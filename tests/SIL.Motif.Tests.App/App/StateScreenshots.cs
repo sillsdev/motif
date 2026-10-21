@@ -602,8 +602,8 @@ public sealed class StateScreenshots(ITestOutputHelper output)
         })
         { Height = 1600 };
         yield return new("timing", "statistics-expanded", stage => stage.Expand(WorkspacePage.Timing,
-            () => stage.Visible<Expander>(expander => expander.Header as string == MotifAppStrings.HeaderDetailedStatistics).First(),
-            MotifAppStrings.HeaderDetailedStatistics))
+            () => stage.Visible<Expander>(expander => expander.Header as string == MotifAppStrings.TimingDetailedStatisticsHeading).First(),
+            MotifAppStrings.TimingDetailedStatisticsHeading))
         { Height = 1300 };
 
         // Warnings.
@@ -996,7 +996,7 @@ public sealed class StateScreenshots(ITestOutputHelper output)
                 ? Visible<TextBlock>(block => block.Classes.Contains("warningState")
                     && block.Text == row.ReachStateText).Any()
                 : Visible<TextBlock>(block => block.Text == row.NoExactUsesText).Any())
-                && (!row.HasGuidance || Visible<TextBlock>(block => block.Text == "What to do in FieldWorks").Any()),
+                && (!row.HasGuidance || Visible<TextBlock>(block => block.Text == MotifAppStrings.WhatToDoInFieldWorks).Any()),
                 "the finding details and producer guidance when present");
             return $"Opened the {row.PanGlossTitle} finding{(named ? " with a named item" : ", which names no item")}.";
         }

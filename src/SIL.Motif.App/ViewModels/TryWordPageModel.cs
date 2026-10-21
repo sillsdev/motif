@@ -498,7 +498,7 @@ public sealed class TryWordStoredAnalysis
     public string Text { get; }
     public IReadOnlyList<ParserReadingMorphViewModel> Morphs { get; }
     public IReadOnlyList<TryWordTracePiece> Pieces { get; }
-    public bool HasUnrecordedStep => Pieces.Any(piece => piece.Status == MotifAppStrings.NoStepRecorded);
+    public bool HasUnrecordedStep => Pieces.Any(piece => piece.HasNoRecordedStep);
 }
 
 /// <summary>A stored piece and only the trace events that name its exact authored identity.</summary>
@@ -511,6 +511,7 @@ public sealed class TryWordTracePiece
         Morphs = [new ParserReadingMorphViewModel(morphs[0])];
         var statuses = morphs.Select(morph => StatusFor(morph, trace)).Distinct().ToArray();
         var status = statuses.Length == 1 ? statuses[0] : PieceStatus.Differ;
+        HasNoRecordedStep = status == PieceStatus.NoStep;
         Status = status switch
         {
             PieceStatus.BuiltAndRefused => MotifAppStrings.TryWordPieceBuiltRefused,
@@ -550,6 +551,8 @@ public sealed class TryWordTracePiece
 
     public IReadOnlyList<ParserReadingMorphViewModel> Morphs { get; }
     public string Status { get; }
+    /// <summary>Whether the trace holds no step for this piece, whatever words say so.</summary>
+    public bool HasNoRecordedStep { get; }
     /// <summary>The status words and signs that form the visible line.</summary>
     public IReadOnlyList<TryWordTraceStatus> StatusParts { get; }
 

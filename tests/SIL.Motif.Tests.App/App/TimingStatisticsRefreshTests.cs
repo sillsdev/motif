@@ -62,7 +62,7 @@ public sealed class TimingStatisticsRefreshTests
                 Assert.False(workspace.Context.EvidencePublication.IsCompleted);
 
                 var details = window.GetLogicalDescendants().OfType<Expander>()
-                    .Single(expander => Equals(expander.Header, MotifAppStrings.HeaderDetailedStatistics));
+                    .Single(expander => Equals(expander.Header, MotifAppStrings.TimingDetailedStatisticsHeading));
                 details.IsExpanded = true;
                 Settle(window);
                 Assert.NotNull(statistics.LoadCommand.ExecutionTask);

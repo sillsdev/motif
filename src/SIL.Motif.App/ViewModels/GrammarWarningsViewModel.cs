@@ -337,14 +337,13 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
     {
         var groups = Rows.Cast<object>().OfType<GrammarWarningRowViewModel>()
             .GroupBy(WarningArea)
-            .OrderBy(group => AreaOrder(group.Key))
-            .ThenBy(group => group.Key, StringComparer.Ordinal)
+            .OrderBy(group => (int)group.Key)
             .ToArray();
         TableEntries.Clear();
         foreach (var group in groups)
         {
             var count = group.Sum(row => row.RepeatCount);
-            TableEntries.Add(new DenseTableGroup(group.Key, PluralText.Format(MotifAppStrings.WarningsFindingsPattern, count)));
+            TableEntries.Add(new DenseTableGroup(AreaText(group.Key), PluralText.Format(MotifAppStrings.WarningsFindingsPattern, count)));
             foreach (var row in group) TableEntries.Add(row);
         }
 
@@ -352,29 +351,33 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
             SelectedTableEntry = null;
     }
 
-    private static string WarningArea(GrammarWarningRowViewModel row)
+    private enum WarningAreaKind { Environments, PhonologicalRules, Affixes, Other }
+
+    private static string AreaText(WarningAreaKind area) => area switch
+    {
+        WarningAreaKind.Environments => MotifAppStrings.WarningsAreaEnvironments,
+        WarningAreaKind.PhonologicalRules => MotifAppStrings.WarningsAreaPhonologicalRules,
+        WarningAreaKind.Affixes => MotifAppStrings.WarningsAreaAffixes,
+        _ => MotifAppStrings.WarningsAreaOther,
+    };
+
+    private static WarningAreaKind WarningArea(GrammarWarningRowViewModel row)
     {
         var kinds = row.Warning.Subject.Select(part => part.FieldWorksKind).Where(kind => kind is not null)
             .Cast<string>().ToArray();
         var code = row.Warning.Code ?? string.Empty;
         if (kinds.Contains("PhEnvironment", StringComparer.Ordinal) ||
             code.Contains("environment", StringComparison.OrdinalIgnoreCase))
-            return MotifAppStrings.WarningsAreaEnvironments;
+            return WarningAreaKind.Environments;
         if (kinds.Any(kind => kind.StartsWith("MoAffix", StringComparison.Ordinal)) ||
             code.Contains("affix", StringComparison.OrdinalIgnoreCase))
-            return MotifAppStrings.WarningsAreaAffixes;
+            return WarningAreaKind.Affixes;
         if (kinds.Any(kind => kind.StartsWith("Ph", StringComparison.Ordinal)) ||
             code.Contains("phon", StringComparison.OrdinalIgnoreCase) ||
             code.Contains("rule", StringComparison.OrdinalIgnoreCase))
-            return MotifAppStrings.WarningsAreaPhonologicalRules;
-        return MotifAppStrings.WarningsAreaOther;
+            return WarningAreaKind.PhonologicalRules;
+        return WarningAreaKind.Other;
     }
-
-    private static int AreaOrder(string area) =>
-        area == MotifAppStrings.WarningsAreaEnvironments ? 0
-        : area == MotifAppStrings.WarningsAreaPhonologicalRules ? 1
-        : area == MotifAppStrings.WarningsAreaAffixes ? 2
-        : 3;
 
     private bool Matches(object item) =>
         item is GrammarWarningRowViewModel row

@@ -668,7 +668,7 @@ public sealed class ProgressiveDisplayTests
                 PageScreenshots.Settle(window);
                 var page = Assert.Single(window.GetVisualDescendants().OfType<TimingPage>());
                 var expander = Assert.Single(page.GetLogicalDescendants().OfType<Expander>(),
-                    control => Equals(control.Header, MotifAppStrings.HeaderDetailedStatistics));
+                    control => Equals(control.Header, MotifAppStrings.TimingDetailedStatisticsHeading));
                 expander.IsExpanded = true;
                 if (page.Page.Statistics.LoadCommand.ExecutionTask is { } loading) await loading;
                 PageScreenshots.Settle(window);
@@ -808,7 +808,7 @@ public sealed class ProgressiveDisplayTests
                 PageScreenshots.Settle(window);
                 var page = Assert.Single(window.GetVisualDescendants().OfType<TimingPage>());
                 var expander = Assert.Single(page.GetLogicalDescendants().OfType<Expander>(),
-                    control => Equals(control.Header, MotifAppStrings.HeaderDetailedStatistics));
+                    control => Equals(control.Header, MotifAppStrings.TimingDetailedStatisticsHeading));
                 expander.IsExpanded = true;
                 PageScreenshots.Settle(window);
                 var grid = Assert.Single(page.GetVisualDescendants().OfType<DataGrid>());

@@ -822,7 +822,7 @@ public sealed class MainWindowSmokeTests
                 window.UpdateLayout();
 
                 var details = window.GetVisualDescendants().OfType<Expander>()
-                    .Single(expander => Equals(expander.Header, MotifAppStrings.HeaderDetailedStatistics));
+                    .Single(expander => Equals(expander.Header, MotifAppStrings.TimingDetailedStatisticsHeading));
                 details.IsExpanded = true;
                 Avalonia.Threading.Dispatcher.UIThread.RunJobs();
                 window.UpdateLayout();

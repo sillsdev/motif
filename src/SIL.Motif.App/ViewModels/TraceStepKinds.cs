@@ -12,18 +12,18 @@ public static class TraceStepKinds
 {
     private static readonly string[] DirectionSuffixes = ["Input", "Output", "Analysis", "Synthesis"];
 
-    private static readonly IReadOnlyDictionary<string, string> Kinds = new Dictionary<string, string>(StringComparer.Ordinal)
+    private static readonly IReadOnlyDictionary<string, Func<string>> Kinds = new Dictionary<string, Func<string>>(StringComparer.Ordinal)
     {
-        ["MorphologicalRule"] = MotifAppStrings.TraceKindMorphologicalRule,
-        ["PhonologicalRule"] = MotifAppStrings.TraceKindPhonologicalRule,
-        ["Template"] = MotifAppStrings.TraceKindAffixTemplate,
-        ["LexicalLookup"] = MotifAppStrings.TraceKindLexicalLookup,
-        ["Stratum"] = MotifAppStrings.TraceKindRuleLevel,
-        ["CompoundingRule"] = MotifAppStrings.TraceKindCompoundRule,
-        ["Word"] = MotifAppStrings.Word,
-        ["Successful"] = MotifAppStrings.TraceKindBuiltTheWord,
-        ["Failed"] = MotifAppStrings.TraceKindNoAnalysisFound,
-        ["Blocked"] = MotifAppStrings.TraceKindBlocked,
+        ["MorphologicalRule"] = () => MotifAppStrings.TraceKindMorphologicalRule,
+        ["PhonologicalRule"] = () => MotifAppStrings.TraceKindPhonologicalRule,
+        ["Template"] = () => MotifAppStrings.TraceKindAffixTemplate,
+        ["LexicalLookup"] = () => MotifAppStrings.TraceKindLexicalLookup,
+        ["Stratum"] = () => MotifAppStrings.TraceKindRuleLevel,
+        ["CompoundingRule"] = () => MotifAppStrings.TraceKindCompoundRule,
+        ["Word"] = () => MotifAppStrings.TraceKindWord,
+        ["Successful"] = () => MotifAppStrings.TraceKindBuiltTheWord,
+        ["Failed"] = () => MotifAppStrings.TraceKindNoAnalysisFound,
+        ["Blocked"] = () => MotifAppStrings.TraceKindBlocked,
     };
 
     /// <summary>The plain name for a trace step's kind, never the parser's own class name.</summary>
@@ -31,13 +31,25 @@ public static class TraceStepKinds
     public static string Describe(string? type)
     {
         if (string.IsNullOrWhiteSpace(type)) return MotifAppStrings.TraceKindStep;
-        if (Kinds.TryGetValue(type, out var exact)) return exact;
+        if (Kinds.TryGetValue(type, out var exact)) return exact();
         var stem = type;
         // Input and Output come off before Analysis and Synthesis, so "TemplateAnalysisInput" leaves "Template".
         foreach (var suffix in DirectionSuffixes)
             if (stem.Length > suffix.Length && stem.EndsWith(suffix, StringComparison.Ordinal))
                 stem = stem[..^suffix.Length];
-        return Kinds.TryGetValue(stem, out var kind) ? kind : Humanise(type);
+        return Kinds.TryGetValue(stem, out var kind) ? kind() : Humanise(type);
+    }
+
+    /// <summary>Whether a step is a rule level or the word itself, which are structure rather than something the parser built.</summary>
+    /// <param name="type">The step's kind as the trace records it.</param>
+    public static bool IsStructural(string? type)
+    {
+        if (string.IsNullOrWhiteSpace(type)) return false;
+        var stem = type;
+        foreach (var suffix in DirectionSuffixes)
+            if (stem.Length > suffix.Length && stem.EndsWith(suffix, StringComparison.Ordinal))
+                stem = stem[..^suffix.Length];
+        return stem is "Stratum" or "Word";
     }
 
     /// <summary>Why the parser refused a step, in words, for a reason code no sentence was recorded for.</summary>

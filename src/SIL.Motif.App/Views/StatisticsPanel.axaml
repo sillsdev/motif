@@ -38,7 +38,7 @@
         </ComboBox.ItemTemplate>
       </ComboBox>
       <TextBox Text="{Binding Statistics.FilterText}"
-               PlaceholderText="Filter rows..."
+               PlaceholderText="{x:Static app:MotifAppStrings.StatisticsFilterPlaceholder}"
                Width="{DynamicResource Component.Statistics.FilterWidth}"
                AutomationProperties.Name="{x:Static app:MotifAppStrings.FilterStatisticsRowsAccessibleName}"
                Margin="{DynamicResource Intent.Gap.AfterGroup}" />
@@ -71,14 +71,14 @@
       <DataGrid.Columns>
         <!-- A DataGridColumn's Binding has no compiled-binding item scope of its own (unlike a
              DataTemplate); ReflectionBinding is the documented per-binding opt-out. -->
-        <DataGridTemplateColumn Header="{x:Static app:MotifAppStrings.HeaderKind}" Tag="kind" ClipboardContentBinding="{ReflectionBinding Kind}">
+        <DataGridTemplateColumn Header="{x:Static app:MotifAppStrings.StatisticsColumnKind}" Tag="kind" ClipboardContentBinding="{ReflectionBinding Kind}">
           <DataGridTemplateColumn.CellTemplate>
             <DataTemplate x:DataType="vm:StatsRowViewModel">
               <views:CopyableTextBlock Text="{Binding Kind}" Margin="{DynamicResource Component.Statistics.CellMargin}" />
             </DataTemplate>
           </DataGridTemplateColumn.CellTemplate>
         </DataGridTemplateColumn>
-        <DataGridTemplateColumn Header="{x:Static app:MotifAppStrings.HeaderObject}" Tag="object" ClipboardContentBinding="{ReflectionBinding Object}">
+        <DataGridTemplateColumn Header="{x:Static app:MotifAppStrings.StatisticsColumnObject}" Tag="object" ClipboardContentBinding="{ReflectionBinding Object}">
           <DataGridTemplateColumn.CellTemplate>
             <DataTemplate x:DataType="vm:StatsRowViewModel">
               <views:CopyableTextBlock Text="{Binding Object}" TextTrimming="CharacterEllipsis"
@@ -98,7 +98,7 @@
             </DataTemplate>
           </DataGridTemplateColumn.CellTemplate>
         </DataGridTemplateColumn>
-        <DataGridTemplateColumn Header="{x:Static app:MotifAppStrings.HeaderCompletion}" Tag="completion" ClipboardContentBinding="{ReflectionBinding CompletionStatus}">
+        <DataGridTemplateColumn Header="{x:Static app:MotifAppStrings.StatisticsColumnCompletion}" Tag="completion" ClipboardContentBinding="{ReflectionBinding CompletionStatus}">
           <DataGridTemplateColumn.CellTemplate>
             <DataTemplate x:DataType="vm:StatsRowViewModel">
               <views:MarkChip Mark="{Binding CompletionMark}" Text="{Binding CompletionShort}" Compact="True"
@@ -116,7 +116,7 @@
             </DataTemplate>
           </DataGridTemplateColumn.CellTemplate>
         </DataGridTemplateColumn>
-        <DataGridTemplateColumn Header="{x:Static app:MotifAppStrings.HeaderAnalyses}" Tag="passes" Width="Auto" ClipboardContentBinding="{ReflectionBinding Passes}">
+        <DataGridTemplateColumn Header="{x:Static app:MotifAppStrings.StatisticsColumnAnalyses}" Tag="passes" Width="Auto" ClipboardContentBinding="{ReflectionBinding Passes}">
           <DataGridTemplateColumn.CellTemplate>
             <DataTemplate x:DataType="vm:StatsRowViewModel">
               <views:HeatCell Text="{Binding PassesText}" TextToolTip="{Binding PassesText}"
@@ -124,7 +124,7 @@
             </DataTemplate>
           </DataGridTemplateColumn.CellTemplate>
         </DataGridTemplateColumn>
-        <DataGridTemplateColumn Header="{x:Static app:MotifAppStrings.HeaderElapsedMs}" Tag="elapsedMs" Width="Auto" ClipboardContentBinding="{ReflectionBinding ElapsedMs}">
+        <DataGridTemplateColumn Header="{x:Static app:MotifAppStrings.StatisticsColumnElapsedMs}" Tag="elapsedMs" Width="Auto" ClipboardContentBinding="{ReflectionBinding ElapsedMs}">
           <DataGridTemplateColumn.CellTemplate>
             <DataTemplate x:DataType="vm:StatsRowViewModel">
               <views:HeatCell Text="{Binding ElapsedText}" TextToolTip="{Binding ElapsedText}"

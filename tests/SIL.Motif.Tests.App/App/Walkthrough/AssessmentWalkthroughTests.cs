@@ -200,7 +200,7 @@ public sealed class AssessmentWalkthroughTests(PristineProjectFixture pristine)
                 walkthrough.Workspace.PageModel<TimingPageModel>().Statistics.SelectedGroup);
 
             var details = walkthrough.Window.GetLogicalDescendants().OfType<Expander>()
-                .Single(expander => Equals(expander.Header, MotifAppStrings.HeaderDetailedStatistics));
+                .Single(expander => Equals(expander.Header, MotifAppStrings.TimingDetailedStatisticsHeading));
             details.IsExpanded = true;
             Dispatcher.UIThread.RunJobs();
             walkthrough.Window.UpdateLayout();

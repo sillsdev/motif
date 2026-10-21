@@ -38,7 +38,7 @@
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
-            <views:CopyableTextBlock Classes="parsimonyGroupTitle" Text="{x:Static app:MotifAppStrings.Decision}" />
+            <views:CopyableTextBlock Classes="parsimonyGroupTitle" Text="{x:Static app:MotifAppStrings.ParsimonyDecisionLabel}" />
             <ItemsControl x:Name="ParsimonyDecisionFilters" ItemsSource="{Binding DecisionFilters}" AutomationProperties.Name="{x:Static app:MotifAppStrings.FilterByDecisionAccessibleName}">
               <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate><WrapPanel Classes="parsimonyFilters" /></ItemsPanelTemplate>
@@ -101,9 +101,9 @@
                   </DataTemplate>
                 </ComboBox.ItemTemplate>
               </ComboBox>
-              <TextBox PlaceholderText="Reason (optional)" Text="{Binding ReasonText}" AcceptsReturn="True" TextWrapping="Wrap"
+              <TextBox PlaceholderText="{x:Static app:MotifAppStrings.ParsimonyReasonPlaceholder}" Text="{Binding ReasonText}" AcceptsReturn="True" TextWrapping="Wrap"
                        AutomationProperties.Name="{x:Static app:MotifAppStrings.ReasonAccessibleName}" AutomationProperties.AutomationId="{x:Static app:AutomationIds.ParsimonyReason}" />
-              <TextBox PlaceholderText="Question to ask" Text="{Binding QuestionText}" AcceptsReturn="True" TextWrapping="Wrap"
+              <TextBox PlaceholderText="{x:Static app:MotifAppStrings.ParsimonyQuestionPlaceholder}" Text="{Binding QuestionText}" AcceptsReturn="True" TextWrapping="Wrap"
                        AutomationProperties.Name="{x:Static app:MotifAppStrings.QuestionAccessibleName}" AutomationProperties.AutomationId="{x:Static app:AutomationIds.ParsimonyQuestion}" />
               <WrapPanel Orientation="Horizontal">
                 <Button Content="{x:Static app:MotifAppStrings.Keep}" Command="{Binding KeepCommand}" AutomationProperties.AutomationId="{x:Static app:AutomationIds.ParsimonyKeep}" />
@@ -164,9 +164,9 @@
         <Border Classes="denseTableColumnHeader">
           <Grid controls:DenseTable.Columns="2* 1.2* 1.5* 1.2* Component.Parsimony.Column.DecisionsWidth Component.DenseTable.MenuSize"
                 controls:DenseTable.CompactColumns="* 0 0 0 Component.Parsimony.Column.DecisionsWidth Component.DenseTable.MenuSize">
-            <views:CopyableTextBlock Classes="denseTableHeading" Text="{x:Static app:MotifAppStrings.Finding}" VerticalAlignment="Center" />
+            <views:CopyableTextBlock Classes="denseTableHeading" Text="{x:Static app:MotifAppStrings.ParsimonyFindingLabel}" VerticalAlignment="Center" />
             <Border Grid.Column="1" controls:DenseTable.Secondary="True">
-              <views:CopyableTextBlock Classes="denseTableHeading" Text="{x:Static app:MotifAppStrings.Counted}" VerticalAlignment="Center" />
+              <views:CopyableTextBlock Classes="denseTableHeading" Text="{x:Static app:MotifAppStrings.ParsimonyCountedLabel}" VerticalAlignment="Center" />
             </Border>
             <Border Grid.Column="2" controls:DenseTable.Secondary="True">
               <views:CopyableTextBlock Classes="denseTableHeading" Text="{x:Static app:MotifAppStrings.StrengthOfEvidence}" TextWrapping="NoWrap"
@@ -176,7 +176,7 @@
               <views:CopyableTextBlock Classes="denseTableHeading" Text="{x:Static app:MotifAppStrings.PairedParserCheck}" TextWrapping="NoWrap"
                          TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
             </Border>
-            <views:CopyableTextBlock Grid.Column="4" Classes="denseTableHeading" Text="{x:Static app:MotifAppStrings.Decision}" VerticalAlignment="Center" />
+            <views:CopyableTextBlock Grid.Column="4" Classes="denseTableHeading" Text="{x:Static app:MotifAppStrings.ParsimonyDecisionLabel}" VerticalAlignment="Center" />
           </Grid>
         </Border>
         <ListBox x:Name="ParsimonyRowsItems" Grid.Row="1" Classes="denseTable"
@@ -280,20 +280,20 @@
         <Border Grid.Row="1" Classes="denseTableColumnHeader" IsVisible="{Binding HasSuppressedItems}">
           <Grid controls:DenseTable.Columns="{StaticResource SuppressedColumns}"
                 controls:DenseTable.CompactColumns="{StaticResource SuppressedCompactColumns}">
-            <views:CopyableTextBlock Classes="denseTableHeading" Text="{x:Static app:MotifAppStrings.Decision}" VerticalAlignment="Center" />
+            <views:CopyableTextBlock Classes="denseTableHeading" Text="{x:Static app:MotifAppStrings.ParsimonyDecisionLabel}" VerticalAlignment="Center" />
             <Border Grid.Column="1" controls:DenseTable.Secondary="True">
               <views:CopyableTextBlock Classes="denseTableHeading" Text="{x:Static app:MotifAppStrings.Judgment}" TextWrapping="NoWrap"
                          TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
             </Border>
             <Border Grid.Column="2" controls:DenseTable.Secondary="True">
-              <views:CopyableTextBlock Classes="denseTableHeading" Text="{x:Static app:MotifAppStrings.Reason}" TextWrapping="NoWrap"
+              <views:CopyableTextBlock Classes="denseTableHeading" Text="{x:Static app:MotifAppStrings.ParsimonyReasonLabel}" TextWrapping="NoWrap"
                          TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
             </Border>
             <Border Grid.Column="3" controls:DenseTable.Secondary="True">
-              <views:CopyableTextBlock Classes="denseTableHeading" Text="{x:Static app:MotifAppStrings.State}" TextWrapping="NoWrap"
+              <views:CopyableTextBlock Classes="denseTableHeading" Text="{x:Static app:MotifAppStrings.ParsimonyStateLabel}" TextWrapping="NoWrap"
                          TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
             </Border>
-            <views:CopyableTextBlock Grid.Column="4" Classes="denseTableHeading" Text="{x:Static app:MotifAppStrings.Action}" VerticalAlignment="Center" />
+            <views:CopyableTextBlock Grid.Column="4" Classes="denseTableHeading" Text="{x:Static app:MotifAppStrings.ParsimonyActionLabel}" VerticalAlignment="Center" />
           </Grid>
         </Border>
         <ListBox x:Name="ParsimonySuppressedItems" Grid.Row="2" Classes="denseTable"
@@ -337,7 +337,7 @@
                     </Border>
                     <StackPanel Grid.Column="4" Classes="parsimonyDecisionActions" Orientation="Horizontal"
                                 Spacing="{StaticResource Intent.Space.Minimal}" VerticalAlignment="Center">
-                      <Button Classes="denseTableAction" Content="{x:Static app:MotifAppStrings.Return}" Command="{Binding ReturnCommand}"
+                      <Button Classes="denseTableAction" Content="{x:Static app:MotifAppStrings.ParsimonyReturnLabel}" Command="{Binding ReturnCommand}"
                               Click="OnReturn"
                               AutomationProperties.Name="{Binding Title, StringFormat='Return {0} to Active'}"
                               AutomationProperties.AutomationId="{Binding ReturnAutomationId}" />

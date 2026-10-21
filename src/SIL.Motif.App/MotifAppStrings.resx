@@ -2095,53 +2095,53 @@ Never included unless you tick it in the preview: local details, which may conta
   </data>
   <data name="MotifApp.KindOfFinding" xml:space="preserve">
     <value>Kind of Finding</value>
-    <comment>Text on the Parsimony page.</comment>
+    <comment>Field label in Parsimony: which kind of finding (a category of grammar observation) this is.</comment>
   </data>
-  <data name="MotifApp.Decision" xml:space="preserve">
+  <data name="MotifApp.ParsimonyDecisionLabel" xml:space="preserve">
     <value>Decision</value>
     <comment>Label: the decision a linguist made about a finding (keep, defer or ask).</comment>
   </data>
   <data name="MotifApp.NotebookRecordTypeForThisDecision" xml:space="preserve">
     <value>Notebook record type for this decision</value>
-    <comment>Text on the Parsimony page.</comment>
+    <comment>Heading or field label on the Parsimony page: "Notebook record type for this decision".</comment>
   </data>
   <data name="MotifApp.ParsimonyReportEarlierBaselineNotice" xml:space="preserve">
     <value>This Report was measured from an earlier Baseline. Check again to see findings for the current one.</value>
-    <comment>Text on the Parsimony page.</comment>
+    <comment>Sentence shown on the Parsimony page. It is read as a complete message; keep it a complete sentence.</comment>
   </data>
-  <data name="MotifApp.Finding" xml:space="preserve">
+  <data name="MotifApp.ParsimonyFindingLabel" xml:space="preserve">
     <value>Finding</value>
-    <comment>Text on the Parsimony page.</comment>
+    <comment>Field label in the Parsimony decision area: the finding (a grammar-economy observation) being decided.</comment>
   </data>
-  <data name="MotifApp.Counted" xml:space="preserve">
+  <data name="MotifApp.ParsimonyCountedLabel" xml:space="preserve">
     <value>Counted</value>
     <comment>Column heading: what the finding counted, such as words or analyses.</comment>
   </data>
   <data name="MotifApp.StrengthOfEvidence" xml:space="preserve">
     <value>Strength of Evidence</value>
-    <comment>Text on the Parsimony page.</comment>
+    <comment>Field label in Parsimony: how strong the evidence for the finding is.</comment>
   </data>
   <data name="MotifApp.PairedParserCheck" xml:space="preserve">
     <value>Paired Parser Check</value>
-    <comment>Text on the Parsimony page.</comment>
+    <comment>Field label in Parsimony: the parser check that was run alongside to confirm the finding.</comment>
   </data>
   <data name="MotifApp.ParsimonyNothingSuppressed" xml:space="preserve">
     <value>Nothing is suppressed. Keep or defer a finding, then Apply and Refresh, and it is listed here.</value>
-    <comment>Text on the Parsimony page.</comment>
+    <comment>Sentence shown on the Parsimony page. It is read as a complete message; keep it a complete sentence.</comment>
   </data>
   <data name="MotifApp.Judgment" xml:space="preserve">
     <value>Judgment</value>
     <comment>Column heading: the verdict the parsimony check reached.</comment>
   </data>
-  <data name="MotifApp.Reason" xml:space="preserve">
+  <data name="MotifApp.ParsimonyReasonLabel" xml:space="preserve">
     <value>Reason</value>
     <comment>Column heading: the reason the linguist gave for a decision.</comment>
   </data>
-  <data name="MotifApp.State" xml:space="preserve">
+  <data name="MotifApp.ParsimonyStateLabel" xml:space="preserve">
     <value>State</value>
     <comment>Column heading: the state of a finding.</comment>
   </data>
-  <data name="MotifApp.Action" xml:space="preserve">
+  <data name="MotifApp.ParsimonyActionLabel" xml:space="preserve">
     <value>Action</value>
     <comment>Column heading for the buttons that act on a row.</comment>
   </data>
@@ -2161,37 +2161,37 @@ Never included unless you tick it in the preview: local details, which may conta
     <value>Review Changes</value>
     <comment>Button or command label on the Parsimony page.</comment>
   </data>
-  <data name="MotifApp.Return" xml:space="preserve">
+  <data name="MotifApp.ParsimonyReturnLabel" xml:space="preserve">
     <value>Return</value>
     <comment>Button: put a suppressed finding back among the active findings.</comment>
   </data>
   <data name="MotifApp.FindingsNotAvailableAccessibleName" xml:space="preserve">
     <value>Findings not available</value>
-    <comment>Accessible name (read by screen readers) on the Parsimony page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the Parsimony page: "Findings not available". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.FilterByKindAccessibleName" xml:space="preserve">
     <value>Filter by kind</value>
-    <comment>Accessible name (read by screen readers) on the Parsimony page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a list on the Parsimony page: "Filter by kind". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.FilterByDecisionAccessibleName" xml:space="preserve">
     <value>Filter by decision</value>
-    <comment>Accessible name (read by screen readers) on the Parsimony page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a list on the Parsimony page: "Filter by decision". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.FindingsStillLoadingAccessibleName" xml:space="preserve">
     <value>Findings still loading</value>
-    <comment>Accessible name (read by screen readers) on the Parsimony page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the Parsimony page: "Findings still loading". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.FindingEvidenceAccessibleName" xml:space="preserve">
     <value>Finding evidence</value>
-    <comment>Accessible name (read by screen readers) on the Parsimony page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a region on the Parsimony page: "Finding evidence". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.DecideThisFindingAccessibleName" xml:space="preserve">
     <value>Decide this finding</value>
-    <comment>Accessible name (read by screen readers) on the Parsimony page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a region on the Parsimony page: "Decide this finding". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.NotebookRecordTypeAccessibleName" xml:space="preserve">
     <value>Notebook record type</value>
-    <comment>Accessible name (read by screen readers) on the Parsimony page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the Parsimony page: "Notebook record type". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.ReasonAccessibleName" xml:space="preserve">
     <value>Reason</value>
@@ -2199,71 +2199,71 @@ Never included unless you tick it in the preview: local details, which may conta
   </data>
   <data name="MotifApp.QuestionAccessibleName" xml:space="preserve">
     <value>Question</value>
-    <comment>Accessible name (read by screen readers) on the Parsimony page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the Parsimony page: "Question". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.SavedDecisionAccessibleName" xml:space="preserve">
     <value>Saved decision</value>
-    <comment>Accessible name (read by screen readers) on the Parsimony page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a region on the Parsimony page: "Saved decision". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.ParsimonyStateAccessibleName" xml:space="preserve">
     <value>Parsimony state</value>
-    <comment>Accessible name (read by screen readers) on the Parsimony page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a region on the Parsimony page: "Parsimony state". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.MeasuredFromAnEarlierBaselineAccessibleName" xml:space="preserve">
     <value>Measured from an earlier Baseline</value>
-    <comment>Accessible name (read by screen readers) on the Parsimony page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a region on the Parsimony page: "Measured from an earlier Baseline". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.EvidenceNotStoredAccessibleName" xml:space="preserve">
     <value>Evidence not stored</value>
-    <comment>Accessible name (read by screen readers) on the Parsimony page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a region on the Parsimony page: "Evidence not stored". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.JudgmentsNeedingALookAccessibleName" xml:space="preserve">
     <value>Judgments needing a look</value>
-    <comment>Accessible name (read by screen readers) on the Parsimony page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a region on the Parsimony page: "Judgments needing a look". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.IncompleteReportAccessibleName" xml:space="preserve">
     <value>Incomplete Report</value>
-    <comment>Accessible name (read by screen readers) on the Parsimony page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a region on the Parsimony page: "Incomplete Report". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.ActiveFindingsAccessibleName" xml:space="preserve">
     <value>Active findings</value>
-    <comment>Accessible name (read by screen readers) on the Parsimony page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the Parsimony page: "Active findings". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.SuppressedDecisionsAccessibleName" xml:space="preserve">
     <value>Suppressed decisions</value>
-    <comment>Accessible name (read by screen readers) on the Parsimony page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the Parsimony page: "Suppressed decisions". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.TotalWordTime" xml:space="preserve">
     <value>Total word time</value>
-    <comment>Text on the Timing page.</comment>
+    <comment>Label on the Timing page: the sum of the time taken by all measured words.</comment>
   </data>
   <data name="MotifApp.MedianWordTime" xml:space="preserve">
     <value>median word time</value>
-    <comment>Text on the Timing page.</comment>
+    <comment>Lowercase fragment inside a Timing sentence: the middle value of the per-word times.</comment>
   </data>
   <data name="MotifApp.TimingMatrixCellHeading" xml:space="preserve">
     <value>Matrix Cell</value>
-    <comment>Text on the Timing page.</comment>
+    <comment>Heading or field label on the Timing page: "Matrix Cell".</comment>
   </data>
   <data name="MotifApp.ListFromTexts" xml:space="preserve">
     <value>List from Texts</value>
-    <comment>Text on the Timing page.</comment>
+    <comment>Label on the Timing page: the word list chosen on the Texts page.</comment>
   </data>
   <data name="MotifApp.SecondsPerWord" xml:space="preserve">
     <value>Seconds per Word</value>
-    <comment>Text on the Timing page.</comment>
+    <comment>Label of the box where a person enters how many seconds each word gets when run again.</comment>
   </data>
   <data name="MotifApp.AnalysisAttemptLimit" xml:space="preserve">
     <value>Analysis Attempt Limit</value>
-    <comment>Text on the Timing page.</comment>
+    <comment>Label of the box where a person limits how many analysis attempts each word may use.</comment>
   </data>
   <data name="MotifApp.ReadingTheParseTimes" xml:space="preserve">
     <value>Reading the parse times…</value>
-    <comment>Text on the Timing page.</comment>
+    <comment>Sentence shown on the Timing page. It is read as a complete message; keep it a complete sentence.</comment>
   </data>
   <data name="MotifApp.TimingBaselineStaleNotice" xml:space="preserve">
     <value>FieldWorks has changed since the Baseline behind these numbers.</value>
-    <comment>Text on the Timing page.</comment>
+    <comment>Sentence shown on the Timing page. It is read as a complete message; keep it a complete sentence.</comment>
   </data>
   <data name="MotifApp.TimingRuleColumnHeading" xml:space="preserve">
     <value>RULE</value>
@@ -2287,31 +2287,31 @@ Never included unless you tick it in the preview: local details, which may conta
   </data>
   <data name="MotifApp.HowLongTheWordsTook" xml:space="preserve">
     <value>How Long the Words Took</value>
-    <comment>Text on the Timing page.</comment>
+    <comment>Heading on the Timing page above the summary of how long the measured words took.</comment>
   </data>
   <data name="MotifApp.Slowest" xml:space="preserve">
     <value>Slowest</value>
     <comment>Toggle: show the slowest words.</comment>
   </data>
-  <data name="MotifApp.AMatrixCell" xml:space="preserve">
+  <data name="MotifApp.TimingSourceMatrixCellOption" xml:space="preserve">
     <value>A Matrix Cell</value>
-    <comment>Button or command label on the Timing page.</comment>
+    <comment>Option on the Timing page: choose the words to measure from a Matrix cell. Follows a question such as "Which words?".</comment>
   </data>
   <data name="MotifApp.UseCell" xml:space="preserve">
     <value>Use Cell</value>
-    <comment>Button or command label on the Timing page.</comment>
+    <comment>Button on the Timing page: use the chosen Matrix cell as the words to measure.</comment>
   </data>
   <data name="MotifApp.AList" xml:space="preserve">
     <value>A List</value>
-    <comment>Button or command label on the Timing page.</comment>
+    <comment>Option on the Timing page: choose the words to measure from a saved word list. Follows a question such as "Which words?".</comment>
   </data>
   <data name="MotifApp.UseList" xml:space="preserve">
     <value>Use List</value>
-    <comment>Button or command label on the Timing page.</comment>
+    <comment>Button on the Timing page: use the chosen word list as the words to measure.</comment>
   </data>
   <data name="MotifApp.AIHandoffForTheseWords" xml:space="preserve">
     <value>AI Handoff for These Words</value>
-    <comment>Button or command label on the Timing page.</comment>
+    <comment>Label of a button on the Timing page. Names the action the person takes: "AI Handoff for These Words".</comment>
   </data>
   <data name="MotifApp.More" xml:space="preserve">
     <value>More</value>
@@ -2319,31 +2319,31 @@ Never included unless you tick it in the preview: local details, which may conta
   </data>
   <data name="MotifApp.ChosenInTexts" xml:space="preserve">
     <value>Chosen in Texts</value>
-    <comment>Button or command label on the Timing page.</comment>
+    <comment>Option on the Timing page: measure the words chosen on the Texts page.</comment>
   </data>
   <data name="MotifApp.PickWords" xml:space="preserve">
     <value>Pick Words</value>
-    <comment>Button or command label on the Timing page.</comment>
+    <comment>Button on the Timing page: pick the words to measure by hand.</comment>
   </data>
   <data name="MotifApp.ReRun" xml:space="preserve">
     <value>Re-run</value>
-    <comment>Button or command label on the Timing page.</comment>
+    <comment>Short button label on the Timing page: run the measured words again with new limits.</comment>
   </data>
   <data name="MotifApp.ReRunChosenWords" xml:space="preserve">
     <value>Re-run Chosen Words</value>
-    <comment>Button or command label on the Timing page.</comment>
+    <comment>Label of a button on the Timing page. Names the action the person takes: "Re-run Chosen Words".</comment>
   </data>
   <data name="MotifApp.ParseAgain" xml:space="preserve">
     <value>Parse Again</value>
-    <comment>Button or command label on the Timing page.</comment>
+    <comment>Button: parse the words again with the current Baseline. Parse is the Motif action that measures words with PanGloss.</comment>
   </data>
   <data name="MotifApp.ShowAllWords" xml:space="preserve">
     <value>Show All Words</value>
-    <comment>Button or command label on the Timing page.</comment>
+    <comment>Button on the Timing page: remove the filter and show every timed word.</comment>
   </data>
   <data name="MotifApp.AIHandoffForThisRule" xml:space="preserve">
     <value>AI Handoff for This Rule</value>
-    <comment>Button or command label on the Timing page.</comment>
+    <comment>Label of a button on the Timing page. Names the action the person takes: "AI Handoff for This Rule".</comment>
   </data>
   <data name="MotifApp.TimingRuleWordsColumnTip" xml:space="preserve">
     <value>How many of these words the parser recorded time for this rule in</value>
@@ -2351,127 +2351,127 @@ Never included unless you tick it in the preview: local details, which may conta
   </data>
   <data name="MotifApp.TotalWordTimeAccessibleName" xml:space="preserve">
     <value>Total word time</value>
-    <comment>Accessible name (read by screen readers) on the Timing page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a region on the Timing page: "Total word time". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.TimingControlsAccessibleName" xml:space="preserve">
     <value>Timing controls</value>
-    <comment>Accessible name (read by screen readers) on the Timing page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the Timing page: "Timing controls". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.AllTimedWordsAccessibleName" xml:space="preserve">
     <value>All timed words</value>
-    <comment>Accessible name (read by screen readers) on the Timing page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the Timing page: "All timed words". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.NumberOfSlowestWordsAccessibleName" xml:space="preserve">
     <value>Number of slowest words</value>
-    <comment>Accessible name (read by screen readers) on the Timing page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the Timing page: "Number of slowest words". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.WordsFromAMatrixCellAccessibleName" xml:space="preserve">
     <value>Words from a Matrix cell</value>
-    <comment>Accessible name (read by screen readers) on the Timing page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a button on the Timing page: "Words from a Matrix cell". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.MatrixCellFromTextsAccessibleName" xml:space="preserve">
     <value>Matrix cell from Texts</value>
-    <comment>Accessible name (read by screen readers) on the Timing page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the Timing page: "Matrix cell from Texts". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.UseCellAccessibleName" xml:space="preserve">
     <value>Use cell</value>
-    <comment>Accessible name (read by screen readers) on the Timing page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the Timing page: "Use cell". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.WordsFromAListAccessibleName" xml:space="preserve">
     <value>Words from a list</value>
-    <comment>Accessible name (read by screen readers) on the Timing page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a button on the Timing page: "Words from a list". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.ListFromTextsAccessibleName" xml:space="preserve">
     <value>List from Texts</value>
-    <comment>Accessible name (read by screen readers) on the Timing page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the Timing page: "List from Texts". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.UseListAccessibleName" xml:space="preserve">
     <value>Use list</value>
-    <comment>Accessible name (read by screen readers) on the Timing page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the Timing page: "Use list". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.AIHandoffForTheseWordsAccessibleName" xml:space="preserve">
     <value>AI Handoff for these words</value>
-    <comment>Accessible name (read by screen readers) on the Timing page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the Timing page: "AI Handoff for these words". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.MoreWaysToChooseWordsAccessibleName" xml:space="preserve">
     <value>More ways to choose words</value>
-    <comment>Accessible name (read by screen readers) on the Timing page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a button on the Timing page: "More ways to choose words". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.ChosenInTextsAccessibleName" xml:space="preserve">
     <value>Chosen in Texts</value>
-    <comment>Accessible name (read by screen readers) on the Timing page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the Timing page: "Chosen in Texts". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.WordsPickedByHandAccessibleName" xml:space="preserve">
     <value>Words picked by hand</value>
-    <comment>Accessible name (read by screen readers) on the Timing page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the Timing page: "Words picked by hand". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.PickWordsAccessibleName" xml:space="preserve">
     <value>Pick words</value>
-    <comment>Accessible name (read by screen readers) on the Timing page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the Timing page: "Pick words". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.ReRunWordsWithNewLimitsAccessibleName" xml:space="preserve">
     <value>Re-run words with new limits</value>
-    <comment>Accessible name (read by screen readers) on the Timing page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a button on the Timing page: "Re-run words with new limits". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.SecondsPerWordAccessibleName" xml:space="preserve">
     <value>Seconds per word</value>
-    <comment>Accessible name (read by screen readers) on the Timing page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the Timing page: "Seconds per word". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.PerWordAnalysisAttemptLimitAccessibleName" xml:space="preserve">
     <value>Per-word analysis attempt limit</value>
-    <comment>Accessible name (read by screen readers) on the Timing page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the Timing page: "Per-word analysis attempt limit". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.ReRunChosenWordsAccessibleName" xml:space="preserve">
     <value>Re-run chosen words</value>
-    <comment>Accessible name (read by screen readers) on the Timing page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the Timing page: "Re-run chosen words". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.ParseTheseWordsAgainToMeasureThemAccessibleName" xml:space="preserve">
     <value>Parse these words again to measure them</value>
-    <comment>Accessible name (read by screen readers) on the Timing page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the Timing page: "Parse these words again to measure them". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.ShowAllWordsInTimingAccessibleName" xml:space="preserve">
     <value>Show all words in Timing</value>
-    <comment>Accessible name (read by screen readers) on the Timing page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the Timing page: "Show all words in Timing". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.WhatEveryShareIsOfAccessibleName" xml:space="preserve">
     <value>What every share is of</value>
-    <comment>Accessible name (read by screen readers) on the Timing page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the Timing page: "What every share is of". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.ShareOfTotalWordTimeByKindAccessibleName" xml:space="preserve">
     <value>Share of total word time by kind</value>
-    <comment>Accessible name (read by screen readers) on the Timing page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the Timing page: "Share of total word time by kind". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.TimingByKindAccessibleName" xml:space="preserve">
     <value>Timing by kind</value>
-    <comment>Accessible name (read by screen readers) on the Timing page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the Timing page: "Timing by kind". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.CallsByKindAccessibleName" xml:space="preserve">
     <value>Calls by kind</value>
-    <comment>Accessible name (read by screen readers) on the Timing page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the Timing page: "Calls by kind". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.TimingOverrunAccessibleName" xml:space="preserve">
     <value>Timing overrun</value>
-    <comment>Accessible name (read by screen readers) on the Timing page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the Timing page: "Timing overrun". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.TimingByRuleAccessibleName" xml:space="preserve">
     <value>Timing by rule</value>
-    <comment>Accessible name (read by screen readers) on the Timing page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the Timing page: "Timing by rule". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.OpenTheGrammarWarningAccessibleName" xml:space="preserve">
     <value>Open the grammar warning</value>
-    <comment>Accessible name (read by screen readers) on the Timing page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the Timing page: "Open the grammar warning". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.WordsUnderThisRuleAccessibleName" xml:space="preserve">
     <value>Words under this rule</value>
-    <comment>Accessible name (read by screen readers) on the Timing page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the Timing page: "Words under this rule". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.NotCheckedYet" xml:space="preserve">
     <value>Not checked yet</value>
-    <comment>Text on the Warnings page.</comment>
+    <comment>Status on the Warnings page: the grammar has not been checked yet, so there are no findings to show.</comment>
   </data>
   <data name="MotifApp.WarningsCheckExplanation" xml:space="preserve">
     <value>Checking reads the whole grammar, so it can take a minute on a large project. It runs only when you ask.</value>
-    <comment>Text on the Warnings page.</comment>
+    <comment>Explanation on the Warnings page of what the grammar check costs: it reads the whole grammar and runs only on request.</comment>
   </data>
   <data name="MotifApp.CheckTheGrammar" xml:space="preserve">
     <value>Check the Grammar</value>
@@ -2487,7 +2487,7 @@ Never included unless you tick it in the preview: local details, which may conta
   </data>
   <data name="MotifApp.CompareRowsNotSortedNotice" xml:space="preserve">
     <value>These words aren't sorted by what FieldWorks holds yet. Parse all words again to fill the rows.</value>
-    <comment>Text on the Compare panel.</comment>
+    <comment>Sentence shown on the Compare panel (Matrix). It is read as a complete message; keep it a complete sentence.</comment>
   </data>
   <data name="MotifApp.CompareMatrixAxisLabel" xml:space="preserve">
     <value>FieldWorks ↓  PanGloss →</value>
@@ -2495,11 +2495,11 @@ Never included unless you tick it in the preview: local details, which may conta
   </data>
   <data name="MotifApp.FixTheseFirst" xml:space="preserve">
     <value>Fix These First</value>
-    <comment>Text on the Compare panel.</comment>
+    <comment>Heading in the Compare panel above the words that should be fixed first.</comment>
   </data>
   <data name="MotifApp.WhatTheseWordsShare" xml:space="preserve">
     <value>What These Words Share:</value>
-    <comment>Text on the Compare panel.</comment>
+    <comment>Lead-in label before the properties the chosen words share, shown in the Compare panel; the colon is part of the text.</comment>
   </data>
   <data name="MotifApp.AddAsUnknown" xml:space="preserve">
     <value>Add as Unknown</value>
@@ -2515,107 +2515,107 @@ Never included unless you tick it in the preview: local details, which may conta
   </data>
   <data name="MotifApp.CompareMatrixAccessibleName" xml:space="preserve">
     <value>Compare matrix</value>
-    <comment>Accessible name (read by screen readers) on the Compare panel.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the Compare panel (Matrix): "Compare matrix". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.FixTheseFirstCountAccessibleName" xml:space="preserve">
     <value>Fix these first count</value>
-    <comment>Accessible name (read by screen readers) on the Compare panel.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the Compare panel (Matrix): "Fix these first count". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.WordsToCheckFirstAccessibleName" xml:space="preserve">
     <value>Words to check first</value>
-    <comment>Accessible name (read by screen readers) on the Compare panel.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the Compare panel (Matrix): "Words to check first". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.WhatTheseWordsShareAccessibleName" xml:space="preserve">
     <value>What these words share</value>
-    <comment>Accessible name (read by screen readers) on the Compare panel.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the Compare panel (Matrix): "What these words share". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.OrderTheListedWordsAccessibleName" xml:space="preserve">
     <value>Order the listed words</value>
-    <comment>Accessible name (read by screen readers) on the Compare panel.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the Compare panel (Matrix): "Order the listed words". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.SearchTheListedWordsAccessibleName" xml:space="preserve">
     <value>Search the listed words</value>
-    <comment>Accessible name (read by screen readers) on the Compare panel.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the Compare panel (Matrix): "Search the listed words". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.CompareParseAgainAccessibleName" xml:space="preserve">
     <value>Parse the stopped and unparsed words again</value>
-    <comment>Accessible name (read by screen readers) on the Compare panel.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the Compare panel (Matrix): "Parse the stopped and unparsed words again". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.SecondsEachWordGetsWhenRunAgainAccessibleName" xml:space="preserve">
     <value>Seconds each word gets when run again</value>
-    <comment>Accessible name (read by screen readers) on the Compare panel.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the Compare panel (Matrix): "Seconds each word gets when run again". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.AIHandoffForTheListedWordsAccessibleName" xml:space="preserve">
     <value>AI Handoff for the listed words</value>
-    <comment>Accessible name (read by screen readers) on the Compare panel.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the Compare panel (Matrix): "AI Handoff for the listed words". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.AddCheckedWordsAsUnknownAccessibleName" xml:space="preserve">
     <value>Add checked words as Unknown</value>
-    <comment>Accessible name (read by screen readers) on the Compare panel.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the Compare panel (Matrix): "Add checked words as Unknown". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.MarkCheckedWordsAsIncorrectSpellingAccessibleName" xml:space="preserve">
     <value>Mark checked words as incorrect spelling</value>
-    <comment>Accessible name (read by screen readers) on the Compare panel.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the Compare panel (Matrix): "Mark checked words as incorrect spelling". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.WordsInTheChosenCellsAccessibleName" xml:space="preserve">
     <value>Words in the chosen cells</value>
-    <comment>Accessible name (read by screen readers) on the Compare panel.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the Compare panel (Matrix): "Words in the chosen cells". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.HandoffIntro" xml:space="preserve">
     <value>Give a chat model the files it needs to help you read these results.</value>
-    <comment>Text on the AI Handoff panel.</comment>
+    <comment>Sentence shown on the AI Handoff panel. It is read as a complete message; keep it a complete sentence.</comment>
   </data>
   <data name="MotifApp.WhatGoesIn" xml:space="preserve">
     <value>What Goes In</value>
-    <comment>Text on the AI Handoff panel.</comment>
+    <comment>Heading above the list of what the AI Handoff files contain.</comment>
   </data>
   <data name="MotifApp.GetAChatModelsHelp" xml:space="preserve">
     <value>Get a Chat Model's Help</value>
-    <comment>Text on the AI Handoff panel.</comment>
+    <comment>Heading of the last AI Handoff step: ask the chat model for help with the results.</comment>
   </data>
   <data name="MotifApp.CopyTheStarterPrompt" xml:space="preserve">
     <value>Copy the Starter Prompt</value>
-    <comment>Text on the AI Handoff panel.</comment>
+    <comment>Heading of a step in the AI Handoff: copy the starter prompt (the opening message for the chat).</comment>
   </data>
   <data name="MotifApp.HandoffStarterPromptDetail" xml:space="preserve">
     <value>It tells the model what the files are and how to read them.</value>
-    <comment>Text on the AI Handoff panel.</comment>
+    <comment>Sentence shown on the AI Handoff panel. It is read as a complete message; keep it a complete sentence.</comment>
   </data>
   <data name="MotifApp.OpenAChat" xml:space="preserve">
     <value>Open a Chat</value>
-    <comment>Text on the AI Handoff panel.</comment>
+    <comment>Heading of a step in the AI Handoff: open a chat with an AI model.</comment>
   </data>
   <data name="MotifApp.ClaudeChatGPTOrGemini" xml:space="preserve">
     <value>Claude, ChatGPT or Gemini.</value>
-    <comment>Text on the AI Handoff panel.</comment>
+    <comment>Sentence fragment in the AI Handoff steps naming example chat models; product names stay as written.</comment>
   </data>
   <data name="MotifApp.AddTheFilesThenPaste" xml:space="preserve">
     <value>Add the Files, Then Paste</value>
-    <comment>Text on the AI Handoff panel.</comment>
+    <comment>Heading of a step in the AI Handoff: add the generated files to the chat, then paste the starter prompt.</comment>
   </data>
   <data name="MotifApp.HandoffAddFilesDetail" xml:space="preserve">
     <value>Drag the files into the chat, then paste the prompt.</value>
     <comment>Step 3 detail on the AI Handoff panel.</comment>
   </data>
-  <data name="MotifApp.TryAsking" xml:space="preserve">
+  <data name="MotifApp.HandoffTryAskingHeading" xml:space="preserve">
     <value>Try Asking</value>
-    <comment>Text on the AI Handoff panel.</comment>
+    <comment>Heading above example questions a person can copy and ask the chat model in the AI Handoff.</comment>
   </data>
   <data name="MotifApp.HandoffTryAskingDetail" xml:space="preserve">
     <value>Click a question to copy it.</value>
-    <comment>Text on the AI Handoff panel.</comment>
+    <comment>Instruction under the example questions in the AI Handoff.</comment>
   </data>
   <data name="MotifApp.HandOffEveryParsedWordInstead" xml:space="preserve">
     <value>Hand Off Every Parsed Word Instead</value>
-    <comment>Button or command label on the AI Handoff panel.</comment>
+    <comment>Button in the AI Handoff: hand off every parsed word instead of only the chosen ones.</comment>
   </data>
   <data name="MotifApp.CopyPath" xml:space="preserve">
     <value>Copy Path</value>
-    <comment>Button or command label on the AI Handoff panel.</comment>
+    <comment>Button in the AI Handoff: copy the folder path of the generated files.</comment>
   </data>
   <data name="MotifApp.CopyStarterPrompt" xml:space="preserve">
     <value>Copy Starter Prompt</value>
-    <comment>Button or command label on the AI Handoff panel.</comment>
+    <comment>Button in the AI Handoff: copy the starter prompt.</comment>
   </data>
   <data name="MotifApp.HandoffFolderTip" xml:space="preserve">
     <value>Drag into a chat. From the keyboard, press Enter to copy the folder path.</value>
@@ -2627,31 +2627,31 @@ Never included unless you tick it in the preview: local details, which may conta
   </data>
   <data name="MotifApp.WordsChosenInCompareAccessibleName" xml:space="preserve">
     <value>Words chosen in Compare</value>
-    <comment>Accessible name (read by screen readers) on the AI Handoff panel.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a region on the AI Handoff panel: "Words chosen in Compare". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.TheAIHandoffIsOutOfDateAccessibleName" xml:space="preserve">
     <value>The AI Handoff is out of date</value>
-    <comment>Accessible name (read by screen readers) on the AI Handoff panel.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the AI Handoff panel: "The AI Handoff is out of date". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.AIHandoffProgressAccessibleName" xml:space="preserve">
     <value>AI Handoff progress</value>
-    <comment>Accessible name (read by screen readers) on the AI Handoff panel.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the AI Handoff panel: "AI Handoff progress". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.CancelTheRunningAIHandoffAccessibleName" xml:space="preserve">
     <value>Cancel the running AI Handoff</value>
-    <comment>Accessible name (read by screen readers) on the AI Handoff panel.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the AI Handoff panel: "Cancel the running AI Handoff". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.WhatTheAIHandoffWillContainAccessibleName" xml:space="preserve">
     <value>What the AI Handoff will contain</value>
-    <comment>Accessible name (read by screen readers) on the AI Handoff panel.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the AI Handoff panel: "What the AI Handoff will contain". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.AIHandoffFilesAccessibleName" xml:space="preserve">
     <value>AI Handoff files</value>
-    <comment>Accessible name (read by screen readers) on the AI Handoff panel.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a list on the AI Handoff panel: "AI Handoff files". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.CopyTheStarterPromptAccessibleName" xml:space="preserve">
     <value>Copy the starter prompt</value>
-    <comment>Accessible name (read by screen readers) on the AI Handoff panel.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the AI Handoff panel: "Copy the starter prompt". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.MovesBetweenCellsWorstFirstAccessibleName" xml:space="preserve">
     <value>Moves between cells, worst first</value>
@@ -2663,25 +2663,25 @@ Never included unless you tick it in the preview: local details, which may conta
   </data>
   <data name="MotifApp.StatisticsStaleNotice" xml:space="preserve">
     <value>Showing the last successful statistics; they may be out of date.</value>
-    <comment>Text on the Timing statistics panel.</comment>
+    <comment>Notice above the detailed statistics: a newer load failed, so the last successful numbers are shown and may be out of date.</comment>
   </data>
   <data name="MotifApp.StatisticsGroupAccessibleName" xml:space="preserve">
     <value>Statistics group</value>
-    <comment>Accessible name (read by screen readers) on the Timing statistics panel.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the detailed statistics table on the Timing page: "Statistics group". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.FilterStatisticsRowsAccessibleName" xml:space="preserve">
     <value>Filter statistics rows</value>
-    <comment>Accessible name (read by screen readers) on the Timing statistics panel.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the detailed statistics table on the Timing page: "Filter statistics rows". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.StatisticsWordScopeAccessibleName" xml:space="preserve">
     <value>Statistics word scope</value>
-    <comment>Accessible name (read by screen readers) on the Timing statistics panel.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the detailed statistics table on the Timing page: "Statistics word scope". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.StatisticsRowsAccessibleName" xml:space="preserve">
     <value>Statistics rows</value>
-    <comment>Accessible name (read by screen readers) on the Timing statistics panel.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the detailed statistics table on the Timing page: "Statistics rows". Not visible on screen.</comment>
   </data>
-  <data name="MotifApp.Area" xml:space="preserve">
+  <data name="MotifApp.WarningsAreaLabel" xml:space="preserve">
     <value>Area</value>
     <comment>Column heading and label: the area of the grammar a warning concerns.</comment>
   </data>
@@ -2691,7 +2691,7 @@ Never included unless you tick it in the preview: local details, which may conta
   </data>
   <data name="MotifApp.NamesYourWords" xml:space="preserve">
     <value>Names Your Words</value>
-    <comment>Text on the Warnings filter panel.</comment>
+    <comment>Heading on the Warnings filter panel above the choice to show only findings that name words from the person's own texts.</comment>
   </data>
   <data name="MotifApp.ShowFindingsWithExactUsesInYourWordsAccessibleName" xml:space="preserve">
     <value>Show findings with exact uses in your words</value>
@@ -2699,27 +2699,27 @@ Never included unless you tick it in the preview: local details, which may conta
   </data>
   <data name="MotifApp.SelectedFinding" xml:space="preserve">
     <value>Selected Finding</value>
-    <comment>Text on the Warnings inspector.</comment>
+    <comment>Heading above the details of the finding selected on the Warnings page.</comment>
   </data>
   <data name="MotifApp.NamedWords" xml:space="preserve">
     <value>Named Words</value>
-    <comment>Text on the Warnings inspector.</comment>
+    <comment>Heading above words that a finding names explicitly.</comment>
   </data>
   <data name="MotifApp.WhatIsWrong" xml:space="preserve">
     <value>What Is Wrong</value>
-    <comment>Text on the Warnings inspector.</comment>
+    <comment>Heading above the description of what is wrong with a grammar item.</comment>
   </data>
   <data name="MotifApp.WhyPanGlossReportedIt" xml:space="preserve">
     <value>Why PanGloss Reported It</value>
-    <comment>Text on the Warnings inspector.</comment>
+    <comment>Heading above why PanGloss reported a finding; PanGloss is a product name.</comment>
   </data>
   <data name="MotifApp.WordformsNotCompared" xml:space="preserve">
     <value>Wordforms Not Compared</value>
-    <comment>Text on the Warnings inspector.</comment>
+    <comment>Heading above wordforms that were not compared because the grammar check could not reach them.</comment>
   </data>
   <data name="MotifApp.WhatToDoInFieldWorks" xml:space="preserve">
     <value>What to Do in FieldWorks</value>
-    <comment>Text on the Warnings inspector.</comment>
+    <comment>Heading or field label on the grammar findings on the Warnings page: "What to Do in FieldWorks".</comment>
   </data>
   <data name="MotifApp.WarningNoAdviceYet" xml:space="preserve">
     <value>PanGloss gives no advice for this kind yet</value>
@@ -2727,31 +2727,31 @@ Never included unless you tick it in the preview: local details, which may conta
   </data>
   <data name="MotifApp.WarningWordsUsingNamedResource" xml:space="preserve">
     <value>Words that use members of the named resource</value>
-    <comment>Text on the Warnings inspector.</comment>
+    <comment>Sentence shown on the grammar findings on the Warnings page. It is read as a complete message; keep it a complete sentence.</comment>
   </data>
   <data name="MotifApp.AfterYouFixIt" xml:space="preserve">
     <value>After You Fix It</value>
-    <comment>Text on the Warnings inspector.</comment>
+    <comment>Heading above what to do after the grammar problem is fixed in FieldWorks.</comment>
   </data>
   <data name="MotifApp.WarningAfterFixSteps" xml:space="preserve">
     <value>Save in FieldWorks, refresh Motif, then parse these words again.</value>
-    <comment>Text on the Warnings inspector.</comment>
+    <comment>Sentence shown on the grammar findings on the Warnings page. It is read as a complete message; keep it a complete sentence.</comment>
   </data>
   <data name="MotifApp.WarningsInspectorEmpty" xml:space="preserve">
     <value>Select a finding to see its details.</value>
-    <comment>Text on the Warnings inspector.</comment>
+    <comment>Sentence shown on the Warnings inspector (details of the selected finding). It is read as a complete message; keep it a complete sentence.</comment>
   </data>
   <data name="MotifApp.LearnMore" xml:space="preserve">
     <value>Learn More</value>
-    <comment>Button or command label on the Warnings inspector.</comment>
+    <comment>Link that opens a Help page about a grammar finding.</comment>
   </data>
   <data name="MotifApp.AIHandoffForThisWarning" xml:space="preserve">
     <value>AI Handoff for This Warning</value>
-    <comment>Button or command label on the Warnings inspector.</comment>
+    <comment>Label of a control on the grammar findings on the Warnings page. Names the action the person takes: "AI Handoff for This Warning".</comment>
   </data>
   <data name="MotifApp.ParseTheseWordsAgain" xml:space="preserve">
     <value>Parse These Words Again</value>
-    <comment>Button or command label on the Warnings inspector.</comment>
+    <comment>Label of a control on the grammar findings on the Warnings page. Names the action the person takes: "Parse These Words Again".</comment>
   </data>
   <data name="MotifApp.SelectedWarningDetailsAccessibleName" xml:space="preserve">
     <value>Selected warning details</value>
@@ -2759,55 +2759,55 @@ Never included unless you tick it in the preview: local details, which may conta
   </data>
   <data name="MotifApp.RecentWords" xml:space="preserve">
     <value>Recent Words</value>
-    <comment>Text on the Try a Word page.</comment>
+    <comment>Heading above the words most recently tried on the Try a Word page.</comment>
   </data>
   <data name="MotifApp.TryWordNoTraceToSave" xml:space="preserve">
     <value>No trace has been recorded to save or copy.</value>
-    <comment>Text on the Try a Word page.</comment>
+    <comment>Sentence shown on the Try a Word page. It is read as a complete message; keep it a complete sentence.</comment>
   </data>
   <data name="MotifApp.TryWordEmptyPrompt" xml:space="preserve">
     <value>Try any word to read the parser's recorded search.</value>
-    <comment>Text on the Try a Word page.</comment>
+    <comment>Sentence shown on the Try a Word page. It is read as a complete message; keep it a complete sentence.</comment>
   </data>
   <data name="MotifApp.Tracing" xml:space="preserve">
     <value>Tracing...</value>
-    <comment>Text on the Try a Word page.</comment>
+    <comment>Status shown on the Try a Word page while the parser records the steps for the word; the dots mean it is still running.</comment>
   </data>
   <data name="MotifApp.TryWordWhyItDidNotParseHeading" xml:space="preserve">
     <value>Why It Did Not Parse in the Last Parse</value>
-    <comment>Text on the Try a Word page.</comment>
+    <comment>Sentence shown on the Try a Word page. It is read as a complete message; keep it a complete sentence.</comment>
   </data>
   <data name="MotifApp.NoStepRecorded" xml:space="preserve">
     <value>No step recorded</value>
-    <comment>Text on the Try a Word page.</comment>
+    <comment>Heading or field label on the Try a Word page: "No step recorded".</comment>
   </data>
   <data name="MotifApp.ParserLabel" xml:space="preserve">
     <value>Parser</value>
     <comment>Heading of the parser side of a side-by-side with FieldWorks. The parser is PanGloss.</comment>
   </data>
-  <data name="MotifApp.Attempt" xml:space="preserve">
+  <data name="MotifApp.TryWordAttemptLabel" xml:space="preserve">
     <value>Attempt</value>
-    <comment>Text on the Try a Word page.</comment>
+    <comment>Label before the number of one parser attempt (one path the parser tried when building the word) on the Try a Word page.</comment>
   </data>
   <data name="MotifApp.WhyItStopped" xml:space="preserve">
     <value>Why It Stopped</value>
-    <comment>Text on the Try a Word page.</comment>
+    <comment>Heading above the reason a parser attempt stopped, on the Try a Word page.</comment>
   </data>
   <data name="MotifApp.NoMorphemesRecorded" xml:space="preserve">
     <value>No morphemes recorded</value>
-    <comment>Text on the Try a Word page.</comment>
+    <comment>Heading or field label on the Try a Word page: "No morphemes recorded".</comment>
   </data>
   <data name="MotifApp.RecordedTrace" xml:space="preserve">
     <value>Recorded Trace</value>
-    <comment>Text on the Try a Word page.</comment>
+    <comment>Heading above the parser's recorded trace on the Try a Word page.</comment>
   </data>
   <data name="MotifApp.OtherRecordedEvent" xml:space="preserve">
     <value>Other recorded event</value>
-    <comment>Text on the Try a Word page.</comment>
+    <comment>Label for a recorded trace event of a kind that has no plain name.</comment>
   </data>
   <data name="MotifApp.MeasuredObject" xml:space="preserve">
     <value>Measured Object</value>
-    <comment>Text on the Try a Word page.</comment>
+    <comment>Field label: the grammar object (a rule, affix or environment) the measurement is about.</comment>
   </data>
   <data name="MotifApp.TimeLabel" xml:space="preserve">
     <value>Time</value>
@@ -2815,207 +2815,207 @@ Never included unless you tick it in the preview: local details, which may conta
   </data>
   <data name="MotifApp.OpenASavedTrace" xml:space="preserve">
     <value>Open a Saved Trace...</value>
-    <comment>Button or command label on the Try a Word page.</comment>
+    <comment>Button on the Try a Word page: open a trace file saved earlier; the dots mean a file dialog follows.</comment>
   </data>
   <data name="MotifApp.CopyForAChatModel" xml:space="preserve">
     <value>Copy for a Chat Model</value>
-    <comment>Button or command label on the Try a Word page.</comment>
+    <comment>Button on the Try a Word page: copy the trace in a form a chat model can read.</comment>
   </data>
   <data name="MotifApp.SaveTheTrace" xml:space="preserve">
     <value>Save the Trace...</value>
-    <comment>Button or command label on the Try a Word page.</comment>
+    <comment>Button on the Try a Word page: save the trace to a file; the dots mean a file dialog follows.</comment>
   </data>
   <data name="MotifApp.CopyTheTrace" xml:space="preserve">
     <value>Copy the Trace</value>
-    <comment>Button or command label on the Try a Word page.</comment>
+    <comment>Button on the Try a Word page: copy the trace.</comment>
   </data>
-  <data name="MotifApp.Plain" xml:space="preserve">
+  <data name="MotifApp.TryWordPlainTab" xml:space="preserve">
     <value>Plain</value>
     <comment>Tab button: the plain-language view of the trace.</comment>
   </data>
-  <data name="MotifApp.Expert" xml:space="preserve">
+  <data name="MotifApp.TryWordExpertTab" xml:space="preserve">
     <value>Expert</value>
     <comment>Tab button: the detailed trace view for experts.</comment>
   </data>
   <data name="MotifApp.TryIt" xml:space="preserve">
     <value>Try It</value>
-    <comment>Button or command label on the Try a Word page.</comment>
+    <comment>Button that runs a Trial of the Proposal or traces the word. A Trial is a try-out of changes without applying them.</comment>
   </data>
-  <data name="MotifApp.Timing" xml:space="preserve">
+  <data name="MotifApp.TryWordTimingLabel" xml:space="preserve">
     <value>Timing</value>
-    <comment>Button or command label on the Try a Word page.</comment>
+    <comment>Button on the Try a Word page that opens the Timing page for the word just tried.</comment>
   </data>
   <data name="MotifApp.WordAnalysesInFieldWorks" xml:space="preserve">
     <value>Word Analyses in FieldWorks</value>
-    <comment>Button or command label on the Try a Word page.</comment>
+    <comment>Link that opens the word's analyses in FieldWorks; FieldWorks is a product name.</comment>
   </data>
   <data name="MotifApp.TryAWordToolsAccessibleName" xml:space="preserve">
     <value>Try a Word tools</value>
-    <comment>Accessible name (read by screen readers) on the Try a Word page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the Try a Word page: "Try a Word tools". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.RecentWordsAccessibleName" xml:space="preserve">
     <value>Recent words</value>
-    <comment>Accessible name (read by screen readers) on the Try a Word page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a list on the Try a Word page: "Recent words". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.OpenASavedTraceAccessibleName" xml:space="preserve">
     <value>Open a saved trace</value>
-    <comment>Accessible name (read by screen readers) on the Try a Word page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a button on the Try a Word page: "Open a saved trace". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.CopyAIDiagnosticInstructionsAccessibleName" xml:space="preserve">
     <value>Copy AI diagnostic instructions</value>
-    <comment>Accessible name (read by screen readers) on the Try a Word page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a button on the Try a Word page: "Copy AI diagnostic instructions". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.SaveFullDiagnosticJSONAccessibleName" xml:space="preserve">
     <value>Save full diagnostic JSON</value>
-    <comment>Accessible name (read by screen readers) on the Try a Word page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a button on the Try a Word page: "Save full diagnostic JSON". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.CopyFullDiagnosticJSONAccessibleName" xml:space="preserve">
     <value>Copy full diagnostic JSON</value>
-    <comment>Accessible name (read by screen readers) on the Try a Word page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a button on the Try a Word page: "Copy full diagnostic JSON". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.DiagnosticCaptureDetailsAccessibleName" xml:space="preserve">
     <value>Diagnostic capture details</value>
-    <comment>Accessible name (read by screen readers) on the Try a Word page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a text on the Try a Word page: "Diagnostic capture details". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.WritingSystemDirectionAndFontAccessibleName" xml:space="preserve">
     <value>Writing system direction and font</value>
-    <comment>Accessible name (read by screen readers) on the Try a Word page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a text on the Try a Word page: "Writing system direction and font". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.PlainTraceViewAccessibleName" xml:space="preserve">
     <value>Plain trace view</value>
-    <comment>Accessible name (read by screen readers) on the Try a Word page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the Try a Word page: "Plain trace view". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.ExpertTraceViewAccessibleName" xml:space="preserve">
     <value>Expert trace view</value>
-    <comment>Accessible name (read by screen readers) on the Try a Word page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the Try a Word page: "Expert trace view". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.TryTheWordAccessibleName" xml:space="preserve">
     <value>Try the word</value>
-    <comment>Accessible name (read by screen readers) on the Try a Word page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the Try a Word page: "Try the word". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.WordToTryAccessibleName" xml:space="preserve">
     <value>Word to try</value>
-    <comment>Accessible name (read by screen readers) on the Try a Word page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the Try a Word page: "Word to try". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.CancelTheTraceAccessibleName" xml:space="preserve">
     <value>Cancel the trace</value>
-    <comment>Accessible name (read by screen readers) on the Try a Word page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a button on the Try a Word page: "Cancel the trace". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.TryTheProposalAgainAccessibleName" xml:space="preserve">
     <value>Try the Proposal again</value>
-    <comment>Accessible name (read by screen readers) on the Try a Word page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the Try a Word page: "Try the Proposal again". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.TryAWordResultAccessibleName" xml:space="preserve">
     <value>Try a Word result</value>
-    <comment>Accessible name (read by screen readers) on the Try a Word page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a text on the Try a Word page: "Try a Word result". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.TryWordOpenInAnalyzeTextsAccessibleName" xml:space="preserve">
     <value>Open in Analyze texts</value>
-    <comment>Accessible name (read by screen readers) on the Try a Word page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a button on the Try a Word page: "Open in Analyze texts". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.TimingForThisWordAccessibleName" xml:space="preserve">
     <value>Timing for this word</value>
-    <comment>Accessible name (read by screen readers) on the Try a Word page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a button on the Try a Word page: "Timing for this word". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.SearchCompletenessAccessibleName" xml:space="preserve">
     <value>Search completeness</value>
-    <comment>Accessible name (read by screen readers) on the Try a Word page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a text on the Try a Word page: "Search completeness". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.TryAWordSummaryAccessibleName" xml:space="preserve">
     <value>Try a Word summary</value>
-    <comment>Accessible name (read by screen readers) on the Try a Word page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the Try a Word page: "Try a Word summary". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.TryWordWhyItDidNotParseAccessibleName" xml:space="preserve">
     <value>Why it did not parse in the last parse</value>
-    <comment>Accessible name (read by screen readers) on the Try a Word page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a region on the Try a Word page: "Why it did not parse in the last parse". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.FieldWorksBesideTheParserAccessibleName" xml:space="preserve">
     <value>FieldWorks beside the parser</value>
-    <comment>Accessible name (read by screen readers) on the Try a Word page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a region on the Try a Word page: "FieldWorks beside the parser". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.EveryStoredFieldWorksAnalysisAccessibleName" xml:space="preserve">
     <value>Every stored FieldWorks analysis</value>
-    <comment>Accessible name (read by screen readers) on the Try a Word page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a list on the Try a Word page: "Every stored FieldWorks analysis". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.RecordedParserAnalysesAccessibleName" xml:space="preserve">
     <value>Recorded parser analyses</value>
-    <comment>Accessible name (read by screen readers) on the Try a Word page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the Try a Word page: "Recorded parser analyses". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.PathsTheParserDroppedAccessibleName" xml:space="preserve">
     <value>Paths the parser dropped</value>
-    <comment>Accessible name (read by screen readers) on the Try a Word page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the Try a Word page: "Paths the parser dropped". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.AttemptsThatGotFurthestAccessibleName" xml:space="preserve">
     <value>Attempts that got furthest</value>
-    <comment>Accessible name (read by screen readers) on the Try a Word page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a list on the Try a Word page: "Attempts that got furthest". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.WhatStoppedTheAttemptAccessibleName" xml:space="preserve">
     <value>What stopped the attempt</value>
-    <comment>Accessible name (read by screen readers) on the Try a Word page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a text on the Try a Word page: "What stopped the attempt". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.ShowEveryAttemptAccessibleName" xml:space="preserve">
     <value>Show every attempt</value>
-    <comment>Accessible name (read by screen readers) on the Try a Word page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a button on the Try a Word page: "Show every attempt". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.WhyItDidNotParseAccessibleName" xml:space="preserve">
     <value>Why it did not parse</value>
-    <comment>Accessible name (read by screen readers) on the Try a Word page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a region on the Try a Word page: "Why it did not parse". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.RecordedStoppedAttemptsAccessibleName" xml:space="preserve">
     <value>Recorded stopped attempts</value>
-    <comment>Accessible name (read by screen readers) on the Try a Word page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a list on the Try a Word page: "Recorded stopped attempts". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.FullParserAnalysisDetailsAccessibleName" xml:space="preserve">
     <value>Full parser analysis details</value>
-    <comment>Accessible name (read by screen readers) on the Try a Word page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a collapsible section on the Try a Word page: "Full parser analysis details". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.RecordedTraceContextAccessibleName" xml:space="preserve">
     <value>Recorded trace context</value>
-    <comment>Accessible name (read by screen readers) on the Try a Word page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a region on the Try a Word page: "Recorded trace context". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.PlainTraceStepsAccessibleName" xml:space="preserve">
     <value>Plain trace steps</value>
-    <comment>Accessible name (read by screen readers) on the Try a Word page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the Try a Word page: "Plain trace steps". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.TimeFromAnEarlierParseAccessibleName" xml:space="preserve">
     <value>Time from an earlier parse</value>
-    <comment>Accessible name (read by screen readers) on the Try a Word page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a region on the Try a Word page: "Time from an earlier parse". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.EarlierRuleTimesAccessibleName" xml:space="preserve">
     <value>Earlier rule times</value>
-    <comment>Accessible name (read by screen readers) on the Try a Word page.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a list on the Try a Word page: "Earlier rule times". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.SelectedAttempt" xml:space="preserve">
     <value>Selected Attempt</value>
-    <comment>Text on the Try a Word attempt inspector.</comment>
+    <comment>Heading above the details of the parser attempt selected on the Try a Word page.</comment>
   </data>
   <data name="MotifApp.TryWordAttemptInspectorEmpty" xml:space="preserve">
     <value>Choose a row in the attempts table, or a path in Expert, to read its recorded steps.</value>
-    <comment>Text on the Try a Word attempt inspector.</comment>
+    <comment>Sentence shown on the Try a Word attempt inspector. It is read as a complete message; keep it a complete sentence.</comment>
   </data>
   <data name="MotifApp.TryWordMembershipNotRecorded" xml:space="preserve">
     <value>Membership in this derivation is not recorded.</value>
-    <comment>Text on the Try a Word attempt inspector.</comment>
+    <comment>Sentence shown on the Try a Word attempt inspector. It is read as a complete message; keep it a complete sentence.</comment>
   </data>
   <data name="MotifApp.RecordedSearchWordAccessibleName" xml:space="preserve">
     <value>Recorded search word</value>
-    <comment>Accessible name (read by screen readers) on the Try a Word attempt inspector.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the Try a Word attempt inspector: "Recorded search word". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.StepsOnTheSelectedAttemptAccessibleName" xml:space="preserve">
     <value>Steps on the selected attempt</value>
-    <comment>Accessible name (read by screen readers) on the Try a Word attempt inspector.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the Try a Word attempt inspector: "Steps on the selected attempt". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.SelectedRecordedStepDetailsAccessibleName" xml:space="preserve">
     <value>Selected recorded step details</value>
-    <comment>Accessible name (read by screen readers) on the Try a Word attempt inspector.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the Try a Word attempt inspector: "Selected recorded step details". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.TheParsersCodeAccessibleName" xml:space="preserve">
     <value>The parser's code</value>
-    <comment>Accessible name (read by screen readers) on the Try a Word attempt inspector.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a text on the Try a Word attempt inspector: "The parser's code". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.TraceLiveNavigationUnavailable" xml:space="preserve">
     <value>Live FieldWorks navigation is unavailable for this recorded morph.</value>
-    <comment>Text on the Try a Word trace.</comment>
+    <comment>Note on a recorded morph in the Try a Word trace: links into the live FieldWorks project cannot be offered for it.</comment>
   </data>
   <data name="MotifApp.TraceRepeatedResultTip" xml:space="preserve">
     <value>The trace recorded this result more than once; distinct derivations are not established.</value>
@@ -3023,15 +3023,15 @@ Never included unless you tick it in the preview: local details, which may conta
   </data>
   <data name="MotifApp.AnalysesAccessibleName" xml:space="preserve">
     <value>Analyses</value>
-    <comment>Accessible name (read by screen readers) on the Try a Word trace.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the recorded analyses section of the Try a Word page: "Analyses". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.RecordedAnalysesAccessibleName" xml:space="preserve">
     <value>Recorded analyses</value>
-    <comment>Accessible name (read by screen readers) on the Try a Word trace.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a list on the recorded analyses section of the Try a Word page: "Recorded analyses". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.RecordedSourceAnalysesAccessibleName" xml:space="preserve">
     <value>Recorded source analyses</value>
-    <comment>Accessible name (read by screen readers) on the Try a Word trace.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a collapsible section on the recorded analyses section of the Try a Word page: "Recorded source analyses". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.EventSource" xml:space="preserve">
     <value>Event · Source</value>
@@ -3051,19 +3051,19 @@ Never included unless you tick it in the preview: local details, which may conta
   </data>
   <data name="MotifApp.PhonologicalRulesApplied" xml:space="preserve">
     <value>Phonological Rules Applied</value>
-    <comment>Text on the Try a Word expert trace.</comment>
+    <comment>Heading above the phonological rules the parser applied in the Expert trace.</comment>
   </data>
   <data name="MotifApp.ExpertPhonologicalEventsNote" xml:space="preserve">
     <value>Recorded phonological events in this view; each row retains its own outcome.</value>
-    <comment>Text on the Try a Word expert trace.</comment>
+    <comment>Sentence shown on the Expert view of the Try a Word trace. It is read as a complete message; keep it a complete sentence.</comment>
   </data>
   <data name="MotifApp.ExpertNoPhonologicalEvents" xml:space="preserve">
     <value>No phonological events recorded in this view</value>
-    <comment>Text on the Try a Word expert trace.</comment>
+    <comment>Sentence shown on the Expert view of the Try a Word trace. It is read as a complete message; keep it a complete sentence.</comment>
   </data>
   <data name="MotifApp.SelectedEvent" xml:space="preserve">
     <value>Selected Event</value>
-    <comment>Text on the Try a Word expert trace.</comment>
+    <comment>Heading above the details of the recorded trace event selected in Expert view.</comment>
   </data>
   <data name="MotifApp.Readable" xml:space="preserve">
     <value>Readable</value>
@@ -3071,19 +3071,19 @@ Never included unless you tick it in the preview: local details, which may conta
   </data>
   <data name="MotifApp.RecordedRejectionDetails" xml:space="preserve">
     <value>Recorded Rejection Details</value>
-    <comment>Text on the Try a Word expert trace.</comment>
+    <comment>Heading above the recorded reasons the parser rejected a step in the Expert trace.</comment>
   </data>
   <data name="MotifApp.ParserRecord" xml:space="preserve">
     <value>Parser Record</value>
-    <comment>Text on the Try a Word expert trace.</comment>
+    <comment>Heading above the parser's recorded analyses of the word on the Try a Word page.</comment>
   </data>
   <data name="MotifApp.EnvironmentNotation" xml:space="preserve">
     <value>Environment Notation</value>
-    <comment>Text on the Try a Word expert trace.</comment>
+    <comment>Heading above the written form (notation) of a phonological environment in the Expert trace.</comment>
   </data>
   <data name="MotifApp.EnvironmentNotRecorded" xml:space="preserve">
     <value>Environment not recorded</value>
-    <comment>Text on the Try a Word expert trace.</comment>
+    <comment>Heading or field label on the Expert view of the Try a Word trace: "Environment not recorded".</comment>
   </data>
   <data name="MotifApp.EveryStep" xml:space="preserve">
     <value>Every Step</value>
@@ -3103,23 +3103,23 @@ Never included unless you tick it in the preview: local details, which may conta
   </data>
   <data name="MotifApp.ExpertAttemptAccessibleName" xml:space="preserve">
     <value>Expert attempt</value>
-    <comment>Accessible name (read by screen readers) on the Try a Word expert trace.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the Expert view of the Try a Word trace: "Expert attempt". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.ExpertWholeTreeAccessibleName" xml:space="preserve">
     <value>Expert whole tree</value>
-    <comment>Accessible name (read by screen readers) on the Try a Word expert trace.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the Expert view of the Try a Word trace: "Expert whole tree". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.ExpertTraceEventsAccessibleName" xml:space="preserve">
     <value>Expert trace events</value>
-    <comment>Accessible name (read by screen readers) on the Try a Word expert trace.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a list on the Expert view of the Try a Word trace: "Expert trace events". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.ExpertPhonologicalRulesAccessibleName" xml:space="preserve">
     <value>Expert phonological rules</value>
-    <comment>Accessible name (read by screen readers) on the Try a Word expert trace.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a collapsible section on the Expert view of the Try a Word trace: "Expert phonological rules". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.ExpertEnvironmentNotationAccessibleName" xml:space="preserve">
     <value>Expert environment notation</value>
-    <comment>Accessible name (read by screen readers) on the Try a Word expert trace.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a collapsible section on the Expert view of the Try a Word trace: "Expert environment notation". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.DeleteMotifsStoreAndReopen" xml:space="preserve">
     <value>Delete Motif's Store and Reopen</value>
@@ -3127,27 +3127,27 @@ Never included unless you tick it in the preview: local details, which may conta
   </data>
   <data name="MotifApp.FatalGrammarIssuesAccessibleName" xml:space="preserve">
     <value>Fatal grammar issues</value>
-    <comment>Accessible name (read by screen readers) on the refusal block.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the refusal notice: "Fatal grammar issues". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.ReviewAProblemReportAccessibleName" xml:space="preserve">
     <value>Review a problem report</value>
-    <comment>Accessible name (read by screen readers) on the refusal block.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the refusal notice: "Review a problem report". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.RefusalDeleteStoreAccessibleName" xml:space="preserve">
     <value>Delete Motif's store and reopen the project</value>
-    <comment>Accessible name (read by screen readers) on the refusal block.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the refusal notice: "Delete Motif's store and reopen the project". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.RefusalDetailsAccessibleName" xml:space="preserve">
     <value>Refusal details</value>
-    <comment>Accessible name (read by screen readers) on the refusal block.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a collapsible section on the refusal notice: "Refusal details". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.OriginalRefusalDetailsAccessibleName" xml:space="preserve">
     <value>Original refusal details</value>
-    <comment>Accessible name (read by screen readers) on the refusal block.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the refusal notice: "Original refusal details". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.DeleteMotifsStore" xml:space="preserve">
     <value>Delete Motif's store?</value>
-    <comment>Text on the store refusal block.</comment>
+    <comment>Question heading of the confirmation shown before Motif deletes its own store (its working file for the project) after it was refused; FieldWorks data is not touched.</comment>
   </data>
   <data name="MotifApp.KeepMotifsStore" xml:space="preserve">
     <value>Keep Motif's Store</value>
@@ -3155,31 +3155,31 @@ Never included unless you tick it in the preview: local details, which may conta
   </data>
   <data name="MotifApp.RefreshRefusalAccessibleName" xml:space="preserve">
     <value>Refresh refusal</value>
-    <comment>Accessible name (read by screen readers) on the store refusal block.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the notice about a Motif store that cannot be opened: "Refresh refusal". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.StoreRefusalConfirmDeleteAccessibleName" xml:space="preserve">
     <value>Confirm deleting Motif's store and reopening the project</value>
-    <comment>Accessible name (read by screen readers) on the store refusal block.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the notice about a Motif store that cannot be opened: "Confirm deleting Motif's store and reopening the project". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.KeepMotifsStoreAccessibleName" xml:space="preserve">
     <value>Keep Motif's store</value>
-    <comment>Accessible name (read by screen readers) on the store refusal block.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the notice about a Motif store that cannot be opened: "Keep Motif's store". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.FieldWorksHoldsNoAnalysisForThisWord" xml:space="preserve">
     <value>FieldWorks holds no analysis for this word.</value>
-    <comment>Text on the word disposition buttons.</comment>
+    <comment>Sentence shown on the choices for a word's analyses (word disposition buttons). It is read as a complete message; keep it a complete sentence.</comment>
   </data>
   <data name="MotifApp.KeepFieldWorksAsItIs" xml:space="preserve">
     <value>Keep FieldWorks as It Is</value>
-    <comment>Text on the word disposition buttons.</comment>
+    <comment>Choice in the disposition buttons: leave the FieldWorks analyses unchanged.</comment>
   </data>
   <data name="MotifApp.AddToFieldWorks" xml:space="preserve">
     <value>Add to FieldWorks</value>
-    <comment>Text on the word disposition buttons.</comment>
+    <comment>Heading in the disposition buttons: analyses that will be added to FieldWorks.</comment>
   </data>
   <data name="MotifApp.AddThemAllAsUnknown" xml:space="preserve">
     <value>Add Them All as Unknown</value>
-    <comment>Text on the word disposition buttons.</comment>
+    <comment>Choice in the disposition buttons: add every PanGloss analysis to FieldWorks marked Unknown (no opinion yet).</comment>
   </data>
   <data name="MotifApp.DispositionIncorrectSpellingTip" xml:space="preserve">
     <value>Incorrect spelling: FieldWorks stops treating it as a word (S)</value>
@@ -3187,95 +3187,95 @@ Never included unless you tick it in the preview: local details, which may conta
   </data>
   <data name="MotifApp.WhatFieldWorksHoldsForThisWordAccessibleName" xml:space="preserve">
     <value>What FieldWorks holds for this word</value>
-    <comment>Accessible name (read by screen readers) on the word disposition buttons.</comment>
+    <comment>Accessible name of the group of buttons that choose what happens to a word's FieldWorks analyses.</comment>
   </data>
   <data name="MotifApp.MarkThisSpellingIncorrectAccessibleName" xml:space="preserve">
     <value>Mark this spelling Incorrect</value>
-    <comment>Accessible name (read by screen readers) on the word disposition buttons.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the choices for a word's analyses (word disposition buttons): "Mark this spelling Incorrect". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.KeepFieldWorksAccessibleName" xml:space="preserve">
     <value>Keep FieldWorks</value>
-    <comment>Accessible name (read by screen readers) on the word disposition buttons.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the choices for a word's analyses (word disposition buttons): "Keep FieldWorks". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.PanGlossAnalysesToAddToFieldWorksAccessibleName" xml:space="preserve">
     <value>PanGloss analyses to add to FieldWorks</value>
-    <comment>Accessible name (read by screen readers) on the word disposition buttons.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the choices for a word's analyses (word disposition buttons): "PanGloss analyses to add to FieldWorks". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.AddEveryPanGlossAnalysisAsUnknownAccessibleName" xml:space="preserve">
     <value>Add every PanGloss analysis as Unknown</value>
-    <comment>Accessible name (read by screen readers) on the word disposition buttons.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the choices for a word's analyses (word disposition buttons): "Add every PanGloss analysis as Unknown". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.GrammarFindingsIntro" xml:space="preserve">
     <value>PanGloss findings from the grammar check and Parse all words.</value>
-    <comment>Text on the grammar warnings panel.</comment>
+    <comment>Sentence shown on the grammar findings on the Warnings page. It is read as a complete message; keep it a complete sentence.</comment>
   </data>
   <data name="MotifApp.CheckingTheGrammar" xml:space="preserve">
     <value>Checking the grammar...</value>
-    <comment>Text on the grammar warnings panel.</comment>
+    <comment>Heading or field label on the grammar findings on the Warnings page: "Checking the grammar...".</comment>
   </data>
   <data name="MotifApp.GrammarLoadingExplanation" xml:space="preserve">
     <value>The parser reads the whole project, so the first check of a Baseline can take a minute on a large project. Later visits are instant until the Baseline is refreshed. You can choose texts meanwhile; they do not depend on the grammar.</value>
-    <comment>Text on the grammar warnings panel.</comment>
+    <comment>Sentence shown on the grammar findings on the Warnings page. It is read as a complete message; keep it a complete sentence.</comment>
   </data>
   <data name="MotifApp.GrammarBaselineRequired" xml:space="preserve">
     <value>Capture a Baseline before the grammar can be checked.</value>
-    <comment>Text on the grammar warnings panel.</comment>
+    <comment>Sentence shown on the grammar findings on the Warnings page. It is read as a complete message; keep it a complete sentence.</comment>
   </data>
   <data name="MotifApp.NoGrammarFindingsWereReported" xml:space="preserve">
     <value>No grammar findings were reported.</value>
-    <comment>Text on the grammar warnings panel.</comment>
+    <comment>Sentence shown on the grammar findings on the Warnings page. It is read as a complete message; keep it a complete sentence.</comment>
   </data>
-  <data name="MotifApp.Item" xml:space="preserve">
+  <data name="MotifApp.WarningsItemColumnHeading" xml:space="preserve">
     <value>Item</value>
     <comment>Column heading: the grammar item a warning names.</comment>
   </data>
   <data name="MotifApp.CheckTheGrammarAgain" xml:space="preserve">
     <value>Check the Grammar Again</value>
-    <comment>Button or command label on the grammar warnings panel.</comment>
+    <comment>Label of a button on the grammar findings on the Warnings page. Names the action the person takes: "Check the Grammar Again".</comment>
   </data>
   <data name="MotifApp.MostOfYourWordsFirst" xml:space="preserve">
     <value>Most of Your Words First</value>
-    <comment>Button or command label on the grammar warnings panel.</comment>
+    <comment>Option in the Warnings sort menu: findings that affect most of the person's words come first.</comment>
   </data>
   <data name="MotifApp.ReportOrder" xml:space="preserve">
     <value>Report Order</value>
-    <comment>Button or command label on the grammar warnings panel.</comment>
+    <comment>Option in the Warnings sort menu: sort findings in the order the report lists them.</comment>
   </data>
   <data name="MotifApp.OpenDetails" xml:space="preserve">
     <value>Open Details</value>
-    <comment>Button or command label on the grammar warnings panel.</comment>
+    <comment>Button: open the details of a grammar finding.</comment>
   </data>
   <data name="MotifApp.GrammarLoadingAccessibleName" xml:space="preserve">
     <value>Grammar loading</value>
-    <comment>Accessible name (read by screen readers) on the grammar warnings panel.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a progress bar on the grammar findings on the Warnings page: "Grammar loading". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.GrammarCheckRefusalAccessibleName" xml:space="preserve">
     <value>Grammar check refusal</value>
-    <comment>Accessible name (read by screen readers) on the grammar warnings panel.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the grammar findings on the Warnings page: "Grammar check refusal". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.TryCheckingTheGrammarAgainAccessibleName" xml:space="preserve">
     <value>Try checking the grammar again</value>
-    <comment>Accessible name (read by screen readers) on the grammar warnings panel.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the grammar findings on the Warnings page: "Try checking the grammar again". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.CheckTheGrammarAgainAccessibleName" xml:space="preserve">
     <value>Check the grammar again</value>
-    <comment>Accessible name (read by screen readers) on the grammar warnings panel.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the grammar findings on the Warnings page: "Check the grammar again". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.ChooseWarningSortOrderAccessibleName" xml:space="preserve">
     <value>Choose warning sort order</value>
-    <comment>Accessible name (read by screen readers) on the grammar warnings panel.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the grammar findings on the Warnings page: "Choose warning sort order". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.SortFindingsByExactWordUsesAccessibleName" xml:space="preserve">
     <value>Sort findings by exact word uses</value>
-    <comment>Accessible name (read by screen readers) on the grammar warnings panel.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the grammar findings on the Warnings page: "Sort findings by exact word uses". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.SortFindingsInReportOrderAccessibleName" xml:space="preserve">
     <value>Sort findings in report order</value>
-    <comment>Accessible name (read by screen readers) on the grammar warnings panel.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the grammar findings on the Warnings page: "Sort findings in report order". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.GrammarFindingsAccessibleName" xml:space="preserve">
     <value>Grammar findings</value>
-    <comment>Accessible name (read by screen readers) on the grammar warnings panel.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the grammar findings on the Warnings page: "Grammar findings". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.WordCardThisChangeLabel" xml:space="preserve">
     <value>THIS CHANGE</value>
@@ -3283,11 +3283,11 @@ Never included unless you tick it in the preview: local details, which may conta
   </data>
   <data name="MotifApp.NothingInFieldWorks" xml:space="preserve">
     <value>nothing in FieldWorks</value>
-    <comment>Text on the word card.</comment>
+    <comment>Fragment on a word card meaning FieldWorks holds no analysis; shown in lowercase inside a longer line.</comment>
   </data>
   <data name="MotifApp.WordCardChangeSentence" xml:space="preserve">
     <value>Sentence when the change was made</value>
-    <comment>Text on the word card.</comment>
+    <comment>Heading or field label on the word card: "Sentence when the change was made".</comment>
   </data>
   <data name="MotifApp.InFieldWorksNow" xml:space="preserve">
     <value>In FieldWorks · Now</value>
@@ -3295,7 +3295,7 @@ Never included unless you tick it in the preview: local details, which may conta
   </data>
   <data name="MotifApp.WordCardNothingInFieldWorksForWord" xml:space="preserve">
     <value>Nothing in FieldWorks for this word.</value>
-    <comment>Text on the word card.</comment>
+    <comment>Sentence shown on the word card. It is read as a complete message; keep it a complete sentence.</comment>
   </data>
   <data name="MotifApp.InPanGlossNow" xml:space="preserve">
     <value>In PanGloss · Now</value>
@@ -3307,27 +3307,27 @@ Never included unless you tick it in the preview: local details, which may conta
   </data>
   <data name="MotifApp.WordCardProposalBuildsNothing" xml:space="preserve">
     <value>The Proposal builds no analysis for this word.</value>
-    <comment>Text on the word card.</comment>
+    <comment>Sentence shown on the word card. It is read as a complete message; keep it a complete sentence.</comment>
   </data>
   <data name="MotifApp.NotInFieldWorks" xml:space="preserve">
     <value>Not in FieldWorks</value>
-    <comment>Text on the word card.</comment>
+    <comment>Short status on a word card: the analysis is not in the FieldWorks project.</comment>
   </data>
   <data name="MotifApp.WordCardNoStoredWarning" xml:space="preserve">
     <value>No stored warning names this word.</value>
-    <comment>Text on the word card.</comment>
+    <comment>Sentence shown on the word card. It is read as a complete message; keep it a complete sentence.</comment>
   </data>
   <data name="MotifApp.TimeByRule" xml:space="preserve">
     <value>Time by Rule</value>
-    <comment>Text on the word card.</comment>
+    <comment>Heading on a word card above how long each grammar rule took for the word.</comment>
   </data>
   <data name="MotifApp.WhatToDo" xml:space="preserve">
     <value>What to Do</value>
-    <comment>Text on the word card.</comment>
+    <comment>Heading on a word card above the suggested next step.</comment>
   </data>
   <data name="MotifApp.WordCardFieldWorksHoldsNothing" xml:space="preserve">
     <value>FieldWorks holds no analysis of this word.</value>
-    <comment>Text on the word card.</comment>
+    <comment>Sentence shown on the word card. It is read as a complete message; keep it a complete sentence.</comment>
   </data>
   <data name="MotifApp.WordCardNotBuiltLabel" xml:space="preserve">
     <value>NOT BUILT</value>
@@ -3335,47 +3335,47 @@ Never included unless you tick it in the preview: local details, which may conta
   </data>
   <data name="MotifApp.WordCardApprovedNotBuilt" xml:space="preserve">
     <value>Approved analyses PanGloss did not build</value>
-    <comment>Text on the word card.</comment>
+    <comment>Heading or field label on the word card: "Approved analyses PanGloss did not build".</comment>
   </data>
   <data name="MotifApp.PanGlossHelp" xml:space="preserve">
     <value>PanGloss Help</value>
-    <comment>Button or command label on the word card.</comment>
+    <comment>Link on a word card that opens PanGloss Help; PanGloss is a product name.</comment>
   </data>
   <data name="MotifApp.OpenTheWarning" xml:space="preserve">
     <value>Open the Warning</value>
-    <comment>Button or command label on the word card.</comment>
+    <comment>Button on a word card: open the grammar warning that names this word.</comment>
   </data>
   <data name="MotifApp.MarkAsUnread" xml:space="preserve">
     <value>Mark as Unread</value>
-    <comment>Button or command label on the word card.</comment>
+    <comment>Button on a word card: mark the word occurrence as not yet read.</comment>
   </data>
   <data name="MotifApp.WordCardChangeSentenceAccessibleName" xml:space="preserve">
     <value>Sentence when the change was made</value>
-    <comment>Accessible name (read by screen readers) on the word card.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the word card: "Sentence when the change was made". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.SentenceContextAccessibleName" xml:space="preserve">
     <value>Sentence context</value>
-    <comment>Accessible name (read by screen readers) on the word card.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the word card: "Sentence context". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.AboutPanGlossAccessibleName" xml:space="preserve">
     <value>About PanGloss</value>
-    <comment>Accessible name (read by screen readers) on the word card.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the word card: "About PanGloss". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.MarkThisOccurrenceAsUnreadAccessibleName" xml:space="preserve">
     <value>Mark this occurrence as unread</value>
-    <comment>Accessible name (read by screen readers) on the word card.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the word card: "Mark this occurrence as unread". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.CheckThisUncertainChangeAgainAccessibleName" xml:space="preserve">
     <value>Check this uncertain change again</value>
-    <comment>Accessible name (read by screen readers) on the word card.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the word card: "Check this uncertain change again". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.StripTokenNothingInFieldWorks" xml:space="preserve">
     <value>Nothing in FieldWorks</value>
-    <comment>Text on the word strip token.</comment>
+    <comment>Status chip on a word strip token: FieldWorks has no analysis for this word.</comment>
   </data>
   <data name="MotifApp.Staged" xml:space="preserve">
     <value>Staged</value>
-    <comment>Text on the word strip token.</comment>
+    <comment>Status chip on a word strip token: the change for this word is staged (queued) but not yet applied to FieldWorks.</comment>
   </data>
   <data name="MotifApp.TimingNoTimesRecorded" xml:space="preserve">
     <value>No parse times were recorded for these words.</value>
@@ -3837,7 +3837,7 @@ Then come back here. Opening this page never starts a check; it reads the stored
   </data>
   <data name="MotifApp.ParsimonyDetailDecision" xml:space="preserve">
     <value>Decision</value>
-    <comment>Field label in the inspector of a suppressed decision.</comment>
+    <comment>Text used by the view model of the parsimony detail decision; shown to the person as written.</comment>
   </data>
   <data name="MotifApp.ParsimonyDetailSubject" xml:space="preserve">
     <value>Subject</value>
@@ -3853,11 +3853,11 @@ Then come back here. Opening this page never starts a check; it reads the stored
   </data>
   <data name="MotifApp.ParsimonyDetailReason" xml:space="preserve">
     <value>Reason</value>
-    <comment>Field label in the inspector of a suppressed decision.</comment>
+    <comment>Text used by the view model of the parsimony detail reason; shown to the person as written.</comment>
   </data>
   <data name="MotifApp.ParsimonyDetailCurrentState" xml:space="preserve">
     <value>Current State</value>
-    <comment>Field label in the inspector of a suppressed decision.</comment>
+    <comment>Text used by the view model of the parsimony detail current state; shown to the person as written.</comment>
   </data>
   <data name="MotifApp.ParsimonyReportedBecauseFormat" xml:space="preserve">
     <value>Reported because {0} match {1}.</value>
@@ -4434,14 +4434,6 @@ Then come back here. Opening this page never starts a check; it reads the stored
   <data name="MotifApp.ComparePlacesPattern" xml:space="preserve">
     <value>{0, plural, one {# place} other {# places}}</value>
     <comment>Plural pattern: how many places a word occurs; # is the count.</comment>
-  </data>
-  <data name="MotifApp.CompareWordUnit" xml:space="preserve">
-    <value>word</value>
-    <comment>Unit under a matrix cell number: one word.</comment>
-  </data>
-  <data name="MotifApp.CompareWordsUnit" xml:space="preserve">
-    <value>words</value>
-    <comment>Unit under a matrix cell number: several words.</comment>
   </data>
   <data name="MotifApp.CompareCellAccessibleNameFormat" xml:space="preserve">
     <value>{0}: {1}, {2}</value>
@@ -5253,523 +5245,523 @@ Then come back here. Opening this page never starts a check; it reads the stored
   </data>
   <data name="MotifApp.RefusalApplyAppliedContentMismatch" xml:space="preserve">
     <value>Applying may have completed, but the project could not be verified. Check it before retrying.</value>
-    <comment>Sentence the window shows when the command refuses with code C.ApplyAppliedContentMismatch. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.ApplyAppliedContentMismatch. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalApplyChangeNoLongerFits" xml:space="preserve">
     <value>One or more changes no longer fit. Remove those changes first.</value>
-    <comment>Sentence the window shows when the command refuses with code C.ApplyChangeNoLongerFits. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.ApplyChangeNoLongerFits. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalApplyChangeUncertain" xml:space="preserve">
     <value>This change needs another check before it can be applied.</value>
-    <comment>Sentence the window shows when the command refuses with code C.ApplyChangeUncertain. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.ApplyChangeUncertain. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalApplyChangesChanged" xml:space="preserve">
     <value>The changes changed. Refresh them before applying.</value>
-    <comment>Sentence the window shows when the command refuses with code C.ApplyChangesChanged. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.ApplyChangesChanged. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalApplyDrift" xml:space="preserve">
     <value>Applying may have completed, but the project could not be verified. Check it before retrying.</value>
-    <comment>Sentence the window shows when the command refuses with code C.ApplyDrift. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.ApplyDrift. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalApplyDryRunMissing" xml:space="preserve">
     <value>The check did not give enough evidence to apply these changes. Check them again.</value>
-    <comment>Sentence the window shows when the command refuses with code C.ApplyDryRunMissing. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.ApplyDryRunMissing. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalProposalClosed" xml:space="preserve">
     <value>These changes were already applied or closed, so their notes cannot be edited.</value>
-    <comment>Sentence the window shows when the command refuses with code C.ProposalClosed. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.ProposalClosed. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalProposalNotFound" xml:space="preserve">
     <value>These changes could not be found. Refresh the list and try again.</value>
-    <comment>Sentence the window shows when the command refuses with code C.ProposalNotFound. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.ProposalNotFound. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalProposalRationaleEmpty" xml:space="preserve">
     <value>These changes need an explanation of what they do before they can be finished.</value>
-    <comment>Sentence the window shows when the command refuses with code C.ProposalRationaleEmpty. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.ProposalRationaleEmpty. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalApplyPreconditionFailed" xml:space="preserve">
     <value>Something in the project changed since this was checked. Check it again before applying.</value>
-    <comment>Sentence the window shows when the command refuses with code C.ApplyPreconditionFailed. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.ApplyPreconditionFailed. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalApplyNotReady" xml:space="preserve">
     <value>The check did not give enough evidence to apply these changes. Check them again.</value>
-    <comment>Sentence the window shows when the command refuses with code C.ApplyNotReady. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.ApplyNotReady. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalApplyProjectInUse" xml:space="preserve">
     <value>FieldWorks has this project open. Close it before applying changes.</value>
-    <comment>Sentence the window shows when the command refuses with code C.ApplyProjectInUse. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.ApplyProjectInUse. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalApplyReconciliationNeeded" xml:space="preserve">
     <value>Applying may have completed, but its result could not be confirmed. Check the project before retrying.</value>
-    <comment>Sentence the window shows when the command refuses with code C.ApplyReconciliationNeeded. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.ApplyReconciliationNeeded. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalOperationCascadingDelete" xml:space="preserve">
     <value>This change deletes something that owns other things, so it cannot be undone from here.</value>
-    <comment>Sentence the window shows when the command refuses with code C.OperationCascadingDelete. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.OperationCascadingDelete. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalOperationInvalidDependency" xml:space="preserve">
     <value>Other changes here need this one. Undo them together.</value>
-    <comment>Sentence the window shows when the command refuses with code C.OperationInvalidDependency. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.OperationInvalidDependency. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalApplyRegression" xml:space="preserve">
     <value>The check found worse results for words already measured. Review them before applying.</value>
-    <comment>Sentence the window shows when the command refuses with code C.ApplyRegression. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.ApplyRegression. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalApplyReopenFailed" xml:space="preserve">
     <value>The changes could not be applied or reopened. Inspect the FieldWorks project before trying again.</value>
-    <comment>Sentence the window shows when the command refuses with code C.ApplyReopenFailed. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.ApplyReopenFailed. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalParseAlreadyRunningHere" xml:space="preserve">
     <value>A parse is already running in this Motif window. Its progress is shown above.</value>
-    <comment>Sentence the window shows when the command refuses with code C.ParseAlreadyRunningHere. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.ParseAlreadyRunningHere. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalParseAlreadyRunningElsewhere" xml:space="preserve">
     <value>A parse is already running for this project in another Motif window or process. Use that window to see its progress or cancel it.</value>
-    <comment>Sentence the window shows when the command refuses with code parse.already-running. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code parse.already-running. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalAssessBaselineChanged" xml:space="preserve">
     <value>The project was refreshed while words were being measured. Measure them again.</value>
-    <comment>Sentence the window shows when the command refuses with code C.AssessBaselineChanged. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.AssessBaselineChanged. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalAssessInvalidLimit" xml:space="preserve">
     <value>Enter a per-word time limit greater than zero.</value>
-    <comment>Sentence the window shows when the command refuses with code C.AssessInvalidLimit. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.AssessInvalidLimit. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalAssessInvocationInconsistent" xml:space="preserve">
     <value>Motif could not record these measurements together. Measure the words again.</value>
-    <comment>Sentence the window shows when the command refuses with code C.AssessInvocationInconsistent. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.AssessInvocationInconsistent. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalAssessMeasurementsIncomplete" xml:space="preserve">
     <value>Measuring did not finish. Measure the words again.</value>
-    <comment>Sentence the window shows when the command refuses with code C.AssessMeasurementsIncomplete. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.AssessMeasurementsIncomplete. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalAssessUnsupportedKind" xml:space="preserve">
     <value>The PanGloss Motif found cannot take this measurement. Install the PanGloss that matches this Motif, then try again.</value>
-    <comment>Sentence the window shows when the command refuses with code C.AssessUnsupportedKind. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.AssessUnsupportedKind. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalAssessWordsAmbiguous" xml:space="preserve">
     <value>Give the words to measure either in the list or in a file, not both.</value>
-    <comment>Sentence the window shows when the command refuses with code C.AssessWordsAmbiguous. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.AssessWordsAmbiguous. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalAssessWordsFileEmpty" xml:space="preserve">
     <value>The file of words to measure has no words in it. Choose a file with one word on each line.</value>
-    <comment>Sentence the window shows when the command refuses with code C.AssessWordsFileEmpty. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.AssessWordsFileEmpty. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalAssessWordsFileUnreadable" xml:space="preserve">
     <value>Motif could not read the file of words to measure. Check that it exists and can be opened, then try again.</value>
-    <comment>Sentence the window shows when the command refuses with code C.AssessWordsFileUnreadable. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.AssessWordsFileUnreadable. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalAssessmentCancelled" xml:space="preserve">
     <value>Measuring was cancelled. Nothing was recorded.</value>
-    <comment>Sentence the window shows when the command refuses with code C.AssessmentCancelled. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.AssessmentCancelled. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalBaselineBusy" xml:space="preserve">
     <value>Another Motif task is reading this project. Try again in a moment.</value>
-    <comment>Sentence the window shows when the command refuses with code C.BaselineBusy. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.BaselineBusy. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalBaselineCopyUnloadable" xml:space="preserve">
     <value>Motif could not read the saved copy of this project. Save it in FieldWorks, then refresh again.</value>
-    <comment>Sentence the window shows when the command refuses with code C.BaselineCopyUnloadable. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.BaselineCopyUnloadable. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalBaselineOwnedRootViolation" xml:space="preserve">
     <value>Motif's working files for this project are not where they should be. Close Motif and open the project again.</value>
-    <comment>Sentence the window shows when the command refuses with code C.BaselineOwnedRootViolation. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.BaselineOwnedRootViolation. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalBaselineSourceIncomplete" xml:space="preserve">
     <value>The project's files are incomplete. Save the project in FieldWorks, then refresh again.</value>
-    <comment>Sentence the window shows when the command refuses with code C.BaselineSourceIncomplete. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.BaselineSourceIncomplete. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalBaselineTextWordsUnreadable" xml:space="preserve">
     <value>Motif could not read the project's texts. Save the project in FieldWorks, then refresh again.</value>
-    <comment>Sentence the window shows when the command refuses with code C.BaselineTextWordsUnreadable. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.BaselineTextWordsUnreadable. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalChangeAnalysisIdentityRequired" xml:space="preserve">
     <value>Choose an analysis before adding this change.</value>
-    <comment>Sentence the window shows when the command refuses with code C.ChangeAnalysisIdentityRequired. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.ChangeAnalysisIdentityRequired. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalChangeAnalysisOwnerInvalid" xml:space="preserve">
     <value>Motif could not find the word that owns this analysis. Refresh and choose it again.</value>
-    <comment>Sentence the window shows when the command refuses with code C.ChangeAnalysisOwnerInvalid. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.ChangeAnalysisOwnerInvalid. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalChangeAssessmentIncomplete" xml:space="preserve">
     <value>Parsing did not finish for every selected word. Parse all words again before accepting the new set.</value>
-    <comment>Sentence the window shows when the command refuses with code C.ChangeAssessmentIncomplete. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.ChangeAssessmentIncomplete. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalChangeAssessmentKind" xml:space="preserve">
     <value>Accept the new set needs every word parsed. Parse all words first.</value>
-    <comment>Sentence the window shows when the command refuses with code C.ChangeAssessmentKind. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.ChangeAssessmentKind. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalChangeAssessmentMissing" xml:space="preserve">
     <value>Those parse results are no longer stored. Parse all words again before adding the change.</value>
-    <comment>Sentence the window shows when the command refuses with code C.ChangeAssessmentMissing. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.ChangeAssessmentMissing. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalChangeAssessmentRequired" xml:space="preserve">
     <value>Parse all words before adding this change.</value>
-    <comment>Sentence the window shows when the command refuses with code C.ChangeAssessmentRequired. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.ChangeAssessmentRequired. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalChangeAssessmentStale" xml:space="preserve">
     <value>These parse results are from an older Baseline. Parse all words again first.</value>
-    <comment>Sentence the window shows when the command refuses with code C.ChangeAssessmentStale. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.ChangeAssessmentStale. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalChangeAssessmentWordMissing" xml:space="preserve">
     <value>The last parse did not include the selected word. Parse all words again.</value>
-    <comment>Sentence the window shows when the command refuses with code C.ChangeAssessmentWordMissing. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.ChangeAssessmentWordMissing. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalChangeBaselineMissing" xml:space="preserve">
     <value>Capture a Baseline before collecting changes.</value>
-    <comment>Sentence the window shows when the command refuses with code C.ChangeBaselineMissing. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.ChangeBaselineMissing. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalChangeCannotCompose" xml:space="preserve">
     <value>This change could not be added. Refresh the changes and try again.</value>
-    <comment>Sentence the window shows when the command refuses with code C.ChangeCannotCompose. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.ChangeCannotCompose. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalChangeInvalidIdentity" xml:space="preserve">
     <value>This change could not be added. Select the word again and retry.</value>
-    <comment>Sentence the window shows when the command refuses with code C.ChangeInvalidIdentity. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.ChangeInvalidIdentity. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalChangeNoEffect" xml:space="preserve">
     <value>This change would not alter the project.</value>
-    <comment>Sentence the window shows when the command refuses with code C.ChangeNoEffect. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.ChangeNoEffect. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalChangeNotFound" xml:space="preserve">
     <value>That change is no longer in the list. Refresh the changes and try again.</value>
-    <comment>Sentence the window shows when the command refuses with code C.ChangeNotFound. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.ChangeNotFound. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalChangeOccurrenceUnavailable" xml:space="preserve">
     <value>The selected word occurrence is unavailable. Refresh and select it again.</value>
-    <comment>Sentence the window shows when the command refuses with code C.ChangeOccurrenceUnavailable. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.ChangeOccurrenceUnavailable. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalChangeOccurrenceWordformMismatch" xml:space="preserve">
     <value>The selected occurrence belongs to a different word.</value>
-    <comment>Sentence the window shows when the command refuses with code C.ChangeOccurrenceWordformMismatch. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.ChangeOccurrenceWordformMismatch. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalChangeProjectSaving" xml:space="preserve">
     <value>FieldWorks is saving the project. Try again in a moment.</value>
-    <comment>Sentence the window shows when the command refuses with code C.ChangeProjectSaving. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.ChangeProjectSaving. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalChangeReadingMissing" xml:space="preserve">
     <value>That parser reading is no longer available. Parse all words again.</value>
-    <comment>Sentence the window shows when the command refuses with code C.ChangeReadingMissing. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.ChangeReadingMissing. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalChangeReconfirmNotAllowed" xml:space="preserve">
     <value>This decision no longer fits the project and cannot be checked again.</value>
-    <comment>Sentence the window shows when the command refuses with code C.ChangeReconfirmNotAllowed. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.ChangeReconfirmNotAllowed. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalChangeReconfirmUnneeded" xml:space="preserve">
     <value>This change does not need another check.</value>
-    <comment>Sentence the window shows when the command refuses with code C.ChangeReconfirmUnneeded. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.ChangeReconfirmUnneeded. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalChangeRefreshRequired" xml:space="preserve">
     <value>Refresh the project before checking the changes again.</value>
-    <comment>Sentence the window shows when the command refuses with code C.ChangeRefreshRequired. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.ChangeRefreshRequired. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalChangeRevisionConflict" xml:space="preserve">
     <value>The changes changed elsewhere. Refresh them and try again.</value>
-    <comment>Sentence the window shows when the command refuses with code C.ChangeRevisionConflict. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.ChangeRevisionConflict. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalChangeScopeInvalid" xml:space="preserve">
     <value>Choose one wordform, one Selection, or one Text.</value>
-    <comment>Sentence the window shows when the command refuses with code C.ChangeScopeInvalid. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.ChangeScopeInvalid. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalChangeSlotOccupied" xml:space="preserve">
     <value>Another pending change already addresses this word and analysis.</value>
-    <comment>Sentence the window shows when the command refuses with code C.ChangeSlotOccupied. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.ChangeSlotOccupied. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalChangeStoredAnalysisMissing" xml:space="preserve">
     <value>That analysis is no longer stored under this word. Refresh and choose another.</value>
-    <comment>Sentence the window shows when the command refuses with code C.ChangeStoredAnalysisMissing. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.ChangeStoredAnalysisMissing. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalChangeTextUnavailable" xml:space="preserve">
     <value>That Text is no longer in the current project view. Refresh and try again.</value>
-    <comment>Sentence the window shows when the command refuses with code C.ChangeTextUnavailable. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.ChangeTextUnavailable. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalChangeWordformAmbiguous" xml:space="preserve">
     <value>The project has more than one word with this spelling. Choose one in FieldWorks.</value>
-    <comment>Sentence the window shows when the command refuses with code C.ChangeWordformAmbiguous. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.ChangeWordformAmbiguous. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalChangeWordformChanged" xml:space="preserve">
     <value>That word changed in the project. Refresh and try again.</value>
-    <comment>Sentence the window shows when the command refuses with code C.ChangeWordformChanged. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.ChangeWordformChanged. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalChangeWordformMissing" xml:space="preserve">
     <value>That word isn't in the FieldWorks project. Refresh and try again.</value>
-    <comment>Sentence the window shows when the command refuses with code C.ChangeWordformMissing. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.ChangeWordformMissing. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalConfigInvalid" xml:space="preserve">
     <value>Motif's settings for this project could not be read. Open the setup again and save them.</value>
-    <comment>Sentence the window shows when the command refuses with code C.ConfigInvalid. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.ConfigInvalid. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalDraftRevisionConflict" xml:space="preserve">
     <value>The changes changed elsewhere. Refresh them and try again.</value>
-    <comment>Sentence the window shows when the command refuses with code C.DraftRevisionConflict. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.DraftRevisionConflict. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalGrammarCheckCancelled" xml:space="preserve">
     <value>The grammar check was cancelled.</value>
-    <comment>Sentence the window shows when the command refuses with code C.GrammarCheckCancelled. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.GrammarCheckCancelled. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalGrammarCheckParserRefused" xml:space="preserve">
     <value>PanGloss could not check this grammar. The details say why.</value>
-    <comment>Sentence the window shows when the command refuses with code C.GrammarCheckParserRefused. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.GrammarCheckParserRefused. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalGrammarCheckTimedOut" xml:space="preserve">
     <value>The grammar check took too long and was stopped. Try again.</value>
-    <comment>Sentence the window shows when the command refuses with code C.GrammarCheckTimedOut. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.GrammarCheckTimedOut. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalHandoffCancelled" xml:space="preserve">
     <value>The AI Handoff was cancelled.</value>
-    <comment>Sentence the window shows when the command refuses with code C.HandoffCancelled. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.HandoffCancelled. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalHandoffDestinationExists" xml:space="preserve">
     <value>That folder already has files in it. Choose an empty folder.</value>
-    <comment>Sentence the window shows when the command refuses with code C.HandoffDestinationExists. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.HandoffDestinationExists. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalHandoffInvocationMismatch" xml:space="preserve">
     <value>Those measurements belong to another project. Measure this project's words, then try again.</value>
-    <comment>Sentence the window shows when the command refuses with code C.HandoffInvocationMismatch. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.HandoffInvocationMismatch. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalHandoffInvocationNotFound" xml:space="preserve">
     <value>Those measurements are no longer stored. Measure the words again, then make the AI Handoff.</value>
-    <comment>Sentence the window shows when the command refuses with code C.HandoffInvocationNotFound. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.HandoffInvocationNotFound. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalHandoffInvocationRequired" xml:space="preserve">
     <value>Measure words before making an AI Handoff.</value>
-    <comment>Sentence the window shows when the command refuses with code C.HandoffInvocationRequired. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.HandoffInvocationRequired. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalHandoffSourceUnavailable" xml:space="preserve">
     <value>The grammar those measurements used is no longer stored. Measure the words again, then make the AI Handoff.</value>
-    <comment>Sentence the window shows when the command refuses with code C.HandoffSourceUnavailable. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.HandoffSourceUnavailable. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalHandoffStatisticsUnavailable" xml:space="preserve">
     <value>The statistics for those measurements are no longer stored. Measure the words again, then make the AI Handoff.</value>
-    <comment>Sentence the window shows when the command refuses with code C.HandoffStatisticsUnavailable. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.HandoffStatisticsUnavailable. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalHandoffTextNotFound" xml:space="preserve">
     <value>A chosen text is not in the project as it was measured. Refresh, measure again, then try again.</value>
-    <comment>Sentence the window shows when the command refuses with code C.HandoffTextNotFound. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.HandoffTextNotFound. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalJobParserUnavailable" xml:space="preserve">
     <value>The parser this check was queued for is gone or was replaced, so the check was stopped. Run it again.</value>
-    <comment>Sentence the window shows when the command refuses with code C.JobParserUnavailable. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.JobParserUnavailable. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalJobWaitCancelled" xml:space="preserve">
     <value>The check was cancelled.</value>
-    <comment>Sentence the window shows when the command refuses with code C.JobWaitCancelled. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.JobWaitCancelled. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalJobWaitTimeout" xml:space="preserve">
     <value>The check took too long and was stopped. Your changes are unchanged; try applying again.</value>
-    <comment>Sentence the window shows when the command refuses with code C.JobWaitTimeout. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.JobWaitTimeout. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalPreflightUnavailable" xml:space="preserve">
     <value>Motif could not check these changes against the project. Try again.</value>
-    <comment>Sentence the window shows when the command refuses with code C.PreflightUnavailable. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.PreflightUnavailable. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalProjectBackupUnreadable" xml:space="preserve">
     <value>Motif cannot restore that file. Choose a .fwbackup file that FieldWorks made.</value>
-    <comment>Sentence the window shows when the command refuses with code C.ProjectBackupUnreadable. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.ProjectBackupUnreadable. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalProjectBusy" xml:space="preserve">
     <value>Another Motif task is using this project. Try again in a moment.</value>
-    <comment>Sentence the window shows when the command refuses with code C.ProjectBusy. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.ProjectBusy. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalProjectInUse" xml:space="preserve">
     <value>FieldWorks has this project open. Close it in FieldWorks, then try again.</value>
-    <comment>Sentence the window shows when the command refuses with code C.ProjectInUse. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.ProjectInUse. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalProjectInvalid" xml:space="preserve">
     <value>Motif cannot open that file as a FieldWorks project. Choose the project's .fwdata file.</value>
-    <comment>Sentence the window shows when the command refuses with code C.ProjectInvalid. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.ProjectInvalid. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalProjectNotFound" xml:space="preserve">
     <value>Motif cannot find that project file. It may have been moved or deleted.</value>
-    <comment>Sentence the window shows when the command refuses with code C.ProjectNotFound. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.ProjectNotFound. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalProjectOperationIo" xml:space="preserve">
     <value>Motif could not read or write a file it needed. Check the disk, then try again.</value>
-    <comment>Sentence the window shows when the command refuses with code C.ProjectOperationIo. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.ProjectOperationIo. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalProjectStoreIo" xml:space="preserve">
     <value>Motif could not read or write its file for this project. Check that the folder can be written to, then try again.</value>
-    <comment>Sentence the window shows when the command refuses with code C.ProjectStoreIo. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.ProjectStoreIo. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalProjectUnloadable" xml:space="preserve">
     <value>Motif could not open this FieldWorks project. Open it in FieldWorks to check it, then try again.</value>
-    <comment>Sentence the window shows when the command refuses with code C.ProjectUnloadable. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.ProjectUnloadable. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalProjectWaitCancelled" xml:space="preserve">
     <value>Waiting to use the project was cancelled.</value>
-    <comment>Sentence the window shows when the command refuses with code C.ProjectWaitCancelled. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.ProjectWaitCancelled. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalReviewAssessmentNotFound" xml:space="preserve">
     <value>Those measurements are no longer stored. Check the changes again.</value>
-    <comment>Sentence the window shows when the command refuses with code C.ReviewAssessmentNotFound. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.ReviewAssessmentNotFound. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalReviewNumbersUnavailable" xml:space="preserve">
     <value>Motif could not work out the numbers for these changes. Check them again.</value>
-    <comment>Sentence the window shows when the command refuses with code C.ReviewNumbersUnavailable. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.ReviewNumbersUnavailable. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalReviewWrongAssessmentKind" xml:space="preserve">
     <value>These numbers need a correctness check. Check the changes again.</value>
-    <comment>Sentence the window shows when the command refuses with code C.ReviewWrongAssessmentKind. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.ReviewWrongAssessmentKind. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalSelectionDefaultMissing" xml:space="preserve">
     <value>Motif does not know which words to measure yet. Choose texts or words in the setup first.</value>
-    <comment>Sentence the window shows when the command refuses with code C.SelectionDefaultMissing. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.SelectionDefaultMissing. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalSelectionEmpty" xml:space="preserve">
     <value>The chosen texts have no words to measure. Choose other texts or add words.</value>
-    <comment>Sentence the window shows when the command refuses with code C.SelectionEmpty. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.SelectionEmpty. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalSelectionInvalid" xml:space="preserve">
     <value>Choose at least one text or add a word before continuing.</value>
-    <comment>Sentence the window shows when the command refuses with code C.SelectionInvalid. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.SelectionInvalid. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalSelectionTextNotFound" xml:space="preserve">
     <value>A chosen text is no longer in the project. Choose the texts again.</value>
-    <comment>Sentence the window shows when the command refuses with code C.SelectionTextNotFound. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.SelectionTextNotFound. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalSelectionReaderBusy" xml:space="preserve">
     <value>Motif is already reading these texts. Try again in a moment.</value>
-    <comment>Sentence the window shows when the command refuses with code RefusalCodes.SelectionReaderBusy. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code RefusalCodes.SelectionReaderBusy. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalSelectionReaderCancelled" xml:space="preserve">
     <value>Reading these texts was cancelled.</value>
-    <comment>Sentence the window shows when the command refuses with code RefusalCodes.SelectionReaderCancelled. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code RefusalCodes.SelectionReaderCancelled. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalSelectionReaderDisposed" xml:space="preserve">
     <value>This text view is no longer open. Reopen it and try again.</value>
-    <comment>Sentence the window shows when the command refuses with code RefusalCodes.SelectionReaderDisposed. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code RefusalCodes.SelectionReaderDisposed. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalSelectionReaderInvalid" xml:space="preserve">
     <value>Motif could not read this text view. Reopen it and try again.</value>
-    <comment>Sentence the window shows when the command refuses with code RefusalCodes.SelectionReaderInvalid. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code RefusalCodes.SelectionReaderInvalid. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalTrialScratchGone" xml:space="preserve">
     <value>The copy these changes were tried on is gone. Try them again.</value>
-    <comment>Sentence the window shows when the command refuses with code trial.scratch-gone. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code trial.scratch-gone. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalTrialNone" xml:space="preserve">
     <value>These changes have not been tried yet. Try them first.</value>
-    <comment>Sentence the window shows when the command refuses with code trial.none. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code trial.none. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalSelectionReaderNoBaseline" xml:space="preserve">
     <value>Refresh this project before reading its saved texts.</value>
-    <comment>Sentence the window shows when the command refuses with code RefusalCodes.SelectionReaderNoBaseline. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code RefusalCodes.SelectionReaderNoBaseline. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalSelectionReaderRangeInvalid" xml:space="preserve">
     <value>Choose a valid range of words to read.</value>
-    <comment>Sentence the window shows when the command refuses with code RefusalCodes.SelectionReaderRangeInvalid. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code RefusalCodes.SelectionReaderRangeInvalid. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalSelectionReaderOwnershipLimit" xml:space="preserve">
     <value>Too much text is open at once. Close a card or choose a smaller range.</value>
-    <comment>Sentence the window shows when the command refuses with code RefusalCodes.SelectionReaderOwnershipLimit. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code RefusalCodes.SelectionReaderOwnershipLimit. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalSelectionReaderProjectPathRequired" xml:space="preserve">
     <value>Motif needs the saved project path to read current text state.</value>
-    <comment>Sentence the window shows when the command refuses with code RefusalCodes.SelectionReaderProjectPathRequired. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code RefusalCodes.SelectionReaderProjectPathRequired. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalTextsEvidenceChanged" xml:space="preserve">
     <value>The project's saved texts changed. Refresh and reopen them.</value>
-    <comment>Sentence the window shows when the command refuses with code C.TextsEvidenceChanged. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.TextsEvidenceChanged. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalStatsCancelled" xml:space="preserve">
     <value>Reading the statistics was cancelled.</value>
-    <comment>Sentence the window shows when the command refuses with code C.StatsCancelled. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.StatsCancelled. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalStatsInvalidEvidence" xml:space="preserve">
     <value>The stored statistics are damaged. Measure the words again.</value>
-    <comment>Sentence the window shows when the command refuses with code C.StatsInvalidEvidence. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.StatsInvalidEvidence. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalStatsNoAssessment" xml:space="preserve">
     <value>No measurements with statistics are stored yet. Measure the words first.</value>
-    <comment>Sentence the window shows when the command refuses with code C.StatsNoAssessment. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.StatsNoAssessment. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalStatsNoCache" xml:space="preserve">
     <value>These measurements were stored without statistics. Measure the words again.</value>
-    <comment>Sentence the window shows when the command refuses with code C.StatsNoCache. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.StatsNoCache. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalStatsNoEvidence" xml:space="preserve">
     <value>The grammar these measurements used is no longer stored. Measure the words again.</value>
-    <comment>Sentence the window shows when the command refuses with code C.StatsNoEvidence. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.StatsNoEvidence. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalStatsParserRefused" xml:space="preserve">
     <value>PanGloss could not read these statistics. The details say why.</value>
-    <comment>Sentence the window shows when the command refuses with code C.StatsParserRefused. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.StatsParserRefused. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalStatsTimedOut" xml:space="preserve">
     <value>Reading the statistics took too long and was stopped. Try again.</value>
-    <comment>Sentence the window shows when the command refuses with code C.StatsTimedOut. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.StatsTimedOut. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalStoreInconsistent" xml:space="preserve">
     <value>Motif's file for this project is damaged and cannot be used.</value>
-    <comment>Sentence the window shows when the command refuses with code C.StoreInconsistent. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.StoreInconsistent. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalStoreUnsupported" xml:space="preserve">
     <value>Motif's file for this project cannot be used by this version of Motif.</value>
-    <comment>Sentence the window shows when the command refuses with code C.StoreUnsupported. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.StoreUnsupported. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalTextsWordsCancelled" xml:space="preserve">
     <value>Reading the texts' words was cancelled.</value>
-    <comment>Sentence the window shows when the command refuses with code C.TextsWordsCancelled. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.TextsWordsCancelled. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalTimingInvalidOverride" xml:space="preserve">
     <value>A re-run does not belong to these measurements. Re-run the words again.</value>
-    <comment>Sentence the window shows when the command refuses with code C.TimingInvalidOverride. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.TimingInvalidOverride. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalTimingNoAssessment" xml:space="preserve">
     <value>No timings are stored yet. Measure the words first.</value>
-    <comment>Sentence the window shows when the command refuses with code C.TimingNoAssessment. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.TimingNoAssessment. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalTimingNoBaseline" xml:space="preserve">
     <value>Refresh the project before looking at timings.</value>
-    <comment>Sentence the window shows when the command refuses with code C.TimingNoBaseline. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.TimingNoBaseline. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalTimingOverrideNotFound" xml:space="preserve">
     <value>A re-run is no longer stored. Re-run the words again.</value>
-    <comment>Sentence the window shows when the command refuses with code C.TimingOverrideNotFound. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.TimingOverrideNotFound. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalTimingWordSetNotFound" xml:space="preserve">
     <value>That saved set of words no longer exists. Choose another.</value>
-    <comment>Sentence the window shows when the command refuses with code C.TimingWordSetNotFound. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.TimingWordSetNotFound. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalTimingWrongKind" xml:space="preserve">
     <value>Those measurements have no timings. Measure the words again.</value>
-    <comment>Sentence the window shows when the command refuses with code C.TimingWrongKind. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.TimingWrongKind. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalTrialChangesChanged" xml:space="preserve">
     <value>The changes were updated while they were being checked. Check them again.</value>
-    <comment>Sentence the window shows when the command refuses with code C.TrialChangesChanged. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.TrialChangesChanged. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalTrialMeasurementIncomplete" xml:space="preserve">
     <value>The check did not finish. Try it again.</value>
-    <comment>Sentence the window shows when the command refuses with code C.TrialMeasurementIncomplete. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.TrialMeasurementIncomplete. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalNoProjectCode" xml:space="preserve">
     <value>Open a project first.</value>
-    <comment>Sentence the window shows when the command refuses with code NoProjectCode. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code NoProjectCode. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalTrialNothingPending" xml:space="preserve">
     <value>There are no changes to check.</value>
-    <comment>Sentence the window shows when the command refuses with code C.TrialNothingPending. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.TrialNothingPending. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalTrialUpdateInProgress" xml:space="preserve">
     <value>Motif is installing an update. Try the check again in a moment.</value>
-    <comment>Sentence the window shows when the command refuses with code C.TrialUpdateInProgress. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.TrialUpdateInProgress. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalWordTraceCancelled" xml:space="preserve">
     <value>Trying the word was cancelled.</value>
-    <comment>Sentence the window shows when the command refuses with code C.WordTraceCancelled. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.WordTraceCancelled. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalWordTraceMalformedDiagnostic" xml:space="preserve">
     <value>That file is not a diagnostic Motif can read. Choose a diagnostic Motif saved.</value>
-    <comment>Sentence the window shows when the command refuses with code C.WordTraceMalformedDiagnostic. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.WordTraceMalformedDiagnostic. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalWordTraceNoBaseline" xml:space="preserve">
     <value>Refresh the project before trying a word.</value>
-    <comment>Sentence the window shows when the command refuses with code C.WordTraceNoBaseline. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.WordTraceNoBaseline. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalWordTraceParserRefused" xml:space="preserve">
     <value>PanGloss could not try this word. The details say why.</value>
-    <comment>Sentence the window shows when the command refuses with code C.WordTraceParserRefused. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection, Text and Proposal-related words are Motif terms.</comment>
+    <comment>Sentence the window shows when the command refuses with code C.WordTraceParserRefused. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalDetailsGrammarIssuesTitle" xml:space="preserve">
     <value>Details · grammar issues</value>
@@ -5779,48 +5771,120 @@ Then come back here. Opening this page never starts a check; it reads the stored
     <value>This Motif store is from another version</value>
     <comment>Heading above the refusal sentence when Motif's store was written by another version of Motif.</comment>
   </data>
-  <data name="MotifApp.HeaderKind" xml:space="preserve">
+  <data name="MotifApp.StatisticsColumnKind" xml:space="preserve">
     <value>Kind</value>
-    <comment>Column heading of the statistics table.</comment>
+    <comment>Heading of a table column on the detailed statistics table on the Timing page.</comment>
   </data>
-  <data name="MotifApp.HeaderObject" xml:space="preserve">
+  <data name="MotifApp.StatisticsColumnObject" xml:space="preserve">
     <value>Object</value>
-    <comment>Column heading of the statistics table.</comment>
+    <comment>Heading of a table column on the detailed statistics table on the Timing page.</comment>
   </data>
-  <data name="MotifApp.HeaderCompletion" xml:space="preserve">
+  <data name="MotifApp.StatisticsColumnCompletion" xml:space="preserve">
     <value>Completion</value>
-    <comment>Column heading of the statistics table.</comment>
+    <comment>Heading of a table column on the detailed statistics table on the Timing page.</comment>
   </data>
-  <data name="MotifApp.HeaderAnalyses" xml:space="preserve">
+  <data name="MotifApp.StatisticsColumnAnalyses" xml:space="preserve">
     <value>Analyses</value>
-    <comment>Column heading of the statistics table.</comment>
+    <comment>Heading of a table column on the detailed statistics table on the Timing page.</comment>
   </data>
-  <data name="MotifApp.HeaderElapsedMs" xml:space="preserve">
+  <data name="MotifApp.StatisticsColumnElapsedMs" xml:space="preserve">
     <value>Elapsed (ms)</value>
-    <comment>Column heading of the statistics table.</comment>
+    <comment>Heading of a table column on the detailed statistics table on the Timing page.</comment>
   </data>
-  <data name="MotifApp.HeaderDetailedStatistics" xml:space="preserve">
+  <data name="MotifApp.TimingDetailedStatisticsHeading" xml:space="preserve">
     <value>Detailed Statistics</value>
-    <comment>Heading of a folded section (an expander) in the Try a Word and Timing pages.</comment>
+    <comment>Heading of a collapsible section on the Timing page.</comment>
   </data>
-  <data name="MotifApp.HeaderParserDetails" xml:space="preserve">
+  <data name="MotifApp.TryWordParserDetailsHeading" xml:space="preserve">
     <value>Parser Details</value>
-    <comment>Heading of a folded section (an expander) in the Try a Word and Timing pages.</comment>
+    <comment>Heading of a collapsible section on the Try a Word attempt inspector.</comment>
   </data>
-  <data name="MotifApp.HeaderRecordedTreeContext" xml:space="preserve">
+  <data name="MotifApp.TryWordRecordedTreeContextHeading" xml:space="preserve">
     <value>Recorded Tree Context</value>
-    <comment>Heading of a folded section (an expander) in the Try a Word and Timing pages.</comment>
+    <comment>Heading of a collapsible section on the saved trace diagnostic panel.</comment>
   </data>
-  <data name="MotifApp.HeaderFullMorphDetails" xml:space="preserve">
+  <data name="MotifApp.TraceFullMorphDetailsHeading" xml:space="preserve">
     <value>Full Morph Details</value>
-    <comment>Heading of a folded section (an expander) in the Try a Word and Timing pages.</comment>
+    <comment>Heading of a collapsible section on the recorded analyses section of the Try a Word page.</comment>
   </data>
-  <data name="MotifApp.HeaderRawMorphRecord" xml:space="preserve">
+  <data name="MotifApp.TraceRawMorphRecordHeading" xml:space="preserve">
     <value>Raw Morph Record</value>
-    <comment>Heading of a folded section (an expander) in the Try a Word and Timing pages.</comment>
+    <comment>Heading of a collapsible section on the recorded analyses section of the Try a Word page.</comment>
   </data>
-  <data name="MotifApp.HeaderFullAnalysisDetails" xml:space="preserve">
+  <data name="MotifApp.TryWordFullAnalysisDetailsHeading" xml:space="preserve">
     <value>Full Analysis Details</value>
-    <comment>Heading of a folded section (an expander) in the Try a Word and Timing pages.</comment>
+    <comment>Heading of a collapsible section on the Try a Word page.</comment>
+  </data>
+  <data name="MotifApp.TraceKindWord" xml:space="preserve">
+    <value>Word</value>
+    <comment>Name of a parser trace step kind: the whole word being analysed.</comment>
+  </data>
+  <data name="MotifApp.ExpertAnalysisPathPlaceholder" xml:space="preserve">
+    <value>Show one analysis path</value>
+    <comment>Hint inside the empty box that chooses which analysis path the Expert trace shows.</comment>
+  </data>
+  <data name="MotifApp.StatisticsFilterPlaceholder" xml:space="preserve">
+    <value>Filter rows...</value>
+    <comment>Hint inside the empty box that filters the rows of the detailed statistics table.</comment>
+  </data>
+  <data name="MotifApp.ParsimonyReasonPlaceholder" xml:space="preserve">
+    <value>Reason (optional)</value>
+    <comment>Hint inside the empty box where a person may say why they decided about a Parsimony finding.</comment>
+  </data>
+  <data name="MotifApp.ParsimonyQuestionPlaceholder" xml:space="preserve">
+    <value>Question to ask</value>
+    <comment>Hint inside the empty box where a person writes a question to ask about a Parsimony finding.</comment>
+  </data>
+  <data name="MotifApp.TryWordInputPlaceholder" xml:space="preserve">
+    <value>Type any word...</value>
+    <comment>Hint inside the empty box where a person types a word to try on the Try a Word page.</comment>
+  </data>
+  <data name="MotifApp.TimingChooseCellPlaceholder" xml:space="preserve">
+    <value>Choose a cell</value>
+    <comment>Hint in the empty drop-down that chooses a Matrix cell whose words the Timing page measures.</comment>
+  </data>
+  <data name="MotifApp.TimingChooseListPlaceholder" xml:space="preserve">
+    <value>Choose a list</value>
+    <comment>Hint in the empty drop-down that chooses a word list whose words the Timing page measures.</comment>
+  </data>
+  <data name="MotifApp.TimingPasteWordsPlaceholder" xml:space="preserve">
+    <value>Type or paste words, one per line</value>
+    <comment>Hint inside the empty box where a person types or pastes words for the Timing page, one on each line.</comment>
+  </data>
+  <data name="MotifApp.CompareSearchWordsPlaceholder" xml:space="preserve">
+    <value>Search words…</value>
+    <comment>Hint inside the empty box that searches the words of the Matrix cell chosen on the Compare panel.</comment>
+  </data>
+  <data name="MotifApp.ExpertMoreRuleStepsFormat" xml:space="preserve">
+    <value>{0} more rule steps · open in Expert</value>
+    <comment>Note under the Plain trace: {0} is how many rule steps are folded away; Expert is the name of a view of the trace.</comment>
+  </data>
+  <data name="MotifApp.ExpertShowingEveryStep" xml:space="preserve">
+    <value>Showing every step</value>
+    <comment>Note above the Expert trace tree when it shows every recorded step of every attempt.</comment>
+  </data>
+  <data name="MotifApp.ExpertShowingAttemptPathFormat" xml:space="preserve">
+    <value>Showing attempt {0}'s recorded path.</value>
+    <comment>Note above the Expert trace tree when it shows one attempt; {0} is the attempt number or id.</comment>
+  </data>
+  <data name="MotifApp.ExpertChooseRecordedEvent" xml:space="preserve">
+    <value>Choose a recorded event.</value>
+    <comment>Prompt in the Expert trace reading line when no recorded event is selected.</comment>
+  </data>
+  <data name="MotifApp.RefusalIssueObjectFormat" xml:space="preserve">
+    <value>Object: {0}</value>
+    <comment>Line in the details of a grammar issue: {0} is the kind of FieldWorks object the issue is about.</comment>
+  </data>
+  <data name="MotifApp.RefusalIssueIdentityFormat" xml:space="preserve">
+    <value>Identity: {0}</value>
+    <comment>Line in the details of a grammar issue: {0} is the identifier of the FieldWorks object the issue is about.</comment>
+  </data>
+  <data name="MotifApp.RefusalIssueFieldFormat" xml:space="preserve">
+    <value>Field: {0}</value>
+    <comment>Line in the details of a grammar issue: {0} is the name of the field the issue is about.</comment>
+  </data>
+  <data name="MotifApp.CompareWordUnitPattern" xml:space="preserve">
+    <value>{0, plural, one {word} other {words}}</value>
+    <comment>Plural pattern: the unit word shown beside the count of words in a Matrix cell; # is not used, only the choice of singular or plural.</comment>
   </data>
 </root>

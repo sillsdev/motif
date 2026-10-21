@@ -1,3 +1,4 @@
+using SIL.Motif.App;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
@@ -163,7 +164,7 @@ public sealed class TraceReaderReviewTests(AvaloniaHeadlessFixture avalonia)
             candidate.IsTreeContextExpanded = true;
             PageScreenshots.Settle(window);
             var context = window.GetVisualDescendants().OfType<Expander>()
-                .Single(expander => expander.Header?.ToString() == "Recorded tree context" && expander.IsEffectivelyVisible);
+                .Single(expander => expander.Header?.ToString() == MotifAppStrings.TryWordRecordedTreeContextHeading && expander.IsEffectivelyVisible);
             var texts = context.GetVisualDescendants().OfType<CopyableTextBlock>()
                 .Where(block => block.IsEffectivelyVisible).Select(block => block.Text).ToArray();
             var repeated = candidate.RecordedTreeContext.GroupBy(step => step.Label)
@@ -201,7 +202,7 @@ public sealed class TraceReaderReviewTests(AvaloniaHeadlessFixture avalonia)
         {
             var candidate = Assert.Single(model.ClosestAttempts);
             if (!ancestor) candidate.IsTreeContextExpanded = true;
-            var header = ancestor ? "Steps on this path" : "Recorded tree context";
+            var header = ancestor ? "Steps on this path" : MotifAppStrings.TryWordRecordedTreeContextHeading;
             var expander = window.GetVisualDescendants().OfType<Expander>()
                 .Single(control => control.Header?.ToString() == header);
             expander.IsExpanded = true;

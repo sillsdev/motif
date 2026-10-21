@@ -11,7 +11,7 @@
     <StackPanel Classes="warningFilters" IsVisible="{Binding Grammar.ShowFindings}"
                 Spacing="{DynamicResource Intent.Space.Related}">
       <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-        <views:CopyableTextBlock Classes="denseTableHeading" Text="{x:Static app:MotifAppStrings.Area}" />
+        <views:CopyableTextBlock Classes="denseTableHeading" Text="{x:Static app:MotifAppStrings.WarningsAreaLabel}" />
         <ItemsControl x:Name="WarningsAreaFilterItems" ItemsSource="{Binding AreaFilters}">
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:WarningsAreaFilterOption">

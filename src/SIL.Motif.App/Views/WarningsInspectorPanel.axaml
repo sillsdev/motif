@@ -20,7 +20,7 @@
                 IsVisible="{Binding Page.HasSelectedWarningArea}">
             <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.Severity}" Classes="muted" />
             <views:CopyableTextBlock Grid.Column="1" Text="{Binding Page.SelectedWarningSeverity}" />
-            <views:CopyableTextBlock Grid.Row="1" Text="{x:Static app:MotifAppStrings.Area}" Classes="muted" />
+            <views:CopyableTextBlock Grid.Row="1" Text="{x:Static app:MotifAppStrings.WarningsAreaLabel}" Classes="muted" />
             <views:CopyableTextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Page.SelectedWarningArea}" />
             <views:CopyableTextBlock Grid.Row="2" Text="{x:Static app:MotifAppStrings.NamedWords}" Classes="muted" />
             <views:CopyableTextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Page.SelectedWarningWordCount}" />

@@ -120,7 +120,7 @@ public sealed partial class TraceWordViewModel
             var addresses = SIL.Motif.Commands.Queries.TraceBuildingStory.Steps(path.Select(step => step.RecordedStep).ToArray())
                 .Select(step => step.StepId).ToHashSet(StringComparer.Ordinal);
             var building = path.Where(step => addresses.Contains(step.RecordedStep.StepId)).ToList();
-            if (building.Count == 0) building.AddRange(path.Where(step => step.KindText != MotifAppStrings.TraceKindRuleLevel && step.KindText != MotifAppStrings.Word));
+            if (building.Count == 0) building.AddRange(path.Where(step => !TraceStepKinds.IsStructural(step.Type)));
             foreach (var step in building) step.IsSeparatePlainEvent = false;
             if (SelectedStep is { } selected && building.All(step => step.RecordedStep.StepId != selected.RecordedStep.StepId))
             {
@@ -138,7 +138,7 @@ public sealed partial class TraceWordViewModel
         {
             var shown = PlainSteps.Select(step => step.RecordedStep.StepId).ToHashSet(StringComparer.Ordinal);
             var count = _expertTree.Count(step => step.Type != "WordAnalysis" && !shown.Contains(step.RecordedStep.StepId));
-            return count > 0 ? $"{count:N0} more rule steps · open in Expert" : string.Empty;
+            return count > 0 ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.ExpertMoreRuleStepsFormat, count.ToString("N0", System.Globalization.CultureInfo.CurrentCulture)) : string.Empty;
         }
     }
 
@@ -179,11 +179,11 @@ public sealed partial class TraceWordViewModel
     public bool HasExpertEnvironment => ExpertEnvironmentTokens.Count > 0;
 
     public string ExpertScopeText => ExpertWholeTree
-        ? "Showing every step"
+        ? MotifAppStrings.ExpertShowingEveryStep
         : SelectedCandidate is null ? string.Empty
-        : $"Showing attempt {SelectedCandidate.AttemptId}'s recorded path.";
+        : string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.ExpertShowingAttemptPathFormat, SelectedCandidate.AttemptId);
 
-    public string ExpertReadableText => SelectedStep is not { } step ? "Choose a recorded event."
+    public string ExpertReadableText => SelectedStep is not { } step ? MotifAppStrings.ExpertChooseRecordedEvent
         : $"{step.KindText}{(step.Source is { Length: > 0 } source ? $" ({source})" : string.Empty)}: {step.RecordedOutcomeText}. {step.RecordedExplanationText}";
 
     /// <summary>The selected producer record, preserving unknown fields without duplicating its descendants.</summary>

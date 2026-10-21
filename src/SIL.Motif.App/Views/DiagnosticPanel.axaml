@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="clr-namespace:SIL.Motif.App"
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
              xmlns:conv="clr-namespace:Avalonia.Data.Converters;assembly=Avalonia.Base"
              xmlns:controls="clr-namespace:SIL.Motif.App.Controls"
@@ -189,7 +190,7 @@
                     </ItemsControl>
                     </StackPanel>
                   </Expander>
-                  <Expander Header="Recorded tree context" IsExpanded="{Binding IsTreeContextExpanded, Mode=TwoWay}" IsVisible="{Binding HasTreeContext}">
+                  <Expander Header="{x:Static app:MotifAppStrings.TryWordRecordedTreeContextHeading}" IsExpanded="{Binding IsTreeContextExpanded, Mode=TwoWay}" IsVisible="{Binding HasTreeContext}">
                     <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
                       <views:CopyableTextBlock Classes="muted" Text="Membership in this derivation is not recorded." TextWrapping="Wrap" />
                       <ItemsControl x:Name="DiagnosticPanelRecordedTreeContextItems" ItemsSource="{Binding RecordedTreeContext}">

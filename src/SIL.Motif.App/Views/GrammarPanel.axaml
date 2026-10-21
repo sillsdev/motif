@@ -109,7 +109,7 @@
               <Border controls:DenseTable.Secondary="True">
                 <views:CopyableTextBlock Classes="denseTableHeading" Text="{x:Static app:MotifAppStrings.Severity}" VerticalAlignment="Center" />
               </Border>
-              <views:CopyableTextBlock Grid.Column="1" Classes="denseTableHeading" Text="{x:Static app:MotifAppStrings.Item}" VerticalAlignment="Center" />
+              <views:CopyableTextBlock Grid.Column="1" Classes="denseTableHeading" Text="{x:Static app:MotifAppStrings.WarningsItemColumnHeading}" VerticalAlignment="Center" />
               <Border Grid.Column="2" controls:DenseTable.Secondary="True">
                 <views:CopyableTextBlock Classes="denseTableHeading" Text="{x:Static app:MotifAppStrings.WhatIsWrong}" VerticalAlignment="Center" />
               </Border>

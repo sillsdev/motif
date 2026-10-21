@@ -47,11 +47,11 @@
           </Button>
           <Border x:Name="TryWordModeButtons" HorizontalAlignment="Left" Grid.Column="2" Classes="traceModeGroup" Margin="{DynamicResource Intent.Gap.AfterRelated}">
             <StackPanel Orientation="Horizontal">
-              <Button Content="{x:Static app:MotifAppStrings.Plain}" Command="{Binding Trace.SetExpertCommand}" Classes="traceMode"
+              <Button Content="{x:Static app:MotifAppStrings.TryWordPlainTab}" Command="{Binding Trace.SetExpertCommand}" Classes="traceMode"
                       Classes.chosen="{Binding !Trace.IsExpert}" AutomationProperties.Name="{x:Static app:MotifAppStrings.PlainTraceViewAccessibleName}">
                 <Button.CommandParameter><x:Boolean>False</x:Boolean></Button.CommandParameter>
               </Button>
-              <Button Content="{x:Static app:MotifAppStrings.Expert}" Command="{Binding Trace.SetExpertCommand}" Classes="traceMode"
+              <Button Content="{x:Static app:MotifAppStrings.TryWordExpertTab}" Command="{Binding Trace.SetExpertCommand}" Classes="traceMode"
                       Classes.chosen="{Binding Trace.IsExpert}" AutomationProperties.Name="{x:Static app:MotifAppStrings.ExpertTraceViewAccessibleName}">
                 <Button.CommandParameter><x:Boolean>True</x:Boolean></Button.CommandParameter>
               </Button>
@@ -60,7 +60,7 @@
           <Button x:Name="TryWordRunButton" Grid.Column="1" Content="{x:Static app:MotifAppStrings.TryIt}" Command="{Binding Trace.TryCommand}" Classes="Primary"
                   Theme="{DynamicResource SolidButton}" AutomationProperties.Name="{x:Static app:MotifAppStrings.TryTheWordAccessibleName}"
                   AutomationProperties.AutomationId="{x:Static app:AutomationIds.TryWordRun}" Margin="{DynamicResource Intent.Gap.AfterRelated}" />
-          <controls:WritingSystemTextBox x:Name="TryWordInputBox" Text="{Binding Trace.WordToTry}" PlaceholderText="Type any word..."
+          <controls:WritingSystemTextBox x:Name="TryWordInputBox" Text="{Binding Trace.WordToTry}" PlaceholderText="{x:Static app:MotifAppStrings.TryWordInputPlaceholder}"
                    controls:WritingSystemText.Id="{Binding Trace.WordWritingSystem}" controls:WritingSystemText.StyleName="Normal"
                    AutomationProperties.Name="{x:Static app:MotifAppStrings.WordToTryAccessibleName}" AutomationProperties.AutomationId="{x:Static app:AutomationIds.TryWordInput}" />
         </Grid>
@@ -100,7 +100,7 @@
             <WrapPanel ItemSpacing="{DynamicResource Intent.Space.Related}"
                        LineSpacing="{DynamicResource Intent.Space.Related}">
               <Button Classes="tryWordResultAction" Content="{x:Static app:MotifAppStrings.AnalyzeTexts}" Command="{Binding OpenInTextsCommand}" Theme="{DynamicResource BorderlessButton}" AutomationProperties.Name="{x:Static app:MotifAppStrings.TryWordOpenInAnalyzeTextsAccessibleName}" />
-              <Button Classes="tryWordResultAction" Content="{x:Static app:MotifAppStrings.Timing}" Command="{Binding OpenTimingCommand}" Theme="{DynamicResource BorderlessButton}" AutomationProperties.Name="{x:Static app:MotifAppStrings.TimingForThisWordAccessibleName}" />
+              <Button Classes="tryWordResultAction" Content="{x:Static app:MotifAppStrings.TryWordTimingLabel}" Command="{Binding OpenTimingCommand}" Theme="{DynamicResource BorderlessButton}" AutomationProperties.Name="{x:Static app:MotifAppStrings.TimingForThisWordAccessibleName}" />
       <Button Classes="tryWordResultAction" Content="{x:Static vm:WindowCopy.AiHandoffForThisWord}" Command="{Binding HandOffCommand}" Theme="{DynamicResource BorderlessButton}" AutomationProperties.Name="{x:Static vm:WindowCopy.AiHandoffForThisWord}" AutomationProperties.AutomationId="{x:Static app:AutomationIds.TryWordHandOff}" />
             </WrapPanel>
 
@@ -221,7 +221,7 @@
       <StackPanel IsVisible="{Binding Trace.ShowsClosestAttempts}" Spacing="{DynamicResource Intent.Space.Minimal}">
         <TextBlock Text="{Binding Trace.ClosestAttemptsHeading}" FontWeight="{DynamicResource Intent.Weight.Section}" FontSize="{DynamicResource Intent.Type.Label}" />
         <Grid ColumnDefinitions="*,2*" ColumnSpacing="{DynamicResource Intent.Space.Related}">
-          <TextBlock Text="{x:Static app:MotifAppStrings.Attempt}" Classes="muted" FontSize="{DynamicResource Intent.Type.Label}" />
+          <TextBlock Text="{x:Static app:MotifAppStrings.TryWordAttemptLabel}" Classes="muted" FontSize="{DynamicResource Intent.Type.Label}" />
           <TextBlock Grid.Column="1" Text="{x:Static app:MotifAppStrings.WhyItStopped}" Classes="muted" FontSize="{DynamicResource Intent.Type.Label}" />
         </Grid>
         <ListBox Classes="tryWordList" x:Name="TryWordAttempts" ItemsSource="{Binding Trace.ClosestAttempts}" SelectedItem="{Binding Trace.SelectedCandidate, Mode=TwoWay}" AutomationProperties.Name="{x:Static app:MotifAppStrings.AttemptsThatGotFurthestAccessibleName}">
@@ -282,7 +282,7 @@
       </Border>
 
       </StackPanel>
-      <Expander Classes="tryWordDisclosure" Header="{x:Static app:MotifAppStrings.HeaderFullAnalysisDetails}" IsVisible="{Binding Trace.HasAnalyses}" AutomationProperties.Name="{x:Static app:MotifAppStrings.FullParserAnalysisDetailsAccessibleName}">
+      <Expander Classes="tryWordDisclosure" Header="{x:Static app:MotifAppStrings.TryWordFullAnalysisDetailsHeading}" IsVisible="{Binding Trace.HasAnalyses}" AutomationProperties.Name="{x:Static app:MotifAppStrings.FullParserAnalysisDetailsAccessibleName}">
         <views:TraceAnalysesView DataContext="{Binding Trace}" />
       </Expander>
       <Border Classes="tryWordSection" IsVisible="{Binding Trace.NoAttemptRecorded}"><views:CopyableTextBlock Text="{Binding Trace.NoAttemptNotice}" TextWrapping="Wrap" /></Border>

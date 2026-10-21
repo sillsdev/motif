@@ -970,7 +970,7 @@ public sealed partial class CompareCellViewModel : ObservableObject
     public string CountNumberText => WordCount.ToString("N0", System.Globalization.CultureInfo.CurrentCulture);
 
     /// <summary>The unit under the cell's number, shown only while the cell has room for details.</summary>
-    public string CountUnitText => WordCount == 1 ? MotifAppStrings.CompareWordUnit : MotifAppStrings.CompareWordsUnit;
+    public string CountUnitText => PluralText.Format(MotifAppStrings.CompareWordUnitPattern, WordCount);
 
     /// <summary>A combination the data cannot produce, and did not: drawn as a dash rather than as a zero.</summary>
     public bool IsEmptyImpossible => Family == CompareFamilyKind.None && Count == 0;

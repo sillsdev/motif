@@ -12,6 +12,8 @@ public sealed class StatsRowViewModel
     };
 
     private readonly string _rawText;
+    private readonly bool _capped;
+    private readonly bool _timedOut;
 
     public StatsRowViewModel(JsonElement row)
     {
@@ -23,7 +25,9 @@ public sealed class StatsRowViewModel
         ElapsedMs = ReadNumber(row, Word is null ? "time_ns" : "elapsed_ns") / 1_000_000;
         var capped = ReadBoolean(row, "capped");
         var timedOut = ReadBoolean(row, "timed_out");
-        IsIncomplete = capped == true || timedOut == true;
+        _capped = capped == true;
+        _timedOut = timedOut == true;
+        IsIncomplete = _capped || _timedOut;
         SearchFinished = capped == false && timedOut == false ? true : IsIncomplete ? false : null;
         CompletionStatus = Word is null ? null : IsIncomplete
             ? capped == true && timedOut == true ? MotifAppStrings.StatsIncompleteBoth
@@ -50,10 +54,9 @@ public sealed class StatsRowViewModel
 
     /// <summary>The completion in a word or two for the table; <see cref="CompletionStatus"/> is its tooltip.</summary>
     public string CompletionShort => CompletionStatus is null ? string.Empty
-        : !IsIncomplete ? (CompletionStatus == MotifAppStrings.StatsSearchCompleted
-            ? MotifAppStrings.StatsCompleted : MotifAppStrings.StatsNoResult)
-        : CompletionStatus == MotifAppStrings.StatsIncompleteBoth ? MotifAppStrings.StatsSearchAndTimeLimits
-        : CompletionStatus == MotifAppStrings.StatsIncompleteSearch ? MotifAppStrings.StatsSearchLimit
+        : !IsIncomplete ? (SearchFinished == true ? MotifAppStrings.StatsCompleted : MotifAppStrings.StatsNoResult)
+        : _capped && _timedOut ? MotifAppStrings.StatsSearchAndTimeLimits
+        : _capped ? MotifAppStrings.StatsSearchLimit
         : MotifAppStrings.StatsTimeLimit;
 
     public bool HasCompletion => CompletionShort.Length > 0;

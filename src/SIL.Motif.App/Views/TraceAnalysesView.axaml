@@ -53,11 +53,11 @@
                         <views:CopyableTextBlock Text="{Binding Gloss}"
                                                  controls:WritingSystemText.Id="{Binding GlossWritingSystem}" controls:WritingSystemText.StyleName="Normal" />
                         <views:CopyableTextBlock Text="{Binding Category}" Classes="muted" />
-                        <Expander Header="{x:Static app:MotifAppStrings.HeaderFullMorphDetails}" IsExpanded="False">
+                        <Expander Header="{x:Static app:MotifAppStrings.TraceFullMorphDetailsHeading}" IsExpanded="False">
                           <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
                             <views:CopyableTextBlock Text="{Binding Details}" TextWrapping="Wrap" />
                             <views:CopyableTextBlock Text="{Binding MsaDetails}" TextWrapping="Wrap" />
-                            <Expander Header="{x:Static app:MotifAppStrings.HeaderRawMorphRecord}">
+                            <Expander Header="{x:Static app:MotifAppStrings.TraceRawMorphRecordHeading}">
                               <views:CopyableTextBlock Text="{Binding RawDetails}" Classes="muted" TextWrapping="Wrap" />
                             </Expander>
                             <views:CopyableTextBlock Text="{Binding Identity}" Classes="muted" TextWrapping="Wrap" />

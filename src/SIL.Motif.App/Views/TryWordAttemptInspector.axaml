@@ -42,7 +42,7 @@
             </DataTemplate>
           </ListBox.ItemTemplate>
         </ListBox>
-        <Expander Header="{x:Static app:MotifAppStrings.HeaderParserDetails}">
+        <Expander Header="{x:Static app:MotifAppStrings.TryWordParserDetailsHeading}">
           <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
             <views:CopyableTextBlock Text="{Binding SelectedCandidate.ParserCode}" TextWrapping="Wrap" IsVisible="{Binding SelectedCandidate.HasParserCode}" AutomationProperties.Name="{x:Static app:MotifAppStrings.TheParsersCodeAccessibleName}" />
             <views:CopyableTextBlock Text="{Binding SelectedCandidate.FailureRequired, StringFormat='Required: {0}'}" TextWrapping="Wrap" IsVisible="{Binding SelectedCandidate.FailureRequired, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
@@ -50,7 +50,7 @@
             <views:CopyableTextBlock Text="{Binding SelectedCandidate.FailureEnvironment, StringFormat='Environment: {0}'}" TextWrapping="Wrap" IsVisible="{Binding SelectedCandidate.FailureEnvironment, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
           </StackPanel>
         </Expander>
-        <Expander Header="{x:Static app:MotifAppStrings.HeaderRecordedTreeContext}" IsExpanded="{Binding SelectedCandidate.IsTreeContextExpanded, Mode=TwoWay}" IsVisible="{Binding SelectedCandidate.HasTreeContext}">
+        <Expander Header="{x:Static app:MotifAppStrings.TryWordRecordedTreeContextHeading}" IsExpanded="{Binding SelectedCandidate.IsTreeContextExpanded, Mode=TwoWay}" IsVisible="{Binding SelectedCandidate.HasTreeContext}">
           <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
             <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.TryWordMembershipNotRecorded}" TextWrapping="Wrap" />
             <ItemsControl x:Name="TryWordSelectedAttemptContext" ItemsSource="{Binding SelectedCandidate.RecordedTreeContext}">
