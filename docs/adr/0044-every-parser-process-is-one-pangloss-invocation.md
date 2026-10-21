@@ -146,7 +146,7 @@ pays the load every time. Invariants 2 to 4 are restated for a process that live
    the next prewarm, or by a word after a 30-second cooldown. A parser that lacks `serve` protocol 1 (its `--describe`
    has no `serve` command, or `interfaces.serveProtocol` is absent or not 1; the release manifest declares the same
    `serveProtocol` once the pin carries it) is
-   never started: every word runs cold. The pin of 0.8.8 lacks it.
+   never started: every word runs cold. The pin of 0.8.11 carries it.
 7. **Keying and invalidation.** Sessions are keyed by Motif project plus BaselineToken and the Baseline's grammar path.
    A new Baseline is a new token and replaces the session, killing the old process. Draft and Trial scratch projects
    (a Proposal's trace) never use a session: they take the cold path.
