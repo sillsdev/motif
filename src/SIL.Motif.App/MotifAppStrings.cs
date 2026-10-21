@@ -1051,4 +1051,6 @@ public static class MotifAppStrings
     public static string AnalysisSectionLabel => Text("MotifApp.AnalysisSectionLabel");
 
     public static string SetupAttemptLimitPerWordAccessibleName => Text("MotifApp.SetupAttemptLimitPerWordAccessibleName");
+
+    public static string SetupCancel => Text("MotifApp.SetupCancel");
 }

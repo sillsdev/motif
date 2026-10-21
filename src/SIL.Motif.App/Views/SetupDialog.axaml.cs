@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Markup.Xaml;
 
 namespace SIL.Motif.App.Views;
@@ -8,6 +9,12 @@ namespace SIL.Motif.App.Views;
 public sealed partial class SetupDialog : UserControl
 {
     public SetupDialog() => AvaloniaXamlLoader.Load(this);
+
+    // The number field commits its text on Enter; the key stays there so the default button does not also advance.
+    private void OnLimitKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter) e.Handled = true;
+    }
 
     /// <summary>Fits the setup surface inside the window's unscaled client area.</summary>
     /// <param name="maxLogicalWidth">The available width before display zoom is applied.</param>

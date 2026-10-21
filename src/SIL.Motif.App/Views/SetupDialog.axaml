@@ -115,7 +115,8 @@
                              Minimum="1" Increment="200000" FormatString="N0"
                              IsEnabled="{Binding !IsStepLimitUnbounded}"
                              AutomationProperties.Name="{x:Static app:MotifAppStrings.SetupAttemptLimitPerWordAccessibleName}"
-                             AutomationProperties.AutomationId="{x:Static app:AutomationIds.SetupStepLimit}" />
+                             AutomationProperties.AutomationId="{x:Static app:AutomationIds.SetupStepLimit}"
+                             KeyDown="OnLimitKeyDown" />
             </Grid>
             <CheckBox Content="{x:Static app:MotifAppStrings.NoAttemptLimit}" IsChecked="{Binding IsStepLimitUnbounded}" />
             <TextBlock Classes="setupError" Text="{Binding StepLimitValidationMessage}"
@@ -150,7 +151,7 @@
                   Command="{Binding FinishCommand}" IsVisible="{Binding IsFirstRunStep}" IsDefault="{Binding IsOpen}"
                   AutomationProperties.Name="{Binding FinishButtonText}"
                   AutomationProperties.AutomationId="{x:Static app:AutomationIds.SetupFinish}" />
-          <Button Grid.Column="3" Classes="setupSecondary" Content="{x:Static app:MotifAppStrings.Cancel}"
+          <Button Grid.Column="3" Classes="setupSecondary" Content="{x:Static app:MotifAppStrings.SetupCancel}"
                   Command="{Binding CancelCommand}" IsCancel="{Binding IsOpen}"
                   AutomationProperties.Name="{x:Static app:MotifAppStrings.CancelSetupAccessibleName}"
                   AutomationProperties.AutomationId="{x:Static app:AutomationIds.SetupCancel}" />

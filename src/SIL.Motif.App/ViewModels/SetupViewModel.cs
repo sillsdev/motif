@@ -20,6 +20,7 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
     private int _loadGeneration;
     private NamedSelectionProjection? _savedSelection;
     private bool _setupSkipped;
+    private bool _isSaving;
     private bool _awaitingFirstRun;
     private int _setupGeneration;
     private Task? _configurationLoadTask;
@@ -38,7 +39,7 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
         Selection = context.Selection;
         Indicators = Enumerable.Range(0, 4).Select(step => new SetupStepIndicator(step, step == 0)).ToArray();
         SkipCommand = new AsyncRelayCommand(SkipAsync);
-        CancelCommand = new RelayCommand(Cancel);
+        CancelCommand = new RelayCommand(Cancel, () => !_isSaving);
         BackCommand = new RelayCommand(() => Step--, () => Step > 0);
         NextCommand = new RelayCommand(() => Step++, () => Step < 3);
         FinishCommand = new AsyncRelayCommand(FinishAsync, CanFinish);
@@ -456,11 +457,11 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
         Selection.PerWordStepLimit = stepLimit.Steps;
         Selection.PerWordStepLimitUnbounded = stepLimit.IsUnbounded;
         var loadGeneration = _loadGeneration;
-        var saved = await _context.Commands.SetDefaultSelectionAsync(new SetDefaultSelectionRequest(
+        var saved = await WhileSavingAsync(() => _context.Commands.SetDefaultSelectionAsync(new SetDefaultSelectionRequest(
             projectPath, _savedSelection?.Name ?? DefaultSelectionName,
             Selection.ChosenTextIds, Selection.PastedWordEntries,
             limits, _savedSelection?.Revision),
-            CancellationToken.None).ConfigureAwait(true);
+            CancellationToken.None)).ConfigureAwait(true);
         if (!saved.Succeeded)
         {
             if (saved.Refusal!.Code == "selection.revision-conflict")
@@ -511,9 +512,25 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
     private bool CanFinish() => IsFirstRunStep && IsStepLimitValid &&
         Selection.CanAssess && !_context.Assess.IsActive;
 
+    // Cancel and Esc wait out the Selection save; afterwards Cancel closes like Skip and the run carries on.
+    private async Task<T> WhileSavingAsync<T>(Func<Task<T>> save)
+    {
+        _isSaving = true;
+        CancelCommand.NotifyCanExecuteChanged();
+        try
+        {
+            return await save().ConfigureAwait(true);
+        }
+        finally
+        {
+            _isSaving = false;
+            CancelCommand.NotifyCanExecuteChanged();
+        }
+    }
+
     private void Cancel()
     {
-        if (!IsOpen) return;
+        if (!IsOpen || _isSaving) return;
         if (_snapshot is not null) RestoreSnapshot(_snapshot);
         _setupGeneration++;
         IsOpen = false;
