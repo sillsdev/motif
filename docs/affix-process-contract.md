@@ -4,7 +4,7 @@ An author names the portions of a stem to match and states how an affix copies o
 
 ## Semantic intent
 
-`AuthorAffixProcessIntentParser.Parse(JsonElement)` and `AuthorAffixProcessComposer.Build(LcmCache, AuthorAffixProcessIntent, Func<CanonicalId>? mintId = null)` accept one new entry only. The closed JSON is embedded as `author-affix-process.schema.json` in Contract; `author-affix-process.vectors.json` contains parser conformance vectors.
+`AuthorAffixProcessIntentParser.Parse(JsonElement)` and `AuthorAffixProcessComposer.Build(LcmCache, AuthorAffixProcessIntent, Func<CanonicalId>? mintId = null)` accept one new entry only. A second composer, `AuthorAffixProcessAllomorphComposer`, adds a process to an existing entry's alternate forms; see "Alternate attachment" below. The closed JSON is embedded as `author-affix-process.schema.json` in Contract; `author-affix-process.vectors.json` contains parser conformance vectors.
 
 Required fields are `morphType`, `gloss`, `analysisWs`, `msa`, `input`, and `output`. `definition` is optional. Gloss, analysis writing-system tag and a present definition must be nonblank in both JSON Parse and typed Build. No `form` or `formWs` is accepted: a process is its pattern and realization, without a written-form placeholder. Lexical metadata uses the existing affix-only `LexicalEntryMsa` shapes: inflectional with category and optional slots, derivational with from/to category, or unclassified with category. Stem MSA, unrelated slots, unsupported morph types, absent analysis writing systems and unknown fields are refused. Gloss and definition follow lexical normalization conventions.
 
@@ -12,7 +12,7 @@ Each input has a unique, nonblank `name` and exactly one of `phoneme: <id>`, `na
 
 The same limits apply to JSON and direct typed Build: 1–16 input parts, 1–64 logical output items, 1–64 phonemes per insertion, and at most 256 expanded output mappings. Repeated inserted phoneme IDs are allowed. Unknown, duplicate, null and ambiguous semantic fields are refused. Some relational constraints, such as copied-name existence and the expanded mapping sum, require runtime semantic validation beyond JSON Schema.
 
-Existing phonemes must belong to the first phoneme set and carry a usable first code in the project's default vernacular writing system. Natural classes must belong to this project's phonological data and contain nonempty segments or distinct usable closed phonological features. Segment-class members must be usable project phonemes. Alpha feature variables, nested sequences/iterations, boundary insertion, truncation, modification and alternate attachment are outside this family.
+Existing phonemes must belong to the first phoneme set and carry a usable first code in the project's default vernacular writing system. Natural classes must belong to this project's phonological data and contain nonempty segments or distinct usable closed phonological features. Segment-class members must be usable project phonemes. Alpha feature variables, nested sequences/iterations, boundary insertion, truncation and modification are outside this family.
 
 ## Construction and declared order
 
@@ -28,6 +28,14 @@ Construction attaches the process to the empty owning slot before accessing its 
 `grammar/moAffixProcess/createInput` permits only `PhVariable`, `PhSimpleContextSeg`, and `PhSimpleContextNC`. `grammar/moAffixProcess/createOutput` permits only `MoCopyFromInput` and `MoInsertPhones`. Their closed payload is `{class: <allowed-class>}` and each child receives its own canonical `entityId`. Reference writes use the existing simple-context FeatureStructure, copy Content and insert Content kinds. Each inserted phoneme becomes a separate singleton mapping, so repeated phoneme identities address distinct member slots.
 
 Every target, authored copy reference and neighboring placement anchor has a declared creation dependency. Sequence creates append after the preceding authored member by identity; operation array order carries no implicit dependency. Input order changes the match; copies retain their referenced input identities. Input deletion can cascade to mappings, so no generic input/output deletion, move or reparent is exposed here.
+
+## Alternate attachment
+
+`AuthorAffixProcessAllomorphIntentParser.Parse(JsonElement)` and `AuthorAffixProcessAllomorphComposer.Build(LcmCache, AuthorAffixProcessAllomorphIntent, Func<CanonicalId>? mintId = null)` add one more process to an entry that already exists. The closed JSON is embedded as `author-affix-process-allomorph.schema.json` in Contract, with `author-affix-process-allomorph.vectors.json`. Fields are `entry`, `input`, `output`, optional `inflectionClasses` and optional `placement` (`after`, `before`). Input and output follow the rules above. There is no gloss, grammatical info, slot or morph type: the process copies the entry's morph type and applies to all of the entry's grammatical info. A process has no environments.
+
+`lexical/lexEntry/createAlternateForms` gains a second closed payload, `{class: "MoAffixProcess", morphType: <id>}`; the ordinary `{morphType, ws, text}` payload is unchanged. The process branch inserts an empty process into `AlternateFormsOS` at the declared placement, sets the morph type and `IsAbstract=false`, and refuses a reused identity. Input and output creates then follow as for a lexeme-form process.
+
+The entry's lexeme form must be an affix process and every existing alternate form must be one too. A stem, an entry without a lexeme form, an entry with plain allomorphs, an entry without affix grammatical info, a missing or non-adjacent placement and a pattern the entry already has are refused, naming the entry. Mixed entries stay refused until their parsing is tested. The ordinary alternate-form composer still refuses an entry that has a process anywhere in its forms. `AffixProcessSnapshots` and the semantic validator already visit `AlternateFormsOS`, so the snapshot meaning and projection version are unchanged.
 
 ## Dry Run, Apply and prerequisite binding
 

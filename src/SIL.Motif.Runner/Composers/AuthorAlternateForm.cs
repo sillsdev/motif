@@ -48,17 +48,17 @@ public static class AuthorAlternateFormIntentParser
             SoundSystemIntentParsing.Id(authored, "morphType"),
             AuthorLexicalEntryIntentParser.NonEmptyIds(authored, "environments"),
             AuthorLexicalEntryIntentParser.NonEmptyIds(authored, "inflectionClasses"),
-            Placement(authored));
+            ParsePlacement(authored));
     }
 
-    private static Placement? Placement(JsonElement authored)
+    internal static Placement? ParsePlacement(JsonElement authored, string constructName = ConstructName)
     {
         if (!authored.TryGetProperty("placement", out var value)) return null;
-        SoundSystemIntentParsing.Object(value, ConstructName + ".placement", "after", "before");
+        SoundSystemIntentParsing.Object(value, constructName + ".placement", "after", "before");
         CanonicalId? after = value.TryGetProperty("after", out _) ? SoundSystemIntentParsing.Id(value, "after") : null;
         CanonicalId? before = value.TryGetProperty("before", out _) ? SoundSystemIntentParsing.Id(value, "before") : null;
         if (after is null && before is null)
-            throw new ContractParseException($"'{ConstructName}': placement must name a neighbouring alternate form.");
+            throw new ContractParseException($"'{constructName}': placement must name a neighbouring alternate form.");
         return new Placement(after, before);
     }
 }
@@ -131,23 +131,24 @@ public static class AuthorAlternateFormComposer
         return operations;
     }
 
-    private static void RequirePlacement(ILexEntry entry, Placement? placement)
+    internal static void RequirePlacement(ILexEntry entry, Placement? placement, string constructName = ConstructName)
     {
+        var named = $" Entry '{CanonicalId.FromGuid(entry.Guid).Value}'.";
         var forms = entry.AlternateFormsOS.Select(form => form.Guid).ToArray();
         if (forms.Length == 0)
         {
             if (placement is not null)
-                throw new InvalidOperationException($"'{ConstructName}': the first alternate form cannot name a neighbour.");
+                throw new InvalidOperationException($"'{constructName}': the first alternate form cannot name a neighbour." + named);
             return;
         }
         if (placement is null)
             throw new InvalidOperationException(
-                $"'{ConstructName}': an entry with alternate forms requires placement beside an existing one.");
+                $"'{constructName}': an entry with alternate forms requires placement beside an existing one." + named);
         var left = placement.After is { } after ? Array.IndexOf(forms, after.ToGuid()) : -1;
         var right = placement.Before is { } before ? Array.IndexOf(forms, before.ToGuid()) : forms.Length;
         if ((placement.After is not null && left < 0) || (placement.Before is not null && right < 0) || right != left + 1)
             throw new InvalidOperationException(
-                $"'{ConstructName}': placement neighbours are missing or not adjacent in the current order.");
+                $"'{constructName}': placement neighbours are missing or not adjacent in the current order." + named);
     }
 
     // An unrestricted form ahead of a restricted one always wins, and the lexeme form comes last.
@@ -185,7 +186,7 @@ public static class AuthorAlternateFormComposer
 
     private static string FormText(IMoForm form) => form.Form.BestVernacularAlternative.Text ?? "?";
 
-    private static IReadOnlyList<IPartOfSpeech> AffixCategories(ILexEntry entry)
+    internal static IReadOnlyList<IPartOfSpeech> AffixCategories(ILexEntry entry)
     {
         var categories = new List<IPartOfSpeech>();
         foreach (var msa in entry.MorphoSyntaxAnalysesOC)

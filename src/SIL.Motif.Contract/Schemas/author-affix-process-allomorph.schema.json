@@ -1,0 +1,149 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://motif.sil.org/contracts/author-affix-process-allomorph/v1",
+  "title": "Add an affix process allomorph",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "entry",
+    "input",
+    "output"
+  ],
+  "properties": {
+    "entry": {
+      "$ref": "#/$defs/CanonicalId"
+    },
+    "input": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 16,
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "phoneme"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "\\S"
+              },
+              "phoneme": {
+                "$ref": "#/$defs/CanonicalId"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "naturalClass"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "\\S"
+              },
+              "naturalClass": {
+                "$ref": "#/$defs/CanonicalId"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "remaining"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "\\S"
+              },
+              "remaining": {
+                "const": true
+              }
+            }
+          }
+        ]
+      }
+    },
+    "output": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 64,
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "copy"
+            ],
+            "properties": {
+              "copy": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "\\S"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "insert"
+            ],
+            "properties": {
+              "insert": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 64,
+                "items": {
+                  "$ref": "#/$defs/CanonicalId"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    "inflectionClasses": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/CanonicalId"
+      }
+    },
+    "placement": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "after": {
+          "$ref": "#/$defs/CanonicalId"
+        },
+        "before": {
+          "$ref": "#/$defs/CanonicalId"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "CanonicalId": {
+      "type": "string",
+      "minLength": 22,
+      "pattern": "^[\\s\\S]*[A-Za-z0-9_-]{22}(?![\\s\\S])"
+    }
+  },
+  "$comment": "Runtime semantic validation also requires the entry to be an affix whose lexeme form is an affix process, placement beside an existing alternate form when it has any, and no repeat of a pattern the entry already has. The allomorph copies the entry's morph type and applies to all of its grammatical info. Duplicate JSON properties are refused by the parser."
+}

@@ -122,6 +122,7 @@ public static class ChangeVocabulary
             ["AuthorPartOfSpeech"] = ("Add category", "Add a part of speech"),
             ["AuthorLexicalEntry"] = ("Add entry", "Add a dictionary entry"),
             ["AuthorAlternateForm"] = ("Add alternate form", "Add an alternate form to an entry"),
+            ["AuthorAffixProcessAllomorph"] = ("Add process allomorph", "Add an affix process allomorph to an entry"),
             ["AuthorAffixTemplate"] = ("Add affix template", "Add an affix template"),
             ["AuthorFeatureValue"] = ("Add feature value", "Add a feature value"),
             ["AuthorFeatureStructure"] = ("Add feature structure", "Add a feature structure"),

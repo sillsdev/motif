@@ -213,6 +213,29 @@
     ],
     "redirect": "For an affix, prefer an inflectional or derivational MSA with categories and a slot over unclassified (guide suffix-prefix-slots). One entry per morpheme, not per stem."
   },
+  "compose-author-affix-process-allomorph": {
+    "title": "Add an affix process allomorph",
+    "description": "Stages one more pattern-based form, an affix process with its own input pattern and output, on an existing affix entry that already realizes itself as a process. The entry's morph type is copied and the form applies to all of the entry's grammatical info. It refuses a stem, an entry with plain allomorphs, a repeated pattern and a missing placement.",
+    "source": "Authored from the typed command contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "entry": "Id of the existing or earlier-staged affix entry whose lexeme form is an affix process.",
+      "input": "Ordered pattern parts, each with a name and one of phoneme, naturalClass or remaining true; the remaining-stem part is last.",
+      "output": "Ordered realization, each item either copy of a named input part or insert of phoneme ids. An input part left out of the output is deleted.",
+      "inflectionClasses": "Optional ids of inflection classes of the stems this form attaches to.",
+      "placement": "The neighbouring alternate form ids, after, before or both; required when the entry already has alternate forms."
+    },
+    "goals": [
+      "Give one affix a second pattern-based form for other stems",
+      "Substitute the first consonant of a stem for one of its allomorphs",
+      "Add a form to an affix that already uses an affix process"
+    ],
+    "guides": [
+      "conditioned-allomorphs",
+      "workflow"
+    ],
+    "redirect": "Use for one morpheme with several pattern-based forms. Plain spelling variants use an alternate form; a new morpheme needs its own entry (guide conditioned-allomorphs)."
+  },
   "compose-author-alternate-form": {
     "title": "Author an alternate form",
     "description": "Stages one more stem or affix form on an existing or earlier-staged entry, with its own environments and, for an affix, inflection classes. It adds no entry, sense or grammatical info and copies no condition from the lexeme form.",
@@ -225,7 +248,7 @@
     "guides": [
       "conditioned-allomorphs"
     ],
-    "redirect": "Use for a listed variant of one morpheme. Not for a regular sound change across many forms: use a phonological rule (guide nasal-assimilation)."
+    "redirect": "Use for a listed variant of one morpheme. Not for a regular sound change, a phonological rule (guide nasal-assimilation), or a pattern-based form (compose-author-affix-process-allomorph)."
   },
   "compose-author-part-of-speech": {
     "title": "Author a part of speech",
@@ -808,7 +831,7 @@
       "workflow",
       "conditioned-allomorphs"
     ],
-    "redirect": "Use for infixes, reduplication and stem-internal changes allomorphs cannot express. Nasal assimilation or substitution is a phonological rule (guide nasal-assimilation); context-conditioned forms are allomorphs (guide conditioned-allomorphs)."
+    "redirect": "Use for infixes, reduplication and stem-internal changes. Another pattern-based form of an existing entry: compose-author-affix-process-allomorph. Regular nasal assimilation is a phonological rule (guide nasal-assimilation)."
   },
   "compose-author-feature-value": {
     "title": "Author a feature value",

@@ -16,7 +16,8 @@ internal static class AffixProcessPrerequisiteFootprint
     internal static IReadOnlyList<ExpectedEffect> Read(LcmCache cache, Proposal proposal)
     {
         var processes = proposal.Operations.Where(operation =>
-                operation.Kind == LexEntryLexemeFormOperationKinds.CreateLexemeForm && operation.After is { } after &&
+                operation.Kind is LexEntryLexemeFormOperationKinds.CreateLexemeForm or
+                    LexEntryAlternateFormsCreateOperationKinds.CreateAlternateForms && operation.After is { } after &&
                 after.ValueKind == System.Text.Json.JsonValueKind.Object && after.TryGetProperty("class", out var concreteClass) &&
                 concreteClass.ValueKind == System.Text.Json.JsonValueKind.String && concreteClass.GetString() == "MoAffixProcess")
             .Select(operation => operation.EntityId).Where(id => id is not null).Select(id => id!.Value).ToHashSet(CanonicalId.ByGuid);

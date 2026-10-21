@@ -7,6 +7,7 @@ internal static class ComposerDefinitions
     public static IReadOnlyList<IComposerDefinition> All { get; } = 
     [
         new AuthorAffixProcessDefinition(),
+        new AuthorAffixProcessAllomorphDefinition(),
         new AuthorFeatureValueDefinition(),
         new DeleteEmptySenseDefinition(),
         new EditPhonemeDefinition(),

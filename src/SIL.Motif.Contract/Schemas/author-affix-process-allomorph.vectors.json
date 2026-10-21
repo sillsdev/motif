@@ -1,0 +1,262 @@
+{
+  "vectors": [
+    {
+      "name": "nasal-substitution",
+      "accept": true,
+      "intent": {
+        "entry": "AAAAAAAAAAAAAAAAAAAAAA",
+        "input": [
+          {
+            "name": "c",
+            "phoneme": "AAAAAAAAAAAAAAAAAAAAAQ"
+          },
+          {
+            "name": "rest",
+            "remaining": true
+          }
+        ],
+        "output": [
+          {
+            "insert": [
+              "AAAAAAAAAAAAAAAAAAAAAg"
+            ]
+          },
+          {
+            "copy": "rest"
+          }
+        ]
+      },
+      "schemaAccept": true
+    },
+    {
+      "name": "with-class-and-placement",
+      "accept": true,
+      "intent": {
+        "entry": "AAAAAAAAAAAAAAAAAAAAAA",
+        "input": [
+          {
+            "name": "c",
+            "phoneme": "AAAAAAAAAAAAAAAAAAAAAQ"
+          },
+          {
+            "name": "rest",
+            "remaining": true
+          }
+        ],
+        "output": [
+          {
+            "insert": [
+              "AAAAAAAAAAAAAAAAAAAAAg"
+            ]
+          },
+          {
+            "copy": "rest"
+          }
+        ],
+        "inflectionClasses": [
+          "AAAAAAAAAAAAAAAAAAAAAg"
+        ],
+        "placement": {
+          "after": "AAAAAAAAAAAAAAAAAAAAAQ"
+        }
+      },
+      "schemaAccept": true
+    },
+    {
+      "name": "morph-type-not-allowed",
+      "accept": false,
+      "intent": {
+        "entry": "AAAAAAAAAAAAAAAAAAAAAA",
+        "input": [
+          {
+            "name": "c",
+            "phoneme": "AAAAAAAAAAAAAAAAAAAAAQ"
+          },
+          {
+            "name": "rest",
+            "remaining": true
+          }
+        ],
+        "output": [
+          {
+            "insert": [
+              "AAAAAAAAAAAAAAAAAAAAAg"
+            ]
+          },
+          {
+            "copy": "rest"
+          }
+        ],
+        "morphType": "AAAAAAAAAAAAAAAAAAAAAA"
+      },
+      "schemaAccept": false
+    },
+    {
+      "name": "gloss-not-allowed",
+      "accept": false,
+      "intent": {
+        "entry": "AAAAAAAAAAAAAAAAAAAAAA",
+        "input": [
+          {
+            "name": "c",
+            "phoneme": "AAAAAAAAAAAAAAAAAAAAAQ"
+          },
+          {
+            "name": "rest",
+            "remaining": true
+          }
+        ],
+        "output": [
+          {
+            "insert": [
+              "AAAAAAAAAAAAAAAAAAAAAg"
+            ]
+          },
+          {
+            "copy": "rest"
+          }
+        ],
+        "gloss": "X"
+      },
+      "schemaAccept": false
+    },
+    {
+      "name": "empty-placement",
+      "accept": false,
+      "intent": {
+        "entry": "AAAAAAAAAAAAAAAAAAAAAA",
+        "input": [
+          {
+            "name": "c",
+            "phoneme": "AAAAAAAAAAAAAAAAAAAAAQ"
+          },
+          {
+            "name": "rest",
+            "remaining": true
+          }
+        ],
+        "output": [
+          {
+            "insert": [
+              "AAAAAAAAAAAAAAAAAAAAAg"
+            ]
+          },
+          {
+            "copy": "rest"
+          }
+        ],
+        "placement": {}
+      }
+    },
+    {
+      "name": "empty-inflection-classes",
+      "accept": false,
+      "intent": {
+        "entry": "AAAAAAAAAAAAAAAAAAAAAA",
+        "input": [
+          {
+            "name": "c",
+            "phoneme": "AAAAAAAAAAAAAAAAAAAAAQ"
+          },
+          {
+            "name": "rest",
+            "remaining": true
+          }
+        ],
+        "output": [
+          {
+            "insert": [
+              "AAAAAAAAAAAAAAAAAAAAAg"
+            ]
+          },
+          {
+            "copy": "rest"
+          }
+        ],
+        "inflectionClasses": []
+      },
+      "schemaAccept": false
+    },
+    {
+      "name": "missing-entry",
+      "accept": false,
+      "intent": {
+        "input": [
+          {
+            "name": "c",
+            "phoneme": "AAAAAAAAAAAAAAAAAAAAAQ"
+          },
+          {
+            "name": "rest",
+            "remaining": true
+          }
+        ],
+        "output": [
+          {
+            "insert": [
+              "AAAAAAAAAAAAAAAAAAAAAg"
+            ]
+          },
+          {
+            "copy": "rest"
+          }
+        ]
+      },
+      "schemaAccept": false
+    },
+    {
+      "name": "remaining-not-last",
+      "accept": false,
+      "intent": {
+        "entry": "AAAAAAAAAAAAAAAAAAAAAA",
+        "input": [
+          {
+            "name": "rest",
+            "remaining": true
+          },
+          {
+            "name": "c",
+            "phoneme": "AAAAAAAAAAAAAAAAAAAAAQ"
+          }
+        ],
+        "output": [
+          {
+            "insert": [
+              "AAAAAAAAAAAAAAAAAAAAAg"
+            ]
+          },
+          {
+            "copy": "rest"
+          }
+        ]
+      },
+      "schemaAccept": true
+    },
+    {
+      "name": "identity-only",
+      "accept": false,
+      "intent": {
+        "entry": "AAAAAAAAAAAAAAAAAAAAAA",
+        "input": [
+          {
+            "name": "c",
+            "phoneme": "AAAAAAAAAAAAAAAAAAAAAQ"
+          },
+          {
+            "name": "rest",
+            "remaining": true
+          }
+        ],
+        "output": [
+          {
+            "copy": "c"
+          },
+          {
+            "copy": "rest"
+          }
+        ]
+      },
+      "schemaAccept": true
+    }
+  ]
+}

@@ -12,7 +12,7 @@ A linguist sees a nasal change its sound near another consonant, while the morph
 
 ## Motif support
 
-`motif_grammar` can read phonemes, natural classes and phonological rules. `motif_add_phoneme`, `motif_add_natural_class` and `motif_add_phonological_rule` create the sound inventory, reusable sound classes and regular rules. A rule intent names existing phonemes or natural classes in its input, output and contexts. Motif still needs a composer for declaring phonological feature definitions. `motif_guide(topic="conditioned-allomorphs")` describes the related case where the evidence instead supports stored conditioned variants.
+`motif_grammar` can read phonemes, natural classes and phonological rules. `motif_add_phoneme`, `motif_add_natural_class` and `motif_add_phonological_rule` create the sound inventory, reusable sound classes and regular rules. A rule intent names existing phonemes or natural classes in its input, output and contexts. Motif still needs a composer for declaring phonological feature definitions. `motif_add_affix_process` and `motif_add_affix_process_allomorph` express a substitution as pattern-based forms of one affix instead. `motif_guide(topic="conditioned-allomorphs")` describes the related case where the evidence instead supports stored conditioned variants.
 
 ## Check with a Trial
 
@@ -25,5 +25,5 @@ Ask when the forms do not decide whether the change is assimilation, a stored al
 ## Common wrong choices
 
 - Duplicating an affix for each place of articulation when one rule explains the alternation.
-- An unrestricted affix process for a nasal change, which can slow parsing a lot (about 300 times on one Cebuano draft); use a phonological rule.
+- One unconstrained affix process for a nasal change: it was measured about 300 times slower on one Cebuano draft. Several processes restricted to the verb category and kept as allomorphs of one entry, with `motif_add_affix_process_allomorph`, stopped no words with compounding off.
 - A rule that changes every nasal because only some assimilate.

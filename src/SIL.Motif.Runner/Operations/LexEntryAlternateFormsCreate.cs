@@ -41,10 +41,15 @@ public static class LexEntryAlternateFormsCreateOperationKinds
 
 /// <summary>The <c>after</c> payload for <see cref="LexEntryAlternateFormsCreateOperationKinds.CreateAlternateForms"/>:
 /// <c>{ "morphType": "&lt;canonicalId&gt;", "ws": "...", "text": "..." }</c>. Closed: any other property is
-/// rejected, and all three are required.</summary>
+/// rejected, and all three are required. A second variant, <c>{ "class": "MoAffixProcess", "morphType": "..." }</c>,
+/// adds an empty affix process whose input and output are built by later operations.</summary>
 public static class LexEntryAlternateFormsCreatePayload
 {
     private static readonly string[] AllowedProperties = { "morphType", "ws", "text" };
+
+    /// <summary>True when the payload is the affix-process variant, <c>{ "class": "MoAffixProcess", "morphType" }</c>.</summary>
+    public static bool IsProcess(JsonElement after) =>
+        after.ValueKind == JsonValueKind.Object && after.TryGetProperty("class", out _);
 
     public static (CanonicalId MorphType, string Ws, string Text) Parse(JsonElement after)
     {
@@ -95,9 +100,18 @@ internal sealed class LexEntryAlternateFormsCreateHandler : IOperationHandler
             $"Operation '{operation.OperationId.Value}' of kind '{Kind}' requires 'entityId'.");
         var after = operation.After ?? throw new InvalidOperationException(
             $"Operation '{operation.OperationId.Value}' of kind '{Kind}' requires 'after'.");
-        var (morphTypeId, ws, text) = LexEntryAlternateFormsCreatePayload.Parse(after);
-
         var (id, entry) = TargetResolution.Resolve<ILexEntry>(cache, operation, Kind);
+        if (LexEntryAlternateFormsCreatePayload.IsProcess(after))
+        {
+            var processMembers = entry.AlternateFormsOS.Cast<ICmObject>().ToArray();
+            var processIndex = OwningCreateHandler<ILexEntry>.InsertionIndex(Kind, processMembers, operation.Placement);
+            touchedTargets.Add(id);
+            var processBefore = ReferenceSequenceFieldSnapshotting.ReadAlternatives(entry.AlternateFormsOS);
+            AffixProcessConstruction.ApplyAlternate(cache, entry, entityId, after, processIndex);
+            return new ExpectedEffect(id, SnapshotFields.LexEntryAlternateForms, processBefore,
+                ReferenceSequenceFieldSnapshotting.ReadAlternatives(entry.AlternateFormsOS));
+        }
+        var (morphTypeId, ws, text) = LexEntryAlternateFormsCreatePayload.Parse(after);
         var morphType = ReferenceFieldLowering.Resolve<IMoMorphType>(cache, morphTypeId, Kind);
         var concreteClass = MoFormConcreteClassSelection.ClassFor(morphType, Kind);
         LexicalFormAuthoring.RequireMatchingKind(entry, concreteClass, Kind);

@@ -26,7 +26,20 @@ public static class AuthorAffixProcessIntentParser
     {
         SoundSystemIntentParsing.Object(authored, "AuthorAffixProcess",
             "morphType", "gloss", "analysisWs", "msa", "definition", "input", "output");
-        var input = SoundSystemIntentParsing.Array(authored, "input").Select(part =>
+        var input = ParseInput(authored);
+        var output = ParseOutput(authored);
+        var result = new AuthorAffixProcessIntent(SoundSystemIntentParsing.Id(authored, "morphType"),
+            SoundSystemIntentParsing.Text(authored, "gloss"), SoundSystemIntentParsing.Text(authored, "analysisWs"),
+            AuthorLexicalEntryIntentParser.ParseMsa(authored, "AuthorAffixProcess"), input, output,
+            authored.TryGetProperty("definition", out _) ? SoundSystemIntentParsing.Text(authored, "definition") : null);
+        try { AffixProcessIntentShape.Validate(result); }
+        catch (InvalidOperationException exception) { throw new ContractParseException(exception.Message); }
+        return result;
+    }
+
+    internal static AffixProcessInputPart[] ParseInput(JsonElement authored)
+    {
+        return SoundSystemIntentParsing.Array(authored, "input").Select(part =>
         {
             SoundSystemIntentParsing.Object(part, "affix input", "name", "phoneme", "naturalClass", "remaining");
             if (part.TryGetProperty("remaining", out var remaining) && remaining.ValueKind != JsonValueKind.True)
@@ -36,7 +49,11 @@ public static class AuthorAffixProcessIntentParser
                 part.TryGetProperty("naturalClass", out _) ? SoundSystemIntentParsing.Id(part, "naturalClass") : null,
                 part.TryGetProperty("remaining", out _));
         }).ToArray();
-        var output = SoundSystemIntentParsing.Array(authored, "output").Select(step =>
+    }
+
+    internal static AffixProcessOutputStep[] ParseOutput(JsonElement authored)
+    {
+        return SoundSystemIntentParsing.Array(authored, "output").Select(step =>
         {
             SoundSystemIntentParsing.Object(step, "affix output", "copy", "insert");
             return new AffixProcessOutputStep(
@@ -45,13 +62,6 @@ public static class AuthorAffixProcessIntentParser
                     phone.ValueKind == JsonValueKind.String && CanonicalId.TryParse(phone.GetString(), out var id)
                         ? id : throw new ContractParseException("Inserted phonemes must be canonical identity strings.")).ToArray() : null);
         }).ToArray();
-        var result = new AuthorAffixProcessIntent(SoundSystemIntentParsing.Id(authored, "morphType"),
-            SoundSystemIntentParsing.Text(authored, "gloss"), SoundSystemIntentParsing.Text(authored, "analysisWs"),
-            AuthorLexicalEntryIntentParser.ParseMsa(authored, "AuthorAffixProcess"), input, output,
-            authored.TryGetProperty("definition", out _) ? SoundSystemIntentParsing.Text(authored, "definition") : null);
-        try { AffixProcessIntentShape.Validate(result); }
-        catch (InvalidOperationException exception) { throw new ContractParseException(exception.Message); }
-        return result;
     }
 }
 
