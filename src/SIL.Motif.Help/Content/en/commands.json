@@ -659,7 +659,7 @@
   },
   "compose-author-affix-process": {
     "title": "Author an affix process",
-    "description": "Stages a new affix entry whose ordered input pattern matches phonemes, a natural class or the remaining stem, and whose output copies named parts or inserts phonemes: an infix or a partial or full reduplication. It refuses transformations that remove matched input. Dry Run and Trial before a person Applies the Proposal.",
+    "description": "Stages a new affix entry whose ordered input pattern matches phonemes, a natural class or the remaining stem, and whose output copies named parts or inserts phonemes: an infix, a partial or full reduplication, or a substitution that deletes matched input by omitting it from the output (Cebuano paN- before p/b gives m). It refuses an output that copies nothing or drops the remaining stem. Dry Run and Trial before a person Applies the Proposal.",
     "source": "Authored from the typed command contract.",
     "fields": {
       "draft": "Draft name.",
@@ -669,7 +669,7 @@
       "definition": "Optional definition of the sense.",
       "msa": "Affix grammatical info: kind inflectional, derivational or unclassified, its category, and for derivational toCategory, for inflectional slots.",
       "input": "Ordered pattern parts, each with a name and one of phoneme, naturalClass or remaining true; the remaining-stem part is last.",
-      "output": "Ordered realization, each item either copy of a named input part or insert of phoneme ids."
+      "output": "Ordered realization, each item either copy of a named input part or insert of phoneme ids. An input part left out of the output is deleted."
     },
     "goals": [
       "Add an infix that is inserted after the first consonant of a stem",

@@ -124,8 +124,10 @@ internal static class AffixProcessSemanticValidator
                     throw new InvalidOperationException("Affix output must copy a top-level input of the same process or insert one phoneme.");
             }
         }
-        if (copies.Values.Any(count => count == 0))
-            throw new InvalidOperationException("Every process input must survive at least once in its output.");
+        if (process.InputOS.Last() is IPhVariable lastVariable && copies[lastVariable.Guid] == 0)
+            throw new InvalidOperationException("The remaining-stem input must survive at least once; omitting it deletes the stem.");
+        if (copies.Values.All(count => count == 0))
+            throw new InvalidOperationException("An output that copies no input deletes the whole stem.");
         if (!inserted && copies.Values.All(count => count == 1))
             throw new InvalidOperationException("An identity-only realization is not an affix process.");
         if (entry.MorphoSyntaxAnalysesOC.Count == 0 || entry.SensesOS.Count == 0)

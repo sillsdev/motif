@@ -6,7 +6,7 @@ An infix is an affix placed inside a root instead of before or after it, as an i
 
 - The sounds the infix inserts must already exist as phonemes in the sound inventory, and any group of sounds the pattern names, such as the consonants, must already be a natural class.
 - The stems the infix attaches to are ordinary entries. The affix process is a new entry with its own gloss and grammatical info.
-- A pattern names each part it matches, for example a leading consonant and the rest of the stem. Every named part must be copied, and the realization must insert something.
+- A pattern names each part it matches, for example a leading consonant and the rest of the stem. A part the realization omits is deleted (nasal substitution drops the stem-initial consonant), but the remaining stem must be copied, and the realization must insert, delete or repeat something.
 
 ## Composers, in order
 

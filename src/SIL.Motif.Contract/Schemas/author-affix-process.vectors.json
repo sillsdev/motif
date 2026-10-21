@@ -347,8 +347,8 @@
       }
     },
     {
-      "name": "uncopied-part",
-      "accept": false,
+      "name": "deleted-initial-part",
+      "accept": true,
       "intent": {
         "morphType": "AAAAAAAAAAAAAAAAAAAAAA",
         "gloss": "REDUP",
@@ -369,7 +369,9 @@
         ],
         "output": [
           {
-            "copy": "stem"
+            "insert": [
+              "AAAAAAAAAAAAAAAAAAAAAQ"
+            ]
           },
           {
             "copy": "stem"
@@ -433,21 +435,21 @@
       "accept": true,
       "schemaAccept": true,
       "intent": {
-        "morphType": "前/\n:AAAAAAAAAAAAAAAAAAAAAA",
+        "morphType": "\u524d/\n:AAAAAAAAAAAAAAAAAAAAAA",
         "gloss": "REDUP",
         "analysisWs": "en",
         "msa": {
           "kind": "unclassified",
-          "category": "前/\n:AAAAAAAAAAAAAAAAAAAAAA"
+          "category": "\u524d/\n:AAAAAAAAAAAAAAAAAAAAAA"
         },
         "input": [
           {
             "name": "c",
-            "naturalClass": "前/\n:AAAAAAAAAAAAAAAAAAAAAg"
+            "naturalClass": "\u524d/\n:AAAAAAAAAAAAAAAAAAAAAg"
           },
           {
             "name": "v",
-            "phoneme": "前/\n:AAAAAAAAAAAAAAAAAAAAAQ"
+            "phoneme": "\u524d/\n:AAAAAAAAAAAAAAAAAAAAAQ"
           },
           {
             "name": "rest",
@@ -460,8 +462,8 @@
           },
           {
             "insert": [
-              "前/\n:AAAAAAAAAAAAAAAAAAAAAQ",
-              "前/\n:AAAAAAAAAAAAAAAAAAAAAQ"
+              "\u524d/\n:AAAAAAAAAAAAAAAAAAAAAQ",
+              "\u524d/\n:AAAAAAAAAAAAAAAAAAAAAQ"
             ]
           },
           {
@@ -757,6 +759,69 @@
           },
           {
             "copy": "stem"
+          }
+        ]
+      }
+    },
+    {
+      "name": "stem-omitted",
+      "accept": false,
+      "intent": {
+        "morphType": "AAAAAAAAAAAAAAAAAAAAAA",
+        "gloss": "REDUP",
+        "analysisWs": "en",
+        "msa": {
+          "kind": "unclassified",
+          "category": "AAAAAAAAAAAAAAAAAAAAAA"
+        },
+        "input": [
+          {
+            "name": "first",
+            "phoneme": "AAAAAAAAAAAAAAAAAAAAAQ"
+          },
+          {
+            "name": "stem",
+            "remaining": true
+          }
+        ],
+        "output": [
+          {
+            "copy": "first"
+          },
+          {
+            "insert": [
+              "AAAAAAAAAAAAAAAAAAAAAQ"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "nothing-copied",
+      "accept": false,
+      "intent": {
+        "morphType": "AAAAAAAAAAAAAAAAAAAAAA",
+        "gloss": "REDUP",
+        "analysisWs": "en",
+        "msa": {
+          "kind": "unclassified",
+          "category": "AAAAAAAAAAAAAAAAAAAAAA"
+        },
+        "input": [
+          {
+            "name": "first",
+            "phoneme": "AAAAAAAAAAAAAAAAAAAAAQ"
+          },
+          {
+            "name": "stem",
+            "remaining": true
+          }
+        ],
+        "output": [
+          {
+            "insert": [
+              "AAAAAAAAAAAAAAAAAAAAAQ"
+            ]
           }
         ]
       }
