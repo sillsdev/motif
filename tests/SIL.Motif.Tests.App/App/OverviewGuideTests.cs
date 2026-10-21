@@ -16,7 +16,7 @@ namespace SIL.Motif.Tests.App;
 [Collection(AvaloniaHeadlessCollection.Name)]
 public sealed class OverviewGuideTests
 {
-    private static readonly string[] RetiredCardNames = ["Accuracy", "Text Coverage", "**Timing**", "**Warnings**"];
+    private static readonly string[] RetiredCardNames = ["Accuracy", "**Timing**", "**Warnings**"];
 
     [Fact]
     public void TheOverviewGuideNamesEveryTableAndTheReadingGuideLinksBack()

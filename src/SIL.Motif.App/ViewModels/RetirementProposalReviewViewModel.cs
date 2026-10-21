@@ -123,6 +123,10 @@ public sealed class RetirementProposalReviewViewModel
     /// <summary>Whether the issue the sound change addressed remains present.</summary>
     public string FindingState { get; private set; } = string.Empty;
 
+    /// <summary>The finding state as a whole sentence, or empty before a review is read.</summary>
+    public string FindingLineText => FindingState.Length == 0 ? string.Empty
+        : string.Format(MotifAppStrings.ProblemFindingFormat, FindingState);
+
     /// <summary>The number of problem examples before and after the sound changes.</summary>
     public string FindingCountsText { get; private set; } = string.Empty;
 

@@ -70,7 +70,7 @@ public sealed class ReviewChangeGroupViewModel : IDenseTableGroupHeading
         get
         {
             var count = Items.Select(item => item.Word).Distinct(StringComparer.Ordinal).Count();
-            return "· " + PluralText.Format(MotifAppStrings.WordCountPattern, count);
+            return PluralText.Format(MotifAppStrings.WordGroupCountPattern, count);
         }
     }
 

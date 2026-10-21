@@ -269,7 +269,7 @@
     <comment>Accessible name announced by screen readers.</comment>
   </data>
   <data name="MotifApp.LookFirst" xml:space="preserve">
-    <value>Look first</value>
+    <value>Look First</value>
     <comment>Window text.</comment>
   </data>
   <data name="MotifApp.StoredResultsToLookAtFirstAccessibleName" xml:space="preserve">
@@ -281,12 +281,12 @@
     <comment>Accessible name announced by screen readers.</comment>
   </data>
   <data name="MotifApp.TextCoverage" xml:space="preserve">
-    <value>Text coverage</value>
+    <value>Text Coverage</value>
     <comment>Window text.</comment>
   </data>
-  <data name="MotifApp.TextsArrow" xml:space="preserve">
+  <data name="MotifApp.OverviewTextsLink" xml:space="preserve">
     <value>Texts →</value>
-    <comment>Window text.</comment>
+    <comment>Link to the Texts page. The arrow is decoration; mirror it in a right-to-left language.</comment>
   </data>
   <data name="MotifApp.OpenTextCoverageInTextsAccessibleName" xml:space="preserve">
     <value>Open Text coverage in Texts</value>
@@ -301,14 +301,14 @@
     <comment>Accessible name announced by screen readers.</comment>
   </data>
   <data name="MotifApp.ApprovedAnalysesKept" xml:space="preserve">
-    <value>Approved analyses kept</value>
+    <value>Approved Analyses Kept</value>
     <comment>Window text.</comment>
   </data>
-  <data name="MotifApp.MatrixArrow" xml:space="preserve">
+  <data name="MotifApp.OverviewMatrixLink" xml:space="preserve">
     <value>Matrix →</value>
-    <comment>Window text.</comment>
+    <comment>Link to the Matrix. The arrow is decoration; mirror it in a right-to-left language.</comment>
   </data>
-  <data name="MotifApp.OpenApprovedAnalysesKeptInTheAccessibleName" xml:space="preserve">
+  <data name="MotifApp.OpenMatrixFromApprovedKeptAccessibleName" xml:space="preserve">
     <value>Open Approved analyses kept in the Matrix</value>
     <comment>Accessible name announced by screen readers.</comment>
   </data>
@@ -320,9 +320,9 @@
     <value>Speed</value>
     <comment>Accessible name announced by screen readers.</comment>
   </data>
-  <data name="MotifApp.SlowestWordsArrow" xml:space="preserve">
+  <data name="MotifApp.OverviewSlowestWordsLink" xml:space="preserve">
     <value>Slowest Words →</value>
-    <comment>Window text.</comment>
+    <comment>Link to the slowest words in Timing. The arrow is decoration; mirror it in a right-to-left language.</comment>
   </data>
   <data name="MotifApp.OpenSlowestWordsInTimingAccessibleName" xml:space="preserve">
     <value>Open slowest words in Timing</value>
@@ -341,7 +341,7 @@
     <comment>Accessible name announced by screen readers.</comment>
   </data>
   <data name="MotifApp.SlowestWords" xml:space="preserve">
-    <value>Slowest words</value>
+    <value>Slowest Words</value>
     <comment>Window text.</comment>
   </data>
   <data name="MotifApp.SlowestWordsAndRecordedTimesAccessibleName" xml:space="preserve">
@@ -353,12 +353,12 @@
     <comment>Accessible name announced by screen readers.</comment>
   </data>
   <data name="MotifApp.GrammarWarnings" xml:space="preserve">
-    <value>Grammar warnings</value>
+    <value>Grammar Warnings</value>
     <comment>Window text.</comment>
   </data>
-  <data name="MotifApp.WarningsArrow" xml:space="preserve">
+  <data name="MotifApp.OverviewWarningsLink" xml:space="preserve">
     <value>Warnings →</value>
-    <comment>Window text.</comment>
+    <comment>Link to the Warnings page. The arrow is decoration; mirror it in a right-to-left language.</comment>
   </data>
   <data name="MotifApp.OpenGrammarWarningsInWarningsAccessibleName" xml:space="preserve">
     <value>Open Grammar warnings in Warnings</value>
@@ -538,7 +538,7 @@
   </data>
   <data name="MotifApp.MarkIncorrect" xml:space="preserve">
     <value>Mark Incorrect</value>
-    <comment>Window text.</comment>
+    <comment>Command. Incorrect is the name of an analysis opinion.</comment>
   </data>
   <data name="MotifApp.RemoveAnalyses" xml:space="preserve">
     <value>Remove Analyses</value>
@@ -560,7 +560,7 @@
     <value>Add Readings as Unknown in This Text</value>
     <comment>Window text.</comment>
   </data>
-  <data name="MotifApp.AddParserReadingsAsUnknownInAccessibleName" xml:space="preserve">
+  <data name="MotifApp.AddParserReadingsAsUnknownInThisTextAccessibleName" xml:space="preserve">
     <value>Add parser readings as Unknown in this Text</value>
     <comment>Accessible name announced by screen readers.</comment>
   </data>
@@ -574,11 +574,11 @@
   </data>
   <data name="MotifApp.MarkSpellingsIncorrectInThisText" xml:space="preserve">
     <value>Mark Spellings Incorrect in This Text</value>
-    <comment>Window text.</comment>
+    <comment>Command. Incorrect is the name of an analysis opinion; keep it consistent with the other uses of Incorrect.</comment>
   </data>
   <data name="MotifApp.MarkSpellingsIncorrectInTheSelectedAccessibleName" xml:space="preserve">
     <value>Mark spellings Incorrect in the selected Text</value>
-    <comment>Accessible name announced by screen readers.</comment>
+    <comment>Accessible name. Incorrect is the name of an analysis opinion.</comment>
   </data>
   <data name="MotifApp.UndoChangesInThisText" xml:space="preserve">
     <value>Undo Changes in This Text</value>
@@ -592,7 +592,7 @@
     <value>Stage Removal from This Text</value>
     <comment>Window text.</comment>
   </data>
-  <data name="MotifApp.StageRemovalOfTheAnalysesUsedAccessibleName" xml:space="preserve">
+  <data name="MotifApp.StageRemovalOfTheAnalysesUsedInThisTextAccessibleName" xml:space="preserve">
     <value>Stage removal of the analyses used in this Text</value>
     <comment>Accessible name announced by screen readers.</comment>
   </data>
@@ -612,17 +612,17 @@
     <value>Add Readings as Unknown in All Chosen Texts</value>
     <comment>Window text.</comment>
   </data>
-  <data name="MotifApp.AddParserReadingsAsUnknownInAccessibleName2" xml:space="preserve">
+  <data name="MotifApp.AddParserReadingsAsUnknownInAllChosenTextsAccessibleName" xml:space="preserve">
     <value>Add parser readings as Unknown in all chosen Texts</value>
     <comment>Window text.</comment>
   </data>
   <data name="MotifApp.MarkSpellingsIncorrectInAllChosen" xml:space="preserve">
     <value>Mark Spellings Incorrect in All Chosen Texts</value>
-    <comment>Window text.</comment>
+    <comment>Command. Incorrect is the name of an analysis opinion; keep it consistent with the other uses of Incorrect.</comment>
   </data>
   <data name="MotifApp.MarkSpellingsIncorrectInAllChosenAccessibleName" xml:space="preserve">
     <value>Mark spellings Incorrect in all chosen Texts</value>
-    <comment>Accessible name announced by screen readers.</comment>
+    <comment>Accessible name. Incorrect is the name of an analysis opinion.</comment>
   </data>
   <data name="MotifApp.UndoChangesInAllChosenTexts" xml:space="preserve">
     <value>Undo Changes in All Chosen Texts</value>
@@ -640,7 +640,7 @@
     <value>Stage Removal from All Chosen Texts</value>
     <comment>Window text.</comment>
   </data>
-  <data name="MotifApp.StageRemovalOfTheAnalysesUsedAccessibleName2" xml:space="preserve">
+  <data name="MotifApp.StageRemovalOfTheAnalysesUsedInAllChosenTextsAccessibleName" xml:space="preserve">
     <value>Stage removal of the analyses used in all chosen Texts</value>
     <comment>Window text.</comment>
   </data>
@@ -712,9 +712,9 @@
     <value>PanGloss</value>
     <comment>Window text.</comment>
   </data>
-  <data name="MotifApp.EscClosesArrowNextWord" xml:space="preserve">
+  <data name="MotifApp.InspectorKeyHint" xml:space="preserve">
     <value>Esc closes · ← → next word</value>
-    <comment>Window text.</comment>
+    <comment>Keyboard hint under the word card: Esc closes it and the left and right arrow keys move to the previous or next word. Keep the key names and arrow glyphs.</comment>
   </data>
   <data name="MotifApp.CloseTheWordCardAccessibleName" xml:space="preserve">
     <value>Close the word card</value>
@@ -862,7 +862,7 @@
   </data>
   <data name="MotifApp.ShowThem" xml:space="preserve">
     <value>Show Them</value>
-    <comment>Window text.</comment>
+    <comment>Link that shows the changes that no longer fit or need another look; them means those changes, not all changes.</comment>
   </data>
   <data name="MotifApp.ShowChangesThatNoLongerFitAccessibleName" xml:space="preserve">
     <value>Show changes that no longer fit or need another look</value>
@@ -942,11 +942,11 @@
   </data>
   <data name="MotifApp.WordChange" xml:space="preserve">
     <value>Word / Change</value>
-    <comment>Window text.</comment>
+    <comment>Column heading: the word and the change made to it. Also used as a field label.</comment>
   </data>
   <data name="MotifApp.OpinionChange" xml:space="preserve">
     <value>Opinion Change</value>
-    <comment>Window text.</comment>
+    <comment>Column heading: opinion is the linguistic status of an analysis (Approved, Unknown, Incorrect), not a personal view.</comment>
   </data>
   <data name="MotifApp.Analysis" xml:space="preserve">
     <value>Analysis</value>
@@ -954,7 +954,7 @@
   </data>
   <data name="MotifApp.PanGlossEffects" xml:space="preserve">
     <value>PanGloss / Effects</value>
-    <comment>Window text.</comment>
+    <comment>Column heading: PanGloss is a product name, do not translate it; Effects are what the change does to parses.</comment>
   </data>
   <data name="MotifApp.Where" xml:space="preserve">
     <value>Where</value>
@@ -1032,10 +1032,6 @@
     <value>Before and after evidence for each affected reading</value>
     <comment>Accessible name announced by screen readers.</comment>
   </data>
-  <data name="MotifApp.Problem" xml:space="preserve">
-    <value>Problem:</value>
-    <comment>Window text.</comment>
-  </data>
   <data name="MotifApp.OtherChanges" xml:space="preserve">
     <value>Other changes</value>
     <comment>Window text.</comment>
@@ -1082,15 +1078,15 @@
   </data>
   <data name="MotifApp.BuiltBy" xml:space="preserve">
     <value>Built By</value>
-    <comment>Window text.</comment>
+    <comment>Field label and column heading: who built the Proposal (a person or an assistant).</comment>
   </data>
   <data name="MotifApp.ItsChanges" xml:space="preserve">
     <value>Its Changes</value>
     <comment>Window text.</comment>
   </data>
-  <data name="MotifApp.WhatItWouldDoToThe" xml:space="preserve">
+  <data name="MotifApp.ProposalNumbersHeading" xml:space="preserve">
     <value>What It Would Do to the Numbers</value>
-    <comment>Window text.</comment>
+    <comment>Section heading above how the Proposal would change the project numbers.</comment>
   </data>
   <data name="MotifApp.OpenInReviewChanges" xml:space="preserve">
     <value>Open in Review Changes</value>
@@ -1291,5 +1287,21 @@
   <data name="MotifApp.ProposalCountPattern" xml:space="preserve">
     <value>{0, plural, one {# proposal} other {# proposals}}</value>
     <comment>Plural pattern: a count of Proposals; # is the count.</comment>
+  </data>
+  <data name="MotifApp.ProblemFindingFormat" xml:space="preserve">
+    <value>Problem: {0}</value>
+    <comment>Line saying whether the problem the sound change addressed remains; {0} is Resolved or Still present.</comment>
+  </data>
+  <data name="MotifApp.WordGroupCountPattern" xml:space="preserve">
+    <value>{0, plural, one {· # word} other {· # words}}</value>
+    <comment>Plural pattern: the count beside a group heading; the dot is a separator; # is the count.</comment>
+  </data>
+  <data name="MotifApp.ChangeGroupCountPattern" xml:space="preserve">
+    <value>{0, plural, one {· # change} other {· # changes}}</value>
+    <comment>Plural pattern: the count beside the grammar changes band; the dot is a separator; # is the count.</comment>
+  </data>
+  <data name="MotifApp.ProposalChangeCountFormat" xml:space="preserve">
+    <value>{0} · {1}</value>
+    <comment>Review count line: {0} is the Proposal name and {1} its count of changes; the dot is a separator and the order may change.</comment>
   </data>
 </root>

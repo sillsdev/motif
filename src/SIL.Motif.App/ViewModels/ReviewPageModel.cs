@@ -749,7 +749,8 @@ public sealed partial class ReviewPageModel : PageModel
         : MotifAppStrings.ChangesMayAlreadyBeApplied
         : ReviewsPendingChanges
         ? _entries.Count > 0 ? PluralText.Format(MotifAppStrings.StatusChangesPattern, _entries.Count) : MotifAppStrings.NoChangesYet
-        : $"{ProposalLabel} · {(_entries.Count == 0 ? MotifAppStrings.NoChanges : PluralText.Format(MotifAppStrings.ChangeCountPattern, _entries.Count))}";
+        : string.Format(MotifAppStrings.ProposalChangeCountFormat, ProposalLabel,
+            _entries.Count == 0 ? MotifAppStrings.NoChanges : PluralText.Format(MotifAppStrings.ChangeCountPattern, _entries.Count));
 
     /// <summary>The line under the heading, saying how the list is ordered and that nothing is written yet.</summary>
     public string HeaderNoteText => _entries.Any(entry => entry.IsGrammar)

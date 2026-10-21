@@ -78,10 +78,7 @@
             </ItemsControl.ItemTemplate>
           </views:ProgressiveItemsControl>
           <views:CopyableTextBlock Classes="reviewSmall" Text="{Binding FindingCountsText}" TextWrapping="Wrap" />
-          <WrapPanel>
-            <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.Problem}" />
-            <views:CopyableTextBlock Text="{Binding FindingState}" FontWeight="{DynamicResource Intent.Weight.Strong}" />
-          </WrapPanel>
+          <views:CopyableTextBlock Text="{Binding FindingLineText}" TextWrapping="Wrap" />
         </StackPanel>
       </Border>
 

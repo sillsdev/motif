@@ -80,7 +80,7 @@
               </Border>
               <Border Classes="inspectorSection" IsVisible="{Binding SelectedProposal.HasNumbers}">
                 <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
-                  <TextBlock Classes="inspectorSectionTitle" Text="{x:Static app:MotifAppStrings.WhatItWouldDoToThe}" />
+                  <TextBlock Classes="inspectorSectionTitle" Text="{x:Static app:MotifAppStrings.ProposalNumbersHeading}" />
                   <ItemsControl x:Name="ProposalsNumberItems" ItemsSource="{Binding SelectedProposal.Numbers}">
                     <ItemsControl.ItemTemplate>
                       <DataTemplate x:DataType="vm:ProposalNumber">

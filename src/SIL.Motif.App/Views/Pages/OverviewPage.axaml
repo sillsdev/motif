@@ -148,7 +148,7 @@
           <StackPanel Classes="overviewTileContent">
             <DockPanel LastChildFill="False">
               <TextBlock Classes="overviewTileTitle" Text="{x:Static app:MotifAppStrings.TextCoverage}" DockPanel.Dock="Left" />
-              <HyperlinkButton Classes="overviewTileLink" Content="{x:Static app:MotifAppStrings.TextsArrow}" DockPanel.Dock="Right"
+              <HyperlinkButton Classes="overviewTileLink" Content="{x:Static app:MotifAppStrings.OverviewTextsLink}" DockPanel.Dock="Right"
                                Command="{Binding OpenTextCoverageCommand}"
                                AutomationProperties.Name="{x:Static app:MotifAppStrings.OpenTextCoverageInTextsAccessibleName}" />
             </DockPanel>
@@ -182,9 +182,9 @@
           <StackPanel Classes="overviewTileContent">
             <DockPanel LastChildFill="False">
               <TextBlock Classes="overviewTileTitle" Text="{x:Static app:MotifAppStrings.ApprovedAnalysesKept}" DockPanel.Dock="Left" />
-              <HyperlinkButton Classes="overviewTileLink" Content="{x:Static app:MotifAppStrings.MatrixArrow}" DockPanel.Dock="Right"
+              <HyperlinkButton Classes="overviewTileLink" Content="{x:Static app:MotifAppStrings.OverviewMatrixLink}" DockPanel.Dock="Right"
                                Command="{Binding OpenAccuracyCommand}"
-                               AutomationProperties.Name="{x:Static app:MotifAppStrings.OpenApprovedAnalysesKeptInTheAccessibleName}" />
+                               AutomationProperties.Name="{x:Static app:MotifAppStrings.OpenMatrixFromApprovedKeptAccessibleName}" />
             </DockPanel>
             <TextBlock Classes="overviewTileValue" Text="{Binding AccuracyMain}" TextWrapping="Wrap" />
             <TextBlock Classes="overviewMuted" Text="{Binding AccuracyCaption}" TextWrapping="Wrap" />
@@ -216,7 +216,7 @@
           <Border Classes="overviewTile" IsVisible="{Binding ShowTiles}" AutomationProperties.Name="{x:Static app:MotifAppStrings.SpeedAccessibleName}">
           <StackPanel Classes="overviewTileContent">
             <DockPanel LastChildFill="True">
-              <HyperlinkButton DockPanel.Dock="Right" Classes="overviewTileLink" Content="{x:Static app:MotifAppStrings.SlowestWordsArrow}" Command="{Binding OpenTimingCommand}" AutomationProperties.Name="{x:Static app:MotifAppStrings.OpenSlowestWordsInTimingAccessibleName}" />
+              <HyperlinkButton DockPanel.Dock="Right" Classes="overviewTileLink" Content="{x:Static app:MotifAppStrings.OverviewSlowestWordsLink}" Command="{Binding OpenTimingCommand}" AutomationProperties.Name="{x:Static app:MotifAppStrings.OpenSlowestWordsInTimingAccessibleName}" />
               <TextBlock Classes="overviewTileTitle" Text="{x:Static app:MotifAppStrings.Speed}" />
             </DockPanel>
             <TextBlock Classes="overviewTileDetail" Text="{Binding SpeedMain}" TextWrapping="Wrap" AutomationProperties.AutomationId="{x:Static app:AutomationIds.OverviewSpeed}" />
@@ -270,7 +270,7 @@
           <StackPanel Classes="overviewTileContent">
             <DockPanel LastChildFill="False">
               <TextBlock Classes="overviewTileTitle" Text="{x:Static app:MotifAppStrings.GrammarWarnings}" DockPanel.Dock="Left" />
-              <HyperlinkButton Classes="overviewTileLink" Content="{x:Static app:MotifAppStrings.WarningsArrow}" DockPanel.Dock="Right"
+              <HyperlinkButton Classes="overviewTileLink" Content="{x:Static app:MotifAppStrings.OverviewWarningsLink}" DockPanel.Dock="Right"
                                Command="{Binding OpenWarningsCommand}"
                                AutomationProperties.Name="{x:Static app:MotifAppStrings.OpenGrammarWarningsInWarningsAccessibleName}" />
             </DockPanel>

@@ -153,7 +153,7 @@ public static class MotifAppStrings
 
     public static string TextCoverage => Text("MotifApp.TextCoverage");
 
-    public static string TextsArrow => Text("MotifApp.TextsArrow");
+    public static string OverviewTextsLink => Text("MotifApp.OverviewTextsLink");
 
     public static string OpenTextCoverageInTextsAccessibleName => Text("MotifApp.OpenTextCoverageInTextsAccessibleName");
 
@@ -163,15 +163,15 @@ public static class MotifAppStrings
 
     public static string ApprovedAnalysesKept => Text("MotifApp.ApprovedAnalysesKept");
 
-    public static string MatrixArrow => Text("MotifApp.MatrixArrow");
+    public static string OverviewMatrixLink => Text("MotifApp.OverviewMatrixLink");
 
-    public static string OpenApprovedAnalysesKeptInTheAccessibleName => Text("MotifApp.OpenApprovedAnalysesKeptInTheAccessibleName");
+    public static string OpenMatrixFromApprovedKeptAccessibleName => Text("MotifApp.OpenMatrixFromApprovedKeptAccessibleName");
 
     public static string ApprovedAnalysesKeptOutcomesAccessibleName => Text("MotifApp.ApprovedAnalysesKeptOutcomesAccessibleName");
 
     public static string SpeedAccessibleName => Text("MotifApp.SpeedAccessibleName");
 
-    public static string SlowestWordsArrow => Text("MotifApp.SlowestWordsArrow");
+    public static string OverviewSlowestWordsLink => Text("MotifApp.OverviewSlowestWordsLink");
 
     public static string OpenSlowestWordsInTimingAccessibleName => Text("MotifApp.OpenSlowestWordsInTimingAccessibleName");
 
@@ -189,7 +189,7 @@ public static class MotifAppStrings
 
     public static string GrammarWarnings => Text("MotifApp.GrammarWarnings");
 
-    public static string WarningsArrow => Text("MotifApp.WarningsArrow");
+    public static string OverviewWarningsLink => Text("MotifApp.OverviewWarningsLink");
 
     public static string OpenGrammarWarningsInWarningsAccessibleName => Text("MotifApp.OpenGrammarWarningsInWarningsAccessibleName");
 
@@ -291,7 +291,7 @@ public static class MotifAppStrings
 
     public static string AddReadingsAsUnknownInThis => Text("MotifApp.AddReadingsAsUnknownInThis");
 
-    public static string AddParserReadingsAsUnknownInAccessibleName => Text("MotifApp.AddParserReadingsAsUnknownInAccessibleName");
+    public static string AddParserReadingsAsUnknownInThisTextAccessibleName => Text("MotifApp.AddParserReadingsAsUnknownInThisTextAccessibleName");
 
     public static string AcceptNewSetInThisText => Text("MotifApp.AcceptNewSetInThisText");
 
@@ -307,7 +307,7 @@ public static class MotifAppStrings
 
     public static string StageRemovalFromThisText => Text("MotifApp.StageRemovalFromThisText");
 
-    public static string StageRemovalOfTheAnalysesUsedAccessibleName => Text("MotifApp.StageRemovalOfTheAnalysesUsedAccessibleName");
+    public static string StageRemovalOfTheAnalysesUsedInThisTextAccessibleName => Text("MotifApp.StageRemovalOfTheAnalysesUsedInThisTextAccessibleName");
 
     public static string InAllChosenTexts => Text("MotifApp.InAllChosenTexts");
 
@@ -317,7 +317,7 @@ public static class MotifAppStrings
 
     public static string AddReadingsAsUnknownInAll => Text("MotifApp.AddReadingsAsUnknownInAll");
 
-    public static string AddParserReadingsAsUnknownInAccessibleName2 => Text("MotifApp.AddParserReadingsAsUnknownInAccessibleName2");
+    public static string AddParserReadingsAsUnknownInAllChosenTextsAccessibleName => Text("MotifApp.AddParserReadingsAsUnknownInAllChosenTextsAccessibleName");
 
     public static string MarkSpellingsIncorrectInAllChosen => Text("MotifApp.MarkSpellingsIncorrectInAllChosen");
 
@@ -331,7 +331,7 @@ public static class MotifAppStrings
 
     public static string StageRemovalFromAllChosenTexts => Text("MotifApp.StageRemovalFromAllChosenTexts");
 
-    public static string StageRemovalOfTheAnalysesUsedAccessibleName2 => Text("MotifApp.StageRemovalOfTheAnalysesUsedAccessibleName2");
+    public static string StageRemovalOfTheAnalysesUsedInAllChosenTextsAccessibleName => Text("MotifApp.StageRemovalOfTheAnalysesUsedInAllChosenTextsAccessibleName");
 
     public static string Read => Text("MotifApp.Read");
 
@@ -367,7 +367,7 @@ public static class MotifAppStrings
 
     public static string PanGloss => Text("MotifApp.PanGloss");
 
-    public static string EscClosesArrowNextWord => Text("MotifApp.EscClosesArrowNextWord");
+    public static string InspectorKeyHint => Text("MotifApp.InspectorKeyHint");
 
     public static string CloseTheWordCardAccessibleName => Text("MotifApp.CloseTheWordCardAccessibleName");
 
@@ -527,7 +527,6 @@ public static class MotifAppStrings
 
     public static string BeforeAndAfterEvidenceForEachAccessibleName => Text("MotifApp.BeforeAndAfterEvidenceForEachAccessibleName");
 
-    public static string Problem => Text("MotifApp.Problem");
 
     public static string OtherChanges => Text("MotifApp.OtherChanges");
 
@@ -555,7 +554,7 @@ public static class MotifAppStrings
 
     public static string ItsChanges => Text("MotifApp.ItsChanges");
 
-    public static string WhatItWouldDoToThe => Text("MotifApp.WhatItWouldDoToThe");
+    public static string ProposalNumbersHeading => Text("MotifApp.ProposalNumbersHeading");
 
     public static string OpenInReviewChanges => Text("MotifApp.OpenInReviewChanges");
 
@@ -656,4 +655,12 @@ public static class MotifAppStrings
     public static string WordCountPattern => Text("MotifApp.WordCountPattern");
 
     public static string ProposalCountPattern => Text("MotifApp.ProposalCountPattern");
+
+    public static string ProblemFindingFormat => Text("MotifApp.ProblemFindingFormat");
+
+    public static string WordGroupCountPattern => Text("MotifApp.WordGroupCountPattern");
+
+    public static string ChangeGroupCountPattern => Text("MotifApp.ChangeGroupCountPattern");
+
+    public static string ProposalChangeCountFormat => Text("MotifApp.ProposalChangeCountFormat");
 }

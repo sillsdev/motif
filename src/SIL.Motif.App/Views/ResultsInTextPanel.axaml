@@ -65,7 +65,7 @@
                 <StackPanel>
                   <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" IsVisible="{Binding $self.IsEffectivelyEnabled}" Content="{x:Static app:MotifAppStrings.AddReadingsAsUnknownInThis}"
                           Command="{Binding InText.AddParserReadingsCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.SelectedText}"
-                          AutomationProperties.Name="{x:Static app:MotifAppStrings.AddParserReadingsAsUnknownInAccessibleName}" />
+                          AutomationProperties.Name="{x:Static app:MotifAppStrings.AddParserReadingsAsUnknownInThisTextAccessibleName}" />
                   <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" IsVisible="{Binding $self.IsEffectivelyEnabled}" Content="{x:Static app:MotifAppStrings.AcceptNewSetInThisText}" Command="{Binding InText.AcceptNewSetCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.SelectedText}"
                           AutomationProperties.Name="{x:Static app:MotifAppStrings.AcceptNewSetForTheSelectedAccessibleName}" />
                   <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" IsVisible="{Binding $self.IsEffectivelyEnabled}" Content="{x:Static app:MotifAppStrings.MarkSpellingsIncorrectInThisText}"
@@ -78,7 +78,7 @@
                   <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
                     <views:CopyableTextBlock Classes="muted" Text="{Binding InText.SelectedTextRemovalPreview}" TextWrapping="Wrap" />
                     <Button Content="{x:Static app:MotifAppStrings.StageRemovalFromThisText}" Command="{Binding InText.RemoveAnalysesCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.SelectedText}"
-                            AutomationProperties.Name="{x:Static app:MotifAppStrings.StageRemovalOfTheAnalysesUsedAccessibleName}" />
+                            AutomationProperties.Name="{x:Static app:MotifAppStrings.StageRemovalOfTheAnalysesUsedInThisTextAccessibleName}" />
                   </StackPanel>
                 </Expander>
                 <views:CopyableTextBlock Classes="section-title" Text="{x:Static app:MotifAppStrings.InAllChosenTexts}" />
@@ -87,7 +87,7 @@
                           AutomationProperties.Name="{x:Static app:MotifAppStrings.AcceptNewSetForTheSelectionAccessibleName}" />
                   <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" IsVisible="{Binding $self.IsEffectivelyEnabled}" Content="{x:Static app:MotifAppStrings.AddReadingsAsUnknownInAll}"
                           Command="{Binding InText.AddParserReadingsCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.ChosenTexts}"
-                          AutomationProperties.Name="{x:Static app:MotifAppStrings.AddParserReadingsAsUnknownInAccessibleName2}" />
+                          AutomationProperties.Name="{x:Static app:MotifAppStrings.AddParserReadingsAsUnknownInAllChosenTextsAccessibleName}" />
                   <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" IsVisible="{Binding $self.IsEffectivelyEnabled}" Content="{x:Static app:MotifAppStrings.MarkSpellingsIncorrectInAllChosen}"
                           Command="{Binding InText.MarkSpellingsIncorrectCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.ChosenTexts}"
                           AutomationProperties.Name="{x:Static app:MotifAppStrings.MarkSpellingsIncorrectInAllChosenAccessibleName}" />
@@ -100,7 +100,7 @@
                   <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
                     <views:CopyableTextBlock Classes="muted" Text="{Binding InText.ChosenTextsRemovalPreview}" TextWrapping="Wrap" />
                     <Button Content="{x:Static app:MotifAppStrings.StageRemovalFromAllChosenTexts}" Command="{Binding InText.RemoveAnalysesCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.ChosenTexts}"
-                            AutomationProperties.Name="{x:Static app:MotifAppStrings.StageRemovalOfTheAnalysesUsedAccessibleName2}" />
+                            AutomationProperties.Name="{x:Static app:MotifAppStrings.StageRemovalOfTheAnalysesUsedInAllChosenTextsAccessibleName}" />
                   </StackPanel>
                 </Expander>
               </StackPanel>
@@ -246,7 +246,7 @@
                                                        IsVisible="{Binding IsPending}" VerticalAlignment="Center"
                                                        Margin="{DynamicResource Component.TextsPage.ShortLabelMargin}" />
                               <views:CopyableTextBlock Classes="muted" VerticalAlignment="Center"
-                                                       Text="{x:Static app:MotifAppStrings.EscClosesArrowNextWord}" TextWrapping="Wrap"
+                                                       Text="{x:Static app:MotifAppStrings.InspectorKeyHint}" TextWrapping="Wrap"
                                                        Margin="{DynamicResource Component.TextsPage.ShortLabelMargin}" />
                             </WrapPanel>
                             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
