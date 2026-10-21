@@ -147,6 +147,30 @@ public sealed class AuthorAffixProcessAllomorphComposerTests : IDisposable
     }
 
     [Fact]
+    public void AProcessEntryWithAPlainAlternateIsRefusedAsMixed()
+    {
+        var entry = ProcessEntry();
+        Setup(() => Get<ILexEntry>(_cache, entry).AlternateFormsOS.Add(
+            _cache.ServiceLocator.GetInstance<IMoAffixAllomorphFactory>().Create()));
+        Refused(Intent(entry) with { Placement = new Placement(Id(Get<ILexEntry>(_cache, entry).AlternateFormsOS[0]), null) },
+            entry, "mixes plain allomorphs");
+    }
+
+    [Fact]
+    public void AMultiPhoneInsertInAnExistingProcessMatchesTheOnePhoneStepsOfAnIntent()
+    {
+        var entry = ProcessEntry();
+        var process = (IMoAffixProcess)Get<ILexEntry>(_cache, entry).LexemeFormOA!;
+        var insert = process.OutputOS.OfType<IMoInsertPhones>().First();
+        Setup(() => insert.ContentRS.Add(_a));
+        Refused(Intent(entry) with
+        {
+            Input = [new("a", Phoneme: Id(_a)), new("rest", Remaining: true)],
+            Output = [new(Insert: [Id(_p)]), new(Insert: [Id(_a)]), new(Insert: [Id(_a)]), new(Copy: "a"), new(Copy: "rest")],
+        }, entry, "already has");
+    }
+
+    [Fact]
     public void ADuplicateOfTheLexemeFormPatternIsRefused()
     {
         var entry = ProcessEntry();

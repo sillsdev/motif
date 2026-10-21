@@ -25,5 +25,7 @@ Ask when the forms do not decide whether the change is assimilation, a stored al
 ## Common wrong choices
 
 - Duplicating an affix for each place of articulation when one rule explains the alternation.
-- One unconstrained affix process for a nasal change: it was measured about 300 times slower on one Cebuano draft. Several processes restricted to the verb category and kept as allomorphs of one entry, with `motif_add_affix_process_allomorph`, stopped no words with compounding off.
+- One unconstrained affix process for a nasal change: it was measured about 300 times slower on one Cebuano draft. Several processes kept as allomorphs of one Verb-only entry (the restriction comes from the entry's grammatical info; the composer has no category input), with `motif_add_affix_process_allomorph`, stopped no words with compounding off.
 - A rule that changes every nasal because only some assimilate.
+
+When only some prefixes substitute, the change is conditioned by the morpheme, not by sound alone. Cebuano is an example: Wolff treats substitution at the paN-, maN-, naN- and hiN- boundary as systematic (p, b become m; t, d, s become n; k and glottal stop become ng; l becomes ngl or nl, both accepted), while ning- and ming- keep k (ningkubit, mingkuyánap). Put the substituting forms on one entry as process allomorphs with `motif_add_affix_process_allomorph`, not in a phonological rule that would also apply to the prefixes that keep the consonant.

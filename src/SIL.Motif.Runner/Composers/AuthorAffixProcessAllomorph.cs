@@ -125,11 +125,11 @@ public static class AuthorAffixProcessAllomorphComposer
             IPhSimpleContextNC { FeatureStructureRA: { } naturalClass } => "N" + naturalClass.Guid,
             _ => "?",
         });
-        var output = process.OutputOS.Select(part => part switch
+        var output = process.OutputOS.SelectMany(part => part switch
         {
-            IMoCopyFromInput { ContentRA: { } content } when positions.TryGetValue(content.Guid, out var index) => "C" + index,
-            IMoInsertPhones insert => "I" + string.Join("+", insert.ContentRS.Select(phone => phone.Guid)),
-            _ => "?",
+            IMoCopyFromInput { ContentRA: { } content } when positions.TryGetValue(content.Guid, out var index) => new[] { "C" + index },
+            IMoInsertPhones insert => insert.ContentRS.Select(phone => "I" + phone.Guid),
+            _ => ["?"],
         });
         return string.Join(",", input) + ">" + string.Join(",", output);
     }
