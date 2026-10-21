@@ -120,7 +120,7 @@ public sealed class FakePanGlossSurfaceTests
         Assert.Equal("pangloss", description.RootElement.GetProperty("binary").GetString());
         AssertFactsIdentity(description.RootElement.GetProperty("facts"));
         var commands = Commands(description);
-        Assert.Equal(new[] { "batch", "describe", "facts", "grammar-health", "import", "parse", "stats" },
+        Assert.Equal(new[] { "batch", "describe", "facts", "grammar-health", "import", "parse", "serve", "stats" },
             commands.Keys.OrderBy(name => name));
         AssertRequestsMatch(commands);
         AssertTraceCommandIsDeclared(commands);

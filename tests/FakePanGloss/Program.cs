@@ -203,7 +203,7 @@ internal static class Program
         {
             schema_version = 1,
             binary = "pangloss",
-            serve_protocol = 1,
+            interfaces = new { serveProtocol = 1 },
             facts = new
             {
                 format = FactsArtifact.Format,
@@ -608,6 +608,11 @@ internal static class Program
             if (behaviour.ServeRequestLog is { } requestLog) File.AppendAllText(requestLog, word + "\n");
             if (word == "hang") Thread.Sleep(Timeout.Infinite);
             if (behaviour.ServeRequestDelayMs > 0) Thread.Sleep(behaviour.ServeRequestDelayMs);
+            if (word == "incomplete")
+            {
+                output.WriteLine(JsonSerializer.Serialize(new { id, type = "error", code = "parse_incomplete", message = "stopped at a limit" }));
+                continue;
+            }
             if (word == "boom")
             {
                 output.WriteLine(JsonSerializer.Serialize(new { id, type = "error", code = "parse-failed", message = "the fake word failed" }));

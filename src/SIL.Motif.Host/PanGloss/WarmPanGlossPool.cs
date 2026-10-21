@@ -125,7 +125,8 @@ public sealed class WarmPanGlossPool : IDisposable
     /// <summary>
     /// Parses a word on the project's resident parser. Waits for a load in progress (honoring
     /// <paramref name="cancellationToken"/>, which then abandons only the wait), starts one if there is none, and
-    /// returns <see cref="WarmParseResult.Fallback"/> when the session failed so the caller runs the cold path.
+    /// returns <see cref="WarmParseResult.Fallback"/> when the session failed or the parser answered the word with an error
+    /// (including <c>parse_incomplete</c>, which the cold <c>parse</c> turns into an incomplete trace) so the caller runs the cold path.
     /// Cancelling during a parse kills the process.
     /// </summary>
     public async Task<WarmParseResult> TryWordAsync(string projectKey, string stateToken, string grammarPath,
@@ -317,7 +318,7 @@ public sealed class WarmPanGlossPool : IDisposable
                 return false;
             }
             if (surface.Capabilities is null || !surface.Capabilities.Commands.TryGetValue("serve", out var serve) ||
-                serve.Hidden || (surface.Capabilities.ServeProtocol ?? ServeProtocol) != ServeProtocol)
+                serve.Hidden || surface.Capabilities.ServeProtocol != ServeProtocol)
             {
                 Fail("serve-unsupported", "This parser has no resident-session mode (serve protocol " +
                     $"{ServeProtocol}), so words run one process each.");

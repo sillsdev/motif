@@ -299,6 +299,19 @@ public sealed class WarmPanGlossPoolTests : IDisposable
     }
 
     [Fact]
+    public async Task AnIncompleteParseErrorFallsBackSoTheColdPathMakesTheIncompleteOutcome()
+    {
+        var (grammar, _, _) = Project("incomplete");
+        using var pool = Pool();
+
+        var fallback = Assert.IsType<WarmParseResult.Fallback>(
+            await pool.TryWordAsync(grammar, "t1", grammar, "incomplete", true, CancellationToken.None));
+
+        Assert.Equal("parse_incomplete", fallback.Code);
+        Assert.Equal(WarmSessionPhase.Ready, pool.GetState(grammar).Phase);
+    }
+
+    [Fact]
     public async Task TheWarmFirstTracerAnswersLikeTheColdOneAndFallsBackToItWhenTheSessionFailed()
     {
         var (grammar, _, _) = Project("tracer");

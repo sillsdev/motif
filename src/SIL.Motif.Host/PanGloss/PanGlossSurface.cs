@@ -224,7 +224,8 @@ internal static class PanGlossSurface
         }
 
         detail = null;
-        int? serveProtocol = root.TryGetProperty("serve_protocol", out var serveElement) &&
+        int? serveProtocol = root.TryGetProperty("interfaces", out var interfaces) &&
+            interfaces.ValueKind == JsonValueKind.Object && interfaces.TryGetProperty("serveProtocol", out var serveElement) &&
             serveElement.ValueKind == JsonValueKind.Number && serveElement.TryGetInt32(out var served) ? served : null;
         return new PanGlossCapabilities(byName.ToImmutable(), HasFactsIdentity(root), serveProtocol);
     }
