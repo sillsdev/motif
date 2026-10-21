@@ -81,6 +81,29 @@ public sealed class CatalogTextRenderingTests
     }
 
     [Fact]
+    public void AssessTextAndJsonShowCountsWithGuessOnlyApartFromAccepted()
+    {
+        static AssessmentWordResult Row(string word, string outcome, string? guess) =>
+            new(word, outcome, false, "Search completed", 1, null)
+            {
+                Morphology = new ParseWordEvidence("s", 0, word, 1, false, false, false,
+                    outcome == "analysed" ? [new ParseAnalysis([new ParseMorph("a", null, null, guess)])] : [], []),
+            };
+        var response = new AssessCommandResponse(new BaselineCaptureResponse(
+            new("project", "sha256:" + new string('a', 64), "version", "2026-10-01T00:00:00.0000000Z",
+                "sha256:" + new string('b', 64)), "project.fwdata", DateTimeOffset.UtcNow, false, true),
+            new SelectionProjection(["a", "b", "c"], []), ["assessment"], "Search completed")
+        { Words = [Row("a", "analysed", null), Row("b", "analysed", "?baga"), Row("c", "no-analysis", null)] };
+        var outcome = CommandOutcome<AssessCommandResponse>.Success(response);
+
+        var text = CommandTextRenderer.Render(outcome, asJson: false).Output;
+        var json = CommandTextRenderer.Render(outcome, asJson: true).Output;
+
+        Assert.Contains("3 word(s); 2 analysed (1 accepted, 1 guess-only); 1 no-analysis", text, StringComparison.Ordinal);
+        Assert.Contains("\"guessOnly\": 1", json, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void WarningTextRetainsProducerAdvicePlacesAndMissingReferenceState()
     {
         var finding = new GrammarWarning(GrammarDiagnosticLevel.Warning, "Producer title",

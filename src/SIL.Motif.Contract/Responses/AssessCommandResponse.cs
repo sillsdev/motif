@@ -18,6 +18,8 @@ public sealed record AssessCommandResponse(
     /// <summary>The complete caller request and resolved Selection provenance for this result.</summary>
     public SelectionDescriptor? SelectionDescriptor { get; init; }
     public IReadOnlyList<AssessmentWordResult> Words { get; init; } = new AssessmentWordResult[0];
+    /// <summary>Words per outcome, and among analysed words how many are accepted or guess-only.</summary>
+    public AssessmentCounts Counts => AssessmentCounts.Of(Words);
     public IReadOnlyList<ProducedAssessmentReference> Measurements { get; init; } = new ProducedAssessmentReference[0];
     /// <summary>Stored ParseTime re-runs to apply, in order, over this result's original word timings.</summary>
     public IReadOnlyList<string> TimingOverrideAssessmentIds { get; init; } = Array.Empty<string>();

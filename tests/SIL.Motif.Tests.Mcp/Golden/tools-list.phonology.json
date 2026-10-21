@@ -1241,6 +1241,10 @@
           },
           "description": "Words to parse. Omit to use the words the Proposal touches."
         },
+        "wordsFile": {
+          "type": "string",
+          "description": "Path to a UTF-8 file with one word per line, instead of words."
+        },
         "negative_words": {
           "type": "array",
           "items": {
