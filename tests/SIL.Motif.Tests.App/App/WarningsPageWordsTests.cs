@@ -1,3 +1,4 @@
+using SIL.Motif.App;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
@@ -163,7 +164,7 @@ public sealed class WarningsPageWordsTests
                     var explanation = Assert.Single(texts, text => text.Text == warning.Explanation);
                     var guidance = Assert.Single(texts, text => text.Text == warning.Guidance);
                     var message = Assert.Single(texts, text => text.Classes.Contains("warningRawMessage"));
-                    Assert.Contains(texts, text => text.Text == "What to do in FieldWorks");
+                    Assert.Contains(texts, text => text.Text == MotifAppStrings.WhatToDoInFieldWorks);
                     Assert.DoesNotContain(texts, text => text.Text == "PanGloss gives no advice for this kind yet");
                     Assert.Equal(warning.Description, message.Text);
                     Assert.True(message.FontSize < explanation.FontSize);
@@ -271,7 +272,7 @@ public sealed class WarningsPageWordsTests
                 Assert.Equal(SIL.Motif.App.Controls.WordPresentation.WordListOwner.Warnings, wordRow.Data!.Owner);
                 var handoff = Assert.Single(panel.GetVisualDescendants().OfType<Button>(),
                     button => ReferenceEquals(button.Command, grammar.Warnings.HandOffCommand));
-                Assert.Equal("AI Handoff for this warning", handoff.Content);
+                Assert.Equal(MotifAppStrings.AIHandoffForThisWarning, handoff.Content);
                 window.MouseMove(new Avalonia.Point(-100, -100));
                 window.UpdateLayout();
                 Dispatcher.UIThread.RunJobs();
@@ -284,11 +285,11 @@ public sealed class WarningsPageWordsTests
                 Assert.Contains(panel.GetVisualDescendants().OfType<TextBlock>(), text =>
                     text.IsEffectivelyVisible && text.Text == "PanGloss explains that this environment cannot be read by the parser.");
                 Assert.Contains(panel.GetVisualDescendants().OfType<TextBlock>(), text =>
-                    text.IsEffectivelyVisible && text.Text == "What to do in FieldWorks");
+                    text.IsEffectivelyVisible && text.Text == MotifAppStrings.WhatToDoInFieldWorks);
                 Assert.Contains(panel.GetVisualDescendants().OfType<TextBlock>(), text =>
                     text.IsEffectivelyVisible && text.Text == "Your words that use e2 (/ _ [C])");
                 Assert.Contains(panel.GetVisualDescendants().OfType<TextBlock>(), text =>
-                    text.IsEffectivelyVisible && text.Text == "After you fix it");
+                    text.IsEffectivelyVisible && text.Text == MotifAppStrings.AfterYouFixIt);
                 Assert.DoesNotContain(panel.GetVisualDescendants().OfType<TextBlock>(), text =>
                     text.IsEffectivelyVisible && text.Text is "PanGloss description" or "PanGloss explanation" or
                         "PanGloss guidance" or "FieldWorks places" or "Motif workflow");

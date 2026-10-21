@@ -104,14 +104,14 @@ public sealed partial class CompareViewModel : ObservableObject
         Columns = Enum.GetValues<CompareColumnKind>().Select(column => new CompareColumnViewModel(column)).ToArray();
         Presets =
         [
-            Preset("Lost", cell => cell.Row == WordProjectStatus.Approved && cell.Column == CompareColumnKind.NoParse),
-            Preset("Built something else",
+            Preset(MotifAppStrings.CompareListLost, cell => cell.Row == WordProjectStatus.Approved && cell.Column == CompareColumnKind.NoParse),
+            Preset(MotifAppStrings.CompareListBuiltSomethingElse,
                 cell => cell.Row == WordProjectStatus.Approved && cell.Column == CompareColumnKind.NoMatch),
-            Preset("Have a look", cell => cell.Family == CompareFamilyKind.Review),
-            Preset("Built anyway", cell => cell.Row == WordProjectStatus.Rejected && cell.Column == CompareColumnKind.Match),
-            Preset("New: PanGloss proposes", cell => cell.Family == CompareFamilyKind.New),
-            Preset("Nobody can analyze", cell => cell.Family == CompareFamilyKind.Nobody),
-            Preset("Stopped", cell => cell.Column == CompareColumnKind.Timeout),
+            Preset(MotifAppStrings.CompareListHaveALook, cell => cell.Family == CompareFamilyKind.Review),
+            Preset(MotifAppStrings.CompareListBuiltAnyway, cell => cell.Row == WordProjectStatus.Rejected && cell.Column == CompareColumnKind.Match),
+            Preset(MotifAppStrings.CompareListNew, cell => cell.Family == CompareFamilyKind.New),
+            Preset(MotifAppStrings.CompareListNobodyCanAnalyze, cell => cell.Family == CompareFamilyKind.Nobody),
+            Preset(MotifAppStrings.CompareListStopped, cell => cell.Column == CompareColumnKind.Timeout),
             Preset(WindowWords.Of(ParserOutcome.NotParsed), cell => cell.Column == CompareColumnKind.Skipped),
         ];
         ClearSelectionCommand = new RelayCommand(() => Select([], additive: false));
@@ -259,9 +259,8 @@ public sealed partial class CompareViewModel : ObservableObject
 
     public string RerunText => RerunWords.Count switch
     {
-        0 => "Every word finished.",
-        1 => "1 word timed out or was not tried.",
-        var count => $"{count:N0} words timed out or were not tried.",
+        0 => MotifAppStrings.CompareEveryWordFinished,
+        var count => PluralText.Format(MotifAppStrings.CompareRerunWordsPattern, count),
     };
 
     private Task RerunUnknownAsync() =>
@@ -390,9 +389,9 @@ public sealed partial class CompareViewModel : ObservableObject
             var chosen = Cells.Where(cell => cell.IsSelected).ToList();
             return chosen.Count switch
             {
-                0 => "No cells chosen: every word is listed. Click a cell to list only its words; Ctrl-click adds cells.",
-                1 => $"{chosen[0].RowLabel} × {chosen[0].ColumnLabel}: {chosen[0].Label}",
-                _ => $"{chosen.Count} cells chosen",
+                0 => MotifAppStrings.CompareNoCellsChosen,
+                1 => string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.CompareCellSelectionFormat, chosen[0].RowLabel, chosen[0].ColumnLabel, chosen[0].Label),
+                _ => PluralText.Format(MotifAppStrings.CompareCellsChosenPattern, chosen.Count),
             };
         }
     }
@@ -408,9 +407,9 @@ public sealed partial class CompareViewModel : ObservableObject
             var chosen = Cells.Count(cell => cell.IsSelected);
             return chosen switch
             {
-                0 => "All words",
-                1 => $"{ChosenCell!.RowLabel} × {ChosenCell.ColumnLabel}",
-                _ => $"{chosen:N0} cells chosen",
+                0 => MotifAppStrings.CompareAllWords,
+                1 => string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.CompareCellHeadingFormat, ChosenCell!.RowLabel, ChosenCell.ColumnLabel),
+                _ => PluralText.Format(MotifAppStrings.CompareCellsChosenPattern, chosen),
             };
         }
     }
@@ -445,9 +444,9 @@ public sealed partial class CompareViewModel : ObservableObject
     /// <summary>The one line under the heading: what the chosen cell means, or how to choose cells.</summary>
     public string ListExplanation => Cells.Count(cell => cell.IsSelected) switch
     {
-        0 => "Choose a cell to list only its words; Ctrl-click adds cells.",
+        0 => MotifAppStrings.CompareChooseCellHint,
         1 => ChosenCell!.Explanation ?? string.Empty,
-        _ => "Ctrl-click a cell to add it or take it away.",
+        _ => MotifAppStrings.CompareCtrlClickHint,
     };
 
     /// <summary>
@@ -460,9 +459,9 @@ public sealed partial class CompareViewModel : ObservableObject
             var chosen = Cells.Where(cell => cell.IsSelected).ToArray();
             var inCells = chosen.Length == 0 ? TotalCount : chosen.Sum(cell => cell.WordCount);
             var words = Words.Count == inCells
-                ? CompareCellViewModel.WordsText(Words.Count) : $"{Words.Count:N0} of {inCells:N0} words";
+                ? CompareCellViewModel.WordsText(Words.Count) : string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.CompareWordsOfFormat, Words.Count.ToString("N0", System.Globalization.CultureInfo.CurrentCulture), inCells.ToString("N0", System.Globalization.CultureInfo.CurrentCulture));
             return _listed.Any(word => word.Occurrences is not null)
-                ? $"{words} · {CompareCellViewModel.PlacesTextOf(_listed.Sum(word => word.Occurrences ?? 0))}" : words;
+                ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.CompareWordsAndPlacesFormat, words, CompareCellViewModel.PlacesTextOf(_listed.Sum(word => word.Occurrences ?? 0))) : words;
         }
     }
 
@@ -496,9 +495,8 @@ public sealed partial class CompareViewModel : ObservableObject
 
     public string CheckedWordText => CheckedWordCount switch
     {
-        0 => "No words ticked",
-        1 => "1 word ticked",
-        var count => $"{count:N0} words ticked",
+        0 => MotifAppStrings.CompareNoWordsTicked,
+        var count => PluralText.Format(MotifAppStrings.CompareWordsTickedPattern, count),
     };
 
     partial void OnSearchTextChanged(string value)
@@ -638,7 +636,7 @@ public sealed partial class CompareViewModel : ObservableObject
         foreach (var (morpheme, index) in shared.Take(SharedShown).Select((morpheme, index) => (morpheme, index)))
             Shared.Add(new CompareSharedMorphemeViewModel(
                 new ParserReadingMorphViewModel(morpheme.Morpheme), morpheme.Count, index > 0));
-        SharedMoreText = shared.Count > SharedShown ? $"and {shared.Count - SharedShown:N0} more" : null;
+        SharedMoreText = shared.Count > SharedShown ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.CompareSharedMoreFormat, (shared.Count - SharedShown).ToString("N0", System.Globalization.CultureInfo.CurrentCulture)) : null;
         OnPropertyChanged(nameof(HasShared));
     }
 
@@ -754,21 +752,21 @@ public sealed partial class CompareViewModel : ObservableObject
 
     public static string ColumnSentenceOf(CompareColumnKind column) => column switch
     {
-        CompareColumnKind.Match => "PanGloss finds the same",
-        CompareColumnKind.NoMatch => "PanGloss finds something different",
-        CompareColumnKind.NoParse => "PanGloss found no parse",
-        CompareColumnKind.Timeout => "PanGloss stopped at a limit",
-        _ => "PanGloss has not parsed the word",
+        CompareColumnKind.Match => MotifAppStrings.CompareColumnSame,
+        CompareColumnKind.NoMatch => MotifAppStrings.CompareColumnDifferent,
+        CompareColumnKind.NoParse => MotifAppStrings.CompareColumnNoParse,
+        CompareColumnKind.Timeout => MotifAppStrings.CompareColumnStopped,
+        _ => MotifAppStrings.CompareColumnNotParsed,
     };
 
     /// <summary>What FieldWorks holds, for an accessible name; a missing word never reads "in FieldWorks" twice.</summary>
     public static string HeldInFieldWorks(string opinions) =>
-        opinions == OpinionLabelOf(WordProjectStatus.NotPresent) ? opinions : $"{opinions} in FieldWorks";
+        opinions == OpinionLabelOf(WordProjectStatus.NotPresent) ? opinions : string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.CompareHeldInFieldWorksFormat, opinions);
 
     /// <summary>The outcome's word for one occurrence; readings beyond the approved ones say so.</summary>
     public static string PanGlossClassLabel(AnalysisMarkingClass markingClass) =>
         markingClass == AnalysisMarkingClass.Extra
-            ? "Different, and more"
+            ? MotifAppStrings.CompareDifferentAndMore
             : WindowWords.Of(WindowWords.OutcomeOf(markingClass));
 
     private ComparePresetViewModel Preset(string label, Func<CompareCellViewModel, bool> chooses) =>
@@ -805,14 +803,14 @@ public sealed partial class CompareRowViewModel(WordProjectStatus row, IReadOnly
     public OpinionMarkKind OpinionMark { get; } = CompareViewModel.OpinionMarkFor(row);
     public bool IsOpinionMarkVisible => Row != WordProjectStatus.IncorrectSpelling;
     public string AccessibleName => Row == WordProjectStatus.NotPresent
-        ? "Choose the words not in FieldWorks" : $"Choose the {OpinionLabel} row";
+        ? MotifAppStrings.CompareChooseNotInFieldWorksAccessibleName : string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.CompareChooseRowAccessibleNameFormat, OpinionLabel);
     public IReadOnlyList<CompareCellViewModel> Cells { get; } = cells;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CountText))]
     private int _count;
 
-    public string CountText => Count == 1 ? "1 word" : $"{Count:N0} words";
+    public string CountText => PluralText.Format(MotifAppStrings.CompareWordsPattern, Count);
 }
 
 /// <summary>One column header of the matrix, with how many words the parser handled that way.</summary>
@@ -826,7 +824,7 @@ public sealed partial class CompareColumnViewModel(CompareColumnKind column) : O
 
     /// <summary>The outcome's mark, which the column's heading wears.</summary>
     public Mark OutcomeMark => Mark.Of(Outcome);
-    public string AccessibleName => $"Choose the PanGloss {Label} column";
+    public string AccessibleName => string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.CompareChooseColumnAccessibleNameFormat, Label);
     public bool IsSame => Column == CompareColumnKind.Match;
     public bool IsDifferent => Column == CompareColumnKind.NoMatch;
     public bool IsNoParse => Column == CompareColumnKind.NoParse;
@@ -864,7 +862,7 @@ public sealed partial class CompareCellViewModel : ObservableObject
     public string Label => AllRefused ? ParserRefusals.Title : _defaultLabel;
     public CompareFamilyKind Family => AllRefused ? CompareFamilyKind.Unknown : _defaultFamily;
     public Mark RefusalMark => Mark.ParserRefusal;
-    public string RefusalBadgeText => AllRefused ? ParserRefusals.Title : $"{RefusedCount:N0} · {ParserRefusals.Title}";
+    public string RefusalBadgeText => AllRefused ? ParserRefusals.Title : string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.CompareRefusalBadgeFormat, RefusedCount.ToString("N0", System.Globalization.CultureInfo.CurrentCulture), ParserRefusals.Title);
 
     /// <summary>The tone the cell's meaning takes.</summary>
     public MeaningTone Tone => WindowWords.ToneOf(Family);
@@ -912,10 +910,10 @@ public sealed partial class CompareCellViewModel : ObservableObject
     public bool ShowsPlaces => HasPlaces;
 
     /// <summary>A count of words with its noun.</summary>
-    public static string WordsText(int count) => count == 1 ? "1 word" : $"{count:N0} words";
+    public static string WordsText(int count) => PluralText.Format(MotifAppStrings.CompareWordsPattern, count);
 
     /// <summary>A count of places with its noun.</summary>
-    public static string PlacesTextOf(int count) => count == 1 ? "1 place" : $"{count:N0} places";
+    public static string PlacesTextOf(int count) => PluralText.Format(MotifAppStrings.ComparePlacesPattern, count);
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasPendingChanges))]
@@ -972,7 +970,7 @@ public sealed partial class CompareCellViewModel : ObservableObject
     public string CountNumberText => WordCount.ToString("N0", System.Globalization.CultureInfo.CurrentCulture);
 
     /// <summary>The unit under the cell's number, shown only while the cell has room for details.</summary>
-    public string CountUnitText => WordCount == 1 ? "word" : "words";
+    public string CountUnitText => WordCount == 1 ? MotifAppStrings.CompareWordUnit : MotifAppStrings.CompareWordsUnit;
 
     /// <summary>A combination the data cannot produce, and did not: drawn as a dash rather than as a zero.</summary>
     public bool IsEmptyImpossible => Family == CompareFamilyKind.None && Count == 0;
@@ -980,10 +978,21 @@ public sealed partial class CompareCellViewModel : ObservableObject
     /// <summary>Whether the cell names what happened; a word FieldWorks lacks has nothing PanGloss could match.</summary>
     public bool ShowsLabel => !AllRefused && Family != CompareFamilyKind.None;
 
-    public string AccessibleName => (HasPlaces ? $"{WordsText(WordCount)}, {PlacesText}: " : $"{WordsText(WordCount)}: ") +
-        $"{CompareViewModel.HeldInFieldWorks(CompareViewModel.OpinionLabelOf(Row))}, " +
-        CompareViewModel.ColumnSentenceOf(Column) +
-        (PendingChangeStatus is { } status ? $". {status}" : string.Empty);
+    public string AccessibleName
+    {
+        get
+        {
+            var held = CompareViewModel.HeldInFieldWorks(CompareViewModel.OpinionLabelOf(Row));
+            var described = HasPlaces
+                ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.CompareCellAccessibleNamePlacesFormat,
+                    WordsText(WordCount), PlacesText, held, CompareViewModel.ColumnSentenceOf(Column))
+                : string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.CompareCellAccessibleNameFormat,
+                    WordsText(WordCount), held, CompareViewModel.ColumnSentenceOf(Column));
+            return PendingChangeStatus is { } status
+                ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.CompareCellAccessibleNameStatusFormat, described, status)
+                : described;
+        }
+    }
 }
 
 public sealed record OpinionLegendItem(OpinionMarkKind Kind, string Label);
@@ -1010,12 +1019,12 @@ public sealed record CompareSharedMorphemeViewModel(ParserReadingMorphViewModel 
 
     public string Gloss => Morpheme.Gloss;
 
-    public string CountText => $"in {Count:N0}";
+    public string CountText => string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.CompareMorphemeCountFormat, Count.ToString("N0", System.Globalization.CultureInfo.CurrentCulture));
 
     public string Separator => HasSeparator ? "·" : string.Empty;
 
     public string AccessibleName => (Gloss.Length == 0 ? Form : $"{Form} {Gloss}") +
-        (Count == 1 ? ": 1 of these words uses it" : $": {Count:N0} of these words use it");
+        PluralText.Format(MotifAppStrings.CompareMorphemeUsedPattern, Count);
 }
 
 /// <summary>A shortcut that chooses a named set of cells at once, such as every word PanGloss stopped on.</summary>
@@ -1066,7 +1075,7 @@ public sealed partial class CompareWordViewModel : ObservableObject, IDisposable
         OpinionMark = OpinionMarks[0].Kind;
         OpinionLabel = string.Join(", ", OpinionMarks.Select(mark => mark.Label));
         PanGlossLabel = WordRow.HasRefusalReason ? ParserRefusals.Title : CompareViewModel.PanGlossClassLabel(Marking.PanGlossClass);
-        AccessibleName = $"{Word}: {CompareViewModel.HeldInFieldWorks(OpinionLabel)}, {CompareViewModel.ColumnSentenceOf(Column)}.";
+        AccessibleName = string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.CompareWordAccessibleNameFormat, Word, CompareViewModel.HeldInFieldWorks(OpinionLabel), CompareViewModel.ColumnSentenceOf(Column));
         Occurrences = word.OccurrenceCount;
         ElapsedMs = word.ElapsedMs;
         Meaning = WordRow.Meaning;
@@ -1085,7 +1094,8 @@ public sealed partial class CompareWordViewModel : ObservableObject, IDisposable
         ReadingCount = word.Morphology?.Analyses.Count ?? 0;
         ReadingChoices = word.Morphology?.Analyses.Select((reading, index) =>
             new CompareReadingChoice(index, reading,
-                $"Analysis {index + 1}: {(index < word.Readings.Count ? word.Readings[index].Text : "Unresolved")}"))
+                string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.CompareReadingChoiceFormat, index + 1,
+                    index < word.Readings.Count ? word.Readings[index].Text : MotifAppStrings.CompareReadingUnresolved)))
             .ToArray() ?? [];
     }
 
@@ -1212,8 +1222,7 @@ public sealed partial class CompareWordViewModel : ObservableObject, IDisposable
     public string ReadingsSummary => Readings.Count switch
     {
         0 => WordRow.OutcomeWord,
-        1 => $"{WordRow.OutcomeWord} · 1 analysis",
-        var count => $"{WordRow.OutcomeWord} · {count} analyses",
+        var count => string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.CompareOutcomeAnalysesFormat, WordRow.OutcomeWord, PluralText.Format(MotifAppStrings.CompareAnalysesPattern, count)),
     };
 
     /// <summary>Why the word has no analyses from PanGloss, in the window's words.</summary>
@@ -1284,17 +1293,17 @@ public sealed record CompareFixFirstViewModel(CompareWordViewModel Word, FixFirs
 
     public string Category => Priority.Category switch
     {
-        FixFirstCategory.ApprovedNoParse => "Approved, not parsed",
-        FixFirstCategory.ApprovedNoMatch => "Approved, parsed differently",
-        FixFirstCategory.RejectedRebuilt => "Disapproved but built",
-        _ => "Unknown, grammar can't build it",
+        FixFirstCategory.ApprovedNoParse => MotifAppStrings.CompareFixApprovedNoParse,
+        FixFirstCategory.ApprovedNoMatch => MotifAppStrings.CompareFixApprovedNoMatch,
+        FixFirstCategory.RejectedRebuilt => MotifAppStrings.CompareFixRejectedRebuilt,
+        _ => MotifAppStrings.CompareFixUnknownNoBuild,
     };
 
     public string Explanation => Priority.Category switch
     {
         FixFirstCategory.ApprovedNoParse or FixFirstCategory.ApprovedNoMatch => Priority.Explanation,
-        FixFirstCategory.RejectedRebuilt => "The grammar still builds an analysis you disapproved.",
-        _ => "The grammar could not build this Unknown analysis.",
+        FixFirstCategory.RejectedRebuilt => MotifAppStrings.CompareFixRejectedRebuiltExplanation,
+        _ => MotifAppStrings.CompareFixUnknownNoBuildExplanation,
     };
 
     public string OccurrenceText => Word.Occurrences is { } count ? $"×{count}" : "—";

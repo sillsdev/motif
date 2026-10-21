@@ -14,23 +14,23 @@ public static class TraceStepKinds
 
     private static readonly IReadOnlyDictionary<string, string> Kinds = new Dictionary<string, string>(StringComparer.Ordinal)
     {
-        ["MorphologicalRule"] = "Morphological rule",
-        ["PhonologicalRule"] = "Phonological rule",
-        ["Template"] = "Affix template",
-        ["LexicalLookup"] = "Lexical lookup",
-        ["Stratum"] = "Rule level",
-        ["CompoundingRule"] = "Compound rule",
-        ["Word"] = "Word",
-        ["Successful"] = "Built the word",
-        ["Failed"] = "No analysis found",
-        ["Blocked"] = "Blocked",
+        ["MorphologicalRule"] = MotifAppStrings.TraceKindMorphologicalRule,
+        ["PhonologicalRule"] = MotifAppStrings.TraceKindPhonologicalRule,
+        ["Template"] = MotifAppStrings.TraceKindAffixTemplate,
+        ["LexicalLookup"] = MotifAppStrings.TraceKindLexicalLookup,
+        ["Stratum"] = MotifAppStrings.TraceKindRuleLevel,
+        ["CompoundingRule"] = MotifAppStrings.TraceKindCompoundRule,
+        ["Word"] = MotifAppStrings.Word,
+        ["Successful"] = MotifAppStrings.TraceKindBuiltTheWord,
+        ["Failed"] = MotifAppStrings.TraceKindNoAnalysisFound,
+        ["Blocked"] = MotifAppStrings.TraceKindBlocked,
     };
 
     /// <summary>The plain name for a trace step's kind, never the parser's own class name.</summary>
     /// <param name="type">The step's kind as the trace records it.</param>
     public static string Describe(string? type)
     {
-        if (string.IsNullOrWhiteSpace(type)) return "Step";
+        if (string.IsNullOrWhiteSpace(type)) return MotifAppStrings.TraceKindStep;
         if (Kinds.TryGetValue(type, out var exact)) return exact;
         var stem = type;
         // Input and Output come off before Analysis and Synthesis, so "TemplateAnalysisInput" leaves "Template".

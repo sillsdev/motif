@@ -1,3 +1,4 @@
+using SIL.Motif.App;
 using System.Text.Json;
 using Avalonia.Input;
 using SIL.Motif.App.Services;
@@ -375,7 +376,7 @@ public sealed class ParsimonyPageModelTests
         Assert.DoesNotContain("Grammar side", details.Keys);
         Assert.DoesNotContain("Trigger", details.Keys);
         Assert.Equal($"Reported because 2 of 3 prohibitions match {ShortTitle(ParsimonyMeasure)}.",
-            details["Why it was reported"]);
+            details[MotifAppStrings.ParsimonyDetailWhyReported]);
     }
 
     [Fact]
@@ -670,7 +671,7 @@ public sealed class ParsimonyPageModelTests
         var row = Assert.Single(page.Rows, item => !item.IsHeader);
         Assert.Equal("Changed since it was kept: back for review", row.Disposition);
         Assert.True(page.SelectFinding(row.Link!));
-        Assert.Contains(page.Evidence!.Details, detail => detail.Label == "Earlier reason" &&
+        Assert.Contains(page.Evidence!.Details, detail => detail.Label == MotifAppStrings.ParsimonyDetailEarlierReason &&
             detail.Value == "Checked against the paradigm.");
     }
 

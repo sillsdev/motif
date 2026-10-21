@@ -120,7 +120,7 @@ public sealed partial class TraceWordViewModel
             var addresses = SIL.Motif.Commands.Queries.TraceBuildingStory.Steps(path.Select(step => step.RecordedStep).ToArray())
                 .Select(step => step.StepId).ToHashSet(StringComparer.Ordinal);
             var building = path.Where(step => addresses.Contains(step.RecordedStep.StepId)).ToList();
-            if (building.Count == 0) building.AddRange(path.Where(step => step.KindText is not ("Rule level" or "Word")));
+            if (building.Count == 0) building.AddRange(path.Where(step => step.KindText != MotifAppStrings.TraceKindRuleLevel && step.KindText != MotifAppStrings.Word));
             foreach (var step in building) step.IsSeparatePlainEvent = false;
             if (SelectedStep is { } selected && building.All(step => step.RecordedStep.StepId != selected.RecordedStep.StepId))
             {

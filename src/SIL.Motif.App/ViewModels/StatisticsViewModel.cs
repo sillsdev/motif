@@ -45,12 +45,12 @@ public sealed partial class StatisticsViewModel : ObservableObject
     [
         .. StatsCommand.StatisticsGroups.Select(group => new StatsGroupChoice(group, group switch
         {
-            "word" => "By word",
-            "object" => "By grammar object",
-            "allomorph" => "By allomorph",
-            "morpheme" => "By morpheme",
-            "group" => "By object group",
-            "never-fires" => "Objects that never fired",
+            "word" => MotifAppStrings.StatsGroupByWord,
+            "object" => MotifAppStrings.StatsGroupByObject,
+            "allomorph" => MotifAppStrings.StatsGroupByAllomorph,
+            "morpheme" => MotifAppStrings.StatsGroupByMorpheme,
+            "group" => MotifAppStrings.StatsGroupByObjectGroup,
+            "never-fires" => MotifAppStrings.StatsGroupNeverFired,
             _ => group,
         })),
     ];
@@ -82,18 +82,15 @@ public sealed partial class StatisticsViewModel : ObservableObject
     private bool IsWordGroup => SelectedGroup == "word";
 
     /// <summary>What the count column counts: a word's analysis attempts, or each grammar object's own attempts.</summary>
-    public string CountHeader => IsWordGroup ? "Analysis attempts" : "Attempts";
+    public string CountHeader => IsWordGroup ? MotifAppStrings.StatsHeaderAnalysisAttempts : MotifAppStrings.StatsHeaderAttempts;
 
     /// <summary>What the time column times: a word's whole parse, or the time spent in the object itself.</summary>
-    public string TimeHeader => IsWordGroup ? "Word time (ms)" : "Own time (ms)";
+    public string TimeHeader => IsWordGroup ? MotifAppStrings.StatsHeaderWordTime : MotifAppStrings.StatsHeaderOwnTime;
 
     /// <summary>What the shading compares, and where each number comes from.</summary>
     public string ShadingNote => IsWordGroup
-        ? "Shading: darker is larger, against the largest in its column. Analysis attempts and word time are the " +
-            "parser's own record of the parse; whether a word finished comes from the last parse."
-        : "Shading: darker is larger. An attempt is a different event for each kind (a rule tried, an entry " +
-            "matched, a root looked up), so attempts are shaded only against rows of their own kind. Own time " +
-            "leaves out time spent in the objects this one called.";
+        ? MotifAppStrings.StatsShadingWord
+        : MotifAppStrings.StatsShadingObject;
 
     /// <summary>Whether these rows use Timing's selected words or cover the whole Assessment.</summary>
     public string ScopeNote
@@ -101,14 +98,15 @@ public sealed partial class StatisticsViewModel : ObservableObject
         get
         {
             var scope = !IsWordGroup
-                ? $"{SelectedGroupChoice.Label} · all rows from the complete parse; selected words do not filter them."
+                ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.StatsScopeObjectFormat,
+                    SelectedGroupChoice.Label)
                 : WordScope is { Count: 0 }
-                    ? "By word · no words selected in Timing."
+                    ? MotifAppStrings.StatsScopeNoWords
                 : WordScope is { } words
-                    ? $"By word · the same {SpeedText.Count(words.Count, "word", "words")} selected in Timing."
-                    : "By word · every word in the parse.";
+                    ? PluralText.Format(MotifAppStrings.StatsScopeSelectedWordsPattern, words.Count)
+                    : MotifAppStrings.StatsScopeEveryWord;
             return HasTimingOverrides
-                ? scope + " These statistics are from the original Parse all words run; later word reruns appear above in Timing."
+                ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.StatsScopeOverridesFormat, scope)
                 : scope;
         }
     }
@@ -126,7 +124,8 @@ public sealed partial class StatisticsViewModel : ObservableObject
 
     public bool AnyIncomplete => IncompleteCount > 0;
 
-    public string IncompleteHeadline => $"Stopped {IncompleteCount:N0}";
+    public string IncompleteHeadline => string.Format(System.Globalization.CultureInfo.CurrentCulture,
+        MotifAppStrings.StatsStoppedHeadlineFormat, IncompleteCount.ToString("N0", System.Globalization.CultureInfo.CurrentCulture));
 
     public string IncompleteDetail
     {
@@ -134,16 +133,15 @@ public sealed partial class StatisticsViewModel : ObservableObject
         {
             var stopped = ScopeRows.Where(row => row.IsIncomplete).ToArray();
             if (stopped.Length == 0)
-                return "No word is recorded as stopped at a time or search limit.";
+                return MotifAppStrings.StatsNoWordStopped;
             var stepLimit = stopped.Any(row => row.CompletionStatus?.Contains("search", StringComparison.OrdinalIgnoreCase) == true);
             var timeLimit = stopped.Any(row => row.CompletionStatus?.Contains("time", StringComparison.OrdinalIgnoreCase) == true);
             return (stepLimit, timeLimit) switch
             {
-                (true, true) => "Stopped at a search limit and ran out of time · Raise the analysis attempt limit under More " +
-                    "or increase Seconds per word.",
-                (true, false) => "Stopped at a search limit · Raise the analysis attempt limit under More.",
-                (false, true) => "Ran out of time · Increase Seconds per word.",
-                _ => "Each search stopped at a limit. See the stop reason on its row.",
+                (true, true) => MotifAppStrings.TimingAdviceBothLimits,
+                (true, false) => MotifAppStrings.TimingAdviceSearchLimit,
+                (false, true) => MotifAppStrings.TimingAdviceTimeLimit,
+                _ => MotifAppStrings.StatsEachSearchStopped,
             };
         }
     }
@@ -152,14 +150,13 @@ public sealed partial class StatisticsViewModel : ObservableObject
 
     public string AnalysesHeadline => SeveralAnalysesCount switch
     {
-        0 => "No word has more than one analysis",
-        1 => "1 word has more than one analysis",
-        _ => $"{SeveralAnalysesCount:N0} words have more than one analysis",
+        0 => MotifAppStrings.StatsNoWordSeveral,
+        _ => PluralText.Format(MotifAppStrings.StatsSeveralWordsPattern, SeveralAnalysesCount),
     };
 
     public string AnalysesDetail => SeveralAnalysesCount == 0
-        ? "No search produced more than one analysis."
-        : "Sort by Analyses to see these words.";
+        ? MotifAppStrings.StatsNoSearchSeveral
+        : MotifAppStrings.StatsSortByAnalyses;
 
     /// <summary>The project containing the retained Assessment, or <c>null</c> before one is chosen.</summary>
     [ObservableProperty]

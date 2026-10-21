@@ -44,9 +44,10 @@ public sealed class WordRowRoutes : ObservableObject
         }
     }
 
-    public string OpenInTextLabel => HasTexts ? "Open in text" : "Open word";
+    public string OpenInTextLabel => HasTexts ? MotifAppStrings.WordRowOpenInText : MotifAppStrings.WordRowOpenWord;
 
-    public string OpenInTextAutomationNameFormat => HasTexts ? "Open {0} in Analyze texts" : "Open {0}";
+    public string OpenInTextAutomationNameFormat => HasTexts
+        ? MotifAppStrings.WordRowOpenInTextAccessibleNameFormat : MotifAppStrings.WordRowOpenWordAccessibleNameFormat;
 
     internal void Register(WordRowViewModel row) => _rows.Add(new WeakReference<WordRowViewModel>(row));
 }
@@ -193,7 +194,9 @@ public sealed partial class WordRowViewModel : ObservableObject
     public IReadOnlyList<WordRowMorphemeViewModel> PanGlossMorphemes { get; }
 
     public string ReadingCountText => _row.PanGlossReadingCount > 1
-        ? $"{_row.PanGlossReadingCount:N0} analyses" + (HasPanGlossMorphemes ? " · showing one" : string.Empty) : string.Empty;
+        ? string.Format(CultureInfo.CurrentCulture, HasPanGlossMorphemes
+            ? MotifAppStrings.WordRowAnalysesShowingOneFormat : MotifAppStrings.WordRowAnalysesFormat,
+            _row.PanGlossReadingCount.ToString("N0", CultureInfo.CurrentCulture)) : string.Empty;
 
     public string RefusalReason => _row.MeaningCode == "refused" ? _row.MeaningDetail : string.Empty;
     public bool HasRefusalReason => RefusalReason.Length > 0;
@@ -225,7 +228,7 @@ public sealed partial class WordRowViewModel : ObservableObject
     {
         _row.MeaningDetail,
         _row.MeaningCode == "disapproved-rebuilt"
-            ? "PanGloss matched an analysis FieldWorks marked Disapproved."
+            ? MotifAppStrings.WordRowMatchedDisapproved
             : string.Empty,
     }.Where(detail => detail.Length > 0));
 
@@ -251,9 +254,9 @@ public sealed partial class WordRowViewModel : ObservableObject
                     var storedInfo = ObjectIdentity.Create("msa", stored.GrammaticalInfoId);
                     var parsedInfo = ObjectIdentity.Create("msa", parsed.GrammaticalInfoId);
                     if (storedForm is null || parsedForm is null || storedInfo is null || parsedInfo is null)
-                        explanations.Add($"identity not recorded: {parsed.Form} ‘{parsed.Gloss}’");
+                        explanations.Add(string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.WordRowIdentityNotRecordedFormat, parsed.Form, parsed.Gloss));
                     else if (!ObjectIdentity.Same(storedForm, parsedForm) || !ObjectIdentity.Same(storedInfo, parsedInfo))
-                        explanations.Add($"different morpheme identity: {parsed.Form} ‘{parsed.Gloss}’");
+                        explanations.Add(string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.WordRowDifferentIdentityFormat, parsed.Form, parsed.Gloss));
                 }
                 else if (sameText)
                 {
@@ -261,13 +264,13 @@ public sealed partial class WordRowViewModel : ObservableObject
                         .Concat(segment.PanGloss.Select(index => panGloss[index])).ToArray();
                     var recorded = morphs.All(morph => ObjectIdentity.Create("form", morph.AllomorphId) is not null &&
                         ObjectIdentity.Create("msa", morph.GrammaticalInfoId) is not null);
-                    var reason = recorded ? "morpheme sequence differs" : "identity not recorded";
-                    explanations.Add(reason + ": " + string.Join(", ",
-                        morphs.Select(morph => $"{morph.Form} ‘{morph.Gloss}’").Distinct()));
+                    explanations.Add(string.Format(CultureInfo.CurrentCulture,
+                        recorded ? MotifAppStrings.WordRowSequenceDiffersFormat : MotifAppStrings.WordRowIdentityListFormat,
+                        string.Join(", ", morphs.Select(morph => $"{morph.Form} ‘{morph.Gloss}’").Distinct())));
                 }
             }
-            return explanations.Count == 0 ? string.Empty : "Same form and gloss; " +
-                string.Join("; ", explanations.Distinct());
+            return explanations.Count == 0 ? string.Empty : string.Format(CultureInfo.CurrentCulture,
+                MotifAppStrings.WordRowSameFormGlossFormat, string.Join("; ", explanations.Distinct()));
         }
     }
 
@@ -284,7 +287,7 @@ public sealed partial class WordRowViewModel : ObservableObject
             if (stored.Form == parsed.Form && stored.Gloss == parsed.Gloss &&
                 !string.IsNullOrWhiteSpace(stored.Entry) && !string.IsNullOrWhiteSpace(parsed.Entry) &&
                 !string.Equals(stored.Entry, parsed.Entry, StringComparison.Ordinal))
-                tips[segment.PanGloss[0]] = $"Different entry: {parsed.Entry} instead of {stored.Entry}";
+                tips[segment.PanGloss[0]] = string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.WordRowDifferentEntryFormat, parsed.Entry, stored.Entry);
         }
         return tips;
     }
@@ -311,15 +314,16 @@ public sealed partial class WordRowViewModel : ObservableObject
 
     /// <summary>The place count in the window's words, or empty when it is not known.</summary>
     public string PlacesTooltip => _row.Places is { } places
-        ? places == 1 ? "1 place" : $"{places:N0} places"
+        ? PluralText.Format(MotifAppStrings.ComparePlacesPattern, places)
         : string.Empty;
 
     /// <summary>How long the parser took, or empty for a word it did not time.</summary>
-    public string ElapsedText => _row.ElapsedMs is not { } ms ? string.Empty : ms == 0 ? "<1 ms" : $"{ms:N0} ms";
+    public string ElapsedText => _row.ElapsedMs is not { } ms ? string.Empty : ms == 0 ? MotifAppStrings.WordRowLessThanMs
+        : string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.WordRowMsFormat, ms.ToString("N0", System.Globalization.CultureInfo.CurrentCulture));
 
     /// <summary>When this word's producing measurement was recorded, independent of its neighbours.</summary>
     public string MeasuredText => _row.Origin is { } origin
-        ? $"Measured {origin.MeasuredUtc.ToLocalTime().ToString("g", CultureInfo.CurrentCulture)}" : string.Empty;
+        ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.WordRowMeasuredFormat, origin.MeasuredUtc.ToLocalTime().ToString("g", System.Globalization.CultureInfo.CurrentCulture)) : string.Empty;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowUnread))]
@@ -340,7 +344,7 @@ public sealed partial class WordRowViewModel : ObservableObject
     /// <summary>Whether to show the Unread mark; a read word, or one whose read state is unknown, shows nothing.</summary>
     public bool ShowUnread => IsUnread == true;
 
-    public string UnreadText => "Unread";
+    public string UnreadText => MotifAppStrings.WordRowUnread;
 
     /// <summary>The stable automation id of one part of this word's row in <paramref name="list"/>.</summary>
     /// <param name="list">The list the row sits in, such as <c>matrix</c>, <c>fix-first</c> or <c>lists</c>.</param>
@@ -349,16 +353,16 @@ public sealed partial class WordRowViewModel : ObservableObject
 
     /// <summary>The one-line summary a hover or focus shows, in window words.</summary>
     public string Summary => string.Join(" · ",
-        new[] { Word, OpinionLabel, $"PanGloss: {OutcomeWord}", Meaning }.Where(part => part.Length > 0));
+        new[] { Word, OpinionLabel, string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.WordRowSummaryPanGlossFormat, OutcomeWord), Meaning }.Where(part => part.Length > 0));
 
-    public string OpenInTextLabel => _routes?.OpenInTextLabel ?? "Open in text";
+    public string OpenInTextLabel => _routes?.OpenInTextLabel ?? MotifAppStrings.WordRowOpenInText;
 
     public string OpenInTextAutomationName => string.Format(CultureInfo.CurrentCulture,
-        _routes?.OpenInTextAutomationNameFormat ?? "Open {0} in Analyze texts", Word);
+        _routes?.OpenInTextAutomationNameFormat ?? MotifAppStrings.WordRowOpenInTextAccessibleNameFormat, Word);
 
     public IRelayCommand OpenInTextCommand { get; }
 
-    public string TryWordLabel => "Try a Word";
+    public string TryWordLabel => MotifAppStrings.TryAWord;
 
     public IRelayCommand TryWordCommand { get; }
 
@@ -373,18 +377,18 @@ public sealed partial class WordRowViewModel : ObservableObject
 
     public bool HasWordAnalysesLink => WordAnalysesLink is not null;
 
-    public string WordAnalysesLabel => $"{FieldWorksLinks.ToolName(WordAnalysesTool)} ↗";
+    public string WordAnalysesLabel => string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.WordRowToolLinkFormat, FieldWorksLinks.ToolName(WordAnalysesTool));
 
     /// <summary>The accessible name and tip of the Word Analyses link.</summary>
-    public string WordAnalysesName => $"Open {Word} in {FieldWorksLinks.ToolName(WordAnalysesTool)}";
+    public string WordAnalysesName => string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.WordRowOpenInToolFormat, Word, FieldWorksLinks.ToolName(WordAnalysesTool));
 
     /// <summary>The Word Analyses step's tip: where it opens, or why it cannot.</summary>
     public string WordAnalysesTip => HasWordAnalysesLink ? WordAnalysesName : WordAnalysesDisabledReason;
 
     /// <summary>Why the Word Analyses step cannot open, or empty when it can.</summary>
     public string WordAnalysesDisabledReason => HasWordAnalysesLink ? string.Empty
-        : _notParsedYet ? $"Parse all words to link {Word} to Word Analyses"
-        : $"FieldWorks has no wordform spelled {Word}";
+        : _notParsedYet ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.WordRowParseToLinkFormat, Word)
+        : string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.WordRowNoWordformFormat, Word);
 
     private static ParserOutcome OutcomeOf(WordRowOutcome outcome) => outcome switch
     {

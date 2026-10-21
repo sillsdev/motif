@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="clr-namespace:SIL.Motif.App"
              xmlns:conv="clr-namespace:Avalonia.Data.Converters;assembly=Avalonia.Base"
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
@@ -8,15 +9,15 @@
   <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
     <WrapPanel ItemSpacing="{DynamicResource Intent.Space.Related}" LineSpacing="{DynamicResource Intent.Space.Compact}">
       <ComboBox x:Name="ExpertTracePanelExpertAttemptsItems" ItemsSource="{Binding ExpertAttempts}" SelectedItem="{Binding SelectedCandidate, Mode=TwoWay}"
-                PlaceholderText="Show one analysis path" AutomationProperties.Name="Expert attempt">
+                PlaceholderText="Show one analysis path" AutomationProperties.Name="{x:Static app:MotifAppStrings.ExpertAttemptAccessibleName}">
         <ComboBox.ItemTemplate>
           <DataTemplate x:DataType="vm:TraceCandidateViewModel">
             <TextBlock Text="{Binding AttemptId, StringFormat='Attempt {0}'}" />
           </DataTemplate>
         </ComboBox.ItemTemplate>
       </ComboBox>
-      <CheckBox Content="Every step" IsChecked="{Binding ExpertWholeTree, Mode=TwoWay}"
-                AutomationProperties.Name="Expert whole tree" ToolTip.Tip="Turn off to show only the chosen attempt's recorded ancestors and terminal event." />
+      <CheckBox Content="{x:Static app:MotifAppStrings.EveryStep}" IsChecked="{Binding ExpertWholeTree, Mode=TwoWay}"
+                AutomationProperties.Name="{x:Static app:MotifAppStrings.ExpertWholeTreeAccessibleName}" ToolTip.Tip="{x:Static app:MotifAppStrings.ExpertEveryStepTip}" />
     </WrapPanel>
     <TextBlock Text="{Binding ExpertScopeText}" Classes="muted" TextWrapping="Wrap"
                IsVisible="{Binding ExpertScopeText, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
@@ -27,12 +28,12 @@
         <ColumnDefinition Width="1.25*" MinWidth="{DynamicResource Component.TryWord.TraceOutcomeColumnMinWidth}" />
         <ColumnDefinition Width="2*" MinWidth="{DynamicResource Component.TryWord.TraceNotationColumnMinWidth}" />
       </Grid.ColumnDefinitions>
-      <TextBlock Text="Event · source" TextWrapping="Wrap" />
-      <TextBlock Grid.Column="1" Text="Input → output" TextWrapping="Wrap" />
-      <TextBlock Grid.Column="2" Text="Outcome" TextWrapping="Wrap" />
-      <TextBlock Grid.Column="3" Text="Notation" TextWrapping="Wrap" />
+      <TextBlock Text="{x:Static app:MotifAppStrings.EventSource}" TextWrapping="Wrap" />
+      <TextBlock Grid.Column="1" Text="{x:Static app:MotifAppStrings.InputOutput}" TextWrapping="Wrap" />
+      <TextBlock Grid.Column="2" Text="{x:Static app:MotifAppStrings.Outcome}" TextWrapping="Wrap" />
+      <TextBlock Grid.Column="3" Text="{x:Static app:MotifAppStrings.Notation}" TextWrapping="Wrap" />
     </Grid>
-    <ItemsControl x:Name="ExpertTracePanelExpertEventsItems" ItemsSource="{Binding ExpertEvents}" AutomationProperties.Name="Expert trace events">
+    <ItemsControl x:Name="ExpertTracePanelExpertEventsItems" ItemsSource="{Binding ExpertEvents}" AutomationProperties.Name="{x:Static app:MotifAppStrings.ExpertTraceEventsAccessibleName}">
       <ItemsControl.ItemsPanel>
         <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
       </ItemsControl.ItemsPanel>
@@ -69,7 +70,7 @@
               </StackPanel>
               <StackPanel Grid.Column="2" Spacing="{DynamicResource Intent.Space.Minimal}">
                 <TextBlock Text="{Binding RecordedOutcomeText}" TextWrapping="Wrap" />
-                <views:TraceNotationToken Classes="traceToken" Theme="{DynamicResource BorderlessButton}" ToolTip.Tip="The producer's subrule index. No allomorph identity is inferred from it."
+                <views:TraceNotationToken Classes="traceToken" Theme="{DynamicResource BorderlessButton}" ToolTip.Tip="{x:Static app:MotifAppStrings.ExpertSubruleIndexTip}"
                                           IsVisible="{Binding HasSubrule}">
                   <TextBlock Text="{Binding SubruleText}" TextWrapping="Wrap" />
                 </views:TraceNotationToken>
@@ -77,7 +78,7 @@
               <StackPanel Grid.Column="3" Spacing="{DynamicResource Intent.Space.Minimal}">
                 <views:TraceNotationToken Classes="traceToken" Command="{Binding $parent[views:ExpertTracePanel].((vm:TraceWordViewModel)DataContext).SelectExpertStepCommand}" CommandParameter="{Binding}"
                         Theme="{DynamicResource BorderlessButton}" HorizontalContentAlignment="Left"
-                        AutomationProperties.Name="{Binding RecordedEventAddress}" ToolTip.Tip="Select this occurrence to read its recorded details.">
+                        AutomationProperties.Name="{Binding RecordedEventAddress}" ToolTip.Tip="{x:Static app:MotifAppStrings.ExpertOccurrenceTip}">
                   <StackPanel>
                     <TextBlock Text="{Binding RecordedStep.StepId}" Classes="traceNotation" TextWrapping="Wrap" />
                     <TextBlock Text="{Binding Type}" Classes="traceNotation" TextWrapping="Wrap" />
@@ -91,13 +92,13 @@
         </DataTemplate>
       </ItemsControl.ItemTemplate>
     </ItemsControl>
-    <Expander IsExpanded="False" AutomationProperties.Name="Expert phonological rules">
+    <Expander IsExpanded="False" AutomationProperties.Name="{x:Static app:MotifAppStrings.ExpertPhonologicalRulesAccessibleName}">
       <Expander.Header>
-        <TextBlock Text="Phonological rules applied" TextWrapping="Wrap" />
+        <TextBlock Text="{x:Static app:MotifAppStrings.PhonologicalRulesApplied}" TextWrapping="Wrap" />
       </Expander.Header>
       <StackPanel Spacing="{DynamicResource Intent.Space.Snug}">
-        <TextBlock Text="Recorded phonological events in this view; each row retains its own outcome." Classes="muted" TextWrapping="Wrap" />
-        <TextBlock Text="No phonological events recorded in this view" IsVisible="{Binding !HasExpertPhonologicalEvents}"
+        <TextBlock Text="{x:Static app:MotifAppStrings.ExpertPhonologicalEventsNote}" Classes="muted" TextWrapping="Wrap" />
+        <TextBlock Text="{x:Static app:MotifAppStrings.ExpertNoPhonologicalEvents}" IsVisible="{Binding !HasExpertPhonologicalEvents}"
                    Classes="muted" TextWrapping="Wrap" />
         <ItemsControl x:Name="ExpertTracePanelExpertPhonologicalEventsItems" ItemsSource="{Binding ExpertPhonologicalEvents}">
           <ItemsControl.ItemsPanel>
@@ -132,32 +133,32 @@
     </Expander>
     <Border Classes="card" IsVisible="{Binding SelectedStep, Converter={x:Static conv:ObjectConverters.IsNotNull}}">
       <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
-        <TextBlock Text="Selected event" />
+        <TextBlock Text="{x:Static app:MotifAppStrings.SelectedEvent}" />
         <TextBlock Text="{Binding SelectedStep.RecordedEventAddress}" Classes="traceNotation" TextWrapping="Wrap" />
         <Grid ColumnDefinitions="1.05*,*" ColumnSpacing="{DynamicResource Intent.Space.Related}">
           <StackPanel Spacing="{DynamicResource Intent.Space.Snug}">
-            <TextBlock Text="Readable" />
+            <TextBlock Text="{x:Static app:MotifAppStrings.Readable}" />
             <views:CopyableTextBlock Text="{Binding ExpertReadableText}" TextWrapping="Wrap" />
             <Expander IsExpanded="False">
               <Expander.Header>
-                <TextBlock Text="Recorded rejection details" TextWrapping="Wrap" />
+                <TextBlock Text="{x:Static app:MotifAppStrings.RecordedRejectionDetails}" TextWrapping="Wrap" />
               </Expander.Header>
               <views:CopyableTextBlock Text="{Binding SelectedStep.RecordedRejectionText}" TextWrapping="Wrap" />
             </Expander>
           </StackPanel>
           <Expander Grid.Column="1" IsExpanded="False">
             <Expander.Header>
-              <TextBlock Text="Parser record" TextWrapping="Wrap" />
+              <TextBlock Text="{x:Static app:MotifAppStrings.ParserRecord}" TextWrapping="Wrap" />
             </Expander.Header>
             <views:CopyableTextBlock Text="{Binding ExpertRawRecord}" Classes="traceNotation" TextWrapping="Wrap" />
           </Expander>
         </Grid>
-        <Expander IsExpanded="False" AutomationProperties.Name="Expert environment notation">
+        <Expander IsExpanded="False" AutomationProperties.Name="{x:Static app:MotifAppStrings.ExpertEnvironmentNotationAccessibleName}">
           <Expander.Header>
-            <TextBlock Text="Environment notation" TextWrapping="Wrap" />
+            <TextBlock Text="{x:Static app:MotifAppStrings.EnvironmentNotation}" TextWrapping="Wrap" />
           </Expander.Header>
           <StackPanel>
-          <TextBlock Text="Environment not recorded" IsVisible="{Binding !HasExpertEnvironment}" Classes="muted" />
+          <TextBlock Text="{x:Static app:MotifAppStrings.EnvironmentNotRecorded}" IsVisible="{Binding !HasExpertEnvironment}" Classes="muted" />
           <ItemsControl x:Name="ExpertTracePanelExpertEnvironmentTokensItems" ItemsSource="{Binding ExpertEnvironmentTokens}">
             <ItemsControl.ItemsPanel>
               <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>

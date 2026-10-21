@@ -11,9 +11,9 @@
         <Button DockPanel.Dock="Right" Content="{Binding HandoffActionText}"
                 Classes="Primary" Theme="{DynamicResource SolidButton}"
                 Command="{Binding Handoff.RunCommand}"
-                AutomationProperties.Name="Write the AI Handoff folder"
+                AutomationProperties.Name="{x:Static app:MotifAppStrings.WriteTheAIHandoffFolderAccessibleName}"
                 AutomationProperties.AutomationId="{x:Static app:AutomationIds.WriteHandoff}" />
-        <views:CopyableTextBlock Classes="section-title" Text="AI Handoff" />
+        <views:CopyableTextBlock Classes="section-title" Text="{x:Static app:MotifAppStrings.AiHandoffHeading}" />
       </DockPanel>
     </Border>
     <ContentControl x:Name="HandoffHost" Grid.Row="1" />

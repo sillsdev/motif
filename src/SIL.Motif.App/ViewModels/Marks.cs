@@ -249,45 +249,45 @@ public static class WindowWords
     /// <summary>The outcome's word: Same, Different, No parse, Stopped or Not parsed.</summary>
     public static string Of(ParserOutcome outcome) => outcome switch
     {
-        ParserOutcome.Same => "Same",
-        ParserOutcome.Different => "Different",
-        ParserOutcome.NoParse => "No parse",
-        ParserOutcome.Stopped => "Stopped",
-        _ => "Not parsed",
+        ParserOutcome.Same => MotifAppStrings.OutcomeSame,
+        ParserOutcome.Different => MotifAppStrings.OutcomeDifferent,
+        ParserOutcome.NoParse => MotifAppStrings.OutcomeNoParse,
+        ParserOutcome.Stopped => MotifAppStrings.OutcomeStopped,
+        _ => MotifAppStrings.OutcomeNotParsed,
     };
 
     /// <summary>The opinion in FieldWorks' own words.</summary>
     public static string Of(OpinionMarkKind opinion) => opinion switch
     {
-        OpinionMarkKind.Approved => "Approved",
-        OpinionMarkKind.Disapproved => "Disapproved",
-        OpinionMarkKind.Unknown => "Unknown",
-        _ => "Not in FieldWorks",
+        OpinionMarkKind.Approved => MotifAppStrings.OpinionApproved,
+        OpinionMarkKind.Disapproved => MotifAppStrings.OpinionDisapproved,
+        OpinionMarkKind.Unknown => MotifAppStrings.OpinionUnknown,
+        _ => MotifAppStrings.NotInFieldWorks,
     };
 
     /// <summary>The tone's default word: Fine, Have a look, Problem or No result.</summary>
     public static string Of(MeaningTone tone) => tone switch
     {
-        MeaningTone.Fine => "Fine",
-        MeaningTone.Look => "Have a look",
-        MeaningTone.Problem => "Problem",
-        _ => "No result",
+        MeaningTone.Fine => MotifAppStrings.MeaningFine,
+        MeaningTone.Look => MotifAppStrings.MeaningHaveALook,
+        MeaningTone.Problem => MotifAppStrings.MeaningProblem,
+        _ => MotifAppStrings.MeaningNoResult,
     };
 
     /// <summary>The grammar-check level's word.</summary>
     public static string Of(GrammarDiagnosticLevel level) => level switch
     {
-        GrammarDiagnosticLevel.Error => "Error",
-        GrammarDiagnosticLevel.Warning => "Warning",
-        _ => "Information",
+        GrammarDiagnosticLevel.Error => MotifAppStrings.WarningsSeverityError,
+        GrammarDiagnosticLevel.Warning => MotifAppStrings.WarningsSeverityWarning,
+        _ => MotifAppStrings.SeverityInformation,
     };
 
     /// <summary>The trace step's word.</summary>
     public static string Of(TraceStepMark step) => step switch
     {
-        TraceStepMark.Built => "built",
-        TraceStepMark.Refused => "refused",
-        _ => "tried",
+        TraceStepMark.Built => MotifAppStrings.TraceStepBuilt,
+        TraceStepMark.Refused => MotifAppStrings.TraceStepRefused,
+        _ => MotifAppStrings.TraceStepTried,
     };
 
     /// <summary>
@@ -313,7 +313,7 @@ public static class WindowWords
 
     /// <summary>The label a Matrix row shows: its opinion, or FieldWorks' own "Incorrect spelling".</summary>
     public static string LabelOf(WordProjectStatus row) =>
-        row == WordProjectStatus.IncorrectSpelling ? "Incorrect spelling" : Of(OpinionOf(row));
+        row == WordProjectStatus.IncorrectSpelling ? MotifAppStrings.IncorrectSpellingLabel : Of(OpinionOf(row));
 
     /// <summary>The outcome a Matrix column stands for.</summary>
     public static ParserOutcome OutcomeOf(CompareColumnKind column) => column switch
@@ -369,9 +369,9 @@ public static class WindowWords
     {
         var (word, family) = CompareSemantics.MeaningOf(standing, ColumnOf(outcome));
         var tone = ToneOf(family);
-        if (outcome == ParserOutcome.Stopped) return ("No result", MeaningTone.Neutral);
+        if (outcome == ParserOutcome.Stopped) return (MotifAppStrings.MeaningNoResult, MeaningTone.Neutral);
         if (standing == ProjectStanding.Candidate && outcome == ParserOutcome.Same)
-            return ("Parses; nothing in FieldWorks yet", tone);
+            return (MotifAppStrings.MeaningParsesNothingInFieldWorks, tone);
         return (word, tone);
     }
 }

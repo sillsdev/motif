@@ -1,3 +1,4 @@
+using SIL.Motif.App;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.VisualTree;
@@ -42,7 +43,7 @@ public sealed class NarrowWindowLayoutTests
                     workspace.CurrentPage = SIL.Motif.App.ViewModels.WorkspacePage.Timing;
                     Settle(window);
                     var statistics = window.GetVisualDescendants().OfType<Expander>()
-                        .First(expander => expander.Header as string == "Detailed statistics" && expander.IsEffectivelyVisible);
+                        .First(expander => expander.Header as string == MotifAppStrings.HeaderDetailedStatistics && expander.IsEffectivelyVisible);
                     statistics.IsExpanded = true;
                     Settle(window);
                     var panel = statistics.GetVisualDescendants().OfType<SIL.Motif.App.Views.StatisticsPanel>().Single();

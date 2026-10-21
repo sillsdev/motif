@@ -1,3 +1,4 @@
+using SIL.Motif.App;
 using System.Diagnostics;
 using Avalonia.Automation;
 using Avalonia.Controls;
@@ -199,7 +200,7 @@ public sealed class AssessmentWalkthroughTests(PristineProjectFixture pristine)
                 walkthrough.Workspace.PageModel<TimingPageModel>().Statistics.SelectedGroup);
 
             var details = walkthrough.Window.GetLogicalDescendants().OfType<Expander>()
-                .Single(expander => Equals(expander.Header, "Detailed statistics"));
+                .Single(expander => Equals(expander.Header, MotifAppStrings.HeaderDetailedStatistics));
             details.IsExpanded = true;
             Dispatcher.UIThread.RunJobs();
             walkthrough.Window.UpdateLayout();

@@ -1,3 +1,4 @@
+using SIL.Motif.App;
 using Avalonia.Controls;
 using Xunit;
 
@@ -15,7 +16,7 @@ public sealed class SizeMatrixDeleteStoreLookupTests
             var button = new Button { Name = "DeleteStoreButton", Content = "Delete this file and reopen" };
             var beforeCaptionChange = SizeMatrixScreenshots.FindStoreDeletionButton([button]);
 
-            button.Content = "Delete Motif's store and reopen";
+            button.Content = MotifAppStrings.DeleteMotifsStoreAndReopen;
             var afterCaptionChange = SizeMatrixScreenshots.FindStoreDeletionButton([button]);
 
             Assert.Same(button, beforeCaptionChange);

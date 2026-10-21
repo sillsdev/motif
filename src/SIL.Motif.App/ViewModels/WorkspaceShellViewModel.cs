@@ -30,7 +30,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
     private const string OpenProjectRefusalText = "Motif could not open this project.";
 
     /// <summary>What the window asks before it deletes a store another version of Motif made.</summary>
-    public const string StoreDeletionWarning = StoreRefusalBlockViewModel.StoreDeletionWarning;
+    public static string StoreDeletionWarning => StoreRefusalBlockViewModel.StoreDeletionWarning;
 
     /// <summary>What the project menu's Configure entry says while the project has no Baseline to choose Texts from.</summary>
     public const string ConfigureNeedsBaselineText = "Refresh first to choose Texts";

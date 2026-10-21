@@ -1,3 +1,4 @@
+using SIL.Motif.App;
 using System.Text.Json;
 using Avalonia;
 using Avalonia.Automation;
@@ -61,7 +62,7 @@ public sealed class TimingStatisticsRefreshTests
                 Assert.False(workspace.Context.EvidencePublication.IsCompleted);
 
                 var details = window.GetLogicalDescendants().OfType<Expander>()
-                    .Single(expander => Equals(expander.Header, "Detailed statistics"));
+                    .Single(expander => Equals(expander.Header, MotifAppStrings.HeaderDetailedStatistics));
                 details.IsExpanded = true;
                 Settle(window);
                 Assert.NotNull(statistics.LoadCommand.ExecutionTask);

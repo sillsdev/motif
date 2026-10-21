@@ -611,9 +611,9 @@ internal sealed class TooltipScenes
     {
         Show(WorkspacePage.Timing);
         var statistics = Workspace.PageModel<TimingPageModel>().Statistics;
-        var expander = Visible<Expander>().First(expander => expander.Header as string == "Detailed statistics");
+        var expander = Visible<Expander>().First(expander => expander.Header as string == MotifAppStrings.HeaderDetailedStatistics);
         expander.IsExpanded = true;
-        await Until(() => Visible<StatisticsPanel>().Any(), "Detailed statistics");
+        await Until(() => Visible<StatisticsPanel>().Any(), MotifAppStrings.HeaderDetailedStatistics);
         await Until(() => statistics.HasLoaded && statistics.Rows.Count > 0, "word statistics");
         if (statistics.SelectedGroup != group)
         {

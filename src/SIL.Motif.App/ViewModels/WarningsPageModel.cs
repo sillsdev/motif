@@ -37,7 +37,7 @@ public sealed class WarningsPageModel : PageModel
         {
             Filter = MatchesSelectedArea,
         };
-        AreaFilters.Add(new WarningsAreaFilterOption(null, "All areas", 0, true));
+        AreaFilters.Add(new WarningsAreaFilterOption(null, MotifAppStrings.WarningsAllAreas, 0, true));
         SetAreaCommand = new RelayCommand<WarningsAreaFilterOption>(SelectArea);
         Grammar.Warnings.ConfigureActions(
             row => Context.HandOffWarning(WordsFor(row), new WarningHandoffScope(
@@ -280,7 +280,7 @@ public sealed class WarningsPageModel : PageModel
         _currentArea = null;
         _rowAreas.Clear();
         AreaFilters.Clear();
-        AreaFilters.Add(new WarningsAreaFilterOption(null, "All areas", Grammar.Warnings.ShownCount, true));
+        AreaFilters.Add(new WarningsAreaFilterOption(null, MotifAppStrings.WarningsAllAreas, Grammar.Warnings.ShownCount, true));
         FilteredTableEntries.Refresh();
         OnPropertyChanged(nameof(SelectedWarningArea));
         OnPropertyChanged(nameof(HasSelectedWarningArea));

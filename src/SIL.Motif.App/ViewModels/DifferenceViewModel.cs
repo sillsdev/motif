@@ -104,14 +104,21 @@ public sealed partial class DifferenceViewModel : ObservableObject
     public int OnlyInOneCount { get; private set; }
 
     public string Summary => !HasDifference ? string.Empty
-        : MovedCount == 0 ? $"None of the {ComparedCount:N0} words moved to another cell."
-        : $"{MovedCount:N0} of {ComparedCount:N0} words moved to another cell"
-          + (RegressedCount > 0 ? $"; {RegressedCount:N0} got worse." : "; none got worse.");
+        : MovedCount == 0 ? string.Format(System.Globalization.CultureInfo.CurrentCulture,
+            MotifAppStrings.DifferenceNoneMovedFormat, ComparedCount.ToString("N0", System.Globalization.CultureInfo.CurrentCulture))
+        : RegressedCount > 0 ? string.Format(System.Globalization.CultureInfo.CurrentCulture,
+            MotifAppStrings.DifferenceMovedWorseFormat, MovedCount.ToString("N0", System.Globalization.CultureInfo.CurrentCulture),
+            ComparedCount.ToString("N0", System.Globalization.CultureInfo.CurrentCulture),
+            RegressedCount.ToString("N0", System.Globalization.CultureInfo.CurrentCulture))
+        : string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.DifferenceMovedNoneWorseFormat,
+            MovedCount.ToString("N0", System.Globalization.CultureInfo.CurrentCulture),
+            ComparedCount.ToString("N0", System.Globalization.CultureInfo.CurrentCulture));
 
     public string OnlyInOneText => OnlyInOneCount == 0 ? string.Empty
-        : $"{OnlyInOneCount:N0} word{(OnlyInOneCount == 1 ? " was" : "s were")} in only one run and {(OnlyInOneCount == 1 ? "is" : "are")} not compared.";
+        : PluralText.Format(MotifAppStrings.DifferenceOnlyInOnePattern, OnlyInOneCount);
 
-    public string RunComparisonText => $"From {BeforeLabel} → {AfterLabel}";
+    public string RunComparisonText => string.Format(System.Globalization.CultureInfo.CurrentCulture,
+        MotifAppStrings.DifferenceRunComparisonFormat, BeforeLabel, AfterLabel);
 
     partial void OnSelectedMoveChanged(MoveViewModel? value)
     {
@@ -221,15 +228,15 @@ public sealed partial class DifferenceViewModel : ObservableObject
     /// <summary>The words a move of <paramref name="kind"/> is listed with.</summary>
     public static string LabelOf(MoveKind kind) => kind switch
     {
-        MoveKind.Regressed => "regressed",
-        MoveKind.NowUnknown => "now unknown",
-        MoveKind.Changed => "changed",
-        MoveKind.NewCoverage => "new coverage",
-        MoveKind.Fixed => "fixed",
-        MoveKind.Decided => "decided",
-        MoveKind.Settled => "settled",
-        MoveKind.Improved => "improved",
-        _ => "unchanged",
+        MoveKind.Regressed => MotifAppStrings.DifferenceMoveRegressed,
+        MoveKind.NowUnknown => MotifAppStrings.DifferenceMoveNowUnknown,
+        MoveKind.Changed => MotifAppStrings.DifferenceMoveChanged,
+        MoveKind.NewCoverage => MotifAppStrings.DifferenceMoveNewCoverage,
+        MoveKind.Fixed => MotifAppStrings.DifferenceMoveFixed,
+        MoveKind.Decided => MotifAppStrings.DifferenceMoveDecided,
+        MoveKind.Settled => MotifAppStrings.DifferenceMoveSettled,
+        MoveKind.Improved => MotifAppStrings.DifferenceMoveImproved,
+        _ => MotifAppStrings.DifferenceMoveUnchanged,
     };
 
     /// <summary>The tone a move is coloured with, so a regression reads like every other Problem.</summary>
@@ -277,10 +284,12 @@ public sealed class MoveViewModel
     public string TransitionText =>
         CompareViewModel.MeaningOf(From.Row, From.Column).Family == CompareFamilyKind.Violation &&
         CompareViewModel.MeaningOf(To.Row, To.Column).Family == CompareFamilyKind.Violation
-            ? $"Still a problem: {FromLabel} → {ToLabel}"
-            : $"{FromLabel} ({FromRow}) → {ToLabel} ({ToRow})";
+            ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.DifferenceStillProblemFormat, FromLabel, ToLabel)
+            : string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.DifferenceTransitionFormat,
+                FromLabel, FromRow, ToLabel, ToRow);
 
-    public string AccessibleName => $"{Count} words, {KindLabel}: {TransitionText}";
+    public string AccessibleName => string.Format(System.Globalization.CultureInfo.CurrentCulture,
+        MotifAppStrings.DifferenceMoveAccessibleNameFormat, Count, KindLabel, TransitionText);
 }
 
 /// <summary>One word of a move, with what the parser said for it in each run.</summary>
@@ -311,7 +320,8 @@ public sealed class MovedWordViewModel
     public ListedWordViewModel Listed => _listed(this);
 
     /// <summary>What the earlier run came to, under the word's row.</summary>
-    public string BeforeNote => $"Before: {BeforeText}";
+    public string BeforeNote => string.Format(System.Globalization.CultureInfo.CurrentCulture,
+        MotifAppStrings.DifferenceBeforeFormat, BeforeText);
 
     /// <summary>The typed word row and earlier result shown in What changed.</summary>
     public WordPresentation Presentation => Listed.PresentationFor(WordListOwner.WhatChanged, BeforeNote);

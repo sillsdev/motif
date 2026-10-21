@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="clr-namespace:SIL.Motif.App"
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              xmlns:word="clr-namespace:SIL.Motif.App.Controls.WordPresentation"
@@ -9,19 +10,19 @@
   <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
                 IsVisible="{Binding Grammar.ShowFindings}">
     <StackPanel Classes="warningInspector" Spacing="{DynamicResource Intent.Space.Related}"
-                AutomationProperties.Name="Selected warning details">
+                AutomationProperties.Name="{x:Static app:MotifAppStrings.SelectedWarningDetailsAccessibleName}">
       <StackPanel IsVisible="{Binding Page.HasSelectedWarningArea}"
                   Spacing="{DynamicResource Intent.Space.Related}">
         <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-          <views:CopyableTextBlock Classes="denseTableHeading" Text="Selected finding" />
+          <views:CopyableTextBlock Classes="denseTableHeading" Text="{x:Static app:MotifAppStrings.SelectedFinding}" />
           <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto"
                 ColumnSpacing="{DynamicResource Intent.Space.Group}"
                 IsVisible="{Binding Page.HasSelectedWarningArea}">
-            <views:CopyableTextBlock Text="Severity" Classes="muted" />
+            <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.Severity}" Classes="muted" />
             <views:CopyableTextBlock Grid.Column="1" Text="{Binding Page.SelectedWarningSeverity}" />
-            <views:CopyableTextBlock Grid.Row="1" Text="Area" Classes="muted" />
+            <views:CopyableTextBlock Grid.Row="1" Text="{x:Static app:MotifAppStrings.Area}" Classes="muted" />
             <views:CopyableTextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Page.SelectedWarningArea}" />
-            <views:CopyableTextBlock Grid.Row="2" Text="Named words" Classes="muted" />
+            <views:CopyableTextBlock Grid.Row="2" Text="{x:Static app:MotifAppStrings.NamedWords}" Classes="muted" />
             <views:CopyableTextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Page.SelectedWarningWordCount}" />
           </Grid>
         </StackPanel>
@@ -34,7 +35,7 @@
               <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
                 <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
                   <views:CopyableTextBlock Text="{Binding TableItemName}" FontWeight="{DynamicResource Intent.Weight.Section}" />
-                  <views:CopyableTextBlock Classes="muted" Text="What is wrong" FontWeight="{DynamicResource Intent.Weight.Section}" />
+                  <views:CopyableTextBlock Classes="muted" Text="{x:Static app:MotifAppStrings.WhatIsWrong}" FontWeight="{DynamicResource Intent.Weight.Section}" />
                   <views:CopyableTextBlock Text="{Binding TableProblemText}" TextWrapping="Wrap" />
                   <views:CopyableTextBlock Classes="muted" Text="{Binding ReachStateText}"
                                             IsVisible="{Binding HasReachStateText}" TextWrapping="Wrap" />
@@ -50,11 +51,11 @@
                         <views:CopyableTextBlock Classes="muted" Text="{Binding SeenText}"
                                                   IsVisible="{Binding HasSeenText}" />
                         <StackPanel IsVisible="{Binding HasExplanation}" Spacing="{DynamicResource Intent.Space.Minimal}">
-                          <views:CopyableTextBlock Classes="muted" Text="Why PanGloss reported it" FontWeight="{DynamicResource Intent.Weight.Section}" />
+                          <views:CopyableTextBlock Classes="muted" Text="{x:Static app:MotifAppStrings.WhyPanGlossReportedIt}" FontWeight="{DynamicResource Intent.Weight.Section}" />
                           <views:CopyableTextBlock Text="{Binding Explanation}" TextWrapping="Wrap" />
                         </StackPanel>
                         <StackPanel IsVisible="{Binding HasWordforms}" Spacing="{DynamicResource Intent.Space.Minimal}">
-                          <views:CopyableTextBlock Text="Wordforms not compared" FontWeight="{DynamicResource Intent.Weight.Section}" />
+                          <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.WordformsNotCompared}" FontWeight="{DynamicResource Intent.Weight.Section}" />
                           <views:CopyableTextBlock Text="{Binding WordformsText}" TextWrapping="Wrap" />
                         </StackPanel>
                         <StackPanel IsVisible="{Binding HasProblemParts}" Spacing="{DynamicResource Intent.Space.Minimal}">
@@ -77,12 +78,12 @@
                           </ItemsControl.ItemTemplate>
                         </ItemsControl>
                         <StackPanel IsVisible="{Binding HasGuidance}" Spacing="{DynamicResource Intent.Space.Minimal}">
-                          <views:CopyableTextBlock Classes="muted" Text="What to do in FieldWorks" FontWeight="{DynamicResource Intent.Weight.Section}" />
+                          <views:CopyableTextBlock Classes="muted" Text="{x:Static app:MotifAppStrings.WhatToDoInFieldWorks}" FontWeight="{DynamicResource Intent.Weight.Section}" />
                           <views:CopyableTextBlock Text="{Binding Guidance}" TextWrapping="Wrap" />
                         </StackPanel>
-                        <views:CopyableTextBlock Classes="muted" Text="PanGloss gives no advice for this kind yet"
+                        <views:CopyableTextBlock Classes="muted" Text="{x:Static app:MotifAppStrings.WarningNoAdviceYet}"
                                                   IsVisible="{Binding !HasGuidance}" TextWrapping="Wrap" />
-                        <HyperlinkButton Classes="revealControl revealLink" Content="Learn more"
+                        <HyperlinkButton Classes="revealControl revealLink" Content="{x:Static app:MotifAppStrings.LearnMore}"
                                          NavigateUri="{Binding HelpUrl}" IsVisible="{Binding HasHelp}" />
                         <views:CopyableTextBlock Classes="muted warningRawMessage" Text="{Binding Description}"
                                                   IsVisible="{Binding HasDescription}" TextWrapping="Wrap" />
@@ -116,7 +117,7 @@
                 <views:CopyableTextBlock Classes="muted" Text="{Binding NoExactUsesText}"
                                           IsVisible="{Binding HasNoExactUses}" />
                 <StackPanel IsVisible="{Binding HasMembershipCandidates}" Spacing="{DynamicResource Intent.Space.Minimal}">
-                  <views:CopyableTextBlock Classes="muted" Text="Words that use members of the named resource" />
+                  <views:CopyableTextBlock Classes="muted" Text="{x:Static app:MotifAppStrings.WarningWordsUsingNamedResource}" />
                   <views:WordListSlot Schema="{x:Static word:WordListSchemas.Warnings}">
                     <Grid RowDefinitions="Auto,Auto">
                       <word:WordRowHeader IsVisible="False" />
@@ -159,17 +160,17 @@
                 </StackPanel>
 
                 <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
-                  <Button Content="AI Handoff for this warning" Command="{Binding $parent[views:WarningsInspectorPanel].Grammar.Warnings.HandOffCommand}"
+                  <Button Content="{x:Static app:MotifAppStrings.AIHandoffForThisWarning}" Command="{Binding $parent[views:WarningsInspectorPanel].Grammar.Warnings.HandOffCommand}"
                           CommandParameter="{Binding}" />
-                  <Button Content="Parse these words again" IsVisible="{Binding CanParseAgain}"
+                  <Button Content="{x:Static app:MotifAppStrings.ParseTheseWordsAgain}" IsVisible="{Binding CanParseAgain}"
                           Command="{Binding $parent[views:WarningsInspectorPanel].Grammar.Warnings.ReparseCommand}"
                           CommandParameter="{Binding}" />
                 </StackPanel>
                 <Border Classes="warningWorkflow" IsVisible="{Binding HasYourWords}">
                   <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-                    <views:CopyableTextBlock Text="After you fix it" FontWeight="{DynamicResource Intent.Weight.Section}" />
+                    <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.AfterYouFixIt}" FontWeight="{DynamicResource Intent.Weight.Section}" />
                     <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap"
-                                              Text="Save in FieldWorks, refresh Motif, then parse these words again." />
+                                              Text="{x:Static app:MotifAppStrings.WarningAfterFixSteps}" />
                   </StackPanel>
                 </Border>
               </StackPanel>
@@ -177,7 +178,7 @@
           </ItemsControl.ItemTemplate>
         </ItemsControl>
       </StackPanel>
-      <views:CopyableTextBlock Classes="muted" Text="Select a finding to see its details."
+      <views:CopyableTextBlock Classes="muted" Text="{x:Static app:MotifAppStrings.WarningsInspectorEmpty}"
                                 IsVisible="{Binding !Page.HasSelectedWarningArea}" />
     </StackPanel>
   </ScrollViewer>

@@ -1,3 +1,4 @@
+using SIL.Motif.App;
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
@@ -124,7 +125,7 @@ public sealed class DenseTableTests
                 Assert.True(flyout.IsOpen);
                 var flyoutContent = Assert.IsAssignableFrom<Control>(flyout.Content);
                 var openDetails = Assert.Single(flyoutContent.GetVisualDescendants().OfType<Button>(), button =>
-                    button.Content is string text && text == "Open details");
+                    button.Content is string text && text == MotifAppStrings.OpenDetails);
                 HeadlessClick.Click(window, openDetails, "Open details");
                 PageScreenshots.Settle(window);
                 Assert.True(rowModel.IsOpen);

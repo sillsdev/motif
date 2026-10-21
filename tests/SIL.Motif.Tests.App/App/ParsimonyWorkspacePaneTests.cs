@@ -267,9 +267,9 @@ public sealed class ParsimonyWorkspacePaneTests
                 Assert.True(model.HasEvidence);
                 Assert.Contains(model.Evidence!.Details, detail => detail.Label == "Items" && detail.Value == selected.Items);
                 Assert.Contains(model.Evidence.Details, detail =>
-                    detail.Label == "Strength of evidence" && detail.Value == selected.StrengthOfEvidence);
+                    detail.Label == MotifAppStrings.ParsimonyDetailStrength && detail.Value == selected.StrengthOfEvidence);
                 Assert.Contains(model.Evidence.Details, detail =>
-                    detail.Label == "Paired parser check" && detail.Value == selected.PairedParserCheck);
+                    detail.Label == MotifAppStrings.ParsimonyDetailPairedCheck && detail.Value == selected.PairedParserCheck);
                 Assert.Contains(resultWindow.GetVisualDescendants().OfType<ComboBox>(), combo =>
                     AutomationProperties.GetName(combo) == "Notebook record type" && combo.IsEffectivelyVisible);
                 Assert.Contains(resultWindow.GetVisualDescendants().OfType<TextBox>(), input =>

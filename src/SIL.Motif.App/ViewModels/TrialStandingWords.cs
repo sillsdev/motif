@@ -20,31 +20,31 @@ public sealed record TrialStandingText(string Status, string Sentence, string Ac
 public static class TrialStandingWords
 {
     /// <summary>What the window says for a Proposal with no Trial.</summary>
-    public static TrialStandingText NotTried { get; } = new("Not tried yet",
-        "Not tried yet. Try it to see what it does to the numbers.", "Try it");
+    public static TrialStandingText NotTried { get; } = new(MotifAppStrings.TrialNotTriedStatus,
+        MotifAppStrings.TrialNotTriedSentence, MotifAppStrings.TryIt);
 
     /// <summary>What the window says while a Trial runs.</summary>
-    public static TrialStandingText Trying { get; } = new("Trying…", "Trying…", "Try again");
+    public static TrialStandingText Trying { get; } = new(MotifAppStrings.TrialTrying, MotifAppStrings.TrialTrying, MotifAppStrings.TryAgain);
 
     /// <summary>What the window says when the only Trials stopped without a result.</summary>
-    public static TrialStandingText Failed { get; } = new("Did not finish",
-        "The last try did not finish. Try again.", "Try again");
+    public static TrialStandingText Failed { get; } = new(MotifAppStrings.TrialDidNotFinishStatus,
+        MotifAppStrings.TrialDidNotFinishSentence, MotifAppStrings.TryAgain);
 
     /// <summary>What the window says when the Trial still describes the Proposal.</summary>
-    public static TrialStandingText Current { get; } = new("Current", "Current", "Try again");
+    public static TrialStandingText Current { get; } = new(MotifAppStrings.TrialCurrentStatus, MotifAppStrings.TrialCurrentStatus, MotifAppStrings.TryAgain);
 
     /// <summary>What the window says when FieldWorks changed since the Trial.</summary>
-    public static TrialStandingText BaselineMoved { get; } = new("Needs another try",
-        "FieldWorks changed since this was tried. Try again.", "Try again")
+    public static TrialStandingText BaselineMoved { get; } = new(MotifAppStrings.TrialNeedsAnotherTryStatus,
+        MotifAppStrings.TrialBaselineMovedSentence, MotifAppStrings.TryAgain)
     {
-        OldNumbers = "From the last try, before FieldWorks changed",
+        OldNumbers = MotifAppStrings.TrialBaselineMovedOldNumbers,
     };
 
     /// <summary>What the window says when the Proposal changed since the Trial.</summary>
-    public static TrialStandingText ProposalChanged { get; } = new("Needs another try",
-        "This Proposal changed since it was tried. Try again.", "Try again")
+    public static TrialStandingText ProposalChanged { get; } = new(MotifAppStrings.TrialNeedsAnotherTryStatus,
+        MotifAppStrings.TrialProposalChangedSentence, MotifAppStrings.TryAgain)
     {
-        OldNumbers = "From the last try, before this Proposal changed",
+        OldNumbers = MotifAppStrings.TrialProposalChangedOldNumbers,
     };
 
     /// <summary>The window's words for <paramref name="standing"/>.</summary>

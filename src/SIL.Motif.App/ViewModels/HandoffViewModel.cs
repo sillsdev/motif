@@ -34,13 +34,12 @@ public sealed partial class HandoffViewModel : CommandRunViewModel<HandoffComman
     /// document they happen to reach.
     /// </summary>
     public static string DataSensitivitySentence { get; } =
-        "Writing an AI Handoff includes real grammar rules, lexicon entries, and sentences from this project. " +
-        "Dragging it into a chat model sends that data to whoever runs it (OpenAI, Anthropic, or another " +
-        "provider) — check the project's own data-sensitivity policy first.";
+        MotifAppStrings.HandoffDataSensitivity;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowsUnavailableReason))]
-    private string _unavailableReason = "No parse results yet: Parse all words first.";
+    private string _unavailableReason = string.Format(System.Globalization.CultureInfo.CurrentCulture,
+        MotifAppStrings.HandoffNoParseResultsFormat, MotifAppStrings.HandoffParseAllWordsFirst);
 
     public bool ShowsUnavailableReason => InvocationId is null && ChosenWords is null;
 
@@ -82,8 +81,9 @@ public sealed partial class HandoffViewModel : CommandRunViewModel<HandoffComman
 
     /// <summary>The time of writing as the stage shows it, or a prompt before the first write.</summary>
     public string WrittenAtText => WrittenAt is { } written
-        ? $"Last written {WindowTimeText.Format(written, _timeProvider)}"
-        : "Not written yet";
+        ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.HandoffLastWrittenFormat,
+            WindowTimeText.Format(written, _timeProvider))
+        : MotifAppStrings.HandoffNotWrittenYet;
 
     // What the next write covers: the Assessment's time, words and texts; set by the workspace.
     [ObservableProperty]
@@ -101,8 +101,8 @@ public sealed partial class HandoffViewModel : CommandRunViewModel<HandoffComman
 
     /// <summary>The sentence the AI Handoff page shows when the files are stale.</summary>
     public string OutOfDateText => LatestAssessmentAt is { } assessed && WrittenAt is { } written
-        ? $"The words were parsed again at {WindowTimeText.Format(assessed, _timeProvider)}, after these files " +
-          $"were written at {WindowTimeText.Format(written, _timeProvider)}. Write the AI Handoff again to include the new results."
+        ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.HandoffOutOfDateFormat,
+            WindowTimeText.Format(assessed, _timeProvider), WindowTimeText.Format(written, _timeProvider))
         : string.Empty;
 
     /// <summary>Where the completed run wrote the folder, or <c>null</c> before a run has completed.</summary>
@@ -182,13 +182,13 @@ public sealed partial class HandoffViewModel : CommandRunViewModel<HandoffComman
     public bool HasChosenWords => ChosenWords is { Count: > 0 };
 
     public string ChosenWordsText => SelectedTrace is { } trace
-        ? $"Keeps the displayed trace for {trace.Word} and the Baseline captured with it."
+        ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.HandoffKeepsTraceFormat, trace.Word)
         : ChosenWords is { } words
             ? _warningScope is not null
                 ? words.Count > 0
-                    ? $"{words.Count:N0} word{(words.Count == 1 ? string.Empty : "s")} selected from this PanGloss finding."
-                    : "No words were selected from this PanGloss finding; its message and attribution limits will be included."
-                : $"Only the {words.Count:N0} word{(words.Count == 1 ? string.Empty : "s")} chosen on the Texts page, parsed again for these files."
+                    ? PluralText.Format(MotifAppStrings.HandoffWarningWordsPattern, words.Count)
+                    : MotifAppStrings.HandoffWarningNoWords
+                : PluralText.Format(MotifAppStrings.HandoffChosenWordsPattern, words.Count)
             : string.Empty;
 
     /// <summary>Hands off <paramref name="words"/> rather than the whole Assessment.</summary>

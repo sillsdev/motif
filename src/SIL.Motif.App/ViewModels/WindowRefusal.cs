@@ -31,7 +31,7 @@ namespace SIL.Motif.App.ViewModels;
 public sealed partial record WindowRefusal
 {
     /// <summary>What the window says for a code it has no sentence for.</summary>
-    public const string GenericSentence = "Motif could not complete this request. Review the project and try again.";
+    public static string GenericSentence => MotifAppStrings.RefusalGeneric;
 
     /// <summary>The code of a project open that failed with an escaped exception rather than a refusal.</summary>
     public const string OpenFailedCode = "window.open-failed";
@@ -47,199 +47,172 @@ public sealed partial record WindowRefusal
 
     private const string WindowCheckCode = "window.check";
 
-    private const string ParserMissing =
-        "Motif could not find PanGloss, so it cannot measure words. Install PanGloss beside Motif, then try again.";
+    private static string ParserMissing => MotifAppStrings.RefusalParserMissing;
 
-    private const string ParserUnusable =
-        "Motif could not run PanGloss, so it cannot measure words. The details say why.";
+    private static string ParserUnusable => MotifAppStrings.RefusalParserUnusable;
 
-    private const string ParserWrong =
-        "PanGloss gave an answer Motif could not read. Install the PanGloss that matches this Motif, then try again.";
+    private static string ParserWrong => MotifAppStrings.RefusalParserWrong;
 
-    private const string StoreFromOtherVersion =
-        "Motif cannot open this store. Delete it and reopen the project to continue. Changes not applied yet " +
-        "are lost; your FieldWorks project is not touched.";
+    private static string StoreFromOtherVersion => MotifAppStrings.RefusalStoreFromOtherVersion;
 
-    private const string StoreDamaged =
-        "Motif's file for this project is damaged. Close every Motif window and keep a copy of the matching .motif.db file " +
-        "beside the project's .fwdata file for support. Remove only that Motif store if you can confirm it " +
-        "belongs to Motif, then reopen the project. " +
-        "Changes not applied yet are lost; your FieldWorks project is not touched. If you cannot confirm the " +
-        "file belongs to Motif, leave it in place and ask for help.";
+    private static string StoreDamaged => MotifAppStrings.RefusalStoreDamaged;
 
     private static readonly IReadOnlyDictionary<string, string> Sentences = new Dictionary<string, string>(StringComparer.Ordinal)
     {
-        [C.ApplyAppliedContentMismatch] = "Applying may have completed, but the project could not be verified. Check it before retrying.",
-        [C.ApplyChangeNoLongerFits] = "One or more changes no longer fit. Remove those changes first.",
-        [C.ApplyChangeUncertain] = "This change needs another check before it can be applied.",
-        [C.ApplyChangesChanged] = "The changes changed. Refresh them before applying.",
-        [C.ApplyDrift] = "Applying may have completed, but the project could not be verified. Check it before retrying.",
-        [C.ApplyDryRunMissing] = "The check did not give enough evidence to apply these changes. Check them again.",
-        [C.ProposalClosed] = "These changes were already applied or closed, so their notes cannot be edited.",
-        [C.ProposalNotFound] = "These changes could not be found. Refresh the list and try again.",
-        [C.ProposalRationaleEmpty] = "These changes need an explanation of what they do before they can be finished.",
-        [C.ApplyPreconditionFailed] =
-            "Something in the project changed since this was checked. Check it again before applying.",
-        [C.ApplyNotReady] = "The check did not give enough evidence to apply these changes. Check them again.",
-        [C.ApplyProjectInUse] = "FieldWorks has this project open. Close it before applying changes.",
-        [C.ApplyReconciliationNeeded] =
-            "Applying may have completed, but its result could not be confirmed. Check the project before retrying.",
-        [C.OperationCascadingDelete] = "This change deletes something that owns other things, so it cannot be undone from here.",
-        [C.OperationInvalidDependency] = "Other changes here need this one. Undo them together.",
-        [C.ApplyRegression] = "The check found worse results for words already measured. Review them before applying.",
-        [C.ApplyReopenFailed] =
-            "The changes could not be applied or reopened. Inspect the FieldWorks project before trying again.",
+        [C.ApplyAppliedContentMismatch] = MotifAppStrings.RefusalApplyAppliedContentMismatch,
+        [C.ApplyChangeNoLongerFits] = MotifAppStrings.RefusalApplyChangeNoLongerFits,
+        [C.ApplyChangeUncertain] = MotifAppStrings.RefusalApplyChangeUncertain,
+        [C.ApplyChangesChanged] = MotifAppStrings.RefusalApplyChangesChanged,
+        [C.ApplyDrift] = MotifAppStrings.RefusalApplyDrift,
+        [C.ApplyDryRunMissing] = MotifAppStrings.RefusalApplyDryRunMissing,
+        [C.ProposalClosed] = MotifAppStrings.RefusalProposalClosed,
+        [C.ProposalNotFound] = MotifAppStrings.RefusalProposalNotFound,
+        [C.ProposalRationaleEmpty] = MotifAppStrings.RefusalProposalRationaleEmpty,
+        [C.ApplyPreconditionFailed] = MotifAppStrings.RefusalApplyPreconditionFailed,
+        [C.ApplyNotReady] = MotifAppStrings.RefusalApplyNotReady,
+        [C.ApplyProjectInUse] = MotifAppStrings.RefusalApplyProjectInUse,
+        [C.ApplyReconciliationNeeded] = MotifAppStrings.RefusalApplyReconciliationNeeded,
+        [C.OperationCascadingDelete] = MotifAppStrings.RefusalOperationCascadingDelete,
+        [C.OperationInvalidDependency] = MotifAppStrings.RefusalOperationInvalidDependency,
+        [C.ApplyRegression] = MotifAppStrings.RefusalApplyRegression,
+        [C.ApplyReopenFailed] = MotifAppStrings.RefusalApplyReopenFailed,
 
-        [C.ParseAlreadyRunningHere] = "A parse is already running in this Motif window. Its progress is shown above.",
-        ["parse.already-running"] = "A parse is already running for this project in another Motif window or process. Use that window to see its progress or cancel it.",
-        [C.AssessBaselineChanged] = "The project was refreshed while words were being measured. Measure them again.",
-        [C.AssessInvalidLimit] = "Enter a per-word time limit greater than zero.",
-        [C.AssessInvocationInconsistent] = "Motif could not record these measurements together. Measure the words again.",
-        [C.AssessMeasurementsIncomplete] = "Measuring did not finish. Measure the words again.",
+        [C.ParseAlreadyRunningHere] = MotifAppStrings.RefusalParseAlreadyRunningHere,
+        ["parse.already-running"] = MotifAppStrings.RefusalParseAlreadyRunningElsewhere,
+        [C.AssessBaselineChanged] = MotifAppStrings.RefusalAssessBaselineChanged,
+        [C.AssessInvalidLimit] = MotifAppStrings.RefusalAssessInvalidLimit,
+        [C.AssessInvocationInconsistent] = MotifAppStrings.RefusalAssessInvocationInconsistent,
+        [C.AssessMeasurementsIncomplete] = MotifAppStrings.RefusalAssessMeasurementsIncomplete,
         [C.AssessParserUnavailable] = ParserUnusable,
-        [C.AssessUnsupportedKind] =
-            "The PanGloss Motif found cannot take this measurement. Install the PanGloss that matches this Motif, then try again.",
-        [C.AssessWordsAmbiguous] = "Give the words to measure either in the list or in a file, not both.",
-        [C.AssessWordsFileEmpty] = "The file of words to measure has no words in it. Choose a file with one word on each line.",
-        [C.AssessWordsFileUnreadable] = "Motif could not read the file of words to measure. Check that it exists and can be opened, then try again.",
-        [C.AssessmentCancelled] = "Measuring was cancelled. Nothing was recorded.",
+        [C.AssessUnsupportedKind] = MotifAppStrings.RefusalAssessUnsupportedKind,
+        [C.AssessWordsAmbiguous] = MotifAppStrings.RefusalAssessWordsAmbiguous,
+        [C.AssessWordsFileEmpty] = MotifAppStrings.RefusalAssessWordsFileEmpty,
+        [C.AssessWordsFileUnreadable] = MotifAppStrings.RefusalAssessWordsFileUnreadable,
+        [C.AssessmentCancelled] = MotifAppStrings.RefusalAssessmentCancelled,
 
-        [C.BaselineBusy] = "Another Motif task is reading this project. Try again in a moment.",
-        [C.BaselineCopyUnloadable] =
-            "Motif could not read the saved copy of this project. Save it in FieldWorks, then refresh again.",
-        [C.BaselineOwnedRootViolation] =
-            "Motif's working files for this project are not where they should be. Close Motif and open the project again.",
-        [C.BaselineSourceIncomplete] =
-            "The project's files are incomplete. Save the project in FieldWorks, then refresh again.",
-        [C.BaselineTextWordsUnreadable] =
-            "Motif could not read the project's texts. Save the project in FieldWorks, then refresh again.",
+        [C.BaselineBusy] = MotifAppStrings.RefusalBaselineBusy,
+        [C.BaselineCopyUnloadable] = MotifAppStrings.RefusalBaselineCopyUnloadable,
+        [C.BaselineOwnedRootViolation] = MotifAppStrings.RefusalBaselineOwnedRootViolation,
+        [C.BaselineSourceIncomplete] = MotifAppStrings.RefusalBaselineSourceIncomplete,
+        [C.BaselineTextWordsUnreadable] = MotifAppStrings.RefusalBaselineTextWordsUnreadable,
 
-        [C.ChangeAnalysisIdentityRequired] = "Choose an analysis before adding this change.",
-        [C.ChangeAnalysisOwnerInvalid] = "Motif could not find the word that owns this analysis. Refresh and choose it again.",
-        [C.ChangeAssessmentIncomplete] = "Parsing did not finish for every selected word. Parse all words again before accepting the new set.",
-        [C.ChangeAssessmentKind] = "Accept the new set needs every word parsed. Parse all words first.",
-        [C.ChangeAssessmentMissing] = "Those parse results are no longer stored. Parse all words again before adding the change.",
-        [C.ChangeAssessmentRequired] = "Parse all words before adding this change.",
-        [C.ChangeAssessmentStale] = "These parse results are from an older Baseline. Parse all words again first.",
-        [C.ChangeAssessmentWordMissing] = "The last parse did not include the selected word. Parse all words again.",
-        [C.ChangeBaselineMissing] = "Capture a Baseline before collecting changes.",
-        [C.ChangeCannotCompose] = "This change could not be added. Refresh the changes and try again.",
-        [C.ChangeInvalidIdentity] = "This change could not be added. Select the word again and retry.",
-        [C.ChangeNoEffect] = "This change would not alter the project.",
-        [C.ChangeNotFound] = "That change is no longer in the list. Refresh the changes and try again.",
-        [C.ChangeOccurrenceUnavailable] = "The selected word occurrence is unavailable. Refresh and select it again.",
-        [C.ChangeOccurrenceWordformMismatch] = "The selected occurrence belongs to a different word.",
-        [C.ChangeProjectSaving] = "FieldWorks is saving the project. Try again in a moment.",
-        [C.ChangeReadingMissing] = "That parser reading is no longer available. Parse all words again.",
-        [C.ChangeReconfirmNotAllowed] = "This decision no longer fits the project and cannot be checked again.",
-        [C.ChangeReconfirmUnneeded] = "This change does not need another check.",
-        [C.ChangeRefreshRequired] = "Refresh the project before checking the changes again.",
-        [C.ChangeRevisionConflict] = "The changes changed elsewhere. Refresh them and try again.",
-        [C.ChangeScopeInvalid] = "Choose one wordform, one Selection, or one Text.",
-        [C.ChangeSlotOccupied] = "Another pending change already addresses this word and analysis.",
-        [C.ChangeStoredAnalysisMissing] = "That analysis is no longer stored under this word. Refresh and choose another.",
-        [C.ChangeTextUnavailable] = "That Text is no longer in the current project view. Refresh and try again.",
-        [C.ChangeWordformAmbiguous] = "The project has more than one word with this spelling. Choose one in FieldWorks.",
-        [C.ChangeWordformChanged] = "That word changed in the project. Refresh and try again.",
-        [C.ChangeWordformMissing] = "That word isn't in the FieldWorks project. Refresh and try again.",
+        [C.ChangeAnalysisIdentityRequired] = MotifAppStrings.RefusalChangeAnalysisIdentityRequired,
+        [C.ChangeAnalysisOwnerInvalid] = MotifAppStrings.RefusalChangeAnalysisOwnerInvalid,
+        [C.ChangeAssessmentIncomplete] = MotifAppStrings.RefusalChangeAssessmentIncomplete,
+        [C.ChangeAssessmentKind] = MotifAppStrings.RefusalChangeAssessmentKind,
+        [C.ChangeAssessmentMissing] = MotifAppStrings.RefusalChangeAssessmentMissing,
+        [C.ChangeAssessmentRequired] = MotifAppStrings.RefusalChangeAssessmentRequired,
+        [C.ChangeAssessmentStale] = MotifAppStrings.RefusalChangeAssessmentStale,
+        [C.ChangeAssessmentWordMissing] = MotifAppStrings.RefusalChangeAssessmentWordMissing,
+        [C.ChangeBaselineMissing] = MotifAppStrings.RefusalChangeBaselineMissing,
+        [C.ChangeCannotCompose] = MotifAppStrings.RefusalChangeCannotCompose,
+        [C.ChangeInvalidIdentity] = MotifAppStrings.RefusalChangeInvalidIdentity,
+        [C.ChangeNoEffect] = MotifAppStrings.RefusalChangeNoEffect,
+        [C.ChangeNotFound] = MotifAppStrings.RefusalChangeNotFound,
+        [C.ChangeOccurrenceUnavailable] = MotifAppStrings.RefusalChangeOccurrenceUnavailable,
+        [C.ChangeOccurrenceWordformMismatch] = MotifAppStrings.RefusalChangeOccurrenceWordformMismatch,
+        [C.ChangeProjectSaving] = MotifAppStrings.RefusalChangeProjectSaving,
+        [C.ChangeReadingMissing] = MotifAppStrings.RefusalChangeReadingMissing,
+        [C.ChangeReconfirmNotAllowed] = MotifAppStrings.RefusalChangeReconfirmNotAllowed,
+        [C.ChangeReconfirmUnneeded] = MotifAppStrings.RefusalChangeReconfirmUnneeded,
+        [C.ChangeRefreshRequired] = MotifAppStrings.RefusalChangeRefreshRequired,
+        [C.ChangeRevisionConflict] = MotifAppStrings.RefusalChangeRevisionConflict,
+        [C.ChangeScopeInvalid] = MotifAppStrings.RefusalChangeScopeInvalid,
+        [C.ChangeSlotOccupied] = MotifAppStrings.RefusalChangeSlotOccupied,
+        [C.ChangeStoredAnalysisMissing] = MotifAppStrings.RefusalChangeStoredAnalysisMissing,
+        [C.ChangeTextUnavailable] = MotifAppStrings.RefusalChangeTextUnavailable,
+        [C.ChangeWordformAmbiguous] = MotifAppStrings.RefusalChangeWordformAmbiguous,
+        [C.ChangeWordformChanged] = MotifAppStrings.RefusalChangeWordformChanged,
+        [C.ChangeWordformMissing] = MotifAppStrings.RefusalChangeWordformMissing,
 
-        [C.ConfigInvalid] = "Motif's settings for this project could not be read. Open the setup again and save them.",
-        [C.DraftRevisionConflict] = "The changes changed elsewhere. Refresh them and try again.",
+        [C.ConfigInvalid] = MotifAppStrings.RefusalConfigInvalid,
+        [C.DraftRevisionConflict] = MotifAppStrings.RefusalDraftRevisionConflict,
 
-        [C.GrammarCheckCancelled] = "The grammar check was cancelled.",
+        [C.GrammarCheckCancelled] = MotifAppStrings.RefusalGrammarCheckCancelled,
         [C.GrammarCheckMalformedFindings] = ParserWrong,
-        [C.GrammarCheckParserRefused] = "PanGloss could not check this grammar. The details say why.",
+        [C.GrammarCheckParserRefused] = MotifAppStrings.RefusalGrammarCheckParserRefused,
         [C.GrammarCheckParserUnavailable] = ParserUnusable,
-        [C.GrammarCheckTimedOut] = "The grammar check took too long and was stopped. Try again.",
+        [C.GrammarCheckTimedOut] = MotifAppStrings.RefusalGrammarCheckTimedOut,
         [C.GrammarCheckUnsupportedSchema] = ParserWrong,
 
-        [C.HandoffCancelled] = "The AI Handoff was cancelled.",
-        [C.HandoffDestinationExists] = "That folder already has files in it. Choose an empty folder.",
-        [C.HandoffInvocationMismatch] =
-            "Those measurements belong to another project. Measure this project's words, then try again.",
-        [C.HandoffInvocationNotFound] =
-            "Those measurements are no longer stored. Measure the words again, then make the AI Handoff.",
-        [C.HandoffInvocationRequired] = "Measure words before making an AI Handoff.",
+        [C.HandoffCancelled] = MotifAppStrings.RefusalHandoffCancelled,
+        [C.HandoffDestinationExists] = MotifAppStrings.RefusalHandoffDestinationExists,
+        [C.HandoffInvocationMismatch] = MotifAppStrings.RefusalHandoffInvocationMismatch,
+        [C.HandoffInvocationNotFound] = MotifAppStrings.RefusalHandoffInvocationNotFound,
+        [C.HandoffInvocationRequired] = MotifAppStrings.RefusalHandoffInvocationRequired,
         [C.HandoffParserUnavailable] = ParserUnusable,
-        [C.HandoffSourceUnavailable] =
-            "The grammar those measurements used is no longer stored. Measure the words again, then make the AI Handoff.",
-        [C.HandoffStatisticsUnavailable] =
-            "The statistics for those measurements are no longer stored. Measure the words again, then make the AI Handoff.",
-        [C.HandoffTextNotFound] =
-            "A chosen text is not in the project as it was measured. Refresh, measure again, then try again.",
+        [C.HandoffSourceUnavailable] = MotifAppStrings.RefusalHandoffSourceUnavailable,
+        [C.HandoffStatisticsUnavailable] = MotifAppStrings.RefusalHandoffStatisticsUnavailable,
+        [C.HandoffTextNotFound] = MotifAppStrings.RefusalHandoffTextNotFound,
 
-        [C.JobParserUnavailable] =
-            "The parser this check was queued for is gone or was replaced, so the check was stopped. Run it again.",
-        [C.JobWaitCancelled] = "The check was cancelled.",
-        [C.JobWaitTimeout] = "The check took too long and was stopped. Your changes are unchanged; try applying again.",
-        [C.PreflightUnavailable] = "Motif could not check these changes against the project. Try again.",
+        [C.JobParserUnavailable] = MotifAppStrings.RefusalJobParserUnavailable,
+        [C.JobWaitCancelled] = MotifAppStrings.RefusalJobWaitCancelled,
+        [C.JobWaitTimeout] = MotifAppStrings.RefusalJobWaitTimeout,
+        [C.PreflightUnavailable] = MotifAppStrings.RefusalPreflightUnavailable,
 
-        [C.ProjectBackupUnreadable] = "Motif cannot restore that file. Choose a .fwbackup file that FieldWorks made.",
-        [C.ProjectBusy] = "Another Motif task is using this project. Try again in a moment.",
-        [C.ProjectInUse] = "FieldWorks has this project open. Close it in FieldWorks, then try again.",
-        [C.ProjectInvalid] = "Motif cannot open that file as a FieldWorks project. Choose the project's .fwdata file.",
-        [C.ProjectNotFound] = "Motif cannot find that project file. It may have been moved or deleted.",
-        [C.ProjectOperationIo] = "Motif could not read or write a file it needed. Check the disk, then try again.",
-        [C.ProjectStoreIo] =
-            "Motif could not read or write its file for this project. Check that the folder can be written to, then try again.",
-        [C.ProjectUnloadable] =
-            "Motif could not open this FieldWorks project. Open it in FieldWorks to check it, then try again.",
-        [C.ProjectWaitCancelled] = "Waiting to use the project was cancelled.",
+        [C.ProjectBackupUnreadable] = MotifAppStrings.RefusalProjectBackupUnreadable,
+        [C.ProjectBusy] = MotifAppStrings.RefusalProjectBusy,
+        [C.ProjectInUse] = MotifAppStrings.RefusalProjectInUse,
+        [C.ProjectInvalid] = MotifAppStrings.RefusalProjectInvalid,
+        [C.ProjectNotFound] = MotifAppStrings.RefusalProjectNotFound,
+        [C.ProjectOperationIo] = MotifAppStrings.RefusalProjectOperationIo,
+        [C.ProjectStoreIo] = MotifAppStrings.RefusalProjectStoreIo,
+        [C.ProjectUnloadable] = MotifAppStrings.RefusalProjectUnloadable,
+        [C.ProjectWaitCancelled] = MotifAppStrings.RefusalProjectWaitCancelled,
 
-        [C.ReviewAssessmentNotFound] = "Those measurements are no longer stored. Check the changes again.",
-        [C.ReviewNumbersUnavailable] = "Motif could not work out the numbers for these changes. Check them again.",
-        [C.ReviewWrongAssessmentKind] = "These numbers need a correctness check. Check the changes again.",
+        [C.ReviewAssessmentNotFound] = MotifAppStrings.RefusalReviewAssessmentNotFound,
+        [C.ReviewNumbersUnavailable] = MotifAppStrings.RefusalReviewNumbersUnavailable,
+        [C.ReviewWrongAssessmentKind] = MotifAppStrings.RefusalReviewWrongAssessmentKind,
 
-        [C.SelectionDefaultMissing] =
-            "Motif does not know which words to measure yet. Choose texts or words in the setup first.",
-        [C.SelectionEmpty] = "The chosen texts have no words to measure. Choose other texts or add words.",
-        [C.SelectionInvalid] = "Choose at least one text or add a word before continuing.",
-        [C.SelectionTextNotFound] = "A chosen text is no longer in the project. Choose the texts again.",
+        [C.SelectionDefaultMissing] = MotifAppStrings.RefusalSelectionDefaultMissing,
+        [C.SelectionEmpty] = MotifAppStrings.RefusalSelectionEmpty,
+        [C.SelectionInvalid] = MotifAppStrings.RefusalSelectionInvalid,
+        [C.SelectionTextNotFound] = MotifAppStrings.RefusalSelectionTextNotFound,
 
-        [RefusalCodes.SelectionReaderBusy] = "Motif is already reading these texts. Try again in a moment.",
-        [RefusalCodes.SelectionReaderCancelled] = "Reading these texts was cancelled.",
-        [RefusalCodes.SelectionReaderDisposed] = "This text view is no longer open. Reopen it and try again.",
-        [RefusalCodes.SelectionReaderInvalid] = "Motif could not read this text view. Reopen it and try again.",
-        ["trial.scratch-gone"] = "The copy these changes were tried on is gone. Try them again.",
-        ["trial.none"] = "These changes have not been tried yet. Try them first.",
-        [RefusalCodes.SelectionReaderNoBaseline] = "Refresh this project before reading its saved texts.",
-        [RefusalCodes.SelectionReaderRangeInvalid] = "Choose a valid range of words to read.",
-        [RefusalCodes.SelectionReaderOwnershipLimit] = "Too much text is open at once. Close a card or choose a smaller range.",
-        [RefusalCodes.SelectionReaderProjectPathRequired] = "Motif needs the saved project path to read current text state.",
-        [C.TextsEvidenceChanged] = "The project's saved texts changed. Refresh and reopen them.",
+        [RefusalCodes.SelectionReaderBusy] = MotifAppStrings.RefusalSelectionReaderBusy,
+        [RefusalCodes.SelectionReaderCancelled] = MotifAppStrings.RefusalSelectionReaderCancelled,
+        [RefusalCodes.SelectionReaderDisposed] = MotifAppStrings.RefusalSelectionReaderDisposed,
+        [RefusalCodes.SelectionReaderInvalid] = MotifAppStrings.RefusalSelectionReaderInvalid,
+        ["trial.scratch-gone"] = MotifAppStrings.RefusalTrialScratchGone,
+        ["trial.none"] = MotifAppStrings.RefusalTrialNone,
+        [RefusalCodes.SelectionReaderNoBaseline] = MotifAppStrings.RefusalSelectionReaderNoBaseline,
+        [RefusalCodes.SelectionReaderRangeInvalid] = MotifAppStrings.RefusalSelectionReaderRangeInvalid,
+        [RefusalCodes.SelectionReaderOwnershipLimit] = MotifAppStrings.RefusalSelectionReaderOwnershipLimit,
+        [RefusalCodes.SelectionReaderProjectPathRequired] = MotifAppStrings.RefusalSelectionReaderProjectPathRequired,
+        [C.TextsEvidenceChanged] = MotifAppStrings.RefusalTextsEvidenceChanged,
 
-        [C.StatsCancelled] = "Reading the statistics was cancelled.",
-        [C.StatsInvalidEvidence] = "The stored statistics are damaged. Measure the words again.",
-        [C.StatsNoAssessment] = "No measurements with statistics are stored yet. Measure the words first.",
-        [C.StatsNoCache] = "These measurements were stored without statistics. Measure the words again.",
-        [C.StatsNoEvidence] = "The grammar these measurements used is no longer stored. Measure the words again.",
-        [C.StatsParserRefused] = "PanGloss could not read these statistics. The details say why.",
+        [C.StatsCancelled] = MotifAppStrings.RefusalStatsCancelled,
+        [C.StatsInvalidEvidence] = MotifAppStrings.RefusalStatsInvalidEvidence,
+        [C.StatsNoAssessment] = MotifAppStrings.RefusalStatsNoAssessment,
+        [C.StatsNoCache] = MotifAppStrings.RefusalStatsNoCache,
+        [C.StatsNoEvidence] = MotifAppStrings.RefusalStatsNoEvidence,
+        [C.StatsParserRefused] = MotifAppStrings.RefusalStatsParserRefused,
         [C.StatsParserUnavailable] = ParserUnusable,
-        [C.StatsTimedOut] = "Reading the statistics took too long and was stopped. Try again.",
+        [C.StatsTimedOut] = MotifAppStrings.RefusalStatsTimedOut,
 
-        [C.StoreInconsistent] = "Motif's file for this project is damaged and cannot be used.",
-        [C.StoreUnsupported] = "Motif's file for this project cannot be used by this version of Motif.",
+        [C.StoreInconsistent] = MotifAppStrings.RefusalStoreInconsistent,
+        [C.StoreUnsupported] = MotifAppStrings.RefusalStoreUnsupported,
 
-        [C.TextsWordsCancelled] = "Reading the texts' words was cancelled.",
+        [C.TextsWordsCancelled] = MotifAppStrings.RefusalTextsWordsCancelled,
 
-        [C.TimingInvalidOverride] = "A re-run does not belong to these measurements. Re-run the words again.",
-        [C.TimingNoAssessment] = "No timings are stored yet. Measure the words first.",
-        [C.TimingNoBaseline] = "Refresh the project before looking at timings.",
-        [C.TimingOverrideNotFound] = "A re-run is no longer stored. Re-run the words again.",
-        [C.TimingWordSetNotFound] = "That saved set of words no longer exists. Choose another.",
-        [C.TimingWrongKind] = "Those measurements have no timings. Measure the words again.",
+        [C.TimingInvalidOverride] = MotifAppStrings.RefusalTimingInvalidOverride,
+        [C.TimingNoAssessment] = MotifAppStrings.RefusalTimingNoAssessment,
+        [C.TimingNoBaseline] = MotifAppStrings.RefusalTimingNoBaseline,
+        [C.TimingOverrideNotFound] = MotifAppStrings.RefusalTimingOverrideNotFound,
+        [C.TimingWordSetNotFound] = MotifAppStrings.RefusalTimingWordSetNotFound,
+        [C.TimingWrongKind] = MotifAppStrings.RefusalTimingWrongKind,
 
-        [C.TrialChangesChanged] = "The changes were updated while they were being checked. Check them again.",
-        [C.TrialMeasurementIncomplete] = "The check did not finish. Try it again.",
-        [NoProjectCode] = "Open a project first.",
-        [C.TrialNothingPending] = "There are no changes to check.",
-        [C.TrialUpdateInProgress] = "Motif is installing an update. Try the check again in a moment.",
+        [C.TrialChangesChanged] = MotifAppStrings.RefusalTrialChangesChanged,
+        [C.TrialMeasurementIncomplete] = MotifAppStrings.RefusalTrialMeasurementIncomplete,
+        [NoProjectCode] = MotifAppStrings.RefusalNoProjectCode,
+        [C.TrialNothingPending] = MotifAppStrings.RefusalTrialNothingPending,
+        [C.TrialUpdateInProgress] = MotifAppStrings.RefusalTrialUpdateInProgress,
 
-        [C.WordTraceCancelled] = "Trying the word was cancelled.",
-        [C.WordTraceMalformedDiagnostic] = "That file is not a diagnostic Motif can read. Choose a diagnostic Motif saved.",
+        [C.WordTraceCancelled] = MotifAppStrings.RefusalWordTraceCancelled,
+        [C.WordTraceMalformedDiagnostic] = MotifAppStrings.RefusalWordTraceMalformedDiagnostic,
         [C.WordTraceMalformedOutput] = ParserWrong,
-        [C.WordTraceNoBaseline] = "Refresh the project before trying a word.",
-        [C.WordTraceParserRefused] = "PanGloss could not try this word. The details say why.",
+        [C.WordTraceNoBaseline] = MotifAppStrings.RefusalWordTraceNoBaseline,
+        [C.WordTraceParserRefused] = MotifAppStrings.RefusalWordTraceParserRefused,
         [C.WordTraceParserUnavailable] = ParserUnusable,
     };
 
@@ -282,7 +255,7 @@ public sealed partial record WindowRefusal
 
     public bool HasCompileIssues => CompileIssues.Count > 0;
 
-    public string DetailsTitle => ParserDiagnostic is null ? "Details" : "Details · grammar issues";
+    public string DetailsTitle => ParserDiagnostic is null ? MotifAppStrings.Details : MotifAppStrings.RefusalDetailsGrammarIssuesTitle;
 
     /// <summary>The command's facts, such as the store path a delete button would need.</summary>
     public IReadOnlyDictionary<string, string> Facts { get; }
@@ -299,7 +272,7 @@ public sealed partial record WindowRefusal
         Code == C.StoreOtherVersion && Facts.ContainsKey(RefusalFactNames.StorePath);
 
     /// <summary>The heading for a refused Motif store that can be deleted and recreated.</summary>
-    public string? Heading => OffersStoreDeletion ? "This Motif store is from another version" : null;
+    public string? Heading => OffersStoreDeletion ? MotifAppStrings.RefusalStoreOtherVersionHeading : null;
 
     /// <summary>Presents a command's refusal in the window's words.</summary>
     public static WindowRefusal From(Refusal refusal) => From(refusal, GenericSentence);

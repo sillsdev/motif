@@ -538,8 +538,8 @@ public sealed class WordRow : UserControl
         {
             Classes = { "wordPresentationNext" },
         };
-        next.Children.Add(NextAction(data, "Open in text", WordAction.OpenInText));
-        next.Children.Add(NextAction(data, "Try a Word", WordAction.TryWord));
+        next.Children.Add(NextAction(data, MotifAppStrings.WordRowOpenInText, WordAction.OpenInText));
+        next.Children.Add(NextAction(data, MotifAppStrings.TryAWord, WordAction.TryWord));
         next.Children.Add(NextAction(data, data.Facts.WordAnalysesLabel, WordAction.OpenAnalyses,
             data.Facts.HasWordAnalysesLink));
         host.Children.Add(next);

@@ -1,3 +1,4 @@
+using SIL.Motif.App;
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
@@ -352,7 +353,7 @@ public sealed class StateScreenshots(ITestOutputHelper output)
         {
             await stage.Hover(WorkspacePage.Texts, () => stage.RowBody(MatrixWords), "the first word row", TextsTab.Matrix);
             return await stage.Hover(null,
-                () => stage.Visible<Button>(link => link.Content as string == "Open in text").First(), "Open in text");
+                () => stage.Visible<Button>(link => link.Content as string == MotifAppStrings.WordRowOpenInText).First(), "Open in text");
         })
         { Height = 1100 };
 
@@ -601,8 +602,8 @@ public sealed class StateScreenshots(ITestOutputHelper output)
         })
         { Height = 1600 };
         yield return new("timing", "statistics-expanded", stage => stage.Expand(WorkspacePage.Timing,
-            () => stage.Visible<Expander>(expander => expander.Header as string == "Detailed statistics").First(),
-            "Detailed statistics"))
+            () => stage.Visible<Expander>(expander => expander.Header as string == MotifAppStrings.HeaderDetailedStatistics).First(),
+            MotifAppStrings.HeaderDetailedStatistics))
         { Height = 1300 };
 
         // Warnings.

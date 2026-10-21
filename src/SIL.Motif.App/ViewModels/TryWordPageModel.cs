@@ -81,11 +81,11 @@ public sealed class TryWordPageModel : PageModel
     /// <summary>The returned membership or availability state, without treating a missing row as absence.</summary>
     public string FieldWorksContextStatus => ResultWordContext switch
     {
-        null or { HasBaseline: false } => "FieldWorks word context unavailable",
-        { IsInFieldWorks: null } => "FieldWorks membership not recorded",
-        { IsInFieldWorks: false } => "Not in FieldWorks",
-        { Analyses.Count: 0 } => "No stored analyses in the captured FieldWorks Baseline",
-        _ => "Stored analyses for " + ResultWordContext.Word,
+        null or { HasBaseline: false } => MotifAppStrings.TryWordContextUnavailable,
+        { IsInFieldWorks: null } => MotifAppStrings.TryWordMembershipUnrecorded,
+        { IsInFieldWorks: false } => MotifAppStrings.NotInFieldWorks,
+        { Analyses.Count: 0 } => MotifAppStrings.TryWordNoStoredAnalyses,
+        _ => string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.TryWordStoredAnalysesForFormat, ResultWordContext.Word),
     };
 
     /// <summary>Each stored analysis and its own recorded opinion, preserving the shared record order.</summary>
@@ -95,7 +95,7 @@ public sealed class TryWordPageModel : PageModel
 
     /// <summary>The distinct opinions actually stored for the returned word.</summary>
     public IReadOnlyList<TryWordOpinion> ResultOpinions => (ResultWordContext?.Analyses ?? []).Select(analysis => WindowWords.OpinionOf(analysis.StoredAnalysisOpinion))
-        .Distinct().Select(opinion => new TryWordOpinion(opinion, WindowWords.Of(opinion) + " in FieldWorks")).ToArray();
+        .Distinct().Select(opinion => new TryWordOpinion(opinion, string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.CompareHeldInFieldWorksFormat, WindowWords.Of(opinion)))).ToArray();
 
     /// <summary>A comparison meaning only when the trace establishes a completed search with no analysis.</summary>
     private (string Word, MeaningTone Tone) ResultComparison => Trace.Result is { Parsed: false, Complete: true, InvalidShape: false } &&
@@ -135,9 +135,9 @@ public sealed class TryWordPageModel : PageModel
     }
 
     public string ResultOutcomeText => HasLastParseRefusal
-        ? ParserRefusals.Title + " in last parse" : SameAsFieldWorks is { } same ? same ? "Same" : "Different"
+        ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.TryWordRefusalInLastParseFormat, ParserRefusals.Title) : SameAsFieldWorks is { } same ? same ? MotifAppStrings.OutcomeSame : MotifAppStrings.OutcomeDifferent
         : Trace.Result is { Complete: true, Parsed: true }
-            ? $"Parsed · {Trace.Analyses.Count} {(Trace.Analyses.Count == 1 ? "analysis" : "analyses")}" : Trace.AnswerText;
+            ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.TryWordParsedFormat, PluralText.Format(MotifAppStrings.TryWordAnalysesPattern, Trace.Analyses.Count)) : Trace.AnswerText;
     public Mark ResultOutcomeMark => HasLastParseRefusal ? Mark.ParserRefusal : SameAsFieldWorks is { } same ? same ? Mark.Same : Mark.Different : Trace.AnswerMark;
 
     private static string Standing(WordContextResponse context) => !context.IsInFieldWorks!.Value
@@ -149,16 +149,16 @@ public sealed class TryWordPageModel : PageModel
 
     /// <summary>The returned trace's grammar capture, never borrowed from the current workspace.</summary>
     public string TracedGrammarText => Trace.Result?.HostCapture?.Baseline is { } baseline
-        ? "Traced with the grammar of the Baseline from " + WindowTimeText.Format(DateTimeOffset.Parse(
-            baseline.Token.CapturedUtc, CultureInfo.InvariantCulture), Context.Clock)
-        : Trace.Result?.GrammarSource is { Length: > 0 } ? "Traced with a saved grammar; its Baseline was not recorded."
-        : "The grammar of this trace was not recorded.";
+        ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.TryWordTracedWithBaselineFormat,
+            WindowTimeText.Format(DateTimeOffset.Parse(baseline.Token.CapturedUtc, CultureInfo.InvariantCulture), Context.Clock))
+        : Trace.Result?.GrammarSource is { Length: > 0 } ? MotifAppStrings.TryWordTracedSavedGrammar
+        : MotifAppStrings.TryWordGrammarNotRecorded;
 
     /// <summary>Different recorded project states, without inferring that their grammars or outcomes differ.</summary>
     public string TraceBaselineWarning => Trace.Result?.HostCapture?.Baseline?.Token is { } traced &&
         _earlierTiming?.Baseline is { } measured && !traced.HasSameSemanticIdentity(measured) &&
         _earlierTiming.Words.Any(word => word.Word == Trace.Result.Word && word.Origin is not null)
-        ? "This trace and the earlier parse used different Baselines. Refresh and try again." : string.Empty;
+        ? MotifAppStrings.TryWordDifferentBaselines : string.Empty;
 
     /// <summary>The diagnostic tools beside the page's trace.</summary>
     public DiagnosticToolsViewModel Diagnostics { get; }
@@ -435,24 +435,22 @@ public sealed class TryWordPageModel : PageModel
             if (timing.Aggregates.Skip(EarlierRuleLimit).ToArray() is { Length: > 0 } rest)
             {
                 var restMs = rest.Sum(rule => rule.SelfMs);
-                EarlierRuleTimes.Add(new TryWordEarlierRuleTime(SpeedText.Count(rest.Length, "other rule", "other rules"),
+                EarlierRuleTimes.Add(new TryWordEarlierRuleTime(PluralText.Format(MotifAppStrings.TryWordOtherRulesPattern, rest.Length),
                     string.Empty, SpeedText.PerWord(restMs),
                     ShareOf(rest.All(rule => rule.ShareOfWordTime is not null) ? rest.Sum(rule => rule.ShareOfWordTime) : null),
                     IsOtherTime: false));
             }
             if (timing.Attribution.NotAttributedMs is { } other && other >= TimingShare.SmallestShownMs)
-                EarlierRuleTimes.Add(new TryWordEarlierRuleTime("Not attributed", string.Empty,
+                EarlierRuleTimes.Add(new TryWordEarlierRuleTime(MotifAppStrings.TimingNotAttributedLabel, string.Empty,
                     SpeedText.PerWord(other), ShareOf(timing.Attribution.NotAttributedShare), IsOtherTime: true));
-            EarlierTimingTitle = $"Time from the parse of {origin.MeasuredUtc.ToLocalTime().ToString("ddd d MMM, h:mm tt", CultureInfo.CurrentCulture)}";
-            EarlierTimingSource = "Not from this traced search. " + (wordMs is { } took
-                ? $"In that parse {result.Word} took {SpeedText.PerWord(took)}; each rule's time covers that parse's " +
-                    "whole search for the word"
-                : $"Each rule's time covers that parse's whole search for {result.Word}") +
-                ", including attempts that stopped.";
+            EarlierTimingTitle = string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.TryWordEarlierTimingTitleFormat, origin.MeasuredUtc.ToLocalTime());
+            EarlierTimingSource = wordMs is { } took
+                ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.TryWordEarlierSourceWithWordFormat, result.Word, SpeedText.PerWord(took))
+                : string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.TryWordEarlierSourceFormat, result.Word);
             EarlierShareHeader = timing.Aggregates.Any(rule => rule.ShareOfWordTime is not null)
-                ? wordMs is { } whole ? $"Share of {SpeedText.PerWord(whole)}" : "Word share" : string.Empty;
+                ? wordMs is { } whole ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.TryWordShareOfFormat, SpeedText.PerWord(whole)) : MotifAppStrings.TryWordWordShare : string.Empty;
             if (timing.Attribution.Overrun)
-                EarlierOverrunText = $"Recorded object timers exceeded word time by {SpeedText.PerWord(timing.Attribution.OverrunMs)}.";
+                EarlierOverrunText = string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.TryWordOverrunFormat, SpeedText.PerWord(timing.Attribution.OverrunMs));
         }
         OnPropertyChanged(nameof(HasEarlierTiming));
         OnPropertyChanged(nameof(EarlierTimingTitle));
@@ -486,7 +484,7 @@ public sealed class TryWordStoredAnalysis
         HasMultipleOpinions = readings.Select(item => WindowWords.OpinionOf(item.StoredAnalysisOpinion)).Distinct().Count() > 1;
         OpinionLabel = readings.Count == 1 ? WindowWords.Of(Opinion) : string.Join(" · ", readings
             .GroupBy(item => WindowWords.OpinionOf(item.StoredAnalysisOpinion))
-            .OrderBy(group => group.Key).Select(group => $"{WindowWords.Of(group.Key)} {group.Count()}"));
+            .OrderBy(group => group.Key).Select(group => string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.TryWordOpinionCountFormat, WindowWords.Of(group.Key), group.Count())));
         Text = string.Join(" + ", reading.Morphs.Select(morph => morph.Form));
         Morphs = reading.Morphs.Select(morph => new ParserReadingMorphViewModel(morph)).ToArray();
         Pieces = reading.Morphs.Select((morph, index) => new TryWordTracePiece(
@@ -500,7 +498,7 @@ public sealed class TryWordStoredAnalysis
     public string Text { get; }
     public IReadOnlyList<ParserReadingMorphViewModel> Morphs { get; }
     public IReadOnlyList<TryWordTracePiece> Pieces { get; }
-    public bool HasUnrecordedStep => Pieces.Any(piece => piece.Status == "No step recorded");
+    public bool HasUnrecordedStep => Pieces.Any(piece => piece.Status == MotifAppStrings.NoStepRecorded);
 }
 
 /// <summary>A stored piece and only the trace events that name its exact authored identity.</summary>
@@ -511,23 +509,34 @@ public sealed class TryWordTracePiece
     public TryWordTracePiece(IReadOnlyList<ParserReadingMorph> morphs, WordTraceReading? trace)
     {
         Morphs = [new ParserReadingMorphViewModel(morphs[0])];
-        var statuses = morphs.Select(morph => StatusFor(morph, trace)).Distinct(StringComparer.Ordinal).ToArray();
-        Status = statuses.Length == 1 ? statuses[0] : "Trace marks differ";
-        StatusParts = Status switch
+        var statuses = morphs.Select(morph => StatusFor(morph, trace)).Distinct().ToArray();
+        var status = statuses.Length == 1 ? statuses[0] : PieceStatus.Differ;
+        Status = status switch
         {
-            "built · refused" =>
+            PieceStatus.BuiltAndRefused => MotifAppStrings.TryWordPieceBuiltRefused,
+            PieceStatus.Refused => MotifAppStrings.TraceStepRefused,
+            PieceStatus.Built => MotifAppStrings.TraceStepBuilt,
+            PieceStatus.Tried => MotifAppStrings.TryWordPieceTried,
+            PieceStatus.NoStep => MotifAppStrings.NoStepRecorded,
+            _ => MotifAppStrings.TryWordPieceDiffer,
+        };
+        StatusParts = status switch
+        {
+            PieceStatus.BuiltAndRefused =>
             [
-                new(Mark.Of(TraceStepMark.Built), "built", string.Empty),
-                new(Mark.Of(TraceStepMark.Refused), "refused", "· "),
+                new(Mark.Of(TraceStepMark.Built), MotifAppStrings.TraceStepBuilt, string.Empty),
+                new(Mark.Of(TraceStepMark.Refused), MotifAppStrings.TraceStepRefused, "· "),
             ],
-            "refused" => [new(Mark.Of(TraceStepMark.Refused), Status, string.Empty)],
-            "built" => [new(Mark.Of(TraceStepMark.Built), Status, string.Empty)],
-            "No step recorded" => [],
+            PieceStatus.Refused => [new(Mark.Of(TraceStepMark.Refused), Status, string.Empty)],
+            PieceStatus.Built => [new(Mark.Of(TraceStepMark.Built), Status, string.Empty)],
+            PieceStatus.NoStep => [],
             _ => [new(null, Status, string.Empty)],
         };
     }
 
-    private static string StatusFor(ParserReadingMorph morph, WordTraceReading? trace)
+    private enum PieceStatus { BuiltAndRefused, Refused, Built, Tried, NoStep, Differ }
+
+    private static PieceStatus StatusFor(ParserReadingMorph morph, WordTraceReading? trace)
     {
         var steps = trace is null ? [] : Flatten(trace.Root).Where(step =>
             step.SourceIdentityQuality == "authored" && step.SourceIdentityKind == "morphRule" &&
@@ -535,8 +544,8 @@ public sealed class TryWordTracePiece
             Guid.TryParse(morph.GrammaticalInfoId, out var msa) && source == msa).ToArray();
         var refusal = steps.FirstOrDefault(step => step.FailureReason is { Length: > 0 });
         var built = steps.Any(step => step.OutcomeStatus is "success" or "successful" or "succeeded");
-        return built && refusal is not null ? "built · refused" : refusal is not null ? "refused"
-            : built ? "built" : steps.Length > 0 ? "Tried" : "No step recorded";
+        return built && refusal is not null ? PieceStatus.BuiltAndRefused : refusal is not null ? PieceStatus.Refused
+            : built ? PieceStatus.Built : steps.Length > 0 ? PieceStatus.Tried : PieceStatus.NoStep;
     }
 
     public IReadOnlyList<ParserReadingMorphViewModel> Morphs { get; }

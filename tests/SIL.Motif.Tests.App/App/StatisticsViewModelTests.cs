@@ -1,3 +1,4 @@
+using SIL.Motif.App;
 using System.Linq;
 using System.Text.Json;
 using SIL.Motif.App.ViewModels;
@@ -399,8 +400,8 @@ public sealed class StatisticsViewModelTests
 
         await statistics.LoadCommand.ExecuteAsync(null);
 
-        Assert.Equal("Analysis attempts", statistics.CountHeader);
-        Assert.Equal("Word time (ms)", statistics.TimeHeader);
+        Assert.Equal(MotifAppStrings.StatsHeaderAnalysisAttempts, statistics.CountHeader);
+        Assert.Equal(MotifAppStrings.StatsHeaderWordTime, statistics.TimeHeader);
         Assert.DoesNotContain("statistics pass", statistics.ShadingNote, StringComparison.Ordinal);
     }
 
@@ -416,8 +417,8 @@ public sealed class StatisticsViewModelTests
 
         await statistics.LoadCommand.ExecuteAsync(null);
 
-        Assert.Equal("Attempts", statistics.CountHeader);
-        Assert.Equal("Own time (ms)", statistics.TimeHeader);
+        Assert.Equal(MotifAppStrings.StatsHeaderAttempts, statistics.CountHeader);
+        Assert.Equal(MotifAppStrings.StatsHeaderOwnTime, statistics.TimeHeader);
         var entry = statistics.Rows.Single(row => row.Object == "entry");
         var roots = statistics.Rows.Single(row => row.Object == "roots");
         var moreRoots = statistics.Rows.Single(row => row.Object == "more roots");

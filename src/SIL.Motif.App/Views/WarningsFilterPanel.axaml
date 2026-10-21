@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="clr-namespace:SIL.Motif.App"
              xmlns:conv="clr-namespace:Avalonia.Data.Converters;assembly=Avalonia.Base"
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
@@ -10,7 +11,7 @@
     <StackPanel Classes="warningFilters" IsVisible="{Binding Grammar.ShowFindings}"
                 Spacing="{DynamicResource Intent.Space.Related}">
       <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-        <views:CopyableTextBlock Classes="denseTableHeading" Text="Area" />
+        <views:CopyableTextBlock Classes="denseTableHeading" Text="{x:Static app:MotifAppStrings.Area}" />
         <ItemsControl x:Name="WarningsAreaFilterItems" ItemsSource="{Binding AreaFilters}">
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:WarningsAreaFilterOption">
@@ -23,7 +24,7 @@
       </StackPanel>
 
       <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-        <views:CopyableTextBlock Classes="denseTableHeading" Text="Severity" />
+        <views:CopyableTextBlock Classes="denseTableHeading" Text="{x:Static app:MotifAppStrings.Severity}" />
         <views:FilterChip Label="All" Count="{Binding Grammar.Warnings.TotalCount}"
                           IsActive="{Binding Grammar.Warnings.Bucket, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:GrammarFindingBucket.All}}"
                           Command="{Binding Grammar.Warnings.SetBucketCommand}"
@@ -46,10 +47,10 @@
       </StackPanel>
 
       <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-        <views:CopyableTextBlock Classes="denseTableHeading" Text="Names your words" />
+        <views:CopyableTextBlock Classes="denseTableHeading" Text="{x:Static app:MotifAppStrings.NamesYourWords}" />
         <ToggleButton Content="{Binding Grammar.Warnings.TouchYourWordsText}"
                       IsChecked="{Binding Grammar.Warnings.TouchYourWords, Mode=TwoWay}"
-                      AutomationProperties.Name="Show findings with exact uses in your words" />
+                      AutomationProperties.Name="{x:Static app:MotifAppStrings.ShowFindingsWithExactUsesInYourWordsAccessibleName}" />
       </StackPanel>
     </StackPanel>
   </ScrollViewer>

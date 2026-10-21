@@ -39,7 +39,8 @@ public sealed class TryWordActionFlowTests
                 var opinions = Assert.Single(controls.OfType<ItemsControl>(), control =>
                     control.Name == "TryWordPanelResultOpinionsItems");
                 var actions = controls.OfType<Button>().Where(button =>
-                    AutomationProperties.GetName(button) is "Open in Analyze texts" or "Timing for this word" ||
+                    AutomationProperties.GetName(button) == MotifAppStrings.TryWordOpenInAnalyzeTextsAccessibleName ||
+                    AutomationProperties.GetName(button) == MotifAppStrings.TimingForThisWordAccessibleName ||
                     AutomationProperties.GetAutomationId(button) == AutomationIds.TryWordHandOff).ToArray();
                 Assert.Equal(3, actions.Length);
                 foreach (var action in actions)

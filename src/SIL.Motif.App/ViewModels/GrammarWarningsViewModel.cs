@@ -79,14 +79,15 @@ public sealed class GrammarWarningDetailViewModel
     public bool HasGuidance => Guidance.Length > 0;
     public bool HasDescription => Description.Length > 0;
     public bool HasHelp => HelpUrl is not null;
-    public string SeenText => RepeatCount > 1 ? $"{RepeatCount:N0} findings" : string.Empty;
+    public string SeenText => RepeatCount > 1
+        ? PluralText.Format(MotifAppStrings.WarningsFindingsPattern, RepeatCount) : string.Empty;
     public bool HasSeenText => RepeatCount > 1;
 }
 
 /// <summary>A named FieldWorks entry link supplied by PanGloss.</summary>
 public sealed record GrammarWarningEntryLink(string Entry, string Tool, Uri Address)
 {
-    public string Label => $"Open {Entry} in {Tool} ↗";
+    public string Label => string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.WarningsOpenEntryFormat, Entry, Tool);
 }
 
 /// <summary>Which grammar-health report levels the Warnings page displays.</summary>
@@ -161,9 +162,11 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
         .Where(row => row.Level == GrammarDiagnosticLevel.Information).Sum(row => row.RepeatCount);
 
     /// <summary>The report's error, warning, and information totals for the page summary.</summary>
-    public string BreakdownText => $"{ErrorCount} {CountWord(ErrorCount, "error", "errors")}, " +
-        $"{WarningCount} {CountWord(WarningCount, "warning", "warnings")}, " +
-        $"{InformationCount} {CountWord(InformationCount, "information finding", "information findings")}.";
+    public string BreakdownText => string.Format(System.Globalization.CultureInfo.CurrentCulture,
+        MotifAppStrings.WarningsBreakdownFormat,
+        PluralText.Format(MotifAppStrings.WarningsErrorsPattern, ErrorCount),
+        PluralText.Format(MotifAppStrings.WarningsWarningsPattern, WarningCount),
+        PluralText.Format(MotifAppStrings.WarningsInformationPattern, InformationCount));
 
     public IRelayCommand<GrammarFindingBucket> SetBucketCommand { get; }
     /// <summary>Changes the warning list to report order.</summary>
@@ -243,15 +246,15 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
     public bool HasAny => _all.Count > 0;
 
     public string CountSummary => ShownCount == TotalCount
-        ? (TotalCount == 1 ? "1 finding" : $"{TotalCount} findings")
-        : $"{ShownCount} of {TotalCount} findings match the filters";
+        ? PluralText.Format(MotifAppStrings.WarningsFindingsPattern, TotalCount)
+        : string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.WarningsCountMatchFormat, ShownCount, TotalCount);
 
     /// <summary>The distinct Selection words reached by exact identity from the findings, when available.</summary>
     public string TouchYourWordsText => WarningWordsQuery.Touched(Findings) is { } touched
-        ? $"Touch your words · {touched.Words:N0} {(touched.Words == 1 ? "word" : "words")}" : "Touch your words";
+        ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.WarningsTouchYourWordsFormat, PluralText.Format(MotifAppStrings.WordCountPattern, touched.Words)) : MotifAppStrings.WarningsTouchYourWords;
 
     /// <summary>The current ordering shown on the sort control.</summary>
-    public string SortLabel => MostYourWordsFirst ? "Sort: most of your words first" : "Sort: report order";
+    public string SortLabel => MostYourWordsFirst ? MotifAppStrings.WarningsSortMostWords : MotifAppStrings.WarningsSortReportOrder;
 
     /// <summary>The complete projected findings, including the effective words each finding touches.</summary>
     public IReadOnlyList<GrammarWarning> Findings { get; private set; } = [];
@@ -341,7 +344,7 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
         foreach (var group in groups)
         {
             var count = group.Sum(row => row.RepeatCount);
-            TableEntries.Add(new DenseTableGroup(group.Key, $"{count:N0} {(count == 1 ? "finding" : "findings")}"));
+            TableEntries.Add(new DenseTableGroup(group.Key, PluralText.Format(MotifAppStrings.WarningsFindingsPattern, count)));
             foreach (var row in group) TableEntries.Add(row);
         }
 
@@ -356,24 +359,22 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
         var code = row.Warning.Code ?? string.Empty;
         if (kinds.Contains("PhEnvironment", StringComparer.Ordinal) ||
             code.Contains("environment", StringComparison.OrdinalIgnoreCase))
-            return "Environments";
+            return MotifAppStrings.WarningsAreaEnvironments;
         if (kinds.Any(kind => kind.StartsWith("MoAffix", StringComparison.Ordinal)) ||
             code.Contains("affix", StringComparison.OrdinalIgnoreCase))
-            return "Affixes";
+            return MotifAppStrings.WarningsAreaAffixes;
         if (kinds.Any(kind => kind.StartsWith("Ph", StringComparison.Ordinal)) ||
             code.Contains("phon", StringComparison.OrdinalIgnoreCase) ||
             code.Contains("rule", StringComparison.OrdinalIgnoreCase))
-            return "Phonological rules";
-        return "Other findings";
+            return MotifAppStrings.WarningsAreaPhonologicalRules;
+        return MotifAppStrings.WarningsAreaOther;
     }
 
-    private static int AreaOrder(string area) => area switch
-    {
-        "Environments" => 0,
-        "Phonological rules" => 1,
-        "Affixes" => 2,
-        _ => 3,
-    };
+    private static int AreaOrder(string area) =>
+        area == MotifAppStrings.WarningsAreaEnvironments ? 0
+        : area == MotifAppStrings.WarningsAreaPhonologicalRules ? 1
+        : area == MotifAppStrings.WarningsAreaAffixes ? 2
+        : 3;
 
     private bool Matches(object item) =>
         item is GrammarWarningRowViewModel row
@@ -462,7 +463,7 @@ public sealed partial class GrammarWarningRowViewModel : ObservableObject
     /// <summary>The first subject name supplied by PanGloss, when the finding names an item.</summary>
     public string NamedItemText { get; }
     /// <summary>The heading for words whose identity matches the named item.</summary>
-    public string ExactWordsHeading => NamedItemText.Length > 0 ? $"Your words that use {NamedItemText}" : "Your words";
+    public string ExactWordsHeading => NamedItemText.Length > 0 ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.WarningsYourWordsThatUseFormat, NamedItemText) : MotifAppStrings.WarningsYourWords;
     /// <summary>Whether the finding names an item with no exact word uses in the Selection.</summary>
     public bool HasNoExactUses => AttributionState == WarningDisplayState.NoneInSelection;
     public string ReachSummaryText { get; }
@@ -470,23 +471,24 @@ public sealed partial class GrammarWarningRowViewModel : ObservableObject
     public bool HasReachStateText => !HasNoExactUses || NamedItemText.Length == 0;
     /// <summary>The plain language shown when no Selection word uses the named item.</summary>
     public string NoExactUsesText => NamedItemText.Length > 0
-        ? $"None of your words use {NamedItemText}" : "None of your words use the named items";
+        ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.WarningsNoneUseFormat, NamedItemText) : MotifAppStrings.WarningsNoneUseNamed;
     /// <summary>The quiet row title, with repeated identical findings counted once.</summary>
-    public string RowTitleText => $"{PanGlossTitle} · {RepeatCount:N0} {CountWord(RepeatCount, "finding", "findings")}";
+    public string RowTitleText => string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.WarningsRowTitleFormat, PanGlossTitle, PluralText.Format(MotifAppStrings.WarningsFindingsPattern, RepeatCount));
     /// <summary>Whether the table lets a person select this row; a heading cannot be selected, a finding can.</summary>
     public bool IsSelectable => true;
     /// <summary>The severity written out for the table's first column: Error, Warning or Note.</summary>
     public string SeverityLabel => Level switch
     {
-        GrammarDiagnosticLevel.Error => "Error",
-        GrammarDiagnosticLevel.Warning => "Warning",
-        _ => "Note",
+        GrammarDiagnosticLevel.Error => MotifAppStrings.WarningsSeverityError,
+        GrammarDiagnosticLevel.Warning => MotifAppStrings.WarningsSeverityWarning,
+        _ => MotifAppStrings.WarningsSeverityNote,
     };
     /// <summary>
     /// The named item for the table's Item column, or the finding's title when it names none, with a count when
     /// identical findings share the row so the row total matches the group's count.
     /// </summary>
-    public string TableItemText => TableItemName + (RepeatCount > 1 ? $" · {RepeatCount:N0} findings" : string.Empty);
+    public string TableItemText => RepeatCount > 1
+        ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.WarningsTableItemRepeatedFormat, TableItemName, PluralText.Format(MotifAppStrings.WarningsFindingsPattern, RepeatCount)) : TableItemName;
     /// <summary>The named item, or the finding's title when it names none, without any repeat count.</summary>
     public string TableItemName => NamedItemText.Length > 0 ? NamedItemText : PanGlossTitle;
     /// <summary>
@@ -502,7 +504,7 @@ public sealed partial class GrammarWarningRowViewModel : ObservableObject
                 if (part.ObjectId is { Length: > 0 } id && !string.IsNullOrWhiteSpace(part.Text))
                     names.TryAdd(id, part.Text);
             return RawIdentifier.Replace(Warning.Description.Length > 0 ? Warning.Description : Message,
-                match => names.TryGetValue(match.Value, out var name) ? name : "an unnamed item");
+                match => names.TryGetValue(match.Value, out var name) ? name : MotifAppStrings.WarningsUnnamedItem);
         }
     }
     private static readonly System.Text.RegularExpressions.Regex RawIdentifier = new(
@@ -511,8 +513,8 @@ public sealed partial class GrammarWarningRowViewModel : ObservableObject
     /// <summary>The Named words cell: an exact count, none, or a dash when no exact count is available.</summary>
     public string TableNamedWordsText => WarningWordsQuery.Touched(Findings.Where(item => item.NamesItem).ToArray())
         is not { IsComplete: true } ? "—" : YourWordsCount is { } count
-        ? count == 0 ? "none" : $"{count:N0} {(count == 1 ? "word" : "words")}"
-        : AttributionState == WarningDisplayState.NoneInSelection ? "none" : "—";
+        ? count == 0 ? MotifAppStrings.WarningsNone : PluralText.Format(MotifAppStrings.WordCountPattern, count)
+        : AttributionState == WarningDisplayState.NoneInSelection ? MotifAppStrings.WarningsNone : "—";
     /// <summary>Whether the separate title says more than the row heading.</summary>
     public bool HasDistinctPanGlossTitle => PanGlossTitle.Length > 0 &&
         !RowTitleText.StartsWith(PanGlossTitle, StringComparison.Ordinal);
@@ -522,37 +524,37 @@ public sealed partial class GrammarWarningRowViewModel : ObservableObject
     public bool HasSpellingCandidates => SpellingCandidateRows.Count > 0;
     /// <summary>The number of distinct spelling matches, kept separate from confirmed identity uses.</summary>
     public string SpellingCandidatesText =>
-        $"{(HasPartialCount ? "At least " : string.Empty)}{SpellingCandidateRows.Count:N0} " +
-        CountWord(SpellingCandidateRows.Count, "spelling match", "spelling matches");
+        PluralText.Format(HasPartialCount ? MotifAppStrings.WarningsSpellingMatchesAtLeastPattern
+            : MotifAppStrings.WarningsSpellingMatchesPattern, SpellingCandidateRows.Count);
     public bool HasAnyWordRows => HasExactRows || HasMembershipCandidates || HasSpellingCandidates;
     public int? YourWordsCount => AttributionState == WarningDisplayState.ExactUses ? WordRows.Count : null;
     public WarningDisplayState AttributionState { get; }
     public string ReachStateText => AttributionState switch
     {
         WarningDisplayState.ExactUses => IsPartialReach
-            ? "Some of your words use an item PanGloss named; Motif could not follow every named connection"
-            : "Your words use an item PanGloss named",
+            ? MotifAppStrings.WarningsReachSomeExact
+            : MotifAppStrings.WarningsReachExact,
         WarningDisplayState.SpellingCandidates => IsPartialReach
-            ? "These spellings match; Motif could not follow every named connection"
-            : "Matched by spelling only; this does not confirm use of the named item",
+            ? MotifAppStrings.WarningsReachSpellingPartial
+            : MotifAppStrings.WarningsReachSpelling,
         WarningDisplayState.MembershipCandidates => IsPartialReach
-            ? "These words use members of the named resource; Motif could not follow every named connection"
-            : "These words use members of the named resource; use of the resource is not confirmed",
-        WarningDisplayState.NoneInSelection => "None of your words use the item PanGloss named",
+            ? MotifAppStrings.WarningsReachMembersPartial
+            : MotifAppStrings.WarningsReachMembers,
+        WarningDisplayState.NoneInSelection => MotifAppStrings.WarningsReachNone,
         WarningDisplayState.NoFollowedRouteMatch =>
-            "No exact word uses were found; Motif could not follow every named connection",
-        WarningDisplayState.NoSubject => "PanGloss names nothing here",
+            MotifAppStrings.WarningsReachNoRoute,
+        WarningDisplayState.NoSubject => MotifAppStrings.WarningsReachNoSubject,
         WarningDisplayState.NamedUnsupportedRoute =>
-            "PanGloss named an item without a word list",
-        WarningDisplayState.ProjectWide => "This item applies across the grammar",
-        WarningDisplayState.MissingObject => "The item PanGloss named is missing from this project",
+            MotifAppStrings.WarningsReachUnsupported,
+        WarningDisplayState.ProjectWide => MotifAppStrings.WarningsReachProjectWide,
+        WarningDisplayState.MissingObject => MotifAppStrings.WarningsReachMissing,
         WarningDisplayState.UnresolvedIdentity when SubjectParts.Any(part =>
             part.Role is GrammarWarningPartRole.Object or GrammarWarningPartRole.Missing) =>
-            "Word counts are unavailable for this named item",
-        WarningDisplayState.UnresolvedIdentity => "Motif could not match PanGloss's name to a project item",
+            MotifAppStrings.WarningsReachUnresolvedNamed,
+        WarningDisplayState.UnresolvedIdentity => MotifAppStrings.WarningsReachUnresolved,
         WarningDisplayState.EvidenceUnavailable when IsPartialReach =>
-            "Word counts are unavailable; Motif could not follow every named connection",
-        _ => "Word counts are unavailable for this finding",
+            MotifAppStrings.WarningsReachEvidencePartial,
+        _ => MotifAppStrings.WarningsReachUnavailable,
     };
     public string LineSummaryText => ReachSummaryText;
     public bool IsPartialReach { get; }
@@ -585,7 +587,9 @@ public sealed partial class GrammarWarningRowViewModel : ObservableObject
         .Select(item => item.Subject.FirstOrDefault(part => part.SourceClass == "WfiWordform")?.Title ??
             item.Subject.FirstOrDefault()?.Text ?? item.Text)
         .GroupBy(word => word, StringComparer.Ordinal)
-        .Select(word => word.Count() == 1 ? $"{word.Key} (1 stored analysis)" : $"{word.Key} ({word.Count():N0} stored analyses)"));
+        .Select(word => word.Count() == 1
+            ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.WarningsOneStoredAnalysis, word.Key)
+            : string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.WarningsStoredAnalysesFormat, word.Key, word.Count().ToString("N0", System.Globalization.CultureInfo.CurrentCulture))));
 
     private static string DetailIdentity(GrammarWarning warning)
     {
@@ -601,9 +605,10 @@ public sealed partial class GrammarWarningRowViewModel : ObservableObject
 
     private static string SummaryFor(IReadOnlyList<GrammarWarning> namedFindings, WarningWordsTouched? touched)
     {
-        if (namedFindings.Count == 0) return "Can't tell: PanGloss names nothing";
+        if (namedFindings.Count == 0) return MotifAppStrings.WarningsCantTell;
         if (touched is not { IsComplete: true }) return string.Empty;
-        return touched.Words == 0 ? "None of your words" : $"{touched.Words:N0} of your words";
+        return touched.Words == 0 ? MotifAppStrings.WarningsNoneOfYourWords
+            : string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.WarningsWordsOfYourWordsFormat, touched.Words.ToString("N0", System.Globalization.CultureInfo.CurrentCulture));
     }
 
     private static WarningDisplayState AggregateAttributionState(IReadOnlyList<GrammarWarning> namedFindings,
@@ -626,7 +631,7 @@ public sealed partial class GrammarWarningRowViewModel : ObservableObject
     public bool IsWarning => Level == GrammarDiagnosticLevel.Warning;
     public bool IsError => Level == GrammarDiagnosticLevel.Error;
     public int RepeatCount { get; }
-    public string SeenText => $"{RepeatCount:N0}×";
+    public string SeenText => string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.WarningsSeenTimesFormat, RepeatCount.ToString("N0", System.Globalization.CultureInfo.CurrentCulture));
     public string Description => Message;
     public string Severity { get; }
     public Mark SeverityMark => Mark.Of(Level);
@@ -659,8 +664,8 @@ public sealed partial class GrammarWarningRowViewModel : ObservableObject
     public bool HasRefreshStatus => IsGone || IsNotMatchedAfterRefresh;
 
     public string StatusText => IsGone
-        ? "Gone after Refresh"
-        : IsNotMatchedAfterRefresh ? "Earlier line could not be matched after Refresh" : string.Empty;
+        ? MotifAppStrings.WarningsGoneAfterRefresh
+        : IsNotMatchedAfterRefresh ? MotifAppStrings.WarningsNotMatchedAfterRefresh : string.Empty;
 
     public void MarkGone() => IsGone = true;
 

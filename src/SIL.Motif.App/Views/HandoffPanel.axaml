@@ -15,21 +15,21 @@
       <StackPanel Spacing="{DynamicResource Component.Handoff.SectionGap}">
 
         <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap"
-                   Text="Give a chat model the files it needs to help you read these results." />
+                   Text="{x:Static app:MotifAppStrings.HandoffIntro}" />
 
         <views:CopyableTextBlock Text="{Binding Handoff.UnavailableReason}" TextWrapping="Wrap"
                                  IsVisible="{Binding Handoff.ShowsUnavailableReason}" />
 
-        <Border Classes="notice" IsVisible="{Binding Handoff.HasChosenWords}" AutomationProperties.Name="Words chosen in Compare">
+        <Border Classes="notice" IsVisible="{Binding Handoff.HasChosenWords}" AutomationProperties.Name="{x:Static app:MotifAppStrings.WordsChosenInCompareAccessibleName}">
           <DockPanel>
-            <Button DockPanel.Dock="Right" Content="Hand off every parsed word instead" Click="OnUseWholeAssessmentClick"
+            <Button DockPanel.Dock="Right" Content="{x:Static app:MotifAppStrings.HandOffEveryParsedWordInstead}" Click="OnUseWholeAssessmentClick"
                     VerticalAlignment="Center" Margin="{DynamicResource Component.Handoff.ActionMargin}" />
             <views:CopyableTextBlock Text="{Binding Handoff.ChosenWordsText}" TextWrapping="Wrap" VerticalAlignment="Center" />
           </DockPanel>
         </Border>
 
         <Border Classes="notice" IsVisible="{Binding Handoff.IsOutOfDate}"
-                AutomationProperties.Name="The AI Handoff is out of date">
+                AutomationProperties.Name="{x:Static app:MotifAppStrings.TheAIHandoffIsOutOfDateAccessibleName}">
           <DockPanel>
             <Ellipse DockPanel.Dock="Left" Classes="freshDot" Classes.stale="{Binding Handoff.IsOutOfDate}"
                      Margin="{DynamicResource Component.Handoff.GlyphMargin}" />
@@ -40,12 +40,12 @@
         <ProgressBar IsVisible="{Binding Handoff.IsActive}"
                      IsIndeterminate="{Binding Handoff.IsIndeterminate}"
                      Minimum="0" Maximum="1" Value="{Binding Handoff.ProgressFraction}"
-                     AutomationProperties.Name="AI Handoff progress"
+                     AutomationProperties.Name="{x:Static app:MotifAppStrings.AIHandoffProgressAccessibleName}"
                      AutomationProperties.AutomationId="{x:Static app:AutomationIds.HandoffProgress}" />
         <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Group}" IsVisible="{Binding Handoff.IsActive}">
           <views:CopyableTextBlock Text="{Binding Handoff.Progress.Message}" VerticalAlignment="Center" />
-          <Button Content="Cancel" Command="{Binding Handoff.CancelCommand}"
-                  AutomationProperties.Name="Cancel the running AI Handoff"
+          <Button Content="{x:Static app:MotifAppStrings.Cancel}" Command="{Binding Handoff.CancelCommand}"
+                  AutomationProperties.Name="{x:Static app:MotifAppStrings.CancelTheRunningAIHandoffAccessibleName}"
                   AutomationProperties.AutomationId="{x:Static app:AutomationIds.CancelHandoff}" />
         </StackPanel>
 
@@ -53,9 +53,9 @@
 
         <!-- Before the first write: what the folder will hold, so nothing about it is a surprise. -->
         <Border Classes="card" IsVisible="{Binding !Handoff.HasCompletedFiles}"
-                AutomationProperties.Name="What the AI Handoff will contain">
+                AutomationProperties.Name="{x:Static app:MotifAppStrings.WhatTheAIHandoffWillContainAccessibleName}">
           <StackPanel Spacing="{DynamicResource Component.Handoff.CardGap}">
-            <views:CopyableTextBlock TextWrapping="Wrap" Classes="section-title" Text="What goes in" FontSize="{DynamicResource Component.Handoff.TitleSize}" />
+            <views:CopyableTextBlock TextWrapping="Wrap" Classes="section-title" Text="{x:Static app:MotifAppStrings.WhatGoesIn}" FontSize="{DynamicResource Component.Handoff.TitleSize}" />
             <ItemsControl x:Name="HandoffPanelPlannedFilesItems" ItemsSource="{Binding PlannedFiles}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="views:PlannedHandoffFile">
@@ -86,7 +86,7 @@
                     Content="{Binding Handoff.Files.Count, StringFormat='Drag all {0} files into your chat'}"
                     Click="OnAllFilesClick"
                     HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" MinHeight="{DynamicResource Component.Handoff.DragHeight}"
-                    ToolTip.Tip="Drag into a chat. From the keyboard, press Enter to copy the folder path."
+                    ToolTip.Tip="{x:Static app:MotifAppStrings.HandoffFolderTip}"
                     ToolTip.Placement="Top" ToolTip.VerticalOffset="0"
                     AutomationProperties.Name="{x:Static vm:WindowCopy.DragAllAiHandoffFiles}"
                     AutomationProperties.AutomationId="{x:Static app:AutomationIds.DragAllHandoffFiles}">
@@ -97,7 +97,7 @@
               </Button.ContentTemplate>
             </Button>
 
-            <ItemsControl x:Name="HandoffPanelFilesItems" ItemsSource="{Binding Handoff.Files}" AutomationProperties.Name="AI Handoff files"
+            <ItemsControl x:Name="HandoffPanelFilesItems" ItemsSource="{Binding Handoff.Files}" AutomationProperties.Name="{x:Static app:MotifAppStrings.AIHandoffFilesAccessibleName}"
                           AutomationProperties.AutomationId="{x:Static app:AutomationIds.HandoffFiles}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:HandoffFileViewModel">
@@ -112,7 +112,7 @@
                         <views:CopyableTextBlock Classes="muted" Text="{Binding Purpose}" FontSize="{DynamicResource Intent.Type.Small}" TextWrapping="Wrap"
                                    IsVisible="{Binding HasPurpose}" />
                       </StackPanel>
-                      <Button Grid.Column="2" Content="Copy path" Click="OnCopyPathClick"
+                      <Button Grid.Column="2" Content="{x:Static app:MotifAppStrings.CopyPath}" Click="OnCopyPathClick"
                               AutomationProperties.Name="{Binding CopyPathAccessibleName}" />
                     </Grid>
                   </Border>
@@ -132,17 +132,17 @@
     <!-- Right when wide, below when narrow: the three steps to a chat, and what to ask once you are there. -->
       <StackPanel x:Name="HandoffGuide" Grid.Column="1" MaxWidth="{DynamicResource Component.Handoff.GuideWidth}"
                   HorizontalAlignment="Right" VerticalAlignment="Top" Spacing="{DynamicResource Intent.Space.Compact}">
-        <views:CopyableTextBlock TextWrapping="Wrap" Classes="section-title" Text="Get a chat model's help" FontSize="{DynamicResource Component.Handoff.TitleSize}" />
+        <views:CopyableTextBlock TextWrapping="Wrap" Classes="section-title" Text="{x:Static app:MotifAppStrings.GetAChatModelsHelp}" FontSize="{DynamicResource Component.Handoff.TitleSize}" />
 
         <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Intent.Space.Group}" Margin="{DynamicResource Component.Handoff.FirstStepMargin}">
           <Border Classes="stepMark"><views:CopyableTextBlock Text="1" /></Border>
           <StackPanel Grid.Column="1" Spacing="{DynamicResource Intent.Space.Snug}">
-            <views:CopyableTextBlock TextWrapping="Wrap" Text="Copy the starter prompt" FontWeight="{DynamicResource Intent.Weight.Section}" />
+            <views:CopyableTextBlock TextWrapping="Wrap" Text="{x:Static app:MotifAppStrings.CopyTheStarterPrompt}" FontWeight="{DynamicResource Intent.Weight.Section}" />
             <views:CopyableTextBlock Classes="muted" FontSize="{DynamicResource Intent.Type.Small}" TextWrapping="Wrap"
-                       Text="It tells the model what the files are and how to read them." />
-            <Button Content="Copy starter prompt" Classes="Primary" Theme="{DynamicResource SolidButton}"
+                       Text="{x:Static app:MotifAppStrings.HandoffStarterPromptDetail}" />
+            <Button Content="{x:Static app:MotifAppStrings.CopyStarterPrompt}" Classes="Primary" Theme="{DynamicResource SolidButton}"
                     Click="OnCopyStarterPromptClick" IsEnabled="{Binding Handoff.HasCompletedFiles}"
-                    HorizontalAlignment="Left" AutomationProperties.Name="Copy the starter prompt">
+                    HorizontalAlignment="Left" AutomationProperties.Name="{x:Static app:MotifAppStrings.CopyTheStarterPromptAccessibleName}">
               <Button.ContentTemplate>
                 <DataTemplate x:DataType="x:String">
                   <TextBlock Text="{Binding}" TextWrapping="Wrap" TextAlignment="Center" />
@@ -155,30 +155,30 @@
         <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Intent.Space.Group}" Margin="{DynamicResource Component.Handoff.StepMargin}">
           <Border Classes="stepMark"><views:CopyableTextBlock Text="2" /></Border>
           <StackPanel Grid.Column="1" Spacing="{DynamicResource Intent.Space.Minimal}">
-            <views:CopyableTextBlock TextWrapping="Wrap" Text="Open a chat" FontWeight="{DynamicResource Intent.Weight.Section}" />
-            <views:CopyableTextBlock Classes="muted" FontSize="{DynamicResource Intent.Type.Small}" Text="Claude, ChatGPT or Gemini." TextWrapping="Wrap" />
+            <views:CopyableTextBlock TextWrapping="Wrap" Text="{x:Static app:MotifAppStrings.OpenAChat}" FontWeight="{DynamicResource Intent.Weight.Section}" />
+            <views:CopyableTextBlock Classes="muted" FontSize="{DynamicResource Intent.Type.Small}" Text="{x:Static app:MotifAppStrings.ClaudeChatGPTOrGemini}" TextWrapping="Wrap" />
           </StackPanel>
         </Grid>
 
         <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Intent.Space.Group}" Margin="{DynamicResource Component.Handoff.StepMargin}">
           <Border Classes="stepMark"><views:CopyableTextBlock Text="3" /></Border>
           <StackPanel Grid.Column="1" Spacing="{DynamicResource Intent.Space.Minimal}">
-            <views:CopyableTextBlock TextWrapping="Wrap" Text="Add the files, then paste" FontWeight="{DynamicResource Intent.Weight.Section}" />
+            <views:CopyableTextBlock TextWrapping="Wrap" Text="{x:Static app:MotifAppStrings.AddTheFilesThenPaste}" FontWeight="{DynamicResource Intent.Weight.Section}" />
             <views:CopyableTextBlock Classes="muted" FontSize="{DynamicResource Intent.Type.Small}" TextWrapping="Wrap"
-                       Text="Drag the files into the chat, then paste the prompt." />
+                       Text="{x:Static app:MotifAppStrings.HandoffAddFilesDetail}" />
           </StackPanel>
         </Grid>
 
         <Border Classes="card" Margin="{DynamicResource Component.Handoff.AskMargin}">
           <StackPanel Spacing="{DynamicResource Intent.Space.Snug}">
-            <views:CopyableTextBlock TextWrapping="Wrap" Text="Try asking" FontWeight="{DynamicResource Intent.Weight.Section}" />
-            <views:CopyableTextBlock TextWrapping="Wrap" Classes="muted" FontSize="{DynamicResource Intent.Type.Label}" Text="Click a question to copy it." />
+            <views:CopyableTextBlock TextWrapping="Wrap" Text="{x:Static app:MotifAppStrings.TryAsking}" FontWeight="{DynamicResource Intent.Weight.Section}" />
+            <views:CopyableTextBlock TextWrapping="Wrap" Classes="muted" FontSize="{DynamicResource Intent.Type.Label}" Text="{x:Static app:MotifAppStrings.HandoffTryAskingDetail}" />
             <ItemsControl x:Name="HandoffPanelQuestionsItems" ItemsSource="{Binding Questions}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="x:String">
                   <Button Classes="handoffQuestion" Click="OnCopyQuestionClick" Tag="{Binding}"
                           HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
-                          ToolTip.Tip="Copy this question" AutomationProperties.Name="{Binding}">
+                          ToolTip.Tip="{x:Static app:MotifAppStrings.CopyThisQuestionTip}" AutomationProperties.Name="{Binding}">
                     <TextBlock Text="{Binding}" TextWrapping="Wrap" />
                   </Button>
                 </DataTemplate>

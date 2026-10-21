@@ -1,3 +1,4 @@
+using SIL.Motif.App;
 using Avalonia.Controls;
 using Avalonia.LogicalTree;
 using Avalonia.VisualTree;
@@ -514,7 +515,7 @@ public sealed class ComparePanelTests(AvaloniaHeadlessFixture avalonia)
                     border.Classes.Contains("matrixShared"));
                 Assert.True(strip.IsEffectivelyVisible);
                 var stripTexts = strip.GetVisualDescendants().OfType<TextBlock>().Select(text => text.Text).ToArray();
-                Assert.Contains("What these words share:", stripTexts);
+                Assert.Contains(MotifAppStrings.WhatTheseWordsShare, stripTexts);
                 Assert.Contains("kat", stripTexts);
                 Assert.Contains("cut", stripTexts);
                 Assert.Contains("in 2", stripTexts);

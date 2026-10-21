@@ -1,3 +1,4 @@
+using SIL.Motif.App;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
@@ -201,7 +202,7 @@ public sealed class TimingHeadlineTests
                 Assert.Contains(TimingPageModel.NoTimingRecordedText, shown);
                 // The only action offered is one the page can run now; a disabled one would be a dead control.
                 var parseAgain = window.GetLogicalDescendants().OfType<Button>()
-                    .Single(button => Equals(button.Content, "Parse again"));
+                    .Single(button => Equals(button.Content, MotifAppStrings.ParseAgain));
                 Assert.Same(context.Assess.RunCommand, parseAgain.Command);
                 Assert.Equal(context.Assess.RunCommand.CanExecute(null), parseAgain.IsEffectivelyVisible);
                 Assert.DoesNotContain(window.GetLogicalDescendants().OfType<Button>(), button =>
@@ -238,9 +239,9 @@ public sealed class TimingHeadlineTests
                 Dispatcher.UIThread.RunJobs();
                 var text = string.Join(" ", window.GetLogicalDescendants().OfType<TextBlock>()
                     .Where(item => item.IsEffectivelyVisible).Select(item => item.Text));
-                Assert.Contains("No words stopped at a search limit.", text);
+                Assert.Contains(MotifAppStrings.TimingNoWordsStopped, text);
                 var allWords = Assert.Single(window.GetLogicalDescendants().OfType<Button>(),
-                    button => Equals(button.Content, "Show all words"));
+                    button => Equals(button.Content, MotifAppStrings.ShowAllWords));
                 Assert.True(allWords.IsEffectivelyVisible);
                 Assert.True(allWords.IsTabStop);
                 allWords.Command!.Execute(allWords.CommandParameter);

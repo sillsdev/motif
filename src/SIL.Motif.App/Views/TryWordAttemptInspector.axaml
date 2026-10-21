@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="clr-namespace:SIL.Motif.App"
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
              xmlns:controls="clr-namespace:SIL.Motif.App.Controls"
              xmlns:conv="clr-namespace:Avalonia.Data.Converters;assembly=Avalonia.Base"
@@ -10,18 +11,18 @@
              views:InspectLink.Trace="{Binding InspectorTrace}">
   <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
     <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
-      <views:CopyableTextBlock Text="Selected attempt" FontWeight="{DynamicResource Intent.Weight.Section}" />
+      <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.SelectedAttempt}" FontWeight="{DynamicResource Intent.Weight.Section}" />
       <views:CopyableTextBlock Text="{Binding Result.Word}" FontWeight="{DynamicResource Intent.Weight.Section}" TextWrapping="Wrap"
                                controls:WritingSystemText.Id="{Binding WordWritingSystem}" controls:WritingSystemText.StyleName="Normal"
-                               IsVisible="{Binding HasResult}" AutomationProperties.Name="Recorded search word" />
-      <views:CopyableTextBlock Text="Choose a row in the attempts table, or a path in Expert, to read its recorded steps." TextWrapping="Wrap" IsVisible="{Binding SelectedCandidate, Converter={x:Static conv:ObjectConverters.IsNull}}" />
+                               IsVisible="{Binding HasResult}" AutomationProperties.Name="{x:Static app:MotifAppStrings.RecordedSearchWordAccessibleName}" />
+      <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.TryWordAttemptInspectorEmpty}" TextWrapping="Wrap" IsVisible="{Binding SelectedCandidate, Converter={x:Static conv:ObjectConverters.IsNull}}" />
       <StackPanel IsVisible="{Binding SelectedCandidate, Converter={x:Static conv:ObjectConverters.IsNotNull}}" Spacing="{DynamicResource Intent.Space.Related}">
         <views:MarkChip Mark="{Binding SelectedCandidate.StepMark}" Text="{Binding SelectedCandidate.StatusText}" HorizontalAlignment="Left" />
         <views:CopyableTextBlock Text="{Binding SelectedCandidate.Text}" controls:WritingSystemText.Id="{Binding WordWritingSystem}" controls:WritingSystemText.StyleName="Normal" FontWeight="{DynamicResource Intent.Weight.Section}" TextWrapping="Wrap" />
         <views:CopyableTextBlock Text="{Binding SelectedCandidate.StopReason}" TextWrapping="Wrap" />
         <ListBox x:Name="TryWordSelectedAttemptSteps" ItemsSource="{Binding SelectedCandidate.Steps}" Classes="tryWordList"
                  SelectedItem="{Binding SelectedAttemptStep, Mode=TwoWay}"
-                 AutomationProperties.Name="Steps on the selected attempt">
+                 AutomationProperties.Name="{x:Static app:MotifAppStrings.StepsOnTheSelectedAttemptAccessibleName}">
           <ListBox.Template><ControlTemplate><ItemsPresenter Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}" /></ControlTemplate></ListBox.Template>
           <ListBox.ItemTemplate>
             <DataTemplate x:DataType="vm:TraceStepViewModel">
@@ -35,23 +36,23 @@
                   <views:CopyableTextBlock Text="{Binding ProducerSourceText}" Classes="traceNotation" TextWrapping="Wrap" IsVisible="{Binding ProducerSourceText, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
                   <views:CopyableTextBlock Text="{Binding CapturedSourceText}" Classes="traceNotation" TextWrapping="Wrap" IsVisible="{Binding CapturedSourceText, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
                   <views:CopyableTextBlock Text="{Binding ReadableText}" TextWrapping="Wrap" IsVisible="{Binding IsSelected}"
-                                           AutomationProperties.Name="Selected recorded step details" />
+                                           AutomationProperties.Name="{x:Static app:MotifAppStrings.SelectedRecordedStepDetailsAccessibleName}" />
                 </StackPanel>
               </Border>
             </DataTemplate>
           </ListBox.ItemTemplate>
         </ListBox>
-        <Expander Header="Parser details">
+        <Expander Header="{x:Static app:MotifAppStrings.HeaderParserDetails}">
           <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-            <views:CopyableTextBlock Text="{Binding SelectedCandidate.ParserCode}" TextWrapping="Wrap" IsVisible="{Binding SelectedCandidate.HasParserCode}" AutomationProperties.Name="The parser's code" />
+            <views:CopyableTextBlock Text="{Binding SelectedCandidate.ParserCode}" TextWrapping="Wrap" IsVisible="{Binding SelectedCandidate.HasParserCode}" AutomationProperties.Name="{x:Static app:MotifAppStrings.TheParsersCodeAccessibleName}" />
             <views:CopyableTextBlock Text="{Binding SelectedCandidate.FailureRequired, StringFormat='Required: {0}'}" TextWrapping="Wrap" IsVisible="{Binding SelectedCandidate.FailureRequired, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
             <views:CopyableTextBlock Text="{Binding SelectedCandidate.FailureActual, StringFormat='Actual: {0}'}" TextWrapping="Wrap" IsVisible="{Binding SelectedCandidate.FailureActual, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
             <views:CopyableTextBlock Text="{Binding SelectedCandidate.FailureEnvironment, StringFormat='Environment: {0}'}" TextWrapping="Wrap" IsVisible="{Binding SelectedCandidate.FailureEnvironment, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
           </StackPanel>
         </Expander>
-        <Expander Header="Recorded tree context" IsExpanded="{Binding SelectedCandidate.IsTreeContextExpanded, Mode=TwoWay}" IsVisible="{Binding SelectedCandidate.HasTreeContext}">
+        <Expander Header="{x:Static app:MotifAppStrings.HeaderRecordedTreeContext}" IsExpanded="{Binding SelectedCandidate.IsTreeContextExpanded, Mode=TwoWay}" IsVisible="{Binding SelectedCandidate.HasTreeContext}">
           <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
-            <views:CopyableTextBlock Text="Membership in this derivation is not recorded." TextWrapping="Wrap" />
+            <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.TryWordMembershipNotRecorded}" TextWrapping="Wrap" />
             <ItemsControl x:Name="TryWordSelectedAttemptContext" ItemsSource="{Binding SelectedCandidate.RecordedTreeContext}">
               <ItemsControl.ItemsPanel><ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
               <ItemsControl.ItemTemplate><DataTemplate x:DataType="vm:TraceStepViewModel">

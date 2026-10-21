@@ -11,10 +11,10 @@
       <StackPanel Spacing="{DynamicResource Intent.Space.Group}">
       <Border Classes="timingPage">
         <StackPanel Spacing="{DynamicResource Intent.Space.Group}">
-          <Border Classes="card" IsVisible="{Binding HasHeadline}" AutomationProperties.Name="Total word time">
+          <Border Classes="card" IsVisible="{Binding HasHeadline}" AutomationProperties.Name="{x:Static app:MotifAppStrings.TotalWordTimeAccessibleName}">
             <StackPanel Classes="timingHeadline" Orientation="Horizontal">
               <StackPanel>
-                <views:CopyableTextBlock Classes="timingHeadlineCaption" Text="Total word time" />
+                <views:CopyableTextBlock Classes="timingHeadlineCaption" Text="{x:Static app:MotifAppStrings.TotalWordTime}" />
                 <views:CopyableTextBlock Classes="timingHeadlineValue" Text="{Binding HeadlineTotal}" />
                 <views:CopyableTextBlock Classes="timingHeadlineCaption" Text="{Binding HeadlineTotalCaption}" />
                 <views:CopyableTextBlock Classes="muted" Text="{Binding RerunMeasurementsText}"
@@ -22,7 +22,7 @@
               </StackPanel>
               <StackPanel>
                 <views:CopyableTextBlock Classes="timingHeadlineValue" Text="{Binding HeadlineMedian}" />
-                <views:CopyableTextBlock Classes="timingHeadlineCaption" Text="median word time" />
+                <views:CopyableTextBlock Classes="timingHeadlineCaption" Text="{x:Static app:MotifAppStrings.MedianWordTime}" />
               </StackPanel>
               <StackPanel>
                 <views:CopyableTextBlock Classes="timingHeadlineValue" Text="{Binding HeadlineStopped}" />
@@ -33,104 +33,104 @@
 
           <WrapPanel ItemSpacing="{DynamicResource Intent.Space.Compact}"
                      LineSpacing="{DynamicResource Intent.Space.Compact}"
-                     AutomationProperties.Name="Timing controls">
-            <views:CopyableTextBlock Classes="muted" Text="Words" VerticalAlignment="Center" />
+                     AutomationProperties.Name="{x:Static app:MotifAppStrings.TimingControlsAccessibleName}">
+            <views:CopyableTextBlock Classes="muted" Text="{x:Static app:MotifAppStrings.Words}" VerticalAlignment="Center" />
             <Button Classes="filterChip" Classes.active="{Binding IsAllSelected}"
                     Content="{Binding AllWordsButtonText}" Command="{Binding SelectWordSetCommand}"
-                    CommandParameter="all" AutomationProperties.Name="All timed words" />
+                    CommandParameter="all" AutomationProperties.Name="{x:Static app:MotifAppStrings.AllTimedWordsAccessibleName}" />
             <Button Classes="filterChip" Classes.active="{Binding IsStepLimitSelected}"
                     Content="{Binding StoppedWordsButtonText}" Command="{Binding SelectWordSetCommand}"
                     CommandParameter="step-limit"
                     AutomationProperties.HelpText="Words stopped at a search limit." />
             <Button Classes="filterChip" Classes.active="{Binding IsSlowestSelected}"
-                    Content="Slowest" Command="{Binding SelectWordSetCommand}"
+                    Content="{x:Static app:MotifAppStrings.Slowest}" Command="{Binding SelectWordSetCommand}"
                     CommandParameter="slowest" />
             <NumericUpDown Value="{Binding SlowestCount}" Minimum="1" Increment="1"
                            Width="{DynamicResource Component.Timing.SlowestCountWidth}"
-                           AutomationProperties.Name="Number of slowest words" />
-            <Button x:Name="MatrixWordsButton" Content="A Matrix cell" AutomationProperties.Name="Words from a Matrix cell">
+                           AutomationProperties.Name="{x:Static app:MotifAppStrings.NumberOfSlowestWordsAccessibleName}" />
+            <Button x:Name="MatrixWordsButton" Content="{x:Static app:MotifAppStrings.AMatrixCell}" AutomationProperties.Name="{x:Static app:MotifAppStrings.WordsFromAMatrixCellAccessibleName}">
               <Button.Flyout>
                 <Flyout Placement="BottomEdgeAlignedLeft">
                   <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
-                    <views:CopyableTextBlock Classes="section-title" Text="Matrix cell" />
+                    <views:CopyableTextBlock Classes="section-title" Text="{x:Static app:MotifAppStrings.TimingMatrixCellHeading}" />
                     <ComboBox x:Name="TimingPageMatrixCellsItems" ItemsSource="{Binding MatrixCells}" SelectedItem="{Binding SelectedMatrixCell}"
                               Width="{DynamicResource Component.Timing.SourcePickerWidth}"
-                              PlaceholderText="Choose a cell" AutomationProperties.Name="Matrix cell from Texts">
+                              PlaceholderText="Choose a cell" AutomationProperties.Name="{x:Static app:MotifAppStrings.MatrixCellFromTextsAccessibleName}">
                       <ComboBox.ItemTemplate>
                         <DataTemplate x:DataType="vm:CompareCellViewModel">
                           <TextBlock Text="{Binding AccessibleName}" />
                         </DataTemplate>
                       </ComboBox.ItemTemplate>
                     </ComboBox>
-                    <Button Content="Use cell" Command="{Binding UseMatrixCellCommand}" Click="CloseWordSourceFlyouts"
-                            AutomationProperties.Name="Use cell"
+                    <Button Content="{x:Static app:MotifAppStrings.UseCell}" Command="{Binding UseMatrixCellCommand}" Click="CloseWordSourceFlyouts"
+                            AutomationProperties.Name="{x:Static app:MotifAppStrings.UseCellAccessibleName}"
                             AutomationProperties.HelpText="{Binding UseMatrixCellDisabledReason}" />
                   </StackPanel>
                 </Flyout>
               </Button.Flyout>
             </Button>
-            <Button x:Name="ListWordsButton" Content="A list" AutomationProperties.Name="Words from a list">
+            <Button x:Name="ListWordsButton" Content="{x:Static app:MotifAppStrings.AList}" AutomationProperties.Name="{x:Static app:MotifAppStrings.WordsFromAListAccessibleName}">
               <Button.Flyout>
                 <Flyout Placement="BottomEdgeAlignedLeft">
                   <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
-                    <views:CopyableTextBlock Classes="section-title" Text="List from Texts" />
+                    <views:CopyableTextBlock Classes="section-title" Text="{x:Static app:MotifAppStrings.ListFromTexts}" />
                     <ComboBox x:Name="TimingPageTextsListsItems" ItemsSource="{Binding TextsLists}" SelectedItem="{Binding SelectedTextsList}"
                               Width="{DynamicResource Component.Timing.SourcePickerWidth}"
-                              PlaceholderText="Choose a list" AutomationProperties.Name="List from Texts">
+                              PlaceholderText="Choose a list" AutomationProperties.Name="{x:Static app:MotifAppStrings.ListFromTextsAccessibleName}">
                       <ComboBox.ItemTemplate>
                         <DataTemplate x:DataType="vm:ComparePresetViewModel">
                           <TextBlock Text="{Binding Label}" />
                         </DataTemplate>
                       </ComboBox.ItemTemplate>
                     </ComboBox>
-                    <Button Content="Use list" Command="{Binding UseTextsListCommand}" Click="CloseWordSourceFlyouts"
-                            AutomationProperties.Name="Use list"
+                    <Button Content="{x:Static app:MotifAppStrings.UseList}" Command="{Binding UseTextsListCommand}" Click="CloseWordSourceFlyouts"
+                            AutomationProperties.Name="{x:Static app:MotifAppStrings.UseListAccessibleName}"
                             AutomationProperties.HelpText="{Binding UseTextsListDisabledReason}" />
                   </StackPanel>
                 </Flyout>
               </Button.Flyout>
             </Button>
-            <Button Content="AI Handoff for these words" Command="{Binding HandOffWordsCommand}"
-                    AutomationProperties.Name="AI Handoff for these words" />
-            <Button x:Name="MoreWordsButton" Content="More" AutomationProperties.Name="More ways to choose words">
+            <Button Content="{x:Static app:MotifAppStrings.AIHandoffForTheseWords}" Command="{Binding HandOffWordsCommand}"
+                    AutomationProperties.Name="{x:Static app:MotifAppStrings.AIHandoffForTheseWordsAccessibleName}" />
+            <Button x:Name="MoreWordsButton" Content="{x:Static app:MotifAppStrings.More}" AutomationProperties.Name="{x:Static app:MotifAppStrings.MoreWaysToChooseWordsAccessibleName}">
               <Button.Flyout>
                 <Flyout Placement="BottomEdgeAlignedLeft">
                   <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
-                    <Button Classes="filterChip" Content="Chosen in Texts" Command="{Binding UseCheckedWordsCommand}"
+                    <Button Classes="filterChip" Content="{x:Static app:MotifAppStrings.ChosenInTexts}" Command="{Binding UseCheckedWordsCommand}"
                             Click="CloseWordSourceFlyouts"
-                            HorizontalAlignment="Left" AutomationProperties.Name="Chosen in Texts"
+                            HorizontalAlignment="Left" AutomationProperties.Name="{x:Static app:MotifAppStrings.ChosenInTextsAccessibleName}"
                             AutomationProperties.HelpText="{Binding UseCheckedWordsDisabledReason}" />
                     <TextBox Text="{Binding PickedWords}" AcceptsReturn="True" TextWrapping="Wrap"
                              MinHeight="{DynamicResource Component.Timing.PickerHeight}"
                              PlaceholderText="Type or paste words, one per line"
-                             AutomationProperties.Name="Words picked by hand" />
-                    <Button Content="Pick words" Command="{Binding UsePickedWordsCommand}" Click="CloseWordSourceFlyouts"
-                            AutomationProperties.Name="Pick words"
+                             AutomationProperties.Name="{x:Static app:MotifAppStrings.WordsPickedByHandAccessibleName}" />
+                    <Button Content="{x:Static app:MotifAppStrings.PickWords}" Command="{Binding UsePickedWordsCommand}" Click="CloseWordSourceFlyouts"
+                            AutomationProperties.Name="{x:Static app:MotifAppStrings.PickWordsAccessibleName}"
                             AutomationProperties.HelpText="{Binding UsePickedWordsDisabledReason}" />
                   </StackPanel>
                 </Flyout>
               </Button.Flyout>
             </Button>
-            <Button Content="Re-run" AutomationProperties.Name="Re-run words with new limits">
+            <Button Content="{x:Static app:MotifAppStrings.ReRun}" AutomationProperties.Name="{x:Static app:MotifAppStrings.ReRunWordsWithNewLimitsAccessibleName}">
               <Button.Flyout>
                 <Flyout Placement="BottomEdgeAlignedLeft">
                   <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
                     <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Snug}">
-                      <views:CopyableTextBlock Text="Seconds per word" VerticalAlignment="Center" />
+                      <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.SecondsPerWord}" VerticalAlignment="Center" />
                       <NumericUpDown Value="{Binding RerunSeconds}" Minimum="1" Increment="1"
-                                     AutomationProperties.Name="Seconds per word" />
+                                     AutomationProperties.Name="{x:Static app:MotifAppStrings.SecondsPerWordAccessibleName}" />
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Snug}">
-                      <views:CopyableTextBlock Text="Analysis attempt limit" VerticalAlignment="Center" />
+                      <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.AnalysisAttemptLimit}" VerticalAlignment="Center" />
                       <NumericUpDown Value="{Binding RerunSteps}" Minimum="1" Increment="100000"
-                                     AutomationProperties.Name="Per-word analysis attempt limit" />
+                                     AutomationProperties.Name="{x:Static app:MotifAppStrings.PerWordAnalysisAttemptLimitAccessibleName}" />
                     </StackPanel>
-                    <Button Content="Re-run chosen words" Command="{Binding RerunWordsCommand}"
-                            AutomationProperties.Name="Re-run chosen words" />
+                    <Button Content="{x:Static app:MotifAppStrings.ReRunChosenWords}" Command="{Binding RerunWordsCommand}"
+                            AutomationProperties.Name="{x:Static app:MotifAppStrings.ReRunChosenWordsAccessibleName}" />
                     <views:CopyableTextBlock Text="{Binding RerunProgressText}" IsVisible="{Binding IsRerunning}" />
                     <ProgressBar Minimum="0" Maximum="{Binding RerunTotal}" Value="{Binding RerunCompleted}"
                                  IsVisible="{Binding IsRerunning}" />
-                    <Button Content="Cancel" Command="{Binding CancelRerunCommand}"
+                    <Button Content="{x:Static app:MotifAppStrings.Cancel}" Command="{Binding CancelRerunCommand}"
                             IsVisible="{Binding IsRerunning}" />
                     <views:CopyableTextBlock Classes="muted" Text="{Binding RerunMessage}" TextWrapping="Wrap" />
                   </StackPanel>
@@ -141,25 +141,25 @@
 
           <views:RefusalBlock DataContext="{Binding TimingRefusal}" />
           <Border Classes="card" IsVisible="{Binding IsLoadingTiming}">
-            <views:CopyableTextBlock Classes="muted" Text="Reading the parse times…" />
+            <views:CopyableTextBlock Classes="muted" Text="{x:Static app:MotifAppStrings.ReadingTheParseTimes}" />
           </Border>
           <Border Classes="card" IsVisible="{Binding ShowNoTimingRecorded}">
             <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
               <views:CopyableTextBlock Text="{x:Static vm:TimingPageModel.NoTimingRecordedText}" TextWrapping="Wrap" />
-              <Button Content="Parse again" Command="{Binding Context.Assess.RunCommand}"
+              <Button Content="{x:Static app:MotifAppStrings.ParseAgain}" Command="{Binding Context.Assess.RunCommand}"
                       IsVisible="{Binding $self.IsEffectivelyEnabled}"
-                      HorizontalAlignment="Left" AutomationProperties.Name="Parse these words again to measure them" />
+                      HorizontalAlignment="Left" AutomationProperties.Name="{x:Static app:MotifAppStrings.ParseTheseWordsAgainToMeasureThemAccessibleName}" />
             </StackPanel>
           </Border>
           <Border Classes="notice" IsVisible="{Binding ShowStaleTiming}">
-            <views:CopyableTextBlock Text="FieldWorks has changed since the Baseline behind these numbers."
+            <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.TimingBaselineStaleNotice}"
                                      TextWrapping="Wrap" />
           </Border>
           <Border Classes="card" IsVisible="{Binding ShowEmptySelection}">
             <WrapPanel>
               <views:CopyableTextBlock Text="{Binding EmptySelectionText}" TextWrapping="Wrap" />
-              <Button Content="Show all words" Command="{Binding SelectWordSetCommand}" CommandParameter="all"
-                      IsVisible="{Binding CanShowAllWords}" AutomationProperties.Name="Show all words in Timing" />
+              <Button Content="{x:Static app:MotifAppStrings.ShowAllWords}" Command="{Binding SelectWordSetCommand}" CommandParameter="all"
+                      IsVisible="{Binding CanShowAllWords}" AutomationProperties.Name="{x:Static app:MotifAppStrings.ShowAllWordsInTimingAccessibleName}" />
             </WrapPanel>
           </Border>
 
@@ -171,13 +171,13 @@
                 <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
                   <views:CopyableTextBlock Classes="section-title" Text="{Binding ScopeLabel}" TextWrapping="Wrap" />
                   <views:CopyableTextBlock Classes="muted" Text="{Binding ShareDenominatorText}" TextWrapping="Wrap"
-                                           AutomationProperties.Name="What every share is of" />
+                                           AutomationProperties.Name="{x:Static app:MotifAppStrings.WhatEveryShareIsOfAccessibleName}" />
                   <views:TimingKindBar x:Name="KindBar" Rows="{Binding KindShares}"
                                        Height="{DynamicResource Component.Timing.BarHeight}"
-                                       AutomationProperties.Name="Share of total word time by kind" />
+                                       AutomationProperties.Name="{x:Static app:MotifAppStrings.ShareOfTotalWordTimeByKindAccessibleName}" />
                   <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Compact}">
                     <ItemsControl x:Name="TimingPageLegendItems" Grid.Column="0" ItemsSource="{Binding #KindBar.Legend}"
-                                  AutomationProperties.Name="Timing by kind">
+                                  AutomationProperties.Name="{x:Static app:MotifAppStrings.TimingByKindAccessibleName}">
                       <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
                           <WrapPanel Orientation="Horizontal" />
@@ -200,7 +200,7 @@
                             AutomationProperties.Name="{Binding KindCallsButtonName}" />
                   </Grid>
                   <ItemsControl x:Name="TimingPageKindCallSharesItems" ItemsSource="{Binding KindCallShares}" IsVisible="{Binding ShowKindCalls}"
-                                AutomationProperties.Name="Calls by kind">
+                                AutomationProperties.Name="{x:Static app:MotifAppStrings.CallsByKindAccessibleName}">
                     <ItemsControl.ItemsPanel>
                       <ItemsPanelTemplate>
                         <WrapPanel Orientation="Horizontal" />
@@ -219,7 +219,7 @@
                   <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
                     <views:CopyableTextBlock Classes="muted" Text="{Binding OverrunText}"
                                              IsVisible="{Binding HasOverrun}"
-                                             AutomationProperties.Name="Timing overrun" />
+                                             AutomationProperties.Name="{x:Static app:MotifAppStrings.TimingOverrunAccessibleName}" />
                   </StackPanel>
                 </StackPanel>
               </Border>
@@ -235,18 +235,18 @@
                       <ColumnDefinition Width="0.7*" MinWidth="{DynamicResource Component.Timing.WordsColumnMinWidth}" />
                       <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <views:CopyableTextBlock Grid.Column="0" Text="RULE" TextWrapping="Wrap" />
-                    <views:CopyableTextBlock Grid.Column="1" Text="KIND" TextWrapping="Wrap"
+                    <views:CopyableTextBlock Grid.Column="0" Text="{x:Static app:MotifAppStrings.TimingRuleColumnHeading}" TextWrapping="Wrap" />
+                    <views:CopyableTextBlock Grid.Column="1" Text="{x:Static app:MotifAppStrings.TimingKindColumnHeading}" TextWrapping="Wrap"
                                              IsVisible="{Binding Context.Inspector, Converter={x:Static ObjectConverters.IsNull}}" />
-                    <views:CopyableTextBlock Grid.Column="2" Text="TIME" TextWrapping="Wrap" />
+                    <views:CopyableTextBlock Grid.Column="2" Text="{x:Static app:MotifAppStrings.TimingTimeColumnHeading}" TextWrapping="Wrap" />
                     <views:CopyableTextBlock Grid.Column="3" Text="{Binding RuleShareHeader}" TextWrapping="Wrap" />
-                    <views:CopyableTextBlock Grid.Column="4" Text="WORDS" TextWrapping="Wrap"
-                                             ToolTip.Tip="How many of these words the parser recorded time for this rule in"
+                    <views:CopyableTextBlock Grid.Column="4" Text="{x:Static app:MotifAppStrings.TimingWordsColumnHeading}" TextWrapping="Wrap"
+                                             ToolTip.Tip="{x:Static app:MotifAppStrings.TimingRuleWordsColumnTip}"
                                              views:ClearTipPlacement.IsEnabled="True"
                                              Background="{DynamicResource Intent.Clear}" />
                   </Grid>
                   <views:ProgressiveItemsControl x:Name="TimingPageRuleRowsItems" FullItemsSource="{Binding RuleRows}"
-                                AutomationProperties.Name="Timing by rule">
+                                AutomationProperties.Name="{x:Static app:MotifAppStrings.TimingByRuleAccessibleName}">
                     <ItemsControl.ItemTemplate>
                       <DataTemplate x:DataType="vm:TimingRuleRow">
                         <Border Classes="hoverReveal">
@@ -279,7 +279,7 @@
                                 <views:InspectLink Grid.Column="1" Subject="{Binding InspectSubject}"
                                                    Classes="revealControl revealLink revealOnHover"
                                                    VerticalAlignment="Center">
-                                  <TextBlock Text="Inspect" />
+                                  <TextBlock Text="{x:Static app:MotifAppStrings.Inspect}" />
                                 </views:InspectLink>
                               </Grid>
                               <views:CopyableTextBlock Grid.Column="1" Classes="muted" Text="{Binding Share.KindLabel}"
@@ -296,7 +296,7 @@
                             <Button Grid.Column="5" Classes="timingGrammarWarning"
                                     IsVisible="{Binding HasGrammarWarning}"
                                     ToolTip.Tip="{x:Static vm:TimingRuleRow.GrammarWarningTooltip}"
-                                    AutomationProperties.Name="Open the grammar warning"
+                                    AutomationProperties.Name="{x:Static app:MotifAppStrings.OpenTheGrammarWarningAccessibleName}"
                                     AutomationProperties.HelpText="{x:Static vm:TimingRuleRow.GrammarWarningTooltip}"
                                     Command="{Binding $parent[views:TimingPage].Page.OpenGrammarWarningCommand}"
                                     CommandParameter="{Binding}">
@@ -319,7 +319,7 @@
                   <views:CopyableTextBlock Classes="section-title" Text="{Binding SelectedRuleName}"
                                             TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding SelectedRuleName}" />
                   <views:CopyableTextBlock Text="{Binding RuleSummary}" TextWrapping="Wrap" />
-                  <Button Content="AI Handoff for this rule" Command="{Binding HandOffRuleCommand}" />
+                  <Button Content="{x:Static app:MotifAppStrings.AIHandoffForThisRule}" Command="{Binding HandOffRuleCommand}" />
                 </StackPanel>
               </Border>
 
@@ -335,7 +335,7 @@
                   <word:WordRowHeader />
                   <ItemsControl Grid.Row="1" x:Name="TimingPageCostliestRuleWordRowsItems"
                                 ItemsSource="{Binding CostliestRuleWordRows}"
-                                AutomationProperties.Name="Words under this rule"
+                                AutomationProperties.Name="{x:Static app:MotifAppStrings.WordsUnderThisRuleAccessibleName}"
                                 KeyboardNavigation.TabNavigation="Continue">
                     <ItemsControl.ItemTemplate>
                       <DataTemplate x:DataType="vm:ListedWordViewModel">
@@ -352,13 +352,13 @@
 
           <Border Classes="card" IsVisible="{Binding HasSelectedWords}">
             <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
-              <views:CopyableTextBlock Classes="section-title" Text="How long the words took" />
+              <views:CopyableTextBlock Classes="section-title" Text="{x:Static app:MotifAppStrings.HowLongTheWordsTook}" />
               <views:CopyableTextBlock Text="{Binding PercentileSummary}" TextWrapping="Wrap" />
             </StackPanel>
           </Border>
         </StackPanel>
       </Border>
-      <Expander Header="Detailed statistics" IsVisible="{Binding ShowStatistics}"
+      <Expander Header="{x:Static app:MotifAppStrings.HeaderDetailedStatistics}" IsVisible="{Binding ShowStatistics}"
                 Expanded="OnStatisticsExpanded">
         <ContentControl x:Name="StatisticsHost" />
       </Expander>

@@ -1,3 +1,4 @@
+using SIL.Motif.App;
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Automation.Peers;
@@ -301,7 +302,7 @@ public sealed class AnalyzeTextsLayoutTests
                 Assert.DoesNotContain(cardLines, line => line.Text?.EndsWith(" · spelling") == true);
                 var cardText = string.Join(" ", cardLines.Select(line => line.Text)
                     .Where(text => !string.IsNullOrWhiteSpace(text)));
-                Assert.Contains("Time by rule", cardText);
+                Assert.Contains(MotifAppStrings.TimeByRule, cardText);
                 Assert.Contains("Subject agreement", cardText);
                 Assert.Contains("Not attributed", cardText);
                 var whySection = Assert.Single(card.GetVisualDescendants().OfType<Border>(), border =>
@@ -309,7 +310,7 @@ public sealed class AnalyzeTextsLayoutTests
                     border.GetVisualDescendants().OfType<CopyableTextBlock>()
                         .Any(line => line.Text == "What a warning names in this word"));
                 var whyText = whySection.GetVisualDescendants().OfType<CopyableTextBlock>().Select(line => line.Text);
-                Assert.DoesNotContain("Time by rule", whyText);
+                Assert.DoesNotContain(MotifAppStrings.TimeByRule, whyText);
                 Assert.DoesNotContain("Subject agreement", whyText);
                 Assert.Contains("anapenda", cardText);
                 Assert.Contains("anapenda", token.OtherWordsUsingMorpheme);
@@ -325,7 +326,7 @@ public sealed class AnalyzeTextsLayoutTests
                 Assert.All(RealizedLines(inText).SelectMany(line => line.Tokens)
                     .Where(item => item.IsWord), item => Assert.Equal(!item.HasNamedWarning, item.IsDimmed));
                 var openWarning = Assert.Single(OpenCard(window).GetVisualDescendants().OfType<Button>(),
-                    button => button.Content?.ToString() == "Open the warning");
+                    button => button.Content?.ToString() == MotifAppStrings.OpenTheWarning);
                 Assert.NotNull(openWarning.Command);
                 openWarning.Command.Execute(openWarning.CommandParameter);
                 Assert.Equal(WorkspacePage.Warnings, workspace.CurrentPage);

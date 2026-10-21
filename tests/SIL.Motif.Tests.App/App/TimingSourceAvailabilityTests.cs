@@ -1,3 +1,4 @@
+using SIL.Motif.App;
 using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
@@ -53,7 +54,7 @@ public sealed class TimingSourceAvailabilityTests
                         AutomationProperties.GetName(button) == name).IsTabStop);
 
                 var matrix = ShowFlyout(window, "Words from a Matrix cell");
-                Assert.Contains(matrix.GetLogicalDescendants().OfType<TextBlock>(), block => block.Text == "Matrix cell");
+                Assert.Contains(matrix.GetLogicalDescendants().OfType<TextBlock>(), block => block.Text == MotifAppStrings.TimingMatrixCellHeading);
                 Assert.Single(matrix.GetLogicalDescendants().OfType<ComboBox>(), combo =>
                     AutomationProperties.GetName(combo) == "Matrix cell from Texts");
                 Assert.Single(matrix.GetLogicalDescendants().OfType<Button>(), button =>

@@ -79,10 +79,10 @@ public sealed class ViewTokenTests
         Assert.Contains("<word:WordCard Host=", card, StringComparison.Ordinal);
         Assert.Contains("HandlesTextReaderShortcuts=\"True\"", card, StringComparison.Ordinal);
         Assert.Contains("private async void OnKeyDown", File.ReadAllText(Path.Combine(AppDirectory(), "Controls", "WordPresentation", "WordCard.cs")), StringComparison.Ordinal);
-        Assert.True(cardMarkup.IndexOf("In FieldWorks · now", StringComparison.Ordinal) <
-                    cardMarkup.IndexOf("In PanGloss · now", StringComparison.Ordinal));
-        Assert.True(cardMarkup.IndexOf("In PanGloss · now", StringComparison.Ordinal) <
-                    cardMarkup.IndexOf("Text=\"What to do\"", StringComparison.Ordinal));
+        Assert.True(cardMarkup.IndexOf("InFieldWorksNow", StringComparison.Ordinal) <
+                    cardMarkup.IndexOf("InPanGlossNow", StringComparison.Ordinal));
+        Assert.True(cardMarkup.IndexOf("InPanGlossNow", StringComparison.Ordinal) <
+                    cardMarkup.IndexOf("Text=\"{x:Static app:MotifAppStrings.WhatToDo}\"", StringComparison.Ordinal));
     }
 
     [Fact]

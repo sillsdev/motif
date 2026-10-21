@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="clr-namespace:SIL.Motif.App"
              xmlns:conv="clr-namespace:Avalonia.Data.Converters;assembly=Avalonia.Base"
              xmlns:controls="clr-namespace:SIL.Motif.App.Controls"
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
@@ -9,42 +10,42 @@
              x:DataType="views:GrammarPanel">
   <Grid Classes="warningPanel" RowDefinitions="Auto,*" RowSpacing="{DynamicResource Intent.Space.Group}">
     <views:CopyableTextBlock Classes="muted"
-                              Text="PanGloss findings from the grammar check and Parse all words."
+                              Text="{x:Static app:MotifAppStrings.GrammarFindingsIntro}"
                               TextWrapping="Wrap" />
 
     <Panel Grid.Row="1">
       <StackPanel IsVisible="{Binding Grammar.ShowLoading}" Spacing="{DynamicResource Intent.Space.Related}">
         <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Group}">
-          <views:CopyableTextBlock Text="Checking the grammar..." FontWeight="{DynamicResource Intent.Weight.Section}" />
+          <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.CheckingTheGrammar}" FontWeight="{DynamicResource Intent.Weight.Section}" />
           <views:CopyableTextBlock Classes="muted" Text="{Binding Grammar.ElapsedText}" />
         </StackPanel>
-        <ProgressBar IsIndeterminate="True" AutomationProperties.Name="Grammar loading" />
+        <ProgressBar IsIndeterminate="True" AutomationProperties.Name="{x:Static app:MotifAppStrings.GrammarLoadingAccessibleName}" />
         <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap"
-                   Text="The parser reads the whole project, so the first check of a Baseline can take a minute on a large project. Later visits are instant until the Baseline is refreshed. You can choose texts meanwhile; they do not depend on the grammar." />
+                   Text="{x:Static app:MotifAppStrings.GrammarLoadingExplanation}" />
       </StackPanel>
 
       <ScrollViewer x:Name="GrammarRefusalScroll" IsVisible="{Binding Grammar.ShowRefused}" HorizontalScrollBarVisibility="Disabled"
-                    VerticalScrollBarVisibility="Auto" AutomationProperties.Name="Grammar check refusal">
+                    VerticalScrollBarVisibility="Auto" AutomationProperties.Name="{x:Static app:MotifAppStrings.GrammarCheckRefusalAccessibleName}">
         <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
           <Border Classes="notice">
             <views:RefusalBlock DataContext="{Binding Grammar.ShownRefusal}" />
           </Border>
-          <Button Content="Try again"
+          <Button Content="{x:Static app:MotifAppStrings.TryAgain}"
                   Classes="Primary" Theme="{DynamicResource SolidButton}"
                   Command="{Binding Grammar.CheckCommand}"
-                  AutomationProperties.Name="Try checking the grammar again" />
+                  AutomationProperties.Name="{x:Static app:MotifAppStrings.TryCheckingTheGrammarAgainAccessibleName}" />
         </StackPanel>
       </ScrollViewer>
 
       <StackPanel IsVisible="{Binding Grammar.ShowNoBaseline}" Spacing="{DynamicResource Intent.Space.Related}">
-        <views:CopyableTextBlock Classes="muted" Text="Capture a Baseline before the grammar can be checked." TextWrapping="Wrap" />
+        <views:CopyableTextBlock Classes="muted" Text="{x:Static app:MotifAppStrings.GrammarBaselineRequired}" TextWrapping="Wrap" />
       </StackPanel>
 
       <StackPanel Classes="warningEmpty" IsVisible="{Binding Grammar.ShowNoFindings}"
                   HorizontalAlignment="Center" VerticalAlignment="Center">
-        <views:CopyableTextBlock Text="No grammar findings were reported." FontWeight="{DynamicResource Intent.Weight.Section}" HorizontalAlignment="Center" />
-        <Button Content="Check the grammar again" HorizontalAlignment="Center"
-                Command="{Binding Grammar.CheckCommand}" AutomationProperties.Name="Check the grammar again" />
+        <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.NoGrammarFindingsWereReported}" FontWeight="{DynamicResource Intent.Weight.Section}" HorizontalAlignment="Center" />
+        <Button Content="{x:Static app:MotifAppStrings.CheckTheGrammarAgain}" HorizontalAlignment="Center"
+                Command="{Binding Grammar.CheckCommand}" AutomationProperties.Name="{x:Static app:MotifAppStrings.CheckTheGrammarAgainAccessibleName}" />
       </StackPanel>
 
       <Grid RowDefinitions="Auto,*,Auto" RowSpacing="{DynamicResource Intent.Space.Related}"
@@ -77,28 +78,28 @@
           </StackPanel>
           <ToggleButton Content="{Binding Grammar.Warnings.TouchYourWordsText}"
                         IsChecked="{Binding Grammar.Warnings.TouchYourWords, Mode=TwoWay}"
-                        AutomationProperties.Name="Show findings with exact uses in your words"
+                        AutomationProperties.Name="{x:Static app:MotifAppStrings.ShowFindingsWithExactUsesInYourWordsAccessibleName}"
                         IsVisible="{Binding ShowInlineFilters}"
                         Margin="{DynamicResource Intent.Gap.AfterRelated}" />
           <Button Content="{Binding Grammar.Warnings.SortLabel}"
-                  AutomationProperties.Name="Choose warning sort order"
+                  AutomationProperties.Name="{x:Static app:MotifAppStrings.ChooseWarningSortOrderAccessibleName}"
                   Margin="{DynamicResource Intent.Gap.AfterRelated}">
             <Button.Flyout>
               <Flyout Placement="BottomEdgeAlignedLeft">
                 <StackPanel Classes="menu">
                   <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}"
-                          Content="Most of your words first"
+                          Content="{x:Static app:MotifAppStrings.MostOfYourWordsFirst}"
                           Command="{Binding Grammar.Warnings.SetMostYourWordsFirstCommand}"
-                          AutomationProperties.Name="Sort findings by exact word uses" />
+                          AutomationProperties.Name="{x:Static app:MotifAppStrings.SortFindingsByExactWordUsesAccessibleName}" />
                   <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}"
-                          Content="Report order" Command="{Binding Grammar.Warnings.SetReportOrderCommand}"
-                          AutomationProperties.Name="Sort findings in report order" />
+                          Content="{x:Static app:MotifAppStrings.ReportOrder}" Command="{Binding Grammar.Warnings.SetReportOrderCommand}"
+                          AutomationProperties.Name="{x:Static app:MotifAppStrings.SortFindingsInReportOrderAccessibleName}" />
                 </StackPanel>
               </Flyout>
             </Button.Flyout>
           </Button>
-          <Button Content="Check the grammar again" Command="{Binding Grammar.CheckCommand}"
-                  AutomationProperties.Name="Check the grammar again" Margin="{DynamicResource Intent.Gap.AfterRelated}" />
+          <Button Content="{x:Static app:MotifAppStrings.CheckTheGrammarAgain}" Command="{Binding Grammar.CheckCommand}"
+                  AutomationProperties.Name="{x:Static app:MotifAppStrings.CheckTheGrammarAgainAccessibleName}" Margin="{DynamicResource Intent.Gap.AfterRelated}" />
         </WrapPanel>
 
         <Grid Grid.Row="1" RowDefinitions="Auto,*" controls:DenseTable.IsWidthHost="True">
@@ -106,14 +107,14 @@
             <Grid ColumnSpacing="{DynamicResource Intent.Space.Group}" controls:DenseTable.Columns="Narrow 2* 2* Narrow Actions"
                   controls:DenseTable.CompactColumns="0 * 0 0 Actions">
               <Border controls:DenseTable.Secondary="True">
-                <views:CopyableTextBlock Classes="denseTableHeading" Text="Severity" VerticalAlignment="Center" />
+                <views:CopyableTextBlock Classes="denseTableHeading" Text="{x:Static app:MotifAppStrings.Severity}" VerticalAlignment="Center" />
               </Border>
-              <views:CopyableTextBlock Grid.Column="1" Classes="denseTableHeading" Text="Item" VerticalAlignment="Center" />
+              <views:CopyableTextBlock Grid.Column="1" Classes="denseTableHeading" Text="{x:Static app:MotifAppStrings.Item}" VerticalAlignment="Center" />
               <Border Grid.Column="2" controls:DenseTable.Secondary="True">
-                <views:CopyableTextBlock Classes="denseTableHeading" Text="What is wrong" VerticalAlignment="Center" />
+                <views:CopyableTextBlock Classes="denseTableHeading" Text="{x:Static app:MotifAppStrings.WhatIsWrong}" VerticalAlignment="Center" />
               </Border>
               <Border Grid.Column="3" controls:DenseTable.Secondary="True">
-                <views:CopyableTextBlock Classes="denseTableHeading" Text="Named words" VerticalAlignment="Center" />
+                <views:CopyableTextBlock Classes="denseTableHeading" Text="{x:Static app:MotifAppStrings.NamedWords}" VerticalAlignment="Center" />
               </Border>
               <Border Grid.Column="4" />
             </Grid>
@@ -123,7 +124,7 @@
                    ItemsSource="{Binding TableEntries}"
                    SelectedItem="{Binding Grammar.Warnings.SelectedTableEntry, Mode=TwoWay}"
                    Focusable="True" IsTabStop="True" KeyboardNavigation.TabNavigation="Once"
-                   AutomationProperties.Name="Grammar findings">
+                   AutomationProperties.Name="{x:Static app:MotifAppStrings.GrammarFindingsAccessibleName}">
             <ListBox.ItemsPanel>
               <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
             </ListBox.ItemsPanel>
@@ -161,7 +162,7 @@
                     </Border>
                     <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Minimal}"
                                 VerticalAlignment="Center">
-                      <Button Classes="denseTableAction" Content="Details"
+                      <Button Classes="denseTableAction" Content="{x:Static app:MotifAppStrings.Details}"
                               Command="{Binding $parent[views:GrammarPanel].OpenFindingDetailsCommand}"
                               CommandParameter="{Binding}"
                               AutomationProperties.Name="{Binding RowTitleText, StringFormat='Details for {0}'}" />
@@ -171,15 +172,15 @@
                           <Flyout Placement="BottomEdgeAlignedLeft">
                             <StackPanel Classes="menu">
                               <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}"
-                                      Content="Open details"
+                                      Content="{x:Static app:MotifAppStrings.OpenDetails}"
                                       Command="{Binding $parent[views:GrammarPanel].OpenFindingDetailsCommand}"
                                       CommandParameter="{Binding}" />
                               <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}"
-                                      Content="AI Handoff for this warning"
+                                      Content="{x:Static app:MotifAppStrings.AIHandoffForThisWarning}"
                                       Command="{Binding $parent[views:GrammarPanel].Grammar.Warnings.HandOffCommand}"
                                       CommandParameter="{Binding}" />
                               <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}"
-                                      Content="Parse these words again" IsVisible="{Binding CanParseAgain}"
+                                      Content="{x:Static app:MotifAppStrings.ParseTheseWordsAgain}" IsVisible="{Binding CanParseAgain}"
                                       Command="{Binding $parent[views:GrammarPanel].Grammar.Warnings.ReparseCommand}"
                                       CommandParameter="{Binding}" />
                             </StackPanel>
@@ -201,7 +202,7 @@
                       HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
                       IsVisible="{Binding ShowInlineSelectionDetails}">
           <ItemsControl x:Name="GrammarPanelSelectionDetailsItems" ItemsSource="{Binding InlineSelectionDetails}"
-                        AutomationProperties.Name="Selected warning details">
+                        AutomationProperties.Name="{x:Static app:MotifAppStrings.SelectedWarningDetailsAccessibleName}">
             <ItemsControl.ItemsPanel>
               <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
             </ItemsControl.ItemsPanel>
@@ -239,7 +240,7 @@
                                   <views:CopyableTextBlock Text="{Binding Explanation}" TextWrapping="Wrap" />
                                 </StackPanel>
                                 <StackPanel IsVisible="{Binding HasWordforms}" Spacing="{DynamicResource Intent.Space.Minimal}">
-                                  <views:CopyableTextBlock Text="Wordforms not compared" FontWeight="{DynamicResource Intent.Weight.Section}" />
+                                  <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.WordformsNotCompared}" FontWeight="{DynamicResource Intent.Weight.Section}" />
                                   <views:CopyableTextBlock Text="{Binding WordformsText}" TextWrapping="Wrap" />
                                 </StackPanel>
                                 <StackPanel IsVisible="{Binding HasProblemParts}" Spacing="{DynamicResource Intent.Space.Minimal}">
@@ -262,12 +263,12 @@
                                   </ItemsControl.ItemTemplate>
                                 </ItemsControl>
                                 <StackPanel IsVisible="{Binding HasGuidance}" Spacing="{DynamicResource Intent.Space.Minimal}">
-                                  <views:CopyableTextBlock Classes="muted" Text="What to do in FieldWorks" FontWeight="{DynamicResource Intent.Weight.Section}" />
+                                  <views:CopyableTextBlock Classes="muted" Text="{x:Static app:MotifAppStrings.WhatToDoInFieldWorks}" FontWeight="{DynamicResource Intent.Weight.Section}" />
                                   <views:CopyableTextBlock Text="{Binding Guidance}" TextWrapping="Wrap" />
                                 </StackPanel>
-                                <views:CopyableTextBlock Classes="muted" Text="PanGloss gives no advice for this kind yet"
+                                <views:CopyableTextBlock Classes="muted" Text="{x:Static app:MotifAppStrings.WarningNoAdviceYet}"
                                                           IsVisible="{Binding !HasGuidance}" TextWrapping="Wrap" />
-                                <HyperlinkButton Classes="revealControl revealLink" Content="Learn more"
+                                <HyperlinkButton Classes="revealControl revealLink" Content="{x:Static app:MotifAppStrings.LearnMore}"
                                                  NavigateUri="{Binding HelpUrl}" IsVisible="{Binding HasHelp}" />
                                 <views:CopyableTextBlock Classes="muted warningRawMessage" Text="{Binding Description}"
                                                           IsVisible="{Binding HasDescription}" TextWrapping="Wrap" />
@@ -301,7 +302,7 @@
                       <views:CopyableTextBlock Classes="muted" Text="{Binding NoExactUsesText}"
                                                IsVisible="{Binding HasNoExactUses}" />
                       <StackPanel IsVisible="{Binding HasMembershipCandidates}" Spacing="{DynamicResource Intent.Space.Minimal}">
-                        <views:CopyableTextBlock Classes="muted" Text="Words that use members of the named resource" />
+                        <views:CopyableTextBlock Classes="muted" Text="{x:Static app:MotifAppStrings.WarningWordsUsingNamedResource}" />
                         <views:WordListSlot Schema="{x:Static word:WordListSchemas.Warnings}">
                         <Grid RowDefinitions="Auto,Auto">
                           <word:WordRowHeader IsVisible="False" />
@@ -342,18 +343,18 @@
                       </StackPanel>
 
                       <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
-                        <Button Content="AI Handoff for this warning" Command="{Binding $parent[views:GrammarPanel].Grammar.Warnings.HandOffCommand}"
+                        <Button Content="{x:Static app:MotifAppStrings.AIHandoffForThisWarning}" Command="{Binding $parent[views:GrammarPanel].Grammar.Warnings.HandOffCommand}"
                                 CommandParameter="{Binding}" />
-                        <Button Content="Parse these words again" IsVisible="{Binding CanParseAgain}"
+                        <Button Content="{x:Static app:MotifAppStrings.ParseTheseWordsAgain}" IsVisible="{Binding CanParseAgain}"
                                 Command="{Binding $parent[views:GrammarPanel].Grammar.Warnings.ReparseCommand}"
                                 CommandParameter="{Binding}" />
                       </StackPanel>
 
                       <Border Classes="warningWorkflow" IsVisible="{Binding HasYourWords}">
                         <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-                          <views:CopyableTextBlock Text="After you fix it" FontWeight="{DynamicResource Intent.Weight.Section}" />
+                          <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.AfterYouFixIt}" FontWeight="{DynamicResource Intent.Weight.Section}" />
                           <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap"
-                                                    Text="Save in FieldWorks, refresh Motif, then parse these words again." />
+                                                    Text="{x:Static app:MotifAppStrings.WarningAfterFixSteps}" />
                         </StackPanel>
                       </Border>
                     </StackPanel>

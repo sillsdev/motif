@@ -20,7 +20,7 @@ public sealed class ParseProgressViewModel(TimeProvider clock) : ObservableObjec
     public bool HasStoppedWords => StoppedWords.Count > 0;
     public bool HasSlowestWord => _progress?.SlowestWord is not null;
     public string SlowestText => _progress?.SlowestWord is { } word
-        ? $"Slowest so far: {word.Word} · {SpeedText.Duration(word.ElapsedMs)}" : string.Empty;
+        ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.ProgressSlowestFormat, word.Word, SpeedText.Duration(word.ElapsedMs)) : string.Empty;
     public double Fraction => _progress switch
     {
         { Stage: AssessmentStage.Complete } => 1,
@@ -33,22 +33,22 @@ public sealed class ParseProgressViewModel(TimeProvider clock) : ObservableObjec
     public string ProgressText => _progress switch
     {
         { Stage: AssessmentStage.Parsing, Total: { } total } progress when progress.Completed >= total =>
-            "All words have been parsed; finishing the Assessment...",
-        { Stage: AssessmentStage.Parsing, Total: { } total } progress =>
-            $"{progress.Completed:N0} of {total:N0} words done" +
-            (progress.CurrentWord is { } word ? $" · Parsing {word}" : string.Empty),
-        { Stage: AssessmentStage.ReadingStatistics } => "All words have been parsed; Motif is reading PanGloss's statistics...",
-        _ => _progress?.Message ?? "Preparing to parse words...",
+            MotifAppStrings.ProgressFinishing,
+        { Stage: AssessmentStage.Parsing, Total: { } total } progress => progress.CurrentWord is { } word
+            ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.ProgressWordsDoneParsingFormat, progress.Completed.ToString("N0", System.Globalization.CultureInfo.CurrentCulture), total.ToString("N0", System.Globalization.CultureInfo.CurrentCulture), word)
+            : string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.ProgressWordsDoneFormat, progress.Completed.ToString("N0", System.Globalization.CultureInfo.CurrentCulture), total.ToString("N0", System.Globalization.CultureInfo.CurrentCulture)),
+        { Stage: AssessmentStage.ReadingStatistics } => MotifAppStrings.ProgressReadingStatistics,
+        _ => _progress?.Message ?? MotifAppStrings.ProgressPreparing,
     };
     public string StatusText => _progress switch
     {
         { Stage: AssessmentStage.Parsing, Total: { } total } progress when progress.Completed >= total =>
-            "All words have been parsed; finishing the Assessment...",
+            MotifAppStrings.ProgressFinishing,
         { Stage: AssessmentStage.Parsing, Total: { } total } progress =>
-            $"Parsing · {progress.Completed:N0} of {total:N0} words · {EstimateText(progress, total)}",
-        { Stage: AssessmentStage.ReadingStatistics } => "All words have been parsed; Motif is reading PanGloss's statistics...",
-        { Stage: AssessmentStage.Complete } => "Assessment complete",
-        _ => _progress?.Message ?? "Preparing to parse words...",
+            string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.ProgressStatusParsingFormat, progress.Completed.ToString("N0", System.Globalization.CultureInfo.CurrentCulture), total.ToString("N0", System.Globalization.CultureInfo.CurrentCulture), EstimateText(progress, total)),
+        { Stage: AssessmentStage.ReadingStatistics } => MotifAppStrings.ProgressReadingStatistics,
+        { Stage: AssessmentStage.Complete } => MotifAppStrings.ProgressComplete,
+        _ => _progress?.Message ?? MotifAppStrings.ProgressPreparing,
     };
     public string TimeText
     {
@@ -59,28 +59,29 @@ public sealed class ParseProgressViewModel(TimeProvider clock) : ObservableObjec
             {
                 { Stage: AssessmentStage.Parsing, Completed: >= 3, Total: { } total } progress
                     when progress.Completed < total =>
-                    $"about {Duration(TimeSpan.FromSeconds(Math.Ceiling(_sampleElapsed.TotalSeconds / progress.Completed *
-                        (total - progress.Completed))))} left",
+                    string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.ProgressAboutLeftFormat, Duration(TimeSpan.FromSeconds(Math.Ceiling(_sampleElapsed.TotalSeconds / progress.Completed *
+                        (total - progress.Completed))))),
                 { Stage: AssessmentStage.Parsing, Total: { } total } progress when progress.Completed >= total =>
-                    "finishing the Assessment",
-                { Stage: AssessmentStage.ReadingStatistics } => "reading PanGloss's statistics",
-                { Stage: AssessmentStage.Complete } => "complete",
-                _ => "estimating time left",
+                    MotifAppStrings.ProgressTimeFinishing,
+                { Stage: AssessmentStage.ReadingStatistics } => MotifAppStrings.ProgressTimeReadingStatistics,
+                { Stage: AssessmentStage.Complete } => MotifAppStrings.ProgressTimeComplete,
+                _ => MotifAppStrings.ProgressTimeEstimating,
             };
-            return $"{elapsed} elapsed · {detail}";
+            return string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.ProgressElapsedFormat, elapsed, detail);
         }
     }
     public string StoppedText => string.Join("; ", (_progress?.StoppedWords ?? []).GroupBy(word => word.Reason).Select(group =>
-        $"{group.Count():N0} word{(group.Count() == 1 ? string.Empty : "s")} " +
-        (group.Key == "TIMEOUT"
-            ? "timed out" + (_progress?.PerWordLimitMs is { } limit ? $" after {limit / 1000.0:0.#} s" : string.Empty)
-            : "stopped at a search limit") + $" ({group.Last().Word})"));
+        group.Key == "TIMEOUT"
+            ? _progress?.PerWordLimitMs is { } limit
+                ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.ProgressStoppedTimedOutAfterFormat, PluralText.Format(MotifAppStrings.ProgressStoppedWordsPattern, group.Count()), (limit / 1000.0).ToString("0.#", System.Globalization.CultureInfo.CurrentCulture), group.Last().Word)
+                : string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.ProgressStoppedTimedOutFormat, PluralText.Format(MotifAppStrings.ProgressStoppedWordsPattern, group.Count()), group.Last().Word)
+            : string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.ProgressStoppedSearchLimitFormat, PluralText.Format(MotifAppStrings.ProgressStoppedWordsPattern, group.Count()), group.Last().Word)));
     public string StalledText => IsStalled
         ? _progress?.PerWordLimitMs is null
-            ? "No word has finished for 1 min. This search has no per-word time limit. You can cancel it or report a problem."
-            : "No word has finished for longer than the word time limit plus 10 s. The parser may have stopped responding."
+            ? MotifAppStrings.ProgressStalledNoLimit
+            : MotifAppStrings.ProgressStalledWithLimit
         : string.Empty;
-    public string CancellationText => "Cancel keeps the previous results. This unfinished parse is not saved; your FieldWorks project is unchanged.";
+    public string CancellationText => MotifAppStrings.ProgressCancellation;
 
     public void Report(AssessmentProgress progress)
     {
@@ -146,18 +147,20 @@ public sealed class ParseProgressViewModel(TimeProvider clock) : ObservableObjec
 
     private string EstimateText(AssessmentProgress progress, int total)
     {
-        if (progress.Completed < 3) return "estimating time";
+        if (progress.Completed < 3) return MotifAppStrings.ProgressEstimatingTime;
         var seconds = _sampleElapsed.TotalSeconds / progress.Completed * Math.Max(0, total - progress.Completed);
-        return seconds < 1 ? "<1 s left" : $"about {Duration(TimeSpan.FromSeconds(Math.Ceiling(seconds)))} left";
+        return seconds < 1 ? MotifAppStrings.ProgressLessThanSecondLeft
+            : string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.ProgressAboutLeftFormat, Duration(TimeSpan.FromSeconds(Math.Ceiling(seconds))));
     }
 
     private static string Duration(TimeSpan duration) => duration.TotalHours >= 1
-        ? $"{(int)duration.TotalHours} h {duration.Minutes} min"
-        : duration.TotalMinutes >= 1 ? $"{(int)duration.TotalMinutes} min {duration.Seconds} s"
-        : duration.TotalSeconds < 1 ? "<1 s" : $"{(int)duration.TotalSeconds} s";
+        ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.ProgressDurationHoursFormat, (int)duration.TotalHours, duration.Minutes)
+        : duration.TotalMinutes >= 1 ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.ProgressDurationMinutesFormat, (int)duration.TotalMinutes, duration.Seconds)
+        : duration.TotalSeconds < 1 ? MotifAppStrings.ProgressDurationLessThanSecond
+        : string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.ProgressDurationSecondsFormat, (int)duration.TotalSeconds);
 }
 
 public sealed record StoppedParseWordViewModel(StoppedParseWord Word)
 {
-    public string Text => $"{Word.Word} · {(Word.Reason == "TIMEOUT" ? "Timed out" : "Stopped at a search limit")} · {Word.ElapsedMs / 1000.0:0.###} s";
+    public string Text => string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.ProgressStoppedWordFormat, Word.Word, Word.Reason == "TIMEOUT" ? MotifAppStrings.ProgressTimedOut : MotifAppStrings.ProgressStoppedAtSearchLimit, (Word.ElapsedMs / 1000.0).ToString("0.###", System.Globalization.CultureInfo.CurrentCulture));
 }

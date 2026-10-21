@@ -1,3 +1,4 @@
+using SIL.Motif.App;
 using System.Text.Json;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.Commands.Queries;
@@ -166,7 +167,7 @@ public sealed class WordRowViewModelTests
         var routes = new WordRowRoutes { OpenInText = opened.Add, TryWord = tried.Add };
         var row = new WordRowViewModel(Alikula(), routes);
 
-        Assert.Equal(("Open in text", "Try a Word", "Word Analyses ↗"),
+        Assert.Equal((MotifAppStrings.WordRowOpenInText, "Try a Word", "Word Analyses ↗"),
             (row.OpenInTextLabel, row.TryWordLabel, row.WordAnalysesLabel));
         Assert.Equal("Open alikula in Word Analyses", row.WordAnalysesName);
         Assert.Equal(new Uri("silfw://localhost/link?database%3dp%26tool%3dAnalyses"), row.WordAnalysesLink);
@@ -188,7 +189,7 @@ public sealed class WordRowViewModelTests
 
         routes.HasTexts = false;
 
-        Assert.Equal("Open word", row.OpenInTextLabel);
+        Assert.Equal(MotifAppStrings.WordRowOpenWord, row.OpenInTextLabel);
         Assert.Equal("Open alikula", row.OpenInTextAutomationName);
     }
 

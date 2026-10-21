@@ -822,7 +822,7 @@ public sealed class MainWindowSmokeTests
                 window.UpdateLayout();
 
                 var details = window.GetVisualDescendants().OfType<Expander>()
-                    .Single(expander => Equals(expander.Header, "Detailed statistics"));
+                    .Single(expander => Equals(expander.Header, MotifAppStrings.HeaderDetailedStatistics));
                 details.IsExpanded = true;
                 Avalonia.Threading.Dispatcher.UIThread.RunJobs();
                 window.UpdateLayout();
@@ -1281,7 +1281,7 @@ public sealed class MainWindowSmokeTests
                     candidate.CommandParameter is ChangeKinds.Approve or ChangeKinds.Reject or ChangeKinds.Candidate);
                 var open = Assert.Single(panel.GetLogicalDescendants().OfType<Button>(), candidate =>
                     AutomationProperties.GetName(candidate) == "Open pasted-word in Analyze texts");
-                Assert.Equal("Open in text", open.Content);
+                Assert.Equal(MotifAppStrings.WordRowOpenInText, open.Content);
             }
             finally
             {

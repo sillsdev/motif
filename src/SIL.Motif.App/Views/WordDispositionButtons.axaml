@@ -1,5 +1,6 @@
 <StackPanel xmlns="https://github.com/avaloniaui"
             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="clr-namespace:SIL.Motif.App"
             xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
             xmlns:views="clr-namespace:SIL.Motif.App.Views"
             x:Class="SIL.Motif.App.Views.WordDispositionButtons"
@@ -24,8 +25,8 @@
         <Flyout.ContentTemplate>
           <DataTemplate x:DataType="vm:ResultsTokenViewModel">
             <StackPanel x:Name="DispositionMenu" Classes="menu" Spacing="{DynamicResource Intent.Space.Related}"
-                        AutomationProperties.Name="What FieldWorks holds for this word">
-              <TextBlock Classes="menuDetail" Text="FieldWorks holds no analysis for this word."
+                        AutomationProperties.Name="{x:Static app:MotifAppStrings.WhatFieldWorksHoldsForThisWordAccessibleName}">
+              <TextBlock Classes="menuDetail" Text="{x:Static app:MotifAppStrings.FieldWorksHoldsNoAnalysisForThisWord}"
                          IsVisible="{Binding !Disposition.HasStoredRows}" />
               <ItemsControl x:Name="WordDispositionStoredRowsItems" ItemsSource="{Binding Disposition.StoredRows}">
                 <ItemsControl.ItemTemplate>
@@ -63,8 +64,8 @@
               </ItemsControl>
               <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}"
                       Command="{Binding AddChangeForTokenCommand}" CommandParameter="{Binding IncorrectSpellingAction}"
-                      AutomationProperties.Name="Mark this spelling Incorrect" ToolTip.Tip="Incorrect spelling: FieldWorks stops treating it as a word (S)">
-                <TextBlock Classes="menuTitle" Text="Incorrect spelling" />
+                      AutomationProperties.Name="{x:Static app:MotifAppStrings.MarkThisSpellingIncorrectAccessibleName}" ToolTip.Tip="{x:Static app:MotifAppStrings.DispositionIncorrectSpellingTip}">
+                <TextBlock Classes="menuTitle" Text="{x:Static app:MotifAppStrings.IncorrectSpelling}" />
               </Button>
               <ItemsControl x:Name="WordDispositionProposalActionsItems" ItemsSource="{Binding Disposition.ProposalActions}"
                             IsVisible="{Binding Disposition.HasProposalActions}">
@@ -84,8 +85,8 @@
               <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}"
                       IsVisible="{Binding Disposition.KeepFieldWorks, Converter={x:Static ObjectConverters.IsNotNull}}"
                       Command="{Binding StageMarkingChoiceForTokenCommand}" CommandParameter="{Binding Disposition.KeepFieldWorksAction}"
-                      AutomationProperties.Name="Keep FieldWorks">
-                <TextBlock Classes="menuTitle" Text="Keep FieldWorks as it is" />
+                      AutomationProperties.Name="{x:Static app:MotifAppStrings.KeepFieldWorksAccessibleName}">
+                <TextBlock Classes="menuTitle" Text="{x:Static app:MotifAppStrings.KeepFieldWorksAsItIs}" />
               </Button>
             </StackPanel>
           </DataTemplate>
@@ -111,8 +112,8 @@
         <Flyout.ContentTemplate>
           <DataTemplate x:DataType="vm:ResultsTokenViewModel">
             <StackPanel x:Name="AddMenu" Classes="menu" Spacing="{DynamicResource Intent.Space.Related}"
-                        AutomationProperties.Name="PanGloss analyses to add to FieldWorks">
-              <TextBlock Classes="menuDetail" Text="Add to FieldWorks" />
+                        AutomationProperties.Name="{x:Static app:MotifAppStrings.PanGlossAnalysesToAddToFieldWorksAccessibleName}">
+              <TextBlock Classes="menuDetail" Text="{x:Static app:MotifAppStrings.AddToFieldWorks}" />
               <ItemsControl x:Name="WordDispositionReadingsItems" ItemsSource="{Binding Disposition.Readings}">
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="vm:WordDispositionRow">
@@ -150,8 +151,8 @@
               <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}"
                       IsVisible="{Binding Disposition.AddAllAsUnknown, Converter={x:Static ObjectConverters.IsNotNull}}"
                       Command="{Binding StageMarkingChoiceForTokenCommand}" CommandParameter="{Binding Disposition.AddAllAsUnknownAction}"
-                      AutomationProperties.Name="Add every PanGloss analysis as Unknown">
-                <TextBlock Classes="menuTitle" Text="Add them all as Unknown" />
+                      AutomationProperties.Name="{x:Static app:MotifAppStrings.AddEveryPanGlossAnalysisAsUnknownAccessibleName}">
+                <TextBlock Classes="menuTitle" Text="{x:Static app:MotifAppStrings.AddThemAllAsUnknown}" />
               </Button>
             </StackPanel>
           </DataTemplate>

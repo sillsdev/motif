@@ -47,7 +47,7 @@ public sealed class TimingResponsiveTests
             var callsButton = page.GetLogicalDescendants().OfType<Button>()
                 .Single(button => AutomationProperties.GetName(button) == "Show calls per kind");
             var ruleHandoff = page.GetLogicalDescendants().OfType<Button>()
-                .Single(button => button.Content?.ToString() == "AI Handoff for this rule");
+                .Single(button => button.Content?.ToString() == MotifAppStrings.AIHandoffForThisRule);
             var pageScroll = Assert.IsType<ScrollViewer>(pageBorder.FindAncestorOfType<ScrollViewer>());
 
             Assert.Equal(5, primaryActions.Length);

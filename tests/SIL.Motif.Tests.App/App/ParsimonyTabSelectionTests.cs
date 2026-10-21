@@ -66,7 +66,7 @@ public sealed class ParsimonyTabSelectionTests
                 var link = Assert.Single(window.GetVisualDescendants().OfType<HyperlinkButton>(), button =>
                     AutomationProperties.GetAutomationId(button) == AutomationIds.ParsimonyReviewChanges);
                 Assert.True(link.IsEffectivelyVisible);
-                Assert.Equal("Review changes", link.Content);
+                Assert.Equal(MotifAppStrings.ParsimonyReviewChanges, link.Content);
                 link.Command!.Execute(link.CommandParameter);
 
                 Assert.Equal(WorkspacePage.Review, workspace.CurrentPage);

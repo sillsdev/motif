@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="clr-namespace:SIL.Motif.App"
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
              xmlns:contract="clr-namespace:SIL.Motif.Contract.Commands;assembly=SIL.Motif.Contract"
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
@@ -15,7 +16,7 @@
                                IsVisible="{Binding !OffersStoreDeletion}" />
       <ScrollViewer Classes="refusalViewport" IsVisible="{Binding HasCompileIssues}"
                     HorizontalScrollBarVisibility="Disabled"
-                    AutomationProperties.Name="Fatal grammar issues">
+                    AutomationProperties.Name="{x:Static app:MotifAppStrings.FatalGrammarIssuesAccessibleName}">
         <ItemsControl x:Name="RefusalBlockCompileIssuesItems" ItemsSource="{Binding CompileIssues}">
           <ItemsControl.ItemsPanel>
             <ItemsPanelTemplate>
@@ -36,20 +37,20 @@
           </ItemsControl.ItemTemplate>
         </ItemsControl>
       </ScrollViewer>
-      <HyperlinkButton x:Name="ReportProblemButton" Classes="refusalReport" Content="Report a problem" Click="OnReportProblemClick"
+      <HyperlinkButton x:Name="ReportProblemButton" Classes="refusalReport" Content="{x:Static app:MotifAppStrings.ReportProblem}" Click="OnReportProblemClick"
               IsVisible="{Binding OffersProblemReport}"
-              AutomationProperties.Name="Review a problem report" HorizontalAlignment="Left" />
+              AutomationProperties.Name="{x:Static app:MotifAppStrings.ReviewAProblemReportAccessibleName}" HorizontalAlignment="Left" />
       <Button x:Name="DeleteStoreButton"
               Classes="Primary" Theme="{DynamicResource SolidButton}"
-              Content="Delete Motif's store and reopen"
+              Content="{x:Static app:MotifAppStrings.DeleteMotifsStoreAndReopen}"
               CommandParameter="{Binding}"
-              AutomationProperties.Name="Delete Motif's store and reopen the project"
+              AutomationProperties.Name="{x:Static app:MotifAppStrings.RefusalDeleteStoreAccessibleName}"
               HorizontalAlignment="Left"
               IsVisible="False" />
-      <Expander Classes="refusalDetails" Header="{Binding DetailsTitle}" AutomationProperties.Name="Refusal details"
+      <Expander Classes="refusalDetails" Header="{Binding DetailsTitle}" AutomationProperties.Name="{x:Static app:MotifAppStrings.RefusalDetailsAccessibleName}"
                 IsExpanded="False" IsVisible="{Binding HasDetails}">
         <ScrollViewer Classes="refusalViewport" HorizontalScrollBarVisibility="Disabled"
-                      AutomationProperties.Name="Original refusal details">
+                      AutomationProperties.Name="{x:Static app:MotifAppStrings.OriginalRefusalDetailsAccessibleName}">
           <views:CopyableTextBlock Classes="refusalDetails" Text="{Binding Details}" TextWrapping="Wrap" />
         </ScrollViewer>
       </Expander>

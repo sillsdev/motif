@@ -115,9 +115,9 @@ public sealed class WordRowOpenLayoutSystemTests(ITestOutputHelper output)
                     var analysis = Assert.Single(card.Document!.Sections.OfType<WordCardAnalysis>());
                     Assert.NotNull(analysis.Token);
                     Assert.Contains(card.GetVisualDescendants().OfType<CopyableTextBlock>(),
-                        block => block.IsEffectivelyVisible && block.Text == "In FieldWorks · now");
+                        block => block.IsEffectivelyVisible && block.Text == MotifAppStrings.InFieldWorksNow);
                     Assert.Contains(card.GetVisualDescendants().OfType<CopyableTextBlock>(),
-                        block => block.IsEffectivelyVisible && block.Text == "Time by rule");
+                        block => block.IsEffectivelyVisible && block.Text == MotifAppStrings.TimeByRule);
                     Assert.Contains(card.GetVisualDescendants().OfType<CopyableTextBlock>(),
                         block => block.IsEffectivelyVisible && block.Text == "WHERE IT APPEARS");
                 }

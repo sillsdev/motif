@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="clr-namespace:SIL.Motif.App"
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
              xmlns:controls="clr-namespace:SIL.Motif.App.Controls"
              xmlns:responses="clr-namespace:SIL.Motif.Contract.Responses;assembly=SIL.Motif.Contract"
@@ -9,10 +10,10 @@
              controls:WritingSystemText.Resolver="{Binding TextStyles}">
   <!-- A word that parses leads with its analyses, each once, before anything the parser dropped. -->
   <StackPanel Spacing="{DynamicResource Intent.Space.Snug}" IsVisible="{Binding HasAnalyses}"
-              AutomationProperties.Name="Analyses">
+              AutomationProperties.Name="{x:Static app:MotifAppStrings.AnalysesAccessibleName}">
     <views:CopyableTextBlock Text="{Binding AnalysesHeading}" FontSize="{DynamicResource Intent.Type.Section}"
                              FontWeight="{DynamicResource Intent.Weight.Section}" />
-    <ItemsControl x:Name="TraceAnalysesViewAnalysesItems" ItemsSource="{Binding Analyses}" AutomationProperties.Name="Recorded analyses">
+    <ItemsControl x:Name="TraceAnalysesViewAnalysesItems" ItemsSource="{Binding Analyses}" AutomationProperties.Name="{x:Static app:MotifAppStrings.RecordedAnalysesAccessibleName}">
       <ItemsControl.ItemsPanel>
         <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
       </ItemsControl.ItemsPanel>
@@ -25,7 +26,7 @@
                 <views:CopyableTextBlock Grid.Column="1" Text="{Binding Surface}" ToolTip.Tip="{Binding LegacyMorphemesTip}" />
                 <views:CopyableTextBlock Grid.Column="2" Classes="muted" Text="{Binding RecordedCountText}"
                                          IsVisible="{Binding HasRepeatedRecords}"
-                                         ToolTip.Tip="The trace recorded this result more than once; distinct derivations are not established." />
+                                         ToolTip.Tip="{x:Static app:MotifAppStrings.TraceRepeatedResultTip}" />
               </Grid>
               <views:CopyableTextBlock Text="{Binding LegacyMorphemesText}" IsVisible="{Binding HasLegacyMorphemes}" TextWrapping="Wrap" />
               <views:CopyableTextBlock Text="{Binding ProjectionErrorText}" ToolTip.Tip="{Binding ProjectionError}"
@@ -52,11 +53,11 @@
                         <views:CopyableTextBlock Text="{Binding Gloss}"
                                                  controls:WritingSystemText.Id="{Binding GlossWritingSystem}" controls:WritingSystemText.StyleName="Normal" />
                         <views:CopyableTextBlock Text="{Binding Category}" Classes="muted" />
-                        <Expander Header="Full morph details" IsExpanded="False">
+                        <Expander Header="{x:Static app:MotifAppStrings.HeaderFullMorphDetails}" IsExpanded="False">
                           <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
                             <views:CopyableTextBlock Text="{Binding Details}" TextWrapping="Wrap" />
                             <views:CopyableTextBlock Text="{Binding MsaDetails}" TextWrapping="Wrap" />
-                            <Expander Header="Raw morph record">
+                            <Expander Header="{x:Static app:MotifAppStrings.HeaderRawMorphRecord}">
                               <views:CopyableTextBlock Text="{Binding RawDetails}" Classes="muted" TextWrapping="Wrap" />
                             </Expander>
                             <views:CopyableTextBlock Text="{Binding Identity}" Classes="muted" TextWrapping="Wrap" />
@@ -66,7 +67,7 @@
                                              Padding="{DynamicResource Intent.Inset.None}"
                                              AutomationProperties.Name="{Binding LinkName}" />
                             <views:CopyableTextBlock Classes="muted"
-                                                     Text="Live FieldWorks navigation is unavailable for this recorded morph."
+                                                     Text="{x:Static app:MotifAppStrings.TraceLiveNavigationUnavailable}"
                                                      IsVisible="{Binding HasNoLink}" TextWrapping="Wrap" />
                           </StackPanel>
                         </Expander>
@@ -80,7 +81,7 @@
         </DataTemplate>
       </ItemsControl.ItemTemplate>
     </ItemsControl>
-    <Expander Header="Parser record" AutomationProperties.Name="Recorded source analyses" IsExpanded="{Binding ShowParserRecord, Mode=TwoWay}" IsVisible="{Binding IsExpert}">
+    <Expander Header="{x:Static app:MotifAppStrings.ParserRecord}" AutomationProperties.Name="{x:Static app:MotifAppStrings.RecordedSourceAnalysesAccessibleName}" IsExpanded="{Binding ShowParserRecord, Mode=TwoWay}" IsVisible="{Binding IsExpert}">
       <ItemsControl x:Name="TraceAnalysesViewSourceAnalysesItems" ItemsSource="{Binding SourceAnalyses}">
         <ItemsControl.ItemsPanel>
           <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>

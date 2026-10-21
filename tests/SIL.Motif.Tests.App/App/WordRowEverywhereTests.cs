@@ -1,3 +1,4 @@
+using SIL.Motif.App;
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
@@ -189,7 +190,7 @@ public sealed class WordRowEverywhereTests
                     var next = panel.InspectorContent.GetVisualDescendants().OfType<Button>()
                         .Where(button => button.IsEffectivelyVisible).ToArray();
                     var tryWord = Assert.Single(next, button => Equals(button.Content, "Try a Word"));
-                    Assert.Contains(next, button => Equals(button.Content, "Open in text"));
+                    Assert.Contains(next, button => Equals(button.Content, MotifAppStrings.WordRowOpenInText));
                     Assert.Contains(next, button => Equals(button.Content, "Word Analyses ↗"));
                     tryWord.BringIntoView();
                     PageScreenshots.Settle(window);
@@ -213,7 +214,7 @@ public sealed class WordRowEverywhereTests
                 var steps = row.GetVisualDescendants().OfType<Control>()
                     .First(part => part.Classes.Contains("wordPresentationNext"))
                     .GetVisualDescendants().OfType<Button>().ToArray();
-                Assert.Equal(["Open in text", "Try a Word", "Word Analyses ↗"],
+                Assert.Equal([MotifAppStrings.WordRowOpenInText, "Try a Word", "Word Analyses ↗"],
                     steps.Select(step => step.Content?.ToString()));
 
                 steps[1].BringIntoView();

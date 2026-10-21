@@ -1,3 +1,4 @@
+using SIL.Motif.App;
 using System.Globalization;
 using Avalonia;
 using Avalonia.Automation;
@@ -319,7 +320,7 @@ public sealed class TryWordPageTests
                 Settle(window);
                 var parser = window.GetVisualDescendants().OfType<Expander>().Single(expander =>
                     AutomationProperties.GetName(expander) == "Recorded source analyses");
-                Assert.Equal("Parser record", parser.Header);
+                Assert.Equal(MotifAppStrings.ParserRecord, parser.Header);
                 Assert.False(parser.IsExpanded);
                 Assert.DoesNotContain(VisibleTexts(window), text => text.Contains("MissingMsa") ||
                     text.StartsWith("Producer id:") || text.StartsWith("Projection status:"));
@@ -701,7 +702,7 @@ public sealed class TryWordPageTests
                 var texts = VisibleTexts(window).ToArray();
                 Assert.DoesNotContain("Grammar source not recorded", texts);
                 Assert.Contains("FieldWorks word context unavailable", texts);
-                Assert.Contains("Recorded trace", texts);
+                Assert.Contains(MotifAppStrings.RecordedTrace, texts);
                 var analyze = Assert.Single(window.GetLogicalDescendants().OfType<Button>(), button =>
                     button.Command == page.OpenInTextsCommand);
                 Assert.True(analyze.Focusable);
@@ -1449,7 +1450,7 @@ public sealed class TryWordPageTests
                     AutomationProperties.GetName(border) == "Recorded trace context");
                 var texts = bestPath.GetLogicalDescendants().OfType<TextBlock>()
                     .Where(block => block.IsEffectivelyVisible).Select(block => block.Text).ToArray();
-                Assert.Contains("Recorded trace", texts);
+                Assert.Contains(MotifAppStrings.RecordedTrace, texts);
                 Assert.DoesNotContain(texts, text => text is not null &&
                     (text.Contains("time", StringComparison.OrdinalIgnoreCase) || text.EndsWith('%')));
                 var earlier = Assert.Single(window.GetLogicalDescendants().OfType<Border>(), border =>
@@ -1776,7 +1777,7 @@ public sealed class TryWordPageTests
                 Assert.Contains("Morphemes: MA + TIN + LU", visible);
                 Assert.DoesNotContain("Recorded twice", visible);
                 Assert.Single(visible, text => text == "Analysis 1");
-                Assert.True(TopOf(view, "Parsed · 2 analyses", window) < TopOf(view, "Recorded trace", window));
+                Assert.True(TopOf(view, "Parsed · 2 analyses", window) < TopOf(view, MotifAppStrings.RecordedTrace, window));
                 Assert.DoesNotContain("Why the other attempts failed", visible);
                 Assert.DoesNotContain("Further derivation is prohibited after a final template.", visible);
                 Assert.DoesNotContain("Rules on this word's best path", visible);

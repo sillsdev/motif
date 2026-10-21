@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="clr-namespace:SIL.Motif.App"
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              x:Class="SIL.Motif.App.Views.WarningsPage"
@@ -7,15 +8,15 @@
   <Grid RowDefinitions="Auto,*">
     <!-- Opening a project never checks the grammar; until someone asks, the page says so and offers the check. -->
     <Border Classes="card warningEmpty" IsVisible="{Binding IsGrammarNotChecked}"
-            AutomationProperties.Name="Grammar not checked yet">
+            AutomationProperties.Name="{x:Static app:MotifAppStrings.GrammarNotCheckedYetAccessibleName}">
       <DockPanel LastChildFill="True">
-        <Button DockPanel.Dock="Right" Content="Check the grammar" VerticalAlignment="Center" Classes="warningAction Primary"
+        <Button DockPanel.Dock="Right" Content="{x:Static app:MotifAppStrings.CheckTheGrammar}" VerticalAlignment="Center" Classes="warningAction Primary"
                 Theme="{DynamicResource SolidButton}"
-                Command="{Binding CheckGrammarCommand}" AutomationProperties.Name="Check the grammar" />
+                Command="{Binding CheckGrammarCommand}" AutomationProperties.Name="{x:Static app:MotifAppStrings.CheckTheGrammarAccessibleName}" />
         <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-          <views:CopyableTextBlock Text="Not checked yet" FontWeight="{DynamicResource Intent.Weight.Section}" />
+          <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.NotCheckedYet}" FontWeight="{DynamicResource Intent.Weight.Section}" />
           <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap"
-                                   Text="Checking reads the whole grammar, so it can take a minute on a large project. It runs only when you ask." />
+                                   Text="{x:Static app:MotifAppStrings.WarningsCheckExplanation}" />
         </StackPanel>
       </DockPanel>
     </Border>

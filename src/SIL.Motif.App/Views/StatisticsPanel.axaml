@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="clr-namespace:SIL.Motif.App"
              xmlns:conv="clr-namespace:Avalonia.Data.Converters;assembly=Avalonia.Base"
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
@@ -28,7 +29,7 @@
     <DockPanel LastChildFill="False" DockPanel.Dock="Top" Margin="{DynamicResource Intent.Gap.AfterRelated}">
       <ComboBox x:Name="StatisticsPanelGroupChoicesItems" ItemsSource="{Binding Statistics.GroupChoices}"
                 SelectedItem="{Binding Statistics.SelectedGroupChoice}"
-                AutomationProperties.Name="Statistics group"
+                AutomationProperties.Name="{x:Static app:MotifAppStrings.StatisticsGroupAccessibleName}"
                 Margin="{DynamicResource Intent.Gap.AfterGroup}">
         <ComboBox.ItemTemplate>
           <DataTemplate x:DataType="vm:StatsGroupChoice">
@@ -39,7 +40,7 @@
       <TextBox Text="{Binding Statistics.FilterText}"
                PlaceholderText="Filter rows..."
                Width="{DynamicResource Component.Statistics.FilterWidth}"
-               AutomationProperties.Name="Filter statistics rows"
+               AutomationProperties.Name="{x:Static app:MotifAppStrings.FilterStatisticsRowsAccessibleName}"
                Margin="{DynamicResource Intent.Gap.AfterGroup}" />
       <views:FilterChip Label="All rows" Count="{Binding Statistics.RowCount}" Margin="{DynamicResource Intent.Gap.AfterRelated}"
                         IsActive="{Binding !Statistics.OnlyIncomplete}" Click="OnAllRowsClick" />
@@ -49,12 +50,12 @@
 
     <views:CopyableTextBlock DockPanel.Dock="Top" Classes="muted"
                Text="{Binding Statistics.ScopeNote}"
-               AutomationProperties.Name="Statistics word scope" />
+               AutomationProperties.Name="{x:Static app:MotifAppStrings.StatisticsWordScopeAccessibleName}" />
 
     <views:RefusalBlock DataContext="{Binding Statistics.ShownRefusal}" DockPanel.Dock="Top" />
     <views:CopyableTextBlock DockPanel.Dock="Bottom" Classes="muted" FontSize="{DynamicResource Intent.Type.Label}" Margin="{DynamicResource Intent.Gap.AfterRelated}" HorizontalAlignment="Stretch" TextWrapping="Wrap"
                Text="{Binding Statistics.ShadingNote}" />
-    <views:CopyableTextBlock Text="Showing the last successful statistics; they may be out of date."
+    <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.StatisticsStaleNotice}"
                IsVisible="{Binding Statistics.IsStale}"
                FontStyle="Italic"
                DockPanel.Dock="Top" />
@@ -66,18 +67,18 @@
               CanUserSortColumns="True"
               ClipboardCopyMode="IncludeHeader"
               Sorting="OnGridSorting"
-              AutomationProperties.Name="Statistics rows">
+              AutomationProperties.Name="{x:Static app:MotifAppStrings.StatisticsRowsAccessibleName}">
       <DataGrid.Columns>
         <!-- A DataGridColumn's Binding has no compiled-binding item scope of its own (unlike a
              DataTemplate); ReflectionBinding is the documented per-binding opt-out. -->
-        <DataGridTemplateColumn Header="Kind" Tag="kind" ClipboardContentBinding="{ReflectionBinding Kind}">
+        <DataGridTemplateColumn Header="{x:Static app:MotifAppStrings.HeaderKind}" Tag="kind" ClipboardContentBinding="{ReflectionBinding Kind}">
           <DataGridTemplateColumn.CellTemplate>
             <DataTemplate x:DataType="vm:StatsRowViewModel">
               <views:CopyableTextBlock Text="{Binding Kind}" Margin="{DynamicResource Component.Statistics.CellMargin}" />
             </DataTemplate>
           </DataGridTemplateColumn.CellTemplate>
         </DataGridTemplateColumn>
-        <DataGridTemplateColumn Header="Object" Tag="object" ClipboardContentBinding="{ReflectionBinding Object}">
+        <DataGridTemplateColumn Header="{x:Static app:MotifAppStrings.HeaderObject}" Tag="object" ClipboardContentBinding="{ReflectionBinding Object}">
           <DataGridTemplateColumn.CellTemplate>
             <DataTemplate x:DataType="vm:StatsRowViewModel">
               <views:CopyableTextBlock Text="{Binding Object}" TextTrimming="CharacterEllipsis"
@@ -87,7 +88,7 @@
             </DataTemplate>
           </DataGridTemplateColumn.CellTemplate>
         </DataGridTemplateColumn>
-        <DataGridTemplateColumn Header="Word" Tag="word" ClipboardContentBinding="{ReflectionBinding Word}">
+        <DataGridTemplateColumn Header="{x:Static app:MotifAppStrings.Word}" Tag="word" ClipboardContentBinding="{ReflectionBinding Word}">
           <DataGridTemplateColumn.CellTemplate>
             <DataTemplate x:DataType="vm:StatsRowViewModel">
               <views:CopyableTextBlock Text="{Binding Word}" TextTrimming="CharacterEllipsis"
@@ -97,7 +98,7 @@
             </DataTemplate>
           </DataGridTemplateColumn.CellTemplate>
         </DataGridTemplateColumn>
-        <DataGridTemplateColumn Header="Completion" Tag="completion" ClipboardContentBinding="{ReflectionBinding CompletionStatus}">
+        <DataGridTemplateColumn Header="{x:Static app:MotifAppStrings.HeaderCompletion}" Tag="completion" ClipboardContentBinding="{ReflectionBinding CompletionStatus}">
           <DataGridTemplateColumn.CellTemplate>
             <DataTemplate x:DataType="vm:StatsRowViewModel">
               <views:MarkChip Mark="{Binding CompletionMark}" Text="{Binding CompletionShort}" Compact="True"
@@ -107,7 +108,7 @@
             </DataTemplate>
           </DataGridTemplateColumn.CellTemplate>
         </DataGridTemplateColumn>
-        <DataGridTemplateColumn Header="Attempts" Tag="attempts" Width="Auto" ClipboardContentBinding="{ReflectionBinding Attempts}">
+        <DataGridTemplateColumn Header="{x:Static app:MotifAppStrings.StatsHeaderAttempts}" Tag="attempts" Width="Auto" ClipboardContentBinding="{ReflectionBinding Attempts}">
           <DataGridTemplateColumn.CellTemplate>
             <DataTemplate x:DataType="vm:StatsRowViewModel">
               <views:HeatCell Text="{Binding AttemptsText}" TextToolTip="{Binding AttemptsText}"
@@ -115,7 +116,7 @@
             </DataTemplate>
           </DataGridTemplateColumn.CellTemplate>
         </DataGridTemplateColumn>
-        <DataGridTemplateColumn Header="Analyses" Tag="passes" Width="Auto" ClipboardContentBinding="{ReflectionBinding Passes}">
+        <DataGridTemplateColumn Header="{x:Static app:MotifAppStrings.HeaderAnalyses}" Tag="passes" Width="Auto" ClipboardContentBinding="{ReflectionBinding Passes}">
           <DataGridTemplateColumn.CellTemplate>
             <DataTemplate x:DataType="vm:StatsRowViewModel">
               <views:HeatCell Text="{Binding PassesText}" TextToolTip="{Binding PassesText}"
@@ -123,7 +124,7 @@
             </DataTemplate>
           </DataGridTemplateColumn.CellTemplate>
         </DataGridTemplateColumn>
-        <DataGridTemplateColumn Header="Elapsed (ms)" Tag="elapsedMs" Width="Auto" ClipboardContentBinding="{ReflectionBinding ElapsedMs}">
+        <DataGridTemplateColumn Header="{x:Static app:MotifAppStrings.HeaderElapsedMs}" Tag="elapsedMs" Width="Auto" ClipboardContentBinding="{ReflectionBinding ElapsedMs}">
           <DataGridTemplateColumn.CellTemplate>
             <DataTemplate x:DataType="vm:StatsRowViewModel">
               <views:HeatCell Text="{Binding ElapsedText}" TextToolTip="{Binding ElapsedText}"

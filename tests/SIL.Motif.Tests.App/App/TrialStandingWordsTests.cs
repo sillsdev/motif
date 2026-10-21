@@ -1,3 +1,4 @@
+using SIL.Motif.App;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.Contract.Responses;
 using Xunit;
@@ -27,9 +28,9 @@ public sealed class TrialStandingWordsTests
             TrialStandingWords.For(TrialStanding.NeedsAnotherTry(TrialStaleReason.BaselineMoved)).Status);
         Assert.Equal("Needs another try",
             TrialStandingWords.For(TrialStanding.NeedsAnotherTry(TrialStaleReason.ProposalChanged)).Status);
-        Assert.Equal("Try it", TrialStandingWords.For(TrialStanding.NotTried).Action);
+        Assert.Equal(MotifAppStrings.TryIt, TrialStandingWords.For(TrialStanding.NotTried).Action);
         Assert.All(new[] { TrialStanding.Trying, TrialStanding.Failed, TrialStanding.Current },
-            standing => Assert.Equal("Try again", TrialStandingWords.For(standing).Action));
+            standing => Assert.Equal(MotifAppStrings.TryAgain, TrialStandingWords.For(standing).Action));
     }
 
     [Fact]

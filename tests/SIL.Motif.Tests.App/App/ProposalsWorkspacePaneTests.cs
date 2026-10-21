@@ -357,7 +357,7 @@ public sealed class ProposalsWorkspacePaneTests
                 staleFlyout.ShowAt(staleMenu);
                 PageScreenshots.Settle(standalone);
                 var repeatedTryAgain = Assert.Single(Assert.IsAssignableFrom<Control>(staleFlyout.Content)
-                    .GetVisualDescendants().OfType<Button>(), button => Equals(button.Content, "Try again"));
+                    .GetVisualDescendants().OfType<Button>(), button => Equals(button.Content, MotifAppStrings.TryAgain));
                 Assert.True(repeatedTryAgain.IsEffectivelyVisible);
                 var detailsAction = Assert.Single(Assert.IsAssignableFrom<Control>(staleFlyout.Content)
                     .GetVisualDescendants().OfType<Button>(), button => Equals(button.Content, "Details"));

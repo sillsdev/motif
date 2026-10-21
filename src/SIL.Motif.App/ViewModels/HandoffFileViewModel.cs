@@ -46,11 +46,11 @@ public sealed record HandoffFileViewModel(string RelativePath, string FullPath)
     /// <summary>What a Handoff's files are for, by name, in the order a reader would open them.</summary>
     public static IReadOnlyList<(string Name, string Purpose)> KnownFiles { get; } =
     [
-        ("handoff.md", "What this AI Handoff is and how to read it."),
-        ("parse-results.json", "Every word the parser was asked about: whether it parsed, how long it took, and its result's signature."),
-        ("texts.json", "The chosen texts, word by word, with the analyses the project stores."),
-        ("grammar.json", "The grammar the parser used, as it read it."),
-        ("read_results.py", "A reader the chat model can run over parse-results.json and texts.json."),
+        ("handoff.md", MotifAppStrings.HandoffFileHandoffMd),
+        ("parse-results.json", MotifAppStrings.HandoffFileParseResults),
+        ("texts.json", MotifAppStrings.HandoffFileTexts),
+        ("grammar.json", MotifAppStrings.HandoffFileGrammar),
+        ("read_results.py", MotifAppStrings.HandoffFileReader),
     ];
 
     /// <summary>One line on what this file holds, or empty for a file this list does not know.</summary>
@@ -60,10 +60,12 @@ public sealed record HandoffFileViewModel(string RelativePath, string FullPath)
     public bool HasPurpose => Purpose.Length > 0;
 
     /// <summary>The accessible action name for starting a drag of this file.</summary>
-    public string DragAccessibleName => $"Drag {RelativePath}";
+    public string DragAccessibleName => string.Format(System.Globalization.CultureInfo.CurrentCulture,
+        MotifAppStrings.HandoffDragAccessibleNameFormat, RelativePath);
 
     /// <summary>The accessible action name for copying this file's full path.</summary>
-    public string CopyPathAccessibleName => $"Copy path for {RelativePath}";
+    public string CopyPathAccessibleName => string.Format(System.Globalization.CultureInfo.CurrentCulture,
+        MotifAppStrings.HandoffCopyPathAccessibleNameFormat, RelativePath);
 
     /// <summary>Maps a relative path's extension to the glyph kind without touching the filesystem.</summary>
     public static HandoffFileKind KindFromRelativePath(string relativePath)

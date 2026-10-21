@@ -56,7 +56,7 @@ public sealed record ParsimonyMeasureGroup(string Title, string AxisLabel, IRead
     public string AxisText => ParsimonyPageModel.AxisName(AxisLabel);
 
     internal static string FindingCount(int count) =>
-        count.ToString(System.Globalization.CultureInfo.CurrentCulture) + (count == 1 ? " finding" : " findings");
+        PluralText.Format(MotifAppStrings.ParsimonyFindingCountPattern, count);
 }
 
 /// <summary>One choice in a findings filter: a label with its count, selectable, with the current choice marked.</summary>
@@ -70,7 +70,8 @@ public sealed partial class ParsimonyFilterChoice(string key, string label, int 
     public string Name { get; } = label;
 
     /// <summary>The choice's name with its count, such as "Kept (2)".</summary>
-    public string Label { get; } = label + " (" + count.ToString(System.Globalization.CultureInfo.CurrentCulture) + ")";
+    public string Label { get; } = string.Format(System.Globalization.CultureInfo.CurrentCulture,
+        MotifAppStrings.ParsimonyFilterChoiceLabelFormat, label, count.ToString(System.Globalization.CultureInfo.CurrentCulture));
 
     /// <summary>The findings that match the choice among those loaded.</summary>
     public int Count { get; } = count;
@@ -265,22 +266,16 @@ public sealed record ParsimonyEvidence(
 /// </summary>
 public sealed partial class ParsimonyPageModel : PageModel
 {
-    private const string NoReportMessage = "No Parsimony Report yet.";
-    private const string NoReportNextStep = "Ask an AI assistant with Motif tools to run every Parsimony measure for " +
-        "this project, or run this in the CLI after replacing the project path:\n" +
-        "motif parsimony --project \"<project.fwdata>\" --measure all --wait\n" +
-        "Then come back here. Opening this page never starts a check; it reads the stored Report.";
-    private const string NoRecordTypesMessage = "This project's Notebook has no record types, so a decision has nowhere to go. " +
-        "Add one in FieldWorks, then reopen this page.";
-    private const string StagedNote = "Staged in pending changes. Nothing is written to FieldWorks until Apply.";
+    private static string NoReportMessage => MotifAppStrings.ParsimonyNoReport;
+    private static string NoReportNextStep => MotifAppStrings.ParsimonyNoReportNextStep;
+    private static string NoRecordTypesMessage => MotifAppStrings.ParsimonyNoRecordTypes;
+    private static string StagedNote => MotifAppStrings.ParsimonyStagedNote;
     private const int ViewPageSize = 200;
-    private const string ReturnStagedLabel = "Return to Active is staged. Apply writes it.";
+    private static string ReturnStagedLabel => MotifAppStrings.ParsimonyReturnStagedLabel;
 
     // A row names this many items and then counts the rest; the inspector lists them all.
     private const int RowItemNames = 12;
-    private const string EvidenceNoteText = "The evidence this Report was measured from is no longer stored, so its " +
-        "findings are listed from the Report itself. Decisions are matched to findings by their recorded evidence, " +
-        "not checked against the grammar again.";
+    private static string EvidenceNoteText => MotifAppStrings.ParsimonyEvidenceNote;
 
     private static readonly ParsimonyRecipeCatalog RecipeCatalog = ParsimonyRecipeCatalog.Load();
 
@@ -490,7 +485,8 @@ public sealed partial class ParsimonyPageModel : PageModel
     /// <summary>The unmeasured checks in one line, such as "Not measured: A and B."; empty when there are none.</summary>
     public string MissingInputsText => MissingInputs.Count == 0
         ? string.Empty
-        : "Not measured: " + JoinPlainly(MissingInputs) + ".";
+        : string.Format(System.Globalization.CultureInfo.CurrentCulture,
+            MotifAppStrings.ParsimonyNotMeasuredFormat, JoinPlainly(MissingInputs));
 
     /// <summary>Whether the listed findings are a partial view of the grammar.</summary>
     public bool HasIncomplete => IsIncomplete || MissingInputs.Count > 0;
@@ -541,11 +537,13 @@ public sealed partial class ParsimonyPageModel : PageModel
     public bool ShowingSuppressed => IsShowingSuppressed;
 
     /// <summary>The Active tab's label with its count.</summary>
-    public string ActiveTabLabel => "Active (" + _activeTotal.ToString(System.Globalization.CultureInfo.CurrentCulture) + ")";
+    public string ActiveTabLabel => string.Format(System.Globalization.CultureInfo.CurrentCulture,
+        MotifAppStrings.ParsimonyActiveTabFormat, _activeTotal.ToString(System.Globalization.CultureInfo.CurrentCulture));
 
     /// <summary>The Suppressed tab's label with its count.</summary>
     public string SuppressedTabLabel =>
-        "Suppressed (" + _suppressedTotal.ToString(System.Globalization.CultureInfo.CurrentCulture) + ")";
+        string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.ParsimonySuppressedTabFormat,
+            _suppressedTotal.ToString(System.Globalization.CultureInfo.CurrentCulture));
 
     /// <summary>Whether a selected Active finding has the decision actions to show.</summary>
     public bool ShowActiveActions => Evidence is not null && _selectedFindingId is not null;
@@ -619,7 +617,7 @@ public sealed partial class ParsimonyPageModel : PageModel
 
     /// <summary>What the findings panel says while there are no measured findings to list, so absence never reads as zero.</summary>
     public string UnavailableText => IsListed ? string.Empty
-        : Message.Length > 0 ? Message : "The findings are not available yet.";
+        : Message.Length > 0 ? Message : MotifAppStrings.ParsimonyFindingsNotAvailable;
 
     /// <summary>Selects one Active finding and shows its evidence, unless the link belongs to another project or Report.</summary>
     public bool SelectFinding(ParsimonyFindingLink link)
@@ -630,14 +628,14 @@ public sealed partial class ParsimonyPageModel : PageModel
             !string.Equals(link.ProjectPath, _reportProjectPath, StringComparison.Ordinal) ||
             !string.Equals(link.ReportId, current.ReportId, StringComparison.Ordinal))
         {
-            Refuse("This finding belongs to a project that is no longer open. Open the Parsimony page for this project.");
+            Refuse(MotifAppStrings.ParsimonyFindingWrongProject);
             return false;
         }
         var row = _activeRows.FirstOrDefault(item => string.Equals(item.Finding.FindingId, link.FindingId,
             StringComparison.Ordinal));
         if (row is null)
         {
-            Refuse("That finding is no longer Active in this Report.");
+            Refuse(MotifAppStrings.ParsimonyFindingNoLongerActive);
             return false;
         }
         SelectionMessage = string.Empty;
@@ -662,7 +660,7 @@ public sealed partial class ParsimonyPageModel : PageModel
         var row = _suppressedRows.FirstOrDefault(item => string.Equals(item.RevisionId, key, StringComparison.Ordinal));
         if (row is null)
         {
-            SelectionMessage = "That decision is no longer in this Report's decisions.";
+            SelectionMessage = MotifAppStrings.ParsimonyDecisionGone;
             return false;
         }
         SelectionMessage = string.Empty;
@@ -776,8 +774,9 @@ public sealed partial class ParsimonyPageModel : PageModel
     {
         var loaded = _activeRows.Count + _suppressedRows.Count;
         var total = _activeTotal + _suppressedTotal;
-        return $"Showing {loaded.ToString(System.Globalization.CultureInfo.CurrentCulture)} of " +
-            $"{total.ToString(System.Globalization.CultureInfo.CurrentCulture)} findings; the rest are still loading.";
+        return string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.ParsimonyLoadingNoteFormat,
+            loaded.ToString(System.Globalization.CultureInfo.CurrentCulture),
+            total.ToString(System.Globalization.CultureInfo.CurrentCulture));
     }
 
     // The first page is already listed. Each later page is appended in place, and a newer read drops what is left.
@@ -793,7 +792,8 @@ public sealed partial class ParsimonyPageModel : PageModel
                 if (!IsCurrent(generation, path)) return;
                 if (!page.Succeeded)
                 {
-                    LoadingNote = "Not every finding could be loaded: " + page.Refusal!.Message;
+                    LoadingNote = string.Format(System.Globalization.CultureInfo.CurrentCulture,
+                        MotifAppStrings.ParsimonyLoadFailedFormat, page.Refusal!.Message);
                     return;
                 }
                 _activeRows.AddRange(page.Value!.Rows.OfType<ParsimonyFindingDispositionViewRow>());
@@ -807,7 +807,8 @@ public sealed partial class ParsimonyPageModel : PageModel
                 if (!IsCurrent(generation, path)) return;
                 if (!page.Succeeded)
                 {
-                    LoadingNote = "Not every finding could be loaded: " + page.Refusal!.Message;
+                    LoadingNote = string.Format(System.Globalization.CultureInfo.CurrentCulture,
+                        MotifAppStrings.ParsimonyLoadFailedFormat, page.Refusal!.Message);
                     return;
                 }
                 _suppressedRows.AddRange(page.Value!.Rows.OfType<ParsimonySuppressionHistoryViewRow>());
@@ -822,7 +823,8 @@ public sealed partial class ParsimonyPageModel : PageModel
         }
         catch (Exception exception) when (IsCurrent(generation, path))
         {
-            LoadingNote = "Not every finding could be loaded: " + exception.Message;
+            LoadingNote = string.Format(System.Globalization.CultureInfo.CurrentCulture,
+                MotifAppStrings.ParsimonyLoadFailedFormat, exception.Message);
         }
     }
 
@@ -930,8 +932,7 @@ public sealed partial class ParsimonyPageModel : PageModel
         MissingInputs = [.. missing.Select(run => ShortTitleOf(run.MeasureId))];
         IsIncomplete = missing.Length > 0;
         IncompleteNote = IsIncomplete
-            ? "Some checks did not run on the stored evidence, so their findings are not listed. " +
-              "Measure the grammar again once the evidence is complete."
+            ? MotifAppStrings.ParsimonyIncompleteNote
             : string.Empty;
         SyncLists();
         ShowAxes();
@@ -948,7 +949,9 @@ public sealed partial class ParsimonyPageModel : PageModel
     private void ShowAxes()
     {
         var findings = _activeRows.Select(row => row.Finding).ToArray();
-        AxisSummary = _activeTotal == 0 ? "No findings to review" : ParsimonyMeasureGroup.FindingCount(_activeTotal) + " to review";
+        AxisSummary = _activeTotal == 0 ? MotifAppStrings.ParsimonyNoFindingsToReview
+            : string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.ParsimonyToReviewFormat,
+                ParsimonyMeasureGroup.FindingCount(_activeTotal));
         AxisLegend = LegendOf(findings);
     }
 
@@ -995,7 +998,7 @@ public sealed partial class ParsimonyPageModel : PageModel
 
     private List<ParsimonyFilterChoice> KindChoices()
     {
-        var choices = new List<ParsimonyFilterChoice> { new(string.Empty, "All findings", _activeRows.Count,
+        var choices = new List<ParsimonyFilterChoice> { new(string.Empty, MotifAppStrings.ParsimonyAllFindings, _activeRows.Count,
             _kindFilter.Length == 0, SelectKindFilterCommand, AutomationIds.ParsimonyKindFilter("all")) };
         foreach (var measure in _activeRows.GroupBy(row => row.Finding.MeasureId, StringComparer.Ordinal))
             choices.Add(new ParsimonyFilterChoice(measure.Key, TitleOf(measure.Key), measure.Count(),
@@ -1006,8 +1009,8 @@ public sealed partial class ParsimonyPageModel : PageModel
     private List<ParsimonyFilterChoice> DecisionChoices()
     {
         var choices = new List<ParsimonyFilterChoice>();
-        foreach (var (key, label) in new[] { ("none", "Not decided"), ("keep", "Kept"), ("defer", "Deferred"),
-            ("ask", "Asked") })
+        foreach (var (key, label) in new[] { ("none", MotifAppStrings.ParsimonyNotDecided), ("keep", MotifAppStrings.ParsimonyKept),
+            ("defer", MotifAppStrings.ParsimonyDeferred), ("ask", MotifAppStrings.ParsimonyAsked) })
             choices.Add(new ParsimonyFilterChoice(key, label, _activeRows.Count(row => DecisionKeyOf(row) == key),
                 _decisionFilter == key, SelectDecisionFilterCommand, AutomationIds.ParsimonyDecisionFilter(key)));
         return choices;
@@ -1060,7 +1063,8 @@ public sealed partial class ParsimonyPageModel : PageModel
             row.MeasureCaption + " · " + row.SubjectCaption,
             row.VisibleId + " · " + row.RecordTitle,
             DecisionLabel(row.Disposition),
-            string.IsNullOrWhiteSpace(row.Reason) ? "No reason given" : "Reason: " + row.Reason,
+            string.IsNullOrWhiteSpace(row.Reason) ? MotifAppStrings.ParsimonyNoReasonGiven
+                : string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.ParsimonyReasonFormat, row.Reason),
             SuppressedStateLabel(row.State),
             _stagedReturns.ContainsKey(row.RecordId) ? ReturnStagedLabel : string.Empty,
             row.RevisionId == _selectedSuppressedKey,
@@ -1111,35 +1115,38 @@ public sealed partial class ParsimonyPageModel : PageModel
     // A staged decision shows over the applied state, so the person sees what Apply has not yet written.
     private string StatusOf(ParsimonyFindingDispositionViewRow row)
     {
-        if (row.JudgmentState == "unresolved") return "Conflict: " + (row.Issue ?? "more than one decision names this finding");
+        if (row.JudgmentState == "unresolved") return string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.ParsimonyConflictFormat,
+                row.Issue ?? MotifAppStrings.ParsimonyConflictDefault);
         if (_stagedByFinding.TryGetValue(row.Finding.FindingId, out var staged))
-            return staged.Label + " · staged, not yet applied";
+            return string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.ParsimonyStagedStatusFormat, staged.Label);
         if (row.State == "resurfaced")
-            return "Changed since it was " + DecisionLabel(row.Disposition ?? string.Empty).ToLowerInvariant() + ": back for review";
+            return string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.ParsimonyResurfacedFormat,
+                DecisionLabel(row.Disposition ?? string.Empty).ToLowerInvariant());
         return string.Empty;
     }
 
     private static ParsimonyEvidence BuildEvidence(ParsimonyFinding finding, string? priorReason, bool changed)
     {
         var details = InspectorDetail.Recorded(
-            ("Counted", Describe(finding)),
-            ("Items", ItemsText(finding)),
-            ("Why it was reported", $"Reported because {Describe(finding)} match {ShortTitleOf(finding.MeasureId)}."),
-            ("Strength of evidence", TierLabel(finding.Tier)),
-            ("Paired parser check", VerificationLabel(finding.Verification))).ToList();
-        if (changed && priorReason is not null) details.AddRange(InspectorDetail.Recorded(("Earlier reason", priorReason)));
+            (MotifAppStrings.ParsimonyDetailCounted, Describe(finding)),
+            (MotifAppStrings.ParsimonyDetailItems, ItemsText(finding)),
+            (MotifAppStrings.ParsimonyDetailWhyReported, string.Format(System.Globalization.CultureInfo.CurrentCulture,
+                MotifAppStrings.ParsimonyReportedBecauseFormat, Describe(finding), ShortTitleOf(finding.MeasureId))),
+            (MotifAppStrings.ParsimonyDetailStrength, TierLabel(finding.Tier)),
+            (MotifAppStrings.ParsimonyDetailPairedCheck, VerificationLabel(finding.Verification))).ToList();
+        if (changed && priorReason is not null) details.AddRange(InspectorDetail.Recorded((MotifAppStrings.ParsimonyDetailEarlierReason, priorReason)));
         return new ParsimonyEvidence(TitleOf(finding.MeasureId), details, finding.Limitations);
     }
 
     private static ParsimonyEvidence BuildSuppressedDetail(ParsimonySuppressionHistoryViewRow row) => new(
         row.MeasureCaption,
         InspectorDetail.Recorded(
-            ("Decision", DecisionLabel(row.Disposition)),
-            ("Subject", row.SubjectCaption),
-            ("Judgment ID", row.VisibleId),
-            ("Notebook record", row.RecordTitle),
-            ("Reason", string.IsNullOrWhiteSpace(row.Reason) ? "No reason given" : row.Reason),
-            ("Current state", SuppressedStateLabel(row.State))),
+            (MotifAppStrings.ParsimonyDetailDecision, DecisionLabel(row.Disposition)),
+            (MotifAppStrings.ParsimonyDetailSubject, row.SubjectCaption),
+            (MotifAppStrings.ParsimonyDetailJudgmentId, row.VisibleId),
+            (MotifAppStrings.ParsimonyDetailNotebookRecord, row.RecordTitle),
+            (MotifAppStrings.ParsimonyDetailReason, string.IsNullOrWhiteSpace(row.Reason) ? MotifAppStrings.ParsimonyNoReasonGiven : row.Reason),
+            (MotifAppStrings.ParsimonyDetailCurrentState, SuppressedStateLabel(row.State))),
         []);
 
     private bool CanStageFinding() => Context.HasProject && CanActOnSelection && ShowActiveActions && !_staging;
@@ -1172,7 +1179,7 @@ public sealed partial class ParsimonyPageModel : PageModel
         var question = QuestionText.Trim();
         if (disposition == "ask" && question.Length == 0)
         {
-            ActionMessage = "Write the question to ask first.";
+            ActionMessage = MotifAppStrings.ParsimonyWriteQuestionFirst;
             return;
         }
         var reason = ReasonText.Trim();
@@ -1245,7 +1252,8 @@ public sealed partial class ParsimonyPageModel : PageModel
                 return;
             }
             _stagedReturns[row.RecordId] = row.RevisionId;
-            ActionMessage = "Return to Active is staged. " + StagedNote;
+            ActionMessage = string.Format(System.Globalization.CultureInfo.CurrentCulture,
+                MotifAppStrings.ParsimonyReturnStagedMessageFormat, StagedNote);
             HasStagedAction = true;
             if (_suppressedByKey.TryGetValue(row.RevisionId, out var shown)) shown.ReturnLabel = ReturnStagedLabel;
         }
@@ -1260,32 +1268,35 @@ public sealed partial class ParsimonyPageModel : PageModel
     {
         var recipe = RecipeCatalog.Find(measureId);
         return recipe is { Metadata.UpdateIntents.Count: > 0 }
-            ? $"The Guide page \u201c{recipe.Title}\u201d describes the update Motif supports for this check. You make the fix itself in FieldWorks."
-            : "This check has no supported update in Motif yet, so there is nothing to link to. Ask about it or defer it instead.";
+            ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.ParsimonyFixNoteFormat, recipe.Title)
+            : MotifAppStrings.ParsimonyFixNoteNone;
     }
 
     // A row names the first few items and counts the rest; the inspector passes no limit and lists every one.
     private static string ItemsText(ParsimonyFinding finding, int limit = int.MaxValue)
     {
-        if (finding.ItemNames.Count == 0) return "The Report does not name the items for this finding.";
+        if (finding.ItemNames.Count == 0) return MotifAppStrings.ParsimonyItemsNotNamed;
         if (finding.ItemNames.Count <= limit) return string.Join(", ", finding.ItemNames);
-        return string.Join(", ", finding.ItemNames.Take(limit)) + $", and {finding.ItemNames.Count - limit} more";
+        return string.Join(", ", finding.ItemNames.Take(limit)) +
+            PluralText.Format(MotifAppStrings.ParsimonyItemsAndMorePattern, finding.ItemNames.Count - limit);
     }
 
     // Two names read "A and B"; three or more read "A, B, and C".
     private static string JoinPlainly(IReadOnlyList<string> names) => names.Count switch
     {
         <= 1 => string.Join(string.Empty, names),
-        2 => $"{names[0]} and {names[1]}",
-        _ => string.Join(", ", names.Take(names.Count - 1)) + ", and " + names[^1],
+        2 => string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.ParsimonyJoinTwoFormat, names[0], names[1]),
+        _ => string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.ParsimonyJoinManyFormat,
+            string.Join(", ", names.Take(names.Count - 1)), names[^1]),
     };
 
     private static string Describe(ParsimonyFinding finding) =>
-        $"{finding.Number.Numerator} of {finding.Number.Denominator} {finding.Number.Unit}";
+        string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.ParsimonyDescribeFormat,
+            finding.Number.Numerator, finding.Number.Denominator, finding.Number.Unit);
 
-    private static string TitleOf(string measureId) => RecipeCatalog.Find(measureId)?.Title ?? "Parsimony check";
+    private static string TitleOf(string measureId) => RecipeCatalog.Find(measureId)?.Title ?? MotifAppStrings.ParsimonyCheckTitle;
 
-    private static string ShortTitleOf(string measureId) => RecipeCatalog.Find(measureId)?.ShortTitle ?? "parsimony check";
+    private static string ShortTitleOf(string measureId) => RecipeCatalog.Find(measureId)?.ShortTitle ?? MotifAppStrings.ParsimonyCheckShortTitle;
 
     private static string AxisLabel(ParsimonyAxis axis) => axis switch
     {
@@ -1304,50 +1315,51 @@ public sealed partial class ParsimonyPageModel : PageModel
     /// <summary>An axis as a group header names it, with "Both" spelled out.</summary>
     internal static string AxisName(string axisLabel) => axisLabel switch
     {
-        "Parsimony" or "Restrictiveness" => axisLabel,
-        _ => "Parsimony and restrictiveness",
+        "Parsimony" => MotifAppStrings.ParsimonyAxisParsimony,
+        "Restrictiveness" => MotifAppStrings.ParsimonyAxisRestrictiveness,
+        _ => MotifAppStrings.ParsimonyAxisBoth,
     };
 
     /// <summary>An axis name with what it means in a few words; the two axes are never combined into one score.</summary>
     internal static string AxisWithMeaning(string axisLabel) => axisLabel switch
     {
-        "Parsimony" => "Parsimony: a simpler grammar",
-        "Restrictiveness" => "Restrictiveness: a grammar that accepts fewer wrong forms",
-        _ => "Parsimony and restrictiveness: a simpler grammar that accepts fewer wrong forms",
+        "Parsimony" => MotifAppStrings.ParsimonyAxisParsimonyMeaning,
+        "Restrictiveness" => MotifAppStrings.ParsimonyAxisRestrictivenessMeaning,
+        _ => MotifAppStrings.ParsimonyAxisBothMeaning,
     };
 
     private static string DecisionLabel(string disposition) => disposition switch
     {
-        "keep" => "Kept",
-        "defer" => "Deferred",
-        "ask" => "Question open",
-        "fix" => "Fix planned",
+        "keep" => MotifAppStrings.ParsimonyKept,
+        "defer" => MotifAppStrings.ParsimonyDeferred,
+        "ask" => MotifAppStrings.ParsimonyQuestionOpen,
+        "fix" => MotifAppStrings.ParsimonyFixPlanned,
         _ => string.Empty,
     };
 
     private static string SuppressedStateLabel(string state) => state switch
     {
-        "suppressed" => "Suppressed",
-        "no-current-finding" => "Stale: no current finding matches it",
-        "evidence-unavailable" => "Unavailable: the evidence cannot be read",
-        "conflict" => "Conflict: needs a decision",
-        "unavailable" => "Unavailable: the decision cannot be read",
+        "suppressed" => MotifAppStrings.ParsimonyStateSuppressed,
+        "no-current-finding" => MotifAppStrings.ParsimonyStateStale,
+        "evidence-unavailable" => MotifAppStrings.ParsimonyStateEvidenceUnavailable,
+        "conflict" => MotifAppStrings.ParsimonyStateConflict,
+        "unavailable" => MotifAppStrings.ParsimonyStateDecisionUnavailable,
         _ => state,
     };
 
     private static string TierLabel(ParsimonyTier tier) => tier switch
     {
-        ParsimonyTier.Static => "The grammar's own statements",
-        ParsimonyTier.Text => "The grammar with attested forms",
-        _ => "Completed parser outcomes",
+        ParsimonyTier.Static => MotifAppStrings.ParsimonyTierStatic,
+        ParsimonyTier.Text => MotifAppStrings.ParsimonyTierText,
+        _ => MotifAppStrings.ParsimonyTierOutcomes,
     };
 
     private static string VerificationLabel(ParsimonyVerification verification) => verification switch
     {
-        ParsimonyVerification.Passed => "Passed",
-        ParsimonyVerification.Failed => "Failed",
-        ParsimonyVerification.Inconclusive => "Inconclusive",
-        _ => "Not yet run",
+        ParsimonyVerification.Passed => MotifAppStrings.ParsimonyVerificationPassed,
+        ParsimonyVerification.Failed => MotifAppStrings.ParsimonyVerificationFailed,
+        ParsimonyVerification.Inconclusive => MotifAppStrings.ParsimonyVerificationInconclusive,
+        _ => MotifAppStrings.ParsimonyVerificationNotRun,
     };
 
     private void ClearReport()

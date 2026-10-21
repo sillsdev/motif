@@ -20,7 +20,7 @@ public sealed record OpenTimingRequest(IReadOnlyList<string> Words, TraceTimingK
 public sealed partial class TimingPageModel : PageModel
 {
     /// <summary>What the page says, where the numbers would be, when no parse time was measured.</summary>
-    public const string NoTimingRecordedText = "No parse times were recorded for these words.";
+    public static string NoTimingRecordedText => MotifAppStrings.TimingNoTimesRecorded;
 
     private int _loadGeneration;
     private bool _isLoadingTiming;
@@ -97,8 +97,14 @@ public sealed partial class TimingPageModel : PageModel
 
     public string FocusSummary => Focus is not { } focus ? string.Empty :
         focus.Rule is null
-            ? $"Timing for {(focus.Words.Count == 0 ? "all words" : $"{focus.Words.Count} selected words")}"
-            : $"Timing for {(focus.Words.Count == 0 ? "all words" : $"{focus.Words.Count} selected words")} under {focus.Label ?? SelectedRuleName ?? "the requested rule"}";
+            ? focus.Words.Count == 0
+                ? MotifAppStrings.TimingFocusAllWords
+                : PluralText.Format(MotifAppStrings.TimingFocusSelectedWordsPattern, focus.Words.Count)
+            : focus.Words.Count == 0
+                ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.TimingFocusAllWordsUnderRuleFormat,
+                    focus.Label ?? SelectedRuleName ?? MotifAppStrings.TimingRequestedRuleLower)
+                : string.Format(CultureInfo.CurrentCulture, MotifAppStrings.TimingFocusSelectedWordsUnderRuleFormat,
+                    focus.Words.Count, focus.Label ?? SelectedRuleName ?? MotifAppStrings.TimingRequestedRuleLower);
 
     public bool HasFocusedTiming => FocusedTiming is not null;
 
@@ -112,8 +118,9 @@ public sealed partial class TimingPageModel : PageModel
 
     /// <summary>The stored timing response's word count and percentiles in one line.</summary>
     public string StoredTimingSummary => StoredTiming is not { } timing ? string.Empty :
-        $"{timing.WordCount:N0} words · median {FormatPercentile(timing.MedianMs)} · 95th percentile " +
-        FormatPercentile(timing.Percentile95Ms);
+        string.Format(CultureInfo.CurrentCulture, MotifAppStrings.TimingStoredSummaryFormat,
+            timing.WordCount.ToString("N0", CultureInfo.CurrentCulture), FormatPercentile(timing.MedianMs),
+            FormatPercentile(timing.Percentile95Ms));
 
     /// <summary>The selected words' stored totals grouped by kind.</summary>
     public TimingResponse? KindTiming { get; private set; }
@@ -141,12 +148,12 @@ public sealed partial class TimingPageModel : PageModel
 
     /// <summary>What an empty Timing result says about the words the current choice included.</summary>
     public string EmptySelectionText => Focus is not null || _explicitWords is not null
-        ? "No parse times were recorded for these selected words."
+        ? MotifAppStrings.TimingNoTimesRecordedSelected
         : _wordSet switch
         {
-            TimingWordSet.StepLimited => "No words stopped at a search limit.",
-            TimingWordSet.Slowest => "No words in this group have recorded parse time.",
-            _ => "No words in this selection have recorded parse time.",
+            TimingWordSet.StepLimited => MotifAppStrings.TimingNoWordsStopped,
+            TimingWordSet.Slowest => MotifAppStrings.TimingNoWordsInGroup,
+            _ => MotifAppStrings.TimingNoWordsInSelection,
         };
 
     /// <summary>Whether the empty result came from a choice other than All.</summary>
@@ -162,9 +169,14 @@ public sealed partial class TimingPageModel : PageModel
     /// <summary>Which words the total covers: all of them, or the group chosen above, and how many were timed.</summary>
     public string HeadlineTotalCaption => !HasHeadline ? string.Empty
         : MeasuredWords.Count < ChosenWordCount
-            ? $"for {MeasuredWords.Count:N0} of {(IsAllSelected ? "the" : "these")} {ChosenWordCount:N0} words"
-        : MeasuredWords.Count == 1 ? "for 1 word"
-        : $"for {(IsAllSelected ? "all" : "these")} {MeasuredWords.Count:N0} words";
+            ? string.Format(CultureInfo.CurrentCulture, IsAllSelected
+                ? MotifAppStrings.TimingCaptionSomeOfAllFormat : MotifAppStrings.TimingCaptionSomeOfTheseFormat,
+                MeasuredWords.Count.ToString("N0", CultureInfo.CurrentCulture),
+                ChosenWordCount.ToString("N0", CultureInfo.CurrentCulture))
+        : MeasuredWords.Count == 1 ? MotifAppStrings.TimingCaptionOneWord
+        : string.Format(CultureInfo.CurrentCulture, IsAllSelected
+            ? MotifAppStrings.TimingCaptionAllWordsFormat : MotifAppStrings.TimingCaptionTheseWordsFormat,
+            MeasuredWords.Count.ToString("N0", CultureInfo.CurrentCulture));
 
     /// <summary>The chosen words' median parse time.</summary>
     public string HeadlineMedian => HasHeadline && KindTiming?.MedianMs is { } median
@@ -176,10 +188,11 @@ public sealed partial class TimingPageModel : PageModel
         ?? string.Empty;
 
     /// <summary>The caption under the stopped-word count.</summary>
-    public string HeadlineStoppedCaption => "stopped at a search limit";
+    public string HeadlineStoppedCaption => MotifAppStrings.TimingStoppedCaption;
 
     /// <summary>The All filter's label, including the timing response's word count.</summary>
-    public string AllWordsButtonText => $"All {KindTiming?.WordCount ?? 0:N0}";
+    public string AllWordsButtonText => string.Format(CultureInfo.CurrentCulture,
+        MotifAppStrings.TimingAllWordsButtonFormat, (KindTiming?.WordCount ?? 0).ToString("N0", CultureInfo.CurrentCulture));
 
     /// <summary>Whether the selected group has a word stopped at either recorded limit.</summary>
     public bool HasStoppedWords => HasStepLimitedWords || HasTimeLimitedWords;
@@ -187,10 +200,9 @@ public sealed partial class TimingPageModel : PageModel
     /// <summary>What the selected words' recorded stop reason means for the controls on this page.</summary>
     public string StoppedWordsAdviceText => (HasStepLimitedWords, HasTimeLimitedWords) switch
     {
-        (true, true) => "Stopped at a search limit and ran out of time · Raise the analysis attempt limit under More " +
-            "or increase Seconds per word.",
-        (true, false) => "Stopped at a search limit · Raise the analysis attempt limit under More.",
-        (false, true) => "Ran out of time · Increase Seconds per word.",
+        (true, true) => MotifAppStrings.TimingAdviceBothLimits,
+        (true, false) => MotifAppStrings.TimingAdviceSearchLimit,
+        (false, true) => MotifAppStrings.TimingAdviceTimeLimit,
         _ => string.Empty,
     };
 
@@ -201,12 +213,13 @@ public sealed partial class TimingPageModel : PageModel
         word.Completion == "Time limit") == true;
 
     /// <summary>The stopped-words filter's label, including words stopped at a parser search limit.</summary>
-    public string StoppedWordsButtonText => $"Stopped {KindTiming?.Words.Count(word =>
-        word.Completion == TimingCompletion.StepLimit).ToString("N0", CultureInfo.CurrentCulture) ?? "0"}";
+    public string StoppedWordsButtonText => string.Format(CultureInfo.CurrentCulture,
+        MotifAppStrings.TimingStoppedButtonFormat, KindTiming?.Words.Count(word =>
+        word.Completion == TimingCompletion.StepLimit).ToString("N0", CultureInfo.CurrentCulture) ?? "0");
 
     /// <summary>Whether these totals include separately recorded re-run measurements.</summary>
     public string RerunMeasurementsText => CurrentTimingOverrides is { Count: > 0 } overrides
-        ? $"Includes {SpeedText.Count(overrides.Count, "separate re-run measurement", "separate re-run measurements")}."
+        ? PluralText.Format(MotifAppStrings.TimingRerunMeasurementsPattern, overrides.Count)
         : string.Empty;
 
     public bool HasRerunMeasurements => RerunMeasurementsText.Length > 0;
@@ -219,9 +232,14 @@ public sealed partial class TimingPageModel : PageModel
     private double WordTimeMs => KindTiming?.Attribution.WordTimeMs ?? 0;
 
     private string MeasuredWordsPhrase => MeasuredWords.Count < ChosenWordCount
-        ? $"{MeasuredWords.Count:N0} of {(IsAllSelected ? "the" : "these")} {ChosenWordCount:N0} words"
-        : MeasuredWords.Count == 1 ? "this word"
-        : $"{(IsAllSelected ? "all" : "these")} {MeasuredWords.Count:N0} words";
+        ? string.Format(CultureInfo.CurrentCulture, IsAllSelected
+            ? MotifAppStrings.TimingPhraseSomeOfAllFormat : MotifAppStrings.TimingPhraseSomeOfTheseFormat,
+            MeasuredWords.Count.ToString("N0", CultureInfo.CurrentCulture),
+            ChosenWordCount.ToString("N0", CultureInfo.CurrentCulture))
+        : MeasuredWords.Count == 1 ? MotifAppStrings.TimingPhraseThisWord
+        : string.Format(CultureInfo.CurrentCulture, IsAllSelected
+            ? MotifAppStrings.TimingPhraseAllWordsFormat : MotifAppStrings.TimingPhraseTheseWordsFormat,
+            MeasuredWords.Count.ToString("N0", CultureInfo.CurrentCulture));
 
     /// <summary>The chosen words' time by kind, with the recorded unattributed time.</summary>
     public IReadOnlyList<TimingShare> KindShares
@@ -231,7 +249,7 @@ public sealed partial class TimingPageModel : PageModel
             var shares = SharesOf(KindTiming?.Aggregates, byKind: true);
             if (!HasHeadline || KindTiming is not { } timing) return shares;
             var attribution = timing.Attribution;
-            return [.. shares, new TimingShare("Not attributed", string.Empty, attribution.NotAttributedMs,
+            return [.. shares, new TimingShare(MotifAppStrings.TimingNotAttributedLabel, string.Empty, attribution.NotAttributedMs,
                 attribution.NotAttributedShare, 0, null)];
         }
     }
@@ -243,7 +261,9 @@ public sealed partial class TimingPageModel : PageModel
     public IReadOnlyList<TimingShare> RuleShares => SharesOf(RuleTiming?.Aggregates, byKind: false);
 
     /// <summary>The rule table's share column, named by what it divides by.</summary>
-    public string RuleShareHeader => HasHeadline ? $"SHARE OF {HeadlineTotal}" : "SHARE";
+    public string RuleShareHeader => HasHeadline
+        ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.TimingShareHeaderFormat, HeadlineTotal)
+        : MotifAppStrings.TimingShareHeader;
 
     /// <summary>What every share on the page is a share of.</summary>
     public string ShareDenominatorText
@@ -251,10 +271,17 @@ public sealed partial class TimingPageModel : PageModel
         get
         {
             if (KindTiming is null) return string.Empty;
-            if (!HasHeadline) return "No parse time was kept for these words, so no shares are shown.";
+            if (!HasHeadline) return MotifAppStrings.TimingNoSharesShown;
             var missing = ChosenWordCount - MeasuredWords.Count;
-            return $"Every share is of the {HeadlineTotal} {MeasuredWordsPhrase} took to parse" + (missing > 0
-                ? $"; {missing:N0} {(missing == 1 ? "has" : "have")} no parse time." : ".");
+            return missing switch
+            {
+                <= 0 => string.Format(CultureInfo.CurrentCulture, MotifAppStrings.TimingShareOfFormat,
+                    HeadlineTotal, MeasuredWordsPhrase),
+                1 => string.Format(CultureInfo.CurrentCulture, MotifAppStrings.TimingShareOfOneMissingFormat,
+                    HeadlineTotal, MeasuredWordsPhrase),
+                _ => string.Format(CultureInfo.CurrentCulture, MotifAppStrings.TimingShareOfManyMissingFormat,
+                    HeadlineTotal, MeasuredWordsPhrase, missing.ToString("N0", CultureInfo.CurrentCulture)),
+            };
         }
     }
 
@@ -265,16 +292,19 @@ public sealed partial class TimingPageModel : PageModel
         {
             if (!HasHeadline || KindTiming is not { } timing) return string.Empty;
             var attribution = timing.Attribution;
-            if (attribution.NotAttributedMs is not { } time) return "Not attributed: Not recorded.";
+            if (attribution.NotAttributedMs is not { } time) return MotifAppStrings.TimingNotAttributedNotRecorded;
             return attribution.NotAttributedShare is { } share
-                ? $"Not attributed: {TimingShare.FormatDuration(time)} ({TimingShare.FormatPercent(share)})."
-                : $"Not attributed: {TimingShare.FormatDuration(time)}.";
+                ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.TimingNotAttributedWithShareFormat,
+                    TimingShare.FormatDuration(time), TimingShare.FormatPercent(share))
+                : string.Format(CultureInfo.CurrentCulture, MotifAppStrings.TimingNotAttributedFormat,
+                    TimingShare.FormatDuration(time));
         }
     }
 
     /// <summary>The measured object time beyond total word time, when the response records an overrun.</summary>
     public string OverrunText => !HasHeadline || KindTiming is not { } timing || !timing.Attribution.Overrun
-        ? string.Empty : $"Overrun: {TimingShare.FormatDuration(timing.Attribution.OverrunMs)}.";
+        ? string.Empty : string.Format(CultureInfo.CurrentCulture, MotifAppStrings.TimingOverrunFormat,
+            TimingShare.FormatDuration(timing.Attribution.OverrunMs));
 
     public bool HasOverrun => HasHeadline && KindTiming?.Attribution.Overrun == true;
 
@@ -292,22 +322,23 @@ public sealed partial class TimingPageModel : PageModel
     public bool IsStepLimitSelected => _wordSet is TimingWordSet.StepLimited && _explicitWords is null;
     public bool IsSlowestSelected => _wordSet is TimingWordSet.Slowest && _explicitWords is null;
     public bool IsAllSelected => _wordSet is TimingWordSet.All && _explicitWords is null;
-    public string ScopeLabel => KindTiming is null ? "No stored timing for these words" :
-        $"Where the time went, for these {KindTiming.WordCount:N0} words: by kind of rule";
+    public string ScopeLabel => KindTiming is null ? MotifAppStrings.TimingNoStoredTimingForWords :
+        string.Format(CultureInfo.CurrentCulture, MotifAppStrings.TimingScopeFormat,
+            KindTiming.WordCount.ToString("N0", CultureInfo.CurrentCulture));
     public string PercentileSummary => KindTiming is null ? string.Empty :
-        KindTiming.WordCount == 0 ? "No words in this selection have recorded parse time." :
-        $"Median {FormatPercentile(KindTiming.MedianMs)} · 95th percentile " +
-        FormatPercentile(KindTiming.Percentile95Ms);
+        KindTiming.WordCount == 0 ? MotifAppStrings.TimingNoWordsInSelection :
+        string.Format(CultureInfo.CurrentCulture, MotifAppStrings.TimingPercentileSummaryFormat,
+            FormatPercentile(KindTiming.MedianMs), FormatPercentile(KindTiming.Percentile95Ms));
 
     private static string FormatPercentile(double? milliseconds) => milliseconds is { } value
-        ? TimingShare.FormatDuration(value) : "not recorded";
+        ? TimingShare.FormatDuration(value) : MotifAppStrings.TimingNotRecordedLower;
     /// <summary>The complete address selected here or requested by another page.</summary>
     public TraceTimingKey? SelectedRule { get; private set; }
     public TimingAggregateRow? SelectedRuleRow => RuleTiming?.Aggregates.FirstOrDefault(row => ObjectIdentity.Same(row.TimingKey.Identity, SelectedRule?.Identity));
 
     /// <summary>The chosen rule's label, for the side card's title.</summary>
     public string? SelectedRuleName => SelectedRuleRow?.Name ??
-        (Focus?.Rule is not null ? Focus.Label ?? "Requested rule" : null);
+        (Focus?.Rule is not null ? Focus.Label ?? MotifAppStrings.TimingRequestedRule : null);
 
     /// <summary>The by-rule table's rows, each saying whether it is the rule the side card describes.</summary>
     public IReadOnlyList<TimingRuleRow> RuleRows =>
@@ -325,11 +356,13 @@ public sealed partial class TimingPageModel : PageModel
     /// </summary>
     public IReadOnlyList<ListedWordViewModel> CostliestRuleWordRows => [.. CostliestRuleWords.Select(word =>
         Listed(word.Word, word.WordTimeMs is { } whole
-            ? $"{TimingShare.FormatDuration(word.SelfMs)} of its {TimingShare.FormatDuration(whole)}"
+            ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.TimingRuleTimeOfFormat,
+                TimingShare.FormatDuration(word.SelfMs), TimingShare.FormatDuration(whole))
             : TimingShare.FormatDuration(word.SelfMs)))];
 
     /// <summary>The heading over the chosen rule's costliest words, naming the rule.</summary>
-    public string RuleWordsTitle => $"Words where {SelectedRuleName} took longest";
+    public string RuleWordsTitle => string.Format(CultureInfo.CurrentCulture,
+        MotifAppStrings.TimingRuleWordsTitleFormat, SelectedRuleName);
 
     private ListedWordViewModel Listed(string word, string timeText)
     {
@@ -337,8 +370,8 @@ public sealed partial class TimingPageModel : PageModel
         listed.TimeText = timeText;
         listed.Note = KindTiming?.Words.FirstOrDefault(row => row.Word == word)?.Completion switch
         {
-            TimingCompletion.StepLimit => "Stopped at a search limit",
-            "Time limit" => "Stopped at the time limit",
+            TimingCompletion.StepLimit => MotifAppStrings.TimingStoppedAtSearchLimit,
+            "Time limit" => MotifAppStrings.TimingStoppedAtTimeLimit,
             _ => null,
         };
         return listed;
@@ -350,10 +383,12 @@ public sealed partial class TimingPageModel : PageModel
         get
         {
             if (RuleShares.FirstOrDefault(share => ObjectIdentity.Same(share.Source?.TimingKey.Identity, SelectedRule?.Identity)) is not { } rule)
-                return Focus?.Rule is null ? string.Empty : "No stored timing for this rule.";
-            return (rule.Share is null ? rule.TimeText :
-                $"{rule.TimeText} · {rule.ShareText} of {MeasuredWordsPhrase}' {HeadlineTotal}") +
-                $" · recorded in {SpeedText.Count(rule.Words, "word", "words")}";
+                return Focus?.Rule is null ? string.Empty : MotifAppStrings.TimingNoStoredTimingForRule;
+            var recorded = PluralText.Format(MotifAppStrings.TimingRecordedInWordsPattern, rule.Words);
+            return rule.Share is null
+                ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.TimingRuleSummaryFormat, rule.TimeText, recorded)
+                : string.Format(CultureInfo.CurrentCulture, MotifAppStrings.TimingRuleSummaryShareFormat,
+                    rule.TimeText, rule.ShareText, MeasuredWordsPhrase, HeadlineTotal, recorded);
         }
     }
     public IReadOnlyList<CompareCellViewModel> MatrixCells =>
@@ -362,28 +397,28 @@ public sealed partial class TimingPageModel : PageModel
         Context.Assess.Compare.Presets.Where(preset => preset.Count > 0).ToArray();
 
     public string UseMatrixCellDisabledReason => Context.ProjectPath is null
-        ? "Open a project first."
-        : SelectedMatrixCell is null ? "Choose a matrix cell above first." : string.Empty;
+        ? MotifAppStrings.TimingOpenProjectFirst
+        : SelectedMatrixCell is null ? MotifAppStrings.TimingChooseMatrixCellFirst : string.Empty;
 
     public bool UseMatrixCellUnavailable => UseMatrixCellDisabledReason.Length > 0;
 
     public string UseTextsListDisabledReason => Context.ProjectPath is null
-        ? "Open a project first."
-        : SelectedTextsList is null ? "Choose a word list above first."
+        ? MotifAppStrings.TimingOpenProjectFirst
+        : SelectedTextsList is null ? MotifAppStrings.TimingChooseWordListFirst
         : Context.Assess.Compare.WordsInPreset(SelectedTextsList).Count == 0
-            ? "No words in this list to use for Timing." : string.Empty;
+            ? MotifAppStrings.TimingNoWordsInList : string.Empty;
 
     public bool UseTextsListUnavailable => UseTextsListDisabledReason.Length > 0;
 
     public string UsePickedWordsDisabledReason => Context.ProjectPath is null
-        ? "Open a project first."
-        : PickedWordValues.Count == 0 ? "Enter one or more words, one per line." : string.Empty;
+        ? MotifAppStrings.TimingOpenProjectFirst
+        : PickedWordValues.Count == 0 ? MotifAppStrings.TimingEnterWords : string.Empty;
 
     public bool UsePickedWordsUnavailable => UsePickedWordsDisabledReason.Length > 0;
 
     public string UseCheckedWordsDisabledReason => Context.ProjectPath is null
-        ? "Open a project first."
-        : Context.Assess.Compare.CheckedWords.Count == 0 ? "Tick words in Texts first." : string.Empty;
+        ? MotifAppStrings.TimingOpenProjectFirst
+        : Context.Assess.Compare.CheckedWords.Count == 0 ? MotifAppStrings.TimingTickWordsInTexts : string.Empty;
 
     public bool UseCheckedWordsUnavailable => UseCheckedWordsDisabledReason.Length > 0;
 
@@ -428,14 +463,17 @@ public sealed partial class TimingPageModel : PageModel
     [NotifyPropertyChangedFor(nameof(KindCallsButtonName))]
     private bool _showKindCalls;
 
-    public string KindCallsButtonText => ShowKindCalls ? "Hide calls" : "Show calls";
+    public string KindCallsButtonText => ShowKindCalls ? MotifAppStrings.TimingHideCalls : MotifAppStrings.TimingShowCalls;
 
-    public string KindCallsButtonName => ShowKindCalls ? "Hide calls per kind" : "Show calls per kind";
+    public string KindCallsButtonName => ShowKindCalls
+        ? MotifAppStrings.TimingHideCallsAccessibleName : MotifAppStrings.TimingShowCallsAccessibleName;
 
     public bool HasKindCalls => KindCallShares.Count > 0;
 
-    public string RerunProgressText => RerunWord is null ? $"{RerunCompleted} of {RerunTotal} words done" :
-        $"{RerunCompleted} of {RerunTotal} words done · parsing {RerunWord}";
+    public string RerunProgressText => RerunWord is null
+        ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.TimingRerunProgressFormat, RerunCompleted, RerunTotal)
+        : string.Format(CultureInfo.CurrentCulture, MotifAppStrings.TimingRerunProgressParsingFormat,
+            RerunCompleted, RerunTotal, RerunWord);
 
     /// <summary>Refreshes the stored timing for the words and rule last opened.</summary>
     public IAsyncRelayCommand LoadFocusedTimingCommand { get; }
@@ -780,7 +818,7 @@ public sealed partial class TimingPageModel : PageModel
             RerunSteps is <= 0 || RerunSteps is > long.MaxValue ||
             RerunSteps is { } steps && decimal.Truncate(steps) != steps)
         {
-            RerunMessage = "Enter a positive per-word time and a positive whole-number analysis attempt limit.";
+            RerunMessage = MotifAppStrings.TimingRerunInvalidLimits;
             return;
         }
 
@@ -809,11 +847,12 @@ public sealed partial class TimingPageModel : PageModel
                 RerunCompleted++;
             }
             if (RerunMessage is null)
-                RerunMessage = RerunCompleted == RerunTotal ? "Re-run complete." : "Re-run cancelled.";
+                RerunMessage = RerunCompleted == RerunTotal
+                    ? MotifAppStrings.TimingRerunComplete : MotifAppStrings.TimingRerunCancelled;
         }
         catch (OperationCanceledException)
         {
-            RerunMessage = "Re-run cancelled.";
+            RerunMessage = MotifAppStrings.TimingRerunCancelled;
         }
         finally
         {
@@ -928,17 +967,19 @@ public sealed record TimingShare(string Label, string Kind, double? ElapsedMs, d
     /// <summary>The window's name for this part's stored kind.</summary>
     public string KindLabel => Kind.Length == 0 ? string.Empty : KindName(Kind);
 
-    public string TimeText => ElapsedMs is { } time ? FormatDuration(time) : "Not recorded";
+    public string TimeText => ElapsedMs is { } time ? FormatDuration(time) : MotifAppStrings.TimingNotRecorded;
 
     public string ShareText => Share is { } share ? FormatPercent(share) :
-        IsNotAttributed ? "Not recorded" : "—";
+        IsNotAttributed ? MotifAppStrings.TimingNotRecorded : "—";
 
     public string WordsText => Words.ToString("N0", CultureInfo.CurrentCulture);
 
     public string CallsText => Source is null ? string.Empty : Source.Calls is { } calls
-        ? Source.CallsArePartial ? $"{calls:N0} recorded calls; some call counts unavailable"
-            : $"{calls:N0} {(calls == 1 ? "call" : "calls")}"
-        : "Not counted";
+        ? Source.CallsArePartial
+            ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.TimingCallsPartialFormat,
+                calls.ToString("N0", CultureInfo.CurrentCulture))
+            : PluralText.Format(MotifAppStrings.TimingCallsPattern, (int)calls)
+        : MotifAppStrings.TimingNotCounted;
 
     /// <summary>Formats recorded times as whole milliseconds, tenths below ten, and seconds from ten seconds.</summary>
     /// <param name="milliseconds">The measured time.</param>
@@ -963,10 +1004,10 @@ public sealed record TimingShare(string Label, string Kind, double? ElapsedMs, d
     /// <summary>The window's name for a stored parser kind.</summary>
     public static string KindName(string kind) => kind switch
     {
-        "morph_rule" => "Morphological rules",
-        "phon_rule" => "Phonological rules",
-        "root_index" => "Root lookup",
-        "lex_entry" => "Lexical entries",
+        "morph_rule" => MotifAppStrings.TimingKindMorphologicalRules,
+        "phon_rule" => MotifAppStrings.TimingKindPhonologicalRules,
+        "root_index" => MotifAppStrings.TimingKindRootLookup,
+        "lex_entry" => MotifAppStrings.TimingKindLexicalEntries,
         _ => kind.Replace('_', ' '),
     };
 }
@@ -986,9 +1027,9 @@ public sealed record TimingRuleRow(TimingShare Share, bool IsChosen)
 
     public bool HasGrammarWarning => WarningCode is not null;
 
-    public const string GrammarWarningTooltip = "A grammar warning names this rule · Open the warning";
+    public static string GrammarWarningTooltip => MotifAppStrings.TimingGrammarWarningTip;
 
     /// <summary>The rule as the inspector looks it up, by the kind and key the timings record it under.</summary>
     public InspectorSubject InspectSubject => InspectorSubject.Rule(Row.TimingKey, Row.Name,
-        Row.IdentityQuality is { Length: > 0 } quality ? quality : "unknown");
+        Row.IdentityQuality is { Length: > 0 } quality ? quality : MotifAppStrings.TimingUnknownQuality);
 }

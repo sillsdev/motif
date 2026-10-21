@@ -27,7 +27,7 @@ public sealed class AiHandoffPageModel : PageModel
     public HandoffViewModel Handoff { get; }
 
     /// <summary>What the page's action reads: the first write, or a rewrite.</summary>
-    public string HandoffActionText => Handoff.HasCompletedFiles ? "Write the AI Handoff again" : "Write the AI Handoff";
+    public string HandoffActionText => Handoff.HasCompletedFiles ? MotifAppStrings.HandoffWriteAgain : MotifAppStrings.HandoffWrite;
 
     protected override void OnProjectCleared()
     {
@@ -65,10 +65,10 @@ public sealed class AiHandoffPageModel : PageModel
         return Task.CompletedTask;
     }
 
-    private void UpdateAvailability() => Handoff.UnavailableReason = "No parse results yet: " +
-        (Context.Assess.ShownRefusal?.Sentence ??
+    private void UpdateAvailability() => Handoff.UnavailableReason = string.Format(System.Globalization.CultureInfo.CurrentCulture,
+        MotifAppStrings.HandoffNoParseResultsFormat, Context.Assess.ShownRefusal?.Sentence ??
             (Context.Evidence.Stored?.LastParserRefusal is { } refusal ? WindowRefusal.From(refusal).Sentence :
-                "Parse all words first."));
+                MotifAppStrings.HandoffParseAllWordsFirst));
 
     protected override void OnRequested(PageRequest request)
     {
@@ -81,12 +81,19 @@ public sealed class AiHandoffPageModel : PageModel
     private static string CoverageOf(DateTimeOffset? at, string words, int texts, int pasted)
     {
         var sources = new List<string>();
-        if (texts > 0) sources.Add(texts == 1 ? "1 text" : $"{texts} texts");
-        if (pasted > 0) sources.Add(pasted == 1 ? "1 pasted word" : $"{pasted} pasted words");
-        var from = sources.Count > 0 ? " from " + string.Join(" and ", sources) : string.Empty;
+        if (texts > 0) sources.Add(PluralText.Format(MotifAppStrings.HandoffCoverageTextsPattern, texts));
+        if (pasted > 0) sources.Add(PluralText.Format(MotifAppStrings.HandoffCoveragePastedWordsPattern, pasted));
+        var from = sources.Count == 2
+            ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.HandoffCoverageJoinFormat, sources[0], sources[1])
+            : sources.Count == 1 ? sources[0] : null;
+        var culture = System.Globalization.CultureInfo.CurrentCulture;
         return at is { } when
-            ? $"Covers the words parsed on {when.ToLocalTime():ddd d MMM, h:mm tt}: {words}{from}."
-            : $"Covers the latest parse: {words}{from}.";
+            ? from is null
+                ? string.Format(culture, MotifAppStrings.HandoffCoverageOnFormat, when.ToLocalTime(), words)
+                : string.Format(culture, MotifAppStrings.HandoffCoverageOnFromFormat, when.ToLocalTime(), words, from)
+            : from is null
+                ? string.Format(culture, MotifAppStrings.HandoffCoverageLatestFormat, words)
+                : string.Format(culture, MotifAppStrings.HandoffCoverageLatestFromFormat, words, from);
     }
 
     private void OnHandoffPropertyChanged(object? sender, PropertyChangedEventArgs e) =>

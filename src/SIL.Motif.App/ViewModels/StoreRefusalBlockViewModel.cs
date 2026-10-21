@@ -8,8 +8,7 @@ namespace SIL.Motif.App.ViewModels;
 public sealed partial class StoreRefusalBlockViewModel : ObservableObject
 {
     /// <summary>The warning shown before discarding the refused store.</summary>
-    public const string StoreDeletionWarning =
-        "Changes not applied yet are lost. Your FieldWorks project is not touched.";
+    public static string StoreDeletionWarning => MotifAppStrings.StoreDeletionWarning;
 
     /// <summary>Creates a notice using the workspace’s recovery commands.</summary>
     /// <param name="deleteStoreCommand">Starts confirmation for the selected refusal.</param>

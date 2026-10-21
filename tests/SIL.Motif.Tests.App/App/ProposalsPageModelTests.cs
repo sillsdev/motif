@@ -126,7 +126,7 @@ public sealed class ProposalsPageModelTests
         Assert.True(second.IsSelected);
         Assert.Equal("Second, selected", second.AccessibleRowName);
         Assert.Equal("Needs another try", second.TableStatusText);
-        Assert.Equal("Try again", second.TryText);
+        Assert.Equal(MotifAppStrings.TryAgain, second.TryText);
         Assert.Equal(AutomationIds.ForProposalActions(second.ProposalId), second.ActionsAutomationId);
     }
 
@@ -307,7 +307,7 @@ public sealed class ProposalsPageModelTests
         Assert.Equal("From the last try, before FieldWorks changed", baselineMoved.StatusText);
         Assert.Equal("From the last try, before this Proposal changed", page.Groups[0].Cards[1].StatusText);
         Assert.True(baselineMoved.NumbersAreOld);
-        Assert.Equal("Try again", baselineMoved.TryText);
+        Assert.Equal(MotifAppStrings.TryAgain, baselineMoved.TryText);
         Assert.True(baselineMoved.CanTry);
         Assert.DoesNotContain("Needs another try", baselineMoved.StatusText);
     }
@@ -321,7 +321,7 @@ public sealed class ProposalsPageModelTests
         var card = page.Groups[0].Cards[0];
 
         Assert.Equal("The last try did not finish. Try again.", card.StatusText);
-        Assert.Equal("Try again", card.TryText);
+        Assert.Equal(MotifAppStrings.TryAgain, card.TryText);
         Assert.True(card.CanTry);
     }
 
@@ -344,7 +344,7 @@ public sealed class ProposalsPageModelTests
 
         Assert.Equal("Not tried yet", page.Groups[0].Title);
         Assert.False(card.HasStatus);
-        Assert.Equal("Try it", card.TryText);
+        Assert.Equal(MotifAppStrings.TryIt, card.TryText);
         Assert.True(card.CanTry);
         Assert.False(card.HasNumbers);
     }
@@ -358,7 +358,7 @@ public sealed class ProposalsPageModelTests
         var card = page.Groups[0].Cards[0];
 
         Assert.Equal("Not tried yet", card.StatusText);
-        Assert.Equal("Try it", card.TryText);
+        Assert.Equal(MotifAppStrings.TryIt, card.TryText);
         Assert.True(card.CanTry);
     }
 

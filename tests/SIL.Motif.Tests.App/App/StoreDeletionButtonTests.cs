@@ -1,3 +1,4 @@
+using SIL.Motif.App;
 using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
@@ -22,7 +23,7 @@ public sealed class StoreDeletionButtonTests
 {
     private const string Project = @"C:\projects\one.fwdata";
     private const string StorePath = @"C:\projects\one.motif.db";
-    private const string DeleteButtonText = "Delete Motif's store and reopen";
+    private static string DeleteButtonText => MotifAppStrings.DeleteMotifsStoreAndReopen;
 
     private readonly AvaloniaHeadlessFixture _avalonia;
 
@@ -83,7 +84,7 @@ public sealed class StoreDeletionButtonTests
                 Assert.Contains(WorkspaceShellViewModel.StoreDeletionWarning, shown);
                 var choices = question.GetLogicalDescendants().OfType<Button>()
                     .Where(choice => choice.IsEffectivelyVisible).Select(choice => choice.Content).ToList();
-                Assert.Equal(["Delete Motif's store and reopen", "Keep Motif's store"], choices);
+                Assert.Equal([MotifAppStrings.DeleteMotifsStoreAndReopen, MotifAppStrings.KeepMotifsStore], choices);
                 Assert.Empty(fake.DeleteRefusedStoreRequests);
             }
             finally

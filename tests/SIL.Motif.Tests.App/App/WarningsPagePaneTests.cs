@@ -146,7 +146,7 @@ public sealed class WarningsPagePaneTests
                     .Where(button => button.IsEffectivelyVisible)
                     .Select(button => button.Content?.ToString()).ToArray();
                 Assert.Contains(pageModel.Grammar.Warnings.SortLabel, visibleButtons);
-                Assert.Contains("Check the grammar again", visibleButtons);
+                Assert.Contains(MotifAppStrings.CheckTheGrammarAgain, visibleButtons);
 
                 Assert.True(filterPanel.IsEffectivelyVisible);
                 var warningFilter = Assert.Single(filterPanel.GetVisualDescendants().OfType<FilterChip>(), chip =>

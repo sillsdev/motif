@@ -1,3 +1,4 @@
+using SIL.Motif.App;
 using SIL.Motif.Commands.Queries;
 using Avalonia.Input;
 using SIL.Motif.App.Services;
@@ -112,7 +113,7 @@ public sealed class ReviewListWalkTests
         Assert.Contains(page.ApplyBlockers, blocker => blocker.Kind == ApplyBlockerKind.TrialNeeded);
         var blocker = page.ApplyBlockers.Single(blocker => blocker.Kind == ApplyBlockerKind.TrialNeeded);
         Assert.Equal(TrialStandingWords.ProposalChanged.Sentence, blocker.Sentence);
-        Assert.Equal("Try again", blocker.ActionText);
+        Assert.Equal(MotifAppStrings.TryAgain, blocker.ActionText);
         Assert.Equal(TrialFreshness.ProposalChanged, context.Lens!.Trial!.Freshness);
     }
 
@@ -473,7 +474,7 @@ public sealed class ReviewListWalkTests
 
         var blocker = page.ApplyBlockers.Single(blocker => blocker.Kind == ApplyBlockerKind.TrialNeeded);
         Assert.Equal(TrialStandingWords.NotTried.Sentence, blocker.Sentence);
-        Assert.Equal("Try it", blocker.ActionText);
+        Assert.Equal(MotifAppStrings.TryIt, blocker.ActionText);
         Assert.Equal("Try this Proposal", blocker.ActionAccessibleName);
         Assert.Contains(page.ApplyChecks, check => check is { Text: "Not tried yet", Passed: false });
     }

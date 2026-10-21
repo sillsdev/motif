@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="clr-namespace:SIL.Motif.App"
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              x:Class="SIL.Motif.App.Views.StoreRefusalBlock"
@@ -8,20 +9,20 @@
     <StackPanel>
       <views:RefusalBlock DataContext="{Binding Refusal}"
                           StoreDeletionCommand="{Binding $parent[views:StoreRefusalBlock].((vm:StoreRefusalBlockViewModel)DataContext).DeleteStoreCommand}"
-                          AutomationProperties.Name="Refresh refusal" />
+                          AutomationProperties.Name="{x:Static app:MotifAppStrings.RefreshRefusalAccessibleName}" />
       <Border x:Name="StoreDeletionQuestion" Classes="refusalConfirmation"
               IsVisible="{Binding IsConfirmingStoreDeletion}">
         <StackPanel Classes="refusal">
-          <TextBlock Classes="refusalTitle" Text="Delete Motif's store?" />
+          <TextBlock Classes="refusalTitle" Text="{x:Static app:MotifAppStrings.DeleteMotifsStore}" />
           <views:CopyableTextBlock Text="{Binding Warning}" TextWrapping="Wrap" />
           <StackPanel Classes="refusalActions" Orientation="Horizontal">
             <Button Classes="Primary" Theme="{DynamicResource SolidButton}"
-                    Content="Delete Motif's store and reopen"
+                    Content="{x:Static app:MotifAppStrings.DeleteMotifsStoreAndReopen}"
                     Command="{Binding ConfirmStoreDeletionCommand}"
-                    AutomationProperties.Name="Confirm deleting Motif's store and reopening the project" />
-            <Button Classes="refusalSecondary" Content="Keep Motif's store"
+                    AutomationProperties.Name="{x:Static app:MotifAppStrings.StoreRefusalConfirmDeleteAccessibleName}" />
+            <Button Classes="refusalSecondary" Content="{x:Static app:MotifAppStrings.KeepMotifsStore}"
                     Command="{Binding CancelStoreDeletionCommand}"
-                    AutomationProperties.Name="Keep Motif's store" />
+                    AutomationProperties.Name="{x:Static app:MotifAppStrings.KeepMotifsStoreAccessibleName}" />
           </StackPanel>
         </StackPanel>
       </Border>
