@@ -42,3 +42,7 @@ An operation failure or final semantic-validation failure rolls back all newly c
 ## Model coverage mapping
 
 The generator policy and manifest bind LexEntry.LexemeForm, MoForm.MorphType/IsAbstract, MoAffixProcess.Input/Output, PhSimpleContextSeg/NC.FeatureStructure, MoCopyFromInput.Content and MoInsertPhones.Content, alongside the reused lexical entry/MSA/sense families. `PhVariable` has no own fields; factory/ownership tests bind its concrete class. Manifest verbs describe the structural model vocabulary, while emission policy closes the creation subset. Other mapping classes, generic graph deletion, and recursive context construction remain unimplemented by this family.
+
+## Compatibility note, 2026-10-21
+
+An input part that the output never copies (an "uncopied input part") was refused; it is now accepted and means the matched material is deleted. The remaining-stem part must still be copied and at least one input must be copied.

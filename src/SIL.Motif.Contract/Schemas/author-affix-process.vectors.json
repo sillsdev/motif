@@ -435,21 +435,21 @@
       "accept": true,
       "schemaAccept": true,
       "intent": {
-        "morphType": "\u524d/\n:AAAAAAAAAAAAAAAAAAAAAA",
+        "morphType": "前/\n:AAAAAAAAAAAAAAAAAAAAAA",
         "gloss": "REDUP",
         "analysisWs": "en",
         "msa": {
           "kind": "unclassified",
-          "category": "\u524d/\n:AAAAAAAAAAAAAAAAAAAAAA"
+          "category": "前/\n:AAAAAAAAAAAAAAAAAAAAAA"
         },
         "input": [
           {
             "name": "c",
-            "naturalClass": "\u524d/\n:AAAAAAAAAAAAAAAAAAAAAg"
+            "naturalClass": "前/\n:AAAAAAAAAAAAAAAAAAAAAg"
           },
           {
             "name": "v",
-            "phoneme": "\u524d/\n:AAAAAAAAAAAAAAAAAAAAAQ"
+            "phoneme": "前/\n:AAAAAAAAAAAAAAAAAAAAAQ"
           },
           {
             "name": "rest",
@@ -462,8 +462,8 @@
           },
           {
             "insert": [
-              "\u524d/\n:AAAAAAAAAAAAAAAAAAAAAQ",
-              "\u524d/\n:AAAAAAAAAAAAAAAAAAAAAQ"
+              "前/\n:AAAAAAAAAAAAAAAAAAAAAQ",
+              "前/\n:AAAAAAAAAAAAAAAAAAAAAQ"
             ]
           },
           {
