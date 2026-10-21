@@ -196,7 +196,8 @@ public static class AssessmentRecordProjections
         record.RequireWords();
         return new(
         record.AssessmentId, record.Assessor, record.Kind, record.TokeniserName, record.TokeniserVersion,
-        record.Words ?? Array.Empty<AssessedWord>());
+        record.Words ?? Array.Empty<AssessedWord>(),
+        record.Invocation?.ExecutableVersion, record.Invocation?.ExecutableBytesSha256);
     }
 
     /// <summary>The <c>Correctness</c>-kind fields a regression check needs — see <see cref="CorrectnessAssessment"/>.</summary>

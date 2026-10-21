@@ -34,6 +34,9 @@ internal static class Program
 
     internal const string EnvironmentFileName = "_pangloss-environment.json";
 
+    /// <summary>Beside a copy of the fake, replaces the version line <c>--version</c> prints.</summary>
+    internal const string VersionFileName = "_fake-pangloss-version";
+
     private const string DescribeOmissionsFileName = "_fake-pangloss-describe-omissions.json";
     private const string AdditionalStatsFlagsFileName = "_fake-pangloss-additional-stats-flags.json";
 
@@ -87,7 +90,8 @@ internal static class Program
         }
         if (args is ["--version"])
         {
-            Console.WriteLine("pangloss 0.8.8");
+            var versionFile = Path.Combine(AppContext.BaseDirectory, VersionFileName);
+            Console.WriteLine(File.Exists(versionFile) ? File.ReadAllText(versionFile).Trim() : "pangloss 0.8.8");
             return 0;
         }
         if (args is ["--allocate-memory", var requestedBytes])

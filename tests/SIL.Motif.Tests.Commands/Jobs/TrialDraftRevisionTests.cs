@@ -1,6 +1,7 @@
 using SIL.Motif.Commands;
 using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Requests;
+using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker.Store;
@@ -109,6 +110,41 @@ public sealed class TrialDraftRevisionTests
         var input = TrialJobInput.Parse(new JobRepository(database).Get(queued.Value!.JobId)!.InputJson);
         Assert.Null(input.Words);
         Assert.False(input.AllWords);
+    }
+
+    [Fact]
+    public void ATrialRecordsTheParserItsEnqueuerExpects()
+    {
+        var id = NewDraftWithOneGloss("pinned-trial");
+        var parser = FakeParser.CopyReportingVersion(
+            Path.Combine(Path.GetTempPath(), "motif-pin-" + Guid.NewGuid().ToString("N")), "0.8.8");
+
+        var queued = JobCommands.EnqueueTrial(new EnqueueTrialRequest(_fwDataPath, ProductVersion, id,
+            Words: ["word"]), parser);
+
+        Assert.True(queued.Succeeded, queued.Refusal?.Message);
+        using var database = ProjectMotifDatabase.Open(_fwDataPath);
+        var inputJson = new JobRepository(database).Get(queued.Value!.JobId)!.InputJson;
+        var expected = ParserIdentity.Read(parser)!;
+        Assert.Equal(expected.Key, JobParserPin.KeyOf(inputJson));
+        using var document = System.Text.Json.JsonDocument.Parse(inputJson);
+        var pin = document.RootElement.GetProperty("parserIdentity");
+        Assert.Equal("0.8.8", pin.GetProperty("version").GetString());
+        Assert.Equal(expected.Sha256, pin.GetProperty("sha256").GetString());
+        Assert.Equal(parser, pin.GetProperty("path").GetString());
+        Assert.Equal(["word"], TrialJobInput.Parse(inputJson).Words);
+    }
+
+    [Fact]
+    public void ATrialQueuedWithNoParserNamedIsPinnedToNone()
+    {
+        var id = NewDraftWithOneGloss("unpinned-trial");
+
+        var queued = JobCommands.EnqueueTrial(new EnqueueTrialRequest(_fwDataPath, ProductVersion, id,
+            Words: ["word"]));
+
+        using var database = ProjectMotifDatabase.Open(_fwDataPath);
+        Assert.Null(JobParserPin.KeyOf(new JobRepository(database).Get(queued.Value!.JobId)!.InputJson));
     }
 
     [Fact]

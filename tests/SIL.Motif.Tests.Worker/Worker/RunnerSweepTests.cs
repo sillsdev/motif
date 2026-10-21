@@ -276,6 +276,59 @@ public sealed class RunnerSweepTests : IDisposable
     }
 
     [Fact]
+    public async Task ARunnerWithNoWorkOfItsOwnYieldsToAJobPinnedToAnotherParser()
+    {
+        var oldParser = FakeParser.CopyReportingVersion(Path.Combine(_root, "old-parser"), "0.8.6");
+        var newParser = FakeParser.CopyReportingVersion(Path.Combine(_root, "new-parser"), "0.8.8");
+        using var machine = MachineDatabase.Open(_options.Root);
+        var known = new KnownProjectRegistry(machine);
+        var runtime = SeedProject(known, "pinned");
+        runtime.Jobs.Create("trial-for-new", runtime.WorkspaceKey, "probe", JobParserPin.Stamp("{}", newParser),
+            JobTimestamp.FormatUtc(DateTimeOffset.UtcNow));
+        var activity = new SIL.Motif.Worker.WorkerRuntime.SweepActivity();
+
+        var stale = await SIL.Motif.Worker.WorkerRuntime.SweepOnceAsync(known, _runtimes, _lanes,
+            _options with { ParserPath = oldParser }, new FakeInvoker(), OwnerId, CancellationToken.None, activity,
+            runClaimedAsync: (_, _) => Task.CompletedTask);
+
+        Assert.Null(stale.JobId);
+        Assert.False(stale.HasActiveWork);
+        Assert.True(stale.YieldToOtherParser);
+        Assert.True(activity.YieldRequested);
+        Assert.Equal(JobStatus.Queued, runtime.Jobs.Get("trial-for-new")!.Status);
+
+        var current = await SIL.Motif.Worker.WorkerRuntime.SweepOnceAsync(known, _runtimes, _lanes,
+            _options with { ParserPath = newParser }, new FakeInvoker(), OwnerId, CancellationToken.None,
+            runClaimedAsync: (_, _) => Task.CompletedTask);
+
+        Assert.Equal("trial-for-new", current.JobId);
+        Assert.False(current.YieldToOtherParser);
+        Assert.Equal(JobStatus.Running, runtime.Jobs.Get("trial-for-new")!.Status);
+    }
+
+    [Fact]
+    public async Task ARunnerWithWorkOfItsOwnDoesNotYieldWhileAJobWaitsForAnotherParser()
+    {
+        var oldParser = FakeParser.CopyReportingVersion(Path.Combine(_root, "old-parser"), "0.8.6");
+        var newParser = FakeParser.CopyReportingVersion(Path.Combine(_root, "new-parser"), "0.8.8");
+        using var machine = MachineDatabase.Open(_options.Root);
+        var known = new KnownProjectRegistry(machine);
+        var runtime = SeedProject(known, "mixed");
+        runtime.Jobs.Create("foreign", runtime.WorkspaceKey, "probe", JobParserPin.Stamp("{}", newParser),
+            JobTimestamp.FormatUtc(DateTimeOffset.UtcNow));
+        runtime.Jobs.Create("own", runtime.WorkspaceKey, "probe", JobParserPin.Stamp("{}", oldParser),
+            JobTimestamp.FormatUtc(DateTimeOffset.UtcNow));
+
+        var outcome = await SIL.Motif.Worker.WorkerRuntime.SweepOnceAsync(known, _runtimes, _lanes,
+            _options with { ParserPath = oldParser }, new FakeInvoker(), OwnerId, CancellationToken.None,
+            runClaimedAsync: (_, _) => Task.CompletedTask);
+
+        Assert.Equal("own", outcome.JobId);
+        Assert.False(outcome.YieldToOtherParser);
+        Assert.Equal(JobStatus.Queued, runtime.Jobs.Get("foreign")!.Status);
+    }
+
+    [Fact]
     public async Task ARunnerCannotRetireOnceASweepHasBegunToClaim()
     {
         using var machine = MachineDatabase.Open(_options.Root);

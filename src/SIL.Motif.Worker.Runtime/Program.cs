@@ -105,7 +105,7 @@ internal static class WorkerRuntime
             ownerId, activity, shutdown.Token);
 
         var lifetime = RunUntilRetiredAsync(new WorkerLifetime(), options.IdleTimeout, activity, shutdown.Token,
-            MotifUpdateGate.IsWorkerRetirementRequested);
+            () => MotifUpdateGate.IsWorkerRetirementRequested() || activity.YieldRequested);
         // A sweep that fails, e.g. because the machine database went away, ends the runner now, not at idle.
         await Task.WhenAny(lifetime, sweeping).ConfigureAwait(false);
         shutdown.Cancel();
@@ -267,6 +267,7 @@ internal static class WorkerRuntime
         private bool _hasActiveWork = true;
         private bool _sweeping;
         private bool _retired;
+        private bool _yieldToOtherParser;
 
         public bool HasActiveWork
         {
@@ -301,13 +302,27 @@ internal static class WorkerRuntime
         }
 
         /// <summary>Ends a sweep with what it found, which is what the idle timer then reads.</summary>
-        public void EndSweep(bool hasActiveWork)
+        public void EndSweep(bool hasActiveWork, bool yieldToOtherParser = false)
         {
             lock (_gate)
             {
                 _sweeping = false;
                 _hasActiveWork = hasActiveWork;
+                _yieldToOtherParser = yieldToOtherParser;
             }
+        }
+
+        /// <summary>
+        /// Whether the last sweep found queued work only for a runner with another parser, and none of its own.
+        /// </summary>
+        /// <remarks>
+        /// The runner then retires at once instead of idling out, which frees ownership for the successor that
+        /// the enqueue of that work started with the right parser, pinned by
+        /// `ARunnerWithNoWorkOfItsOwnYieldsToAJobPinnedToAnotherParser`.
+        /// </remarks>
+        public bool YieldRequested
+        {
+            get { lock (_gate) return _yieldToOtherParser; }
         }
     }
 
@@ -345,7 +360,7 @@ internal static class WorkerRuntime
         }
         finally
         {
-            activity.EndSweep(outcome.HasActiveWork);
+            activity.EndSweep(outcome.HasActiveWork, outcome.YieldToOtherParser);
         }
     }
 
@@ -357,6 +372,8 @@ internal static class WorkerRuntime
     {
         var opened = new List<(Projects.ProjectRuntime Runtime, JobRunnerLoop Loop)>();
         var hasActiveWork = false;
+        var yieldToOtherParser = false;
+        var workerParserKey = ParserIdentity.KeyOf(options.ParserPath);
         var allKnownProjectsOpened = true;
         foreach (var known in FromMachineDatabase(() => knownProjects.List()))
         {
@@ -372,8 +389,13 @@ internal static class WorkerRuntime
                     Path.GetFileNameWithoutExtension(known.FullFwDataPath));
                 var runtime = runtimes.GetOrOpen(project);
                 ReconcileParkedJobs(runtime, DateTimeOffset.UtcNow, listActive);
-                if ((listActive?.Invoke(runtime) ?? runtime.Jobs.ListActive(runtime.WorkspaceKey)).Count != 0)
+                var active = listActive?.Invoke(runtime) ?? runtime.Jobs.ListActive(runtime.WorkspaceKey);
+                // Work pinned to another parser neither keeps this runner alive nor can it run; yield instead.
+                var foreign = active.Count(job => IsPinnedToAnotherParser(job, workerParserKey));
+                if (active.Count - foreign != 0)
                     hasActiveWork = true;
+                else if (foreign != 0)
+                    yieldToOtherParser = true;
                 else
                     runtime.Jobs.PurgeArchived(ArchivePolicy.Default);
                 opened.Add((runtime, ProjectJobHandlers.CreateLoop(runtime.Database, runtime.Baselines,
@@ -404,7 +426,7 @@ internal static class WorkerRuntime
         }
 
         if (scannedAsync is not null) await scannedAsync().ConfigureAwait(false);
-        if (opened.Count == 0) return new SweepOutcome(null, hasActiveWork);
+        if (opened.Count == 0) return new SweepOutcome(null, hasActiveWork, yieldToOtherParser && !hasActiveWork);
 
         var candidates = new List<(Projects.ProjectRuntime Runtime, JobRunnerLoop Loop, JobQueueHead Head)>();
         foreach (var candidate in opened)
@@ -423,12 +445,12 @@ internal static class WorkerRuntime
         }
         candidates.Sort((left, right) => IsEarlier(left.Head, right.Head) ? -1 :
             IsEarlier(right.Head, left.Head) ? 1 : 0);
-        if (candidates.Count == 0) return new SweepOutcome(null, hasActiveWork);
+        if (candidates.Count == 0) return new SweepOutcome(null, hasActiveWork, yieldToOtherParser && !hasActiveWork);
 
         // A stopping runner leaves the row queued for the runner its enqueue kicked.
-        if (cancellationToken.IsCancellationRequested) return new SweepOutcome(null, hasActiveWork);
+        if (cancellationToken.IsCancellationRequested) return new SweepOutcome(null, hasActiveWork, yieldToOtherParser && !hasActiveWork);
         using var activityLease = MotifUpdateGate.TryAcquire();
-        if (activityLease is null) return new SweepOutcome(null, hasActiveWork);
+        if (activityLease is null) return new SweepOutcome(null, hasActiveWork, yieldToOtherParser && !hasActiveWork);
 
         foreach (var candidate in candidates)
         {
@@ -449,7 +471,7 @@ internal static class WorkerRuntime
                 await runClaimedAsync(claimed, cancellationToken).ConfigureAwait(false);
             return new SweepOutcome(claimed.JobId, true);
         }
-        return new SweepOutcome(null, hasActiveWork);
+        return new SweepOutcome(null, hasActiveWork, yieldToOtherParser && !hasActiveWork);
     }
 
     private static void ReportProjectSweepFailure(string path, string step, Exception exception,
@@ -481,7 +503,12 @@ internal static class WorkerRuntime
     }
 
     /// <summary>One sweep tick's result: the job it ran, if any, and whether any project had active work.</summary>
-    internal readonly record struct SweepOutcome(string? JobId, bool HasActiveWork);
+    internal readonly record struct SweepOutcome(string? JobId, bool HasActiveWork, bool YieldToOtherParser = false);
+
+    private static bool IsPinnedToAnotherParser(JobRecord job, string? workerParserKey) =>
+        job.Status is JobStatus.Queued or JobStatus.Running &&
+        !(job.Status == JobStatus.Running && job.IsHeldAt(JobTimestamp.FormatUtc(DateTimeOffset.UtcNow))) &&
+        !JobParserPin.Matches(job.InputJson, workerParserKey);
 
     /// QueueOrder ties are real, so JobId is what makes the order stable.
     private static bool IsEarlier(JobQueueHead candidate, JobQueueHead current) =>

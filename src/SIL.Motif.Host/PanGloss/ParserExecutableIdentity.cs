@@ -26,6 +26,23 @@ public static partial class ParserExecutableIdentity
         }
     }
 
+    /// <summary>The version the executable at <paramref name="path"/> reports for <c>--version</c>, or "unavailable".</summary>
+    /// <remarks>Cached by path, modified time and length, so a rebuilt executable at the same path is read again.</remarks>
+    public static string ReadVersion(string path)
+    {
+        try
+        {
+            var file = new FileInfo(path);
+            return file.Exists
+                ? Versions.GetOrAdd((file.FullName, file.LastWriteTimeUtc.Ticks, file.Length), key => VersionOf(key.Path))
+                : "unavailable";
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            return "unavailable";
+        }
+    }
+
     private static string VersionOf(string path)
     {
         try

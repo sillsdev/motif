@@ -89,7 +89,7 @@ public static class ProjectJobHandlers
                 defaultChecks ?? FileDefaultProposalChecksStore.ForInstallation()) is { } trial)
             handlers[TrialJobHandler.TrialKind] = (job, token) => trial.RunAsync(job, project, token);
 
-        return new JobRunnerLoop(new JobClaims(database), workspaceKey, ownerId: ownerId,
+        return new JobRunnerLoop(new JobClaims(database, parserKey: ParserIdentity.KeyOf(options.ParserPath)), workspaceKey, ownerId: ownerId,
             lease: options.Lease, poll: TimeSpan.Zero, handlers: handlers);
     }
 

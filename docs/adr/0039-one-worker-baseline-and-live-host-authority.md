@@ -186,6 +186,34 @@ The reduction is deliberate and worth naming: a user with FieldWorks open used t
 project and could agree. Now they close it, or the refresh waits. Restoring that as a FieldWorks-side
 prompt that runs `motif` afterwards is a question for that surface rather than for this barrier.
 
+### 2026-10-20 — a Worker claims only the jobs its own parser can run
+
+The decision that one Worker serves a root assumed every Worker on that root runs the same parser. It does
+not hold when two builds share `~/.local/share/SIL/Motif`: a stale Worker (PanGloss 0.8.6) claimed the Trial
+jobs a newer build (0.8.8) queued and parsed them with the old engine, so Trial and Assess disagreed on five
+words and nothing recorded which parser had run. The "one Worker per product version" alternative stays
+rejected; the root still has one owner at a time. What changes is who may claim what.
+
+- **A job records the parser its enqueuer expects.** Trial, Parsimony, Parsimony candidate evidence and
+  phonology-check jobs carry `parserIdentity` in their input document: the version the executable reports for
+  `--version`, the SHA-256 of its bytes, and its path. The version alone is not enough, because a development
+  build keeps its version across rebuilds; the **version plus content hash is the key a claim compares**. The
+  path is information only, since two copies of one build are one parser. The queue table is unchanged.
+- **A Worker claims a pinned job only when its own key matches.** A mismatched job stays queued, is not failed,
+  and does not block the jobs behind it. A Worker with no parser claims no pinned job.
+- **Legacy jobs are claimable by any Worker.** A job with no `parserIdentity` (queued before this amendment, or
+  by a caller that named no parser) keeps the behaviour it had: refusing it would strand work that no enqueuer
+  can re-pin.
+- **A Worker yields to work it cannot run.** Queued work pinned to another parser does not keep a Worker alive;
+  a Worker whose only queued work is such work retires at once. That frees ownership for the Worker the enqueue
+  already started with `--wake-project` and the right `--parser`, which waits for it. If that waiting Worker has
+  already given up (it waits one lease), the job stays queued until the next enqueue, `--wait` poll or MCP wait
+  wakes a Worker again.
+- **A result records the parser that ran it.** Each batch invocation's evidence records the executable's
+  version and path beside the executable hash it already held, so Assess and Trial Assessments both say which
+  parser measured them. [`compare`](0042-a-job-produces-assessments-an-assessor-makes-them.md) warns when its two
+  Assessments recorded different parsers; an Assessment with no recorded parser is not a mismatch.
+
 ## Consequences
 
 This design makes repeated evaluation cheap and concurrent while keeping live-project writes under the host

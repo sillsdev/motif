@@ -48,11 +48,14 @@ public static class ParsimonyCommands
         ReadRetirementReviewRequest request) => RetirementProposalReviewQuery.Read(request);
 
     /// <summary>Queues the requested fixed measure without capturing or refreshing a Baseline.</summary>
-    public static CommandOutcome<JobEnqueuedResponse> Enqueue(EnqueueParsimonyReportRequest request) =>
-        Enqueue(request, MeasureRunner.Supports);
+    /// <param name="request">The measure to queue.</param>
+    /// <param name="parserPath">The parser the woken runner will use, recorded on the job; null records none.</param>
+    public static CommandOutcome<JobEnqueuedResponse> Enqueue(EnqueueParsimonyReportRequest request,
+        string? parserPath = null) =>
+        Enqueue(request, MeasureRunner.Supports, parserPath);
 
     internal static CommandOutcome<JobEnqueuedResponse> Enqueue(
-        EnqueueParsimonyReportRequest request, Func<string, bool> supportsMeasure)
+        EnqueueParsimonyReportRequest request, Func<string, bool> supportsMeasure, string? parserPath = null)
     {
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(supportsMeasure);
@@ -95,7 +98,7 @@ public static class ParsimonyCommands
             var input = JsonSerializer.Serialize(new ParsimonyJobInput(request.MeasureId, scopeBinding, assessmentIds),
                 MotifJson.CreateOptions());
             var job = new JobRepository(database).Create(jobId, workspaceKey,
-                SIL.Motif.Worker.Parsimony.ParsimonyJobHandler.JobKind, input,
+                SIL.Motif.Worker.Parsimony.ParsimonyJobHandler.JobKind, JobParserPin.Stamp(input, parserPath),
                 DateTimeOffset.UtcNow.ToString("O", System.Globalization.CultureInfo.InvariantCulture));
             return CommandOutcome<JobEnqueuedResponse>.Success(
                 new JobEnqueuedResponse(job.JobId, job.Kind, workspaceKey));
@@ -103,7 +106,10 @@ public static class ParsimonyCommands
     }
 
     /// <summary>Queues candidate evidence for the exact completed Dry Run named by the request.</summary>
-    public static CommandOutcome<JobEnqueuedResponse> EnqueueCandidate(EnqueueParsimonyCandidateRequest request)
+    /// <param name="request">The candidate evidence to queue.</param>
+    /// <param name="parserPath">The parser the woken runner will use, recorded on the job; null records none.</param>
+    public static CommandOutcome<JobEnqueuedResponse> EnqueueCandidate(EnqueueParsimonyCandidateRequest request,
+        string? parserPath = null)
     {
         ArgumentNullException.ThrowIfNull(request);
         var admission = ParsimonyAdmission.Check(request.MeasureId, request.EvidenceScope, request.AssessmentIds) ??
@@ -195,7 +201,7 @@ public static class ParsimonyCommands
             var jobId = CanonicalId.Mint("job/").Value;
             var json = JsonSerializer.Serialize(input, MotifJson.CreateOptions());
             var created = new JobRepository(database).Create(jobId, dryRun.ProjectKey,
-                ParsimonyCandidateEvidenceBuilder.JobKind, json,
+                ParsimonyCandidateEvidenceBuilder.JobKind, JobParserPin.Stamp(json, parserPath),
                 DateTimeOffset.UtcNow.ToString("O", System.Globalization.CultureInfo.InvariantCulture));
             return CommandOutcome<JobEnqueuedResponse>.Success(
                 new JobEnqueuedResponse(created.JobId, created.Kind, created.ProjectKey));

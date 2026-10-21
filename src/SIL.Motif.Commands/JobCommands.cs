@@ -128,7 +128,8 @@ public static class JobCommands
     /// queues a Trial job and returns the job id that names it. A request with neither words nor all words
     /// measures <see cref="DerivedTrialWords"/>, so every front end tries a Proposal the same way.
     /// </summary>
-    public static CommandOutcome<JobEnqueuedResponse> EnqueueTrial(EnqueueTrialRequest request)
+    public static CommandOutcome<JobEnqueuedResponse> EnqueueTrial(EnqueueTrialRequest request,
+        string? parserPath = null)
     {
         if (request.Words?.Any(word => string.IsNullOrWhiteSpace(word) ||
                 !string.Equals(word, word.Trim(), StringComparison.Ordinal)) == true)
@@ -175,7 +176,8 @@ public static class JobCommands
             var input = new TrialJobInput(proposalJson, request.Scope, words, request.AllWords, prerequisites,
                 request.Limits, request.BaselineAssessmentIds, request.NegativeWords);
             var inputJson = JsonSerializer.Serialize(input, MotifJson.CreateOptions());
-            var created = jobs.Create(jobId, workspaceKey, TrialKind, inputJson, NowStamp());
+            var created = jobs.Create(jobId, workspaceKey, TrialKind,
+                JobParserPin.Stamp(inputJson, parserPath), NowStamp());
             return CommandOutcome<JobEnqueuedResponse>.Success(
                 new JobEnqueuedResponse(created.JobId, TrialKind, workspaceKey));
         });

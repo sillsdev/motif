@@ -180,7 +180,8 @@ internal static class ParsimonyTools
         if (jobId is null)
         {
             var queued = ParsimonyCommands.Enqueue(new EnqueueParsimonyReportRequest(
-                context.ProjectPath, context.ProductVersion, measureId, evidenceScope));
+                context.ProjectPath, context.ProductVersion, measureId, evidenceScope),
+                context.JobParserPath);
             if (!queued.Succeeded) return ToolOutcome.Refused(queued.Refusal!);
             jobId = queued.Value!.JobId;
         }

@@ -45,7 +45,8 @@ public sealed partial class CommandClient
     public async Task<CommandOutcome<JobEnqueuedResponse>> EnqueueTrialAsync(
         SIL.Motif.Commands.Requests.EnqueueTrialRequest request, CancellationToken cancellationToken)
     {
-        var queued = await OneAtATime(() => JobCommands.EnqueueTrial(request), cancellationToken)
+        var queued = await OneAtATime(() => JobCommands.EnqueueTrial(request,
+            _options.ParserPath), cancellationToken)
             .ConfigureAwait(false);
         if (queued.Succeeded) _options.RunnerLauncher.Start(request.FwDataPath);
         return queued;
