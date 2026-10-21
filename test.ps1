@@ -322,6 +322,17 @@ $phaseClocks['test slot wait'] = [Diagnostics.Stopwatch]::StartNew()
 $testSlot = Enter-MotifTestSlot -Directory $testSlotDirectory
 Write-PhaseDuration 'test slot wait'
 
+# build.ps1 stages the pinned parser beside the tests; use it unless the caller named one explicitly.
+if (-not $env:MOTIF_PANGLOSS_EXE) {
+    $stagedParser = Join-Path $repoRoot "bin/$Configuration/$(if ($IsWindows) { 'pangloss.exe' } else { 'pangloss' })"
+    if (Test-Path -LiteralPath $stagedParser -PathType Leaf) {
+        $stagedParser = [IO.Path]::GetFullPath($stagedParser)
+        $env:MOTIF_PANGLOSS_EXE = $stagedParser
+        if (-not $env:MOTIF_PANGLOSS_SERVE_EXE) { $env:MOTIF_PANGLOSS_SERVE_EXE = $stagedParser }
+        Write-Host "Using the staged parser for PanGloss-dependent tests: $stagedParser"
+    }
+}
+
 $coverageAdapter = ''
 $coverageSettings = ''
 if ($Coverage) {
