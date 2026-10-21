@@ -741,7 +741,7 @@ public sealed class ContrastTests(AvaloniaHeadlessFixture avalonia)
         avalonia.Invoke(() => Assert.True(Ratio(Color.Parse("#696969"), Resolve("Intent.Selected.Fill", ThemeVariant.Light)) < Text));
     }
 
-    // Known gap: a word card's header paints muted text on the selected-row fill, under 4.5:1 once the fill is #D7E6FF.
+    // Known gap: muted text on a word card header misses AA on the #D7E6FF fill.
     [Fact]
     public void MutedTextOnTheWordCardHeaderStillFallsShortOfAa()
     {
