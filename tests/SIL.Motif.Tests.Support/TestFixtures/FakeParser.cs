@@ -118,6 +118,17 @@ internal static class FakeParser
         return File.Exists(log) ? File.ReadAllLines(log) : [];
     }
 
+    /// <summary>
+    /// How many word traces a recording copy has answered, on the cold <c>parse</c> command or on a resident
+    /// <c>serve</c> session: a trace is one request whichever way it was served.
+    /// </summary>
+    internal static int TraceRequests(string copiedExecutable)
+    {
+        var log = Path.Combine(Path.GetDirectoryName(copiedExecutable)!, "_pangloss-serve-trace-requests.log");
+        return Invocations(copiedExecutable).Count(command => command == "parse") +
+            (File.Exists(log) ? File.ReadAllLines(log).Length : 0);
+    }
+
     /// <summary>The <c>--stored-analyses</c> value of each grammar-health run a recording copy has answered.</summary>
     internal static IReadOnlyList<string> StoredAnalysesRequested(string copiedExecutable)
     {

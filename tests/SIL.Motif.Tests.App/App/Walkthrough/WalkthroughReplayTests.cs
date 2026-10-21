@@ -157,8 +157,7 @@ public sealed class WalkthroughReplayTests(PristineProjectFixture pristine)
             Assert.False(diagnosticHost.GetLogicalDescendants().OfType<Expander>().Single(expander =>
                 Avalonia.Automation.AutomationProperties.GetName(expander) == "Full derivation tree").IsEffectivelyVisible);
             Assert.Contains("motifa-trace", traceResponse.DiagnosticJson);
-            Assert.Equal(1, FakeParser.Invocations(parserPath).Count(command => command == "parse"));
-            Assert.Contains("parse", FakeParser.Invocations(parserPath));
+            Assert.Equal(1, FakeParser.TraceRequests(parserPath));
             return Task.CompletedTask;
         }, WalkthroughSteps.Remaining(deadline));
     }
@@ -861,7 +860,7 @@ internal static class WalkthroughReplay
                 Assert.Equal("geldi", window.TextByAutomationId(AutomationIds.TryWordResult));
                 Assert.True(traceResponse.Parsed && traceResponse.Complete);
                 Assert.Contains("geldi-trace", traceResponse.DiagnosticJson);
-                Assert.Equal(1, FakeParser.Invocations(parserPath).Count(command => command == "parse"));
+                Assert.Equal(1, FakeParser.TraceRequests(parserPath));
                 break;
             case "review-apply-refresh-parse":
                 window.WaitUntil(() => window.Workspace.Assess.State == RunState.Completed &&

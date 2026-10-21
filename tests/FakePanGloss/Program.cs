@@ -46,6 +46,9 @@ internal static class Program
     /// <summary>One command name per line, for each invocation of a copy that carries the sentinel.</summary>
     internal const string InvocationsFileName = "_pangloss-invocations.log";
 
+    /// <summary>Beside a recording copy, one word per trace request a resident serve answered.</summary>
+    internal const string ServeTraceRequestsFileName = "_pangloss-serve-trace-requests.log";
+
     /// <summary>One <c>--stored-analyses</c> value per grammar-health run, for a copy that carries the sentinel.</summary>
     internal const string StoredAnalysesFileName = "_pangloss-stored-analyses.log";
 
@@ -590,6 +593,13 @@ internal static class Program
             output.WriteLine(JsonSerializer.Serialize(new { type = "fatal", code = fatalCode, message = "the fake serve was told to fail" }));
             return 1;
         }
+        // A grammar that fails to compile is a fatal load_failed, as in real serve; the word then runs cold.
+        if (behaviour.Mode == "fail")
+        {
+            output.WriteLine(JsonSerializer.Serialize(new { type = "fatal", code = "load_failed",
+                message = behaviour.StandardError ?? "the fake parser was told to fail" }));
+            return 1;
+        }
         if (behaviour.ServeCrashOnLoad) Environment.Exit(77);
         output.WriteLine("{\"type\":\"ready\",\"protocol\":" + behaviour.ServeProtocol.ToString(CultureInfo.InvariantCulture) +
             ",\"loadMs\":5}");
@@ -612,6 +622,8 @@ internal static class Program
             }
             var word = request.RootElement.GetProperty("word").GetString() ?? string.Empty;
             if (behaviour.ServeRequestLog is { } requestLog) File.AppendAllText(requestLog, word + "\n");
+            if (File.Exists(Path.Combine(AppContext.BaseDirectory, RecordInvocationsSentinel)))
+                File.AppendAllText(Path.Combine(AppContext.BaseDirectory, ServeTraceRequestsFileName), word + "\n");
             if (word == "hang") Thread.Sleep(Timeout.Infinite);
             if (behaviour.ServeRequestDelayMs > 0) Thread.Sleep(behaviour.ServeRequestDelayMs);
             if (word == "partial")
