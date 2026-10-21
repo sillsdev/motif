@@ -55,6 +55,16 @@ public static class TryWordSessions
     public static WarmSessionState GetState(string projectPath, string? parserPath = null) =>
         PoolFor(parserPath).GetState(projectPath);
 
+    /// <summary>
+    /// Kills and drops every resident session for the project, whichever parser it runs; idempotent. Call before a
+    /// project is deleted, moved or rebaselined, because on Windows a resident parser can hold the Baseline file open.
+    /// Baseline capture calls it.
+    /// </summary>
+    public static void Evict(string projectPath)
+    {
+        foreach (var pool in Pools.Values) pool.Evict(projectPath);
+    }
+
     internal static WarmPanGlossPool PoolFor(string? parserPath)
     {
         var executable = parserPath ?? PanGlossExecutable.TryLocate();
@@ -73,7 +83,7 @@ public static class TryWordSessions
     internal static string TokenText(SIL.Motif.Contract.Baselines.BaselineToken token) =>
         token.SemanticSnapshotDigest + "|" + token.BundleDigest;
 
-    /// <summary>Stops every resident parser; the host calls it on exit.</summary>
+    /// <summary>Stops every resident parser. The App calls it on exit; the MCP host does so through process exit.</summary>
     public static void Shutdown()
     {
         foreach (var pool in Pools.Values) pool.Dispose();

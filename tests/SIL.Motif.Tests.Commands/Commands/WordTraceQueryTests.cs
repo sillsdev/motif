@@ -117,6 +117,57 @@ public sealed class WordTraceQueryTests : IDisposable
     }
 
     [Fact]
+    public void TheExplicitParserOverloadUsesTheResidentSessionOnlyWhenWarmIsOn()
+    {
+        var path = _pristine.CopyProjectFile();
+        Capture(path);
+        try
+        {
+            var cold = WordTraceQuery.Query(new WordTraceRequest(path, "motifa"), FakeParser.ExecutablePath,
+                CancellationToken.None, null, warm: false);
+            Assert.True(cold.Succeeded, cold.Refusal?.Message);
+            Assert.Equal(WarmSessionPhase.Idle, TryWordSessions.GetState(path, FakeParser.ExecutablePath).Phase);
+
+            var progress = new List<string?>();
+            var warm = WordTraceQuery.Query(new WordTraceRequest(path, "motifa"), FakeParser.ExecutablePath,
+                CancellationToken.None, p => progress.Add(p.CurrentWord), warm: true);
+            Assert.True(warm.Succeeded, warm.Refusal?.Message);
+            Assert.Equal(WarmSessionPhase.Ready, TryWordSessions.GetState(path, FakeParser.ExecutablePath).Phase);
+            Assert.Equal(["motifa"], progress);
+        }
+        finally
+        {
+            TryWordSessions.Shutdown();
+        }
+    }
+
+    [Fact]
+    public async Task EvictKillsTheProjectsSessionIdempotentlyAndCapturingABaselineEvictsIt()
+    {
+        var path = _pristine.CopyProjectFile();
+        Capture(path);
+        try
+        {
+            Assert.Equal(WarmSessionPhase.Ready, (await TryWordSessions.Prewarm(path, FakeParser.ExecutablePath)).Phase);
+            TryWordSessions.Evict(path);
+            TryWordSessions.Evict(path);
+            Assert.Equal(WarmSessionPhase.Idle, TryWordSessions.GetState(path, FakeParser.ExecutablePath).Phase);
+
+            Assert.Equal(WarmSessionPhase.Ready, (await TryWordSessions.Prewarm(path, FakeParser.ExecutablePath)).Phase);
+            Capture(path);
+            Assert.Equal(WarmSessionPhase.Idle, TryWordSessions.GetState(path, FakeParser.ExecutablePath).Phase);
+
+            Assert.Equal(WarmSessionPhase.Ready, (await TryWordSessions.Prewarm(path, FakeParser.ExecutablePath)).Phase);
+            TryWordSessions.Shutdown();
+            Assert.Equal(WarmSessionPhase.Idle, TryWordSessions.GetState(path, FakeParser.ExecutablePath).Phase);
+        }
+        finally
+        {
+            TryWordSessions.Shutdown();
+        }
+    }
+
+    [Fact]
     public async Task PrewarmingAProjectWithoutABaselineIsFailedAndWithOneBecomesReadyThenFiresStateChanged()
     {
         var bare = _pristine.CopyProjectFile();

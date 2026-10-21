@@ -44,11 +44,7 @@ public static class WordTraceQuery
     public static CommandOutcome<WordTraceResponse> Query(
         WordTraceRequest request, CancellationToken cancellationToken = default)
     {
-        var parser = PanGlossExecutable.TryLocate();
-        if (!TryWordSessions.Enabled) return Query(request, parser, cancellationToken);
-        using var invoker = new PanGlossInvoker(parser);
-        using var tracer = TryWordSessions.TracerFor(parser, invoker);
-        return Query(request, tracer, cancellationToken);
+        return Query(request, PanGlossExecutable.TryLocate(), cancellationToken);
     }
 
     /// <summary>
@@ -69,14 +65,23 @@ public static class WordTraceQuery
     /// <summary>Traces a word with an explicitly selected parser.</summary>
     /// <param name="request">The project and word to trace.</param>
     /// <param name="cancellationToken">Cancels the trace.</param>
-    /// <param name="onProgress">Receives parser progress, when supplied.</param>
+    /// <param name="onProgress">Receives one "Tracing the word" report before the trace, on the cold and the warm
+    /// path alike; neither path reports finer parser progress.</param>
     /// <param name="parserPath">The parser to run, or <see langword="null"/> when none is available.</param>
+    /// <remarks>Uses the project's resident session when <see cref="TryWordSessions.Enabled"/>, else one process per word.</remarks>
     public static CommandOutcome<WordTraceResponse> Query(
         WordTraceRequest request, string? parserPath, CancellationToken cancellationToken = default,
-        Action<AssessmentProgress>? onProgress = null)
+        Action<AssessmentProgress>? onProgress = null) =>
+        Query(request, parserPath, cancellationToken, onProgress, TryWordSessions.Enabled);
+
+    internal static CommandOutcome<WordTraceResponse> Query(
+        WordTraceRequest request, string? parserPath, CancellationToken cancellationToken,
+        Action<AssessmentProgress>? onProgress, bool warm)
     {
         using var invoker = new PanGlossInvoker(parserPath);
-        return Query(request, new PanGlossTracer(invoker), cancellationToken, onProgress);
+        if (!warm) return Query(request, new PanGlossTracer(invoker), cancellationToken, onProgress);
+        using var tracer = TryWordSessions.TracerFor(parserPath, invoker);
+        return Query(request, tracer, cancellationToken, onProgress);
     }
 
     internal static CommandOutcome<WordTraceResponse> Query(

@@ -151,6 +151,19 @@ public sealed class WarmPanGlossPool : IDisposable
         }
     }
 
+    /// <summary>Kills and drops the project's session so nothing holds its Baseline files open. Idempotent.</summary>
+    public void Evict(string projectKey)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(projectKey);
+        Session? session;
+        lock (_gate)
+        {
+            if (_disposed || !_sessions.Remove(Normalize(projectKey), out session)) return;
+        }
+        session.Kill(WarmSessionState.Idle, raise: false);
+        Raise(Normalize(projectKey), WarmSessionState.Idle);
+    }
+
     public void Dispose()
     {
         Session[] all;
