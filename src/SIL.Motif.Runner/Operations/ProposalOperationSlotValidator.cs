@@ -27,18 +27,8 @@ public static class ProposalOperationSlotValidator
     /// <param name="added">The operations being added, or replacing a retained one.</param>
     /// <exception cref="ConflictRefusal">An added operation addresses the same slot as another.</exception>
     public static void ValidateAppend(
-        IReadOnlyList<OperationEnvelope> retained, IReadOnlyList<OperationEnvelope> added)
-    {
-        for (var index = 0; index < added.Count; index++)
-        {
-            foreach (var other in retained.Concat(added.Take(index)))
-            {
-                if (FindConflict(new[] { other, added[index] }) is { } collision)
-                    throw new ConflictRefusal(collision.Existing.OperationId, collision.Duplicate.OperationId);
-            }
-        }
-        TextCreateDependencies.Validate(retained.Concat(added).ToList(), added);
-    }
+        IReadOnlyList<OperationEnvelope> retained, IReadOnlyList<OperationEnvelope> added) =>
+        new ProposalSlotIndex(retained).Append(added);
 
     public static (OperationEnvelope Existing, OperationEnvelope Duplicate)? FindConflict(
         IEnumerable<OperationEnvelope> operations)
