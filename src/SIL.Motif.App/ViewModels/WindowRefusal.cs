@@ -99,6 +99,9 @@ public sealed partial record WindowRefusal
         [C.AssessParserUnavailable] = ParserUnusable,
         [C.AssessUnsupportedKind] =
             "The PanGloss Motif found cannot take this measurement. Install the PanGloss that matches this Motif, then try again.",
+        [C.AssessWordsAmbiguous] = "Give the words to measure either in the list or in a file, not both.",
+        [C.AssessWordsFileEmpty] = "The file of words to measure has no words in it. Choose a file with one word on each line.",
+        [C.AssessWordsFileUnreadable] = "Motif could not read the file of words to measure. Check that it exists and can be opened, then try again.",
         [C.AssessmentCancelled] = "Measuring was cancelled. Nothing was recorded.",
 
         [C.BaselineBusy] = "Another Motif task is reading this project. Try again in a moment.",
