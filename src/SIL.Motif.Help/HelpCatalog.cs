@@ -41,6 +41,14 @@ public enum HelpEntryKind
 /// For a composing command, example goals a linguist might have that it serves, in plain words; null for every
 /// other entry.
 /// </param>
+/// <param name="Guides">
+/// For a composing command, the encoding guide topics to read before using it (for example <c>nasal-assimilation</c>);
+/// null when it names none.
+/// </param>
+/// <param name="Redirect">
+/// For a composing command, one short sentence saying when it is the wrong choice and what to use instead; null when
+/// it names none.
+/// </param>
 public sealed record HelpEntry(
     HelpEntryKind Kind,
     string Code,
@@ -51,7 +59,21 @@ public sealed record HelpEntry(
     string? HelpPage,
     string Url,
     IReadOnlyDictionary<string, string>? Fields = null,
-    IReadOnlyList<string>? Goals = null);
+    IReadOnlyList<string>? Goals = null,
+    IReadOnlyList<string>? Guides = null,
+    string? Redirect = null)
+{
+    /// <summary>
+    /// The one-line nudge naming this entry's encoding guides, worded for both the CLI and MCP, or null when it has none.
+    /// </summary>
+    public string? GuideLine => Guides is { Count: > 0 }
+        ? "Research first: read encoding guide " + string.Join(", ", Guides) +
+            " (motif_guide topic, or motif help guide:encoding/<topic> --full) and check best practice before adding rules."
+        : null;
+
+    /// <summary>The guide line and the redirect joined as one block for a description, or null when neither exists.</summary>
+    public string? Callout => GuideLine is null ? Redirect : Redirect is null ? GuideLine : GuideLine + " " + Redirect;
+}
 
 /// <summary>A Subject a composer can serve, with the words that name it for a person.</summary>
 /// <param name="Id">The kebab-case Subject id.</param>
@@ -146,7 +168,8 @@ public sealed class HelpCatalog
                 var fields = MergeFields(englishMetadata?.Fields, localizedMetadata?.Fields);
                 var goals = localizedMetadata?.Goals ?? englishMetadata?.Goals;
                 entries.Add(new HelpEntry(
-                    kind, code, slug, title, description, source, page, BuildUrl(locale, kind, slug), fields, goals));
+                    kind, code, slug, title, description, source, page, BuildUrl(locale, kind, slug), fields, goals, localizedMetadata?.Guides ?? englishMetadata?.Guides,
+                    localizedMetadata?.Redirect ?? englishMetadata?.Redirect));
             }
         }
 
@@ -367,7 +390,11 @@ public sealed class HelpCatalog
                     : null,
                 value.TryGetProperty("goals", out var goals)
                     ? goals.EnumerateArray().Select(goal => goal.GetString()!).ToArray()
-                    : null));
+                    : null,
+                value.TryGetProperty("guides", out var guides)
+                    ? guides.EnumerateArray().Select(guide => guide.GetString()!).ToArray()
+                    : null,
+                value.TryGetProperty("redirect", out var redirect) ? redirect.GetString() : null));
         }
 
         return result;
@@ -466,7 +493,7 @@ public sealed class HelpCatalog
 
     private sealed record Metadata(
         string? Title, string? Description, string? Source, Dictionary<string, string>? Fields = null,
-        string[]? Goals = null);
+        string[]? Goals = null, string[]? Guides = null, string? Redirect = null);
 
     // A translation supplies the fields it has; English fills the rest, as it does for every other field.
     private static IReadOnlyDictionary<string, string>? MergeFields(

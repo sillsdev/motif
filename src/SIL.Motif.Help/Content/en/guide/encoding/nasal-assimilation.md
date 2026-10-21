@@ -21,3 +21,9 @@ After a composer can express the rule, include attested forms for each condition
 ## Ask the linguist
 
 Ask when the forms do not decide whether the change is assimilation, a stored allomorph or a lexical exception. Build one contrast from actual project forms: “In `<attested form A>`, the nasal is before `<observed sound A>`; in `<attested form B>`, it is before `<observed sound B>`. Does the same morpheme occur before `<attested sound C>`, and what form do speakers use?” Replace bracketed items with evidence and distinguish observed forms from predictions.
+
+## Common wrong choices
+
+- Duplicating an affix for each place of articulation when one rule explains the alternation.
+- An unrestricted affix process for a nasal change, which slows the parser badly; use a phonological rule.
+- A rule that changes every nasal because only some assimilate.

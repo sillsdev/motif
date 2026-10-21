@@ -14,3 +14,8 @@ The command creates the stem name, its regions and their complete feature specif
 Add `--cite-source <text>` and optionally `--cite-locator <text>` to record the source on every operation this command produces.
 
 Dry Run and Trial the Draft on positive and negative words, revise it, then Finalize for a person to review and Apply.
+
+## When not to use this
+
+- A stem name only names feature conditions; it attaches to no allomorph and authors no stem.
+- For forms conditioned by sounds, use environments with `compose-author-environment`, not a stem name.

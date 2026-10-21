@@ -16,3 +16,9 @@ Each input part has a distinct `name` and exactly one of `phoneme`, `naturalClas
 The limits are 1–16 input parts, 1–64 logical output items, 1–64 phonemes per insertion and 256 expanded output mappings. Nested contexts, truncation, modification, insertion of natural classes, attaching to an existing entry and replacing or deleting an existing process are not supported.
 
 Add `--cite-source <text>` and optionally `--cite-locator <text>` to record the source on every operation this command produces. The command stages operations in a Draft and does not change the saved FieldWorks project. Dry Run and Trial the Proposal on affected words, then Finalize it for a person to review and Apply.
+
+## When not to use this
+
+- For nasal assimilation or substitution, use a phonological rule with `compose-author-phonological-rule`; unrestricted affix processes slow the parser badly.
+- For a form that changes with its sound context, keep allomorphs under one entry with environments, using `compose-author-alternate-form`.
+- For a plain prefix or suffix, use `compose-author-lexical-entry` and a slot.

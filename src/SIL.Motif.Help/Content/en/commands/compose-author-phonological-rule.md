@@ -17,3 +17,9 @@ To stage several rules in one file, use the compose-batch command with batch-loc
 The rule is staged disabled and is enabled only after every right-hand side has complete supported contexts. Finalize the Proposal, inspect its Dry Run, then use Trial to check the expected parse and generation behavior before a person Applies it.
 
 Add `--cite-source <text>` and optionally `--cite-locator <text>` to record the source on every operation this command produces.
+
+## When not to use this
+
+- For one irregular word or stem, use `compose-author-alternate-form` or an allomorph; a rule changes every form that matches its context.
+- For one affix with a few listed variants, keep them under one entry with environments.
+- Do not widen the context or the classes beyond what the evidence supports.

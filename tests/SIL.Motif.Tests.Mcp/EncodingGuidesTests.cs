@@ -35,6 +35,21 @@ public sealed class EncodingGuidesTests
     }
 
     [Fact]
+    public void ComposerToolDescriptionsCarryTheGuideLineAfterTheTitle()
+    {
+        var help = HelpCatalog.Load();
+        var verbs = ProposalCommands.ComposerDescriptors.Select(composer => composer.Verb)
+            .Where(verb => help.Find(HelpEntryKind.Command, verb)?.Guides is not null).ToArray();
+        Assert.NotEmpty(verbs);
+        foreach (var verb in verbs)
+        {
+            var entry = help.Find(HelpEntryKind.Command, verb)!;
+            Assert.StartsWith(entry.Title + ". " + entry.Callout + " " + entry.Description,
+                ComposerTools.Describe(verb), StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
     public void EveryMcpGuideIsTheSameTextAsTheCliHelpGuide()
     {
         var help = HelpCatalog.Load(System.Globalization.CultureInfo.GetCultureInfo("en"));

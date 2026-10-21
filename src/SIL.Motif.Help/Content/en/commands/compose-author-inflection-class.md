@@ -14,3 +14,8 @@ The command preserves the category's default inflection class. Use the create op
 Add `--cite-source <text>` and optionally `--cite-locator <text>` to record the source on every operation this command produces.
 
 Dry Run and Trial the Draft on affected words, revise it, then Finalize for a person to review and Apply.
+
+## When not to use this
+
+- Use a class only for arbitrary lexical grouping; a value that must agree with an affix is a feature ([guide](guide:encoding/feature-conditioned-slots)).
+- For a sound-conditioned form, use an environment rather than a class.

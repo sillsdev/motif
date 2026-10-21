@@ -28,6 +28,22 @@ public sealed class HelpCommandTests
     }
 
     [Fact]
+    public void ComposerHelpOpensWithTheEncodingGuideLine()
+    {
+        var line = HelpCatalog.Load().Find(HelpEntryKind.Command, "compose-author-phonological-rule")!.GuideLine;
+        Assert.Contains("nasal-assimilation", line, StringComparison.Ordinal);
+
+        foreach (var arguments in new[] { new[] { "help", "compose-author-phonological-rule" }, ["help", "compose-author-phonological-rule", "--full"] })
+        {
+            var result = Run(true, arguments);
+            Assert.Equal(0, result.ExitCode);
+            var lines = result.Output.Split('\n').Select(l => l.TrimEnd('\r')).ToArray();
+            Assert.Equal(line, lines[1]);
+            Assert.Equal(HelpCatalog.Load().Find(HelpEntryKind.Command, "compose-author-phonological-rule")!.Redirect, lines[2]);
+        }
+    }
+
+    [Fact]
     public void HelpListsAndShowsTheEncodingGuides()
     {
         var list = Run("help");

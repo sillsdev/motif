@@ -10,3 +10,9 @@ The closed intent names one existing allomorph or morpheme prohibition. `expecte
 The command stages one write in the Draft. It does not change the FieldWorks project. Finish the Draft, inspect its Dry Run, and compare bounded before and after Trials with the same words. Review the after Report; only a person can Apply a Proposal.
 
 Add `--cite-source <text>` and optionally `--cite-locator <text>` to record the source on every operation this command produces.
+
+## When not to use this
+
+- It cannot add a prohibition, only turn an existing one off or on; do not use it to forbid a combination you could model.
+- If a slot, template, required feature or environment can express the restriction, author that instead ([guide](guide:encoding/suffix-prefix-slots)).
+- If the evidence does not say whether to switch one off, ask the linguist ([guide](guide:encoding/ask-the-linguist)).

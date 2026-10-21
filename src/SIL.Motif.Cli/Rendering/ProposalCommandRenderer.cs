@@ -145,6 +145,7 @@ public static class ProposalCommandRenderer
     private static string RenderDraftCreated(DraftCreatedResponse r)
     {
         var sb = new StringBuilder();
+        sb.AppendLine("Before composing rules, read: motif help guide:encoding/workflow --full");
         sb.AppendLine($"Created draft '{r.DraftName}'.");
         sb.AppendLine($"  proposalId: {r.ProposalId}");
         if (r.Label is not null) sb.AppendLine($"  label:       {r.Label}");

@@ -154,7 +154,11 @@
       "Merge redundant allomorphs of an affix into one",
       "Replace a duplicate form with the form a phonological rule derives",
       "Retire an unused prefix or suffix alternate after moving what refers to it"
-    ]
+    ],
+    "guides": [
+      "no-inflection"
+    ],
+    "redirect": "Retire only what the evidence shows is spurious. If forms show no inflection, do not invent affixes to replace it (guide no-inflection)."
   },
   "retire-redundant-zero-affix": {
     "title": "Retire an unused zero affix",
@@ -171,7 +175,11 @@
       "Remove an unused null affix entry from the lexicon",
       "Retire a redundant zero morpheme that adds no feature",
       "Clean up an empty affix whose slots are all optional"
-    ]
+    ],
+    "guides": [
+      "no-inflection"
+    ],
+    "redirect": "Retire only what the evidence shows is spurious. If forms show no inflection, do not invent affixes to replace it (guide no-inflection)."
   },
   "compose-author-phonological-rule": {
     "title": "Author a phonological rule",
@@ -182,7 +190,12 @@
       "Make a consonant assimilate in voicing or place to a neighbouring sound",
       "Delete a segment or insert one in a given context",
       "Devoice, nasalise or palatalise a word-final or intervocalic sound"
-    ]
+    ],
+    "guides": [
+      "nasal-assimilation",
+      "conditioned-allomorphs"
+    ],
+    "redirect": "Use for a regular sound change across many forms. Not for one irregular word: use an alternate form or allomorph (guide conditioned-allomorphs)."
   },
   "compose-author-lexical-entry": {
     "title": "Author a lexical entry",
@@ -193,7 +206,12 @@
       "Enter a root or stem in the lexicon with a gloss and category",
       "Add a prefix or suffix entry with a short gloss",
       "Create a lexical entry with a citation form and part of speech"
-    ]
+    ],
+    "guides": [
+      "suffix-prefix-slots",
+      "feature-conditioned-slots"
+    ],
+    "redirect": "For an affix, prefer an inflectional or derivational MSA with categories and a slot over unclassified (guide suffix-prefix-slots). One entry per morpheme, not per stem."
   },
   "compose-author-alternate-form": {
     "title": "Author an alternate form",
@@ -203,7 +221,11 @@
       "Give a prefix a second form before vowels",
       "Add a stem variant that appears in one environment",
       "Record another shape of an existing affix"
-    ]
+    ],
+    "guides": [
+      "conditioned-allomorphs"
+    ],
+    "redirect": "Use for a listed variant of one morpheme. Not for a regular sound change across many forms: use a phonological rule (guide nasal-assimilation)."
   },
   "compose-author-part-of-speech": {
     "title": "Author a part of speech",
@@ -213,7 +235,12 @@
       "Add a category for verbs the project lacks",
       "Create a subcategory such as transitive verb",
       "Add a noun category with an abbreviation"
-    ]
+    ],
+    "guides": [
+      "suffix-prefix-slots",
+      "feature-conditioned-slots"
+    ],
+    "redirect": "Put affixes in slots in speakers' order. No entry per stem, and no one broad slot for affixes with different jobs (guide suffix-prefix-slots)."
   },
   "compose-author-affix-slot": {
     "title": "Author an affix slot",
@@ -223,7 +250,12 @@
       "Add a slot for a plural suffix that attaches to nouns",
       "Make a slot for a subject prefix on verbs",
       "Put existing inflectional affixes into a new slot"
-    ]
+    ],
+    "guides": [
+      "suffix-prefix-slots",
+      "feature-conditioned-slots"
+    ],
+    "redirect": "Put affixes in slots in speakers' order. No entry per stem, and no one broad slot for affixes with different jobs (guide suffix-prefix-slots)."
   },
   "compose-author-affix-template": {
     "title": "Author an affix template",
@@ -233,7 +265,12 @@
       "Arrange the prefix and suffix slots of a verb",
       "Build a template for the order of noun affixes",
       "Add an alternative template for a category"
-    ]
+    ],
+    "guides": [
+      "suffix-prefix-slots",
+      "feature-conditioned-slots"
+    ],
+    "redirect": "Put affixes in slots in speakers' order. No entry per stem, and no one broad slot for affixes with different jobs (guide suffix-prefix-slots)."
   },
   "compare": {
     "title": "Compare two Assessments",
@@ -403,7 +440,13 @@
       "Turn off a rule that forbids two forms together",
       "Switch a prohibition back on",
       "Disable a duplicated prohibition"
-    ]
+    ],
+    "guides": [
+      "ask-the-linguist",
+      "suffix-prefix-slots",
+      "feature-conditioned-slots"
+    ],
+    "redirect": "Only disables or enables an existing prohibition. Prefer a slot, template, feature or environment that removes the need (guides suffix-prefix-slots, feature-conditioned-slots)."
   },
   "compose-edit-compound-rule": {
     "title": "Turn a compound rule off or on",
@@ -419,7 +462,12 @@
       "Stop compounding from making non-words",
       "Disable a compound rule that accepts any two stems",
       "Switch a compound rule back on"
-    ]
+    ],
+    "guides": [
+      "workflow",
+      "ask-the-linguist"
+    ],
+    "redirect": "Only turns existing compounding off or on; it builds and fixes nothing. Trial known compounds before and after, and ask the linguist first (guide workflow)."
   },
   "compose-set-no-default-compounding": {
     "title": "Set default compounding",
@@ -434,7 +482,11 @@
       "Stop default compounding from accepting non-words",
       "Turn off the parser's built-in compounding when the language has no compound rules",
       "Switch default compounding back on"
-    ]
+    ],
+    "guides": [
+      "workflow"
+    ],
+    "redirect": "Only turns existing compounding off or on; it builds and fixes nothing. Trial known compounds before and after, and ask the linguist first (guide workflow)."
   },
   "compose-edit-affix-slot": {
     "title": "Edit an affix slot",
@@ -444,7 +496,12 @@
       "Make an affix slot optional",
       "Make a slot required again",
       "See which affixes and templates a slot affects"
-    ]
+    ],
+    "guides": [
+      "suffix-prefix-slots",
+      "feature-conditioned-slots"
+    ],
+    "redirect": "Put affixes in slots in speakers' order. No entry per stem, and no one broad slot for affixes with different jobs (guide suffix-prefix-slots)."
   },
   "compose-edit-affix-template": {
     "title": "Edit an affix template",
@@ -454,7 +511,12 @@
       "Add a slot to a template",
       "Reorder the suffix slots",
       "Remove a slot from a template"
-    ]
+    ],
+    "guides": [
+      "suffix-prefix-slots",
+      "feature-conditioned-slots"
+    ],
+    "redirect": "Put affixes in slots in speakers' order. No entry per stem, and no one broad slot for affixes with different jobs (guide suffix-prefix-slots)."
   },
   "compose-edit-inflectional-affix": {
     "title": "Edit an inflectional affix",
@@ -463,7 +525,12 @@
     "goals": [
       "Move an affix into a different slot",
       "Change which slots an inflectional affix can fill"
-    ]
+    ],
+    "guides": [
+      "suffix-prefix-slots",
+      "feature-conditioned-slots"
+    ],
+    "redirect": "Put affixes in slots in speakers' order. No entry per stem, and no one broad slot for affixes with different jobs (guide suffix-prefix-slots)."
   },
   "compose-edit-part-of-speech-inflection-class-default": {
     "title": "Set a category class default",
@@ -478,7 +545,12 @@
     "goals": [
       "Set the default class for nouns",
       "Clear a category's default inflection class"
-    ]
+    ],
+    "guides": [
+      "suffix-prefix-slots",
+      "feature-conditioned-slots"
+    ],
+    "redirect": "Put affixes in slots in speakers' order. No entry per stem, and no one broad slot for affixes with different jobs (guide suffix-prefix-slots)."
   },
   "compose-edit-stem-allomorph-stem-name": {
     "title": "Set a stem allomorph's name",
@@ -493,7 +565,11 @@
     "goals": [
       "Say which stem name a stem variant uses",
       "Clear the stem name from a variant"
-    ]
+    ],
+    "guides": [
+      "conditioned-allomorphs"
+    ],
+    "redirect": "Keep variants of one morpheme under one entry with narrow conditions. Not for a regular sound change across forms: use a phonological rule (guide nasal-assimilation)."
   },
   "compose-edit-stem-inflection-class": {
     "title": "Set a stem's class",
@@ -509,7 +585,11 @@
       "Assign a stem to its noun class",
       "Change the inflection class of one stem",
       "Clear a stem's class"
-    ]
+    ],
+    "guides": [
+      "feature-conditioned-slots"
+    ],
+    "redirect": "Restrict a slot's affix by feature value; do not copy affixes or slots per value. Arbitrary lexical grouping is an inflection class (guide feature-conditioned-slots)."
   },
   "compose-delete-empty-sense": {
     "title": "Delete an empty sense",
@@ -540,7 +620,11 @@
       "Remove stress marks from lexeme forms so the parser matches them",
       "Rewrite the lexeme form of many entries at once",
       "Keep the stress-marked spelling as the citation form"
-    ]
+    ],
+    "guides": [
+      "conditioned-allomorphs"
+    ],
+    "redirect": "Keep variants of one morpheme under one entry with narrow conditions. Not for a regular sound change across forms: use a phonological rule (guide nasal-assimilation)."
   },
   "compose-set-stem-part-of-speech": {
     "title": "Set a stem's part of speech",
@@ -556,7 +640,12 @@
       "Give a stem analysis a part of speech",
       "Fix the part of speech of one stem",
       "Fill in a missing part of speech"
-    ]
+    ],
+    "guides": [
+      "suffix-prefix-slots",
+      "feature-conditioned-slots"
+    ],
+    "redirect": "Put affixes in slots in speakers' order. No entry per stem, and no one broad slot for affixes with different jobs (guide suffix-prefix-slots)."
   },
   "compose-edit-affix-inflection-classes": {
     "title": "Edit affix class restrictions",
@@ -572,7 +661,12 @@
       "Restrict an affix to certain noun classes",
       "Remove the class restriction from a suffix",
       "Change which classes a prefix attaches to"
-    ]
+    ],
+    "guides": [
+      "suffix-prefix-slots",
+      "feature-conditioned-slots"
+    ],
+    "redirect": "Put affixes in slots in speakers' order. No entry per stem, and no one broad slot for affixes with different jobs (guide suffix-prefix-slots)."
   },
   "compose-edit-allomorph-condition": {
     "title": "Edit an allomorph condition",
@@ -582,7 +676,11 @@
       "Change where an allomorph is allowed to appear",
       "Add an environment to a stem variant",
       "Change which position an affix form takes"
-    ]
+    ],
+    "guides": [
+      "conditioned-allomorphs"
+    ],
+    "redirect": "Keep variants of one morpheme under one entry with narrow conditions. Not for a regular sound change across forms: use a phonological rule (guide nasal-assimilation)."
   },
   "compose-edit-natural-class": {
     "title": "Edit a natural class",
@@ -592,7 +690,12 @@
       "Add a vowel to an existing class",
       "Remove a sound that does not belong in a class",
       "Correct the members of a natural class"
-    ]
+    ],
+    "guides": [
+      "nasal-assimilation",
+      "conditioned-allomorphs"
+    ],
+    "redirect": "Keep sound classes narrow: list only the sounds the pattern needs, never a class spanning unrelated sounds (guide nasal-assimilation)."
   },
   "compose-relink-natural-class": {
     "title": "Relink natural-class users",
@@ -601,7 +704,12 @@
     "goals": [
       "Replace a class with a corrected one everywhere it is used",
       "Move environments and rules onto a new vowel class"
-    ]
+    ],
+    "guides": [
+      "nasal-assimilation",
+      "conditioned-allomorphs"
+    ],
+    "redirect": "Keep sound classes narrow: list only the sounds the pattern needs, never a class spanning unrelated sounds (guide nasal-assimilation)."
   },
   "find-composer": {
     "title": "Find a composer",
@@ -611,12 +719,20 @@
   "compose-batch": {
     "title": "Compose many intents",
     "description": "Stages every intent in a JSON file in one Draft with one project load, through the same checks as each composing command alone. If any intent is refused, nothing is added, and both a label and a Rationale are still required before Finalize. Only a person can Apply.",
-    "source": "Hand-written from command behavior."
+    "source": "Hand-written from command behavior.",
+    "guides": [
+      "workflow"
+    ],
+    "redirect": "Prefer the specific typed composer; batch only stages several in one Draft. One small Proposal per grammar question (guide workflow)."
   },
   "compose": {
     "title": "Compose steps in a Draft",
     "description": "Stages one or more composing steps in a Draft in one call, each a composing command's name and closed intent, and can first remove earlier operations. A later step sees the earlier ones, and if any step or removal is refused, nothing changes. Only a person can Apply.",
-    "source": "Hand-written from command behavior."
+    "source": "Hand-written from command behavior.",
+    "guides": [
+      "workflow"
+    ],
+    "redirect": "Prefer the specific typed composer; batch only stages several in one Draft. One small Proposal per grammar question (guide workflow)."
   },
   "compose-author-text": {
     "title": "Author a text",
@@ -637,7 +753,11 @@
       "Disapprove a wrong analysis",
       "Return a wordform to undecided",
       "Approve the analysis in an interlinear text"
-    ]
+    ],
+    "guides": [
+      "ask-the-linguist"
+    ],
+    "redirect": "Records a decision about an analysis. If the evidence does not decide, ask the linguist instead of guessing (guide ask-the-linguist)."
   },
   "order-allomorphs": {
     "title": "Order alternate forms",
@@ -646,7 +766,11 @@
     "goals": [
       "Put the most specific alternate form first",
       "Reorder the alternate forms of an entry"
-    ]
+    ],
+    "guides": [
+      "conditioned-allomorphs"
+    ],
+    "redirect": "Keep variants of one morpheme under one entry with narrow conditions. Not for a regular sound change across forms: use a phonological rule (guide nasal-assimilation)."
   },
   "compose-author-feature-structure": {
     "title": "Author grammatical features",
@@ -655,7 +779,11 @@
     "goals": [
       "Attach grammatical features to a stem",
       "Say which features an inflectional affix carries"
-    ]
+    ],
+    "guides": [
+      "feature-conditioned-slots"
+    ],
+    "redirect": "Restrict a slot's affix by feature value; do not copy affixes or slots per value. Arbitrary lexical grouping is an inflection class (guide feature-conditioned-slots)."
   },
   "compose-author-affix-process": {
     "title": "Author an affix process",
@@ -675,7 +803,12 @@
       "Add an infix that is inserted after the first consonant of a stem",
       "Copy the first syllable of a stem to mark a meaning",
       "Repeat a whole stem with a separator between the copies"
-    ]
+    ],
+    "guides": [
+      "workflow",
+      "conditioned-allomorphs"
+    ],
+    "redirect": "Use for infixes, reduplication and stem-internal changes allomorphs cannot express. Nasal assimilation or substitution is a phonological rule (guide nasal-assimilation); context-conditioned forms are allomorphs (guide conditioned-allomorphs)."
   },
   "compose-author-feature-value": {
     "title": "Author a feature value",
@@ -691,7 +824,11 @@
       "Mark a noun as plural in its feature structure",
       "Set a value for a feature on an affix",
       "Leave a feature unspecified on a stem"
-    ]
+    ],
+    "guides": [
+      "feature-conditioned-slots"
+    ],
+    "redirect": "Restrict a slot's affix by feature value; do not copy affixes or slots per value. Arbitrary lexical grouping is an inflection class (guide feature-conditioned-slots)."
   },
   "compose-author-phoneme": {
     "title": "Author a phoneme",
@@ -701,7 +838,12 @@
       "Add a missing consonant to the sound inventory",
       "Record a vowel with its written representations",
       "Add a phoneme that rules will refer to"
-    ]
+    ],
+    "guides": [
+      "nasal-assimilation",
+      "conditioned-allomorphs"
+    ],
+    "redirect": "Add or change a phoneme only for a real contrast; a surface variant a rule or allomorph explains is not a new phoneme (guides nasal-assimilation, conditioned-allomorphs)."
   },
   "compose-edit-phoneme": {
     "title": "Edit a phoneme's representations",
@@ -717,7 +859,12 @@
       "Add the digraph ng as a way to write an existing nasal phoneme",
       "Write the affricate with the digraph ts",
       "Respell a phoneme's representation without creating a second phoneme"
-    ]
+    ],
+    "guides": [
+      "nasal-assimilation",
+      "conditioned-allomorphs"
+    ],
+    "redirect": "Add or change a phoneme only for a real contrast; a surface variant a rule or allomorph explains is not a new phoneme (guides nasal-assimilation, conditioned-allomorphs)."
   },
   "compose-author-natural-class": {
     "title": "Author a natural class",
@@ -727,7 +874,12 @@
       "Make a vowel class for harmony rules",
       "Group the voiceless stops into one class",
       "Define a class of sounds that an environment can name"
-    ]
+    ],
+    "guides": [
+      "nasal-assimilation",
+      "conditioned-allomorphs"
+    ],
+    "redirect": "Keep sound classes narrow: list only the sounds the pattern needs, never a class spanning unrelated sounds (guide nasal-assimilation)."
   },
   "compose-author-environment": {
     "title": "Author an environment",
@@ -737,7 +889,12 @@
       "Say that a form appears after a vowel",
       "Describe the sounds before and after where an affix changes",
       "Make a word-initial environment for a rule"
-    ]
+    ],
+    "guides": [
+      "conditioned-allomorphs",
+      "nasal-assimilation"
+    ],
+    "redirect": "Keep the environment as narrow as the evidence. For a regular change across many forms use a phonological rule, not environments (guide nasal-assimilation)."
   },
   "show": {
     "title": "Show a Proposal",
@@ -812,7 +969,11 @@
   "new": {
     "title": "Start a Proposal",
     "description": "Starts a named Draft holding one related set of semantic changes. Set a short label and a Rationale before Finalize, then measure and revise the Draft. Only a person can Apply.",
-    "source": "Authored from ADR 0058 and the typed command contract."
+    "source": "Authored from ADR 0058 and the typed command contract.",
+    "guides": [
+      "workflow"
+    ],
+    "redirect": "Start one small Proposal per grammar question, then try it before anything else (guide workflow)."
   },
   "finalize": {
     "title": "Finalize a Proposal",
@@ -848,7 +1009,11 @@
       "Add the citation form of a new stem or affix",
       "Record the lexeme form in another writing system",
       "Fix the headword spelling of an entry"
-    ]
+    ],
+    "guides": [
+      "conditioned-allomorphs"
+    ],
+    "redirect": "Keep variants of one morpheme under one entry with narrow conditions. Not for a regular sound change across forms: use a phonological rule (guide nasal-assimilation)."
   },
   "list": {
     "title": "List Proposals",
@@ -913,7 +1078,11 @@
       "Add a number feature with singular and plural",
       "Define a tense feature with its values",
       "Create a feature that agreement can refer to"
-    ]
+    ],
+    "guides": [
+      "feature-conditioned-slots"
+    ],
+    "redirect": "Restrict a slot's affix by feature value; do not copy affixes or slots per value. Arbitrary lexical grouping is an inflection class (guide feature-conditioned-slots)."
   },
   "compose-author-inflection-class": {
     "title": "Author inflection class",
@@ -924,7 +1093,11 @@
       "Define a gender or agreement class that nouns are assigned to",
       "Create a subclass of an inflection class",
       "Add a verb conjugation class"
-    ]
+    ],
+    "guides": [
+      "feature-conditioned-slots"
+    ],
+    "redirect": "Use only when stems arbitrarily pattern differently for the same affix. A value that must agree is a feature, not a class (guide feature-conditioned-slots)."
   },
   "compose-author-stem-name": {
     "title": "Author a stem name",
@@ -934,7 +1107,11 @@
       "Name the stem shape used in the plural",
       "Say where a special stem form is allowed",
       "Add a stem name for a set of feature conditions"
-    ]
+    ],
+    "guides": [
+      "conditioned-allomorphs"
+    ],
+    "redirect": "Only names feature conditions; it attaches to no allomorph. For sound-conditioned forms use environments, not a stem name (guide conditioned-allomorphs)."
   },
   "phonology-examples save": {
     "title": "Save phonology examples",

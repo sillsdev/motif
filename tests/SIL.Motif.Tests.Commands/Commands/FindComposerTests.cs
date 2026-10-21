@@ -37,6 +37,15 @@ public sealed class FindComposerTests
         return outcome.Value!;
     }
 
+    [Fact]
+    public void AComposerMatchNamesItsEncodingGuides()
+    {
+        var response = Run(null, "phonological-rules");
+        var rule = Assert.Single(response.Results, match => match.Verb == "compose-author-phonological-rule");
+        Assert.Contains("nasal-assimilation", rule.Guides!);
+        Assert.Contains("alternate form", rule.Redirect!, StringComparison.Ordinal);
+    }
+
     private static readonly string[] LostSubjects = [
         "conditioned-allomorphy",
     ];

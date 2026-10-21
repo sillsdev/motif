@@ -16,3 +16,8 @@ Alternate forms have declared precedence: an eligible earlier form can block a l
 Add `--cite-source <text>` and optionally `--cite-locator <text>` to record the source on every operation this command produces.
 
 The command returns the new form's operations and created entity id. Dry Run and Trial the Draft on affected words, revise it, then Finalize it for a person to review and Apply.
+
+## When not to use this
+
+- For a regular sound change across many forms, use `compose-author-phonological-rule` rather than listing a variant for each.
+- Do not duplicate an unrestricted form for every stem; give each variant the narrowest environment that fits.

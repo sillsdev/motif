@@ -96,7 +96,7 @@
   },
   {
     "name": "motif_start_proposal",
-    "description": "Start a Proposal. Starts a named Draft holding one related set of semantic changes. Set a short label and a Rationale before Finalize, then measure and revise the Draft. Only a person can Apply.\nCommand: new. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nLabel: The short description a person reads while reviewing the Proposal.",
+    "description": "Start a Proposal. Research first: read encoding guide workflow (motif_guide topic, or motif help guide:encoding/\u003Ctopic\u003E --full) and check best practice before adding rules. Start one small Proposal per grammar question, then try it before anything else (guide workflow). Starts a named Draft holding one related set of semantic changes. Set a short label and a Rationale before Finalize, then measure and revise the Draft. Only a person can Apply.\nCommand: new. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nLabel: The short description a person reads while reviewing the Proposal.",
     "inputSchema": {
       "type": "object",
       "properties": {

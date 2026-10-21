@@ -20,3 +20,8 @@ Do not use a Trial as proof that an affix does not exist. If a Proposal changes 
 ## Ask the linguist
 
 Ask when the project lacks enough comparable forms to separate no inflection from missing or unrecorded data. Use attested examples: “`<attested form A>` and `<attested form B>` have the same form in the contexts recorded here. Are these the same lexeme in contrasting `<grammatical contexts>`, and is there another form speakers use?” Replace bracketed items with observed project data; do not state the absence as settled until the comparison is supported.
+
+## Common wrong choices
+
+- Inventing an affix or template because another language marks the distinction.
+- Approximating a missing composer with unrelated edits.

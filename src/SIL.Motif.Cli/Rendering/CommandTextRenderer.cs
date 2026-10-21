@@ -498,6 +498,10 @@ public static class CommandTextRenderer
             text.Append(match.Verb).Append(" - ").AppendLine(match.Title);
             text.Append("  ").AppendLine(match.Description);
             text.Append("  Subjects: ").AppendLine(string.Join(", ", match.Subjects));
+            if (match.Redirect is not null)
+                text.Append("  Wrong choice? ").AppendLine(match.Redirect);
+            if (match.Guides is { Count: > 0 })
+                text.Append("  Guides: ").AppendLine(string.Join(", ", match.Guides.Select(guide => "encoding/" + guide)));
             text.AppendLine(match.IntentSchema is null
                 ? "  Intent: described on the Help page (motif help " + match.Verb + ")."
                 : "  Intent schema: use --json.");

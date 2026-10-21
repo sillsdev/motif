@@ -22,3 +22,8 @@ Use this frame and replace every bracketed item with project evidence:
 > “I found `<attested form A>` in `<observed context A>` and `<attested form B>` in `<observed context B>`. The two analyses predict `<candidate A>` versus `<candidate B>` for `<unobserved or contrasting context>`. Which form would a speaker use there?”
 
 Ask for the missing fact only. Do not bundle a request to choose the analysis, name a rule, provide more examples and approve a Proposal into one question.
+
+## Common wrong choices
+
+- Guessing a high-impact choice the evidence does not support.
+- Asking several questions at once, or with forms that are not attested in the project.

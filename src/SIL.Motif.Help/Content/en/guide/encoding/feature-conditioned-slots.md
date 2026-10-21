@@ -21,3 +21,9 @@ Try words with each attested value and a contrasting value. Confirm the right af
 ## Ask the linguist
 
 Ask when it is unclear whether a contrast is grammatical agreement or arbitrary lexical grouping, or which value belongs to a form. Use attested forms: “`<attested form A>` takes `<affix A>` and is marked `<observed value A>`; `<attested form B>` takes `<affix B>`. Does `<attested form C>` have value `<value A>` or `<value B>`?” Replace bracketed items with project evidence and ask only the question that distinguishes the encodings.
+
+## Common wrong choices
+
+- An arbitrary inflection class for a value that must agree with other words.
+- Letting every affix compete for a slot without feature restrictions the data supports.
+- A separate affix or slot per feature value.

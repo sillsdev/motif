@@ -20,3 +20,9 @@ Include words that should take each affix and words that should not. Check that 
 ## Ask the linguist
 
 Ask when the forms do not show whether an affix is required, optional or ordered relative to another affix. Build one question from attested words: “I found `<attested form A>` with `<affix A>` and `<attested form B>` with `<affix B>`. In `<attested context C>`, should both affixes occur, and in what order?” Replace each bracketed item with evidence from this project.
+
+## Common wrong choices
+
+- An affix entry per stem, or one broad slot for affixes with different jobs.
+- An unclassified affix when an inflectional or derivational analysis with a slot fits.
+- An ad hoc prohibition for an order a template can express.

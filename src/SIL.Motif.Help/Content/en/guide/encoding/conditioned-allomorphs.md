@@ -21,3 +21,9 @@ After a composer can express the change, include attested words from each sound 
 ## Ask the linguist
 
 Ask when the evidence does not show whether the variants share a morpheme or what sound defines the environment. Use real project forms: “I found `<attested form A>` before `<observed sound class A>` and `<attested form B>` before `<observed sound class B>`. Does `<variant>` also occur before `<attested sound C>`, or is that a separate morpheme?” Replace bracketed items with forms read from this project; label any unobserved form as a prediction.
+
+## Common wrong choices
+
+- A separate entry for each variant of one morpheme.
+- An environment broader than the evidence, or an unrestricted form placed before narrower ones.
+- Listing variants for a regular sound change across many forms; a phonological rule fits that better.

@@ -51,3 +51,8 @@ The guides name MCP tools. From the CLI, use the matching `motif` command; run `
 | `motif_difference` | `motif difference produce` |
 | `motif_guide` | `motif help guide:encoding/<topic> --full` |
 
+## Common wrong choices
+
+- Reaching for an affix process, ad hoc prohibition or batch when a typed composer fits the claim.
+- Making one large Proposal for several grammar questions.
+- Describing an unmeasured change as an improvement.

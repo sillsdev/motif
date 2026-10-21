@@ -34,6 +34,58 @@ public sealed class HelpCatalogTests
     }
 
     [Fact]
+    public void EveryGuideTopicNamedByACommandIsAnEncodingGuide()
+    {
+        var catalog = HelpCatalog.Load(System.Globalization.CultureInfo.GetCultureInfo("en"));
+        var named = catalog.Entries.Where(entry => entry.Kind == HelpEntryKind.Command && entry.Guides is not null).ToArray();
+
+        Assert.NotEmpty(named);
+        foreach (var entry in named)
+        {
+            Assert.InRange(entry.Guides!.Count, 1, 3);
+            foreach (var topic in entry.Guides)
+                Assert.NotNull(catalog.Find(HelpEntryKind.Guide, "encoding/" + topic));
+        }
+    }
+
+    [Fact]
+    public void EveryCommandWithGuidesAlsoHasAShortRedirectLine()
+    {
+        var catalog = HelpCatalog.Load(System.Globalization.CultureInfo.GetCultureInfo("en"));
+        foreach (var entry in catalog.Entries.Where(entry => entry.Kind == HelpEntryKind.Command && entry.Guides is not null))
+        {
+            Assert.False(string.IsNullOrWhiteSpace(entry.Redirect), $"'{entry.Code}' has guides but no redirect.");
+            Assert.InRange(entry.Redirect!.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length, 8, 40);
+        }
+    }
+
+    // Composers that change no grammar rule or lexical form, so no phenomenon guide applies.
+    private static readonly IReadOnlyDictionary<string, string> ComposersWithoutGuides = new Dictionary<string, string>
+    {
+        ["compose-author-text"] = "adds a text to analyse, not grammar",
+        ["compose-delete-empty-sense"] = "removes an empty sense, which encodes no phenomenon",
+        ["compose-record-parsimony-disposition"] = "records a review decision about a Parsimony finding",
+    };
+
+    [Fact]
+    public void EveryGrammarComposerNamesAnEncodingGuideUnlessAllowListed()
+    {
+        var catalog = HelpCatalog.Load(System.Globalization.CultureInfo.GetCultureInfo("en"));
+        var composers = catalog.Entries.Where(entry => entry.Kind == HelpEntryKind.Command
+            && (entry.Code.StartsWith("compose", StringComparison.Ordinal)
+                || entry.Code is "order-allomorphs" or "retire-allomorph" or "retire-redundant-zero-affix" or "new")).ToArray();
+
+        Assert.Contains(composers, entry => entry.Code == "compose-author-phonological-rule");
+        foreach (var entry in composers)
+        {
+            if (ComposersWithoutGuides.ContainsKey(entry.Code))
+                Assert.Null(entry.Guides);
+            else
+                Assert.True(entry.Guides is { Count: > 0 }, $"'{entry.Code}' names no encoding guide.");
+        }
+    }
+
+    [Fact]
     public void EveryTypedComposerFieldHasAHelpDescriptionAndNoDescriptionIsOrphaned()
     {
         var catalog = HelpCatalog.Load(System.Globalization.CultureInfo.GetCultureInfo("en"));

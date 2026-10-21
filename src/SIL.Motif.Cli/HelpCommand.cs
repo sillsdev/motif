@@ -283,6 +283,10 @@ public static class HelpCommand
     private static void PrintEntry(HelpEntry entry, HelpEntryKind kind, HelpCatalog catalog, TextWriter output)
     {
         output.WriteLine(entry.Title);
+        if (entry.GuideLine is { } guideLine)
+            output.WriteLine(guideLine);
+        if (entry.Redirect is { } redirect)
+            output.WriteLine(redirect);
         output.WriteLine(entry.Description);
         if (kind == HelpEntryKind.Command)
         {

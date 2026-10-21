@@ -29,6 +29,8 @@ public sealed record ComposerSubjectPage(string Id, string Title, string? Excerp
 /// <param name="SubjectPage">In detailed mode, the Subject page that best fits the search.</param>
 /// <param name="Score">In a goal search, the rarity-weighted overlap that ranked the composer; null in a Subject search.</param>
 /// <param name="MatchedWords">In a goal search, the goal's words found in the composer's text; null in a Subject search.</param>
+/// <param name="Guides">The encoding guide topics to read before using the composer, or null when it names none.</param>
+/// <param name="Redirect">When the composer is the wrong choice and what to use instead, or null when it names none.</param>
 public sealed record ComposerMatch(
     string Verb,
     string Title,
@@ -39,7 +41,9 @@ public sealed record ComposerMatch(
     string? Example = null,
     ComposerSubjectPage? SubjectPage = null,
     double? Score = null,
-    IReadOnlyList<string>? MatchedWords = null);
+    IReadOnlyList<string>? MatchedWords = null,
+    IReadOnlyList<string>? Guides = null,
+    string? Redirect = null);
 
 /// <summary>A Subject named as the nearest to a goal no composer covers.</summary>
 /// <param name="Id">The Subject id.</param>
@@ -347,7 +351,9 @@ public static class FindComposerCommand
                 schema,
                 schema is null ? "help" : "shape",
                 detailed ? FirstExample(Entry?.HelpPage) : null,
-                detailed ? SubjectPage(help, subjectId) : null);
+                detailed ? SubjectPage(help, subjectId) : null,
+                Guides: Entry?.Guides,
+                Redirect: Entry?.Redirect);
         }
     }
 

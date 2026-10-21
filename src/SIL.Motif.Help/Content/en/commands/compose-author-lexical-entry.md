@@ -16,3 +16,9 @@ An affix can also be restricted. `inflectionClasses` lists existing inflection c
 Add `--cite-source <text>` and optionally `--cite-locator <text>` to record the source on every operation this command produces.
 
 Every id can belong to something an earlier command added to the same Draft, such as a new part of speech. The command returns the new entry's operations and created entity ids for later calls. Dry Run and Trial the Draft on affected words, revise it, then Finalize it for a person to review and Apply.
+
+## When not to use this
+
+- For an affix, prefer an inflectional MSA with its category and a slot over an unclassified one, which attaches without restriction.
+- Do not create an entry per stem that takes the same affix; one affix entry serves them all.
+- For another form of an existing entry, use `compose-author-alternate-form`.

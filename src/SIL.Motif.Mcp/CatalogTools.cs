@@ -66,8 +66,10 @@ internal static class CatalogTools
     {
         var entry = Help.Find(HelpEntryKind.Command, name);
         if (entry is null) throw new InvalidOperationException($"Tool '{name}' needs shared Help text.");
-        return entry.Title + ". " + entry.Description;
+        return entry.Title + ". " + GuidePrefix(entry) + entry.Description;
     }
+
+    private static string GuidePrefix(HelpEntry entry) => entry.Callout is { } line ? line + " " : string.Empty;
 
     internal static string Describe(IEnumerable<CommandDescriptor> commands) => string.Join("\n", commands.Select(command =>
     {
@@ -75,7 +77,7 @@ internal static class CatalogTools
             ?? throw new InvalidOperationException($"Command '{command.Name}' needs shared Help text.");
         var fields = command.RequestType.GetProperties().Where(property => !IsContext(property.Name))
             .Select(property => FieldDoc(command.RequestType, property)).Where(value => value.Length > 0);
-        return entry.Title + ". " + entry.Description + "\nCommand: " + command.Name + ". " +
+        return entry.Title + ". " + GuidePrefix(entry) + entry.Description + "\nCommand: " + command.Name + ". " +
             "Agent class: " + command.Agent + ".\n" + string.Join("\n", fields);
     }));
 
