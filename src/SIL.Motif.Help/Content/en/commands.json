@@ -526,6 +526,22 @@
       "Clean up blank senses left by an import"
     ]
   },
+  "compose-rewrite-lexeme-form": {
+    "title": "Rewrite lexeme forms",
+    "description": "Rewrites the lexeme form of many existing entries in one Draft, each guarded by the form it must hold now, and can keep the old spelling as the citation form. Use it when the lexeme form carries stress marks the parser cannot match; Motif stages a Draft and never Applies it automatically. Only a person can Apply.",
+    "source": "Hand-written from the closed intent and composer contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "entries": "The entries to rewrite, each with entryGuid, writingSystem, expectedForm and newForm; a current form that differs from expectedForm refuses the whole batch.",
+      "setEmptyCitationForm": "When true, an entry with no citation form in that writing system gets its old lexeme form as the citation form.",
+      "foldStressMarks": "When true, omit newForm: it is computed from expectedForm by removing U+0300, U+0301, U+0302, U+0304 and U+030C only."
+    },
+    "goals": [
+      "Remove stress marks from lexeme forms so the parser matches them",
+      "Rewrite the lexeme form of many entries at once",
+      "Keep the stress-marked spelling as the citation form"
+    ]
+  },
   "compose-set-stem-part-of-speech": {
     "title": "Set a stem's part of speech",
     "description": "Sets the part of speech of one existing stem analysis after checking the expected current value. Its inflection class, if any, must belong to the new part of speech; Motif stages a Draft for a person to review and Apply.",

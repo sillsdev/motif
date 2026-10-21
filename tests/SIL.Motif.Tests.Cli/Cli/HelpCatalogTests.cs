@@ -111,6 +111,7 @@ public sealed class HelpCatalogTests
                      "compose-edit-stem-inflection-class",
                      "compose-edit-compound-rule",
                      "compose-set-no-default-compounding",
+                     "compose-rewrite-lexeme-form",
                      "order-allomorphs",
                      "compose-author-text",
                      "compose-edit-analysis-decision",
