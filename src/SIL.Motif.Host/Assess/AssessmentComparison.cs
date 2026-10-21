@@ -144,9 +144,7 @@ public static class AssessmentComparer
 
         // Unknown on either side (recorded before parsers were) is not a mismatch: there is nothing to compare.
         var parserMismatch = from.ParserSha256 is not null && to.ParserSha256 is not null &&
-            (!string.Equals(from.ParserSha256, to.ParserSha256, StringComparison.Ordinal) ||
-             (from.ParserVersion is not null && to.ParserVersion is not null &&
-              !string.Equals(from.ParserVersion, to.ParserVersion, StringComparison.Ordinal)));
+            !string.Equals(from.ParserSha256, to.ParserSha256, StringComparison.Ordinal);
         var parserWarning = parserMismatch
             ? $"'{from.AssessmentId}' was parsed by {ParserIdentity.Describe(from.ParserVersion, from.ParserSha256)}; " +
               $"'{to.AssessmentId}' by {ParserIdentity.Describe(to.ParserVersion, to.ParserSha256)}. A word that " +

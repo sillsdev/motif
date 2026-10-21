@@ -158,8 +158,6 @@ public static class JobCommands
                     "The Draft changed after it was checked. Reload it before queueing a Trial.",
                     new Dictionary<string, string>(StringComparer.Ordinal) { ["draftName"] = record.DraftName }));
 
-            if (ParserPinGuard.Refuse(parserPath) is { } unidentified)
-                return CommandOutcome<JobEnqueuedResponse>.Refused(unidentified);
             var jobs = new JobRepository(database);
             var jobId = CanonicalId.Mint("job/").Value;
             var workspaceKey = ProjectWorkspaceKey.Compute(project);

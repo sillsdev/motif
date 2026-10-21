@@ -420,7 +420,7 @@ internal static class WorkerRuntime
                             handoverCreated = job.CreatedUtc;
                         }
                     }
-                    else if (!(pin is not null && job.Status == JobStatus.Queued && TryFailUnavailable(runtime, job, pin)))
+                    else if (!(pin is not null && TryFailUnavailable(runtime, job, pin)))
                         unresolved = true;
                 }
                 if (active.Count - foreignJobs.Count != 0 || unresolved)
@@ -537,7 +537,7 @@ internal static class WorkerRuntime
     internal readonly record struct SweepOutcome(string? JobId, bool HasActiveWork, bool YieldToOtherParser = false,
         ParserHandover? Handover = null);
 
-    /// <summary>Fails a queued job whose pinned parser can no longer be started.</summary>
+    /// <summary>Fails a queued or lease-expired job whose pinned parser cannot be started.</summary>
     private static bool TryFailUnavailable(Projects.ProjectRuntime runtime, JobRecord job, PinnedParser pin)
     {
         try

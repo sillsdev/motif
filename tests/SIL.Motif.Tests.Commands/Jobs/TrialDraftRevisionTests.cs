@@ -118,6 +118,7 @@ public sealed class TrialDraftRevisionTests
         var id = NewDraftWithOneGloss("pinned-trial");
         var parser = FakeParser.CopyReportingVersion(
             Path.Combine(Path.GetTempPath(), "motif-pin-" + Guid.NewGuid().ToString("N")), "0.8.8");
+        ParserExecutableIdentity.ReadVersion(parser);
 
         var queued = JobCommands.EnqueueTrial(new EnqueueTrialRequest(_fwDataPath, ProductVersion, id,
             Words: ["word"]), parser);
@@ -148,19 +149,20 @@ public sealed class TrialDraftRevisionTests
     }
 
     [Fact]
-    public void AParserThatCannotBeIdentifiedRefusesTheTrialInsteadOfLeavingItUnpinned()
+    public void AParserThatCannotBeIdentifiedStillPinsTheTrialByItsBytes()
     {
         var id = NewDraftWithOneGloss("unidentifiable-trial");
-        var before = CountTrialJobs();
         var broken = Path.Combine(Path.GetTempPath(), "motif-broken-" + Guid.NewGuid().ToString("N"));
         File.WriteAllText(broken, "not an executable");
 
         var queued = JobCommands.EnqueueTrial(new EnqueueTrialRequest(_fwDataPath, ProductVersion, id,
             Words: ["word"]), broken);
 
-        Assert.False(queued.Succeeded);
-        Assert.Equal("job.parser-unidentifiable", queued.Refusal!.Code);
-        Assert.Equal(before, CountTrialJobs());
+        Assert.True(queued.Succeeded, queued.Refusal?.Message);
+        using var database = ProjectMotifDatabase.Open(_fwDataPath);
+        var pin = JobParserPin.Read(new JobRepository(database).Get(queued.Value!.JobId)!.InputJson)!;
+        Assert.Equal(ParserIdentity.Read(broken)!.Sha256, pin.Key);
+        Assert.Equal("unknown", pin.Version);
     }
 
     [Fact]
@@ -169,6 +171,7 @@ public sealed class TrialDraftRevisionTests
         var id = NewDraftWithOneGloss("stranded-trial");
         var parser = FakeParser.CopyReportingVersion(
             Path.Combine(Path.GetTempPath(), "motif-stranded-" + Guid.NewGuid().ToString("N")), "0.8.8");
+        ParserExecutableIdentity.ReadVersion(parser);
         var queued = JobCommands.EnqueueTrial(new EnqueueTrialRequest(_fwDataPath, ProductVersion, id,
             Words: ["word"]), parser);
         using (var database = ProjectMotifDatabase.Open(_fwDataPath))

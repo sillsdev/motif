@@ -15,9 +15,7 @@ public static partial class ParserExecutableIdentity
         try
         {
             var file = new FileInfo(path);
-            var version = file.Exists
-                ? Versions.GetOrAdd((file.FullName, file.LastWriteTimeUtc.Ticks, file.Length), key => VersionOf(key.Path))
-                : "unavailable";
+            var version = file.Exists ? ReadVersion(path) : "unavailable";
             return Path.GetFileName(path) + " " + version;
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException)
@@ -33,13 +31,31 @@ public static partial class ParserExecutableIdentity
         try
         {
             var file = new FileInfo(path);
-            return file.Exists
-                ? Versions.GetOrAdd((file.FullName, file.LastWriteTimeUtc.Ticks, file.Length), key => VersionOf(key.Path))
-                : "unavailable";
+            if (!file.Exists) return "unavailable";
+            var key = (file.FullName, file.LastWriteTimeUtc.Ticks, file.Length);
+            if (Versions.TryGetValue(key, out var known)) return known;
+            var read = VersionOf(file.FullName);
+            if (read != "unavailable") Versions[key] = read;
+            return read;
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException)
         {
             return "unavailable";
+        }
+    }
+
+    /// <summary>The version already read for the executable at <paramref name="path"/>, or null; it runs nothing.</summary>
+    public static string? CachedVersion(string path)
+    {
+        try
+        {
+            var file = new FileInfo(path);
+            return file.Exists && Versions.TryGetValue((file.FullName, file.LastWriteTimeUtc.Ticks, file.Length), out var known)
+                ? known : null;
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            return null;
         }
     }
 

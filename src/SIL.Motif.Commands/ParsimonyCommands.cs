@@ -94,8 +94,6 @@ public static class ParsimonyCommands
                         saved.AddedWords, selection.Words, selection.Sha256),
                 };
             }
-            if (ParserPinGuard.Refuse(parserPath) is { } unidentified)
-                return CommandOutcome<JobEnqueuedResponse>.Refused(unidentified);
             var jobId = CanonicalId.Mint("job/").Value;
             var input = JsonSerializer.Serialize(new ParsimonyJobInput(request.MeasureId, scopeBinding, assessmentIds),
                 MotifJson.CreateOptions());
@@ -200,8 +198,6 @@ public static class ParsimonyCommands
 
             var input = new ParsimonyCandidateJobInput(ParsimonyCandidateJobInput.CurrentSchemaVersion,
                 dryRun.JobId, request.MeasureId, scopeBinding, assessmentIds, retirementTranslation);
-            if (ParserPinGuard.Refuse(parserPath) is { } unidentified)
-                return CommandOutcome<JobEnqueuedResponse>.Refused(unidentified);
             var jobId = CanonicalId.Mint("job/").Value;
             var json = JsonSerializer.Serialize(input, MotifJson.CreateOptions());
             var created = new JobRepository(database).Create(jobId, dryRun.ProjectKey,

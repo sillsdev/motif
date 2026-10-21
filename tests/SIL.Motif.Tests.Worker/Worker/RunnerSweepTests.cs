@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Projects;
+using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker;
@@ -386,6 +387,7 @@ public sealed class RunnerSweepTests : IDisposable
     {
         var oldParser = FakeParser.CopyReportingVersion(Path.Combine(_root, "old-parser"), "0.8.6");
         var pinned = FakeParser.CopyReportingVersion(Path.Combine(_root, "pinned-parser"), "0.8.8");
+        SIL.Motif.Host.PanGloss.ParserExecutableIdentity.ReadVersion(pinned);
         using var machine = MachineDatabase.Open(_options.Root);
         var known = new KnownProjectRegistry(machine);
         var runtime = SeedProject(known, "stranded");
@@ -415,6 +417,47 @@ public sealed class RunnerSweepTests : IDisposable
         Assert.False(outcome.HasActiveWork);
         Assert.False(outcome.YieldToOtherParser);
         Assert.False(activity.YieldRequested);
+    }
+
+    [Fact]
+    public async Task ARunningJobWithAnExpiredLeasePinnedToAVanishedParserIsFailedToo()
+    {
+        var oldParser = FakeParser.CopyReportingVersion(Path.Combine(_root, "old-parser"), "0.8.6");
+        var pinned = FakeParser.CopyReportingVersion(Path.Combine(_root, "pinned-parser"), "0.8.8");
+        using var machine = MachineDatabase.Open(_options.Root);
+        var known = new KnownProjectRegistry(machine);
+        var runtime = SeedProject(known, "expired");
+        runtime.Jobs.Create("orphan", runtime.WorkspaceKey, "probe", JobParserPin.Stamp("{}", pinned),
+            JobTimestamp.FormatUtc(DateTimeOffset.UtcNow));
+        var claimed = new JobClaims(runtime.Database, parserKey: ParserIdentity.KeyOf(pinned))
+            .Claim(runtime.WorkspaceKey, "dead-runner", JobTimestamp.FormatUtc(DateTimeOffset.UtcNow),
+                TimeSpan.FromMilliseconds(1))!;
+        Assert.Equal(JobStatus.Running, runtime.Jobs.Get(claimed.JobId)!.Status);
+        File.Delete(pinned);
+        await Task.Delay(50);
+        var activity = new SIL.Motif.Worker.WorkerRuntime.SweepActivity();
+
+        var outcome = await SIL.Motif.Worker.WorkerRuntime.SweepOnceAsync(known, _runtimes, _lanes,
+            _options with { ParserPath = oldParser }, new FakeInvoker(), OwnerId, CancellationToken.None, activity,
+            runClaimedAsync: (_, _) => Task.CompletedTask);
+
+        var failed = runtime.Jobs.Get("orphan")!;
+        Assert.Equal(JobStatus.Failed, failed.Status);
+        Assert.Contains("job.parser-unavailable", failed.ResultJson);
+        Assert.False(outcome.HasActiveWork);
+        Assert.False(activity.YieldRequested);
+    }
+
+    [Theory]
+    [InlineData("/usr/share/dotnet/dotnet", "/app/SIL.Motif.Worker.dll", "/usr/share/dotnet/dotnet", "/app/SIL.Motif.Worker.dll")]
+    [InlineData("/app/SIL.Motif.Worker", "/app/SIL.Motif.Worker.dll", "/app/SIL.Motif.Worker", null)]
+    public void ARunnerStartedThroughTheDotnetHostIsRestartedThroughIt(string processPath, string entry,
+        string executable, string? prefix)
+    {
+        var command = ParserHandoverLauncher.Command(processPath, entry);
+
+        Assert.Equal(executable, command.Executable);
+        Assert.Equal(prefix is null ? [] : new[] { prefix }, command.Prefix);
     }
 
     [Fact]

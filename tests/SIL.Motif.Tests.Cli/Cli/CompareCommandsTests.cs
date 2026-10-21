@@ -101,6 +101,18 @@ public sealed class CompareCommandsTests : IDisposable
     }
 
     [Fact]
+    public void TwoAssessmentsWithOneParserHashAreTheSameParserWhateverVersionTheyReport()
+    {
+        var fromId = RecordAssessment("pangloss", "ParseTime", "none", "1", [("alpha", true)], Parser("0.8.8", 'd'));
+        var toId = RecordAssessment("pangloss", "ParseTime", "none", "1", [("alpha", false)], Parser("0.8.9", 'd'));
+
+        var response = CompareCommands.Produce(new ProduceComparisonRequest(_project, ProductVersion, fromId, toId))
+            .Value!;
+
+        Assert.Null(response.ParserWarning);
+    }
+
+    [Fact]
     public void TwoAssessmentsMadeByOneParser_DoNotWarn()
     {
         var fromId = RecordAssessment("pangloss", "ParseTime", "none", "1", [("alpha", true)], Parser("0.8.8", 'd'));

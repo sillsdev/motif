@@ -243,6 +243,6 @@ The Assessor remains responsible for interpreting its raw parser format. Motif j
 
 The parser is context, like the tokeniser: two Assessments made by different parsers still join on the word,
 and `compare` says so. When both recorded the parser that ran them (executable version and content hash, see
-[ADR 0039](0039-one-worker-baseline-and-live-host-authority.md)'s amendment of the same date) and the two differ,
-the response, the stored Difference's scope and its report carry a warning naming both, because a change in
+[ADR 0039](0039-one-worker-baseline-and-live-host-authority.md)'s amendment of the same date) and the two content hashes differ,
+the response, the stored Difference's scope and its report carry a warning naming both with their versions when known, because a change in
 the parser looks exactly like a change in the grammar. An Assessment that recorded no parser is not a mismatch.

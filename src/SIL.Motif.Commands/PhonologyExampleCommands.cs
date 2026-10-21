@@ -192,8 +192,6 @@ public static class PhonologyExampleCommands
             if (request.Baseline is not null && request.Baseline != current.Baseline.Token)
                 return CommandOutcome<JobEnqueuedResponse>.Refused(new Refusal("phonology-examples.baseline-changed",
                     FailureReason.Refused, "The named Baseline is no longer the current one; check against the current Baseline."));
-            if (ParserPinGuard.Refuse(parserPath) is { } unidentified)
-                return CommandOutcome<JobEnqueuedResponse>.Refused(unidentified);
             var jobId = CanonicalId.Mint("job/").Value;
             var input = JsonSerializer.Serialize(new PhonologyCheckJobInput(request.RevisionId,
                 current.Baseline.Token, limits), MotifJson.CreateOptions());

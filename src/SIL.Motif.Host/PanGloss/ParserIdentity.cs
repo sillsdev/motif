@@ -5,23 +5,21 @@ using System.Text.Json.Serialization;
 namespace SIL.Motif.Host.PanGloss;
 
 /// <summary>
-/// Which parser an enqueuer expects a job to run on, and which one a Worker is: the version the executable
-/// reports and the SHA-256 of its bytes.
+/// Which parser an enqueuer expects a job to run on, and which one a Worker is: the SHA-256 of its bytes.
 /// </summary>
 /// <remarks>
-/// The version alone is too weak: a development build of PanGloss keeps its version across rebuilds, and the
-/// 0.8.6 and 0.8.8 incident was one stale executable of the wrong release. The content hash is what makes two
-/// executables the same parser, so <see cref="Key"/> is the version and the hash, and a job and a Worker
-/// match only when their keys are equal. The path is recorded as information alone: two copies of one build
-/// are one parser, and a rebuild in place is another.
+/// The bytes fully determine the parser, and a development build keeps its version across rebuilds, so
+/// <see cref="Key"/> is the hash alone and a job and a Worker match only when their keys are equal. The version
+/// and path are information: the version is recorded only when already known, else "unknown", so reading an
+/// identity never runs the parser. Two copies of one build are one parser, and a rebuild in place is another.
 /// </remarks>
 public sealed record ParserIdentity(string Version, string Sha256, string Path)
 {
     private static readonly ConcurrentDictionary<(string Path, long Stamp, long Length), string> Hashes = new();
 
-    /// <summary>The value a job and a Worker compare: version and content hash.</summary>
+    /// <summary>The value a job and a Worker compare: the content hash alone.</summary>
     [JsonIgnore]
-    public string Key => Version + "|" + Sha256;
+    public string Key => Sha256;
 
     /// <summary>Reads the identity of the executable at <paramref name="path"/>, or null when there is none.</summary>
     public static ParserIdentity? Read(string? path)
@@ -36,7 +34,7 @@ public sealed record ParserIdentity(string Version, string Sha256, string Path)
                 using var stream = File.OpenRead(key.Path);
                 return "sha256:" + Convert.ToHexString(SHA256.HashData(stream)).ToLowerInvariant();
             });
-            return new ParserIdentity(ParserExecutableIdentity.ReadVersion(file.FullName), sha, file.FullName);
+            return new ParserIdentity(ParserExecutableIdentity.CachedVersion(file.FullName) ?? "unknown", sha, file.FullName);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or
             ArgumentException)

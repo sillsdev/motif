@@ -330,8 +330,6 @@ public static class RefusalCodes
     public const string JobMoveTargetNotFound = "job.move-target-not-found";
     /// <summary>The parser a queued job was pinned to can no longer be started, so the job was failed.</summary>
     public const string JobParserUnavailable = "job.parser-unavailable";
-    /// <summary>The parser is present but its identity could not be read, so no job was queued.</summary>
-    public const string JobParserUnidentifiable = "job.parser-unidentifiable";
     /// <summary>The job recorded no Assessments.</summary>
     public const string JobNoAssessments = "job.no-assessments";
     /// <summary>The job is still running, so it cannot be requeued.</summary>

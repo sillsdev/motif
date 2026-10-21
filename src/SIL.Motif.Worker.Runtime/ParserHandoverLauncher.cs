@@ -9,7 +9,8 @@ internal sealed record ParserHandover(string ParserPath, string FwDataPath);
 /// <summary>Starts a runner for the parser a retiring runner's leftover work is pinned to.</summary>
 /// <remarks>
 /// It builds the same arguments an enqueuer's launcher gives a runner, pinned by
-/// `AYieldingRunnerHandsTheOldestPinnedJobToARunnerForItsParser`, and starts this executable, which is a runner.
+/// `AYieldingRunnerHandsTheOldestPinnedJobToARunnerForItsParser`, and starts this runner again: its apphost, or
+/// `dotnet <dll>` when it was started that way, pinned by `ARunnerStartedThroughTheDotnetHostIsRestartedThroughIt`.
 /// </remarks>
 internal static class ParserHandoverLauncher
 {
@@ -32,9 +33,10 @@ internal static class ParserHandoverLauncher
 
     internal static void Start(RunnerOptions options, ParserHandover handover, Action<string> reportWarning)
     {
-        var executable = Environment.ProcessPath;
+        var (executable, prefix) = Command(Environment.ProcessPath,
+            System.Reflection.Assembly.GetEntryAssembly()?.Location);
         if (executable is null) return;
-        var arguments = Arguments(options, handover);
+        var arguments = prefix.Concat(Arguments(options, handover)).ToList();
         try
         {
             if (SpawnOverride is { } spawn)
@@ -45,7 +47,6 @@ internal static class ParserHandoverLauncher
             var start = new ProcessStartInfo(executable)
             {
                 UseShellExecute = false, CreateNoWindow = true,
-                RedirectStandardInput = true, RedirectStandardOutput = true, RedirectStandardError = true,
             };
             start.Environment.Remove("ICU_DATA");
             foreach (var argument in arguments) start.ArgumentList.Add(argument);
@@ -57,6 +58,17 @@ internal static class ParserHandoverLauncher
             reportWarning("warning: could not start the runner for the parser queued work is pinned to (" +
                 exception.Message + "). That work stays queued until a runner for it starts.");
         }
+    }
+
+    /// <summary>What starts this runner again: its own executable, or the dotnet host and the runner's dll.</summary>
+    internal static (string? Executable, IReadOnlyList<string> Prefix) Command(string? processPath,
+        string? entryAssembly)
+    {
+        if (processPath is null) return (null, []);
+        var host = Path.GetFileNameWithoutExtension(processPath);
+        return string.Equals(host, "dotnet", StringComparison.OrdinalIgnoreCase) && entryAssembly is not null
+            ? (processPath, [entryAssembly])
+            : (processPath, []);
     }
 
     private static string Milliseconds(TimeSpan value) =>

@@ -30,6 +30,21 @@ public sealed class JobParserPinTests : IDisposable
             MotifSchema.CurrentSchema, new Version(1, 0));
         _oldParser = FakeParser.CopyReportingVersion(Path.Combine(_root, "old"), "0.8.6");
         _newParser = FakeParser.CopyReportingVersion(Path.Combine(_root, "new"), "0.8.8");
+        ParserExecutableIdentity.ReadVersion(_oldParser);
+        ParserExecutableIdentity.ReadVersion(_newParser);
+    }
+
+    [Fact]
+    public void AParserThatCannotReportItsVersionStillPinsByItsBytes()
+    {
+        var broken = Path.Combine(_root, "not-a-parser");
+        File.WriteAllText(broken, "not an executable");
+
+        var identity = ParserIdentity.Read(broken)!;
+
+        Assert.Equal("unknown", identity.Version);
+        Assert.Equal(identity.Sha256, identity.Key);
+        Assert.Equal(identity.Key, JobParserPin.KeyOf(JobParserPin.Stamp("{}", broken)));
     }
 
     [Fact]
@@ -49,6 +64,7 @@ public sealed class JobParserPinTests : IDisposable
     {
         var rebuilt = FakeParser.CopyReportingVersion(Path.Combine(_root, "rebuilt"), "0.8.8");
         File.AppendAllText(rebuilt, " ");
+        ParserExecutableIdentity.ReadVersion(rebuilt);
 
         var original = ParserIdentity.Read(_newParser)!;
         var changed = ParserIdentity.Read(rebuilt)!;
