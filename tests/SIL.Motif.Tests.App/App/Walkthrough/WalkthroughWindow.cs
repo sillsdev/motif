@@ -508,15 +508,7 @@ public sealed class WalkthroughWindow : IDisposable
                 : string.Empty;
             throw new InvalidOperationException($"AutomationId '{automationId}' has no visible bounds.{state}");
         }
-        // Word-list slots are skipped, so a target past a slot's horizontal viewport is not reported as clipped.
-        var clippedBy = control.GetVisualAncestors().OfType<ScrollViewer>()
-            .Where(viewer => viewer is not WordListSlot)
-            .FirstOrDefault(viewer =>
-            {
-                var viewportOrigin = control.TranslatePoint(new Point(), viewer);
-                return viewportOrigin is not { } point ||
-                    !FitsViewport(new Rect(point, control.Bounds.Size), viewer.Viewport);
-            });
+        var clippedBy = ClippingViewer(control);
         if (clippedBy is not null)
         {
             var viewportOrigin = control.TranslatePoint(new Point(), clippedBy);
@@ -536,6 +528,15 @@ public sealed class WalkthroughWindow : IDisposable
             ?? throw new InvalidOperationException($"AutomationId '{automationId}' is outside the main window.");
         return new Rect(origin, control.Bounds.Size);
     }
+
+    /// <summary>The nearest ScrollViewer, a word-list slot included, whose viewport does not contain the control.</summary>
+    internal static ScrollViewer? ClippingViewer(Control control) =>
+        control.GetVisualAncestors().OfType<ScrollViewer>().FirstOrDefault(viewer =>
+        {
+            var viewportOrigin = control.TranslatePoint(new Point(), viewer);
+            return viewportOrigin is not { } point ||
+                !FitsViewport(new Rect(point, control.Bounds.Size), viewer.Viewport);
+        });
 
     internal static bool FitsViewport(Rect target, Size viewport) =>
         target.X >= 0 && target.Y >= 0 && target.Right <= viewport.Width && target.Bottom <= viewport.Height;

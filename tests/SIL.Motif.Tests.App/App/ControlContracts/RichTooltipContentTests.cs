@@ -337,6 +337,30 @@ internal sealed class TooltipScenes
                 row.FocusWord();
                 PageScreenshots.Settle(Window);
                 break;
+            case TooltipScene.WhatChanged:
+                Show(WorkspacePage.Texts, TextsTab.Matrix);
+                await Until(() => Workspace.Assess.State == RunState.Completed && Workspace.Assess.Result is not null,
+                    "the Sample Assessment to finish");
+                var firstRun = Workspace.Assess.Result!;
+                // A second run that loses kitabu's analysis moves kitabu between cells, so What changed has a move.
+                _client.AssessCompletesWith(firstRun with
+                {
+                    Words = [.. firstRun.Words.Select(item => item.Word != "kitabu" ? item : item with
+                    {
+                        Outcome = "no-analysis",
+                        Morphology = null,
+                        Readings = [],
+                        ReadingGrades = [],
+                    })],
+                });
+                await Workspace.Assess.RunCommand.ExecuteAsync(null);
+                var difference = Workspace.Assess.Difference;
+                await Until(() => difference.Moves.Count > 0, "a move between the two runs");
+                difference.SelectedMove = difference.Moves.First(move => move.Words.Any(moved => moved.Word == "kitabu"));
+                Show(WorkspacePage.Texts, TextsTab.WhatChanged);
+                await Until(() => Visible<WordListSlot>().Any(slot => slot.CurrentLayout is not null),
+                    "the What changed word list");
+                break;
             case TooltipScene.MatrixStaged: Show(WorkspacePage.Texts, TextsTab.Matrix); break;
             case TooltipScene.Reader:
                 Show(WorkspacePage.Texts, TextsTab.AnalyzeTexts);

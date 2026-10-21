@@ -599,6 +599,7 @@ internal enum TooltipScene
     OpenRecent,
     CollapsedSidebar,
     Matrix,
+    WhatChanged,
     Reader,
     AnalyzeWordList,
     ReaderDisapproved,
