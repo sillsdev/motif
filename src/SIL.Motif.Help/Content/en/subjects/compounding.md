@@ -12,7 +12,11 @@ A compound joins two stems into one word. FieldWorks allows it through compound 
 
 1. `compose-edit-compound-rule` turns one compound rule off or on. Give the rule's id, the Disabled value you read, and the one you want.
 
+2. `compose-set-no-default-compounding` turns the parser's built-in default compounding off or on for the whole project. Use it when the language has no compound rules and the parser still accepts words that join two stems.
+
 ## Pitfalls
+
+- The parser compounds by default even when the project has no compound rules at all; turning that off removes every word built that way, so test known compounds before and after.
 
 - Turning a rule off removes every word it builds, including real compounds. Test known compounds before and after.
 - A new Assessment is needed to see the effect on the words the parser accepts; compare it with the one taken before the change.

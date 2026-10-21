@@ -12,6 +12,7 @@ public sealed class InflectionClassEditorDispatchTests
     [InlineData("compose-edit-stem-allomorph-stem-name")]
     [InlineData("compose-edit-stem-inflection-class")]
     [InlineData("compose-edit-compound-rule")]
+    [InlineData("compose-set-no-default-compounding")]
     public void DraftComposerRegistryContainsTheInflectionClassEditors(string verb)
     {
         Assert.Contains(verb, ProposalCommands.DraftComposers.Keys);

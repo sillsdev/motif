@@ -130,6 +130,7 @@ public static class ChangeVocabulary
             ["RelinkNaturalClass"] = ("Point to natural class", "Point to another natural class"),
             ["EditAdhocProhibition"] = ("Change restriction", "Change a co-occurrence restriction"),
             ["EditCompoundRule"] = ("Change compound rule", "Turn a compound rule off or on"),
+            ["SetNoDefaultCompounding"] = ("Change default compounding", "Turn default compounding off or on"),
             ["EditAffixSlot"] = ("Change affix slot", "Change an affix slot"),
             ["EditAffixTemplate"] = ("Change affix template", "Change an affix template"),
             ["EditInflectionalAffix"] = ("Change affix", "Change an inflectional affix"),

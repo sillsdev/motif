@@ -43,6 +43,7 @@ public sealed class InflectionClassEditorCliTests
 
     [Theory]
     [InlineData("compose-edit-compound-rule")]
+    [InlineData("compose-set-no-default-compounding")]
     public void EditorVerbsThatAreDraftAgentToolsStillReachCliUsage(string verb)
     {
         var descriptor = Assert.Single(CommandCatalog.All, command => command.Name == verb);

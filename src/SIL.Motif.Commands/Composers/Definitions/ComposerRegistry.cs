@@ -15,6 +15,7 @@ internal static class ComposerDefinitions
         new EditPartOfSpeechInflectionClassDefaultDefinition(),
         new EditStemAllomorphStemNameDefinition(),
         new EditStemInflectionClassDefinition(),
+        new SetNoDefaultCompoundingDefinition(),
         new SetStemPartOfSpeechDefinition(),
         new RetireAllomorphDefinition(),
         new RetireRedundantZeroAffixDefinition(),

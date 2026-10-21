@@ -421,6 +421,21 @@
       "Switch a compound rule back on"
     ]
   },
+  "compose-set-no-default-compounding": {
+    "title": "Set default compounding",
+    "description": "Stages one explicit change to the parser's built-in default compounding in a Draft. A project with no compound rules of its own still has the parser join any two stems unless default compounding is turned off; the expected value guards against stale evidence, and only a person can Apply.",
+    "source": "Hand-written from the closed intent and composer contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "expectedNoDefaultCompounding": "Whether default compounding is turned off now: true when it is, false when it is on.",
+      "noDefaultCompounding": "Whether default compounding should be turned off: true to turn it off, false to turn it on."
+    },
+    "goals": [
+      "Stop default compounding from accepting non-words",
+      "Turn off the parser's built-in compounding when the language has no compound rules",
+      "Switch default compounding back on"
+    ]
+  },
   "compose-edit-affix-slot": {
     "title": "Edit an affix slot",
     "description": "Changes whether an existing inflectional affix slot is optional. The response lists every affix and template using the shared slot; Motif stages a Draft and never Applies it automatically. Only a person can Apply.",
