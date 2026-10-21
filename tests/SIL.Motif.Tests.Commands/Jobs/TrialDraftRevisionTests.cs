@@ -148,6 +148,51 @@ public sealed class TrialDraftRevisionTests
     }
 
     [Fact]
+    public void AParserThatCannotBeIdentifiedRefusesTheTrialInsteadOfLeavingItUnpinned()
+    {
+        var id = NewDraftWithOneGloss("unidentifiable-trial");
+        var before = CountTrialJobs();
+        var broken = Path.Combine(Path.GetTempPath(), "motif-broken-" + Guid.NewGuid().ToString("N"));
+        File.WriteAllText(broken, "not an executable");
+
+        var queued = JobCommands.EnqueueTrial(new EnqueueTrialRequest(_fwDataPath, ProductVersion, id,
+            Words: ["word"]), broken);
+
+        Assert.False(queued.Succeeded);
+        Assert.Equal("job.parser-unidentifiable", queued.Refusal!.Code);
+        Assert.Equal(before, CountTrialJobs());
+    }
+
+    [Fact]
+    public void AJobFailedBecauseItsParserIsGoneShowsItsCodeAndWaitReturnsItAtOnce()
+    {
+        var id = NewDraftWithOneGloss("stranded-trial");
+        var parser = FakeParser.CopyReportingVersion(
+            Path.Combine(Path.GetTempPath(), "motif-stranded-" + Guid.NewGuid().ToString("N")), "0.8.8");
+        var queued = JobCommands.EnqueueTrial(new EnqueueTrialRequest(_fwDataPath, ProductVersion, id,
+            Words: ["word"]), parser);
+        using (var database = ProjectMotifDatabase.Open(_fwDataPath))
+        {
+            var jobs = new JobRepository(database);
+            var job = jobs.Get(queued.Value!.JobId)!;
+            jobs.Transition(job.JobId, SIL.Motif.Contract.Jobs.JobStatus.Failed, job.Version,
+                SIL.Motif.Contract.Jobs.JobFailureCategory.Infrastructure,
+                JobParserPin.UnavailableResult(JobParserPin.Read(job.InputJson)!));
+        }
+
+        var started = System.Diagnostics.Stopwatch.StartNew();
+        var waited = JobCommands.WaitForJob(new WaitForJobRequest(_fwDataPath, queued.Value!.JobId,
+            ProductVersion, TimeSpan.FromSeconds(60)));
+
+        Assert.True(started.Elapsed < TimeSpan.FromSeconds(10), "the wait took " + started.Elapsed);
+        Assert.True(waited.Succeeded, waited.Refusal?.Message);
+        Assert.Equal(SIL.Motif.Contract.Jobs.JobStatus.Failed, waited.Value!.Status);
+        Assert.Equal("job.parser-unavailable", waited.Value.FailureCode);
+        Assert.Contains("Run the Trial again", waited.Value.FailureDetail);
+        Assert.Contains("0.8.8", waited.Value.FailureDetail);
+    }
+
+    [Fact]
     public void ATrialKeepsTheWordsItsCallerNamedEvenForAGrammarChange()
     {
         var id = NewDraftWithOneGloss("named-scope");

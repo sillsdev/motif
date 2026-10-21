@@ -58,4 +58,38 @@ public static class JobParserPin
     /// <summary>Whether a Worker whose parser key is <paramref name="workerKey"/> may claim the job.</summary>
     public static bool Matches(string inputJson, string? workerKey) =>
         KeyOf(inputJson) is not { } pinned || string.Equals(pinned, workerKey, StringComparison.Ordinal);
+
+    /// <summary>The parser a job is pinned to, or null for a job with no pin.</summary>
+    public static PinnedParser? Read(string inputJson)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(inputJson);
+            if (document.RootElement.ValueKind != JsonValueKind.Object ||
+                !document.RootElement.TryGetProperty(Property, out var pin) || pin.ValueKind != JsonValueKind.Object)
+                return null;
+            string? Text(string name) => pin.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String
+                ? value.GetString() : null;
+            return Text("key") is { } key ? new PinnedParser(Text("version") ?? "unknown version", Text("path") ?? "", key) : null;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>Whether the pinned parser can still be started: its file exists and its identity is still the pin.</summary>
+    public static bool IsStartable(PinnedParser pin) =>
+        pin.Path.Length != 0 && string.Equals(ParserIdentity.KeyOf(pin.Path), pin.Key, StringComparison.Ordinal);
+
+    /// <summary>The result document of a job failed because its pinned parser can no longer be started.</summary>
+    public static string UnavailableResult(PinnedParser pin) => new JsonObject
+    {
+        ["code"] = SIL.Motif.Contract.Commands.RefusalCodes.JobParserUnavailable,
+        ["message"] = "This job was queued for PanGloss " + pin.Version + " at '" + pin.Path +
+            "', which is gone or was replaced, so no runner can run it. Run the Trial again.",
+    }.ToJsonString();
 }
+
+/// <summary>The parser a job's pin names.</summary>
+public sealed record PinnedParser(string Version, string Path, string Key);

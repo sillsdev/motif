@@ -158,6 +158,8 @@ public static class JobCommands
                     "The Draft changed after it was checked. Reload it before queueing a Trial.",
                     new Dictionary<string, string>(StringComparer.Ordinal) { ["draftName"] = record.DraftName }));
 
+            if (ParserPinGuard.Refuse(parserPath) is { } unidentified)
+                return CommandOutcome<JobEnqueuedResponse>.Refused(unidentified);
             var jobs = new JobRepository(database);
             var jobId = CanonicalId.Mint("job/").Value;
             var workspaceKey = ProjectWorkspaceKey.Compute(project);
@@ -310,8 +312,31 @@ public static class JobCommands
             {
                 TrialProgress = trialProgress,
                 StageProgress = stageProgress,
+                FailureCode = FailureCodeOf(job),
+                FailureDetail = FailureCodeOf(job) is null ? null : FailureField(job.ResultJson, "message"),
             });
         });
+    }
+
+    private static string? FailureCodeOf(JobRecord job) =>
+        job.Status == JobStatus.Failed && FailureField(job.ResultJson, "code") is { } code &&
+        (code == RefusalCodes.JobParserUnavailable || RefusalCatalog.Specs.ContainsKey(code)) ? code : null;
+
+    /// <summary>A string a failed job's result records under <paramref name="name"/>, if any.</summary>
+    private static string? FailureField(string? resultJson, string name)
+    {
+        if (resultJson is null) return null;
+        try
+        {
+            using var document = JsonDocument.Parse(resultJson);
+            return document.RootElement.ValueKind == JsonValueKind.Object &&
+                document.RootElement.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String
+                ? value.GetString() : null;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 
     private static (TrialWordProgress? TrialProgress, JobStageProgress? StageProgress) DecodeProgress(

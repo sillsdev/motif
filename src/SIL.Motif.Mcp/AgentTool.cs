@@ -20,8 +20,8 @@ internal sealed class ServerContext(string projectPath, string productVersion, I
 
     public string? ParserPath { get; } = parserPath;
 
-    /// <summary>The parser a job queued now is pinned to: the one the tool uses, else the runner's own.</summary>
-    public string? JobParserPath => ParserPath ?? runner.Options.ParserPath;
+    /// <summary>The parser a job queued now is pinned to: exactly the one the launcher starts runners with.</summary>
+    public string? JobParserPath => runner.Options.ParserPath;
 
     public string ProductVersion { get; } = productVersion;
 

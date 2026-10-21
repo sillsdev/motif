@@ -204,11 +204,22 @@ rejected; the root still has one owner at a time. What changes is who may claim 
 - **Legacy jobs are claimable by any Worker.** A job with no `parserIdentity` (queued before this amendment, or
   by a caller that named no parser) keeps the behaviour it had: refusing it would strand work that no enqueuer
   can re-pin.
-- **A Worker yields to work it cannot run.** Queued work pinned to another parser does not keep a Worker alive;
-  a Worker whose only queued work is such work retires at once. That frees ownership for the Worker the enqueue
-  already started with `--wake-project` and the right `--parser`, which waits for it. If that waiting Worker has
-  already given up (it waits one lease), the job stays queued until the next enqueue, `--wait` poll or MCP wait
-  wakes a Worker again.
+- **A Worker hands work it cannot run to a Worker that can.** Queued work pinned to another parser does not
+  keep a Worker alive. A Worker whose only queued work is such work retires, and as it exits it starts a Worker
+  for the parser the **oldest** such job is pinned to, through the same arguments a wake gives (`--root`,
+  `--parser <pinned path>`, the namespace, idle and lease settings, `--wake-project`). It starts one only when
+  the pinned path exists and its current key still equals the pin. The started Worker waits for ownership as a
+  wake waiter, claims the job, and hands over whatever it leaves behind in the same way. Nothing depends on
+  the enqueue's own Worker still waiting.
+- **A job whose parser cannot be started is failed, not stranded.** When the pinned path is gone, or the key
+  there differs after a rebuild or update, a Worker fails the queued job with the registered code
+  `job.parser-unavailable` and a message naming the pinned version and path and saying to run the Trial again.
+  The job's status shows the code and message, so `--wait`, the MCP wait and the App report it at once. A
+  queued job could not fail before; `queued -> failed` is now a legal transition for exactly this case.
+- **No parser, or an unreadable one, is decided at enqueue.** With no parser configured a job is queued
+  unpinned, as before. With a parser present whose `--version` cannot be read, the enqueue is refused with
+  `job.parser-unidentifiable` rather than queued unpinned. An MCP job is pinned to the parser the launcher
+  starts Workers with, not to a second value.
 - **A result records the parser that ran it.** Each batch invocation's evidence records the executable's
   version and path beside the executable hash it already held, so Assess and Trial Assessments both say which
   parser measured them. [`compare`](0042-a-job-produces-assessments-an-assessor-makes-them.md) warns when its two

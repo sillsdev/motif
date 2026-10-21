@@ -57,6 +57,7 @@ public sealed class RefusalDefaultReasonTests
         ["project.refused"] = "reason not determinable statically: the reason is computed from the exception by ReasonFor",
         ["window.check"] = "reason not determinable statically: a window-only code, which carries no FailureReason",
         ["window.diagnostic-not-written"] = "reason not determinable statically: a window-only code, which carries no FailureReason",
+        ["job.parser-unavailable"] = "reason not determinable statically: a failure code a Worker records on a job, not a refusal",
         ["window.diagnostic-unreadable"] = "reason not determinable statically: a window-only code, which carries no FailureReason",
         ["window.no-project"] = "reason not determinable statically: a window-only code, which carries no FailureReason",
         ["window.open-failed"] = "reason not determinable statically: a window-only code, which carries no FailureReason",

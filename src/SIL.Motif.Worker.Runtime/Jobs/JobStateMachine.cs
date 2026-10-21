@@ -11,7 +11,7 @@ public sealed class JobStateMachine
         new Dictionary<JobStatus, IReadOnlySet<JobStatus>>
         {
             [JobStatus.Queued] = new HashSet<JobStatus>
-                { JobStatus.WaitingForBaseline, JobStatus.WaitingForProjectHost, JobStatus.Running, JobStatus.Cancelled },
+                { JobStatus.WaitingForBaseline, JobStatus.WaitingForProjectHost, JobStatus.Running, JobStatus.Failed, JobStatus.Cancelled },
             [JobStatus.WaitingForBaseline] = new HashSet<JobStatus>
                 { JobStatus.Queued, JobStatus.Running, JobStatus.Failed, JobStatus.Cancelled },
             [JobStatus.WaitingForProjectHost] = new HashSet<JobStatus>

@@ -165,6 +165,10 @@ public sealed partial record WindowRefusal
         [C.HandoffTextNotFound] =
             "A chosen text is not in the project as it was measured. Refresh, measure again, then try again.",
 
+        [C.JobParserUnavailable] =
+            "The parser this check was queued for is gone or was replaced, so the check was stopped. Run it again.",
+        [C.JobParserUnidentifiable] =
+            "Motif could not tell which version of the parser is installed, so it did not start the check.",
         [C.JobWaitCancelled] = "The check was cancelled.",
         [C.JobWaitTimeout] = "The check took too long and was stopped. Your changes are unchanged; try applying again.",
         [C.PreflightUnavailable] = "Motif could not check these changes against the project. Try again.",

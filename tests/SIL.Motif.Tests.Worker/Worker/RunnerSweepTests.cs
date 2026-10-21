@@ -329,6 +329,95 @@ public sealed class RunnerSweepTests : IDisposable
     }
 
     [Fact]
+    public async Task AYieldingRunnerHandsTheOldestPinnedJobToARunnerForItsParser()
+    {
+        var oldParser = FakeParser.CopyReportingVersion(Path.Combine(_root, "old-parser"), "0.8.6");
+        var parserA = FakeParser.CopyReportingVersion(Path.Combine(_root, "parser-a"), "0.8.8");
+        var parserB = FakeParser.CopyReportingVersion(Path.Combine(_root, "parser-b"), "0.8.9");
+        using var machine = MachineDatabase.Open(_options.Root);
+        var known = new KnownProjectRegistry(machine);
+        var runtime = SeedProject(known, "handover");
+        var now = DateTimeOffset.UtcNow;
+        runtime.Jobs.Create("later-for-b", runtime.WorkspaceKey, "probe", JobParserPin.Stamp("{}", parserB),
+            JobTimestamp.FormatUtc(now));
+        runtime.Jobs.Create("earlier-for-a", runtime.WorkspaceKey, "probe", JobParserPin.Stamp("{}", parserA),
+            JobTimestamp.FormatUtc(now.AddSeconds(-30)));
+        var activity = new SIL.Motif.Worker.WorkerRuntime.SweepActivity();
+
+        var stale = await SIL.Motif.Worker.WorkerRuntime.SweepOnceAsync(known, _runtimes, _lanes,
+            _options with { ParserPath = oldParser }, new FakeInvoker(), OwnerId, CancellationToken.None, activity,
+            runClaimedAsync: (_, _) => Task.CompletedTask);
+
+        Assert.True(activity.YieldRequested);
+        Assert.Equal(new ParserHandover(Path.GetFullPath(parserA), runtime.Project.FullFwDataPath), stale.Handover);
+        Assert.Equal(stale.Handover, activity.Handover);
+
+        (string Executable, IReadOnlyList<string> Arguments)? spawned = null;
+        ParserHandoverLauncher.SpawnOverride = (executable, arguments) => spawned = (executable, arguments);
+        try
+        {
+            ParserHandoverLauncher.Start(_options with { OwnerNamespace = "ns" }, stale.Handover!,
+                _ => { });
+        }
+        finally
+        {
+            ParserHandoverLauncher.SpawnOverride = null;
+        }
+        Assert.NotNull(spawned);
+        var started = RunnerOptions.Read(spawned!.Value.Arguments.ToArray());
+        Assert.Equal(Path.GetFullPath(parserA), started.ParserPath);
+        Assert.Equal(_options.Root, started.Root);
+        Assert.Equal("ns", started.OwnerNamespace);
+        Assert.Equal(runtime.Project.FullFwDataPath, started.WakeProjectPath);
+
+        var successor = await SIL.Motif.Worker.WorkerRuntime.SweepOnceAsync(known, _runtimes, _lanes, started,
+            new FakeInvoker(), OwnerId, CancellationToken.None, runClaimedAsync: (_, _) => Task.CompletedTask);
+
+        Assert.Equal("earlier-for-a", successor.JobId);
+        Assert.True(successor.HasActiveWork);
+        Assert.False(successor.YieldToOtherParser);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AJobPinnedToAParserDeletedOrRebuiltAfterTheEnqueueFailsWithTheParserUnavailableCode(
+        bool rebuilt)
+    {
+        var oldParser = FakeParser.CopyReportingVersion(Path.Combine(_root, "old-parser"), "0.8.6");
+        var pinned = FakeParser.CopyReportingVersion(Path.Combine(_root, "pinned-parser"), "0.8.8");
+        using var machine = MachineDatabase.Open(_options.Root);
+        var known = new KnownProjectRegistry(machine);
+        var runtime = SeedProject(known, "stranded");
+        runtime.Jobs.Create("stranded-trial", runtime.WorkspaceKey, "probe", JobParserPin.Stamp("{}", pinned),
+            JobTimestamp.FormatUtc(DateTimeOffset.UtcNow));
+        File.Delete(pinned);
+        if (rebuilt)
+        {
+            File.Copy(oldParser, pinned);
+            File.AppendAllText(pinned, "rebuilt");
+        }
+        var activity = new SIL.Motif.Worker.WorkerRuntime.SweepActivity();
+
+        var outcome = await SIL.Motif.Worker.WorkerRuntime.SweepOnceAsync(known, _runtimes, _lanes,
+            _options with { ParserPath = oldParser }, new FakeInvoker(), OwnerId, CancellationToken.None, activity,
+            runClaimedAsync: (_, _) => Task.CompletedTask);
+
+        var failed = runtime.Jobs.Get("stranded-trial")!;
+        Assert.Equal(JobStatus.Failed, failed.Status);
+        Assert.Equal(JobFailureCategory.Infrastructure, failed.FailureCategory);
+        using var result = System.Text.Json.JsonDocument.Parse(failed.ResultJson!);
+        Assert.Equal("job.parser-unavailable", result.RootElement.GetProperty("code").GetString());
+        var message = result.RootElement.GetProperty("message").GetString()!;
+        Assert.Contains("0.8.8", message);
+        Assert.Contains(Path.GetFullPath(pinned), message);
+        Assert.Contains("Run the Trial again", message);
+        Assert.False(outcome.HasActiveWork);
+        Assert.False(outcome.YieldToOtherParser);
+        Assert.False(activity.YieldRequested);
+    }
+
+    [Fact]
     public async Task ARunnerCannotRetireOnceASweepHasBegunToClaim()
     {
         using var machine = MachineDatabase.Open(_options.Root);

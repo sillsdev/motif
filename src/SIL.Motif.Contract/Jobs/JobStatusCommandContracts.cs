@@ -73,6 +73,14 @@ public sealed record JobStatusResponse
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyOrder(12)] public JobStageProgress? StageProgress { get; init; }
 
+    /// <summary>The registered refusal code a failed job recorded, such as <c>job.parser-unavailable</c>.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    [JsonPropertyOrder(13)] public string? FailureCode { get; init; }
+
+    /// <summary>The sentence a failed job recorded to say why, naming what to do next.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    [JsonPropertyOrder(14)] public string? FailureDetail { get; init; }
+
     private static string RequireNonBlank(string? value, string parameterName) =>
         string.IsNullOrWhiteSpace(value)
             ? throw new ArgumentException("A nonblank value is required.", parameterName)
