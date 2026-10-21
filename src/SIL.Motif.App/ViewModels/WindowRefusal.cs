@@ -228,6 +228,7 @@ public sealed partial record WindowRefusal
         [C.TrialMeasurementIncomplete] = "The check did not finish. Try it again.",
         [NoProjectCode] = "Open a project first.",
         [C.TrialNothingPending] = "There are no changes to check.",
+        [C.TrialUpdateInProgress] = "Motif is installing an update. Try the check again in a moment.",
 
         [C.WordTraceCancelled] = "Trying the word was cancelled.",
         [C.WordTraceMalformedDiagnostic] = "That file is not a diagnostic Motif can read. Choose a diagnostic Motif saved.",
