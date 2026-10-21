@@ -59,6 +59,7 @@ public sealed class StoreDeletionFlowTests
         await workspace.ConfirmStoreDeletionCommand.ExecuteAsync(null);
 
         Assert.Equal(Project, Assert.Single(fake.DeleteRefusedStoreRequests).ProjectPath);
+        Assert.Equal("evict " + Project, fake.TryWordSessionsFake.Calls[0]);
         Assert.False(workspace.IsConfirmingStoreDeletion);
         Assert.True(fake.CurrentBaselineRequests.Count > readsBefore);
         Assert.Null(workspace.Baseline.ShownRefusal);
@@ -142,7 +143,7 @@ public sealed class StoreDeletionFlowTests
         var selection = new SelectionViewModel(fake);
         var workspace = new WorkspaceShellViewModel(new ProjectViewModel(fake, new NoProjectPicker()),
             new BaselineViewModel(fake), selection, new AssessViewModel(fake, selection),
-            new NoFolderPicker(), new NoDragSource(), fake);
+            new NoFolderPicker(), new NoDragSource(), fake, tryWordSessions: fake.TryWordSessionsFake);
         await workspace.OpenRecentProjectCommand.ExecuteAsync(new RecentProjectViewModel(Project));
         Assert.Equal(RefusalCodes.StoreOtherVersion, workspace.Baseline.ShownRefusal?.Code);
         return (fake, workspace);

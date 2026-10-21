@@ -49,6 +49,7 @@ public sealed class MotifDesktopSession
         if (_closing) return Closed;
         _closing = true;
         _detach?.Invoke();
+        Workspace.Context.TryWordSessions.Shutdown();
         if (Window.IsVisible) Window.Close();
         // Nothing waits on disposal at exit, so a failure is observed here rather than left unobserved.
         Workspace.DisposeAsync().AsTask().ContinueWith(disposal =>

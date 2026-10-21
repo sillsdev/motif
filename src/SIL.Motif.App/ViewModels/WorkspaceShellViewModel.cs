@@ -65,7 +65,8 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
         TechDemoNoticeViewModel? techDemoNotice = null,
         IAdvancedAiModePreferenceStore? advancedAiModePreferences = null,
         IAssistantConnectionService? assistantConnections = null, IUriLauncher? uriLauncher = null, bool advancedAiModeEnabled = false,
-        IDefaultProposalChecksStore? defaultProposalChecks = null)
+        IDefaultProposalChecksStore? defaultProposalChecks = null,
+        ITryWordSessions? tryWordSessions = null)
     {
         ArgumentNullException.ThrowIfNull(project);
         ArgumentNullException.ThrowIfNull(baseline);
@@ -91,7 +92,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
             CanOpenRecentProjectFolder);
         Context = new WorkspaceContext(selection, assess, new ChangesViewModel(commandClient), commandClient, folderPicker,
             dragSource, baseline, clock, clipboard, diagnosticFiles, diagnosticDialogs,
-            advancedAiModePreferences, assistantConnections, uriLauncher, defaultProposalChecks)
+            advancedAiModePreferences, assistantConnections, uriLauncher, defaultProposalChecks, tryWordSessions)
         {
             AdvancedAiModeEnabled = advancedAiModeEnabled,
             KnownProjects = project.KnownProjects,
@@ -625,6 +626,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
         if (!string.Equals(projectPath, Context.ProjectPath, StringComparison.Ordinal)) return;
         await Context.StopProjectWorkAsync().ConfigureAwait(true);
         if (!string.Equals(projectPath, Context.ProjectPath, StringComparison.Ordinal)) return;
+        Context.TryWordSessions.Evict(projectPath);
         var outcome = await _commandClient.DeleteRefusedStoreAsync(
             new ProjectStoreResetRequest(projectPath), CancellationToken.None).ConfigureAwait(true);
         if (outcome.Refusal is { } refusal)

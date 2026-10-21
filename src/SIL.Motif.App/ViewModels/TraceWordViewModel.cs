@@ -79,6 +79,13 @@ public sealed partial class TraceWordViewModel : ObservableObject
     [ObservableProperty]
     private bool _isLoading;
 
+    /// <summary>The resident parser sessions the pending word may be waiting on; the workspace supplies them.</summary>
+    public ITryWordSessions TryWordSessions { get; set; } = NoTryWordSessions.Instance;
+
+    /// <summary>Whether the word being traced is waiting on the parser to finish loading the grammar.</summary>
+    [ObservableProperty]
+    private bool _isLoadingGrammar;
+
     partial void OnIsLoadingChanged(bool value)
     {
         CancelCommand.NotifyCanExecuteChanged();
@@ -704,6 +711,25 @@ public sealed partial class TraceWordViewModel : ObservableObject
         OnPropertyChanged(nameof(Roots));
     }
 
+    // Listens only while a word is pending, so the static session event never outlives the word it serves.
+    private IDisposable WatchGrammarLoad(ITryWordSessions sessions, string path)
+    {
+        void Refresh(object? sender, EventArgs e) =>
+            IsLoadingGrammar = IsLoading && sessions.GetPhase(path) == WarmSessionPhase.Loading;
+        sessions.PhaseChanged += Refresh;
+        Refresh(null, EventArgs.Empty);
+        return new GrammarWatch(() =>
+        {
+            sessions.PhaseChanged -= Refresh;
+            IsLoadingGrammar = false;
+        });
+    }
+
+    private sealed class GrammarWatch(Action stop) : IDisposable
+    {
+        public void Dispose() => stop();
+    }
+
     private async Task TryAsync()
     {
         if (IsLoading || ParseProgress.IsActive || TryCommand.IsRunning || _projectPath is not { } path) return;
@@ -742,6 +768,7 @@ public sealed partial class TraceWordViewModel : ObservableObject
         {
             if (generation == _generation && IsLoading) ParseProgress.Report(value);
         });
+        using var grammarWatch = WatchGrammarLoad(TryWordSessions, path);
         var outcome = await ParseProgress.TrackAsync(() =>
             _commandClient.TraceWordAsync(new WordTraceRequest(path, word, ProposalIdSource?.Invoke()), running.Token, progress))
             .ConfigureAwait(true);

@@ -72,6 +72,8 @@
                                Text="Try any word to read the parser's recorded search." />
       <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Group}" IsVisible="{Binding Trace.IsLoading}">
         <views:CopyableTextBlock Classes="muted" Text="Tracing..." VerticalAlignment="Center" />
+        <views:CopyableTextBlock Classes="muted" Text="{x:Static app:MotifAppStrings.TryWordLoadingGrammar}" VerticalAlignment="Center"
+                                 IsVisible="{Binding Trace.IsLoadingGrammar}" />
         <Button Content="Cancel" Command="{Binding Trace.CancelCommand}" AutomationProperties.Name="Cancel the trace" />
       </StackPanel>
       <views:RefusalBlock DataContext="{Binding Trace.ShownRefusal}" />

@@ -1,3 +1,4 @@
+using SIL.Motif.App.Services;
 using SIL.Motif.Commands;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Commands.Requests;
@@ -194,6 +195,9 @@ public sealed partial class FakeCommandClient
 
     public Func<GrammarCheckRequest, CancellationToken, Task<CommandOutcome<StoredGrammarCheckResponse>>>?
         StoredGrammarCheckHandler { get; set; }
+
+    /// <summary>The resident parser sessions the window's calls reach.</summary>
+    public FakeTryWordSessions TryWordSessionsFake { get; } = new();
 
     public void OnTraceWord(
         Func<WordTraceRequest, CancellationToken, Task<CommandOutcome<WordTraceResponse>>> behavior) =>

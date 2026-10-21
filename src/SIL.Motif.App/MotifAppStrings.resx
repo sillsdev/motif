@@ -1304,4 +1304,8 @@
     <value>{0} · {1}</value>
     <comment>Review count line: {0} is the Proposal name and {1} its count of changes; the dot is a separator and the order may change.</comment>
   </data>
+  <data name="MotifApp.TryWordLoadingGrammar" xml:space="preserve">
+    <value>Loading the grammar…</value>
+    <comment>Quiet status beside the Cancel button on Try a Word while the parser is still loading the grammar for the word just submitted.</comment>
+  </data>
 </root>

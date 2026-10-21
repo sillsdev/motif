@@ -663,4 +663,6 @@ public static class MotifAppStrings
     public static string ChangeGroupCountPattern => Text("MotifApp.ChangeGroupCountPattern");
 
     public static string ProposalChangeCountFormat => Text("MotifApp.ProposalChangeCountFormat");
+
+    public static string TryWordLoadingGrammar => Text("MotifApp.TryWordLoadingGrammar");
 }

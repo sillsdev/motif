@@ -134,7 +134,7 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
         IDiagnosticFilePicker? diagnosticFiles = null, IDiagnosticWindowDialogs? diagnosticDialogs = null,
         IAdvancedAiModePreferenceStore? advancedAiModePreferences = null,
         IAssistantConnectionService? assistantConnections = null, IUriLauncher? uriLauncher = null,
-        IDefaultProposalChecksStore? defaultProposalChecks = null)
+        IDefaultProposalChecksStore? defaultProposalChecks = null, ITryWordSessions? tryWordSessions = null)
     {
         ArgumentNullException.ThrowIfNull(selection);
         ArgumentNullException.ThrowIfNull(assess);
@@ -147,6 +147,8 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
         Assess = assess;
         Changes = changes;
         Commands = commands;
+        TryWordSessions = tryWordSessions ?? NoTryWordSessions.Instance;
+        assess.Trace.TryWordSessions = TryWordSessions;
         SelectionReads = new WorkspaceSelection(commands);
         ProposalSelectionReads = new WorkspaceSelection(commands);
         TrialRun = new TrialRunViewModel(commands);
@@ -265,6 +267,9 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
 
     /// <summary>The command seam a page runs its own queries through.</summary>
     public ICommandClient Commands { get; }
+
+    /// <summary>The resident parser sessions Try a Word reuses; absent ones leave every word on the cold path.</summary>
+    public ITryWordSessions TryWordSessions { get; }
 
     /// <summary>The one Selection reader shared by the window's word views and expanded Review context.</summary>
     public WorkspaceSelection SelectionReads { get; }
@@ -403,6 +408,8 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
 
     private void ClearOwnProjectState()
     {
+        // Every route out of a project passes here; its resident parser can hold the Baseline file open on Windows.
+        if (ProjectPath is { } leaving) TryWordSessions.Evict(leaving);
         ++_pageRequestVersion;
         _selectionReaderRequested = false;
         _readerEvidence = null;
@@ -758,6 +765,8 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     partial void OnCurrentPageChanged(WorkspacePage value)
     {
         ++_pageRequestVersion;
+        if (value == WorkspacePage.TryAWord && ProjectPath is { } projectPath)
+            TryWordSessions.Prewarm(projectPath);
         if (value is not (WorkspacePage.Texts or WorkspacePage.Review)) return;
         RequireSelectionReader();
     }
