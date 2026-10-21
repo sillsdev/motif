@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using SIL.Motif.Commands.Store;
+using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Host;
 using SIL.Motif.Host.Parser;
@@ -76,8 +77,8 @@ public static class TryWordSessions
         });
     }
 
-    internal static WarmFirstTracer TracerFor(string? parserPath, PanGlossInvoker invoker) =>
-        new(PoolFor(parserPath), new PanGlossTracer(invoker), invoker);
+    internal static WarmFirstTracer TracerFor(string? parserPath, PanGlossInvoker invoker, StepCap? stepLimit = null) =>
+        new(PoolFor(parserPath), new PanGlossTracer(invoker, stepLimit), invoker, stepLimit);
 
     /// <summary>The session key part that changes whenever the Baseline does.</summary>
     internal static string TokenText(SIL.Motif.Contract.Baselines.BaselineToken token) =>

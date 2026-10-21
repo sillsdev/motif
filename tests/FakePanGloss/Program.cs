@@ -67,7 +67,8 @@ internal static class Program
             [new("--trace", true), new("--trace-format", true), new("--trace-details", false),
                 new("--step-cap", true)], RunParse),
         new("serve", [],
-            [new("--project", true), new("--step-cap", true), new("--word-timeout-ms", true)], RunServe),
+            [new("--project", true), new("--step-cap", true), new("--work-cap", true), new("--word-timeout-ms", true),
+                new("--guess", false)], RunServe),
         new("grammar-health", ["grammar", "out.json?"],
             [new("--fw-project", true), new("--stored-analyses", true)], RunGrammarHealth),
     ];
@@ -578,6 +579,7 @@ internal static class Program
         var output = new StreamWriter(Console.OpenStandardOutput(), utf8) { AutoFlush = true, NewLine = "\n" };
         if (behaviour.ServeStartLog is { } startLog)
             File.AppendAllText(startLog, Environment.ProcessId.ToString(CultureInfo.InvariantCulture) + "\n");
+        if (behaviour.ServeArgvLog is { } argvLog) File.AppendAllText(argvLog, JsonSerializer.Serialize(args) + "\n");
         if (behaviour.ServeLoadDelayMs > 0) Thread.Sleep(behaviour.ServeLoadDelayMs);
         if (behaviour.ServeFatalCode is { } fatalCode)
         {
@@ -608,10 +610,12 @@ internal static class Program
             if (behaviour.ServeRequestLog is { } requestLog) File.AppendAllText(requestLog, word + "\n");
             if (word == "hang") Thread.Sleep(Timeout.Infinite);
             if (behaviour.ServeRequestDelayMs > 0) Thread.Sleep(behaviour.ServeRequestDelayMs);
-            if (word == "incomplete")
+            if (word == "partial")
             {
-                output.WriteLine(JsonSerializer.Serialize(new { id, type = "error", code = "parse_incomplete", message = "stopped at a limit" }));
-                continue;
+                // As serve does on an abrupt stdin end: half a response line, no newline, then exit.
+                output.Write("{\"id\":" + JsonSerializer.Serialize(id) + ",\"type\":\"result\",\"exitCode\":0,\"resu");
+                output.Flush();
+                return 0;
             }
             if (word == "boom")
             {
@@ -620,7 +624,8 @@ internal static class Program
             }
             var envelope = TraceEnvelope(word, behaviour.TraceSignature ?? word + "-sig", behaviour.TraceJson,
                 behaviour.TraceCapped, behaviour.TraceTimedOut, behaviour.TraceAnalyses);
-            output.WriteLine("{\"id\":" + JsonSerializer.Serialize(id) + ",\"type\":\"result\",\"result\":" + envelope + "}");
+            output.WriteLine("{\"id\":" + JsonSerializer.Serialize(id) + ",\"type\":\"result\",\"exitCode\":" +
+                behaviour.ServeExitCode.ToString(CultureInfo.InvariantCulture) + ",\"result\":" + envelope + "}");
         }
         GC.KeepAlive(hog);
         return 0;
@@ -932,6 +937,8 @@ internal static class Program
         public int ServeLoadDelayMs { get; init; }
         public int ServeRequestDelayMs { get; init; }
         public int ServeProtocol { get; init; } = 1;
+        public string? ServeArgvLog { get; init; }
+        public int ServeExitCode { get; init; }
         public int ServeAllocateBytes { get; init; }
 
         internal static Behaviour Read(string? directory, string? subcommand = null)

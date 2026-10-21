@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
+using SIL.Motif.Contract.Assess;
 using SIL.Motif.Host.Parser;
 
 namespace SIL.Motif.Host.PanGloss;
@@ -39,8 +40,11 @@ public abstract record WarmParseResult
 {
     private WarmParseResult() { }
 
-    /// <summary>The parser's reply: exactly the JSON a cold <c>parse --trace-format json --trace-details</c> prints.</summary>
-    public sealed record Completed(string Json, TimeSpan Elapsed) : WarmParseResult;
+    /// <summary>
+    /// The parser's reply: <paramref name="Json"/> is exactly the JSON a cold <c>parse --trace-format json --trace-details</c> prints
+    /// and <paramref name="ExitCode"/> the cold command's exit code, to be read as if from the cold process.
+    /// </summary>
+    public sealed record Completed(string Json, int ExitCode, TimeSpan Elapsed) : WarmParseResult;
 
     /// <summary>The caller cancelled; the resident process was killed and the next call restarts it.</summary>
     public sealed record Cancelled : WarmParseResult;
@@ -66,7 +70,8 @@ public sealed record WarmPanGlossOptions
 /// Resident <c>pangloss serve</c> processes, one per project, so a word costs a parse instead of a load (ADR 0044,
 /// long-lived parser session). Each request takes machine-queue admission; the process lives in its own containment
 /// job with the memory ceiling for its whole life. Requests to one session run one at a time, in order.
-/// A cancel kills the process; any failure falls back to the cold path for that word.
+/// A cancel kills the process; any failure falls back to the cold path for that word. A session is keyed by project and
+/// by the step cap it was started with, because <c>serve</c> applies its caps to every request.
 /// </summary>
 public sealed class WarmPanGlossPool : IDisposable
 {
@@ -104,10 +109,10 @@ public sealed class WarmPanGlossPool : IDisposable
     public event EventHandler<WarmSessionStateChangedEventArgs>? StateChanged;
 
     /// <summary>The state of a project's session; <see cref="WarmSessionState.Idle"/> when it has none.</summary>
-    public WarmSessionState GetState(string projectKey)
+    public WarmSessionState GetState(string projectKey, StepCap? stepCap = null)
     {
         lock (_gate)
-            return _sessions.TryGetValue(Normalize(projectKey), out var session) ? session.State : WarmSessionState.Idle;
+            return _sessions.TryGetValue(SessionKey(projectKey, stepCap), out var session) ? session.State : WarmSessionState.Idle;
     }
 
     /// <summary>
@@ -116,26 +121,26 @@ public sealed class WarmPanGlossPool : IDisposable
     /// or <see cref="WarmSessionPhase.Failed"/> (with code and message) and never faults. A Failed session is retried.
     /// A different <paramref name="stateToken"/> or grammar replaces the session.
     /// </summary>
-    public Task<WarmSessionState> Prewarm(string projectKey, string stateToken, string grammarPath)
+    public Task<WarmSessionState> Prewarm(string projectKey, string stateToken, string grammarPath, StepCap? stepCap = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(projectKey);
-        return Acquire(Normalize(projectKey), stateToken, grammarPath, retryFailed: true).Loaded;
+        return Acquire(projectKey, stateToken, grammarPath, stepCap, retryFailed: true).Loaded;
     }
 
     /// <summary>
     /// Parses a word on the project's resident parser. Waits for a load in progress (honoring
     /// <paramref name="cancellationToken"/>, which then abandons only the wait), starts one if there is none, and
-    /// returns <see cref="WarmParseResult.Fallback"/> when the session failed or the parser answered the word with an error
-    /// (including <c>parse_incomplete</c>, which the cold <c>parse</c> turns into an incomplete trace) so the caller runs the cold path.
+    /// returns <see cref="WarmParseResult.Fallback"/> when the session failed, the parser answered the word with an error,
+    /// or a reply line was malformed or unterminated, so the caller runs the cold path.
+    /// <paramref name="stepCap"/> is passed to <c>serve</c> as <c>--step-cap</c> and is part of the session key.
     /// Cancelling during a parse kills the process.
     /// </summary>
     public async Task<WarmParseResult> TryWordAsync(string projectKey, string stateToken, string grammarPath,
-        string word, bool traceDetails, CancellationToken cancellationToken)
+        string word, bool traceDetails, CancellationToken cancellationToken, StepCap? stepCap = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(projectKey);
         ArgumentException.ThrowIfNullOrEmpty(word);
-        var key = Normalize(projectKey);
-        var session = Acquire(key, stateToken, grammarPath, retryFailed: false);
+        var session = Acquire(projectKey, stateToken, grammarPath, stepCap, retryFailed: false);
         if (session.CoolingDown(_options.RetryCooldown) is { } cooling) return cooling;
         try
         {
@@ -151,17 +156,22 @@ public sealed class WarmPanGlossPool : IDisposable
         }
     }
 
-    /// <summary>Kills and drops the project's session so nothing holds its Baseline files open. Idempotent.</summary>
+    /// <summary>Kills and drops every session of the project, whatever its caps, so nothing holds its Baseline files open. Idempotent.</summary>
     public void Evict(string projectKey)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(projectKey);
-        Session? session;
+        var project = Normalize(projectKey);
+        List<Session> evicted;
         lock (_gate)
         {
-            if (_disposed || !_sessions.Remove(Normalize(projectKey), out session)) return;
+            if (_disposed) return;
+            evicted = _sessions.Values.Where(session => string.Equals(session.ProjectKey, project,
+                StringComparison.OrdinalIgnoreCase)).ToList();
+            foreach (var session in evicted) _sessions.Remove(session.Key);
         }
-        session.Kill(WarmSessionState.Idle, raise: false);
-        Raise(Normalize(projectKey), WarmSessionState.Idle);
+        if (evicted.Count == 0) return;
+        foreach (var session in evicted) session.Kill(WarmSessionState.Idle, raise: false);
+        Raise(project, WarmSessionState.Idle);
     }
 
     public void Dispose()
@@ -181,8 +191,12 @@ public sealed class WarmPanGlossPool : IDisposable
 
     private static string Normalize(string projectKey) => Path.GetFullPath(projectKey);
 
-    private Session Acquire(string key, string token, string grammarPath, bool retryFailed)
+    private static string SessionKey(string projectKey, StepCap? stepCap) =>
+        Normalize(projectKey) + "\n" + (stepCap?.ToArgument() ?? string.Empty);
+
+    private Session Acquire(string projectKey, string token, string grammarPath, StepCap? stepCap, bool retryFailed)
     {
+        var key = SessionKey(projectKey, stepCap);
         Session? stale = null;
         Session session;
         lock (_gate)
@@ -209,7 +223,7 @@ public sealed class WarmPanGlossPool : IDisposable
             }
             if (existing is null)
             {
-                existing = new Session(this, key, token, grammarPath);
+                existing = new Session(this, key, Normalize(projectKey), token, grammarPath, stepCap?.ToArgument());
                 _sessions[key] = existing;
             }
             session = existing;
@@ -243,7 +257,8 @@ public sealed class WarmPanGlossPool : IDisposable
         });
     }
 
-    private sealed class Session(WarmPanGlossPool pool, string key, string token, string grammarPath)
+    private sealed class Session(WarmPanGlossPool pool, string key, string projectKey, string token, string grammarPath,
+        string? stepCapArgument)
     {
         private readonly object _lock = new();
         private readonly TaskCompletionSource<WarmSessionState> _loaded =
@@ -251,7 +266,7 @@ public sealed class WarmPanGlossPool : IDisposable
         private readonly SemaphoreSlim _requests = new(1, 1);
         private PanGlossContainmentJob? _job;
         private PanGlossChildProcess? _process;
-        private StreamReader? _reader;
+        private TerminatedLineReader? _reader;
         private Task<string>? _stderr;
         private WarmSessionState _state = WarmSessionState.Loading;
         private DateTime _lastUsedUtc = DateTime.UtcNow;
@@ -261,6 +276,7 @@ public sealed class WarmPanGlossPool : IDisposable
         private bool _retired;
 
         public string Key { get; } = key;
+        public string ProjectKey { get; } = projectKey;
         public string Token { get; } = token;
         public string GrammarPath { get; } = grammarPath;
         public Task<WarmSessionState> Loaded => _loaded.Task;
@@ -286,7 +302,7 @@ public sealed class WarmPanGlossPool : IDisposable
                 if (_started) return;
                 _started = true;
             }
-            pool.Raise(Key, WarmSessionState.Loading);
+            pool.Raise(ProjectKey, WarmSessionState.Loading);
             _ = Task.Run(LoadAsync);
         }
 
@@ -350,6 +366,11 @@ public sealed class WarmPanGlossPool : IDisposable
             start.ArgumentList.Add("serve");
             start.ArgumentList.Add("--project");
             start.ArgumentList.Add(GrammarPath);
+            if (stepCapArgument is not null)
+            {
+                start.ArgumentList.Add("--step-cap");
+                start.ArgumentList.Add(stepCapArgument);
+            }
             PanGlossChildProcess process;
             try { process = job.Start(start); }
             catch (Exception exception) when (exception is System.ComponentModel.Win32Exception or InvalidOperationException
@@ -358,7 +379,7 @@ public sealed class WarmPanGlossPool : IDisposable
                 Fail("serve-start-failed", $"Could not start '{executable}': {exception.Message}");
                 return false;
             }
-            var reader = new StreamReader(process.InteractiveOutput!, PanGlossProcessEnvironment.StreamEncoding);
+            var reader = new TerminatedLineReader(process.InteractiveOutput!, PanGlossProcessEnvironment.StreamEncoding);
             lock (_lock)
             {
                 if (_retired) { process.Dispose(); return false; }
@@ -428,7 +449,7 @@ public sealed class WarmPanGlossPool : IDisposable
         private async Task<WarmParseResult> RequestAsync(string word, bool traceDetails, CancellationToken token)
         {
             PanGlossChildProcess? process;
-            StreamReader? reader;
+            TerminatedLineReader? reader;
             lock (_lock) { process = _process; reader = _reader; }
             if (State.Phase != WarmSessionPhase.Ready || process is null || reader is null)
                 return new WarmParseResult.Fallback("session-ended", "The resident parser is no longer running.");
@@ -456,7 +477,11 @@ public sealed class WarmPanGlossPool : IDisposable
                     if (!root.TryGetProperty("id", out var replyId) || replyId.GetString() != id) continue;
                     var type = root.TryGetProperty("type", out var t) ? t.GetString() : null;
                     if (type == "result" && root.TryGetProperty("result", out var result))
-                        return new WarmParseResult.Completed(result.GetRawText(), clock.Elapsed);
+                    {
+                        if (!root.TryGetProperty("exitCode", out var exit) || !exit.TryGetInt32(out var exitCode))
+                            return new WarmParseResult.Fallback("serve-protocol", "A result line carried no exit code.");
+                        return new WarmParseResult.Completed(result.GetRawText(), exitCode, clock.Elapsed);
+                    }
                     var code = root.TryGetProperty("code", out var c) ? c.GetString() ?? "error" : "error";
                     var message = root.TryGetProperty("message", out var m) ? m.GetString() ?? "" : "";
                     return new WarmParseResult.Fallback(code, message);
@@ -510,7 +535,7 @@ public sealed class WarmPanGlossPool : IDisposable
                 _state = state;
                 if (state.Phase == WarmSessionPhase.Failed) _failedUtc = DateTime.UtcNow;
             }
-            pool.Raise(Key, state);
+            pool.Raise(ProjectKey, state);
         }
 
         private void Fail(string code, string message)
@@ -557,7 +582,7 @@ public sealed class WarmPanGlossPool : IDisposable
                         pool._sessions.Remove(Key);
                 _loaded.TrySetResult(state);
             }
-            if (raise && state is not null) pool.Raise(Key, state);
+            if (raise && state is not null) pool.Raise(ProjectKey, state);
         }
 
         /// <summary>Ends an idle session politely: close its input, then kill whatever is left.</summary>
@@ -568,7 +593,7 @@ public sealed class WarmPanGlossPool : IDisposable
             try { process?.InteractiveInput?.Dispose(); process?.WaitForExitAsync().Wait(TimeSpan.FromSeconds(2)); }
             catch (Exception exception) when (exception is AggregateException or IOException or ObjectDisposedException) { }
             Kill(null, raise: false);
-            pool.Raise(Key, WarmSessionState.Idle);
+            pool.Raise(ProjectKey, WarmSessionState.Idle);
         }
     }
 }

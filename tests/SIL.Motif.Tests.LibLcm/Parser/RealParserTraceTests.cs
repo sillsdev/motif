@@ -11,7 +11,7 @@ namespace SIL.Motif.Tests.Parser;
 public sealed class RealParserTraceTests
 {
     // The exact grammar PanGloss's `trace_render.rs::golden_grammar` builds: one root, one suffix rule.
-    private const string GoldenGrammar = """
+    internal const string GoldenGrammar = """
         <?xml version="1.0" encoding="utf-8"?>
         <HermitCrabInput>
           <Language>

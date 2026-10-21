@@ -45,6 +45,18 @@ public sealed class PanGlossTracer : IPanGlossTracer
         };
     }
 
+    /// <summary>
+    /// Reads what a resident parser returned as if it were a cold process's exit code and standard output: a nonzero exit
+    /// is accepted only when the output reports a stop at a limit, exactly as <see cref="PanGlossRequest.Trace"/> accepts it;
+    /// any other nonzero exit is <see cref="PanGlossTraceOutcome.Malformed"/>, which the warm caller hands to the cold path.
+    /// </summary>
+    internal static PanGlossTraceOutcome Interpret(string word, int exitCode, string output, TimeSpan elapsed)
+    {
+        if (exitCode != 0 && !new PanGlossRequest.Trace(string.Empty, word).AcceptsNonzeroExit(output))
+            return new PanGlossTraceOutcome.Malformed(word, output, $"The resident parser reported exit code {exitCode}.");
+        return Interpret(word, new PanGlossOutcome.Completed(output, string.Empty, elapsed));
+    }
+
     internal static PanGlossTraceOutcome Interpret(string word, PanGlossOutcome.Completed completed)
     {
         if (!PanGlossTraceOutput.TryRead(completed.Output, out var document, out var error))

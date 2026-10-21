@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using SIL.Motif.Contract.Assess;
 using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
@@ -299,16 +300,71 @@ public sealed class WarmPanGlossPoolTests : IDisposable
     }
 
     [Fact]
-    public async Task AnIncompleteParseErrorFallsBackSoTheColdPathMakesTheIncompleteOutcome()
+    public async Task TheServeExitCodeIsPassedThroughAndReadLikeTheColdProcessesExitCode()
     {
-        var (grammar, _, _) = Project("incomplete");
+        var (stopped, _, _) = Project("exit-capped", new { ServeExitCode = 1, TraceCapped = true });
+        var (refused, _, _) = Project("exit-refused", new { ServeExitCode = 3 });
+        using var pool = Pool();
+        using var invoker = new PanGlossInvoker(FakeParser.ExecutablePath,
+            new MachinePanGlossQueue(["Local\\MotifWarmExit-" + Guid.NewGuid().ToString("N")]));
+        var tracer = new WarmFirstTracer(pool, new PanGlossTracer(invoker));
+
+        var raw = Assert.IsType<WarmParseResult.Completed>(
+            await pool.TryWordAsync(stopped, "t1", stopped, "motifa", true, CancellationToken.None));
+        Assert.Equal(1, raw.ExitCode);
+
+        // A nonzero exit whose document reports a stop is an incomplete trace, as it is from the cold process.
+        Assert.IsType<PanGlossTraceOutcome.Incomplete>(
+            await tracer.TraceAsync(stopped, "t1", stopped, "motifa", CancellationToken.None));
+        // Any other nonzero exit is not an answer: the cold path decides (here it exits 0 and completes).
+        Assert.Equal(3, Assert.IsType<WarmParseResult.Completed>(
+            await pool.TryWordAsync(refused, "t1", refused, "motifa", true, CancellationToken.None)).ExitCode);
+        Assert.IsType<PanGlossTraceOutcome.Completed>(
+            await tracer.TraceAsync(refused, "t1", refused, "motifa", CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task AWordWithADifferentStepCapGetsItsOwnSessionStartedWithThatCap()
+    {
+        var (grammar, startLog, _) = Project("caps", new { ServeArgvLog = Path.Combine(_root, "caps", "argv.log") });
+        var argvLog = Path.Combine(_root, "caps", "argv.log");
         using var pool = Pool();
 
-        var fallback = Assert.IsType<WarmParseResult.Fallback>(
-            await pool.TryWordAsync(grammar, "t1", grammar, "incomplete", true, CancellationToken.None));
+        await pool.TryWordAsync(grammar, "t1", grammar, "motifa", true, CancellationToken.None);
+        await pool.TryWordAsync(grammar, "t1", grammar, "motifa", true, CancellationToken.None, new StepCap(1000));
+        await pool.TryWordAsync(grammar, "t1", grammar, "motifb", true, CancellationToken.None, new StepCap(1000));
+        await pool.TryWordAsync(grammar, "t1", grammar, "motifc", true, CancellationToken.None, StepCap.Unbounded);
 
-        Assert.Equal("parse_incomplete", fallback.Code);
+        var argv = Lines(argvLog);
+        Assert.Equal(3, Lines(startLog).Length);
+        Assert.DoesNotContain("--step-cap", argv[0]);
+        Assert.Contains("\"--step-cap\",\"1000\"", argv[1]);
+        Assert.Contains("\"--step-cap\",\"unbounded\"", argv[2]);
         Assert.Equal(WarmSessionPhase.Ready, pool.GetState(grammar).Phase);
+        Assert.Equal(WarmSessionPhase.Ready, pool.GetState(grammar, new StepCap(1000)).Phase);
+        Assert.Equal(WarmSessionPhase.Idle, pool.GetState(grammar, new StepCap(7)).Phase);
+
+        pool.Evict(grammar);
+        Assert.Equal(WarmSessionPhase.Idle, pool.GetState(grammar, new StepCap(1000)).Phase);
+    }
+
+    [Fact]
+    public async Task AnUnterminatedFinalLineIsDiscardedAndTheWordFallsBackToCold()
+    {
+        var (grammar, _, _) = Project("partial");
+        using var pool = Pool();
+        using var invoker = new PanGlossInvoker(FakeParser.ExecutablePath,
+            new MachinePanGlossQueue(["Local\\MotifWarmPartial-" + Guid.NewGuid().ToString("N")]));
+        var tracer = new WarmFirstTracer(pool, new PanGlossTracer(invoker));
+
+        var fallback = Assert.IsType<WarmParseResult.Fallback>(
+            await pool.TryWordAsync(grammar, "t1", grammar, "partial", true, CancellationToken.None));
+        Assert.Equal("process-exited", fallback.Code);
+
+        // The cold path answers the word, and the next call after the cooldown-free retry still works.
+        var outcome = Assert.IsType<PanGlossTraceOutcome.Completed>(
+            await tracer.TraceAsync(grammar, "t1", grammar, "partial", CancellationToken.None));
+        Assert.Equal("partial", outcome.Word);
     }
 
     [Fact]
