@@ -3647,6 +3647,138 @@
                   "intent"
                 ],
                 "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
+                      "compose-set-no-default-compounding"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for compose-set-no-default-compounding.",
+                    "properties": {
+                      "expectedNoDefaultCompounding": {
+                        "type": "boolean",
+                        "description": "Whether default compounding is turned off now: true when it is, false when it is on."
+                      },
+                      "noDefaultCompounding": {
+                        "type": "boolean",
+                        "description": "Whether default compounding should be turned off: true to turn it off, false to turn it on."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "expectedNoDefaultCompounding",
+                      "noDefaultCompounding"
+                    ]
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
+                      "compose-rewrite-lexeme-form"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for compose-rewrite-lexeme-form.",
+                    "properties": {
+                      "entries": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "entryGuid": {
+                              "type": "string"
+                            },
+                            "writingSystem": {
+                              "type": "string"
+                            },
+                            "expectedForm": {
+                              "type": "string"
+                            },
+                            "newForm": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "entryGuid",
+                            "writingSystem",
+                            "expectedForm"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "description": "The entries to rewrite, each with entryGuid, writingSystem, expectedForm and newForm; a current form that differs from expectedForm refuses the whole batch."
+                      },
+                      "setEmptyCitationForm": {
+                        "type": "boolean",
+                        "description": "When true, an entry with no citation form in that writing system gets its old lexeme form as the citation form."
+                      },
+                      "foldStressMarks": {
+                        "type": "boolean",
+                        "description": "When true, omit newForm: it is computed from expectedForm by removing U\u002B0300, U\u002B0301, U\u002B0302, U\u002B0304 and U\u002B030C only."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "entries"
+                    ]
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
               }
             ]
           },
@@ -4560,6 +4692,102 @@
         "target",
         "expectedDisabled",
         "disabled",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_set_no_default_compounding",
+    "description": "Set default compounding. Stages one explicit change to the parser\u0027s built-in default compounding in a Draft. A project with no compound rules of its own still has the parser join any two stems unless default compounding is turned off; the expected value guards against stale evidence, and only a person can Apply.\nCommand: compose-set-no-default-compounding. Agent class: Draft.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "Draft name."
+        },
+        "expectedNoDefaultCompounding": {
+          "type": "boolean",
+          "description": "Whether default compounding is turned off now: true when it is, false when it is on."
+        },
+        "noDefaultCompounding": {
+          "type": "boolean",
+          "description": "Whether default compounding should be turned off: true to turn it off, false to turn it on."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "draft",
+        "expectedNoDefaultCompounding",
+        "noDefaultCompounding",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_rewrite_lexeme_form",
+    "description": "Rewrite lexeme forms. Rewrites the lexeme form of many existing entries in one Draft, each guarded by the form it must hold now, and can keep the old spelling as the citation form. Use it when the lexeme form carries stress marks the parser cannot match; Motif stages a Draft and never Applies it automatically. Only a person can Apply.\nCommand: compose-rewrite-lexeme-form. Agent class: Draft.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "Draft name."
+        },
+        "entries": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "entryGuid": {
+                "type": "string"
+              },
+              "writingSystem": {
+                "type": "string"
+              },
+              "expectedForm": {
+                "type": "string"
+              },
+              "newForm": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "entryGuid",
+              "writingSystem",
+              "expectedForm"
+            ],
+            "additionalProperties": false
+          },
+          "description": "The entries to rewrite, each with entryGuid, writingSystem, expectedForm and newForm; a current form that differs from expectedForm refuses the whole batch."
+        },
+        "setEmptyCitationForm": {
+          "type": "boolean",
+          "description": "When true, an entry with no citation form in that writing system gets its old lexeme form as the citation form."
+        },
+        "foldStressMarks": {
+          "type": "boolean",
+          "description": "When true, omit newForm: it is computed from expectedForm by removing U\u002B0300, U\u002B0301, U\u002B0302, U\u002B0304 and U\u002B030C only."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "draft",
+        "entries",
         "project"
       ],
       "additionalProperties": false

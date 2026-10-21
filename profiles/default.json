@@ -44,6 +44,8 @@
     { "tool": "motif_add_affix_process" },
     { "tool": "motif_add_feature_value" },
     { "tool": "motif_edit_phoneme" },
-    { "tool": "motif_edit_compound_rule" }
+    { "tool": "motif_edit_compound_rule" },
+    { "tool": "motif_set_no_default_compounding" },
+    { "tool": "motif_rewrite_lexeme_form" }
   ]
 }

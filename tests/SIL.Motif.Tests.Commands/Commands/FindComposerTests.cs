@@ -69,6 +69,14 @@ public sealed class FindComposerTests
         Assert.Contains(expected, Run(goal, null).Results.Take(3).Select(result => result.Verb));
 
     [Fact]
+    public void FindComposerRanksTheDefaultCompoundingComposerFirstForTurnOffDefaultCompounding()
+    {
+        var results = Run("turn off default compounding", null).Results;
+
+        Assert.Equal("compose-set-no-default-compounding", results[0].Verb);
+    }
+
+    [Fact]
     public void FindComposerRanksTheCompoundRuleComposerFirstForDisableCompoundingRule()
     {
         var results = Run("disable compounding rule", null).Results;

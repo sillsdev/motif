@@ -69,6 +69,9 @@ public static partial class SnapshotFields
     /// <summary>One Text's identity, name, paragraph, segment and occurrence bindings; never every Text.</summary>
     public const string LangProjectTexts = "texts/langProject/texts";
 
+    /// <summary>Whether the parser's built-in default compounding is switched off in ParserParameters; never the rest of that XML.</summary>
+    public const string MoMorphDataNoDefaultCompounding = "grammar/moMorphData/noDefaultCompounding";
+
     /// <summary>The ordered alternate forms owned by a lexical entry.</summary>
     public const string LexEntryAlternateForms = "lexical/lexEntry/alternateForms";
 
