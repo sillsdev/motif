@@ -6,6 +6,8 @@ namespace SIL.Motif.Mcp;
 internal static class EncodingGuides
 {
     internal const string UriPrefix = "motif://guides/";
+    // The guides live once, in the Help content, so `motif help` and motif_guide serve the same text.
+    private const string HelpGuideCodePrefix = "encoding/";
     internal const string ParsimonyRecipeUriPrefix = "motif://parsimony/recipes/";
 
     private static readonly Guide[] Guides =
@@ -105,11 +107,9 @@ internal static class EncodingGuides
     private static string ReadText(Guide guide)
     {
         if (guide.FileName is null) return ParsimonyReferenceCatalog.Load().ToMarkdown();
-        using var stream = ManifestResourceLookup.GetStream(typeof(EncodingGuides).Assembly,
-            "motif-guides/" + guide.FileName)
-            ?? throw new InvalidOperationException($"The embedded guide '{guide.Topic}' is missing.");
-        using var reader = new StreamReader(stream);
-        return ManifestResourceLookup.NormalizeLineEndings(reader.ReadToEnd());
+        var page = HelpCatalog.Load().Find(HelpEntryKind.Guide, HelpGuideCodePrefix + guide.FileName[..^3])?.HelpPage
+            ?? throw new InvalidOperationException($"The shared Help guide for '{guide.Topic}' is missing.");
+        return ManifestResourceLookup.NormalizeLineEndings(page);
     }
 
     private sealed record Guide(string Topic, string Title, string Description, string? FileName);

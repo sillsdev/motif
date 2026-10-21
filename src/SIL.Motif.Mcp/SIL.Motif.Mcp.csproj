@@ -32,12 +32,6 @@
     <EmbeddedResource Include="..\..\profiles\default.json" LogicalName="motif-profiles/default.json" />
   </ItemGroup>
 
-  <ItemGroup>
-    <EmbeddedResource Include="Resources\encoding-guides\*.md">
-      <LogicalName>motif-guides/%(Filename)%(Extension)</LogicalName>
-    </EmbeddedResource>
-  </ItemGroup>
-
   <!-- Tool descriptions quote request-field docs, so they ride inside this assembly rather than beside it. -->
   <Target Name="EmbedRequestFieldDocs" AfterTargets="ResolveAssemblyReferences" BeforeTargets="PrepareResources">
     <ItemGroup>

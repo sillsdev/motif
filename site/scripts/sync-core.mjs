@@ -34,6 +34,10 @@ const guideSections = [
 		title: 'For AI agents and scripts',
 		pages: ['agents/start-here', 'agents/output-and-exit-codes', 'agents/measure-a-grammar', 'agents/work-with-jobs', 'agents/handoff'],
 	},
+	{
+		title: 'Encoding guides',
+		pages: ['encoding/workflow', 'encoding/ask-the-linguist', 'encoding/suffix-prefix-slots', 'encoding/conditioned-allomorphs', 'encoding/feature-conditioned-slots', 'encoding/nasal-assimilation', 'encoding/no-inflection'],
+	},
 ];
 const guideCodes = guideSections.flatMap((section) => section.pages);
 const guideOrder = new Map(guideCodes.map((code, index) => [code, index + 1]));

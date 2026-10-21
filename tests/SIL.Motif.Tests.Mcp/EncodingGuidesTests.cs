@@ -35,6 +35,16 @@ public sealed class EncodingGuidesTests
     }
 
     [Fact]
+    public void EveryMcpGuideIsTheSameTextAsTheCliHelpGuide()
+    {
+        var help = HelpCatalog.Load(System.Globalization.CultureInfo.GetCultureInfo("en"));
+        foreach (var topic in EncodingGuides.Topics.Where(topic => topic != "parsimony-references"))
+            Assert.Equal(
+                help.GetHelpPage(HelpEntryKind.Guide, "encoding/" + topic)!.ReplaceLineEndings("\n"),
+                EncodingGuides.ReadTopic(topic));
+    }
+
+    [Fact]
     public void EveryCatalogRecipeIsListedAndReadFromTheSharedHelpPage()
     {
         var recipes = ParsimonyRecipeCatalog.Load().Recipes;

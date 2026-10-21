@@ -13,7 +13,7 @@ $wordFiles = @(Get-ChildItem -LiteralPath $setsPath -Directory | ForEach-Object 
 })
 if ($wordFiles.Count -eq 0) { throw 'No eval-set word lists were found.' }
 
-$guidePath = Join-Path $PSScriptRoot '../src/SIL.Motif.Mcp/Resources/encoding-guides'
+$guidePath = Join-Path $PSScriptRoot '../src/SIL.Motif.Help/Content/en/guide/encoding'
 $guides = @(Get-ChildItem -LiteralPath $guidePath -Filter '*.md' -File)
 if ($guides.Count -eq 0) { throw 'No encoding guides were found.' }
 

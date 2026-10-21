@@ -57,6 +57,11 @@ public static class HelpCommand
                          entry.Kind == HelpEntryKind.Command && IsAvailableHelpEntry(entry, policy)))
                 output.WriteLine($"{commandEntry.Title,-30}  {commandEntry.Code}");
             output.WriteLine();
+            output.WriteLine("Encoding guides (read the one for the phenomenon before composing rules):");
+            foreach (var guide in catalog.Entries.Where(entry =>
+                         entry.Kind == HelpEntryKind.Guide && entry.Code.StartsWith("encoding/", StringComparison.Ordinal)))
+                output.WriteLine($"  {guide.Code["encoding/".Length..],-28}  {guide.Title}  (motif help guide:{guide.Code} --full)");
+            output.WriteLine();
             PrintDiscoverySection(output, "Advanced AI commands", CommandSurface.AdvancedAi, policy);
             output.WriteLine();
             PrintDiscoverySection(output, "Developer commands", CommandSurface.Developer, policy);

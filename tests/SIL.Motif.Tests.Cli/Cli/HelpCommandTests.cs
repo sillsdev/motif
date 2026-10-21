@@ -28,6 +28,22 @@ public sealed class HelpCommandTests
     }
 
     [Fact]
+    public void HelpListsAndShowsTheEncodingGuides()
+    {
+        var list = Run("help");
+        Assert.Equal(0, list.ExitCode);
+        Assert.Contains("Encoding guides", list.Output, StringComparison.Ordinal);
+        Assert.Contains("motif help guide:encoding/nasal-assimilation --full", list.Output, StringComparison.Ordinal);
+
+        var guide = Run("help", "guide:encoding/nasal-assimilation", "--full");
+        Assert.Equal(0, guide.ExitCode);
+        Assert.Contains("Segmental nasal assimilation", guide.Output, StringComparison.Ordinal);
+        Assert.Contains(
+            HelpCatalog.Load().GetHelpPage(HelpEntryKind.Guide, "encoding/nasal-assimilation")!.Split('\n')[0].TrimEnd('\r'),
+            guide.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void HelpDiscoversAdvancedAiAndDeveloperCommandsWhenBothModesAreOff()
     {
         var result = Run("help");

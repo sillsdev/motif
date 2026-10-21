@@ -2,6 +2,8 @@
 
 Use this command to stage one simple regular rewrite rule in a Draft. Each of `input` and `output` is an array with zero or one item; each item names an existing `phoneme` or `naturalClass`. An empty `input` means insertion, and an empty `output` means deletion.
 
+Before composing a rule, read the encoding guide for the phenomenon: `motif help guide:encoding/nasal-assimilation --full` for a nasal sound change, or `motif help` for the other guides.
+
 ```sh
 motif compose-author-phonological-rule --project language.fwdata --draft nasal-rule --intent '{"name":"n becomes m before a labial","direction":"left-to-right","input":[{"phoneme":"<n-id>"}],"output":[{"phoneme":"<m-id>"}],"left":[{"boundary":"word"}],"right":[{"naturalClass":"<labial-class-id>"},{"boundary":"word"}],"placement":{"after":"<neighbor-rule-id>"}}'
 ```

@@ -9,7 +9,7 @@ Start by learning what the saved project and words already show. Make one small 
   recorded path for other calls.
 - Read `motif_overview`, then `motif_grammar` and `motif_lexicon` for the relevant objects and forms.
 - Use `motif_word` for the linguist's recorded analysis and `motif_try_word` to see how the current grammar handles a form.
-- Read the guide for the phenomenon. Check whether Motif has a composer for every object the encoding needs.
+- Read the guide for the phenomenon: `motif_guide` over MCP, or `motif help guide:encoding/<topic> --full` from the CLI (`motif help` lists the topics). Check whether Motif has a composer for every object the encoding needs.
 
 ## Draft one small Proposal
 
