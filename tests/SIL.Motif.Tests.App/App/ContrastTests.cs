@@ -741,6 +741,32 @@ public sealed class ContrastTests(AvaloniaHeadlessFixture avalonia)
         avalonia.Invoke(() => Assert.True(Ratio(Color.Parse("#696969"), Resolve("Intent.Selected.Fill", ThemeVariant.Light)) < Text));
     }
 
+    // Known gap: a word card's header paints muted text on the selected-row fill, under 4.5:1 once the fill is #D7E6FF.
+    [Fact]
+    public void MutedTextOnTheWordCardHeaderStillFallsShortOfAa()
+    {
+        avalonia.Invoke(() =>
+        {
+            var text = new TextBlock { Text = "Esc closes", Classes = { "muted" } };
+            var window = new MotifTestWindow
+            {
+                Content = new Border { Classes = { "wordPresentationCardHeader" }, Child = text },
+                RequestedThemeVariant = ThemeVariant.Light, Width = 300, Height = 100,
+            };
+            try
+            {
+                window.Show();
+                window.UpdateLayout();
+                var ratio = Effective(text);
+                Assert.True(ratio is >= Part and < Text, $"muted on the card header: {ratio:F2}:1; if this now passes, drop the follow-up in the map");
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
     private static Color Resolve(string key, ThemeVariant theme)
     {
         Assert.True(Application.Current!.TryGetResource(key, theme, out var value), $"{key} does not resolve in {theme}");

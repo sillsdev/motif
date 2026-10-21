@@ -30,8 +30,8 @@ Light theme only. Same means the same value, or one alias of the same Semi step.
 | Intent.TextMuted, Intent.TextSecondary | FwLabelBrush | Semi (about #727477) and #454C57 / #696969 | Different (not adopted) | FwLabelBrush is the ink measured in FieldWorks' label column. It is 4.35:1 on the adopted selected row, under 4.5:1, so TextSecondary cannot take it; TextMuted is a Semi role and is never overridden (ADR 0074). Motif has no label-only key to give it. Follow-up 1 |
 | (none) | FwWsAbbrevBrush | n/a / #404040 | FW only | Writing-system abbreviation gutter ink; Motif has no data-tree writing-system gutter. Intent.Text is the nearest role |
 | Intent.Marking.Divider | FwSliceRuleBrush, FwSectionRuleBrush, FwPickerBorderBrush, FwDialogGroupSeparatorBrush | #D3D3D3 (Grey200) / LightGray (#D3D3D3) | Same (adopted) | Was #D5DCE4 (Slate200). Motif's divider is the key its analysis rules and strips use. Decorative, so no contrast bar. Dark unchanged. Pinned |
-| Intent.Border | same four | Semi (about #EDEDED) / LightGray | Different (not adopted) | A Semi role, never overridden (ADR 0074). Follow-up 2 |
-| Intent.Marking.Border | FwDialogFieldBorderBrush | #7A7A7A (Grey550) / #7A7A7A | Same (adopted) | Was #AEB8C3 (Slate400, 2.01:1). Edges Motif's compact controls such as action chips; #7A7A7A is 4.29:1 on Surface and 4.18:1 on Surface.Subtle, above the 3:1 a control boundary needs. Dark unchanged. Pinned. Motif's text boxes still take Semi's own border (follow-up 2) |
+| Intent.Border | same four | Semi (about #EDEDED) / LightGray | Different (not adopted) | A Semi role, never overridden (ADR 0074). Follow-up 3 |
+| Intent.Marking.Border | FwDialogFieldBorderBrush | #7A7A7A (Grey550) / #7A7A7A | Same (adopted) | Was #AEB8C3 (Slate400, 2.01:1). Edges Motif's compact controls such as action chips; #7A7A7A is 4.29:1 on Surface and 4.18:1 on Surface.Subtle, above the 3:1 a control boundary needs. Dark unchanged. Pinned. Motif's text boxes still take Semi's own border (follow-up 3). FieldWorks uses #7A7A7A only on input and host frames; Motif also applies it to chip and hover-reveal edges, as a deliberate extension. Those edges go from 2.0:1 to 4.3:1, which meets the 3:1 non-text bar. Owner visual check pending |
 | Intent.Marking.Divider | FwBrowseGridLineBrush | #D3D3D3 / #DCDCDC | Different | Both faint grid dividers; Motif uses the rule colour above for both. Decorative |
 | Intent.Text | FwSectionHeaderBrush | Semi Text0 / #696969 | Different (not adopted) | FieldWorks takes SystemColors.ControlDarkDark; Motif's section heading is Intent.Text at semibold 13 (Intent.Type.Section, Intent.Weight.Section), a Semi role. Follow-up 1 |
 | Intent.TextFaint | FwDisabledOptionBrush | Semi / Gray (#808080) | Different | FieldWorks keeps legacy Gray for an unavailable option because Semi's disabled text is lighter. Motif shows an unavailable control at Intent.Opacity.Dimmed (0.35) and a disabled reason beside it. Different mechanism, not a value |
@@ -61,11 +61,11 @@ the machine-guess RGB(234,220,186), each darkened or lightened until its text re
 | Intent.Stroke.DividerTop | DataTree.TopHairlineBorderThickness | 0,1,0,0 / 0,1,0,0 | Same | Pinned |
 | Intent.Stroke.DividerBottom | DataTree.BottomHairlineBorderThickness | 0,0,0,1 / 0,0,0,1 | Same | Pinned |
 | Intent.Radius.Control | DataTree.PickerCornerRadius | 3 / Semi Small (3) | Same | Pinned |
-| Intent.Inset.Page, Intent.Inset.Panel | DialogWindowPadding | 8 / 10 | Different | FieldWorks pads a dialog body 10; Motif pads pages and panels 8 as the page review settled. Follow-up 3 |
-| Intent.Inset.Tooltip | DataTree.MenuItemPadding | 8,4 / 8,3 | Different | Menu items in FieldWorks keep the WinForms density. Motif's menu takes Semi's. Follow-up 3 |
+| Intent.Inset.Page, Intent.Inset.Panel | DialogWindowPadding | 8 / 10 | Different | FieldWorks pads a dialog body 10; Motif pads pages and panels 8 as the page review settled. Follow-up 4 |
+| Intent.Inset.Tooltip | DataTree.MenuItemPadding | 8,4 / 8,3 | Different | Menu items in FieldWorks keep the WinForms density. Motif's menu takes Semi's. Follow-up 4 |
 | Intent.Inset.Row | DataTree.ListRowPadding | 6,4 / 4,1 | Different | FieldWorks' browse rows are about 18 high (DataTree.BrowseRowMinHeight) to match XMLViews; Motif's rows hold a 36-high DenseTable row (Component.DenseTable.RowHeight) |
 | Intent.Space.Minimal | DataTree.RowSpacing, DataTree.FieldSpacing | 2 / 1 | Different | A data tree is denser than Motif's lists. Not adopting: Motif has no data tree |
-| Primitive.Size.26, Primitive.Size.28 via Scoped/ControlHeights | DialogMinControlHeight | 26 and 28 / 24 (Semi Small) | Different | Motif's compact heights read better with Andika at 13. They are scoped to Motif's roots, so a host's Semi 24 is untouched (ADR 0074). Revisit with the font follow-up (4) |
+| Primitive.Size.26, Primitive.Size.28 via Scoped/ControlHeights | DialogMinControlHeight | 26 and 28 / 24 (Semi Small) | Different | Motif's compact heights read better with Andika at 13. They are scoped to Motif's roots, so a host's Semi 24 is untouched (ADR 0074). Revisit with the font follow-up (5) |
 | Primitive.Space.\*, Primitive.Inset.\*, Primitive.Size.\* | DataTree.\* sizes, Dialog\*Padding | various | Motif only, by value | Motif's other primitives are layout values for Motif's pages (columns, rails, strips). FieldWorks' DataTree.LabelColumnWidth 150, SplitterWidth 5 and the dialog control paddings (4,2 / 6,1 / 8,2 / 8,3 / 4,1) have no Motif page that needs them |
 
 ## Type
@@ -73,7 +73,7 @@ the machine-guess RGB(234,220,186), each darkened or lightened until its text re
 Interface font: the owner has decided on Andika, to be bundled with FieldWorks (FieldWorks pull request 1196, still
 open). Motif already bundles Andika (Primitive.Font.UI) at 13 DIP (Intent.Type.Body). FieldWorks today sets no UI
 family (platform default) and its `FwSurfaceFontSize` is 11. Adopting FieldWorks' font token and size is out of scope
-for this slice and is follow-up 4, once 1196 lands.
+for this slice and is follow-up 5, once 1196 lands.
 
 ## Theme variants
 
@@ -104,9 +104,16 @@ Adopted in this slice (each passes contrast, each pinned): selected row, field b
    TextMuted and Text are Semi roles. A label-only Intent key needs a first consumer (the token gate rejects unused
    keys) and a Dark value, so it waits for the field and form pages. On white it is 5.49:1, so it suits labels off a
    selected row.
-2. Semi-role colours (Intent.Border rules, text-box frames): FieldWorks' LightGray rule (#D3D3D3, decorative) and
+2. Muted text on the selected row: `Intent.TextMuted` (Semi Text2) is drawn on `Intent.Selected.Fill`. Traced in the
+   word card header (`wordPresentationCardHeader`: location, pending status and "Esc closes" in the `muted` class, and
+   the close button), which sits on the fill; the Inspector breadcrumb strip, the selected Settings rail entry and
+   segment, an open word strip and the chosen timing row share the fill and use muted classes for captions and glosses.
+   Ratio about 3.7:1, under 4.5:1 (was about 4.1:1 on #E8F1FF, which also missed). Pinned as a known gap by
+   `MutedTextOnTheWordCardHeaderStillFallsShortOfAa`. TextMuted is a Semi role and is never overridden, so the fix is a
+   Motif-owned muted-on-selected key, or a lighter selected fill; owner decision.
+3. Semi-role colours (Intent.Border rules, text-box frames): FieldWorks' LightGray rule (#D3D3D3, decorative) and
    #7A7A7A input frame need a Motif-owned text-box and card theme, since a Semi key is never overridden app-wide.
-3. Dialog padding and menu density (8 against 10, 8,4 against 8,3): only if Motif's views are hosted beside FieldWorks
+4. Dialog padding and menu density (8 against 10, 8,4 against 8,3): only if Motif's views are hosted beside FieldWorks
    dialogs and the seam shows; otherwise Motif keeps its own.
-4. Interface font and size (Andika per FieldWorks 1196, 11 against 13): adopt FieldWorks' font token once 1196 lands.
+5. Interface font and size (Andika per FieldWorks 1196, 11 against 13): adopt FieldWorks' font token once 1196 lands.
    Control heights 26 and 28 against Semi's 24 are revisited with it.
