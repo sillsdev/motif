@@ -110,6 +110,48 @@ public sealed class AuthorAffixProcessComposerTests : IDisposable
         Assert.All(process.OutputOS.OfType<IMoCopyFromInput>(), copy => Assert.Equal(process.InputOS[0].Guid, copy.ContentRA?.Guid));
     }
 
+    [Fact]
+    public void OutputThatOmitsAnInputDeletesItAndRoundTripsThroughApplyAndReopen()
+    {
+        var intent = Intent() with
+        {
+            Input = [new("onset", Phoneme: Id(_onset)), new("rest", Remaining: true)],
+            Output = [new(Insert: [Id(_insert)]), new(Insert: [Id(_vowel)]), new(Copy: "rest")],
+        };
+        var proposal = Proposal(AuthorAffixProcessComposer.Build(_cache, intent));
+        ProposalApplier.Apply(_cache, proposal, ScratchDryRun.Of(_cache, proposal).Anchor, "affix-core-tests");
+        var process = Process(proposal);
+        Assert.Equal(new[] { "PhSimpleContextSeg", "PhVariable" }, process.InputOS.Select(part => part.ClassName));
+        Assert.Equal(new[] { "MoInsertPhones", "MoInsertPhones", "MoCopyFromInput" }, process.OutputOS.Select(item => item.ClassName));
+        Assert.Equal(process.InputOS[1].Guid, Assert.Single(process.OutputOS.OfType<IMoCopyFromInput>()).ContentRA!.Guid);
+        Assert.DoesNotContain(process.OutputOS.OfType<IMoCopyFromInput>(), copy => copy.ContentRA!.Guid == process.InputOS[0].Guid);
+        var after = SoundSystemSnapshots.Read(_cache);
+        new FwDataProjectLoader().Save(_cache);
+        using var reopened = new FwDataProjectLoader().LoadScratchCache(_cache.ProjectId.Path);
+        Assert.Empty(SoundSystemSnapshots.Compare(after, SoundSystemSnapshots.Read(reopened)));
+    }
+
+    [Fact]
+    public void OutputThatDeletesTheStemOrEverythingIsRefusedAtBuildAndAtApply()
+    {
+        var good = Intent() with
+        {
+            Input = [new("onset", Phoneme: Id(_onset)), new("rest", Remaining: true)],
+            Output = [new(Insert: [Id(_insert)]), new(Copy: "rest")],
+        };
+        Assert.NotEmpty(AuthorAffixProcessComposer.Build(_cache, good));
+        var dropsStem = good with { Output = [new(Copy: "onset"), new(Insert: [Id(_insert)])] };
+        var copiesNothing = good with { Output = [new(Insert: [Id(_insert)])] };
+        foreach (var bad in new[] { dropsStem, copiesNothing })
+            Assert.Throws<InvalidOperationException>(() => AuthorAffixProcessComposer.Build(_cache, bad));
+        var operations = AuthorAffixProcessComposer.Build(_cache, good);
+        var onset = operations.First(operation => operation.Kind == MoAffixProcessInputOperationKinds.Create).EntityId!.Value;
+        var redirected = operations.Select(operation => operation.Kind == MoCopyFromInputContentOperationKinds.SetContent
+            ? ReplaceAfter(operation, new { @ref = onset.Value }) : operation).ToArray();
+        var failure = Assert.Throws<InvalidOperationException>(() => ScratchDryRun.Of(_cache, Proposal(redirected)));
+        Assert.Contains("remaining-stem", failure.Message, StringComparison.Ordinal);
+    }
+
     [Theory]
     [InlineData("class-membership")]
     [InlineData("insert-code")]

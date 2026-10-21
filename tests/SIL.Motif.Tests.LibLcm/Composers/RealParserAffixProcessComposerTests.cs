@@ -84,6 +84,39 @@ public sealed class RealParserAffixProcessComposerTests(PristineProjectFixture p
         Assert.Empty(await Readings(tracer, path, "taataat", panel));
     }
 
+    [RealParserFact]
+    public async Task NasalSubstitutionProcessesDeleteTheStemInitialConsonantAndParseTheDerivedForms()
+    {
+        using var cache = pristine.NewScratch();
+        RealParserProject.PrepareForParsing(cache, "p", "a", "l", "i", "t", "b", "n", "m", "g");
+        var category = Created(ApplyOps(cache, AuthorPartOfSpeechComposer.Build(cache,
+            new AuthorPartOfSpeechIntent("Synthetic word", Anal(cache), "W"))),
+            CmPossibilityListPossibilitiesOperationKinds.Create);
+        var phonemes = Phonemes(cache);
+        var names = new Dictionary<CanonicalId, string>(CanonicalId.ByGuid);
+        foreach (var stem in new[] { "palit", "tabang" })
+            names[Form(cache, ApplyOps(cache, AuthorLexicalEntryComposer.Build(cache, new AuthorLexicalEntryIntent(stem,
+                Vern(cache), CanonicalId.FromGuid(MoMorphTypeTags.kguidMorphStem), stem, Anal(cache),
+                new LexicalEntryMsa(LexicalEntryMsaKind.Stem, category)))))] = stem;
+        names[Process(cache, MoMorphTypeTags.kguidMorphPrefix, category,
+            [new("c", Phoneme: phonemes["p"]), new("rest", Remaining: true)],
+            [new(Insert: [phonemes["p"], phonemes["a"], phonemes["m"]]), new(Copy: "rest")])] = "paM";
+        names[Process(cache, MoMorphTypeTags.kguidMorphPrefix, category,
+            [new("c", Phoneme: phonemes["t"]), new("rest", Remaining: true)],
+            [new(Insert: [phonemes["p"], phonemes["a"], phonemes["n"]]), new(Copy: "rest")])] = "paN";
+        var path = cache.ProjectId.Path;
+        new FwDataProjectLoader().Save(cache);
+        using var invoker = new PanGlossInvoker();
+        var tracer = new PanGlossTracer(invoker);
+        var panel = new Panel(names);
+
+        Assert.Equal(["paM+palit"], await Readings(tracer, path, "pamalit", panel));
+        Assert.Equal(["paN+tabang"], await Readings(tracer, path, "panabang", panel));
+        Assert.Equal(["palit"], await Readings(tracer, path, "palit", panel));
+        foreach (var control in new[] { "pampalit", "pantabang", "pamabang", "panalit" })
+            Assert.Empty(await Readings(tracer, path, control, panel));
+    }
+
     private sealed record Panel(IReadOnlyDictionary<CanonicalId, string> Names);
 
     private async Task<string[]> Readings(PanGlossTracer tracer, string path, string word, Panel panel)

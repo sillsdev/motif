@@ -14,7 +14,7 @@ public sealed record AffixProcessInputPart(string Name, CanonicalId? Phoneme = n
 /// <summary>One realization step: copy a named input part or insert a nonempty phoneme sequence.</summary>
 public sealed record AffixProcessOutputStep(string? Copy = null, IReadOnlyList<CanonicalId>? Insert = null);
 
-/// <summary>One new affix entry with an ordered flat stem pattern and a nondestructive realization.</summary>
+/// <summary>One new affix entry with an ordered flat stem pattern and a realization that may omit (delete) leading input parts.</summary>
 public sealed record AuthorAffixProcessIntent(CanonicalId MorphType, string Gloss, string AnalysisWritingSystem,
     LexicalEntryMsa Msa, IReadOnlyList<AffixProcessInputPart> Input, IReadOnlyList<AffixProcessOutputStep> Output,
     string? Definition = null);
@@ -103,8 +103,11 @@ internal static class AffixProcessIntentShape
             }
         }
         if (expanded > 256) throw new InvalidOperationException("A process supports at most 256 expanded output mappings.");
-        if (copies.Values.Any(count => count == 0))
-            throw new InvalidOperationException("Every input part must be copied at least once.");
+        var remaining = intent.Input.FirstOrDefault(part => part.Remaining);
+        if (remaining is not null && copies[remaining.Name] == 0)
+            throw new InvalidOperationException("The remaining-stem part must be copied at least once; omitting it deletes the stem.");
+        if (copies.Values.All(count => count == 0))
+            throw new InvalidOperationException("An output that copies no input part deletes the whole stem.");
         if (!inserts && copies.Values.All(count => count == 1))
             throw new InvalidOperationException("An identity-only realization is not an affix process.");
     }

@@ -347,8 +347,8 @@
       }
     },
     {
-      "name": "uncopied-part",
-      "accept": false,
+      "name": "deleted-initial-part",
+      "accept": true,
       "intent": {
         "morphType": "AAAAAAAAAAAAAAAAAAAAAA",
         "gloss": "REDUP",
@@ -369,7 +369,9 @@
         ],
         "output": [
           {
-            "copy": "stem"
+            "insert": [
+              "AAAAAAAAAAAAAAAAAAAAAQ"
+            ]
           },
           {
             "copy": "stem"
@@ -757,6 +759,69 @@
           },
           {
             "copy": "stem"
+          }
+        ]
+      }
+    },
+    {
+      "name": "stem-omitted",
+      "accept": false,
+      "intent": {
+        "morphType": "AAAAAAAAAAAAAAAAAAAAAA",
+        "gloss": "REDUP",
+        "analysisWs": "en",
+        "msa": {
+          "kind": "unclassified",
+          "category": "AAAAAAAAAAAAAAAAAAAAAA"
+        },
+        "input": [
+          {
+            "name": "first",
+            "phoneme": "AAAAAAAAAAAAAAAAAAAAAQ"
+          },
+          {
+            "name": "stem",
+            "remaining": true
+          }
+        ],
+        "output": [
+          {
+            "copy": "first"
+          },
+          {
+            "insert": [
+              "AAAAAAAAAAAAAAAAAAAAAQ"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "nothing-copied",
+      "accept": false,
+      "intent": {
+        "morphType": "AAAAAAAAAAAAAAAAAAAAAA",
+        "gloss": "REDUP",
+        "analysisWs": "en",
+        "msa": {
+          "kind": "unclassified",
+          "category": "AAAAAAAAAAAAAAAAAAAAAA"
+        },
+        "input": [
+          {
+            "name": "first",
+            "phoneme": "AAAAAAAAAAAAAAAAAAAAAQ"
+          },
+          {
+            "name": "stem",
+            "remaining": true
+          }
+        ],
+        "output": [
+          {
+            "insert": [
+              "AAAAAAAAAAAAAAAAAAAAAQ"
+            ]
           }
         ]
       }

@@ -205,5 +205,5 @@
       "pattern": "^[\\s\\S]*[A-Za-z0-9_-]{22}(?![\\s\\S])"
     }
   },
-  "$comment": "Runtime semantic validation also requires unique local names, a unique final remaining part, all inputs copied, inserted material or repeated copying, and at most 256 expanded mappings. Project references and affix morphology are resolved against the loaded project. Duplicate JSON properties are refused by the parser."
+  "$comment": "Runtime semantic validation also requires unique local names, a unique final remaining part, a copied remaining-stem part, at least one copied input, inserted material or deletion or repeated copying, and at most 256 expanded mappings. Project references and affix morphology are resolved against the loaded project. Duplicate JSON properties are refused by the parser."
 }

@@ -3412,7 +3412,7 @@
                           },
                           "additionalProperties": false
                         },
-                        "description": "Ordered realization, each item either copy of a named input part or insert of phoneme ids."
+                        "description": "Ordered realization, each item either copy of a named input part or insert of phoneme ids. An input part left out of the output is deleted."
                       }
                     },
                     "additionalProperties": false,
@@ -4435,7 +4435,7 @@
   },
   {
     "name": "motif_add_affix_process",
-    "description": "Author an affix process. Stages a new affix entry whose ordered input pattern matches phonemes, a natural class or the remaining stem, and whose output copies named parts or inserts phonemes: an infix or a partial or full reduplication. It refuses transformations that remove matched input. Dry Run and Trial before a person Applies the Proposal.\nCommand: compose-author-affix-process. Agent class: Draft.",
+    "description": "Author an affix process. Stages a new affix entry whose ordered input pattern matches phonemes, a natural class or the remaining stem, and whose output copies named parts or inserts phonemes: an infix, a partial or full reduplication, or a substitution that deletes matched input by omitting it from the output (Cebuano paN- before p/b gives m). It refuses an output that copies nothing or drops the remaining stem. Dry Run and Trial before a person Applies the Proposal.\nCommand: compose-author-affix-process. Agent class: Draft.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -4532,7 +4532,7 @@
             },
             "additionalProperties": false
           },
-          "description": "Ordered realization, each item either copy of a named input part or insert of phoneme ids."
+          "description": "Ordered realization, each item either copy of a named input part or insert of phoneme ids. An input part left out of the output is deleted."
         },
         "project": {
           "type": "string",
