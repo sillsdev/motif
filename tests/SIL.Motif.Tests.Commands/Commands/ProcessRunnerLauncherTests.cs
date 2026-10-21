@@ -1,4 +1,3 @@
-using System.Collections;
 using SIL.LCModel;
 using SIL.LCModel.Core.Text;
 using SIL.LCModel.Infrastructure;
@@ -163,12 +162,12 @@ public sealed class ProcessRunnerLauncherTests(PristineProjectFixture pristine)
         }
     }
 
+    /// <summary>Only the variables a launcher could set or leak, so sibling tests do not race it.</summary>
     private static SortedDictionary<string, string?> MotifVariables()
     {
         var variables = new SortedDictionary<string, string?>(StringComparer.Ordinal);
-        foreach (DictionaryEntry entry in Environment.GetEnvironmentVariables())
-            if (entry.Key is string name && name.StartsWith("MOTIF_", StringComparison.OrdinalIgnoreCase))
-                variables[name] = entry.Value as string;
+        foreach (var name in RunnerVariables.Append(RunnerOptions.NamespaceVariable).Append(RunnerOptions.RootVariable))
+            variables[name] = Environment.GetEnvironmentVariable(name);
         return variables;
     }
 }
