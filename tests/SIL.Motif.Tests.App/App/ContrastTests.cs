@@ -711,26 +711,34 @@ public sealed class ContrastTests(AvaloniaHeadlessFixture avalonia)
         });
     }
 
-    // FieldWorks colours Motif has not adopted: each must still read on Motif's light page.
+    [Theory]
+    [InlineData("Intent.Selected.Fill", "#D7E6FF")] // FwSelectedRowBrush
+    [InlineData("Intent.Marking.Border", "#7A7A7A")] // FwDialogFieldBorderBrush
+    [InlineData("Intent.Marking.Divider", "#D3D3D3")] // LightGray, FwSliceRuleBrush
+    public void AColourMotifAdoptedFromFieldWorksStaysAtItsValue(string key, string hex)
+    {
+        avalonia.Invoke(() => Assert.Equal(Color.Parse(hex), Resolve(key, ThemeVariant.Light)));
+    }
+
     [Fact]
-    public void FieldWorksLightColoursMotifHasNotAdoptedWouldPassContrast()
+    public void TheAdoptedFieldWorksColoursReadOnMotifsLightSurfaces()
     {
         avalonia.Invoke(() =>
         {
-            var white = Resolve("Intent.Surface", ThemeVariant.Light);
-            var subtle = Resolve("Intent.Surface.Subtle", ThemeVariant.Light);
-            var neutral = Resolve("Intent.Neutral.Fill", ThemeVariant.Light);
-            var selectedRow = Color.Parse("#D7E6FF"); // FwSelectedRowBrush
-            var label = Color.Parse("#696969");       // FwLabelBrush, FwSectionHeaderBrush
-            var fieldBorder = Color.Parse("#7A7A7A"); // FwDialogFieldBorderBrush
-
+            var selected = Resolve("Intent.Selected.Fill", ThemeVariant.Light);
             foreach (var ink in new[] { "Intent.Accent", "Intent.Text", "Intent.TextSecondary" })
-                Assert.True(Ratio(Resolve(ink, ThemeVariant.Light), selectedRow) >= Text, $"{ink} on FwSelectedRowBrush");
-            foreach (var surface in new[] { white, subtle, neutral })
-                Assert.True(Ratio(label, surface) >= Text, $"FwLabelBrush on {surface}");
-            foreach (var surface in new[] { white, subtle })
-                Assert.True(Ratio(fieldBorder, surface) >= Part, $"FwDialogFieldBorderBrush on {surface}");
+                Assert.True(Ratio(Resolve(ink, ThemeVariant.Light), selected) >= Text, $"{ink} on Intent.Selected.Fill");
+            foreach (var surface in new[] { "Intent.Surface", "Intent.Surface.Subtle" })
+                Assert.True(Ratio(Resolve("Intent.Marking.Border", ThemeVariant.Light), Resolve(surface, ThemeVariant.Light)) >= Part,
+                    $"Intent.Marking.Border on {surface}");
         });
+    }
+
+    // FwLabelBrush (#696969) is not adopted: on FieldWorks' selected row it is 4.35:1, under the 4.5:1 text needs.
+    [Fact]
+    public void FieldWorksLabelInkStillFailsOnTheSelectedRow()
+    {
+        avalonia.Invoke(() => Assert.True(Ratio(Color.Parse("#696969"), Resolve("Intent.Selected.Fill", ThemeVariant.Light)) < Text));
     }
 
     private static Color Resolve(string key, ThemeVariant theme)

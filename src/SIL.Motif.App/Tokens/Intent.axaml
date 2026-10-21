@@ -179,7 +179,7 @@
     Candidate.Text on Candidate.Fill: 5.85:1 light, 7.56:1 dark
     TextSecondary on Surface.Subtle: 8.43:1 light, 9.94:1 dark
     TextSecondary on Neutral.Fill: 7.46:1 light, 7.34:1 dark
-    Accent on Selected.Fill: 6.30:1 light, 6.31:1 dark
+    Accent on Selected.Fill: 5.68:1 light, 6.31:1 dark
     Accent on Surface: 7.17:1 light, 8.96:1 dark
     Accent on Candidate.Fill: 5.98:1 light, 5.72:1 dark
     Emphasis.Text on Emphasis.Fill: 5.00:1 light, 5.08:1 dark
@@ -277,7 +277,7 @@
       <SolidColorBrush x:Key="Intent.Tooltip.Text" Color="{StaticResource Primitive.Color.Grey0}" />
       <SolidColorBrush x:Key="Intent.Tooltip.Background" Color="{StaticResource Primitive.Color.Grey900}" />
       <SolidColorBrush x:Key="Intent.Accent" Color="{StaticResource Primitive.Color.Blue700}" />
-      <SolidColorBrush x:Key="Intent.Selected.Fill" Color="{StaticResource Primitive.Color.Blue50}" />
+      <SolidColorBrush x:Key="Intent.Selected.Fill" Color="{StaticResource Primitive.Color.Blue75}" />
       <SolidColorBrush x:Key="Intent.Emphasis.Fill" Color="{StaticResource Primitive.Color.Blue500}" />
       <SolidColorBrush x:Key="Intent.Emphasis.Text" Color="{StaticResource Primitive.Color.Grey0}" />
       <SolidColorBrush x:Key="Intent.Neutral.Fill" Color="{StaticResource Primitive.Color.Grey100}" />
@@ -305,9 +305,9 @@
       <StaticResource x:Key="Intent.Danger.Fill" ResourceKey="SemiColorDangerLight" />
       <SolidColorBrush x:Key="Intent.Danger.Text" Color="{StaticResource Primitive.Color.Rose950}" />
       <SolidColorBrush x:Key="Intent.Marking.Text" Color="{StaticResource Primitive.Color.Slate950}" />
-      <SolidColorBrush x:Key="Intent.Marking.Border" Color="{StaticResource Primitive.Color.Slate400}" />
+      <SolidColorBrush x:Key="Intent.Marking.Border" Color="{StaticResource Primitive.Color.Grey550}" />
       <SolidColorBrush x:Key="Intent.Marking.Surface" Color="{StaticResource Primitive.Color.Grey0}" />
-      <SolidColorBrush x:Key="Intent.Marking.Divider" Color="{StaticResource Primitive.Color.Slate200}" />
+      <SolidColorBrush x:Key="Intent.Marking.Divider" Color="{StaticResource Primitive.Color.Grey200}" />
       <SolidColorBrush x:Key="Intent.Marking.Hover" Color="{StaticResource Primitive.Color.Slate50}" />
       <SolidColorBrush x:Key="Intent.Marking.Link" Color="{StaticResource Primitive.Color.Blue775}" />
       <SolidColorBrush x:Key="Intent.Opinion.Approved.Text" Color="{StaticResource Primitive.Color.Teal950}" />

@@ -2,8 +2,8 @@
 
 **In plain terms:** this table sets each Motif token beside the FieldWorks token that serves the same purpose, says
 whether the two values are the same, and gives the reason wherever they differ. Where the values are the same, a test
-pins them. Where they differ, Motif has not changed: the differences are listed as proposed follow-ups at the end, each
-with the contrast it would have. It is the mapping [ADR 0074](../adr/0074-tokens-map-onto-fwavaloniatheme-and-never-override-semi.md)
+pins them. Where FieldWorks' value passes Motif's contrast tests, Motif has adopted it. Where it fails, or Motif
+deliberately differs, the difference is a follow-up at the end with its reason. It is the mapping [ADR 0074](../adr/0074-tokens-map-onto-fwavaloniatheme-and-never-override-semi.md)
 asks for, and the deviations it records belong in [docs/ux/deviations.md](../ux/deviations.md).
 
 ## Sources
@@ -17,7 +17,8 @@ asks for, and the deviations it records belong in [docs/ux/deviations.md](../ux/
 - Values written `Semi` are Semi.Avalonia roles that neither side hard-codes. FieldWorks' own comments give two of
   them as composited on white: `SemiColorBorder` about #EDEDED and `SemiColorText2` about #727477.
 - Tests: `tests/SIL.Motif.Tests.App/App/ContrastTests.cs`, `AValueMotifSharesWithFieldWorksStaysAtFieldWorksValue`,
-  `ANoFillIsFullyTransparentAsInFieldWorks` and `FieldWorksLightColoursMotifHasNotAdoptedWouldPassContrast`.
+  `ANoFillIsFullyTransparentAsInFieldWorks`, `AColourMotifAdoptedFromFieldWorksStaysAtItsValue`,
+  `TheAdoptedFieldWorksColoursReadOnMotifsLightSurfaces` and `FieldWorksLabelInkStillFailsOnTheSelectedRow`.
 
 Light theme only. Same means the same value, or one alias of the same Semi step.
 
@@ -25,13 +26,14 @@ Light theme only. Same means the same value, or one alias of the same Semi step.
 
 | Motif key | FW key | Value (Motif / FW) | Same or different | Reason |
 | --- | --- | --- | --- | --- |
-| Intent.Selected.Fill | FwSelectedRowBrush | #E8F1FF (Blue50) / #D7E6FF | Different | FieldWorks pins the legacy WinForms selected-row colour (kclrBackgroundSelRow) for pixel parity; Motif has no WinForms baseline. Same pale-blue family. Adopting it passes: Intent.Accent on #D7E6FF is 5.68:1 (needs 4.5:1). Follow-up 1 |
-| Intent.TextMuted, Intent.TextSecondary | FwLabelBrush | Semi (about #727477) and #454C57 / #696969 | Different | FwLabelBrush is the ink measured in FieldWorks' label column. Motif's field labels use TextMuted or TextSecondary by place. #696969 is 5.49:1 on white, 5.34:1 on Surface.Subtle and 4.73:1 on Neutral.Fill, so it passes. Follow-up 2 |
+| Intent.Selected.Fill | FwSelectedRowBrush | #D7E6FF (Blue75) / #D7E6FF | Same (adopted) | Was #E8F1FF. FieldWorks' legacy WinForms selected-row colour. Passes: Accent 5.68:1, Text 16.65:1, TextSecondary 6.87:1 (need 4.5:1). Dark #1D3354 unchanged. Pinned |
+| Intent.TextMuted, Intent.TextSecondary | FwLabelBrush | Semi (about #727477) and #454C57 / #696969 | Different (not adopted) | FwLabelBrush is the ink measured in FieldWorks' label column. It is 4.35:1 on the adopted selected row, under 4.5:1, so TextSecondary cannot take it; TextMuted is a Semi role and is never overridden (ADR 0074). Motif has no label-only key to give it. Follow-up 1 |
 | (none) | FwWsAbbrevBrush | n/a / #404040 | FW only | Writing-system abbreviation gutter ink; Motif has no data-tree writing-system gutter. Intent.Text is the nearest role |
-| Intent.Border | FwSliceRuleBrush, FwSectionRuleBrush, FwPickerBorderBrush, FwDialogGroupSeparatorBrush | Semi (about #EDEDED) / LightGray (#D3D3D3) | Different | FieldWorks found the Semi border too faint for a rule and kept the WinForms DataTree divider pen colour. Motif's border is Semi's. LightGray is 1.5:1 on white and the border about 1.2:1; both are decorative dividers, which WCAG 1.4.11 does not measure. Follow-up 3 |
-| Intent.Marking.Border | FwDialogFieldBorderBrush | #AEB8C3 (Slate400) / #7A7A7A | Different | FieldWorks wants a bounded input frame to read; #7A7A7A is 4.29:1 on white, above the 3:1 a control boundary needs. Motif's marking border is 2.01:1 on white, but it edges analysis marks, not input fields, and Motif's text boxes take Semi's own border. Follow-up 4 |
-| Intent.Marking.Divider | FwBrowseGridLineBrush | #D5DCE4 (Slate200) / #DCDCDC | Different | Both faint grid dividers; Motif's is tinted slate to sit with its marking palette. No contrast case. Follow-up 3 |
-| Intent.TextSecondary | FwSectionHeaderBrush | #454C57 (Grey700) / #696969 | Different | FieldWorks takes SystemColors.ControlDarkDark for a section header; Motif's section heading is Intent.Text at semibold 13 (Intent.Type.Section, Intent.Weight.Section), and TextSecondary is for navigation labels. #696969 passes 4.5:1 on white. Follow-up 2 |
+| Intent.Marking.Divider | FwSliceRuleBrush, FwSectionRuleBrush, FwPickerBorderBrush, FwDialogGroupSeparatorBrush | #D3D3D3 (Grey200) / LightGray (#D3D3D3) | Same (adopted) | Was #D5DCE4 (Slate200). Motif's divider is the key its analysis rules and strips use. Decorative, so no contrast bar. Dark unchanged. Pinned |
+| Intent.Border | same four | Semi (about #EDEDED) / LightGray | Different (not adopted) | A Semi role, never overridden (ADR 0074). Follow-up 2 |
+| Intent.Marking.Border | FwDialogFieldBorderBrush | #7A7A7A (Grey550) / #7A7A7A | Same (adopted) | Was #AEB8C3 (Slate400, 2.01:1). Edges Motif's compact controls such as action chips; #7A7A7A is 4.29:1 on Surface and 4.18:1 on Surface.Subtle, above the 3:1 a control boundary needs. Dark unchanged. Pinned. Motif's text boxes still take Semi's own border (follow-up 2) |
+| Intent.Marking.Divider | FwBrowseGridLineBrush | #D3D3D3 / #DCDCDC | Different | Both faint grid dividers; Motif uses the rule colour above for both. Decorative |
+| Intent.Text | FwSectionHeaderBrush | Semi Text0 / #696969 | Different (not adopted) | FieldWorks takes SystemColors.ControlDarkDark; Motif's section heading is Intent.Text at semibold 13 (Intent.Type.Section, Intent.Weight.Section), a Semi role. Follow-up 1 |
 | Intent.TextFaint | FwDisabledOptionBrush | Semi / Gray (#808080) | Different | FieldWorks keeps legacy Gray for an unavailable option because Semi's disabled text is lighter. Motif shows an unavailable control at Intent.Opacity.Dimmed (0.35) and a disabled reason beside it. Different mechanism, not a value |
 | Intent.Clear | FwTransparentBrush | #00FFFFFF / Transparent | Same | Both are alpha 0. Pinned |
 | (none) | FwTreeBoxBorderBrush, FwTreeBoxGlyphBrush | n/a / #A0A0A0, #404040 | FW only | The +/- box of a collapsible data-tree section; Motif has no such box (it uses disclosure marks coloured by Intent.TextMuted) |
@@ -59,17 +61,19 @@ the machine-guess RGB(234,220,186), each darkened or lightened until its text re
 | Intent.Stroke.DividerTop | DataTree.TopHairlineBorderThickness | 0,1,0,0 / 0,1,0,0 | Same | Pinned |
 | Intent.Stroke.DividerBottom | DataTree.BottomHairlineBorderThickness | 0,0,0,1 / 0,0,0,1 | Same | Pinned |
 | Intent.Radius.Control | DataTree.PickerCornerRadius | 3 / Semi Small (3) | Same | Pinned |
-| Intent.Inset.Page, Intent.Inset.Panel | DialogWindowPadding | 8 / 10 | Different | FieldWorks pads a dialog body 10; Motif pads pages and panels 8 as the page review settled. Follow-up 5 |
-| Intent.Inset.Tooltip | DataTree.MenuItemPadding | 8,4 / 8,3 | Different | Menu items in FieldWorks keep the WinForms density. Motif's menu takes Semi's. Follow-up 5 |
+| Intent.Inset.Page, Intent.Inset.Panel | DialogWindowPadding | 8 / 10 | Different | FieldWorks pads a dialog body 10; Motif pads pages and panels 8 as the page review settled. Follow-up 3 |
+| Intent.Inset.Tooltip | DataTree.MenuItemPadding | 8,4 / 8,3 | Different | Menu items in FieldWorks keep the WinForms density. Motif's menu takes Semi's. Follow-up 3 |
 | Intent.Inset.Row | DataTree.ListRowPadding | 6,4 / 4,1 | Different | FieldWorks' browse rows are about 18 high (DataTree.BrowseRowMinHeight) to match XMLViews; Motif's rows hold a 36-high DenseTable row (Component.DenseTable.RowHeight) |
 | Intent.Space.Minimal | DataTree.RowSpacing, DataTree.FieldSpacing | 2 / 1 | Different | A data tree is denser than Motif's lists. Not adopting: Motif has no data tree |
-| Primitive.Size.26, Primitive.Size.28 via Scoped/ControlHeights | DialogMinControlHeight | 26 and 28 / 24 (Semi Small) | Different | Motif's compact heights read better with Andika at 13. They are scoped to Motif's roots, so a host's Semi 24 is untouched (ADR 0074). Revisit with the font decision |
+| Primitive.Size.26, Primitive.Size.28 via Scoped/ControlHeights | DialogMinControlHeight | 26 and 28 / 24 (Semi Small) | Different | Motif's compact heights read better with Andika at 13. They are scoped to Motif's roots, so a host's Semi 24 is untouched (ADR 0074). Revisit with the font follow-up (4) |
 | Primitive.Space.\*, Primitive.Inset.\*, Primitive.Size.\* | DataTree.\* sizes, Dialog\*Padding | various | Motif only, by value | Motif's other primitives are layout values for Motif's pages (columns, rails, strips). FieldWorks' DataTree.LabelColumnWidth 150, SplitterWidth 5 and the dialog control paddings (4,2 / 6,1 / 8,2 / 8,3 / 4,1) have no Motif page that needs them |
 
 ## Type
 
-Font family and size are not mapped here: pending owner font decision. For the record, FieldWorks' `FwSurfaceFontSize`
-is 11 with the platform default family, and Motif's Intent.Type.Body is 13 with bundled Andika.
+Interface font: the owner has decided on Andika, to be bundled with FieldWorks (FieldWorks pull request 1196, still
+open). Motif already bundles Andika (Primitive.Font.UI) at 13 DIP (Intent.Type.Body). FieldWorks today sets no UI
+family (platform default) and its `FwSurfaceFontSize` is 11. Adopting FieldWorks' font token and size is out of scope
+for this slice and is follow-up 4, once 1196 lands.
 
 ## Theme variants
 
@@ -91,22 +95,18 @@ host's theme variant.
   list sizes, link prompt, validation message and paragraph rules). Motif has no data tree.
 - Font: FwSurfaceFontSize (see Type).
 
-## Proposed follow-ups (no Motif visual changes in this slice)
+## Follow-ups
 
-ADR 0074 decision 2 says to adopt FieldWorks' light values for these purposes wherever Motif's contrast tests pass.
-This slice leaves Motif's visuals alone, so each is a proposal. Each needs the screenshots and size matrix to be
-reviewed, and its Motif tests (`FieldWorksLightColoursMotifHasNotAdoptedWouldPassContrast` already shows each would
-pass) to be moved to the new value.
+Adopted in this slice (each passes contrast, each pinned): selected row, field border (Marking.Border), rules
+(Marking.Divider). Not adopted, with the reason:
 
-1. Selected row: Intent.Selected.Fill #E8F1FF to #D7E6FF. Passes: Accent 5.68:1, Text 16.65:1, TextSecondary 6.87:1.
-   The Dark value #1D3354 stays.
-2. Label ink: add or retarget one Intent label key to #696969 for field labels and section headers. Passes on Surface
-   5.49:1, Surface.Subtle 5.34:1, Neutral.Fill 4.73:1. It is lighter than TextSecondary (8.66:1), so it suits labels,
-   not body text.
-3. Rules: Intent.Border and the Marking dividers stay unless a view needs a visible rule; then FieldWorks' LightGray
-   (#D3D3D3, 1.5:1, decorative) is the candidate. Register as a decision, not a contrast result.
-4. Field border: a text-box frame in #7A7A7A (4.29:1 on Surface, 4.18:1 on Surface.Subtle, above the 3:1 non-text
-   bar) once Motif's text boxes stop taking Semi's border. Needs a Motif-owned text-box theme, so it is its own slice.
-5. Dialog padding and menu density (8 against 10, 8,4 against 8,3): only if Motif's views are hosted beside FieldWorks
-   dialogs and the seam shows; otherwise keep Motif's.
-6. Control height 26 and 28 against Semi's 24: revisit with the interface font decision.
+1. Label ink and section header #696969: fails 4.5:1 on the new selected row (4.35:1), so TextSecondary cannot take it;
+   TextMuted and Text are Semi roles. A label-only Intent key needs a first consumer (the token gate rejects unused
+   keys) and a Dark value, so it waits for the field and form pages. On white it is 5.49:1, so it suits labels off a
+   selected row.
+2. Semi-role colours (Intent.Border rules, text-box frames): FieldWorks' LightGray rule (#D3D3D3, decorative) and
+   #7A7A7A input frame need a Motif-owned text-box and card theme, since a Semi key is never overridden app-wide.
+3. Dialog padding and menu density (8 against 10, 8,4 against 8,3): only if Motif's views are hosted beside FieldWorks
+   dialogs and the seam shows; otherwise Motif keeps its own.
+4. Interface font and size (Andika per FieldWorks 1196, 11 against 13): adopt FieldWorks' font token once 1196 lands.
+   Control heights 26 and 28 against Semi's 24 are revisited with it.
