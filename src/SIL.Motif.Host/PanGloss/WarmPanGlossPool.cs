@@ -191,8 +191,13 @@ public sealed class WarmPanGlossPool : IDisposable
 
     private static string Normalize(string projectKey) => Path.GetFullPath(projectKey);
 
+    /// <summary>PanGloss's own per-word runaway guard, which a parse without <c>--step-cap</c> applies.</summary>
+    private const long ParserDefaultSteps = 50_000_000;
+
+    /// <summary>No cap and the parser's default cap share a session; any other cap has its own.</summary>
     private static string SessionKey(string projectKey, StepCap? stepCap) =>
-        Normalize(projectKey) + "\n" + (stepCap?.ToArgument() ?? string.Empty);
+        Normalize(projectKey) + "\n" + (stepCap is null || stepCap.Steps == ParserDefaultSteps
+            ? string.Empty : stepCap.ToArgument());
 
     private Session Acquire(string projectKey, string token, string grammarPath, StepCap? stepCap, bool retryFailed)
     {

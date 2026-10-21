@@ -119,6 +119,7 @@ Assert-Interface '--describe binary' 'pangloss' $description.binary
 Assert-Interface '--describe facts.schemaVersion' $interfaces.facts.schemaVersion $description.facts.schemaVersion
 Assert-Interface '--describe facts.contextVersion' $interfaces.facts.contextVersion $description.facts.contextVersion
 Assert-Interface '--describe facts.statsManifestVersion' $interfaces.facts.statsManifestVersion $description.facts.statsManifestVersion
+Assert-Interface '--describe interfaces.serveProtocol' $interfaces.serveProtocol $description.interfaces.serveProtocol
 
 $commands = @{}
 foreach ($command in @($description.commands)) {

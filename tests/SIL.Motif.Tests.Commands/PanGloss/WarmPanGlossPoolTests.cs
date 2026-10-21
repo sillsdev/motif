@@ -335,6 +335,7 @@ public sealed class WarmPanGlossPoolTests : IDisposable
         await pool.TryWordAsync(grammar, "t1", grammar, "motifb", true, CancellationToken.None, new StepCap(1000));
         await pool.TryWordAsync(grammar, "t1", grammar, "motifc", true, CancellationToken.None, StepCap.Unbounded);
 
+        await pool.TryWordAsync(grammar, "t1", grammar, "motifd", true, CancellationToken.None, new StepCap(50_000_000));
         var argv = Lines(argvLog);
         Assert.Equal(3, Lines(startLog).Length);
         Assert.DoesNotContain("--step-cap", argv[0]);
@@ -343,6 +344,9 @@ public sealed class WarmPanGlossPoolTests : IDisposable
         Assert.Equal(WarmSessionPhase.Ready, pool.GetState(grammar).Phase);
         Assert.Equal(WarmSessionPhase.Ready, pool.GetState(grammar, new StepCap(1000)).Phase);
         Assert.Equal(WarmSessionPhase.Idle, pool.GetState(grammar, new StepCap(7)).Phase);
+
+        await pool.TryWordAsync(grammar, "t1", grammar, "motife", true, CancellationToken.None, StepCap.Default);
+        Assert.Equal(4, Lines(startLog).Length);
 
         pool.Evict(grammar);
         Assert.Equal(WarmSessionPhase.Idle, pool.GetState(grammar, new StepCap(1000)).Phase);
