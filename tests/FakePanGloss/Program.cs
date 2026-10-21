@@ -268,14 +268,23 @@ internal static class Program
         var outPath = args[3];
         string? cachePath = null;
         string? analysesPath = null;
+        var wordTimeoutMs = 0;
         for (var i = 4; i < args.Length; i++)
         {
-            if (args[i] == "--cache" && i + 1 < args.Length) cachePath = args[++i];
+            if (args[i] == "--word-timeout-ms" && i + 1 < args.Length)
+                int.TryParse(args[++i], NumberStyles.Integer, CultureInfo.InvariantCulture, out wordTimeoutMs);
+            else if (args[i] == "--cache" && i + 1 < args.Length) cachePath = args[++i];
             else if (args[i] == "--analyses" && i + 1 < args.Length) analysesPath = args[++i];
         }
         var directory = Path.GetDirectoryName(Path.GetFullPath(projectPath));
         RecordArgv(directory, args);
         var behaviour = Behaviour.Read(directory, "batch");
+        // A timed-out word with recoversAtTimeoutMs completes once given that limit, as a slow word does unloaded.
+        behaviour = behaviour with
+        {
+            Words = behaviour.Words.Select(word => word.Outcome == "timed-out" && word.RecoversAtTimeoutMs is { } at &&
+                wordTimeoutMs >= at ? word with { Outcome = "complete" } : word).ToArray(),
+        };
         var words = File.Exists(wordsPath) ? File.ReadAllLines(wordsPath) : Array.Empty<string>();
         if (behaviour.StartedPath is { } startedPath) File.WriteAllText(startedPath, string.Empty);
         if (behaviour.ProcessIdPath is { } processIdPath)
@@ -917,7 +926,8 @@ internal static class Program
         }));
 
     private sealed record FakeWord(string Word, string Outcome, string? Signature = null,
-        IReadOnlyList<JsonElement>? Analyses = null, int? Attempts = null, int? Passes = null, double ElapsedMs = 3);
+        IReadOnlyList<JsonElement>? Analyses = null, int? Attempts = null, int? Passes = null, double ElapsedMs = 3,
+        int? RecoversAtTimeoutMs = null);
 
     private sealed record Behaviour
     {

@@ -142,6 +142,25 @@ public sealed class PanGlossAssessor : IAssessor
             {
                 throw new AssessorUnavailableException(AssessorName, exception.Message);
             }
+            // Words stopped at the wall-clock limit run again serially under a longer one; the record names each.
+            if (completed.MorphologyOutput is { } firstAnalyses)
+            {
+                StoppedWordRetryRunner.Outcome? retried;
+                try
+                {
+                    retried = await StoppedWordRetryRunner.RunAsync(_invoker, _paths, batch, evidence,
+                        completed.Output, firstAnalyses, onAdmissionWait, cancellationToken).ConfigureAwait(false);
+                }
+                catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+                {
+                    throw new AssessorUnavailableException(AssessorName, exception.Message);
+                }
+                if (retried is not null)
+                {
+                    evidence = retried.Evidence;
+                    completed = completed with { Output = retried.Tsv, MorphologyOutput = retried.Analyses };
+                }
+            }
             IReadOnlyList<WordAnalysis> rows;
             try { rows = BatchTsvParser.Parse(completed.Output); }
             catch (InvalidOperationException exception)
