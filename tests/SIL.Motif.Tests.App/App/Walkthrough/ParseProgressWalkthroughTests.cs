@@ -169,12 +169,7 @@ public sealed class ParseProgressWalkthroughTests(PristineProjectFixture pristin
             WalkthroughSteps.ChooseProjectAndCaptureBaseline(window, deadline);
             FakeParser.BehaveBesideExecutable(parser, new
             {
-                subcommands = new Dictionary<string, object>
-                {
-                    ["parse"] = new { heartbeatPath = heartbeat },
-                    // Measured progress is the cold path's: another serve protocol fails the session so the word runs cold.
-                    ["serve"] = new { serveProtocol = 2 },
-                },
+                subcommands = new Dictionary<string, object> { ["parse"] = new { heartbeatPath = heartbeat } },
             });
             window.ShowPage(WorkspacePage.TryAWord);
             var trace = window.Workspace.Assess.Trace;
@@ -189,7 +184,7 @@ public sealed class ParseProgressWalkthroughTests(PristineProjectFixture pristin
                 Assert.Contains("estimating", Details(window));
                 await trace.TryCommand.ExecuteAsync(null);
                 Assert.False(trace.TryCommand.CanExecute(null));
-                Assert.Equal(1, FakeParser.TraceRequests(parser));
+                Assert.Single(FakeParser.Invocations(parser), line => line == "parse");
                 clock.Advance(TimeSpan.FromSeconds(61));
                 window.WaitUntil(() => Details(window).Contains("no per-word time limit", StringComparison.Ordinal),
                     TimeSpan.FromSeconds(5), "the unbounded trace gave no account of its long wait");
@@ -202,43 +197,6 @@ public sealed class ParseProgressWalkthroughTests(PristineProjectFixture pristin
                 await running.WaitAsync(TimeSpan.FromSeconds(20));
             }
             Assert.False(trace.ParseProgress.IsActive);
-        }, WalkthroughSteps.Remaining(deadline));
-    }
-
-    [Fact]
-    public void TryAWordOnTheWarmSessionReportsTracingTheWordAndDoesNotReplaceARunningTrace()
-    {
-        using var project = new WalkthroughProject(pristine);
-        var parser = FakeParser.CopyRecordingInvocations(project.ManagedRoot);
-        var deadline = Stopwatch.GetTimestamp() + 180 * Stopwatch.Frequency;
-        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
-        {
-            using var window = new WalkthroughWindow(project.ManagedRoot, project.FwDataPath, parserPath: parser);
-            WalkthroughSteps.ChooseProjectAndCaptureBaseline(window, deadline);
-            FakeParser.BehaveBesideExecutable(parser, new
-            {
-                subcommands = new Dictionary<string, object> { ["serve"] = new { serveRequestDelayMs = 2500 } },
-            });
-            window.ShowPage(WorkspacePage.TryAWord);
-            var trace = window.Workspace.Assess.Trace;
-            trace.WordToTry = "held";
-            var running = trace.TryCommand.ExecuteAsync(null);
-            try
-            {
-                window.WaitUntil(() => trace.ParseProgress.IsActive &&
-                    trace.ParseProgress.ProgressText.Contains("0 of 1 words done · Parsing held", StringComparison.Ordinal),
-                    TimeSpan.FromSeconds(15), "the warm word did not report that it is being traced");
-                await trace.TryCommand.ExecuteAsync(null);
-                Assert.False(trace.TryCommand.CanExecute(null));
-                await running.WaitAsync(TimeSpan.FromSeconds(30));
-                Assert.Equal(1, FakeParser.TraceRequests(parser));
-                Assert.DoesNotContain(FakeParser.Invocations(parser), line => line == "parse");
-            }
-            finally
-            {
-                trace.CancelCommand.Execute(null);
-                await running.WaitAsync(TimeSpan.FromSeconds(20));
-            }
         }, WalkthroughSteps.Remaining(deadline));
     }
 

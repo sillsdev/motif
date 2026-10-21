@@ -15,10 +15,12 @@ using SIL.LCModel.Infrastructure;
 using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Assess;
 using SIL.Motif.Commands.Requests;
+using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Host;
+using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.Store;
 using SIL.Motif.App.Composition;
 using SIL.Motif.App.Services;
@@ -91,6 +93,59 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
             await second.KnownProjectsLoaded;
             Assert.Empty(second.Workspace.Project.KnownProjects);
             await host.StopAsync();
+        });
+    }
+
+    // Resident sessions latch for the whole process, so this separate test process is the only one that runs them.
+    [Fact]
+    public void OpeningTryAWordWarmsTheParserAndAWordIsTracedOnTheResidentSession()
+    {
+        var host = MotifAppHost.Shared;
+        using var project = new WalkthroughProject(pristine);
+        var parser = FakeParser.CopyRecordingInvocations(Path.Combine(NewRoot(), "parser"));
+        var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(project.FwDataPath),
+            project.ManagedRoot);
+        Assert.True(captured.Succeeded, captured.Refusal?.Message);
+        var skipped = ProjectSetupCommands.Skip(new SkipSetupRequest(project.FwDataPath));
+        Assert.True(skipped.Succeeded, skipped.Refusal?.Message);
+        var picker = new RecordingProjectPicker(project.FwDataPath);
+        var options = Options(project.ManagedRoot, picker) with { ParserPath = parser,
+            RunnerLauncher = new NoRunnerLauncher(new JobRunnerLaunchOptions(project.ManagedRoot, parser)),
+            TryWordSessions = new TryWordSessionsAdapter(parser) };
+
+        host.Run("open Try a Word, trace a word on the resident session", JourneyLimit, async () =>
+        {
+            var session = host.Start(options);
+            try
+            {
+                await session.KnownProjectsLoaded;
+                await SelectNewProjectAsync(session, () => picker.Calls == 1);
+                await Until(() => session.Workspace.Baseline.HasBaseline, "the Baseline did not load");
+                await ShowPageAsync(session, WorkspacePage.TryAWord);
+                var path = session.Workspace.Context.ProjectPath!;
+                await Until(() => session.Workspace.Context.TryWordSessions.GetPhase(path) == WarmSessionPhase.Ready,
+                    "opening Try a Word did not warm the parser");
+
+                var trace = session.Workspace.Assess.Trace;
+                trace.SetWord("motifa");
+                await trace.TryCommand.ExecuteAsync(null);
+                Assert.NotNull(trace.Result);
+                Assert.Null(trace.Refusal);
+
+                var reports = new List<string>();
+                var traced = WordTraceQuery.Query(new WordTraceRequest(path, "motifb"), parser,
+                    CancellationToken.None, progress => reports.Add(progress.Message));
+                Assert.True(traced.Succeeded, traced.Refusal?.Message);
+                Assert.Equal(["Tracing motifb"], reports);
+
+                Assert.Equal(2, FakeParser.TraceRequests(parser));
+                Assert.DoesNotContain(FakeParser.Invocations(parser), command => command == "parse");
+            }
+            finally
+            {
+                session.Workspace.Context.TryWordSessions.Evict(session.Workspace.Context.ProjectPath ?? project.FwDataPath);
+                session.Workspace.Context.TryWordSessions.Shutdown();
+            }
         });
     }
 

@@ -52,7 +52,8 @@ public sealed record MotifAppOptions(
     IUserPreferencesStore? UserPreferencesStore = null,
     IAdvancedAiModePreferenceStore? AdvancedAiModePreferences = null,
     IAssistantConnectionService? AssistantConnections = null,
-    IDefaultProposalChecksStore? DefaultProposalChecks = null)
+    IDefaultProposalChecksStore? DefaultProposalChecks = null,
+    ITryWordSessions? TryWordSessions = null)
 {
     /// <summary>The command surface the window may show for the current preference choice.</summary>
     public CommandSurfacePolicy SurfacePolicy =>
@@ -70,7 +71,8 @@ public sealed record MotifAppOptions(
             UserPreferencesStore: new FileUserPreferencesStore(FileUserPreferencesStore.DefaultPath),
             AdvancedAiModePreferences: FileAdvancedAiModePreferenceStore.ForInstallation(),
             AssistantConnections: AssistantConnectionService.ForInstallation(),
-            DefaultProposalChecks: FileDefaultProposalChecksStore.ForInstallation());
+            DefaultProposalChecks: FileDefaultProposalChecksStore.ForInstallation(),
+            TryWordSessions: new TryWordSessionsAdapter(commands.ParserPath));
     }
 }
 
@@ -123,7 +125,7 @@ public static class MotifAppComposition
             assistantConnections: options.AssistantConnections,
             defaultProposalChecks: options.DefaultProposalChecks,
             uriLauncher: new AvaloniaLauncher(window),
-            tryWordSessions: new TryWordSessionsAdapter(options.ParserPath));
+            tryWordSessions: options.TryWordSessions);
         window.Compose(workspace);
         var crashes = new CrashReporter(options.TimeProvider, options.CrashWindow ?? new CrashWindowServices());
         return new MotifAppCompositionResult(window, workspace, crashes, surfacePolicy);
