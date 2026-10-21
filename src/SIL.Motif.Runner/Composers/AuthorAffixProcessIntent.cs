@@ -67,24 +67,30 @@ internal static class AffixProcessIntentShape
             throw new InvalidOperationException("An affix process definition must be nonblank when present.");
         if (intent.Msa is null || intent.Msa.Kind == LexicalEntryMsaKind.Stem || !Enum.IsDefined(intent.Msa.Kind))
             throw new InvalidOperationException("An affix process needs affix grammatical info.");
-        if (intent.Input is null || intent.Input.Count is < 1 or > 16)
+        ValidatePattern(intent.Input, intent.Output);
+    }
+
+    /// <summary>Checks the stem pattern and realization alone, as an entry-less allomorph states them.</summary>
+    internal static void ValidatePattern(IReadOnlyList<AffixProcessInputPart> input, IReadOnlyList<AffixProcessOutputStep> output)
+    {
+        if (input is null || input.Count is < 1 or > 16)
             throw new InvalidOperationException("A process needs between 1 and 16 input parts.");
-        if (intent.Output is null || intent.Output.Count is < 1 or > 64)
+        if (output is null || output.Count is < 1 or > 64)
             throw new InvalidOperationException("A process needs between 1 and 64 logical output steps.");
         var copies = new Dictionary<string, int>(StringComparer.Ordinal);
-        for (var index = 0; index < intent.Input.Count; index++)
+        for (var index = 0; index < input.Count; index++)
         {
-            var part = intent.Input[index];
+            var part = input[index];
             if (part is null || string.IsNullOrWhiteSpace(part.Name) || !copies.TryAdd(part.Name, 0))
                 throw new InvalidOperationException("Input part names must be nonblank and unique.");
             if ((part.Phoneme is null ? 0 : 1) + (part.NaturalClass is null ? 0 : 1) + (part.Remaining ? 1 : 0) != 1)
                 throw new InvalidOperationException("An input part needs exactly one phoneme, natural class or remaining stem.");
-            if (part.Remaining && index != intent.Input.Count - 1)
+            if (part.Remaining && index != input.Count - 1)
                 throw new InvalidOperationException("The remaining-stem part must be unique and last.");
         }
         var expanded = 0;
         var inserts = false;
-        foreach (var step in intent.Output)
+        foreach (var step in output)
         {
             if (step is null || (step.Copy is null) == (step.Insert is null))
                 throw new InvalidOperationException("An output step needs exactly one copy or insertion.");
@@ -103,7 +109,7 @@ internal static class AffixProcessIntentShape
             }
         }
         if (expanded > 256) throw new InvalidOperationException("A process supports at most 256 expanded output mappings.");
-        var remaining = intent.Input.FirstOrDefault(part => part.Remaining);
+        var remaining = input.FirstOrDefault(part => part.Remaining);
         if (remaining is not null && copies[remaining.Name] == 0)
             throw new InvalidOperationException("The remaining-stem part must be copied at least once; omitting it deletes the stem.");
         if (copies.Values.All(count => count == 0))
