@@ -68,7 +68,7 @@ public sealed class AssessProgressIntegrationTests(PristineProjectFixture pristi
             File.WriteAllText(release + ".3", string.Empty);
             var outcome = await run.WaitAsync(TimeSpan.FromSeconds(30));
             Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
-            Assert.Single(FakeParser.Invocations(parser), command => command == "batch");
+            Assert.Equal(2, FakeParser.Invocations(parser).Count(command => command == "batch")); // the stopped word reruns alone
         }
         finally
         {

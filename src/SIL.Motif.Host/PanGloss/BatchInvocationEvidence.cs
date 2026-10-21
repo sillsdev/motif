@@ -38,6 +38,12 @@ public sealed record BatchInvocationEvidence(
     public string? AnalysesPath { get; init; }
     public string? AnalysesSha256 { get; init; }
 
+    /// <summary>
+    /// Set when words the parser stopped at the per-word time limit were run again alone under a longer limit and
+    /// their rows in the retained TSV and morphology files were replaced by the retried rows; null when none were.
+    /// </summary>
+    public StoppedWordRetry? StoppedWordRetry { get; init; }
+
     /// <summary>PanGloss stderr lines retained with the invocation, newline-joined or null when none were retained.</summary>
     /// <remarks>
     /// Joined rather than listed because a record's value equality is what lets one invocation be recorded once per
@@ -151,4 +157,35 @@ public sealed record BatchInvocationEvidence(
             return read;
         }
     }
+}
+
+/// <summary>
+/// The record that some words were measured twice. The first pass stopped them at the per-word time limit; a
+/// second invocation of the same parser on the same staged source ran only those words under
+/// <see cref="LimitMs"/>. The retained TSV and morphology files hold the retried rows for those words, and the
+/// first-pass files are kept beside them as <c>first-pass.tsv</c> and <c>first-pass-analyses.jsonl</c>.
+/// </summary>
+/// <remarks>
+/// Only primitive members, so two recordings of one invocation still compare equal. A recovered word's row is
+/// the same parse the first pass would have produced had it been given more time; a word that stopped again
+/// keeps its stopped row, so it still blocks Apply.
+/// </remarks>
+/// <param name="LimitMs">The longer per-word limit the retry ran under.</param>
+/// <param name="Stopped">Words the first pass stopped at the time limit.</param>
+/// <param name="Retried">Words actually run again; the rest exceeded <see cref="MaxWords"/>.</param>
+/// <param name="Recovered">Retried words that completed.</param>
+/// <param name="StillStopped">Retried words that stopped again.</param>
+/// <param name="Words">One tab-separated line per stopped word: index, word, first-pass ms, retry ms or "-", and recovered, still-stopped or not-retried.</param>
+public sealed record StoppedWordRetry(
+    int LimitMs, int Stopped, int Retried, int Recovered, int StillStopped,
+    string RetryInvocationId, string FirstPassTsvSha256, string FirstPassAnalysesSha256,
+    string RetryTsvSha256, string RetryAnalysesSha256, string Words)
+{
+    /// <summary>How many times the per-word limit the retry allows.</summary>
+    public const int Multiplier = 10;
+
+    /// <summary>The most words one invocation retries, so a grammar that is slow on thousands of words is not rerun at length.</summary>
+    public const int MaxWords = 200;
+
+    public int NotRetried => Stopped - Retried;
 }
