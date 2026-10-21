@@ -16,13 +16,13 @@ Theme can follow the operating system or use Light or Dark. The change applies w
 
 The Parsing group edits the current project's Default Selection. Setup, Settings, and **Analysis options** edit that same saved limit policy; the next parse uses it, while earlier results keep the limits from their own run. See [Default Selection](guide:default-selection) and [first-run setup](guide:first-run-setup) for choosing what to parse.
 
-**Texts to parse** shows the selected Text count; **Use all texts** saves every project Text in the Default Selection while keeping its added words and parsing limits.
+**Texts to Parse** shows the selected Text count; **Use All Texts** saves every project Text in the Default Selection while keeping its added words and parsing limits.
 
 When the step limit is finite, the time limit can follow Motif's estimate or use an explicit value. An explicit value remains in force when the step limit changes until you choose the estimate again. With no step limit there is no time limit, and an explicit override is cleared. Enter commits a number; leaving the field also commits it. If Motif refuses the value, the saved Selection stays as it was. Escape restores the last accepted value before it closes Settings.
 
-## Default proposal checks
+## Default Proposal Checks
 
-Default proposal checks sets how thorough Motif's grammar check is when it runs by itself, from Warnings, or for a Proposal. **Compare stored analyses** checks that each word's saved analyses still parse, which is the one part of a grammar check that slows down as a project grows. Choose one:
+Default Proposal Checks sets how thorough Motif's grammar check is when it runs by itself, from Warnings, or for a Proposal. **Compare Stored Analyses** checks that each word's saved analyses still parse, which is the one part of a grammar check that slows down as a project grows. Choose one:
 
 - **Within a work budget (recommended)** compares words until a fixed amount of work is spent, then says how many were left. It gives the same result on every computer.
 - **Every word** compares all of them. A large project can take half a minute or more.
@@ -30,13 +30,13 @@ Default proposal checks sets how thorough Motif's grammar check is when it runs 
 
 The choice is remembered for this user on this computer and applies to the next grammar check. Results already shown keep the choice they were checked with. The command line's [Check a grammar](cmd:grammar%20check) accepts `--stored-analyses` to override it for one run.
 
-## Writing systems
+## Writing Systems
 
 For the project's writing-system settings and how to change them in FieldWorks, see [Writing systems in the window](guide:writing-systems).
 
 ## Texts
 
-**Use all texts** saves every Text in the current project as its Default Selection. Parsing limits and added words keep their saved values.
+**Use All Texts** saves every Text in the current project as its Default Selection. Parsing limits and added words keep their saved values.
 
 ## Help and reports
 

@@ -36,7 +36,7 @@ public sealed class FirstRunSetupWalkthroughTests(PristineProjectFixture pristin
             SetupWalkthroughActions.CaptureBaselineAndWaitForSetup(
                 walkthrough, project.TextCount, WalkthroughSteps.Remaining(deadline));
             var setup = walkthrough.Workspace.Context.Setup!;
-            SetupWalkthroughActions.ClickSetupButton(walkthrough, "Next: texts");
+            SetupWalkthroughActions.ClickSetupButton(walkthrough, SIL.Motif.App.MotifAppStrings.SetupNextTexts);
 
             var textChoiceCheckBoxes = walkthrough.Window.GetLogicalDescendants().OfType<CheckBox>()
                 .Where(checkBox => checkBox.IsEffectivelyVisible && checkBox.DataContext is TextChoiceViewModel)
@@ -74,9 +74,9 @@ public sealed class FirstRunSetupWalkthroughTests(PristineProjectFixture pristin
             Assert.All(setup.Selection.Texts, text => Assert.True(text.IsChecked));
             Assert.Equal(selectedTextIds, setup.Selection.ChosenTextIds.Order());
 
-            SetupWalkthroughActions.ClickSetupButton(walkthrough, "Next: limits");
+            SetupWalkthroughActions.ClickSetupButton(walkthrough, SIL.Motif.App.MotifAppStrings.SetupNextLimits);
             SetupWalkthroughActions.TypeSetupLimit(walkthrough, "Analysis attempt limit per word", "3100");
-            SetupWalkthroughActions.ClickSetupButton(walkthrough, "Next: first run");
+            SetupWalkthroughActions.ClickSetupButton(walkthrough, SIL.Motif.App.MotifAppStrings.SetupNextFirstRun);
             walkthrough.SetFakeParserBehavior(new
             {
                 subcommands = new Dictionary<string, object>
@@ -84,7 +84,7 @@ public sealed class FirstRunSetupWalkthroughTests(PristineProjectFixture pristin
                     ["batch"] = new { words = new[] { new { word = SeededProject.FirstForm, outcome = "complete" } } },
                 },
             });
-            walkthrough.Click("Start first run");
+            walkthrough.Click(SIL.Motif.App.MotifAppStrings.StartFirstRun);
             walkthrough.WaitUntil(
                 () => walkthrough.Workspace.Assess.State == RunState.Completed &&
                     walkthrough.Workspace.Context.EvidencePublication.IsCompleted,
@@ -154,17 +154,17 @@ public sealed class FirstRunSetupWalkthroughTests(PristineProjectFixture pristin
             walkthrough.SetFakeParserBehavior(heldBehavior);
 
             var setup = walkthrough.Workspace.Context.Setup!;
-            SetupWalkthroughActions.ClickSetupButton(walkthrough, "Next: texts");
+            SetupWalkthroughActions.ClickSetupButton(walkthrough, SIL.Motif.App.MotifAppStrings.SetupNextTexts);
             Assert.Equal(1, setup.Step);
             SetupWalkthroughActions.ClickSetupButton(walkthrough, "Back");
             Assert.Equal(0, setup.Step);
-            SetupWalkthroughActions.ClickSetupButton(walkthrough, "Next: texts");
+            SetupWalkthroughActions.ClickSetupButton(walkthrough, SIL.Motif.App.MotifAppStrings.SetupNextTexts);
             SetupWalkthroughActions.SetSetupTextChecked(walkthrough, SeededProject.TextTitle, true);
             SetupWalkthroughActions.SetSetupTextChecked(walkthrough, TwoTextWalkthroughProject.SecondTextTitle, true);
             SetupWalkthroughActions.SetSetupTextChecked(walkthrough, TwoTextWalkthroughProject.SecondTextTitle, false);
-            SetupWalkthroughActions.ClickSetupButton(walkthrough, "Next: limits");
+            SetupWalkthroughActions.ClickSetupButton(walkthrough, SIL.Motif.App.MotifAppStrings.SetupNextLimits);
             SetupWalkthroughActions.TypeSetupLimit(walkthrough, "Analysis attempt limit per word", "3100");
-            SetupWalkthroughActions.ClickSetupButton(walkthrough, "Next: first run");
+            SetupWalkthroughActions.ClickSetupButton(walkthrough, SIL.Motif.App.MotifAppStrings.SetupNextFirstRun);
             var grammar = walkthrough.Workspace.PageModel<WarningsPageModel>().Grammar;
             var grammarCheck = walkthrough.Workspace.PageModel<WarningsPageModel>()
                 .CheckGrammarCommand.ExecuteAsync(null);
@@ -179,7 +179,7 @@ public sealed class FirstRunSetupWalkthroughTests(PristineProjectFixture pristin
                 if (e.PropertyName == nameof(SetupViewModel.IsOpen) && !setup.IsOpen)
                     stageWhenSetupClosed = walkthrough.Workspace.Assess.Progress?.Stage;
             };
-            walkthrough.Click("Start first run");
+            walkthrough.Click(SIL.Motif.App.MotifAppStrings.StartFirstRun);
             Assert.True(grammar.IsLoading, "the first-run click should be queued behind the held grammar check");
             Assert.True(setup.IsOpen, "setup should stay open until the queued first run reports progress");
             File.WriteAllText(releaseGrammar, string.Empty);
@@ -249,16 +249,16 @@ public sealed class FirstRunSetupWalkthroughTests(PristineProjectFixture pristin
             walkthrough.WaitUntil(
                 () => setup.StepLimitEstimateText.Contains("parser statistics from the last parse", StringComparison.Ordinal),
                 WalkthroughSteps.Remaining(deadline), "Configure did not load the parser rate from the completed run");
-            SetupWalkthroughActions.ClickSetupButton(walkthrough, "Next: texts");
+            SetupWalkthroughActions.ClickSetupButton(walkthrough, SIL.Motif.App.MotifAppStrings.SetupNextTexts);
             Assert.True(walkthrough.Workspace.Context.Setup!.Selection.Texts
                 .Single(text => text.Title == SeededProject.TextTitle).IsChecked);
             Assert.False(walkthrough.Workspace.Context.Setup.Selection.Texts
                 .Single(text => text.Title == TwoTextWalkthroughProject.SecondTextTitle).IsChecked);
-            SetupWalkthroughActions.ClickSetupButton(walkthrough, "Next: limits");
+            SetupWalkthroughActions.ClickSetupButton(walkthrough, SIL.Motif.App.MotifAppStrings.SetupNextLimits);
             Assert.Contains("At this limit a word takes up to about", setup.StepLimitEstimateText, StringComparison.Ordinal);
             Assert.Equal(3100m, walkthrough.Find<NumericUpDown>("Analysis attempt limit per word").Value);
-            SetupWalkthroughActions.ClickSetupButton(walkthrough, "Next: first run");
-            walkthrough.Click("Use this Selection");
+            SetupWalkthroughActions.ClickSetupButton(walkthrough, SIL.Motif.App.MotifAppStrings.SetupNextFirstRun);
+            walkthrough.Click(SIL.Motif.App.MotifAppStrings.UseThisSelection);
             walkthrough.WaitUntil(
                 () => !setup.IsOpen,
                 WalkthroughSteps.Remaining(deadline), "using the saved Selection did not close setup");

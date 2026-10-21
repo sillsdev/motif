@@ -49,11 +49,11 @@ public sealed partial class ProblemReportPreviewViewModel : ObservableObject
         try
         {
             await _clipboard.SetTextAsync(ReportText).ConfigureAwait(true);
-            Status = "The reviewed report is on the clipboard.";
+            Status = MotifAppStrings.ProblemReportCopied;
         }
         catch (Exception)
         {
-            Status = "Motif could not copy the report.";
+            Status = MotifAppStrings.ProblemReportCopyFailed;
         }
     }
 
@@ -64,7 +64,7 @@ public sealed partial class ProblemReportPreviewViewModel : ObservableObject
         try
         {
             Status = await _launcher.LaunchAsync(Report.IssueUri(ReportText)).ConfigureAwait(true)
-                ? "The issue form should open. Review the report there before submitting it."
+                ? MotifAppStrings.ProblemReportIssueFormOpened
                 : AppLinks.NewIssue;
         }
         catch (Exception)

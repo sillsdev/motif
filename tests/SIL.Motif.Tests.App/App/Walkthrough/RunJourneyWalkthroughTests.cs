@@ -51,19 +51,19 @@ public sealed class RunJourneyWalkthroughTests(PristineProjectFixture pristine)
                 Assert.Equal("This Baseline has no Texts.", walkthrough.Workspace.Selection.TextsEmptyMessage);
                 Assert.Empty(walkthrough.Workspace.Selection.Texts);
 
-                SetupWalkthroughActions.ClickSetupButton(walkthrough, "Next: texts");
+                SetupWalkthroughActions.ClickSetupButton(walkthrough, SIL.Motif.App.MotifAppStrings.SetupNextTexts);
                 var pasted = string.Join(Environment.NewLine, words);
                 walkthrough.Type("Words to add", pasted);
                 var wordsBox = walkthrough.Find<TextBox>("Words to add");
                 Assert.Equal(140, wordsBox.MaxHeight);
                 Assert.True(wordsBox.Bounds.Height <= wordsBox.MaxHeight);
                 Assert.Equal(ScrollBarVisibility.Auto, ScrollViewer.GetVerticalScrollBarVisibility(wordsBox));
-                var next = SetupWalkthroughActions.FindSetupButton(walkthrough, "Next: limits");
+                var next = SetupWalkthroughActions.FindSetupButton(walkthrough, SIL.Motif.App.MotifAppStrings.SetupNextLimits);
                 Assert.True(next.IsEffectivelyVisible);
                 Assert.True(next.IsEffectivelyEnabled);
 
-                SetupWalkthroughActions.ClickSetupButton(walkthrough, "Next: limits");
-                SetupWalkthroughActions.ClickSetupButton(walkthrough, "Next: first run");
+                SetupWalkthroughActions.ClickSetupButton(walkthrough, SIL.Motif.App.MotifAppStrings.SetupNextLimits);
+                SetupWalkthroughActions.ClickSetupButton(walkthrough, SIL.Motif.App.MotifAppStrings.SetupNextFirstRun);
                 walkthrough.SetFakeParserBehavior(new
                 {
                     subcommands = new Dictionary<string, object>
@@ -71,7 +71,7 @@ public sealed class RunJourneyWalkthroughTests(PristineProjectFixture pristine)
                         ["batch"] = new { words = words.Select(word => new { word, outcome = "complete" }).ToArray() },
                     },
                 });
-                walkthrough.Click("Start first run");
+                walkthrough.Click(SIL.Motif.App.MotifAppStrings.StartFirstRun);
                 walkthrough.WaitUntil(
                     () => walkthrough.Workspace.Assess.State == RunState.Completed &&
                         walkthrough.Workspace.Context.EvidencePublication.IsCompleted,

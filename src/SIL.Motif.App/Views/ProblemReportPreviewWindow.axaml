@@ -1,9 +1,10 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:app="clr-namespace:SIL.Motif.App"
         xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
         x:Class="SIL.Motif.App.Views.ProblemReportPreviewWindow"
         x:DataType="vm:ProblemReportPreviewViewModel"
-        Title="Review problem report"
+        Title="{x:Static app:MotifAppStrings.ReviewProblemReportWindowTitle}"
         WindowStartupLocation="CenterOwner"
         Width="{DynamicResource Component.Shell.CrashWidth}"
         Height="{DynamicResource Component.Shell.CrashHeight}"
@@ -20,23 +21,26 @@
   <DockPanel Margin="{DynamicResource Component.Shell.CrashInset}">
     <StackPanel DockPanel.Dock="Bottom" Spacing="{DynamicResource Intent.Space.Related}">
       <TextBlock Classes="muted" Text="{Binding Status}" IsVisible="{Binding HasStatus}" TextWrapping="Wrap"
-                 AutomationProperties.Name="Problem report status" />
-      <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="{DynamicResource Intent.Space.Related}">
-        <Button Content="Copy report" Click="OnCopyReportClick" AutomationProperties.Name="Copy reviewed problem report" />
-        <Button Content="Open issue form" Click="OnOpenIssueClick" AutomationProperties.Name="Open issue form with reviewed report" />
-        <Button Content="Close" Click="OnCloseClick" IsDefault="True" IsCancel="True"
-                AutomationProperties.Name="Close problem report preview" />
-      </StackPanel>
+                 AutomationProperties.Name="{x:Static app:MotifAppStrings.ProblemReportStatusAccessibleName}" />
+      <!-- FieldWorks dialog buttons: Copy Report does not close the window, so it sits bottom left; the closing buttons are one group at bottom right. -->
+      <Grid ColumnDefinitions="Auto,*,Auto">
+        <Button Content="{x:Static app:MotifAppStrings.CopyReport}" Click="OnCopyReportClick" AutomationProperties.Name="{x:Static app:MotifAppStrings.CopyReviewedProblemReportAccessibleName}" />
+        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
+          <Button Content="{x:Static app:MotifAppStrings.OpenIssueForm}" Click="OnOpenIssueClick" AutomationProperties.Name="{x:Static app:MotifAppStrings.OpenIssueFormWithReviewedAccessibleName}" />
+          <Button Content="{x:Static app:MotifAppStrings.Close}" Click="OnCloseClick" IsDefault="True" IsCancel="True"
+                  AutomationProperties.Name="{x:Static app:MotifAppStrings.CloseProblemReportPreviewAccessibleName}" />
+        </StackPanel>
+      </Grid>
     </StackPanel>
     <Grid RowDefinitions="Auto,Auto,*" RowSpacing="{DynamicResource Intent.Space.Related}">
-      <TextBlock Text="Review this report before sharing it through GitHub Issues. Opening the issue form does not submit it. If you cannot use GitHub, copy the reviewed report and email john_lambert@sil.org."
+      <TextBlock Text="{x:Static app:MotifAppStrings.ProblemReportPreviewIntro}"
                  TextWrapping="Wrap" />
-      <CheckBox Grid.Row="1" Content="Include local details (may contain project or language data)"
+      <CheckBox Grid.Row="1" Content="{x:Static app:MotifAppStrings.IncludeLocalDetails}"
                 IsChecked="{Binding IncludeLocalDetails}"
-                AutomationProperties.Name="Include local details that may contain project or language data" />
+                AutomationProperties.Name="{x:Static app:MotifAppStrings.IncludeLocalDetailsAccessibleName}" />
       <TextBox Grid.Row="2" Text="{Binding ReportText}" IsReadOnly="True" AcceptsReturn="True" TextWrapping="NoWrap"
                ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.HorizontalScrollBarVisibility="Auto"
-               AutomationProperties.Name="Problem report preview" />
+               AutomationProperties.Name="{x:Static app:MotifAppStrings.ProblemReportPreviewAccessibleName}" />
     </Grid>
   </DockPanel>
   </LayoutTransformControl>

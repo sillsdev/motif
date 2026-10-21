@@ -123,11 +123,11 @@ public sealed class SetupRealClientTests(PristineProjectFixture pristine)
             AssertEstimatedLimit(original.Value!.Selection!, 3100);
 
             SetupWalkthroughActions.OpenConfigure(walkthrough);
-            SetupWalkthroughActions.ClickSetupButton(walkthrough, "Next: texts");
+            SetupWalkthroughActions.ClickSetupButton(walkthrough, SIL.Motif.App.MotifAppStrings.SetupNextTexts);
             Assert.True(walkthrough.Workspace.Context.Setup!.Selection.Texts.Single().IsChecked);
             Assert.Equal(SeededProject.TextTitle,
                 Assert.Single(walkthrough.Workspace.Context.Setup.Selection.Texts).Title);
-            SetupWalkthroughActions.ClickSetupButton(walkthrough, "Next: limits");
+            SetupWalkthroughActions.ClickSetupButton(walkthrough, SIL.Motif.App.MotifAppStrings.SetupNextLimits);
             Assert.Equal(3100m, walkthrough.Find<Avalonia.Controls.NumericUpDown>(
                 "Analysis attempt limit per word").Value);
             Assert.Contains("At this limit a word takes up to about",
@@ -136,10 +136,10 @@ public sealed class SetupRealClientTests(PristineProjectFixture pristine)
             SetupWalkthroughActions.ClickSetupButton(walkthrough, "Back");
             SetupWalkthroughActions.SetSetupTextChecked(walkthrough, SeededProject.TextTitle, false);
             walkthrough.Type("Words to add", "motifb");
-            SetupWalkthroughActions.ClickSetupButton(walkthrough, "Next: limits");
+            SetupWalkthroughActions.ClickSetupButton(walkthrough, SIL.Motif.App.MotifAppStrings.SetupNextLimits);
             SetupWalkthroughActions.TypeSetupLimit(walkthrough, "Analysis attempt limit per word", "6600");
-            SetupWalkthroughActions.ClickSetupButton(walkthrough, "Next: first run");
-            walkthrough.Click("Use this Selection");
+            SetupWalkthroughActions.ClickSetupButton(walkthrough, SIL.Motif.App.MotifAppStrings.SetupNextFirstRun);
+            walkthrough.Click(SIL.Motif.App.MotifAppStrings.UseThisSelection);
             walkthrough.WaitUntil(
                 () => walkthrough.Workspace.Context.Setup?.IsOpen == false,
                 WalkthroughSteps.Remaining(deadline), "Configure did not save and close the changed Selection");

@@ -69,9 +69,9 @@ internal sealed class WritingSystemSettingsRow
     {
         WritingSystem = writingSystem;
         var normal = resolver.Resolve(TextStyleRequest.Linguistic(writingSystem.Id));
-        FontSourceText = !normal.RequestedFontInstalled ? "Fallback" :
+        FontSourceText = !normal.RequestedFontInstalled ? MotifAppStrings.FontSourceFallback :
             resolver.RequestedFontIsBundled(normal.RequestedFontFamily)
-                ? "Bundled with Motif" : "Installed";
+                ? MotifAppStrings.FontSourceBundled : MotifAppStrings.FontSourceInstalled;
         IsAlsoInVernacular = isAlsoInVernacular;
         var missingFonts = isAlsoInVernacular ? [] : writingSystem.StyleFonts
             .Select(pair => (pair.Key, pair.Value.FontFamily))
@@ -86,28 +86,31 @@ internal sealed class WritingSystemSettingsRow
     public WritingSystemDisplay WritingSystem { get; }
     public string Id => WritingSystem.Id;
     public string Name => string.IsNullOrWhiteSpace(WritingSystem.Name) ? WritingSystem.Id : WritingSystem.Name;
+    public string DetailsAccessibleName => string.Format(MotifAppStrings.WritingSystemDetailsAccessibleNameFormat, Name);
     public string Abbreviation => WritingSystem.Abbreviation;
     public bool HasAbbreviation => !string.IsNullOrWhiteSpace(Abbreviation);
     public bool HasTag => !string.IsNullOrWhiteSpace(Id) && !string.Equals(Id, Abbreviation, StringComparison.Ordinal);
     public bool IsDefault => WritingSystem.IsDefault;
     public bool ShowDefault => IsDefault && !IsAlsoInVernacular;
     public bool IsAlsoInVernacular { get; }
-    public string AlsoInVernacularText => "Also in Vernacular, with the same settings.";
+    public string AlsoInVernacularText => MotifAppStrings.AlsoInVernacular;
     public string FontFamily => ResolveStyleFont("Normal").FontFamily;
     public string FontSourceText { get; }
-    public string FontLabel => string.IsNullOrWhiteSpace(FontFamily) ? "None set" : FontFamily;
+    public string FontLabel => string.IsNullOrWhiteSpace(FontFamily) ? MotifAppStrings.FontNoneSet : FontFamily;
     public string Features => string.IsNullOrWhiteSpace(ResolveStyleFont("Normal").FontFeatures)
-        ? "None" : ResolveStyleFont("Normal").FontFeatures;
-    public string Direction => WritingSystem.RightToLeft ? "Right to left" : "Left to right";
+        ? MotifAppStrings.FontFeaturesNone : ResolveStyleFont("Normal").FontFeatures;
+    public string Direction => WritingSystem.RightToLeft ? MotifAppStrings.DirectionRightToLeft : MotifAppStrings.DirectionLeftToRight;
     public string StyleSizes => string.Join(" · ", WritingSystem.StyleSizes
         .OrderBy(pair => string.Equals(pair.Key, "Normal", StringComparison.Ordinal) ? 0 : 1)
         .ThenBy(pair => pair.Key, StringComparer.CurrentCultureIgnoreCase)
-        .Select(pair => $"{pair.Value.ToString("0.##", CultureInfo.InvariantCulture)} pt ({pair.Key})"));
+        .Select(pair => string.Format(MotifAppStrings.StyleSizeFormat,
+            pair.Value.ToString("0.##", CultureInfo.InvariantCulture), pair.Key)));
     public bool HasStyleSizes => !string.IsNullOrEmpty(StyleSizes);
     public IReadOnlyList<string> MissingFontFamilies { get; }
     public bool IsFontMissing => MissingFontFamilies.Count > 0;
     public string MissingFontCaption => MissingFontFamilies.Count == 0 ? string.Empty :
-        $"Not installed: {string.Join(" · ", MissingFontFamilies)}. Motif uses an available fallback.";
+        string.Format(MotifAppStrings.MissingFontCaptionFormat,
+            string.Join(" · ", MissingFontFamilies));
     public TextAlignment PreviewTextAlignment => WritingSystem.RightToLeft ? TextAlignment.Right : TextAlignment.Left;
 
     private WritingSystemStyleFont ResolveStyleFont(string styleName) =>
@@ -176,14 +179,14 @@ internal sealed partial class SettingsViewModel : ObservableObject
             () => !string.IsNullOrEmpty(ShortcutSearch));
         SelectThemeCommand = new RelayCommand<WindowThemeChoice>(choice => ThemeChoice = choice);
         PageGroupOptions = new ObservableCollection<SettingsGroupOption>([
-            new(SettingsGroup.Display, "Display"),
-            new(SettingsGroup.KeyboardShortcuts, "Keyboard shortcuts"),
-            new(SettingsGroup.Parsing, "Parsing"),
-            new(SettingsGroup.ProposalChecks, "Default proposal checks"),
-            new(SettingsGroup.WritingSystems, "Writing systems"),
-            new(SettingsGroup.Texts, "Texts"),
-            new(SettingsGroup.HelpAndReports, "Help and problem reports"),
-            new(SettingsGroup.About, "About Motif"),
+            new(SettingsGroup.Display, MotifAppStrings.Display),
+            new(SettingsGroup.KeyboardShortcuts, MotifAppStrings.KeyboardShortcuts),
+            new(SettingsGroup.Parsing, MotifAppStrings.Parsing),
+            new(SettingsGroup.ProposalChecks, MotifAppStrings.DefaultProposalChecks),
+            new(SettingsGroup.WritingSystems, MotifAppStrings.WritingSystems),
+            new(SettingsGroup.Texts, MotifAppStrings.Texts),
+            new(SettingsGroup.HelpAndReports, MotifAppStrings.HelpAndProblemReports),
+            new(SettingsGroup.About, MotifAppStrings.AboutMotif),
         ]);
         _selectedGroup = MapSettingsGroup(saved.LastSettingsGroup);
         RefreshNavigationOptions(SelectedGroup);
@@ -224,11 +227,10 @@ internal sealed partial class SettingsViewModel : ObservableObject
     public string PreferenceProblemText { get; private set; } = string.Empty;
     public bool HasPreferenceProblem => !string.IsNullOrEmpty(PreferenceProblemText);
     public bool ShowResetPreferences => _preferences.State == PreferenceState.Refused;
-    public string ThemeSystemLabel => OperatingSystem.IsWindows() ? "Match Windows"
-        : OperatingSystem.IsMacOS() ? "Match macOS" : "Match system";
-    public string HelpCaption => "Help for the page you are on.";
-    public string ReportCaption => "You see the whole report before anything leaves this computer. " +
-        "Opening the issue form doesn't submit it.";
+    public string ThemeSystemLabel => OperatingSystem.IsWindows() ? MotifAppStrings.MatchWindows
+        : OperatingSystem.IsMacOS() ? MotifAppStrings.MatchMacOS : MotifAppStrings.MatchSystem;
+    public string HelpCaption => MotifAppStrings.HelpCaption;
+    public string ReportCaption => MotifAppStrings.ReportCaption;
     public string ZoomShortcutHint => string.Join(" · ", _shortcutCatalog
         .Where(entry => entry.Action is "Zoom in" or "Zoom out" or "Reset zoom")
         .Select(entry => $"{entry.Action}: {entry.Keys}"));
@@ -237,10 +239,9 @@ internal sealed partial class SettingsViewModel : ObservableObject
     public string OperatingSystemText => _windowReport.OperatingSystem;
     public string DataRoot => _applicationFacts.ManagedDataRoot;
     public string DataRootDisplay => PathDisplay.Wrappable(DataRoot);
-    public string DataFolderActionText => OperatingSystem.IsWindows() ? "Show in Explorer"
-        : OperatingSystem.IsMacOS() ? "Show in Finder" : "Open folder";
-    public string ParsingLead => $"These limits are saved with {ProjectName}'s Selection. Setup chose them; " +
-        "you can change them here or under Texts › Analysis options.";
+    public string DataFolderActionText => OperatingSystem.IsWindows() ? MotifAppStrings.ShowInExplorer
+        : OperatingSystem.IsMacOS() ? MotifAppStrings.ShowInFinder : MotifAppStrings.OpenFolder;
+    public string ParsingLead => string.Format(MotifAppStrings.ParsingLeadFormat, ProjectName);
     public string ProjectName => !string.IsNullOrWhiteSpace(_overview.Overview?.ProjectName)
         ? _overview.Overview.ProjectName
         : !string.IsNullOrWhiteSpace(_workspace.Context.Setup?.ProjectName)
@@ -250,8 +251,9 @@ internal sealed partial class SettingsViewModel : ObservableObject
     public bool HasSavedSelection => _workspace.Context.Setup?.CanRunDefaultSelection == true;
     public bool HasProjectWithoutSelection => HasProject && !HasSavedSelection;
     public string TextSelectionSummary =>
-        $"{_workspace.Selection.ChosenTextIds.Count} of {_workspace.Selection.TextCount} " +
-        (_workspace.Selection.TextCount == 1 ? "Text selected" : "Texts selected");
+        string.Format(MotifAppStrings.TextSelectionSummaryFormat,
+            _workspace.Selection.ChosenTextIds.Count,
+            PluralText.Format(MotifAppStrings.TextsSelectedPattern, _workspace.Selection.TextCount));
     public bool CanUseAllTexts => HasSavedSelection &&
         _workspace.Context.Setup?.SavedSelectionContainsAllTexts != true;
     public string TextSelectionRefusal { get; private set; } = string.Empty;
@@ -260,13 +262,12 @@ internal sealed partial class SettingsViewModel : ObservableObject
     public bool ShortcutSearchHasText => !string.IsNullOrWhiteSpace(ShortcutSearch);
     public bool HasShortcutMatches => ShortcutEntries.Count > 0;
     public bool ShowNoShortcutMatches => ShortcutRegistryAvailable && ShortcutSearchHasText && !HasShortcutMatches;
-    public string NoShortcutMatchesText => $"No shortcut matches \"{ShortcutSearch}\".";
+    public string NoShortcutMatchesText => string.Format(MotifAppStrings.NoShortcutMatchesFormat, ShortcutSearch);
     public bool IsDisplaySelected => SelectedGroup == SettingsGroup.Display;
     public bool IsKeyboardShortcutsSelected => SelectedGroup == SettingsGroup.KeyboardShortcuts;
     public bool IsParsingSelected => SelectedGroup == SettingsGroup.Parsing;
     public bool IsProposalChecksSelected => SelectedGroup == SettingsGroup.ProposalChecks;
-    public string ProposalChecksLead => "How thorough Motif's grammar check is when it runs by itself or on a " +
-        "Proposal. Remembered for this computer, like zoom.";
+    public string ProposalChecksLead => MotifAppStrings.ProposalChecksLead;
     public bool IsStoredAnalysesBudget => _storedAnalyses == StoredAnalysisComparison.Budget;
     public bool IsStoredAnalysesAll => _storedAnalyses == StoredAnalysisComparison.All;
     public bool IsStoredAnalysesOff => _storedAnalyses == StoredAnalysisComparison.Off;
@@ -276,16 +277,16 @@ internal sealed partial class SettingsViewModel : ObservableObject
     public bool IsWritingSystemsSelected => SelectedGroup == SettingsGroup.WritingSystems;
     public bool IsHelpAndReportsSelected => SelectedGroup == SettingsGroup.HelpAndReports;
     public bool IsAboutSelected => SelectedGroup == SettingsGroup.About;
-    public string GroupParsingLabel => HasProject ? $"Parsing for {ProjectName}" : "Parsing";
-    public string WritingSystemsHeading => HasProject ? $"Writing systems in {ProjectName}" : "Writing systems";
-    public string WritingSystemsLead => $"Motif draws each word with the font, direction and size {ProjectName} gives it. To change them, use FieldWorks.";
+    public string GroupParsingLabel => HasProject ? string.Format(MotifAppStrings.ParsingForProjectFormat, ProjectName) : MotifAppStrings.Parsing;
+    public string WritingSystemsHeading => HasProject ? string.Format(MotifAppStrings.WritingSystemsInProjectFormat, ProjectName) : MotifAppStrings.WritingSystems;
+    public string WritingSystemsLead => string.Format(MotifAppStrings.WritingSystemsLeadFormat, ProjectName);
     public bool HasWritingSystems => VernacularWritingSystems.Count + AnalysisWritingSystems.Count > 0;
     public bool HasVernacularWritingSystems => VernacularWritingSystems.Count > 0;
     public bool HasAnalysisWritingSystems => AnalysisWritingSystems.Count > 0;
     public bool ShowWritingSystemsEmptyState => HasProject && !HasWritingSystems;
     public string WritingSystemsEmptyText => _overview.Overview is null
-        ? "Refresh to see the writing systems saved in FieldWorks."
-        : "No writing systems were recorded in the Baseline.";
+        ? MotifAppStrings.WritingSystemsEmptyRefresh
+        : MotifAppStrings.WritingSystemsEmptyBaseline;
     public bool HasMissingWritingSystemFont => VernacularWritingSystems.Concat(AnalysisWritingSystems)
         .Any(row => row.IsFontMissing);
     public bool ShowSettingsFooter => IsParsingSelected || IsWritingSystemsSelected && HasProject;
@@ -299,7 +300,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
         IsNoStepLimit != _lastGoodNoStepLimit || StepLimit != _lastGoodStepLimit ||
         TimeLimitSeconds != _lastGoodTimeLimitSeconds;
     public string StepLimitEstimateText => _workspace.Context.Setup?.StepLimitEstimateText ??
-        "The estimate uses parser statistics from the last parse when available.";
+        MotifAppStrings.StepLimitEstimateDefault;
     public bool IsTimeLimitEnabled => HasProject && HasSavedSelection && !IsNoStepLimit;
     public bool IsNoStepLimit
     {
@@ -362,7 +363,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
             _workspace.Selection.PerWordTimeLimitSeconds = value;
             if (!IsNoStepLimit) IsUsingEstimate = false;
             TimeLimitRefusal = !IsNoStepLimit && (value is null or <= 0)
-                ? "Enter a per-word time limit greater than zero." : string.Empty;
+                ? MotifAppStrings.TimeLimitPositiveRefusal : string.Empty;
             OnPropertyChanged(nameof(HasTimeLimitRefusal));
         }
     }
@@ -398,7 +399,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
     private bool _reportIncludesExpanded;
 
     [ObservableProperty]
-    private string _copyVersionsText = "Copy versions";
+    private string _copyVersionsText = MotifAppStrings.CopyVersions;
 
     public double ZoomScale => ZoomPercent / 100d;
     public string ZoomLabel => $"{ZoomPercent}%";
@@ -413,8 +414,8 @@ internal sealed partial class SettingsViewModel : ObservableObject
     public string ReportVersionsText => _windowReport.ToVersionText();
     public string ParsingFooter => _workspace.Context.Assess.IsActive
         ? _workspace.Context.Setup?.RunningStepLimitText is { Length: > 0 } text
-            ? text : "The parse running now keeps the limits it started with."
-        : "Used from the next parse. Results already on screen keep the limits they were parsed with.";
+            ? text : MotifAppStrings.ParsingFooterRunning
+        : MotifAppStrings.ParsingFooterIdle;
 
     public SettingsGroup[] Groups => Enum.GetValues<SettingsGroup>();
     public SettingsGroupOption? SelectedNavigationEntry
@@ -478,8 +479,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
             _storedAnalyses = previous;
-            StoredAnalysesRefusal = "Motif couldn't save this choice, so the grammar check keeps its earlier one. " +
-                exception.Message;
+            StoredAnalysesRefusal = string.Format(MotifAppStrings.StoredAnalysesSaveRefusalFormat, exception.Message);
         }
         OnPropertyChanged(nameof(IsStoredAnalysesBudget));
         OnPropertyChanged(nameof(IsStoredAnalysesAll));
@@ -547,7 +547,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
             (StepLimit is null or <= 0 || decimal.Truncate(StepLimit.Value) != StepLimit.Value))
         {
             CancelParsingLimitEdit();
-            _stepLimitRefusal = "The per-word step limit must be a positive whole number.";
+            _stepLimitRefusal = MotifAppStrings.StepLimitWholeNumberRefusal;
             OnPropertyChanged(nameof(StepLimitRefusal));
             OnPropertyChanged(nameof(HasStepLimitRefusal));
             return WindowRefusal.Plain(_stepLimitRefusal);
@@ -555,7 +555,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
         if (!IsNoStepLimit && !IsUsingEstimate && (TimeLimitSeconds is null or <= 0))
         {
             CancelParsingLimitEdit();
-            TimeLimitRefusal = "Enter a per-word time limit greater than zero.";
+            TimeLimitRefusal = MotifAppStrings.TimeLimitPositiveRefusal;
             OnPropertyChanged(nameof(HasTimeLimitRefusal));
             return WindowRefusal.Plain(TimeLimitRefusal);
         }
@@ -577,7 +577,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
         else
         {
             CancelParsingLimitEdit();
-            TimeLimitRefusal = "Enter a per-word time limit from 0.001 seconds to 2,147,483.647 seconds.";
+            TimeLimitRefusal = MotifAppStrings.TimeLimitRangeRefusal;
             OnPropertyChanged(nameof(HasTimeLimitRefusal));
             return WindowRefusal.Plain(TimeLimitRefusal);
         }
@@ -618,7 +618,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
 
     public void MarkVersionsCopied()
     {
-        CopyVersionsText = "Copied";
+        CopyVersionsText = MotifAppStrings.Copied;
         _ = ResetCopiedLabelAsync();
     }
 
@@ -660,7 +660,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
     private async Task ResetCopiedLabelAsync()
     {
         await Task.Delay(TimeSpan.FromSeconds(2)).ConfigureAwait(true);
-        CopyVersionsText = "Copy versions";
+        CopyVersionsText = MotifAppStrings.CopyVersions;
     }
 
     private void RefreshShortcutList()

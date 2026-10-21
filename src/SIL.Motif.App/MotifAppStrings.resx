@@ -1308,4 +1308,777 @@
     <value>Loading the grammar…</value>
     <comment>Quiet status beside the Cancel button on Try a Word while the parser is still loading the grammar for the word just submitted.</comment>
   </data>
+  <data name="MotifApp.Settings" xml:space="preserve">
+    <value>Settings</value>
+    <comment>Text in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.Back" xml:space="preserve">
+    <value>Back</value>
+    <comment>Button label in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.LeaveSettingsAccessibleName" xml:space="preserve">
+    <value>Leave Settings</value>
+    <comment>Accessible name in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.Display" xml:space="preserve">
+    <value>Display</value>
+    <comment>Text in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.ResetSavedPreferences" xml:space="preserve">
+    <value>Reset Saved Preferences</value>
+    <comment>Button label in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.ResetSavedPreferencesAccessibleName" xml:space="preserve">
+    <value>Reset saved preferences</value>
+    <comment>Accessible name in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.Zoom" xml:space="preserve">
+    <value>Zoom</value>
+    <comment>Text in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.ZoomOutAccessibleName" xml:space="preserve">
+    <value>Zoom out</value>
+    <comment>Accessible name in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.ZoomInAccessibleName" xml:space="preserve">
+    <value>Zoom in</value>
+    <comment>Accessible name in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.ResetTo100" xml:space="preserve">
+    <value>Reset to 100%</value>
+    <comment>Button label in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.ResetZoomTo100AccessibleName" xml:space="preserve">
+    <value>Reset zoom to 100%</value>
+    <comment>Accessible name in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.Theme" xml:space="preserve">
+    <value>Theme</value>
+    <comment>Text in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.ThemeRememberedCaption" xml:space="preserve">
+    <value>Remembered for this computer, like zoom.</value>
+    <comment>Text in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.Light" xml:space="preserve">
+    <value>Light</value>
+    <comment>Button label in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.LightThemeAccessibleName" xml:space="preserve">
+    <value>Light theme</value>
+    <comment>Accessible name in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.Dark" xml:space="preserve">
+    <value>Dark</value>
+    <comment>Button label in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.DarkThemeAccessibleName" xml:space="preserve">
+    <value>Dark theme</value>
+    <comment>Accessible name in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.MatchOperatingSystemThemeAccessibleName" xml:space="preserve">
+    <value>Match the operating system theme</value>
+    <comment>Accessible name in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.Reset" xml:space="preserve">
+    <value>Reset</value>
+    <comment>Button label in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.ResetThemeToMatchOperatingAccessibleName" xml:space="preserve">
+    <value>Reset theme to match the operating system</value>
+    <comment>Accessible name in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.KeyboardShortcuts" xml:space="preserve">
+    <value>Keyboard Shortcuts</value>
+    <comment>Text in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.ShortcutsWorkWithoutTextFocusCaption" xml:space="preserve">
+    <value>Shortcuts work when no text box has the cursor.</value>
+    <comment>Text in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.SearchShortcutsAccessibleName" xml:space="preserve">
+    <value>Search shortcuts</value>
+    <comment>Accessible name in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.ClearShortcutSearchAccessibleName" xml:space="preserve">
+    <value>Clear shortcut search</value>
+    <comment>Accessible name in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.OpenProjectForParsingLimitsPlaceholder" xml:space="preserve">
+    <value>Open a project to set its parsing limits.</value>
+    <comment>Text in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.ChooseWhatToParseForLimitsPlaceholder" xml:space="preserve">
+    <value>Choose what to parse before setting its parsing limits.</value>
+    <comment>Text in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.StepLimitPerWordLabel" xml:space="preserve">
+    <value>Step Limit per Word</value>
+    <comment>Text in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.StepLimitDefaultCaption" xml:space="preserve">
+    <value>200,000 steps is the default. A word that reaches it is marked ◐ Stopped.</value>
+    <comment>Text in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.ResetStepLimit" xml:space="preserve">
+    <value>Reset Step Limit</value>
+    <comment>Button label in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.ResetStepLimitTo200000AccessibleName" xml:space="preserve">
+    <value>Reset step limit to 200000</value>
+    <comment>Accessible name in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.NoStepLimitAccessibleName" xml:space="preserve">
+    <value>No step limit</value>
+    <comment>Accessible name in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.TimeLimitPerWord" xml:space="preserve">
+    <value>Time Limit per Word</value>
+    <comment>Text in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.TimeLimitFollowsStepLimitCaption" xml:space="preserve">
+    <value>Follows the step limit until you type your own value.</value>
+    <comment>Text in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.TimeLimitPerWordInAccessibleName" xml:space="preserve">
+    <value>Time limit per word in seconds</value>
+    <comment>Accessible name in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.UseMotifEstimateAccessibleName" xml:space="preserve">
+    <value>Use Motif's estimate</value>
+    <comment>Accessible name in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.DefaultProposalChecks" xml:space="preserve">
+    <value>Default Proposal Checks</value>
+    <comment>Text in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.CompareStoredAnalyses" xml:space="preserve">
+    <value>Compare Stored Analyses</value>
+    <comment>Text in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.CompareStoredAnalysesCaption" xml:space="preserve">
+    <value>Checks that each word's saved analyses still parse. It is the one part of a grammar check that slows down as a project grows.</value>
+    <comment>Text in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.StoredAnalysisWorkBudgetChoiceAccessibleName" xml:space="preserve">
+    <value>Within a work budget, recommended</value>
+    <comment>Accessible name in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.StoredAnalysisWorkBudgetChoice" xml:space="preserve">
+    <value>Within a work budget (recommended)</value>
+    <comment>Text in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.StoredAnalysisWorkBudgetCaption" xml:space="preserve">
+    <value>Compares words until a fixed amount of work is spent, then says how many were left. The same on every computer.</value>
+    <comment>Text in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.StoredAnalysisEveryWordChoiceAccessibleName" xml:space="preserve">
+    <value>Every word, slower on large projects</value>
+    <comment>Accessible name in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.StoredAnalysisEveryWordChoice" xml:space="preserve">
+    <value>Every word</value>
+    <comment>Text in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.StoredAnalysisEveryWordCaption" xml:space="preserve">
+    <value>Compares all of them. A large project can take half a minute or more.</value>
+    <comment>Text in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.StoredAnalysisOffChoiceAccessibleName" xml:space="preserve">
+    <value>Off</value>
+    <comment>Accessible name in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.StoredAnalysisOffCaption" xml:space="preserve">
+    <value>Skips the comparison. The other grammar checks still run.</value>
+    <comment>Text in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.ResetComparison" xml:space="preserve">
+    <value>Reset Comparison</value>
+    <comment>Button label in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.ResetStoredAnalysisComparisonToAccessibleName" xml:space="preserve">
+    <value>Reset stored analysis comparison to a work budget</value>
+    <comment>Accessible name in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.ProposalChecksAppliesNextCaption" xml:space="preserve">
+    <value>Applies to the next grammar check. Results already shown keep the choice they were checked with.</value>
+    <comment>Text in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.OpenProjectForWritingSystemsPlaceholder" xml:space="preserve">
+    <value>Open a project to see its writing systems.</value>
+    <comment>Text in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.Default" xml:space="preserve">
+    <value>Default</value>
+    <comment>Text in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.WritingSystemFontPreviewCaption" xml:space="preserve">
+    <value>Font preview</value>
+    <comment>Text in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.Font" xml:space="preserve">
+    <value>Font</value>
+    <comment>Text in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.FontIsMissingAccessibleName" xml:space="preserve">
+    <value>A font is missing</value>
+    <comment>Accessible name in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.Features" xml:space="preserve">
+    <value>Features</value>
+    <comment>Text in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.Direction" xml:space="preserve">
+    <value>Direction</value>
+    <comment>Text in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.Size" xml:space="preserve">
+    <value>Size</value>
+    <comment>Text in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.WritingSystemLimitsFootnote" xml:space="preserve">
+    <value>Motif doesn't switch keyboards or check spelling, and it sorts word lists by Unicode value, not by these sort orders.</value>
+    <comment>Text in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.ChangeInFieldWorksHeading" xml:space="preserve">
+    <value>Change these in FieldWorks.</value>
+    <comment>Text in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.WritingSystemSetupFieldWorksPath" xml:space="preserve">
+    <value>Font, features, direction, keyboard, spelling and sort: Format › Set up Vernacular Writing Systems… or Format › Set up Analysis Writing Systems…</value>
+    <comment>Text in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.WritingSystemSizeFieldWorksPath" xml:space="preserve">
+    <value>Size: Format › Styles…, then the Normal style, or a writing system’s override in it.</value>
+    <comment>Text in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.WritingSystemRefreshHint" xml:space="preserve">
+    <value>After FieldWorks saves, press Refresh to see a change here.</value>
+    <comment>Text in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.TextsToParseLabel" xml:space="preserve">
+    <value>Texts to Parse</value>
+    <comment>Text in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.UseAllTexts" xml:space="preserve">
+    <value>Use All Texts</value>
+    <comment>Button label in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.UseAllTextsAccessibleName" xml:space="preserve">
+    <value>Use all texts</value>
+    <comment>Accessible name in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.OpenProjectForTextsPlaceholder" xml:space="preserve">
+    <value>Open a project and choose what to parse to set its Texts.</value>
+    <comment>Text in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.HelpAndProblemReports" xml:space="preserve">
+    <value>Help and Problem Reports</value>
+    <comment>Text in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.Help" xml:space="preserve">
+    <value>Help</value>
+    <comment>Text in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.OpenHelp" xml:space="preserve">
+    <value>Open Help</value>
+    <comment>Button label in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.GuideAndCommandPagesOnline" xml:space="preserve">
+    <value>Guide and Command Pages Online</value>
+    <comment>Text in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.OpenMotifSite" xml:space="preserve">
+    <value>Open the Motif Site ↗</value>
+    <comment>Button label in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.OpenMotifSiteAccessibleName" xml:space="preserve">
+    <value>Open the Motif site</value>
+    <comment>Accessible name in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.WhatReportIncludes" xml:space="preserve">
+    <value>What a Report Includes ▸</value>
+    <comment>Expander header in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.WhatReportIncludesAccessibleName" xml:space="preserve">
+    <value>What a report includes</value>
+    <comment>Accessible name in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.ReportIncludesList" xml:space="preserve">
+    <value>Motif version · PanGloss version · Operating system · Safe failure facts · The operation that failed · Its refusal code and exit status · Method names from the stack, with no messages or file paths.
+Never included unless you tick it in the preview: local details, which may contain project or language data.</value>
+    <comment>Text in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.AboutMotif" xml:space="preserve">
+    <value>About Motif</value>
+    <comment>Text in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.Motif" xml:space="preserve">
+    <value>Motif</value>
+    <comment>Text in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.PanGlossMissingCaption" xml:space="preserve">
+    <value>Motif can't parse until it finds PanGloss.</value>
+    <comment>Text in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.OperatingSystem" xml:space="preserve">
+    <value>Operating System</value>
+    <comment>Text in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.WhereMotifKeepsItsData" xml:space="preserve">
+    <value>Where Motif Keeps Its Data</value>
+    <comment>Text in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.OpenMotifDataFolderAccessibleName" xml:space="preserve">
+    <value>Open Motif data folder</value>
+    <comment>Accessible name in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.MotifDataFolderCaption" xml:space="preserve">
+    <value>This folder holds Motif's managed project data and parser artifacts. FieldWorks projects stay in their own folders; App preferences are kept separately.</value>
+    <comment>Text in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.CopyVersionsAccessibleName" xml:space="preserve">
+    <value>Copy versions</value>
+    <comment>Accessible name in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.MotifWritesNothingUntilApplyCaption" xml:space="preserve">
+    <value>Motif reads your project and writes nothing until you press Apply.</value>
+    <comment>Text in SettingsPage.</comment>
+  </data>
+  <data name="MotifApp.SettingsGroupsAccessibleName" xml:space="preserve">
+    <value>Settings groups</value>
+    <comment>Accessible name in SettingsNavigation.</comment>
+  </data>
+  <data name="MotifApp.SetupFoundProjectTitle" xml:space="preserve">
+    <value>Found the project</value>
+    <comment>Text in SetupDialog.</comment>
+  </data>
+  <data name="MotifApp.SetupSelectionTitle" xml:space="preserve">
+    <value>What should Motif measure every time?</value>
+    <comment>Text in SetupDialog.</comment>
+  </data>
+  <data name="MotifApp.SetupLimitsTitle" xml:space="preserve">
+    <value>How much work should each word get?</value>
+    <comment>Text in SetupDialog.</comment>
+  </data>
+  <data name="MotifApp.SetupFoundProjectDescription" xml:space="preserve">
+    <value>Motif found this project. Choose the texts and words to include in every run.</value>
+    <comment>Text in SetupDialog.</comment>
+  </data>
+  <data name="MotifApp.SetupSelectionDescription" xml:space="preserve">
+    <value>The default Selection is parsed on every run, so today's results can be compared with yesterday's. Interlinearized texts are a good start because their approved analyses are what accuracy is measured against.</value>
+    <comment>Text in SetupDialog.</comment>
+  </data>
+  <data name="MotifApp.SetupLimitsDescription" xml:space="preserve">
+    <value>Choose the maximum number of analysis attempts per word. PanGloss derives an inner search-work limit at 100 times that value. Motif estimates how long a word may take and gives it extra time to finish.</value>
+    <comment>Text in SetupDialog.</comment>
+  </data>
+  <data name="MotifApp.SetupChoicesKeptCaption" xml:space="preserve">
+    <value>Your choices are kept with this project and can be changed later.</value>
+    <comment>Text in SetupDialog.</comment>
+  </data>
+  <data name="MotifApp.SetupTextsOrderCaption" xml:space="preserve">
+    <value>Texts, most interlinearized first</value>
+    <comment>Text in SetupDialog.</comment>
+  </data>
+  <data name="MotifApp.SetupAddWordsLabel" xml:space="preserve">
+    <value>Add Words:</value>
+    <comment>Text in SetupDialog.</comment>
+  </data>
+  <data name="MotifApp.OneWordPerLinePlaceholder" xml:space="preserve">
+    <value>One word per line</value>
+    <comment>Placeholder in SetupDialog.</comment>
+  </data>
+  <data name="MotifApp.WordsToAddAccessibleName" xml:space="preserve">
+    <value>Words to add</value>
+    <comment>Accessible name in SetupDialog.</comment>
+  </data>
+  <data name="MotifApp.SetupAttemptLimitPerWord" xml:space="preserve">
+    <value>Analysis Attempt Limit per Word</value>
+    <comment>Text in SetupDialog.</comment>
+  </data>
+  <data name="MotifApp.SetupAttemptLimitDefaultCaption" xml:space="preserve">
+    <value>200,000 attempts is the default. Choose no attempt limit to let parsing continue until it finishes.</value>
+    <comment>Text in SetupDialog.</comment>
+  </data>
+  <data name="MotifApp.NoAttemptLimit" xml:space="preserve">
+    <value>No Attempt Limit</value>
+    <comment>CheckBox label in SetupDialog.</comment>
+  </data>
+  <data name="MotifApp.SkipForNow" xml:space="preserve">
+    <value>Skip for Now</value>
+    <comment>Button label in SetupDialog.</comment>
+  </data>
+  <data name="MotifApp.SkipSetupForNowAccessibleName" xml:space="preserve">
+    <value>Skip setup for now</value>
+    <comment>Accessible name in SetupDialog.</comment>
+  </data>
+  <data name="MotifApp.MotifHasStoppedWindowTitle" xml:space="preserve">
+    <value>Motif Has Stopped</value>
+    <comment>Window title in CrashWindow.</comment>
+  </data>
+  <data name="MotifApp.ReviewProblemReportAccessibleName" xml:space="preserve">
+    <value>Review a problem report</value>
+    <comment>Accessible name in CrashWindow.</comment>
+  </data>
+  <data name="MotifApp.Close" xml:space="preserve">
+    <value>Close</value>
+    <comment>Button label in CrashWindow.</comment>
+  </data>
+  <data name="MotifApp.CrashHeadlineAccessibleName" xml:space="preserve">
+    <value>Crash headline</value>
+    <comment>Accessible name in CrashWindow.</comment>
+  </data>
+  <data name="MotifApp.CrashSummaryAccessibleName" xml:space="preserve">
+    <value>Crash summary</value>
+    <comment>Accessible name in CrashWindow.</comment>
+  </data>
+  <data name="MotifApp.CrashMessageAccessibleName" xml:space="preserve">
+    <value>Crash message</value>
+    <comment>Accessible name in CrashWindow.</comment>
+  </data>
+  <data name="MotifApp.CrashDetailsAccessibleName" xml:space="preserve">
+    <value>Crash details</value>
+    <comment>Accessible name in CrashWindow.</comment>
+  </data>
+  <data name="MotifApp.CrashDetailsTextAccessibleName" xml:space="preserve">
+    <value>Crash details text</value>
+    <comment>Accessible name in CrashWindow.</comment>
+  </data>
+  <data name="MotifApp.ReviewProblemReportWindowTitle" xml:space="preserve">
+    <value>Review Problem Report</value>
+    <comment>Window title in ProblemReportPreviewWindow.</comment>
+  </data>
+  <data name="MotifApp.ProblemReportStatusAccessibleName" xml:space="preserve">
+    <value>Problem report status</value>
+    <comment>Accessible name in ProblemReportPreviewWindow.</comment>
+  </data>
+  <data name="MotifApp.CopyReport" xml:space="preserve">
+    <value>Copy Report</value>
+    <comment>Button label in ProblemReportPreviewWindow.</comment>
+  </data>
+  <data name="MotifApp.CopyReviewedProblemReportAccessibleName" xml:space="preserve">
+    <value>Copy reviewed problem report</value>
+    <comment>Accessible name in ProblemReportPreviewWindow.</comment>
+  </data>
+  <data name="MotifApp.OpenIssueForm" xml:space="preserve">
+    <value>Open Issue Form</value>
+    <comment>Button label in ProblemReportPreviewWindow.</comment>
+  </data>
+  <data name="MotifApp.OpenIssueFormWithReviewedAccessibleName" xml:space="preserve">
+    <value>Open issue form with reviewed report</value>
+    <comment>Accessible name in ProblemReportPreviewWindow.</comment>
+  </data>
+  <data name="MotifApp.CloseProblemReportPreviewAccessibleName" xml:space="preserve">
+    <value>Close problem report preview</value>
+    <comment>Accessible name in ProblemReportPreviewWindow.</comment>
+  </data>
+  <data name="MotifApp.ProblemReportPreviewIntro" xml:space="preserve">
+    <value>Review this report before sharing it through GitHub Issues. Opening the issue form does not submit it. If you cannot use GitHub, copy the reviewed report and email john_lambert@sil.org.</value>
+    <comment>Text in ProblemReportPreviewWindow.</comment>
+  </data>
+  <data name="MotifApp.IncludeLocalDetails" xml:space="preserve">
+    <value>Include Local Details (may contain project or language data)</value>
+    <comment>CheckBox label in ProblemReportPreviewWindow.</comment>
+  </data>
+  <data name="MotifApp.IncludeLocalDetailsAccessibleName" xml:space="preserve">
+    <value>Include local details that may contain project or language data</value>
+    <comment>Accessible name in ProblemReportPreviewWindow.</comment>
+  </data>
+  <data name="MotifApp.ProblemReportPreviewAccessibleName" xml:space="preserve">
+    <value>Problem report preview</value>
+    <comment>Accessible name in ProblemReportPreviewWindow.</comment>
+  </data>
+  <data name="MotifApp.OpenOnline" xml:space="preserve">
+    <value>Open Online</value>
+    <comment>Button label in HelpPopupView.</comment>
+  </data>
+  <data name="MotifApp.OpenThisHelpPageOnlineAccessibleName" xml:space="preserve">
+    <value>Open this help page online</value>
+    <comment>Accessible name in HelpPopupView.</comment>
+  </data>
+  <data name="MotifApp.FontSourceFallback" xml:space="preserve">
+    <value>Fallback</value>
+    <comment>Source of the font shown for a writing system: the requested font is not installed, so a fallback is used.</comment>
+  </data>
+  <data name="MotifApp.FontSourceBundled" xml:space="preserve">
+    <value>Bundled with Motif</value>
+    <comment>Source of the font shown for a writing system: the font ships inside Motif.</comment>
+  </data>
+  <data name="MotifApp.FontSourceInstalled" xml:space="preserve">
+    <value>Installed</value>
+    <comment>Source of the font shown for a writing system: the font is installed on this computer.</comment>
+  </data>
+  <data name="MotifApp.AlsoInVernacular" xml:space="preserve">
+    <value>Also in Vernacular, with the same settings.</value>
+    <comment>Note on an analysis writing system that is also a vernacular one; Vernacular is the name of the vernacular writing system group.</comment>
+  </data>
+  <data name="MotifApp.FontNoneSet" xml:space="preserve">
+    <value>None set</value>
+    <comment>Value shown for the Font fact of a writing system that has no font set.</comment>
+  </data>
+  <data name="MotifApp.FontFeaturesNone" xml:space="preserve">
+    <value>None</value>
+    <comment>Value shown for the Features fact of a writing system that has no font features.</comment>
+  </data>
+  <data name="MotifApp.DirectionRightToLeft" xml:space="preserve">
+    <value>Right to left</value>
+    <comment>Value of the Direction fact of a right-to-left writing system.</comment>
+  </data>
+  <data name="MotifApp.DirectionLeftToRight" xml:space="preserve">
+    <value>Left to right</value>
+    <comment>Value of the Direction fact of a left-to-right writing system.</comment>
+  </data>
+  <data name="MotifApp.StyleSizeFormat" xml:space="preserve">
+    <value>{0} pt ({1})</value>
+    <comment>Font size of a text style in a writing system: {0} is the size in points and {1} is the style name, for example 12 pt (Normal).</comment>
+  </data>
+  <data name="MotifApp.MissingFontCaptionFormat" xml:space="preserve">
+    <value>Not installed: {0}. Motif uses an available fallback.</value>
+    <comment>Caption under a writing system whose font is missing: {0} is the list of missing font names.</comment>
+  </data>
+  <data name="MotifApp.WritingSystems" xml:space="preserve">
+    <value>Writing Systems</value>
+    <comment>Name of the Settings group that shows the project writing systems.</comment>
+  </data>
+  <data name="MotifApp.MatchWindows" xml:space="preserve">
+    <value>Match Windows</value>
+    <comment>Theme choice button: use the Windows light or dark setting.</comment>
+  </data>
+  <data name="MotifApp.MatchMacOS" xml:space="preserve">
+    <value>Match macOS</value>
+    <comment>Theme choice button: use the macOS light or dark setting.</comment>
+  </data>
+  <data name="MotifApp.MatchSystem" xml:space="preserve">
+    <value>Match System</value>
+    <comment>Theme choice button: use the operating system light or dark setting.</comment>
+  </data>
+  <data name="MotifApp.HelpCaption" xml:space="preserve">
+    <value>Help for the page you are on.</value>
+    <comment>Caption beside the Open Help button in Settings.</comment>
+  </data>
+  <data name="MotifApp.ReportCaption" xml:space="preserve">
+    <value>You see the whole report before anything leaves this computer. Opening the issue form doesn't submit it.</value>
+    <comment>Caption beside the Report a Problem button in Settings.</comment>
+  </data>
+  <data name="MotifApp.ShowInExplorer" xml:space="preserve">
+    <value>Show in Explorer</value>
+    <comment>Button that shows the data folder in Windows Explorer.</comment>
+  </data>
+  <data name="MotifApp.ShowInFinder" xml:space="preserve">
+    <value>Show in Finder</value>
+    <comment>Button that shows the data folder in the macOS Finder.</comment>
+  </data>
+  <data name="MotifApp.ParsingLeadFormat" xml:space="preserve">
+    <value>These limits are saved with {0}'s Selection. Setup chose them; you can change them here or under Texts › Analysis options.</value>
+    <comment>Lead sentence of the Parsing settings: {0} is the project name; Selection, Setup, Texts and Analysis options are names in the window.</comment>
+  </data>
+  <data name="MotifApp.TextSelectionSummaryFormat" xml:space="preserve">
+    <value>{0} of {1}</value>
+    <comment>Summary of the chosen Texts: {0} is how many are chosen and {1} the plural phrase for how many exist, for example 2 of 5 Texts selected.</comment>
+  </data>
+  <data name="MotifApp.TextsSelectedPattern" xml:space="preserve">
+    <value>{0, plural, one {# Text selected} other {# Texts selected}}</value>
+    <comment>Plural pattern: the number of Texts in the project that can be chosen; Text is a Motif noun; # is the count.</comment>
+  </data>
+  <data name="MotifApp.NoShortcutMatchesFormat" xml:space="preserve">
+    <value>No shortcut matches "{0}".</value>
+    <comment>Message when the shortcut search finds nothing: {0} is what the person typed.</comment>
+  </data>
+  <data name="MotifApp.ProposalChecksLead" xml:space="preserve">
+    <value>How thorough Motif's grammar check is when it runs by itself or on a Proposal. Remembered for this computer, like zoom.</value>
+    <comment>Lead sentence of the Default Proposal Checks settings; Proposal is a Motif noun.</comment>
+  </data>
+  <data name="MotifApp.ParsingForProjectFormat" xml:space="preserve">
+    <value>Parsing for {0}</value>
+    <comment>Name of the Parsing settings group when a project is open: {0} is the project name.</comment>
+  </data>
+  <data name="MotifApp.WritingSystemsInProjectFormat" xml:space="preserve">
+    <value>Writing Systems in {0}</value>
+    <comment>Heading of the writing systems settings when a project is open: {0} is the project name.</comment>
+  </data>
+  <data name="MotifApp.WritingSystemsLeadFormat" xml:space="preserve">
+    <value>Motif draws each word with the font, direction and size {0} gives it. To change them, use FieldWorks.</value>
+    <comment>Lead sentence of the writing systems settings: {0} is the project name.</comment>
+  </data>
+  <data name="MotifApp.WritingSystemsEmptyRefresh" xml:space="preserve">
+    <value>Refresh to see the writing systems saved in FieldWorks.</value>
+    <comment>Message when the writing systems have not been read yet.</comment>
+  </data>
+  <data name="MotifApp.WritingSystemsEmptyBaseline" xml:space="preserve">
+    <value>No writing systems were recorded in the Baseline.</value>
+    <comment>Message when the Baseline recorded no writing systems; Baseline is a Motif noun.</comment>
+  </data>
+  <data name="MotifApp.StepLimitEstimateDefault" xml:space="preserve">
+    <value>The estimate uses parser statistics from the last parse when available.</value>
+    <comment>Caption under the step limit when no estimate has been made yet.</comment>
+  </data>
+  <data name="MotifApp.TimeLimitPositiveRefusal" xml:space="preserve">
+    <value>Enter a per-word time limit greater than zero.</value>
+    <comment>Message beside the time limit when it is zero, negative or empty.</comment>
+  </data>
+  <data name="MotifApp.ParsingFooterRunning" xml:space="preserve">
+    <value>The parse running now keeps the limits it started with.</value>
+    <comment>Footer of the Parsing settings while a parse is running.</comment>
+  </data>
+  <data name="MotifApp.ParsingFooterIdle" xml:space="preserve">
+    <value>Used from the next parse. Results already on screen keep the limits they were parsed with.</value>
+    <comment>Footer of the Parsing settings when no parse is running.</comment>
+  </data>
+  <data name="MotifApp.StoredAnalysesSaveRefusalFormat" xml:space="preserve">
+    <value>Motif couldn't save this choice, so the grammar check keeps its earlier one. {0}</value>
+    <comment>Message when saving the stored analyses choice failed: {0} is the system reason.</comment>
+  </data>
+  <data name="MotifApp.StepLimitWholeNumberRefusal" xml:space="preserve">
+    <value>The per-word step limit must be a positive whole number.</value>
+    <comment>Message beside the step limit when it is not a positive whole number.</comment>
+  </data>
+  <data name="MotifApp.TimeLimitRangeRefusal" xml:space="preserve">
+    <value>Enter a per-word time limit from 0.001 seconds to 2,147,483.647 seconds.</value>
+    <comment>Message beside the time limit when it is outside the allowed range.</comment>
+  </data>
+  <data name="MotifApp.Copied" xml:space="preserve">
+    <value>Copied</value>
+    <comment>Label of the Copy Versions button for two seconds after the versions were copied.</comment>
+  </data>
+  <data name="MotifApp.CopyVersions" xml:space="preserve">
+    <value>Copy Versions</value>
+    <comment>Button in About Motif that copies the Motif, PanGloss and operating system versions to the clipboard.</comment>
+  </data>
+  <data name="MotifApp.EnterPositiveWholeNumberOfAttempts" xml:space="preserve">
+    <value>Enter a positive whole number of analysis attempts, or choose no attempt limit.</value>
+    <comment>Message in Setup and Settings when the analysis attempt limit is not a positive whole number.</comment>
+  </data>
+  <data name="MotifApp.RunningNoStepLimit" xml:space="preserve">
+    <value>The parse running now has no step limit.</value>
+    <comment>Status line while a parse runs without a step limit.</comment>
+  </data>
+  <data name="MotifApp.RunningStepLimitFormat" xml:space="preserve">
+    <value>The parse running now keeps {0:N0} steps.</value>
+    <comment>Status line while a parse runs: {0} is the number of analysis steps it keeps.</comment>
+  </data>
+  <data name="MotifApp.SetupNextLimits" xml:space="preserve">
+    <value>Next: Limits</value>
+    <comment>Setup button that goes to the limits step; the step is named Limits.</comment>
+  </data>
+  <data name="MotifApp.SetupNextFirstRun" xml:space="preserve">
+    <value>Next: First Run</value>
+    <comment>Setup button that goes to the first run step.</comment>
+  </data>
+  <data name="MotifApp.SetupNextTexts" xml:space="preserve">
+    <value>Next: Texts</value>
+    <comment>Setup button that goes to the texts step.</comment>
+  </data>
+  <data name="MotifApp.SetupStepCaptionFormat" xml:space="preserve">
+    <value>Setting up {0} · step {1} of 4</value>
+    <comment>Caption of the Setup dialog: {0} is the project name and {1} the current step number out of four.</comment>
+  </data>
+  <data name="MotifApp.SetupNoAttemptLimitEstimate" xml:space="preserve">
+    <value>No analysis attempt limit. Motif will not apply a per-word time limit.</value>
+    <comment>Estimate shown in Setup when no analysis attempt limit is chosen.</comment>
+  </data>
+  <data name="MotifApp.EstimateUnderOneMillisecond" xml:space="preserve">
+    <value>less than 1 ms</value>
+    <comment>A time estimate under one millisecond; ms is the unit symbol.</comment>
+  </data>
+  <data name="MotifApp.EstimateMillisecondsFormat" xml:space="preserve">
+    <value>{0:N0} ms</value>
+    <comment>A time estimate in milliseconds: {0} is the number; ms is the unit symbol.</comment>
+  </data>
+  <data name="MotifApp.EstimateSecondsFormat" xml:space="preserve">
+    <value>{0:0.#} s</value>
+    <comment>A time estimate in seconds: {0} is the number; s is the unit symbol.</comment>
+  </data>
+  <data name="MotifApp.NoAddedWords" xml:space="preserve">
+    <value>No added words</value>
+    <comment>Setup summary line when the person added no words of their own.</comment>
+  </data>
+  <data name="MotifApp.UseThisSelection" xml:space="preserve">
+    <value>Use This Selection</value>
+    <comment>Setup button on the last step when editing the saved Selection; Selection is a Motif noun.</comment>
+  </data>
+  <data name="MotifApp.StartFirstRun" xml:space="preserve">
+    <value>Start First Run</value>
+    <comment>Setup button on the last step of first-time setup: saves the Selection and starts the first parse.</comment>
+  </data>
+  <data name="MotifApp.SetupUseSelectionTitle" xml:space="preserve">
+    <value>Use this Selection as the project default</value>
+    <comment>Heading of the last Setup step when editing the saved Selection.</comment>
+  </data>
+  <data name="MotifApp.SetupFirstRunTitle" xml:space="preserve">
+    <value>Ready for the first run?</value>
+    <comment>Heading of the last Setup step of first-time setup.</comment>
+  </data>
+  <data name="MotifApp.SetupUseSelectionDescription" xml:space="preserve">
+    <value>This will be the project default. Parse all words will use it next time.</value>
+    <comment>Description of the last Setup step when editing the saved Selection; Parse all words is the name of a command.</comment>
+  </data>
+  <data name="MotifApp.SetupFirstRunDescription" xml:space="preserve">
+    <value>Motif will save this Selection with the project, then parse all its words.</value>
+    <comment>Description of the last Setup step of first-time setup.</comment>
+  </data>
+  <data name="MotifApp.SetupChooseTextOrWord" xml:space="preserve">
+    <value>Choose at least one text or add a word before continuing.</value>
+    <comment>Message in Setup when nothing is chosen to parse.</comment>
+  </data>
+  <data name="MotifApp.SetupEstimateUnlimitedTypicalFormat" xml:space="preserve">
+    <value>At this limit a word takes up to about {0}. Motif will not apply a per-word time limit. The estimate uses a typical machine.</value>
+    <comment>Estimate in Setup: {0} is a time such as 3 s; no per-word time limit applies; the estimate assumes a typical computer.</comment>
+  </data>
+  <data name="MotifApp.SetupEstimateUnlimitedMeasuredFormat" xml:space="preserve">
+    <value>At this limit a word takes up to about {0}. Motif will not apply a per-word time limit. The estimate uses the parser statistics from the last parse.</value>
+    <comment>Estimate in Setup: {0} is a time such as 3 s; no per-word time limit applies; the estimate uses measured parser statistics.</comment>
+  </data>
+  <data name="MotifApp.SetupEstimateLimitedTypicalFormat" xml:space="preserve">
+    <value>At this limit a word takes up to about {0}. Motif stops a word after {1}. The estimate uses a typical machine.</value>
+    <comment>Estimate in Setup: {0} and {1} are times such as 3 s; Motif stops a word after the second; the estimate assumes a typical computer.</comment>
+  </data>
+  <data name="MotifApp.SetupEstimateLimitedMeasuredFormat" xml:space="preserve">
+    <value>At this limit a word takes up to about {0}. Motif stops a word after {1}. The estimate uses the parser statistics from the last parse.</value>
+    <comment>Estimate in Setup: {0} and {1} are times such as 3 s; Motif stops a word after the second; the estimate uses measured parser statistics.</comment>
+  </data>
+  <data name="MotifApp.CrashHeadline" xml:space="preserve">
+    <value>Motif ran into a problem it could not recover from</value>
+    <comment>Heading of the crash window.</comment>
+  </data>
+  <data name="MotifApp.CrashSummary" xml:space="preserve">
+    <value>Motif will close when you close this window. Review the problem report before you choose to share it.</value>
+    <comment>Plain summary under the heading of the crash window.</comment>
+  </data>
+  <data name="MotifApp.CrashThankYou" xml:space="preserve">
+    <value>Thank you for helping improve the demo.</value>
+    <comment>Thanks at the bottom of the crash window.</comment>
+  </data>
+  <data name="MotifApp.ProblemReportCopied" xml:space="preserve">
+    <value>The reviewed report is on the clipboard.</value>
+    <comment>Status in the problem report window after the report was copied.</comment>
+  </data>
+  <data name="MotifApp.ProblemReportCopyFailed" xml:space="preserve">
+    <value>Motif could not copy the report.</value>
+    <comment>Status in the problem report window when copying failed.</comment>
+  </data>
+  <data name="MotifApp.ProblemReportIssueFormOpened" xml:space="preserve">
+    <value>The issue form should open. Review the report there before submitting it.</value>
+    <comment>Status in the problem report window after the browser was asked to open the issue form.</comment>
+  </data>
+  <data name="MotifApp.CancelSetupAccessibleName" xml:space="preserve">
+    <value>Cancel setup</value>
+    <comment>Accessible name of the Cancel button in Setup: closes Setup without saving or skipping it.</comment>
+  </data>
+  <data name="MotifApp.WritingSystemDetailsAccessibleNameFormat" xml:space="preserve">
+    <value>Writing system details for {0}</value>
+    <comment>Accessible name of the Details expander of one writing system: {0} is the writing system name.</comment>
+  </data>
+  <data name="MotifApp.VernacularSectionLabel" xml:space="preserve">
+    <value>VERNACULAR</value>
+    <comment>Small section label above the vernacular writing systems, shown in capitals; the capitals are part of the text.</comment>
+  </data>
+  <data name="MotifApp.AnalysisSectionLabel" xml:space="preserve">
+    <value>ANALYSIS</value>
+    <comment>Small section label above the analysis writing systems, shown in capitals; the capitals are part of the text.</comment>
+  </data>
+  <data name="MotifApp.SetupAttemptLimitPerWordAccessibleName" xml:space="preserve">
+    <value>Analysis attempt limit per word</value>
+    <comment>Accessible name of the analysis attempt limit field in Setup.</comment>
+  </data>
 </root>

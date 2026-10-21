@@ -105,14 +105,14 @@ internal static class WalkthroughSteps
                     timeout, "Configure did not open the first-run Selection");
             }
 
-            SetupWalkthroughActions.ClickSetupButton(walkthrough, "Next: texts");
+            SetupWalkthroughActions.ClickSetupButton(walkthrough, SIL.Motif.App.MotifAppStrings.SetupNextTexts);
             if (walkthrough.Workspace.Selection.Texts.FirstOrDefault() is { } text)
                 SetupWalkthroughActions.SetSetupTextChecked(walkthrough, text.Title, true);
             else
                 walkthrough.Type("Words to add", "motifa");
-            SetupWalkthroughActions.ClickSetupButton(walkthrough, "Next: limits");
-            SetupWalkthroughActions.ClickSetupButton(walkthrough, "Next: first run");
-            walkthrough.Click("Start first run");
+            SetupWalkthroughActions.ClickSetupButton(walkthrough, SIL.Motif.App.MotifAppStrings.SetupNextLimits);
+            SetupWalkthroughActions.ClickSetupButton(walkthrough, SIL.Motif.App.MotifAppStrings.SetupNextFirstRun);
+            walkthrough.Click(SIL.Motif.App.MotifAppStrings.StartFirstRun);
         }
 
         walkthrough.WaitUntil(

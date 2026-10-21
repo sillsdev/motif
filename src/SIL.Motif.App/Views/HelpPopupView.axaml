@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="clr-namespace:SIL.Motif.App"
              xmlns:md="clr-namespace:LiveMarkdown.Avalonia;assembly=LiveMarkdown.Avalonia"
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              x:DataType="vm:HelpPopupViewModel"
@@ -12,8 +13,8 @@
         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}">
           <TextBlock x:Name="HelpTitle" Classes="section-title" Text="{Binding Title}"
                      FontSize="{DynamicResource Intent.Type.Title}" TextWrapping="Wrap" />
-          <Button x:Name="OpenOnlineButton" Grid.Column="1" Content="Open online"
-                  Command="{Binding OpenOnlineCommand}" AutomationProperties.Name="Open this help page online" />
+          <Button x:Name="OpenOnlineButton" Grid.Column="1" Content="{x:Static app:MotifAppStrings.OpenOnline}"
+                  Command="{Binding OpenOnlineCommand}" AutomationProperties.Name="{x:Static app:MotifAppStrings.OpenThisHelpPageOnlineAccessibleName}" />
         </Grid>
         <TextBlock x:Name="HelpDescription" Classes="muted"
                    Text="{Binding Description}" IsVisible="{Binding ShowsDescription}"

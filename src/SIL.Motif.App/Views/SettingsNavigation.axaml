@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="clr-namespace:SIL.Motif.App"
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              xmlns:req="clr-namespace:SIL.Motif.Contract.Requests;assembly=SIL.Motif.Contract"
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
@@ -10,14 +11,14 @@
   <ListBox x:Name="SettingsGroups" Classes="settingsRailList" ItemsSource="{Binding PageGroupOptions}"
                    Focusable="True" IsTabStop="True"
                    SelectedItem="{Binding SelectedNavigationEntry, Mode=TwoWay}"
-                   AutomationProperties.Name="Settings groups">
+                   AutomationProperties.Name="{x:Static app:MotifAppStrings.SettingsGroupsAccessibleName}">
             <ListBox.ItemTemplate>
               <DataTemplate x:DataType="vm:SettingsGroupOption">
                 <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Compact}">
                   <views:CopyableTextBlock Text="{Binding Title}" TextWrapping="Wrap" />
                   <views:MarkGlyph Grid.Column="1" Classes="inline" Mark="{x:Static vm:Mark.Warning}"
                                    IsVisible="{Binding HasWarning}"
-                                   AutomationProperties.Name="A font is missing" />
+                                   AutomationProperties.Name="{x:Static app:MotifAppStrings.FontIsMissingAccessibleName}" />
                 </Grid>
               </DataTemplate>
             </ListBox.ItemTemplate>

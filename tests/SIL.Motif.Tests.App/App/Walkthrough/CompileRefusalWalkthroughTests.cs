@@ -53,11 +53,11 @@ public sealed class CompileRefusalWalkthroughTests(PristineProjectFixture pristi
                 WalkthroughSteps.ChooseProjectAndCaptureBaseline(window, deadline);
                 FakeParser.BehaveBesideExecutable(parser, new { mode = "fail", standardError = failure });
                 window.ConfigureFromProjectMenu();
-                SetupWalkthroughActions.ClickSetupButton(window, "Next: texts");
+                SetupWalkthroughActions.ClickSetupButton(window, SIL.Motif.App.MotifAppStrings.SetupNextTexts);
                 window.Type("Words to add", "motifa");
-                SetupWalkthroughActions.ClickSetupButton(window, "Next: limits");
-                SetupWalkthroughActions.ClickSetupButton(window, "Next: first run");
-                window.Click("Start first run");
+                SetupWalkthroughActions.ClickSetupButton(window, SIL.Motif.App.MotifAppStrings.SetupNextLimits);
+                SetupWalkthroughActions.ClickSetupButton(window, SIL.Motif.App.MotifAppStrings.SetupNextFirstRun);
+                window.Click(SIL.Motif.App.MotifAppStrings.StartFirstRun);
                 window.WaitUntil(() => window.Workspace.Assess.State == RunState.Refused &&
                     window.Workspace.Context.EvidencePublication.IsCompleted,
                     WalkthroughSteps.Remaining(deadline), "the compile refusal did not reach the pages");

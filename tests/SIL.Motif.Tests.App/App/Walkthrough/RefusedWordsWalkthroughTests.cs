@@ -59,11 +59,11 @@ public sealed class RefusedWordsWalkthroughTests(PristineProjectFixture pristine
                 using var walkthrough = new WalkthroughWindow(root, projectPath, Path.Combine(root, "handoff"));
                 SetupWalkthroughActions.SelectProject(walkthrough, projectPath);
                 SetupWalkthroughActions.CaptureBaselineAndWaitForSetup(walkthrough, 0, WalkthroughSteps.Remaining(deadline));
-                SetupWalkthroughActions.ClickSetupButton(walkthrough, "Next: texts");
+                SetupWalkthroughActions.ClickSetupButton(walkthrough, SIL.Motif.App.MotifAppStrings.SetupNextTexts);
                 walkthrough.Type("Words to add", "chat\nchats\nlion\nlions\nfenêtre");
-                SetupWalkthroughActions.ClickSetupButton(walkthrough, "Next: limits");
-                SetupWalkthroughActions.ClickSetupButton(walkthrough, "Next: first run");
-                walkthrough.Click("Start first run");
+                SetupWalkthroughActions.ClickSetupButton(walkthrough, SIL.Motif.App.MotifAppStrings.SetupNextLimits);
+                SetupWalkthroughActions.ClickSetupButton(walkthrough, SIL.Motif.App.MotifAppStrings.SetupNextFirstRun);
+                walkthrough.Click(SIL.Motif.App.MotifAppStrings.StartFirstRun);
                 walkthrough.WaitUntil(() => walkthrough.Workspace.Assess.State == RunState.Completed &&
                     walkthrough.Workspace.Context.EvidencePublication.IsCompleted,
                     WalkthroughSteps.Remaining(deadline), "the added-word parse did not finish",

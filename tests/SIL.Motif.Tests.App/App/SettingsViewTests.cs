@@ -63,7 +63,7 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                     Assert.Single(popup.GetVisualDescendants().OfType<Button>(),
                         button => AutomationProperties.GetName(button) == "Use all texts");
                     Assert.Single(popup.GetVisualDescendants().OfType<TextBlock>(),
-                        text => text.IsEffectivelyVisible && text.Text == "Texts to parse");
+                        text => text.IsEffectivelyVisible && text.Text == SIL.Motif.App.MotifAppStrings.TextsToParseLabel);
                     workspace.Selection.SearchText = "Hadithi";
                     Assert.Equal(allBoxesAlreadyChecked ? "2 of 2 Texts selected" : "1 of 2 Texts selected",
                         settings.TextSelectionSummary);
@@ -166,7 +166,7 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                     window.Show();
                     PageScreenshots.Settle(window);
                     var page = OpenSettings(window);
-                    Assert.Equal("Display", ActiveGroupHeading(page));
+                    Assert.Equal(SIL.Motif.App.MotifAppStrings.Display, ActiveGroupHeading(page));
                     HeadlessClick.Click(window, Button(page, "Zoom in"), "Zoom in");
                     HeadlessClick.Click(window, Button(page, "Dark theme"), "Dark theme");
 
@@ -251,17 +251,17 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                     window.KeyPress(Key.Down, RawInputModifiers.None, PhysicalKey.ArrowDown, null);
                     PageScreenshots.Settle(window);
                     Assert.Equal(SettingsGroup.KeyboardShortcuts, Assert.IsType<SettingsGroupOption>(groups.SelectedItem).Group);
-                    Assert.Equal("Keyboard shortcuts", ActiveGroupHeading(page));
+                    Assert.Equal(SIL.Motif.App.MotifAppStrings.KeyboardShortcuts, ActiveGroupHeading(page));
 
                     window.KeyPress(Key.End, RawInputModifiers.None, PhysicalKey.End, null);
                     PageScreenshots.Settle(window);
                     Assert.Equal(SettingsGroup.About, Assert.IsType<SettingsGroupOption>(groups.SelectedItem).Group);
-                    Assert.Equal("About Motif", ActiveGroupHeading(page));
+                    Assert.Equal(SIL.Motif.App.MotifAppStrings.AboutMotif, ActiveGroupHeading(page));
 
                     window.KeyPress(Key.Home, RawInputModifiers.None, PhysicalKey.Home, null);
                     PageScreenshots.Settle(window);
                     Assert.Equal(SettingsGroup.Display, Assert.IsType<SettingsGroupOption>(groups.SelectedItem).Group);
-                    Assert.Equal("Display", ActiveGroupHeading(page));
+                    Assert.Equal(SIL.Motif.App.MotifAppStrings.Display, ActiveGroupHeading(page));
                 }
                 finally
                 {
@@ -311,7 +311,7 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                 var groups = page.Navigation.FindControl<ListBox>("SettingsGroups")!;
                 SettingsTestAccess.Select(page, SettingsGroup.WritingSystems);
                 PageScreenshots.Settle(window);
-                Assert.Equal("Writing systems in Sample", ActiveGroupHeading(page));
+                Assert.Equal(string.Format(SIL.Motif.App.MotifAppStrings.WritingSystemsInProjectFormat, "Sample"), ActiveGroupHeading(page));
                 var details = Assert.Single(page.GetVisualDescendants().OfType<Expander>(),
                     control => AutomationProperties.GetName(control) == "Writing system details for Vernacular 7");
                 Assert.False(details.IsExpanded);
@@ -1050,11 +1050,11 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                         var visibleText = page.GetVisualDescendants().OfType<TextBlock>()
                             .Where(text => text.IsEffectivelyVisible).ToArray();
                         var operatingSystemLabel = Assert.Single(visibleText,
-                            text => text.Text == "Operating system");
+                            text => text.Text == SIL.Motif.App.MotifAppStrings.OperatingSystem);
                         var operatingSystemValue = Assert.Single(visibleText,
                             text => text.Text == operatingSystem);
                         var dataRootLabel = Assert.Single(visibleText,
-                            text => text.Text == "Where Motif keeps its data");
+                            text => text.Text == SIL.Motif.App.MotifAppStrings.WhereMotifKeepsItsData);
                         var dataRootValue = Assert.Single(visibleText,
                             text => text.Text?.Replace("\u200B", "", StringComparison.Ordinal) == dataRoot);
                         var openFolder = Button(page, "Open Motif data folder");
@@ -1138,10 +1138,10 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                     var page = OpenSettings(window);
                     var groups = page.Navigation.FindControl<ListBox>("SettingsGroups")!;
                     Assert.Contains(groups.Items.OfType<SettingsGroupOption>(),
-                        option => option.Title == "Default proposal checks");
+                        option => option.Title == SIL.Motif.App.MotifAppStrings.DefaultProposalChecks);
                     SettingsTestAccess.Select(page, SettingsGroup.ProposalChecks);
                     PageScreenshots.Settle(window);
-                    Assert.Equal("Default proposal checks", ActiveGroupHeading(page));
+                    Assert.Equal(SIL.Motif.App.MotifAppStrings.DefaultProposalChecks, ActiveGroupHeading(page));
 
                     var budget = page.FindControl<RadioButton>("StoredAnalysesBudgetChoice")!;
                     var all = page.FindControl<RadioButton>("StoredAnalysesAllChoice")!;

@@ -12,14 +12,13 @@ namespace SIL.Motif.App.ViewModels;
 public sealed partial class CrashReportViewModel : ObservableObject
 {
     /// <summary>The window's heading.</summary>
-    public const string Headline = "Motif ran into a problem it could not recover from";
+    public static string Headline => MotifAppStrings.CrashHeadline;
 
     /// <summary>The plain summary under the heading.</summary>
-    public const string Summary =
-        "Motif will close when you close this window. Review the problem report before you choose to share it.";
+    public static string Summary => MotifAppStrings.CrashSummary;
 
     /// <summary>Thanks the person for a report that can improve the demo.</summary>
-    public const string ThankYou = "Thank you for helping improve the demo.";
+    public static string ThankYou => MotifAppStrings.CrashThankYou;
 
     /// <summary>Shows <paramref name="report"/> and keeps its local details available in the window.</summary>
     public CrashReportViewModel(CrashReport report)

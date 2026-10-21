@@ -1,7 +1,9 @@
+using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.LogicalTree;
+using Avalonia.VisualTree;
 using Avalonia.Threading;
 using SIL.Motif.App.Services;
 using SIL.Motif.App.Views;
@@ -52,6 +54,27 @@ public sealed class ProblemReportPreviewTests
     }
 
     [Fact]
+    public void TheNonClosingCopyActionSitsLeftOfTheClosingGroupWhichEnterAndEscapeActivate()
+    {
+        RunWithWindow(window =>
+        {
+            window.UpdateLayout();
+            var buttons = window.GetLogicalDescendants().OfType<Button>().ToArray();
+            Button Named(string content) => Assert.Single(buttons, button => Equals(button.Content, content));
+            var copy = Named(SIL.Motif.App.MotifAppStrings.CopyReport);
+            var open = Named(SIL.Motif.App.MotifAppStrings.OpenIssueForm);
+            var close = Named(SIL.Motif.App.MotifAppStrings.Close);
+            double X(Button button) => button.TranslatePoint(default, window)!.Value.X;
+            Assert.True(X(copy) < X(open));
+            Assert.True(X(open) < X(close));
+            Assert.True(close.IsDefault);
+            Assert.True(close.IsCancel);
+            Assert.False(copy.IsDefault || copy.IsCancel || open.IsDefault || open.IsCancel);
+            return Task.CompletedTask;
+        });
+    }
+
+    [Fact]
     public void CopyAndIssueActionsUseExactlyTheVisiblePreview()
     {
         RunWithWindow(async window =>
@@ -62,11 +85,11 @@ public sealed class ProblemReportPreviewTests
             window.UpdateLayout();
             var reviewed = preview.Text ?? string.Empty;
 
-            Click(window, "Copy report");
+            Click(window, SIL.Motif.App.MotifAppStrings.CopyReport);
             await Until(() => _clipboard.Copied.Count == 1);
             Assert.Equal(reviewed, _clipboard.Copied[0]);
 
-            Click(window, "Open issue form");
+            Click(window, SIL.Motif.App.MotifAppStrings.OpenIssueForm);
             await Until(() => _launcher.Launched.Count == 1);
             Assert.Equal("https", _launcher.Launched[0].Scheme);
             Assert.StartsWith(AppLinks.NewIssue, _launcher.Launched[0].AbsoluteUri, StringComparison.Ordinal);

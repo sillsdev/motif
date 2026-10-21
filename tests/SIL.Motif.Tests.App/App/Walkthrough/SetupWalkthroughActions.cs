@@ -105,13 +105,13 @@ internal static class SetupWalkthroughActions
         TimeSpan timeout, string? addedWords = null)
     {
         var setup = walkthrough.Workspace.Context.Setup!;
-        ClickSetupButton(walkthrough, "Next: texts");
+        ClickSetupButton(walkthrough, SIL.Motif.App.MotifAppStrings.SetupNextTexts);
         Assert.Equal(1, setup.Step);
         SetSetupTextChecked(walkthrough, selectedText, true);
         if (addedWords is not null) walkthrough.Type("Words to add", addedWords);
-        ClickSetupButton(walkthrough, "Next: limits");
+        ClickSetupButton(walkthrough, SIL.Motif.App.MotifAppStrings.SetupNextLimits);
         TypeSetupLimit(walkthrough, "Analysis attempt limit per word", stepLimit);
-        ClickSetupButton(walkthrough, "Next: first run");
+        ClickSetupButton(walkthrough, SIL.Motif.App.MotifAppStrings.SetupNextFirstRun);
         Assert.Equal(3, setup.Step);
         var heartbeat = Path.Combine(walkthrough.ManagedRoot, "first-run-held-heartbeat");
         walkthrough.SetFakeParserBehavior(new
@@ -127,7 +127,7 @@ internal static class SetupWalkthroughActions
             if (e.PropertyName == nameof(SetupViewModel.IsOpen) && !setup.IsOpen)
                 stageWhenSetupClosed = walkthrough.Workspace.Assess.Progress?.Stage;
         };
-        walkthrough.Click("Start first run");
+        walkthrough.Click(SIL.Motif.App.MotifAppStrings.StartFirstRun);
         walkthrough.WaitUntil(
             () => File.Exists(heartbeat) || walkthrough.Workspace.Assess.State is
                 RunState.Completed or RunState.Cancelled or RunState.Refused,

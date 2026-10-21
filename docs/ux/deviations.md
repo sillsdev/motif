@@ -24,6 +24,8 @@ the guide is silent ("FW has no rule").
 | Setup as an overlay | [Dialog windows][G-win]: owned windows, centred on the owner | Setup is an in-window overlay | Standalone, the host window is Motif's own | Motif is hosted in FieldWorks |
 | Menu bar | [Menu structure][G-menu]: File, Send/Receive, Edit, View, Data, Insert, Format, Tools, Window, Help; areas add no top-level menus | Standalone: File, Edit, View, Tools, Help only; the icon rail stands for the area and tool list | Motif has no Send/Receive, Data, Insert, Format or Window commands, and is a separate process | Motif is hosted: its commands join FieldWorks' menus |
 | Motif-only shortcuts | [Keyboard shortcuts][G-keys]: keep WinForms keys; no new meaning for a key used in the area | Motif keeps its own staging keys | Motif is a separate area and they collide with nothing in FieldWorks Tools | Before hosting: check single-letter keys against interlinear |
+| Shortcut labels | [Localizable text][G-loc]: all window text comes from .resx; [ADR 0072](../adr/0072-window-text-lives-in-resx-help-content-stays-json.md) moves the 78 `shortcut-*` labels | The labels stay in `Help/Content/en/ui.json`, still sentence case, read through the Help catalog by `KeyboardShortcutRegistry` | Moving them edits `KeyboardShortcutRegistry.cs`, which the menu-bar lane (T-dk) also rewrites, and the Help catalog that the CLI, the docs site and the Help golden share; neither lane may collide with the other | The menu-bar lane lands: then move the labels to `MotifAppStrings.resx` in Title Case and have the docs site read them there |
+| Problem report buttons | [Dialog buttons][G-btn]: buttons that act without closing go next to their content or bottom left; the closing group is confirming, alternatives, Cancel | Copy Report sits bottom left. Open Issue Form stays in the bottom-right group beside Close, though the window stays open after it | Open Issue Form is the dialog's confirming action: it hands the reviewed report to the browser, and the window stays open to show the result and to let a person copy instead | The owner prefers the strict rule: then it moves to the bottom left too |
 | Crowdin | FW has no rule; its `crowdin.json` maps `Src/**/*.resx` | No Crowdin project; English only | Nothing to translate yet | The codebases merge |
 
 ## Not deviations
@@ -37,6 +39,7 @@ These differ from FieldWorks on the surface and are recorded so nobody reopens t
 | Apply is one-way | [Saving and undo][G-undo]: one undo per field; [Bulk Edit][G-bulk]: preview, marked not saved, one named step | Apply is one-way by design: Motif has no unapply. Undo exists only before Apply | Proposals, Dry Run and Trials exist to test before Apply, and FieldWorks' own undo covers only a subset of its commands ([ADR 0016](../adr/0016-scratch-cache-copy-not-undo.md), [ADR 0005](../adr/0005-schema-operations-non-undoable-uow.md)) |
 
 [G-loc]: https://github.com/sillsdev/FieldWorks/blob/8b57dd6f7/Docs/ux/README.md#L151
+[G-btn]: https://github.com/sillsdev/FieldWorks/blob/8b57dd6f7/Docs/ux/README.md#L188
 [G-theme]: https://github.com/sillsdev/FieldWorks/blob/8b57dd6f7/Docs/ux/README.md#L142
 [G-win]: https://github.com/sillsdev/FieldWorks/blob/8b57dd6f7/Docs/ux/README.md#L201
 [G-menu]: https://github.com/sillsdev/FieldWorks/blob/8b57dd6f7/Docs/ux/README.md#L75

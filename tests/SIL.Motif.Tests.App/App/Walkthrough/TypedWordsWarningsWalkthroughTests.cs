@@ -24,11 +24,11 @@ public sealed class TypedWordsWarningsWalkthroughTests(PristineProjectFixture pr
             using var walkthrough = new WalkthroughWindow(project.ManagedRoot, project.FwDataPath);
             SetupWalkthroughActions.SelectProject(walkthrough, project.FwDataPath);
             SetupWalkthroughActions.CaptureBaselineAndWaitForSetup(walkthrough, 0, TimeSpan.FromMinutes(2));
-            SetupWalkthroughActions.ClickSetupButton(walkthrough, "Next: texts");
+            SetupWalkthroughActions.ClickSetupButton(walkthrough, SIL.Motif.App.MotifAppStrings.SetupNextTexts);
             walkthrough.Type("Words to add", "trois\nchat\nchats\ntrès\nfenêtre\nfenêtres");
-            SetupWalkthroughActions.ClickSetupButton(walkthrough, "Next: limits");
-            SetupWalkthroughActions.ClickSetupButton(walkthrough, "Next: first run");
-            walkthrough.Click("Start first run");
+            SetupWalkthroughActions.ClickSetupButton(walkthrough, SIL.Motif.App.MotifAppStrings.SetupNextLimits);
+            SetupWalkthroughActions.ClickSetupButton(walkthrough, SIL.Motif.App.MotifAppStrings.SetupNextFirstRun);
+            walkthrough.Click(SIL.Motif.App.MotifAppStrings.StartFirstRun);
             walkthrough.WaitUntil(() => walkthrough.Workspace.Assess.State is RunState.Completed or RunState.Refused,
                 TimeSpan.FromMinutes(2), "the typed Selection did not finish parsing");
             Assert.Equal(RunState.Completed, walkthrough.Workspace.Assess.State);

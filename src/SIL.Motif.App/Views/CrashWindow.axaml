@@ -1,9 +1,10 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:app="clr-namespace:SIL.Motif.App"
         xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
         x:Class="SIL.Motif.App.Views.CrashWindow"
         x:DataType="vm:CrashReportViewModel"
-        Title="Motif has stopped"
+        Title="{x:Static app:MotifAppStrings.MotifHasStoppedWindowTitle}"
         WindowStartupLocation="CenterScreen"
         Width="{DynamicResource Component.Shell.CrashWidth}"
         Height="{DynamicResource Component.Shell.CrashHeight}"
@@ -20,25 +21,26 @@
   <DockPanel Margin="{DynamicResource Component.Shell.CrashInset}">
     <StackPanel DockPanel.Dock="Bottom" Spacing="{DynamicResource Intent.Space.Related}">
       <TextBlock Classes="muted" Text="{x:Static vm:CrashReportViewModel.ThankYou}" TextWrapping="Wrap" />
-      <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="{DynamicResource Intent.Space.Related}">
-        <Button Content="Report a problem" Click="OnReportProblemClick" AutomationProperties.Name="Review a problem report" />
-        <Button Content="Close" Click="OnCloseClick" IsDefault="True" IsCancel="True"
-                AutomationProperties.Name="Close" />
-      </StackPanel>
+      <!-- FieldWorks dialog buttons: Report a Problem does not close the window, so it sits bottom left; Close is the only closing button, bottom right. -->
+      <Grid ColumnDefinitions="Auto,*,Auto">
+        <Button Content="{x:Static app:MotifAppStrings.ReportProblem}" Click="OnReportProblemClick" AutomationProperties.Name="{x:Static app:MotifAppStrings.ReviewProblemReportAccessibleName}" />
+        <Button Grid.Column="2" Content="{x:Static app:MotifAppStrings.Close}" Click="OnCloseClick" IsDefault="True" IsCancel="True"
+                AutomationProperties.Name="{x:Static app:MotifAppStrings.Close}" />
+      </Grid>
     </StackPanel>
     <ScrollViewer HorizontalScrollBarVisibility="Disabled">
       <StackPanel Spacing="{DynamicResource Intent.Space.Group}">
         <TextBlock Classes="section-title" Text="{x:Static vm:CrashReportViewModel.Headline}" TextWrapping="Wrap"
-                   AutomationProperties.Name="Crash headline" />
+                   AutomationProperties.Name="{x:Static app:MotifAppStrings.CrashHeadlineAccessibleName}" />
         <TextBlock Text="{x:Static vm:CrashReportViewModel.Summary}" TextWrapping="Wrap"
-                   AutomationProperties.Name="Crash summary" />
-        <TextBlock Classes="error" Text="{Binding Message}" AutomationProperties.Name="Crash message" />
-        <Expander Header="Details" IsExpanded="False" HorizontalAlignment="Stretch"
-                  AutomationProperties.Name="Crash details">
+                   AutomationProperties.Name="{x:Static app:MotifAppStrings.CrashSummaryAccessibleName}" />
+        <TextBlock Classes="error" Text="{Binding Message}" AutomationProperties.Name="{x:Static app:MotifAppStrings.CrashMessageAccessibleName}" />
+        <Expander Header="{x:Static app:MotifAppStrings.Details}" IsExpanded="False" HorizontalAlignment="Stretch"
+                  AutomationProperties.Name="{x:Static app:MotifAppStrings.CrashDetailsAccessibleName}">
           <ScrollViewer MaxHeight="{DynamicResource Component.Shell.CrashDetailsMaxHeight}"
                         HorizontalScrollBarVisibility="Auto">
             <SelectableTextBlock Classes="refusalDetails" Text="{Binding Details}"
-                                 AutomationProperties.Name="Crash details text" />
+                                 AutomationProperties.Name="{x:Static app:MotifAppStrings.CrashDetailsTextAccessibleName}" />
           </ScrollViewer>
         </Expander>
       </StackPanel>

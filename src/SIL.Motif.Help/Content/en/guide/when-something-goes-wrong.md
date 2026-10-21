@@ -4,7 +4,7 @@ If a command or action is refused, first read the message in Motif. It often exp
 
 You can open the same report preview from [Settings](guide:settings). It is also available from a refusal or a stalled parse.
 
-For a problem report, choose **Report a problem** and review the preview. By default it includes Motif and PanGloss versions, your operating system, the window action, the refusal code, the command's exit status when available, and a stack without file locations. It leaves out project paths and names, words, grammar, and raw parser output. You can choose **Include local details** to add the error text and facts shown under Details; those may contain project or language data. Copying the report or opening the issue form happens only after you review the preview, and the issue form is not submitted automatically.
+For a problem report, choose **Report a problem** and review the preview. By default it includes Motif and PanGloss versions, your operating system, the window action, the refusal code, the command's exit status when available, and a stack without file locations. It leaves out project paths and names, words, grammar, and raw parser output. You can choose **Include Local Details** to add the error text and facts shown under Details; those may contain project or language data. Copying the report or opening the issue form happens only after you review the preview, and the issue form is not submitted automatically.
 
 Send feedback through [GitHub Issues](https://github.com/sillsdev/motif/issues). If you cannot use GitHub, copy the reviewed report and email it to [john_lambert@sil.org](mailto:john_lambert@sil.org). Review any local details before sharing them.
 
@@ -16,6 +16,6 @@ If Motif cannot read its machine store, close every Motif window and keep a copy
 
 For a parser trace, open **Diagnostic tools** from **Try a Word**. You can save or copy diagnostic information for a particular word. It can include real word forms and morphological details, so review it before sharing.
 
-If the app stops after an error, the separate **Motif has stopped** window keeps the full error under **Details** and offers **Report a problem**. The same preview shows what will be copied or placed in the issue form. The local **Details** may contain project paths or linguistic information; they are added to a report only when you choose **Include local details**.
+If the app stops after an error, the separate **Motif Has Stopped** window keeps the full error under **Details** and offers **Report a Problem**. The same preview shows what will be copied or placed in the issue form. The local **Details** may contain project paths or linguistic information; they are added to a report only when you choose **Include Local Details**.
 
 ![A recorded parser trace to inspect in Try a Word](shot:try-word-typing/trace)

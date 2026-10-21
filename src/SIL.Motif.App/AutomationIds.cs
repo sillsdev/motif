@@ -60,6 +60,7 @@ public static class AutomationIds
     public const string SetupBack = "motif-setup-back";
     public const string SetupNext = "motif-setup-next";
     public const string SetupFinish = "motif-setup-finish";
+    public const string SetupCancel = "motif-setup-cancel";
     public const string ParseAllWords = "motif-parse-all-words";
     public const string ParseProgressDetails = "motif-parse-progress-details";
     public const string ParseStoppedWords = "motif-parse-stopped-words";

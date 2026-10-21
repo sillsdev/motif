@@ -665,4 +665,390 @@ public static class MotifAppStrings
     public static string ProposalChangeCountFormat => Text("MotifApp.ProposalChangeCountFormat");
 
     public static string TryWordLoadingGrammar => Text("MotifApp.TryWordLoadingGrammar");
+
+    public static string Settings => Text("MotifApp.Settings");
+
+    public static string Back => Text("MotifApp.Back");
+
+    public static string LeaveSettingsAccessibleName => Text("MotifApp.LeaveSettingsAccessibleName");
+
+    public static string Display => Text("MotifApp.Display");
+
+    public static string ResetSavedPreferences => Text("MotifApp.ResetSavedPreferences");
+
+    public static string ResetSavedPreferencesAccessibleName => Text("MotifApp.ResetSavedPreferencesAccessibleName");
+
+    public static string Zoom => Text("MotifApp.Zoom");
+
+    public static string ZoomOutAccessibleName => Text("MotifApp.ZoomOutAccessibleName");
+
+    public static string ZoomInAccessibleName => Text("MotifApp.ZoomInAccessibleName");
+
+    public static string ResetTo100 => Text("MotifApp.ResetTo100");
+
+    public static string ResetZoomTo100AccessibleName => Text("MotifApp.ResetZoomTo100AccessibleName");
+
+    public static string Theme => Text("MotifApp.Theme");
+
+    public static string ThemeRememberedCaption => Text("MotifApp.ThemeRememberedCaption");
+
+    public static string Light => Text("MotifApp.Light");
+
+    public static string LightThemeAccessibleName => Text("MotifApp.LightThemeAccessibleName");
+
+    public static string Dark => Text("MotifApp.Dark");
+
+    public static string DarkThemeAccessibleName => Text("MotifApp.DarkThemeAccessibleName");
+
+    public static string MatchOperatingSystemThemeAccessibleName => Text("MotifApp.MatchOperatingSystemThemeAccessibleName");
+
+    public static string Reset => Text("MotifApp.Reset");
+
+    public static string ResetThemeToMatchOperatingAccessibleName => Text("MotifApp.ResetThemeToMatchOperatingAccessibleName");
+
+    public static string KeyboardShortcuts => Text("MotifApp.KeyboardShortcuts");
+
+    public static string ShortcutsWorkWithoutTextFocusCaption => Text("MotifApp.ShortcutsWorkWithoutTextFocusCaption");
+
+    public static string SearchShortcutsAccessibleName => Text("MotifApp.SearchShortcutsAccessibleName");
+
+    public static string ClearShortcutSearchAccessibleName => Text("MotifApp.ClearShortcutSearchAccessibleName");
+
+    public static string OpenProjectForParsingLimitsPlaceholder => Text("MotifApp.OpenProjectForParsingLimitsPlaceholder");
+
+    public static string ChooseWhatToParseForLimitsPlaceholder => Text("MotifApp.ChooseWhatToParseForLimitsPlaceholder");
+
+    public static string StepLimitPerWordLabel => Text("MotifApp.StepLimitPerWordLabel");
+
+    public static string StepLimitDefaultCaption => Text("MotifApp.StepLimitDefaultCaption");
+
+    public static string ResetStepLimit => Text("MotifApp.ResetStepLimit");
+
+    public static string ResetStepLimitTo200000AccessibleName => Text("MotifApp.ResetStepLimitTo200000AccessibleName");
+
+    public static string NoStepLimitAccessibleName => Text("MotifApp.NoStepLimitAccessibleName");
+
+    public static string TimeLimitPerWord => Text("MotifApp.TimeLimitPerWord");
+
+    public static string TimeLimitFollowsStepLimitCaption => Text("MotifApp.TimeLimitFollowsStepLimitCaption");
+
+    public static string TimeLimitPerWordInAccessibleName => Text("MotifApp.TimeLimitPerWordInAccessibleName");
+
+    public static string UseMotifEstimateAccessibleName => Text("MotifApp.UseMotifEstimateAccessibleName");
+
+    public static string DefaultProposalChecks => Text("MotifApp.DefaultProposalChecks");
+
+    public static string CompareStoredAnalyses => Text("MotifApp.CompareStoredAnalyses");
+
+    public static string CompareStoredAnalysesCaption => Text("MotifApp.CompareStoredAnalysesCaption");
+
+    public static string StoredAnalysisWorkBudgetChoiceAccessibleName => Text("MotifApp.StoredAnalysisWorkBudgetChoiceAccessibleName");
+
+    public static string StoredAnalysisWorkBudgetChoice => Text("MotifApp.StoredAnalysisWorkBudgetChoice");
+
+    public static string StoredAnalysisWorkBudgetCaption => Text("MotifApp.StoredAnalysisWorkBudgetCaption");
+
+    public static string StoredAnalysisEveryWordChoiceAccessibleName => Text("MotifApp.StoredAnalysisEveryWordChoiceAccessibleName");
+
+    public static string StoredAnalysisEveryWordChoice => Text("MotifApp.StoredAnalysisEveryWordChoice");
+
+    public static string StoredAnalysisEveryWordCaption => Text("MotifApp.StoredAnalysisEveryWordCaption");
+
+    public static string StoredAnalysisOffChoiceAccessibleName => Text("MotifApp.StoredAnalysisOffChoiceAccessibleName");
+
+    public static string StoredAnalysisOffCaption => Text("MotifApp.StoredAnalysisOffCaption");
+
+    public static string ResetComparison => Text("MotifApp.ResetComparison");
+
+    public static string ResetStoredAnalysisComparisonToAccessibleName => Text("MotifApp.ResetStoredAnalysisComparisonToAccessibleName");
+
+    public static string ProposalChecksAppliesNextCaption => Text("MotifApp.ProposalChecksAppliesNextCaption");
+
+    public static string OpenProjectForWritingSystemsPlaceholder => Text("MotifApp.OpenProjectForWritingSystemsPlaceholder");
+
+    public static string Default => Text("MotifApp.Default");
+
+    public static string WritingSystemFontPreviewCaption => Text("MotifApp.WritingSystemFontPreviewCaption");
+
+    public static string Font => Text("MotifApp.Font");
+
+    public static string FontIsMissingAccessibleName => Text("MotifApp.FontIsMissingAccessibleName");
+
+    public static string Features => Text("MotifApp.Features");
+
+    public static string Direction => Text("MotifApp.Direction");
+
+    public static string Size => Text("MotifApp.Size");
+
+    public static string WritingSystemLimitsFootnote => Text("MotifApp.WritingSystemLimitsFootnote");
+
+    public static string ChangeInFieldWorksHeading => Text("MotifApp.ChangeInFieldWorksHeading");
+
+    public static string WritingSystemSetupFieldWorksPath => Text("MotifApp.WritingSystemSetupFieldWorksPath");
+
+    public static string WritingSystemSizeFieldWorksPath => Text("MotifApp.WritingSystemSizeFieldWorksPath");
+
+    public static string WritingSystemRefreshHint => Text("MotifApp.WritingSystemRefreshHint");
+
+    public static string TextsToParseLabel => Text("MotifApp.TextsToParseLabel");
+
+    public static string UseAllTexts => Text("MotifApp.UseAllTexts");
+
+    public static string UseAllTextsAccessibleName => Text("MotifApp.UseAllTextsAccessibleName");
+
+    public static string OpenProjectForTextsPlaceholder => Text("MotifApp.OpenProjectForTextsPlaceholder");
+
+    public static string HelpAndProblemReports => Text("MotifApp.HelpAndProblemReports");
+
+    public static string Help => Text("MotifApp.Help");
+
+    public static string OpenHelp => Text("MotifApp.OpenHelp");
+
+    public static string GuideAndCommandPagesOnline => Text("MotifApp.GuideAndCommandPagesOnline");
+
+    public static string OpenMotifSite => Text("MotifApp.OpenMotifSite");
+
+    public static string OpenMotifSiteAccessibleName => Text("MotifApp.OpenMotifSiteAccessibleName");
+
+    public static string WhatReportIncludes => Text("MotifApp.WhatReportIncludes");
+
+    public static string WhatReportIncludesAccessibleName => Text("MotifApp.WhatReportIncludesAccessibleName");
+
+    public static string ReportIncludesList => Text("MotifApp.ReportIncludesList");
+
+    public static string AboutMotif => Text("MotifApp.AboutMotif");
+
+    public static string Motif => Text("MotifApp.Motif");
+
+    public static string PanGlossMissingCaption => Text("MotifApp.PanGlossMissingCaption");
+
+    public static string OperatingSystem => Text("MotifApp.OperatingSystem");
+
+    public static string WhereMotifKeepsItsData => Text("MotifApp.WhereMotifKeepsItsData");
+
+    public static string OpenMotifDataFolderAccessibleName => Text("MotifApp.OpenMotifDataFolderAccessibleName");
+
+    public static string MotifDataFolderCaption => Text("MotifApp.MotifDataFolderCaption");
+
+    public static string CopyVersionsAccessibleName => Text("MotifApp.CopyVersionsAccessibleName");
+
+    public static string MotifWritesNothingUntilApplyCaption => Text("MotifApp.MotifWritesNothingUntilApplyCaption");
+
+    public static string SettingsGroupsAccessibleName => Text("MotifApp.SettingsGroupsAccessibleName");
+
+    public static string SetupFoundProjectTitle => Text("MotifApp.SetupFoundProjectTitle");
+
+    public static string SetupSelectionTitle => Text("MotifApp.SetupSelectionTitle");
+
+    public static string SetupLimitsTitle => Text("MotifApp.SetupLimitsTitle");
+
+    public static string SetupFoundProjectDescription => Text("MotifApp.SetupFoundProjectDescription");
+
+    public static string SetupSelectionDescription => Text("MotifApp.SetupSelectionDescription");
+
+    public static string SetupLimitsDescription => Text("MotifApp.SetupLimitsDescription");
+
+    public static string SetupChoicesKeptCaption => Text("MotifApp.SetupChoicesKeptCaption");
+
+    public static string SetupTextsOrderCaption => Text("MotifApp.SetupTextsOrderCaption");
+
+    public static string SetupAddWordsLabel => Text("MotifApp.SetupAddWordsLabel");
+
+    public static string OneWordPerLinePlaceholder => Text("MotifApp.OneWordPerLinePlaceholder");
+
+    public static string WordsToAddAccessibleName => Text("MotifApp.WordsToAddAccessibleName");
+
+    public static string SetupAttemptLimitPerWord => Text("MotifApp.SetupAttemptLimitPerWord");
+
+    public static string SetupAttemptLimitDefaultCaption => Text("MotifApp.SetupAttemptLimitDefaultCaption");
+
+    public static string NoAttemptLimit => Text("MotifApp.NoAttemptLimit");
+
+    public static string SkipForNow => Text("MotifApp.SkipForNow");
+
+    public static string SkipSetupForNowAccessibleName => Text("MotifApp.SkipSetupForNowAccessibleName");
+
+    public static string MotifHasStoppedWindowTitle => Text("MotifApp.MotifHasStoppedWindowTitle");
+
+    public static string ReviewProblemReportAccessibleName => Text("MotifApp.ReviewProblemReportAccessibleName");
+
+    public static string Close => Text("MotifApp.Close");
+
+    public static string CrashHeadlineAccessibleName => Text("MotifApp.CrashHeadlineAccessibleName");
+
+    public static string CrashSummaryAccessibleName => Text("MotifApp.CrashSummaryAccessibleName");
+
+    public static string CrashMessageAccessibleName => Text("MotifApp.CrashMessageAccessibleName");
+
+    public static string CrashDetailsAccessibleName => Text("MotifApp.CrashDetailsAccessibleName");
+
+    public static string CrashDetailsTextAccessibleName => Text("MotifApp.CrashDetailsTextAccessibleName");
+
+    public static string ReviewProblemReportWindowTitle => Text("MotifApp.ReviewProblemReportWindowTitle");
+
+    public static string ProblemReportStatusAccessibleName => Text("MotifApp.ProblemReportStatusAccessibleName");
+
+    public static string CopyReport => Text("MotifApp.CopyReport");
+
+    public static string CopyReviewedProblemReportAccessibleName => Text("MotifApp.CopyReviewedProblemReportAccessibleName");
+
+    public static string OpenIssueForm => Text("MotifApp.OpenIssueForm");
+
+    public static string OpenIssueFormWithReviewedAccessibleName => Text("MotifApp.OpenIssueFormWithReviewedAccessibleName");
+
+    public static string CloseProblemReportPreviewAccessibleName => Text("MotifApp.CloseProblemReportPreviewAccessibleName");
+
+    public static string ProblemReportPreviewIntro => Text("MotifApp.ProblemReportPreviewIntro");
+
+    public static string IncludeLocalDetails => Text("MotifApp.IncludeLocalDetails");
+
+    public static string IncludeLocalDetailsAccessibleName => Text("MotifApp.IncludeLocalDetailsAccessibleName");
+
+    public static string ProblemReportPreviewAccessibleName => Text("MotifApp.ProblemReportPreviewAccessibleName");
+
+    public static string OpenOnline => Text("MotifApp.OpenOnline");
+
+    public static string OpenThisHelpPageOnlineAccessibleName => Text("MotifApp.OpenThisHelpPageOnlineAccessibleName");
+
+    public static string FontSourceFallback => Text("MotifApp.FontSourceFallback");
+
+    public static string FontSourceBundled => Text("MotifApp.FontSourceBundled");
+
+    public static string FontSourceInstalled => Text("MotifApp.FontSourceInstalled");
+
+    public static string AlsoInVernacular => Text("MotifApp.AlsoInVernacular");
+
+    public static string FontNoneSet => Text("MotifApp.FontNoneSet");
+
+    public static string FontFeaturesNone => Text("MotifApp.FontFeaturesNone");
+
+    public static string DirectionRightToLeft => Text("MotifApp.DirectionRightToLeft");
+
+    public static string DirectionLeftToRight => Text("MotifApp.DirectionLeftToRight");
+
+    public static string StyleSizeFormat => Text("MotifApp.StyleSizeFormat");
+
+    public static string MissingFontCaptionFormat => Text("MotifApp.MissingFontCaptionFormat");
+
+    public static string WritingSystems => Text("MotifApp.WritingSystems");
+
+    public static string MatchWindows => Text("MotifApp.MatchWindows");
+
+    public static string MatchMacOS => Text("MotifApp.MatchMacOS");
+
+    public static string MatchSystem => Text("MotifApp.MatchSystem");
+
+    public static string HelpCaption => Text("MotifApp.HelpCaption");
+
+    public static string ReportCaption => Text("MotifApp.ReportCaption");
+
+    public static string ShowInExplorer => Text("MotifApp.ShowInExplorer");
+
+    public static string ShowInFinder => Text("MotifApp.ShowInFinder");
+
+    public static string ParsingLeadFormat => Text("MotifApp.ParsingLeadFormat");
+
+    public static string TextSelectionSummaryFormat => Text("MotifApp.TextSelectionSummaryFormat");
+
+    public static string TextsSelectedPattern => Text("MotifApp.TextsSelectedPattern");
+
+    public static string NoShortcutMatchesFormat => Text("MotifApp.NoShortcutMatchesFormat");
+
+    public static string ProposalChecksLead => Text("MotifApp.ProposalChecksLead");
+
+    public static string ParsingForProjectFormat => Text("MotifApp.ParsingForProjectFormat");
+
+    public static string WritingSystemsInProjectFormat => Text("MotifApp.WritingSystemsInProjectFormat");
+
+    public static string WritingSystemsLeadFormat => Text("MotifApp.WritingSystemsLeadFormat");
+
+    public static string WritingSystemsEmptyRefresh => Text("MotifApp.WritingSystemsEmptyRefresh");
+
+    public static string WritingSystemsEmptyBaseline => Text("MotifApp.WritingSystemsEmptyBaseline");
+
+    public static string StepLimitEstimateDefault => Text("MotifApp.StepLimitEstimateDefault");
+
+    public static string TimeLimitPositiveRefusal => Text("MotifApp.TimeLimitPositiveRefusal");
+
+    public static string ParsingFooterRunning => Text("MotifApp.ParsingFooterRunning");
+
+    public static string ParsingFooterIdle => Text("MotifApp.ParsingFooterIdle");
+
+    public static string StoredAnalysesSaveRefusalFormat => Text("MotifApp.StoredAnalysesSaveRefusalFormat");
+
+    public static string StepLimitWholeNumberRefusal => Text("MotifApp.StepLimitWholeNumberRefusal");
+
+    public static string TimeLimitRangeRefusal => Text("MotifApp.TimeLimitRangeRefusal");
+
+    public static string Copied => Text("MotifApp.Copied");
+
+    public static string CopyVersions => Text("MotifApp.CopyVersions");
+
+    public static string EnterPositiveWholeNumberOfAttempts => Text("MotifApp.EnterPositiveWholeNumberOfAttempts");
+
+    public static string RunningNoStepLimit => Text("MotifApp.RunningNoStepLimit");
+
+    public static string RunningStepLimitFormat => Text("MotifApp.RunningStepLimitFormat");
+
+    public static string SetupNextLimits => Text("MotifApp.SetupNextLimits");
+
+    public static string SetupNextFirstRun => Text("MotifApp.SetupNextFirstRun");
+
+    public static string SetupNextTexts => Text("MotifApp.SetupNextTexts");
+
+    public static string SetupStepCaptionFormat => Text("MotifApp.SetupStepCaptionFormat");
+
+    public static string SetupNoAttemptLimitEstimate => Text("MotifApp.SetupNoAttemptLimitEstimate");
+
+    public static string EstimateUnderOneMillisecond => Text("MotifApp.EstimateUnderOneMillisecond");
+
+    public static string EstimateMillisecondsFormat => Text("MotifApp.EstimateMillisecondsFormat");
+
+    public static string EstimateSecondsFormat => Text("MotifApp.EstimateSecondsFormat");
+
+    public static string NoAddedWords => Text("MotifApp.NoAddedWords");
+
+    public static string UseThisSelection => Text("MotifApp.UseThisSelection");
+
+    public static string StartFirstRun => Text("MotifApp.StartFirstRun");
+
+    public static string SetupUseSelectionTitle => Text("MotifApp.SetupUseSelectionTitle");
+
+    public static string SetupFirstRunTitle => Text("MotifApp.SetupFirstRunTitle");
+
+    public static string SetupUseSelectionDescription => Text("MotifApp.SetupUseSelectionDescription");
+
+    public static string SetupFirstRunDescription => Text("MotifApp.SetupFirstRunDescription");
+
+    public static string SetupChooseTextOrWord => Text("MotifApp.SetupChooseTextOrWord");
+
+    public static string SetupEstimateUnlimitedTypicalFormat => Text("MotifApp.SetupEstimateUnlimitedTypicalFormat");
+
+    public static string SetupEstimateUnlimitedMeasuredFormat => Text("MotifApp.SetupEstimateUnlimitedMeasuredFormat");
+
+    public static string SetupEstimateLimitedTypicalFormat => Text("MotifApp.SetupEstimateLimitedTypicalFormat");
+
+    public static string SetupEstimateLimitedMeasuredFormat => Text("MotifApp.SetupEstimateLimitedMeasuredFormat");
+
+    public static string CrashHeadline => Text("MotifApp.CrashHeadline");
+
+    public static string CrashSummary => Text("MotifApp.CrashSummary");
+
+    public static string CrashThankYou => Text("MotifApp.CrashThankYou");
+
+    public static string ProblemReportCopied => Text("MotifApp.ProblemReportCopied");
+
+    public static string ProblemReportCopyFailed => Text("MotifApp.ProblemReportCopyFailed");
+
+    public static string ProblemReportIssueFormOpened => Text("MotifApp.ProblemReportIssueFormOpened");
+
+    public static string CancelSetupAccessibleName => Text("MotifApp.CancelSetupAccessibleName");
+
+    public static string WritingSystemDetailsAccessibleNameFormat => Text("MotifApp.WritingSystemDetailsAccessibleNameFormat");
+
+    public static string VernacularSectionLabel => Text("MotifApp.VernacularSectionLabel");
+
+    public static string AnalysisSectionLabel => Text("MotifApp.AnalysisSectionLabel");
+
+    public static string SetupAttemptLimitPerWordAccessibleName => Text("MotifApp.SetupAttemptLimitPerWordAccessibleName");
 }

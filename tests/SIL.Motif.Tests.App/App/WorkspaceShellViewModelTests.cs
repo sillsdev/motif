@@ -262,7 +262,7 @@ public sealed class WorkspaceShellViewModelTests
         Assert.Equal(1.25m, workspace.Selection.PerWordTimeLimitSeconds);
         Assert.Equal(987m, workspace.Selection.PerWordStepLimit);
         Assert.Equal(new StepCap(987), workspace.Selection.BuildRequest().PerWordStepLimit);
-        Assert.Equal("Use this Selection", workspace.Context.Setup.FinishButtonText);
+        Assert.Equal(SIL.Motif.App.MotifAppStrings.UseThisSelection, workspace.Context.Setup.FinishButtonText);
         Assert.Equal("Use this Selection as the project default", workspace.Context.Setup.FinishTitle);
         Assert.DoesNotContain("Save", workspace.Context.Setup.FinishDescription);
     }
@@ -792,7 +792,7 @@ public sealed class WorkspaceShellViewModelTests
 
         Assert.True(workspace.Context.Setup.IsOpen);
         Assert.Equal(0, workspace.Context.Setup.Step);
-        Assert.Equal("Start first run", workspace.Context.Setup.FinishButtonText);
+        Assert.Equal(SIL.Motif.App.MotifAppStrings.StartFirstRun, workspace.Context.Setup.FinishButtonText);
     }
 
     [Fact]
@@ -845,7 +845,7 @@ public sealed class WorkspaceShellViewModelTests
         Assert.Equal(addedWords, workspace.Selection.PastedWords);
         Assert.Equal(timeLimitSeconds, workspace.Selection.PerWordTimeLimitSeconds);
         Assert.Equal(stepLimit, setup.StepLimitSteps);
-        Assert.Equal("Use this Selection", setup.FinishButtonText);
+        Assert.Equal(SIL.Motif.App.MotifAppStrings.UseThisSelection, setup.FinishButtonText);
     }
 
     [Fact]

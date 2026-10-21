@@ -48,6 +48,51 @@ public sealed class SetupHLayoutTests
         }, TimeSpan.FromMinutes(2));
     }
 
+    [Fact]
+    public void SetupButtonsFollowTheFieldWorksDialogOrderAndEnterAndEscapeAreBoundWhileOpen()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, frame) = await PageScreenshots.OpenOverSampleData();
+            var setup = workspace.Context.Setup!;
+            setup.IsOpen = true;
+            setup.Step = 1;
+            var dialog = new SetupDialog { DataContext = setup };
+            dialog.FitToAvailableArea(900, 600);
+            var window = new MotifTestWindow { Content = dialog, Width = 900, Height = 600 };
+            try
+            {
+                window.Show();
+                PageScreenshots.Settle(window);
+                var buttons = dialog.GetVisualDescendants().OfType<Button>().Where(button => button.IsEffectivelyVisible).ToArray();
+                Button Named(string id) => Assert.Single(buttons, button =>
+                    Avalonia.Automation.AutomationProperties.GetAutomationId(button) == id);
+                double X(Button button) => button.TranslatePoint(default, window)!.Value.X;
+                var skip = Named(SIL.Motif.App.AutomationIds.SkipSetup);
+                var back = Named(SIL.Motif.App.AutomationIds.SetupBack);
+                var next = Named(SIL.Motif.App.AutomationIds.SetupNext);
+                var cancel = Named(SIL.Motif.App.AutomationIds.SetupCancel);
+                Assert.True(X(skip) < X(back) && X(back) < X(next) && X(next) < X(cancel));
+                Assert.Equal(SIL.Motif.App.MotifAppStrings.Cancel, cancel.Content);
+                Assert.True(next.IsDefault);
+                Assert.True(cancel.IsCancel);
+                Assert.False(skip.IsDefault || skip.IsCancel || back.IsDefault || back.IsCancel);
+
+                setup.CancelCommand.Execute(null);
+                Assert.False(setup.IsOpen);
+                Assert.False(next.IsDefault);
+                Assert.False(cancel.IsCancel);
+            }
+            finally
+            {
+                setup.IsOpen = false;
+                window.Close();
+                frame.Close();
+                await workspace.DisposeAsync();
+            }
+        }, TimeSpan.FromMinutes(2));
+    }
+
     [Theory]
     [InlineData(640, 600, 1)]
     [InlineData(1040, 480, 1)]
@@ -92,7 +137,8 @@ public sealed class SetupHLayoutTests
                             button.Classes.Any(name => name is "setupPrimary" or "setupSecondary" or "setupSkip"));
                     Assert.Single(actions, button => button.Classes.Contains("setupSkip"));
                     Assert.Single(actions, button => button.Classes.Contains("setupPrimary"));
-                    Assert.Equal(step == 0 ? 0 : 1,
+                    // Back (from step 2 on) and Cancel, which every step shows.
+                    Assert.Equal(step == 0 ? 1 : 2,
                         actions.Count(button => button.Classes.Contains("setupSecondary")));
                     foreach (var action in actions)
                     {

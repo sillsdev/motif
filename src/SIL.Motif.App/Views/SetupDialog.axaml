@@ -28,9 +28,9 @@
         </Grid>
 
         <StackPanel Grid.Row="1" Spacing="{DynamicResource Intent.Space.Snug}">
-          <TextBlock Classes="setupTitle" IsVisible="{Binding IsProjectStep}" Text="Found the project" />
-          <TextBlock Classes="setupTitle" IsVisible="{Binding IsSelectionStep}" Text="What should Motif measure every time?" />
-          <TextBlock Classes="setupTitle" IsVisible="{Binding IsLimitsStep}" Text="How much work should each word get?" />
+          <TextBlock Classes="setupTitle" IsVisible="{Binding IsProjectStep}" Text="{x:Static app:MotifAppStrings.SetupFoundProjectTitle}" />
+          <TextBlock Classes="setupTitle" IsVisible="{Binding IsSelectionStep}" Text="{x:Static app:MotifAppStrings.SetupSelectionTitle}" />
+          <TextBlock Classes="setupTitle" IsVisible="{Binding IsLimitsStep}" Text="{x:Static app:MotifAppStrings.SetupLimitsTitle}" />
           <TextBlock Classes="setupTitle" IsVisible="{Binding IsFirstRunStep}" Text="{Binding FinishTitle}" />
 
         </StackPanel>
@@ -39,33 +39,33 @@
         <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
           <views:RefusalBlock DataContext="{Binding ShownRefusal}" />
           <TextBlock Classes="setupDescription" IsVisible="{Binding IsProjectStep}"
-                     Text="Motif found this project. Choose the texts and words to include in every run." TextWrapping="Wrap" />
+                     Text="{x:Static app:MotifAppStrings.SetupFoundProjectDescription}" TextWrapping="Wrap" />
           <TextBlock Classes="setupDescription" IsVisible="{Binding IsSelectionStep}"
-                     Text="The default Selection is parsed on every run, so today's results can be compared with yesterday's. Interlinearized texts are a good start because their approved analyses are what accuracy is measured against."
+                     Text="{x:Static app:MotifAppStrings.SetupSelectionDescription}"
                      TextWrapping="Wrap" />
           <TextBlock Classes="setupDescription" IsVisible="{Binding IsLimitsStep}"
-                     Text="Choose the maximum number of analysis attempts per word. PanGloss derives an inner search-work limit at 100 times that value. Motif estimates how long a word may take and gives it extra time to finish." TextWrapping="Wrap" />
+                     Text="{x:Static app:MotifAppStrings.SetupLimitsDescription}" TextWrapping="Wrap" />
           <TextBlock Classes="setupDescription" IsVisible="{Binding IsFirstRunStep}"
                      Text="{Binding FinishDescription}" TextWrapping="Wrap" />
 
           <Grid>
           <StackPanel IsVisible="{Binding IsProjectStep}" Spacing="{DynamicResource Intent.Space.Related}" VerticalAlignment="Center">
             <TextBlock Classes="setupProjectName" Text="{Binding ProjectName}" />
-            <TextBlock Classes="setupMuted" Text="Your choices are kept with this project and can be changed later." TextWrapping="Wrap" />
+            <TextBlock Classes="setupMuted" Text="{x:Static app:MotifAppStrings.SetupChoicesKeptCaption}" TextWrapping="Wrap" />
           </StackPanel>
 
           <StackPanel IsVisible="{Binding IsSelectionStep}" Spacing="{DynamicResource Intent.Space.Related}">
-            <TextBlock Classes="setupMuted" Text="Texts, most interlinearized first" />
+            <TextBlock Classes="setupMuted" Text="{x:Static app:MotifAppStrings.SetupTextsOrderCaption}" />
             <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Compact}"
                         IsVisible="{Binding Selection.HasTexts}">
-              <Button Content="Select all texts" Command="{Binding Selection.SelectAllTextsCommand}"
+              <Button Content="{x:Static app:MotifAppStrings.SelectAllTexts}" Command="{Binding Selection.SelectAllTextsCommand}"
                       Theme="{DynamicResource BorderlessButton}" Foreground="{DynamicResource Intent.Accent}"
-                      AutomationProperties.Name="Select all texts"
+                      AutomationProperties.Name="{x:Static app:MotifAppStrings.SelectAllTextsAccessibleName}"
                       AutomationProperties.AutomationId="{x:Static app:AutomationIds.SetupSelectAllTexts}" />
-              <Button Content="Clear" Command="{Binding Selection.ClearTextsCommand}"
+              <Button Content="{x:Static app:MotifAppStrings.Clear}" Command="{Binding Selection.ClearTextsCommand}"
                       IsVisible="{Binding Selection.ShowClearTexts}"
                       Theme="{DynamicResource BorderlessButton}" Foreground="{DynamicResource Intent.Accent}"
-                      AutomationProperties.Name="Clear" AutomationProperties.AutomationId="{x:Static app:AutomationIds.SetupClearTexts}" />
+                      AutomationProperties.Name="{x:Static app:MotifAppStrings.Clear}" AutomationProperties.AutomationId="{x:Static app:AutomationIds.SetupClearTexts}" />
             </StackPanel>
             <Border Classes="setupTextList">
               <ItemsControl x:Name="SetupDialogTextsItems" ItemsSource="{Binding Selection.Texts}">
@@ -92,12 +92,12 @@
                        IsVisible="{Binding Selection.TextsEmptyMessage, Converter={x:Static conv:ObjectConverters.IsNotNull}}"
                        TextWrapping="Wrap" />
             <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Intent.Space.Related}">
-              <TextBlock Text="Add words:" FontWeight="{DynamicResource Intent.Weight.Section}" VerticalAlignment="Top" />
+              <TextBlock Text="{x:Static app:MotifAppStrings.SetupAddWordsLabel}" FontWeight="{DynamicResource Intent.Weight.Section}" VerticalAlignment="Top" />
               <TextBox Grid.Column="1" Text="{Binding Selection.PastedWords}" AcceptsReturn="True"
                        TextWrapping="Wrap" MinHeight="{DynamicResource Component.Setup.AddedWordsHeight}"
                        MaxHeight="{DynamicResource Component.Setup.AddedWordsMaxHeight}"
                        ScrollViewer.VerticalScrollBarVisibility="Auto"
-                       PlaceholderText="One word per line" AutomationProperties.Name="Words to add"
+                       PlaceholderText="{x:Static app:MotifAppStrings.OneWordPerLinePlaceholder}" AutomationProperties.Name="{x:Static app:MotifAppStrings.WordsToAddAccessibleName}"
                        AutomationProperties.AutomationId="{x:Static app:AutomationIds.SetupAddWords}" />
             </Grid>
             <Border Classes="setupSummary">
@@ -108,16 +108,16 @@
           <StackPanel IsVisible="{Binding IsLimitsStep}" Spacing="{DynamicResource Intent.Space.Group}" VerticalAlignment="Center">
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Group}">
               <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
-                <TextBlock Text="Analysis attempt limit per word" FontWeight="{DynamicResource Intent.Weight.Section}" />
-                <TextBlock Classes="setupMuted" Text="200,000 attempts is the default. Choose no attempt limit to let parsing continue until it finishes." TextWrapping="Wrap" />
+                <TextBlock Text="{x:Static app:MotifAppStrings.SetupAttemptLimitPerWord}" FontWeight="{DynamicResource Intent.Weight.Section}" />
+                <TextBlock Classes="setupMuted" Text="{x:Static app:MotifAppStrings.SetupAttemptLimitDefaultCaption}" TextWrapping="Wrap" />
               </StackPanel>
               <NumericUpDown Grid.Column="1" Classes="setupNumber" Value="{Binding StepLimitSteps}"
                              Minimum="1" Increment="200000" FormatString="N0"
                              IsEnabled="{Binding !IsStepLimitUnbounded}"
-                             AutomationProperties.Name="Analysis attempt limit per word"
+                             AutomationProperties.Name="{x:Static app:MotifAppStrings.SetupAttemptLimitPerWordAccessibleName}"
                              AutomationProperties.AutomationId="{x:Static app:AutomationIds.SetupStepLimit}" />
             </Grid>
-            <CheckBox Content="No attempt limit" IsChecked="{Binding IsStepLimitUnbounded}" />
+            <CheckBox Content="{x:Static app:MotifAppStrings.NoAttemptLimit}" IsChecked="{Binding IsStepLimitUnbounded}" />
             <TextBlock Classes="setupError" Text="{Binding StepLimitValidationMessage}"
                        IsVisible="{Binding StepLimitValidationMessage, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
             <TextBlock Classes="setupMuted" Text="{Binding StepLimitEstimateText}" TextWrapping="Wrap" />
@@ -134,20 +134,26 @@
         </StackPanel>
         </ScrollViewer>
 
-        <Grid Grid.Row="3" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}">
-          <Button Classes="setupSkip" HorizontalAlignment="Left" Content="Skip for now" Command="{Binding SkipCommand}"
-                  AutomationProperties.Name="Skip setup for now"
+        <!-- FieldWorks dialog buttons: Skip for Now is an optional step that sits bottom left; Back, the confirming Next or
+             Finish, then Cancel form the bottom-right group. Enter confirms and Esc cancels while the dialog is open. -->
+        <Grid Grid.Row="3" ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}">
+          <Button Classes="setupSkip" HorizontalAlignment="Left" Content="{x:Static app:MotifAppStrings.SkipForNow}" Command="{Binding SkipCommand}"
+                  AutomationProperties.Name="{x:Static app:MotifAppStrings.SkipSetupForNowAccessibleName}"
                   AutomationProperties.AutomationId="{x:Static app:AutomationIds.SkipSetup}" />
-          <Button Grid.Column="1" Classes="setupSecondary" Content="Back" Command="{Binding BackCommand}"
+          <Button Grid.Column="1" Classes="setupSecondary" Content="{x:Static app:MotifAppStrings.Back}" Command="{Binding BackCommand}"
                   IsVisible="{Binding IsBackVisible}"
                   AutomationProperties.AutomationId="{x:Static app:AutomationIds.SetupBack}" />
           <Button Grid.Column="2" Classes="setupPrimary" Content="{Binding NextButtonText}" Command="{Binding NextCommand}"
-                  IsVisible="{Binding IsNextVisible}"
+                  IsVisible="{Binding IsNextVisible}" IsDefault="{Binding IsOpen}"
                   AutomationProperties.AutomationId="{x:Static app:AutomationIds.SetupNext}" />
           <Button Grid.Column="2" Classes="setupPrimary" Content="{Binding FinishButtonText}"
-                  Command="{Binding FinishCommand}" IsVisible="{Binding IsFirstRunStep}"
+                  Command="{Binding FinishCommand}" IsVisible="{Binding IsFirstRunStep}" IsDefault="{Binding IsOpen}"
                   AutomationProperties.Name="{Binding FinishButtonText}"
                   AutomationProperties.AutomationId="{x:Static app:AutomationIds.SetupFinish}" />
+          <Button Grid.Column="3" Classes="setupSecondary" Content="{x:Static app:MotifAppStrings.Cancel}"
+                  Command="{Binding CancelCommand}" IsCancel="{Binding IsOpen}"
+                  AutomationProperties.Name="{x:Static app:MotifAppStrings.CancelSetupAccessibleName}"
+                  AutomationProperties.AutomationId="{x:Static app:AutomationIds.SetupCancel}" />
         </Grid>
       </Grid>
     </Border>

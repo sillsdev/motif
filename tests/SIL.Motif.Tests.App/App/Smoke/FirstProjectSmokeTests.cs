@@ -66,10 +66,10 @@ public sealed class FirstProjectSmokeTests(PristineProjectFixture pristine)
                 InteractiveControlFamily.Collection);
 
             var setup = walkthrough.Workspace.Context.Setup!;
-            SetupWalkthroughActions.ClickSetupButton(walkthrough, "Next: texts");
+            SetupWalkthroughActions.ClickSetupButton(walkthrough, SIL.Motif.App.MotifAppStrings.SetupNextTexts);
             SetupWalkthroughActions.SetSetupTextChecked(walkthrough, SeededProject.TextTitle, true);
-            SetupWalkthroughActions.ClickSetupButton(walkthrough, "Next: limits");
-            SetupWalkthroughActions.ClickSetupButton(walkthrough, "Next: first run");
+            SetupWalkthroughActions.ClickSetupButton(walkthrough, SIL.Motif.App.MotifAppStrings.SetupNextLimits);
+            SetupWalkthroughActions.ClickSetupButton(walkthrough, SIL.Motif.App.MotifAppStrings.SetupNextFirstRun);
             walkthrough.SetFakeParserBehavior(new
             {
                 subcommands = new Dictionary<string, object>
@@ -105,7 +105,7 @@ public sealed class FirstProjectSmokeTests(PristineProjectFixture pristine)
             });
             try
             {
-                walkthrough.Click("Start first run");
+                walkthrough.Click(SIL.Motif.App.MotifAppStrings.StartFirstRun);
                 walkthrough.WaitUntil(() => File.Exists(batchStarted), StepTimeout(deadline),
                     "the first run did not reach the fake parser");
                 Assert.Equal(RunState.Running, walkthrough.Workspace.Assess.State);

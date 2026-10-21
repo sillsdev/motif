@@ -38,6 +38,7 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
         Selection = context.Selection;
         Indicators = Enumerable.Range(0, 4).Select(step => new SetupStepIndicator(step, step == 0)).ToArray();
         SkipCommand = new AsyncRelayCommand(SkipAsync);
+        CancelCommand = new RelayCommand(Cancel);
         BackCommand = new RelayCommand(() => Step--, () => Step > 0);
         NextCommand = new RelayCommand(() => Step++, () => Step < 3);
         FinishCommand = new AsyncRelayCommand(FinishAsync, CanFinish);
@@ -67,8 +68,8 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
         var limitMs = resolved.PerWordTimeLimitMs;
         var stepLimit = resolved.PerWordStepLimit;
         RunningStepLimitText = stepLimit.IsUnbounded
-            ? "The parse running now has no step limit."
-            : $"The parse running now keeps {stepLimit.Steps ?? StepCap.DefaultSteps:N0} steps.";
+            ? MotifAppStrings.RunningNoStepLimit
+            : string.Format(MotifAppStrings.RunningStepLimitFormat, stepLimit.Steps ?? StepCap.DefaultSteps);
         return _context.Assess.RunDefaultSelectionAsync(limitMs, stepLimit);
     }
 
@@ -109,28 +110,30 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
 
     public string NextButtonText => Step switch
     {
-        1 => "Next: limits",
-        2 => "Next: first run",
-        _ => "Next: texts",
+        1 => MotifAppStrings.SetupNextLimits,
+        2 => MotifAppStrings.SetupNextFirstRun,
+        _ => MotifAppStrings.SetupNextTexts,
     };
 
-    public string StepCaption => $"Setting up {ProjectName} · step {Step + 1} of 4";
+    public string StepCaption => string.Format(MotifAppStrings.SetupStepCaptionFormat,
+        ProjectName, Step + 1);
 
     public string StepLimitEstimateText
     {
         get
         {
-            if (!IsStepLimitValid) return "Enter a positive whole number of analysis attempts, or choose no attempt limit.";
+            if (!IsStepLimitValid) return MotifAppStrings.EnterPositiveWholeNumberOfAttempts;
             var estimate = CurrentStepLimitEstimate;
-            if (estimate is null) return "No analysis attempt limit. Motif will not apply a per-word time limit.";
-            var source = estimate.IsTypicalMachine
-                ? " The estimate uses a typical machine."
-                : " The estimate uses the parser statistics from the last parse.";
+            if (estimate is null) return MotifAppStrings.SetupNoAttemptLimitEstimate;
             if (estimate.PerWordTimeLimitMs is not { } limitMs || limitMs > int.MaxValue)
-                return $"At this limit a word takes up to about {FormatEstimate(estimate.EstimatedMilliseconds)}. " +
-                    $"Motif will not apply a per-word time limit.{source}";
-            return $"At this limit a word takes up to about {FormatEstimate(estimate.EstimatedMilliseconds)}. " +
-                $"Motif stops a word after {FormatEstimate(limitMs)}.{source}";
+                return string.Format(estimate.IsTypicalMachine
+                    ? MotifAppStrings.SetupEstimateUnlimitedTypicalFormat
+                    : MotifAppStrings.SetupEstimateUnlimitedMeasuredFormat,
+                    FormatEstimate(estimate.EstimatedMilliseconds));
+            return string.Format(estimate.IsTypicalMachine
+                ? MotifAppStrings.SetupEstimateLimitedTypicalFormat
+                : MotifAppStrings.SetupEstimateLimitedMeasuredFormat,
+                FormatEstimate(estimate.EstimatedMilliseconds), FormatEstimate(limitMs));
         }
     }
 
@@ -209,7 +212,7 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
 
     public string? StepLimitValidationMessage => IsStepLimitUnbounded || IsStepLimitValid
         ? null
-        : "Enter a positive whole number of analysis attempts, or choose no attempt limit.";
+        : MotifAppStrings.EnterPositiveWholeNumberOfAttempts;
 
     private bool IsStepLimitValid => IsStepLimitUnbounded ||
         StepLimitSteps is > 0 and var steps && decimal.Truncate(steps) == steps && steps <= long.MaxValue;
@@ -226,9 +229,9 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
 
     private static string FormatEstimate(decimal milliseconds) => milliseconds switch
     {
-        < 1m => "less than 1 ms",
-        < 1000m => $"{decimal.Ceiling(milliseconds):N0} ms",
-        _ => $"{milliseconds / 1000m:0.#} s",
+        < 1m => MotifAppStrings.EstimateUnderOneMillisecond,
+        < 1000m => string.Format(MotifAppStrings.EstimateMillisecondsFormat, decimal.Ceiling(milliseconds)),
+        _ => string.Format(MotifAppStrings.EstimateSecondsFormat, milliseconds / 1000m),
     };
 
     private void OpenFirstTimeSetup()
@@ -247,21 +250,24 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
     private bool _isEditingExistingSelection;
 
     public string AddedWordsText => Selection.PastedWordEntries.Count == 0
-        ? "No added words"
+        ? MotifAppStrings.NoAddedWords
         : string.Join(", ", Selection.PastedWordEntries);
 
     public string RunSummary => _words.SummaryText;
 
-    public string FinishButtonText => IsEditingExistingSelection ? "Use this Selection" : "Start first run";
+    public string FinishButtonText => IsEditingExistingSelection ? MotifAppStrings.UseThisSelection : MotifAppStrings.StartFirstRun;
 
     public string FinishTitle => IsEditingExistingSelection
-        ? "Use this Selection as the project default" : "Ready for the first run?";
+        ? MotifAppStrings.SetupUseSelectionTitle : MotifAppStrings.SetupFirstRunTitle;
 
     public string FinishDescription => IsEditingExistingSelection
-        ? "This will be the project default. Parse all words will use it next time."
-        : "Motif will save this Selection with the project, then parse all its words.";
+        ? MotifAppStrings.SetupUseSelectionDescription
+        : MotifAppStrings.SetupFirstRunDescription;
 
     public IAsyncRelayCommand SkipCommand { get; }
+
+    /// <summary>Closes the dialog without saving or recording a skip, so first-time setup is offered again later.</summary>
+    public IRelayCommand CancelCommand { get; }
     public IRelayCommand BackCommand { get; }
     public IRelayCommand NextCommand { get; }
     public IAsyncRelayCommand FinishCommand { get; }
@@ -435,7 +441,7 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
         }
         if (!Selection.CanAssess)
         {
-            ShownRefusal = WindowRefusal.Plain("Choose at least one text or add a word before continuing.");
+            ShownRefusal = WindowRefusal.Plain(MotifAppStrings.SetupChooseTextOrWord);
             return;
         }
 
@@ -504,6 +510,15 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
 
     private bool CanFinish() => IsFirstRunStep && IsStepLimitValid &&
         Selection.CanAssess && !_context.Assess.IsActive;
+
+    private void Cancel()
+    {
+        if (!IsOpen) return;
+        if (_snapshot is not null) RestoreSnapshot(_snapshot);
+        _setupGeneration++;
+        IsOpen = false;
+        ShownRefusal = null;
+    }
 
     private async Task SkipAsync()
     {

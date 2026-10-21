@@ -1,7 +1,9 @@
+using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.LogicalTree;
+using Avalonia.VisualTree;
 using Avalonia.Media.Imaging;
 using Avalonia.Styling;
 using Avalonia.Threading;
@@ -32,11 +34,11 @@ public sealed class CrashWindowTests(AvaloniaHeadlessFixture avalonia)
                 window.Show();
                 window.UpdateLayout();
 
-                Assert.Equal("Motif has stopped", window.Title);
+                Assert.Equal(SIL.Motif.App.MotifAppStrings.MotifHasStoppedWindowTitle, window.Title);
                 Assert.Equal("Refreshing PRIVATEWORD at /home/private/project.fwdata failed.",
                     Named<TextBlock>(window, "Crash message").Text);
                 Assert.Equal(report.Details, Named<SelectableTextBlock>(window, "Crash details text").Text);
-                Assert.Equal(["Report a problem", "Close"],
+                Assert.Equal([SIL.Motif.App.MotifAppStrings.ReportProblem, SIL.Motif.App.MotifAppStrings.Close],
                     window.GetLogicalDescendants().OfType<Button>().Select(button => button.Content as string));
                 Assert.Equal(CrashReportViewModel.Summary,
                     Named<TextBlock>(window, "Crash summary").Text);
@@ -49,11 +51,29 @@ public sealed class CrashWindowTests(AvaloniaHeadlessFixture avalonia)
     }
 
     [Fact]
+    public void TheNonClosingReportActionSitsLeftOfTheClosingButtonWhichEnterAndEscapeActivate()
+    {
+        RunWithWindow(Report(), window =>
+        {
+            var buttons = window.GetLogicalDescendants().OfType<Button>().ToArray();
+            var report = Assert.Single(buttons, button => Equals(button.Content, SIL.Motif.App.MotifAppStrings.ReportProblem));
+            var close = Assert.Single(buttons, button => Equals(button.Content, SIL.Motif.App.MotifAppStrings.Close));
+            window.UpdateLayout();
+            Assert.True(report.TranslatePoint(default, window)!.Value.X < close.TranslatePoint(default, window)!.Value.X);
+            Assert.False(report.IsDefault);
+            Assert.False(report.IsCancel);
+            Assert.True(close.IsDefault);
+            Assert.True(close.IsCancel);
+            return Task.CompletedTask;
+        });
+    }
+
+    [Fact]
     public void OpeningTheReportActionDoesNotOpenTheBrowserBeforeThePreviewIsReviewed()
     {
         RunWithWindow(Report(), window =>
         {
-            Click(window, "Report a problem");
+            Click(window, SIL.Motif.App.MotifAppStrings.ReportProblem);
             Dispatcher.UIThread.RunJobs();
 
             var preview = Assert.IsType<ProblemReportPreviewWindow>(window.CurrentProblemReportPreview);
@@ -69,7 +89,7 @@ public sealed class CrashWindowTests(AvaloniaHeadlessFixture avalonia)
     {
         RunWithWindow(Report(), window =>
         {
-            Click(window, "Close");
+            Click(window, SIL.Motif.App.MotifAppStrings.Close);
             Assert.False(window.IsVisible);
             return Task.CompletedTask;
         });
@@ -97,7 +117,7 @@ public sealed class CrashWindowTests(AvaloniaHeadlessFixture avalonia)
                 var window = Assert.IsType<CrashWindow>(reporter.Window);
                 Assert.True(window.IsVisible);
                 Assert.False(main.IsEnabled);
-                Click(window, "Close");
+                Click(window, SIL.Motif.App.MotifAppStrings.Close);
                 Assert.Equal(1, shutdowns);
                 Assert.False(main.IsVisible);
             }
