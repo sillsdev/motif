@@ -197,7 +197,8 @@ public static class AssessmentRecordProjections
         return new(
         record.AssessmentId, record.Assessor, record.Kind, record.TokeniserName, record.TokeniserVersion,
         record.Words ?? Array.Empty<AssessedWord>(),
-        record.Invocation?.ExecutableVersion, record.Invocation?.ExecutableBytesSha256);
+        record.Invocation?.ExecutableVersion, record.Invocation?.ExecutableBytesSha256,
+        record.Invocation?.StoppedWordRetry is { Failure: null });
     }
 
     /// <summary>The <c>Correctness</c>-kind fields a regression check needs — see <see cref="CorrectnessAssessment"/>.</summary>

@@ -39,7 +39,7 @@ public sealed record BatchInvocationEvidence(
     public string? AnalysesSha256 { get; init; }
 
     /// <summary>
-    /// Set when words the parser stopped at the per-word time limit were run again alone under a longer limit and
+    /// Set when words the parser stopped at the per-word time limit were run again in one serial batch under a longer limit and
     /// their rows in the retained TSV and morphology files were replaced by the retried rows; null when none were.
     /// </summary>
     public StoppedWordRetry? StoppedWordRetry { get; init; }
@@ -161,7 +161,7 @@ public sealed record BatchInvocationEvidence(
 
 /// <summary>
 /// The record that some words were measured twice. The first pass stopped them at the per-word time limit; a
-/// second invocation of the same parser on the same staged source ran only those words under
+/// second invocation of the same parser on the same staged source ran only those words, serially, under
 /// <see cref="LimitMs"/>. The retained TSV and morphology files hold the retried rows for those words, and the
 /// first-pass files are kept beside them as <c>first-pass.tsv</c> and <c>first-pass-analyses.jsonl</c>.
 /// </summary>
@@ -172,7 +172,7 @@ public sealed record BatchInvocationEvidence(
 /// </remarks>
 /// <param name="LimitMs">The longer per-word limit the retry ran under.</param>
 /// <param name="Stopped">Words the first pass stopped at the time limit.</param>
-/// <param name="Retried">Words actually run again; the rest exceeded <see cref="MaxWords"/>.</param>
+/// <param name="Retried">Words actually run again; the rest exceeded <see cref="MaxWords"/>. When <see cref="Failure"/> is set, the words the retry was attempted on.</param>
 /// <param name="Recovered">Retried words that completed.</param>
 /// <param name="StillStopped">Retried words that stopped again.</param>
 /// <param name="Words">One tab-separated line per stopped word: index, word, first-pass ms, retry ms or "-", and recovered, still-stopped or not-retried.</param>
@@ -185,7 +185,10 @@ public sealed record StoppedWordRetry(
     public const int Multiplier = 10;
 
     /// <summary>The most words one invocation retries, so a grammar that is slow on thousands of words is not rerun at length.</summary>
-    public const int MaxWords = 200;
+    public const int MaxWords = 50;
 
     public int NotRetried => Stopped - Retried;
+
+    /// <summary>Why the retry gave nothing, when it was attempted and failed; the stopped rows then stay as the first pass left them.</summary>
+    public string? Failure { get; init; }
 }

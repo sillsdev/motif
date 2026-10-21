@@ -142,7 +142,7 @@ public sealed class PanGlossAssessor : IAssessor
             {
                 throw new AssessorUnavailableException(AssessorName, exception.Message);
             }
-            // Words stopped at the wall-clock limit run again alone under a longer one; the record names each.
+            // Words stopped at the wall-clock limit run again serially under a longer one; the record names each.
             if (completed.MorphologyOutput is { } firstAnalyses)
             {
                 StoppedWordRetryRunner.Outcome? retried;

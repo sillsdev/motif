@@ -9,7 +9,7 @@ using SIL.Motif.Host.Parser;
 namespace SIL.Motif.Host.Assess;
 
 /// <summary>
-/// Runs again, alone and under a longer limit, the words a batch stopped at the per-word time limit, then
+/// Runs again, serially and under a longer limit, the words a batch stopped at the per-word time limit, then
 /// writes the retried rows over the stopped ones.
 /// </summary>
 /// <remarks>
@@ -43,32 +43,32 @@ internal static class StoppedWordRetryRunner
         {
             var request = new PanGlossRequest.Batch(evidence.SourcePath, retryWords, retryLimit, null,
                 first.PerWordStepLimit, retryDirectory)
-            { CollectAnalyses = true, OnAdmissionWait = onAdmissionWait };
+            { CollectAnalyses = true, OnAdmissionWait = onAdmissionWait, ThreadCount = 1 };
             var outcome = await invoker.RunAsync(request, "assess:retry-stopped", cancellationToken)
                 .ConfigureAwait(false);
             lease = (outcome as PanGlossOutcome.Completed)?.ArtifactLease;
             if (outcome is PanGlossOutcome.Cancelled) throw new OperationCanceledException(cancellationToken);
             if (outcome is not PanGlossOutcome.Completed { BatchEvidence: { } retry, MorphologyOutput: { } retryAnalyses } done)
-                return null;
+                return Failed("the retry run did not complete: " + outcome.Message);
             if (retry.SourceBytesSha256 != evidence.SourceBytesSha256 ||
                 retry.ExecutableBytesSha256 != evidence.ExecutableBytesSha256 ||
                 retry.AnalysesPath is null || retry.AnalysesSha256 is null ||
                 BatchInvocationEvidence.DigestFile(retry.TsvPath) != retry.TsvSha256 ||
                 !BatchInvocationEvidence.TextMatchesDigest(done.Output, retry.TsvSha256) ||
                 !BatchInvocationEvidence.TextMatchesDigest(retryAnalyses, retry.AnalysesSha256))
-                return null;
+                return Failed("the retry run's source, parser or retained files did not match the first pass");
             var retryRows = BatchTsvParser.Parse(done.Output);
             if (retryRows.Count != retryWords.Length || retryRows.Where((row, i) =>
                 row.Index != i || row.Word != retryWords[i]).Any())
-                return null;
+                return Failed("the retry run did not return one ordered row for every retried word");
 
             var merged = Merge(tsv, analyses, chosen.Select(row => row.Index).ToArray(), done.Output, retryAnalyses);
-            if (merged is null) return null;
+            if (merged is null) return Failed("the retry rows could not be merged into the first-pass files");
             var directory = Path.GetDirectoryName(evidence.TsvPath)!;
-            File.Copy(evidence.TsvPath, Path.Combine(directory, "first-pass.tsv"), overwrite: false);
-            File.Copy(evidence.AnalysesPath, Path.Combine(directory, "first-pass-analyses.jsonl"), overwrite: false);
-            File.Copy(retry.TsvPath, Path.Combine(directory, "retry.tsv"), overwrite: false);
-            File.Copy(retry.AnalysesPath, Path.Combine(directory, "retry-analyses.jsonl"), overwrite: false);
+            File.Copy(evidence.TsvPath, Path.Combine(directory, "first-pass.tsv"), overwrite: true);
+            File.Copy(evidence.AnalysesPath, Path.Combine(directory, "first-pass-analyses.jsonl"), overwrite: true);
+            File.Copy(retry.TsvPath, Path.Combine(directory, "retry.tsv"), overwrite: true);
+            File.Copy(retry.AnalysesPath, Path.Combine(directory, "retry-analyses.jsonl"), overwrite: true);
             var utf8 = new UTF8Encoding(false);
             File.WriteAllText(evidence.TsvPath, merged.Value.Tsv, utf8);
             File.WriteAllText(evidence.AnalysesPath, merged.Value.Analyses, utf8);
@@ -99,6 +99,19 @@ internal static class StoppedWordRetryRunner
         finally
         {
             lease?.Dispose();
+        }
+
+        // The stopped rows stay stopped; the record says a retry was tried and why it gave nothing.
+        Outcome Failed(string reason)
+        {
+            var rows = stopped.Select(row => string.Join('\t', row.Index.ToString(CultureInfo.InvariantCulture),
+                row.Word, row.ElapsedMs.ToString(CultureInfo.InvariantCulture), "-", "retry-failed"));
+            return new Outcome(tsv, analyses, evidence with
+            {
+                StoppedWordRetry = new StoppedWordRetry((int)retryLimit.TotalMilliseconds, stopped.Length,
+                    chosen.Length, 0, chosen.Length, string.Empty, string.Empty, string.Empty, string.Empty,
+                    string.Empty, string.Join('\n', rows)) { Failure = reason },
+            });
         }
     }
 

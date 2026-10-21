@@ -219,9 +219,9 @@ that genuinely did not parse. The timeout and attempt limits are stored per word
 work limit from the attempt limit.
 
 `--word-timeout-ms` is wall-clock inside PanGloss, so a busy machine stops slow words that finish when it is
-idle. After the batch, Motif runs each word stopped at the time limit again alone under ten times the limit (at
-most 200 words) and writes the retried rows over the stopped ones; the invocation evidence records the retry
-(`StoppedWordRetry`) and keeps the first-pass files. A word that stops again stays stopped and still blocks
+idle. After the batch, Motif runs each word stopped at the time limit again in one serial batch under ten times the limit (at
+most 50 words) and writes the retried rows over the stopped ones; the invocation evidence records the retry
+(`StoppedWordRetry`, including a failed retry and its reason) and keeps the first-pass files. A word that stops again stays stopped and still blocks
 Apply, so a runaway search is caught. A word that hit the attempt cap is not retried: load does not change it.
 Assess and Trial share this rule because both run through the one assessor.
 

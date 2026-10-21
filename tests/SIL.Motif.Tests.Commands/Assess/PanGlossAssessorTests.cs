@@ -249,6 +249,80 @@ public sealed class PanGlossAssessorTests : IDisposable
         Assert.Equal(2, FakeParser.Invocations(parser).Count(command => command == "batch"));
     }
 
+    [Theory]
+    [InlineData("crash")]
+    [InlineData("empty")]
+    [InlineData("mismatch")]
+    public async Task AFailedRetryIsRecordedWithItsReasonAndTheStoppedRowsStayStopped(string failure)
+    {
+        var parser = FakeParser.CopyRecordingInvocations(Path.Combine(_root, "failed-retry-" + failure));
+        FakeParser.BehaveBesideExecutable(parser, new
+        {
+            words = new object[] { new { word = "slow", outcome = "timed-out", recoversAtTimeoutMs = 5000 } },
+        });
+        using var invoker = RealFakeInvoker(parser);
+        var assessor = new PanGlossAssessor(_paths, new FailingRetryInvoker(invoker, failure));
+
+        var produced = await assessor.ProduceAsync(
+            new AssessmentScope.Words(["slow"], [AssessmentKind.ParseTime], TimeSpan.FromMilliseconds(700), 123),
+            _candidate, CancellationToken.None);
+
+        var evidence = Assert.IsType<BatchInvocationEvidence>(produced.Single().Invocation);
+        var analysis = Assert.IsType<AssessmentRaw.Batch>(produced.Single().Raw).Analysis;
+        Assert.True(analysis.IsIncomplete);
+        Assert.Equal(WordOutcome.TimedOut, analysis.Words.Single().Outcome);
+        var retry = Assert.IsType<StoppedWordRetry>(evidence.StoppedWordRetry);
+        Assert.False(string.IsNullOrWhiteSpace(retry.Failure));
+        Assert.Equal((1, 1, 0, 1), (retry.Stopped, retry.Retried, retry.Recovered, retry.StillStopped));
+        Assert.Equal("0\tslow\t900\t-\tretry-failed", retry.Words.Replace("\t3\t", "\t900\t"));
+        Assert.Equal(BatchInvocationEvidence.DigestFile(evidence.TsvPath), evidence.TsvSha256);
+        Assert.False(File.Exists(Path.Combine(Path.GetDirectoryName(evidence.TsvPath)!, "first-pass.tsv")));
+    }
+
+    [Fact]
+    public async Task OnlyTheFirstFiftyStoppedWordsAreRetriedSeriallyAndTheRestAreRecorded()
+    {
+        var parser = FakeParser.CopyRecordingInvocations(Path.Combine(_root, "cap-parser"));
+        var words = Enumerable.Range(0, 60).Select(i => "w" + i).ToArray();
+        FakeParser.BehaveBesideExecutable(parser, new
+        {
+            words = words.Select(word => new { word, outcome = "timed-out", recoversAtTimeoutMs = 5000 }).ToArray(),
+        });
+        using var invoker = RealFakeInvoker(parser);
+        var capture = new FailingRetryInvoker(invoker, "none");
+        var assessor = new PanGlossAssessor(_paths, capture);
+
+        var produced = await assessor.ProduceAsync(
+            new AssessmentScope.Words(words, [AssessmentKind.ParseTime], TimeSpan.FromMilliseconds(700), 123),
+            _candidate, CancellationToken.None);
+
+        var retry = Assert.IsType<StoppedWordRetry>(
+            Assert.IsType<BatchInvocationEvidence>(produced.Single().Invocation).StoppedWordRetry);
+        Assert.Equal((60, 50, 50, 0, 10), (retry.Stopped, retry.Retried, retry.Recovered, retry.StillStopped, retry.NotRetried));
+        Assert.Equal(10, retry.Words.Split('\n').Count(line => line.EndsWith("not-retried", StringComparison.Ordinal)));
+        Assert.Equal(1, capture.RetryThreads);
+        var analysis = Assert.IsType<AssessmentRaw.Batch>(produced.Single().Raw).Analysis;
+        Assert.Equal(10, analysis.TimedOut);
+    }
+
+    private sealed class FailingRetryInvoker(IPanGlossInvoker inner, string failure) : IPanGlossInvoker
+    {
+        public int? RetryThreads { get; private set; }
+
+        public async Task<PanGlossOutcome> RunAsync(PanGlossRequest request, string label,
+            CancellationToken cancellationToken, TimeSpan? wallClockCap = null)
+        {
+            if (label != "assess:retry-stopped") return await inner.RunAsync(request, label, cancellationToken, wallClockCap);
+            if (failure == "crash") return new PanGlossOutcome.Unavailable("the parser crashed");
+            if (failure == "mismatch" && request is PanGlossRequest.Batch batch)
+                request = batch with { Words = ["other"] };
+            var outcome = await inner.RunAsync(request, label, cancellationToken, wallClockCap);
+            RetryThreads = (outcome as PanGlossOutcome.Completed)?.BatchEvidence?.Threads;
+            return failure == "empty" && outcome is PanGlossOutcome.Completed done
+                ? done with { Output = string.Empty } : outcome;
+        }
+    }
+
     [Fact]
     public async Task AWordThatHitTheAttemptCapIsNotRetriedBecauseLoadDoesNotChangeIt()
     {

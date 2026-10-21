@@ -24,6 +24,19 @@ public sealed class AssessmentComparerTests
     }
 
     [Fact]
+    public void OneSideThatReranStoppedWordsIsWarnedAsHavingUsedADifferentEffectiveLimit()
+    {
+        var word = SIL.Motif.Tests.TestFixtures.CorrectnessFixture.Word("alpha", true);
+        var plain = new ComparableAssessment("from", "pangloss", "Correctness", "none", "1", [word]);
+        var retried = plain with { AssessmentId = "to", StoppedWordRetried = true };
+
+        Assert.Contains("different effective per-word limits", AssessmentComparer.Compare(plain, retried).ParserWarning);
+        Assert.Contains("'to'", AssessmentComparer.Compare(plain, retried).ParserWarning);
+        Assert.Null(AssessmentComparer.Compare(plain, plain with { AssessmentId = "to" }).ParserWarning);
+        Assert.Null(AssessmentComparer.Compare(retried, retried with { AssessmentId = "x" }).ParserWarning);
+    }
+
+    [Fact]
     public void DifferentWordSets_CompareOnTheIntersection_AndReportEachSidesCount()
     {
         var from = Build("assessment/from", "pangloss", "ParseTime", "none", "1",

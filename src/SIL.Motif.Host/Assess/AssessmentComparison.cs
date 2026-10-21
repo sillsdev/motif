@@ -19,7 +19,8 @@ public sealed record ComparableAssessment(
     string TokeniserVersion,
     IReadOnlyList<AssessedWord> Words,
     string? ParserVersion = null,
-    string? ParserSha256 = null);
+    string? ParserSha256 = null,
+    bool StoppedWordRetried = false);
 
 /// <summary>Where a caller turns what it already has into the narrow join view above.</summary>
 public static class ComparableAssessmentProjections
@@ -145,11 +146,19 @@ public static class AssessmentComparer
         // Unknown on either side (recorded before parsers were) is not a mismatch: there is nothing to compare.
         var parserMismatch = from.ParserSha256 is not null && to.ParserSha256 is not null &&
             !string.Equals(from.ParserSha256, to.ParserSha256, StringComparison.Ordinal);
-        var parserWarning = parserMismatch
+        string? parserWarning = parserMismatch
             ? $"'{from.AssessmentId}' was parsed by {ParserIdentity.Describe(from.ParserVersion, from.ParserSha256)}; " +
               $"'{to.AssessmentId}' by {ParserIdentity.Describe(to.ParserVersion, to.ParserSha256)}. A word that " +
               "differs below may differ because the parser changed, not the grammar."
             : null;
+
+        if (from.StoppedWordRetried != to.StoppedWordRetried)
+        {
+            var retried = from.StoppedWordRetried ? from : to;
+            parserWarning = (parserWarning is null ? string.Empty : parserWarning + " ") +
+                $"'{retried.AssessmentId}' reran words stopped at the per-word time limit under a longer limit and " +
+                "the other Assessment did not, so the two runs used different effective per-word limits.";
+        }
 
         return new AssessmentComparison(from.Words.Count, to.Words.Count, sharedWords, tokeniserMismatch, warning, changes)
         {
