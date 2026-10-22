@@ -55,6 +55,7 @@ internal enum IntentFieldKind
 /// <param name="Nullable">
 /// For an id, text or number field, whether JSON null is a meaningful value, such as "no class".
 /// </param>
+/// <param name="TrueOnly">For a flag, whether only true is meaningful.</param>
 internal sealed record IntentField(
     string Name,
     IntentFieldKind Kind,
@@ -63,7 +64,8 @@ internal sealed record IntentField(
     IReadOnlyList<string>? Values,
     IntentShape? Shape,
     bool Many,
-    bool Nullable = false);
+    bool Nullable = false,
+    bool TrueOnly = false);
 
 /// <summary>Builders for the fields of an <see cref="IntentShape"/>.</summary>
 internal static class Field
@@ -82,8 +84,8 @@ internal static class Field
         new(name, IntentFieldKind.Text, required, IdRole.Opaque, null, null, false, nullable);
 
     /// <summary>A boolean.</summary>
-    public static IntentField Flag(string name, bool required = false) =>
-        new(name, IntentFieldKind.Flag, required, IdRole.Opaque, null, null, false);
+    public static IntentField Flag(string name, bool required = false, bool trueOnly = false) =>
+        new(name, IntentFieldKind.Flag, required, IdRole.Opaque, null, null, false, TrueOnly: trueOnly);
 
     /// <summary>A number, or JSON null when <paramref name="nullable"/> says null means "none".</summary>
     public static IntentField Number(string name, bool required = false, bool nullable = false) =>
@@ -109,10 +111,12 @@ internal sealed class IntentShape
 
     private readonly Dictionary<string, IntentField> _byName;
 
-    private IntentShape(IReadOnlyList<IntentField> fields, IReadOnlyList<IReadOnlyList<string>> groups)
+    private IntentShape(IReadOnlyList<IntentField> fields, IReadOnlyList<IReadOnlyList<string>> groups,
+        IReadOnlyList<IReadOnlyList<string>> atMostOneGroups)
     {
         Fields = fields;
         TogetherGroups = groups;
+        AtMostOneGroups = atMostOneGroups;
         _byName = new Dictionary<string, IntentField>(StringComparer.Ordinal);
         foreach (var field in fields)
         {
@@ -125,6 +129,10 @@ internal sealed class IntentShape
             foreach (var name in group)
                 if (!_byName.ContainsKey(name))
                     throw new ArgumentException($"Together names the unknown field '{name}'.", nameof(groups));
+        foreach (var group in atMostOneGroups)
+            foreach (var name in group)
+                if (!_byName.ContainsKey(name))
+                    throw new ArgumentException($"AtMostOne names the unknown field '{name}'.", nameof(atMostOneGroups));
     }
 
     /// <summary>The fields, in declaration order.</summary>
@@ -133,11 +141,17 @@ internal sealed class IntentShape
     /// <summary>Groups of field names that are given together or not at all.</summary>
     public IReadOnlyList<IReadOnlyList<string>> TogetherGroups { get; }
 
+    /// <summary>Groups in which at most one field may appear.</summary>
+    public IReadOnlyList<IReadOnlyList<string>> AtMostOneGroups { get; }
+
     /// <summary>A shape of exactly these fields.</summary>
-    public static IntentShape Of(params IntentField[] fields) => new(fields, []);
+    public static IntentShape Of(params IntentField[] fields) => new(fields, [], []);
 
     /// <summary>The same shape, with the named fields required to appear together or not at all.</summary>
-    public IntentShape Together(params string[] names) => new(Fields, [.. TogetherGroups, names]);
+    public IntentShape Together(params string[] names) => new(Fields, [.. TogetherGroups, names], AtMostOneGroups);
+
+    /// <summary>The same shape, with the named fields limited to one present field.</summary>
+    public IntentShape AtMostOne(params string[] names) => new(Fields, TogetherGroups, [.. AtMostOneGroups, names]);
 
     /// <summary>
     /// Throws <see cref="ContractParseException"/> for a property the shape does not declare, at any depth, and
@@ -159,6 +173,13 @@ internal sealed class IntentShape
             if (present.Length != 0 && present.Length != group.Count)
                 throw new ContractParseException(
                     $"'{path}': {string.Join(", ", group.Select(name => $"'{name}'"))} go together.");
+        }
+        foreach (var group in AtMostOneGroups)
+        {
+            var present = group.Where(name => authored.TryGetProperty(name, out _)).ToArray();
+            if (present.Length > 1)
+                throw new ContractParseException(
+                    $"'{path}': give at most one of {string.Join(", ", group.Select(name => $"'{name}'"))}.");
         }
         foreach (var field in Fields)
         {
@@ -226,6 +247,23 @@ internal sealed class IntentShape
                         .Select(other => (JsonNode)other).ToArray());
             schema["dependentRequired"] = dependent;
         }
+        if (AtMostOneGroups.Count > 0)
+        {
+            var exclusions = new JsonArray();
+            foreach (var group in AtMostOneGroups)
+            {
+                for (var left = 0; left < group.Count; left++)
+                for (var right = left + 1; right < group.Count; right++)
+                    exclusions.Add(new JsonObject
+                    {
+                        ["not"] = new JsonObject
+                        {
+                            ["required"] = new JsonArray((JsonNode)group[left], (JsonNode)group[right]),
+                        },
+                    });
+            }
+            schema["allOf"] = exclusions;
+        }
         schema["additionalProperties"] = false;
         return schema;
     }
@@ -238,7 +276,7 @@ internal sealed class IntentShape
             new JsonObject { ["type"] = new JsonArray("number", "null") },
         IntentFieldKind.Id or IntentFieldKind.Text => new JsonObject { ["type"] = "string" },
         IntentFieldKind.Ids => new JsonObject { ["type"] = "array", ["items"] = new JsonObject { ["type"] = "string" } },
-        IntentFieldKind.Flag => new JsonObject { ["type"] = "boolean" },
+        IntentFieldKind.Flag => FlagSchema(field),
         IntentFieldKind.Number => new JsonObject { ["type"] = "number" },
         IntentFieldKind.Choice => new JsonObject
         {
@@ -249,4 +287,11 @@ internal sealed class IntentShape
             ? new JsonObject { ["type"] = "array", ["items"] = field.Shape!.ToJsonSchema() }
             : field.Shape!.ToJsonSchema(),
     };
+
+    private static JsonObject FlagSchema(IntentField field)
+    {
+        var schema = new JsonObject { ["type"] = "boolean" };
+        if (field.TrueOnly) schema["const"] = true;
+        return schema;
+    }
 }

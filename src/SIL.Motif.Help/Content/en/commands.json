@@ -199,7 +199,7 @@
   },
   "compose-author-lexical-entry": {
     "title": "Author a lexical entry",
-    "description": "Stages one new dictionary entry with its lexeme form, one sense with gloss and optional definition, and grammatical info: a stem, or an inflectional, derivational or unclassified affix. Each form can name environments, and an affix can name the inflection classes it attaches to. Inspect its Dry Run and try words with it before a person Applies the Proposal.",
+    "description": "Stages one new dictionary entry with its lexeme form, one sense with gloss and optional definition, and grammatical info: a stem, or an inflectional, derivational or unclassified affix. An inflectional affix can name the inflection classes its form attaches to; use compose-edit-derivational-affix-restriction for a derivational affix. Inspect its Dry Run and try words with it before a person Applies the Proposal.",
     "source": "Hand-written from command behavior.",
     "goals": [
       "Add a new word to the dictionary with its meaning",
@@ -222,7 +222,7 @@
       "entry": "Id of the existing or earlier-staged affix entry whose lexeme form is an affix process.",
       "input": "Ordered pattern parts, each with a name and one of phoneme, naturalClass or remaining true; the remaining-stem part is last.",
       "output": "Ordered realization, each item either copy of a named input part or insert of phoneme ids. An input part left out of the output is deleted.",
-      "inflectionClasses": "Optional ids of inflection classes of the stems this form attaches to.",
+      "inflectionClasses": "Optional ids of inflection classes of the stems this form attaches to. Inflectional affixes only; a derivational affix is refused (use compose-edit-derivational-affix-restriction).",
       "placement": "The neighbouring alternate form ids, after, before or both; required when the entry already has alternate forms."
     },
     "goals": [
@@ -238,7 +238,7 @@
   },
   "compose-author-alternate-form": {
     "title": "Author an alternate form",
-    "description": "Stages one more stem or affix form on an existing or earlier-staged entry, with its own environments and, for an affix, inflection classes. It adds no entry, sense or grammatical info and copies no condition from the lexeme form.",
+    "description": "Stages one more stem or affix form on an existing or earlier-staged entry, with its own environments and, when the entry has inflectional grammatical info, inflection classes. Use compose-edit-derivational-affix-restriction for a derivational analysis. It adds no entry, sense or grammatical info and copies no condition from the lexeme form.",
     "source": "Hand-written from command behavior.",
     "goals": [
       "Give a prefix a second form before vowels",
@@ -672,7 +672,7 @@
   },
   "compose-edit-affix-inflection-classes": {
     "title": "Edit affix class restrictions",
-    "description": "Replaces an ordinary inflectional prefix, suffix or interfix's exact class restriction set after checking the expected current ids. An empty set removes the restriction; Motif stages a Draft for a person to review and Apply.",
+    "description": "Replaces an ordinary inflectional prefix, suffix or interfix's exact class restriction set after checking the expected current ids. An empty set removes the restriction; for derivational affixes, use compose-edit-derivational-affix-restriction instead. Motif stages a Draft for a person to review and Apply.",
     "source": "Hand-written from the closed intent and composer contract.",
     "fields": {
       "draft": "Draft name.",
@@ -689,7 +689,28 @@
       "suffix-prefix-slots",
       "feature-conditioned-slots"
     ],
-    "redirect": "Limits which stems an affix attaches to by class. Use it for arbitrary lexical grouping; a value that must agree is a feature (guide feature-conditioned-slots)."
+    "redirect": "For inflectional affixes only. Use compose-edit-derivational-affix-restriction for derivational affixes; use a feature for agreement (guide feature-conditioned-slots)."
+  },
+  "compose-edit-derivational-affix-restriction": {
+    "title": "Restrict a derivational affix",
+    "description": "Sets, replaces or explicitly clears the From Inflection Class and can set the exact From Exception Features on an existing affix entry's derivational grammatical info. Omitted fields stay unchanged. Motif stages a Draft for a person to review and Apply.",
+    "source": "Authored from the typed command contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "msa": "Id of the derivational grammatical info of an existing affix entry.",
+      "fromInflectionClass": "Optional id of an inflection class owned by the From category or an ancestor; omission leaves the current link unchanged.",
+      "clearFromInflectionClass": "Set true to remove the current From Inflection Class; do not combine with fromInflectionClass.",
+      "fromExceptionFeatures": "Optional exact set of valid From Exception Features; an empty list removes them all, and omission leaves the current set unchanged."
+    },
+    "goals": [
+      "Restrict a derivational affix to stems of one inflection class",
+      "Set the From Exception Features on a derivational affix",
+      "Stop a derivational affix applying to unmarked stems"
+    ],
+    "guides": [
+      "suffix-prefix-slots"
+    ],
+    "redirect": "For a derivational affix only. An inflectional affix is restricted by the inflection classes on its form (compose-edit-affix-inflection-classes)."
   },
   "compose-edit-allomorph-condition": {
     "title": "Edit an allomorph condition",

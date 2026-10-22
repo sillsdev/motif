@@ -191,15 +191,14 @@ public sealed class AuthorLexicalEntryRestrictionTests : IDisposable
     }
 
     [Fact]
-    public void ADerivationalAffixCanBeRestrictedToTheClassesOfItsInputCategory()
+    public void ADerivationalAffixIsNotRestrictedByFormClassesBecauseTheParserIgnoresThem()
     {
         var class12 = AddInflectionClass(_cache, _category, "1/2");
 
-        var derivational = ApplyOps(_cache, AuthorLexicalEntryComposer.Build(_cache, Prefix(new LexicalEntryMsa(
-            LexicalEntryMsaKind.Derivational, _category, _category), [class12])));
+        var failure = Assert.Throws<InvalidOperationException>(() => AuthorLexicalEntryComposer.Build(_cache,
+            Prefix(new LexicalEntryMsa(LexicalEntryMsaKind.Derivational, _category, _category), [class12])));
 
-        Assert.Single(Assert.IsAssignableFrom<IMoAffixAllomorph>(
-            Get<ILexEntry>(_cache, Created(derivational, LexDbEntriesOperationKinds.Create)).LexemeFormOA).InflectionClassesRC);
+        Assert.Contains("compose-edit-derivational-affix-restriction", failure.Message, StringComparison.Ordinal);
     }
 
     [Theory]

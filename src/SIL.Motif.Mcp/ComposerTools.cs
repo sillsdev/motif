@@ -54,6 +54,7 @@ internal static class ComposerTools
             ["additionalProperties"] = false,
         };
         if (shape["required"] is JsonArray required) intent["required"] = required.DeepClone();
+        if (shape["allOf"] is JsonArray constraints) intent["allOf"] = constraints.DeepClone();
         return (composer.Verb, intent);
     }
 
@@ -72,6 +73,7 @@ internal static class ComposerTools
             foreach (var field in fields) required.Add(field!.DeepClone());
         var inputSchema = new JsonObject { ["type"] = "object", ["properties"] = properties, ["required"] = required,
             ["additionalProperties"] = false };
+        if (shape["allOf"] is JsonArray constraints) inputSchema["allOf"] = constraints.DeepClone();
         var description = Describe(composer.Verb);
         var verb = composer.Verb;
         var names = composer.FieldNames;

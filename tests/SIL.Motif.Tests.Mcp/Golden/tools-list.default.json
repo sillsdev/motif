@@ -995,7 +995,7 @@
   },
   {
     "name": "motif_add_lexical_entry",
-    "description": "Author a lexical entry. Research first: motif_guide topic suffix-prefix-slots or feature-conditioned-slots; check best practice. For an affix, prefer an inflectional or derivational MSA with categories and a slot over unclassified (guide suffix-prefix-slots). One entry per morpheme, not per stem. Stages one new dictionary entry with its lexeme form, one sense with gloss and optional definition, and grammatical info: a stem, or an inflectional, derivational or unclassified affix. Each form can name environments, and an affix can name the inflection classes it attaches to. Inspect its Dry Run and try words with it before a person Applies the Proposal.\nCommand: compose-author-lexical-entry. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
+    "description": "Author a lexical entry. Research first: motif_guide topic suffix-prefix-slots or feature-conditioned-slots; check best practice. For an affix, prefer an inflectional or derivational MSA with categories and a slot over unclassified (guide suffix-prefix-slots). One entry per morpheme, not per stem. Stages one new dictionary entry with its lexeme form, one sense with gloss and optional definition, and grammatical info: a stem, or an inflectional, derivational or unclassified affix. An inflectional affix can name the inflection classes its form attaches to; use compose-edit-derivational-affix-restriction for a derivational affix. Inspect its Dry Run and try words with it before a person Applies the Proposal.\nCommand: compose-author-lexical-entry. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -1103,7 +1103,7 @@
   },
   {
     "name": "motif_add_alternate_form",
-    "description": "Author an alternate form. Research first: motif_guide topic conditioned-allomorphs; check best practice. Use for a listed variant of one morpheme. Not for a regular sound change, a phonological rule (guide nasal-assimilation), or a pattern-based form (compose-author-affix-process-allomorph). Stages one more stem or affix form on an existing or earlier-staged entry, with its own environments and, for an affix, inflection classes. It adds no entry, sense or grammatical info and copies no condition from the lexeme form.\nCommand: compose-author-alternate-form. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
+    "description": "Author an alternate form. Research first: motif_guide topic conditioned-allomorphs; check best practice. Use for a listed variant of one morpheme. Not for a regular sound change, a phonological rule (guide nasal-assimilation), or a pattern-based form (compose-author-affix-process-allomorph). Stages one more stem or affix form on an existing or earlier-staged entry, with its own environments and, when the entry has inflectional grammatical info, inflection classes. Use compose-edit-derivational-affix-restriction for a derivational analysis. It adds no entry, sense or grammatical info and copies no condition from the lexeme form.\nCommand: compose-author-alternate-form. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -3516,7 +3516,7 @@
                         "items": {
                           "type": "string"
                         },
-                        "description": "Optional ids of inflection classes of the stems this form attaches to."
+                        "description": "Optional ids of inflection classes of the stems this form attaches to. Inflectional affixes only; a derivational affix is refused (use compose-edit-derivational-affix-restriction)."
                       },
                       "placement": {
                         "type": "object",
@@ -3678,6 +3678,80 @@
                     "additionalProperties": false,
                     "required": [
                       "target"
+                    ]
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
+                      "compose-edit-derivational-affix-restriction"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for compose-edit-derivational-affix-restriction.",
+                    "properties": {
+                      "msa": {
+                        "type": "string",
+                        "description": "Id of the derivational grammatical info of an existing affix entry."
+                      },
+                      "fromInflectionClass": {
+                        "type": "string",
+                        "description": "Optional id of an inflection class owned by the From category or an ancestor; omission leaves the current link unchanged."
+                      },
+                      "clearFromInflectionClass": {
+                        "type": "boolean",
+                        "const": true,
+                        "description": "Set true to remove the current From Inflection Class; do not combine with fromInflectionClass."
+                      },
+                      "fromExceptionFeatures": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Optional exact set of valid From Exception Features; an empty list removes them all, and omission leaves the current set unchanged."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "msa"
+                    ],
+                    "allOf": [
+                      {
+                        "not": {
+                          "required": [
+                            "fromInflectionClass",
+                            "clearFromInflectionClass"
+                          ]
+                        }
+                      }
                     ]
                   },
                   "citation": {
@@ -4732,7 +4806,7 @@
           "items": {
             "type": "string"
           },
-          "description": "Optional ids of inflection classes of the stems this form attaches to."
+          "description": "Optional ids of inflection classes of the stems this form attaches to. Inflectional affixes only; a derivational affix is refused (use compose-edit-derivational-affix-restriction)."
         },
         "placement": {
           "type": "object",
@@ -4865,6 +4939,62 @@
         "project"
       ],
       "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_edit_derivational_affix_restriction",
+    "description": "Restrict a derivational affix. Research first: motif_guide topic suffix-prefix-slots; check best practice. For a derivational affix only. An inflectional affix is restricted by the inflection classes on its form (compose-edit-affix-inflection-classes). Sets, replaces or explicitly clears the From Inflection Class and can set the exact From Exception Features on an existing affix entry\u0027s derivational grammatical info. Omitted fields stay unchanged. Motif stages a Draft for a person to review and Apply.\nCommand: compose-edit-derivational-affix-restriction. Agent class: Draft.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "Draft name."
+        },
+        "msa": {
+          "type": "string",
+          "description": "Id of the derivational grammatical info of an existing affix entry."
+        },
+        "fromInflectionClass": {
+          "type": "string",
+          "description": "Optional id of an inflection class owned by the From category or an ancestor; omission leaves the current link unchanged."
+        },
+        "clearFromInflectionClass": {
+          "type": "boolean",
+          "const": true,
+          "description": "Set true to remove the current From Inflection Class; do not combine with fromInflectionClass."
+        },
+        "fromExceptionFeatures": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Optional exact set of valid From Exception Features; an empty list removes them all, and omission leaves the current set unchanged."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "draft",
+        "msa",
+        "project"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "not": {
+            "required": [
+              "fromInflectionClass",
+              "clearFromInflectionClass"
+            ]
+          }
+        }
+      ]
     },
     "readOnlyHint": false,
     "destructiveHint": false,

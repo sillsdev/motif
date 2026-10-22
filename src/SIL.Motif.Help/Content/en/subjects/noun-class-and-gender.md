@@ -14,7 +14,7 @@ Noun classes and genders sort nouns into groups that agreement and affixes may d
 2. `compose-author-inflection-feature` declares the agreement feature when the grouping is grammatical.
    `compose-author-feature-structure` and `compose-author-feature-value` give noun stems the class feature.
 3. `compose-edit-stem-inflection-class` assigns a stem to its class.
-4. `compose-edit-affix-inflection-classes` restricts an affix to the classes it attaches to.
+4. `compose-edit-affix-inflection-classes` restricts an inflectional affix through its form. `compose-edit-derivational-affix-restriction` restricts a derivational affix through its grammatical info.
 
 ## Pitfalls
 

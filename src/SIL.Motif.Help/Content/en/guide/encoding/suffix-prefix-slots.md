@@ -13,6 +13,15 @@ A linguist sees prefixes or suffixes recurring in the same grammatical order acr
 
 `motif_grammar` can read categories, templates and slots. `motif_add_lexical_entry` creates one entry and one sense with a structured MSA: use an inflectional MSA for a slot-filling affix, or a derivational MSA with both its source and destination categories. `motif_add_affix_slot` creates a category-owned slot and can assign existing inflectional MSAs; `motif_add_affix_template` creates the ordered prefix and suffix slots. Use returned entity ids in later calls or batches after the creating call completes. Batch intents may reference only ids from earlier completed calls or batches; declare operation ordering and dependencies in the intent data, since array position alone does not establish them.
 
+## Restricting which stems an affix attaches to
+
+Where the restriction goes depends on the kind of affix, because FieldWorks' parser reads it from different places.
+
+- Inflectional grammatical info: restrict the affix form to inflection classes. `motif_add_alternate_form` and `motif_add_affix_process_allomorph` take `inflectionClasses`, and `compose-edit-affix-inflection-classes` changes them later. FieldWorks reads the form's Inflection Classes for inflectional grammatical info only.
+- Derivational grammatical info: use the `motif_edit_derivational_affix_restriction` MCP tool or `compose-edit-derivational-affix-restriction` CLI verb to set or clear its From Inflection Class and, optionally, set From Exception Features. FieldWorks reads those fields from the derivational grammatical info. Form inflection classes do not restrict a derivational analysis, so a mixed entry can use both paths for their corresponding analyses. If an entry has no inflectional grammatical info, Motif refuses form `inflectionClasses` and names the derivational restriction tool.
+
+An unmarked stem does not take a derivational affix restricted to a class: only stems assigned that class do. Assign the class to the stems first, or the affix will stop applying to every stem you meant it for.
+
 ## Check with a Trial
 
 Include words that should take each affix and words that should not. Check that the affixes appear in the intended order, that required slots are filled, and that unrelated words do not gain extra parses. A Trial checks the Proposal; it does not create grammar objects.
@@ -26,3 +35,4 @@ Ask when the forms do not show whether an affix is required, optional or ordered
 - An affix entry per stem, or one broad slot for affixes with different jobs.
 - An unclassified affix when an inflectional or derivational analysis with a slot fits.
 - An ad hoc prohibition for an order a template can express.
+- Inflection classes on a form when the entry has no inflectional grammatical info; restrict its derivational grammatical info instead.

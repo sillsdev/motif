@@ -222,6 +222,45 @@ public sealed class AuthorAffixProcessAllomorphComposerTests : IDisposable
     }
 
     [Fact]
+    public void InflectionClassesOnADerivationalProcessEntryAreRefusedNamingTheRestrictionComposer()
+    {
+        var inflectionClass = AddInflectionClass(_cache, _category, "Class 1");
+        var entry = ProcessEntry(derivational: true);
+
+        var failure = Assert.Throws<InvalidOperationException>(() =>
+            AuthorAffixProcessAllomorphComposer.Build(_cache, Intent(entry) with { InflectionClasses = [inflectionClass] }));
+
+        Assert.Contains("derivational affix", failure.Message, StringComparison.Ordinal);
+        Assert.Contains("compose-edit-derivational-affix-restriction", failure.Message, StringComparison.Ordinal);
+        Assert.Contains("From Inflection Class", failure.Message, StringComparison.Ordinal);
+        Assert.NotEmpty(AuthorAffixProcessAllomorphComposer.Build(_cache, Intent(entry)));
+    }
+
+    [Fact]
+    public void InflectionClassesRestrictTheInflectionalMsaOnAMixedEntry()
+    {
+        var inflectionClass = AddInflectionClass(_cache, _category, "Class 1");
+        var entry = ProcessEntry(derivational: true);
+        Setup(() =>
+        {
+            var inflectional = _cache.ServiceLocator.GetInstance<IMoInflAffMsaFactory>().Create();
+            Get<ILexEntry>(_cache, entry).MorphoSyntaxAnalysesOC.Add(inflectional);
+            inflectional.PartOfSpeechRA = _cache.LangProject.PartsOfSpeechOA.PossibilitiesOS.OfType<IPartOfSpeech>()
+                .First(category => category.Guid == _category.ToGuid());
+        });
+
+        var operations = AuthorAffixProcessAllomorphComposer.Build(_cache,
+            Intent(entry) with { InflectionClasses = [inflectionClass] });
+
+        var create = Assert.Single(operations, operation =>
+            operation.Kind == LexEntryAlternateFormsCreateOperationKinds.CreateAlternateForms);
+        var classLink = Assert.Single(operations, operation =>
+            operation.Kind == MoAffixFormInflectionClassesOperationKinds.AddRefInflectionClasses);
+        Assert.Equal(create.EntityId, classLink.Target);
+        Assert.Equal(inflectionClass.Value, classLink.After!.Value.GetProperty("member").GetString());
+    }
+
+    [Fact]
     public void ParserAcceptsOnlyTheClosedShape()
     {
         using var stream = typeof(CanonicalId).Assembly.GetManifestResourceStream(
@@ -260,11 +299,13 @@ public sealed class AuthorAffixProcessAllomorphComposerTests : IDisposable
             [new(Insert: [Id(_m)]), new(Copy: "rest")]),
     };
 
-    private CanonicalId ProcessEntry()
+    private CanonicalId ProcessEntry(bool derivational = false)
     {
         var proposal = ApplyOps(_cache, AuthorAffixProcessComposer.Build(_cache, new AuthorAffixProcessIntent(
             MorphType(MoMorphTypeTags.kguidMorphPrefix), "PAN", Anal(_cache),
-            new LexicalEntryMsa(LexicalEntryMsaKind.Inflectional, _category),
+            derivational
+                ? new LexicalEntryMsa(LexicalEntryMsaKind.Derivational, _category, ToCategory: AddCategory(_cache, "Adjective"))
+                : new LexicalEntryMsa(LexicalEntryMsaKind.Inflectional, _category),
             [new("a", Phoneme: Id(_a)), new("rest", Remaining: true)],
             [new(Insert: [Id(_p), Id(_a)]), new(Copy: "a"), new(Copy: "rest")])));
         return Created(proposal, LexDbEntriesOperationKinds.Create);

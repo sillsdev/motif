@@ -1,6 +1,6 @@
 # Inflection classes
 
-Inflection classes are groups of words that inflect the same way. A stem belongs to a class, a category may have a default class, and an affix can be restricted to the classes it attaches to.
+Inflection classes are groups of words that inflect the same way. A stem belongs to a class, a category may have a default class, and an affix can be restricted to the classes it attaches to: an inflectional affix on its form, a derivational affix on its grammatical info.
 
 ## What the work needs
 
@@ -13,7 +13,8 @@ Inflection classes are groups of words that inflect the same way. A stem belongs
 1. `compose-author-inflection-class` creates a class or subclass.
 2. `compose-edit-stem-inflection-class` sets or clears one stem's class.
 3. `compose-edit-part-of-speech-inflection-class-default` sets or clears a category's default class.
-4. `compose-edit-affix-inflection-classes` restricts an affix to certain classes, or removes the restriction.
+4. `compose-edit-affix-inflection-classes` restricts an inflectional affix to certain classes, or removes the restriction.
+5. `compose-edit-derivational-affix-restriction` restricts a derivational affix to stems of one class (and optionally with certain exception features). A class on the form of a derivational affix is ignored by the parser.
 
 ## Pitfalls
 

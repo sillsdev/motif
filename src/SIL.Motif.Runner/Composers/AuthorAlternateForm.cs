@@ -17,7 +17,7 @@ namespace SIL.Motif.Runner.Composers;
 /// <param name="MorphType">The existing morph type; it must be the same kind (stem or affix) as the entry.</param>
 /// <param name="Environments">The phonological environments the form occurs in; absent means any.</param>
 /// <param name="InflectionClasses">
-/// For an affix entry only, the inflection classes of the stems this form attaches to; absent means any.
+/// The classes this form attaches to for an inflectional MSA; a derivational MSA uses its MSA restriction.
 /// </param>
 /// <param name="Placement">
 /// The neighbouring alternate forms that define the insertion gap; required when the entry already has any.
@@ -108,7 +108,8 @@ public static class AuthorAlternateFormComposer
         {
             if (formClass != MoFormConcreteClass.AffixAllomorph)
                 throw new InvalidOperationException($"'{ConstructName}': only an affix form takes 'inflectionClasses'.");
-            classes = LexicalFormAuthoring.RequireInflectionClasses(cache, requested, AffixCategories(entry), ConstructName);
+            var inflectionalCategories = LexicalFormAuthoring.InflectionalAffixCategories(entry, ConstructName);
+            classes = LexicalFormAuthoring.RequireInflectionClasses(cache, requested, inflectionalCategories, ConstructName);
         }
 
         RequirePlacement(entry, intent.Placement);

@@ -60,6 +60,18 @@ public static class EditAffixInflectionClassesComposer
              morphType != MoMorphTypeTags.kguidMorphPrefixingInterfix && morphType != MoMorphTypeTags.kguidMorphSuffixingInterfix))
             throw new InvalidOperationException("The target must be a nonabstract ordinary prefix or suffix with a vernacular form.");
         var msas = entry.MorphoSyntaxAnalysesOC.ToArray();
+        var hasDerivationalInfo = msas.OfType<IMoDerivAffMsa>().Any();
+        var hasInflectionalInfo = msas.OfType<IMoInflAffMsa>().Any();
+        if (hasDerivationalInfo && hasInflectionalInfo)
+        {
+            throw new InvalidOperationException(
+                "This editor cannot edit a mixed affix entry that includes derivational grammatical info. " +
+                "It requires an entry with only inflectional grammatical info and usable categories.");
+        }
+        if (hasDerivationalInfo)
+        {
+            LexicalFormAuthoring.RequireNoDerivationalClasses(entry, "EditAffixInflectionClasses");
+        }
         if (msas.Length == 0 || msas.Any(msa => msa is not IMoInflAffMsa { PartOfSpeechRA: not null }))
             throw new InvalidOperationException("The affix entry must have only inflectional grammatical info with usable categories.");
         var categories = msas.Cast<IMoInflAffMsa>().Select(msa =>

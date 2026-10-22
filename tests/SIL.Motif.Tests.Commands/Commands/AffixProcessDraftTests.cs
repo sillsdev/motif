@@ -171,6 +171,47 @@ public sealed class AffixProcessDraftTests(PristineProjectFixture pristine)
         Assert.Equal(entryId, alternate.Target);
     }
 
+    [Fact]
+    public void DerivationalRestrictionComposerReplaysAStagedClassAndDerivationalEntry()
+    {
+        using var cache = pristine.NewScratch();
+        var path = cache.ProjectId.Path;
+        var vernacular = cache.WritingSystemFactory.GetStrFromWs(cache.DefaultVernWs);
+        var analysisWs = cache.WritingSystemFactory.GetStrFromWs(cache.DefaultAnalWs);
+        var category = CanonicalId.FromGuid(pristine.Seed.PartOfSpeechId).Value;
+        cache.Dispose();
+        Assert.True(ProposalCommands.New(new(path, Version, "restrict", "Restrict a derivational prefix")).Succeeded);
+        var classResult = ProposalCommands.ComposeAuthorInflectionClass(new(path, Version, "restrict",
+            JsonSerializer.Serialize(new { category, name = "Class Seven", ws = analysisWs })));
+        Assert.True(classResult.Succeeded, classResult.Refusal?.Message);
+        var classId = Assert.Single(classResult.Value!.Operations, operation => operation.EntityId is not null).EntityId!;
+        var derivedResult = ProposalCommands.ComposeAuthorPartOfSpeech(new(path, Version, "restrict",
+            JsonSerializer.Serialize(new { name = "Derived", ws = analysisWs })));
+        Assert.True(derivedResult.Succeeded, derivedResult.Refusal?.Message);
+        var derived = Assert.Single(derivedResult.Value!.Operations, operation => operation.EntityId is not null).EntityId!;
+        var entry = ProposalCommands.ComposeAuthorLexicalEntry(new(path, Version, "restrict", JsonSerializer.Serialize(new
+        {
+            form = "pag", formWs = vernacular, morphType = CanonicalId.FromGuid(MoMorphTypeTags.kguidMorphPrefix).Value,
+            gloss = "agentive", analysisWs, msa = new { kind = "derivational", category, toCategory = derived },
+        })));
+        Assert.True(entry.Succeeded, entry.Refusal?.Message);
+        var msaId = Assert.Single(entry.Value!.Operations,
+            operation => operation.Kind == "lexical/lexEntry/createMorphoSyntaxAnalyses").EntityId!;
+
+        var composed = ProposalCommands.ComposeIntent(new(path, Version, "restrict",
+            "compose-edit-derivational-affix-restriction",
+            JsonSerializer.Serialize(new { msa = msaId, fromInflectionClass = classId })));
+
+        Assert.True(composed.Succeeded, composed.Refusal?.Message);
+        var draft = ReadDraft(path, "restrict");
+        Assert.Contains(draft.ComposerProvenance, item =>
+            item.GetProperty("composer").GetString() == "EditDerivationalAffixRestriction");
+        var set = Assert.Single(draft.Operations, operation => operation.Kind == "grammar/moDerivAffMsa/setFromInflectionClass");
+        Assert.Equal(msaId, set.Target);
+        Assert.Equal(classId, set.After["ref"].GetString());
+        Assert.NotEmpty(set.DependsOn);
+    }
+
     private static string ProcessIntent(string phonemeId, string naturalClassId, string analysisWs, string categoryId) => JsonSerializer.Serialize(new
     {
         morphType = CanonicalId.FromGuid(MoMorphTypeTags.kguidMorphPrefix).Value,

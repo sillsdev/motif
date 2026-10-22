@@ -222,7 +222,9 @@ public sealed class HelpCatalogTests
         var catalog = HelpCatalog.Load(System.Globalization.CultureInfo.GetCultureInfo("en"));
         var entry = Assert.IsType<HelpEntry>(catalog.Find(HelpEntryKind.Command, "compose-author-lexical-entry"));
         var entryPage = catalog.GetHelpPage(HelpEntryKind.Command, "compose-author-lexical-entry")!;
-        Assert.Contains("inflection classes it attaches to", entry.Description, StringComparison.Ordinal);
+        Assert.Contains("inflectional affix can name the inflection classes its form attaches to", entry.Description,
+            StringComparison.Ordinal);
+        Assert.Contains("compose-edit-derivational-affix-restriction", entry.Description, StringComparison.Ordinal);
         Assert.Contains("Empty lists, repeated ids", entryPage, StringComparison.Ordinal);
 
         var alternate = Assert.IsType<HelpEntry>(catalog.Find(HelpEntryKind.Command, "compose-author-alternate-form"));

@@ -45,7 +45,7 @@ public sealed record LexicalEntryMsa(
 /// <param name="Msa">The sense's grammatical info.</param>
 /// <param name="Definition">The sense's optional definition.</param>
 /// <param name="InflectionClasses">
-/// For an affix form only, the inflection classes of the stems it may attach to; absent means unrestricted.
+/// For an inflectional affix form only, the classes it may attach to; a derivational affix uses its MSA restriction.
 /// </param>
 /// <param name="Environments">The phonological environments the lexeme form occurs in; absent means any.</param>
 public sealed record AuthorLexicalEntryIntent(
@@ -182,6 +182,8 @@ public static class AuthorLexicalEntryComposer
                 (formClass == MoFormConcreteClass.StemAllomorph ? "a stem msa." : "an affix msa, not a stem msa."));
         if (intent.InflectionClasses is not null && formClass != MoFormConcreteClass.AffixAllomorph)
             throw new InvalidOperationException($"'{ConstructName}': only an affix form takes 'inflectionClasses'.");
+        if (intent.InflectionClasses is not null && msa.Kind == LexicalEntryMsaKind.Derivational)
+            throw new InvalidOperationException(LexicalFormAuthoring.DerivationalClassesRefusal(ConstructName));
         var category = Category(cache, msa.Category);
         if (msa.ToCategory is { } toCategory) Category(cache, toCategory);
         var slots = msa.Slots ?? [];

@@ -284,6 +284,7 @@ public sealed class FindComposerTests
         { "Make the second syllable copy the first in the plural", "compose-author-affix-process" },
         { "Put the marker in the middle of the root", "compose-author-affix-process" },
         { "Add a nasal substitution form to the existing prefix", "compose-author-affix-process-allomorph" },
+        { "Make the derivational prefix attach only to stems of one inflection class", "compose-edit-derivational-affix-restriction" },
         { "Mark the subject agreement slot as optional", "compose-edit-affix-slot" },
         { "Disapprove the wrong analysis of this wordform", "compose-edit-analysis-decision" },
         { "Add a second spelling for the plural prefix that appears before consonants", "compose-author-alternate-form" },

@@ -1,0 +1,122 @@
+{
+  "vectors": [
+    {
+      "name": "class-only",
+      "accept": true,
+      "intent": {
+        "msa": "AAAAAAAAAAAAAAAAAAAAAA",
+        "fromInflectionClass": "AAAAAAAAAAAAAAAAAAAAAQ"
+      },
+      "schemaAccept": true
+    },
+    {
+      "name": "features-only",
+      "accept": true,
+      "intent": {
+        "msa": "AAAAAAAAAAAAAAAAAAAAAA",
+        "fromExceptionFeatures": [
+          "AAAAAAAAAAAAAAAAAAAAAQ",
+          "AAAAAAAAAAAAAAAAAAAAAg"
+        ]
+      },
+      "schemaAccept": true
+    },
+    {
+      "name": "class-and-features",
+      "accept": true,
+      "intent": {
+        "msa": "AAAAAAAAAAAAAAAAAAAAAA",
+        "fromInflectionClass": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "fromExceptionFeatures": [
+          "AAAAAAAAAAAAAAAAAAAAAg"
+        ]
+      },
+      "schemaAccept": true
+    },
+    {
+      "name": "clear-class",
+      "accept": true,
+      "intent": {
+        "msa": "AAAAAAAAAAAAAAAAAAAAAA",
+        "clearFromInflectionClass": true
+      },
+      "schemaAccept": true
+    },
+    {
+      "name": "clear-class-and-features",
+      "accept": true,
+      "intent": {
+        "msa": "AAAAAAAAAAAAAAAAAAAAAA",
+        "clearFromInflectionClass": true,
+        "fromExceptionFeatures": []
+      },
+      "schemaAccept": true
+    },
+    {
+      "name": "neither",
+      "accept": false,
+      "intent": {
+        "msa": "AAAAAAAAAAAAAAAAAAAAAA"
+      },
+      "schemaAccept": false
+    },
+    {
+      "name": "replace-and-clear-class",
+      "accept": false,
+      "intent": {
+        "msa": "AAAAAAAAAAAAAAAAAAAAAA",
+        "fromInflectionClass": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "clearFromInflectionClass": true
+      },
+      "schemaAccept": false
+    },
+    {
+      "name": "clear-class-must-be-true",
+      "accept": false,
+      "intent": {
+        "msa": "AAAAAAAAAAAAAAAAAAAAAA",
+        "clearFromInflectionClass": false
+      },
+      "schemaAccept": false
+    },
+    {
+      "name": "clear-features",
+      "accept": true,
+      "intent": {
+        "msa": "AAAAAAAAAAAAAAAAAAAAAA",
+        "fromExceptionFeatures": []
+      },
+      "schemaAccept": true
+    },
+    {
+      "name": "repeated-feature",
+      "accept": false,
+      "intent": {
+        "msa": "AAAAAAAAAAAAAAAAAAAAAA",
+        "fromExceptionFeatures": [
+          "AAAAAAAAAAAAAAAAAAAAAQ",
+          "AAAAAAAAAAAAAAAAAAAAAQ"
+        ]
+      },
+      "schemaAccept": false
+    },
+    {
+      "name": "no-msa",
+      "accept": false,
+      "intent": {
+        "fromInflectionClass": "AAAAAAAAAAAAAAAAAAAAAQ"
+      },
+      "schemaAccept": false
+    },
+    {
+      "name": "unknown-field",
+      "accept": false,
+      "intent": {
+        "msa": "AAAAAAAAAAAAAAAAAAAAAA",
+        "fromInflectionClass": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "toInflectionClass": "AAAAAAAAAAAAAAAAAAAAAg"
+      },
+      "schemaAccept": false
+    }
+  ]
+}

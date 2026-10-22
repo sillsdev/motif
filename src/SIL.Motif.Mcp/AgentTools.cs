@@ -1137,6 +1137,7 @@ internal static class AgentTools
             ["additionalProperties"] = false,
         };
         if (required.Count > 0) intent["required"] = required;
+        if (canonicalToolSchema["allOf"] is JsonArray constraints) intent["allOf"] = constraints.DeepClone();
         return (verb, intent);
     }
 

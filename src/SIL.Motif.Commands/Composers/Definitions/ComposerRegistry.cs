@@ -12,6 +12,7 @@ internal static class ComposerDefinitions
         new DeleteEmptySenseDefinition(),
         new EditPhonemeDefinition(),
         new EditAffixInflectionClassesDefinition(),
+        new EditDerivationalAffixRestrictionDefinition(),
         new EditCompoundRuleDefinition(),
         new EditPartOfSpeechInflectionClassDefaultDefinition(),
         new EditStemAllomorphStemNameDefinition(),

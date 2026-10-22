@@ -29,6 +29,18 @@ internal static class SampleJsonSchemaValidator
             return;
         }
 
+        if (schema.TryGetProperty("anyOf", out var anyOf))
+        {
+            var matches = anyOf.EnumerateArray()
+                .Count(alternative => Validate(instance, alternative, rootSchema).Count == 0);
+            if (matches == 0)
+                errors.Add($"{path}: expected at least one matching schema");
+        }
+
+        if (schema.TryGetProperty("not", out var forbidden) &&
+            Validate(instance, forbidden, rootSchema).Count == 0)
+            errors.Add($"{path}: matches a forbidden schema");
+
         if (schema.TryGetProperty("oneOf", out var alternatives))
         {
             var matches = alternatives.EnumerateArray()
@@ -96,6 +108,9 @@ internal static class SampleJsonSchemaValidator
         var items = instance.EnumerateArray().ToArray();
         if (schema.TryGetProperty("minItems", out var minimum) && items.Length < minimum.GetInt32())
             errors.Add($"{path}: expected at least {minimum.GetInt32()} items");
+        if (schema.TryGetProperty("uniqueItems", out var uniqueItems) && uniqueItems.GetBoolean() &&
+            items.Select(item => item.GetRawText()).Distinct(StringComparer.Ordinal).Count() != items.Length)
+            errors.Add($"{path}: items must be unique");
         if (schema.TryGetProperty("items", out var itemSchema))
         {
             for (var index = 0; index < items.Length; index++)

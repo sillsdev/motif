@@ -24,6 +24,7 @@
     { "name": "motif_add_affix_process", "class": "Draft" },
     { "name": "motif_add_affix_process_allomorph", "class": "Draft" },
     { "name": "motif_edit_phoneme", "class": "Draft" },
+    { "name": "motif_edit_derivational_affix_restriction", "class": "Draft" },
     { "name": "motif_edit_compound_rule", "class": "Draft" },
     { "name": "motif_set_no_default_compounding", "class": "Draft" },
     { "name": "motif_rewrite_lexeme_form", "class": "Draft" },

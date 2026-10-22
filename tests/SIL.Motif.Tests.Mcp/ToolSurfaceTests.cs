@@ -246,7 +246,7 @@ public sealed class ToolSurfaceTests
         Assert.DoesNotContain("intentsJson", batch.Tool.ArgumentNames);
         var branches = intents["items"]!["oneOf"]!.AsArray();
         var verbs = branches.Select(branch => branch!["properties"]!["verb"]!["enum"]![0]!.GetValue<string>()).ToArray();
-        Assert.Equal(31, verbs.Length);
+        Assert.Equal(32, verbs.Length);
         Assert.Equal(new[]
         {
             "compose-author-lexeme-form",
@@ -276,6 +276,7 @@ public sealed class ToolSurfaceTests
             "compose-edit-affix-slot",
             "compose-edit-affix-template",
             "compose-edit-inflectional-affix",
+            "compose-edit-derivational-affix-restriction",
             "compose-edit-allomorph-condition",
             "order-allomorphs",
             "compose-author-text",

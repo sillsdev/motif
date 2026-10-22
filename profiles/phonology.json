@@ -66,6 +66,9 @@
       "tool": "motif_edit_phoneme"
     },
     {
+      "tool": "motif_edit_derivational_affix_restriction"
+    },
+    {
       "tool": "motif_add_feature_value"
     },
     {

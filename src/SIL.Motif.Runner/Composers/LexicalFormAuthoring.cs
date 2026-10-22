@@ -131,6 +131,36 @@ internal static class LexicalFormAuthoring
         return Sorted(classes);
     }
 
+    public static void RequireNoDerivationalClasses(ILexEntry entry, string construct)
+    {
+        var msas = entry.MorphoSyntaxAnalysesOC;
+        if (!msas.OfType<IMoDerivAffMsa>().Any()) return;
+        throw new InvalidOperationException(DerivationalClassesRefusal(construct));
+    }
+
+    public static IReadOnlyList<IPartOfSpeech> InflectionalAffixCategories(ILexEntry entry, string construct)
+    {
+        var msas = entry.MorphoSyntaxAnalysesOC.OfType<IMoInflAffMsa>().ToArray();
+        if (msas.Length == 0)
+        {
+            if (entry.MorphoSyntaxAnalysesOC.OfType<IMoDerivAffMsa>().Any())
+                throw new InvalidOperationException(DerivationalClassesRefusal(construct));
+            throw new InvalidOperationException(
+                $"'{construct}': inflection classes need inflectional affix grammatical info to check them against.");
+        }
+        var categories = msas.Select(msa => msa.PartOfSpeechRA).Where(category => category is not null)
+            .Cast<IPartOfSpeech>().ToArray();
+        if (categories.Length == 0)
+            throw new InvalidOperationException(
+                $"'{construct}': inflectional affix grammatical info needs a category to check inflection classes against.");
+        return categories;
+    }
+
+    public static string DerivationalClassesRefusal(string construct) =>
+        $"'{construct}': Inflection Classes on a derivational affix's form do not restrict its derivational analysis. " +
+        "Use compose-edit-derivational-affix-restriction to set the From Inflection Class and, if needed, the From " +
+        "Exception Features on its grammatical info. Inflection Classes on a form apply to an inflectional affix.";
+
     /// <summary>The link operation kind and member for each environment then class, in a stable order.</summary>
     public static IEnumerable<(string Kind, CanonicalId Member)> Links(MoFormConcreteClass formClass,
         IReadOnlyList<CanonicalId> sortedEnvironments, IReadOnlyList<CanonicalId> sortedClasses)

@@ -123,6 +123,47 @@ public sealed class AuthorAlternateFormComposerTests : IDisposable
     }
 
     [Fact]
+    public void AnAffixAlternateOfADerivationalAffixRefusesInflectionClassesNamingTheRestrictionComposer()
+    {
+        var class12 = AddInflectionClass(_cache, _category, "1/2");
+        var derived = AddCategory(_cache, "Adjective");
+        var created = ApplyOps(_cache, AuthorLexicalEntryComposer.Build(_cache, new AuthorLexicalEntryIntent("mi", Vern(_cache),
+            MorphType(MoMorphTypeTags.kguidMorphPrefix), "mi", Anal(_cache),
+            new LexicalEntryMsa(LexicalEntryMsaKind.Derivational, _category, derived))));
+        var entry = Created(created, LexDbEntriesOperationKinds.Create);
+        var intent = new AuthorAlternateFormIntent(entry, "me", Vern(_cache), MorphType(MoMorphTypeTags.kguidMorphPrefix));
+
+        var refusal = Assert.Throws<InvalidOperationException>(() =>
+            AuthorAlternateFormComposer.Build(_cache, intent with { InflectionClasses = [class12] }));
+
+        Assert.Contains("compose-edit-derivational-affix-restriction", refusal.Message, StringComparison.Ordinal);
+        Assert.NotEmpty(AuthorAlternateFormComposer.Build(_cache, intent));
+    }
+
+    [Fact]
+    public void AnAffixAlternateUsesInflectionClassesForTheInflectionalMsaOfAMixedEntry()
+    {
+        var class12 = AddInflectionClass(_cache, _category, "1/2");
+        var derived = AddCategory(_cache, "Adjective");
+        var created = ApplyOps(_cache, AuthorLexicalEntryComposer.Build(_cache, new AuthorLexicalEntryIntent("mi", Vern(_cache),
+            MorphType(MoMorphTypeTags.kguidMorphPrefix), "mi", Anal(_cache),
+            new LexicalEntryMsa(LexicalEntryMsaKind.Derivational, _category, derived))));
+        var entry = Created(created, LexDbEntriesOperationKinds.Create);
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+        {
+            var inflectional = _cache.ServiceLocator.GetInstance<IMoInflAffMsaFactory>().Create();
+            Get<ILexEntry>(_cache, entry).MorphoSyntaxAnalysesOC.Add(inflectional);
+            inflectional.PartOfSpeechRA = Get<IPartOfSpeech>(_cache, _category);
+        });
+
+        var operations = AuthorAlternateFormComposer.Build(_cache, Prefix(entry, classes: [class12]));
+        ApplyOps(_cache, operations);
+
+        var alternate = Assert.IsAssignableFrom<IMoAffixAllomorph>(Assert.Single(Get<ILexEntry>(_cache, entry).AlternateFormsOS));
+        Assert.Equal([class12.ToGuid()], alternate.InflectionClassesRC.Select(item => item.Guid));
+    }
+
+    [Fact]
     public void AnEnvironmentNamingAnUnknownNaturalClassIsRefusedAndOneNamingAnAbbreviationIsAccepted()
     {
         var (entry, _, _) = AddInflectionalPrefix(_cache, "m", _category);

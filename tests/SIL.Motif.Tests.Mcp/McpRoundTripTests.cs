@@ -181,6 +181,51 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
     }
 
     [Fact]
+    public async Task DerivationalRestrictionToolSetsTheClassOnAStagedDerivationalEntryAndAlternateFormClassesAreRefused()
+    {
+        using var project = new WalkthroughProject(pristine);
+        await using var session = await Session.StartAsync(project.FwDataPath,
+            new McpLaunchOptions(Profile: "phonology"));
+        await session.CallAsync("motif_start_proposal", ("draft", "derivational"),
+            ("label", "Restrict a derivational prefix"), ("rationale", "Only marked stems take it."));
+        var category = CanonicalId.FromGuid(project.Seed.PartOfSpeechId).Value;
+        var inflectionClass = await session.CallAsync("motif_add_inflection_class", ("draft", "derivational"),
+            ("category", category), ("name", "1/2"), ("ws", "en"));
+        var classId = Assert.Single(inflectionClass.GetProperty("result").GetProperty("operations").EnumerateArray(),
+            operation => operation.GetProperty("kind").GetString() == "grammar/partOfSpeech/createInflectionClasses")
+            .GetProperty("entityId").GetString()!;
+        var derived = await session.CallAsync("motif_add_part_of_speech", ("draft", "derivational"),
+            ("name", "Derived"), ("ws", "en"));
+        var derivedId = derived.GetProperty("result").GetProperty("operations").EnumerateArray()
+            .First(operation => operation.TryGetProperty("entityId", out _)).GetProperty("entityId").GetString()!;
+        var prefix = CanonicalId.FromGuid(MoMorphTypeTags.kguidMorphPrefix).Value;
+        var entry = await session.CallAsync("motif_add_lexical_entry", ("draft", "derivational"),
+            ("form", "pag"), ("formWs", "fr"), ("morphType", prefix), ("gloss", "agentive"), ("analysisWs", "en"),
+            ("msa", new { kind = "derivational", category, toCategory = derivedId }));
+        Assert.True(entry.GetProperty("ok").GetBoolean(), entry.ToString());
+        var entryOperations = entry.GetProperty("result").GetProperty("operations").EnumerateArray().ToArray();
+        var msaId = Assert.Single(entryOperations, operation =>
+            operation.GetProperty("kind").GetString() == "lexical/lexEntry/createMorphoSyntaxAnalyses")
+            .GetProperty("entityId").GetString()!;
+        var entryId = Assert.Single(entryOperations, operation =>
+            operation.GetProperty("kind").GetString() == "lexical/lexDb/createEntries").GetProperty("entityId").GetString()!;
+
+        var restricted = await session.CallAsync("motif_edit_derivational_affix_restriction", ("draft", "derivational"),
+            ("msa", msaId), ("fromInflectionClass", classId));
+
+        Assert.True(restricted.GetProperty("ok").GetBoolean(), restricted.ToString());
+        Assert.Contains(restricted.GetProperty("result").GetProperty("operations").EnumerateArray(), operation =>
+            operation.GetProperty("kind").GetString() == "grammar/moDerivAffMsa/setFromInflectionClass");
+        var refused = await session.Client.CallToolAsync("motif_add_alternate_form", new Dictionary<string, object?>
+        {
+            ["project"] = project.FwDataPath, ["draft"] = "derivational", ["entry"] = "entry:" + entryId,
+            ["form"] = "mag", ["formWs"] = "fr", ["morphType"] = prefix, ["inflectionClasses"] = new[] { classId },
+        });
+        Assert.True(refused.IsError);
+        Assert.Contains("compose-edit-derivational-affix-restriction", ((TextContentBlock)refused.Content[0]).Text);
+    }
+
+    [Fact]
     public async Task KnownProjectSelectorsKeepDraftsInTheirOwnProjectsInOneSession()
     {
         using var first = new WalkthroughProject(pristine);

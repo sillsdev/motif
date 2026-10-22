@@ -66,6 +66,29 @@ public sealed class InflectionClassEditingTests(PristineProjectFixture pristine)
         Assert.Equal("n", Get<IMoAffixAllomorph>(cache, form).Form.get_String(cache.DefaultVernWs).Text);
     }
 
+    [Fact]
+    public void MixedAffixEntryRefusalExplainsThatOnlyInflectionalInfoCanBeEditedHere()
+    {
+        using var cache = pristine.NewScratch();
+        var category = CanonicalId.FromGuid(pristine.Seed.PartOfSpeechId);
+        var (entryId, _, form) = AddInflectionalPrefix(cache, "n", category);
+        var entry = Get<ILexEntry>(cache, entryId);
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+        {
+            var derivational = cache.ServiceLocator.GetInstance<IMoDerivAffMsaFactory>().Create();
+            entry.MorphoSyntaxAnalysesOC.Add(derivational);
+            derivational.FromPartOfSpeechRA = Get<IPartOfSpeech>(cache, category);
+            derivational.ToPartOfSpeechRA = Get<IPartOfSpeech>(cache, category);
+        });
+
+        var failure = Assert.Throws<InvalidOperationException>(() =>
+            EditAffixInflectionClassesComposer.Build(cache, new(form, [], [])));
+
+        Assert.Contains("mixed", failure.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("only inflectional grammatical info", failure.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("compose-edit-derivational-affix-restriction", failure.Message, StringComparison.Ordinal);
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]

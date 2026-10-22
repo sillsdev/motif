@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://motif.sil.org/contracts/edit-derivational-affix-restriction/v1",
+  "title": "Restrict a derivational affix",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "msa"
+  ],
+  "anyOf": [
+    { "required": [ "fromInflectionClass" ] },
+    { "required": [ "clearFromInflectionClass" ] },
+    { "required": [ "fromExceptionFeatures" ] }
+  ],
+  "not": {
+    "required": [ "fromInflectionClass", "clearFromInflectionClass" ]
+  },
+  "properties": {
+    "msa": {
+      "$ref": "#/$defs/CanonicalId"
+    },
+    "fromInflectionClass": {
+      "$ref": "#/$defs/CanonicalId"
+    },
+    "clearFromInflectionClass": {
+      "type": "boolean",
+      "const": true
+    },
+    "fromExceptionFeatures": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/CanonicalId"
+      }
+    }
+  },
+  "$defs": {
+    "CanonicalId": {
+      "type": "string",
+      "minLength": 22,
+      "pattern": "^[\\s\\S]*[A-Za-z0-9_-]{22}(?![\\s\\S])"
+    }
+  },
+  "$comment": "Omitting an optional field leaves it unchanged; clearFromInflectionClass true clears the class link, and an empty fromExceptionFeatures array clears that link set. Runtime validation also requires msa to be the derivational grammatical info of an existing affix entry with a From category, the class to belong to that category or an ancestor, and each exception feature to be one of the project's. Duplicate JSON properties are refused by the parser."
+}

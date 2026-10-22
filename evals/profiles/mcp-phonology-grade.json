@@ -83,6 +83,10 @@
       "class": "Draft"
     },
     {
+      "name": "motif_edit_derivational_affix_restriction",
+      "class": "Draft"
+    },
+    {
       "name": "motif_add_part_of_speech",
       "class": "Draft"
     },

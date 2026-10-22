@@ -14,7 +14,7 @@ namespace SIL.Motif.Runner.Composers;
 /// <param name="Entry">The existing, or earlier-staged, affix entry that gains the form.</param>
 /// <param name="Input">The ordered flat stem pattern, as for a new affix process.</param>
 /// <param name="Output">The realization, as for a new affix process.</param>
-/// <param name="InflectionClasses">The inflection classes of the stems this form attaches to; absent means any.</param>
+/// <param name="InflectionClasses">Inflection classes for inflectional grammatical info; derivational grammatical info uses its MSA restriction.</param>
 /// <param name="Placement">The neighbouring alternate forms that define the insertion gap; required when any exist.</param>
 public sealed record AuthorAffixProcessAllomorphIntent(CanonicalId Entry, IReadOnlyList<AffixProcessInputPart> Input,
     IReadOnlyList<AffixProcessOutputStep> Output, IReadOnlyList<CanonicalId>? InflectionClasses = null,
@@ -76,7 +76,10 @@ public static class AuthorAffixProcessAllomorphComposer
         AffixProcessGraphBuilder.RequireReferences(cache, intent.Input, intent.Output);
         IReadOnlyList<CanonicalId> classes = [];
         if (classIds is not null)
-            classes = LexicalFormAuthoring.RequireInflectionClasses(cache, classIds, categories, ConstructName);
+        {
+            var inflectionalCategories = LexicalFormAuthoring.InflectionalAffixCategories(entry, ConstructName);
+            classes = LexicalFormAuthoring.RequireInflectionClasses(cache, classIds, inflectionalCategories, ConstructName);
+        }
         AuthorAlternateFormComposer.RequirePlacement(entry, placement, ConstructName);
         var signature = Signature(intent);
         foreach (var existing in entry.AlternateFormsOS.Prepend(entry.LexemeFormOA).OfType<IMoAffixProcess>())
