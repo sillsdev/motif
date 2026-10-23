@@ -1,3 +1,4 @@
+using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 
@@ -10,6 +11,7 @@ namespace SIL.Motif.App.Composition;
 public sealed class MotifDesktopSession
 {
     private readonly TaskCompletionSource _closed = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly FileUserPreferencesStore? _ownedPreferences;
     private Action? _detach;
     private bool _closing;
 
@@ -19,6 +21,7 @@ public sealed class MotifDesktopSession
         Workspace = composition.Workspace;
         Crashes = composition.Crashes;
         SurfacePolicy = composition.SurfacePolicy;
+        _ownedPreferences = composition.OwnedUserPreferencesStore;
         KnownProjectsLoaded = knownProjectsLoaded;
     }
 
@@ -41,7 +44,8 @@ public sealed class MotifDesktopSession
     public Task Closed => _closed.Task;
 
     /// <summary>
-    /// Closes the window and disposes the workspace. The lifetime's exit calls it; so does an in-process
+    /// Closes the window, flushes preferences and disposes the workspace and the preferences owned by the session.
+    /// Caller-supplied preferences remain caller-owned. The lifetime's exit calls it; so does an in-process
     /// restart before it composes a new session over the same root. Later calls return the first close.
     /// </summary>
     public Task CloseAsync()
@@ -50,7 +54,15 @@ public sealed class MotifDesktopSession
         _closing = true;
         _detach?.Invoke();
         Workspace.Context.TryWordSessions.Shutdown();
-        if (Window.IsVisible) Window.Close();
+        try
+        {
+            if (Window.IsVisible) Window.Close();
+            Window.FlushPreferences();
+        }
+        finally
+        {
+            _ownedPreferences?.Dispose();
+        }
         // Nothing waits on disposal at exit, so a failure is observed here rather than left unobserved.
         Workspace.DisposeAsync().AsTask().ContinueWith(disposal =>
         {

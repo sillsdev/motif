@@ -98,6 +98,7 @@ public sealed partial class MainWindow : Window
         if (this.FindControl<StackPanel>("TopBarActions") is { } actions)
             foreach (var action in actions.Children.OfType<Button>())
                 action.AddHandler(ToolTip.ToolTipOpeningEvent, (_, _) => PlaceBesideTopBarActions(actions, action));
+        Closed += (_, _) => FlushPreferences();
         if (!rememberBounds) return;
         RestoreBounds();
         Opened += (_, _) => ConstrainRestoredBounds();
@@ -721,11 +722,15 @@ public sealed partial class MainWindow : Window
         if (bounds.X is { } x && bounds.Y is { } y) Position = new PixelPoint(x, y);
     }
 
+    /// <summary>Writes preferences still waiting for their delayed save; window close and session close call it.</summary>
+    internal void FlushPreferences() => _preferences.Flush();
+
     private void SaveBounds()
     {
+        var placement = new WindowPlacement(Width, Height, Position.X, Position.Y);
         _preferences.Update(preferences => preferences with
         {
-            Window = new WindowPlacement(Width, Height, Position.X, Position.Y),
+            Window = placement,
         });
     }
 

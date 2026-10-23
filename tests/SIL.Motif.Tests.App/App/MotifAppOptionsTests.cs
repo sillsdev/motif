@@ -13,6 +13,8 @@ public sealed class MotifAppOptionsTests
     {
         var options = MotifAppOptions.ForInstallation();
 
+        Assert.Null(options.UserPreferencesStore);
+        Assert.NotNull(options.OwnedUserPreferencesFactory);
         Assert.Equal(RunnerOptions.ResolveRoot(), options.ManagedRoot);
         Assert.Equal(PanGlossExecutable.TryLocate(), options.ParserPath);
         Assert.Equal(options.ManagedRoot, options.RunnerLauncher.Options.Root);

@@ -778,6 +778,13 @@ internal sealed partial class SettingsViewModel : ObservableObject
 
     private void OnPreferencesChanged(object? sender, EventArgs e)
     {
+        // A delayed save reports a failure from a thread-pool thread.
+        if (!Avalonia.Threading.Dispatcher.UIThread.CheckAccess())
+        {
+            Avalonia.Threading.Dispatcher.UIThread.Post(() => OnPreferencesChanged(sender, e));
+            return;
+        }
+
         UpdatePreferenceProblem();
         ResetPreferencesCommand.NotifyCanExecuteChanged();
     }

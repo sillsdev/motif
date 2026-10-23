@@ -94,10 +94,13 @@ public interface IUserPreferencesStore
 
     /// <summary>Deletes only this store's file and recreates it with the current defaults.</summary>
     PreferenceWriteResult Reset();
+
+    /// <summary>Writes any change still waiting for its delayed save, and returns once it is on disk or has failed.</summary>
+    void Flush();
 }
 
 /// <summary>The validated file-backed store shared by all App presentation preferences.</summary>
-public sealed class FileUserPreferencesStore : IUserPreferencesStore
+public sealed class FileUserPreferencesStore : IUserPreferencesStore, IDisposable
 {
     private const int CurrentFormatVersion = 1;
     private static readonly TimeSpan LockTimeout = TimeSpan.FromMilliseconds(750);
@@ -114,20 +117,48 @@ public sealed class FileUserPreferencesStore : IUserPreferencesStore
     private static readonly JsonSerializerOptions JsonOptions = CreateJsonOptions();
     private readonly string _path;
     private readonly object _gate = new();
+    private readonly object _writeGate = new();
+    private readonly TimeSpan? _saveDelay;
+    private readonly Action? _beforeWriteProcessLock;
+    private readonly List<Func<UserPreferences, UserPreferences>> _pending = [];
+    private readonly Timer? _timer;
     private UserPreferences _current = UserPreferences.Defaults;
     private PreferenceState _state;
     private PreferenceProblem? _problem;
 
-    /// <summary>Creates a store for the supplied preferences file path.</summary>
-    public FileUserPreferencesStore(string path)
+    /// <summary>
+    /// Creates a store for the supplied preferences file path. With a <paramref name="saveDelay"/>, an update changes
+    /// the in-session snapshot at once and the file write is coalesced: it runs on a thread-pool thread that long
+    /// after the last update, or sooner through <see cref="Flush"/>. Without one, every update writes before it returns.
+    /// </summary>
+    public FileUserPreferencesStore(string path, TimeSpan? saveDelay = null)
+        : this(path, saveDelay, beforeWriteProcessLock: null)
+    {
+    }
+
+    /// <summary>
+    /// Creates a store with an observer called after each pending batch drains, before acquiring the process mutex.
+    /// </summary>
+    internal FileUserPreferencesStore(string path, TimeSpan? saveDelay, Action? beforeWriteProcessLock)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
         _path = Path.GetFullPath(path);
+        _saveDelay = saveDelay;
+        _beforeWriteProcessLock = beforeWriteProcessLock;
+        if (saveDelay is not null)
+        {
+            _timer = new Timer(_ => FlushFromTimer(), null, Timeout.Infinite, Timeout.Infinite);
+            AppDomain.CurrentDomain.ProcessExit += OnProcessExit;
+        }
+
         var read = ReadFile();
         _current = read.Preferences;
         _state = read.State;
         _problem = read.Problem;
     }
+
+    /// <summary>How long after the last change the installed App writes preferences.</summary>
+    public static TimeSpan InstallationSaveDelay { get; } = TimeSpan.FromMilliseconds(400);
 
     /// <summary>The installation's per-user preferences file.</summary>
     public static string DefaultPath => Path.Combine(
@@ -168,6 +199,15 @@ public sealed class FileUserPreferencesStore : IUserPreferencesStore
                 _current = Validate(edit(_current));
                 result = new PreferenceWriteResult(PreferenceWriteState.Refused, _problem);
             }
+            else if (_saveDelay is { } delay)
+            {
+                _current = Validate(edit(_current));
+                _pending.Add(edit);
+                _timer!.Change(delay, Timeout.InfiniteTimeSpan);
+                result = _state == PreferenceState.Unavailable
+                    ? new PreferenceWriteResult(PreferenceWriteState.SessionOnly, _problem)
+                    : new PreferenceWriteResult(PreferenceWriteState.Saved, null);
+            }
             else
             {
                 result = UpdateUnderLock(edit, prior);
@@ -179,11 +219,103 @@ public sealed class FileUserPreferencesStore : IUserPreferencesStore
     }
 
     /// <inheritdoc />
+    public void Flush()
+    {
+        // One writer at a time: a flush that arrives while a write is in flight waits, then drains what is left.
+        lock (_writeGate)
+        {
+            List<Func<UserPreferences, UserPreferences>> edits;
+            PreferenceState before;
+            lock (_gate)
+            {
+                if (_pending.Count == 0) return;
+                edits = [.. _pending];
+                _pending.Clear();
+                before = _state;
+            }
+
+            var changed = WriteEdits(edits, before);
+            if (changed) Changed?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    private bool WriteEdits(List<Func<UserPreferences, UserPreferences>> edits, PreferenceState before)
+    {
+        UserPreferences Apply(UserPreferences start) =>
+            edits.Aggregate(start, (value, edit) => Validate(edit(value)));
+        try
+        {
+            _beforeWriteProcessLock?.Invoke();
+            return WithProcessLock(() =>
+            {
+                var latest = ReadFile();
+                lock (_gate)
+                {
+                    if (latest.State == PreferenceState.Refused)
+                    {
+                        _state = PreferenceState.Refused;
+                        _problem = latest.Problem;
+                        return true;
+                    }
+                }
+
+                var next = Apply(latest.Preferences);
+                WriteFile(next);
+                lock (_gate)
+                {
+                    // Edits queued during the write are already in _current; the next flush merges them on top.
+                    if (_pending.Count == 0) _current = next;
+                    _state = PreferenceState.Ready;
+                    _problem = null;
+                }
+
+                return before != PreferenceState.Ready;
+            });
+        }
+        catch (Exception exception)
+        {
+            // Nothing may escape a background write: the snapshot stays as the session saw it, marked session-only.
+            System.Diagnostics.Trace.TraceError("Motif could not save preferences to {0}: {1}", _path, exception);
+            lock (_gate)
+            {
+                _state = PreferenceState.Unavailable;
+                _problem = UnavailableProblem;
+            }
+
+            return true;
+        }
+    }
+
+    /// <summary>Stops the delayed save without writing; call <see cref="Flush"/> first to keep waiting changes.</summary>
+    public void Dispose()
+    {
+        if (_timer is null) return;
+        AppDomain.CurrentDomain.ProcessExit -= OnProcessExit;
+        _timer.Dispose();
+    }
+
+    private void FlushFromTimer()
+    {
+        try
+        {
+            Flush();
+        }
+        catch (Exception exception)
+        {
+            System.Diagnostics.Trace.TraceError("Motif preference flush failed: {0}", exception);
+        }
+    }
+
+    private void OnProcessExit(object? sender, EventArgs e) => FlushFromTimer();
+
+    /// <inheritdoc />
     public PreferenceWriteResult Reset()
     {
         PreferenceWriteResult result;
+        lock (_writeGate)
         lock (_gate)
         {
+            _pending.Clear();
             try
             {
                 result = WithProcessLock(() =>
@@ -304,8 +436,14 @@ public sealed class FileUserPreferencesStore : IUserPreferencesStore
         }
     }
 
+    /// <summary>How many times this store has written the file; tests use it to pin coalescing.</summary>
+    internal int WriteCount => Volatile.Read(ref _writeCount);
+
+    private int _writeCount;
+
     private void WriteFile(UserPreferences preferences)
     {
+        Interlocked.Increment(ref _writeCount);
         var directory = Path.GetDirectoryName(Path.GetFullPath(_path)) ??
             throw new IOException("The preferences file has no parent folder.");
         Directory.CreateDirectory(directory);
@@ -397,6 +535,11 @@ public sealed class MemoryUserPreferencesStore : IUserPreferencesStore
         lock (_gate) _current = FileUserPreferencesStore.Validate(edit(_current));
         Changed?.Invoke(this, EventArgs.Empty);
         return new PreferenceWriteResult(PreferenceWriteState.Saved, null);
+    }
+
+    /// <inheritdoc />
+    public void Flush()
+    {
     }
 
     /// <inheritdoc />

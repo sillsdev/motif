@@ -23,7 +23,10 @@ internal static class WindowZoomPolicy
         var scale = percent / 100d;
         SharedTransform.ScaleX = scale;
         SharedTransform.ScaleY = scale;
-        application.Resources[TransformResourceKey] = SharedTransform;
+        // Re-assigning the same instance restyles every tab (140-510 ms a step); the Scale change alone reaches users.
+        if (!application.Resources.TryGetValue(TransformResourceKey, out var current) ||
+            !ReferenceEquals(current, SharedTransform))
+            application.Resources[TransformResourceKey] = SharedTransform;
     }
 
     public static void EnablePopupTransforms(Control root)

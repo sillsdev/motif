@@ -33,7 +33,7 @@ namespace SIL.Motif.App.Composition;
 /// Whether the window restores and saves its size and place in the person's settings; off unless installed,
 /// so a composed test window never writes the person's settings.
 /// </param>
-/// <param name="UserPreferencesStore">The shared per-user App preferences, or process-local defaults when omitted.</param>
+/// <param name="UserPreferencesStore">Caller-owned App preferences; when supplied, session close never disposes them.</param>
 /// <param name="AdvancedAiModePreferences">Where the user's Advanced AI mode choice is read and saved.</param>
 /// <param name="AssistantConnections">The replaceable assistant discovery and connection service.</param>
 /// <param name="DefaultProposalChecks">Where the user's Default proposal checks are read and saved.</param>
@@ -55,6 +55,9 @@ public sealed record MotifAppOptions(
     IDefaultProposalChecksStore? DefaultProposalChecks = null,
     ITryWordSessions? TryWordSessions = null)
 {
+    /// <summary>Creates session-owned preferences when no caller-owned store is supplied.</summary>
+    internal Func<FileUserPreferencesStore>? OwnedUserPreferencesFactory { get; init; }
+
     /// <summary>The command surface the window may show for the current preference choice.</summary>
     public CommandSurfacePolicy SurfacePolicy =>
         new(developerCommandsEnabled: false, advancedAiModeEnabled: AdvancedAiModePreferences?.IsEnabled ?? false);
@@ -68,11 +71,14 @@ public sealed record MotifAppOptions(
         var commands = CommandClientOptions.ForInstallation();
         return new MotifAppOptions(commands.ManagedRoot, commands.ParserPath, commands.RunnerLauncher,
             TimeProvider.System, RememberBounds: true,
-            UserPreferencesStore: new FileUserPreferencesStore(FileUserPreferencesStore.DefaultPath),
             AdvancedAiModePreferences: FileAdvancedAiModePreferenceStore.ForInstallation(),
             AssistantConnections: AssistantConnectionService.ForInstallation(),
             DefaultProposalChecks: FileDefaultProposalChecksStore.ForInstallation(),
-            TryWordSessions: new TryWordSessionsAdapter(commands.ParserPath));
+            TryWordSessions: new TryWordSessionsAdapter(commands.ParserPath))
+        {
+            OwnedUserPreferencesFactory = static () => new FileUserPreferencesStore(
+                FileUserPreferencesStore.DefaultPath, FileUserPreferencesStore.InstallationSaveDelay),
+        };
     }
 }
 
@@ -94,7 +100,9 @@ public static class MotifAppComposition
         ArgumentNullException.ThrowIfNull(options.TimeProvider);
 
         var surfacePolicy = options.SurfacePolicy;
-        var preferences = options.UserPreferencesStore ?? new MemoryUserPreferencesStore();
+        var ownedPreferences = options.UserPreferencesStore is null ? options.OwnedUserPreferencesFactory?.Invoke() : null;
+        var preferences = options.UserPreferencesStore ?? ownedPreferences;
+        preferences ??= new MemoryUserPreferencesStore();
         var applicationFacts = ApplicationFacts.ForApp(options.ManagedRoot, options.ParserPath);
         var window = new MainWindow(options.RememberBounds, uriLauncher: null,
             preferencesStore: preferences, applicationFacts: applicationFacts);
@@ -128,7 +136,10 @@ public static class MotifAppComposition
             tryWordSessions: options.TryWordSessions);
         window.Compose(workspace);
         var crashes = new CrashReporter(options.TimeProvider, options.CrashWindow ?? new CrashWindowServices());
-        return new MotifAppCompositionResult(window, workspace, crashes, surfacePolicy);
+        return new MotifAppCompositionResult(window, workspace, crashes, surfacePolicy)
+        {
+            OwnedUserPreferencesStore = ownedPreferences,
+        };
     }
 }
 
@@ -137,4 +148,8 @@ public sealed record MotifAppCompositionResult(
     MainWindow Window,
     WorkspaceShellViewModel Workspace,
     CrashReporter Crashes,
-    CommandSurfacePolicy SurfacePolicy);
+    CommandSurfacePolicy SurfacePolicy)
+{
+    /// <summary>The preferences owned by the composed desktop lifetime, excluding caller-supplied stores.</summary>
+    internal FileUserPreferencesStore? OwnedUserPreferencesStore { get; init; }
+}
