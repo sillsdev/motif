@@ -196,17 +196,11 @@ try {
     Assert-Interface "batch TSV column '$($interfaces.batchTsvColumns[4])'" '-' $cells[4]
 
     $sqliteDirectory = Join-Path $RepositoryRoot "bin/$Configuration"
-    $architecture = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture
-    $rid = if ($IsWindows) { 'win-x64' }
-        elseif ($IsLinux) { 'linux-x64' }
-        elseif ($IsMacOS -and $architecture -eq [System.Runtime.InteropServices.Architecture]::Arm64) { 'osx-arm64' }
-        elseif ($IsMacOS) { 'osx-x64' }
-        else { throw 'PanGloss interface gate cannot select the SQLite runtime for this platform.' }
     $nativeName = if ($IsWindows) { 'e_sqlite3.dll' } elseif ($IsMacOS) { 'libe_sqlite3.dylib' } else { 'libe_sqlite3.so' }
     # The reader runs in a child process from a probe copy: Windows cannot delete a DLL this process has loaded.
     $sqliteProbe = Join-Path $ProbeRoot 'sqlite'
     New-Item -ItemType Directory -Force -Path $sqliteProbe | Out-Null
-    Copy-Item -LiteralPath (Join-Path $sqliteDirectory "runtimes/$rid/native/$nativeName") -Destination $sqliteProbe
+    Copy-Item -LiteralPath (Join-Path $sqliteDirectory $nativeName) -Destination $sqliteProbe
     foreach ($assemblyName in @('SQLitePCLRaw.core.dll', 'SQLitePCLRaw.provider.e_sqlite3.dll',
             'SQLitePCLRaw.batteries_v2.dll', 'Microsoft.Data.Sqlite.dll')) {
         $assemblyPath = Join-Path $sqliteDirectory $assemblyName

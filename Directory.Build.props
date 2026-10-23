@@ -71,6 +71,38 @@
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
   </PropertyGroup>
 
+  <!--
+    A build is for one runtime: the one an explicit -r names (packaging, test artifacts), otherwise the build machine's
+    (win-x64, linux-x64, osx-arm64 or osx-x64). A runtime-agnostic build copies every package's native libraries for
+    every runtime NuGet knows, about 600 MB per output directory and four output directories per worktree; one runtime
+    puts that runtime's natives beside the apphosts and nothing else. Other runtimes are built by CI, one job each.
+    The output path keeps no runtime folder, so the apphosts still sit side by side. Motif supports no 32-bit runtime.
+    NETCoreSdkRuntimeIdentifier is not yet defined here, and RuntimeInformation.RuntimeIdentifier names a
+    non-portable runtime under Visual Studio's MSBuild, so the portable name is spelled from OS and architecture.
+  -->
+  <PropertyGroup>
+    <_MotifHostOs Condition="$([MSBuild]::IsOSPlatform('Windows'))">win</_MotifHostOs>
+    <_MotifHostOs Condition="$([MSBuild]::IsOSPlatform('Linux'))">linux</_MotifHostOs>
+    <_MotifHostOs Condition="$([MSBuild]::IsOSPlatform('OSX'))">osx</_MotifHostOs>
+    <_MotifHostArch>$([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString().ToLowerInvariant())</_MotifHostArch>
+    <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">$(_MotifHostOs)-$(_MotifHostArch)</RuntimeIdentifier>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+    <SelfContained Condition="'$(SelfContained)' == ''">false</SelfContained>
+  </PropertyGroup>
+
+  <Target Name="MotifRefuse32BitRuntime" BeforeTargets="Restore;_CheckForInvalidConfigurationAndPlatform"
+          Condition="$(RuntimeIdentifier.EndsWith('-x86')) or $(RuntimeIdentifier.EndsWith('-arm'))">
+    <Error Text="Motif supports only 64-bit runtimes; '$(RuntimeIdentifier)' is 32-bit." />
+  </Target>
+
+  <!-- Native package symbols (SkiaSharp's alone are about 100 MB) are for debugging the native library, not Motif. -->
+  <Target Name="MotifSkipNativePackageSymbols" BeforeTargets="_CopyFilesMarkedCopyLocal">
+    <ItemGroup>
+      <ReferenceCopyLocalPaths Remove="@(ReferenceCopyLocalPaths)"
+                               Condition="'%(ReferenceCopyLocalPaths.Extension)' == '.pdb' and '%(ReferenceCopyLocalPaths.AssetType)' == 'native'" />
+    </ItemGroup>
+  </Target>
+
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions"
                       Version="$(MicrosoftExtensionsDependencyInjectionAbstractionsVersion)" />

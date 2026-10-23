@@ -153,6 +153,12 @@ subdirectory because a test host that outlives its run holds a lock on the direc
 from, and that must not be the product's; the fake parser gets one below that because parser discovery
 prefers an executable sitting beside the application, and the fake must never be that executable.
 
+**A build is for one runtime.** Without `-r`, `Directory.Build.props` builds for the machine's own 64-bit
+runtime (`win-x64`, `linux-x64`, `osx-arm64` or `osx-x64`), so each package's native libraries for that runtime
+sit flat beside the apphosts and there is no `runtimes/` tree; native package `.pdb` files are not copied. A
+runtime-agnostic build copied every runtime's natives, about 600 MB per output directory. Other runtimes are
+built by CI, one job per runtime, and packaging passes `-r` explicitly. A 32-bit runtime fails the build.
+
 A test names an executable through `BuildOutput` (`tests/SIL.Motif.Tests.Support/TestFixtures/`), which
 resolves from the test binaries' own directory. Do not spell a configuration into a test path: a
 hard-coded `Debug` makes a `Release` run drive the wrong build, or none at all.

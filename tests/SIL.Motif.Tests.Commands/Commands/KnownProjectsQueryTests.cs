@@ -303,8 +303,7 @@ public sealed class KnownProjectsQueryTests : IDisposable
                 File.Copy(Path.Combine(AppContext.BaseDirectory, name), Path.Combine(assemblyDirectory, name));
             var nativeName = OperatingSystem.IsWindows() ? "e_sqlite3.dll"
                 : OperatingSystem.IsMacOS() ? "libe_sqlite3.dylib" : "libe_sqlite3.so";
-            var runtime = System.Runtime.InteropServices.RuntimeInformation.RuntimeIdentifier;
-            File.Copy(Path.Combine(AppContext.BaseDirectory, "runtimes", runtime, "native", nativeName),
+            File.Copy(Path.Combine(AppContext.BaseDirectory, nativeName),
                 Path.Combine(assemblyDirectory, nativeName));
         }
         var start = new ProcessStartInfo("pwsh")
