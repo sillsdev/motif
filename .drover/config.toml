@@ -22,3 +22,6 @@ effort = "high"
 [land]
 policy = "batch"
 push = false
+
+[cleanup]
+disposable = ["**/bin", "**/obj"]
