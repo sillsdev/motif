@@ -117,7 +117,7 @@
           "items": {
             "type": "string"
           },
-          "description": "Exact current phoneme ids in the class."
+          "description": "Exact current phoneme ids in the class; copy all members[].id from a detailed motif_grammar natural_classes listing."
         },
         "members": {
           "type": "array",

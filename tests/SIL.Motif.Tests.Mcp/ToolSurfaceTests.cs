@@ -2,8 +2,15 @@ using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
+using SIL.LCModel;
+using SIL.LCModel.Infrastructure;
+using SIL.Motif.Commands;
+using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Catalog;
+using SIL.Motif.Contract.Ids;
 using SIL.Motif.Mcp;
+using SIL.Motif.Tests.TestFixtures;
+using SIL.Motif.Worker;
 using Xunit;
 
 namespace SIL.Motif.Tests.Mcp;
@@ -417,4 +424,117 @@ public sealed class ToolSurfaceTests
 
     private static string GoldenPath(string profile, [CallerFilePath] string source = "") =>
         Path.Combine(Path.GetDirectoryName(source)!, "Golden", "tools-list." + profile + ".json");
+}
+
+[Collection(LcmCacheParallelCollections.Group3)]
+[Trait("MotifTestLevel", "Integration")]
+public sealed class DetailedNaturalClassMemberToolTests(PristineProjectFixture pristine)
+{
+    [Fact]
+    public async Task DetailedMemberIdsAreAcceptedAsExpectedMembersByNaturalClassEdit()
+    {
+        Guid phonemeGuid = default;
+        Guid otherPhonemeGuid = default;
+        Guid naturalClassGuid = default;
+        using var project = new WalkthroughProject(pristine, configure: (cache, _, _) =>
+        {
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            {
+                var phonology = cache.LangProject.PhonologicalDataOA;
+                var services = cache.ServiceLocator;
+                if (phonology.PhonemeSetsOS.Count == 0)
+                    phonology.PhonemeSetsOS.Add(services.GetInstance<IPhPhonemeSetFactory>().Create());
+                var set = phonology.PhonemeSetsOS[0];
+                var phoneme = services.GetInstance<IPhPhonemeFactory>().Create();
+                set.PhonemesOC.Add(phoneme);
+                phoneme.Name.set_String(cache.DefaultVernWs, "eng");
+                phoneme.CodesOS.Clear();
+                var code = services.GetInstance<IPhCodeFactory>().Create();
+                phoneme.CodesOS.Add(code);
+                code.Representation.set_String(cache.DefaultVernWs, "ŋ");
+
+                var otherPhoneme = services.GetInstance<IPhPhonemeFactory>().Create();
+                set.PhonemesOC.Add(otherPhoneme);
+                otherPhoneme.Name.set_String(cache.DefaultVernWs, "en");
+                otherPhoneme.CodesOS.Clear();
+                var otherCode = services.GetInstance<IPhCodeFactory>().Create();
+                otherPhoneme.CodesOS.Add(otherCode);
+                otherCode.Representation.set_String(cache.DefaultVernWs, "n");
+
+                var naturalClass = services.GetInstance<IPhNCSegmentsFactory>().Create();
+                phonology.NaturalClassesOS.Add(naturalClass);
+                naturalClass.Name.set_String(cache.DefaultAnalWs, "nasals");
+                naturalClass.Abbreviation.set_String(cache.DefaultAnalWs, "N");
+                naturalClass.SegmentsRC.Add(phoneme);
+                naturalClass.SegmentsRC.Add(otherPhoneme);
+                phonemeGuid = phoneme.Guid;
+                otherPhonemeGuid = otherPhoneme.Guid;
+                naturalClassGuid = naturalClass.Guid;
+            });
+        });
+        var managedRoot = RunnerOptions.ResolveRoot();
+        var baseline = BaselineCaptureCommand.Capture(
+            new BaselineCaptureRequest(project.FwDataPath), managedRoot);
+        Assert.True(baseline.Succeeded, baseline.Refusal?.Message);
+
+        var defaultProfile = ToolProfile.Load("default");
+        var context = new ServerContext(project.FwDataPath, "1.0",
+            new NoRunnerLauncher(new JobRunnerLaunchOptions(managedRoot, null)), new ActivityLog(null),
+            defaultProfile, TextWriter.Null, advancedAiModeEnabled: true);
+        var grammarTools = MotifMcpServer.Expose(defaultProfile);
+        var grammar = await MotifMcpServer.CallAsync(context, grammarTools, "motif_grammar",
+            Arguments(("project", project.FwDataPath), ("kind", "natural_classes"), ("detail", "detailed")), CancellationToken.None);
+
+        Assert.False(grammar.IsError ?? false, grammar.StructuredContent?.GetRawText());
+        var naturalClass = grammar.StructuredContent!.Value.GetProperty("result").GetProperty("items")
+            .EnumerateArray().Single(item => item.GetProperty("id").GetString() == CanonicalId.FromGuid(naturalClassGuid).Value);
+        var members = naturalClass.GetProperty("members").EnumerateArray().ToArray();
+        Assert.Equal(2, naturalClass.GetProperty("memberCount").GetInt32());
+        Assert.Equal(2, members.Length);
+        var member = members.Single(item => item.GetProperty("id").GetString() == CanonicalId.FromGuid(phonemeGuid).Value);
+        var memberId = member.GetProperty("id").GetString()!;
+        Assert.Equal(CanonicalId.FromGuid(phonemeGuid).Value, memberId);
+        Assert.Equal("ŋ", member.GetProperty("symbol").GetString());
+        var otherMember = members.Single(item => item.GetProperty("id").GetString() == CanonicalId.FromGuid(otherPhonemeGuid).Value);
+        Assert.Equal("n", otherMember.GetProperty("symbol").GetString());
+        var memberIds = members.Select(item => item.GetProperty("id").GetString()!).ToArray();
+
+        var defaultGrammar = await MotifMcpServer.CallAsync(context, grammarTools,
+            "motif_grammar", Arguments(("project", project.FwDataPath), ("kind", "natural_classes")), CancellationToken.None);
+        Assert.False(defaultGrammar.IsError ?? false, defaultGrammar.StructuredContent?.GetRawText());
+        var defaultMember = defaultGrammar.StructuredContent!.Value.GetProperty("result").GetProperty("items")
+            .EnumerateArray().Single(item => item.GetProperty("id").GetString() == CanonicalId.FromGuid(naturalClassGuid).Value)
+            .GetProperty("members").EnumerateArray().Single(item => item.GetProperty("id").GetString() == memberId);
+        Assert.Equal(memberId, defaultMember.GetProperty("id").GetString());
+
+        var conciseGrammar = await MotifMcpServer.CallAsync(context, grammarTools, "motif_grammar",
+            Arguments(("project", project.FwDataPath), ("kind", "natural_classes"), ("detail", "concise")), CancellationToken.None);
+        Assert.False(conciseGrammar.IsError ?? false, conciseGrammar.StructuredContent?.GetRawText());
+        var conciseClass = conciseGrammar.StructuredContent!.Value.GetProperty("result").GetProperty("items")
+            .EnumerateArray().Single(item => item.GetProperty("id").GetString() == naturalClass.GetProperty("id").GetString());
+        Assert.Equal(2, conciseClass.GetProperty("memberCount").GetInt32());
+        Assert.False(conciseClass.TryGetProperty("members", out _));
+
+        var experimental = ToolProfile.Load("parsimony-experimental");
+        var editContext = new ServerContext(project.FwDataPath, "1.0",
+            new NoRunnerLauncher(new JobRunnerLaunchOptions(managedRoot, null)), new ActivityLog(null),
+            experimental, TextWriter.Null, advancedAiModeEnabled: true);
+        var experimentalTools = MotifMcpServer.Expose(experimental);
+        var started = await MotifMcpServer.CallAsync(editContext, experimentalTools, "motif_start_proposal",
+            Arguments(("project", project.FwDataPath), ("draft", "member-id-edit"), ("label", "Check a natural class member id"),
+                ("rationale", "The listed phoneme id is the exact current member identity.")), CancellationToken.None);
+        Assert.False(started.IsError ?? false, started.StructuredContent?.GetRawText());
+        var edited = await MotifMcpServer.CallAsync(editContext, experimentalTools, "motif_edit_natural_class",
+            Arguments(("project", project.FwDataPath), ("draft", "member-id-edit"),
+                ("target", naturalClass.GetProperty("id").GetString()!),
+                ("expectedMembers", memberIds), ("members", new[] { memberId })), CancellationToken.None);
+
+        Assert.False(edited.IsError ?? false, edited.StructuredContent?.GetRawText());
+        Assert.True(edited.StructuredContent!.Value.GetProperty("ok").GetBoolean(),
+            edited.StructuredContent.Value.GetRawText());
+        Assert.Equal(1, edited.StructuredContent.Value.GetProperty("result").GetProperty("operationCount").GetInt32());
+    }
+
+    private static Dictionary<string, JsonElement> Arguments(params (string Name, object? Value)[] values) =>
+        values.ToDictionary(pair => pair.Name, pair => JsonSerializer.SerializeToElement(pair.Value));
 }

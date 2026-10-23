@@ -41,7 +41,7 @@
       "properties": {
         "kind": {
           "type": "string",
-          "description": "What to list. Omit for counts of every kind.",
+          "description": "What to list. Omit for counts of every kind. Detailed natural classes include members as {id,symbol}; reuse each member id unchanged in membership edits.",
           "enum": [
             "categories",
             "phonemes",

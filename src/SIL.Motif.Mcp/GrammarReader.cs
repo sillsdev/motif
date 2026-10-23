@@ -50,7 +50,7 @@ internal static class GrammarReader
                 .Select(code => (JsonNode?)Text(cache, code.Representation)).ToArray()),
         })),
         "natural_classes" => cache.LangProject.PhonologicalDataOA.NaturalClassesOS.Select(natural =>
-            Item(cache, natural, natural.Name, natural.Abbreviation, NaturalClassFacts(natural, detailed))),
+            Item(cache, natural, natural.Name, natural.Abbreviation, NaturalClassFacts(cache, natural, detailed))),
         "environments" => cache.LangProject.PhonologicalDataOA.EnvironmentsOS.Select(environment =>
             Item(cache, environment, environment.Name, null, new()
             {
@@ -94,7 +94,7 @@ internal static class GrammarReader
         return item;
     }
 
-    private static JsonObject NaturalClassFacts(IPhNaturalClass natural, bool detailed)
+    private static JsonObject NaturalClassFacts(LcmCache cache, IPhNaturalClass natural, bool detailed)
     {
         var facts = new JsonObject { ["classKind"] = natural.ClassName };
         if (natural is IPhNCSegments segments)
@@ -102,7 +102,13 @@ internal static class GrammarReader
             facts["memberCount"] = segments.SegmentsRC.Count;
             if (detailed)
                 facts["members"] = new JsonArray(segments.SegmentsRC
-                    .Select(phoneme => (JsonNode?)phoneme.Name.BestAnalysisAlternative.Text).ToArray());
+                    .Select(phoneme => (JsonNode?)new JsonObject
+                    {
+                        ["id"] = Id(phoneme),
+                        ["symbol"] = phoneme.CodesOS
+                            .Select(code => Text(cache, code.Representation))
+                            .FirstOrDefault(representation => !string.IsNullOrEmpty(representation)),
+                    }).ToArray());
         }
         return facts;
     }

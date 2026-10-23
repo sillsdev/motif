@@ -1,11 +1,11 @@
 {
   "name": "default",
-  "description": "The shipped surface: every default tool, onboarding descriptions, server instructions, concise results.",
+  "description": "The shipped surface: every default tool, onboarding descriptions, server instructions, concise results and detailed grammar listings.",
   "defaultDetail": "concise",
   "tools": [
     { "tool": "motif_overview" },
     { "tool": "motif_capture_baseline" },
-    { "tool": "motif_grammar" },
+    { "tool": "motif_grammar", "detail": "detailed" },
     { "tool": "motif_lexicon" },
     { "tool": "motif_word" },
     { "tool": "motif_start_proposal" },

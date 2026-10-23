@@ -134,7 +134,8 @@ internal static class AgentTools
         new("motif_grammar",
             string.Empty,
             AgentClass.Read,
-            Schema.Object([("kind", Schema.String("What to list. Omit for counts of every kind.",
+            Schema.Object([("kind", Schema.String("What to list. Omit for counts of every kind. Detailed natural classes " +
+                    "include members as {id,symbol}; reuse each member id unchanged in membership edits.",
                     GrammarReader.Kinds.ToArray()), false),
                 ("query", Schema.String("Only objects whose name or abbreviation contains this text."), false),
                 ("offset", Schema.Integer("Items to skip, for the next page.", 0, 100000), false),
@@ -291,7 +292,8 @@ internal static class AgentTools
             Schema.Object(
                 ("draft", Schema.String("Draft name from motif_start_proposal."), true),
                 ("target", Schema.String("Canonical id of the existing segment natural class."), true),
-                ("expectedMembers", Schema.StringArray("Exact current phoneme ids in the class."), true),
+                ("expectedMembers", Schema.StringArray("Exact current phoneme ids in the class; copy all members[].id " +
+                    "from a detailed motif_grammar natural_classes listing."), true),
                 ("members", Schema.StringArray("Requested distinct phoneme ids; the class must remain nonempty."), true)),
             false,
             false,
@@ -1271,7 +1273,8 @@ internal static class AgentTools
             ? GrammarReader.Summary(cache) : Page(GrammarReader.Read(cache, kind, args.Optional("query"), detailed), offset, limit));
         return ToolOutcome.From(outcome, kind is null
             ? "Pick a kind and call motif_grammar again to list it, or motif_lexicon for stems and affixes."
-            : "Name these ids in changes. Page on with offset if total exceeds what was returned.");
+            : "Use these ids in changes. For detailed natural classes, pass each members[].id unchanged as " +
+                "expectedMembers when editing. Page on with offset if total exceeds what was returned.");
     }
 
     private static JsonObject Page(JsonObject result, int offset, int limit)
