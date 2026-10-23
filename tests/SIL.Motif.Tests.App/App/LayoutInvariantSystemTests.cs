@@ -18,6 +18,46 @@ namespace SIL.Motif.Tests.App;
 public sealed class LayoutInvariantSystemTests(ITestOutputHelper output)
 {
     [Fact]
+    public void ResizeAndZoomTransitionsPreserveTimingHitTargets()
+    {
+        using var run = new LayoutInvariantRun("resize-zoom", output);
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var app = Application.Current!;
+            var theme = app.RequestedThemeVariant;
+            var zoom = (int)Math.Round(WindowZoomPolicy.Transform.ScaleX * 100);
+            app.RequestedThemeVariant = ThemeVariant.Light;
+            try
+            {
+                var (workspace, window) = await PageScreenshots.OpenOverSampleData(parse: false,
+                    capturedWords: new TextWordsResponse([], [], true),
+                    advancedAiModeEnabled: true,
+                    assistantConnections: null,
+                    configure: (client, _) =>
+                    {
+                        ParsimonyStateScreenshots.Configure(client, "empty");
+                        client.StoredGrammarCheckIs(new GrammarCheckResponse([], true));
+                    });
+                try
+                {
+                    workspace.CurrentPage = WorkspacePage.Timing;
+                    LayoutInvariantEngineTests.Settle(window);
+                    LayoutInvariantFixtures.RequirePage(window, workspace, WorkspacePage.Timing);
+                    foreach (var cell in new LayoutCell[]
+                    {
+                        new(960, 780, 150), new(1920, 1080, 100),
+                        new(1920, 1080, 150), new(1600, 480, 100),
+                    })
+                        run.Inspect(window, "Timing/empty", cell, quick: false, workspace);
+                }
+                finally { window.Close(); await workspace.DisposeAsync(); }
+            }
+            finally { app.RequestedThemeVariant = theme; WindowZoomPolicy.Apply(app, zoom); }
+        }, TimeSpan.FromMinutes(1));
+        run.AssertFindings();
+    }
+
+    [Fact]
     public void EveryPageAndApplicableStateSatisfiesTheFullLightGrid()
     {
         using var run = new LayoutInvariantRun("full", output);

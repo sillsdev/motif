@@ -1,6 +1,9 @@
 using System.Diagnostics;
 using System.Text.Json;
 using Avalonia.Headless;
+using Avalonia.Rendering.Composition;
+using Avalonia.Threading;
+using Avalonia.VisualTree;
 using SIL.Motif.App.Views;
 using SIL.Motif.App.ViewModels;
 using Xunit;
@@ -26,13 +29,50 @@ internal sealed class LayoutInvariantRun(string tier, ITestOutputHelper output) 
         prepare?.Invoke();
         if (prepare is not null) LayoutInvariantEngineTests.Settle(window);
         LayoutInvariantFixtures.RequirePage(window, workspace, workspace.CurrentPage);
-        Avalonia.Headless.AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+        SettleComposition(window);
         var context = new LayoutFindingContext(scene, cell.Name, cell.Zoom, "light");
         Assert.True(_inspected.Add(context), $"Duplicate invariant cell {context}.");
         _findings.AddRange(LayoutInvariantFixtures.RequiredActions(window, workspace, context));
         _findings.AddRange(quick ? ReachabilityAssertions.InspectQuick(window, context, _reportOnly) :
             ReachabilityAssertions.Inspect(window, context, _measurements, _reportOnly));
         _timings.Add(new { Scene = scene, Cell = cell, Milliseconds = clock.Elapsed.TotalMilliseconds });
+    }
+
+    private static void SettleComposition(MainWindow window)
+    {
+        var dispatcher = Dispatcher.UIThread;
+        dispatcher.VerifyAccess();
+        var compositor = ElementComposition.GetElementVisual(window)?.Compositor
+            ?? throw new InvalidOperationException("The window must be attached before checking layout invariants.");
+        var dispatcherStopped = false;
+        void OnShutdownStarted(object? sender, EventArgs e) => dispatcherStopped = true;
+        void RequireProducer()
+        {
+            if (dispatcherStopped || !dispatcher.Thread.IsAlive || !window.IsVisible ||
+                !window.IsAttachedToVisualTree() || window.PlatformImpl is null ||
+                !ReferenceEquals(ElementComposition.GetElementVisual(window)?.Compositor, compositor))
+                throw new InvalidOperationException("The window's rendering producer ended before the batch rendered.");
+        }
+
+        dispatcher.ShutdownStarted += OnShutdownStarted;
+        try
+        {
+            // Hit testing consumes composition readback, which can lag layout until the batch renders.
+            RequireProducer();
+            var rendered = compositor.RequestCompositionBatchCommitAsync().Rendered;
+            while (!rendered.IsCompleted)
+            {
+                RequireProducer();
+                dispatcher.RunJobs();
+                if (!rendered.IsCompleted)
+                {
+                    RequireProducer();
+                    Avalonia.Headless.AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                }
+            }
+            rendered.GetAwaiter().GetResult();
+        }
+        finally { dispatcher.ShutdownStarted -= OnShutdownStarted; }
     }
 
     internal void AssertFindings() => LayoutInvariantWorkList.AssertNoUnexpected(
