@@ -26,6 +26,7 @@ internal static class Program
         MotifInstallLifecycle.CompleteStartup();
         if (ShouldRunReleasePathways(args, Environment.GetEnvironmentVariable("MOTIF_RELEASE_PATHWAYS")))
             return ReleasePathwayReplay.Run(Environment.GetEnvironmentVariable("MOTIF_RELEASE_PATHWAYS")!);
+        using var trace = MotifTrace.StartFromEnvironment();
         return BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }
 

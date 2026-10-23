@@ -6,6 +6,7 @@ using Avalonia.Threading;
 using Avalonia.VisualTree;
 using SIL.Motif.App.ViewModels;
 
+using SIL.Motif.App.Services;
 namespace SIL.Motif.App.Controls;
 
 /// <summary>
@@ -96,7 +97,7 @@ public sealed class DenseTable
         if (!grid.GetValue(ConfiguredProperty))
         {
             grid.SetValue(ConfiguredProperty, true);
-            grid.AttachedToVisualTree += (_, _) => Join(grid);
+            grid.AttachedToVisualTree += (_, _) => { MotifTrace.Count("attached.DenseTable"); Join(grid); };
             grid.DetachedFromVisualTree += (_, _) => Leave(grid);
             grid.SizeChanged += (_, _) => OnGridSizeChanged(grid);
         }
@@ -265,7 +266,7 @@ public sealed class DenseTable
         SecondaryProperty.Changed.AddClassHandler<Control>((control, args) =>
         {
             if (args.NewValue is not true) { LeaveCell(control); return; }
-            control.AttachedToVisualTree += (_, _) => JoinCell(control);
+            control.AttachedToVisualTree += (_, _) => { MotifTrace.Count("attached.DenseTable.cell"); JoinCell(control); };
             control.DetachedFromVisualTree += (_, _) => LeaveCell(control);
             JoinCell(control);
         });

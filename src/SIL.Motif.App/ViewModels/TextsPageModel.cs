@@ -212,6 +212,10 @@ public sealed partial class TextsPageModel : PageModel
 
     partial void OnTabChanged(TextsTab value)
     {
+        if (MotifTrace.IsEnabled && !MotifTrace.SwitchIsTo("tab", value.ToString()))
+            MotifTrace.BeginSwitch("tab", _tracedTab.ToString(), value.ToString());
+        _tracedTab = value;
+        using var span = MotifTrace.BeginInSwitch("switch.tab-changed");
         OnPropertyChanged(nameof(ShowMatrixContent));
         OnPropertyChanged(nameof(ShowAnalyzeTextsContent));
         OnPropertyChanged(nameof(ShowParsePrompt));
@@ -219,6 +223,8 @@ public sealed partial class TextsPageModel : PageModel
         OnPropertyChanged(nameof(ShowAnalyzeParsePrompt));
         if (value == TextsTab.Lists) TextsLists.SelectFirstIfNeeded();
     }
+
+    private TextsTab _tracedTab;
 
     private void OnChosenCellsChanged(object? sender, EventArgs e)
     {

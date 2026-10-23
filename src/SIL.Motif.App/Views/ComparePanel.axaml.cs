@@ -6,6 +6,7 @@ using Avalonia.VisualTree;
 using SIL.Motif.App.Controls.WordPresentation;
 using SIL.Motif.App.ViewModels;
 
+using SIL.Motif.App.Services;
 namespace SIL.Motif.App.Views;
 
 /// <summary>The Compare matrix in Texts: what the project held against what the parser built.</summary>
@@ -69,6 +70,8 @@ public sealed partial class ComparePanel : UserControl
 
     private void ApplyShortMatrixToCells()
     {
+        using var span = MotifTrace.Begin("compare.short-matrix-walk");
+        MotifTrace.Count("compare-layout-updated");
         var isShort = Classes.Contains("shortMatrix");
         foreach (var cell in this.GetVisualDescendants().OfType<MatrixCell>())
             if (cell.ShowsDetails == isShort)

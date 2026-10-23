@@ -230,6 +230,7 @@ public sealed class WritingSystemText
 
         private void OnAttachedToVisualTree(object? sender, VisualTreeAttachmentEventArgs e)
         {
+            MotifTrace.Count("attached.WritingSystemText");
             SubscribeToVisibilityAncestors();
             Refresh();
         }

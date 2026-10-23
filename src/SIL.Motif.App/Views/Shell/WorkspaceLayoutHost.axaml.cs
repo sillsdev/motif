@@ -2,8 +2,10 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Automation;
 using Avalonia.Interactivity;
-using Avalonia.LogicalTree;
+using Avalonia.Controls.Templates;
+using Avalonia.VisualTree;
 using Avalonia.Markup.Xaml;
+using SIL.Motif.App.Services;
 
 namespace SIL.Motif.App.Views.Shell;
 
@@ -29,6 +31,7 @@ public sealed partial class WorkspaceLayoutHost : UserControl
     public static double GetBandBudget(Control control) => control.GetValue(BandBudgetProperty);
 
     private bool _isAttachedToVisualTree;
+    private bool _noticeBandVisible;
     private bool _hasSidePanel;
     private bool _hasPageInspector;
     private Control? _inspectorFooter;
@@ -46,7 +49,7 @@ public sealed partial class WorkspaceLayoutHost : UserControl
         AvaloniaXamlLoader.Load(this);
         AddHandler(PageInspectorRequestedEvent, OnPageInspectorRequested, RoutingStrategies.Bubble);
         foreach (var rowHost in new[] { "InspectorRowHost", "PageActionRowHost" })
-            Part<ContentControl>(rowHost).SizeChanged += (_, _) => InvalidateMeasure();
+            Part<PageContentSlot>(rowHost).SizeChanged += (_, _) => InvalidateMeasure();
         AttachedToVisualTree += (_, _) =>
         {
             _isAttachedToVisualTree = true;
@@ -90,13 +93,14 @@ public sealed partial class WorkspaceLayoutHost : UserControl
 
     protected override Size MeasureOverride(Size availableSize)
     {
+        using var measureSpan = MotifTrace.BeginLayout("layout.host-measure");
+        MotifTrace.Count("host-measure");
         var footerCap = (double)this.FindResource("Component.Shell.FooterMaxHeight")!;
         var pageMinHeight = (double)this.FindResource("Component.Shell.WorkingPageMinHeight")!;
         // Fixed bands (the reveal row, the project notice band) come off first; the notice and footer split the rest.
         var paneHeader = (double)this.FindResource("Component.Shell.PaneHeaderHeight")!;
         var fixedBands = (Part<Button>("SidePanelRevealButton").IsVisible ? paneHeader : 0) +
-            (Page is Control page && page.GetLogicalDescendants().OfType<Border>().Any(border =>
-                border.Name == "NoticeBand" && border.IsVisible) ? paneHeader : 0);
+            (_noticeBandVisible ? paneHeader : 0);
         var bandBudget = double.IsInfinity(availableSize.Height) ? double.PositiveInfinity
             : Math.Max(0, (availableSize.Height - pageMinHeight - fixedBands) / 2);
         var footerBudget = Math.Min(footerCap, bandBudget);
@@ -114,7 +118,7 @@ public sealed partial class WorkspaceLayoutHost : UserControl
     private void FitFooter(string viewportName, string actionsName, double budget)
     {
         var viewport = Part<ScrollViewer>(viewportName);
-        var actions = Part<ContentControl>(actionsName);
+        var actions = Part<PageContentSlot>(actionsName);
         if (actions.Content is not Control row)
         {
             viewport.MaxHeight = budget;
@@ -146,6 +150,18 @@ public sealed partial class WorkspaceLayoutHost : UserControl
         UpdatePanes();
     }
 
+    /// <summary>Whether the shell's project notice band is showing inside the page; set by the shell, so measuring never walks the page.</summary>
+    public bool NoticeBandVisible
+    {
+        get => _noticeBandVisible;
+        set
+        {
+            if (_noticeBandVisible == value) return;
+            _noticeBandVisible = value;
+            InvalidateMeasure();
+        }
+    }
+
     /// <summary>The persistent navigation rail, supplied by the shell.</summary>
     public Control? Rail
     {
@@ -170,26 +186,27 @@ public sealed partial class WorkspaceLayoutHost : UserControl
     /// <summary>Replaces the current page's optional panes and detaches the preceding page's controls.</summary>
     public void SetPagePanels(IWorkspacePaneProvider? provider)
     {
-        Part<ContentControl>("SidePanelContent").Content = null;
-        Part<ContentControl>("PageInspectorHost").Content = null;
-        Part<ContentControl>("InspectorFooterHost").Content = null;
-        Part<ContentControl>("PageActionFooterHost").Content = null;
-        Part<ContentControl>("InspectorRowHost").Content = null;
-        Part<ContentControl>("PageActionRowHost").Content = null;
+        using var span = MotifTrace.BeginInSwitch("panes.set-page-panels");
+        Part<PageContentSlot>("SidePanelContent").Content = null;
+        Part<PageContentSlot>("PageInspectorHost").Content = null;
+        Part<PageContentSlot>("InspectorFooterHost").Content = null;
+        Part<PageContentSlot>("PageActionFooterHost").Content = null;
+        Part<PageContentSlot>("InspectorRowHost").Content = null;
+        Part<PageContentSlot>("PageActionRowHost").Content = null;
         var side = provider?.SidePanel;
         var inspector = provider?.InspectorContent;
         var footer = provider?.InspectorFooter;
         Part<TextBlock>("SidePanelTitle").Text = provider?.SidePanelTitle.ToUpperInvariant();
-        Part<ContentControl>("SidePanelContent").Content = side;
-        Part<ContentControl>("PageInspectorHost").Content = inspector;
+        Part<PageContentSlot>("SidePanelContent").Content = side;
+        Part<PageContentSlot>("PageInspectorHost").Content = inspector;
         _inspectorFooter = footer;
         _inspectorActions = provider?.InspectorActions;
         _hasSidePanel = side is not null;
         _hasPageInspector = inspector is not null;
         if (!_isAttachedToVisualTree)
         {
-            Part<ContentControl>("InspectorFooterHost").Content = footer;
-            Part<ContentControl>("InspectorRowHost").Content = _inspectorActions;
+            Part<PageContentSlot>("InspectorFooterHost").Content = footer;
+            Part<PageContentSlot>("InspectorRowHost").Content = _inspectorActions;
         }
         UpdatePanes();
     }
@@ -248,6 +265,8 @@ public sealed partial class WorkspaceLayoutHost : UserControl
 
     private void UpdatePanes()
     {
+        using var span = MotifTrace.BeginInSwitch("panes.update");
+        MotifTrace.Count("update-panes");
         if (!_isAttachedToVisualTree) return;
         var sideVisible = _hasSidePanel && (_sidePanelOpenOverride ??
             _viewportWidth >= (double)this.FindResource("Component.Shell.SidePanelCollapseWidth")!);
@@ -268,12 +287,13 @@ public sealed partial class WorkspaceLayoutHost : UserControl
         returnButton.Classes.Set("focusedInspectorReturn", focusedInspector);
         returnButton.Content = focusedInspector ? "Back to page" : "›";
         AutomationProperties.SetName(returnButton, focusedInspector ? "Back to page" : "Hide Inspector");
-        var footerHost = Part<ContentControl>(inspectorVisible ? "InspectorFooterHost" : "PageActionFooterHost");
-        var previousHost = Part<ContentControl>(inspectorVisible ? "PageActionFooterHost" : "InspectorFooterHost");
+        var footerHost = Part<PageContentSlot>(inspectorVisible ? "InspectorFooterHost" : "PageActionFooterHost");
+        // Release the previous host first: a slot ignores a re-set of the Content it still holds.
+        var previousHost = Part<PageContentSlot>(inspectorVisible ? "PageActionFooterHost" : "InspectorFooterHost");
         previousHost.Content = null;
         footerHost.Content = _inspectorFooter;
-        var rowHost = Part<ContentControl>(inspectorVisible ? "InspectorRowHost" : "PageActionRowHost");
-        Part<ContentControl>(inspectorVisible ? "PageActionRowHost" : "InspectorRowHost").Content = null;
+        var rowHost = Part<PageContentSlot>(inspectorVisible ? "InspectorRowHost" : "PageActionRowHost");
+        Part<PageContentSlot>(inspectorVisible ? "PageActionRowHost" : "InspectorRowHost").Content = null;
         rowHost.Content = _inspectorActions;
         Part<ScrollViewer>("InspectorFooterViewport").IsVisible = inspectorVisible && _inspectorFooter is not null;
         Part<ScrollViewer>("PageActionFooterViewport").IsVisible = !inspectorVisible && _inspectorFooter is not null;
@@ -281,7 +301,7 @@ public sealed partial class WorkspaceLayoutHost : UserControl
         Part<Button>("SidePanelRevealButton").IsVisible = _hasSidePanel && !sideVisible;
         Part<Border>("InspectorPane").IsVisible = inspectorVisible;
         Part<Button>("InspectorStrip").IsVisible = !inspectorVisible;
-        Part<ContentControl>("PageInspectorHost").IsVisible = _hasPageInspector && !_objectInspectorOpen;
+        Part<PageContentSlot>("PageInspectorHost").IsVisible = _hasPageInspector && !_objectInspectorOpen;
         Part<ContentControl>("ObjectInspectorHost").IsVisible = _objectInspectorOpen;
         Part<TextBlock>("InspectorEmpty").IsVisible = !_hasPageInspector && !_objectInspectorOpen;
         // The band budget reads which bands show, so a visibility change must re-run it even at an unchanged size.
@@ -328,4 +348,63 @@ public sealed partial class WorkspaceLayoutHost : UserControl
 
     private T Part<T>(string name) where T : Control => this.FindControl<T>(name)
         ?? throw new InvalidOperationException($"The frame has no part named {name}.");
+}
+
+/// <summary>
+/// A pane slot that keeps every page's content attached and shows only the current one, so a page switch
+/// toggles visibility instead of detaching and re-attaching (and re-styling) whole subtrees. <see cref="ContentControl.Content"/>
+/// is still the current page's content; each content sits in its own wrapper so its own IsVisible is untouched.
+/// </summary>
+public sealed class PageContentSlot : ContentControl
+{
+    private readonly Grid _stack = new();
+    private readonly Dictionary<Control, Panel> _wrappers = new();
+
+    public PageContentSlot()
+    {
+        Template = new FuncControlTemplate((_, _) => _stack);
+        // Applied now so contents added before the first measure join an already-built stack.
+        ApplyTemplate();
+    }
+
+    protected override Type StyleKeyOverride => typeof(ContentControl);
+
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+    {
+        base.OnPropertyChanged(change);
+        if (change.Property != ContentProperty) return;
+        var current = change.NewValue as Control;
+        if (current is not null) Wrapper(current);
+        List<Control>? moved = null;
+        foreach (var (content, wrapper) in _wrappers)
+        {
+            wrapper.IsVisible = ReferenceEquals(content, current);
+            // Content that another slot took is gone from this wrapper; forget it so the cache stays bounded.
+            if (wrapper.Children.Count == 0 && !ReferenceEquals(content, current)) (moved ??= []).Add(content);
+        }
+        if (moved is null) return;
+        foreach (var content in moved)
+        {
+            _stack.Children.Remove(_wrappers[content]);
+            _wrappers.Remove(content);
+        }
+    }
+
+    // One wrapper per content held here; wrappers emptied by a move are pruned above.
+    private Panel Wrapper(Control content)
+    {
+        if (!_wrappers.TryGetValue(content, out var wrapper))
+        {
+            wrapper = new Panel();
+            _wrappers[content] = wrapper;
+            _stack.Children.Add(wrapper);
+        }
+        if (!ReferenceEquals(content.GetVisualParent(), wrapper))
+        {
+            // The other footer or row slot may hold it from an earlier width; take it from there.
+            if (content.GetVisualParent() is Panel old) old.Children.Remove(content);
+            wrapper.Children.Add(content);
+        }
+        return wrapper;
+    }
 }

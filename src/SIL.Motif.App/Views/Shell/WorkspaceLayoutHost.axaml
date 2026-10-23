@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:app="clr-namespace:SIL.Motif.App"
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
+             xmlns:shell="clr-namespace:SIL.Motif.App.Views.Shell"
              x:Class="SIL.Motif.App.Views.Shell.WorkspaceLayoutHost">
   <Grid x:Name="PaneGrid" ColumnDefinitions="Auto,0,*,Auto">
     <ContentControl x:Name="RailHost" />
@@ -14,7 +15,7 @@
             <views:CopyableTextBlock x:Name="SidePanelTitle" Classes="workspacePaneLabel" VerticalAlignment="Center" />
           </DockPanel>
         </Border>
-        <ContentControl x:Name="SidePanelContent" Grid.Row="1" />
+        <shell:PageContentSlot x:Name="SidePanelContent" Grid.Row="1" />
       </Grid>
     </Border>
     <Grid x:Name="WorkingPageRegion" Grid.Column="2" RowDefinitions="Auto,*,Auto">
@@ -30,9 +31,9 @@
         <ScrollViewer x:Name="PageActionFooterViewport" Focusable="True" IsTabStop="True"
                       AutomationProperties.Name="{x:Static app:MotifAppStrings.DetailsAccessibleName}"
                       HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-          <ContentControl x:Name="PageActionFooterHost" />
+          <shell:PageContentSlot x:Name="PageActionFooterHost" />
         </ScrollViewer>
-        <ContentControl x:Name="PageActionRowHost" />
+        <shell:PageContentSlot x:Name="PageActionRowHost" />
       </StackPanel>
     </Grid>
     <Border x:Name="InspectorPane" Grid.Column="3" Classes="workspaceInspector" IsVisible="False">
@@ -46,16 +47,16 @@
         </Border>
         <Grid Grid.Row="1">
           <ContentControl x:Name="ObjectInspectorHost" />
-          <ContentControl x:Name="PageInspectorHost" IsVisible="False" />
+          <shell:PageContentSlot x:Name="PageInspectorHost" IsVisible="False" />
           <views:CopyableTextBlock x:Name="InspectorEmpty" Classes="muted workspaceEmpty" Text="{x:Static app:MotifAppStrings.SelectAnItemToInspect}" />
         </Grid>
         <StackPanel Grid.Row="2">
           <ScrollViewer x:Name="InspectorFooterViewport" Focusable="True" IsTabStop="True"
                         AutomationProperties.Name="{x:Static app:MotifAppStrings.DetailsAccessibleName}"
                         HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-            <ContentControl x:Name="InspectorFooterHost" />
+            <shell:PageContentSlot x:Name="InspectorFooterHost" />
           </ScrollViewer>
-          <ContentControl x:Name="InspectorRowHost" />
+          <shell:PageContentSlot x:Name="InspectorRowHost" />
         </StackPanel>
       </Grid>
     </Border>

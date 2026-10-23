@@ -584,6 +584,7 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
 
     private async Task RunPublicationAsync(CancellationToken cancellationToken)
     {
+        using var traced = MotifTrace.Begin("context.publish-to-pages");
         _publishing = true;
         var generation = Volatile.Read(ref _openGeneration);
         try
@@ -764,12 +765,18 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
 
     partial void OnCurrentPageChanged(WorkspacePage value)
     {
+        if (MotifTrace.IsEnabled && !MotifTrace.SwitchIsTo("page", value.ToString()))
+            MotifTrace.BeginSwitch("page", _tracedPage.ToString(), value.ToString());
+        _tracedPage = value;
+        using var span = MotifTrace.BeginInSwitch("switch.page-changed");
         ++_pageRequestVersion;
         if (value == WorkspacePage.TryAWord && ProjectPath is { } projectPath)
             TryWordSessions.Prewarm(projectPath);
         if (value is not (WorkspacePage.Texts or WorkspacePage.Review)) return;
         RequireSelectionReader();
     }
+
+    private WorkspacePage _tracedPage;
 
     private void RequireSelectionReader()
     {
@@ -787,14 +794,24 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     /// <summary>Opens <paramref name="page"/> as it stands; a page this window does not offer stays closed.</summary>
     public void OpenPage(WorkspacePage page)
     {
-        if (CanOpenPage(page)) CurrentPage = page;
+        if (!CanOpenPage(page)) return;
+        if (MotifTrace.IsEnabled && page != CurrentPage)
+            MotifTrace.BeginSwitch("page", CurrentPage.ToString(), page.ToString());
+        using var span = MotifTrace.BeginInSwitch("switch.open-page");
+        CurrentPage = page;
     }
 
     /// <summary>Opens the page named by <paramref name="request"/>, then sends each page its request.</summary>
     public void Open(PageRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
-        if (CanOpenPage(request.Page)) CurrentPage = request.Page;
+        if (CanOpenPage(request.Page))
+        {
+            if (MotifTrace.IsEnabled && request.Page != CurrentPage)
+                MotifTrace.BeginSwitch("page", CurrentPage.ToString(), request.Page.ToString());
+            using var span = MotifTrace.BeginInSwitch("switch.open-page");
+            CurrentPage = request.Page;
+        }
         var version = ++_pageRequestVersion;
         var publication = EvidencePublication;
         var delivery = DeliverRequestAsync(request, publication, version, Volatile.Read(ref _openGeneration));
@@ -809,6 +826,7 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
             request = _occurrenceNavigator?.Invoke(occurrence.Anchor) == true
                 ? new OpenTextsRequest(TextsTab.AnalyzeTexts)
                 : new OpenWordRequest(occurrence.Word, occurrence.WordformId);
+        using var span = MotifTrace.Begin("switch.deliver-request");
         foreach (var page in _pages.ToArray()) page.Requested(request);
     }
 

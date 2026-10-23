@@ -27,10 +27,13 @@ public sealed class RefusalCodeRegistryTests
         "tsv", "txt", "xml", "zip",
     };
 
-    // Dotted literals that are not refusal codes: classification and finding codes, cgroup files, SQL tables.
+    // Dotted literals that are not refusal codes: finding codes, cgroup files, SQL tables, trace spans.
     private static readonly Regex NotRefusalCodes = new(
         "^(?:proposal\\.rationale$|delta\\.|cgroup\\.|cpu\\.|memory\\.|facts\\.|sil\\.lcmodel$|parse\\.allomorph\\.|" +
-        "grammar\\.(?:empty-lexicon|required-slot-empty|stored-analysis\\.))", RegexOptions.None);
+        "grammar\\.(?:empty-lexicon|required-slot-empty|stored-analysis\\.)|" +
+        "compare\\.(?:apply-filter|short-matrix-walk)$|context\\.publish-to-pages$|layout\\.(?:arrange|host-measure|measure)$|" +
+        "panes\\.|results-in-text\\.|review\\.(?:load|rebuild-entries)$|shell\\.(?:raise-freshness|update-notice-band)$|" +
+        "switch\\.|view\\.switch$|visible-lifetime\\.)", RegexOptions.None);
 
     private static IReadOnlyList<(string Name, string Value)> Registry() =>
         new[] { typeof(RefusalCodes), typeof(HostRefusalCodes), typeof(ParsimonyRefusalCodes) }

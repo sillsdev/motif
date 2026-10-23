@@ -785,6 +785,8 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
 
     private void RaiseFreshness()
     {
+        using var span = MotifTrace.Begin("shell.raise-freshness");
+        MotifTrace.Count("raise-freshness");
         StoreRefusalBlock.Show(Baseline.ShownRefusal, IsConfirmingStoreDeletion);
         OnPropertyChanged(nameof(SelectionSummaryText));
         OnPropertyChanged(nameof(Freshness));
@@ -904,6 +906,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
 
     private void RefreshPages()
     {
+        using var span = MotifTrace.BeginInSwitch("switch.refresh-pages");
         foreach (var page in Pages) page.IsCurrent = page.Page == CurrentPage;
     }
 

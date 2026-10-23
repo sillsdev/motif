@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
 using Avalonia.VisualTree;
 
+using SIL.Motif.App.Services;
 namespace SIL.Motif.App.Views;
 
 /// <summary>A Compare cell whose colour and pending marker reflect its project and parser meaning.</summary>
@@ -35,6 +36,7 @@ public sealed partial class MatrixCell : UserControl
 
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
+        MotifTrace.Count("attached.MatrixCell");
         base.OnAttachedToVisualTree(e);
         if (this.FindAncestorOfType<ComparePanel>() is { } panel)
             ShowsDetails = !panel.Classes.Contains("shortMatrix");

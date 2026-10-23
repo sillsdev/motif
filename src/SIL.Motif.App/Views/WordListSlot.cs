@@ -71,6 +71,7 @@ public sealed class WordListSlot : ScrollViewer
 
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
+        MotifTrace.Count("attached.WordListSlot");
         base.OnAttachedToVisualTree(e);
         RefreshTextStyles();
     }

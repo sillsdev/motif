@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.VisualTree;
 
+using SIL.Motif.App.Services;
 namespace SIL.Motif.App.Views;
 
 // Hidden hosts stay attached; pinned by `HiddenMatrixHostReleasesRowsAndRestoresCheckedWords`.
@@ -55,6 +56,8 @@ internal sealed class VisibleControlLifetime
         if (_initialized && active == _active) return;
         _initialized = true;
         _active = active;
+        using var span = MotifTrace.Begin(active ? "visible-lifetime.show" : "visible-lifetime.hide");
+        span?.SetTag("control", _control.GetType().Name);
         if (active) _show();
         else _hide();
     }

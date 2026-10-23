@@ -291,6 +291,8 @@ public sealed partial class ReviewPageModel : PageModel
     /// <summary>Reads the list of the Draft <see cref="Changes"/> holds: the open Proposal's, or the pending one.</summary>
     internal async Task LoadReviewAsync()
     {
+        using var span = MotifTrace.Begin("review.load");
+        MotifTrace.Count("review-load");
         var generation = ++_reviewGeneration;
         if (Context.ProjectPath is not { } project)
         {
@@ -316,6 +318,8 @@ public sealed partial class ReviewPageModel : PageModel
     // One list: the review's grammar entries, then one entry per word change in Changes, in the groups' order.
     private void RebuildEntries(bool changesMoved)
     {
+        using var span = MotifTrace.Begin("review.rebuild-entries");
+        MotifTrace.Count("review-rebuild");
         var previousKey = Current?.Key;
         var reviewed = (_review?.Entries ?? []).ToArray();
         var words = reviewed.OfType<WordChangeEntry>()

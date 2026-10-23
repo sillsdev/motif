@@ -7,6 +7,7 @@ using SIL.Motif.App.Controls.WordPresentation;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Responses;
 
+using SIL.Motif.App.Services;
 namespace SIL.Motif.App.ViewModels;
 
 /// <summary>
@@ -673,6 +674,9 @@ public sealed partial class CompareViewModel : ObservableObject
 
     private void ApplyFilter()
     {
+        using var span = MotifTrace.Begin("compare.apply-filter");
+        span?.SetTag("words", _all.Count);
+        MotifTrace.Count("apply-filter");
         var chosen = Cells.Where(cell => cell.IsSelected).Select(cell => (cell.Row, cell.Column)).ToHashSet();
         var matches = _all.AsEnumerable();
         if (chosen.Count > 0) matches = matches.Where(word => chosen.Contains((word.Row, word.Column)));

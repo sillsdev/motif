@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using SIL.Motif.App.Services;
 using SIL.Motif.Commands.SelectionReading;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
@@ -129,6 +130,7 @@ public sealed partial class ResultsInTextViewModel
 
     private void RebuildNativeSelection()
     {
+        using var span = MotifTrace.Begin("results-in-text.rebuild-selection");
         var summary = _selectionOwner.Summary;
         if (ReferenceEquals(summary, _nativeSummary)) return;
         var previous = SelectedText?.TextId ?? _preferredTextId;
@@ -210,6 +212,8 @@ public sealed partial class ResultsInTextViewModel
 
     private void RefreshNativeLines()
     {
+        using var span = MotifTrace.Begin("results-in-text.refresh-lines");
+        MotifTrace.Count("refresh-native-lines");
         if (!_readerVisible || SelectedText?.Summary is not { } text || _selectionOwner.Reader is not { } reader)
         {
             ReleaseLinePages();

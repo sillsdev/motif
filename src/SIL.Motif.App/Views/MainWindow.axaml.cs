@@ -158,6 +158,20 @@ public sealed partial class MainWindow : Window
         if (this.FindControl<Border>("TopBar") is { } topBar) topBar.Classes.Add(chromeClass);
     }
 
+    /// <inheritdoc />
+    protected override Size MeasureOverride(Size availableSize)
+    {
+        using var span = MotifTrace.BeginLayout("layout.measure");
+        return base.MeasureOverride(availableSize);
+    }
+
+    /// <inheritdoc />
+    protected override Size ArrangeOverride(Size finalSize)
+    {
+        using var span = MotifTrace.BeginLayout("layout.arrange");
+        return base.ArrangeOverride(finalSize);
+    }
+
     /// <summary>Builds each page's view from its model with <see cref="PageRegistry"/>, and binds the window to <paramref name="workspace"/>.</summary>
     public void Compose(WorkspaceShellViewModel workspace)
     {
@@ -186,6 +200,7 @@ public sealed partial class MainWindow : Window
 
         void UpdatePagePanels()
         {
+            using var span = MotifTrace.BeginInSwitch("switch.view-attach");
             this.FindControl<Button>("SettingsButton")?.Classes.Set("open", workspace.CurrentPage == WorkspacePage.Settings);
             _layoutHost?.SetPagePanels(
                 _pageViews.GetValueOrDefault(workspace.CurrentPage) as IWorkspacePaneProvider);
@@ -196,8 +211,16 @@ public sealed partial class MainWindow : Window
         }
         workspace.PropertyChanged += (_, changed) =>
         {
-            if (changed.PropertyName == nameof(WorkspaceShellViewModel.CurrentPage)) UpdatePagePanels();
+            if (changed.PropertyName == nameof(WorkspaceShellViewModel.CurrentPage))
+            {
+                UpdatePagePanels();
+                MotifTrace.EndAtFirstFrame(this);
+            }
             UpdateNoticeBand();
+        };
+        workspace.PageModel<TextsPageModel>().PropertyChanged += (_, changed) =>
+        {
+            if (changed.PropertyName == nameof(TextsPageModel.Tab)) MotifTrace.EndAtFirstFrame(this);
         };
         workspace.Project.PropertyChanged += (_, _) => UpdateNoticeBand();
         workspace.Context.TextStyles.MissingFontNotices.CollectionChanged += (_, _) => UpdateNoticeBand();
@@ -298,6 +321,8 @@ public sealed partial class MainWindow : Window
 
     private void UpdateNoticeBand()
     {
+        using var span = MotifTrace.Begin("shell.update-notice-band");
+        MotifTrace.Count("update-notice-band");
         if (DataContext is not WorkspaceShellViewModel workspace ||
             this.FindControl<Border>("NoticeBand") is not { } band ||
             this.FindControl<TextBlock>("NoticeSummary") is not { } summary) return;
@@ -307,6 +332,7 @@ public sealed partial class MainWindow : Window
         summary.Text = message ?? string.Empty;
         ToolTip.SetTip(summary, message);
         band.IsVisible = !string.IsNullOrWhiteSpace(message);
+        if (_layoutHost is not null) _layoutHost.NoticeBandVisible = band.IsVisible;
     }
 
     private async void OnStatusReportProblemClick(object? sender, RoutedEventArgs e) =>

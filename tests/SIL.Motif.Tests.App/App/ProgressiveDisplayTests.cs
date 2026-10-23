@@ -213,7 +213,7 @@ public sealed class ProgressiveDisplayTests
             .Where(path => File.ReadAllText(path).Contains("Children.Add(", StringComparison.Ordinal) ||
                 File.ReadAllText(path).Contains("ProgressivePanel.Populate(this", StringComparison.Ordinal))
             .Select(path => Path.GetFileNameWithoutExtension(path).Replace(".axaml", string.Empty)).Order().ToArray();
-        Assert.Equal(new[] { "FilterChip", "GrammarWarningPartsBlock", "HeatCell", "MainWindow", "MarkChip", "MorphemePanel", "NamedMark", "OutcomeBar", "OverviewShareBar", "ProgressivePanel", "WordCard", "WordRow", "WordRowHeader", "WordStripToken" },
+        Assert.Equal(new[] { "FilterChip", "GrammarWarningPartsBlock", "HeatCell", "MainWindow", "MarkChip", "MorphemePanel", "NamedMark", "OutcomeBar", "OverviewShareBar", "ProgressivePanel", "WordCard", "WordRow", "WordRowHeader", "WordStripToken", "WorkspaceLayoutHost" },
             codeBuilt);
     }
 

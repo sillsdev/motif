@@ -829,12 +829,17 @@ public sealed class PageScreenshots
         string? settingsFilePath = null, TextWordsResponse? capturedWords = null,
         AssessCommandResponse? capturedAssessment = null, bool advancedAiModeEnabled = false, IUserPreferencesStore? preferencesStore = null,
         SIL.Motif.Commands.Assistants.IAssistantConnectionService? assistantConnections = null,
-        bool renderForCapture = true, Action<string, double>? recordSetup = null, bool composeWindow = true)
+        bool renderForCapture = true, Action<string, double>? recordSetup = null, bool composeWindow = true,
+        bool activateTextsPage = true, Action<MainWindow>? configureWindow = null)
     {
         var stage = System.Diagnostics.Stopwatch.StartNew();
         void Record(string name) { recordSetup?.Invoke(name, stage.Elapsed.TotalMilliseconds); stage.Restart(); }
         var fake = new FakeCommandClient();
         var clock = NewCaptureClock();
+        if (!activateTextsPage)
+            fake.DefaultSelectionCompletesWith(new NamedSelectionProjection(
+                "Default", [], [], string.Empty, string.Empty, 1000,
+                SIL.Motif.Contract.Assess.StepCap.Default));
         fake.KnownProjectsListIs([new KnownProjectSummary(ProjectPath, CaptureStartAt)]);
         fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(Token(), BaselineSaveAt, false)
         {
@@ -910,6 +915,7 @@ public sealed class PageScreenshots
             ? new MemoryUserPreferencesStore()
             : new FileUserPreferencesStore(settingsFilePath));
         var window = new MainWindow(rememberBounds: false, uriLauncher: null, preferencesStore: preferences);
+        configureWindow?.Invoke(window);
         if (composeWindow) window.Compose(workspace);
         else workspace.UpdateWindowWidth(window.Width);
         window.Closed += async (_, _) =>
@@ -933,7 +939,13 @@ public sealed class PageScreenshots
             return (workspace, window);
         }
         Record("select-texts");
-        await workspace.Assess.RunCommand.ExecuteAsync(null);
+        if (activateTextsPage)
+            await workspace.Assess.RunCommand.ExecuteAsync(null);
+        else
+        {
+            Assert.True(workspace.ParseAllWordsCommand.CanExecute(null));
+            await workspace.ParseAllWordsCommand.ExecuteAsync(null);
+        }
         await workspace.Context.EvidencePublication;
         Record("assess");
         workspace.PageModel<TimingPageModel>().Statistics.AssessmentId = "assessment/one";
@@ -941,14 +953,33 @@ public sealed class PageScreenshots
         Record("statistics");
         workspace.Assess.Words.SelectedRow = workspace.Assess.Words.Rows.FirstOrDefault(row => row.Word == "hawajafika");
         var textsPage = workspace.PageModel<TextsPageModel>();
-        workspace.CurrentPage = WorkspacePage.Texts;
-        textsPage.Tab = TextsTab.AnalyzeTexts;
-        textsPage.ShowAnalyzeViewCommand.Execute(AnalyzeTextsView.TextReader);
-        if (renderForCapture) Settle(window);
-        else LayoutInvariantEngineTests.Settle(window);
+        if (activateTextsPage)
+        {
+            workspace.CurrentPage = WorkspacePage.Texts;
+            textsPage.Tab = TextsTab.AnalyzeTexts;
+            textsPage.ShowAnalyzeViewCommand.Execute(AnalyzeTextsView.TextReader);
+            if (renderForCapture) Settle(window);
+            else LayoutInvariantEngineTests.Settle(window);
+        }
         var reader = textsPage.ResultsInText;
         await reader.SelectionRefresh;
         if (!composeWindow) reader.ShowReader();
+        if (activateTextsPage)
+        {
+            await SeedSampleReaderTokenAsync(workspace);
+            Record("reader-and-token");
+        }
+        await workspace.PageModel<AiHandoffPageModel>().Handoff.RunCommand.ExecuteAsync(null);
+        Record("handoff");
+        clock.Advance(TimeSpan.FromDays(1).Add(TimeSpan.FromMinutes(35)));
+        workspace.PageModel<AiHandoffPageModel>().Handoff.LatestAssessmentAt = clock.GetLocalNow();
+        return (workspace, window);
+    }
+
+    internal static async Task SeedSampleReaderTokenAsync(WorkspaceShellViewModel workspace)
+    {
+        var reader = workspace.PageModel<TextsPageModel>().ResultsInText;
+        await reader.SelectionRefresh;
         Assert.Null(workspace.Context.SelectionReads.Refusal);
         var positions = workspace.Context.SelectionReads.Summary!.SourcePositions;
         var first = positions.FirstOrDefault(position => position.Word.Form == "alikula") ?? positions.FirstOrDefault();
@@ -956,12 +987,6 @@ public sealed class PageScreenshots
         var token = await reader.ReadOccurrenceAsync(first.Location.Anchor);
         Assert.NotNull(token);
         reader.SelectToken(token);
-        Record("reader-and-token");
-        await workspace.PageModel<AiHandoffPageModel>().Handoff.RunCommand.ExecuteAsync(null);
-        Record("handoff");
-        clock.Advance(TimeSpan.FromDays(1).Add(TimeSpan.FromMinutes(35)));
-        workspace.PageModel<AiHandoffPageModel>().Handoff.LatestAssessmentAt = clock.GetLocalNow();
-        return (workspace, window);
     }
 
     private const string SampleHandoffMarkdown =

@@ -6,6 +6,7 @@ using Avalonia.Controls.Shapes;
 using Avalonia.Layout;
 using Avalonia.VisualTree;
 
+using SIL.Motif.App.Services;
 namespace SIL.Motif.App.Views;
 
 /// <summary>Keeps the standard Expander chevron inside the header's layout column.</summary>
@@ -59,6 +60,7 @@ public static class ExpanderChevronAlignment
 
     private static void OnAttachedToVisualTree(object? sender, VisualTreeAttachmentEventArgs e)
     {
+        MotifTrace.Count("attached.Expander");
         if (sender is Expander expander) ApplyOrWait(expander);
     }
 
