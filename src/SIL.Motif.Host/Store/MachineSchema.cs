@@ -17,7 +17,7 @@ public static class MachineSchema
     public const int ApplicationId = 0x4D414348;
 
     /// <summary>The schema this assembly creates and requires.</summary>
-    public const int CurrentSchema = 1;
+    public const int CurrentSchema = 2;
 
     /// <summary>Builds every table this store needs, in one step.</summary>
     internal static void Create(SqliteConnection connection, SqliteTransaction? transaction)
@@ -82,7 +82,8 @@ public static class MachineSchema
     private static IReadOnlyList<ColumnShape> ColumnsFor(string table) => table switch
     {
         "KnownProjects" =>
-        [C("WorkspaceKey", "TEXT", false, 1), C("FullFwDataPath", "TEXT", true), C("LastSeenUtc", "TEXT", true)],
+        [C("WorkspaceKey", "TEXT", false, 1), C("FullFwDataPath", "TEXT", true), C("LastSeenUtc", "TEXT", true),
+            C("ProjectTag", "TEXT")],
         "Usage" =>
         [C("Id", "INTEGER", false, 1), C("TimestampUtc", "TEXT", true), C("Command", "TEXT", true),
             C("ArgumentShapeJson", "TEXT", true)],
@@ -106,7 +107,8 @@ public static class MachineSchema
         CREATE TABLE IF NOT EXISTS KnownProjects (
             WorkspaceKey TEXT PRIMARY KEY,
             FullFwDataPath TEXT NOT NULL,
-            LastSeenUtc TEXT NOT NULL
+            LastSeenUtc TEXT NOT NULL,
+            ProjectTag TEXT UNIQUE
         );
 
         CREATE TABLE IF NOT EXISTS Usage (

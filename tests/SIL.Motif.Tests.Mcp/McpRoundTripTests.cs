@@ -24,8 +24,6 @@ using SIL.Motif.Contract.Retirement;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host;
 using SIL.Motif.Host.LcmUtils;
-using SIL.Motif.Host.Store;
-using SIL.Motif.Contract.Projects;
 using SIL.Motif.Mcp;
 using SIL.Motif.Commands.Preferences;
 using SIL.Motif.Projection.HumanJudgments;
@@ -231,9 +229,7 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
         using var first = new WalkthroughProject(pristine);
         using var second = new WalkthroughProject(pristine);
         await using var session = await Session.StartAsync(first.FwDataPath, new McpLaunchOptions());
-        using (var machine = MachineDatabase.Open(RunnerOptions.ResolveRoot()))
-            new KnownProjectRegistry(machine).Record(ProjectWorkspaceKey.Compute(
-                new ProjectLocator(second.FwDataPath, "second")), second.FwDataPath, DateTimeOffset.UtcNow);
+        KnownProjectTestSetup.AssignUniqueTag(RunnerOptions.ResolveRoot(), second.FwDataPath, "second");
 
         var firstDraft = await session.CallAsync("motif_start_proposal", ("draft", "shared-name"),
             ("label", "First project"), ("rationale", "One linguistic claim."));
@@ -1372,9 +1368,8 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
         public static async Task<Session> StartAsync(string project, McpLaunchOptions options)
         {
             Assert.True(ProposalCommands.Open(new OpenRequest(project)).Succeeded);
-            using (var machine = MachineDatabase.Open(RunnerOptions.ResolveRoot()))
-                new KnownProjectRegistry(machine).Record(ProjectWorkspaceKey.Compute(
-                    new ProjectLocator(project, Path.GetFileNameWithoutExtension(project))), project, DateTimeOffset.UtcNow);
+            KnownProjectTestSetup.AssignUniqueTag(RunnerOptions.ResolveRoot(), project,
+                Path.GetFileNameWithoutExtension(project));
             var advancedAiMode = FileAdvancedAiModePreferenceStore.ForInstallation();
             advancedAiMode.SetEnabled(true);
             options = options with { AdvancedAiModeEnabled = advancedAiMode.IsEnabled, ParserPath = FakeParser.ExecutablePath };

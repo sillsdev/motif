@@ -24,6 +24,7 @@ namespace SIL.Motif.Commands.Catalog;
 /// <see cref="PhonologyExampleCommands"/>,
 /// <see cref="Queries.WordContextQuery"/>, <see cref="Queries.WordTraceQuery"/>, <see cref="Queries.ObjectUsesQuery"/>, and <see cref="Queries.InspectQuery"/>.
 /// The project setup group reaches <see cref="ProjectCreateCommand"/> and <see cref="ProjectInitializationCommand"/>.
+/// The person-only project tag commands reach <see cref="ProjectTagCommands"/>.
 /// </summary>
 /// <remarks>
 /// The report list reaches <see cref="ReportCommands.ListKinds"/>, waited Dry Runs reach
@@ -200,6 +201,11 @@ public static class CommandCatalog
         // Saved default Selection
         new CommandDescriptor("project create", typeof(ProjectCreateRequest),
             typeof(ProjectCreatedResponse), CommandSurface.Developer, AgentClass.HumanOnly),
+        new CommandDescriptor("project tag", typeof(ReadProjectTagRequest),
+            typeof(ProjectTagResponse), CommandSurface.Released, AgentClass.Read)
+            { ExposeAsAgentTool = false },
+        new CommandDescriptor("project tag --set", typeof(SetProjectTagRequest),
+            typeof(ProjectTagResponse), CommandSurface.Released, AgentClass.HumanOnly),
         new CommandDescriptor("project initialize", typeof(ProjectInitializationRequest),
             typeof(ProjectInitializationResponse), CommandSurface.AdvancedAi, AgentClass.HumanOnly),
         new CommandDescriptor("selection show", typeof(ReadDefaultSelectionRequest), typeof(DefaultSelectionResponse), CommandSurface.Released, AgentClass.Read),

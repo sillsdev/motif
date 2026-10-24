@@ -54,6 +54,8 @@ public sealed class RefusalDefaultReasonTests
         ["preferences.unavailable"] = "reason not determinable statically: a window preference problem, which carries no FailureReason",
         ["phonology-examples.assessment-not-found"] = "reason not determinable statically: the code is chosen by a conditional; both arms use NotFound",
         ["phonology-examples.example-not-found"] = "reason not determinable statically: the code is chosen by a conditional; both arms use NotFound",
+        ["project.tag-invalid"] = "reason not determinable statically: code and reason are selected from ProjectTagProblem",
+        ["project.tag-taken"] = "reason not determinable statically: code and reason are selected from ProjectTagProblem",
         ["project.refused"] = "reason not determinable statically: the reason is computed from the exception by ReasonFor",
         ["window.check"] = "reason not determinable statically: a window-only code, which carries no FailureReason",
         ["window.diagnostic-not-written"] = "reason not determinable statically: a window-only code, which carries no FailureReason",

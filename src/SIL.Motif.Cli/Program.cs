@@ -141,7 +141,8 @@ try
         return RefuseUnavailableCommand(commandName, flags.ContainsKey("json"), error, command);
 
     // Every invocation naming a project upserts it into the machine store (ADR 0041 decision 4).
-    if (flags.TryGetValue("project", out var projectForRegistry) && commandName != "project initialize")
+    if (flags.TryGetValue("project", out var projectForRegistry) &&
+        commandName is not ("project initialize" or "project tag" or "project tag --set"))
         RecordKnownProject(projectForRegistry, ResolveRoot(), error);
 
     // Every migrated read surface renders both ways from one projection (ADR 0021 decision 2).
@@ -1861,6 +1862,17 @@ try
                 result = RenderCommand(created);
                 break;
             }
+            if (positionals is ["tag"] && flags.ContainsKey("set") && !HasProjectTagValue(rest))
+                return Usage(UsageLineFor("project tag --set"), asJson);
+            if (positionals is ["tag"] && flags.TryGetValue("project", out var tagProject))
+            {
+                result = RenderCommand(flags.TryGetValue("set", out var newTag)
+                    ? ProjectTagCommands.Set(new SetProjectTagRequest(tagProject, newTag))
+                    : ProjectTagCommands.Read(new ReadProjectTagRequest(tagProject)));
+                break;
+            }
+            if (positionals is ["tag"])
+                return Usage(UsageLineFor("project tag") + " OR " + UsageLineFor("project tag --set"), asJson);
             if (positionals.Count != 1 || positionals[0] != "initialize" ||
                 !flags.TryGetValue("project", out var initializationProject))
                 return Usage(UsageLineFor("project initialize"), asJson);
@@ -2397,6 +2409,8 @@ static string ResolveCommandName(string verb, IReadOnlyDictionary<string, string
         return "trial --pending";
     if (verb == "phonology-examples" && positionals.FirstOrDefault() is "save" or "list" or "show" or "check" or "results")
         return verb + " " + positionals[0];
+    if (verb == "project" && positionals.SequenceEqual(new[] { "tag" }) && flags.ContainsKey("set"))
+        return "project tag --set";
     if (verb is "config" or "baseline" or "grammar" or "jobs" or "project" or "selection" or "texts" or "setup" or "store" or "word" or "difference" or "evidence")
     {
         var candidate = positionals.Count > 0 ? verb + " " + positionals[0] : verb;
@@ -2671,6 +2685,20 @@ static (Dictionary<string, string> Flags, List<string> Positionals, IReadOnlyLis
     }
 
     return (flags, positionals, Array.Empty<string>());
+}
+
+static bool HasProjectTagValue(string[] tokens)
+{
+    var forwardingBoundary = Array.IndexOf(tokens, "--");
+    var parsedLength = forwardingBoundary < 0 ? tokens.Length : forwardingBoundary;
+    for (var index = parsedLength - 1; index >= 0; index--)
+    {
+        if (tokens[index] != "--set") continue;
+        if (index + 1 >= parsedLength) return false;
+        var value = tokens[index + 1];
+        return !value.StartsWith("--", StringComparison.Ordinal) || CanonicalId.TryParse(value, out _);
+    }
+    return false;
 }
 
 // The version this CLI negotiates with; the worker decides compatibility from the protocol range, not this.

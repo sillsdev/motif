@@ -371,6 +371,32 @@
     },
     {
       "kind": "command",
+      "code": "project tag",
+      "slug": "project-tag",
+      "title": "Read a project tag",
+      "description": "Reads the tag Motif stores for this project on this machine. When its vernacular language code is already used, Motif tries the exact folder name and refuses if that choice is invalid or taken.",
+      "helpPage": "# Read a project tag\n\nRead the tag Motif stores for this project on this machine. For a project without a tag, Motif uses its vernacular language code when that code is available. If the code is already used, Motif tries the exact folder name and refuses if that name is invalid or taken.\n\n\u0060\u0060\u0060text\nmotif project tag --project \u003Cfwdata\u003E\n\u0060\u0060\u0060\n\nUse \u0060--json\u0060 to receive the tag as structured output. If Motif cannot choose a valid, unused tag, choose one with \u0060project tag --set\u0060.\n",
+      "usage": [
+        "Usage: motif project tag --project \u003Cfwdata\u003E [--json]"
+      ],
+      "surface": "Released",
+      "url": "https://motif-docs.pages.dev/reference/commands/project-tag/"
+    },
+    {
+      "kind": "command",
+      "code": "project tag --set",
+      "slug": "project-tag-set",
+      "title": "Set a project tag",
+      "description": "Chooses the tag Motif stores for this project on this machine. The tag must follow the lowercase rules and be unused by every other Known project.",
+      "helpPage": "# Set a project tag\n\nChoose the tag Motif stores for this project on this machine. A tag starts with a lowercase letter, uses lowercase letters, digits and hyphens, contains at most ten characters, and must be unused by every other Known project.\n\n\u0060\u0060\u0060text\nmotif project tag --set cebu --project \u003Cfwdata\u003E\n\u0060\u0060\u0060\n\nUse \u0060--json\u0060 to receive the saved tag as structured output. The new tag remains in place when Motif records the project again.\n",
+      "usage": [
+        "Usage: motif project tag --set \u003Cnew-tag\u003E --project \u003Cfwdata\u003E [--json]"
+      ],
+      "surface": "Released",
+      "url": "https://motif-docs.pages.dev/reference/commands/project-tag-set/"
+    },
+    {
+      "kind": "command",
       "code": "proposal note",
       "slug": "proposal-note",
       "title": "Write your note on a Proposal",

@@ -95,7 +95,7 @@ public sealed class ToolSurfaceTests
     }
 
     [Fact]
-    public void OnlyTheCliFirstEditorsAndTheActivityLogReaderOptOutOfDefaultToolExposure()
+    public void CliFirstCommandsAndTheActivityReaderOptOutOfDefaultToolExposure()
     {
         var optedOut = CommandCatalog.All.Where(command => !command.ExposeAsAgentTool)
             .Select(command => command.Name)
@@ -112,6 +112,7 @@ public sealed class ToolSurfaceTests
             "compose-edit-stem-allomorph-stem-name",
             "compose-edit-stem-inflection-class",
             "compose-set-stem-part-of-speech",
+            "project tag",
         }, optedOut);
 
         var numeralEditors = CommandCatalog.All.Where(command =>
@@ -128,7 +129,8 @@ public sealed class ToolSurfaceTests
             Assert.DoesNotContain(AgentTools.All, tool => tool.Requests.Contains(command.RequestType));
         });
 
-        Assert.All(CommandCatalog.All.Except(numeralEditors).Where(command => command.Name != "activity"), command =>
+        Assert.All(CommandCatalog.All.Except(numeralEditors).Where(command =>
+            command.Name != "activity" && command.Name != "project tag"), command =>
             Assert.True(command.ExposeAsAgentTool));
         Assert.DoesNotContain(AgentTools.All, tool => tool.Name == "motif_activity" && tool.Requests.Count > 0);
     }
@@ -191,6 +193,15 @@ public sealed class ToolSurfaceTests
         Assert.Contains(tools, tool => tool.Name == "motif_assess");
         Assert.Contains(tools, tool => tool.Name == "motif_list_projects");
         Assert.DoesNotContain(tools, tool => tool.Name.Contains("finish", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void ProjectTagsAreVisibleThroughProjectMetadataWithoutAnAgentSetter()
+    {
+        var tools = MotifMcpServer.Expose(ToolProfile.Builtin);
+
+        Assert.Contains(tools, tool => tool.Name == "motif_list_projects");
+        Assert.DoesNotContain(tools, tool => tool.Name.Contains("project_tag", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]
@@ -473,6 +484,8 @@ public sealed class DetailedNaturalClassMemberToolTests(PristineProjectFixture p
             });
         });
         var managedRoot = RunnerOptions.ResolveRoot();
+        KnownProjectTestSetup.AssignUniqueTag(managedRoot, project.FwDataPath,
+            Path.GetFileNameWithoutExtension(project.FwDataPath));
         var baseline = BaselineCaptureCommand.Capture(
             new BaselineCaptureRequest(project.FwDataPath), managedRoot);
         Assert.True(baseline.Succeeded, baseline.Refusal?.Message);

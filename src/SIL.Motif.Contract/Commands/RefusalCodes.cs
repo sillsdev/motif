@@ -132,6 +132,9 @@ public static class RefusalCodes
     public const string ProjectNotFound = "project.not-found";
     public const string ProjectOperationIo = "project.operation-io";
     public const string ProjectStoreIo = "project.store-io";
+    public const string ProjectTagInvalid = "project.tag-invalid";
+    public const string ProjectTagTaken = "project.tag-taken";
+    public const string ProjectTagUnavailable = "project.tag-unavailable";
     public const string ProjectUnloadable = "project.unloadable";
 
     /// <summary>Waiting for the window's one project gate was cancelled before the command started.</summary>

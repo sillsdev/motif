@@ -77,6 +77,8 @@ public sealed class McpOpenProjectTests
             Assert.Equal(1, registered.StructuredContent!.Value.GetProperty("result").GetArrayLength());
             Assert.Equal(Path.GetFullPath(fwDataPath), registered.StructuredContent!.Value.GetProperty("result")[0]
                 .GetProperty("fullFwDataPath").GetString());
+            Assert.Equal("fra", registered.StructuredContent.Value.GetProperty("result")[0]
+                .GetProperty("projectTag").GetString());
 
             var reopened = await client.CallToolAsync("motif_open", new Dictionary<string, object?>
             {

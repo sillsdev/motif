@@ -66,6 +66,8 @@ public sealed class RunnerSpineTests : IDisposable
     {
         var first = _projects.CopyProjectFile();
         var second = _projects.CopyProjectFile();
+        KnownProjectTestSetup.AssignUniqueTag(_root, first, Path.GetFileNameWithoutExtension(first));
+        KnownProjectTestSetup.AssignUniqueTag(_root, second, Path.GetFileNameWithoutExtension(second));
 
         // Registered in this order, but nothing here says the sweep must visit them in this order.
         var secondRun = Cli($"baseline-refresh --project \"{second}\"");

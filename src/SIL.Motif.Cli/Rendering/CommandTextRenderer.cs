@@ -80,6 +80,7 @@ public static class CommandTextRenderer
             StatsCommandResponse r => RenderStats(r),
             DefaultSelectionResponse r => RenderDefaultSelection(r),
             ProjectInitializationResponse r => RenderProjectInitialization(r),
+            ProjectTagResponse r => "Project tag: " + r.Tag + Environment.NewLine,
             ProjectCreatedResponse r => RenderProjectCreated(r),
             NamedSelectionProjection p => RenderDefaultSelection(new DefaultSelectionResponse(p)),
             ProjectSetupResponse r => r.SetupSkipped

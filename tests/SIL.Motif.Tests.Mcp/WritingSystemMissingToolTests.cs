@@ -2,12 +2,9 @@ using System.Text.Json;
 using ModelContextProtocol.Protocol;
 using SIL.Motif.Commands;
 using SIL.Motif.Commands.Requests;
-using SIL.Motif.Contract.Projects;
-using SIL.Motif.Host.Store;
 using SIL.Motif.Mcp;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker;
-using SIL.Motif.Worker.Projects;
 using Xunit;
 
 namespace SIL.Motif.Tests.Mcp;
@@ -24,9 +21,7 @@ public sealed class WritingSystemMissingToolTests(PristineProjectFixture pristin
         var copy = pristine.CopyProjectFile();
         var path = Path.Combine(Path.GetDirectoryName(copy)!, "Wsfail" + Guid.NewGuid().ToString("N") + ".fwdata");
         File.Move(copy, path);
-        using (var machine = MachineDatabase.Open(RunnerOptions.ResolveRoot()))
-            new KnownProjectRegistry(machine).Record(ProjectWorkspaceKey.Compute(
-                new ProjectLocator(path, "wsfail")), path, DateTimeOffset.UtcNow);
+        KnownProjectTestSetup.AssignUniqueTag(RunnerOptions.ResolveRoot(), path, "wsfail");
         var context = new ServerContext(path, "1.0", new NoRunnerLauncher(
             new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), null)), new ActivityLog(null), ToolProfile.Builtin,
             TextWriter.Null, advancedAiModeEnabled: true);
@@ -55,9 +50,7 @@ public sealed class WritingSystemMissingToolTests(PristineProjectFixture pristin
         var copy = pristine.CopyProjectFile();
         var path = Path.Combine(Path.GetDirectoryName(copy)!, "Wsfail" + Guid.NewGuid().ToString("N") + ".fwdata");
         File.Move(copy, path);
-        using (var machine = MachineDatabase.Open(RunnerOptions.ResolveRoot()))
-            new KnownProjectRegistry(machine).Record(ProjectWorkspaceKey.Compute(
-                new ProjectLocator(path, "wsfail")), path, DateTimeOffset.UtcNow);
+        KnownProjectTestSetup.AssignUniqueTag(RunnerOptions.ResolveRoot(), path, "wsfail");
         var context = new ServerContext(path, "1.0", new NoRunnerLauncher(
             new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), null)), new ActivityLog(null), ToolProfile.Builtin,
             TextWriter.Null, advancedAiModeEnabled: true);
@@ -89,9 +82,7 @@ public sealed class WritingSystemMissingToolTests(PristineProjectFixture pristin
         var copy = pristine.CopyProjectFile();
         var path = Path.Combine(Path.GetDirectoryName(copy)!, "Wsfail" + Guid.NewGuid().ToString("N") + ".fwdata");
         File.Move(copy, path);
-        using (var machine = MachineDatabase.Open(RunnerOptions.ResolveRoot()))
-            new KnownProjectRegistry(machine).Record(ProjectWorkspaceKey.Compute(
-                new ProjectLocator(path, "wsfail")), path, DateTimeOffset.UtcNow);
+        KnownProjectTestSetup.AssignUniqueTag(RunnerOptions.ResolveRoot(), path, "wsfail");
         var context = new ServerContext(path, "1.0", new NoRunnerLauncher(
             new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), FakeParser.ExecutablePath)), new ActivityLog(null), ToolProfile.Builtin,
             TextWriter.Null, advancedAiModeEnabled: true, parserPath: FakeParser.ExecutablePath);

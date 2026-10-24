@@ -22,6 +22,9 @@ namespace SIL.Motif.Commands.Queries;
 /// <summary>One Known project ready to display in a project picker.</summary>
 public sealed record KnownProjectSummary(string FullFwDataPath, DateTimeOffset LastSeenUtc)
 {
+    /// <summary>The unique project tag saved in Motif's machine-local registry, when available.</summary>
+    public string? ProjectTag { get; init; }
+
     /// <summary>The LangProject GUID read from the saved project file or its current Baseline.</summary>
     public string? ProjectIdentity { get; init; }
 
@@ -55,7 +58,10 @@ public static class KnownProjectsQuery
         {
             // An unavailable file can return, so browsing Recent never forgets its registry entry.
             if (!File.Exists(known.FullFwDataPath) || !listedPaths.Add(Path.GetFullPath(known.FullFwDataPath))) continue;
-            var summary = new KnownProjectSummary(known.FullFwDataPath, known.LastSeenUtc);
+            var summary = new KnownProjectSummary(known.FullFwDataPath, known.LastSeenUtc)
+            {
+                ProjectTag = known.ProjectTag,
+            };
             if (!metadataBlocked && metadataTime < TimeSpan.FromMilliseconds(250))
             {
                 var clock = Stopwatch.StartNew();

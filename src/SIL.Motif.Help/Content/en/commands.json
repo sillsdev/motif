@@ -24,6 +24,16 @@
     "description": "Creates Motif's reserved human judgment field in a FieldWorks project after explicit confirmation. It does not add a judgment or create a writing system.",
     "source": "Hand-written from the project initialization contract and command behavior."
   },
+  "project tag": {
+    "title": "Read a project tag",
+    "description": "Reads the tag Motif stores for this project on this machine. When its vernacular language code is already used, Motif tries the exact folder name and refuses if that choice is invalid or taken.",
+    "source": "Hand-written from the machine-local project-tag behavior."
+  },
+  "project tag --set": {
+    "title": "Set a project tag",
+    "description": "Chooses the tag Motif stores for this project on this machine. The tag must follow the lowercase rules and be unused by every other Known project.",
+    "source": "Hand-written from the machine-local project-tag behavior."
+  },
   "report": {
     "title": "Read an Assessment report",
     "description": "Calculates a named report from an Assessment and project data. Use it to answer a focused question about words, Texts, or grammar without rerunning PanGloss.",
