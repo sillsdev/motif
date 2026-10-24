@@ -235,24 +235,69 @@ internal sealed class TrialJobHandler
                     batchWait.Observe, cancellationToken)
                 .ConfigureAwait(false);
             var artifactLeases = produced.Select(item => item.ArtifactLease).OfType<AssessmentArtifactLease>().Distinct().ToArray();
+            var published = false;
+            var preserveArtifacts = false;
             try
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                var assessmentIds = RecordAll(produced, proposal, candidate.DryRun,
+                var records = PrepareAll(produced, proposal, candidate.DryRun,
                     candidate.Selection, candidate.Scope, scopeConfiguration, assessor.Name, baseline.Token,
                     candidate.ProjectStandings);
-                foreach (var lease in artifactLeases) lease.Retain();
+                var assessmentIds = records.Select(record => record.AssessmentId).ToArray();
                 var completionJson = JsonSerializer.Serialize(
                     new TrialCompletion(baseline.Token, assessmentIds, input.AllWords, grammarCheckWarning),
                     MotifJson.CreateOptions());
-                TrialScratchRetention.DeleteEarlier(claim.Database, workspaceKey,
-                    proposal.ProposalId.Value, claim.Job.JobId);
+                try
+                {
+                    _assessments.RecordBatchForClaim(records, claim.JobId, claim.CapturedClaimToken!, completionJson);
+                }
+                catch (TrialPublicationOutcomeUnknownException exception)
+                {
+                    preserveScratch = true;
+                    preserveArtifacts = true;
+                    ReportTrialMaintenanceFailure(claim.JobId, "confirm publication", exception);
+                    ReleaseSettledTrialParseLease(parseLease, claim.JobId);
+                    return new JobOutcome(JobStatus.CompletedWithAssessmentFailure, JobFailureCategory.None,
+                        JsonSerializer.Serialize(new { detail = exception.Message }));
+                }
+
+                published = true;
                 preserveScratch = true;
-                return new JobOutcome(JobStatus.Completed, JobFailureCategory.None, completionJson);
+                foreach (var lease in artifactLeases)
+                {
+                    try { lease.Retain(); }
+                    catch (Exception exception)
+                    {
+                        preserveArtifacts = true;
+                        ReportTrialMaintenanceFailure(claim.JobId, "retain Assessment artifacts", exception);
+                    }
+                }
+
+                try
+                {
+                    TrialScratchRetention.DeleteEarlier(claim.Database, workspaceKey,
+                        proposal.ProposalId.Value, claim.Job.JobId);
+                }
+                catch (Exception exception)
+                {
+                    ReportTrialMaintenanceFailure(claim.JobId, "remove earlier Trial scratch", exception);
+                }
+                ReleaseSettledTrialParseLease(parseLease, claim.JobId);
+                return null;
             }
             finally
             {
-                foreach (var lease in artifactLeases) lease.Dispose();
+                if (!published && !preserveArtifacts)
+                {
+                    foreach (var lease in artifactLeases)
+                    {
+                        try { lease.Dispose(); }
+                        catch (Exception exception)
+                        {
+                            ReportTrialMaintenanceFailure(claim.JobId, "discard unpublished Assessment artifacts", exception);
+                        }
+                    }
+                }
             }
         }
         catch (OperationCanceledException)
@@ -318,7 +363,8 @@ internal sealed class TrialJobHandler
         return candidate ?? throw new InvalidOperationException("The lane produced no candidate.");
     }
 
-    private IReadOnlyList<string> RecordAll(IReadOnlyList<ProducedAssessment> produced, Contract.Model.Proposal proposal,
+    private IReadOnlyList<NewAssessmentRecord> PrepareAll(IReadOnlyList<ProducedAssessment> produced,
+        Contract.Model.Proposal proposal,
         DryRunModel dryRun, Selection selection, AssessmentScope.Words scope,
         AssessmentScopeConfiguration scopeConfiguration, string assessorName, BaselineToken baselineToken,
         IReadOnlyDictionary<string, string> projectStandings)
@@ -329,7 +375,6 @@ internal sealed class TrialJobHandler
         var scopeDigest = AssessmentMaterial.Digest(scopeJson);
         var baselineTokenJson = JsonSerializer.Serialize(baselineToken, MotifJson.CreateOptions());
 
-        var ids = new List<string>();
         var records = new List<NewAssessmentRecord>();
         var wordStatistics = TrialWordStatistics.Read(produced, scope.WordForms);
         foreach (var item in produced)
@@ -352,10 +397,24 @@ internal sealed class TrialJobHandler
                     }).ToArray(),
                 },
             });
-            ids.Add(assessmentId);
         }
-        _assessments.RecordBatch(records);
-        return ids;
+        return records;
+    }
+
+    private static void ReportTrialMaintenanceFailure(string jobId, string action, Exception exception)
+    {
+        try { Console.Error.WriteLine($"warning: Trial '{jobId}' could not {action}: {exception}"); }
+        catch (Exception) { }
+    }
+
+    private static void ReleaseSettledTrialParseLease(SIL.Motif.Host.Store.ProjectParseLease parseLease,
+        string jobId)
+    {
+        try { parseLease.Dispose(); }
+        catch (Exception exception)
+        {
+            ReportTrialMaintenanceFailure(jobId, "release project parse admission", exception);
+        }
     }
 
     private static IReadOnlyDictionary<string, string> ReadProjectStandings(LcmCache? cache,

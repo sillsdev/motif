@@ -1,6 +1,9 @@
 using System.Diagnostics;
+using System.Reflection;
+using System.Runtime.ExceptionServices;
 using System.Security.Cryptography;
 using System.Text.Json;
+using Microsoft.Data.Sqlite;
 using SIL.LCModel;
 using SIL.LCModel.Core.Text;
 using SIL.LCModel.Infrastructure;
@@ -713,6 +716,391 @@ public sealed class TrialJobHandlerTests : IDisposable
         Assert.Empty(full.Words!);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CancellationBeforePublicationCannotPublishAssessmentsOrRetainArtifacts(bool recover)
+    {
+        using var lanes = new ProjectLaneRegistry(_ => _token);
+        var proposalId = CanonicalId.Mint("proposal/");
+        var proposalJson = BuildSetGlossProposalJson(proposalId, _seed.FirstSenseId, "stale trial text");
+        SaveCommittedProposal(proposalId, proposalJson);
+        var job = CreateTrialJob(proposalJson, startRunning: false);
+        var clock = new TrialTestClock(DateTimeOffset.Parse("2026-08-29T01:00:00Z"));
+        var jobs = new JobRepository(_database, clock);
+        var claims = new JobClaims(_database, clock);
+        var held = claims.Claim(ProjectWorkspaceKey.Compute(_project), "runner-old", clock.UtcNow.ToString("O"),
+            TimeSpan.FromSeconds(2))!;
+        var claim = ClaimedJob.Of(jobs, held.JobId);
+        var assessor = new TrialArtifactAssessor(Path.Combine(_root, "stale-trial-artifacts"));
+        var (assessmentProxy, barrier) = AssessmentRepositoryBarrier.Create(_assessments);
+        var handler = BuildHandler(lanes, assessor, assessments: assessmentProxy);
+        var running = Task.Run(() => handler.RunAsync(claim, _project, CancellationToken.None));
+
+        Assert.True(barrier.Entered.Wait(TimeSpan.FromSeconds(30)),
+            "the Trial did not reach the Assessment publication boundary.");
+        AssessmentPublicationSnapshot before;
+        AssessmentPublicationSnapshot afterRecovery;
+        JobRecord cancelled;
+        string? dryRunBeforeRecovery;
+        try
+        {
+            Assert.True(Directory.Exists(assessor.InvocationDirectory));
+            dryRunBeforeRecovery = jobs.Get(job.JobId)!.DryRunJson;
+            before = ReadAssessmentPublicationSnapshot();
+            jobs.CancelActive(job.JobId);
+            if (recover)
+            {
+                clock.UtcNow = clock.UtcNow.AddSeconds(3);
+                new WorkerRecovery(jobs, clock, ownerId: "runner-new").RecoverInterruptedJobs(clock.UtcNow);
+            }
+            cancelled = jobs.Get(job.JobId)!;
+            afterRecovery = ReadAssessmentPublicationSnapshot();
+        }
+        finally
+        {
+            barrier.Release.Set();
+        }
+
+        var outcome = await running.WaitAsync(TimeSpan.FromSeconds(30));
+        var afterStaleTrial = ReadAssessmentPublicationSnapshot();
+        _output.WriteLine("Publication snapshots before recovery: {0}; after recovery: {1}; after stale Trial: {2}; " +
+            "outcome: {3}; artifact directory exists: {4}.", before, afterRecovery, afterStaleTrial,
+            outcome?.Status, assessor.InvocationDirectory is { } directory && Directory.Exists(directory));
+
+        if (!recover)
+        {
+            Assert.Equal(JobStatus.Running, cancelled.Status);
+            Assert.True(cancelled.CancellationRequested);
+            Assert.True(new JobClaims(_database).Finish(job.JobId, held.ClaimToken!,
+                JobStatus.Cancelled, JobFailureCategory.Cancellation, null));
+            cancelled = jobs.Get(job.JobId)!;
+        }
+        Assert.Equal(JobStatus.Cancelled, cancelled.Status);
+        Assert.Equal("{\"assessmentDisposition\":\"cancelled\"}", cancelled.ResultJson);
+        Assert.True(cancelled.DryRunPublished);
+        Assert.NotNull(dryRunBeforeRecovery);
+        Assert.Equal(dryRunBeforeRecovery, cancelled.DryRunJson);
+        Assert.Equal(1, cancelled.Attempt);
+        Assert.Equal(before, afterRecovery);
+        Assert.True(afterRecovery == afterStaleTrial,
+            $"stale Trial publication changed the database; before {afterRecovery}, after {afterStaleTrial}.");
+        Assert.Equal(JobStatus.Cancelled, outcome?.Status);
+        Assert.False(Directory.Exists(assessor.InvocationDirectory));
+    }
+
+    [Fact]
+    public async Task ACommittedTrialSurvivesLateCancellationRecoveryAndStaleOwnerActions()
+    {
+        using var lanes = new ProjectLaneRegistry(_ => _token);
+        using var cancellation = new CancellationTokenSource();
+        var proposalId = CanonicalId.Mint("proposal/");
+        var proposalJson = BuildSetGlossProposalJson(proposalId, _seed.FirstSenseId, "commit first text");
+        SaveCommittedProposal(proposalId, proposalJson);
+        var job = CreateTrialJob(proposalJson, startRunning: false);
+        var clock = new TrialTestClock(DateTimeOffset.Parse("2026-08-29T01:00:00Z"));
+        var jobs = new JobRepository(_database, clock);
+        var claims = new JobClaims(_database, clock);
+        var held = claims.Claim(ProjectWorkspaceKey.Compute(_project), "runner-commit-first",
+            clock.UtcNow.ToString("O"), TimeSpan.FromSeconds(2))!;
+        var claim = ClaimedJob.Of(jobs, held.JobId);
+        var assessor = new TrialArtifactAssessor(Path.Combine(_root, "commit-first-artifacts"));
+        CreateJobBundlePin(job.JobId);
+        var (assessmentProxy, barrier) = AssessmentRepositoryBarrier.Create(_assessments);
+        barrier.PauseAfterReturn = true;
+        var handler = BuildHandler(lanes, assessor, assessments: assessmentProxy);
+        var running = Task.Run(() => handler.RunAsync(claim, _project, cancellation.Token));
+
+        Assert.True(barrier.Entered.Wait(TimeSpan.FromSeconds(30)),
+            "the Trial did not return from its publication transaction.");
+        var savedAtBoundary = jobs.Get(job.JobId)!;
+        var dryRunJson = savedAtBoundary.DryRunJson;
+        var resultJson = savedAtBoundary.ResultJson;
+        var beforeLateCancellation = ReadAssessmentPublicationSnapshot();
+        var pinsAtBoundary = CountJobBundlePins(job.JobId);
+        try
+        {
+            jobs.CancelActive(job.JobId);
+            clock.UtcNow = clock.UtcNow.AddSeconds(3);
+            new WorkerRecovery(jobs, clock, ownerId: "runner-after-commit").RecoverInterruptedJobs(clock.UtcNow);
+            cancellation.Cancel();
+            Assert.False(claims.Renew(job.JobId, held.ClaimToken!, clock.UtcNow.ToString("O"), TimeSpan.FromMinutes(1)));
+            Assert.False(claims.Finish(job.JobId, held.ClaimToken!, JobStatus.Completed,
+                JobFailureCategory.None, resultJson));
+        }
+        finally
+        {
+            barrier.Release.Set();
+        }
+
+        var outcome = await running.WaitAsync(TimeSpan.FromSeconds(30));
+        var final = jobs.Get(job.JobId)!;
+        var afterLateCancellation = ReadAssessmentPublicationSnapshot();
+        _output.WriteLine("Publication row at boundary: {0}/{1}; final: {2}/{3}; outcome null: {4}.",
+            savedAtBoundary.Status, resultJson, final.Status, final.ResultJson, outcome is null);
+
+        Assert.Equal(JobStatus.Completed, savedAtBoundary.Status);
+        Assert.NotNull(resultJson);
+        using var completion = JsonDocument.Parse(resultJson);
+        var assessmentIds = completion.RootElement.GetProperty("assessmentIds").EnumerateArray()
+            .Select(item => item.GetString()!).ToArray();
+        Assert.Single(assessmentIds);
+        Assert.All(assessmentIds, id => Assert.Equal(proposalId, _assessments.Get(id).ProposalId));
+        Assert.Equal(JobStatus.Completed, final.Status);
+        Assert.Equal(resultJson, final.ResultJson);
+        Assert.Equal(dryRunJson, final.DryRunJson);
+        Assert.Equal(1, final.Attempt);
+        Assert.Null(outcome);
+        Assert.Equal(beforeLateCancellation, afterLateCancellation);
+        Assert.Equal(0, pinsAtBoundary);
+        Assert.Equal(0, CountJobBundlePins(job.JobId));
+        Assert.True(Directory.Exists(assessor.InvocationDirectory));
+        Assert.True(Directory.Exists(TrialScratchPath.ForJob(job.JobId)));
+        Assert.Single(jobs.ListAttempts(job.JobId));
+    }
+
+    [Fact]
+    public async Task AssessmentCollisionRollsBackCompletionAndPinReleaseAndDisposesArtifacts()
+    {
+        using var lanes = new ProjectLaneRegistry(_ => _token);
+        var proposalId = CanonicalId.Mint("proposal/");
+        var proposalJson = BuildSetGlossProposalJson(proposalId, _seed.FirstSenseId, "rollback collision text");
+        SaveCommittedProposal(proposalId, proposalJson);
+        var job = CreateTrialJob(proposalJson, startRunning: false);
+        var held = new JobClaims(_database).Claim(ProjectWorkspaceKey.Compute(_project), "runner-collision",
+            DateTimeOffset.Parse("2026-08-29T01:00:00Z").ToString("O"), TimeSpan.FromMinutes(2))!;
+        var claim = ClaimedJob.Of(_jobs, held.JobId);
+        CreateJobBundlePin(job.JobId);
+        var assessor = new TrialArtifactAssessor(Path.Combine(_root, "collision-artifacts"),
+            kinds: [AssessmentKind.ParseTime, AssessmentKind.ObjectTiming]);
+        var (assessmentProxy, barrier) = AssessmentRepositoryBarrier.Create(_assessments);
+        barrier.DuplicateSecondAssessmentId = true;
+        barrier.Release.Set();
+        var handler = BuildHandler(lanes, assessor, assessments: assessmentProxy);
+        var before = ReadAssessmentPublicationSnapshot();
+
+        var outcome = await handler.RunAsync(claim, _project, CancellationToken.None);
+
+        var after = ReadAssessmentPublicationSnapshot();
+        var unchanged = _jobs.Get(job.JobId)!;
+        Assert.Equal(JobStatus.CompletedWithAssessmentFailure, outcome?.Status);
+        Assert.Equal(JobStatus.Running, unchanged.Status);
+        Assert.Null(unchanged.ResultJson);
+        Assert.Equal(1, CountJobBundlePins(job.JobId));
+        Assert.Equal(before, after);
+        Assert.Empty(_assessments.ListByProposal(proposalId));
+        Assert.NotNull(assessor.InvocationDirectory);
+        Assert.False(Directory.Exists(assessor.InvocationDirectory));
+    }
+
+    [Fact]
+    public async Task EarlierScratchCleanupFailureDoesNotUndoCommittedResultOrRetainedArtifacts()
+    {
+        using var lanes = new ProjectLaneRegistry(_ => _token);
+        var proposalId = CanonicalId.Mint("proposal/");
+        var proposalJson = BuildSetGlossProposalJson(proposalId, _seed.FirstSenseId, "cleanup warning text");
+        SaveCommittedProposal(proposalId, proposalJson);
+        var job = CreateTrialJob(proposalJson);
+        var assessor = new TrialArtifactAssessor(Path.Combine(_root, "cleanup-warning-artifacts"));
+        var (assessmentProxy, barrier) = AssessmentRepositoryBarrier.Create(_assessments);
+        barrier.AfterInnerPublication = _database.Dispose;
+        barrier.Release.Set();
+        var handler = BuildHandler(lanes, assessor, assessments: assessmentProxy);
+        var databasePath = _database.FullPath;
+
+        var outcome = await handler.RunAsync(ClaimedJob.Of(_jobs, job.JobId), _project, CancellationToken.None);
+
+        Assert.Null(outcome);
+        using var reopened = MotifDatabase.OpenOwned(databasePath, _project,
+            MotifSchema.CurrentSchema, new Version(1, 0));
+        var savedJob = new JobRepository(reopened).Get(job.JobId)!;
+        var savedAssessment = Assert.Single(new AssessmentRepository(reopened).ListByProposal(proposalId));
+        Assert.Equal(JobStatus.Completed, savedJob.Status);
+        Assert.NotNull(savedJob.ResultJson);
+        Assert.True(Directory.Exists(assessor.InvocationDirectory));
+        Assert.True(Directory.Exists(TrialScratchPath.ForJob(job.JobId)));
+        Assert.NotNull(new AssessmentRepository(reopened).Get(savedAssessment.AssessmentId).Invocation);
+    }
+
+    [Fact]
+    public async Task AmbiguousCommitReadsBackAfterTransactionAndConnectionCleanupFailures()
+    {
+        using var lanes = new ProjectLaneRegistry(_ => _token);
+        var proposalId = CanonicalId.Mint("proposal/");
+        var proposalJson = BuildSetGlossProposalJson(proposalId, _seed.FirstSenseId, "ambiguous commit cleanup text");
+        SaveCommittedProposal(proposalId, proposalJson);
+        var job = CreateTrialJob(proposalJson);
+        var assessor = new TrialArtifactAssessor(Path.Combine(_root, "ambiguous-cleanup-artifacts"));
+        var storage = new FaultingTrialPublicationStorageBoundary
+        {
+            CommitOperation = transaction =>
+            {
+                transaction.Commit();
+                throw new IOException("injected post-commit exception");
+            },
+            TransactionDisposeException = new IOException("injected transaction-dispose exception"),
+            ConnectionCloseException = new IOException("injected connection-close exception"),
+            ConnectionDisposeException = new IOException("injected connection-dispose exception"),
+        };
+        var handler = BuildHandler(lanes, assessor,
+            assessments: new AssessmentRepository(_database, storage));
+
+        var outcome = await handler.RunAsync(ClaimedJob.Of(_jobs, job.JobId), _project, CancellationToken.None);
+
+        _output.WriteLine("Outcome null: {0}; read-backs: {1}; cleanup path: {2}; artifacts exist: {3}.",
+            outcome is null, storage.ReadBackCount, string.Join(",", storage.Events),
+            assessor.InvocationDirectory is { } directory && Directory.Exists(directory));
+        Assert.Equal(1, storage.ReadBackCount);
+        Assert.Null(outcome);
+        Assert.Equal(["commit", "transaction-dispose", "connection-close", "connection-dispose", "read-back"],
+            storage.Events);
+        var savedJob = _jobs.Get(job.JobId)!;
+        Assert.Equal(JobStatus.Completed, savedJob.Status);
+        Assert.NotNull(savedJob.ResultJson);
+        var savedAssessment = Assert.Single(_assessments.ListByProposal(proposalId));
+        Assert.NotNull(_assessments.Get(savedAssessment.AssessmentId).Invocation);
+        Assert.True(Directory.Exists(assessor.InvocationDirectory));
+        Assert.True(Directory.Exists(TrialScratchPath.ForJob(job.JobId)));
+    }
+
+    [Fact]
+    public async Task UnreadableCommitOutcomeRetainsArtifactsAndReportsAllStorageFailures()
+    {
+        using var lanes = new ProjectLaneRegistry(_ => _token);
+        var proposalId = CanonicalId.Mint("proposal/");
+        var proposalJson = BuildSetGlossProposalJson(proposalId, _seed.FirstSenseId, "unreadable cleanup text");
+        SaveCommittedProposal(proposalId, proposalJson);
+        var job = CreateTrialJob(proposalJson);
+        var assessor = new TrialArtifactAssessor(Path.Combine(_root, "unreadable-cleanup-artifacts"));
+        var storage = new FaultingTrialPublicationStorageBoundary
+        {
+            CommitOperation = transaction =>
+            {
+                transaction.Commit();
+                throw new IOException("injected ambiguous commit failure");
+            },
+            TransactionDisposeException = new IOException("injected disposal failure"),
+            ConnectionCloseException = new IOException("injected close failure"),
+            ReadBackException = new IOException("injected read-back failure"),
+        };
+        var handler = BuildHandler(lanes, assessor,
+            assessments: new AssessmentRepository(_database, storage));
+
+        var outcome = await handler.RunAsync(ClaimedJob.Of(_jobs, job.JobId), _project, CancellationToken.None);
+
+        Assert.Equal(JobStatus.CompletedWithAssessmentFailure, outcome?.Status);
+        Assert.Contains("injected ambiguous commit failure", outcome!.ResultJson, StringComparison.Ordinal);
+        Assert.Contains("injected disposal failure", outcome.ResultJson, StringComparison.Ordinal);
+        Assert.Contains("injected close failure", outcome.ResultJson, StringComparison.Ordinal);
+        Assert.Contains("injected read-back failure", outcome.ResultJson, StringComparison.Ordinal);
+        Assert.Equal(["commit", "transaction-dispose", "connection-close", "connection-dispose", "read-back"],
+            storage.Events);
+        Assert.Equal(JobStatus.Completed, _jobs.Get(job.JobId)!.Status);
+        Assert.Single(_assessments.ListByProposal(proposalId));
+        Assert.True(Directory.Exists(assessor.InvocationDirectory));
+        Assert.True(Directory.Exists(TrialScratchPath.ForJob(job.JobId)));
+    }
+
+    [Fact]
+    public async Task ProvenPreCommitFailureKeepsOriginalErrorAndDisposesUnpublishedArtifacts()
+    {
+        using var lanes = new ProjectLaneRegistry(_ => _token);
+        var proposalId = CanonicalId.Mint("proposal/");
+        var proposalJson = BuildSetGlossProposalJson(proposalId, _seed.FirstSenseId, "pre-commit cleanup text");
+        SaveCommittedProposal(proposalId, proposalJson);
+        var job = CreateTrialJob(proposalJson);
+        var assessor = new TrialArtifactAssessor(Path.Combine(_root, "pre-commit-cleanup-artifacts"));
+        var storage = new FaultingTrialPublicationStorageBoundary
+        {
+            CommitOperation = _ => throw new IOException("injected pre-commit failure"),
+            TransactionDisposeException = new IOException("injected disposal failure"),
+            ConnectionCloseException = new IOException("injected close failure"),
+        };
+        var handler = BuildHandler(lanes, assessor,
+            assessments: new AssessmentRepository(_database, storage));
+
+        var outcome = await handler.RunAsync(ClaimedJob.Of(_jobs, job.JobId), _project, CancellationToken.None);
+
+        Assert.Equal(JobStatus.CompletedWithAssessmentFailure, outcome?.Status);
+        Assert.Contains("injected pre-commit failure", outcome!.ResultJson, StringComparison.Ordinal);
+        Assert.DoesNotContain("injected disposal failure", outcome.ResultJson, StringComparison.Ordinal);
+        Assert.Equal(["commit", "transaction-dispose", "connection-close", "connection-dispose", "read-back"],
+            storage.Events);
+        var unchanged = _jobs.Get(job.JobId)!;
+        Assert.Equal(JobStatus.Running, unchanged.Status);
+        Assert.Null(unchanged.ResultJson);
+        Assert.Empty(_assessments.ListByProposal(proposalId));
+        Assert.False(Directory.Exists(assessor.InvocationDirectory));
+        Assert.False(Directory.Exists(TrialScratchPath.ForJob(job.JobId)));
+    }
+
+    [Fact]
+    public async Task ImplicitPostCommitCleanupFailuresDoNotReplaceSavedSuccess()
+    {
+        using var lanes = new ProjectLaneRegistry(_ => _token);
+        var proposalId = CanonicalId.Mint("proposal/");
+        var proposalJson = BuildSetGlossProposalJson(proposalId, _seed.FirstSenseId, "implicit cleanup text");
+        SaveCommittedProposal(proposalId, proposalJson);
+        var job = CreateTrialJob(proposalJson);
+        var assessor = new TrialArtifactAssessor(Path.Combine(_root, "implicit-cleanup-artifacts"));
+        var storage = new FaultingTrialPublicationStorageBoundary
+        {
+            TransactionDisposeException = new IOException("injected implicit-dispose failure"),
+            ConnectionCloseException = new IOException("injected implicit-close failure"),
+            ConnectionDisposeException = new IOException("injected implicit-connection-dispose failure"),
+        };
+        var handler = BuildHandler(lanes, assessor,
+            assessments: new AssessmentRepository(_database, storage));
+
+        var outcome = await handler.RunAsync(ClaimedJob.Of(_jobs, job.JobId), _project, CancellationToken.None);
+
+        Assert.Null(outcome);
+        Assert.Equal(["commit", "transaction-dispose", "connection-close", "connection-dispose"], storage.Events);
+        Assert.Equal(0, storage.ReadBackCount);
+        var savedJob = _jobs.Get(job.JobId)!;
+        Assert.Equal(JobStatus.Completed, savedJob.Status);
+        Assert.NotNull(savedJob.ResultJson);
+        Assert.Single(_assessments.ListByProposal(proposalId));
+        Assert.True(Directory.Exists(assessor.InvocationDirectory));
+        Assert.True(Directory.Exists(TrialScratchPath.ForJob(job.JobId)));
+    }
+
+    [Fact]
+    public async Task CurrentClaimCanPublishAssessmentsAndRetainArtifacts()
+    {
+        using var lanes = new ProjectLaneRegistry(_ => _token);
+        var proposalId = CanonicalId.Mint("proposal/");
+        var proposalJson = BuildSetGlossProposalJson(proposalId, _seed.FirstSenseId, "current trial text");
+        SaveCommittedProposal(proposalId, proposalJson);
+        var job = CreateTrialJob(proposalJson, startRunning: false);
+        var clock = new TrialTestClock(DateTimeOffset.Parse("2026-08-29T01:00:00Z"));
+        var jobs = new JobRepository(_database, clock);
+        var claims = new JobClaims(_database, clock);
+        var held = claims.Claim(ProjectWorkspaceKey.Compute(_project), "runner-live", clock.UtcNow.ToString("O"),
+            TimeSpan.FromMinutes(2))!;
+        var claim = ClaimedJob.Of(jobs, held.JobId);
+        var assessor = new TrialArtifactAssessor(Path.Combine(_root, "current-trial-artifacts"));
+        var (assessmentProxy, barrier) = AssessmentRepositoryBarrier.Create(_assessments);
+        var handler = BuildHandler(lanes, assessor, assessments: assessmentProxy);
+        var before = ReadAssessmentPublicationSnapshot();
+        var running = Task.Run(() => handler.RunAsync(claim, _project, CancellationToken.None));
+
+        Assert.True(barrier.Entered.Wait(TimeSpan.FromSeconds(30)),
+            "the Trial did not reach the Assessment publication boundary.");
+        barrier.Release.Set();
+        var outcome = await running.WaitAsync(TimeSpan.FromSeconds(30));
+        var after = ReadAssessmentPublicationSnapshot();
+
+        Assert.Null(outcome);
+        Assert.Equal(JobStatus.Completed, jobs.Get(job.JobId)!.Status);
+        Assert.False(claims.Finish(held.JobId, held.ClaimToken!, JobStatus.Completed,
+            JobFailureCategory.None, jobs.Get(job.JobId)!.ResultJson));
+        Assert.Equal(before.AssessmentCount + 1, after.AssessmentCount);
+        Assert.Equal(before.InvocationCount + 1, after.InvocationCount);
+        Assert.Equal(before.CurrentAssessmentId, after.CurrentAssessmentId);
+        Assert.True(Directory.Exists(assessor.InvocationDirectory));
+    }
+
     [Fact]
     public void DryRunIsPublishedDurablyBeforeTheCandidateIsPreparedForAssessment()
     {
@@ -857,7 +1245,15 @@ public sealed class TrialJobHandlerTests : IDisposable
             SIL.Motif.Contract.MotifJson.CreateOptions());
         var job = _jobs.Create(Guid.NewGuid().ToString("N"), ProjectWorkspaceKey.Compute(_project),
             TrialJobHandler.TrialKind, inputJson, createdUtc ?? "2026-08-29T00:00:00Z");
-        if (startRunning) _jobs.Transition(_jobs.Get(job.JobId)!, JobStatus.Running);
+        if (startRunning)
+        {
+            var claimTime = DateTimeOffset.Parse(job.CreatedUtc).AddSeconds(1).ToString("O");
+            var claimed = new JobClaims(_database).Claim(ProjectWorkspaceKey.Compute(_project), "trial-test-runner",
+                claimTime, TimeSpan.FromHours(1));
+            if (claimed is null || claimed.JobId != job.JobId)
+                throw new InvalidOperationException("The queue returned another Trial job.");
+            job = claimed;
+        }
         _trialScratchPaths.Add(TrialScratchPath.ForJob(job.JobId));
         return job;
     }
@@ -903,12 +1299,13 @@ public sealed class TrialJobHandlerTests : IDisposable
     private TrialJobHandler BuildHandler(ProjectLaneRegistry lanes, IAssessor assessor,
         Func<LcmCache?, CancellationToken, Task<string>>? prepareForAssessment = null,
         IProjectConfigurationReader? configuration = null,
-        Func<string, string, Action<bool>?, CancellationToken, Task<GrammarCheckResponse?>>? grammarHealth = null)
+        Func<string, string, Action<bool>?, CancellationToken, Task<GrammarCheckResponse?>>? grammarHealth = null,
+        IAssessmentRepository? assessments = null)
     {
         var catalog = new AssessorCatalog(new[] { assessor });
         var factory = new ScratchCacheFactory(_loader);
         return new TrialJobHandler(_baselines, _proposals, lanes,
-            configuration ?? new ProjectConfigurationReader(), catalog, _assessments,
+            configuration ?? new ProjectConfigurationReader(), catalog, assessments ?? _assessments,
             (fwDataPath, scratchRoot, _) =>
             {
                 var cache = factory.CreateFromFileCopy(fwDataPath, scratchRoot);
@@ -927,13 +1324,19 @@ public sealed class TrialJobHandlerTests : IDisposable
         private readonly Action? _afterProduction;
         private string? _cachePath;
         private string? _cacheDigest;
+        private string? _projectPath;
 
-        public TrialArtifactAssessor(string runRoot, Action? afterProduction = null)
+        public TrialArtifactAssessor(string runRoot, Action? afterProduction = null,
+            IReadOnlyList<AssessmentKind>? kinds = null)
         {
             RunRoot = runRoot;
             _afterProduction = afterProduction;
-            _assessor = new FakeAssessor("pangloss", [AssessmentKind.ObjectTiming],
-                _ => new AssessmentRaw.FileCache(_cachePath!, _cacheDigest!))
+            _assessor = new FakeAssessor("pangloss", kinds ?? [AssessmentKind.ObjectTiming],
+                rawForScope: (scope, _, kind) => kind == AssessmentKind.ObjectTiming
+                    ? new AssessmentRaw.FileCache(_cachePath!, _cacheDigest!)
+                    : new AssessmentRaw.Batch(new BatchAnalysis(scope.WordForms.Select((word, index) =>
+                        new WordAnalysis(index, word, 1, WordOutcome.NoAnalysis, "none")).ToArray(),
+                        1000, _projectPath!, []) { PerWordStepLimit = scope.PerWordStepLimit }))
             {
                 CaptureEvidence = Capture,
             };
@@ -962,11 +1365,167 @@ public sealed class TrialJobHandlerTests : IDisposable
             var evidence = FakeAssessmentEvidence.Capture(RunRoot, scope, candidate);
             Invocation = evidence;
             InvocationDirectory = Path.GetDirectoryName(evidence.SourcePath)!;
+            _projectPath = Directory.GetFiles(candidate, "*.fwdata", SearchOption.AllDirectories).Single();
             SourceBytes = File.ReadAllBytes(evidence.SourcePath);
             _cachePath = Path.Combine(InvocationDirectory, "stats.sqlite");
             File.WriteAllBytes(_cachePath, System.Text.Encoding.UTF8.GetBytes("synthetic statistics cache"));
             _cacheDigest = BatchInvocationEvidence.DigestFile(_cachePath);
             return evidence;
+        }
+    }
+
+    private AssessmentPublicationSnapshot ReadAssessmentPublicationSnapshot()
+    {
+        using var connection = _database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT (SELECT COUNT(*) FROM Assessments), " +
+            "(SELECT COUNT(*) FROM AssessmentInvocations), " +
+            "(SELECT CurrentAssessmentId FROM MotifMetadata WHERE Id = 1);";
+        using var reader = command.ExecuteReader();
+        Assert.True(reader.Read());
+        return new AssessmentPublicationSnapshot(reader.GetInt64(0), reader.GetInt64(1),
+            reader.IsDBNull(2) ? null : reader.GetString(2));
+    }
+
+    private void CreateJobBundlePin(string jobId)
+    {
+        using var connection = _database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = "INSERT INTO ParsimonyBundles " +
+            "(BundleId, BaselineTokenJson, ProjectKey, BaselineDigest, MaterialKey, EvidenceDirectory, " +
+            "GrammarFactsPath, EvidencePath, BaselineRootDirectory, InputKind, CandidateIdentity, " +
+            "ModelFingerprint, GrammarFactsSchemaVersion, GrammarFactsSha256, EvidenceSchemaVersion, " +
+            "EvidenceSha256, CreatedUtc) VALUES ($bundle, '{}', $project, 'digest', 'material', 'evidence', " +
+            "'facts', 'evidence', 'baseline', 'baseline', NULL, 'model', 1, 'facts-hash', 1, 'evidence-hash', $created); " +
+            "INSERT INTO ParsimonyBundleReferences (BundleId, ReferenceKind, ReferenceId, CreatedUtc) " +
+            "VALUES ($bundle, 'job', $job, $created);";
+        command.Parameters.AddWithValue("$bundle", "bundle-" + Guid.NewGuid().ToString("N"));
+        command.Parameters.AddWithValue("$project", ProjectWorkspaceKey.Compute(_project));
+        command.Parameters.AddWithValue("$job", jobId);
+        command.Parameters.AddWithValue("$created", "2026-08-29T01:00:00.0000000+00:00");
+        command.ExecuteNonQuery();
+    }
+
+    private int CountJobBundlePins(string jobId)
+    {
+        using var connection = _database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT COUNT(*) FROM ParsimonyBundleReferences " +
+            "WHERE ReferenceKind = 'job' AND ReferenceId = $job;";
+        command.Parameters.AddWithValue("$job", jobId);
+        return Convert.ToInt32(command.ExecuteScalar());
+    }
+
+    private sealed record AssessmentPublicationSnapshot(long AssessmentCount, long InvocationCount,
+        string? CurrentAssessmentId);
+
+    private sealed class TrialTestClock(DateTimeOffset initial) : IJobClock
+    {
+        public DateTimeOffset UtcNow { get; set; } = initial;
+    }
+
+    public class AssessmentRepositoryBarrier : DispatchProxy
+    {
+        private IAssessmentRepository _inner = null!;
+
+        public ManualResetEventSlim Entered { get; } = new();
+        public ManualResetEventSlim Release { get; } = new();
+        public bool PauseAfterReturn { get; set; }
+        public bool DuplicateSecondAssessmentId { get; set; }
+        public Action? AfterInnerPublication { get; set; }
+
+        public static (IAssessmentRepository Proxy, AssessmentRepositoryBarrier Barrier) Create(
+            IAssessmentRepository inner)
+        {
+            var proxy = DispatchProxy.Create<IAssessmentRepository, AssessmentRepositoryBarrier>();
+            var barrier = (AssessmentRepositoryBarrier)proxy;
+            barrier._inner = inner;
+            return (proxy, barrier);
+        }
+
+        protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
+        {
+            ArgumentNullException.ThrowIfNull(targetMethod);
+            var publication = targetMethod.Name is "RecordBatch" or "RecordBatchForClaim";
+            if (publication && !PauseAfterReturn) Pause();
+
+            if (targetMethod.Name == "RecordBatchForClaim" && DuplicateSecondAssessmentId && args is not null)
+            {
+                var records = (IReadOnlyList<NewAssessmentRecord>)args[0]!;
+                Assert.True(records.Count > 1);
+                args[0] = records.Select((record, index) => index == 1
+                    ? record with { AssessmentId = records[0].AssessmentId }
+                    : record).ToArray();
+            }
+
+            object? result;
+            try
+            {
+                result = targetMethod.Invoke(_inner, args);
+            }
+            catch (TargetInvocationException exception) when (exception.InnerException is { } inner)
+            {
+                ExceptionDispatchInfo.Capture(inner).Throw();
+                throw;
+            }
+
+            if (targetMethod.Name == "RecordBatchForClaim") AfterInnerPublication?.Invoke();
+            if (publication && PauseAfterReturn) Pause();
+            return result;
+        }
+
+        private void Pause()
+        {
+            Entered.Set();
+            if (!Release.Wait(TimeSpan.FromSeconds(30)))
+                throw new TimeoutException("The Assessment publication barrier was not released.");
+        }
+    }
+
+    private sealed class FaultingTrialPublicationStorageBoundary : ITrialPublicationStorageBoundary
+    {
+        public Action<SqliteTransaction>? CommitOperation { get; init; }
+        public Exception? TransactionDisposeException { get; init; }
+        public Exception? ConnectionCloseException { get; init; }
+        public Exception? ConnectionDisposeException { get; init; }
+        public Exception? ReadBackException { get; init; }
+        public int ReadBackCount { get; private set; }
+        public List<string> Events { get; } = [];
+
+        public void Commit(SqliteTransaction transaction)
+        {
+            Events.Add("commit");
+            if (CommitOperation is { } operation) operation(transaction);
+            else transaction.Commit();
+        }
+
+        public void DisposeTransaction(SqliteTransaction transaction)
+        {
+            Events.Add("transaction-dispose");
+            transaction.Dispose();
+            if (TransactionDisposeException is { } exception) throw exception;
+        }
+
+        public void CloseConnection(SqliteConnection connection)
+        {
+            Events.Add("connection-close");
+            connection.Close();
+            if (ConnectionCloseException is { } exception) throw exception;
+        }
+
+        public void DisposeConnection(SqliteConnection connection)
+        {
+            Events.Add("connection-dispose");
+            connection.Dispose();
+            if (ConnectionDisposeException is { } exception) throw exception;
+        }
+
+        public JobRecord? ReadBack(Func<JobRecord?> readBack)
+        {
+            Events.Add("read-back");
+            ReadBackCount++;
+            if (ReadBackException is { } exception) throw exception;
+            return readBack();
         }
     }
 

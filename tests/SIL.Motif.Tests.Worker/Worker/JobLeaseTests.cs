@@ -109,6 +109,25 @@ public sealed class JobLeaseTests : IDisposable
         Assert.Null(claims.Claim(Project, "runner-b", Stamp(later.AddSeconds(1)), Lease()));
     }
 
+    [Theory]
+    [InlineData(JobStatus.Running)]
+    [InlineData(JobStatus.WaitingForBaseline)]
+    [InlineData(JobStatus.WaitingForProjectHost)]
+    public void AnActiveClaimCanRenewAndFinishFromEveryActiveStatus(JobStatus status)
+    {
+        var jobs = new JobRepository(_database);
+        var claims = new JobClaims(_database);
+        jobs.Create("job-1", Project, "dry-run", "{}", Now());
+        var claimed = claims.Claim(Project, "runner-a", Now(), Lease())!;
+        if (status != JobStatus.Running)
+            SetStatus("job-1", status);
+
+        Assert.True(claims.Renew(claimed.JobId, claimed.ClaimToken!, Now(), Lease()));
+        Assert.True(claims.Finish(claimed.JobId, claimed.ClaimToken!, JobStatus.Failed,
+            JobFailureCategory.Unknown, "{\"error\":true}"));
+        Assert.Equal(JobStatus.Failed, jobs.Get(claimed.JobId)!.Status);
+    }
+
     [Fact]
     public void AStaleOwnerCannotHeartbeatOrFinishAJobReassignedAwayFromIt()
     {
@@ -291,6 +310,16 @@ public sealed class JobLeaseTests : IDisposable
         command.Parameters.AddWithValue("$order", queueOrder);
         command.Parameters.AddWithValue("$id", jobId);
         command.ExecuteNonQuery();
+    }
+
+    private void SetStatus(string jobId, JobStatus status)
+    {
+        using var connection = _database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = "UPDATE Jobs SET Status = $status WHERE JobId = $id;";
+        command.Parameters.AddWithValue("$status", JobStatusJson.ToWire(status));
+        command.Parameters.AddWithValue("$id", jobId);
+        Assert.Equal(1, command.ExecuteNonQuery());
     }
 
     private Dictionary<string, double> QueueOrders()

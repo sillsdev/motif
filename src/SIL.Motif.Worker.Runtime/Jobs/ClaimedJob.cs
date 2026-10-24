@@ -30,6 +30,8 @@ public sealed class ClaimedJob
 
     internal SIL.Motif.Host.Store.MotifDatabase Database => _jobs.Database;
 
+    internal string? CapturedClaimToken => _capturedClaimToken;
+
     /// <summary>This job's id, stable for the life of the claim.</summary>
     public string JobId => _jobId;
 

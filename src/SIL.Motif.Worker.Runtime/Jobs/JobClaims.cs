@@ -165,7 +165,8 @@ public sealed class JobClaims : IJobClaimProtocol
         command.Transaction = transaction;
         command.CommandText =
             "UPDATE Jobs SET LeaseUntilUtc = $until, HeartbeatUtc = $now " +
-            "WHERE JobId = $id AND ClaimToken = $token;";
+            "WHERE JobId = $id AND ClaimToken = $token " +
+            "AND Status IN ('running','waiting-for-baseline','waiting-for-project-host');";
         command.Parameters.AddWithValue("$until", Stamp(now, lease));
         command.Parameters.AddWithValue("$now", now);
         command.Parameters.AddWithValue("$id", jobId);

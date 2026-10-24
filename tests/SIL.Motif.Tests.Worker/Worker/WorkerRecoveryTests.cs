@@ -56,6 +56,90 @@ public sealed class WorkerRecoveryTests : IDisposable
     }
 
     [Fact]
+    public void RecoveryCancelsExpiredCancellationRequestWithoutReclaimingOrLosingDryRun()
+    {
+        var project = new ProjectLocator(Path.Combine(_root, "expired-cancel.fwdata"), "expired-cancel");
+        using var database = MotifDatabase.OpenOwned(Path.Combine(_root, "expired-cancel.motif.db"), project,
+            MotifSchema.CurrentSchema, new Version(1, 0));
+        var clock = new FixedClock("2026-08-23T12:00:00Z");
+        var jobs = new JobRepository(database, clock);
+        var claims = new JobClaims(database, clock);
+        jobs.Create(NewJob() with { JobId = "expired-cancel" });
+        var running = claims.Claim("project", "runner-old", clock.UtcNow.ToString("O"), TimeSpan.FromSeconds(2))!;
+        running = jobs.PublishDryRun(running.JobId, "{\"dryRun\":true}", running.Version);
+        jobs.CancelActive(running.JobId);
+
+        var recovery = new WorkerRecovery(jobs, clock, ownerId: "runner-new");
+        recovery.RecoverInterruptedJobs(clock.UtcNow);
+        Assert.Equal(JobStatus.Running, jobs.Get(running.JobId)!.Status);
+
+        clock.UtcNow = clock.UtcNow.AddSeconds(3);
+        recovery.RecoverInterruptedJobs(clock.UtcNow);
+
+        var cancelled = jobs.Get(running.JobId)!;
+        Assert.Equal(JobStatus.Cancelled, cancelled.Status);
+        Assert.Equal(JobFailureCategory.Cancellation, cancelled.FailureCategory);
+        Assert.Equal(1, cancelled.Attempt);
+        Assert.True(cancelled.CancellationRequested);
+        Assert.True(cancelled.DryRunPublished);
+        Assert.Equal("{\"dryRun\":true}", cancelled.DryRunJson);
+        Assert.Equal("{\"assessmentDisposition\":\"cancelled\"}", cancelled.ResultJson);
+        Assert.Single(jobs.ListAttempts(cancelled.LogicalJobId));
+        Assert.False(claims.Finish(running.JobId, running.ClaimToken!, JobStatus.Completed,
+            JobFailureCategory.None, null));
+    }
+
+    [Fact]
+    public void RecoveryRejectsDryRunWritesFromAnExpiredCancelledClaim()
+    {
+        var project = new ProjectLocator(Path.Combine(_root, "late-cancel.fwdata"), "late-cancel");
+        using var database = MotifDatabase.OpenOwned(Path.Combine(_root, "late-cancel.motif.db"), project,
+            MotifSchema.CurrentSchema, new Version(1, 0));
+        var clock = new FixedClock("2026-08-23T12:00:00Z");
+        var jobs = new JobRepository(database, clock);
+        var claims = new JobClaims(database, clock);
+        jobs.Create(NewJob() with { JobId = "late-cancel" });
+        var running = claims.Claim("project", "runner-old", clock.UtcNow.ToString("O"), TimeSpan.FromSeconds(2))!;
+        var staleHandle = ClaimedJob.Of(jobs, running.JobId);
+        jobs.CancelActive(running.JobId);
+
+        Assert.Throws<InvalidOperationException>(() => staleHandle.PublishDryRun("{\"late\":true}"));
+        clock.UtcNow = clock.UtcNow.AddSeconds(3);
+        new WorkerRecovery(jobs, clock, ownerId: "runner-new").RecoverInterruptedJobs(clock.UtcNow);
+        Assert.Throws<InvalidOperationException>(() => staleHandle.PublishDryRun("{\"late\":true}"));
+
+        var cancelled = jobs.Get(running.JobId)!;
+        Assert.Equal(JobStatus.Cancelled, cancelled.Status);
+        Assert.False(cancelled.DryRunPublished);
+        Assert.Null(cancelled.DryRunJson);
+        Assert.Null(cancelled.ResultJson);
+        Assert.Equal(1, cancelled.Attempt);
+        Assert.Single(jobs.ListAttempts(cancelled.LogicalJobId));
+    }
+
+    [Fact]
+    public void RecoveryRejectsRenewalFromAnExpiredCancelledClaim()
+    {
+        var project = new ProjectLocator(Path.Combine(_root, "renew-terminal.fwdata"), "renew-terminal");
+        using var database = MotifDatabase.OpenOwned(Path.Combine(_root, "renew-terminal.motif.db"), project,
+            MotifSchema.CurrentSchema, new Version(1, 0));
+        var clock = new FixedClock("2026-08-23T12:00:00Z");
+        var jobs = new JobRepository(database, clock);
+        var claims = new JobClaims(database, clock);
+        jobs.Create(NewJob() with { JobId = "renew-terminal" });
+        var running = claims.Claim("project", "runner-old", clock.UtcNow.ToString("O"), TimeSpan.FromSeconds(2))!;
+        jobs.CancelActive(running.JobId);
+        clock.UtcNow = clock.UtcNow.AddSeconds(3);
+
+        new WorkerRecovery(jobs, clock, ownerId: "runner-new").RecoverInterruptedJobs(clock.UtcNow);
+
+        Assert.Equal(JobStatus.Cancelled, jobs.Get(running.JobId)!.Status);
+        Assert.False(claims.Renew(running.JobId, running.ClaimToken!, clock.UtcNow.ToString("O"),
+            TimeSpan.FromSeconds(2)));
+        Assert.Equal(JobStatus.Cancelled, jobs.Get(running.JobId)!.Status);
+    }
+
+    [Fact]
     public void RetryDelaysIncreaseAndTerminalHistoryRemainsImmutable()
     {
         var project = new ProjectLocator(Path.Combine(_root, "retry.fwdata"), "retry");
@@ -88,13 +172,19 @@ public sealed class WorkerRecoveryTests : IDisposable
         using var database = MotifDatabase.OpenOwned(Path.Combine(_root, Guid.NewGuid() + ".motif.db"), project,
             MotifSchema.CurrentSchema, new Version(1, 0));
         var jobs = new JobRepository(database, new FixedClock("2026-08-23T12:00:00Z"));
+        var completing = jobs.Transition(jobs.Create(NewJob() with { JobId = "completed" }), JobStatus.Running);
+        var completed = jobs.Transition(completing, JobStatus.Completed, "{\"ok\":true}");
         var running = jobs.Transition(jobs.Create(NewJob() with { JobId = Guid.NewGuid().ToString("N") }), JobStatus.Running);
-        jobs.Transition(running.JobId, JobStatus.Failed, running.Version, category, "{\"error\":true}");
+        var failed = jobs.Transition(running.JobId, JobStatus.Failed, running.Version, category, "{\"error\":true}");
 
         var result = new WorkerRecovery(jobs).RecoverInterruptedJobs(DateTimeOffset.Parse("2026-08-23T12:00:00Z"));
 
         Assert.Empty(result.RetryJobs);
         Assert.Single(jobs.ListAttempts(running.LogicalJobId));
+        Assert.Equal((JobStatus.Completed, "{\"ok\":true}"),
+            (jobs.Get(completed.JobId)!.Status, jobs.Get(completed.JobId)!.ResultJson));
+        Assert.Equal((JobStatus.Failed, "{\"error\":true}"),
+            (jobs.Get(failed.JobId)!.Status, jobs.Get(failed.JobId)!.ResultJson));
     }
 
     [Fact]
@@ -304,6 +394,6 @@ public sealed class WorkerRecoveryTests : IDisposable
 
     private sealed class FixedClock(string value) : IJobClock
     {
-        public DateTimeOffset UtcNow => DateTimeOffset.Parse(value);
+        public DateTimeOffset UtcNow { get; set; } = DateTimeOffset.Parse(value);
     }
 }

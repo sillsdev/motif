@@ -232,6 +232,28 @@ public sealed class JobRepository
     public JobRecord Transition(JobRecord current, JobStatus next, string? resultJson = null) =>
         Transition(current.JobId, next, current.Version, resultJson);
 
+    internal JobRecord CompleteTrialForClaim(SqliteConnection connection, SqliteTransaction transaction,
+        string jobId, string claimToken, string completionJson)
+    {
+        ArgumentNullException.ThrowIfNull(connection);
+        ArgumentNullException.ThrowIfNull(transaction);
+        ArgumentException.ThrowIfNullOrWhiteSpace(jobId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(claimToken);
+        ArgumentNullException.ThrowIfNull(completionJson);
+
+        var current = ReadOptional(connection, transaction, jobId);
+        if (current is null || current.Kind != TrialJobHandler.TrialKind ||
+            !string.Equals(current.ClaimToken, claimToken, StringComparison.Ordinal) ||
+            current.Status != JobStatus.Running || current.CancellationRequested)
+            throw new OperationCanceledException("The Trial claim no longer authorises completion.");
+
+        var completed = PrepareTransition(current,
+            _stateMachine.Transition(current, JobStatus.Completed, completionJson));
+        ValidateFailureCategory(completed);
+        UpdateTransition(connection, transaction, completed);
+        return completed;
+    }
+
     public JobRecord Transition(string jobId, JobStatus next, string? resultJson = null)
     {
         var current = GetRequired(jobId);
@@ -395,6 +417,41 @@ public sealed class JobRepository
         Insert(connection, transaction, Normalize(retry));
         transaction.Commit();
         return retry;
+    }
+
+    internal void CancelExpiredCancellationRequests(DateTimeOffset now)
+    {
+        using var connection = _database.OpenConnection();
+        using var transaction = connection.BeginTransaction();
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = SelectSql + " WHERE Status = 'running' AND CancellationRequested = 1 " +
+            "AND ArchivedUtc IS NULL AND (LeaseUntilUtc IS NULL OR LeaseUntilUtc <= $now) ORDER BY JobId;";
+        command.Parameters.AddWithValue("$now", JobTimestamp.FormatUtc(now.ToUniversalTime()));
+        using var reader = command.ExecuteReader();
+        var current = new List<JobRecord>();
+        while (reader.Read()) current.Add(Read(reader));
+        reader.Close();
+
+        foreach (var job in current)
+        {
+            var changed = PrepareTransition(job, _stateMachine.Transition(job, JobStatus.Cancelled));
+            var effectiveNow = now.ToUniversalTime();
+            var durableUpdated = ValidateUtc(job.UpdatedUtc, nameof(job.UpdatedUtc));
+            if (effectiveNow < durableUpdated) effectiveNow = durableUpdated;
+            var transitionUpdated = ValidateUtc(changed.UpdatedUtc, nameof(changed.UpdatedUtc));
+            if (effectiveNow < transitionUpdated) effectiveNow = transitionUpdated;
+            changed = changed with
+            {
+                UpdatedUtc = JobTimestamp.FormatUtc(effectiveNow),
+                ArchivedUtc = JobTimestamp.FormatUtc(effectiveNow),
+                FailureCategory = JobFailureCategory.Cancellation
+            };
+            ValidateFailureCategory(changed);
+            UpdateTransition(connection, transaction, changed);
+        }
+
+        transaction.Commit();
     }
 
     /// <summary>Marks running jobs interrupted at startup, optionally only this runner's own.</summary>

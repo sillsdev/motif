@@ -350,6 +350,8 @@ its Assessment disposition is `cancelled`, so Apply needs the same explicit forc
 other unavailable Assessment. A late Assessment remains attached to the exact Proposal intent digest and
 Baseline Token it evaluated. Amendment, refresh, supersession, or even Apply does not relabel it as current
 and does not discard its historical result.
+Trial Assessment publication and its completed job result commit atomically; cancellation accepted first prevents
+publication, and cancellation after that commit leaves the completed Trial unchanged.
 
 ## Scheduling and resource limits
 

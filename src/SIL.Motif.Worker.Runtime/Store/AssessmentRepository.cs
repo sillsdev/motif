@@ -1,8 +1,10 @@
 using System.Globalization;
+using System.Runtime.ExceptionServices;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Data.Sqlite;
+using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Analysis;
@@ -11,6 +13,7 @@ using SIL.Motif.Host.Corpus;
 using SIL.Motif.Host.Parser;
 using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.Store;
+using SIL.Motif.Worker.Jobs;
 
 namespace SIL.Motif.Worker.Store;
 
@@ -29,6 +32,19 @@ public interface IAssessmentRepository
 
     /// <summary>Records every kind from one invocation atomically, including its shared evidence.</summary>
     void RecordBatch(IReadOnlyList<NewAssessmentRecord> assessments);
+
+    /// <summary>
+    /// Records every kind from a claimed Trial and completes its job in one transaction while the claim remains active.
+    /// </summary>
+    /// <param name="assessments">The complete Assessment batch produced by the Trial.</param>
+    /// <param name="jobId">The Trial job row whose claim authorises publication.</param>
+    /// <param name="claimToken">The token captured when this runner claimed the job.</param>
+    /// <param name="completionJson">The Trial result that names the recorded Assessment ids.</param>
+    /// <exception cref="OperationCanceledException">
+    /// The job is cancelled, terminal, or no longer held by this claim.
+    /// </exception>
+    void RecordBatchForClaim(IReadOnlyList<NewAssessmentRecord> assessments, string jobId, string claimToken,
+        string completionJson);
 
     /// <summary>Gets one Assessment, with its full word and analysis detail, by id.</summary>
     /// <exception cref="KeyNotFoundException">No Assessment is recorded under this id.</exception>
@@ -86,6 +102,57 @@ public interface IAssessmentRepository
     /// holds, that is current, or that a surviving Assessment replaces is kept, and no surviving row is rewritten.
     /// </summary>
     void DeleteByProposal(CanonicalId proposalId, string? exceptAssessmentId);
+}
+
+internal sealed class TrialPublicationOutcomeUnknownException : IOException
+{
+    public TrialPublicationOutcomeUnknownException(string jobId, Exception commitException,
+        IReadOnlyList<Exception> cleanupExceptions, Exception readBackException)
+        : base($"The Trial publication commit for job '{jobId}' could not be confirmed. " +
+            $"Commit error: {commitException.Message} Cleanup errors: {string.Join(" | ", cleanupExceptions.Select(error => error.Message))} " +
+            $"Read-back error: {readBackException.Message}",
+            new AggregateException([commitException, .. cleanupExceptions, readBackException]))
+    {
+    }
+}
+
+internal interface ITrialPublicationStorageBoundary
+{
+    /// <summary>Commits the transaction that completes a Trial and inserts its Assessments.</summary>
+    void Commit(SqliteTransaction transaction);
+
+    /// <summary>Releases the transaction after a publication attempt.</summary>
+    void DisposeTransaction(SqliteTransaction transaction);
+
+    /// <summary>Closes the connection before the independent outcome read-back.</summary>
+    void CloseConnection(SqliteConnection connection);
+
+    /// <summary>Releases the publication connection.</summary>
+    void DisposeConnection(SqliteConnection connection);
+
+    /// <summary>Reads the job outcome after the publication connection has been released.</summary>
+    JobRecord? ReadBack(Func<JobRecord?> readBack);
+}
+
+internal sealed class SqliteTrialPublicationStorageBoundary : ITrialPublicationStorageBoundary
+{
+    /// <summary>The production boundary over the pinned SQLite provider.</summary>
+    internal static SqliteTrialPublicationStorageBoundary Instance { get; } = new();
+
+    /// <summary>Commits the SQLite transaction.</summary>
+    public void Commit(SqliteTransaction transaction) => transaction.Commit();
+
+    /// <summary>Disposes the SQLite transaction.</summary>
+    public void DisposeTransaction(SqliteTransaction transaction) => transaction.Dispose();
+
+    /// <summary>Closes the SQLite connection.</summary>
+    public void CloseConnection(SqliteConnection connection) => connection.Close();
+
+    /// <summary>Disposes the SQLite connection.</summary>
+    public void DisposeConnection(SqliteConnection connection) => connection.Dispose();
+
+    /// <summary>Reads the saved job through a separate repository connection.</summary>
+    public JobRecord? ReadBack(Func<JobRecord?> readBack) => readBack();
 }
 
 /// <summary>
@@ -236,10 +303,19 @@ public sealed class AssessmentRepository : IAssessmentRepository
     };
 
     private readonly MotifDatabase _database;
+    private readonly ITrialPublicationStorageBoundary _trialPublicationStorage;
 
     /// <summary>Creates a repository over an already worker-owned database.</summary>
-    public AssessmentRepository(MotifDatabase database) =>
+    public AssessmentRepository(MotifDatabase database)
+        : this(database, SqliteTrialPublicationStorageBoundary.Instance)
+    {
+    }
+
+    internal AssessmentRepository(MotifDatabase database, ITrialPublicationStorageBoundary trialPublicationStorage)
+    {
         _database = database ?? throw new ArgumentNullException(nameof(database));
+        _trialPublicationStorage = trialPublicationStorage ?? throw new ArgumentNullException(nameof(trialPublicationStorage));
+    }
 
     /// <inheritdoc />
     public void Record(NewAssessmentRecord assessment) => RecordBatch([assessment]);
@@ -247,14 +323,149 @@ public sealed class AssessmentRepository : IAssessmentRepository
     /// <inheritdoc />
     public void RecordBatch(IReadOnlyList<NewAssessmentRecord> assessments)
     {
-        ArgumentNullException.ThrowIfNull(assessments);
-        foreach (var assessment in assessments) ValidateRecord(assessment);
-        // Serialized before the write lock is taken, so a large Trial holds it only for its inserts.
-        var prepared = assessments.Select(Prepare).ToArray();
+        var prepared = PrepareBatch(assessments);
         using var connection = _database.OpenConnection();
         using var transaction = connection.BeginTransaction();
         InsertPrepared(connection, transaction, prepared);
         transaction.Commit();
+    }
+
+    /// <inheritdoc />
+    public void RecordBatchForClaim(IReadOnlyList<NewAssessmentRecord> assessments, string jobId, string claimToken,
+        string completionJson)
+    {
+        if (string.IsNullOrWhiteSpace(jobId))
+            throw new ArgumentException("A job id is required.", nameof(jobId));
+        if (string.IsNullOrWhiteSpace(claimToken))
+            throw new ArgumentException("A claim token is required.", nameof(claimToken));
+        ArgumentNullException.ThrowIfNull(completionJson);
+        var prepared = PrepareBatch(assessments);
+        using var resources = new TrialPublicationResources(_database.OpenConnection(), _trialPublicationStorage, jobId);
+        var connection = resources.Connection;
+        var transaction = resources.BeginTransaction(deferred: false);
+        try
+        {
+            new JobRepository(_database).CompleteTrialForClaim(connection, transaction, jobId, claimToken,
+                completionJson);
+            InsertPrepared(connection, transaction, prepared);
+        }
+        catch (Exception)
+        {
+            try { transaction.Rollback(); }
+            catch (Exception rollbackException)
+            {
+                resources.Report("rollback unpublished Trial transaction", rollbackException);
+            }
+            throw;
+        }
+
+        try
+        {
+            _trialPublicationStorage.Commit(transaction);
+        }
+        catch (Exception commitException)
+        {
+            var cleanupExceptions = resources.Release();
+            JobRecord? observed;
+            try
+            {
+                observed = _trialPublicationStorage.ReadBack(() => new JobRepository(_database).Get(jobId));
+            }
+            catch (Exception readBackException)
+            {
+                throw new TrialPublicationOutcomeUnknownException(jobId, commitException, cleanupExceptions,
+                    readBackException);
+            }
+
+            if (observed is { Status: JobStatus.Completed, ResultJson: var result } &&
+                observed.Kind == TrialJobHandler.TrialKind &&
+                string.Equals(observed.ClaimToken, claimToken, StringComparison.Ordinal) &&
+                string.Equals(result, completionJson, StringComparison.Ordinal))
+            {
+                resources.ReportConfirmedCommit(commitException, cleanupExceptions);
+                return;
+            }
+
+            resources.ReportCleanup(commitException, cleanupExceptions);
+            ExceptionDispatchInfo.Capture(commitException).Throw();
+            throw;
+        }
+    }
+
+    private sealed class TrialPublicationResources(SqliteConnection connection,
+        ITrialPublicationStorageBoundary storage, string jobId) : IDisposable
+    {
+        private readonly List<Exception> _cleanupExceptions = [];
+        private SqliteTransaction? _transaction;
+        private bool _released;
+
+        public SqliteConnection Connection { get; } = connection;
+
+        public SqliteTransaction BeginTransaction(bool deferred)
+        {
+            _transaction = Connection.BeginTransaction(deferred);
+            return _transaction;
+        }
+
+        public IReadOnlyList<Exception> Release()
+        {
+            if (_released) return _cleanupExceptions;
+            _released = true;
+            if (_transaction is not null)
+                TryCleanup(() => storage.DisposeTransaction(_transaction));
+            TryCleanup(() => storage.CloseConnection(Connection));
+            TryCleanup(() => storage.DisposeConnection(Connection));
+            return _cleanupExceptions;
+        }
+
+        public void Dispose()
+        {
+            if (_released) return;
+            ReportCleanup(null, Release());
+        }
+
+        public void Report(string action, Exception exception) =>
+            WriteDiagnostic($"could not {action}: {exception}");
+
+        public void ReportConfirmedCommit(Exception commitException, IReadOnlyList<Exception> cleanupExceptions)
+        {
+            var cleanupDetails = cleanupExceptions.Count == 0
+                ? "none"
+                : string.Join(" | ", cleanupExceptions.Select(error => error.Message));
+            WriteDiagnostic($"commit error '{commitException.Message}' was resolved by exact read-back; " +
+                $"cleanup errors: {cleanupDetails}; details: " +
+                new AggregateException([commitException, .. cleanupExceptions]));
+        }
+
+        public void ReportCleanup(Exception? commitException, IReadOnlyList<Exception> cleanupExceptions)
+        {
+            if (cleanupExceptions.Count == 0) return;
+            var failures = commitException is null
+                ? cleanupExceptions
+                : new[] { commitException }.Concat(cleanupExceptions).ToArray();
+            Report("release Trial publication resources; " + string.Join(" | ", failures.Select(error => error.Message)),
+                new AggregateException(failures));
+        }
+
+        private void TryCleanup(Action cleanup)
+        {
+            try { cleanup(); }
+            catch (Exception exception) { _cleanupExceptions.Add(exception); }
+        }
+
+        private void WriteDiagnostic(string message)
+        {
+            try { Console.Error.WriteLine($"warning: Trial '{jobId}' {message}"); }
+            catch (Exception) { }
+        }
+    }
+
+    private static PreparedAssessment[] PrepareBatch(IReadOnlyList<NewAssessmentRecord> assessments)
+    {
+        ArgumentNullException.ThrowIfNull(assessments);
+        foreach (var assessment in assessments) ValidateRecord(assessment);
+        // Serialized before the write lock is taken, so a large Trial holds it only for its inserts.
+        return assessments.Select(Prepare).ToArray();
     }
 
     internal static void ValidateRecords(IReadOnlyList<NewAssessmentRecord> assessments)
