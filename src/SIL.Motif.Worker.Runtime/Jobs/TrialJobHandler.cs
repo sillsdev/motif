@@ -238,17 +238,7 @@ internal sealed class TrialJobHandler
             try
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                var durableAssessments = produced.Select(item => item.Invocation is { } invocation
-                    ? item with
-                    {
-                        Invocation = invocation with
-                        {
-                            SourcePath = AssessmentSourceArtifactStore.Persist(_workerRoot,
-                                invocation.SourcePath, invocation.SourceBytesSha256),
-                        },
-                    }
-                    : item).ToArray();
-                var assessmentIds = RecordAll(durableAssessments, proposal, candidate.DryRun,
+                var assessmentIds = RecordAll(produced, proposal, candidate.DryRun,
                     candidate.Selection, candidate.Scope, scopeConfiguration, assessor.Name, baseline.Token,
                     candidate.ProjectStandings);
                 foreach (var lease in artifactLeases) lease.Retain();

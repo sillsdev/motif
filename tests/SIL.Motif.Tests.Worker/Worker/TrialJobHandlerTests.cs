@@ -4,6 +4,7 @@ using System.Text.Json;
 using SIL.LCModel;
 using SIL.LCModel.Core.Text;
 using SIL.LCModel.Infrastructure;
+using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Canonicalization;
 using SIL.Motif.Contract.Ids;
@@ -32,6 +33,7 @@ using SIL.Motif.Worker;
 using SIL.Motif.Worker.Scheduling;
 using SIL.Motif.Worker.Store;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace SIL.Motif.Tests.Worker;
 
@@ -57,9 +59,11 @@ public sealed class TrialJobHandlerTests : IDisposable
     private readonly SeededProject _seed;
     private readonly Guid _opinionAnalysisId;
     private readonly Guid _phonologicalDataId;
+    private readonly ITestOutputHelper _output;
 
-    public TrialJobHandlerTests(PristineProjectFixture pristine)
+    public TrialJobHandlerTests(PristineProjectFixture pristine, ITestOutputHelper output)
     {
+        _output = output;
         Directory.CreateDirectory(_root);
 
         using var master = pristine.NewScratch();
@@ -114,6 +118,105 @@ public sealed class TrialJobHandlerTests : IDisposable
         Assert.Equal(JobStatus.Completed, completed.Status);
         Assert.True(completed.DryRunPublished);
         Assert.Equal(1, _loader.LoadScratchCacheCount);
+    }
+
+    [Fact]
+    public void TrialRetainsItsStagedSourceWithoutPublishingASecondCopy()
+    {
+        using var lanes = new ProjectLaneRegistry(_ => _token);
+        var assessor = new TrialArtifactAssessor(Path.Combine(_root, "assessment-runs"));
+        var handler = BuildHandler(lanes, assessor);
+        var proposalId = CanonicalId.Mint("proposal/");
+        var proposalJson = BuildSetGlossProposalJson(proposalId, _seed.FirstSenseId, "retained source");
+        SaveCommittedProposal(proposalId, proposalJson);
+        var job = CreateTrialJob(proposalJson);
+
+        var completed = RunAndFinish(handler, job.JobId);
+
+        Assert.Equal(JobStatus.Completed, completed.Status);
+        var header = Assert.Single(_assessments.ListByProposal(proposalId));
+        var assessment = _assessments.Get(header.AssessmentId);
+        var invocation = Assert.IsType<BatchInvocationEvidence>(assessment.Invocation);
+        var sourcePath = Path.GetFullPath(invocation.SourcePath);
+        var sharedSources = Path.Combine(_root, "assessment-sources");
+        var sourceCopies = Directory.GetFiles(assessor.RunRoot, "source.fwdata", SearchOption.AllDirectories)
+            .Concat(Directory.Exists(sharedSources)
+                ? Directory.GetFiles(sharedSources, "*.fwdata", SearchOption.TopDirectoryOnly)
+                : [])
+            .Where(path => BatchInvocationEvidence.DigestFile(path) == invocation.SourceBytesSha256)
+            .ToArray();
+        var sourceBytes = new FileInfo(sourcePath).Length;
+        _output.WriteLine($"Trial source fixture copies={sourceCopies.Length}; bytes={sourceCopies.Sum(path => new FileInfo(path).Length)}; single-copy-bytes={sourceBytes}.");
+
+        var relativeSourcePath = Path.GetRelativePath(Path.GetFullPath(assessor.RunRoot), sourcePath);
+        Assert.False(Path.IsPathRooted(relativeSourcePath));
+        Assert.DoesNotContain("..", relativeSourcePath.Split(Path.DirectorySeparatorChar));
+        Assert.Equal(invocation.InvocationId, Path.GetFileName(Path.GetDirectoryName(sourcePath)));
+        Assert.Equal(assessor.SourceBytes, File.ReadAllBytes(sourcePath));
+        Assert.Equal(invocation.SourceBytesSha256, BatchInvocationEvidence.DigestFile(sourcePath));
+        Assert.True(Directory.Exists(assessor.InvocationDirectory));
+        Assert.False(Directory.Exists(sharedSources));
+        Assert.Single(sourceCopies);
+        Assert.Equal(sourceBytes, sourceCopies.Sum(path => new FileInfo(path).Length));
+
+        using var replay = StatsEvidenceReplay.Create(invocation, assessment.CachePath!, assessment.CacheDigest!);
+        Assert.Equal(invocation.SourceBytesSha256, BatchInvocationEvidence.DigestFile(replay.GrammarPath));
+    }
+
+    [Fact]
+    public void HistoricalSharedAssessmentSourceRemainsReadableForStatsReplay()
+    {
+        var stagingDirectory = Path.Combine(_root, "legacy-staging");
+        Directory.CreateDirectory(stagingDirectory);
+        var stagedSource = Path.Combine(stagingDirectory, "source.fwdata");
+        var sourceBytes = System.Text.Encoding.UTF8.GetBytes("historical shared source fixture");
+        File.WriteAllBytes(stagedSource, sourceBytes);
+        var sourceDigest = BatchInvocationEvidence.DigestFile(stagedSource);
+        var sharedSource = AssessmentSourceArtifactStore.Persist(_root, stagedSource, sourceDigest);
+        AssessmentSourceArtifactStore.Verify(sharedSource, sourceDigest);
+        var cachePath = Path.Combine(_root, "legacy-stats.sqlite");
+        File.WriteAllBytes(cachePath, [1, 2, 3, 4]);
+        var cacheDigest = BatchInvocationEvidence.DigestFile(cachePath);
+        var invocation = new BatchInvocationEvidence("historical-invocation", sharedSource, sourceDigest,
+            "sha256:" + new string('1', 64), "words.txt", "sha256:" + new string('2', 64),
+            "out.tsv", "sha256:" + new string('3', 64), "stderr.txt", "sha256:" + new string('4', 64),
+            null, StepCap.Default, 1, true);
+        var assessmentId = CanonicalId.Mint("assessment/").Value;
+        var selection = Selection.Create("historical", []);
+        _assessments.Record(new NewAssessmentRecord(assessmentId, null, null, "pangloss",
+            AssessmentKind.ObjectTiming.ToStoredKind(), "{}", "sha256:" + new string('5', 64),
+            new AssessmentSubject.Words(selection, "none", "1"), "{}", null, null, sourceDigest,
+            null, null, null,
+            new AssessmentRecordMaterial.Words([], cachePath, cacheDigest, [], invocation)));
+
+        var stored = _assessments.Get(assessmentId);
+        Assert.Equal(sharedSource, stored.Invocation!.SourcePath);
+        using var replay = StatsEvidenceReplay.Create(stored.Invocation, stored.CachePath!, stored.CacheDigest!);
+        Assert.Equal(sourceBytes, File.ReadAllBytes(replay.GrammarPath));
+        Assert.Equal(sourceDigest, BatchInvocationEvidence.DigestFile(replay.GrammarPath));
+    }
+
+    [Fact]
+    public async Task TrialDisposesItsStagedSourceWhenCancellationPreventsAssessmentCommit()
+    {
+        using var lanes = new ProjectLaneRegistry(_ => _token);
+        using var cancellation = new CancellationTokenSource();
+        var assessor = new TrialArtifactAssessor(Path.Combine(_root, "assessment-runs"), cancellation.Cancel);
+        var handler = BuildHandler(lanes, assessor);
+        var proposalId = CanonicalId.Mint("proposal/");
+        var proposalJson = BuildSetGlossProposalJson(proposalId, _seed.FirstSenseId, "cancel retained source");
+        SaveCommittedProposal(proposalId, proposalJson);
+        var job = CreateTrialJob(proposalJson);
+        var claim = ClaimedJob.Of(_jobs, job.JobId);
+
+        var outcome = await handler.RunAsync(claim, _project, cancellation.Token);
+
+        Assert.Equal(JobStatus.Cancelled, outcome!.Status);
+        claim.Transition(outcome.Status, outcome.Category, outcome.ResultJson);
+        Assert.NotNull(assessor.InvocationDirectory);
+        Assert.False(Directory.Exists(assessor.InvocationDirectory));
+        Assert.Empty(_assessments.ListByProposal(proposalId));
+        Assert.False(Directory.Exists(Path.Combine(_root, "assessment-sources")));
     }
 
     [Fact]
@@ -816,6 +919,55 @@ public sealed class TrialJobHandlerTests : IDisposable
             },
             (scratch, plan, _) => Task.FromResult(ProposalDryRunner.Run(scratch!, plan)),
             prepareForAssessment ?? DefaultPrepareForAssessment, _root, grammarHealth);
+    }
+
+    private sealed class TrialArtifactAssessor : IAssessor
+    {
+        private readonly FakeAssessor _assessor;
+        private readonly Action? _afterProduction;
+        private string? _cachePath;
+        private string? _cacheDigest;
+
+        public TrialArtifactAssessor(string runRoot, Action? afterProduction = null)
+        {
+            RunRoot = runRoot;
+            _afterProduction = afterProduction;
+            _assessor = new FakeAssessor("pangloss", [AssessmentKind.ObjectTiming],
+                _ => new AssessmentRaw.FileCache(_cachePath!, _cacheDigest!))
+            {
+                CaptureEvidence = Capture,
+            };
+        }
+
+        public string RunRoot { get; }
+        public string? InvocationDirectory { get; private set; }
+        public BatchInvocationEvidence? Invocation { get; private set; }
+        public byte[] SourceBytes { get; private set; } = [];
+        public string Name => _assessor.Name;
+        public IReadOnlyList<AssessmentKind> SupportedKinds => _assessor.SupportedKinds;
+
+        public async Task<IReadOnlyList<ProducedAssessment>> ProduceAsync(
+            AssessmentScope scope, string exportedCandidate, CancellationToken cancellationToken)
+        {
+            var produced = await _assessor.ProduceAsync(scope, exportedCandidate, cancellationToken)
+                .ConfigureAwait(false);
+            var lease = new AssessmentArtifactLease(InvocationDirectory!);
+            var withLease = produced.Select(item => item with { ArtifactLease = lease }).ToArray();
+            _afterProduction?.Invoke();
+            return withLease;
+        }
+
+        private BatchInvocationEvidence Capture(AssessmentScope scope, string candidate)
+        {
+            var evidence = FakeAssessmentEvidence.Capture(RunRoot, scope, candidate);
+            Invocation = evidence;
+            InvocationDirectory = Path.GetDirectoryName(evidence.SourcePath)!;
+            SourceBytes = File.ReadAllBytes(evidence.SourcePath);
+            _cachePath = Path.Combine(InvocationDirectory, "stats.sqlite");
+            File.WriteAllBytes(_cachePath, System.Text.Encoding.UTF8.GetBytes("synthetic statistics cache"));
+            _cacheDigest = BatchInvocationEvidence.DigestFile(_cachePath);
+            return evidence;
+        }
     }
 
     private Task<string> DefaultPrepareForAssessment(LcmCache? cache, CancellationToken _)
