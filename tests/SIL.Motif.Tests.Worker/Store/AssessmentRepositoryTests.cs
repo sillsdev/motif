@@ -1,7 +1,12 @@
 using System.Linq;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using Microsoft.Data.Sqlite;
+using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Ids;
+using SIL.Motif.Contract.Parsimony;
 using SIL.Motif.Contract.Projects;
+using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Corpus;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.Parser;
@@ -577,6 +582,151 @@ public sealed class AssessmentRepositoryTests : IDisposable
     }
 
     [Fact]
+    public void SweepKeepsBothAssessmentsCitedByASavedDifferenceAndItsReplacementLineage()
+    {
+        var repository = NewRepository("sweep-difference.fwdata", out var database);
+        var proposal = CanonicalId.Mint("proposal/");
+        SeedProposal(database, proposal.Value);
+        repository.Record(NewAssessment("before", proposal, "sha256:intent", "Correctness"));
+        repository.Record(NewAssessment("root", proposal, "sha256:intent", "Correctness"));
+        repository.Record(NewAssessment("middle", proposal, "sha256:intent", "Correctness"));
+        repository.Record(NewAssessment("after", proposal, "sha256:intent", "Correctness"));
+        repository.Record(NewAssessment("uncited", proposal, "sha256:intent", "ParseTime"));
+        Execute(database, "UPDATE Assessments SET ReplacesAssessmentId = 'root' WHERE AssessmentId = 'middle';", proposal.Value);
+        Execute(database, "UPDATE Assessments SET ReplacesAssessmentId = 'middle' WHERE AssessmentId = 'after';", proposal.Value);
+
+        var differences = new ProposalDifferenceRepository(database);
+        differences.Publish(new NewProposalDifference(
+            DifferenceSummary("difference/1", proposal.Value, "before", "after"), []));
+
+        repository.DeleteByProposal(proposal, exceptAssessmentId: null);
+
+        Assert.Equal("before", repository.Get("before").AssessmentId);
+        Assert.Equal("root", repository.Get("root").AssessmentId);
+        Assert.Equal("middle", repository.Get("middle").AssessmentId);
+        Assert.Equal("after", repository.Get("after").AssessmentId);
+        Assert.Throws<KeyNotFoundException>(() => repository.Get("uncited"));
+        Assert.Equal(("before", "after"),
+            (differences.GetSummary("difference/1")!.BeforeAssessmentId,
+                differences.GetSummary("difference/1")!.AfterAssessmentId));
+    }
+
+    [Fact]
+    public void SweepKeepsAssessmentIdsInEveryFrozenParsimonyCitationSlot()
+    {
+        var repository = NewRepository("sweep-parsimony.fwdata", out var database);
+        var proposal = CanonicalId.Mint("proposal/");
+        SeedProposal(database, proposal.Value);
+        repository.Record(NewAssessment("report/top-level", proposal, "sha256:intent", "Correctness"));
+        repository.Record(NewAssessment("report/inputs", proposal, "sha256:intent", "Correctness"));
+        repository.Record(NewAssessment("report/evidence", proposal, "sha256:intent", "Correctness"));
+        repository.Record(NewAssessment("report/uncited", proposal, "sha256:intent", "ParseTime"));
+        new ReportRepository(database).Save(ParsimonyReport(
+            "report/parsimony", ["report/top-level"], ["report/inputs"], ["report/evidence"]));
+
+        repository.DeleteByProposal(proposal, exceptAssessmentId: null);
+
+        Assert.Equal("report/top-level", repository.Get("report/top-level").AssessmentId);
+        Assert.Equal("report/inputs", repository.Get("report/inputs").AssessmentId);
+        Assert.Equal("report/evidence", repository.Get("report/evidence").AssessmentId);
+        Assert.Throws<KeyNotFoundException>(() => repository.Get("report/uncited"));
+    }
+
+    [Fact]
+    public void SweepAcceptsAnOmittedOptionalParsimonyAssessmentIdsList()
+    {
+        var repository = NewRepository("sweep-parsimony-optional-assessment-ids.fwdata", out var database);
+        var proposal = CanonicalId.Mint("proposal/");
+        SeedProposal(database, proposal.Value);
+        repository.Record(NewAssessment("report/uncited", proposal, "sha256:intent", "Correctness"));
+        var report = ParsimonyReport("report/optional-assessment-ids", [], [], []);
+        var reportJson = JsonNode.Parse(report.ReportJson)!.AsObject();
+        Assert.True(reportJson.Remove("assessmentIds"));
+        var omittedListReport = report with
+        {
+            ReportJson = reportJson.ToJsonString(new JsonSerializerOptions(JsonSerializerDefaults.Web)),
+        };
+        var read = JsonSerializer.Deserialize<ParsimonyReportResponse>(omittedListReport.ReportJson,
+            new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        Assert.NotNull(read);
+        Assert.Empty(read.AssessmentIds);
+        Assert.Empty(read.Inputs.AssessmentIds);
+        Assert.NotNull(read.JoinQuality);
+        new ReportRepository(database).Save(omittedListReport);
+
+        repository.DeleteByProposal(proposal, exceptAssessmentId: null);
+
+        Assert.Throws<KeyNotFoundException>(() => repository.Get("report/uncited"));
+    }
+
+    [Fact]
+    public void SweepRefusesAnExplicitNullOptionalParsimonyAssessmentIdsList()
+    {
+        var repository = NewRepository("sweep-parsimony-null-assessment-ids.fwdata", out var database);
+        var proposal = CanonicalId.Mint("proposal/");
+        SeedProposal(database, proposal.Value);
+        repository.Record(NewAssessment("report/unknown", proposal, "sha256:intent", "Correctness"));
+        var report = ParsimonyReport("report/null-assessment-ids", [], [], []);
+        var reportJson = JsonNode.Parse(report.ReportJson)!.AsObject();
+        reportJson["assessmentIds"] = null;
+        new ReportRepository(database).Save(report with
+        {
+            ReportJson = reportJson.ToJsonString(new JsonSerializerOptions(JsonSerializerDefaults.Web)),
+        });
+
+        Assert.Throws<InvalidDataException>(() => repository.DeleteByProposal(proposal, exceptAssessmentId: null));
+
+        Assert.Equal("report/unknown", repository.Get("report/unknown").AssessmentId);
+    }
+
+    [Fact]
+    public void SweepRefusesMalformedFrozenParsimonyCitationsWithoutDeletingAssessments()
+    {
+        var repository = NewRepository("sweep-parsimony-malformed.fwdata", out var database);
+        var proposal = CanonicalId.Mint("proposal/");
+        SeedProposal(database, proposal.Value);
+        repository.Record(NewAssessment("cited-or-unknown", proposal, "sha256:intent", "Correctness"));
+        new ReportRepository(database).Save(new ReportRecord(
+            "report/malformed", null, null, "{}", "{}", "parsimony"));
+
+        Assert.Throws<InvalidDataException>(() => repository.DeleteByProposal(proposal, exceptAssessmentId: null));
+
+        Assert.Equal("cited-or-unknown", repository.Get("cited-or-unknown").AssessmentId);
+    }
+
+    [Fact]
+    public void SweepRefusesAnUnknownFrozenParsimonyCitationFieldWithoutDeletingAssessments()
+    {
+        var repository = NewRepository("sweep-parsimony-unknown-field.fwdata", out var database);
+        var proposal = CanonicalId.Mint("proposal/");
+        SeedProposal(database, proposal.Value);
+        repository.Record(NewAssessment("cited-or-unknown", proposal, "sha256:intent", "Correctness"));
+        var report = ParsimonyReport("report/unknown-field", ["cited-or-unknown"], ["cited-or-unknown"],
+            ["cited-or-unknown"]);
+        var reportJson = report.ReportJson[..^1] + ",\"futureReferences\":[\"cited-or-unknown\"]}";
+        new ReportRepository(database).Save(report with { ReportJson = reportJson });
+
+        Assert.Throws<InvalidDataException>(() => repository.DeleteByProposal(proposal, exceptAssessmentId: null));
+
+        Assert.Equal("cited-or-unknown", repository.Get("cited-or-unknown").AssessmentId);
+    }
+
+    [Fact]
+    public void SweepRefusesAnUnrecognizedReportKindWithoutDeletingAssessments()
+    {
+        var repository = NewRepository("sweep-unknown-report.fwdata", out var database);
+        var proposal = CanonicalId.Mint("proposal/");
+        SeedProposal(database, proposal.Value);
+        repository.Record(NewAssessment("cited-or-unknown", proposal, "sha256:intent", "Correctness"));
+        new ReportRepository(database).Save(new ReportRecord(
+            "report/unknown", null, null, "{\"assessmentIds\":[\"cited-or-unknown\"]}", "{}", "future-report"));
+
+        Assert.Throws<InvalidDataException>(() => repository.DeleteByProposal(proposal, exceptAssessmentId: null));
+
+        Assert.Equal("cited-or-unknown", repository.Get("cited-or-unknown").AssessmentId);
+    }
+
+    [Fact]
     public void SweepKeepsAPinnedAssessment()
     {
         var repository = NewRepository("sweep-pinned.fwdata", out var database);
@@ -640,6 +790,10 @@ public sealed class AssessmentRepositoryTests : IDisposable
         SeedProposal(database, proposal.Value);
         repository.Record(NewAssessment("first", proposal, "sha256:intent", "Correctness"));
         repository.Record(NewAssessment("second", proposal, "sha256:intent", "ParseTime"));
+        repository.Record(NewAssessment("uncited", proposal, "sha256:intent", "ParseTime"));
+        var differences = new ProposalDifferenceRepository(database);
+        differences.Publish(new NewProposalDifference(
+            DifferenceSummary("difference/rollback", proposal.Value, "first", "second"), []));
         var words = Scalar(database, "SELECT CAST(COUNT(*) AS TEXT) FROM AssessedWords;");
         Execute(database, "CREATE TRIGGER FailLateSweep BEFORE DELETE ON Assessments " +
             "BEGIN SELECT RAISE(ABORT, 'injected late failure'); END;", proposal.Value);
@@ -648,6 +802,10 @@ public sealed class AssessmentRepositoryTests : IDisposable
 
         Assert.Equal("first", repository.Get("first").AssessmentId);
         Assert.Equal("second", repository.Get("second").AssessmentId);
+        Assert.Equal("uncited", repository.Get("uncited").AssessmentId);
+        Assert.Equal(("first", "second"),
+            (differences.GetSummary("difference/rollback")!.BeforeAssessmentId,
+                differences.GetSummary("difference/rollback")!.AfterAssessmentId));
         Assert.Equal(words, Scalar(database, "SELECT CAST(COUNT(*) AS TEXT) FROM AssessedWords;"));
     }
 
@@ -697,6 +855,43 @@ public sealed class AssessmentRepositoryTests : IDisposable
         command.Parameters.AddWithValue("$proposal", proposalId);
         command.ExecuteNonQuery();
     }
+
+    private static ReportRecord ParsimonyReport(string reportId, IReadOnlyList<string> responseAssessmentIds,
+        IReadOnlyList<string> inputAssessmentIds, IReadOnlyList<string> evidenceAssessmentIds)
+    {
+        var token = new BaselineToken("project", "sha256:" + new string('1', 64), "1",
+            "2026-10-13T00:00:00Z", "sha256:" + new string('2', 64));
+        var inputs = ParsimonyInputs(token, inputAssessmentIds);
+        var response = new ParsimonyReportResponse(reportId, inputs, [], "saved Parsimony report")
+        {
+            AssessmentIds = responseAssessmentIds,
+            JoinQuality = new ParsimonyJoinQuality("default-selection", false, 0, 0, 0, 0, 0, 0, 0,
+                null, null, null, null, null),
+            Notes = [],
+        };
+        var evidence = new
+        {
+            inputs = ParsimonyInputs(token, evidenceAssessmentIds),
+            grammarFactsPath = "grammar-facts.sqlite",
+            evidencePath = "evidence.sqlite",
+            findings = Array.Empty<object>(),
+            joinQuality = new ParsimonyJoinQuality("default-selection", false, 0, 0, 0, 0, 0, 0, 0,
+                null, null, null, null, null),
+        };
+        var options = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+        return new ReportRecord(reportId, null, null, JsonSerializer.Serialize(response, options),
+            JsonSerializer.Serialize(evidence, options), "parsimony");
+    }
+
+    private static ParsimonyReportInputs ParsimonyInputs(BaselineToken token, IReadOnlyList<string> assessmentIds) =>
+        new("bundle/1", token, "baseline", null, "model/1",
+            new ParsimonyArtifactDigest(1, new string('3', 64)),
+            new ParsimonyArtifactDigest(1, new string('4', 64)), null, null, assessmentIds);
+
+    private static ProposalDifferenceSummary DifferenceSummary(string differenceId, string proposalId,
+        string beforeAssessmentId, string afterAssessmentId) =>
+        new(differenceId, proposalId, "trial/1", beforeAssessmentId, afterAssessmentId, "text/1", "Text", "baseline/1",
+            new ProposalDifferencePolicy(), 0, 0, 0, 0, 0, 0, [], [], "2026-10-13T00:00:00Z");
 
     // A wall-clock bound flakes under load; the statement count inside the write lock does not.
     [Fact]
