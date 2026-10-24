@@ -18,7 +18,7 @@ internal static class WalkthroughSteps
 
         Assert.Empty(walkthrough.Workspace.Project.KnownProjects);
         walkthrough.OpenProjectMenu();
-        Assert.True(walkthrough.FindProjectMenuEntry<Button>("Select a new project").IsEffectivelyEnabled);
+        Assert.True(walkthrough.ProjectMenuEntry("SelectNewMenuItem").IsEffectivelyEnabled);
         walkthrough.ChooseNewProject();
         walkthrough.WaitUntil(
             () => walkthrough.Workspace.Baseline.HasBaseline &&
@@ -40,7 +40,7 @@ internal static class WalkthroughSteps
         Assert.False(walkthrough.Find<Button>("Parse all words in the Selection").IsEffectivelyEnabled);
         Assert.False(walkthrough.Find<Button>("Write the AI Handoff folder").IsEffectivelyEnabled);
         walkthrough.WaitUntil(
-            () => walkthrough.Find<Button>("Project menu").IsEffectivelyEnabled,
+            () => walkthrough.ProjectSwitchEnabled,
             TimeSpan.FromSeconds(10), "the Project menu did not re-enable after setup closed",
             () => $"ProjectSwitchEnabled='{walkthrough.Workspace.ProjectSwitchEnabled}', " +
                 $"Refresh.IsRunning='{walkthrough.Workspace.RefreshCommand.IsRunning}', " +
@@ -153,7 +153,7 @@ internal static class WalkthroughSteps
             walkthrough.Click("Parse all words in the Selection");
             if (cancelWhenParsingHasPendingWords is null)
             {
-                Assert.False(walkthrough.Find<Button>("Project menu").IsEffectivelyEnabled);
+                Assert.False(walkthrough.ProjectSwitchEnabled);
                 Assert.False(walkthrough.Named<ContentControl>("SelectionHost").IsEffectivelyEnabled);
                 walkthrough.WaitUntil(() =>
                 {
@@ -194,7 +194,7 @@ internal static class WalkthroughSteps
             walkthrough.WaitUntil(
                 () => walkthrough.Workspace.Assess.State == RunState.Running,
                 Remaining(deadline), "the held Assessment did not reach Running");
-            Assert.False(walkthrough.Find<Button>("Project menu").IsEffectivelyEnabled);
+            Assert.False(walkthrough.ProjectSwitchEnabled);
             Assert.False(walkthrough.Named<ContentControl>("SelectionHost").IsEffectivelyEnabled);
             Assert.True(walkthrough.Find<Button>("Cancel parsing all words").IsEffectivelyEnabled);
             holdingGate.ReleaseAssess();

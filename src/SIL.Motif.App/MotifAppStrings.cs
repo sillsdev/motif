@@ -13,27 +13,51 @@ public static class MotifAppStrings
     // Falls back to the id so a missing entry shows in the window; MotifAppStringsTests pins every accessor.
     private static string Text(string stringId) => Resources.GetString(stringId) ?? stringId;
 
-    public static string ProjectMenuAccessibleName => Text("MotifApp.ProjectMenuAccessibleName");
+    public static string MenuFile => Text("MotifApp.MenuFile");
 
-    public static string SelectNew => Text("MotifApp.SelectNew");
+    public static string MenuSelectNew => Text("MotifApp.MenuSelectNew");
 
-    public static string SelectNewDetail => Text("MotifApp.SelectNewDetail");
+    public static string MenuOpenRecent => Text("MotifApp.MenuOpenRecent");
 
-    public static string SelectNewAccessibleName => Text("MotifApp.SelectNewAccessibleName");
+    public static string MenuConfigure => Text("MotifApp.MenuConfigure");
 
-    public static string OpenRecent => Text("MotifApp.OpenRecent");
+    public static string MenuExit => Text("MotifApp.MenuExit");
 
-    public static string OpenRecentAccessibleName => Text("MotifApp.OpenRecentAccessibleName");
+    public static string MenuEdit => Text("MotifApp.MenuEdit");
 
-    public static string Configure => Text("MotifApp.Configure");
+    public static string MenuUndo => Text("MotifApp.MenuUndo");
 
-    public static string ConfigureAccessibleName => Text("MotifApp.ConfigureAccessibleName");
+    public static string MenuRedo => Text("MotifApp.MenuRedo");
 
-    public static string WritingSystemsAndFonts => Text("MotifApp.WritingSystemsAndFonts");
+    public static string MenuCopy => Text("MotifApp.MenuCopy");
 
-    public static string WritingSystemsAndFontsDetail => Text("MotifApp.WritingSystemsAndFontsDetail");
+    public static string MenuView => Text("MotifApp.MenuView");
 
-    public static string WritingSystemsAndFontsAccessibleName => Text("MotifApp.WritingSystemsAndFontsAccessibleName");
+    public static string MenuZoomIn => Text("MotifApp.MenuZoomIn");
+
+    public static string MenuZoomOut => Text("MotifApp.MenuZoomOut");
+
+    public static string MenuResetZoom => Text("MotifApp.MenuResetZoom");
+
+    public static string MenuTools => Text("MotifApp.MenuTools");
+
+    public static string MenuOptions => Text("MotifApp.MenuOptions");
+
+    public static string MenuWritingSystems => Text("MotifApp.MenuWritingSystems");
+
+    public static string MenuHelp => Text("MotifApp.MenuHelp");
+
+    public static string MenuHelpTopics => Text("MotifApp.MenuHelpTopics");
+
+    public static string MenuKeyboardShortcuts => Text("MotifApp.MenuKeyboardShortcuts");
+
+    public static string MenuReportProblem => Text("MotifApp.MenuReportProblem");
+
+    public static string MenuRecentPreviousPattern => Text("MotifApp.MenuRecentPreviousPattern");
+
+    public static string MenuRecentMorePattern => Text("MotifApp.MenuRecentMorePattern");
+
+    public static string MainMenuAccessibleName => Text("MotifApp.MainMenuAccessibleName");
 
     public static string SeeWhatChanged => Text("MotifApp.SeeWhatChanged");
 
@@ -1638,6 +1662,8 @@ public static class MotifAppStrings
 
     public static string GrammarCheckRefusalAccessibleName => Text("MotifApp.GrammarCheckRefusalAccessibleName");
 
+    public static string GrammarCheckFailedFormat => Text("MotifApp.GrammarCheckFailedFormat");
+
     public static string TryCheckingTheGrammarAgainAccessibleName => Text("MotifApp.TryCheckingTheGrammarAgainAccessibleName");
 
     public static string CheckTheGrammarAgainAccessibleName => Text("MotifApp.CheckTheGrammarAgainAccessibleName");
@@ -1857,6 +1883,12 @@ public static class MotifAppStrings
     public static string ParsimonyFindingCountPattern => Text("MotifApp.ParsimonyFindingCountPattern");
 
     public static string ParsimonyFilterChoiceLabelFormat => Text("MotifApp.ParsimonyFilterChoiceLabelFormat");
+
+    public static string ParsimonyJobFailed => Text("MotifApp.ParsimonyJobFailed");
+
+    public static string ParsimonyBaselineChanged => Text("MotifApp.ParsimonyBaselineChanged");
+
+    public static string ParsimonyReportUnavailable => Text("MotifApp.ParsimonyReportUnavailable");
 
     public static string ParsimonyNoReport => Text("MotifApp.ParsimonyNoReport");
 
@@ -2955,4 +2987,60 @@ public static class MotifAppStrings
     public static string RefusalIssueFieldFormat => Text("MotifApp.RefusalIssueFieldFormat");
 
     public static string CompareWordUnitPattern => Text("MotifApp.CompareWordUnitPattern");
+
+    public static string MenuRefresh => Text("MotifApp.MenuRefresh");
+
+    public static string RefreshIconGlyph => Text("MotifApp.RefreshIconGlyph");
+
+    public static string ProjectChipCaret => Text("MotifApp.ProjectChipCaret");
+
+    public static string MainMenuButtonGlyph => Text("MotifApp.MainMenuButtonGlyph");
+
+    public static string MainMenuButtonAccessibleName => Text("MotifApp.MainMenuButtonAccessibleName");
+
+    public static string ProjectChipNameFormat => Text("MotifApp.ProjectChipNameFormat");
+
+    public static string ProjectChipParsedFormat => Text("MotifApp.ProjectChipParsedFormat");
+
+    public static string ProjectChipDetailFormat => Text("MotifApp.ProjectChipDetailFormat");
+
+    public static string ProjectChipJoinFormat => Text("MotifApp.ProjectChipJoinFormat");
+
+    public static string ProjectCardAccessibleName => Text("MotifApp.ProjectCardAccessibleName");
+
+    public static string ProjectCardOpenedFormat => Text("MotifApp.ProjectCardOpenedFormat");
+
+    public static string ProjectCardParsedFormat => Text("MotifApp.ProjectCardParsedFormat");
+
+    public static string ProjectCardNotParsed => Text("MotifApp.ProjectCardNotParsed");
+
+    public static string ProjectCardButtonRefresh => Text("MotifApp.ProjectCardButtonRefresh");
+
+    public static string ProjectCardButtonParseAllWords => Text("MotifApp.ProjectCardButtonParseAllWords");
+
+    public static string ProjectCardButtonSeeWhatChanged => Text("MotifApp.ProjectCardButtonSeeWhatChanged");
+
+    public static string ProjectCardTextsHeading => Text("MotifApp.ProjectCardTextsHeading");
+
+    public static string ProjectCardTextsSummaryFormat => Text("MotifApp.ProjectCardTextsSummaryFormat");
+
+    public static string ProjectCardTextsCountPattern => Text("MotifApp.ProjectCardTextsCountPattern");
+
+    public static string ProjectCardNoTextsChosen => Text("MotifApp.ProjectCardNoTextsChosen");
+
+    public static string ProjectCardButtonChoose => Text("MotifApp.ProjectCardButtonChoose");
+
+    public static string ProjectCardButtonProjectSettings => Text("MotifApp.ProjectCardButtonProjectSettings");
+
+    public static string ProjectCardProjectSettingsAccessibleName => Text("MotifApp.ProjectCardProjectSettingsAccessibleName");
+
+    public static string ProjectCardButtonOpenAnother => Text("MotifApp.ProjectCardButtonOpenAnother");
+
+    public static string ProjectCardOpenAnotherAccessibleName => Text("MotifApp.ProjectCardOpenAnotherAccessibleName");
+
+    public static string TechDemoNoticeGotIt => Text("MotifApp.TechDemoNoticeGotIt");
+
+    public static string TechDemoNoticeGotItAccessibleName => Text("MotifApp.TechDemoNoticeGotItAccessibleName");
+
+    public static string ProjectCardTextsCountFormat => Text("MotifApp.ProjectCardTextsCountFormat");
 }

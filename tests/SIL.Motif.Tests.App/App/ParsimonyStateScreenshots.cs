@@ -101,6 +101,8 @@ public sealed class ParsimonyStateScreenshots(ITestOutputHelper output)
 
     internal static void Configure(FakeCommandClient fake, string state)
     {
+        // Switching scenes must clear any previously reusable set.
+        fake.ParsimonySetHandler = null;
         var current = PageScreenshots.Token();
         if (state is "empty" or "refused")
         {
@@ -116,6 +118,49 @@ public sealed class ParsimonyStateScreenshots(ITestOutputHelper output)
             new ParsimonyLatestReportResponse(report.ReportId, report.Inputs.BundleId))));
         fake.OnReadParsimonyReport((_, _) => Task.FromResult(CommandOutcome<ParsimonyReportResponse>.Success(report)));
         ServeViews(fake, report, state);
+        if (state is "listed-evidence" or "dense-review" or "incomplete" or "pending-keep" or
+            "suppressed-with-reason" or "suppressed-without-reason" or "resurfaced" or "judgment-hash-failed")
+            ServeCurrentReportSet(fake, report);
+    }
+
+    // Stable scenes reuse a current set; historical and unavailable scenes remain distinct.
+    internal static void ServeCurrentReportSet(FakeCommandClient fake, ParsimonyReportResponse sample)
+    {
+        var originalViews = fake.ParsimonyViewHandler!;
+        var set = ParsimonySampleReports.CurrentSet(sample);
+        var reports = set.Reports;
+        Assert.Equal(sample.Findings.Count, reports.Sum(report => report.Findings.Count));
+        Assert.Equal(reports.Count,
+            reports.Select(report => report.ReportId).Distinct(StringComparer.Ordinal).Count());
+        fake.ParsimonySetHandler = (_, _) =>
+            Task.FromResult(CommandOutcome<ParsimonyReportSetResponse?>.Success(set));
+        fake.ParsimonyViewHandler = async (request, cancellationToken) =>
+        {
+            var report = Assert.Single(reports,
+                candidate => candidate.ReportId == request.Query.Filters.ReportId);
+            var measure = Assert.Single(report.MeasureRuns).MeasureId;
+            if (request.Query.View == "parsimony-suppression-history")
+                Assert.Null(request.Query.Filters.MeasureId);
+            else
+                Assert.Equal(measure, request.Query.Filters.MeasureId);
+            var outcome = await originalViews(request, cancellationToken);
+            if (!outcome.Succeeded) return outcome;
+            var byId = report.Findings.ToDictionary(finding => finding.FindingId, StringComparer.Ordinal);
+            var rows = outcome.Value!.Rows.Select(row => row switch
+            {
+                ParsimonyFindingDispositionViewRow finding when
+                    byId.TryGetValue(finding.Finding.FindingId, out var item) =>
+                    (ParsimonyViewRow)(finding with { ReportId = report.ReportId, Finding = item }),
+                ParsimonySuppressionHistoryViewRow decision when decision.MeasureId == measure =>
+                    decision with { ReportId = report.ReportId, SourceReportId = report.ReportId },
+                ParsimonyUnresolvedJudgmentViewRow issue when report.ReportId == sample.ReportId => issue,
+                _ => null,
+            }).OfType<ParsimonyViewRow>().ToArray();
+            return CommandOutcome<ParsimonyNamedViewResponse>.Success(outcome.Value with
+            {
+                Rows = rows, Total = rows.Length, Returned = rows.Length,
+            });
+        };
     }
 
     // The live views the page reads: each Report finding is Active, except the ones a decision state moves.

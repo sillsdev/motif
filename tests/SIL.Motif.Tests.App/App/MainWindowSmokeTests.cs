@@ -214,13 +214,14 @@ public sealed class MainWindowSmokeTests
             try
             {
                 var topBar = Assert.IsType<Border>(window.FindControl<Border>("TopBar"));
-                var projectMenu = Assert.IsType<Button>(window.FindControl<Button>("ProjectMenuButton"));
-                var actions = Assert.IsType<StackPanel>(window.FindControl<StackPanel>("TopBarActions"));
+                var projectMenu = Assert.IsType<Menu>(window.FindControl<Menu>("MainMenu"));
+                var chip = Assert.IsType<Button>(window.FindControl<Button>("ProjectChip"));
+                var refresh = Assert.IsType<Button>(window.FindControl<Button>("RefreshIconButton"));
 
                 Assert.Equal(WindowDecorations.Full, window.WindowDecorations);
                 Assert.Equal(WindowDecorationsElementRole.TitleBar, WindowDecorationProperties.GetElementRole(topBar));
                 Assert.Equal(WindowDecorationsElementRole.User, WindowDecorationProperties.GetElementRole(projectMenu));
-                Assert.All(actions.Children.OfType<Button>(), button =>
+                Assert.All(new[] { chip, refresh }, button =>
                     Assert.Equal(WindowDecorationsElementRole.User, WindowDecorationProperties.GetElementRole(button)));
                 Assert.Equal(OperatingSystem.IsWindows() || OperatingSystem.IsMacOS(),
                     window.ExtendClientAreaToDecorationsHint);
@@ -235,7 +236,7 @@ public sealed class MainWindowSmokeTests
     }
 
     [Fact]
-    public void RecentProjectSummaryDoesNotMoveProjectMenuActionsWhenItLoads()
+    public void RecentProjectSummaryDoesNotMoveFileMenuActionsWhenItLoads()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
@@ -244,19 +245,9 @@ public sealed class MainWindowSmokeTests
             {
                 await workspace.RefreshKnownProjectsAsync();
                 window.Show();
-                var projectMenuButton = Assert.IsType<Button>(window.FindControl<Button>("ProjectMenuButton"));
-                ClickButton(window, projectMenuButton);
+                window.OpenFileMenu();
                 PageScreenshots.Settle(window);
-
-                var projectMenu = Assert.IsType<Flyout>(projectMenuButton.Flyout);
-                var content = Assert.IsAssignableFrom<Control>(projectMenu.Content);
-                var configure = Assert.Single(content.GetLogicalDescendants().OfType<Button>(), button =>
-                    AutomationProperties.GetName(button) == "Configure the project");
-                var recent = Assert.Single(content.GetLogicalDescendants().OfType<Button>(), button =>
-                    AutomationProperties.GetName(button) == "Open a recent project");
-                var detail = Assert.Single(recent.GetLogicalDescendants().OfType<TextBlock>(), text =>
-                    text.Classes.Contains("menuDetail"));
-                Assert.Contains("No other projects", detail.Text, StringComparison.Ordinal);
+                var configure = Assert.IsType<MenuItem>(window.FindControl<MenuItem>("ConfigureMenuItem"));
                 var before = BoundsInTopLevel(configure);
 
                 const string projectName = "Recent";
@@ -264,8 +255,10 @@ public sealed class MainWindowSmokeTests
                     Path.Combine(Path.GetTempPath(), projectName + ".fwdata"), DateTimeOffset.UtcNow));
                 PageScreenshots.Settle(window);
 
-                Assert.Contains(projectName, detail.Text, StringComparison.Ordinal);
-                Assert.Equal(before, BoundsInTopLevel(configure));
+                Assert.Contains(window.RecentProjectItems, item =>
+                    AutomationProperties.GetName(item) == "Open " + projectName);
+                var after = BoundsInTopLevel(configure);
+                Assert.Equal((before.X, before.Y), (after.X, after.Y));
             }
             finally
             {
@@ -444,7 +437,7 @@ public sealed class MainWindowSmokeTests
     {
         _avalonia.Invoke(() =>
         {
-            var notice = new TechDemoNoticeViewModel(new MemoryTechDemoNoticePreferences(), new SucceedingUriLauncher());
+            var notice = new TechDemoNoticeViewModel(new MemoryTechDemoNoticePreferences());
             var (_, window, _) = NewComposedWindow(notice);
             try
             {
@@ -470,7 +463,7 @@ public sealed class MainWindowSmokeTests
     {
         _avalonia.Invoke(() =>
         {
-            var notice = new TechDemoNoticeViewModel(new MemoryTechDemoNoticePreferences(), new SucceedingUriLauncher());
+            var notice = new TechDemoNoticeViewModel(new MemoryTechDemoNoticePreferences());
             var (_, window, _) = NewComposedWindow(notice);
             try
             {
@@ -533,20 +526,26 @@ public sealed class MainWindowSmokeTests
                 var page = Assert.Single(window.GetLogicalDescendants().OfType<OverviewPage>());
                 var text = string.Join("\n", window.GetVisualDescendants().OfType<TextBlock>().Select(item => item.Text));
                 Assert.Same(overview, workspace.PageModel<OverviewPageModel>().Overview);
-                Assert.Contains(@"C:\projects\aweti.fwdata", Assert.Single(fake.OverviewRequests).ProjectPath);
+                Assert.Equal(2, fake.OverviewRequests.Count);
+                Assert.All(fake.OverviewRequests, request => Assert.Equal(projectPath, request.ProjectPath));
                 Assert.DoesNotContain("opened ", text, StringComparison.Ordinal);
                 Assert.DoesNotContain("last FieldWorks save", text, StringComparison.Ordinal);
-                Assert.Contains("FieldWorks saved", text);
-                Assert.Contains("Baseline of", text);
-                Assert.Contains("saved", text);
-                Assert.DoesNotContain("FieldWorks has changed since the Baseline behind these numbers.", text);
+                var cardForText = ProjectCardAccess.Open(window);
+                var withCard = text + "\n" + string.Join("\n", cardForText.GetVisualDescendants().OfType<TextBlock>().Select(item => item.Text));
+                ProjectCardAccess.Close(window);
+                Assert.Contains("FieldWorks saved", withCard);
+                Assert.Contains("Baseline of", withCard);
+                Assert.Contains("saved", withCard);
+                Assert.DoesNotContain("FieldWorks has changed since the Baseline behind these numbers.", withCard);
                 Assert.True(workspace.FreshnessIsStale);
-                var freshnessLabel = window.GetVisualDescendants().OfType<CopyableTextBlock>().Single(block =>
+                var card = ProjectCardAccess.Open(window);
+                var freshnessLabel = card.GetVisualDescendants().OfType<CopyableTextBlock>().Single(block =>
                     AutomationProperties.GetAutomationId(block) == AutomationIds.FreshnessLabel);
-                var freshnessDetail = window.GetVisualDescendants().OfType<CopyableTextBlock>().Single(block =>
+                var freshnessDetail = card.GetVisualDescendants().OfType<CopyableTextBlock>().Single(block =>
                     AutomationProperties.GetAutomationId(block) == AutomationIds.FreshnessDetail);
                 Assert.Equal(workspace.FreshnessLabel, freshnessLabel.Text);
                 Assert.Equal(workspace.FreshnessDetail, freshnessDetail.Text);
+                ProjectCardAccess.Close(window);
                 Assert.NotNull(page.FindControl<ItemsControl>("OverviewCoverageRows"));
                 Assert.NotNull(page.FindControl<ItemsControl>("OverviewAccuracyRows"));
                 var overviewModel = workspace.PageModel<OverviewPageModel>();
@@ -640,8 +639,10 @@ public sealed class MainWindowSmokeTests
                 Assert.Contains(window.GetVisualDescendants().OfType<CopyableTextBlock>(), prompt =>
                     AutomationProperties.GetAutomationId(prompt) == AutomationIds.ParsePromptText &&
                     prompt.Text == workspace.Context.ParsePromptText && prompt.IsEffectivelyVisible);
-                Assert.Contains(window.GetLogicalDescendants().OfType<Button>(), button =>
+                var card = ProjectCardAccess.Open(window);
+                Assert.Contains(card.GetLogicalDescendants().OfType<Button>(), button =>
                     AutomationProperties.GetName(button) == "Parse all words");
+                ProjectCardAccess.Close(window);
                 Assert.Contains("Not checked yet", text);
                 Assert.DoesNotContain("0 of 0", text);
                 Assert.DoesNotContain("words hit the step limit", text);
@@ -798,19 +799,26 @@ public sealed class MainWindowSmokeTests
     [Fact]
     public void ResultTablesRenderSelectableDynamicCells()
     {
-        _avalonia.Invoke(() =>
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             var (workspace, window, _) = NewComposedWindow();
             var fake = (FakeCommandClient)workspace.Context.Commands;
             try
             {
+                const string projectPath = @"C:\projects\aweti.fwdata";
+                var token = new BaselineToken("project", "sha256:" + new string('a', 64), "1",
+                    "2026-09-01T00:00:00Z", "sha256:" + new string('b', 64));
+                fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(token, DateTimeOffset.UtcNow, false));
+                fake.StoredGrammarCheckIs(new GrammarCheckResponse([], HasBaseline: true));
+                fake.DefaultSelectionResponseIs(new DefaultSelectionResponse(null, SetupSkipped: true));
+                fake.ListTextsCompletesWith(new TextInventoryResponse([], HasBaseline: true));
+                await workspace.SetProjectAsync(projectPath, captureFreshProject: false);
                 using var statisticsDocument = JsonDocument.Parse(
                     "{\"kind\":\"word\",\"form\":\"motifa\",\"attempts\":2,\"passes\":1,\"elapsed_ns\":5000000}");
+                fake.StatsCompletesWith(new StatsCommandResponse("assessment", "grammar", "cache", null,
+                    [statisticsDocument.RootElement.Clone()]));
                 workspace.Context.PublishEvidence(new WorkspaceEvidence(new AssessCommandResponse(
-                    new BaselineCaptureResponse(
-                        new BaselineToken("project", "sha256:" + new string('a', 64), "1",
-                            "2026-09-01T00:00:00Z", "sha256:" + new string('b', 64)),
-                        "project.fwdata", DateTimeOffset.UtcNow, false, false),
+                    new BaselineCaptureResponse(token, projectPath, DateTimeOffset.UtcNow, false, false),
                     new SelectionProjection([], []), [], "summary"), DateTimeOffset.Now, WasRerun: false));
                 workspace.PageModel<TimingPageModel>().Statistics.Rows.Add(new StatsRowViewModel(statisticsDocument.RootElement.Clone()));
                 workspace.CurrentPage = WorkspacePage.Timing;
@@ -849,10 +857,8 @@ public sealed class MainWindowSmokeTests
                     Description = "PanGloss reports a dropped item.",
                     Guidance = "Restore the missing item in FieldWorks.",
                 };
-                const string projectPath = @"C:\projects\aweti.fwdata";
                 fake.CheckGrammarCompletesWith(new GrammarCheckResponse([warning], HasBaseline: true));
                 var grammarModel = workspace.PageModel<WarningsPageModel>().Grammar;
-                grammarModel.LoadStored(projectPath, new GrammarCheckResponse([], HasBaseline: true));
                 workspace.CurrentPage = WorkspacePage.Warnings;
                 window.UpdateLayout();
                 Avalonia.Threading.Dispatcher.UIThread.RunJobs();
@@ -862,10 +868,12 @@ public sealed class MainWindowSmokeTests
                     AutomationProperties.GetName(button) == "Check the grammar again" &&
                     button.IsEffectivelyVisible);
                 Assert.True(checkAgain.IsEffectivelyEnabled);
+                var beforeRetry = fake.CheckGrammarRequests.Count;
                 ClickButton(window, checkAgain);
                 Avalonia.Threading.Dispatcher.UIThread.RunJobs();
                 window.UpdateLayout();
-                Assert.Equal(projectPath, Assert.Single(fake.CheckGrammarRequests).ProjectPath);
+                Assert.Equal(beforeRetry + 1, fake.CheckGrammarRequests.Count);
+                Assert.Equal(projectPath, fake.CheckGrammarRequests[^1].ProjectPath);
                 var findings = window.GetVisualDescendants().OfType<ItemsControl>()
                     .Single(control => AutomationProperties.GetName(control) == "Grammar findings");
                 var row = Assert.IsType<GrammarWarningRowViewModel>(Assert.Single(grammarModel.Warnings.Rows));
@@ -884,8 +892,9 @@ public sealed class MainWindowSmokeTests
             finally
             {
                 window.Close();
+                await workspace.DisposeAsync();
             }
-        });
+        }, TimeSpan.FromSeconds(60));
     }
 
     [Fact]
@@ -1824,7 +1833,8 @@ public sealed class MainWindowSmokeTests
         visual.FindAncestorOfType<Button>(includeSelf: false) is not null
         || visual.FindAncestorOfType<ToggleButton>(includeSelf: false) is not null
         || visual.FindAncestorOfType<TextBox>(includeSelf: false) is not null
-        || visual.FindAncestorOfType<ComboBox>(includeSelf: false) is not null;
+        || visual.FindAncestorOfType<ComboBox>(includeSelf: false) is not null
+        || visual.FindAncestorOfType<MenuItem>(includeSelf: false) is not null;
 
     [Fact]
     public void AtTheNarrowestWindowEveryPageOpensOnAClickInTheCollapsedSidebar()

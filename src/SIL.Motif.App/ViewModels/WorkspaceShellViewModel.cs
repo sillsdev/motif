@@ -114,6 +114,10 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
         Inspector = new InspectorViewModel(Context, page => PageOf(page).Title);
         var setup = new SetupViewModel(Context, PageModel<TextsPageModel>().Words);
         Context.AttachSetup(setup);
+        setup.Selection.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(SelectionViewModel.SummaryText)) OnPropertyChanged(nameof(ProjectCardTextsSummary));
+        };
         setup.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(SetupViewModel.CanRunDefaultSelection) ||
@@ -804,6 +808,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
         OnPropertyChanged(nameof(ShowsParseAllWordsAction));
         OnPropertyChanged(nameof(ShowsChooseWhatToParseAction));
         OnPropertyChanged(nameof(ShowsParseAllWordsProgress));
+        RaiseProjectCard();
         OnPropertyChanged(nameof(ParseAllWordsProgressText));
         OnPropertyChanged(nameof(ParseAllWordsProgressIsIndeterminate));
         OnPropertyChanged(nameof(ParseAllWordsProgressFraction));
@@ -874,6 +879,8 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
                 RefreshPages();
                 break;
             case nameof(WorkspaceContext.ProjectPath):
+                NoteProjectOpened();
+                RaiseProjectCard();
                 OnPropertyChanged(nameof(ProjectName));
                 OnPropertyChanged(nameof(HasProject));
                 OnPropertyChanged(nameof(ProjectSwitchEnabled));

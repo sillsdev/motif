@@ -45,7 +45,7 @@ public sealed class CloseAndReopenAndSwitchWalkthroughTests(PristineProjectFixtu
             Assert.Equal(firstProject.FwDataPath,
                 Assert.Single(reopenedWalkthrough.Workspace.Project.KnownProjects).FullFwDataPath);
             reopenedWalkthrough.OpenProjectMenu();
-            Assert.False(reopenedWalkthrough.FindProjectMenuEntry<Button>("Open a recent project").IsEffectivelyEnabled);
+            Assert.False(reopenedWalkthrough.ProjectMenuEntry("OpenRecentMenuItem").IsEffectivelyEnabled);
             reopenedWalkthrough.CloseProjectMenu();
 
             using var secondProject = new WalkthroughProject(pristine);

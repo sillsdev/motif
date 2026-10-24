@@ -42,7 +42,11 @@ public sealed partial class TextsPageModel : PageModel
         ResultsInText = new ResultsInTextViewModel(Words, Assess, context.OpenWord, context.TryWord, context.Changes,
             context.Commands, context.SelectionReads)
         {
-            OpenTexts = () => context.OpenTexts(TextsTab.AnalyzeTexts),
+            OpenTexts = () =>
+            {
+                if (context.ConfigureCommand is { } configure && configure.CanExecute(null))
+                    configure.Execute(null);
+            },
             OpenWarnings = () => context.OpenPage(WorkspacePage.Warnings),
             ProposalStanding = () => context.ProposalStanding,
         };

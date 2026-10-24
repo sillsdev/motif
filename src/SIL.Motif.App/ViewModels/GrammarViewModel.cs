@@ -10,22 +10,25 @@ using SIL.Motif.Projection.Usage;
 namespace SIL.Motif.App.ViewModels;
 
 /// <summary>
-/// Checks a project's grammar as a whole when requested or after a successful Baseline refresh. Reads stored
+/// Checks a project's grammar as a whole when requested or when its Baseline opens or changes. Reads stored
 /// findings alongside allomorph refusals retained by Parse all words, without starting another parse.
 /// </summary>
 public sealed partial class GrammarViewModel : ObservableObject
 {
     private readonly ICommandClient _commandClient;
     private readonly TimeProvider _timeProvider;
+    private readonly Func<Task>? _requestCheck;
     private string? _projectPath;
     private int _generation;
 
-    public GrammarViewModel(ICommandClient commandClient, TimeProvider? timeProvider = null)
+    public GrammarViewModel(ICommandClient commandClient, TimeProvider? timeProvider = null,
+        Func<Task>? requestCheck = null)
     {
         ArgumentNullException.ThrowIfNull(commandClient);
         _commandClient = commandClient;
         _timeProvider = timeProvider ?? TimeProvider.System;
-        CheckCommand = new AsyncRelayCommand(CheckFromUserAsync, () => _projectPath is not null);
+        _requestCheck = requestCheck;
+        CheckCommand = new AsyncRelayCommand(CheckFromUserAsync, () => _projectPath is not null && !IsLoading);
         Warnings.PropertyChanged += OnWarningsChanged;
     }
 
@@ -49,6 +52,8 @@ public sealed partial class GrammarViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(ShowFindings))]
     [NotifyPropertyChangedFor(nameof(SummaryText))]
     private bool _isLoading;
+
+    partial void OnIsLoadingChanged(bool value) => CheckCommand.NotifyCanExecuteChanged();
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowRefused))]
@@ -164,34 +169,40 @@ public sealed partial class GrammarViewModel : ObservableObject
         Refusal = null;
         ElapsedSeconds = 0;
 
-        var checking = _commandClient.CheckGrammarAsync(new GrammarCheckRequest(path), cancellationToken);
-        var started = _timeProvider.GetTimestamp();
-        while (!checking.IsCompleted)
+        try
         {
-            await Task.WhenAny(checking, Task.Delay(TimeSpan.FromSeconds(1), _timeProvider, CancellationToken.None))
-                .ConfigureAwait(true);
-            if (generation != _generation) return;
-            ElapsedSeconds = (int)_timeProvider.GetElapsedTime(started).TotalSeconds;
+            var checking = _commandClient.CheckGrammarAsync(new GrammarCheckRequest(path), cancellationToken);
+            var started = _timeProvider.GetTimestamp();
+            while (!checking.IsCompleted)
+            {
+                await Task.WhenAny(checking, Task.Delay(TimeSpan.FromSeconds(1), _timeProvider, CancellationToken.None))
+                    .ConfigureAwait(true);
+                if (generation == _generation && !cancellationToken.IsCancellationRequested)
+                    ElapsedSeconds = (int)_timeProvider.GetElapsedTime(started).TotalSeconds;
+            }
+
+            var outcome = await checking.ConfigureAwait(true);
+            if (generation != _generation || cancellationToken.IsCancellationRequested) return;
+
+            // The table is filled before the state flips, so no view sees "checked" before its findings arrive.
+            if (outcome.Succeeded)
+            {
+                Warnings.Load(outcome.Value!.Findings, preserveResolved);
+                HasBaseline = outcome.Value.HasBaseline;
+            }
+            else
+            {
+                Warnings.Load(null);
+                HasBaseline = false;
+                Refusal = outcome.Refusal;
+            }
+
+            HasChecked = true;
         }
-
-        var outcome = await checking.ConfigureAwait(true);
-        if (generation != _generation) return;
-
-        // The table is filled before the state flips, so no view ever sees "checked" with an empty table.
-        if (outcome.Succeeded)
+        finally
         {
-            Warnings.Load(outcome.Value!.Findings, preserveResolved);
-            HasBaseline = outcome.Value.HasBaseline;
+            if (generation == _generation) IsLoading = false;
         }
-        else
-        {
-            Warnings.Load(null);
-            HasBaseline = false;
-            Refusal = outcome.Refusal;
-        }
-
-        HasChecked = true;
-        IsLoading = false;
     }
 
     private async Task CheckFromUserAsync()
@@ -199,6 +210,7 @@ public sealed partial class GrammarViewModel : ObservableObject
         if (_projectPath is not { } path) return;
         using var usageAction = _commandClient.BeginUsageAction("grammar check",
             UsageArgumentShape.Text("fwDataPath"));
-        await CheckAsync().ConfigureAwait(true);
+        if (_requestCheck is not null) await _requestCheck().ConfigureAwait(true);
+        else await CheckAsync().ConfigureAwait(true);
     }
 }

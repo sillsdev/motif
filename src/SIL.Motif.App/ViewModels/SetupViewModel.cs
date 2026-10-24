@@ -51,6 +51,9 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
     public SelectionViewModel Selection { get; }
 
     /// <summary>Whether the saved Default Selection can be run from the shell.</summary>
+    /// <summary>The saved Default Selection's name, or <see langword="null"/> before one is saved.</summary>
+    internal string? SavedSelectionName => _savedSelection?.Name;
+
     public bool CanRunDefaultSelection => ProjectPath is not null && _savedSelection is not null;
 
     /// <summary>Whether the saved Default Selection contains every current project Text.</summary>

@@ -58,21 +58,39 @@ public sealed class LongProjectTitleTests
                 workspace.CurrentPage = WorkspacePage.Warnings;
                 PageScreenshots.Settle(window);
                 Assert.True(workspace.ShowsChooseWhatToParseAction);
-                var choose = window.FindControl<Button>("ChooseWhatToParseButton")!;
-                var project = window.FindControl<Button>("ProjectMenuButton")!;
-                var nameText = Assert.Single(project.GetVisualDescendants().OfType<TextBlock>(),
-                    text => text.Classes.Contains("projectName"));
+                Assert.Null(window.FindControl<Button>("ChooseWhatToParseButton"));
+                var chip = ProjectCardAccess.Chip(window);
+                var refresh = window.FindControl<Button>("RefreshIconButton")!;
+                var nameText = window.FindControl<TextBlock>("ProjectNameLabel")!;
+                var mainMenu = window.FindControl<Menu>("MainMenu")!;
+                AssertInside(window, mainMenu);
+                Assert.True(Bounds(mainMenu, window).Right <= Bounds(chip, window).Left + 1,
+                    "The project chip overlaps the menu bar.");
                 Capture(window, width, height, zoom, dark, windowsShaped);
                 Assert.Equal(workspace.ProjectName, nameText.Text);
-                Assert.Equal(workspace.ProjectName, ToolTip.GetTip(nameText));
-                AssertInside(window, project);
-                AssertInside(window, choose);
+                Assert.Equal(workspace.ProjectChipAccessibleName, ToolTip.GetTip(chip));
+                Assert.Contains(workspace.ProjectName, workspace.ProjectChipAccessibleName, StringComparison.Ordinal);
+                AssertInside(window, chip);
+                AssertInside(window, refresh);
+                Assert.Same(workspace.RefreshCommand, refresh.Command);
+                Assert.Equal(workspace.RefreshCommand.CanExecute(null), refresh.IsEffectivelyEnabled);
                 var nameBounds = Bounds(nameText, window);
-                Assert.True(Bounds(project, window).Inflate(1).Contains(nameBounds),
-                    $"Project text {nameBounds} exceeds its menu {Bounds(project, window)}.");
-                Assert.True(Bounds(project, window).Right <= Bounds(choose, window).Left + 1);
+                Assert.True(Bounds(chip, window).Inflate(1).Contains(nameBounds),
+                    $"Project text {nameBounds} exceeds its chip {Bounds(chip, window)}.");
+                var chipBounds = Bounds(chip, window);
+                var refreshBounds = Bounds(refresh, window);
+                Assert.InRange(refreshBounds.Left - chipBounds.Right, -0.5, refreshBounds.Height);
+                Assert.True(chipBounds.Top < refreshBounds.Bottom && refreshBounds.Top < chipBounds.Bottom,
+                    "Refresh shares the chip's row.");
+                // The top bar is one row: the chip and Refresh share it with the menus.
+                var topBar = window.FindControl<Border>("TopBar")!;
+                Assert.True(Bounds(topBar, window).Height <= (double)window.FindResource("Component.TopBar.Height")! *
+                    (zoom / 100d) + 1, "The chip pushed the top bar past its one row.");
+                var card = ProjectCardAccess.Open(window);
+                var choose = card.FindControl<Button>("CardChooseButton")!;
+                AssertInside(window, choose);
                 var command = Assert.IsAssignableFrom<IAsyncRelayCommand>(choose.Command);
-                HeadlessClick.Click(window, choose, "Choose what to parse");
+                HeadlessClick.Click(window, choose, "Choose");
                 Assert.NotNull(command.ExecutionTask);
                 await command.ExecutionTask;
                 PageScreenshots.Settle(window);

@@ -32,7 +32,7 @@ public sealed class SwitchProjectWalkthroughTests(PristineProjectFixture pristin
                 var progress = walkthrough.Workspace.Assess.Progress!;
                 Assert.Equal(firstProject.Words.Count, progress.Total);
                 Assert.InRange(progress.Completed, 0, firstProject.Words.Count - 1);
-                Assert.False(walkthrough.Find<Button>("Project menu").IsEffectivelyEnabled);
+                Assert.False(walkthrough.ProjectSwitchEnabled);
                 Assert.False(walkthrough.Named<ContentControl>("SelectionHost").IsEffectivelyEnabled);
                 Assert.True(walkthrough.Find<Button>("Cancel parsing all words").IsEffectivelyEnabled);
                 PanglossProcesses.TrackNew(parserPath, existing, appeared);
@@ -52,7 +52,7 @@ public sealed class SwitchProjectWalkthroughTests(PristineProjectFixture pristin
                 return walkthrough.Workspace.Assess.State == RunState.Cancelled &&
                     !PanglossProcesses.AnyAlive(parserPath, appeared);
             }, WalkthroughSteps.Remaining(deadline), "the first Assessment did not cancel");
-            Assert.True(walkthrough.Find<Button>("Project menu").IsEffectivelyEnabled);
+            Assert.True(walkthrough.ProjectSwitchEnabled);
 
             walkthrough.ProjectPath = secondProject.FwDataPath;
             walkthrough.ChooseNewProject();

@@ -16,6 +16,7 @@
     { "id": "highlight-receipt", "kind": "highlight", "automationId": "motif-apply-receipt" },
     { "id": "applied", "kind": "capture", "durationMs": 1400, "callouts": [ { "automationId": "motif-apply-receipt" } ] },
     { "id": "refresh-baseline", "kind": "click", "automationId": "motif-refresh-project" },
+    { "id": "open-project-card", "kind": "click", "automationId": "motif-project-chip" },
     { "id": "wait-for-refreshed-baseline", "kind": "waitFor", "automationId": "motif-freshness-detail", "condition": "text", "expectedText": "Refreshed. Parse all words to update the numbers.", "timeoutMs": 30000 },
     { "id": "highlight-refresh-state", "kind": "highlight", "automationId": "motif-freshness-detail" },
     { "id": "refreshed", "kind": "capture", "durationMs": 1500, "callouts": [ { "automationId": "motif-freshness-detail" } ] },

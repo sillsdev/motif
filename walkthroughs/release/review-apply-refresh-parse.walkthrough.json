@@ -91,6 +91,11 @@
       "automationId": "motif-refresh-project"
     },
     {
+      "id": "open-project-card",
+      "kind": "click",
+      "automationId": "motif-project-chip"
+    },
+    {
       "id": "wait-for-refreshed-baseline",
       "kind": "waitFor",
       "automationId": "motif-freshness-detail",

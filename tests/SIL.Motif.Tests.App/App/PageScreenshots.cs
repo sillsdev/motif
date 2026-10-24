@@ -200,11 +200,9 @@ public sealed class PageScreenshots
                 Assert.Equal(new Uri(projectFolder), launcher.LastUri);
                 Assert.Null(workspace.OpenRecentProjectCommand.ExecutionTask);
 
-                var projectMenu = window.FindControl<Button>("ProjectMenuButton")!;
-                projectMenu.Flyout!.ShowAt(projectMenu);
+                window.OpenFileMenu();
                 Settle(window);
-                var openRecent = window.FindControl<Button>("OpenRecentButton")!;
-                openRecent.Flyout!.ShowAt(openRecent);
+                window.OpenRecentMenu();
                 Settle(window);
                 var recentMenuItem = Assert.Single(window.RecentProjectItems);
                 var menuRow = Assert.IsType<Grid>(recentMenuItem.Header);
@@ -262,27 +260,16 @@ public sealed class PageScreenshots
             {
                 await workspace.Project.LoadKnownProjectsAsync();
                 workspace.CurrentPage = WorkspacePage.Overview;
-                var projectMenu = window.FindControl<Button>("ProjectMenuButton")!;
-                projectMenu.Flyout!.ShowAt(projectMenu);
+                window.OpenFileMenu();
                 Settle(window);
-                var projectMenuPanel = Assert.Single(window.GetVisualDescendants().OfType<StackPanel>(),
-                    panel => panel.Classes.Contains("projectMenu"));
-                Assert.True(projectMenuPanel.Bounds.Width <= 210.5,
-                    $"The project menu is {projectMenuPanel.Bounds.Width:0.#} px wide at thin 150% zoom.");
-                var openRecent = window.FindControl<Button>("OpenRecentButton")!;
-                openRecent.Flyout!.ShowAt(openRecent);
+                window.OpenRecentMenu();
                 Settle(window);
 
-                var parentDetail = Assert.Single(openRecent.GetVisualDescendants().OfType<TextBlock>(),
-                    text => text.Classes.Contains("menuDetail"));
-                Assert.Equal("Sample ›", parentDetail.Text);
-                var submenu = Assert.Single(window.GetVisualDescendants().OfType<MenuFlyoutPresenter>(),
-                    presenter => presenter.IsEffectivelyVisible);
-                var submenuBounds = new Rect(submenu.TranslatePoint(default, window)!.Value, submenu.Bounds.Size);
-                var parentDetailBounds = new Rect(parentDetail.TranslatePoint(default, window)!.Value,
-                    parentDetail.Bounds.Size);
-                Assert.False(submenuBounds.Intersects(parentDetailBounds),
-                    "The recent-project menu covers its parent detail.");
+                var submenu = Assert.Single(window.GetVisualDescendants().OfType<MenuItem>(),
+                    item => item.Name == "OpenRecentMenuItem").GetVisualDescendants().OfType<Avalonia.Controls.Primitives.Popup>().Single();
+                var submenuPresenter = Assert.IsAssignableFrom<Control>(submenu.Child);
+                var submenuBounds = new Rect(submenuPresenter.TranslatePoint(default, window)!.Value,
+                    submenuPresenter.Bounds.Size);
                 Assert.True(submenuBounds.Left >= 0 && submenuBounds.Right <= window.ClientSize.Width,
                     $"The recent-project menu spans x {submenuBounds.Left:0.#}-{submenuBounds.Right:0.#} " +
                     $"outside the {window.ClientSize.Width:0.#} px window.");
@@ -362,9 +349,11 @@ public sealed class PageScreenshots
                                 Assert.DoesNotContain(renderedText, text => text?.Contains(
                                     "FieldWorks has changed since the Baseline behind these numbers", StringComparison.Ordinal) == true);
                                 Assert.True(workspace.FreshnessIsStale);
-                                var freshnessDetail = window.GetVisualDescendants().OfType<CopyableTextBlock>().Single(text =>
+                                var card = ProjectCardAccess.Open(window);
+                                var freshnessDetail = card.GetVisualDescendants().OfType<CopyableTextBlock>().Single(text =>
                                     AutomationProperties.GetAutomationId(text) == SIL.Motif.App.AutomationIds.FreshnessDetail);
                                 Assert.Equal(workspace.FreshnessDetail, freshnessDetail.Text);
+                                ProjectCardAccess.Close(window);
                             }
                             var file = $"overview-{state}-{width}-{theme}.png";
                             Save(window, Path.Combine(folder, file));
@@ -1434,7 +1423,7 @@ public sealed class PageScreenshots
     }
 
     /// <summary>The tech demo notice as a first run shows it, live, so a capture never draws it disabled.</summary>
-    internal static TechDemoNoticeViewModel FirstRunNotice() => new(new NoticeNotYetSeen(), new Launcher());
+    internal static TechDemoNoticeViewModel FirstRunNotice() => new(new NoticeNotYetSeen());
 
     private sealed class NoticeNotYetSeen : ITechDemoNoticePreferences
     {

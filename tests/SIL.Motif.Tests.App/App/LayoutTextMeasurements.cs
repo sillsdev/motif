@@ -1,6 +1,7 @@
 using System.Globalization;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Media;
 
 namespace SIL.Motif.Tests.App;
@@ -32,9 +33,13 @@ internal sealed class LayoutTextMeasurements
         FontStyle FontStyle, FontWeight FontWeight, FontStretch FontStretch, FlowDirection FlowDirection,
         TextAlignment TextAlignment, double LineHeight, string Culture, string UiCulture)
     {
-        internal static MeasurementKey From(TextBlock text) => new(text.Text, text.FontFamily, text.FontSize,
+        // An AccessText draws its text without the access-key underscore, so that is the width to measure.
+        internal static MeasurementKey From(TextBlock text) => new(RenderedText(text), text.FontFamily, text.FontSize,
             text.FontStyle, text.FontWeight, text.FontStretch, text.FlowDirection, text.TextAlignment, text.LineHeight,
             CultureInfo.CurrentCulture.Name, CultureInfo.CurrentUICulture.Name);
+
+        private static string? RenderedText(TextBlock text) =>
+            text is AccessText ? string.Concat(text.Text?.Replace("__", "\0", StringComparison.Ordinal).Replace("_", string.Empty, StringComparison.Ordinal).Replace("\0", "_", StringComparison.Ordinal)) : text.Text;
 
         internal double MeasureWidth()
         {

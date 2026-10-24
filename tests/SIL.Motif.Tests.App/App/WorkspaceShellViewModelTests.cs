@@ -1079,7 +1079,8 @@ public sealed class WorkspaceShellViewModelTests
         Assert.False(workspace.PageModel<TimingPageModel>().ShowStatistics);
         Assert.True(workspace.PageModel<OverviewPageModel>().ShowNoAssessment);
         Assert.False(workspace.PageModel<OverviewPageModel>().ShowTiles);
-        Assert.True(workspace.PageModel<WarningsPageModel>().IsGrammarNotChecked);
+        Assert.True(workspace.PageModel<WarningsPageModel>().Grammar.HasChecked);
+        Assert.False(workspace.PageModel<WarningsPageModel>().IsGrammarNotChecked);
 
         workspace.CurrentPage = WorkspacePage.TryAWord;
         Assert.Equal(WorkspacePage.TryAWord, workspace.CurrentPage);

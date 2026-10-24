@@ -266,7 +266,7 @@ public sealed class ContrastTests(AvaloniaHeadlessFixture avalonia)
                         .First(candidate => candidate.Text == TechDemoNoticeViewModel.NoticeText);
                     var messageRatio = Effective(message);
                     if (messageRatio < Text) failures.Add($"{theme} notice text: {messageRatio:F2}:1");
-                    foreach (var name in new[] { "Report a problem", "Acknowledge the tech demo notice" })
+                    foreach (var name in new[] { "Acknowledge the tech demo notice" })
                     {
                         var button = banner.GetLogicalDescendants().OfType<Button>()
                             .Single(candidate => AutomationProperties.GetName(candidate) == name);

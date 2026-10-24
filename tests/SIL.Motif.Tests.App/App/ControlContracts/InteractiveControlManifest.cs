@@ -303,7 +303,7 @@ internal static class InteractiveControlManifest
 
 
         new("nested project menu entries", InteractiveControlFamily.Action,
-            "src/SIL.Motif.App/Views/MainWindow.axaml", "OpenRecentButton"),
+            "src/SIL.Motif.App/Views/MainWindow.axaml", "OpenRecentMenuItem"),
         new("outcome summary and legend", InteractiveControlFamily.Summary,
             "src/SIL.Motif.App/Views/OutcomeBar.cs", "public sealed class OutcomeBar"),
         new("timing kind summary bar", InteractiveControlFamily.Summary,

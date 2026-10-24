@@ -16,10 +16,12 @@ using Avalonia.Styling;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using SIL.LCModel;
+using SIL.LCModel.Infrastructure;
 using SIL.Motif.App;
 using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Contract.Requests;
+using SIL.Motif.Contract.Parsimony;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Services;
@@ -33,6 +35,7 @@ using SIL.Motif.Commands.Queries;
 using SIL.Motif.Host;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Host.Analysis;
+using SIL.Motif.Host.Parsimony;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker.Store;
 using SkiaSharp;
@@ -81,12 +84,9 @@ public sealed class WalkthroughReplayTests(PristineProjectFixture pristine)
             WalkthroughFonts.Register();
             using var walkthrough = new WalkthroughWindow(project.ManagedRoot, project.FwDataPath);
             walkthrough.Show();
-            var selectProject = walkthrough.FindByAutomationId(AutomationIds.SelectNewProject);
+            var fileMenu = walkthrough.Window.FindControl<MenuItem>("FileMenu")!;
 
-            var flyout = (Flyout)typeof(WalkthroughWindow).GetProperty("ProjectMenuFlyout",
-                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
-                .GetValue(walkthrough)!;
-            Assert.False(flyout.IsOpen);
+            Assert.False(fileMenu.IsSubMenuOpen);
             return Task.CompletedTask;
         }, TimeSpan.FromSeconds(10));
     }
@@ -333,8 +333,11 @@ internal static class WalkthroughReplayTestRunner
         using (projectLifetime)
         {
             var parserPath = project.ParserPath ??
-                FakeParser.CopyRecordingInvocations(Path.Combine(project.ManagedRoot, "walkthrough-parser"));
+                FakeParser.CopyRecordingInvocations(Path.Combine(managedRoot, "walkthrough-parser"));
             var preparation = await WalkthroughFixtureSeeder.SeedAsync(script.Fixture, project, clock, parserPath);
+            if (script.Id == "explained-word-card")
+                Assert.Equal(["describe", "batch"], FakeParser.Invocations(parserPath));
+            IReadOnlyList<string>? invocationsAtOpen = null;
             var captures = new List<WalkthroughCapture>();
             var clipSegments = new List<WalkthroughClipSegment>();
             var deadline = Stopwatch.GetTimestamp() + (long)(WalkthroughReplay.DeadlineBudget(script).TotalSeconds * Stopwatch.Frequency);
@@ -372,8 +375,8 @@ internal static class WalkthroughReplayTestRunner
                         Assert.NotNull(frame);
                         Assert.Equal((3200, 2000), (frame!.Width, frame.Height));
                     }
-                    WalkthroughReplay.Run(walkthrough, script, help, clock, captures, clipSegments,
-                        deadline, root, preparation);
+                    invocationsAtOpen = WalkthroughReplay.Run(walkthrough, script, help, clock, captures, clipSegments,
+                        deadline, root, preparation, parserPath);
                     WalkthroughReplay.AssertFixtureOutcome(walkthrough, script, parserPath, deadline);
                     if (script.Id == "explained-word-card")
                     {
@@ -391,7 +394,10 @@ internal static class WalkthroughReplayTestRunner
             }, WalkthroughSteps.Remaining(deadline));
 
             if (script.Id == "explained-word-card")
-                Assert.Equal(["describe", "batch"], FakeParser.Invocations(parserPath));
+            {
+                Assert.NotNull(invocationsAtOpen);
+                Assert.Equal(invocationsAtOpen, FakeParser.Invocations(parserPath));
+            }
             Assert.NotEmpty(captures);
             Assert.NotEmpty(clipSegments);
             Assert.Equal(0, clipSegments[0].StartMs);
@@ -434,8 +440,12 @@ internal static class WalkthroughReplayTestRunner
 
         var ordinary = new WalkthroughProject(pristine, managedRoot,
             new DateTime(2026, 4, 2, 12, 0, 0, DateTimeKind.Utc));
+        // Keep scratch disposal separate from the process worker root required for artifact ownership.
+        var workerRoot = fixture == "parsimony-report-ready"
+            ? SIL.Motif.Worker.RunnerOptions.ResolveRoot()
+            : ordinary.ManagedRoot;
         return (ordinary, new WalkthroughProjectContext(
-            ordinary.ManagedRoot, ordinary.FwDataPath, ordinary.TextId, null));
+            workerRoot, ordinary.FwDataPath, ordinary.TextId, null));
     }
 
     private static void AssertRightToLeftText(WalkthroughWindow walkthrough)
@@ -558,30 +568,72 @@ internal static class WalkthroughReplay
         return budget;
     }
 
-    public static void Run(
+    public static IReadOnlyList<string> Run(
         WalkthroughWindow window, WalkthroughScript script, WalkthroughHelpContent help, FixedClock clock,
         List<WalkthroughCapture> captures, List<WalkthroughClipSegment> clipSegments, long deadline,
         string repositoryRoot,
-        WalkthroughFixturePreparation? preparation = null)
+        WalkthroughFixturePreparation? preparation = null, string? parserPath = null)
     {
         var highlighted = new HashSet<string>(StringComparer.Ordinal);
         var elapsedMs = 0;
         string? lastTarget = null;
+        IReadOnlyList<string> invocationsAtOpen = [];
         foreach (var step in script.Steps)
         {
             switch (step.Kind)
             {
                 case WalkthroughStepKind.Click:
                     var clickId = step.AutomationId!;
+                    if (preparation?.ClickTargets?.TryGetValue(clickId, out var fixtureTarget) == true)
+                        clickId = fixtureTarget;
+                    if (parserPath is not null && script.Id == "review-apply-refresh-parse" &&
+                        step.Id is "refresh-baseline" or "parse-all-words")
+                        Assert.Equal(2, FakeParser.Invocations(parserPath).Count(command => command == "batch"));
                     var clickBounds = window.BoundsByAutomationId(clickId);
                     window.ClickAutomationId(clickId);
+                    if (step.AutomationId == AutomationIds.SelectNewProject && script.Id is
+                        "explained-word-card" or "parsimony-findings" or "review-apply-refresh-parse")
+                    {
+                        var grammar = window.Workspace.PageModel<WarningsPageModel>().Grammar;
+                        var parsimony = window.Workspace.PageModel<ParsimonyPageModel>();
+                        var openRemaining = WalkthroughSteps.Remaining(deadline);
+                        window.WaitUntil(() => !window.Workspace.IsProjectOpening &&
+                            !window.Workspace.Context.IsOpeningProject &&
+                            window.Workspace.Context.EvidencePublication.IsCompleted &&
+                            (!window.Workspace.Baseline.HasBaseline || grammar.HasChecked && !grammar.IsLoading) &&
+                            parsimony.AutomaticWork.IsCompleted,
+                            openRemaining < TimeSpan.FromSeconds(60) ? openRemaining : TimeSpan.FromSeconds(60),
+                            "the prepared project's automatic grammar answer or retained Parsimony read did not finish",
+                            () => $"Grammar.HasChecked={grammar.HasChecked}; Grammar.IsLoading={grammar.IsLoading}; " +
+                                $"Parsimony.State={parsimony.State}; Parsimony.Work={parsimony.AutomaticWork.Status}; " +
+                                $"EvidencePublication={window.Workspace.Context.EvidencePublication.Status}");
+                        window.Workspace.Context.EvidencePublication.GetAwaiter().GetResult();
+                        parsimony.AutomaticWork.GetAwaiter().GetResult();
+                        invocationsAtOpen = parserPath is not null ? FakeParser.Invocations(parserPath).ToArray() : [];
+                        if (parserPath is not null && script.Id == "explained-word-card")
+                            Assert.Equal(["describe", "batch", "describe", "grammar-health"], invocationsAtOpen);
+                    }
+                    if (parserPath is not null && script.Id == "review-apply-refresh-parse" && step.Id == "refresh-baseline")
+                    {
+                        var refresh = window.Workspace.RefreshCommand.ExecutionTask;
+                        Assert.NotNull(refresh);
+                        var refreshRemaining = WalkthroughSteps.Remaining(deadline);
+                        window.WaitUntil(() => refresh.IsCompleted,
+                            refreshRemaining < TimeSpan.FromSeconds(60) ? refreshRemaining : TimeSpan.FromSeconds(60),
+                            "the explicit Refresh command did not finish before opening its project card",
+                            () => $"RefreshTask={refresh.Status}; " +
+                                $"EvidencePublication={window.Workspace.Context.EvidencePublication.Status}; " +
+                                $"Grammar.IsLoading={window.Workspace.PageModel<WarningsPageModel>().Grammar.IsLoading}");
+                        refresh.GetAwaiter().GetResult();
+                        Assert.Equal(2, FakeParser.Invocations(parserPath).Count(command => command == "batch"));
+                    }
                     if (preparation?.ReadyMarkers.TryGetValue(clickId, out var readyMarker) == true)
                         window.WaitUntil(() => File.Exists(readyMarker), WalkthroughSteps.Remaining(deadline),
                             $"the prepared parser phase for '{step.Id}' did not start");
                     SuppressTooltipsForCapture(window.Window);
                     clipSegments.Add(new WalkthroughClipSegment(elapsedMs, ClickDurationMs,
                         WalkthroughArtifacts.CaptureFrame(window.Window), clickBounds,
-                        WalkthroughClipSegmentKind.Click, clickId));
+                        WalkthroughClipSegmentKind.Click, step.AutomationId));
                     elapsedMs += ClickDurationMs;
                     lastTarget = clickId;
                     break;
@@ -742,6 +794,7 @@ internal static class WalkthroughReplay
                     throw new InvalidDataException($"Walkthrough step '{step.Id}' has unsupported kind.");
             }
         }
+        return invocationsAtOpen;
     }
 
     /// <summary>Whether nothing that can still move the Analyze texts word strips is running.</summary>
@@ -876,7 +929,20 @@ internal static class WalkthroughReplay
             case "parsimony-findings":
                 var parsimony = window.Workspace.PageModel<ParsimonyPageModel>();
                 Assert.Equal(ParsimonyPageState.Listed, parsimony.State);
+                Assert.Equal("2 findings to review", parsimony.AxisSummary);
+                var findingRows = parsimony.Rows.Where(row => !row.IsHeader).ToArray();
+                Assert.Equal(2, findingRows.Length);
+                var shown = ParsimonyCommands.Show(new ShowParsimonyReportRequest(window.ProjectPath,
+                    MotifProductVersion.CurrentText, Assert.Single(findingRows.Select(row => row.Link!.ReportId).Distinct())));
+                Assert.True(shown.Succeeded, shown.Refusal?.Message);
+                Assert.Equal(window.Workspace.Baseline.Token, shown.Value!.Inputs.BaselineToken);
+                Assert.Equal(shown.Value.Findings.Select(finding => finding.FindingId).Order(StringComparer.Ordinal),
+                    findingRows.Select(row => row.Link!.FindingId).Order(StringComparer.Ordinal));
+                Assert.All(shown.Value.Findings, finding => Assert.All(finding.EvidenceRefs,
+                    reference => Assert.Equal(shown.Value.Inputs.BundleId, reference.BundleId)));
                 Assert.NotNull(parsimony.Evidence);
+                Assert.Contains(parsimony.Evidence.Details,
+                    detail => detail.Label == "Counted" && detail.Value == "2 of 3 prohibitions");
                 break;
             case "no-longer-fits":
                 var review = window.Workspace.PageModel<ReviewPageModel>();
@@ -894,7 +960,8 @@ internal static class WalkthroughReplay
     }
 }
 
-internal sealed record WalkthroughFixturePreparation(IReadOnlyDictionary<string, string> ReadyMarkers)
+internal sealed record WalkthroughFixturePreparation(IReadOnlyDictionary<string, string> ReadyMarkers,
+    IReadOnlyDictionary<string, string>? ClickTargets = null)
 {
     internal static WalkthroughFixturePreparation Empty { get; } = new(
         new Dictionary<string, string>(StringComparer.Ordinal));
@@ -1019,16 +1086,75 @@ internal static class WalkthroughFixtureSeeder
     private static async Task<WalkthroughFixturePreparation> SeedParsimonyReportReadyAsync(
         WalkthroughProjectContext project, FixedClock clock, string parserPath)
     {
+        var prohibitions = new List<object>();
+        new FieldWorksSimulator(project.FwDataPath, clock).SaveEdit(cache =>
+        {
+            var analyses = cache.ServiceLocator.GetInstance<ILexEntryRepository>().AllInstances()
+                .Where(entry => entry.MorphoSyntaxAnalysesOC.Count > 0).OrderBy(entry => entry.Guid).Take(2)
+                .Select(entry => Assert.Single(entry.MorphoSyntaxAnalysesOC)).ToArray();
+            Assert.Equal(2, analyses.Length);
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            {
+                for (var index = 0; index < 3; index++)
+                {
+                    var prohibition = cache.ServiceLocator.GetInstance<IMoMorphAdhocProhibFactory>().Create();
+                    cache.LangProject.MorphologicalDataOA.AdhocCoProhibitionsOC.Add(prohibition);
+                    prohibition.FirstMorphemeRA = analyses[0];
+                    prohibition.Adjacency = 1;
+                    prohibition.RestOfMorphsRS.Add(analyses[1]);
+                    prohibitions.Add(new
+                    {
+                        prohibitionGuid = prohibition.Guid.ToString("D"), kind = "morpheme", disabled = false,
+                        adjacency = "somewhereToLeft", primaryGuid = analyses[0].Guid.ToString("D"), targetKind = "msa",
+                        others = new[] { new { targetGuid = analyses[1].Guid.ToString("D"), targetKind = "msa" } },
+                    });
+                }
+            });
+        });
+        FakeParser.WriteFactsFixture(parserPath, new { prohibitions });
         await SeedOverviewReadyAsync(project, clock, parserPath);
-        var current = CurrentBaselineQuery.Query(new CurrentBaselineRequest(project.FwDataPath));
-        Assert.True(current.Succeeded, current.Refusal?.Message);
-        var report = ParsimonySampleReports.Listed(current.Value!.Token!);
-        var locator = ProjectStoreCommand.Locate(project.FwDataPath);
-        using var database = MotifDatabase.OpenOwned(ProjectDatabaseCatalog.DatabasePathFor(locator), locator,
-            MotifSchema.CurrentSchema, new Version(1, 0));
-        new ReportRepository(database).Save(new ReportRecord(report.ReportId, null, null,
-            ParsimonySampleReports.Json(report), "{}", "parsimony", report.Text, "2026-10-05T09:00:00.0000000+00:00"));
-        return WalkthroughFixturePreparation.Empty;
+        var queued = ParsimonyCommands.Enqueue(new EnqueueParsimonyReportRequest(
+            project.FwDataPath, MotifProductVersion.CurrentText, ParsimonyAdmission.AllMeasures,
+            ParsimonyEvidenceScopeKind.ProjectApproved), parserPath);
+        Assert.True(queued.Succeeded, queued.Refusal?.Message);
+        await using (var runner = new InProcessRunnerLauncher(new JobRunnerLaunchOptions(project.ManagedRoot, parserPath)))
+        {
+            runner.Start(project.FwDataPath);
+            await runner.WhenIdleAsync().WaitAsync(TimeSpan.FromMinutes(2));
+        }
+        var completed = await ParsimonyCommands.WaitAllAsync(new WaitForParsimonyReportSetRequest(
+            project.FwDataPath, MotifProductVersion.CurrentText, queued.Value!.JobId, TimeSpan.Zero), CancellationToken.None);
+        Assert.True(completed.Succeeded, completed.Refusal?.Message);
+        Assert.Equal(ParsimonyAdmission.SupportedMeasureIds(), completed.Value!.Reports
+            .SelectMany(report => report.MeasureRuns.Select(run => run.MeasureId)).ToArray());
+        var client = RealCommandClient.Create(project.ManagedRoot, parserPath, timeProvider: clock);
+        var boundView = await client.ReadParsimonyViewAsync(new ReadParsimonyViewRequest(
+            project.FwDataPath, MotifProductVersion.CurrentText,
+            new ParsimonyNamedViewRequest(completed.Value.BundleId, ParsimonyViews.ParsimonyActiveFindings,
+                new ParsimonyViewFilters(ReportId: completed.Value.Reports[0].ReportId), 1)), CancellationToken.None);
+        Assert.True(boundView.Succeeded,
+            $"The produced Parsimony bundle must open through the named-view reader: {boundView.Refusal?.Code}: {boundView.Refusal?.Message}");
+        var reusable = await client.ReadLatestParsimonyReportSetAsync(new ReadLatestParsimonyReportRequest(
+            project.FwDataPath, MotifProductVersion.CurrentText), CancellationToken.None);
+        Assert.True(reusable.Succeeded, reusable.Refusal?.Message);
+        Assert.NotNull(reusable.Value);
+        Assert.Equal(completed.Value.JobId, reusable.Value.JobId);
+        Assert.Equal(completed.Value.BundleId, reusable.Value.BundleId);
+        Assert.Equal(2, reusable.Value.Reports.Sum(report => report.Findings.Count));
+        Assert.All(reusable.Value.Reports, item =>
+        {
+            Assert.Empty(item.AssessmentIds);
+            Assert.Empty(item.Inputs.AssessmentIds);
+        });
+        var report = Assert.Single(reusable.Value.Reports,
+            item => item.MeasureRuns.Any(run => run.MeasureId == ParsimonySampleReports.ParsimonyMeasure));
+        Assert.Equal(2, report.Findings.Count);
+        return new WalkthroughFixturePreparation(new Dictionary<string, string>(StringComparer.Ordinal),
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                [AutomationIds.ForParsimonyFinding("finding-1")] =
+                    AutomationIds.ForParsimonyFinding(report.Findings[0].FindingId),
+            });
     }
 
     // The Parsimony walkthrough is the one script that shows Advanced AI mode on; its fixture stores the Report.

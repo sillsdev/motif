@@ -73,6 +73,14 @@ public enum ShortcutKey
     A,
     /// <summary>The D key.</summary>
     D,
+    /// <summary>The E key.</summary>
+    E,
+    /// <summary>The V key.</summary>
+    V,
+    /// <summary>The T key.</summary>
+    T,
+    /// <summary>The H key.</summary>
+    H,
     /// <summary>The U key.</summary>
     U,
     /// <summary>The C key.</summary>
@@ -140,6 +148,8 @@ public enum ShortcutScope
     Settings,
     /// <summary>The Pages rail.</summary>
     NavigationRail,
+    /// <summary>An open menu item.</summary>
+    Menu,
     /// <summary>Grouped tables with row and group actions.</summary>
     Table,
 }

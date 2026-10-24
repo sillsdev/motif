@@ -92,6 +92,7 @@ public static class RefusalCodes
     public const string EvidenceUnknownTier = "evidence.unknown-tier";
 
     public const string GrammarCheckCancelled = "grammarcheck.cancelled";
+    public const string GrammarCheckFailed = "grammarcheck.failed";
     public const string GrammarCheckMalformedFindings = "grammarcheck.malformed-findings";
     public const string GrammarCheckParserRefused = "grammarcheck.parser-refused";
     public const string GrammarCheckParserUnavailable = "grammarcheck.parser-unavailable";

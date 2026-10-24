@@ -108,8 +108,7 @@ public static class MotifAppComposition
             preferencesStore: preferences, applicationFacts: applicationFacts);
         var nativePickers = new AvaloniaStoragePickers(window);
         var diagnosticDialogs = options.DiagnosticDialogs ?? nativePickers;
-        var techDemoNotice = new TechDemoNoticeViewModel(
-            new TechDemoNoticePreferencesAdapter(preferences), new AvaloniaLauncher(window));
+        var techDemoNotice = new TechDemoNoticeViewModel(new TechDemoNoticePreferencesAdapter(preferences));
         var commandClient = new CommandClient(new CommandClientOptions(
             options.ManagedRoot, options.ParserPath, options.RunnerLauncher, startGate, options.TimeProvider));
         var selection = new SelectionViewModel(commandClient);

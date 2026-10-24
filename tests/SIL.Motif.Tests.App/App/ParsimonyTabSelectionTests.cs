@@ -5,6 +5,11 @@ using Avalonia.VisualTree;
 using SIL.Motif.App;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
+using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Jobs;
+using SIL.Motif.Contract.Parsimony;
+using SIL.Motif.Contract.Responses;
+using SIL.Motif.Host.Parsimony;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 
@@ -79,25 +84,68 @@ public sealed class ParsimonyTabSelectionTests
     }
 
     [Fact]
-    public void EmptyStateShowsCopyableAssistantAndCliInstructions()
+    public void FailedAutomaticCheckShowsCopyableAssistantAndCliInstructions()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (workspace, window) = await PageScreenshots.OpenOverSampleData(advancedAiModeEnabled: true,
-                configure: (fake, _) => ParsimonyStateScreenshots.Configure(fake, "empty"));
+            var waiting = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var finish = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            FakeCommandClient? commands = null;
+            var (workspace, window) = await PageScreenshots.OpenOverSampleData(parse: false, advancedAiModeEnabled: true,
+                configure: (fake, _) =>
+                {
+                    commands = fake;
+                    ParsimonyStateScreenshots.Configure(fake, "empty");
+                    fake.EnqueueParsimonyHandler = (_, _) => Task.FromResult(CommandOutcome<JobEnqueuedResponse>.Success(
+                        new JobEnqueuedResponse("job/parsimony-failed", "parsimony-report", "project")));
+                    fake.OnWaitForJob(async (request, _, cancellationToken) =>
+                    {
+                        waiting.TrySetResult();
+                        await finish.Task.WaitAsync(cancellationToken);
+                        return CommandOutcome<JobStatusResponse>.Success(new JobStatusResponse(request.JobId,
+                            "project", true, "parsimony-report", JobStatus.Failed, 1, null, false, null, 1));
+                    });
+                });
             try
             {
+                await waiting.Task.WaitAsync(TimeSpan.FromSeconds(10));
+                var fake = Assert.IsType<FakeCommandClient>(commands);
+                var request = Assert.Single(fake.EnqueueParsimonyRequests);
+                Assert.Equal(ParsimonyAdmission.AllMeasures, request.MeasureId);
+                Assert.Equal(ParsimonyEvidenceScopeKind.ProjectApproved, request.EvidenceScope);
+                Assert.Null(request.AssessmentIds);
                 workspace.CurrentPage = WorkspacePage.Parsimony;
+                var page = workspace.PageModel<ParsimonyPageModel>();
                 PageScreenshots.Settle(window);
+                Assert.True(page.IsLoading);
+                Assert.False(page.IsListed);
+                Assert.Empty(page.Message);
+                Assert.False(page.HasNextStep);
+                Assert.DoesNotContain(window.GetVisualDescendants().OfType<CopyableTextBlock>(), text =>
+                    text.IsEffectivelyVisible && text.Text?.Contains("motif parsimony", StringComparison.Ordinal) == true);
 
+                finish.TrySetResult();
+                await page.AutomaticWork.WaitAsync(TimeSpan.FromSeconds(10));
+                PageScreenshots.Settle(window);
+                Assert.Equal(ParsimonyPageState.Refused, page.State);
+                Assert.Equal(MotifAppStrings.ParsimonyJobFailed, page.Message);
+                Assert.False(page.IsListed);
+                Assert.Empty(page.Rows);
                 var guidance = Assert.Single(window.GetVisualDescendants().OfType<CopyableTextBlock>(), text =>
                     text.IsEffectivelyVisible && text.Text?.Contains("motif parsimony", StringComparison.Ordinal) == true);
+                Assert.True(guidance.Bounds.Width > 0 && guidance.Bounds.Height > 0);
                 var text = guidance.Text ?? string.Empty;
+                Assert.Equal(MotifAppStrings.ParsimonyNoReportNextStep, text);
                 Assert.Contains("Ask an AI assistant with Motif tools", text, StringComparison.Ordinal);
+                Assert.Contains("motif parsimony --project \"<project.fwdata>\" --measure all --wait", text, StringComparison.Ordinal);
                 Assert.DoesNotContain("Advanced AI tools", text, StringComparison.Ordinal);
+                Assert.Single(fake.EnqueueParsimonyRequests);
+                Assert.Empty(fake.AssessRequests);
             }
             finally
             {
+                finish.TrySetResult();
+                await workspace.DisposeAsync();
                 window.Close();
             }
         }, TimeSpan.FromMinutes(2));

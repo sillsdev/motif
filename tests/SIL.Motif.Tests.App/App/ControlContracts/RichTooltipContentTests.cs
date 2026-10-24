@@ -282,8 +282,8 @@ internal sealed class TooltipScenes
                 _client.KnownProjectsListIs([.. new[] { "Sample", "Kiswahili" }.Select(name =>
                     new KnownProjectSummary($@"C:\Users\linguist\FieldWorks\Projects\{name}\{name}.fwdata", DateTimeOffset.UtcNow.AddDays(-2)))]);
                 Show(WorkspacePage.Overview);
-                await OpenMenu(Window.FindControl<Button>("ProjectMenuButton")!, "the project menu");
-                await OpenMenu(Window.FindControl<Button>("OpenRecentButton")!, "Open recent");
+                await OpenMenu(Window.FindControl<MenuItem>("FileMenu")!, "the File menu");
+                await OpenMenu(Window.FindControl<MenuItem>("OpenRecentMenuItem")!, "Open recent");
                 break;
             case TooltipScene.CollapsedSidebar:
                 Window.Width = WorkspaceShellViewModel.SidebarCollapseWidth - 100;
@@ -499,6 +499,12 @@ internal sealed class TooltipScenes
                         AutomationProperties.GetAutomationId(control) == AutomationIds.SidebarSelectionSummary),
                     "the status counts and selection summary");
                 break;
+            case TooltipScene.FrameNarrowTopBar:
+                Window.Width = (double)Window.FindResource("Component.TopBar.NarrowWidth")! - 60;
+                Show(WorkspacePage.Overview);
+                await Until(() => Visible<MenuItem>().Any(item =>
+                    AutomationProperties.GetAutomationId(item) == AutomationIds.MenuButton), "the narrow top bar's menu button");
+                break;
             case TooltipScene.FrameCompactStatus:
                 Window.Width = (double)Window.FindResource("Component.StatusBar.CompactWidth")! - 1;
                 Show(WorkspacePage.Overview);
@@ -573,7 +579,7 @@ internal sealed class TooltipScenes
                 Window.ShowKeyboardStatus(null);
                 break;
             case TooltipScene.OpenRecent:
-                foreach (var name in new[] { "OpenRecentButton", "ProjectMenuButton" }) Window.FindControl<Button>(name)!.Flyout!.Hide();
+                foreach (var name in new[] { "OpenRecentMenuItem", "FileMenu" }) Window.FindControl<MenuItem>(name)!.IsSubMenuOpen = false;
                 break;
             case TooltipScene.CollapsedSidebar: Window.Width = Width; break;
             case TooltipScene.TextPicker: Visible<ComboBox>().First(box => AutomationProperties.GetName(box) == "Text to read").IsDropDownOpen = false; break;
@@ -660,6 +666,12 @@ internal sealed class TooltipScenes
         if (tab is { } chosen) Workspace.PageModel<TextsPageModel>().Tab = chosen;
         Workspace.CurrentPage = page;
         PageScreenshots.Settle(Window);
+    }
+
+    private async Task OpenMenu(MenuItem item, string what)
+    {
+        HeadlessClick.Click(Window, item, what);
+        await Until(() => item.IsSubMenuOpen, what);
     }
 
     private async Task OpenMenu(Button button, string what)

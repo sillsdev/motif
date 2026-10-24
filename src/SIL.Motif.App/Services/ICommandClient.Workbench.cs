@@ -85,6 +85,14 @@ public partial interface ICommandClient
     Task<CommandOutcome<RetirementReviewQueryResponse>> ReadRetirementReviewAsync(
         ReadRetirementReviewRequest request, CancellationToken cancellationToken);
 
+    /// <summary>Queues the admitted review measures and wakes the runner without assessing a Selection.</summary>
+    Task<CommandOutcome<JobEnqueuedResponse>> EnqueueParsimonyReportAsync(
+        EnqueueParsimonyReportRequest request, CancellationToken cancellationToken);
+
+    /// <summary>Reads the newest complete all-measure job whose captured inputs still match this project.</summary>
+    Task<CommandOutcome<ParsimonyReportSetResponse?>> ReadLatestParsimonyReportSetAsync(
+        ReadLatestParsimonyReportRequest request, CancellationToken cancellationToken);
+
     /// <summary>Names the newest stored Parsimony Report and its bundle, reading the store and never a parser.</summary>
     Task<CommandOutcome<ParsimonyLatestReportResponse>> ReadLatestParsimonyReportAsync(
         ReadLatestParsimonyReportRequest request, CancellationToken cancellationToken);

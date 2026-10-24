@@ -24,18 +24,22 @@ public sealed class NarrowWindowLayoutTests
             try
             {
                 var failures = new List<string>();
-                Check("Freshness line at 760", () =>
-                {
-                    window.Width = 760;
-                    Settle(window);
-                    var line = window.FindControl<Control>("FreshnessLine")!;
-                    var actions = window.FindControl<StackPanel>("TopBarActions")!;
-                    var detail = line.GetVisualDescendants().OfType<TextBlock>().Last(text => text.Classes.Contains("freshDetail"));
-                    var detailRight = detail.TranslatePoint(new Point(detail.Bounds.Width, 0), window)!.Value.X;
-                    var actionsLeft = actions.TranslatePoint(default, window)!.Value.X;
-                    Assert.True(detailRight <= actionsLeft,
-                        $"The freshness detail ends at {detailRight}, past the project actions at {actionsLeft}.");
-                });
+                foreach (var width in new[] { 760, 640 })
+                    Check($"Project chip and Refresh at {width}", () =>
+                    {
+                        window.Width = width;
+                        Settle(window);
+                        var topBar = window.FindControl<Border>("TopBar")!;
+                        var chip = window.FindControl<Button>("ProjectChip")!;
+                        var refresh = window.FindControl<Button>("RefreshIconButton")!;
+                        var barRight = topBar.TranslatePoint(new Point(topBar.Bounds.Width - topBar.Padding.Right, 0), window)!.Value.X;
+                        var chipRight = chip.TranslatePoint(new Point(chip.Bounds.Width, 0), window)!.Value.X;
+                        var refreshLeft = refresh.TranslatePoint(default, window)!.Value.X;
+                        var refreshRight = refresh.TranslatePoint(new Point(refresh.Bounds.Width, 0), window)!.Value.X;
+                        Assert.True(chipRight <= refreshLeft + 0.5, $"The chip ends at {chipRight}, past Refresh at {refreshLeft}.");
+                        Assert.True(refreshRight <= barRight + 0.5, $"Refresh ends at {refreshRight}, past the top bar's content at {barRight}.");
+                        Assert.Equal(width >= 760, window.FindControl<TextBlock>("ProjectChipDetail")!.IsEffectivelyVisible);
+                    });
                 Check("Expanded Timing at 1040", () =>
                 {
                     window.Width = 1040;

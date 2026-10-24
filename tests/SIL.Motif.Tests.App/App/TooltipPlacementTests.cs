@@ -25,7 +25,7 @@ public sealed class TooltipPlacementTests
 {
     private static readonly HashSet<string> RequiredOwnersAtEachWidth = new(StringComparer.Ordinal)
     {
-        "refresh", "project name", "word cell", "drag all files", "question to copy", "Apply to FieldWorks project", "ticked words to AI Handoff",
+        "refresh", "project chip", "word cell", "drag all files", "question to copy", "Apply to FieldWorks project", "ticked words to AI Handoff",
         "Parse stopped words again", "word strip", "disapproved mark on a strip", "staged change", "opinion on a word card",
         "mark unread without a text occurrence", "FieldWorks link on a morpheme", "FieldWorks link in a finding",
         "collapsed sidebar entry", "pending change in a Matrix cell", "WORDS column", "completion in detailed statistics",
@@ -38,8 +38,8 @@ public sealed class TooltipPlacementTests
         ["disapproved mark on a strip"] = "in the Letter, the tip overlaps the adjacent anapenda word strip",
         ["pending change in a Matrix cell"] = "the compact Matrix leaves no clear side; the tip overlaps the next cell",
         ["status parse progress"] = "the tip rises over the clipped sliver of Review's Back button above the status bar",
+        ["show Inspector"] = "the notice's Got It sits left of the strip and the first word row fills the side below it",
         ["tech demo promise"] = "Overview's full-width Open in Matrix footer sits above the status bar on every side",
-        ["Settings"] = "the rail's Help button sits above the gear and the page fills the right-hand side",
     };
 
     [Theory]

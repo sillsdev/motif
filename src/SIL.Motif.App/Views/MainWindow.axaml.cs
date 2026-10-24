@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.LogicalTree;
 using Avalonia.Controls.Primitives;
 using Avalonia.Data;
 using Avalonia.Input;
@@ -80,9 +81,6 @@ public sealed partial class MainWindow : Window
         {
             UpdateFrameViewport(e.NewSize.Width / (_settings?.ZoomScale ?? 1));
         };
-        // The root's own width is the window's width after zoom, however the zoom was applied.
-        if (this.FindControl<LayoutTransformControl>("RootLayoutTransform")?.Child is { } zoomedRoot)
-            zoomedRoot.SizeChanged += (_, e) => StackNoticeActions(e.NewSize.Width);
         _keyboardStatusTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
         _keyboardStatusTimer.Tick += (_, _) =>
         {
@@ -95,10 +93,15 @@ public sealed partial class MainWindow : Window
         if (HelpPopup is { } helpView)
             helpView.DataContext = new HelpPopupViewModel(_uriLauncher);
         AddHandler(InputElement.KeyDownEvent, OnKeyDown, RoutingStrategies.Tunnel);
-        if (this.FindControl<StackPanel>("TopBarActions") is { } actions)
-            foreach (var action in actions.Children.OfType<Button>())
-                action.AddHandler(ToolTip.ToolTipOpeningEvent, (_, _) => PlaceBesideTopBarActions(actions, action));
+        if (this.FindControl<Menu>("MainMenu") is { } mainMenu) MenuShortcutDisplay.Apply(mainMenu);
+        AddHandler(GotFocusEvent, RememberFocusOutsideMenu, RoutingStrategies.Bubble);
+        // A command handles Click, so the close needs handledEventsToo.
+        foreach (var name in new[] { "SelectNewMenuItem", "ConfigureMenuItem" })
+            this.FindControl<MenuItem>(name)?.AddHandler(MenuItem.ClickEvent, (_, _) => HideProjectMenu(), handledEventsToo: true);
+        if (this.FindControl<Menu>("MainMenu") is { } menuBar)
+            foreach (var item in menuBar.GetLogicalDescendants().OfType<MenuItem>()) ActivateOnSpace(item);
         Closed += (_, _) => FlushPreferences();
+        AddHandler(InputElement.KeyDownEvent, OnMenuAccessKeyDown, RoutingStrategies.Tunnel);
         if (!rememberBounds) return;
         RestoreBounds();
         Opened += (_, _) => ConstrainRestoredBounds();
@@ -138,13 +141,6 @@ public sealed partial class MainWindow : Window
         {
             _currentProblemReportPreview = null;
         }
-    }
-
-    // The tip opens left of the whole group, so it hides neither the action's neighbours nor the notice below.
-    private static void PlaceBesideTopBarActions(StackPanel actions, Button action)
-    {
-        if (actions.TranslatePoint(default, action) is { } groupStart)
-            ToolTip.SetHorizontalOffset(action, groupStart.X - actions.Spacing);
     }
 
     private void ConfigureWindowChrome()
@@ -263,13 +259,15 @@ public sealed partial class MainWindow : Window
             (_, e) => OnPageInspectorRequested(workspace, e), RoutingStrategies.Bubble);
         workspace.Inspector.Closed += (_, _) => ReturnFocusFromInspector();
 
+        if (this.FindControl<ProjectCardView>("ProjectCardView") is { } card) card.DataContext = workspace;
+        ConfigureProjectCard();
         SizeChanged += (_, _) =>
         {
             CloseTransientTooltips();
             UpdateSetupDialogZoom();
         };
-        if (this.FindControl<Button>("ProjectMenuButton")?.Flyout is Flyout projectMenu)
-            projectMenu.Opened += (_, _) => _ = workspace.RefreshKnownProjectsAsync();
+        if (this.FindControl<MenuItem>("FileMenu") is { } fileMenu)
+            fileMenu.SubmenuOpened += (_, _) => _ = workspace.RefreshKnownProjectsAsync();
         // Coming back from FieldWorks is when a save it made is news; this reads, it never reruns.
         Activated += (_, _) => _ = workspace.CheckFreshnessAsync();
         workspace.RecentProjects.CollectionChanged += (_, _) => RebuildRecentProjects(workspace);
@@ -285,6 +283,12 @@ public sealed partial class MainWindow : Window
         {
             workspace.IsSidebarCollapsed = true;
             workspace.IsChromeCompact = width < (double)this.FindResource("Component.TopBar.CompactWidth")!;
+        }
+        if (this.FindControl<Border>("TopBar") is { } topBar)
+        {
+            var narrow = width < (double)this.FindResource("Component.TopBar.NarrowWidth")!;
+            topBar.Classes.Set("narrow", narrow);
+            SetMenusCollapsed(narrow);
         }
         if (this.FindControl<Border>("StatusBar") is { } status)
             status.Classes.Set("compact", width < (double)this.FindResource("Component.StatusBar.CompactWidth")!);
@@ -305,18 +309,6 @@ public sealed partial class MainWindow : Window
         if (!KeyboardShortcutRegistry.Allows(entry, KeyboardShortcutRegistry.IsTextInput(e.Source), isCurrentItem)) return;
         _layoutHost?.ToggleSidePanel();
         e.Handled = true;
-    }
-
-    // Below the stack width the notice's actions take their own row, so text and actions never share a line.
-    private void StackNoticeActions(double width)
-    {
-        if (this.FindControl<StackPanel>("TechDemoNoticeActions") is not { } actions) return;
-        var stacked = width < (double)this.FindResource("Component.Notice.StackWidth")!;
-        Grid.SetColumn(actions, stacked ? 0 : 1);
-        Grid.SetRow(actions, stacked ? 1 : 0);
-        if (actions.Parent is Grid layout)
-            layout.RowSpacing = stacked ? (double)this.FindResource("Intent.Space.Minimal")! : 0;
-        actions.HorizontalAlignment = stacked ? Avalonia.Layout.HorizontalAlignment.Left : Avalonia.Layout.HorizontalAlignment.Right;
     }
 
     private void UpdateNoticeBand()
@@ -392,7 +384,7 @@ public sealed partial class MainWindow : Window
 
     /// <summary>The project menu's Open recent entries, one per recent project, as the menu shows them.</summary>
     public IReadOnlyList<MenuItem> RecentProjectItems =>
-        this.FindControl<Button>("OpenRecentButton")?.Flyout is MenuFlyout menu
+        this.FindControl<MenuItem>("OpenRecentMenuItem") is { } menu
             ? menu.Items.OfType<MenuItem>().Where(item => item.CommandParameter is RecentProjectViewModel).ToList()
             : [];
 
@@ -400,12 +392,17 @@ public sealed partial class MainWindow : Window
 
     private void RebuildRecentProjects(WorkspaceShellViewModel workspace, int offset = 0)
     {
-        if (this.FindControl<Button>("OpenRecentButton")?.Flyout is not MenuFlyout menu) return;
+        if (this.FindControl<MenuItem>("OpenRecentMenuItem") is not { } menu) return;
         menu.Items.Clear();
         if (offset > 0)
         {
-            var previous = new MenuItem { Header = $"Previous {RecentProjectPageSize}", StaysOpenOnClick = true };
+            var previous = new MenuItem
+            {
+                Header = PluralText.Format(MotifAppStrings.MenuRecentPreviousPattern, RecentProjectPageSize),
+                Tag = "previous", StaysOpenOnClick = true,
+            };
             previous.Click += (_, _) => ChangePage(previous, Math.Max(0, offset - RecentProjectPageSize), false);
+            ActivateOnSpace(previous);
             menu.Items.Add(previous);
         }
         foreach (var recent in workspace.RecentProjects.Skip(offset).Take(RecentProjectPageSize))
@@ -420,13 +417,19 @@ public sealed partial class MainWindow : Window
             Avalonia.Automation.AutomationProperties.SetName(item, recent.AutomationName);
             // Close after the command consumes Click; pinned by `NewProjectsAppearAndMissingProjectsLeaveOpenRecent`.
             item.AddHandler(MenuItem.ClickEvent, (_, _) => HideProjectMenu(), handledEventsToo: true);
+            ActivateOnSpace(item);
             menu.Items.Add(item);
         }
         var remaining = workspace.RecentProjects.Count - offset - RecentProjectPageSize;
         if (remaining > 0)
         {
-            var next = new MenuItem { Header = $"Show {Math.Min(remaining, RecentProjectPageSize)} more", StaysOpenOnClick = true };
+            var next = new MenuItem
+            {
+                Header = PluralText.Format(MotifAppStrings.MenuRecentMorePattern, Math.Min(remaining, RecentProjectPageSize)),
+                Tag = "next", StaysOpenOnClick = true,
+            };
             next.Click += (_, _) => ChangePage(next, offset + RecentProjectPageSize, true);
+            ActivateOnSpace(next);
             menu.Items.Add(next);
         }
 
@@ -438,9 +441,8 @@ public sealed partial class MainWindow : Window
                 RebuildRecentProjects(workspace, pageOffset);
                 if (!restoreFocus) return;
                 var items = menu.Items.OfType<MenuItem>().ToArray();
-                var prefix = forward ? "Show " : "Previous ";
-                var target = items.FirstOrDefault(item => item.Header is string header &&
-                    header.StartsWith(prefix, StringComparison.Ordinal)) ?? items.FirstOrDefault();
+                var tag = forward ? "next" : "previous";
+                var target = items.FirstOrDefault(item => Equals(item.Tag, tag)) ?? items.FirstOrDefault();
                 target?.BringIntoView();
                 target?.Focus();
             });
@@ -509,30 +511,14 @@ public sealed partial class MainWindow : Window
                 KeyboardShortcutRegistry.IsTextInput(e.Source), hasFocusedItem: true))
         {
             e.Handled = true;
-            switch (entry.Behavior)
-            {
-                case KeyboardShortcutBehavior.Copy:
-                    if (KeyboardShortcutRegistry.CopyTextFor(e.Source) is { } text)
-                        await _problemReportServices.CopyTextAsync(text, this).ConfigureAwait(true);
-                    break;
-                case KeyboardShortcutBehavior.Undo when DataContext is WorkspaceShellViewModel workspace:
-                    ShowKeyboardStatus(await workspace.PageModel<ReviewPageModel>().Changes
-                        .UndoStagingActionAsync().ConfigureAwait(true));
-                    break;
-                case KeyboardShortcutBehavior.Redo when DataContext is WorkspaceShellViewModel workspace:
-                    ShowKeyboardStatus(await workspace.PageModel<ReviewPageModel>().Changes
-                        .RedoStagingActionAsync().ConfigureAwait(true));
-                    break;
-            }
+            await ExecuteEditAsync(entry.Behavior, e.Source).ConfigureAwait(true);
             return;
         }
         if (entry?.Behavior == KeyboardShortcutBehavior.ShowShortcuts
             && KeyboardShortcutRegistry.Allows(entry, KeyboardShortcutRegistry.IsTextInput(e.Source), hasFocusedItem: true))
         {
             e.Handled = true;
-            this.FindControl<Button>("HelpButton")?.Flyout?.Hide();
-            _settings?.OpenGroup(ViewModels.SettingsGroup.KeyboardShortcuts);
-            OpenSettings();
+            OpenKeyboardShortcuts();
             return;
         }
         if (entry?.Behavior == KeyboardShortcutBehavior.OpenSettings)
@@ -570,6 +556,14 @@ public sealed partial class MainWindow : Window
                 settings.ResetZoomCommand.Execute(null);
                 return;
             }
+        }
+        // An open project card is the topmost step, so Esc closes it before the Inspector or the page.
+        if (entry?.Behavior == KeyboardShortcutBehavior.Back &&
+            this.FindControl<Button>("ProjectChip")?.Flyout is Flyout { IsOpen: true } card)
+        {
+            e.Handled = true;
+            card.Hide();
+            return;
         }
         // The inspector is the deepest step of the drill-down, so Esc steps it back before anything on the page.
         if (entry?.Behavior == KeyboardShortcutBehavior.Back &&
@@ -734,10 +728,178 @@ public sealed partial class MainWindow : Window
         help.ShowForPage(page, _helpAutomationId);
     }
 
-    // Hiding unbinds the entry; pinned by `ConfigureOpensOnceFromKeyboardAndDoubleClick`.
-    private void OnProjectMenuEntryClick(object? sender, RoutedEventArgs e) => Dispatcher.UIThread.Post(HideProjectMenu);
 
-    private void HideProjectMenu() => this.FindControl<Button>("ProjectMenuButton")?.Flyout?.Hide();
+    /// <summary>Menu items choose on the registry's activation key, as a button does.</summary>
+    private static void ActivateOnSpace(MenuItem item)
+    {
+        item.AddHandler(KeyDownEvent, OnMenuItemKey);
+        item.AddHandler(KeyUpEvent, OnMenuItemKey);
+    }
+
+    [KeyboardShortcutHandler("Menu:ActivateMenuItem")]
+    private static void OnMenuItemKey(object? sender, KeyEventArgs e)
+    {
+        if (sender is not MenuItem item || item.HasSubMenu || !item.IsEffectivelyEnabled) return;
+        var entry = KeyboardShortcutRegistry.Find(KeyboardShortcutScope.Menu, e.Key, e.KeyModifiers,
+            targetBehaviors: [KeyboardShortcutBehavior.ActivateMenuItem]);
+        if (entry is null) return;
+        e.Handled = true;
+        if (e.RoutedEvent != KeyUpEvent) return;
+        var hasCommand = item.Command is { } command && command.CanExecute(item.CommandParameter);
+        if (hasCommand) item.Command!.Execute(item.CommandParameter);
+        item.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent, item) { Handled = hasCommand });
+    }
+
+    private MenuItem? _menuButton;
+    private bool _menusCollapsed;
+
+    private IEnumerable<MenuItem> TopLevelMenus() =>
+        new[] { "FileMenu", "EditMenu", "ViewMenu", "ToolsMenu", "HelpMenu" }
+            .Select(name => this.FindControl<MenuItem>(name)).OfType<MenuItem>();
+
+    /// <summary>Narrow, the bar's one item is a ≡ holding File to Help; wide, they are the bar's own.</summary>
+    private void SetMenusCollapsed(bool collapsed)
+    {
+        if (collapsed == _menusCollapsed || this.FindControl<Menu>("MainMenu") is not { } menu) return;
+        var menus = TopLevelMenus().ToArray();
+        if (menus.Length == 0) return;
+        _menusCollapsed = collapsed;
+        menu.Close();
+        foreach (var open in menus.Append(_menuButton).OfType<MenuItem>()) open.IsSubMenuOpen = false;
+        var button = _menuButton ??= BuildMenuButton();
+        // An opened menu's pop-up still holds its items, so they come out first and go back in after re-parenting.
+        var held = ReleaseSubItems(menus);
+        menu.Items.Clear();
+        button.Items.Clear();
+        foreach (var item in menus) (collapsed ? button.Items : menu.Items).Add(item);
+        if (collapsed) menu.Items.Add(button);
+        foreach (var (parent, children) in held.AsEnumerable().Reverse())
+            foreach (var child in children) parent.Items.Add(child);
+    }
+
+    private static List<(MenuItem Parent, List<object?> Children)> ReleaseSubItems(IEnumerable<MenuItem> menus)
+    {
+        var held = new List<(MenuItem, List<object?>)>();
+        foreach (var menu in menus)
+        {
+            var children = menu.Items.Cast<object?>().ToList();
+            held.AddRange(ReleaseSubItems(children.OfType<MenuItem>()));
+            menu.Items.Clear();
+            held.Add((menu, children));
+        }
+        return held;
+    }
+
+    private static MenuItem BuildMenuButton()
+    {
+        var button = new MenuItem
+        {
+            Header = MotifAppStrings.MainMenuButtonGlyph,
+        };
+        Avalonia.Automation.AutomationProperties.SetName(button, MotifAppStrings.MainMenuButtonAccessibleName);
+        Avalonia.Automation.AutomationProperties.SetAutomationId(button, AutomationIds.MenuButton);
+        ToolTip.SetTip(button, MotifAppStrings.MainMenuButtonAccessibleName);
+        return button;
+    }
+
+    // With the menus behind the ≡, Alt+E opens the ≡ and then Edit; wide, the menu bar's own access keys do it.
+    [KeyboardShortcutHandler("Window:OpenMenu")]
+    private void OnMenuAccessKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (!_menusCollapsed || _menuButton is not { } button) return;
+        var entry = KeyboardShortcutRegistry.Find(KeyboardShortcutScope.Window, e.Key, e.KeyModifiers,
+            targetBehaviors: [KeyboardShortcutBehavior.OpenMenu]);
+        var match = entry is null ? null : TopLevelMenus().FirstOrDefault(item =>
+            string.Equals(AccessKeyOf(item), entry.Key.ToString(), StringComparison.OrdinalIgnoreCase));
+        if (match is null) return;
+        e.Handled = true;
+        button.Open();
+        match.Open();
+        match.Focus(NavigationMethod.Tab);
+    }
+
+    private static string? AccessKeyOf(MenuItem item) =>
+        item.Header is string header && header.IndexOf('_') is var at and >= 0 && at + 1 < header.Length
+            ? header[at + 1].ToString()
+            : null;
+
+    // The card keeps open for Refresh, whose result it shows, and closes for the commands that open something else.
+    private void ConfigureProjectCard()
+    {
+        if (this.FindControl<Button>("ProjectChip") is not { } chip || chip.Flyout is not Flyout flyout) return;
+        flyout.Closed += (_, _) => Dispatcher.UIThread.Post(() => chip.Focus());
+        foreach (var name in new[] { "CardChooseButton", "CardSettingsButton", "CardOpenAnotherButton", "CardParseAllWordsButton" })
+            if (this.FindControl<ProjectCardView>("ProjectCardView")?.FindControl<Button>(name) is { } action)
+                action.AddHandler(Button.ClickEvent, (_, _) => flyout.Hide(), handledEventsToo: true);
+    }
+
+    private void HideProjectMenu() => this.FindControl<Menu>("MainMenu")?.Close();
+
+    private void OnExitClick(object? sender, RoutedEventArgs e) => Close();
+
+    private async void OnEditMenuClick(object? sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem { Tag: string tag } && Enum.TryParse<KeyboardShortcutBehavior>(tag, out var behavior))
+            await ExecuteEditAsync(behavior, FocusedElementOutsideMenu()).ConfigureAwait(true);
+    }
+
+    private void OnViewMenuClick(object? sender, RoutedEventArgs e)
+    {
+        if (_settings is not { } settings || sender is not MenuItem { Tag: string tag }) return;
+        switch (tag)
+        {
+            case nameof(KeyboardShortcutBehavior.ZoomIn): settings.ZoomIn(); break;
+            case nameof(KeyboardShortcutBehavior.ZoomOut): settings.ZoomOut(); break;
+            case nameof(KeyboardShortcutBehavior.ResetZoom): settings.ResetZoomCommand.Execute(null); break;
+        }
+    }
+
+    private void OnHelpTopicsClick(object? sender, RoutedEventArgs e)
+    {
+        _helpAutomationId = null;
+        RefreshHelpContent();
+        if (this.FindControl<Button>("HelpButton") is { } button) button.Flyout?.ShowAt(button);
+    }
+
+    private void OnKeyboardShortcutsClick(object? sender, RoutedEventArgs e) => OpenKeyboardShortcuts();
+
+    private void OpenKeyboardShortcuts()
+    {
+        this.FindControl<Button>("HelpButton")?.Flyout?.Hide();
+        _settings?.OpenGroup(ViewModels.SettingsGroup.KeyboardShortcuts);
+        OpenSettings();
+    }
+
+    // Opening a menu moves focus into it; the word to copy is wherever the person was working before.
+    private object? FocusedElementOutsideMenu() =>
+        _lastFocusOutsideMenu is { } remembered && remembered.IsAttachedToVisualTree() ? remembered : null;
+
+    private Control? _lastFocusOutsideMenu;
+
+    private void RememberFocusOutsideMenu(object? sender, RoutedEventArgs e)
+    {
+        if (e.Source is Control focused && !focused.GetSelfAndVisualAncestors().Any(ancestor => ancestor is Menu))
+            _lastFocusOutsideMenu = focused;
+    }
+
+    private async Task ExecuteEditAsync(KeyboardShortcutBehavior behavior, object? source)
+    {
+        switch (behavior)
+        {
+            case KeyboardShortcutBehavior.Copy:
+                if (KeyboardShortcutRegistry.CopyTextFor(source) is { } text)
+                    await _problemReportServices.CopyTextAsync(text, this).ConfigureAwait(true);
+                break;
+            case KeyboardShortcutBehavior.Undo when DataContext is WorkspaceShellViewModel workspace:
+                ShowKeyboardStatus(await workspace.PageModel<ReviewPageModel>().Changes
+                    .UndoStagingActionAsync().ConfigureAwait(true));
+                break;
+            case KeyboardShortcutBehavior.Redo when DataContext is WorkspaceShellViewModel workspace:
+                ShowKeyboardStatus(await workspace.PageModel<ReviewPageModel>().Changes
+                    .RedoStagingActionAsync().ConfigureAwait(true));
+                break;
+        }
+    }
 
     private void RestoreBounds()
     {

@@ -6,6 +6,8 @@ using Avalonia.Collections;
 using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.Commands.Handoff;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Contract.Baselines;
+using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 
@@ -16,22 +18,26 @@ namespace SIL.Motif.App.ViewModels;
 public sealed record OpenGrammarWarningRequest(string Code) : PageRequest(WorkspacePage.Warnings);
 
 /// <summary>
-/// The Warnings page's model: the grammar's findings, counted beside the page's sidebar label, and the check a
-/// person starts when nothing has been checked for this Baseline yet. It owns the grammar check and publishes a
-/// <see cref="GrammarSummary"/> of it to the context for the pages that summarise it.
+/// Owns the loaded Baseline's grammar check independently of page visibility, reusing stored findings when
+/// available. Counts findings beside the sidebar label and publishes their <see cref="GrammarSummary"/> to the
+/// context for the pages that summarise them.
 /// </summary>
 public sealed class WarningsPageModel : PageModel
 {
     private readonly Dictionary<GrammarWarningRowViewModel, string> _rowAreas =
         new(ReferenceEqualityComparer.Instance);
     private int _readGeneration;
+    private bool _checkAfterOpen;
+    private CancellationTokenSource? _checkCancellation;
+    private Task _checking = Task.CompletedTask;
+    private BaselineToken? _checkingBaseline;
     private string? _requestedWarningCode;
     private string? _currentArea;
     private string? _selectedArea;
 
     public WarningsPageModel(WorkspaceContext context) : base(context)
     {
-        Grammar = new GrammarViewModel(context.Commands, context.Clock);
+        Grammar = new GrammarViewModel(context.Commands, context.Clock, CheckGrammarAsync);
         Grammar.Warnings.TableEntries.CollectionChanged += OnWarningTableEntriesChanged;
         FilteredTableEntries = new DataGridCollectionView(Grammar.Warnings.TableEntries)
         {
@@ -85,12 +91,14 @@ public sealed class WarningsPageModel : PageModel
     /// <summary>Whether the open project's grammar has no check to show, so the page offers one.</summary>
     public bool IsGrammarNotChecked => Context.HasProject && !Grammar.HasChecked && !Grammar.IsLoading;
 
-    /// <summary>Checks the open project's grammar: started only by a person, since it can take a minute.</summary>
+    /// <summary>Rechecks the open project's grammar, joining any check already in progress.</summary>
     public IAsyncRelayCommand CheckGrammarCommand { get; }
 
     protected override void OnProjectCleared()
     {
         _readGeneration++;
+        _checkCancellation?.Cancel();
+        _checkAfterOpen = false;
         _requestedWarningCode = null;
         Grammar.Clear();
     }
@@ -102,15 +110,26 @@ public sealed class WarningsPageModel : PageModel
         TryOpenRequestedWarning();
     }
 
-    // Opening shows the check stored for this Baseline, and never starts one of its own.
     protected override async Task OnProjectOpenedAsync(string projectPath, CancellationToken cancellationToken)
     {
         Grammar.Clear();
         var generation = ++_readGeneration;
+        var baseline = Context.Baseline?.Token;
         var stored = await Context.Commands
             .ReadStoredGrammarCheckAsync(new GrammarCheckRequest(projectPath), cancellationToken).ConfigureAwait(true);
-        if (generation != _readGeneration || !string.Equals(projectPath, Context.ProjectPath, StringComparison.Ordinal)) return;
-        if (stored.Succeeded) Grammar.LoadStored(projectPath, stored.Value?.Check, stored.Value?.LastParserRefusal);
+        if (generation != _readGeneration || projectPath != Context.ProjectPath ||
+            baseline != Context.Baseline?.Token || cancellationToken.IsCancellationRequested) return;
+        if (!stored.Succeeded) return;
+        Grammar.LoadStored(projectPath, stored.Value?.Check, stored.Value?.LastParserRefusal);
+        _checkAfterOpen = baseline is not null && stored.Value?.Check is not { HasBaseline: true };
+    }
+
+    protected override void OnProjectOpenCompleted()
+    {
+        if (!_checkAfterOpen) return;
+        _checkAfterOpen = false;
+        if (Context.ProjectPath is { } path && Context.Baseline?.HasBaseline == true && _checking.IsCompleted)
+            _ = StartCheck(path);
     }
 
     protected override async Task OnEvidencePublishedAsync(EvidenceLens lens, CancellationToken cancellationToken)
@@ -120,25 +139,77 @@ public sealed class WarningsPageModel : PageModel
         var stored = await Context.Commands.ReadStoredGrammarCheckAsync(new GrammarCheckRequest(path), cancellationToken)
             .ConfigureAwait(true);
         if (generation == _readGeneration && path == Context.ProjectPath && stored.Succeeded)
+        {
             Grammar.LoadStored(path, stored.Value?.Check, stored.Value?.LastParserRefusal);
+            if (Context.IsOpeningProject)
+                _checkAfterOpen = Context.Baseline?.HasBaseline == true &&
+                    stored.Value?.Check is not { HasBaseline: true };
+        }
     }
 
-    // A person asked for the new Baseline, so its grammar is checked rather than only read.
     protected override async Task OnBaselineCapturedAsync(CancellationToken cancellationToken)
     {
-        if (Context.ProjectPath is not { } path) return;
-        _readGeneration++;
-        await Grammar.SetProjectAsync(path, cancellationToken).ConfigureAwait(true);
-        await Context.PublishGrammarCheckedAsync(cancellationToken).ConfigureAwait(true);
+        var path = Context.ProjectPath;
+        var baseline = Context.Baseline?.Token;
+        var stopping = OnStopWorkAsync();
+        var generation = _readGeneration;
+        await stopping.ConfigureAwait(true);
+        cancellationToken.ThrowIfCancellationRequested();
+        if (generation != _readGeneration || path is null || path != Context.ProjectPath ||
+            baseline is null || baseline != Context.Baseline?.Token) return;
+        if (Context.IsOpeningProject) _checkAfterOpen = true;
+        else _ = StartCheck(path);
     }
 
-    private async Task CheckGrammarAsync()
+    protected override Task OnStopWorkAsync()
     {
-        if (Context.ProjectPath is not { } path) return;
-        // A stored read still in flight would otherwise replace this check with the older stored one.
+        _checkAfterOpen = false;
         _readGeneration++;
-        await Grammar.SetProjectAsync(path).ConfigureAwait(true);
-        await Context.PublishGrammarCheckedAsync().ConfigureAwait(true);
+        _checkCancellation?.Cancel();
+        return _checking;
+    }
+
+    private Task CheckGrammarAsync()
+    {
+        if (!_checking.IsCompleted) return _checking;
+        return Context.ProjectPath is { } path ? StartCheck(path) : Task.CompletedTask;
+    }
+
+    private Task StartCheck(string path)
+    {
+        _checkAfterOpen = false;
+        var generation = ++_readGeneration;
+        var baseline = Context.Baseline?.Token;
+        var cancellation = new CancellationTokenSource();
+        _checkCancellation = cancellation;
+        _checkingBaseline = baseline;
+        _checking = CheckAndPublishAsync(path, baseline, generation, cancellation);
+        return _checking;
+    }
+
+    private async Task CheckAndPublishAsync(string path, BaselineToken? baseline, int generation,
+        CancellationTokenSource cancellation)
+    {
+        bool IsCurrent() => generation == _readGeneration && path == Context.ProjectPath &&
+            baseline == Context.Baseline?.Token && !cancellation.IsCancellationRequested;
+        try
+        {
+            await Grammar.SetProjectAsync(path, cancellation.Token).ConfigureAwait(true);
+            if (IsCurrent()) await Context.PublishGrammarCheckedAsync(cancellation.Token).ConfigureAwait(true);
+        }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception)
+        {
+            if (IsCurrent()) Grammar.LoadStored(path, null, new Refusal(
+                RefusalCodes.GrammarCheckFailed, FailureReason.Refused, string.Format(CultureInfo.CurrentCulture, MotifAppStrings.GrammarCheckFailedFormat, exception.Message)));
+        }
+        finally
+        {
+            if (ReferenceEquals(_checkCancellation, cancellation)) _checkCancellation = null;
+            cancellation.Dispose();
+        }
     }
 
     private static IReadOnlyList<string> WordsFor(GrammarWarningRowViewModel row)
@@ -192,6 +263,13 @@ public sealed class WarningsPageModel : PageModel
 
     private void OnContextPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName == nameof(WorkspaceContext.Baseline) && _checkCancellation is not null &&
+            _checkingBaseline != Context.Baseline?.Token)
+        {
+            _readGeneration++;
+            _checkCancellation.Cancel();
+            Grammar.Clear();
+        }
         if (e.PropertyName == nameof(WorkspaceContext.HasProject)) RaiseCheckState();
     }
 

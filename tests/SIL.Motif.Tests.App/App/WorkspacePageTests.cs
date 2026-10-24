@@ -561,37 +561,249 @@ public sealed class WorkspacePageTests
     }
 
     [Fact]
-    public async Task RefreshingTheBaselineChecksTheGrammarBecauseAPersonAskedForIt()
+    public async Task RefreshingTheBaselineChecksItsGrammarAgain()
     {
         var (fake, projectPicker, workspace) = NewWorkspace();
         await ChooseProjectAsync(fake, projectPicker, workspace);
-        Assert.Empty(fake.CheckGrammarRequests);
+        Assert.Single(fake.CheckGrammarRequests);
 
         fake.CaptureBaselineCompletesWith(new BaselineCaptureResponse(Token, ProjectPath, Saved, false, false));
         await workspace.Baseline.RefreshCommand.ExecuteAsync(null);
 
-        Assert.Single(fake.CheckGrammarRequests);
+        Assert.Equal(2, fake.CheckGrammarRequests.Count);
         Assert.True(workspace.PageModel<WarningsPageModel>().Grammar.HasChecked);
     }
 
     [Fact]
-    public async Task OpeningAProjectWithNothingStoredNeverChecksTheGrammarAndOffersTheCheck()
+    public async Task AutomaticGrammarWaitsForTheOtherProjectOpenParticipants()
     {
+        using var testLifetime = new CancellationTokenSource(TimeSpan.FromMinutes(1));
         var (fake, projectPicker, workspace) = NewWorkspace();
+        var remainingOpen = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        _ = new OpeningGatePage(workspace.Context, remainingOpen.Task);
+        var checking = new TaskCompletionSource<CommandOutcome<GrammarCheckResponse>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        fake.OnCheckGrammar((_, _) => checking.Task);
+        try
+        {
+            fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(Token, Saved, false));
+            fake.ListTextsCompletesWith(new TextInventoryResponse([], HasBaseline: true));
+            var opening = workspace.SetProjectAsync(ProjectPath, testLifetime.Token, captureFreshProject: false);
+            Assert.False(opening.IsCompleted);
+            Assert.Empty(fake.CheckGrammarRequests);
 
-        await ChooseProjectAsync(fake, projectPicker, workspace);
+            remainingOpen.SetResult();
+            await opening.WaitAsync(testLifetime.Token);
 
-        Assert.Single(fake.StoredGrammarCheckRequests);
-        Assert.Empty(fake.CheckGrammarRequests);
-        Assert.True(workspace.PageModel<WarningsPageModel>().IsGrammarNotChecked);
-        Assert.Equal("Not checked yet", workspace.PageModel<WarningsPageModel>().Grammar.SummaryText);
-        Assert.False(workspace.PageOf(WorkspacePage.Warnings).HasBadge);
+            Assert.Single(fake.CheckGrammarRequests);
+            Assert.True(workspace.PageModel<WarningsPageModel>().Grammar.IsLoading);
+            Assert.False(workspace.Context.IsOpeningProject);
+            Assert.Equal(WorkspacePage.Overview, workspace.CurrentPage);
+            Assert.Empty(fake.AssessRequests);
+        }
+        finally
+        {
+            remainingOpen.TrySetResult();
+            checking.TrySetResult(CommandOutcome<GrammarCheckResponse>.Success(new([], HasBaseline: true)));
+            await workspace.DisposeAsync();
+        }
+    }
 
-        await workspace.PageModel<WarningsPageModel>().CheckGrammarCommand.ExecuteAsync(null);
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task FailedOrCancelledProjectOpeningNeverStartsAutomaticGrammar(bool cancel)
+    {
+        using var testLifetime = new CancellationTokenSource(TimeSpan.FromMinutes(1));
+        using var openingCancellation = new CancellationTokenSource();
+        var (fake, _, workspace) = NewWorkspace();
+        fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(Token, Saved, false));
+        var remainingOpen = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        _ = new OpeningGatePage(workspace.Context, remainingOpen.Task);
+        try
+        {
+            var opening = workspace.SetProjectAsync(ProjectPath, openingCancellation.Token,
+                captureFreshProject: false);
+            Assert.False(opening.IsCompleted);
+            if (cancel)
+            {
+                openingCancellation.Cancel();
+                await Assert.ThrowsAnyAsync<OperationCanceledException>(() => opening.WaitAsync(testLifetime.Token));
+            }
+            else
+            {
+                remainingOpen.SetException(new InvalidOperationException("The project could not finish opening."));
+                await Assert.ThrowsAsync<InvalidOperationException>(() => opening.WaitAsync(testLifetime.Token));
+            }
 
-        Assert.Equal(ProjectPath, Assert.Single(fake.CheckGrammarRequests).ProjectPath);
-        Assert.False(workspace.PageModel<WarningsPageModel>().IsGrammarNotChecked);
-        Assert.True(workspace.PageModel<WarningsPageModel>().Grammar.CheckCommand.CanExecute(null));
+            Assert.False(workspace.Context.IsOpeningProject);
+            Assert.Empty(fake.CheckGrammarRequests);
+            Assert.Empty(fake.AssessRequests);
+        }
+        finally
+        {
+            remainingOpen.TrySetResult();
+            await workspace.DisposeAsync();
+        }
+    }
+
+    private sealed class OpeningGatePage(WorkspaceContext context, Task remainingOpen) : PageModel(context)
+    {
+        protected override Task OnProjectOpenedAsync(string projectPath, CancellationToken cancellationToken) =>
+            remainingOpen.WaitAsync(cancellationToken);
+    }
+
+    [Fact]
+    public async Task OpeningAnUncheckedBaselineChecksGrammarOnOverviewWithoutBlockingOrAssessing()
+    {
+        using var testLifetime = new CancellationTokenSource(TimeSpan.FromMinutes(1));
+        var (fake, projectPicker, workspace) = NewWorkspace();
+        var checking = new TaskCompletionSource<CommandOutcome<GrammarCheckResponse>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var published = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        fake.OnCheckGrammar((_, _) => checking.Task);
+        var grammar = workspace.PageModel<WarningsPageModel>().Grammar;
+        fake.OnOverview((_, _) =>
+        {
+            if (grammar.HasChecked) published.TrySetResult();
+            return Task.FromResult(CommandOutcome<OverviewResponse>.Refused(
+                new Refusal("overview.not-configured", FailureReason.Refused, "No Overview configured.")));
+        });
+        var finding = new GrammarWarning(GrammarDiagnosticLevel.Warning, "Entry", [],
+            [new GrammarWarningPart("dropped", GrammarWarningPartRole.Text)], "warning: dropped")
+        { Group = "Dropped entry", Code = "fwdata.dropped-entry" };
+        var response = CommandOutcome<GrammarCheckResponse>.Success(new([finding], HasBaseline: true));
+        try
+        {
+            await ChooseProjectAsync(fake, projectPicker, workspace).WaitAsync(testLifetime.Token);
+            Assert.True(workspace.Baseline.HasBaseline);
+            Assert.Equal(WorkspacePage.Overview, workspace.CurrentPage);
+            Assert.Equal(ProjectPath, Assert.Single(fake.CheckGrammarRequests).ProjectPath);
+            Assert.True(grammar.IsLoading);
+            Assert.False(grammar.HasChecked);
+            Assert.Empty(fake.CaptureBaselineRequests);
+            Assert.Empty(fake.AssessRequests);
+            Assert.Null(workspace.Context.Evidence.Assessment);
+
+            checking.SetResult(response);
+            await published.Task.WaitAsync(testLifetime.Token);
+
+            Assert.True(grammar.HasChecked);
+            Assert.False(grammar.IsLoading);
+            Assert.Equal("fwdata.dropped-entry", Assert.Single(grammar.Warnings.Findings).Code);
+            Assert.Equal("1", workspace.PageOf(WorkspacePage.Warnings).Badge);
+            Assert.Equal("fwdata.dropped-entry", Assert.Single(workspace.Context.GrammarSummary!.Findings).Code);
+            Assert.Equal(WorkspacePage.Overview, workspace.CurrentPage);
+            Assert.Empty(fake.AssessRequests);
+            Assert.Null(workspace.Context.Evidence.Assessment);
+        }
+        finally
+        {
+            checking.TrySetResult(response);
+            await workspace.DisposeAsync();
+        }
+    }
+
+    [Fact]
+    public async Task SwitchingProjectsCancelsAndDrainsGrammarWithoutPublishingItsOldResult()
+    {
+        using var testLifetime = new CancellationTokenSource(TimeSpan.FromMinutes(1));
+        var (fake, projectPicker, workspace) = NewWorkspace();
+        var otherPath = Path.Combine(Path.GetTempPath(), "projects", "two.fwdata");
+        var checking = new TaskCompletionSource<CommandOutcome<GrammarCheckResponse>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        CancellationToken checkCancellation = default;
+        fake.OnCheckGrammar((_, cancellation) =>
+        {
+            checkCancellation = cancellation;
+            return checking.Task;
+        });
+        var current = new GrammarCheckResponse([], HasBaseline: true);
+        fake.StoredGrammarCheckHandler = (request, _) => Task.FromResult(
+            CommandOutcome<StoredGrammarCheckResponse>.Success(new(
+                request.ProjectPath == otherPath ? current : null)));
+        var oldFinding = new GrammarWarning(GrammarDiagnosticLevel.Warning, "Old project", [],
+            [new GrammarWarningPart("obsolete", GrammarWarningPartRole.Text)], "warning: obsolete");
+        var oldResult = CommandOutcome<GrammarCheckResponse>.Success(new([oldFinding], HasBaseline: true));
+        try
+        {
+            await ChooseProjectAsync(fake, projectPicker, workspace).WaitAsync(testLifetime.Token);
+            Assert.Single(fake.CheckGrammarRequests);
+            Assert.True(workspace.PageModel<WarningsPageModel>().Grammar.IsLoading);
+            var oldOverviewReads = fake.OverviewRequests.Count(request => request.ProjectPath == ProjectPath);
+
+            var switching = workspace.SetProjectAsync(otherPath, captureFreshProject: false);
+
+            Assert.True(checkCancellation.IsCancellationRequested);
+            Assert.False(switching.IsCompleted);
+            checking.SetResult(oldResult);
+            await switching.WaitAsync(testLifetime.Token);
+
+            Assert.Equal(otherPath, workspace.Context.ProjectPath);
+            Assert.Equal(WorkspacePage.Overview, workspace.CurrentPage);
+            Assert.Equal(oldOverviewReads,
+                fake.OverviewRequests.Count(request => request.ProjectPath == ProjectPath));
+            var grammar = workspace.PageModel<WarningsPageModel>().Grammar;
+            Assert.True(grammar.HasChecked);
+            Assert.False(grammar.IsLoading);
+            Assert.Empty(grammar.Warnings.Findings);
+            Assert.Empty(workspace.Context.GrammarSummary!.Findings);
+            Assert.Single(fake.CheckGrammarRequests);
+            Assert.Empty(fake.AssessRequests);
+            Assert.Null(workspace.Context.Evidence.Assessment);
+        }
+        finally
+        {
+            checking.TrySetResult(oldResult);
+            await workspace.DisposeAsync();
+        }
+    }
+
+    [Fact]
+    public async Task TheNestedGrammarRetryPublishesOverviewAndStopsWithTheWorkspace()
+    {
+        using var testLifetime = new CancellationTokenSource(TimeSpan.FromMinutes(1));
+        var (fake, projectPicker, workspace) = NewWorkspace();
+        fake.StoredGrammarCheckIs(new GrammarCheckResponse([], HasBaseline: true));
+        await ChooseProjectAsync(fake, projectPicker, workspace).WaitAsync(testLifetime.Token);
+        var grammar = workspace.PageModel<WarningsPageModel>().Grammar;
+        var beforeRetry = fake.OverviewRequests.Count;
+
+        await grammar.CheckCommand.ExecuteAsync(null);
+
+        Assert.Equal(beforeRetry + 1, fake.OverviewRequests.Count);
+        var checking = new TaskCompletionSource<CommandOutcome<GrammarCheckResponse>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        CancellationToken checkCancellation = default;
+        fake.OnCheckGrammar((_, cancellation) =>
+        {
+            checkCancellation = cancellation;
+            return checking.Task;
+        });
+        var response = CommandOutcome<GrammarCheckResponse>.Success(new([], HasBaseline: true));
+        try
+        {
+            var retrying = grammar.CheckCommand.ExecuteAsync(null);
+            Assert.True(grammar.IsLoading);
+            Assert.False(workspace.PageModel<WarningsPageModel>().CheckGrammarCommand.CanExecute(null));
+            var beforeStop = fake.OverviewRequests.Count;
+
+            var stopping = workspace.Context.StopPageWorkAsync();
+
+            Assert.True(checkCancellation.IsCancellationRequested);
+            Assert.False(stopping.IsCompleted);
+            checking.SetResult(response);
+            await stopping.WaitAsync(testLifetime.Token);
+            await retrying.WaitAsync(testLifetime.Token);
+            Assert.Equal(beforeStop, fake.OverviewRequests.Count);
+            Assert.False(grammar.IsLoading);
+            Assert.Empty(fake.AssessRequests);
+        }
+        finally
+        {
+            checking.TrySetResult(response);
+            await workspace.DisposeAsync();
+        }
     }
 
     [Fact]

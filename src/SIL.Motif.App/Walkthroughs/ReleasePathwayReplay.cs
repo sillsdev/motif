@@ -374,12 +374,6 @@ internal static class ReleasePathwayReplay
         foreach (var control in window.GetLogicalDescendants().OfType<Control>()
                      .Concat(window.GetVisualDescendants().OfType<Control>()))
             yield return control;
-        if (window.FindControl<Button>("ProjectMenuButton")?.Flyout is Flyout flyout &&
-            flyout.Content is Control content)
-        {
-            yield return content;
-            foreach (var control in content.GetLogicalDescendants().OfType<Control>()) yield return control;
-        }
         foreach (var owned in window.OwnedWindows)
         {
             yield return owned;

@@ -101,7 +101,7 @@ public sealed class WorkflowShellTests
     }
 
     [Fact]
-    public void AProjectWithNoStoredGrammarCheckOffersAWorkingCheckButtonOnWarnings()
+    public void AnAutomaticallyCheckedGrammarOffersAWorkingRetryOnWarnings()
     {
         var fake = new FakeCommandClient();
         fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(
@@ -120,15 +120,16 @@ public sealed class WorkflowShellTests
                 window.UpdateLayout();
                 Avalonia.Threading.Dispatcher.UIThread.RunJobs();
 
-                Assert.Empty(fake.CheckGrammarRequests);
-                var check = ButtonNamed(window, "Check the grammar");
+                Assert.Single(fake.CheckGrammarRequests);
+                var check = Assert.Single(window.GetVisualDescendants().OfType<Button>(), button =>
+                    AutomationProperties.GetName(button) == "Check the grammar again" && button.IsEffectivelyVisible);
                 Assert.True(check.IsEffectivelyVisible);
                 Assert.True(check.IsEffectivelyEnabled);
 
                 Click(window, check);
                 Avalonia.Threading.Dispatcher.UIThread.RunJobs();
 
-                Assert.Single(fake.CheckGrammarRequests);
+                Assert.Equal(2, fake.CheckGrammarRequests.Count);
             }
             finally
             {
@@ -279,15 +280,10 @@ public sealed class WorkflowShellTests
                     : new Thickness(12, 0, 8, 0);
                 Assert.Equal(chromePadding, topBar.Padding);
 
-                var menuButton = window.FindControl<Button>("ProjectMenuButton")!;
-                var flyout = Assert.IsType<Flyout>(menuButton.Flyout);
-                flyout.ShowAt(menuButton);
-                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
-                var texts = Assert.IsAssignableFrom<Panel>(flyout.Content).GetLogicalDescendants().OfType<TextBlock>().ToList();
-                Assert.All(texts.Where(text => text.Classes.Contains("menuTitle")), text => Assert.Equal(13d, text.FontSize));
-                Assert.True(Application.Current!.TryGetResource("SemiColorText2", window.ActualThemeVariant, out var muted));
-                Assert.All(texts.Where(text => text.Classes.Contains("menuDetail")), text => Assert.Same(muted, text.Foreground));
-                flyout.Hide();
+                var projectName = window.FindControl<TextBlock>("ProjectNameLabel")!;
+                Assert.True(Application.Current!.TryGetResource("Intent.Type.Body", window.ActualThemeVariant, out var body));
+                Assert.Equal(body, projectName.FontSize);
+                Assert.Equal(5, window.FindControl<Menu>("MainMenu")!.Items.OfType<MenuItem>().Count());
             }
             finally
             {
@@ -305,19 +301,14 @@ public sealed class WorkflowShellTests
             try
             {
                 window.Show();
-                var menuButton = window.FindControl<Button>("ProjectMenuButton")!;
-                var flyout = Assert.IsType<Flyout>(menuButton.Flyout);
-                flyout.ShowAt(menuButton);
-                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
-                var entries = Assert.IsAssignableFrom<Panel>(flyout.Content).Children.OfType<Button>().ToList();
-
-                Assert.Equal(
-                    ["Select a new project", "Open a recent project", "Configure the project",
-                        "Writing system fonts and direction"],
-                    entries.Select(AutomationProperties.GetName));
+                var entries = window.FindControl<MenuItem>("FileMenu")!.Items.OfType<MenuItem>().ToList();
+                Assert.Equal(["SelectNewMenuItem", "OpenRecentMenuItem", "RefreshMenuItem", "ConfigureMenuItem", "ExitMenuItem"],
+                    entries.Select(entry => entry.Name));
                 Assert.Same(workspace.SelectNewProjectCommand, entries[0].Command);
-                Assert.Same(workspace.ConfigureCommand, entries[2].Command);
-                Assert.IsType<MenuFlyout>(entries[1].Flyout);
+                Assert.Same(workspace.RefreshCommand, entries[2].Command);
+                Assert.Same(workspace.ConfigureCommand, entries[3].Command);
+                Assert.Equal("WritingSystemsMenuItem", window.FindControl<MenuItem>("ToolsMenu")!.Items
+                    .OfType<MenuItem>().Last().Name);
 
                 var newestSeen = DateTimeOffset.UtcNow;
                 workspace.Project.KnownProjects.Add(new KnownProjectSummary(
@@ -365,19 +356,12 @@ public sealed class WorkflowShellTests
                 await captureStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
 
                 Assert.True(workspace.IsProjectOpening);
-                var menuButton = window.FindControl<Button>("ProjectMenuButton")!;
-                Assert.True(menuButton.IsEffectivelyEnabled);
-                var flyout = Assert.IsType<Flyout>(menuButton.Flyout);
-                flyout.ShowAt(menuButton);
-                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
-                var flyoutPanel = Assert.IsAssignableFrom<Panel>(flyout.Content);
-                var configure = flyoutPanel.GetLogicalDescendants().OfType<Button>()
-                    .Single(button => AutomationProperties.GetName(button) == "Configure the project");
+                window.OpenFileMenu();
+                Assert.True(window.FindControl<MenuItem>("SelectNewMenuItem")!.IsEffectivelyEnabled);
+                var configure = window.FindControl<MenuItem>("ConfigureMenuItem")!;
                 Assert.False(configure.IsEffectivelyEnabled);
-                Assert.Contains(configure.GetLogicalDescendants().OfType<TextBlock>(), text =>
-                    text.Text == WorkspaceShellViewModel.ConfigureNeedsBaselineText && text.IsEffectivelyVisible);
+                Assert.Equal(WorkspaceShellViewModel.ConfigureNeedsBaselineText, ToolTip.GetTip(configure));
 
-                flyout.Hide();
                 capture.SetResult(CommandOutcome<BaselineCaptureResponse>.Success(new BaselineCaptureResponse(
                     new BaselineToken("project-1", "sha256:" + new string('a', 64), "1",
                         "2026-09-05T00:00:00Z", "sha256:" + new string('b', 64)),
@@ -385,13 +369,8 @@ public sealed class WorkflowShellTests
                 await opening;
 
                 Assert.False(workspace.IsProjectOpening);
-                flyout.ShowAt(menuButton);
-                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
-                configure = flyoutPanel.GetLogicalDescendants().OfType<Button>()
-                    .Single(button => AutomationProperties.GetName(button) == "Configure the project");
                 Assert.True(configure.IsEffectivelyEnabled);
-                Assert.Contains(configure.GetLogicalDescendants().OfType<TextBlock>(), text =>
-                    text.Text == "Texts, added words and limits" && text.IsEffectivelyVisible);
+                Assert.Equal("Texts, added words and limits", ToolTip.GetTip(configure));
             }
             finally
             {
@@ -502,7 +481,8 @@ public sealed class WorkflowShellTests
             try
             {
                 window.Show();
-                var menu = window.FindControl<Button>("ProjectMenuButton")!;
+                window.OpenFileMenu();
+                var menu = window.FindControl<MenuItem>("SelectNewMenuItem")!;
                 Assert.True(menu.IsEffectivelyEnabled);
 
                 workspace.Assess.State = RunState.Running;
@@ -555,7 +535,7 @@ public sealed class WorkflowShellTests
     }
 
     [Fact]
-    public void TheFreshnessLineHidesUntilAProjectIsOpenAndRefreshIsTheOnlyAction()
+    public void TheChipShowsNoStatusUntilAProjectIsOpenAndRefreshIsDisabledThenAndHasNoWordButtons()
     {
         _avalonia.Invoke(() =>
         {
@@ -565,11 +545,15 @@ public sealed class WorkflowShellTests
                 window.Show();
                 window.UpdateLayout();
 
-                Assert.False(window.FindControl<Control>("FreshnessLine")!.IsEffectivelyVisible);
+                Assert.False(workspace.HasFreshness);
+                Assert.Equal(string.Empty, workspace.ProjectChipStatusText);
+                Assert.True(string.IsNullOrEmpty(window.FindControl<TextBlock>("ProjectChipDetail")!.Text));
                 Assert.True(ButtonNamed(window, "Refresh the project").IsEffectivelyVisible);
                 Assert.False(ButtonNamed(window, "Refresh the project").IsEffectivelyEnabled);
+                Assert.Null(window.FindControl<Control>("ChooseWhatToParseButton"));
                 Assert.False(workspace.ShowsParseAllWordsAction);
-                Assert.False(ButtonNamed(window, "See what the refresh changed").IsEffectivelyVisible);
+                Assert.DoesNotContain(window.GetVisualDescendants().OfType<Button>(), button =>
+                    button.IsEffectivelyVisible && AutomationProperties.GetName(button) == "See what the refresh changed");
             }
             finally
             {

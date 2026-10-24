@@ -131,7 +131,12 @@ public sealed class WarningsPageWordsTests
             Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
             var stored = StoredGrammarCheckQuery.Query(new GrammarCheckRequest(project));
             Assert.True(stored.Succeeded, stored.Refusal?.Message);
-            await AssertAdviceVisible(stored.Value!.Check!.Findings);
+            var findings = stored.Value!.Check!.Findings;
+            Assert.Contains("2dcadeb4-672c-497b-813a-10f7fe92af19", findings[0].Description);
+            await AssertAdviceVisible(findings, new Dictionary<string, string>
+            {
+                ["grammar.allomorph.unsegmentable"] = "Allomorph 'motifa' could not be segmented with this project's phonemes: allomorph \"motifa\": cannot segment \"motifa\": no character definition matches at position 0; skipped",
+            });
         }
         finally
         {
@@ -139,7 +144,8 @@ public sealed class WarningsPageWordsTests
         }
     }
 
-    private async Task AssertAdviceVisible(IReadOnlyList<GrammarWarning> findings)
+    private async Task AssertAdviceVisible(IReadOnlyList<GrammarWarning> findings,
+        IReadOnlyDictionary<string, string>? expectedDescriptions = null)
     {
         foreach (var warning in findings.DistinctBy(finding => finding.Code))
         {
@@ -166,7 +172,9 @@ public sealed class WarningsPageWordsTests
                     var message = Assert.Single(texts, text => text.Classes.Contains("warningRawMessage"));
                     Assert.Contains(texts, text => text.Text == MotifAppStrings.WhatToDoInFieldWorks);
                     Assert.DoesNotContain(texts, text => text.Text == "PanGloss gives no advice for this kind yet");
-                    Assert.Equal(warning.Description, message.Text);
+                    var expectedDescription = warning.Code is { } code &&
+                        expectedDescriptions?.TryGetValue(code, out var expected) == true ? expected : warning.Description;
+                    Assert.Equal(expectedDescription, message.Text);
                     Assert.True(message.FontSize < explanation.FontSize);
                     Assert.True(message.FontSize < guidance.FontSize);
                     var parent = message.GetVisualParent()!;

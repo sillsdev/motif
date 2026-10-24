@@ -464,9 +464,18 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
                 Assert.DoesNotContain(session.Window.GetVisualDescendants().OfType<CopyableTextBlock>(), text =>
                     AutomationProperties.GetAutomationId(text) == SIL.Motif.App.AutomationIds.ParsePromptText &&
                     text.IsEffectivelyVisible);
-                Assert.Contains(session.Window.GetVisualDescendants().OfType<Button>(), button =>
-                    button.Content?.ToString() == SIL.Motif.App.MotifAppStrings.ParseAllWords && button.IsEffectivelyVisible &&
-                    ReferenceEquals(button.Command, workspace.ParseAllWordsCommand));
+                var chip = session.Window.FindControl<Button>("ProjectChip")!;
+                Click(session.Window, chip);
+                await Until(() => chip.Flyout is Flyout { IsOpen: true }, "the project card did not open");
+                var cardFlyout = Assert.IsType<Flyout>(chip.Flyout);
+                var card = Assert.IsType<ProjectCardView>(cardFlyout.Content);
+                var cardParse = card.FindControl<Button>("CardParseAllWordsButton")!;
+                Assert.True(cardParse.IsEffectivelyVisible);
+                Assert.True(cardParse.IsEffectivelyEnabled);
+                Assert.Same(workspace.ParseAllWordsCommand, cardParse.Command);
+                Assert.Equal(SIL.Motif.App.MotifAppStrings.ParseAllWordsAccessibleName,
+                    AutomationProperties.GetName(cardParse));
+                cardFlyout.Hide();
 
                 stage = "Texts prompt";
                 await ShowPageAsync(session, WorkspacePage.Texts);
@@ -582,19 +591,16 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
     // The entry's command runs as the walkthrough runs it: a flyout's overlay takes no synthetic click.
     private static async Task SelectNewProjectAsync(MotifDesktopSession session, Func<bool> pickerCalled)
     {
-        var menu = session.Window.FindControl<Button>("ProjectMenuButton")
-            ?? throw new InvalidOperationException("The window has no project menu.");
-        Click(session.Window, menu);
-        var flyout = Assert.IsType<Flyout>(menu.Flyout);
-        Assert.True(flyout.IsOpen, "The project menu did not open.");
-        var entry = (flyout.Content as Control)?.GetLogicalDescendants().OfType<Button>().Single(button =>
-            AutomationProperties.GetName(button) == "Select a new project")
-            ?? throw new InvalidOperationException("The project menu has no content.");
+        var file = session.Window.FindControl<MenuItem>("FileMenu")
+            ?? throw new InvalidOperationException("The window has no File menu.");
+        file.IsSubMenuOpen = true;
+        var entry = session.Window.FindControl<MenuItem>("SelectNewMenuItem")
+            ?? throw new InvalidOperationException("The File menu has no Select New item.");
         Assert.Same(session.Workspace.SelectNewProjectCommand, entry.Command);
-        await Until(() => entry.IsEffectivelyEnabled, "'Select a new project' never became enabled");
+        await Until(() => entry.IsEffectivelyEnabled, "'Select New' never became enabled");
         entry.Command!.Execute(entry.CommandParameter);
         await Until(pickerCalled, "choosing a new project did not ask the substituted picker");
-        flyout.Hide();
+        file.IsSubMenuOpen = false;
     }
 
     private static Task Until(Func<bool> condition, string failure) => Until(condition, () => failure);

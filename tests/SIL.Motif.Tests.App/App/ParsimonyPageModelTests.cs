@@ -19,9 +19,8 @@ using Xunit;
 namespace SIL.Motif.Tests.App;
 
 /// <summary>
-/// Pins the Parsimony page's states, grouping and links against the stored Report alone. Opening or reopening the page
-/// reads the latest stored Report and its Baseline; the fake client fails any other call, so a parser run or a write
-/// would surface as a test failure.
+/// Pins stored finding states, grouping and links independently of automatic review work. Producer ownership and
+/// replacement are exercised by ParsimonyAutomaticWorkTests.
 /// </summary>
 public sealed class ParsimonyPageModelTests
 {
@@ -865,13 +864,13 @@ public sealed class ParsimonyPageModelTests
     private static void ExpectPagedReport(FakeCommandClient fake, ParsimonyReportResponse report, Task gate)
     {
         ExpectReport(fake, report);
-        fake.ParsimonyViewHandler = async (request, _) =>
+        fake.ParsimonyViewHandler = async (request, cancellationToken) =>
         {
             if (request.Query.View != "parsimony-active-findings")
                 return CommandOutcome<ParsimonyNamedViewResponse>.Success(new ParsimonyNamedViewResponse(BundleId,
                     request.Query.View, 1, ParsimonyMeasureStatus.Computed, [], 0, 0, null, false, [], null, null));
             var offset = request.Query.Cursor is null ? 0 : int.Parse(request.Query.Cursor);
-            if (offset > 0) await gate;
+            if (offset > 0) await gate.WaitAsync(cancellationToken);
             var rows = report.Findings.Skip(offset).Take(request.Query.Limit)
                 .Select(finding => (ParsimonyViewRow)new ParsimonyFindingDispositionViewRow(ReportId, BundleId, "active",
                     finding, null, null, null, null, null, null)).ToArray();

@@ -468,11 +468,19 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
                 }
                 if (!IsCurrentOpen(generation)) return;
             }
+            openCancellation.Token.ThrowIfCancellationRequested();
         }
         finally
         {
             Interlocked.CompareExchange(ref _openCancellation, null, openCancellation);
             openCancellation.Dispose();
+        }
+
+        foreach (var page in participants.OfType<PageModel>())
+        {
+            if (!IsCurrentOpen(generation) || cancellationToken.IsCancellationRequested || ProjectPath != projectPath)
+                return;
+            page.ProjectOpenCompleted();
         }
     }
 

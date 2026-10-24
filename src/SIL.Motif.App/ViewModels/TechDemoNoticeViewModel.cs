@@ -12,17 +12,13 @@ public sealed partial class TechDemoNoticeViewModel : ObservableObject
         "Motif is a tech demo. It writes nothing until you press Apply. Keep a FieldWorks backup.";
 
     private readonly ITechDemoNoticePreferences _preferences;
-    private readonly IUriLauncher _launcher;
 
-    /// <summary>Creates the notice from the saved acknowledgment and the window's link launcher.</summary>
+    /// <summary>Creates the notice from the saved acknowledgment.</summary>
     /// <param name="preferences">Persists whether the person has acknowledged the notice.</param>
-    /// <param name="launcher">Opens the Motif issue page.</param>
-    public TechDemoNoticeViewModel(ITechDemoNoticePreferences preferences, IUriLauncher launcher)
+    public TechDemoNoticeViewModel(ITechDemoNoticePreferences preferences)
     {
         ArgumentNullException.ThrowIfNull(preferences);
-        ArgumentNullException.ThrowIfNull(launcher);
         _preferences = preferences;
-        _launcher = launcher;
         IsVisible = !preferences.HasSeenTechDemoNotice;
     }
 
@@ -37,9 +33,4 @@ public sealed partial class TechDemoNoticeViewModel : ObservableObject
         _preferences.MarkTechDemoNoticeSeen();
         IsVisible = false;
     }
-
-    /// <summary>Opens the issue page where a person can report a problem.</summary>
-    [RelayCommand]
-    private async Task ReportProblemAsync() =>
-        await _launcher.LaunchAsync(new Uri(AppLinks.Issues)).ConfigureAwait(true);
 }

@@ -258,7 +258,8 @@ public sealed class ProjectSwitchTests
                 await OpenProjectAsync(parts.Workspace, ProjectA);
                 parts.Workspace.Selection.PastedWords = "word";
                 window.UpdateLayout();
-                var projectMenu = Assert.IsType<Button>(window.FindControl<Button>("ProjectMenuButton"));
+                window.OpenFileMenu();
+                var projectMenu = Assert.IsType<MenuItem>(window.FindControl<MenuItem>("SelectNewMenuItem"));
                 var page = Assert.Single(window.GetLogicalDescendants().OfType<TextsPage>());
                 var selectionHost = Assert.IsType<ContentControl>(page.FindControl<ContentControl>("SelectionHost"));
                 var search = Assert.Single(selectionHost.GetLogicalDescendants().OfType<TextBox>(), control =>

@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Globalization;
 using Avalonia.Controls;
 using Avalonia.LogicalTree;
+using Avalonia.VisualTree;
 using Avalonia.Threading;
 using SIL.LCModel;
 using SIL.LCModel.Infrastructure;
@@ -56,6 +57,14 @@ public sealed class ActivationWalkthroughTests(PristineProjectFixture pristine)
                         walkthrough.Workspace.Selection.Texts.Count == 1,
                     WalkthroughSteps.Remaining(deadline), "the recent project did not load its Baseline and Texts");
 
+                // Activation is measured after the grammar work that successful opening starts.
+                var grammar = walkthrough.Workspace.PageModel<WarningsPageModel>().Grammar;
+                walkthrough.WaitUntil(() => grammar.HasChecked && !grammar.IsLoading,
+                    WalkthroughSteps.Remaining(deadline), "the automatic opening grammar check did not finish");
+                Assert.Null(grammar.Refusal);
+                Assert.True(grammar.HasBaseline);
+                Assert.Null(walkthrough.Workspace.Context.Evidence.Assessment);
+
                 var baselineToken = walkthrough.Workspace.Baseline.Token;
                 Assert.NotNull(baselineToken);
                 Assert.Equal(capturedAt.ToUniversalTime(),
@@ -81,14 +90,17 @@ public sealed class ActivationWalkthroughTests(PristineProjectFixture pristine)
 
                 Assert.Equal(baselineToken, walkthrough.Workspace.Baseline.Token);
                 Assert.Equal(invocationsBeforeSave, FakeParser.Invocations(parserPath));
+                Assert.Null(walkthrough.Workspace.Context.Evidence.Assessment);
                 Assert.True(walkthrough.Workspace.FreshnessIsStale);
-                var renderedText = walkthrough.Window.GetLogicalDescendants().OfType<TextBlock>()
+                var card = ProjectCardAccess.Open(walkthrough.Window);
+                var renderedText = card.GetVisualDescendants().OfType<TextBlock>()
                     .Where(text => text.IsVisible).Select(text => text.Text).OfType<string>().ToArray();
                 Assert.Contains("FieldWorks saved since", renderedText);
                 var renderedDetail = Assert.Single(renderedText, text => text.Contains(
                     "Baseline of", StringComparison.Ordinal));
                 Assert.Equal(walkthrough.Workspace.FreshnessDetail, renderedDetail);
                 Assert.Contains("saved", renderedDetail, StringComparison.Ordinal);
+                ProjectCardAccess.Close(walkthrough.Window);
             }
             finally
             {

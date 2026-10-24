@@ -8,7 +8,6 @@
     <StaticResource x:Key="Component.Notice.Padding" ResourceKey="Intent.Inset.Notice" />
     <StaticResource x:Key="Component.Notice.Radius" ResourceKey="Intent.Radius.Control" />
     <StaticResource x:Key="Component.Notice.ActionGap" ResourceKey="Intent.Space.Section" />
-    <StaticResource x:Key="Component.Notice.StackWidth" ResourceKey="Primitive.Size.640" />
     <StaticResource x:Key="Component.Notice.QuietPadding" ResourceKey="Primitive.Inset.0_8_0_8" />
   </Styles.Resources>
   <Style Selector="Border.notice">

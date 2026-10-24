@@ -158,24 +158,32 @@ public sealed class WalkthroughWindow : IDisposable
 
     public void OpenProjectMenu()
     {
-        if (!ProjectMenuFlyout.IsOpen) Click("Project menu");
+        if (!ProjectMenuIsOpen) ClickControl(FileMenu, "File");
     }
 
-    /// <summary>Closes the project menu by clicking its button again, a press the open menu's light dismiss takes.</summary>
+    /// <summary>Whether Select New, Open Recent and the other project commands are enabled, as the old project button was.</summary>
+    public bool ProjectSwitchEnabled => ProjectMenuEntry("SelectNewMenuItem").IsEffectivelyEnabled;
+
+    private bool ProjectMenuIsOpen => FileMenu.IsSubMenuOpen;
+
+    private MenuItem FileMenu => Window.FindControl<MenuItem>("FileMenu")
+        ?? throw new InvalidOperationException("The MainWindow has no File menu.");
+
+    /// <summary>Closes the File menu by clicking its header again, a press the open menu's light dismiss takes.</summary>
     public void CloseProjectMenu()
     {
-        if (!ProjectMenuFlyout.IsOpen) return;
-        HeadlessClick.PressOver(Window, Find<Button>("Project menu"), "Project menu");
-        Assert.False(ProjectMenuFlyout.IsOpen, "Clicking 'Project menu' again did not close the menu.");
+        if (!ProjectMenuIsOpen) return;
+        HeadlessClick.PressOver(Window, FileMenu, "File");
+        Assert.False(ProjectMenuIsOpen, "Clicking 'File' again did not close the menu.");
     }
 
     public void ChooseNewProject()
     {
         var selectedPath = _projectPicker.Path;
-        ClickProjectMenuEntry("Select a new project");
+        ClickProjectMenuEntry("SelectNewMenuItem");
         var selectionTask = Workspace.SelectNewProjectCommand.ExecutionTask;
         Assert.NotNull(selectionTask);
-        WaitUntil(() => !ProjectMenuFlyout.IsOpen,
+        WaitUntil(() => !ProjectMenuIsOpen,
             TimeSpan.FromSeconds(10), "selecting a new project did not close the project menu");
         WaitUntil(() => selectionTask.IsCompleted,
             TimeSpan.FromSeconds(30), "the project picker did not finish");
@@ -216,26 +224,26 @@ public sealed class WalkthroughWindow : IDisposable
                 $"Setup.ConfigurationLoadTask='{Workspace.Context.Setup?.ConfigurationLoadTask?.Status}'");
 
     /// <summary>Clicks the project menu's Configure entry through the pointer, in the menu's own popup.</summary>
-    public void ConfigureFromProjectMenu() => ClickProjectMenuEntry("Configure the project");
+    public void ConfigureFromProjectMenu() => ClickProjectMenuEntry("ConfigureMenuItem");
 
     /// <summary>Opens the project menu and clicks the entry named <paramref name="accessibleName"/> through the pointer.</summary>
     public void ClickProjectMenuEntry(string accessibleName)
     {
         OpenProjectMenu();
-        var entry = FindProjectMenuEntry<Button>(accessibleName);
+        var entry = ProjectMenuEntry(accessibleName);
         var menu = TopLevel.GetTopLevel(entry)
             ?? throw new InvalidOperationException($"The project menu's '{accessibleName}' is not in a top level.");
         ClickControl(entry, accessibleName, menu);
         Window.UpdateLayout();
         Pump();
-        Assert.False(ProjectMenuFlyout.IsOpen, $"Clicking '{accessibleName}' left the project menu open.");
+        Assert.False(ProjectMenuIsOpen, $"Clicking '{accessibleName}' left the project menu open.");
     }
 
     /// <summary>Focuses the project menu entry named <paramref name="accessibleName"/> and presses <paramref name="key"/> on it.</summary>
     public void PressKeyOnProjectMenuEntry(string accessibleName, Key key, PhysicalKey physicalKey)
     {
         OpenProjectMenu();
-        var entry = FindProjectMenuEntry<Button>(accessibleName);
+        var entry = ProjectMenuEntry(accessibleName);
         Assert.True(entry.IsEffectivelyEnabled, $"'{accessibleName}' is not effectively enabled.");
         var menu = TopLevel.GetTopLevel(entry)
             ?? throw new InvalidOperationException($"The project menu's '{accessibleName}' is not in a top level.");
@@ -245,20 +253,20 @@ public sealed class WalkthroughWindow : IDisposable
         menu.KeyRelease(key, RawInputModifiers.None, physicalKey, null);
         Window.UpdateLayout();
         Pump();
-        Assert.False(ProjectMenuFlyout.IsOpen, $"Pressing {key} on '{accessibleName}' left the project menu open.");
+        Assert.False(ProjectMenuIsOpen, $"Pressing {key} on '{accessibleName}' left the project menu open.");
     }
 
     /// <summary>Double-clicks the project menu entry named <paramref name="accessibleName"/>; returns its clicks.</summary>
     public int DoubleClickProjectMenuEntry(string accessibleName)
     {
         OpenProjectMenu();
-        var entry = FindProjectMenuEntry<Button>(accessibleName);
+        var entry = ProjectMenuEntry(accessibleName);
         var menu = TopLevel.GetTopLevel(entry)
             ?? throw new InvalidOperationException($"The project menu's '{accessibleName}' is not in a top level.");
         var clicks = HeadlessClick.DoubleClick(menu, entry, accessibleName);
         Window.UpdateLayout();
         Pump();
-        Assert.False(ProjectMenuFlyout.IsOpen, $"Double-clicking '{accessibleName}' left the project menu open.");
+        Assert.False(ProjectMenuIsOpen, $"Double-clicking '{accessibleName}' left the project menu open.");
         return clicks;
     }
 
@@ -266,11 +274,9 @@ public sealed class WalkthroughWindow : IDisposable
     public bool SetupDialogIsShown =>
         Window.GetLogicalDescendants().OfType<SetupDialog>().Single().IsEffectivelyVisible;
 
-    public T FindProjectMenuEntry<T>(string accessibleName) where T : Control =>
-        (ProjectMenuFlyout.Content as Control)?.GetLogicalDescendants().OfType<T>().Single(control =>
-            string.Equals(Avalonia.Automation.AutomationProperties.GetName(control), accessibleName,
-                StringComparison.Ordinal))
-        ?? throw new InvalidOperationException("The project menu has no content.");
+    /// <summary>The File menu's item with the element name <paramref name="name"/>, such as <c>ConfigureMenuItem</c>.</summary>
+    public MenuItem ProjectMenuEntry(string name) => Window.FindControl<MenuItem>(name)
+        ?? throw new InvalidOperationException($"The File menu has no item named '{name}'.");
 
     /// <summary>The one control named <paramref name="name"/>, wherever it sits: each page's view has names of its own.</summary>
     public T Named<T>(string name) where T : Control =>
@@ -561,11 +567,11 @@ public sealed class WalkthroughWindow : IDisposable
         var seen = new HashSet<Control>(ReferenceEqualityComparer.Instance);
         foreach (var control in ControlsFrom(Window))
             if (seen.Add(control)) yield return control;
-        if (ProjectMenuFlyout.Content is Control projectMenu)
-            foreach (var control in ControlsFrom(projectMenu))
-                if (seen.Add(control)) yield return control;
         if (Window.FindControl<Button>("StatusParseProgress")?.Flyout is Flyout { IsOpen: true, Content: Control progress })
             foreach (var control in ControlsFrom(progress))
+                if (seen.Add(control)) yield return control;
+        if (Window.FindControl<Button>("ProjectChip")?.Flyout is Flyout { IsOpen: true, Content: Control projectCard })
+            foreach (var control in ControlsFrom(projectCard))
                 if (seen.Add(control)) yield return control;
         if (Window.FindControl<Button>("NoticeDetailsButton")?.Flyout is Flyout { IsOpen: true, Content: Control notices })
             foreach (var control in ControlsFrom(notices))
@@ -731,10 +737,6 @@ public sealed class WalkthroughWindow : IDisposable
         Pump();
         Assert.Equal(text, textBox.Text);
     }
-
-    private Flyout ProjectMenuFlyout =>
-        Window.FindControl<Button>("ProjectMenuButton")?.Flyout as Flyout
-        ?? throw new InvalidOperationException("The MainWindow has no project menu flyout.");
 
     public void DragAllFiles()
     {

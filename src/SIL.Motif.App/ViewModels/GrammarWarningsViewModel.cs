@@ -28,6 +28,7 @@ public sealed class GrammarWarningDetailViewModel
     {
         Warning = warning;
         RepeatCount = repeatCount;
+        warning = WarningDisplayProjection.For(warning);
         var text = PanGlossWarningText.From(warning);
         Title = text.Title;
         Explanation = text.Explanation;
@@ -403,18 +404,20 @@ public sealed partial class GrammarWarningRowViewModel : ObservableObject
         ArgumentNullException.ThrowIfNull(warnings);
         if (warnings.Count == 0) throw new ArgumentException("A kind row needs at least one finding.", nameof(warnings));
         var warning = warnings[0];
-        var panGloss = PanGlossWarningText.From(warning);
+        var display = warnings.Select(WarningDisplayProjection.For).ToArray();
+        var panGloss = PanGlossWarningText.From(display[0]);
         Findings = warnings;
         Details = DetailsFor(warnings);
         Warning = warning;
         RepeatCount = warnings.Count;
         Level = warning.Severity;
         Severity = Level.ToWireValue();
-        SubjectParts = warnings.SelectMany(item => item.Subject).Distinct().ToArray();
-        ProblemParts = warnings.SelectMany(item => item.Problem).Distinct().ToArray();
-        Text = string.Join(Environment.NewLine, warnings.Select(item => item.Text).Distinct(StringComparer.Ordinal));
+        SubjectParts = display.SelectMany(item => item.Subject).Distinct().ToArray();
+        ProblemParts = display.SelectMany(item => item.Problem).Distinct().ToArray();
+        Text = string.Join(Environment.NewLine, display.Select(item => item.Text).Distinct(StringComparer.Ordinal));
         Message = string.Join(Environment.NewLine, Details.Select(detail => detail.Description)
             .Where(description => description.Length > 0).Distinct(StringComparer.Ordinal));
+        TableProblemText = display[0].Description.Length > 0 ? display[0].Description : Message;
         PanGlossTitle = panGloss.Title;
         PanGlossExplanation = string.Join(Environment.NewLine, Details.Select(detail => detail.Explanation)
             .Where(explanation => explanation.Length > 0).Distinct(StringComparer.Ordinal));
@@ -441,7 +444,7 @@ public sealed partial class GrammarWarningRowViewModel : ObservableObject
             .Select(word => new WordRowViewModel(word.Row, wordRoutes))];
         SpellingCandidateRows = [.. spellingWords.DistinctBy(word => word.Row.Word, StringComparer.Ordinal)
             .Select(word => new WordRowViewModel(word.Row, wordRoutes))];
-        var namedParts = namedFindings.SelectMany(item => item.Subject)
+        var namedParts = display.Where(item => item.NamesItem).SelectMany(item => item.Subject)
             .Where(part => part.Role is GrammarWarningPartRole.Object or GrammarWarningPartRole.Missing)
             .ToArray();
         var linkedNames = namedParts.Where(part => part.FieldWorksLink is { Length: > 0 }).ToArray();
@@ -498,21 +501,7 @@ public sealed partial class GrammarWarningRowViewModel : ObservableObject
     /// The PanGloss description for the table's problem column. A raw identifier is shown as the name of the
     /// subject or problem part that carries it, or as an unnamed item when no part does.
     /// </summary>
-    public string TableProblemText
-    {
-        get
-        {
-            var names = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var part in Warning.Subject.Concat(Warning.Problem))
-                if (part.ObjectId is { Length: > 0 } id && !string.IsNullOrWhiteSpace(part.Text))
-                    names.TryAdd(id, part.Text);
-            return RawIdentifier.Replace(Warning.Description.Length > 0 ? Warning.Description : Message,
-                match => names.TryGetValue(match.Value, out var name) ? name : MotifAppStrings.WarningsUnnamedItem);
-        }
-    }
-    private static readonly System.Text.RegularExpressions.Regex RawIdentifier = new(
-        "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}",
-        System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+    public string TableProblemText { get; }
     /// <summary>The Named words cell: an exact count, none, or a dash when no exact count is available.</summary>
     public string TableNamedWordsText => WarningWordsQuery.Touched(Findings.Where(item => item.NamesItem).ToArray())
         is not { IsComplete: true } ? "—" : YourWordsCount is { } count

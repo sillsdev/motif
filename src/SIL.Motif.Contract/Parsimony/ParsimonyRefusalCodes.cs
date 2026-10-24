@@ -7,6 +7,7 @@ namespace SIL.Motif.Contract.Parsimony;
 public static class ParsimonyRefusalCodes
 {
     public const string AssessmentBaselineMismatch = "parsimony.assessment-baseline-mismatch";
+    public const string AutomaticFailed = "parsimony.automatic-failed";
     public const string BundleBusy = "parsimony.bundle-busy";
     public const string BundleInvalid = "parsimony.bundle-invalid";
     public const string BundleNotFound = "parsimony.bundle-not-found";
@@ -42,6 +43,7 @@ public static class ParsimonyRefusalCodes
     public const string ResultInvalid = "parsimony.result-invalid";
     public const string ResultMissing = "parsimony.result-missing";
     public const string RetirementExpectationsUnavailable = "parsimony.retirement-expectations-unavailable";
+    public const string RunnerStartFailed = "parsimony.runner-start-failed";
     public const string SelectionUnavailable = "parsimony.selection-unavailable";
     public const string ViewItemNotFound = "parsimony.view-item-not-found";
 }

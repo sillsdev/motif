@@ -261,8 +261,8 @@ public sealed record ParsimonyEvidence(
 
 /// <summary>
 /// The Parsimony page: the Active and Suppressed findings of the latest stored Parsimony Report, with the evidence for
-/// the one selected. Opening the page and reopening it read the stored Report and the live decision views; nothing here
-/// starts a parser run. A decision staged from the page goes into pending changes and is written only by Apply.
+/// the one selected. A loaded Baseline starts missing review measures after the workspace opens, independently of
+/// page visibility. A staged decision enters pending changes and is written only by Apply.
 /// </summary>
 public sealed partial class ParsimonyPageModel : PageModel
 {
@@ -282,7 +282,7 @@ public sealed partial class ParsimonyPageModel : PageModel
     private int _readGeneration;
     private bool _staging;
     private string? _stagedReportId;
-    private ParsimonyReportResponse? _report;
+    private readonly Dictionary<string, ParsimonyReportResponse> _reportsById = new(StringComparer.Ordinal);
     private string? _reportProjectPath;
     private string? _selectedFindingId;
     private string? _selectedSuppressedKey;
@@ -552,7 +552,7 @@ public sealed partial class ParsimonyPageModel : PageModel
     public bool ShowSuppressedActions => Evidence is not null && _selectedSuppressedKey is not null;
 
     /// <summary>Whether a decision can be recorded against the current selection.</summary>
-    public bool CanActOnSelection => SelectedRecordType is not null && _report is not null;
+    public bool CanActOnSelection => SelectedRecordType is not null && _reportsById.Count > 0;
 
     /// <summary>
     /// The Active list as one flat list: each measure's header, then its findings. The page draws it virtualized.
@@ -594,7 +594,7 @@ public sealed partial class ParsimonyPageModel : PageModel
     /// <summary>Stages the withdrawal of the selected Suppressed decision, so its finding returns to Active.</summary>
     public IAsyncRelayCommand ReturnToActiveCommand { get; }
 
-    /// <summary>Reads the stored Report and the decision views again; it never starts a parser run.</summary>
+    /// <summary>Reloads stored findings, joining or retrying missing review work for the loaded Baseline.</summary>
     public IAsyncRelayCommand ReloadCommand { get; }
 
     /// <summary>Reads the stored Report again for the open project.</summary>
@@ -606,7 +606,15 @@ public sealed partial class ParsimonyPageModel : PageModel
             ClearReport();
             return;
         }
+        if (!_automaticWork.IsCompleted)
+        {
+            await _automaticWork.WaitAsync(cancellationToken).ConfigureAwait(true);
+            return;
+        }
+        var readGeneration = _readGeneration + 1;
         await LoadAsync(path, cancellationToken).ConfigureAwait(true);
+        if (readGeneration != _readGeneration || Context.ProjectPath != path || cancellationToken.IsCancellationRequested) return;
+        await StartAutomatic(retry: true).ConfigureAwait(true);
     }
 
     /// <summary>Chooses the kind of finding to list; empty lists every kind.</summary>
@@ -623,16 +631,14 @@ public sealed partial class ParsimonyPageModel : PageModel
     public bool SelectFinding(ParsimonyFindingLink link)
     {
         ArgumentNullException.ThrowIfNull(link);
-        var current = _report;
-        if (current is null || !string.Equals(link.ProjectPath, Context.ProjectPath, StringComparison.Ordinal) ||
-            !string.Equals(link.ProjectPath, _reportProjectPath, StringComparison.Ordinal) ||
-            !string.Equals(link.ReportId, current.ReportId, StringComparison.Ordinal))
+        if (!_reportsById.ContainsKey(link.ReportId) || !string.Equals(link.ProjectPath, Context.ProjectPath, StringComparison.Ordinal) ||
+            !string.Equals(link.ProjectPath, _reportProjectPath, StringComparison.Ordinal))
         {
             Refuse(MotifAppStrings.ParsimonyFindingWrongProject);
             return false;
         }
-        var row = _activeRows.FirstOrDefault(item => string.Equals(item.Finding.FindingId, link.FindingId,
-            StringComparison.Ordinal));
+        var row = _activeRows.FirstOrDefault(item => item.ReportId == link.ReportId &&
+            string.Equals(item.Finding.FindingId, link.FindingId, StringComparison.Ordinal));
         if (row is null)
         {
             Refuse(MotifAppStrings.ParsimonyFindingNoLongerActive);
@@ -675,7 +681,16 @@ public sealed partial class ParsimonyPageModel : PageModel
         return true;
     }
 
-    protected override void OnProjectCleared() => ClearReport();
+    protected override void OnProjectCleared()
+    {
+        _openCompleted = false;
+        _canProduce = false;
+        ++_operationGeneration;
+        _automaticCancellation?.Cancel();
+        _remainingCancellation?.Cancel();
+        _reusableBaseline = null;
+        ClearReport();
+    }
 
     protected override Task OnProjectOpenedAsync(string projectPath, CancellationToken cancellationToken)
     {
@@ -683,85 +698,146 @@ public sealed partial class ParsimonyPageModel : PageModel
         return LoadAsync(projectPath, cancellationToken);
     }
 
+    private sealed record ReportCursor(ParsimonyReportResponse Report, string? Active, string? Suppressed);
+
     private async Task LoadAsync(string path, CancellationToken cancellationToken)
     {
         var generation = ++_readGeneration;
+        await StopRemainingAsync().ConfigureAwait(true);
+        if (!IsCurrent(generation, path)) return;
         ClearShown();
+        _reusableBaseline = null;
+        _canProduce = false;
         State = ParsimonyPageState.Loading;
-        var latest = await Context.Commands.ReadLatestParsimonyReportAsync(
+        var set = await Context.Commands.ReadLatestParsimonyReportSetAsync(
             new ReadLatestParsimonyReportRequest(path, MotifProductVersion.CurrentText), cancellationToken).ConfigureAwait(true);
-        if (!IsCurrent(generation, path)) return;
-        if (!latest.Succeeded)
+        if (!IsCurrent(generation, path) || cancellationToken.IsCancellationRequested) return;
+        if (!set.Succeeded)
         {
-            ShowRefusal(latest.Refusal!);
+            ShowRefusal(set.Refusal!);
             return;
         }
-
-        var shown = await Context.Commands.ReadParsimonyReportAsync(new ShowParsimonyReportRequest(
-            path, MotifProductVersion.CurrentText, latest.Value!.ReportId), cancellationToken).ConfigureAwait(true);
-        if (!IsCurrent(generation, path)) return;
-        if (!shown.Succeeded)
+        IReadOnlyList<ParsimonyReportResponse> reports;
+        SIL.Motif.Contract.Baselines.BaselineToken? reusableBaseline = null;
+        if (set.Value is { } complete)
         {
-            ShowRefusal(shown.Refusal!);
-            return;
+            reports = complete.Reports;
+            reusableBaseline = reports[0].Inputs.BaselineToken;
         }
-        var report = shown.Value!;
-
-        var active = await ReadViewPageAsync(path, report, ParsimonyViews.ParsimonyActiveFindings, null, cancellationToken).ConfigureAwait(true);
-        if (!IsCurrent(generation, path)) return;
-        var evidenceMissing = !active.Succeeded &&
-            active.Refusal!.Code is ParsimonyRefusalCodes.BundleNotFound or ParsimonyRefusalCodes.BundleInvalid;
-        if (!active.Succeeded && !evidenceMissing)
+        else
         {
-            ShowRefusal(active.Refusal!);
-            return;
+            _canProduce = true;
+            var latest = await Context.Commands.ReadLatestParsimonyReportAsync(
+                new ReadLatestParsimonyReportRequest(path, MotifProductVersion.CurrentText), cancellationToken).ConfigureAwait(true);
+            if (!IsCurrent(generation, path) || cancellationToken.IsCancellationRequested) return;
+            if (!latest.Succeeded)
+            {
+                ShowRefusal(latest.Refusal!);
+                return;
+            }
+            var shown = await Context.Commands.ReadParsimonyReportAsync(new ShowParsimonyReportRequest(
+                path, MotifProductVersion.CurrentText, latest.Value!.ReportId), cancellationToken).ConfigureAwait(true);
+            if (!IsCurrent(generation, path) || cancellationToken.IsCancellationRequested) return;
+            if (!shown.Succeeded)
+            {
+                ShowRefusal(shown.Refusal!);
+                return;
+            }
+            if (shown.Value!.MeasureRuns is null || shown.Value.MeasureRuns.Any(run => run is null))
+            {
+                ShowRefusal(new Refusal(ParsimonyRefusalCodes.ReportDamaged, FailureReason.StoreInconsistent,
+                    MotifAppStrings.ParsimonyReportUnavailable));
+                return;
+            }
+            reports = [shown.Value];
         }
-        var suppressed = await ReadViewPageAsync(path, report, ParsimonyViews.ParsimonySuppressed, null, cancellationToken).ConfigureAwait(true);
-        if (!IsCurrent(generation, path)) return;
-        if (!suppressed.Succeeded)
+        var activeRows = new List<ParsimonyFindingDispositionViewRow>();
+        var suppressedRows = new List<ParsimonySuppressionHistoryViewRow>();
+        var issues = new List<string>();
+        var cursors = new List<ReportCursor>();
+        var activeTotal = 0;
+        var suppressedTotal = 0;
+        var missingEvidence = false;
+        foreach (var report in reports)
         {
-            ShowRefusal(suppressed.Refusal!);
-            return;
+            var active = await ReadViewPageAsync(path, report, ParsimonyViews.ParsimonyActiveFindings, null,
+                cancellationToken).ConfigureAwait(true);
+            if (!IsCurrent(generation, path) || cancellationToken.IsCancellationRequested) return;
+            var evidenceMissing = !active.Succeeded &&
+                active.Refusal!.Code is ParsimonyRefusalCodes.BundleNotFound or ParsimonyRefusalCodes.BundleInvalid;
+            if (!active.Succeeded && !evidenceMissing)
+            {
+                ShowRefusal(active.Refusal!);
+                return;
+            }
+            var suppressed = await ReadViewPageAsync(path, report, ParsimonyViews.ParsimonySuppressed, null,
+                cancellationToken).ConfigureAwait(true);
+            if (!IsCurrent(generation, path) || cancellationToken.IsCancellationRequested) return;
+            if (!suppressed.Succeeded)
+            {
+                ShowRefusal(suppressed.Refusal!);
+                return;
+            }
+            var decisions = suppressed.Value!.Rows.OfType<ParsimonySuppressionHistoryViewRow>().ToArray();
+            var findings = evidenceMissing ? UndecidedFindings(report, decisions)
+                : active.Value!.Rows.OfType<ParsimonyFindingDispositionViewRow>().ToArray();
+            activeRows.AddRange(findings);
+            suppressedRows.AddRange(decisions);
+            activeTotal += evidenceMissing ? findings.Length : TotalOf(active.Value!, findings.Length);
+            suppressedTotal += TotalOf(suppressed.Value, decisions.Length);
+            missingEvidence |= evidenceMissing;
+            cursors.Add(new ReportCursor(report, evidenceMissing ? null : NextCursorOf(active.Value!),
+                NextCursorOf(suppressed.Value)));
+            var history = await ReadAllViewRowsAsync(path, report, ParsimonyViews.ParsimonySuppressionHistory,
+                cancellationToken).ConfigureAwait(true);
+            if (!IsCurrent(generation, path) || cancellationToken.IsCancellationRequested) return;
+            if (history.Succeeded) issues.Add(JudgmentIssueLines(history.Value!.Rows));
         }
-
         var current = await Context.Commands.GetCurrentBaselineAsync(new CurrentBaselineRequest(path), cancellationToken)
             .ConfigureAwait(true);
-        if (!IsCurrent(generation, path)) return;
+        if (!IsCurrent(generation, path) || cancellationToken.IsCancellationRequested) return;
         var types = await Context.Commands.ListNotebookRecordTypesAsync(
             new ListNotebookRecordTypesRequest(path, MotifProductVersion.CurrentText), cancellationToken).ConfigureAwait(true);
-        if (!IsCurrent(generation, path)) return;
+        if (!IsCurrent(generation, path) || cancellationToken.IsCancellationRequested) return;
         var staged = await Context.Commands.LoadPendingChangesAsync(
             new PendingChangesRequest(path, MotifProductVersion.CurrentText), cancellationToken).ConfigureAwait(true);
-        if (!IsCurrent(generation, path)) return;
-        var history = await ReadAllViewRowsAsync(path, report, ParsimonyViews.ParsimonySuppressionHistory, cancellationToken)
-            .ConfigureAwait(true);
-        if (!IsCurrent(generation, path)) return;
-
-        _report = report;
+        if (!IsCurrent(generation, path) || cancellationToken.IsCancellationRequested) return;
+        if (missingEvidence)
+        {
+            reusableBaseline = null;
+            _canProduce = true;
+        }
+        if (reusableBaseline is not null && (!current.Succeeded || current.Value?.Token != reusableBaseline ||
+            (Context.Baseline?.Token is { } contextToken && contextToken != reusableBaseline)))
+        {
+            _reusableBaseline = null;
+            _canProduce = false;
+            ShowRefusal(new Refusal(ParsimonyRefusalCodes.ReportBaselineMismatch, FailureReason.Refused,
+                MotifAppStrings.ParsimonyBaselineChanged));
+            return;
+        }
+        _reusableBaseline = reusableBaseline;
+        foreach (var report in reports) _reportsById.Add(report.ReportId, report);
         _reportProjectPath = path;
-        _suppressedRows = [.. suppressed.Value!.Rows.OfType<ParsimonySuppressionHistoryViewRow>()];
-        _suppressedTotal = TotalOf(suppressed.Value, _suppressedRows.Count);
-        JudgmentIssuesText = history.Succeeded ? JudgmentIssueLines(history.Value!.Rows) : string.Empty;
-        _activeRows = evidenceMissing
-            ? [.. UndecidedFindings(report, _suppressedRows)]
-            : [.. active.Value!.Rows.OfType<ParsimonyFindingDispositionViewRow>()];
-        _activeTotal = evidenceMissing ? _activeRows.Count : TotalOf(active.Value!, _activeRows.Count);
-        EvidenceNote = evidenceMissing ? EvidenceNoteText : string.Empty;
-        IsHistorical = !(current.Succeeded && current.Value?.Token == report.Inputs.BaselineToken);
+        _suppressedRows = [.. suppressedRows.DistinctBy(row => row.RevisionId)];
+        _suppressedTotal = suppressedTotal;
+        JudgmentIssuesText = string.Join("\n", issues.SelectMany(line => line.Split('\n')).Where(line => line.Length > 0).Distinct(StringComparer.Ordinal));
+        _activeRows = [.. activeRows.DistinctBy(row => row.Finding.FindingId)];
+        _activeTotal = activeTotal;
+        EvidenceNote = missingEvidence ? EvidenceNoteText : string.Empty;
+        IsHistorical = !(current.Succeeded && current.Value?.Token == reports[0].Inputs.BaselineToken);
         RecordTypes = types.Succeeded ? types.Value!.RecordTypes : [];
         SelectedRecordType = RecordTypes.Count == 1 ? RecordTypes[0] : null;
-        ForgetStagedWork(staged, report.ReportId);
-        var activeCursor = evidenceMissing ? null : NextCursorOf(active.Value!);
-        var suppressedCursor = NextCursorOf(suppressed.Value!);
-        if (suppressedCursor is null) PruneAppliedStagedWork();
-        var more = activeCursor is not null || suppressedCursor is not null;
+        ForgetStagedWork(staged, string.Join("|", reports.Select(report => report.ReportId).Order(StringComparer.Ordinal)));
+        var more = cursors.Any(cursor => cursor.Active is not null || cursor.Suppressed is not null);
+        if (!more) PruneAppliedStagedWork();
         LoadingNote = more ? LoadingNoteText() : string.Empty;
-        ShowReport(report, path);
+        ShowReport(reports);
         if (more)
         {
             var remaining = new CancellationTokenSource();
             _remainingCancellation = remaining;
-            RemainingLoad = LoadRemainingAsync(generation, path, report, activeCursor, suppressedCursor, remaining.Token);
+            RemainingLoad = LoadRemainingAsync(generation, path, cursors, remaining.Token);
         }
     }
 
@@ -779,65 +855,51 @@ public sealed partial class ParsimonyPageModel : PageModel
             total.ToString(System.Globalization.CultureInfo.CurrentCulture));
     }
 
-    // The first page is already listed. Each later page is appended in place, and a newer read drops what is left.
-    private async Task LoadRemainingAsync(int generation, string path, ParsimonyReportResponse report,
-        string? activeCursor, string? suppressedCursor, CancellationToken cancellationToken)
+    private async Task LoadRemainingAsync(int generation, string path, IReadOnlyList<ReportCursor> cursors,
+        CancellationToken cancellationToken)
     {
         try
         {
-            while (activeCursor is not null)
+            foreach (var pending in cursors)
             {
-                var page = await ReadViewPageAsync(path, report, ParsimonyViews.ParsimonyActiveFindings, activeCursor, cancellationToken)
-                    .ConfigureAwait(true);
-                if (!IsCurrent(generation, path)) return;
-                if (!page.Succeeded)
+                foreach (var view in new[] { ParsimonyViews.ParsimonyActiveFindings, ParsimonyViews.ParsimonySuppressed })
                 {
-                    LoadingNote = string.Format(System.Globalization.CultureInfo.CurrentCulture,
-                        MotifAppStrings.ParsimonyLoadFailedFormat, page.Refusal!.Message);
-                    return;
+                    var cursor = view == ParsimonyViews.ParsimonyActiveFindings ? pending.Active : pending.Suppressed;
+                    while (cursor is not null)
+                    {
+                        var page = await ReadViewPageAsync(path, pending.Report, view, cursor, cancellationToken)
+                            .ConfigureAwait(true);
+                        if (!IsCurrent(generation, path) || cancellationToken.IsCancellationRequested) return;
+                        if (!page.Succeeded)
+                        {
+                            LoadingNote = string.Format(System.Globalization.CultureInfo.CurrentCulture,
+                                MotifAppStrings.ParsimonyLoadFailedFormat, page.Refusal!.Message);
+                            return;
+                        }
+                        if (view == ParsimonyViews.ParsimonyActiveFindings)
+                            _activeRows.AddRange(page.Value!.Rows.OfType<ParsimonyFindingDispositionViewRow>());
+                        else
+                            _suppressedRows.AddRange(page.Value!.Rows.OfType<ParsimonySuppressionHistoryViewRow>());
+                        cursor = NextCursorOf(page.Value!);
+                        SyncLists();
+                        ShowAxes();
+                        BadgeCount = _activeTotal;
+                        LoadingNote = LoadingNoteText();
+                    }
                 }
-                _activeRows.AddRange(page.Value!.Rows.OfType<ParsimonyFindingDispositionViewRow>());
-                activeCursor = NextCursorOf(page.Value);
-                ShowArrivedPage(report);
-            }
-            while (suppressedCursor is not null)
-            {
-                var page = await ReadViewPageAsync(path, report, ParsimonyViews.ParsimonySuppressed, suppressedCursor, cancellationToken)
-                    .ConfigureAwait(true);
-                if (!IsCurrent(generation, path)) return;
-                if (!page.Succeeded)
-                {
-                    LoadingNote = string.Format(System.Globalization.CultureInfo.CurrentCulture,
-                        MotifAppStrings.ParsimonyLoadFailedFormat, page.Refusal!.Message);
-                    return;
-                }
-                _suppressedRows.AddRange(page.Value!.Rows.OfType<ParsimonySuppressionHistoryViewRow>());
-                suppressedCursor = NextCursorOf(page.Value);
-                ShowArrivedPage(report);
             }
             PruneAppliedStagedWork();
             LoadingNote = string.Empty;
         }
-        catch (OperationCanceledException) when (!IsCurrent(generation, path))
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
         }
-        catch (Exception exception) when (IsCurrent(generation, path))
+        catch (Exception exception)
         {
-            LoadingNote = string.Format(System.Globalization.CultureInfo.CurrentCulture,
-                MotifAppStrings.ParsimonyLoadFailedFormat, exception.Message);
+            if (IsCurrent(generation, path) && !cancellationToken.IsCancellationRequested)
+                LoadingNote = string.Format(System.Globalization.CultureInfo.CurrentCulture,
+                    MotifAppStrings.ParsimonyLoadFailedFormat, exception.Message);
         }
-    }
-
-    private void ShowArrivedPage(ParsimonyReportResponse report)
-    {
-        _activeTotal = Math.Max(_activeTotal, _activeRows.Count);
-        _suppressedTotal = Math.Max(_suppressedTotal, _suppressedRows.Count);
-        SyncLists();
-        ShowAxes();
-        BadgeCount = _activeTotal;
-        LoadingNote = LoadingNoteText();
-        OnPropertyChanged(nameof(ActiveTabLabel));
-        OnPropertyChanged(nameof(SuppressedTabLabel));
     }
 
     // Without the evidence bundle, the Report's findings stand in for the Active view, less matched decisions.
@@ -855,7 +917,8 @@ public sealed partial class ParsimonyPageModel : PageModel
         ParsimonyReportResponse report, string view, string? cursor, CancellationToken cancellationToken) =>
         await Context.Commands.ReadParsimonyViewAsync(new ReadParsimonyViewRequest(
             path, MotifProductVersion.CurrentText, new ParsimonyNamedViewRequest(report.Inputs.BundleId, view,
-                new ParsimonyViewFilters(ReportId: report.ReportId), ViewPageSize, cursor)), cancellationToken)
+                new ParsimonyViewFilters(ReportId: report.ReportId,
+                    MeasureId: report.MeasureRuns.Count == 1 ? report.MeasureRuns[0].MeasureId : null), ViewPageSize, cursor)), cancellationToken)
             .ConfigureAwait(true);
 
     // Every record that failed a check or carries a warning, named by ID and title, one line each.
@@ -916,19 +979,20 @@ public sealed partial class ParsimonyPageModel : PageModel
         {
             State = ParsimonyPageState.NoReport;
             Message = NoReportMessage;
-            NextStep = NoReportNextStep;
         }
         else
         {
             State = ParsimonyPageState.Refused;
             Message = refusal.Message;
         }
+        NextStep = NoReportNextStep;
         BadgeCount = null;
     }
 
-    private void ShowReport(ParsimonyReportResponse report, string path)
+    private void ShowReport(IReadOnlyList<ParsimonyReportResponse> reports)
     {
-        var missing = report.MeasureRuns.Where(run => run.Status != ParsimonyMeasureStatus.Computed).ToArray();
+        var missing = reports.SelectMany(report => report.MeasureRuns)
+            .Where(run => run.Status != ParsimonyMeasureStatus.Computed).ToArray();
         MissingInputs = [.. missing.Select(run => ShortTitleOf(run.MeasureId))];
         IsIncomplete = missing.Length > 0;
         IncompleteNote = IsIncomplete
@@ -959,7 +1023,6 @@ public sealed partial class ParsimonyPageModel : PageModel
     private void SyncLists()
     {
         var path = _reportProjectPath ?? string.Empty;
-        var reportId = _report?.ReportId ?? string.Empty;
         var groups = new List<ParsimonyMeasureGroup>();
         var flat = new List<ParsimonyListRow>(_activeRows.Count + 8);
         var tableEntries = new List<object>(_activeRows.Count + 8);
@@ -967,7 +1030,7 @@ public sealed partial class ParsimonyPageModel : PageModel
             (_kindFilter.Length == 0 || row.Finding.MeasureId == _kindFilter));
         foreach (var measure in shown.GroupBy(row => row.Finding.MeasureId, StringComparer.Ordinal))
         {
-            var items = measure.Select(row => RowFor(row, path, reportId)).ToArray();
+            var items = measure.Select(row => RowFor(row, path)).ToArray();
             var group = new ParsimonyMeasureGroup(TitleOf(measure.Key), AxisLabel(measure.First().Finding.Axis), items);
             groups.Add(group);
             if (!_headersByMeasure.TryGetValue(measure.Key, out var header))
@@ -1038,10 +1101,10 @@ public sealed partial class ParsimonyPageModel : PageModel
         while (shown.Count > target.Count) shown.RemoveAt(shown.Count - 1);
     }
 
-    private ParsimonyListRow RowFor(ParsimonyFindingDispositionViewRow row, string path, string reportId)
+    private ParsimonyListRow RowFor(ParsimonyFindingDispositionViewRow row, string path)
     {
         if (_rowsByFinding.TryGetValue(row.Finding.FindingId, out var existing)) return existing;
-        var link = new ParsimonyFindingLink(path, reportId, row.Finding.FindingId);
+        var link = new ParsimonyFindingLink(path, row.ReportId, row.Finding.FindingId);
         var made = new ParsimonyListRow(false, string.Empty, string.Empty, string.Empty, Describe(row.Finding),
             ItemsText(row.Finding, RowItemNames), TierLabel(row.Finding.Tier),
             VerificationLabel(row.Finding.Verification), StatusOf(row), link,
@@ -1154,8 +1217,9 @@ public sealed partial class ParsimonyPageModel : PageModel
     private bool CanStageRow(ParsimonyFindingLink link) =>
         Context.HasProject && IsListed && !IsShowingSuppressed && CanActOnSelection && !_staging &&
         string.Equals(link.ProjectPath, _reportProjectPath, StringComparison.Ordinal) &&
-        string.Equals(link.ReportId, _report?.ReportId, StringComparison.Ordinal) &&
-        _activeRows.Any(row => string.Equals(row.Finding.FindingId, link.FindingId, StringComparison.Ordinal));
+        _reportsById.ContainsKey(link.ReportId) &&
+        _activeRows.Any(row => row.ReportId == link.ReportId &&
+            string.Equals(row.Finding.FindingId, link.FindingId, StringComparison.Ordinal));
 
     private bool CanReturnSelected() =>
         Context.HasProject && CanActOnSelection && !_staging && SelectedSuppressedRow() is { State: "suppressed" };
@@ -1172,7 +1236,7 @@ public sealed partial class ParsimonyPageModel : PageModel
 
     private async Task StageDecisionAsync(string disposition)
     {
-        if (_report is null || _reportProjectPath is null || SelectedRecordType is null || _selectedFindingId is null) return;
+        if (_reportsById.Count == 0 || _reportProjectPath is null || SelectedRecordType is null || _selectedFindingId is null) return;
         var row = _activeRows.FirstOrDefault(item => string.Equals(item.Finding.FindingId, _selectedFindingId,
             StringComparison.Ordinal));
         if (row is null) return;
@@ -1184,18 +1248,18 @@ public sealed partial class ParsimonyPageModel : PageModel
         }
         var reason = ReasonText.Trim();
         var path = _reportProjectPath;
-        var report = _report;
+        var generation = _readGeneration;
         _staging = true;
         ActionsChanged();
         NotifyAllRowDecisionCommands();
         try
         {
             var outcome = await Context.Commands.RecordParsimonyDispositionAsync(new RecordParsimonyDispositionFromFindingRequest(
-                path, MotifProductVersion.CurrentText, report.ReportId, row.Finding.FindingId, disposition,
+                path, MotifProductVersion.CurrentText, row.ReportId, row.Finding.FindingId, disposition,
                 SelectedRecordType.Id, PendingChanges.DraftName,
                 disposition is "keep" or "defer" && reason.Length > 0 ? reason : null,
                 disposition == "ask" ? question : null), CancellationToken.None).ConfigureAwait(true);
-            if (!IsCurrent(_readGeneration, path)) return;
+            if (!IsCurrent(generation, path)) return;
             if (!outcome.Succeeded)
             {
                 HasStagedAction = false;
@@ -1232,6 +1296,7 @@ public sealed partial class ParsimonyPageModel : PageModel
         var row = SelectedSuppressedRow();
         if (row is null || _reportProjectPath is null) return;
         var path = _reportProjectPath;
+        var generation = _readGeneration;
         var intent = JsonSerializer.Serialize(new
         {
             recordId = row.RecordId,
@@ -1244,7 +1309,7 @@ public sealed partial class ParsimonyPageModel : PageModel
             var outcome = await Context.Commands.RetractParsimonyDispositionAsync(new RetractParsimonyDispositionRequest(
                 path, MotifProductVersion.CurrentText, PendingChanges.DraftName, intent), CancellationToken.None)
                 .ConfigureAwait(true);
-            if (!IsCurrent(_readGeneration, path)) return;
+            if (!IsCurrent(generation, path)) return;
             if (!outcome.Succeeded)
             {
                 HasStagedAction = false;
@@ -1365,7 +1430,7 @@ public sealed partial class ParsimonyPageModel : PageModel
     private void ClearReport()
     {
         _readGeneration++;
-        _report = null;
+        _reportsById.Clear();
         _reportProjectPath = null;
         _stagedByFinding.Clear();
         _stagedReturns.Clear();
@@ -1375,13 +1440,10 @@ public sealed partial class ParsimonyPageModel : PageModel
 
     private void ClearShown()
     {
-        _remainingCancellation?.Cancel();
-        _remainingCancellation = null;
-        RemainingLoad = Task.CompletedTask;
         LoadingNote = string.Empty;
         _selectedFindingId = null;
         _selectedSuppressedKey = null;
-        _report = null;
+        _reportsById.Clear();
         _reportProjectPath = null;
         _activeRows = [];
         _suppressedRows = [];

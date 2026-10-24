@@ -263,6 +263,7 @@ public static class RefusalCatalog
         Spec(RefusalCodes.EvidenceInvalidPage, FailureReason.InvalidArgument),
         Spec(RefusalCodes.EvidenceUnknownTier, FailureReason.InvalidArgument),
         Spec(RefusalCodes.GrammarCheckCancelled, FailureReason.Cancelled),
+        Spec(RefusalCodes.GrammarCheckFailed, FailureReason.Refused),
         Spec(RefusalCodes.GrammarCheckMalformedFindings, FailureReason.Refused),
         Spec(RefusalCodes.GrammarCheckParserRefused, FailureReason.Refused),
         Spec(RefusalCodes.GrammarCheckParserUnavailable, FailureReason.Refused,
@@ -538,6 +539,7 @@ public static class RefusalCatalog
 
         // ParsimonyRefusalCodes
         Spec(ParsimonyRefusalCodes.AssessmentBaselineMismatch, FailureReason.Refused),
+        Spec(ParsimonyRefusalCodes.AutomaticFailed, FailureReason.Refused),
         Spec(ParsimonyRefusalCodes.BundleBusy, FailureReason.Busy),
         Spec(ParsimonyRefusalCodes.BundleInvalid, FailureReason.StoreInconsistent),
         Spec(ParsimonyRefusalCodes.BundleNotFound, FailureReason.NotFound),
@@ -573,6 +575,7 @@ public static class RefusalCatalog
         Spec(ParsimonyRefusalCodes.ResultInvalid, FailureReason.Refused),
         Spec(ParsimonyRefusalCodes.ResultMissing, FailureReason.StoreInconsistent),
         Spec(ParsimonyRefusalCodes.RetirementExpectationsUnavailable, FailureReason.Refused),
+        Spec(ParsimonyRefusalCodes.RunnerStartFailed, FailureReason.Refused),
         Spec(ParsimonyRefusalCodes.SelectionUnavailable, FailureReason.Refused),
         Spec(ParsimonyRefusalCodes.ViewItemNotFound, FailureReason.NotFound),
     ];

@@ -9,7 +9,6 @@
         xmlns:app="clr-namespace:SIL.Motif.App">
   <Styles.Resources>
     <StaticResource x:Key="Component.Menu.Width" ResourceKey="Primitive.Size.280" />
-    <StaticResource x:Key="Component.Menu.ProjectMenuWidth" ResourceKey="Primitive.Size.210" />
     <StaticResource x:Key="Component.Menu.EntryPadding" ResourceKey="Intent.Inset.Row" />
     <StaticResource x:Key="Component.Menu.ButtonPadding" ResourceKey="Primitive.Inset.6_2_6_2" />
     <StaticResource x:Key="Component.Menu.ButtonHeight" ResourceKey="Primitive.Size.24" />
@@ -18,9 +17,6 @@
   <Style Selector="FlyoutPresenter">
     <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
   </Style>
-  <Style Selector="FlyoutPresenter.projectMenu">
-    <Setter Property="AutomationProperties.AutomationId" Value="{x:Static app:AutomationIds.ProjectMenuFlyout}" />
-  </Style>
   <!-- The Help card is wider than Semi's cap, so its presenter alone may grow to hold it. -->
   <Style Selector="FlyoutPresenter.help">
     <Setter Property="MaxWidth" Value="{DynamicResource Component.Menu.HelpMaxWidth}" />
@@ -28,12 +24,6 @@
   <Style Selector="StackPanel.menu">
     <Setter Property="Width" Value="{DynamicResource Component.Menu.Width}" />
     <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Minimal}" />
-  </Style>
-  <Style Selector="StackPanel.projectMenu">
-    <Setter Property="Width" Value="{DynamicResource Component.Menu.ProjectMenuWidth}" />
-  </Style>
-  <Style Selector="StackPanel.projectMenu Button.menuEntry :is(TextBlock).menuDetail">
-    <Setter Property="TextWrapping" Value="Wrap" />
   </Style>
   <Style Selector="Button.menuButton">
     <Setter Property="Padding" Value="{DynamicResource Component.Menu.ButtonPadding}" />

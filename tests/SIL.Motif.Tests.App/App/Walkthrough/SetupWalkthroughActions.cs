@@ -39,7 +39,7 @@ internal static class SetupWalkthroughActions
     {
         if (!walkthrough.Window.IsVisible) walkthrough.Show();
         walkthrough.ProjectPath = projectPath;
-        walkthrough.ClickProjectMenuEntry("Select a new project");
+        walkthrough.ClickProjectMenuEntry("SelectNewMenuItem");
         walkthrough.WaitUntil(
             () => walkthrough.Workspace.Context.ProjectPath == projectPath &&
                 walkthrough.Workspace.Context.Setup?.ProjectPath == projectPath &&

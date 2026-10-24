@@ -310,7 +310,7 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
 
     public TextOccurrenceLocation? LocateOccurrence(OccurrenceAnchor occurrence) => NativeLocation(occurrence);
 
-    /// <summary>Opens the Texts page for the empty state that asks for a checked Text.</summary>
+    /// <summary>Opens configuration for the empty state that asks for a checked Text.</summary>
     public Action? OpenTexts { get; set; }
 
     /// <summary>Shows a clicked word's comparison in the side panel.</summary>

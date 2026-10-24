@@ -46,7 +46,7 @@ public sealed class TextsListsHandoffAvailabilityTests
                 Assert.Equal(lists.HandOffListDisabledReason, ToolTip.GetTip(wholeListButton));
                 Assert.Equal(lists.HandOffListDisabledReason, AutomationProperties.GetHelpText(wholeListButton));
                 Assert.Empty(VisibleReasons(window, lists.HandOffListDisabledReason,
-                    lists.HandOffCheckedWordsDisabledReason));
+                    lists.HandOffCheckedWordsHelpText));
 
                 var words = workspace.Context.Assess.Words;
                 words.Load([new AssessmentWordResult(

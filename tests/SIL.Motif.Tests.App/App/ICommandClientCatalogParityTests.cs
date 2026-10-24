@@ -71,6 +71,7 @@ public sealed class ICommandClientCatalogParityTests
         nameof(ICommandClient.ReadParserStepRateAsync),
         nameof(ICommandClient.RestoreBackupAsync),
         nameof(ICommandClient.ReadLatestParsimonyReportAsync),
+        nameof(ICommandClient.ReadLatestParsimonyReportSetAsync),
         nameof(ICommandClient.ReadParsimonyReportAsync),
     };
 
@@ -80,6 +81,7 @@ public sealed class ICommandClientCatalogParityTests
             [nameof(ICommandClient.ReadProposalReviewEntryCountAsync)] = "proposal review",
             // The window gets the queued job together with the Baseline warning; its test below checks the response.
             [nameof(ICommandClient.EnqueueTrialAsync)] = "trial",
+            [nameof(ICommandClient.EnqueueParsimonyReportAsync)] = "parsimony",
         };
 
     [Fact]

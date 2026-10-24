@@ -71,7 +71,7 @@ public sealed class KnownProjectsRefreshWalkthroughTests(PristineProjectFixture 
                     !string.Equals(AutomationProperties.GetName(item), secondProjectEntryName,
                         StringComparison.Ordinal)),
                 TimeSpan.FromSeconds(10), "the missing project stayed under Open recent");
-            Assert.False(walkthrough.FindProjectMenuEntry<Button>("Open a recent project").IsEffectivelyEnabled);
+            Assert.False(walkthrough.ProjectMenuEntry("OpenRecentMenuItem").IsEffectivelyEnabled);
 
             return Task.CompletedTask;
         }, WalkthroughSteps.Remaining(deadline));

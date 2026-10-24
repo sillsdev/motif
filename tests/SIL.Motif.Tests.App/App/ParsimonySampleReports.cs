@@ -1,7 +1,10 @@
 using System.Text.Json;
 using SIL.Motif.Contract.Baselines;
+using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Parsimony;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Host.PanGloss;
+using SIL.Motif.Host.Parsimony;
 
 namespace SIL.Motif.Tests.App;
 
@@ -72,6 +75,43 @@ internal static class ParsimonySampleReports
                     new ParsimonyMeasureNumber(1, 5, "forms"), 0.2, null),
             ],
         };
+    }
+
+    /// <summary>A current all-measure job; each sample finding belongs to exactly one Report.</summary>
+    internal static ParsimonyReportSetResponse CurrentSet(ParsimonyReportResponse sample)
+    {
+        var inputs = new ParsimonyReportInputs(sample.Inputs.BundleId, sample.Inputs.BaselineToken,
+            "baseline", null, sample.Inputs.ModelFingerprint,
+            new ParsimonyArtifactDigest(PanGlossInterfaceVersions.FactsSchemaVersion,
+                sample.Inputs.GrammarFacts.Sha256),
+            new ParsimonyArtifactDigest(EvidenceSchema.Version, sample.Inputs.Evidence.Sha256),
+            null, null, [], ParsimonyEvidenceScopeKind.ProjectApproved);
+        var reports = ParsimonyAdmission.SupportedMeasureIds().Select((id, index) =>
+        {
+            var definition = MeasureCatalog.Find(id)!;
+            var findings = sample.Findings.Where(finding => finding.MeasureId == id)
+                .Select(finding => finding with
+                {
+                    Axis = definition.Axis, Tier = definition.Tier, Threshold = definition.Threshold!,
+                }).ToArray();
+            var run = sample.MeasureRuns.SingleOrDefault(candidate => candidate.MeasureId == id);
+            // Measures without sample findings have completed empty inventories.
+            var number = findings.FirstOrDefault()?.Number ??
+                new ParsimonyMeasureNumber(0, 0, definition.Unit);
+            run ??= new ParsimonyMeasureRun(id, ParsimonyMeasureStatus.Computed, number.Denominator,
+                number.Numerator, number.Unit, number,
+                number.Denominator == 0 ? null : (double)number.Numerator / number.Denominator, null);
+            return sample with
+            {
+                ReportId = id == ParsimonySampleReports.ParsimonyMeasure ? sample.ReportId
+                    : CanonicalId.FromGuid(new Guid(index + 1, 0, 0, new byte[8]), "report/").Value,
+                Inputs = inputs, Findings = findings, MeasureRuns = [run],
+                JoinQuality = sample.JoinQuality is { } quality
+                    ? quality with { Scope = "project-approved" } : null,
+                Notes = sample.Notes.Where(note => note.MeasureId == id).ToArray(),
+            };
+        }).ToArray();
+        return new ParsimonyReportSetResponse("job/sample-current-all", inputs.BundleId, reports);
     }
 
     internal static string Json(ParsimonyReportResponse report) =>

@@ -852,14 +852,12 @@ public sealed class ProgressiveDisplayTests
                 configure: (fake, _) => fake.KnownProjectsListIs(projects));
             try
             {
-                var button = window.FindControl<Button>("OpenRecentButton")!;
-                var menu = Assert.IsType<MenuFlyout>(button.Flyout);
-                var projectButton = window.FindControl<Button>("ProjectMenuButton")!;
-                projectButton.Flyout!.ShowAt(projectButton);
+                var menu = window.FindControl<MenuItem>("OpenRecentMenuItem")!;
+                window.OpenFileMenu();
                 await workspace.RefreshKnownProjectsAsync();
                 Assert.Equal(2000, workspace.RecentProjects.Count);
                 PageScreenshots.Settle(window);
-                menu.ShowAt(button);
+                window.OpenRecentMenu();
                 PageScreenshots.Settle(window);
                 var first = workspace.RecentProjects[0];
                 for (var page = 0; page < 100; page++)
@@ -873,7 +871,7 @@ public sealed class ProgressiveDisplayTests
                     Assert.True(next.Focus());
                     next.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(MenuItem.ClickEvent));
                     LayoutInvariantEngineTests.Settle(window);
-                    Assert.True(menu.IsOpen);
+                    Assert.True(menu.IsSubMenuOpen);
                     Assert.Contains(menu.Items.OfType<MenuItem>(), item => item.IsFocused);
                 }
                 Assert.Same(workspace.OpenRecentProjectCommand, window.RecentProjectItems[^1].Command);

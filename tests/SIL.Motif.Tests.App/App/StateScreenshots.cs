@@ -273,11 +273,11 @@ public sealed class StateScreenshots(ITestOutputHelper output)
     {
         // The shell: menus and buttons in the top bar and the sidebar, on whichever page is behind them.
         yield return new("shell", "project-menu", stage => stage.OpenMenu(WorkspacePage.Overview,
-            () => stage.Window.FindControl<Button>("ProjectMenuButton")!, "the project menu"));
+            () => stage.Window.FindControl<MenuItem>("FileMenu")!, "the File menu"));
         yield return new("shell", "open-recent", async stage =>
         {
-            await stage.OpenMenu(WorkspacePage.Overview, () => stage.Window.FindControl<Button>("ProjectMenuButton")!, "the project menu");
-            return await stage.OpenMenu(null, () => stage.Window.FindControl<Button>("OpenRecentButton")!, "Open recent");
+            await stage.OpenMenu(WorkspacePage.Overview, () => stage.Window.FindControl<MenuItem>("FileMenu")!, "the File menu");
+            return await stage.OpenMenu(null, () => stage.Window.FindControl<MenuItem>("OpenRecentMenuItem")!, "Open recent");
         })
         {
             // Opening the project menu reads the known projects again, so the client is what lists them.
@@ -814,6 +814,7 @@ public sealed class StateScreenshots(ITestOutputHelper output)
         AssessCommandResponse parsed)
     {
         private readonly List<FlyoutBase> _menus = [];
+        private readonly List<MenuItem> _openItems = [];
         private readonly List<Control> _tips = [];
         private Control? _pressed;
 
@@ -899,6 +900,17 @@ public sealed class StateScreenshots(ITestOutputHelper output)
             return tooltipIsOpen
                 ? $"Pointer over {what}; its tooltip is open: \"{ToolTip.GetTip(owner)}\"."
                 : $"Pointer over {what}; its tooltip \"{ToolTip.GetTip(owner)}\" did not open.";
+        }
+
+        public async Task<string> OpenMenu(WorkspacePage? page, Func<MenuItem> find, string what, TextsTab? tab = null)
+        {
+            if (page is { } shown) Open(shown, tab);
+            var item = find();
+            PageScreenshots.Settle(Window);
+            HeadlessClick.Click(Window, item, what);
+            await Until(() => item.IsSubMenuOpen, $"the {what} menu");
+            _openItems.Insert(0, item);
+            return $"Clicked {what}; its menu is open.";
         }
 
         public async Task<string> OpenMenu(WorkspacePage? page, Func<Button> find, string what, TextsTab? tab = null)
@@ -1187,6 +1199,8 @@ public sealed class StateScreenshots(ITestOutputHelper output)
         public void Reset()
         {
             Workspace.Context.CloseInspector();
+            foreach (var item in _openItems) item.IsSubMenuOpen = false;
+            _openItems.Clear();
             foreach (var menu in _menus) menu.Hide();
             _menus.Clear();
             foreach (var owner in _tips)

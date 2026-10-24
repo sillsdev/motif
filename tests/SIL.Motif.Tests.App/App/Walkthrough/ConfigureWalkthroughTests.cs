@@ -38,7 +38,7 @@ public sealed class ConfigureWalkthroughTests(PristineProjectFixture pristine)
                 (Key.Space, PhysicalKey.Space),
             })
             {
-                walkthrough.PressKeyOnProjectMenuEntry("Configure the project", key, physicalKey);
+                walkthrough.PressKeyOnProjectMenuEntry("ConfigureMenuItem", key, physicalKey);
                 Assert.True(setup.IsOpen, $"pressing {key} on Configure did not reopen setup");
                 Assert.True(walkthrough.SetupDialogIsShown, $"pressing {key} opened setup, but it is not on screen");
                 Assert.Equal(0, setup.Step);
@@ -68,7 +68,7 @@ public sealed class ConfigureWalkthroughTests(PristineProjectFixture pristine)
             Assert.False(walkthrough.SetupDialogIsShown);
 
             var openingsBeforeDoubleClick = opened;
-            var clicks = walkthrough.DoubleClickProjectMenuEntry("Configure the project");
+            var clicks = walkthrough.DoubleClickProjectMenuEntry("ConfigureMenuItem");
             Assert.True(clicks >= 1, "the double-click never clicked Configure");
             Assert.Equal(openingsBeforeDoubleClick + 1, opened);
             Assert.True(walkthrough.SetupDialogIsShown, "double-clicking Configure did not leave setup on screen");

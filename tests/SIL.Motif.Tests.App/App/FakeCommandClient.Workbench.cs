@@ -13,6 +13,29 @@ namespace SIL.Motif.Tests.App;
 // Unconfigured queries return an empty value or a refusal, depending on the query.
 public sealed partial class FakeCommandClient
 {
+    public Func<EnqueueParsimonyReportRequest, CancellationToken, Task<CommandOutcome<JobEnqueuedResponse>>>?
+        EnqueueParsimonyHandler { get; set; }
+    public List<EnqueueParsimonyReportRequest> EnqueueParsimonyRequests { get; } = [];
+
+    public Task<CommandOutcome<JobEnqueuedResponse>> EnqueueParsimonyReportAsync(
+        EnqueueParsimonyReportRequest request, CancellationToken cancellationToken)
+    {
+        EnqueueParsimonyRequests.Add(request);
+        return EnqueueParsimonyHandler?.Invoke(request, cancellationToken) ?? Refused<JobEnqueuedResponse>(
+            new Refusal("parsimony.enqueue-not-configured", FailureReason.Refused, "No Parsimony producer configured."));
+    }
+
+    public Func<ReadLatestParsimonyReportRequest, CancellationToken,
+        Task<CommandOutcome<ParsimonyReportSetResponse?>>>? ParsimonySetHandler { get; set; }
+    public List<ReadLatestParsimonyReportRequest> ParsimonySetRequests { get; } = [];
+
+    public Task<CommandOutcome<ParsimonyReportSetResponse?>> ReadLatestParsimonyReportSetAsync(
+        ReadLatestParsimonyReportRequest request, CancellationToken cancellationToken)
+    {
+        ParsimonySetRequests.Add(request);
+        return ParsimonySetHandler?.Invoke(request, cancellationToken) ?? Completed<ParsimonyReportSetResponse?>(null);
+    }
+
     private SIL.Motif.App.ViewModels.WorkspaceSelection? _readerOwner;
     internal SIL.Motif.App.ViewModels.WorkspaceSelection ReaderOwner =>
         _readerOwner ??= new SIL.Motif.App.ViewModels.WorkspaceSelection(this);

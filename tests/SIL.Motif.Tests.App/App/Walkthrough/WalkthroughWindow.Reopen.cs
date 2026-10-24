@@ -19,10 +19,10 @@ internal static class WalkthroughWindowReopen
         walkthrough.WaitUntil(() => walkthrough.Workspace.RecentProjects.Any(candidate =>
                 string.Equals(candidate.AutomationName, automationName, StringComparison.Ordinal)),
             TimeSpan.FromSeconds(10), $"'{automationName}' did not appear under Open recent");
-        var openRecent = walkthrough.FindProjectMenuEntry<Button>("Open a recent project");
-        var recentMenu = Assert.IsType<MenuFlyout>(openRecent.Flyout);
+        var openRecent = walkthrough.ProjectMenuEntry("OpenRecentMenuItem");
+        var recentMenu = openRecent;
         HeadlessClick.Click(TopLevel.GetTopLevel(openRecent)!, openRecent, "Open a recent project");
-        Assert.True(recentMenu.IsOpen, "Clicking 'Open a recent project' did not open its list.");
+        Assert.True(recentMenu.IsSubMenuOpen, "Clicking 'Open a recent project' did not open its list.");
         while (!walkthrough.Window.RecentProjectItems.Any(candidate =>
                    candidate.CommandParameter is RecentProjectViewModel recent &&
                    string.Equals(recent.FullFwDataPath, projectPath, pathComparison)))
@@ -45,7 +45,7 @@ internal static class WalkthroughWindowReopen
         Assert.Same(project, item.CommandParameter);
         var before = command.ExecutionTask;
         HeadlessClick.Click(TopLevel.GetTopLevel(item)!, item, project.AutomationName);
-        walkthrough.WaitUntil(() => !recentMenu.IsOpen &&
+        walkthrough.WaitUntil(() => !recentMenu.IsSubMenuOpen &&
                 !ReferenceEquals(before, command.ExecutionTask) && command.ExecutionTask is { IsCompleted: true },
             TimeSpan.FromSeconds(60), $"opening '{project.AutomationName}' did not finish");
         Assert.NotSame(before, command.ExecutionTask);

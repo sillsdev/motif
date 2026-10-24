@@ -1,6 +1,8 @@
 using System.Diagnostics;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.LogicalTree;
+using Avalonia.VisualTree;
 using SIL.LCModel;
 using SIL.Motif.App;
 using SIL.Motif.App.ViewModels;
@@ -119,15 +121,18 @@ public sealed class ApplyReadBackWalkthroughTests(PristineProjectFixture pristin
                 Assert.Equal(2, wordform.SpellingStatus);
             }
 
-            var freshnessLabel = walkthrough.Window.GetLogicalDescendants().OfType<CopyableTextBlock>()
+            var appliedCard = ProjectCardAccess.Open(walkthrough.Window);
+            var appliedLabel = appliedCard.GetVisualDescendants().OfType<CopyableTextBlock>()
                 .Single(text => text.Classes.Contains("freshLabel"));
-            var freshnessDetail = walkthrough.Window.GetLogicalDescendants().OfType<CopyableTextBlock>()
-                .Single(text => text.Classes.Contains("freshDetail"));
-            Assert.True(freshnessLabel.IsEffectivelyVisible);
-            Assert.Equal("Changes applied", freshnessLabel.Text);
-            Assert.True(freshnessDetail.IsEffectivelyVisible);
-            Assert.Contains("changes applied after it", freshnessDetail.Text,
+            var appliedDetail = appliedCard.GetVisualDescendants().OfType<CopyableTextBlock>()
+                .Single(text => text.Classes.Contains("freshDetail") &&
+                    AutomationProperties.GetAutomationId(text) == AutomationIds.FreshnessDetail);
+            Assert.True(appliedLabel.IsEffectivelyVisible);
+            Assert.Equal("Changes applied", appliedLabel.Text);
+            Assert.True(appliedDetail.IsEffectivelyVisible);
+            Assert.Contains("changes applied after it", appliedDetail.Text,
                 StringComparison.Ordinal);
+            ProjectCardAccess.Close(walkthrough.Window);
             InteractiveControlSweep.AssertScene(walkthrough, "stale Review values",
                 InteractiveControlFamily.Action,
                 InteractiveControlFamily.Link,
@@ -155,24 +160,37 @@ public sealed class ApplyReadBackWalkthroughTests(PristineProjectFixture pristin
             Assert.Null(walkthrough.Workspace.Context.Evidence.Assessment);
             Assert.True(walkthrough.Workspace.Context.NeedsAssessment);
             Assert.Equal(ProjectFreshness.Refreshed, walkthrough.Workspace.Freshness);
+            var refreshedCard = ProjectCardAccess.Open(walkthrough.Window);
+            var freshnessLabel = refreshedCard.GetVisualDescendants().OfType<CopyableTextBlock>()
+                .Single(text => text.Classes.Contains("freshLabel"));
+            var freshnessDetail = refreshedCard.GetVisualDescendants().OfType<CopyableTextBlock>()
+                .Single(text => text.Classes.Contains("freshDetail") &&
+                    AutomationProperties.GetAutomationId(text) == AutomationIds.FreshnessDetail);
             Assert.True(freshnessLabel.IsEffectivelyVisible);
             Assert.Equal(walkthrough.Workspace.FreshnessLabel, freshnessLabel.Text);
             Assert.True(freshnessDetail.IsEffectivelyVisible);
             Assert.Equal(walkthrough.Workspace.FreshnessDetail, freshnessDetail.Text);
+            ProjectCardAccess.Close(walkthrough.Window);
 
             var startedPath = Path.Combine(project.ManagedRoot, "refreshed-parser-started");
             var releasePath = Path.Combine(project.ManagedRoot, "release-refreshed-parser");
             walkthrough.SetFakeParserBehavior(new
             {
-                startedPath,
-                holdUntilPath = releasePath,
-                words = new[]
+                subcommands = new Dictionary<string, object>
                 {
-                    new
+                    ["batch"] = new
                     {
-                        word = SeededProject.AnalysedWordForm,
-                        outcome = "complete",
-                        signature = "after-refresh",
+                        startedPath,
+                        holdUntilPath = releasePath,
+                        words = new[]
+                        {
+                            new
+                            {
+                                word = SeededProject.AnalysedWordForm,
+                                outcome = "complete",
+                                signature = "after-refresh",
+                            },
+                        },
                     },
                 },
             });

@@ -628,6 +628,7 @@ internal enum TooltipScene
     FrameCompactStatus,
     FrameNotice,
     FrameKeyboardStatus,
+    FrameNarrowTopBar,
 }
 
 /// <summary>
@@ -650,15 +651,34 @@ internal static class TooltipOwners
 {
     internal static IReadOnlyList<TooltipOwner> All { get; } =
     [
-        new("parse all words", "Views/MainWindow.axaml", "Parse the words you chose.", TooltipScene.Overview,
+        new("parse all words", "Views/ProjectCardView.axaml", "Parse the words you chose.", TooltipScene.Overview,
             control => control is Button && Name(control) == "Parse all words")
         {
-            Pending = "the sample has just parsed and saved no default choice of words, so the button is hidden",
+            Pending = "the button is in the project card's pop-up, which the sample's window tree does not hold until the chip opens it; ProjectCardTests opens it",
         },
-        new("refresh", "Views/MainWindow.axaml", "Capture a new Baseline from FieldWorks' last save.", TooltipScene.Overview,
-            control => control is Button && Name(control) == "Refresh the project"),
-        new("project name", "Views/MainWindow.axaml", "{Binding ProjectName}", TooltipScene.Overview,
-            control => control is TextBlock && control.Classes.Contains("projectName")),
+        new("card refresh", "Views/ProjectCardView.axaml", "Capture a new Baseline from FieldWorks' last save.", TooltipScene.Overview,
+            control => control is Button && AutomationProperties.GetAutomationId(control) == AutomationIds.ProjectCardRefresh)
+        {
+            Pending = "the button is in the project card's pop-up; ProjectCardTests opens it",
+        },
+        new("card choose texts", "Views/ProjectCardView.axaml", "{Binding ConfigureDetailText}", TooltipScene.Overview,
+            control => control is Button && AutomationProperties.GetAutomationId(control) == AutomationIds.ProjectCardChoose)
+        {
+            Pending = "the button is in the project card's pop-up; ProjectCardTests opens it",
+        },
+        new("card project settings", "Views/ProjectCardView.axaml", "{Binding ConfigureDetailText}", TooltipScene.Overview,
+            control => control is Button && AutomationProperties.GetAutomationId(control) == AutomationIds.ProjectCardSettings)
+        {
+            Pending = "the button is in the project card's pop-up; ProjectCardTests opens it",
+        },
+        new("refresh", "Views/MainWindow.axaml", "Refresh", TooltipScene.Overview,
+            control => control is Button && AutomationProperties.GetAutomationId(control) == AutomationIds.RefreshProject),
+        new("project chip", "Views/MainWindow.axaml", "{Binding ProjectChipAccessibleName}", TooltipScene.Overview,
+            control => control is Button && AutomationProperties.GetAutomationId(control) == AutomationIds.ProjectChip),
+        new("menu button", "Views/MainWindow.axaml.cs", "MotifAppStrings.MainMenuButtonAccessibleName", TooltipScene.FrameNarrowTopBar,
+            control => control is MenuItem && AutomationProperties.GetAutomationId(control) == AutomationIds.MenuButton),
+        new("configure detail", "Views/MainWindow.axaml", "{Binding ConfigureDetailText}", TooltipScene.OpenRecent,
+            control => control is MenuItem && control.Name == "ConfigureMenuItem"),
         new("backup promise", "Views/MainWindow.axaml", "Keep a FieldWorks backup. Motif writes only when you press Apply.",
             TooltipScene.FrameStatus, control => control is CopyableTextBlock &&
                 ToolTip.GetTip(control) as string == "Keep a FieldWorks backup. Motif writes only when you press Apply."),
@@ -694,7 +714,8 @@ internal static class TooltipOwners
             control => control is ListBoxItem && control.FindAncestorOfType<ListBox>() is { } list &&
                 list.Classes.Contains("sidebar") && list.Classes.Contains("collapsed")),
         new("recent project", "Views/MainWindow.axaml.cs", "recent.FullFwDataPath", TooltipScene.OpenRecent,
-            control => control is MenuItem),
+            control => control is MenuItem && control.Name != "ConfigureMenuItem" &&
+                AutomationProperties.GetAutomationId(control) != AutomationIds.MenuButton),
         new("Matrix cell", "Views/ComparePanel.axaml", "{Binding Explanation}", TooltipScene.Matrix,
             control => MatrixCellOrTipText(control, compact: false)),
         new("Matrix column heading", "Views/ComparePanel.axaml", "{Binding Label}", TooltipScene.Matrix,

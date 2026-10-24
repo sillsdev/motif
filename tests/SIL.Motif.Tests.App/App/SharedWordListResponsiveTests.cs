@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
+using Avalonia.Controls.Presenters;
 using Avalonia.Headless;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -10,6 +11,7 @@ using Avalonia.Media.Imaging;
 using Avalonia.Styling;
 using Avalonia.VisualTree;
 using SIL.Motif.App;
+using SIL.Motif.App.Controls;
 using SIL.Motif.App.Controls.WordPresentation;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
@@ -86,6 +88,33 @@ public sealed class SharedWordListResponsiveTests
     [Fact]
     public void DifferenceActionsStayVisibleAndReceivePointerBeforeFocus() => CheckActions(DifferenceScene);
 
+    [Fact]
+    public void ReviewChangesKeepTheirDenseTableBodyVisibleAcrossZoomAndThemes()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var fake = new FakeCommandClient();
+            fake.PendingChangesIs(ReviewScreenshots.Blocked());
+            var (workspace, window) = await ReviewScreenshots.OpenAsync(fake);
+            try
+            {
+                workspace.CurrentPage = WorkspacePage.Review;
+                foreach (var theme in Themes)
+                foreach (var size in Sizes)
+                {
+                    ApplySize(window, size, theme);
+                    AssertReviewTableVisible(window, $"6-review, 640x{size.Height} at {size.Zoom}% {theme.Name}");
+                }
+            }
+            finally
+            {
+                Application.Current!.RequestedThemeVariant = ThemeVariant.Light;
+                WindowZoomPolicy.Apply(Application.Current!, ZoomPolicy.DefaultPercent);
+                window.Close();
+            }
+        }, TimeSpan.FromMinutes(3));
+    }
+
     [ScreenshotFact]
     public void CapturesWordListsAt640By600And900AcrossZoomAndThemes()
     {
@@ -105,7 +134,7 @@ public sealed class SharedWordListResponsiveTests
             {
                 workspace.CurrentPage = WorkspacePage.Review;
                 PageScreenshots.Settle(window);
-                await CaptureScene("6-review", window, root, states);
+                await CaptureScene("6-review", window, root, states, AssertReviewTableVisible);
             }
             finally
             {
@@ -185,7 +214,7 @@ public sealed class SharedWordListResponsiveTests
                     var target = PrepareRightmostAction(slot, scene, size, theme, window, failures);
                     if (target is null) return;
                     var (row, action) = target.Value;
-                    var outsideFocus = window.FindControl<Button>("ProjectMenuButton");
+                    var outsideFocus = window.FindControl<Button>("ProjectChip");
                     Record(outsideFocus is not null && outsideFocus.Focus(), state,
                         "the test could not move focus outside the word row", failures);
                     Record(!row.GetVisualDescendants().OfType<Control>().Any(control => control.IsFocused) &&
@@ -467,21 +496,80 @@ public sealed class SharedWordListResponsiveTests
         return visible;
     }
 
-    private static async Task CaptureScene(string scene, MainWindow window, string root, ICollection<string> states)
+    private static async Task CaptureScene(string scene, MainWindow window, string root, ICollection<string> states,
+        Action<MainWindow, string>? assertContent = null)
     {
         foreach (var theme in Themes)
         foreach (var size in Sizes)
         {
             ApplySize(window, size, theme);
-            var slots = window.GetVisualDescendants().OfType<WordListSlot>()
-                .Where(slot => slot.IsEffectivelyVisible && slot.CurrentLayout is not null).ToArray();
-            if (slots.Length == 0)
-                throw new InvalidOperationException($"{scene}, 640x{size.Height} at {size.Zoom}% {theme.Name}: no visible word list slot.");
+            var state = $"{scene}, 640x{size.Height} at {size.Zoom}% {theme.Name}";
+            if (assertContent is not null) assertContent(window, state);
+            else
+            {
+                var slots = window.GetVisualDescendants().OfType<WordListSlot>()
+                    .Where(slot => slot.IsEffectivelyVisible && slot.CurrentLayout is not null).ToArray();
+                if (slots.Length == 0)
+                    throw new InvalidOperationException($"{state}: no visible word list slot.");
+            }
 
             var fileName = $"{scene}-640x{size.Height}-{size.Zoom}-{theme.Name}.png";
             SaveFrame(window, Path.Combine(root, fileName));
             states.Add($"{fileName}\t{scene}, 640x{size.Height}, {size.Zoom}%, {theme.Name}.");
             await Task.Yield();
+        }
+    }
+
+    private static void AssertReviewTableVisible(MainWindow window, string state)
+    {
+        var panel = Assert.Single(window.GetVisualDescendants().OfType<ReviewPanel>());
+        var list = panel.FindControl<ListBox>("ReviewItems")!;
+        Assert.Contains("denseTable", list.Classes);
+        Assert.Equal(AutomationIds.ReviewWordsSlot, AutomationProperties.GetAutomationId(list));
+        var changes = list.ItemsSource!.Cast<object>().OfType<ReviewListEntryViewModel>()
+            .Where(entry => entry.Change is not null).ToArray();
+        Assert.Equal(new[] { "anapenda", "chakula", "kitabu", "watoto" },
+            changes.Select(entry => entry.Change!.Word).OrderBy(word => word, StringComparer.Ordinal));
+        Assert.True(list.IsEffectivelyVisible && EffectiveOpacity(list) > 0,
+            $"{state}: the populated Review table is hidden.");
+
+        var scroll = Assert.Single(list.GetVisualDescendants().OfType<ScrollViewer>(),
+            viewer => viewer.Name == "PART_ScrollViewer");
+        var body = Assert.Single(scroll.GetVisualDescendants().OfType<ScrollContentPresenter>());
+        var pageHost = window.FindControl<Panel>("PageHost")!;
+        var bodyBounds = BoundsInWindow(body, window);
+        var pageBounds = BoundsInWindow(pageHost, window);
+        var windowBounds = new Rect(window.ClientSize);
+        Assert.True(body.IsEffectivelyVisible && EffectiveOpacity(body) > 0 &&
+            bodyBounds.Width > 0 && bodyBounds.Height > 0 &&
+            pageBounds.Inflate(1).Contains(bodyBounds) && windowBounds.Inflate(1).Contains(bodyBounds),
+            $"{state}: Review table body {bodyBounds} exceeds page {pageBounds} or window {windowBounds}.");
+
+        var row = list.GetVisualDescendants().OfType<ListBoxItem>().FirstOrDefault(item =>
+            item.IsEffectivelyVisible && item.DataContext is ReviewListEntryViewModel { Change: not null } &&
+            bodyBounds.Inflate(1).Contains(BoundsInWindow(item, window)) &&
+            ClippedBoundsInWindow(item, window).Height >= BoundsInWindow(item, window).Height - 1);
+        Assert.True(row is not null, $"{state}: no populated Review change row is fully visible in the table body.");
+        var realizedRow = Assert.IsType<ListBoxItem>(row);
+        var entry = Assert.IsType<ReviewListEntryViewModel>(realizedRow.DataContext);
+        var frame = Assert.Single(realizedRow.GetVisualDescendants().OfType<Border>(),
+            border => border.Classes.Contains("denseTableRow"));
+        var tracks = Assert.Single(frame.GetVisualDescendants().OfType<Grid>(),
+            grid => DenseTable.GetColumns(grid) is not null);
+        var header = panel.FindControl<Grid>("ReviewTableHeader")!;
+        Assert.Equal(header.ColumnDefinitions.Select(column => column.Width),
+            tracks.ColumnDefinitions.Select(column => column.Width));
+        var word = Assert.Single(frame.GetVisualDescendants().OfType<CopyableTextBlock>(),
+            text => text.IsEffectivelyVisible && text.Text == entry.Change!.Word);
+        foreach (var content in new Control[] { frame, word })
+        {
+            var bounds = BoundsInWindow(content, window);
+            var visible = ClippedBoundsInWindow(content, window);
+            Assert.True(content.IsEffectivelyVisible && EffectiveOpacity(content) > 0 &&
+                bounds.Width > 0 && bounds.Height > 0 && bodyBounds.Inflate(1).Contains(bounds) &&
+                visible.Width >= bounds.Width - 1 && visible.Height >= bounds.Height - 1,
+                $"{state}: Review {content.GetType().Name} for {entry.Change!.Word} is hidden or clipped; " +
+                $"bounds {bounds}, visible {visible}, table body {bodyBounds}.");
         }
     }
 

@@ -37,6 +37,52 @@ public sealed class AnalyzeTextsLayoutTests
     private static readonly TimeSpan Deadline = TimeSpan.FromSeconds(60);
 
     [Fact]
+    public void ChooseTextsFromParsedReaderOpensConfiguration()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, window) = await OpenAnalyzeTexts();
+            try
+            {
+                var page = workspace.PageModel<TextsPageModel>();
+                var setup = workspace.Context.Setup!;
+                Assert.NotNull(workspace.Assess.Result);
+                Assert.True(workspace.Baseline.HasBaseline);
+                Assert.False(setup.IsOpen);
+                Assert.True(workspace.Selection.HasTexts);
+                foreach (var text in workspace.Selection.Texts) text.IsChecked = false;
+                workspace.Selection.PastedWords = "kitabu";
+                await SettleReaderAsync(workspace, window);
+                Assert.Empty(page.ResultsInText.Texts);
+                Assert.True(page.ResultsInText.NeedsTexts);
+                Assert.NotNull(workspace.Assess.Result);
+
+                var choose = Assert.Single(Panel(window).GetVisualDescendants().OfType<Button>(), button =>
+                    AutomationProperties.GetName(button) == MotifAppStrings.ChooseTextsToAnalyzeAccessibleName);
+                choose.BringIntoView();
+                Settle(window);
+                Assert.True(choose.IsEffectivelyVisible);
+                Assert.True(choose.IsEffectivelyEnabled);
+                var center = choose.TranslatePoint(new Point(choose.Bounds.Width / 2, choose.Bounds.Height / 2), window)
+                    ?? throw new InvalidOperationException("Choose texts is not attached to the window.");
+                Assert.True(window.InputHitTest(center) is Visual hit &&
+                    (ReferenceEquals(hit, choose) || choose.IsVisualAncestorOf(hit)));
+                window.MouseDown(center, MouseButton.Left);
+                window.MouseUp(center, MouseButton.Left);
+                if (setup.ConfigurationLoadTask is { } load) await load;
+                Settle(window);
+
+                Assert.True(setup.IsOpen, "Choose texts must open configuration from the parsed reader.");
+                Assert.Equal(0, setup.Step);
+                Assert.True(window.FindControl<SetupDialog>("SetupDialogView")!.IsEffectivelyVisible);
+                Assert.Equal(WorkspacePage.Texts, workspace.CurrentPage);
+                Assert.Equal(TextsTab.AnalyzeTexts, page.Tab);
+            }
+            finally { window.Close(); await workspace.DisposeAsync(); }
+        }, Deadline);
+    }
+
+    [Fact]
     public void KeyboardReaderWalkthroughStagesOpinionsThenShowsThemInReview()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>

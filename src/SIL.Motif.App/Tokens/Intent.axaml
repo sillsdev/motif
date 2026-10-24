@@ -157,7 +157,6 @@
     Intent.Weight.Section         semibold weight for section headings
     Intent.Weight.Strong          bold weight for emphasized values
     Intent.Weight.Normal          normal weight where emphasis must be reset
-    Intent.Type.Brand             the Motif wordmark
     Intent.Type.Navigation        sidebar entries and menu entries, 13
     Intent.Type.Body              ordinary control text, 13
     Intent.Type.Status            the freshness line, 12
@@ -244,7 +243,6 @@
   <StaticResource x:Key="Intent.Weight.Section" ResourceKey="Primitive.FontWeight.SemiBold" />
   <StaticResource x:Key="Intent.Weight.Strong" ResourceKey="Primitive.FontWeight.Bold" />
   <StaticResource x:Key="Intent.Weight.Normal" ResourceKey="Primitive.FontWeight.Normal" />
-  <StaticResource x:Key="Intent.Type.Brand" ResourceKey="Primitive.Type.13" />
   <StaticResource x:Key="Intent.Type.Navigation" ResourceKey="Primitive.Type.13" />
   <StaticResource x:Key="Intent.Type.Body" ResourceKey="Primitive.Type.13" />
   <StaticResource x:Key="Intent.Type.Status" ResourceKey="Primitive.Type.12" />

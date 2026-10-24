@@ -41,6 +41,14 @@ public abstract partial class PageModel : ObservableObject, IProjectStatePartici
     protected virtual Task OnProjectOpenedAsync(string projectPath, CancellationToken cancellationToken) =>
         Task.CompletedTask;
 
+    /// <summary>
+    /// Starts owned background work after every project-open stage succeeded and the context left its opening
+    /// phase. Return immediately; project switches and <see cref="OnStopWorkAsync"/> own its cancellation.
+    /// </summary>
+    protected virtual void OnProjectOpenCompleted()
+    {
+    }
+
     /// <summary>Reloads what the page shows now that a new Baseline has been captured.</summary>
     protected virtual Task OnBaselineCapturedAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
@@ -54,7 +62,7 @@ public abstract partial class PageModel : ObservableObject, IProjectStatePartici
     protected virtual Task OnEvidencePublishedAsync(EvidenceLens lens, CancellationToken cancellationToken) =>
         Task.CompletedTask;
 
-    /// <summary>Reloads this page's stored summary after a person checked the grammar.</summary>
+    /// <summary>Reloads this page's stored summary after a grammar check completed.</summary>
     protected virtual Task OnGrammarCheckedAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
     /// <summary>Answers <paramref name="request"/> when it is addressed to this page; ignores it otherwise.</summary>
@@ -66,6 +74,8 @@ public abstract partial class PageModel : ObservableObject, IProjectStatePartici
 
     internal Task ProjectOpenedAsync(string projectPath, CancellationToken cancellationToken) =>
         OnProjectOpenedAsync(projectPath, cancellationToken);
+
+    internal void ProjectOpenCompleted() => OnProjectOpenCompleted();
 
     internal Task BaselineCapturedAsync(CancellationToken cancellationToken) => OnBaselineCapturedAsync(cancellationToken);
 

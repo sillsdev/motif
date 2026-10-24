@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Input;
@@ -228,8 +229,14 @@ public sealed class HFrameActionTests(AvaloniaHeadlessFixture avalonia)
                 window.Width = 640;
                 PageScreenshots.Settle(window);
                 Assert.Equal(full["Baseline of ".Length..], workspace.FreshnessDetail);
-                Assert.Contains(window.FindControl<Border>("TopBar")!.GetVisualDescendants().OfType<CopyableTextBlock>(),
+                var narrowChip = window.FindControl<Button>("ProjectChip")!;
+                Assert.False(window.FindControl<TextBlock>("ProjectChipDetail")!.IsEffectivelyVisible,
+                    "Narrow, the chip keeps its name and dot alone.");
+                Assert.Contains(workspace.FreshnessLabel, AutomationProperties.GetName(narrowChip), StringComparison.Ordinal);
+                var card = ProjectCardAccess.Open(window);
+                Assert.Contains(card.GetVisualDescendants().OfType<CopyableTextBlock>(),
                     text => text.Text == workspace.FreshnessDetail);
+                ProjectCardAccess.Close(window);
                 window.Width = 1920;
                 PageScreenshots.Settle(window);
                 Assert.Equal(full, workspace.FreshnessDetail);

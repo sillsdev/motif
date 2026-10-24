@@ -271,7 +271,7 @@ public sealed class CancelAssessmentWalkthroughTests(PristineProjectFixture pris
                     "the cancelled Assessment left its PanGloss process alive");
 
                 Assert.Equal("assessment.cancelled", walkthrough.Workspace.Assess.Refusal?.Code);
-                Assert.True(walkthrough.Find<Button>("Project menu").IsEffectivelyEnabled);
+                Assert.True(walkthrough.ProjectSwitchEnabled);
                 Assert.True(walkthrough.Named<ContentControl>("SelectionHost").IsEffectivelyEnabled);
                 var afterCancellation = WalkthroughStoreAssertions.ListInvocations(project.FwDataPath);
                 Assert.Equal(beforeCancellation.Select(invocation => invocation.InvocationId),

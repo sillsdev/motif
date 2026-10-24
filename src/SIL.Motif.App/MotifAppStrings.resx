@@ -4,49 +4,97 @@
   <resheader name="version"><value>2.0</value></resheader>
   <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
-  <data name="MotifApp.ProjectMenuAccessibleName" xml:space="preserve">
-    <value>Project menu</value>
-    <comment>Accessible name of the project menu button in the top bar.</comment>
+  <data name="MotifApp.MenuFile" xml:space="preserve">
+    <value>_File</value>
+    <comment>Top-level menu: project commands. The underscore marks the access key (Alt+F).</comment>
   </data>
-  <data name="MotifApp.SelectNew" xml:space="preserve">
-    <value>Select New…</value>
-    <comment>Command in the project menu: pick another project file. The ellipsis means it asks for more input.</comment>
+  <data name="MotifApp.MenuSelectNew" xml:space="preserve">
+    <value>_Select New…</value>
+    <comment>File menu command: pick another project file. The ellipsis means it asks for more input.</comment>
   </data>
-  <data name="MotifApp.SelectNewDetail" xml:space="preserve">
-    <value>Choose another .fwdata file</value>
-    <comment>Detail line under the Select New command.</comment>
+  <data name="MotifApp.MenuOpenRecent" xml:space="preserve">
+    <value>Open _Recent</value>
+    <comment>File menu submenu listing recent projects.</comment>
   </data>
-  <data name="MotifApp.SelectNewAccessibleName" xml:space="preserve">
-    <value>Select a new project</value>
-    <comment>Accessible name of the Select New command.</comment>
+  <data name="MotifApp.MenuConfigure" xml:space="preserve">
+    <value>_Configure…</value>
+    <comment>File menu command that opens the project configuration.</comment>
   </data>
-  <data name="MotifApp.OpenRecent" xml:space="preserve">
-    <value>Open Recent</value>
-    <comment>Command in the project menu that opens the list of recent projects.</comment>
+  <data name="MotifApp.MenuExit" xml:space="preserve">
+    <value>E_xit</value>
+    <comment>File menu command that closes the window.</comment>
   </data>
-  <data name="MotifApp.OpenRecentAccessibleName" xml:space="preserve">
-    <value>Open a recent project</value>
-    <comment>Accessible name of the Open Recent command.</comment>
+  <data name="MotifApp.MenuEdit" xml:space="preserve">
+    <value>_Edit</value>
+    <comment>Top-level menu: undo, redo and copy.</comment>
   </data>
-  <data name="MotifApp.Configure" xml:space="preserve">
-    <value>Configure…</value>
-    <comment>Command in the project menu that opens the project configuration.</comment>
+  <data name="MotifApp.MenuUndo" xml:space="preserve">
+    <value>_Undo</value>
+    <comment>Edit menu command: undo the last staging action.</comment>
   </data>
-  <data name="MotifApp.ConfigureAccessibleName" xml:space="preserve">
-    <value>Configure the project</value>
-    <comment>Accessible name of the Configure command.</comment>
+  <data name="MotifApp.MenuRedo" xml:space="preserve">
+    <value>_Redo</value>
+    <comment>Edit menu command: redo the last undone staging action.</comment>
   </data>
-  <data name="MotifApp.WritingSystemsAndFonts" xml:space="preserve">
-    <value>Writing Systems and Fonts</value>
-    <comment>Command in the project menu that opens the writing system guide.</comment>
+  <data name="MotifApp.MenuCopy" xml:space="preserve">
+    <value>_Copy</value>
+    <comment>Edit menu command: copy the selected or focused word.</comment>
   </data>
-  <data name="MotifApp.WritingSystemsAndFontsDetail" xml:space="preserve">
-    <value>How Motif displays project language text</value>
-    <comment>Detail line under the Writing Systems and Fonts command.</comment>
+  <data name="MotifApp.MenuView" xml:space="preserve">
+    <value>_View</value>
+    <comment>Top-level menu: zoom.</comment>
   </data>
-  <data name="MotifApp.WritingSystemsAndFontsAccessibleName" xml:space="preserve">
-    <value>Writing system fonts and direction</value>
-    <comment>Accessible name of the Writing Systems and Fonts command.</comment>
+  <data name="MotifApp.MenuZoomIn" xml:space="preserve">
+    <value>Zoom _In</value>
+    <comment>View menu command.</comment>
+  </data>
+  <data name="MotifApp.MenuZoomOut" xml:space="preserve">
+    <value>Zoom _Out</value>
+    <comment>View menu command.</comment>
+  </data>
+  <data name="MotifApp.MenuResetZoom" xml:space="preserve">
+    <value>_Reset Zoom</value>
+    <comment>View menu command.</comment>
+  </data>
+  <data name="MotifApp.MenuTools" xml:space="preserve">
+    <value>_Tools</value>
+    <comment>Top-level menu: options and writing systems.</comment>
+  </data>
+  <data name="MotifApp.MenuOptions" xml:space="preserve">
+    <value>_Options…</value>
+    <comment>Tools menu command that opens Settings.</comment>
+  </data>
+  <data name="MotifApp.MenuWritingSystems" xml:space="preserve">
+    <value>_Writing Systems and Fonts</value>
+    <comment>Tools menu command that opens the writing system guide.</comment>
+  </data>
+  <data name="MotifApp.MenuHelp" xml:space="preserve">
+    <value>_Help</value>
+    <comment>Top-level menu: help and problem reports.</comment>
+  </data>
+  <data name="MotifApp.MenuHelpTopics" xml:space="preserve">
+    <value>Help _Topics</value>
+    <comment>Help menu command that opens the Help card.</comment>
+  </data>
+  <data name="MotifApp.MenuKeyboardShortcuts" xml:space="preserve">
+    <value>_Keyboard Shortcuts</value>
+    <comment>Help menu command that opens the keyboard shortcut list in Settings.</comment>
+  </data>
+  <data name="MotifApp.MenuReportProblem" xml:space="preserve">
+    <value>_Report a Problem…</value>
+    <comment>Help menu command that opens the problem report.</comment>
+  </data>
+  <data name="MotifApp.MenuRecentPreviousPattern" xml:space="preserve">
+    <value>{0, plural, one {Previous #} other {Previous #}}</value>
+    <comment>Plural pattern: Open Recent entry that shows the previous page of recent projects; # is the page size.</comment>
+  </data>
+  <data name="MotifApp.MenuRecentMorePattern" xml:space="preserve">
+    <value>{0, plural, one {Show # more} other {Show # more}}</value>
+    <comment>Plural pattern: Open Recent entry that shows the next page of recent projects; # is how many it adds.</comment>
+  </data>
+  <data name="MotifApp.MainMenuAccessibleName" xml:space="preserve">
+    <value>Main menu</value>
+    <comment>Accessible name of the menu bar.</comment>
   </data>
   <data name="MotifApp.SeeWhatChanged" xml:space="preserve">
     <value>See What Changed</value>
@@ -2470,8 +2518,8 @@ Never included unless you tick it in the preview: local details, which may conta
     <comment>Status on the Warnings page: the grammar has not been checked yet, so there are no findings to show.</comment>
   </data>
   <data name="MotifApp.WarningsCheckExplanation" xml:space="preserve">
-    <value>Checking reads the whole grammar, so it can take a minute on a large project. It runs only when you ask.</value>
-    <comment>Explanation on the Warnings page of what the grammar check costs: it reads the whole grammar and runs only on request.</comment>
+    <value>Motif checks the loaded Baseline’s grammar automatically. Large projects can take a minute. You can check it again here.</value>
+    <comment>Explanation of automatic checking for the loaded Baseline and the option to check again.</comment>
   </data>
   <data name="MotifApp.CheckTheGrammar" xml:space="preserve">
     <value>Check the Grammar</value>
@@ -3700,8 +3748,8 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.ParsimonyNoReportNextStep" xml:space="preserve">
     <value>Ask an AI assistant with Motif tools to run every Parsimony measure for this project, or run this in the CLI after replacing the project path:
 motif parsimony --project "&lt;project.fwdata&gt;" --measure all --wait
-Then come back here. Opening this page never starts a check; it reads the stored Report.</value>
-    <comment>Next step on the Parsimony page when no Report is stored. The second line is a command line to copy: keep it exactly, including the placeholder &lt;project.fwdata&gt;.</comment>
+Motif starts a check automatically when this project opens. Use Reload to read a completed Report or retry a failed check.</value>
+    <comment>Manual fallback on the Parsimony page when no usable Report is available. The second line is a command line to copy: keep it exactly, including the placeholder &lt;project.fwdata&gt;.</comment>
   </data>
   <data name="MotifApp.ParsimonyNoRecordTypes" xml:space="preserve">
     <value>This project's Notebook has no record types, so a decision has nowhere to go. Add one in FieldWorks, then reopen this page.</value>
@@ -5886,5 +5934,133 @@ Then come back here. Opening this page never starts a check; it reads the stored
   <data name="MotifApp.CompareWordUnitPattern" xml:space="preserve">
     <value>{0, plural, one {word} other {words}}</value>
     <comment>Plural pattern: the unit word shown beside the count of words in a Matrix cell; # is not used, only the choice of singular or plural.</comment>
+  </data>
+  <data name="MotifApp.ParsimonyJobFailed" xml:space="preserve">
+    <value>Parsimony could not finish. Reload to try again.</value>
+    <comment>Shown when automatic Parsimony work ends without completing its review.</comment>
+  </data>
+  <data name="MotifApp.ParsimonyBaselineChanged" xml:space="preserve">
+    <value>The Baseline changed while Parsimony was running. Reload to review the current Baseline.</value>
+    <comment>Shown when completed Parsimony work belongs to a Baseline that has been replaced.</comment>
+  </data>
+  <data name="MotifApp.ParsimonyReportUnavailable" xml:space="preserve">
+    <value>The completed job has no usable report for this Baseline. Reload to try again.</value>
+    <comment>Shown when automatic Parsimony work finishes but its stored report cannot be reused.</comment>
+  </data>
+  <data name="MotifApp.GrammarCheckFailedFormat" xml:space="preserve">
+    <value>The grammar check could not finish: {0}</value>
+    <comment>Shown when an automatic grammar check fails unexpectedly. {0} is the reported failure detail.</comment>
+  </data>
+  <data name="MotifApp.MenuRefresh" xml:space="preserve">
+    <value>Re_fresh</value>
+    <comment>File menu command that captures a new Baseline from FieldWorks' last save.</comment>
+  </data>
+  <data name="MotifApp.MainMenuButtonAccessibleName" xml:space="preserve">
+    <value>Menu</value>
+    <comment>Accessible name and tooltip of the button that opens the File, Edit, View, Tools and Help menus when the window is too narrow for the menu bar.</comment>
+  </data>
+  <data name="MotifApp.RefreshIconGlyph" xml:space="preserve">
+    <value>⟳</value>
+    <comment>The glyph on the top bar's Refresh icon button, beside the project chip.</comment>
+  </data>
+  <data name="MotifApp.ProjectChipCaret" xml:space="preserve">
+    <value>▾</value>
+    <comment>The caret at the end of the project chip, which shows that it opens the project card.</comment>
+  </data>
+  <data name="MotifApp.MainMenuButtonGlyph" xml:space="preserve">
+    <value>≡</value>
+    <comment>The glyph on the button that holds the File, Edit, View, Tools and Help menus when the window is narrow.</comment>
+  </data>
+  <data name="MotifApp.ProjectChipNameFormat" xml:space="preserve">
+    <value>{0}, {1}</value>
+    <comment>Accessible name and tooltip of the project chip: {0} is the project name and {1} its status in words, such as Current.</comment>
+  </data>
+  <data name="MotifApp.ProjectChipParsedFormat" xml:space="preserve">
+    <value>parsed {0}</value>
+    <comment>Part of the project chip in a wide window: {0} is the time the words were last parsed.</comment>
+  </data>
+  <data name="MotifApp.ProjectChipDetailFormat" xml:space="preserve">
+    <value>· {0}</value>
+    <comment>The wide project chip's words after the project name: {0} is the status and, once words were parsed, when.</comment>
+  </data>
+  <data name="MotifApp.ProjectChipJoinFormat" xml:space="preserve">
+    <value>{0} · {1}</value>
+    <comment>Joins two parts of the project chip text; the dot is a separator and the order may change.</comment>
+  </data>
+  <data name="MotifApp.ProjectCardAccessibleName" xml:space="preserve">
+    <value>Project card</value>
+    <comment>Accessible name of the pop-up that opens from the project chip and tells the story of the open project.</comment>
+  </data>
+  <data name="MotifApp.ProjectCardOpenedFormat" xml:space="preserve">
+    <value>FieldWorks project · opened {0}</value>
+    <comment>Subtitle of the project card: {0} is the time the project was opened; the dot is a separator.</comment>
+  </data>
+  <data name="MotifApp.ProjectCardParsedFormat" xml:space="preserve">
+    <value>Last parsed {0}.</value>
+    <comment>Line of the project card's status block: {0} is the time the words were last parsed.</comment>
+  </data>
+  <data name="MotifApp.ProjectCardNotParsed" xml:space="preserve">
+    <value>Not parsed yet.</value>
+    <comment>Line of the project card's status block when no words have been parsed.</comment>
+  </data>
+  <data name="MotifApp.ProjectCardButtonRefresh" xml:space="preserve">
+    <value>_Refresh</value>
+    <comment>Project card button that captures a new Baseline.</comment>
+  </data>
+  <data name="MotifApp.ProjectCardButtonParseAllWords" xml:space="preserve">
+    <value>_Parse All Words</value>
+    <comment>Project card button that parses the words the user chose.</comment>
+  </data>
+  <data name="MotifApp.ProjectCardButtonSeeWhatChanged" xml:space="preserve">
+    <value>See _What Changed</value>
+    <comment>Project card button that shows what a refresh changed.</comment>
+  </data>
+  <data name="MotifApp.ProjectCardTextsHeading" xml:space="preserve">
+    <value>Texts to Parse</value>
+    <comment>Heading of the project card section that says which texts Motif parses.</comment>
+  </data>
+  <data name="MotifApp.ProjectCardTextsSummaryFormat" xml:space="preserve">
+    <value>{0} of {1} · {2}</value>
+    <comment>Project card summary of the chosen texts: {0} is how many texts are chosen, {1} the total with its unit such as 14 texts, and {2} the name of the saved set; the dot is a separator.</comment>
+  </data>
+  <data name="MotifApp.ProjectCardTextsCountPattern" xml:space="preserve">
+    <value>{0, plural, one {# text} other {# texts}}</value>
+    <comment>Plural pattern: the number of texts in the project; # is the count.</comment>
+  </data>
+  <data name="MotifApp.ProjectCardNoTextsChosen" xml:space="preserve">
+    <value>No texts chosen yet</value>
+    <comment>Project card summary when no texts have been chosen to parse.</comment>
+  </data>
+  <data name="MotifApp.ProjectCardButtonChoose" xml:space="preserve">
+    <value>C_hoose…</value>
+    <comment>Project card button that opens the choice of what to parse.</comment>
+  </data>
+  <data name="MotifApp.ProjectCardButtonProjectSettings" xml:space="preserve">
+    <value>Project _Settings…</value>
+    <comment>Project card button that opens the project's settings: the texts, added words and limits.</comment>
+  </data>
+  <data name="MotifApp.ProjectCardProjectSettingsAccessibleName" xml:space="preserve">
+    <value>Project settings</value>
+    <comment>Accessible name of the Project Settings button on the project card.</comment>
+  </data>
+  <data name="MotifApp.ProjectCardButtonOpenAnother" xml:space="preserve">
+    <value>Open _Another Project…</value>
+    <comment>Project card button that chooses a different FieldWorks project.</comment>
+  </data>
+  <data name="MotifApp.ProjectCardOpenAnotherAccessibleName" xml:space="preserve">
+    <value>Open another project</value>
+    <comment>Accessible name of the Open Another Project button on the project card.</comment>
+  </data>
+  <data name="MotifApp.TechDemoNoticeGotIt" xml:space="preserve">
+    <value>_Got It</value>
+    <comment>Button that acknowledges the first-run tech demo notice.</comment>
+  </data>
+  <data name="MotifApp.TechDemoNoticeGotItAccessibleName" xml:space="preserve">
+    <value>Acknowledge the tech demo notice</value>
+    <comment>Accessible name of the Got It button on the first-run tech demo notice.</comment>
+  </data>
+  <data name="MotifApp.ProjectCardTextsCountFormat" xml:space="preserve">
+    <value>{0} of {1}</value>
+    <comment>Project card summary of the chosen texts when no set is saved yet: {0} is how many texts are chosen and {1} the total with its unit such as 14 texts.</comment>
   </data>
 </root>

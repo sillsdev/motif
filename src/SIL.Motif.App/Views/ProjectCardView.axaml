@@ -1,0 +1,86 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="clr-namespace:SIL.Motif.App"
+             xmlns:views="clr-namespace:SIL.Motif.App.Views"
+             xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
+             x:DataType="vm:WorkspaceShellViewModel"
+             x:Class="SIL.Motif.App.Views.ProjectCardView">
+  <!-- The project card: the whole story of the open project, opened from the top bar's chip. -->
+  <Border x:Name="ProjectCard" Classes="card projectCard"
+          AutomationProperties.Name="{x:Static app:MotifAppStrings.ProjectCardAccessibleName}"
+          AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProjectCard}">
+    <StackPanel Spacing="{DynamicResource Intent.Space.Section}">
+      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}">
+        <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
+          <DockPanel Classes="freshness" IsVisible="{Binding HasFreshness}">
+            <Ellipse DockPanel.Dock="Left" Classes="freshDot" Classes.current="{Binding FreshnessIsCurrent}"
+                     Classes.stale="{Binding FreshnessIsStale}" Classes.busy="{Binding FreshnessIsBusy}"
+                     Classes.refused="{Binding HasRefreshRefusal}" />
+            <views:CopyableTextBlock Classes="cardProjectName" Text="{Binding ProjectName}" TextTrimming="CharacterEllipsis" />
+          </DockPanel>
+          <views:CopyableTextBlock Classes="muted" Text="{Binding ProjectCardSubtitle}"
+                                   IsVisible="{Binding ProjectCardSubtitle, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+        </StackPanel>
+        <Button x:Name="CardRefreshButton" Grid.Column="1" Content="{x:Static app:MotifAppStrings.ProjectCardButtonRefresh}"
+                Command="{Binding RefreshCommand}" IsVisible="{Binding HasFreshness}"
+                VerticalAlignment="Top"
+                AutomationProperties.Name="{x:Static app:MotifAppStrings.RefreshAccessibleName}"
+                AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProjectCardRefresh}"
+                ToolTip.Tip="{x:Static app:MotifAppStrings.RefreshTip}" />
+      </Grid>
+
+      <Border x:Name="CardStatusBlock" Classes="cardStatus" IsVisible="{Binding HasFreshness}"
+              Classes.current="{Binding FreshnessIsCurrent}" Classes.stale="{Binding FreshnessIsStale}"
+              Classes.busy="{Binding FreshnessIsBusy}" Classes.refused="{Binding HasRefreshRefusal}">
+        <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
+          <views:CopyableTextBlock Classes="freshLabel" Text="{Binding FreshnessLabel}"
+                                   Classes.current="{Binding FreshnessIsCurrent}"
+                                   Classes.stale="{Binding FreshnessIsStale}" Classes.busy="{Binding FreshnessIsBusy}"
+                                   Classes.refused="{Binding HasRefreshRefusal}"
+                                   AutomationProperties.AutomationId="{x:Static app:AutomationIds.FreshnessLabel}" />
+          <views:CopyableTextBlock Classes="freshDetail" Text="{Binding FreshnessDetail}" TextWrapping="Wrap"
+                                   AutomationProperties.AutomationId="{x:Static app:AutomationIds.FreshnessDetail}" />
+          <views:CopyableTextBlock Classes="freshDetail" Text="{Binding ProjectCardParsedText}" TextWrapping="Wrap" />
+          <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}"
+                      IsVisible="{Binding ShowsSeeWhatChanged}">
+            <Button Content="{x:Static app:MotifAppStrings.ProjectCardButtonSeeWhatChanged}"
+                    Command="{Binding SeeWhatChangedCommand}"
+                    AutomationProperties.Name="{x:Static app:MotifAppStrings.SeeWhatChangedAccessibleName}"
+                    AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProjectCardSeeWhatChanged}" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+
+      <StackPanel x:Name="CardTextsSection" Spacing="{DynamicResource Intent.Space.Minimal}" IsVisible="{Binding HasProject}">
+        <TextBlock Classes="section-title" Text="{x:Static app:MotifAppStrings.ProjectCardTextsHeading}" />
+        <views:CopyableTextBlock Text="{Binding ProjectCardTextsSummary}" TextWrapping="Wrap" />
+        <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
+          <Button x:Name="CardParseAllWordsButton" Content="{x:Static app:MotifAppStrings.ProjectCardButtonParseAllWords}"
+                  Command="{Binding ParseAllWordsCommand}" IsVisible="{Binding ShowsParseAllWordsAction}"
+                  AutomationProperties.Name="{x:Static app:MotifAppStrings.ParseAllWordsAccessibleName}"
+                  AutomationProperties.AutomationId="{x:Static app:AutomationIds.ParseAllWords}"
+                  ToolTip.Tip="{x:Static app:MotifAppStrings.ParseAllWordsTip}" />
+          <Button x:Name="CardChooseButton" Content="{x:Static app:MotifAppStrings.ProjectCardButtonChoose}"
+                  Command="{Binding ConfigureCommand}"
+                  AutomationProperties.Name="{x:Static app:MotifAppStrings.ChooseWhatToParseAccessibleName}"
+                  AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProjectCardChoose}"
+                  ToolTip.Tip="{Binding ConfigureDetailText}" ToolTip.ShowOnDisabled="True" />
+        </StackPanel>
+      </StackPanel>
+
+      <Border Classes="cardFooter">
+        <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
+          <Button x:Name="CardSettingsButton" Content="{x:Static app:MotifAppStrings.ProjectCardButtonProjectSettings}"
+                  Command="{Binding ConfigureCommand}" IsVisible="{Binding HasProject}"
+                  AutomationProperties.Name="{x:Static app:MotifAppStrings.ProjectCardProjectSettingsAccessibleName}"
+                  AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProjectCardSettings}"
+                  ToolTip.Tip="{Binding ConfigureDetailText}" ToolTip.ShowOnDisabled="True" />
+          <Button x:Name="CardOpenAnotherButton" Content="{x:Static app:MotifAppStrings.ProjectCardButtonOpenAnother}"
+                  Command="{Binding SelectNewProjectCommand}" IsEnabled="{Binding ProjectSwitchEnabled}"
+                  AutomationProperties.Name="{x:Static app:MotifAppStrings.ProjectCardOpenAnotherAccessibleName}"
+                  AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProjectCardOpenAnother}" />
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </Border>
+</UserControl>

@@ -10,7 +10,7 @@ public sealed class TechDemoNoticeViewModelTests
     public void GotItRemembersTheNoticeForTheNextWindow()
     {
         var preferences = new MemoryTechDemoNoticePreferences();
-        var firstWindow = new TechDemoNoticeViewModel(preferences, new SucceedingUriLauncher());
+        var firstWindow = new TechDemoNoticeViewModel(preferences);
 
         Assert.Equal(
             "Motif is a tech demo. It writes nothing until you press Apply. Keep a FieldWorks backup.",
@@ -21,7 +21,7 @@ public sealed class TechDemoNoticeViewModelTests
 
         Assert.False(firstWindow.IsVisible);
         Assert.True(preferences.HasSeenTechDemoNotice);
-        Assert.False(new TechDemoNoticeViewModel(preferences, new SucceedingUriLauncher()).IsVisible);
+        Assert.False(new TechDemoNoticeViewModel(preferences).IsVisible);
     }
 
     [Fact]

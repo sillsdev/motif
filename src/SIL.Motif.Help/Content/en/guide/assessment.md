@@ -6,6 +6,6 @@ While it runs, the progress panel stays visible at the top of the window. It sho
 
 The result tells you which words parsed, which approved analyses PanGloss built again, and how much time parsing took. A search that was interrupted or stopped at a limit is saved as not finished; it should not be read as a completed “no parse.” The **Overview** and **Texts** pages read the saved result. Opening either page does not run PanGloss.
 
-After saving in FieldWorks, choose **Refresh** to read the saved project, then **Parse all words** in the top bar to parse your [Default Selection](term:default-selection) again. A parse is evidence about one run, not a verdict that the grammar is good or bad.
+After saving in FieldWorks, choose **Refresh** (the ⟳ beside the project name in the top bar) to read the saved project, then **Parse all words** in the project card to parse your [Default Selection](term:default-selection) again. A parse is evidence about one run, not a verdict that the grammar is good or bad.
 
 Motif allows only one Parse all words run for a project at a time, even across windows and processes. If another window is already parsing that project, a second request is refused; use the running window to follow progress or cancel the run.

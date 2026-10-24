@@ -97,25 +97,29 @@ public sealed partial class WorkspaceLayoutHost : UserControl
         MotifTrace.Count("host-measure");
         var footerCap = (double)this.FindResource("Component.Shell.FooterMaxHeight")!;
         var pageMinHeight = (double)this.FindResource("Component.Shell.WorkingPageMinHeight")!;
-        // Fixed bands (the reveal row, the project notice band) come off first; the notice and footer split the rest.
+        // Fixed bands (reveal row, notice band, page actions) come off first; notice and footer details split the rest.
         var paneHeader = (double)this.FindResource("Component.Shell.PaneHeaderHeight")!;
         var fixedBands = (Part<Button>("SidePanelRevealButton").IsVisible ? paneHeader : 0) +
             (_noticeBandVisible ? paneHeader : 0);
+        var pageActions = Part<PageContentSlot>("PageActionRowHost");
+        var pageActionsHeight = pageActions.Content is Control pageRow ? ActionsHeight(pageActions, pageRow) : 0;
+        fixedBands += pageActionsHeight;
+        // Whole DIPs, so layout rounding cannot overshoot.
         var bandBudget = double.IsInfinity(availableSize.Height) ? double.PositiveInfinity
-            : Math.Max(0, (availableSize.Height - pageMinHeight - fixedBands) / 2);
-        var footerBudget = Math.Min(footerCap, bandBudget);
-        SetValue(BandBudgetProperty, footerBudget);
+            : Math.Max(0, Math.Floor((availableSize.Height - pageMinHeight - fixedBands) / 2));
+        var footerBudget = Math.Min(footerCap - pageActionsHeight, bandBudget);
+        SetValue(BandBudgetProperty, Math.Min(footerCap, bandBudget));
         // Beside the page the Inspector column keeps its own body; the page's minimum height does not bind it.
         var inspectorBody = (double)this.FindResource("Component.Shell.InspectorBodyMinHeight")!;
         var inspectorBudget = double.IsInfinity(availableSize.Height) ? double.PositiveInfinity
             : Math.Max(0, Math.Min(footerCap, availableSize.Height - paneHeader - inspectorBody));
         FitFooter("InspectorFooterViewport", "InspectorRowHost", inspectorBudget);
-        FitFooter("PageActionFooterViewport", "PageActionRowHost", footerBudget);
+        FitFooter("PageActionFooterViewport", "PageActionRowHost", footerBudget, rowCounted: true);
         return base.MeasureOverride(availableSize);
     }
 
     // The scrolling details take what the pinned actions leave, never less than their minimum.
-    private void FitFooter(string viewportName, string actionsName, double budget)
+    private void FitFooter(string viewportName, string actionsName, double budget, bool rowCounted = false)
     {
         var viewport = Part<ScrollViewer>(viewportName);
         var actions = Part<PageContentSlot>(actionsName);
@@ -125,7 +129,7 @@ public sealed partial class WorkspaceLayoutHost : UserControl
             return;
         }
         var minimum = (double)this.FindResource("Component.Shell.FooterDetailsMinHeight")!;
-        viewport.MaxHeight = double.IsInfinity(budget) ? budget : Math.Max(minimum, budget - ActionsHeight(actions, row));
+        viewport.MaxHeight = double.IsInfinity(budget) ? budget : Math.Max(minimum, rowCounted ? budget : budget - ActionsHeight(actions, row));
     }
 
     // Measured from the last arrange, so fitting the details cannot feed back on itself.

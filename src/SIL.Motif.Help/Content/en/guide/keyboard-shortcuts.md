@@ -130,10 +130,17 @@ Inside text inputs, Ctrl+C/X/V and Ctrl+Z/Y use the control's own copy, cut, pas
 | --- | --- | --- | --- | --- |
 | Enter or Space | Enter or Space | Enter or Space | Pages rail | Show or hide the side panel |
 
+## Menus
+
+| Key | Windows / Linux | macOS | Page or scope | Action |
+| --- | --- | --- | --- | --- |
+| Space | Space | Space | Menus | Choose a menu item |
+
 ## Window
 
 | Key | Windows / Linux | macOS | Page or scope | Action |
 | --- | --- | --- | --- | --- |
+| F or E or V or T or H | Alt+F or Alt+E or Alt+V or Alt+T or Alt+H | Alt+F or Alt+E or Alt+V or Alt+T or Alt+H | Window | Open a menu |
 | F1 | F1 | F1 | Window | Open Help for this page |
 | Escape | Esc | Esc | Window | Step back in the Inspector |
 | ? | Shift+/ | Shift+/ | Window | Show keyboard shortcuts |

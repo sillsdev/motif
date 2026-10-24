@@ -5,6 +5,20 @@ namespace SIL.Motif.App;
 
 public static class AutomationIds
 {
+    public const string MainMenu = "motif-main-menu";
+    /// <summary>The ≡ button that opens the menus in a narrow window.</summary>
+    public const string MenuButton = "motif-menu-button";
+    /// <summary>The top bar's project chip, which opens the project card.</summary>
+    public const string ProjectChip = "motif-project-chip";
+    /// <summary>The project card that opens from the chip.</summary>
+    public const string ProjectCard = "motif-project-card";
+    public const string ProjectCardRefresh = "motif-project-card-refresh";
+    public const string ProjectCardSeeWhatChanged = "motif-project-card-see-what-changed";
+    public const string ProjectCardChoose = "motif-project-card-choose";
+    public const string ProjectCardSettings = "motif-project-card-settings";
+    public const string ProjectCardOpenAnother = "motif-project-card-open-another";
+    public const string TechDemoGotIt = "motif-tech-demo-got-it";
+    /// <summary>The File menu, which holds the project commands the project menu button used to hold.</summary>
     public const string ProjectMenu = "motif-project-menu";
     public const string HelpButton = "motif-help-button";
     public const string SettingsButton = "motif-settings-button";
@@ -100,9 +114,6 @@ public static class AutomationIds
 
     /// <summary>The "words in Selection" caption under the Overview's first count.</summary>
     public const string OverviewSelectionLabel = "motif-overview-selection-label";
-
-    /// <summary>The project menu presenter, which carries no content of its own to name.</summary>
-    public const string ProjectMenuFlyout = "motif-project-menu-flyout";
 
     /// <summary>The Analyze texts reader's Read menu button.</summary>
     public const string ReaderReadMenu = "motif-reader-read-menu";

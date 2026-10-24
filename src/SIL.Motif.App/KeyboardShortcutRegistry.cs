@@ -22,6 +22,7 @@ internal enum KeyboardShortcutScope
     DiagnosticTree,
     NavigationRail,
     Table,
+    Menu,
 }
 
 internal enum KeyboardShortcutBehavior
@@ -75,6 +76,8 @@ internal enum KeyboardShortcutBehavior
     PreviousAction,
     OpenActionsMenu,
     OpenDetails,
+    ActivateMenuItem,
+    OpenMenu,
 }
 
 public sealed record KeyboardShortcutEntry(string Key, string Gesture, string Scope, string Action);
@@ -121,6 +124,10 @@ public static class KeyboardShortcutRegistry
         [ShortcutKey.F1] = Key.F1,
         [ShortcutKey.A] = Key.A,
         [ShortcutKey.D] = Key.D,
+        [ShortcutKey.E] = Key.E,
+        [ShortcutKey.V] = Key.V,
+        [ShortcutKey.T] = Key.T,
+        [ShortcutKey.H] = Key.H,
         [ShortcutKey.U] = Key.U,
         [ShortcutKey.C] = Key.C,
         [ShortcutKey.Y] = Key.Y,
@@ -178,6 +185,14 @@ public static class KeyboardShortcutRegistry
         var matches = candidates.Take(2).ToArray();
         return matches.Length == 1 ? matches[0] : null;
     }
+
+    /// <summary>The first registered binding of <paramref name="behavior"/> in <paramref name="scope"/>, the one a menu shows.</summary>
+    internal static KeyboardShortcutBinding? FirstBindingFor(KeyboardShortcutScope scope, KeyboardShortcutBehavior behavior) =>
+        Bindings.FirstOrDefault(binding => binding.Scope == scope && binding.Behavior == behavior);
+
+    /// <summary>The readable text of a binding's gesture on this platform, such as "Ctrl+,", as the Help catalog shows it.</summary>
+    internal static string DisplayTextFor(KeyboardShortcutBinding binding) =>
+        KeyboardShortcutCatalog.FormatGesture(binding.Gesture, CurrentPlatform, CurrentCulture);
 
     internal static bool Allows(KeyboardShortcutBinding binding, bool isTextInput, bool hasFocusedItem) =>
         binding.FocusRule switch
@@ -268,6 +283,7 @@ public static class KeyboardShortcutRegistry
         ShortcutScope.Morpheme => KeyboardShortcutScope.Morpheme,
         ShortcutScope.NavigationRail => KeyboardShortcutScope.NavigationRail,
         ShortcutScope.Table => KeyboardShortcutScope.Table,
+        ShortcutScope.Menu => KeyboardShortcutScope.Menu,
         _ => throw new InvalidOperationException($"Shortcut scope '{scope}' has no App route."),
     };
 

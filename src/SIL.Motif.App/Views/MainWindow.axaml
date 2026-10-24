@@ -26,115 +26,94 @@
   <LayoutTransformControl x:Name="RootLayoutTransform" ClipToBounds="True">
   <Grid RowDefinitions="Auto,*,Auto">
 
-    <!-- Top bar: the project menu, how fresh the numbers are, and Refresh. -->
+    <!-- Top bar, one row: the icon, the menus (behind a ≡ when narrow), and the project chip and Refresh. -->
     <Border x:Name="TopBar" Classes="topBar"
             chrome:WindowDecorationProperties.ElementRole="TitleBar">
-      <Grid VerticalAlignment="Center">
-        <Grid.ColumnDefinitions>
-          <ColumnDefinition Width="Auto" />
-          <ColumnDefinition Width="*" MaxWidth="{DynamicResource Component.TopBar.ProjectMenuMaxWidth}" />
-          <ColumnDefinition Width="*" />
-          <ColumnDefinition Width="Auto" />
-        </Grid.ColumnDefinitions>
+      <Grid x:Name="TopBarRow" ColumnDefinitions="Auto,Auto,Auto,*" VerticalAlignment="Center">
+        <Image Classes="brandLogo" Source="avares://SIL.Motif.App/Assets/motif-icon.png" />
 
-        <StackPanel Classes="topBarGroup brand" Orientation="Horizontal" VerticalAlignment="Center">
-          <Image Classes="brandLogo" Source="avares://SIL.Motif.App/Assets/motif-icon.png" />
-          <views:CopyableTextBlock Classes="brandName" Text="Motif" VerticalAlignment="Center" />
-        </StackPanel>
+        <Menu x:Name="MainMenu" Grid.Column="1" Classes="mainMenu" VerticalAlignment="Center"
+              chrome:WindowDecorationProperties.ElementRole="User"
+              AutomationProperties.Name="{x:Static app:MotifAppStrings.MainMenuAccessibleName}"
+              AutomationProperties.AutomationId="{x:Static app:AutomationIds.MainMenu}">
+          <MenuItem x:Name="FileMenu" Header="{x:Static app:MotifAppStrings.MenuFile}"
+                    AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProjectMenu}">
+            <MenuItem x:Name="SelectNewMenuItem" Header="{x:Static app:MotifAppStrings.MenuSelectNew}"
+                      IsEnabled="{Binding ProjectSwitchEnabled}" Command="{Binding SelectNewProjectCommand}"
+                      AutomationProperties.AutomationId="{x:Static app:AutomationIds.SelectNewProject}" />
+            <MenuItem x:Name="OpenRecentMenuItem" Header="{x:Static app:MotifAppStrings.MenuOpenRecent}">
+              <MenuItem.IsEnabled>
+                <MultiBinding Converter="{x:Static BoolConverters.And}">
+                  <Binding Path="ProjectSwitchEnabled" />
+                  <Binding Path="HasRecentProjects" />
+                </MultiBinding>
+              </MenuItem.IsEnabled>
+            </MenuItem>
+            <MenuItem x:Name="RefreshMenuItem" Header="{x:Static app:MotifAppStrings.MenuRefresh}"
+                      Command="{Binding RefreshCommand}" />
+            <MenuItem x:Name="ConfigureMenuItem" Header="{x:Static app:MotifAppStrings.MenuConfigure}"
+                      Command="{Binding ConfigureCommand}" ToolTip.ShowOnDisabled="True"
+                      ToolTip.Tip="{Binding ConfigureDetailText}"
+                      AutomationProperties.HelpText="{Binding ConfigureDetailText}" />
+            <Separator />
+            <MenuItem x:Name="ExitMenuItem" Header="{x:Static app:MotifAppStrings.MenuExit}" Click="OnExitClick" />
+          </MenuItem>
+          <MenuItem x:Name="EditMenu" Header="{x:Static app:MotifAppStrings.MenuEdit}">
+            <MenuItem x:Name="UndoMenuItem" Header="{x:Static app:MotifAppStrings.MenuUndo}" Tag="Undo" Click="OnEditMenuClick" />
+            <MenuItem x:Name="RedoMenuItem" Header="{x:Static app:MotifAppStrings.MenuRedo}" Tag="Redo" Click="OnEditMenuClick" />
+            <Separator />
+            <MenuItem x:Name="CopyMenuItem" Header="{x:Static app:MotifAppStrings.MenuCopy}" Tag="Copy" Click="OnEditMenuClick" />
+          </MenuItem>
+          <MenuItem x:Name="ViewMenu" Header="{x:Static app:MotifAppStrings.MenuView}">
+            <MenuItem x:Name="ZoomInMenuItem" Header="{x:Static app:MotifAppStrings.MenuZoomIn}" Tag="ZoomIn" Click="OnViewMenuClick" />
+            <MenuItem x:Name="ZoomOutMenuItem" Header="{x:Static app:MotifAppStrings.MenuZoomOut}" Tag="ZoomOut" Click="OnViewMenuClick" />
+            <MenuItem x:Name="ResetZoomMenuItem" Header="{x:Static app:MotifAppStrings.MenuResetZoom}" Tag="ResetZoom" Click="OnViewMenuClick" />
+          </MenuItem>
+          <MenuItem x:Name="ToolsMenu" Header="{x:Static app:MotifAppStrings.MenuTools}">
+            <MenuItem x:Name="OptionsMenuItem" Header="{x:Static app:MotifAppStrings.MenuOptions}" Tag="OpenSettings" Click="OnSettingsClick" />
+            <MenuItem x:Name="WritingSystemsMenuItem" Header="{x:Static app:MotifAppStrings.MenuWritingSystems}" Click="OnWritingSystemsGuideClick" />
+          </MenuItem>
+          <MenuItem x:Name="HelpMenu" Header="{x:Static app:MotifAppStrings.MenuHelp}">
+            <MenuItem x:Name="HelpTopicsMenuItem" Header="{x:Static app:MotifAppStrings.MenuHelpTopics}" Tag="ShowHelp" Click="OnHelpTopicsClick" />
+            <MenuItem x:Name="KeyboardShortcutsMenuItem" Header="{x:Static app:MotifAppStrings.MenuKeyboardShortcuts}" Tag="ShowShortcuts" Click="OnKeyboardShortcutsClick" />
+            <Separator />
+            <MenuItem x:Name="ReportProblemMenuItem" Header="{x:Static app:MotifAppStrings.MenuReportProblem}" Click="OnStatusReportProblemClick" />
+          </MenuItem>
+        </Menu>
 
-        <Button x:Name="ProjectMenuButton" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Left"
-                Theme="{DynamicResource OutlineButton}" Classes="Tertiary projectMenu"
-                chrome:WindowDecorationProperties.ElementRole="User"
-                IsEnabled="{Binding ProjectSwitchEnabled}"
-                AutomationProperties.Name="{x:Static app:MotifAppStrings.ProjectMenuAccessibleName}"
-                AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProjectMenu}">
-          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}">
-            <TextBlock Classes="projectName" Text="{Binding ProjectName}" TextTrimming="CharacterEllipsis"
-                       ToolTip.Tip="{Binding ProjectName}" />
-            <TextBlock Grid.Column="1" Classes="disclosure" Text="&#x25BE;" VerticalAlignment="Center" />
-          </Grid>
-          <Button.Flyout>
-            <Flyout Placement="BottomEdgeAlignedLeft" FlyoutPresenterClasses="projectMenu">
-              <StackPanel Classes="menu projectMenu">
-                <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" Click="OnProjectMenuEntryClick"
-                        Command="{Binding SelectNewProjectCommand}" AutomationProperties.Name="{x:Static app:MotifAppStrings.SelectNewAccessibleName}"
-                        AutomationProperties.AutomationId="{x:Static app:AutomationIds.SelectNewProject}">
-                  <StackPanel>
-                    <TextBlock Classes="menuTitle" Text="{x:Static app:MotifAppStrings.SelectNew}" />
-                    <TextBlock Classes="menuDetail" Text="{x:Static app:MotifAppStrings.SelectNewDetail}" />
-                  </StackPanel>
-                </Button>
-                <Button x:Name="OpenRecentButton" Classes="menuEntry" Theme="{DynamicResource BorderlessButton}"
-                        IsEnabled="{Binding HasRecentProjects}" AutomationProperties.Name="{x:Static app:MotifAppStrings.OpenRecentAccessibleName}">
-                  <StackPanel>
-                    <TextBlock Classes="menuTitle" Text="{x:Static app:MotifAppStrings.OpenRecent}" />
-                    <TextBlock Classes="menuDetail" Text="{Binding RecentProjectsText, StringFormat='{}{0} &#x203A;'}"
-                               TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
-                  </StackPanel>
-                  <Button.Flyout>
-                    <MenuFlyout Placement="RightEdgeAlignedTop" />
-                  </Button.Flyout>
-                </Button>
-                <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" Click="OnProjectMenuEntryClick"
-                        Command="{Binding ConfigureCommand}"
-                        AutomationProperties.Name="{x:Static app:MotifAppStrings.ConfigureAccessibleName}">
-                  <StackPanel>
-                    <TextBlock Classes="menuTitle" Text="{x:Static app:MotifAppStrings.Configure}" />
-                    <TextBlock Classes="menuDetail" Text="{Binding ConfigureDetailText}" />
-                  </StackPanel>
-                </Button>
-                <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" Click="OnWritingSystemsGuideClick"
-                        AutomationProperties.Name="{x:Static app:MotifAppStrings.WritingSystemsAndFontsAccessibleName}">
-                  <StackPanel>
-                    <TextBlock Classes="menuTitle" Text="{x:Static app:MotifAppStrings.WritingSystemsAndFonts}" />
-                    <TextBlock Classes="menuDetail" Text="{x:Static app:MotifAppStrings.WritingSystemsAndFontsDetail}" />
-                  </StackPanel>
-                </Button>
-              </StackPanel>
-            </Flyout>
-          </Button.Flyout>
-        </Button>
+        <Border x:Name="TopBarSeparator" Grid.Column="2" Classes="topBarSeparator" />
 
-        <StackPanel x:Name="TopBarActions" Grid.Column="3" Classes="topBarGroup" Orientation="Horizontal"
-                    VerticalAlignment="Center">
-          <Button Content="{x:Static app:MotifAppStrings.SeeWhatChanged}" Command="{Binding SeeWhatChangedCommand}"
-                  Theme="{DynamicResource OutlineButton}" Classes="Tertiary"
+        <!-- The chip shortens its words before it pushes Refresh out of the row; Refresh stays beside it. -->
+        <DockPanel x:Name="ProjectChipRow" Grid.Column="3" HorizontalAlignment="Left" VerticalAlignment="Center">
+          <Button x:Name="RefreshIconButton" DockPanel.Dock="Right" Classes="Tertiary refreshIcon"
+                  Theme="{DynamicResource BorderlessButton}"
+                  Content="{x:Static app:MotifAppStrings.RefreshIconGlyph}" Command="{Binding RefreshCommand}"
                   chrome:WindowDecorationProperties.ElementRole="User"
-                  IsVisible="{Binding ShowsSeeWhatChanged}" AutomationProperties.Name="{x:Static app:MotifAppStrings.SeeWhatChangedAccessibleName}" />
-          <Button Content="{x:Static app:MotifAppStrings.ParseAllWords}" Command="{Binding ParseAllWordsCommand}"
-                  Theme="{DynamicResource OutlineButton}" Classes="Tertiary"
-                  chrome:WindowDecorationProperties.ElementRole="User"
-                  IsVisible="{Binding ShowsParseAllWordsAction}"
-                  AutomationProperties.Name="{x:Static app:MotifAppStrings.ParseAllWordsAccessibleName}"
-                  AutomationProperties.AutomationId="{x:Static app:AutomationIds.ParseAllWords}"
-                  ToolTip.Tip="{x:Static app:MotifAppStrings.ParseAllWordsTip}" />
-          <Button x:Name="ChooseWhatToParseButton" Content="{x:Static app:MotifAppStrings.ChooseWhatToParse}" Command="{Binding ConfigureCommand}"
-                  Theme="{DynamicResource OutlineButton}" Classes="Tertiary"
-                  chrome:WindowDecorationProperties.ElementRole="User"
-                  IsVisible="{Binding ShowsChooseWhatToParseAction}"
-                  AutomationProperties.Name="{x:Static app:MotifAppStrings.ChooseWhatToParseAccessibleName}" />
-          <Button Content="{x:Static app:MotifAppStrings.Refresh}" Command="{Binding RefreshCommand}"
-                  Theme="{DynamicResource OutlineButton}" Classes="Tertiary"
-                  chrome:WindowDecorationProperties.ElementRole="User"
-                  IsVisible="{Binding ShowsRefreshAction}" AutomationProperties.Name="{x:Static app:MotifAppStrings.RefreshAccessibleName}"
+                  AutomationProperties.Name="{x:Static app:MotifAppStrings.RefreshAccessibleName}"
                   AutomationProperties.AutomationId="{x:Static app:AutomationIds.RefreshProject}"
-                  ToolTip.Tip="{x:Static app:MotifAppStrings.RefreshTip}" />
-        </StackPanel>
-
-        <DockPanel x:Name="FreshnessLine" Grid.Column="2" Classes="freshness" VerticalAlignment="Center"
-                   IsVisible="{Binding HasFreshness}">
-          <Ellipse DockPanel.Dock="Left" Classes="freshDot" Classes.current="{Binding FreshnessIsCurrent}"
-                   Classes.stale="{Binding FreshnessIsStale}" Classes.busy="{Binding FreshnessIsBusy}"
-                   Classes.refused="{Binding HasRefreshRefusal}" />
-          <views:CopyableTextBlock DockPanel.Dock="Left" Classes="freshLabel" Text="{Binding FreshnessLabel}"
-                                   TextTrimming="CharacterEllipsis"
-                                   Classes.current="{Binding FreshnessIsCurrent}"
-                                   Classes.stale="{Binding FreshnessIsStale}" Classes.busy="{Binding FreshnessIsBusy}"
-                                   Classes.refused="{Binding HasRefreshRefusal}"
-                                   AutomationProperties.AutomationId="{x:Static app:AutomationIds.FreshnessLabel}" />
-          <views:CopyableTextBlock Classes="muted freshDetail" Text="{Binding FreshnessDetail}"
-                                   VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
-                                   AutomationProperties.AutomationId="{x:Static app:AutomationIds.FreshnessDetail}" />
+                  ToolTip.Tip="{x:Static app:MotifAppStrings.Refresh}" />
+          <Button x:Name="ProjectChip" Classes="Tertiary projectChip" Theme="{DynamicResource BorderlessButton}"
+                  chrome:WindowDecorationProperties.ElementRole="User"
+                  AutomationProperties.Name="{Binding ProjectChipAccessibleName}"
+                  AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProjectChip}"
+                  ToolTip.Tip="{Binding ProjectChipAccessibleName}">
+            <DockPanel>
+              <Ellipse DockPanel.Dock="Left" Classes="freshDot" IsVisible="{Binding HasFreshness}"
+                       Classes.current="{Binding FreshnessIsCurrent}" Classes.stale="{Binding FreshnessIsStale}"
+                       Classes.busy="{Binding FreshnessIsBusy}" Classes.refused="{Binding HasRefreshRefusal}" />
+              <TextBlock DockPanel.Dock="Right" Classes="chipCaret" VerticalAlignment="Center"
+                         Text="{x:Static app:MotifAppStrings.ProjectChipCaret}" />
+              <TextBlock x:Name="ProjectNameLabel" DockPanel.Dock="Left" Classes="projectName" VerticalAlignment="Center"
+                         Text="{Binding ProjectName}" TextTrimming="CharacterEllipsis" />
+              <TextBlock x:Name="ProjectChipDetail" Classes="chipDetail" VerticalAlignment="Center"
+                         Text="{Binding ProjectChipDetailText}" TextTrimming="CharacterEllipsis" />
+            </DockPanel>
+            <Button.Flyout>
+              <Flyout Placement="BottomEdgeAlignedLeft" FlyoutPresenterClasses="projectCard">
+                <views:ProjectCardView x:Name="ProjectCardView" />
+              </Flyout>
+            </Button.Flyout>
+          </Button>
         </DockPanel>
       </Grid>
     </Border>
@@ -217,17 +196,16 @@
           <ScrollViewer x:Name="TechDemoNoticeViewport" HorizontalScrollBarVisibility="Disabled"
                         VerticalScrollBarVisibility="Auto">
             <Border x:Name="TechDemoNotice" IsVisible="{Binding ShowsTechDemoNotice}" Classes="notice">
-              <Grid x:Name="TechDemoNoticeLayout" RowDefinitions="Auto,Auto" ColumnDefinitions="*,Auto"
+              <Grid x:Name="TechDemoNoticeLayout" ColumnDefinitions="*,Auto"
                     ColumnSpacing="{DynamicResource Component.Notice.ActionGap}">
                 <views:CopyableTextBlock Text="{x:Static vm:TechDemoNoticeViewModel.NoticeText}"
-                                         VerticalAlignment="Center" TextWrapping="Wrap" />
+                                         AutomationProperties.Name="{x:Static vm:TechDemoNoticeViewModel.NoticeText}"
+                                         VerticalAlignment="Center" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
                 <StackPanel x:Name="TechDemoNoticeActions" Grid.Column="1" Orientation="Horizontal"
                             Spacing="{DynamicResource Intent.Space.Section}" VerticalAlignment="Center">
-                  <HyperlinkButton Classes="reviewLink" Content="Report a problem"
-                                   Command="{Binding TechDemoNotice.ReportProblemCommand}"
-                                   AutomationProperties.Name="Report a problem" />
-                  <Button Content="Got it" Command="{Binding TechDemoNotice.GotItCommand}"
-                          AutomationProperties.Name="Acknowledge the tech demo notice" />
+                  <Button Content="{x:Static app:MotifAppStrings.TechDemoNoticeGotIt}" Command="{Binding TechDemoNotice.GotItCommand}"
+                          AutomationProperties.Name="{x:Static app:MotifAppStrings.TechDemoNoticeGotItAccessibleName}"
+                          AutomationProperties.AutomationId="{x:Static app:AutomationIds.TechDemoGotIt}" />
                 </StackPanel>
               </Grid>
             </Border>

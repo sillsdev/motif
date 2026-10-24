@@ -306,6 +306,7 @@ public sealed class ParsimonyWorkspacePaneTests
             {
                 resultWindow.Close();
                 window.Close();
+                await workspace.DisposeAsync();
             }
         }, TimeSpan.FromMinutes(3));
     }
@@ -376,6 +377,7 @@ public sealed class ParsimonyWorkspacePaneTests
             {
                 hostWindow.Close();
                 window.Close();
+                await workspace.DisposeAsync();
             }
         }, TimeSpan.FromMinutes(3));
     }
@@ -436,6 +438,7 @@ public sealed class ParsimonyWorkspacePaneTests
             {
                 shellWindow.Close();
                 window.Close();
+                await workspace.DisposeAsync();
             }
         }, TimeSpan.FromMinutes(3));
     }
@@ -470,6 +473,7 @@ public sealed class ParsimonyWorkspacePaneTests
             {
                 shellWindow.Close();
                 window.Close();
+                await workspace.DisposeAsync();
             }
         }, TimeSpan.FromMinutes(3));
     }
@@ -479,18 +483,18 @@ public sealed class ParsimonyWorkspacePaneTests
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var report = ParsimonySampleReports.Listed(PageScreenshots.Token());
-            var latest = new TaskCompletionSource<CommandOutcome<ParsimonyLatestReportResponse>>(
+            var reports = new TaskCompletionSource<CommandOutcome<ParsimonyReportSetResponse?>>(
                 TaskCreationOptions.RunContinuationsAsynchronously);
-            var latestReads = 0;
+            var setReads = 0;
             var (workspace, window) = await PageScreenshots.OpenOverSampleData(advancedAiModeEnabled: true,
                 configure: (fake, _) =>
                 {
                     ParsimonyWorkspacePaneTests.ConfigureMixedFindingKinds(fake);
-                    fake.OnReadLatestParsimony((_, _) => Interlocked.Increment(ref latestReads) == 1
-                        ? Task.FromResult(CommandOutcome<ParsimonyLatestReportResponse>.Success(
-                            new ParsimonyLatestReportResponse(report.ReportId, report.Inputs.BundleId)))
-                        : latest.Task);
+                    var stored = fake.ParsimonySetHandler!;
+                    fake.ParsimonySetHandler = (request, cancellationToken) =>
+                        Interlocked.Increment(ref setReads) == 1
+                            ? stored(request, cancellationToken)
+                            : reports.Task.WaitAsync(cancellationToken);
                 });
             var shellWindow = new MotifTestWindow { Width = 1300, Height = 780 };
             Task? reload = null;
@@ -512,11 +516,12 @@ public sealed class ParsimonyWorkspacePaneTests
             }
             finally
             {
-                latest.TrySetResult(CommandOutcome<ParsimonyLatestReportResponse>.Refused(
+                reports.TrySetResult(CommandOutcome<ParsimonyReportSetResponse?>.Refused(
                     new Refusal("parsimony.no-report", FailureReason.NotFound, "No Parsimony Report yet.")));
                 if (reload is not null) await reload;
                 shellWindow.Close();
                 window.Close();
+                await workspace.DisposeAsync();
             }
         }, TimeSpan.FromMinutes(3));
     }
@@ -575,6 +580,7 @@ public sealed class ParsimonyWorkspacePaneTests
                 new ParsimonyNamedViewResponse(report.Inputs.BundleId, request.Query.View, 1,
                     ParsimonyMeasureStatus.Computed, [], rows.Length, rows.Length, null, false, rows, null, null)));
         };
+        ParsimonyStateScreenshots.ServeCurrentReportSet(fake, report);
     }
 
 }

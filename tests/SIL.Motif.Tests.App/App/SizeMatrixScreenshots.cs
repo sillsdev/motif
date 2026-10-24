@@ -262,28 +262,17 @@ public sealed class SizeMatrixScreenshots
 
     private static void OpenRecentProjects(MainWindow window)
     {
-        var projectMenu = Assert.IsType<Button>(window.FindControl<Button>("ProjectMenuButton"));
-        var flyout = Assert.IsType<Flyout>(projectMenu.Flyout);
-        flyout.ShowAt(projectMenu);
+        window.OpenFileMenu();
         PageScreenshots.Settle(window);
-        var content = Assert.IsAssignableFrom<Panel>(flyout.Content);
-        var openRecent = Assert.Single(content.Children.OfType<Button>(), button =>
-            AutomationProperties.GetName(button) == "Open a recent project");
-        Assert.NotNull(openRecent.Flyout);
-        openRecent.Flyout.ShowAt(openRecent);
+        window.OpenRecentMenu();
         PageScreenshots.Settle(window);
         Assert.NotEmpty(window.RecentProjectItems);
     }
 
     private static void CloseRecentProjects(MainWindow window)
     {
-        var projectMenu = window.FindControl<Button>("ProjectMenuButton")!;
-        var flyout = (Flyout)projectMenu.Flyout!;
-        var content = Assert.IsAssignableFrom<Panel>(flyout.Content);
-        var openRecent = content.Children.OfType<Button>().Single(button =>
-            AutomationProperties.GetName(button) == "Open a recent project");
-        openRecent.Flyout?.Hide();
-        flyout.Hide();
+        window.FindControl<MenuItem>("OpenRecentMenuItem")!.IsSubMenuOpen = false;
+        window.FindControl<MenuItem>("FileMenu")!.IsSubMenuOpen = false;
         PageScreenshots.Settle(window);
     }
 
@@ -478,7 +467,7 @@ internal static class ExpectedMatrixFindings
     [
         new("open-recent-projects", "popup-outside-window", new("FlyoutPresenter", Name: "motif-project-menu-flyout"), null, [..AllMatrixPoints], "The recent-project menu overlaps the top bar at these sizes.", "matrix/open-recent-projects-thin-100-light.png",
             "V25", "recent-projects menu overlaps the top bar", "UF"),
-        new("2c-texts-lists", "unreachable-control", new("WordRow", Name: "motif-word-row-lists-hawajafika-row"), null, [new("thin", 150, "light"), new("thin", 150, "dark")], "Word rows with always-visible actions are wider than the list viewport and its scroll route.", "matrix/2c-texts-lists-thin-150-light.png",
+        new("2c-texts-lists", "unreachable-control", new("WordRow", Name: "motif-word-row-lists-hawajafika-row"), null, [new("thin", 150, "dark")], "Word rows with always-visible actions are wider than the list viewport and its scroll route.", "matrix/2c-texts-lists-thin-150-light.png",
             "H02", "list word row beyond its scroll route", "Analyze texts"),
         new("2c-texts-lists", "unreachable-control", new("Button", Name: "motif-handoff-list"), null, [new("thin", 150, "light"), new("thin", 150, "dark")], "The list's AI Handoff action sits beyond the narrow page at this zoom.", "matrix/2c-texts-lists-thin-150-light.png",
             "H02", "list handoff action beyond the page", "Analyze texts"),

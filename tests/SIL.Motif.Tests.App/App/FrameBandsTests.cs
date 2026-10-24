@@ -2,6 +2,8 @@ using SIL.Motif.App;
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
+using Avalonia.Headless;
+using Avalonia.Input;
 using Avalonia.Controls.Presenters;
 using Avalonia.LogicalTree;
 using Avalonia.VisualTree;
@@ -128,14 +130,48 @@ public sealed class FrameBandsTests
     private static Rect InWindow(Control control, Window window) =>
         new Rect(control.Bounds.Size).TransformToAABB(control.TransformToVisual(window)!.Value);
 
+    [Fact]
+    public void GotItAccessKeyDismissesAndRemembersTheFirstRunNotice()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var preferences = new MemoryUserPreferencesStore();
+            var notice = new TechDemoNoticeViewModel(new TechDemoNoticePreferencesAdapter(preferences));
+            var (workspace, window) = FakeComposedWindow.Create(techDemoNotice: notice, preferencesStore: preferences);
+            try
+            {
+                window.Show();
+                PageScreenshots.Settle(window);
+                var band = window.FindControl<Border>("TechDemoNotice")!;
+                Assert.True(notice.IsVisible && band.IsEffectivelyVisible);
+                Assert.False(preferences.Current.HasSeenTechDemoNotice);
+                Assert.True(window.FindControl<Button>("ProjectChip")!.Focus());
+                window.KeyPress(Key.LeftAlt, RawInputModifiers.Alt, PhysicalKey.AltLeft, null);
+                window.KeyPressQwerty(PhysicalKey.G, RawInputModifiers.Alt);
+                window.KeyReleaseQwerty(PhysicalKey.G, RawInputModifiers.Alt);
+                window.KeyRelease(Key.LeftAlt, RawInputModifiers.None, PhysicalKey.AltLeft, null);
+                PageScreenshots.Settle(window);
+                Assert.False(notice.IsVisible, "Alt+G must acknowledge the first-run notice.");
+                Assert.False(band.IsEffectivelyVisible);
+                Assert.True(preferences.Current.HasSeenTechDemoNotice);
+            }
+            finally
+            {
+                window.Close();
+                await workspace.DisposeAsync();
+            }
+        }, TimeSpan.FromSeconds(60));
+    }
+
     [Theory]
-    [InlineData(620, 100, true)]
-    [InlineData(639, 100, true)]
-    [InlineData(640, 100, false)]
-    [InlineData(940, 150, true)]
-    [InlineData(960, 150, false)]
-    [InlineData(1240, 100, false)]
-    public void TheNoticeNeverOverlapsItsActionsAndStacksThemInAWindowNarrowerThan640(int width, int zoom, bool stacked)
+    [InlineData(620, 100)]
+    [InlineData(639, 100)]
+    [InlineData(640, 100)]
+    [InlineData(640, 150)]
+    [InlineData(940, 150)]
+    [InlineData(960, 150)]
+    [InlineData(1240, 100)]
+    public void TheNoticeIsOneLineWithGotItBesideItsTextAtEveryWidth(int width, int zoom)
     {
         AvaloniaHeadlessFixture.RunUntilComplete(() =>
         {
@@ -144,18 +180,24 @@ public sealed class FrameBandsTests
             {
                 window.Show();
                 workspace.CurrentPage = WorkspacePage.Overview;
-                LayoutInvariantFixtures.Apply(window, new LayoutCell(width, 700, zoom));
+                LayoutInvariantFixtures.Apply(window, new LayoutCell(width, 600, zoom));
                 var actions = window.FindControl<StackPanel>("TechDemoNoticeActions")!;
                 var text = window.FindControl<Border>("TechDemoNotice")!.GetVisualDescendants()
                     .OfType<SIL.Motif.App.Views.CopyableTextBlock>().First();
                 Assert.True(actions.IsEffectivelyVisible && text.IsEffectivelyVisible);
-                Assert.Equal(stacked ? 1 : 0, Grid.GetRow(actions));
+                var buttons = actions.Children.OfType<Button>().ToArray();
+                var gotIt = Assert.Single(buttons);
+                Assert.Equal("Got It", Assert.IsType<string>(gotIt.Content).Replace("_", "", StringComparison.Ordinal));
+                Assert.Single(text.TextLayout.TextLines);
+                Assert.Equal(TechDemoNoticeViewModel.NoticeText, text.Text);
+                Assert.Equal(TechDemoNoticeViewModel.NoticeText, AutomationProperties.GetName(text));
+                Assert.Equal(1, Grid.GetColumn(actions));
+                Assert.Equal(0, Grid.GetRow(actions));
                 var textBox = InWindow(text, window);
                 var actionBox = InWindow(actions, window);
                 Assert.False(textBox.Intersects(actionBox), $"The notice's text {textBox} overlaps its actions {actionBox}.");
                 var gap = (double)window.FindResource("Component.Notice.ActionGap")!;
-                if (stacked) Assert.True(actionBox.Top >= textBox.Bottom - 0.5, "Stacked actions sit below the text.");
-                else Assert.True(actionBox.Left - textBox.Right >= gap * zoom / 100d - 1, "Side by side, a gap separates them.");
+                Assert.True(actionBox.Left - textBox.Right >= gap * zoom / 100d - 1, "Side by side, a gap separates them.");
             }
             finally
             {

@@ -1,6 +1,10 @@
 {
   "shortcut-group-navigation-rail": {"title":"Pages rail","description":"Keyboard shortcuts for the Pages rail.","source":"Motif interface text"},
   "shortcut-scope-navigation-rail": {"title":"Pages rail","description":"Available when the current page in the Pages rail has keyboard focus.","source":"Motif interface text"},
+  "shortcut-group-menu": {"title":"Menus","description":"Keyboard shortcuts for the menu bar.","source":"Motif interface text"},
+  "shortcut-scope-menu": {"title":"Menus","description":"Available when a menu item has keyboard focus.","source":"Motif interface text"},
+  "shortcut-activate-menu-item": {"title":"Choose a menu item","description":"Choose the menu item that has keyboard focus, as Enter does.","source":"Motif interface text"},
+  "shortcut-open-menu": {"title":"Open a menu","description":"Open the File, Edit, View, Tools or Help menu by the underlined letter in its name.","source":"Motif interface text"},
   "shortcut-toggle-side-panel": {"title":"Show or hide the side panel","description":"Show or hide the current page's side panel while keeping that page open.","source":"Motif interface text"},
   "shortcut-page-title": {"title":"Keyboard shortcuts","description":"The keyboard shortcuts available in Motif.","source":"Motif interface text"},
   "shortcut-group-analyze-texts": {"title":"Analyze texts","description":"Keyboard shortcuts for reading and reviewing a Text.","source":"Motif interface text"},

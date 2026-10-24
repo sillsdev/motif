@@ -709,8 +709,8 @@ public sealed partial class ComponentStyleTests
             Border.PaddingProperty, "Component.TopBar.WindowsChromePadding");
         yield return new("TopBar", "the macOS traffic-light inset", host => Add(host, Box("topBar", "macChrome")),
             Border.PaddingProperty, "Component.TopBar.MacChromePadding");
-        yield return new("TopBar", "the project menu", host => Add(host, Press("projectMenu")),
-            Button.MaxWidthProperty, "Component.TopBar.ProjectMenuMaxWidth");
+        yield return new("TopBar", "the project name", host => Add(host, With(new TextBlock { Text = "Motif" }, ["projectName"])),
+            TextBlock.MaxWidthProperty, "Component.TopBar.ProjectNameMaxWidth");
         yield return new("TopBar", "the parse progress bar", host => Add(host, With(new ProgressBar(), ["topBarParseProgress"])),
             ProgressBar.WidthProperty, "Component.TopBar.ParseProgressWidth");
         yield return new("TopBar", "the parse progress bar", host => Add(host, With(new ProgressBar(), ["topBarParseProgress"])),

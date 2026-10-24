@@ -89,6 +89,7 @@ internal static class HeadlessClick
         var clicks = 0;
         void OnClicked(object? sender, RoutedEventArgs e) => clicks++;
         if (control is Button button) button.Click += OnClicked;
+        if (control is MenuItem menuItem) menuItem.AddHandler(MenuItem.ClickEvent, OnClicked, handledEventsToo: true);
         try
         {
             window.MouseMove(aimed);
@@ -100,6 +101,7 @@ internal static class HeadlessClick
         finally
         {
             if (control is Button clickable) clickable.Click -= OnClicked;
+            if (control is MenuItem clickableItem) clickableItem.RemoveHandler(MenuItem.ClickEvent, OnClicked);
         }
         Dispatcher.UIThread.RunJobs();
         return clicks;
