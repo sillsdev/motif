@@ -213,11 +213,11 @@ public sealed class RealParserBatchTests(PristineProjectFixture pristine)
     }
 
     [RealParserFact]
-    public async Task BatchStatisticsRecreatesVersionSevenCacheWithCompiledOutputKeys()
+    public async Task BatchStatisticsRecreatesThePreviousCacheAndReadsDeterministicWork()
     {
         using var cache = pristine.NewScratch();
         RealParserProject.PrepareForParsing(cache, "m", "o", "t", "i", "f", "a", "b");
-        var root = Path.Combine(Path.GetTempPath(), "motif-pangloss-stats-v8-" + Guid.NewGuid().ToString("N"));
+        var root = Path.Combine(Path.GetTempPath(), "motif-pangloss-stats-v9-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(root);
         var cachePath = Path.Combine(root, "stats.sqlite");
         var word = SeededProject.FirstForm;
@@ -228,17 +228,17 @@ public sealed class RealParserBatchTests(PristineProjectFixture pristine)
             var first = await invoker.RunAsync(
                 new PanGlossRequest.Batch(cache.ProjectId.Path, [word], TimeSpan.FromSeconds(5), cachePath)
                     { ThreadCount = 1 },
-                "test:stats-v8-prime", CancellationToken.None);
+                "test:stats-v9-prime", CancellationToken.None);
             Assert.IsType<PanGlossOutcome.Completed>(first);
-            SetCacheSchemaVersion(cachePath, 7);
+            SetCacheSchemaVersion(cachePath, PanGlossInterfaceVersions.StatsCacheVersion - 1);
 
             var second = await invoker.RunAsync(
                 new PanGlossRequest.Batch(cache.ProjectId.Path, [word], TimeSpan.FromSeconds(5), cachePath)
                     { ThreadCount = 1 },
-                "test:stats-v8-recreate", CancellationToken.None);
+                "test:stats-v9-recreate", CancellationToken.None);
 
             Assert.IsType<PanGlossOutcome.Completed>(second);
-            Assert.Equal(8, ReadInt64(cachePath,
+            Assert.Equal(PanGlossInterfaceVersions.StatsCacheVersion, ReadInt64(cachePath,
                 "SELECT schema_version FROM cache_identity WHERE cache_id = 1;"));
             var objectKeys = ReadStrings(cachePath, "SELECT key FROM object ORDER BY object_id;");
             Assert.Contains(objectKeys, key => key.StartsWith("lex_entry:", StringComparison.Ordinal));
@@ -248,12 +248,16 @@ public sealed class RealParserBatchTests(PristineProjectFixture pristine)
                 key.Contains("#allo", StringComparison.Ordinal));
 
             var statistics = PanGlossBatchStatisticsReader.Read(cachePath, [word]);
+            var counters = statistics.Words[word];
+            Assert.NotNull(counters.WorkSteps);
+            Assert.Equal(ReadInt64(cachePath, "SELECT work FROM word LIMIT 1;"), counters.WorkSteps);
+            Assert.True(counters.WorkSteps >= counters.Attempts);
             Assert.Contains(statistics.ObjectTimings,
                 row => row.Key.StartsWith("lex_entry:", StringComparison.Ordinal));
 
             var query = await invoker.RunAsync(new PanGlossRequest.Stats(cache.ProjectId.Path, cachePath,
                     ["--group", "word", "--format", "jsonl"]),
-                "test:stats-v8-query", CancellationToken.None);
+                "test:stats-v9-query", CancellationToken.None);
             var statsOutput = Assert.IsType<PanGlossOutcome.Completed>(query).Output;
             var rows = statsOutput.Split('\n', StringSplitOptions.RemoveEmptyEntries);
             Assert.Equal(2, rows.Length);

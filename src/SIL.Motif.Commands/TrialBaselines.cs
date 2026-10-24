@@ -1,5 +1,6 @@
 using SIL.Motif.Commands.Assess;
 using SIL.Motif.Commands.Requests;
+using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
@@ -17,8 +18,15 @@ public static class TrialBaselines
     /// <summary>Assesses the words, or the project's default Selection when none are named.</summary>
     public static CommandOutcome<AssessCommandResponse> Assess(string projectPath, IReadOnlyList<string> words,
         string managedRoot, string? parserPath, CancellationToken cancellationToken) =>
+        Assess(projectPath, words, managedRoot, parserPath, cancellationToken, null);
+
+    /// <summary>Measures the before words under the deterministic limits chosen for their Trial.</summary>
+    internal static CommandOutcome<AssessCommandResponse> Assess(string projectPath, IReadOnlyList<string> words,
+        string managedRoot, string? parserPath, CancellationToken cancellationToken, TrialLimits? limits) =>
         AssessCommand.Assess(new AssessRequest(projectPath,
-            words.Count == 0 ? null : new SelectionRequest(false, [], words, false, null)),
+            words.Count == 0 ? null : new SelectionRequest(false, [], words, false, null),
+            PerWordLimitMs: limits?.PerWordLimit is { } time ? (int)time.TotalMilliseconds : null,
+            PerWordStepLimit: limits?.PerWordStepLimit),
             managedRoot, parserPath ?? PanGlossExecutable.TryLocate(), null, cancellationToken);
 
     /// <summary>
@@ -36,12 +44,18 @@ public static class TrialBaselines
     public static CommandOutcome<JobEnqueuedResponse> EnqueueWithBaseline(EnqueueTrialRequest request,
         string managedRoot, string? parserPath, CancellationToken cancellationToken,
         Action<string>? onBaselineUnavailable = null) =>
-        EnqueueWithBaseline(request, words => Assess(request.FwDataPath, words, managedRoot, parserPath,
-            cancellationToken), onBaselineUnavailable, parserPath ?? SIL.Motif.Host.Parser.PanGlossExecutable.TryLocate());
+        EnqueueWithBaseline(request, (words, limits) => Assess(request.FwDataPath, words, managedRoot, parserPath,
+            cancellationToken, limits), onBaselineUnavailable, parserPath ?? SIL.Motif.Host.Parser.PanGlossExecutable.TryLocate());
 
     /// <summary>As the other overload, with the Baseline measurement supplied by the caller.</summary>
     internal static CommandOutcome<JobEnqueuedResponse> EnqueueWithBaseline(EnqueueTrialRequest request,
         Func<IReadOnlyList<string>, CommandOutcome<AssessCommandResponse>> assess,
+        Action<string>? onBaselineUnavailable = null, string? expectedParserPath = null) =>
+        EnqueueWithBaseline(request, (words, _) => assess(words), onBaselineUnavailable, expectedParserPath);
+
+    /// <summary>Passes one frozen limit policy to the before measurement and the queued Trial.</summary>
+    internal static CommandOutcome<JobEnqueuedResponse> EnqueueWithBaseline(EnqueueTrialRequest request,
+        Func<IReadOnlyList<string>, TrialLimits?, CommandOutcome<AssessCommandResponse>> assess,
         Action<string>? onBaselineUnavailable = null, string? expectedParserPath = null)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -49,8 +63,11 @@ public static class TrialBaselines
         var resolved = JobCommands.ResolveTrialWords(request);
         if (!resolved.Succeeded) return CommandOutcome<JobEnqueuedResponse>.Refused(resolved.Refusal!);
         var words = resolved.Value;
+        var frozen = JobCommands.FreezeTrialLimits(request);
+        if (!frozen.Succeeded) return CommandOutcome<JobEnqueuedResponse>.Refused(frozen.Refusal!);
+        request = frozen.Value!;
         CommandOutcome<AssessCommandResponse> before;
-        try { before = assess(words ?? []); }
+        try { before = assess(words ?? [], request.Limits); }
         catch (Exception exception) when (onBaselineUnavailable is not null && exception is not OperationCanceledException)
         {
             // A project that cannot be assessed here still queues its Trial; the caller is told what is missing.

@@ -91,6 +91,7 @@ internal static class AssessmentWordRows
             MissedApproved = word.MissedApproved,
             Attempts = word.Attempts,
             Passes = word.Passes,
+            WorkSteps = word.WorkSteps,
             Origin = word.Origin,
         };
         return row with { FixFirst = FixFirst(row) };

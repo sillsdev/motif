@@ -22,6 +22,7 @@ using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Analysis;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.LcmUtils;
+using SIL.Motif.Host.Parser;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Tests.Parser;
@@ -124,6 +125,61 @@ public sealed class DeterministicAssessCommandTests : IDisposable
         Assert.NotNull(estimate);
         Assert.Equal(800m, estimate.EstimatedMilliseconds);
         Assert.Equal(8_000, estimate.PerWordTimeLimitMs);
+    }
+
+    [Theory]
+    [InlineData(true, "none")]
+    [InlineData(false, "tsv")]
+    [InlineData(false, "morphology")]
+    [InlineData(false, "none")]
+    public void ARecoveredRetryIsRecordedWithItsFinalCounters(bool retryStatisticsAvailable, string finalFields)
+    {
+        using var seeded = NewSeededScratch();
+        var cachePath = Path.Combine(_managedRootsParent, "retry-first-pass.sqlite");
+        WriteStatsCacheWithWork(cachePath, ("motifa", 11, 2, 777, 725_001L));
+        var cacheDigest = BatchInvocationEvidence.DigestFile(cachePath);
+        var retryStatistics = retryStatisticsAvailable
+            ? new PanGlossWordStatistics(29, 8, 1_200_000L) { WorkSteps = 2900 }
+            : null;
+        var recoveredWord = new WordAnalysis(0, "motifa", 1200, WordOutcome.Analysed, "recovered")
+        {
+            Morphology = new ParseWordEvidence(ParseMorphEvidence.Schema, 0, "motifa", 1200,
+                false, false, false, [], []) { Attempts = finalFields == "none" ? null : 29 },
+            WasRetried = true,
+            Steps = finalFields == "tsv" ? 29 : null,
+            WorkSteps = finalFields == "tsv" ? 2900 : null,
+            RetryStatistics = retryStatistics,
+        };
+        var assessor = new FakeAssessor("fake-assessor", CollectedKinds, kind => kind switch
+        {
+            AssessmentKind.ParseTime => new AssessmentRaw.Batch(new BatchAnalysis(
+                [recoveredWord], 700, seeded.FwDataPath, []) { PerWordStepLimit = StepCap.Default }),
+            AssessmentKind.ObjectTiming => new AssessmentRaw.FileCache(cachePath, cacheDigest),
+            _ => new AssessmentRaw.WordMeasurements([]),
+        })
+        {
+            CaptureEvidence = (scope, candidate) => FakeAssessmentEvidence.Capture(
+                _managedRootsParent, scope, candidate),
+        };
+
+        var outcome = AssessCommand.Run(new AssessRequest(seeded.FwDataPath,
+            new SelectionRequest(false, [], ["motifa"], false, null)), NewManagedRoot(), assessor,
+            NewInvoker(), null, CancellationToken.None);
+
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        int? expectedAttempts = retryStatisticsAvailable || finalFields != "none" ? 29 : null;
+        long? expectedWork = retryStatisticsAvailable || finalFields == "tsv" ? 2900 : null;
+        var responseWord = Assert.Single(outcome.Value!.Words);
+        Assert.Equal(expectedAttempts, responseWord.Attempts);
+        Assert.Equal(expectedAttempts, responseWord.Morphology!.Attempts);
+        Assert.Equal(retryStatisticsAvailable ? 8 : null, responseWord.Passes);
+        Assert.Equal(expectedWork, responseWord.WorkSteps);
+        var parseMeasurement = Assert.Single(outcome.Value.Measurements, item => item.Kind == "ParseTime");
+        var storedWord = Assert.Single(OpenRepository(seeded.FwDataPath).Get(parseMeasurement.AssessmentId).Words!);
+        Assert.Equal(expectedAttempts, storedWord.Attempts);
+        Assert.Equal(retryStatisticsAvailable ? 8 : null, storedWord.Passes);
+        Assert.Equal(expectedWork, storedWord.WorkSteps);
+        Assert.Equal(expectedAttempts, storedWord.Morphology!.Attempts);
     }
 
     [Fact]
@@ -890,7 +946,7 @@ public sealed class DeterministicAssessCommandTests : IDisposable
     }
 
     [Theory]
-    [InlineData(null, null, null, 500000, 20_000)]
+    [InlineData(null, null, null, 500000, 200_000)]
     [InlineData(4000, 150000, null, 150000, 4000)]
     [InlineData(4000, 150000, 750000, 750000, 4000)]
     public void TheRunUsesRequestLimitsBeforeProjectConfiguredLimits(
@@ -1812,6 +1868,46 @@ public sealed class DeterministicAssessCommandTests : IDisposable
         params (string Word, int Attempts, int Passes, int ObjectAttempts, long SelfTimeNs)[] words) =>
         WriteStatsCache(path, 0L, words);
 
+    private static void WriteStatsCacheWithWork(string path,
+        params (string Word, int Attempts, int Passes, long WorkSteps, long ElapsedNs)[] words)
+    {
+        using var connection = new SqliteConnection(new SqliteConnectionStringBuilder
+        {
+            DataSource = path,
+            Mode = SqliteOpenMode.ReadWriteCreate,
+            Pooling = false,
+        }.ToString());
+        connection.Open();
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = """
+                CREATE TABLE cache_identity (cache_id INTEGER PRIMARY KEY, schema_version INTEGER NOT NULL);
+                INSERT INTO cache_identity VALUES (1, 9);
+                CREATE TABLE word (word_id INTEGER PRIMARY KEY, form TEXT NOT NULL, elapsed_ns INTEGER NOT NULL,
+                    attempts INTEGER NOT NULL, passes INTEGER NOT NULL, work INTEGER);
+                CREATE TABLE object (object_id INTEGER PRIMARY KEY, key TEXT NOT NULL, kind TEXT NOT NULL,
+                    label TEXT NOT NULL, identity_quality TEXT NOT NULL);
+                CREATE TABLE fact (word_id INTEGER NOT NULL, object_id INTEGER NOT NULL,
+                    direction TEXT NOT NULL, attempts INTEGER NOT NULL, self_time_ns INTEGER NOT NULL);
+                """;
+            command.ExecuteNonQuery();
+        }
+        foreach (var (word, attempts, passes, workSteps, elapsedNs) in words)
+        {
+            using var insert = connection.CreateCommand();
+            insert.CommandText = """
+                INSERT INTO word (form, elapsed_ns, attempts, passes, work)
+                VALUES ($form, $elapsedNs, $attempts, $passes, $workSteps);
+                """;
+            insert.Parameters.AddWithValue("$form", word);
+            insert.Parameters.AddWithValue("$elapsedNs", elapsedNs);
+            insert.Parameters.AddWithValue("$attempts", attempts);
+            insert.Parameters.AddWithValue("$passes", passes);
+            insert.Parameters.AddWithValue("$workSteps", workSteps);
+            insert.ExecuteNonQuery();
+        }
+    }
+
     private static void WriteStatsCache(string path,
         params (string Word, int Attempts, int Passes, int ObjectAttempts, long SelfTimeNs, long ElapsedNs)[] words)
     {
@@ -1825,7 +1921,7 @@ public sealed class DeterministicAssessCommandTests : IDisposable
         using var command = connection.CreateCommand();
         command.CommandText = """
             CREATE TABLE cache_identity (cache_id INTEGER PRIMARY KEY, schema_version INTEGER NOT NULL);
-            INSERT INTO cache_identity VALUES (1, 8);
+            INSERT INTO cache_identity VALUES (1, 9);
             CREATE TABLE word (
                 word_id INTEGER PRIMARY KEY, form TEXT NOT NULL, elapsed_ns INTEGER NOT NULL,
                 attempts INTEGER NOT NULL, passes INTEGER NOT NULL, capped INTEGER NOT NULL,

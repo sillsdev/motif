@@ -557,6 +557,27 @@ public sealed class GrammarCheckQueryTests : IDisposable
     }
 
     [Fact]
+    public void AMalformedReportRetainsTheParserContractAndReadFailureForDiagnosis()
+    {
+        var fwDataPath = _pristine.CopyProjectFile();
+        Capture(fwDataPath);
+        var report = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory,
+            "TestFixtures", "GrammarHealth", "pangloss-v0.10.0-producer.json")))!.AsObject();
+        report.Remove("locale");
+        var outcome = GrammarCheckQuery.Query(new GrammarCheckRequest(fwDataPath), new FakeInvoker
+        {
+            Respond = _ => new PanGlossOutcome.Completed(report.ToJsonString(), string.Empty, TimeSpan.Zero),
+        }, CancellationToken.None);
+
+        Assert.False(outcome.Succeeded);
+        Assert.Equal("grammarcheck.malformed-findings", outcome.Refusal!.Code);
+        Assert.Equal(PanGlossInterfaceVersions.SourceTag, outcome.Refusal.Facts["parserSourceTag"]);
+        Assert.Equal("4", outcome.Refusal.Facts["expectedSchemaVersion"]);
+        Assert.Contains("locale", outcome.Refusal.Facts["parseError"], StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(outcome.Refusal.Facts["parseError"], outcome.Refusal.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void AReportWithTheOldFindingsMemberIsRejected()
     {
         var fwDataPath = _pristine.CopyProjectFile();

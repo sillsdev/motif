@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Microsoft.Data.Sqlite;
 using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.Parser;
 
@@ -20,7 +21,9 @@ namespace SIL.Motif.Host.Assess;
 /// </remarks>
 internal static class StoppedWordRetryRunner
 {
-    internal sealed record Outcome(string Tsv, string Analyses, BatchInvocationEvidence Evidence);
+    internal sealed record Outcome(string Tsv, string Analyses, BatchInvocationEvidence Evidence,
+        IReadOnlySet<int> RetriedIndices,
+        IReadOnlyDictionary<string, PanGlossWordStatistics>? RetryStatistics);
 
     /// <summary>Returns the merged evidence, or null when there is nothing to retry or the retry could not be trusted.</summary>
     internal static async Task<Outcome?> RunAsync(
@@ -38,12 +41,18 @@ internal static class StoppedWordRetryRunner
             limit.TotalMilliseconds * StoppedWordRetry.Multiplier, int.MaxValue - 1));
         var retryWords = chosen.Select(row => row.Word).ToArray();
         var retryDirectory = paths.DirectoryFor(Guid.NewGuid().ToString("N"));
+        var retryStatsPath = first.StatsCachePath is null ? null : Path.Combine(retryDirectory, "retry-stats.sqlite");
         AssessmentArtifactLease? lease = null;
         try
         {
-            var request = new PanGlossRequest.Batch(evidence.SourcePath, retryWords, retryLimit, null,
+            var request = new PanGlossRequest.Batch(evidence.SourcePath, retryWords, retryLimit, retryStatsPath,
                 first.PerWordStepLimit, retryDirectory)
-            { CollectAnalyses = true, OnAdmissionWait = onAdmissionWait, ThreadCount = 1 };
+            {
+                CollectAnalyses = true,
+                AllowMissingStatsCache = true,
+                OnAdmissionWait = onAdmissionWait,
+                ThreadCount = 1,
+            };
             var outcome = await invoker.RunAsync(request, "assess:retry-stopped", cancellationToken)
                 .ConfigureAwait(false);
             lease = (outcome as PanGlossOutcome.Completed)?.ArtifactLease;
@@ -61,6 +70,7 @@ internal static class StoppedWordRetryRunner
             if (retryRows.Count != retryWords.Length || retryRows.Where((row, i) =>
                 row.Index != i || row.Word != retryWords[i]).Any())
                 return Failed("the retry run did not return one ordered row for every retried word");
+            var retryStatistics = ReadRetryStatistics(retryStatsPath, retryWords);
 
             var merged = Merge(tsv, analyses, chosen.Select(row => row.Index).ToArray(), done.Output, retryAnalyses);
             if (merged is null) return Failed("the retry rows could not be merged into the first-pass files");
@@ -94,7 +104,7 @@ internal static class StoppedWordRetryRunner
                 TsvSha256 = BatchInvocationEvidence.DigestFile(evidence.TsvPath),
                 AnalysesSha256 = BatchInvocationEvidence.DigestFile(evidence.AnalysesPath),
                 StoppedWordRetry = record,
-            });
+            }, chosen.Select(row => row.Index).ToHashSet(), retryStatistics);
         }
         finally
         {
@@ -111,7 +121,22 @@ internal static class StoppedWordRetryRunner
                 StoppedWordRetry = new StoppedWordRetry((int)retryLimit.TotalMilliseconds, stopped.Length,
                     chosen.Length, 0, chosen.Length, string.Empty, string.Empty, string.Empty, string.Empty,
                     string.Empty, string.Join('\n', rows)) { Failure = reason },
-            });
+            }, new HashSet<int>(), null);
+        }
+    }
+
+    private static IReadOnlyDictionary<string, PanGlossWordStatistics>? ReadRetryStatistics(
+        string? cachePath, IReadOnlyCollection<string> words)
+    {
+        if (cachePath is null || !File.Exists(cachePath)) return null;
+        try
+        {
+            return PanGlossBatchStatisticsReader.Read(cachePath, words, _ => 0, maxObjectTimingRows: 0).Words;
+        }
+        catch (Exception exception) when (exception is IOException or InvalidDataException or
+            UnauthorizedAccessException or SqliteException or ArgumentException)
+        {
+            return null;
         }
     }
 

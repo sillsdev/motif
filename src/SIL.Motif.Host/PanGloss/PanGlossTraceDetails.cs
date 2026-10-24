@@ -20,6 +20,12 @@ public sealed record PanGlossTraceDetails(
     bool Guessed,
     IReadOnlyList<PanGlossTraceCategory> Categories)
 {
+    /// <summary>
+    /// The parser's total work reservations for this word across all phases, or <see langword="null"/> when the
+    /// document does not carry <c>search.workSteps</c>.
+    /// </summary>
+    public long? WorkSteps { get; init; }
+
     /// <summary>Whether the search explored everything it meant to.</summary>
     public bool ReportedCompleted { get; init; } = true;
     public bool SearchCompleted => ReportedCompleted && !Capped && !TimedOut && !InvalidShape;

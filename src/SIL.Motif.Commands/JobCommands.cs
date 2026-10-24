@@ -8,9 +8,11 @@ using System.Linq;
 using System.Text.Json;
 using System.Security.Cryptography;
 using System.Threading;
+using SIL.Motif.Commands.Queries;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Commands.Store;
 using SIL.Motif.Contract;
+using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Canonicalization;
 using SIL.Motif.Contract.Ids;
@@ -18,6 +20,7 @@ using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Contract.Parsing;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Host.Config;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Model.DryRun;
 using SIL.Motif.Model.Effects;
@@ -174,13 +177,46 @@ public static class JobCommands
             }
             var words = request.Words ?? (request.AllWords ? null : DerivedTrialWords(proposal));
             var input = new TrialJobInput(proposalJson, request.Scope, words, request.AllWords, prerequisites,
-                request.Limits, request.BaselineAssessmentIds, request.NegativeWords);
+                request.Limits ?? ResolveTrialLimits(database, project, request.Scope),
+                request.BaselineAssessmentIds, request.NegativeWords);
             var inputJson = JsonSerializer.Serialize(input, MotifJson.CreateOptions());
             var created = jobs.Create(jobId, workspaceKey, TrialKind,
                 JobParserPin.Stamp(inputJson, parserPath), NowStamp());
             return CommandOutcome<JobEnqueuedResponse>.Success(
                 new JobEnqueuedResponse(created.JobId, TrialKind, workspaceKey));
         });
+    }
+
+    /// <summary>Snapshots effective limits for both sides of a Trial.</summary>
+    internal static CommandOutcome<EnqueueTrialRequest> FreezeTrialLimits(EnqueueTrialRequest request) =>
+        request.Limits is not null
+            ? CommandOutcome<EnqueueTrialRequest>.Success(request)
+            : ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
+                CommandOutcome<EnqueueTrialRequest>.Success(request with
+                {
+                    Limits = ResolveTrialLimits(database, project, request.Scope),
+                }));
+
+    // The default Selection's limits as Assess resolves them, so Baseline and Trial stop a word at the same cap.
+    private static TrialLimits? ResolveTrialLimits(MotifDatabase database, ProjectLocator project, string? scopeName)
+    {
+        var saved = new NamedSelectionRepository(database).GetDefault();
+        var limits = saved?.Limits;
+        if (limits is null)
+        {
+            try
+            {
+                var scopes = new ProjectConfigurationReader().Read(project).Scopes;
+                var scope = scopes.FirstOrDefault(declared => declared.Name == (scopeName ?? AssessmentScopeConfiguration.DefaultName))
+                    ?? scopes[0];
+                limits = SelectionLimitPolicy.Estimated(scope.PerWordStepLimit);
+            }
+            catch (ProjectConfigurationException)
+            {
+                return null;
+            }
+        }
+        return ParseRunLimits.Resolve(limits, ParseRunLimits.ReadRate(new AssessmentRepository(database)));
     }
 
     /// <summary>The words a Trial request would measure: its own, or those its Proposal touches; null means all.</summary>

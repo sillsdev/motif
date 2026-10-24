@@ -77,7 +77,7 @@ public sealed class RealParserTraceTests
             Assert.True(completed.Summary.Completed);
             Assert.Equal("ed_suffix", completed.Summary.DeepestRuleReached);
             Assert.Equal(
-                ["NonPartialRuleProhibitedAfterFinalTemplate", "PartialParse"], completed.Summary.FailureReasons);
+                ["PartialParse"], completed.Summary.FailureReasons);
             Assert.NotNull(completed.Tree);
             Assert.Equal("WordAnalysis", completed.Tree!.Type);
             Assert.Equal("sagd", completed.Tree.InputShape);

@@ -341,6 +341,7 @@ internal sealed class TrialJobHandler
 
         var ids = new List<string>();
         var records = new List<NewAssessmentRecord>();
+        var wordStatistics = TrialWordStatistics.Read(produced, scope.WordForms);
         foreach (var item in produced)
         {
             var assessmentId = CanonicalId.Mint("assessment/").Value;
@@ -351,10 +352,14 @@ internal sealed class TrialJobHandler
             {
                 Material = record.RequireWordMaterial() with
                 {
-                    Rows = record.RequireWordMaterial().Rows.Select(word => projectStandings.TryGetValue(
-                        word.Word.Normalize(System.Text.NormalizationForm.FormD), out var standing)
-                        ? word with { ProjectStanding = standing }
-                        : word).ToArray(),
+                    Rows = record.RequireWordMaterial().Rows.Select(word =>
+                    {
+                        word = TrialWordStatistics.Apply(word, wordStatistics);
+                        return projectStandings.TryGetValue(
+                            word.Word.Normalize(System.Text.NormalizationForm.FormD), out var standing)
+                            ? word with { ProjectStanding = standing }
+                            : word;
+                    }).ToArray(),
                 },
             });
             ids.Add(assessmentId);

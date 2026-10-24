@@ -142,10 +142,10 @@ public sealed class PanGlossAssessor : IAssessor
             {
                 throw new AssessorUnavailableException(AssessorName, exception.Message);
             }
+            StoppedWordRetryRunner.Outcome? retried = null;
             // Words stopped at the wall-clock limit run again serially under a longer one; the record names each.
             if (completed.MorphologyOutput is { } firstAnalyses)
             {
-                StoppedWordRetryRunner.Outcome? retried;
                 try
                 {
                     retried = await StoppedWordRetryRunner.RunAsync(_invoker, _paths, batch, evidence,
@@ -192,7 +192,20 @@ public sealed class PanGlossAssessor : IAssessor
                             ? WordOutcome.Analysed : WordOutcome.NoAnalysis;
                     if (row.ElapsedMs != item.ElapsedMs || row.Outcome != expectedOutcome)
                         throw new InvalidDataException("TSV and morphology evidence describe different search outcomes.");
-                    return row with { Morphology = item };
+                    if (retried is null || !retried.RetriedIndices.Contains(row.Index))
+                        return row with { Morphology = item };
+                    var statistics = retried.RetryStatistics?.GetValueOrDefault(row.Word);
+                    var attempts = statistics?.Attempts ??
+                        (row.Steps is <= int.MaxValue and { } steps ? (int)steps : item.Attempts);
+                    return row with
+                    {
+                        Morphology = item with { Attempts = attempts },
+                        WasRetried = true,
+                        Steps = statistics?.Attempts ?? row.Steps ?? item.Attempts,
+                        Passes = statistics?.Passes,
+                        WorkSteps = statistics?.WorkSteps ?? row.WorkSteps,
+                        RetryStatistics = statistics,
+                    };
                 }).ToArray();
                 if (unavailableWarnings.Length > 0)
                 {

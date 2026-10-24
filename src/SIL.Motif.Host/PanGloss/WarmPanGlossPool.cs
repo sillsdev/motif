@@ -375,6 +375,8 @@ public sealed class WarmPanGlossPool : IDisposable
             {
                 start.ArgumentList.Add("--step-cap");
                 start.ArgumentList.Add(stepCapArgument);
+                start.ArgumentList.Add("--work-cap");
+                start.ArgumentList.Add(StepCap.Parse(stepCapArgument).ToWorkCapArgument());
             }
             PanGlossChildProcess process;
             try { process = job.Start(start); }

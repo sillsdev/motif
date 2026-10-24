@@ -1,12 +1,12 @@
 {
-  "version": "0.8.11",
-  "tag": "v0.8.11",
+  "version": "0.10.0",
+  "tag": "v0.10.0",
   "interfaces": {
-    "sourceTag": "v0.8.11",
+    "sourceTag": "v0.10.0",
     "describeSchemaVersion": 1,
     "grammarHealthSchemaVersion": 4,
     "traceDetailsSchemaId": "pangloss.trace-details.v3",
-    "statsCacheVersion": 8,
+    "statsCacheVersion": 9,
     "serveProtocol": 1,
     "compileErrorSchemaVersion": 1,
     "batchTsvColumns": [
@@ -57,20 +57,20 @@
   },
   "assets": {
     "win-x64": {
-      "url": "https://github.com/sillsdev/PanGloss/releases/download/v0.8.11/pangloss-win-x64.exe",
-      "sha256": "1d9690f95170d8fc2c5b6f9e3d52d6b719f6937452f8f3dced7912212fb4ac10"
+      "url": "https://github.com/sillsdev/PanGloss/releases/download/v0.10.0/pangloss-win-x64.exe",
+      "sha256": "90bc73e2a9154db0bc6bfd3fdb518fd134a722f7e75f20a3b3940f261f7b5729"
     },
     "linux-x64": {
-      "url": "https://github.com/sillsdev/PanGloss/releases/download/v0.8.11/pangloss-linux-x64",
-      "sha256": "eb48c3a9db5c8bbf9598941fd510b273a2ec212362b7f2671fea54bf01d4c206"
+      "url": "https://github.com/sillsdev/PanGloss/releases/download/v0.10.0/pangloss-linux-x64",
+      "sha256": "2158b777b90b9450ef56150c407111f9e8619d11333196d4f485e363a1d18887"
     },
     "osx-arm64": {
-      "url": "https://github.com/sillsdev/PanGloss/releases/download/v0.8.11/pangloss-osx-arm64",
-      "sha256": "38d2295c85bfb933c7fcfe57b9de13f0ddfe6f4ff6d292dbd5037a0ac3917a51"
+      "url": "https://github.com/sillsdev/PanGloss/releases/download/v0.10.0/pangloss-osx-arm64",
+      "sha256": "c063a2e624712bd78d0cc659f0744c0206ad665a5b5d08bd7d04a07b7a10642d"
     },
     "osx-x64": {
-      "url": "https://github.com/sillsdev/PanGloss/releases/download/v0.8.11/pangloss-osx-x64",
-      "sha256": "417d81f59c8a3a89ec406dfd3262ecda3f7bbacbfc78b28ce4afe719e0f8b3c2"
+      "url": "https://github.com/sillsdev/PanGloss/releases/download/v0.10.0/pangloss-osx-x64",
+      "sha256": "863c9245e13ed030ca523e9a8b4ca786093d8d00881cdbfc1c7ceaaf8df94f66"
     }
   }
 }

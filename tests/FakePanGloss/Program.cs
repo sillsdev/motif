@@ -60,7 +60,8 @@ internal static class Program
     [
         new("phonology-examples", ["grammar", "request.json", "out.json?"], [], RunPhonologyExamples),
         new("batch", ["grammar", "words.txt", "out.tsv"],
-            [new("--word-timeout-ms", true), new("--step-cap", true), new("--threads", true), new("--stats", false),
+            [new("--word-timeout-ms", true), new("--step-cap", true), new("--work-cap", true), new("--threads", true),
+                new("--stats", false),
                 new("--cache", true), new("--analyses", true)], RunBatch),
         new("facts", ["snapshot.json"],
             [new("--out", true), new("--context", true), new("--stats", true),
@@ -71,7 +72,7 @@ internal static class Program
             [new("--cache", true), new("--group", true), new("--format", true)], RunStats),
         new("parse", ["grammar", "word"],
             [new("--trace", true), new("--trace-format", true), new("--trace-details", false),
-                new("--step-cap", true)], RunParse),
+                new("--step-cap", true), new("--work-cap", true)], RunParse),
         new("serve", [],
             [new("--project", true), new("--step-cap", true), new("--work-cap", true), new("--word-timeout-ms", true),
                 new("--guess", false)], RunServe),
@@ -95,7 +96,7 @@ internal static class Program
         if (args is ["--version"])
         {
             var versionFile = Path.Combine(AppContext.BaseDirectory, VersionFileName);
-            Console.WriteLine(File.Exists(versionFile) ? File.ReadAllText(versionFile).Trim() : "pangloss 0.8.11");
+            Console.WriteLine(File.Exists(versionFile) ? File.ReadAllText(versionFile).Trim() : "pangloss 0.10.0");
             return 0;
         }
         if (args is ["--allocate-memory", var requestedBytes])
@@ -280,10 +281,18 @@ internal static class Program
         RecordArgv(directory, args);
         var behaviour = Behaviour.Read(directory, "batch");
         // A timed-out word with recoversAtTimeoutMs completes once given that limit, as a slow word does unloaded.
+        var recovered = behaviour.Words.Any(word => word.Outcome == "timed-out" &&
+            word.RecoversAtTimeoutMs is { } at && wordTimeoutMs >= at);
         behaviour = behaviour with
         {
             Words = behaviour.Words.Select(word => word.Outcome == "timed-out" && word.RecoversAtTimeoutMs is { } at &&
-                wordTimeoutMs >= at ? word with { Outcome = "complete" } : word).ToArray(),
+                wordTimeoutMs >= at ? word with
+                {
+                    Outcome = "complete",
+                    Attempts = word.RecoveredAttempts ?? word.Attempts,
+                    Passes = word.RecoveredPasses ?? word.Passes,
+                    WorkSteps = word.RecoveredWorkSteps ?? word.WorkSteps,
+                } : word).ToArray(),
         };
         var words = File.Exists(wordsPath) ? File.ReadAllLines(wordsPath) : Array.Empty<string>();
         if (behaviour.StartedPath is { } startedPath) File.WriteAllText(startedPath, string.Empty);
@@ -341,7 +350,16 @@ internal static class Program
                 else File.WriteAllText(outPath, BatchTsv(behaviour, words));
                 if (analysesPath is not null) File.WriteAllText(analysesPath, BatchMorphology(behaviour, words));
                 if (cachePath is not null)
-                    StatsCache.Write(cachePath, words.Where(word => !string.IsNullOrWhiteSpace(word)).ToArray());
+                {
+                    var statisticsMode = recovered ? behaviour.RetryStatisticsMode : "present";
+                    if (statisticsMode == "malformed") File.WriteAllText(cachePath, "not a statistics database");
+                    else if (statisticsMode != "absent")
+                        StatsCache.Write(cachePath, words.Where(word => !string.IsNullOrWhiteSpace(word)).Select(word =>
+                        {
+                            var known = behaviour.Words.FirstOrDefault(item => item.Word == word);
+                            return new StatsCache.WordRow(word, known?.Attempts ?? 1, known?.Passes ?? 1, known?.WorkSteps);
+                        }).ToArray());
+                }
                 return behaviour.ExitCode;
         }
     }
@@ -918,6 +936,7 @@ internal static class Program
             return JsonSerializer.Serialize(new
             {
                 schema = "fieldworks-parse-analysis/v1", index, word, elapsedMs = known?.ElapsedMs ?? 3,
+                attempts = known?.Attempts,
                 capped = known?.Outcome == "capped", timedOut = known?.Outcome == "timed-out", invalidShape = false,
                 analyses = known?.Analyses ?? [],
                 unavailable = hasFindings && known?.Analyses is not { Count: > 0 }
@@ -927,7 +946,8 @@ internal static class Program
 
     private sealed record FakeWord(string Word, string Outcome, string? Signature = null,
         IReadOnlyList<JsonElement>? Analyses = null, int? Attempts = null, int? Passes = null, double ElapsedMs = 3,
-        int? RecoversAtTimeoutMs = null);
+        int? RecoversAtTimeoutMs = null, long? WorkSteps = null,
+        int? RecoveredAttempts = null, int? RecoveredPasses = null, long? RecoveredWorkSteps = null);
 
     private sealed record Behaviour
     {
@@ -937,6 +957,7 @@ internal static class Program
         // Facts only: a pause before the first heartbeat, standing in for a loaded host's slow process start.
         public int StartupDelayMilliseconds { get; init; }
         public bool StreamProgress { get; init; }
+        public string RetryStatisticsMode { get; init; } = "present";
         public string? HeartbeatPath { get; init; }
         public string? StartedPath { get; init; }
         public string? HoldUntilPath { get; init; }

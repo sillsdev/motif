@@ -17,6 +17,34 @@ namespace SIL.Motif.Tests.Composers;
 public sealed class EditNaturalClassComposerTests(PristineProjectFixture pristine)
 {
     [Fact]
+    public void ReferenceNamesUseCanonicalDecompositionAndOrdinalCaseWithoutGuessing()
+    {
+        using var cache = pristine.NewScratch();
+        var authored = new List<OperationEnvelope>();
+        var a = CreatePhoneme(cache, authored, "a");
+        var naturalClass = CreateSegmentClass(cache, authored, "vówels", "V", [a]);
+        Assert.Equal(naturalClass, EditNaturalClassComposer.ResolveNaturalClassReference(cache, "VO\u0301WELS"));
+        Assert.Equal(naturalClass, EditNaturalClassComposer.ResolveNaturalClassReference(cache, "v"));
+        var prefixed = CanonicalId.Parse("natural-class/" + naturalClass.Value);
+        Assert.Equal(prefixed, EditNaturalClassComposer.ResolveNaturalClassReference(cache, prefixed.Value));
+        foreach (var missing in new[] { "vów", " vówels ", "missing" })
+        {
+            var refused = Assert.Throws<InvalidOperationException>(() =>
+                EditNaturalClassComposer.ResolveNaturalClassReference(cache, missing));
+            Assert.Contains("was not found", refused.Message);
+            Assert.Contains(naturalClass.Value, refused.Message);
+        }
+        var duplicate = CreateSegmentClass(cache, authored, "VÓWELS", "V2", [a]);
+        var ambiguous = Assert.Throws<InvalidOperationException>(() =>
+            EditNaturalClassComposer.ResolveNaturalClassReference(cache, "vo\u0301wels"));
+        Assert.Contains("ambiguous", ambiguous.Message);
+        Assert.Contains(naturalClass.Value, ambiguous.Message);
+        Assert.Contains(duplicate.Value, ambiguous.Message);
+        Assert.Throws<ContractParseException>(() => EditNaturalClassIntentParser.Parse(JsonSerializer.SerializeToElement(
+            new { target = "vówels", expectedMembers = new[] { a.Value }, members = new[] { a.Value } })));
+    }
+
+    [Fact]
     public void EditsOnlyTheRequestedSegmentIdentities()
     {
         using var cache = pristine.NewScratch();

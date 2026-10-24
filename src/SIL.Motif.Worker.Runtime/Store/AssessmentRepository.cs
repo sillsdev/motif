@@ -316,6 +316,7 @@ public sealed class AssessmentRepository : IAssessmentRepository
         "AssessedWordId", "AssessmentId", "OrdinalIndex", "Word", "Outcome", "ElapsedMs", "ElapsedNs", "RawSignature",
         "MorphologyJson", "CorrectnessJson", "ProjectStanding", "OccurrenceCount", "ReadingGradesJson",
         "MissedApprovedCount", "MissedApprovedJson", "IsIncomplete", "Attempts", "Passes", "AnalysisComparisonJson",
+        "WorkSteps",
     ];
 
     private static readonly string[] AnalysisColumns =
@@ -348,6 +349,7 @@ public sealed class AssessmentRepository : IAssessmentRepository
                 word.IsIncomplete ? 1 : 0, word.Attempts, word.Passes,
                 word.AnalysisComparison is null ? null
                     : JsonSerializer.Serialize(word.AnalysisComparison, ParseMorphEvidence.JsonOptions),
+                word.WorkSteps,
             ]);
             for (var analysisIndex = 0; analysisIndex < word.Analyses.Count; analysisIndex++)
             {
@@ -962,7 +964,8 @@ public sealed class AssessmentRepository : IAssessmentRepository
             SELECT aw.AssessedWordId, aw.Word, aw.Outcome, aw.ElapsedMs, aw.ElapsedNs,
                    pa.CategoryGuid, pa.MorphemeGuidsJson, pa.RootIndex, pa.IdentityDigest, aw.RawSignature,
                    aw.MorphologyJson, aw.CorrectnessJson, aw.OrdinalIndex, aw.ProjectStanding, aw.OccurrenceCount,
-                   aw.ReadingGradesJson, aw.MissedApprovedCount, aw.IsIncomplete, aw.MissedApprovedJson, aw.Attempts, aw.Passes, aw.AnalysisComparisonJson
+                   aw.ReadingGradesJson, aw.MissedApprovedCount, aw.IsIncomplete, aw.MissedApprovedJson, aw.Attempts, aw.Passes, aw.AnalysisComparisonJson,
+                   aw.WorkSteps
             FROM AssessedWords aw
             LEFT JOIN ParsedAnalyses pa ON pa.AssessedWordId = aw.AssessedWordId
             WHERE aw.AssessmentId = $id
@@ -991,6 +994,7 @@ public sealed class AssessmentRepository : IAssessmentRepository
         bool currentIncomplete = false;
         int? currentAttempts = null;
         int? currentPasses = null;
+        long? currentWorkSteps = null;
         List<ParsedAnalysis> currentAnalyses = [];
 
         RepositoryReadCounters.QueryExecuted();
@@ -1008,7 +1012,7 @@ public sealed class AssessmentRepository : IAssessmentRepository
                         ProjectStanding = currentStanding, OccurrenceCount = currentOccurrenceCount,
                         ReadingGrades = currentReadingGrades, AnalysisComparison = currentComparison, MissedApprovedCount = currentMissedApprovedCount,
                         MissedApproved = currentMissedApproved, IsIncomplete = currentIncomplete,
-                        Attempts = currentAttempts, Passes = currentPasses });
+                        Attempts = currentAttempts, Passes = currentPasses, WorkSteps = currentWorkSteps });
                 }
                 if (wordForms is null && reader.GetInt32(12) != words.Count)
                     throw new InvalidDataException("Assessment case ordinals must be contiguous and begin at zero.");
@@ -1033,6 +1037,7 @@ public sealed class AssessmentRepository : IAssessmentRepository
                 currentPasses = reader.IsDBNull(20) ? null : reader.GetInt32(20);
                 currentComparison = reader.IsDBNull(21) ? null
                     : JsonSerializer.Deserialize<WordAnalysisComparison>(reader.GetString(21), ParseMorphEvidence.JsonOptions);
+                currentWorkSteps = reader.IsDBNull(22) ? null : reader.GetInt64(22);
                 currentAnalyses = [];
             }
 
@@ -1055,7 +1060,7 @@ public sealed class AssessmentRepository : IAssessmentRepository
                 ProjectStanding = currentStanding, OccurrenceCount = currentOccurrenceCount,
                 ReadingGrades = currentReadingGrades, AnalysisComparison = currentComparison, MissedApprovedCount = currentMissedApprovedCount,
                 MissedApproved = currentMissedApproved, IsIncomplete = currentIncomplete,
-                        Attempts = currentAttempts, Passes = currentPasses });
+                        Attempts = currentAttempts, Passes = currentPasses, WorkSteps = currentWorkSteps });
         }
         return words;
     }

@@ -260,9 +260,8 @@ public static class AssessCommand
                     ? TimeSpan.FromMilliseconds(ms)
                     : stepLimit.IsUnbounded ? null
                     : usesDefaultSelection && defaultLimits?.TimeMode == SelectionTimeLimitMode.Explicit
-                        ? TimeSpan.FromMilliseconds(SelectionLimitPolicy.Resolve(defaultLimits,
-                            ReadParserStepRate(assessments)).PerWordTimeLimitMs!.Value)
-                        : EstimatePerWordTimeLimit(assessments, stepLimit);
+                        ? TimeSpan.FromMilliseconds(defaultLimits.ExplicitPerWordLimitMs!.Value)
+                        : ParseRunLimits.SafetyNetTime(stepLimit, ParseRunLimits.ReadRate(assessments));
                 scope = new AssessmentScope.Words(composition.Selection.Words, collected, timeLimit, stepLimit);
                 var latestWordProgress = new TrialWordProgress(0, scope.WordForms.Count, null);
                 onProgress?.Invoke(new AssessmentProgress(
@@ -383,7 +382,7 @@ public static class AssessCommand
                     AssessmentStage.ReadingStatistics, 0, null, "Reading PanGloss's statistics..."));
                 string summaryMarkdown;
                 // Require one batch statistics row for each resolved word before recording.
-                Dictionary<string, PanGlossWordStatistics>? wordStats = null;
+                IReadOnlyDictionary<string, PanGlossWordStatistics>? wordStats = null;
                 IReadOnlyList<AssessmentObjectTiming> objectTimings = [];
                 if (statsCachePath is null)
                 {
@@ -432,6 +431,8 @@ public static class AssessCommand
 
                 if (cancellationToken.IsCancellationRequested)
                     return CommandOutcome<AssessCommandResponse>.Refused(Cancelled(request.ProjectPath));
+                wordStats = BatchAnalysis.OverlayRetryStatistics(wordStats,
+                    produced.Select(item => item.Raw).OfType<AssessmentRaw.Batch>().SelectMany(item => item.Analysis.Words));
                 var namingCache = baselineReader.Cache;
                 var projectName = Path.GetFileNameWithoutExtension(request.ProjectPath);
                 var wordContext = ReadProjectWordContext(namingCache, composition.Selection.Words,
@@ -495,8 +496,9 @@ public static class AssessCommand
                             return word with
                             {
                                 ElapsedNs = stats?.ElapsedNs,
-                                Attempts = stats?.Attempts,
-                                Passes = stats?.Passes,
+                                Attempts = stats?.Attempts ?? word.Attempts,
+                                Passes = stats?.Passes ?? word.Passes,
+                                WorkSteps = stats?.WorkSteps ?? word.WorkSteps,
                                 Morphology = word.Morphology is { } morphology && stats is not null
                                     ? morphology with { Attempts = stats.Attempts }
                                     : word.Morphology,
@@ -534,12 +536,8 @@ public static class AssessCommand
                         .ToArray());
                 var comparisonByWord = pendingRecords.FirstOrDefault(record => record.Kind == AssessmentKind.ParseTime.ToStoredKind())
                     ?.Words.ToDictionary(word => word.Word, word => word.AnalysisComparison, StringComparer.Ordinal);
-                var timing = produced.FirstOrDefault(item => item.Kind == AssessmentKind.ParseTime);
-                var words = timing?.Raw is AssessmentRaw.Batch batch
-                    ? batch.Analysis.Words.Select(word => AssessmentWordRows.Row(word.Word,
-                        word.Outcome.ToStoredOutcome(), word.ElapsedMs, word.Signature, word.Morphology,
-                        word.Correctness)).ToArray()
-                    : Array.Empty<AssessmentWordResult>();
+                var words = pendingRecords.FirstOrDefault(record => record.Kind == AssessmentKind.ParseTime.ToStoredKind())
+                    ?.Words.Select(AssessmentWordRows.FromRecorded).ToArray() ?? Array.Empty<AssessmentWordResult>();
                 var completionSummary = AssessmentWordRows.CompletionSummary(words);
                 summaryMarkdown = RenderSummaryMarkdown(completionSummary, summaryMarkdown);
                 var grammarWarnings = invocation.GrammarWarningLines is { Count: > 0 } warningLines
@@ -578,8 +576,9 @@ public static class AssessCommand
                                 StoredAnalyses = storedAnalyses,
                                 StoredAnalysesAvailable = true,
                                 AnalysisComparison = comparisonByWord?.GetValueOrDefault(word.Word),
-                                Attempts = stats?.Attempts,
-                                Passes = stats?.Passes,
+                                Attempts = stats?.Attempts ?? word.Attempts,
+                                Passes = stats?.Passes ?? word.Passes,
+                                WorkSteps = stats?.WorkSteps ?? word.WorkSteps,
                             };
                             return row with { FixFirst = AssessmentWordRows.FixFirst(row), Comparison = CompareSemantics.Compare(row) };
                         }).ToArray();
@@ -699,19 +698,6 @@ public static class AssessCommand
         "assess.parser-unavailable", FailureReason.Refused, message,
         ParserNotFoundFact.Mark(
             new Dictionary<string, string>(StringComparer.Ordinal) { ["projectPath"] = projectPath }, executableMissing));
-
-    private static TimeSpan? EstimatePerWordTimeLimit(AssessmentRepository assessments, StepCap stepLimit)
-    {
-        var limits = SelectionLimitPolicy.Resolve(SelectionLimitPolicy.Estimated(stepLimit),
-            ReadParserStepRate(assessments));
-        return limits.PerWordTimeLimitMs is { } milliseconds ? TimeSpan.FromMilliseconds(milliseconds) : null;
-    }
-
-    private static ParserStepRate ReadParserStepRate(AssessmentRepository assessments)
-    {
-        var latest = assessments.ListByKind(AssessmentKind.ParseTime.ToStoredKind()).LastOrDefault();
-        return StepLimitEstimator.FromAssessment(latest is null ? null : assessments.Get(latest.AssessmentId));
-    }
 
     private static Refusal Cancelled(string projectPath) => new(
         "assessment.cancelled", FailureReason.Cancelled,

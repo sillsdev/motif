@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using SIL.Motif.Commands.Parsimony;
+using SIL.Motif.Commands.Queries;
 using SIL.Motif.Commands.Store;
 using SIL.Motif.Contract;
 using SIL.Motif.Contract.Baselines;
@@ -199,8 +200,8 @@ internal static class RetirementReviewProjectionAssembler
                 candidate.TokeniserName == after.TokeniserName && candidate.TokeniserVersion == after.TokeniserVersion &&
                 candidate.Invocation is { } beforeInvocation &&
                 beforeInvocation.ExecutableBytesSha256 == after.Invocation.ExecutableBytesSha256 &&
-                beforeInvocation.PerWordTimeoutMs == after.Invocation.PerWordTimeoutMs &&
-                beforeInvocation.PerWordStepLimit == after.Invocation.PerWordStepLimit &&
+                AssessmentSearchCaps.Match(beforeInvocation.PerWordStepLimit,
+                    after.Invocation.PerWordStepLimit) &&
                 beforeInvocation.Threads == after.Invocation.Threads &&
                 beforeInvocation.CollectStatistics == after.Invocation.CollectStatistics &&
                 beforeInvocation.SourceBytesSha256 == evidence.Candidate.BaselineSourceSha256 &&

@@ -76,6 +76,17 @@ public sealed record AssessmentWordResult(
     public int? Attempts { get; init; }
     /// <summary>How many of those attempts passed, when measured.</summary>
     public int? Passes { get; init; }
+    /// <summary>
+    /// The total parser work reserved for this word across all phases, when PanGloss reported it; deterministic
+    /// for a grammar, word and PanGloss version, unlike elapsed time.
+    /// </summary>
+    public long? WorkSteps { get; init; }
+    /// <summary>
+    /// Which limit ended a stopped word's search: <see cref="StopLimit.Work"/> for the deterministic step or work
+    /// cap, <see cref="StopLimit.Time"/> for the wall-clock safety net, or <see langword="null"/> for a word that
+    /// was not stopped.
+    /// </summary>
+    public string? StoppedBy => StopLimit.FromOutcome(Outcome);
     /// <summary>The run that measured this word; a composite result can have a different origin per word.</summary>
     public WordMeasurementOrigin? Origin { get; init; }
     /// <summary>How many chosen Text occurrences this word represents in the run's resolved Selection.</summary>
@@ -121,3 +132,21 @@ public enum FixFirstCategory
 /// <param name="Label">The short cell name shown with the word.</param>
 /// <param name="Explanation">A single sentence explaining why the word is listed.</param>
 public sealed record FixFirstPriority(FixFirstCategory Category, int Rank, string Label, string Explanation);
+
+/// <summary>The names for which per-word limit stopped a search, as written into Assess and Trial JSON.</summary>
+public static class StopLimit
+{
+    /// <summary>The deterministic analysis-attempt or search-work cap stopped the word.</summary>
+    public const string Work = "work-limit";
+
+    /// <summary>The per-word wall-clock safety net stopped the word; it depends on this computer's speed.</summary>
+    public const string Time = "time-limit";
+
+    /// <summary>Maps a stored word outcome to the limit that stopped it, or null when it was not stopped.</summary>
+    public static string? FromOutcome(string outcome) => outcome switch
+    {
+        "capped" => Work,
+        "timed-out" => Time,
+        _ => null,
+    };
+}

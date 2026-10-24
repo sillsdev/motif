@@ -89,6 +89,9 @@ public abstract record PanGlossRequest
     {
         public bool CollectAnalyses { get; init; }
 
+        /// <summary>Allows a retry to finish without a statistics cache, leaving its unavailable counters unknown.</summary>
+        internal bool AllowMissingStatsCache { get; init; }
+
         /// <summary>PanGloss worker threads for this batch, populated from the machine CPU budget.</summary>
         internal int ThreadCount { get; init; } = PanGlossCpuBudget.DefaultBatchThreadCount;
 
@@ -124,6 +127,8 @@ public abstract record PanGlossRequest
             }
             startInfo.ArgumentList.Add("--step-cap");
             startInfo.ArgumentList.Add((PerWordStepLimit ?? StepCap.Default).ToArgument());
+            startInfo.ArgumentList.Add("--work-cap");
+            startInfo.ArgumentList.Add((PerWordStepLimit ?? StepCap.Default).ToWorkCapArgument());
             startInfo.ArgumentList.Add("--threads");
             startInfo.ArgumentList.Add(ThreadCount.ToString(CultureInfo.InvariantCulture));
             if (CollectAnalyses)
@@ -141,7 +146,7 @@ public abstract record PanGlossRequest
             TimeSpan elapsed, out BatchInvocationEvidence.BatchFileDigests? batchFileDigests)
         {
             batchFileDigests = null;
-            if (StatsCachePath is not null && !File.Exists(StatsCachePath))
+            if (StatsCachePath is not null && !File.Exists(StatsCachePath) && !AllowMissingStatsCache)
             {
                 return new PanGlossOutcome.Incomplete(
                     $"pangloss batch --stats exited 0 but wrote no cache to '{StatsCachePath}'.", standardError);
@@ -259,6 +264,8 @@ public abstract record PanGlossRequest
             if (StepLimit is null) return;
             startInfo.ArgumentList.Add("--step-cap");
             startInfo.ArgumentList.Add(StepLimit.ToArgument());
+            startInfo.ArgumentList.Add("--work-cap");
+            startInfo.ArgumentList.Add(StepLimit.ToWorkCapArgument());
         }
 
         internal override PanGlossOutcome Finish(string scratch, string standardOutput, string standardError,

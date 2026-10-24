@@ -4,6 +4,7 @@ using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Contract.Retirement;
+using SIL.Motif.Commands.Queries;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.Parser;
 using SIL.Motif.Host.Parsimony;
@@ -139,8 +140,10 @@ public static class RecipeVerification
         if (before.Assessment.TokeniserName != after.Assessment.TokeniserName ||
             before.Assessment.TokeniserVersion != after.Assessment.TokeniserVersion)
             throw new RecipeVerificationRefusalException("Both Assessments must use the same parser tokeniser options.");
-        if (before.Options is not null && after.Options is not null && before.Options != after.Options)
-            throw new RecipeVerificationRefusalException("Both Assessments must use the same parser executable and limits.");
+        if (before.Options is not null && after.Options is not null &&
+            !SameParserRunSettings(before.Options, after.Options))
+            throw new RecipeVerificationRefusalException(
+                "Both Assessments must use the same parser executable, step and work caps, thread count, and statistics collection.");
 
         var unavailable = new List<string>(beforeFrozen.Unavailable);
         unavailable.AddRange(afterFrozen.Unavailable);
@@ -148,8 +151,8 @@ public static class RecipeVerification
         unavailable.AddRange(after.Unavailable);
         if (before.Options is null || after.Options is null)
             unavailable.Add("A parser Assessment did not retain its effective executable and limits.");
-        else if (before.Options.Threads < 1 || before.Options.PerWordTimeoutMs is <= 0 ||
-                 before.Options.PerWordTimeoutMs > 1000 || before.Options.PerWordStepLimit.Steps is null or <= 0 or > 200_000)
+        else if (before.Options.Threads < 1 ||
+                 before.Options.PerWordStepLimit.Steps is null or <= 0 or > 200_000)
             unavailable.Add("The parser limits do not satisfy the bounded verification contract.");
         if (beforeFrozen.Cases.Count == 0 && beforeFrozen.ReviewedNegatives.Count == 0)
             unavailable.Add("The frozen set contains no mandatory positive or negative verification cases.");
@@ -254,6 +257,12 @@ public static class RecipeVerification
             Array.AsReadOnly(unavailable.Distinct(StringComparer.Ordinal).ToArray()),
             Array.AsReadOnly(exclusions.Distinct(StringComparer.Ordinal).ToArray()));
     }
+
+    private static bool SameParserRunSettings(RecipeVerificationOptions before, RecipeVerificationOptions after) =>
+        before.ParserSha256 == after.ParserSha256 &&
+        AssessmentSearchCaps.Match(before.PerWordStepLimit, after.PerWordStepLimit) &&
+        before.Threads == after.Threads &&
+        before.CollectStatistics == after.CollectStatistics;
 
     private static Dictionary<string, CaseObservation[]> Index(IReadOnlyList<AssessedWord> words,
         IReadOnlySet<string> expectedSurfaces, string phase, ICollection<string> unavailable)

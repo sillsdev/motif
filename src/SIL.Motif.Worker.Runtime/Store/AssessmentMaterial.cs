@@ -23,6 +23,9 @@ public static class AssessmentMaterial
             {
                 Morphology = word.Morphology,
                 Correctness = word.Correctness,
+                Attempts = word.Steps is <= int.MaxValue and { } steps ? (int)steps : word.Morphology?.Attempts,
+                Passes = word.Passes,
+                WorkSteps = word.WorkSteps,
                 IsIncomplete = word.Outcome is WordOutcome.Capped or WordOutcome.TimedOut ||
                     word.Morphology is { Capped: true } or { TimedOut: true },
             })

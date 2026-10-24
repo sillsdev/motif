@@ -506,7 +506,7 @@
               },
               "naturalClass": {
                 "type": "string",
-                "description": "Natural class id with a unique abbreviation."
+                "description": "Natural class id, exact name or abbreviation; names must resolve uniquely using NFD and ordinal case-insensitive equality, without trimming. The class must have a unique abbreviation."
               },
               "boundary": {
                 "type": "string",
@@ -536,7 +536,7 @@
               },
               "naturalClass": {
                 "type": "string",
-                "description": "Natural class id with a unique abbreviation."
+                "description": "Natural class id, exact name or abbreviation; names must resolve uniquely using NFD and ordinal case-insensitive equality, without trimming. The class must have a unique abbreviation."
               },
               "boundary": {
                 "type": "string",
@@ -645,7 +645,7 @@
               },
               "naturalClass": {
                 "type": "string",
-                "description": "Natural class id with a unique abbreviation."
+                "description": "Natural class id, exact name or abbreviation; names must resolve uniquely using NFD and ordinal case-insensitive equality, without trimming. The class must have a unique abbreviation."
               },
               "boundary": {
                 "type": "string",
@@ -676,7 +676,7 @@
               },
               "naturalClass": {
                 "type": "string",
-                "description": "Natural class id with a unique abbreviation."
+                "description": "Natural class id, exact name or abbreviation; names must resolve uniquely using NFD and ordinal case-insensitive equality, without trimming. The class must have a unique abbreviation."
               },
               "boundary": {
                 "type": "string",

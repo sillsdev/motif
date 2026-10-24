@@ -29,6 +29,18 @@ public sealed record StepCap
 
     public static implicit operator StepCap(long steps) => new(steps);
 
+    /// <summary>How many search-work units PanGloss allows per analysis attempt, as its own default does.</summary>
+    public const long WorkCapMultiplier = 100;
+
+    /// <summary>
+    /// The matching <c>--work-cap</c> value: <see cref="WorkCapMultiplier"/> times the attempt cap, so the work
+    /// cap PanGloss would derive is stated rather than left implicit, or <c>unbounded</c> without an attempt cap.
+    /// </summary>
+    public string ToWorkCapArgument() =>
+        Steps is { } steps && steps <= long.MaxValue / WorkCapMultiplier
+            ? (steps * WorkCapMultiplier).ToString(CultureInfo.InvariantCulture)
+            : "unbounded";
+
     public string ToArgument() => Steps?.ToString(CultureInfo.InvariantCulture) ?? "unbounded";
 
     public static StepCap Parse(string value)

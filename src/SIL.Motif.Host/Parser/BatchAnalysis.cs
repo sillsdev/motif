@@ -1,5 +1,6 @@
 using System.Globalization;
 using SIL.Motif.Contract.Assess;
+using SIL.Motif.Host.PanGloss;
 
 namespace SIL.Motif.Host.Parser;
 
@@ -65,6 +66,21 @@ public sealed record WordAnalysis(int Index, string Word, int ElapsedMs, WordOut
 {
     public SIL.Motif.Contract.Responses.ParseWordEvidence? Morphology { get; init; }
     public SIL.Motif.Contract.Responses.WordCorrectness? Correctness { get; init; }
+
+    /// <summary>Whether this row replaced a timed-out first-pass row with a retry result.</summary>
+    public bool WasRetried { get; init; }
+
+    /// <summary>The retry's passing-attempt count, when its statistics cache supplied one.</summary>
+    public int? Passes { get; init; }
+
+    /// <summary>The retry's per-word statistics, when its cache supplied them.</summary>
+    public SIL.Motif.Host.PanGloss.PanGlossWordStatistics? RetryStatistics { get; init; }
+
+    /// <summary>The analysis attempts in the final per-word evidence, or null when that evidence supplied none.</summary>
+    public long? Steps { get; init; }
+
+    /// <summary>The total parser work in the final per-word evidence, or null when that evidence supplied none.</summary>
+    public long? WorkSteps { get; init; }
 }
 
 /// <summary>
@@ -80,6 +96,23 @@ public sealed record BatchAnalysis(
 {
     /// <summary>The recorded per-word analysis-attempt limit, or null when the evidence does not name one.</summary>
     public StepCap? PerWordStepLimit { get; init; }
+
+    /// <summary>
+    /// Selects final per-word statistics, removing first-pass counts for replaced rows even when the retry
+    /// supplied no cache. Null means that no statistics were available for any word.
+    /// </summary>
+    public static IReadOnlyDictionary<string, PanGlossWordStatistics>? OverlayRetryStatistics(
+        IReadOnlyDictionary<string, PanGlossWordStatistics>? firstPass, IEnumerable<WordAnalysis> words)
+    {
+        var result = firstPass?.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal)
+            ?? new Dictionary<string, PanGlossWordStatistics>(StringComparer.Ordinal);
+        foreach (var word in words.Where(word => word.WasRetried))
+        {
+            result.Remove(word.Word);
+            if (word.RetryStatistics is { } retry) result[word.Word] = retry;
+        }
+        return result.Count == 0 ? null : result;
+    }
 
     public int Analysed => Words.Count(w => w.Outcome == WordOutcome.Analysed);
     public int NoAnalysis => Words.Count(w => w.Outcome == WordOutcome.NoAnalysis);
@@ -115,6 +148,7 @@ public static class BatchTsvParser
     public static IReadOnlyList<WordAnalysis> Parse(string tsv)
     {
         var results = new List<WordAnalysis>();
+        int? stepsColumn = null, workStepsColumn = null;
 
         foreach (var raw in tsv.Split('\n'))
         {
@@ -122,7 +156,14 @@ public static class BatchTsvParser
             if (line.Length == 0) continue;
 
             var columns = line.Split('\t');
-            if (columns.Length < 5) continue; // the STARTED progress marker and any header
+            if (IsHeader(columns))
+            {
+                // Step columns are read by name; a headerless TSV declares none, so none is guessed for it.
+                stepsColumn = Array.IndexOf(columns, "steps") is var steps and >= 0 ? steps : null;
+                workStepsColumn = Array.IndexOf(columns, "work_steps") is var work and >= 0 ? work : null;
+                continue;
+            }
+            if (columns.Length < 5) continue; // the STARTED progress marker
 
             // The STARTED marker reuses the row shape with a non-numeric elapsed column.
             if (!int.TryParse(columns[2], NumberStyles.Integer, CultureInfo.InvariantCulture, out var elapsedMs))
@@ -136,11 +177,23 @@ public static class BatchTsvParser
                 Word: columns[1],
                 ElapsedMs: elapsedMs,
                 Outcome: ToOutcome(columns[3], columns[4]),
-                Signature: columns[4]));
+                Signature: columns[4])
+            {
+                Steps = ReadCounter(columns, stepsColumn),
+                WorkSteps = ReadCounter(columns, workStepsColumn),
+            });
         }
 
         return results;
     }
+
+    private static bool IsHeader(string[] columns) =>
+        columns.Length >= 5 && columns[0] is "index" or "idx" && Array.IndexOf(columns, "word") == 1 &&
+        Array.IndexOf(columns, "elapsed_ms") == 2;
+
+    private static long? ReadCounter(string[] columns, int? column) =>
+        column is { } index && index < columns.Length &&
+        long.TryParse(columns[index], NumberStyles.None, CultureInfo.InvariantCulture, out var value) ? value : null;
 
     private static WordOutcome ToOutcome(string status, string signature) => status switch
     {

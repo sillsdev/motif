@@ -164,9 +164,42 @@ public sealed class SchemaVersionGateTests : IDisposable
     }
 
     [Fact]
+    public void APreviousWorkStepsShapeIsRefusedAndCanBeReset()
+    {
+        const int previousSchema = 49;
+        Assert.Equal(50, MotifSchema.CurrentSchema);
+        var path = Path.Combine(_root, "previous-work-steps.motif.db");
+        var locator = new ProjectLocator(Path.Combine(_root, "previous-work-steps.fwdata"), "previous-work-steps");
+        using (MotifDatabase.OpenOwned(path, locator, MotifSchema.CurrentSchema, new Version(1, 0))) { }
+        using (var connection = new SqliteConnection($"Data Source={path};Pooling=False"))
+        {
+            connection.Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = $"ALTER TABLE AssessedWords DROP COLUMN WorkSteps; PRAGMA user_version = {previousSchema};";
+            command.ExecuteNonQuery();
+        }
+
+        var refusal = Assert.Throws<MotifStoreVersionException>(() =>
+            MotifDatabase.OpenOwned(path, locator, MotifSchema.CurrentSchema, new Version(1, 0)));
+        Assert.Equal(Path.GetFullPath(path), refusal.StorePath);
+        Assert.Contains("delete", refusal.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("recreate", refusal.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(previousSchema, PragmaUserVersion(path));
+
+        Assert.True(MotifDatabase.DeleteIfOtherVersion(path, locator, MotifSchema.CurrentSchema, new Version(1, 0)));
+        Assert.False(File.Exists(path));
+        using var reset = MotifDatabase.OpenOwned(path, locator, MotifSchema.CurrentSchema, new Version(1, 0));
+        using var reopened = reset.OpenConnection();
+        Assert.Equal(50, PragmaUserVersion(path));
+        using var shape = reopened.CreateCommand();
+        shape.CommandText = "SELECT COUNT(*) FROM pragma_table_info('AssessedWords') WHERE name = 'WorkSteps';";
+        Assert.Equal(1L, shape.ExecuteScalar());
+    }
+
+    [Fact]
     public void AStoreStampedWithSchemaFortySevenIsRefusedByThePhonologyAssessmentGeneration()
     {
-        Assert.Equal(49, MotifSchema.CurrentSchema);
+        Assert.Equal(50, MotifSchema.CurrentSchema);
         var path = Path.Combine(_root, "schema47.motif.db");
         var locator = new ProjectLocator(Path.Combine(_root, "schema47.fwdata"), "schema47");
         using (MotifDatabase.OpenOwned(path, locator, MotifSchema.CurrentSchema, new Version(1, 0))) { }
@@ -234,12 +267,12 @@ public sealed class SchemaVersionGateTests : IDisposable
     }
 
     [Fact]
-    public void AddingTheLeaseGenerationDidNotRaiseTheCompatibilityFloor()
+    public void TheCurrentSchemaKeepsItsMinimumWorkerVersion()
     {
         var path = Path.Combine(_root, "floor.motif.db");
         var locator = new ProjectLocator(Path.Combine(_root, "floor.fwdata"), "floor");
 
-        // The columns are additive and nullable, so a build that predates them stays welcome.
+        // Schema refusal is separate from this compatible worker-version floor.
         using var database = MotifDatabase.OpenOwned(path, locator, MotifSchema.CurrentSchema,
             new Version(1, 0));
 

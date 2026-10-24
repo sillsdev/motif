@@ -414,7 +414,7 @@ public sealed class PanGlossInvokerTests : IDisposable
 
         Assert.IsType<PanGlossOutcome.Completed>(outcome);
         Assert.Equal(["parse", grammar, "motifa", "--trace", "--trace-format", "json", "--trace-details",
-            "--step-cap", "7"], Argv(grammar));
+            "--step-cap", "7", "--work-cap", "700"], Argv(grammar));
     }
 
     [Theory]
@@ -1028,7 +1028,8 @@ public sealed class PanGlossInvokerTests : IDisposable
         Assert.EndsWith("words.txt", argv[2], StringComparison.Ordinal);
         Assert.EndsWith("out.tsv", argv[3], StringComparison.Ordinal);
         Assert.Equal(["--word-timeout-ms", "1500", "--step-cap",
-            StepCap.DefaultSteps.ToString(CultureInfo.InvariantCulture), "--threads",
+            StepCap.DefaultSteps.ToString(CultureInfo.InvariantCulture), "--work-cap",
+            (StepCap.DefaultSteps * StepCap.WorkCapMultiplier).ToString(CultureInfo.InvariantCulture), "--threads",
             PanGlossCpuBudget.DefaultBatchThreadCount.ToString(CultureInfo.InvariantCulture), "--stats", "--cache", cache], argv[4..]);
         Assert.True(File.Exists(cache));
     }
@@ -1043,7 +1044,8 @@ public sealed class PanGlossInvokerTests : IDisposable
             new PanGlossRequest.Batch(project, ["motifa"], TimeSpan.FromSeconds(1)), "test:batch", CancellationToken.None);
 
         Assert.Equal(["--word-timeout-ms", "1000", "--step-cap",
-            StepCap.DefaultSteps.ToString(CultureInfo.InvariantCulture), "--threads",
+            StepCap.DefaultSteps.ToString(CultureInfo.InvariantCulture), "--work-cap",
+            (StepCap.DefaultSteps * StepCap.WorkCapMultiplier).ToString(CultureInfo.InvariantCulture), "--threads",
             PanGlossCpuBudget.DefaultBatchThreadCount.ToString(CultureInfo.InvariantCulture)], Argv(project)[4..]);
     }
 
@@ -1058,7 +1060,8 @@ public sealed class PanGlossInvokerTests : IDisposable
             "test:batch-threads", CancellationToken.None);
 
         Assert.Equal(["--word-timeout-ms", "1000", "--step-cap",
-            StepCap.DefaultSteps.ToString(CultureInfo.InvariantCulture), "--threads", "3"], Argv(project)[4..]);
+            StepCap.DefaultSteps.ToString(CultureInfo.InvariantCulture), "--work-cap",
+            (StepCap.DefaultSteps * StepCap.WorkCapMultiplier).ToString(CultureInfo.InvariantCulture), "--threads", "3"], Argv(project)[4..]);
     }
 
     [Fact]
@@ -1114,7 +1117,7 @@ public sealed class PanGlossInvokerTests : IDisposable
             new PanGlossRequest.Batch(project, ["motifa"], TimeSpan.FromMilliseconds(700), PerWordStepLimit: 123),
             "test:batch-budget", CancellationToken.None);
 
-        Assert.Equal(["--word-timeout-ms", "700", "--step-cap", "123", "--threads",
+        Assert.Equal(["--word-timeout-ms", "700", "--step-cap", "123", "--work-cap", "12300", "--threads",
             PanGlossCpuBudget.DefaultBatchThreadCount.ToString(CultureInfo.InvariantCulture)], Argv(project)[4..]);
     }
 

@@ -163,6 +163,19 @@ public sealed class RecipeVerificationTests
     }
 
     [Fact]
+    public void ALongTimeSafetyNetDoesNotMakeTheParserLimitsUnverifiable()
+    {
+        var frozen = Expectations(Reading(FormOneGuid));
+        var options = Options(80_000, 200_000, 1);
+        var before = Run("before", [Case("ara", [Parsed(FormOneGuid)])], options);
+        var after = Run("after", [Case("ara", [Parsed(FormOneGuid)])], options);
+
+        var result = RecipeVerification.Compare(frozen, before, after);
+
+        Assert.DoesNotContain(result.Unavailable, item => item.Contains("bounded verification contract"));
+    }
+
+    [Fact]
     public void IncompleteInputAndUnscopedCasesAreReportedWithTheEffectiveBudgets()
     {
         var frozen = Expectations(Reading(FormOneGuid)) with { Unavailable = ["unreadable project judgment"] };
@@ -193,7 +206,33 @@ public sealed class RecipeVerificationTests
         Assert.Throws<ComparisonRefusalException>(() => RecipeVerification.Compare(frozen, before,
             Run("other-kind", [Case("ara", [Parsed(FormOneGuid)])], kind: "Correctness")));
         Assert.Throws<RecipeVerificationRefusalException>(() => RecipeVerification.Compare(frozen, before,
-            Run("other-options", [Case("ara", [Parsed(FormOneGuid)])], options: Options(2000, 200_000, 1))));
+            Run("other-options", [Case("ara", [Parsed(FormOneGuid)])], options: Options(1000, 199_999, 1))));
+    }
+
+    [Fact]
+    public void PairedRunsIgnoreDifferentTimeoutsWhenStepAndWorkCapsMatch()
+    {
+        var frozen = Expectations(Reading(FormOneGuid));
+        var words = new[] { Case("ara", [Parsed(FormOneGuid)]) };
+        var before = Run("before", words, Options(1000, 200_000, 1));
+        var after = Run("after", words, Options(80_000, 200_000, 1));
+
+        var result = RecipeVerification.Compare(frozen, before, after);
+
+        Assert.Equal(RecipeVerificationStatus.Pass, result.Status);
+        Assert.Equal(80_000, result.EffectiveOptions!.PerWordTimeoutMs);
+    }
+
+    [Fact]
+    public void PairedRunsRejectDifferentStepAndWorkCaps()
+    {
+        var frozen = Expectations(Reading(FormOneGuid));
+        var words = new[] { Case("ara", [Parsed(FormOneGuid)]) };
+        var before = Run("before", words, Options(1000, 200_000, 1));
+        var after = Run("after", words, Options(1000, 199_999, 1));
+
+        Assert.Throws<RecipeVerificationRefusalException>(() =>
+            RecipeVerification.Compare(frozen, before, after));
     }
 
     [Fact]

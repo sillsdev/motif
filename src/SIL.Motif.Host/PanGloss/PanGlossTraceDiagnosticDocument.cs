@@ -155,6 +155,7 @@ public static class PanGlossTraceDiagnosticReader
             categories.EnumerateObject().Select(ReadCategory).ToArray())
         {
             ReportedCompleted = RequiredBool(search, "completed"),
+            WorkSteps = OptionalLong(search, "workSteps"),
         };
 
         var analyses = ReadAnalyses(result);
@@ -468,6 +469,10 @@ public static class PanGlossTraceDiagnosticReader
     private static int? OptionalInt(JsonElement owner, string name) =>
         owner.ValueKind == JsonValueKind.Object && owner.TryGetProperty(name, out var value) &&
         value.ValueKind == JsonValueKind.Number ? value.GetInt32() : null;
+
+    private static long? OptionalLong(JsonElement owner, string name) =>
+        owner.ValueKind == JsonValueKind.Object && owner.TryGetProperty(name, out var value) &&
+        value.ValueKind == JsonValueKind.Number && value.TryGetInt64(out var number) ? number : null;
 
     private static bool? OptionalBool(JsonElement owner, string name) =>
         owner.ValueKind == JsonValueKind.Object && owner.TryGetProperty(name, out var value) &&

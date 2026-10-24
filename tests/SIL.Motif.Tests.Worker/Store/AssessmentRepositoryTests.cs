@@ -20,6 +20,23 @@ public sealed class AssessmentRepositoryTests : IDisposable
     public AssessmentRepositoryTests() => Directory.CreateDirectory(_root);
 
     [Fact]
+    public void AttemptsAndWorkStepsSurviveReadBackAndAMissingWorkStaysNull()
+    {
+        var repository = NewRepository("work-steps.fwdata", out var database);
+        using var ownedDatabase = database;
+        repository.Record(NewAssessment("work-steps", null, null, "ParseTime",
+        [
+            new AssessedWord("bo", "capped", []) { Attempts = 200_000, WorkSteps = 20_000_000_000L, IsIncomplete = true },
+            new AssessedWord("za", "analysed", []) { Attempts = 12 },
+        ]));
+
+        var rows = repository.Get("work-steps").Words!;
+
+        Assert.Equal((200_000, 20_000_000_000L), (rows[0].Attempts, rows[0].WorkSteps));
+        Assert.Equal((12, (long?)null), (rows[1].Attempts, rows[1].WorkSteps));
+    }
+
+    [Fact]
     public void SharedMorphologyAndApprovedExpectationsSurviveReadBackWithBothLimitFlags()
     {
         var repository = NewRepository("morphology.fwdata", out var database);

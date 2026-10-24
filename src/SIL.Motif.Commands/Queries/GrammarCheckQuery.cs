@@ -136,7 +136,10 @@ public static class GrammarCheckQuery
                 return CommandOutcome<GrammarCheckResponse>.Refused(new Refusal(
                     "grammarcheck.malformed-findings", FailureReason.Refused,
                     $"pangloss grammar-health wrote a report Motif could not read: {exception.Message}",
-                    Fact(("projectPath", request.ProjectPath))));
+                    Fact(("projectPath", request.ProjectPath),
+                        ("parserSourceTag", PanGlossInterfaceVersions.SourceTag),
+                        ("expectedSchemaVersion", PanGlossInterfaceVersions.GrammarHealthSchemaVersion.ToString(CultureInfo.InvariantCulture)),
+                        ("parseError", exception.Message))));
             }
 
             if (parserExitedNonzero && !findings.Any(finding => finding.Severity == GrammarDiagnosticLevel.Error))

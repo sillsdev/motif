@@ -291,7 +291,7 @@ internal static class AgentTools
             AgentClass.Draft,
             Schema.Object(
                 ("draft", Schema.String("Draft name from motif_start_proposal."), true),
-                ("target", Schema.String("Canonical id of the existing segment natural class."), true),
+                ("target", Schema.String("Canonical id, exact natural class name or abbreviation; names use NFD and ordinal case-insensitive equality, without trimming."), true),
                 ("expectedMembers", Schema.StringArray("Exact current phoneme ids in the class; copy all members[].id " +
                     "from a detailed motif_grammar natural_classes listing."), true),
                 ("members", Schema.StringArray("Requested distinct phoneme ids; the class must remain nonempty."), true)),
@@ -309,11 +309,11 @@ internal static class AgentTools
             AgentClass.Draft,
             Schema.Object(
                 ("draft", Schema.String("Draft name from motif_start_proposal."), true),
-                ("source", Schema.String("Canonical id of the class users currently reference."), true),
-                ("replacement", Schema.String("Canonical id of the replacement class."), true),
+                ("source", Schema.String("Canonical id, exact name or abbreviation of the class users currently reference; names use NFD and ordinal case-insensitive equality, without trimming."), true),
+                ("replacement", Schema.String("Canonical id, exact name or abbreviation of the replacement class; names use NFD and ordinal case-insensitive equality, without trimming."), true),
                 ("replacementCreationOperation", Schema.String("Operation id returned by the class create earlier in this Draft."), true),
                 ("environments", Schema.Array("Explicit environment users and their exact current typed contexts.",
-                    Schema.Object(("target", Schema.String("Environment id."), true),
+                    Schema.Object(("target", Schema.String("Environment id or unique exact name; names use NFD and ordinal case-insensitive equality, without trimming."), true),
                         ("expectedLeft", NaturalClassRelinkContexts(), true),
                         ("expectedRight", NaturalClassRelinkContexts(), true))), true),
                 ("ruleContexts", Schema.StringArray("Explicit rewrite-rule context object ids using the source class."), true)),
@@ -330,7 +330,7 @@ internal static class AgentTools
             string.Empty,
             AgentClass.Draft,
             Schema.Object(("draft", Schema.String("Draft name."), true),
-                ("name", Schema.String("Environment name."), true), ("left", Schema.Contexts(), true), ("right", Schema.Contexts(), true)),
+                ("name", Schema.String("Environment name."), true), ("left", NaturalClassContexts(), true), ("right", NaturalClassContexts(), true)),
             false,
             false,
             false,
@@ -962,7 +962,7 @@ internal static class AgentTools
             ("naturalClass", Schema.String("Natural class id owned by this project's phonological data."), false));
         var changedItems = Schema.Array("Zero or one explicit phoneme or natural-class items.", item);
         changedItems["maxItems"] = 1;
-        var contexts = Schema.Contexts();
+        var contexts = NaturalClassContexts();
         contexts["maxItems"] = 8;
         return Schema.Object(("draft", Schema.String("Draft name."), true),
             ("name", Schema.String("Rule name."), true),
@@ -1175,9 +1175,17 @@ internal static class AgentTools
 
     private static JsonObject NaturalClassRelinkContexts()
     {
-        var contexts = Schema.Contexts();
+        var contexts = NaturalClassContexts();
         var properties = contexts["items"]!.AsObject()["properties"]!.AsObject();
         properties["boundaryMarker"] = Schema.String("Declared morpheme-boundary marker id.");
+        return contexts;
+    }
+
+    private static JsonObject NaturalClassContexts()
+    {
+        var contexts = Schema.Contexts();
+        contexts["items"]!.AsObject()["properties"]!.AsObject()["naturalClass"] =
+            Schema.String("Natural class id, exact name or abbreviation; names must resolve uniquely using NFD and ordinal case-insensitive equality, without trimming. The class must have a unique abbreviation.");
         return contexts;
     }
 

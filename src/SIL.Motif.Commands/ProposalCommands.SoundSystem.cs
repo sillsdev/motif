@@ -1,6 +1,8 @@
 using SIL.Motif.Projection;
 using System.Globalization;
+using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using SIL.LCModel;
 using SIL.LCModel.Core.KernelInterfaces;
@@ -255,6 +257,128 @@ public static partial class ProposalCommands
             }
         });
 
+    private static bool EditsCreatedNaturalClass(ComposeStep step, JsonElement input, HashSet<Guid> created) =>
+        step.Verb == "compose-edit-natural-class" && input.ValueKind == JsonValueKind.Object &&
+        input.TryGetProperty("target", out var target) && target.ValueKind == JsonValueKind.String &&
+        CanonicalId.TryParse(target.GetString(), out var id) && created.Contains(id.ToGuid());
+
+    private static bool ReplacesNamedNaturalClassEdit(LcmCache cache, ComposeStep step, OperationEnvelope operation)
+    {
+        if (step.Verb != "compose-edit-natural-class" || step.Authored is not { } input ||
+            input.ValueKind != JsonValueKind.Object || !input.TryGetProperty("target", out var target) ||
+            target.ValueKind != JsonValueKind.String || CanonicalId.TryParse(target.GetString(), out _) ||
+            operation.Target is not { } id || operation.Kind is not
+                (PhNCSegmentsSegmentsOperationKinds.AddRefSegments or PhNCSegmentsSegmentsOperationKinds.RemoveRefSegments))
+            return false;
+        var naturalClass = cache.LangProject.PhonologicalDataOA.NaturalClassesOS
+            .FirstOrDefault(candidate => candidate.Guid == id.ToGuid());
+        return naturalClass is not null &&
+            (SameReferenceName(naturalClass.Name.BestAnalysisAlternative.Text, target.GetString()!) ||
+                SameReferenceName(naturalClass.Abbreviation.BestAnalysisAlternative.Text, target.GetString()!));
+    }
+
+    private static JsonElement ResolveSoundObjectNames(LcmCache cache, string verb, JsonElement authored)
+    {
+        if (verb is not ("compose-author-environment" or "compose-author-phonological-rule" or
+            "compose-edit-natural-class" or "compose-relink-natural-class") ||
+            HasDuplicateSoundIntentProperties(authored) ||
+            JsonNode.Parse(authored.GetRawText()) is not JsonObject intent) return authored;
+        switch (verb)
+        {
+            case "compose-author-environment":
+            case "compose-author-phonological-rule":
+                ResolveContextNaturalClassNames(cache, intent, "left", "right");
+                break;
+            case "compose-edit-natural-class":
+                ResolveReference(cache, intent, "target", NaturalClassReference);
+                break;
+            case "compose-relink-natural-class":
+                ResolveReference(cache, intent, "source", NaturalClassReference);
+                ResolveReference(cache, intent, "replacement", NaturalClassReference);
+                ResolveEnvironmentNames(cache, intent);
+                break;
+        }
+        using var normalized = JsonDocument.Parse(intent.ToJsonString());
+        return normalized.RootElement.Clone();
+    }
+
+    private static bool HasDuplicateSoundIntentProperties(JsonElement value)
+    {
+        if (value.ValueKind == JsonValueKind.Array)
+            return value.EnumerateArray().Any(HasDuplicateSoundIntentProperties);
+        if (value.ValueKind != JsonValueKind.Object) return false;
+        var names = new HashSet<string>(StringComparer.Ordinal);
+        return value.EnumerateObject().Any(property => !names.Add(property.Name) ||
+            HasDuplicateSoundIntentProperties(property.Value));
+    }
+
+    private static void ResolveContextNaturalClassNames(LcmCache cache, JsonObject intent, params string[] properties)
+    {
+        foreach (var property in properties)
+            if (intent[property] is JsonArray contexts)
+                foreach (var context in contexts.OfType<JsonObject>())
+                    ResolveReference(cache, context, "naturalClass", NaturalClassReference);
+    }
+
+    private static void ResolveEnvironmentNames(LcmCache cache, JsonObject intent)
+    {
+        if (intent["environments"] is not JsonArray environments) return;
+        foreach (var environment in environments.OfType<JsonObject>())
+        {
+            ResolveReference(cache, environment, "target", ResolveEnvironmentReference);
+            ResolveContextNaturalClassNames(cache, environment, "expectedLeft", "expectedRight");
+        }
+    }
+
+    private static void ResolveReference(LcmCache cache, JsonObject authored, string property,
+        Func<LcmCache, string, string> resolver)
+    {
+        if (authored[property] is not JsonValue value || !value.TryGetValue<string>(out var reference) ||
+            CanonicalId.TryParse(reference, out _)) return;
+        authored[property] = resolver(cache, reference);
+    }
+
+    private static string NaturalClassReference(LcmCache cache, string reference) =>
+        EditNaturalClassComposer.ResolveNaturalClassReference(cache, reference).Value;
+
+    private static string ResolveEnvironmentReference(LcmCache cache, string reference)
+    {
+        var environments = cache.LangProject.PhonologicalDataOA.EnvironmentsOS.ToArray();
+        var matches = environments.Where(environment => SameReferenceName(
+            environment.Name.BestAnalysisAlternative.Text, reference)).ToArray();
+        if (matches.Length == 1) return CanonicalId.FromGuid(matches[0].Guid).Value;
+
+        var candidates = matches.Length > 0 ? matches : environments.Where(environment =>
+            ContainsReferenceName(environment.Name.BestAnalysisAlternative.Text, reference)).ToArray();
+        if (candidates.Length == 0) candidates = environments;
+        var displayedCandidates = matches.Length == 0 ? candidates.Take(12) : candidates;
+        var candidateText = string.Join(", ", displayedCandidates
+            .OrderBy(environment => EnvironmentDisplayName(environment), StringComparer.Ordinal)
+            .ThenBy(environment => environment.Guid)
+            .Select(environment => $"{EnvironmentDisplayName(environment)} [{CanonicalId.FromGuid(environment.Guid).Value}]"));
+        if (matches.Length == 0 && candidates.Length > 12) candidateText += $", and {candidates.Length - 12} more";
+        if (candidateText.Length == 0) candidateText = "none";
+        var status = matches.Length == 0 ? "was not found" : "is ambiguous";
+        throw new InvalidOperationException(
+            $"Environment reference '{reference}' {status}. Candidates: {candidateText}.");
+    }
+
+    private static string EnvironmentDisplayName(IPhEnvironment environment)
+    {
+        var name = environment.Name.BestAnalysisAlternative.Text;
+        return string.IsNullOrWhiteSpace(name) || name == "***"
+            ? CanonicalId.FromGuid(environment.Guid).Value
+            : name;
+    }
+
+    private static bool SameReferenceName(string? name, string reference) =>
+        !string.IsNullOrWhiteSpace(name) && name != "***" && string.Equals(name.Normalize(NormalizationForm.FormD),
+            reference.Normalize(NormalizationForm.FormD), StringComparison.OrdinalIgnoreCase);
+
+    private static bool ContainsReferenceName(string? name, string reference) =>
+        name is not null && name.Normalize(NormalizationForm.FormD).Contains(
+            reference.Normalize(NormalizationForm.FormD), StringComparison.OrdinalIgnoreCase);
+
     private static CommandOutcome<ComposedOperationsResponse> ComposeIntoDraft(
         MotifDatabase database,
         ProjectLocator project,
@@ -312,6 +436,10 @@ public static partial class ProposalCommands
                 return CommandOutcome<ComposedOperationsResponse[]>.Refused(removal);
             var previous = ProposalJsonParser.Parse(BuildProposalJson(draft));
             var proposalId = CanonicalId.Parse(draft.ProposalId);
+            var createdNaturalClasses = previous.Operations
+                .Where(operation => operation.Kind == PhPhonDataNaturalClassesOperationKinds.Create)
+                .Select(operation => operation.EntityId!.Value.ToGuid()).ToHashSet();
+            var cancelledCreationMembers = new HashSet<string>(StringComparer.Ordinal);
             var declaredLabels = steps.Select((step, index) => (step.Label, index))
                 .Where(item => item.Label is not null)
                 .ToDictionary(item => item.Label!, item => item.index, StringComparer.Ordinal);
@@ -321,7 +449,9 @@ public static partial class ProposalCommands
                 .ToHashSet(StringComparer.Ordinal);
             var replacedSet = steps
                 .SelectMany(step => step.Authored is { } authored && step.ReplacePrevious is { } replaces
-                    ? previous.Operations.Where(operation => replaces(authored, operation))
+                    ? previous.Operations.Where(operation => replaces(authored, operation) &&
+                        !(step.Verb == "compose-edit-natural-class" &&
+                            operation.Target is { } target && createdNaturalClasses.Contains(target.ToGuid())))
                     : [])
                 .Select(operation => operation.OperationId.Value)
                 .Concat(identityReplaced)
@@ -349,14 +479,28 @@ public static partial class ProposalCommands
                 using var unit = new NonUndoableUnitOfWorkHelper(handler);
                 unit.RollBack = false;
                 foreach (var operation in OperationExecutionOrder.Sort(retained))
+                {
+                    // Names become available as their creators run; replacement edits must stay out of the scratch.
+                    if (!(operation.Target is { } target && createdNaturalClasses.Contains(target.ToGuid())) &&
+                        steps.Any(step => ReplacesNamedNaturalClassEdit(cache, step, operation)))
+                    {
+                        replacedSet.Add(operation.OperationId.Value);
+                        continue;
+                    }
+                    if (operation.DependsOn.Any(dependency => replacedSet.Contains(dependency.OperationId.Value)))
+                        throw new InvalidOperationException(
+                            "An existing Draft operation depends on an edit this intent would replace.");
                     OperationHandlerRegistry.Resolve(operation.Kind, "Draft composer preparation")
                         .ApplyAndCaptureEffect(cache, operation, new List<CanonicalId>());
+                }
+                retained = retained.Where(operation => !replacedSet.Contains(operation.OperationId.Value)).ToArray();
                 var staged = new StagedDependencyIndex(retained);
                 // A replaced edit leaves before its replacement arrives, so it cannot conflict with it.
                 var validated = new List<OperationEnvelope>(retained);
                 var slotIndex = new ProposalSlotIndex(retained);
                 var batchAdded = new List<OperationEnvelope>();
                 var batchIdentities = new HashSet<(string Composer, string Identity)>();
+                var editedNaturalClasses = new HashSet<Guid>();
                 var availableLabels = new Dictionary<string, CanonicalId>(StringComparer.Ordinal);
                 var results = new List<(JsonElement Input, OperationEnvelope[] Added,
                     IReadOnlyList<ComposedRelatedObject>? Related)>();
@@ -365,8 +509,19 @@ public static partial class ProposalCommands
                     var step = steps[index];
                     try
                     {
+                        var normalized = step.Authored is { } raw && step.Verb is { } verb
+                            ? ResolveSoundObjectNames(cache, verb, raw)
+                            : step.Authored;
+                        if (step.Verb == "compose-edit-natural-class" && normalized is { } naturalClassInput &&
+                            naturalClassInput.ValueKind == JsonValueKind.Object &&
+                            naturalClassInput.TryGetProperty("target", out var naturalClassTarget) &&
+                            naturalClassTarget.ValueKind == JsonValueKind.String &&
+                            CanonicalId.TryParse(naturalClassTarget.GetString(), out var naturalClassId) &&
+                            !editedNaturalClasses.Add(naturalClassId.ToGuid()))
+                            throw new InvalidOperationException(
+                                "An earlier intent in this batch already edits the same target; author one edit.");
                         // Two edits of one slot cannot both stand, so a batch never replaces its own edit.
-                        if (step.Authored is { } authored && step.ReplacePrevious is { } replaces &&
+                        if (normalized is { } authored && step.ReplacePrevious is { } replaces &&
                             batchAdded.Any(operation => replaces(authored, operation)))
                             throw new InvalidOperationException(
                                 "An earlier intent in this batch already edits the same target; author one edit.");
@@ -374,11 +529,11 @@ public static partial class ProposalCommands
                             throw new InvalidOperationException(step.Definition!.Replaces!.DuplicateMessage);
                         JsonElement input;
                         IReadOnlyList<OperationEnvelope> operations;
-                        if (step.ResolvePlacementLabels && step.Definition is { } definition &&
-                            definition.Verb == PhonologicalRuleComposerVerb && step.Authored is { } authoredInput)
+                        if (step.Definition is { } definition && normalized is { } authoredInput)
                         {
-                            input = ResolveRulePlacementLabels(authoredInput, availableLabels, declaredLabels,
-                                index);
+                            input = step.ResolvePlacementLabels && definition.Verb == PhonologicalRuleComposerVerb
+                                ? ResolveRulePlacementLabels(authoredInput, availableLabels, declaredLabels, index)
+                                : authoredInput;
                             operations = definition.Compose(cache, input, proposalId, () => CanonicalId.Mint());
                         }
                         else
@@ -395,13 +550,57 @@ public static partial class ProposalCommands
                                     $"Label '{labelForPrincipal}' requires exactly one {CreatePhonologicalRuleKind} creation.");
                             labeledEntity = principal;
                         }
+                        IReadOnlyList<OperationEnvelope> creationMemberRemovals = [];
+                        if (EditsCreatedNaturalClass(step, input, createdNaturalClasses))
+                        {
+                            var removedMembers = operations
+                                .Where(operation => operation.Kind == PhNCSegmentsSegmentsOperationKinds.RemoveRefSegments)
+                                .Select(operation => PhNCSegmentsSegmentsMemberPayload.Parse(operation.After!.Value,
+                                    operation.Kind).ToGuid()).ToHashSet();
+                            var targetId = CanonicalId.Parse(input.GetProperty("target").GetString()!).ToGuid();
+                            var cancelled = retained.Where(operation =>
+                                    operation.Kind == PhNCSegmentsSegmentsOperationKinds.AddRefSegments &&
+                                    operation.Target!.Value.ToGuid() == targetId &&
+                                    removedMembers.Contains(PhNCSegmentsSegmentsMemberPayload.Parse(
+                                        operation.After!.Value, operation.Kind).ToGuid()))
+                                .Select(operation => operation.OperationId.Value).ToHashSet(StringComparer.Ordinal);
+                            if (validated.Any(operation => !cancelled.Contains(operation.OperationId.Value) &&
+                                    operation.DependsOn.Any(dependency => cancelled.Contains(dependency.OperationId.Value))))
+                                throw new InvalidOperationException(
+                                    "An existing Draft operation depends on an edit this intent would replace.");
+                            if (cancelled.Count != removedMembers.Count)
+                                throw new InvalidOperationException("A removed member has no pending creation membership.");
+                            // A removed new-object member cancels its pending addition, keeping one write to its slot.
+                            creationMemberRemovals = operations.Where(operation =>
+                                operation.Kind == PhNCSegmentsSegmentsOperationKinds.RemoveRefSegments).ToArray();
+                            cancelledCreationMembers.UnionWith(cancelled);
+                            replacedSet.UnionWith(cancelled);
+                            retained = retained.Where(operation => !cancelled.Contains(operation.OperationId.Value)).ToArray();
+                            validated.RemoveAll(operation => cancelled.Contains(operation.OperationId.Value));
+                            staged = new StagedDependencyIndex(validated);
+                            slotIndex = new ProposalSlotIndex(validated);
+                            operations = operations.Where(operation =>
+                                operation.Kind != PhNCSegmentsSegmentsOperationKinds.RemoveRefSegments).ToArray();
+                        }
                         var related = step.RelatedObjects?.Invoke(cache, input);
                         step.ValidateAppend?.Invoke(validated, input, operations);
-                        var added = DeclareDependencies(input, operations, staged);
+                        var dependencyContext = staged;
+                        if (EditsCreatedNaturalClass(step, input, createdNaturalClasses))
+                        {
+                            var targetId = CanonicalId.Parse(input.GetProperty("target").GetString()!).ToGuid();
+                            // Initial member writes are independent, so a kept member must not require a cancelled sibling.
+                            dependencyContext = new StagedDependencyIndex(staged.Operations.Where(operation =>
+                                operation.Kind != PhNCSegmentsSegmentsOperationKinds.AddRefSegments ||
+                                operation.Target!.Value.ToGuid() != targetId));
+                        }
+                        var added = DeclareDependencies(input, operations, dependencyContext);
                         slotIndex.Append(added);
                         // Later steps read the project as a later single call would, after this step's changes.
                         if (index < steps.Count - 1)
+                        {
+                            ApplyToScratch(cache, creationMemberRemovals);
                             ApplyToScratch(cache, added);
+                        }
                         staged.Add(added);
                         validated.AddRange(added);
                         batchAdded.AddRange(added);
@@ -428,12 +627,13 @@ public static partial class ProposalCommands
                 }
                 if (IdentityOf(step) is not null)
                     draft.ComposerProvenance.RemoveAll(provenance => SharesIdentity(provenance, step));
-                if (step.ReplacePrevious is not null && result.Input.ValueKind == JsonValueKind.Object &&
+                if (step.ReplacePrevious is not null && !EditsCreatedNaturalClass(step, result.Input, createdNaturalClasses) &&
+                    result.Input.ValueKind == JsonValueKind.Object &&
                     result.Input.TryGetProperty("target", out var replacementTarget) &&
                     replacementTarget.ValueKind == JsonValueKind.String)
                     draft.ComposerProvenance.RemoveAll(provenance => ReplacesComposerIntent(provenance,
                         step.Composer, replacementTarget.GetString()));
-                if (result.Added.Length > 0)
+                if (result.Added.Length > 0 || EditsCreatedNaturalClass(step, result.Input, createdNaturalClasses))
                     draft.ComposerProvenance.Add(JsonSerializer.SerializeToElement(new
                     {
                         composer = step.Composer,
@@ -441,6 +641,17 @@ public static partial class ProposalCommands
                         operationIds = result.Added.Select(operation => operation.OperationId.Value).ToArray(),
                     }));
             }
+            if (cancelledCreationMembers.Count > 0)
+                for (var index = 0; index < draft.ComposerProvenance.Count; index++)
+                {
+                    var provenance = draft.ComposerProvenance[index];
+                    var recorded = ProvenanceOperationIds(provenance);
+                    if (recorded is null || !recorded.Any(cancelledCreationMembers.Contains)) continue;
+                    var updated = JsonNode.Parse(provenance.GetRawText())!.AsObject();
+                    updated["operationIds"] = JsonSerializer.SerializeToNode(
+                        recorded.Where(id => !cancelledCreationMembers.Contains(id)).ToArray());
+                    draft.ComposerProvenance[index] = JsonSerializer.SerializeToElement(updated);
+                }
             foreach (var group in draft.ContractVersions.Keys.ToArray())
                 if (!draft.Operations.Any(operation =>
                         SIL.Motif.Contract.Model.OperationKind.GetGroup(operation.Kind) == group))

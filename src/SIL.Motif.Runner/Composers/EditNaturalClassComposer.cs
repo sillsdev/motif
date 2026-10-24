@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Text.Json;
 using SIL.LCModel;
 using SIL.LCModel.Core.KernelInterfaces;
@@ -87,6 +88,42 @@ public static class EditNaturalClassComposer
             .ThenBy(user => user.Id, StringComparer.Ordinal).ToArray();
     }
 
+    /// <summary>Resolves one canonical identity, natural-class name or abbreviation in the loaded project.</summary>
+    /// <remarks>Names use Unicode canonical decomposition (NFD) and ordinal case-insensitive equality, without trimming.</remarks>
+    /// <param name="cache">The loaded project to search.</param>
+    /// <param name="reference">A canonical identity or exact natural-class name or abbreviation.</param>
+    /// <returns>The canonical identity for the resolved project natural class.</returns>
+    /// <exception cref="ArgumentNullException">The cache or reference is null.</exception>
+    /// <exception cref="InvalidOperationException">The reference is missing or names more than one natural class.</exception>
+    public static CanonicalId ResolveNaturalClassReference(LcmCache cache, string reference)
+    {
+        ArgumentNullException.ThrowIfNull(cache);
+        ArgumentNullException.ThrowIfNull(reference);
+        if (CanonicalId.TryParse(reference, out var id))
+        {
+            _ = ResolveNaturalClass(cache, id);
+            return id;
+        }
+
+        var naturalClasses = cache.LangProject.PhonologicalDataOA.NaturalClassesOS.ToArray();
+        var matches = naturalClasses.Where(naturalClass => NaturalClassNames(naturalClass)
+            .Any(name => SameName(name, reference))).ToArray();
+        if (matches.Length == 1) return SoundSystemAuthoring.Id(matches[0]);
+
+        var candidates = matches.Length > 0 ? matches : naturalClasses.Where(naturalClass => NaturalClassNames(naturalClass)
+            .Any(name => ContainsName(name, reference))).ToArray();
+        if (candidates.Length == 0) candidates = naturalClasses;
+        var displayedCandidates = matches.Length == 0 ? candidates.Take(12) : candidates;
+        var candidateText = string.Join(", ", displayedCandidates.OrderBy(NaturalClassDisplayName, StringComparer.Ordinal)
+            .ThenBy(naturalClass => naturalClass.Guid)
+            .Select(naturalClass => $"{NaturalClassDisplayName(naturalClass)} [{SoundSystemAuthoring.Id(naturalClass).Value}]"));
+        if (matches.Length == 0 && candidates.Length > 12) candidateText += $", and {candidates.Length - 12} more";
+        if (candidateText.Length == 0) candidateText = "none";
+        var status = matches.Length == 0 ? "was not found" : "is ambiguous";
+        throw new InvalidOperationException(
+            $"'{ConstructName}': natural class reference '{reference}' {status}. Candidates: {candidateText}.");
+    }
+
     private static IPhNCSegments ResolveSegmentClass(LcmCache cache, CanonicalId id)
     {
         var naturalClass = ResolveNaturalClass(cache, id);
@@ -101,6 +138,34 @@ public static class EditNaturalClassComposer
             throw new InvalidOperationException($"'{ConstructName}': natural class '{id.Value}' is not owned by this project.");
         return naturalClass;
     }
+
+    private static IEnumerable<string> NaturalClassNames(IPhNaturalClass naturalClass)
+    {
+        var name = naturalClass.Name.BestAnalysisAlternative.Text;
+        var abbreviation = naturalClass.Abbreviation.BestAnalysisAlternative.Text;
+        if (!string.IsNullOrWhiteSpace(name) && name != "***") yield return name;
+        if (!string.IsNullOrWhiteSpace(abbreviation) && abbreviation != "***") yield return abbreviation;
+    }
+
+    private static string NaturalClassDisplayName(IPhNaturalClass naturalClass)
+    {
+        var name = naturalClass.Name.BestAnalysisAlternative.Text;
+        var abbreviation = naturalClass.Abbreviation.BestAnalysisAlternative.Text;
+        var displayName = string.IsNullOrWhiteSpace(name) || name == "***"
+            ? abbreviation
+            : string.IsNullOrWhiteSpace(abbreviation) || abbreviation == "***" || SameName(name, abbreviation)
+                ? name
+                : $"{name} ({abbreviation})";
+        return string.IsNullOrWhiteSpace(displayName) ? SoundSystemAuthoring.Id(naturalClass).Value : displayName;
+    }
+
+    private static bool SameName(string left, string right) =>
+        string.Equals(left.Normalize(NormalizationForm.FormD), right.Normalize(NormalizationForm.FormD),
+            StringComparison.OrdinalIgnoreCase);
+
+    private static bool ContainsName(string name, string reference) =>
+        name.Normalize(NormalizationForm.FormD).Contains(reference.Normalize(NormalizationForm.FormD),
+            StringComparison.OrdinalIgnoreCase);
 
     private static CanonicalId[] Unique(IReadOnlyList<CanonicalId> ids, string name)
     {

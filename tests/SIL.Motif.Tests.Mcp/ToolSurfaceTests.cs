@@ -533,6 +533,21 @@ public sealed class DetailedNaturalClassMemberToolTests(PristineProjectFixture p
         Assert.True(edited.StructuredContent!.Value.GetProperty("ok").GetBoolean(),
             edited.StructuredContent.Value.GetRawText());
         Assert.Equal(1, edited.StructuredContent.Value.GetProperty("result").GetProperty("operationCount").GetInt32());
+
+        var missing = await MotifMcpServer.CallAsync(editContext, experimentalTools, "motif_edit_natural_class",
+            Arguments(("project", project.FwDataPath), ("draft", "member-id-edit"), ("target", "nasa"),
+                ("expectedMembers", memberIds), ("members", new[] { memberId })), CancellationToken.None);
+        Assert.True(missing.IsError);
+        var failure = missing.StructuredContent!.Value;
+        Assert.False(failure.GetProperty("ok").GetBoolean());
+        Assert.Equal("draft.invalid", failure.GetProperty("code").GetString());
+        Assert.Contains(CanonicalId.FromGuid(naturalClassGuid).Value, failure.GetProperty("message").GetString());
+
+        var namedEdit = await MotifMcpServer.CallAsync(editContext, experimentalTools, "motif_edit_natural_class",
+            Arguments(("project", project.FwDataPath), ("draft", "member-id-edit"), ("target", "n"),
+                ("expectedMembers", memberIds), ("members", new[] { memberId })), CancellationToken.None);
+        Assert.False(namedEdit.IsError ?? false, namedEdit.StructuredContent?.GetRawText());
+        Assert.Equal(1, namedEdit.StructuredContent!.Value.GetProperty("result").GetProperty("operationCount").GetInt32());
     }
 
     private static Dictionary<string, JsonElement> Arguments(params (string Name, object? Value)[] values) =>

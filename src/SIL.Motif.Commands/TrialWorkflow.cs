@@ -1,5 +1,6 @@
 using SIL.Motif.Commands.Assess;
 using SIL.Motif.Commands.Requests;
+using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
@@ -39,12 +40,18 @@ public static class TrialWorkflow
     /// <param name="cancellationToken">Cancels the Baseline measurement.</param>
     public static CommandOutcome<TrialEnqueued> Enqueue(EnqueueTrialRequest request, string managedRoot,
         string? parserPath, BaselineMode mode, CancellationToken cancellationToken) =>
-        Enqueue(request, words => TrialBaselines.Assess(request.FwDataPath, words, managedRoot, parserPath,
-            cancellationToken), mode, parserPath ?? SIL.Motif.Host.Parser.PanGlossExecutable.TryLocate());
+        Enqueue(request, (words, limits) => TrialBaselines.Assess(request.FwDataPath, words, managedRoot, parserPath,
+            cancellationToken, limits), mode, parserPath ?? SIL.Motif.Host.Parser.PanGlossExecutable.TryLocate());
 
     /// <summary>As the public overload, with the Baseline measurement supplied by the caller.</summary>
     internal static CommandOutcome<TrialEnqueued> Enqueue(EnqueueTrialRequest request,
         Func<IReadOnlyList<string>, CommandOutcome<AssessCommandResponse>> assess, BaselineMode mode,
+        string? expectedParserPath = null) =>
+        Enqueue(request, (words, _) => assess(words), mode, expectedParserPath);
+
+    /// <summary>Runs the update-gated workflow while carrying the frozen limits through the before measurement.</summary>
+    internal static CommandOutcome<TrialEnqueued> Enqueue(EnqueueTrialRequest request,
+        Func<IReadOnlyList<string>, TrialLimits?, CommandOutcome<AssessCommandResponse>> assess, BaselineMode mode,
         string? expectedParserPath = null)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -59,9 +66,9 @@ public static class TrialWorkflow
         CommandOutcome<JobEnqueuedResponse> queued;
         try
         {
-            queued = TrialBaselines.EnqueueWithBaseline(request, words =>
+            queued = TrialBaselines.EnqueueWithBaseline(request, (words, limits) =>
             {
-                try { return assess(words); }
+                try { return assess(words, limits); }
                 catch (Exception exception) when (exception is not OperationCanceledException)
                 {
                     failed = true;
