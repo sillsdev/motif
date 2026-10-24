@@ -36,12 +36,19 @@ namespace SIL.Motif.Tests.Retirement;
 
 [Collection(LcmCacheParallelCollections.Group1)]
 [Trait("MotifTestLevel", "System")]
-public sealed partial class RedundantZeroAffixRecipeAcceptanceTests(PristineProjectFixture pristine)
+public sealed partial class RedundantZeroAffixRecipeAcceptanceTests(PristineProjectFixture pristine) : IDisposable
 {
     private const string ProductVersion = "0.1.0";
     private static readonly JsonSerializerOptions WebJson = new(JsonSerializerDefaults.Web);
     private readonly string _root = Path.Combine(Path.GetTempPath(), "motif-zero-affix-recipe-" +
         Guid.NewGuid().ToString("N"));
+    internal string TemporaryRoot => _root;
+
+    /// <summary>Deletes the private scratch files created by this acceptance test instance.</summary>
+    public void Dispose()
+    {
+        if (Directory.Exists(_root)) Directory.Delete(_root, recursive: true);
+    }
 
     [RealParserFact]
     public async Task ZeroAffixFindingDryRunAndPairedAssessmentsVerifyWholeGraphRetirement()

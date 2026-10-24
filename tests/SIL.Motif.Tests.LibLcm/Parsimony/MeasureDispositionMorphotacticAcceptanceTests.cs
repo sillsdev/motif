@@ -9,6 +9,12 @@ namespace SIL.Motif.Tests.Parsimony;
 
 public sealed partial class MorphotacticRecipeAcceptanceTests
 {
+    /// <summary>Deletes the private scratch files created by this acceptance test instance.</summary>
+    public void Dispose()
+    {
+        if (Directory.Exists(_root)) Directory.Delete(_root, recursive: true);
+    }
+
     [ParsimonyFactsFact]
     public async Task DuplicateProhibitionDispositionRoutesUseTheActualMeasureFinding()
     {

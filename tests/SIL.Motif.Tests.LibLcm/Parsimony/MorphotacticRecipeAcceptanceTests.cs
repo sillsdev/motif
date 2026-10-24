@@ -45,7 +45,7 @@ namespace SIL.Motif.Tests.Parsimony;
 [Collection(LcmCacheParallelCollections.Group3)]
 [Trait("MotifTestLevel", "System")]
 public sealed partial class MorphotacticRecipeAcceptanceTests(
-    PristineProjectFixture pristine, ITestOutputHelper output)
+    PristineProjectFixture pristine, ITestOutputHelper output) : IDisposable
 {
     private const string ProductVersion = "0.1.0";
     private const int Anywhere = 0;
@@ -53,6 +53,7 @@ public sealed partial class MorphotacticRecipeAcceptanceTests(
     private const int AdjacentToLeft = 3;
     private readonly string _root = Path.Combine(Path.GetTempPath(), "motif-morphotactic-acceptance-" +
         Guid.NewGuid().ToString("N"));
+    internal string TemporaryRoot => _root;
 
     [RealParserFact]
     public async Task AdhocDuplicateDisablingOneExactDuplicateKeepsCompletedParseSetsUnchanged()

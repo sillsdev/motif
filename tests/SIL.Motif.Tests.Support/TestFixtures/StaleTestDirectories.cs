@@ -1,7 +1,7 @@
 namespace SIL.Motif.Tests.TestFixtures;
 
 /// <summary>
-/// Deletes what earlier test processes left in the shared temporary roots this suite creates per process.
+/// Deletes stale directories from the temporary roots owned by this test suite.
 /// </summary>
 /// <remarks>
 /// A process that is killed, or whose cleanup meets a file still locked, leaves its directory behind, and
@@ -17,11 +17,11 @@ public static class StaleTestDirectories
     /// <summary>The folder under the temporary directory that holds each test process's own worker root.</summary>
     public const string WorkerRootsFolder = "SIL.Motif.Tests.WorkerRoots";
 
-    /// <summary>The per-process roots under the temporary directory that <see cref="SweepTemporaryRoots"/> clears.</summary>
+    /// <summary>The test-owned roots under the temporary directory that <see cref="SweepTemporaryRoots"/> clears.</summary>
     public static readonly string[] TemporaryRoots =
         ["SIL.Motif.Tests.Pristine", "SIL.Motif.Tests.Large", "SIL.Motif.Tests.WritingSystems", WorkerRootsFolder,
             "SIL.Motif.Tests.WorkerLockRegistries", Path.Combine("SIL.Motif.Walkthrough", "engine"),
-            "SIL.Motif.WalkthroughDiffs"];
+            "SIL.Motif.WalkthroughDiffs", StoredSelectionFixture.TemporaryRootFolder];
 
     /// <summary>Sweeps each of <see cref="TemporaryRoots"/>; never throws.</summary>
     public static void SweepTemporaryRoots()

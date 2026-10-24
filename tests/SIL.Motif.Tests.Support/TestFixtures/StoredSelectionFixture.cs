@@ -17,7 +17,10 @@ namespace SIL.Motif.Tests.TestFixtures;
 /// <summary>Publishes explicit current-format Text records for reader tests that do not open a LibLCM project.</summary>
 public sealed partial class StoredSelectionFixture : IDisposable
 {
-    private readonly string _root = Path.Combine(Path.GetTempPath(), "SIL.Motif.StoredSelectionFixture",
+    /// <summary>Folder below the temporary directory that holds disposable fixture stores.</summary>
+    public const string TemporaryRootFolder = "SIL.Motif.StoredSelectionFixture";
+
+    private readonly string _root = Path.Combine(Path.GetTempPath(), TemporaryRootFolder,
         Guid.NewGuid().ToString("N"));
     private readonly MotifDatabase _database;
     private readonly string _projectKey;
