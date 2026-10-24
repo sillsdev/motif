@@ -36,6 +36,8 @@ The comparison's `availability` distinguishes `Available` (analysis identities w
 
 An agent reads the same summary through the `motif_assess` tool. It returns the counts, one page of words and the stored Assessment id, and pages through that Assessment with `assessment`, `offset` and `limit` rather than measuring again. `wordsFile` names the word file as `--words` does, and giving both `words` and `wordsFile` is refused with `assess.words-ambiguous`. A file that is missing or unreadable is refused with `assess.words-file-unreadable`, and one with no words with `assess.words-file-empty`.
 
+Word files must be at most 8 MiB of valid UTF-8 text without NUL bytes; an initial UTF-8 signature is accepted. A larger file is refused with `assess.words-file-too-large`; invalid UTF-8 or NUL bytes with `assess.words-file-not-text`. Split a large list into smaller files, or save a non-text file as UTF-8 with one word per line, then repeat the call.
+
 ## Related commands
 
 - [Show the Default Selection](cmd:selection%20show) reads the usual word list.

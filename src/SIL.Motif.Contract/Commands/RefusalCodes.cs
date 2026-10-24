@@ -45,6 +45,8 @@ public static class RefusalCodes
     public const string AssessUnsupportedKind = "assess.unsupported-kind";
     public const string AssessWordsAmbiguous = "assess.words-ambiguous";
     public const string AssessWordsFileEmpty = "assess.words-file-empty";
+    public const string AssessWordsFileNotText = "assess.words-file-not-text";
+    public const string AssessWordsFileTooLarge = "assess.words-file-too-large";
     public const string AssessWordsFileUnreadable = "assess.words-file-unreadable";
     public const string AssessmentCancelled = "assessment.cancelled";
 

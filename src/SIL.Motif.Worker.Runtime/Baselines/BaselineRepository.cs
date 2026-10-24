@@ -543,6 +543,12 @@ public sealed class BaselineRepository
             throw new ArgumentException("The publication time must be UTC.", nameof(publishedUtc));
         if (sourceLastWriteUtc.Offset != TimeSpan.Zero)
             throw new ArgumentException("The source last-write time must be UTC.", nameof(sourceLastWriteUtc));
+        // Prepare outside the transaction so lazy projection work cannot block drafting.
+        var textRows = SerializedRows(textWordsProjection.Texts, text => text.TextId);
+        var wordformRows = SerializedRows(textWordsProjection.Wordforms, wordform => wordform.WordformId);
+        var indexRows = SerializedRows(BaselineTextReadIndexBuilder.Build(textWordsProjection), text => text.TextId);
+        var summaryJson = JsonSerializer.Serialize(
+            projectSummary ?? ProjectSummarySnapshot.Empty, MotifJson.CreateOptions());
         using var connection = _database.OpenConnection();
         using var transaction = connection.BeginTransaction();
         using (var deleteProjection = connection.CreateCommand())
@@ -588,22 +594,20 @@ public sealed class BaselineRepository
                 ON CONFLICT(ProjectKey) DO UPDATE SET SummaryJson = excluded.SummaryJson;
                 """;
             summaryCommand.Parameters.AddWithValue("$project", projectKey);
-            summaryCommand.Parameters.AddWithValue("$summary", JsonSerializer.Serialize(
-                projectSummary ?? ProjectSummarySnapshot.Empty, MotifJson.CreateOptions()));
+            summaryCommand.Parameters.AddWithValue("$summary", summaryJson);
             summaryCommand.ExecuteNonQuery();
         }
         InsertRows(connection, transaction,
             "INSERT INTO BaselineTextWords (ProjectKey, TextId, BundleDigest, TextJson) VALUES ($project, $id, $bundle, $json);",
-            projectKey, publication.Token.BundleDigest, textWordsProjection.Texts, text => text.TextId);
+            projectKey, publication.Token.BundleDigest, textRows);
         InsertRows(connection, transaction,
             "INSERT INTO BaselineTextWordforms (ProjectKey, WordformId, BundleDigest, WordformJson) " +
             "VALUES ($project, $id, $bundle, $json);",
-            projectKey, publication.Token.BundleDigest, textWordsProjection.Wordforms, wordform => wordform.WordformId);
+            projectKey, publication.Token.BundleDigest, wordformRows);
         InsertRows(connection, transaction,
             "INSERT INTO BaselineTextReadIndex (ProjectKey, TextId, BundleDigest, IndexJson) " +
             "VALUES ($project, $id, $bundle, $json);",
-            projectKey, publication.Token.BundleDigest,
-            BaselineTextReadIndexBuilder.Build(textWordsProjection), text => text.TextId);
+            projectKey, publication.Token.BundleDigest, indexRows);
         command.CommandText = SelectSql + " WHERE ProjectKey = $project;";
         using var reader = command.ExecuteReader();
         if (!reader.Read()) throw new InvalidOperationException("The Baseline publication was not recorded.");
@@ -658,8 +662,11 @@ public sealed class BaselineRepository
         }
     }
 
-    private static void InsertRows<T>(SqliteConnection connection, SqliteTransaction transaction, string insert,
-        string projectKey, string digest, IEnumerable<T> rows, Func<T, Guid> idOf)
+    private static List<(string Id, string Json)> SerializedRows<T>(IEnumerable<T> rows, Func<T, Guid> idOf) =>
+        rows.Select(row => (idOf(row).ToString("D"), JsonSerializer.Serialize(row, TextWordsJson))).ToList();
+
+    private static void InsertRows(SqliteConnection connection, SqliteTransaction transaction, string insert,
+        string projectKey, string digest, IReadOnlyList<(string Id, string Json)> rows)
     {
         using var command = connection.CreateCommand();
         command.Transaction = transaction;
@@ -670,8 +677,8 @@ public sealed class BaselineRepository
         var json = command.Parameters.Add("$json", SqliteType.Text);
         foreach (var row in rows)
         {
-            id.Value = idOf(row).ToString("D");
-            json.Value = JsonSerializer.Serialize(row, TextWordsJson);
+            id.Value = row.Id;
+            json.Value = row.Json;
             command.ExecuteNonQuery();
         }
     }

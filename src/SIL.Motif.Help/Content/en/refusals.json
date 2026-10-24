@@ -110,5 +110,25 @@
   "composer.unknown-subject": {
     "why": "No composer serves that Subject. Search by goal to find the right composer, or use one of the Subject ids the search lists.",
     "source": "Hand-written for the composer search."
+  },
+  "assess.words-ambiguous": {
+    "why": "Give either inline words or a words file. Remove one of words and wordsFile, then repeat the call.",
+    "source": "Word-list file input contract."
+  },
+  "assess.words-file-empty": {
+    "why": "The words file at {wordsFile} has no words after blank lines are removed. Write one word per line, save the file, then repeat the call.",
+    "source": "Word-list file input contract."
+  },
+  "assess.words-file-unreadable": {
+    "why": "The words file at {wordsFile} could not be read. Check the path and read access, or choose a readable file, then repeat the call.",
+    "source": "Word-list file input contract."
+  },
+  "assess.words-file-too-large": {
+    "why": "The words file at {wordsFile} exceeds 8 MiB, including any initial UTF-8 signature. Split it into smaller word lists, then repeat the call for each file.",
+    "source": "Word-list file input contract."
+  },
+  "assess.words-file-not-text": {
+    "why": "The words file at {wordsFile} must be valid UTF-8 text without NUL bytes. Save it as UTF-8 with one word per line, then repeat the call.",
+    "source": "Word-list file input contract."
   }
 }
