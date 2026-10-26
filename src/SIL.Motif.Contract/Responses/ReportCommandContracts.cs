@@ -173,12 +173,12 @@ public sealed class ParsimonyReportInputsJsonConverter : JsonConverter<Parsimony
                 ReadText(fields["bundleId"], "bundleId"),
                 baseline,
                 ReadText(fields["inputKind"], "inputKind"),
-                ReadNullableText(fields["candidate"], "candidate"),
+                ReadOptionalNullableText(fields, "candidate"),
                 ReadText(fields["modelFingerprint"], "modelFingerprint"),
                 ReadArtifact(fields["grammarFacts"], "grammarFacts"),
                 ReadArtifact(fields["evidence"], "evidence"),
-                ReadNullableText(fields["selectionSha256"], "selectionSha256"),
-                ReadNullableText(fields["expectationRevisionSha256"], "expectationRevisionSha256"),
+                ReadOptionalNullableText(fields, "selectionSha256"),
+                ReadOptionalNullableText(fields, "expectationRevisionSha256"),
                 ReadTextArray(fields["assessmentIds"], "assessmentIds"),
                 ReadEnum<ParsimonyEvidenceScopeKind>(fields["evidenceScope"], "evidenceScope"),
                 fields.TryGetValue("retirementExpectationTranslation", out var retirement) &&
@@ -296,6 +296,9 @@ public sealed class ParsimonyReportInputsJsonConverter : JsonConverter<Parsimony
         JsonValueKind.String => value.GetString(),
         _ => throw new JsonException($"{name} must be a string or null."),
     };
+
+    private static string? ReadOptionalNullableText(IReadOnlyDictionary<string, JsonElement> fields, string name) =>
+        fields.TryGetValue(name, out var value) ? ReadNullableText(value, name) : null;
 
     private static IReadOnlyList<string> ReadTextArray(JsonElement value, string name)
     {

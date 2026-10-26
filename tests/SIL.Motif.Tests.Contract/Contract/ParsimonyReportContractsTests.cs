@@ -55,6 +55,46 @@ public sealed class ParsimonyReportContractsTests
     }
 
     [Fact]
+    public void ParsimonyInputsAllowOmittedNullableOptionalFields()
+    {
+        var omittedVariants = new[]
+        {
+            InputsJson.Replace("\"candidate\":null,", "", StringComparison.Ordinal),
+            InputsJson.Replace("\"selectionSha256\":null,", "", StringComparison.Ordinal),
+            InputsJson.Replace("\"expectationRevisionSha256\":null,", "", StringComparison.Ordinal),
+            InputsJson.Replace("\"candidate\":null,", "", StringComparison.Ordinal)
+                .Replace("\"selectionSha256\":null,", "", StringComparison.Ordinal)
+                .Replace("\"expectationRevisionSha256\":null,", "", StringComparison.Ordinal),
+        };
+
+        foreach (var json in omittedVariants)
+        {
+            var actual = JsonSerializer.Deserialize<ParsimonyReportInputs>(json, MotifJson.CreateOptions());
+
+            Assert.NotNull(actual);
+            Assert.Null(actual.Candidate);
+            Assert.Null(actual.SelectionSha256);
+            Assert.Null(actual.ExpectationRevisionSha256);
+        }
+
+        var explicitNulls = JsonSerializer.Deserialize<ParsimonyReportInputs>(InputsJson, MotifJson.CreateOptions());
+        Assert.NotNull(explicitNulls);
+        Assert.Null(explicitNulls.Candidate);
+        Assert.Null(explicitNulls.SelectionSha256);
+        Assert.Null(explicitNulls.ExpectationRevisionSha256);
+
+        var candidateWithoutIdentity = InputsJson.Replace("\"inputKind\":\"baseline\"", "\"inputKind\":\"candidate\"",
+            StringComparison.Ordinal).Replace("\"candidate\":null,", "", StringComparison.Ordinal);
+        Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<ParsimonyReportInputs>(
+            candidateWithoutIdentity, MotifJson.CreateOptions()));
+        Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<ParsimonyReportInputs>(
+            InputsJson.Replace("\"evidenceScope\":\"default-selection\"", "", StringComparison.Ordinal),
+            MotifJson.CreateOptions()));
+        Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<ParsimonyReportInputs>(
+            InputsJson.Replace("\"assessmentIds\":[],", "", StringComparison.Ordinal), MotifJson.CreateOptions()));
+    }
+
+    [Fact]
     public void ParsimonyInputsRoundTripTheirFrozenArtifactBindings()
     {
         var actual = JsonSerializer.Deserialize<ParsimonyReportInputs>(InputsJson, MotifJson.CreateOptions());
