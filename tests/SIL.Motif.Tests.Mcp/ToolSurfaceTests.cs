@@ -113,7 +113,16 @@ public sealed class ToolSurfaceTests
             "compose-edit-stem-inflection-class",
             "compose-set-stem-part-of-speech",
             "project tag",
+            "store artifacts",
         }, optedOut);
+
+        var artifactInventory = Assert.Single(CommandCatalog.All,
+            command => command.Name == "store artifacts");
+        Assert.Equal(CommandSurface.Developer, artifactInventory.Surface);
+        Assert.Equal(AgentClass.HumanOnly, artifactInventory.Agent);
+        Assert.False(artifactInventory.IsAgentTool);
+        Assert.DoesNotContain(AgentTools.All,
+            tool => tool.Requests.Contains(artifactInventory.RequestType));
 
         var numeralEditors = CommandCatalog.All.Where(command =>
             command.Name is "compose-edit-part-of-speech-inflection-class-default" or
@@ -130,7 +139,8 @@ public sealed class ToolSurfaceTests
         });
 
         Assert.All(CommandCatalog.All.Except(numeralEditors).Where(command =>
-            command.Name != "activity" && command.Name != "project tag"), command =>
+            command.Name != "activity" && command.Name != "project tag" &&
+            command.Name != "store artifacts"), command =>
             Assert.True(command.ExposeAsAgentTool));
         Assert.DoesNotContain(AgentTools.All, tool => tool.Name == "motif_activity" && tool.Requests.Count > 0);
     }

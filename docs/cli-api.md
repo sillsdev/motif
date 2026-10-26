@@ -20,6 +20,26 @@ Two entry points are not catalogued commands. `motif mcp [--profile <file | ship
 
 Draft authoring commands, including `label` and `comment`, use Advanced AI mode. The Released Apply commands `apply <proposalId>`, `apply --proposal <id>`, and `apply --all-pending` are human-only and unavailable as agent tools. Plain `apply` has an optional `--force` switch that skips Readiness reasons only; it does not bypass project fit checks. The `apply --proposal` route has no force option.
 
+`store artifacts --root <worker-root> --stores <stores.json> --json` is a CLI-only Developer command for a read-only inventory of `assessment-runs`, `assessment-sources`, and `baselines`. The manifest has `schemaVersion: 1`, a `referenceDomainComplete` declaration, and an explicit `stores` array; each entry names one database path, its project path, and its FieldWorks identity. List every store that may refer to the named worker root before declaring the domain complete. The command does not discover stores from `KnownProjects`, accept globs, start a Worker or parser, or expose an App or MCP route.
+
+For each listed store, inventory acquires the existing `.use.lock` without creating it, copies the database and any existing WAL/SHM sidecars to private scratch, and validates only that snapshot. Hard-linked database, sidecar, or generated-artifact paths are refused; when platform file identity cannot be proved, affected records remain `Unknown`. Assessment BaselineTokens resolve only through exact recorded Baseline tokens; malformed or unmatched tokens leave the Baseline family uncertain. A missing or busy lock, unsupported store, malformed reference shape, or incomplete declared domain leaves affected files `Unknown`. The response reports exact paths, logical bytes, owners, retaining records and reason codes without linguistic payload. `referenceDomainComplete` reports whether the named stores and supported references were understood; `inventoryComplete` reports whether the bounded path walk finished. The total `logicalBytes` is omitted when the reference domain is incomplete or when a link, changing path, or scan limit prevents a complete walk. This inventory-only slice reports no `Eligible` files and has no apply command; it does not authorize deletion.
+
+Example manifest:
+
+```json
+{
+  "schemaVersion": 1,
+  "referenceDomainComplete": true,
+  "stores": [
+    {
+      "databasePath": "/data/project.motif.db",
+      "projectPath": "/data/project.fwdata",
+      "projectIdentity": "fieldworks-project-identity"
+    }
+  ]
+}
+```
+
 ## Process and data boundary
 
 Scripts and external integrations call the `motif` executable and read its JSON responses. Those response shapes are defined in `SIL.Motif.Contract`, which has no LibLCM reference; the repository targets `net10.0` only. Non-.NET integrations can read the JSON contract without loading a Motif assembly. The current response types are in [`SIL.Motif.Contract.Responses`](../src/SIL.Motif.Contract/Responses/), and the shared failure envelope and exit-code mapping are defined by [`FailureEnvelope`](../src/SIL.Motif.Contract/Responses/FailureEnvelope.cs).

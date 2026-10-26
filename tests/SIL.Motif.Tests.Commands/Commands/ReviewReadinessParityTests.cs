@@ -6,8 +6,10 @@ using SIL.Motif.Contract;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Canonicalization;
 using SIL.Motif.Contract.Ids;
+using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Parsing;
 using SIL.Motif.Contract.Requests;
+using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.Corpus;
 using SIL.Motif.Model.Effects;
@@ -53,6 +55,55 @@ public sealed class ReviewReadinessParityTests : IDisposable
 
         Assert.True(AppliesWithoutForce(fixture, proposal.Id));
         Assert.True(ReviewIsReady(fixture, proposal.Id));
+    }
+
+    [Fact]
+    public void ReviewProjectsCurrentDryRunEvidenceAsCurrentOnTheSavedTrial()
+    {
+        using var fixture = new TrialsTests.ProjectFixture(_root);
+        var id = Arrange(fixture, "ready");
+
+        var review = ProposalReview.Read(fixture.Database, fixture.Project, id.Value).Value!;
+
+        Assert.True(review.Readiness!.IsReady);
+        Assert.Equal(TrialFreshness.Current, review.Trial!.Freshness);
+        Assert.True(review.Trial.DryRun!.EvidenceCurrent);
+    }
+
+    [Fact]
+    public void ReviewDoesNotInferPublishedDryRunBaselineAfterAssessmentFailureAndBaselineMove()
+    {
+        using var fixture = new TrialsTests.ProjectFixture(_root);
+        var proposal = fixture.SaveProposal();
+        var sourceBaseline = CurrentToken(fixture);
+        fixture.CreateAssessmentFailureJobAfterDryRun(proposal.Json, "2026-09-24T11:00:00Z", "assessment-failed");
+        var currentBaseline = fixture.RecordBaseline("sha256:" + new string('c', 64),
+            "2026-09-24T13:00:00Z", semanticDigest: "sha256:" + new string('d', 64));
+
+        Assert.NotEqual(sourceBaseline, currentBaseline);
+        var review = ProposalReview.Read(fixture.Database, fixture.Project, proposal.Id.Value).Value!;
+
+        Assert.Equal(proposal.Digest, review.Trial!.IntentDigest);
+        Assert.Equal(JobStatus.CompletedWithAssessmentFailure, review.Trial.Status);
+        Assert.Equal(TrialFreshness.Incomplete, review.Trial.Freshness);
+        Assert.Equal(proposal.Digest, review.Trial.DryRun!.IntentDigest);
+        Assert.False(review.Trial.DryRun.EvidenceCurrent);
+    }
+
+    [Theory]
+    [InlineData("baseline-moved-without-a-new-trial", TrialFreshness.BaselineMoved)]
+    [InlineData("stale-trial-digest", TrialFreshness.ProposalChanged)]
+    public void ReviewProjectsDryRunEvidenceAsNotCurrentWhenItsContextMoves(string scenario,
+        TrialFreshness expectedFreshness)
+    {
+        using var fixture = new TrialsTests.ProjectFixture(_root);
+        var id = Arrange(fixture, scenario);
+
+        var review = ProposalReview.Read(fixture.Database, fixture.Project, id.Value).Value!;
+
+        Assert.False(review.Readiness!.IsReady);
+        Assert.Equal(expectedFreshness, review.Trial!.Freshness);
+        Assert.False(review.Trial.DryRun!.EvidenceCurrent);
     }
 
     [Theory]

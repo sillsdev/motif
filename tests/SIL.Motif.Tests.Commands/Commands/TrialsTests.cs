@@ -498,6 +498,16 @@ public sealed class TrialsTests : IDisposable
             return jobId;
         }
 
+        public string CreateAssessmentFailureJobAfterDryRun(string proposalJson, string createdUtc, string jobId)
+        {
+            var job = CreateRunningJob(proposalJson, createdUtc, jobId);
+            job = _jobs.PublishDryRun(job.JobId, PublishedDryRun(ProposalJsonParser.Parse(proposalJson)), job.Version);
+            var result = JsonSerializer.Serialize(new { detail = "Assessment failed after Dry Run publication." },
+                MotifJson.CreateOptions());
+            _jobs.Transition(job.JobId, JobStatus.CompletedWithAssessmentFailure, job.Version, result);
+            return jobId;
+        }
+
         public string CreateDefaultSelectionJob(string proposalJson, string createdUtc, string jobId,
             IReadOnlyList<string> assessmentIds)
         {

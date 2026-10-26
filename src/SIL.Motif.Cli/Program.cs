@@ -48,6 +48,9 @@ public static int Main(string[] args)
 {
     CrashDialogs.Suppress();
     InterruptSignal.RestoreIfIgnored();
+    if (ArtifactInventoryCli.IsInvocation(args))
+        return ArtifactInventoryCli.Run(args, Console.Out, Console.Error,
+            Environment.GetEnvironmentVariable(CommandSurfacePolicy.DeveloperCommandsEnvironmentVariable));
     MotifInstallLifecycle.Initialize(args);
 
     if (args.Length > 0 && args[0] == "--update-smoke")
@@ -89,6 +92,10 @@ internal static int Run(
     IReadOnlyDictionary<string, string?> environment,
     Action<string, Action<string>?> startRunner)
 {
+if (ArtifactInventoryCli.IsInvocation(args))
+    return ArtifactInventoryCli.Run(args, output, error,
+        environment.GetValueOrDefault(CommandSurfacePolicy.DeveloperCommandsEnvironmentVariable));
+
 string ResolveRoot() => environment.TryGetValue(RunnerOptions.RootVariable, out var root)
     && !string.IsNullOrWhiteSpace(root) ? root : RunnerOptions.DefaultRoot;
 

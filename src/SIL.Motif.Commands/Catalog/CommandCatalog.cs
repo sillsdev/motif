@@ -22,7 +22,8 @@ namespace SIL.Motif.Commands.Catalog;
 /// <see cref="HandoffCommand"/>,
 /// <see cref="JobCommands"/>, <see cref="PendingChangesWorkflow"/>, <see cref="ReadStateCommands"/>,
 /// <see cref="PhonologyExampleCommands"/>,
-/// <see cref="Queries.WordContextQuery"/>, <see cref="Queries.WordTraceQuery"/>, <see cref="Queries.ObjectUsesQuery"/>, and <see cref="Queries.InspectQuery"/>.
+/// <see cref="Queries.WordContextQuery"/>, <see cref="Queries.WordTraceQuery"/>, <see cref="Queries.ObjectUsesQuery"/>,
+/// <see cref="Queries.InspectQuery"/>, and <see cref="Diagnostics.ArtifactRetentionCommands"/>.
 /// The project setup group reaches <see cref="ProjectCreateCommand"/> and <see cref="ProjectInitializationCommand"/>.
 /// The person-only project tag commands reach <see cref="ProjectTagCommands"/>.
 /// </summary>
@@ -213,6 +214,8 @@ public static class CommandCatalog
         new CommandDescriptor("selection set-limits", typeof(SetSelectionLimitsRequest), typeof(NamedSelectionProjection), CommandSurface.Released, AgentClass.HumanOnly),
         new CommandDescriptor("setup skip", typeof(SkipSetupRequest), typeof(ProjectSetupResponse), CommandSurface.Released, AgentClass.HumanOnly),
         new CommandDescriptor("store delete-refused", typeof(ProjectStoreResetRequest), typeof(ProjectStoreResetResponse), CommandSurface.Developer, AgentClass.HumanOnly),
+        new CommandDescriptor("store artifacts", typeof(ArtifactInventoryRequest), typeof(ArtifactInventoryResponse),
+            CommandSurface.Developer, AgentClass.HumanOnly) { ExposeAsAgentTool = false },
         new CommandDescriptor("texts list", typeof(TextInventoryRequest), typeof(TextInventoryResponse), CommandSurface.Released, AgentClass.Read),
         new CommandDescriptor("word read-state", typeof(WordReadStateRequest), typeof(WordReadStateResponse), CommandSurface.Developer, AgentClass.Read),
 

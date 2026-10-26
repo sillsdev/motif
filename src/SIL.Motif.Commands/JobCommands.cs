@@ -13,6 +13,7 @@ using SIL.Motif.Commands.Requests;
 using SIL.Motif.Commands.Store;
 using SIL.Motif.Contract;
 using SIL.Motif.Contract.Assess;
+using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Canonicalization;
 using SIL.Motif.Contract.Ids;
@@ -299,8 +300,8 @@ public static class JobCommands
                     throw new InvalidDataException("The Dry Run content differs from its source binding.");
                 var record = repository.Get(canonicalId);
                 var currentDigest = IntentDigest.Compute(ProposalJsonParser.Parse(CanonicalProposalJson(record)));
-                var current = currentDigest == dryRun.IntentDigest &&
-                    new BaselineRepository(database).IsCurrentEvidence(job.ProjectKey, completion.BaselineToken);
+                var current = IsDryRunEvidenceCurrent(database, job.ProjectKey, currentDigest,
+                    dryRun.IntentDigest, completion.BaselineToken);
                 if (current) repository.SetAnchor(canonicalId, JsonSerializer.Serialize(dryRun.Anchor));
 
                 return CommandOutcome<DryRunProjection>.Success(DryRunProjectionBuilder.Build(id, dryRun, proposal) with
@@ -830,6 +831,18 @@ public static class JobCommands
             root.GetProperty("effectDigest").GetString()!,
             anchor);
     }
+
+    /// <summary>Checks whether saved Dry Run content and Baseline evidence are current.</summary>
+    /// <param name="database">The project's Motif store.</param>
+    /// <param name="projectKey">The project identity recorded by the job.</param>
+    /// <param name="currentIntentDigest">The current Proposal content digest, if available.</param>
+    /// <param name="evidenceIntentDigest">The Proposal content digest recorded by the Dry Run.</param>
+    /// <param name="evidenceBaseline">The Baseline measured by the Dry Run.</param>
+    /// <returns>Whether both the Proposal content and the Baseline evidence still match.</returns>
+    internal static bool IsDryRunEvidenceCurrent(MotifDatabase database, string projectKey,
+        string? currentIntentDigest, string evidenceIntentDigest, BaselineToken evidenceBaseline) =>
+        string.Equals(currentIntentDigest, evidenceIntentDigest, StringComparison.Ordinal) &&
+        new BaselineRepository(database).IsCurrentEvidence(projectKey, evidenceBaseline);
 
     private static IReadOnlyList<ExpectedEffect> ParseExpectedEffects(JsonElement array)
     {

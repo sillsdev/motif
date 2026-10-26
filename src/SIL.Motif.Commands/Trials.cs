@@ -206,8 +206,13 @@ public static class Trials
                 StringComparer.Ordinal);
         var words = input.Words ?? rows.SelectMany(record => record.Selection.Words)
             .Distinct(StringComparer.Ordinal).ToArray();
-        var dryRun = job.DryRunJson is null ? null : DryRunProjectionBuilder.Build(proposalId,
-            JobCommands.ParsePublishedDryRun(job.DryRunJson), proposal);
+        var dryRunResult = job.DryRunJson is null ? null : JobCommands.ParsePublishedDryRun(job.DryRunJson);
+        var dryRun = dryRunResult is null ? null : DryRunProjectionBuilder.Build(proposalId, dryRunResult, proposal)
+            with
+            {
+                EvidenceCurrent = completion is not null && JobCommands.IsDryRunEvidenceCurrent(database,
+                    job.ProjectKey, currentIntentDigest, dryRunResult.IntentDigest, completion.BaselineToken),
+            };
         var freshness = !completed
             ? TrialFreshness.Incomplete
             : GetFreshness(sourceBaseline, intentDigest, current, currentIntentDigest);
