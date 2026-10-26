@@ -642,34 +642,91 @@ public sealed partial class CompareViewModel : ObservableObject
     }
 
     private void OnChangesChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e) =>
-        UpdatePendingMarkers();
+        UpdatePendingMarkers(incremental: true);
 
-    private void UpdatePendingMarkers()
+    /// <summary>The pending state last applied to each word.</summary>
+    private Dictionary<string, (PendingChangeState State, string? Staged)>? _appliedPending;
+
+    /// <summary>The rows of each word form, built once per loaded set of facts.</summary>
+    private Dictionary<string, List<AssessmentRowFacts>>? _rowsByWord;
+
+    private static Dictionary<string, (PendingChangeState State, string? Staged)> PendingByWord(
+        IEnumerable<ChangeViewModel> items) =>
+        items.GroupBy(change => change.Word, StringComparer.Ordinal).ToDictionary(group => group.Key, group =>
+        {
+            var changes = group.ToArray();
+            return (PendingChangeStates.FromChanges(changes), changes.FirstOrDefault(change =>
+                change.StoredAnalysisId is not null &&
+                change.Kind is ChangeKinds.Approve or ChangeKinds.Reject or ChangeKinds.Candidate)?.TransitionText);
+        }, StringComparer.Ordinal);
+
+    /// <summary>Incremental updates touch only words whose pending state changed.</summary>
+    private void UpdatePendingMarkers(bool incremental = false)
     {
-        var pending = (_changes?.Items ?? []).GroupBy(change => change.Word, StringComparer.Ordinal)
-            .ToDictionary(group => group.Key, group => group.ToArray(), StringComparer.Ordinal);
+        var pending = PendingByWord(_changes?.Items ?? []);
+        var previous = _appliedPending;
+        _appliedPending = pending;
+        if (!incremental || previous is null)
+        {
+            ApplyPendingToAll(pending);
+            return;
+        }
+        var touched = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var (word, now) in pending)
+            if (!previous.TryGetValue(word, out var before) || before != now) touched.Add(word);
+        foreach (var word in previous.Keys)
+            if (!pending.ContainsKey(word)) touched.Add(word);
+        if (touched.Count == 0) return;
+        _rowsByWord ??= _all.GroupBy(word => word.Word, StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.ToList(), StringComparer.Ordinal);
+        var rows = new HashSet<AssessmentRowFacts>(ReferenceEqualityComparer.Instance);
+        foreach (var word in touched)
+        {
+            if (!_rowsByWord.TryGetValue(word, out var facts)) continue;
+            pending.TryGetValue(word, out var now);
+            foreach (var row in facts)
+            {
+                row.PendingState = now.State;
+                row.StagedOpinionText = now.Staged;
+                rows.Add(row);
+            }
+        }
+        if (rows.Count == 0) return;
+        foreach (var model in _wordModels.Models.Where(model => rows.Contains(model.Facts)))
+            SyncPendingFromFacts(model);
+        var places = rows.Select(row => (row.Row, row.Column)).ToHashSet();
+        foreach (var cell in Cells.Where(cell => places.Contains((cell.Row, cell.Column))))
+            cell.PendingState = CellPendingState(cell);
+    }
+
+    private static void SyncPendingFromFacts(CompareWordViewModel model)
+    {
+        model.PendingState = model.Facts.PendingState;
+        model.HasPendingChange = model.PendingState != PendingChangeState.None;
+        model.StagedOpinionText = model.Facts.StagedOpinionText;
+    }
+
+    private PendingChangeState CellPendingState(CompareCellViewModel cell)
+    {
+        var statuses = _all.Where(word => word.Row == cell.Row && word.Column == cell.Column)
+            .Select(word => word.PendingState).ToArray();
+        return statuses.Contains(PendingChangeState.NoLongerFits)
+            ? PendingChangeState.NoLongerFits
+            : statuses.Contains(PendingChangeState.Uncertain) ? PendingChangeState.Uncertain
+            : statuses.FirstOrDefault(status => status != PendingChangeState.None);
+    }
+
+    private void ApplyPendingToAll(Dictionary<string, (PendingChangeState State, string? Staged)> pending)
+    {
+        _rowsByWord = null;
         foreach (var word in _all)
         {
-            pending.TryGetValue(word.Word, out var changes);
-            word.PendingState = PendingChangeStates.FromChanges(changes);
-            word.StagedOpinionText = changes?.FirstOrDefault(change => change.StoredAnalysisId is not null &&
-                change.Kind is ChangeKinds.Approve or ChangeKinds.Reject or ChangeKinds.Candidate)?.TransitionText;
+            pending.TryGetValue(word.Word, out var now);
+            word.PendingState = now.State;
+            word.StagedOpinionText = now.Staged;
         }
-        foreach (var model in _wordModels.Models)
-        {
-            model.PendingState = model.Facts.PendingState;
-            model.HasPendingChange = model.PendingState != PendingChangeState.None;
-            model.StagedOpinionText = model.Facts.StagedOpinionText;
-        }
-        foreach (var cell in Cells)
-        {
-            var statuses = _all.Where(word => word.Row == cell.Row && word.Column == cell.Column)
-                .Select(word => word.PendingState).ToArray();
-            cell.PendingState = statuses.Contains(PendingChangeState.NoLongerFits)
-                ? PendingChangeState.NoLongerFits
-                : statuses.Contains(PendingChangeState.Uncertain) ? PendingChangeState.Uncertain
-                : statuses.FirstOrDefault(status => status != PendingChangeState.None);
-        }
+        foreach (var model in _wordModels.Models) SyncPendingFromFacts(model);
+        foreach (var cell in Cells) cell.PendingState = CellPendingState(cell);
     }
 
     private void ApplyFilter()

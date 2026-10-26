@@ -490,4 +490,27 @@ public sealed class PendingChangesViewModelTests
             Avalonia.Input.PointerPressedEventArgs trigger, IReadOnlyList<string> filePaths,
             DragDropEffects allowedEffects) => Task.FromResult(allowedEffects);
     }
+
+    [Fact]
+    public async Task ReplacingTheChangeListRaisesOneCollectionNotificationHoweverManyChangesArrive()
+    {
+        var fake = new FakeCommandClient();
+        var changes = new ChangesViewModel(fake);
+        await changes.OpenProjectAsync("project.fwdata");
+        var notifications = new List<System.Collections.Specialized.NotifyCollectionChangedAction>();
+        changes.Items.CollectionChanged += (_, e) => notifications.Add(e.Action);
+        fake.PendingChangesIs(new PendingChangesSnapshot("draft/test", "r1",
+            Enumerable.Range(0, 50).Select(index => new PendingChange("change-" + index,
+                CanonicalId.Mint().Value, "word" + index, ChangeKinds.IncorrectSpelling, null, null, [])).ToArray(), []));
+
+        await changes.ReloadAsync();
+
+        Assert.Equal(50, changes.Items.Count);
+        Assert.Equal([System.Collections.Specialized.NotifyCollectionChangedAction.Reset], notifications);
+        notifications.Clear();
+        fake.PendingChangesIs(new PendingChangesSnapshot("draft/test", "r2", [], []));
+        await changes.ReloadAsync();
+        Assert.Empty(changes.Items);
+        Assert.Equal([System.Collections.Specialized.NotifyCollectionChangedAction.Reset], notifications);
+    }
 }

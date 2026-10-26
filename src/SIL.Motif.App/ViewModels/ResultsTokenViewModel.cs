@@ -790,6 +790,9 @@ public sealed partial class ResultsTokenViewModel : ObservableObject, IDisposabl
         OnMarkingChanged();
     }
 
+    /// <summary>The pending changes whose markings were last applied to this token, to skip an unchanged re-apply.</summary>
+    internal IReadOnlyList<ChangeViewModel> AppliedPending { get; set; } = [];
+
     internal void SetStagedMarkings(IReadOnlyList<ChangeViewModel> changes)
     {
         StagedChanges = changes.Select(change => new StagedMarkingDisplayViewModel(change)).ToArray();

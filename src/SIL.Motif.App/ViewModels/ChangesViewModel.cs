@@ -78,7 +78,9 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
         };
     }
 
-    public ObservableCollection<ChangeViewModel> Items { get; } = [];
+    private readonly ReplacingObservableCollection<ChangeViewModel> _items = [];
+
+    public ObservableCollection<ChangeViewModel> Items => _items;
 
     internal int ProjectGeneration => _projectGeneration;
 
@@ -768,8 +770,8 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
         _isReplacingItems = true;
         try
         {
-            Items.Clear();
-            foreach (var change in changes) Items.Add(change);
+            // One replacement notification avoids repeating downstream projection work.
+            if (changes.Count > 0 || _items.Count > 0) _items.ReplaceWith(changes);
         }
         finally
         {

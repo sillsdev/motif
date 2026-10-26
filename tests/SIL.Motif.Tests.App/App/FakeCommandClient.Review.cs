@@ -23,11 +23,14 @@ public sealed partial class FakeCommandClient
     public Func<ApplyProposalRequest, CancellationToken, Task<CommandOutcome<ApplyPendingResult>>>?
         ApplyProposalHandler { get; set; }
 
+    public Func<ProposalReviewRequest, CancellationToken, Task<CommandOutcome<ProposalReviewResponse>>>?
+        ProposalReviewHandler { get; set; }
+
     public Task<CommandOutcome<ProposalReviewResponse>> ReadProposalReviewAsync(
         ProposalReviewRequest request, CancellationToken cancellationToken)
     {
         ProposalReviewRequests.Add(request);
-        return Completed(Review);
+        return ProposalReviewHandler is { } handler ? handler(request, cancellationToken) : Completed(Review);
     }
 
     public Task<CommandOutcome<ProposalReviewEntryCountResponse>> ReadProposalReviewEntryCountAsync(

@@ -337,7 +337,7 @@ public sealed class WordRow : UserControl
         foreach (var column in columns)
         {
             var cell = Cell(data, column, hasOpinionColumn);
-            if (cell is Panel { Children.Count: 0 } && column != WordListColumn.Word) continue;
+            if (cell is null || cell is Panel { Children.Count: 0 } && column != WordListColumn.Word) continue;
             switch (column)
             {
                 case WordListColumn.Tick:
@@ -401,10 +401,10 @@ public sealed class WordRow : UserControl
             WordListColumn.Meaning => new NamedMark { Mark = facts.MeaningMark, Text = facts.Meaning, Classes = { "wordPresentationMeaning" } },
             WordListColumn.Warnings => facts.HasWarningsNamed
                 ? new NamedMark { Mark = facts.WarningMark, Text = facts.WarningsText, Classes = { "wordPresentationWarnings" } }
-                : new Panel(),
+                : null,
             WordListColumn.Places => PlacesCell(facts),
             WordListColumn.Time => TimeCell(data),
-            WordListColumn.Read => facts.ShowUnread ? UnreadCell(facts) : new Panel(),
+            WordListColumn.Read => facts.ShowUnread ? UnreadCell(facts) : null,
             WordListColumn.Next => NextCell(data),
             _ => throw new ArgumentOutOfRangeException(nameof(column), column, null),
         };
@@ -438,11 +438,11 @@ public sealed class WordRow : UserControl
         return cell;
     }
 
-    private Control FieldWorksCell(WordPresentation data, bool hasOpinionColumn)
+    private Control? FieldWorksCell(WordPresentation data, bool hasOpinionColumn)
     {
         var facts = data.Facts;
         if (facts.FieldWorksMorphemes.Count == 0)
-            return hasOpinionColumn ? new Panel() : OpinionCell(data);
+            return hasOpinionColumn ? null : OpinionCell(data);
         var panel = new MorphemePanel
         {
             Morphs = facts.FieldWorksMorphemes,

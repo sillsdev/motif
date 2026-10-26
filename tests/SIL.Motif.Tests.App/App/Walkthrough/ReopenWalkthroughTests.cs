@@ -79,6 +79,19 @@ public sealed class ReopenWalkthroughTests(PristineProjectFixture pristine)
                     CanonicalId.FromGuid(wordformId).Value, SeededProject.AnalysedWordForm)), CancellationToken.None);
             Assert.True(put.Succeeded, put.Refusal?.Message);
             var changeId = Assert.Single(put.Value!.Changes).ChangeId;
+            var uncheckedGrammar = await firstClient.ReadStoredGrammarCheckAsync(
+                new GrammarCheckRequest(project.FwDataPath), CancellationToken.None);
+            Assert.True(uncheckedGrammar.Succeeded, uncheckedGrammar.Refusal?.Message);
+            Assert.Null(uncheckedGrammar.Value!.Check);
+            var checkedGrammar = await firstClient.CheckGrammarAsync(
+                new GrammarCheckRequest(project.FwDataPath), CancellationToken.None);
+            Assert.True(checkedGrammar.Succeeded, checkedGrammar.Refusal?.Message);
+            var storedGrammar = await firstClient.ReadStoredGrammarCheckAsync(
+                new GrammarCheckRequest(project.FwDataPath), CancellationToken.None);
+            Assert.True(storedGrammar.Succeeded, storedGrammar.Refusal?.Message);
+            Assert.True(storedGrammar.Value!.Check!.HasBaseline);
+            Assert.NotNull(storedGrammar.Value.Provenance);
+            Assert.Equal(capture.Value!.Token, storedGrammar.Value.Provenance.BaselineToken);
             var parserInvocationsBeforeOpen = FakeParser.Invocations(parserPath);
 
             using var reopened = new WalkthroughWindow(
@@ -116,6 +129,14 @@ public sealed class ReopenWalkthroughTests(PristineProjectFixture pristine)
             Assert.Equal(changeId, Assert.Single(review.Changes.Items).ChangeId);
             Assert.Equal(changeId, Assert.Single(reopened.Workspace.Context.Changes.Items).ChangeId);
             Assert.False(reopened.Workspace.Context.Setup?.IsOpen == true);
+            var warnings = reopened.Workspace.PageModel<WarningsPageModel>().Grammar;
+            Assert.True(warnings.HasChecked);
+            Assert.True(warnings.HasBaseline);
+            Assert.False(warnings.IsLoading);
+            var reopenedGrammar = await reopened.Workspace.Context.Commands.ReadStoredGrammarCheckAsync(
+                new GrammarCheckRequest(project.FwDataPath), CancellationToken.None);
+            Assert.True(reopenedGrammar.Succeeded, reopenedGrammar.Refusal?.Message);
+            Assert.Equal(storedGrammar.Value.Provenance, reopenedGrammar.Value!.Provenance);
             Assert.Equal(parserInvocationsBeforeOpen, FakeParser.Invocations(parserPath));
 
             using var verificationDatabase = ProjectMotifDatabase.Open(project.FwDataPath);

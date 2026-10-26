@@ -216,8 +216,10 @@ public sealed class ReviewDenseTableTests
         }, TimeSpan.FromMinutes(3));
     }
 
-    [Fact]
-    public void SelectingACompactRowKeepsTheInspectorClosedUntilDetailsAreRequested()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void SelectingACompactRowKeepsTheInspectorClosedUntilDetailsAreRequested(bool grammar)
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
@@ -233,12 +235,13 @@ public sealed class ReviewDenseTableTests
                 window.Show();
                 PageScreenshots.Settle(window);
                 var list = panel.FindControl<ListBox>("ReviewItems")!;
-                var word = page.TableEntries.OfType<ReviewListEntryViewModel>().Single(entry => entry.Change is not null);
-                HeadlessClick.Click(window, list.ContainerFromItem(word)!, "kitabu change");
+                var selected = page.TableEntries.OfType<ReviewListEntryViewModel>()
+                    .Single(entry => entry.Review?.IsGrammar == grammar);
+                HeadlessClick.Click(window, list.ContainerFromItem(selected)!, grammar ? "grammar change" : "kitabu change");
                 PageScreenshots.Settle(window);
-                Assert.Same(word.Review, page.Current);
+                Assert.Same(selected.Review, page.Current);
                 Assert.False(host.FindControl<Border>("InspectorPane")!.IsVisible);
-                var row = list.ContainerFromItem(word)!;
+                var row = list.ContainerFromItem(selected)!;
                 var menu = Assert.Single(row.GetVisualDescendants().OfType<Button>(),
                     button => button.Classes.Contains("denseTableMenu"));
                 HeadlessClick.Click(window, menu, "Row actions");
@@ -246,11 +249,15 @@ public sealed class ReviewDenseTableTests
                 var body = Assert.IsAssignableFrom<Control>(flyout.Content);
                 var details = Assert.Single(body.GetVisualDescendants().OfType<Button>(), button => button.Content is "Details");
                 HeadlessClick.Click(TopLevel.GetTopLevel(details) ?? window, details, "Details for this change");
-                flyout.Hide();
                 PageScreenshots.Settle(window);
                 Assert.True(host.FindControl<Border>("InspectorPane")!.IsVisible);
-                var card = Assert.Single(panel.InspectorContent.GetVisualDescendants().OfType<WordCard>());
-                Assert.Equal(word.Change!.Presentation.Key, card.Document!.Key);
+                Assert.False(flyout.IsOpen);
+                Assert.Same(selected.Review, page.Current);
+                if (selected.Change is { } change)
+                {
+                    var card = Assert.Single(panel.InspectorContent.GetVisualDescendants().OfType<WordCard>());
+                    Assert.Equal(change.Presentation.Key, card.Document!.Key);
+                }
                 Assert.Empty(fake.ReviewMarkRequests);
                 Assert.Empty(fake.ApplyPendingRequests);
             }

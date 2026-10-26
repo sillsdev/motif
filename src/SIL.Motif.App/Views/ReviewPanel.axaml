@@ -220,116 +220,141 @@
               </Grid>
             </Border>
           </DataTemplate>
-          <DataTemplate DataType="vm:ReviewListEntryViewModel" x:DataType="vm:ReviewListEntryViewModel">
-            <ContentControl Content="{Binding Review}">
-              <ContentControl.ContentTemplate>
-                <DataTemplate x:DataType="vm:ReviewEntryViewModel">
-                  <Grid>
-                    <Border Classes="denseTableRow" MinHeight="{StaticResource Component.DenseTable.RowHeight}">
-                      <Grid controls:DenseTable.Columns="{StaticResource Component.Review.TableColumns}"
-                            controls:DenseTable.CompactColumns="{StaticResource Component.Review.TableCompactColumns}">
-                        <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center"
-                              ColumnSpacing="{StaticResource Intent.Space.Minimal}">
-                          <StackPanel>
-                            <views:CopyableTextBlock Classes="denseTableCell denseTableItem" Text="{Binding Title}"
-                                IsVisible="{Binding IsGrammar}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Title}" />
-                            <views:CopyableTextBlock Classes="denseTableCell" Text="{Binding Summary}"
-                                IsVisible="{Binding IsGrammar}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Summary}" />
-                            <ContentControl Content="{Binding Change}">
-                              <ContentControl.ContentTemplate>
-                                <DataTemplate x:DataType="vm:ChangeViewModel">
-                                  <views:CopyableTextBlock Classes="denseTableItem" Text="{Binding Word}"
-                                      controls:WritingSystemText.Id="{Binding Presentation.Facts.WordWritingSystem}"
-                                      controls:WritingSystemText.StyleName="Normal" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Word}" />
-                                </DataTemplate>
-                              </ContentControl.ContentTemplate>
-                            </ContentControl>
-                          </StackPanel>
-                          <views:CopyableTextBlock Grid.Column="1" Classes="denseTableCount" Text="✓" IsVisible="{Binding IsLookedAt}"
-                              VerticalAlignment="Center" AutomationProperties.Name="{x:Static app:MotifAppStrings.LookedAtAccessibleName}" ToolTip.Tip="{x:Static app:MotifAppStrings.LookedAtTip}" />
-                        </Grid>
-                        <ContentControl Grid.Column="1" controls:DenseTable.Secondary="True" Content="{Binding Change}" VerticalAlignment="Center">
-                          <ContentControl.ContentTemplate>
-                            <DataTemplate x:DataType="vm:ChangeViewModel">
-                              <Grid>
-                                <StackPanel Orientation="Horizontal" Spacing="{StaticResource Intent.Space.Compact}"
-                                            IsVisible="{Binding HasOpinionTransitionMarks}">
-                                  <controls:OpinionMark Kind="{Binding NowOpinionMark}" ToolTip.Tip="{Binding StagedTransition.Now}" />
-                                  <views:CopyableTextBlock Text="→" Classes="denseTableCell" />
-                                  <controls:OpinionMark Kind="{Binding AfterOpinionMark}" ToolTip.Tip="{Binding StagedTransition.AfterApply}" />
-                                </StackPanel>
-                                <views:CopyableTextBlock Text="{Binding TransitionText}" Classes="denseTableCell"
-                                    IsVisible="{Binding !HasOpinionTransitionMarks}" TextWrapping="Wrap" ToolTip.Tip="{Binding TransitionText}" />
-                              </Grid>
-                            </DataTemplate>
-                          </ContentControl.ContentTemplate>
-                        </ContentControl>
-                        <ContentControl Grid.Column="2" controls:DenseTable.Secondary="True" Content="{Binding Change}" VerticalAlignment="Center">
-                          <ContentControl.ContentTemplate>
-                            <DataTemplate x:DataType="vm:ChangeViewModel">
-                              <word:MorphemePanel Morphs="{Binding RowMorphs}" ShowCategory="False"
-                                  MaxVisibleMorphs="6" OverflowRequest="{Binding ReviewMorphologyRequest}" />
-                            </DataTemplate>
-                          </ContentControl.ContentTemplate>
-                        </ContentControl>
-                        <StackPanel Grid.Column="3" controls:DenseTable.Secondary="True" VerticalAlignment="Center">
-                          <views:CopyableTextBlock Classes="denseTableCell" Text="{Binding TableOutcomeText}"
-                              IsVisible="{Binding IsGrammar}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding TableOutcomeText}" />
-                          <ContentControl Content="{Binding Change}">
-                            <ContentControl.ContentTemplate>
-                              <DataTemplate x:DataType="vm:ChangeViewModel">
-                                <views:MarkChip Mark="{Binding Presentation.Facts.CompactOutcomeMark}"
-                                    Text="{Binding Presentation.Facts.CompactOutcomeWord}" Compact="True" WrapText="True" />
-                              </DataTemplate>
-                            </ContentControl.ContentTemplate>
-                          </ContentControl>
+          <views:ReviewRowTemplate>
+            <views:ReviewRowTemplate.Grammar>
+              <DataTemplate x:DataType="vm:ReviewListEntryViewModel">
+                <Grid>
+                  <Border Classes="denseTableRow" MinHeight="{StaticResource Component.DenseTable.RowHeight}">
+                    <Grid controls:DenseTable.Columns="{StaticResource Component.Review.TableColumns}"
+                          controls:DenseTable.CompactColumns="{StaticResource Component.Review.TableCompactColumns}">
+                      <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center"
+                            ColumnSpacing="{StaticResource Intent.Space.Minimal}">
+                        <StackPanel>
+                          <views:CopyableTextBlock Classes="denseTableCell denseTableItem" Text="{Binding Review.Title}"
+                              TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Review.Title}" />
+                          <views:CopyableTextBlock Classes="denseTableCell" Text="{Binding Review.Summary}"
+                              TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Review.Summary}" />
                         </StackPanel>
-                        <StackPanel Grid.Column="4" controls:DenseTable.Secondary="True" VerticalAlignment="Center">
-                          <views:CopyableTextBlock Classes="denseTableCell" Text="{x:Static app:MotifAppStrings.Project}" IsVisible="{Binding IsGrammar}" />
-                          <views:CopyableTextBlock Classes="denseTableCell" Text="{Binding Change.Presentation.PendingChange.WhereText}"
-                              IsVisible="{Binding !IsGrammar}" TextTrimming="CharacterEllipsis"
-                              ToolTip.Tip="{Binding Change.Presentation.PendingChange.WhereText}" />
-                        </StackPanel>
-                        <Border Grid.Column="5" Classes="reviewFitTag" VerticalAlignment="Center"
-                                ToolTip.Tip="{Binding TableFitDescription}" AutomationProperties.Name="{Binding TableFitDescription}"
-                                Classes.fits="{Binding Change.StillFits}" Classes.noLongerFits="{Binding Change.IsNoLongerFits}"
-                                Classes.uncertain="{Binding Change.IsUncertain}">
-                          <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{StaticResource Intent.Space.Minimal}">
-                            <views:CopyableTextBlock Text="{Binding FitGlyph}" Classes="reviewFitText" />
-                            <views:CopyableTextBlock Grid.Column="1" Text="{Binding TableFitText}" Classes="reviewFitText" TextWrapping="NoWrap" />
-                          </Grid>
-                        </Border>
-                        <StackPanel Grid.Column="6" Orientation="Horizontal" VerticalAlignment="Center"
-                                    Spacing="{StaticResource Intent.Space.Minimal}">
-                          <Button Classes="denseTableAction" Content="{x:Static app:MotifAppStrings.Keep}" Command="{Binding KeepCommand}"
-                                  AutomationProperties.Name="{Binding TableKeepAutomationName}" />
-                          <Button Classes="denseTableAction" Content="{x:Static app:MotifAppStrings.Undo}" Command="{Binding UndoCommand}"
-                                  AutomationProperties.Name="{Binding TableUndoAutomationName}" />
-                          <Button Classes="denseTableMenu" Content="⋯" IsTabStop="True"
-                                  AutomationProperties.Name="{Binding MoreAutomationName}">
-                            <Button.Flyout>
-                              <Flyout Placement="BottomEdgeAlignedLeft">
-                                <StackPanel Classes="menu">
-                                  <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}"
-                                          Content="{x:Static app:MotifAppStrings.Details}" Click="OnDetailsRequested"
-                                          AutomationProperties.Name="{x:Static app:MotifAppStrings.DetailsForThisChangeAccessibleName}" />
-                                  <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}"
-                                          Content="{x:Static app:MotifAppStrings.Keep}" Command="{Binding KeepCommand}" />
-                                  <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}"
-                                          Content="{x:Static app:MotifAppStrings.Undo}" Command="{Binding UndoCommand}" />
-                                </StackPanel>
-                              </Flyout>
-                            </Button.Flyout>
-                          </Button>
-                        </StackPanel>
+                        <views:CopyableTextBlock Grid.Column="1" Classes="denseTableCount" Text="✓" IsVisible="{Binding Review.IsLookedAt}"
+                            VerticalAlignment="Center" AutomationProperties.Name="{x:Static app:MotifAppStrings.LookedAtAccessibleName}" ToolTip.Tip="{x:Static app:MotifAppStrings.LookedAtTip}" />
                       </Grid>
-                    </Border>
-                    <Border Classes="denseTableFocusRing" />
-                  </Grid>
-                </DataTemplate>
-              </ContentControl.ContentTemplate>
-            </ContentControl>
-          </DataTemplate>
+                      <views:CopyableTextBlock Grid.Column="3" controls:DenseTable.Secondary="True" Classes="denseTableCell"
+                          Text="{Binding Review.TableOutcomeText}" VerticalAlignment="Center"
+                          TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Review.TableOutcomeText}" />
+                      <views:CopyableTextBlock Grid.Column="4" controls:DenseTable.Secondary="True" Classes="denseTableCell"
+                          Text="{x:Static app:MotifAppStrings.Project}" VerticalAlignment="Center" />
+                      <Border Grid.Column="5" Classes="reviewFitTag" VerticalAlignment="Center"
+                              ToolTip.Tip="{Binding Review.TableFitDescription}" AutomationProperties.Name="{Binding Review.TableFitDescription}"
+                              Classes.fits="{Binding Review.Change.StillFits}" Classes.noLongerFits="{Binding Review.Change.IsNoLongerFits}"
+                              Classes.uncertain="{Binding Review.Change.IsUncertain}">
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{StaticResource Intent.Space.Minimal}">
+                          <views:CopyableTextBlock Text="{Binding Review.FitGlyph}" Classes="reviewFitText" />
+                          <views:CopyableTextBlock Grid.Column="1" Text="{Binding Review.TableFitText}" Classes="reviewFitText" TextWrapping="NoWrap" />
+                        </Grid>
+                      </Border>
+                      <StackPanel Grid.Column="6" Orientation="Horizontal" VerticalAlignment="Center"
+                                  Spacing="{StaticResource Intent.Space.Minimal}">
+                        <Button Classes="denseTableAction" Content="{x:Static app:MotifAppStrings.Keep}" Command="{Binding Review.KeepCommand}"
+                                AutomationProperties.Name="{Binding Review.TableKeepAutomationName}" />
+                        <Button Classes="denseTableAction" Content="{x:Static app:MotifAppStrings.Undo}" Command="{Binding Review.UndoCommand}"
+                                AutomationProperties.Name="{Binding Review.TableUndoAutomationName}" />
+                        <Button Classes="denseTableMenu" Content="⋯" IsTabStop="True"
+                                AutomationProperties.Name="{Binding Review.MoreAutomationName}">
+                          <Button.Flyout>
+                            <Flyout Placement="BottomEdgeAlignedLeft">
+                              <StackPanel Classes="menu">
+                                <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}"
+                                        Content="{x:Static app:MotifAppStrings.Details}" Click="OnDetailsRequested"
+                                        AutomationProperties.Name="{x:Static app:MotifAppStrings.DetailsForThisChangeAccessibleName}" />
+                                <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}"
+                                        Content="{x:Static app:MotifAppStrings.Keep}" Command="{Binding Review.KeepCommand}" />
+                                <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}"
+                                        Content="{x:Static app:MotifAppStrings.Undo}" Command="{Binding Review.UndoCommand}" />
+                              </StackPanel>
+                            </Flyout>
+                          </Button.Flyout>
+                        </Button>
+                      </StackPanel>
+                    </Grid>
+                  </Border>
+                  <Border Classes="denseTableFocusRing" />
+                </Grid>
+              </DataTemplate>
+            </views:ReviewRowTemplate.Grammar>
+            <views:ReviewRowTemplate.Word>
+              <DataTemplate x:DataType="vm:ReviewListEntryViewModel">
+                <Grid>
+                  <Border Classes="denseTableRow" MinHeight="{StaticResource Component.DenseTable.RowHeight}">
+                    <Grid controls:DenseTable.Columns="{StaticResource Component.Review.TableColumns}"
+                          controls:DenseTable.CompactColumns="{StaticResource Component.Review.TableCompactColumns}">
+                      <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center"
+                            ColumnSpacing="{StaticResource Intent.Space.Minimal}">
+                        <views:CopyableTextBlock Classes="denseTableItem" Text="{Binding Review.Change.Word}"
+                            controls:WritingSystemText.Id="{Binding Review.Change.Presentation.Facts.WordWritingSystem}"
+                            controls:WritingSystemText.StyleName="Normal" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Review.Change.Word}" />
+                        <views:CopyableTextBlock Grid.Column="1" Classes="denseTableCount" Text="✓" IsVisible="{Binding Review.IsLookedAt}"
+                            VerticalAlignment="Center" AutomationProperties.Name="{x:Static app:MotifAppStrings.LookedAtAccessibleName}" ToolTip.Tip="{x:Static app:MotifAppStrings.LookedAtTip}" />
+                      </Grid>
+                      <Grid Grid.Column="1" controls:DenseTable.Secondary="True">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
+                                    Spacing="{StaticResource Intent.Space.Compact}"
+                                    IsVisible="{Binding Review.Change.HasOpinionTransitionMarks}">
+                          <controls:OpinionMark Kind="{Binding Review.Change.NowOpinionMark}" ToolTip.Tip="{Binding Review.Change.StagedTransition.Now}" />
+                          <views:CopyableTextBlock Text="→" Classes="denseTableCell" />
+                          <controls:OpinionMark Kind="{Binding Review.Change.AfterOpinionMark}" ToolTip.Tip="{Binding Review.Change.StagedTransition.AfterApply}" />
+                        </StackPanel>
+                        <views:CopyableTextBlock Text="{Binding Review.Change.TransitionText}" Classes="denseTableCell"
+                            VerticalAlignment="Center" IsVisible="{Binding !Review.Change.HasOpinionTransitionMarks}"
+                            TextWrapping="Wrap" ToolTip.Tip="{Binding Review.Change.TransitionText}" />
+                      </Grid>
+                      <word:MorphemePanel Grid.Column="2" controls:DenseTable.Secondary="True" VerticalAlignment="Center"
+                          Morphs="{Binding Review.Change.RowMorphs}" ShowCategory="False"
+                          MaxVisibleMorphs="6" OverflowRequest="{Binding Review.Change.ReviewMorphologyRequest}" />
+                      <views:MarkChip Grid.Column="3" controls:DenseTable.Secondary="True" VerticalAlignment="Center"
+                          Mark="{Binding Review.Change.Presentation.Facts.CompactOutcomeMark}"
+                          Text="{Binding Review.Change.Presentation.Facts.CompactOutcomeWord}" Compact="True" WrapText="True" />
+                      <views:CopyableTextBlock Grid.Column="4" controls:DenseTable.Secondary="True" Classes="denseTableCell"
+                          Text="{Binding Review.Change.Presentation.PendingChange.WhereText}" VerticalAlignment="Center"
+                          TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Review.Change.Presentation.PendingChange.WhereText}" />
+                      <Border Grid.Column="5" Classes="reviewFitTag" VerticalAlignment="Center"
+                              ToolTip.Tip="{Binding Review.TableFitDescription}" AutomationProperties.Name="{Binding Review.TableFitDescription}"
+                              Classes.fits="{Binding Review.Change.StillFits}" Classes.noLongerFits="{Binding Review.Change.IsNoLongerFits}"
+                              Classes.uncertain="{Binding Review.Change.IsUncertain}">
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{StaticResource Intent.Space.Minimal}">
+                          <views:CopyableTextBlock Text="{Binding Review.FitGlyph}" Classes="reviewFitText" />
+                          <views:CopyableTextBlock Grid.Column="1" Text="{Binding Review.TableFitText}" Classes="reviewFitText" TextWrapping="NoWrap" />
+                        </Grid>
+                      </Border>
+                      <StackPanel Grid.Column="6" Orientation="Horizontal" VerticalAlignment="Center"
+                                  Spacing="{StaticResource Intent.Space.Minimal}">
+                        <Button Classes="denseTableAction" Content="{x:Static app:MotifAppStrings.Keep}" Command="{Binding Review.KeepCommand}"
+                                AutomationProperties.Name="{Binding Review.TableKeepAutomationName}" />
+                        <Button Classes="denseTableAction" Content="{x:Static app:MotifAppStrings.Undo}" Command="{Binding Review.UndoCommand}"
+                                AutomationProperties.Name="{Binding Review.TableUndoAutomationName}" />
+                        <Button Classes="denseTableMenu" Content="⋯" IsTabStop="True"
+                                AutomationProperties.Name="{Binding Review.MoreAutomationName}">
+                          <Button.Flyout>
+                            <Flyout Placement="BottomEdgeAlignedLeft">
+                              <StackPanel Classes="menu">
+                                <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}"
+                                        Content="{x:Static app:MotifAppStrings.Details}" Click="OnDetailsRequested"
+                                        AutomationProperties.Name="{x:Static app:MotifAppStrings.DetailsForThisChangeAccessibleName}" />
+                                <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}"
+                                        Content="{x:Static app:MotifAppStrings.Keep}" Command="{Binding Review.KeepCommand}" />
+                                <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}"
+                                        Content="{x:Static app:MotifAppStrings.Undo}" Command="{Binding Review.UndoCommand}" />
+                              </StackPanel>
+                            </Flyout>
+                          </Button.Flyout>
+                        </Button>
+                      </StackPanel>
+                    </Grid>
+                  </Border>
+                  <Border Classes="denseTableFocusRing" />
+                </Grid>
+              </DataTemplate>
+            </views:ReviewRowTemplate.Word>
+          </views:ReviewRowTemplate>
         </ListBox.DataTemplates>
       </ListBox>
     </Grid>

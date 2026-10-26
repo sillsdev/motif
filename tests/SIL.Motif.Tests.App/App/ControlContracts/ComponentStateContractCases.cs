@@ -878,62 +878,86 @@ internal static class TooltipOwners
         {
             Pending = "the staged Review scene has only ordinary groups, which carry no note",
         },
-        new("Review grammar row title", "Views/ReviewPanel.axaml", "{Binding Title}", TooltipScene.ReviewStaged,
-            control => control is CopyableTextBlock { DataContext: ReviewEntryViewModel entry } text &&
+        new("Review grammar row title", "Views/ReviewPanel.axaml", "{Binding Review.Title}", TooltipScene.ReviewStaged,
+            control => control is CopyableTextBlock
+                { DataContext: ReviewListEntryViewModel { Review: { IsGrammar: true } entry } } text &&
                 control.Classes.Contains("denseTableItem") && text.Text == entry.Title)
         {
             Pending = "the staged sample holds no grammar change",
         },
-        new("Review grammar row summary", "Views/ReviewPanel.axaml", "{Binding Summary}", TooltipScene.ReviewStaged,
-            control => control is CopyableTextBlock { DataContext: ReviewEntryViewModel entry } text &&
+        new("Review grammar row summary", "Views/ReviewPanel.axaml", "{Binding Review.Summary}", TooltipScene.ReviewStaged,
+            control => control is CopyableTextBlock
+                { DataContext: ReviewListEntryViewModel { Review: { IsGrammar: true } entry } } text &&
                 !control.Classes.Contains("denseTableItem") && text.Text == entry.Summary)
         {
             Pending = "the staged sample holds no grammar change",
         },
-        new("Review row word", "Views/ReviewPanel.axaml", "{Binding Word}", TooltipScene.ReviewStaged,
-            control => control is CopyableTextBlock { DataContext: ChangeViewModel } &&
+        new("Review row word", "Views/ReviewPanel.axaml", "{Binding Review.Change.Word}", TooltipScene.ReviewStaged,
+            control => control is CopyableTextBlock
+                { DataContext: ReviewListEntryViewModel { Review: { IsGrammar: false, Change: not null } } } &&
                 control.Classes.Contains("denseTableItem") && control.FindAncestorOfType<ReviewPanel>() is not null),
         new("Review row looked at", "Views/ReviewPanel.axaml", "Looked at", TooltipScene.ReviewStaged,
-            control => control is CopyableTextBlock && Name(control) == "Looked at" &&
+            control => control is CopyableTextBlock
+                { DataContext: ReviewListEntryViewModel { Review.IsGrammar: false } } && Name(control) == "Looked at" &&
                 control.FindAncestorOfType<ReviewPanel>() is not null)
         {
             Pending = "the staged sample has no change marked as looked at",
         },
-        new("Review opinion now", "Views/ReviewPanel.axaml", "{Binding StagedTransition.Now}", TooltipScene.ReviewStaged,
-            control => control is OpinionMark { DataContext: ChangeViewModel change } &&
+        new("Review grammar row looked at", "Views/ReviewPanel.axaml", "Looked at", TooltipScene.ReviewStaged,
+            control => control is CopyableTextBlock
+                { DataContext: ReviewListEntryViewModel { Review.IsGrammar: true } } && Name(control) == "Looked at" &&
+                control.FindAncestorOfType<ReviewPanel>() is not null)
+        {
+            Pending = "the staged sample holds no grammar change",
+        },
+        new("Review opinion now", "Views/ReviewPanel.axaml", "{Binding Review.Change.StagedTransition.Now}", TooltipScene.ReviewStaged,
+            control => control is OpinionMark
+                { DataContext: ReviewListEntryViewModel { Review: { IsGrammar: false, Change: { } change } } } &&
                 ToolTip.GetTip(control) as string == change.StagedTransition.Now &&
                 control.FindAncestorOfType<ReviewPanel>() is not null)
         {
             Pending = "the staged Review scene does not show the opinion column",
         },
-        new("Review opinion after Apply", "Views/ReviewPanel.axaml", "{Binding StagedTransition.AfterApply}", TooltipScene.ReviewStaged,
-            control => control is OpinionMark { DataContext: ChangeViewModel change } &&
+        new("Review opinion after Apply", "Views/ReviewPanel.axaml", "{Binding Review.Change.StagedTransition.AfterApply}", TooltipScene.ReviewStaged,
+            control => control is OpinionMark
+                { DataContext: ReviewListEntryViewModel { Review: { IsGrammar: false, Change: { } change } } } &&
                 ToolTip.GetTip(control) as string == change.StagedTransition.AfterApply &&
                 ToolTip.GetTip(control) as string != change.StagedTransition.Now &&
                 control.FindAncestorOfType<ReviewPanel>() is not null)
         {
             Pending = "the staged Review scene does not show the opinion column",
         },
-        new("Review opinion change text", "Views/ReviewPanel.axaml", "{Binding TransitionText}", TooltipScene.ReviewStaged,
-            control => control is CopyableTextBlock { DataContext: ChangeViewModel change } text &&
+        new("Review opinion change text", "Views/ReviewPanel.axaml", "{Binding Review.Change.TransitionText}", TooltipScene.ReviewStaged,
+            control => control is CopyableTextBlock
+                { DataContext: ReviewListEntryViewModel { Review: { IsGrammar: false, Change: { } change } } } text &&
                 text.Text == change.TransitionText && control.FindAncestorOfType<ReviewPanel>() is not null)
         {
             Pending = "the staged Review scene does not show the opinion column",
         },
-        new("Review grammar effect", "Views/ReviewPanel.axaml", "{Binding TableOutcomeText}", TooltipScene.ReviewStaged,
-            control => control is CopyableTextBlock { DataContext: ReviewEntryViewModel entry } text &&
-                text.Text == entry.TableOutcomeText)
+        new("Review grammar effect", "Views/ReviewPanel.axaml", "{Binding Review.TableOutcomeText}", TooltipScene.ReviewStaged,
+            control => control is CopyableTextBlock
+                { DataContext: ReviewListEntryViewModel { Review: { IsGrammar: true } entry } } text &&
+                text.Text == entry.TableOutcomeText && control.FindAncestorOfType<ReviewPanel>() is not null)
         {
             Pending = "the staged sample holds no grammar change",
         },
-        new("Review row location", "Views/ReviewPanel.axaml", "{Binding Change.Presentation.PendingChange.WhereText}",
-            TooltipScene.ReviewStaged, control => control is CopyableTextBlock { DataContext: ReviewEntryViewModel entry } text &&
-                entry.Change is { } change && text.Text == change.Presentation.PendingChange?.WhereText)
+        new("Review row location", "Views/ReviewPanel.axaml", "{Binding Review.Change.Presentation.PendingChange.WhereText}",
+            TooltipScene.ReviewStaged, control => control is CopyableTextBlock
+                { DataContext: ReviewListEntryViewModel { Review: { IsGrammar: false, Change: { } change } } } text &&
+                text.Text == change.Presentation.PendingChange?.WhereText &&
+                control.FindAncestorOfType<ReviewPanel>() is not null)
         {
             Pending = "the staged Review scene does not show the location column",
         },
-        new("Review row fit", "Views/ReviewPanel.axaml", "{Binding TableFitDescription}", TooltipScene.ReviewStaged,
-            control => control is Border && control.Classes.Contains("reviewFitTag")),
+        new("Review row fit", "Views/ReviewPanel.axaml", "{Binding Review.TableFitDescription}", TooltipScene.ReviewStaged,
+            control => control is Border { DataContext: ReviewListEntryViewModel { Review.IsGrammar: false } } &&
+                control.Classes.Contains("reviewFitTag") && control.FindAncestorOfType<ReviewPanel>() is not null),
+        new("Review grammar row fit", "Views/ReviewPanel.axaml", "{Binding Review.TableFitDescription}", TooltipScene.ReviewStaged,
+            control => control is Border { DataContext: ReviewListEntryViewModel { Review.IsGrammar: true } } &&
+                control.Classes.Contains("reviewFitTag") && control.FindAncestorOfType<ReviewPanel>() is not null)
+        {
+            Pending = "the staged sample holds no grammar change",
+        },
         new("Review Inspector Word Analyses", "Views/ReviewInspector.axaml", "{Binding Listed.Row.WordAnalysesTip}",
             TooltipScene.ReviewStaged, control => control is HyperlinkButton &&
                 control.FindAncestorOfType<ReviewInspector>() is not null),

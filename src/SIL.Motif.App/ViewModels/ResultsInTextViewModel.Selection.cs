@@ -320,6 +320,7 @@ public sealed partial class ResultsInTextViewModel
         token.PendingState = PendingChangeStates.FromChanges(relevant);
         token.IsPending = relevant.Length > 0;
         token.SetStagedMarkings(relevant);
+        token.AppliedPending = relevant;
         ShowProposalOn(token);
         token.IsUncertainChanged = token.Occurrence is { } changed && _uncertainHighlights.Contains(changed);
         token.SetWarningEvidence(ResultsTokenViewModel.WarningEvidenceFor(token.Form,
@@ -435,9 +436,36 @@ public sealed partial class ResultsInTextViewModel
     {
         RefreshNativeUncertainty();
         TrackSelectionWork(RefreshNativeAnalyzeAsync());
-        foreach (var token in NativeRealizedTokens()) PrepareNativeTokenState(token);
+        UpdateNativePendingTokens();
         NotifyNativeCounts();
         RefreshNativeLines();
+    }
+
+    /// <summary>Updates realized tokens only when their pending changes differ.</summary>
+    private void UpdateNativePendingTokens()
+    {
+        var items = _changes.Items.ToArray();
+        foreach (var token in NativeRealizedTokens())
+        {
+            var relevant = items.Length == 0 ? [] : items.Where(change => change.Addresses(token)).ToArray();
+            token.IsUncertainChanged = token.Occurrence is { } anchor && _uncertainHighlights.Contains(anchor);
+            if (relevant.SequenceEqual(token.AppliedPending, SamePendingChange.Instance)) continue;
+            token.PendingState = PendingChangeStates.FromChanges(relevant);
+            token.IsPending = relevant.Length > 0;
+            token.SetStagedMarkings(relevant);
+            token.AppliedPending = relevant;
+            ShowProposalOn(token);
+        }
+    }
+
+    private sealed class SamePendingChange : IEqualityComparer<ChangeViewModel>
+    {
+        public static readonly SamePendingChange Instance = new();
+        public bool Equals(ChangeViewModel? x, ChangeViewModel? y) => ReferenceEquals(x, y) || x is not null && y is not null &&
+            x.ChangeId == y.ChangeId && x.Kind == y.Kind && x.WordformId == y.WordformId &&
+            x.StoredAnalysisId == y.StoredAnalysisId && x.ReadingIndex == y.ReadingIndex &&
+            x.Occurrence == y.Occurrence && x.StagedTransition == y.StagedTransition;
+        public int GetHashCode(ChangeViewModel change) => change.ChangeId.GetHashCode(StringComparison.Ordinal);
     }
 
     private void ApplyNativeReadState(Guid textId, IReadOnlyList<OccurrenceAnchor> read)

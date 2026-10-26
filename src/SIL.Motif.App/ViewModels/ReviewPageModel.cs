@@ -34,6 +34,7 @@ public sealed partial class ReviewPageModel : PageModel
     private IReadOnlyList<ReviewEntryViewModel> _entries = [];
     private int _currentIndex;
     private bool _walked;
+    private bool _entriesStaleWhileHidden;
     private int _reviewGeneration;
     private Task? _reviewTask;
     private int _reviewEntryCountGeneration;
@@ -49,7 +50,10 @@ public sealed partial class ReviewPageModel : PageModel
         // A change's row comes from the parse on screen, so a new parse rebuilds the rows.
         context.Assess.Words.PropertyChanged += (_, e) =>
         {
-            if (e.PropertyName == nameof(AssessWordsViewModel.AllRows)) RefreshReviewEntries();
+            if (e.PropertyName != nameof(AssessWordsViewModel.AllRows)) return;
+            // A hidden Review rebuilds when it is shown, and only if the parse moved while it was away.
+            if (Context.CurrentPage == WorkspacePage.Review) RefreshReviewEntries();
+            else _entriesStaleWhileHidden = true;
         };
         RemoveNonFittingCommand = new AsyncRelayCommand(RemoveNonFittingAsync,
             () => Changes.Items.Any(item => item.IsNoLongerFits));
@@ -1151,6 +1155,11 @@ public sealed partial class ReviewPageModel : PageModel
             {
                 _reviewEntryCountGeneration++;
                 _hiddenReviewEntryCount = null;
+                if (_entriesStaleWhileHidden)
+                {
+                    _entriesStaleWhileHidden = false;
+                    RefreshReviewEntries();
+                }
                 _reviewTask = LoadReviewAsync();
             }
             else
@@ -1302,6 +1311,11 @@ public sealed partial class ReviewPageModel : PageModel
             {
                 _reviewEntryCountGeneration++;
                 _hiddenReviewEntryCount = null;
+                if (_entriesStaleWhileHidden)
+                {
+                    _entriesStaleWhileHidden = false;
+                    RefreshReviewEntries();
+                }
                 _reviewTask = LoadReviewAsync();
                 _retirementReviewTask = LoadRetirementReviewAsync();
             }

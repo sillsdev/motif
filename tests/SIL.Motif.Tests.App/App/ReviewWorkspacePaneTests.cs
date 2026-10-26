@@ -17,6 +17,121 @@ namespace SIL.Motif.Tests.App;
 public sealed class ReviewWorkspacePaneTests
 {
     [Fact]
+    public void ReturningToReviewWithAChangedAssessmentNeverShowsThePreviousOutcomeWhileItsReadIsHeld()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var fake = ReviewDenseTableTests.MixedChanges();
+            var (workspace, window) = await ReviewScreenshots.OpenAsync(fake);
+            var page = workspace.PageModel<ReviewPageModel>();
+            var release = new TaskCompletionSource<CommandOutcome<ProposalReviewResponse>>(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+            var published = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var tablePublications = 0;
+            System.ComponentModel.PropertyChangedEventHandler onTablePublished = (_, e) =>
+            {
+                if (e.PropertyName != nameof(ReviewPageModel.TableEntries)) return;
+                tablePublications++;
+                if (release.Task.IsCompleted) published.TrySetResult();
+            };
+            page.PropertyChanged += onTablePublished;
+            try
+            {
+                window.Width = 1920;
+                window.Height = 1080;
+                workspace.Assess.Words.Load(
+                    [new AssessmentWordResult("kitabu", "no-analysis", false, "Search completed", 1, "before")]);
+                workspace.CurrentPage = WorkspacePage.Review;
+                PageScreenshots.Settle(window);
+                var panel = Assert.Single(window.GetVisualDescendants().OfType<ReviewPanel>());
+                var list = panel.FindControl<ListBox>("ReviewItems")!;
+                var initial = Assert.Single(list.ItemsSource!.OfType<ReviewListEntryViewModel>(),
+                    row => row.Change?.Word == "kitabu");
+                list.ScrollIntoView(initial);
+                PageScreenshots.Settle(window);
+                var header = panel.FindControl<Grid>("ReviewTableHeader")!;
+                Assert.True(header.ColumnDefinitions[3].Width.Value > 0,
+                    $"The outcome column is compact at Review width {panel.Bounds.Width}.");
+
+                Control[] ShownWordRows() => list.GetRealizedContainers().OfType<Control>()
+                    .Where(row => row.IsEffectivelyVisible &&
+                        row.DataContext is ReviewListEntryViewModel { Change.Word: "kitabu" }).ToArray();
+                string? Outcome(Control row)
+                {
+                    var chip = Assert.Single(row.GetVisualDescendants().OfType<MarkChip>(),
+                        chip => chip.IsEffectivelyVisible);
+                    Assert.True(chip.Bounds.Width > 0 && chip.Bounds.Height > 0);
+                    return chip.Text;
+                }
+
+                var previousWord = Assert.IsType<AssessWordRowViewModel>(workspace.Assess.Words.Find("kitabu"));
+                Assert.Equal(ParserOutcome.NoParse, previousWord.WordRow.Outcome);
+                var previousOutcome = Outcome(Assert.Single(ShownWordRows()));
+                Assert.Equal(workspace.Assess.Words.Listed("kitabu").Row.CompactOutcomeWord, previousOutcome);
+                workspace.CurrentPage = WorkspacePage.Overview;
+                PageScreenshots.Settle(window);
+                var readsBefore = fake.ProposalReviewRequests.Count;
+                var publicationsBefore = tablePublications;
+                workspace.Assess.Words.Load(
+                    [new AssessmentWordResult("kitabu", "analysed", false, "Search completed", 1, "after")
+                    {
+                        Morphology = new ParseWordEvidence("v1", 0, "kitabu", 1, false, false, false,
+                            [new ParseAnalysis([new ParseMorph("form", "msa", null, null)])], []),
+                        Readings = [ReviewScreenshots.Reading(("kitabu", "book"))],
+                        ReadingGrades = [ReadingGrade.Candidate],
+                    }]);
+                var currentWord = Assert.IsType<AssessWordRowViewModel>(workspace.Assess.Words.Find("kitabu"));
+                Assert.NotSame(previousWord, currentWord);
+                Assert.Equal("analysed", currentWord.Source.Outcome);
+                Assert.Single(currentWord.Source.Morphology!.Analyses);
+                Assert.Equal(ParserOutcome.Same, currentWord.WordRow.Outcome);
+                Assert.Equal(ParserOutcome.Same, workspace.Assess.Words.Listed("kitabu").Row.Outcome);
+                var expectedOutcome = workspace.Assess.Words.Listed("kitabu").Row.CompactOutcomeWord;
+                Assert.NotEqual(previousOutcome, expectedOutcome);
+                Assert.Equal(readsBefore, fake.ProposalReviewRequests.Count);
+                Assert.Equal(publicationsBefore, tablePublications);
+
+                fake.ProposalReviewHandler = (_, _) => release.Task;
+                workspace.CurrentPage = WorkspacePage.Review;
+                Assert.Equal(readsBefore + 1, fake.ProposalReviewRequests.Count);
+                Assert.False(release.Task.IsCompleted);
+                PageScreenshots.Settle(window);
+                Assert.True(panel.IsEffectivelyVisible);
+                var shown = ShownWordRows();
+                Assert.All(shown, row => Assert.Equal(expectedOutcome, Outcome(row)));
+                if (shown.Length == 0)
+                {
+                    Assert.False(page.KeepCommand.CanExecute(null));
+                    Assert.False(page.UndoCommand.CanExecute(null));
+                    Assert.False(page.KeepAllCommand.CanExecute(null));
+                    Assert.False(page.UndoAllCommand.CanExecute(null));
+                }
+
+                release.SetResult(CommandOutcome<ProposalReviewResponse>.Success(fake.Review));
+                await published.Task;
+                PageScreenshots.Settle(window);
+                var current = Assert.Single(list.ItemsSource!.OfType<ReviewListEntryViewModel>(),
+                    row => row.Change?.Word == "kitabu");
+                list.ScrollIntoView(current);
+                PageScreenshots.Settle(window);
+                Assert.Equal(expectedOutcome, Outcome(Assert.Single(ShownWordRows())));
+                Assert.Empty(fake.ReviewMarkRequests);
+                Assert.Empty(fake.PendingRemoveRequests);
+                Assert.Empty(fake.RemoveOperationsRequests);
+                Assert.Empty(fake.ApplyPendingRequests);
+                Assert.Empty(fake.ApplyProposalRequests);
+            }
+            finally
+            {
+                page.PropertyChanged -= onTablePublished;
+                release.TrySetResult(CommandOutcome<ProposalReviewResponse>.Success(fake.Review));
+                try { await workspace.DisposeAsync(); }
+                finally { window.Close(); }
+            }
+        }, TimeSpan.FromMinutes(3));
+    }
+
+    [Fact]
     public void ForPageOwnsReviewPanesWithoutGetterReparentingAndReusesTheRealWordCard()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>

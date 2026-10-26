@@ -964,4 +964,30 @@ public sealed class CompareViewModelTests
         Assert.Equal(PendingChangeState.NoLongerFits,
             compare.Cells.Single(cell => cell.Row == word.Row && cell.Column == word.Column).PendingState);
     }
+
+    [Fact]
+    public void ALaterPendingChangeUpdatesOnlyTheWordsWhosePendingStateChanged()
+    {
+        var (_, compare) = Loaded();
+        var changes = new ChangesViewModel(new FakeCommandClient());
+        compare.Changes = changes;
+        var first = compare.Words.First();
+        var other = compare.Words.First(item => item.Word != first.Word);
+        changes.Items.Add(new ChangeViewModel(ChangeKinds.IncorrectSpelling, first.Word, "", "change-1"));
+        Assert.Equal(PendingChangeState.NotAppliedYet, first.PendingState);
+        var raised = new List<string?>();
+        first.PropertyChanged += (_, e) => raised.Add(e.PropertyName);
+        other.PropertyChanged += (_, e) => raised.Add("other:" + e.PropertyName);
+
+        changes.Items.Add(new ChangeViewModel(ChangeKinds.IncorrectSpelling, other.Word, "", "change-2"));
+
+        Assert.Equal(PendingChangeState.NotAppliedYet, other.PendingState);
+        Assert.DoesNotContain(raised, name => name is not null && !name.StartsWith("other:", StringComparison.Ordinal));
+        changes.Items.Clear();
+        Assert.Equal(PendingChangeState.None, first.PendingState);
+        Assert.Equal(PendingChangeState.None, other.PendingState);
+        Assert.False(first.HasPendingChange);
+        Assert.Equal(PendingChangeState.None,
+            compare.Cells.Single(cell => cell.Row == first.Row && cell.Column == first.Column).PendingState);
+    }
 }

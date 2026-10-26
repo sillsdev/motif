@@ -112,7 +112,7 @@ public sealed partial class ReviewPanel : UserControl, IWorkspacePaneProvider
 
     private void OnDetailsRequested(object? sender, RoutedEventArgs e)
     {
-        if (sender is not Control { DataContext: ReviewEntryViewModel entry }) return;
+        if (sender is not Control { DataContext: ReviewListEntryViewModel { Review: { } entry } }) return;
         Page.SelectEntry(entry);
         if (Page.SelectedTableEntry is { } selected)
             _items.ContainerFromItem(selected)?.GetVisualDescendants().OfType<Button>()

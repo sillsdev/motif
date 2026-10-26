@@ -207,7 +207,7 @@
                   <TextBlock Classes="gutterLabel analysisRow fieldWorksRow" Text="{x:Static app:MotifAppStrings.FieldWorks}" />
                   <TextBlock Classes="gutterLabel analysisRow" Text="{x:Static app:MotifAppStrings.PanGloss}" />
                 </StackPanel>
-                <views:ProgressiveItemsControl x:Name="ResultsInTextPanelTokensItems" FullItemsSource="{Binding DisplayTokens}" HorizontalAlignment="Stretch">
+                <views:ProgressiveItemsControl x:Name="ResultsInTextPanelTokensItems" DefersFirstPage="True" FullItemsSource="{Binding DisplayTokens}" HorizontalAlignment="Stretch">
                   <ItemsControl.ItemsPanel><ItemsPanelTemplate><views:WordStripWrapPanel Orientation="Horizontal"
                                                                                            HorizontalAlignment="Stretch"
                                                                                            controls:WritingSystemText.FlowEnabled="True" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>

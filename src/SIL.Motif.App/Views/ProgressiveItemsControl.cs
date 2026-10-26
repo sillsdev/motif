@@ -20,7 +20,15 @@ public sealed class ProgressiveItemsControl : ItemsControl
     public static readonly StyledProperty<object?> FullItemsSourceProperty =
         AvaloniaProperty.Register<ProgressiveItemsControl, object?>(nameof(FullItemsSource));
 
+    public static readonly StyledProperty<bool> DefersFirstPageProperty =
+        AvaloniaProperty.Register<ProgressiveItemsControl, bool>(nameof(DefersFirstPage));
+
     private const int PageSize = 20;
+
+    // How many deferring controls may fill their first page inside the frame that shows them: one screenful.
+    private const int FirstPagesPerFrame = 6;
+    private static int s_firstPagesThisFrame;
+    private static bool s_frameResetPosted;
     private int _offset;
     private bool _updating;
     private bool _attached;
@@ -33,6 +41,16 @@ public sealed class ProgressiveItemsControl : ItemsControl
     internal Task PageRefresh { get; private set; } = Task.CompletedTask;
 
     protected override Type StyleKeyOverride => typeof(ItemsControl);
+
+    /// <summary>
+    /// Whether this control fills its first page after the frame that shows it once a screenful of its siblings has,
+    /// so a long list of strips does not hold the switch that revealed it.
+    /// </summary>
+    public bool DefersFirstPage
+    {
+        get => GetValue(DefersFirstPageProperty);
+        set => SetValue(DefersFirstPageProperty, value);
+    }
 
     /// <summary>The complete wrapping collection, independent of the currently displayed page.</summary>
     public object? FullItemsSource
@@ -92,7 +110,7 @@ public sealed class ProgressiveItemsControl : ItemsControl
             Observe(null);
             if (_attached) Observe(FullItemsSource as INotifyCollectionChanged);
             _offset = FullItemsSource is IProgressivePageSource pages ? pages.InitialOffset : 0;
-            RefreshPage();
+            RefreshPage(mayDefer: true);
         }
         else if (change.Property == ItemTemplateProperty)
         {
@@ -107,7 +125,7 @@ public sealed class ProgressiveItemsControl : ItemsControl
         base.OnAttachedToVisualTree(e);
         _attached = true;
         Observe(FullItemsSource as INotifyCollectionChanged);
-        RefreshPage();
+        RefreshPage(mayDefer: true);
     }
 
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
@@ -143,9 +161,55 @@ public sealed class ProgressiveItemsControl : ItemsControl
         RefreshPage();
     }
 
-    private void RefreshPage()
+    private bool TakeFirstPageSlot()
+    {
+        if (!s_frameResetPosted)
+        {
+            s_frameResetPosted = true;
+            Dispatcher.UIThread.Post(() =>
+            {
+                s_firstPagesThisFrame = 0;
+                s_frameResetPosted = false;
+            }, DispatcherPriority.Background);
+        }
+        return ++s_firstPagesThisFrame <= FirstPagesPerFrame;
+    }
+
+    private void RefreshPage(bool mayDefer = false)
     {
         CancelPage();
+        if (mayDefer && DefersFirstPage && _attached && !TakeFirstPageSlot())
+        {
+            var generation = _pageGeneration;
+            var deferred = new TaskCompletionSource();
+            PageRefresh = deferred.Task;
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (generation == _pageGeneration && _attached)
+                {
+                    RefreshPage();
+                    var started = PageRefresh;
+                    void CompleteDeferred(Task completed)
+                    {
+                        try
+                        {
+                            completed.GetAwaiter().GetResult();
+                            deferred.TrySetResult();
+                        }
+                        catch (OperationCanceledException exception) when (completed.IsCanceled)
+                        {
+                            deferred.TrySetCanceled(exception.CancellationToken);
+                        }
+                        catch (Exception exception) { deferred.TrySetException(exception); }
+                    }
+                    if (started.IsCompleted) CompleteDeferred(started);
+                    else _ = started.ContinueWith(CompleteDeferred, CancellationToken.None,
+                        TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+                }
+                else deferred.TrySetResult();
+            }, DispatcherPriority.Background);
+            return;
+        }
         if (FullItemsSource is IProgressivePageSource pages)
         {
             _offset = Math.Min(_offset, Math.Max(0, (pages.Count - 1) / PageSize * PageSize));
@@ -156,7 +220,9 @@ public sealed class ProgressiveItemsControl : ItemsControl
         }
         IList source = FullItemsSource as IList ?? (FullItemsSource as IEnumerable)?.Cast<object>().ToArray() ?? [];
         _offset = Math.Min(_offset, Math.Max(0, (source.Count - 1) / PageSize * PageSize));
+        var publishedGeneration = _pageGeneration;
         PublishPage(source, source.Count, _offset);
+        if (publishedGeneration == _pageGeneration) PageRefresh = Task.CompletedTask;
     }
 
     private async Task ReadPageAsync(IProgressivePageSource pages, int offset, long generation,

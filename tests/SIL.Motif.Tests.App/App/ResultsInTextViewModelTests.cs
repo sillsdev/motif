@@ -1911,6 +1911,93 @@ public sealed class ResultsInTextViewModelTests : IAsyncLifetime
     }
 
     [Fact]
+    public void ReloadingEquivalentPendingChangesKeepsUnchangedTokenMarkings()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            PendingChangesSnapshot Snapshot() => new("draft/pending", "revision/pending",
+                [new PendingChange("pending-book", Wordform("kitabu"), "kitabu", ChangeKinds.Approve,
+                    null, null, []) { StoredAnalysisId = "stored-book" }],
+                [new ChangeFit("pending-book", ChangeFitStatus.Fits, new List<string>())]);
+            var (inText, _, fake) = await Loaded(pending: Snapshot());
+            var tokens = SelectionModelFixture.VisibleLines(inText).SelectMany(line => line.Tokens).ToArray();
+            var raised = new List<ResultsTokenViewModel>();
+            foreach (var token in tokens)
+                token.PropertyChanged += (_, e) =>
+                {
+                    if (e.PropertyName == nameof(ResultsTokenViewModel.StagedChanges)) raised.Add(token);
+                };
+
+            fake.PendingChangesIs(Snapshot());
+            await inText.Changes.ReloadAsync();
+
+            Assert.Empty(raised);
+            var changed = tokens.Where(token => token.Form == "kitabu").ToArray();
+            Assert.All(changed, token => Assert.True(token.IsPending));
+            fake.PendingChangesIs(new PendingChangesSnapshot("draft/pending", "revision/undone", [], []));
+            await inText.Changes.ReloadAsync();
+            Assert.True(changed.ToHashSet().SetEquals(raised));
+            Assert.All(changed, token =>
+            {
+                Assert.False(token.IsPending);
+                Assert.Empty(token.StagedChanges);
+                Assert.Empty(token.Marking.StagedTransitions);
+            });
+        }, TimeSpan.FromSeconds(180));
+    }
+
+    [Fact]
+    public void ReloadingPendingChangesUpdatesTheDisplayedPreviousOpinion()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            PendingChangesSnapshot Snapshot(string opinion) => new("draft/pending", "revision/pending",
+                [new PendingChange("pending-book", Wordform("kitabu"), "kitabu", ChangeKinds.Approve,
+                    null, null, [])
+                {
+                    StoredAnalysisId = "stored-book",
+                    Analyses = [new ReviewAnalysis(new ParserReading([]), opinion, true, true)],
+                }], []);
+            var (inText, _, fake) = await Loaded(pending: Snapshot(ReadingGrade.Candidate));
+            var token = SelectionModelFixture.VisibleLines(inText).SelectMany(line => line.Tokens)
+                .First(token => token.Form == "kitabu");
+            Assert.Contains("Unknown", Assert.Single(token.StagedChanges).Transition);
+
+            fake.PendingChangesIs(Snapshot(ReadingGrade.Disapproved));
+            await inText.Changes.ReloadAsync();
+
+            Assert.Contains("Disapproved", Assert.Single(token.StagedChanges).Transition);
+        }, TimeSpan.FromSeconds(180));
+    }
+
+    [Theory]
+    [InlineData(ChangeFitStatus.Uncertain)]
+    [InlineData(ChangeFitStatus.NoLongerFits)]
+    public void ReloadingPendingFitUpdatesTheTokenMarkings(string status)
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            PendingChangesSnapshot Snapshot(string fit) => new("draft/pending", "revision/pending",
+                [new PendingChange("pending-book", Wordform("kitabu"), "kitabu", ChangeKinds.Approve,
+                    null, null, []) { StoredAnalysisId = "stored-book" }],
+                [new ChangeFit("pending-book", fit, [])]);
+            var (inText, _, fake) = await Loaded(pending: Snapshot(ChangeFitStatus.Fits));
+            var token = SelectionModelFixture.VisibleLines(inText).SelectMany(line => line.Tokens)
+                .First(token => token.Form == "kitabu");
+
+            fake.PendingChangesIs(Snapshot(status));
+            await inText.Changes.ReloadAsync();
+
+            var staged = Assert.Single(token.StagedChanges);
+            Assert.Equal(status == ChangeFitStatus.Uncertain, staged.IsUncertain);
+            Assert.Equal(status == ChangeFitStatus.NoLongerFits, staged.NoLongerFits);
+            Assert.Equal(status, Assert.Single(token.Marking.StagedTransitions).FitStatus);
+            Assert.Equal(status == ChangeFitStatus.Uncertain ? PendingChangeState.Uncertain :
+                PendingChangeState.NoLongerFits, token.PendingState);
+        }, TimeSpan.FromSeconds(180));
+    }
+
+    [Fact]
     public void AParserOnlyReadingCanBeAddedAsApproved()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
