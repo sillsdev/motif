@@ -14,6 +14,8 @@ $preparePortableWorkerPackage = -not $artifactSelectionWasExplicit -or $Portable
 $prepareExplainedWordCardFixture = -not $artifactSelectionWasExplicit -or $ExplainedWordCardFixture
 
 $repositoryRoot = [System.IO.DirectoryInfo]::new($PSScriptRoot).Parent.FullName
+Import-Module (Join-Path $PSScriptRoot 'SyntheticSamples.psm1') -Force
+$sampleInputRoot = if ($prepareExplainedWordCardFixture) { Resolve-SyntheticSampleRoot $repositoryRoot } else { $null }
 $configurationRoot = Join-Path $repositoryRoot "bin/$Configuration"
 $testOutputRoot = Join-Path $configurationRoot 'tests'
 $preparedRoot = Join-Path $testOutputRoot 'prepared'
@@ -345,7 +347,7 @@ try {
 
     if ($prepareExplainedWordCardFixture) {
         $sampleSpecPath = Join-Path $workRoot 'explained-word-card.sample.json'
-        $sampleSpec = Get-Content -LiteralPath (Join-Path $repositoryRoot 'samples/synthetic-turkic/sample.json') -Raw |
+        $sampleSpec = Get-Content -LiteralPath (Join-Path $sampleInputRoot 'synthetic-turkic/sample.json') -Raw |
             ConvertFrom-Json -AsHashtable
         $stems = [System.Collections.Generic.List[object]]::new()
         foreach ($stem in $sampleSpec['stems']) { $stems.Add($stem) }

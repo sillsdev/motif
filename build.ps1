@@ -22,9 +22,10 @@
   MSBuild configuration. Defaults to Debug, matching a bare `dotnet build`.
 
   .PARAMETER Project
-  Restore and build only tests/<Project>/<Project>.csproj and what it references, not Motif.sln. For
-  iterating on one test project: the hygiene gates, ICU staging, PanGloss staging and interface gate still
-  run. The test project (through SIL.Motif.Tests.Support) builds the CLI and worker apphosts its tests start.
+  Restore and build tests/<Project>/<Project>.csproj and its references, not Motif.sln. For one test project,
+  hygiene gates, ICU/PanGloss staging and the runtime interface gate still run. That gate separately builds
+  tools/SampleProjects outside the test project's reference graph to generate disposable probe projects.
+  The test project (through SIL.Motif.Tests.Support) builds the CLI and worker apphosts its tests start.
 
 .PARAMETER SkipHygiene
   Compile without the comment and design-token gates. For bisecting a build break only -- CI never passes this, so
@@ -157,6 +158,26 @@ if ($LASTEXITCODE -ne 0) {
     Write-Host ''
     Write-Host 'Build failed.' -ForegroundColor Red
     exit 1
+}
+
+if ($Project) {
+    $sampleProjectsTarget = Join-Path $repoRoot 'tools/SampleProjects/SIL.Motif.SampleProjects.csproj'
+    Write-Step "dotnet restore SIL.Motif.SampleProjects ($nodeText)"
+    $sampleProjectsRestore = Invoke-MotifRestore -Target $sampleProjectsTarget -MaxNodes $buildNodes
+    $sampleProjectsRestore.Output | ForEach-Object { Write-Host $_ }
+    if ($sampleProjectsRestore.ExitCode -ne 0) {
+        Write-Host ''
+        Write-Host 'SampleProjects restore failed.' -ForegroundColor Red
+        exit 1
+    }
+
+    Write-Step "dotnet build SIL.Motif.SampleProjects ($Configuration, $nodeText)"
+    & dotnet build $sampleProjectsTarget --configuration $Configuration --nologo --no-restore @nodeArguments
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host ''
+        Write-Host 'SampleProjects build failed.' -ForegroundColor Red
+        exit 1
+    }
 }
 
 if (-not $IsWindows) {

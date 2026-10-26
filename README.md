@@ -107,4 +107,4 @@ Read next:
 
 ## Licence
 
-Motif and its synthetic language sets are MIT-licensed. Future real-language data may carry share-alike or non-commercial terms recorded in each set's `LICENSES` file; see the [external evaluation-data licence notice](https://github.com/sillsdev/motif-test-grammars/blob/v0.3.0/evals/DATA-LICENSES.md).
+Motif software is MIT-licensed. That license does not authorize grammar or FieldWorks project payloads in this repository: [ADR 0076](docs/adr/0076-grammar-data-never-belongs-in-motif.md) prohibits committing real, synthetic, self-authored, self-generated or agent-generated data. Tracked legacy payloads remain violations pending separate removal; they are not exceptions. Pinned external evaluation data has its own terms in the [external evaluation-data licence notice](https://github.com/sillsdev/motif-test-grammars/blob/v0.3.0/evals/DATA-LICENSES.md).

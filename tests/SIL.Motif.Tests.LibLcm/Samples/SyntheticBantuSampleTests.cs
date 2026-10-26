@@ -28,7 +28,7 @@ public sealed class SyntheticBantuSampleTests(ITestOutputHelper output)
 
         try
         {
-            var sampleFolder = Path.Combine(RepositoryRoot(), "samples", SampleFolder);
+            var sampleFolder = SyntheticSampleInputs.SampleDirectory(RepositoryRoot(), SampleFolder);
             var specPath = Path.Combine(sampleFolder, "sample.json");
             var bugsPath = Path.Combine(sampleFolder, "bugs.json");
             using var schema = JsonDocument.Parse(await File.ReadAllTextAsync(
@@ -66,7 +66,7 @@ public sealed class SyntheticBantuSampleTests(ITestOutputHelper output)
 
         try
         {
-            var sampleFolder = Path.Combine(RepositoryRoot(), "samples", SampleFolder);
+            var sampleFolder = SyntheticSampleInputs.SampleDirectory(RepositoryRoot(), SampleFolder);
             var specPath = Path.Combine(sampleFolder, "sample.json");
             var bugsPath = Path.Combine(sampleFolder, "bugs.json");
             var expectedPath = Path.Combine(sampleFolder, "expected.json");

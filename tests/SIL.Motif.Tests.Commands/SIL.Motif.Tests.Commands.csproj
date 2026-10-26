@@ -23,5 +23,6 @@
 
   <ItemGroup>
     <None Update="Parsimony\Fixtures\**\*" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\evals\conformance.lock.json" Link="conformance.lock.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

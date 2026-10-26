@@ -37,10 +37,32 @@ public sealed class SampleProjectBuildTests
         var samplesRoot = Path.Combine(repositoryRoot, "samples");
         using var schema = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(samplesRoot, "sample.schema.json")));
         using var expected = JsonDocument.Parse(await File.ReadAllTextAsync(
-            Path.Combine(samplesRoot, "synthetic-turkic", "expected.json")));
+            Path.Combine(SyntheticSampleInputs.SampleDirectory(repositoryRoot, "synthetic-turkic"), "expected.json")));
 
         SampleJsonSchemaValidator.AssertValid(
             expected.RootElement, schema.RootElement.GetProperty("$defs").GetProperty("sampleExpected"), schema.RootElement);
+    }
+
+    [Fact]
+    public void SyntheticSampleInputVerifierRejectsPartialCache()
+    {
+        var repositoryRoot = Path.GetFullPath(Path.Combine(BuildOutput.ProductDirectory, "..", ".."));
+        using var manifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(repositoryRoot,
+            "evals", "synthetic-samples.lock.json")));
+        var root = Path.Combine(Path.GetTempPath(), "MotifSyntheticSamples", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        try
+        {
+            var error = Assert.Throws<InvalidDataException>(() =>
+                SyntheticSampleInputs.VerifyRoot(root, manifest.RootElement));
+            Assert.Contains("exactly the catalog sample directories", error.Message, StringComparison.Ordinal);
+        }
+        finally
+        {
+            try { Directory.Delete(root, recursive: true); }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
+        }
     }
 
     [Fact]
@@ -140,11 +162,12 @@ public sealed class SampleProjectBuildTests
         var samplesRoot = Path.Combine(repositoryRoot, "samples");
         using var schema = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(samplesRoot, "sample.schema.json")));
         var schemaRoot = schema.RootElement;
-        var sampleFolders = Directory.GetDirectories(samplesRoot)
-            .Where(folder => File.Exists(Path.Combine(folder, "sample.json")))
-            .Order(StringComparer.Ordinal)
-            .ToArray();
-        Assert.NotEmpty(sampleFolders);
+        var sampleRoot = SyntheticSampleInputs.ResolveRoot(repositoryRoot);
+        var requiredSampleIds = new[] { "synthetic-bantu", "synthetic-turkic" };
+        var sampleFolders = requiredSampleIds.Select(id => Path.Combine(sampleRoot, id))
+            .Order(StringComparer.Ordinal).ToArray();
+        Assert.Equal(requiredSampleIds.Order(StringComparer.Ordinal).ToArray(),
+            sampleFolders.Select(folder => Path.GetFileName(folder)!).ToArray());
 
         foreach (var sampleFolder in sampleFolders)
         {

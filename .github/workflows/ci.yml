@@ -41,6 +41,12 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
+      - name: Provision approved synthetic sample inputs
+        shell: pwsh
+        run: |
+          $path = ./evals/Get-SyntheticSamples.ps1 -Download
+          "MOTIF_SYNTHETIC_SAMPLES=$path" >> $env:GITHUB_ENV
+
       - name: Read pinned SIL ICU source revision
         if: runner.os == 'macOS'
         id: sil-icu-source
@@ -118,6 +124,12 @@ jobs:
         run: |
           $path = ./evals/Get-TestGrammars.ps1
           "MOTIF_TEST_GRAMMARS=$path" >> $env:GITHUB_ENV
+
+      - name: Fetch pinned conformance fixture
+        shell: pwsh
+        run: |
+          $path = ./evals/Get-ConformanceFixture.ps1
+          "MOTIF_TEST_CONFORMANCE=$path" >> $env:GITHUB_ENV
 
       - name: Stage pinned PanGloss release
         shell: pwsh

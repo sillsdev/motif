@@ -50,10 +50,6 @@ export function validateProductionSyncArguments(argv, { repository, site }) {
 		throw new Error('--api-xml must be SIL.Motif.Contract.xml from the selected ' +
 			configuration + ' build output: ' + inputs.apiXml);
 	}
-	const expectedSamplesRoot = path.join(repositoryRoot, 'samples');
-	if (!samePath(inputs.samplesRoot, expectedSamplesRoot)) {
-		throw new Error('--samples-root must be the repository sample source: ' + inputs.samplesRoot);
-	}
 	const expectedSamplesOut = path.join(buildOutput, 'samples');
 	if (!samePath(inputs.samplesOut, expectedSamplesOut)) {
 		throw new Error('--samples-out must come from the selected ' + configuration +

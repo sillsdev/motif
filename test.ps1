@@ -215,6 +215,15 @@ if (-not $Project) {
         exit 1
     }
 
+    $phaseClocks['PanGloss interface regression'] = [Diagnostics.Stopwatch]::StartNew()
+    Write-Step 'PanGloss interface regression'
+    & pwsh -NoProfile -File (Join-Path $repoRoot 'tools/Test-PanGlossInterfaces.Tests.ps1') -Configuration $Configuration
+    Write-PhaseDuration 'PanGloss interface regression'
+    if ($LASTEXITCODE -ne 0) {
+        Write-PhaseDuration 'whole gate'
+        exit 1
+    }
+
     $phaseClocks['publication policy regression'] = [Diagnostics.Stopwatch]::StartNew()
     Write-Step 'publication policy regression'
     & pwsh -NoProfile -File (Join-Path $repoRoot 'tools/MotifReleasePublication.Tests.ps1')

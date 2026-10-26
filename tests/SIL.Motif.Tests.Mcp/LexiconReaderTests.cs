@@ -184,6 +184,45 @@ public sealed class LexiconReaderTests(PristineProjectFixture pristine) : IDispo
     }
 
     [Fact]
+    public void ConciseAndDetailedPagesPreservePerSenseIdsGlossesAndWritingSystems()
+    {
+        Fill();
+        var services = _cache.ServiceLocator;
+        services.WritingSystemManager.GetOrSet("es", out var secondAnalysisWs);
+        var entry = services.GetInstance<ILexEntryRepository>().AllInstances()
+            .Single(candidate => candidate.HeadWord?.Text == "balay");
+        var firstSense = entry.SensesOS.Single();
+        ILexSense secondSense = null!;
+
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+        {
+            services.WritingSystems.AnalysisWritingSystems.Add(secondAnalysisWs);
+            services.WritingSystems.CurrentAnalysisWritingSystems.Add(secondAnalysisWs);
+            firstSense.Gloss.set_String(_cache.DefaultAnalWs, "house");
+            secondSense = services.GetInstance<ILexSenseFactory>().Create();
+            entry.SensesOS.Add(secondSense);
+            secondSense.MorphoSyntaxAnalysisRA = firstSense.MorphoSyntaxAnalysisRA;
+            secondSense.Gloss.set_String(secondAnalysisWs.Handle, "casa");
+        });
+
+        var expectedIds = new[] { GrammarReader.Id(firstSense), GrammarReader.Id(secondSense) };
+        var concisePage = Read(new LexiconFilter(Headword: "balay"), limit: 1);
+        var concise = concisePage["entries"]![0]!["senses"]!.AsArray();
+
+        Assert.False(concisePage.ContainsKey("glossWs"));
+        Assert.Equal(expectedIds, concise.Select(sense => sense!["id"]!.GetValue<string>()));
+        Assert.Equal(["house", "casa"], concise.Select(sense => sense!["gloss"]!.GetValue<string>()));
+        Assert.Equal(["en", "es"], concise.Select(sense => sense!["glossWs"]!.GetValue<string>()));
+
+        var detailedPage = Read(new LexiconFilter(Headword: "balay"), limit: 1, detailed: true);
+        Assert.False(detailedPage.ContainsKey("glossWs"));
+        var detailed = detailedPage["entries"]![0]!["senses"]!.AsArray();
+        Assert.Equal(expectedIds, detailed.Select(sense => sense!["id"]!.GetValue<string>()));
+        Assert.Equal(["house", "casa"], detailed.Select(sense => sense!["gloss"]!.GetValue<string>()));
+        Assert.Equal(["en", "es"], detailed.Select(sense => sense!["glossWs"]!.GetValue<string>()));
+    }
+
+    [Fact]
     public void ConciseLineKeepsAtMostFiveSensesAndCountsTheRest()
     {
         Fill();

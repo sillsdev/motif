@@ -200,7 +200,7 @@ public sealed class SampleProjectSpikeTests(ITestOutputHelper output)
         try
         {
             using var buildOutput = await BuildCachedTurkicAsync(root);
-            var samplePath = Path.Combine(RepositoryRoot(), "samples", "synthetic-turkic", "sample.json");
+            var samplePath = Path.Combine(SyntheticSampleInputs.SampleDirectory(RepositoryRoot(), "synthetic-turkic"), "sample.json");
             using var sample = JsonDocument.Parse(await File.ReadAllTextAsync(samplePath));
             var wordOccurrences = WordOccurrencesByText(sample.RootElement);
             var assessment = await AssessTextsAsync(root, buildOutput.RootElement, wordOccurrences);
@@ -221,7 +221,7 @@ public sealed class SampleProjectSpikeTests(ITestOutputHelper output)
 
         try
         {
-            var sampleFolder = Path.Combine(RepositoryRoot(), "samples", "synthetic-turkic");
+            var sampleFolder = SyntheticSampleInputs.SampleDirectory(RepositoryRoot(), "synthetic-turkic");
             var specPath = Path.Combine(sampleFolder, "sample.json");
             var bugsPath = Path.Combine(sampleFolder, "bugs.json");
             var expectedPath = Path.Combine(sampleFolder, "expected.json");
@@ -424,7 +424,7 @@ public sealed class SampleProjectSpikeTests(ITestOutputHelper output)
 
     private static async Task<JsonDocument> BuildCachedTurkicAsync(string destinationRoot)
     {
-        var sampleFolder = Path.Combine(RepositoryRoot(), "samples", "synthetic-turkic");
+        var sampleFolder = SyntheticSampleInputs.SampleDirectory(RepositoryRoot(), "synthetic-turkic");
         var specPath = Path.Combine(sampleFolder, "sample.json");
         var bugsPath = Path.Combine(sampleFolder, "bugs.json");
         var schemaPath = Path.Combine(RepositoryRoot(), "samples", "sample.schema.json");
@@ -513,7 +513,7 @@ public sealed class SampleProjectSpikeTests(ITestOutputHelper output)
     private static async Task<JsonDocument> BuildAsync(string root)
     {
         var result = await RunBuilderAsync(root,
-            Path.Combine(RepositoryRoot(), "samples", "synthetic-turkic", "sample.json"));
+            Path.Combine(SyntheticSampleInputs.SampleDirectory(RepositoryRoot(), "synthetic-turkic"), "sample.json"));
         Assert.True(result.ExitCode == 0, result.StandardError);
         return JsonDocument.Parse(result.StandardOutput);
     }

@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { syncSiteContent } from './sync-core.mjs';
 import { validateProductionSyncArguments, validateProductionHelpExport } from './production-inputs.mjs';
 import { validateWalkthroughArtifacts } from './walkthrough-artifacts.mjs';
+import { resolveSyntheticSampleRoot } from './synthetic-sample-inputs.mjs';
 
 const site = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const repository = path.resolve(site, '..');
@@ -80,11 +81,9 @@ if (production) {
 		: path.join(fixtureRoot, 'help'));
 	walkthroughRoot = argument(argv, '--walkthrough-output') ??
 		process.env.MOTIF_WALKTHROUGH_OUTPUT ?? path.join(fixtureRoot, 'walkthroughs');
-	const samplesRootOption = argument(argv, '--samples-root');
+	const samplesRootOption = argument(argv, '--samples-root') ?? process.env.MOTIF_SAMPLES_ROOT;
 	const samplesOutOption = argument(argv, '--samples-out');
-	samplesRoot = samplesRootOption
-		? path.resolve(samplesRootOption)
-		: await firstExisting(path.join(repository, 'samples'), path.join(fixtureRoot, 'samples'));
+	samplesRoot = await resolveSyntheticSampleRoot(repository, samplesRootOption);
 	samplesOut = samplesOutOption
 		? path.resolve(samplesOutOption)
 		: await firstExisting(path.join(repository, 'bin', 'Debug', 'samples'), path.join(fixtureRoot, 'samples'));
@@ -94,6 +93,8 @@ if (production) {
 		path.join(fixtureRoot, 'SIL.Motif.Contract.xml'),
 	);
 }
+
+if (production) await resolveSyntheticSampleRoot(repository, production.samplesRoot);
 
 const result = await syncSiteContent({
 	repository, site, helpExportPath, helpRoot, walkthroughRoot, docsRoot, apiXmlPath, samplesRoot, samplesOut,

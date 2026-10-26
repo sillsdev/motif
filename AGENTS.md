@@ -20,23 +20,42 @@ on Windows, Ubuntu 22.04, and macOS.
 **One machine, many worktrees: the scripts size themselves.** `build.ps1` passes `-m:N` to restore and build, with
 `N = MOTIF_BUILD_NODES` or, on a developer machine, a quarter of the processors (minimum two). CI is uncapped: no `-m`, no slot, and xUnit keeps its own thread default.
 `test.ps1` gives each xUnit host `MaxParallelThreads = MOTIF_TEST_THREADS` or its share of the processors (minimum
-two). `./test.ps1 -Project <name>` (with or without `-Filter`) builds only that test project through
-`./build.ps1 -Project <name>` and skips the tooling regression scripts, which a run without `-Project` still runs.
+two). `./test.ps1 -Project <name>` (with or without `-Filter`) builds the named test project and its
+references through `./build.ps1 -Project <name>`; the runtime interface gate separately builds
+`tools/SampleProjects` outside that reference graph to generate disposable probe projects. It skips the
+tooling regression scripts, which a run without `-Project` still runs.
 A test project's `SIL.Motif.Tests.Support` reference builds the `motif` and `SIL.Motif.Worker` apphosts; a project
 that starts another apphost by path needs its own `ProjectReference` to it.
 
 **`./test.ps1` needs no FieldWorks project or sibling FieldWorks checkout.** Every LibLCM project the suite
-exercises is a real, blank `LcmCache` built at run time by `NewLangProjFixture` and seeded by
-`SeededProject` (`tests/SIL.Motif.Tests.Support/TestFixtures/`). Synthetic evaluation sets live in the
-separate `sillsdev/motif-test-grammars` repository and are pinned by tag and commit in
-`evals/test-grammars.lock.json`. Fetch them into this checkout with `pwsh ./evals/Get-TestGrammars.ps1`,
-or set `MOTIF_TEST_GRAMMARS` to a local checkout at that pin; no evaluation set is kept in Motif.
-`EvaluationSetVerificationTests` skips with a clear reason when the sets are absent, and CI fetches them
-before testing. PanGloss owns grammar conformance and parser-scale benchmarks. The released `pangloss`
-executable is also pinned by version, runtime identifier and SHA-256 in `pangloss-release.json`.
-Tests needing it use `RealParserFactAttribute`, which skips when the parser is absent on an ordinary
-developer machine. Release integration validation requires both pinned dependencies and treats any
-parser- or evaluation-set-dependent skips as incomplete validation.
+exercises is a real, blank `LcmCache` built at run time by `NewLangProjFixture`; `SeededProject`
+(`tests/SIL.Motif.Tests.Support/TestFixtures/`) is executable fixture code, not a committed project
+payload. Synthetic evaluation sets live in the separate `sillsdev/motif-test-grammars` repository and
+are pinned by tag and commit in `evals/test-grammars.lock.json`. `pwsh ./evals/Get-TestGrammars.ps1`
+fetches them into the ignored `bin/.cache/test-grammars` directory; alternatively, set
+`MOTIF_TEST_GRAMMARS` to an external checkout at that pin. `EvaluationSetVerificationTests` skips with
+a clear reason when the sets are absent, and CI fetches them before testing. PanGloss owns grammar
+conformance and parser-scale benchmarks. The released `pangloss` executable is also pinned by version,
+runtime identifier and SHA-256 in `pangloss-release.json`. Tests needing it use `RealParserFactAttribute`,
+which skips when the parser is absent on an ordinary developer machine. Release integration validation
+requires both pinned dependencies and treats any parser- or evaluation-set-dependent skips as incomplete
+validation.
+
+**Never commit grammar or FieldWorks project data to Motif** ([ADR 0076](docs/adr/0076-grammar-data-never-belongs-in-motif.md)).
+This ban includes real, synthetic, self-authored, self-generated, agent-generated, converted, benchmark, conformance and
+test-fixture payloads, regardless of provenance, licence, size or regression-test need. It covers grammar
+XML/JSON/YAML, project files and SQLite stores, snapshots, backups, exports, archives, and serialized
+payload embedded or encoded in source, resources or goldens. Commit schemas, contracts, lock references,
+retrieval tools and generic fixture-builder code only when they do not carry serialized grammar content.
+Tests may create disposable project outputs at runtime only under ignored or private temporary roots; never
+stage those outputs. Private owner data may be supplied externally for local work, but must not be copied
+to a public external repository. Existing tracked payloads are not grandfathered. The previously tracked
+`tools/fixtures/pangloss-interface-smoke.xml` and files under
+`tests/SIL.Motif.Tests.Support/TestFixtures/Conformance/deep-optional-affix-nesting/` were removed from
+this source. Conformance tests provision pinned external inputs with `evals/Get-ConformanceFixture.ps1`;
+the runtime interface gate uses `tools/SampleProjects` to generate disposable probe projects. These
+path-specific facts do not claim an exhaustive semantic scan or guarantee that every possible payload
+has been found; apply the ban to every change and never commit serialized inputs.
 
 **`./test.ps1` gives each test class exactly one level from its project's `MotifTestDefaultLevel`, with
 System overrides for walkthroughs and real-parser tests. With no switch it selects Unit and Integration;

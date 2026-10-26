@@ -257,7 +257,7 @@ public sealed class SampleBuilderExtensionTests
         string root, bool includeClassFeatures)
     {
         var sample = JsonNode.Parse(await File.ReadAllTextAsync(
-            Path.Combine(RepositoryRoot(), "samples", "synthetic-turkic", "sample.json")))!.AsObject();
+            Path.Combine(SyntheticSampleInputs.SampleDirectory(RepositoryRoot(), "synthetic-turkic"), "sample.json")))!.AsObject();
         var nounTemplate = sample["affixTemplates"]!.AsArray().Single(template =>
             template!["partOfSpeech"]!.GetValue<string>() == "noun" &&
             template["name"]!.GetValue<string>() == "Noun suffixes")!;

@@ -7,11 +7,19 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $repositoryRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
-$samplesRoot = Join-Path $repositoryRoot 'samples'
+Import-Module (Join-Path $PSScriptRoot 'SyntheticSamples.psm1') -Force
+$samplesRoot = Resolve-SyntheticSampleRoot $repositoryRoot
 $sampleOutputRoot = [System.IO.Path]::GetFullPath((Join-Path $repositoryRoot "bin\$Configuration\samples"))
-$builderPath = Join-Path $repositoryRoot "bin\$Configuration\SIL.Motif.SampleProjects.exe"
-$sampleSpecs = @(Get-ChildItem -LiteralPath $samplesRoot -Directory |
-    Where-Object { Test-Path -LiteralPath (Join-Path $_.FullName 'sample.json') })
+$builderName = if ($IsWindows) { 'SIL.Motif.SampleProjects.exe' } else { 'SIL.Motif.SampleProjects' }
+$builderPath = Join-Path $repositoryRoot "bin\$Configuration\$builderName"
+$requiredSampleIds = @('synthetic-bantu', 'synthetic-turkic')
+$sampleSpecs = @($requiredSampleIds | ForEach-Object {
+    $directory = Join-Path $samplesRoot $_
+    if (-not (Test-Path -LiteralPath (Join-Path $directory 'sample.json') -PathType Leaf)) {
+        throw "Required sample identity '$_' is missing from the verified sample root '$samplesRoot'."
+    }
+    Get-Item -LiteralPath $directory
+})
 
 if ($Sample) {
     $sampleSpecs = @($sampleSpecs | Where-Object Name -eq $Sample)

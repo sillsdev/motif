@@ -35,7 +35,7 @@ internal sealed class SlowParserWalkthroughProject : IDisposable
         try
         {
             var repository = RepositoryRoot();
-            var samplePath = Path.Combine(repository, "samples", "synthetic-turkic", "sample.json");
+            var samplePath = Path.Combine(SyntheticSampleInputs.SampleDirectory(repository, "synthetic-turkic"), "sample.json");
             var sample = JsonNode.Parse(await File.ReadAllTextAsync(samplePath))!.AsObject();
             var stems = sample["stems"]!.AsArray();
             for (var index = 0; index < WordCount; index++)

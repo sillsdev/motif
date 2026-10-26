@@ -1,0 +1,16 @@
+{
+  "repository": "https://github.com/sillsdev/motif-test-grammars.git",
+  "release": "fixture-inputs-v1",
+  "commit": "412e38035364486b26607bb016dbaa06e306a622",
+  "asset": "https://github.com/sillsdev/motif-test-grammars/releases/download/fixture-inputs-v1/synthetic-samples-5f449-v1.zip",
+  "bytes": 10295,
+  "sha256": "0437adae7b5ba44b9772a268d56a5c737ca2381d31f8192d8b1afc931df9e977",
+  "files": [
+    { "path": "samples/synthetic-bantu/sample.json", "bytes": 18771, "sha256": "4675ab2628feea8d66594aef655f49957ed057fa81065f7d9e46aff6818d35c1" },
+    { "path": "samples/synthetic-bantu/bugs.json", "bytes": 3144, "sha256": "44ead6b01efb998ca3c938129b6490556c840cafbb588f38a5071cc6212a2214" },
+    { "path": "samples/synthetic-bantu/expected.json", "bytes": 2625, "sha256": "f1e0c632e891245ab78ee0776cab48353b4c7d92fa34d62b56474de60b7dfb86" },
+    { "path": "samples/synthetic-turkic/sample.json", "bytes": 19953, "sha256": "9981c7c092f0608e5aa24ffda09b863aa2c4c1be7874e346a846c9b05e8a8e94" },
+    { "path": "samples/synthetic-turkic/bugs.json", "bytes": 4265, "sha256": "700edd6cf61d4e668c629c4bc1507bb2dee2f055117b53e39c7f82519bfbabeb" },
+    { "path": "samples/synthetic-turkic/expected.json", "bytes": 3819, "sha256": "9879d1f689e2d53581c45bf3607a0ff2c4b74beb46fa930a4b68c34802a70a16" }
+  ]
+}

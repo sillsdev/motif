@@ -263,7 +263,7 @@ public sealed class ProcessWritingSystemRepositoryTests
         var repositoryRoot = Path.GetFullPath(Path.Combine(BuildOutput.ProductDirectory, "..", ".."));
         var builderPath = Path.Combine(BuildOutput.ProductDirectory,
             OperatingSystem.IsWindows() ? "SIL.Motif.SampleProjects.exe" : "SIL.Motif.SampleProjects");
-        var samplePath = Path.Combine(repositoryRoot, "samples", "synthetic-turkic", "sample.json");
+        var samplePath = Path.Combine(SyntheticSampleInputs.SampleDirectory(repositoryRoot, "synthetic-turkic"), "sample.json");
         Directory.CreateDirectory(root);
 
         try

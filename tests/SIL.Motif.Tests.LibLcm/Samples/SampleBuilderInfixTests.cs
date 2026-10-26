@@ -82,7 +82,7 @@ public sealed class SampleBuilderInfixTests
     private static async Task<string> WriteInfixSampleAsync(string root)
     {
         var sample = JsonNode.Parse(await File.ReadAllTextAsync(
-            Path.Combine(RepositoryRoot(), "samples", "synthetic-turkic", "sample.json")))!.AsObject();
+            Path.Combine(SyntheticSampleInputs.SampleDirectory(RepositoryRoot(), "synthetic-turkic"), "sample.json")))!.AsObject();
         sample["stems"]!.AsArray().Add(JsonNode.Parse("""
             { "id": "sulat", "form": "sulat", "partOfSpeech": "verb", "gloss": "write" }
             """));

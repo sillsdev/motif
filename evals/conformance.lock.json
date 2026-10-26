@@ -1,0 +1,48 @@
+{
+  "repository": "https://github.com/sillsdev/machine",
+  "commit": "f150e2a005ce639f7d68ef17fb0db25b2f6aaa3c",
+  "sourceRoot": "conformance/edge-cases/deep-optional-affix-nesting",
+  "cacheFiles": [
+    {
+      "sourcePath": "conformance/edge-cases/deep-optional-affix-nesting/fieldworks/project.fwdata",
+      "cachePath": "project.fwdata",
+      "bytes": 69873,
+      "sha256": "c75d8e8877a3b5bb4125c141cbe5cb7dac76c0fa1ecafc4fd07f62d8d810c2b9"
+    },
+    {
+      "sourcePath": "conformance/edge-cases/deep-optional-affix-nesting/fieldworks/WritingSystemStore/de.ldml",
+      "cachePath": "WritingSystemStore/de.ldml",
+      "bytes": 823,
+      "sha256": "2a0570a1e53f79739859b2622061b31da0bbcb579b328882f23f7f42385b2cfb"
+    },
+    {
+      "sourcePath": "conformance/edge-cases/deep-optional-affix-nesting/fieldworks/WritingSystemStore/en.ldml",
+      "cachePath": "WritingSystemStore/en.ldml",
+      "bytes": 763,
+      "sha256": "9015ac69b98dee7eb594a2f2c3cf6b865a2152f51ad2cd3df68a52ad6c24361d"
+    },
+    {
+      "sourcePath": "conformance/edge-cases/deep-optional-affix-nesting/fieldworks/WritingSystemStore/es.ldml",
+      "cachePath": "WritingSystemStore/es.ldml",
+      "bytes": 912,
+      "sha256": "9fd89776026d62fcff7fefb22b8b499e8fa88752c3c71ed72a422f67c1c21952"
+    },
+    {
+      "sourcePath": "conformance/edge-cases/deep-optional-affix-nesting/fieldworks/WritingSystemStore/fr.ldml",
+      "cachePath": "WritingSystemStore/fr.ldml",
+      "bytes": 792,
+      "sha256": "9b8c132cb5d7cfd8873889d94308014afec5f5407aeb77fe1ec3f235078a0dee"
+    },
+    {
+      "sourcePath": "conformance/edge-cases/deep-optional-affix-nesting/words.yaml",
+      "cachePath": "words.yaml",
+      "bytes": 102026,
+      "sha256": "92330f36ae3a9cafefa93f7cc36ff1e102f55fe66412c9e6e52d2e4d49f18b8f"
+    }
+  ],
+  "oracleSelections": {
+    "oneAnalysisShort": { "byteOffset": 2795, "byteLength": 1 },
+    "nineHundredTwentyFour": { "byteOffset": 3557, "byteLength": 7 },
+    "oneAnalysisLong": { "byteOffset": 100858, "byteLength": 13 }
+  }
+}

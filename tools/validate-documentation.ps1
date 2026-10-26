@@ -112,12 +112,14 @@ try {
 
     $samplesOutput = Join-Path $repoRoot "bin/$Configuration/samples"
     $apiXml = Join-Path $repoRoot "bin/$Configuration/SIL.Motif.Contract.xml"
+    Import-Module (Join-Path $repoRoot 'tools/SyntheticSamples.psm1') -Force
+    $sampleInputRoot = Resolve-SyntheticSampleRoot $repoRoot
     $env:MOTIF_SITE_SYNC_MODE = 'production'
     $env:MOTIF_HELP_EXPORT = $helpExportPath
     $env:MOTIF_HELP_CONTENT_ROOT = $helpRoot
     $env:MOTIF_WALKTHROUGH_OUTPUT = $walkthroughOutput
     $env:MOTIF_CONTRACT_XML = $apiXml
-    $env:MOTIF_SAMPLES_ROOT = Join-Path $repoRoot 'samples'
+    $env:MOTIF_SAMPLES_ROOT = $sampleInputRoot
     $env:MOTIF_SAMPLES_OUT = $samplesOutput
     $env:MOTIF_DOCS_ROOT = Join-Path $repoRoot 'docs'
     $env:MOTIF_BUILD_CONFIGURATION = $Configuration

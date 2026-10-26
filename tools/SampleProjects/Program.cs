@@ -5,6 +5,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
+using System.Xml.Linq;
 using SIL.LCModel;
 using SIL.LCModel.Core.Text;
 using SIL.LCModel.DomainServices;
@@ -32,6 +33,27 @@ internal static class Program
 
     private static int Main(string[] args)
     {
+        if (args.Length > 0 && args[0] == "interface-probe")
+        {
+            if (args.Length != 2)
+            {
+                Console.Error.WriteLine("Usage: SIL.Motif.SampleProjects interface-probe <output-root>");
+                return 2;
+            }
+
+            try
+            {
+                var result = BuildInterfaceProbe(args[1]);
+                Console.WriteLine(JsonSerializer.Serialize(result, JsonOptions));
+                return 0;
+            }
+            catch (Exception exception)
+            {
+                Console.Error.WriteLine(exception.Message);
+                return 1;
+            }
+        }
+
         var buildMatrix = args.Length > 0 && args[0] == "build-matrix";
         if (args.Length < 3 || (!buildMatrix && args[0] != "build"))
         {
@@ -91,6 +113,55 @@ internal static class Program
             Console.Error.WriteLine(exception.Message);
             return 1;
         }
+    }
+
+    private static InterfaceProbeResult BuildInterfaceProbe(string outputRoot)
+    {
+        outputRoot = Path.GetFullPath(outputRoot);
+        if (Directory.Exists(outputRoot) && Directory.EnumerateFileSystemEntries(outputRoot).Any())
+            throw new IOException($"Interface probe output directory is not empty: {outputRoot}");
+
+        Directory.CreateDirectory(outputRoot);
+        Environment.SetEnvironmentVariable(
+            "MOTIF_WRITING_SYSTEM_REPOSITORY_PATH", Path.Combine(outputRoot, "writing-systems"));
+        Environment.SetEnvironmentVariable("MOTIF_TEST_SLDR_OFFLINE", "1");
+        Environment.SetEnvironmentVariable("MOTIF_TEST_SLDR_CACHE_PATH", Path.Combine(outputRoot, "sldr-cache"));
+
+        var projectRoot = Path.Combine(outputRoot, "valid");
+        Directory.CreateDirectory(projectRoot);
+        string projectPath;
+        Guid environmentId;
+        using (var cache = NewLangProjFixture.CreateCache(projectRoot))
+        {
+            var seed = SeededProject.Seed(cache);
+            IPhEnvironment environment = null!;
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            {
+                environment = cache.ServiceLocator.GetInstance<IPhEnvironmentFactory>().Create();
+                cache.LangProject.PhonologicalDataOA.EnvironmentsOS.Add(environment);
+                environment.StringRepresentation = TsStringUtils.MakeString("/ _ a", cache.DefaultVernWs);
+                var form = (IMoStemAllomorph)cache.ServiceLocator.GetInstance<IMoFormRepository>()
+                    .GetObject(seed.FirstLexemeFormId);
+                form.PhoneEnvRC.Add(environment);
+            });
+
+            var phonemes = SeededProject.FirstForm.Distinct()
+                .Select(character => character.ToString())
+                .ToArray();
+            RealParserProject.PrepareForParsing(cache, phonemes);
+            projectPath = cache.ProjectId.Path;
+            environmentId = environment.Guid;
+        }
+
+        var compileErrorPath = Path.Combine(outputRoot, "compile-error.fwdata");
+        File.Copy(projectPath, compileErrorPath);
+        var document = XDocument.Load(compileErrorPath);
+        var environmentRecord = document.Descendants("rt").Single(row =>
+            (string?)row.Attribute("guid") == environmentId.ToString());
+        environmentRecord.Remove();
+        document.Save(compileErrorPath);
+
+        return new InterfaceProbeResult(projectPath, compileErrorPath, SeededProject.FirstForm);
     }
 
     private static BuildMatrixResult BuildMatrix(
@@ -164,6 +235,8 @@ internal static class Program
             Console.Error.WriteLine($"[{variant}] word {result.Word} outcome={result.Outcome.ToStoredOutcome()}");
         return build;
     }
+
+    private sealed record InterfaceProbeResult(string ProjectPath, string CompileErrorProjectPath, string Word);
 }
 
 internal sealed record SampleSpec

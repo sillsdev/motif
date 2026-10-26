@@ -84,8 +84,10 @@ New-Item -ItemType Directory -Path $env:MOTIF_WORKER_ROOT -Force | Out-Null
 New-Item -ItemType Directory -Path $env:MOTIF_WRITING_SYSTEM_REPOSITORY_PATH -Force | Out-Null
 
 $repoRoot = Split-Path $PSScriptRoot -Parent
+Import-Module (Join-Path $PSScriptRoot 'SyntheticSamples.psm1') -Force
+$sampleInputRoot = Resolve-SyntheticSampleRoot $repoRoot
 $sampleBuilder = Join-Path $repoRoot 'bin/Release/SIL.Motif.SampleProjects.exe'
-$sampleSpec = Join-Path $repoRoot 'samples/synthetic-turkic/sample.json'
+$sampleSpec = Join-Path $sampleInputRoot 'synthetic-turkic/sample.json'
 $sampleOutputRoot = Join-Path $work 'sample-projects'
 $sampleBuildOutput = & $sampleBuilder build $sampleSpec $sampleOutputRoot 2>&1
 if ($LASTEXITCODE -ne 0) {

@@ -17,9 +17,9 @@ public sealed class ConformanceGrammarAssessTests
     {
         using var project = new ConformanceProject();
         var selection = new SelectionRequest(false, [], [
-            ConformanceProject.OneAnalysisShort,
-            ConformanceProject.OneAnalysisLong,
-            ConformanceProject.NineHundredTwentyFour,
+            project.OneAnalysisShort,
+            project.OneAnalysisLong,
+            project.NineHundredTwentyFour,
         ], false, null);
 
         var outcome = AssessCommand.Assess(
@@ -28,10 +28,10 @@ public sealed class ConformanceGrammarAssessTests
         Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
         var result = outcome.Value!;
         Assert.Equal(3, result.Words.Count);
-        AssertBoundaryResult(result, ConformanceProject.OneAnalysisShort);
-        AssertBoundaryResult(result, ConformanceProject.OneAnalysisLong);
+        AssertBoundaryResult(result, project.OneAnalysisShort);
+        AssertBoundaryResult(result, project.OneAnalysisLong);
 
-        var midpoint = Assert.Single(result.Words, word => word.Word == ConformanceProject.NineHundredTwentyFour);
+        var midpoint = Assert.Single(result.Words, word => word.Word == project.NineHundredTwentyFour);
         Assert.True(midpoint.IsIncomplete || midpoint.Outcome == "analysed");
         if (midpoint.IsIncomplete)
         {

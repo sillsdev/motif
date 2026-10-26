@@ -62,29 +62,53 @@ if (-not $sourceTagMatch.Success) {
 }
 $expectedParserVersion = if ($isPinnedCandidate) { [string] $pin.version } else { $sourceTagMatch.Groups[1].Value }
 
-function Invoke-PanGloss {
-    param([string[]] $Arguments)
+function Invoke-ChildProcess {
+    param(
+        [string] $ExecutablePath,
+        [string[]] $Arguments,
+        [string] $Purpose
+    )
 
-    $start = [System.Diagnostics.ProcessStartInfo]::new($ParserPath)
+    $start = [System.Diagnostics.ProcessStartInfo]::new($ExecutablePath)
     $start.UseShellExecute = $false
     $start.CreateNoWindow = $true
     $start.RedirectStandardOutput = $true
     $start.RedirectStandardError = $true
+    $start.StandardOutputEncoding = [System.Text.UTF8Encoding]::new($false)
+    $start.StandardErrorEncoding = [System.Text.UTF8Encoding]::new($false)
+    [void] $start.Environment.Remove('ICU_DATA')
     foreach ($argument in $Arguments) { [void] $start.ArgumentList.Add($argument) }
     $process = [System.Diagnostics.Process]::new()
     $process.StartInfo = $start
-    if (-not $process.Start()) { throw "Could not start PanGloss: $ParserPath" }
-    $stdout = $process.StandardOutput.ReadToEndAsync()
-    $stderr = $process.StandardError.ReadToEndAsync()
-    if (-not $process.WaitForExit(60000)) {
-        try { $process.Kill($true) } catch { }
-        throw "PanGloss did not finish within 60 seconds: $($Arguments -join ' ')"
+    $started = $false
+    try {
+        if (-not $process.Start()) { throw "Could not start ${Purpose}: $ExecutablePath" }
+        $started = $true
+        $stdout = $process.StandardOutput.ReadToEndAsync()
+        $stderr = $process.StandardError.ReadToEndAsync()
+        if (-not $process.WaitForExit(60000)) {
+            try { $process.Kill($true) } catch { }
+            [void] $process.WaitForExit(10000)
+            throw "$Purpose did not finish within 60 seconds: $($Arguments -join ' ')"
+        }
+        $process.WaitForExit()
+        return [pscustomobject]@{
+            ExitCode = $process.ExitCode
+            StandardOutput = $stdout.GetAwaiter().GetResult()
+            StandardError = $stderr.GetAwaiter().GetResult()
+        }
     }
-    [pscustomobject]@{
-        ExitCode = $process.ExitCode
-        StandardOutput = $stdout.GetAwaiter().GetResult()
-        StandardError = $stderr.GetAwaiter().GetResult()
+    finally {
+        if ($started -and -not $process.HasExited) {
+            try { $process.Kill($true) } catch { }
+        }
+        $process.Dispose()
     }
+}
+
+function Invoke-PanGloss {
+    param([string[]] $Arguments)
+    Invoke-ChildProcess $ParserPath $Arguments 'PanGloss'
 }
 
 function Assert-Interface {
@@ -149,12 +173,32 @@ $ProbeRoot = [System.IO.Path]::GetFullPath($ProbeRoot)
 if (Test-Path -LiteralPath $ProbeRoot) { throw "PanGloss interface probe directory already exists: $ProbeRoot" }
 [System.IO.Directory]::CreateDirectory($ProbeRoot) | Out-Null
 try {
-    $fixture = Join-Path $RepositoryRoot 'tools/fixtures/pangloss-interface-smoke.xml'
-    if (-not (Test-Path -LiteralPath $fixture -PathType Leaf)) {
-        throw "PanGloss interface fixture is missing: $fixture"
+    $sampleProjectsName = if ($IsWindows) { 'SIL.Motif.SampleProjects.exe' } else { 'SIL.Motif.SampleProjects' }
+    $sampleProjectsPath = Join-Path $RepositoryRoot "bin/$Configuration/$sampleProjectsName"
+    if (-not (Test-Path -LiteralPath $sampleProjectsPath -PathType Leaf)) {
+        throw "SampleProjects is missing; build it with ./build.ps1: $sampleProjectsPath"
     }
-    $grammar = Join-Path $ProbeRoot 'smoke.fwdata'
-    Copy-Item -LiteralPath $fixture -Destination $grammar
+    $generatedRoot = Join-Path $ProbeRoot 'generated'
+    $generation = Invoke-ChildProcess $sampleProjectsPath @('interface-probe', $generatedRoot) 'SampleProjects'
+    if ($generation.ExitCode -ne 0) {
+        throw "PanGloss interface probe generation failed with exit $($generation.ExitCode). $($generation.StandardError.Trim())"
+    }
+    $probe = Read-Json $generation.StandardOutput 'generated LibLCM interface probe'
+    $grammar = [System.IO.Path]::GetFullPath([string] $probe.projectPath)
+    $brokenGrammar = [System.IO.Path]::GetFullPath([string] $probe.compileErrorProjectPath)
+    $word = [string] $probe.word
+    foreach ($path in @($grammar, $brokenGrammar)) {
+        $relativePath = [System.IO.Path]::GetRelativePath($ProbeRoot, $path)
+        if ($relativePath -eq '..' -or $relativePath.StartsWith("..$([System.IO.Path]::DirectorySeparatorChar)", [StringComparison]::Ordinal)) {
+            throw "PanGloss interface probe escaped its private directory: $path"
+        }
+        if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+            throw "PanGloss interface probe did not create a project file: $path"
+        }
+    }
+    if ([string]::IsNullOrWhiteSpace($word) -or $pathComparer.Equals($grammar, $brokenGrammar)) {
+        throw 'PanGloss interface probe returned an empty word or duplicate project paths.'
+    }
 
     $health = Invoke-PanGloss @('grammar-health', $grammar, '--fw-project', 'interface smoke')
     if ($health.ExitCode -ne 0 -and [string]::IsNullOrWhiteSpace($health.StandardOutput)) {
@@ -163,7 +207,7 @@ try {
     $healthReport = Read-Json $health.StandardOutput 'grammar-health'
     Assert-Interface 'grammar-health schema_version' $interfaces.grammarHealthSchemaVersion $healthReport.schema_version
 
-    $trace = Invoke-PanGloss @('parse', $grammar, 'word', '--trace', '--trace-format', 'json', '--trace-details')
+    $trace = Invoke-PanGloss @('parse', $grammar, $word, '--trace', '--trace-format', 'json', '--trace-details')
     if ($trace.ExitCode -ne 0) {
         throw "PanGloss interface mismatch: parse trace expected exit 0, actual $($trace.ExitCode). $($trace.StandardError.Trim())"
     }
@@ -173,7 +217,7 @@ try {
     $words = Join-Path $ProbeRoot 'words.txt'
     $tsv = Join-Path $ProbeRoot 'batch.tsv'
     $statsCache = Join-Path $ProbeRoot 'stats.sqlite'
-    [System.IO.File]::WriteAllText($words, "word`n", [System.Text.UTF8Encoding]::new($false))
+    [System.IO.File]::WriteAllText($words, "$word`n", [System.Text.UTF8Encoding]::new($false))
     $batch = Invoke-PanGloss @(
         'batch', $grammar, $words, $tsv,
         '--step-cap', '100', '--threads', '1', '--stats', '--cache', $statsCache)
@@ -184,7 +228,7 @@ try {
     $cells = if ($null -eq $completedRow) { @() } else { [regex]::Split([string] $completedRow, "`t") }
     Assert-Interface 'batch TSV completion columns' @($interfaces.batchTsvColumns).Count $cells.Length
     Assert-Interface "batch TSV column '$($interfaces.batchTsvColumns[0])'" '0' $cells[0]
-    Assert-Interface "batch TSV column '$($interfaces.batchTsvColumns[1])'" 'word' $cells[1]
+    Assert-Interface "batch TSV column '$($interfaces.batchTsvColumns[1])'" $word $cells[1]
     if ($cells[2] -notmatch '^\d+(\.\d+)?$') {
         throw "PanGloss interface mismatch: batch TSV column '$($interfaces.batchTsvColumns[2])' expected a non-negative number, actual '$($cells[2])'."
     }
@@ -229,22 +273,16 @@ finally { $connection.Dispose() }
     $readerPath = Join-Path $sqliteProbe 'read-stats-version.ps1'
     [System.IO.File]::WriteAllText($readerPath, $reader, [System.Text.UTF8Encoding]::new($false))
     $pwsh = (Get-Process -Id $PID).Path
-    $statsVersion = & $pwsh -NoProfile -NonInteractive -File $readerPath -Directory $sqliteProbe -Cache $statsCache
-    if ($LASTEXITCODE -ne 0) {
-        throw "PanGloss interface check could not read the stats cache version; the reader exited $LASTEXITCODE."
+    $statsReader = Invoke-ChildProcess $pwsh @(
+        '-NoProfile', '-NonInteractive', '-File', $readerPath,
+        '-Directory', $sqliteProbe, '-Cache', $statsCache) 'stats-cache reader'
+    if ($statsReader.ExitCode -ne 0) {
+        throw "PanGloss interface check could not read the stats cache version; the reader exited $($statsReader.ExitCode). $($statsReader.StandardError.Trim())"
     }
-    Assert-Interface 'stats cache schema_version' $interfaces.statsCacheVersion ([string] $statsVersion).Trim()
+    Assert-Interface 'stats cache schema_version' $interfaces.statsCacheVersion $statsReader.StandardOutput.Trim()
 
-    $brokenGrammar = Join-Path $ProbeRoot 'compile-error.fwdata'
-    $broken = [System.IO.File]::ReadAllText($fixture)
-    $broken = [regex]::Replace(
-        $broken, '(<PhoneEnv>)', '$1<objsur guid="99999999-9999-9999-9999-999999999999" t="r" />', 1)
-    if ($broken -ceq [System.IO.File]::ReadAllText($fixture)) {
-        throw 'PanGloss interface fixture cannot produce its deliberate compile error.'
-    }
-    [System.IO.File]::WriteAllText($brokenGrammar, $broken, [System.Text.UTF8Encoding]::new($false))
     $compile = Invoke-PanGloss @(
-        'parse', $brokenGrammar, 'word', '--trace', '--trace-format', 'json', '--trace-details')
+        'parse', $brokenGrammar, $word, '--trace', '--trace-format', 'json', '--trace-details')
     $compileReport = $null
     foreach ($line in $compile.StandardError -split "`r?`n") {
         if ($line.TrimStart().StartsWith('{')) {

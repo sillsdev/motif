@@ -192,11 +192,13 @@ function Invoke-MediaStep {
         }
         'site' {
             Invoke-Native 'npm' @('ci', '--prefix', $siteRoot)
+            Import-Module (Join-Path $repositoryRoot 'tools/SyntheticSamples.psm1') -Force
+            $sampleInputRoot = Resolve-SyntheticSampleRoot $repositoryRoot
             $syncArgs = @(
                 'run', 'sync', '--prefix', $siteRoot, '--',
                 '--help-export', $helpExport,
                 '--help-root', (Join-Path $repositoryRoot 'src/SIL.Motif.Help/Content'),
-                '--samples-root', (Join-Path $repositoryRoot 'samples'),
+                '--samples-root', $sampleInputRoot,
                 '--samples-out', (Join-Path $configurationRoot 'samples'),
                 '--api-xml', (Join-Path $configurationRoot 'SIL.Motif.Contract.xml')
             )

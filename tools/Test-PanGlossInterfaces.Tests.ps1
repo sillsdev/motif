@@ -60,6 +60,7 @@ try {
     $validParser = New-FakeParser 'valid-schema'
     $validProbe = Join-Path $testRoot 'valid-probe'
     $validBehavior = @{
+        words = @()
         phases = @{
             parse = @(
                 @{},

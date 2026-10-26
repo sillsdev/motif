@@ -112,7 +112,8 @@ assert_version() {
 assert_version "$PRODUCT_VERSION"
 
 sample_builder="$GITHUB_WORKSPACE/bin/Release/SIL.Motif.SampleProjects"
-sample_spec="$GITHUB_WORKSPACE/samples/synthetic-turkic/sample.json"
+sample_root=$(pwsh -NoProfile -File "$GITHUB_WORKSPACE/tools/Resolve-SyntheticSamples.ps1")
+sample_spec="$sample_root/synthetic-turkic/sample.json"
 if [[ "$RUNTIME_IDENTIFIER" == linux-x64 ]]; then
     export MOTIF_RELEASE_APP_PREFIX_ARGUMENTS='["--appimage-extract-and-run"]'
     export MOTIF_RELEASE_APP_WRAPPER="$(command -v xvfb-run)"
