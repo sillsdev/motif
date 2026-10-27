@@ -40,6 +40,7 @@ public sealed partial class WordCard : UserControl
         AvaloniaProperty.Register<WordCard, bool>(nameof(HandlesTextReaderShortcuts));
 
     private readonly StackPanel _sections;
+    private bool _batching;
     private CancellationTokenSource? _readCancellation;
 
     public WordCard()
@@ -118,12 +119,12 @@ public sealed partial class WordCard : UserControl
     {
         DocumentProperty.Changed.AddClassHandler<WordCard>((card, _) =>
         {
-            card.Build();
+            card.BuildUnlessBatching();
             card.LoadCardTiming();
         });
-        HeaderProperty.Changed.AddClassHandler<WordCard>((card, _) => card.Build());
-        FailureProperty.Changed.AddClassHandler<WordCard>((card, _) => card.Build());
-        CanRetryProperty.Changed.AddClassHandler<WordCard>((card, _) => card.Build());
+        HeaderProperty.Changed.AddClassHandler<WordCard>((card, _) => card.BuildUnlessBatching());
+        FailureProperty.Changed.AddClassHandler<WordCard>((card, _) => card.BuildUnlessBatching());
+        CanRetryProperty.Changed.AddClassHandler<WordCard>((card, _) => card.BuildUnlessBatching());
         HostProperty.Changed.AddClassHandler<WordCard>((card, _) => card.StartHostedRead());
         KeyProperty.Changed.AddClassHandler<WordCard>((card, _) => card.StartHostedRead());
         EvidenceRevisionProperty.Changed.AddClassHandler<WordCard>((card, _) => card.StartHostedRead());
@@ -141,6 +142,28 @@ public sealed partial class WordCard : UserControl
         CancelHostedRead();
         if (Host is not null) Document = null;
         base.OnDetachedFromVisualTree(e);
+    }
+
+    /// <summary>Applies several state changes and builds the sections once afterwards.</summary>
+    private void SetState(WordCardDocument? document, string? failure, bool canRetry)
+    {
+        _batching = true;
+        try
+        {
+            Document = document;
+            Failure = failure;
+            CanRetry = canRetry;
+        }
+        finally
+        {
+            _batching = false;
+        }
+        Build();
+    }
+
+    private void BuildUnlessBatching()
+    {
+        if (!_batching) Build();
     }
 
     private void Build()
@@ -292,18 +315,14 @@ public sealed partial class WordCard : UserControl
         CancelHostedRead();
         var cancellation = new CancellationTokenSource();
         _readCancellation = cancellation;
-        Document = null;
-        Failure = "Loading word details…";
-        CanRetry = false;
+        SetState(null, "Loading word details…", false);
         try
         {
             var result = await host.ReadCardAsync(key, EvidenceRevision, cancellation.Token);
             if (cancellation.IsCancellationRequested || Key != key) return;
             if (result.Document is { } document &&
                 (document.Key != key || document.EvidenceRevision != EvidenceRevision)) return;
-            Document = result.Document;
-            Failure = result.Failure;
-            CanRetry = result.CanRetry;
+            SetState(result.Document, result.Failure, result.CanRetry);
         }
         catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
         {

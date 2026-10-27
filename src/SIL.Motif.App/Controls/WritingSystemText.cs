@@ -3,6 +3,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
 using Avalonia.Controls.Presenters;
+using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
@@ -172,7 +173,6 @@ public sealed class WritingSystemText
     {
         private readonly Control _control;
         private readonly object _presentationIdentity = new();
-        private readonly HashSet<Visual> _visibilityAncestors = [];
         private readonly HashSet<ScrollViewer> _scrollAncestors = [];
         private TextStyles? _subscribedStyles;
         private long _presentationGeneration;
@@ -187,7 +187,8 @@ public sealed class WritingSystemText
             _control.AttachedToVisualTree += OnAttachedToVisualTree;
             _control.DetachedFromVisualTree += OnDetachedFromVisualTree;
             _control.PropertyChanged += OnPropertyChanged;
-            if (_control.IsAttachedToVisualTree()) SubscribeToVisibilityAncestors();
+            _control.EffectiveViewportChanged += OnEffectiveViewportChanged;
+            if (_control.IsAttachedToVisualTree()) SubscribeToScrollAncestors();
         }
 
         public void Refresh()
@@ -224,14 +225,15 @@ public sealed class WritingSystemText
             _control.AttachedToVisualTree -= OnAttachedToVisualTree;
             _control.DetachedFromVisualTree -= OnDetachedFromVisualTree;
             _control.PropertyChanged -= OnPropertyChanged;
-            UnsubscribeFromVisibilityAncestors();
+            _control.EffectiveViewportChanged -= OnEffectiveViewportChanged;
+            UnsubscribeFromScrollAncestors();
             ClearStyle();
         }
 
         private void OnAttachedToVisualTree(object? sender, VisualTreeAttachmentEventArgs e)
         {
             MotifTrace.Count("attached.WritingSystemText");
-            SubscribeToVisibilityAncestors();
+            SubscribeToScrollAncestors();
             Refresh();
         }
 
@@ -240,14 +242,7 @@ public sealed class WritingSystemText
             CancelPresentation();
             UnsubscribeFromContext();
             _hasDrawnForCurrentContext = false;
-            UnsubscribeFromVisibilityAncestors();
-        }
-
-        private void OnAncestorPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
-        {
-            if (e.Property != Visual.IsVisibleProperty) return;
-            if (_control.IsEffectivelyVisible) QueuePresentationCheck(_presentationGeneration);
-            else CancelPresentationCheck();
+            UnsubscribeFromScrollAncestors();
         }
 
         private void OnPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
@@ -269,6 +264,10 @@ public sealed class WritingSystemText
             }
         }
 
+        // Hiding is caught when the queued check tests visibility.
+        private void OnEffectiveViewportChanged(object? sender, EffectiveViewportChangedEventArgs e) =>
+            QueuePresentationCheck(_presentationGeneration);
+
         private void OnContextChanged(object? sender, EventArgs e) => Refresh();
 
         private void SynchronizeContextSubscription()
@@ -287,20 +286,16 @@ public sealed class WritingSystemText
             _subscribedStyles = null;
         }
 
-        private void SubscribeToVisibilityAncestors()
+        // Visibility reaches the control through its own IsEffectivelyVisible, so only scrolling needs the ancestors.
+        private void SubscribeToScrollAncestors()
         {
             foreach (var ancestor in _control.GetVisualAncestors())
-            {
-                if (_visibilityAncestors.Add(ancestor)) ancestor.PropertyChanged += OnAncestorPropertyChanged;
                 if (ancestor is ScrollViewer scroll && _scrollAncestors.Add(scroll))
                     scroll.ScrollChanged += OnScrollChanged;
-            }
         }
 
-        private void UnsubscribeFromVisibilityAncestors()
+        private void UnsubscribeFromScrollAncestors()
         {
-            foreach (var ancestor in _visibilityAncestors) ancestor.PropertyChanged -= OnAncestorPropertyChanged;
-            _visibilityAncestors.Clear();
             foreach (var scroll in _scrollAncestors) scroll.ScrollChanged -= OnScrollChanged;
             _scrollAncestors.Clear();
         }

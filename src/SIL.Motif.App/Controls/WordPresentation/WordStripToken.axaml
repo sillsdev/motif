@@ -6,7 +6,7 @@
         xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
         xmlns:word="clr-namespace:SIL.Motif.App.Controls.WordPresentation"
         x:Class="SIL.Motif.App.Controls.WordPresentation.WordStripToken"
-        x:Name="WordStrip" x:CompileBindings="False"
+        x:Name="WordStrip" x:DataType="vm:ResultsTokenViewModel"
           IsVisible="{Binding IsWord}" Classes="wordStrip hoverReveal"
           Classes.open="{Binding #WordStrip.State.IsOpen}"
           Classes.uncertainChanged="{Binding IsUncertainChanged}"
@@ -101,8 +101,9 @@
               <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}" VerticalAlignment="Center">
                 <TextBlock Classes="stagedLabel" Text="{x:Static app:MotifAppStrings.Staged}" />
                 <TextBlock Text="{Binding Transition}" TextWrapping="Wrap" />
+                <!-- Kept on reflection: Actions is not a member of this row's model, so a compiled binding cannot build. -->
                 <Button Classes="revealControl revealButton revealOnHover" Content="{x:Static app:MotifAppStrings.Undo}"
-                        Command="{Binding Actions.Changes.RemoveCommand}" CommandParameter="{Binding Change}"
+                        Command="{ReflectionBinding Actions.Changes.RemoveCommand}" CommandParameter="{Binding Change}"
                         AutomationProperties.Name="{Binding Change.UndoAutomationName}" />
               </StackPanel>
             </Border>

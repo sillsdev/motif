@@ -21,13 +21,14 @@ public sealed class ResultsModelTemplate : IRecyclingDataTemplate
 
     public Control? Build(object? data, Control? existing)
     {
-        if (existing is not null && _sources.TryGetValue(existing, out var reused))
+        var model = Resolve(data);
+        if (existing is not null && _sources.TryGetValue(existing, out var reused) &&
+            (Inner is not WordStripTokenTemplate tokens || tokens.CanRecycle(model, existing)))
         {
             reused.Value = data;
-            existing.DataContext = Resolve(data);
+            existing.DataContext = model;
             return existing;
         }
-        var model = Resolve(data);
         var control = Inner?.Build(model);
         if (control is null) return null;
         var source = new Source(data);
