@@ -103,6 +103,8 @@ assert_version() {
     local expected="$1"
     local actual
     actual=$("$cli_shim" --version)
+    # `--version` prints the product version, then " (source SHA <sha>)" when the build embedded one.
+    actual=$(printf '%s' "$actual" | sed -E 's/ \(source SHA [0-9a-fA-F]{40}([0-9a-fA-F]{24})?\)$//')
     if [[ "$actual" != "$expected" ]]; then
         printf 'Expected Motif version %s, found %s.\n' "$expected" "$actual" >&2
         exit 1
@@ -189,7 +191,7 @@ printf 'keep\n' > "$user_data_marker"
 "$cli_shim" --update-smoke "$feed_directory" "$RUNTIME_IDENTIFIER" "$NEXT_PRODUCT_VERSION"
 updated=false
 for _ in $(seq 1 120); do
-    if [[ $("$cli_shim" --version 2>/dev/null || true) == "$NEXT_PRODUCT_VERSION" ]]; then
+    if [[ $("$cli_shim" --version 2>/dev/null | sed -E 's/ \(source SHA [0-9a-fA-F]{40}([0-9a-fA-F]{24})?\)$//' || true) == "$NEXT_PRODUCT_VERSION" ]]; then
         updated=true
         break
     fi
