@@ -111,6 +111,14 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-package-${{ hashFiles('**/*.csproj', '**/Directory.Build.props', 'SilVersions.props', 'nuget.config') }}
+          restore-keys: |
+            nuget-${{ runner.os }}-package-
+
       - name: Install pinned Velopack CLI
         shell: pwsh
         run: dotnet tool install --global vpk --version 1.2.158
@@ -273,6 +281,14 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-package-${{ hashFiles('**/*.csproj', '**/Directory.Build.props', 'SilVersions.props', 'nuget.config') }}
+          restore-keys: |
+            nuget-${{ runner.os }}-package-
 
       - name: Validate selected release version and tag
         shell: pwsh
@@ -440,6 +456,14 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-package-${{ hashFiles('**/*.csproj', '**/Directory.Build.props', 'SilVersions.props', 'nuget.config') }}
+          restore-keys: |
+            nuget-${{ runner.os }}-package-
+
       - name: Install Xvfb
         run: sudo apt-get update && sudo apt-get install -y xvfb xauth
 
@@ -595,6 +619,14 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-package-${{ hashFiles('**/*.csproj', '**/Directory.Build.props', 'SilVersions.props', 'nuget.config') }}
+          restore-keys: |
+            nuget-${{ runner.os }}-package-
 
       - name: Verify arm64 runner
         run: test "$(uname -m)" = arm64
