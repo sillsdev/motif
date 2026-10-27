@@ -792,9 +792,9 @@ internal static class TooltipOwners
         {
             Pending = "it shows only in an opened disposition menu",
         },
-        new("disapproved mark on a strip", "Controls/WordPresentation/WordStripToken.axaml", "{Binding DisapprovedTip}", TooltipScene.ReaderDisapproved,
+        new("disapproved mark on a strip", "Tokens/Components/WordStripParts.axaml", "{Binding DisapprovedTip}", TooltipScene.ReaderDisapproved,
             control => control is MarkChip && control.GetVisualAncestors().OfType<Border>().Any(border => border.Name == "WordStrip")),
-        new("staged change", "Controls/WordPresentation/WordStripToken.axaml", "{Binding FitStatus}", TooltipScene.ReaderStaged,
+        new("staged change", "Tokens/Components/WordStripParts.axaml", "{Binding FitStatus}", TooltipScene.ReaderStaged,
             control => control is Border && control.Classes.Contains("stagedStrip")),
         new("opinion on a word card", "Controls/WordPresentation/WordCard.axaml", "{Binding OpinionLabel}", TooltipScene.WordCard,
             control => control is OpinionMark),
