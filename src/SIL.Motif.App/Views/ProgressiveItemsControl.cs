@@ -25,13 +25,14 @@ public sealed class ProgressiveItemsControl : ItemsControl
 
     private const int PageSize = 20;
 
-    // How many deferring controls may fill their first page inside the frame that shows them: one screenful.
-    private const int FirstPagesPerFrame = 6;
-    private static int s_firstPagesThisFrame;
+    // Items deferring controls may realize in the showing frame: one screenful, counted in items.
+    internal const int FirstPageTokenBudget = 6;
+    private static int s_firstPageItemsThisFrame;
     private static bool s_frameResetPosted;
     private int _offset;
     private bool _updating;
     private bool _attached;
+    private bool _firstPagePublished;
     private IDataTemplate? _rowTemplate;
     private IDataTemplate? _pageTemplate;
     private readonly ObservableCollection<object> _displayed = [];
@@ -110,6 +111,7 @@ public sealed class ProgressiveItemsControl : ItemsControl
             Observe(null);
             if (_attached) Observe(FullItemsSource as INotifyCollectionChanged);
             _offset = FullItemsSource is IProgressivePageSource pages ? pages.InitialOffset : 0;
+            _firstPagePublished = false;
             RefreshPage(mayDefer: true);
         }
         else if (change.Property == ItemTemplateProperty)
@@ -124,6 +126,7 @@ public sealed class ProgressiveItemsControl : ItemsControl
     {
         base.OnAttachedToVisualTree(e);
         _attached = true;
+        _firstPagePublished = false;
         Observe(FullItemsSource as INotifyCollectionChanged);
         RefreshPage(mayDefer: true);
     }
@@ -158,8 +161,16 @@ public sealed class ProgressiveItemsControl : ItemsControl
     private void OnSourceChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
         if (FullItemsSource is not IProgressivePageSource || e.Action == NotifyCollectionChangedAction.Reset) _offset = 0;
-        RefreshPage();
+        // A source that publishes its first page after this control attached still spends the per-frame budget.
+        RefreshPage(mayDefer: !_firstPagePublished);
     }
+
+    private int FirstPageCost() => Math.Min(PageSize, FullItemsSource switch
+    {
+        IProgressivePageSource pages => Math.Max(0, pages.Count - _offset),
+        ICollection collection => Math.Max(0, collection.Count - _offset),
+        _ => PageSize,
+    });
 
     private bool TakeFirstPageSlot()
     {
@@ -168,11 +179,14 @@ public sealed class ProgressiveItemsControl : ItemsControl
             s_frameResetPosted = true;
             Dispatcher.UIThread.Post(() =>
             {
-                s_firstPagesThisFrame = 0;
+                s_firstPageItemsThisFrame = 0;
                 s_frameResetPosted = false;
             }, DispatcherPriority.Background);
         }
-        return ++s_firstPagesThisFrame <= FirstPagesPerFrame;
+        var cost = FirstPageCost();
+        if (s_firstPageItemsThisFrame + cost > FirstPageTokenBudget) return false;
+        s_firstPageItemsThisFrame += cost;
+        return true;
     }
 
     private void RefreshPage(bool mayDefer = false)
@@ -266,6 +280,7 @@ public sealed class ProgressiveItemsControl : ItemsControl
         _updating = true;
         try
         {
+            if (source.Count > 0) _firstPagePublished = true;
             var page = new List<object>();
             if (_offset > 0) page.Add(new Navigation($"Previous {PageSize}", _offset - PageSize));
             for (var index = sourceOffset; index < Math.Min(source.Count, sourceOffset + PageSize); index++)

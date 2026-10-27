@@ -49,13 +49,14 @@ public sealed class DeferredFirstPageTests
         }, TimeSpan.FromSeconds(30));
     }
 
+    // One item per control, so the six-item first-page budget runs out after six controls.
     [Fact]
     public void DetachingOrReplacingADeferredSourceCompletesTheSupersededWaiters()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(() =>
         {
             Dispatcher.UIThread.RunJobs();
-            var (window, panel, controls) = CreateWindow(useArray: true);
+            var (window, panel, controls) = CreateWindow(useArray: true, itemCount: 1);
             try
             {
                 window.Show();
@@ -94,7 +95,7 @@ public sealed class DeferredFirstPageTests
     }
 
     private static (MotifTestWindow Window, StackPanel Panel, ProgressiveItemsControl[] Controls)
-        CreateWindow(bool useArray)
+        CreateWindow(bool useArray, int itemCount = 40)
     {
         var panel = new StackPanel();
         var controls = Enumerable.Range(0, 8).Select(controlIndex => new ProgressiveItemsControl
@@ -102,8 +103,8 @@ public sealed class DeferredFirstPageTests
             DefersFirstPage = true,
             ItemTemplate = new FuncDataTemplate<string>((text, _) => new TextBlock { Text = text }),
             FullItemsSource = useArray
-                ? Enumerable.Range(0, 40).Select(index => "item-" + index).ToArray()
-                : Enumerable.Range(0, 40).Select(index => "item-" + index).ToList(),
+                ? Enumerable.Range(0, itemCount).Select(index => "item-" + index).ToArray()
+                : Enumerable.Range(0, itemCount).Select(index => "item-" + index).ToList(),
         }).ToArray();
         foreach (var control in controls) panel.Children.Add(control);
         return (new MotifTestWindow { Width = 800, Height = 600, Content = panel }, panel, controls);
