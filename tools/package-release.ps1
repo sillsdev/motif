@@ -10,8 +10,7 @@ param(
 
     [string] $OutputDirectory,
 
-    # Skip the build.ps1 gate (hygiene, restore, compile, PanGloss interface gate). For a second staging of the
-    # same checkout that differs only in version, after a first staging already passed the gate.
+    # Skip the build.ps1 gate when a first staging of this checkout already passed it.
     [switch] $SkipBuildGate
 )
 
