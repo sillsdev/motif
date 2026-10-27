@@ -18,19 +18,28 @@ concurrency:
   cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' && github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/') }}
 
 jobs:
+  plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.m.outputs.matrix }}
+    steps:
+      - id: m
+        shell: bash
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          # Intel macOS (the slowest job) runs only when someone dispatches the workflow by hand.
+          m='[{"os":"windows-latest","icu_rid":"win-x64"},{"os":"ubuntu-22.04","icu_rid":"linux-x64"},{"os":"macos-15","icu_rid":"osx-arm64"}'
+          if [ "$EVENT" = workflow_dispatch ]; then m="$m"',{"os":"macos-15-intel","icu_rid":"osx-x64"}'; fi
+          echo "matrix=$m]" >> "$GITHUB_OUTPUT"
+
   build-and-test:
+    needs: plan
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - os: windows-latest
-            icu_rid: win-x64
-          - os: ubuntu-22.04
-            icu_rid: linux-x64
-          - os: macos-15
-            icu_rid: osx-arm64
-          - os: macos-15-intel
-            icu_rid: osx-x64
+        include: ${{ fromJSON(needs.plan.outputs.matrix) }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
     env:
