@@ -3189,4 +3189,98 @@ public static class MotifAppStrings
     public static string TechDemoNoticeGotItAccessibleName => Text("MotifApp.TechDemoNoticeGotItAccessibleName");
 
     public static string ProjectCardTextsCountFormat => Text("MotifApp.ProjectCardTextsCountFormat");
+
+    public static string OverviewSpeedWordsPattern => Text("MotifApp.OverviewSpeedWordsPattern");
+
+    public static string OverviewSpeedMainFormat => Text("MotifApp.OverviewSpeedMainFormat");
+
+    public static string OverviewSpeedNoTimes => Text("MotifApp.OverviewSpeedNoTimes");
+
+    public static string OverviewSpeedMedianFormat => Text("MotifApp.OverviewSpeedMedianFormat");
+
+    public static string OverviewSpeedMedianWithPercentileFormat => Text("MotifApp.OverviewSpeedMedianWithPercentileFormat");
+
+    public static string OverviewSpeedStoppedPattern => Text("MotifApp.OverviewSpeedStoppedPattern");
+
+    public static string OverviewSlowestSummaryFormat => Text("MotifApp.OverviewSlowestSummaryFormat");
+
+    public static string OverviewSlowestWordFormat => Text("MotifApp.OverviewSlowestWordFormat");
+
+    public static string OverviewSlowestStoppedWordFormat => Text("MotifApp.OverviewSlowestStoppedWordFormat");
+
+    public static string OverviewTimingOverrunFormat => Text("MotifApp.OverviewTimingOverrunFormat");
+
+    public static string TraceParsed => Text("MotifApp.TraceParsed");
+
+    public static string TraceSearchIncomplete => Text("MotifApp.TraceSearchIncomplete");
+
+    public static string TraceAnalysesPattern => Text("MotifApp.TraceAnalysesPattern");
+
+    public static string TraceSourceRecordsPattern => Text("MotifApp.TraceSourceRecordsPattern");
+
+    public static string TraceAnalysesWithRecordsFormat => Text("MotifApp.TraceAnalysesWithRecordsFormat");
+
+    public static string TraceParsedAnalysesFormat => Text("MotifApp.TraceParsedAnalysesFormat");
+
+    public static string TraceAnalysisAttemptsPattern => Text("MotifApp.TraceAnalysisAttemptsPattern");
+
+    public static string TraceGuessed => Text("MotifApp.TraceGuessed");
+
+    public static string TraceOverallFormat => Text("MotifApp.TraceOverallFormat");
+
+    public static string TraceOverallNotRecorded => Text("MotifApp.TraceOverallNotRecorded");
+
+    public static string TraceInParserFormat => Text("MotifApp.TraceInParserFormat");
+
+    public static string TraceParserTimeFormat => Text("MotifApp.TraceParserTimeFormat");
+
+    public static string TraceDroppedPathsPattern => Text("MotifApp.TraceDroppedPathsPattern");
+
+    public static string TraceAttemptsFailedPattern => Text("MotifApp.TraceAttemptsFailedPattern");
+
+    public static string TraceAttemptsPattern => Text("MotifApp.TraceAttemptsPattern");
+
+    public static string TraceClosestAttemptsHeadingOne => Text("MotifApp.TraceClosestAttemptsHeadingOne");
+
+    public static string TraceClosestAttemptsHeadingMany => Text("MotifApp.TraceClosestAttemptsHeadingMany");
+
+    public static string TraceMoreAttemptsCountPattern => Text("MotifApp.TraceMoreAttemptsCountPattern");
+
+    public static string TraceShowOtherFormat => Text("MotifApp.TraceShowOtherFormat");
+
+    public static string TraceShowOtherRefusedByFormat => Text("MotifApp.TraceShowOtherRefusedByFormat");
+
+    public static string TraceSearchIncompleteFormat => Text("MotifApp.TraceSearchIncompleteFormat");
+
+    public static string TraceReasonNotRecorded => Text("MotifApp.TraceReasonNotRecorded");
+
+    public static string TraceSearchComplete => Text("MotifApp.TraceSearchComplete");
+
+    public static string TraceSearchCompletionNotRecorded => Text("MotifApp.TraceSearchCompletionNotRecorded");
+
+    public static string TraceStatusHiddenFormat => Text("MotifApp.TraceStatusHiddenFormat");
+
+    public static string TraceHiddenByFiltersPattern => Text("MotifApp.TraceHiddenByFiltersPattern");
+
+    public static string TraceFilterFailed => Text("MotifApp.TraceFilterFailed");
+
+    public static string TraceFilterSucceeded => Text("MotifApp.TraceFilterSucceeded");
+
+    public static string TraceFilterRuleFormat => Text("MotifApp.TraceFilterRuleFormat");
+
+    public static string TraceFilterMorphFormat => Text("MotifApp.TraceFilterMorphFormat");
+
+    public static string TraceFilterAllSteps => Text("MotifApp.TraceFilterAllSteps");
+
+    public static string TraceStepsHiddenPattern => Text("MotifApp.TraceStepsHiddenPattern");
+
+    public static string TraceFilterHiddenSuffixPattern => Text("MotifApp.TraceFilterHiddenSuffixPattern");
+
+    public static string TraceRecordedTimesPattern => Text("MotifApp.TraceRecordedTimesPattern");
+
+    public static string OverviewSeeWordsPattern => Text("MotifApp.OverviewSeeWordsPattern");
+
+    public static string OverviewStoppedWordsRowPattern => Text("MotifApp.OverviewStoppedWordsRowPattern");
+
+    public static string OverviewStoppedWordsDetailFormat => Text("MotifApp.OverviewStoppedWordsDetailFormat");
 }

@@ -6353,4 +6353,192 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <value>Open Row Details</value>
     <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
   </data>
+  <data name="MotifApp.OverviewSpeedWordsPattern" xml:space="preserve">
+    <value>{0, plural, one {# word} other {# words}}</value>
+    <comment>Count sentence on the Overview Speed tile: how many words PanGloss timed. # is the count.</comment>
+  </data>
+  <data name="MotifApp.OverviewSpeedMainFormat" xml:space="preserve">
+    <value>{0} · {1} total word time</value>
+    <comment>Headline of the Overview Speed tile. {0} is the count of timed words, such as "142 words"; {1} is the total of each word's parse time, such as "38.0 s".</comment>
+  </data>
+  <data name="MotifApp.OverviewSpeedNoTimes" xml:space="preserve">
+    <value>No parse times recorded</value>
+    <comment>Overview Speed tile headline when no parse times are stored.</comment>
+  </data>
+  <data name="MotifApp.OverviewSpeedMedianFormat" xml:space="preserve">
+    <value>median {0} a word</value>
+    <comment>Overview Speed tile: the median per-word parse time. {0} is a duration such as "6.4 ms".</comment>
+  </data>
+  <data name="MotifApp.OverviewSpeedMedianWithPercentileFormat" xml:space="preserve">
+    <value>median {0} a word · 95th percentile {1}</value>
+    <comment>Overview Speed tile: the median and 95th percentile per-word parse times. {0} and {1} are durations such as "6.4 ms".</comment>
+  </data>
+  <data name="MotifApp.OverviewSpeedStoppedPattern" xml:space="preserve">
+    <value>{0, plural, one {# stopped at a search limit} other {# stopped at a search limit}}</value>
+    <comment>Count sentence on the Overview Speed tile: how many words stopped at a parser search limit. # is the count.</comment>
+  </data>
+  <data name="MotifApp.OverviewSlowestSummaryFormat" xml:space="preserve">
+    <value>Slowest: {0}</value>
+    <comment>Overview summary of the slowest words. {0} is the list of words with their parse times.</comment>
+  </data>
+  <data name="MotifApp.OverviewSlowestWordFormat" xml:space="preserve">
+    <value>{0} · {1}</value>
+    <comment>One slowest word in the Overview summary. {0} is the word; {1} is its parse time.</comment>
+  </data>
+  <data name="MotifApp.OverviewSlowestStoppedWordFormat" xml:space="preserve">
+    <value>{0} Stopped · {1}</value>
+    <comment>One slowest word that stopped at a search limit. {0} is the word; {1} is its parse time. Stopped is the name of an outcome.</comment>
+  </data>
+  <data name="MotifApp.OverviewTimingOverrunFormat" xml:space="preserve">
+    <value>Object timers exceed total word time by {0}.</value>
+    <comment>Overview note when the parser object timers add up to more than the total word time. {0} is the excess duration.</comment>
+  </data>
+  <data name="MotifApp.TraceParsed" xml:space="preserve">
+    <value>Parsed</value>
+    <comment>Outcome word on the Try a Word page: PanGloss built at least one analysis.</comment>
+  </data>
+  <data name="MotifApp.TraceSearchIncomplete" xml:space="preserve">
+    <value>Search incomplete</value>
+    <comment>Outcome word on the Try a Word page: the parser search stopped before it finished.</comment>
+  </data>
+  <data name="MotifApp.TraceAnalysesPattern" xml:space="preserve">
+    <value>{0, plural, one {# analysis} other {# analyses}}</value>
+    <comment>Count sentence on the Try a Word page: how many analyses the trace found. # is the count.</comment>
+  </data>
+  <data name="MotifApp.TraceSourceRecordsPattern" xml:space="preserve">
+    <value>{0, plural, one {# source record} other {# source records}}</value>
+    <comment>Count sentence on the Try a Word page: how many parser records the analyses came from. # is the count.</comment>
+  </data>
+  <data name="MotifApp.TraceAnalysesWithRecordsFormat" xml:space="preserve">
+    <value>{0}, {1}</value>
+    <comment>Try a Word analyses heading when records repeat. {0} is the analysis count sentence; {1} is the source record count sentence.</comment>
+  </data>
+  <data name="MotifApp.TraceParsedAnalysesFormat" xml:space="preserve">
+    <value>Parsed: {0}</value>
+    <comment>Try a Word analyses heading for a parsed word. {0} is the analysis count sentence, such as "2 analyses".</comment>
+  </data>
+  <data name="MotifApp.TraceAnalysisAttemptsPattern" xml:space="preserve">
+    <value>{0, plural, one {# analysis attempt} other {# analysis attempts}}</value>
+    <comment>Count sentence in the Try a Word trace summary: how many analysis attempts the parser made. # is the count.</comment>
+  </data>
+  <data name="MotifApp.TraceGuessed" xml:space="preserve">
+    <value>guessed</value>
+    <comment>Try a Word trace summary part: the parser guessed the word's stem.</comment>
+  </data>
+  <data name="MotifApp.TraceOverallFormat" xml:space="preserve">
+    <value>{0} overall</value>
+    <comment>Try a Word trace summary part. {0} is the overall duration of the trace.</comment>
+  </data>
+  <data name="MotifApp.TraceOverallNotRecorded" xml:space="preserve">
+    <value>overall time not recorded</value>
+    <comment>Try a Word trace summary part: no overall duration was recorded.</comment>
+  </data>
+  <data name="MotifApp.TraceInParserFormat" xml:space="preserve">
+    <value>{0} in the parser, {1}</value>
+    <comment>Try a Word trace summary part. {0} is the time spent in the parser; {1} is the overall time sentence.</comment>
+  </data>
+  <data name="MotifApp.TraceParserTimeFormat" xml:space="preserve">
+    <value>Parser time · {0}</value>
+    <comment>Try a Word line giving the recorded parser time. {0} is a duration.</comment>
+  </data>
+  <data name="MotifApp.TraceDroppedPathsPattern" xml:space="preserve">
+    <value>{0, plural, one {# other path the parser tried and dropped (normal)} other {# other paths the parser tried and dropped (normal)}}</value>
+    <comment>Count sentence over the folded paths of a parsed word: other paths the parser tried and dropped, which is normal. # is the count.</comment>
+  </data>
+  <data name="MotifApp.TraceAttemptsFailedPattern" xml:space="preserve">
+    <value>{0, plural, one {# attempt failed · choose a group to see its recorded outcomes} other {# attempts failed · choose a group to see its recorded outcomes}}</value>
+    <comment>Count sentence over the Try a Word stop groups. # is the number of failed attempts.</comment>
+  </data>
+  <data name="MotifApp.TraceAttemptsPattern" xml:space="preserve">
+    <value>{0, plural, one {# attempt} other {# attempts}}</value>
+    <comment>Count of attempts shown beside a Try a Word stop group. # is the count.</comment>
+  </data>
+  <data name="MotifApp.TraceClosestAttemptsHeadingOne" xml:space="preserve">
+    <value>The attempt that got furthest</value>
+    <comment>Heading over the single closest attempt on the Try a Word page.</comment>
+  </data>
+  <data name="MotifApp.TraceClosestAttemptsHeadingMany" xml:space="preserve">
+    <value>Attempts that got furthest</value>
+    <comment>Heading over the closest attempts on the Try a Word page.</comment>
+  </data>
+  <data name="MotifApp.TraceMoreAttemptsCountPattern" xml:space="preserve">
+    <value>{0, plural, one {attempt} other {# attempts}}</value>
+    <comment>The attempts a Try a Word button offers to show. Used inside "Show the other {0}"; one has no number. # is the count.</comment>
+  </data>
+  <data name="MotifApp.TraceShowOtherFormat" xml:space="preserve">
+    <value>Show the other {0}</value>
+    <comment>Button text on the Try a Word page. {0} is the attempts phrase.</comment>
+  </data>
+  <data name="MotifApp.TraceShowOtherRefusedByFormat" xml:space="preserve">
+    <value>Show the other {0} refused by {1}</value>
+    <comment>Button text on the Try a Word page. {0} is the attempts phrase; {1} is the name of the rule that refused them.</comment>
+  </data>
+  <data name="MotifApp.TraceSearchIncompleteFormat" xml:space="preserve">
+    <value>Search incomplete: {0}</value>
+    <comment>Try a Word search status. {0} is the reason the search stopped.</comment>
+  </data>
+  <data name="MotifApp.TraceReasonNotRecorded" xml:space="preserve">
+    <value>Reason not recorded</value>
+    <comment>Try a Word search status: the trace kept no reason for the stop.</comment>
+  </data>
+  <data name="MotifApp.TraceSearchComplete" xml:space="preserve">
+    <value>Search complete</value>
+    <comment>Try a Word search status: the parser search finished.</comment>
+  </data>
+  <data name="MotifApp.TraceSearchCompletionNotRecorded" xml:space="preserve">
+    <value>Search completion not recorded</value>
+    <comment>Try a Word search status: the trace does not say whether the search finished.</comment>
+  </data>
+  <data name="MotifApp.TraceStatusHiddenFormat" xml:space="preserve">
+    <value>{0}  ·  {1}</value>
+    <comment>Try a Word search status followed by a filter note. {0} is the status; {1} is the hidden-by-filters sentence.</comment>
+  </data>
+  <data name="MotifApp.TraceHiddenByFiltersPattern" xml:space="preserve">
+    <value>{0, plural, one {# hidden by filters} other {# hidden by filters}}</value>
+    <comment>Count sentence on the Try a Word search status: steps the filters hide. # is the count.</comment>
+  </data>
+  <data name="MotifApp.TraceFilterFailed" xml:space="preserve">
+    <value>failed</value>
+    <comment>Try a Word filter description: only failed steps show.</comment>
+  </data>
+  <data name="MotifApp.TraceFilterSucceeded" xml:space="preserve">
+    <value>succeeded</value>
+    <comment>Try a Word filter description: only succeeded steps show.</comment>
+  </data>
+  <data name="MotifApp.TraceFilterRuleFormat" xml:space="preserve">
+    <value>rule: {0}</value>
+    <comment>Try a Word filter description for the rule filter. {0} is the text typed.</comment>
+  </data>
+  <data name="MotifApp.TraceFilterMorphFormat" xml:space="preserve">
+    <value>morph: {0}</value>
+    <comment>Try a Word filter description for the morph filter. {0} is the text typed.</comment>
+  </data>
+  <data name="MotifApp.TraceFilterAllSteps" xml:space="preserve">
+    <value>all recorded steps</value>
+    <comment>Try a Word filter description when no filter is set.</comment>
+  </data>
+  <data name="MotifApp.TraceStepsHiddenPattern" xml:space="preserve">
+    <value>{0, plural, one {# step hidden by filters} other {# steps hidden by filters}}</value>
+    <comment>Count sentence on the Try a Word filter description when only counts apply. # is the number of steps hidden.</comment>
+  </data>
+  <data name="MotifApp.TraceFilterHiddenSuffixPattern" xml:space="preserve">
+    <value>{0, plural, one {# hidden} other {# hidden}}</value>
+    <comment>Count appended to the Try a Word filter description. # is the number of steps hidden.</comment>
+  </data>
+  <data name="MotifApp.TraceRecordedTimesPattern" xml:space="preserve">
+    <value>{0, plural, =2 {Recorded twice} other {Recorded # times}}</value>
+    <comment>Try a Word note on an analysis the parser recorded more than once. # is the count; shown only above one.</comment>
+  </data>
+  <data name="MotifApp.OverviewSeeWordsPattern" xml:space="preserve">
+    <value>{0, plural, one {See the # word} other {See the # words}}</value>
+    <comment>Link text on an Overview Look First row to open the listed words. # is the count.</comment>
+  </data>
+  <data name="MotifApp.OverviewStoppedWordsRowPattern" xml:space="preserve">
+    <value>{0, plural, one {# word stopped at a search limit.} other {# words stopped at a search limit.}}</value>
+    <comment>Overview Look First row: how many words stopped at a parser search limit. # is the count.</comment>
+  </data>
+  <data name="MotifApp.OverviewStoppedWordsDetailFormat" xml:space="preserve">
+    <value>{0} of {1} total word time</value>
+    <comment>Detail line of the Overview Look First stopped-words row. {0} is the time those words took; {1} is the total word time.</comment>
+  </data>
 </root>

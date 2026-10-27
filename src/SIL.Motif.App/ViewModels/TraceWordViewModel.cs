@@ -220,9 +220,9 @@ public sealed partial class TraceWordViewModel : ObservableObject
         {
             if (Result is not { } result) return string.Empty;
 
-            var parts = new List<string> { result.Parsed ? "Parsed" : result.InvalidShape ? ParserRefusals.Title : "No parse" };
+            var parts = new List<string> { result.Parsed ? MotifAppStrings.TraceParsed : result.InvalidShape ? ParserRefusals.Title : MotifAppStrings.OutcomeNoParse };
             if (result.Parsed)
-                parts.Add($"{_analyses.Count:N0} {(_analyses.Count == 1 ? "analysis" : "analyses")}");
+                parts.Add(PluralText.Format(MotifAppStrings.TraceAnalysesPattern, _analyses.Count));
             if (result.ParserElapsedMs is { } parserMs) parts.Add(FormatMs(parserMs));
             return string.Join(" · ", parts);
         }
@@ -230,7 +230,7 @@ public sealed partial class TraceWordViewModel : ObservableObject
 
     /// <summary>The recorded parser duration, independent of the result outcome and analysis count.</summary>
     public string ParserTimeText => Result?.ParserElapsedMs is { } milliseconds
-        ? $"Parser time · {FormatMs(milliseconds)}" : string.Empty;
+        ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.TraceParserTimeFormat, FormatMs(milliseconds)) : string.Empty;
 
     public string? StopReason => Result is { Complete: false } result ? result.StopReason : null;
 
@@ -242,15 +242,16 @@ public sealed partial class TraceWordViewModel : ObservableObject
 
     private static string Summarize(WordTraceResponse result)
     {
-        var parts = new List<string> { result.Parsed ? "Parsed" : result.InvalidShape ? ParserRefusals.Title : "No parse" };
-        if (result.Guessed) parts.Add("guessed");
+        var parts = new List<string> { result.Parsed ? MotifAppStrings.TraceParsed : result.InvalidShape ? ParserRefusals.Title : MotifAppStrings.OutcomeNoParse };
+        if (result.Guessed) parts.Add(MotifAppStrings.TraceGuessed);
         if (result.ParserSteps is { } steps)
-            parts.Add($"{steps:N0} analysis attempt{(steps == 1 ? string.Empty : "s")}");
+            parts.Add(PluralText.Format(MotifAppStrings.TraceAnalysisAttemptsPattern, (int)Math.Min(steps, int.MaxValue)));
         var overall = result.HostCapture?.WallElapsedMs is { } capturedElapsed
-            ? $"{FormatMs(capturedElapsed)} overall"
-            : result.ElapsedMs > 0 ? $"{FormatMs(result.ElapsedMs)} overall" : "overall time not recorded";
+            ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.TraceOverallFormat, FormatMs(capturedElapsed))
+            : result.ElapsedMs > 0 ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.TraceOverallFormat, FormatMs(result.ElapsedMs))
+            : MotifAppStrings.TraceOverallNotRecorded;
         parts.Add(result.ParserElapsedMs is { } parserMs
-            ? $"{FormatMs(parserMs)} in the parser, {overall}"
+            ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.TraceInParserFormat, FormatMs(parserMs), overall)
             : overall);
         return string.Join("  ·  ", parts);
     }
@@ -317,9 +318,11 @@ public sealed partial class TraceWordViewModel : ObservableObject
         get
         {
             var records = _analyses.Sum(analysis => analysis.RecordCount);
-            var count = _analyses.Count == 1 ? "1 analysis" : $"{_analyses.Count:N0} analyses";
-            if (records > _analyses.Count) count += $", {records:N0} source records";
-            return Result is { Parsed: true } ? $"Parsed: {count}" : count;
+            var count = PluralText.Format(MotifAppStrings.TraceAnalysesPattern, _analyses.Count);
+            if (records > _analyses.Count)
+                count = string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.TraceAnalysesWithRecordsFormat, count,
+                    PluralText.Format(MotifAppStrings.TraceSourceRecordsPattern, records));
+            return Result is { Parsed: true } ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.TraceParsedAnalysesFormat, count) : count;
         }
     }
 
@@ -330,9 +333,7 @@ public sealed partial class TraceWordViewModel : ObservableObject
     public bool HasDroppedPaths => Result is { Parsed: true } && FailedAttemptCount > 0;
 
     /// <summary>The fold over a parsed word's stopped attempts, saying how many there are and that they are normal.</summary>
-    public string DroppedPathsText => FailedAttemptCount == 1
-        ? "1 other path the parser tried and dropped (normal)"
-        : $"{FailedAttemptCount:N0} other paths the parser tried and dropped (normal)";
+    public string DroppedPathsText => PluralText.Format(MotifAppStrings.TraceDroppedPathsPattern, FailedAttemptCount);
 
     /// <summary>Whether a parsed word's dropped paths are unfolded; a new answer folds them again.</summary>
     [ObservableProperty]
@@ -350,14 +351,14 @@ public sealed partial class TraceWordViewModel : ObservableObject
 
     /// <summary>Whether the word parsed, as the one word a reader wants before anything else.</summary>
     public string AnswerText => Result is not { } result ? string.Empty
-        : result.InvalidShape ? ParserRefusals.Title : !result.Complete ? "Search incomplete" : result.Parsed ? "Parsed" : "No parse";
+        : result.InvalidShape ? ParserRefusals.Title : !result.Complete ? MotifAppStrings.TraceSearchIncomplete : result.Parsed ? MotifAppStrings.TraceParsed : MotifAppStrings.OutcomeNoParse;
 
     /// <summary>
     /// The mark that answer wears: a trace that built the word has no action glyph, a limit is Stopped,
     /// and one that finished without building it is No parse.
     /// </summary>
     public Mark AnswerMark => Result is { InvalidShape: true } ? Mark.ParserRefusal : Result is { Complete: false } ? Mark.Stopped
-        : Result is { Parsed: true } ? new Mark(MarkKind.Outcome, "parsed", string.Empty, "Parsed")
+        : Result is { Parsed: true } ? new Mark(MarkKind.Outcome, "parsed", string.Empty, MotifAppStrings.TraceParsed)
         : Mark.NoParse;
 
     /// <summary>Recorded stopped attempts grouped by explicit attribution and reason; empty when nothing failed.</summary>
@@ -383,8 +384,7 @@ public sealed partial class TraceWordViewModel : ObservableObject
         {
             if (_stopGroups.Count == 0) return string.Empty;
             var attempts = _stopGroups.Sum(group => group.Count);
-            var tries = attempts == 1 ? "1 attempt" : $"{attempts:N0} attempts";
-            return $"{tries} failed · choose a group to see its recorded outcomes";
+            return PluralText.Format(MotifAppStrings.TraceAttemptsFailedPattern, attempts);
         }
     }
 
@@ -413,7 +413,8 @@ public sealed partial class TraceWordViewModel : ObservableObject
         [.. MatchingAttempts().Take(ShowEveryAttempt ? int.MaxValue : ClosestShown)];
 
     public bool HasClosestAttempts => ClosestAttempts.Count > 0;
-    public string ClosestAttemptsHeading => ClosestAttempts.Count == 1 ? "The attempt that got furthest" : "Attempts that got furthest";
+    public string ClosestAttemptsHeading => ClosestAttempts.Count == 1
+        ? MotifAppStrings.TraceClosestAttemptsHeadingOne : MotifAppStrings.TraceClosestAttemptsHeadingMany;
 
     /// <summary>The analysis the project approves for the Results word being tried, which the parser missed.</summary>
     public IReadOnlyList<ParserReadingMorphViewModel> ExpectedMorphs { get; private set; } = [];
@@ -461,10 +462,11 @@ public sealed partial class TraceWordViewModel : ObservableObject
         get
         {
             var hidden = MatchingAttempts().Count() - ClosestAttempts.Count;
-            var others = hidden == 1 ? "attempt" : $"{hidden:N0} attempts";
+            var others = PluralText.Format(MotifAppStrings.TraceMoreAttemptsCountPattern, hidden);
             return hidden <= 0 ? string.Empty
-                : SelectedStopGroup is { } group ? $"Show the other {others} refused by {group.RuleText}"
-                : $"Show the other {others}";
+                : SelectedStopGroup is { } group
+                    ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.TraceShowOtherRefusedByFormat, others, group.RuleText)
+                : string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.TraceShowOtherFormat, others);
         }
     }
 
@@ -613,12 +615,14 @@ public sealed partial class TraceWordViewModel : ObservableObject
         get
         {
             var values = new List<string>();
-            if (OutcomeFilter != TraceOutcomeFilter.All) values.Add(OutcomeFilter == TraceOutcomeFilter.Failed ? "failed" : "succeeded");
-            if (!string.IsNullOrWhiteSpace(RuleFilter)) values.Add($"rule: {RuleFilter.Trim()}");
-            if (!string.IsNullOrWhiteSpace(MorphFilter)) values.Add($"morph: {MorphFilter.Trim()}");
+            if (OutcomeFilter != TraceOutcomeFilter.All) values.Add(OutcomeFilter == TraceOutcomeFilter.Failed ? MotifAppStrings.TraceFilterFailed : MotifAppStrings.TraceFilterSucceeded);
+            if (!string.IsNullOrWhiteSpace(RuleFilter)) values.Add(string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.TraceFilterRuleFormat, RuleFilter.Trim()));
+            if (!string.IsNullOrWhiteSpace(MorphFilter)) values.Add(string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.TraceFilterMorphFormat, MorphFilter.Trim()));
             return values.Count == 0
-                ? (HiddenStepCount == 0 ? "all recorded steps" : $"{HiddenStepCount:N0} steps hidden by filters")
-                : string.Join(", ", values) + (HiddenStepCount == 0 ? string.Empty : $" · {HiddenStepCount:N0} hidden");
+                ? (HiddenStepCount == 0 ? MotifAppStrings.TraceFilterAllSteps
+                    : PluralText.Format(MotifAppStrings.TraceStepsHiddenPattern, HiddenStepCount))
+                : string.Join(", ", values) + (HiddenStepCount == 0 ? string.Empty
+                    : " · " + PluralText.Format(MotifAppStrings.TraceFilterHiddenSuffixPattern, HiddenStepCount));
         }
     }
 
@@ -632,11 +636,15 @@ public sealed partial class TraceWordViewModel : ObservableObject
                 TraceSearchCompletion.InvalidShape =>
                     ParserRefusals.Title + ": " + ParserRefusals.InvalidShape.Reason,
                 TraceSearchCompletion.Incomplete =>
-                    $"Search incomplete: {(string.IsNullOrWhiteSpace(result.StopReason) ? "Reason not recorded" : result.StopReason)}",
-                TraceSearchCompletion.Complete => "Search complete",
-                _ => "Search completion not recorded",
+                    string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.TraceSearchIncompleteFormat,
+                        string.IsNullOrWhiteSpace(result.StopReason) ? MotifAppStrings.TraceReasonNotRecorded : result.StopReason),
+                TraceSearchCompletion.Complete => MotifAppStrings.TraceSearchComplete,
+                _ => MotifAppStrings.TraceSearchCompletionNotRecorded,
             };
-            return HiddenStepCount > 0 ? $"{status}  ·  {HiddenStepCount:N0} hidden by filters" : status;
+            return HiddenStepCount > 0
+                ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.TraceStatusHiddenFormat, status,
+                    PluralText.Format(MotifAppStrings.TraceHiddenByFiltersPattern, HiddenStepCount))
+                : status;
         }
     }
 
@@ -905,8 +913,8 @@ public sealed class TraceAnalysisViewModel
     public bool HasRepeatedRecords => RecordCount > 1;
 
     /// <summary>"Recorded twice" for an analysis recorded more than once, otherwise empty.</summary>
-    public string RecordedCountText => RecordCount == 2 ? "Recorded twice"
-        : HasRepeatedRecords ? $"Recorded {RecordCount:N0} times" : string.Empty;
+    public string RecordedCountText => HasRepeatedRecords
+        ? PluralText.Format(MotifAppStrings.TraceRecordedTimesPattern, RecordCount) : string.Empty;
 
     public string Label => Position is { } position ? $"Analysis {position}"
         : Index is { } index ? $"Analysis {index + 1}" : AnalysisId is { Length: > 0 } id ? $"Analysis {id}" : "Recorded analysis";
@@ -1085,7 +1093,7 @@ public sealed partial class TraceStopGroupViewModel : ObservableObject
         ReasonText = explanation is { Length: > 0 } sentence ? sentence
             : reasonCode is { Length: > 0 } code ? TraceStepKinds.ExplainReason(code)
             : "PanGloss didn't record why.";
-        CountText = count == 1 ? "1 attempt" : $"{count:N0} attempts";
+        CountText = PluralText.Format(MotifAppStrings.TraceAttemptsPattern, count);
     }
 
     /// <summary>The captured FieldWorks name or producer label; null when no stopping rule was recorded.</summary>

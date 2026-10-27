@@ -237,18 +237,21 @@ public sealed partial class OverviewPageModel : PageModel
     /// </summary>
     public string SpeedMain => Overview is
         { Timing.MeasuredWordCount: > 0 and var measured, AssessmentElapsedSeconds: { } seconds }
-        ? $"{SpeedText.Count(measured, "word", "words")} · {TimingShare.FormatDuration(seconds * 1000)} total word time"
-        : "No parse times recorded";
+        ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.OverviewSpeedMainFormat,
+            PluralText.Format(MotifAppStrings.OverviewSpeedWordsPattern, measured), TimingShare.FormatDuration(seconds * 1000))
+        : MotifAppStrings.OverviewSpeedNoTimes;
 
     /// <summary>The stored median and 95th percentile per-word parse time.</summary>
     public string SpeedMedian => Overview?.Timing is { MedianMs: { } median } timing
-        ? $"median {TimingShare.FormatDuration(median)} a word" +
-          (timing.Percentile95Ms is { } p95 ? $" · 95th percentile {TimingShare.FormatDuration(p95)}" : string.Empty)
+        ? timing.Percentile95Ms is { } p95
+            ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.OverviewSpeedMedianWithPercentileFormat,
+                TimingShare.FormatDuration(median), TimingShare.FormatDuration(p95))
+            : string.Format(CultureInfo.CurrentCulture, MotifAppStrings.OverviewSpeedMedianFormat, TimingShare.FormatDuration(median))
         : string.Empty;
 
     /// <summary>How many words stopped at a parser search limit, or empty when none did.</summary>
     public string SpeedDetails => Overview?.Timing is { MeasuredWordCount: > 0, StepLimitedWordCount: > 0 and var stopped }
-        ? $"{stopped:N0} stopped at a search limit"
+        ? PluralText.Format(MotifAppStrings.OverviewSpeedStoppedPattern, stopped)
         : string.Empty;
 
     /// <summary>The slowest words as word rows, each with the parse time the Overview read for it.</summary>
@@ -274,9 +277,11 @@ public sealed partial class OverviewPageModel : PageModel
 
     public string SlowestWordSummary => Overview is { Timing.MeasuredWordCount: > 0 } overview &&
         overview.Timing.SlowestWords.Count > 0
-        ? "Slowest: " + string.Join(" · ", overview.Timing.SlowestWords.Select(word =>
-            $"{word.Word}{(overview.LookFirst.StepLimitedWords.Contains(word.Word, StringComparer.Ordinal) ? " Stopped" : string.Empty)} · " +
-            TimingShare.FormatDuration(word.ElapsedMs)))
+        ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.OverviewSlowestSummaryFormat,
+            string.Join(" · ", overview.Timing.SlowestWords.Select(word => string.Format(CultureInfo.CurrentCulture,
+                overview.LookFirst.StepLimitedWords.Contains(word.Word, StringComparer.Ordinal)
+                    ? MotifAppStrings.OverviewSlowestStoppedWordFormat : MotifAppStrings.OverviewSlowestWordFormat,
+                word.Word, TimingShare.FormatDuration(word.ElapsedMs)))))
         : string.Empty;
 
     public bool HasSlowestWordSummary => SlowestWordSummary.Length > 0;
@@ -301,7 +306,8 @@ public sealed partial class OverviewPageModel : PageModel
 
     /// <summary>Names the measured overrun if parser-object timers exceed total word time.</summary>
     public string TimingAttributionNote => Overview?.Timing.Attribution is { Overrun: true } attribution
-        ? $"Object timers exceed total word time by {TimingShare.FormatDuration(attribution.OverrunMs)}."
+        ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.OverviewTimingOverrunFormat,
+            TimingShare.FormatDuration(attribution.OverrunMs))
         : string.Empty;
 
     /// <summary>The stored-result groups ranked for a useful next step.</summary>
@@ -341,11 +347,12 @@ public sealed partial class OverviewPageModel : PageModel
             if (data.StepLimitedWords.Count > 0)
             {
                 var detail = data.StepLimitedWordTimeMs is { } stopped && overview.AssessmentElapsedSeconds is { } total
-                    ? $"{TimingShare.FormatDuration(stopped)} of {TimingShare.FormatDuration(total * 1000)} total word time"
+                    ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.OverviewStoppedWordsDetailFormat,
+                        TimingShare.FormatDuration(stopped), TimingShare.FormatDuration(total * 1000))
                     : string.Empty;
                 rows.Add(new OverviewLookFirstRow((rows.Count + 1).ToString(CultureInfo.CurrentCulture),
-                    $"{SpeedText.Count(data.StepLimitedWords.Count, "word", "words")} stopped at a search limit.",
-                    detail, $"See the {SpeedText.Count(data.StepLimitedWords.Count, "word", "words")}",
+                    PluralText.Format(MotifAppStrings.OverviewStoppedWordsRowPattern, data.StepLimitedWords.Count),
+                    detail, PluralText.Format(MotifAppStrings.OverviewSeeWordsPattern, data.StepLimitedWords.Count),
                     new RelayCommand(() => Context.OpenTiming(data.StepLimitedWords, null))));
             }
             if (data.UnknownDifferentWordCount > 0)
