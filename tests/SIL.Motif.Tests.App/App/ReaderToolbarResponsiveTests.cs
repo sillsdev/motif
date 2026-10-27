@@ -124,7 +124,7 @@ public sealed class ReaderToolbarResponsiveTests
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (workspace, window) = await AnalyzeTextsLayoutTests.OpenAnalyzeTexts();
+            var (workspace, window) = await AnalyzeTextsLayoutTests.OpenAnalyzeTexts(seedReaderToken: false);
             // The toolbar is checked in returning use; the first-run notice is acknowledged as a returning user has.
             workspace.TechDemoNotice?.GotItCommand.Execute(null);
             var settings = SettingsTestAccess.Model(window);

@@ -65,7 +65,7 @@ public sealed class AnalyzeTextsMenuTests
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (_, window) = await OpenAnalyzeTexts();
+            var (_, window) = await OpenAnalyzeTexts(seedReaderToken: false);
             try
             {
                 var select = Named<Button>(Panel(window), "Select words for actions");

@@ -41,7 +41,7 @@ public sealed class AnalyzeTextsLayoutTests
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (workspace, window) = await OpenAnalyzeTexts();
+            var (workspace, window) = await OpenAnalyzeTexts(seedReaderToken: false);
             try
             {
                 var page = workspace.PageModel<TextsPageModel>();
@@ -165,7 +165,7 @@ public sealed class AnalyzeTextsLayoutTests
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (workspace, window) = await OpenAnalyzeTexts();
+            var (workspace, window) = await OpenAnalyzeTexts(seedReaderToken: false);
             try
             {
                 var page = workspace.PageModel<TextsPageModel>();
@@ -910,7 +910,7 @@ public sealed class AnalyzeTextsLayoutTests
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (workspace, window) = await OpenAnalyzeTexts();
+            var (workspace, window) = await OpenAnalyzeTexts(seedReaderToken: false);
             try
             {
                 var selection = Assert.Single(window.GetVisualDescendants().OfType<SelectionPanel>());
@@ -1045,7 +1045,7 @@ public sealed class AnalyzeTextsLayoutTests
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (workspace, window) = await OpenAnalyzeTexts();
+            var (workspace, window) = await OpenAnalyzeTexts(seedReaderToken: false);
             try
             {
                 workspace.PageModel<TextsPageModel>().ResultsInText.CloseTokenCard();
@@ -1223,7 +1223,7 @@ public sealed class AnalyzeTextsLayoutTests
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (workspace, window) = await OpenAnalyzeTexts();
+            var (workspace, window) = await OpenAnalyzeTexts(seedReaderToken: false);
             try
             {
                 workspace.PageModel<TextsPageModel>().ResultsInText.CloseTokenCard();
@@ -1291,10 +1291,11 @@ public sealed class AnalyzeTextsLayoutTests
     internal static async Task<(WorkspaceShellViewModel Workspace, MainWindow Window)> OpenAnalyzeTexts(
         int width = 1240, bool parse = true,
         Action<FakeCommandClient, AssessCommandResponse>? configure = null, TextWordsResponse? capturedWords = null,
-        AssessCommandResponse? capturedAssessment = null)
+        AssessCommandResponse? capturedAssessment = null, bool seedReaderToken = true)
     {
         var (workspace, window) = await PageScreenshots.OpenOverSampleData(
-            parse: parse, configure: configure, capturedWords: capturedWords, capturedAssessment: capturedAssessment);
+            parse: parse, configure: configure, capturedWords: capturedWords, capturedAssessment: capturedAssessment,
+            seedReaderToken: seedReaderToken);
         window.Width = width;
         window.Height = 780;
         workspace.PageModel<TextsPageModel>().Tab = TextsTab.AnalyzeTexts;

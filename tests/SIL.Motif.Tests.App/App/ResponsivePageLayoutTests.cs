@@ -9,7 +9,8 @@ namespace SIL.Motif.Tests.App;
 
 [Collection(AvaloniaHeadlessCollection.Name)]
 [Trait("MotifTestLevel", "System")]
-public sealed class ResponsivePageLayoutTests
+public sealed class ResponsivePageLayoutTests(ResponsivePageLayoutTests.SampleWindow fixture)
+    : IClassFixture<ResponsivePageLayoutTests.SampleWindow>
 {
     public static IEnumerable<object[]> Routes
     {
@@ -36,14 +37,18 @@ public sealed class ResponsivePageLayoutTests
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (workspace, window) = await PageScreenshots.OpenOverSampleData(
-                seedReaderToken: page == WorkspacePage.Texts && tab == TextsTab.AnalyzeTexts,
-                advancedAiModeEnabled: page == WorkspacePage.Parsimony,
-                configure: (fake, _) =>
-                {
-                    if (page == WorkspacePage.Parsimony)
-                        ParsimonyStateScreenshots.Configure(fake, "listed-evidence");
-                });
+            var separate = page is WorkspacePage.Parsimony or WorkspacePage.TryAWord ||
+                page == WorkspacePage.Texts && tab == TextsTab.AnalyzeTexts;
+            var (workspace, window) = separate
+                ? await PageScreenshots.OpenOverSampleData(
+                    seedReaderToken: page == WorkspacePage.Texts && tab == TextsTab.AnalyzeTexts,
+                    advancedAiModeEnabled: page == WorkspacePage.Parsimony,
+                    configure: (fake, _) =>
+                    {
+                        if (page == WorkspacePage.Parsimony)
+                            ParsimonyStateScreenshots.Configure(fake, "listed-evidence");
+                    })
+                : await fixture.GetAsync();
             try
             {
                 workspace.PageModel<TextsPageModel>().Tab = tab;
@@ -62,8 +67,36 @@ public sealed class ResponsivePageLayoutTests
             {
                 WindowZoomPolicy.Apply(Application.Current!, ZoomPolicy.DefaultPercent);
                 Application.Current!.RequestedThemeVariant = ThemeVariant.Light;
-                window.Close();
+                if (separate)
+                {
+                    window.Close();
+                    await workspace.DisposeAsync();
+                }
             }
         }, TimeSpan.FromMinutes(3));
+    }
+
+    /// <summary>Shares the unchanged sample between page layout checks in this class.</summary>
+    public sealed class SampleWindow : IDisposable
+    {
+        private WorkspaceShellViewModel? _workspace;
+        private MainWindow? _window;
+
+        internal async Task<(WorkspaceShellViewModel Workspace, MainWindow Window)> GetAsync()
+        {
+            if (_window is null)
+                (_workspace, _window) = await PageScreenshots.OpenOverSampleData(seedReaderToken: false);
+            return (_workspace!, _window);
+        }
+
+        public void Dispose()
+        {
+            if (_window is null) return;
+            AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+            {
+                _window.Close();
+                await _workspace!.DisposeAsync();
+            }, TimeSpan.FromMinutes(1));
+        }
     }
 }

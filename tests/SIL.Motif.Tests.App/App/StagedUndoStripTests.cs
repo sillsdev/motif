@@ -1,7 +1,7 @@
+using System.Collections.Specialized;
 using Avalonia.Automation.Peers;
 using Avalonia.Automation.Provider;
 using Avalonia.Controls;
-using Avalonia.Threading;
 using Avalonia.VisualTree;
 using SIL.Motif.App;
 using SIL.Motif.App.ViewModels;
@@ -30,13 +30,21 @@ public sealed class StagedUndoStripTests
                 Assert.NotNull(undo.Command);
 
                 var invoke = Assert.IsAssignableFrom<IInvokeProvider>(ControlAutomationPeer.CreatePeerForElement(undo));
-                invoke.Invoke();
-                for (var pass = 0; pass < 100 && changes.Items.Count > 0; pass++)
+                var removed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                NotifyCollectionChangedEventHandler onChanged = (_, _) =>
                 {
-                    await Task.Delay(20);
-                    Dispatcher.UIThread.RunJobs();
+                    if (changes.Items.Count == 0) removed.TrySetResult();
+                };
+                changes.Items.CollectionChanged += onChanged;
+                try
+                {
+                    invoke.Invoke();
+                    if (changes.Items.Count > 0) await removed.Task.WaitAsync(TimeSpan.FromSeconds(2));
                 }
-
+                finally
+                {
+                    changes.Items.CollectionChanged -= onChanged;
+                }
                 Assert.Empty(changes.Items);
             }
             finally

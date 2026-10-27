@@ -145,7 +145,7 @@ public sealed class InspectorTests
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             var fake = default(FakeCommandClient)!;
-            var (workspace, window) = await PageScreenshots.OpenOverSampleData(configure: (client, assessment) =>
+            var (workspace, window) = await PageScreenshots.OpenOverSampleData(seedReaderToken: false, configure: (client, assessment) =>
             {
                 fake = client;
                 OverviewTimingScreenshots.ReadOverviewAndTiming(client, assessment);
