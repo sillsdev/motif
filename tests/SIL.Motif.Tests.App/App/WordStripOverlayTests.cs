@@ -15,7 +15,7 @@ public sealed class WordStripOverlayTests
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (_, window) = await OpenAnalyzeTexts();
+            var (_, window) = await OpenAnalyzeTexts(seedReaderToken: false);
             try
             {
                 var panel = Panel(window);

@@ -547,7 +547,7 @@ public sealed class PageScreenshots
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (workspace, window) = await OpenOverSampleData();
+            var (workspace, window) = await OpenOverSampleData(seedReaderToken: false);
             try
             {
                 foreach (var (_, page, tab) in Views())
@@ -593,7 +593,7 @@ public sealed class PageScreenshots
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (workspace, window) = await OpenOverSampleData();
+            var (workspace, window) = await OpenOverSampleData(seedReaderToken: false);
             try
             {
                 await TryTheSampleWord(workspace);
@@ -717,7 +717,7 @@ public sealed class PageScreenshots
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (workspace, window) = await OpenOverSampleData();
+            var (workspace, window) = await OpenOverSampleData(seedReaderToken: false);
             try
             {
                 await TryTheSampleWord(workspace);

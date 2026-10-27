@@ -216,7 +216,10 @@ public sealed class ResultsInTextVirtualizationTests
     private static async Task SettleAsync(ReaderSetup setup, bool renderFrame = true)
     {
         var lines = setup.Panel.FindControl<ItemsControl>("TextLineItems")!;
-        (int Number, Rect Bounds)[] previous = [];
+        var previous = lines.GetRealizedContainers()
+            .Where(container => container.DataContext is SelectionLinePosition)
+            .Select(container => (((SelectionLinePosition)container.DataContext!).Header.Number, container.Bounds))
+            .ToArray();
         for (var attempt = 0; attempt < 6; attempt++)
         {
             Avalonia.Threading.Dispatcher.UIThread.RunJobs();

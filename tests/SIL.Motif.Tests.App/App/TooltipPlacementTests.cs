@@ -67,6 +67,7 @@ public sealed class TooltipPlacementTests
                     scenes.Width = width;
                     foreach (var scene in owners.Select(owner => owner.Scene).Distinct().Order())
                     {
+                        Application.Current!.RequestedThemeVariant = ThemeVariant.Light;
                         await scenes.Reach(scene);
                         if (scene == TooltipScene.ParseProgress)
                             scenes.ParseProgressStatusButton.Flyout?.Hide();
@@ -85,8 +86,6 @@ public sealed class TooltipPlacementTests
                             placedOwners.Add(owner.Key);
                             foreach (var theme in new[] { themeName == "dark" ? ThemeVariant.Dark : ThemeVariant.Light })
                             {
-                                Application.Current!.RequestedThemeVariant = theme;
-                                PageScreenshots.Settle(scenes.Window);
                                 var where = $"{scenes.Window.Width} {theme} {owner.Key}";
                                 expectedPlacements++;
                                 if (RequiredOwnersAtEachWidth.Contains(owner.Key)) requiredPlacements++;
@@ -175,7 +174,7 @@ public sealed class TooltipPlacementTests
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var scenes = await TooltipScenes.Open();
+            var scenes = await TooltipScenes.Open(seedReaderToken: false);
             try
             {
                 var wordForm = TooltipOwners.All.Single(owner => owner.Key == "word cell");

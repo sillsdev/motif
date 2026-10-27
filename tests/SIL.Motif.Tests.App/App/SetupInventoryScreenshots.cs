@@ -15,7 +15,7 @@ public sealed class SetupInventoryScreenshots
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (workspace, window) = await PageScreenshots.OpenOverSampleData();
+            var (workspace, window) = await PageScreenshots.OpenOverSampleData(parse: false, composeWindow: false);
             try
             {
                 var inventory = TextInventoryQuery.Query(new(workspace.Context.ProjectPath!));
@@ -35,6 +35,9 @@ public sealed class SetupInventoryScreenshots
                 }
                 Assert.Equal(new[] { "3 distinct", "6 distinct" },
                     choices.Select(choice => choice.DistinctCountText).Order());
+                workspace.CurrentPage = WorkspacePage.Texts;
+                await workspace.Context.EvidencePublication;
+                await workspace.Context.SelectionReads.Pending;
                 var summary = workspace.Context.SelectionReads.Summary;
                 Assert.NotNull(summary);
                 Assert.Equal(9, summary.SourcePositions.Select(position => position.Word.Form)
