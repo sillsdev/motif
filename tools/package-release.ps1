@@ -8,7 +8,11 @@ param(
     [ValidatePattern('^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$')]
     [string] $ProductVersion,
 
-    [string] $OutputDirectory
+    [string] $OutputDirectory,
+
+    # Skip the build.ps1 gate (hygiene, restore, compile, PanGloss interface gate). For a second staging of the
+    # same checkout that differs only in version, after a first staging already passed the gate.
+    [switch] $SkipBuildGate
 )
 
 Set-StrictMode -Version Latest
@@ -178,9 +182,14 @@ function Get-RelativePackagePath {
 try {
     Assert-NoReparsePointsInPath $intermediateParentPath
     $env:MOTIF_PACKAGE_INTERMEDIATE_ROOT = $intermediateRoot
-    & (Join-Path $repoRoot 'build.ps1') -Configuration Release
-    if ($LASTEXITCODE -ne 0) {
-        throw 'The release wrapper gate failed; no package was published.'
+    if ($SkipBuildGate) {
+        Write-Host '==> build.ps1 gate skipped (-SkipBuildGate): an earlier staging of this checkout passed it' -ForegroundColor Yellow
+    }
+    else {
+        & (Join-Path $repoRoot 'build.ps1') -Configuration Release
+        if ($LASTEXITCODE -ne 0) {
+            throw 'The release wrapper gate failed; no package was published.'
+        }
     }
 
     $icuRuntimeSource = [Environment]::GetEnvironmentVariable('MOTIF_SIL_ICU_STAGE')

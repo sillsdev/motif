@@ -128,7 +128,7 @@ jobs:
 
       - name: Stage Windows payload N plus one
         shell: pwsh
-        run: ./tools/package-release.ps1 -RuntimeIdentifier $env:RUNTIME_IDENTIFIER -ProductVersion $env:NEXT_PRODUCT_VERSION -OutputDirectory $env:NEXT_STAGE_DIRECTORY
+        run: ./tools/package-release.ps1 -RuntimeIdentifier $env:RUNTIME_IDENTIFIER -ProductVersion $env:NEXT_PRODUCT_VERSION -OutputDirectory $env:NEXT_STAGE_DIRECTORY -SkipBuildGate
 
       - name: Sign staged Windows payload N plus one when SIL credentials are available
         if: env.HAS_TRUSTED_SIGNING_CREDENTIALS == 'true'
@@ -476,7 +476,7 @@ jobs:
 
       - name: Stage Linux payload N plus one
         shell: pwsh
-        run: ./tools/package-release.ps1 -RuntimeIdentifier $env:RUNTIME_IDENTIFIER -ProductVersion $env:NEXT_PRODUCT_VERSION -OutputDirectory $env:NEXT_STAGE_DIRECTORY
+        run: ./tools/package-release.ps1 -RuntimeIdentifier $env:RUNTIME_IDENTIFIER -ProductVersion $env:NEXT_PRODUCT_VERSION -OutputDirectory $env:NEXT_STAGE_DIRECTORY -SkipBuildGate
 
       - name: Pack Linux version N
         run: >-
@@ -664,7 +664,7 @@ jobs:
 
       - name: Stage macOS payload N plus one
         shell: pwsh
-        run: ./tools/package-release.ps1 -RuntimeIdentifier $env:RUNTIME_IDENTIFIER -ProductVersion $env:NEXT_PRODUCT_VERSION -OutputDirectory $env:NEXT_STAGE_DIRECTORY
+        run: ./tools/package-release.ps1 -RuntimeIdentifier $env:RUNTIME_IDENTIFIER -ProductVersion $env:NEXT_PRODUCT_VERSION -OutputDirectory $env:NEXT_STAGE_DIRECTORY -SkipBuildGate
 
       - name: Pack macOS version N
         run: >-
