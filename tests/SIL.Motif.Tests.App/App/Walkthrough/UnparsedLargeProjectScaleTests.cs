@@ -20,21 +20,27 @@ namespace SIL.Motif.Tests.App.Walkthrough;
 public sealed class UnparsedLargeProjectScaleTests(ITestOutputHelper output)
 {
     [Fact]
-    public void LargeSelectionOpensScrollsAndReopensWithinMemoryBudgetsWithoutParsing()
+    public void SelectionOpensScrollsAndReopensWithinMemoryBudgetsWithoutParsing() => Run(false);
+
+    [SlowScaleFact]
+    [Trait("Category", "SlowScale")]
+    public void LargeSelectionOpensScrollsAndReopensWithinMemoryBudgetsWithoutParsing() => Run(true);
+
+    private void Run(bool representative)
     {
         var measurements = new ScaleMeasurements(output);
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             measurements.Checkpoint("Unparsed: before fixture project/cache and ICU initialization");
-            using var project = new LargeProjectFixture(representativeScale: true);
+            using var project = new LargeProjectFixture(representativeScale: representative, mediumScale: !representative);
             measurements.Checkpoint("Unparsed: after fixture project/cache and ICU initialization");
             output.WriteLine($"Representative master: {project.CreationTime.TotalSeconds:F3} s; " +
                 $"{new FileInfo(project.FwDataPath).Length / 1048576d:F1} MiB; " +
                 $"{project.Words.Count} wordforms, {project.TextIds.Count} Texts, {project.TotalOccurrenceCount} occurrences");
-            Assert.Equal(22948, project.Words.Count);
-            Assert.Equal(129, project.TextIds.Count);
-            Assert.Equal(21604, project.SelectedWordCount);
-            Assert.Equal(76761, project.TotalOccurrenceCount);
+            Assert.Equal(representative ? 22948 : 300, project.Words.Count);
+            Assert.Equal(representative ? 129 : 10, project.TextIds.Count);
+            Assert.Equal(representative ? 21604 : 300, project.SelectedWordCount);
+            Assert.Equal(representative ? 76761 : 960, project.TotalOccurrenceCount);
             var parser = FakeParser.CopyRecordingInvocations(project.ManagedRoot);
             var client = RealCommandClient.Create(project.ManagedRoot, parser);
             string? baselinePath = null;
@@ -77,7 +83,7 @@ public sealed class UnparsedLargeProjectScaleTests(ITestOutputHelper output)
         measurements.AssertBaselineReadVolume("Unparsed: open configured Selection", 8L * 1048576, 0);
         Assert.Null(window.Workspace.Context.SelectionReads.Reader);
         Capture(window, "opened");
-        await measurements.MeasureAsync("Unparsed: show all 21604 Word list rows", 30, async () =>
+        await measurements.MeasureAsync("Unparsed: show all Word list rows", 30, async () =>
         {
             window.ShowPage(WorkspacePage.Texts);
             window.ShowTextsTab(TextsTab.AnalyzeTexts);
@@ -116,11 +122,11 @@ public sealed class UnparsedLargeProjectScaleTests(ITestOutputHelper output)
             output.WriteLine($"Word list realized {rows.Count} rows at depth {rows.MaximumDepth}; " +
                 $"{rowModels} row models survive collection from {createdRows.Count} creation observations");
         });
-        measurements.AssertReadCounts("Unparsed: show all 21604 Word list rows", 0, 128, 1, 4096);
+        measurements.AssertReadCounts("Unparsed: show all Word list rows", 0, 128, 1, 4096);
         var openedReader = window.Workspace.Context.SelectionReads.Reader!;
         Assert.Equal(project.TotalOccurrenceCount, openedReader.Diagnostics.PhysicalOccurrences);
         Capture(window, "word-list-end");
-        await measurements.MeasureAsync("Unparsed: read and scroll 224-line Text", 30, async () =>
+        await measurements.MeasureAsync("Unparsed: read and scroll longest Text", 30, async () =>
         {
             texts.ShowAnalyzeViewCommand.Execute(AnalyzeTextsView.TextReader);
             var model = texts.ResultsInText;
@@ -129,7 +135,7 @@ public sealed class UnparsedLargeProjectScaleTests(ITestOutputHelper output)
             await model.ReadStateRefresh;
             Assert.Equal(project.TotalOccurrenceCount, model.AllCount);
             var longest = model.Texts.Single(text => text.TextId == project.TextIds[0]);
-            Assert.Equal(224, longest.Summary!.LineCount);
+            Assert.Equal(project.LongestTextLength / 8, longest.Summary!.LineCount);
             model.SelectedText = longest;
             var panel = window.Window.GetLogicalDescendants().OfType<ResultsInTextPanel>().Single();
             PageScreenshots.Settle(window.Window);
@@ -175,7 +181,7 @@ public sealed class UnparsedLargeProjectScaleTests(ITestOutputHelper output)
                 $"the last strip at {origin.Value} size {strip.Bounds.Size} is outside the reader viewport " +
                 $"{reader.Viewport} at offset {reader.Offset} in extent {reader.Extent}; scrolls: {string.Join("; ", scrolls)}");
         });
-        measurements.AssertReadCounts("Unparsed: read and scroll 224-line Text", 1, 128, 1, 4096);
+        measurements.AssertReadCounts("Unparsed: read and scroll longest Text", 1, 128, 1, 4096);
         Assert.Null(window.Workspace.Assess.Result);
         Capture(window, "text-reader-end");
         texts.ShowAnalyzeViewCommand.Execute(AnalyzeTextsView.WordList);

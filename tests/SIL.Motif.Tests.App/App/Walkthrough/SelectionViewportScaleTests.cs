@@ -11,11 +11,16 @@ namespace SIL.Motif.Tests.App.Walkthrough;
 [Trait("MotifTestLevel", "System")]
 public sealed class SelectionViewportScaleTests(ITestOutputHelper output)
 {
-    [Theory]
-    [InlineData(false, 3000, 40, 9760)]
-    [InlineData(true, 21604, 129, 76761)]
-    public async Task SequentialRangesKeepActualDisplayModelsAndReaderReadsBounded(
-        bool representative, int wordRows, int textCount, int occurrenceCount)
+    [Fact]
+    public Task SequentialRangesKeepActualDisplayModelsAndReaderReadsBounded() =>
+        CheckSequentialRanges(false, 3000, 40, 9760);
+
+    [SlowScaleFact]
+    [Trait("Category", "SlowScale")]
+    public Task RepresentativeSequentialRangesKeepActualDisplayModelsAndReaderReadsBounded() =>
+        CheckSequentialRanges(true, 21604, 129, 76761);
+
+    private async Task CheckSequentialRanges(bool representative, int wordRows, int textCount, int occurrenceCount)
     {
         using var project = new LargeProjectFixture(representative);
         var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(project.FwDataPath), project.ManagedRoot);

@@ -27,13 +27,21 @@ namespace SIL.Motif.Tests.App.Walkthrough;
 public sealed class LargeProjectScaleTests(ITestOutputHelper output)
 {
     [Fact]
-    public void LargeProjectCompletesTheFakeParserWorkflowWithinTimeAndMemoryBudgets()
+    public void ProjectCompletesTheFakeParserWorkflowWithinTimeAndMemoryBudgets() => RunWorkflow(false);
+
+    [SlowScaleFact]
+    [Trait("Category", "SlowScale")]
+    public void LargeProjectCompletesTheFakeParserWorkflowWithinTimeAndMemoryBudgets() => RunWorkflow(true);
+
+    private void RunWorkflow(bool large)
     {
         var measurements = new ScaleMeasurements(output);
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             measurements.Checkpoint("Large: before fixture project/cache and ICU initialization");
-            using var project = new LargeProjectFixture();
+            using var project = new LargeProjectFixture(smallScale: !large);
+            var wordCount = project.Words.Count;
+            var changeCount = large ? 200 : 5;
             measurements.Checkpoint("Large: after fixture project/cache and ICU initialization");
             output.WriteLine($"Large master creation: {project.CreationTime.TotalSeconds:F3} s");
             var parser = FakeParser.CopyRecordingInvocations(project.ManagedRoot);
@@ -61,17 +69,17 @@ public sealed class LargeProjectScaleTests(ITestOutputHelper output)
                 using (var cache = new FwDataProjectLoader().LoadScratchCache(project.FwDataPath))
                 {
                     measurements.Checkpoint("Large: after explicit cache open and ICU use");
-                    Assert.Equal(LargeProjectFixture.EntryCount,
+                    Assert.Equal(wordCount,
                         cache.ServiceLocator.GetInstance<ILexEntryRepository>().AllInstances().Count());
-                    Assert.Equal(LargeProjectFixture.EntryCount,
+                    Assert.Equal(wordCount,
                         cache.ServiceLocator.GetInstance<IWfiAnalysisRepository>().AllInstances().Count());
                     var opinions = cache.ServiceLocator.GetInstance<IWfiAnalysisRepository>().AllInstances()
                         .GroupBy(analysis => analysis.GetAgentOpinion(cache.LangProject.DefaultUserAgent)).ToArray();
                     Assert.Equal(3, opinions.Length);
-                    Assert.All(opinions, group => Assert.Equal(1000, group.Count()));
+                    Assert.All(opinions, group => Assert.Equal(wordCount / 3, group.Count()));
                     Assert.All(cache.ServiceLocator.GetInstance<ILexEntryRepository>().AllInstances(),
                         entry => Assert.Single(entry.AlternateFormsOS));
-                    Assert.Equal(LargeProjectFixture.TextCount,
+                    Assert.Equal(project.TextIds.Count,
                         cache.ServiceLocator.GetInstance<ITextRepository>().AllInstances().Count());
                 }
                 var capture = await client.CaptureBaselineAsync(new BaselineCaptureRequest(project.FwDataPath), CancellationToken.None);
@@ -83,25 +91,25 @@ public sealed class LargeProjectScaleTests(ITestOutputHelper output)
             var skipped = await client.SkipSetupAsync(new SkipSetupRequest(project.FwDataPath), CancellationToken.None);
             Assert.True(skipped.Succeeded, skipped.Refusal?.Message);
             AssessCommandResponse assessed = null!;
-            await measurements.MeasureAsync("Assess all 3000 words", 10, async () =>
+            await measurements.MeasureAsync("Assess all words", 10, async () =>
             {
                 var result = await client.AssessAsync(new AssessRequest(project.FwDataPath),
                     new Progress<AssessmentProgress>(), CancellationToken.None);
                 Assert.True(result.Succeeded, result.Refusal?.Message);
                 assessed = result.Value!;
-                Assert.Equal(LargeProjectFixture.EntryCount, assessed.Words.Count);
-                Assert.Equal(LargeProjectFixture.EntryCount, assessed.Words.Select(word => word.Word).Distinct().Count());
-                Assert.Equal(1800, assessed.Words.Count(word => word.Outcome == "analysed"));
-                Assert.Equal(600, assessed.Words.Count(word => word.Outcome == "no-analysis"));
-                Assert.Equal(600, assessed.Words.Count(word => word.Outcome == "capped"));
+                Assert.Equal(wordCount, assessed.Words.Count);
+                Assert.Equal(wordCount, assessed.Words.Select(word => word.Word).Distinct().Count());
+                Assert.Equal(wordCount * 3 / 5, assessed.Words.Count(word => word.Outcome == "analysed"));
+                Assert.Equal(wordCount / 5, assessed.Words.Count(word => word.Outcome == "no-analysis"));
+                Assert.Equal(wordCount / 5, assessed.Words.Count(word => word.Outcome == "capped"));
             });
-            await measurements.MeasureAsync("Stage 200 pending changes", 180, async () =>
+            await measurements.MeasureAsync("Stage pending changes", 180, async () =>
             {
                 var pending = await client.LoadPendingChangesAsync(
                     new PendingChangesRequest(project.FwDataPath, MotifProductVersion.CurrentText), CancellationToken.None);
                 Assert.True(pending.Succeeded, pending.Refusal?.Message);
                 var revision = pending.Value!.Revision;
-                foreach (var word in project.Words.Take(200))
+                foreach (var word in project.Words.Take(changeCount))
                 {
                     var put = await client.PutPendingChangeAsync(new PutPendingChangeRequest(
                         project.FwDataPath, MotifProductVersion.CurrentText, revision,
@@ -125,14 +133,14 @@ public sealed class LargeProjectScaleTests(ITestOutputHelper output)
                 PageScreenshots.Settle(window.Window);
                 measurements.Checkpoint("Large: after first Skia render");
             });
-            measurements.AssertReadCounts("Open stored Overview", 1, 267, 3000, 162189);
+            measurements.AssertReadCounts("Open stored Overview", 1, 267, wordCount, 162189);
             Capture(window, "overview");
             var texts = window.Workspace.PageModel<TextsPageModel>();
             await measurements.MeasureAsync("Open Matrix", 15, () =>
             {
                 window.ShowPage(WorkspacePage.Texts);
                 window.ShowTextsTab(TextsTab.Matrix);
-                Assert.Equal(LargeProjectFixture.EntryCount, texts.Assess.Compare.Cells.Sum(cell => cell.WordCount));
+                Assert.Equal(wordCount, texts.Assess.Compare.Cells.Sum(cell => cell.WordCount));
                 PageScreenshots.Settle(window.Window);
             });
             Capture(window, "matrix");
@@ -149,13 +157,13 @@ public sealed class LargeProjectScaleTests(ITestOutputHelper output)
             await measurements.MeasureAsync("Analyze longest Text and scroll to end", 6, async () =>
             {
                 window.ShowTextsTab(TextsTab.AnalyzeTexts);
-                window.WaitUntil(() => texts.ResultsInText.Texts.Count == LargeProjectFixture.TextCount,
+                window.WaitUntil(() => texts.ResultsInText.Texts.Count == project.TextIds.Count,
                     TimeSpan.FromSeconds(30), "the large Texts were not loaded");
                 var readerModel = texts.ResultsInText;
                 await readerModel.ReadStateRefresh;
-                Assert.Equal(LargeProjectFixture.OccurrenceCount, readerModel.AllCount);
+                Assert.Equal(project.TotalOccurrenceCount, readerModel.AllCount);
                 var longest = readerModel.Texts.Single(text => text.TextId == project.TextIds[0]);
-                Assert.Equal(50, longest.Summary!.LineCount);
+                Assert.Equal(project.LongestTextLength / 8, longest.Summary!.LineCount);
                 readerModel.SelectedText = longest;
                 var panel = window.Window.GetLogicalDescendants().OfType<ResultsInTextPanel>().Single();
                 var finalPosition = window.Workspace.Context.SelectionReads.Summary!.SourcePositions.Last(position =>
@@ -203,14 +211,14 @@ public sealed class LargeProjectScaleTests(ITestOutputHelper output)
                 Assert.Contains("parse-results.json", handoff.Value.Files);
                 Assert.All(handoff.Value.Files, file => Assert.True(File.Exists(Path.Combine(destination, file)), file));
             });
-            await measurements.MeasureAsync("Open Review with 200 changes", 15, () =>
+            await measurements.MeasureAsync("Open Review with pending changes", 15, () =>
             {
                 window.ShowPage(WorkspacePage.Review);
-                Assert.Equal(200, window.Workspace.PageModel<ReviewPageModel>().Changes.Count);
+                Assert.Equal(changeCount, window.Workspace.PageModel<ReviewPageModel>().Changes.Count);
                 PageScreenshots.Settle(window.Window);
             });
             measurements.AssertBudgets();
-            Capture(window, "review-200");
+            Capture(window, $"review-{changeCount}");
         }, TimeSpan.FromMinutes(10));
         using var process = Process.GetCurrentProcess();
         output.WriteLine($"Host lifetime peak RSS: {process.PeakWorkingSet64 / 1048576d:F1} MiB");

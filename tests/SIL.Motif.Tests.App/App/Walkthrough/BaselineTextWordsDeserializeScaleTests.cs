@@ -20,7 +20,8 @@ public sealed class BaselineTextWordsDeserializeScaleTests(ITestOutputHelper out
         Measure(representativeScale: false, 3000, 3000, 40, 9760);
     }
 
-    [Fact]
+    [SlowScaleFact]
+    [Trait("Category", "SlowScale")]
     public void TwentyOneThousandSixHundredFourRowSelectionReportsFullDeserializeCost()
     {
         Measure(representativeScale: true, 22948, 21604, 129, 76761);

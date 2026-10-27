@@ -15,13 +15,16 @@ public sealed class LargeProjectFixture : IDisposable
     public const int LongestTextWordCount = 400;
     private static readonly Lazy<MasterProject> Master = new(() => CreateMaster(
         EntryCount, EntryCount, TextCount, OccurrenceCount, LongestTextWordCount));
+    private static readonly Lazy<MasterProject> MediumMaster = new(() => CreateMaster(300, 300, 10, 960, 80));
+    private static readonly Lazy<MasterProject> SmallMaster = new(() => CreateMaster(60, 60, 6, 240, 48));
     private static readonly Lazy<MasterProject> RepresentativeMaster = new(() => CreateMaster(
         22948, 21604, 129, 76761, 1792));
     private readonly string _root = Path.Combine(Path.GetTempPath(), "SIL.Motif.Tests.Large", Guid.NewGuid().ToString("N"));
 
-    public LargeProjectFixture(bool representativeScale = false)
+    public LargeProjectFixture(bool representativeScale = false, bool smallScale = false, bool mediumScale = false)
     {
-        var master = representativeScale ? RepresentativeMaster.Value : Master.Value;
+        var master = representativeScale ? RepresentativeMaster.Value : smallScale ? SmallMaster.Value :
+            mediumScale ? MediumMaster.Value : Master.Value;
         var folder = Path.Combine(_root, NewLangProjFixture.ProjectName);
         PristineProjectFixture.CopyFieldWorksProjectFiles(master.Folder, folder);
         FwDataPath = Path.Combine(folder, NewLangProjFixture.ProjectName + ".fwdata");
@@ -71,14 +74,15 @@ public sealed class LargeProjectFixture : IDisposable
         var stem = services.GetInstance<IMoMorphTypeRepository>().GetObject(MoMorphTypeTags.kguidMorphStem);
         var words = new List<LargeProjectWord>(wordformCount);
         var stored = new List<IWfiAnalysis>(wordformCount);
-        var lexicon = new List<(IMoStemAllomorph Form, IMoStemMsa Msa, ILexSense Sense)>(EntryCount);
+        var entryCount = Math.Min(EntryCount, wordformCount);
+        var lexicon = new List<(IMoStemAllomorph Form, IMoStemMsa Msa, ILexSense Sense)>(entryCount);
         var textIds = new List<Guid>(textCount);
         NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
         {
             var pos = services.GetInstance<IPartOfSpeechFactory>().Create();
             cache.LangProject.PartsOfSpeechOA.PossibilitiesOS.Add(pos);
             pos.Name.set_String(cache.DefaultAnalWs, "Scale noun");
-            for (var i = 0; i < EntryCount; i++)
+            for (var i = 0; i < entryCount; i++)
             {
                 var word = Word(i);
                 var entry = entries.Create();
@@ -102,7 +106,7 @@ public sealed class LargeProjectFixture : IDisposable
             for (var i = 0; i < wordformCount; i++)
             {
                 var word = Word(i);
-                var (form, msa, sense) = lexicon[i % EntryCount];
+                var (form, msa, sense) = lexicon[i % entryCount];
                 var wordform = wordforms.Create(TsStringUtils.MakeString(word, cache.DefaultVernWs));
                 var analysis = analyses.Create();
                 wordform.AnalysesOC.Add(analysis);
