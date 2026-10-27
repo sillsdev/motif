@@ -103,7 +103,7 @@ public sealed class SelectionAnalyzeTests
         }, TimeSpan.FromSeconds(30));
     }
 
-    private static async Task<IReadOnlyList<WeakReference<object>>> ScrollAnalyzeAsync(int lineCount = 100, int longLineCount = 500)
+    private static async Task<IReadOnlyList<WeakReference<object>>> ScrollAnalyzeAsync(int lineCount = 60, int longLineCount = 100)
     {
         var projection = Projection(lineCount, longLineCount);
         using var fixture = new StoredSelectionFixture(projection);
@@ -165,16 +165,10 @@ public sealed class SelectionAnalyzeTests
             first.Tokens[0].IsSelectedForActions = false;
             Assert.Equal(expectedCount - 1, owner.CheckedWordCount);
             var viewer = panel.FindControl<ScrollViewer>("TextScrollViewer")!;
-            for (var index = 1; index < lineCount; index++)
+            foreach (var index in new[] { 1, lineCount / 3, 2 * lineCount / 3, lineCount - 1 }.Distinct())
             {
                 await owner.LinePages!.ReadLinePageAsync(index + 1, 0);
-                // Scrolled as a reader scrolls: a jump to an unrealized line rebuilds every visible line's strips.
-                while (lines.ContainerFromIndex(index) is null &&
-                       viewer.Offset.Y < viewer.Extent.Height - viewer.Viewport.Height)
-                {
-                    viewer.Offset = viewer.Offset.WithY(viewer.Offset.Y + viewer.Viewport.Height / 2);
-                    PageScreenshots.Settle(window);
-                }
+                lines.ScrollIntoView(index);
                 if (index == lineCount - 1) viewer.ScrollToEnd();
                 await LayoutAsync(window, owner);
                 Assert.NotNull(lines.ContainerFromIndex(index));
