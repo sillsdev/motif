@@ -365,6 +365,9 @@ internal sealed class TooltipScenes
             case TooltipScene.Reader:
                 Show(WorkspacePage.Texts, TextsTab.AnalyzeTexts);
                 await AnalyzeTextsLayoutTests.SettleReaderAsync(Workspace, Window);
+                var readerWord = (WordStripToken)AnalyzeTextsLayoutTests.StripOf(AnalyzeTextsLayoutTests.Panel(Window), "chakula");
+                readerWord.FocusWord();
+                PageScreenshots.Settle(Window);
                 break;
             case TooltipScene.AnalyzeWordList:
                 Show(WorkspacePage.Texts, TextsTab.AnalyzeTexts);
