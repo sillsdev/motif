@@ -1,0 +1,24 @@
+#!/bin/sh
+set -eu
+
+repo=$(git rev-parse --show-toplevel) || {
+    echo 'grammar-data hook: cannot find the current worktree' >&2
+    exit 2
+}
+case "$(uname -s)" in
+    MINGW*|MSYS*|CYGWIN*)
+        command -v cygpath >/dev/null 2>&1 && repo=$(cygpath -w "$repo")
+        powershell=pwsh.exe
+        ;;
+    *) powershell=pwsh ;;
+esac
+checker="$repo/tools/Check-GrammarData.ps1"
+if [ ! -f "$checker" ]; then
+    echo 'grammar-data hook: checker is missing; commit refused' >&2
+    exit 2
+fi
+if ! command -v "$powershell" >/dev/null 2>&1; then
+    echo 'grammar-data hook: PowerShell 7 is unavailable; commit refused' >&2
+    exit 2
+fi
+exec "$powershell" -NoProfile -File "$checker" -Mode Index -RepositoryRoot "$repo"

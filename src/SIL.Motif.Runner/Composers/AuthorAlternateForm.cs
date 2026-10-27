@@ -152,7 +152,7 @@ public static class AuthorAlternateFormComposer
                 $"'{constructName}': placement neighbours are missing or not adjacent in the current order." + named);
     }
 
-    // An unrestricted form ahead of a restricted one always wins, and the lexeme form comes last.
+    // Selection order is pinned by AnOrderThatLetsAnUnrestrictedFormShadowARestrictedOneIsRefusedWithTheNextStep.
     private static void RequireOrderThatCanBeSelected(ILexEntry entry, Placement? placement, bool restricted)
     {
         var forms = entry.AlternateFormsOS.ToList();

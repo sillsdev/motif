@@ -142,6 +142,8 @@ function Publish-MotifProject {
     param(
         [string] $ProjectPath,
         [string] $Destination,
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
         [string] $BuildOutputRoot
     )
 
@@ -157,9 +159,7 @@ function Publish-MotifProject {
         '-p:MotifPortablePackage=true',
         '--nologo'
     )
-    if (-not [string]::IsNullOrEmpty($BuildOutputRoot)) {
-        $arguments += "-p:MotifBinRoot=$BuildOutputRoot"
-    }
+    $arguments += "-p:MotifBinRoot=$BuildOutputRoot"
     & dotnet publish @arguments
     if ($LASTEXITCODE -ne 0) {
         throw "dotnet publish failed for $ProjectPath."
@@ -210,10 +210,14 @@ try {
     $appEntryPointName = "SIL.Motif.App$entryPointSuffix"
     $cliEntryPointName = "motif$entryPointSuffix"
     $workerEntryPointName = "SIL.Motif.Worker$entryPointSuffix"
+    $frontEndBuildDirectory = (Join-Path $intermediateRoot 'front-end-build') +
+        [System.IO.Path]::DirectorySeparatorChar
     $workerPublishDirectory = Join-Path $intermediateRoot 'worker-publish'
-    Publish-MotifProject (Join-Path $repoRoot 'src/SIL.Motif.App/SIL.Motif.App.csproj') $stage
-    Publish-MotifProject (Join-Path $repoRoot 'src/SIL.Motif.Cli/SIL.Motif.Cli.csproj') $stage
-    # App and CLI leave a framework-dependent Worker runtimeconfig in the shared bin that a publish there keeps.
+    # Keep self-contained publish outputs out of the shared framework-dependent development bin.
+    Publish-MotifProject (Join-Path $repoRoot 'src/SIL.Motif.App/SIL.Motif.App.csproj') `
+        $stage $frontEndBuildDirectory
+    Publish-MotifProject (Join-Path $repoRoot 'src/SIL.Motif.Cli/SIL.Motif.Cli.csproj') `
+        $stage $frontEndBuildDirectory
     $workerBuildDirectory = (Join-Path $intermediateRoot 'worker-build') + [System.IO.Path]::DirectorySeparatorChar
     Publish-MotifProject (Join-Path $repoRoot 'src/SIL.Motif.Worker/SIL.Motif.Worker.csproj') $workerPublishDirectory $workerBuildDirectory
 

@@ -18,4 +18,4 @@ An infix is an affix placed inside a root instead of before or after it, as an i
 
 - Test the infix on a stem that begins with a consonant and on one that begins with a vowel; a pattern that needs a leading consonant does not match the second.
 - Do not author an infix as a conditioned alternate form of a prefix; an alternate form keeps its place at the edge of the stem.
-- A realization that drops matched material is refused; copy every part you match.
+- A realization may omit matched parts to delete them, but it must copy at least one input part and copy the remaining stem when it is named.

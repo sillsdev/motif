@@ -104,27 +104,24 @@ public sealed class SampleProjectSpikeTests(ITestOutputHelper output)
 
         try
         {
+            var fixture = RuntimeSampleProjectFixture.Create("runtime-undeclared");
+            var tokens = fixture.Tokens;
+            var undeclaredForm = tokens.Phonemes[0] + tokens.Phonemes[1];
+            fixture.Sample.Phonemes = [tokens.Phonemes[0]];
+            fixture.Sample.NaturalClasses.Clear();
+            fixture.Sample.Environments.Clear();
+            fixture.Sample.PartsOfSpeech = [fixture.Sample.PartsOfSpeech[0]];
+            fixture.Sample.Stems = [new(tokens.NounId, undeclaredForm, tokens.NounId, tokens.Id + " stem")];
+            fixture.Sample.AffixTemplates.Clear();
+            fixture.Sample.Texts = [new(tokens.TextId, tokens.TextTitle, [undeclaredForm])];
             var specPath = Path.Combine(root, "invalid-sample.json");
-            await File.WriteAllTextAsync(specPath, """
-                {
-                  "id": "sample-test",
-                  "title": "Test sample",
-                  "disclaimer": "SYNTHETIC EXAMPLE. This language data was generated to demonstrate Motif. It is modelled loosely on Turkish, but it is not real Turkish, has not been checked by speakers, and must not be used as a description of any language.",
-                  "description": "SYNTHETIC EXAMPLE. This language data was generated to demonstrate Motif. It is modelled loosely on Turkish, but it is not real Turkish, has not been checked by speakers, and must not be used as a description of any language.",
-                  "teaches": ["parser basics"],
-                  "summary": "A synthetic parser test.",
-                  "language": { "name": "Synthetic test", "tag": "tr" },
-                  "phonemes": ["a"],
-                  "partsOfSpeech": [{ "id": "noun", "name": "Noun" }],
-                  "stems": [{ "id": "car", "form": "ar", "partOfSpeech": "noun", "gloss": "car" }],
-                  "texts": [{ "id": "one", "title": "One", "sentences": ["ar"] }]
-                }
-                """);
+            await RuntimeSampleProjectFixture.WriteSampleAsync(specPath, fixture.Sample);
 
             var result = await RunBuilderAsync(root, specPath);
 
             Assert.NotEqual(0, result.ExitCode);
-            Assert.Contains("Stem 'car' form 'ar' uses undeclared character 'r'.", result.StandardError);
+            Assert.Contains($"Stem '{tokens.NounId}' form '{undeclaredForm}' uses undeclared character '{tokens.Phonemes[1]}'.",
+                result.StandardError);
         }
         finally
         {
@@ -140,27 +137,25 @@ public sealed class SampleProjectSpikeTests(ITestOutputHelper output)
 
         try
         {
+            var fixture = RuntimeSampleProjectFixture.Create("runtime-diacritic");
+            var tokens = fixture.Tokens;
+            var diacritic = char.ConvertFromUtf32(0x00E7);
+            var decomposedBase = char.ConvertFromUtf32(0x0063);
+            fixture.Sample.Phonemes = [diacritic];
+            fixture.Sample.NaturalClasses.Clear();
+            fixture.Sample.Environments.Clear();
+            fixture.Sample.PartsOfSpeech = [fixture.Sample.PartsOfSpeech[0]];
+            fixture.Sample.Stems = [new(tokens.NounId, decomposedBase, tokens.NounId, tokens.Id + " stem")];
+            fixture.Sample.AffixTemplates.Clear();
+            fixture.Sample.Texts = [new(tokens.TextId, tokens.TextTitle, [decomposedBase])];
             var specPath = Path.Combine(root, "invalid-sample.json");
-            await File.WriteAllTextAsync(specPath, """
-                {
-                  "id": "sample-test",
-                  "title": "Test sample",
-                  "disclaimer": "SYNTHETIC EXAMPLE. This language data was generated to demonstrate Motif. It is modelled loosely on Turkish, but it is not real Turkish, has not been checked by speakers, and must not be used as a description of any language.",
-                  "description": "SYNTHETIC EXAMPLE. This language data was generated to demonstrate Motif. It is modelled loosely on Turkish, but it is not real Turkish, has not been checked by speakers, and must not be used as a description of any language.",
-                  "teaches": ["parser basics"],
-                  "summary": "A synthetic parser test.",
-                  "language": { "name": "Synthetic test", "tag": "tr" },
-                  "phonemes": ["ç"],
-                  "partsOfSpeech": [{ "id": "noun", "name": "Noun" }],
-                  "stems": [{ "id": "car", "form": "c", "partOfSpeech": "noun", "gloss": "car" }],
-                  "texts": [{ "id": "one", "title": "One", "sentences": ["c"] }]
-                }
-                """);
+            await RuntimeSampleProjectFixture.WriteSampleAsync(specPath, fixture.Sample);
 
             var result = await RunBuilderAsync(root, specPath);
 
             Assert.NotEqual(0, result.ExitCode);
-            Assert.Contains("Stem 'car' form 'c' uses undeclared character 'c'.", result.StandardError);
+            Assert.Contains($"Stem '{tokens.NounId}' form '{decomposedBase}' uses undeclared character '{decomposedBase}'.",
+                result.StandardError);
         }
         finally
         {
@@ -346,55 +341,63 @@ public sealed class SampleProjectSpikeTests(ITestOutputHelper output)
 
         try
         {
+            var fixture = RuntimeSampleProjectFixture.Create("runtime-optional-slots");
+            var tokens = fixture.Tokens;
+            var backVowel = tokens.Phonemes[1];
+            var frontVowel = tokens.Phonemes[4];
+            var consonant = tokens.Phonemes[2];
+            var backClass = tokens.Id + "-back-vowels";
+            var frontClass = tokens.Id + "-front-vowels";
+            var consonantClass = tokens.ConsonantClassId;
+            var slotId = tokens.Id + "-plural-slot";
+            var stem = frontVowel + consonant;
+            var backSuffix = backVowel + consonant;
+            var frontSuffix = frontVowel + consonant;
+            var backEnvironmentId = tokens.Id + "-back-environment";
+            var frontEnvironmentId = tokens.Id + "-front-environment";
+            var backEnvironment = $"/[{tokens.BackVowelClassAbbreviation}]([{tokens.ConsonantClassAbbreviation}])_";
+            var frontEnvironment = $"/[{tokens.FrontVowelClassAbbreviation}]([{tokens.ConsonantClassAbbreviation}])_";
+            fixture.Sample.NaturalClasses =
+            [
+                new(backClass, tokens.Id + " back vowels", tokens.BackVowelClassAbbreviation, [backVowel]),
+                new(frontClass, tokens.Id + " front vowels", tokens.FrontVowelClassAbbreviation, [frontVowel]),
+                new(consonantClass, tokens.Id + " consonants", tokens.ConsonantClassAbbreviation,
+                    [.. tokens.Phonemes.Where(value => value != backVowel && value != frontVowel)]),
+            ];
+            fixture.Sample.Environments =
+            [
+                new(backEnvironmentId, tokens.Id + " back-vowel context", backEnvironment),
+                new(frontEnvironmentId, tokens.Id + " front-vowel context", frontEnvironment),
+            ];
+            fixture.Sample.PartsOfSpeech = [fixture.Sample.PartsOfSpeech[0]];
+            fixture.Sample.Stems = [new(tokens.NounId, stem, tokens.NounId, tokens.Id + " stem gloss")];
+            fixture.Sample.AffixSlots = [new(slotId, tokens.Id + " plural slot", tokens.NounId, Optional: false)];
+            fixture.Sample.AffixTemplates =
+            [
+                new(tokens.NounTemplateId, tokens.NounTemplateName, tokens.NounId, Final: true,
+                    SuffixSlots: [slotId]),
+            ];
+            fixture.Sample.Affixes =
+            [
+                new(tokens.Id + "-plural-affix", tokens.NounId, [slotId], tokens.Id + " plural gloss",
+                [
+                    new(tokens.Id + "-back-allomorph", backSuffix, backEnvironmentId),
+                    new(tokens.Id + "-front-allomorph", frontSuffix, frontEnvironmentId),
+                ]),
+            ];
+            fixture.Sample.Texts = [new(tokens.TextId, tokens.TextTitle, [stem + frontSuffix])];
             var specPath = Path.Combine(root, "slow-spike.json");
             var bugsPath = Path.Combine(root, "slow-spike-bugs.json");
-            await File.WriteAllTextAsync(specPath, """
-                {
-                  "id": "sample-slow-spike",
-                  "title": "Synthetic slow spike",
-                  "disclaimer": "SYNTHETIC EXAMPLE. This language data was generated to demonstrate Motif. It is modelled loosely on Turkish, but it is not real Turkish, has not been checked by speakers, and must not be used as a description of any language.",
-                  "description": "SYNTHETIC EXAMPLE. This language data was generated to demonstrate Motif. It is modelled loosely on Turkish, but it is not real Turkish, has not been checked by speakers, and must not be used as a description of any language.",
-                  "teaches": ["parser performance"],
-                  "summary": "A synthetic parser performance test.",
-                  "language": { "name": "Synthetic Turkic-style", "tag": "tr" },
-                  "phonemes": ["a", "e", "l", "r", "v"],
-                  "naturalClasses": [
-                    { "id": "back", "name": "Back vowels", "abbreviation": "Back", "phonemes": ["a"] },
-                    { "id": "front", "name": "Front vowels", "abbreviation": "Front", "phonemes": ["e"] },
-                    { "id": "consonants", "name": "Consonants", "abbreviation": "C", "phonemes": ["l", "r", "v"] }
-                  ],
-                  "environments": [
-                    { "id": "back-env", "name": "After back vowel", "representation": "/[Back]([C])_" },
-                    { "id": "front-env", "name": "After front vowel", "representation": "/[Front]([C])_" }
-                  ],
-                  "partsOfSpeech": [{ "id": "noun", "name": "Noun" }],
-                  "stems": [{ "id": "ev", "form": "ev", "partOfSpeech": "noun", "gloss": "house" }],
-                  "affixes": [{
-                    "id": "plural", "partOfSpeech": "noun", "slots": ["plural"], "gloss": "plural",
-                    "allomorphs": [
-                      { "id": "lar", "form": "lar", "environment": "back-env" },
-                      { "id": "ler", "form": "ler", "environment": "front-env" }
-                    ]
-                  }],
-                  "affixSlots": [{ "id": "plural", "name": "Plural", "partOfSpeech": "noun", "optional": false }],
-                  "affixTemplates": [{ "id": "noun", "name": "Noun suffixes", "partOfSpeech": "noun", "suffixSlots": ["plural"], "final": true }],
-                  "phonologicalRules": [],
-                  "texts": [{ "id": "houses", "title": "Houses", "sentences": ["evler"] }]
-                }
-                """);
-            await File.WriteAllTextAsync(bugsPath, """
-                [{
-                  "id": "optional-plural-copies",
-                  "title": "Repeated optional plural slots",
-                  "disclaimer": "SYNTHETIC EXAMPLE. This language data was generated to demonstrate Motif. It is modelled loosely on Turkish, but it is not real Turkish, has not been checked by speakers, and must not be used as a description of any language.",
-                  "fix": ["Keep one Plural slot in the noun template."],
-                  "symptom": { "kind": "slow", "words": ["evler"], "reason": "Repeated optional slots create redundant parse paths." },
-                  "patch": [{ "op": "duplicateOptionalSlot", "templateId": "noun", "slotId": "plural", "count": 64 }]
-                }]
-                """);
+            await RuntimeSampleProjectFixture.WriteSampleAsync(specPath, fixture.Sample);
+            var bug = new RuntimeBugSpec(tokens.BugId, tokens.Id + " repeated optional slots",
+                fixture.Sample.Disclaimer,
+                new("slow", [stem + frontSuffix], "Repeated optional slots create redundant parser paths."),
+                ["Keep one plural slot in the noun template."],
+                [new("duplicateOptionalSlot", TemplateId: tokens.NounTemplateId, SlotId: slotId, Count: 64)]);
+            await RuntimeSampleProjectFixture.WriteBugsAsync(bugsPath, [bug]);
 
             using var fixedBuild = await BuildVariantAsync(root, specPath, bugsPath, [], "fixed");
-            using var brokenBuild = await BuildVariantAsync(root, specPath, bugsPath, ["optional-plural-copies"], "broken");
+            using var brokenBuild = await BuildVariantAsync(root, specPath, bugsPath, [tokens.BugId], "broken");
             var fixedProject = fixedBuild.RootElement.GetProperty("projectPath").GetString()!;
             var fixedText = fixedBuild.RootElement.GetProperty("texts")[0].GetProperty("guid").GetString()!;
             var brokenProject = brokenBuild.RootElement.GetProperty("projectPath").GetString()!;

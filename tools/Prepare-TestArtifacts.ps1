@@ -2,7 +2,8 @@
 param(
     [string] $Configuration = 'Debug',
     [switch] $PortableWorkerPackage,
-    [switch] $ExplainedWordCardFixture
+    [switch] $ExplainedWordCardFixture,
+    [string] $ArtifactOutputRoot
 )
 
 Set-StrictMode -Version Latest
@@ -17,7 +18,30 @@ $repositoryRoot = [System.IO.DirectoryInfo]::new($PSScriptRoot).Parent.FullName
 Import-Module (Join-Path $PSScriptRoot 'SyntheticSamples.psm1') -Force
 $sampleInputRoot = if ($prepareExplainedWordCardFixture) { Resolve-SyntheticSampleRoot $repositoryRoot } else { $null }
 $configurationRoot = Join-Path $repositoryRoot "bin/$Configuration"
-$testOutputRoot = Join-Path $configurationRoot 'tests'
+if ([string]::IsNullOrWhiteSpace($ArtifactOutputRoot)) {
+    $testOutputRoot = Join-Path $configurationRoot 'tests'
+}
+else {
+    $testOutputRoot = [System.IO.Path]::GetFullPath($ArtifactOutputRoot)
+    $isolatedOutputRoot = [System.IO.Path]::GetFullPath(
+        (Join-Path $repositoryRoot 'bin/.cache/test-artifact-preparation'))
+    $isolatedPrefix = $isolatedOutputRoot.TrimEnd(
+        [System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar) +
+        [System.IO.Path]::DirectorySeparatorChar
+    $pathComparison = if ($IsWindows) {
+        [System.StringComparison]::OrdinalIgnoreCase
+    }
+    else {
+        [System.StringComparison]::Ordinal
+    }
+    if (-not $testOutputRoot.StartsWith($isolatedPrefix, $pathComparison)) {
+        throw "ArtifactOutputRoot must be below $isolatedOutputRoot."
+    }
+    $outputItem = Get-Item -LiteralPath $testOutputRoot -Force -ErrorAction SilentlyContinue
+    if ($outputItem -and ($outputItem.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0) {
+        throw "ArtifactOutputRoot may not be a reparse point: $testOutputRoot"
+    }
+}
 $preparedRoot = Join-Path $testOutputRoot 'prepared'
 $stageRoot = Join-Path $testOutputRoot ('.prepared-' + [Guid]::NewGuid().ToString('N'))
 $workRoot = Join-Path $stageRoot 'work'
@@ -48,7 +72,12 @@ $workerAssets = @(
     'SIL.Motif.Worker.runtimeconfig.json'
 )
 # Reusing compiler state avoids recompilation; fresh package staging keeps removed assets from surviving.
-$publishBuildRoot = Join-Path $repositoryRoot "bin/.cache/test-artifacts/$Configuration/$runtimeIdentifier"
+$publishBuildRoot = if ($preparePortableWorkerPackage) {
+    Join-Path $repositoryRoot "bin/.cache/test-artifacts/$Configuration/$runtimeIdentifier"
+}
+else {
+    Join-Path $testOutputRoot '.package-build-cache'
+}
 $offlineRestoreConfig = Join-Path $publishBuildRoot 'offline-nuget.config'
 
 function Get-WorkerAssetHashes {
@@ -360,13 +389,13 @@ try {
         })
         Write-JsonFile $sampleSpecPath $sampleSpec
 
-        $sampleBuilderName = if ($targetIsWindows) { 'SIL.Motif.SampleProjects.exe' } else { 'SIL.Motif.SampleProjects' }
-        $sampleBuilder = Join-Path $configurationRoot $sampleBuilderName
-        if (-not (Test-Path -LiteralPath $sampleBuilder -PathType Leaf)) {
-            throw "The SampleProjects apphost is missing: $sampleBuilder"
+        $sampleProjectsAssembly = Join-Path $configurationRoot 'SIL.Motif.SampleProjects.dll'
+        if (-not (Test-Path -LiteralPath $sampleProjectsAssembly -PathType Leaf)) {
+            throw "The SampleProjects assembly is missing: $sampleProjectsAssembly"
         }
+        $dotnetHost = Get-Command dotnet -CommandType Application -ErrorAction Stop
         $sampleOutputRoot = Join-Path $walkthroughRoot 'project-output'
-        $sampleBuildOutput = & $sampleBuilder build $sampleSpecPath $sampleOutputRoot 2>&1
+        $sampleBuildOutput = & $dotnetHost.Source $sampleProjectsAssembly build $sampleSpecPath $sampleOutputRoot 2>&1
         if ($LASTEXITCODE -ne 0) {
             throw "The Explained Word Card project build failed: $($sampleBuildOutput -join [Environment]::NewLine)"
         }

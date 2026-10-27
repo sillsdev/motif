@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.Data.Sqlite;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.PanGloss;
@@ -39,24 +40,38 @@ public sealed class WorkStepsReadingTests : IDisposable
     [Fact]
     public void ABatchTsvThatDeclaresStepColumnsHasThemRead()
     {
-        var tsv = "index\tword\telapsed_ms\tstatus\tsignature\tsteps\twork_steps\n" +
-                  "0\tmotifa\t3\tok\tsig\t12\t345\n" +
-                  "1\tmotifb\t900\tCAP\t-\t200000\t20000000\n";
+        var first = new BatchRow(0, NewWord(), 3, "ok", "sig", 12, 345);
+        var capped = new BatchRow(1, NewWord(), 900, "CAP", "-", 200_000, 20_000_000);
+        var tsv = SerializeRows(
+            ["index", "word", "elapsed_ms", "status", "signature", "steps", "work_steps"],
+            [first, capped], row =>
+                [row.Index.ToString(CultureInfo.InvariantCulture), row.Word,
+                    row.ElapsedMs.ToString(CultureInfo.InvariantCulture), row.Status, row.Signature,
+                    row.Steps!.Value.ToString(CultureInfo.InvariantCulture),
+                    row.WorkSteps!.Value.ToString(CultureInfo.InvariantCulture)]);
 
         var rows = BatchTsvParser.Parse(tsv);
 
         Assert.Equal(2, rows.Count);
         Assert.Equal((12L, 345L), (rows[0].Steps, rows[0].WorkSteps));
+        Assert.Equal(first.Word, rows[0].Word);
         Assert.Equal(WordOutcome.Capped, rows[1].Outcome);
         Assert.Equal((200_000L, 20_000_000L), (rows[1].Steps, rows[1].WorkSteps));
+        Assert.Equal(capped.Word, rows[1].Word);
     }
 
     [Fact]
     public void TheCurrentBatchTsvHasNoStepColumnsAndStillParses()
     {
-        var rows = BatchTsvParser.Parse("0\tmotifa\t3\tok\tsig\n1\tmotifb\t2000\tTIMEOUT\t-\n");
+        var analysed = new BatchRow(0, NewWord(), 3, "ok", "sig");
+        var timedOut = new BatchRow(1, NewWord(), 2000, "TIMEOUT", "-");
+        var rows = BatchTsvParser.Parse(SerializeRows(
+            ["index", "word", "elapsed_ms", "status", "signature"], [analysed, timedOut], row =>
+                [row.Index.ToString(CultureInfo.InvariantCulture), row.Word,
+                    row.ElapsedMs.ToString(CultureInfo.InvariantCulture), row.Status, row.Signature]));
 
         Assert.Equal([WordOutcome.Analysed, WordOutcome.TimedOut], rows.Select(row => row.Outcome));
+        Assert.Equal([analysed.Word, timedOut.Word], rows.Select(row => row.Word));
         Assert.All(rows, row => Assert.Null(row.Steps));
         Assert.All(rows, row => Assert.Null(row.WorkSteps));
     }
@@ -134,4 +149,24 @@ public sealed class WorkStepsReadingTests : IDisposable
             """;
         command.ExecuteNonQuery();
     }
+
+    private static string SerializeRows<T>(IReadOnlyList<string> columns, IEnumerable<T> rows,
+        Func<T, IReadOnlyList<string>> values)
+    {
+        var serialized = new List<string[]> { columns.ToArray() };
+        foreach (var row in rows)
+        {
+            var fields = values(row).ToArray();
+            if (fields.Length != columns.Count || fields.Any(field => field.Contains('\t') || field.Contains('\n')))
+                throw new ArgumentException("Each TSV row must provide one plain value per declared column.");
+            serialized.Add(fields);
+        }
+
+        return string.Join("\n", serialized.Select(fields => string.Join("\t", fields))) + "\n";
+    }
+
+    private static string NewWord() => "word-" + Guid.NewGuid().ToString("N");
+
+    private sealed record BatchRow(int Index, string Word, int ElapsedMs, string Status, string Signature,
+        long? Steps = null, long? WorkSteps = null);
 }

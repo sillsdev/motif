@@ -145,6 +145,9 @@ $phaseClocks['build gate'] = [Diagnostics.Stopwatch]::StartNew()
 $buildExitCode = 0
 if ($SkipBuild) {
     Write-Step 'build gate -- SKIPPED (-SkipBuild)'
+    Write-Step 'grammar-data worktree guard'
+    & pwsh -NoProfile -File (Join-Path $repoRoot 'tools/Check-GrammarData.ps1') -Mode Worktree -RepositoryRoot $repoRoot
+    $buildExitCode = $LASTEXITCODE
 }
 else {
     $buildArguments = @{ Configuration = $Configuration }
@@ -219,6 +222,16 @@ if (-not $Project) {
     Write-Step 'PanGloss interface regression'
     & pwsh -NoProfile -File (Join-Path $repoRoot 'tools/Test-PanGlossInterfaces.Tests.ps1') -Configuration $Configuration
     Write-PhaseDuration 'PanGloss interface regression'
+    if ($LASTEXITCODE -ne 0) {
+        Write-PhaseDuration 'whole gate'
+        exit 1
+    }
+
+    $phaseClocks['artifact preparation host regression'] = [Diagnostics.Stopwatch]::StartNew()
+    Write-Step 'artifact preparation host regression'
+    & pwsh -NoProfile -File (Join-Path $repoRoot 'tools/Test-PrepareTestArtifacts.Tests.ps1') `
+        -Configuration $Configuration
+    Write-PhaseDuration 'artifact preparation host regression'
     if ($LASTEXITCODE -ne 0) {
         Write-PhaseDuration 'whole gate'
         exit 1

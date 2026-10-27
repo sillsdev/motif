@@ -22,6 +22,11 @@ $testRoot = Join-Path $repoRoot "bin/.cache/pangloss-interface-test-$([guid]::Ne
 [System.IO.Directory]::CreateDirectory($testRoot) | Out-Null
 $behaviorPath = Join-Path $testRoot 'fake-behavior.json'
 $previousBehavior = $env:FAKE_PANGLOSS_BEHAVIOUR_PATH
+$dotnetRootNames = @('DOTNET_ROOT', 'DOTNET_ROOT_X64', 'DOTNET_ROOT_ARM64')
+$previousDotnetRoots = @{}
+foreach ($name in $dotnetRootNames) {
+    $previousDotnetRoots[$name] = [Environment]::GetEnvironmentVariable($name, 'Process')
+}
 $gate = Join-Path $PSScriptRoot 'Test-PanGlossInterfaces.ps1'
 
 function New-FakeParser {
@@ -70,9 +75,20 @@ try {
     } | ConvertTo-Json -Depth 6
     [System.IO.File]::WriteAllText($behaviorPath, $validBehavior, [System.Text.UTF8Encoding]::new($false))
     Invoke-Gate $validParser $validProbe
-    Write-Host 'PanGloss interface gate rejects a wrong grammar-health schema and accepts the pinned interface.' -ForegroundColor Green
+
+    $env:DOTNET_ROOT = Join-Path $repoRoot "bin/$Configuration"
+    foreach ($name in @('DOTNET_ROOT_X64', 'DOTNET_ROOT_ARM64')) {
+        [Environment]::SetEnvironmentVariable($name, $null, 'Process')
+    }
+    [Environment]::SetEnvironmentVariable('FAKE_PANGLOSS_BEHAVIOUR_PATH', $null, 'Process')
+    $sampleProjectsProbe = Join-Path $testRoot 'sample-projects-runtime-root'
+    Invoke-Gate $pinnedPath $sampleProjectsProbe
+    Write-Host 'PanGloss interface gate rejects a wrong schema, accepts the pinned interface, and generates a real probe through the SDK host under the package runtime root.' -ForegroundColor Green
 }
 finally {
     $env:FAKE_PANGLOSS_BEHAVIOUR_PATH = $previousBehavior
+    foreach ($name in $dotnetRootNames) {
+        [Environment]::SetEnvironmentVariable($name, $previousDotnetRoots[$name], 'Process')
+    }
     if (Test-Path -LiteralPath $testRoot) { Remove-Item -LiteralPath $testRoot -Recurse -Force }
 }

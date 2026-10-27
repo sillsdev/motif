@@ -156,11 +156,12 @@ public sealed class EntryPointStartupTests
     {
         var repositoryRoot = Path.GetFullPath(Path.Combine(BuildOutput.ProductDirectory, "..", ".."));
         var release = File.ReadAllText(Path.Combine(repositoryRoot, "tools/package-release.ps1"));
-        var appPublish = release.IndexOf("Publish-MotifProject (Join-Path $repoRoot 'src/SIL.Motif.App/SIL.Motif.App.csproj') $stage", StringComparison.Ordinal);
-        var cliPublish = release.IndexOf("Publish-MotifProject (Join-Path $repoRoot 'src/SIL.Motif.Cli/SIL.Motif.Cli.csproj') $stage", StringComparison.Ordinal);
-        var workerPublish = release.IndexOf("Publish-MotifProject (Join-Path $repoRoot 'src/SIL.Motif.Worker/SIL.Motif.Worker.csproj') $workerPublishDirectory", StringComparison.Ordinal);
-        var workerCopy = release.IndexOf("Copy-Item -LiteralPath $workerAssetSource -Destination $workerAssetDestination -Force", StringComparison.Ordinal);
-        var runtimeConfigCheck = release.IndexOf("includedFrameworks", StringComparison.Ordinal);
+        var normalizedRelease = System.Text.RegularExpressions.Regex.Replace(release, @"[ \t]*`(?:\r\n|\n|\r)[ \t]*", " ");
+        var appPublish = normalizedRelease.IndexOf("Publish-MotifProject (Join-Path $repoRoot 'src/SIL.Motif.App/SIL.Motif.App.csproj') $stage $frontEndBuildDirectory", StringComparison.Ordinal);
+        var cliPublish = normalizedRelease.IndexOf("Publish-MotifProject (Join-Path $repoRoot 'src/SIL.Motif.Cli/SIL.Motif.Cli.csproj') $stage $frontEndBuildDirectory", StringComparison.Ordinal);
+        var workerPublish = normalizedRelease.IndexOf("Publish-MotifProject (Join-Path $repoRoot 'src/SIL.Motif.Worker/SIL.Motif.Worker.csproj') $workerPublishDirectory $workerBuildDirectory", StringComparison.Ordinal);
+        var workerCopy = normalizedRelease.IndexOf("Copy-Item -LiteralPath $workerAssetSource -Destination $workerAssetDestination -Force", StringComparison.Ordinal);
+        var runtimeConfigCheck = normalizedRelease.IndexOf("includedFrameworks", StringComparison.Ordinal);
 
         Assert.True(appPublish >= 0 && cliPublish > appPublish && workerPublish > cliPublish &&
                     workerCopy > workerPublish && runtimeConfigCheck > workerCopy,
@@ -168,7 +169,9 @@ public sealed class EntryPointStartupTests
         Assert.Contains("SIL.Motif.App.runtimeconfig.json", release, StringComparison.Ordinal);
         Assert.Contains("motif.runtimeconfig.json", release, StringComparison.Ordinal);
         Assert.Contains("SIL.Motif.Worker.runtimeconfig.json", release, StringComparison.Ordinal);
-        Assert.Contains("$workerPublishDirectory $workerBuildDirectory", release, StringComparison.Ordinal);
+        Assert.Contains("$frontEndBuildDirectory = (Join-Path $intermediateRoot 'front-end-build')", normalizedRelease, StringComparison.Ordinal);
+        Assert.Contains("$workerBuildDirectory = (Join-Path $intermediateRoot 'worker-build')", normalizedRelease, StringComparison.Ordinal);
+        Assert.Contains("$workerPublishDirectory $workerBuildDirectory", normalizedRelease, StringComparison.Ordinal);
         Assert.Contains("-p:MotifBinRoot=$BuildOutputRoot", release, StringComparison.Ordinal);
         var unixSmoke = File.ReadAllText(Path.Combine(repositoryRoot, "tools/package-smoke-unix.sh"));
         Assert.Contains("cmp -- \"$staged_worker_runtime_config\" \"$worker_runtime_config\"", unixSmoke, StringComparison.Ordinal);

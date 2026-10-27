@@ -21,6 +21,22 @@ index as well as the working tree before committing. Named staging alone does no
 files already staged: use a clean isolated worktree or an explicitly scoped commit, and verify the
 commit's complete path list. Never clear someone else's index to make a commit easier.
 
+### Local grammar-data commit hook
+
+`pwsh ./tools/Install-GrammarDataHook.ps1` installs a worktree-local pre-commit adapter. It preserves
+the prior active hook directory and delegates its hooks; the pre-commit adapter runs the original
+pre-commit first, then checks the actual Git index. Re-running the installer keeps the same original
+hook directory. The installer uses repository worktree configuration so one linked worktree does not
+change its neighbors. Build and test commands never install hooks. The hook needs Git and PowerShell 7;
+if either the checker or its runtime is missing, the commit fails. `--no-verify` and clients that do
+not run Git hooks can bypass this local check, so CI independently checks the named range and tip.
+
+The checker reports only the path, rule and SHA-256 of recognized bytes. Supported project identities,
+populated grammar structures, simple source literals and bounded encodings are rejected; suspicious
+opaque carriers are reported for review. It is a finite recognizer, not proof that arbitrary source or
+an encrypted or steganographic file contains no language data. Never add private or self-generated
+grammar data to the repository, even if this checker does not recognize it.
+
 ### Review range and evidence
 
 Discover the GitHub repository from the configured remote; do not copy a stale repository URL into a

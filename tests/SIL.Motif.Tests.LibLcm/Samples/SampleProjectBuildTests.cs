@@ -72,25 +72,23 @@ public sealed class SampleProjectBuildTests
         Directory.CreateDirectory(root);
         try
         {
+            var fixture = RuntimeSampleProjectFixture.Create("runtime-genesis");
+            var tokens = fixture.Tokens;
+            fixture.Sample.Phonemes = tokens.Phonemes.Take(2).ToArray();
+            fixture.Sample.NaturalClasses =
+            [
+                new(tokens.VowelClassId, tokens.Id + " first segment", tokens.VowelClassAbbreviation,
+                    [tokens.Phonemes[0]]),
+            ];
+            fixture.Sample.PartsOfSpeech = [new(tokens.NounId, tokens.NounName)];
+            fixture.Sample.Stems = [new(tokens.NounId, tokens.NounForm, tokens.NounId, tokens.Id + " gloss")];
+            fixture.Sample.Affixes.Clear();
+            fixture.Sample.AffixSlots.Clear();
+            fixture.Sample.AffixTemplates =
+                [new(tokens.NounTemplateId, tokens.NounTemplateName, tokens.NounId, Final: true)];
+            fixture.Sample.Texts = [new(tokens.TextId, tokens.TextTitle, [tokens.NounForm])];
             var specPath = Path.Combine(root, "genesis.json");
-            await File.WriteAllTextAsync(specPath, """
-                {
-                  "id": "t17-boundary-genesis",
-                  "title": "Boundary genesis fixture",
-                  "teaches": ["FieldWorks boundaries"],
-                  "summary": "A minimal generated project for boundary authoring.",
-                  "disclaimer": "Synthetic test data.",
-                  "description": "Boundary genesis fixture.",
-                  "language": { "name": "French", "tag": "fr" },
-                  "phonemes": ["a", "b"],
-                  "naturalClasses": [
-                    { "id": "vowels", "name": "Vowels", "abbreviation": "V", "phonemes": ["a"] }
-                  ],
-                  "partsOfSpeech": [{ "id": "noun", "name": "Noun" }],
-                  "stems": [{ "id": "stem", "form": "a", "partOfSpeech": "noun", "gloss": "a" }],
-                  "texts": [{ "id": "text", "title": "Fixture text", "sentences": ["a"] }]
-                }
-                """);
+            await RuntimeSampleProjectFixture.WriteSampleAsync(specPath, fixture.Sample);
 
             var builder = Path.Combine(BuildOutput.ProductDirectory,
                 OperatingSystem.IsWindows() ? "SIL.Motif.SampleProjects.exe" : "SIL.Motif.SampleProjects");
@@ -108,9 +106,9 @@ public sealed class SampleProjectBuildTests
             {
                 var set = Assert.Single(live.LangProject.PhonologicalDataOA.PhonemeSetsOS);
                 var a = Assert.Single(set.PhonemesOC, phoneme =>
-                    phoneme.Name.get_String(live.DefaultVernWs)?.Text == "a");
+                    phoneme.Name.get_String(live.DefaultVernWs)?.Text == tokens.Phonemes[0]);
                 var b = Assert.Single(set.PhonemesOC, phoneme =>
-                    phoneme.Name.get_String(live.DefaultVernWs)?.Text == "b");
+                    phoneme.Name.get_String(live.DefaultVernWs)?.Text == tokens.Phonemes[1]);
                 var ruleOperations = AuthorPhonologicalRuleComposer.Build(live,
                     new AuthorPhonologicalRuleIntent("First rule", PhonologicalRuleDirection.Simultaneous,
                         [new(Phoneme: CanonicalId.FromGuid(a.Guid))], [new(Phoneme: CanonicalId.FromGuid(b.Guid))],

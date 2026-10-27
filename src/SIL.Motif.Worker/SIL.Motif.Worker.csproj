@@ -3,8 +3,27 @@
     <OutputType>Exe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
     <IsPackable>false</IsPackable>
+    <AddSyntheticProjectReferencesForSolutionDependencies>false</AddSyntheticProjectReferencesForSolutionDependencies>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\SIL.Motif.Worker.Runtime\SIL.Motif.Worker.Runtime.csproj" />
   </ItemGroup>
+  <ItemGroup Condition="'$(BuildingSolutionFile)' == 'true'">
+    <ProjectReference Include="..\SIL.Motif.App\SIL.Motif.App.csproj" ReferenceOutputAssembly="false" Private="false" />
+    <ProjectReference Include="..\SIL.Motif.Cli\SIL.Motif.Cli.csproj" ReferenceOutputAssembly="false" Private="false" />
+  </ItemGroup>
+  <Target Name="MotifProtectFrontendBuildOutputs" AfterTargets="_CleanGetCurrentAndPriorFileWrites"
+          Condition="'$(MOTIF_PACKAGE_INTERMEDIATE_ROOT)' == ''">
+    <ReadLinesFromFile File="$(MSBuildThisFileDirectory)..\SIL.Motif.App\obj\$(Configuration)\SIL.Motif.App.csproj.FileListAbsolute.txt"
+                       Condition="Exists('$(MSBuildThisFileDirectory)..\SIL.Motif.App\obj\$(Configuration)\SIL.Motif.App.csproj.FileListAbsolute.txt')">
+      <Output TaskParameter="Lines" ItemName="_MotifFrontendFileWrites" />
+    </ReadLinesFromFile>
+    <ReadLinesFromFile File="$(MSBuildThisFileDirectory)..\SIL.Motif.Cli\obj\$(Configuration)\SIL.Motif.Cli.csproj.FileListAbsolute.txt"
+                       Condition="Exists('$(MSBuildThisFileDirectory)..\SIL.Motif.Cli\obj\$(Configuration)\SIL.Motif.Cli.csproj.FileListAbsolute.txt')">
+      <Output TaskParameter="Lines" ItemName="_MotifFrontendFileWrites" />
+    </ReadLinesFromFile>
+    <ItemGroup>
+      <_CleanPriorFileWrites Remove="@(_MotifFrontendFileWrites)" />
+    </ItemGroup>
+  </Target>
 </Project>

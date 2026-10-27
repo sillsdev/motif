@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text.Json;
 using Microsoft.Data.Sqlite;
 using SIL.Motif.Host.PanGloss;
@@ -8,6 +9,7 @@ using SIL.LCModel.Infrastructure;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Worker.Assess;
 using SIL.Motif.Worker.Store;
+using SIL.Motif.Tests.Samples;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 
@@ -139,38 +141,51 @@ public sealed class RealParserBatchTests(PristineProjectFixture pristine)
     }
 
     [RealParserFact]
-    public async Task ExhaustedStepBudgetReturnsPerWordCapsAndContinuesTheBatch()
+    public async Task ExhaustedPerWordBudgetReturnsPerWordCapsAndContinuesTheBatch()
     {
-        const string grammar = """
-            <HermitCrabInput><Language><Name>BoundedSuffix</Name>
-            <PartsOfSpeech><PartOfSpeech id="pos"><Name>Noun</Name></PartOfSpeech></PartsOfSpeech>
-            <CharacterDefinitionTable id="table"><Name>Main</Name><SegmentDefinitions>
-            <SegmentDefinition id="k"><Representations><Representation>k</Representation></Representations></SegmentDefinition>
-            <SegmentDefinition id="a"><Representations><Representation>a</Representation></Representations></SegmentDefinition>
-            <SegmentDefinition id="d"><Representations><Representation>d</Representation></Representations></SegmentDefinition>
-            </SegmentDefinitions></CharacterDefinitionTable>
-            <NaturalClasses><FeatureNaturalClass id="any"><Name>Any</Name></FeatureNaturalClass></NaturalClasses>
-            <Strata><Stratum characterDefinitionTable="table" morphologicalRuleOrder="unordered" morphologicalRules="suffix">
-            <Name>Main</Name><MorphologicalRuleDefinitions>
-            <MorphologicalRule id="suffix" requiredPartsOfSpeech="pos"><Name>Suffix</Name>
-            <MorphologicalSubrules><MorphologicalSubrule id="suffix-form"><MorphologicalInput>
-            <PhoneticSequence id="stem"><OptionalSegmentSequence min="1" max="-1"><SimpleContext naturalClass="any" />
-            </OptionalSegmentSequence></PhoneticSequence></MorphologicalInput><MorphologicalOutput>
-            <CopyFromInput index="stem" /><InsertSegments><PhoneticShape>d</PhoneticShape></InsertSegments>
-            </MorphologicalOutput></MorphologicalSubrule></MorphologicalSubrules></MorphologicalRule>
-            </MorphologicalRuleDefinitions><LexicalEntries><LexicalEntry id="root" partOfSpeech="pos">
-            <Allomorphs><Allomorph id="root-form"><PhoneticShape>ka</PhoneticShape></Allomorph></Allomorphs>
-            </LexicalEntry></LexicalEntries></Stratum></Strata></Language></HermitCrabInput>
-            """;
-        var grammarPath = Path.Combine(Path.GetTempPath(), "motif-cap-" + Guid.NewGuid().ToString("N") + ".xml");
-        File.WriteAllText(grammarPath, grammar);
-        string[] words = ["kadddd", "ak"];
+        var fixture = RuntimeSampleProjectFixture.Create("runtime-batch-cap");
+        var tokens = fixture.Tokens;
+        fixture.Sample.Stems = [fixture.Sample.Stems[0]];
+        fixture.Sample.PartsOfSpeech = [fixture.Sample.PartsOfSpeech[0]];
+        fixture.Sample.AffixTemplates = [fixture.Sample.AffixTemplates[0]];
+        var slots = Enumerable.Range(0, 8).Select(index => tokens.Id + "-suffix-slot-" + index).ToArray();
+        fixture.Sample.AffixSlots.AddRange(slots.Select((slot, index) =>
+            new RuntimeAffixSlotSpec(slot, tokens.Id + " suffix slot " + index, tokens.NounId, Optional: false)));
+        var nounTemplateIndex = fixture.Sample.AffixTemplates.FindIndex(template =>
+            template.Id == tokens.NounTemplateId);
+        fixture.Sample.AffixTemplates[nounTemplateIndex] = fixture.Sample.AffixTemplates[nounTemplateIndex] with
+            { SuffixSlots = slots };
+        // Four alternatives make the eight-slot search reach the two-step work ceiling.
+        var suffixAllomorphs = Enumerable.Range(0, slots.Length / 2)
+            .Select(index => new RuntimeAllomorphSpec(
+                tokens.Id + "-suffix-form-" + index, tokens.SuffixForm))
+            .ToArray();
+        fixture.Sample.Affixes.Add(new(tokens.Id + "-suffix", tokens.NounId, slots,
+            tokens.Id + " repeated suffix", suffixAllomorphs));
+        var cappedWord = tokens.NounForm + string.Concat(Enumerable.Repeat(tokens.SuffixForm, slots.Length));
+        var nonParseWord = tokens.PrefixForm;
+        Assert.Contains(nonParseWord, fixture.Sample.Phonemes);
+        var root = Path.Combine(BuildOutput.ProductDirectory, "RealParserBatch", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        var specPath = Path.Combine(root, "sample.json");
+        await RuntimeSampleProjectFixture.WriteSampleAsync(specPath, fixture.Sample);
+        var builder = Path.Combine(BuildOutput.ProductDirectory,
+            OperatingSystem.IsWindows() ? "SIL.Motif.SampleProjects.exe" : "SIL.Motif.SampleProjects");
+        var build = new ProcessStartInfo(builder);
+        build.ArgumentList.Add("build");
+        build.ArgumentList.Add(specPath);
+        build.ArgumentList.Add(Path.Combine(root, "output"));
+        var buildResult = ToolProcess.Run(build);
+        Assert.True(buildResult.ExitCode == 0, buildResult.Error);
+        using var builtProject = JsonDocument.Parse(buildResult.Output);
+        var projectPath = builtProject.RootElement.GetProperty("projectPath").GetString()!;
+        string[] words = [cappedWord, nonParseWord];
         using var invoker = new PanGlossInvoker();
         using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(60));
         try
         {
             var outcome = await invoker.RunAsync(
-                new PanGlossRequest.Batch(grammarPath, words, TimeSpan.FromSeconds(1), PerWordStepLimit: 1)
+                new PanGlossRequest.Batch(projectPath, words, TimeSpan.FromSeconds(1), PerWordStepLimit: 2)
                     { CollectAnalyses = true },
                 "test:per-word-cap", cancellation.Token, wallClockCap: TimeSpan.FromSeconds(30));
             Assert.True(outcome is PanGlossOutcome.Completed, outcome.Message);
@@ -184,7 +199,12 @@ public sealed class RealParserBatchTests(PristineProjectFixture pristine)
             Assert.False(evidence[1].Capped);
             Assert.Contains("CAP", completed.StandardError);
         }
-        finally { File.Delete(grammarPath); }
+        finally
+        {
+            try { Directory.Delete(root, recursive: true); }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
+        }
     }
 
     [RealParserFact]

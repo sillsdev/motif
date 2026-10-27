@@ -7,6 +7,7 @@
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
     <InvariantGlobalization>false</InvariantGlobalization>
+    <DefineConstants>$(DefineConstants);GRAMMAR_DATA_HYGIENE_UNDER_TEST</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>
@@ -25,6 +26,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="..\..\tools\GrammarDataHygiene\grammar-data-hygiene.cs" Link="GrammarDataHygiene\grammar-data-hygiene.cs" />
     <None Include="Parser\Fixtures\*" CopyToOutputDirectory="PreserveNewest" />
     <None Include="Texts\Fixtures\*" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\..\evals\test-grammars.lock.json" Link="test-grammars.lock.json" CopyToOutputDirectory="PreserveNewest" />

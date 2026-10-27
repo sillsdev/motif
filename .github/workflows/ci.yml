@@ -36,10 +36,43 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
+
+      - name: Check grammar-data range, checkout tip and worktree
+        id: grammar-data
+        shell: pwsh
+        run: |
+          $event = Get-Content -LiteralPath $env:GITHUB_EVENT_PATH -Raw | ConvertFrom-Json
+          $qualifiedBase = '52c1c239ffb3437684a65662ab5395b23eab37fc'
+          switch ($env:GITHUB_EVENT_NAME) {
+            'pull_request' {
+              $base = [string] $event.pull_request.base.sha
+              $head = [string] $event.pull_request.head.sha
+            }
+            'push' {
+              $base = [string] $event.before
+              $head = [string] $event.after
+              if ([string]::IsNullOrWhiteSpace($base) -or $base -match '^0+$') { $base = $qualifiedBase }
+            }
+            default {
+              $base = $qualifiedBase
+              $head = $env:GITHUB_SHA
+            }
+          }
+          if ([string]::IsNullOrWhiteSpace($base) -or [string]::IsNullOrWhiteSpace($head)) { throw 'The event has no authoritative grammar-data base and head.' }
+          "base=$base" >> $env:GITHUB_OUTPUT
+          "head=$head" >> $env:GITHUB_OUTPUT
+          ./tools/Check-GrammarData.ps1 -Mode Range -RepositoryRoot (Get-Location).Path -Base $base -Head $head
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ./tools/Check-GrammarData.ps1 -Mode Tip -RepositoryRoot (Get-Location).Path -Head $env:GITHUB_SHA
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ./tools/Check-GrammarData.ps1 -Mode Worktree -RepositoryRoot (Get-Location).Path
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Provision approved synthetic sample inputs
         shell: pwsh
@@ -151,6 +184,19 @@ jobs:
       - name: Require released PanGloss integration results
         shell: pwsh
         run: ./tools/Assert-RequiredPanGloss.ps1 -ResultsDirectory (Join-Path (Get-Location).Path 'bin/Release/test-results')
+
+      - name: Recheck grammar-data range, checkout tip and worktree
+        shell: pwsh
+        env:
+          GRAMMAR_DATA_BASE: ${{ steps.grammar-data.outputs.base }}
+          GRAMMAR_DATA_HEAD: ${{ steps.grammar-data.outputs.head }}
+        run: |
+          ./tools/Check-GrammarData.ps1 -Mode Range -RepositoryRoot (Get-Location).Path -Base $env:GRAMMAR_DATA_BASE -Head $env:GRAMMAR_DATA_HEAD
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ./tools/Check-GrammarData.ps1 -Mode Tip -RepositoryRoot (Get-Location).Path -Head $env:GITHUB_SHA
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ./tools/Check-GrammarData.ps1 -Mode Worktree -RepositoryRoot (Get-Location).Path
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Verify PanGloss pin mode handling
         shell: pwsh

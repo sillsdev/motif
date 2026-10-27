@@ -105,6 +105,13 @@ elseif ($env:LOCAL_NUGET_REPO) {
     Write-Host "==> LOCAL_NUGET_REPO is set but '$env:LOCAL_NUGET_REPO' does not exist -- ignoring" -ForegroundColor Yellow
 }
 
+Write-Step 'grammar-data worktree guard'
+& pwsh -NoProfile -File (Join-Path $repoRoot 'tools/Check-GrammarData.ps1') -Mode Worktree -RepositoryRoot $repoRoot
+if ($LASTEXITCODE -ne 0) {
+    Write-Host 'Grammar-data worktree guard failed.' -ForegroundColor Red
+    exit $LASTEXITCODE
+}
+
 if ($SkipHygiene) {
     Write-Step 'comment and design-token hygiene -- SKIPPED (-SkipHygiene)'
 }

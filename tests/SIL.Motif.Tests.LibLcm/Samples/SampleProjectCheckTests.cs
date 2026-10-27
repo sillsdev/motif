@@ -16,34 +16,22 @@ public sealed class SampleProjectCheckTests
 
         try
         {
+            var fixture = RuntimeSampleProjectFixture.Create("runtime-check");
+            var tokens = fixture.Tokens;
+            fixture.Sample.Stems = [fixture.Sample.Stems[0]];
+            fixture.Sample.PartsOfSpeech = [fixture.Sample.PartsOfSpeech[0]];
+            fixture.Sample.AffixTemplates = [fixture.Sample.AffixTemplates[0]];
+            fixture.Sample.Texts = [new(tokens.TextId, tokens.TextTitle, [tokens.NounForm])];
             var samplePath = Path.Combine(root, "sample.json");
             var bugsPath = Path.Combine(root, "bugs.json");
-            await File.WriteAllTextAsync(samplePath, """
-                {
-                  "id": "sample-check",
-                  "title": "Synthetic check sample",
-                  "disclaimer": "SYNTHETIC EXAMPLE. This language data was generated to demonstrate Motif. It is modelled loosely on Turkish, but it is not real Turkish, has not been checked by speakers, and must not be used as a description of any language.",
-                  "description": "SYNTHETIC EXAMPLE. This language data was generated to demonstrate Motif. It is modelled loosely on Turkish, but it is not real Turkish, has not been checked by speakers, and must not be used as a description of any language.",
-                  "teaches": ["sample checking"],
-                  "summary": "A tiny sample for checking the builder.",
-                  "language": { "name": "Synthetic check", "tag": "tr" },
-                  "phonemes": ["a", "r"],
-                  "partsOfSpeech": [{ "id": "noun", "name": "Noun" }],
-                  "stems": [{ "id": "word", "form": "ar", "partOfSpeech": "noun", "gloss": "word" }],
-                  "affixTemplates": [{ "id": "noun", "name": "Noun", "partOfSpeech": "noun", "final": true }],
-                  "texts": [{ "id": "example", "title": "Example", "sentences": ["ar"] }]
-                }
-                """);
-            await File.WriteAllTextAsync(bugsPath, """
-                [{
-                  "id": "duplicate-template",
-                  "title": "Duplicate template",
-                  "disclaimer": "SYNTHETIC EXAMPLE. This language data was generated to demonstrate Motif. It is modelled loosely on Turkish, but it is not real Turkish, has not been checked by speakers, and must not be used as a description of any language.",
-                  "symptom": { "kind": "slow", "words": ["ar"], "reason": "A duplicated template adds another path." },
-                  "fix": ["Keep one noun template."],
-                  "patch": [{ "op": "duplicateTemplate", "templateId": "noun", "count": 1 }]
-                }]
-                """);
+            const string duplicateTemplateVariant = "duplicate-template";
+            await RuntimeSampleProjectFixture.WriteSampleAsync(samplePath, fixture.Sample);
+            var bug = new RuntimeBugSpec(duplicateTemplateVariant, tokens.Id + " duplicate template",
+                fixture.Sample.Disclaimer,
+                new("slow", [tokens.NounForm], "A duplicated template adds another parser path."),
+                ["Keep the original noun template."],
+                [new("duplicateTemplate", TemplateId: tokens.NounTemplateId, Count: 1)]);
+            await RuntimeSampleProjectFixture.WriteBugsAsync(bugsPath, [bug]);
 
             var builder = Path.Combine(BuildOutput.ProductDirectory,
                 OperatingSystem.IsWindows() ? "SIL.Motif.SampleProjects.exe" : "SIL.Motif.SampleProjects");
@@ -72,8 +60,9 @@ public sealed class SampleProjectCheckTests
             Assert.Contains("[fixed] grammar-health errors=", standardError);
             Assert.Contains("[duplicate-template] grammar-health errors=", standardError);
             Assert.DoesNotContain("[all-bugs] grammar-health", standardError);
-            Assert.Contains("[fixed] word ar outcome=analysed", standardError);
-            Assert.Contains("[duplicate-template] word ar outcome=analysed", standardError);
+            Assert.Contains($"[fixed] word {tokens.NounForm} outcome=analysed", standardError);
+            Assert.Contains($"[{duplicateTemplateVariant}] grammar-health errors=", standardError);
+            Assert.Contains($"[{duplicateTemplateVariant}] word {tokens.NounForm} outcome=analysed", standardError);
             foreach (var line in standardError.Split('\n').Where(line => line.Contains("finding code=", StringComparison.Ordinal)))
                 Assert.Matches("^\\[[^]]+\\] finding code=\\S+ level=(error|warning|info) description=.+\\r?$", line);
         }

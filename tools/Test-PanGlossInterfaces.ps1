@@ -173,13 +173,14 @@ $ProbeRoot = [System.IO.Path]::GetFullPath($ProbeRoot)
 if (Test-Path -LiteralPath $ProbeRoot) { throw "PanGloss interface probe directory already exists: $ProbeRoot" }
 [System.IO.Directory]::CreateDirectory($ProbeRoot) | Out-Null
 try {
-    $sampleProjectsName = if ($IsWindows) { 'SIL.Motif.SampleProjects.exe' } else { 'SIL.Motif.SampleProjects' }
-    $sampleProjectsPath = Join-Path $RepositoryRoot "bin/$Configuration/$sampleProjectsName"
+    $sampleProjectsPath = Join-Path $RepositoryRoot "bin/$Configuration/SIL.Motif.SampleProjects.dll"
     if (-not (Test-Path -LiteralPath $sampleProjectsPath -PathType Leaf)) {
         throw "SampleProjects is missing; build it with ./build.ps1: $sampleProjectsPath"
     }
+    $dotnetHost = Get-Command dotnet -CommandType Application -ErrorAction Stop
     $generatedRoot = Join-Path $ProbeRoot 'generated'
-    $generation = Invoke-ChildProcess $sampleProjectsPath @('interface-probe', $generatedRoot) 'SampleProjects'
+    $generation = Invoke-ChildProcess $dotnetHost.Source @(
+        $sampleProjectsPath, 'interface-probe', $generatedRoot) 'SampleProjects'
     if ($generation.ExitCode -ne 0) {
         throw "PanGloss interface probe generation failed with exit $($generation.ExitCode). $($generation.StandardError.Trim())"
     }

@@ -1,0 +1,3 @@
+<Project>
+  <!-- Prevents repository publish targets from reaching this file-based tool. -->
+</Project>

@@ -40,6 +40,7 @@ using SIL.Motif.Runner.Operations;
 using SIL.Motif.Runner.Retirement;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Tests.Parser;
+using SIL.Motif.Tests.Samples;
 using SIL.Motif.Worker.Assess;
 using SIL.Motif.Worker.Baselines;
 using SIL.Motif.Worker.Jobs;
@@ -238,13 +239,70 @@ public sealed partial class AllomorphRuleRetirementAcceptanceTests(
         using (var controlResult = JsonDocument.Parse(File.ReadAllText(controlTracePath)))
             Assert.Empty(controlResult.RootElement.GetProperty("result").GetProperty("analyses").EnumerateArray());
 
-        var heldOutGrammar = Path.Combine(_root, "heldout.xml");
-        File.WriteAllText(heldOutGrammar, HeldOutGrammar());
-        var generated = Run(parser, "generate", heldOutGrammar, "HELDOUT");
+        var heldOutRoot = Path.Combine(_root, "heldout-runtime");
+        Directory.CreateDirectory(heldOutRoot);
+        var heldOutFixture = RuntimeSampleProjectFixture.Create("retirement-held-out");
+        var heldOutTokens = heldOutFixture.Tokens;
+        var context = heldOutTokens.Phonemes[1];
+        var input = heldOutTokens.Phonemes[4];
+        var replacement = heldOutTokens.Phonemes[5];
+        var heldOutStem = string.Concat(heldOutTokens.Phonemes[0], heldOutTokens.Phonemes[2], context,
+            input, context);
+        var heldOutSurface = string.Concat(heldOutTokens.Phonemes[0], heldOutTokens.Phonemes[2], context,
+            replacement, context);
+        heldOutFixture.Sample.PartsOfSpeech = [heldOutFixture.Sample.PartsOfSpeech[0]];
+        heldOutFixture.Sample.Stems =
+            [new(heldOutTokens.Id + "-held-out-stem", heldOutStem, heldOutTokens.NounId,
+                heldOutTokens.Id + " held-out gloss")];
+        heldOutFixture.Sample.AffixTemplates.Clear();
+        heldOutFixture.Sample.Texts = [new(heldOutTokens.TextId, heldOutTokens.TextTitle, [heldOutStem])];
+        var heldOutSpec = Path.Combine(heldOutRoot, "sample.json");
+        await RuntimeSampleProjectFixture.WriteSampleAsync(heldOutSpec, heldOutFixture.Sample);
+        var builder = Path.Combine(BuildOutput.ProductDirectory,
+            OperatingSystem.IsWindows() ? "SIL.Motif.SampleProjects.exe" : "SIL.Motif.SampleProjects");
+        var sampleBuild = Run(builder, "build", heldOutSpec, Path.Combine(heldOutRoot, "output"));
+        Assert.Equal(0, sampleBuild.ExitCode);
+        using var builtHeldOut = JsonDocument.Parse(sampleBuild.Output);
+        var heldOutProject = builtHeldOut.RootElement.GetProperty("projectPath").GetString()!;
+        var heldOutEntryGuid = Guid.Empty;
+        var heldOutMsaGuid = Guid.Empty;
+        using (var heldOutCache = new FwDataProjectLoader().LoadScratchCache(heldOutProject))
+        {
+            var phonemes = heldOutCache.LangProject.PhonologicalDataOA.PhonemeSetsOS.Single().PhonemesOC;
+            var inputPhoneme = phonemes.Single(item =>
+                item.Name.get_String(heldOutCache.DefaultVernWs)?.Text == input);
+            var outputPhoneme = phonemes.Single(item =>
+                item.Name.get_String(heldOutCache.DefaultVernWs)?.Text == replacement);
+            var contextClass = heldOutCache.LangProject.PhonologicalDataOA.NaturalClassesOS
+                .OfType<IPhNCSegments>().Single(item =>
+                    item.Name.get_String(heldOutCache.DefaultAnalWs)?.Text == heldOutTokens.Id + " vowels");
+            var rule = AuthorPhonologicalRuleComposer.Build(heldOutCache,
+                new(heldOutTokens.Id + " context rule", PhonologicalRuleDirection.Simultaneous,
+                    [new(Phoneme: CanonicalId.FromGuid(inputPhoneme.Guid))],
+                    [new(Phoneme: CanonicalId.FromGuid(outputPhoneme.Guid))],
+                    [new(NaturalClass: CanonicalId.FromGuid(contextClass.Guid))],
+                    [new(NaturalClass: CanonicalId.FromGuid(contextClass.Guid))]));
+            Apply(heldOutCache, rule);
+            new FwDataProjectLoader().Save(heldOutCache);
+            var heldOutEntry = heldOutCache.LangProject.LexDbOA.Entries.Single(entry =>
+                entry.LexemeFormOA is IMoStemAllomorph form &&
+                form.Form.get_String(heldOutCache.DefaultVernWs)?.Text == heldOutStem);
+            heldOutEntryGuid = heldOutEntry.Guid;
+            heldOutMsaGuid = Assert.IsAssignableFrom<IMoStemMsa>(
+                Assert.Single(heldOutEntry.MorphoSyntaxAnalysesOC)).Guid;
+            heldOutProject = heldOutCache.ProjectId.Path;
+        }
+        var importedHeldOut = Path.Combine(heldOutRoot, "grammar.json");
+        var heldOutImport = Run(parser, "import", heldOutProject, importedHeldOut);
+        Assert.Equal(0, heldOutImport.ExitCode);
+        var generateRequestPath = Path.Combine(heldOutRoot, "generate-request.json");
+        await RuntimeSampleProjectFixture.WriteGenerateRequestAsync(generateRequestPath,
+            heldOutEntryGuid, heldOutMsaGuid);
+        var generated = Run(parser, "generate", importedHeldOut, "--request", generateRequestPath);
         Assert.Equal(0, generated.ExitCode);
-        Assert.Contains("ikata", generated.Output, StringComparison.Ordinal);
-        var heldOutTracePath = Path.Combine(_root, "heldout.trace.json");
-        var heldOutParse = Run(parser, "parse", heldOutGrammar, "ikata", "--trace=" + heldOutTracePath,
+        Assert.Contains(heldOutSurface, generated.Output, StringComparison.Ordinal);
+        var heldOutTracePath = Path.Combine(heldOutRoot, "heldout.trace.json");
+        var heldOutParse = Run(parser, "parse", importedHeldOut, heldOutSurface, "--trace=" + heldOutTracePath,
             "--trace-format", "json", "--trace-details");
         Assert.Equal(0, heldOutParse.ExitCode);
         using (var heldOutResult = JsonDocument.Parse(File.ReadAllText(heldOutTracePath)))
@@ -263,7 +321,8 @@ public sealed partial class AllomorphRuleRetirementAcceptanceTests(
         output.WriteLine("AlternationFamily before=r~t family across 2 suffixes; rebuilt scratch=0 findings/0 family rows, " +
             "Run=Computed because the retired family is absent and no loaded rule can affect another family.");
         output.WriteLine("Causal witness=trace PhonologicalRuleSynthesis ata; controlled rule removal=ata not analysed.");
-        output.WriteLine("Held-out XML route=generate ikata; parse ikata=analysed.");
+        output.WriteLine($"Held-out FieldWorks request route=generate {heldOutSurface}; " +
+            $"parse {heldOutSurface}=analysed.");
         output.WriteLine($"Trace scratch={retainedProject}");
     }
 
@@ -1193,31 +1252,6 @@ public sealed partial class AllomorphRuleRetirementAcceptanceTests(
             BaselineSemanticDigest.ProjectionVersion, DateTime.UtcNow.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'"),
             BatchInvocationEvidence.DigestFile(cache.ProjectId.Path));
     }
-
-    private static string HeldOutGrammar() => """
-        <HermitCrabInput><Language><Name>RetirementHeldOut</Name>
-          <PartsOfSpeech><PartOfSpeech id="pos"><Name>Noun</Name></PartOfSpeech></PartsOfSpeech>
-          <PhonologicalFeatureSystem><SymbolicFeature id="f"><Name>f</Name><Symbols><Symbol id="fp">positive</Symbol><Symbol id="fn">negative</Symbol></Symbols></SymbolicFeature>
-            <SymbolicFeature id="g"><Name>g</Name><Symbols><Symbol id="gp">positive</Symbol><Symbol id="gn">negative</Symbol></Symbols></SymbolicFeature>
-            <SymbolicFeature id="h"><Name>h</Name><Symbols><Symbol id="hp">positive</Symbol><Symbol id="hn">negative</Symbol></Symbols></SymbolicFeature></PhonologicalFeatureSystem>
-          <CharacterDefinitionTable id="table"><Name>Main</Name><SegmentDefinitions>
-            <SegmentDefinition id="ca"><Representations><Representation>a</Representation></Representations><FeatureValue feature="f" symbolValues="fp"/><FeatureValue feature="g" symbolValues="gp"/><FeatureValue feature="h" symbolValues="hp"/></SegmentDefinition>
-            <SegmentDefinition id="ci"><Representations><Representation>i</Representation></Representations><FeatureValue feature="f" symbolValues="fp"/><FeatureValue feature="g" symbolValues="gp"/><FeatureValue feature="h" symbolValues="hn"/></SegmentDefinition>
-            <SegmentDefinition id="ck"><Representations><Representation>k</Representation></Representations><FeatureValue feature="f" symbolValues="fp"/><FeatureValue feature="g" symbolValues="gn"/><FeatureValue feature="h" symbolValues="hp"/></SegmentDefinition>
-            <SegmentDefinition id="cr"><Representations><Representation>r</Representation></Representations><FeatureValue feature="f" symbolValues="fp"/><FeatureValue feature="g" symbolValues="gn"/><FeatureValue feature="h" symbolValues="hn"/></SegmentDefinition>
-            <SegmentDefinition id="ct"><Representations><Representation>t</Representation></Representations><FeatureValue feature="f" symbolValues="fn"/><FeatureValue feature="g" symbolValues="gp"/><FeatureValue feature="h" symbolValues="hp"/></SegmentDefinition>
-          </SegmentDefinitions></CharacterDefinitionTable>
-          <NaturalClasses><SegmentNaturalClass id="nca"><Name>A</Name><Segment segment="ca"/></SegmentNaturalClass><SegmentNaturalClass id="ncr"><Name>R</Name><Segment segment="cr"/></SegmentNaturalClass><SegmentNaturalClass id="nct"><Name>T</Name><Segment segment="ct"/></SegmentNaturalClass></NaturalClasses>
-          <PhonologicalRuleDefinitions><PhonologicalRule id="pr"><Name>r becomes t between a segments</Name><PhoneticInput><PhoneticSequence><SimpleContext naturalClass="ncr"/></PhoneticSequence></PhoneticInput>
-            <PhonologicalSubrules><PhonologicalSubrule><PhoneticOutput><PhoneticSequence><SimpleContext naturalClass="nct"/></PhoneticSequence></PhoneticOutput><Environment>
-              <LeftEnvironment><PhoneticTemplate><PhoneticSequence><SimpleContext naturalClass="nca"/></PhoneticSequence></PhoneticTemplate></LeftEnvironment>
-              <RightEnvironment><PhoneticTemplate><PhoneticSequence><SimpleContext naturalClass="nca"/></PhoneticSequence></PhoneticTemplate></RightEnvironment>
-            </Environment></PhonologicalSubrule></PhonologicalSubrules></PhonologicalRule></PhonologicalRuleDefinitions>
-          <Strata><Stratum characterDefinitionTable="table" morphologicalRuleOrder="unordered" phonologicalRules="pr"><Name>Main</Name><LexicalEntries>
-            <LexicalEntry id="holdout" partOfSpeech="pos"><Allomorphs><Allomorph id="holdout-form"><PhoneticShape>ikara</PhoneticShape></Allomorph></Allomorphs><MorphemeId>HELDOUT</MorphemeId><Gloss>heldout</Gloss></LexicalEntry>
-          </LexicalEntries></Stratum></Strata>
-        </Language></HermitCrabInput>
-        """;
 
     private static string StripDigest(string digest) => digest.StartsWith("sha256:", StringComparison.Ordinal)
         ? digest["sha256:".Length..] : digest;

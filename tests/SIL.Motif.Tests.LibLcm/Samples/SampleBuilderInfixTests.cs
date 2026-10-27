@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Tests.Parser;
@@ -20,21 +19,22 @@ public sealed class SampleBuilderInfixTests
 
         try
         {
-            var samplePath = await WriteInfixSampleAsync(root);
+            var fixture = await WriteInfixSampleAsync(root);
+            var tokens = fixture.Tokens;
             using var schema = JsonDocument.Parse(await File.ReadAllTextAsync(
                 Path.Combine(RepositoryRoot(), "samples", "sample.schema.json")));
-            using var sample = JsonDocument.Parse(await File.ReadAllTextAsync(samplePath));
+            using var sample = JsonDocument.Parse(await File.ReadAllTextAsync(fixture.SamplePath));
             SampleJsonSchemaValidator.AssertValid(sample.RootElement, schema.RootElement);
-            using var output = await BuildAsync(root, samplePath);
+            using var output = await BuildAsync(root, fixture.SamplePath);
             using var cache = new FwDataProjectLoader().LoadScratchCache(
                 output.RootElement.GetProperty("projectPath").GetString()!);
 
             var entry = cache.LangProject.LexDbOA.Entries.Single(candidate =>
                 candidate.LexemeFormOA is IMoAffixAllomorph form &&
-                form.Form.get_String(cache.DefaultVernWs).Text == "um");
+                form.Form.get_String(cache.DefaultVernWs).Text == tokens.InfixForm);
             var allomorph = Assert.IsAssignableFrom<IMoAffixAllomorph>(entry.LexemeFormOA);
             Assert.Equal(MoMorphTypeTags.kguidMorphInfix, allomorph.MorphTypeRA!.Guid);
-            Assert.Equal("/ # [C] _", allomorph.PositionRS.Single().StringRepresentation.Text);
+            Assert.Equal(tokens.InfixEnvironmentRepresentation, allomorph.PositionRS.Single().StringRepresentation.Text);
         }
         finally
         {
@@ -49,8 +49,9 @@ public sealed class SampleBuilderInfixTests
 
         try
         {
-            var samplePath = await WriteInfixSampleAsync(root);
-            using var output = await BuildAsync(root, samplePath);
+            var fixture = await WriteInfixSampleAsync(root);
+            var tokens = fixture.Tokens;
+            using var output = await BuildAsync(root, fixture.SamplePath);
             var text = Assert.Single(output.RootElement.GetProperty("texts").EnumerateArray());
             var assess = new ProcessStartInfo(BuildOutput.Cli)
             {
@@ -70,7 +71,7 @@ public sealed class SampleBuilderInfixTests
                 $"Motif Assess exited {result.ExitCode}.\n{result.StandardOutput}\n{result.StandardError}");
             using var assessment = JsonDocument.Parse(result.StandardOutput);
             var word = Assert.Single(assessment.RootElement.GetProperty("words").EnumerateArray());
-            Assert.Equal("sumulat", word.GetProperty("word").GetString());
+            Assert.Equal(tokens.InfixResult, word.GetProperty("word").GetString());
             Assert.Equal("analysed", word.GetProperty("outcome").GetString());
         }
         finally
@@ -79,46 +80,24 @@ public sealed class SampleBuilderInfixTests
         }
     }
 
-    private static async Task<string> WriteInfixSampleAsync(string root)
+    private static async Task<WrittenFixture> WriteInfixSampleAsync(string root)
     {
-        var sample = JsonNode.Parse(await File.ReadAllTextAsync(
-            Path.Combine(SyntheticSampleInputs.SampleDirectory(RepositoryRoot(), "synthetic-turkic"), "sample.json")))!.AsObject();
-        sample["stems"]!.AsArray().Add(JsonNode.Parse("""
-            { "id": "sulat", "form": "sulat", "partOfSpeech": "verb", "gloss": "write" }
-            """));
-        sample["affixSlots"]!.AsArray().Add(JsonNode.Parse("""
-            { "id": "infix-slot", "name": "Infix", "partOfSpeech": "verb", "optional": true }
-            """));
-        var verbTemplate = sample["affixTemplates"]!.AsArray().Single(template =>
-            template!["id"]!.GetValue<string>() == "verb")!;
-        verbTemplate["prefixSlots"] = JsonNode.Parse("""["infix-slot"]""");
-        var pastSlot = sample["affixSlots"]!.AsArray().Single(slot => slot!["id"]!.GetValue<string>() == "past")!;
-        pastSlot["optional"] = true;
-        sample["environments"]!.AsArray().Add(JsonNode.Parse("""
-            { "id": "infix-after-initial-c", "name": "After initial consonant", "representation": "/ # [C] _" }
-            """));
-        sample["affixes"]!.AsArray().Add(JsonNode.Parse("""
-            {
-              "id": "infix-um",
-              "partOfSpeech": "verb",
-              "slots": ["infix-slot"],
-              "gloss": "infix",
-              "allomorphs": [{
-                "id": "infix-um-form",
-                "form": "um",
-                "morphType": "infix",
-                "positionEnvironment": "infix-after-initial-c"
-              }]
-            }
-            """));
-        sample["texts"]!.AsArray().Clear();
-        sample["texts"]!.AsArray().Add(JsonNode.Parse("""
-            { "id": "infix-smoke", "title": "Infix test", "sentences": ["sumulat"] }
-            """));
-
+        var runtime = RuntimeSampleProjectFixture.Create("runtime-infix");
+        var sample = runtime.Sample;
+        var tokens = runtime.Tokens;
+        sample.AffixSlots.Add(new(tokens.InfixSlotId, tokens.InfixSlotName, tokens.VerbId, Optional: true));
+        var templateIndex = sample.AffixTemplates.FindIndex(template => template.Id == tokens.VerbTemplateId);
+        sample.AffixTemplates[templateIndex] = sample.AffixTemplates[templateIndex] with
+            { PrefixSlots = [tokens.InfixSlotId] };
+        sample.Environments.Add(new(tokens.InfixEnvironmentId, tokens.Id + " initial position",
+            tokens.InfixEnvironmentRepresentation));
+        sample.Affixes.Add(new(tokens.Id + "-infix-affix", tokens.VerbId, [tokens.InfixSlotId],
+            tokens.Id + " infix", [new(tokens.Id + "-infix-form", tokens.InfixForm,
+                MorphType: "infix", PositionEnvironment: tokens.InfixEnvironmentId)]));
+        sample.Texts = [new(tokens.TextId, tokens.TextTitle, [tokens.InfixResult])];
         var samplePath = Path.Combine(root, "infix-sample.json");
-        await File.WriteAllTextAsync(samplePath, sample.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
-        return samplePath;
+        await RuntimeSampleProjectFixture.WriteSampleAsync(samplePath, sample);
+        return new WrittenFixture(samplePath, tokens);
     }
 
     private static async Task<JsonDocument> BuildAsync(string root, string samplePath)
@@ -162,6 +141,7 @@ public sealed class SampleBuilderInfixTests
     }
 
     private sealed record ProcessResult(int ExitCode, string StandardOutput, string StandardError);
+    private sealed record WrittenFixture(string SamplePath, RuntimeSampleTokens Tokens);
 }
 
 [Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group1)]
