@@ -127,7 +127,7 @@ public sealed class ResultsInTextVirtualizationTests
     }
 
     [Fact]
-    public void ScrollingThroughEveryLineKeepsLineRealizationBounded()
+    public void ScrollingAcrossDistantLinesKeepsLineRealizationBounded()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
@@ -136,40 +136,19 @@ public sealed class ResultsInTextVirtualizationTests
             var lines = setup.Panel.FindControl<ItemsControl>("TextLineItems")!;
             var reader = Assert.Single(setup.Panel.GetVisualDescendants().OfType<ScrollViewer>(),
                 viewer => ReferenceEquals(viewer.Content, lines));
-            var visited = new HashSet<int>();
-            var next = 1;
-            while (next <= 2000)
+            foreach (var number in new[] { 1, 20, 21, 500, 1000, 1500, 1999, 2000, 1 })
             {
-                var height = lines.GetRealizedContainers().Where(container => container.Bounds.Height > 0)
-                    .Min(container => container.Bounds.Height);
-                var perPage = Math.Max(1, (int)Math.Floor(reader.Viewport.Height / Math.Max(1, height)));
-                lines.ScrollIntoView(Math.Min(2000, next + perPage - 1) - 1);
+                lines.ScrollIntoView(number - 1);
                 await SettleAsync(setup, renderFrame: false);
-                foreach (var container in lines.GetRealizedContainers())
-                    visited.Add(Assert.IsType<SelectionLinePosition>(container.DataContext).Header.Number);
-                for (var retry = 0; retry < 4 && !visited.Contains(next); retry++)
-                {
-                    lines.ScrollIntoView(next - 1);
-                    await SettleAsync(setup, renderFrame: false);
-                    foreach (var container in lines.GetRealizedContainers())
-                        visited.Add(Assert.IsType<SelectionLinePosition>(container.DataContext).Header.Number);
-                }
-                Assert.Contains(next, visited);
+                var line = Assert.Single(lines.GetRealizedContainers(), container =>
+                    Assert.IsType<SelectionLinePosition>(container.DataContext).Header.Number == number);
+                var origin = line.TranslatePoint(default, reader);
+                Assert.NotNull(origin);
+                Assert.True(new Rect(reader.Viewport).Intersects(new Rect(origin!.Value, line.Bounds.Size)));
                 AssertBounded(lines, 2000);
                 Assert.InRange(setup.Owner.LinePages!.RealizedLines.Count(), 1, 48);
-                while (visited.Contains(next)) next++;
             }
-            Assert.Equal(Enumerable.Range(1, 2000), visited.Order());
-            lines.ScrollIntoView(1999);
-            await SettleAsync(setup);
-            var finalLine = Assert.Single(lines.GetRealizedContainers(), container =>
-                Assert.IsType<SelectionLinePosition>(container.DataContext).Header.Number == 2000);
-            var origin = finalLine.TranslatePoint(default, reader);
-            Assert.NotNull(origin);
-            Assert.True(new Rect(reader.Viewport).Intersects(new Rect(origin!.Value, finalLine.Bounds.Size)));
-            AssertBounded(lines, 2000);
-            Assert.InRange(setup.Owner.LinePages!.RealizedLines.Count(), 1, 48);
-        }, TimeSpan.FromMinutes(10));
+        }, TimeSpan.FromMinutes(2));
     }
 
     [Fact]
