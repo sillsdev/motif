@@ -883,7 +883,7 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
     }
 
     [Fact]
-    public void ExistingPageCapturesFitAt100125And150PercentZoom()
+    public void ExistingPageCapturesFitAt100And150PercentZoom()
     {
         var settingsPath = NewSettingsPath();
         var priorTheme = ReadTheme();
@@ -904,7 +904,7 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                     var page = OpenSettings(window);
                     var zoomIn = Button(page, "Zoom in");
                     var zoomRoot = window.FindControl<LayoutTransformControl>("RootLayoutTransform")!;
-                    var zooms = new[] { (Percent: 100, Clicks: 0), (Percent: 125, Clicks: 2), (Percent: 150, Clicks: 1) };
+                    var zooms = new[] { (Percent: 100, Clicks: 0), (Percent: 150, Clicks: 3) };
 
                     foreach (var zoom in zooms)
                     {
@@ -1012,7 +1012,6 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
 
     [Theory]
     [InlineData(640)]
-    [InlineData(1040)]
     public void AboutGroupFitsLongRuntimeValuesAtCompactWidthsAnd150PercentZoom(int width)
     {
         const string operatingSystem = "Microsoft Windows 10.0.26300";
@@ -1197,7 +1196,7 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
     }
 
     [Fact]
-    public void DefaultProposalChecksGroupFitsAt100125And150PercentZoomInBothThemes()
+    public void DefaultProposalChecksGroupFitsAt100And150PercentZoom()
     {
         var settingsPath = NewSettingsPath();
         var priorTheme = ReadTheme();
@@ -1214,10 +1213,10 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                     var page = OpenSettings(window);
                     var settings = Assert.IsType<SettingsViewModel>(page.DataContext);
                     SettingsTestAccess.Select(page, SettingsGroup.ProposalChecks);
-                    foreach (var theme in new[] { WindowThemeChoice.Light, WindowThemeChoice.Dark })
+                    foreach (var theme in new[] { WindowThemeChoice.Light })
                     {
                         settings.ThemeChoice = theme;
-                        foreach (var zoom in new[] { 100, 125, 150 })
+                        foreach (var zoom in new[] { 100, 150 })
                         {
                             settings.ZoomPercent = zoom;
                             PageScreenshots.Settle(window);

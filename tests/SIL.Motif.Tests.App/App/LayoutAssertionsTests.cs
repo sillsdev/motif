@@ -165,9 +165,7 @@ public sealed class LayoutAssertionsTests(AvaloniaHeadlessFixture avalonia)
 
                 LayoutAssertions.AssertResponsiveLayouts(window);
 
-                foreach (var expectedTheme in new[] { ThemeVariant.Light, ThemeVariant.Dark })
-                foreach (var expectedWidth in new[] { 1040, 1240 })
-                foreach (var expectedZoom in new[] { 100, 125, 150 })
+                foreach (var (expectedWidth, expectedZoom, expectedTheme) in LayoutAssertions.ResponsiveCells)
                     Assert.Contains((expectedWidth, expectedZoom, expectedTheme), visited);
                 Assert.Equal(900, window.Width);
                 Assert.Equal(500, window.Height);

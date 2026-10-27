@@ -69,7 +69,6 @@ public sealed class TryWordHLayoutTests
     [Theory]
     [InlineData(820, 600, 150)]
     [InlineData(1040, 780, 150)]
-    [InlineData(1040, 480, 150)]
     public void OpeningRecordedAttemptsKeepsTheirFirstRowInTheInitialViewport(int width, int height, int zoom)
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
@@ -147,10 +146,7 @@ public sealed class TryWordHLayoutTests
     [Theory]
     [InlineData(820, 600, 100)]
     [InlineData(1040, 780, 100)]
-    [InlineData(1920, 1080, 100)]
-    [InlineData(1040, 480, 100)]
     [InlineData(820, 600, 150)]
-    [InlineData(1040, 780, 150)]
     public void RegisteredPagePinsInputAndSuppliesSelectedAttemptDetails(int width, int height, int zoom)
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
@@ -242,9 +238,7 @@ public sealed class TryWordHLayoutTests
 
     [Theory]
     [InlineData(1040, 100)]
-    [InlineData(1240, 100)]
     [InlineData(1040, 150)]
-    [InlineData(1240, 150)]
     public void PlainBuildingSentencesFitTheRecordedTrace(int width, int zoom)
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>

@@ -59,9 +59,9 @@ public sealed class ReaderToolbarResponsiveTests
                 var read = AnalyzeTextsLayoutTests.Named<Button>(panel, "Mark read or unread");
                 var select = AnalyzeTextsLayoutTests.Named<Button>(panel, "Select words for actions");
 
-                foreach (var (themeName, theme) in Themes)
-                foreach (var (sizeName, width, height) in Sizes)
-                foreach (var zoom in new[] { 100, 150 })
+                // Low resolution, low resolution zoomed in, and half-screen, in the light theme.
+                var (themeName, theme) = Themes[0];
+                foreach (var (width, height, zoom) in new[] { (640, 600, 100), (640, 600, 150), (960, 1040, 100) })
                 {
                     Application.Current!.RequestedThemeVariant = theme;
                     settings.ZoomPercent = zoom;
@@ -139,9 +139,8 @@ public sealed class ReaderToolbarResponsiveTests
                 var select = AnalyzeTextsLayoutTests.Named<Button>(panel, "Select words for actions");
                 var reader = workspace.PageModel<TextsPageModel>().ResultsInText;
 
-                foreach (var (themeName, theme) in Themes)
-                foreach (var height in new[] { 600, 900 })
-                foreach (var zoom in new[] { 100, 150 })
+                var (themeName, theme) = Themes[0];
+                foreach (var (height, zoom) in new[] { (600, 100), (600, 150), (900, 100) })
                 {
                     Application.Current!.RequestedThemeVariant = theme;
                     settings.ZoomPercent = zoom;

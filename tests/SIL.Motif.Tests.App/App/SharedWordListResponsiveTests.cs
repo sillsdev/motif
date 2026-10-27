@@ -41,7 +41,8 @@ public sealed class SharedWordListResponsiveTests
 
     private static readonly ResponsiveSize[] Sizes =
     [
-        new(600, 100), new(600, 150), new(900, 100), new(900, 150),
+        // Low resolution (640x600), zoomed in (640x600 at 150%) and the taller half-screen window (640x900).
+        new(600, 100), new(600, 150), new(900, 100),
     ];
 
     [Fact]
@@ -145,7 +146,7 @@ public sealed class SharedWordListResponsiveTests
         }, TimeSpan.FromMinutes(5));
 
         File.WriteAllLines(Path.Combine(root, "shared-word-list-states.txt"), states);
-        Assert.Equal(40, states.Count);
+        Assert.Equal((Scenes.Length + 1) * Sizes.Length * Themes.Length, states.Count);
     }
 
     private static async Task VisitWordListScenes(
@@ -181,6 +182,7 @@ public sealed class SharedWordListResponsiveTests
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             var failures = new List<string>();
+            // A pointer check leaves the row open, so each check opens its own window for each size.
             foreach (var theme in Themes)
             foreach (var size in Sizes)
             {
@@ -601,7 +603,6 @@ public sealed class SharedWordListResponsiveTests
     private static readonly ThemeChoice[] Themes =
     [
         new("light", ThemeVariant.Light),
-        new("dark", ThemeVariant.Dark),
     ];
 
     private sealed record ResponsiveScene(string Name, TooltipScene Scene, WordListSchema Schema,

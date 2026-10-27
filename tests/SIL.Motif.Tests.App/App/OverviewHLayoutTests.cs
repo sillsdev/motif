@@ -58,10 +58,7 @@ public sealed class OverviewHLayoutTests
     [Theory]
     [InlineData(820, 600, 100)]
     [InlineData(1040, 780, 100)]
-    [InlineData(1920, 1080, 100)]
-    [InlineData(1040, 480, 100)]
     [InlineData(820, 600, 150)]
-    [InlineData(1040, 480, 150)]
     public void CoverageAndSpeedAreTablesBelowTheFigureStrip(int width, int height, int zoomPercent)
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>

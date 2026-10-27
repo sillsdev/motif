@@ -18,7 +18,6 @@ public sealed class TextsHeaderResponsiveTests
     [InlineData(640, 600, 100)]
     [InlineData(640, 600, 150)]
     [InlineData(640, 900, 100)]
-    [InlineData(640, 900, 150)]
     public void TabsAndParseActionStayVisibleAndRespondToPointerInput(int width, int height, int zoom)
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>

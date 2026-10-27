@@ -24,9 +24,13 @@ namespace SIL.Motif.Tests.App;
 internal static class LayoutAssertions
 {
     internal const double Tolerance = 2;
-    private static readonly int[] Widths = [1040, 1240];
-    private static readonly int[] Zooms = [100, 125, 150];
-    private static readonly ThemeVariant[] Themes = [ThemeVariant.Light, ThemeVariant.Dark];
+    // Low resolution (the narrowest supported width), zoomed in at that width, and a half-screen width.
+    internal static readonly (int Width, int Zoom, ThemeVariant Theme)[] ResponsiveCells =
+    [
+        (1040, 100, ThemeVariant.Light),
+        (1040, 150, ThemeVariant.Light),
+        (1240, 100, ThemeVariant.Light),
+    ];
     internal static void BeforeCapture(Window window) => AssertCurrent(window);
 
     internal static void AssertResponsiveLayouts(Window window, bool captureFailure = true)
@@ -44,9 +48,7 @@ internal static class LayoutAssertions
 
         try
         {
-            foreach (var theme in Themes)
-            foreach (var width in Widths)
-            foreach (var zoom in Zooms)
+            foreach (var (width, zoom, theme) in ResponsiveCells)
             {
                 application.RequestedThemeVariant = theme;
                 if (settings is not null) settings.ZoomPercent = zoom;

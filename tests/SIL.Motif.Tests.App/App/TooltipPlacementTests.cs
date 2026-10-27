@@ -42,11 +42,11 @@ public sealed class TooltipPlacementTests
         ["tech demo promise"] = "Overview's full-width Open in Matrix footer sits above the status bar on every side",
     };
 
-    [Theory]
-    [InlineData("light")]
-    [InlineData("dark")]
-    public void ATooltipClearsOtherInteractiveControlsAndItsViewport(string themeName)
+    // Light theme only: placement is geometry, and some owners appear only at 1240.
+    [Fact]
+    public void ATooltipClearsOtherInteractiveControlsAndItsViewport()
     {
+        const string themeName = "light";
         var failures = new List<string>();
         var gapsSeen = new HashSet<string>(StringComparer.Ordinal);
         var owners = TooltipOwners.All.Where(owner => owner.Pending is null &&

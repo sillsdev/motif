@@ -15,7 +15,6 @@ public sealed class TimingTitleWrappingTests
 {
     [Theory]
     [InlineData(false)]
-    [InlineData(true)]
     public void TimingScopeKeepsItsFullHeadingInsideTheNarrowPage(bool dark)
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>

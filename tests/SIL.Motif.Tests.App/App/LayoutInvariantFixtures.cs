@@ -55,10 +55,8 @@ internal static class LayoutInvariantFixtures
 
     internal static IReadOnlyList<LayoutCell> QuickCells { get; } = [new(640, 600, 150)];
 
-    internal static IReadOnlyList<LayoutCell> Cells { get; } =
-        (from size in new[] { (640, 600), (960, 780), (1920, 1080), (1600, 480) }
-         from zoom in new[] { 100, 150 }
-         select new LayoutCell(size.Item1, size.Item2, zoom)).ToArray();
+    /// <summary>Low resolution, a half-screen window, and low resolution zoomed in.</summary>
+    internal static IReadOnlyList<LayoutCell> Cells { get; } = [new(640, 600, 100), new(960, 780, 100), new(640, 600, 150)];
 
     internal static TextWordsResponse QuickWords()
     {

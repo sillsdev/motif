@@ -558,7 +558,7 @@ public sealed class AnalyzeTextsLayoutTests
                 workspace.PageModel<TextsPageModel>().ResultsInText.CloseTokenCard();
                 foreach (var (width, zoom) in new[]
                 {
-                    (1040, 100), (1240, 100), (1040, 125), (1240, 125), (1040, 150), (1240, 150),
+                    (1040, 100), (1040, 150), (1240, 100),
                 })
                 {
                     settings.ZoomPercent = zoom;

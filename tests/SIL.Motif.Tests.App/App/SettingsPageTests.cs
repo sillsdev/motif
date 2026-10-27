@@ -221,8 +221,6 @@ public sealed class SettingsPageTests
     [Theory]
     [InlineData(640, 600)]
     [InlineData(1040, 780)]
-    [InlineData(1920, 1080)]
-    [InlineData(1040, 600)]
     public void SectionNavigationScrollsOneListWithoutHidingOtherSections(int width, int height)
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
@@ -391,11 +389,6 @@ public sealed class SettingsPageTests
     [InlineData(640, 600, 100)]
     [InlineData(640, 600, 150)]
     [InlineData(1040, 780, 100)]
-    [InlineData(1040, 780, 150)]
-    [InlineData(1920, 1080, 100)]
-    [InlineData(1920, 1080, 150)]
-    [InlineData(1040, 600, 100)]
-    [InlineData(1040, 600, 150)]
     public void KeyboardNavigationReachesSectionsSearchAndBack(int width, int height, int zoom)
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>

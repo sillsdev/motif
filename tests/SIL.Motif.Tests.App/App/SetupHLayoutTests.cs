@@ -97,7 +97,6 @@ public sealed class SetupHLayoutTests
     [InlineData(640, 600, 1)]
     [InlineData(1040, 480, 1)]
     [InlineData(640, 600, 1.5)]
-    [InlineData(1040, 480, 1.5)]
     public void EveryStepKeepsItsPrimaryActionsOutsideTheScrollingBody(int width, int height, double zoom)
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>

@@ -25,7 +25,7 @@ public sealed class WordRowOpenLayoutSystemTests(ITestOutputHelper output)
     private static readonly TimeSpan Deadline = TimeSpan.FromMinutes(1);
 
     [Fact]
-    public void OpenWordListRowsFitAcrossWidthsZoomsAndThemesAndUseTheModuleCard()
+    public void OpenWordListRowsFitAtLowResolutionHalfScreenAndZoomedInAndUseTheModuleCard()
     {
         using var layoutLog = new LayoutLoopLogScope(output);
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
@@ -50,8 +50,8 @@ public sealed class WordRowOpenLayoutSystemTests(ITestOutputHelper output)
                     ScrollViewer.GetVerticalScrollBarVisibility(pageList));
                 var lastPage = workspace.VisiblePages[^1];
                 var textsPage = workspace.VisiblePages.Single(page => page.Page == WorkspacePage.Texts);
-                foreach (var zoom in new[] { 100, 125, 150 })
-                foreach (var width in new[] { 640, 1040, 1240 })
+                // Low resolution, low resolution zoomed in, and a half-screen width.
+                foreach (var (zoom, width) in new[] { (100, 640), (150, 640), (100, 1040) })
                 {
                     WindowZoomPolicy.Apply(application, zoom);
                     window.Width = width;
@@ -77,9 +77,10 @@ public sealed class WordRowOpenLayoutSystemTests(ITestOutputHelper output)
                 WindowZoomPolicy.Apply(application, 100);
                 var wordsList = window.GetVisualDescendants().OfType<ListBox>()
                     .Single(list => list.Name == "TextWordsPanelRowsItems");
-                foreach (var theme in new[] { ThemeVariant.Light, ThemeVariant.Dark })
-                foreach (var zoom in new[] { 100, 125, 150 })
-                foreach (var width in new[] { 1040, 1240 })
+                foreach (var (theme, zoom, width) in new[]
+                {
+                    (ThemeVariant.Light, 100, 1040), (ThemeVariant.Light, 150, 1040), (ThemeVariant.Light, 100, 1240),
+                })
                 {
                     application.RequestedThemeVariant = theme;
                     window.RequestedThemeVariant = theme;

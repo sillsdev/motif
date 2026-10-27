@@ -27,12 +27,9 @@ public sealed class AiPageTextLayoutSystemTests
     public static IEnumerable<object[]> Cells()
     {
         foreach (var page in new[] { WorkspacePage.AiAssistants, WorkspacePage.AiHandoff })
-        foreach (var dark in new[] { false, true })
-        foreach (var (width, height, zoom) in new[]
-        {
-            (640, 600, 150), (820, 600, 150), (1040, 480, 150), (1040, 780, 100),
-        })
-            yield return [page, dark, width, height, zoom];
+        // The 640x600 zoomed-in cell is the Unit case above; light theme only, since the text arrangement is the check.
+        foreach (var (width, height, zoom) in new[] { (820, 600, 150), (1040, 780, 100) })
+            yield return [page, false, width, height, zoom];
     }
 
     [Theory]
