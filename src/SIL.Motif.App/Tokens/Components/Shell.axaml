@@ -33,6 +33,7 @@
     <StaticResource x:Key="Component.Shell.InspectorCollapseWidth" ResourceKey="Primitive.Size.1000" />
     <StaticResource x:Key="Component.Shell.PaneHeaderHeight" ResourceKey="Primitive.Size.28" />
     <StaticResource x:Key="Component.Shell.PaneButtonSize" ResourceKey="Primitive.Size.22" />
+    <StaticResource x:Key="Component.Shell.PaneBodyInset" ResourceKey="Primitive.Inset.8_0_8_0" />
     <StaticResource x:Key="Component.Shell.PaneHeaderInset" ResourceKey="Primitive.Inset.12_0_4_0" />
     <StaticResource x:Key="Component.Shell.InspectorStripWidth" ResourceKey="Primitive.Size.24" />
     <StaticResource x:Key="Component.Shell.InspectorTipClearance" ResourceKey="Intent.Space.Section" />
@@ -45,6 +46,10 @@
   <Style Selector="Border.workspaceInspector">
     <Setter Property="Background" Value="{DynamicResource Intent.Surface}" />
     <Setter Property="BorderThickness" Value="{DynamicResource Component.Inspector.Edge}" />
+  </Style>
+  <!-- Page content in the side panel or the Inspector clears the drawn edge on both sides; pages own their vertical rhythm. -->
+  <Style Selector="ContentControl.workspacePaneBody">
+    <Setter Property="Padding" Value="{DynamicResource Component.Shell.PaneBodyInset}" />
   </Style>
   <Style Selector="Border.workspacePaneHeader">
     <Setter Property="Height" Value="{DynamicResource Component.Shell.PaneHeaderHeight}" />

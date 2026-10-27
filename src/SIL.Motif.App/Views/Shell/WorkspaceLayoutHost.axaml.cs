@@ -366,7 +366,13 @@ public sealed class PageContentSlot : ContentControl
 
     public PageContentSlot()
     {
-        Template = new FuncControlTemplate((_, _) => _stack);
+        // The border carries the slot's Padding, so a pane style can inset every page the slot holds.
+        Template = new FuncControlTemplate((_, _) =>
+        {
+            var inset = new Border { Child = _stack };
+            inset.Bind(Border.PaddingProperty, this.GetObservable(PaddingProperty));
+            return inset;
+        });
         // Applied now so contents added before the first measure join an already-built stack.
         ApplyTemplate();
     }

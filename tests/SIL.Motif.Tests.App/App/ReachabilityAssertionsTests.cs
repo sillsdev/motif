@@ -1,3 +1,4 @@
+using Avalonia.Automation;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Presenters;
@@ -434,6 +435,8 @@ public sealed class ReachabilityAssertionsTests(AvaloniaHeadlessFixture avalonia
             var cell = Label("Cell");
             var collapsed = Label("Collapsed");
             collapsed.IsVisible = false;
+            var letter = Label("Letter", "A");
+            AutomationProperties.SetAutomationId(letter, SIL.Motif.App.AutomationIds.OpinionMarkLetter);
             var grid = new Grid { Width = 160, Height = 30, Children = { cell } };
             SIL.Motif.App.Controls.DenseTable.SetColumns(grid, "*");
             var window = new MotifTestWindow
@@ -446,7 +449,7 @@ public sealed class ReachabilityAssertionsTests(AvaloniaHeadlessFixture avalonia
                         Box(flush, 0), Box(near, 2), Box(clear, 8), Box(panel, 0, "SidePanelBorder"),
                         new Border { Name = "PlainBox", BorderBrush = Brushes.Gray, BorderThickness = new Thickness(1),
                             Child = new Button { Content = inButton } },
-                        grid, Box(collapsed, 0),
+                        grid, Box(collapsed, 0), Box(letter, 0),
                     },
                 },
             };
@@ -467,6 +470,7 @@ public sealed class ReachabilityAssertionsTests(AvaloniaHeadlessFixture avalonia
                 Assert.Empty(Edges(inButton));
                 Assert.Empty(Edges(cell));
                 Assert.Empty(Edges(collapsed));
+                Assert.Empty(Edges(letter));
 
                 var reportOnly = new List<LayoutFinding>();
                 var inspected = ReachabilityAssertions.Inspect(window, context, reportOnly: reportOnly);

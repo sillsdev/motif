@@ -36,7 +36,7 @@ internal static class ReachabilityAssertions
     /// the list a caller passes as <c>reportOnly</c> instead of returning it. Flip it to true once the known
     /// crowded edges are fixed.
     /// </summary>
-    internal static readonly bool EdgeCrowdingFailsTheRun = false;
+    internal static readonly bool EdgeCrowdingFailsTheRun = true;
 
     /// <summary>The smallest gap between painted text and a drawn edge, equal to the Intent.Space.Related spacing.</summary>
     internal const double EdgeClearance = 6;
@@ -457,11 +457,15 @@ internal static class ReachabilityAssertions
     private static readonly string[] FramePaneNames =
         ["SidePanelBorder", "InspectorPane", "WorkingPageHost", "TopBar", "StatusBar"];
 
+    // The opinion mark's letter is a glyph centred in a fixed-size round symbol, not padded text.
+    private const string OpinionMarkLetterId = SIL.Motif.App.AutomationIds.OpinionMarkLetter;
+
     /// <summary>Flags text whose painted bounds sit closer than the edge clearance to a drawn edge of its panel.</summary>
     internal static IReadOnlyList<LayoutFinding> EdgeCrowdingFindings(
         TextBlock text, LayoutFindingContext context, Visual layoutRoot, double clearance = EdgeClearance)
     {
         if (!IsRenderedText(text) || PaintedBounds(text) is not { Width: > 0, Height: > 0 }) return [];
+        if (AutomationProperties.GetAutomationId(text) == OpinionMarkLetterId) return [];
         var ancestors = text.GetVisualAncestors().OfType<Control>().ToArray();
         // These templates pad their own content, and a table cell is flush by design.
         if (ancestors.Any(ancestor => ancestor is Button or ToggleButton or ComboBox or TextBox or CheckBox

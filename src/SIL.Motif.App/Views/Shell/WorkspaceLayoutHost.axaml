@@ -15,7 +15,7 @@
             <views:CopyableTextBlock x:Name="SidePanelTitle" Classes="workspacePaneLabel" VerticalAlignment="Center" />
           </DockPanel>
         </Border>
-        <shell:PageContentSlot x:Name="SidePanelContent" Grid.Row="1" />
+        <shell:PageContentSlot x:Name="SidePanelContent" Grid.Row="1" Classes="workspacePaneBody" />
       </Grid>
     </Border>
     <Grid x:Name="WorkingPageRegion" Grid.Column="2" RowDefinitions="Auto,*,Auto">
@@ -47,7 +47,7 @@
         </Border>
         <Grid Grid.Row="1">
           <ContentControl x:Name="ObjectInspectorHost" />
-          <shell:PageContentSlot x:Name="PageInspectorHost" IsVisible="False" />
+          <shell:PageContentSlot x:Name="PageInspectorHost" IsVisible="False" Classes="workspacePaneBody" />
           <views:CopyableTextBlock x:Name="InspectorEmpty" Classes="muted workspaceEmpty" Text="{x:Static app:MotifAppStrings.SelectAnItemToInspect}" />
         </Grid>
         <StackPanel Grid.Row="2">
