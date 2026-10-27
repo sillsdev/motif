@@ -34,16 +34,25 @@ function Get-MotifTestArtifactRequirements {
   How many test processes run at once.
 
   .DESCRIPTION
-  MOTIF_TEST_PROCESSES, a positive whole number, wins. Otherwise a third of the processors, rounded down, never
-  fewer than two and never more than eight: the gate is bound by total process time, and each App shard process
-  has its own UI dispatcher, so more concurrent processes is what makes App tests run side by side.
+  MOTIF_TEST_PROCESSES, a positive whole number, wins. Otherwise a developer machine, which shares its processors
+  with other worktrees, gets a third of them, rounded down, never fewer than two and never more than eight. CI owns
+  its runner and App shards are mostly one UI thread each, so it gets one fewer than the processors (at least two,
+  at most eight) and no more than one per 2 GiB of memory. The gate is bound by total process time, and each App
+  shard process has its own UI dispatcher, so more concurrent processes is what makes App tests run side by side.
 #>
 function Get-MotifTestProcessConcurrency {
     [CmdletBinding()]
-    param([int] $ProcessorCount = [Environment]::ProcessorCount)
+    param(
+        [int] $ProcessorCount = [Environment]::ProcessorCount,
+        [long] $MemoryBytes = [GC]::GetGCMemoryInfo().TotalAvailableMemoryBytes
+    )
 
     $processes = 0
     if ([int]::TryParse([string] $env:MOTIF_TEST_PROCESSES, [ref] $processes) -and $processes -gt 0) { return $processes }
+    if ($env:CI -match '^(?i:true|1|yes)$') {
+        $byMemory = [int][Math]::Floor($MemoryBytes / 2GB)
+        return [Math]::Min(8, [Math]::Max(2, [Math]::Min($ProcessorCount - 1, $byMemory)))
+    }
     return [Math]::Min(8, [Math]::Max(2, [int][Math]::Floor($ProcessorCount / 3)))
 }
 

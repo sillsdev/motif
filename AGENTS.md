@@ -61,7 +61,7 @@ has been found; apply the ban to every change and never commit serialized inputs
 System overrides for walkthroughs and real-parser tests. With no switch it selects Unit and Integration;
 `-All` selects all three levels. A bare `dotnet test` leaves `MOTIF_TEST_LEVELS` unset and runs every test.
 It runs each selected test project as one or more processes, with concurrency capped at a third of the
-available processor count (rounded down, minimum two, maximum eight; `MOTIF_TEST_PROCESSES=N` sets it). App tests run
+available processor count (rounded down, minimum two, maximum eight; on CI one fewer than the processors and one per 2 GiB of memory; `MOTIF_TEST_PROCESSES=N` sets it). App tests run
 one at a time per process, so the App project is split into 12 shards that run side by side.** It discovers test projects listed in `Motif.sln` under `tests/`, so
 adding a project includes it automatically. The cap leaves processor capacity for each test host's CLI,
 worker, and parser child processes. More than four worktrees testing at once oversubscribe the machine,

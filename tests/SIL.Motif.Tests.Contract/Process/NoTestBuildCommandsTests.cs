@@ -64,10 +64,8 @@ public sealed class NoTestBuildCommandsTests
             StringComparison.Ordinal);
         Assert.Contains("throw \"Required test artifact preparation script is missing: $prepareTestArtifacts\"",
             body, StringComparison.Ordinal);
-        Assert.Contains("PortableWorkerPackage = [bool] $preparePortable", body, StringComparison.Ordinal);
-        Assert.Contains("ExplainedWordCardFixture = [bool] $prepareExplainedWordCard", body,
-            StringComparison.Ordinal);
-        Assert.Contains("& $prepareTestArtifacts @prepareParameters", body, StringComparison.Ordinal);
+        Assert.Contains("-ExplainedWordCardFixture", body, StringComparison.Ordinal);
+        Assert.Contains("'-PortableWorkerPackage'", body, StringComparison.Ordinal);
         Assert.Contains("[switch] $All", testScript, StringComparison.Ordinal);
         Assert.DoesNotContain("if ([string]::IsNullOrWhiteSpace($levels))", testScript, StringComparison.Ordinal);
         var planRegression = testScript.IndexOf("Test-MotifTestRunPlan.Tests.ps1", StringComparison.Ordinal);
@@ -75,7 +73,7 @@ public sealed class NoTestBuildCommandsTests
             StringComparison.Ordinal);
         var missingPreparerFailure = body.IndexOf("throw \"Required test artifact preparation script is missing:",
             StringComparison.Ordinal);
-        var preparerInvocation = body.IndexOf("& $prepareTestArtifacts @prepareParameters", StringComparison.Ordinal);
+        var preparerInvocation = body.IndexOf("& $prepareTestArtifacts -Configuration", StringComparison.Ordinal);
         var testLaunch = testScript.IndexOf("Write-Step (\"dotnet test (", StringComparison.Ordinal);
         Assert.True(planRegression >= 0 && planRegression < preparationCompleted,
             "The gate must check artifact-selection rules before preparation.");

@@ -56,6 +56,12 @@ try {
     Assert-Equal (Get-MotifTestProcessConcurrency -ProcessorCount 20) 6 'processes for a third of 20'
     Assert-Equal (Get-MotifTestProcessConcurrency -ProcessorCount 4) 2 'process floor'
     Assert-Equal (Get-MotifTestProcessConcurrency -ProcessorCount 64) 8 'process ceiling'
+    Set-Environment @{ CI = 'true' }
+    Assert-Equal (Get-MotifTestProcessConcurrency -ProcessorCount 4 -MemoryBytes 16GB) 3 'CI processes on 4 processors'
+    Assert-Equal (Get-MotifTestProcessConcurrency -ProcessorCount 4 -MemoryBytes 4GB) 2 'CI processes bounded by memory'
+    Assert-Equal (Get-MotifTestProcessConcurrency -ProcessorCount 2 -MemoryBytes 16GB) 2 'CI process floor'
+    Assert-Equal (Get-MotifTestProcessConcurrency -ProcessorCount 64 -MemoryBytes 256GB) 8 'CI process ceiling'
+    Set-Environment @{}
     Set-Environment @{ MOTIF_TEST_PROCESSES = '3' }
     Assert-Equal (Get-MotifTestProcessConcurrency -ProcessorCount 20) 3 'explicit processes'
     Set-Environment @{ MOTIF_TEST_PROCESSES = 'x' }

@@ -324,6 +324,7 @@ $testRuns = @(foreach ($testProject in @($testProjects | Sort-Object -Property S
         [pscustomobject]@{
             Project = $testProject.Name; Label = $label; Assembly = $testProject.Assembly
             Shard = if ($runShards -eq 1) { '' } else { "$index/$runShards" }
+            NeedsPortable = ($testProject.Name -eq 'SIL.Motif.Tests.Cli')
         }
     }
 })
@@ -375,17 +376,26 @@ if ($preparePortable -or $prepareExplainedWordCard) {
     if (-not (Test-Path -LiteralPath $prepareTestArtifacts -PathType Leaf)) {
         throw "Required test artifact preparation script is missing: $prepareTestArtifacts"
     }
-
-    Write-Step 'prepare selected test artifacts'
-    $prepareParameters = @{
-        Configuration = $Configuration
-        PortableWorkerPackage = [bool] $preparePortable
-        ExplainedWordCardFixture = [bool] $prepareExplainedWordCard
-    }
-    & $prepareTestArtifacts @prepareParameters
+}
+if ($prepareExplainedWordCard) {
+    Write-Step 'prepare selected test artifacts: Explained Word Card fixture'
+    & $prepareTestArtifacts -Configuration $Configuration -ExplainedWordCardFixture
     if ($LASTEXITCODE -ne 0) {
         throw "Prepare-TestArtifacts.ps1 failed with exit code $LASTEXITCODE."
     }
+}
+# Only the Cli process consumes the 50 s of publishes, so they run beside the other tests and it waits.
+$portablePrepare = $null
+if ($preparePortable) {
+    Write-Step 'prepare selected test artifacts: portable Worker package (in the background)'
+    $portableInput = Join-Path $resultsRoot 'portable-package.stdin'
+    [IO.File]::WriteAllText($portableInput, 'portable-package')
+    $portablePrepare = Start-Process -FilePath 'pwsh' -PassThru -NoNewWindow `
+        -ArgumentList @('-NoProfile', '-File', ('"{0}"' -f $prepareTestArtifacts), '-Configuration', $Configuration,
+            '-PortableWorkerPackage') `
+        -RedirectStandardInput $portableInput -RedirectStandardOutput (Join-Path $resultsRoot 'portable-package.log') `
+        -RedirectStandardError (Join-Path $resultsRoot 'portable-package.stderr.log')
+    [void] $portablePrepare.Handle
 }
 Write-PhaseDuration 'test artifact preparation'
 
@@ -405,10 +415,20 @@ $jobs = foreach ($run in $testRuns) {
     Start-ThreadJob -Name $run.Label -ThrottleLimit $projectConcurrency `
         -ArgumentList $run.Label, $run.Assembly, $run.Shard, $Filter, $levelSelection, $Configuration,
             $projectResults, $projectLog, $projectErrorLog, $projectInput, $inputToken, $coverageAdapter,
-            $coverageSettings, $testThreads -ScriptBlock {
+            $coverageSettings, $testThreads, $(if ($run.NeedsPortable) { $portablePrepare } else { $null }) -ScriptBlock {
         param($name, $assemblyPath, $shard, $filter, $levels, $configuration, $projectResults, $log, $errorLog,
-            $inputPath, $inputToken, $coverageAdapter, $coverageSettings, $threads)
+            $inputPath, $inputToken, $coverageAdapter, $coverageSettings, $threads, $portablePrepare)
         $projectClock = [Diagnostics.Stopwatch]::StartNew()
+        if ($portablePrepare) {
+            $portablePrepare.WaitForExit()
+            if ($portablePrepare.ExitCode -ne 0) {
+                Set-Content -Path $log -Value "The portable Worker package preparation failed with exit code $($portablePrepare.ExitCode); see portable-package.log beside this file."
+                return [pscustomobject]@{
+                    Name = $name; ExitCode = 1; Seconds = $projectClock.Elapsed.TotalSeconds; Log = $log
+                    ErrorLog = $errorLog; ResultsDirectory = $projectResults; StopReason = 'artifact preparation failed'
+                }
+            }
+        }
         $arguments = @(
             'test'
             ('"{0}"' -f $assemblyPath)
