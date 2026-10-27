@@ -478,8 +478,10 @@ internal static class WalkthroughArtifacts
             foreach (var callout in rows[rowIndex])
             {
                 var target = callout.Bounds;
-                targetPoints[callout.AutomationId] = new Point(target.Center.X,
-                    rowIndex == 0 ? target.Top : target.Bottom);
+                var side = rowIndex > 0 && SideExit(callout, rows[rowIndex], item => item.Bounds);
+                var top = rowIndex == 0 || TopExit(callout, rowIndex, rows, item => item.Bounds);
+                targetPoints[callout.AutomationId] = side ? new Point(target.Right, target.Center.Y) :
+                    new Point(target.Center.X, top ? target.Top : target.Bottom);
             }
         }
 
@@ -508,15 +510,15 @@ internal static class WalkthroughArtifacts
         var stagger = 3 * scale;
         for (var rowIndex = 0; rowIndex < rows.Count; rowIndex++)
         {
-            var row = rows[rowIndex].OrderBy(label => label.TargetBounds.Left).ToArray();
-            if (rowIndex == 0)
-            {
-                var rowTop = row.Min(label => label.TargetBounds.Top) + targetOffset.Y;
-                for (var index = 0; index < row.Length; index++)
-                    gutterYs[row[index].AutomationId ?? string.Empty] = rowTop - stagger * (row.Length - index);
-                continue;
-            }
-
+            var upper = rows[rowIndex].Where(label => label.TargetPoint.X != label.TargetBounds.Right &&
+                label.TargetPoint.Y == label.TargetBounds.Top).OrderBy(label => label.TargetBounds.Left).ToArray();
+            for (var index = 0; index < upper.Length; index++)
+                gutterYs[upper[index].AutomationId ?? string.Empty] = upper.Min(label => label.TargetBounds.Top) +
+                    targetOffset.Y - stagger * (upper.Length - index);
+            var row = rows[rowIndex].Where(label => label.TargetPoint.X != label.TargetBounds.Right &&
+                label.TargetPoint.Y != label.TargetBounds.Top)
+                .OrderBy(label => label.TargetBounds.Left).ToArray();
+            if (row.Length == 0) continue;
             var rowBottom = row.Max(label => label.TargetBounds.Bottom) + targetOffset.Y;
             if (rowIndex == rows.Count - 1)
             {
@@ -525,7 +527,8 @@ internal static class WalkthroughArtifacts
                 continue;
             }
 
-            var nextTop = rows[rowIndex + 1].Min(label => label.TargetBounds.Top) + targetOffset.Y;
+            var nextTop = rows[rowIndex + 1].Where(label => label.TargetPoint.X != label.TargetBounds.Right)
+                .Select(label => label.TargetBounds.Top).DefaultIfEmpty(rowBottom - targetOffset.Y).Min() + targetOffset.Y;
             var gutterHeight = nextTop - rowBottom;
             if (gutterHeight <= 0)
                 throw new InvalidOperationException(
@@ -540,7 +543,7 @@ internal static class WalkthroughArtifacts
         return labels.Select(label =>
         {
             var start = new Point(label.TargetPoint.X + targetOffset.X, label.TargetPoint.Y + targetOffset.Y);
-            var gutter = gutterYs[label.AutomationId ?? string.Empty];
+            var gutter = label.TargetPoint.X == label.TargetBounds.Right ? start.Y : gutterYs[label.AutomationId ?? string.Empty];
             var verticalLeg = new Point(start.X, gutter);
             var exit = new Point(exitX, gutter);
             var entry = new Point(label.Bounds.Left - 2 * scale, label.MarkerCenter.Y);
@@ -550,10 +553,30 @@ internal static class WalkthroughArtifacts
     }
 
     private static IReadOnlyList<T> OrderCaptionColumnCallouts<T>(IReadOnlyList<T> callouts,
-        Func<T, Rect> bounds, double rowTolerance) => GroupCaptionRows(callouts, bounds, rowTolerance)
-        .SelectMany(row => row.OrderBy(callout => bounds(callout).Left)
+        Func<T, Rect> bounds, double rowTolerance)
+    {
+        var rows = GroupCaptionRows(callouts, bounds, rowTolerance);
+        return rows.SelectMany((row, index) => row.OrderBy(callout => TopExit(callout, index, rows, bounds) ? 0 :
+                index > 0 && SideExit(callout, row, bounds) ? 1 : 2)
+            .ThenBy(callout => bounds(callout).Left)
             .ThenBy(callout => bounds(callout).Right))
         .ToArray();
+    }
+
+    private static bool TopExit<T>(T item, int index, List<List<T>> rows, Func<T, Rect> bounds)
+    {
+        if (index == 0 || index + 1 >= rows.Count || SideExit(item, rows[index], bounds)) return false;
+        var nextTop = rows[index + 1].Min(other => bounds(other).Top);
+        return rows[index].Any(other => SideExit(other, rows[index], bounds) &&
+            bounds(other).Bottom >= nextTop && bounds(item).Right <= bounds(other).Left);
+    }
+
+    private static bool SideExit<T>(T item, IReadOnlyList<T> row, Func<T, Rect> bounds)
+    {
+        var target = bounds(item);
+        return row.Any(other => bounds(other).Bottom > target.Center.Y && bounds(other).Right <= target.Left) &&
+            row.All(other => ReferenceEquals(item, other) || bounds(other).Right <= target.Left);
+    }
 
     private static IReadOnlyList<WalkthroughCaptureCallout> OrderCaptionColumnCallouts(
         IReadOnlyList<WalkthroughCaptureCallout> callouts, double scale) => OrderCaptionColumnCallouts(callouts,

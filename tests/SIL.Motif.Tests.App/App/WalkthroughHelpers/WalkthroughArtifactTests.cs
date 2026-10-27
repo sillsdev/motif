@@ -240,6 +240,23 @@ public sealed class WalkthroughArtifactTests(AvaloniaHeadlessFixture avalonia)
     }
 
     [Fact]
+    public void CaptionLeadersAvoidCrossingForAdjacentTargetsWithDifferentHeights()
+    {
+        var callouts = new[]
+        {
+            new WalkthroughCaptureCallout("word", "Word", new Rect(30, 7.5, 115, 60)),
+            new WalkthroughCaptureCallout("fieldworks", "FieldWorks", new Rect(20, 65, 257.5, 92.5)),
+            new WalkthroughCaptureCallout("action", "Action", new Rect(292.5, 55, 162.5, 62.5)),
+        };
+        using var font = new SKFont(SKTypeface.Default, 40);
+        var labels = WalkthroughArtifacts.ArrangeCaptionColumnLabels(callouts, 1500, font, 2.5, 600);
+        var leaders = WalkthroughArtifacts.ArrangeCaptionColumnLeaderPaths(labels, new Point(60, 0), 515, 2.5);
+
+        Assert.False(LeaderPathsIntersect(leaders.Single(leader => leader.AutomationId == "fieldworks"),
+            leaders.Single(leader => leader.AutomationId == "action")));
+    }
+
+    [Fact]
     public void ExplainedWordCardSetCaptionsUsePlainWords()
     {
         var root = FindRepositoryRoot();
