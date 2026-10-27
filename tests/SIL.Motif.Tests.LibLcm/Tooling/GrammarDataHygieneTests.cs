@@ -89,8 +89,9 @@ public sealed class GrammarDataHygieneTests
             var payload = RuntimePayload(temp);
             var json = Encoding.UTF8.GetString(payload);
             var split = json.Length / 2;
-            var source = "var records = " + JsonSerializer.Serialize(json[..split]) + " + " + JsonSerializer.Serialize(json[split..]) + ";";
-            Assert.Contains(GrammarDataHygiene.Inspect("source.cs", Encoding.UTF8.GetBytes(source)), f => f.Severity == FindingSeverity.Reject);
+            var source = "var decoy = \"safe\";\n\nvar records = " + JsonSerializer.Serialize(json[..split]) + " + " + JsonSerializer.Serialize(json[split..]) + ";";
+            Assert.Contains(GrammarDataHygiene.Inspect("source.cs", Encoding.UTF8.GetBytes(source)),
+                f => f.Severity == FindingSeverity.Reject && f.Explanation.StartsWith("source literal at line 3;", StringComparison.Ordinal));
             var base64 = Convert.ToBase64String(payload);
             Assert.Contains(GrammarDataHygiene.Inspect("encoded.cs", Encoding.UTF8.GetBytes("const string blob = \"" + base64 + "\";")), f => f.Severity == FindingSeverity.Reject);
 

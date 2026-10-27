@@ -346,6 +346,7 @@ internal static class GrammarDataHygiene
             }
             var childFindings = new List<GrammarFinding>();
             InspectCore("literal", Encoding.UTF8.GetBytes(value), depth, budget, childFindings, false);
+            if (childFindings.Count == 0) continue;
             var sourceLine = 1;
             for (var character = 0; character < match.Index; character++) if (text[character] == '\n') sourceLine++;
             foreach (var finding in childFindings)
