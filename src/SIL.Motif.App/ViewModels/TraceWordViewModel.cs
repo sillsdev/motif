@@ -291,10 +291,10 @@ public sealed partial class TraceWordViewModel : ObservableObject
 
     /// <summary>The grammar source returned with this trace, independent of the current workspace.</summary>
     public string GrammarSourceText => Result is not { } result ? string.Empty
-        : result.GrammarSourceAvailability == TraceEvidenceAvailability.NotRecorded ? "Grammar source not recorded"
+        : result.GrammarSourceAvailability == TraceEvidenceAvailability.NotRecorded ? MotifAppStrings.TraceGrammarSourceNotRecorded
         : result.HostCapture?.Baseline is { } baseline
-            ? $"Grammar source: Baseline captured {baseline.Token.CapturedUtc} · source saved {baseline.SourceLastWriteUtc:u} · {baseline.CaptureDescription}"
-            : $"Grammar source: {result.GrammarSource}";
+            ? TraceText.Format(MotifAppStrings.TraceGrammarSourceBaselineFormat, baseline.Token.CapturedUtc, baseline.SourceLastWriteUtc, baseline.CaptureDescription)
+            : TraceText.Format(MotifAppStrings.TraceGrammarSourceFormat, result.GrammarSource);
 
     /// <summary>
     /// Logical summaries in first-recorded order, each with the number of source records it represents.
@@ -371,11 +371,11 @@ public sealed partial class TraceWordViewModel : ObservableObject
     public IReadOnlyList<string> NoParseReasons => _reading?.NoParseReasons ?? [];
     public bool HasNoParseReasons => Result is { Parsed: false } && NoParseReasons.Count > 0;
     public string NoAttemptNotice => Result is { Complete: false }
-        ? "No terminal attempt was recorded before the search stopped. Recorded progress is retained."
-        : "No terminal attempt was recorded.";
+        ? MotifAppStrings.TraceNoTerminalAttemptStopped
+        : MotifAppStrings.TraceNoTerminalAttempt;
 
     /// <summary>Over the groups: why the word failed, or, for a word that parsed, why its other attempts did.</summary>
-    public string StopGroupsHeading => Result is { Parsed: true } ? "Why the other attempts failed" : "Why it did not parse";
+    public string StopGroupsHeading => Result is { Parsed: true } ? MotifAppStrings.TraceWhyOtherAttemptsFailed : MotifAppStrings.TraceWhyNotParsed;
 
     /// <summary>One line over the groups counting recorded stopped attempts.</summary>
     public string StopGroupsSummary
@@ -531,7 +531,7 @@ public sealed partial class TraceWordViewModel : ObservableObject
     public string ProvenanceWarning =>
         Result?.Provenance is { CanNavigate: false } comparison
             ? comparison.Warning
-            : "Compatibility with the current FieldWorks project is not recorded; live links are unavailable for this saved diagnostic.";
+            : MotifAppStrings.TraceProvenanceNotRecorded;
 
     private static IReadOnlyDictionary<string, TraceWritingSystem> WritingSystemsById(WordTraceResponse? result) =>
         result?.HostCapture?.WritingSystems.GroupBy(system => system.Id).ToDictionary(group => group.Key, group => group.First())
@@ -542,10 +542,11 @@ public sealed partial class TraceWordViewModel : ObservableObject
         get
         {
             var systems = Result?.HostCapture?.WritingSystems;
-            if (systems is null || systems.Count == 0) return "Writing systems: not recorded; using the UI font fallback.";
+            if (systems is null || systems.Count == 0) return MotifAppStrings.TraceWritingSystemsNotRecorded;
             var summary = string.Join(", ", systems.Select(system =>
-                $"{system.Id} ({system.Direction ?? "direction not recorded"}; font: {system.Font ?? "UI fallback"})"));
-            return $"Writing systems: {summary}. Font fallback: Noto Sans, Segoe UI, Arial.";
+                TraceText.Format(MotifAppStrings.TraceWritingSystemFormat, system.Id,
+                    system.Direction ?? MotifAppStrings.TraceDirectionNotRecorded, system.Font ?? MotifAppStrings.TraceFontUiFallback)));
+            return TraceText.Format(MotifAppStrings.TraceWritingSystemsSummaryFormat, summary);
         }
     }
 
@@ -562,29 +563,29 @@ public sealed partial class TraceWordViewModel : ObservableObject
             var parts = new List<string>();
             void Add(string label, string? value)
             {
-                if (!string.IsNullOrWhiteSpace(value)) parts.Add($"{label}: {value}");
+                if (!string.IsNullOrWhiteSpace(value)) parts.Add(TraceText.Format(MotifAppStrings.TraceLabelValueFormat, label, value));
             }
 
-            Add("Format", result.DiagnosticFormat);
-            Add("Parser", result.ParserName);
-            Add("Parser version", result.ParserVersion);
-            Add("Trace profile", result.TraceProfile);
-            Add("Grammar hash", result.GrammarHash ?? capture?.GrammarHash);
-            Add("Grammar hash semantics", result.GrammarHashSemantics ?? capture?.GrammarHashSemantics);
-            Add("Project identity", capture?.ProjectIdentity);
-            Add("Bundle digest", capture?.BundleDigest);
+            Add(MotifAppStrings.TraceCaptureFormatLabel, result.DiagnosticFormat);
+            Add(MotifAppStrings.TraceCaptureParserLabel, result.ParserName);
+            Add(MotifAppStrings.TraceCaptureParserVersionLabel, result.ParserVersion);
+            Add(MotifAppStrings.TraceCaptureProfileLabel, result.TraceProfile);
+            Add(MotifAppStrings.TraceCaptureGrammarHashLabel, result.GrammarHash ?? capture?.GrammarHash);
+            Add(MotifAppStrings.TraceCaptureGrammarHashSemanticsLabel, result.GrammarHashSemantics ?? capture?.GrammarHashSemantics);
+            Add(MotifAppStrings.TraceCaptureProjectIdentityLabel, capture?.ProjectIdentity);
+            Add(MotifAppStrings.TraceCaptureBundleDigestLabel, capture?.BundleDigest);
             if (capture?.Baseline is { } baseline)
             {
-                parts.Add($"Baseline captured: {baseline.Token.CapturedUtc}");
-                parts.Add($"Source saved: {baseline.SourceLastWriteUtc:u}");
+                parts.Add(TraceText.Format(MotifAppStrings.TraceBaselineCapturedFormat, baseline.Token.CapturedUtc));
+                parts.Add(TraceText.Format(MotifAppStrings.TraceSourceSavedFormat, baseline.SourceLastWriteUtc));
                 parts.Add(baseline.CaptureDescription);
             }
-            else parts.Add("Baseline source not recorded");
+            else parts.Add(MotifAppStrings.TraceBaselineSourceNotRecorded);
             if (result.GrammarSourceAvailability == TraceEvidenceAvailability.NotRecorded)
-                parts.Add("Grammar source not recorded");
-            if (capture?.CapturedUtc is { } capturedUtc) parts.Add($"Captured: {capturedUtc:u}");
-            if (capture?.WallElapsedMs is { } elapsed) parts.Add($"Host elapsed: {elapsed:N0} ms");
-            return parts.Count == 0 ? "Capture details not recorded." : string.Join(" · ", parts);
+                parts.Add(MotifAppStrings.TraceGrammarSourceNotRecorded);
+            if (capture?.CapturedUtc is { } capturedUtc) parts.Add(TraceText.Format(MotifAppStrings.TraceCapturedAtFormat, capturedUtc));
+            if (capture?.WallElapsedMs is { } elapsed) parts.Add(TraceText.Format(MotifAppStrings.TraceHostElapsedFormat, elapsed.ToString("N0", System.Globalization.CultureInfo.CurrentCulture)));
+            return parts.Count == 0 ? MotifAppStrings.TraceCaptureDetailsNotRecorded : string.Join(" · ", parts);
         }
     }
 
@@ -674,7 +675,7 @@ public sealed partial class TraceWordViewModel : ObservableObject
 
     public bool ShowFullDerivation => View == TraceView.FullDerivation;
 
-    public string FocusToggleLabel => IsFocused ? "Show Analyses" : "Focus this word";
+    public string FocusToggleLabel => IsFocused ? MotifAppStrings.TraceShowAnalyses : MotifAppStrings.TraceFocusThisWord;
 
     public IAsyncRelayCommand TryCommand { get; }
 
@@ -871,8 +872,8 @@ public sealed class TraceAnalysisViewModel
         ArgumentNullException.ThrowIfNull(analysis);
         AnalysisId = analysis.AnalysisId;
         Index = analysis.Index;
-        Surface = analysis.Surface ?? "Surface not recorded";
-        Availability = string.IsNullOrWhiteSpace(analysis.Availability) ? "availability not recorded" : analysis.Availability;
+        Surface = analysis.Surface ?? MotifAppStrings.TraceSurfaceNotRecorded;
+        Availability = string.IsNullOrWhiteSpace(analysis.Availability) ? MotifAppStrings.TraceAvailabilityNotRecorded : analysis.Availability;
         ProjectionStatus = analysis.ProjectionStatus;
         ProjectionError = analysis.ProjectionError;
         LegacyMorphemes = analysis.LegacyMorphemes;
@@ -897,11 +898,11 @@ public sealed class TraceAnalysisViewModel
     public bool HasLegacyMorphemes => LegacyMorphemes is { Length: > 0 };
     /// <summary>The parser's recorded morphemes, shown without assigning FieldWorks identities or roles.</summary>
     public string LegacyMorphemesText => HasLegacyMorphemes
-        ? $"Morphemes: {string.Join(" + ", LegacyMorphemes!.Split('+', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))}"
+        ? TraceText.Format(MotifAppStrings.TraceMorphemesFormat, string.Join(" + ", LegacyMorphemes!.Split('+', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)))
         : string.Empty;
 
     /// <summary>The parser's own names for the analysis's morphemes, kept for the tooltip on its surface form.</summary>
-    public string? LegacyMorphemesTip => HasLegacyMorphemes ? $"The parser's morphemes: {LegacyMorphemes}" : null;
+    public string? LegacyMorphemesTip => HasLegacyMorphemes ? TraceText.Format(MotifAppStrings.TraceParserMorphemesTipFormat, LegacyMorphemes) : null;
     public IReadOnlyList<TraceMorphViewModel> Morphs { get; }
 
     /// <summary>The analysis's place among the distinct analyses, from 1, once duplicates are merged.</summary>
@@ -916,14 +917,15 @@ public sealed class TraceAnalysisViewModel
     public string RecordedCountText => HasRepeatedRecords
         ? PluralText.Format(MotifAppStrings.TraceRecordedTimesPattern, RecordCount) : string.Empty;
 
-    public string Label => Position is { } position ? $"Analysis {position}"
-        : Index is { } index ? $"Analysis {index + 1}" : AnalysisId is { Length: > 0 } id ? $"Analysis {id}" : "Recorded analysis";
+    public string Label => Position is { } position ? TraceText.Format(MotifAppStrings.TraceAnalysisNumberFormat, position)
+        : Index is { } index ? TraceText.Format(MotifAppStrings.TraceAnalysisNumberFormat, index + 1)
+        : AnalysisId is { Length: > 0 } id ? TraceText.Format(MotifAppStrings.TraceAnalysisNumberFormat, id) : MotifAppStrings.TraceRecordedAnalysis;
     public bool HasProjectionError => ProjectionError is { Length: > 0 };
 
     /// <summary>
     /// Why the analysis has no FieldWorks morphemes, in plain words; the parser's own account is the tooltip.
     /// </summary>
-    public string ProjectionErrorText => "The parser found this analysis, but can't match its morphemes to FieldWorks entries.";
+    public string ProjectionErrorText => MotifAppStrings.TraceProjectionErrorText;
 }
 
 /// <summary>One rich morph record. Missing fields are named as unavailable rather than inferred from another field.</summary>
@@ -935,79 +937,83 @@ public sealed class TraceMorphViewModel
         FormWritingSystem = morph.FormWritingSystem;
         HeadwordWritingSystem = morph.HeadwordWritingSystem;
         GlossWritingSystem = morph.GlossWritingSystem;
-        RawDetails = morph.RawJson ?? "Full raw morph details not recorded";
+        RawDetails = morph.RawJson ?? MotifAppStrings.TraceRawMorphNotRecorded;
         MsaDetails = FormatMsaDetails(morph.RawJson);
-        Form = ValueOrUnavailable(morph.Form, "Form");
-        Headword = ValueOrUnavailable(morph.Headword, "Headword");
-        Gloss = ValueOrUnavailable(morph.Gloss, "Gloss");
-        Category = ValueOrUnavailable(morph.CategoryName ?? morph.Category, "Category");
-        Slot = ValueOrUnavailable(morph.Slot, "Slot");
-        InflectionClass = ValueOrUnavailable(morph.InflectionClassName ?? morph.InflectionClass, "Inflection class");
-        Features = ValueOrUnavailable(morph.Features, "Features");
-        GuessedString = ValueOrUnavailable(morph.GuessedString, "Guessed string");
-        Identity = ValueOrUnavailable(morph.Identity, "Identity");
-        IdentityQuality = ValueOrUnavailable(morph.IdentityQuality, "Identity quality");
-        FormId = ValueOrUnavailable(morph.FormId, "Form ID");
-        EntryId = ValueOrUnavailable(morph.EntryId, "Entry ID");
-        MsaId = ValueOrUnavailable(morph.MsaId, "Grammatical info ID");
-        InflTypeId = ValueOrUnavailable(morph.InflTypeId, "Inflection type ID");
+        Form = ValueOrUnavailable(morph.Form, MotifAppStrings.TraceMorphFormLabel);
+        Headword = ValueOrUnavailable(morph.Headword, MotifAppStrings.TraceMorphHeadwordLabel);
+        Gloss = ValueOrUnavailable(morph.Gloss, MotifAppStrings.TraceMorphGlossLabel);
+        Category = ValueOrUnavailable(morph.CategoryName ?? morph.Category, MotifAppStrings.TraceMorphCategoryLabel);
+        Slot = ValueOrUnavailable(morph.Slot, MotifAppStrings.TraceMorphSlotLabel);
+        InflectionClass = ValueOrUnavailable(morph.InflectionClassName ?? morph.InflectionClass, MotifAppStrings.TraceMorphInflectionClassLabel);
+        Features = ValueOrUnavailable(morph.Features, MotifAppStrings.TraceMorphFeaturesLabel);
+        GuessedString = ValueOrUnavailable(morph.GuessedString, MotifAppStrings.TraceMorphGuessedStringLabel);
+        Identity = ValueOrUnavailable(morph.Identity, MotifAppStrings.TraceMorphIdentityLabel);
+        IdentityQuality = ValueOrUnavailable(morph.IdentityQuality, MotifAppStrings.TraceMorphIdentityQualityLabel);
+        FormId = ValueOrUnavailable(morph.FormId, MotifAppStrings.TraceMorphFormIdLabel);
+        EntryId = ValueOrUnavailable(morph.EntryId, MotifAppStrings.TraceMorphEntryIdLabel);
+        MsaId = ValueOrUnavailable(morph.MsaId, MotifAppStrings.TraceMorphMsaIdLabel);
+        InflTypeId = ValueOrUnavailable(morph.InflTypeId, MotifAppStrings.TraceMorphInflTypeIdLabel);
         WritingSystems = string.Join("; ", new[] {
-            FormatWs("form", morph.FormWritingSystem),
-            FormatWs("headword", morph.HeadwordWritingSystem),
-            FormatWs("gloss", morph.GlossWritingSystem),
+            FormatWs(MotifAppStrings.TraceWsRoleForm, morph.FormWritingSystem),
+            FormatWs(MotifAppStrings.TraceWsRoleHeadword, morph.HeadwordWritingSystem),
+            FormatWs(MotifAppStrings.TraceWsRoleGloss, morph.GlossWritingSystem),
         }.Where(value => value is not null)!);
         Details = string.Join(" · ", new[] {
-            $"Slot: {Slot}", $"Inflection class: {InflectionClass}", $"Features: {Features}", $"Guessed: {GuessedString}",
-            $"Form ID: {FormId}", $"Entry ID: {EntryId}", $"Grammatical info ID: {MsaId}", $"Inflection type ID: {InflTypeId}",
-            $"Writing systems: {(WritingSystems.Length == 0 ? "not recorded" : WritingSystems)}",
+            LabelValue(MotifAppStrings.TraceMorphSlotLabel, Slot), LabelValue(MotifAppStrings.TraceMorphInflectionClassLabel, InflectionClass),
+            LabelValue(MotifAppStrings.TraceMorphFeaturesLabel, Features), LabelValue(MotifAppStrings.TraceMorphGuessedLabel, GuessedString),
+            LabelValue(MotifAppStrings.TraceMorphFormIdLabel, FormId), LabelValue(MotifAppStrings.TraceMorphEntryIdLabel, EntryId),
+            LabelValue(MotifAppStrings.TraceMorphMsaIdLabel, MsaId), LabelValue(MotifAppStrings.TraceMorphInflTypeIdLabel, InflTypeId),
+            LabelValue(MotifAppStrings.TraceMorphWritingSystemsLabel, WritingSystems.Length == 0 ? MotifAppStrings.TraceValueNotRecorded : WritingSystems),
         });
         var subject = InspectorSubject.Morpheme(morph.FormId, morph.MsaId, morph.Form ?? morph.Headword, morph.Gloss);
-        InspectSubject = subject is null ? null : subject with { IdentityQuality = morph.IdentityQuality ?? "unknown" };
+        InspectSubject = subject is null ? null : subject with { IdentityQuality = morph.IdentityQuality ?? MotifAppStrings.TraceIdentityQualityUnknown };
         Link = allowLiveLink && Uri.TryCreate(morph.FieldWorksLink, UriKind.Absolute, out var link) &&
                string.Equals(link.Scheme, "silfw", StringComparison.OrdinalIgnoreCase) ? link : null;
         var toolName = FieldWorksLinks.ToolNameOf(morph.FieldWorksLink);
         LinkName = string.IsNullOrWhiteSpace(morph.Headword)
-            ? $"Open the entry for {Form} in {toolName}"
-            : $"Open {morph.Headword} in {toolName}";
+            ? TraceText.Format(MotifAppStrings.TraceOpenEntryFormat, Form, toolName)
+            : TraceText.Format(MotifAppStrings.TraceOpenHeadwordFormat, morph.Headword, toolName);
     }
 
     private static string ValueOrUnavailable(string? value, string label) =>
-        string.IsNullOrWhiteSpace(value) ? $"{label} not recorded" : value;
+        string.IsNullOrWhiteSpace(value) ? TraceText.Format(MotifAppStrings.TraceFieldNotRecordedFormat, label) : value;
+
+    private static string LabelValue(string label, string value) => TraceText.Format(MotifAppStrings.TraceLabelValueFormat, label, value);
 
     private static string FormatMsaDetails(string? rawJson)
     {
-        if (string.IsNullOrWhiteSpace(rawJson)) return "Grammatical info not recorded.";
+        if (string.IsNullOrWhiteSpace(rawJson)) return MotifAppStrings.TraceMsaNotRecorded;
         try
         {
             using var document = JsonDocument.Parse(rawJson);
             var root = document.RootElement;
-            if (root.ValueKind != JsonValueKind.Object) return "Grammatical info not recorded.";
+            if (root.ValueKind != JsonValueKind.Object) return MotifAppStrings.TraceMsaNotRecorded;
             var fields = new (string Label, string Name)[]
             {
-                ("Grammatical info", "kind"),
-                ("From category", "fromCategory"),
-                ("To category", "toCategory"),
-                ("From inflection class", "fromInflectionClass"),
-                ("To inflection class", "toInflectionClass"),
-                ("From features", "fromFeatures"),
-                ("To features", "toFeatures"),
-                ("Attaches to", "attachesTo"),
-                ("Slots", "slots"),
-                ("Inflection class", "inflectionClass"),
+                (MotifAppStrings.TraceMsaKindLabel, "kind"),
+                (MotifAppStrings.TraceMsaFromCategoryLabel, "fromCategory"),
+                (MotifAppStrings.TraceMsaToCategoryLabel, "toCategory"),
+                (MotifAppStrings.TraceMsaFromInflectionClassLabel, "fromInflectionClass"),
+                (MotifAppStrings.TraceMsaToInflectionClassLabel, "toInflectionClass"),
+                (MotifAppStrings.TraceMsaFromFeaturesLabel, "fromFeatures"),
+                (MotifAppStrings.TraceMsaToFeaturesLabel, "toFeatures"),
+                (MotifAppStrings.TraceMsaAttachesToLabel, "attachesTo"),
+                (MotifAppStrings.TraceMsaSlotsLabel, "slots"),
+                (MotifAppStrings.TraceMorphInflectionClassLabel, "inflectionClass"),
             };
             var values = new List<string>();
             foreach (var field in fields)
             {
                 if (TryDisplay(root, field.Name, out var value) || (root.TryGetProperty("msa", out var msa) &&
                     TryDisplay(msa, field.Name, out value)))
-                    values.Add($"{field.Label}: {value}");
+                    values.Add(LabelValue(field.Label, value));
             }
 
-            return values.Count == 0 ? "Grammatical info not recorded." : string.Join(" · ", values);
+            return values.Count == 0 ? MotifAppStrings.TraceMsaNotRecorded : string.Join(" · ", values);
         }
         catch (JsonException)
         {
-            return "Grammatical info unavailable; the raw morph record is kept below.";
+            return MotifAppStrings.TraceMsaUnavailable;
         }
     }
 
@@ -1021,14 +1027,14 @@ public sealed class TraceMorphViewModel
     }
     private static string DisplayValue(JsonElement value) => value.ValueKind switch
     {
-        JsonValueKind.Null => "not recorded",
+        JsonValueKind.Null => MotifAppStrings.TraceValueNotRecorded,
         JsonValueKind.String => value.GetString() ?? "",
         JsonValueKind.Array => string.Join(", ", value.EnumerateArray().Select(DisplayValue)),
         JsonValueKind.Object when value.TryGetProperty("text", out var text) => DisplayValue(text),
         JsonValueKind.Object when value.TryGetProperty("form", out var form) => DisplayValue(form),
         JsonValueKind.Object when value.TryGetProperty("name", out var name) => DisplayValue(name) +
-            (value.TryGetProperty("optional", out var optional) ? $" (optional: {DisplayValue(optional)})" : ""),
-        JsonValueKind.Object => string.Join("; ", value.EnumerateObject().Select(field => $"{field.Name}: {DisplayValue(field.Value)}")),
+            (value.TryGetProperty("optional", out var optional) ? TraceText.Format(MotifAppStrings.TraceMsaOptionalFormat, DisplayValue(optional)) : ""),
+        JsonValueKind.Object => string.Join("; ", value.EnumerateObject().Select(field => LabelValue(field.Name, DisplayValue(field.Value)))),
         _ => value.GetRawText(),
     };
     public string? FormWritingSystem { get; }
@@ -1036,7 +1042,7 @@ public sealed class TraceMorphViewModel
     public string? GlossWritingSystem { get; }
 
     private static string? FormatWs(string role, string? value) =>
-        string.IsNullOrWhiteSpace(value) ? null : $"{role}={value}";
+        string.IsNullOrWhiteSpace(value) ? null : TraceText.Format(MotifAppStrings.TraceWsRoleFormat, role, value);
 
     public string RawDetails { get; }
     public string MsaDetails { get; }
@@ -1060,8 +1066,9 @@ public sealed class TraceMorphViewModel
     public InspectorSubject? InspectSubject { get; }
 
     /// <summary>What the trace recorded about the morph, for the inspector to show apart from the Baseline's facts.</summary>
-    public IReadOnlyList<InspectorDetail> Captured => InspectorDetail.Recorded(("Form", Form), ("Headword", Headword),
-        ("Gloss", Gloss), ("Category", Category), ("Slot", Slot), ("Features", Features));
+    public IReadOnlyList<InspectorDetail> Captured => InspectorDetail.Recorded((MotifAppStrings.TraceMorphFormLabel, Form), (MotifAppStrings.TraceMorphHeadwordLabel, Headword),
+        (MotifAppStrings.TraceMorphGlossLabel, Gloss), (MotifAppStrings.TraceMorphCategoryLabel, Category),
+        (MotifAppStrings.TraceMorphSlotLabel, Slot), (MotifAppStrings.TraceMorphFeaturesLabel, Features));
     public bool CanInspect => InspectSubject is not null;
     public bool CannotInspect => InspectSubject is null;
     public string Details { get; }
@@ -1089,10 +1096,10 @@ public sealed partial class TraceStopGroupViewModel : ObservableObject
         ReasonCode = reasonCode;
         Explanation = explanation;
         Count = count;
-        RuleText = rule is { Length: > 0 } named ? named : "Recorded refusal";
+        RuleText = rule is { Length: > 0 } named ? named : MotifAppStrings.TraceRecordedRefusal;
         ReasonText = explanation is { Length: > 0 } sentence ? sentence
             : reasonCode is { Length: > 0 } code ? TraceStepKinds.ExplainReason(code)
-            : "PanGloss didn't record why.";
+            : MotifAppStrings.TraceDidNotRecordWhy;
         CountText = PluralText.Format(MotifAppStrings.TraceAttemptsPattern, count);
     }
 
@@ -1161,23 +1168,24 @@ public sealed class TraceCandidateViewModel : ObservableObject
         IsBlocked = candidate.OutcomeStatus == "blocked" || candidate.Steps.LastOrDefault()?.Type == "Blocked";
         IsFailure = !candidate.Succeeded && !IsBlocked && (candidate.OutcomeStatus is "failed" or "failure" || candidate.FailureReason is { Length: > 0 } || candidate.ContextualFailure is { Length: > 0 } || candidate.Steps.Any(step => step.FailureReason is { Length: > 0 }));
         SourceIdentity = candidate.SourceIdentityId is { Length: > 0 }
-            ? $"{candidate.SourceIdentityKind ?? "source"}: {candidate.SourceIdentityId} ({candidate.SourceIdentityQuality ?? "quality not recorded"})"
-            : "Source identity not recorded";
+            ? TraceText.Format(MotifAppStrings.TraceSourceIdentityFormat, candidate.SourceIdentityKind ?? MotifAppStrings.TraceSourceKindLower,
+                candidate.SourceIdentityId, candidate.SourceIdentityQuality ?? MotifAppStrings.TraceQualityNotRecorded)
+            : MotifAppStrings.TraceSourceIdentityNotRecorded;
         HasTreeContext = candidate.TreeContext.Count > 0;
         _loadContext = () => root is null ? [] : TraceTreeContextRange.Resolve(root, candidate.TreeContext)
             .Select(step => new TraceStepViewModel(step, null, directions, labels, refs)).ToArray();
         Steps = candidate.Steps.Select(step => new TraceStepViewModel(step, deepestStepId: null, directions, labels, refs)).ToArray();
-        Text = RichMorphs.Count > 0 ? string.Join(" + ", RichMorphs.Select(morph => morph.Form)) : Morphs.Count > 0 ? string.Join(" + ", Morphs.Select(morph => morph.Form)) : Steps.LastOrDefault()?.Source ?? "Recorded attempt";
+        Text = RichMorphs.Count > 0 ? string.Join(" + ", RichMorphs.Select(morph => morph.Form)) : Morphs.Count > 0 ? string.Join(" + ", Morphs.Select(morph => morph.Form)) : Steps.LastOrDefault()?.Source ?? MotifAppStrings.TraceRecordedAttempt;
         Gloss = string.Join(" + ", Morphs.Select(morph => morph.GlossOrPlaceholder));
         Surface = candidate.Surface;
         StoppedByRule = labels?.Resolve(candidate.StoppedByRefId, candidate.StoppedByRule) ?? candidate.StoppedByRule;
         StoppedByRuleId = candidate.StoppedByRuleId;
-        StopHeadline = Succeeded ? "Built the word"
-            : StoppedByRule is { Length: > 0 } rule ? $"Refused by {rule}"
-            : "No analysis found";
+        StopHeadline = Succeeded ? MotifAppStrings.TraceKindBuiltTheWord
+            : StoppedByRule is { Length: > 0 } rule ? TraceText.Format(MotifAppStrings.TraceRefusedByFormat, rule)
+            : MotifAppStrings.TraceKindNoAnalysisFound;
         StopReason = Explanation is { Length: > 0 } explanation ? explanation
             : FailureReason is { Length: > 0 } code ? TraceFailureSentences.Explain(code, StoppedByRule, FailureRequired)
-            : "Reason not recorded";
+            : MotifAppStrings.TraceReasonNotRecorded;
     }
 
     /// <summary>The parser's own reason code, kept out of the sentence and shown only among the steps.</summary>
@@ -1217,7 +1225,7 @@ public sealed class TraceCandidateViewModel : ObservableObject
     public string SourceIdentity { get; }
     public string FailureContext => string.Join(" · ", new[] { ContextualFailure, FailureReason, Explanation }.Where(value => !string.IsNullOrWhiteSpace(value))) is { Length: > 0 } text
         ? text
-        : "Failure context not recorded";
+        : MotifAppStrings.TraceFailureContextNotRecorded;
     public IReadOnlyList<TraceStepViewModel> Steps { get; }
     private readonly Func<IReadOnlyList<TraceStepViewModel>> _loadContext;
     private IReadOnlyList<TraceStepViewModel>? _context;
@@ -1234,7 +1242,8 @@ public sealed class TraceCandidateViewModel : ObservableObject
     public IReadOnlyList<TraceStepViewModel> RecordedTreeContext => !IsTreeContextExpanded ? [] : _context ??= _loadContext();
     public string Text { get; }
     public string Gloss { get; }
-    public string StatusText => IsBlocked ? "Blocked" : Succeeded ? "built the word" : IsFailure ? "refused" : "tried";
+    public string StatusText => IsBlocked ? MotifAppStrings.TraceKindBlocked : Succeeded ? MotifAppStrings.TraceStatusBuiltTheWord
+        : IsFailure ? MotifAppStrings.TraceStepRefused : MotifAppStrings.TraceStepTried;
 
     /// <summary>How this attempt ended: it built the word, a rule refused it, or it was only tried.</summary>
     public Mark StepMark => Mark.Of(Succeeded ? TraceStepMark.Built : IsFailure ? TraceStepMark.Refused : TraceStepMark.Tried);
@@ -1254,11 +1263,11 @@ public sealed class TraceEffortViewModel
         Tried = effort.Attempts.ToString("N0");
         Produced = effort.Outputs.ToString("N0");
         var misses = new List<string>();
-        if (effort.NotApplied > 0) misses.Add($"{effort.NotApplied:N0} did not apply");
-        if (effort.NoRoot > 0) misses.Add($"{effort.NoRoot:N0} found no root");
-        if (effort.SurfaceMismatch > 0) misses.Add($"{effort.SurfaceMismatch:N0} did not match the word");
+        if (effort.NotApplied > 0) misses.Add(TraceText.Format(MotifAppStrings.TraceEffortDidNotApplyFormat, effort.NotApplied.ToString("N0")));
+        if (effort.NoRoot > 0) misses.Add(TraceText.Format(MotifAppStrings.TraceEffortNoRootFormat, effort.NoRoot.ToString("N0")));
+        if (effort.SurfaceMismatch > 0) misses.Add(TraceText.Format(MotifAppStrings.TraceEffortSurfaceMismatchFormat, effort.SurfaceMismatch.ToString("N0")));
         Missed = misses.Count == 0 ? "—" : string.Join(", ", misses);
-        Time = effort.SelfMs is { } ms ? TraceWordViewModel.FormatMs(ms) : "not timed";
+        Time = effort.SelfMs is { } ms ? TraceWordViewModel.FormatMs(ms) : MotifAppStrings.TraceNotTimed;
 
         WorkHeat = Shade(effort.Work, largest.Work);
         UsesHeat = Shade(effort.Uses, largest.Uses);
@@ -1343,14 +1352,14 @@ public sealed class TraceStepViewModel : ObservableObject
     public bool HasUnlinkedBuildingSource => HasUnlinkedSource && !Type.Contains("Analysis", StringComparison.Ordinal);
 
     public string BuildingText => Type.Contains("Analysis", StringComparison.Ordinal) && Output is { Length: > 0 }
-            ? "Stem form · " + Output
-        : Type == "StratumSynthesisInput" ? "Stem used · " + Input
+            ? TraceText.Format(MotifAppStrings.TraceBuildingStemFormFormat, Output)
+        : Type == "StratumSynthesisInput" ? TraceText.Format(MotifAppStrings.TraceBuildingStemUsedFormat, Input)
         : Type == "LexicalLookup" && RecordedStep.EventEvidence?.LookupResult is { MatchCount: > 0 }
-            ? "Stem found · " + Input
-        : Type == "Successful" ? "Built the word"
-        : Type == "Failed" ? "No analysis found"
-        : Type.Contains("MorphologicalRule", StringComparison.Ordinal) ? "Affix"
-        : Type.Contains("PhonologicalRule", StringComparison.Ordinal) ? "Sound rule" : KindText;
+            ? TraceText.Format(MotifAppStrings.TraceBuildingStemFoundFormat, Input)
+        : Type == "Successful" ? MotifAppStrings.TraceKindBuiltTheWord
+        : Type == "Failed" ? MotifAppStrings.TraceKindNoAnalysisFound
+        : Type.Contains("MorphologicalRule", StringComparison.Ordinal) ? MotifAppStrings.TraceBuildingAffix
+        : Type.Contains("PhonologicalRule", StringComparison.Ordinal) ? MotifAppStrings.TraceBuildingSoundRule : KindText;
 
     public bool ShowsBuildingOutcome => Type.Contains("Synthesis", StringComparison.Ordinal) && Type != "StratumSynthesisInput";
 
@@ -1362,9 +1371,9 @@ public sealed class TraceStepViewModel : ObservableObject
 
     public TraceStep RecordedStep { get; private init; } = null!;
     public TraceRef? Reference { get; private init; }
-    public string? ProducerSourceText => RecordedStep.Source is { Length: > 0 } source ? $"Producer: {source}" : null;
+    public string? ProducerSourceText => RecordedStep.Source is { Length: > 0 } source ? TraceText.Format(MotifAppStrings.TraceProducerFormat, source) : null;
     public string? CapturedSourceText => Reference?.CapturedFieldWorksLabel is { Length: > 0 } captured &&
-        !string.Equals(captured, RecordedStep.Source, StringComparison.Ordinal) ? $"Captured FieldWorks: {captured}" : null;
+        !string.Equals(captured, RecordedStep.Source, StringComparison.Ordinal) ? TraceText.Format(MotifAppStrings.TraceCapturedFieldWorksFormat, captured) : null;
     public string? SourceLabel => Source;
 
     /// <summary>The inspector subject from this event's recorded typed key; absent without that key.</summary>
@@ -1372,27 +1381,28 @@ public sealed class TraceStepViewModel : ObservableObject
         ? InspectorSubject.Rule(key, Source, reference.IdentityQuality) : null;
 
     /// <summary>This event's recorded details, shown apart from the inspector's current Baseline facts.</summary>
-    public IReadOnlyList<InspectorDetail> Captured => InspectorDetail.Recorded(("Kind", Type),
-        ("Producer", RecordedStep.Source), ("Captured FieldWorks", Reference?.CapturedFieldWorksLabel),
-        ("Producer event ID", RecordedStep.EventEvidence?.ProducerStepId), ("Tree address", RecordedStep.StepId),
-        ("Subrule", Subrule?.ToString(System.Globalization.CultureInfo.InvariantCulture)),
-        ("Input", Input), ("Output", Output),
-        ("Outcome", OutcomeStatus), ("Event", OutcomeEventType), ("Reason", FailureReason),
-        ("Explanation", RecordedStep.ExplanationAvailability == TraceEvidenceAvailability.Recorded
-            ? RecordedStep.ReasonExplanation : null), ("Evaluator details", RecordedRejectionText));
+    public IReadOnlyList<InspectorDetail> Captured => InspectorDetail.Recorded((MotifAppStrings.TraceCapturedKindLabel, Type),
+        (MotifAppStrings.TraceCapturedProducerLabel, RecordedStep.Source), (MotifAppStrings.TraceCapturedFieldWorksLabel, Reference?.CapturedFieldWorksLabel),
+        (MotifAppStrings.TraceCapturedProducerEventIdLabel, RecordedStep.EventEvidence?.ProducerStepId), (MotifAppStrings.TraceCapturedTreeAddressLabel, RecordedStep.StepId),
+        (MotifAppStrings.TraceCapturedSubruleLabel, Subrule?.ToString(System.Globalization.CultureInfo.InvariantCulture)),
+        (MotifAppStrings.TraceCapturedInputLabel, Input), (MotifAppStrings.TraceCapturedOutputLabel, Output),
+        (MotifAppStrings.TraceCapturedOutcomeLabel, OutcomeStatus), (MotifAppStrings.TraceCapturedEventLabel, OutcomeEventType),
+        (MotifAppStrings.TraceCapturedReasonLabel, FailureReason),
+        (MotifAppStrings.TraceCapturedExplanationLabel, RecordedStep.ExplanationAvailability == TraceEvidenceAvailability.Recorded
+            ? RecordedStep.ReasonExplanation : null), (MotifAppStrings.TraceCapturedEvaluatorDetailsLabel, RecordedRejectionText));
     public bool CanInspect => InspectSubject is not null;
     public bool HasUnlinkedSource => !CanInspect && SourceLabel is { Length: > 0 };
 
-    public string RecordedOutcomeText => IsFailure ? "Refused" : OutcomeStatus?.ToLowerInvariant() switch
+    public string RecordedOutcomeText => IsFailure ? MotifAppStrings.TraceOutcomeRefused : OutcomeStatus?.ToLowerInvariant() switch
     {
-        "attempted" => "Tried",
-        "success" or "succeeded" or "successful" => "Applied",
-        "failed" or "failure" or "error" => "Refused",
-        "blocked" => "Blocked",
-        null or "" => "Outcome not recorded",
+        "attempted" => MotifAppStrings.TraceOutcomeTried,
+        "success" or "succeeded" or "successful" => MotifAppStrings.TraceOutcomeApplied,
+        "failed" or "failure" or "error" => MotifAppStrings.TraceOutcomeRefused,
+        "blocked" => MotifAppStrings.TraceKindBlocked,
+        null or "" => MotifAppStrings.TraceOutcomeNotRecorded,
         _ => OutcomeStatus,
     };
-    public string RecordedLabel => Type == "Blocked" ? "Blocked" : KindText;
+    public string RecordedLabel => Type == "Blocked" ? MotifAppStrings.TraceKindBlocked : KindText;
     public string Notation => string.Join(" · ", new[] { Type, OutcomeStatus, OutcomeEventType }
         .Where(value => !string.IsNullOrWhiteSpace(value)));
     /// <summary>The event's recorded classification without repeating its event name.</summary>
@@ -1402,42 +1412,43 @@ public sealed class TraceStepViewModel : ObservableObject
     /// <summary>Whether this event has a separate recorded classification to show.</summary>
     public bool HasExpertClassification => ExpertClassificationText.Length > 0;
     /// <summary>The event's recorded input, or why its empty expert token has no value.</summary>
-    public string InputTip => Input is null ? "Input not recorded" : "Recorded input shape, in the parser's direction.";
+    public string InputTip => Input is null ? MotifAppStrings.TraceInputNotRecorded : MotifAppStrings.TraceInputShapeTip;
     /// <summary>The event's recorded output, or why its empty expert token has no value.</summary>
-    public string OutputTip => Output is null ? "Output not recorded" : "Recorded output shape. A recorded output alone does not prove application.";
+    public string OutputTip => Output is null ? MotifAppStrings.TraceOutputNotRecorded : MotifAppStrings.TraceOutputShapeTip;
     /// <summary>This event's address in Motif's unchanged saved tree, independently of its producer event ID.</summary>
     public string RecordedEventAddress => RecordedStep.StepId is { Length: > 0 } address
-        ? $"Recorded event: {address}" : "Event address not recorded";
+        ? TraceText.Format(MotifAppStrings.TraceRecordedEventFormat, address) : MotifAppStrings.TraceEventAddressNotRecorded;
 
     /// <summary>The producer's captured event ID, shown separately from Motif's tree address; never synthesized.</summary>
     public string RecordedProducerEventAddress => RecordedStep.EventEvidence?.ProducerStepId is { Length: > 0 } producer
-        ? $"Producer event ID: {producer}" + (RecordedStep.StepId is { Length: > 0 } treeAddress
-            ? $" (tree address {treeAddress})" : "; tree address not recorded")
-        : RecordedStep.StepId is { Length: > 0 } address ? $"Tree address: {address}; producer event ID not recorded"
-            : "Producer event ID not recorded";
+        ? RecordedStep.StepId is { Length: > 0 } treeAddress
+            ? TraceText.Format(MotifAppStrings.TraceProducerEventWithTreeFormat, producer, treeAddress)
+            : TraceText.Format(MotifAppStrings.TraceProducerEventNoTreeFormat, producer)
+        : RecordedStep.StepId is { Length: > 0 } address ? TraceText.Format(MotifAppStrings.TraceTreeAddressOnlyFormat, address)
+            : MotifAppStrings.TraceProducerEventNotRecorded;
     public string RecordedReasonText => RecordedStep.ReasonAvailability == TraceEvidenceAvailability.Recorded
-        ? RecordedStep.FailureReason! : "Reason not recorded";
+        ? RecordedStep.FailureReason! : MotifAppStrings.TraceReasonNotRecorded;
     public string RecordedExplanationText => RecordedStep.ExplanationAvailability == TraceEvidenceAvailability.Recorded
         ? RecordedStep.ReasonExplanation! : TraceFailureSentences.Explain(FailureReason, Source, FailureRequired);
     public string RecordedRejectionText => RecordedStep.RejectionDetailsAvailability == TraceEvidenceAvailability.NotRecorded &&
         TraceEvidenceDisplay.Details(RecordedStep).Count == 0
-        ? "Rejection details not recorded" : string.Join("\n", new[]
+        ? MotifAppStrings.TraceRejectionDetailsNotRecorded : string.Join("\n", new[]
     {
-        FailureRequired is { Length: > 0 } ? $"Required: {FailureRequired}" : null,
-        FailureActual is { Length: > 0 } ? $"Actual: {FailureActual}" : null,
-        FailureEnvironment is { Length: > 0 } ? $"Environment: {FailureEnvironment}" : null,
-        RecordedStep.FailureEvidence is { Status: "available" or "recorded" or "captured" } ? "Rejection details recorded" : null,
-        RecordedStep.FailureEvidence?.Status is { Length: > 0 } status ? $"Evidence status: {status}" : null,
-        RecordedStep.FailureEvidence?.Kind is { Length: > 0 } kind ? $"Evidence kind: {kind}" : null,
-        RecordedStep.FailureEvidence?.Source is { Length: > 0 } source ? $"Evidence source: {source}" : null,
-        RecordedStep.FailureEvidence?.ReasonCode is { Length: > 0 } code ? $"Evidence reason code: {code}" : null,
-        RecordedStep.FailureEvidence?.UnavailableReason is { Length: > 0 } unavailable ? $"Evidence unavailable reason: {unavailable}" : null,
-        RecordedStep.FailureEvidence?.Reason is { Length: > 0 } reason ? $"Evidence reason: {reason}" : null,
-        RecordedStep.FailureEvidence?.Required is { Length: > 0 } required ? $"Evidence required: {required}" : null,
-        RecordedStep.FailureEvidence?.Actual is { Length: > 0 } actual ? $"Evidence actual: {actual}" : null,
-        RecordedStep.FailureEvidence?.Environment is { Length: > 0 } environment ? $"Evidence environment: {environment}" : null,
+        FailureRequired is { Length: > 0 } ? TraceText.Format(MotifAppStrings.TraceRequiredFormat, FailureRequired) : null,
+        FailureActual is { Length: > 0 } ? TraceText.Format(MotifAppStrings.TraceActualFormat, FailureActual) : null,
+        FailureEnvironment is { Length: > 0 } ? TraceText.Format(MotifAppStrings.TraceEnvironmentFormat, FailureEnvironment) : null,
+        RecordedStep.FailureEvidence is { Status: "available" or "recorded" or "captured" } ? MotifAppStrings.TraceRejectionDetailsRecorded : null,
+        RecordedStep.FailureEvidence?.Status is { Length: > 0 } status ? TraceText.Format(MotifAppStrings.TraceEvidenceStatusFormat, status) : null,
+        RecordedStep.FailureEvidence?.Kind is { Length: > 0 } kind ? TraceText.Format(MotifAppStrings.TraceEvidenceKindFormat, kind) : null,
+        RecordedStep.FailureEvidence?.Source is { Length: > 0 } source ? TraceText.Format(MotifAppStrings.TraceEvidenceSourceFormat, source) : null,
+        RecordedStep.FailureEvidence?.ReasonCode is { Length: > 0 } code ? TraceText.Format(MotifAppStrings.TraceEvidenceReasonCodeFormat, code) : null,
+        RecordedStep.FailureEvidence?.UnavailableReason is { Length: > 0 } unavailable ? TraceText.Format(MotifAppStrings.TraceEvidenceUnavailableReasonFormat, unavailable) : null,
+        RecordedStep.FailureEvidence?.Reason is { Length: > 0 } reason ? TraceText.Format(MotifAppStrings.TraceEvidenceReasonFormat, reason) : null,
+        RecordedStep.FailureEvidence?.Required is { Length: > 0 } required ? TraceText.Format(MotifAppStrings.TraceEvidenceRequiredFormat, required) : null,
+        RecordedStep.FailureEvidence?.Actual is { Length: > 0 } actual ? TraceText.Format(MotifAppStrings.TraceEvidenceActualFormat, actual) : null,
+        RecordedStep.FailureEvidence?.Environment is { Length: > 0 } environment ? TraceText.Format(MotifAppStrings.TraceEvidenceEnvironmentFormat, environment) : null,
     }.Where(value => value is not null).Concat(TraceEvidenceDisplay.Details(RecordedStep))) is { Length: > 0 } text
-        ? text : "Rejection details not recorded";
+        ? text : MotifAppStrings.TraceRejectionDetailsNotRecorded;
     /// <summary>A known refusal explanation in the window's words, without parser codes or evidence details.</summary>
     public string PlainRefusalText
     {
@@ -1494,7 +1505,8 @@ public sealed class TraceStepViewModel : ObservableObject
     public string? SourceIdentityKind { get; }
     public string? SourceIdentityId { get; }
     public string? SourceIdentityQuality { get; }
-    public string SourceIdentity => $"{SourceIdentityKind ?? "Source"}: {SourceIdentityId ?? "not recorded"} ({SourceIdentityQuality ?? "quality not recorded"})";
+    public string SourceIdentity => TraceText.Format(MotifAppStrings.TraceSourceIdentityFormat, SourceIdentityKind ?? MotifAppStrings.TraceSourceKindTitle,
+        SourceIdentityId ?? MotifAppStrings.TraceValueNotRecorded, SourceIdentityQuality ?? MotifAppStrings.TraceQualityNotRecorded);
     public IReadOnlyList<TraceMorphViewModel> AttemptedMorphs { get; }
     public bool HasAttemptedMorphs => AttemptedMorphs.Count > 0;
     public bool HasFailureReason => FailureReason is { Length: > 0 };
@@ -1512,7 +1524,8 @@ public sealed class TraceStepViewModel : ObservableObject
         Type.Contains("success", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>What happened at the step, in the words a linguist uses: applied, refused, or only tried.</summary>
-    public string StatusText => IsBlocked ? "Blocked" : IsFailure ? "refused" : IsSuccessful ? "applied" : "tried";
+    public string StatusText => IsBlocked ? MotifAppStrings.TraceKindBlocked : IsFailure ? MotifAppStrings.TraceStepRefused
+        : IsSuccessful ? MotifAppStrings.TraceStepApplied : MotifAppStrings.TraceStepTried;
 
     /// <summary>The step's kind in plain words, such as "Affix rule".</summary>
     public string KindText => TraceStepKinds.Describe(Type);
@@ -1520,17 +1533,17 @@ public sealed class TraceStepViewModel : ObservableObject
     /// <summary>Whether this event recorded a positive subrule index.</summary>
     public bool HasSubrule => Subrule is > 0;
     /// <summary>The recorded subrule index, when it has one.</summary>
-    public string SubruleText => HasSubrule ? $"Subrule: {Subrule}" : string.Empty;
+    public string SubruleText => HasSubrule ? TraceText.Format(MotifAppStrings.TraceSubruleFormat, Subrule) : string.Empty;
 
     public string ContextText => string.Join("\n", new[] {
-        FailureReason is null ? "Reason not recorded" : RecordedStep.ExplanationAvailability == TraceEvidenceAvailability.Recorded
+        FailureReason is null ? MotifAppStrings.TraceReasonNotRecorded : RecordedStep.ExplanationAvailability == TraceEvidenceAvailability.Recorded
             ? RecordedStep.ReasonExplanation : TraceStepKinds.ExplainReason(FailureReason),
-        RecordedStep?.RejectionDetailsAvailability == TraceEvidenceAvailability.Recorded ? null : "Rejection details not recorded",
+        RecordedStep?.RejectionDetailsAvailability == TraceEvidenceAvailability.Recorded ? null : MotifAppStrings.TraceRejectionDetailsNotRecorded,
         ContextualFailure,
-        FailureRequired is { Length: > 0 } ? $"Required: {FailureRequired}" : null,
-        FailureActual is { Length: > 0 } ? $"Actual: {FailureActual}" : null,
-        FailureEnvironment is { Length: > 0 } ? $"Environment: {FailureEnvironment}" : null,
-    }.Where(value => !string.IsNullOrWhiteSpace(value))) is { Length: > 0 } context ? context : "Contextual failure not recorded";
+        FailureRequired is { Length: > 0 } ? TraceText.Format(MotifAppStrings.TraceRequiredFormat, FailureRequired) : null,
+        FailureActual is { Length: > 0 } ? TraceText.Format(MotifAppStrings.TraceActualFormat, FailureActual) : null,
+        FailureEnvironment is { Length: > 0 } ? TraceText.Format(MotifAppStrings.TraceEnvironmentFormat, FailureEnvironment) : null,
+    }.Where(value => !string.IsNullOrWhiteSpace(value))) is { Length: > 0 } context ? context : MotifAppStrings.TraceContextualFailureNotRecorded;
 
     public string MorphSearchText => string.Join("\n", AttemptedMorphs.SelectMany(morph =>
         new[] { morph.Form, morph.Headword, morph.Gloss, morph.Category, morph.Identity, morph.FormId, morph.EntryId }));
@@ -1577,4 +1590,11 @@ public sealed class TraceStepViewModel : ObservableObject
     public bool ExpandForFilter { get; }
     public IReadOnlyList<TraceStepViewModel> Children { get; }
     public string Label { get; }
+}
+
+/// <summary>Formats a localized trace sentence with the current culture, as an interpolated string would.</summary>
+internal static class TraceText
+{
+    public static string Format(string format, params object?[] args) =>
+        string.Format(System.Globalization.CultureInfo.CurrentCulture, format, args);
 }

@@ -3407,4 +3407,286 @@ public static class MotifAppStrings
     public static string OverviewWarningsWithErrorsFormat => Text("MotifApp.OverviewWarningsWithErrorsFormat");
 
     public static string OverviewReadRefusalNumbers => Text("MotifApp.OverviewReadRefusalNumbers");
+
+    public static string TraceGrammarSourceNotRecorded => Text("MotifApp.TraceGrammarSourceNotRecorded");
+
+    public static string TraceGrammarSourceBaselineFormat => Text("MotifApp.TraceGrammarSourceBaselineFormat");
+
+    public static string TraceGrammarSourceFormat => Text("MotifApp.TraceGrammarSourceFormat");
+
+    public static string TraceProvenanceNotRecorded => Text("MotifApp.TraceProvenanceNotRecorded");
+
+    public static string TraceNoTerminalAttemptStopped => Text("MotifApp.TraceNoTerminalAttemptStopped");
+
+    public static string TraceNoTerminalAttempt => Text("MotifApp.TraceNoTerminalAttempt");
+
+    public static string TraceWhyOtherAttemptsFailed => Text("MotifApp.TraceWhyOtherAttemptsFailed");
+
+    public static string TraceWhyNotParsed => Text("MotifApp.TraceWhyNotParsed");
+
+    public static string TraceWritingSystemsNotRecorded => Text("MotifApp.TraceWritingSystemsNotRecorded");
+
+    public static string TraceWritingSystemFormat => Text("MotifApp.TraceWritingSystemFormat");
+
+    public static string TraceDirectionNotRecorded => Text("MotifApp.TraceDirectionNotRecorded");
+
+    public static string TraceFontUiFallback => Text("MotifApp.TraceFontUiFallback");
+
+    public static string TraceWritingSystemsSummaryFormat => Text("MotifApp.TraceWritingSystemsSummaryFormat");
+
+    public static string TraceLabelValueFormat => Text("MotifApp.TraceLabelValueFormat");
+
+    public static string TraceCaptureFormatLabel => Text("MotifApp.TraceCaptureFormatLabel");
+
+    public static string TraceCaptureParserLabel => Text("MotifApp.TraceCaptureParserLabel");
+
+    public static string TraceCaptureParserVersionLabel => Text("MotifApp.TraceCaptureParserVersionLabel");
+
+    public static string TraceCaptureProfileLabel => Text("MotifApp.TraceCaptureProfileLabel");
+
+    public static string TraceCaptureGrammarHashLabel => Text("MotifApp.TraceCaptureGrammarHashLabel");
+
+    public static string TraceCaptureGrammarHashSemanticsLabel => Text("MotifApp.TraceCaptureGrammarHashSemanticsLabel");
+
+    public static string TraceCaptureProjectIdentityLabel => Text("MotifApp.TraceCaptureProjectIdentityLabel");
+
+    public static string TraceCaptureBundleDigestLabel => Text("MotifApp.TraceCaptureBundleDigestLabel");
+
+    public static string TraceBaselineCapturedFormat => Text("MotifApp.TraceBaselineCapturedFormat");
+
+    public static string TraceSourceSavedFormat => Text("MotifApp.TraceSourceSavedFormat");
+
+    public static string TraceBaselineSourceNotRecorded => Text("MotifApp.TraceBaselineSourceNotRecorded");
+
+    public static string TraceCapturedAtFormat => Text("MotifApp.TraceCapturedAtFormat");
+
+    public static string TraceHostElapsedFormat => Text("MotifApp.TraceHostElapsedFormat");
+
+    public static string TraceCaptureDetailsNotRecorded => Text("MotifApp.TraceCaptureDetailsNotRecorded");
+
+    public static string TraceShowAnalyses => Text("MotifApp.TraceShowAnalyses");
+
+    public static string TraceFocusThisWord => Text("MotifApp.TraceFocusThisWord");
+
+    public static string TraceSurfaceNotRecorded => Text("MotifApp.TraceSurfaceNotRecorded");
+
+    public static string TraceAvailabilityNotRecorded => Text("MotifApp.TraceAvailabilityNotRecorded");
+
+    public static string TraceMorphemesFormat => Text("MotifApp.TraceMorphemesFormat");
+
+    public static string TraceParserMorphemesTipFormat => Text("MotifApp.TraceParserMorphemesTipFormat");
+
+    public static string TraceAnalysisNumberFormat => Text("MotifApp.TraceAnalysisNumberFormat");
+
+    public static string TraceRecordedAnalysis => Text("MotifApp.TraceRecordedAnalysis");
+
+    public static string TraceProjectionErrorText => Text("MotifApp.TraceProjectionErrorText");
+
+    public static string TraceRawMorphNotRecorded => Text("MotifApp.TraceRawMorphNotRecorded");
+
+    public static string TraceValueNotRecorded => Text("MotifApp.TraceValueNotRecorded");
+
+    public static string TraceFieldNotRecordedFormat => Text("MotifApp.TraceFieldNotRecordedFormat");
+
+    public static string TraceMorphFormLabel => Text("MotifApp.TraceMorphFormLabel");
+
+    public static string TraceMorphHeadwordLabel => Text("MotifApp.TraceMorphHeadwordLabel");
+
+    public static string TraceMorphGlossLabel => Text("MotifApp.TraceMorphGlossLabel");
+
+    public static string TraceMorphCategoryLabel => Text("MotifApp.TraceMorphCategoryLabel");
+
+    public static string TraceMorphSlotLabel => Text("MotifApp.TraceMorphSlotLabel");
+
+    public static string TraceMorphInflectionClassLabel => Text("MotifApp.TraceMorphInflectionClassLabel");
+
+    public static string TraceMorphFeaturesLabel => Text("MotifApp.TraceMorphFeaturesLabel");
+
+    public static string TraceMorphGuessedStringLabel => Text("MotifApp.TraceMorphGuessedStringLabel");
+
+    public static string TraceMorphGuessedLabel => Text("MotifApp.TraceMorphGuessedLabel");
+
+    public static string TraceMorphIdentityLabel => Text("MotifApp.TraceMorphIdentityLabel");
+
+    public static string TraceMorphIdentityQualityLabel => Text("MotifApp.TraceMorphIdentityQualityLabel");
+
+    public static string TraceMorphFormIdLabel => Text("MotifApp.TraceMorphFormIdLabel");
+
+    public static string TraceMorphEntryIdLabel => Text("MotifApp.TraceMorphEntryIdLabel");
+
+    public static string TraceMorphMsaIdLabel => Text("MotifApp.TraceMorphMsaIdLabel");
+
+    public static string TraceMorphInflTypeIdLabel => Text("MotifApp.TraceMorphInflTypeIdLabel");
+
+    public static string TraceMorphWritingSystemsLabel => Text("MotifApp.TraceMorphWritingSystemsLabel");
+
+    public static string TraceWsRoleForm => Text("MotifApp.TraceWsRoleForm");
+
+    public static string TraceWsRoleHeadword => Text("MotifApp.TraceWsRoleHeadword");
+
+    public static string TraceWsRoleGloss => Text("MotifApp.TraceWsRoleGloss");
+
+    public static string TraceWsRoleFormat => Text("MotifApp.TraceWsRoleFormat");
+
+    public static string TraceIdentityQualityUnknown => Text("MotifApp.TraceIdentityQualityUnknown");
+
+    public static string TraceOpenEntryFormat => Text("MotifApp.TraceOpenEntryFormat");
+
+    public static string TraceOpenHeadwordFormat => Text("MotifApp.TraceOpenHeadwordFormat");
+
+    public static string TraceMsaNotRecorded => Text("MotifApp.TraceMsaNotRecorded");
+
+    public static string TraceMsaUnavailable => Text("MotifApp.TraceMsaUnavailable");
+
+    public static string TraceMsaKindLabel => Text("MotifApp.TraceMsaKindLabel");
+
+    public static string TraceMsaFromCategoryLabel => Text("MotifApp.TraceMsaFromCategoryLabel");
+
+    public static string TraceMsaToCategoryLabel => Text("MotifApp.TraceMsaToCategoryLabel");
+
+    public static string TraceMsaFromInflectionClassLabel => Text("MotifApp.TraceMsaFromInflectionClassLabel");
+
+    public static string TraceMsaToInflectionClassLabel => Text("MotifApp.TraceMsaToInflectionClassLabel");
+
+    public static string TraceMsaFromFeaturesLabel => Text("MotifApp.TraceMsaFromFeaturesLabel");
+
+    public static string TraceMsaToFeaturesLabel => Text("MotifApp.TraceMsaToFeaturesLabel");
+
+    public static string TraceMsaAttachesToLabel => Text("MotifApp.TraceMsaAttachesToLabel");
+
+    public static string TraceMsaSlotsLabel => Text("MotifApp.TraceMsaSlotsLabel");
+
+    public static string TraceMsaOptionalFormat => Text("MotifApp.TraceMsaOptionalFormat");
+
+    public static string TraceRecordedRefusal => Text("MotifApp.TraceRecordedRefusal");
+
+    public static string TraceDidNotRecordWhy => Text("MotifApp.TraceDidNotRecordWhy");
+
+    public static string TraceSourceKindLower => Text("MotifApp.TraceSourceKindLower");
+
+    public static string TraceSourceKindTitle => Text("MotifApp.TraceSourceKindTitle");
+
+    public static string TraceQualityNotRecorded => Text("MotifApp.TraceQualityNotRecorded");
+
+    public static string TraceSourceIdentityFormat => Text("MotifApp.TraceSourceIdentityFormat");
+
+    public static string TraceSourceIdentityNotRecorded => Text("MotifApp.TraceSourceIdentityNotRecorded");
+
+    public static string TraceRecordedAttempt => Text("MotifApp.TraceRecordedAttempt");
+
+    public static string TraceRefusedByFormat => Text("MotifApp.TraceRefusedByFormat");
+
+    public static string TraceFailureContextNotRecorded => Text("MotifApp.TraceFailureContextNotRecorded");
+
+    public static string TraceStatusBuiltTheWord => Text("MotifApp.TraceStatusBuiltTheWord");
+
+    public static string TraceEffortDidNotApplyFormat => Text("MotifApp.TraceEffortDidNotApplyFormat");
+
+    public static string TraceEffortNoRootFormat => Text("MotifApp.TraceEffortNoRootFormat");
+
+    public static string TraceEffortSurfaceMismatchFormat => Text("MotifApp.TraceEffortSurfaceMismatchFormat");
+
+    public static string TraceNotTimed => Text("MotifApp.TraceNotTimed");
+
+    public static string TraceBuildingStemFormFormat => Text("MotifApp.TraceBuildingStemFormFormat");
+
+    public static string TraceBuildingStemUsedFormat => Text("MotifApp.TraceBuildingStemUsedFormat");
+
+    public static string TraceBuildingStemFoundFormat => Text("MotifApp.TraceBuildingStemFoundFormat");
+
+    public static string TraceBuildingAffix => Text("MotifApp.TraceBuildingAffix");
+
+    public static string TraceBuildingSoundRule => Text("MotifApp.TraceBuildingSoundRule");
+
+    public static string TraceProducerFormat => Text("MotifApp.TraceProducerFormat");
+
+    public static string TraceCapturedFieldWorksFormat => Text("MotifApp.TraceCapturedFieldWorksFormat");
+
+    public static string TraceCapturedKindLabel => Text("MotifApp.TraceCapturedKindLabel");
+
+    public static string TraceCapturedProducerLabel => Text("MotifApp.TraceCapturedProducerLabel");
+
+    public static string TraceCapturedFieldWorksLabel => Text("MotifApp.TraceCapturedFieldWorksLabel");
+
+    public static string TraceCapturedProducerEventIdLabel => Text("MotifApp.TraceCapturedProducerEventIdLabel");
+
+    public static string TraceCapturedTreeAddressLabel => Text("MotifApp.TraceCapturedTreeAddressLabel");
+
+    public static string TraceCapturedSubruleLabel => Text("MotifApp.TraceCapturedSubruleLabel");
+
+    public static string TraceCapturedInputLabel => Text("MotifApp.TraceCapturedInputLabel");
+
+    public static string TraceCapturedOutputLabel => Text("MotifApp.TraceCapturedOutputLabel");
+
+    public static string TraceCapturedOutcomeLabel => Text("MotifApp.TraceCapturedOutcomeLabel");
+
+    public static string TraceCapturedEventLabel => Text("MotifApp.TraceCapturedEventLabel");
+
+    public static string TraceCapturedReasonLabel => Text("MotifApp.TraceCapturedReasonLabel");
+
+    public static string TraceCapturedExplanationLabel => Text("MotifApp.TraceCapturedExplanationLabel");
+
+    public static string TraceCapturedEvaluatorDetailsLabel => Text("MotifApp.TraceCapturedEvaluatorDetailsLabel");
+
+    public static string TraceOutcomeRefused => Text("MotifApp.TraceOutcomeRefused");
+
+    public static string TraceOutcomeTried => Text("MotifApp.TraceOutcomeTried");
+
+    public static string TraceOutcomeApplied => Text("MotifApp.TraceOutcomeApplied");
+
+    public static string TraceOutcomeNotRecorded => Text("MotifApp.TraceOutcomeNotRecorded");
+
+    public static string TraceInputNotRecorded => Text("MotifApp.TraceInputNotRecorded");
+
+    public static string TraceInputShapeTip => Text("MotifApp.TraceInputShapeTip");
+
+    public static string TraceOutputNotRecorded => Text("MotifApp.TraceOutputNotRecorded");
+
+    public static string TraceOutputShapeTip => Text("MotifApp.TraceOutputShapeTip");
+
+    public static string TraceRecordedEventFormat => Text("MotifApp.TraceRecordedEventFormat");
+
+    public static string TraceEventAddressNotRecorded => Text("MotifApp.TraceEventAddressNotRecorded");
+
+    public static string TraceProducerEventWithTreeFormat => Text("MotifApp.TraceProducerEventWithTreeFormat");
+
+    public static string TraceProducerEventNoTreeFormat => Text("MotifApp.TraceProducerEventNoTreeFormat");
+
+    public static string TraceTreeAddressOnlyFormat => Text("MotifApp.TraceTreeAddressOnlyFormat");
+
+    public static string TraceProducerEventNotRecorded => Text("MotifApp.TraceProducerEventNotRecorded");
+
+    public static string TraceRejectionDetailsNotRecorded => Text("MotifApp.TraceRejectionDetailsNotRecorded");
+
+    public static string TraceRejectionDetailsRecorded => Text("MotifApp.TraceRejectionDetailsRecorded");
+
+    public static string TraceRequiredFormat => Text("MotifApp.TraceRequiredFormat");
+
+    public static string TraceActualFormat => Text("MotifApp.TraceActualFormat");
+
+    public static string TraceEnvironmentFormat => Text("MotifApp.TraceEnvironmentFormat");
+
+    public static string TraceEvidenceStatusFormat => Text("MotifApp.TraceEvidenceStatusFormat");
+
+    public static string TraceEvidenceKindFormat => Text("MotifApp.TraceEvidenceKindFormat");
+
+    public static string TraceEvidenceSourceFormat => Text("MotifApp.TraceEvidenceSourceFormat");
+
+    public static string TraceEvidenceReasonCodeFormat => Text("MotifApp.TraceEvidenceReasonCodeFormat");
+
+    public static string TraceEvidenceUnavailableReasonFormat => Text("MotifApp.TraceEvidenceUnavailableReasonFormat");
+
+    public static string TraceEvidenceReasonFormat => Text("MotifApp.TraceEvidenceReasonFormat");
+
+    public static string TraceEvidenceRequiredFormat => Text("MotifApp.TraceEvidenceRequiredFormat");
+
+    public static string TraceEvidenceActualFormat => Text("MotifApp.TraceEvidenceActualFormat");
+
+    public static string TraceEvidenceEnvironmentFormat => Text("MotifApp.TraceEvidenceEnvironmentFormat");
+
+    public static string TraceSubruleFormat => Text("MotifApp.TraceSubruleFormat");
+
+    public static string TraceContextualFailureNotRecorded => Text("MotifApp.TraceContextualFailureNotRecorded");
+
+    public static string TraceStepApplied => Text("MotifApp.TraceStepApplied");
 }

@@ -6789,4 +6789,568 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <value>Motif could not read this project's numbers.</value>
     <comment>Overview refusal summary when the project numbers cannot be read.</comment>
   </data>
+  <data name="MotifApp.TraceGrammarSourceNotRecorded" xml:space="preserve">
+    <value>Grammar source not recorded</value>
+    <comment>Try a Word detail: the trace kept no grammar source.</comment>
+  </data>
+  <data name="MotifApp.TraceGrammarSourceBaselineFormat" xml:space="preserve">
+    <value>Grammar source: Baseline captured {0} · source saved {1:u} · {2}</value>
+    <comment>Try a Word grammar source line for a trace captured from a Baseline. {0} is the capture time; {1} is the time the source was saved; {2} is the capture description.</comment>
+  </data>
+  <data name="MotifApp.TraceGrammarSourceFormat" xml:space="preserve">
+    <value>Grammar source: {0}</value>
+    <comment>Try a Word grammar source line. {0} is the source the trace recorded.</comment>
+  </data>
+  <data name="MotifApp.TraceProvenanceNotRecorded" xml:space="preserve">
+    <value>Compatibility with the current FieldWorks project is not recorded; live links are unavailable for this saved diagnostic.</value>
+    <comment>Try a Word warning on a saved diagnostic that records no compatibility with the open FieldWorks project.</comment>
+  </data>
+  <data name="MotifApp.TraceNoTerminalAttemptStopped" xml:space="preserve">
+    <value>No terminal attempt was recorded before the search stopped. Recorded progress is retained.</value>
+    <comment>Try a Word notice when a search stopped before any attempt ended.</comment>
+  </data>
+  <data name="MotifApp.TraceNoTerminalAttempt" xml:space="preserve">
+    <value>No terminal attempt was recorded.</value>
+    <comment>Try a Word notice when the diagnostic recorded no attempt that ended.</comment>
+  </data>
+  <data name="MotifApp.TraceWhyOtherAttemptsFailed" xml:space="preserve">
+    <value>Why the other attempts failed</value>
+    <comment>Try a Word heading over the groups of failed attempts for a word that parsed.</comment>
+  </data>
+  <data name="MotifApp.TraceWhyNotParsed" xml:space="preserve">
+    <value>Why it did not parse</value>
+    <comment>Try a Word heading over the groups of failed attempts for a word that did not parse.</comment>
+  </data>
+  <data name="MotifApp.TraceWritingSystemsNotRecorded" xml:space="preserve">
+    <value>Writing systems: not recorded; using the UI font fallback.</value>
+    <comment>Try a Word note when the trace recorded no writing systems.</comment>
+  </data>
+  <data name="MotifApp.TraceWritingSystemFormat" xml:space="preserve">
+    <value>{0} ({1}; font: {2})</value>
+    <comment>Try a Word writing system entry. {0} is the writing system id; {1} is its direction; {2} is its font.</comment>
+  </data>
+  <data name="MotifApp.TraceDirectionNotRecorded" xml:space="preserve">
+    <value>direction not recorded</value>
+    <comment>Try a Word writing system entry when the text direction was not recorded.</comment>
+  </data>
+  <data name="MotifApp.TraceFontUiFallback" xml:space="preserve">
+    <value>UI fallback</value>
+    <comment>Try a Word writing system entry when no font was recorded and the window's font is used.</comment>
+  </data>
+  <data name="MotifApp.TraceWritingSystemsSummaryFormat" xml:space="preserve">
+    <value>Writing systems: {0}. Font fallback: Noto Sans, Segoe UI, Arial.</value>
+    <comment>Try a Word note on the recorded writing systems. {0} is the list of writing systems.</comment>
+  </data>
+  <data name="MotifApp.TraceLabelValueFormat" xml:space="preserve">
+    <value>{0}: {1}</value>
+    <comment>Try a Word detail pairing a label with its value. {0} is the label; {1} is the value.</comment>
+  </data>
+  <data name="MotifApp.TraceCaptureFormatLabel" xml:space="preserve">
+    <value>Format</value>
+    <comment>Try a Word capture detail label for the diagnostic format.</comment>
+  </data>
+  <data name="MotifApp.TraceCaptureParserLabel" xml:space="preserve">
+    <value>Parser</value>
+    <comment>Try a Word capture detail label for the parser name.</comment>
+  </data>
+  <data name="MotifApp.TraceCaptureParserVersionLabel" xml:space="preserve">
+    <value>Parser version</value>
+    <comment>Try a Word capture detail label for the parser version.</comment>
+  </data>
+  <data name="MotifApp.TraceCaptureProfileLabel" xml:space="preserve">
+    <value>Trace profile</value>
+    <comment>Try a Word capture detail label for the trace profile.</comment>
+  </data>
+  <data name="MotifApp.TraceCaptureGrammarHashLabel" xml:space="preserve">
+    <value>Grammar hash</value>
+    <comment>Try a Word capture detail label for the grammar hash.</comment>
+  </data>
+  <data name="MotifApp.TraceCaptureGrammarHashSemanticsLabel" xml:space="preserve">
+    <value>Grammar hash semantics</value>
+    <comment>Try a Word capture detail label for what the grammar hash covers.</comment>
+  </data>
+  <data name="MotifApp.TraceCaptureProjectIdentityLabel" xml:space="preserve">
+    <value>Project identity</value>
+    <comment>Try a Word capture detail label for the project identity.</comment>
+  </data>
+  <data name="MotifApp.TraceCaptureBundleDigestLabel" xml:space="preserve">
+    <value>Bundle digest</value>
+    <comment>Try a Word capture detail label for the bundle digest.</comment>
+  </data>
+  <data name="MotifApp.TraceBaselineCapturedFormat" xml:space="preserve">
+    <value>Baseline captured: {0}</value>
+    <comment>Try a Word capture detail. {0} is when the Baseline was captured.</comment>
+  </data>
+  <data name="MotifApp.TraceSourceSavedFormat" xml:space="preserve">
+    <value>Source saved: {0:u}</value>
+    <comment>Try a Word capture detail. {0} is when the source was last saved.</comment>
+  </data>
+  <data name="MotifApp.TraceBaselineSourceNotRecorded" xml:space="preserve">
+    <value>Baseline source not recorded</value>
+    <comment>Try a Word capture detail when no Baseline source was recorded.</comment>
+  </data>
+  <data name="MotifApp.TraceCapturedAtFormat" xml:space="preserve">
+    <value>Captured: {0:u}</value>
+    <comment>Try a Word capture detail. {0} is when the trace was captured.</comment>
+  </data>
+  <data name="MotifApp.TraceHostElapsedFormat" xml:space="preserve">
+    <value>Host elapsed: {0} ms</value>
+    <comment>Try a Word capture detail. {0} is the elapsed milliseconds as a number.</comment>
+  </data>
+  <data name="MotifApp.TraceCaptureDetailsNotRecorded" xml:space="preserve">
+    <value>Capture details not recorded.</value>
+    <comment>Try a Word capture details line when nothing was recorded.</comment>
+  </data>
+  <data name="MotifApp.TraceShowAnalyses" xml:space="preserve">
+    <value>Show Analyses</value>
+    <comment>Try a Word button label that leaves the focused view and shows all analyses.</comment>
+  </data>
+  <data name="MotifApp.TraceFocusThisWord" xml:space="preserve">
+    <value>Focus this word</value>
+    <comment>Try a Word button label that narrows the view to this word.</comment>
+  </data>
+  <data name="MotifApp.TraceSurfaceNotRecorded" xml:space="preserve">
+    <value>Surface not recorded</value>
+    <comment>Try a Word analysis when the surface form was not recorded.</comment>
+  </data>
+  <data name="MotifApp.TraceAvailabilityNotRecorded" xml:space="preserve">
+    <value>availability not recorded</value>
+    <comment>Try a Word analysis when its availability was not recorded.</comment>
+  </data>
+  <data name="MotifApp.TraceMorphemesFormat" xml:space="preserve">
+    <value>Morphemes: {0}</value>
+    <comment>Try a Word analysis line listing the parser's morphemes. {0} is the morphemes joined by plus signs.</comment>
+  </data>
+  <data name="MotifApp.TraceParserMorphemesTipFormat" xml:space="preserve">
+    <value>The parser's morphemes: {0}</value>
+    <comment>Try a Word tooltip on an analysis surface form. {0} is the parser's morpheme string.</comment>
+  </data>
+  <data name="MotifApp.TraceAnalysisNumberFormat" xml:space="preserve">
+    <value>Analysis {0}</value>
+    <comment>Try a Word analysis label. {0} is its position, from 1, or its recorded id.</comment>
+  </data>
+  <data name="MotifApp.TraceRecordedAnalysis" xml:space="preserve">
+    <value>Recorded analysis</value>
+    <comment>Try a Word analysis label when it has no position or id.</comment>
+  </data>
+  <data name="MotifApp.TraceProjectionErrorText" xml:space="preserve">
+    <value>The parser found this analysis, but can't match its morphemes to FieldWorks entries.</value>
+    <comment>Try a Word explanation when an analysis has no FieldWorks morphemes.</comment>
+  </data>
+  <data name="MotifApp.TraceRawMorphNotRecorded" xml:space="preserve">
+    <value>Full raw morph details not recorded</value>
+    <comment>Try a Word morph detail when the raw record was not kept.</comment>
+  </data>
+  <data name="MotifApp.TraceValueNotRecorded" xml:space="preserve">
+    <value>not recorded</value>
+    <comment>Try a Word detail value that the trace did not record.</comment>
+  </data>
+  <data name="MotifApp.TraceFieldNotRecordedFormat" xml:space="preserve">
+    <value>{0} not recorded</value>
+    <comment>Try a Word morph detail when a field is missing. {0} is the field label.</comment>
+  </data>
+  <data name="MotifApp.TraceMorphFormLabel" xml:space="preserve">
+    <value>Form</value>
+    <comment>Try a Word morph detail label.</comment>
+  </data>
+  <data name="MotifApp.TraceMorphHeadwordLabel" xml:space="preserve">
+    <value>Headword</value>
+    <comment>Try a Word morph detail label.</comment>
+  </data>
+  <data name="MotifApp.TraceMorphGlossLabel" xml:space="preserve">
+    <value>Gloss</value>
+    <comment>Try a Word morph detail label.</comment>
+  </data>
+  <data name="MotifApp.TraceMorphCategoryLabel" xml:space="preserve">
+    <value>Category</value>
+    <comment>Try a Word morph detail label.</comment>
+  </data>
+  <data name="MotifApp.TraceMorphSlotLabel" xml:space="preserve">
+    <value>Slot</value>
+    <comment>Try a Word morph detail label.</comment>
+  </data>
+  <data name="MotifApp.TraceMorphInflectionClassLabel" xml:space="preserve">
+    <value>Inflection class</value>
+    <comment>Try a Word morph detail label.</comment>
+  </data>
+  <data name="MotifApp.TraceMorphFeaturesLabel" xml:space="preserve">
+    <value>Features</value>
+    <comment>Try a Word morph detail label.</comment>
+  </data>
+  <data name="MotifApp.TraceMorphGuessedStringLabel" xml:space="preserve">
+    <value>Guessed string</value>
+    <comment>Try a Word morph detail label used when a field is missing.</comment>
+  </data>
+  <data name="MotifApp.TraceMorphGuessedLabel" xml:space="preserve">
+    <value>Guessed</value>
+    <comment>Try a Word morph detail label for the guessed string in the detail line.</comment>
+  </data>
+  <data name="MotifApp.TraceMorphIdentityLabel" xml:space="preserve">
+    <value>Identity</value>
+    <comment>Try a Word morph detail label.</comment>
+  </data>
+  <data name="MotifApp.TraceMorphIdentityQualityLabel" xml:space="preserve">
+    <value>Identity quality</value>
+    <comment>Try a Word morph detail label.</comment>
+  </data>
+  <data name="MotifApp.TraceMorphFormIdLabel" xml:space="preserve">
+    <value>Form ID</value>
+    <comment>Try a Word morph detail label.</comment>
+  </data>
+  <data name="MotifApp.TraceMorphEntryIdLabel" xml:space="preserve">
+    <value>Entry ID</value>
+    <comment>Try a Word morph detail label.</comment>
+  </data>
+  <data name="MotifApp.TraceMorphMsaIdLabel" xml:space="preserve">
+    <value>Grammatical info ID</value>
+    <comment>Try a Word morph detail label.</comment>
+  </data>
+  <data name="MotifApp.TraceMorphInflTypeIdLabel" xml:space="preserve">
+    <value>Inflection type ID</value>
+    <comment>Try a Word morph detail label.</comment>
+  </data>
+  <data name="MotifApp.TraceMorphWritingSystemsLabel" xml:space="preserve">
+    <value>Writing systems</value>
+    <comment>Try a Word morph detail label for the writing systems of its fields.</comment>
+  </data>
+  <data name="MotifApp.TraceWsRoleForm" xml:space="preserve">
+    <value>form</value>
+    <comment>Try a Word writing system role for the form field.</comment>
+  </data>
+  <data name="MotifApp.TraceWsRoleHeadword" xml:space="preserve">
+    <value>headword</value>
+    <comment>Try a Word writing system role for the headword field.</comment>
+  </data>
+  <data name="MotifApp.TraceWsRoleGloss" xml:space="preserve">
+    <value>gloss</value>
+    <comment>Try a Word writing system role for the gloss field.</comment>
+  </data>
+  <data name="MotifApp.TraceWsRoleFormat" xml:space="preserve">
+    <value>{0}={1}</value>
+    <comment>Try a Word writing system entry. {0} is the field role; {1} is the writing system.</comment>
+  </data>
+  <data name="MotifApp.TraceIdentityQualityUnknown" xml:space="preserve">
+    <value>unknown</value>
+    <comment>Try a Word morph identity quality when none was recorded.</comment>
+  </data>
+  <data name="MotifApp.TraceOpenEntryFormat" xml:space="preserve">
+    <value>Open the entry for {0} in {1}</value>
+    <comment>Try a Word link text for a morph with no headword. {0} is the form; {1} is the FieldWorks tool.</comment>
+  </data>
+  <data name="MotifApp.TraceOpenHeadwordFormat" xml:space="preserve">
+    <value>Open {0} in {1}</value>
+    <comment>Try a Word link text for a morph. {0} is the headword; {1} is the FieldWorks tool.</comment>
+  </data>
+  <data name="MotifApp.TraceMsaNotRecorded" xml:space="preserve">
+    <value>Grammatical info not recorded.</value>
+    <comment>Try a Word morph grammatical info line when none was recorded.</comment>
+  </data>
+  <data name="MotifApp.TraceMsaUnavailable" xml:space="preserve">
+    <value>Grammatical info unavailable; the raw morph record is kept below.</value>
+    <comment>Try a Word morph grammatical info line when the record could not be read.</comment>
+  </data>
+  <data name="MotifApp.TraceMsaKindLabel" xml:space="preserve">
+    <value>Grammatical info</value>
+    <comment>Try a Word grammatical info label.</comment>
+  </data>
+  <data name="MotifApp.TraceMsaFromCategoryLabel" xml:space="preserve">
+    <value>From category</value>
+    <comment>Try a Word grammatical info label.</comment>
+  </data>
+  <data name="MotifApp.TraceMsaToCategoryLabel" xml:space="preserve">
+    <value>To category</value>
+    <comment>Try a Word grammatical info label.</comment>
+  </data>
+  <data name="MotifApp.TraceMsaFromInflectionClassLabel" xml:space="preserve">
+    <value>From inflection class</value>
+    <comment>Try a Word grammatical info label.</comment>
+  </data>
+  <data name="MotifApp.TraceMsaToInflectionClassLabel" xml:space="preserve">
+    <value>To inflection class</value>
+    <comment>Try a Word grammatical info label.</comment>
+  </data>
+  <data name="MotifApp.TraceMsaFromFeaturesLabel" xml:space="preserve">
+    <value>From features</value>
+    <comment>Try a Word grammatical info label.</comment>
+  </data>
+  <data name="MotifApp.TraceMsaToFeaturesLabel" xml:space="preserve">
+    <value>To features</value>
+    <comment>Try a Word grammatical info label.</comment>
+  </data>
+  <data name="MotifApp.TraceMsaAttachesToLabel" xml:space="preserve">
+    <value>Attaches to</value>
+    <comment>Try a Word grammatical info label.</comment>
+  </data>
+  <data name="MotifApp.TraceMsaSlotsLabel" xml:space="preserve">
+    <value>Slots</value>
+    <comment>Try a Word grammatical info label.</comment>
+  </data>
+  <data name="MotifApp.TraceMsaOptionalFormat" xml:space="preserve">
+    <value> (optional: {0})</value>
+    <comment>Try a Word grammatical info suffix on an optional item. {0} is the optional flag.</comment>
+  </data>
+  <data name="MotifApp.TraceRecordedRefusal" xml:space="preserve">
+    <value>Recorded refusal</value>
+    <comment>Try a Word stop group name when no rule was recorded.</comment>
+  </data>
+  <data name="MotifApp.TraceDidNotRecordWhy" xml:space="preserve">
+    <value>PanGloss didn't record why.</value>
+    <comment>Try a Word stop group reason when none was recorded.</comment>
+  </data>
+  <data name="MotifApp.TraceSourceKindLower" xml:space="preserve">
+    <value>source</value>
+    <comment>Try a Word attempt source identity kind when none was recorded.</comment>
+  </data>
+  <data name="MotifApp.TraceSourceKindTitle" xml:space="preserve">
+    <value>Source</value>
+    <comment>Try a Word step source identity kind when none was recorded.</comment>
+  </data>
+  <data name="MotifApp.TraceQualityNotRecorded" xml:space="preserve">
+    <value>quality not recorded</value>
+    <comment>Try a Word source identity quality when none was recorded.</comment>
+  </data>
+  <data name="MotifApp.TraceSourceIdentityFormat" xml:space="preserve">
+    <value>{0}: {1} ({2})</value>
+    <comment>Try a Word source identity. {0} is the kind; {1} is the id; {2} is the quality.</comment>
+  </data>
+  <data name="MotifApp.TraceSourceIdentityNotRecorded" xml:space="preserve">
+    <value>Source identity not recorded</value>
+    <comment>Try a Word attempt source identity when none was recorded.</comment>
+  </data>
+  <data name="MotifApp.TraceRecordedAttempt" xml:space="preserve">
+    <value>Recorded attempt</value>
+    <comment>Try a Word attempt label when it has no morphs or steps.</comment>
+  </data>
+  <data name="MotifApp.TraceRefusedByFormat" xml:space="preserve">
+    <value>Refused by {0}</value>
+    <comment>Try a Word attempt headline. {0} is the rule that refused it.</comment>
+  </data>
+  <data name="MotifApp.TraceFailureContextNotRecorded" xml:space="preserve">
+    <value>Failure context not recorded</value>
+    <comment>Try a Word attempt failure context when none was recorded.</comment>
+  </data>
+  <data name="MotifApp.TraceStatusBuiltTheWord" xml:space="preserve">
+    <value>built the word</value>
+    <comment>Try a Word attempt status chip text when it built the word.</comment>
+  </data>
+  <data name="MotifApp.TraceEffortDidNotApplyFormat" xml:space="preserve">
+    <value>{0} did not apply</value>
+    <comment>Try a Word effort table cell. {0} is the count of rules that did not apply.</comment>
+  </data>
+  <data name="MotifApp.TraceEffortNoRootFormat" xml:space="preserve">
+    <value>{0} found no root</value>
+    <comment>Try a Word effort table cell. {0} is the count that found no root.</comment>
+  </data>
+  <data name="MotifApp.TraceEffortSurfaceMismatchFormat" xml:space="preserve">
+    <value>{0} did not match the word</value>
+    <comment>Try a Word effort table cell. {0} is the count that did not match the word.</comment>
+  </data>
+  <data name="MotifApp.TraceNotTimed" xml:space="preserve">
+    <value>not timed</value>
+    <comment>Try a Word effort table cell when no time was recorded.</comment>
+  </data>
+  <data name="MotifApp.TraceBuildingStemFormFormat" xml:space="preserve">
+    <value>Stem form · {0}</value>
+    <comment>Try a Word plain step text. {0} is the stem form built.</comment>
+  </data>
+  <data name="MotifApp.TraceBuildingStemUsedFormat" xml:space="preserve">
+    <value>Stem used · {0}</value>
+    <comment>Try a Word plain step text. {0} is the stem used.</comment>
+  </data>
+  <data name="MotifApp.TraceBuildingStemFoundFormat" xml:space="preserve">
+    <value>Stem found · {0}</value>
+    <comment>Try a Word plain step text. {0} is the stem found in the lexicon.</comment>
+  </data>
+  <data name="MotifApp.TraceBuildingAffix" xml:space="preserve">
+    <value>Affix</value>
+    <comment>Try a Word plain step text for a morphological rule.</comment>
+  </data>
+  <data name="MotifApp.TraceBuildingSoundRule" xml:space="preserve">
+    <value>Sound rule</value>
+    <comment>Try a Word plain step text for a phonological rule.</comment>
+  </data>
+  <data name="MotifApp.TraceProducerFormat" xml:space="preserve">
+    <value>Producer: {0}</value>
+    <comment>Try a Word step source line. {0} is the producer.</comment>
+  </data>
+  <data name="MotifApp.TraceCapturedFieldWorksFormat" xml:space="preserve">
+    <value>Captured FieldWorks: {0}</value>
+    <comment>Try a Word step source line. {0} is the captured FieldWorks label.</comment>
+  </data>
+  <data name="MotifApp.TraceCapturedKindLabel" xml:space="preserve">
+    <value>Kind</value>
+    <comment>Try a Word step detail label.</comment>
+  </data>
+  <data name="MotifApp.TraceCapturedProducerLabel" xml:space="preserve">
+    <value>Producer</value>
+    <comment>Try a Word step detail label.</comment>
+  </data>
+  <data name="MotifApp.TraceCapturedFieldWorksLabel" xml:space="preserve">
+    <value>Captured FieldWorks</value>
+    <comment>Try a Word step detail label.</comment>
+  </data>
+  <data name="MotifApp.TraceCapturedProducerEventIdLabel" xml:space="preserve">
+    <value>Producer event ID</value>
+    <comment>Try a Word step detail label.</comment>
+  </data>
+  <data name="MotifApp.TraceCapturedTreeAddressLabel" xml:space="preserve">
+    <value>Tree address</value>
+    <comment>Try a Word step detail label.</comment>
+  </data>
+  <data name="MotifApp.TraceCapturedSubruleLabel" xml:space="preserve">
+    <value>Subrule</value>
+    <comment>Try a Word step detail label.</comment>
+  </data>
+  <data name="MotifApp.TraceCapturedInputLabel" xml:space="preserve">
+    <value>Input</value>
+    <comment>Try a Word step detail label.</comment>
+  </data>
+  <data name="MotifApp.TraceCapturedOutputLabel" xml:space="preserve">
+    <value>Output</value>
+    <comment>Try a Word step detail label.</comment>
+  </data>
+  <data name="MotifApp.TraceCapturedOutcomeLabel" xml:space="preserve">
+    <value>Outcome</value>
+    <comment>Try a Word step detail label.</comment>
+  </data>
+  <data name="MotifApp.TraceCapturedEventLabel" xml:space="preserve">
+    <value>Event</value>
+    <comment>Try a Word step detail label.</comment>
+  </data>
+  <data name="MotifApp.TraceCapturedReasonLabel" xml:space="preserve">
+    <value>Reason</value>
+    <comment>Try a Word step detail label.</comment>
+  </data>
+  <data name="MotifApp.TraceCapturedExplanationLabel" xml:space="preserve">
+    <value>Explanation</value>
+    <comment>Try a Word step detail label.</comment>
+  </data>
+  <data name="MotifApp.TraceCapturedEvaluatorDetailsLabel" xml:space="preserve">
+    <value>Evaluator details</value>
+    <comment>Try a Word step detail label.</comment>
+  </data>
+  <data name="MotifApp.TraceOutcomeRefused" xml:space="preserve">
+    <value>Refused</value>
+    <comment>Try a Word step outcome.</comment>
+  </data>
+  <data name="MotifApp.TraceOutcomeTried" xml:space="preserve">
+    <value>Tried</value>
+    <comment>Try a Word step outcome.</comment>
+  </data>
+  <data name="MotifApp.TraceOutcomeApplied" xml:space="preserve">
+    <value>Applied</value>
+    <comment>Try a Word step outcome.</comment>
+  </data>
+  <data name="MotifApp.TraceOutcomeNotRecorded" xml:space="preserve">
+    <value>Outcome not recorded</value>
+    <comment>Try a Word step outcome when none was recorded.</comment>
+  </data>
+  <data name="MotifApp.TraceInputNotRecorded" xml:space="preserve">
+    <value>Input not recorded</value>
+    <comment>Try a Word tooltip when a step recorded no input.</comment>
+  </data>
+  <data name="MotifApp.TraceInputShapeTip" xml:space="preserve">
+    <value>Recorded input shape, in the parser's direction.</value>
+    <comment>Try a Word tooltip on a step's recorded input.</comment>
+  </data>
+  <data name="MotifApp.TraceOutputNotRecorded" xml:space="preserve">
+    <value>Output not recorded</value>
+    <comment>Try a Word tooltip when a step recorded no output.</comment>
+  </data>
+  <data name="MotifApp.TraceOutputShapeTip" xml:space="preserve">
+    <value>Recorded output shape. A recorded output alone does not prove application.</value>
+    <comment>Try a Word tooltip on a step's recorded output.</comment>
+  </data>
+  <data name="MotifApp.TraceRecordedEventFormat" xml:space="preserve">
+    <value>Recorded event: {0}</value>
+    <comment>Try a Word step address. {0} is the event's tree address.</comment>
+  </data>
+  <data name="MotifApp.TraceEventAddressNotRecorded" xml:space="preserve">
+    <value>Event address not recorded</value>
+    <comment>Try a Word step address when none was recorded.</comment>
+  </data>
+  <data name="MotifApp.TraceProducerEventWithTreeFormat" xml:space="preserve">
+    <value>Producer event ID: {0} (tree address {1})</value>
+    <comment>Try a Word step address. {0} is the producer event id; {1} is the tree address.</comment>
+  </data>
+  <data name="MotifApp.TraceProducerEventNoTreeFormat" xml:space="preserve">
+    <value>Producer event ID: {0}; tree address not recorded</value>
+    <comment>Try a Word step address. {0} is the producer event id.</comment>
+  </data>
+  <data name="MotifApp.TraceTreeAddressOnlyFormat" xml:space="preserve">
+    <value>Tree address: {0}; producer event ID not recorded</value>
+    <comment>Try a Word step address. {0} is the tree address.</comment>
+  </data>
+  <data name="MotifApp.TraceProducerEventNotRecorded" xml:space="preserve">
+    <value>Producer event ID not recorded</value>
+    <comment>Try a Word step address when neither address was recorded.</comment>
+  </data>
+  <data name="MotifApp.TraceRejectionDetailsNotRecorded" xml:space="preserve">
+    <value>Rejection details not recorded</value>
+    <comment>Try a Word step rejection details when none were recorded.</comment>
+  </data>
+  <data name="MotifApp.TraceRejectionDetailsRecorded" xml:space="preserve">
+    <value>Rejection details recorded</value>
+    <comment>Try a Word step rejection details when the evidence was captured.</comment>
+  </data>
+  <data name="MotifApp.TraceRequiredFormat" xml:space="preserve">
+    <value>Required: {0}</value>
+    <comment>Try a Word failure detail. {0} is what the rule required.</comment>
+  </data>
+  <data name="MotifApp.TraceActualFormat" xml:space="preserve">
+    <value>Actual: {0}</value>
+    <comment>Try a Word failure detail. {0} is what was found.</comment>
+  </data>
+  <data name="MotifApp.TraceEnvironmentFormat" xml:space="preserve">
+    <value>Environment: {0}</value>
+    <comment>Try a Word failure detail. {0} is the environment.</comment>
+  </data>
+  <data name="MotifApp.TraceEvidenceStatusFormat" xml:space="preserve">
+    <value>Evidence status: {0}</value>
+    <comment>Try a Word failure evidence line. {0} is the status.</comment>
+  </data>
+  <data name="MotifApp.TraceEvidenceKindFormat" xml:space="preserve">
+    <value>Evidence kind: {0}</value>
+    <comment>Try a Word failure evidence line. {0} is the kind.</comment>
+  </data>
+  <data name="MotifApp.TraceEvidenceSourceFormat" xml:space="preserve">
+    <value>Evidence source: {0}</value>
+    <comment>Try a Word failure evidence line. {0} is the source.</comment>
+  </data>
+  <data name="MotifApp.TraceEvidenceReasonCodeFormat" xml:space="preserve">
+    <value>Evidence reason code: {0}</value>
+    <comment>Try a Word failure evidence line. {0} is the reason code.</comment>
+  </data>
+  <data name="MotifApp.TraceEvidenceUnavailableReasonFormat" xml:space="preserve">
+    <value>Evidence unavailable reason: {0}</value>
+    <comment>Try a Word failure evidence line. {0} is why the evidence is unavailable.</comment>
+  </data>
+  <data name="MotifApp.TraceEvidenceReasonFormat" xml:space="preserve">
+    <value>Evidence reason: {0}</value>
+    <comment>Try a Word failure evidence line. {0} is the reason.</comment>
+  </data>
+  <data name="MotifApp.TraceEvidenceRequiredFormat" xml:space="preserve">
+    <value>Evidence required: {0}</value>
+    <comment>Try a Word failure evidence line. {0} is what was required.</comment>
+  </data>
+  <data name="MotifApp.TraceEvidenceActualFormat" xml:space="preserve">
+    <value>Evidence actual: {0}</value>
+    <comment>Try a Word failure evidence line. {0} is what was found.</comment>
+  </data>
+  <data name="MotifApp.TraceEvidenceEnvironmentFormat" xml:space="preserve">
+    <value>Evidence environment: {0}</value>
+    <comment>Try a Word failure evidence line. {0} is the environment.</comment>
+  </data>
+  <data name="MotifApp.TraceSubruleFormat" xml:space="preserve">
+    <value>Subrule: {0}</value>
+    <comment>Try a Word step line. {0} is the recorded subrule index.</comment>
+  </data>
+  <data name="MotifApp.TraceContextualFailureNotRecorded" xml:space="preserve">
+    <value>Contextual failure not recorded</value>
+    <comment>Try a Word step context when no failure context was recorded.</comment>
+  </data>
+  <data name="MotifApp.TraceStepApplied" xml:space="preserve">
+    <value>applied</value>
+    <comment>Try a Word step chip text when a rule applied.</comment>
+  </data>
 </root>
