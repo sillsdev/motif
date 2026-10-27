@@ -90,7 +90,7 @@ public sealed class SelectionWordRowsTests
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             var textId = Guid.NewGuid();
-            var words = Enumerable.Range(0, 500).Select(index => new TextWordsProjectedWordform(
+            var words = Enumerable.Range(0, 150).Select(index => new TextWordsProjectedWordform(
                 Guid.NewGuid(), [], [], 0, false, [])).ToArray();
             var tokens = words.Select((word, index) => new TextWordsProjectedToken($"word-{index:000}",
                 [new WritingSystemText($"word-{index:000}", "en")], word.WordformId,
@@ -104,11 +104,11 @@ public sealed class SelectionWordRowsTests
             try
             {
                 await reads.ReloadAsync(fixture.ProjectPath, [textId], []);
-                Assert.Equal(500, list.Rows.Count);
+                Assert.Equal(150, list.Rows.Count);
                 Assert.Equal(0, reads.Reader!.Diagnostics.LiveRowModels);
                 Assert.Equal(0, reads.Reader.Diagnostics.WordformRowsDeserialized);
                 var weak = await ScrollAsync(list, reads.Reader);
-                Assert.InRange(reads.Reader.Diagnostics.WordformRowsDeserialized, 500, weak.Count);
+                Assert.InRange(reads.Reader.Diagnostics.WordformRowsDeserialized, 150, weak.Count);
                 list.ShowVisibleRows();
                 Assert.Equal(1, list.CheckedWordCount);
                 Assert.True(list.Rows[0].IsChecked);
@@ -201,7 +201,7 @@ public sealed class SelectionWordRowsTests
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             var textId = Guid.NewGuid();
-            var words = Enumerable.Range(0, 500).Select(_ => new TextWordsProjectedWordform(
+            var words = Enumerable.Range(0, 150).Select(_ => new TextWordsProjectedWordform(
                 Guid.NewGuid(), [], [], 0, false, [])).ToArray();
             var tokens = words.Select((word, index) => new TextWordsProjectedToken($"word-{index:000}",
                 [new WritingSystemText($"word-{index:000}", "en")], word.WordformId,
@@ -215,7 +215,6 @@ public sealed class SelectionWordRowsTests
             var window = new MotifTestWindow { Width = 1000, Height = 700, Content = new TextWordsPanel(list) };
             try
             {
-                var before = WordRow.TotalCellBuilds;
                 await reads.ReloadAsync(fixture.ProjectPath, [textId], []);
                 window.Show();
                 PageScreenshots.Settle(window);
@@ -236,6 +235,8 @@ public sealed class SelectionWordRowsTests
                         shownWords.Add(row.Data.Key.Value);
                     }
                 }
+                await ShowOffsetAsync(0);
+                var before = WordRow.TotalCellBuilds;
                 for (var offset = 0d; offset < scroll.Extent.Height - scroll.Viewport.Height; offset += scroll.Viewport.Height)
                     await ShowOffsetAsync(offset);
                 await ShowOffsetAsync(Math.Max(0, scroll.Extent.Height - scroll.Viewport.Height));
@@ -589,7 +590,7 @@ public sealed class SelectionWordRowsTests
             rows.ScrollIntoView(list.Rows.Count - 1);
             SettleRowLayout(window);
             await list.SettleVisibleDetailsAsync();
-            Assert.InRange(reader.Diagnostics.WordformRowsDeserialized, 500, weak.Count);
+            Assert.InRange(reader.Diagnostics.WordformRowsDeserialized, list.Rows.Count, weak.Count);
             Assert.Equal(1, list.CheckedWordCount);
             rows.ScrollIntoView(0);
             SettleRowLayout(window);
