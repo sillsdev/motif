@@ -101,6 +101,12 @@ jobs:
 
       - uses: actions/checkout@v4
 
+      - name: Provision approved synthetic sample inputs
+        shell: pwsh
+        run: |
+          $path = ./evals/Get-SyntheticSamples.ps1 -Download
+          "MOTIF_SYNTHETIC_SAMPLES=$path" >> $env:GITHUB_ENV
+
       - name: Read product and update-smoke versions
         shell: pwsh
         run: |
@@ -271,6 +277,12 @@ jobs:
           [System.IO.File]::AppendAllLines($env:GITHUB_ENV, $paths, [System.Text.UTF8Encoding]::new($false))
 
       - uses: actions/checkout@v4
+
+      - name: Provision approved synthetic sample inputs
+        shell: pwsh
+        run: |
+          $path = ./evals/Get-SyntheticSamples.ps1 -Download
+          "MOTIF_SYNTHETIC_SAMPLES=$path" >> $env:GITHUB_ENV
 
       - name: Read product and update-smoke versions
         shell: pwsh
@@ -446,6 +458,12 @@ jobs:
 
       - uses: actions/checkout@v4
 
+      - name: Provision approved synthetic sample inputs
+        shell: pwsh
+        run: |
+          $path = ./evals/Get-SyntheticSamples.ps1 -Download
+          "MOTIF_SYNTHETIC_SAMPLES=$path" >> $env:GITHUB_ENV
+
       - name: Read product and update-smoke versions
         shell: pwsh
         run: |
@@ -609,6 +627,12 @@ jobs:
           } >> "$GITHUB_ENV"
 
       - uses: actions/checkout@v4
+
+      - name: Provision approved synthetic sample inputs
+        shell: pwsh
+        run: |
+          $path = ./evals/Get-SyntheticSamples.ps1 -Download
+          "MOTIF_SYNTHETIC_SAMPLES=$path" >> $env:GITHUB_ENV
 
       - name: Read product and update-smoke versions
         shell: pwsh
