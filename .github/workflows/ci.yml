@@ -162,8 +162,16 @@ jobs:
           printf 'MOTIF_SIL_ICU_STAGE=%s\n' "$prefix/lib" >> "$GITHUB_ENV"
 
       - name: Build (comment hygiene, then compile)
+        if: runner.os != 'Linux'
         shell: pwsh
         run: ./build.ps1 -Configuration Release
+
+      # On Ubuntu the Release build is the hermetic check: it compiles once, with a read-only HOME, so no
+      # second Debug compile is needed. Its Contract-project test run uses the same Release outputs.
+      - name: Build under a read-only home, then test one project (Ubuntu)
+        if: runner.os == 'Linux'
+        shell: pwsh
+        run: ./tools/Test-HermeticBuild.ps1 -Configuration Release
 
       - name: Fetch pinned test grammars
         shell: pwsh
@@ -184,11 +192,6 @@ jobs:
           $artifact = Get-PinnedPanGlossArtifact -RepositoryRoot (Get-Location).Path `
             -CacheDirectory (Join-Path $env:RUNNER_TEMP "motif-pangloss/$env:ICU_RID")
           "MOTIF_PANGLOSS_EXE=$($artifact.Path)" >> $env:GITHUB_ENV
-
-      - name: Hermetic check (Ubuntu)
-        if: runner.os == 'Linux'
-        shell: pwsh
-        run: ./tools/Test-HermeticBuild.ps1
 
       - name: Test (full suite)
         shell: pwsh
