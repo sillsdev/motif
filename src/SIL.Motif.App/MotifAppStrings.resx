@@ -172,6 +172,10 @@
     <value>{0, plural, one {# change not applied yet} other {# changes not applied yet}}</value>
     <comment>Plural pattern: the status bar changes sentence; # is the count.</comment>
   </data>
+  <data name="MotifApp.StatusFilterHidesPattern" xml:space="preserve">
+    <value>{0, plural, one {filter hides # word} other {filter hides # words}}</value>
+    <comment>Plural pattern: status bar note on the Texts page saying how many words the active word-list filter hides; # is the count.</comment>
+  </data>
   <data name="MotifApp.StatusWarningsPattern" xml:space="preserve">
     <value>{0, plural, one {# warning} other {# warnings}}</value>
     <comment>Plural pattern: the status bar warnings sentence; # is the count.</comment>

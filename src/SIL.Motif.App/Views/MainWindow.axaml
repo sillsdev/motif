@@ -283,6 +283,8 @@
                      AutomationProperties.LiveSetting="Polite" AutomationProperties.Name="{x:Static app:MotifAppStrings.KeyboardShortcutStatusAccessibleName}" />
         </Grid>
         <StackPanel Grid.Column="2" Classes="statusGroup" Orientation="Horizontal">
+          <TextBlock x:Name="StatusFilterHides" Text="{Binding FilterHidesText}" IsVisible="{Binding FilterHidesText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                     VerticalAlignment="Center" AutomationProperties.LiveSetting="Polite" />
           <Button x:Name="StatusChanges" x:DataType="vm:PageViewModel" IsVisible="{Binding HasBadge}"
                   Command="{Binding Model.ShowPageCommand}" CommandParameter="{x:Static vm:WorkspacePage.Review}"
                   AutomationProperties.Name="{x:Static app:MotifAppStrings.ReviewChangesAccessibleName}"

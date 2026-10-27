@@ -115,7 +115,7 @@ public sealed partial class WordRowViewModel : ObservableObject
         var row = new WordRow(word, WordRowOutcome.NotParsed, meaning, WordRowProjection.ToneOf(family))
         {
             MeaningCode = "not-parsed",
-            Gloss = string.Join(" ", morphs.Select(morph => morph.Gloss.Length == 0 ? "?" : morph.Gloss)),
+            Gloss = string.Join(" ", morphs.Select(morph => morph.Gloss.Length == 0 ? MissingValue.Marker : morph.Gloss)),
             Opinion = opinion,
             FieldWorksMorphemes = morphs,
             Places = places,
@@ -163,7 +163,7 @@ public sealed partial class WordRowViewModel : ObservableObject
 
     internal WordRowViewModel WithFieldWorksMorphemes(IReadOnlyList<ParserReadingMorph> morphs) => new(_row with
     {
-        Gloss = string.Join(" ", morphs.Select(morph => morph.Gloss.Length == 0 ? "?" : morph.Gloss)),
+        Gloss = string.Join(" ", morphs.Select(morph => morph.Gloss.Length == 0 ? MissingValue.Marker : morph.Gloss)),
         FieldWorksMorphemes = morphs,
     }, _routes, _notParsedYet);
 

@@ -7,7 +7,7 @@ namespace SIL.Motif.App.ViewModels;
 internal sealed record KeyboardStoredAnalysis(string Id, string Opinion, IReadOnlyList<ParserReadingMorph> Morphs)
 {
     public string DisplayReading => string.Join(" ", Morphs.Select(morph =>
-        $"{morph.Form} = {(string.IsNullOrWhiteSpace(morph.Gloss) ? "?" : morph.Gloss)}"));
+        $"{morph.Form} = {(string.IsNullOrWhiteSpace(morph.Gloss) ? MissingValue.Marker : morph.Gloss)}"));
 }
 
 internal sealed record PendingStoredOpinionChange(

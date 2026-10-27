@@ -416,7 +416,7 @@ public sealed class ParserReadingViewModel
         StoredAnalysisId = reading.StoredAnalysisId;
         StoredAnalysisOpinion = reading.StoredAnalysisOpinion;
         Text = string.Join(" + ", Morphs.Select(morph => morph.Form)) + " = " +
-               string.Join(" + ", Morphs.Select(morph => morph.Gloss.Length == 0 ? "?" : morph.Gloss));
+               string.Join(" + ", Morphs.Select(morph => morph.Gloss.Length == 0 ? MissingValue.Marker : morph.Gloss));
         Grade = grade;
         IsApproved = grade == ReadingGrade.Approved;
         IsDisapproved = grade == ReadingGrade.Disapproved;
@@ -469,7 +469,7 @@ public sealed class ParserReadingViewModel
 public sealed class ParserReadingMorphViewModel
 {
     private const string UnknownForm = "unknown morpheme";
-    private readonly string _glossPlaceholder = "?";
+    private readonly string _glossPlaceholder = MissingValue.Marker;
     private readonly string? _entry;
     private readonly string _toolName;
 
@@ -501,13 +501,13 @@ public sealed class ParserReadingMorphViewModel
 
     /// <summary>
     /// A morpheme from a parser trace, which may not know a morpheme's form or gloss: an unnamed one reads
-    /// "unknown morpheme" and a missing gloss a dash, never a bare question mark.
+    /// "unknown morpheme" and a missing gloss three stars, never a bare question mark.
     /// </summary>
     public static ParserReadingMorphViewModel ForTrace(ParserReadingMorph morph)
     {
         ArgumentNullException.ThrowIfNull(morph);
         var form = string.IsNullOrWhiteSpace(morph.Form) || morph.Form.Trim() == "?" ? UnknownForm : morph.Form;
-        return new ParserReadingMorphViewModel(morph, form, "—");
+        return new ParserReadingMorphViewModel(morph, form, MissingValue.Marker);
     }
 
     public string Form { get; }

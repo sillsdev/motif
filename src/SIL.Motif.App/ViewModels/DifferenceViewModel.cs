@@ -347,10 +347,10 @@ public sealed class MovedWordViewModel
     private static string Describe(AssessmentRowFacts row)
     {
         var readings = row.Source.Readings?.Select(reading => string.Join(" + ", reading.Morphs.Select(morph => morph.Form))
-            + " = " + string.Join(" + ", reading.Morphs.Select(morph => morph.Gloss.Length == 0 ? "?" : morph.Gloss)))
+            + " = " + string.Join(" + ", reading.Morphs.Select(morph => morph.Gloss.Length == 0 ? MissingValue.Marker : morph.Gloss)))
             ?? row.Source.Morphology?.Analyses.Select(analysis =>
                 string.Join(" + ", analysis.Morphs.Select(morph => morph.GuessedString ?? "?")) + " = " +
-                string.Join(" + ", analysis.Morphs.Select(_ => "?"))) ?? [];
+                string.Join(" + ", analysis.Morphs.Select(_ => MissingValue.Marker))) ?? [];
         var text = string.Join(" | ", readings);
         return text.Length == 0 ? row.Result : $"{row.Result}: {text}";
     }

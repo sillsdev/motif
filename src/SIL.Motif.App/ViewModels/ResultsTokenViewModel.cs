@@ -867,9 +867,9 @@ public sealed partial class ResultsTokenViewModel : ObservableObject, IDisposabl
     }
 
     // Forms already carry their own hyphens ("a-", "-a"), so they join as written; glosses join with one.
-    private static string ReadingText(ParserReading? reading) => reading is null ? "?"
+    private static string ReadingText(ParserReading? reading) => reading is null ? MissingValue.Marker
         : JoinForms(reading.Morphs.Select(morph => morph.Form)) + " ‘" +
-          string.Join("-", reading.Morphs.Select(morph => morph.Gloss.Length == 0 ? "?" : morph.Gloss)) + "’";
+          string.Join("-", reading.Morphs.Select(morph => morph.Gloss.Length == 0 ? MissingValue.Marker : morph.Gloss)) + "’";
 
     private static string JoinForms(IEnumerable<string> forms)
     {

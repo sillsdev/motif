@@ -113,6 +113,10 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
         VisiblePages = Pages.Where(page => page.IsAvailable && PageRegistry.For(page.Page).ShowInRail).ToArray();
         Inspector = new InspectorViewModel(Context, page => PageOf(page).Title);
         var setup = new SetupViewModel(Context, PageModel<TextsPageModel>().Words);
+        PageModel<TextsPageModel>().Words.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(TextWordsViewModel.FilterHidesText)) OnPropertyChanged(nameof(FilterHidesText));
+        };
         Context.AttachSetup(setup);
         setup.Selection.PropertyChanged += (_, e) =>
         {
@@ -301,6 +305,9 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
 
     /// <summary>Whether a project is opening, including its first-open Baseline capture.</summary>
     public bool IsProjectOpening => Context.IsOpeningProject || _isSettingProject;
+
+    /// <summary>The Texts page's "filter hides N words" note for the status bar; empty elsewhere or with no filter.</summary>
+    public string FilterHidesText => CurrentPage == WorkspacePage.Texts ? PageModel<TextsPageModel>().Words.FilterHidesText : string.Empty;
 
     /// <summary>The sidebar's Selection summary, with a brief message while its project is still loading.</summary>
     public string SelectionSummaryText => Context.IsOpeningProject ? "Loading project..." : Selection.SummaryText;
@@ -872,6 +879,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
         {
             case nameof(WorkspaceContext.CurrentPage):
                 OnPropertyChanged(nameof(CurrentPage));
+                OnPropertyChanged(nameof(FilterHidesText));
                 OnPropertyChanged(nameof(SelectedPage));
                 OnPropertyChanged(nameof(ShowsRefreshAction));
                 OnPropertyChanged(nameof(ShowsChooseWhatToParseAction));

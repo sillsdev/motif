@@ -623,6 +623,37 @@ public sealed class TextWordsViewModelTests : IAsyncLifetime
     }
 
     [Fact]
+    public void AnActiveFilterSaysHowManyWordsItHidesAndNothingElse()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (fake, selection, words) = NewViewModel();
+            await words.SetProjectAsync(ProjectPath);
+            await PublishAsync(fake, new TextWordsResponse(
+                [
+                    new TextWord("kitabu", null,
+                        [new WordOccurrence(TextId, "Alpha", 1, "s", "approved", Analysis("k1", "book"))],
+                        [Analysis("k1", "book")], []),
+                    new TextWord("nitakupa", null, [new WordOccurrence(TextId, "Alpha", 2, "s", "unanalysed", null)], [], []),
+                    new TextWord("wewe", null, [new WordOccurrence(TextId, "Alpha", 3, "s", "unanalysed", null)], [], []),
+                ],
+                [], HasBaseline: true));
+
+            Assert.Equal(string.Empty, words.FilterHidesText);
+
+            words.SetStatusFilterCommand.Execute(WordProjectStatus.NotPresent);
+            Assert.Equal("filter hides 1 word", words.FilterHidesText);
+
+            words.SearchText = "nita";
+            Assert.Equal("filter hides 2 words", words.FilterHidesText);
+
+            words.SearchText = string.Empty;
+            words.SetStatusFilterCommand.Execute(null);
+            Assert.Equal(string.Empty, words.FilterHidesText);
+        }, TimeSpan.FromSeconds(180));
+    }
+
+    [Fact]
     public void ReloadingFeedsPerTextCountsBackOntoTheSelectionsTextChoices()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>

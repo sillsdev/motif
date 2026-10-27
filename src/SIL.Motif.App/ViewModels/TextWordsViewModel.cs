@@ -252,6 +252,12 @@ public sealed partial class TextWordsViewModel : ObservableObject
             : "No words to test yet"
         : $"{WordCount:N0} word{(WordCount == 1 ? string.Empty : "s")} · {OccurrenceCount:N0} place{(OccurrenceCount == 1 ? string.Empty : "s")}";
 
+    /// <summary>Status-bar text naming how many words the active filter hides; empty when none are hidden.</summary>
+    public string FilterHidesText => _hiddenByFilter == 0 ? string.Empty
+        : PluralText.Format(MotifAppStrings.StatusFilterHidesPattern, _hiddenByFilter);
+
+    private int _hiddenByFilter;
+
     public int AllCount => _selectionReads.Summary?.WordRowCount ?? 0;
     public int ApprovedFilterCount => CountStanding(ProjectStanding.Approved);
     public int CandidateFilterCount => CountStanding(ProjectStanding.Candidate);
@@ -362,6 +368,7 @@ public sealed partial class TextWordsViewModel : ObservableObject
     {
         OnPropertyChanged(nameof(WordCount));
         OnPropertyChanged(nameof(SummaryText));
+        OnPropertyChanged(nameof(FilterHidesText));
         OnPropertyChanged(nameof(AllCount));
         OnPropertyChanged(nameof(ApprovedFilterCount));
         OnPropertyChanged(nameof(CandidateFilterCount));
@@ -861,7 +868,7 @@ public sealed class ProjectAnalysisViewModel
     {
         ArgumentNullException.ThrowIfNull(analysis);
         Morphs = analysis.Morphs.Select(morph => new ParserReadingMorphViewModel(morph)).ToArray();
-        Gloss = string.Join(" ", Morphs.Select(morph => morph.Gloss.Length == 0 ? "?" : morph.Gloss));
+        Gloss = string.Join(" ", Morphs.Select(morph => morph.Gloss.Length == 0 ? MissingValue.Marker : morph.Gloss));
     }
 
     public IReadOnlyList<ParserReadingMorphViewModel> Morphs { get; }

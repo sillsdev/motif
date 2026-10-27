@@ -385,7 +385,7 @@ public sealed class TraceWordViewModelTests
 
         var namedMorph = Assert.Single(candidate.Morphs);
         Assert.Equal("tin", namedMorph.Form);
-        Assert.Equal("—", namedMorph.GlossOrPlaceholder);
+        Assert.Equal("***", namedMorph.GlossOrPlaceholder);
         Assert.DoesNotContain("?", candidate.Gloss);
         Assert.DoesNotContain("unknown morpheme", candidate.Gloss);
     }

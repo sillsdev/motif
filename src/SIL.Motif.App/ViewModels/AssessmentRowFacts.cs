@@ -55,11 +55,11 @@ internal sealed record AssessmentRowFacts(AssessmentWordResult Source, int? Occu
     {
         if (Source.Readings is { } readings)
             return index < readings.Count ? string.Join(" + ", readings[index].Morphs.Select(morph => morph.Form))
-                + " = " + string.Join(" + ", readings[index].Morphs.Select(morph => morph.Gloss.Length == 0 ? "?" : morph.Gloss))
+                + " = " + string.Join(" + ", readings[index].Morphs.Select(morph => morph.Gloss.Length == 0 ? MissingValue.Marker : morph.Gloss))
                 : "Unresolved";
         var morphs = Source.Morphology!.Analyses[index].Morphs;
         return string.Join(" + ", morphs.Select(morph => morph.GuessedString ?? "?")) + " = " +
-            string.Join(" + ", morphs.Select(_ => "?"));
+            string.Join(" + ", morphs.Select(_ => MissingValue.Marker));
     }
 }
 

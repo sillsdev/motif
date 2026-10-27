@@ -58,6 +58,8 @@ public sealed partial class TextWordsViewModel
         if (!string.IsNullOrWhiteSpace(SearchText))
             matches = matches.Where(word => word.Key.Form.Contains(SearchText.Trim(), StringComparison.CurrentCultureIgnoreCase));
         var ordered = matches.OrderByDescending(word => word.OccurrenceCount).ToArray();
+        _hiddenByFilter = (_selectionReads.Summary?.Words.Count ?? 0) - ordered.Length;
+        OnPropertyChanged(nameof(FilterHidesText));
         var generation = _rowsGeneration;
         Rows = new LazyProjectionList<SelectionWordSummary, TextWordRowViewModel>(ordered,
             GetSummaryRow, row => row.Summary!, () => generation == _rowsGeneration && _acceptLoads);
