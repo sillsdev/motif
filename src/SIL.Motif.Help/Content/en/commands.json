@@ -849,6 +849,8 @@
       "gloss": "The sense's gloss.",
       "analysisWs": "Analysis writing system tag for the gloss and definition.",
       "definition": "Optional definition of the sense.",
+      "form": "Optional headword shown for the entry, in the vernacular writing system formWs, without the hyphens FieldWorks shows on affixes (for example in for the infix -in-). Give it with formWs.",
+      "formWs": "Vernacular writing system tag for form.",
       "msa": "Affix grammatical info: kind inflectional, derivational or unclassified, its category, and for derivational toCategory, for inflectional slots.",
       "input": "Ordered pattern parts, each with a name and one of phoneme, naturalClass or remaining true; the remaining-stem part is last.",
       "output": "Ordered realization, each item either copy of a named input part or insert of phoneme ids. An input part left out of the output is deleted."

@@ -93,7 +93,7 @@ internal static class TraceDiagnosticCapture
             if (reference.IdentityQuality != "authored" ||
                 !Guid.TryParse(reference.Identity, out var id) || !repository.TryGetObject(id, out var found))
                 return reference;
-            reference = reference with { CapturedFieldWorksLabel = NameOf(found) };
+            reference = reference with { CapturedFieldWorksLabel = TraceRuleNames.NameOf(found) };
             if (!comparison.CanNavigate) return reference;
             return reference with
             {
@@ -122,31 +122,6 @@ internal static class TraceDiagnosticCapture
             DiagnosticJson = json.ToJsonString(new JsonSerializerOptions { MaxDepth = 512 }),
             Reading = reading,
         });
-    }
-
-    // An affix rule is known by its entry, as FieldWorks shows it: headword, then the sense gloss if any.
-    private static string? NameOf(ICmObject rule)
-    {
-        var msa = rule as IMoMorphSynAnalysis;
-        for (var owner = rule; owner is not null; owner = owner.Owner)
-        {
-            if (owner is ILexEntry entry)
-            {
-                var headword = entry.HeadWord?.Text;
-                var gloss = (msa is null ? entry.SensesOS.FirstOrDefault()
-                        : entry.AllSenses.FirstOrDefault(sense => sense.MorphoSyntaxAnalysisRA == msa))
-                    ?.Gloss.BestAnalysisAlternative.Text;
-                return gloss is { Length: > 0 } && gloss != "***" ? $"{headword} ‘{gloss}’" : headword;
-            }
-        }
-        // A rule's ShortName is its class description ("A PhRegularRule"), not the name the project gives it.
-        var named = rule switch
-        {
-            IPhSegmentRule segment => segment.Name.BestAnalysisAlternative?.Text,
-            IMoCompoundRule compound => compound.Name.BestAnalysisAlternative?.Text,
-            _ => rule.ShortName,
-        };
-        return named is { Length: > 0 } name && name != "***" ? name : null;
     }
 
     private static string SizesKey(System.Collections.Generic.IReadOnlyDictionary<string, double>? sizes) =>

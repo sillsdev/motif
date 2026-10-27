@@ -15,6 +15,14 @@ internal static class TryWordSummary
     internal const int MaxClosestAttempts = 3;
     internal const int MaxReasons = 5;
 
+    private static TraceRef? RefFor(WordTraceReading reading, string? refId) =>
+        refId is null ? null : reading.Refs.FirstOrDefault(r => r.Id == refId);
+
+    // The FieldWorks name first, the parser's own id after it as a secondary detail.
+    private static string? Named(TraceRef? reference, string? rule) =>
+        reference?.CapturedFieldWorksLabel is { Length: > 0 } name && rule is { Length: > 0 } && name != rule
+            ? $"{name} ({rule})" : rule;
+
     public static JsonObject Concise(WordTraceResponse response)
     {
         var reading = response.Reading;
@@ -29,7 +37,8 @@ internal static class TryWordSummary
         if (response.StopReason is { Length: > 0 }) result["stopReason"] = response.StopReason;
         if (response.InvalidShape) result["invalidShape"] = true;
         if (response.Guessed) result["guessed"] = true;
-        if (response.DeepestRule is { Length: > 0 }) result["deepestRule"] = response.DeepestRule;
+        if (response.DeepestRule is { Length: > 0 })
+            result["deepestRule"] = Named(reading.Refs.Where(r => r.Label == response.DeepestRule).ToArray() is [var only] ? only : null, response.DeepestRule);
 
         var readings = new JsonArray();
         foreach (var analysis in reading.Analyses.DistinctBy(a => a.Signature ?? a.LegacyMorphemes).Take(MaxReadings))
@@ -58,7 +67,7 @@ internal static class TryWordSummary
             foreach (var group in reading.StopGroups.Take(MaxStopGroups))
                 stops.Add(new JsonObject
                 {
-                    ["rule"] = group.Rule,
+                    ["rule"] = Named(RefFor(reading, group.RuleRefId), group.Rule),
                     ["reason"] = group.ReasonCode,
                     ["explanation"] = group.Explanation,
                     ["attempts"] = group.Count,
@@ -75,7 +84,7 @@ internal static class TryWordSummary
                     ["morphs"] = string.Join(" ", attempt.Morphs.Select(m => m.Form)),
                     ["failure"] = attempt.FailureReason,
                     ["explanation"] = attempt.Explanation,
-                    ["stoppedBy"] = attempt.StoppedByRule,
+                    ["stoppedBy"] = Named(RefFor(reading, attempt.StoppedByRefId), attempt.StoppedByRule),
                 });
             result["closestAttempts"] = closest;
         }

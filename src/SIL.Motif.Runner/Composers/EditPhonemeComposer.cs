@@ -53,11 +53,12 @@ public static class EditPhonemeComposer
             respelled.Select(r => r.From).Distinct(StringComparer.Ordinal).Count() != respelled.Length)
             throw new InvalidOperationException($"{Duplicate}: a representation is named twice in one edit.");
         var inventory = SoundSystemAuthoring.FirstSet(cache);
-        var taken = inventory.PhonemesOC.Cast<IPhTerminalUnit>().Concat(inventory.BoundaryMarkersOC)
-            .SelectMany(unit => unit.CodesOS).Select(code => Spelling(cache, code)).Where(s => s is not null).ToHashSet(StringComparer.Ordinal);
-        foreach (var spelling in incoming.Where(taken.Contains))
-            throw new InvalidOperationException(
-                $"{Duplicate}: '{spelling}' already belongs to a phoneme or boundary in the first phoneme set.");
+        var owners = new Dictionary<string, IPhTerminalUnit>(StringComparer.Ordinal);
+        foreach (var unit in inventory.PhonemesOC.Cast<IPhTerminalUnit>().Concat(inventory.BoundaryMarkersOC))
+            foreach (var code in unit.CodesOS)
+                if (Spelling(cache, code) is { } spelling) owners.TryAdd(spelling, unit);
+        foreach (var spelling in incoming.Where(owners.ContainsKey))
+            throw new InvalidOperationException($"{Duplicate}: {DescribeOwner(cache, spelling, owners[spelling], phoneme)}");
         foreach (var (from, _) in respelled)
         {
             if (!own.ContainsKey(from))
@@ -94,6 +95,21 @@ public static class EditPhonemeComposer
                 SoundSystemAuthoring.Id(naturalClass).Value, Named(naturalClass.Name.BestAnalysisAlternative.Text, naturalClass.Guid)));
         return environments.Concat(classes).DistinctBy(user => (user.Kind, user.Id))
             .OrderBy(user => user.Kind, StringComparer.Ordinal).ThenBy(user => user.Id, StringComparer.Ordinal).ToArray();
+    }
+
+    private static string DescribeOwner(LcmCache cache, string spelling, IPhTerminalUnit owner, IPhPhoneme target)
+    {
+        var kind = owner is IPhPhoneme ? "phoneme" : "boundary marker";
+        var name = owner.Name.get_String(cache.DefaultVernWs)?.Text ?? owner.Name.BestAnalysisAlternative.Text;
+        var shown = string.IsNullOrWhiteSpace(name) || name == "***" ? "(unnamed)" : name;
+        var spellings = string.Join(", ", owner.CodesOS.Select(code => Spelling(cache, code)).OfType<string>()
+            .Select(text => $"'{text}'"));
+        var id = SoundSystemAuthoring.Id(owner).Value;
+        var self = ReferenceEquals(owner, target) ? " (the phoneme being edited)" : string.Empty;
+        return $"'{spelling}' already belongs to {kind} '{shown}' (id {id}, representations {spellings}){self} " +
+            "in the first phoneme set. " + (ReferenceEquals(owner, target)
+                ? "The phoneme already has it; nothing to add."
+                : "Pick a spelling that no phoneme has, or edit that phoneme instead.");
     }
 
     private static IPhPhoneme Resolve(LcmCache cache, CanonicalId id)

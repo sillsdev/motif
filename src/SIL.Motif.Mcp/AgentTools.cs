@@ -1272,7 +1272,7 @@ internal static class AgentTools
         if (!outcome.Succeeded) return ToolOutcome.Refused(outcome.Refusal!);
         var summary = detailed
             ? (JsonObject)JsonNode.Parse(ProjectionJson.Serialize(outcome.Value!))!
-            : TryWordSummary.Concise(outcome.Value!);
+            : TryWordSummary.Concise(TryWordRuleNames.Named(projectPath, outcome.Value!, proposal));
         summary["tracedAgainst"] = proposal is null ? "baseline" : "proposal " + proposal + " (its latest Trial copy)";
         return ToolOutcome.From(CommandOutcome<JsonObject>.Success(summary));
     }

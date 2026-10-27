@@ -1451,6 +1451,14 @@
           "type": "string",
           "description": "Optional definition of the sense."
         },
+        "form": {
+          "type": "string",
+          "description": "Optional headword shown for the entry, in the vernacular writing system formWs, without the hyphens FieldWorks shows on affixes (for example in for the infix -in-). Give it with formWs."
+        },
+        "formWs": {
+          "type": "string",
+          "description": "Vernacular writing system tag for form."
+        },
         "msa": {
           "type": "object",
           "properties": {

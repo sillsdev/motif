@@ -35,6 +35,18 @@ public static class AuthorAffixProcessComposer
         var process = processCreate.EntityId!.Value;
         var creates = operations.Where(operation => operation.EntityId is not null)
             .ToDictionary(operation => operation.EntityId!.Value, operation => operation.OperationId, CanonicalId.ByGuid);
+        if (intent.Form is not null)
+        {
+            LexicalFormAuthoring.RequireWritingSystem(cache, intent.FormWritingSystem!, vernacular: true, "AuthorAffixProcess");
+            operations.Add(new OperationEnvelope(mint(), MoFormFormOperationKinds.SetForm, target: process,
+                after: JsonSerializer.SerializeToElement(new
+                {
+                    ws = intent.FormWritingSystem,
+                    text = intent.Form.Normalize(System.Text.NormalizationForm.FormC),
+                }),
+                dependsOn: [new OperationDependency(processCreate.OperationId)],
+                rationale: "Authored affix-process headword."));
+        }
         AffixProcessGraphBuilder.Append(operations, mint, creates, process, intent.Input, intent.Output,
             "Authored affix-process intent.");
         return operations;

@@ -23,6 +23,8 @@ internal sealed class AuthorAffixProcessDefinition : ComposerDefinition<AuthorAf
         Field.Text("gloss", required: true),
         Field.Text("analysisWs", required: true),
         Field.Text("definition"),
+        Field.Text("form"),
+        Field.Text("formWs"),
         Field.Nested("msa", IntentShape.Of(
             Field.Choice("kind", ["inflectional", "derivational", "unclassified"], required: true),
             Field.Id("category", IdRole.Reference, required: true),

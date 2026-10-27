@@ -17,7 +17,7 @@ public sealed record AffixProcessOutputStep(string? Copy = null, IReadOnlyList<C
 /// <summary>One new affix entry with an ordered flat stem pattern and a realization that may omit (delete) leading input parts.</summary>
 public sealed record AuthorAffixProcessIntent(CanonicalId MorphType, string Gloss, string AnalysisWritingSystem,
     LexicalEntryMsa Msa, IReadOnlyList<AffixProcessInputPart> Input, IReadOnlyList<AffixProcessOutputStep> Output,
-    string? Definition = null);
+    string? Definition = null, string? Form = null, string? FormWritingSystem = null);
 
 /// <summary>Parses the closed named-part affix-process intent, including the typed authoring limits.</summary>
 public static class AuthorAffixProcessIntentParser
@@ -25,13 +25,15 @@ public static class AuthorAffixProcessIntentParser
     public static AuthorAffixProcessIntent Parse(JsonElement authored)
     {
         SoundSystemIntentParsing.Object(authored, "AuthorAffixProcess",
-            "morphType", "gloss", "analysisWs", "msa", "definition", "input", "output");
+            "morphType", "gloss", "analysisWs", "msa", "definition", "form", "formWs", "input", "output");
         var input = ParseInput(authored);
         var output = ParseOutput(authored);
         var result = new AuthorAffixProcessIntent(SoundSystemIntentParsing.Id(authored, "morphType"),
             SoundSystemIntentParsing.Text(authored, "gloss"), SoundSystemIntentParsing.Text(authored, "analysisWs"),
             AuthorLexicalEntryIntentParser.ParseMsa(authored, "AuthorAffixProcess"), input, output,
-            authored.TryGetProperty("definition", out _) ? SoundSystemIntentParsing.Text(authored, "definition") : null);
+            authored.TryGetProperty("definition", out _) ? SoundSystemIntentParsing.Text(authored, "definition") : null,
+            authored.TryGetProperty("form", out _) ? SoundSystemIntentParsing.Text(authored, "form") : null,
+            authored.TryGetProperty("formWs", out _) ? SoundSystemIntentParsing.Text(authored, "formWs") : null);
         try { AffixProcessIntentShape.Validate(result); }
         catch (InvalidOperationException exception) { throw new ContractParseException(exception.Message); }
         return result;
@@ -75,6 +77,10 @@ internal static class AffixProcessIntentShape
             throw new InvalidOperationException("An affix process needs a nonblank analysis writing system.");
         if (intent.Definition is not null && string.IsNullOrWhiteSpace(intent.Definition))
             throw new InvalidOperationException("An affix process definition must be nonblank when present.");
+        if ((intent.Form is null) != (intent.FormWritingSystem is null))
+            throw new InvalidOperationException("An affix process form needs both 'form' and 'formWs', or neither.");
+        if (intent.Form is not null && string.IsNullOrWhiteSpace(intent.Form))
+            throw new InvalidOperationException("An affix process form must be nonblank when present.");
         if (intent.Msa is null || intent.Msa.Kind == LexicalEntryMsaKind.Stem || !Enum.IsDefined(intent.Msa.Kind))
             throw new InvalidOperationException("An affix process needs affix grammatical info.");
         ValidatePattern(intent.Input, intent.Output);

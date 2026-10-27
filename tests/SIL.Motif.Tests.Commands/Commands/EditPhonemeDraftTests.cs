@@ -46,4 +46,30 @@ public sealed class EditPhonemeDraftTests(PristineProjectFixture pristine)
         Assert.False(refused.Succeeded);
         Assert.Contains("phoneme-representation-duplicate", refused.Refusal!.Message);
     }
+
+    [Fact]
+    public void ADuplicateRefusalNamesThePhonemeThatAlreadyOwnsTheRepresentation()
+    {
+        using var cache = pristine.NewScratch();
+        var path = cache.ProjectId.Path;
+        cache.Dispose();
+        Assert.True(ProposalCommands.New(new(path, Version, "owner", "Digraphs")).Succeeded);
+        var owner = ProposalCommands.ComposeAuthorPhoneme(new(path, Version, "owner",
+            JsonSerializer.Serialize(new { name = "ng-digraph", representations = new[] { "ng", "NG" } })));
+        var ownerId = Assert.Single(owner.Value!.Operations, o => o.Kind.EndsWith("/createPhonemes", StringComparison.Ordinal)).EntityId!;
+        var other = ProposalCommands.ComposeAuthorPhoneme(new(path, Version, "owner",
+            JsonSerializer.Serialize(new { name = "eng", representations = new[] { "\u014B" } })));
+        var otherId = Assert.Single(other.Value!.Operations, o => o.Kind.EndsWith("/createPhonemes", StringComparison.Ordinal)).EntityId!;
+
+        var refused = ProposalCommands.ComposeIntent(new(path, Version, "owner", "compose-edit-phoneme",
+            JsonSerializer.Serialize(new { target = otherId, add = new[] { new { representation = "ng" } } })));
+
+        Assert.False(refused.Succeeded);
+        var message = refused.Refusal!.Message;
+        Assert.Contains("phoneme-representation-duplicate", message);
+        Assert.Contains("'ng-digraph'", message);
+        Assert.Contains(ownerId, message);
+        Assert.Contains("'ng'", message);
+        Assert.Contains("'NG'", message);
+    }
 }

@@ -99,6 +99,29 @@ public sealed class AuthorAffixProcessComposerTests : IDisposable
     }
 
     [Fact]
+    public void AHeadwordFormIsWrittenByApplyAndGoneAfterUndo()
+    {
+        var vernacular = _cache.WritingSystemFactory.GetStrFromWs(_cache.DefaultVernWs);
+        var intent = Intent() with { Form = "in", FormWritingSystem = vernacular };
+        var operations = AuthorAffixProcessComposer.Build(_cache, intent);
+        Assert.Contains(operations, operation => operation.Kind == MoFormFormOperationKinds.SetForm);
+        var proposal = Proposal(operations);
+        var dryRun = ScratchDryRun.Of(_cache, proposal);
+
+        ProposalApplier.Apply(_cache, proposal, dryRun.Anchor, "affix-headword-tests");
+
+        var process = Process(proposal);
+        Assert.Equal("in", process.Form.get_String(_cache.DefaultVernWs).Text);
+        var entry = Assert.IsAssignableFrom<ILexEntry>(process.Owner);
+        Assert.Contains("in", entry.HeadWord.Text);
+        var processId = process.Guid;
+
+        _cache.ActionHandlerAccessor.Undo();
+
+        Assert.False(Repository.IsValidObjectId(processId));
+    }
+
+    [Fact]
     public void WholeStemCopy_IsAnEmptyFormWithTwoDistinctCopyMappings()
     {
         var intent = Intent() with { Input = [new("stem", Remaining: true)], Output = [new(Copy: "stem"), new(Copy: "stem")] };

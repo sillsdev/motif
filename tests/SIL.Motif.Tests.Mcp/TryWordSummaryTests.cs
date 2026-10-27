@@ -49,6 +49,48 @@ public sealed class TryWordSummaryTests
     }
 
     [Fact]
+    public void ANamedRuleShowsItsFieldWorksNameBeforeTheParsersId()
+    {
+        var response = Response(parsed: false, 0, 1);
+        var group = response.Reading.StopGroups[0];
+        var reference = new TraceRef("rule-ref", "morphRule", "mrule#2") { CapturedFieldWorksLabel = "mu- ‘ACT.PUNC.FUT’" };
+        var named = response with
+        {
+            DeepestRule = "mrule#2",
+            Reading = response.Reading with
+            {
+                Refs = [reference],
+                StopGroups = [group with { Rule = "mrule#2", RuleRefId = "rule-ref" }],
+            },
+        };
+
+        var text = TryWordSummary.Concise(named).ToJsonString(new System.Text.Json.JsonSerializerOptions
+            { Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping });
+
+        Assert.Contains("\"rule\":\"mu- ‘ACT.PUNC.FUT’ (mrule#2)\"", text);
+        Assert.Contains("\"deepestRule\":\"mu- ‘ACT.PUNC.FUT’ (mrule#2)\"", text);
+    }
+
+    [Fact]
+    public void AWordTracedAgainstAProposalKeepsTheParsersIdsAndNeverReadsTheBaseline()
+    {
+        var failed = Response(parsed: false, 0, 0);
+        var ruleGuid = "12345678-1234-1234-abcd-123456789abc";
+        var response = failed with
+        {
+            Reading = failed.Reading with
+            {
+                Refs = [new TraceRef("rule", "morphRule", "mrule#2") { Identity = ruleGuid, IdentityQuality = "authored" }],
+            },
+        };
+
+        // The path names no project: a Baseline read would refuse it, so only an early return can pass.
+        var result = TryWordRuleNames.Named("/no/such/project.fwdata", response, "my-proposal");
+
+        Assert.Same(response, result);
+    }
+
+    [Fact]
     public void ManyReadingsAreCountedAndTruncatedWithANote()
     {
         var analyses = Enumerable.Range(0, 20).Select(i => new TraceAnalysis("a" + i, i, "w", "available",

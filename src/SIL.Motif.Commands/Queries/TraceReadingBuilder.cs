@@ -89,6 +89,9 @@ public static class TraceReadingBuilder
         };
     }
 
+    internal static IReadOnlyList<string> RecordedReasonsFor(TraceStep root, TraceDisplayLabels labels) =>
+        RecordedReasons(root, labels);
+
     private static IReadOnlyList<string> RecordedReasons(TraceStep root, TraceDisplayLabels? labels = null)
     {
         var steps = Flatten(root).ToArray();

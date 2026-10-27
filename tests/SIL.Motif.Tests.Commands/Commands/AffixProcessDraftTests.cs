@@ -66,6 +66,47 @@ public sealed class AffixProcessDraftTests(PristineProjectFixture pristine)
     }
 
     [Fact]
+    public void AnAffixProcessCanCarryAHeadwordAndOtherwiseStaysNameless()
+    {
+        using var cache = pristine.NewScratch();
+        var path = cache.ProjectId.Path;
+        var analysisWs = cache.WritingSystemFactory.GetStrFromWs(cache.DefaultAnalWs);
+        var vernacularWs = cache.WritingSystemFactory.GetStrFromWs(cache.DefaultVernWs);
+        cache.Dispose();
+        Assert.True(ProposalCommands.New(new(path, Version, "headword", "Add an infix")).Succeeded);
+        var phoneme = ProposalCommands.ComposeAuthorPhoneme(new(path, Version, "headword",
+            JsonSerializer.Serialize(new { name = "headword-i", representations = new[] { "i" } })));
+        var phonemeId = Assert.Single(phoneme.Value!.Operations,
+            operation => operation.Kind.EndsWith("/createPhonemes", StringComparison.Ordinal)).EntityId!;
+        var category = CanonicalId.FromGuid(pristine.Seed.PartOfSpeechId).Value;
+        var intent = new Dictionary<string, object?>
+        {
+            ["morphType"] = CanonicalId.FromGuid(MoMorphTypeTags.kguidMorphInfix).Value,
+            ["gloss"] = "perfective", ["analysisWs"] = analysisWs, ["form"] = "in", ["formWs"] = vernacularWs,
+            ["msa"] = new { kind = "unclassified", category },
+            ["input"] = new object[] { new { name = "c", phoneme = phonemeId }, new { name = "stem", remaining = true } },
+            ["output"] = new object[] { new { copy = "c" }, new { insert = new[] { phonemeId } }, new { copy = "stem" } },
+        };
+        var composed = ProposalCommands.ComposeIntent(new(path, Version, "headword", "compose-author-affix-process",
+            JsonSerializer.Serialize(intent)));
+
+        Assert.True(composed.Succeeded, composed.Refusal?.Message);
+        var draft = ReadDraft(path, "headword");
+        var create = Assert.Single(draft.Operations, operation => operation.Kind == "lexical/lexEntry/createLexemeForm");
+        var setForm = Assert.Single(draft.Operations, operation => operation.Kind == "grammar/moForm/setForm");
+        Assert.Equal(create.EntityId, setForm.Target);
+        Assert.Equal("in", setForm.After["text"].GetString());
+        Assert.Equal(vernacularWs, setForm.After["ws"].GetString());
+        Assert.NotEmpty(setForm.DependsOn);
+
+        intent.Remove("form");
+        var refused = ProposalCommands.ComposeIntent(new(path, Version, "headword", "compose-author-affix-process",
+            JsonSerializer.Serialize(intent)));
+        Assert.False(refused.Succeeded);
+        Assert.Contains("form", refused.Refusal!.Message);
+    }
+
+    [Fact]
     public void BatchReplaysEarlierReferencesWithCitationsAndAllOrNothingAppendRules()
     {
         using var cache = pristine.NewScratch();

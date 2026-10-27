@@ -10,14 +10,24 @@ public sealed class TraceDisplayLabels
 {
     private readonly IReadOnlyDictionary<string, TraceRef> _refs;
 
-    public TraceDisplayLabels(IReadOnlyList<TraceRef> refs) =>
+    private readonly bool _showSource;
+
+    /// <param name="refs">The reading's refs.</param>
+    /// <param name="showSource">Keeps the producer's own label after a captured name, as "name (label)".</param>
+    public TraceDisplayLabels(IReadOnlyList<TraceRef> refs, bool showSource = false)
+    {
         _refs = refs.ToDictionary(reference => reference.Id, StringComparer.Ordinal);
+        _showSource = showSource;
+    }
 
     /// <summary>
     /// The captured FieldWorks name, otherwise the ref's producer label. A missing ref uses the caller's
     /// recorded label; display text never establishes a match.
     /// </summary>
-    public string? Resolve(string? refId, string? fallback) =>
-        refId is not null && _refs.TryGetValue(refId, out var reference)
-            ? reference.CapturedFieldWorksLabel ?? reference.Label : fallback;
+    public string? Resolve(string? refId, string? fallback)
+    {
+        if (refId is null || !_refs.TryGetValue(refId, out var reference)) return fallback;
+        if (reference.CapturedFieldWorksLabel is not { } name) return reference.Label;
+        return _showSource && !string.IsNullOrEmpty(fallback) && fallback != name ? $"{name} ({fallback})" : name;
+    }
 }
