@@ -1121,6 +1121,8 @@ public sealed partial class ComponentStyleTests
             Button.PaddingProperty, "Intent.Inset.None");
         yield return new("WordCard", "the close-card action color", host => Add(host, Press("wordPresentationCardClose")),
             Button.ForegroundProperty, "Intent.TextMuted");
+        yield return new("WordStripParts", "the selection glyph size", host => Add(host, Box("selectionGlyph")),
+            Control.WidthProperty, "Component.WordStrip.SelectionGlyphSize");
         yield return new("WordStrip", "a word strip's group gap", host => Add(host, Box("wordStrip")),
             Border.MarginProperty, "Intent.Gap.CompactItem");
         yield return new("WordStrip", "a resting word strip edge", host => Add(host, Box("wordStrip")),
