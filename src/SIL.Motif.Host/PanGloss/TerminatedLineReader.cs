@@ -7,11 +7,16 @@ namespace SIL.Motif.Host.PanGloss;
 /// line; <see cref="StreamReader.ReadLineAsync()"/> would return that fragment as a line, so this reader returns
 /// <see langword="null"/> at end of stream and discards any unterminated tail.
 /// </summary>
+/// <remarks>
+/// It reads bytes and splits on <c>\n</c> itself rather than through a <see cref="StreamReader"/>:
+/// <c>StreamReader.ReadAsync</c> keeps reading while its last read filled the byte buffer, and a pipe that has been
+/// drained answers that extra read with "nothing yet", so a reply ending on a full read was never returned
+/// and the session hung. The encoding must keep <c>\n</c> as the single byte 0x0A, as UTF-8 does.
+/// </remarks>
 internal sealed class TerminatedLineReader(Stream stream, Encoding encoding)
 {
-    private readonly StreamReader _reader = new(stream, encoding);
-    private readonly char[] _buffer = new char[8192];
-    private readonly StringBuilder _line = new();
+    private readonly byte[] _buffer = new byte[8192];
+    private readonly MemoryStream _line = new();
     private int _position;
     private int _length;
 
@@ -22,21 +27,21 @@ internal sealed class TerminatedLineReader(Stream stream, Encoding encoding)
         {
             if (_position == _length)
             {
-                _length = await _reader.ReadAsync(_buffer.AsMemory()).ConfigureAwait(false);
+                _length = await stream.ReadAsync(_buffer.AsMemory()).ConfigureAwait(false);
                 _position = 0;
                 if (_length == 0) return null;
             }
-            var end = Array.IndexOf(_buffer, '\n', _position, _length - _position);
+            var end = Array.IndexOf(_buffer, (byte)'\n', _position, _length - _position);
             if (end < 0)
             {
-                _line.Append(_buffer, _position, _length - _position);
+                _line.Write(_buffer, _position, _length - _position);
                 _position = _length;
                 continue;
             }
-            _line.Append(_buffer, _position, end - _position);
+            _line.Write(_buffer, _position, end - _position);
             _position = end + 1;
-            var text = _line.ToString();
-            _line.Clear();
+            var text = encoding.GetString(_line.GetBuffer(), 0, (int)_line.Length);
+            _line.SetLength(0);
             return text;
         }
     }

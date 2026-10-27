@@ -62,6 +62,8 @@ public sealed record WarmPanGlossOptions
     public TimeSpan IdleTimeout { get; init; } = TimeSpan.FromMinutes(10);
     /// <summary>A load still not ready after this long becomes Failed.</summary>
     public TimeSpan LoadTimeout { get; init; } = TimeSpan.FromSeconds(120);
+    /// <summary>A word still unanswered after this long kills the session and takes the cold path; infinite waits forever.</summary>
+    public TimeSpan ParseTimeout { get; init; } = TimeSpan.FromMinutes(5);
     /// <summary>After a failure a word takes the cold path for this long before the session is tried again.</summary>
     public TimeSpan RetryCooldown { get; init; } = TimeSpan.FromSeconds(30);
 }
@@ -260,6 +262,16 @@ public sealed class WarmPanGlossPool : IDisposable
             try { handler(this, new WarmSessionStateChangedEventArgs(key, state)); }
             catch (Exception exception) { Trace.TraceWarning("A warm-session state handler failed: {0}", exception.Message); }
         });
+    }
+
+    private static class ParseTimedOut
+    {
+        public const string Code = "parse-timeout";
+
+        public static string Message(TimeSpan limit) =>
+            $"The resident parser did not answer within {limit.TotalSeconds:0.#} seconds and was stopped.";
+
+        public static WarmParseResult.Fallback Result(TimeSpan limit) => new(Code, Message(limit));
     }
 
     private sealed class Session(WarmPanGlossPool pool, string key, string projectKey, string token, string grammarPath,
@@ -463,6 +475,13 @@ public sealed class WarmPanGlossPool : IDisposable
             var id = Interlocked.Increment(ref pool._nextId).ToString(System.Globalization.CultureInfo.InvariantCulture);
             var clock = Stopwatch.StartNew();
             using var registration = token.Register(() => Kill(WarmSessionState.Idle, raise: true));
+            var timedOut = false;
+            using var deadline = new CancellationTokenSource(pool._options.ParseTimeout);
+            using var deadlineRegistration = deadline.Token.Register(() =>
+            {
+                timedOut = true;
+                Fail(ParseTimedOut.Code, ParseTimedOut.Message(pool._options.ParseTimeout));
+            });
             try
             {
                 var request = JsonSerializer.Serialize(new { id, op = "parse", word, traceDetails }) + "\n";
@@ -473,6 +492,7 @@ public sealed class WarmPanGlossPool : IDisposable
                 {
                     var line = await reader.ReadLineAsync().ConfigureAwait(false);
                     if (token.IsCancellationRequested) return new WarmParseResult.Cancelled();
+                    if (Volatile.Read(ref timedOut)) return ParseTimedOut.Result(pool._options.ParseTimeout);
                     if (line is null)
                     {
                         var died = Died();
@@ -497,6 +517,7 @@ public sealed class WarmPanGlossPool : IDisposable
             catch (Exception exception) when (exception is IOException or ObjectDisposedException or JsonException)
             {
                 if (token.IsCancellationRequested) return new WarmParseResult.Cancelled();
+                if (Volatile.Read(ref timedOut)) return ParseTimedOut.Result(pool._options.ParseTimeout);
                 var died = Died();
                 Fail(died.Code, died.Message);
                 return new WarmParseResult.Fallback(died.Code, died.Message);

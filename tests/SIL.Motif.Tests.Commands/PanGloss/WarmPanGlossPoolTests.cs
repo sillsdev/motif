@@ -188,6 +188,24 @@ public sealed class WarmPanGlossPoolTests : IDisposable
     }
 
     [Fact]
+    public async Task AWordTheParserNeverAnswersTimesOutKillsTheSessionAndFallsBackToCold()
+    {
+        var (grammar, startLog, _) = Project("timeout");
+        using var pool = Pool(new WarmPanGlossOptions { ParseTimeout = TimeSpan.FromMilliseconds(500) });
+        await pool.TryWordAsync(grammar, "t1", grammar, "motifa", true, CancellationToken.None);
+        var pid = int.Parse(Lines(startLog)[0]);
+
+        var clock = Stopwatch.StartNew();
+        var stuck = Assert.IsType<WarmParseResult.Fallback>(
+            await pool.TryWordAsync(grammar, "t1", grammar, "hang", true, CancellationToken.None));
+
+        Assert.Equal("parse-timeout", stuck.Code);
+        Assert.True(clock.Elapsed < TimeSpan.FromSeconds(20), "The stuck word must not hold the caller.");
+        await Eventually(() => !Alive(pid), "the unresponsive process to be killed");
+        Assert.Equal(WarmSessionPhase.Failed, pool.GetState(grammar).Phase);
+    }
+
+    [Fact]
     public async Task AParserPastTheMemoryCeilingIsKilledAndTheWordFallsBackToCold()
     {
         var (grammar, startLog, _) = Project("ceiling", new { ServeAllocateBytes = 900 * 1024 * 1024 });
