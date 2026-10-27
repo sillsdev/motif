@@ -58,13 +58,13 @@ public sealed class ProgressiveDisplayTests
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             // Without Compose nothing applies the stored theme and zoom; this case leaks both on purpose.
-            var (firstWorkspace, firstWindow) = await LayoutInvariantFixtures.OpenFreshSampleData(renderForCapture: false, composeWindow: false);
+            var (firstWorkspace, firstWindow) = await LayoutInvariantFixtures.OpenFreshSampleData(renderForCapture: false, composeWindow: false, parse: false);
             Application.Current!.RequestedThemeVariant = Avalonia.Styling.ThemeVariant.Dark;
             WindowZoomPolicy.Apply(Application.Current, 150);
             firstWindow.Close();
             await firstWorkspace.DisposeAsync();
 
-            var (workspace, window) = await LayoutInvariantFixtures.OpenFreshSampleData(renderForCapture: false, composeWindow: false);
+            var (workspace, window) = await LayoutInvariantFixtures.OpenFreshSampleData(renderForCapture: false, composeWindow: false, parse: false);
             try
             {
                 Assert.Equal(Avalonia.Styling.ThemeVariant.Default, Application.Current.RequestedThemeVariant);
@@ -330,7 +330,7 @@ public sealed class ProgressiveDisplayTests
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (workspace, sampleWindow) = await LayoutInvariantFixtures.OpenFreshSampleData();
+            var (workspace, sampleWindow) = await LayoutInvariantFixtures.OpenFreshSampleData(composeWindow: false, seedReaderToken: false);
             var row = FixedWordRow(workspace);
             var window = new MotifTestWindow { Width = 1240, Height = 780, Content = row };
             try
@@ -365,7 +365,7 @@ public sealed class ProgressiveDisplayTests
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (workspace, sampleWindow) = await LayoutInvariantFixtures.OpenFreshSampleData();
+            var (workspace, sampleWindow) = await LayoutInvariantFixtures.OpenFreshSampleData(composeWindow: false, seedReaderToken: false);
             var facts = workspace.Assess.Words.Rows.Select(row => row.WordRow).ToArray();
             Assert.NotEmpty(facts);
             var words = Enumerable.Range(0, 240).Select(index => new WordPresentation(
@@ -465,7 +465,7 @@ public sealed class ProgressiveDisplayTests
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (workspace, sample) = await LayoutInvariantFixtures.OpenFreshSampleData(configure: (fake, assessment) =>
+            var (workspace, sample) = await LayoutInvariantFixtures.OpenFreshSampleData(composeWindow: false, seedReaderToken: false, configure: (fake, assessment) =>
             {
                 var source = assessment.Words.First(word => word.StoredAnalyses.Count > 0);
                 var words = Enumerable.Range(0, 200).Select(index => source with { Word = $"review-{index:D3}" }).ToArray();
@@ -589,7 +589,7 @@ public sealed class ProgressiveDisplayTests
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (workspace, window) = await LayoutInvariantFixtures.OpenFreshSampleData();
+            var (workspace, window) = await LayoutInvariantFixtures.OpenFreshSampleData(seedReaderToken: false);
             try
             {
                 window.Width = 1240;
@@ -612,7 +612,7 @@ public sealed class ProgressiveDisplayTests
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (workspace, sample) = await LayoutInvariantFixtures.OpenFreshSampleData();
+            var (workspace, sample) = await LayoutInvariantFixtures.OpenFreshSampleData(composeWindow: false, parse: false);
             var panel = new DiagnosticPanel(workspace.PageModel<TryWordPageModel>().Diagnostics);
             var window = new MotifTestWindow { Width = 1240, Height = 780, Content = new ScrollViewer { Content = panel } };
             try
@@ -687,7 +687,7 @@ public sealed class ProgressiveDisplayTests
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (workspace, window) = await LayoutInvariantFixtures.OpenFreshSampleData();
+            var (workspace, window) = await LayoutInvariantFixtures.OpenFreshSampleData(seedReaderToken: false);
             try
             {
                 window.Width = 1040;
@@ -827,7 +827,7 @@ public sealed class ProgressiveDisplayTests
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (workspace, window) = await LayoutInvariantFixtures.OpenFreshSampleData();
+            var (workspace, window) = await LayoutInvariantFixtures.OpenFreshSampleData(seedReaderToken: false);
             try
             {
                 window.Width = width;
@@ -876,7 +876,7 @@ public sealed class ProgressiveDisplayTests
             var projects = Enumerable.Range(0, 2000).Select(index =>
                 new SIL.Motif.Commands.Queries.KnownProjectSummary(
                     Path.Combine(Path.GetTempPath(), $"project-{index}.fwdata"), PageScreenshots.CaptureStartAt)).ToArray();
-            var (workspace, window) = await LayoutInvariantFixtures.OpenFreshSampleData(
+            var (workspace, window) = await LayoutInvariantFixtures.OpenFreshSampleData(parse: false,
                 configure: (fake, _) => fake.KnownProjectsListIs(projects));
             try
             {
@@ -957,7 +957,7 @@ public sealed class ProgressiveDisplayTests
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (workspace, sampleWindow) = await LayoutInvariantFixtures.OpenFreshSampleData(renderForCapture: false);
+            var (workspace, sampleWindow) = await LayoutInvariantFixtures.OpenFreshSampleData(renderForCapture: false, composeWindow: false, parse: false);
             var panel = new TryWordPanel(workspace.PageModel<TryWordPageModel>());
             var window = new MotifTestWindow { Width = 1240, Height = 780, Content = new ScrollViewer { Content = panel } };
             try

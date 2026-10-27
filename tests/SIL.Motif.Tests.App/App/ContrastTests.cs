@@ -334,7 +334,7 @@ public sealed class ContrastTests(AvaloniaHeadlessFixture avalonia)
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             var priorTheme = Application.Current!.RequestedThemeVariant;
-            var (workspace, window) = await PageScreenshots.OpenOverSampleData(
+            var (workspace, window) = await PageScreenshots.OpenOverSampleData(seedReaderToken: false,
                 configure: OverviewTimingScreenshots.ReadOverviewAndTiming);
             try
             {
@@ -374,7 +374,7 @@ public sealed class ContrastTests(AvaloniaHeadlessFixture avalonia)
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (workspace, window) = await PageScreenshots.OpenOverSampleData(
+            var (workspace, window) = await PageScreenshots.OpenOverSampleData(seedReaderToken: false,
                 configure: OverviewTimingScreenshots.ReadOverviewAndTiming);
             try
             {

@@ -46,11 +46,12 @@ internal static class LayoutInvariantFixtures
     /// <summary>Opens the sample-data window as <see cref="PageScreenshots.OpenOverSampleData"/> does, from reset shared state.</summary>
     internal static Task<(WorkspaceShellViewModel Workspace, MainWindow Window)> OpenFreshSampleData(
         Action<FakeCommandClient, AssessCommandResponse>? configure = null, bool renderForCapture = true,
-        bool composeWindow = true)
+        bool composeWindow = true, bool parse = true, bool seedReaderToken = true)
     {
         ResetSharedState();
         return PageScreenshots.OpenOverSampleData(
-            configure: configure, renderForCapture: renderForCapture, composeWindow: composeWindow);
+            configure: configure, renderForCapture: renderForCapture, composeWindow: composeWindow,
+            parse: parse, seedReaderToken: seedReaderToken);
     }
 
     internal static IReadOnlyList<LayoutCell> QuickCells { get; } = [new(640, 600, 150)];
