@@ -629,13 +629,19 @@ public sealed class AnalyzeTextsLayoutTests
             try
             {
                 var inText = workspace.PageModel<TextsPageModel>().ResultsInText;
-                bool AnyCheckboxShows() => Panel(window).GetVisualDescendants().OfType<CheckBox>().Any(box =>
-                    box.IsEffectivelyVisible && box.DataContext is ResultsTokenViewModel);
+                bool AnyCheckboxShows() => Panel(window).GetVisualDescendants().OfType<Border>().Any(box =>
+                    box.Classes.Contains("selectionGlyph") && box.IsEffectivelyVisible && box.DataContext is ResultsTokenViewModel);
                 Assert.False(AnyCheckboxShows());
 
                 inText.ChooseWordsCommand.Execute(null);
                 Settle(window);
                 Assert.True(AnyCheckboxShows());
+                Assert.DoesNotContain(Panel(window).GetVisualDescendants().OfType<CheckBox>(),
+                    box => box.DataContext is ResultsTokenViewModel);
+                var focused = (WordStripToken)StripOf(Panel(window), "chakula");
+                focused.FocusWord();
+                Settle(window);
+                Assert.Single(focused.GetVisualDescendants().OfType<CheckBox>());
 
                 inText.ChooseWordsCommand.Execute(null);
                 Settle(window);
@@ -833,13 +839,13 @@ public sealed class AnalyzeTextsLayoutTests
                     var outcomeMark = strip.FindControl<Control>("WordLine")!.GetVisualDescendants()
                         .OfType<MarkGlyph>()
                         .SingleOrDefault(glyph => MarkClasses.GetMark(glyph)?.Kind == MarkKind.Outcome);
-                    var panGlossLine = strip.FindControl<Control>("PanGlossLine")!;
+                    var panGlossLine = PanGlossLineOf((WordStripToken)strip);
 
                     if (token.Verdict == OccurrenceVerdict.Matches)
                     {
                         Assert.Null(outcomeMark);
                         Assert.Empty(word.TextDecorations ?? new TextDecorationCollection());
-                        Assert.False(panGlossLine.IsVisible);
+                        Assert.Null(panGlossLine);
                         foreach (var hidden in strip.FindControl<Control>("WordLine")!.GetVisualDescendants()
                                      .OfType<MarkGlyph>().Where(glyph =>
                                          string.IsNullOrWhiteSpace(AutomationProperties.GetName(glyph))))
@@ -851,6 +857,7 @@ public sealed class AnalyzeTextsLayoutTests
                         continue;
                     }
 
+                    Assert.NotNull(panGlossLine);
                     Assert.True(panGlossLine.IsVisible, $"{token.Form} has {token.Verdict}.");
                     var expected = token.Verdict switch
                     {
@@ -953,6 +960,15 @@ public sealed class AnalyzeTextsLayoutTests
                 {
                     var form = ResultsInTextPanel.TokenOf(strip)!.Form;
                     Assert.DoesNotContain(strip.GetVisualDescendants().OfType<Expander>(), _ => true);
+                    Assert.Equal(strip.BorderThickness.Top, strip.BorderThickness.Bottom);
+                    Assert.Equal(0, Assert.IsAssignableFrom<ISolidColorBrush>(strip.BorderBrush).Color.A);
+                    Assert.Single(strip.GetVisualDescendants().OfType<DispositionFace>(),
+                        face => !face.Classes.Contains("add"));
+                    Assert.DoesNotContain(strip.GetVisualDescendants().OfType<Button>(), button =>
+                        Avalonia.Automation.AutomationProperties.GetName(button) ==
+                        SIL.Motif.App.Views.WordDispositionButtons.MarkButtonName);
+                    ((WordStripToken)strip).FocusWord();
+                    Settle(window);
                     var marks = strip.GetVisualDescendants().OfType<Button>().Where(button =>
                         Avalonia.Automation.AutomationProperties.GetName(button) ==
                         SIL.Motif.App.Views.WordDispositionButtons.MarkButtonName).ToArray();
@@ -962,8 +978,6 @@ public sealed class AnalyzeTextsLayoutTests
                         Assert.Single(mark.GetVisualDescendants().OfType<Avalonia.Controls.Shapes.Path>());
                         Assert.NotNull(mark.Flyout);
                     });
-                    Assert.Equal(strip.BorderThickness.Top, strip.BorderThickness.Bottom);
-                    Assert.Equal(0, Assert.IsAssignableFrom<ISolidColorBrush>(strip.BorderBrush).Color.A);
 
                     Assert.Empty(strip.GetVisualDescendants().OfType<HyperlinkButton>());
                     var rows = Assert.Single(strip.GetVisualDescendants().OfType<StackPanel>(),
@@ -1344,9 +1358,20 @@ public sealed class AnalyzeTextsLayoutTests
         return new Rect(origin, visual.Bounds.Size);
     }
 
+    internal static Border? PanGlossLineOf(WordStripToken strip) =>
+        strip.GetVisualDescendants().OfType<Border>().FirstOrDefault(border => border.Classes.Contains("panGlossLine"));
+
+    internal static MorphemePanel MorphologyOf(Control row) =>
+        Assert.Single(row.GetVisualDescendants().OfType<MorphemePanel>());
+
     private static void AssertNativeMetric(WordStripToken strip, string rowName, double metric)
     {
-        var row = strip.FindControl<Control>(rowName)!;
+        var row = rowName == "PanGlossLine" ? PanGlossLineOf(strip) : strip.FindControl<Control>(rowName);
+        if (row is null)
+        {
+            Assert.Equal(0, metric);
+            return;
+        }
         var nativeHeight = MaxNativeTextHeight(row);
         Assert.True(metric >= nativeHeight,
             $"{strip.Data?.Form} {rowName}: metric={metric}, native={nativeHeight}, row={row.DesiredSize.Height}.");

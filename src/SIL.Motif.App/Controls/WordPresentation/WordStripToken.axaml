@@ -13,102 +13,25 @@
           Classes.dimmed="{Binding IsDimmed}" Focusable="True" IsTabStop="True"
           AutomationProperties.AutomationId="{Binding StripAutomationId}"
           ToolTip.Tip="{Binding TooltipSummary}" views:ClearTipPlacement.IsEnabled="True">
-  <Grid x:Name="StripContent" x:DataType="vm:ResultsTokenViewModel"
-        ColumnDefinitions="*,Auto,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}">
-      <StackPanel Grid.Column="0" Classes="stripStack stripRows">
-        <StackPanel x:Name="WordLine" Classes="stripWordRow" Orientation="Horizontal">
-          <CheckBox x:Name="SelectionCheckBox" Classes="stripCheck" IsChecked="{Binding IsSelectedForActions, Mode=TwoWay}"
-                    IsVisible="{Binding #WordStrip.ShowsSelectionCheckBox}"
-                    AutomationProperties.Name="{Binding SelectionAutomationName}" />
-          <controls:UnreadMark x:Name="UnreadMark" Classes.dotOnly="True" IsVisible="{Binding ShowUnread}"
-                               VerticalAlignment="Center"
-                               AutomationProperties.AutomationId="{Binding UnreadAutomationId}" />
-          <views:CopyableTextBlock Classes="stripWord" Text="{Binding Text}" VerticalAlignment="Center"
-                                   controls:WritingSystemText.Id="{Binding TextWritingSystem}" controls:WritingSystemText.StyleName="Normal"
-                                   Classes.differentVerdict="{Binding HasDifferentVerdictCue}"
-                                   Classes.noParseVerdict="{Binding HasNoParseVerdictCue}"
-                                   Classes.stoppedVerdict="{Binding HasStoppedVerdictCue}"
-                                   AutomationProperties.AutomationId="{Binding WordAutomationId}" />
-          <views:MarkGlyph Classes.inline="True" Mark="{Binding WordVerdictMark}"
-                           AutomationProperties.Name="{Binding WordVerdictMark.Word}" />
-          <StackPanel x:Name="NamedWarning" Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Minimal}"
-                      IsVisible="{Binding HasNamedWarning}"
-                      AutomationProperties.Name="{Binding WarningMarkCount, StringFormat='Named in {0}'}">
-            <views:MarkGlyph Classes.inline="True" Mark="{Binding WarningMark}" />
-            <TextBlock Classes="warningMark" Text="{Binding WarningMarkCount}" />
-          </StackPanel>
-          <views:WordDispositionButtons />
-          <views:MarkChip x:Name="DisapprovedMarkChip" Mark="{Binding DisapprovedMark}" Text="{Binding DisapprovedLabel}" Compact="True"
-                          IsVisible="{Binding HasDisapprovedReading}" ToolTip.Tip="{Binding DisapprovedTip}"
-                          views:ClearTipPlacement.IsEnabled="True"
-                          AutomationProperties.AutomationId="{Binding DisapprovedAutomationId}" />
-        </StackPanel>
-        <Border x:Name="FieldWorksLine" Classes="stripRow stripFieldWorks analysisRow"
-                AutomationProperties.AutomationId="{Binding FieldWorksAutomationId}">
-          <Grid x:Name="FieldWorksContent" ColumnDefinitions="*,Auto,Auto"
-                ColumnSpacing="{DynamicResource Intent.Space.Compact}">
-            <word:MorphemePanel x:Name="FieldWorksMorphology" Classes="stripMorphology"
-                                Morphs="{Binding PrimaryFieldWorksMorphs}"
-                                WarningMarkedMorphIndices="{Binding WarningMarkedFieldWorksMorphIndices}"
-                                ShowCategory="False" WrapParts="True" ShowLinks="False"
-                                IsVisible="{Binding HasFieldWorksAnalyses}" />
-            <Border x:Name="MoreFieldWorks" Classes="panGlossExtra" VerticalAlignment="Top" IsVisible="{Binding HasMoreFieldWorksAnalyses}">
-              <TextBlock Text="{Binding MoreFieldWorksLabel}" />
-            </Border>
-            <TextBlock x:Name="NothingStored" Classes="stripNothing" Text="{x:Static app:MotifAppStrings.StripTokenNothingInFieldWorks}" IsVisible="{Binding HasNothingStored}" />
-          </Grid>
-        </Border>
-        <Border x:Name="PanGlossLine" Classes="stripRow panGlossLine analysisRow"
-                AutomationProperties.AutomationId="{Binding PanGlossAutomationId}"
-                Classes.same="{Binding IsPanGlossSame}" Classes.different="{Binding IsPanGlossDifferent}"
-                Classes.none="{Binding IsPanGlossNone}" Classes.capped="{Binding IsPanGlossCapped}">
-          <Grid x:Name="PanGlossContent" ColumnDefinitions="*,Auto,Auto"
-                ColumnSpacing="{DynamicResource Intent.Space.Compact}">
-            <word:MorphemePanel x:Name="PanGlossMorphology" Classes="stripMorphology"
-                                Morphs="{Binding PanGlossReadingMorphs}" ShowCategory="False"
-                                WrapParts="True" ShowLinks="False"
-                                IsVisible="{Binding ShowsPanGlossReading}" />
-            <Border x:Name="MorePanGloss" Classes="panGlossExtra" VerticalAlignment="Top" IsVisible="{Binding HasMorePanGlossReadings}">
-              <TextBlock Text="{Binding MorePanGlossLabel}" />
-            </Border>
-            <StackPanel x:Name="PanGlossNote" Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Minimal}"
-                        IsVisible="{Binding ShowsPanGlossNote}">
-              <TextBlock Classes="f stripNote" Classes.outcomeMark="{Binding IsPanGlossCapped}"
-                         Classes.stopped="{Binding IsPanGlossCapped}" Text="{Binding PanGlossNote}" />
-            </StackPanel>
-          </Grid>
-        </Border>
+  <Grid x:Name="StripContent" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}">
+    <StackPanel x:Name="StripStack" Classes="stripStack stripRows">
+      <StackPanel x:Name="WordLine" Classes="stripWordRow" Orientation="Horizontal">
+        <views:CopyableTextBlock x:Name="WordText" Classes="stripWord" Text="{Binding Text}" VerticalAlignment="Center"
+                                 controls:WritingSystemText.Id="{Binding TextWritingSystem}" controls:WritingSystemText.StyleName="Normal"
+                                 Classes.differentVerdict="{Binding HasDifferentVerdictCue}"
+                                 Classes.noParseVerdict="{Binding HasNoParseVerdictCue}"
+                                 Classes.stoppedVerdict="{Binding HasStoppedVerdictCue}"
+                                 AutomationProperties.AutomationId="{Binding WordAutomationId}" />
+        <views:MarkGlyph x:Name="VerdictGlyph" Classes.inline="True" Mark="{Binding WordVerdictMark}"
+                         AutomationProperties.Name="{Binding WordVerdictMark.Word}" />
+        <views:DispositionFace x:Name="MarkFace" Classes="dispositionFace rest" Letter="{Binding Disposition.MarkLetter}"
+                               Classes.approved="{Binding Disposition.IsMarkApproved}" Classes.unknown="{Binding Disposition.IsMarkUnknown}"
+                               Classes.disapproved="{Binding Disposition.IsMarkDisapproved}" Classes.absent="{Binding Disposition.IsMarkAbsent}"
+                               Classes.changed="{Binding Disposition.IsChanged}" />
       </StackPanel>
-      <Border Grid.Column="1" x:Name="StripActions" Classes="stripActions" IsVisible="{Binding ShowsActions}">
-        <StackPanel Classes="stripRows">
-          <StackPanel x:Name="ActionRow" Classes="stripWordRow stripActionRow" Orientation="Horizontal">
-            <Button x:Name="PrimaryActionButton" Classes="actionChip primary" Content="{Binding PrimaryActionLabel}" VerticalAlignment="Center"
-                    Command="{Binding StageMarkingChoiceForTokenCommand}"
-                    CommandParameter="{Binding BoundPrimaryAction}" IsVisible="{Binding HasPrimaryAction}"
-                    AutomationProperties.AutomationId="{Binding PrimaryActionAutomationId}"
-                    AutomationProperties.Name="{Binding Marking.PrimaryAction.Label, StringFormat='Choose {0} for this word'}" />
-          </StackPanel>
-        </StackPanel>
-      </Border>
-      <views:ProgressiveItemsControl Grid.Column="2" x:Name="ResultsInTextPanelStagedChangesItems" FullItemsSource="{Binding StagedChanges}"
-                                     IsVisible="{Binding HasStagedChanges}"
-                                     AutomationProperties.AutomationId="{Binding StagedAutomationId}">
-        <ItemsControl.ItemsPanel><ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-        <ItemsControl.ItemTemplate>
-          <DataTemplate x:DataType="vm:StagedMarkingDisplayViewModel">
-            <Border Classes="stagedStrip hoverReveal" ToolTip.Tip="{Binding FitStatus}"
-                    views:ClearTipPlacement.IsEnabled="True">
-              <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}" VerticalAlignment="Center">
-                <TextBlock Classes="stagedLabel" Text="{x:Static app:MotifAppStrings.Staged}" />
-                <TextBlock Text="{Binding Transition}" TextWrapping="Wrap" />
-                <!-- Kept on reflection: Actions is not a member of this row's model, so a compiled binding cannot build. -->
-                <Button Classes="revealControl revealButton revealOnHover" Content="{x:Static app:MotifAppStrings.Undo}"
-                        Command="{ReflectionBinding Actions.Changes.RemoveCommand}" CommandParameter="{Binding Change}"
-                        AutomationProperties.Name="{Binding Change.UndoAutomationName}" />
-              </StackPanel>
-            </Border>
-          </DataTemplate>
-        </ItemsControl.ItemTemplate>
-      </views:ProgressiveItemsControl>
+      <Border x:Name="FieldWorksLine" Classes="stripRow stripFieldWorks analysisRow"
+              AutomationProperties.AutomationId="{Binding FieldWorksAutomationId}" />
+    </StackPanel>
+    <Border x:Name="StripActions" Grid.Column="1" Classes="stripActions" />
   </Grid>
 </Border>

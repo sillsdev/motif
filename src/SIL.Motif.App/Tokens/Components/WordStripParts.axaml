@@ -1,0 +1,135 @@
+<!--
+  The parts of a word strip that most words never show. A strip builds one from here the first time its word needs it,
+  so a resting word holds only the bindings it displays.
+-->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:app="clr-namespace:SIL.Motif.App"
+        xmlns:controls="clr-namespace:SIL.Motif.App.Controls"
+        xmlns:views="clr-namespace:SIL.Motif.App.Views"
+        xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
+        xmlns:word="clr-namespace:SIL.Motif.App.Controls.WordPresentation">
+  <Styles.Resources>
+    <DataTemplate x:Key="WordStripPart.FieldWorksMorphology" x:DataType="vm:ResultsTokenViewModel">
+      <word:MorphemePanel Classes="stripMorphology" Morphs="{Binding PrimaryFieldWorksMorphs}"
+                          WarningMarkedMorphIndices="{Binding WarningMarkedFieldWorksMorphIndices}"
+                          ShowCategory="False" WrapParts="True" ShowLinks="False" />
+    </DataTemplate>
+    <DataTemplate x:Key="WordStripPart.MoreFieldWorks" x:DataType="vm:ResultsTokenViewModel">
+      <Border Classes="panGlossExtra" VerticalAlignment="Top">
+        <TextBlock Text="{Binding MoreFieldWorksLabel}" />
+      </Border>
+    </DataTemplate>
+    <DataTemplate x:Key="WordStripPart.NothingStored" x:DataType="vm:ResultsTokenViewModel">
+      <TextBlock Classes="stripNothing" Text="{x:Static app:MotifAppStrings.StripTokenNothingInFieldWorks}" />
+    </DataTemplate>
+    <DataTemplate x:Key="WordStripPart.PanGlossLine" x:DataType="vm:ResultsTokenViewModel">
+      <Border Classes="stripRow panGlossLine analysisRow"
+              AutomationProperties.AutomationId="{Binding PanGlossAutomationId}"
+              Classes.same="{Binding IsPanGlossSame}" Classes.different="{Binding IsPanGlossDifferent}"
+              Classes.none="{Binding IsPanGlossNone}" Classes.capped="{Binding IsPanGlossCapped}" />
+    </DataTemplate>
+    <DataTemplate x:Key="WordStripPart.PanGlossMorphology" x:DataType="vm:ResultsTokenViewModel">
+      <word:MorphemePanel Classes="stripMorphology" Morphs="{Binding PanGlossReadingMorphs}" ShowCategory="False"
+                          WrapParts="True" ShowLinks="False" />
+    </DataTemplate>
+    <DataTemplate x:Key="WordStripPart.MorePanGloss" x:DataType="vm:ResultsTokenViewModel">
+      <Border Classes="panGlossExtra" VerticalAlignment="Top">
+        <TextBlock Text="{Binding MorePanGlossLabel}" />
+      </Border>
+    </DataTemplate>
+    <DataTemplate x:Key="WordStripPart.PanGlossNote" x:DataType="vm:ResultsTokenViewModel">
+      <TextBlock Classes="f stripNote" Classes.outcomeMark="{Binding IsPanGlossCapped}"
+                 Classes.stopped="{Binding IsPanGlossCapped}" Text="{Binding PanGlossNote}" />
+    </DataTemplate>
+    <DataTemplate x:Key="WordStripPart.UnreadMark" x:DataType="vm:ResultsTokenViewModel">
+      <controls:UnreadMark Classes.dotOnly="True" VerticalAlignment="Center"
+                           AutomationProperties.AutomationId="{Binding UnreadAutomationId}" />
+    </DataTemplate>
+    <DataTemplate x:Key="WordStripPart.NamedWarning" x:DataType="vm:ResultsTokenViewModel">
+      <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Minimal}"
+                  AutomationProperties.Name="{Binding WarningMarkCount, StringFormat='Named in {0}'}">
+        <views:MarkGlyph Classes.inline="True" Mark="{Binding WarningMark}" />
+        <TextBlock Classes="warningMark" Text="{Binding WarningMarkCount}" />
+      </StackPanel>
+    </DataTemplate>
+    <DataTemplate x:Key="WordStripPart.DisapprovedChip" x:DataType="vm:ResultsTokenViewModel">
+      <views:MarkChip Mark="{Binding DisapprovedMark}" Text="{Binding DisapprovedLabel}" Compact="True"
+                      ToolTip.Tip="{Binding DisapprovedTip}" views:ClearTipPlacement.IsEnabled="True"
+                      AutomationProperties.AutomationId="{Binding DisapprovedAutomationId}" />
+    </DataTemplate>
+    <DataTemplate x:Key="WordStripPart.AddFace" x:DataType="vm:ResultsTokenViewModel">
+      <views:DispositionFace Classes="dispositionFace rest add" Letter="{Binding Disposition.AddLabel}"
+                             Classes.picked="{Binding Disposition.ChosenReading, Converter={x:Static ObjectConverters.IsNotNull}}"
+                             Classes.approved="{Binding Disposition.IsChosenApproved}"
+                             Classes.unknown="{Binding Disposition.IsChosenUnknown}" />
+    </DataTemplate>
+    <DataTemplate x:Key="WordStripPart.SelectionGlyph" x:DataType="vm:ResultsTokenViewModel">
+      <Border Classes="selectionGlyph" Classes.checked="{Binding IsSelectedForActions}"
+              AutomationProperties.Name="{Binding SelectionAutomationName}">
+        <Path Classes="selectionTick" Data="M1 5 L4 8 L9 2" />
+      </Border>
+    </DataTemplate>
+    <DataTemplate x:Key="WordStripPart.SelectionBox" x:DataType="vm:ResultsTokenViewModel">
+      <CheckBox Classes="stripCheck" IsChecked="{Binding IsSelectedForActions, Mode=TwoWay}"
+                AutomationProperties.Name="{Binding SelectionAutomationName}" />
+    </DataTemplate>
+    <DataTemplate x:Key="WordStripPart.ActionRow" x:DataType="vm:ResultsTokenViewModel">
+      <StackPanel Classes="stripWordRow stripActionRow" Orientation="Horizontal">
+        <Button Classes="actionChip primary" Content="{Binding PrimaryActionLabel}" VerticalAlignment="Center"
+                Command="{Binding StageMarkingChoiceForTokenCommand}"
+                CommandParameter="{Binding BoundPrimaryAction}"
+                AutomationProperties.AutomationId="{Binding PrimaryActionAutomationId}"
+                AutomationProperties.Name="{Binding Marking.PrimaryAction.Label, StringFormat='Choose {0} for this word'}" />
+      </StackPanel>
+    </DataTemplate>
+    <DataTemplate x:Key="WordStripPart.Staged" x:DataType="vm:ResultsTokenViewModel">
+      <views:ProgressiveItemsControl x:Name="ResultsInTextPanelStagedChangesItems" FullItemsSource="{Binding StagedChanges}"
+                                     AutomationProperties.AutomationId="{Binding StagedAutomationId}">
+        <ItemsControl.ItemsPanel><ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:StagedMarkingDisplayViewModel">
+            <Border Classes="stagedStrip hoverReveal" ToolTip.Tip="{Binding FitStatus}"
+                    views:ClearTipPlacement.IsEnabled="True">
+              <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}" VerticalAlignment="Center">
+                <TextBlock Classes="stagedLabel" Text="{x:Static app:MotifAppStrings.Staged}" />
+                <TextBlock Text="{Binding Transition}" TextWrapping="Wrap" />
+                <Button Classes="revealControl revealButton revealOnHover" Content="{x:Static app:MotifAppStrings.Undo}"
+                        Command="{Binding $parent[word:WordStripToken].Data.UndoStagedChangeCommand}" CommandParameter="{Binding Change}"
+                        AutomationProperties.Name="{Binding Change.UndoAutomationName}" />
+              </StackPanel>
+            </Border>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </views:ProgressiveItemsControl>
+    </DataTemplate>
+    <DataTemplate x:Key="WordStripPart.Columns" x:DataType="vm:ResultsTokenViewModel">
+      <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}" />
+    </DataTemplate>
+    <DataTemplate x:Key="WordStripPart.Row" x:DataType="vm:ResultsTokenViewModel">
+      <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="{DynamicResource Intent.Space.Compact}" />
+    </DataTemplate>
+  </Styles.Resources>
+  <Style Selector="Border.selectionGlyph">
+    <Setter Property="Width" Value="{DynamicResource Component.WordStrip.SelectionGlyphSize}" />
+    <Setter Property="Height" Value="{DynamicResource Component.WordStrip.SelectionGlyphSize}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Component.WordStrip.Radius}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.Box}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
+    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
+  </Style>
+  <Style Selector="Border.selectionGlyph.checked">
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Accent}" />
+    <Setter Property="Background" Value="{DynamicResource Intent.Selected.Fill}" />
+  </Style>
+  <Style Selector="Border.selectionGlyph Path.selectionTick">
+    <Setter Property="Stroke" Value="{DynamicResource Intent.Accent}" />
+    <Setter Property="StrokeThickness" Value="{DynamicResource Component.WordStrip.SelectionTickThickness}" />
+    <Setter Property="Stretch" Value="Uniform" />
+    <Setter Property="IsVisible" Value="False" />
+  </Style>
+  <Style Selector="Border.selectionGlyph.checked Path.selectionTick">
+    <Setter Property="IsVisible" Value="True" />
+  </Style>
+</Styles>

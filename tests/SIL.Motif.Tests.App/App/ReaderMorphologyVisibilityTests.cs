@@ -62,9 +62,10 @@ public sealed class ReaderMorphologyVisibilityTests(AvaloniaHeadlessFixture aval
                 {
                     Assert.False(token.PresentationState.IsOpen);
                     Assert.True(token.HasMorePanGlossReadings);
-                    Assert.True(strip.FindControl<Control>("PanGlossLine")!.IsEffectivelyVisible);
-                    AssertComplete(strip.FindControl<MorphemePanel>("FieldWorksMorphology")!, token.PrimaryFieldWorksMorphs);
-                    AssertComplete(strip.FindControl<MorphemePanel>("PanGlossMorphology")!, token.PanGlossReadingMorphs);
+                    var panGlossLine = AnalyzeTextsLayoutTests.PanGlossLineOf(strip);
+                    Assert.True(panGlossLine!.IsEffectivelyVisible);
+                    AssertComplete(AnalyzeTextsLayoutTests.MorphologyOf(strip.FindControl<Control>("FieldWorksLine")!), token.PrimaryFieldWorksMorphs);
+                    AssertComplete(AnalyzeTextsLayoutTests.MorphologyOf(panGlossLine), token.PanGlossReadingMorphs);
                     LayoutAssertions.AssertCurrent(window);
                 }
                 catch (Exception failure)

@@ -25,7 +25,7 @@ public sealed class MenuBarTests
     private static readonly Dictionary<string, int> BoundContentBaseline = new()
     {
         ["Controls/WordPresentation/WordCard.axaml"] = 3,
-        ["Controls/WordPresentation/WordStripToken.axaml"] = 1,
+        ["Tokens/Components/WordStripParts.axaml"] = 1,
         ["Views/DiagnosticPanel.axaml"] = 2,
         ["Views/GrammarPanel.axaml"] = 3,
         ["Views/HandoffPanel.axaml"] = 1,

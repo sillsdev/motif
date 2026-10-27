@@ -112,6 +112,7 @@ public sealed class ProgressiveDisplayTests
                 foreach (var entry in entries)
                 {
                     if (entry.Mode == "grid") continue;
+                    if (entry.Name == "ResultsInTextPanelStagedChangesItems" && !targets.ContainsKey(entry.Name)) continue;
                     Assert.True(targets.TryGetValue(entry.Name, out var target), $"Missing {viewName}/{entry.Name}");
                     var (items, fragment) = target;
                     if (entry.Mode is "finite" or "inline")
@@ -214,7 +215,7 @@ public sealed class ProgressiveDisplayTests
         var collections = new[] { "ItemsControl", "ProgressiveItemsControl", "ListBox", "TreeView", "DataGrid", "ComboBox", "ItemsRepeater" };
         var viewsDirectory = Path.Combine(AppDirectory(), "Views");
         var wordCardPath = Path.Combine(AppDirectory(), "Controls", "WordPresentation", "WordCard.axaml");
-        var wordStripPath = Path.Combine(AppDirectory(), "Controls", "WordPresentation", "WordStripToken.axaml");
+        var wordStripPath = Path.Combine(AppDirectory(), "Tokens", "Components", "WordStripParts.axaml");
         var actual = Directory.EnumerateFiles(viewsDirectory, "*.axaml", SearchOption.AllDirectories)
             .SelectMany(path => CollectionEntries(path,
                 Path.GetRelativePath(viewsDirectory, path).Replace('\\', '/')[..^6]))

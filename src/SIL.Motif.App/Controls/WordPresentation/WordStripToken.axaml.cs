@@ -4,6 +4,7 @@ using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
+using Avalonia.Controls.Templates;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Avalonia.VisualTree;
@@ -32,26 +33,32 @@ public sealed partial class WordStripToken : Border
 
     private readonly Border _strip;
     private readonly Control _wordLine;
-    private readonly Control _fieldWorksLine;
-    private readonly Control _panGlossLine;
+    private readonly Border _fieldWorksLine;
     private readonly Panel _wordLinePanel;
-    private readonly Panel _fieldWorksContent;
-    private readonly Panel _panGlossContent;
+    private readonly Panel _stripStack;
     private readonly Panel _stripContent;
-    private readonly Panel _actionRow;
-    private readonly Control _selectionCheckBox;
-    private readonly UnreadMark _unreadMark;
-    private readonly Control _namedWarning;
-    private readonly Control _disapprovedMark;
-    private readonly Control _moreFieldWorks;
-    private readonly Control _nothingStored;
-    private readonly Control _morePanGloss;
-    private readonly Control _panGlossNote;
-    private readonly Control _primaryAction;
-    private readonly Control _stagedChanges;
-    private readonly Control _actions;
-    private readonly MorphemePanel _fieldWorksMorphology;
-    private readonly MorphemePanel _panGlossMorphology;
+    private readonly Control _wordText;
+    private readonly Control _verdictGlyph;
+    private readonly Control _markFace;
+    private readonly Border _actions;
+    private readonly List<Control> _owned = [];
+    private Control? _addFace;
+    private Control? _selectionGlyph;
+    private Control? _unreadMark;
+    private Control? _namedWarning;
+    private Control? _disapprovedMark;
+    private MorphemePanel? _fieldWorksMorphology;
+    private Control? _moreFieldWorks;
+    private Control? _nothingStored;
+    private Control? _fieldWorksColumns;
+    private Border? _panGlossLine;
+    private MorphemePanel? _panGlossMorphology;
+    private Control? _morePanGloss;
+    private Control? _panGlossNote;
+    private Control? _panGlossColumns;
+    private Control? _actionRow;
+    private Control? _stagedChanges;
+    private WordStripOverlay? _ownOverlay;
     private ResultsTokenViewModel? _observedData;
     private Point? _pressedAt;
 
@@ -74,32 +81,45 @@ public sealed partial class WordStripToken : Border
         _strip = this;
         _wordLine = this.FindControl<Control>("WordLine")!;
         _wordLinePanel = (Panel)_wordLine;
-        _fieldWorksLine = this.FindControl<Control>("FieldWorksLine")!;
-        _panGlossLine = this.FindControl<Control>("PanGlossLine")!;
+        _fieldWorksLine = this.FindControl<Border>("FieldWorksLine")!;
+        _stripStack = this.FindControl<Panel>("StripStack")!;
         _stripContent = this.FindControl<Panel>("StripContent")!;
-        _fieldWorksContent = this.FindControl<Panel>("FieldWorksContent")!;
-        _panGlossContent = this.FindControl<Panel>("PanGlossContent")!;
-        _actionRow = this.FindControl<Panel>("ActionRow")!;
-        _selectionCheckBox = this.FindControl<Control>("SelectionCheckBox")!;
-        _unreadMark = this.FindControl<UnreadMark>("UnreadMark")!;
-        _namedWarning = this.FindControl<Control>("NamedWarning")!;
-        _disapprovedMark = this.FindControl<Control>("DisapprovedMarkChip")!;
-        _moreFieldWorks = this.FindControl<Control>("MoreFieldWorks")!;
-        _nothingStored = this.FindControl<Control>("NothingStored")!;
-        _morePanGloss = this.FindControl<Control>("MorePanGloss")!;
-        _panGlossNote = this.FindControl<Control>("PanGlossNote")!;
-        _primaryAction = this.FindControl<Control>("PrimaryActionButton")!;
-        _stagedChanges = this.FindControl<Control>("ResultsInTextPanelStagedChangesItems")!;
-        _actions = this.FindControl<Control>("StripActions")!;
-        _fieldWorksMorphology = this.FindControl<MorphemePanel>("FieldWorksMorphology")!;
-        _panGlossMorphology = this.FindControl<MorphemePanel>("PanGlossMorphology")!;
+        _wordText = this.FindControl<Control>("WordText")!;
+        _verdictGlyph = this.FindControl<Control>("VerdictGlyph")!;
+        _markFace = this.FindControl<Control>("MarkFace")!;
+        _actions = this.FindControl<Border>("StripActions")!;
         Focusable = true;
         IsTabStop = true;
         _strip.AddHandler(PointerPressedEvent, OnPointerPressed, RoutingStrategies.Tunnel, handledEventsToo: true);
         _strip.AddHandler(PointerReleasedEvent, OnPointerReleased, RoutingStrategies.Bubble, handledEventsToo: true);
         AddHandler(MorphemePanel.OverflowRequestedEvent, OnOverflowRequested, RoutingStrategies.Bubble);
         _strip.KeyDown += OnKeyDown;
+        PointerEntered += (_, _) => Overlay.Claim(this);
+        PointerExited += (_, _) => ReleaseOverlayIfIdle();
+        GotFocus += (_, _) => Overlay.Claim(this);
+        LostFocus += (_, _) => Dispatcher.UIThread.Post(ReleaseOverlayIfIdle);
     }
+
+    private WordStripOverlay Overlay => WordStripOverlay.GetInstance(this) ?? (_ownOverlay ??= new WordStripOverlay());
+
+    /// <summary>Builds a rarely shown part of a strip from the shared part templates.</summary>
+    internal static T BuildPart<T>(string name, object? data) where T : Control
+    {
+        var key = "WordStripPart." + name;
+        var template = Application.Current?.FindResource(key) as IDataTemplate ??
+            throw new InvalidOperationException($"The word strip part {key} is missing.");
+        return (T)template.Build(data)!;
+    }
+
+    internal void ReleaseOverlayIfIdle()
+    {
+        var overlay = Overlay;
+        if (ReferenceEquals(overlay.Owner, this) && !IsPointerOver && !IsKeyboardFocusWithin && !overlay.HasOpenMenu)
+            overlay.Release(this);
+    }
+
+    /// <summary>Puts the resting faces or the shared overlay in this word, whichever it now shows.</summary>
+    internal void SyncOverlay() => SyncOptionalControls();
 
     /// <summary>The occurrence and analysis facts to present.</summary>
     public ResultsTokenViewModel? Data
@@ -142,17 +162,17 @@ public sealed partial class WordStripToken : Border
         return size;
     }
 
-    private static double MeasuredLineHeight(Control row) => row.DesiredSize.Height;
+    private static double MeasuredLineHeight(Control? row) => row is { IsVisible: true, Parent: not null } ? row.DesiredSize.Height : 0;
 
     private void OnDataChanged()
     {
         if (_observedData is not null) _observedData.PropertyChanged -= OnDataPropertyChanged;
+        if (ReferenceEquals(Overlay.Owner, this)) Overlay.Release(this);
         if (Data is not { } data)
         {
             _observedData = null;
             _strip.Tag = null;
-            _fieldWorksMorphology.OverflowRequest = null;
-            _panGlossMorphology.OverflowRequest = null;
+            ApplyOverflowRequests();
             SyncOptionalControls();
             return;
         }
@@ -160,14 +180,24 @@ public sealed partial class WordStripToken : Border
         _observedData.PropertyChanged += OnDataPropertyChanged;
         if (State?.Key != data.PresentationKey)
             SetCurrentValue(StateProperty, data.PresentationState);
-        _fieldWorksMorphology.OverflowRequest = new MorphemeOverflowRequest(data.PresentationKey.Value,
-            $"{data.PresentationKey.Value}:fieldworks", data.EvidenceRevision, MorphologyProducer.FieldWorks);
-        _panGlossMorphology.OverflowRequest = new MorphemeOverflowRequest(data.PresentationKey.Value,
-            $"{data.PresentationKey.Value}:pangloss", data.EvidenceRevision, MorphologyProducer.PanGloss);
         AutomationProperties.SetName(_strip, data.HoverSummary);
         _strip.Tag = data;
         AutomationProperties.SetAutomationId(_strip, data.StripAutomationId);
         SyncOptionalControls();
+        ApplyOverflowRequests();
+    }
+
+    private void ApplyOverflowRequests()
+    {
+        var data = Data;
+        if (_fieldWorksMorphology is not null)
+            _fieldWorksMorphology.OverflowRequest = data is null ? null : new MorphemeOverflowRequest(
+                data.PresentationKey.Value, $"{data.PresentationKey.Value}:fieldworks", data.EvidenceRevision,
+                MorphologyProducer.FieldWorks);
+        if (_panGlossMorphology is not null)
+            _panGlossMorphology.OverflowRequest = data is null ? null : new MorphemeOverflowRequest(
+                data.PresentationKey.Value, $"{data.PresentationKey.Value}:pangloss", data.EvidenceRevision,
+                MorphologyProducer.PanGloss);
     }
 
     private void OnDataPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -184,7 +214,8 @@ public sealed partial class WordStripToken : Border
                 nameof(ResultsTokenViewModel.HasMoreFieldWorksAnalyses) or nameof(ResultsTokenViewModel.HasNothingStored) or
                 nameof(ResultsTokenViewModel.ShowsPanGlossReading) or nameof(ResultsTokenViewModel.HasMorePanGlossReadings) or
                 nameof(ResultsTokenViewModel.ShowsPanGlossNote) or nameof(ResultsTokenViewModel.HasPrimaryAction) or
-                nameof(ResultsTokenViewModel.HasStagedChanges) or nameof(ResultsTokenViewModel.ShowsActions))) return;
+                nameof(ResultsTokenViewModel.HasStagedChanges) or nameof(ResultsTokenViewModel.ShowsActions) or
+                nameof(ResultsTokenViewModel.Disposition))) return;
         if (Dispatcher.UIThread.CheckAccess()) SyncOptionalControls();
         else Dispatcher.UIThread.Post(SyncOptionalControls);
     }
@@ -194,51 +225,145 @@ public sealed partial class WordStripToken : Border
         if (_observedData is { } data) AutomationProperties.SetName(_strip, data.HoverSummary);
     }
 
+    private T Part<T>(ref T? field, string name) where T : Control
+    {
+        if (field is null)
+        {
+            field = BuildPart<T>(name, Data);
+            _owned.Add(field);
+        }
+        return field;
+    }
+
     private void SyncOptionalControls()
     {
         var data = Data;
-        _panGlossLine.IsVisible = data is { Verdict: not OccurrenceVerdict.Matches };
-        Place(_wordLinePanel, _selectionCheckBox, ShowsSelectionCheckBox, 0);
-        var hasUnread = data?.ShowUnread == true;
-        Place(_wordLinePanel, _unreadMark, hasUnread, ShowsSelectionCheckBox ? 1 : 0);
-        var hasWarning = data?.HasNamedWarning == true;
-        Place(_wordLinePanel, _namedWarning, hasWarning,
-            (ShowsSelectionCheckBox ? 1 : 0) + (hasUnread ? 1 : 0) + 1);
-        Place(_wordLinePanel, _disapprovedMark, data?.HasDisapprovedReading == true,
-            (ShowsSelectionCheckBox ? 1 : 0) + (hasUnread ? 1 : 0) + 1 + (hasWarning ? 1 : 0) + 1);
-        var hasFieldWorks = data?.HasFieldWorksAnalyses == true;
-        var hasMoreFieldWorks = data?.HasMoreFieldWorksAnalyses == true;
-        Place(_fieldWorksContent, _fieldWorksMorphology, hasFieldWorks, 0);
-        var fieldWorksIndex = hasFieldWorks ? 1 : 0;
-        Place(_fieldWorksContent, _moreFieldWorks, hasMoreFieldWorks, fieldWorksIndex);
-        fieldWorksIndex += hasMoreFieldWorks ? 1 : 0;
-        Place(_fieldWorksContent, _nothingStored, data?.HasNothingStored == true, fieldWorksIndex);
-        var hasPanGloss = data?.ShowsPanGlossReading == true;
-        var hasMorePanGloss = data?.HasMorePanGlossReadings == true;
-        Place(_panGlossContent, _panGlossMorphology, hasPanGloss, 0);
-        var panGlossIndex = hasPanGloss ? 1 : 0;
-        Place(_panGlossContent, _morePanGloss, hasMorePanGloss, panGlossIndex);
-        panGlossIndex += hasMorePanGloss ? 1 : 0;
-        Place(_panGlossContent, _panGlossNote, data?.ShowsPanGlossNote == true, panGlossIndex);
-        Place(_stripContent, _actions, data is { ShowsActions: true }, 1);
-        Place(_stripContent, _stagedChanges, data?.HasStagedChanges == true, 2);
-        Place(_actionRow, _primaryAction, data?.HasPrimaryAction == true, 0);
+        var overlay = Overlay;
+        var active = ReferenceEquals(overlay.Owner, this) && data is not null;
+        var line = new List<Control>(8);
+        if (ShowsSelectionCheckBox)
+            line.Add(active ? overlay.SelectionBox : Part(ref _selectionGlyph, "SelectionGlyph"));
+        if (data?.ShowUnread == true) line.Add(Part(ref _unreadMark, "UnreadMark"));
+        line.Add(_wordText);
+        line.Add(_verdictGlyph);
+        if (data?.HasNamedWarning == true) line.Add(Part(ref _namedWarning, "NamedWarning"));
+        if (active) line.Add(overlay.Buttons);
+        else
+        {
+            line.Add(_markFace);
+            if (data?.Disposition.HasReadings == true) line.Add(Part(ref _addFace, "AddFace"));
+        }
+        if (data?.HasDisapprovedReading == true) line.Add(Part(ref _disapprovedMark, "DisapprovedChip"));
+        Reconcile(_wordLinePanel, line);
+
+        var fieldWorks = new List<Control>(3);
+        if (data?.HasFieldWorksAnalyses == true)
+        {
+            var created = _fieldWorksMorphology is null;
+            fieldWorks.Add(Part(ref _fieldWorksMorphology, "FieldWorksMorphology"));
+            if (created) ApplyOverflowRequests();
+        }
+        if (data?.HasMoreFieldWorksAnalyses == true) fieldWorks.Add(Part(ref _moreFieldWorks, "MoreFieldWorks"));
+        if (data?.HasNothingStored == true) fieldWorks.Add(Part(ref _nothingStored, "NothingStored"));
+        FillRow(_fieldWorksLine, fieldWorks, ref _fieldWorksColumns);
+
+        var rows = new List<Control>(3) { _wordLine, _fieldWorksLine };
+        if (data is { Verdict: not OccurrenceVerdict.Matches })
+        {
+            var panGlossLine = Part(ref _panGlossLine, "PanGlossLine");
+            var panGloss = new List<Control>(3);
+            if (data.ShowsPanGlossReading)
+            {
+                var created = _panGlossMorphology is null;
+                panGloss.Add(Part(ref _panGlossMorphology, "PanGlossMorphology"));
+                if (created) ApplyOverflowRequests();
+            }
+            if (data.HasMorePanGlossReadings) panGloss.Add(Part(ref _morePanGloss, "MorePanGloss"));
+            if (data.ShowsPanGlossNote) panGloss.Add(Part(ref _panGlossNote, "PanGlossNote"));
+            FillRow(panGlossLine, panGloss, ref _panGlossColumns);
+            rows.Add(panGlossLine);
+        }
+        Reconcile(_stripStack, rows);
+
+        var columns = new List<Control>(3) { _stripStack };
+        if (data is { ShowsActions: true })
+        {
+            SetChild(_actions, data.HasPrimaryAction ? Part(ref _actionRow, "ActionRow") : null);
+            columns.Add(_actions);
+        }
+        if (data?.HasStagedChanges == true) columns.Add(Part(ref _stagedChanges, "Staged"));
+        Reconcile(_stripContent, columns);
+        Park();
     }
 
-    private void Place(Panel parent, Control child, bool include, int index)
+    private void FillRow(Border row, List<Control> items, ref Control? columnsField)
     {
-        if (!include)
+        if (items.Count == 0)
         {
-            if (ReferenceEquals(child.Parent, parent)) parent.Children.Remove(child);
-            // Omitted controls keep logical ownership so their bindings follow recycled token data.
-            if (!LogicalChildren.Contains(child)) LogicalChildren.Add(child);
+            row.Child = null;
             return;
         }
+        if (items.Count == 1)
+        {
+            SetChild(row, items[0]);
+            return;
+        }
+        var columns = (Grid)Part(ref columnsField, "Row");
+        SetChild(row, columns);
+        Reconcile(columns, items);
+    }
+
+    private void Reconcile(Panel panel, List<Control> desired)
+    {
+        for (var index = 0; index < desired.Count; index++)
+        {
+            var child = desired[index];
+            if (panel is Grid) Grid.SetColumn(child, ColumnOf(panel, child, index));
+            if (index < panel.Children.Count && ReferenceEquals(panel.Children[index], child)) continue;
+            Detach(child);
+            panel.Children.Insert(Math.Min(index, panel.Children.Count), child);
+        }
+        for (var index = panel.Children.Count - 1; index >= desired.Count; index--) panel.Children.RemoveAt(index);
+        for (var index = panel.Children.Count - 1; index >= 0; index--)
+            if (!desired.Contains(panel.Children[index])) panel.Children.RemoveAt(index);
+    }
+
+    private int ColumnOf(Panel panel, Control child, int index)
+    {
+        if (!ReferenceEquals(panel, _stripContent)) return index;
+        return ReferenceEquals(child, _stripStack) ? 0 : ReferenceEquals(child, _actions) ? 1 : 2;
+    }
+
+    private void Detach(Control child)
+    {
         if (ReferenceEquals(child.Parent, this)) LogicalChildren.Remove(child);
-        if (parent is Grid) Grid.SetColumn(child, index);
-        if (ReferenceEquals(child.Parent, parent)) return;
-        if (child.Parent is Panel previous) previous.Children.Remove(child);
-        parent.Children.Insert(Math.Min(index, parent.Children.Count), child);
+        switch (child.Parent)
+        {
+            case Panel panel: panel.Children.Remove(child); break;
+            case Decorator decorator when ReferenceEquals(decorator.Child, child): decorator.Child = null; break;
+            case ContentControl content when ReferenceEquals(content.Content, child): content.Content = null; break;
+        }
+    }
+
+    private void SetChild(Border parent, Control? child)
+    {
+        if (ReferenceEquals(parent.Child, child)) return;
+        parent.Child = null;
+        if (child is null) return;
+        Detach(child);
+        parent.Child = child;
+    }
+
+    private void Park()
+    {
+        foreach (var part in _owned)
+        {
+            if (part.GetVisualParent() is null)
+            {
+                if (!LogicalChildren.Contains(part)) LogicalChildren.Add(part);
+            }
+            else if (ReferenceEquals(part.Parent, this)) LogicalChildren.Remove(part);
+        }
     }
 
     private void OnStateChanged()
@@ -259,6 +384,15 @@ public sealed partial class WordStripToken : Border
 
     private void OnPointerPressed(object? sender, PointerPressedEventArgs e)
     {
+        if (_selectionGlyph is not null && e.Source is Visual hit &&
+            hit.GetSelfAndVisualAncestors().Any(visual => ReferenceEquals(visual, _selectionGlyph)) &&
+            e.GetCurrentPoint(_strip).Properties.IsLeftButtonPressed && Data is { } selected)
+        {
+            selected.IsSelectedForActions = !selected.IsSelectedForActions;
+            _pressedAt = null;
+            e.Handled = true;
+            return;
+        }
         var point = e.GetCurrentPoint(_strip);
         var nested = e.Source is Control source && source.GetSelfAndVisualAncestors()
             .TakeWhile(control => !ReferenceEquals(control, _strip))
@@ -356,7 +490,8 @@ public sealed partial class WordStripToken : Border
             case KeyboardShortcutBehavior.OpenDispositionMenu:
                 var name = entry.Behavior == KeyboardShortcutBehavior.OpenAddList
                     ? WordDispositionButtons.AddButtonName : WordDispositionButtons.MarkButtonName;
-                if (this.GetVisualDescendants().OfType<Button>().FirstOrDefault(button =>
+                Overlay.Claim(this);
+                if (Overlay.Buttons.Children.OfType<Button>().FirstOrDefault(button =>
                         button.IsEffectivelyVisible && AutomationProperties.GetName(button) == name) is not { } opener)
                     break;
                 e.Handled = true;

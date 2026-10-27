@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.VisualTree;
+using SIL.Motif.App.Controls.WordPresentation;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using Xunit;
@@ -28,7 +29,10 @@ public sealed class AnalyzeTextsMenuTests
             {
                 workspace.PageModel<TextsPageModel>().ResultsInText.CloseTokenCard();
                 Settle(window);
-                var mark = Named<Button>(StripOf(Panel(window), "chakula"), WordDispositionButtons.MarkButtonName);
+                var strip = StripOf(Panel(window), "chakula");
+                ((WordStripToken)strip).FocusWord();
+                Settle(window);
+                var mark = Named<Button>(strip, WordDispositionButtons.MarkButtonName);
                 AssertDispositionMenu(Open(mark, window), "the strip's disposition menu");
             }
             finally

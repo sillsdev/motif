@@ -1,4 +1,5 @@
 using System.Collections.Specialized;
+using CommunityToolkit.Mvvm.Input;
 using Avalonia.Input;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Controls.WordPresentation;
@@ -1907,6 +1908,27 @@ public sealed partial class ResultsInTextViewModelTests : IAsyncLifetime
             Assert.False(selected.Marking.NeedsALook);
             Assert.Single(tokens[1].Marking.StagedTransitions,
                 transition => transition.ReadingIndex == 1);
+        }, TimeSpan.FromSeconds(180));
+    }
+
+    [Fact]
+    public void TheStagedUndoCommandOnATokenRemovesItsStagedChange()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var pending = new PendingChangesSnapshot("draft/undo", "revision/undo",
+                [new PendingChange("pending-book", Wordform("kitabu"), "kitabu", ChangeKinds.Approve,
+                    null, null, []) { StoredAnalysisId = "stored-book" }],
+                [new ChangeFit("pending-book", ChangeFitStatus.Fits, new List<string>())]);
+            var (inText, _, client) = await Loaded(pending: pending);
+            var token = SelectionModelFixture.VisibleLines(inText).SelectMany(line => line.Tokens)
+                .First(candidate => candidate.Form == "kitabu");
+            var staged = Assert.Single(token.StagedChanges);
+            var command = Assert.IsAssignableFrom<IAsyncRelayCommand<ChangeViewModel>>(token.UndoStagedChangeCommand);
+
+            await command.ExecuteAsync(staged.Change);
+
+            Assert.Equal("pending-book", Assert.Single(client.PendingRemoveRequests).ChangeId);
         }, TimeSpan.FromSeconds(180));
     }
 

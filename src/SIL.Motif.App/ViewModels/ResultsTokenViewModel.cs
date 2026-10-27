@@ -605,6 +605,9 @@ public sealed partial class ResultsTokenViewModel : ObservableObject, IDisposabl
 
     public IAsyncRelayCommand<WordChangeAction>? AddChangeForTokenCommand => Actions?.AddChangeForTargetCommand;
 
+    /// <summary>Removes a staged change from this word's strip.</summary>
+    public IAsyncRelayCommand<ChangeViewModel>? UndoStagedChangeCommand => Actions?.Changes.RemoveCommand;
+
     public IRelayCommand<string>? TryWordForTokenCommand => Actions?.TryWordForTargetCommand;
 
     public IAsyncRelayCommand<WordMarkingChoice>? StageMarkingChoiceForTokenCommand => Actions?.StageMarkingChoiceForTargetCommand;

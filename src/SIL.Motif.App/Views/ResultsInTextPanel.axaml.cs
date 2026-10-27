@@ -23,6 +23,7 @@ public sealed partial class ResultsInTextPanel : UserControl
         InText = inText;
         DataContext = this;
         AvaloniaXamlLoader.Load(this);
+        WordStripOverlay.SetInstance(this, new WordStripOverlay());
         _lineItems = this.FindControl<ItemsControl>("TextLineItems")!;
         _textScrollViewer = this.FindControl<ScrollViewer>("TextScrollViewer")!;
         ScrollEndAnchor.Attach(_textScrollViewer);

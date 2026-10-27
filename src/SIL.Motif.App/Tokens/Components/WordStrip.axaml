@@ -17,6 +17,8 @@
     <StaticResource x:Key="Component.WordStrip.ActionRule" ResourceKey="Primitive.Inset.1_0_0_0" />
     <StaticResource x:Key="Component.WordStrip.ActionPadding" ResourceKey="Primitive.Inset.3_0_3_0" />
     <StaticResource x:Key="Component.WordStrip.StagedWidth" ResourceKey="Primitive.Size.110" />
+    <StaticResource x:Key="Component.WordStrip.SelectionGlyphSize" ResourceKey="Primitive.Size.18" />
+    <StaticResource x:Key="Component.WordStrip.SelectionTickThickness" ResourceKey="Primitive.Stroke.2" />
     <StaticResource x:Key="Component.WordStrip.GutterWidth" ResourceKey="Primitive.Size.60" />
     <!-- A short word's rows keep at least this width, so its strip stays wide enough to aim at. -->
     <StaticResource x:Key="Component.WordStrip.RowsMinWidth" ResourceKey="Primitive.Size.70" />

@@ -90,6 +90,28 @@
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Opinion.Unknown.Accent}" />
   </Style>
 
+  <!-- A resting face draws its own letter and caret, so its ink follows the same states as the real button's text. -->
+  <Style Selector="Border.dispositionFace.rest">
+    <Setter Property="TextElement.FontSize" Value="{DynamicResource Intent.Type.Label}" />
+    <Setter Property="TextElement.FontWeight" Value="Bold" />
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource Intent.Opinion.None.Text}" />
+  </Style>
+  <Style Selector="Border.dispositionFace.rest.approved">
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource Intent.Opinion.Approved.Text}" />
+  </Style>
+  <Style Selector="Border.dispositionFace.rest.unknown">
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource Intent.Opinion.Unknown.Text}" />
+  </Style>
+  <Style Selector="Border.dispositionFace.rest.disapproved">
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource Intent.Opinion.Disapproved.Text}" />
+  </Style>
+  <Style Selector="Border.dispositionFace.rest.changed, Border.dispositionFace.rest.picked">
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource Intent.Opinion.Changed.Text}" />
+  </Style>
+  <Style Selector="Border.dispositionFace.rest.add">
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource Intent.Change.Text}" />
+  </Style>
+
   <Style Selector="Border.dispositionFace.tile">
     <Setter Property="Width" Value="{DynamicResource Component.WordDisposition.TileSize}" />
     <Setter Property="Height" Value="{DynamicResource Component.WordDisposition.TileSize}" />

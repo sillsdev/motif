@@ -128,9 +128,11 @@ public sealed class ViewTokenTests
         var markup = File.ReadAllText(Path.Combine(AppDirectory(), "Controls", "WordPresentation", "WordStripToken.axaml"));
         var cardMarkup = File.ReadAllText(Path.Combine(AppDirectory(), "Controls", "WordPresentation", "WordCard.axaml"));
         var buttons = File.ReadAllText(Path.Combine(AppDirectory(), "Views", "WordDispositionButtons.axaml"));
+        Assert.Contains("<views:DispositionFace x:Name=\"MarkFace\"", markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("<views:WordDispositionButtons", markup, StringComparison.Ordinal);
+        Assert.Contains("<views:WordDispositionButtons />", cardMarkup, StringComparison.Ordinal);
         foreach (var host in new[] { markup, cardMarkup })
         {
-            Assert.Contains("<views:WordDispositionButtons />", host, StringComparison.Ordinal);
             Assert.DoesNotContain("Fix ▾", host, StringComparison.Ordinal);
             Assert.DoesNotContain("Marking.SetChoices", host, StringComparison.Ordinal);
         }
