@@ -23,9 +23,15 @@ permissions:
   id-token: write
   actions: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  # Newer pushes to a branch or PR cancel the older run; main, tags and dispatched runs (releases) always finish.
+  cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' && github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/') }}
+
 jobs:
   nightly-change:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     outputs:
       changed: ${{ steps.check.outputs.changed }}
     steps:
@@ -70,6 +76,7 @@ jobs:
     needs: [nightly-change]
     if: needs.nightly-change.outputs.changed == 'true'
     runs-on: windows-latest
+    timeout-minutes: 60
     env:
       MSBUILDDISABLENODEREUSE: '1'
       UseSharedCompilation: 'false'
@@ -229,6 +236,7 @@ jobs:
     if: github.event_name == 'workflow_dispatch' && inputs.publish_release
     needs: [release-check-windows, release-check-linux, release-check-macos]
     runs-on: windows-latest
+    timeout-minutes: 60
     permissions:
       contents: write
       id-token: write
@@ -391,6 +399,7 @@ jobs:
     needs: [nightly-change]
     if: needs.nightly-change.outputs.changed == 'true'
     runs-on: ubuntu-22.04
+    timeout-minutes: 60
     env:
       MSBUILDDISABLENODEREUSE: '1'
       UseSharedCompilation: 'false'
@@ -554,6 +563,7 @@ jobs:
     needs: [nightly-change]
     if: needs.nightly-change.outputs.changed == 'true'
     runs-on: macos-latest
+    timeout-minutes: 60
     env:
       MSBUILDDISABLENODEREUSE: '1'
       UseSharedCompilation: 'false'
