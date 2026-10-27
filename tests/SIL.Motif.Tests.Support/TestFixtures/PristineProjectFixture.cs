@@ -5,7 +5,7 @@ using SIL.Motif.Host.LcmUtils;
 namespace SIL.Motif.Tests.TestFixtures;
 
 /// <summary>
-/// One blank, seeded project built and saved once per process, from which each test opens a
+/// One blank, seeded project built and saved once per process (once per gate, when <see cref="FixtureDiskCache"/> is on), from which each test opens a
 /// cheap private copy instead of paying to create its own.
 /// </summary>
 /// <remarks>
@@ -49,25 +49,22 @@ public sealed class PristineProjectFixture : IDisposable
     private static SeededMaster CreateMaster()
     {
         GuardAgainstStaleWritingSystemStashFiles();
-        var root = Path.Combine(Path.GetTempPath(), "SIL.Motif.Tests.Pristine", Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(root);
-        var master = NewLangProjFixture.CreateCache(root);
-        try
+        var built = FixtureDiskCache.GetOrBuild("pristine", root =>
         {
+            using var master = NewLangProjFixture.CreateCache(root);
             var seed = SeededProject.Seed(master);
             new FwDataProjectLoader().Save(master);
-            var folder = Path.GetDirectoryName(master.ProjectId.Path)!;
+            return seed;
+        });
+        if (!built.Shared)
+        {
             AppDomain.CurrentDomain.ProcessExit += (_, _) =>
             {
-                try { Directory.Delete(root, recursive: true); }
+                try { Directory.Delete(built.Root, recursive: true); }
                 catch { /* best effort: a locked native handle should not fail the run */ }
             };
-            return new SeededMaster(folder, seed);
         }
-        finally
-        {
-            master.Dispose();
-        }
+        return new SeededMaster(Path.Combine(built.Root, NewLangProjFixture.ProjectName), built.Metadata);
     }
 
     private sealed record SeededMaster(string Folder, SeededProject Seed);

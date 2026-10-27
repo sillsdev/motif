@@ -47,8 +47,18 @@ public sealed class LargeProjectFixture : IDisposable
     private static MasterProject CreateMaster(int wordformCount, int selectedWordCount, int textCount,
         int occurrenceCount, int longestTextLength)
     {
+        var built = FixtureDiskCache.GetOrBuild($"large-{wordformCount}-{selectedWordCount}-{textCount}-{occurrenceCount}-{longestTextLength}",
+            root => BuildMaster(root, wordformCount, selectedWordCount, textCount, occurrenceCount, longestTextLength));
+        if (!built.Shared) RegisterCleanup(built.Root);
+        return new(Path.Combine(built.Root, NewLangProjFixture.ProjectName), built.Metadata.Words, built.Metadata.TextIds,
+            built.Metadata.CreationTime, built.Metadata.SelectedWordCount, built.Metadata.TotalOccurrenceCount,
+            built.Metadata.LongestTextLength);
+    }
+
+    private static MasterMetadata BuildMaster(string root, int wordformCount, int selectedWordCount, int textCount,
+        int occurrenceCount, int longestTextLength)
+    {
         var clock = Stopwatch.StartNew();
-        var root = Path.Combine(Path.GetTempPath(), "SIL.Motif.Tests.Large", Guid.NewGuid().ToString("N"));
         using var cache = NewLangProjFixture.CreateCache(root);
         var services = cache.ServiceLocator;
         var entries = services.GetInstance<ILexEntryFactory>();
@@ -140,9 +150,7 @@ public sealed class LargeProjectFixture : IDisposable
         RealParserProject.PrepareForParsing(cache, Enumerable.Range('a', 26).Select(c => ((char)c).ToString()).ToArray());
         new FwDataProjectLoader().Save(cache);
         clock.Stop();
-        RegisterCleanup(root);
-        return new(Path.GetDirectoryName(cache.ProjectId.Path)!, words.AsReadOnly(), textIds.AsReadOnly(), clock.Elapsed,
-            selectedWordCount, occurrenceCount, longestTextLength);
+        return new(words, textIds, clock.Elapsed, selectedWordCount, occurrenceCount, longestTextLength);
     }
 
     private static string Word(int index) => "scale" + (char)('a' + index / 17576) +
@@ -159,6 +167,10 @@ public sealed class LargeProjectFixture : IDisposable
         catch (IOException) { }
         catch (UnauthorizedAccessException) { }
     }
+
+    /// <summary>What a master's saved folder cannot say about itself; kept beside it by <see cref="FixtureDiskCache"/>.</summary>
+    internal sealed record MasterMetadata(IReadOnlyList<LargeProjectWord> Words, IReadOnlyList<Guid> TextIds,
+        TimeSpan CreationTime, int SelectedWordCount, int TotalOccurrenceCount, int LongestTextLength);
 
     private sealed record MasterProject(string Folder, IReadOnlyList<LargeProjectWord> Words,
         IReadOnlyList<Guid> TextIds, TimeSpan CreationTime, int SelectedWordCount, int TotalOccurrenceCount,

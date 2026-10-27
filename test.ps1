@@ -123,6 +123,14 @@ $env:DOTNET_TC_CallCounting = '0'
 # Shards take classes by recorded seconds, not by hash; tools/Update-TestShardWeights.ps1 renews the file.
 $shardWeights = Join-Path $PSScriptRoot 'tests/test-shard-weights.json'
 if (Test-Path $shardWeights) { $env:MOTIF_TEST_SHARD_WEIGHTS = $shardWeights }
+# Test processes copy the seeded LibLCM masters from here; names carry an input hash, old folders go.
+$fixtureCache = Join-Path $repoRoot "bin/.cache/test-fixtures/$Configuration"
+if (Test-Path -LiteralPath $fixtureCache) {
+    Get-ChildItem -LiteralPath $fixtureCache -Directory |
+        Where-Object { $_.LastWriteTimeUtc -lt [datetime]::UtcNow.AddDays(-3) } |
+        Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+}
+$env:MOTIF_TEST_FIXTURE_CACHE = $fixtureCache
 if ($All -and $System) { throw 'Choose either -All or -System.' }
 $levelSelection = if ($All) { 'All' } elseif ($System) { 'System' } else { 'Unit,Integration' }
 
