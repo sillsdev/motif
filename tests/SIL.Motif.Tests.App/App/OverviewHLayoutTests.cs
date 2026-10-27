@@ -22,7 +22,7 @@ public sealed class OverviewHLayoutTests
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (workspace, window) = await PageScreenshots.OpenOverSampleData();
+            var (workspace, window) = await PageScreenshots.OpenOverSampleData(seedReaderToken: false);
             var settings = SettingsPageTests.WindowSettings(window);
             var previousZoom = settings.ZoomPercent;
             try
@@ -63,7 +63,7 @@ public sealed class OverviewHLayoutTests
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (workspace, window) = await PageScreenshots.OpenOverSampleData();
+            var (workspace, window) = await PageScreenshots.OpenOverSampleData(seedReaderToken: false);
             workspace.ShowPageCommand.Execute(WorkspacePage.Overview);
             SettingsViewModel? settings = SettingsTestAccess.Model(window);
             var originalZoom = settings?.ZoomPercent ?? (int)Math.Round(WindowZoomPolicy.Transform.ScaleX * 100);
@@ -161,7 +161,7 @@ public sealed class OverviewHLayoutTests
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             var previousTheme = Application.Current!.RequestedThemeVariant;
-            var (workspace, window) = await PageScreenshots.OpenOverSampleData();
+            var (workspace, window) = await PageScreenshots.OpenOverSampleData(seedReaderToken: false);
             workspace.ShowPageCommand.Execute(WorkspacePage.Overview);
             SettingsViewModel? settings = SettingsTestAccess.Model(window);
             var previousZoom = settings?.ZoomPercent ?? (int)Math.Round(WindowZoomPolicy.Transform.ScaleX * 100);

@@ -27,7 +27,7 @@ public sealed class TryWordHLayoutTests
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (workspace, frame) = await PageScreenshots.OpenOverSampleData();
+            var (workspace, frame) = await PageScreenshots.OpenSampleModelsOnly();
             var model = workspace.PageModel<TryWordPageModel>();
             if (hasResult) model.Trace.Result = PageScreenshots.TraceWithIdentities();
             var page = PageRegistry.For(WorkspacePage.TryAWord).CreateView(model);
@@ -73,7 +73,7 @@ public sealed class TryWordHLayoutTests
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (workspace, frame) = await PageScreenshots.OpenOverSampleData();
+            var (workspace, frame) = await PageScreenshots.OpenSampleModelsOnly();
             var model = workspace.PageModel<TryWordPageModel>();
             model.Trace.Result = PageScreenshots.TraceWithIdentities();
             model.Trace.WordToTry = model.Trace.Result.Word;
@@ -151,7 +151,7 @@ public sealed class TryWordHLayoutTests
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (workspace, frame) = await PageScreenshots.OpenOverSampleData();
+            var (workspace, frame) = await PageScreenshots.OpenSampleModelsOnly();
             var model = workspace.PageModel<TryWordPageModel>();
             model.Trace.Result = PageScreenshots.TraceWithIdentities();
             model.Trace.WordToTry = model.Trace.Result.Word;
@@ -243,7 +243,7 @@ public sealed class TryWordHLayoutTests
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (workspace, frame) = await PageScreenshots.OpenOverSampleData();
+            var (workspace, frame) = await PageScreenshots.OpenSampleModelsOnly();
             var model = workspace.PageModel<TryWordPageModel>();
             model.Trace.Result = SIL.Motif.Commands.Queries.WordTraceQuery.LoadDiagnostic(File.ReadAllText(
                 Path.Combine(AppContext.BaseDirectory, "TestFixtures", "trace-details-v3-matinlu.json"))).Value!;
@@ -303,7 +303,7 @@ public sealed class TryWordHLayoutTests
         {
             var folder = Environment.GetEnvironmentVariable(ScreenshotFactAttribute.FolderVariable)!;
             Directory.CreateDirectory(folder);
-            var (workspace, frame) = await PageScreenshots.OpenOverSampleData();
+            var (workspace, frame) = await PageScreenshots.OpenSampleModelsOnly();
             var model = workspace.PageModel<TryWordPageModel>();
             model.Trace.Result = PageScreenshots.TraceWithIdentities();
             model.Trace.WordToTry = model.Trace.Result.Word;

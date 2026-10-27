@@ -199,10 +199,10 @@ internal sealed class TooltipScenes
 
     private GrammarViewModel Grammar => Workspace.PageModel<WarningsPageModel>().Grammar;
 
-    public static async Task<TooltipScenes> Open()
+    public static async Task<TooltipScenes> Open(bool seedReaderToken = true)
     {
         FakeCommandClient? client = null;
-        var (workspace, window) = await PageScreenshots.OpenOverSampleData(configure: (fake, assessment) =>
+        var (workspace, window) = await PageScreenshots.OpenOverSampleData(seedReaderToken: seedReaderToken, configure: (fake, assessment) =>
         {
             fake.ReadWordStateCompletesWith(new WordReadStateResponse([], true));
             OverviewTimingScreenshots.ReadOverviewAndTiming(fake, assessment);

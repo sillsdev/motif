@@ -153,7 +153,7 @@ public sealed class SharedWordListResponsiveTests
         Func<ResponsiveScene, TooltipScenes, WorkspaceShellViewModel, MainWindow, Task> visit,
         IEnumerable<ResponsiveScene>? selectedScenes = null, bool leaveAfterVisit = true)
     {
-        var fixture = await TooltipScenes.Open();
+        var fixture = await TooltipScenes.Open(seedReaderToken: false);
         fixture.Width = 640;
         var workspace = fixture.Workspace;
         var window = fixture.Window;
@@ -182,56 +182,77 @@ public sealed class SharedWordListResponsiveTests
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             var failures = new List<string>();
-            // A pointer check leaves the row open, so each check opens its own window for each size.
-            foreach (var theme in Themes)
-            foreach (var size in Sizes)
+            // One window serves every size; Reach returns from Try a Word.
+            await VisitWordListScenes(async (scene, fixture, workspace, window) =>
             {
-                await VisitWordListScenes(async (scene, _, workspace, window) =>
+                foreach (var theme in Themes)
+                foreach (var size in Sizes)
                 {
                     var state = StateName(scene, size, theme);
-                    window.MouseMove(new Point(8, 8));
-                    PageScreenshots.Settle(window);
-                    await SelectTimingRule(scene, workspace, window, state, failures);
-                    ApplySize(window, size, theme);
-                    var slot = window.GetVisualDescendants().OfType<WordListSlot>()
-                        .FirstOrDefault(item => item.IsEffectivelyVisible && item.CurrentLayout is not null);
+                    await PrepareSize(scene, workspace, window, size, theme, state, failures);
+                    CheckKeyboard(scene, window, size, theme, state, failures);
+
+                    await ReturnToScene(scene, fixture, workspace, window);
+                    await PrepareSize(scene, workspace, window, size, theme, state, failures);
+                    var slot = VisibleSlot(window);
                     Record(slot is not null, state,
                         "no visible production WordListSlot was measured", failures);
                     if (slot is not null)
                         InspectRightmostAction(slot, scene, size, theme, window, workspace, failures);
-                }, [selectedScene], leaveAfterVisit: false);
 
-                await VisitWordListScenes(async (scene, _, workspace, window) =>
-                {
-                    var state = StateName(scene, size, theme);
-                    window.MouseMove(new Point(8, 8));
-                    PageScreenshots.Settle(window);
-                    await SelectTimingRule(scene, workspace, window, state, failures);
-                    ApplySize(window, size, theme);
-                    var slot = window.GetVisualDescendants().OfType<WordListSlot>()
-                        .FirstOrDefault(item => item.IsEffectivelyVisible && item.CurrentLayout is not null);
-                    Record(slot is not null, state,
-                        "no visible production WordListSlot was measured for keyboard input", failures);
-                    if (slot is null) return;
-                    var target = PrepareRightmostAction(slot, scene, size, theme, window, failures);
-                    if (target is null) return;
-                    var (row, action) = target.Value;
-                    var outsideFocus = window.FindControl<Button>("ProjectChip");
-                    Record(outsideFocus is not null && outsideFocus.Focus(), state,
-                        "the test could not move focus outside the word row", failures);
-                    Record(!row.GetVisualDescendants().OfType<Control>().Any(control => control.IsFocused) &&
-                           !action.IsFocused, state,
-                        "the row action was focused before the keyboard navigation check", failures);
-                    row.FocusWord();
-                    var startedAtRow = row.IsFocused;
-                    for (var tab = 0; startedAtRow && tab < 100 && !action.IsFocused; tab++)
-                        window.KeyPress(Key.Tab, RawInputModifiers.None, PhysicalKey.None, null);
-                    Record(startedAtRow && action.IsFocused, state,
-                        "the rightmost next-step action cannot receive keyboard focus after scrolling", failures);
-                }, [selectedScene]);
-            }
+                    // Leave Try a Word and clear the focus and pointer position the checks left behind.
+                    await ReturnToScene(scene, fixture, workspace, window);
+                }
+            }, [selectedScene], leaveAfterVisit: false);
             Assert.True(failures.Count == 0, string.Join(Environment.NewLine, failures));
         }, TimeSpan.FromMinutes(5));
+    }
+
+    private static WordListSlot? VisibleSlot(MainWindow window) =>
+        window.GetVisualDescendants().OfType<WordListSlot>()
+            .FirstOrDefault(item => item.IsEffectivelyVisible && item.CurrentLayout is not null);
+
+    private static async Task PrepareSize(ResponsiveScene scene, WorkspaceShellViewModel workspace,
+        MainWindow window, ResponsiveSize size, ThemeChoice theme, string state, ICollection<string> failures)
+    {
+        window.MouseMove(new Point(8, 8));
+        PageScreenshots.Settle(window);
+        await SelectTimingRule(scene, workspace, window, state, failures);
+        ApplySize(window, size, theme);
+    }
+
+    private static async Task ReturnToScene(ResponsiveScene scene, TooltipScenes fixture,
+        WorkspaceShellViewModel workspace, MainWindow window)
+    {
+        // Escape closes anything the last check left open; Reach shows the scene's page again.
+        window.KeyPress(Key.Escape, RawInputModifiers.None, PhysicalKey.None, null);
+        await fixture.Reach(scene.Scene);
+        window.FindControl<Button>("ProjectChip")?.Focus();
+        PageScreenshots.Settle(window);
+    }
+
+    private static void CheckKeyboard(ResponsiveScene scene, MainWindow window, ResponsiveSize size,
+        ThemeChoice theme, string state, ICollection<string> failures)
+    {
+        var slot = VisibleSlot(window);
+        Record(slot is not null, state,
+            "no visible production WordListSlot was measured for keyboard input", failures);
+        if (slot is null) return;
+        var target = PrepareRightmostAction(slot, scene, size, theme, window, failures);
+        if (target is null) return;
+        var (row, action) = target.Value;
+        var outsideFocus = window.FindControl<Button>("ProjectChip");
+        Record(outsideFocus is not null && outsideFocus.Focus(), state,
+            "the test could not move focus outside the word row", failures);
+        Record(!row.GetVisualDescendants().OfType<Control>().Any(control => control.IsFocused) &&
+               !action.IsFocused, state,
+            "the row action was focused before the keyboard navigation check", failures);
+        row.FocusWord();
+        var startedAtRow = row.IsFocused;
+        for (var tab = 0; startedAtRow && tab < 100 && !action.IsFocused; tab++)
+            window.KeyPress(Key.Tab, RawInputModifiers.None, PhysicalKey.None, null);
+        Record(startedAtRow && action.IsFocused, state,
+            "the rightmost next-step action cannot receive keyboard focus after scrolling", failures);
     }
 
     private static void InspectSlotLayout(WordListSlot slot, ResponsiveScene scene, int index, ResponsiveSize size,

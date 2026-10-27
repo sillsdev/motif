@@ -812,6 +812,7 @@ public sealed class PageScreenshots
     /// Opens the window over the sample project; without <paramref name="parse"/> it stops before the first parse,
     /// and with <paramref name="leaveSetupOpen"/> it stops with first-run setup still showing.
     /// Component fixtures can omit shell composition with <paramref name="composeWindow"/> and build their own view.
+    /// A test that never reads the selected reader token can skip seeding it with <paramref name="seedReaderToken"/>.
     /// </summary>
     internal static async Task<(WorkspaceShellViewModel Workspace, MainWindow Window)> OpenOverSampleData(
         bool parse = true, Action<FakeCommandClient, AssessCommandResponse>? configure = null, bool leaveSetupOpen = false,
@@ -819,7 +820,7 @@ public sealed class PageScreenshots
         AssessCommandResponse? capturedAssessment = null, bool advancedAiModeEnabled = false, IUserPreferencesStore? preferencesStore = null,
         SIL.Motif.Commands.Assistants.IAssistantConnectionService? assistantConnections = null,
         bool renderForCapture = true, Action<string, double>? recordSetup = null, bool composeWindow = true,
-        bool activateTextsPage = true, Action<MainWindow>? configureWindow = null)
+        bool activateTextsPage = true, Action<MainWindow>? configureWindow = null, bool seedReaderToken = true)
     {
         var stage = System.Diagnostics.Stopwatch.StartNew();
         void Record(string name) { recordSetup?.Invoke(name, stage.Elapsed.TotalMilliseconds); stage.Restart(); }
@@ -953,7 +954,7 @@ public sealed class PageScreenshots
         var reader = textsPage.ResultsInText;
         await reader.SelectionRefresh;
         if (!composeWindow) reader.ShowReader();
-        if (activateTextsPage)
+        if (activateTextsPage && seedReaderToken)
         {
             await SeedSampleReaderTokenAsync(workspace);
             Record("reader-and-token");
@@ -964,6 +965,15 @@ public sealed class PageScreenshots
         workspace.PageModel<AiHandoffPageModel>().Handoff.LatestAssessmentAt = clock.GetLocalNow();
         return (workspace, window);
     }
+
+    /// <summary>
+    /// The sample project's view models without a composed shell, a parse, an Assess run or a seeded reader token,
+    /// for tests that host one page or control themselves, or check only view-model state.
+    /// </summary>
+    internal static Task<(WorkspaceShellViewModel Workspace, MainWindow Window)> OpenSampleModelsOnly(
+        Action<FakeCommandClient, AssessCommandResponse>? configure = null, TextWordsResponse? capturedWords = null) =>
+        OpenOverSampleData(parse: false, configure: configure, capturedWords: capturedWords,
+            composeWindow: false, activateTextsPage: false);
 
     internal static async Task SeedSampleReaderTokenAsync(WorkspaceShellViewModel workspace)
     {

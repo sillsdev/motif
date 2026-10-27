@@ -20,7 +20,7 @@ public sealed class SetupHLayoutTests
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (workspace, frame) = await PageScreenshots.OpenOverSampleData(
+            var (workspace, frame) = await PageScreenshots.OpenOverSampleData(composeWindow: false,
                 capturedWords: useCapturedText ? WritingSystemTestData.ArabicText() : null);
             try
             {
@@ -53,7 +53,7 @@ public sealed class SetupHLayoutTests
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (workspace, frame) = await PageScreenshots.OpenOverSampleData();
+            var (workspace, frame) = await PageScreenshots.OpenSampleModelsOnly();
             var setup = workspace.Context.Setup!;
             setup.IsOpen = true;
             setup.Step = 1;
@@ -101,7 +101,7 @@ public sealed class SetupHLayoutTests
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (workspace, frame) = await PageScreenshots.OpenOverSampleData();
+            var (workspace, frame) = await PageScreenshots.OpenSampleModelsOnly();
             var setup = workspace.Context.Setup!;
             for (var index = 0; index < 16; index++)
                 setup.Selection.Texts.Add(new TextChoiceViewModel(Guid.NewGuid(), $"Additional text {index + 1}", 80, 0));
@@ -192,7 +192,7 @@ public sealed class SetupHLayoutTests
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             var captured = new TextWordsResponse([], [new TextLines(Guid.NewGuid(), "Empty Text", [])], true);
-            var (workspace, frame) = await PageScreenshots.OpenOverSampleData(parse: false, capturedWords: captured);
+            var (workspace, frame) = await PageScreenshots.OpenSampleModelsOnly(capturedWords: captured);
             try
             {
                 var choice = Assert.Single(workspace.Context.Setup!.Selection.Texts);
@@ -217,7 +217,7 @@ public sealed class SetupHLayoutTests
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             var previousTheme = Application.Current!.RequestedThemeVariant;
-            var (workspace, frame) = await PageScreenshots.OpenOverSampleData();
+            var (workspace, frame) = await PageScreenshots.OpenSampleModelsOnly();
             var setup = workspace.Context.Setup!;
             setup.IsOpen = true;
             var dialog = new SetupDialog { DataContext = setup };
