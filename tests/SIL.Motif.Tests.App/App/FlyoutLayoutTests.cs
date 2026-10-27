@@ -22,7 +22,7 @@ public sealed class FlyoutLayoutTests
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (workspace, window) = await PageScreenshots.OpenOverSampleData(
+            var (workspace, window) = await PageScreenshots.OpenOverSampleData(seedReaderToken: false,
                 configure: OverviewTimingScreenshots.ReadOverviewAndTiming);
             try
             {

@@ -15,7 +15,7 @@ public sealed class TimingAccessibilityTests
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (workspace, window) = await PageScreenshots.OpenOverSampleData();
+            var (workspace, window) = await PageScreenshots.OpenOverSampleData(seedReaderToken: false);
             try
             {
                 workspace.CurrentPage = WorkspacePage.Timing;

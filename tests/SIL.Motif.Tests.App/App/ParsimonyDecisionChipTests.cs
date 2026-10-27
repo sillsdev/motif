@@ -31,7 +31,7 @@ public sealed class ParsimonyDecisionChipTests
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (workspace, window) = await PageScreenshots.OpenOverSampleData(advancedAiModeEnabled: true,
+            var (workspace, window) = await PageScreenshots.OpenOverSampleData(parse: false, advancedAiModeEnabled: true,
                 configure: (fake, _) => ParsimonyStateScreenshots.Configure(fake, state));
             try
             {

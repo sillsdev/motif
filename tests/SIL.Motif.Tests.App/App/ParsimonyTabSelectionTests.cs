@@ -29,7 +29,7 @@ public sealed class ParsimonyTabSelectionTests
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (workspace, window) = await PageScreenshots.OpenOverSampleData(advancedAiModeEnabled: true,
+            var (workspace, window) = await PageScreenshots.OpenOverSampleData(parse: false, advancedAiModeEnabled: true,
                 configure: (fake, _) => ParsimonyStateScreenshots.Configure(fake, "suppressed-with-reason"));
             try
             {
@@ -58,7 +58,7 @@ public sealed class ParsimonyTabSelectionTests
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (workspace, window) = await PageScreenshots.OpenOverSampleData(advancedAiModeEnabled: true,
+            var (workspace, window) = await PageScreenshots.OpenOverSampleData(parse: false, advancedAiModeEnabled: true,
                 configure: (fake, _) => ParsimonyStateScreenshots.Configure(fake, "pending-keep"));
             try
             {

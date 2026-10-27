@@ -19,7 +19,7 @@ public sealed class TimingTitleWrappingTests
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (workspace, window) = await PageScreenshots.OpenOverSampleData();
+            var (workspace, window) = await PageScreenshots.OpenOverSampleData(seedReaderToken: false);
             var theme = Application.Current!.RequestedThemeVariant;
             try
             {

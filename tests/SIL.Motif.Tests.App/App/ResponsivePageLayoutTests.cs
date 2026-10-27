@@ -37,6 +37,7 @@ public sealed class ResponsivePageLayoutTests
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             var (workspace, window) = await PageScreenshots.OpenOverSampleData(
+                seedReaderToken: page == WorkspacePage.Texts && tab == TextsTab.AnalyzeTexts,
                 advancedAiModeEnabled: page == WorkspacePage.Parsimony,
                 configure: (fake, _) =>
                 {
