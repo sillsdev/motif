@@ -33,6 +33,132 @@ public static class MotifAppStrings
 
     public static string ReviewCardDetailsUnavailable => Text("MotifApp.ReviewCardDetailsUnavailable");
 
+    public static string ShortcutPagesRail => Text("MotifApp.ShortcutPagesRail");
+
+    public static string ShortcutMenus => Text("MotifApp.ShortcutMenus");
+
+    public static string ShortcutActivateMenuItem => Text("MotifApp.ShortcutActivateMenuItem");
+
+    public static string ShortcutOpenMenu => Text("MotifApp.ShortcutOpenMenu");
+
+    public static string ShortcutToggleSidePanel => Text("MotifApp.ShortcutToggleSidePanel");
+
+    public static string ShortcutReviewChanges => Text("MotifApp.ShortcutReviewChanges");
+
+    public static string ShortcutDiagnosticTree => Text("MotifApp.ShortcutDiagnosticTree");
+
+    public static string ShortcutMorpheme => Text("MotifApp.ShortcutMorpheme");
+
+    public static string ShortcutWindow => Text("MotifApp.ShortcutWindow");
+
+    public static string ShortcutEditing => Text("MotifApp.ShortcutEditing");
+
+    public static string ShortcutMatrixPreview => Text("MotifApp.ShortcutMatrixPreview");
+
+    public static string ShortcutMoveBetweenWords => Text("MotifApp.ShortcutMoveBetweenWords");
+
+    public static string ShortcutPreviousLine => Text("MotifApp.ShortcutPreviousLine");
+
+    public static string ShortcutNextLine => Text("MotifApp.ShortcutNextLine");
+
+    public static string ShortcutOpenWordCard => Text("MotifApp.ShortcutOpenWordCard");
+
+    public static string ShortcutOpenOrCloseWordCard => Text("MotifApp.ShortcutOpenOrCloseWordCard");
+
+    public static string ShortcutCloseWordCard => Text("MotifApp.ShortcutCloseWordCard");
+
+    public static string ShortcutReaderPreviousScreen => Text("MotifApp.ShortcutReaderPreviousScreen");
+
+    public static string ShortcutReaderNextScreen => Text("MotifApp.ShortcutReaderNextScreen");
+
+    public static string ShortcutReaderFirstLine => Text("MotifApp.ShortcutReaderFirstLine");
+
+    public static string ShortcutReaderLastLine => Text("MotifApp.ShortcutReaderLastLine");
+
+    public static string ShortcutStageApprove => Text("MotifApp.ShortcutStageApprove");
+
+    public static string ShortcutStageDisapprove => Text("MotifApp.ShortcutStageDisapprove");
+
+    public static string ShortcutStageUnknown => Text("MotifApp.ShortcutStageUnknown");
+
+    public static string ShortcutStageRemoveAnalysis => Text("MotifApp.ShortcutStageRemoveAnalysis");
+
+    public static string ShortcutStageIncorrectSpelling => Text("MotifApp.ShortcutStageIncorrectSpelling");
+
+    public static string ShortcutOpenAddList => Text("MotifApp.ShortcutOpenAddList");
+
+    public static string ShortcutOpenDispositionMenu => Text("MotifApp.ShortcutOpenDispositionMenu");
+
+    public static string ShortcutPreviousChange => Text("MotifApp.ShortcutPreviousChange");
+
+    public static string ShortcutNextChange => Text("MotifApp.ShortcutNextChange");
+
+    public static string ShortcutKeepChange => Text("MotifApp.ShortcutKeepChange");
+
+    public static string ShortcutUndoChange => Text("MotifApp.ShortcutUndoChange");
+
+    public static string ShortcutPreviousRow => Text("MotifApp.ShortcutPreviousRow");
+
+    public static string ShortcutNextRow => Text("MotifApp.ShortcutNextRow");
+
+    public static string ShortcutWordPreviousScreen => Text("MotifApp.ShortcutWordPreviousScreen");
+
+    public static string ShortcutWordNextScreen => Text("MotifApp.ShortcutWordNextScreen");
+
+    public static string ShortcutFirstRow => Text("MotifApp.ShortcutFirstRow");
+
+    public static string ShortcutLastRow => Text("MotifApp.ShortcutLastRow");
+
+    public static string ShortcutPreviousDiagnosticItem => Text("MotifApp.ShortcutPreviousDiagnosticItem");
+
+    public static string ShortcutNextDiagnosticItem => Text("MotifApp.ShortcutNextDiagnosticItem");
+
+    public static string ShortcutFocusWordSearch => Text("MotifApp.ShortcutFocusWordSearch");
+
+    public static string ShortcutChooseCell => Text("MotifApp.ShortcutChooseCell");
+
+    public static string ShortcutOpenInspector => Text("MotifApp.ShortcutOpenInspector");
+
+    public static string ShortcutOpenHelp => Text("MotifApp.ShortcutOpenHelp");
+
+    public static string ShortcutStepBack => Text("MotifApp.ShortcutStepBack");
+
+    public static string ShortcutShowShortcuts => Text("MotifApp.ShortcutShowShortcuts");
+
+    public static string ShortcutOpenSettings => Text("MotifApp.ShortcutOpenSettings");
+
+    public static string ShortcutZoomIn => Text("MotifApp.ShortcutZoomIn");
+
+    public static string ShortcutZoomOut => Text("MotifApp.ShortcutZoomOut");
+
+    public static string ShortcutResetZoom => Text("MotifApp.ShortcutResetZoom");
+
+    public static string ShortcutCopy => Text("MotifApp.ShortcutCopy");
+
+    public static string ShortcutRedo => Text("MotifApp.ShortcutRedo");
+
+    public static string ShortcutCloseSettings => Text("MotifApp.ShortcutCloseSettings");
+
+    public static string ShortcutSaveParsingLimits => Text("MotifApp.ShortcutSaveParsingLimits");
+
+    public static string ShortcutCancelParsingLimitEdit => Text("MotifApp.ShortcutCancelParsingLimitEdit");
+
+    public static string ShortcutMoveBetweenThemeChoices => Text("MotifApp.ShortcutMoveBetweenThemeChoices");
+
+    public static string ShortcutFocusCloseSettings => Text("MotifApp.ShortcutFocusCloseSettings");
+
+    public static string ShortcutFocusSettingsGroups => Text("MotifApp.ShortcutFocusSettingsGroups");
+
+    public static string ShortcutTables => Text("MotifApp.ShortcutTables");
+
+    public static string ShortcutTableNextAction => Text("MotifApp.ShortcutTableNextAction");
+
+    public static string ShortcutTablePreviousAction => Text("MotifApp.ShortcutTablePreviousAction");
+
+    public static string ShortcutTableOpenActions => Text("MotifApp.ShortcutTableOpenActions");
+
+    public static string ShortcutTableOpenDetails => Text("MotifApp.ShortcutTableOpenDetails");
+
     public static string MenuFile => Text("MotifApp.MenuFile");
 
     public static string MenuSelectNew => Text("MotifApp.MenuSelectNew");

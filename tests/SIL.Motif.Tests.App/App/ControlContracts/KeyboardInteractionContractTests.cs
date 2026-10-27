@@ -81,15 +81,15 @@ public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture ava
                 .Select(property => property.Name).Order(StringComparer.Ordinal));
 
         var rows = KeyboardShortcutRegistry.Entries.ToHashSet();
-        var wordMotion = new KeyboardShortcutEntry("← or →", "← or →", "Analyze texts", "Move between words");
+        var wordMotion = new KeyboardShortcutEntry("← or →", "← or →", "Analyze Texts", "Move Between Words");
         Assert.Contains(wordMotion, rows);
-        Assert.Equal("Move between words (← or →)", KeyboardShortcutRegistry.TooltipFor(wordMotion));
-        Assert.Contains(new KeyboardShortcutEntry("↑", "↑", "Analyze texts",
-            "Move focus to the first word on the previous line"), rows);
-        Assert.Contains(new KeyboardShortcutEntry("↓", "↓", "Analyze texts",
-            "Move focus to the first word on the next line"), rows);
+        Assert.Equal("Move Between Words (← or →)", KeyboardShortcutRegistry.TooltipFor(wordMotion));
+        Assert.Contains(new KeyboardShortcutEntry("↑", "↑", "Analyze Texts",
+            "Move Focus to the First Word on the Previous Line"), rows);
+        Assert.Contains(new KeyboardShortcutEntry("↓", "↓", "Analyze Texts",
+            "Move Focus to the First Word on the Next Line"), rows);
         foreach (var (key, action) in new[] { ("A", "Stage Approve"), ("D", "Stage Disapprove"), ("U", "Stage Unknown") })
-        foreach (var scope in new[] { "Analyze texts", "Word list", "Lists" })
+        foreach (var scope in new[] { "Analyze Texts", "Word List", "Lists" })
             Assert.Contains(new KeyboardShortcutEntry(key, key, scope, action), rows);
 
         var expectedSettingsKeys = new List<(string Key, string Gesture, string Scope)>
@@ -98,15 +98,15 @@ public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture ava
             ("Home", "Home", "Tables"), ("End", "End", "Tables"),
             ("Tab", "Tab", "Tables"), ("Tab", "Shift+Tab", "Tables"),
             ("Menu key or ↓", "Menu key or Alt+↓", "Tables"), ("Enter", "Enter", "Tables"),
-            ("← or →", "← or →", "Analyze texts"),
-            ("↑", "↑", "Analyze texts"), ("↓", "↓", "Analyze texts"),
-            ("Enter or Space", "Enter or Space", "Analyze texts"),
-            ("Page Up", "Page Up", "Analyze texts"), ("Page Down", "Page Down", "Analyze texts"),
-            ("Home", "Home", "Analyze texts"), ("End", "End", "Analyze texts"),
-            ("Enter", "Enter", "Analyze texts"), ("Escape", "Esc", "Analyze texts"),
+            ("← or →", "← or →", "Analyze Texts"),
+            ("↑", "↑", "Analyze Texts"), ("↓", "↓", "Analyze Texts"),
+            ("Enter or Space", "Enter or Space", "Analyze Texts"),
+            ("Page Up", "Page Up", "Analyze Texts"), ("Page Down", "Page Down", "Analyze Texts"),
+            ("Home", "Home", "Analyze Texts"), ("End", "End", "Analyze Texts"),
+            ("Enter", "Enter", "Analyze Texts"), ("Escape", "Esc", "Analyze Texts"),
         };
         var primarySearchGesture = PrimarySearchGesture;
-        foreach (var scope in new[] { "Word list", "Lists" })
+        foreach (var scope in new[] { "Word List", "Lists" })
         {
             expectedSettingsKeys.AddRange(new[]
             {
@@ -119,27 +119,27 @@ public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture ava
         }
         expectedSettingsKeys.AddRange(new[]
         {
-            ("↑", "↑", "Diagnostic tree"), ("↓", "↓", "Diagnostic tree"),
-            ("Escape", "Esc", "Analyze texts"), ("F", primarySearchGesture, "Analyze texts"),
-            ("A", "A", "Analyze texts"), ("D", "D", "Analyze texts"), ("U", "U", "Analyze texts"),
-            ("Delete", "Delete", "Analyze texts"), ("S", "S", "Analyze texts"), ("P", "P", "Analyze texts"),
-            ("F10", "Shift+F10", "Analyze texts"),
+            ("↑", "↑", "Diagnostic Tree"), ("↓", "↓", "Diagnostic Tree"),
+            ("Escape", "Esc", "Analyze Texts"), ("F", primarySearchGesture, "Analyze Texts"),
+            ("A", "A", "Analyze Texts"), ("D", "D", "Analyze Texts"), ("U", "U", "Analyze Texts"),
+            ("Delete", "Delete", "Analyze Texts"), ("S", "S", "Analyze Texts"), ("P", "P", "Analyze Texts"),
+            ("F10", "Shift+F10", "Analyze Texts"),
             ("F", primarySearchGesture, "Matrix"), ("Enter or Space", "Enter or Space", "Matrix"),
             ("Enter or Space", "Enter or Space", "Matrix"),
             ("↑", "↑", "Matrix"), ("↓", "↓", "Matrix"),
             ("Page Up", "Page Up", "Matrix"), ("Page Down", "Page Down", "Matrix"),
             ("Home", "Home", "Matrix"), ("End", "End", "Matrix"), ("Escape", "Esc", "Matrix"),
-            ("Enter or Space", "Enter or Space", "Review changes"),
-            ("↑", "↑", "Review changes"), ("↓", "↓", "Review changes"),
-            ("Page Up", "Page Up", "Review changes"), ("Page Down", "Page Down", "Review changes"),
-            ("Home", "Home", "Review changes"), ("End", "End", "Review changes"),
-            ("Escape", "Esc", "Review changes"),
-            ("↑", "Alt+↑", "Review changes"), ("↓", "Alt+↓", "Review changes"),
-            ("K", "Alt+K", "Review changes"), ("U", "Alt+Shift+U", "Review changes"),
-            ("Enter or Space", "Enter or Space", "Matrix preview"),
+            ("Enter or Space", "Enter or Space", "Review Changes"),
+            ("↑", "↑", "Review Changes"), ("↓", "↓", "Review Changes"),
+            ("Page Up", "Page Up", "Review Changes"), ("Page Down", "Page Down", "Review Changes"),
+            ("Home", "Home", "Review Changes"), ("End", "End", "Review Changes"),
+            ("Escape", "Esc", "Review Changes"),
+            ("↑", "Alt+↑", "Review Changes"), ("↓", "Alt+↓", "Review Changes"),
+            ("K", "Alt+K", "Review Changes"), ("U", "Alt+Shift+U", "Review Changes"),
+            ("Enter or Space", "Enter or Space", "Matrix Preview"),
             ("Space", "Space", "Menus"),
             ("Enter or Space", "Enter or Space", "Morpheme"),
-            ("Enter or Space", "Enter or Space", "Pages rail"),
+            ("Enter or Space", "Enter or Space", "Pages Rail"),
             ("F1", "F1", "Window"), ("Escape", "Esc", "Window"), ("?", "Shift+/", "Window"),
             ("F or E or V or T or H", "Alt+F or Alt+E or Alt+V or Alt+T or Alt+H", "Window"),
             (",", "Ctrl+,", "Window"),

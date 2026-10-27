@@ -508,8 +508,11 @@ test('sync publishes every authored Guide page from the built CLI export', async
 		['guide', 'learn/index'],
 		['guide', 'learn/stems-and-the-lexicon'],
 	];
-	const exportedControl = helpExport.entries.find((entry) => entry.kind === 'ui');
-	if (exportedControl) expectedPages.splice(2, 0, ['ui', exportedControl.code]);
+	const shortcuts = helpExport.entries.filter((entry) => entry.kind === 'ui' && entry.code.startsWith('shortcut-'));
+	assert.ok(shortcuts.length > 0, 'The built CLI must export the window shortcut controls.');
+	assert.equal(entries.get('ui:shortcut-page-title')?.title, 'Keyboard Shortcuts');
+	assert.equal(entries.get('ui:shortcut-open-word-card')?.title, 'Open the Word Card');
+	expectedPages.push(...shortcuts.map((entry) => ['ui', entry.code]), ['guide', 'keyboard-shortcuts']);
 	for (const entry of helpExport.entries) {
 		assert.ok(entry.helpPage === null || typeof entry.helpPage === 'string', `${entry.kind} ${entry.code} must export a Help page or null.`);
 		if (entry.kind === 'guide') assert.equal(typeof entry.helpPage, 'string', `Guide ${entry.code} must export its Help page.`);

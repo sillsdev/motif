@@ -673,7 +673,7 @@
       "kind": "ui",
       "code": "shortcut-activate-menu-item",
       "slug": "shortcut-activate-menu-item",
-      "title": "Choose a menu item",
+      "title": "Choose a Menu Item",
       "description": "Choose the menu item that has keyboard focus, as Enter does.",
       "helpPage": null,
       "url": "https://motif-docs.pages.dev/reference/controls/shortcut-activate-menu-item/"
@@ -682,7 +682,7 @@
       "kind": "ui",
       "code": "shortcut-cancel-parsing-limit-edit",
       "slug": "shortcut-cancel-parsing-limit-edit",
-      "title": "Cancel parsing limit edits",
+      "title": "Cancel Parsing Limit Edits",
       "description": "Restore the saved parsing limits while editing them.",
       "helpPage": null,
       "url": "https://motif-docs.pages.dev/reference/controls/shortcut-cancel-parsing-limit-edit/"
@@ -691,7 +691,7 @@
       "kind": "ui",
       "code": "shortcut-choose-cell",
       "slug": "shortcut-choose-cell",
-      "title": "Choose this cell",
+      "title": "Choose This Cell",
       "description": "Toggle the focused comparison cell.",
       "helpPage": null,
       "url": "https://motif-docs.pages.dev/reference/controls/shortcut-choose-cell/"
@@ -709,7 +709,7 @@
       "kind": "ui",
       "code": "shortcut-close-word-card",
       "slug": "shortcut-close-word-card",
-      "title": "Close the word card",
+      "title": "Close the Word Card",
       "description": "Close the open word card.",
       "helpPage": null,
       "url": "https://motif-docs.pages.dev/reference/controls/shortcut-close-word-card/"
@@ -727,7 +727,7 @@
       "kind": "ui",
       "code": "shortcut-first-row",
       "slug": "shortcut-first-row",
-      "title": "Go to the first row",
+      "title": "Go to the First Row",
       "description": "Focus the first row.",
       "helpPage": null,
       "url": "https://motif-docs.pages.dev/reference/controls/shortcut-first-row/"
@@ -736,7 +736,7 @@
       "kind": "ui",
       "code": "shortcut-focus-close-settings",
       "slug": "shortcut-focus-close-settings",
-      "title": "Move focus to Back",
+      "title": "Move Focus to Back",
       "description": "Move focus from the Settings sections to Back.",
       "helpPage": null,
       "url": "https://motif-docs.pages.dev/reference/controls/shortcut-focus-close-settings/"
@@ -745,7 +745,7 @@
       "kind": "ui",
       "code": "shortcut-focus-settings-groups",
       "slug": "shortcut-focus-settings-groups",
-      "title": "Move focus to Settings groups",
+      "title": "Move Focus to Settings Groups",
       "description": "Move focus from Back to the Settings groups.",
       "helpPage": null,
       "url": "https://motif-docs.pages.dev/reference/controls/shortcut-focus-settings-groups/"
@@ -754,7 +754,7 @@
       "kind": "ui",
       "code": "shortcut-focus-word-search",
       "slug": "shortcut-focus-word-search",
-      "title": "Focus the word search",
+      "title": "Focus the Word Search",
       "description": "Move keyboard focus to the current page\u0027s word search.",
       "helpPage": null,
       "url": "https://motif-docs.pages.dev/reference/controls/shortcut-focus-word-search/"
@@ -763,7 +763,7 @@
       "kind": "ui",
       "code": "shortcut-group-analyze-texts",
       "slug": "shortcut-group-analyze-texts",
-      "title": "Analyze texts",
+      "title": "Analyze Texts",
       "description": "Keyboard shortcuts for reading and reviewing a Text.",
       "helpPage": null,
       "url": "https://motif-docs.pages.dev/reference/controls/shortcut-group-analyze-texts/"
@@ -772,7 +772,7 @@
       "kind": "ui",
       "code": "shortcut-group-diagnostic-tree",
       "slug": "shortcut-group-diagnostic-tree",
-      "title": "Diagnostic tree",
+      "title": "Diagnostic Tree",
       "description": "Keyboard shortcuts for navigating the diagnostic tree.",
       "helpPage": null,
       "url": "https://motif-docs.pages.dev/reference/controls/shortcut-group-diagnostic-tree/"
@@ -826,7 +826,7 @@
       "kind": "ui",
       "code": "shortcut-group-navigation-rail",
       "slug": "shortcut-group-navigation-rail",
-      "title": "Pages rail",
+      "title": "Pages Rail",
       "description": "Keyboard shortcuts for the Pages rail.",
       "helpPage": null,
       "url": "https://motif-docs.pages.dev/reference/controls/shortcut-group-navigation-rail/"
@@ -835,7 +835,7 @@
       "kind": "ui",
       "code": "shortcut-group-review-changes",
       "slug": "shortcut-group-review-changes",
-      "title": "Review changes",
+      "title": "Review Changes",
       "description": "Keyboard shortcuts for navigating pending changes.",
       "helpPage": null,
       "url": "https://motif-docs.pages.dev/reference/controls/shortcut-group-review-changes/"
@@ -871,7 +871,7 @@
       "kind": "ui",
       "code": "shortcut-group-word-list",
       "slug": "shortcut-group-word-list",
-      "title": "Word list",
+      "title": "Word List",
       "description": "Keyboard shortcuts for the Word list and Lists rows.",
       "helpPage": null,
       "url": "https://motif-docs.pages.dev/reference/controls/shortcut-group-word-list/"
@@ -880,7 +880,7 @@
       "kind": "ui",
       "code": "shortcut-keep-change",
       "slug": "shortcut-keep-change",
-      "title": "Keep change",
+      "title": "Keep Change",
       "description": "Marks the current change as looked at and moves to the next one.",
       "helpPage": null,
       "url": "https://motif-docs.pages.dev/reference/controls/shortcut-keep-change/"
@@ -889,7 +889,7 @@
       "kind": "ui",
       "code": "shortcut-last-row",
       "slug": "shortcut-last-row",
-      "title": "Go to the last row",
+      "title": "Go to the Last Row",
       "description": "Focus the last row.",
       "helpPage": null,
       "url": "https://motif-docs.pages.dev/reference/controls/shortcut-last-row/"
@@ -898,7 +898,7 @@
       "kind": "ui",
       "code": "shortcut-move-between-theme-choices",
       "slug": "shortcut-move-between-theme-choices",
-      "title": "Move between theme choices",
+      "title": "Move Between Theme Choices",
       "description": "Move focus among Light, Dark and System.",
       "helpPage": null,
       "url": "https://motif-docs.pages.dev/reference/controls/shortcut-move-between-theme-choices/"
@@ -907,7 +907,7 @@
       "kind": "ui",
       "code": "shortcut-move-between-words",
       "slug": "shortcut-move-between-words",
-      "title": "Move between words",
+      "title": "Move Between Words",
       "description": "Focus the previous or next word in the Text.",
       "helpPage": null,
       "url": "https://motif-docs.pages.dev/reference/controls/shortcut-move-between-words/"
@@ -916,7 +916,7 @@
       "kind": "ui",
       "code": "shortcut-next-change",
       "slug": "shortcut-next-change",
-      "title": "Next change",
+      "title": "Next Change",
       "description": "Marks the change you leave as looked at and moves to the next one.",
       "helpPage": null,
       "url": "https://motif-docs.pages.dev/reference/controls/shortcut-next-change/"
@@ -925,7 +925,7 @@
       "kind": "ui",
       "code": "shortcut-next-diagnostic-item",
       "slug": "shortcut-next-diagnostic-item",
-      "title": "Move to the next diagnostic item",
+      "title": "Move to the Next Diagnostic Item",
       "description": "Focus the following item in the diagnostic tree.",
       "helpPage": null,
       "url": "https://motif-docs.pages.dev/reference/controls/shortcut-next-diagnostic-item/"
@@ -934,7 +934,7 @@
       "kind": "ui",
       "code": "shortcut-next-line",
       "slug": "shortcut-next-line",
-      "title": "Move focus to the first word on the next line",
+      "title": "Move Focus to the First Word on the Next Line",
       "description": "Focus the first word on the next line of the Text.",
       "helpPage": null,
       "url": "https://motif-docs.pages.dev/reference/controls/shortcut-next-line/"
@@ -943,7 +943,7 @@
       "kind": "ui",
       "code": "shortcut-next-row",
       "slug": "shortcut-next-row",
-      "title": "Move to the next row",
+      "title": "Move to the Next Row",
       "description": "Focus the next row.",
       "helpPage": null,
       "url": "https://motif-docs.pages.dev/reference/controls/shortcut-next-row/"
@@ -952,7 +952,7 @@
       "kind": "ui",
       "code": "shortcut-open-add-list",
       "slug": "shortcut-open-add-list",
-      "title": "Show PanGloss analyses to add",
+      "title": "Add Analysis from PanGloss",
       "description": "Open the list of PanGloss analyses FieldWorks does not hold for the focused word.",
       "helpPage": null,
       "url": "https://motif-docs.pages.dev/reference/controls/shortcut-open-add-list/"
@@ -961,7 +961,7 @@
       "kind": "ui",
       "code": "shortcut-open-disposition-menu",
       "slug": "shortcut-open-disposition-menu",
-      "title": "Change what FieldWorks holds",
+      "title": "Set Analysis",
       "description": "Open the focused word\u0027s opinion tiles.",
       "helpPage": null,
       "url": "https://motif-docs.pages.dev/reference/controls/shortcut-open-disposition-menu/"
@@ -970,7 +970,7 @@
       "kind": "ui",
       "code": "shortcut-open-help",
       "slug": "shortcut-open-help",
-      "title": "Open Help for this page",
+      "title": "Open Help for This Page",
       "description": "Show Help for the current page.",
       "helpPage": null,
       "url": "https://motif-docs.pages.dev/reference/controls/shortcut-open-help/"
@@ -988,7 +988,7 @@
       "kind": "ui",
       "code": "shortcut-open-menu",
       "slug": "shortcut-open-menu",
-      "title": "Open a menu",
+      "title": "Open a Menu",
       "description": "Open the File, Edit, View, Tools or Help menu by the underlined letter in its name.",
       "helpPage": null,
       "url": "https://motif-docs.pages.dev/reference/controls/shortcut-open-menu/"
@@ -997,7 +997,7 @@
       "kind": "ui",
       "code": "shortcut-open-or-close-word-card",
       "slug": "shortcut-open-or-close-word-card",
-      "title": "Open or close the word card",
+      "title": "Open or Close the Word Card",
       "description": "Toggle the focused word\u0027s card.",
       "helpPage": null,
       "url": "https://motif-docs.pages.dev/reference/controls/shortcut-open-or-close-word-card/"
@@ -1015,7 +1015,7 @@
       "kind": "ui",
       "code": "shortcut-open-word-card",
       "slug": "shortcut-open-word-card",
-      "title": "Open the word card",
+      "title": "Open the Word Card",
       "description": "Open the focused word\u0027s card.",
       "helpPage": null,
       "url": "https://motif-docs.pages.dev/reference/controls/shortcut-open-word-card/"
@@ -1024,7 +1024,7 @@
       "kind": "ui",
       "code": "shortcut-page-title",
       "slug": "shortcut-page-title",
-      "title": "Keyboard shortcuts",
+      "title": "Keyboard Shortcuts",
       "description": "The keyboard shortcuts available in Motif.",
       "helpPage": null,
       "url": "https://motif-docs.pages.dev/reference/controls/shortcut-page-title/"
@@ -1033,7 +1033,7 @@
       "kind": "ui",
       "code": "shortcut-previous-change",
       "slug": "shortcut-previous-change",
-      "title": "Previous change",
+      "title": "Previous Change",
       "description": "Moves to the previous change in the Review changes list.",
       "helpPage": null,
       "url": "https://motif-docs.pages.dev/reference/controls/shortcut-previous-change/"
@@ -1042,7 +1042,7 @@
       "kind": "ui",
       "code": "shortcut-previous-diagnostic-item",
       "slug": "shortcut-previous-diagnostic-item",
-      "title": "Move to the previous diagnostic item",
+      "title": "Move to the Previous Diagnostic Item",
       "description": "Focus the preceding item in the diagnostic tree.",
       "helpPage": null,
       "url": "https://motif-docs.pages.dev/reference/controls/shortcut-previous-diagnostic-item/"
@@ -1051,7 +1051,7 @@
       "kind": "ui",
       "code": "shortcut-previous-line",
       "slug": "shortcut-previous-line",
-      "title": "Move focus to the first word on the previous line",
+      "title": "Move Focus to the First Word on the Previous Line",
       "description": "Focus the first word on the previous line of the Text.",
       "helpPage": null,
       "url": "https://motif-docs.pages.dev/reference/controls/shortcut-previous-line/"
@@ -1060,7 +1060,7 @@
       "kind": "ui",
       "code": "shortcut-previous-row",
       "slug": "shortcut-previous-row",
-      "title": "Move to the previous row",
+      "title": "Move to the Previous Row",
       "description": "Focus the previous row.",
       "helpPage": null,
       "url": "https://motif-docs.pages.dev/reference/controls/shortcut-previous-row/"
@@ -1069,7 +1069,7 @@
       "kind": "ui",
       "code": "shortcut-reader-first-line",
       "slug": "shortcut-reader-first-line",
-      "title": "Go to the first line of the Text",
+      "title": "Go to the First Line of the Text",
       "description": "Focus the first line of the Text.",
       "helpPage": null,
       "url": "https://motif-docs.pages.dev/reference/controls/shortcut-reader-first-line/"
@@ -1078,7 +1078,7 @@
       "kind": "ui",
       "code": "shortcut-reader-last-line",
       "slug": "shortcut-reader-last-line",
-      "title": "Go to the last line of the Text",
+      "title": "Go to the Last Line of the Text",
       "description": "Focus the last line of the Text.",
       "helpPage": null,
       "url": "https://motif-docs.pages.dev/reference/controls/shortcut-reader-last-line/"
@@ -1087,7 +1087,7 @@
       "kind": "ui",
       "code": "shortcut-reader-next-screen",
       "slug": "shortcut-reader-next-screen",
-      "title": "Move down one screen of lines",
+      "title": "Move Down One Screen of Lines",
       "description": "Move focus down by the number of lines visible in the reader.",
       "helpPage": null,
       "url": "https://motif-docs.pages.dev/reference/controls/shortcut-reader-next-screen/"
@@ -1096,7 +1096,7 @@
       "kind": "ui",
       "code": "shortcut-reader-previous-screen",
       "slug": "shortcut-reader-previous-screen",
-      "title": "Move up one screen of lines",
+      "title": "Move Up One Screen of Lines",
       "description": "Move focus up by the number of lines visible in the reader.",
       "helpPage": null,
       "url": "https://motif-docs.pages.dev/reference/controls/shortcut-reader-previous-screen/"
@@ -1114,7 +1114,7 @@
       "kind": "ui",
       "code": "shortcut-reset-zoom",
       "slug": "shortcut-reset-zoom",
-      "title": "Reset zoom",
+      "title": "Reset Zoom",
       "description": "Return display zoom to its default.",
       "helpPage": null,
       "url": "https://motif-docs.pages.dev/reference/controls/shortcut-reset-zoom/"
@@ -1123,7 +1123,7 @@
       "kind": "ui",
       "code": "shortcut-save-parsing-limits",
       "slug": "shortcut-save-parsing-limits",
-      "title": "Save parsing limits",
+      "title": "Save Parsing Limits",
       "description": "Apply the parsing limits you entered.",
       "helpPage": null,
       "url": "https://motif-docs.pages.dev/reference/controls/shortcut-save-parsing-limits/"
@@ -1132,7 +1132,7 @@
       "kind": "ui",
       "code": "shortcut-scope-analyze-texts",
       "slug": "shortcut-scope-analyze-texts",
-      "title": "Analyze texts",
+      "title": "Analyze Texts",
       "description": "Available in the Analyze texts reader.",
       "helpPage": null,
       "url": "https://motif-docs.pages.dev/reference/controls/shortcut-scope-analyze-texts/"
@@ -1141,7 +1141,7 @@
       "kind": "ui",
       "code": "shortcut-scope-diagnostic-tree",
       "slug": "shortcut-scope-diagnostic-tree",
-      "title": "Diagnostic tree",
+      "title": "Diagnostic Tree",
       "description": "Available when the diagnostic tree has keyboard focus.",
       "helpPage": null,
       "url": "https://motif-docs.pages.dev/reference/controls/shortcut-scope-diagnostic-tree/"
@@ -1168,7 +1168,7 @@
       "kind": "ui",
       "code": "shortcut-scope-matrix-preview",
       "slug": "shortcut-scope-matrix-preview",
-      "title": "Matrix preview",
+      "title": "Matrix Preview",
       "description": "Available in a Matrix preview.",
       "helpPage": null,
       "url": "https://motif-docs.pages.dev/reference/controls/shortcut-scope-matrix-preview/"
@@ -1195,7 +1195,7 @@
       "kind": "ui",
       "code": "shortcut-scope-navigation-rail",
       "slug": "shortcut-scope-navigation-rail",
-      "title": "Pages rail",
+      "title": "Pages Rail",
       "description": "Available when the current page in the Pages rail has keyboard focus.",
       "helpPage": null,
       "url": "https://motif-docs.pages.dev/reference/controls/shortcut-scope-navigation-rail/"
@@ -1204,7 +1204,7 @@
       "kind": "ui",
       "code": "shortcut-scope-review-changes",
       "slug": "shortcut-scope-review-changes",
-      "title": "Review changes",
+      "title": "Review Changes",
       "description": "Available in Review changes.",
       "helpPage": null,
       "url": "https://motif-docs.pages.dev/reference/controls/shortcut-scope-review-changes/"
@@ -1240,7 +1240,7 @@
       "kind": "ui",
       "code": "shortcut-scope-word-list",
       "slug": "shortcut-scope-word-list",
-      "title": "Word list",
+      "title": "Word List",
       "description": "Available in the Word list.",
       "helpPage": null,
       "url": "https://motif-docs.pages.dev/reference/controls/shortcut-scope-word-list/"
@@ -1249,7 +1249,7 @@
       "kind": "ui",
       "code": "shortcut-show-shortcuts",
       "slug": "shortcut-show-shortcuts",
-      "title": "Show keyboard shortcuts",
+      "title": "Show Keyboard Shortcuts",
       "description": "Open the keyboard shortcut list.",
       "helpPage": null,
       "url": "https://motif-docs.pages.dev/reference/controls/shortcut-show-shortcuts/"
@@ -1276,7 +1276,7 @@
       "kind": "ui",
       "code": "shortcut-stage-incorrect-spelling",
       "slug": "shortcut-stage-incorrect-spelling",
-      "title": "Stage Incorrect spelling",
+      "title": "Stage Incorrect Spelling",
       "description": "Stage the focused word\u0027s spelling as Incorrect in Review changes.",
       "helpPage": null,
       "url": "https://motif-docs.pages.dev/reference/controls/shortcut-stage-incorrect-spelling/"
@@ -1285,7 +1285,7 @@
       "kind": "ui",
       "code": "shortcut-stage-remove-analysis",
       "slug": "shortcut-stage-remove-analysis",
-      "title": "Stage removing the analysis",
+      "title": "Stage Removing the Analysis",
       "description": "Stage removing the focused word\u0027s FieldWorks analysis in Review changes.",
       "helpPage": null,
       "url": "https://motif-docs.pages.dev/reference/controls/shortcut-stage-remove-analysis/"
@@ -1303,7 +1303,7 @@
       "kind": "ui",
       "code": "shortcut-step-back",
       "slug": "shortcut-step-back",
-      "title": "Step back in the Inspector",
+      "title": "Step Back in the Inspector",
       "description": "Return to the preceding Inspector level.",
       "helpPage": null,
       "url": "https://motif-docs.pages.dev/reference/controls/shortcut-step-back/"
@@ -1312,7 +1312,7 @@
       "kind": "ui",
       "code": "shortcut-table-next-action",
       "slug": "shortcut-table-next-action",
-      "title": "Next table action",
+      "title": "Next Table Action",
       "description": "Focus the next row or group action.",
       "helpPage": null,
       "url": "https://motif-docs.pages.dev/reference/controls/shortcut-table-next-action/"
@@ -1321,7 +1321,7 @@
       "kind": "ui",
       "code": "shortcut-table-open-actions",
       "slug": "shortcut-table-open-actions",
-      "title": "Open row actions",
+      "title": "Open Row Actions",
       "description": "Open the actions menu for the selected row.",
       "helpPage": null,
       "url": "https://motif-docs.pages.dev/reference/controls/shortcut-table-open-actions/"
@@ -1330,7 +1330,7 @@
       "kind": "ui",
       "code": "shortcut-table-open-details",
       "slug": "shortcut-table-open-details",
-      "title": "Open row details",
+      "title": "Open Row Details",
       "description": "Show the selected row\u0027s details.",
       "helpPage": null,
       "url": "https://motif-docs.pages.dev/reference/controls/shortcut-table-open-details/"
@@ -1339,7 +1339,7 @@
       "kind": "ui",
       "code": "shortcut-table-previous-action",
       "slug": "shortcut-table-previous-action",
-      "title": "Previous table action",
+      "title": "Previous Table Action",
       "description": "Focus the previous row or group action.",
       "helpPage": null,
       "url": "https://motif-docs.pages.dev/reference/controls/shortcut-table-previous-action/"
@@ -1348,7 +1348,7 @@
       "kind": "ui",
       "code": "shortcut-toggle-side-panel",
       "slug": "shortcut-toggle-side-panel",
-      "title": "Show or hide the side panel",
+      "title": "Show or Hide the Side Panel",
       "description": "Show or hide the current page\u0027s side panel while keeping that page open.",
       "helpPage": null,
       "url": "https://motif-docs.pages.dev/reference/controls/shortcut-toggle-side-panel/"
@@ -1366,7 +1366,7 @@
       "kind": "ui",
       "code": "shortcut-undo-change",
       "slug": "shortcut-undo-change",
-      "title": "Undo change",
+      "title": "Undo Change",
       "description": "Takes the current change out of the Proposal.",
       "helpPage": null,
       "url": "https://motif-docs.pages.dev/reference/controls/shortcut-undo-change/"
@@ -1375,7 +1375,7 @@
       "kind": "ui",
       "code": "shortcut-word-next-screen",
       "slug": "shortcut-word-next-screen",
-      "title": "Move down one screen of words",
+      "title": "Move Down One Screen of Words",
       "description": "Move focus down by the number of rows visible in the list.",
       "helpPage": null,
       "url": "https://motif-docs.pages.dev/reference/controls/shortcut-word-next-screen/"
@@ -1384,7 +1384,7 @@
       "kind": "ui",
       "code": "shortcut-word-previous-screen",
       "slug": "shortcut-word-previous-screen",
-      "title": "Move up one screen of words",
+      "title": "Move Up One Screen of Words",
       "description": "Move focus up by the number of rows visible in the list.",
       "helpPage": null,
       "url": "https://motif-docs.pages.dev/reference/controls/shortcut-word-previous-screen/"
@@ -1393,7 +1393,7 @@
       "kind": "ui",
       "code": "shortcut-zoom-in",
       "slug": "shortcut-zoom-in",
-      "title": "Zoom in",
+      "title": "Zoom In",
       "description": "Increase the App\u0027s display zoom.",
       "helpPage": null,
       "url": "https://motif-docs.pages.dev/reference/controls/shortcut-zoom-in/"
@@ -1402,7 +1402,7 @@
       "kind": "ui",
       "code": "shortcut-zoom-out",
       "slug": "shortcut-zoom-out",
-      "title": "Zoom out",
+      "title": "Zoom Out",
       "description": "Decrease the App\u0027s display zoom.",
       "helpPage": null,
       "url": "https://motif-docs.pages.dev/reference/controls/shortcut-zoom-out/"
@@ -1825,9 +1825,9 @@
       "kind": "guide",
       "code": "keyboard-shortcuts",
       "slug": "keyboard-shortcuts",
-      "title": "Keyboard shortcuts",
+      "title": "Keyboard Shortcuts",
       "description": "Inside text inputs, Ctrl\u002BC/X/V and Ctrl\u002BZ/Y use the control\u0027s own copy, cut, paste, undo and redo. Elsewhere, Ctrl\u002BC copies selected text or the focused word, Ctrl\u002BV does nothing, Ctrl\u002BZ undoes the last staging action, and Ctrl\u002BY redoes it; on macOS use \u2318, with \u2318\u002BShift\u002BZ also redoing. Letter shortcuts work when focus is outside text entry. A, D and U stage an opinion for Review changes; Apply there writes it to the FieldWorks project. In Analyze texts, Delete stages removing the word\u0027s FieldWorks analysis, S stages Incorrect spelling, P opens the PanGloss analyses to add, and Shift\u002BF10 opens the word\u0027s opinion tiles. In Analyze texts, Up and Down focus the first word on the previous or next line, Page Up and Page Down move by a screen of visible lines, and Home and End focus the first or last line of the Text. For the available display choices, see Settings.",
-      "helpPage": "# Keyboard shortcuts\n\nInside text inputs, Ctrl\u002BC/X/V and Ctrl\u002BZ/Y use the control\u0027s own copy, cut, paste, undo and redo. Elsewhere, Ctrl\u002BC copies selected text or the focused word, Ctrl\u002BV does nothing, Ctrl\u002BZ undoes the last staging action, and Ctrl\u002BY redoes it; on macOS use \u2318, with \u2318\u002BShift\u002BZ also redoing. Letter shortcuts work when focus is outside text entry. A, D and U stage an opinion for Review changes; Apply there writes it to the FieldWorks project. In Analyze texts, Delete stages removing the word\u0027s FieldWorks analysis, S stages Incorrect spelling, P opens the PanGloss analyses to add, and Shift\u002BF10 opens the word\u0027s opinion tiles. In Analyze texts, Up and Down focus the first word on the previous or next line, Page Up and Page Down move by a screen of visible lines, and Home and End focus the first or last line of the Text. For the available display choices, see [Settings](guide:settings).\n\n## Analyze texts\n\n| Key | Windows / Linux | macOS | Page or scope | Action |\n| --- | --- | --- | --- | --- |\n| \u2190 or \u2192 | \u2190 or \u2192 | \u2190 or \u2192 | Analyze texts | Move between words |\n| \u2191 | \u2191 | \u2191 | Analyze texts | Move focus to the first word on the previous line |\n| \u2193 | \u2193 | \u2193 | Analyze texts | Move focus to the first word on the next line |\n| Enter or Space | Enter or Space | Enter or Space | Analyze texts | Open the word card |\n| Escape | Esc | Esc | Analyze texts | Close the word card |\n| Page Up | Page Up | Page Up | Analyze texts | Move up one screen of lines |\n| Page Down | Page Down | Page Down | Analyze texts | Move down one screen of lines |\n| Home | Home | Home | Analyze texts | Go to the first line of the Text |\n| End | End | End | Analyze texts | Go to the last line of the Text |\n| A | A | A | Analyze texts | Stage Approve |\n| D | D | D | Analyze texts | Stage Disapprove |\n| U | U | U | Analyze texts | Stage Unknown |\n| Delete | Delete | Delete | Analyze texts | Stage removing the analysis |\n| S | S | S | Analyze texts | Stage Incorrect spelling |\n| P | P | P | Analyze texts | Show PanGloss analyses to add |\n| F10 | Shift\u002BF10 | Shift\u002BF10 | Analyze texts | Change what FieldWorks holds |\n| F | Ctrl\u002BF | \u2318\u002BF | Analyze texts | Focus the word search |\n| Enter | Enter | Enter | Analyze texts | Save parsing limits |\n| Escape | Esc | Esc | Analyze texts | Cancel parsing limit edits |\n\n## Word list\n\n| Key | Windows / Linux | macOS | Page or scope | Action |\n| --- | --- | --- | --- | --- |\n| Enter or Space | Enter or Space | Enter or Space | Word list | Open or close the word card |\n| \u2191 | \u2191 | \u2191 | Word list | Move to the previous row |\n| \u2193 | \u2193 | \u2193 | Word list | Move to the next row |\n| Page Up | Page Up | Page Up | Word list | Move up one screen of words |\n| Page Down | Page Down | Page Down | Word list | Move down one screen of words |\n| Home | Home | Home | Word list | Go to the first row |\n| End | End | End | Word list | Go to the last row |\n| Escape | Esc | Esc | Word list | Close the word card |\n| A | A | A | Word list | Stage Approve |\n| D | D | D | Word list | Stage Disapprove |\n| U | U | U | Word list | Stage Unknown |\n| F | Ctrl\u002BF | \u2318\u002BF | Word list | Focus the word search |\n\n## Lists\n\n| Key | Windows / Linux | macOS | Page or scope | Action |\n| --- | --- | --- | --- | --- |\n| Enter or Space | Enter or Space | Enter or Space | Lists | Open or close the word card |\n| \u2191 | \u2191 | \u2191 | Lists | Move to the previous row |\n| \u2193 | \u2193 | \u2193 | Lists | Move to the next row |\n| Page Up | Page Up | Page Up | Lists | Move up one screen of words |\n| Page Down | Page Down | Page Down | Lists | Move down one screen of words |\n| Home | Home | Home | Lists | Go to the first row |\n| End | End | End | Lists | Go to the last row |\n| Escape | Esc | Esc | Lists | Close the word card |\n| A | A | A | Lists | Stage Approve |\n| D | D | D | Lists | Stage Disapprove |\n| U | U | U | Lists | Stage Unknown |\n| F | Ctrl\u002BF | \u2318\u002BF | Lists | Focus the word search |\n\n## Tables\n\n| Key | Windows / Linux | macOS | Page or scope | Action |\n| --- | --- | --- | --- | --- |\n| \u2191 | \u2191 | \u2191 | Tables | Move to the previous row |\n| \u2193 | \u2193 | \u2193 | Tables | Move to the next row |\n| Home | Home | Home | Tables | Go to the first row |\n| End | End | End | Tables | Go to the last row |\n| Tab | Tab | Tab | Tables | Next table action |\n| Tab | Shift\u002BTab | Shift\u002BTab | Tables | Previous table action |\n| Menu key or \u2193 | Menu key or Alt\u002B\u2193 | Menu key or Alt\u002B\u2193 | Tables | Open row actions |\n| Enter | Enter | Enter | Tables | Open row details |\n\n## Matrix\n\n| Key | Windows / Linux | macOS | Page or scope | Action |\n| --- | --- | --- | --- | --- |\n| Enter or Space | Enter or Space | Enter or Space | Matrix | Open or close the word card |\n| \u2191 | \u2191 | \u2191 | Matrix | Move to the previous row |\n| \u2193 | \u2193 | \u2193 | Matrix | Move to the next row |\n| Page Up | Page Up | Page Up | Matrix | Move up one screen of words |\n| Page Down | Page Down | Page Down | Matrix | Move down one screen of words |\n| Home | Home | Home | Matrix | Go to the first row |\n| End | End | End | Matrix | Go to the last row |\n| Escape | Esc | Esc | Matrix | Close the word card |\n| F | Ctrl\u002BF | \u2318\u002BF | Matrix | Focus the word search |\n| Enter or Space | Enter or Space | Enter or Space | Matrix | Choose this cell |\n\n## Review changes\n\n| Key | Windows / Linux | macOS | Page or scope | Action |\n| --- | --- | --- | --- | --- |\n| Enter or Space | Enter or Space | Enter or Space | Review changes | Open or close the word card |\n| \u2191 | \u2191 | \u2191 | Review changes | Move to the previous row |\n| \u2193 | \u2193 | \u2193 | Review changes | Move to the next row |\n| Page Up | Page Up | Page Up | Review changes | Move up one screen of words |\n| Page Down | Page Down | Page Down | Review changes | Move down one screen of words |\n| Home | Home | Home | Review changes | Go to the first row |\n| End | End | End | Review changes | Go to the last row |\n| Escape | Esc | Esc | Review changes | Close the word card |\n| \u2191 | Alt\u002B\u2191 | Alt\u002B\u2191 | Review changes | Previous change |\n| \u2193 | Alt\u002B\u2193 | Alt\u002B\u2193 | Review changes | Next change |\n| K | Alt\u002BK | Alt\u002BK | Review changes | Keep change |\n| U | Alt\u002BShift\u002BU | Alt\u002BShift\u002BU | Review changes | Undo change |\n\n## Matrix preview\n\n| Key | Windows / Linux | macOS | Page or scope | Action |\n| --- | --- | --- | --- | --- |\n| Enter or Space | Enter or Space | Enter or Space | Matrix preview | Choose this cell |\n\n## Morpheme\n\n| Key | Windows / Linux | macOS | Page or scope | Action |\n| --- | --- | --- | --- | --- |\n| Enter or Space | Enter or Space | Enter or Space | Morpheme | Open the Inspector |\n\n## Diagnostic tree\n\n| Key | Windows / Linux | macOS | Page or scope | Action |\n| --- | --- | --- | --- | --- |\n| \u2191 | \u2191 | \u2191 | Diagnostic tree | Move to the previous diagnostic item |\n| \u2193 | \u2193 | \u2193 | Diagnostic tree | Move to the next diagnostic item |\n\n## Pages rail\n\n| Key | Windows / Linux | macOS | Page or scope | Action |\n| --- | --- | --- | --- | --- |\n| Enter or Space | Enter or Space | Enter or Space | Pages rail | Show or hide the side panel |\n\n## Menus\n\n| Key | Windows / Linux | macOS | Page or scope | Action |\n| --- | --- | --- | --- | --- |\n| Space | Space | Space | Menus | Choose a menu item |\n\n## Window\n\n| Key | Windows / Linux | macOS | Page or scope | Action |\n| --- | --- | --- | --- | --- |\n| F or E or V or T or H | Alt\u002BF or Alt\u002BE or Alt\u002BV or Alt\u002BT or Alt\u002BH | Alt\u002BF or Alt\u002BE or Alt\u002BV or Alt\u002BT or Alt\u002BH | Window | Open a menu |\n| F1 | F1 | F1 | Window | Open Help for this page |\n| Escape | Esc | Esc | Window | Step back in the Inspector |\n| ? | Shift\u002B/ | Shift\u002B/ | Window | Show keyboard shortcuts |\n| , | Ctrl\u002B, | \u2318\u002B, | Window | Open Settings |\n| = or Keypad \u002B | Ctrl\u002B= or Ctrl\u002BShift\u002B= or Ctrl\u002BKeypad \u002B | \u2318\u002B= or \u2318\u002BShift\u002B= or \u2318\u002BKeypad \u002B | Window | Zoom in |\n| - or Keypad - | Ctrl\u002B- or Ctrl\u002BKeypad - | \u2318\u002B- or \u2318\u002BKeypad - | Window | Zoom out |\n| 0 or Keypad 0 | Ctrl\u002B0 or Ctrl\u002BKeypad 0 | \u2318\u002B0 or \u2318\u002BKeypad 0 | Window | Reset zoom |\n| C | Ctrl\u002BC | \u2318\u002BC | Window | Copy |\n| Z | Ctrl\u002BZ | \u2318\u002BZ | Window | Undo |\n| Y or Z | Ctrl\u002BY or Ctrl\u002BShift\u002BZ | \u2318\u002BY or \u2318\u002BShift\u002BZ | Window | Redo |\n\n## Settings\n\n| Key | Windows / Linux | macOS | Page or scope | Action |\n| --- | --- | --- | --- | --- |\n| Escape | Esc | Esc | Settings | Return from Settings |\n| Enter | Enter | Enter | Settings | Save parsing limits |\n| Escape | Esc | Esc | Settings | Cancel parsing limit edits |\n| \u2190 or \u2192 | \u2190 or \u2192 | \u2190 or \u2192 | Settings | Move between theme choices |\n| Tab | Shift\u002BTab | Shift\u002BTab | Settings | Move focus to Back |\n| Tab | Tab | Tab | Settings | Move focus to Settings groups |\n",
+      "helpPage": "# Keyboard Shortcuts\n\nInside text inputs, Ctrl\u002BC/X/V and Ctrl\u002BZ/Y use the control\u0027s own copy, cut, paste, undo and redo. Elsewhere, Ctrl\u002BC copies selected text or the focused word, Ctrl\u002BV does nothing, Ctrl\u002BZ undoes the last staging action, and Ctrl\u002BY redoes it; on macOS use \u2318, with \u2318\u002BShift\u002BZ also redoing. Letter shortcuts work when focus is outside text entry. A, D and U stage an opinion for Review changes; Apply there writes it to the FieldWorks project. In Analyze texts, Delete stages removing the word\u0027s FieldWorks analysis, S stages Incorrect spelling, P opens the PanGloss analyses to add, and Shift\u002BF10 opens the word\u0027s opinion tiles. In Analyze texts, Up and Down focus the first word on the previous or next line, Page Up and Page Down move by a screen of visible lines, and Home and End focus the first or last line of the Text. For the available display choices, see [Settings](guide:settings).\n\n## Analyze Texts\n\n| Key | Windows / Linux | macOS | Page or scope | Action |\n| --- | --- | --- | --- | --- |\n| \u2190 or \u2192 | \u2190 or \u2192 | \u2190 or \u2192 | Analyze Texts | Move Between Words |\n| \u2191 | \u2191 | \u2191 | Analyze Texts | Move Focus to the First Word on the Previous Line |\n| \u2193 | \u2193 | \u2193 | Analyze Texts | Move Focus to the First Word on the Next Line |\n| Enter or Space | Enter or Space | Enter or Space | Analyze Texts | Open the Word Card |\n| Escape | Esc | Esc | Analyze Texts | Close the Word Card |\n| Page Up | Page Up | Page Up | Analyze Texts | Move Up One Screen of Lines |\n| Page Down | Page Down | Page Down | Analyze Texts | Move Down One Screen of Lines |\n| Home | Home | Home | Analyze Texts | Go to the First Line of the Text |\n| End | End | End | Analyze Texts | Go to the Last Line of the Text |\n| A | A | A | Analyze Texts | Stage Approve |\n| D | D | D | Analyze Texts | Stage Disapprove |\n| U | U | U | Analyze Texts | Stage Unknown |\n| Delete | Delete | Delete | Analyze Texts | Stage Removing the Analysis |\n| S | S | S | Analyze Texts | Stage Incorrect Spelling |\n| P | P | P | Analyze Texts | Add Analysis from PanGloss |\n| F10 | Shift\u002BF10 | Shift\u002BF10 | Analyze Texts | Set Analysis |\n| F | Ctrl\u002BF | \u2318\u002BF | Analyze Texts | Focus the Word Search |\n| Enter | Enter | Enter | Analyze Texts | Save Parsing Limits |\n| Escape | Esc | Esc | Analyze Texts | Cancel Parsing Limit Edits |\n\n## Word List\n\n| Key | Windows / Linux | macOS | Page or scope | Action |\n| --- | --- | --- | --- | --- |\n| Enter or Space | Enter or Space | Enter or Space | Word List | Open or Close the Word Card |\n| \u2191 | \u2191 | \u2191 | Word List | Move to the Previous Row |\n| \u2193 | \u2193 | \u2193 | Word List | Move to the Next Row |\n| Page Up | Page Up | Page Up | Word List | Move Up One Screen of Words |\n| Page Down | Page Down | Page Down | Word List | Move Down One Screen of Words |\n| Home | Home | Home | Word List | Go to the First Row |\n| End | End | End | Word List | Go to the Last Row |\n| Escape | Esc | Esc | Word List | Close the Word Card |\n| A | A | A | Word List | Stage Approve |\n| D | D | D | Word List | Stage Disapprove |\n| U | U | U | Word List | Stage Unknown |\n| F | Ctrl\u002BF | \u2318\u002BF | Word List | Focus the Word Search |\n\n## Lists\n\n| Key | Windows / Linux | macOS | Page or scope | Action |\n| --- | --- | --- | --- | --- |\n| Enter or Space | Enter or Space | Enter or Space | Lists | Open or Close the Word Card |\n| \u2191 | \u2191 | \u2191 | Lists | Move to the Previous Row |\n| \u2193 | \u2193 | \u2193 | Lists | Move to the Next Row |\n| Page Up | Page Up | Page Up | Lists | Move Up One Screen of Words |\n| Page Down | Page Down | Page Down | Lists | Move Down One Screen of Words |\n| Home | Home | Home | Lists | Go to the First Row |\n| End | End | End | Lists | Go to the Last Row |\n| Escape | Esc | Esc | Lists | Close the Word Card |\n| A | A | A | Lists | Stage Approve |\n| D | D | D | Lists | Stage Disapprove |\n| U | U | U | Lists | Stage Unknown |\n| F | Ctrl\u002BF | \u2318\u002BF | Lists | Focus the Word Search |\n\n## Tables\n\n| Key | Windows / Linux | macOS | Page or scope | Action |\n| --- | --- | --- | --- | --- |\n| \u2191 | \u2191 | \u2191 | Tables | Move to the Previous Row |\n| \u2193 | \u2193 | \u2193 | Tables | Move to the Next Row |\n| Home | Home | Home | Tables | Go to the First Row |\n| End | End | End | Tables | Go to the Last Row |\n| Tab | Tab | Tab | Tables | Next Table Action |\n| Tab | Shift\u002BTab | Shift\u002BTab | Tables | Previous Table Action |\n| Menu key or \u2193 | Menu key or Alt\u002B\u2193 | Menu key or Alt\u002B\u2193 | Tables | Open Row Actions |\n| Enter | Enter | Enter | Tables | Open Row Details |\n\n## Matrix\n\n| Key | Windows / Linux | macOS | Page or scope | Action |\n| --- | --- | --- | --- | --- |\n| Enter or Space | Enter or Space | Enter or Space | Matrix | Open or Close the Word Card |\n| \u2191 | \u2191 | \u2191 | Matrix | Move to the Previous Row |\n| \u2193 | \u2193 | \u2193 | Matrix | Move to the Next Row |\n| Page Up | Page Up | Page Up | Matrix | Move Up One Screen of Words |\n| Page Down | Page Down | Page Down | Matrix | Move Down One Screen of Words |\n| Home | Home | Home | Matrix | Go to the First Row |\n| End | End | End | Matrix | Go to the Last Row |\n| Escape | Esc | Esc | Matrix | Close the Word Card |\n| F | Ctrl\u002BF | \u2318\u002BF | Matrix | Focus the Word Search |\n| Enter or Space | Enter or Space | Enter or Space | Matrix | Choose This Cell |\n\n## Review Changes\n\n| Key | Windows / Linux | macOS | Page or scope | Action |\n| --- | --- | --- | --- | --- |\n| Enter or Space | Enter or Space | Enter or Space | Review Changes | Open or Close the Word Card |\n| \u2191 | \u2191 | \u2191 | Review Changes | Move to the Previous Row |\n| \u2193 | \u2193 | \u2193 | Review Changes | Move to the Next Row |\n| Page Up | Page Up | Page Up | Review Changes | Move Up One Screen of Words |\n| Page Down | Page Down | Page Down | Review Changes | Move Down One Screen of Words |\n| Home | Home | Home | Review Changes | Go to the First Row |\n| End | End | End | Review Changes | Go to the Last Row |\n| Escape | Esc | Esc | Review Changes | Close the Word Card |\n| \u2191 | Alt\u002B\u2191 | Alt\u002B\u2191 | Review Changes | Previous Change |\n| \u2193 | Alt\u002B\u2193 | Alt\u002B\u2193 | Review Changes | Next Change |\n| K | Alt\u002BK | Alt\u002BK | Review Changes | Keep Change |\n| U | Alt\u002BShift\u002BU | Alt\u002BShift\u002BU | Review Changes | Undo Change |\n\n## Matrix Preview\n\n| Key | Windows / Linux | macOS | Page or scope | Action |\n| --- | --- | --- | --- | --- |\n| Enter or Space | Enter or Space | Enter or Space | Matrix Preview | Choose This Cell |\n\n## Morpheme\n\n| Key | Windows / Linux | macOS | Page or scope | Action |\n| --- | --- | --- | --- | --- |\n| Enter or Space | Enter or Space | Enter or Space | Morpheme | Open the Inspector |\n\n## Diagnostic Tree\n\n| Key | Windows / Linux | macOS | Page or scope | Action |\n| --- | --- | --- | --- | --- |\n| \u2191 | \u2191 | \u2191 | Diagnostic Tree | Move to the Previous Diagnostic Item |\n| \u2193 | \u2193 | \u2193 | Diagnostic Tree | Move to the Next Diagnostic Item |\n\n## Pages Rail\n\n| Key | Windows / Linux | macOS | Page or scope | Action |\n| --- | --- | --- | --- | --- |\n| Enter or Space | Enter or Space | Enter or Space | Pages Rail | Show or Hide the Side Panel |\n\n## Menus\n\n| Key | Windows / Linux | macOS | Page or scope | Action |\n| --- | --- | --- | --- | --- |\n| Space | Space | Space | Menus | Choose a Menu Item |\n\n## Window\n\n| Key | Windows / Linux | macOS | Page or scope | Action |\n| --- | --- | --- | --- | --- |\n| F or E or V or T or H | Alt\u002BF or Alt\u002BE or Alt\u002BV or Alt\u002BT or Alt\u002BH | Alt\u002BF or Alt\u002BE or Alt\u002BV or Alt\u002BT or Alt\u002BH | Window | Open a Menu |\n| F1 | F1 | F1 | Window | Open Help for This Page |\n| Escape | Esc | Esc | Window | Step Back in the Inspector |\n| ? | Shift\u002B/ | Shift\u002B/ | Window | Show Keyboard Shortcuts |\n| , | Ctrl\u002B, | \u2318\u002B, | Window | Open Settings |\n| = or Keypad \u002B | Ctrl\u002B= or Ctrl\u002BShift\u002B= or Ctrl\u002BKeypad \u002B | \u2318\u002B= or \u2318\u002BShift\u002B= or \u2318\u002BKeypad \u002B | Window | Zoom In |\n| - or Keypad - | Ctrl\u002B- or Ctrl\u002BKeypad - | \u2318\u002B- or \u2318\u002BKeypad - | Window | Zoom Out |\n| 0 or Keypad 0 | Ctrl\u002B0 or Ctrl\u002BKeypad 0 | \u2318\u002B0 or \u2318\u002BKeypad 0 | Window | Reset Zoom |\n| C | Ctrl\u002BC | \u2318\u002BC | Window | Copy |\n| Z | Ctrl\u002BZ | \u2318\u002BZ | Window | Undo |\n| Y or Z | Ctrl\u002BY or Ctrl\u002BShift\u002BZ | \u2318\u002BY or \u2318\u002BShift\u002BZ | Window | Redo |\n\n## Settings\n\n| Key | Windows / Linux | macOS | Page or scope | Action |\n| --- | --- | --- | --- | --- |\n| Escape | Esc | Esc | Settings | Return from Settings |\n| Enter | Enter | Enter | Settings | Save Parsing Limits |\n| Escape | Esc | Esc | Settings | Cancel Parsing Limit Edits |\n| \u2190 or \u2192 | \u2190 or \u2192 | \u2190 or \u2192 | Settings | Move Between Theme Choices |\n| Tab | Shift\u002BTab | Shift\u002BTab | Settings | Move Focus to Back |\n| Tab | Tab | Tab | Settings | Move Focus to Settings Groups |\n",
       "url": "https://motif-docs.pages.dev/guide/keyboard-shortcuts/"
     },
     {

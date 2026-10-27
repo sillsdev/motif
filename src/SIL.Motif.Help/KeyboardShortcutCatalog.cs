@@ -291,7 +291,7 @@ public static class KeyboardShortcutCatalog
     {
         var selectedCulture = culture ?? CultureInfo.CurrentUICulture;
         var locale = NormalizeLocale(selectedCulture.TwoLetterISOLanguageName);
-        var titles = ReadUiTitles(locale);
+        var titles = HelpCatalog.ReadUiTitles(selectedCulture);
         var resources = ReadShortcutHelp(locale);
         var introduction = Required(resources.Introduction, "introduction");
         var keyHeading = Required(resources.KeyHeading, "keyHeading");
@@ -427,7 +427,7 @@ public static class KeyboardShortcutCatalog
                 }
             }
         }
-        var titles = ReadUiTitles(EnglishLocale);
+        var titles = HelpCatalog.ReadUiTitles(CultureInfo.GetCultureInfo(EnglishLocale));
         var requiredCodes = definitions.SelectMany(definition => new[] { definition.GroupCode, definition.TitleCode })
             .Concat(definitions.SelectMany(definition => definition.Scopes).Distinct().Select(ScopeCode))
             .Append("shortcut-page-title");
@@ -498,29 +498,6 @@ public static class KeyboardShortcutCatalog
 
     private static string NormalizeLocale(string locale) =>
         string.IsNullOrWhiteSpace(locale) || locale == "iv" ? EnglishLocale : locale;
-
-    private static Dictionary<string, string> ReadUiTitles(string locale)
-    {
-        var english = ReadUiTitlesResource(EnglishLocale);
-        if (locale == EnglishLocale)
-            return english;
-        return english.Concat(ReadUiTitlesResource(locale))
-            .GroupBy(pair => pair.Key)
-            .ToDictionary(group => group.Key, group => group.Last().Value, StringComparer.Ordinal);
-    }
-
-    private static Dictionary<string, string> ReadUiTitlesResource(string locale)
-    {
-        var assembly = Assembly.GetExecutingAssembly();
-        var resourceName = ManifestResourceLookup.FindPhysicalName(
-            assembly.GetManifestResourceNames(), $"help/{locale}/ui.json");
-        if (resourceName is null)
-            return new Dictionary<string, string>(StringComparer.Ordinal);
-        using var stream = assembly.GetManifestResourceStream(resourceName)!;
-        using var document = JsonDocument.Parse(stream);
-        return document.RootElement.EnumerateObject().ToDictionary(
-            item => item.Name, item => item.Value.GetProperty("title").GetString()!, StringComparer.Ordinal);
-    }
 
     private sealed record ShortcutHelpResources(
         string? Introduction,

@@ -20,4 +20,12 @@
     </EmbeddedResource>
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- One authored resource source serves the window and its shared Help projection. -->
+    <EmbeddedResource Include="..\SIL.Motif.App\MotifAppStrings*.resx">
+      <Link>WindowText\%(Filename)%(Extension)</Link>
+      <ManifestResourceName>SIL.Motif.Help.WindowText.%(Filename)</ManifestResourceName>
+    </EmbeddedResource>
+  </ItemGroup>
+
 </Project>

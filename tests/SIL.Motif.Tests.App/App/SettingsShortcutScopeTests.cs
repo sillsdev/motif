@@ -90,7 +90,7 @@ public sealed class SettingsShortcutScopeTests
                 settings.ShortcutSearch = searchAction;
                 settings.OpenGroup(SettingsGroup.KeyboardShortcuts);
                 PageScreenshots.Settle(window);
-                Assert.Equal(new[] { "Analyze texts", "Lists", "Matrix", "Word list" },
+                Assert.Equal(new[] { "Analyze Texts", "Lists", "Matrix", "Word List" },
                     settings.ShortcutEntries.Select(entry => entry.Group).Order().ToArray());
                 Assert.Single(settings.ShortcutEntries.Select(entry => entry.Keys).Distinct());
                 Assert.Single(settings.ShortcutEntries.Select(entry => entry.Action).Distinct());

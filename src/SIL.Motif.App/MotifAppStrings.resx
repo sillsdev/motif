@@ -6101,4 +6101,256 @@ Motif starts a check automatically when this project opens. Use Reload to read a
   <data name="MotifApp.ReviewCardDetailsUnavailable" xml:space="preserve">
     <value>The captured word's details are unavailable. Refresh the project and open the change again.</value>
   </data>
+  <data name="MotifApp.ShortcutPagesRail" xml:space="preserve">
+    <value>Pages Rail</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutMenus" xml:space="preserve">
+    <value>Menus</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutActivateMenuItem" xml:space="preserve">
+    <value>Choose a Menu Item</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutOpenMenu" xml:space="preserve">
+    <value>Open a Menu</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutToggleSidePanel" xml:space="preserve">
+    <value>Show or Hide the Side Panel</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutReviewChanges" xml:space="preserve">
+    <value>Review Changes</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutDiagnosticTree" xml:space="preserve">
+    <value>Diagnostic Tree</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutMorpheme" xml:space="preserve">
+    <value>Morpheme</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutWindow" xml:space="preserve">
+    <value>Window</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutEditing" xml:space="preserve">
+    <value>Editing</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutMatrixPreview" xml:space="preserve">
+    <value>Matrix Preview</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutMoveBetweenWords" xml:space="preserve">
+    <value>Move Between Words</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutPreviousLine" xml:space="preserve">
+    <value>Move Focus to the First Word on the Previous Line</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutNextLine" xml:space="preserve">
+    <value>Move Focus to the First Word on the Next Line</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutOpenWordCard" xml:space="preserve">
+    <value>Open the Word Card</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutOpenOrCloseWordCard" xml:space="preserve">
+    <value>Open or Close the Word Card</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutCloseWordCard" xml:space="preserve">
+    <value>Close the Word Card</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutReaderPreviousScreen" xml:space="preserve">
+    <value>Move Up One Screen of Lines</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutReaderNextScreen" xml:space="preserve">
+    <value>Move Down One Screen of Lines</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutReaderFirstLine" xml:space="preserve">
+    <value>Go to the First Line of the Text</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutReaderLastLine" xml:space="preserve">
+    <value>Go to the Last Line of the Text</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutStageApprove" xml:space="preserve">
+    <value>Stage Approve</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutStageDisapprove" xml:space="preserve">
+    <value>Stage Disapprove</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutStageUnknown" xml:space="preserve">
+    <value>Stage Unknown</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutStageRemoveAnalysis" xml:space="preserve">
+    <value>Stage Removing the Analysis</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutStageIncorrectSpelling" xml:space="preserve">
+    <value>Stage Incorrect Spelling</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutOpenAddList" xml:space="preserve">
+    <value>Add Analysis from PanGloss</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutOpenDispositionMenu" xml:space="preserve">
+    <value>Set Analysis</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutPreviousChange" xml:space="preserve">
+    <value>Previous Change</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutNextChange" xml:space="preserve">
+    <value>Next Change</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutKeepChange" xml:space="preserve">
+    <value>Keep Change</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutUndoChange" xml:space="preserve">
+    <value>Undo Change</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutPreviousRow" xml:space="preserve">
+    <value>Move to the Previous Row</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutNextRow" xml:space="preserve">
+    <value>Move to the Next Row</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutWordPreviousScreen" xml:space="preserve">
+    <value>Move Up One Screen of Words</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutWordNextScreen" xml:space="preserve">
+    <value>Move Down One Screen of Words</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutFirstRow" xml:space="preserve">
+    <value>Go to the First Row</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutLastRow" xml:space="preserve">
+    <value>Go to the Last Row</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutPreviousDiagnosticItem" xml:space="preserve">
+    <value>Move to the Previous Diagnostic Item</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutNextDiagnosticItem" xml:space="preserve">
+    <value>Move to the Next Diagnostic Item</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutFocusWordSearch" xml:space="preserve">
+    <value>Focus the Word Search</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutChooseCell" xml:space="preserve">
+    <value>Choose This Cell</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutOpenInspector" xml:space="preserve">
+    <value>Open the Inspector</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutOpenHelp" xml:space="preserve">
+    <value>Open Help for This Page</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutStepBack" xml:space="preserve">
+    <value>Step Back in the Inspector</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutShowShortcuts" xml:space="preserve">
+    <value>Show Keyboard Shortcuts</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutOpenSettings" xml:space="preserve">
+    <value>Open Settings</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutZoomIn" xml:space="preserve">
+    <value>Zoom In</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutZoomOut" xml:space="preserve">
+    <value>Zoom Out</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutResetZoom" xml:space="preserve">
+    <value>Reset Zoom</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutCopy" xml:space="preserve">
+    <value>Copy</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutRedo" xml:space="preserve">
+    <value>Redo</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutCloseSettings" xml:space="preserve">
+    <value>Return from Settings</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutSaveParsingLimits" xml:space="preserve">
+    <value>Save Parsing Limits</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutCancelParsingLimitEdit" xml:space="preserve">
+    <value>Cancel Parsing Limit Edits</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutMoveBetweenThemeChoices" xml:space="preserve">
+    <value>Move Between Theme Choices</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutFocusCloseSettings" xml:space="preserve">
+    <value>Move Focus to Back</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutFocusSettingsGroups" xml:space="preserve">
+    <value>Move Focus to Settings Groups</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutTables" xml:space="preserve">
+    <value>Tables</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutTableNextAction" xml:space="preserve">
+    <value>Next Table Action</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutTablePreviousAction" xml:space="preserve">
+    <value>Previous Table Action</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutTableOpenActions" xml:space="preserve">
+    <value>Open Row Actions</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutTableOpenDetails" xml:space="preserve">
+    <value>Open Row Details</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
 </root>

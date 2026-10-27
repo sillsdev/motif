@@ -4,6 +4,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Resources;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
@@ -97,6 +98,8 @@ public sealed class HelpCatalog
 {
     private const string EnglishLocale = "en";
     private const string SiteRootValue = "https://motif-docs.pages.dev";
+    private static readonly ResourceManager WindowTitles = new(
+        "SIL.Motif.Help.WindowText.MotifAppStrings", typeof(HelpCatalog).Assembly);
     private static readonly Regex HelpLinkPattern = new(
         @"\]\((?<kind>cmd|term|ui|guide):(?<code>[^)]+)\)", RegexOptions.CultureInvariant);
     private static readonly Regex MarkdownInlineLinkPattern = new(
@@ -148,8 +151,8 @@ public sealed class HelpCatalog
                     : ReadGuidePages(locale);
                 entries.AddRange(BuildGuideEntries(
                     locale,
-                    WithGeneratedShortcutPage(EnglishLocale),
-                    locale == EnglishLocale ? localizedGuides : WithGeneratedShortcutPage(locale)));
+                    WithGeneratedShortcutPage(EnglishLocale, locale == EnglishLocale ? selectedCulture : null),
+                    locale == EnglishLocale ? localizedGuides : WithGeneratedShortcutPage(locale, selectedCulture)));
                 continue;
             }
 
@@ -160,7 +163,9 @@ public sealed class HelpCatalog
             {
                 english.TryGetValue(code, out var englishMetadata);
                 localized.TryGetValue(code, out var localizedMetadata);
-                var title = localizedMetadata?.Title ?? englishMetadata?.Title;
+                var title = kind == HelpEntryKind.Ui
+                    ? UiTitle(englishMetadata, localizedMetadata, selectedCulture)
+                    : localizedMetadata?.Title ?? englishMetadata?.Title;
                 var description = localizedMetadata?.Description ?? englishMetadata?.Description;
                 var source = localizedMetadata?.Source ?? englishMetadata?.Source;
                 if (title is null || description is null || source is null)
@@ -305,10 +310,10 @@ public sealed class HelpCatalog
             .ToArray();
     }
 
-    private static KeyValuePair<string, string>[] WithGeneratedShortcutPage(string locale)
+    private static KeyValuePair<string, string>[] WithGeneratedShortcutPage(string locale, CultureInfo? culture = null)
     {
         var pages = ReadGuidePages(locale).ToDictionary(page => page.Key, page => page.Value, StringComparer.Ordinal);
-        pages["keyboard-shortcuts"] = KeyboardShortcutCatalog.RenderHelpPage(CultureInfo.GetCultureInfo(locale));
+        pages["keyboard-shortcuts"] = KeyboardShortcutCatalog.RenderHelpPage(culture ?? CultureInfo.GetCultureInfo(locale));
         return pages.OrderBy(page => page.Key, StringComparer.Ordinal).ToArray();
     }
 
@@ -372,6 +377,28 @@ public sealed class HelpCatalog
         return merged;
     }
 
+    /// <summary>Title-only projection for callers that also generate Guide pages.</summary>
+    /// <param name="culture">The requested resource culture, including its regional fallback chain.</param>
+    internal static IReadOnlyDictionary<string, string> ReadUiTitles(CultureInfo culture)
+    {
+        var locale = culture.TwoLetterISOLanguageName;
+        if (string.IsNullOrWhiteSpace(locale) || locale == "iv") locale = EnglishLocale;
+        var english = ReadMetadata(EnglishLocale, HelpEntryKind.Ui);
+        var localized = locale == EnglishLocale ? new Dictionary<string, Metadata>() : ReadMetadata(locale, HelpEntryKind.Ui);
+        return english.Keys.Concat(localized.Keys).Distinct(StringComparer.Ordinal).ToDictionary(code => code,
+            code => UiTitle(english.GetValueOrDefault(code), localized.GetValueOrDefault(code), culture)
+                ?? throw new InvalidDataException($"Help UI title for '{code}' is missing."), StringComparer.Ordinal);
+    }
+
+    private static string? UiTitle(Metadata? english, Metadata? localized, CultureInfo culture)
+    {
+        var resourceId = english?.TitleResource ?? localized?.TitleResource;
+        return resourceId is null
+            ? localized?.Title ?? english?.Title
+            : WindowTitles.GetString(resourceId, culture)
+                ?? throw new InvalidDataException($"Window title resource '{resourceId}' is missing.");
+    }
+
     private static Dictionary<string, Metadata> ReadMetadata(string locale, HelpEntryKind kind)
     {
         var resource = ReadResource($"help/{locale}/{KindPlural(kind)}.json");
@@ -384,7 +411,7 @@ public sealed class HelpCatalog
         {
             var value = property.Value;
             result.Add(property.Name, new Metadata(
-                value.GetProperty("title").GetString(),
+                value.TryGetProperty("title", out var title) ? title.GetString() : null,
                 value.GetProperty("description").GetString(),
                 value.GetProperty("source").GetString(),
                 value.TryGetProperty("fields", out var fields)
@@ -397,7 +424,8 @@ public sealed class HelpCatalog
                 value.TryGetProperty("guides", out var guides)
                     ? guides.EnumerateArray().Select(guide => guide.GetString()!).ToArray()
                     : null,
-                value.TryGetProperty("redirect", out var redirect) ? redirect.GetString() : null));
+                value.TryGetProperty("redirect", out var redirect) ? redirect.GetString() : null,
+                value.TryGetProperty("titleResource", out var titleResource) ? titleResource.GetString() : null));
         }
 
         return result;
@@ -496,7 +524,7 @@ public sealed class HelpCatalog
 
     private sealed record Metadata(
         string? Title, string? Description, string? Source, Dictionary<string, string>? Fields = null,
-        string[]? Goals = null, string[]? Guides = null, string? Redirect = null);
+        string[]? Goals = null, string[]? Guides = null, string? Redirect = null, string? TitleResource = null);
 
     // A translation supplies the fields it has; English fills the rest, as it does for every other field.
     private static IReadOnlyDictionary<string, string>? MergeFields(
