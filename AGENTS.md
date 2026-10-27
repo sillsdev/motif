@@ -60,8 +60,9 @@ has been found; apply the ban to every change and never commit serialized inputs
 **`./test.ps1` gives each test class exactly one level from its project's `MotifTestDefaultLevel`, with
 System overrides for walkthroughs and real-parser tests. With no switch it selects Unit and Integration;
 `-All` selects all three levels. A bare `dotnet test` leaves `MOTIF_TEST_LEVELS` unset and runs every test.
-It runs each selected test project as one or more processes, with concurrency capped at a sixth of the
-available processor count (rounded down, minimum two), so four suites in four worktrees can run at once.** It discovers test projects listed in `Motif.sln` under `tests/`, so
+It runs each selected test project as one or more processes, with concurrency capped at a third of the
+available processor count (rounded down, minimum two, maximum eight; `MOTIF_TEST_PROCESSES=N` sets it). App tests run
+one at a time per process, so the App project is split into 12 shards that run side by side.** It discovers test projects listed in `Motif.sln` under `tests/`, so
 adding a project includes it automatically. The cap leaves processor capacity for each test host's CLI,
 worker, and parser child processes. More than four worktrees testing at once oversubscribe the machine,
 so on a developer machine each run waits for one of a fifth of the processors' worth of machine-wide

@@ -31,6 +31,24 @@ function Get-MotifTestArtifactRequirements {
 
 <#
   .SYNOPSIS
+  How many test processes run at once.
+
+  .DESCRIPTION
+  MOTIF_TEST_PROCESSES, a positive whole number, wins. Otherwise a third of the processors, rounded down, never
+  fewer than two and never more than eight: the gate is bound by total process time, and each App shard process
+  has its own UI dispatcher, so more concurrent processes is what makes App tests run side by side.
+#>
+function Get-MotifTestProcessConcurrency {
+    [CmdletBinding()]
+    param([int] $ProcessorCount = [Environment]::ProcessorCount)
+
+    $processes = 0
+    if ([int]::TryParse([string] $env:MOTIF_TEST_PROCESSES, [ref] $processes) -and $processes -gt 0) { return $processes }
+    return [Math]::Min(8, [Math]::Max(2, [int][Math]::Floor($ProcessorCount / 3)))
+}
+
+<#
+  .SYNOPSIS
   The xUnit MaxParallelThreads for one test process; 0 means leave it to xUnit.
 
   .DESCRIPTION
@@ -52,4 +70,4 @@ function Get-MotifTestThreadCount {
     return [Math]::Max(2, [int][Math]::Floor($ProcessorCount / [Math]::Max(1, $ProjectConcurrency)))
 }
 
-Export-ModuleMember -Function Get-MotifTestArtifactRequirements, Get-MotifTestThreadCount
+Export-ModuleMember -Function Get-MotifTestArtifactRequirements, Get-MotifTestProcessConcurrency, Get-MotifTestThreadCount

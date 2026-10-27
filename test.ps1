@@ -12,10 +12,10 @@
   that remains is the `pangloss` executable, a separate Rust build gated by `RealParserFactAttribute`
   -- those tests skip, rather than fail, when it is not built.
 
-  Each test project runs in one or more separate processes, with concurrent processes capped at a sixth of the
-  available processor count (at least two). Test processes start CLI, worker and parser child processes, and
-  the cap is sized so that four suites running side by side in separate worktrees still share the machine
-  without oversubscribing it: on 20 processors, four suites at 10 processes each took 326 s, at 3 each 276-300 s. Classes that open a LibLCM cache share a serialized xUnit collection within their
+  Each test project runs in one or more separate processes, with concurrent processes capped at a third of the
+  available processor count (at least two, at most eight; MOTIF_TEST_PROCESSES sets it). The gate is bound by
+  total process time, and App tests run one at a time inside a process (one UI dispatcher), so the App project is
+  split into many shards that run side by side. Machine-wide test slots still bound how many suites run at once. Classes that open a LibLCM cache share a serialized xUnit collection within their
   assembly, because two caches opening in one process race; a project that declares
   <MotifTestShards>N</MotifTestShards> is split by test class into N processes, which cannot race, so its
   LibLCM tests run N at a time. Classes are dealt to shards by the seconds tests/test-shard-weights.json records
@@ -312,8 +312,8 @@ $duplicateNames = @($testProjects | Group-Object Name | Where-Object Count -gt 1
 if ($duplicateNames.Count -gt 0) { throw "Test project names must be unique: $($duplicateNames.Name -join ', ')" }
 Import-Module (Join-Path $repoRoot 'tools/MotifTestRunPlan.psm1') -Force
 $availableProcessors = [Environment]::ProcessorCount
-# Sized so four suites side by side do not oversubscribe the machine; see the help text.
-$projectConcurrency = [Math]::Max(2, [int][Math]::Floor($availableProcessors / 6))
+# A third of the processors, at most eight; see the help text. MOTIF_TEST_PROCESSES overrides.
+$projectConcurrency = Get-MotifTestProcessConcurrency -ProcessorCount $availableProcessors
 # The biggest projects start first, so the throttle does not leave one long shard running alone at the end.
 $testRuns = @(foreach ($testProject in @($testProjects | Sort-Object -Property Shards -Descending)) {
     $runShards = $testProject.Shards

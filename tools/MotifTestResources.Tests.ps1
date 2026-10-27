@@ -5,7 +5,7 @@ Import-Module (Join-Path $PSScriptRoot 'MotifRestore.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'MotifTestSlot.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'MotifTestRunPlan.psm1') -Force
 
-$names = 'CI', 'MOTIF_BUILD_NODES', 'MOTIF_TEST_SLOTS', 'MOTIF_TEST_THREADS', 'MOTIF_TEST_SLOT_DIR', 'TMPDIR', 'TMP', 'TEMP'
+$names = 'CI', 'MOTIF_BUILD_NODES', 'MOTIF_TEST_SLOTS', 'MOTIF_TEST_THREADS', 'MOTIF_TEST_PROCESSES', 'MOTIF_TEST_SLOT_DIR', 'TMPDIR', 'TMP', 'TEMP'
 $saved = @{}
 $realTempPath = [IO.Path]::GetTempPath()
 foreach ($name in $names) { $saved[$name] = [Environment]::GetEnvironmentVariable($name) }
@@ -52,6 +52,14 @@ try {
     Set-Environment @{ CI = 'true'; MOTIF_TEST_SLOTS = '2' }
     Assert-Equal (Get-MotifTestSlotCount -ProcessorCount 20) 2 'CI honours an explicit slot count'
 
+    Set-Environment @{}
+    Assert-Equal (Get-MotifTestProcessConcurrency -ProcessorCount 20) 6 'processes for a third of 20'
+    Assert-Equal (Get-MotifTestProcessConcurrency -ProcessorCount 4) 2 'process floor'
+    Assert-Equal (Get-MotifTestProcessConcurrency -ProcessorCount 64) 8 'process ceiling'
+    Set-Environment @{ MOTIF_TEST_PROCESSES = '3' }
+    Assert-Equal (Get-MotifTestProcessConcurrency -ProcessorCount 20) 3 'explicit processes'
+    Set-Environment @{ MOTIF_TEST_PROCESSES = 'x' }
+    Assert-Equal (Get-MotifTestProcessConcurrency -ProcessorCount 20) 6 'bad processes fall back'
     Set-Environment @{}
     Assert-Equal (Get-MotifTestThreadCount -ProjectConcurrency 3 -ProcessorCount 20) 6 'threads for a third of 20'
     Assert-Equal (Get-MotifTestThreadCount -ProjectConcurrency 12 -ProcessorCount 20) 2 'thread floor'
