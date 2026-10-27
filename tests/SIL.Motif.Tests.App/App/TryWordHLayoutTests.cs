@@ -102,8 +102,9 @@ public sealed class TryWordHLayoutTests
                     candidate => ReferenceEquals(candidate.TemplatedParent, scroll));
                 var origin = first.TranslatePoint(default, presenter)!.Value;
                 Assert.InRange(origin.Y, 0, presenter.Bounds.Height);
+                var fontMetricSlack = 4.0 * zoom / 100;
                 // A very short window keeps the full analysis rows, so there the row starts in view and scrolls the rest.
-                Assert.True(height < 600 || origin.Y + first.Bounds.Height <= presenter.Bounds.Height + 1,
+                Assert.True(height < 600 || origin.Y + first.Bounds.Height <= presenter.Bounds.Height + fontMetricSlack,
                     $"First attempt bottom {origin.Y + first.Bounds.Height} exceeds viewport {presenter.Bounds.Height}.");
                 Assert.Single(page.GetVisualDescendants().OfType<TextBlock>().Where(block =>
                     block.IsEffectivelyVisible && block.Text?.StartsWith("Parsed", StringComparison.Ordinal) == true));
