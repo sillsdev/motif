@@ -390,6 +390,7 @@ public sealed class MainWindowSmokeTests
         {
             var (workspace, window, _) = NewComposedWindow();
             window.EnsureAllPageViews();
+            window.RealizeLazyContent();
 
             Assert.Same(workspace, window.DataContext);
             Assert.Equal("Motif (tech demo)", window.Title);

@@ -69,7 +69,7 @@
 
     <Panel Grid.Row="1">
       <Panel IsVisible="{Binding ShowMatrixContent}" Classes.waiting="{Binding Assess.IsActive}">
-        <ContentControl x:Name="CompareHost" />
+        <views:LazyContent x:Name="CompareHost" />
         <views:CopyableTextBlock Classes="muted" Text="{x:Static app:MotifAppStrings.NoResultsYetChooseTheWords}"
             IsVisible="{Binding ShowEmptyResults}" HorizontalAlignment="Center" VerticalAlignment="Center" />
       </Panel>
@@ -95,12 +95,12 @@
           <ContentControl x:Name="AnalyzeParsePromptHost" Grid.Row="1" IsVisible="{Binding ShowAnalyzeParsePrompt}"
                           HorizontalAlignment="Left" />
           <ContentControl x:Name="AnalyzeReaderHost" Grid.Row="2" IsVisible="{Binding ShowTextReader}" />
-          <ContentControl x:Name="WordListHost" Grid.Row="2" IsVisible="{Binding ShowWordList}" />
+          <views:LazyContent x:Name="WordListHost" Grid.Row="2" IsVisible="{Binding ShowWordList}" />
         </Grid>
       </Grid>
       </ScrollViewer>
-      <ContentControl x:Name="ListsHost" IsVisible="{Binding ShowLists}" Classes.waiting="{Binding Assess.IsActive}" />
-      <ContentControl x:Name="DifferenceHost" IsVisible="{Binding ShowWhatChanged}" />
+      <views:LazyContent x:Name="ListsHost" IsVisible="{Binding ShowLists}" Classes.waiting="{Binding Assess.IsActive}" />
+      <views:LazyContent x:Name="DifferenceHost" IsVisible="{Binding ShowWhatChanged}" />
       <ContentControl x:Name="CentredParsePromptHost" IsVisible="{Binding ShowCentredParsePrompt}"
                       HorizontalAlignment="Center" VerticalAlignment="Center" />
     </Panel>

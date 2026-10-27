@@ -63,14 +63,14 @@ public sealed partial class TextsPage : UserControl, IWorkspacePaneProvider
         analyzeScroll.SizeChanged += (_, _) => FitAnalyzeHeight();
         FitAnalyzeHeight();
 
-        Host("CompareHost").Content = new ComparePanel(page.Assess.Compare);
+        Lazy("CompareHost", () => new ComparePanel(page.Assess.Compare));
         var selection = new SelectionPanel(page.Selection, page.Words, settings);
         _selectionHost.Content = selection;
         PrepareSidePanel();
         Host("AnalyzeReaderHost").Content = new ResultsInTextPanel(page.ResultsInText);
-        Host("WordListHost").Content = new TextWordsPanel(page.Words);
-        Host("ListsHost").Content = new TextsListsPanel(page.TextsLists);
-        Host("DifferenceHost").Content = new DifferencePanel(page.Assess.Difference);
+        Lazy("WordListHost", () => new TextWordsPanel(page.Words));
+        Lazy("ListsHost", () => new TextsListsPanel(page.TextsLists));
+        Lazy("DifferenceHost", () => new DifferencePanel(page.Assess.Difference));
 
         // One prompt, moved between its two places, so the page never holds two buttons of the same name.
         var prompt = new Border { Classes = { "card" }, Child = new ParsePrompt { DataContext = page.Context } };
@@ -107,6 +107,11 @@ public sealed partial class TextsPage : UserControl, IWorkspacePaneProvider
         analyze.ColumnSpacing = 0;
         foreach (var child in analyze.Children) Grid.SetColumn(child, 0);
     }
+
+    // A tab's panel is built when its tab is first shown, not when the page is.
+    private void Lazy(string name, Func<Control> build) =>
+        (this.FindControl<LazyContent>(name) ?? throw new InvalidOperationException($"TextsPage.axaml has no element named '{name}'."))
+            .Factory = build;
 
     private ContentControl Host(string name) =>
         this.FindControl<ContentControl>(name)
