@@ -7,6 +7,7 @@ Import-Module (Join-Path $PSScriptRoot 'MotifTestRunPlan.psm1') -Force
 
 $names = 'CI', 'MOTIF_BUILD_NODES', 'MOTIF_TEST_SLOTS', 'MOTIF_TEST_THREADS', 'MOTIF_TEST_SLOT_DIR', 'TMPDIR', 'TMP', 'TEMP'
 $saved = @{}
+$realTempPath = [IO.Path]::GetTempPath()
 foreach ($name in $names) { $saved[$name] = [Environment]::GetEnvironmentVariable($name) }
 
 function Assert-Equal {
@@ -78,7 +79,7 @@ try {
     Set-Environment @{ MOTIF_TEST_SLOT_DIR = '/shared/slots' }
     Assert-Equal (Get-MotifTestSlotDirectory) '/shared/slots' 'MOTIF_TEST_SLOT_DIR wins'
 
-    $blocker = Join-Path ([IO.Path]::GetTempPath()) "motif-slot-blocker-$([guid]::NewGuid().ToString('N'))"
+    $blocker = Join-Path $realTempPath "motif-slot-blocker-$([guid]::NewGuid().ToString('N'))"
     [IO.File]::WriteAllText($blocker, 'x')
     try {
         Set-Environment @{ MOTIF_TEST_SLOTS = '2' }
