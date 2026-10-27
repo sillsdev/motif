@@ -30,7 +30,7 @@ public sealed class WordRowOpenLayoutSystemTests(ITestOutputHelper output)
         using var layoutLog = new LayoutLoopLogScope(output);
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (workspace, window) = await PageScreenshots.OpenOverSampleData();
+            var (workspace, window) = await PageScreenshots.OpenOverSampleData(seedReaderToken: false);
             var application = Application.Current!;
             var originalTheme = application.RequestedThemeVariant;
             var originalZoom = WindowZoomPolicy.Transform.ScaleX;

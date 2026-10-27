@@ -29,7 +29,7 @@ public sealed class ParsimonyWorkspacePaneTests
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (workspace, window) = await PageScreenshots.OpenOverSampleData(seedReaderToken: false, advancedAiModeEnabled: true,
+            var (workspace, window) = await PageScreenshots.OpenOverSampleData(parse: false, advancedAiModeEnabled: true,
                 configure: (fake, _) => ParsimonyStateScreenshots.Configure(fake, "dense-review"));
             try
             {
@@ -107,7 +107,7 @@ public sealed class ParsimonyWorkspacePaneTests
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (workspace, window) = await PageScreenshots.OpenOverSampleData(seedReaderToken: false, advancedAiModeEnabled: true,
+            var (workspace, window) = await PageScreenshots.OpenOverSampleData(parse: false, composeWindow: false, advancedAiModeEnabled: true,
                 configure: (fake, _) => ParsimonyStateScreenshots.Configure(fake, "suppressed-with-reason"));
             var resultWindow = new MotifTestWindow { Width = 1280, Height = 820 };
             try
@@ -187,7 +187,7 @@ public sealed class ParsimonyWorkspacePaneTests
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (workspace, window) = await PageScreenshots.OpenOverSampleData(seedReaderToken: false, advancedAiModeEnabled: true,
+            var (workspace, window) = await PageScreenshots.OpenOverSampleData(parse: false, composeWindow: false, advancedAiModeEnabled: true,
                 configure: (fake, _) => ParsimonyStateScreenshots.Configure(fake, "listed-evidence"));
             var resultWindow = new MotifTestWindow { Width = 1280, Height = 820 };
             try
@@ -316,7 +316,7 @@ public sealed class ParsimonyWorkspacePaneTests
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (workspace, window) = await PageScreenshots.OpenOverSampleData(seedReaderToken: false, advancedAiModeEnabled: true,
+            var (workspace, window) = await PageScreenshots.OpenOverSampleData(parse: false, composeWindow: false, advancedAiModeEnabled: true,
                 configure: (fake, _) => ParsimonyStateScreenshots.Configure(fake, "listed-evidence"));
             var hostWindow = new MotifTestWindow { Width = 1300, Height = 820 };
             try
@@ -387,7 +387,7 @@ public sealed class ParsimonyWorkspacePaneTests
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (workspace, window) = await PageScreenshots.OpenOverSampleData(seedReaderToken: false, advancedAiModeEnabled: true,
+            var (workspace, window) = await PageScreenshots.OpenOverSampleData(parse: false, composeWindow: false, advancedAiModeEnabled: true,
                 configure: (fake, _) => ConfigureMixedFindingKinds(fake));
             var shellWindow = new MotifTestWindow { Width = 1300, Height = 780 };
             try
@@ -450,7 +450,7 @@ public sealed class ParsimonyWorkspacePaneTests
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (workspace, window) = await PageScreenshots.OpenOverSampleData(seedReaderToken: false, advancedAiModeEnabled: true,
+            var (workspace, window) = await PageScreenshots.OpenOverSampleData(parse: false, composeWindow: false, advancedAiModeEnabled: true,
                 configure: (fake, _) => ParsimonyStateScreenshots.Configure(fake, state));
             var shellWindow = new MotifTestWindow { Width = 1300, Height = 780 };
             try
@@ -486,7 +486,7 @@ public sealed class ParsimonyWorkspacePaneTests
             var reports = new TaskCompletionSource<CommandOutcome<ParsimonyReportSetResponse?>>(
                 TaskCreationOptions.RunContinuationsAsynchronously);
             var setReads = 0;
-            var (workspace, window) = await PageScreenshots.OpenOverSampleData(seedReaderToken: false, advancedAiModeEnabled: true,
+            var (workspace, window) = await PageScreenshots.OpenOverSampleData(parse: false, composeWindow: false, advancedAiModeEnabled: true,
                 configure: (fake, _) =>
                 {
                     ParsimonyWorkspacePaneTests.ConfigureMixedFindingKinds(fake);

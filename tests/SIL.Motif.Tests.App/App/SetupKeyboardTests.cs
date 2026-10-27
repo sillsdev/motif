@@ -22,7 +22,7 @@ public sealed class SetupKeyboardTests
         MotifTestWindow Window, FakeCommandClient Fake)> OpenAsync(int step)
     {
         FakeCommandClient? captured = null;
-        var (workspace, frame) = await PageScreenshots.OpenOverSampleData(configure: (fake, _) => captured = fake);
+        var (workspace, frame) = await PageScreenshots.OpenOverSampleData(parse: false, composeWindow: false, configure: (fake, _) => captured = fake);
         var setup = workspace.Context.Setup!;
         setup.IsOpen = true;
         setup.Step = step;

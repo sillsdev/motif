@@ -20,7 +20,7 @@ public sealed class NarrowWindowLayoutTests
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (workspace, window) = await PageScreenshots.OpenOverSampleData(parse: true);
+            var (workspace, window) = await PageScreenshots.OpenOverSampleData(seedReaderToken: false);
             try
             {
                 var failures = new List<string>();

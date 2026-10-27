@@ -217,7 +217,7 @@ public sealed class HFrameActionTests(AvaloniaHeadlessFixture avalonia)
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (workspace, window) = await PageScreenshots.OpenOverSampleData();
+            var (workspace, window) = await PageScreenshots.OpenOverSampleData(seedReaderToken: false);
             try
             {
                 SettingsTestAccess.Model(window)

@@ -55,7 +55,7 @@ public sealed class ExpertTracePanelTests
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (workspace, window) = await PageScreenshots.OpenOverSampleData(configure: (fake, _) =>
+            var (workspace, window) = await PageScreenshots.OpenOverSampleData(seedReaderToken: false, configure: (fake, _) =>
                 fake.TraceWordCompletesWith(PageScreenshots.TraceWithIdentities()));
             try
             {

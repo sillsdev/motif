@@ -77,7 +77,7 @@ public sealed class WordRowEverywhereTests
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (workspace, window) = await PageScreenshots.OpenOverSampleData();
+            var (workspace, window) = await PageScreenshots.OpenOverSampleData(seedReaderToken: false);
             try
             {
                 var texts = workspace.PageModel<TextsPageModel>();
@@ -170,7 +170,7 @@ public sealed class WordRowEverywhereTests
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             FakeCommandClient? client = null;
-            var (workspace, window) = await PageScreenshots.OpenOverSampleData(configure: (fake, assessment) =>
+            var (workspace, window) = await PageScreenshots.OpenOverSampleData(seedReaderToken: list == "review", configure: (fake, assessment) =>
             {
                 OverviewTimingScreenshots.ReadOverviewAndTiming(fake, assessment);
                 client = fake;
