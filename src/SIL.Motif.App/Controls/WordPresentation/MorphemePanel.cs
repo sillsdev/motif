@@ -310,8 +310,10 @@ public sealed class MorphemePanel : Decorator
                 var previous = parts[index - 1];
                 var current = parts[index];
                 if (Math.Abs(previous.Bounds.Top - current.Bounds.Top) > 0.5) continue;
-                var x = previous.Bounds.Right + SeparatorOffset;
-                context.DrawLine(pen, new Point(x, previous.Bounds.Top), new Point(x, previous.Bounds.Bottom));
+                if (previous.TranslatePoint(new Point(previous.Bounds.Width + SeparatorOffset, 0), this) is not { } top ||
+                    previous.TranslatePoint(new Point(previous.Bounds.Width + SeparatorOffset, previous.Bounds.Height), this) is not { } bottom)
+                    continue;
+                context.DrawLine(pen, top, bottom);
             }
         }
 
@@ -340,6 +342,8 @@ public sealed class MorphemePanel : Decorator
             Child = _parts;
         }
         var morphs = Morphs ?? [];
+        WritingSystemText.SetFlowId(_parts, morphs.FirstOrDefault()?.FormWritingSystem);
+        WritingSystemText.SetFlowEnabled(_parts, true);
         var limit = OverflowRequest is null ? morphs.Count : Math.Min(MaxVisibleMorphs, morphs.Count);
         var visible = morphs.Take(limit).ToArray();
         if (InlineParts)
@@ -437,9 +441,18 @@ public sealed class MorphemePanel : Decorator
         part.Classes.Add("morphemePanelInspectable");
         AutomationProperties.SetName(part, $"Inspect {morph.Form}");
         ToolTip.SetTip(part, $"Show {morph.Form} in the inspector");
+        Point? pressedAt = null;
+        part.AddHandler(PointerPressedEvent, (_, e) =>
+        {
+            pressedAt = e.GetCurrentPoint(part).Properties.IsLeftButtonPressed ? e.GetPosition(part) : null;
+        }, RoutingStrategies.Tunnel, handledEventsToo: true);
         part.PointerReleased += (_, e) =>
         {
-            if (e.InitialPressMouseButton != MouseButton.Left || e.Source is Visual source &&
+            var moved = pressedAt is { } start ? e.GetPosition(part) - start : default;
+            pressedAt = null;
+            if (Math.Abs(moved.X) > 4 || Math.Abs(moved.Y) > 4 ||
+                e.Source is SelectableTextBlock { SelectedText.Length: > 0 } ||
+                e.InitialPressMouseButton != MouseButton.Left || e.Source is Visual source &&
                 source.FindAncestorOfType<HyperlinkButton>(includeSelf: true) is not null)
                 return;
             part.Focus(NavigationMethod.Pointer);

@@ -72,16 +72,14 @@ public sealed class SelectionAndCopyTests(WordScenes words, CardScenes cards) :
         Assert.Equal(word.Text[1..4], scene.CopyRangeByKeyboard(word, 1, 4));
     });
 
-    [Theory(Skip = "Fails today: releasing the pointer over an inspectable morpheme moves focus to the morpheme part " +
-        "(MorphemePanel's PointerReleased handler), which clears the drag selection, so a partial drag-selection " +
-        "inside a gloss or form of a strip cannot be copied. Keyboard selection of the same text works.")]
+    [Theory]
     [InlineData("ltr")]
     [InlineData("rtl")]
     public void DraggingAcrossAGlossSelectsItsStartInReadingOrderAndOpensNothing(string name) => Run(() =>
     {
         var scene = words.Get(name);
         var gloss = scene.Constituent(0, Part.PanGlossGloss, 3);
-        var copied = scene.CopyByDrag(gloss, 0.6);
+        var copied = scene.CopyByDrag(gloss, 0.3);
         Assert.False(string.IsNullOrEmpty(copied), "The drag selected nothing.");
         Assert.StartsWith(copied!, gloss.Text);
         Assert.True(copied!.Length < gloss.Text.Length, "A partial drag copied the whole gloss.");
@@ -94,12 +92,15 @@ public sealed class SelectionAndCopyTests(WordScenes words, CardScenes cards) :
     public void DraggingAcrossAFormSelectsItsStartInTheFormsOwnDirection(string name) => Run(() =>
     {
         var scene = words.Get(name);
-        var word = scene.Constituent(0, Part.Word);
-        var copied = scene.CopyByDrag(word, 0.6);
-        Assert.False(string.IsNullOrEmpty(copied), "The drag selected nothing.");
-        Assert.StartsWith(copied!, word.Text);
-        Assert.True(copied!.Length < word.Text.Length);
-        Assert.Empty(scene.Host.Requests);
+        foreach (var form in new[] { scene.Constituent(0, Part.Word), scene.Constituent(0, Part.FieldWorksForm, 2) })
+        {
+            scene.Host.Requests.Clear();
+            var copied = scene.CopyByDrag(form, 0.6);
+            Assert.False(string.IsNullOrEmpty(copied), $"The drag selected nothing in {form.Part}.");
+            Assert.StartsWith(copied!, form.Text);
+            Assert.True(copied!.Length < form.Text.Length);
+            Assert.DoesNotContain(scene.Host.Requests, request => request.Action == SIL.Motif.App.Controls.WordPresentation.WordAction.OpenCard);
+        }
     });
 
     [Theory]

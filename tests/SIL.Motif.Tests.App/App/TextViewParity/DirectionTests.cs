@@ -71,9 +71,7 @@ public sealed class DirectionTests(LineScenes lines, CardScenes cards) : IClassF
                 AssertOrder(scene, word, part, rightToLeft: false);
     });
 
-    [Fact(Skip = "Fails today: a reader word strip is hosted in an items container that does not inherit the line's " +
-        "right-to-left FlowDirection, so words wrap right-to-left but the morpheme columns inside each word still run " +
-        "left-to-right (morpheme 0 is leftmost).")]
+    [Fact]
     public void RightToLeftMorphemeColumnsMirrorInBothProducers() => Run(() =>
     {
         var scene = lines.Get("rtl");
@@ -82,7 +80,7 @@ public sealed class DirectionTests(LineScenes lines, CardScenes cards) : IClassF
                 AssertOrder(scene, word, part, rightToLeft: true);
     });
 
-    [Fact(Skip = "Fails today: the word card is not mirrored for right-to-left text, so its morpheme columns run left-to-right.")]
+    [Fact]
     public void RightToLeftMorphemeColumnsMirrorInTheCard() => Run(() =>
     {
         var scene = cards.Get("rtl");

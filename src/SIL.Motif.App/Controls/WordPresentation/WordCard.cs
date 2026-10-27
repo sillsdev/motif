@@ -7,6 +7,7 @@ using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Avalonia.VisualTree;
 using SIL.Motif.App.Controls;
+using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 
@@ -290,6 +291,16 @@ public sealed partial class WordCard : UserControl
             _ => (WordAction?)null,
         };
         if (action is not { } requestAction) return;
+        if (requestAction is WordAction.NavigateCardPrevious or WordAction.NavigateCardNext)
+        {
+            var token = Document?.Sections.OfType<WordCardAnalysis>().Select(section => section.Token)
+                .FirstOrDefault(item => item is not null);
+            var writingSystem = token?.TextWritingSystem ?? token?.FormWritingSystem;
+            if (WritingSystemText.GetResolver(this)?.Resolve(TextStyleRequest.Linguistic(writingSystem)).FlowDirection ==
+                Avalonia.Media.FlowDirection.RightToLeft)
+                requestAction = requestAction == WordAction.NavigateCardPrevious
+                    ? WordAction.NavigateCardNext : WordAction.NavigateCardPrevious;
+        }
         e.Handled = true;
         var opinion = entry.Behavior switch
         {

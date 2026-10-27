@@ -422,7 +422,7 @@ public sealed partial class WordStripToken : Border
     {
         if (Data is not { IsWord: true } token || KeyboardShortcutRegistry.IsTextInput(e.Source)) return;
         var entry = KeyboardShortcutRegistry.Find(KeyboardShortcutScope.TextReader, e.Key, e.KeyModifiers,
-            targetBehaviors: [KeyboardShortcutBehavior.CloseWordCard]) ??
+            targetBehaviors: [KeyboardShortcutBehavior.CloseWordCard, KeyboardShortcutBehavior.OpenWordCard]) ??
             KeyboardShortcutRegistry.Find(KeyboardShortcutScope.TextReader, e.Key, e.KeyModifiers);
         if (entry is null || !KeyboardShortcutRegistry.Allows(entry, isTextInput: false, hasFocusedItem: true)) return;
         switch (entry.Behavior)
@@ -434,8 +434,9 @@ public sealed partial class WordStripToken : Border
             case KeyboardShortcutBehavior.PreviousWord:
             case KeyboardShortcutBehavior.NextWord:
                 e.Handled = true;
-                await NavigateAsync(token, entry.Behavior == KeyboardShortcutBehavior.PreviousWord
-                    ? WordAction.NavigatePrevious : WordAction.NavigateNext);
+                var previous = entry.Behavior == KeyboardShortcutBehavior.PreviousWord;
+                if (_wordText.FlowDirection == Avalonia.Media.FlowDirection.RightToLeft) previous = !previous;
+                await NavigateAsync(token, previous ? WordAction.NavigatePrevious : WordAction.NavigateNext);
                 break;
             case KeyboardShortcutBehavior.PreviousLine:
             case KeyboardShortcutBehavior.NextLine:

@@ -50,6 +50,9 @@
   <Style Selector="StackPanel.morphemePanelPart.different :is(TextBlock)">
     <Setter Property="Foreground" Value="{DynamicResource Intent.Outcome.Different}" />
   </Style>
+  <Style Selector=":is(SelectableTextBlock).morphemePanelForm, :is(SelectableTextBlock).morphemePanelGloss, :is(SelectableTextBlock).morphemePanelCategory">
+    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
+  </Style>
   <Style Selector=":is(TextBlock).morphemePanelForm">
     <Setter Property="FontSize" Value="{StaticResource Intent.Type.Body}" />
   </Style>

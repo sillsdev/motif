@@ -36,7 +36,7 @@ public sealed class HitTestTests(LineScenes lines, CardScenes cards) : IClassFix
         foreach (var constituent in others)
         {
             var hit = scene.VisualAt(scene.Centre(constituent));
-            Assert.True(hit is not null && Reaches(constituent, others, hit),
+            Assert.True(hit is not null && Reaches(constituent, hit),
                 $"{constituent.Part} {constituent.Morph} '{constituent.Text}' is not what the pointer reaches at its centre ({scene.Bounds(constituent.Visual)} in a {scene.Window.Width} window): {hit?.GetType().Name}.");
         }
     });
@@ -96,12 +96,12 @@ public sealed class HitTestTests(LineScenes lines, CardScenes cards) : IClassFix
         foreach (var constituent in others)
         {
             var hit = scene.VisualAt(scene.Centre(constituent));
-            Assert.True(hit is not null && Reaches(constituent, others, hit),
+            Assert.True(hit is not null && Reaches(constituent, hit),
                 $"{constituent.Part} {constituent.Morph} '{constituent.Text}' is not what the pointer reaches at its centre ({scene.Bounds(constituent.Visual)} in a {scene.Window.Width} window): {hit?.GetType().Name}.");
         }
     });
 
-    [Fact(Skip = "Fails today: in the right-to-left card the pointer at the centre of the first form reaches nothing (GetVisualAt is null), so that form cannot be clicked there.")]
+    [Fact]
     public void TheRightToLeftCardsConstituentsAreHitAtTheirCentres() => Run(() =>
     {
         var scene = cards.Get("rtl");
@@ -109,14 +109,12 @@ public sealed class HitTestTests(LineScenes lines, CardScenes cards) : IClassFix
         foreach (var constituent in others)
         {
             var hit = scene.VisualAt(scene.Centre(constituent));
-            Assert.True(hit is not null && Reaches(constituent, others, hit),
+            Assert.True(hit is not null && Reaches(constituent, hit),
                 $"{constituent.Part} {constituent.Morph} '{constituent.Text}' is not what the pointer reaches at its centre ({scene.Bounds(constituent.Visual)} in a {scene.Window.Width} window): {hit?.GetType().Name}.");
         }
     });
 
     /// <summary>True when the pointer reaches the constituent or a visual over it.</summary>
-    private static bool Reaches(Constituent constituent, IReadOnlyList<Constituent> all, Visual hit) =>
-        ReferenceEquals(hit, constituent.Visual) || constituent.Visual.IsVisualAncestorOf(hit) ||
-        !all.Any(other => !ReferenceEquals(other, constituent) &&
-            (ReferenceEquals(hit, other.Visual) || other.Visual.IsVisualAncestorOf(hit)));
+    private static bool Reaches(Constituent constituent, Visual hit) =>
+        ReferenceEquals(hit, constituent.Visual) || constituent.Visual.IsVisualAncestorOf(hit);
 }

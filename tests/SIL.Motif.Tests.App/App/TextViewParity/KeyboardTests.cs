@@ -82,7 +82,8 @@ public sealed class KeyboardTests(LineScenes lines, CardScenes cards) : IClassFi
         var key = scene.TokenOf(1).PresentationKey;
         var expected = new (Key Key, WordAction Action)[]
         {
-            (Key.Right, WordAction.NavigateNext), (Key.Left, WordAction.NavigatePrevious),
+            (Key.Right, scene.Sample.RightToLeft ? WordAction.NavigatePrevious : WordAction.NavigateNext),
+            (Key.Left, scene.Sample.RightToLeft ? WordAction.NavigateNext : WordAction.NavigatePrevious),
             (Key.Down, WordAction.NavigateNextLine), (Key.Up, WordAction.NavigatePreviousLine),
             (Key.PageDown, WordAction.NavigateNextPage), (Key.PageUp, WordAction.NavigatePreviousPage),
             (Key.Home, WordAction.NavigateFirst), (Key.End, WordAction.NavigateLast),
@@ -101,7 +102,7 @@ public sealed class KeyboardTests(LineScenes lines, CardScenes cards) : IClassFi
         Assert.Empty(wrong);
     });
 
-    [Fact(Skip = "Fails today: Enter on a focused word strip sends no request in a headless window, although the shortcut table binds it like Space. Unchecked whether real Enter differs.")]
+    [Fact]
     public void EnterOpensTheWordCardLikeSpace() => Run(() =>
     {
         var scene = lines.Get("ltr");
@@ -122,8 +123,29 @@ public sealed class KeyboardTests(LineScenes lines, CardScenes cards) : IClassFi
         Assert.True(gloss.Visual.Focus());
         scene.Press(Key.Right);
         var request = Assert.Single(scene.Host.Requests);
-        Assert.Equal(WordAction.NavigateNext, request.Action);
+        Assert.Equal(scene.Sample.RightToLeft ? WordAction.NavigatePrevious : WordAction.NavigateNext, request.Action);
         Assert.Equal(scene.TokenOf(2).PresentationKey, request.Key);
+    });
+
+    [Theory]
+    [InlineData("ltr")]
+    [InlineData("rtl")]
+    public void HorizontalArrowsMoveTheOpenCardInTheTextsVisualDirection(string name) => Run(() =>
+    {
+        var scene = cards.Get(name);
+        scene.TheCard.HandlesTextReaderShortcuts = true;
+        foreach (var (key, action) in new[]
+        {
+            (Key.Left, scene.Sample.RightToLeft ? WordAction.NavigateCardNext : WordAction.NavigateCardPrevious),
+            (Key.Right, scene.Sample.RightToLeft ? WordAction.NavigateCardPrevious : WordAction.NavigateCardNext),
+        })
+        {
+            scene.Host.Requests.Clear();
+            scene.TheCard.FocusCard();
+            scene.Press(key);
+            Assert.Equal(action, Assert.Single(scene.Host.Requests).Action);
+        }
+        scene.TheCard.HandlesTextReaderShortcuts = false;
     });
 
     [Theory]
