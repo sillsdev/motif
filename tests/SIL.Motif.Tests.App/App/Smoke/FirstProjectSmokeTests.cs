@@ -3,8 +3,10 @@ using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.LogicalTree;
 using Avalonia.VisualTree;
+using SIL.Motif.App;
 using SIL.Motif.App.Controls;
 using SIL.Motif.App.ViewModels;
+using SIL.Motif.App.Views;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Tests.App.Walkthrough;
@@ -266,6 +268,12 @@ public sealed class FirstProjectSmokeTests(PristineProjectFixture pristine)
                 InteractiveControlFamily.SelectableText,
                 InteractiveControlFamily.Collection);
             walkthrough.ShowPage(WorkspacePage.Timing);
+            var statistics = walkthrough.Window.GetLogicalDescendants().OfType<Expander>()
+                .Single(expander => Equals(expander.Header, MotifAppStrings.TimingDetailedStatisticsHeading));
+            statistics.IsExpanded = true;
+            walkthrough.WaitUntil(() => walkthrough.Window.GetVisualDescendants().OfType<StatisticsPanel>()
+                    .Any(panel => panel.IsEffectivelyVisible), WalkthroughSteps.Remaining(deadline),
+                "Timing statistics did not appear");
             InteractiveControlSweep.AssertScene(walkthrough, "completed Timing",
                 InteractiveControlFamily.Action,
                 InteractiveControlFamily.Link,
