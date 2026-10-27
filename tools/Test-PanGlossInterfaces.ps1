@@ -177,7 +177,7 @@ try {
     if (-not (Test-Path -LiteralPath $sampleProjectsPath -PathType Leaf)) {
         throw "SampleProjects is missing; build it with ./build.ps1: $sampleProjectsPath"
     }
-    $dotnetHost = Get-Command dotnet -CommandType Application -ErrorAction Stop
+    $dotnetHost = Get-Command dotnet -CommandType Application -TotalCount 1 -ErrorAction Stop
     $generatedRoot = Join-Path $ProbeRoot 'generated'
     $generation = Invoke-ChildProcess $dotnetHost.Source @(
         $sampleProjectsPath, 'interface-probe', $generatedRoot) 'SampleProjects'

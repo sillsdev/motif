@@ -393,7 +393,7 @@ try {
         if (-not (Test-Path -LiteralPath $sampleProjectsAssembly -PathType Leaf)) {
             throw "The SampleProjects assembly is missing: $sampleProjectsAssembly"
         }
-        $dotnetHost = Get-Command dotnet -CommandType Application -ErrorAction Stop
+        $dotnetHost = Get-Command dotnet -CommandType Application -TotalCount 1 -ErrorAction Stop
         $sampleOutputRoot = Join-Path $walkthroughRoot 'project-output'
         $sampleBuildOutput = & $dotnetHost.Source $sampleProjectsAssembly build $sampleSpecPath $sampleOutputRoot 2>&1
         if ($LASTEXITCODE -ne 0) {
