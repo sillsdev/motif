@@ -15,6 +15,7 @@ using SIL.Motif.Contract.Commands;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.App;
 using SIL.Motif.App.Controls;
 using PresentationWordRow = SIL.Motif.App.Controls.WordPresentation.WordRow;
 using SIL.Motif.App.Services;
@@ -39,6 +40,46 @@ public sealed class WorkflowShellTests
     private readonly AvaloniaHeadlessFixture _avalonia;
 
     public WorkflowShellTests(AvaloniaHeadlessFixture avalonia) => _avalonia = avalonia;
+
+    [Fact]
+    public void WorkspaceViewCanBeHostedInAPlainWindowAndSwitchPages()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var workspace = NewWorkspace();
+            var view = new MotifWorkspaceView();
+            var window = new Window { Width = 1100, Height = 800, Content = view, DataContext = workspace };
+            MotifTestWindow.MergeControlHeights(window);
+            var launcher = new AvaloniaLauncher(window);
+            var host = new MotifWorkspaceHost(workspace, window, new MemoryUserPreferencesStore(),
+                ApplicationFacts.Current, launcher, ProblemReportWindowServices.ForWindow(window, launcher),
+                _ => Task.CompletedTask);
+            try
+            {
+                SIL.Motif.App.Controls.WritingSystemText.SetResolver(window, workspace.Context.TextStyles);
+                view.Attach(host);
+                window.Show();
+                Assert.True(view.UpdateLayoutViewport(window, window.ClientSize.Width));
+                view.UpdateChromeClasses(window.ClientSize.Width, window.Height);
+                PageScreenshots.Settle(window);
+
+                Assert.NotNull(view.FindControl<ListBox>("PageList"));
+                Assert.NotNull(view.FindControl<Border>("StatusBar"));
+                var pageHost = Assert.IsType<Panel>(view.FindControl<Panel>("PageHost"));
+                workspace.CurrentPage = WorkspacePage.Review;
+                PageScreenshots.Settle(window);
+                var page = Assert.Single(pageHost.Children, child => child.Name == "ReviewPage");
+                Assert.True(page.IsEffectivelyVisible);
+                Assert.Contains(window.GetVisualDescendants(), control =>
+                    AutomationProperties.GetAutomationId(control) == AutomationIds.Pages && control.IsEffectivelyVisible);
+            }
+            finally
+            {
+                window.Close();
+                await workspace.DisposeAsync();
+            }
+        }, TimeSpan.FromMinutes(1));
+    }
 
     [Fact]
     public void NoViewNamesASemiColourKey()
@@ -86,7 +127,7 @@ public sealed class WorkflowShellTests
             try
             {
                 window.EnsureAllPageViews();
-                var host = window.FindControl<Panel>("PageHost")!;
+                var host = window.FindInWindowOrWorkspace<Panel>("PageHost")!;
                 Assert.Equal(PageHosts, host.Children.Select(child => child.Name));
                 foreach (var page in Enum.GetValues<WorkspacePage>())
                 {
@@ -236,7 +277,7 @@ public sealed class WorkflowShellTests
                 window.Show();
                 window.UpdateLayout();
 
-                var sidebar = window.FindControl<Border>("Sidebar")!;
+                var sidebar = window.FindInWindowOrWorkspace<Border>("Sidebar")!;
                 Assert.True(workspace.IsSidebarCollapsed);
                 Assert.Equal(44, sidebar.Bounds.Width);
                 Assert.All(SidebarEntries(window), entry => Assert.False(Label(entry).IsEffectivelyVisible));
@@ -282,10 +323,10 @@ public sealed class WorkflowShellTests
                     : new Thickness(12, 0, 8, 0);
                 Assert.Equal(chromePadding, topBar.Padding);
 
-                var projectName = window.FindControl<TextBlock>("ProjectNameLabel")!;
+                var projectName = window.FindInWindowOrWorkspace<TextBlock>("ProjectNameLabel")!;
                 Assert.True(Application.Current!.TryGetResource("Intent.Type.Body", window.ActualThemeVariant, out var body));
                 Assert.Equal(body, projectName.FontSize);
-                Assert.Equal(5, window.FindControl<Menu>("MainMenu")!.Items.OfType<MenuItem>().Count());
+                Assert.Equal(5, window.FindInWindowOrWorkspace<Menu>("MainMenu")!.Items.OfType<MenuItem>().Count());
             }
             finally
             {
@@ -303,13 +344,13 @@ public sealed class WorkflowShellTests
             try
             {
                 window.Show();
-                var entries = window.FindControl<MenuItem>("FileMenu")!.Items.OfType<MenuItem>().ToList();
+                var entries = window.FindInWindowOrWorkspace<MenuItem>("FileMenu")!.Items.OfType<MenuItem>().ToList();
                 Assert.Equal(["SelectNewMenuItem", "OpenRecentMenuItem", "RefreshMenuItem", "ConfigureMenuItem", "ExitMenuItem"],
                     entries.Select(entry => entry.Name));
                 Assert.Same(workspace.SelectNewProjectCommand, entries[0].Command);
                 Assert.Same(workspace.RefreshCommand, entries[2].Command);
                 Assert.Same(workspace.ConfigureCommand, entries[3].Command);
-                Assert.Equal("WritingSystemsMenuItem", window.FindControl<MenuItem>("ToolsMenu")!.Items
+                Assert.Equal("WritingSystemsMenuItem", window.FindInWindowOrWorkspace<MenuItem>("ToolsMenu")!.Items
                     .OfType<MenuItem>().Last().Name);
 
                 var newestSeen = DateTimeOffset.UtcNow;
@@ -359,8 +400,8 @@ public sealed class WorkflowShellTests
 
                 Assert.True(workspace.IsProjectOpening);
                 window.OpenFileMenu();
-                Assert.True(window.FindControl<MenuItem>("SelectNewMenuItem")!.IsEffectivelyEnabled);
-                var configure = window.FindControl<MenuItem>("ConfigureMenuItem")!;
+                Assert.True(window.FindInWindowOrWorkspace<MenuItem>("SelectNewMenuItem")!.IsEffectivelyEnabled);
+                var configure = window.FindInWindowOrWorkspace<MenuItem>("ConfigureMenuItem")!;
                 Assert.False(configure.IsEffectivelyEnabled);
                 Assert.Equal(WorkspaceShellViewModel.ConfigureNeedsBaselineText, ToolTip.GetTip(configure));
 
@@ -484,7 +525,7 @@ public sealed class WorkflowShellTests
             {
                 window.Show();
                 window.OpenFileMenu();
-                var menu = window.FindControl<MenuItem>("SelectNewMenuItem")!;
+                var menu = window.FindInWindowOrWorkspace<MenuItem>("SelectNewMenuItem")!;
                 Assert.True(menu.IsEffectivelyEnabled);
 
                 workspace.Assess.State = RunState.Running;
@@ -549,10 +590,10 @@ public sealed class WorkflowShellTests
 
                 Assert.False(workspace.HasFreshness);
                 Assert.Equal(string.Empty, workspace.ProjectChipStatusText);
-                Assert.True(string.IsNullOrEmpty(window.FindControl<TextBlock>("ProjectChipDetail")!.Text));
+                Assert.True(string.IsNullOrEmpty(window.FindInWindowOrWorkspace<TextBlock>("ProjectChipDetail")!.Text));
                 Assert.True(ButtonNamed(window, "Refresh the project").IsEffectivelyVisible);
                 Assert.False(ButtonNamed(window, "Refresh the project").IsEffectivelyEnabled);
-                Assert.Null(window.FindControl<Control>("ChooseWhatToParseButton"));
+                Assert.Null(window.FindInWindowOrWorkspace<Control>("ChooseWhatToParseButton"));
                 Assert.False(workspace.ShowsParseAllWordsAction);
                 Assert.DoesNotContain(window.GetVisualDescendants().OfType<Button>(), button =>
                     button.IsEffectivelyVisible && AutomationProperties.GetName(button) == "See what the refresh changed");
@@ -733,7 +774,7 @@ public sealed class WorkflowShellTests
 
                 window.EnsureAllPageViews();
                 window.RealizeLazyContent();
-                var pages = window.FindControl<Panel>("PageHost")!.Children;
+                var pages = window.FindInWindowOrWorkspace<Panel>("PageHost")!.Children;
                 var tryPage = Assert.IsType<TryAWordPage>(pages.Single(page => page.Name == "TryAWordPage"));
                 var tryWord = Assert.Single(tryPage.GetLogicalDescendants().OfType<TryWordPanel>());
                 Assert.Same(workspace.Assess.Trace, tryWord.Trace);
@@ -797,7 +838,7 @@ public sealed class WorkflowShellTests
         ?? throw new InvalidOperationException($"No control named '{name}'.");
 
     private static List<ListBoxItem> SidebarEntries(MainWindow window) =>
-        window.FindControl<ListBox>("PageList")!.GetLogicalDescendants().OfType<ListBoxItem>().ToList();
+        window.FindInWindowOrWorkspace<ListBox>("PageList")!.GetLogicalDescendants().OfType<ListBoxItem>().ToList();
 
     private static ListBoxItem Entry(IEnumerable<ListBoxItem> entries, WorkspacePage page) =>
         entries.Single(entry => entry.DataContext is PageViewModel model && model.Page == page);

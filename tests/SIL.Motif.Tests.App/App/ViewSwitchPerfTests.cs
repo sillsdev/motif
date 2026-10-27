@@ -92,7 +92,7 @@ public sealed class ViewSwitchPerfTests
                     Assert.Equal(zoom, workspace.PageModel<SettingsPageModel>().Settings!.ZoomPercent);
                     Assert.Equal(zoom / 100d, WindowZoomPolicy.Transform.ScaleX);
                     Assert.Equal(zoom / 100d, WindowZoomPolicy.Transform.ScaleY);
-                    var zoomRoot = window.FindControl<LayoutTransformControl>("RootLayoutTransform");
+                    var zoomRoot = window.FindInWindowOrWorkspace<LayoutTransformControl>("RootLayoutTransform");
                     Assert.NotNull(zoomRoot);
                     Assert.Same(WindowZoomPolicy.Transform, zoomRoot!.LayoutTransform);
 

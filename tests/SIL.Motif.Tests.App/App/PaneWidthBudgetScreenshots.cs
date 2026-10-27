@@ -36,7 +36,7 @@ public sealed class PaneWidthBudgetScreenshots
                     Application.Current.RequestedThemeVariant = theme == "dark" ? ThemeVariant.Dark : ThemeVariant.Light;
                     workspace.CurrentPage = WorkspacePage.Texts;
                     PageScreenshots.Settle(window);
-                    var host = window.FindControl<WorkspaceLayoutHost>("WorkspaceLayout")!;
+                    var host = window.FindInWindowOrWorkspace<WorkspaceLayoutHost>("WorkspaceLayout")!;
                     var railEntry = window.GetVisualDescendants().OfType<ListBoxItem>().Single(item =>
                         item.DataContext is PageViewModel { Page: WorkspacePage.Texts });
                     HeadlessClick.Click(window, railEntry, "Texts side panel");

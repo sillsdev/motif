@@ -328,7 +328,7 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                 workspace.Context.TextStyles.MissingFontNotices.Add(
                     new WritingSystemFontNotice("v-7", "FieldWorks asks for a missing font."));
                 PageScreenshots.Settle(window);
-                var noticeOpener = window.FindControl<Button>("NoticeDetailsButton")!;
+                var noticeOpener = window.FindInWindowOrWorkspace<Button>("NoticeDetailsButton")!;
                 HeadlessClick.Click(window, noticeOpener, "See project notices");
                 var noticeFlyout = Assert.IsType<Flyout>(noticeOpener.Flyout);
                 Assert.True(noticeFlyout.IsOpen);
@@ -894,8 +894,8 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                 var (workspace, window) = await PageScreenshots.OpenOverSampleData(settingsFilePath: settingsPath);
                 try
                 {
-                    var sidebarFooter = window.FindControl<StackPanel>("SidebarFooter")!;
-                    var selectionSummary = window.FindControl<CopyableTextBlock>("StatusSelectionSummary")!;
+                    var sidebarFooter = window.FindInWindowOrWorkspace<StackPanel>("SidebarFooter")!;
+                    var selectionSummary = window.FindInWindowOrWorkspace<CopyableTextBlock>("StatusSelectionSummary")!;
                     Assert.True(double.IsNaN(sidebarFooter.Height));
                     Assert.Equal(TextWrapping.NoWrap, selectionSummary.TextWrapping);
                     Assert.Equal(TextTrimming.CharacterEllipsis, selectionSummary.TextTrimming);
@@ -903,7 +903,7 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                     window.Height = 780;
                     var page = OpenSettings(window);
                     var zoomIn = Button(page, "Zoom in");
-                    var zoomRoot = window.FindControl<LayoutTransformControl>("RootLayoutTransform")!;
+                    var zoomRoot = window.FindInWindowOrWorkspace<LayoutTransformControl>("RootLayoutTransform")!;
                     var zooms = new[] { (Percent: 100, Clicks: 0), (Percent: 150, Clicks: 3) };
 
                     foreach (var zoom in zooms)

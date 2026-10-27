@@ -67,7 +67,7 @@ public sealed class ProposalsResponsiveScreenshots
                 await model.ShowSetAsideCommand.ExecuteAsync(null);
                 workspace.CurrentPage = WorkspacePage.Proposals;
                 var page = window.PageView<ProposalsPage>();
-                var host = window.FindControl<WorkspaceLayoutHost>("WorkspaceLayout")!;
+                var host = window.FindInWindowOrWorkspace<WorkspaceLayoutHost>("WorkspaceLayout")!;
                 PageScreenshots.Settle(window);
 
                 Assert.Equal(ProposalsCaptureFixture.SelectedProposalId, model.SelectedProposal?.ProposalId);

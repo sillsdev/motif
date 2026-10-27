@@ -204,7 +204,7 @@ public sealed class WarningsPagePaneTests
 
                 var panel = Assert.Single(window.GetVisualDescendants().OfType<GrammarPanel>());
                 var list = panel.FindControl<ListBox>("GrammarPanelRowsItems")!;
-                var layoutHost = Assert.IsType<WorkspaceLayoutHost>(window.FindControl<WorkspaceLayoutHost>("WorkspaceLayout"));
+                var layoutHost = Assert.IsType<WorkspaceLayoutHost>(window.FindInWindowOrWorkspace<WorkspaceLayoutHost>("WorkspaceLayout"));
                 var inspectorPane = layoutHost.FindControl<Border>("InspectorPane")!;
                 var inspectorStrip = layoutHost.FindControl<Button>("InspectorStrip")!;
                 var inspectorHost = layoutHost.FindControl<ContentControl>("PageInspectorHost")!;

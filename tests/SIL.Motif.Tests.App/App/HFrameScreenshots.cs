@@ -50,7 +50,7 @@ public sealed class HFrameScreenshots
                     if (page == WorkspacePage.Texts) workspace.PageModel<TextsPageModel>().Tab = TextsTab.AnalyzeTexts;
                     PageScreenshots.Save(window, Path.Combine(folder, $"frame-{page}-{width}-{height}-{zoom}-{theme}.png"));
                 }
-                var settings = window.FindControl<Button>("SettingsButton")!;
+                var settings = window.FindInWindowOrWorkspace<Button>("SettingsButton")!;
                 PageScreenshots.Settle(window);
                 var point = settings.TranslatePoint(new Point(settings.Bounds.Width / 2, settings.Bounds.Height / 2), window)!.Value;
                 window.MouseDown(point, MouseButton.Left);

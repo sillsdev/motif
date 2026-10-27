@@ -156,9 +156,9 @@ public sealed class FooterHeightBudgetTests(AvaloniaHeadlessFixture avalonia)
                     }
                 }
                 var minimum = (double)window.FindResource("Component.Shell.WorkingPageMinHeight")!;
-                Assert.True(window.FindControl<Panel>("PageHost")!.Bounds.Height >= minimum - 0.5,
-                    $"The page is {window.FindControl<Panel>("PageHost")!.Bounds.Height} tall; the minimum is {minimum}. " +
-                    $"Host {window.FindControl<WorkspaceLayoutHost>("WorkspaceLayout")!.Bounds.Height}, notice {window.FindControl<ScrollViewer>("TechDemoNoticeViewport")!.Bounds.Height}/{window.FindControl<ScrollViewer>("TechDemoNoticeViewport")!.MaxHeight}, footer {window.GetVisualDescendants().OfType<ScrollViewer>().First(v => v.Name == "PageActionFooterViewport").Bounds.Height}/{window.GetVisualDescendants().OfType<ScrollViewer>().First(v => v.Name == "PageActionFooterViewport").MaxHeight}.");
+                Assert.True(window.FindInWindowOrWorkspace<Panel>("PageHost")!.Bounds.Height >= minimum - 0.5,
+                    $"The page is {window.FindInWindowOrWorkspace<Panel>("PageHost")!.Bounds.Height} tall; the minimum is {minimum}. " +
+                    $"Host {window.FindInWindowOrWorkspace<WorkspaceLayoutHost>("WorkspaceLayout")!.Bounds.Height}, notice {window.FindInWindowOrWorkspace<ScrollViewer>("TechDemoNoticeViewport")!.Bounds.Height}/{window.FindInWindowOrWorkspace<ScrollViewer>("TechDemoNoticeViewport")!.MaxHeight}, footer {window.GetVisualDescendants().OfType<ScrollViewer>().First(v => v.Name == "PageActionFooterViewport").Bounds.Height}/{window.GetVisualDescendants().OfType<ScrollViewer>().First(v => v.Name == "PageActionFooterViewport").MaxHeight}.");
             }
             finally
             {

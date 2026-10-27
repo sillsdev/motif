@@ -21,7 +21,7 @@ public sealed class ChromeScreenshots
             var (workspace, window) = await PageScreenshots.OpenOverSampleData(parse: false);
             try
             {
-                var topBar = Assert.IsType<Border>(window.FindControl<Border>("TopBar"));
+                var topBar = Assert.IsType<Border>(window.FindInWindowOrWorkspace<Border>("TopBar"));
                 topBar.Classes.Set("windowsChrome", true);
                 foreach (var width in new[] { 820d, 1040d, 1240d })
                 {
@@ -32,7 +32,7 @@ public sealed class ChromeScreenshots
 
                 var popup = SettingsViewTests.OpenSettings(window);
                 var settings = Assert.IsType<SettingsViewModel>(popup.DataContext);
-                var gear = Assert.IsType<Button>(window.FindControl<Button>("SettingsButton"));
+                var gear = Assert.IsType<Button>(window.FindInWindowOrWorkspace<Button>("SettingsButton"));
                 foreach (var zoom in new[] { 100, 150 })
                 {
                     settings.ZoomPercent = zoom;

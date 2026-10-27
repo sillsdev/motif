@@ -259,7 +259,7 @@ public sealed class ProjectSwitchTests
                 parts.Workspace.Selection.PastedWords = "word";
                 window.UpdateLayout();
                 window.OpenFileMenu();
-                var projectMenu = Assert.IsType<MenuItem>(window.FindControl<MenuItem>("SelectNewMenuItem"));
+                var projectMenu = Assert.IsType<MenuItem>(window.FindInWindowOrWorkspace<MenuItem>("SelectNewMenuItem"));
                 var page = window.PageView<TextsPage>();
                 var selectionHost = Assert.IsType<ContentControl>(page.FindControl<ContentControl>("SelectionHost"));
                 var search = Assert.Single(selectionHost.GetLogicalDescendants().OfType<TextBox>(), control =>

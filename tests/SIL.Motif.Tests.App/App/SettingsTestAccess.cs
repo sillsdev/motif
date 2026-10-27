@@ -33,7 +33,7 @@ internal static class SettingsTestAccess
         PageScreenshots.Settle(window);
         if (workspace.CurrentPage != WorkspacePage.Settings)
         {
-            HeadlessClick.Click(window, window.FindControl<Button>("SettingsButton")!, "Settings");
+            HeadlessClick.Click(window, window.FindInWindowOrWorkspace<Button>("SettingsButton")!, "Settings");
             PageScreenshots.Settle(window);
         }
         Assert.Equal(WorkspacePage.Settings, workspace.CurrentPage);
@@ -49,7 +49,7 @@ internal static class SettingsTestAccess
         var reopenNavigation = !page.Navigation.IsEffectivelyVisible;
         if (reopenNavigation)
         {
-            HeadlessClick.Click(window, window.FindControl<Button>("SettingsButton")!, "Settings");
+            HeadlessClick.Click(window, window.FindInWindowOrWorkspace<Button>("SettingsButton")!, "Settings");
             PageScreenshots.Settle(window);
         }
         Assert.True(page.Navigation.IsEffectivelyVisible);

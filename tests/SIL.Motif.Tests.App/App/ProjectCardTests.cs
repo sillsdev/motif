@@ -38,11 +38,11 @@ public sealed class ProjectCardTests
                 Assert.Contains(workspace.ProjectName, AutomationProperties.GetName(chip), StringComparison.Ordinal);
                 Assert.Contains(workspace.FreshnessLabel, AutomationProperties.GetName(chip), StringComparison.Ordinal);
                 Assert.Equal(workspace.ProjectChipAccessibleName, ToolTip.GetTip(chip));
-                var detail = window.FindControl<TextBlock>("ProjectChipDetail")!;
+                var detail = window.FindInWindowOrWorkspace<TextBlock>("ProjectChipDetail")!;
                 Assert.True(detail.IsEffectivelyVisible);
                 Assert.StartsWith("· " + workspace.FreshnessLabel, detail.Text, StringComparison.Ordinal);
-                Assert.True(window.FindControl<Border>("TopBarSeparator")!.IsEffectivelyVisible);
-                Assert.Equal(MenuNames, window.FindControl<Menu>("MainMenu")!.Items.OfType<MenuItem>().Select(item => item.Name));
+                Assert.True(window.FindInWindowOrWorkspace<Border>("TopBarSeparator")!.IsEffectivelyVisible);
+                Assert.Equal(MenuNames, window.FindInWindowOrWorkspace<Menu>("MainMenu")!.Items.OfType<MenuItem>().Select(item => item.Name));
 
                 window.Width = 700;
                 PageScreenshots.Settle(window);
@@ -94,7 +94,7 @@ public sealed class ProjectCardTests
                 Assert.True(workspace.FreshnessIsCurrent);
                 Assert.False(workspace.FreshnessIsStale);
                 Assert.Empty(client.CaptureBaselineRequests);
-                var refresh = window.FindControl<Button>("RefreshIconButton")!;
+                var refresh = window.FindInWindowOrWorkspace<Button>("RefreshIconButton")!;
                 Assert.True(refresh.IsEffectivelyVisible && refresh.IsEffectivelyEnabled);
                 Assert.Same(workspace.RefreshCommand, refresh.Command);
                 HeadlessClick.Click(window, refresh, MotifAppStrings.RefreshAccessibleName);
@@ -149,21 +149,21 @@ public sealed class ProjectCardTests
             var (workspace, window) = await PageScreenshots.OpenOverSampleData(parse: false);
             try
             {
-                var menu = window.FindControl<Menu>("MainMenu")!;
+                var menu = window.FindInWindowOrWorkspace<Menu>("MainMenu")!;
                 window.Width = 700;
                 PageScreenshots.Settle(window);
                 var button = Assert.Single(menu.Items.OfType<MenuItem>());
                 Assert.Equal(AutomationIds.MenuButton, AutomationProperties.GetAutomationId(button));
                 Assert.Equal(MotifAppStrings.MainMenuButtonAccessibleName, AutomationProperties.GetName(button));
                 Assert.Equal(MenuNames, button.Items.OfType<MenuItem>().Select(item => item.Name));
-                Assert.Same(button, window.FindControl<MenuItem>("FileMenu")!.Parent);
-                Assert.Equal("Undo", Plain(window.FindControl<MenuItem>("UndoMenuItem")!));
-                Assert.Same(window.FindControl<MenuItem>("EditMenu"), window.FindControl<MenuItem>("UndoMenuItem")!.Parent);
+                Assert.Same(button, window.FindInWindowOrWorkspace<MenuItem>("FileMenu")!.Parent);
+                Assert.Equal("Undo", Plain(window.FindInWindowOrWorkspace<MenuItem>("UndoMenuItem")!));
+                Assert.Same(window.FindInWindowOrWorkspace<MenuItem>("EditMenu"), window.FindInWindowOrWorkspace<MenuItem>("UndoMenuItem")!.Parent);
 
                 window.Width = 1240;
                 PageScreenshots.Settle(window);
                 Assert.Equal(MenuNames, menu.Items.OfType<MenuItem>().Select(item => item.Name));
-                Assert.Same(menu, window.FindControl<MenuItem>("FileMenu")!.Parent);
+                Assert.Same(menu, window.FindInWindowOrWorkspace<MenuItem>("FileMenu")!.Parent);
             }
             finally
             {
@@ -185,9 +185,9 @@ public sealed class ProjectCardTests
                 PageScreenshots.Settle(window);
                 window.KeyPress(Key.E, RawInputModifiers.Alt, PhysicalKey.E, null);
                 PageScreenshots.Settle(window);
-                var button = window.FindControl<Menu>("MainMenu")!.Items.OfType<MenuItem>().Single();
+                var button = window.FindInWindowOrWorkspace<Menu>("MainMenu")!.Items.OfType<MenuItem>().Single();
                 Assert.True(button.IsSubMenuOpen, "Alt+E did not open the menu button.");
-                Assert.True(window.FindControl<MenuItem>("EditMenu")!.IsSubMenuOpen, "Alt+E did not open Edit.");
+                Assert.True(window.FindInWindowOrWorkspace<MenuItem>("EditMenu")!.IsSubMenuOpen, "Alt+E did not open Edit.");
             }
             finally
             {

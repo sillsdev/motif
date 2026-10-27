@@ -195,7 +195,7 @@ public sealed class SizeMatrixScreenshots
                     refusedWorkspace.CurrentPage = WorkspacePage.Overview;
                     Assert.True(refusedWorkspace.HasRefreshRefusal);
                     // The refusal lives in the notice details flyout, so the capture opens it as a person does.
-                    var opener = refusedWindow.FindControl<Button>("NoticeDetailsButton")!;
+                    var opener = refusedWindow.FindInWindowOrWorkspace<Button>("NoticeDetailsButton")!;
                     HeadlessClick.Click(refusedWindow, opener, "See project notices");
                     PageScreenshots.Settle(refusedWindow);
                     var details = Assert.IsAssignableFrom<Control>(Assert.IsType<Flyout>(opener.Flyout).Content);
@@ -271,8 +271,8 @@ public sealed class SizeMatrixScreenshots
 
     private static void CloseRecentProjects(MainWindow window)
     {
-        window.FindControl<MenuItem>("OpenRecentMenuItem")!.IsSubMenuOpen = false;
-        window.FindControl<MenuItem>("FileMenu")!.IsSubMenuOpen = false;
+        window.FindInWindowOrWorkspace<MenuItem>("OpenRecentMenuItem")!.IsSubMenuOpen = false;
+        window.FindInWindowOrWorkspace<MenuItem>("FileMenu")!.IsSubMenuOpen = false;
         PageScreenshots.Settle(window);
     }
 

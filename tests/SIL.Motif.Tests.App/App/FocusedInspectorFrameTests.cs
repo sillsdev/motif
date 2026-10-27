@@ -35,7 +35,7 @@ public sealed class FocusedInspectorFrameTests
                 workspace.PageModel<SettingsPageModel>().Settings!.ZoomPercent = zoom;
                 window.Show();
                 PageScreenshots.Settle(window);
-                var host = window.FindControl<WorkspaceLayoutHost>("WorkspaceLayout")!;
+                var host = window.FindInWindowOrWorkspace<WorkspaceLayoutHost>("WorkspaceLayout")!;
                 var working = host.FindControl<ContentControl>("WorkingPageHost")!;
                 var region = Assert.IsType<Grid>(working.GetVisualParent());
                 var content = working.Content;
@@ -86,7 +86,7 @@ public sealed class FocusedInspectorFrameTests
                 workspace.PageModel<SettingsPageModel>().Settings!.ZoomPercent = 150;
                 window.Show();
                 PageScreenshots.Settle(window);
-                var host = window.FindControl<WorkspaceLayoutHost>("WorkspaceLayout")!;
+                var host = window.FindInWindowOrWorkspace<WorkspaceLayoutHost>("WorkspaceLayout")!;
                 var working = host.FindControl<ContentControl>("WorkingPageHost")!;
                 var region = Assert.IsType<Grid>(working.GetVisualParent());
                 var content = working.Content;

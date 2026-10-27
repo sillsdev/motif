@@ -58,11 +58,11 @@ public sealed class LongProjectTitleTests
                 workspace.CurrentPage = WorkspacePage.Warnings;
                 PageScreenshots.Settle(window);
                 Assert.True(workspace.ShowsChooseWhatToParseAction);
-                Assert.Null(window.FindControl<Button>("ChooseWhatToParseButton"));
+                Assert.Null(window.FindInWindowOrWorkspace<Button>("ChooseWhatToParseButton"));
                 var chip = ProjectCardAccess.Chip(window);
-                var refresh = window.FindControl<Button>("RefreshIconButton")!;
-                var nameText = window.FindControl<TextBlock>("ProjectNameLabel")!;
-                var mainMenu = window.FindControl<Menu>("MainMenu")!;
+                var refresh = window.FindInWindowOrWorkspace<Button>("RefreshIconButton")!;
+                var nameText = window.FindInWindowOrWorkspace<TextBlock>("ProjectNameLabel")!;
+                var mainMenu = window.FindInWindowOrWorkspace<Menu>("MainMenu")!;
                 AssertInside(window, mainMenu);
                 Assert.True(Bounds(mainMenu, window).Right <= Bounds(chip, window).Left + 1,
                     "The project chip overlaps the menu bar.");
@@ -83,7 +83,7 @@ public sealed class LongProjectTitleTests
                 Assert.True(chipBounds.Top < refreshBounds.Bottom && refreshBounds.Top < chipBounds.Bottom,
                     "Refresh shares the chip's row.");
                 // The top bar is one row: the chip and Refresh share it with the menus.
-                var topBar = window.FindControl<Border>("TopBar")!;
+                var topBar = window.FindInWindowOrWorkspace<Border>("TopBar")!;
                 Assert.True(Bounds(topBar, window).Height <= (double)window.FindResource("Component.TopBar.Height")! *
                     (zoom / 100d) + 1, "The chip pushed the top bar past its one row.");
                 var card = ProjectCardAccess.Open(window);

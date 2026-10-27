@@ -35,7 +35,7 @@ public sealed class HFrameActionTests(AvaloniaHeadlessFixture avalonia)
                 window.Height = 780;
                 progress.Report(new AssessmentProgress(AssessmentStage.Parsing, 1, 3, "Parsing"));
                 PageScreenshots.Settle(window);
-                var status = window.FindControl<Button>("StatusParseProgress")!;
+                var status = window.FindInWindowOrWorkspace<Button>("StatusParseProgress")!;
                 Assert.True(status.IsEffectivelyVisible);
                 var track = Assert.Single(status.GetVisualDescendants().OfType<ProgressBar>());
                 Assert.Equal(60, track.Bounds.Width);
@@ -80,7 +80,7 @@ public sealed class HFrameActionTests(AvaloniaHeadlessFixture avalonia)
                 workspace.PageOf(WorkspacePage.Review).BadgeCount = 3;
                 workspace.PageOf(WorkspacePage.Warnings).BadgeCount = 2;
                 PageScreenshots.Settle(window);
-                foreach (var action in window.FindControl<Border>("TopBar")!.GetVisualDescendants()
+                foreach (var action in window.FindInWindowOrWorkspace<Border>("TopBar")!.GetVisualDescendants()
                     .OfType<Button>().Where(button => button.IsEffectivelyVisible))
                     AssertInside(window, action);
                 foreach (var (name, page) in new[]
@@ -88,7 +88,7 @@ public sealed class HFrameActionTests(AvaloniaHeadlessFixture avalonia)
                 {
                     workspace.CurrentPage = WorkspacePage.Overview;
                     PageScreenshots.Settle(window);
-                    var button = window.FindControl<Button>(name)!;
+                    var button = window.FindInWindowOrWorkspace<Button>(name)!;
                     AssertInside(window, button);
                     Click(window, button);
                     PageScreenshots.Settle(window);
@@ -229,8 +229,8 @@ public sealed class HFrameActionTests(AvaloniaHeadlessFixture avalonia)
                 window.Width = 640;
                 PageScreenshots.Settle(window);
                 Assert.Equal(full["Baseline of ".Length..], workspace.FreshnessDetail);
-                var narrowChip = window.FindControl<Button>("ProjectChip")!;
-                Assert.False(window.FindControl<TextBlock>("ProjectChipDetail")!.IsEffectivelyVisible,
+                var narrowChip = window.FindInWindowOrWorkspace<Button>("ProjectChip")!;
+                Assert.False(window.FindInWindowOrWorkspace<TextBlock>("ProjectChipDetail")!.IsEffectivelyVisible,
                     "Narrow, the chip keeps its name and dot alone.");
                 Assert.Contains(workspace.FreshnessLabel, AutomationProperties.GetName(narrowChip), StringComparison.Ordinal);
                 var card = ProjectCardAccess.Open(window);
@@ -268,7 +268,7 @@ public sealed class HFrameActionTests(AvaloniaHeadlessFixture avalonia)
                     .ZoomPercent = zoom;
                 workspace.CurrentPage = page;
                 PageScreenshots.Settle(window);
-                var rail = window.FindControl<ListBox>("PageList")!;
+                var rail = window.FindInWindowOrWorkspace<ListBox>("PageList")!;
                 var current = workspace.PageOf(page);
                 Assert.Equal(page, workspace.CurrentPage);
                 Assert.Same(current, rail.SelectedItem);
@@ -306,7 +306,7 @@ public sealed class HFrameActionTests(AvaloniaHeadlessFixture avalonia)
                 SettingsTestAccess.Model(window)
                     .ZoomPercent = zoom;
                 workspace.CurrentPage = WorkspacePage.Overview;
-                var rail = window.FindControl<ListBox>("PageList")!;
+                var rail = window.FindInWindowOrWorkspace<ListBox>("PageList")!;
                 rail.ItemsSource = workspace.VisiblePages.Where(page => page.Page != WorkspacePage.Texts).ToArray();
                 workspace.CurrentPage = WorkspacePage.Texts;
                 PageScreenshots.Settle(window);

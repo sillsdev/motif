@@ -311,7 +311,7 @@ public sealed class FirstRunSetupWalkthroughTests(PristineProjectFixture pristin
             });
             // Overview, Texts and Review offer the action in the page; every page offers it in the project card.
             walkthrough.ShowPage(WorkspacePage.Timing);
-            Assert.Null(walkthrough.Window.FindControl<Button>("ChooseWhatToParseButton"));
+            Assert.Null(walkthrough.Window.FindInWindowOrWorkspace<Button>("ChooseWhatToParseButton"));
             var card = ProjectCardAccess.Open(walkthrough.Window);
             var cardAction = card.FindControl<Button>("CardChooseButton");
             Assert.NotNull(cardAction);

@@ -34,7 +34,7 @@ public sealed class SettingsSectionAnchorTests
                 SettingsTestAccess.Model(window).ZoomPercent = 150;
                 window.Show();
                 var page = SettingsTestAccess.Open(window);
-                HeadlessClick.Click(window, window.FindControl<Button>("SettingsButton")!, "Settings");
+                HeadlessClick.Click(window, window.FindInWindowOrWorkspace<Button>("SettingsButton")!, "Settings");
                 PageScreenshots.Settle(window);
                 var groups = page.Navigation.FindControl<ListBox>("SettingsGroups")!;
                 var index = SettingsTestAccess.Model(window).PageGroupOptions.ToList()
@@ -43,7 +43,7 @@ public sealed class SettingsSectionAnchorTests
                 HeadlessClick.Click(window, item, "Keyboard shortcuts");
                 PageScreenshots.Settle(window);
                 Assert.Equal(SettingsGroup.KeyboardShortcuts, SettingsTestAccess.Model(window).SelectedGroup);
-                var host = window.FindControl<WorkspaceLayoutHost>("WorkspaceLayout")!;
+                var host = window.FindInWindowOrWorkspace<WorkspaceLayoutHost>("WorkspaceLayout")!;
                 HeadlessClick.Click(window, host.FindControl<Button>("SidePanelCollapseButton")!, "Collapse side bar");
                 PageScreenshots.Settle(window);
                 Capture(window, height, dark, "selected");

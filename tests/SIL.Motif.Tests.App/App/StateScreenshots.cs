@@ -273,11 +273,11 @@ public sealed class StateScreenshots(ITestOutputHelper output)
     {
         // The shell: menus and buttons in the top bar and the sidebar, on whichever page is behind them.
         yield return new("shell", "project-menu", stage => stage.OpenMenu(WorkspacePage.Overview,
-            () => stage.Window.FindControl<MenuItem>("FileMenu")!, "the File menu"));
+            () => stage.Window.FindInWindowOrWorkspace<MenuItem>("FileMenu")!, "the File menu"));
         yield return new("shell", "open-recent", async stage =>
         {
-            await stage.OpenMenu(WorkspacePage.Overview, () => stage.Window.FindControl<MenuItem>("FileMenu")!, "the File menu");
-            return await stage.OpenMenu(null, () => stage.Window.FindControl<MenuItem>("OpenRecentMenuItem")!, "Open recent");
+            await stage.OpenMenu(WorkspacePage.Overview, () => stage.Window.FindInWindowOrWorkspace<MenuItem>("FileMenu")!, "the File menu");
+            return await stage.OpenMenu(null, () => stage.Window.FindInWindowOrWorkspace<MenuItem>("OpenRecentMenuItem")!, "Open recent");
         })
         {
             // Opening the project menu reads the known projects again, so the client is what lists them.
@@ -290,9 +290,9 @@ public sealed class StateScreenshots(ITestOutputHelper output)
             },
         };
         yield return new("shell", "help", stage => stage.OpenMenu(WorkspacePage.Overview,
-            () => stage.Window.FindControl<Button>("HelpButton")!, "Help"));
+            () => stage.Window.FindInWindowOrWorkspace<Button>("HelpButton")!, "Help"));
         yield return new("shell", "help-texts", stage => stage.OpenMenu(WorkspacePage.Texts,
-            () => stage.Window.FindControl<Button>("HelpButton")!, "Help on Texts"));
+            () => stage.Window.FindInWindowOrWorkspace<Button>("HelpButton")!, "Help on Texts"));
         yield return new("shell", "refresh-tooltip", stage => stage.Hover(WorkspacePage.Overview,
             () => stage.Named<Button>("Refresh the project"), "Refresh", requireTooltip: true));
         yield return new("shell", "sidebar-hover", stage => stage.Hover(WorkspacePage.Overview,
@@ -300,7 +300,7 @@ public sealed class StateScreenshots(ITestOutputHelper output)
         yield return new("shell", "sidebar-focus", stage => stage.FocusFromKeyboard(WorkspacePage.Overview,
             () => stage.SidebarItem("Timing"), "the Timing sidebar entry"));
         yield return new("shell", "button-focus", stage => stage.FocusFromKeyboard(WorkspacePage.Overview,
-            () => stage.Window.FindControl<Button>("HelpButton")!, "Help"));
+            () => stage.Window.FindInWindowOrWorkspace<Button>("HelpButton")!, "Help"));
         yield return new("shell", "button-pressed", stage => stage.Press(WorkspacePage.Overview,
             () => stage.Named<Button>("Refresh the project"), "Refresh"));
 

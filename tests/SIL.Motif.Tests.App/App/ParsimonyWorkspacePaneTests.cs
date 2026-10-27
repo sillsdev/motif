@@ -42,7 +42,7 @@ public sealed class ParsimonyWorkspacePaneTests
                 var active = model.Rows.First(row => !row.IsHeader && row.Items == "ka- + -ni");
                 var asked = model.Rows.First(row => !row.IsHeader && row.Items == "ma- + -tu");
 
-                var host = window.FindControl<WorkspaceLayoutHost>("WorkspaceLayout")!;
+                var host = window.FindInWindowOrWorkspace<WorkspaceLayoutHost>("WorkspaceLayout")!;
                 var page = window.PageView<ParsimonyPage>();
                 Assert.False(host.FindControl<Border>("SidePanelBorder")!.IsVisible);
                 Assert.False(host.FindControl<Border>("InspectorPane")!.IsVisible);

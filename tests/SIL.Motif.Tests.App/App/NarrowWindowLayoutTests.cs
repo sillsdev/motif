@@ -29,16 +29,16 @@ public sealed class NarrowWindowLayoutTests
                     {
                         window.Width = width;
                         Settle(window);
-                        var topBar = window.FindControl<Border>("TopBar")!;
-                        var chip = window.FindControl<Button>("ProjectChip")!;
-                        var refresh = window.FindControl<Button>("RefreshIconButton")!;
+                        var topBar = window.FindInWindowOrWorkspace<Border>("TopBar")!;
+                        var chip = window.FindInWindowOrWorkspace<Button>("ProjectChip")!;
+                        var refresh = window.FindInWindowOrWorkspace<Button>("RefreshIconButton")!;
                         var barRight = topBar.TranslatePoint(new Point(topBar.Bounds.Width - topBar.Padding.Right, 0), window)!.Value.X;
                         var chipRight = chip.TranslatePoint(new Point(chip.Bounds.Width, 0), window)!.Value.X;
                         var refreshLeft = refresh.TranslatePoint(default, window)!.Value.X;
                         var refreshRight = refresh.TranslatePoint(new Point(refresh.Bounds.Width, 0), window)!.Value.X;
                         Assert.True(chipRight <= refreshLeft + 0.5, $"The chip ends at {chipRight}, past Refresh at {refreshLeft}.");
                         Assert.True(refreshRight <= barRight + 0.5, $"Refresh ends at {refreshRight}, past the top bar's content at {barRight}.");
-                        Assert.Equal(width >= 760, window.FindControl<TextBlock>("ProjectChipDetail")!.IsEffectivelyVisible);
+                        Assert.Equal(width >= 760, window.FindInWindowOrWorkspace<TextBlock>("ProjectChipDetail")!.IsEffectivelyVisible);
                     });
                 Check("Expanded Timing at 1040", () =>
                 {

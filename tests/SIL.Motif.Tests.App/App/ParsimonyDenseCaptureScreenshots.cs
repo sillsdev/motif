@@ -81,7 +81,7 @@ public sealed class ParsimonyDenseCaptureScreenshots
                     var model = workspace.PageModel<ParsimonyPageModel>();
                     await ParsimonyStateScreenshots.DriveDenseReviewAsync(model);
                     var page = window.PageView<ParsimonyPage>();
-                    var host = window.FindControl<WorkspaceLayoutHost>("WorkspaceLayout")!;
+                    var host = window.FindInWindowOrWorkspace<WorkspaceLayoutHost>("WorkspaceLayout")!;
                     Assert.Contains(host.Page!.GetVisualDescendants().OfType<ParsimonyPage>(),
                         hostedPage => ReferenceEquals(page, hostedPage));
                     var label = $"{theme.Name}/{viewport.Name}/{zoom}%";

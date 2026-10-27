@@ -3,7 +3,6 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.LogicalTree;
 using Avalonia.Controls.Primitives;
-using Avalonia.Data;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
@@ -18,9 +17,10 @@ using SIL.Motif.App.Views.Shell;
 namespace SIL.Motif.App.Views;
 
 /// <summary>
-/// The window frame holds the title bar, navigation rail, page panels and status bar. It stays minimal
-/// until <see cref="Compose"/> supplies its workspace and builds the pages, so a caller can construct and
-/// inspect the bare shell (<c>AppSmokeTests</c>) without standing up any command client or desktop adapter.
+/// The window shell holds the title bar, menu and project chip, and hosts one <see cref="MotifWorkspaceView"/>
+/// that carries the navigation rail, page panels and status bar. It stays minimal until <see cref="Compose"/>
+/// supplies its workspace and builds the pages, so a caller can construct and inspect the bare shell
+/// (<c>AppSmokeTests</c>) without standing up any command client or desktop adapter.
 /// </summary>
 public sealed partial class MainWindow : Window
 {
@@ -29,16 +29,9 @@ public sealed partial class MainWindow : Window
     private readonly IUserPreferencesStore _preferences;
     private readonly ApplicationFacts _applicationFacts;
     private ProblemReportPreviewWindow? _currentProblemReportPreview;
-    private string? _helpAutomationId;
-    private readonly DispatcherTimer _keyboardStatusTimer;
-    private Control? _inspectedFrom;
-    private SettingsViewModel? _settings;
-    private readonly Dictionary<WorkspacePage, Control> _pageViews = [];
-    private Panel? _pageHost;
-    private readonly WorkspaceLayoutHost? _layoutHost;
-    private HelpPopupView? HelpPopup =>
-        this.FindControl<Button>("HelpButton")?.Flyout is Flyout flyout ? flyout.Content as HelpPopupView : null;
-    private WorkspacePage _settingsReturnPage = WorkspacePage.Overview;
+    private readonly MotifWorkspaceView? _workspaceView;
+    private MotifWorkspaceHost? _host;
+    private SettingsViewModel? _settings => _host?.Settings;
 
     /// <summary>A window at the XAML's own size that neither reads nor writes the remembered bounds, as tests need.</summary>
     public MainWindow() : this(rememberBounds: false)
@@ -73,26 +66,16 @@ public sealed partial class MainWindow : Window
         _preferences = preferencesStore ?? new MemoryUserPreferencesStore();
         _applicationFacts = applicationFacts ?? ApplicationFacts.Current;
         AvaloniaXamlLoader.Load(this);
-        _layoutHost = this.FindControl<WorkspaceLayoutHost>("WorkspaceLayout");
-        if (_layoutHost is { } budgetHost && this.FindControl<ScrollViewer>("TechDemoNoticeViewport") is { } noticeViewport)
-            noticeViewport.Bind(MaxHeightProperty, budgetHost.GetObservable(WorkspaceLayoutHost.BandBudgetProperty));
-        if (_layoutHost is { } layoutHost)
+        _workspaceView = this.FindControl<MotifWorkspaceView>("WorkspaceView");
+        if (_workspaceView?.Layout is { } layoutHost)
             layoutHost.AttachedToVisualTree += (_, _) => UpdateFrameViewport(ClientSize.Width / (_settings?.ZoomScale ?? 1));
         SizeChanged += (_, e) =>
         {
             UpdateFrameViewport(e.NewSize.Width / (_settings?.ZoomScale ?? 1));
         };
-        _keyboardStatusTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
-        _keyboardStatusTimer.Tick += (_, _) =>
-        {
-            _keyboardStatusTimer.Stop();
-            ShowKeyboardStatus(null);
-        };
         _uriLauncher = uriLauncher ?? new AvaloniaLauncher(this);
         _problemReportServices = ProblemReportWindowServices.ForWindow(this, _uriLauncher);
         ConfigureWindowChrome();
-        if (HelpPopup is { } helpView)
-            helpView.DataContext = new HelpPopupViewModel(_uriLauncher);
         AddHandler(InputElement.KeyDownEvent, OnKeyDown, RoutingStrategies.Tunnel);
         if (this.FindControl<Menu>("MainMenu") is { } mainMenu) MenuShortcutDisplay.Apply(mainMenu);
         AddHandler(GotFocusEvent, RememberFocusOutsideMenu, RoutingStrategies.Bubble);
@@ -107,15 +90,6 @@ public sealed partial class MainWindow : Window
         RestoreBounds();
         Opened += (_, _) => ConstrainRestoredBounds();
         Closing += (_, _) => SaveBounds();
-    }
-
-    private async void OnParseReportProblemClick(object? sender, RoutedEventArgs e) =>
-        await ShowProblemReportAsync(ProblemReport.ForStalledParse(_applicationFacts)).ConfigureAwait(true);
-
-    private async void OnMachineStoreReportProblemClick(object? sender, RoutedEventArgs e)
-    {
-        if (DataContext is WorkspaceShellViewModel { Project.MachineStoreProblemReport: { } report })
-            await ShowProblemReportAsync(report).ConfigureAwait(true);
     }
 
     /// <summary>Shows the reviewed report before a person copies it or opens an issue form.</summary>
@@ -169,88 +143,23 @@ public sealed partial class MainWindow : Window
         return base.ArrangeOverride(finalSize);
     }
 
+    /// <summary>Finds a named control in the window or in the hosted view, which has its own name scope.</summary>
+    internal T? FindControl<T>(string name) where T : Control =>
+        NameScope.GetNameScope(this)?.Find(name) as T ?? _workspaceView?.FindControl<T>(name);
+
     /// <summary>Builds each page's view from its model with <see cref="PageRegistry"/>, and binds the window to <paramref name="workspace"/>.</summary>
     public void Compose(WorkspaceShellViewModel workspace)
     {
         ArgumentNullException.ThrowIfNull(workspace);
+        var view = _workspaceView
+            ?? throw new InvalidOperationException("MainWindow.axaml has no element named 'WorkspaceView'.");
         DataContext = workspace;
-        foreach (var name in new[] { "NoticeDetailsButton", "StatusParseProgress" })
-            if (this.FindControl<Button>(name)?.Flyout is Flyout { Content: Control content })
-                content.DataContext = workspace;
-        ConfigureSettings(workspace);
+        _host = new MotifWorkspaceHost(workspace, this, _preferences, _applicationFacts, _uriLauncher,
+            _problemReportServices, ShowProblemReportAsync);
+        ConfigureZoom();
         WritingSystemText.SetResolver(this, workspace.Context.TextStyles);
-
-        var host = this.FindControl<Panel>("PageHost")
-            ?? throw new InvalidOperationException("MainWindow.axaml has no element named 'PageHost'.");
-        workspace.PageModel<TextsPageModel>().ResultsInText.OpenPanGlossGuide = OpenPanGlossGuide;
-        _pageHost = host;
-        EnsurePageView(workspace, workspace.CurrentPage);
-
-        void UpdatePagePanels()
-        {
-            using var span = MotifTrace.BeginInSwitch("switch.view-attach");
-            this.FindControl<Button>("SettingsButton")?.Classes.Set("open", workspace.CurrentPage == WorkspacePage.Settings);
-            _layoutHost?.SetPagePanels(
-                _pageViews.GetValueOrDefault(workspace.CurrentPage) as IWorkspacePaneProvider);
-            _layoutHost?.ShowWorkingPage();
-            if (this.FindControl<ListBox>("PageList") is not { } pageRail) return;
-            var current = pageRail.Items.OfType<PageViewModel>().FirstOrDefault(page => page.Page == workspace.CurrentPage);
-            pageRail.SetCurrentValue(ListBox.SelectedItemProperty, current);
-        }
-        workspace.PropertyChanged += (_, changed) =>
-        {
-            if (changed.PropertyName == nameof(WorkspaceShellViewModel.CurrentPage))
-            {
-                EnsurePageView(workspace, workspace.CurrentPage);
-                UpdatePagePanels();
-                MotifTrace.EndAtFirstFrame(this);
-            }
-            UpdateNoticeBand();
-        };
-        workspace.PageModel<TextsPageModel>().PropertyChanged += (_, changed) =>
-        {
-            if (changed.PropertyName == nameof(TextsPageModel.Tab)) MotifTrace.EndAtFirstFrame(this);
-        };
-        workspace.Project.PropertyChanged += (_, _) => UpdateNoticeBand();
-        workspace.Context.TextStyles.MissingFontNotices.CollectionChanged += (_, _) => UpdateNoticeBand();
-        UpdateNoticeBand();
-        workspace.Inspector.PropertyChanged += (_, changed) =>
-        {
-            if (changed.PropertyName == nameof(InspectorViewModel.IsOpen))
-                _layoutHost?.SetObjectInspectorOpen(workspace.Inspector.IsOpen);
-        };
-        if (this.FindControl<ListBox>("PageList") is { } rail)
-        {
-            rail.Selection.LostSelection += (_, _) =>
-            {
-                var current = rail.Items.OfType<PageViewModel>().FirstOrDefault(page => page.Page == workspace.CurrentPage);
-                if (current is not null) rail.SetCurrentValue(ListBox.SelectedItemProperty, current);
-            };
-            WorkspacePage? pressedPage = null;
-            rail.AddHandler(InputElement.PointerPressedEvent, (_, e) =>
-            {
-                var item = e.Source as ListBoxItem ?? (e.Source as Control)?.FindAncestorOfType<ListBoxItem>();
-                pressedPage = item?.DataContext is PageViewModel { IsCurrent: true } page ? page.Page : null;
-            }, RoutingStrategies.Tunnel);
-            rail.AddHandler(InputElement.PointerReleasedEvent, (_, _) =>
-            {
-                if (pressedPage == workspace.CurrentPage) _layoutHost?.ToggleSidePanel();
-                pressedPage = null;
-            }, RoutingStrategies.Bubble, handledEventsToo: true);
-            rail.AddHandler(InputElement.KeyDownEvent, OnRailKeyDown, RoutingStrategies.Tunnel);
-        }
-        UpdatePagePanels();
-        _layoutHost?.SetObjectInspectorOpen(workspace.Inspector.IsOpen);
-        if (this.FindControl<Button>("StatusChanges") is { } changesStatus)
-            changesStatus.DataContext = workspace.PageOf(WorkspacePage.Review);
-        if (this.FindControl<Button>("StatusWarnings") is { } warningsStatus)
-            warningsStatus.DataContext = workspace.PageOf(WorkspacePage.Warnings);
+        view.Attach(_host);
         UpdateFrameViewport(Width / (_settings?.ZoomScale ?? 1));
-
-        AddHandler(InspectLink.RequestedEvent, (_, e) => OnInspectRequested(workspace, e));
-        AddHandler(WorkspaceLayoutHost.PageInspectorRequestedEvent,
-            (_, e) => OnPageInspectorRequested(workspace, e), RoutingStrategies.Bubble);
-        workspace.Inspector.Closed += (_, _) => ReturnFocusFromInspector();
 
         if (this.FindControl<ProjectCardView>("ProjectCardView") is { } card) card.DataContext = workspace;
         ConfigureProjectCard();
@@ -270,8 +179,7 @@ public sealed partial class MainWindow : Window
 
     private void UpdateFrameViewport(double width)
     {
-        if (_layoutHost is not { } host || TopLevel.GetTopLevel(host) != this) return;
-        host.UpdateViewport(width);
+        if (_workspaceView is not { } view || !view.UpdateLayoutViewport(this, width)) return;
         if (DataContext is WorkspaceShellViewModel workspace)
         {
             workspace.IsSidebarCollapsed = true;
@@ -283,97 +191,13 @@ public sealed partial class MainWindow : Window
             topBar.Classes.Set("narrow", narrow);
             SetMenusCollapsed(narrow);
         }
-        if (this.FindControl<Border>("StatusBar") is { } status)
-            status.Classes.Set("compact", width < (double)this.FindResource("Component.StatusBar.CompactWidth")!);
-        var shortRail = Height / (_settings?.ZoomScale ?? 1) < (double)this.FindResource("Component.Sidebar.ShortHeight")!;
-        this.FindControl<ListBox>("PageList")?.Classes.Set("shortRail", shortRail);
-        this.FindControl<StackPanel>("SidebarFooter")?.Classes.Set("shortRail", shortRail);
-    }
-
-    [KeyboardShortcutHandler("NavigationRail:ToggleSidePanel")]
-    private void OnRailKeyDown(object? sender, KeyEventArgs e)
-    {
-        var entry = KeyboardShortcutRegistry.Find(KeyboardShortcutScope.NavigationRail, e.Key, e.KeyModifiers);
-        if (entry?.Behavior != KeyboardShortcutBehavior.ToggleSidePanel ||
-            DataContext is not WorkspaceShellViewModel workspace) return;
-        var item = e.Source as ListBoxItem ?? (e.Source as Control)?.FindAncestorOfType<ListBoxItem>();
-        var isCurrentItem = item?.DataContext is PageViewModel { IsCurrent: true } page &&
-            page.Page == workspace.CurrentPage;
-        if (!KeyboardShortcutRegistry.Allows(entry, KeyboardShortcutRegistry.IsTextInput(e.Source), isCurrentItem)) return;
-        _layoutHost?.ToggleSidePanel();
-        e.Handled = true;
-    }
-
-    private void UpdateNoticeBand()
-    {
-        using var span = MotifTrace.Begin("shell.update-notice-band");
-        MotifTrace.Count("update-notice-band");
-        if (DataContext is not WorkspaceShellViewModel workspace ||
-            this.FindControl<Border>("NoticeBand") is not { } band ||
-            this.FindControl<TextBlock>("NoticeSummary") is not { } summary) return;
-        var message = workspace.Baseline.ShownRefusal?.Sentence ?? workspace.OpenRefusal?.Sentence ??
-            workspace.Project.MachineStoreRecoveryMessage ??
-            workspace.Context.TextStyles.MissingFontNotices.FirstOrDefault()?.Message;
-        summary.Text = message ?? string.Empty;
-        ToolTip.SetTip(summary, message);
-        band.IsVisible = !string.IsNullOrWhiteSpace(message);
-        if (_layoutHost is not null) _layoutHost.NoticeBandVisible = band.IsVisible;
+        view.UpdateChromeClasses(width, Height / (_settings?.ZoomScale ?? 1));
     }
 
     private async void OnStatusReportProblemClick(object? sender, RoutedEventArgs e) =>
         await ShowProblemReportAsync(ProblemReport.ForWindowAction(_applicationFacts)).ConfigureAwait(true);
 
-    // Names inside object details extend the breadcrumb; other names begin a fresh inspection.
-    private void OnInspectRequested(WorkspaceShellViewModel workspace, InspectRequestedEventArgs e)
-    {
-        e.Handled = true;
-        if (e.Origin.FindAncestorOfType<Inspector>() is not null)
-        {
-            workspace.Inspector.Push(e.Subject);
-            return;
-        }
-        _inspectedFrom = e.Origin;
-        workspace.Context.OpenInspector(e.Subject, InspectLink.GetFrom(e.Origin), InspectLink.GetTrace(e.Origin), e.Captured);
-        _layoutHost?.ShowInspector();
-    }
-
-    private void OnPageInspectorRequested(WorkspaceShellViewModel workspace, RoutedEventArgs e)
-    {
-        _inspectedFrom = null;
-        workspace.Inspector.Close();
-        e.Handled = true;
-    }
-
-    private void ReturnFocusFromInspector()
-    {
-        if (_inspectedFrom is { } origin && TopLevel.GetTopLevel(origin) is not null && origin.IsEffectivelyVisible)
-            origin.Focus(NavigationMethod.Tab);
-        _inspectedFrom = null;
-    }
-
-    private void OpenPanGlossGuide()
-    {
-        if (this.FindControl<Button>("HelpButton") is not { } button ||
-            HelpPopup?.DataContext is not HelpPopupViewModel help) return;
-        button.Flyout?.ShowAt(button);
-        help.ShowPanGlossPage();
-    }
-
-    private void OnWritingSystemsGuideClick(object? sender, RoutedEventArgs e)
-    {
-        if (this.FindControl<Button>("HelpButton") is not { } button ||
-            HelpPopup?.DataContext is not HelpPopupViewModel help) return;
-        button.Flyout?.ShowAt(button);
-        help.ShowWritingSystemsPage();
-    }
-
-    private void OnWritingSystemsSettingsClick(object? sender, RoutedEventArgs e)
-    {
-        if (sender is not Control { DataContext: WritingSystemFontNotice notice }) return;
-        this.FindControl<Button>("NoticeDetailsButton")?.Flyout?.Hide();
-        _settings?.OpenWritingSystem(notice.WritingSystemId);
-        OpenSettings();
-    }
+    private void OnWritingSystemsGuideClick(object? sender, RoutedEventArgs e) => _workspaceView?.ShowWritingSystemsGuide();
 
     /// <summary>The project menu's Open recent entries, one per recent project, as the menu shows them.</summary>
     public IReadOnlyList<MenuItem> RecentProjectItems =>
@@ -493,7 +317,7 @@ public sealed partial class MainWindow : Window
     private async void OnKeyDown(object? sender, KeyEventArgs e)
     {
         var modifiers = e.KeyModifiers;
-        var scope = SearchScope();
+        var scope = _workspaceView?.SearchScope() ?? KeyboardShortcutScope.Window;
         var windowEntry = KeyboardShortcutRegistry.Find(KeyboardShortcutScope.Window, e.Key, modifiers);
         var inspectorIsOpen = DataContext is WorkspaceShellViewModel { Inspector.IsOpen: true };
         var entry = inspectorIsOpen && windowEntry?.Behavior == KeyboardShortcutBehavior.Back
@@ -511,18 +335,18 @@ public sealed partial class MainWindow : Window
             && KeyboardShortcutRegistry.Allows(entry, KeyboardShortcutRegistry.IsTextInput(e.Source), hasFocusedItem: true))
         {
             e.Handled = true;
-            OpenKeyboardShortcuts();
+            _workspaceView?.OpenKeyboardShortcuts();
             return;
         }
         if (entry?.Behavior == KeyboardShortcutBehavior.OpenSettings)
         {
             e.Handled = true;
-            OpenSettings();
+            _workspaceView?.OpenSettings();
             return;
         }
         if (entry?.Behavior == KeyboardShortcutBehavior.FocusWordSearch)
         {
-            if (FindWordSearch(scope) is { } search) search.Focus();
+            if (_workspaceView?.FindWordSearch(scope) is { } search) search.Focus();
             e.Handled = true;
             return;
         }
@@ -559,102 +383,34 @@ public sealed partial class MainWindow : Window
             return;
         }
         // The inspector is the deepest step of the drill-down, so Esc steps it back before anything on the page.
-        if (entry?.Behavior == KeyboardShortcutBehavior.Back &&
-            DataContext is WorkspaceShellViewModel { Inspector.IsOpen: true } shell &&
-            this.FindControl<Inspector>("Inspector") is { IsEffectivelyVisible: true })
+        if (entry?.Behavior == KeyboardShortcutBehavior.Back && _workspaceView?.TryStepInspectorBack() == true)
         {
             e.Handled = true;
-            shell.Inspector.Back();
             return;
         }
         if (entry?.Behavior != KeyboardShortcutBehavior.ShowHelp) return;
         e.Handled = true;
-        _helpAutomationId = e.Source is Control control
-            ? Avalonia.Automation.AutomationProperties.GetAutomationId(control)
-            : null;
-        RefreshHelpContent();
-        if (this.FindControl<Button>("HelpButton") is { } button)
-            button.Flyout?.ShowAt(button);
-    }
-
-    internal void ShowKeyboardStatus(string? message)
-    {
-        if (this.FindControl<TextBlock>("KeyboardShortcutStatusLine") is not { } line) return;
-        _keyboardStatusTimer.Stop();
-        line.Text = message ?? string.Empty;
-        line.IsVisible = !string.IsNullOrWhiteSpace(message);
-        ToolTip.SetTip(line, message);
-        if (this.FindControl<TextBlock>("StatusSelectionSummary") is { } selection)
-            selection.IsVisible = !line.IsVisible;
-        if (line.IsVisible) _keyboardStatusTimer.Start();
-    }
-
-    private KeyboardShortcutScope SearchScope()
-    {
-        if (DataContext is not WorkspaceShellViewModel shell) return KeyboardShortcutScope.Window;
-        if (shell.CurrentPage != WorkspacePage.Texts) return KeyboardShortcutScope.Window;
-        return shell.PageModel<TextsPageModel>().Tab switch
-        {
-            TextsTab.AnalyzeTexts when shell.PageModel<TextsPageModel>().AnalyzeView == AnalyzeTextsView.TextReader => KeyboardShortcutScope.TextReader,
-            TextsTab.AnalyzeTexts => KeyboardShortcutScope.WordList,
-            TextsTab.Lists => KeyboardShortcutScope.Lists,
-            TextsTab.Matrix => KeyboardShortcutScope.Matrix,
-            _ => KeyboardShortcutScope.Window,
-        };
-    }
-
-    private TextBox? FindWordSearch(KeyboardShortcutScope scope) => this.GetVisualDescendants().OfType<TextBox>()
-        .FirstOrDefault(box => box.IsEffectivelyVisible &&
-            (scope switch
-            {
-                KeyboardShortcutScope.TextReader => box.Name == "ReaderWordSearch",
-                KeyboardShortcutScope.WordList => box.Name == "WordListSearch",
-                KeyboardShortcutScope.Lists => box.Name == "ListsWordSearch",
-                KeyboardShortcutScope.Matrix => box.Name == "MatrixWordSearch",
-                _ => false,
-            }));
-
-    private void OnHelpFlyoutOpened(object? sender, EventArgs e)
-    {
-        RefreshHelpContent();
-        _helpAutomationId = null;
-    }
-
-    /// <summary>Builds <paramref name="page"/>'s view on its first visit; a page nobody opens costs nothing at startup.</summary>
-    internal Control EnsurePageView(WorkspaceShellViewModel workspace, WorkspacePage page)
-    {
-        if (_pageViews.TryGetValue(page, out var existing)) return existing;
-        var entry = workspace.Pages.First(candidate => candidate.Page == page);
-        var view = entry.Model is TextsPageModel texts
-            ? new TextsPage(texts, _settings)
-            : PageRegistry.For(page).CreateView(entry.Model);
-        view.Name = $"{page}Page";
-        view.Bind(IsVisibleProperty, new Binding(nameof(PageViewModel.IsCurrent)) { Source = entry });
-        _pageHost!.Children.Add(view);
-        _pageViews[page] = view;
-        if (view is SettingsPage settingsPage) ConfigureSettingsPage(settingsPage, workspace);
-        return view;
+        _workspaceView?.ShowHelp(e.Source);
     }
 
     /// <summary>Builds <paramref name="page"/>'s view if it has none yet, so a test can reach it without visiting it.</summary>
-    internal Control EnsurePageView(WorkspacePage page) =>
-        EnsurePageView((WorkspaceShellViewModel)DataContext!, page);
+    internal Control EnsurePageView(WorkspacePage page) => _workspaceView!.EnsurePageView(page);
 
-    private void ConfigureSettings(WorkspaceShellViewModel workspace)
+    internal void ShowKeyboardStatus(string? message) => _workspaceView?.ShowKeyboardStatus(message);
+
+    private void ConfigureZoom()
     {
-        _settings = new SettingsViewModel(workspace, _preferences, _applicationFacts);
-        workspace.PageModel<SettingsPageModel>().Settings = _settings;
-
+        var settings = _settings!;
         if (this.FindControl<LayoutTransformControl>("RootLayoutTransform") is { } transformRoot)
         {
-            WindowZoomPolicy.Apply(Application.Current!, _settings.ZoomPercent);
+            WindowZoomPolicy.Apply(Application.Current!, settings.ZoomPercent);
             transformRoot.LayoutTransform = WindowZoomPolicy.Transform;
-            _settings.PropertyChanged += (_, args) =>
+            settings.PropertyChanged += (_, args) =>
             {
                 if (args.PropertyName != nameof(SettingsViewModel.ZoomScale)) return;
                 CloseTransientTooltips();
-                WindowZoomPolicy.Apply(Application.Current!, _settings.ZoomPercent);
-                UpdateFrameViewport(Width / _settings.ZoomScale);
+                WindowZoomPolicy.Apply(Application.Current!, settings.ZoomPercent);
+                UpdateFrameViewport(Width / settings.ZoomScale);
                 UpdateSetupDialogZoom();
             };
         }
@@ -667,60 +423,7 @@ public sealed partial class MainWindow : Window
             ToolTip.SetIsOpen(owner, false);
     }
 
-    private void ConfigureSettingsPage(SettingsPage page, WorkspaceShellViewModel workspace)
-    {
-        page.CloseRequested += (_, _) => CloseSettings();
-        page.OpenHelpRequested += (_, _) =>
-        {
-            RefreshHelpContent();
-            if (this.FindControl<Button>("HelpButton") is { } button) button.Flyout?.ShowAt(button);
-        };
-        page.ReportProblemRequested += async (_, _) =>
-            await ShowProblemReportAsync(ProblemReport.ForWindowAction(_applicationFacts)).ConfigureAwait(true);
-        page.OpenSiteRequested += async (_, _) =>
-            await _uriLauncher.LaunchAsync(new Uri(AppLinks.Documentation)).ConfigureAwait(true);
-        page.ConfigureRequested += (_, _) =>
-        {
-            CloseSettings();
-            workspace.ConfigureCommand.Execute(null);
-        };
-        page.OpenDataFolderRequested += async (_, _) =>
-        {
-            if (_settings is null) return;
-            await _uriLauncher.LaunchAsync(new Uri(Path.GetFullPath(_settings.DataRoot))).ConfigureAwait(true);
-        };
-        page.CopyVersionsRequested += async (_, _) =>
-        {
-            await _problemReportServices.CopyTextAsync(
-                ProblemReport.ForWindowAction(_applicationFacts).ToVersionText(), this).ConfigureAwait(true);
-            _settings?.MarkVersionsCopied();
-        };
-    }
-
-    private void OnSettingsClick(object? sender, RoutedEventArgs e) => OpenSettings();
-
-    private void OpenSettings()
-    {
-        if (DataContext is not WorkspaceShellViewModel workspace ||
-            EnsurePageView(workspace, WorkspacePage.Settings) is not SettingsPage page) return;
-        var alreadyOpen = workspace.CurrentPage == WorkspacePage.Settings;
-        if (!alreadyOpen) _settingsReturnPage = workspace.CurrentPage;
-        this.FindControl<Button>("HelpButton")?.Flyout?.Hide();
-        workspace.ShowPageCommand.Execute(WorkspacePage.Settings);
-        if (alreadyOpen) _layoutHost?.ShowSidePanel();
-        if (_settings?.TakeWritingSystemTargetId() is { } writingSystemId) page.FocusWritingSystem(writingSystemId);
-        else if (_settings?.IsKeyboardShortcutsSelected == true) page.FocusShortcutSearch();
-        else page.FocusSelectedGroup();
-    }
-
-    private void CloseSettings()
-    {
-        if (DataContext is not WorkspaceShellViewModel workspace) return;
-        var destination = workspace.Context.CanOpenPage(_settingsReturnPage)
-            ? _settingsReturnPage : WorkspacePage.Overview;
-        workspace.ShowPageCommand.Execute(destination);
-        this.FindControl<Button>("SettingsButton")?.Focus(NavigationMethod.Tab);
-    }
+    private void OnSettingsClick(object? sender, RoutedEventArgs e) => _workspaceView?.OpenSettings();
 
     private void UpdateSetupDialogZoom()
     {
@@ -732,13 +435,6 @@ public sealed partial class MainWindow : Window
         var maxLogicalWidth = Math.Max(0, Width / zoom - inset * 2);
         var maxLogicalHeight = Math.Max(0, Height / zoom - inset * 2);
         dialog.FitToAvailableArea(maxLogicalWidth, maxLogicalHeight);
-    }
-
-    private void RefreshHelpContent()
-    {
-        if (HelpPopup?.DataContext is not HelpPopupViewModel help) return;
-        var page = (DataContext as WorkspaceShellViewModel)?.CurrentPage ?? WorkspacePage.Overview;
-        help.ShowForPage(page, _helpAutomationId);
     }
 
 
@@ -867,21 +563,10 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private void OnHelpTopicsClick(object? sender, RoutedEventArgs e)
-    {
-        _helpAutomationId = null;
-        RefreshHelpContent();
-        if (this.FindControl<Button>("HelpButton") is { } button) button.Flyout?.ShowAt(button);
-    }
+    private void OnHelpTopicsClick(object? sender, RoutedEventArgs e) => _workspaceView?.ShowHelp(null);
 
-    private void OnKeyboardShortcutsClick(object? sender, RoutedEventArgs e) => OpenKeyboardShortcuts();
+    private void OnKeyboardShortcutsClick(object? sender, RoutedEventArgs e) => _workspaceView?.OpenKeyboardShortcuts();
 
-    private void OpenKeyboardShortcuts()
-    {
-        this.FindControl<Button>("HelpButton")?.Flyout?.Hide();
-        _settings?.OpenGroup(ViewModels.SettingsGroup.KeyboardShortcuts);
-        OpenSettings();
-    }
 
     // Opening a menu moves focus into it; the word to copy is wherever the person was working before.
     private object? FocusedElementOutsideMenu() =>

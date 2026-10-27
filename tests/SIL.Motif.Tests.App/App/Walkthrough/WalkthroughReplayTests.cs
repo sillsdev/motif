@@ -84,7 +84,7 @@ public sealed class WalkthroughReplayTests(PristineProjectFixture pristine)
             WalkthroughFonts.Register();
             using var walkthrough = new WalkthroughWindow(project.ManagedRoot, project.FwDataPath);
             walkthrough.Show();
-            var fileMenu = walkthrough.Window.FindControl<MenuItem>("FileMenu")!;
+            var fileMenu = walkthrough.Window.FindInWindowOrWorkspace<MenuItem>("FileMenu")!;
 
             Assert.False(fileMenu.IsSubMenuOpen);
             return Task.CompletedTask;

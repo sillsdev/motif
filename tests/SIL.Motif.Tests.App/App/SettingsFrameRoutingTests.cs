@@ -50,8 +50,8 @@ public sealed class SettingsFrameRoutingTests
                 Assert.True(page.IsEffectivelyVisible);
                 Assert.Same(settings, page.DataContext);
                 Assert.Same(settings, page.Navigation.DataContext);
-                Assert.Null(window.FindControl<Button>("SettingsButton")!.Flyout);
-                var host = window.FindControl<WorkspaceLayoutHost>("WorkspaceLayout")!;
+                Assert.Null(window.FindInWindowOrWorkspace<Button>("SettingsButton")!.Flyout);
+                var host = window.FindInWindowOrWorkspace<WorkspaceLayoutHost>("WorkspaceLayout")!;
                 Assert.Same(page.Navigation, host.FindControl<ContentControl>("SidePanelContent")!.Content);
                 FakeComposedWindow.Click(window, "Settings");
                 PageScreenshots.Settle(window);
@@ -68,7 +68,7 @@ public sealed class SettingsFrameRoutingTests
                 HeadlessClick.Click(window, back, "Back from Settings");
                 PageScreenshots.Settle(window);
                 Assert.Equal(WorkspacePage.Timing, workspace.CurrentPage);
-                Assert.True(window.FindControl<Button>("SettingsButton")!.IsFocused);
+                Assert.True(window.FindInWindowOrWorkspace<Button>("SettingsButton")!.IsFocused);
             }
             finally
             {
@@ -83,7 +83,7 @@ public sealed class SettingsFrameRoutingTests
         Directory.CreateDirectory(folder);
         using var frame = window.CaptureRenderedFrame() ?? throw new InvalidOperationException("Settings frame did not render.");
         frame.Save(Path.Combine(folder, name + ".png"), PngBitmapEncoderOptions.Default);
-        if (window.FindControl<Button>("SettingsButton")?.Flyout is Avalonia.Controls.Flyout { IsOpen: true, Content: Control content } &&
+        if (window.FindInWindowOrWorkspace<Button>("SettingsButton")?.Flyout is Avalonia.Controls.Flyout { IsOpen: true, Content: Control content } &&
             TopLevel.GetTopLevel(content) is { } popup)
         {
             using var popupFrame = popup.CaptureRenderedFrame() ?? throw new InvalidOperationException("Settings popup did not render.");

@@ -36,14 +36,14 @@ public sealed class FocusedInspectorNavigationTests
                 var subject = InspectorSubject.Morpheme(morph.AllomorphId, morph.GrammaticalInfoId, morph.Form, "3PL")!;
                 workspace.Context.OpenInspector(subject);
                 await workspace.Inspector.Loading;
-                var host = window.FindControl<WorkspaceLayoutHost>("WorkspaceLayout")!;
+                var host = window.FindInWindowOrWorkspace<WorkspaceLayoutHost>("WorkspaceLayout")!;
                 HeadlessClick.Click(window, host.FindControl<Button>("InspectorStrip")!, "Show Inspector");
                 PageScreenshots.Settle(window);
                 Assert.False(host.FindControl<Grid>("WorkingPageRegion")!.IsVisible);
-                if (settings) HeadlessClick.Click(window, window.FindControl<Button>("SettingsButton")!, "Settings");
+                if (settings) HeadlessClick.Click(window, window.FindInWindowOrWorkspace<Button>("SettingsButton")!, "Settings");
                 else
                 {
-                    var rail = window.FindControl<ListBox>("PageList")!;
+                    var rail = window.FindInWindowOrWorkspace<ListBox>("PageList")!;
                     var index = rail.Items.OfType<PageViewModel>().ToList().FindIndex(page => page.Page == WorkspacePage.Timing);
                     var item = Assert.IsType<ListBoxItem>(rail.ContainerFromIndex(index));
                     item.BringIntoView();

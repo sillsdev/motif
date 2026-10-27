@@ -55,7 +55,7 @@ public sealed class StoreDeletionButtonTests
                 Settle(window);
 
                 Assert.NotNull(workspace.Baseline.ShownRefusal);
-                var opener = window.FindControl<Button>("NoticeDetailsButton")!;
+                var opener = window.FindInWindowOrWorkspace<Button>("NoticeDetailsButton")!;
                 Assert.True(opener.IsEffectivelyVisible);
                 HeadlessClick.Click(window, opener, "See project notices");
                 var flyout = Assert.IsType<Flyout>(opener.Flyout);

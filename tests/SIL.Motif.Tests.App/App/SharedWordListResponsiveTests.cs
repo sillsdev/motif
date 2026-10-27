@@ -227,7 +227,7 @@ public sealed class SharedWordListResponsiveTests
         // Escape closes anything the last check left open; Reach shows the scene's page again.
         window.KeyPress(Key.Escape, RawInputModifiers.None, PhysicalKey.None, null);
         await fixture.Reach(scene.Scene);
-        window.FindControl<Button>("ProjectChip")?.Focus();
+        window.FindInWindowOrWorkspace<Button>("ProjectChip")?.Focus();
         PageScreenshots.Settle(window);
     }
 
@@ -241,7 +241,7 @@ public sealed class SharedWordListResponsiveTests
         var target = PrepareRightmostAction(slot, scene, size, theme, window, failures);
         if (target is null) return;
         var (row, action) = target.Value;
-        var outsideFocus = window.FindControl<Button>("ProjectChip");
+        var outsideFocus = window.FindInWindowOrWorkspace<Button>("ProjectChip");
         Record(outsideFocus is not null && outsideFocus.Focus(), state,
             "the test could not move focus outside the word row", failures);
         Record(!row.GetVisualDescendants().OfType<Control>().Any(control => control.IsFocused) &&
@@ -261,7 +261,7 @@ public sealed class SharedWordListResponsiveTests
         var state = $"{scene.Name}, slot {index + 1}, 640x{size.Height} at {size.Zoom}% {theme}";
         var layout = slot.CurrentLayout!;
         var viewportBounds = BoundsInWindow(slot, window, slot.Viewport);
-        var pageHost = window.FindControl<Panel>("PageHost");
+        var pageHost = window.FindInWindowOrWorkspace<Panel>("PageHost");
         var pageBounds = pageHost is null ? default : BoundsInWindow(pageHost, window);
         Record(layout.AvailableWidth <= slot.Bounds.Width + 1,
             state, $"layout width {layout.AvailableWidth:0.###} exceeds viewport bounds {slot.Bounds.Width:0.###}", failures);
@@ -559,7 +559,7 @@ public sealed class SharedWordListResponsiveTests
         var scroll = Assert.Single(list.GetVisualDescendants().OfType<ScrollViewer>(),
             viewer => viewer.Name == "PART_ScrollViewer");
         var body = Assert.Single(scroll.GetVisualDescendants().OfType<ScrollContentPresenter>());
-        var pageHost = window.FindControl<Panel>("PageHost")!;
+        var pageHost = window.FindInWindowOrWorkspace<Panel>("PageHost")!;
         var bodyBounds = BoundsInWindow(body, window);
         var pageBounds = BoundsInWindow(pageHost, window);
         var windowBounds = new Rect(window.ClientSize);

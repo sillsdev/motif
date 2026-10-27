@@ -74,7 +74,7 @@ public sealed class AnalyzeTextsLayoutTests
 
                 Assert.True(setup.IsOpen, "Choose texts must open configuration from the parsed reader.");
                 Assert.Equal(0, setup.Step);
-                Assert.True(window.FindControl<SetupDialog>("SetupDialogView")!.IsEffectivelyVisible);
+                Assert.True(window.FindInWindowOrWorkspace<SetupDialog>("SetupDialogView")!.IsEffectivelyVisible);
                 Assert.Equal(WorkspacePage.Texts, workspace.CurrentPage);
                 Assert.Equal(TextsTab.AnalyzeTexts, page.Tab);
             }
@@ -228,7 +228,7 @@ public sealed class AnalyzeTextsLayoutTests
         Assert.True(count == workspace.Context.Changes.Items.Count,
             $"Expected {count} changes, got {workspace.Context.Changes.Items.Count}; " +
             $"refusal={workspace.Context.Changes.LastRefusal}; " +
-            $"keyboard={window.FindControl<TextBlock>("KeyboardShortcutStatusLine")?.Text}");
+            $"keyboard={window.FindInWindowOrWorkspace<TextBlock>("KeyboardShortcutStatusLine")?.Text}");
     }
 
     [Fact]

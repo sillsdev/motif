@@ -534,7 +534,8 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
     // The frame shows parse progress in the status bar; its details and Cancel live in that button's flyout.
     private static IEnumerable<Visual> ParseProgressControls(Window window)
     {
-        if (window.FindControl<Button>("StatusParseProgress") is not { Flyout: Flyout flyout } status)
+        if (window.GetVisualDescendants().OfType<Button>().FirstOrDefault(button => button.Name == "StatusParseProgress")
+            is not { Flyout: Flyout flyout } status)
             return window.GetVisualDescendants();
         if (!flyout.IsOpen && status.IsEffectivelyVisible) flyout.ShowAt(status);
         return flyout is { IsOpen: true, Content: Control details }

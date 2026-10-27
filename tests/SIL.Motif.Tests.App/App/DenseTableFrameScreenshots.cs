@@ -81,7 +81,7 @@ public sealed class DenseTableFrameScreenshots
                 File.WriteAllLines(Path.Combine(folder, "warnings-frame-failures.txt"), failures);
                 Assert.True(failures.Count == 0, string.Join(Environment.NewLine, failures));
 
-                var host = window.FindControl<WorkspaceLayoutHost>("WorkspaceLayout")!;
+                var host = window.FindInWindowOrWorkspace<WorkspaceLayoutHost>("WorkspaceLayout")!;
                 foreach (var (themeName, theme) in new[] { ("light", ThemeVariant.Light), ("dark", ThemeVariant.Dark) })
                 foreach (var objectOpen in new[] { false, true })
                 {

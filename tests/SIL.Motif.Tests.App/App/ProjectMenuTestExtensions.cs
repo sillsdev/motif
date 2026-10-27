@@ -8,7 +8,7 @@ internal static class ProjectMenuTestExtensions
 {
     public static MenuItem OpenFileMenu(this MainWindow window)
     {
-        var file = window.FindControl<MenuItem>("FileMenu")!;
+        var file = window.FindInWindowOrWorkspace<MenuItem>("FileMenu")!;
         file.IsSubMenuOpen = true;
         return file;
     }
@@ -16,7 +16,7 @@ internal static class ProjectMenuTestExtensions
     public static MenuItem OpenRecentMenu(this MainWindow window)
     {
         window.OpenFileMenu();
-        var recent = window.FindControl<MenuItem>("OpenRecentMenuItem")!;
+        var recent = window.FindInWindowOrWorkspace<MenuItem>("OpenRecentMenuItem")!;
         recent.IsSubMenuOpen = true;
         return recent;
     }

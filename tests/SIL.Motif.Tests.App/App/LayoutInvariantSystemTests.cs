@@ -105,7 +105,7 @@ public sealed class LayoutInvariantSystemTests(ITestOutputHelper output)
                         InspectGrid("Timing/inspector-open", () =>
                         {
                             ShowObjectInspector();
-                            Assert.True(window.FindControl<Inspector>("Inspector")!.IsEffectivelyVisible);
+                            Assert.True(window.FindInWindowOrWorkspace<Inspector>("Inspector")!.IsEffectivelyVisible);
                         });
                         workspace.Inspector.Close();
                         workspace.CurrentPage = WorkspacePage.Overview;
@@ -160,7 +160,7 @@ public sealed class LayoutInvariantSystemTests(ITestOutputHelper output)
                         LayoutInvariantEngineTests.Settle(window);
                         Avalonia.Headless.AvaloniaHeadlessPlatform.ForceRenderTimerTick();
                         LayoutInvariantEngineTests.Settle(window);
-                        window.FindControl<SIL.Motif.App.Views.Shell.WorkspaceLayoutHost>("WorkspaceLayout")!.ShowInspector();
+                        window.FindInWindowOrWorkspace<SIL.Motif.App.Views.Shell.WorkspaceLayoutHost>("WorkspaceLayout")!.ShowInspector();
                         LayoutInvariantEngineTests.Settle(window);
                         Avalonia.Headless.AvaloniaHeadlessPlatform.ForceRenderTimerTick();
                         LayoutInvariantEngineTests.Settle(window);

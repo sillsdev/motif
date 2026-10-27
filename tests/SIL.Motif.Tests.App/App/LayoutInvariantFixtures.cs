@@ -111,7 +111,7 @@ internal static class LayoutInvariantFixtures
     {
         var expected = new List<string>();
         var overview = workspace.Pages.Single(page => page.Page == WorkspacePage.Overview);
-        var rail = window.FindControl<ListBox>("PageList")!;
+        var rail = window.FindInWindowOrWorkspace<ListBox>("PageList")!;
         var navigation = ReachabilityAssertions.CanReachItem(rail, rail.Items.IndexOf(overview), window);
         if (!navigation) expected.Add(overview.AutomationName);
         if (context.Scene.EndsWith("/populated", StringComparison.Ordinal))
@@ -160,7 +160,7 @@ internal static class LayoutInvariantFixtures
     internal static void RequirePage(MainWindow window, WorkspaceShellViewModel workspace, WorkspacePage page)
     {
         Assert.Equal(page, workspace.CurrentPage);
-        var host = window.FindControl<Panel>("PageHost")!;
+        var host = window.FindInWindowOrWorkspace<Panel>("PageHost")!;
         // A narrow open Inspector takes the working area, so the current page is shown but may be covered.
         var view = Assert.Single(host.Children, child => child.IsVisible);
         var model = workspace.Pages.Single(entry => entry.Page == page).Model;

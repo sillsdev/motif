@@ -38,7 +38,7 @@ public sealed class ReviewDenseTableFrameScreenshots
                 var selected = page.TableEntries.OfType<ReviewListEntryViewModel>().Single(entry => entry.Change is not null);
                 list.SelectedItem = selected;
                 var settings = SettingsTestAccess.Model(window);
-                var host = window.FindControl<WorkspaceLayoutHost>("WorkspaceLayout")!;
+                var host = window.FindInWindowOrWorkspace<WorkspaceLayoutHost>("WorkspaceLayout")!;
                 foreach (var (width, height) in new[] { (640, 600), (960, 780), (1920, 1080), (960, 600) })
                 foreach (var zoom in new[] { 100, 150 })
                 foreach (var (theme, variant) in new[] { ("light", ThemeVariant.Light), ("dark", ThemeVariant.Dark) })

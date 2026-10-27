@@ -87,11 +87,11 @@ public sealed class MenuBarTests
     {
         var (top, tools, help, file) = OnWindow(window =>
         {
-            var menu = window.FindControl<Menu>("MainMenu")!;
+            var menu = window.FindInWindowOrWorkspace<Menu>("MainMenu")!;
             return (Items(menu).Select(Plain).ToArray(),
-                Items(window.FindControl<MenuItem>("ToolsMenu")!).Select(Plain).ToArray(),
-                Items(window.FindControl<MenuItem>("HelpMenu")!).Select(Plain).ToArray(),
-                Items(window.FindControl<MenuItem>("FileMenu")!).Select(Plain).ToArray());
+                Items(window.FindInWindowOrWorkspace<MenuItem>("ToolsMenu")!).Select(Plain).ToArray(),
+                Items(window.FindInWindowOrWorkspace<MenuItem>("HelpMenu")!).Select(Plain).ToArray(),
+                Items(window.FindInWindowOrWorkspace<MenuItem>("FileMenu")!).Select(Plain).ToArray());
         });
         Assert.Equal(TopLevel, top);
         Assert.Equal(["Options…", "Writing Systems and Fonts"], tools);
@@ -104,9 +104,9 @@ public sealed class MenuBarTests
     {
         OnWindow(window =>
         {
-            Assert.Null(window.FindControl<Button>("ProjectMenuButton"));
-            var options = window.FindControl<MenuItem>("OptionsMenuItem")!;
-            Assert.Same(window.FindControl<MenuItem>("ToolsMenu"), options.Parent);
+            Assert.Null(window.FindInWindowOrWorkspace<Button>("ProjectMenuButton"));
+            var options = window.FindInWindowOrWorkspace<MenuItem>("OptionsMenuItem")!;
+            Assert.Same(window.FindInWindowOrWorkspace<MenuItem>("ToolsMenu"), options.Parent);
             Assert.Equal("OpenSettings", options.Tag);
             return 0;
         });
@@ -115,7 +115,7 @@ public sealed class MenuBarTests
     [Fact]
     public void EveryMenuItemWithAShortcutShowsTheRegistrysGestureAndOthersShowNone()
     {
-        var rows = OnWindow(window => window.FindControl<Menu>("MainMenu")!.GetLogicalDescendants().OfType<MenuItem>()
+        var rows = OnWindow(window => window.FindInWindowOrWorkspace<Menu>("MainMenu")!.GetLogicalDescendants().OfType<MenuItem>()
             .Select(item => (Name: Plain(item), item.Tag, item.InputGesture)).ToArray());
         Assert.NotEmpty(rows);
         foreach (var (name, tag, gesture) in rows)
@@ -139,7 +139,7 @@ public sealed class MenuBarTests
         {
             "UndoMenuItem", "RedoMenuItem", "CopyMenuItem", "ZoomInMenuItem", "ZoomOutMenuItem", "ResetZoomMenuItem",
             "OptionsMenuItem", "HelpTopicsMenuItem", "KeyboardShortcutsMenuItem",
-        }.ToDictionary(name => name, name => window.FindControl<MenuItem>(name)!.InputGesture));
+        }.ToDictionary(name => name, name => window.FindInWindowOrWorkspace<MenuItem>(name)!.InputGesture));
         Assert.All(gestures, pair => Assert.True(pair.Value is not null, pair.Key + " shows no shortcut"));
         Assert.Equal(Key.F1, gestures["HelpTopicsMenuItem"]!.Key);
         Assert.Equal(Key.Z, gestures["UndoMenuItem"]!.Key);
@@ -162,7 +162,7 @@ public sealed class MenuBarTests
     [Fact]
     public void AccessKeysAreUniqueWithinEachMenuLevelAndHeadersComeFromTheResx()
     {
-        var levels = OnWindow(window => Levels(window.FindControl<Menu>("MainMenu")!)
+        var levels = OnWindow(window => Levels(window.FindInWindowOrWorkspace<Menu>("MainMenu")!)
             .Select(level => Items(level).Select(item => (Header: (string)item.Header!, Key: AccessKey(item))).ToArray())
             .ToArray());
         Assert.True(levels.Length >= 6, "the bar and its five menus each form a level");
@@ -222,7 +222,7 @@ public sealed class MenuBarTests
     {
         OnWindow(window =>
         {
-            var label = window.FindControl<TextBlock>("ProjectNameLabel");
+            var label = window.FindInWindowOrWorkspace<TextBlock>("ProjectNameLabel");
             Assert.NotNull(label);
             Assert.Null(label!.Text);
             return 0;

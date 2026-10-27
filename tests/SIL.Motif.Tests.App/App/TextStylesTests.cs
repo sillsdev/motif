@@ -48,7 +48,7 @@ public sealed class TextStylesTests
 
                 var notices = workspace.Context.TextStyles.MissingFontNotices;
                 Assert.Single(notices);
-                var noticeRow = window.FindControl<ItemsControl>("MainWindowWritingSystemNoticesItems");
+                var noticeRow = window.FindInWindowOrWorkspace<ItemsControl>("MainWindowWritingSystemNoticesItems");
                 Assert.NotNull(noticeRow);
                 var selectionPanel = Assert.Single(window.GetLogicalDescendants().OfType<SelectionPanel>());
                 var selectAll = Assert.Single(selectionPanel.GetLogicalDescendants().OfType<Button>(), button =>

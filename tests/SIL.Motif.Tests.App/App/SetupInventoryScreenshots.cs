@@ -61,7 +61,7 @@ public sealed class SetupInventoryScreenshots
                 setup.Step = 1;
                 setup.IsOpen = true;
                 PageScreenshots.Settle(window);
-                var dialog = Assert.IsType<SetupDialog>(window.FindControl<SetupDialog>("SetupDialogView"));
+                var dialog = Assert.IsType<SetupDialog>(window.FindInWindowOrWorkspace<SetupDialog>("SetupDialogView"));
                 Assert.True(dialog.IsEffectivelyVisible);
                 Assert.Same(setup, dialog.DataContext);
                 Assert.All(workspace.Selection.Texts, text => Assert.True(text.IsChecked));

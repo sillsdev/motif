@@ -30,12 +30,12 @@ public sealed class TopBarScreenshots
 
                     if (theme == "light")
                     {
-                    var menuButton = window.FindControl<Menu>("MainMenu")!.Items.OfType<MenuItem>().Single();
+                    var menuButton = window.FindInWindowOrWorkspace<Menu>("MainMenu")!.Items.OfType<MenuItem>().Single();
                     menuButton.IsSubMenuOpen = true;
-                    window.FindControl<MenuItem>("EditMenu")!.IsSubMenuOpen = true;
+                    window.FindInWindowOrWorkspace<MenuItem>("EditMenu")!.IsSubMenuOpen = true;
                     PageScreenshots.Settle(window);
                     PageScreenshots.Save(window, Path.Combine(folder, $"topbar-narrow-menu-640x600-150-{theme}.png"));
-                    window.FindControl<MenuItem>("EditMenu")!.IsSubMenuOpen = false;
+                    window.FindInWindowOrWorkspace<MenuItem>("EditMenu")!.IsSubMenuOpen = false;
                     menuButton.IsSubMenuOpen = false;
                     PageScreenshots.Settle(window);
                     }

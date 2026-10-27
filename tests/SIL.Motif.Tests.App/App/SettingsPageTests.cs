@@ -403,7 +403,7 @@ public sealed class SettingsPageTests
             window.Width = width;
             window.Height = height;
             settings.ZoomPercent = zoom;
-            HeadlessClick.Click(frame, frame.FindControl<Button>("SettingsButton")!, "Settings");
+            HeadlessClick.Click(frame, frame.FindInWindowOrWorkspace<Button>("SettingsButton")!, "Settings");
             try
             {
                 window.Show();

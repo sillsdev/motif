@@ -167,7 +167,7 @@ public sealed class WalkthroughWindow : IDisposable
 
     private bool ProjectMenuIsOpen => FileMenu.IsSubMenuOpen;
 
-    private MenuItem FileMenu => Window.FindControl<MenuItem>("FileMenu")
+    private MenuItem FileMenu => Window.FindInWindowOrWorkspace<MenuItem>("FileMenu")
         ?? throw new InvalidOperationException("The MainWindow has no File menu.");
 
     /// <summary>Closes the File menu by clicking its header again, a press the open menu's light dismiss takes.</summary>
@@ -276,7 +276,7 @@ public sealed class WalkthroughWindow : IDisposable
         Window.GetLogicalDescendants().OfType<SetupDialog>().Single().IsEffectivelyVisible;
 
     /// <summary>The File menu's item with the element name <paramref name="name"/>, such as <c>ConfigureMenuItem</c>.</summary>
-    public MenuItem ProjectMenuEntry(string name) => Window.FindControl<MenuItem>(name)
+    public MenuItem ProjectMenuEntry(string name) => Window.FindInWindowOrWorkspace<MenuItem>(name)
         ?? throw new InvalidOperationException($"The File menu has no item named '{name}'.");
 
     /// <summary>The one control named <paramref name="name"/>, wherever it sits: each page's view has names of its own.</summary>
@@ -330,7 +330,7 @@ public sealed class WalkthroughWindow : IDisposable
 
     public void OpenParseProgressFlyout()
     {
-        var opener = Window.FindControl<Button>("StatusParseProgress")
+        var opener = Window.FindInWindowOrWorkspace<Button>("StatusParseProgress")
             ?? throw new InvalidOperationException("The window has no parse-progress status button.");
         var flyout = opener.Flyout as Flyout
             ?? throw new InvalidOperationException("The parse-progress status button has no flyout.");
@@ -349,7 +349,7 @@ public sealed class WalkthroughWindow : IDisposable
     {
         OpenParseProgressFlyoutIfAvailable();
         IEnumerable<Visual> roots = [Window];
-        if (Window.FindControl<Button>("StatusParseProgress")?.Flyout is Flyout { IsOpen: true, Content: Control progress })
+        if (Window.FindInWindowOrWorkspace<Button>("StatusParseProgress")?.Flyout is Flyout { IsOpen: true, Content: Control progress })
             roots = roots.Append(progress);
         return string.Join(" ", roots.SelectMany(root => root.GetVisualDescendants()).OfType<TextBlock>()
             .Where(block => block.IsEffectivelyVisible).Select(block => block.Text));
@@ -357,7 +357,7 @@ public sealed class WalkthroughWindow : IDisposable
 
     public void DismissParseProgressFlyout()
     {
-        var opener = Window.FindControl<Button>("StatusParseProgress")
+        var opener = Window.FindInWindowOrWorkspace<Button>("StatusParseProgress")
             ?? throw new InvalidOperationException("The window has no parse-progress status button.");
         var flyout = opener.Flyout as Flyout
             ?? throw new InvalidOperationException("The parse-progress status button has no flyout.");
@@ -577,13 +577,13 @@ public sealed class WalkthroughWindow : IDisposable
         var seen = new HashSet<Control>(ReferenceEqualityComparer.Instance);
         foreach (var control in ControlsFrom(Window))
             if (seen.Add(control)) yield return control;
-        if (Window.FindControl<Button>("StatusParseProgress")?.Flyout is Flyout { IsOpen: true, Content: Control progress })
+        if (Window.FindInWindowOrWorkspace<Button>("StatusParseProgress")?.Flyout is Flyout { IsOpen: true, Content: Control progress })
             foreach (var control in ControlsFrom(progress))
                 if (seen.Add(control)) yield return control;
-        if (Window.FindControl<Button>("ProjectChip")?.Flyout is Flyout { IsOpen: true, Content: Control projectCard })
+        if (Window.FindInWindowOrWorkspace<Button>("ProjectChip")?.Flyout is Flyout { IsOpen: true, Content: Control projectCard })
             foreach (var control in ControlsFrom(projectCard))
                 if (seen.Add(control)) yield return control;
-        if (Window.FindControl<Button>("NoticeDetailsButton")?.Flyout is Flyout { IsOpen: true, Content: Control notices })
+        if (Window.FindInWindowOrWorkspace<Button>("NoticeDetailsButton")?.Flyout is Flyout { IsOpen: true, Content: Control notices })
             foreach (var control in ControlsFrom(notices))
                 if (seen.Add(control)) yield return control;
         foreach (var ownedWindow in Window.OwnedWindows)
@@ -604,7 +604,7 @@ public sealed class WalkthroughWindow : IDisposable
     {
         foreach (var opener in new[] { "StatusParseProgress", "NoticeDetailsButton" })
         {
-            if (Window.FindControl<Button>(opener)?.Flyout is not Flyout { IsOpen: true } flyout) continue;
+            if (Window.FindInWindowOrWorkspace<Button>(opener)?.Flyout is not Flyout { IsOpen: true } flyout) continue;
             if (flyout.Content is Control content && (ReferenceEquals(content, control) ||
                     content.IsLogicalAncestorOf(control) || content.IsVisualAncestorOf(control)))
                 continue;
@@ -616,14 +616,14 @@ public sealed class WalkthroughWindow : IDisposable
 
     private void OpenParseProgressFlyoutIfAvailable()
     {
-        var opener = Window.FindControl<Button>("StatusParseProgress");
+        var opener = Window.FindInWindowOrWorkspace<Button>("StatusParseProgress");
         if (opener?.IsEffectivelyVisible == true && opener.Flyout is Flyout { IsOpen: false })
             OpenParseProgressFlyout();
     }
 
     private void OpenNoticeDetailsFlyoutIfAvailable()
     {
-        var opener = Window.FindControl<Button>("NoticeDetailsButton");
+        var opener = Window.FindInWindowOrWorkspace<Button>("NoticeDetailsButton");
         if (opener?.IsEffectivelyVisible == true && opener.Flyout is Flyout { IsOpen: false })
         {
             ClickControl(opener, "See project notices");

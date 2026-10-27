@@ -189,7 +189,7 @@ internal sealed class TooltipScenes
     private Task<bool>? _parseProgressTask;
     public WordRow? MatrixTargetRow { get; private set; }
 
-    public Button ParseProgressStatusButton => Window.FindControl<Button>("StatusParseProgress")!;
+    public Button ParseProgressStatusButton => Window.FindInWindowOrWorkspace<Button>("StatusParseProgress")!;
 
     private TooltipScenes(WorkspaceShellViewModel workspace, MainWindow window, FakeCommandClient client)
     {
@@ -291,8 +291,8 @@ internal sealed class TooltipScenes
                 _client.KnownProjectsListIs([.. new[] { "Sample", "Kiswahili" }.Select(name =>
                     new KnownProjectSummary($@"C:\Users\linguist\FieldWorks\Projects\{name}\{name}.fwdata", DateTimeOffset.UtcNow.AddDays(-2)))]);
                 Show(WorkspacePage.Overview);
-                await OpenMenu(Window.FindControl<MenuItem>("FileMenu")!, "the File menu");
-                await OpenMenu(Window.FindControl<MenuItem>("OpenRecentMenuItem")!, "Open recent");
+                await OpenMenu(Window.FindInWindowOrWorkspace<MenuItem>("FileMenu")!, "the File menu");
+                await OpenMenu(Window.FindInWindowOrWorkspace<MenuItem>("OpenRecentMenuItem")!, "Open recent");
                 break;
             case TooltipScene.CollapsedSidebar:
                 Window.Width = WorkspaceShellViewModel.SidebarCollapseWidth - 100;
@@ -546,7 +546,7 @@ internal sealed class TooltipScenes
                 var sungura = AnalyzeTextsLayoutTests.StripOf(AnalyzeTextsLayoutTests.Panel(Window), "Sungura");
                 Assert.True(sungura.Focus());
                 Window.KeyPress(Key.A, RawInputModifiers.None, PhysicalKey.None, null);
-                var status = Window.FindControl<TextBlock>("KeyboardShortcutStatusLine")!;
+                var status = Window.FindInWindowOrWorkspace<TextBlock>("KeyboardShortcutStatusLine")!;
                 await Until(() => status.IsEffectivelyVisible && status.Text == "Sungura is already Approved." &&
                     ToolTip.GetTip(status) as string == status.Text,
                     "the keyboard shortcut status message");
@@ -591,7 +591,7 @@ internal sealed class TooltipScenes
                 Window.ShowKeyboardStatus(null);
                 break;
             case TooltipScene.OpenRecent:
-                foreach (var name in new[] { "OpenRecentMenuItem", "FileMenu" }) Window.FindControl<MenuItem>(name)!.IsSubMenuOpen = false;
+                foreach (var name in new[] { "OpenRecentMenuItem", "FileMenu" }) Window.FindInWindowOrWorkspace<MenuItem>(name)!.IsSubMenuOpen = false;
                 break;
             case TooltipScene.CollapsedSidebar: Window.Width = Width; break;
             case TooltipScene.TextPicker: Visible<ComboBox>().First(box => AutomationProperties.GetName(box) == "Text to read").IsDropDownOpen = false; break;

@@ -25,7 +25,7 @@ public sealed class SettingsTooltipViewportTests
         {
             var (workspace, window) = FakeComposedWindow.Create();
             var priorTheme = Application.Current!.RequestedThemeVariant;
-            var gear = window.FindControl<Button>("SettingsButton")!;
+            var gear = window.FindInWindowOrWorkspace<Button>("SettingsButton")!;
             try
             {
                 Application.Current.RequestedThemeVariant = dark ? ThemeVariant.Dark : ThemeVariant.Light;

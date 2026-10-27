@@ -45,7 +45,7 @@ public sealed class ProgressiveDisplayTests
     private static readonly string[] ViewNames =
     [
         "ComparePanel", "DiagnosticPanel", "DifferencePanel", "ExpertTracePanel", "GrammarPanel", "HandoffPanel",
-        "Inspector", "MainWindow", "MiniMatrix", "OverviewInspector", "Pages/AssistantConnectionsPage", "Pages/OverviewPage", "Pages/ParsimonyPage",
+        "Inspector", "MiniMatrix", "MotifWorkspaceView", "OverviewInspector", "Pages/AssistantConnectionsPage", "Pages/OverviewPage", "Pages/ParsimonyPage",
         "Pages/ProposalsPage", "Pages/TimingPage",
         "RefusalBlock", "ResultsInTextPanel", "ReviewWordRow",
         "RetirementProposalReviewPanel", "ReviewInspector", "ReviewPanel", "SelectionPanel", "SettingsPage", "SettingsNavigation", "SetupDialog", "StatisticsPanel", "TextWordsPanel", "TextsListsPanel",
@@ -89,7 +89,7 @@ public sealed class ProgressiveDisplayTests
         {
             var (workspace, sampleWindow) = await LayoutInvariantFixtures.OpenFreshSampleData(
                 renderForCapture: false,
-                composeWindow: viewName is "MainWindow" or "SettingsPage" or "SettingsNavigation");
+                composeWindow: viewName is "MotifWorkspaceView" or "SettingsPage" or "SettingsNavigation");
             var window = new MotifTestWindow { Width = 1240, Height = 780 };
             try
             {
@@ -241,7 +241,7 @@ public sealed class ProgressiveDisplayTests
             .Where(path => File.ReadAllText(path).Contains("Children.Add(", StringComparison.Ordinal) ||
                 File.ReadAllText(path).Contains("ProgressivePanel.Populate(this", StringComparison.Ordinal))
             .Select(path => Path.GetFileNameWithoutExtension(path).Replace(".axaml", string.Empty)).Order().ToArray();
-        Assert.Equal(new[] { "FilterChip", "GrammarWarningPartsBlock", "HeatCell", "MainWindow", "MarkChip", "MorphemePanel", "NamedMark", "OutcomeBar", "OverviewShareBar", "ProgressivePanel", "WordCard", "WordRow", "WordRowHeader", "WordStripToken", "WorkspaceLayoutHost" },
+        Assert.Equal(new[] { "FilterChip", "GrammarWarningPartsBlock", "HeatCell", "MainWindow", "MarkChip", "MorphemePanel", "MotifWorkspaceView", "NamedMark", "OutcomeBar", "OverviewShareBar", "ProgressivePanel", "WordCard", "WordRow", "WordRowHeader", "WordStripToken", "WorkspaceLayoutHost" },
             codeBuilt);
     }
 
@@ -893,7 +893,7 @@ public sealed class ProgressiveDisplayTests
                 configure: (fake, _) => fake.KnownProjectsListIs(projects));
             try
             {
-                var menu = window.FindControl<MenuItem>("OpenRecentMenuItem")!;
+                var menu = window.FindInWindowOrWorkspace<MenuItem>("OpenRecentMenuItem")!;
                 window.OpenFileMenu();
                 await workspace.RefreshKnownProjectsAsync();
                 Assert.Equal(projectCount, workspace.RecentProjects.Count);
@@ -1074,10 +1074,10 @@ public sealed class ProgressiveDisplayTests
     {
         var texts = workspace.PageModel<TextsPageModel>();
         var trace = workspace.PageModel<TryWordPageModel>();
-        if (name == "MainWindow")
+        if (name == "MotifWorkspaceView")
         {
-            var shell = (Control)sample.Content!;
-            sample.Content = null;
+            var shell = sample.FindControl<MotifWorkspaceView>("WorkspaceView")!;
+            ((Panel)shell.Parent!).Children.Remove(shell);
             PageScreenshots.Settle(sample);
             shell.DataContext = workspace;
             return shell;

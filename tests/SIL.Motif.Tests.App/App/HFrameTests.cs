@@ -24,7 +24,7 @@ public sealed class HFrameTests(AvaloniaHeadlessFixture avalonia)
         {
             var window = new MainWindow { Width = 960, Height = 600 };
             var frame = Assert.IsAssignableFrom<Control>(window.Content);
-            var host = window.FindControl<WorkspaceLayoutHost>("WorkspaceLayout")!;
+            var host = window.FindInWindowOrWorkspace<WorkspaceLayoutHost>("WorkspaceLayout")!;
             try
             {
                 if (detachBeforeShow) window.Content = new TextBox();
@@ -48,7 +48,7 @@ public sealed class HFrameTests(AvaloniaHeadlessFixture avalonia)
                 PageScreenshots.Settle(window);
                 Assert.True(side.IsVisible);
                 Assert.True(inspector.IsVisible);
-                Assert.DoesNotContain("shortRail", window.FindControl<ListBox>("PageList")!.Classes);
+                Assert.DoesNotContain("shortRail", window.FindInWindowOrWorkspace<ListBox>("PageList")!.Classes);
 
                 window.Content = new TextBox();
                 window.Width = 640;
@@ -58,7 +58,7 @@ public sealed class HFrameTests(AvaloniaHeadlessFixture avalonia)
                 PageScreenshots.Settle(window);
                 Assert.False(side.IsVisible);
                 Assert.False(inspector.IsVisible);
-                Assert.Contains("compact", window.FindControl<Border>("StatusBar")!.Classes);
+                Assert.Contains("compact", window.FindInWindowOrWorkspace<Border>("StatusBar")!.Classes);
             }
             finally
             {
@@ -77,9 +77,9 @@ public sealed class HFrameTests(AvaloniaHeadlessFixture avalonia)
             {
                 window.Show();
                 PageScreenshots.Settle(window);
-                Assert.Equal(34, window.FindControl<Border>("TopBar")!.Bounds.Height);
-                Assert.Equal(44, window.FindControl<Border>("Sidebar")!.Bounds.Width);
-                var status = window.FindControl<Border>("StatusBar");
+                Assert.Equal(34, window.FindInWindowOrWorkspace<Border>("TopBar")!.Bounds.Height);
+                Assert.Equal(44, window.FindInWindowOrWorkspace<Border>("Sidebar")!.Bounds.Width);
+                var status = window.FindInWindowOrWorkspace<Border>("StatusBar");
                 Assert.NotNull(status);
                 Assert.Equal(24, status.Bounds.Height);
                 Assert.Contains(status.GetVisualDescendants().OfType<TextBlock>(), text =>
@@ -206,7 +206,7 @@ public sealed class HFrameTests(AvaloniaHeadlessFixture avalonia)
                 window.Width = 960;
                 workspace.CurrentPage = WorkspacePage.Texts;
                 PageScreenshots.Settle(window);
-                var host = window.FindControl<WorkspaceLayoutHost>("WorkspaceLayout")!;
+                var host = window.FindInWindowOrWorkspace<WorkspaceLayoutHost>("WorkspaceLayout")!;
                 var side = host.FindControl<Border>("SidePanelBorder")!;
                 var selection = Assert.IsType<ContentControl>(host.FindControl<ContentControl>("SidePanelContent")!.Content);
                 Assert.Equal("SelectionHost", selection.Name);
@@ -249,9 +249,9 @@ public sealed class HFrameTests(AvaloniaHeadlessFixture avalonia)
                 PageScreenshots.Settle(window);
                 Assert.Equal(640, window.ClientSize.Width);
                 var actions = window.GetVisualDescendants().OfType<ListBoxItem>().Cast<Control>().ToList();
-                actions.Add(window.FindControl<Button>("HelpButton")!);
-                actions.Add(window.FindControl<Button>("SettingsButton")!);
-                actions.Add(window.FindControl<Border>("StatusBar")!.GetVisualDescendants().OfType<Button>().Single(button =>
+                actions.Add(window.FindInWindowOrWorkspace<Button>("HelpButton")!);
+                actions.Add(window.FindInWindowOrWorkspace<Button>("SettingsButton")!);
+                actions.Add(window.FindInWindowOrWorkspace<Border>("StatusBar")!.GetVisualDescendants().OfType<Button>().Single(button =>
                     button.IsEffectivelyVisible && AutomationProperties.GetName(button) == "Report a problem"));
                 Assert.NotEmpty(actions);
                 foreach (var action in actions)

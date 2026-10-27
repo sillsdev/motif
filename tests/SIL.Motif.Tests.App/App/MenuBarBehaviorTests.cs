@@ -29,7 +29,7 @@ public sealed class MenuBarBehaviorTests
 
     private static void Click(MenuItem item) => item.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
 
-    private static MenuItem Item(MainWindow window, string name) => window.FindControl<MenuItem>(name)!;
+    private static MenuItem Item(MainWindow window, string name) => window.FindInWindowOrWorkspace<MenuItem>(name)!;
 
     private static string[] RenderedTexts(MainWindow window, string menuName, string itemName)
     {
@@ -100,7 +100,7 @@ public sealed class MenuBarBehaviorTests
             {
                 window.Show();
                 Click(Item(window, item));
-                var line = window.FindControl<TextBlock>("KeyboardShortcutStatusLine")!;
+                var line = window.FindInWindowOrWorkspace<TextBlock>("KeyboardShortcutStatusLine")!;
                 for (var wait = 0; wait < 100 && line.Text != message; wait++) await Task.Delay(20);
                 Assert.Equal(message, line.Text);
             }
@@ -126,7 +126,7 @@ public sealed class MenuBarBehaviorTests
                     Focusable = true,
                     DataContext = new WordRowViewModel(new ContractWordRow("morpheme", WordRowOutcome.Same, "Kept", WordRowTone.Fine)),
                 };
-                window.FindControl<Panel>("PageHost")!.Children.Add(word);
+                window.FindInWindowOrWorkspace<Panel>("PageHost")!.Children.Add(word);
                 PageScreenshots.Settle(window);
                 Assert.True(word.Focus());
                 Assert.True(Item(window, "EditMenu").Focus());
@@ -165,7 +165,7 @@ public sealed class MenuBarBehaviorTests
                     Content = "morpheme",
                     DataContext = new WordRowViewModel(new ContractWordRow("morpheme", WordRowOutcome.Same, "Kept", WordRowTone.Fine)),
                 };
-                window.FindControl<Panel>("PageHost")!.Children.Add(word);
+                window.FindInWindowOrWorkspace<Panel>("PageHost")!.Children.Add(word);
                 PageScreenshots.Settle(window);
                 Assert.True(word.Focus());
                 window.KeyPress(Key.LeftAlt, RawInputModifiers.Alt, PhysicalKey.AltLeft, null);
@@ -218,7 +218,7 @@ public sealed class MenuBarBehaviorTests
                 await workspace.Project.LoadKnownProjectsAsync();
                 Assert.Equal(45, workspace.RecentProjects.Count);
                 var ordered = workspace.RecentProjects.Select(project => project.FullFwDataPath).ToArray();
-                Assert.True(window.FindControl<Button>("ProjectChip")!.Focus());
+                Assert.True(window.FindInWindowOrWorkspace<Button>("ProjectChip")!.Focus());
                 window.KeyPress(Key.LeftAlt, RawInputModifiers.Alt, PhysicalKey.AltLeft, null);
                 window.KeyPressQwerty(PhysicalKey.F, RawInputModifiers.Alt);
                 window.KeyReleaseQwerty(PhysicalKey.F, RawInputModifiers.Alt);
@@ -280,7 +280,7 @@ public sealed class MenuBarBehaviorTests
             try
             {
                 window.Show();
-                var help = window.FindControl<Button>("HelpButton")!;
+                var help = window.FindInWindowOrWorkspace<Button>("HelpButton")!;
                 Click(Item(window, "HelpTopicsMenuItem"));
                 PageScreenshots.Settle(window);
                 Assert.True(help.Flyout!.IsOpen);
@@ -299,10 +299,10 @@ public sealed class MenuBarBehaviorTests
             var (_, window) = FakeComposedWindow.Create();
             try
             {
-                Assert.Equal("Main menu", AutomationProperties.GetName(window.FindControl<Menu>("MainMenu")!));
+                Assert.Equal("Main menu", AutomationProperties.GetName(window.FindInWindowOrWorkspace<Menu>("MainMenu")!));
                 Assert.Equal(WindowDecorationsElementRole.User,
-                    WindowDecorationProperties.GetElementRole(window.FindControl<Control>("ProjectChip")!));
-                Assert.NotNull(AutomationProperties.GetHelpText(window.FindControl<MenuItem>("ConfigureMenuItem")!));
+                    WindowDecorationProperties.GetElementRole(window.FindInWindowOrWorkspace<Control>("ProjectChip")!));
+                Assert.NotNull(AutomationProperties.GetHelpText(window.FindInWindowOrWorkspace<MenuItem>("ConfigureMenuItem")!));
             }
             finally { window.Close(); }
         });

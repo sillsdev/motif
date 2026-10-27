@@ -313,21 +313,21 @@
     "control": "ItemsControl"
   },
   {
-    "view": "MainWindow",
+    "view": "MotifWorkspaceView",
     "name": "MainWindowStoppedWordsItems",
     "source": "ActiveParseProgress.StoppedWords",
     "mode": "rows",
     "control": "ItemsControl"
   },
   {
-    "view": "MainWindow",
+    "view": "MotifWorkspaceView",
     "name": "MainWindowWritingSystemNoticesItems",
     "source": "Context.TextStyles.MissingFontNotices",
     "mode": "finite",
     "control": "ItemsControl"
   },
   {
-    "view": "MainWindow",
+    "view": "MotifWorkspaceView",
     "name": "PageList",
     "source": "VisiblePages",
     "mode": "finite",

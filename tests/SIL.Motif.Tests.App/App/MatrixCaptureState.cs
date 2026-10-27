@@ -29,7 +29,7 @@ internal static class MatrixCaptureState
         Xunit.Assert.True((expectedPage == WorkspacePage.Texts) == expectedTab.HasValue,
             "A Texts capture must name its expected tab, and other pages must omit one.");
 
-        var pageHost = Xunit.Assert.IsType<Panel>(window.FindControl<Panel>("PageHost"));
+        var pageHost = Xunit.Assert.IsType<Panel>(window.FindInWindowOrWorkspace<Panel>("PageHost"));
         var pageNames = Enum.GetValues<WorkspacePage>()
             .Select(page => $"{page}Page")
             .ToHashSet(StringComparer.Ordinal);

@@ -262,7 +262,7 @@ public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture ava
                 workspace.CurrentPage = WorkspacePage.Texts;
                 PageScreenshots.Settle(window);
                 Assert.Equal(width, window.ClientSize.Width);
-                var host = window.FindControl<WorkspaceLayoutHost>("WorkspaceLayout")!;
+                var host = window.FindInWindowOrWorkspace<WorkspaceLayoutHost>("WorkspaceLayout")!;
                 var side = host.FindControl<Border>("SidePanelBorder")!;
                 var item = window.GetVisualDescendants().OfType<ListBoxItem>().Single(control =>
                     control.DataContext is PageViewModel { Page: WorkspacePage.Texts });
@@ -279,7 +279,7 @@ public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture ava
                 Capture("enter-reopened");
 
                 KeyModifiers? receivedModifiers = null;
-                window.FindControl<ListBox>("PageList")!.AddHandler(InputElement.KeyDownEvent,
+                window.FindInWindowOrWorkspace<ListBox>("PageList")!.AddHandler(InputElement.KeyDownEvent,
                     (_, e) => receivedModifiers = e.KeyModifiers,
                     Avalonia.Interactivity.RoutingStrategies.Tunnel, handledEventsToo: true);
                 window.KeyPress(Key.Space, RawInputModifiers.Control, PhysicalKey.Space, null);
@@ -309,7 +309,7 @@ public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture ava
 
                 workspace.CurrentPage = WorkspacePage.Texts;
                 PageScreenshots.Settle(window);
-                Assert.True(window.FindControl<Button>("HelpButton")!.Focus());
+                Assert.True(window.FindInWindowOrWorkspace<Button>("HelpButton")!.Focus());
                 window.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.None, null);
                 window.KeyRelease(Key.Enter, RawInputModifiers.None, PhysicalKey.None, null);
                 PageScreenshots.Settle(window);
@@ -467,10 +467,10 @@ public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture ava
             window.Show();
             try
             {
-                Assert.True(window.FindControl<Button>("HelpButton")!.Focus());
+                Assert.True(window.FindInWindowOrWorkspace<Button>("HelpButton")!.Focus());
                 window.KeyPress(Key.Z, primary, PhysicalKey.None, null);
                 Assert.Empty(workspace.Context.Changes.Items);
-                status = window.FindControl<TextBlock>("KeyboardShortcutStatusLine")?.Text;
+                status = window.FindInWindowOrWorkspace<TextBlock>("KeyboardShortcutStatusLine")?.Text;
             }
             finally
             {
@@ -663,7 +663,7 @@ public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture ava
                 Assert.True(AnalyzeTextsLayoutTests.StripOf(panel, "Sungura").Focus());
                 window.KeyPress(Key.A, RawInputModifiers.None, PhysicalKey.None, null);
                 AnalyzeTextsLayoutTests.Settle(window);
-                var status = Assert.IsType<TextBlock>(window.FindControl<TextBlock>("KeyboardShortcutStatusLine"));
+                var status = Assert.IsType<TextBlock>(window.FindInWindowOrWorkspace<TextBlock>("KeyboardShortcutStatusLine"));
                 Assert.True(status.IsVisible);
                 Assert.Equal("Sungura is already Approved.", status.Text);
                 Assert.Empty(workspace.Context.Changes.Items);

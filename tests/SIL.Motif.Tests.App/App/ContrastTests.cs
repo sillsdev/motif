@@ -220,7 +220,7 @@ public sealed class ContrastTests(AvaloniaHeadlessFixture avalonia)
             var (_, window) = await PageScreenshots.OpenOverSampleData(parse: false);
             try
             {
-                var banner = window.FindControl<Border>("StatusBar")!;
+                var banner = window.FindInWindowOrWorkspace<Border>("StatusBar")!;
                 foreach (var theme in Themes)
                 {
                     Application.Current!.RequestedThemeVariant = theme;
@@ -256,7 +256,7 @@ public sealed class ContrastTests(AvaloniaHeadlessFixture avalonia)
             var (_, window) = await PageScreenshots.OpenOverSampleData(parse: false);
             try
             {
-                var banner = window.FindControl<Border>("TechDemoNotice")!;
+                var banner = window.FindInWindowOrWorkspace<Border>("TechDemoNotice")!;
                 foreach (var theme in Themes)
                 {
                     Application.Current!.RequestedThemeVariant = theme;

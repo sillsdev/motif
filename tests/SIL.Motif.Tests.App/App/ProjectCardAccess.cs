@@ -10,7 +10,7 @@ namespace SIL.Motif.Tests.App;
 internal static class ProjectCardAccess
 {
     /// <summary>The chip that opens the card.</summary>
-    public static Button Chip(MainWindow window) => window.FindControl<Button>("ProjectChip")!;
+    public static Button Chip(MainWindow window) => window.FindInWindowOrWorkspace<Button>("ProjectChip")!;
 
     /// <summary>Opens the card under the chip and returns it, laid out and rendered.</summary>
     public static ProjectCardView Open(MainWindow window)

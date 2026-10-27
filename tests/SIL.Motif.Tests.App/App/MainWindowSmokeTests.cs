@@ -67,7 +67,7 @@ public sealed class MainWindowSmokeTests
                     StoppedWords = Enumerable.Range(0, 30).Select(index =>
                         new SIL.Motif.Contract.Jobs.StoppedParseWord($"stopped-{index}", "TIMEOUT", 1000)).ToArray(),
                 });
-                window.FindControl<Button>("StatusParseProgress")!.Flyout!.ShowAt(window.FindControl<Button>("StatusParseProgress")!);
+                window.FindInWindowOrWorkspace<Button>("StatusParseProgress")!.Flyout!.ShowAt(window.FindInWindowOrWorkspace<Button>("StatusParseProgress")!);
                 var stopped = window.GetVisualDescendants().OfType<Expander>().Single(expander =>
                     AutomationProperties.GetAutomationId(expander) == SIL.Motif.App.AutomationIds.ParseStoppedWords);
                 stopped.IsExpanded = true;
@@ -109,7 +109,7 @@ public sealed class MainWindowSmokeTests
                 progress.Report(new AssessmentProgress(AssessmentStage.Parsing, 0, 1, "Parsing held")
                     { CurrentWord = "held", PerWordLimitMs = 1000 });
                 PageScreenshots.Settle(window);
-                window.FindControl<Button>("StatusParseProgress")!.Flyout!.ShowAt(window.FindControl<Button>("StatusParseProgress")!);
+                window.FindInWindowOrWorkspace<Button>("StatusParseProgress")!.Flyout!.ShowAt(window.FindInWindowOrWorkspace<Button>("StatusParseProgress")!);
                 PageScreenshots.Settle(window);
                 var report = Assert.Single(window.GetVisualDescendants().OfType<Button>(), button =>
                     AutomationProperties.GetName(button) == "Report a problem with parsing");
@@ -154,7 +154,7 @@ public sealed class MainWindowSmokeTests
                 Dispatcher.UIThread.RunJobs();
                 window.UpdateLayout();
 
-                var helpButton = window.FindControl<Button>("HelpButton");
+                var helpButton = window.FindInWindowOrWorkspace<Button>("HelpButton");
                 Assert.NotNull(helpButton);
                 Assert.True(helpButton.Flyout?.IsOpen);
                 var helpView = Assert.IsType<HelpPopupView>(Assert.IsType<Flyout>(helpButton.Flyout).Content);
@@ -213,10 +213,10 @@ public sealed class MainWindowSmokeTests
             var (_, window, _) = NewComposedWindow();
             try
             {
-                var topBar = Assert.IsType<Border>(window.FindControl<Border>("TopBar"));
-                var projectMenu = Assert.IsType<Menu>(window.FindControl<Menu>("MainMenu"));
-                var chip = Assert.IsType<Button>(window.FindControl<Button>("ProjectChip"));
-                var refresh = Assert.IsType<Button>(window.FindControl<Button>("RefreshIconButton"));
+                var topBar = Assert.IsType<Border>(window.FindInWindowOrWorkspace<Border>("TopBar"));
+                var projectMenu = Assert.IsType<Menu>(window.FindInWindowOrWorkspace<Menu>("MainMenu"));
+                var chip = Assert.IsType<Button>(window.FindInWindowOrWorkspace<Button>("ProjectChip"));
+                var refresh = Assert.IsType<Button>(window.FindInWindowOrWorkspace<Button>("RefreshIconButton"));
 
                 Assert.Equal(WindowDecorations.Full, window.WindowDecorations);
                 Assert.Equal(WindowDecorationsElementRole.TitleBar, WindowDecorationProperties.GetElementRole(topBar));
@@ -247,7 +247,7 @@ public sealed class MainWindowSmokeTests
                 window.Show();
                 window.OpenFileMenu();
                 PageScreenshots.Settle(window);
-                var configure = Assert.IsType<MenuItem>(window.FindControl<MenuItem>("ConfigureMenuItem"));
+                var configure = Assert.IsType<MenuItem>(window.FindInWindowOrWorkspace<MenuItem>("ConfigureMenuItem"));
                 var before = BoundsInTopLevel(configure);
 
                 const string projectName = "Recent";
@@ -278,11 +278,11 @@ public sealed class MainWindowSmokeTests
             {
                 window.Show();
                 window.UpdateLayout();
-                var sidebar = Assert.IsType<Border>(window.FindControl<Border>("Sidebar"));
-                var footer = Assert.IsType<StackPanel>(window.FindControl<StackPanel>("SidebarFooter"));
-                var utilities = Assert.IsType<StackPanel>(window.FindControl<StackPanel>("SidebarUtilities"));
-                var help = Assert.IsType<Button>(window.FindControl<Button>("HelpButton"));
-                var settings = Assert.IsType<Button>(window.FindControl<Button>("SettingsButton"));
+                var sidebar = Assert.IsType<Border>(window.FindInWindowOrWorkspace<Border>("Sidebar"));
+                var footer = Assert.IsType<StackPanel>(window.FindInWindowOrWorkspace<StackPanel>("SidebarFooter"));
+                var utilities = Assert.IsType<StackPanel>(window.FindInWindowOrWorkspace<StackPanel>("SidebarUtilities"));
+                var help = Assert.IsType<Button>(window.FindInWindowOrWorkspace<Button>("HelpButton"));
+                var settings = Assert.IsType<Button>(window.FindInWindowOrWorkspace<Button>("SettingsButton"));
 
                 Assert.Contains(help.GetVisualAncestors(), ancestor => ReferenceEquals(ancestor, sidebar));
                 Assert.Contains(settings.GetVisualAncestors(), ancestor => ReferenceEquals(ancestor, sidebar));
@@ -300,7 +300,7 @@ public sealed class MainWindowSmokeTests
                 Assert.True(workspace.IsSidebarCollapsed);
                 Assert.Equal(Avalonia.Layout.Orientation.Vertical, utilities.Orientation);
                 Assert.True(help.IsEffectivelyVisible);
-                Assert.False(window.FindControl<TextBlock>("SidebarHelpLabel")?.IsEffectivelyVisible ?? true);
+                Assert.False(window.FindInWindowOrWorkspace<TextBlock>("SidebarHelpLabel")?.IsEffectivelyVisible ?? true);
                 Assert.True(settings.IsEffectivelyVisible);
 
                 var before = workspace.CurrentPage;
@@ -334,7 +334,7 @@ public sealed class MainWindowSmokeTests
                 workspace.PageModel<TextsPageModel>().ResultsInText.OpenPanGlossGuideCommand.Execute(null);
                 window.UpdateLayout();
 
-                var helpButton = Assert.IsType<Button>(window.FindControl<Button>("HelpButton"));
+                var helpButton = Assert.IsType<Button>(window.FindInWindowOrWorkspace<Button>("HelpButton"));
                 Assert.True(helpButton.Flyout?.IsOpen);
                 var help = Assert.IsType<HelpPopupViewModel>(
                     Assert.IsType<HelpPopupView>(Assert.IsType<Flyout>(helpButton.Flyout).Content).DataContext);
@@ -446,7 +446,7 @@ public sealed class MainWindowSmokeTests
                 window.Show();
                 window.UpdateLayout();
 
-                var status = Assert.IsType<Border>(window.FindControl<Border>("StatusBar"));
+                var status = Assert.IsType<Border>(window.FindInWindowOrWorkspace<Border>("StatusBar"));
                 Assert.True(status.IsEffectivelyVisible);
                 Assert.Contains("Tech demo: writes nothing until you press Apply",
                     status.GetVisualDescendants().OfType<TextBlock>().Select(text => text.Text));
@@ -472,11 +472,11 @@ public sealed class MainWindowSmokeTests
                 window.Show();
                 window.UpdateLayout();
 
-                var banner = Assert.IsType<Border>(window.FindControl<Border>("TechDemoNotice"));
+                var banner = Assert.IsType<Border>(window.FindInWindowOrWorkspace<Border>("TechDemoNotice"));
                 Assert.True(banner.IsEffectivelyVisible);
                 Assert.Contains(TechDemoNoticeViewModel.NoticeText,
                     banner.GetVisualDescendants().OfType<TextBlock>().Select(text => text.Text));
-                var pageHost = Assert.IsType<Panel>(window.FindControl<Panel>("PageHost"));
+                var pageHost = Assert.IsType<Panel>(window.FindInWindowOrWorkspace<Panel>("PageHost"));
                 Assert.True(banner.TranslatePoint(new Point(0, banner.Bounds.Height), window)!.Value.Y <=
                     pageHost.TranslatePoint(new Point(0, 0), window)!.Value.Y + 0.5, "The notice sits above the page.");
                 var gotIt = Assert.Single(banner.GetVisualDescendants().OfType<Button>(), button =>
@@ -578,15 +578,15 @@ public sealed class MainWindowSmokeTests
                 workspace.Baseline.FieldWorksHeldProject = true;
                 workspace.Baseline.ShownRefusal = WindowRefusal.Plain("FieldWorks still has the project open.");
                 window.UpdateLayout();
-                var noticeBand = window.FindControl<Border>("NoticeBand")!;
+                var noticeBand = window.FindInWindowOrWorkspace<Border>("NoticeBand")!;
                 Assert.True(noticeBand.IsEffectivelyVisible);
                 Assert.Equal(28, noticeBand.Bounds.Height);
                 Assert.Equal(workspace.Baseline.ShownRefusal.Sentence,
-                    window.FindControl<TextBlock>("NoticeSummary")!.Text);
+                    window.FindInWindowOrWorkspace<TextBlock>("NoticeSummary")!.Text);
                 PageScreenshots.Settle(window);
                 Assert.True(noticeBand.IsEffectivelyVisible,
                     $"Refusal after settling: {workspace.Baseline.ShownRefusal?.Sentence ?? "none"}");
-                var detailsButton = window.FindControl<Button>("NoticeDetailsButton")!;
+                var detailsButton = window.FindInWindowOrWorkspace<Button>("NoticeDetailsButton")!;
                 ClickButton(window, detailsButton);
                 PageScreenshots.Settle(window);
                 Assert.True(detailsButton.Flyout!.IsOpen);

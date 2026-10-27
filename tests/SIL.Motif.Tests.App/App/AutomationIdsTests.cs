@@ -109,9 +109,9 @@ public sealed class AutomationIdsTests
         var members = typeof(AutomationIds).GetMembers(System.Reflection.BindingFlags.Public |
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)
             .Select(member => member.Name).ToHashSet(StringComparer.Ordinal);
-        var mainWindow = File.ReadAllText(Path.Combine(appRoot, "Views", "MainWindow.axaml"));
+        var workspaceView = File.ReadAllText(Path.Combine(appRoot, "Views", "MotifWorkspaceView.axaml"));
         Assert.Contains("Setter Property=\"AutomationProperties.AutomationId\" Value=\"{Binding AutomationId}\"",
-            mainWindow, StringComparison.Ordinal);
+            workspaceView, StringComparison.Ordinal);
         var references = new List<string>();
         foreach (var view in appSources)
         {

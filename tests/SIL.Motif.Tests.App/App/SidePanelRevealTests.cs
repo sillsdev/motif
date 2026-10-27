@@ -36,7 +36,7 @@ public sealed class SidePanelRevealTests
                 settings.ZoomPercent = zoom;
                 workspace.CurrentPage = WorkspacePage.Texts;
                 PageScreenshots.Settle(window);
-                var host = window.FindControl<WorkspaceLayoutHost>("WorkspaceLayout")!;
+                var host = window.FindInWindowOrWorkspace<WorkspaceLayoutHost>("WorkspaceLayout")!;
                 var side = host.FindControl<Border>("SidePanelBorder")!;
                 var reveal = host.FindControl<Button>("SidePanelRevealButton");
                 Assert.NotNull(reveal);
@@ -87,7 +87,7 @@ public sealed class SidePanelRevealTests
                 PageScreenshots.Settle(window);
                 Assert.Equal(width, window.ClientSize.Width);
                 Assert.Equal(600, window.ClientSize.Height);
-                var rail = window.FindControl<ListBox>("PageList")!;
+                var rail = window.FindInWindowOrWorkspace<ListBox>("PageList")!;
                 var entries = workspace.VisiblePages.ToArray();
                 Assert.True(entries.Length >= 9);
                 foreach (var entry in entries)
@@ -114,8 +114,8 @@ public sealed class SidePanelRevealTests
                     Assert.Equal(entries[index].Page, workspace.CurrentPage);
                     AssertInside(window, RailItem(rail, entries[index]));
                 }
-                AssertInside(window, window.FindControl<Button>("HelpButton")!);
-                AssertInside(window, window.FindControl<Button>("SettingsButton")!);
+                AssertInside(window, window.FindInWindowOrWorkspace<Button>("HelpButton")!);
+                AssertInside(window, window.FindInWindowOrWorkspace<Button>("SettingsButton")!);
             }
             finally
             {
@@ -157,7 +157,7 @@ public sealed class SidePanelRevealTests
                     frame.Save(Path.Combine(folder, $"texts-reveal-{size}-{width}-{height}-{zoom}-{theme}.png"),
                         PngBitmapEncoderOptions.Default);
                     LayoutAssertions.AssertCurrent(window);
-                    var host = window.FindControl<WorkspaceLayoutHost>("WorkspaceLayout")!;
+                    var host = window.FindInWindowOrWorkspace<WorkspaceLayoutHost>("WorkspaceLayout")!;
                     var sideVisible = host.FindControl<Border>("SidePanelBorder")!.IsVisible;
                     var reveal = host.FindControl<Button>("SidePanelRevealButton");
                     if (!sideVisible && reveal?.IsEffectivelyVisible != true)

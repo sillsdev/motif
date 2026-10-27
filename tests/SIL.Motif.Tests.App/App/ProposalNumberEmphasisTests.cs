@@ -60,7 +60,7 @@ public sealed class ProposalNumberEmphasisTests
                 window.Width = 640;
                 window.Height = 600;
                 PageScreenshots.Settle(window);
-                var host = window.FindControl<WorkspaceLayoutHost>("WorkspaceLayout")!;
+                var host = window.FindInWindowOrWorkspace<WorkspaceLayoutHost>("WorkspaceLayout")!;
                 HeadlessClick.Click(window, host.FindControl<Button>("InspectorStrip")!, "Show Inspector");
                 PageScreenshots.Settle(window);
                 var inspector = host.FindControl<ContentControl>("PageInspectorHost")!;

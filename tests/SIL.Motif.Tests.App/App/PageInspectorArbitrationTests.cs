@@ -170,7 +170,7 @@ public sealed class PageInspectorArbitrationTests(AvaloniaHeadlessFixture avalon
         {
             var fake = SampleInspectorClient();
             var (workspace, window) = FakeComposedWindow.Create(fake);
-            var host = window.FindControl<WorkspaceLayoutHost>("WorkspaceLayout")!;
+            var host = window.FindInWindowOrWorkspace<WorkspaceLayoutHost>("WorkspaceLayout")!;
             try
             {
                 workspace.CurrentPage = WorkspacePage.Texts;
@@ -219,7 +219,7 @@ public sealed class PageInspectorArbitrationTests(AvaloniaHeadlessFixture avalon
         {
             var fake = SampleInspectorClient();
             var (workspace, window) = FakeComposedWindow.Create(fake);
-            var host = window.FindControl<WorkspaceLayoutHost>("WorkspaceLayout")!;
+            var host = window.FindInWindowOrWorkspace<WorkspaceLayoutHost>("WorkspaceLayout")!;
             try
             {
                 workspace.CurrentPage = WorkspacePage.Texts;
@@ -279,7 +279,7 @@ public sealed class PageInspectorArbitrationTests(AvaloniaHeadlessFixture avalon
                 PageScreenshots.Settle(window);
                 var input = InstallPageInput(window, SampleSubject());
                 var provider = new InspectorPage();
-                var host = window.FindControl<WorkspaceLayoutHost>("WorkspaceLayout")!;
+                var host = window.FindInWindowOrWorkspace<WorkspaceLayoutHost>("WorkspaceLayout")!;
                 host.SetPagePanels(provider);
                 PageScreenshots.Settle(window);
                 Assert.False(host.FindControl<Border>("InspectorPane")!.IsVisible);

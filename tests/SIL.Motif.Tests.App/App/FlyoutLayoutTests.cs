@@ -51,7 +51,7 @@ public sealed class FlyoutLayoutTests
                         {
                             workspace.CurrentPage = which == "help" ? WorkspacePage.Overview : WorkspacePage.Texts;
                             PageScreenshots.Settle(window);
-                            button = window.FindControl<Button>("HelpButton")!;
+                            button = window.FindInWindowOrWorkspace<Button>("HelpButton")!;
                         }
                         HeadlessClick.Click(window, button, which);
                         for (var pass = 0; pass < 50 && button.Flyout?.IsOpen != true; pass++)

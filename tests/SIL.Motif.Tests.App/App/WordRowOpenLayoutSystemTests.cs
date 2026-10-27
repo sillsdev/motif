@@ -45,7 +45,7 @@ public sealed class WordRowOpenLayoutSystemTests(ITestOutputHelper output)
 
                 var rowIndex = texts.Words.Rows.Select((item, index) => (item, index))
                     .Single(pair => pair.item.Presentation.Facts.Word == "hawajafika").index;
-                var pageList = window.FindControl<ListBox>("PageList")!;
+                var pageList = window.FindInWindowOrWorkspace<ListBox>("PageList")!;
                 Assert.Equal(ScrollBarVisibility.Auto,
                     ScrollViewer.GetVerticalScrollBarVisibility(pageList));
                 var lastPage = workspace.VisiblePages[^1];

@@ -76,7 +76,7 @@ public sealed class TimingResponsiveTests
                         Assert.Equal(640, Math.Round(window.ClientSize.Width));
                         Assert.Equal(height, Math.Round(window.ClientSize.Height));
                         Assert.Equal(height / settings.ZoomScale < 600,
-                            window.FindControl<ListBox>("PageList")!.Classes.Contains("shortRail"));
+                            window.FindInWindowOrWorkspace<ListBox>("PageList")!.Classes.Contains("shortRail"));
                         Assert.True(page.Page.HasRule);
                         Assert.True(page.Page.HasRuleDetail);
 

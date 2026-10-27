@@ -199,7 +199,7 @@ public sealed class WorkspacePaneHostTests(AvaloniaHeadlessFixture avalonia)
 
                 workspace.CurrentPage = WorkspacePage.Texts;
                 PageScreenshots.Settle(window);
-                var mainHost = window.FindControl<WorkspaceLayoutHost>("WorkspaceLayout")!;
+                var mainHost = window.FindInWindowOrWorkspace<WorkspaceLayoutHost>("WorkspaceLayout")!;
                 Assert.Same(selection, mainHost.FindControl<ContentControl>("SidePanelContent")!.Content);
                 Assert.Same(texts.DataContext, selection.DataContext);
                 var mainWindowParent = selection.Parent;
