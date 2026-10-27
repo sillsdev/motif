@@ -123,7 +123,7 @@ public static class MotifSchema
     {
         var target = Environment.GetEnvironmentVariable("MOTIF_TEST_STORAGE_UNAVAILABLE_FOR");
         if (target is null) return;
-        var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        var comparison = OperatingSystem.IsWindows() || OperatingSystem.IsMacOS() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
         if (string.Equals(Path.GetFullPath(target), Path.GetFullPath(connection.DataSource), comparison))
             throw new SqliteException("disk I/O error", 10);
     }

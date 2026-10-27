@@ -171,6 +171,8 @@ internal static class WalkthroughArtifacts
         Action<string>? reportBaselineMismatch = null, bool strictBaselineComparison = false)
     {
         var updateBaselines = Environment.GetEnvironmentVariable("MOTIF_WALKTHROUGH_UPDATE_BASELINES") == "1";
+        // A strict replay checks every capture before it fails, so one run writes every stale actual PNG.
+        var mismatches = new List<Xunit.Sdk.XunitException>();
         var prepared = captures.Select(capture =>
         {
             if (!help.StepCaptions.TryGetValue(capture.Id, out var caption))
@@ -179,7 +181,6 @@ internal static class WalkthroughArtifacts
             var baselineRoot = Path.Combine(repositoryRoot, "tests", "SIL.Motif.Tests.App", "Assets",
                 "WalkthroughBaselines", script.Id);
             // A plain mismatch must not hide the annotated actual: both land in walkthrough-diffs before it fails.
-            Exception? plainMismatch = null;
             try
             {
                 CheckBaseline(Path.Combine(baselineRoot, $"{capture.Id}.png"), capture.Png, updateBaselines,
@@ -187,11 +188,17 @@ internal static class WalkthroughArtifacts
             }
             catch (Xunit.Sdk.XunitException mismatch)
             {
-                plainMismatch = mismatch;
+                mismatches.Add(mismatch);
             }
-            CheckBaseline(Path.Combine(baselineRoot, $"{capture.Id}-annotated.png"), annotated, updateBaselines,
-                capture.Callouts, reportBaselineMismatch, strictBaselineComparison);
-            if (plainMismatch is not null) ExceptionDispatchInfo.Capture(plainMismatch).Throw();
+            try
+            {
+                CheckBaseline(Path.Combine(baselineRoot, $"{capture.Id}-annotated.png"), annotated, updateBaselines,
+                    capture.Callouts, reportBaselineMismatch, strictBaselineComparison);
+            }
+            catch (Xunit.Sdk.XunitException mismatch)
+            {
+                mismatches.Add(mismatch);
+            }
             using var screenshot = SKBitmap.Decode(capture.Png)
                 ?? throw new InvalidDataException("Could not read rendered walkthrough PNG.");
             using var annotatedImage = SKBitmap.Decode(annotated)
@@ -199,6 +206,11 @@ internal static class WalkthroughArtifacts
             return new PreparedCapture(capture, caption, annotated, screenshot.Width, screenshot.Height,
                 annotatedImage.Width, annotatedImage.Height);
         }).ToArray();
+        if (mismatches.Count == 1) ExceptionDispatchInfo.Capture(mismatches[0]).Throw();
+        if (mismatches.Count > 1)
+            throw new Xunit.Sdk.XunitException(
+                $"{mismatches.Count} walkthrough baselines differ:{Environment.NewLine}" +
+                string.Join(Environment.NewLine, mismatches.Select(mismatch => mismatch.Message)));
 
         var configuredOutput = Environment.GetEnvironmentVariable("MOTIF_WALKTHROUGH_OUTPUT");
         if (string.IsNullOrWhiteSpace(configuredOutput)) return;

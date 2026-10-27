@@ -15,6 +15,9 @@ public sealed class WritingSystemMissingToolTests(PristineProjectFixture pristin
 {
     private const string SeamVariable = "MOTIF_TEST_FAIL_WRITING_SYSTEM_FOR";
 
+    /// <summary>A path as it appears inside raw JSON text: Windows backslashes are escaped there.</summary>
+    private static string JsonPath(string path) => JsonEncodedText.Encode(path).ToString();
+
     [Fact]
     public async Task ACaptureOfAProjectWithAMissingWritingSystemIsASetupProblemNotDamage()
     {
@@ -41,7 +44,8 @@ public sealed class WritingSystemMissingToolTests(PristineProjectFixture pristin
         var text = structured.GetRawText();
         Assert.Contains("setup problem", structured.GetProperty("next").GetString(), StringComparison.Ordinal);
         Assert.DoesNotContain("damaged", structured.GetProperty("message").GetString()!, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains(Path.Combine(Path.GetDirectoryName(path)!, "WritingSystemStore"), text, StringComparison.Ordinal);
+        Assert.Contains(JsonPath(Path.Combine(Path.GetDirectoryName(path)!, "WritingSystemStore")), text,
+            StringComparison.Ordinal);
     }
 
     [Fact]
@@ -115,7 +119,7 @@ public sealed class WritingSystemMissingToolTests(PristineProjectFixture pristin
         var structured = result.StructuredContent!.Value;
         Assert.True(structured.GetProperty("code").GetString() == "project.writing-system-missing", structured.GetRawText());
         Assert.DoesNotContain("Repeat the call once", structured.GetProperty("next").GetString(), StringComparison.Ordinal);
-        Assert.Contains(Path.Combine(Path.GetDirectoryName(path)!, "WritingSystemStore"), structured.GetRawText(),
-            StringComparison.Ordinal);
+        Assert.Contains(JsonPath(Path.Combine(Path.GetDirectoryName(path)!, "WritingSystemStore")),
+            structured.GetRawText(), StringComparison.Ordinal);
     }
 }

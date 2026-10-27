@@ -79,6 +79,31 @@ public sealed class JobRunnerHostOwnershipTests
         }
     }
 
+    // On macOS a link made in the temporary folder points at a path that passes through /var, itself a link.
+    [UnixWorkerLockFact]
+    public void AliasWhoseTargetPassesThroughAnotherLinkedFolderSharesTheRunnerOwner()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "motif-owner-linked-target-" + Guid.NewGuid().ToString("N"));
+        var realParent = Path.Combine(root, "real");
+        var viaLink = Path.Combine(root, "via-link");
+        var aliasParent = Path.Combine(root, "alias");
+        var ownerNamespace = "linked-target-" + Guid.NewGuid().ToString("N");
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(realParent, "sub", "installation"));
+            Directory.CreateSymbolicLink(viaLink, realParent);
+            Directory.CreateSymbolicLink(aliasParent, Path.Combine(viaLink, "sub"));
+            using var first = JobRunnerHost.ForRoot(Path.Combine(realParent, "sub", "installation"), ownerNamespace);
+            using var alias = JobRunnerHost.ForRoot(Path.Combine(aliasParent, "installation"), ownerNamespace);
+
+            Assert.Equal(first.OwnerName, alias.OwnerName);
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+        }
+    }
+
     [UnixWorkerLockFact]
     public async Task SameRootOwnerIsSharedAcrossDifferentTempDirectories()
     {

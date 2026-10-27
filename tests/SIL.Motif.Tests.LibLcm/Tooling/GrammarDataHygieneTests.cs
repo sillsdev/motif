@@ -218,7 +218,8 @@ public sealed class GrammarDataHygieneTests
         try
         {
             InitGit(temp);
-            var oddName = "space and-ñ\nline.txt";
+            // A line feed is not a legal file-name character on Windows; Unix keeps it to cover NUL-delimited git output.
+            var oddName = OperatingSystem.IsWindows() ? "space and-ñ line.txt" : "space and-ñ\nline.txt";
             File.WriteAllBytes(Path.Combine(temp, oddName), RuntimePayload(temp));
             RunGit(temp, "add", "--", oddName);
             Assert.Equal(1, RunGuard("--index", temp));
@@ -637,6 +638,13 @@ public sealed class GrammarDataHygieneTests
 
     private static void DeleteTemp(string path)
     {
-        if (Directory.Exists(path)) Directory.Delete(path, true);
+        if (!Directory.Exists(path)) return;
+        // Git writes its objects read-only, and Windows cannot delete a read-only file.
+        foreach (var file in Directory.EnumerateFiles(path, "*", SearchOption.AllDirectories))
+        {
+            var attributes = File.GetAttributes(file);
+            if ((attributes & FileAttributes.ReadOnly) != 0) File.SetAttributes(file, attributes & ~FileAttributes.ReadOnly);
+        }
+        Directory.Delete(path, true);
     }
 }

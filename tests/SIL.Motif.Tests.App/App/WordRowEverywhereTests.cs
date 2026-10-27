@@ -189,7 +189,9 @@ public sealed class WordRowEverywhereTests
                     PageScreenshots.Settle(window);
                     var next = panel.InspectorContent.GetVisualDescendants().OfType<Button>()
                         .Where(button => button.IsEffectivelyVisible).ToArray();
-                    var tryWord = Assert.Single(next, button => Equals(button.Content, "Try a Word"));
+                    // The word card also offers Try a Word once its details load; this checks the row's own button.
+                    var tryWord = Assert.Single(next, button => Equals(button.Content, "Try a Word") &&
+                        button.Classes.Contains("reviewAction"));
                     Assert.Contains(next, button => Equals(button.Content, MotifAppStrings.WordRowOpenInText));
                     Assert.Contains(next, button => Equals(button.Content, "Word Analyses ↗"));
                     tryWord.BringIntoView();

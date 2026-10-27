@@ -132,16 +132,29 @@ function Copy-MotifStagedIcu {
   inside a checkout under a folder Defender skips for build churn. A checkout is the place this
   repository already keeps every other per-run write. MOTIF_TEST_TEMP names another folder instead.
   Linux and macOS keep the system folder: there is no on-access scanner, and /tmp is often in memory.
+  On macOS that folder is reached through a symbolic link ($TMPDIR is /var/folders/..., and /var is a link to
+  /private/var). The product refuses any path that passes through a link, so every test that builds a scratch
+  path under $TMPDIR would be refused, and a path compared after the system resolves it would not match the one
+  the test built. macOS therefore keeps the system folder but names it by its real path.
   Returns the folder, or $null when the system folder is kept.
 #>
 function Initialize-MotifTestTemporaryDirectory {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)][string] $RepoRoot,
-        [bool] $WindowsHost = $IsWindows
+        [bool] $WindowsHost = $IsWindows,
+        [bool] $MacHost = $IsMacOS
     )
 
-    if (-not $WindowsHost) { return $null }
+    if (-not $WindowsHost) {
+        if ($MacHost) {
+            $system = if ([string]::IsNullOrWhiteSpace($env:TMPDIR)) { '/tmp' } else { $env:TMPDIR }
+            # pwd -P prints the physical directory, with every link resolved.
+            $real = (& /bin/sh -c 'cd "$1" && pwd -P' sh $system 2>$null)
+            if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($real)) { $env:TMPDIR = "$real".Trim() }
+        }
+        return $null
+    }
     $directory = $env:MOTIF_TEST_TEMP
     # A short name: tests build deep scratch paths below it and must stay under the Windows path limit.
     if ([string]::IsNullOrWhiteSpace($directory)) { $directory = Join-Path $RepoRoot 'bin/t' }

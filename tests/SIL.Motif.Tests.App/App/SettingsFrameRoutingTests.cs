@@ -37,8 +37,10 @@ public sealed class SettingsFrameRoutingTests
                 PageScreenshots.Settle(window);
                 if (keyboard)
                 {
-                    window.KeyPress(Key.OemComma, RawInputModifiers.Control, PhysicalKey.Comma, null);
-                    window.KeyRelease(Key.OemComma, RawInputModifiers.Control, PhysicalKey.Comma, null);
+                    // Settings is Command+, on macOS and Control+, elsewhere; the shortcut catalog resolves it per platform.
+                    var chord = OperatingSystem.IsMacOS() ? RawInputModifiers.Meta : RawInputModifiers.Control;
+                    window.KeyPress(Key.OemComma, chord, PhysicalKey.Comma, null);
+                    window.KeyRelease(Key.OemComma, chord, PhysicalKey.Comma, null);
                 }
                 else FakeComposedWindow.Click(window, "Settings");
                 PageScreenshots.Settle(window);

@@ -990,7 +990,8 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                     {
                         RoutedEvent = InputElement.KeyDownEvent,
                         Key = Key.C,
-                        KeyModifiers = KeyModifiers.Control,
+                        // The copy chord is Command+C on macOS and Control+C elsewhere.
+                        KeyModifiers = OperatingSystem.IsMacOS() ? KeyModifiers.Meta : KeyModifiers.Control,
                     };
                     value.RaiseEvent(key);
                     Assert.True(key.Handled);

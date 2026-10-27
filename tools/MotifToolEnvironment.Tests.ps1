@@ -26,6 +26,25 @@ try {
     Assert-Equal 'unchanged-temp' $env:TEMP 'Off Windows TEMP is untouched.'
     Assert-Equal 'unchanged-tmp' $env:TMP 'Off Windows TMP is untouched.'
 
+    # macOS keeps the system folder but names it by its real path, because /var/folders is behind a link.
+    if (-not $IsWindows) {
+        $real = Join-Path $root 'real-tmp'
+        [IO.Directory]::CreateDirectory($real) | Out-Null
+        $link = Join-Path $root 'link-tmp'
+        [IO.Directory]::CreateSymbolicLink($link, $real) | Out-Null
+        $savedTmpDir = $env:TMPDIR
+        try {
+            $env:TMPDIR = $link
+            $kept = Initialize-MotifTestTemporaryDirectory -RepoRoot $root -WindowsHost $false -MacHost $true
+            Assert-Equal $null $kept 'macOS keeps the system temporary folder.'
+            Assert-Equal ((& /bin/sh -c 'cd "$1" && pwd -P' sh $real)) $env:TMPDIR 'macOS TMPDIR names the real folder.'
+            $env:TMPDIR = $link
+            Initialize-MotifTestTemporaryDirectory -RepoRoot $root -WindowsHost $false -MacHost $false | Out-Null
+            Assert-Equal $link $env:TMPDIR 'Linux TMPDIR is untouched.'
+        }
+        finally { $env:TMPDIR = $savedTmpDir }
+    }
+
     $expected = [IO.Path]::GetFullPath((Join-Path $root 'bin/t'))
     $moved = Initialize-MotifTestTemporaryDirectory -RepoRoot $root -WindowsHost $true
     Assert-Equal $expected $moved 'On Windows the folder is bin/t in the checkout.'

@@ -13,6 +13,36 @@ internal static class WalkthroughWindowReopen
         ArgumentNullException.ThrowIfNull(walkthrough);
         ArgumentException.ThrowIfNullOrWhiteSpace(projectPath);
 
+        // A background refresh can rebuild the recent list between aiming and pressing, so a missed click is repeated.
+        const int attempts = 3;
+        MenuItem recentMenu;
+        RecentProjectViewModel project;
+        Task? before;
+        for (var attempt = 1; ; attempt++)
+        {
+            try
+            {
+                (recentMenu, project, before) = ClickRecentEntry(walkthrough, projectPath);
+                break;
+            }
+            catch (Xunit.Sdk.XunitException exception) when (attempt < attempts &&
+                exception.Message.StartsWith("The click aimed at", StringComparison.Ordinal))
+            {
+                Dispatcher.UIThread.RunJobs();
+                walkthrough.CloseProjectMenu();
+            }
+        }
+        var command = walkthrough.Workspace.OpenRecentProjectCommand;
+        walkthrough.WaitUntil(() => !recentMenu.IsSubMenuOpen &&
+                !ReferenceEquals(before, command.ExecutionTask) && command.ExecutionTask is { IsCompleted: true },
+            TimeSpan.FromSeconds(60), $"opening '{project.AutomationName}' did not finish");
+        Assert.NotSame(before, command.ExecutionTask);
+        Assert.Equal(projectPath, walkthrough.Workspace.Context.ProjectPath);
+    }
+
+    private static (MenuItem RecentMenu, RecentProjectViewModel Project, Task? Before) ClickRecentEntry(
+        WalkthroughWindow walkthrough, string projectPath)
+    {
         var pathComparison = OperatingSystem.IsLinux() ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
         walkthrough.OpenProjectMenu();
         var automationName = $"Open {Path.GetFileNameWithoutExtension(projectPath)}";
@@ -45,10 +75,6 @@ internal static class WalkthroughWindowReopen
         Assert.Same(project, item.CommandParameter);
         var before = command.ExecutionTask;
         HeadlessClick.Click(TopLevel.GetTopLevel(item)!, item, project.AutomationName);
-        walkthrough.WaitUntil(() => !recentMenu.IsSubMenuOpen &&
-                !ReferenceEquals(before, command.ExecutionTask) && command.ExecutionTask is { IsCompleted: true },
-            TimeSpan.FromSeconds(60), $"opening '{project.AutomationName}' did not finish");
-        Assert.NotSame(before, command.ExecutionTask);
-        Assert.Equal(projectPath, walkthrough.Workspace.Context.ProjectPath);
+        return (recentMenu, project, before);
     }
 }

@@ -36,6 +36,10 @@ public static class ArtifactRetentionCommands
     private const string WorkerMarker = "SIL.Motif.WorkerRoot.v1";
     private const string PhysicalAliasRefused = "physical-alias-refused";
     private const string FileIdentityUnavailable = "file-identity-unavailable";
+
+    // A live store is open for writing; Windows denies a read that does not share that access.
+    private static readonly FileShare StoreReadShare =
+        OperatingSystem.IsWindows() ? FileShare.ReadWrite | FileShare.Delete : FileShare.Read;
     private static readonly string[] Families = ["assessment-runs", "assessment-sources", "baselines"];
 
     /// <summary>Reads named database snapshots and the three generated-artifact families without changing them.</summary>
@@ -337,7 +341,7 @@ public static class ArtifactRetentionCommands
         RequireSingleLink(physicalBefore);
         budget.Reserve(before.Length);
 
-        using var source = new FileStream(sourcePath, FileMode.Open, FileAccess.Read, FileShare.Read,
+        using var source = new FileStream(sourcePath, FileMode.Open, FileAccess.Read, StoreReadShare,
             bufferSize: 81920, FileOptions.SequentialScan);
         var physicalOpened = ReadPhysicalFileIdentity(source.SafeFileHandle);
         RequireSingleLink(physicalOpened);
@@ -396,7 +400,7 @@ public static class ArtifactRetentionCommands
             file = new FileStream(path, options);
             if (OperatingSystem.IsWindows())
                 EnsureWindowsSnapshotAccess(path, isDirectory: false, requireProtectedRules: false,
-                    CurrentWindowsUser());
+                    CurrentWindowsUser(), allowTokenOwner: true);
             else if (OperatingSystem.IsLinux() || OperatingSystem.IsMacOS())
                 EnsureUnixOwnerOnly(path, UnixFileMode.UserRead | UnixFileMode.UserWrite);
             else
@@ -463,13 +467,17 @@ public static class ArtifactRetentionCommands
 
     [SupportedOSPlatform("windows")]
     private static void EnsureWindowsSnapshotAccess(string path, bool isDirectory, bool requireProtectedRules,
-        SecurityIdentifier owner)
+        SecurityIdentifier owner, bool allowTokenOwner = false)
     {
         CommonObjectSecurity security = isDirectory
             ? new DirectoryInfo(path).GetAccessControl(AccessControlSections.Access | AccessControlSections.Owner)
             : new FileInfo(path).GetAccessControl(AccessControlSections.Access | AccessControlSections.Owner);
-        if (requireProtectedRules && !security.AreAccessRulesProtected ||
-            !owner.Equals(security.GetOwner(typeof(SecurityIdentifier))))
+        // An elevated token owns new files as Administrators; the access rules keep others out.
+        var actualOwner = security.GetOwner(typeof(SecurityIdentifier));
+        var ownerAccepted = owner.Equals(actualOwner) ||
+                            allowTokenOwner && WindowsIdentity.GetCurrent().Owner is { } tokenOwner &&
+                            tokenOwner.Equals(actualOwner);
+        if (requireProtectedRules && !security.AreAccessRulesProtected || !ownerAccepted)
             throw new UnauthorizedAccessException("The private snapshot path does not have a protected owner ACL.");
 
         var allows = security.GetAccessRules(includeExplicit: true, includeInherited: true,
@@ -485,7 +493,7 @@ public static class ArtifactRetentionCommands
 
     private static string HashFile(string path)
     {
-        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read,
+        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, StoreReadShare,
             bufferSize: 81920, FileOptions.SequentialScan);
         if (stream.Length > MaximumSnapshotFileBytes)
             throw new InvalidDataException("snapshot-size-limit");
@@ -506,6 +514,7 @@ public static class ArtifactRetentionCommands
     private static PhysicalFileIdentity ReadPhysicalFileIdentity(string path)
     {
         if (OperatingSystem.IsLinux()) return ReadLinuxPhysicalFileIdentity(path);
+        if (OperatingSystem.IsMacOS()) return ReadMacPhysicalFileIdentity(path);
         if (OperatingSystem.IsWindows()) return ReadWindowsPhysicalFileIdentity(path);
         throw new PlatformNotSupportedException(FileIdentityUnavailable);
     }
@@ -513,6 +522,7 @@ public static class ArtifactRetentionCommands
     private static PhysicalFileIdentity ReadPhysicalFileIdentity(SafeFileHandle handle)
     {
         if (OperatingSystem.IsLinux()) return ReadLinuxPhysicalFileIdentity(handle);
+        if (OperatingSystem.IsMacOS()) return ReadMacPhysicalFileIdentity(handle);
         if (OperatingSystem.IsWindows()) return ReadWindowsPhysicalFileIdentity(handle);
         throw new PlatformNotSupportedException(FileIdentityUnavailable);
     }
@@ -561,6 +571,49 @@ public static class ArtifactRetentionCommands
             result.Inode, result.LinkCount);
     }
 
+    // macOS has no statx; the 64-bit-inode stat is plain lstat on Apple silicon and $INODE64 on Intel.
+    [SupportedOSPlatform("macos")]
+    private static PhysicalFileIdentity ReadMacPhysicalFileIdentity(string path)
+    {
+        MacStatBuffer result;
+        var status = RuntimeInformation.ProcessArchitecture == Architecture.Arm64
+            ? MacLstatArm64(path, out result)
+            : MacLstatIntel(path, out result);
+        return ReadMacPhysicalFileIdentity(status, Marshal.GetLastPInvokeError(), result);
+    }
+
+    [SupportedOSPlatform("macos")]
+    private static PhysicalFileIdentity ReadMacPhysicalFileIdentity(SafeFileHandle handle)
+    {
+        var addedReference = false;
+        try
+        {
+            handle.DangerousAddRef(ref addedReference);
+            var descriptor = handle.DangerousGetHandle().ToInt32();
+            MacStatBuffer result;
+            var status = RuntimeInformation.ProcessArchitecture == Architecture.Arm64
+                ? MacFstatArm64(descriptor, out result)
+                : MacFstatIntel(descriptor, out result);
+            return ReadMacPhysicalFileIdentity(status, Marshal.GetLastPInvokeError(), result);
+        }
+        finally
+        {
+            if (addedReference) handle.DangerousRelease();
+        }
+    }
+
+    [SupportedOSPlatform("macos")]
+    private static PhysicalFileIdentity ReadMacPhysicalFileIdentity(int status, int error, MacStatBuffer result)
+    {
+        if (status != 0)
+        {
+            if (error is 22 or 45 or 78)
+                throw new PlatformNotSupportedException(FileIdentityUnavailable, new Win32Exception(error));
+            throw new IOException("Could not read macOS file identity.", new Win32Exception(error));
+        }
+        return new PhysicalFileIdentity((uint)result.Device, result.Inode, result.LinkCount);
+    }
+
     [SupportedOSPlatform("windows")]
     private static PhysicalFileIdentity ReadWindowsPhysicalFileIdentity(string path)
     {
@@ -600,6 +653,14 @@ public static class ArtifactRetentionCommands
         [FieldOffset(140)] public uint DeviceMinor;
     }
 
+    [StructLayout(LayoutKind.Explicit, Size = 144)]
+    private struct MacStatBuffer
+    {
+        [FieldOffset(0)] public int Device;
+        [FieldOffset(6)] public ushort LinkCount;
+        [FieldOffset(8)] public ulong Inode;
+    }
+
     [StructLayout(LayoutKind.Sequential)]
     private struct WindowsFileInformation
     {
@@ -621,6 +682,18 @@ public static class ArtifactRetentionCommands
     [DllImport("libc", EntryPoint = "statx", SetLastError = true, CharSet = CharSet.Ansi)]
     private static extern int LinuxStatx(int directory, string path, int flags, uint mask,
         out LinuxStatxBuffer result);
+
+    [DllImport("libc", EntryPoint = "lstat", SetLastError = true, CharSet = CharSet.Ansi)]
+    private static extern int MacLstatArm64(string path, out MacStatBuffer result);
+
+    [DllImport("libc", EntryPoint = "fstat", SetLastError = true)]
+    private static extern int MacFstatArm64(int descriptor, out MacStatBuffer result);
+
+    [DllImport("libc", EntryPoint = "lstat$INODE64", SetLastError = true, CharSet = CharSet.Ansi)]
+    private static extern int MacLstatIntel(string path, out MacStatBuffer result);
+
+    [DllImport("libc", EntryPoint = "fstat$INODE64", SetLastError = true)]
+    private static extern int MacFstatIntel(int descriptor, out MacStatBuffer result);
 
     [DllImport("kernel32.dll", EntryPoint = "GetFileInformationByHandle", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]

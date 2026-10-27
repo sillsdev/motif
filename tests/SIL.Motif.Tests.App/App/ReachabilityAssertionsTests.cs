@@ -1052,8 +1052,10 @@ public sealed class ReachabilityAssertionsTests(AvaloniaHeadlessFixture avalonia
                 var findings = ReachabilityAssertions.Inspect(window,
                     new LayoutFindingContext("synthetic", "short", 100, "light"));
 
-                Assert.Contains(findings, finding => finding.Check == LayoutCheckNames.MissingGlyph &&
-                    finding.Control.Name == "ClippedLabel" && finding.Identity == "U+0378");
+                // macOS: see NoUnmappedCodePointOnMacOsFactAttribute; the clipped-box check below still runs there.
+                if (!OperatingSystem.IsMacOS())
+                    Assert.Contains(findings, finding => finding.Check == LayoutCheckNames.MissingGlyph &&
+                        finding.Control.Name == "ClippedLabel" && finding.Identity == "U+0378");
                 Assert.Contains(findings, finding => finding.Check == LayoutCheckNames.TextBoxOverflow &&
                     finding.Control.Name == "ClippedLabel");
             }
@@ -1136,7 +1138,7 @@ public sealed class ReachabilityAssertionsTests(AvaloniaHeadlessFixture avalonia
         });
     }
 
-    [Fact]
+    [NoUnmappedCodePointOnMacOsFact]
     public void VisibleTextWithoutAMappedGlyphReportsTheCodePointAndChosenFamily()
     {
         avalonia.Invoke(() =>
@@ -1212,5 +1214,20 @@ public sealed class ReachabilityAssertionsTests(AvaloniaHeadlessFixture avalonia
             }
             finally { window.Close(); }
         });
+    }
+}
+
+/// <summary>
+/// A fact that needs a code point no installed font maps. U+0378 is unassigned, so Windows and Linux fonts have no
+/// glyph for it. macOS falls back to Apple's LastResort font, which draws a placeholder for every code point,
+/// assigned or not, so on that runner Avalonia reports a glyph and there is nothing missing to find. The check
+/// itself is platform independent code, and the Windows and Linux runs exercise it.
+/// </summary>
+internal sealed class NoUnmappedCodePointOnMacOsFactAttribute : FactAttribute
+{
+    public NoUnmappedCodePointOnMacOsFactAttribute()
+    {
+        if (OperatingSystem.IsMacOS())
+            Skip = "macOS maps every code point through its LastResort font, so no code point is missing a glyph.";
     }
 }

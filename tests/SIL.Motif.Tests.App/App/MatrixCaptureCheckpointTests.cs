@@ -24,17 +24,21 @@ public sealed class MatrixCaptureCheckpointTests
 
             var csvPath = Path.Combine(run.MatrixFolder, "index.csv");
             var jsonPath = Path.Combine(run.MatrixFolder, "findings.json");
-            using var csvSnapshot = new FileStream(csvPath, FileMode.Open, FileAccess.Read,
+            // Windows denies File.Move(overwrite) onto an open file, so there the snapshot is read text.
+            var windows = OperatingSystem.IsWindows();
+            using var csvSnapshot = windows ? null : new FileStream(csvPath, FileMode.Open, FileAccess.Read,
                 FileShare.ReadWrite | FileShare.Delete);
-            using var jsonSnapshot = new FileStream(jsonPath, FileMode.Open, FileAccess.Read,
+            using var jsonSnapshot = windows ? null : new FileStream(jsonPath, FileMode.Open, FileAccess.Read,
                 FileShare.ReadWrite | FileShare.Delete);
+            var csvBefore = windows ? File.ReadAllText(csvPath) : null;
+            var jsonBefore = windows ? File.ReadAllText(jsonPath) : null;
             run.AddCapture("scene-thin-150-light.png", "scene", size, 150, "light", []);
             run.WriteArtifacts();
 
-            using var csvReader = new StreamReader(csvSnapshot);
-            Assert.DoesNotContain("scene-thin-150-light.png", csvReader.ReadToEnd());
+            using var csvReader = csvSnapshot is null ? null : new StreamReader(csvSnapshot);
+            Assert.DoesNotContain("scene-thin-150-light.png", csvReader?.ReadToEnd() ?? csvBefore);
             Assert.Contains("scene-thin-150-light.png", File.ReadAllText(csvPath));
-            using var previous = JsonDocument.Parse(jsonSnapshot);
+            using var previous = jsonSnapshot is null ? JsonDocument.Parse(jsonBefore!) : JsonDocument.Parse(jsonSnapshot);
             using var current = JsonDocument.Parse(File.ReadAllText(jsonPath));
             Assert.Equal(previous.RootElement.GetRawText(), current.RootElement.GetRawText());
             var savedFinding = Assert.Single(current.RootElement.EnumerateArray());

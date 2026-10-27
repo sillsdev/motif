@@ -922,8 +922,11 @@ public sealed class ArtifactInventoryArgvTests : IDisposable
             return new FileState(-1, directory.LastWriteTimeUtc.Ticks, string.Empty);
         }
         var info = new FileInfo(path);
+        // The test's SQLite connection still holds the store; share read and write as SQLite does.
+        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read,
+            FileShare.ReadWrite | FileShare.Delete);
         return new FileState(info.Length, info.LastWriteTimeUtc.Ticks,
-            Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path))));
+            Convert.ToHexString(SHA256.HashData(stream)));
     }
 
     public void Dispose()

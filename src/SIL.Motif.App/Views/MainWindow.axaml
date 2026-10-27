@@ -91,7 +91,7 @@
                   chrome:WindowDecorationProperties.ElementRole="User"
                   AutomationProperties.Name="{x:Static app:MotifAppStrings.RefreshAccessibleName}"
                   AutomationProperties.AutomationId="{x:Static app:AutomationIds.RefreshProject}"
-                  ToolTip.Tip="{x:Static app:MotifAppStrings.Refresh}" />
+                  ToolTip.Tip="{x:Static app:MotifAppStrings.Refresh}" views:ClearTipPlacement.IsEnabled="True" />
           <Button x:Name="ProjectChip" Classes="Tertiary projectChip" Theme="{DynamicResource BorderlessButton}"
                   chrome:WindowDecorationProperties.ElementRole="User"
                   AutomationProperties.Name="{Binding ProjectChipAccessibleName}"

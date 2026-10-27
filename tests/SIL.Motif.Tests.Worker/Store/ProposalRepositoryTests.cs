@@ -13,6 +13,7 @@ namespace SIL.Motif.Tests.Store;
 public sealed class ProposalRepositoryTests : IDisposable
 {
     private readonly string _root = Path.Combine(Path.GetTempPath(), "motif-proposals-" + Guid.NewGuid().ToString("N"));
+    private readonly List<MotifDatabase> _openDatabases = [];
 
     public ProposalRepositoryTests() => Directory.CreateDirectory(_root);
 
@@ -521,6 +522,7 @@ public sealed class ProposalRepositoryTests : IDisposable
         var project = new ProjectLocator(Path.Combine(_root, name + ".fwdata"), name);
         var database = MotifDatabase.OpenOwned(Path.Combine(_root, name + ".motif.db"), project,
             MotifSchema.CurrentSchema, new Version(1, 0));
+        _openDatabases.Add(database);
         var repository = new ProposalRepository(database);
         var id = CanonicalId.Mint("proposal/");
         repository.SaveRevision(new ProposalRevisionRecord(
@@ -541,6 +543,8 @@ public sealed class ProposalRepositoryTests : IDisposable
 
     public void Dispose()
     {
+        // Windows cannot delete a SQLite file that a connection still holds open.
+        foreach (var database in _openDatabases) database.Dispose();
         try { Directory.Delete(_root, true); }
         catch (DirectoryNotFoundException) { }
     }

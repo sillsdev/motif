@@ -218,17 +218,33 @@ public sealed class JobRunnerHost : IDisposable
         var fullPath = Path.GetFullPath(path);
         var pathRoot = Path.GetPathRoot(fullPath) ?? throw new ArgumentException("The root path is invalid.", nameof(path));
         var current = pathRoot;
-        var segments = fullPath[pathRoot.Length..].Split(
-            [Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar], StringSplitOptions.RemoveEmptyEntries);
-        foreach (var segment in segments)
+        var remaining = new LinkedList<string>(fullPath[pathRoot.Length..].Split(
+            [Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar], StringSplitOptions.RemoveEmptyEntries));
+        var hops = 0;
+        while (remaining.First is { } first)
         {
-            var candidate = Path.Combine(current, segment);
+            remaining.RemoveFirst();
+            var candidate = Path.Combine(current, first.Value);
             FileSystemInfo entry = Directory.Exists(candidate) ? new DirectoryInfo(candidate) : new FileInfo(candidate);
-            var target = entry.Exists ? entry.ResolveLinkTarget(returnFinalTarget: true) : null;
-            current = Path.GetFullPath(target?.FullName ?? candidate);
+            // One hop at a time: a target can itself pass through a linked folder, as /var does on macOS.
+            var target = entry.Exists ? entry.ResolveLinkTarget(returnFinalTarget: false) : null;
+            if (target is null)
+            {
+                current = candidate;
+                continue;
+            }
+            if (++hops > MaximumLinkHops) throw new IOException("The runner root passes through too many symbolic links.");
+            var targetPath = Path.GetFullPath(target.FullName);
+            var targetRoot = Path.GetPathRoot(targetPath) ?? pathRoot;
+            current = targetRoot;
+            var targetSegments = targetPath[targetRoot.Length..].Split(
+                [Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar], StringSplitOptions.RemoveEmptyEntries);
+            for (var index = targetSegments.Length - 1; index >= 0; index--) remaining.AddFirst(targetSegments[index]);
         }
         return Path.TrimEndingDirectorySeparator(current);
     }
+
+    private const int MaximumLinkHops = 40;
 
     internal static string GetOwnerMutexNameForNamespace(string userNamespace) => OperatingSystem.IsWindows()
         ? @"Local\SIL.Motif.Worker.Owner." + userNamespace
