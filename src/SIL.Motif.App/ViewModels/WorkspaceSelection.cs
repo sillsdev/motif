@@ -47,6 +47,12 @@ public sealed class WorkspaceSelection : ObservableObject
     /// <summary>Notifies model owners to release registrations and detail before the old reader is disposed.</summary>
     internal event Action? Replacing;
 
+    /// <summary>
+    /// Whether the current <see cref="Replacing"/> is a reload that will publish a successor, so a reader may hold
+    /// what it shows until then; false when the Selection is being cleared or stopped.
+    /// </summary>
+    internal bool IsReplacingForReload { get; private set; }
+
     /// <summary>Registers a realized summary row; its model owner must dispose the registration on release.</summary>
     internal IDisposable RegisterRow() => (_summaryRead ?? throw new InvalidOperationException(
         "There is no Selection summary to display.")).Lease.RegisterModel(SelectionModelKind.Row);
@@ -116,7 +122,7 @@ public sealed class WorkspaceSelection : ObservableObject
         SelectionRead<SelectionSummary>? summary = null;
         try
         {
-            var previous = ReleaseCurrent();
+            var previous = ReleaseCurrent(reloading: true);
             if (previous is not null) await previous.DisposeAsync().ConfigureAwait(true);
             if (generation != _generation || cancellation.IsCancellationRequested) return;
             var outcome = await _commands.OpenSelectionReaderAsync(request, cancellation.Token).ConfigureAwait(true);
@@ -200,9 +206,11 @@ public sealed class WorkspaceSelection : ObservableObject
         }
     }
 
-    private SelectionReader? ReleaseCurrent()
+    private SelectionReader? ReleaseCurrent(bool reloading = false)
     {
-        Replacing?.Invoke();
+        IsReplacingForReload = reloading;
+        try { Replacing?.Invoke(); }
+        finally { IsReplacingForReload = false; }
         var previous = _reader;
         _reader = null;
         Navigation = null;

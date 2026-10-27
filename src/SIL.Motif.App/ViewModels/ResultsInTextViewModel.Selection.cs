@@ -36,8 +36,28 @@ public sealed partial class ResultsInTextViewModel
     private ResultsTokenViewModel? _pinnedToken;
     private IDisposable? _pinnedCard;
 
-    public object DisplayedLines => _standaloneSelectedLine is { } standalone
-        ? new object[] { new WeakReference<object>(standalone) }.Concat(_linePositions).ToArray() : _linePositions;
+    // Held while the Selection is being reloaded: what is shown stays, and the reload's result is compared with it.
+    private bool _suspended;
+    private Dictionary<Guid, SelectionSourcePosition[]> _positionsByText = [];
+    private Dictionary<string, SelectionSourcePosition[]> _positionsByForm = [];
+    private Dictionary<string, bool> _unreadByForm = new(StringComparer.Ordinal);
+    private long _matchRevision;
+    private (Guid TextId, ResultsInTextFilter Filter, string Search, long Revision, IReadOnlyList<SelectionLineHeader> Headers)? _matchCache;
+    private IReadOnlyList<SelectionLineHeader>? _linePositionsSource;
+    private (ResultsLineViewModel Line, IReadOnlyList<SelectionLinePosition> Positions, object[] Rows)? _standaloneRows;
+    private readonly Dictionary<(AnalysisOperationScope Scope, Guid? TextId), SelectionActionFacts> _scopeCache = [];
+
+    public object DisplayedLines => _standaloneSelectedLine is { } standalone ? StandaloneRows(standalone) : _linePositions;
+
+    // The same array until the standalone word or the lines change, so a refresh is not a new list.
+    private object[] StandaloneRows(ResultsLineViewModel standalone)
+    {
+        if (_standaloneRows is { } cached && ReferenceEquals(cached.Line, standalone) &&
+            ReferenceEquals(cached.Positions, _linePositions)) return cached.Rows;
+        var rows = new object[] { new WeakReference<object>(standalone) }.Concat(_linePositions).ToArray();
+        _standaloneRows = (standalone, _linePositions, rows);
+        return rows;
+    }
     internal int DisplayedLineCount => _visibleHeaders.Count + (_standaloneSelectedLine is null ? 0 : 1);
     internal IReadOnlyList<SelectionLineHeader> VisibleHeaders => _visibleHeaders;
     internal SelectionLinePages? LinePages => _linePages;
@@ -48,7 +68,7 @@ public sealed partial class ResultsInTextViewModel
 
     private void InitializeSelectionReader()
     {
-        _selectionOwner.Replacing += ClearNativeSelection;
+        _selectionOwner.Replacing += OnSelectionReplacing;
         _selectionOwner.PropertyChanged += OnSelectionPublished;
     }
 
@@ -57,6 +77,8 @@ public sealed partial class ResultsInTextViewModel
         if (change.PropertyName == nameof(WorkspaceSelection.Summary)) RebuildNativeSelection();
         else if (change.PropertyName == nameof(WorkspaceSelection.IsLoading))
         {
+            // A reload that ended without a successor leaves nothing to hold what was shown for.
+            if (_suspended && !_selectionOwner.IsLoading && _selectionOwner.Summary is null) ClearNativeSelection();
             OnPropertyChanged(nameof(Message));
             OnPropertyChanged(nameof(HasMessage));
             OnPropertyChanged(nameof(HasLines));
@@ -81,6 +103,7 @@ public sealed partial class ResultsInTextViewModel
         _lineObservation = null;
         pages.ReleasingTokens -= ReleaseRealizedTokenHandlers;
         pages.ReleasingLineTokens -= ReleaseLineTokenHandlers;
+        pages.LineRepublished -= OnLineRepublished;
         ReleaseRealizedTokenHandlers(pages);
         TrackSelectionWork(pages.StopAsync());
     }
@@ -98,8 +121,60 @@ public sealed partial class ResultsInTextViewModel
             token.PropertyChanged -= OnTokenPropertyChanged;
     }
 
+    private void OnSelectionReplacing()
+    {
+        if (_selectionOwner.IsReplacingForReload && _readerVisible && _nativeSummary is not null &&
+            _linePages is not null && SelectedText is not null) SuspendNativeSelection();
+        else ClearNativeSelection();
+    }
+
+    /// <summary>Holds the shown lines and open card while a reload replaces the reader.</summary>
+    private void SuspendNativeSelection()
+    {
+        if (_suspended) return;
+        _suspended = true;
+        ++_selectionVersion;
+        ++_readStateGeneration;
+        ++_analyzeVersion;
+        _linePages?.Suspend();
+        _presentationRead?.Dispose();
+        _presentationRead = null;
+        _readStateWritesApplied.Clear();
+        OnPropertyChanged(nameof(Message));
+        OnPropertyChanged(nameof(HasMessage));
+        OnPropertyChanged(nameof(HasLines));
+    }
+
+    private IDisposable RegisterLineModel() => _suspended || _selectionOwner.Summary is null
+        ? NoRegistration.Instance : _selectionOwner.RegisterLine();
+
+    private sealed class NoRegistration : IDisposable
+    {
+        public static readonly NoRegistration Instance = new();
+        public void Dispose() { }
+    }
+
+    private void IndexNativePositions()
+    {
+        var positions = _nativeSummary?.SourcePositions ?? [];
+        _positionsByText = positions.GroupBy(position => position.Location.Anchor.TextId)
+            .ToDictionary(group => group.Key, group => group.ToArray());
+        _positionsByForm = positions.GroupBy(position => position.Word.Form, StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.ToArray(), StringComparer.Ordinal);
+        _matchCache = null;
+        _scopeCache.Clear();
+        ++_matchRevision;
+    }
+
     private void ClearNativeSelection()
     {
+        _suspended = false;
+        _positionsByText = [];
+        _positionsByForm = [];
+        _unreadByForm = new(StringComparer.Ordinal);
+        _matchCache = null;
+        _scopeCache.Clear();
+        ++_matchRevision;
         ++_selectionVersion;
         ++_readStateGeneration;
         SelectedToken = null;
@@ -132,7 +207,9 @@ public sealed partial class ResultsInTextViewModel
     {
         using var span = MotifTrace.Begin("results-in-text.rebuild-selection");
         var summary = _selectionOwner.Summary;
+        if (summary is null && _suspended) return;
         if (ReferenceEquals(summary, _nativeSummary)) return;
+        if (summary is not null && _suspended && TryAdoptNativeSummary(summary)) return;
         var previous = SelectedText?.TextId ?? _preferredTextId;
         ClearNativeSelection();
         if (summary is null) return;
@@ -140,12 +217,104 @@ public sealed partial class ResultsInTextViewModel
         _nativeAnalyze = summary.Analyze;
         _nativeWords = summary.Words.ToDictionary(word => word.Key);
         _nativePositions = summary.SourcePositions.ToDictionary(position => position.Location.Anchor);
+        IndexNativePositions();
         RefreshNativeUncertainty();
         foreach (var text in summary.Texts) Texts.Add(new ResultsTextViewModel(text));
         SelectedText = Texts.FirstOrDefault(text => text.TextId == previous) ?? Texts.FirstOrDefault();
         NotifyNativeCounts();
         RefreshNativeLines();
         TrackSelectionWork(RefreshNativePresentationAsync(_selectionVersion));
+    }
+
+    private bool SameLineShape(SelectionLineHeader left, SelectionLineHeader right) => left.Number == right.Number &&
+        left.ParagraphId == right.ParagraphId && left.SegmentId == right.SegmentId && left.TokenCount == right.TokenCount;
+
+    private bool SameTextShape(SelectionTextSummary left, SelectionTextSummary right) => left.TextId == right.TextId &&
+        left.Title == right.Title && left.TitleWritingSystem == right.TitleWritingSystem &&
+        left.Lines.Count == right.Lines.Count && left.Lines.Zip(right.Lines).All(pair => SameLineShape(pair.First, pair.Second));
+
+    // Same Texts and lines keep their models, strips and card; only lines read differently are replaced.
+    private bool TryAdoptNativeSummary(SelectionSummary summary)
+    {
+        if (_selectionOwner.Reader is not { } reader || _linePages is not { } pages || SelectedText is not { } selected ||
+            _nativeSummary is not { } previous || previous.Texts.Count != summary.Texts.Count ||
+            !previous.Texts.Zip(summary.Texts).All(pair => SameTextShape(pair.First, pair.Second))) return false;
+        using var span = MotifTrace.Begin("results-in-text.adopt-selection");
+        _nativeSummary = summary;
+        _nativeAnalyze = summary.Analyze;
+        _nativeWords = summary.Words.ToDictionary(word => word.Key);
+        _nativePositions = summary.SourcePositions.ToDictionary(position => position.Location.Anchor);
+        IndexNativePositions();
+        _checkedOccurrences.RemoveWhere(anchor => !_nativePositions.ContainsKey(anchor));
+        _uncheckedOccurrences.RemoveWhere(anchor => !_nativePositions.ContainsKey(anchor));
+        _readOccurrences.RemoveWhere(anchor => !_nativePositions.ContainsKey(anchor));
+        // The line headers the pages hold stay; only the counts a Text shows are new.
+        for (var index = 0; index < Texts.Count; index++)
+            Texts[index].Summary = summary.Texts[index] with { Lines = Texts[index].Summary.Lines };
+        _suspended = false;
+        RefreshNativeUncertainty();
+        pages.Rebase(reader, (_assess.Result?.Words ?? []).GroupBy(word => word.Word, StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.First(), StringComparer.Ordinal), RegisterLineModel);
+        foreach (var token in NativeRealizedTokens().Where(token => !ReferenceEquals(token, _pinnedToken)))
+            if (_nativeWords.TryGetValue(new TextWordKey(token.WordformId, token.Form, token.FormWritingSystem), out var word))
+                token.BindActionFacts(word.Actions);
+        KeepOrCloseOpenCard();
+        _standaloneSelectedLine?.RebindRegistration(_selectionOwner.RegisterLine());
+        OnPropertyChanged(nameof(SelectedTextWordCount));
+        OnPropertyChanged(nameof(ScopeCountSummary));
+        NotifyNativeCounts();
+        RefreshNativeLines();
+        TrackSelectionWork(RefreshNativePresentationAsync(_selectionVersion));
+        return true;
+    }
+
+    // Keeps the card while its word keeps its identity; a card whose line reads differently is renewed later.
+    private void KeepOrCloseOpenCard()
+    {
+        if (SelectedToken is not { } open) return;
+        var reader = _selectionOwner.Reader!;
+        if (open.Occurrence is { } anchor)
+        {
+            if (!_nativePositions.TryGetValue(anchor, out var position) || position.Word.Form != open.Form ||
+                position.Word.WordformId != open.WordformId)
+            {
+                CloseTokenCard();
+                return;
+            }
+            if (_nativeWords.TryGetValue(position.Word, out var word)) open.BindActionFacts(word.Actions);
+        }
+        else if (_assess.Result?.Words.FirstOrDefault(result => result.Word == open.Form) is not { } result)
+        {
+            CloseTokenCard();
+            return;
+        }
+        else if (!ReferenceEquals(result, open.SourceAssessment))
+        {
+            var replacement = NativeCardToken(result, open.WordformId);
+            ReleasePreviousPin(null);
+            replacement.OwnRegistration(_selectionOwner.RegisterCardToken());
+            NativeModelCreated?.Invoke(new WeakReference<object>(replacement));
+            _pinnedCard = _selectionOwner.RegisterCard(this, CloseTokenCard);
+            _pinnedToken = replacement;
+            PrepareNativeTokenState(replacement);
+            SelectedToken = replacement;
+            return;
+        }
+        if (!ReferenceEquals(open, _pinnedToken)) return;
+        open.Rebind(reader.Context.ExpectedWriteContext(), _selectionOwner.RegisterCardToken());
+        _pinnedCard?.Dispose();
+        _pinnedCard = _selectionOwner.RegisterCard(this, CloseTokenCard);
+        PrepareNativeTokenState(open);
+    }
+
+    // Renews the open card when its line reads differently now, or closes it when the word is gone.
+    private void OnLineRepublished(ResultsLineViewModel line, bool changed)
+    {
+        if (!changed || SelectedToken is not { Occurrence: { } anchor } open || !ReferenceEquals(open, _pinnedToken) ||
+            line.TextId != anchor.TextId || line.ParagraphId != anchor.ParagraphId || line.SegmentId != anchor.SegmentId) return;
+        var fresh = line.Tokens.FirstOrDefault(token => token.Occurrence == anchor);
+        if (fresh is null || fresh.Form != open.Form || fresh.WordformId != open.WordformId) CloseTokenCard();
+        else SelectToken(fresh);
     }
 
     private async Task RefreshNativePresentationAsync(long version)
@@ -172,6 +341,7 @@ public sealed partial class ResultsInTextViewModel
             _presentationRead = acquired;
             _nativePresentation = acquired!.Value;
             acquired = null;
+            ++_matchRevision;
             var changed = _readStateWritesApplied.Where(pair => pair.Value != writes.GetValueOrDefault(pair.Key))
                 .Select(pair => pair.Key).ToHashSet();
             _readOccurrences.RemoveWhere(anchor => !changed.Contains(anchor.TextId));
@@ -214,6 +384,7 @@ public sealed partial class ResultsInTextViewModel
     {
         using var span = MotifTrace.Begin("results-in-text.refresh-lines");
         MotifTrace.Count("refresh-native-lines");
+        if (_suspended) return;
         if (!_readerVisible || SelectedText?.Summary is not { } text || _selectionOwner.Reader is not { } reader)
         {
             ReleaseLinePages();
@@ -224,29 +395,29 @@ public sealed partial class ResultsInTextViewModel
             if (_linePages is null || _linePages.TextId != text.TextId)
             {
                 ReleaseLinePages();
-                _linePages = new SelectionLinePages(reader, text, _selectionOwner.RegisterLine,
+                _linePages = new SelectionLinePages(reader, text, RegisterLineModel,
                     (_assess.Result?.Words ?? []).GroupBy(word => word.Word, StringComparer.Ordinal)
                         .ToDictionary(group => group.Key, group => group.First(), StringComparer.Ordinal),
                     navigation: _selectionOwner.Navigation, prepare: PrepareNativeToken);
                 _linePages.ReleasingTokens += ReleaseRealizedTokenHandlers;
                 _linePages.ReleasingLineTokens += ReleaseLineTokenHandlers;
+                _linePages.LineRepublished += OnLineRepublished;
                 _lineObservation = _linePages.Observe(model => NativeModelCreated?.Invoke(model));
             }
-            var positions = _nativeSummary!.SourcePositions.Where(position => position.Location.Anchor.TextId == text.TextId &&
-                NativeMatches(position)).ToArray();
-            var matching = positions.Select(position => position.Location.LineNumber).ToHashSet();
-            _visibleHeaders = Filter == ResultsInTextFilter.All && string.IsNullOrWhiteSpace(SearchText)
-                ? text.Lines : text.Lines.Where(header => matching.Contains(header.Number)).ToArray();
+            _visibleHeaders = VisibleHeadersFor(text);
             foreach (var token in NativeRealizedTokens())
                 token.IsDimmed = token.Occurrence is { } anchor && _nativePositions.TryGetValue(anchor, out var position) &&
                     !NativeMatches(position);
         }
-        if (!_linePositions.Select(position => position.Header).SequenceEqual(_visibleHeaders))
+        if (!(ReferenceEquals(_linePositionsSource, _visibleHeaders) && _linePositions.Count == _visibleHeaders.Count) &&
+            !_linePositions.Select(position => position.Header).SequenceEqual(_visibleHeaders))
             _linePositions = _visibleHeaders.Select(header => new SelectionLinePosition(this, header)).ToArray();
+        _linePositionsSource = _visibleHeaders;
         if (_readerVisible && HasStandaloneSelectedWord && SelectedToken is { } selected)
         {
             if (!ReferenceEquals(_standaloneSelectedWord, selected))
             {
+                _standaloneRows = null;
                 _standaloneSelectedLine?.Dispose();
                 _standaloneSelectedWord = selected;
                 _standaloneSelectedLine = ResultsLineViewModel.ForSelectedWord(selected, _selectionOwner.RegisterLine());
@@ -258,6 +429,7 @@ public sealed partial class ResultsInTextViewModel
             _standaloneSelectedLine?.Dispose();
             _standaloneSelectedLine = null;
             _standaloneSelectedWord = null;
+            _standaloneRows = null;
         }
         OnPropertyChanged(nameof(DisplayedLines));
         OnPropertyChanged(nameof(Message));
@@ -267,6 +439,22 @@ public sealed partial class ResultsInTextViewModel
         OnPropertyChanged(nameof(HasResults));
         OnPropertyChanged(nameof(HasLines));
         OnPropertyChanged(nameof(NeedsTexts));
+    }
+
+    // Matching lines come from the selected Text's own positions and are kept until a match input changes.
+    private IReadOnlyList<SelectionLineHeader> VisibleHeadersFor(SelectionTextSummary text)
+    {
+        if (Filter == ResultsInTextFilter.All && string.IsNullOrWhiteSpace(SearchText)) return text.Lines;
+        var search = SearchText ?? string.Empty;
+        if (_matchCache is { } cached && cached.TextId == text.TextId && cached.Filter == Filter &&
+            cached.Search == search && cached.Revision == _matchRevision) return cached.Headers;
+        var scanned = _positionsByText.GetValueOrDefault(text.TextId) ?? [];
+        MatchTests += scanned.Length;
+        var matching = scanned.Where(NativeMatches)
+            .Select(position => position.Location.LineNumber).ToHashSet();
+        var headers = text.Lines.Where(header => matching.Contains(header.Number)).ToArray();
+        _matchCache = (text.TextId, Filter, search, _matchRevision, headers);
+        return headers;
     }
 
     internal ResultsLineViewModel RealizeLine(SelectionLineHeader header)
@@ -350,6 +538,7 @@ public sealed partial class ResultsInTextViewModel
         var facts = await Task.Run(() => SelectionAnalyzeProjection.Build(summary, pending, presentation)).ConfigureAwait(true);
         if (version != _analyzeVersion || !ReferenceEquals(summary, _nativeSummary)) return;
         _nativeAnalyze = facts;
+        ++_matchRevision;
         OnPropertyChanged(nameof(NeedsALookCount));
         OnPropertyChanged(nameof(NamedInWarningCount));
     }
@@ -361,6 +550,9 @@ public sealed partial class ResultsInTextViewModel
     private bool NativeNeedsALook(SelectionSourcePosition position) =>
         _nativeWords[position.Word].Actions.NeedsALook && !_changes.Items.Any(change =>
             change.Addresses(position.Word.WordformId, position.Location.Anchor));
+
+    /// <summary>How many occurrences the Text's lines were filtered from, which a click must not add to.</summary>
+    internal long MatchTests { get; private set; }
 
     private bool NativeMatches(SelectionSourcePosition position)
     {
@@ -434,6 +626,7 @@ public sealed partial class ResultsInTextViewModel
 
     private void RefreshNativePending()
     {
+        ++_matchRevision;
         RefreshNativeUncertainty();
         TrackSelectionWork(RefreshNativeAnalyzeAsync());
         UpdateNativePendingTokens();
@@ -470,24 +663,40 @@ public sealed partial class ResultsInTextViewModel
 
     private void ApplyNativeReadState(Guid textId, IReadOnlyList<OccurrenceAnchor> read)
     {
-        _readOccurrences.RemoveWhere(anchor => anchor.TextId == textId);
+        var positions = _positionsByText.GetValueOrDefault(textId) ?? [];
+        foreach (var position in positions) _readOccurrences.Remove(position.Location.Anchor);
         _readOccurrences.UnionWith(read.Where(_nativePositions.ContainsKey));
-        UpdateAssessmentReadState();
-        foreach (var token in NativeRealizedTokens()) PrepareNativeTokenState(token);
+        ++_matchRevision;
+        UpdateAssessmentReadState(positions.Select(position => position.Word.Form));
+        foreach (var token in NativeRealizedTokens())
+            if (token.Occurrence is { } anchor && anchor.TextId == textId) token.SetReadState(_readOccurrences.Contains(anchor));
         NotifyNativeCounts();
         RefreshNativeLines();
     }
 
-    private void UpdateAssessmentReadState()
+    // A full pass reads every occurrence once; a pass for given forms reads only those forms' occurrences.
+    private void UpdateAssessmentReadState(IEnumerable<string>? forms = null)
     {
         var knownTexts = (_nativePresentation?.ReadOccurrences.Keys ?? []).Concat(_readStateWritesApplied.Keys).ToHashSet();
-        var unread = new Dictionary<string, bool>(StringComparer.Ordinal);
-        foreach (var position in _nativeSummary?.SourcePositions ?? [])
+        if (forms is null)
         {
-            if (!knownTexts.Contains(position.Location.Anchor.TextId)) continue;
-            unread[position.Word.Form] = unread.GetValueOrDefault(position.Word.Form) ||
-                !_readOccurrences.Contains(position.Location.Anchor);
+            _unreadByForm = new Dictionary<string, bool>(StringComparer.Ordinal);
+            foreach (var position in _nativeSummary?.SourcePositions ?? [])
+            {
+                if (!knownTexts.Contains(position.Location.Anchor.TextId)) continue;
+                _unreadByForm[position.Word.Form] = _unreadByForm.GetValueOrDefault(position.Word.Form) ||
+                    !_readOccurrences.Contains(position.Location.Anchor);
+            }
         }
+        else
+            foreach (var form in forms.Distinct(StringComparer.Ordinal))
+            {
+                var known = (_positionsByForm.GetValueOrDefault(form) ?? [])
+                    .Where(position => knownTexts.Contains(position.Location.Anchor.TextId)).ToArray();
+                if (known.Length == 0) _unreadByForm.Remove(form);
+                else _unreadByForm[form] = known.Any(position => !_readOccurrences.Contains(position.Location.Anchor));
+            }
+        var unread = _unreadByForm;
         bool? IsUnread(string form) => unread.TryGetValue(form.Normalize(System.Text.NormalizationForm.FormD),
             out var value) ? value : null;
         _assess.Words.ApplyReadState(IsUnread);

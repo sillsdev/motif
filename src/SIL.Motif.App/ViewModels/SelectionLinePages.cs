@@ -11,14 +11,14 @@ namespace SIL.Motif.App.ViewModels;
 /// <summary>Coalesces realized line pages into one bounded reader result and releases their models together.</summary>
 internal sealed class SelectionLinePages
 {
-    private readonly SelectionReader _reader;
+    private SelectionReader _reader;
     private readonly SelectionTextSummary _text;
     private readonly HashSet<SelectionLineHeader> _headers;
     private readonly IReadOnlyDictionary<int, SelectionLineHeader> _headersByNumber;
-    private readonly IReadOnlyDictionary<string, AssessmentWordResult> _assessments;
+    private IReadOnlyDictionary<string, AssessmentWordResult> _assessments;
     private readonly SavedProjectNavigation? _navigation;
     private readonly Action<ResultsTokenViewModel>? _prepare;
-    private readonly Func<IDisposable> _registerLine;
+    private Func<IDisposable> _registerLine;
     private readonly DisplayProjectionCache<SelectionLineHeader, ResultsLineViewModel> _lines;
     private readonly LazyProjectionList<SelectionLineHeader, ResultsLineViewModel> _lineSource;
     private readonly Dictionary<int, LinePage> _pages = [];
@@ -31,6 +31,8 @@ internal sealed class SelectionLinePages
     private bool _running;
     private bool _stopped;
     private bool _visible = true;
+    private bool _suspended;
+    private bool _rebasing;
     private long _version;
     private long _tokenGeneration;
 
@@ -74,6 +76,42 @@ internal sealed class SelectionLinePages
     public Refusal? Refusal { get; private set; }
     public event Action? ReleasingTokens;
     public event Action<ResultsLineViewModel>? ReleasingLineTokens;
+
+    /// <summary>Raised after a reader swap for each page that was already showing; true when its words had to be replaced.</summary>
+    public event Action<ResultsLineViewModel, bool>? LineRepublished;
+
+    /// <summary>Whether a reader swap is under way, which holds reads until the newer reader is adopted.</summary>
+    internal bool IsSuspended => _suspended;
+
+    /// <summary>
+    /// Stops reading from the reader that is about to be replaced, keeping every published line as it is shown.
+    /// Reads asked for meanwhile wait for <see cref="Rebase"/>.
+    /// </summary>
+    internal void Suspend()
+    {
+        if (_stopped || _suspended) return;
+        _suspended = true;
+        Changed();
+    }
+
+    /// <summary>
+    /// Continues on the replacement reader: each published page is read again and compared with what it shows, so
+    /// only pages whose content differs are replaced and the rest only move their models onto the new reader.
+    /// </summary>
+    internal void Rebase(SelectionReader reader, IReadOnlyDictionary<string, AssessmentWordResult>? assessments,
+        Func<IDisposable> registerLine)
+    {
+        if (_stopped) return;
+        _reader = reader;
+        _assessments = assessments ?? new Dictionary<string, AssessmentWordResult>();
+        _registerLine = registerLine;
+        foreach (var line in _lines.Models) line.RebindRegistration(registerLine());
+        _suspended = false;
+        _rebasing = true;
+        Changed();
+        Schedule();
+    }
+
     public IDisposable Observe(Action<WeakReference<object>> observer) => _lines.Observe(observer);
 
     public Task<IReadOnlyList<object>> ReadLinePageAsync(int lineNumber, int tokenOffset,
@@ -112,6 +150,11 @@ internal sealed class SelectionLinePages
         if (offset < 0 || offset > page.Count || count is < 0 or > 20)
             throw new ArgumentOutOfRangeException(nameof(offset));
         var take = Math.Min(count, page.Count - offset);
+        if (_suspended && page.Published && page.Offset == offset && page.Take == take)
+        {
+            page.Active = true;
+            return Task.FromResult<IReadOnlyList<object>>(page.Line!.Tokens);
+        }
         if (page.Offset == offset && page.Take == take && page.Published &&
             _read?.PresentationStamp == _reader.Diagnostics.PresentationStamp)
         {
@@ -143,7 +186,7 @@ internal sealed class SelectionLinePages
 
     private void Schedule()
     {
-        if (_running || _stopped || !_visible) return;
+        if (_running || _stopped || !_visible || _suspended) return;
         _running = true;
         _pending = PumpAsync();
     }
@@ -153,7 +196,7 @@ internal sealed class SelectionLinePages
         await Task.Yield();
         try
         {
-            while (!_stopped)
+            while (!_stopped && !_suspended)
             {
                 var active = _pages.Values.Where(page => page.Active || page.Published).OrderBy(page => page.Header.Number).ToArray();
                 if (active.Length == 0) break;
@@ -166,7 +209,7 @@ internal sealed class SelectionLinePages
                 var acquired = outcome.Value;
                 try
                 {
-                    if (_stopped) break;
+                    if (_stopped || _suspended) break;
                     if (version != _version) continue;
                     Refusal = outcome.Refusal;
                     if (!outcome.Succeeded)
@@ -179,14 +222,28 @@ internal sealed class SelectionLinePages
                     var stampChanged = _read is not null && _read.PresentationStamp != read.PresentationStamp;
                     var projected = SelectionDisplayProjection.Lines(read.Value, _navigation);
                     var results = ResolveAssessments(read.Value);
+                    var republished = new List<(ResultsLineViewModel Line, bool Changed)>();
                     try
                     {
                         for (var index = 0; index < read.Value.Lines.Count; index++)
                         {
                             var fragment = read.Value.Lines[index];
                             var page = _pages[fragment.LineNumber];
+                            var showing = page.Published && page.PublishedOffset == page.Offset &&
+                                page.PublishedTake == page.Take;
+                            var digest = !showing || stampChanged || _rebasing ?
+                                LineDigest(fragment, projected[index], results, read.Value) : page.Digest;
+                            if (showing && (stampChanged || _rebasing) && digest == page.Digest)
+                            {
+                                // The same words in the same places: keep their models and strips, move them to this read.
+                                page.Line!.Rebind(read);
+                                if (_rebasing) republished.Add((page.Line, false));
+                                continue;
+                            }
                             if (!page.Published || stampChanged || page.PublishedOffset != page.Offset || page.PublishedTake != page.Take)
                             {
+                                if (showing && _rebasing) republished.Add((page.Line!, true));
+                                page.Digest = digest;
                                 ReleasingLineTokens?.Invoke(page.Line!);
                                 page.Line!.ShowPage(_text.Title, projected[index], fragment, results, read, _prepare);
                                 page.TokenGeneration = ++_tokenGeneration;
@@ -199,6 +256,7 @@ internal sealed class SelectionLinePages
                                 page.NotifyPending = true;
                             }
                         }
+                        _rebasing = false;
                         var previous = _read;
                         _read = read;
                         acquired = null;
@@ -209,6 +267,7 @@ internal sealed class SelectionLinePages
                             page.Notify();
                         }
                         CompleteWaiting();
+                        foreach (var (line, changed) in republished) LineRepublished?.Invoke(line, changed);
                         if (version == _version) break;
                     }
                     catch
@@ -224,8 +283,18 @@ internal sealed class SelectionLinePages
         {
             _readCancellation = null;
             _running = false;
-            CompleteWaiting();
+            // A suspended pump leaves its waiters for the reader that replaces this one.
+            if (!_suspended) CompleteWaiting();
         }
+    }
+
+    private ulong LineDigest(TextLineFragment fragment, TextLine projected,
+        IReadOnlyDictionary<string, AssessmentWordResult> results, TextLineSlice slice)
+    {
+        var forms = projected.Tokens.Select(token => token.Form).OfType<string>().Distinct(StringComparer.Ordinal)
+            .Select(form => new object?[] { form, results.GetValueOrDefault(form), slice.Assessments.GetValueOrDefault(form) })
+            .ToArray();
+        return SelectionLineDigest.Of(_text.Title, fragment, projected, forms);
     }
 
     private IReadOnlyDictionary<string, AssessmentWordResult> ResolveAssessments(TextLineSlice slice) =>
@@ -329,6 +398,7 @@ internal sealed class SelectionLinePages
         public int PublishedOffset { get; set; }
         public int PublishedTake { get; set; }
         public bool NotifyPending { get; set; }
+        public ulong Digest { get; set; }
         public int Offset { get; set; }
         public int Take { get; set; }
         public int Count => !owner._stopped && owner._visible && owner._pages.TryGetValue(Header.Number, out var current) &&

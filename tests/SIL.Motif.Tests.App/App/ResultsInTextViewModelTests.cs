@@ -21,7 +21,7 @@ namespace SIL.Motif.Tests.App;
 /// found nothing — and a filter keeps only the lines holding a matching word, dimming the rest of them.
 /// </summary>
 [Collection(AvaloniaHeadlessCollection.Name)]
-public sealed class ResultsInTextViewModelTests : IAsyncLifetime
+public sealed partial class ResultsInTextViewModelTests : IAsyncLifetime
 {
     private readonly List<SelectionModelFixture> _fixtures = [];
     public Task InitializeAsync() => Task.CompletedTask;

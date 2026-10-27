@@ -7,26 +7,40 @@ namespace SIL.Motif.App.ViewModels;
 
 public sealed partial class ResultsInTextViewModel
 {
-    private IEnumerable<SelectionSourcePosition> NativePositionsFor(AnalysisOperationScope scope) =>
-        (_nativeSummary?.SourcePositions ?? []).Where(position => scope switch
-        {
-            AnalysisOperationScope.SelectedText => position.Location.Anchor.TextId == SelectedText?.TextId,
-            AnalysisOperationScope.ChosenTexts => true,
-            AnalysisOperationScope.CheckedWords => NativeIsChecked(position.Location.Anchor),
-            _ => false,
-        });
+    // Each scope reads its own positions: the selected Text's, the checked words', or all of them.
+    private IEnumerable<SelectionSourcePosition> NativePositionsFor(AnalysisOperationScope scope) => scope switch
+    {
+        AnalysisOperationScope.SelectedText => SelectedText is { } text ?
+            _positionsByText.GetValueOrDefault(text.TextId) ?? [] : [],
+        AnalysisOperationScope.ChosenTexts => _nativeSummary?.SourcePositions ?? [],
+        AnalysisOperationScope.CheckedWords when _selectAllOccurrences => (_nativeSummary?.SourcePositions ?? [])
+            .Where(position => NativeIsChecked(position.Location.Anchor)),
+        AnalysisOperationScope.CheckedWords => _checkedOccurrences.Select(anchor => _nativePositions.GetValueOrDefault(anchor))
+            .OfType<SelectionSourcePosition>(),
+        _ => [],
+    };
 
+    // The summary's own scopes cannot change until the summary does, so they are worked out once per summary.
     private SelectionActionFacts NativeActionScope(AnalysisOperationScope scope)
     {
-        if (_selectionOwner.Reader is not { } reader || _nativeSummary is null) return new SelectionActionFacts([]);
+        if (_selectionOwner.Reader is not { } || _nativeSummary is null) return new SelectionActionFacts([]);
+        if (scope == AnalysisOperationScope.CheckedWords) return ResolveNativeActionScope(scope);
+        var key = (scope, scope == AnalysisOperationScope.SelectedText ? SelectedText?.TextId : null);
+        if (!_scopeCache.TryGetValue(key, out var facts)) _scopeCache[key] = facts = ResolveNativeActionScope(scope);
+        return facts;
+    }
+
+    private SelectionActionFacts ResolveNativeActionScope(AnalysisOperationScope scope)
+    {
+        var reader = _selectionOwner.Reader!;
         IReadOnlySet<Guid>? texts = scope switch
         {
             AnalysisOperationScope.SelectedText => SelectedText is { } text ? new HashSet<Guid> { text.TextId } : new HashSet<Guid>(),
             AnalysisOperationScope.AssessmentSelection => null,
-            _ => _nativeSummary.Texts.Select(text => text.TextId).ToHashSet(),
+            _ => _nativeSummary!.Texts.Select(text => text.TextId).ToHashSet(),
         };
         var keys = scope == AnalysisOperationScope.AssessmentSelection ? _nativeWords.Keys.ToArray() :
-            _nativeSummary.SourcePositions.Select(position => position.Word).Distinct().ToArray();
+            _nativeSummary!.SourcePositions.Select(position => position.Word).Distinct().ToArray();
         return reader.ResolveActionScope(keys, texts,
             excluded: scope == AnalysisOperationScope.CheckedWords && _selectAllOccurrences ? _uncheckedOccurrences : null,
             included: scope == AnalysisOperationScope.CheckedWords && !_selectAllOccurrences ? _checkedOccurrences : null);

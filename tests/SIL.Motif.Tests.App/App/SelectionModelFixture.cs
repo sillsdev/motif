@@ -26,12 +26,18 @@ internal sealed class SelectionModelFixture(FakeCommandClient client) : IAsyncDi
 
     public async Task PublishAsync(TextWordsResponse source, AssessCommandResponse? assessment = null,
         IReadOnlyList<Guid>? textIds = null, IReadOnlyList<string>? addedWords = null, BaselineToken? baseline = null,
-        IReadOnlyList<OccurrenceAnchor>? readOccurrences = null)
+        IReadOnlyList<OccurrenceAnchor>? readOccurrences = null, bool replaceInPlace = false, Task? openGate = null)
     {
-        await Reads.StopAsync();
-        _pausedDatabase?.Dispose();
+        // A window publication leaves the old Selection standing until its successor opens.
+        if (!replaceInPlace) await Reads.StopAsync();
+        var supersededDatabase = _pausedDatabase;
+        var supersededStore = _store;
+        if (!replaceInPlace)
+        {
+            supersededDatabase?.Dispose();
+            supersededStore?.Dispose();
+        }
         _pausedDatabase = null;
-        _store?.Dispose();
         Source = source;
         _assessment = assessment;
         _store = StoredSelectionFixture.FromDisplayRecords(source, assessment?.Baseline.Token ?? baseline);
@@ -53,6 +59,15 @@ internal sealed class SelectionModelFixture(FakeCommandClient client) : IAsyncDi
                 { ProjectPath = _store.ProjectPath, ShownAssessment = request.ShownAssessment, PauseAt = PauseAt }, cancellation);
         }
         else client.SelectionReaderHandler = _store.OpenAsync;
+        if (openGate is not null)
+        {
+            var open = client.SelectionReaderHandler;
+            client.SelectionReaderHandler = async (request, cancellation) =>
+            {
+                await openGate;
+                return await open(request, cancellation);
+            };
+        }
         var root = assessment?.Measurements.LastOrDefault(item => item.Kind == AssessmentKinds.ParseTime)?.AssessmentId
             ?? assessment?.AssessmentIds.FirstOrDefault();
         await Reads.ReloadAsync(_store.ProjectPath, textIds ?? source.Texts.Select(text => text.TextId).ToArray(),
@@ -65,7 +80,16 @@ internal sealed class SelectionModelFixture(FakeCommandClient client) : IAsyncDi
                 new EvidenceOrigin(EvidenceOriginKind.Project, null, null, null)));
         Xunit.Assert.Null(Reads.Refusal);
         Xunit.Assert.NotNull(Reads.Summary);
+        if (replaceInPlace)
+        {
+            supersededDatabase?.Dispose();
+            supersededStore?.Dispose();
+        }
     }
+
+    /// <summary>Publishes new records the way an evidence publication does, without stopping the old Selection first.</summary>
+    public Task RepublishAsync(TextWordsResponse source, AssessCommandResponse? assessment = null, Task? openGate = null) =>
+        PublishAsync(source, assessment, replaceInPlace: true, openGate: openGate);
 
     public static TextWordsResponse WithOccurrenceTexts(TextWordsResponse source)
     {

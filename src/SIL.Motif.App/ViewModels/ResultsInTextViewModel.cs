@@ -277,7 +277,7 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
     public string ChosenTextsRemovalPreview => NativeRemovalPreview(AnalysisOperationScope.ChosenTexts);
 
     /// <summary>Why nothing is shown, or <see langword="null"/> when there are lines to read.</summary>
-    public string? Message => _selectionOwner.IsLoading == true ? "Reading selected Texts…" :
+    public string? Message => _selectionOwner.IsLoading == true && !_suspended ? "Reading selected Texts…" :
         HasStandaloneSelectedWord ? null : Texts.Count == 0
             ? _assess.Result is null ? null : _texts.HasAvailableTexts
                 ? "Choose a text in Texts to read the results in place."
@@ -317,7 +317,8 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
     public void SelectToken(ResultsTokenViewModel token)
     {
         ArgumentNullException.ThrowIfNull(token);
-        if (token.IsWord)
+        // Nothing to pin a card to while a reload replaces the reader; the click is made again afterwards.
+        if (token.IsWord && !_suspended)
         {
             SelectedToken = PinToken(token);
             AddChangeCommand.NotifyCanExecuteChanged();
@@ -837,7 +838,7 @@ public sealed class ResultsTextViewModel
         TitleWritingSystem = summary.TitleWritingSystem;
     }
 
-    internal SelectionTextSummary Summary { get; }
+    internal SelectionTextSummary Summary { get; set; }
 
     public string Title { get; }
     public string? TitleWritingSystem { get; }
@@ -862,6 +863,19 @@ public sealed class ResultsLineViewModel : ObservableObject, IDisposable
         SentenceStyle = "Normal";
         Tokens = [];
         TokenSource = tokenSource;
+        _modelRegistration = registration;
+    }
+
+    /// <summary>Moves this unchanged line and its words onto a newer reader without touching what they show.</summary>
+    internal void Rebind(SelectionRead<TextLineSlice> read)
+    {
+        var expected = read.Context.ExpectedWriteContext();
+        foreach (var token in Tokens) token.Rebind(expected, read.Lease.RegisterModel(SelectionModelKind.Token));
+    }
+
+    internal void RebindRegistration(IDisposable registration)
+    {
+        _modelRegistration?.Dispose();
         _modelRegistration = registration;
     }
 

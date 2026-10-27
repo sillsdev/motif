@@ -19,7 +19,7 @@ namespace SIL.Motif.App.ViewModels;
 public sealed partial class ResultsTokenViewModel : ObservableObject, IDisposable
 {
     private IDisposable? _modelRegistration;
-    private readonly ExpectedContext? _expectedContext;
+    private ExpectedContext? _expectedContext;
     private SelectionWordActionFacts? _actionFacts;
     private readonly string? _producingAssessmentId;
     private readonly TextToken _source;
@@ -113,13 +113,26 @@ public sealed partial class ResultsTokenViewModel : ObservableObject, IDisposabl
     /// <summary>Releases this displayed token's registration when its range or card owner removes it.</summary>
     public void Dispose() => Interlocked.Exchange(ref _modelRegistration, null)?.Dispose();
 
-    internal void OwnRegistration(IDisposable registration)
+    internal void OwnRegistration(IDisposable? registration)
     {
         _modelRegistration?.Dispose();
         _modelRegistration = registration;
     }
 
     internal void BindActionFacts(SelectionWordActionFacts facts) => _actionFacts = facts;
+
+    /// <summary>The assessment evidence this occurrence was built from, kept to tell when a card's word has changed.</summary>
+    internal AssessmentWordResult? SourceAssessment => _assessment;
+
+    /// <summary>
+    /// Moves an unchanged occurrence onto a newer reader: later writes carry that reader's evidence and its
+    /// registration counts against it, while the displayed facts stay as they were.
+    /// </summary>
+    internal void Rebind(ExpectedContext? expectedContext, IDisposable? registration)
+    {
+        _expectedContext = expectedContext;
+        OwnRegistration(registration);
+    }
 
     internal ResultsTokenViewModel CopyForCard() => new(string.Empty, 0, _source, _assessment,
         location: Location, occurrence: Occurrence, textId: _textId, expectedContext: _expectedContext,
