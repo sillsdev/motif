@@ -12,9 +12,14 @@ internal sealed class ReviewWordPresentationHost(ReviewPageModel page) : IWordPr
     {
         cancellationToken.ThrowIfCancellationRequested();
         if (Find(key) is not { } change || change.Presentation.EvidenceRevision != evidenceRevision)
-            return WordCardReadResult.Failed("This change has changed before its details could be shown.", false);
+            return WordCardReadResult.Failed(MotifAppStrings.ReviewCardEvidenceChanged, false);
 
         await page.ShowContextCommand.ExecuteAsync(change).ConfigureAwait(true);
+        cancellationToken.ThrowIfCancellationRequested();
+        var read = await page.ReadWordCardTokenAsync(change, cancellationToken).ConfigureAwait(true);
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!ReferenceEquals(Find(key), change) || change.Presentation.EvidenceRevision != evidenceRevision)
+            return WordCardReadResult.Failed(MotifAppStrings.ReviewCardEvidenceChanged, false);
         var listed = change.Listed;
         WordCardSentenceToken[] ChangedTokens(IEnumerable<UncertaintyTokenViewModel> tokens) =>
             tokens.Select(token => new WordCardSentenceToken(token.Form, token.FormWritingSystem, token.IsChanged)).ToArray();
@@ -29,10 +34,10 @@ internal sealed class ReviewWordPresentationHost(ReviewPageModel page) : IWordPr
             [],
             change.HasUnavailableContext,
             page.Context, change.ContextSource);
-        WordCardSection[] sections = listed is null
-            ? [pending]
-            : [pending, new WordCardAnalysis(listed.Card, listed.CardToken, listed.HasCard ? null : listed.NotParsedText)];
-        return WordCardReadResult.Read(new WordCardDocument(key, evidenceRevision, sections));
+        WordCardSection[] sections = [pending, new WordCardAnalysis(listed?.Card, read.Token,
+            read.Token is null ? listed?.NotParsedText : null)];
+        return new WordCardReadResult(new WordCardDocument(key, evidenceRevision, sections),
+            read.Failure, read.Token is null);
     }
 
     public async ValueTask<WordActionResult> HandleAsync(WordRequest request, CancellationToken cancellationToken)

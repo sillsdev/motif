@@ -13,6 +13,26 @@ public static class MotifAppStrings
     // Falls back to the id so a missing entry shows in the window; MotifAppStringsTests pins every accessor.
     private static string Text(string stringId) => Resources.GetString(stringId) ?? stringId;
 
+    public static string SetAnalysis => Text("MotifApp.SetAnalysis");
+
+    public static string SetAnalysisApproved => Text("MotifApp.SetAnalysisApproved");
+
+    public static string SetAnalysisUnknown => Text("MotifApp.SetAnalysisUnknown");
+
+    public static string SetAnalysisDisapproved => Text("MotifApp.SetAnalysisDisapproved");
+
+    public static string SetAnalysisRemove => Text("MotifApp.SetAnalysisRemove");
+
+    public static string SetAnalysisChangedTipFormat => Text("MotifApp.SetAnalysisChangedTipFormat");
+
+    public static string SetAnalysisCurrentTipFormat => Text("MotifApp.SetAnalysisCurrentTipFormat");
+
+    public static string AddAnalysisFromPanGloss => Text("MotifApp.AddAnalysisFromPanGloss");
+
+    public static string ReviewCardEvidenceChanged => Text("MotifApp.ReviewCardEvidenceChanged");
+
+    public static string ReviewCardDetailsUnavailable => Text("MotifApp.ReviewCardDetailsUnavailable");
+
     public static string MenuFile => Text("MotifApp.MenuFile");
 
     public static string MenuSelectNew => Text("MotifApp.MenuSelectNew");

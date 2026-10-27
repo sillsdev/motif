@@ -1054,21 +1054,21 @@ public sealed partial class ComponentStyleTests
             TextBlock.FontSizeProperty, "Component.Mark.GlyphType");
         yield return new("ActionChip", "the primary action floor", host => Add(host, Press("actionChip", "primary")),
             Button.MinHeightProperty, "Component.ActionChip.Height");
-        yield return new("ActionChip", "the Fix menu action", host => Add(host, Press("actionChip", "fix")),
+        yield return new("ActionChip", "the Set menu action", host => Add(host, Press("actionChip", "set")),
             Button.BorderBrushProperty, "Intent.Marking.Border");
-        yield return new("ActionChip", "the Fix menu text", host => Add(host, Press("actionChip", "fix")),
+        yield return new("ActionChip", "the Set menu text", host => Add(host, Press("actionChip", "set")),
             Button.ForegroundProperty, "Intent.Marking.Text");
-        yield return new("ActionChip", "the Fix menu caret size", host => Add(host, new Avalonia.Controls.Shapes.Path
+        yield return new("ActionChip", "the Set menu caret size", host => Add(host, new Avalonia.Controls.Shapes.Path
             {
                 Classes = { "actionChipCaret" },
                 Data = Geometry.Parse("M0 1 L5 6 L10 1 Z"),
             }), Avalonia.Controls.Shapes.Path.WidthProperty, "Component.ActionChip.CaretSize");
-        yield return new("ActionChip", "the Fix menu caret height", host => Add(host, new Avalonia.Controls.Shapes.Path
+        yield return new("ActionChip", "the Set menu caret height", host => Add(host, new Avalonia.Controls.Shapes.Path
             {
                 Classes = { "actionChipCaret" },
                 Data = Geometry.Parse("M0 1 L5 6 L10 1 Z"),
             }), Avalonia.Controls.Shapes.Path.HeightProperty, "Component.ActionChip.CaretSize");
-        yield return new("ActionChip", "the Fix menu caret colour", host => Add(host, new Avalonia.Controls.Shapes.Path
+        yield return new("ActionChip", "the Set menu caret colour", host => Add(host, new Avalonia.Controls.Shapes.Path
             {
                 Classes = { "actionChipCaret" },
                 Data = Geometry.Parse("M0 1 L5 6 L10 1 Z"),

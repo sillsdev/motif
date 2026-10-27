@@ -119,7 +119,7 @@ public sealed partial class ReviewUndoRealClientTests(PristineProjectFixture pri
             source.OccurrenceIndex);
         var marked = new ResultsTokenViewModel("First text", line.Number, source, result,
             occurrence: occurrence);
-        var choice = Assert.Single(marked.Marking.FixChoices,
+        var choice = Assert.Single(marked.Marking.SetChoices,
             candidate => candidate.Kind == AnalysisMarkingActionKind.Disapprove &&
                          candidate.StoredAnalysisId == CanonicalId.FromGuid(project.Text.ApprovedAnalysisId).Value);
         var action = new AnalysisMarkingAction(choice.Kind, choice.Label, choice.StoredAnalysisId,

@@ -10,10 +10,10 @@ namespace SIL.Motif.App.Views;
 public partial class WordDispositionButtons : StackPanel
 {
     /// <summary>The accessible name of the opinion mark button, which opens the tiles.</summary>
-    public const string MarkButtonName = "Change what FieldWorks holds for this word";
+    public static string MarkButtonName => MotifAppStrings.SetAnalysis;
 
     /// <summary>The accessible name of the add button, which lists PanGloss analyses to add.</summary>
-    public const string AddButtonName = "Add a PanGloss analysis to FieldWorks";
+    public static string AddButtonName => MotifAppStrings.AddAnalysisFromPanGloss;
 
     /// <summary>Creates the buttons; their data context is the word's <c>ResultsTokenViewModel</c>.</summary>
     public WordDispositionButtons() => InitializeComponent();

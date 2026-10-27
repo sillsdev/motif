@@ -96,7 +96,7 @@ public sealed class AnalyzeTextsMenuTests
 
     private static void AssertMenuRows(Control menu, string what) => AssertMenuRows(Entries(menu), what);
 
-    // The opinion tiles sit side by side in fours; the menu's other entries read as left-aligned rows.
+    // Every stored analysis retains all four choices, including its current Opinion.
     private static void AssertDispositionMenu(Control menu, string what)
     {
         var entries = Entries(menu);

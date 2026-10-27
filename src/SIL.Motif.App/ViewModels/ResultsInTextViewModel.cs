@@ -183,7 +183,7 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
     /// <summary>The one Try a Word command whose parameter carries the card's spelling.</summary>
     public IRelayCommand<string> TryWordForTargetCommand { get; }
 
-    /// <summary>The one Fix command whose parameter retains its original word and evidence.</summary>
+    /// <summary>The one Set command whose parameter retains its original word and evidence.</summary>
     public IAsyncRelayCommand<WordMarkingChoice> StageMarkingChoiceForTargetCommand { get; }
 
     internal IReadOnlyList<System.Windows.Input.ICommand> TokenActionCommands { get; }
@@ -700,7 +700,7 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
 
     internal static bool CanStageMarkingChoice(ResultsTokenViewModel token, AnalysisMarkingChoice? choice) =>
         token.IsWord && choice is not null && token.AllowsMarkingAction(choice.Kind, choice.StoredAnalysisId, choice.Reading) &&
-        (token.Marking.FixChoices.Contains(choice) || token.Marking.ProposalBlock?.Choices.Contains(choice) == true ||
+        (token.Marking.SetChoices.Contains(choice) || token.Marking.ProposalBlock?.Choices.Contains(choice) == true ||
             choice.StoredAnalysisId is { } analysisId && token.Marking.FieldWorksAnalyses
                 .FirstOrDefault(analysis => analysis.StoredAnalysisId == analysisId) is { } analysis &&
             AnalysisMarkingState.OpinionChoicesFor(analysis).Contains(choice));

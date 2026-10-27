@@ -41,7 +41,7 @@ public sealed class WordDispositionTests
         Assert.Equal("U", disposition.MarkLetter);
         Assert.True(disposition.IsChanged);
         Assert.True(disposition.StoredRows[0].Tiles[1].IsStaged);
-        Assert.StartsWith("Changed: FieldWorks will hold it as Unknown", disposition.MarkTip);
+        Assert.StartsWith("Set analysis. Changed: FieldWorks will hold it as Unknown", disposition.MarkTip);
     }
 
     [Fact]

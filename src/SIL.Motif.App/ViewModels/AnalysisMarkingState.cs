@@ -33,7 +33,7 @@ public enum AnalysisMarkingClass
     Refused,
 }
 
-/// <summary>The action presented for one comparison or one explicit Fix choice.</summary>
+/// <summary>The action presented for one comparison or one explicit Set choice.</summary>
 public enum AnalysisMarkingActionKind
 {
     /// <summary>Approve a stored analysis.</summary>
@@ -103,7 +103,7 @@ public sealed record ProposalReadingBlock(
     /// <summary>The line under the block's heading when the Trial built nothing for the word.</summary>
     public const string NothingBuilt = "The Proposal builds no analysis for this word.";
 
-    /// <summary>What the Fix choices call the open Proposal when its Trial carries no label.</summary>
+    /// <summary>What the Set choices call the open Proposal when its Trial carries no label.</summary>
     public const string ThisProposal = "this Proposal";
 
     /// <summary>The window's name for a reading FieldWorks does not hold yet.</summary>
@@ -133,7 +133,7 @@ public sealed record PanGlossReadingMarking(
     public bool IsParserOnly => !MatchesStored;
 }
 
-/// <summary>A named Fix choice for changing one stored opinion or adding one parser reading.</summary>
+/// <summary>A named Set choice for changing one stored opinion or adding one parser reading.</summary>
 /// <param name="Kind">The action's role in the window.</param>
 /// <param name="Label">The visible choice name.</param>
 /// <param name="Subtitle">The opinion transition explained to the reader.</param>
@@ -147,7 +147,7 @@ public sealed record AnalysisMarkingChoice(
     AnalysisMarkingActionKind Kind, string Label, string Subtitle, string? StoredAnalysisId,
     ParseAnalysis? Reading, int? ReadingIndex, string Now, string AfterApply, string? ChangeKind);
 
-/// <summary>An action selected from the primary row control or its Fix menu.</summary>
+/// <summary>An action selected from the primary row control or its Set menu.</summary>
 /// <param name="Kind">The action's role in the window.</param>
 /// <param name="Label">The visible action name.</param>
 /// <param name="StoredAnalysisId">The stored reading to change, when this action changes one.</param>
@@ -184,7 +184,7 @@ public sealed record StagedMarkingTransition(string Now, string AfterApply,
 /// <param name="PanGlossClass">The comparison class after stored opinions are considered.</param>
 /// <param name="PanGlossReadings">Every parser reading and any matching stored analyses.</param>
 /// <param name="PrimaryAction">The table-selected action, or <see langword="null"/> when no one-click action applies.</param>
-/// <param name="FixChoices">Explicit choices for changing an opinion or adding a reading.</param>
+/// <param name="SetChoices">Explicit choices for changing an opinion or adding a reading.</param>
 /// <param name="StagedTransitions">The pending changes displayed on this occurrence.</param>
 /// <param name="IsUncertain">Whether the pending change's fit with the current project is uncertain.</param>
 /// <param name="NoLongerFits">Whether the pending change no longer fits the current project.</param>
@@ -195,7 +195,7 @@ public sealed record AnalysisMarkingState(
     AnalysisMarkingClass PanGlossClass,
     IReadOnlyList<PanGlossReadingMarking> PanGlossReadings,
     AnalysisMarkingAction? PrimaryAction,
-    IReadOnlyList<AnalysisMarkingChoice> FixChoices,
+    IReadOnlyList<AnalysisMarkingChoice> SetChoices,
     IReadOnlyList<StagedMarkingTransition> StagedTransitions,
     bool IsUncertain,
     bool NoLongerFits,
@@ -214,7 +214,7 @@ public sealed record AnalysisMarkingState(
     /// <param name="trial">The comparison of FieldWorks with the Trial's result for the word.</param>
     /// <param name="text">Writes a reading the way the card does.</param>
     /// <param name="builtBy">Names the Proposal's changes that create entities a reading uses.</param>
-    /// <param name="proposalLabel">The open Proposal's name, which the Fix choices put in their wording.</param>
+    /// <param name="proposalLabel">The open Proposal's name, which the Set choices put in their wording.</param>
     /// <returns>The block, with no readings when the Trial built nothing.</returns>
     public static ProposalReadingBlock BuildProposalBlock(AnalysisMarkingState trial,
         Func<PanGlossReadingMarking, string> text, Func<ParseAnalysis, IReadOnlyList<BuiltByEntry>> builtBy,
@@ -248,10 +248,10 @@ public sealed record AnalysisMarkingState(
         return new ProposalReadingBlock(readings, choices);
     }
 
-    /// <summary>Whether an available action or Fix choice remains unstaged.</summary>
+    /// <summary>Whether an available action or Set choice remains unstaged.</summary>
     public bool NeedsALook => StagedTransitions.Count == 0 &&
         (CountsTowardNeedsALook(PrimaryAction?.Kind) || PanGlossClass != AnalysisMarkingClass.Same &&
-            FixChoices.Any(choice => CountsTowardNeedsALook(choice.Kind)));
+            SetChoices.Any(choice => CountsTowardNeedsALook(choice.Kind)));
 
     private static bool CountsTowardNeedsALook(AnalysisMarkingActionKind? kind) =>
         kind is not null and not AnalysisMarkingActionKind.KeepFieldWorks and
@@ -311,8 +311,8 @@ public sealed record AnalysisMarkingState(
 
         var markingClass = ToMarkingClass(classification.Class);
         var primary = BuildPrimaryAction(markingClass, stored, readings);
-        var fixes = BuildFixChoices(markingClass, stored, readings);
-        return new AnalysisMarkingState(stored, markingClass, readings, primary, fixes, [],
+        var choices = BuildSetChoices(markingClass, stored, readings);
+        return new AnalysisMarkingState(stored, markingClass, readings, primary, choices, [],
             false, false, isUnread);
     }
 
@@ -390,7 +390,7 @@ public sealed record AnalysisMarkingState(
         return null;
     }
 
-    private static IReadOnlyList<AnalysisMarkingChoice> BuildFixChoices(
+    private static IReadOnlyList<AnalysisMarkingChoice> BuildSetChoices(
         AnalysisMarkingClass markingClass, IReadOnlyList<FieldWorksAnalysisMarking> stored,
         IReadOnlyList<PanGlossReadingMarking> readings)
     {

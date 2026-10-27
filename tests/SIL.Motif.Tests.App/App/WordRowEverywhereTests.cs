@@ -42,7 +42,7 @@ public sealed class WordRowEverywhereTests
             workspace.CurrentPage = WorkspacePage.Texts;
             await Until(window, () => Token(texts, "chakula") is not null, "chakula in Analyze texts");
             var chakula = Token(texts, "chakula")!;
-            var add = chakula.Marking.FixChoices.Single(choice => choice.Label == "Add as Approved");
+            var add = chakula.Marking.SetChoices.Single(choice => choice.Label == "Add as Approved");
             await chakula.StageMarkingChoiceForTokenCommand!.ExecuteAsync(chakula.BindMarkingChoice(add));
             await Until(window, () => workspace.Context.Changes.HasItems, "the staged change on chakula");
             workspace.CurrentPage = WorkspacePage.Review;

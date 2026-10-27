@@ -196,7 +196,11 @@ public sealed partial class WordCard : UserControl
         }
         if (Failure is { Length: > 0 } failure)
         {
-            var message = new CopyableTextBlock { Text = failure, Classes = { "wordPresentationCardFailure" } };
+            var message = new CopyableTextBlock
+            {
+                Text = failure, TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+                Classes = { "wordPresentationCardFailure" },
+            };
             AutomationProperties.SetName(message, failure);
             _sections.Children.Add(message);
             if (CanRetry)

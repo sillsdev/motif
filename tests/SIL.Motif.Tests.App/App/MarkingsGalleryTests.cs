@@ -61,7 +61,7 @@ public sealed class MarkingsGalleryTests
             Assert.Contains("capped", gallery.CappedLine.Classes);
             Assert.Equal("+2", ((TextBlock)gallery.ExtraCount.Child!).Text);
             Assert.Equal("✓", gallery.PrimaryAction.Content);
-            Assert.Equal("Fix ▾", gallery.FixAction.Content);
+            Assert.Equal("Set analysis ▾", gallery.SetAction.Content);
             Assert.Equal("Staged", ((StackPanel)gallery.StagedStrip.Child!).Children[0] is TextBlock label ? label.Text : null);
         });
     }

@@ -156,7 +156,7 @@ public sealed class WalkthroughArtifactTests(AvaloniaHeadlessFixture avalonia)
         var callouts = new[]
         {
             new WalkthroughCaptureCallout("pangloss", "PanGloss built the same reading.", new Rect(250, 130, 210, 54)),
-            new WalkthroughCaptureCallout("fix", "Fix opens the other choices for this word.", new Rect(420, 70, 50, 40)),
+            new WalkthroughCaptureCallout("fix", "Set opens the other choices for this word.", new Rect(420, 70, 50, 40)),
             new WalkthroughCaptureCallout("opinion", "This is the word opinion.", new Rect(20, 40, 120, 44)),
             new WalkthroughCaptureCallout("word", "The word as it appears in the text.", new Rect(150, 40, 120, 44)),
         };
@@ -169,8 +169,8 @@ public sealed class WalkthroughArtifactTests(AvaloniaHeadlessFixture avalonia)
         Assert.Single(labels.Select(label => label.MarkerCenter.X).Distinct());
         Assert.Equal("This is the word opinion.", string.Join(" ", labels[0].Lines));
         Assert.Equal("The word as it appears in the text.", string.Join(" ", labels[1].Lines));
-        Assert.Contains("Fix", string.Join(" ", labels[2].Lines));
-        Assert.Equal("Fix opens the other choices for this word.", string.Join(" ", labels[2].Lines));
+        Assert.Contains("Set", string.Join(" ", labels[2].Lines));
+        Assert.Equal("Set opens the other choices for this word.", string.Join(" ", labels[2].Lines));
         Assert.Equal("PanGloss built the same reading.", string.Join(" ", labels[3].Lines));
         Assert.Equal(["opinion", "word", "fix", "pangloss"], labels.Select(label => label.AutomationId));
         Assert.Equal(new Point(80, 40), labels[0].TargetPoint);
@@ -189,7 +189,7 @@ public sealed class WalkthroughArtifactTests(AvaloniaHeadlessFixture avalonia)
         {
             new WalkthroughCaptureCallout("opinion", "A means FieldWorks approved this reading.", new Rect(65, 53, 32.5, 32.5)),
             new WalkthroughCaptureCallout("word", "The word as it appears in the text.", new Rect(112.5, 10.5, 90, 117.5)),
-            new WalkthroughCaptureCallout("fix", "Fix opens the other choices for this word.", new Rect(272.5, 10.5, 225, 117.5)),
+            new WalkthroughCaptureCallout("fix", "Set opens the other choices for this word.", new Rect(272.5, 10.5, 225, 117.5)),
             new WalkthroughCaptureCallout("unread", "Unread marks a word whose current reading has not been reviewed.", new Rect(497.5, 10.5, 142.5, 117.5)),
             new WalkthroughCaptureCallout("fieldworks", "FieldWorks shows its morphemes with a gloss below each one.", new Rect(10, 133, 630, 150)),
             new WalkthroughCaptureCallout("pangloss", "PanGloss built the same reading.", new Rect(10, 288, 630, 282.5)),
@@ -240,7 +240,7 @@ public sealed class WalkthroughArtifactTests(AvaloniaHeadlessFixture avalonia)
     }
 
     [Fact]
-    public void ExplainedWordCardFixCaptionsUsePlainWords()
+    public void ExplainedWordCardSetCaptionsUsePlainWords()
     {
         var root = FindRepositoryRoot();
         var help = WalkthroughHelpContent.Load(root, "explained-word-card", "en");
@@ -252,7 +252,7 @@ public sealed class WalkthroughArtifactTests(AvaloniaHeadlessFixture avalonia)
         Assert.NotEmpty(captions);
         Assert.All(captions, caption =>
         {
-            Assert.EndsWith("Choose it to change what FieldWorks holds.", caption, StringComparison.Ordinal);
+            Assert.EndsWith("Choose Set analysis to change what FieldWorks holds.", caption, StringComparison.Ordinal);
             Assert.DoesNotContain("Fix", caption, StringComparison.Ordinal);
             Assert.DoesNotContain("▾", caption);
         });

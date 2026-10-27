@@ -23,7 +23,7 @@ public sealed class AnalysisActionRulesTests
     [InlineData(AnalysisMarkingActionKind.RemoveAnalysis, false)]
     [InlineData(AnalysisMarkingActionKind.KeepFieldWorks, false)]
     [InlineData(AnalysisMarkingActionKind.Disapprove, true)]
-    public void FixChoicesCountTowardNeedsALookOnlyWhenTheyAskForAReview(
+    public void SetChoicesCountTowardNeedsALookOnlyWhenTheyAskForAReview(
         AnalysisMarkingActionKind kind, bool expected)
     {
         var choice = new AnalysisMarkingChoice(

@@ -132,7 +132,7 @@ public sealed class ViewTokenTests
         {
             Assert.Contains("<views:WordDispositionButtons />", host, StringComparison.Ordinal);
             Assert.DoesNotContain("Fix ▾", host, StringComparison.Ordinal);
-            Assert.DoesNotContain("Marking.FixChoices", host, StringComparison.Ordinal);
+            Assert.DoesNotContain("Marking.SetChoices", host, StringComparison.Ordinal);
         }
         Assert.DoesNotContain("Fix actions", markup + cardMarkup, StringComparison.Ordinal);
         Assert.Contains("{x:Static views:WordDispositionButtons.MarkButtonName}", buttons, StringComparison.Ordinal);

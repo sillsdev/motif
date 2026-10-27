@@ -98,7 +98,7 @@ public sealed class ResultsTokenViewModelTests
         Assert.False(token.ShowsProposalBlock);
         Assert.Null(token.Marking.ProposalBlock);
         Assert.False(token.Disposition.HasProposalActions);
-        Assert.Equal(before.FixChoices, token.Marking.FixChoices);
+        Assert.Equal(before.SetChoices, token.Marking.SetChoices);
     }
 
     [Fact]
@@ -151,7 +151,7 @@ public sealed class ResultsTokenViewModelTests
     }
 
     [Fact]
-    public void TheFixMenuNamesTheProposalWhenItsTrialHasALabel()
+    public void TheSetMenuNamesTheProposalWhenItsTrialHasALabel()
     {
         using var token = new ResultsTokenViewModel("Text", 1,
             Token(Stored(Book, ReadingGrade.Candidate, "stored-1")), Result(Book));

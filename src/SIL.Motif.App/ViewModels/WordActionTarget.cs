@@ -22,7 +22,7 @@ public sealed record WordActionReading(ParseAnalysis? Analysis, string? Text, in
 public sealed record WordChangeAction(
     WordActionTarget Target, string Kind, IReadOnlyList<WordActionReading> Readings, bool IsAvailable);
 
-/// <summary>A Fix-menu choice bound to the word and evidence that supplied the menu.</summary>
+/// <summary>A Set-menu choice bound to the word and evidence that supplied the menu.</summary>
 public sealed record WordMarkingChoice(WordActionTarget Target, AnalysisMarkingChoice Choice, bool IsAvailable)
 {
     public string Label => Choice.Label;

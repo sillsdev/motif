@@ -771,9 +771,11 @@ internal static class TooltipOwners
         new("word strip", "Controls/WordPresentation/WordStripToken.axaml", "{Binding TooltipSummary}", TooltipScene.Reader,
             control => control is Border { Name: "WordStrip" }),
         new("a word's opinion mark", "Views/WordDispositionButtons.axaml", "{Binding Disposition.MarkTip}", TooltipScene.Reader,
-            control => control is Button && AutomationProperties.GetName(control) == "Change what FieldWorks holds for this word"),
+            control => control is Button && control.FindAncestorOfType<WordDispositionButtons>() is not null &&
+                AutomationProperties.GetName(control) == WordDispositionButtons.MarkButtonName),
         new("a word's add count", "Views/WordDispositionButtons.axaml", "{Binding Disposition.AddTip}", TooltipScene.Reader,
-            control => control is Button && AutomationProperties.GetName(control) == "Add a PanGloss analysis to FieldWorks"),
+            control => control is Button && control.FindAncestorOfType<WordDispositionButtons>() is not null &&
+                AutomationProperties.GetName(control) == WordDispositionButtons.AddButtonName),
         new("a disposition tile", "Views/WordDispositionButtons.axaml", "{Binding Tip}", TooltipScene.Reader,
             control => control is Button && control.DataContext is WordDispositionTile { Choice: null or { Kind: not AnalysisMarkingActionKind.Add } })
         {
@@ -959,7 +961,8 @@ internal static class TooltipOwners
             Pending = "the staged sample holds no grammar change",
         },
         new("Review Inspector Word Analyses", "Views/ReviewInspector.axaml", "{Binding Listed.Row.WordAnalysesTip}",
-            TooltipScene.ReviewStaged, control => control is HyperlinkButton &&
+            TooltipScene.ReviewStaged, control => control is HyperlinkButton { DataContext: ChangeViewModel } &&
+                control.Classes.Contains("reviewLink") &&
                 control.FindAncestorOfType<ReviewInspector>() is not null),
         new("Try a Word analysis that could not be shown", "Views/TryWordPanel.axaml", "{Binding ProjectionErrorText}",
             TooltipScene.TryAWordRecordedDetails, control => control is StackPanel { DataContext: TraceAnalysisViewModel } &&

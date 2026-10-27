@@ -103,13 +103,13 @@ public sealed partial class ReviewUndoRealClientTests
                 using var card = owner.GetCardToken(result);
                 Assert.Equal(ambiguous ? null : project.Text.AnalysedWordformId, card.WordformId);
                 Assert.Equal(!ambiguous, card.IncorrectSpellingAction.IsAvailable);
-                Assert.NotEmpty(card.Marking.FixChoices);
-                if (ambiguous) Assert.All(card.BoundFixChoices, choice => Assert.False(choice.IsAvailable));
+                Assert.NotEmpty(card.Marking.SetChoices);
+                if (ambiguous) Assert.All(card.BoundSetChoices, choice => Assert.False(choice.IsAvailable));
                 if (!ambiguous)
                 {
                     Assert.Equal(incorrect, card.Comparison.Standing == ProjectStanding.IncorrectSpelling);
-                    Assert.Contains(card.BoundFixChoices, choice => choice.IsAvailable && choice.Choice.StoredAnalysisId is not null);
-                    Assert.All(card.BoundFixChoices.Where(choice => choice.IsAvailable), choice =>
+                    Assert.Contains(card.BoundSetChoices, choice => choice.IsAvailable && choice.Choice.StoredAnalysisId is not null);
+                    Assert.All(card.BoundSetChoices.Where(choice => choice.IsAvailable), choice =>
                         Assert.Equal(project.Text.AnalysedWordformId, choice.Target.WordformId));
                 }
                 assess.Result = new AssessCommandResponse(new BaselineCaptureResponse(baseline, project.FwDataPath,

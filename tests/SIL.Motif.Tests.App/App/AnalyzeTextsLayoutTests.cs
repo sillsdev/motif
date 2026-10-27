@@ -1007,7 +1007,7 @@ public sealed class AnalyzeTextsLayoutTests
                 var inText = workspace.PageModel<TextsPageModel>().ResultsInText;
                 inText.CloseTokenCard();
                 var chakula = RealizedLines(inText)[0].Tokens.Single(token => token.Form == "chakula");
-                var add = Assert.Single(chakula.Marking.FixChoices, choice => choice.Label == "Add as Approved");
+                var add = Assert.Single(chakula.Marking.SetChoices, choice => choice.Label == "Add as Approved");
                 await chakula.StageMarkingChoiceForTokenCommand!.ExecuteAsync(chakula.BindMarkingChoice(add));
                 Settle(window);
 

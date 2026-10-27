@@ -172,6 +172,13 @@ alone. It is changed one analysis at a time, in its text. A staged change of Opi
 Apply", never as an Opinion of its own.
 _Avoid_: rejected, grade, verdict, no opinion, status
 
+**Set (an analysis)**:
+The action that chooses what FieldWorks will hold for one analysis: **Approved**, **Unknown**,
+**Disapproved** or **Remove**. Its menu says **Set analysis**; **Opinion** names the value, not the
+action. **Add analysis from PanGloss** offers readings FieldWorks does not hold. Both stage changes
+for Review and Apply; **Undo** takes back a staged change. The count remains **N changes**.
+_Avoid_: Fix, Opinion as the action name
+
 **Read**:
 A word the linguist has looked at in Motif. Its opposite is **Unread**. It is kept in the Motif store and never sent to FieldWorks. It clears on its own, by the same fingerprint rules as a pending change: a new PanGloss result for the word, a change to its FieldWorks analyses or opinion, or a change to the sentence it was read in. The window colours Unread words and can show only those.
 _Avoid_: reviewed, checked, seen, approved, needs a look

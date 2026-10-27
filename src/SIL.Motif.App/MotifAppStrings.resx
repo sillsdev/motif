@@ -6063,4 +6063,42 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <value>{0} of {1}</value>
     <comment>Project card summary of the chosen texts when no set is saved yet: {0} is how many texts are chosen and {1} the total with its unit such as 14 texts.</comment>
   </data>
+  <data name="MotifApp.SetAnalysis" xml:space="preserve">
+    <value>Set analysis</value>
+    <comment>Action that sets the Opinion of one stored analysis; keep Opinion as the value name.</comment>
+  </data>
+  <data name="MotifApp.SetAnalysisApproved" xml:space="preserve">
+    <value>Set analysis: Approved</value>
+    <comment>Menu action for one stored analysis; Approved is FieldWorks Opinion vocabulary.</comment>
+  </data>
+  <data name="MotifApp.SetAnalysisUnknown" xml:space="preserve">
+    <value>Set analysis: Unknown</value>
+    <comment>Menu action for one stored analysis; Unknown is FieldWorks Opinion vocabulary.</comment>
+  </data>
+  <data name="MotifApp.SetAnalysisDisapproved" xml:space="preserve">
+    <value>Set analysis: Disapproved</value>
+    <comment>Menu action for one stored analysis; Disapproved is FieldWorks Opinion vocabulary.</comment>
+  </data>
+  <data name="MotifApp.SetAnalysisRemove" xml:space="preserve">
+    <value>Set analysis: Remove</value>
+    <comment>Menu action that stages deletion of one stored analysis; it is not Undo.</comment>
+  </data>
+  <data name="MotifApp.SetAnalysisCurrentTipFormat" xml:space="preserve">
+    <value>Now: {0}</value>
+    <comment>Tooltip for the current Opinion, which is not another staged change. {0} is the localized Set analysis choice.</comment>
+  </data>
+  <data name="MotifApp.AddAnalysisFromPanGloss" xml:space="preserve">
+    <value>Add analysis from PanGloss</value>
+    <comment>Action that opens PanGloss readings to add to FieldWorks; PanGloss is a product name.</comment>
+  </data>
+  <data name="MotifApp.SetAnalysisChangedTipFormat" xml:space="preserve">
+    <value>Set analysis. Changed: FieldWorks will hold it as {0}. Ctrl+Z undoes</value>
+    <comment>Tooltip after staging a Set choice. {0} is the requested FieldWorks Opinion.</comment>
+  </data>
+  <data name="MotifApp.ReviewCardEvidenceChanged" xml:space="preserve">
+    <value>This change or its evidence changed before its details could be shown. Open the change again.</value>
+  </data>
+  <data name="MotifApp.ReviewCardDetailsUnavailable" xml:space="preserve">
+    <value>The captured word's details are unavailable. Refresh the project and open the change again.</value>
+  </data>
 </root>

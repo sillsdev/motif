@@ -31,10 +31,10 @@ internal sealed class MarkingsGallery : StackPanel
             Classes = { "actionChip", "primary" },
         };
         AutomationProperties.SetName(PrimaryAction, "Approve analysis");
-        FixAction = new Button
+        SetAction = new Button
         {
-            Content = "Fix ▾",
-            Classes = { "actionChip", "fix" },
+            Content = SIL.Motif.App.MotifAppStrings.SetAnalysis + " ▾",
+            Classes = { "actionChip", "set" },
         };
         StagedUndo = new Button
         {
@@ -55,7 +55,7 @@ internal sealed class MarkingsGallery : StackPanel
                 },
             },
         };
-        Children.Add(Row(PrimaryAction, FixAction, StagedStrip));
+        Children.Add(Row(PrimaryAction, SetAction, StagedStrip));
 
         Children.Add(Heading("Hover or focus to reveal"));
         FieldWorksLink = new Button
@@ -83,7 +83,7 @@ internal sealed class MarkingsGallery : StackPanel
     public Border NoneLine { get; }
     public Border CappedLine { get; }
     public Button PrimaryAction { get; }
-    public Button FixAction { get; }
+    public Button SetAction { get; }
     public Border StagedStrip { get; }
     public Button StagedUndo { get; }
     public Border HoverRegion { get; }

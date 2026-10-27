@@ -8,7 +8,7 @@
             Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Compact}" VerticalAlignment="Center">
   <Button Classes="dispositionButton" Theme="{DynamicResource BorderlessButton}" VerticalAlignment="Center"
           AutomationProperties.Name="{x:Static views:WordDispositionButtons.MarkButtonName}"
-          AutomationProperties.AutomationId="{Binding FixAutomationId}"
+          AutomationProperties.AutomationId="{Binding SetAutomationId}"
           ToolTip.Tip="{Binding Disposition.MarkTip}">
     <Border Classes="dispositionFace"
             Classes.approved="{Binding Disposition.IsMarkApproved}" Classes.unknown="{Binding Disposition.IsMarkUnknown}"
@@ -25,7 +25,7 @@
         <Flyout.ContentTemplate>
           <DataTemplate x:DataType="vm:ResultsTokenViewModel">
             <StackPanel x:Name="DispositionMenu" Classes="menu" Spacing="{DynamicResource Intent.Space.Related}"
-                        AutomationProperties.Name="{x:Static app:MotifAppStrings.WhatFieldWorksHoldsForThisWordAccessibleName}">
+                        AutomationProperties.Name="{x:Static app:MotifAppStrings.SetAnalysis}">
               <TextBlock Classes="menuDetail" Text="{x:Static app:MotifAppStrings.FieldWorksHoldsNoAnalysisForThisWord}"
                          IsVisible="{Binding !Disposition.HasStoredRows}" />
               <ItemsControl x:Name="WordDispositionStoredRowsItems" ItemsSource="{Binding Disposition.StoredRows}">
@@ -38,7 +38,7 @@
                       <ItemsControl x:Name="WordDispositionTilesItems" ItemsSource="{Binding Tiles}">
                         <ItemsControl.ItemsPanel>
                           <ItemsPanelTemplate>
-                            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Compact}" />
+                            <StackPanel Spacing="{DynamicResource Intent.Space.Compact}" />
                           </ItemsPanelTemplate>
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
@@ -47,13 +47,17 @@
                                     Theme="{DynamicResource BorderlessButton}"
                                     Command="{Binding #DispositionMenu.((vm:ResultsTokenViewModel)DataContext).StageMarkingChoiceForTokenCommand}"
                                     CommandParameter="{Binding Action}"
-                                    ToolTip.Tip="{Binding Tip}" AutomationProperties.Name="{Binding Tip}">
-                              <Border Classes="dispositionFace tile"
-                                      Classes.approved="{Binding IsApproved}" Classes.unknown="{Binding IsUnknown}"
-                                      Classes.disapproved="{Binding IsDisapproved}" Classes.absent="{Binding IsAbsent}"
-                                      Classes.current="{Binding IsCurrent}" Classes.staged="{Binding IsStaged}">
-                                <TextBlock Text="{Binding Letter}" />
-                              </Border>
+                                    HorizontalContentAlignment="Left"
+                                    ToolTip.Tip="{Binding Tip}" AutomationProperties.Name="{Binding SetActionLabel}">
+                              <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
+                                <Border Classes="dispositionFace tile"
+                                        Classes.approved="{Binding IsApproved}" Classes.unknown="{Binding IsUnknown}"
+                                        Classes.disapproved="{Binding IsDisapproved}" Classes.absent="{Binding IsAbsent}"
+                                        Classes.current="{Binding IsCurrent}" Classes.staged="{Binding IsStaged}">
+                                  <TextBlock Text="{Binding Letter}" />
+                                </Border>
+                                <TextBlock Classes="menuTitle" Text="{Binding SetActionLabel}" VerticalAlignment="Center" />
+                              </StackPanel>
                             </Button>
                           </DataTemplate>
                         </ItemsControl.ItemTemplate>
@@ -112,8 +116,8 @@
         <Flyout.ContentTemplate>
           <DataTemplate x:DataType="vm:ResultsTokenViewModel">
             <StackPanel x:Name="AddMenu" Classes="menu" Spacing="{DynamicResource Intent.Space.Related}"
-                        AutomationProperties.Name="{x:Static app:MotifAppStrings.PanGlossAnalysesToAddToFieldWorksAccessibleName}">
-              <TextBlock Classes="menuDetail" Text="{x:Static app:MotifAppStrings.AddToFieldWorks}" />
+                        AutomationProperties.Name="{x:Static app:MotifAppStrings.AddAnalysisFromPanGloss}">
+              <TextBlock Classes="menuDetail" Text="{x:Static app:MotifAppStrings.AddAnalysisFromPanGloss}" />
               <ItemsControl x:Name="WordDispositionReadingsItems" ItemsSource="{Binding Disposition.Readings}">
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="vm:WordDispositionRow">

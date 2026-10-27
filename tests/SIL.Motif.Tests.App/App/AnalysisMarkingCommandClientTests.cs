@@ -73,7 +73,7 @@ public sealed class AnalysisMarkingCommandClientTests(PristineProjectFixture pri
             var inText = await LoadInTextAsync(project, assessment, assessmentId);
             var selected = ResultsToken(inText, token.Form!);
             inText.SelectToken(selected);
-            var choice = Assert.Single(selected.Marking.FixChoices,
+            var choice = Assert.Single(selected.Marking.SetChoices,
                 candidate => candidate.Kind == AnalysisMarkingActionKind.AcceptNewSet);
 
             await inText.StageMarkingChoiceCommand.ExecuteAsync(choice);
@@ -110,7 +110,7 @@ public sealed class AnalysisMarkingCommandClientTests(PristineProjectFixture pri
 
             if (addAsApproved)
             {
-                var choice = Assert.Single(selected.Marking.FixChoices,
+                var choice = Assert.Single(selected.Marking.SetChoices,
                     candidate => candidate.Label == "Add as Approved" && candidate.ReadingIndex == 0);
                 await inText.StageMarkingChoiceCommand.ExecuteAsync(choice);
             }
@@ -142,7 +142,7 @@ public sealed class AnalysisMarkingCommandClientTests(PristineProjectFixture pri
             var selected = ResultsToken(inText, token.Form!);
             inText.SelectToken(selected);
             var stored = Assert.Single(selected.Marking.FieldWorksAnalyses);
-            var choice = Assert.Single(selected.Marking.FixChoices,
+            var choice = Assert.Single(selected.Marking.SetChoices,
                 candidate => candidate.Kind == AnalysisMarkingActionKind.Disapprove &&
                              candidate.StoredAnalysisId == stored.StoredAnalysisId);
             Assert.Null(choice.Reading);

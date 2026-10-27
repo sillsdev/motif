@@ -98,7 +98,7 @@ public sealed class AnalyzeTextsScreenshots
 
                 inText.CloseTokenCard();
                 var chakula = await FindTokenAsync(workspace, window, "chakula");
-                var add = chakula.Marking.FixChoices.Single(choice => choice.Label == "Add as Approved");
+                var add = chakula.Marking.SetChoices.Single(choice => choice.Label == "Add as Approved");
                 await chakula.StageMarkingChoiceForTokenCommand!.ExecuteAsync(chakula.BindMarkingChoice(add));
                 foreach (var (theme, variant) in Themes())
                 {

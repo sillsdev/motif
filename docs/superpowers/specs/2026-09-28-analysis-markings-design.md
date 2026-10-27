@@ -17,7 +17,7 @@ The design canvas, which is private to the owner: https://claude.ai/artifact/Eoy
   - `R2-Matrix`: compact Matrix cells;
   - `R2-Review`: interactive, grouped by transition;
   - `R2-HowItWorks`: the linguist's guide.
-- **Round 3**, `R3-InText`, `R3-Popups` and `R3-Review`, is the base. The owner called it golden. It shows each word as a compact interlinear strip with Word, FieldWorks and PanGloss lines, an opinion mark, one ✓ action with Fix ▾, a Staged note, and a click-open card. **Round 3b is withdrawn.**
+- **Round 3**, `R3-InText`, `R3-Popups` and `R3-Review`, is the base. The owner called it golden. It shows each word as a compact interlinear strip with Word, FieldWorks and PanGloss lines, an opinion mark, one ✓ action with Set ▾, a Staged note, and a click-open card. **Round 3b is withdrawn.**
 - **Round 4** makes the owner's notes into a roughly 20% refinement of Round 3:
   - `R4-InText` and `R4-Popups`: the card sections stack vertically as FieldWorks-style interlinear, and FW ↗ and Undo appear only on hover or focus;
   - `R4-Review`: unchanged;

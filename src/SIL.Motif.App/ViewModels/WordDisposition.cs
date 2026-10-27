@@ -1,3 +1,4 @@
+using System.Globalization;
 using SIL.Motif.Contract.Responses;
 
 namespace SIL.Motif.App.ViewModels;
@@ -18,7 +19,7 @@ public enum WordDispositionKind
     Absent,
 }
 
-/// <summary>One tile of a disposition button's menu: a letter the person can choose for one analysis.</summary>
+/// <summary>One Set analysis choice, retaining the Opinion mark of the analysis it acts on.</summary>
 /// <param name="Kind">What FieldWorks would hold.</param>
 /// <param name="IsCurrent">Whether FieldWorks holds this now.</param>
 /// <param name="IsStaged">Whether a pending change makes FieldWorks hold this after Apply.</param>
@@ -32,8 +33,13 @@ public sealed record WordDispositionTile(
     /// <summary>Whether choosing the tile does anything: it stages a change, or it is what FieldWorks already holds.</summary>
     public bool IsAvailable => Action?.IsAvailable ?? (Choice is not null || IsCurrent);
 
-    /// <summary>The hover text: the full phrase and, for the word's main analysis, its key.</summary>
-    public string Tip => (IsCurrent ? "Now: " : string.Empty) + WordDisposition.PhraseOf(Kind);
+    /// <summary>The full Set analysis action shown in the menu and announced by screen readers.</summary>
+    public string SetActionLabel => WordDisposition.SetActionLabelOf(Kind);
+
+    /// <summary>The action's hover text, identifying the current Opinion without staging it again.</summary>
+    public string Tip => IsCurrent
+        ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.SetAnalysisCurrentTipFormat, SetActionLabel)
+        : SetActionLabel;
 
     /// <summary>Whether the tile is Approved, for its style class.</summary>
     public bool IsApproved => Kind == WordDispositionKind.Approved;
@@ -63,7 +69,7 @@ public sealed record WordDispositionRow(
 
 /// <summary>
 /// The two buttons a word offers: its opinion mark, which sets what FieldWorks holds for the stored analyses, and a
-/// count of PanGloss readings FieldWorks does not hold, which adds one. Both present the word's existing Fix choices
+/// count of PanGloss readings FieldWorks does not hold, which adds one. Both present the word's existing Set choices
 /// and stage them through the same commands, so Review, Apply and undo are unchanged.
 /// </summary>
 public sealed class WordDisposition
@@ -114,7 +120,7 @@ public sealed class WordDisposition
     public IReadOnlyList<WordMarkingChoice> AddExpectedParse => ProposalActions
         .Where(action => action.Choice.Kind == AnalysisMarkingActionKind.AddExpectedParse).ToArray();
 
-    /// <summary>Whether Fix offers anything inside the open Proposal.</summary>
+    /// <summary>Whether Set offers anything inside the open Proposal.</summary>
     public bool HasProposalActions => ProposalActions.Count > 0;
 
     /// <summary>What the opinion mark shows: the first stored analysis after any pending change, or a dash.</summary>
@@ -164,14 +170,14 @@ public sealed class WordDisposition
     public string AddLabel => ChosenReading is { } chosen ? "✓" + chosen.Number : "+" + Readings.Count;
 
     /// <summary>The add button's hover text.</summary>
-    public string AddTip => ChosenReading is { } chosen
+    public string AddTip => MotifAppStrings.AddAnalysisFromPanGloss + ": " + (ChosenReading is { } chosen
         ? $"Adding analysis {chosen.Number} ({chosen.Morphs}) as {PhraseWordOf(ChosenKind!.Value)}"
-        : Readings.Count == 1 ? "Add the PanGloss analysis to FieldWorks" : $"Add one of {Readings.Count} PanGloss analyses";
+        : Readings.Count == 1 ? "Add the PanGloss analysis to FieldWorks" : $"Add one of {Readings.Count} PanGloss analyses");
 
     /// <summary>The mark button's hover text.</summary>
     public string MarkTip => IsChanged
-        ? $"Changed: FieldWorks will hold it as {PhraseWordOf(Mark)}. Ctrl+Z undoes"
-        : "Change what FieldWorks holds";
+        ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.SetAnalysisChangedTipFormat, PhraseWordOf(Mark))
+        : MotifAppStrings.SetAnalysis;
 
     /// <summary>Builds both buttons from a word's marking.</summary>
     public static WordDisposition From(AnalysisMarkingState marking, Func<AnalysisMarkingChoice, WordMarkingChoice>? bind = null,
@@ -183,7 +189,7 @@ public sealed class WordDisposition
             .ToArray();
 
         var readings = new List<WordDispositionRow>();
-        var readingIndexes = marking.FixChoices.Where(choice => choice.Kind == AnalysisMarkingActionKind.Add &&
+        var readingIndexes = marking.SetChoices.Where(choice => choice.Kind == AnalysisMarkingActionKind.Add &&
                 choice.ReadingIndex is not null)
             .Select(choice => choice.ReadingIndex!.Value).Distinct().ToArray();
         foreach (var index in readingIndexes)
@@ -193,7 +199,7 @@ public sealed class WordDisposition
             var tiles = new List<WordDispositionTile>();
             foreach (var kind in new[] { WordDispositionKind.Approved, WordDispositionKind.Unknown })
             {
-                var choice = marking.FixChoices.FirstOrDefault(candidate =>
+                var choice = marking.SetChoices.FirstOrDefault(candidate =>
                     candidate.Kind == AnalysisMarkingActionKind.Add && candidate.ReadingIndex == index &&
                     candidate.AfterApply == PhraseWordOf(kind));
                 if (choice is null) continue;
@@ -204,8 +210,8 @@ public sealed class WordDisposition
                 "Different from FieldWorks", tiles));
         }
 
-        var keep = marking.FixChoices.FirstOrDefault(choice => choice.Kind == AnalysisMarkingActionKind.KeepFieldWorks);
-        var addAll = marking.FixChoices.FirstOrDefault(choice => choice.Kind == AnalysisMarkingActionKind.AcceptNewSet);
+        var keep = marking.SetChoices.FirstOrDefault(choice => choice.Kind == AnalysisMarkingActionKind.KeepFieldWorks);
+        var addAll = marking.SetChoices.FirstOrDefault(choice => choice.Kind == AnalysisMarkingActionKind.AcceptNewSet);
         var spelling = staged.Any(change => change.AfterApply == "Incorrect");
         return new WordDisposition(stored, readings, keep, addAll, spelling, bind, proposalActions ?? []);
     }
@@ -219,7 +225,7 @@ public sealed class WordDisposition
                 WordDispositionKind.Absent }
             .Select(kind =>
             {
-                var choice = marking.FixChoices.FirstOrDefault(candidate =>
+                var choice = marking.SetChoices.FirstOrDefault(candidate =>
                     candidate.StoredAnalysisId == analysis.StoredAnalysisId && candidate.Kind == ActionFor(kind));
                 return new WordDispositionTile(kind, kind == current,
                     pending is not null && KindOfAfterApply(pending.AfterApply) == kind, choice, choice is null ? null : bind?.Invoke(choice));
@@ -260,6 +266,15 @@ public sealed class WordDisposition
         WordDispositionKind.Unknown => "U",
         WordDispositionKind.Disapproved => "D",
         _ => "–",
+    };
+
+    /// <summary>The localized Set action for one stored analysis and the requested Opinion or removal.</summary>
+    public static string SetActionLabelOf(WordDispositionKind kind) => kind switch
+    {
+        WordDispositionKind.Approved => MotifAppStrings.SetAnalysisApproved,
+        WordDispositionKind.Unknown => MotifAppStrings.SetAnalysisUnknown,
+        WordDispositionKind.Disapproved => MotifAppStrings.SetAnalysisDisapproved,
+        _ => MotifAppStrings.SetAnalysisRemove,
     };
 
     /// <summary>The full hover phrase for <paramref name="kind"/>.</summary>

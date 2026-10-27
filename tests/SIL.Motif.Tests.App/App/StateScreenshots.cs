@@ -1056,7 +1056,7 @@ public sealed class StateScreenshots(ITestOutputHelper output)
         {
             await ReachWordAsync("chakula");
             var chakula = Token("chakula");
-            var add = chakula.Marking.FixChoices.Single(choice => choice.Label == "Add as Approved");
+            var add = chakula.Marking.SetChoices.Single(choice => choice.Label == "Add as Approved");
             await chakula.StageMarkingChoiceForTokenCommand!.ExecuteAsync(chakula.BindMarkingChoice(add));
             await Until(() => Token("chakula").HasStagedChanges, "the staged change on chakula");
         }

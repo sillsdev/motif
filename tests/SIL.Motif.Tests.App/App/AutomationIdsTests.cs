@@ -73,7 +73,7 @@ public sealed class AutomationIdsTests
         {
             first.StripAutomationId, first.WordAutomationId, first.OpinionMarkAutomationId,
             first.DisapprovedAutomationId, first.FieldWorksAutomationId, first.PanGlossAutomationId,
-            first.PrimaryActionAutomationId, first.FixAutomationId, first.StagedAutomationId, first.UnreadAutomationId,
+            first.PrimaryActionAutomationId, first.SetAutomationId, first.StagedAutomationId, first.UnreadAutomationId,
         };
 
         Assert.All(parts, id => Assert.Matches("^motif-word-input-2-67c3bc6e6c6572-[a-z]+$", id));

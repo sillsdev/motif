@@ -263,11 +263,13 @@ public sealed partial class ReviewPageModel : PageModel
     {
         if (e.PropertyName is nameof(WorkspaceContext.ProposalStanding))
         {
+            RefreshWordCardState();
             RaiseApplyState();
             TryAgainCommand.NotifyCanExecuteChanged();
             return;
         }
         if (e.PropertyName is not (nameof(WorkspaceContext.Lens) or nameof(WorkspaceContext.EvidenceLens))) return;
+        RefreshWordCardState();
         RaiseModeState();
         // A new Trial changes the evidence a looked-at mark was judged against, so the marks are read again.
         if (e.PropertyName == nameof(WorkspaceContext.Lens) && Context.CurrentPage == WorkspacePage.Review)
@@ -1250,6 +1252,7 @@ public sealed partial class ReviewPageModel : PageModel
 
     private void ReleaseContext()
     {
+        ReleaseWordCard();
         var change = _contextChange;
         var source = _sentenceContext;
         _contextChange = null;
@@ -1349,6 +1352,7 @@ public sealed partial class ReviewPageModel : PageModel
     // Many paths announce CanApply or ApplyBlockReason; everything derived from the blockers follows those two.
     protected override void OnPropertyChanged(PropertyChangedEventArgs e)
     {
+        if (e.PropertyName == nameof(Current)) ReleaseWordCard();
         base.OnPropertyChanged(e);
         switch (e.PropertyName)
         {
@@ -1430,6 +1434,7 @@ public sealed partial class ReviewPageModel : PageModel
     {
         ReleaseContext();
         await _contextStop.ConfigureAwait(true);
+        await _wordCardStop.ConfigureAwait(true);
         _retirementReviewCancellation?.Cancel();
         _measurementCancellation?.Cancel();
         _applyCancellation?.Cancel();

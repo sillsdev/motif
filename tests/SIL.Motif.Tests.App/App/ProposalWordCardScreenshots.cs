@@ -16,7 +16,7 @@ namespace SIL.Motif.Tests.App;
 
 /// <summary>
 /// Saves an Analyze texts word card inside a Proposal, with the block that says what the Proposal's Trial built for
-/// the word and the Fix menu entries that approve it there.
+/// the word and the Set menu entries that approve it there.
 /// </summary>
 [Collection(AvaloniaHeadlessCollection.Name)]
 [Trait("MotifTestLevel", "System")]

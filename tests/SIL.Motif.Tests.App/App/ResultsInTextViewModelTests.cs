@@ -98,7 +98,7 @@ public sealed class ResultsInTextViewModelTests : IAsyncLifetime
     }
 
     [Fact]
-    public void ACapturedFixChoiceKeepsItsOriginalTargetAfterAnotherTokenIsSelected()
+    public void ACapturedSetChoiceKeepsItsOriginalTargetAfterAnotherTokenIsSelected()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
@@ -478,7 +478,7 @@ public sealed class ResultsInTextViewModelTests : IAsyncLifetime
             Assert.Equal(AnalysisMarkingClass.Extra, tokens[0].Marking.PanGlossClass);
             Assert.Equal(ReadingGrade.Approved, Assert.Single(tokens[0].Marking.FieldWorksAnalyses).Opinion);
             Assert.Equal(AnalysisMarkingActionKind.KeepFieldWorks, tokens[0].Marking.PrimaryAction!.Kind);
-            Assert.Contains(tokens[0].Marking.FixChoices, choice => choice.Kind == AnalysisMarkingActionKind.Add &&
+            Assert.Contains(tokens[0].Marking.SetChoices, choice => choice.Kind == AnalysisMarkingActionKind.Add &&
                 choice.Label == "Add as Unknown" && choice.Subtitle == "Not in FieldWorks → Unknown");
             Assert.Equal(AnalysisMarkingClass.Conflict, tokens[1].Marking.PanGlossClass);
             Assert.Null(tokens[1].Marking.PrimaryAction);
@@ -1215,7 +1215,7 @@ public sealed class ResultsInTextViewModelTests : IAsyncLifetime
                 .First(candidate => candidate.Form == "kitabu");
             inText.SelectToken(token);
             var stored = Assert.Single(token.Marking.FieldWorksAnalyses);
-            var remove = Assert.Single(token.Marking.FixChoices, choice =>
+            var remove = Assert.Single(token.Marking.SetChoices, choice =>
                 choice.Kind == AnalysisMarkingActionKind.RemoveAnalysis &&
                 choice.StoredAnalysisId == stored.StoredAnalysisId);
 
@@ -1239,7 +1239,7 @@ public sealed class ResultsInTextViewModelTests : IAsyncLifetime
             var token = SelectionModelFixture.VisibleLines(inText).SelectMany(line => line.Tokens)
                 .First(candidate => candidate.Form == "kitabu");
             inText.SelectToken(token);
-            var removal = Assert.Single(token.Marking.FixChoices, choice =>
+            var removal = Assert.Single(token.Marking.SetChoices, choice =>
                 choice.Kind == AnalysisMarkingActionKind.RemoveAnalysis);
             client.PendingPutHandler = (_, _) => Task.FromResult(
                 CommandOutcome<PendingChangesSnapshot>.Refused(new Refusal("remove.refused",
@@ -1258,11 +1258,11 @@ public sealed class ResultsInTextViewModelTests : IAsyncLifetime
         {
             var (inText, _, client) = await Loaded();
             var token = SelectionModelFixture.VisibleLines(inText).SelectMany(line => line.Tokens)
-                .First(candidate => candidate.Marking.FixChoices.Any(choice =>
+                .First(candidate => candidate.Marking.SetChoices.Any(choice =>
                     choice.Kind == AnalysisMarkingActionKind.AcceptNewSet));
             inText.SelectToken(token);
             inText.Changes.AssessmentId = "assessment/one";
-            var accept = Assert.Single(token.Marking.FixChoices, choice =>
+            var accept = Assert.Single(token.Marking.SetChoices, choice =>
                 choice.Kind == AnalysisMarkingActionKind.AcceptNewSet);
             client.PendingPutHandler = (_, _) => Task.FromResult(
                 CommandOutcome<PendingChangesSnapshot>.Refused(new Refusal("accept.refused",
@@ -1824,7 +1824,7 @@ public sealed class ResultsInTextViewModelTests : IAsyncLifetime
                 .Where(token => token.Form == "kitabu").ToArray();
             var selected = tokens[0];
             inText.SelectToken(selected);
-            var choice = Assert.Single(selected.Marking.FixChoices,
+            var choice = Assert.Single(selected.Marking.SetChoices,
                 candidate => candidate.Kind == AnalysisMarkingActionKind.Disapprove && candidate.StoredAnalysisId is not null);
 
             await inText.StageMarkingChoiceCommand.ExecuteAsync(choice);
@@ -1851,7 +1851,7 @@ public sealed class ResultsInTextViewModelTests : IAsyncLifetime
             var selected = SelectionModelFixture.VisibleLines(inText).SelectMany(line => line.Tokens)
                 .First(token => token.Form == "kitabu");
             inText.SelectToken(selected);
-            var choice = Assert.Single(selected.Marking.FixChoices,
+            var choice = Assert.Single(selected.Marking.SetChoices,
                 candidate => candidate.Kind == AnalysisMarkingActionKind.Disapprove && candidate.ReadingIndex == 1);
 
             await inText.StageMarkingChoiceCommand.ExecuteAsync(choice);
@@ -2007,7 +2007,7 @@ public sealed class ResultsInTextViewModelTests : IAsyncLifetime
             var selected = SelectionModelFixture.VisibleLines(inText).SelectMany(line => line.Tokens)
                 .Single(token => token.Form == "mtoto");
             inText.SelectToken(selected);
-            var choice = Assert.Single(selected.Marking.FixChoices,
+            var choice = Assert.Single(selected.Marking.SetChoices,
                 candidate => candidate.Label == "Add as Approved" && candidate.ReadingIndex == 0);
 
             await inText.StageMarkingChoiceCommand.ExecuteAsync(choice);
@@ -2030,7 +2030,7 @@ public sealed class ResultsInTextViewModelTests : IAsyncLifetime
             var selected = SelectionModelFixture.VisibleLines(inText).SelectMany(line => line.Tokens)
                 .Single(token => token.Form == "mtoto");
             inText.SelectToken(selected);
-            var choice = Assert.Single(selected.Marking.FixChoices,
+            var choice = Assert.Single(selected.Marking.SetChoices,
                 candidate => candidate.Kind == AnalysisMarkingActionKind.Add && candidate.Label == "Add as Unknown");
 
             await inText.StageMarkingChoiceCommand.ExecuteAsync(choice);

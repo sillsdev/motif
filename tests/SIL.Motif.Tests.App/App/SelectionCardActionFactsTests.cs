@@ -27,8 +27,8 @@ public sealed class SelectionCardActionFactsTests
         using var token = new ResultsTokenViewModel("Selection", 0,
             new TextToken("same", "same", null, null) { WordformId = available ? first : null }, result,
             actionFacts: facts);
-        Assert.NotEmpty(token.Marking.FixChoices);
-        Assert.All(token.BoundFixChoices, choice => Assert.Equal(available, choice.IsAvailable));
+        Assert.NotEmpty(token.Marking.SetChoices);
+        Assert.All(token.BoundSetChoices, choice => Assert.Equal(available, choice.IsAvailable));
         Assert.Equal(available, token.IncorrectSpellingAction.IsAvailable);
         Assert.All(token.Disposition.Readings.SelectMany(row => row.Tiles),
             tile =>

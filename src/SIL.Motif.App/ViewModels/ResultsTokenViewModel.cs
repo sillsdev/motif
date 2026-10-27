@@ -217,7 +217,8 @@ public sealed partial class ResultsTokenViewModel : ObservableObject, IDisposabl
 
     public string PrimaryActionAutomationId => AutomationIdForPart("action");
 
-    public string FixAutomationId => AutomationIdForPart("fix");
+    // Walkthroughs retain the saved word-part key when the action caption changes.
+    public string SetAutomationId => AutomationIdForPart("fix");
 
     /// <summary>The add button's identifier, for the PanGloss readings FieldWorks does not hold.</summary>
     public string AddAutomationId => AutomationIdForPart("add");
@@ -599,13 +600,13 @@ public sealed partial class ResultsTokenViewModel : ObservableObject, IDisposabl
     public WordChangeAction IncorrectSpellingAction => new(CaptureActionTarget(Actions?.Changes.AssessmentId),
         ChangeKinds.IncorrectSpelling, [], IsWord && HasUniqueActionTarget);
 
-    private IReadOnlyList<WordMarkingChoice>? _boundFixChoices;
+    private IReadOnlyList<WordMarkingChoice>? _boundSetChoices;
 
-    /// <summary>Fix choices that retain the target and producing evidence named when the menu is built.</summary>
-    public IReadOnlyList<WordMarkingChoice> BoundFixChoices => _boundFixChoices ??=
-        Marking.FixChoices.Select(BindMarkingChoice).ToArray();
+    /// <summary>Set choices that retain the target and producing evidence named when the menu is built.</summary>
+    public IReadOnlyList<WordMarkingChoice> BoundSetChoices => _boundSetChoices ??=
+        Marking.SetChoices.Select(BindMarkingChoice).ToArray();
 
-    /// <summary>Captures an offered Fix or keyboard opinion choice for this word.</summary>
+    /// <summary>Captures an offered Set or keyboard opinion choice for this word.</summary>
     public WordMarkingChoice BindMarkingChoice(AnalysisMarkingChoice choice) => new(
         CaptureActionTarget(Actions?.Changes.AssessmentId), choice,
         ResultsInTextViewModel.CanStageMarkingChoice(this, choice));
@@ -722,11 +723,11 @@ public sealed partial class ResultsTokenViewModel : ObservableObject, IDisposabl
     /// <summary>The block's choices bound to the Trial that produced them, never to today's evidence.</summary>
     public IReadOnlyList<WordMarkingChoice> BoundProposalChoices { get; private set; } = [];
 
-    /// <summary>The Trial's own approve choice, offered beside the Fix menu, when the word has one.</summary>
+    /// <summary>The Trial's own approve choice, offered beside the Set menu, when the word has one.</summary>
     public WordMarkingChoice? ApproveInProposal => BoundProposalChoices.FirstOrDefault(choice =>
         choice.Choice.Kind == AnalysisMarkingActionKind.ApproveInProposal);
 
-    /// <summary>The Trial's expected-parse choice, offered beside the Fix menu, when the word has one.</summary>
+    /// <summary>The Trial's expected-parse choice, offered beside the Set menu, when the word has one.</summary>
     public WordMarkingChoice? AddExpectedParse => BoundProposalChoices.FirstOrDefault(choice =>
         choice.Choice.Kind == AnalysisMarkingActionKind.AddExpectedParse);
 
@@ -812,8 +813,8 @@ public sealed partial class ResultsTokenViewModel : ObservableObject, IDisposabl
     private void OnMarkingChanged()
     {
         _disposition = null;
-        _boundFixChoices = null;
-        OnPropertyChanged(nameof(BoundFixChoices));
+        _boundSetChoices = null;
+        OnPropertyChanged(nameof(BoundSetChoices));
         foreach (var name in new[]
                  {
                      nameof(Marking), nameof(ShowUnread), nameof(IsPanGlossSame), nameof(IsPanGlossDifferent),

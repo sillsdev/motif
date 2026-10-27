@@ -571,7 +571,7 @@ public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture ava
     [InlineData("Approve", ReadingGrade.Candidate, ChangeKinds.Approve)]
     [InlineData("Disapprove", ReadingGrade.Approved, ChangeKinds.Reject)]
     [InlineData("Unknown", ReadingGrade.Approved, ChangeKinds.Candidate)]
-    public async Task OpinionShortcutStagesOneMatchingFixChoice(string behavior, string opinion, string kind)
+    public async Task OpinionShortcutStagesOneMatchingSetChoice(string behavior, string opinion, string kind)
     {
         PendingStoredOpinionChange? staged = null;
         var routes = new WordRowRoutes { StageOpinion = change => { staged = change; return Task.FromResult(true); } };
@@ -918,10 +918,10 @@ public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture ava
                 Assert.NotNull(readingOccurrence);
                 await inText.OpenTokenCardAsync(readingOccurrence);
                 AnalyzeTextsLayoutTests.Settle(window);
-                var fixActions = Assert.Single(AnalyzeTextsLayoutTests.OpenCard(window)
+                var setActions = Assert.Single(AnalyzeTextsLayoutTests.OpenCard(window)
                     .GetVisualDescendants().OfType<Button>(), button =>
                     AutomationProperties.GetName(button) == WordDispositionButtons.MarkButtonName);
-                Assert.True(fixActions.Focus(), "The card's opinion mark button can receive keyboard focus.");
+                Assert.True(setActions.Focus(), "The card's opinion mark button can receive keyboard focus.");
 
                 window.KeyPress(Key.Right, RawInputModifiers.None, PhysicalKey.None, null);
                 AnalyzeTextsLayoutTests.Settle(window);

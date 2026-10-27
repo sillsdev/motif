@@ -297,7 +297,7 @@ number it shows is a `Paired<T>` from `lens.PairAsync(...)` over the same query 
 |---|---|---|
 | Overview | `OverviewAsync(path)` | `PairAsync(set => OverviewAsync(path, set))`; tiles read "7 → 8 of 9 words parse"; Speed and Text coverage bars draw two rows; "Look first" becomes "What this Proposal moves", built from `DifferenceViewModel.Moves` over the two word lists, each row linking to the Matrix cell |
 | Texts › Matrix | `Assess.Compare` over `Assess.Result` | `Compare` is loaded from `lens.Today`; a second `CompareViewModel` from the Trial words; cells show "Same 1 → 2"; a cell whose count moved gets `Classes="moved"`; a "Moved by this Proposal" filter chip lists words whose cell differs; the word list adds a "With this Proposal" column |
-| Texts › Analyze texts, word card | one `AnalysisMarkingState` per word | the card adds an "In PanGloss · with this Proposal" block (tinted `Intent.Proposal.Fill`) from the Trial's reading for that word, with "Built by: <change>" links naming the ReviewEntry whose operations the reading's morphs reference; Fix ▾ gains "Approve <reading> in this Proposal" and "Add an expected parse…" (section 8) |
+| Texts › Analyze texts, word card | one `AnalysisMarkingState` per word | the card adds an "In PanGloss · with this Proposal" block (tinted `Intent.Proposal.Fill`) from the Trial's reading for that word, with "Built by: <change>" links naming the ReviewEntry whose operations the reading's morphs reference; Set ▾ gains "Approve <reading> in this Proposal" and "Add an expected parse…" (section 8) |
 | Texts › What changed | previous in-session run vs this run | in Proposal mode the two lists are Today and With this Proposal; this tab is the Overview's "What this Proposal moves" in full |
 | Timing | `TimingAsync(id, overrides)` | paired over the two sets' ids; stats read "795 → 801 ms"; kind bars draw Today and Proposal on one scale; the rule table's time column reads "288 → 291 ms"; a rule created by the Proposal is marked "new", one it removes "removed" (from the Dry Run's effects) |
 | Warnings | `ReadStoredGrammarCheckAsync(path)` | paired over the two sets' grammar checks; chips "All 24 → 22", "Gone with this Proposal", "New with this Proposal"; a gone row is struck through and says "Fixed by: <change>" when the Dry Run touched the object the warning names |
@@ -449,7 +449,7 @@ Receipt on Review changes as today.
 ## 8. Approving or adding a parse inside a Proposal
 
 In Proposal mode, the word card's "In PanGloss · with this Proposal" block offers two actions through the existing
-`WordDispositionButtons` and `Fix ▾`:
+`WordDispositionButtons` and `Set ▾`:
 
 - **Approve <reading> in this Proposal**: the Trial built a reading that matches an analysis FieldWorks holds as
   Unknown. Stages `approve` for that stored analysis into the open Proposal's Draft.
@@ -555,7 +555,7 @@ wrapper class each in `WalkthroughReplayTests.cs`, baselines under `tests/SIL.Mo
 |---|---|---|
 | `proposals-open` | `proposal-ready` (new seeder: a Proposal with one sound rule authored through the composer, a completed fake-parser Trial over the Default Selection, plus the pending Draft with one approve) | `proposals` (the page with its three groups), `overview-with-proposal` (the bar and paired tiles) |
 | `proposal-review-keep-undo` | `proposal-ready` | `review-list` (grammar and word entries in one list), `looked-at` (after Next and Keep), `undo-dependents` (the Undo prompt naming dependents), `needs-another-try` (the bar after Undo) |
-| `proposal-approve-parse` | `proposal-ready` | `word-card-with-proposal` (the tinted block and Fix ▾), `staged-in-proposal` (Review changes showing the new word entry under the rule) |
+| `proposal-approve-parse` | `proposal-ready` | `word-card-with-proposal` (the tinted block and Set ▾), `staged-in-proposal` (Review changes showing the new word entry under the rule) |
 
 Guide pages reference them with `shot:` links. `PageScreenshots.Views()` gains `("9-proposals", WorkspacePage.Proposals, …)`
 and, through a new `OpenOverSampleDataInProposalMode()`, a Proposal-mode capture of Overview, Texts (Matrix), Timing,

@@ -37,7 +37,7 @@ The component owns reveal behavior, while each row only marks its host and secon
 
 - [ ] Extend the hoverReveal component selectors so revealOnHover controls use the hidden-opacity token at rest and the visible-opacity token for pointerover, focus-within and open.
 - [ ] Add hoverReveal to the shared word row and revealOnHover to Open in text, Try a Word and Word Analyses.
-- [ ] Add revealOnHover to Analyze texts' per-word Fix menus and retain the visible primary marking action. Keep the word card's existing extra links on the same class.
+- [ ] Add revealOnHover to Analyze texts' per-word Set menus and retain the visible primary marking action. Keep the word card's existing extra links on the same class.
 - [ ] Run ./build.ps1 and ./test.ps1; preserve any unrelated failures in the report.
 
 ### Task 3: Capture the affected places

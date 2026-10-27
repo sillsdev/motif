@@ -72,18 +72,18 @@ public sealed class FieldWorksSimulatorWalkthroughTests(PristineProjectFixture p
                     $"{word.Word}: {word.Outcome}, {word.Morphology?.Analyses.Count ?? 0} analyses") ?? []));
             var strip = walkthrough.Window.GetLogicalDescendants().OfType<Border>()
                 .Single(control => control.Name == "WordStrip" && SIL.Motif.App.Views.ResultsInTextPanel.TokenOf(control)?.Occurrence == token.Occurrence);
-            var fixMenu = strip.GetLogicalDescendants().OfType<Button>().Single(button =>
+            var setMenu = strip.GetLogicalDescendants().OfType<Button>().Single(button =>
                 Equals(Avalonia.Automation.AutomationProperties.GetName(button), WordDispositionButtons.AddButtonName));
-            HeadlessClick.Click(walkthrough.Window, fixMenu, WordDispositionButtons.AddButtonName);
-            Assert.True(fixMenu.Flyout?.IsOpen);
-            var fixChoices = FlyoutContent.Of(Assert.IsType<Flyout>(fixMenu.Flyout));
-            var approveChoice = fixChoices.GetVisualDescendants().OfType<Button>().Single(button =>
+            HeadlessClick.Click(walkthrough.Window, setMenu, WordDispositionButtons.AddButtonName);
+            Assert.True(setMenu.Flyout?.IsOpen);
+            var setChoices = FlyoutContent.Of(Assert.IsType<Flyout>(setMenu.Flyout));
+            var approveChoice = setChoices.GetVisualDescendants().OfType<Button>().Single(button =>
                 Equals(Avalonia.Automation.AutomationProperties.GetName(button), "Add as Approved"));
             Assert.Null(inText.SelectedToken);
             Assert.Same(token.StageMarkingChoiceForTokenCommand, approveChoice.Command);
             Assert.True(approveChoice.Command?.CanExecute(approveChoice.CommandParameter),
                 $"Selected token: {inText.SelectedToken?.Form}; parameter: {approveChoice.CommandParameter}; " +
-                $"choices: {string.Join(", ", token.Marking.FixChoices.Select(choice => choice.Label))}");
+                $"choices: {string.Join(", ", token.Marking.SetChoices.Select(choice => choice.Label))}");
             Assert.False(token.IsCardOpen, "Opening the PanGloss analyses to add also opened the word comparison card.");
             HeadlessClick.Click(TopLevel.GetTopLevel(approveChoice)
                 ?? throw new InvalidOperationException("The add menu is not in a top level."), approveChoice, "Add as Approved");
@@ -100,10 +100,10 @@ public sealed class FieldWorksSimulatorWalkthroughTests(PristineProjectFixture p
                 walkthrough.Workspace.Context.Changes.Items.Single().Word);
             Assert.Equal(expectedAnchor, ReadOccurrenceAnchor(project.FwDataPath));
 
-            fixMenu.Flyout!.Hide();
+            setMenu.Flyout!.Hide();
             Dispatcher.UIThread.RunJobs();
             walkthrough.Window.UpdateLayout();
-            Assert.False(fixMenu.Flyout.IsOpen);
+            Assert.False(setMenu.Flyout.IsOpen);
 
             walkthrough.ShowPage(WorkspacePage.Review);
             var review = walkthrough.Workspace.PageModel<ReviewPageModel>();

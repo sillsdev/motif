@@ -149,7 +149,7 @@ public sealed class CancelAssessmentWalkthroughTests(PristineProjectFixture pris
             Assert.NotNull(cardOrigin);
             Assert.True(viewport.Intersects(new Rect(cardOrigin!.Value, card.Bounds.Size)),
                 "The final occurrence's card is outside the reader's visible bounds.");
-            var removal = Assert.Single(finalToken.Marking.FixChoices, choice =>
+            var removal = Assert.Single(finalToken.Marking.SetChoices, choice =>
                 choice.Kind == AnalysisMarkingActionKind.RemoveAnalysis);
             await finalToken.StageMarkingChoiceForTokenCommand!.ExecuteAsync(finalToken.BindMarkingChoice(removal));
             var change = Assert.Single(inText.Changes.Items);

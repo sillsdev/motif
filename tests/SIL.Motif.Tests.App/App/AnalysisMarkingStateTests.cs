@@ -108,7 +108,7 @@ public sealed class AnalysisMarkingStateTests
         var state = AnalysisMarkingState.Create(Token(), Result("capped", true, Book));
 
         Assert.Null(state.PrimaryAction);
-        Assert.Empty(state.FixChoices);
+        Assert.Empty(state.SetChoices);
         Assert.True(state.IsUnread);
         Assert.False(state.NeedsALook);
     }
@@ -131,7 +131,7 @@ public sealed class AnalysisMarkingStateTests
         if (opinion == ReadingGrade.Disapproved && isBuilt)
         {
             Assert.Null(state.PrimaryAction);
-            Assert.NotEmpty(state.FixChoices);
+            Assert.NotEmpty(state.SetChoices);
         }
     }
 
@@ -196,23 +196,23 @@ public sealed class AnalysisMarkingStateTests
     }
 
     [Fact]
-    public void PrimaryAddStagesUnknownWhileAddAsApprovedRemainsAFixChoice()
+    public void PrimaryAddStagesUnknownWhileAddAsApprovedRemainsASetChoice()
     {
         var state = AnalysisMarkingState.Create(Token(), Result("new", Child));
 
         Assert.Equal(ChangeKinds.AddCandidate, state.PrimaryAction!.ChangeKind);
         Assert.Equal("Unknown", state.PrimaryAction.AfterApply);
-        Assert.Contains(state.FixChoices, choice => choice.Label == "Add as Approved" &&
+        Assert.Contains(state.SetChoices, choice => choice.Label == "Add as Approved" &&
             choice.ChangeKind == ChangeKinds.Approve);
     }
 
     [Fact]
-    public void NoParseWithAnApprovedAnalysisOffersKeepAsAFixChoice()
+    public void NoParseWithAnApprovedAnalysisOffersKeepAsASetChoice()
     {
         var state = AnalysisMarkingState.Create(
             Token(Stored(Book, ReadingGrade.Approved, "stored-1")), Result("none"));
 
-        Assert.Contains(state.FixChoices, choice => choice.Kind == AnalysisMarkingActionKind.KeepFieldWorks &&
+        Assert.Contains(state.SetChoices, choice => choice.Kind == AnalysisMarkingActionKind.KeepFieldWorks &&
             choice.Label == "Keep FieldWorks");
         Assert.False(state.NeedsALook);
     }
@@ -261,7 +261,7 @@ public sealed class AnalysisMarkingStateTests
     {
         var state = AnalysisMarkingState.Create(Token(Stored(Book, grade, "stored-1")), Result("book", Book));
 
-        var remove = Assert.Single(state.FixChoices, choice => choice.Label == "Remove analysis");
+        var remove = Assert.Single(state.SetChoices, choice => choice.Label == "Remove analysis");
         Assert.Equal($"{label} → Removed", remove.Subtitle);
         Assert.Equal(label, remove.Now);
     }
@@ -288,44 +288,44 @@ public sealed class AnalysisMarkingStateTests
 
         var state = AnalysisMarkingState.Create(Token(stored), Result("book", Book));
 
-        var remove = Assert.Single(state.FixChoices, choice => choice.Label == "Remove analysis");
+        var remove = Assert.Single(state.SetChoices, choice => choice.Label == "Remove analysis");
         Assert.Equal("stored-1", remove.StoredAnalysisId);
         Assert.Equal("remove-analysis", remove.ChangeKind);
     }
 
     [Fact]
-    public void ApprovedAnalysisCanReturnToUnknownThroughTheFixChoices()
+    public void ApprovedAnalysisCanReturnToUnknownThroughTheSetChoices()
     {
         var state = AnalysisMarkingState.Create(
             Token(Stored(Book, ReadingGrade.Approved, "stored-1")), Result("book", Book));
 
-        Assert.Contains(state.FixChoices, choice => choice.Kind == AnalysisMarkingActionKind.MakeUnknown &&
+        Assert.Contains(state.SetChoices, choice => choice.Kind == AnalysisMarkingActionKind.MakeUnknown &&
             choice.Label == "Make Unknown" && choice.StoredAnalysisId == "stored-1" &&
             choice.ChangeKind == ChangeKinds.Candidate && choice.Subtitle == "Approved → Unknown");
     }
 
     [Fact]
-    public void DisapprovedToApprovedFixChoiceIsNamedApprove()
+    public void DisapprovedToApprovedSetChoiceIsNamedApprove()
     {
         var state = AnalysisMarkingState.Create(
             Token(Stored(Book, ReadingGrade.Disapproved, "stored-1")), Result("none"));
 
-        Assert.Contains(state.FixChoices, choice => choice.Kind == AnalysisMarkingActionKind.Approve &&
+        Assert.Contains(state.SetChoices, choice => choice.Kind == AnalysisMarkingActionKind.Approve &&
             choice.Label == "Approve" && choice.ChangeKind == ChangeKinds.Approve &&
             choice.Subtitle == "Disapproved → Approved");
     }
 
     [Fact]
-    public void DisapprovedDifferentReadingUsesTheFixMenu()
+    public void DisapprovedDifferentReadingUsesTheSetMenu()
     {
         var state = AnalysisMarkingState.Create(
             Token(Stored(Book, ReadingGrade.Disapproved, "stored-1")), Result("different", Child));
 
         Assert.Equal(["Approve", "Make Unknown", "Accept PanGloss's analysis", "Add as Unknown", "Add PanGloss's analyses as Unknown",
             "Keep FieldWorks", "Remove analysis"],
-            state.FixChoices.Select(choice => choice.Label));
-        Assert.Equal(ChangeKinds.Approve, state.FixChoices[2].ChangeKind);
-        Assert.Equal(ChangeKinds.AddCandidate, state.FixChoices[3].ChangeKind);
+            state.SetChoices.Select(choice => choice.Label));
+        Assert.Equal(ChangeKinds.Approve, state.SetChoices[2].ChangeKind);
+        Assert.Equal(ChangeKinds.AddCandidate, state.SetChoices[3].ChangeKind);
     }
 
     [Fact]
@@ -335,20 +335,20 @@ public sealed class AnalysisMarkingStateTests
             Token(Stored(Book, ReadingGrade.Approved, "stored-1")), Result("different", Child));
 
         Assert.Equal(["Disapprove", "Make Unknown", "Add as Unknown", "Keep FieldWorks", "Remove analysis"],
-            state.FixChoices.Select(choice => choice.Label));
-        Assert.DoesNotContain(state.FixChoices, choice => choice.ChangeKind == ChangeKinds.Approve ||
+            state.SetChoices.Select(choice => choice.Label));
+        Assert.DoesNotContain(state.SetChoices, choice => choice.ChangeKind == ChangeKinds.Approve ||
             choice.Kind == AnalysisMarkingActionKind.AcceptNewSet);
     }
 
     [Fact]
-    public void MatchingUnknownAnalysisOffersOpinionActionsInTheFixMenu()
+    public void MatchingUnknownAnalysisOffersOpinionActionsInTheSetMenu()
     {
         var state = AnalysisMarkingState.Create(Token(Stored(Book, ReadingGrade.Candidate, "stored-1")),
             Result("book", Book));
 
-        Assert.Contains(state.FixChoices, choice => choice.Kind == AnalysisMarkingActionKind.Approve &&
+        Assert.Contains(state.SetChoices, choice => choice.Kind == AnalysisMarkingActionKind.Approve &&
             choice.StoredAnalysisId == "stored-1");
-        Assert.Contains(state.FixChoices, choice => choice.Kind == AnalysisMarkingActionKind.Disapprove &&
+        Assert.Contains(state.SetChoices, choice => choice.Kind == AnalysisMarkingActionKind.Disapprove &&
             choice.StoredAnalysisId == "stored-1");
     }
 
@@ -360,7 +360,7 @@ public sealed class AnalysisMarkingStateTests
 
         Assert.Equal(AnalysisMarkingClass.Capped, state.PanGlossClass);
         Assert.Null(state.PrimaryAction);
-        Assert.Contains(state.FixChoices, choice => choice.Kind == AnalysisMarkingActionKind.RemoveAnalysis);
+        Assert.Contains(state.SetChoices, choice => choice.Kind == AnalysisMarkingActionKind.RemoveAnalysis);
         Assert.False(state.NeedsALook);
     }
 
