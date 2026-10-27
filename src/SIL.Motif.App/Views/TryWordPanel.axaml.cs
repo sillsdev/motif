@@ -20,10 +20,13 @@ public sealed partial class TryWordPanel : UserControl
         AttemptInspector = new TryWordAttemptInspector(Trace);
         DataContext = model;
         AvaloniaXamlLoader.Load(this);
-        var diagnostic = new DiagnosticPanel(model.Diagnostics, showResultSummary: false, showAnalyses: false,
-            showAttemptSummaries: false);
-        diagnostic.Bind(DiagnosticPanel.ShowFullDerivationProperty, new Avalonia.Data.Binding("IsExpert"));
-        this.FindControl<ContentControl>("RichDiagnosticHost")!.Content = diagnostic;
+        this.FindControl<LazyContent>("RichDiagnosticHost")!.Factory = () =>
+        {
+            var diagnostic = new DiagnosticPanel(model.Diagnostics, showResultSummary: false, showAnalyses: false,
+                showAttemptSummaries: false);
+            diagnostic.Bind(DiagnosticPanel.ShowFullDerivationProperty, new Avalonia.Data.Binding("IsExpert"));
+            return diagnostic;
+        };
         model.SavedDiagnosticOpened += OnSavedDiagnosticOpened;
     }
 

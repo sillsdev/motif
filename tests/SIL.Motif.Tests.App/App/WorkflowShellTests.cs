@@ -732,6 +732,7 @@ public sealed class WorkflowShellTests
                 window.UpdateLayout();
 
                 window.EnsureAllPageViews();
+                window.RealizeLazyContent();
                 var pages = window.FindControl<Panel>("PageHost")!.Children;
                 var tryPage = Assert.IsType<TryAWordPage>(pages.Single(page => page.Name == "TryAWordPage"));
                 var tryWord = Assert.Single(tryPage.GetLogicalDescendants().OfType<TryWordPanel>());

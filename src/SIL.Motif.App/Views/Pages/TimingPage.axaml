@@ -360,7 +360,7 @@
       </Border>
       <Expander Header="{x:Static app:MotifAppStrings.TimingDetailedStatisticsHeading}" IsVisible="{Binding ShowStatistics}"
                 Expanded="OnStatisticsExpanded">
-        <ContentControl x:Name="StatisticsHost" />
+        <views:LazyContent x:Name="StatisticsHost" />
       </Expander>
       </StackPanel>
     </ScrollViewer>

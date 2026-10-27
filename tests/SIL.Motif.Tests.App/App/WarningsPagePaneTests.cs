@@ -138,9 +138,8 @@ public sealed class WarningsPagePaneTests
                 Assert.NotNull(count);
                 Assert.Equal("2 findings", count.Text);
                 Assert.True(count.IsEffectivelyVisible);
-                Assert.DoesNotContain(bodyControls.GetVisualDescendants().OfType<FilterChip>(), chip =>
-                    chip.IsEffectivelyVisible);
-                Assert.False(Assert.Single(bodyControls.GetVisualDescendants().OfType<ToggleButton>()).IsEffectivelyVisible);
+                Assert.Empty(bodyControls.GetVisualDescendants().OfType<FilterChip>());
+                Assert.Empty(bodyControls.GetVisualDescendants().OfType<ToggleButton>());
 
                 var visibleButtons = bodyControls.GetVisualDescendants().OfType<Button>()
                     .Where(button => button.IsEffectivelyVisible)

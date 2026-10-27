@@ -286,7 +286,7 @@
         <views:TraceAnalysesView DataContext="{Binding Trace}" />
       </Expander>
       <Border Classes="tryWordSection" IsVisible="{Binding Trace.NoAttemptRecorded}"><views:CopyableTextBlock Text="{Binding Trace.NoAttemptNotice}" TextWrapping="Wrap" /></Border>
-      <ContentControl x:Name="RichDiagnosticHost" IsVisible="{Binding Trace.HasResult}" />
+      <views:LazyContent x:Name="RichDiagnosticHost" IsVisible="{Binding Trace.HasResult}" />
       <views:ExpertTracePanel DataContext="{Binding Trace}" IsVisible="{Binding ShowsExpertTrace}" />
       <Border Classes="tryWordSection" IsVisible="{Binding Trace.ShowsPlainTrace}" AutomationProperties.Name="{x:Static app:MotifAppStrings.RecordedTraceContextAccessibleName}">
         <StackPanel Spacing="{DynamicResource Intent.Space.Snug}">

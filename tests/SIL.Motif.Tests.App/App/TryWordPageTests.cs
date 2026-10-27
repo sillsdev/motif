@@ -1338,6 +1338,7 @@ public sealed class TryWordPageTests
                     .Select(block => AutomationProperties.GetName(block)).ToList();
                 Assert.Contains("Diagnostic capture details", names);
                 Assert.Contains("Writing system direction and font", names);
+                window.RealizeLazyContent();
                 Assert.Contains(window.GetLogicalDescendants().OfType<Expander>(), expander =>
                     Equals(expander.Header, "Aggregate parser effort by category"));
             }

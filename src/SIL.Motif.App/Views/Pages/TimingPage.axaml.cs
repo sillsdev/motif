@@ -28,7 +28,7 @@ public sealed partial class TimingPage : UserControl
         _sidePanel = this.FindControl<Control>("TimingSidePanel");
         _shareLayout!.SizeChanged += (_, args) => ArrangeSidePanel(args.NewSize.Width);
         ArrangeSidePanel(_shareLayout.Bounds.Width);
-        this.FindControl<ContentControl>("StatisticsHost")!.Content = new StatisticsPanel(page.Statistics);
+        this.FindControl<LazyContent>("StatisticsHost")!.Factory = () => new StatisticsPanel(page.Statistics);
         var wordRows = this.FindControl<ItemsControl>("TimingPageCostliestRuleWordRowsItems")!;
         WordPresentationHost = new WordListPresentationHost<ListedWordViewModel>(
             wordRows, row => row.TimingPresentation, WordListCardSections.Listed);
