@@ -29,6 +29,16 @@ if (-not [OperatingSystem]::IsWindows()) {
     throw 'The package smoke script currently exercises the Windows installer.'
 }
 
+# `motif --version` prints the product version, then " (source SHA <full sha>)" when the build embedded one.
+function Get-CliProductVersion {
+    param([string[]] $VersionOutput)
+    $text = [string]::Join('', $VersionOutput).Trim()
+    if ($text -match '^(?<version>\S+)(?: \(source SHA [0-9a-fA-F]{40}(?:[0-9a-fA-F]{24})?\))?$') {
+        return $Matches['version']
+    }
+    return $text
+}
+
 $feed = [System.IO.Path]::GetFullPath($FeedDirectory)
 $install = [System.IO.Path]::GetFullPath($InstallDirectory)
 $initialPackage = [System.IO.Path]::GetFullPath($InitialPackagePath)
@@ -74,8 +84,8 @@ if (-not [string]::Equals([System.IO.Path]::GetFullPath($pathCommand.Source), $c
     throw "PATH resolved motif.exe to $($pathCommand.Source), not the registered CLI $cliPath."
 }
 $versionOutput = & motif.exe --version
-if ($LASTEXITCODE -ne 0 -or [string]::Join('', $versionOutput).Trim() -ne $ProductVersion) {
-    throw "The installed CLI did not report version $ProductVersion."
+if ($LASTEXITCODE -ne 0 -or (Get-CliProductVersion $versionOutput) -ne $ProductVersion) {
+    throw "The installed CLI did not report version $ProductVersion; it printed: $([string]::Join('', $versionOutput).Trim())"
 }
 
 $env:MOTIF_WORKER_ROOT = Join-Path $work 'worker'
@@ -318,7 +328,7 @@ if (-not $SkipUpdate) {
     }
     $updated = $false
     for ($attempt = 0; $attempt -lt 120; $attempt++) {
-        $updatedVersion = (& $cliPath --version | Out-String).Trim()
+        $updatedVersion = Get-CliProductVersion (& $cliPath --version)
         if ($LASTEXITCODE -eq 0 -and $updatedVersion -eq $NextProductVersion) {
             $updated = $true
             break
