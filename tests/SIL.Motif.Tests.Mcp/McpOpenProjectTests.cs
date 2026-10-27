@@ -167,7 +167,7 @@ public sealed class McpOpenProjectTests
             var sourceHash = HashProject(fwDataPath);
             var preferencePath = Path.Combine(workerRoot, "advanced-ai-mode.json");
             new FileAdvancedAiModePreferenceStore(preferencePath).SetEnabled(true);
-            await using var client = await StartClient(workerRoot, preferencePath);
+            await using var client = await StartClient(workerRoot, preferencePath, Path.Combine(workerRoot, "motif.db"));
 
             var initiallyKnown = await client.CallToolAsync("motif_list_projects", new Dictionary<string, object?>());
             Assert.True(initiallyKnown.IsError != true, ErrorText(initiallyKnown));
@@ -230,7 +230,7 @@ public sealed class McpOpenProjectTests
         return cache.ProjectId.Path;
     }
 
-    private static async Task<McpClient> StartClient(string workerRoot, string preferencePath)
+    private static async Task<McpClient> StartClient(string workerRoot, string preferencePath, string? shortTimeoutPath = null)
     {
         var transport = new StdioClientTransport(new StdioClientTransportOptions
         {
@@ -238,6 +238,7 @@ public sealed class McpOpenProjectTests
             {
                 [FileAdvancedAiModePreferenceStore.PathEnvironmentVariable] = preferencePath,
                 [RunnerOptions.RootVariable] = workerRoot,
+                ["MOTIF_TEST_SQLITE_SHORT_TIMEOUT_FOR"] = shortTimeoutPath,
             },
             Name = "motif MCP explicit-open regression",
             Command = BuildOutput.Cli,

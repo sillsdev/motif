@@ -295,8 +295,15 @@ internal sealed class MotifSqliteStore : IDisposable
             : new OwnedSqliteConnection(connectionString, onDisposed);
         try
         {
+            if (HasShortTestTimeout(path)) connection.DefaultTimeout = 1;
             connection.Open();
             configure(connection);
+            if (HasShortTestTimeout(path))
+            {
+                using var command = connection.CreateCommand();
+                command.CommandText = "PRAGMA busy_timeout = 100;";
+                command.ExecuteNonQuery();
+            }
             return connection;
         }
         catch
@@ -313,6 +320,15 @@ internal sealed class MotifSqliteStore : IDisposable
         Pooling = pooled,
         Mode = SqliteOpenMode.ReadWriteCreate
     }.ToString();
+
+    private static bool HasShortTestTimeout(string path)
+    {
+        var testPath = Environment.GetEnvironmentVariable("MOTIF_TEST_SQLITE_SHORT_TIMEOUT_FOR");
+        var comparison = OperatingSystem.IsWindows() || OperatingSystem.IsMacOS()
+            ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        return !string.IsNullOrWhiteSpace(testPath) &&
+            string.Equals(Path.GetFullPath(testPath), Path.GetFullPath(path), comparison);
+    }
 
     private static void RegisterPoolOwner(string connectionString)
     {

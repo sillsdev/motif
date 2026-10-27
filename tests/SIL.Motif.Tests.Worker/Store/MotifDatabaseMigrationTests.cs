@@ -25,9 +25,33 @@ public sealed class MotifDatabaseMigrationTests : IDisposable
         Assert.Equal(1, PragmaInt(connection, "foreign_keys"));
         Assert.Equal("wal", PragmaText(connection, "journal_mode"));
         Assert.Equal(SqliteConnections.BusyTimeoutMilliseconds, PragmaInt(connection, "busy_timeout"));
+        Assert.Equal(30, connection.DefaultTimeout);
         Assert.Equal("new", Scalar(connection, "SELECT FieldWorksProjectIdentity FROM MotifMetadata WHERE Id = 1;"));
         Assert.Equal(Path.Combine(_root, "new.fwdata"), Scalar(connection, "SELECT FullFwDataPath FROM MotifMetadata WHERE Id = 1;"));
         Assert.Same(DBNull.Value, Scalar(connection, "SELECT CurrentAssessmentId FROM MotifMetadata WHERE Id = 1;"));
+    }
+
+    [Fact]
+    public void ShortTestTimeoutAppliesOnlyToItsNamedDatabase()
+    {
+        using var target = Open("target.fwdata", supportedSchema: MotifSchema.CurrentSchema);
+        using var other = Open("other.fwdata", supportedSchema: MotifSchema.CurrentSchema);
+        const string variable = "MOTIF_TEST_SQLITE_SHORT_TIMEOUT_FOR";
+        var previous = Environment.GetEnvironmentVariable(variable);
+        try
+        {
+            Environment.SetEnvironmentVariable(variable, target.FullPath);
+            using var targetConnection = target.OpenConnection();
+            using var otherConnection = other.OpenConnection();
+            Assert.Equal(1, targetConnection.DefaultTimeout);
+            Assert.Equal(100, PragmaInt(targetConnection, "busy_timeout"));
+            Assert.Equal(30, otherConnection.DefaultTimeout);
+            Assert.Equal(SqliteConnections.BusyTimeoutMilliseconds, PragmaInt(otherConnection, "busy_timeout"));
+        }
+        finally { Environment.SetEnvironmentVariable(variable, previous); }
+        using var restored = target.OpenConnection();
+        Assert.Equal(30, restored.DefaultTimeout);
+        Assert.Equal(SqliteConnections.BusyTimeoutMilliseconds, PragmaInt(restored, "busy_timeout"));
     }
 
     [Fact]

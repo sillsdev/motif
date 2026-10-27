@@ -31,8 +31,15 @@ public sealed class StoreBusyBeforeSaveTests(PristineProjectFixture pristine)
         using (var connection = database.OpenConnection())
         using (var writer = connection.BeginTransaction())
         {
-            held = ProposalCommands.AddSetGloss(new AddSetGlossRequest(path, version, name, sense,
-                NewLangProjFixture.AnalysisTag, "while held"));
+            const string timeoutVariable = "MOTIF_TEST_SQLITE_SHORT_TIMEOUT_FOR";
+            var previous = Environment.GetEnvironmentVariable(timeoutVariable);
+            try
+            {
+                Environment.SetEnvironmentVariable(timeoutVariable, database.FullPath);
+                held = ProposalCommands.AddSetGloss(new AddSetGlossRequest(path, version, name, sense,
+                    NewLangProjFixture.AnalysisTag, "while held"));
+            }
+            finally { Environment.SetEnvironmentVariable(timeoutVariable, previous); }
             writer.Rollback();
         }
 
