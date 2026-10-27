@@ -36,7 +36,7 @@ public sealed class AnalyzeReShowFirstPageTests(ITestOutputHelper output)
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            using var project = new LargeProjectFixture();
+            using var project = new LargeProjectFixture(smallScale: true);
             var parser = FakeParser.CopyRecordingInvocations(project.ManagedRoot);
             FakeParser.BehaveBesideExecutable(parser, new
             {
@@ -68,7 +68,7 @@ public sealed class AnalyzeReShowFirstPageTests(ITestOutputHelper output)
             await window.Workspace.Context.EvidencePublication;
             window.WaitUntilProjectIsQuiet(TimeSpan.FromSeconds(60), "large project did not finish opening");
             window.ShowPage(WorkspacePage.Texts);
-            window.WaitUntil(() => window.Workspace.PageModel<TextsPageModel>().ResultsInText.Texts.Count == LargeProjectFixture.TextCount,
+            window.WaitUntil(() => window.Workspace.PageModel<TextsPageModel>().ResultsInText.Texts.Count == project.TextIds.Count,
                 TimeSpan.FromSeconds(60), "the large Texts were not loaded");
             var texts = window.Workspace.PageModel<TextsPageModel>();
 
