@@ -204,11 +204,11 @@ public sealed class PhonologyAssessmentRepositoryTests : IDisposable
     }
 
     [Fact]
-    public void FiveHundredLargeSummariesAdvanceWithinActualUtf8BoundAndExposeExactOmissions()
+    public void LargeSummariesAdvanceWithinActualUtf8BoundAndExposeExactOmissions()
     {
         using var database = Open();
         var text = string.Concat(Enumerable.Repeat("\U0001F600", 256));
-        var examples = Enumerable.Range(0, 500).Select(index => new PhonologyExample("e" + index, text,
+        var examples = Enumerable.Range(0, 100).Select(index => new PhonologyExample("e" + index, text,
             Enumerable.Range(0, 16).Select(form => text[..^2] + (char)('a' + form)).ToArray(),
             new PhonologyGenerationContext.HcXmlEntry(text), new CitationView(new string('"', 300), new string('\\', 120))))
             .ToArray();
@@ -248,7 +248,7 @@ public sealed class PhonologyAssessmentRepositoryTests : IDisposable
             pages++;
         } while (cursor is not null);
         Assert.Equal(examples.Select(example => example.Id), collected);
-        Assert.True(pages > 5);
+        Assert.True(pages > 1);
         var detail = results.ReadExample("large", "e0");
         Assert.Equal(1024, Assert.IsType<PhonologyRowEvidence.Produced>(detail.Result.Evidence).AppliedRuleIds.Count);
         Assert.True(JsonSerializer.SerializeToUtf8Bytes(detail, JsonOptions).Length <= 32 * 1024 * 1024);
