@@ -9,6 +9,7 @@ using Avalonia.LogicalTree;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using SIL.Motif.App.Controls;
+using SIL.Motif.App.Controls.WordPresentation;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Composition;
 using SIL.Motif.App;
@@ -410,6 +411,15 @@ public sealed class WalkthroughWindow : IDisposable
 
     internal void ScrollIntoView(string automationId)
     {
+        if (automationId.StartsWith("motif-word-", StringComparison.Ordinal) &&
+            (automationId.EndsWith("-fix", StringComparison.Ordinal) || automationId.EndsWith("-add", StringComparison.Ordinal)))
+        {
+            var stripId = automationId[..automationId.LastIndexOf('-')] + "-strip";
+            ScrollIntoView(stripId);
+            Assert.IsType<WordStripToken>(FindByAutomationId(stripId)).FocusWord();
+            Pump();
+            Window.UpdateLayout();
+        }
         // A reader line's tokens arrive with its page read, which can outlast one pump under load, so scan again.
         WaitUntil(() => FindOptionalByAutomationId(automationId) is not null || ScanReaderLinesFor(automationId),
             TimeSpan.FromSeconds(15), $"'{automationId}' never appeared in the window",

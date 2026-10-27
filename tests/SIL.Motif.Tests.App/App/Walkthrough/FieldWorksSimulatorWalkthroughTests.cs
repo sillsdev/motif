@@ -8,6 +8,7 @@ using SIL.LCModel;
 using SIL.LCModel.Core.Text;
 using SIL.LCModel.Infrastructure;
 using SIL.Motif.App.ViewModels;
+using SIL.Motif.App.Controls.WordPresentation;
 using SIL.Motif.App.Views;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Host.Store;
@@ -72,6 +73,8 @@ public sealed class FieldWorksSimulatorWalkthroughTests(PristineProjectFixture p
                     $"{word.Word}: {word.Outcome}, {word.Morphology?.Analyses.Count ?? 0} analyses") ?? []));
             var strip = walkthrough.Window.GetLogicalDescendants().OfType<Border>()
                 .Single(control => control.Name == "WordStrip" && SIL.Motif.App.Views.ResultsInTextPanel.TokenOf(control)?.Occurrence == token.Occurrence);
+            Assert.IsType<WordStripToken>(strip).FocusWord();
+            AnalyzeTextsLayoutTests.Settle(walkthrough.Window);
             var setMenu = strip.GetLogicalDescendants().OfType<Button>().Single(button =>
                 Equals(Avalonia.Automation.AutomationProperties.GetName(button), WordDispositionButtons.AddButtonName));
             HeadlessClick.Click(walkthrough.Window, setMenu, WordDispositionButtons.AddButtonName);

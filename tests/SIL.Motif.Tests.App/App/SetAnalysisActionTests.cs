@@ -203,7 +203,12 @@ public sealed class SetAnalysisActionTests
         reader.CloseTokenCard();
         Settle(window);
         var strip = StripOf(Panel(window), form);
-        if (host == "strip") return strip;
+        if (host == "strip")
+        {
+            Assert.IsType<WordStripToken>(strip).FocusWord();
+            Settle(window);
+            return strip;
+        }
         var token = Assert.IsType<ResultsTokenViewModel>(ResultsInTextPanel.TokenOf(strip));
         if (host == "card")
         {
