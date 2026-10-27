@@ -218,7 +218,7 @@ Refusals: `draft.invalid` (finalizing without a label and comment, which `motif_
 |---|---|---|---|---|---|
 | `motif_dry_run` | Evaluate | yes | `proposal`, `job?`, `wait_seconds?`, `detail`, `limit` | the Dry Run projection, or `{ status: running, job }` | not read-only, not idempotent |
 | `motif_trial` | Evaluate | yes | `proposal`, `words?`, `job?`, `wait_seconds?`, `detail`, `limit` | `{ job: status, assessments }`, or `{ status: running, job }` | not read-only, not idempotent |
-| `motif_try_word` | Evaluate | yes | `word`, `detail`, `limit` | the trace for one word under the current grammar | not read-only, idempotent |
+| `motif_try_word` | Evaluate | yes | `word`, `proposal`, `detail`, `limit` | the trace for one word under the current grammar, or under a Proposal's latest Trial copy | not read-only, idempotent |
 
 Refusals: `assess.parser-unavailable` / `grammarcheck.parser-unavailable` → tell the linguist the parser is not installed; `job.invalid-words` (blank or padded words); `job.dry-run-incomplete`; a Draft that is not finished yet refuses the Dry Run with a `proposal.*` code, and its `Next:` points at `motif_proposals`.
 

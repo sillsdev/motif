@@ -1301,6 +1301,10 @@
           "type": "string",
           "description": "The word to parse."
         },
+        "proposal": {
+          "type": "string",
+          "description": "A proposal id: parse the word with that Draft or Proposal\u0027s changes, in the copy of its latest motif_trial. Omit to parse against the current Baseline."
+        },
         "detail": {
           "type": "string",
           "description": "\u0027concise\u0027 (default) drops empty fields and long lists; \u0027detailed\u0027 returns everything.",

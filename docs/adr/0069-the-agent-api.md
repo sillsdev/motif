@@ -52,7 +52,7 @@ short enough for every host to read in full.
 | `motif_projects` | reads | The Known projects |
 | `motif_read` | reads | One `view` of a project: `overview` (including anything missing before work can start: no Baseline, no worker, Advanced AI mode off), `grammar`, `lexicon`, `word`, `texts`, `proposals` |
 | `motif_find_composer` | reads | The Composers for a goal in a linguist's words or a Subject, each with when to reach for it, its schema and a worked example, and that Subject's help page |
-| `motif_try_word` | reads | One word against the project as it stands |
+| `motif_try_word` | reads | One word against the project as it stands, or with a Proposal's changes when given its id (needs a Trial) |
 | `motif_results` | reads | Everything a Proposal's Trial collected, by `aspect`, paged |
 | `motif_proposal` | writes | A Proposal's simple state changes, by `action`: `start`, `rationale`, `trial`, `finalize`, `withdraw` |
 | `motif_compose` | writes | Authoring: one or more steps, each a Composer's verb and its intent, and operations to remove |

@@ -751,6 +751,72 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
     }
 
     [Fact]
+    public async Task TryWordParsesAWordWithADraftsChangesAndNamesTheDraftItTracedAgainst()
+    {
+        using var project = new WalkthroughProject(pristine);
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(project.FwDataPath), project.ManagedRoot).Succeeded);
+        await using var runner = new InProcessRunnerLauncher(
+            new JobRunnerLaunchOptions(project.ManagedRoot, FakeParser.ExecutablePath));
+        await using var session = await Session.StartAsync(project.FwDataPath, new McpLaunchOptions(Runner: runner));
+        var word = SeededProject.AnalysedWordForm;
+
+        var started = await session.CallAsync("motif_start_proposal", ("draft", "try-draft"), ("label", "Try draft"),
+            ("rationale", "Trace a word with the Draft's changes."));
+        var proposalId = started.GetProperty("result").GetProperty("proposalId").GetString()!;
+        var lexicon = await session.CallAsync("motif_lexicon", ("query", SeededProject.FirstForm));
+        var sense = lexicon.GetProperty("result").GetProperty("entries")[0].GetProperty("senses")[0];
+        await session.CallAsync("motif_set_gloss", ("draft", "try-draft"), ("sense", sense.GetProperty("id").GetString()!),
+            ("ws", lexicon.GetProperty("result").GetProperty("glossWs").GetString()!), ("text", "traced gloss"));
+        var trial = await session.CallAsync("motif_trial", ("proposal", proposalId), ("words", new[] { word }),
+            ("wait_seconds", 120));
+        Assert.True(trial.GetProperty("ok").GetBoolean(), trial.ToString());
+
+        var baseline = (await session.CallAsync("motif_try_word", ("word", word))).GetProperty("result");
+        Assert.False(baseline.GetProperty("parsed").GetBoolean(), baseline.ToString());
+        Assert.Equal("baseline", baseline.GetProperty("tracedAgainst").GetString());
+
+        // The Trial's copy is where the Draft's changes live; let the fake parser accept the word only there.
+        var scratch = SIL.Motif.Worker.Jobs.TrialScratchPath.ProjectFile(
+            SIL.Motif.Worker.Jobs.TrialScratchPath.ForJob(trial.GetProperty("result").GetProperty("job").GetString()!));
+        Assert.NotNull(scratch);
+        FakeParser.Behave(Path.GetDirectoryName(scratch)!, FakeParser.TraceBehavior(word, "draft-sig", "DraftRule"));
+
+        var traced = await session.CallAsync("motif_try_word", ("word", word), ("proposal", proposalId));
+        Assert.True(traced.GetProperty("ok").GetBoolean(), traced.ToString());
+        Assert.True(traced.GetProperty("result").GetProperty("parsed").GetBoolean(), traced.ToString());
+        Assert.Contains(proposalId, traced.GetProperty("result").GetProperty("tracedAgainst").GetString());
+        var still = (await session.CallAsync("motif_try_word", ("word", word))).GetProperty("result");
+        Assert.False(still.GetProperty("parsed").GetBoolean());
+
+        var concise = traced.GetProperty("result");
+        var detailed = (await session.CallAsync("motif_try_word", ("word", word), ("proposal", proposalId),
+            ("detail", "detailed"))).GetProperty("result");
+        Assert.Contains(proposalId, detailed.GetProperty("tracedAgainst").GetString());
+        Assert.True(detailed.GetProperty("parsed").GetBoolean());
+        Assert.Equal(word, detailed.GetProperty("word").GetString());
+        Assert.True(detailed.TryGetProperty("reading", out _), "detailed keeps the full response shape");
+        Assert.False(concise.TryGetProperty("reading", out _));
+
+        var unknown = await session.Client.CallToolAsync("motif_try_word", new Dictionary<string, object?>
+        {
+            ["project"] = project.FwDataPath, ["word"] = word, ["proposal"] = "AAAAAAAAAAAAAAAAAAAAAA",
+        });
+        Assert.True(unknown.IsError);
+        var text = ((TextContentBlock)unknown.Content[0]).Text;
+        Assert.Contains("trial.none", text);
+        Assert.Contains("motif_trial", text);
+
+        var malformed = await session.Client.CallToolAsync("motif_try_word", new Dictionary<string, object?>
+        {
+            ["project"] = project.FwDataPath, ["word"] = word, ["proposal"] = "proposal/does-not-exist",
+        });
+        Assert.True(malformed.IsError);
+        var malformedText = ((TextContentBlock)malformed.Content[0]).Text;
+        Assert.Contains("proposal.invalid-id", malformedText);
+        Assert.Contains("is not a Proposal id", malformedText);
+    }
+
+    [Fact]
     public async Task AnAgentMeasuresADraftBeforeFinalizingItsUnchangedContent()
     {
         using var project = new WalkthroughProject(pristine);

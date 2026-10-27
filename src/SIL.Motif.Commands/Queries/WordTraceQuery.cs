@@ -52,9 +52,9 @@ public static class WordTraceQuery
     /// project that supplies writing systems, FieldWorks links and captured names, which costs seconds on a large lexicon.
     /// </summary>
     public static CommandOutcome<WordTraceResponse> QueryAnswerOnly(
-        WordTraceRequest request, CancellationToken cancellationToken = default)
+        WordTraceRequest request, CancellationToken cancellationToken = default, string? parserPath = null)
     {
-        var parser = PanGlossExecutable.TryLocate();
+        var parser = parserPath ?? PanGlossExecutable.TryLocate();
         using var invoker = new PanGlossInvoker(parser);
         if (!TryWordSessions.Enabled)
             return Query(request, new PanGlossTracer(invoker), cancellationToken, hostEvidence: false);
@@ -101,6 +101,11 @@ public static class WordTraceQuery
             var baseline = currentBaseline;
             if (request.ProposalId is { } proposalId)
             {
+                if (!SIL.Motif.Contract.Ids.CanonicalId.TryParse(proposalId, out _))
+                    return CommandOutcome<WordTraceResponse>.Refused(new Refusal("proposal.invalid-id",
+                        FailureReason.InvalidArgument,
+                        $"'{proposalId}' is not a Proposal id. Use the id motif_start_proposal or motif_proposals gave.",
+                        new Dictionary<string, string> { ["proposalId"] = proposalId }));
                 var trial = Trials.LatestFor(database, project, proposalId);
                 if (trial is null)
                     return CommandOutcome<WordTraceResponse>.Refused(new Refusal("trial.none", FailureReason.NotFound,

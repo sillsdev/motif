@@ -816,12 +816,15 @@ internal static class AgentTools
         new("motif_try_word",
             string.Empty,
             AgentClass.Evaluate,
-            Schema.Object([("word", Schema.String("The word to parse."), true), ..Schema.Verbosity()]),
+            Schema.Object([("word", Schema.String("The word to parse."), true),
+                ("proposal", Schema.String("A proposal id: parse the word with that Draft or Proposal's changes, in the copy of its latest motif_trial. Omit to parse against the current Baseline."), false),
+                ..Schema.Verbosity()]),
             false,
             true,
             true,
             true,
-            (c, a, ct) => Task.FromResult(TryWord(c.ProjectPath, a.Required("word"), a.Optional("detail") == "detailed", ct)))
+            (c, a, ct) => Task.FromResult(TryWord(c.ProjectPath, a.Required("word"), a.Optional("proposal"),
+                a.Optional("detail") == "detailed", ct, c.ParserPath)))
             { Requests = [typeof(WordTraceRequest)] },
 
         new("motif_job",
@@ -1256,16 +1259,22 @@ internal static class AgentTools
     }
 
     // Concise skips the slow FieldWorks project copy that only the detailed trace's links and tables need.
-    private static ToolOutcome TryWord(string projectPath, string word, bool detailed, CancellationToken ct)
+    private static ToolOutcome TryWord(string projectPath, string word, string? proposal, bool detailed, CancellationToken ct,
+        string? parserPath)
     {
-        var request = new WordTraceRequest(projectPath, word);
+        var request = new WordTraceRequest(projectPath, word, proposal);
         // This host lives across calls, so a first word starts the resident parser (read-only).
         TryWordSessions.Enable();
-        var outcome = detailed ? WordTraceQuery.Query(request, ct) : WordTraceQuery.QueryAnswerOnly(request, ct);
-        if (detailed) return ToolOutcome.From(outcome);
-        return outcome.Succeeded
-            ? ToolOutcome.From(CommandOutcome<JsonObject>.Success(TryWordSummary.Concise(outcome.Value!)))
-            : ToolOutcome.Refused(outcome.Refusal!);
+        var outcome = detailed ? WordTraceQuery.Query(request, parserPath, ct) : WordTraceQuery.QueryAnswerOnly(request, ct, parserPath);
+        if (!outcome.Succeeded && proposal is not null && outcome.Refusal is { Code: "trial.none" } none)
+            return ToolOutcome.Refused(none.Code, none.Reason,
+                $"No Trial is recorded for '{proposal}'. Run motif_trial on it first; motif_try_word parses against the copy that Trial made.");
+        if (!outcome.Succeeded) return ToolOutcome.Refused(outcome.Refusal!);
+        var summary = detailed
+            ? (JsonObject)JsonNode.Parse(ProjectionJson.Serialize(outcome.Value!))!
+            : TryWordSummary.Concise(outcome.Value!);
+        summary["tracedAgainst"] = proposal is null ? "baseline" : "proposal " + proposal + " (its latest Trial copy)";
+        return ToolOutcome.From(CommandOutcome<JsonObject>.Success(summary));
     }
 
     private static ToolOutcome ReadGrammar(ServerContext context, ToolArgs args)
