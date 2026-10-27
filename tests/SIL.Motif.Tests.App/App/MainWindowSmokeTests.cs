@@ -389,11 +389,12 @@ public sealed class MainWindowSmokeTests
         _avalonia.Invoke(() =>
         {
             var (workspace, window, _) = NewComposedWindow();
+            window.EnsureAllPageViews();
 
             Assert.Same(workspace, window.DataContext);
             Assert.Equal("Motif (tech demo)", window.Title);
             Assert.Same(workspace.PageModel<OverviewPageModel>(),
-                Assert.Single(window.GetLogicalDescendants().OfType<OverviewPage>()).DataContext);
+                window.PageView<OverviewPage>().DataContext);
             Assert.Same(workspace.PageModel<WarningsPageModel>().Grammar, Assert.Single(window.GetLogicalDescendants().OfType<GrammarPanel>()).Grammar);
             // The frame attaches only the current page's side panel, which holds the Texts selection.
             workspace.CurrentPage = WorkspacePage.Texts;
@@ -523,7 +524,7 @@ public sealed class MainWindowSmokeTests
                 window.ApplyTemplate();
                 window.UpdateLayout();
 
-                var page = Assert.Single(window.GetLogicalDescendants().OfType<OverviewPage>());
+                var page = window.PageView<OverviewPage>();
                 var text = string.Join("\n", window.GetVisualDescendants().OfType<TextBlock>().Select(item => item.Text));
                 Assert.Same(overview, workspace.PageModel<OverviewPageModel>().Overview);
                 Assert.Equal(2, fake.OverviewRequests.Count);
@@ -633,7 +634,7 @@ public sealed class MainWindowSmokeTests
                 window.ApplyTemplate();
                 window.UpdateLayout();
 
-                var page = Assert.Single(window.GetLogicalDescendants().OfType<OverviewPage>());
+                var page = window.PageView<OverviewPage>();
                 var text = string.Join("\n", page.GetVisualDescendants().OfType<TextBlock>().Select(item => item.Text));
                 Assert.True(workspace.Context.NeedsAssessment);
                 Assert.Contains(window.GetVisualDescendants().OfType<CopyableTextBlock>(), prompt =>
@@ -682,7 +683,7 @@ public sealed class MainWindowSmokeTests
                 window.ApplyTemplate();
                 window.UpdateLayout();
 
-                var page = Assert.Single(window.GetLogicalDescendants().OfType<OverviewPage>());
+                var page = window.PageView<OverviewPage>();
                 var counts = page.GetVisualDescendants().OfType<UniformGrid>()
                     .Single(item => item.Classes.Contains("overviewCounts"));
                 var selectionCell = Assert.IsAssignableFrom<StackPanel>(counts.Children[0]);
@@ -1434,7 +1435,7 @@ public sealed class MainWindowSmokeTests
                 Assert.True(secondText.IsChecked);
                 await workspace.Context.EvidencePublication;
                 Assert.Contains(secondTextId, workspace.Selection.ChosenTextIds);
-                var pageView = Assert.Single(window.GetLogicalDescendants().OfType<TextsPage>());
+                var pageView = window.PageView<TextsPage>();
                 var readerHost = pageView.FindControl<ContentControl>("AnalyzeReaderHost");
                 var wordListHost = pageView.FindControl<ContentControl>("WordListHost");
                 Assert.NotNull(readerHost);
@@ -1533,7 +1534,7 @@ public sealed class MainWindowSmokeTests
                 ClickButton(window, changedTab);
                 window.UpdateLayout();
                 Assert.Equal(TextsTab.WhatChanged, page.Tab);
-                var pageView = Assert.Single(window.GetLogicalDescendants().OfType<TextsPage>());
+                var pageView = window.PageView<TextsPage>();
                 Assert.True(pageView.FindControl<ContentControl>("DifferenceHost")!.IsEffectivelyVisible);
             }
             finally
@@ -1591,7 +1592,7 @@ public sealed class MainWindowSmokeTests
                 window.Show();
                 window.UpdateLayout();
 
-                var page = Assert.Single(window.GetLogicalDescendants().OfType<TextsPage>());
+                var page = window.PageView<TextsPage>();
                 var selectionHost = Assert.IsType<ContentControl>(page.FindControl<ContentControl>("SelectionHost"));
                 var variant = window.ActualThemeVariant;
                 Assert.True(Application.Current!.TryGetResource(
@@ -1625,7 +1626,7 @@ public sealed class MainWindowSmokeTests
                 Dispatcher.UIThread.RunJobs();
                 window.UpdateLayout();
 
-                var textsPage = Assert.Single(window.GetVisualDescendants().OfType<TextsPage>());
+                var textsPage = window.PageView<TextsPage>();
                 Assert.True(textsPage.IsEffectivelyVisible);
                 Assert.Single(textsPage.GetVisualDescendants().OfType<CopyableTextBlock>(),
                     block => block.Text == workspace.Assess.ShownRefusal!.Sentence && block.IsEffectivelyVisible);

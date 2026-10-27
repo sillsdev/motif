@@ -31,7 +31,7 @@ public sealed class TimingResponsiveTests
             var settings = SettingsTestAccess.Model(window);
             workspace.CurrentPage = WorkspacePage.Timing;
             PageScreenshots.Settle(window);
-            var page = Assert.Single(window.GetVisualDescendants().OfType<TimingPage>());
+            var page = window.PageView<TimingPage>();
             var headline = Assert.Single(page.GetLogicalDescendants().OfType<Panel>(),
                 panel => panel.Classes.Contains("timingHeadline"));
             var pageBorder = Assert.Single(page.GetLogicalDescendants().OfType<Border>(),

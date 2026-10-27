@@ -80,7 +80,7 @@ public sealed class ParsimonyDenseCaptureScreenshots
 
                     var model = workspace.PageModel<ParsimonyPageModel>();
                     await ParsimonyStateScreenshots.DriveDenseReviewAsync(model);
-                    var page = Assert.Single(window.GetVisualDescendants().OfType<ParsimonyPage>());
+                    var page = window.PageView<ParsimonyPage>();
                     var host = window.FindControl<WorkspaceLayoutHost>("WorkspaceLayout")!;
                     Assert.Contains(host.Page!.GetVisualDescendants().OfType<ParsimonyPage>(),
                         hostedPage => ReferenceEquals(page, hostedPage));

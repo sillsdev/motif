@@ -66,7 +66,7 @@ public sealed class ProposalsResponsiveScreenshots
                 var model = workspace.PageModel<ProposalsPageModel>();
                 await model.ShowSetAsideCommand.ExecuteAsync(null);
                 workspace.CurrentPage = WorkspacePage.Proposals;
-                var page = Assert.Single(window.GetVisualDescendants().OfType<ProposalsPage>());
+                var page = window.PageView<ProposalsPage>();
                 var host = window.FindControl<WorkspaceLayoutHost>("WorkspaceLayout")!;
                 PageScreenshots.Settle(window);
 

@@ -694,7 +694,7 @@ public sealed class ProgressiveDisplayTests
                 window.Height = 1300;
                 workspace.CurrentPage = WorkspacePage.Timing;
                 PageScreenshots.Settle(window);
-                var page = Assert.Single(window.GetVisualDescendants().OfType<TimingPage>());
+                var page = window.PageView<TimingPage>();
                 var expander = Assert.Single(page.GetLogicalDescendants().OfType<Expander>(),
                     control => Equals(control.Header, MotifAppStrings.TimingDetailedStatisticsHeading));
                 expander.IsExpanded = true;
@@ -834,7 +834,7 @@ public sealed class ProgressiveDisplayTests
                 window.Height = height;
                 workspace.CurrentPage = WorkspacePage.Timing;
                 PageScreenshots.Settle(window);
-                var page = Assert.Single(window.GetVisualDescendants().OfType<TimingPage>());
+                var page = window.PageView<TimingPage>();
                 var expander = Assert.Single(page.GetLogicalDescendants().OfType<Expander>(),
                     control => Equals(control.Header, MotifAppStrings.TimingDetailedStatisticsHeading));
                 expander.IsExpanded = true;

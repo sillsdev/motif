@@ -163,7 +163,7 @@ public sealed class ChromeLayoutTests
                 workspace.CurrentPage = WorkspacePage.AiAssistants;
                 PageScreenshots.Settle(window);
 
-                var page = Assert.Single(window.GetVisualDescendants().OfType<AssistantConnectionsPage>());
+                var page = window.PageView<AssistantConnectionsPage>();
                 var targets = page.GetVisualDescendants().OfType<Control>()
                     .Where(control => control is Button or CheckBox)
                     .Where(control => control.IsEffectivelyVisible)

@@ -43,7 +43,7 @@ public sealed class ParsimonyWorkspacePaneTests
                 var asked = model.Rows.First(row => !row.IsHeader && row.Items == "ma- + -tu");
 
                 var host = window.FindControl<WorkspaceLayoutHost>("WorkspaceLayout")!;
-                var page = Assert.Single(window.GetVisualDescendants().OfType<ParsimonyPage>());
+                var page = window.PageView<ParsimonyPage>();
                 Assert.False(host.FindControl<Border>("SidePanelBorder")!.IsVisible);
                 Assert.False(host.FindControl<Border>("InspectorPane")!.IsVisible);
                 var list = page.FindControl<ListBox>("ParsimonyRowsItems")!;

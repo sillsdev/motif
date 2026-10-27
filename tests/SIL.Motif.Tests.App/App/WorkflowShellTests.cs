@@ -85,6 +85,7 @@ public sealed class WorkflowShellTests
             var (workspace, window) = NewComposedWindow();
             try
             {
+                window.EnsureAllPageViews();
                 var host = window.FindControl<Panel>("PageHost")!;
                 Assert.Equal(PageHosts, host.Children.Select(child => child.Name));
                 foreach (var page in Enum.GetValues<WorkspacePage>())
@@ -146,6 +147,7 @@ public sealed class WorkflowShellTests
             var (workspace, window) = NewComposedWindow();
             try
             {
+                window.EnsureAllPageViews();
                 foreach (var page in Enum.GetValues<WorkspacePage>())
                 {
                     workspace.CurrentPage = page;
@@ -729,6 +731,7 @@ public sealed class WorkflowShellTests
                 window.Show();
                 window.UpdateLayout();
 
+                window.EnsureAllPageViews();
                 var pages = window.FindControl<Panel>("PageHost")!.Children;
                 var tryPage = Assert.IsType<TryAWordPage>(pages.Single(page => page.Name == "TryAWordPage"));
                 var tryWord = Assert.Single(tryPage.GetLogicalDescendants().OfType<TryWordPanel>());

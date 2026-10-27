@@ -34,7 +34,7 @@ public sealed class TextsHeaderResponsiveTests
 
                 Assert.Equal(width, window.ClientSize.Width);
                 Assert.Equal(height, window.ClientSize.Height);
-                var texts = Assert.Single(window.GetVisualDescendants().OfType<TextsPage>());
+                var texts = window.PageView<TextsPage>();
                 var tabs = texts.GetVisualDescendants().OfType<Button>()
                     .Where(button => AutomationProperties.GetName(button) is
                         "Matrix tab" or "Analyze texts tab" or "Lists tab" or "What changed tab")
@@ -89,7 +89,7 @@ public sealed class TextsHeaderResponsiveTests
                 window.Height = 1080;
                 workspace.CurrentPage = WorkspacePage.Texts;
                 PageScreenshots.Settle(window);
-                var texts = Assert.Single(window.GetVisualDescendants().OfType<TextsPage>());
+                var texts = window.PageView<TextsPage>();
                 var controls = texts.GetVisualDescendants().OfType<Button>()
                     .Where(button => AutomationProperties.GetName(button) is
                         "Matrix tab" or "Analyze texts tab" or "Lists tab" or "What changed tab" or

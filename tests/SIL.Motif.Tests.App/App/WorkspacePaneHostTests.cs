@@ -172,7 +172,7 @@ public sealed class WorkspacePaneHostTests(AvaloniaHeadlessFixture avalonia)
             var (workspace, window) = await PageScreenshots.OpenOverSampleData(parse: false);
             try
             {
-                var texts = Assert.Single(window.GetVisualDescendants().OfType<TextsPage>());
+                var texts = window.PageView<TextsPage>();
                 var selection = texts.FindControl<ContentControl>("SelectionHost")!;
                 Assert.Null(selection.Parent);
                 Assert.Same(texts.DataContext, selection.DataContext);

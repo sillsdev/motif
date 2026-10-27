@@ -667,7 +667,7 @@ public sealed class AnalyzeTextsLayoutTests
             try
             {
                 Assert.True(workspace.Context.NeedsAssessment);
-                var page = Assert.Single(window.GetLogicalDescendants().OfType<TextsPage>());
+                var page = window.PageView<TextsPage>();
                 var prompt = Assert.Single(page.GetVisualDescendants().OfType<ParsePrompt>(),
                     candidate => candidate.IsEffectivelyVisible);
                 var action = Assert.Single(prompt.GetVisualDescendants().OfType<Button>());

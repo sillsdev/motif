@@ -38,7 +38,7 @@ public sealed class ProposalNumberEmphasisTests
                 var card = Assert.IsType<ProposalCardViewModel>(model.SelectedProposal);
                 Assert.Contains(card.Numbers, number => number.Moved);
                 Assert.Contains(card.Numbers, number => !number.Moved);
-                var page = Assert.Single(window.GetVisualDescendants().OfType<ProposalsPage>());
+                var page = window.PageView<ProposalsPage>();
                 var list = page.FindControl<ListBox>("ProposalsRowsItems")!;
                 var row = Assert.IsType<ListBoxItem>(list.ContainerFromItem(card));
                 var measures = new[]

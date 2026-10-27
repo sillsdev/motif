@@ -34,7 +34,7 @@ public sealed class OverviewHLayoutTests
                 window.Width = width;
                 window.Height = 600;
                 PageScreenshots.Settle(window);
-                var page = Assert.Single(window.GetVisualDescendants().OfType<OverviewPage>());
+                var page = window.PageView<OverviewPage>();
                 SettingsPageTests.CaptureSettings(window, $"overview-initial-{width}-150");
                 var presenter = Assert.Single(page.GetVisualDescendants().OfType<ScrollContentPresenter>());
                 var rows = page.FindControl<ItemsControl>("OverviewPageLookFirstRowsItems")!;
@@ -74,7 +74,7 @@ public sealed class OverviewHLayoutTests
                 window.Width = width;
                 window.Height = height;
                 PageScreenshots.Settle(window);
-                var page = Assert.Single(window.GetVisualDescendants().OfType<OverviewPage>());
+                var page = window.PageView<OverviewPage>();
                 var figures = page.FindControl<UniformGrid>("OverviewFigures")!;
                 var coverage = page.FindControl<ItemsControl>("OverviewCoverageRows")!;
                 var speed = page.FindControl<ItemsControl>("OverviewTimingRows")!;

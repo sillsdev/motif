@@ -21,9 +21,8 @@ public sealed class MatrixCaptureStateTests
                 var (workspace, window) = await PageScreenshots.OpenOverSampleData(parse: false);
                 try
                 {
-                    var pageHost = Assert.IsType<Panel>(window.FindControl<Panel>("PageHost"));
-                    var overviewView = pageHost.Children.OfType<Control>().Single(view => view.Name == "OverviewPage");
-                    var textsView = pageHost.Children.OfType<Control>().Single(view => view.Name == "TextsPage");
+                    var overviewView = window.PageView(WorkspacePage.Overview);
+                    var textsView = window.PageView(WorkspacePage.Texts);
 
                     await AssertSceneSaveRejected(root, window, workspace, "wrong-current-page",
                         WorkspacePage.Texts, TextsTab.Matrix, "Expected CurrentPage Texts");

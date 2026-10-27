@@ -34,6 +34,7 @@ public sealed partial class MainWindow : Window
     private Control? _inspectedFrom;
     private SettingsViewModel? _settings;
     private readonly Dictionary<WorkspacePage, Control> _pageViews = [];
+    private Panel? _pageHost;
     private readonly WorkspaceLayoutHost? _layoutHost;
     private HelpPopupView? HelpPopup =>
         this.FindControl<Button>("HelpButton")?.Flyout is Flyout flyout ? flyout.Content as HelpPopupView : null;
@@ -182,17 +183,8 @@ public sealed partial class MainWindow : Window
         var host = this.FindControl<Panel>("PageHost")
             ?? throw new InvalidOperationException("MainWindow.axaml has no element named 'PageHost'.");
         workspace.PageModel<TextsPageModel>().ResultsInText.OpenPanGlossGuide = OpenPanGlossGuide;
-        foreach (var entry in workspace.Pages)
-        {
-            var view = entry.Model is TextsPageModel texts
-                ? new TextsPage(texts, _settings)
-                : PageRegistry.For(entry.Page).CreateView(entry.Model);
-            view.Name = $"{entry.Page}Page";
-            view.Bind(IsVisibleProperty, new Binding(nameof(PageViewModel.IsCurrent)) { Source = entry });
-            host.Children.Add(view);
-            _pageViews[entry.Page] = view;
-            if (view is SettingsPage settingsPage) ConfigureSettingsPage(settingsPage, workspace);
-        }
+        _pageHost = host;
+        EnsurePageView(workspace, workspace.CurrentPage);
 
         void UpdatePagePanels()
         {
@@ -209,6 +201,7 @@ public sealed partial class MainWindow : Window
         {
             if (changed.PropertyName == nameof(WorkspaceShellViewModel.CurrentPage))
             {
+                EnsurePageView(workspace, workspace.CurrentPage);
                 UpdatePagePanels();
                 MotifTrace.EndAtFirstFrame(this);
             }
@@ -627,6 +620,26 @@ public sealed partial class MainWindow : Window
         _helpAutomationId = null;
     }
 
+    /// <summary>Builds <paramref name="page"/>'s view on its first visit; a page nobody opens costs nothing at startup.</summary>
+    internal Control EnsurePageView(WorkspaceShellViewModel workspace, WorkspacePage page)
+    {
+        if (_pageViews.TryGetValue(page, out var existing)) return existing;
+        var entry = workspace.Pages.First(candidate => candidate.Page == page);
+        var view = entry.Model is TextsPageModel texts
+            ? new TextsPage(texts, _settings)
+            : PageRegistry.For(page).CreateView(entry.Model);
+        view.Name = $"{page}Page";
+        view.Bind(IsVisibleProperty, new Binding(nameof(PageViewModel.IsCurrent)) { Source = entry });
+        _pageHost!.Children.Add(view);
+        _pageViews[page] = view;
+        if (view is SettingsPage settingsPage) ConfigureSettingsPage(settingsPage, workspace);
+        return view;
+    }
+
+    /// <summary>Builds <paramref name="page"/>'s view if it has none yet, so a test can reach it without visiting it.</summary>
+    internal Control EnsurePageView(WorkspacePage page) =>
+        EnsurePageView((WorkspaceShellViewModel)DataContext!, page);
+
     private void ConfigureSettings(WorkspaceShellViewModel workspace)
     {
         _settings = new SettingsViewModel(workspace, _preferences, _applicationFacts);
@@ -689,7 +702,7 @@ public sealed partial class MainWindow : Window
     private void OpenSettings()
     {
         if (DataContext is not WorkspaceShellViewModel workspace ||
-            _pageViews.GetValueOrDefault(WorkspacePage.Settings) is not SettingsPage page) return;
+            EnsurePageView(workspace, WorkspacePage.Settings) is not SettingsPage page) return;
         var alreadyOpen = workspace.CurrentPage == WorkspacePage.Settings;
         if (!alreadyOpen) _settingsReturnPage = workspace.CurrentPage;
         this.FindControl<Button>("HelpButton")?.Flyout?.Hide();

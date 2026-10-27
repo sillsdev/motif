@@ -115,7 +115,7 @@ public sealed class SettingsPageTests
                 frame.Show();
                 workspace.ShowPageCommand.Execute(WorkspacePage.Settings);
                 PageScreenshots.Settle(frame);
-                var page = Assert.Single(frame.FindControl<Panel>("PageHost")!.Children.OfType<SettingsPage>());
+                var page = frame.PageView<SettingsPage>();
                 Assert.True(page.IsEffectivelyVisible);
                 Assert.Equal(WorkspacePage.Settings, workspace.CurrentPage);
                 Assert.DoesNotContain(workspace.VisiblePages, entry => entry.Page == WorkspacePage.Settings);

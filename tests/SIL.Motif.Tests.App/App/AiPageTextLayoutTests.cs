@@ -63,8 +63,8 @@ internal static class AiPageTextLayoutChecks
                 Assert.InRange(window.ClientSize.Width, width - 1, width + 1);
                 Assert.InRange(window.ClientSize.Height, height - 1, height + 1);
                 var page = destination == WorkspacePage.AiAssistants
-                    ? (Control)Assert.Single(window.GetVisualDescendants().OfType<AssistantConnectionsPage>())
-                    : Assert.Single(window.GetVisualDescendants().OfType<AiHandoffPage>());
+                    ? (Control)window.PageView<AssistantConnectionsPage>()
+                    : window.PageView<AiHandoffPage>();
                 if (destination == WorkspacePage.AiAssistants)
                 {
                     var model = workspace.PageModel<AssistantConnectionsPageModel>();

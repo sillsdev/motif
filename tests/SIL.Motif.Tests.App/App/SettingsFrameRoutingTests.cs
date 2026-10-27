@@ -46,7 +46,7 @@ public sealed class SettingsFrameRoutingTests
                 PageScreenshots.Settle(window);
                 Capture(window, $"settings-entry-{keyboard}-{width}-{height}-{zoom}");
                 Assert.Equal(WorkspacePage.Settings, workspace.CurrentPage);
-                var page = Assert.Single(window.GetVisualDescendants().OfType<SettingsPage>());
+                var page = window.PageView<SettingsPage>();
                 Assert.True(page.IsEffectivelyVisible);
                 Assert.Same(settings, page.DataContext);
                 Assert.Same(settings, page.Navigation.DataContext);

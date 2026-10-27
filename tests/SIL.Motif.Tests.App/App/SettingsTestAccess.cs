@@ -16,7 +16,7 @@ internal static class SettingsTestAccess
 
     internal static SettingsPage Page(MainWindow window)
     {
-        var page = Assert.Single(window.FindControl<Panel>("PageHost")!.Children.OfType<SettingsPage>());
+        var page = window.PageView<SettingsPage>();
         Assert.Same(Model(window), page.DataContext);
         Assert.Same(Model(window), page.Navigation.DataContext);
         return page;

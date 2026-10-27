@@ -260,7 +260,7 @@ public sealed class ProjectSwitchTests
                 window.UpdateLayout();
                 window.OpenFileMenu();
                 var projectMenu = Assert.IsType<MenuItem>(window.FindControl<MenuItem>("SelectNewMenuItem"));
-                var page = Assert.Single(window.GetLogicalDescendants().OfType<TextsPage>());
+                var page = window.PageView<TextsPage>();
                 var selectionHost = Assert.IsType<ContentControl>(page.FindControl<ContentControl>("SelectionHost"));
                 var search = Assert.Single(selectionHost.GetLogicalDescendants().OfType<TextBox>(), control =>
                     AutomationProperties.GetName(control) == "Search texts");

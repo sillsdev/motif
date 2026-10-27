@@ -363,7 +363,7 @@ public sealed class PageInspectorArbitrationTests(AvaloniaHeadlessFixture avalon
 
     private static PageInput InstallPageInput(MainWindow window, InspectorSubject subject)
     {
-        var texts = Assert.Single(window.GetVisualDescendants().OfType<TextsPage>());
+        var texts = window.PageView<TextsPage>();
         var root = Assert.IsType<Grid>(texts.Content);
         var input = new PageInput(subject);
         var actions = new StackPanel

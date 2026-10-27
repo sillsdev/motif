@@ -434,7 +434,7 @@ public sealed class ProposalsWorkspacePaneTests
                 workspace.CurrentPage = WorkspacePage.Proposals;
                 PageScreenshots.Settle(window);
                 var mainHost = window.FindControl<WorkspaceLayoutHost>("WorkspaceLayout")!;
-                var mainPage = Assert.Single(window.GetVisualDescendants().OfType<ProposalsPage>());
+                var mainPage = window.PageView<ProposalsPage>();
                 var mainProvider = Assert.IsAssignableFrom<IWorkspacePaneProvider>(mainPage);
                 var mainSidePanel = Assert.IsAssignableFrom<Control>(mainProvider.SidePanel);
                 var mainInspector = Assert.IsAssignableFrom<Control>(mainProvider.InspectorContent);
