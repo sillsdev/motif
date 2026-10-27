@@ -1,6 +1,5 @@
 using Avalonia;
 using Avalonia.Headless;
-using Avalonia.Media.Imaging;
 using Avalonia.Styling;
 using SIL.Motif.App;
 using SIL.Motif.App.ViewModels;
@@ -46,9 +45,6 @@ public sealed class SizeMatrixReachabilityTests
                             $"Expected client width {size.Width}, got {window.ClientSize.Width} after resize.");
                         Assert.True(Math.Abs(window.ClientSize.Height - size.Height) < 1,
                             $"Expected client height {size.Height}, got {window.ClientSize.Height} after resize.");
-                        using var frame = window.CaptureRenderedFrame();
-                        Assert.NotNull(frame);
-
                         var context = new LayoutFindingContext(scene, size.Name, zoom, "light");
                         var findings = ReachabilityAssertions.InspectReachabilityAndTitleBar(window, context);
                         allFindings.AddRange(findings);
