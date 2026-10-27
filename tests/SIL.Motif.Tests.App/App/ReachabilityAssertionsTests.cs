@@ -482,6 +482,85 @@ public sealed class ReachabilityAssertionsTests(AvaloniaHeadlessFixture avalonia
     }
 
     [Fact]
+    public void ASparseWindowIsReportedAsMostlyEmpty()
+    {
+        avalonia.Invoke(() =>
+        {
+            var window = new MotifTestWindow
+            {
+                Width = 800, Height = 600,
+                Content = new TextBlock { Name = "Lonely", Text = "Only this", HorizontalAlignment = HorizontalAlignment.Left,
+                    VerticalAlignment = VerticalAlignment.Top },
+            };
+            try
+            {
+                window.Show();
+                PageScreenshots.Settle(window);
+                var context = new LayoutFindingContext("synthetic", "sparse", 100, "light");
+
+                var finding = Assert.Single(ReachabilityAssertions.EmptyAreaFindings(window, context));
+
+                Assert.Equal(LayoutCheckNames.EmptyArea, finding.Check);
+                Assert.Contains("empty", finding.Detail, StringComparison.Ordinal);
+            }
+            finally { window.Close(); }
+        });
+    }
+
+    [Fact]
+    public void AFullWindowIsNotReportedAsEmpty()
+    {
+        avalonia.Invoke(() =>
+        {
+            var rows = new StackPanel();
+            for (var index = 0; index < 40; index++)
+                rows.Children.Add(new TextBlock { Text = new string('w', 90), Margin = new Thickness(0, 0, 0, 2) });
+            var window = new MotifTestWindow { Width = 800, Height = 600, Content = rows };
+            try
+            {
+                window.Show();
+                PageScreenshots.Settle(window);
+                Assert.Empty(ReachabilityAssertions.EmptyAreaFindings(window,
+                    new LayoutFindingContext("synthetic", "full", 100, "light")));
+            }
+            finally { window.Close(); }
+        });
+    }
+
+    [Theory]
+    [InlineData(1240, 780)]
+    [InlineData(640, 600)]
+    public void EveryRegisteredPageFillsItsWindowOverSampleData(int width, int height)
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, window) = await PageScreenshots.OpenOverSampleData();
+            try
+            {
+                window.MinWidth = 0;
+                window.MinHeight = 0;
+                window.Width = width;
+                window.Height = height;
+                var sparse = new List<string>();
+                foreach (var page in LayoutInvariantFixtures.RegisteredPages)
+                {
+                    workspace.CurrentPage = page;
+                    PageScreenshots.Settle(window);
+                    sparse.AddRange(ReachabilityAssertions.EmptyAreaFindings(window,
+                        new LayoutFindingContext($"{page}/populated", $"{width}x{height}", 100, "light"))
+                        .Select(finding => $"{page}: {finding.Detail}"));
+                }
+                Assert.True(sparse.Count == 0, string.Join(Environment.NewLine, sparse));
+            }
+            finally
+            {
+                window.Close();
+                await workspace.DisposeAsync();
+            }
+        }, TimeSpan.FromSeconds(120));
+    }
+
+    [Fact]
     public void AnOpenFlyoutOutsideTheWindowIsReportedWithAStableCheckName()
     {
         avalonia.Invoke(() =>

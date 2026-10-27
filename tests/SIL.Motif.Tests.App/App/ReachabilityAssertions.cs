@@ -404,6 +404,56 @@ internal static class ReachabilityAssertions
         static string Truncate(string value) => value.Length <= 60 ? value : value[..60] + "...";
     }
 
+    /// <summary>The largest share of the client area that may hold no painted content before a view counts as sparse.</summary>
+    internal const double MaxEmptyAreaRatio = 0.9;
+
+    /// <summary>The side of one occupancy cell, in client pixels.</summary>
+    internal const double EmptyAreaCell = 8;
+
+    /// <summary>Flags a surface whose client area is mostly bare: the share of cells that no content covers.</summary>
+    internal static IReadOnlyList<LayoutFinding> EmptyAreaFindings(
+        Visual root, LayoutFindingContext context, double maxRatio = MaxEmptyAreaRatio)
+    {
+        var topLevel = TopLevel.GetTopLevel(root) ?? root as TopLevel;
+        if (topLevel is null) return [];
+        var client = ClientBounds(topLevel);
+        if (client.Width <= 0 || client.Height <= 0) return [];
+        var columns = (int)Math.Ceiling(client.Width / EmptyAreaCell);
+        var rows = (int)Math.Ceiling(client.Height / EmptyAreaCell);
+        var covered = new bool[columns, rows];
+        var popupControls = OpenPopupControls(topLevel);
+        foreach (var control in Controls(topLevel).Where(control => ReferenceEquals(TopLevel.GetTopLevel(control), topLevel))
+                     .Where(control => !popupControls.Contains(control)).Where(IsPaintedContent))
+        {
+            var bounds = PaintedBounds(control).Intersect(client);
+            if (bounds.Width <= 0 || bounds.Height <= 0) continue;
+            var firstColumn = (int)Math.Floor(bounds.Left / EmptyAreaCell);
+            var lastColumn = Math.Min(columns - 1, (int)Math.Ceiling(bounds.Right / EmptyAreaCell) - 1);
+            var firstRow = (int)Math.Floor(bounds.Top / EmptyAreaCell);
+            var lastRow = Math.Min(rows - 1, (int)Math.Ceiling(bounds.Bottom / EmptyAreaCell) - 1);
+            for (var column = firstColumn; column <= lastColumn; column++)
+            for (var row = firstRow; row <= lastRow; row++)
+                covered[column, row] = true;
+        }
+
+        var empty = 0;
+        foreach (var cell in covered) if (!cell) empty++;
+        var ratio = empty / (double)(columns * rows);
+        if (ratio <= maxRatio) return [];
+        return [new LayoutFinding(context.Scene, context.Size, context.Zoom, context.Theme,
+            LayoutCheckNames.EmptyArea, Describe(topLevel as Control ?? Controls(topLevel).First()),
+            LayoutBounds.From(client), "empty-area-ratio",
+            $"{ratio:P0} of the {client.Width:0}×{client.Height:0} client area holds no text, image or control; " +
+            $"the most a view may leave empty is {maxRatio:P0}.")];
+    }
+
+    // Containers and list hosts fill their box whether or not anything is in it, so only what they hold counts.
+    private static bool IsPaintedContent(Control control) =>
+        control.IsEffectivelyVisible && HasVisibleOpacity(control) && control.Bounds.Width > 0 && control.Bounds.Height > 0 &&
+        (control is TextBlock text ? IsRenderedText(text) :
+            control is Avalonia.Controls.Image or Avalonia.Controls.Shapes.Shape ||
+            IsInteractive(control) && control is not (ScrollViewer or ItemsControl or TabControl or Window));
+
     private static readonly string[] FramePaneNames =
         ["SidePanelBorder", "InspectorPane", "WorkingPageHost", "TopBar", "StatusBar"];
 

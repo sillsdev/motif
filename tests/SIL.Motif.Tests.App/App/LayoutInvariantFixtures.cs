@@ -31,6 +31,28 @@ internal static class LayoutInvariantFixtures
     internal static IReadOnlyList<WorkspacePage> PopulatedPages { get; } =
         RegisteredPages;
 
+    /// <summary>
+    /// Returns the process-wide Application state that one case can change to what a fresh launch has: the default
+    /// theme variant and 100% zoom. Cases that compose a window over sample data start from here, not from
+    /// whatever the case before left behind.
+    /// </summary>
+    internal static void ResetSharedState()
+    {
+        var application = Application.Current!;
+        application.RequestedThemeVariant = Avalonia.Styling.ThemeVariant.Default;
+        WindowZoomPolicy.Apply(application, ZoomPolicy.DefaultPercent);
+    }
+
+    /// <summary>Opens the sample-data window as <see cref="PageScreenshots.OpenOverSampleData"/> does, from reset shared state.</summary>
+    internal static Task<(WorkspaceShellViewModel Workspace, MainWindow Window)> OpenFreshSampleData(
+        Action<FakeCommandClient, AssessCommandResponse>? configure = null, bool renderForCapture = true,
+        bool composeWindow = true)
+    {
+        ResetSharedState();
+        return PageScreenshots.OpenOverSampleData(
+            configure: configure, renderForCapture: renderForCapture, composeWindow: composeWindow);
+    }
+
     internal static IReadOnlyList<LayoutCell> QuickCells { get; } = [new(640, 600, 150)];
 
     internal static IReadOnlyList<LayoutCell> Cells { get; } =
