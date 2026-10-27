@@ -193,10 +193,12 @@ public sealed class ViewSwitchPerfTests
         return $"{span.GetProperty("kind").GetString()}:{span.GetProperty("to").GetString()}";
     }
 
-    private static async Task Switch(WorkspaceShellViewModel workspace, Avalonia.Controls.Window window, string name,
+    internal static async Task Switch(WorkspaceShellViewModel workspace, Avalonia.Controls.Window window, string name,
         WorkspacePage page, TextsTab tab)
     {
         var texts = workspace.PageModel<TextsPageModel>();
+        var before = new HashSet<Avalonia.Visual>(Avalonia.VisualTree.VisualExtensions.GetVisualDescendants(window),
+            ReferenceEqualityComparer.Instance as IEqualityComparer<Avalonia.Visual>);
         using var wall = MotifTrace.Begin("harness.click-to-frame");
         wall?.SetTag("view", name);
         if (page == WorkspacePage.Texts && workspace.CurrentPage == WorkspacePage.Texts) texts.Tab = tab;
@@ -206,9 +208,75 @@ public sealed class ViewSwitchPerfTests
             workspace.SelectedPage = workspace.PageOf(page);
         }
 
-        await WaitForFirstFrame(window, name);
+        var clock = Stopwatch.StartNew();
+        var tick = new Stopwatch();
+        var jobs = new Stopwatch();
+        var iterations = 0;
+        var layoutUpdates = 0;
+        var manager = Avalonia.VisualTree.VisualExtensions.GetLayoutManager(window);
+        EventHandler onLayout = (_, _) => layoutUpdates++;
+        manager.LayoutUpdated += onLayout;
+        while (MotifTrace.CurrentSwitch is not null && clock.Elapsed < TimeSpan.FromSeconds(10))
+        {
+            iterations++;
+            tick.Start();
+            Avalonia.Headless.AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+            tick.Stop();
+            jobs.Start();
+            // Input priority and above, as the real dispatcher runs them; Background work waits for the settle below.
+            Dispatcher.UIThread.RunJobs(DispatcherPriority.Input);
+            jobs.Stop();
+        }
+        manager.LayoutUpdated -= onLayout;
+        using (var split = MotifTrace.Begin("attrib.frame-split"))
+        {
+            split?.SetTag("view", name);
+            split?.SetTag("tick-ms", Math.Round(tick.Elapsed.TotalMilliseconds, 2));
+            split?.SetTag("jobs-ms", Math.Round(jobs.Elapsed.TotalMilliseconds, 2));
+            split?.SetTag("loop-ms", Math.Round(clock.Elapsed.TotalMilliseconds, 2));
+            split?.SetTag("iterations", iterations);
+            split?.SetTag("layout-updated", layoutUpdates);
+        }
+        Assert.True(MotifTrace.CurrentSwitch is null, $"The switch to '{name}' never reached a first frame.");
         wall?.Dispose();
+        using (var tree = MotifTrace.Begin("attrib.tree"))
+        {
+            var all = Avalonia.VisualTree.VisualExtensions.GetVisualDescendants(window).ToList();
+            var visible = all.Where(v => v.IsEffectivelyVisible).ToList();
+            var afterSet = new HashSet<Avalonia.Visual>(all, ReferenceEqualityComparer.Instance as IEqualityComparer<Avalonia.Visual>);
+            var created = all.Where(v => !before.Contains(v)).ToList();
+            tree?.SetTag("view", name);
+            tree?.SetTag("created", created.Count);
+            tree?.SetTag("created-visible", created.Count(v => v.IsEffectivelyVisible));
+            tree?.SetTag("removed", before.Count(v => !afterSet.Contains(v)));
+            tree?.SetTag("created-owner", string.Join(", ", created.GroupBy(Owner)
+                .OrderByDescending(g => g.Count()).Take(12).Select(g => $"{g.Key}={g.Count()}")));
+            tree?.SetTag("created-top", string.Join(", ", created.GroupBy(v => v.GetType().Name)
+                .OrderByDescending(g => g.Count()).Take(30).Select(g => $"{g.Key}={g.Count()}")));
+            tree?.SetTag("visual-all", all.Count);
+            tree?.SetTag("visual-visible", visible.Count);
+            tree?.SetTag("top-visible", string.Join(", ", visible.GroupBy(v => v.GetType().Name)
+                .OrderByDescending(g => g.Count()).Take(14).Select(g => $"{g.Key}={g.Count()}")));
+        }
+        var settle = Stopwatch.StartNew();
         await Quiet(window);
+        using (var after = MotifTrace.Begin("attrib.settle"))
+        {
+            after?.SetTag("view", name);
+            after?.SetTag("quiet-ms", Math.Round(settle.Elapsed.TotalMilliseconds, 1));
+        }
+    }
+
+    private static string Owner(Avalonia.Visual visual)
+    {
+        for (var parent = Avalonia.VisualTree.VisualExtensions.GetVisualParent(visual); parent is not null;
+             parent = Avalonia.VisualTree.VisualExtensions.GetVisualParent(parent))
+        {
+            var type = parent.GetType();
+            if (type.Namespace is { } ns && ns.StartsWith("SIL.Motif.App.Views", StringComparison.Ordinal)
+                && type.Name is not ("MainWindow" or "WorkspaceLayoutHost")) return type.Name;
+        }
+        return "?";
     }
 
     private static Task WaitForFirstFrame(Avalonia.Controls.Window window, string name)
