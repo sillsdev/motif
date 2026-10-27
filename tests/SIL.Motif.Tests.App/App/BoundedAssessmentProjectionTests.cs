@@ -152,6 +152,8 @@ public sealed class BoundedAssessmentProjectionTests
             Assert.True(compare.Words[0].IsChecked);
             window.Content = null;
             PageScreenshots.Settle(window);
+            // A dropped panel stays bound to the longer-lived model, so unbind it before counting.
+            panel.DataContext = null;
         }
         finally { window.Close(); }
         await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() => { }, Avalonia.Threading.DispatcherPriority.Background);

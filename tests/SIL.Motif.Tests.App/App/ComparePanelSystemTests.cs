@@ -16,6 +16,38 @@ namespace SIL.Motif.Tests.App;
 public sealed class ComparePanelSystemTests(AvaloniaHeadlessFixture avalonia)
 {
     [Fact]
+    public void HidingTheMatrixKeepsItsCellsAndBindingsSoShowingItAgainRebuildsNothing()
+    {
+        avalonia.Invoke(() =>
+        {
+            var compare = CompareViewModelTests.LostWords();
+            var panel = new ComparePanel(compare);
+            var host = new Border { Child = panel };
+            var window = new MotifTestWindow { Content = host, Width = 1240, Height = 800 };
+            try
+            {
+                window.Show();
+                window.UpdateLayout();
+                var before = panel.GetVisualDescendants().OfType<MatrixCell>().ToArray();
+                Assert.NotEmpty(before);
+                Assert.Same(panel, panel.DataContext);
+
+                host.IsVisible = false;
+                window.UpdateLayout();
+                Assert.Same(panel, panel.DataContext);
+                Assert.Equal(0, compare.MaterializedRowCount);
+
+                host.IsVisible = true;
+                window.UpdateLayout();
+                var after = panel.GetVisualDescendants().OfType<MatrixCell>().ToArray();
+                Assert.Equal(before.Length, after.Length);
+                Assert.True(before.SequenceEqual(after), "the cells were rebuilt on the second show");
+            }
+            finally { window.Close(); }
+        });
+    }
+
+    [Fact]
     public void TheChosenWordListStartsWithAWholeRowAt1240Pixels()
     {
         avalonia.Invoke(() =>
