@@ -136,14 +136,14 @@ public sealed partial class OverviewPageModel : PageModel
     public IRelayCommand OpenLostWordsCommand { get; }
 
     /// <summary>The stored Lost-word evidence shown beside the summary tables.</summary>
-    public string LostWordsContextText => !HasAssessment ? "Parse your texts to see which approved words are Lost."
-        : Overview!.LookFirst.ApprovedLostWords.Count == 0 ? "No approved word is Lost in this parse."
-        : "Approved words the grammar no longer builds.";
+    public string LostWordsContextText => !HasAssessment ? MotifAppStrings.OverviewLostWordsParseFirst
+        : Overview!.LookFirst.ApprovedLostWords.Count == 0 ? MotifAppStrings.OverviewLostWordsNone
+        : MotifAppStrings.OverviewLostWordsSome;
 
     /// <summary>Whether shared morpheme evidence was recorded, without treating unavailable evidence as none.</summary>
     public string SharedLostMorphemeContextText => Overview?.LookFirst.SharedLostMorphemesAvailable == true
-        ? Overview.LookFirst.SharedLostMorphemes.Count == 0 ? "No shared morphemes were recorded." : string.Empty
-        : "Shared morpheme information is unavailable.";
+        ? Overview.LookFirst.SharedLostMorphemes.Count == 0 ? MotifAppStrings.OverviewSharedMorphemesNone : string.Empty
+        : MotifAppStrings.OverviewSharedMorphemesUnavailable;
 
     /// <summary>Whether the response has an Assessment for its default Selection.</summary>
     public bool HasAssessment => Overview?.AssessmentId is not null;
@@ -174,7 +174,7 @@ public sealed partial class OverviewPageModel : PageModel
     public bool ShowNoKnownProjects => !HasKnownProjects;
 
     /// <summary>What the chooser says when this computer has no Known projects.</summary>
-    public string NoKnownProjectsText => HasKnownProjects ? string.Empty : "No recent projects on this computer.";
+    public string NoKnownProjectsText => HasKnownProjects ? string.Empty : MotifAppStrings.OverviewNoKnownProjects;
 
     /// <summary>Whether the Overview read was refused.</summary>
     public bool HasOverviewRefusal => OverviewRefusal is not null;
@@ -206,13 +206,13 @@ public sealed partial class OverviewPageModel : PageModel
     /// <summary>The number of words in the response's default Selection.</summary>
     public string SelectionWordCountText => Overview is { SelectionResolved: false }
         ? Context.Baseline?.HasBaseline == true && Context.Setup?.CanRunDefaultSelection == true
-            ? "not resolved" : "not set up" :
+            ? MotifAppStrings.OverviewSelectionNotResolved : MotifAppStrings.OverviewSelectionNotSetUp :
         Overview?.SelectionWordCount.ToString("N0", CultureInfo.CurrentCulture) ?? string.Empty;
 
     /// <summary>The number of places in the response's selected Texts.</summary>
     public string TextOccurrenceCountText => Overview is { SelectionResolved: false }
         ? Context.Baseline?.HasBaseline == true && Context.Setup?.CanRunDefaultSelection == true
-            ? "not resolved" : "not set up" :
+            ? MotifAppStrings.OverviewSelectionNotResolved : MotifAppStrings.OverviewSelectionNotSetUp :
         Overview?.TextOccurrenceCount.ToString("N0", CultureInfo.CurrentCulture) ?? string.Empty;
 
     /// <summary>The project's wordform count from the response.</summary>
@@ -228,7 +228,7 @@ public sealed partial class OverviewPageModel : PageModel
         Overview is { } response ? InventoryCountText(response.LexemeCount) : string.Empty;
 
     private static string InventoryCountText(int? count) =>
-        count?.ToString("N0", CultureInfo.CurrentCulture) ?? "Not measured";
+        count?.ToString("N0", CultureInfo.CurrentCulture) ?? MotifAppStrings.OverviewNotMeasured;
 
     /// <summary>
     /// The speed headline: how many words PanGloss timed and their total word time, each word's parse time added
@@ -296,7 +296,7 @@ public sealed partial class OverviewPageModel : PageModel
                 row.SelfMs, row.ShareOfWordTime, row.WordsTouched, row)).ToList();
             if (timing.Attribution.NotAttributedMs is > 0 and var other &&
                 timing.Attribution.NotAttributedShare is { } share)
-                shares.Add(new TimingShare("Not attributed", string.Empty, other, share,
+                shares.Add(new TimingShare(MotifAppStrings.OverviewNotAttributed, string.Empty, other, share,
                     timing.Attribution.MeasuredWordCount, null));
             return shares;
         }
@@ -322,24 +322,20 @@ public sealed partial class OverviewPageModel : PageModel
             {
                 var count = data.ApprovedSameTextDifferentEntryWords.Count;
                 rows.Add(new OverviewLookFirstRow("1",
-                    $"{SpeedText.Count(count, "approved word", "approved words")} " +
-                    (count == 1 ? "is built from a different entry with the same form and gloss." :
-                        "are built from a different entry with the same form and gloss."),
-                    string.Empty, $"See the {SpeedText.Count(count, "word", "words")}",
+                    PluralText.Format(MotifAppStrings.OverviewApprovedDifferentEntryPattern, count),
+                    string.Empty, PluralText.Format(MotifAppStrings.OverviewSeeWordsPattern, count),
                     new RelayCommand(() => OpenCell(WordProjectStatus.Approved, CompareColumnKind.NoMatch))));
             }
             if (data.ApprovedLostWords.Count > 0)
             {
-                var detail = !data.SharedLostMorphemesAvailable ? "Shared morpheme information is unavailable." :
+                var detail = !data.SharedLostMorphemesAvailable ? MotifAppStrings.OverviewSharedMorphemesUnavailable :
                     string.Join(" · ", data.SharedLostMorphemes.Select(morpheme =>
-                    $"{SpeedText.Count(morpheme.WordCount, "word", "words")} use {morpheme.Form}" +
-                    (morpheme.NamedByWarning ? " (named by a grammar warning)" : string.Empty)));
+                    string.Format(CultureInfo.CurrentCulture, MotifAppStrings.OverviewSharedMorphemeUseFormat,
+                        PluralText.Format(MotifAppStrings.OverviewSpeedWordsPattern, morpheme.WordCount), morpheme.Form) +
+                    (morpheme.NamedByWarning ? MotifAppStrings.OverviewSharedMorphemeNamedByWarning : string.Empty)));
                 var approvedLostWordCount = data.ApprovedLostWords.Count;
-                var approvedLostSummary = $"{SpeedText.Count(approvedLostWordCount, "approved word", "approved words")} " +
-                    (approvedLostWordCount == 1 ? "is Lost; the grammar builds nothing for it." :
-                        "are Lost; the grammar builds nothing for them.");
-                var approvedLostLink = approvedLostWordCount == 1 ? "See the word" :
-                    $"See the {SpeedText.Count(approvedLostWordCount, "word", "words")}";
+                var approvedLostSummary = PluralText.Format(MotifAppStrings.OverviewApprovedLostPattern, approvedLostWordCount);
+                var approvedLostLink = PluralText.Format(MotifAppStrings.OverviewSeeLostWordsPattern, approvedLostWordCount);
                 rows.Add(new OverviewLookFirstRow((rows.Count + 1).ToString(CultureInfo.CurrentCulture),
                     approvedLostSummary, detail, approvedLostLink,
                     new RelayCommand(() => OpenCell(WordProjectStatus.Approved, CompareColumnKind.NoParse))));
@@ -357,9 +353,9 @@ public sealed partial class OverviewPageModel : PageModel
             }
             if (data.UnknownDifferentWordCount > 0)
                 rows.Add(new OverviewLookFirstRow((rows.Count + 1).ToString(CultureInfo.CurrentCulture),
-                    $"{SpeedText.Count(data.UnknownDifferentWordCount, "Unknown word", "Unknown words")} differ " +
-                    "from what PanGloss builds.", string.Empty,
-                    $"See the {SpeedText.Count(data.UnknownDifferentWordCount, "word", "words")}",
+                    PluralText.Format(MotifAppStrings.OverviewUnknownDifferentPattern, data.UnknownDifferentWordCount),
+                    string.Empty,
+                    PluralText.Format(MotifAppStrings.OverviewSeeWordsPattern, data.UnknownDifferentWordCount),
                     new RelayCommand(() => OpenCell(WordProjectStatus.Candidate, CompareColumnKind.NoMatch))));
             return rows;
         }
@@ -368,35 +364,39 @@ public sealed partial class OverviewPageModel : PageModel
     public bool HasLookFirstRows => LookFirstRows.Count > 0;
 
     /// <summary>How many Selection words produced a completed parse.</summary>
-    public string TextCoverageMain => !HasAssessment || Overview is not { } overview ? "Not parsed yet" :
-        $"{overview.TextCoverage.ParsedWords:N0} of {overview.SelectionWordCount:N0} words parse";
+    public string TextCoverageMain => !HasAssessment || Overview is not { } overview ? MotifAppStrings.OverviewNotParsedYet :
+        string.Format(CultureInfo.CurrentCulture, MotifAppStrings.OverviewCoverageMainFormat,
+            Number(overview.TextCoverage.ParsedWords), Number(overview.SelectionWordCount));
 
     /// <summary>The parsed share of the Selection's words and of their places in the Texts.</summary>
     public string TextCoverageWords => !HasAssessment || Overview is not { } overview ? string.Empty :
-        $"{FormatPercent(overview.WordCoveragePercent)} of the words in your Selection · " +
-        (overview.TextCoverage.TotalOccurrences == 0
-            ? "No places in the chosen Texts"
-            : $"{FormatPercent(overview.TextCoverage.OccurrenceCoveragePercent)} of their " +
-              $"{overview.TextCoverage.TotalOccurrences:N0} places");
+        string.Format(CultureInfo.CurrentCulture, MotifAppStrings.OverviewCoverageWordsFormat,
+            FormatPercent(overview.WordCoveragePercent),
+            overview.TextCoverage.TotalOccurrences == 0
+                ? MotifAppStrings.OverviewCoverageNoPlaces
+                : string.Format(CultureInfo.CurrentCulture, MotifAppStrings.OverviewCoveragePlacesFormat,
+                    FormatPercent(overview.TextCoverage.OccurrenceCoveragePercent),
+                    Number(overview.TextCoverage.TotalOccurrences)));
 
     /// <summary>The word outcomes that make up the Selection coverage bar.</summary>
     public IReadOnlyList<OutcomeSegment> TextCoverageSegments => !HasAssessment || Overview is not { } overview ? [] :
         NonZeroSegments(
-            Segment(Mark.Same, overview.TextCoverage.SameWords, "same", CompareColumnKind.Match,
-                "Same outcome"),
-            Segment(Mark.Different, overview.TextCoverage.DifferentWords, "different", CompareColumnKind.NoMatch,
-                "Different outcome"),
-            Segment(Mark.NoParse, overview.TextCoverage.NoParseWords, "no parse", CompareColumnKind.NoParse,
-                "No parse"),
-            Segment(Mark.Stopped, overview.TextCoverage.UnknownWords, "stopped", CompareColumnKind.Timeout,
-                "Stopped"),
-            Segment(Mark.ParserRefusal, overview.TextCoverage.SkippedWords, "can't read", CompareColumnKind.NoParse,
+            Segment(Mark.Same, overview.TextCoverage.SameWords, MotifAppStrings.OverviewLabelSame, CompareColumnKind.Match,
+                MotifAppStrings.OverviewOutcomeSame),
+            Segment(Mark.Different, overview.TextCoverage.DifferentWords, MotifAppStrings.OverviewLabelDifferent, CompareColumnKind.NoMatch,
+                MotifAppStrings.OverviewOutcomeDifferent),
+            Segment(Mark.NoParse, overview.TextCoverage.NoParseWords, MotifAppStrings.OverviewLabelNoParse, CompareColumnKind.NoParse,
+                MotifAppStrings.OverviewOutcomeNoParse),
+            Segment(Mark.Stopped, overview.TextCoverage.UnknownWords, MotifAppStrings.OverviewLabelStopped, CompareColumnKind.Timeout,
+                MotifAppStrings.OverviewOutcomeStopped),
+            Segment(Mark.ParserRefusal, overview.TextCoverage.SkippedWords, MotifAppStrings.OverviewLabelCantRead, CompareColumnKind.NoParse,
                 ParserRefusals.Title));
 
     /// <summary>How many approved words the grammar still builds.</summary>
-    public string AccuracyMain => !HasAssessment || Overview is not { } overview ? "Not parsed yet" :
-        overview.Accuracy.ApprovedWordCount == 0 ? "No analyses are approved yet, so there is nothing to rebuild" :
-        $"{overview.Accuracy.ApprovedWordsKept:N0} of {overview.Accuracy.ApprovedWordCount:N0} rebuilt exactly";
+    public string AccuracyMain => !HasAssessment || Overview is not { } overview ? MotifAppStrings.OverviewNotParsedYet :
+        overview.Accuracy.ApprovedWordCount == 0 ? MotifAppStrings.OverviewAccuracyNothingApproved :
+        string.Format(CultureInfo.CurrentCulture, MotifAppStrings.OverviewAccuracyMainFormat,
+            Number(overview.Accuracy.ApprovedWordsKept), Number(overview.Accuracy.ApprovedWordCount));
 
     /// <summary>The recorded outcomes among Approved words that were not rebuilt exactly.</summary>
     public string AccuracyCaption
@@ -409,14 +409,20 @@ public sealed partial class OverviewPageModel : PageModel
             var otherDifferent = Math.Max(0, accuracy.ApprovedWordsNoMatch - identityOnly);
             var parts = new List<string>();
             if (!overview.LookFirst.ApprovedSameTextDifferentEntryAvailable && accuracy.ApprovedWordsNoMatch > 0)
-                parts.Add($"{accuracy.ApprovedWordsNoMatch:N0} built something else; entry comparison unavailable");
+                parts.Add(string.Format(CultureInfo.CurrentCulture,
+                    MotifAppStrings.OverviewAccuracyBuiltElseUnavailableFormat, Number(accuracy.ApprovedWordsNoMatch)));
             else if (identityOnly > 0)
-                parts.Add($"{identityOnly:N0} with the same forms and glosses but a different entry");
+                parts.Add(string.Format(CultureInfo.CurrentCulture,
+                    MotifAppStrings.OverviewAccuracySameFormsFormat, Number(identityOnly)));
             if (overview.LookFirst.ApprovedSameTextDifferentEntryAvailable && otherDifferent > 0)
-                parts.Add($"{otherDifferent:N0} built differently");
-            if (accuracy.ApprovedWordsNoParse > 0) parts.Add($"{accuracy.ApprovedWordsNoParse:N0} Lost");
-            if (accuracy.ApprovedWordsUnknown > 0) parts.Add($"{accuracy.ApprovedWordsUnknown:N0} Stopped");
-            if (accuracy.ApprovedWordsSkipped > 0) parts.Add($"{accuracy.ApprovedWordsSkipped:N0} Not parsed");
+                parts.Add(string.Format(CultureInfo.CurrentCulture,
+                    MotifAppStrings.OverviewAccuracyBuiltDifferentlyFormat, Number(otherDifferent)));
+            if (accuracy.ApprovedWordsNoParse > 0) parts.Add(string.Format(CultureInfo.CurrentCulture,
+                MotifAppStrings.OverviewAccuracyLostFormat, Number(accuracy.ApprovedWordsNoParse)));
+            if (accuracy.ApprovedWordsUnknown > 0) parts.Add(string.Format(CultureInfo.CurrentCulture,
+                MotifAppStrings.OverviewAccuracyStoppedFormat, Number(accuracy.ApprovedWordsUnknown)));
+            if (accuracy.ApprovedWordsSkipped > 0) parts.Add(string.Format(CultureInfo.CurrentCulture,
+                MotifAppStrings.OverviewAccuracyNotParsedFormat, Number(accuracy.ApprovedWordsSkipped)));
             return string.Join(" · ", parts);
         }
     }
@@ -433,12 +439,12 @@ public sealed partial class OverviewPageModel : PageModel
             var accuracy = overview.Accuracy;
             var parts = new List<string>
             {
-                SpeedText.Count(accuracy.RejectedAnalysesRebuilt, "disapproved analysis", "disapproved analyses") +
-                " still built",
+                PluralText.Format(MotifAppStrings.OverviewDisapprovedStillBuiltPattern, accuracy.RejectedAnalysesRebuilt),
             };
             if (accuracy.CandidateWordCount > 0)
-                parts.Add($"PanGloss confirms {accuracy.CandidatesConfirmed:N0} of " +
-                    SpeedText.Count(accuracy.CandidateWordCount, "word", "words") + " marked Unknown");
+                parts.Add(string.Format(CultureInfo.CurrentCulture, MotifAppStrings.OverviewCandidatesConfirmedFormat,
+                    Number(accuracy.CandidatesConfirmed),
+                    PluralText.Format(MotifAppStrings.OverviewSpeedWordsPattern, accuracy.CandidateWordCount)));
             return string.Join(" · ", parts);
         }
     }
@@ -446,16 +452,17 @@ public sealed partial class OverviewPageModel : PageModel
     /// <summary>The approved-word outcomes that make up the Accuracy bar.</summary>
     public IReadOnlyList<OutcomeSegment> AccuracySegments => !HasAssessment || Overview is not { } overview ? [] :
         NonZeroSegments(
-            ApprovedSegment(Mark.Of(MeaningTone.Fine), overview.Accuracy.ApprovedWordsKept, "kept",
-                CompareColumnKind.Match, "Kept"),
+            ApprovedSegment(Mark.Of(MeaningTone.Fine), overview.Accuracy.ApprovedWordsKept,
+                MotifAppStrings.OverviewLabelKept, CompareColumnKind.Match, MotifAppStrings.OverviewOutcomeKept),
             ApprovedSegment(Mark.Of(MeaningTone.Problem), overview.Accuracy.ApprovedWordsNoMatch,
-                "built something else", CompareColumnKind.NoMatch, "Built something else"),
+                MotifAppStrings.OverviewLabelBuiltSomethingElse, CompareColumnKind.NoMatch,
+                MotifAppStrings.OverviewOutcomeBuiltSomethingElse),
             ApprovedSegment(Mark.Of(MeaningTone.Problem), overview.Accuracy.ApprovedWordsNoParse,
-                "lost", CompareColumnKind.NoParse, "Lost"),
+                MotifAppStrings.OverviewLabelLost, CompareColumnKind.NoParse, MotifAppStrings.OverviewOutcomeLost),
             ApprovedSegment(Mark.Of(MeaningTone.Neutral), overview.Accuracy.ApprovedWordsUnknown,
-                "stopped", CompareColumnKind.Timeout, "No result"),
+                MotifAppStrings.OverviewLabelStopped, CompareColumnKind.Timeout, MotifAppStrings.OverviewOutcomeNoResult),
             ApprovedSegment(Mark.Of(MeaningTone.Neutral), overview.Accuracy.ApprovedWordsSkipped,
-                "can't read", CompareColumnKind.NoParse, ParserRefusals.Title));
+                MotifAppStrings.OverviewLabelCantRead, CompareColumnKind.NoParse, ParserRefusals.Title));
 
     /// <summary>Whether the Overview response contains its stored grammar warning summary.</summary>
     public bool HasWarningSummary => Overview?.Warnings is not null;
@@ -465,18 +472,19 @@ public sealed partial class OverviewPageModel : PageModel
 
     /// <summary>The Selection words reached by exact identity from a stored grammar warning.</summary>
     public string WarningsYourWordsText => Overview?.Warnings is not { } warnings ? string.Empty
-        : !HasAssessment ? "Parse to see which of your words they touch"
+        : !HasAssessment ? MotifAppStrings.OverviewWarningsParseToSee
         : warnings.YourWords is null ? string.Empty
         : !warnings.YourWords.IsComplete ? string.Empty
         : warnings.YourWords.Words == 0 &&
           (warnings.YourWords.BySpellingOnly > 0 || warnings.YourWords.ByMembershipOnly > 0)
-            ? "No confirmed word uses; possible matches were found"
-        : warnings.YourWords.Words == 0 ? "None of your words use what a warning names"
-        : $"{warnings.YourWords.Words:N0} of your words use what a warning names";
+            ? MotifAppStrings.OverviewWarningsNoConfirmedUse
+        : warnings.YourWords.Words == 0 ? MotifAppStrings.OverviewWarningsNoWordUse
+        : string.Format(CultureInfo.CurrentCulture, MotifAppStrings.OverviewWarningsWordsUseFormat,
+            Number(warnings.YourWords.Words));
 
     /// <summary>Spelling matches stay visible as candidates, separate from confirmed identity matches.</summary>
     public string WarningsSpellingCandidatesText => Overview?.Warnings?.YourWords is { BySpellingOnly: > 0 } touched
-        ? $"{SpeedText.Count(touched.BySpellingOnly, "spelling-only match", "spelling-only matches")}; not confirmed uses"
+        ? PluralText.Format(MotifAppStrings.OverviewSpellingOnlyMatchesPattern, touched.BySpellingOnly)
         : string.Empty;
 
     /// <summary>The largest warning kinds, with exact identity matches and spelling candidates shown apart.</summary>
@@ -484,35 +492,38 @@ public sealed partial class OverviewPageModel : PageModel
         .Select(row => new OverviewWarningKindRow(row.GroupName ?? row.Code,
             row.Level switch
             {
-                GrammarDiagnosticLevel.Error => SpeedText.Count(row.Count, "error", "errors"),
-                GrammarDiagnosticLevel.Warning => SpeedText.Count(row.Count, "warning", "warnings"),
-                _ => SpeedText.Count(row.Count, "information finding", "information findings"),
+                GrammarDiagnosticLevel.Error => PluralText.Format(MotifAppStrings.OverviewWarningErrorsPattern, row.Count),
+                GrammarDiagnosticLevel.Warning => PluralText.Format(MotifAppStrings.OverviewWarningWarningsPattern, row.Count),
+                _ => PluralText.Format(MotifAppStrings.OverviewWarningInformationPattern, row.Count),
             },
             WarningKindWordText(row),
             row.BySpellingOnly is > 0 and var candidates
-                ? $"{SpeedText.Count(candidates, "spelling-only match", "spelling-only matches")}; not confirmed uses"
+                ? PluralText.Format(MotifAppStrings.OverviewSpellingOnlyMatchesPattern, candidates)
                 : string.Empty))
         .ToArray() ?? [];
 
     private static string WarningKindWordText(GrammarWarningSummary row) =>
         row.YourWords is { } known && row.WordAttributionComplete == true
-            ? SpeedText.Count(known, "word", "words") : string.Empty;
+            ? PluralText.Format(MotifAppStrings.OverviewSpeedWordsPattern, known) : string.Empty;
 
     /// <summary>The reported error, warning, and information totals for the grammar check.</summary>
     public string WarningsCount
     {
         get
         {
-            if (Overview?.Warnings is not { } warnings) return "Not checked yet";
+            if (Overview?.Warnings is not { } warnings) return MotifAppStrings.OverviewWarningsNotCheckedYet;
             var warningCount = warnings.WarningCount;
             if (warningCount is null && warnings.Count == 0) warningCount = 0;
             if (warningCount is null && warnings.Count is { } count && warnings.ErrorCount is { } errors &&
                 warnings.InformationCount is { } information)
                 warningCount = Math.Max(0, count - errors - information);
-            if (warningCount is null) return warnings.Count is not null ? "Warnings" : "Not checked yet";
-            var headline = SpeedText.Count(warningCount.Value, "warning", "warnings");
+            if (warningCount is null) return warnings.Count is not null
+                ? MotifAppStrings.OverviewWarningsHeadlineOnly : MotifAppStrings.OverviewWarningsNotCheckedYet;
+            var headline = PluralText.Format(MotifAppStrings.OverviewWarningWarningsPattern, warningCount.Value);
             return warnings.ErrorCount is > 0 and var errorCount
-                ? $"{headline} · {SpeedText.Count(errorCount, "error", "errors")}" : headline;
+                ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.OverviewWarningsWithErrorsFormat, headline,
+                    PluralText.Format(MotifAppStrings.OverviewWarningErrorsPattern, errorCount))
+                : headline;
         }
     }
 
@@ -538,14 +549,16 @@ public sealed partial class OverviewPageModel : PageModel
         new(mark, count, label)
         {
             Command = new RelayCommand(() => OpenOutcomeColumn(column)),
-            ActionName = $"Open {count:N0} {outcome} words in the Matrix",
+            ActionName = string.Format(CultureInfo.CurrentCulture, MotifAppStrings.OverviewOpenOutcomeWordsFormat,
+                Number(count), outcome),
         };
 
     private OutcomeSegment ApprovedSegment(Mark mark, int count, string label, CompareColumnKind column,
         string meaning) => new(mark, count, label)
     {
         Command = new RelayCommand(() => OpenCell(WordProjectStatus.Approved, column)),
-        ActionName = $"Open {count:N0} Approved {meaning} words in the Matrix",
+        ActionName = string.Format(CultureInfo.CurrentCulture, MotifAppStrings.OverviewOpenApprovedWordsFormat,
+            Number(count), meaning),
     };
 
     private void OpenOutcomeColumn(CompareColumnKind column) => Context.OpenTexts(TextsTab.Matrix,
@@ -555,7 +568,9 @@ public sealed partial class OverviewPageModel : PageModel
         Context.OpenTexts(TextsTab.Matrix, [new TextsListCell(status, column)]);
 
     private static string FormatPercent(double? value) => value is { } percent
-        ? percent.ToString("N0", CultureInfo.CurrentCulture) + "%" : "not recorded";
+        ? percent.ToString("N0", CultureInfo.CurrentCulture) + "%" : MotifAppStrings.OverviewNotRecorded;
+
+    private static string Number(int value) => value.ToString("N0", CultureInfo.CurrentCulture);
 
     protected override void OnProjectCleared()
     {
@@ -600,7 +615,7 @@ public sealed partial class OverviewPageModel : PageModel
         OnPropertyChanged(nameof(LastParseRefusal));
         OnPropertyChanged(nameof(HasLastParseRefusal));
         OverviewRefusal = overview.Succeeded || overview.Refusal is null ? null :
-            WindowRefusal.From(overview.Refusal, "Motif could not read this project's numbers.");
+            WindowRefusal.From(overview.Refusal, MotifAppStrings.OverviewReadRefusalNumbers);
     }
 
     private void OnContextPropertyChanged(object? sender, PropertyChangedEventArgs e)

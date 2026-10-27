@@ -3283,4 +3283,128 @@ public static class MotifAppStrings
     public static string OverviewStoppedWordsRowPattern => Text("MotifApp.OverviewStoppedWordsRowPattern");
 
     public static string OverviewStoppedWordsDetailFormat => Text("MotifApp.OverviewStoppedWordsDetailFormat");
+
+    public static string OverviewApprovedDifferentEntryPattern => Text("MotifApp.OverviewApprovedDifferentEntryPattern");
+
+    public static string OverviewSeeLostWordsPattern => Text("MotifApp.OverviewSeeLostWordsPattern");
+
+    public static string OverviewApprovedLostPattern => Text("MotifApp.OverviewApprovedLostPattern");
+
+    public static string OverviewSharedMorphemeUseFormat => Text("MotifApp.OverviewSharedMorphemeUseFormat");
+
+    public static string OverviewSharedMorphemeNamedByWarning => Text("MotifApp.OverviewSharedMorphemeNamedByWarning");
+
+    public static string OverviewSharedMorphemesUnavailable => Text("MotifApp.OverviewSharedMorphemesUnavailable");
+
+    public static string OverviewSharedMorphemesNone => Text("MotifApp.OverviewSharedMorphemesNone");
+
+    public static string OverviewUnknownDifferentPattern => Text("MotifApp.OverviewUnknownDifferentPattern");
+
+    public static string OverviewLostWordsParseFirst => Text("MotifApp.OverviewLostWordsParseFirst");
+
+    public static string OverviewLostWordsNone => Text("MotifApp.OverviewLostWordsNone");
+
+    public static string OverviewLostWordsSome => Text("MotifApp.OverviewLostWordsSome");
+
+    public static string OverviewNoKnownProjects => Text("MotifApp.OverviewNoKnownProjects");
+
+    public static string OverviewSelectionNotResolved => Text("MotifApp.OverviewSelectionNotResolved");
+
+    public static string OverviewSelectionNotSetUp => Text("MotifApp.OverviewSelectionNotSetUp");
+
+    public static string OverviewNotMeasured => Text("MotifApp.OverviewNotMeasured");
+
+    public static string OverviewNotAttributed => Text("MotifApp.OverviewNotAttributed");
+
+    public static string OverviewNotParsedYet => Text("MotifApp.OverviewNotParsedYet");
+
+    public static string OverviewNotRecorded => Text("MotifApp.OverviewNotRecorded");
+
+    public static string OverviewCoverageMainFormat => Text("MotifApp.OverviewCoverageMainFormat");
+
+    public static string OverviewCoverageWordsFormat => Text("MotifApp.OverviewCoverageWordsFormat");
+
+    public static string OverviewCoverageNoPlaces => Text("MotifApp.OverviewCoverageNoPlaces");
+
+    public static string OverviewCoveragePlacesFormat => Text("MotifApp.OverviewCoveragePlacesFormat");
+
+    public static string OverviewLabelSame => Text("MotifApp.OverviewLabelSame");
+
+    public static string OverviewLabelDifferent => Text("MotifApp.OverviewLabelDifferent");
+
+    public static string OverviewLabelNoParse => Text("MotifApp.OverviewLabelNoParse");
+
+    public static string OverviewLabelStopped => Text("MotifApp.OverviewLabelStopped");
+
+    public static string OverviewLabelCantRead => Text("MotifApp.OverviewLabelCantRead");
+
+    public static string OverviewOutcomeSame => Text("MotifApp.OverviewOutcomeSame");
+
+    public static string OverviewOutcomeDifferent => Text("MotifApp.OverviewOutcomeDifferent");
+
+    public static string OverviewOutcomeNoParse => Text("MotifApp.OverviewOutcomeNoParse");
+
+    public static string OverviewOutcomeStopped => Text("MotifApp.OverviewOutcomeStopped");
+
+    public static string OverviewOpenOutcomeWordsFormat => Text("MotifApp.OverviewOpenOutcomeWordsFormat");
+
+    public static string OverviewOpenApprovedWordsFormat => Text("MotifApp.OverviewOpenApprovedWordsFormat");
+
+    public static string OverviewAccuracyNothingApproved => Text("MotifApp.OverviewAccuracyNothingApproved");
+
+    public static string OverviewAccuracyMainFormat => Text("MotifApp.OverviewAccuracyMainFormat");
+
+    public static string OverviewAccuracyBuiltElseUnavailableFormat => Text("MotifApp.OverviewAccuracyBuiltElseUnavailableFormat");
+
+    public static string OverviewAccuracySameFormsFormat => Text("MotifApp.OverviewAccuracySameFormsFormat");
+
+    public static string OverviewAccuracyBuiltDifferentlyFormat => Text("MotifApp.OverviewAccuracyBuiltDifferentlyFormat");
+
+    public static string OverviewAccuracyLostFormat => Text("MotifApp.OverviewAccuracyLostFormat");
+
+    public static string OverviewAccuracyStoppedFormat => Text("MotifApp.OverviewAccuracyStoppedFormat");
+
+    public static string OverviewAccuracyNotParsedFormat => Text("MotifApp.OverviewAccuracyNotParsedFormat");
+
+    public static string OverviewDisapprovedStillBuiltPattern => Text("MotifApp.OverviewDisapprovedStillBuiltPattern");
+
+    public static string OverviewCandidatesConfirmedFormat => Text("MotifApp.OverviewCandidatesConfirmedFormat");
+
+    public static string OverviewLabelKept => Text("MotifApp.OverviewLabelKept");
+
+    public static string OverviewLabelBuiltSomethingElse => Text("MotifApp.OverviewLabelBuiltSomethingElse");
+
+    public static string OverviewLabelLost => Text("MotifApp.OverviewLabelLost");
+
+    public static string OverviewOutcomeKept => Text("MotifApp.OverviewOutcomeKept");
+
+    public static string OverviewOutcomeBuiltSomethingElse => Text("MotifApp.OverviewOutcomeBuiltSomethingElse");
+
+    public static string OverviewOutcomeLost => Text("MotifApp.OverviewOutcomeLost");
+
+    public static string OverviewOutcomeNoResult => Text("MotifApp.OverviewOutcomeNoResult");
+
+    public static string OverviewWarningsParseToSee => Text("MotifApp.OverviewWarningsParseToSee");
+
+    public static string OverviewWarningsNoConfirmedUse => Text("MotifApp.OverviewWarningsNoConfirmedUse");
+
+    public static string OverviewWarningsNoWordUse => Text("MotifApp.OverviewWarningsNoWordUse");
+
+    public static string OverviewWarningsWordsUseFormat => Text("MotifApp.OverviewWarningsWordsUseFormat");
+
+    public static string OverviewSpellingOnlyMatchesPattern => Text("MotifApp.OverviewSpellingOnlyMatchesPattern");
+
+    public static string OverviewWarningErrorsPattern => Text("MotifApp.OverviewWarningErrorsPattern");
+
+    public static string OverviewWarningWarningsPattern => Text("MotifApp.OverviewWarningWarningsPattern");
+
+    public static string OverviewWarningInformationPattern => Text("MotifApp.OverviewWarningInformationPattern");
+
+    public static string OverviewWarningsNotCheckedYet => Text("MotifApp.OverviewWarningsNotCheckedYet");
+
+    public static string OverviewWarningsHeadlineOnly => Text("MotifApp.OverviewWarningsHeadlineOnly");
+
+    public static string OverviewWarningsWithErrorsFormat => Text("MotifApp.OverviewWarningsWithErrorsFormat");
+
+    public static string OverviewReadRefusalNumbers => Text("MotifApp.OverviewReadRefusalNumbers");
 }

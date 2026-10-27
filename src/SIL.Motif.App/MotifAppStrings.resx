@@ -6541,4 +6541,252 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <value>{0} of {1} total word time</value>
     <comment>Detail line of the Overview Look First stopped-words row. {0} is the time those words took; {1} is the total word time.</comment>
   </data>
+  <data name="MotifApp.OverviewApprovedDifferentEntryPattern" xml:space="preserve">
+    <value>{0, plural, one {# approved word is built from a different entry with the same form and gloss.} other {# approved words are built from a different entry with the same form and gloss.}}</value>
+    <comment>Overview Look First row: approved words built from a different entry with the same form and gloss. # is the count.</comment>
+  </data>
+  <data name="MotifApp.OverviewSeeLostWordsPattern" xml:space="preserve">
+    <value>{0, plural, one {See the word} other {See the # words}}</value>
+    <comment>Link text on the Overview Look First Lost row. # is the count; the single word has no number.</comment>
+  </data>
+  <data name="MotifApp.OverviewApprovedLostPattern" xml:space="preserve">
+    <value>{0, plural, one {# approved word is Lost; the grammar builds nothing for it.} other {# approved words are Lost; the grammar builds nothing for them.}}</value>
+    <comment>Overview Look First row: approved words the grammar builds nothing for. # is the count.</comment>
+  </data>
+  <data name="MotifApp.OverviewSharedMorphemeUseFormat" xml:space="preserve">
+    <value>{0} use {1}</value>
+    <comment>Overview Look First Lost row detail. {0} is the word count sentence; {1} is the shared morpheme form.</comment>
+  </data>
+  <data name="MotifApp.OverviewSharedMorphemeNamedByWarning" xml:space="preserve">
+    <value> (named by a grammar warning)</value>
+    <comment>Appended to a shared morpheme in the Overview Look First Lost row detail when a grammar warning names it.</comment>
+  </data>
+  <data name="MotifApp.OverviewSharedMorphemesUnavailable" xml:space="preserve">
+    <value>Shared morpheme information is unavailable.</value>
+    <comment>Overview note when shared morpheme evidence was not recorded.</comment>
+  </data>
+  <data name="MotifApp.OverviewSharedMorphemesNone" xml:space="preserve">
+    <value>No shared morphemes were recorded.</value>
+    <comment>Overview note when the shared morpheme evidence is recorded and empty.</comment>
+  </data>
+  <data name="MotifApp.OverviewUnknownDifferentPattern" xml:space="preserve">
+    <value>{0, plural, one {# Unknown word differs from what PanGloss builds.} other {# Unknown words differ from what PanGloss builds.}}</value>
+    <comment>Overview Look First row: Unknown words PanGloss builds differently. # is the count.</comment>
+  </data>
+  <data name="MotifApp.OverviewLostWordsParseFirst" xml:space="preserve">
+    <value>Parse your texts to see which approved words are Lost.</value>
+    <comment>Overview Lost words context when nothing has been parsed yet.</comment>
+  </data>
+  <data name="MotifApp.OverviewLostWordsNone" xml:space="preserve">
+    <value>No approved word is Lost in this parse.</value>
+    <comment>Overview Lost words context when no approved word is Lost.</comment>
+  </data>
+  <data name="MotifApp.OverviewLostWordsSome" xml:space="preserve">
+    <value>Approved words the grammar no longer builds.</value>
+    <comment>Overview Lost words context when some approved words are Lost.</comment>
+  </data>
+  <data name="MotifApp.OverviewNoKnownProjects" xml:space="preserve">
+    <value>No recent projects on this computer.</value>
+    <comment>Overview note when the recent project list is empty.</comment>
+  </data>
+  <data name="MotifApp.OverviewSelectionNotResolved" xml:space="preserve">
+    <value>not resolved</value>
+    <comment>Overview Selection count when the Selection could not be resolved.</comment>
+  </data>
+  <data name="MotifApp.OverviewSelectionNotSetUp" xml:space="preserve">
+    <value>not set up</value>
+    <comment>Overview Selection count when no Selection is set up.</comment>
+  </data>
+  <data name="MotifApp.OverviewNotMeasured" xml:space="preserve">
+    <value>Not measured</value>
+    <comment>Overview inventory count that was not measured.</comment>
+  </data>
+  <data name="MotifApp.OverviewNotAttributed" xml:space="preserve">
+    <value>Not attributed</value>
+    <comment>Overview timing share for time no object timer accounts for.</comment>
+  </data>
+  <data name="MotifApp.OverviewNotParsedYet" xml:space="preserve">
+    <value>Not parsed yet</value>
+    <comment>Overview caption before any parse has been stored.</comment>
+  </data>
+  <data name="MotifApp.OverviewNotRecorded" xml:space="preserve">
+    <value>not recorded</value>
+    <comment>Overview percentage that the project did not record.</comment>
+  </data>
+  <data name="MotifApp.OverviewCoverageMainFormat" xml:space="preserve">
+    <value>{0} of {1} words parse</value>
+    <comment>Overview Text Coverage headline. {0} is the parsed word count; {1} is the Selection word count.</comment>
+  </data>
+  <data name="MotifApp.OverviewCoverageWordsFormat" xml:space="preserve">
+    <value>{0} of the words in your Selection · {1}</value>
+    <comment>Overview Text Coverage caption. {0} is the word percentage; {1} is the places sentence.</comment>
+  </data>
+  <data name="MotifApp.OverviewCoverageNoPlaces" xml:space="preserve">
+    <value>No places in the chosen Texts</value>
+    <comment>Overview Text Coverage caption when the chosen Texts have no places.</comment>
+  </data>
+  <data name="MotifApp.OverviewCoveragePlacesFormat" xml:space="preserve">
+    <value>{0} of their {1} places</value>
+    <comment>Overview Text Coverage caption. {0} is the place percentage; {1} is the place count.</comment>
+  </data>
+  <data name="MotifApp.OverviewLabelSame" xml:space="preserve">
+    <value>same</value>
+    <comment>Overview coverage bar key: words with the same outcome.</comment>
+  </data>
+  <data name="MotifApp.OverviewLabelDifferent" xml:space="preserve">
+    <value>different</value>
+    <comment>Overview coverage bar key: words with a different outcome.</comment>
+  </data>
+  <data name="MotifApp.OverviewLabelNoParse" xml:space="preserve">
+    <value>no parse</value>
+    <comment>Overview coverage bar key: words with no parse.</comment>
+  </data>
+  <data name="MotifApp.OverviewLabelStopped" xml:space="preserve">
+    <value>stopped</value>
+    <comment>Overview bar key: words that stopped at a search limit.</comment>
+  </data>
+  <data name="MotifApp.OverviewLabelCantRead" xml:space="preserve">
+    <value>can't read</value>
+    <comment>Overview bar key: words the parser refused to read.</comment>
+  </data>
+  <data name="MotifApp.OverviewOutcomeSame" xml:space="preserve">
+    <value>Same outcome</value>
+    <comment>Overview coverage segment name used in its action name.</comment>
+  </data>
+  <data name="MotifApp.OverviewOutcomeDifferent" xml:space="preserve">
+    <value>Different outcome</value>
+    <comment>Overview coverage segment name used in its action name.</comment>
+  </data>
+  <data name="MotifApp.OverviewOutcomeNoParse" xml:space="preserve">
+    <value>No parse</value>
+    <comment>Overview coverage segment name used in its action name.</comment>
+  </data>
+  <data name="MotifApp.OverviewOutcomeStopped" xml:space="preserve">
+    <value>Stopped</value>
+    <comment>Overview coverage segment name used in its action name.</comment>
+  </data>
+  <data name="MotifApp.OverviewOpenOutcomeWordsFormat" xml:space="preserve">
+    <value>Open {0} {1} words in the Matrix</value>
+    <comment>Action name of an Overview coverage segment. {0} is the word count; {1} is the outcome name.</comment>
+  </data>
+  <data name="MotifApp.OverviewOpenApprovedWordsFormat" xml:space="preserve">
+    <value>Open {0} Approved {1} words in the Matrix</value>
+    <comment>Action name of an Overview accuracy segment. {0} is the word count; {1} is the outcome name.</comment>
+  </data>
+  <data name="MotifApp.OverviewAccuracyNothingApproved" xml:space="preserve">
+    <value>No analyses are approved yet, so there is nothing to rebuild</value>
+    <comment>Overview Accuracy headline when no analysis is approved.</comment>
+  </data>
+  <data name="MotifApp.OverviewAccuracyMainFormat" xml:space="preserve">
+    <value>{0} of {1} rebuilt exactly</value>
+    <comment>Overview Accuracy headline. {0} is the rebuilt count; {1} is the approved count.</comment>
+  </data>
+  <data name="MotifApp.OverviewAccuracyBuiltElseUnavailableFormat" xml:space="preserve">
+    <value>{0} built something else; entry comparison unavailable</value>
+    <comment>Overview Accuracy caption part. {0} is the count.</comment>
+  </data>
+  <data name="MotifApp.OverviewAccuracySameFormsFormat" xml:space="preserve">
+    <value>{0} with the same forms and glosses but a different entry</value>
+    <comment>Overview Accuracy caption part. {0} is the count.</comment>
+  </data>
+  <data name="MotifApp.OverviewAccuracyBuiltDifferentlyFormat" xml:space="preserve">
+    <value>{0} built differently</value>
+    <comment>Overview Accuracy caption part. {0} is the count.</comment>
+  </data>
+  <data name="MotifApp.OverviewAccuracyLostFormat" xml:space="preserve">
+    <value>{0} Lost</value>
+    <comment>Overview Accuracy caption part. {0} is the count of Lost words.</comment>
+  </data>
+  <data name="MotifApp.OverviewAccuracyStoppedFormat" xml:space="preserve">
+    <value>{0} Stopped</value>
+    <comment>Overview Accuracy caption part. {0} is the count of Stopped words.</comment>
+  </data>
+  <data name="MotifApp.OverviewAccuracyNotParsedFormat" xml:space="preserve">
+    <value>{0} Not parsed</value>
+    <comment>Overview Accuracy caption part. {0} is the count of Not parsed words.</comment>
+  </data>
+  <data name="MotifApp.OverviewDisapprovedStillBuiltPattern" xml:space="preserve">
+    <value>{0, plural, one {# disapproved analysis still built} other {# disapproved analyses still built}}</value>
+    <comment>Overview Accuracy breakdown part. # is the count.</comment>
+  </data>
+  <data name="MotifApp.OverviewCandidatesConfirmedFormat" xml:space="preserve">
+    <value>PanGloss confirms {0} of {1} marked Unknown</value>
+    <comment>Overview Accuracy breakdown part. {0} is the confirmed count; {1} is the word count sentence.</comment>
+  </data>
+  <data name="MotifApp.OverviewLabelKept" xml:space="preserve">
+    <value>kept</value>
+    <comment>Overview accuracy bar key: approved words rebuilt exactly.</comment>
+  </data>
+  <data name="MotifApp.OverviewLabelBuiltSomethingElse" xml:space="preserve">
+    <value>built something else</value>
+    <comment>Overview accuracy bar key: approved words that built something else.</comment>
+  </data>
+  <data name="MotifApp.OverviewLabelLost" xml:space="preserve">
+    <value>lost</value>
+    <comment>Overview accuracy bar key: approved words that are Lost.</comment>
+  </data>
+  <data name="MotifApp.OverviewOutcomeKept" xml:space="preserve">
+    <value>Kept</value>
+    <comment>Overview accuracy segment name used in its action name.</comment>
+  </data>
+  <data name="MotifApp.OverviewOutcomeBuiltSomethingElse" xml:space="preserve">
+    <value>Built something else</value>
+    <comment>Overview accuracy segment name used in its action name.</comment>
+  </data>
+  <data name="MotifApp.OverviewOutcomeLost" xml:space="preserve">
+    <value>Lost</value>
+    <comment>Overview accuracy segment name used in its action name.</comment>
+  </data>
+  <data name="MotifApp.OverviewOutcomeNoResult" xml:space="preserve">
+    <value>No result</value>
+    <comment>Overview accuracy segment name used in its action name.</comment>
+  </data>
+  <data name="MotifApp.OverviewWarningsParseToSee" xml:space="preserve">
+    <value>Parse to see which of your words they touch</value>
+    <comment>Overview warnings caption before any parse has been stored.</comment>
+  </data>
+  <data name="MotifApp.OverviewWarningsNoConfirmedUse" xml:space="preserve">
+    <value>No confirmed word uses; possible matches were found</value>
+    <comment>Overview warnings caption when only spelling or membership matches exist.</comment>
+  </data>
+  <data name="MotifApp.OverviewWarningsNoWordUse" xml:space="preserve">
+    <value>None of your words use what a warning names</value>
+    <comment>Overview warnings caption when no word uses what a warning names.</comment>
+  </data>
+  <data name="MotifApp.OverviewWarningsWordsUseFormat" xml:space="preserve">
+    <value>{0} of your words use what a warning names</value>
+    <comment>Overview warnings caption. {0} is the word count.</comment>
+  </data>
+  <data name="MotifApp.OverviewSpellingOnlyMatchesPattern" xml:space="preserve">
+    <value>{0, plural, one {# spelling-only match; not confirmed uses} other {# spelling-only matches; not confirmed uses}}</value>
+    <comment>Overview warnings caption on spelling matches that are not confirmed uses. # is the count.</comment>
+  </data>
+  <data name="MotifApp.OverviewWarningErrorsPattern" xml:space="preserve">
+    <value>{0, plural, one {# error} other {# errors}}</value>
+    <comment>Overview grammar check count of errors. # is the count.</comment>
+  </data>
+  <data name="MotifApp.OverviewWarningWarningsPattern" xml:space="preserve">
+    <value>{0, plural, one {# warning} other {# warnings}}</value>
+    <comment>Overview grammar check count of warnings. # is the count.</comment>
+  </data>
+  <data name="MotifApp.OverviewWarningInformationPattern" xml:space="preserve">
+    <value>{0, plural, one {# information finding} other {# information findings}}</value>
+    <comment>Overview grammar check count of information findings. # is the count.</comment>
+  </data>
+  <data name="MotifApp.OverviewWarningsNotCheckedYet" xml:space="preserve">
+    <value>Not checked yet</value>
+    <comment>Overview grammar check headline before any check.</comment>
+  </data>
+  <data name="MotifApp.OverviewWarningsHeadlineOnly" xml:space="preserve">
+    <value>Warnings</value>
+    <comment>Overview grammar check headline when only a total is known.</comment>
+  </data>
+  <data name="MotifApp.OverviewWarningsWithErrorsFormat" xml:space="preserve">
+    <value>{0} · {1}</value>
+    <comment>Overview grammar check headline. {0} is the warning count; {1} is the error count.</comment>
+  </data>
+  <data name="MotifApp.OverviewReadRefusalNumbers" xml:space="preserve">
+    <value>Motif could not read this project's numbers.</value>
+    <comment>Overview refusal summary when the project numbers cannot be read.</comment>
+  </data>
 </root>

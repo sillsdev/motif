@@ -245,7 +245,7 @@ public sealed partial class TraceWordViewModel : ObservableObject
         var parts = new List<string> { result.Parsed ? MotifAppStrings.TraceParsed : result.InvalidShape ? ParserRefusals.Title : MotifAppStrings.OutcomeNoParse };
         if (result.Guessed) parts.Add(MotifAppStrings.TraceGuessed);
         if (result.ParserSteps is { } steps)
-            parts.Add(PluralText.Format(MotifAppStrings.TraceAnalysisAttemptsPattern, (int)Math.Min(steps, int.MaxValue)));
+            parts.Add(PluralText.Format(MotifAppStrings.TraceAnalysisAttemptsPattern, (int)Math.Clamp(steps, 0L, int.MaxValue)));
         var overall = result.HostCapture?.WallElapsedMs is { } capturedElapsed
             ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.TraceOverallFormat, FormatMs(capturedElapsed))
             : result.ElapsedMs > 0 ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.TraceOverallFormat, FormatMs(result.ElapsedMs))
