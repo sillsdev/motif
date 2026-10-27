@@ -22,6 +22,10 @@ internal static class SettingsTestAccess
         return page;
     }
 
+    /// <summary>The shortcut rows, which exist once the list is open; a named control inside a template is not in the page's scope.</summary>
+    internal static ItemsControl ShortcutList(SettingsPage page) =>
+        page.GetVisualDescendants().OfType<ItemsControl>().Single(list => list.Name == "SettingsShortcutsItems");
+
     internal static SettingsPage Open(MainWindow window)
     {
         var workspace = Assert.IsType<WorkspaceShellViewModel>(window.DataContext);

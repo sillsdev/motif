@@ -47,10 +47,13 @@ public sealed class SettingsShortcutScopeTests
                 var list = Assert.IsType<StackPanel>(inset.Child);
                 var availableWidth = presenter.Bounds.Width - inset.Padding.Left - inset.Padding.Right;
                 Assert.InRange(list.Bounds.Width, availableWidth - 1, availableWidth + 1);
-                var row = page.FindControl<ItemsControl>("SettingsShortcutsItems")!
+                var row = SettingsTestAccess.ShortcutList(page)
                     .GetVisualDescendants().OfType<Border>().First(border =>
                         border.Classes.Contains("settingsShortcutRow"));
-                Assert.InRange(row.Bounds.Width, list.Bounds.Width - 1, list.Bounds.Width + 1);
+                // The rows fill the shortcut expander, which sits inside the page list inset by its own content padding.
+                var expander = Assert.IsType<Expander>(row.FindAncestorOfType<Expander>());
+                Assert.InRange(expander.Bounds.Width, list.Bounds.Width - 1, list.Bounds.Width + 1);
+                Assert.InRange(row.Bounds.Width, expander.Bounds.Width - 40, expander.Bounds.Width);
                 Assert.True(scroll.Extent.Width <= scroll.Viewport.Width + 1);
             }
             finally
@@ -95,7 +98,7 @@ public sealed class SettingsShortcutScopeTests
                 Assert.Single(settings.ShortcutEntries.Select(entry => entry.Keys).Distinct());
                 Assert.Single(settings.ShortcutEntries.Select(entry => entry.Action).Distinct());
                 SettingsPageTests.CaptureSettings(window, $"scope-duplicate-search-{width}-{height}-{zoom}");
-                var list = page.FindControl<ItemsControl>("SettingsShortcutsItems")!;
+                var list = SettingsTestAccess.ShortcutList(page);
                 var rows = list.GetVisualDescendants().OfType<Border>()
                     .Where(row => row.Classes.Contains("settingsShortcutRow")).ToArray();
                 Assert.Equal(4, rows.Length);

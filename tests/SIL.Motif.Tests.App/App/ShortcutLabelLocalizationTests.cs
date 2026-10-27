@@ -94,7 +94,7 @@ public sealed class ShortcutLabelLocalizationTests
                 Assert.Equal("Keyboard Shortcuts", KeyboardShortcutRegistry.Title);
                 Assert.NotEmpty(settings.ShortcutEntries);
                 Assert.All(settings.ShortcutEntries, entry => Assert.Equal("Open the Word Card", entry.Action));
-                var list = page.FindControl<ItemsControl>("SettingsShortcutsItems")!;
+                var list = SettingsTestAccess.ShortcutList(page);
                 var rows = list.GetVisualDescendants().OfType<Border>()
                     .Where(row => row.Classes.Contains("settingsShortcutRow")).ToArray();
                 Assert.Equal(settings.ShortcutEntries.Count, rows.Length);

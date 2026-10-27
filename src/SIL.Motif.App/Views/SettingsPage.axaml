@@ -77,14 +77,21 @@
     <Button Grid.Column="1" Content="×" Classes="settingsClearSearch" Command="{Binding ClearShortcutSearchCommand}" IsVisible="{Binding ShortcutSearchHasText}" AutomationProperties.Name="{x:Static app:MotifAppStrings.ClearShortcutSearchAccessibleName}" />
   </Grid>
   <views:CopyableTextBlock Classes="settingsNoMatch" Text="{Binding NoShortcutMatchesText}" IsVisible="{Binding ShowNoShortcutMatches}" TextWrapping="Wrap" />
-  <ItemsControl x:Name="SettingsShortcutsItems" ItemsSource="{Binding ShortcutEntries}" IsVisible="{Binding ShortcutRegistryAvailable}">
-    <ItemsControl.ItemTemplate><DataTemplate x:DataType="vm:ShortcutEntry">
-      <Border Classes="settingsShortcutRow"><Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}">
-        <views:CopyableTextBlock Text="{Binding ScopedAction}" TextWrapping="Wrap" />
-        <Border Grid.Column="1" Classes="settingsKeyCap"><views:CopyableTextBlock Text="{Binding Keys}" TextWrapping="Wrap" /></Border>
-      </Grid></Border>
-    </DataTemplate></ItemsControl.ItemTemplate>
-  </ItemsControl>
+  <Expander x:Name="SettingsShortcutsExpander" Header="{x:Static app:MotifAppStrings.AllShortcuts}" IsExpanded="{Binding ShortcutListShown, Mode=TwoWay}"
+            IsVisible="{Binding ShortcutRegistryAvailable}">
+    <views:LazyContent>
+      <views:LazyContent.Build><DataTemplate x:DataType="vm:SettingsViewModel">
+        <ItemsControl x:Name="SettingsShortcutsItems" ItemsSource="{Binding ShortcutEntries}">
+          <ItemsControl.ItemTemplate><DataTemplate x:DataType="vm:ShortcutEntry">
+            <Border Classes="settingsShortcutRow"><Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}">
+              <views:CopyableTextBlock Text="{Binding ScopedAction}" TextWrapping="Wrap" />
+              <Border Grid.Column="1" Classes="settingsKeyCap"><views:CopyableTextBlock Text="{Binding Keys}" TextWrapping="Wrap" /></Border>
+            </Grid></Border>
+          </DataTemplate></ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </DataTemplate></views:LazyContent.Build>
+    </views:LazyContent>
+  </Expander>
 </StackPanel>
 <StackPanel x:Name="SettingsParsingSection" Classes="settingsPage">
               <views:CopyableTextBlock Classes="settingsGroupHeading" Text="{Binding GroupParsingLabel}" />

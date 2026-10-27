@@ -1180,6 +1180,11 @@ public sealed class ProgressiveDisplayTests
             if (items.ItemTemplate?.Build(null) is { } row)
                 foreach (var fragment in Fragments(row, depth + 1)) yield return fragment;
         }
+        foreach (var lazy in Controls(root).OfType<LazyContent>())
+        {
+            if ((lazy.Factory?.Invoke() ?? lazy.Build?.Build(null)) is { } built)
+                foreach (var fragment in Fragments(built, depth + 1)) yield return fragment;
+        }
         foreach (var content in Controls(root).OfType<ContentControl>())
         {
             if (content.ContentTemplate?.Build(null) is { } row)

@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.LogicalTree;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 
@@ -18,6 +19,17 @@ internal static class PageViewAccess
     internal static void EnsureAllPageViews(this MainWindow window)
     {
         foreach (var entry in PageRegistry.Entries) window.PageView(entry.Page);
+    }
+
+    /// <summary>Builds every lazily built panel under a control, even those whose tab or expander is closed.</summary>
+    internal static void RealizeLazyContent(this Control root)
+    {
+        for (var more = true; more;)
+        {
+            more = false;
+            foreach (var lazy in root.GetLogicalDescendants().OfType<LazyContent>().Where(lazy => !lazy.IsRealized).ToArray())
+                more |= lazy.Realize() is not null;
+        }
     }
 
     private static WorkspacePage PageOf(Type viewType) => viewType.Name switch

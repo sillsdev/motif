@@ -1448,6 +1448,10 @@
     <value>Shortcuts work when no text box has the cursor.</value>
     <comment>Explanatory sentence in the Settings page: shortcuts work without text focus.</comment>
   </data>
+  <data name="MotifApp.AllShortcuts" xml:space="preserve">
+    <value>All shortcuts</value>
+    <comment>Header of an expander in the Settings page that opens the full list of keyboard shortcuts.</comment>
+  </data>
   <data name="MotifApp.SearchShortcutsAccessibleName" xml:space="preserve">
     <value>Search shortcuts</value>
     <comment>Accessible name read by screen readers for the search shortcuts control in the Settings page.</comment>

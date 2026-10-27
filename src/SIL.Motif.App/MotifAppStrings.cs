@@ -881,6 +881,8 @@ public static class MotifAppStrings
 
     public static string ShortcutsWorkWithoutTextFocusCaption => Text("MotifApp.ShortcutsWorkWithoutTextFocusCaption");
 
+    public static string AllShortcuts => Text("MotifApp.AllShortcuts");
+
     public static string SearchShortcutsAccessibleName => Text("MotifApp.SearchShortcutsAccessibleName");
 
     public static string ClearShortcutSearchAccessibleName => Text("MotifApp.ClearShortcutSearchAccessibleName");

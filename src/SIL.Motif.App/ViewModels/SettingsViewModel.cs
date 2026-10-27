@@ -369,6 +369,10 @@ internal sealed partial class SettingsViewModel : ObservableObject
     }
     public bool IsUsingMotifEstimate => IsUsingEstimate;
 
+    /// <summary>Whether the full shortcut list is open; the rows are built only when it is.</summary>
+    [ObservableProperty]
+    private bool _shortcutListShown;
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShortcutSearchHasText))]
     [NotifyPropertyChangedFor(nameof(NoShortcutMatchesText))]
@@ -446,6 +450,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
 
     partial void OnSelectedGroupChanged(SettingsGroup value)
     {
+        if (value == SettingsGroup.KeyboardShortcuts) ShortcutListShown = true;
         OnPropertyChanged(nameof(IsDisplaySelected));
         OnPropertyChanged(nameof(IsKeyboardShortcutsSelected));
         OnPropertyChanged(nameof(IsParsingSelected));
@@ -491,6 +496,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
 
     partial void OnShortcutSearchChanged(string value)
     {
+        if (ShortcutSearchHasText) ShortcutListShown = true;
         RefreshShortcutList();
         ClearShortcutSearchCommand.NotifyCanExecuteChanged();
         OnPropertyChanged(nameof(ShowNoShortcutMatches));
