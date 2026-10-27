@@ -1199,17 +1199,21 @@ public sealed class MainWindowSmokeTests
 
                 Assert.True(selected.IsCardOpen);
                 var resultsPanel = Assert.Single(window.GetLogicalDescendants().OfType<ResultsInTextPanel>());
-                CheckBox[] SelectionBoxes() => resultsPanel.GetLogicalDescendants().OfType<CheckBox>()
+                CheckBox[] SelectionBoxes() => resultsPanel.GetVisualDescendants().OfType<CheckBox>()
                     .Where(checkBox => checkBox.IsEffectivelyVisible &&
                         (AutomationProperties.GetName(checkBox) ?? string.Empty)
                         .StartsWith("Select ", StringComparison.Ordinal))
                     .ToArray();
                 Assert.Empty(SelectionBoxes());
                 workspace.PageModel<TextsPageModel>().ResultsInText.ChooseWordsCommand.Execute(null);
-                window.UpdateLayout();
-                Assert.Single(SelectionBoxes());
-                var strip = resultsPanel.GetLogicalDescendants().OfType<Border>()
+                PageScreenshots.Settle(window);
+                var strip = resultsPanel.GetVisualDescendants().OfType<SIL.Motif.App.Controls.WordPresentation.WordStripToken>()
                     .Single(control => control.Name == "WordStrip" && ResultsInTextPanel.TokenOf(control)?.Occurrence == selected.Occurrence);
+                Assert.Single(strip.GetVisualDescendants().OfType<Border>(), control =>
+                    control.Classes.Contains("selectionGlyph") && control.IsEffectivelyVisible);
+                strip.FocusWord();
+                PageScreenshots.Settle(window);
+                Assert.Single(SelectionBoxes());
                 Assert.DoesNotContain(resultsPanel.GetLogicalDescendants().OfType<Popup>(), popup => popup.IsOpen);
                 Dispatcher.UIThread.RunJobs();
                 window.UpdateLayout();
