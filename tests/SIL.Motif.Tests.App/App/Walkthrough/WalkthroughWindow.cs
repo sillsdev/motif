@@ -416,9 +416,9 @@ public sealed class WalkthroughWindow : IDisposable
         {
             var stripId = automationId[..automationId.LastIndexOf('-')] + "-strip";
             ScrollIntoView(stripId);
-            Assert.IsType<WordStripToken>(FindByAutomationId(stripId)).FocusWord();
-            Pump();
-            Window.UpdateLayout();
+            // The buttons are on the word that owns the shared overlay, so focus and hover until they appear.
+            WaitUntil(() => FocusedWordShows(stripId, automationId), TimeSpan.FromSeconds(15),
+                $"'{automationId}' never appeared on its focused word", () => DescribeFocusedWord(stripId));
         }
         // A reader line's tokens arrive with its page read, which can outlast one pump under load, so scan again.
         WaitUntil(() => FindOptionalByAutomationId(automationId) is not null || ScanReaderLinesFor(automationId),
@@ -429,6 +429,34 @@ public sealed class WalkthroughWindow : IDisposable
         Pump();
         Window.UpdateLayout();
     }
+
+    private bool FocusedWordShows(string stripId, string automationId)
+    {
+        if (FindOptionalByAutomationId(stripId) is not WordStripToken strip)
+        {
+            ScrollIntoView(stripId);
+            return false;
+        }
+        if (!strip.IsKeyboardFocusWithin)
+        {
+            strip.BringIntoView();
+            strip.FocusWord();
+        }
+        Pump();
+        Window.UpdateLayout();
+        if (FindOptionalByAutomationId(automationId) is not null) return true;
+        // A hovered word takes the shared buttons from the focused one, so hover this word.
+        if (!strip.IsPointerOver && strip.TranslatePoint(new Point(strip.Bounds.Width / 2, strip.Bounds.Height / 2), Window) is { } center)
+        {
+            Window.MouseMove(center);
+            Pump();
+        }
+        return FindOptionalByAutomationId(automationId) is not null;
+    }
+
+    private string DescribeFocusedWord(string stripId) => FindOptionalByAutomationId(stripId) is WordStripToken strip
+        ? $"strip focused={strip.IsKeyboardFocusWithin}, pointerOver={strip.IsPointerOver}, visible={strip.IsEffectivelyVisible}, bounds={strip.Bounds}."
+        : $"strip '{stripId}' is missing.";
 
     private bool ScanReaderLinesFor(string automationId)
     {
