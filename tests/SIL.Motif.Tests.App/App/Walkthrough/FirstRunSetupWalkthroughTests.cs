@@ -309,9 +309,12 @@ public sealed class FirstRunSetupWalkthroughTests(PristineProjectFixture pristin
                 Assert.True(button.IsEffectivelyEnabled);
                 Assert.Same(walkthrough.Workspace.ConfigureCommand, button.Command);
             });
-            // Overview, Texts and Review offer the action in the page; every page offers it in the project card.
+            // Every page offers the action in the project card; outside it Timing offers only its shared parse prompt.
             walkthrough.ShowPage(WorkspacePage.Timing);
-            Assert.Null(walkthrough.Window.FindInWindowOrWorkspace<Button>("ChooseWhatToParseButton"));
+            var outsideCard = Assert.Single(walkthrough.Window.VisibleChooseWhatToParseButtonsOutsideProjectCard());
+            Assert.NotNull(outsideCard.FindAncestorOfType<ParsePrompt>());
+            Assert.NotNull(outsideCard.FindAncestorOfType<TimingPage>());
+            Assert.Same(walkthrough.Workspace.ConfigureCommand, outsideCard.Command);
             var card = ProjectCardAccess.Open(walkthrough.Window);
             var cardAction = card.FindControl<Button>("CardChooseButton");
             Assert.NotNull(cardAction);

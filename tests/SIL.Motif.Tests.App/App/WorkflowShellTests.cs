@@ -593,7 +593,7 @@ public sealed class WorkflowShellTests
                 Assert.True(string.IsNullOrEmpty(window.FindInWindowOrWorkspace<TextBlock>("ProjectChipDetail")!.Text));
                 Assert.True(ButtonNamed(window, "Refresh the project").IsEffectivelyVisible);
                 Assert.False(ButtonNamed(window, "Refresh the project").IsEffectivelyEnabled);
-                Assert.Null(window.FindInWindowOrWorkspace<Control>("ChooseWhatToParseButton"));
+                Assert.Empty(window.VisibleChooseWhatToParseButtonsOutsideProjectCard());
                 Assert.False(workspace.ShowsParseAllWordsAction);
                 Assert.DoesNotContain(window.GetVisualDescendants().OfType<Button>(), button =>
                     button.IsEffectivelyVisible && AutomationProperties.GetName(button) == "See what the refresh changed");

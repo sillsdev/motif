@@ -58,7 +58,7 @@ public sealed class LongProjectTitleTests
                 workspace.CurrentPage = WorkspacePage.Warnings;
                 PageScreenshots.Settle(window);
                 Assert.True(workspace.ShowsChooseWhatToParseAction);
-                Assert.Null(window.FindInWindowOrWorkspace<Button>("ChooseWhatToParseButton"));
+                Assert.Empty(window.VisibleChooseWhatToParseButtonsOutsideProjectCard());
                 var chip = ProjectCardAccess.Chip(window);
                 var refresh = window.FindInWindowOrWorkspace<Button>("RefreshIconButton")!;
                 var nameText = window.FindInWindowOrWorkspace<TextBlock>("ProjectNameLabel")!;

@@ -292,6 +292,7 @@ public sealed partial class WordStripToken : Border
             SetChild(_actions, data.HasPrimaryAction ? Part(ref _actionRow, "ActionRow") : null);
             columns.Add(_actions);
         }
+        else SetChild(_actions, null);
         if (data?.HasStagedChanges == true) columns.Add(Part(ref _stagedChanges, "Staged"));
         Reconcile(_stripContent, columns);
         Park();

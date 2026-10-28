@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.VisualTree;
 using SIL.Motif.App.Controls.WordPresentation;
+using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using Xunit;
 using static SIL.Motif.Tests.App.AnalyzeTextsLayoutTests;
@@ -66,6 +67,49 @@ public sealed class WordStripOverlayTests
                 Assert.Single(strips[1].GetVisualDescendants().OfType<WordDispositionButtons>());
                 Assert.Single(panel.GetVisualDescendants().OfType<WordDispositionButtons>()
                     .Where(buttons => buttons.GetVisualAncestors().OfType<WordStripToken>().Any()));
+            }
+            finally
+            {
+                window.Close();
+            }
+        }, TimeSpan.FromSeconds(60));
+    }
+
+    [Fact]
+    public void AStripThatStopsShowingActionsReleasesTheActionRowAndRestoresItWhenActionsReturn()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, window) = await OpenAnalyzeTexts();
+            try
+            {
+                var inText = workspace.PageModel<TextsPageModel>().ResultsInText;
+                inText.CloseTokenCard();
+                var chakula = RealizedLines(inText)[0].Tokens.Single(token => token.Form == "chakula");
+                var panel = Panel(window);
+                var strip = (WordStripToken)StripOf(panel, "chakula");
+                var actions = strip.FindControl<Border>("StripActions")!;
+                Assert.True(chakula.HasPrimaryAction && chakula.ShowsActions,
+                    "The word must start with a primary action showing.");
+                Assert.NotNull(actions.Child);
+
+                var add = Assert.Single(chakula.Marking.SetChoices, choice => choice.Label == "Add as Approved");
+                await chakula.StageMarkingChoiceForTokenCommand!.ExecuteAsync(chakula.BindMarkingChoice(add));
+                Settle(window);
+
+                Assert.False(chakula.ShowsActions);
+                Assert.Null(actions.Child);
+
+                chakula.SetStagedMarkings([]);
+                Settle(window);
+
+                Assert.True(chakula.ShowsActions && chakula.HasPrimaryAction);
+                strip = (WordStripToken)StripOf(panel, "chakula");
+                actions = strip.FindControl<Border>("StripActions")!;
+                Assert.NotNull(actions.Child);
+                var action = strip.GetVisualDescendants().OfType<Button>().Single(button =>
+                    Avalonia.Automation.AutomationProperties.GetAutomationId(button) == chakula.PrimaryActionAutomationId);
+                Assert.True(action.IsEffectivelyVisible);
             }
             finally
             {

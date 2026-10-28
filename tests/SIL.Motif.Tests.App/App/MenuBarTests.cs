@@ -2,6 +2,7 @@ using System.Text.RegularExpressions;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.LogicalTree;
+using Avalonia.VisualTree;
 using SIL.Motif.App;
 using SIL.Motif.App.Views;
 using Xunit;
@@ -104,7 +105,10 @@ public sealed class MenuBarTests
     {
         OnWindow(window =>
         {
+            // Prove the lookup reaches the top bar before claiming the project flyout button is absent.
+            Assert.NotNull(window.FindInWindowOrWorkspace<Menu>("MainMenu"));
             Assert.Null(window.FindInWindowOrWorkspace<Button>("ProjectMenuButton"));
+            Assert.DoesNotContain(window.GetVisualDescendants().OfType<Button>(), button => button.Name == "ProjectMenuButton");
             var options = window.FindInWindowOrWorkspace<MenuItem>("OptionsMenuItem")!;
             Assert.Same(window.FindInWindowOrWorkspace<MenuItem>("ToolsMenu"), options.Parent);
             Assert.Equal("OpenSettings", options.Tag);
