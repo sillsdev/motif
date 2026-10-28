@@ -185,6 +185,7 @@ public sealed partial class WordStripToken : Border
         AutomationProperties.SetAutomationId(_strip, data.StripAutomationId);
         SyncOptionalControls();
         ApplyOverflowRequests();
+        if (IsKeyboardFocusWithin || IsPointerOver) Overlay.Claim(this);
     }
 
     private void ApplyOverflowRequests()
