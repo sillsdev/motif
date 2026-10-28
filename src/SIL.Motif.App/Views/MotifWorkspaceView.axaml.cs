@@ -48,6 +48,21 @@ public sealed partial class MotifWorkspaceView : UserControl
         };
     }
 
+    /// <summary>Stops the status timer, which the dispatcher would otherwise keep rooted, with this view, after the window closes.</summary>
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        _keyboardStatusTimer.Stop();
+        base.OnDetachedFromVisualTree(e);
+    }
+
+    /// <summary>Restarts the status timer when a message is still showing as the view returns to a window.</summary>
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        if (this.FindControl<TextBlock>("KeyboardShortcutStatusLine") is { IsVisible: true })
+            _keyboardStatusTimer.Start();
+    }
+
     /// <summary>The layout host that places the rail, page and Inspector.</summary>
     internal WorkspaceLayoutHost? Layout => _layoutHost;
 

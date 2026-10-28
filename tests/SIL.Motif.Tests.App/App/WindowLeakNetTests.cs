@@ -1,6 +1,7 @@
 using System.Runtime.CompilerServices;
 using Avalonia.Controls;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using SIL.Motif.App.Views;
 using Xunit;
 
@@ -49,6 +50,23 @@ public sealed class WindowLeakNetTests
         }
 
         Assert.False(reference.IsAlive, "A closed MainWindow is still reachable after a full collection.");
+    });
+
+    [Fact]
+    public void TheKeyboardStatusTimerStopsWhenTheWorkspaceViewLeavesItsWindow() => AvaloniaHeadlessPlatform.Invoke(() =>
+    {
+        var (_, window) = FakeComposedWindow.Create();
+        window.Show();
+        var view = window.GetVisualDescendants().OfType<MotifWorkspaceView>().Single();
+        var timer = (DispatcherTimer)typeof(MotifWorkspaceView)
+            .GetField("_keyboardStatusTimer", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+            .GetValue(view)!;
+
+        view.ShowKeyboardStatus("Copied");
+        Assert.True(timer.IsEnabled);
+        window.Close();
+
+        Assert.False(timer.IsEnabled);
     });
 
     [MethodImpl(MethodImplOptions.NoInlining)]
