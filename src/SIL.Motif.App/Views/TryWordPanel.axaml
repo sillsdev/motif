@@ -9,6 +9,9 @@
              x:Class="SIL.Motif.App.Views.TryWordPanel"
              x:DataType="vm:TryWordPageModel" SizeChanged="OnTryWordSizeChanged" Classes="tryWord"
              controls:WritingSystemText.Resolver="{Binding Trace.TextStyles}">
+  <UserControl.Styles>
+    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/TryWordScoped.axaml" />
+  </UserControl.Styles>
   <Grid RowDefinitions="Auto,*">
       <Border Classes="tryWordInput" Background="{DynamicResource Intent.Clear}">
         <Grid x:Name="TryWordInputGrid" ColumnDefinitions="*,Auto,Auto,Auto" RowSpacing="{DynamicResource Intent.Space.Compact}" ColumnSpacing="{DynamicResource Intent.Space.Compact}">

@@ -8,6 +8,9 @@
              x:Class="SIL.Motif.App.Views.TraceAnalysesView"
              x:DataType="vm:TraceWordViewModel"
              controls:WritingSystemText.Resolver="{Binding TextStyles}">
+  <UserControl.Styles>
+    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/TryWordScoped.axaml" />
+  </UserControl.Styles>
   <!-- A word that parses leads with its analyses, each once, before anything the parser dropped. -->
   <StackPanel Spacing="{DynamicResource Intent.Space.Snug}" IsVisible="{Binding HasAnalyses}"
               AutomationProperties.Name="{x:Static app:MotifAppStrings.AnalysesAccessibleName}">

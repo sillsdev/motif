@@ -7,6 +7,9 @@
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              x:Class="SIL.Motif.App.Views.ReviewInspector"
              x:DataType="vm:ReviewPageModel">
+  <UserControl.Styles>
+    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/ReviewScoped.axaml" />
+  </UserControl.Styles>
   <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
     <StackPanel Classes="reviewRelated">
       <views:RetirementProposalReviewPanel DataContext="{Binding RetirementReview}"

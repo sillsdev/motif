@@ -8,6 +8,9 @@
              x:Class="SIL.Motif.App.Views.SettingsPage"
              x:DataType="vm:SettingsViewModel"
              Classes="settingsPageView" controls:WritingSystemText.Resolver="{Binding WritingSystemTextStyles}">
+  <UserControl.Styles>
+    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/SettingsScoped.axaml" />
+  </UserControl.Styles>
   <Grid RowDefinitions="Auto,*">
     <Border Classes="settingsHeader">
       <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}">

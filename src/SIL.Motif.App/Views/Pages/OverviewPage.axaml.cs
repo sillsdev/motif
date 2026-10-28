@@ -28,6 +28,7 @@ public sealed partial class OverviewPage : UserControl, IWorkspacePaneProvider
             Name = "OverviewLostWordsAction",
             Content = "Open in Matrix",
             Classes = { "primary", "overviewInspectorAction" },
+            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch,
             Command = page.OpenLostWordsCommand,
             DataContext = page,
         };

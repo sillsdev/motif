@@ -1,5 +1,7 @@
+<!-- The Warnings resources, and the styles that controls outside Warnings reach. The rest are in WarningsScoped.axaml. -->
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
   <Styles.Resources>
     <StaticResource x:Key="Component.Warnings.PageMargin" ResourceKey="Intent.Inset.Page" />
     <StaticResource x:Key="Component.Warnings.EmptyMargin" ResourceKey="Intent.Inset.Page" />
@@ -10,93 +12,8 @@
     <StaticResource x:Key="Component.Warnings.WorkflowPadding" ResourceKey="Intent.Inset.Row" />
   </Styles.Resources>
 
-  <Style Selector="Grid.warningPanel">
-    <Setter Property="Margin" Value="{DynamicResource Component.Warnings.PageMargin}" />
-  </Style>
-
   <Style Selector="StackPanel.warningEmpty">
     <Setter Property="Margin" Value="{DynamicResource Component.Warnings.EmptyMargin}" />
   </Style>
 
-  <Style Selector="Border.warningRow">
-    <Setter Property="Background" Value="{DynamicResource Intent.Surface}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
-    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.Box}" />
-    <Setter Property="CornerRadius" Value="{DynamicResource Intent.Radius.Control}" />
-    <Setter Property="Padding" Value="{DynamicResource Component.Warnings.RowPadding}" />
-    <Setter Property="Margin" Value="{DynamicResource Component.Warnings.RowMargin}" />
-  </Style>
-
-  <Style Selector="Button.warningSummary">
-    <Setter Property="HorizontalAlignment" Value="Stretch" />
-    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
-    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.None}" />
-    <Setter Property="Padding" Value="{DynamicResource Component.Warnings.SummaryPadding}" />
-  </Style>
-
-  <Style Selector="Button.warningSummary:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.warningSummary:pressed /template/ ContentPresenter#PART_ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource Intent.Surface.Subtle}" />
-  </Style>
-
-  <Style Selector=":is(TextBlock).warningMessage">
-    <Setter Property="Foreground" Value="{DynamicResource Intent.Text}" />
-    <Setter Property="FontWeight" Value="SemiBold" />
-  </Style>
-
-  <Style Selector=":is(TextBlock).warningState">
-    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
-  </Style>
-
-  <Style Selector=":is(TextBlock).warningRawMessage">
-    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Caption}" />
-  </Style>
-
-  <Style Selector=":is(TextBlock).warningReach">
-    <Setter Property="FontWeight" Value="SemiBold" />
-  </Style>
-
-  <Style Selector="Border.warningDetail">
-    <Setter Property="Padding" Value="{DynamicResource Component.Warnings.DetailPadding}" />
-  </Style>
-
-  <Style Selector="Border.warningWorkflow">
-    <Setter Property="Background" Value="{DynamicResource Intent.Surface.Subtle}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
-    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.Box}" />
-    <Setter Property="CornerRadius" Value="{DynamicResource Intent.Radius.Control}" />
-    <Setter Property="Padding" Value="{DynamicResource Component.Warnings.WorkflowPadding}" />
-  </Style>
-
-  <Style Selector=":is(Control).warningPart">
-    <Setter Property="Margin" Value="{DynamicResource Intent.Gap.CompactItem}" />
-  </Style>
-
-  <Style Selector="HyperlinkButton.warningObjectLink">
-    <Setter Property="Foreground" Value="{DynamicResource Intent.Link}" />
-    <Setter Property="FontWeight" Value="SemiBold" />
-    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />
-    <Setter Property="Margin" Value="{DynamicResource Intent.Gap.CompactItem}" />
-  </Style>
-
-  <Style Selector="HyperlinkButton.warningEntryAction">
-    <Setter Property="Foreground" Value="{DynamicResource Intent.Link}" />
-    <Setter Property="FontWeight" Value="SemiBold" />
-    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />
-    <Setter Property="HorizontalAlignment" Value="Left" />
-  </Style>
-
-  <Style Selector=":is(SelectableTextBlock).warningObject">
-    <Setter Property="Foreground" Value="{DynamicResource Intent.Link}" />
-    <Setter Property="FontWeight" Value="SemiBold" />
-  </Style>
-
-  <Style Selector=":is(SelectableTextBlock).warningMissing">
-    <Setter Property="Foreground" Value="{DynamicResource Intent.Danger.Text}" />
-    <Setter Property="FontWeight" Value="SemiBold" />
-  </Style>
-
-  <Style Selector=":is(SelectableTextBlock).warningValue">
-    <Setter Property="Foreground" Value="{DynamicResource Intent.Success.Text}" />
-  </Style>
 </Styles>

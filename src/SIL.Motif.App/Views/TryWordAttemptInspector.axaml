@@ -9,6 +9,9 @@
              x:DataType="vm:TraceWordViewModel"
              controls:WritingSystemText.Resolver="{Binding TextStyles}"
              views:InspectLink.Trace="{Binding InspectorTrace}">
+  <UserControl.Styles>
+    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/TryWordScoped.axaml" />
+  </UserControl.Styles>
   <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
     <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
       <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.SelectedAttempt}" FontWeight="{DynamicResource Intent.Weight.Section}" />

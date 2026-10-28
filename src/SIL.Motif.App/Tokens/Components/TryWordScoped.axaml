@@ -1,0 +1,132 @@
+<!-- TryWord styles that only its own views use. Those views include this file, so no other control tries these selectors. -->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Style Selector="StackPanel.diagnosticBody">
+    <Setter Property="Margin" Value="{DynamicResource Component.TryWord.PageInset}" />
+  </Style>
+  <Style Selector=":is(UserControl).embedded StackPanel.diagnosticBody">
+    <Setter Property="Margin" Value="{DynamicResource Intent.Inset.None}" />
+  </Style>
+  <Style Selector="Button.stopGroup">
+    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.None}" />
+    <Setter Property="Padding" Value="{DynamicResource Component.TryWord.SmallInset}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Intent.Radius.Control}" />
+  </Style>
+  <Style Selector="Button.stopGroup.chosen">
+    <Setter Property="Background" Value="{DynamicResource Intent.Danger.Fill}" />
+  </Style>
+  <!-- Semi repaints the face under the pointer and on a press, so the chosen group keeps its fill there. -->
+  <Style Selector="Button.stopGroup.chosen:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.stopGroup.chosen:pressed /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource Intent.Danger.Fill}" />
+  </Style>
+  <Style Selector="Button.stopGroup TextBlock.stopReason">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
+    <Setter Property="FontWeight" Value="Normal" />
+  </Style>
+  <Style Selector="Button.recentWord">
+    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.None}" />
+    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Primary}" />
+  </Style>
+  <!-- A row's tip opens above it, over rows already read, never over the rows still to come. -->
+  <Style Selector="Button.ruleRow">
+    <Setter Property="ToolTip.Placement" Value="Top" />
+    <Setter Property="ToolTip.VerticalOffset" Value="0" />
+    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.None}" />
+    <Setter Property="Padding" Value="{DynamicResource Component.TryWord.SmallInset}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Intent.Radius.None}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Text}" />
+  </Style>
+  <Style Selector=":is(TextBlock).stopText">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Warning.Text}" />
+  </Style>
+  <Style Selector=":is(TextBlock).traceNotation">
+    <Setter Property="FontFamily" Value="{DynamicResource Component.TryWord.NotationFont}" />
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
+  </Style>
+  <Style Selector="Button.traceToken">
+    <Setter Property="MinHeight" Value="{DynamicResource Intent.Space.Minimal}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Text}" />
+    <Setter Property="FontWeight" Value="Normal" />
+    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Left" />
+    <Setter Property="FontFamily" Value="{DynamicResource Component.TryWord.NotationFont}" />
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
+  </Style>
+  <Style Selector="Button.traceMode.chosen /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource Intent.Emphasis.Fill}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Emphasis.Text}" />
+  </Style>
+  <Style Selector="Border.traceModeGroup">
+    <Setter Property="Background" Value="{DynamicResource Intent.Surface}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.Box}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Intent.Radius.Control}" />
+    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />
+  </Style>
+  <Style Selector="Button.traceMode">
+    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.None}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Intent.Radius.None}" />
+    <Setter Property="Padding" Value="{DynamicResource Component.TryWord.ToolButtonInset}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Text}" />
+  </Style>
+  <Style Selector="Button.traceMode.chosen:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.traceMode.chosen:pressed /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource Intent.Emphasis.Fill}" />
+  </Style>
+  <Style Selector="ListBox.tryWordList ListBoxItem">
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+  </Style>
+  <!-- Padding rather than a margin, so the scrolled content's own bounds include the inset. -->
+  <Style Selector="Border.tryWordPageInset">
+    <Setter Property="Padding" Value="{DynamicResource Component.TryWord.PageInset}" />
+  </Style>
+  <Style Selector="StackPanel.tryWordPage">
+    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Compact}" />
+  </Style>
+  <Style Selector="Border.tryWordInput">
+    <Setter Property="Padding" Value="{DynamicResource Component.TryWord.PageInset}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.DividerBottom}" />
+  </Style>
+  <Style Selector="Border.tryWordSection, Border.tryWordAttemptRow">
+    <Setter Property="Padding" Value="{DynamicResource Component.TryWord.SmallInset}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.DividerBottom}" />
+  </Style>
+  <Style Selector=":is(UserControl).tryWord Border.card">
+    <Setter Property="Padding" Value="{DynamicResource Component.TryWord.SmallInset}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Intent.Radius.None}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.DividerBottom}" />
+  </Style>
+  <Style Selector="Button.tryWordResultAction">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Body}" />
+    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />
+    <Setter Property="MinHeight" Value="{DynamicResource Component.TryWord.CompactControlHeight}" />
+  </Style>
+  <Style Selector="Expander.tryWordDisclosure">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
+  </Style>
+  <Style Selector="Expander.tryWordDisclosure /template/ ToggleButton">
+    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />
+    <Setter Property="MinHeight" Value="{DynamicResource Component.TryWord.CompactControlHeight}" />
+  </Style>
+  <Style Selector="ListBox#TryWordAttempts ListBoxItem">
+    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />
+  </Style>
+  <Style Selector="ToggleButton.tryWordPathsToggle">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
+    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />
+    <Setter Property="MinHeight" Value="{DynamicResource Component.TryWord.CompactControlHeight}" />
+  </Style>
+  <Style Selector="ToggleButton.tryWordPathsToggle:checked">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Link.Text}" />
+    <Setter Property="Background" Value="{DynamicResource Intent.Primary.Fill}" />
+  </Style>
+
+</Styles>

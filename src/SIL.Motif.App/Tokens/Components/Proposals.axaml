@@ -1,28 +1,10 @@
+<!-- The Proposals resources. Its styles are in ProposalsScoped.axaml, included by the views that use them. -->
 <!-- The Proposals page: a grouped table beside the selected Proposal's details. -->
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
   <Styles.Resources>
     <StaticResource x:Key="Component.Proposals.PageMargin" ResourceKey="Intent.Inset.Page" />
   </Styles.Resources>
 
-  <Style Selector="StackPanel.proposalsPage">
-    <Setter Property="Margin" Value="{DynamicResource Component.Proposals.PageMargin}" />
-    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Section}" />
-  </Style>
-  <Style Selector="StackPanel.proposalTitleRow">
-    <Setter Property="Orientation" Value="Horizontal" />
-    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Related}" />
-  </Style>
-  <Style Selector="StackPanel.proposalsHeading">
-    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Compact}" />
-  </Style>
-  <Style Selector="StackPanel.proposalInspectorActions">
-    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Compact}" />
-  </Style>
-  <Style Selector="WrapPanel.proposalInspectorActions">
-    <Setter Property="ItemSpacing" Value="{DynamicResource Intent.Space.Compact}" />
-  </Style>
-  <Style Selector=":is(TextBlock).proposalNumber.moved">
-    <Setter Property="FontWeight" Value="Bold" />
-  </Style>
 </Styles>

@@ -76,6 +76,7 @@ public sealed class InteractionCueTests(AvaloniaHeadlessFixture avalonia)
         {
             var (content, tile) = Build("overviewTile");
             var window = new MotifTestWindow { Content = content, Width = 400, Height = 300 };
+            ScopedComponentStyles.Include(window, "Overview");
             try
             {
                 window.Show();

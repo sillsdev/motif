@@ -8,6 +8,9 @@
              xmlns:word="clr-namespace:SIL.Motif.App.Controls.WordPresentation"
              x:Class="SIL.Motif.App.Views.GrammarPanel"
              x:DataType="views:GrammarPanel">
+  <UserControl.Styles>
+    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/WarningsScoped.axaml" />
+  </UserControl.Styles>
   <Grid Classes="warningPanel" RowDefinitions="Auto,*" RowSpacing="{DynamicResource Intent.Space.Group}">
     <views:CopyableTextBlock Classes="muted"
                               Text="{x:Static app:MotifAppStrings.GrammarFindingsIntro}"

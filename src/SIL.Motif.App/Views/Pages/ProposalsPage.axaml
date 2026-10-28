@@ -6,6 +6,9 @@
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              x:Class="SIL.Motif.App.Views.ProposalsPage"
              x:DataType="vm:ProposalsPageModel">
+  <UserControl.Styles>
+    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/ProposalsScoped.axaml" />
+  </UserControl.Styles>
   <UserControl.Resources>
     <DataTemplate x:Key="ProposalGroupFilterTemplate" x:DataType="vm:ProposalsPageModel">
       <StackPanel Classes="proposalFilterPane" Spacing="{DynamicResource Intent.Space.Compact}"
@@ -28,6 +31,9 @@
     </DataTemplate>
     <DataTemplate x:Key="ProposalInspectorTemplate" x:DataType="vm:ProposalsPageModel">
       <Border Classes="inspector">
+        <Border.Styles>
+          <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/ProposalsScoped.axaml" />
+        </Border.Styles>
         <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
           <Border Classes="inspectorBodyFrame">
           <StackPanel Spacing="{DynamicResource Intent.Space.Related}">

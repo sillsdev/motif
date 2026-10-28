@@ -1,0 +1,65 @@
+<!-- Timing styles that only its own views use. Those views include this file, so no other control tries these selectors. -->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:views="clr-namespace:SIL.Motif.App.Views">
+  <Style Selector="views|TimingKindBar">
+    <Setter Property="MorphRuleBrush" Value="{DynamicResource Intent.Timing.MorphRule}" />
+    <Setter Property="PhonRuleBrush" Value="{DynamicResource Intent.Timing.PhonRule}" />
+    <Setter Property="LexiconBrush" Value="{DynamicResource Intent.Timing.Lexicon}" />
+    <Setter Property="RootLookupBrush" Value="{DynamicResource Intent.Timing.RootLookup}" />
+    <Setter Property="UnattributedBrush" Value="{DynamicResource Intent.Timing.Unattributed}" />
+  </Style>
+  <Style Selector="Border.timingPage">
+    <Setter Property="Padding" Value="{DynamicResource Component.Timing.PagePadding}" />
+  </Style>
+  <Style Selector="StackPanel.timingHeadline">
+    <Setter Property="Spacing" Value="{DynamicResource Component.Timing.HeadlineGap}" />
+  </Style>
+  <Style Selector=":is(TextBlock).timingHeadlineValue">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Title}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <Style Selector=":is(TextBlock).timingHeadlineCaption">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
+  </Style>
+  <Style Selector="Border.timingTableHeader">
+    <Setter Property="Background" Value="{DynamicResource Intent.Surface.Subtle}" />
+    <Setter Property="Padding" Value="{DynamicResource Component.Timing.HeaderPadding}" />
+  </Style>
+  <Style Selector="Button.timingRuleRow">
+    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.DividerBottom}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Intent.Radius.None}" />
+    <Setter Property="Padding" Value="{DynamicResource Component.Timing.RowPadding}" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+  </Style>
+  <Style Selector="Button.timingGrammarWarning">
+    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.None}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Severity.Warning}" />
+    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Button.timingRuleRow.chosen">
+    <Setter Property="Background" Value="{DynamicResource Intent.Selected.Fill}" />
+  </Style>
+  <!-- Semi repaints the face under the pointer and on a press, so the row's hover fill and divider go there too. -->
+  <Style Selector="Button.timingRuleRow:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.timingRuleRow:pressed /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource Intent.Surface.Hover}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
+  </Style>
+  <!-- After hover, so the chosen rule keeps its own fill under the pointer. -->
+  <Style Selector="Button.timingRuleRow.chosen:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.timingRuleRow.chosen:pressed /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource Intent.Selected.Fill}" />
+  </Style>
+  <Style Selector="Grid.timingColumns">
+    <Setter Property="ColumnSpacing" Value="{DynamicResource Intent.Space.Group}" />
+  </Style>
+  <Style Selector="StackPanel.timingSidePanel.wide">
+    <Setter Property="Width" Value="{DynamicResource Component.Timing.SideWidth}" />
+  </Style>
+
+</Styles>

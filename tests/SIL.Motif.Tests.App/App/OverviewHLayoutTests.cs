@@ -132,6 +132,7 @@ public sealed class OverviewHLayoutTests
             var content = new StackPanel();
             foreach (var bar in bars) content.Children.Add(bar);
             var window = new MotifTestWindow { Width = 400, Height = 300, Content = content };
+            ScopedComponentStyles.Include(window, "Overview");
             try
             {
                 window.Show();

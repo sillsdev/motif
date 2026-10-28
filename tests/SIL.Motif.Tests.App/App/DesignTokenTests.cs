@@ -56,7 +56,7 @@ public sealed class DesignTokenTests
     [Fact]
     public void SetupScrimUsesItsOwnDarkBrushInBothThemes()
     {
-        var setupStyles = File.ReadAllText(Path.Combine(AppDirectory(), "Tokens", "Components", "Setup.axaml"));
+        var setupStyles = File.ReadAllText(Path.Combine(AppDirectory(), "Tokens", "Components", "SetupScoped.axaml"));
         Assert.Contains("{DynamicResource Intent.Scrim}", setupStyles, StringComparison.Ordinal);
 
         _avalonia.Invoke(() =>
@@ -516,8 +516,20 @@ public sealed class DesignTokenTests
     public void EveryComponentFileIsIncludedByTheApplication()
     {
         var app = File.ReadAllText(Path.Combine(AppDirectory(), "App.axaml"));
+        var views = Directory.GetFiles(Path.Combine(AppDirectory(), "Views"), "*.axaml", SearchOption.AllDirectories)
+            .Select(File.ReadAllText).ToList();
         foreach (var file in ComponentFiles())
-            Assert.Contains($"Tokens/Components/{Path.GetFileName(file)}\"", app);
+        {
+            var include = $"Tokens/Components/{Path.GetFileName(file)}\"";
+            if (!file.EndsWith("Scoped.axaml", StringComparison.Ordinal))
+            {
+                Assert.Contains(include, app);
+                continue;
+            }
+            // A *Scoped file holds one page's own styles: the views that use it include it, and the application must not.
+            Assert.DoesNotContain(include, app);
+            Assert.Contains(views, view => view.Contains(include, StringComparison.Ordinal));
+        }
     }
 
     // The outcome, meaning, opinion and timing keys replaced these; an alias would keep two names for one meaning.

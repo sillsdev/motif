@@ -6,6 +6,9 @@
              xmlns:word="clr-namespace:SIL.Motif.App.Controls.WordPresentation"
              x:Class="SIL.Motif.App.Views.TimingPage"
              x:DataType="vm:TimingPageModel">
+  <UserControl.Styles>
+    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/TimingScoped.axaml" />
+  </UserControl.Styles>
   <Grid>
     <ScrollViewer IsVisible="{Binding !Context.NeedsAssessment}">
       <StackPanel Spacing="{DynamicResource Intent.Space.Group}">

@@ -1,0 +1,25 @@
+<!-- Proposals styles that only its own views use. Those views include this file, so no other control tries these selectors. -->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Style Selector="StackPanel.proposalsPage">
+    <Setter Property="Margin" Value="{DynamicResource Component.Proposals.PageMargin}" />
+    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Section}" />
+  </Style>
+  <Style Selector="StackPanel.proposalTitleRow">
+    <Setter Property="Orientation" Value="Horizontal" />
+    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Related}" />
+  </Style>
+  <Style Selector="StackPanel.proposalsHeading">
+    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Compact}" />
+  </Style>
+  <Style Selector="StackPanel.proposalInspectorActions">
+    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Compact}" />
+  </Style>
+  <Style Selector="WrapPanel.proposalInspectorActions">
+    <Setter Property="ItemSpacing" Value="{DynamicResource Intent.Space.Compact}" />
+  </Style>
+  <Style Selector=":is(TextBlock).proposalNumber.moved">
+    <Setter Property="FontWeight" Value="Bold" />
+  </Style>
+
+</Styles>

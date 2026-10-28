@@ -1,6 +1,8 @@
+<!-- The Review resources, and the styles that controls outside Review reach. The rest are in ReviewScoped.axaml. -->
 <!-- Review page spacing, change groups, compact change rows, and type roles use shared intent tokens. -->
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
   <Styles.Resources>
     <StaticResource x:Key="Component.Review.PageMargin" ResourceKey="Intent.Inset.Page" />
     <StaticResource x:Key="Component.Review.FooterActionHeight" ResourceKey="Primitive.Size.22" />
@@ -30,28 +32,8 @@
     <x:String x:Key="Component.Review.TableCompactColumns">* 0 0 0 0 Component.Review.TableCompactFitWidth Component.Review.TableActionsWidth</x:String>
     <x:String x:Key="Component.Review.TableColumns">* Narrow 2* Narrow 2* Narrow Component.Review.TableActionsWidth</x:String>
   </Styles.Resources>
-  <Style Selector="Grid.reviewLayout">
-    <Setter Property="Margin" Value="{DynamicResource Component.Review.PageMargin}" />
-    <Setter Property="ColumnSpacing" Value="{DynamicResource Intent.Space.Group}" />
-  </Style>
-  <Style Selector="StackPanel.reviewStack">
-    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Group}" />
-  </Style>
-  <Style Selector="StackPanel.reviewRelated">
-    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Related}" />
-  </Style>
   <Style Selector="StackPanel.reviewCompact">
     <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Compact}" />
-  </Style>
-  <Style Selector="Border.reviewHeaderGuidance">
-    <Setter Property="Margin" Value="{DynamicResource Component.Review.HeaderGuidanceGap}" />
-  </Style>
-  <Style Selector="StackPanel.reviewPageHeader">
-    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Compact}" />
-    <Setter Property="Margin" Value="{DynamicResource Intent.Inset.None}" />
-  </Style>
-  <Style Selector="StackPanel.reviewFooterDetails">
-    <Setter Property="Margin" Value="{DynamicResource Component.Review.HeaderGuidanceGap}" />
   </Style>
   <Style Selector="Border.reviewActions Button.reviewAction">
     <Setter Property="MinHeight" Value="{DynamicResource Component.Review.FooterActionHeight}" />
@@ -59,105 +41,6 @@
   <Style Selector="Border.reviewActions">
     <Setter Property="Padding" Value="{DynamicResource Component.Review.FooterPadding}" />
     <Setter Property="HorizontalAlignment" Value="Stretch" />
-  </Style>
-  <Style Selector="Border.reviewFooter">
-    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
-    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.DividerTop}" />
-    <Setter Property="Padding" Value="{DynamicResource Component.Review.FooterPadding}" />
-    <Setter Property="HorizontalAlignment" Value="Stretch" />
-  </Style>
-
-  <!-- A group of changes: a titled box; the ones that no longer fit in red, the Uncertain ones in amber. -->
-  <Style Selector="Border.reviewGroup">
-    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
-    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.Box}" />
-    <Setter Property="CornerRadius" Value="{DynamicResource Component.Review.GroupRadius}" />
-    <Setter Property="Margin" Value="{DynamicResource Component.Review.GroupMargin}" />
-    <Setter Property="ClipToBounds" Value="True" />
-  </Style>
-  <Style Selector="Border.reviewGroup.reviewEntry">
-    <Setter Property="Margin" Value="{DynamicResource Component.Review.EntryMargin}" />
-    <Setter Property="BorderThickness" Value="{DynamicResource Component.Review.EntryRule}" />
-    <Setter Property="CornerRadius" Value="{DynamicResource Intent.Radius.None}" />
-  </Style>
-  <Style Selector="Border.reviewGroup.reviewEntry.header">
-    <Setter Property="BorderThickness" Value="{DynamicResource Component.Review.EntryHeaderRule}" />
-    <Setter Property="CornerRadius" Value="{DynamicResource Component.Review.EntryHeaderRadius}" />
-  </Style>
-  <Style Selector="Border.reviewGroup.reviewEntry.last">
-    <Setter Property="Margin" Value="{DynamicResource Component.Review.GroupMargin}" />
-    <Setter Property="BorderThickness" Value="{DynamicResource Component.Review.EntryLastRule}" />
-    <Setter Property="CornerRadius" Value="{DynamicResource Component.Review.EntryLastRadius}" />
-  </Style>
-  <!-- The current entry uses the selected-row fill and accent edge that distinguish the active item. -->
-  <Style Selector="Border.reviewCurrentFrame.current">
-    <Setter Property="Background" Value="{DynamicResource Intent.Selected.Fill}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Accent}" />
-    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.Box}" />
-  </Style>
-  <Style Selector="Border.reviewGrammarRow">
-    <Setter Property="Padding" Value="{DynamicResource Component.Review.RowPadding}" />
-  </Style>
-  <Style Selector="WrapPanel.reviewToolbar">
-    <Setter Property="ItemSpacing" Value="{DynamicResource Intent.Space.Related}" />
-    <Setter Property="LineSpacing" Value="{DynamicResource Intent.Space.Compact}" />
-  </Style>
-  <Style Selector="Border.reviewPrompt">
-    <Setter Property="Background" Value="{DynamicResource Intent.Warning.Fill}" />
-    <Setter Property="Padding" Value="{DynamicResource Component.Review.HeaderPadding}" />
-    <Setter Property="CornerRadius" Value="{DynamicResource Component.Review.GroupRadius}" />
-  </Style>
-  <Style Selector="Border.reviewGroup.noLongerFits">
-    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Danger}" />
-  </Style>
-  <Style Selector="Border.reviewGroup.uncertain">
-    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Warning}" />
-  </Style>
-  <Style Selector="Border.reviewGroupHeader">
-    <Setter Property="Background" Value="{DynamicResource Intent.Surface.Subtle}" />
-    <Setter Property="Padding" Value="{DynamicResource Component.Review.HeaderPadding}" />
-  </Style>
-  <Style Selector="Border.reviewGroup.noLongerFits Border.reviewGroupHeader">
-    <Setter Property="Background" Value="{DynamicResource Intent.Danger.Fill}" />
-  </Style>
-  <Style Selector="Border.reviewGroup.uncertain Border.reviewGroupHeader">
-    <Setter Property="Background" Value="{DynamicResource Intent.Warning.Fill}" />
-  </Style>
-  <Style Selector=":is(TextBlock).reviewGroupTitle">
-    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Small}" />
-    <Setter Property="FontWeight" Value="Bold" />
-  </Style>
-  <Style Selector="Border.reviewGroup.noLongerFits :is(TextBlock).reviewGroupTitle">
-    <Setter Property="Foreground" Value="{DynamicResource Intent.Danger.Text}" />
-  </Style>
-  <Style Selector="Border.reviewGroup.uncertain :is(TextBlock).reviewGroupTitle">
-    <Setter Property="Foreground" Value="{DynamicResource Intent.Warning.Text}" />
-  </Style>
-  <Style Selector=":is(TextBlock).reviewGroupNote">
-    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Small}" />
-  </Style>
-  <Style Selector="Border.reviewGroup.noLongerFits :is(TextBlock).reviewGroupNote">
-    <Setter Property="Foreground" Value="{DynamicResource Intent.Danger.Text}" />
-  </Style>
-  <Style Selector="Border.reviewGroup.uncertain :is(TextBlock).reviewGroupNote">
-    <Setter Property="Foreground" Value="{DynamicResource Intent.Warning.Text}" />
-  </Style>
-  <Style Selector=":is(TextBlock).reviewGap">
-    <Setter Property="Margin" Value="{DynamicResource Component.Review.GapStart}" />
-  </Style>
-  <Style Selector=":is(TextBlock).reviewGapEnd">
-    <Setter Property="Margin" Value="{DynamicResource Component.Review.GapEnd}" />
-  </Style>
-
-  <!-- One change per row: the word and its analysis, the staged note, then the context and the actions. -->
-  <Style Selector="Border.reviewRow">
-    <Setter Property="Padding" Value="{DynamicResource Component.Review.RowPadding}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
-    <Setter Property="BorderThickness" Value="{DynamicResource Component.Review.RowRule}" />
-  </Style>
-  <Style Selector="Grid.reviewRowGrid">
-    <Setter Property="ColumnSpacing" Value="{DynamicResource Intent.Space.Group}" />
-    <Setter Property="RowSpacing" Value="{DynamicResource Intent.Space.Compact}" />
   </Style>
   <Style Selector="Border.reviewAnalysis">
     <Setter Property="Padding" Value="{DynamicResource Component.Review.AnalysisPadding}" />
@@ -171,25 +54,12 @@
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Small}" />
     <Setter Property="FontWeight" Value="SemiBold" />
   </Style>
-  <Style Selector="Border.reviewNote">
-    <Setter Property="Padding" Value="{DynamicResource Component.Review.NotePadding}" />
-    <Setter Property="BorderThickness" Value="{DynamicResource Component.Review.NoteRule}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Change.Action}" />
-    <Setter Property="Background" Value="{DynamicResource Intent.Change.Fill}" />
-  </Style>
   <Style Selector="Border.reviewNote :is(TextBlock)">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Small}" />
     <Setter Property="Foreground" Value="{DynamicResource Intent.Change.Text}" />
   </Style>
-  <Style Selector="Border.reviewNote.uncertain">
-    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Warning.Text}" />
-    <Setter Property="Background" Value="{DynamicResource Intent.Warning.Fill}" />
-  </Style>
   <Style Selector="Border.reviewNote.uncertain :is(TextBlock)">
     <Setter Property="Foreground" Value="{DynamicResource Intent.Warning.Text}" />
-  </Style>
-  <Style Selector="Border.reviewNote :is(TextBlock).reviewNoteTitle">
-    <Setter Property="FontWeight" Value="Bold" />
   </Style>
   <Style Selector="WrapPanel.reviewActions">
     <Setter Property="ItemSpacing" Value="{DynamicResource Intent.Space.Related}" />
@@ -231,44 +101,14 @@
     <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.Box}" />
   </Style>
 
-  <!-- What blocks Apply: the count, then each blocker's sentence above its action. -->
-  <Style Selector=":is(TextBlock).reviewBlockedTitle">
-    <Setter Property="FontWeight" Value="SemiBold" />
-    <Setter Property="Foreground" Value="{DynamicResource Intent.Warning.Text}" />
-  </Style>
-  <Style Selector=":is(TextBlock).reviewBlocker">
-    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Small}" />
-  </Style>
-
   <Style Selector=":is(TextBlock).reviewSmall">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Small}" />
     <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
-  </Style>
-  <Style Selector=":is(TextBlock).reviewEmphasis">
-    <Setter Property="FontWeight" Value="SemiBold" />
   </Style>
   <Style Selector="HyperlinkButton.reviewLink">
     <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Small}" />
     <Setter Property="VerticalAlignment" Value="Center" />
-  </Style>
-  <Style Selector="Border.reviewFitTag">
-    <Setter Property="Padding" Value="{StaticResource Component.Review.PillPadding}" />
-    <Setter Property="BorderThickness" Value="{StaticResource Intent.Stroke.Box}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
-  </Style>
-  <Style Selector="Border.reviewFitTag.fits">
-    <Setter Property="Background" Value="{DynamicResource Intent.Success.Fill}" />
-  </Style>
-  <Style Selector="Border.reviewFitTag.noLongerFits">
-    <Setter Property="Background" Value="{DynamicResource Intent.Danger.Fill}" />
-  </Style>
-  <Style Selector="Border.reviewFitTag.uncertain">
-    <Setter Property="Background" Value="{DynamicResource Intent.Warning.Fill}" />
-  </Style>
-  <Style Selector=":is(TextBlock).reviewFitText">
-    <Setter Property="FontSize" Value="{StaticResource Intent.Type.Label}" />
-    <Setter Property="Foreground" Value="{DynamicResource Intent.Text}" />
   </Style>
   <Style Selector="Border.reviewFitTag.fits :is(TextBlock)">
     <Setter Property="Foreground" Value="{DynamicResource Intent.Success.Text}" />
@@ -279,4 +119,5 @@
   <Style Selector="Border.reviewFitTag.uncertain :is(TextBlock)">
     <Setter Property="Foreground" Value="{DynamicResource Intent.Warning.Text}" />
   </Style>
+
 </Styles>

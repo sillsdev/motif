@@ -8,11 +8,17 @@
              xmlns:contract="clr-namespace:SIL.Motif.Contract.Responses;assembly=SIL.Motif.Contract"
              x:Class="SIL.Motif.App.Views.ParsimonyPage"
              x:DataType="vm:ParsimonyPageModel">
+  <UserControl.Styles>
+    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/ParsimonyScoped.axaml" />
+  </UserControl.Styles>
   <UserControl.Resources>
     <x:String x:Key="SuppressedColumns">2* 1.5* 1.5* 1.2* Component.Parsimony.Column.DecisionsWidth Component.DenseTable.MenuSize</x:String>
     <x:String x:Key="SuppressedCompactColumns">* 0 0 0 Component.Parsimony.Column.DecisionsWidth Component.DenseTable.MenuSize</x:String>
     <DataTemplate x:Key="ParsimonySidePanelTemplate" x:DataType="vm:ParsimonyPageModel">
       <StackPanel Classes="parsimonySidePanel" MaxWidth="{StaticResource Component.Parsimony.SidePanelWidth}">
+        <StackPanel.Styles>
+          <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/ParsimonyScoped.axaml" />
+        </StackPanel.Styles>
         <views:CopyableTextBlock Classes="muted" Text="{Binding UnavailableText}" TextWrapping="Wrap"
                                  IsVisible="{Binding !IsListed}" AutomationProperties.Name="{x:Static app:MotifAppStrings.FindingsNotAvailableAccessibleName}" />
         <StackPanel Classes="parsimonyStack" IsVisible="{Binding IsListed}">
@@ -61,6 +67,9 @@
 
     <DataTemplate x:Key="ParsimonyInspectorTemplate" x:DataType="vm:ParsimonyPageModel">
       <ScrollViewer MaxWidth="{StaticResource Component.Parsimony.InspectorWidth}">
+        <ScrollViewer.Styles>
+          <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/ParsimonyScoped.axaml" />
+        </ScrollViewer.Styles>
         <StackPanel Classes="parsimonyDetailColumn">
           <views:CopyableTextBlock Classes="parsimonyMessage" Text="{Binding SelectionMessage}" TextWrapping="Wrap"
                                    IsVisible="{Binding HasSelectionMessage}" />

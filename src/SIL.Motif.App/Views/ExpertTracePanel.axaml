@@ -6,6 +6,9 @@
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
              x:Class="SIL.Motif.App.Views.ExpertTracePanel"
              x:DataType="vm:TraceWordViewModel">
+  <UserControl.Styles>
+    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/TryWordScoped.axaml" />
+  </UserControl.Styles>
   <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
     <WrapPanel ItemSpacing="{DynamicResource Intent.Space.Related}" LineSpacing="{DynamicResource Intent.Space.Compact}">
       <ComboBox x:Name="ExpertTracePanelExpertAttemptsItems" ItemsSource="{Binding ExpertAttempts}" SelectedItem="{Binding SelectedCandidate, Mode=TwoWay}"

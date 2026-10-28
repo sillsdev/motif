@@ -419,6 +419,7 @@ public sealed class ContrastTests(AvaloniaHeadlessFixture avalonia)
             {
                 var bar = new TimingKindBar();
                 var window = new MotifTestWindow { Content = bar, RequestedThemeVariant = theme, Width = 400, Height = 100 };
+                ScopedComponentStyles.Include(window, "Timing");
                 try
                 {
                     window.Show();

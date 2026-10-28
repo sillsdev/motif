@@ -7,6 +7,9 @@
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              x:Class="SIL.Motif.App.Views.HandoffPanel"
              x:DataType="views:HandoffPanel">
+  <UserControl.Styles>
+    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/HandoffScoped.axaml" />
+  </UserControl.Styles>
   <ScrollViewer>
   <Border Padding="{DynamicResource Component.Handoff.PageMargin}">
   <Grid x:Name="HandoffColumns" ColumnDefinitions="*,*" ColumnSpacing="{DynamicResource Component.Handoff.ColumnGap}"

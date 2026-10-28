@@ -56,6 +56,7 @@ public sealed partial class ComponentStyleTests
             foreach (var item in Cases())
             {
                 var host = new StackPanel();
+                if (item.Component.EndsWith("Scoped", StringComparison.Ordinal)) ScopedComponentStyles.Include(host, item.Component);
                 var window = new MotifTestWindow { Content = host, RequestedThemeVariant = variant, Width = 400, Height = 300 };
                 try
                 {
@@ -415,6 +416,7 @@ public sealed partial class ComponentStyleTests
             {
                 var (content, target) = item.Build();
                 var window = new MotifTestWindow { Content = content, RequestedThemeVariant = variant, Width = 400, Height = 300 };
+                ScopedComponentStyles.IncludeAll(window);
                 try
                 {
                     if (item.Stimulus.HasFlag(StateStimulus.Disabled)) target.IsEnabled = false;
@@ -694,8 +696,8 @@ public sealed partial class ComponentStyleTests
 
         yield return new("Handoff", "a step mark", host => Add(host, Box("stepMark")), Border.BackgroundProperty, "Intent.Emphasis.Fill");
         yield return new("Handoff", "a step mark", host => Add(host, Box("stepMark")), Border.MinWidthProperty, "Component.Handoff.StepMarkSize");
-        yield return new("Handoff", "a file's kind", host => Inside(host, Box("handoffKind")), TextBlock.ForegroundProperty, "Intent.Emphasis.Text");
-        yield return new("Handoff", "a written file", host => Add(host, Box("handoffFile")), Border.BorderThicknessProperty,
+        yield return new("HandoffScoped", "a file's kind", host => Inside(host, Box("handoffKind")), TextBlock.ForegroundProperty, "Intent.Emphasis.Text");
+        yield return new("HandoffScoped", "a written file", host => Add(host, Box("handoffFile")), Border.BorderThicknessProperty,
             "Component.Handoff.FileEdge");
         yield return new("Handoff", "the page header", host => Add(host, Box("handoffHeader")), Border.PaddingProperty,
             "Component.Handoff.HeaderPadding");
@@ -776,53 +778,53 @@ public sealed partial class ComponentStyleTests
         yield return new("TabStrip", "a tab", host => Add(host, Press("tab")), Button.BorderBrushProperty, "Intent.Clear");
         yield return new("TabStrip", "the active tab", host => Add(host, Press("tab", "active")), Button.BorderBrushProperty, "Intent.Accent");
 
-        yield return new("Warnings", "the page", host => Add(host, With(new Grid(), ["warningPanel"])),
+        yield return new("WarningsScoped", "the page", host => Add(host, With(new Grid(), ["warningPanel"])),
             Grid.MarginProperty, "Component.Warnings.PageMargin");
         yield return new("Warnings", "the empty state", host => Add(host, Stack("warningEmpty")),
             StackPanel.MarginProperty, "Component.Warnings.EmptyMargin");
-        yield return new("Warnings", "a finding row", host => Add(host, Box("warningRow")),
+        yield return new("WarningsScoped", "a finding row", host => Add(host, Box("warningRow")),
             Border.BackgroundProperty, "Intent.Surface");
-        yield return new("Warnings", "a finding summary", host => Add(host, Press("warningSummary")),
+        yield return new("WarningsScoped", "a finding summary", host => Add(host, Press("warningSummary")),
             Button.BackgroundProperty, "Intent.Clear");
-        yield return new("Warnings", "a finding's compact part gap", host => Add(host, Text("warningPart")),
+        yield return new("WarningsScoped", "a finding's compact part gap", host => Add(host, Text("warningPart")),
             TextBlock.MarginProperty, "Intent.Gap.CompactItem");
-        yield return new("Warnings", "finding details", host => Add(host, Box("warningDetail")),
+        yield return new("WarningsScoped", "finding details", host => Add(host, Box("warningDetail")),
             Border.PaddingProperty, "Component.Warnings.DetailPadding");
-        yield return new("Proposals", "the page", host => Add(host, Stack("proposalsPage")),
+        yield return new("ProposalsScoped", "the page", host => Add(host, Stack("proposalsPage")),
             StackPanel.MarginProperty, "Component.Proposals.PageMargin");
-        yield return new("Parsimony", "the page", host => Add(host, With(new Grid(), ["parsimonyPanel"])),
+        yield return new("ParsimonyScoped", "the page", host => Add(host, With(new Grid(), ["parsimonyPanel"])),
             Grid.MarginProperty, "Component.Parsimony.PageMargin");
-        yield return new("Parsimony", "the state notice", host => Add(host, Box("parsimonyNotice")),
+        yield return new("ParsimonyScoped", "the state notice", host => Add(host, Box("parsimonyNotice")),
             Border.PaddingProperty, "Component.Parsimony.NoticePadding");
-        yield return new("Parsimony", "a banner", host => Add(host, Box("parsimonyBanner")),
+        yield return new("ParsimonyScoped", "a banner", host => Add(host, Box("parsimonyBanner")),
             Border.BackgroundProperty, "Intent.Surface.Subtle");
-        yield return new("Parsimony", "a measure group", host => Add(host, Stack("parsimonyGroup")),
+        yield return new("ParsimonyScoped", "a measure group", host => Add(host, Stack("parsimonyGroup")),
             StackPanel.MarginProperty, "Component.Parsimony.GroupMargin");
-        yield return new("Parsimony", "a group header", host => Add(host, With(new Grid(), ["parsimonyGroupHeader"])),
+        yield return new("ParsimonyScoped", "a group header", host => Add(host, With(new Grid(), ["parsimonyGroupHeader"])),
             Grid.ColumnSpacingProperty, "Intent.Space.Compact");
-        yield return new("Parsimony", "a finding row's layout", host => Add(host, With(new Grid(), ["parsimonyRowGrid"])),
+        yield return new("ParsimonyScoped", "a finding row's layout", host => Add(host, With(new Grid(), ["parsimonyRowGrid"])),
             Grid.ColumnSpacingProperty, "Intent.Space.Compact");
-        yield return new("Parsimony", "the three row decision actions", host => Add(host, Stack("parsimonyDecisionActions")),
+        yield return new("ParsimonyScoped", "the three row decision actions", host => Add(host, Stack("parsimonyDecisionActions")),
             StackPanel.WidthProperty, "Component.Parsimony.Column.DecisionsWidth");
-        yield return new("Parsimony", "a measure's title", host => Add(host, Text("parsimonyGroupTitle")),
+        yield return new("ParsimonyScoped", "a measure's title", host => Add(host, Text("parsimonyGroupTitle")),
             TextBlock.ForegroundProperty, "Intent.Text");
-        yield return new("Parsimony", "a finding's decision", host => Add(host, Text("parsimonyDisposition")),
+        yield return new("ParsimonyScoped", "a finding's decision", host => Add(host, Text("parsimonyDisposition")),
             TextBlock.ForegroundProperty, "Intent.Link");
-        yield return new("Parsimony", "the evidence", host => Add(host, Box("parsimonyDetail")),
+        yield return new("ParsimonyScoped", "the evidence", host => Add(host, Box("parsimonyDetail")),
             Border.PaddingProperty, "Component.Parsimony.NoticePadding");
-        yield return new("Parsimony", "the detail column", host => Add(host, Stack("parsimonyDetailColumn")),
+        yield return new("ParsimonyScoped", "the detail column", host => Add(host, Stack("parsimonyDetailColumn")),
             StackPanel.MarginProperty, "Intent.Gap.CompactItem");
-        yield return new("Parsimony", "a message", host => Add(host, Text("parsimonyMessage")),
+        yield return new("ParsimonyScoped", "a message", host => Add(host, Text("parsimonyMessage")),
             TextBlock.ForegroundProperty, "Intent.Text");
-        yield return new("Review", "a group of changes", host => Add(host, Box("reviewGroup")),
+        yield return new("ReviewScoped", "a group of changes", host => Add(host, Box("reviewGroup")),
             Border.BorderBrushProperty, "Intent.Border");
-        yield return new("Review", "the no longer fits group", host => Add(host, Box("reviewGroup", "noLongerFits")),
+        yield return new("ReviewScoped", "the no longer fits group", host => Add(host, Box("reviewGroup", "noLongerFits")),
             Border.BorderBrushProperty, "Intent.Danger");
-        yield return new("Review", "the Uncertain group", host => Add(host, Box("reviewGroup", "uncertain")),
+        yield return new("ReviewScoped", "the Uncertain group", host => Add(host, Box("reviewGroup", "uncertain")),
             Border.BorderBrushProperty, "Intent.Warning");
-        yield return new("Review", "a staged note", host => Add(host, Box("reviewNote")),
+        yield return new("ReviewScoped", "a staged note", host => Add(host, Box("reviewNote")),
             Border.BackgroundProperty, "Intent.Change.Fill");
-        yield return new("Review", "an Uncertain note", host => Add(host, Box("reviewNote", "uncertain")),
+        yield return new("ReviewScoped", "an Uncertain note", host => Add(host, Box("reviewNote", "uncertain")),
             Border.BackgroundProperty, "Intent.Warning.Fill");
         yield return new("Review", "a parser analysis", host => Add(host, Box("reviewAnalysis", "parser")),
             Border.BackgroundProperty, "Intent.Selected.Fill");
@@ -832,63 +834,65 @@ public sealed partial class ComponentStyleTests
             Border.BackgroundProperty, "Intent.Warning.Fill");
         yield return new("Review", "a changed sentence word", host => Add(host, Box("reviewSentenceToken", "changed")),
             Border.BorderThicknessProperty, "Intent.Stroke.Box");
-        yield return new("Review", "the current entry edge", host => Add(host, Box("reviewCurrentFrame", "current")),
+        yield return new("ReviewScoped", "the current entry edge", host => Add(host, Box("reviewCurrentFrame", "current")),
             Border.BorderBrushProperty, "Intent.Accent");
         yield return new("TryWord", "a failed diagnostic", host => Add(host, Text("failed")),
             TextBlock.ForegroundProperty, "Intent.Danger.Text");
-        yield return new("Timing", "the page", host => Add(host, Box("timingPage")), Border.PaddingProperty,
+        yield return new("TryWordScoped", "the input edge", host => Add(host, Box("tryWordInput")),
+            Border.PaddingProperty, "Component.TryWord.PageInset");
+        yield return new("TimingScoped", "the page", host => Add(host, Box("timingPage")), Border.PaddingProperty,
             "Component.Timing.PagePadding");
-        yield return new("Timing", "the table header", host => Add(host, Box("timingTableHeader")),
+        yield return new("TimingScoped", "the table header", host => Add(host, Box("timingTableHeader")),
             Border.BackgroundProperty, "Intent.Surface.Subtle");
-        yield return new("Timing", "the chosen rule row", host => Add(host, Press("timingRuleRow", "chosen")),
+        yield return new("TimingScoped", "the chosen rule row", host => Add(host, Press("timingRuleRow", "chosen")),
             Button.BackgroundProperty, "Intent.Selected.Fill");
-        yield return new("Timing", "the table's columns", host => Add(host, With(new Grid(), ["timingColumns"])),
+        yield return new("TimingScoped", "the table's columns", host => Add(host, With(new Grid(), ["timingColumns"])),
             Grid.ColumnSpacingProperty, "Intent.Space.Group");
-        yield return new("Timing", "the kind bar's morphological rules", host => Add(host, new SIL.Motif.App.Views.TimingKindBar()),
+        yield return new("TimingScoped", "the kind bar's morphological rules", host => Add(host, new SIL.Motif.App.Views.TimingKindBar()),
             SIL.Motif.App.Views.TimingKindBar.MorphRuleBrushProperty, "Intent.Timing.MorphRule");
-        yield return new("Timing", "the kind bar's phonological rules", host => Add(host, new SIL.Motif.App.Views.TimingKindBar()),
+        yield return new("TimingScoped", "the kind bar's phonological rules", host => Add(host, new SIL.Motif.App.Views.TimingKindBar()),
             SIL.Motif.App.Views.TimingKindBar.PhonRuleBrushProperty, "Intent.Timing.PhonRule");
-        yield return new("Timing", "the kind bar's lexical entries", host => Add(host, new SIL.Motif.App.Views.TimingKindBar()),
+        yield return new("TimingScoped", "the kind bar's lexical entries", host => Add(host, new SIL.Motif.App.Views.TimingKindBar()),
             SIL.Motif.App.Views.TimingKindBar.LexiconBrushProperty, "Intent.Timing.Lexicon");
-        yield return new("Timing", "the kind bar's root lookup", host => Add(host, new SIL.Motif.App.Views.TimingKindBar()),
+        yield return new("TimingScoped", "the kind bar's root lookup", host => Add(host, new SIL.Motif.App.Views.TimingKindBar()),
             SIL.Motif.App.Views.TimingKindBar.RootLookupBrushProperty, "Intent.Timing.RootLookup");
-        yield return new("Timing", "the kind bar's time no rule accounts for", host => Add(host, new SIL.Motif.App.Views.TimingKindBar()),
+        yield return new("TimingScoped", "the kind bar's time no rule accounts for", host => Add(host, new SIL.Motif.App.Views.TimingKindBar()),
             SIL.Motif.App.Views.TimingKindBar.UnattributedBrushProperty, "Intent.Timing.Unattributed");
-        yield return new("Timing", "a rule row", host => Add(host, Press("timingRuleRow")), Button.PaddingProperty,
+        yield return new("TimingScoped", "a rule row", host => Add(host, Press("timingRuleRow")), Button.PaddingProperty,
             "Component.Timing.RowPadding");
         yield return new("Selection", "a text count", host => Add(host, Text("textCount")),
             TextBlock.MarginProperty, "Component.Selection.CountMargin");
-        yield return new("Setup", "the dialog", host => Add(host, Box("setupDialog")),
+        yield return new("SetupScoped", "the dialog", host => Add(host, Box("setupDialog")),
             Border.MaxWidthProperty, "Component.Setup.DialogWidth");
-        yield return new("Setup", "the dialog edge", host => Add(host, Box("setupDialog")),
+        yield return new("SetupScoped", "the dialog edge", host => Add(host, Box("setupDialog")),
             Border.CornerRadiusProperty, "Component.Setup.DialogRadius");
-        yield return new("Setup", "the dialog inset", host => Add(host, Box("setupDialog")),
+        yield return new("SetupScoped", "the dialog inset", host => Add(host, Box("setupDialog")),
             Border.PaddingProperty, "Component.Setup.DialogPadding");
-        yield return new("Setup", "a Text row", host => Add(host, Box("setupTextRow")),
+        yield return new("SetupScoped", "a Text row", host => Add(host, Box("setupTextRow")),
             Border.PaddingProperty, "Component.Setup.TextRowPadding");
-        yield return new("Setup", "the primary action", host => Add(host, Press("setupPrimary")),
+        yield return new("SetupScoped", "the primary action", host => Add(host, Press("setupPrimary")),
             Button.PaddingProperty, "Component.Setup.TextRowPadding");
-        yield return new("Overview", "the header", host => Add(host, Box("overviewHeader")),
+        yield return new("OverviewScoped", "the header", host => Add(host, Box("overviewHeader")),
             Border.PaddingProperty, "Component.Overview.HeaderPadding");
-        yield return new("Overview", "a summary tile", host => Add(host, Press("overviewTile")),
+        yield return new("OverviewScoped", "a summary tile", host => Add(host, Press("overviewTile")),
             Button.BackgroundProperty, "Intent.Surface");
-        yield return new("Overview", "a summary tile", host => Add(host, Press("overviewTile")),
+        yield return new("OverviewScoped", "a summary tile", host => Add(host, Press("overviewTile")),
             Button.PaddingProperty, "Component.Overview.TilePadding");
-        yield return new("Overview", "the Look first row", host => Add(host, Press("overviewLookFirstRow")),
+        yield return new("OverviewScoped", "the Look first row", host => Add(host, Press("overviewLookFirstRow")),
             Button.PaddingProperty, "Intent.Inset.None");
-        yield return new("Overview", "the Look first row", host => Add(host, Press("overviewLookFirstRow")),
+        yield return new("OverviewScoped", "the Look first row", host => Add(host, Press("overviewLookFirstRow")),
             Button.BackgroundProperty, "Intent.Surface");
-        yield return new("Overview", "the Look first action", host => Add(host, Text("overviewLookFirstAction")),
+        yield return new("OverviewScoped", "the Look first action", host => Add(host, Text("overviewLookFirstAction")),
             TextBlock.ForegroundProperty, "Intent.Link");
-        yield return new("Overview", "the Look first action", host => Add(host, Text("overviewLookFirstAction")),
+        yield return new("OverviewScoped", "the Look first action", host => Add(host, Text("overviewLookFirstAction")),
             TextBlock.FontSizeProperty, "Intent.Type.Small");
-        yield return new("Overview", "a framed tile", host => Add(host, Box("overviewTile")),
+        yield return new("OverviewScoped", "a framed tile", host => Add(host, Box("overviewTile")),
             Border.BackgroundProperty, "Intent.Surface");
-        yield return new("Overview", "a framed tile", host => Add(host, Box("overviewTile")),
+        yield return new("OverviewScoped", "a framed tile", host => Add(host, Box("overviewTile")),
             Border.PaddingProperty, "Component.Overview.TilePadding");
-        yield return new("Overview", "a table summary", host => Add(host, Text("overviewTileValue")),
+        yield return new("OverviewScoped", "a table summary", host => Add(host, Text("overviewTileValue")),
             TextBlock.FontSizeProperty, "Intent.Type.Body");
-        yield return new("Overview", "a handoff icon", host => Add(host,
+        yield return new("OverviewScoped", "a handoff icon", host => Add(host,
                 new PathIcon { Classes = { "overviewHandoffIcon" } }),
             Control.WidthProperty, "Component.Overview.HandoffIconSize");
 
@@ -1196,11 +1200,11 @@ public sealed partial class ComponentStyleTests
             Button.ForegroundProperty, "Intent.Marking.Link");
         yield return new("HoverReveal", "the FieldWorks link padding", host => Add(host, Press("revealControl", "revealLink")),
             Button.PaddingProperty, "Intent.Inset.None");
-        yield return new("Settings", "the popup corner radius", host => Add(host, Box("settingsSurface")),
+        yield return new("SettingsScoped", "the popup corner radius", host => Add(host, Box("settingsSurface")),
             Border.CornerRadiusProperty, "Component.Settings.Radius");
         yield return new("Settings", "the gear width", host => Add(host, Press("settingsGear")),
             Button.WidthProperty, "Component.Menu.ButtonHeight");
-        yield return new("Settings", "a shortcut key cap radius", host => Add(host, Box("settingsKeyCap")),
+        yield return new("SettingsScoped", "a shortcut key cap radius", host => Add(host, Box("settingsKeyCap")),
             Border.CornerRadiusProperty, "Component.Settings.KeyRadius");
     }
 

@@ -10,6 +10,9 @@
              x:DataType="vm:TraceWordViewModel"
              SizeChanged="OnPanelSizeChanged"
              controls:WritingSystemText.Resolver="{Binding TextStyles}">
+  <UserControl.Styles>
+    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/TryWordScoped.axaml" />
+  </UserControl.Styles>
   <Border>
     <StackPanel Classes="diagnosticBody" Spacing="{DynamicResource Intent.Space.Group}">
       <!-- The answer first: did it parse, then how hard the parser worked. Tools sit behind one menu. -->

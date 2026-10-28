@@ -7,6 +7,9 @@
              x:Class="SIL.Motif.App.Views.WarningsInspectorPanel"
              IsVisible="{Binding Grammar.ShowFindings}"
              x:DataType="views:WarningsInspectorPanel">
+  <UserControl.Styles>
+    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/WarningsScoped.axaml" />
+  </UserControl.Styles>
   <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
                 IsVisible="{Binding Grammar.ShowFindings}">
     <StackPanel Classes="warningInspector" Spacing="{DynamicResource Intent.Space.Related}"

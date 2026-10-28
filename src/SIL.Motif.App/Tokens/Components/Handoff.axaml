@@ -1,9 +1,11 @@
+<!-- The Handoff resources, and the styles that controls outside Handoff reach. The rest are in HandoffScoped.axaml. -->
 <!--
   The AI Handoff page: what goes in, the files written, and the steps to a chat.
   Colours come from Intent keys only; sizes and gaps from Intent keys or this file's own Component keys.
 -->
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
   <Styles.Resources>
     <StaticResource x:Key="Component.Handoff.HeaderPadding" ResourceKey="Intent.Inset.Panel" />
     <StaticResource x:Key="Component.Handoff.PageMargin" ResourceKey="Intent.Inset.Page" />
@@ -38,20 +40,6 @@
     <Setter Property="Padding" Value="{DynamicResource Component.Handoff.HeaderPadding}" />
   </Style>
 
-  <!-- A written file: a row under a hairline, led by a solid mark naming its kind. -->
-  <Style Selector="Border.handoffFile">
-    <Setter Property="Padding" Value="{DynamicResource Component.Handoff.FilePadding}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
-    <Setter Property="BorderThickness" Value="{DynamicResource Component.Handoff.FileEdge}" />
-    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
-  </Style>
-  <Style Selector="Border.handoffKind">
-    <Setter Property="Background" Value="{DynamicResource Intent.Emphasis.Fill}" />
-    <Setter Property="CornerRadius" Value="{DynamicResource Intent.Radius.Control}" />
-    <Setter Property="MinWidth" Value="{DynamicResource Component.Handoff.KindMinWidth}" />
-    <Setter Property="Padding" Value="{DynamicResource Component.Handoff.KindPadding}" />
-    <Setter Property="VerticalAlignment" Value="Center" />
-  </Style>
   <Style Selector="Border.handoffKind :is(TextBlock)">
     <Setter Property="Foreground" Value="{DynamicResource Intent.Emphasis.Text}" />
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
@@ -59,14 +47,6 @@
     <Setter Property="HorizontalAlignment" Value="Center" />
   </Style>
 
-  <!-- A suggested question reads as a link: one click copies it for the chat. -->
-  <Style Selector="Button.handoffQuestion">
-    <Setter Property="ToolTip.Placement" Value="Top" />
-    <Setter Property="ToolTip.VerticalOffset" Value="0" />
-    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
-    <Setter Property="Padding" Value="{DynamicResource Component.Handoff.QuestionInset}" />
-    <Setter Property="Margin" Value="{DynamicResource Component.Handoff.QuestionInset}" />
-  </Style>
   <Style Selector="Button.handoffQuestion TextBlock">
     <Setter Property="Foreground" Value="{DynamicResource Intent.Link}" />
   </Style>
@@ -85,4 +65,5 @@
     <Setter Property="HorizontalAlignment" Value="Center" />
     <Setter Property="VerticalAlignment" Value="Center" />
   </Style>
+
 </Styles>

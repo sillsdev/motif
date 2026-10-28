@@ -1,0 +1,100 @@
+<!-- Parsimony styles that only its own views use. Those views include this file, so no other control tries these selectors. -->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Style Selector="Grid.parsimonyPanel">
+    <Setter Property="Margin" Value="{StaticResource Component.Parsimony.PageMargin}" />
+  </Style>
+
+  <Style Selector="Border.parsimonyNotice">
+    <Setter Property="Padding" Value="{StaticResource Component.Parsimony.NoticePadding}" />
+  </Style>
+
+  <Style Selector=":is(TextBlock).parsimonyMessage">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Text}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+
+  <Style Selector="Border.parsimonyBanner">
+    <Setter Property="Background" Value="{DynamicResource Intent.Surface.Subtle}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
+    <Setter Property="BorderThickness" Value="{StaticResource Intent.Stroke.Box}" />
+    <Setter Property="CornerRadius" Value="{StaticResource Intent.Radius.Control}" />
+    <Setter Property="Padding" Value="{StaticResource Component.Parsimony.BannerPadding}" />
+  </Style>
+
+  <Style Selector="StackPanel.parsimonyGroup">
+    <Setter Property="Margin" Value="{StaticResource Component.Parsimony.GroupMargin}" />
+    <Setter Property="Spacing" Value="{StaticResource Intent.Space.Minimal}" />
+  </Style>
+
+  <Style Selector="Grid.parsimonyGroupHeader">
+    <Setter Property="ColumnSpacing" Value="{StaticResource Intent.Space.Compact}" />
+  </Style>
+
+  <Style Selector="Grid.parsimonyRowGrid">
+    <Setter Property="ColumnSpacing" Value="{StaticResource Intent.Space.Compact}" />
+  </Style>
+
+  <Style Selector="StackPanel.parsimonyDecisionActions">
+    <Setter Property="Width" Value="{StaticResource Component.Parsimony.Column.DecisionsWidth}" />
+  </Style>
+
+  <Style Selector=":is(TextBlock).parsimonyGroupTitle">
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Text}" />
+  </Style>
+
+  <Style Selector=":is(TextBlock).parsimonyRowItems">
+    <Setter Property="MaxLines" Value="2" />
+    <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+  </Style>
+
+  <Style Selector=":is(TextBlock).parsimonyDisposition">
+    <Setter Property="FontSize" Value="{StaticResource Intent.Type.Label}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Link}" />
+  </Style>
+
+  <Style Selector="Border.parsimonyDetail">
+    <Setter Property="Padding" Value="{StaticResource Component.Parsimony.NoticePadding}" />
+  </Style>
+
+  <Style Selector="StackPanel.parsimonyStack">
+    <Setter Property="Spacing" Value="{StaticResource Intent.Space.Minimal}" />
+  </Style>
+
+  <Style Selector="StackPanel.parsimonyTabs">
+    <Setter Property="Spacing" Value="{StaticResource Intent.Space.Minimal}" />
+    <Setter Property="Margin" Value="{StaticResource Component.Parsimony.GroupMargin}" />
+  </Style>
+
+  <Style Selector="StackPanel.parsimonySidePanel">
+    <Setter Property="Margin" Value="{StaticResource Intent.Gap.CompactItem}" />
+    <Setter Property="Spacing" Value="{StaticResource Intent.Space.Minimal}" />
+  </Style>
+
+  <Style Selector="WrapPanel.parsimonyFilters">
+    <Setter Property="ItemSpacing" Value="{StaticResource Intent.Space.Minimal}" />
+    <Setter Property="LineSpacing" Value="{StaticResource Intent.Space.Minimal}" />
+  </Style>
+
+  <Style Selector="Button.parsimonyTab">
+    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
+    <Setter Property="BorderThickness" Value="{StaticResource Intent.Stroke.None}" />
+  </Style>
+
+  <Style Selector="Button.parsimonyTab.selected">
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Background" Value="{DynamicResource Intent.Surface.Subtle}" />
+  </Style>
+
+  <Style Selector="StackPanel.parsimonyDecisionRow">
+    <Setter Property="Spacing" Value="{StaticResource Intent.Space.Compact}" />
+  </Style>
+
+  <Style Selector="StackPanel.parsimonyDetailColumn">
+    <Setter Property="Margin" Value="{StaticResource Intent.Gap.CompactItem}" />
+    <Setter Property="Spacing" Value="{StaticResource Intent.Space.Minimal}" />
+  </Style>
+
+</Styles>

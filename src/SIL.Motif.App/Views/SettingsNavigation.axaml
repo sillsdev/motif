@@ -8,6 +8,9 @@
              x:Class="SIL.Motif.App.Views.SettingsNavigation"
              x:DataType="vm:SettingsViewModel"
              controls:WritingSystemText.Resolver="{Binding WritingSystemTextStyles}">
+  <UserControl.Styles>
+    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/SettingsScoped.axaml" />
+  </UserControl.Styles>
   <ListBox x:Name="SettingsGroups" Classes="settingsRailList" ItemsSource="{Binding PageGroupOptions}"
                    Focusable="True" IsTabStop="True"
                    SelectedItem="{Binding SelectedNavigationEntry, Mode=TwoWay}"

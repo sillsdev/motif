@@ -7,9 +7,15 @@
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              x:Class="SIL.Motif.App.Views.ReviewPanel"
              x:DataType="vm:ReviewPageModel">
+  <UserControl.Styles>
+    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/ReviewScoped.axaml" />
+  </UserControl.Styles>
   <UserControl.Resources>
     <DataTemplate x:Key="ApplyFooterTemplate" x:DataType="vm:ReviewPageModel">
       <Border Classes="reviewFooter" IsVisible="{Binding ShowsSideCards}">
+        <Border.Styles>
+          <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/ReviewScoped.axaml" />
+        </Border.Styles>
     <StackPanel Classes="reviewRelated reviewFooterDetails">
       <views:CopyableTextBlock x:Name="ApplyFullReason" Classes="reviewBlockedTitle" Text="{Binding ApplyDisabledReason}"
                                IsVisible="{Binding !CanApply}" TextWrapping="Wrap"
@@ -63,6 +69,7 @@
     <DataTemplate x:Key="ApplyActionsTemplate" x:DataType="vm:ReviewPageModel">
       <Border Classes="reviewActions" IsVisible="{Binding ShowsSideCards}">
         <Border.Styles>
+          <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/ReviewScoped.axaml" />
           <Style Selector="Button.measureAction">
             <Setter Property="AutomationProperties.AutomationId" Value="{x:Static app:AutomationIds.MeasureChanges}" />
           </Style>
@@ -106,6 +113,9 @@
     </DataTemplate>
     <DataTemplate x:Key="ReviewNavigatorTemplate" x:DataType="vm:ReviewPageModel">
       <StackPanel Classes="reviewRelated">
+        <StackPanel.Styles>
+          <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/ReviewScoped.axaml" />
+        </StackPanel.Styles>
         <views:CopyableTextBlock Classes="reviewEmphasis" Text="{Binding LookedAtText}" TextWrapping="Wrap"
                                  AutomationProperties.AutomationId="{x:Static app:AutomationIds.ReviewLookedAt}" />
         <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.Show}" Classes="muted" />

@@ -9,6 +9,9 @@
              x:Class="SIL.Motif.App.Views.OverviewInspector"
              x:DataType="vm:OverviewPageModel"
              controls:WritingSystemText.Resolver="{Binding Context.TextStyles}">
+  <UserControl.Styles>
+    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/OverviewScoped.axaml" />
+  </UserControl.Styles>
   <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
     <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.LostWords}" FontWeight="{DynamicResource Intent.Weight.Section}" />
     <views:CopyableTextBlock Text="{Binding LostWordsContextText}" TextWrapping="Wrap" />
