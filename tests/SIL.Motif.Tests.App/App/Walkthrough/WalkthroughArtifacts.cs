@@ -883,21 +883,32 @@ internal static class WalkthroughArtifacts
             Math.Max(expected.Width, actual.Width), Math.Max(expected.Height, actual.Height),
             SKColorType.Rgba8888, SKAlphaType.Unpremul);
         diff.Erase(new SKColor(0, 0, 0, 0));
+        using var expectedRgba = expected.Copy(SKColorType.Rgba8888) ??
+            throw new InvalidOperationException("The walkthrough baseline could not be read as RGBA.");
+        using var actualRgba = actual.Copy(SKColorType.Rgba8888) ??
+            throw new InvalidOperationException("The walkthrough capture could not be read as RGBA.");
+        var expectedPixels = expectedRgba.GetPixelSpan();
+        var actualPixels = actualRgba.GetPixelSpan();
+        var diffPixels = diff.GetPixelSpan();
         for (var y = 0; y < diff.Height; y++)
         for (var x = 0; x < diff.Width; x++)
         {
-            var outsideExpected = x >= expected.Width || y >= expected.Height;
-            var outsideActual = x >= actual.Width || y >= actual.Height;
-            var differs = outsideExpected || outsideActual;
+            var differs = x >= expected.Width || y >= expected.Height || x >= actual.Width || y >= actual.Height;
             if (!differs)
             {
-                var before = expected.GetPixel(x, y);
-                var after = actual.GetPixel(x, y);
-                differs = Math.Abs(before.Red - after.Red) > ChannelTolerance ||
-                    Math.Abs(before.Green - after.Green) > ChannelTolerance ||
-                    Math.Abs(before.Blue - after.Blue) > ChannelTolerance || before.Alpha != after.Alpha;
+                var before = y * expectedRgba.RowBytes + x * 4;
+                var after = y * actualRgba.RowBytes + x * 4;
+                differs = Math.Abs(expectedPixels[before] - actualPixels[after]) > ChannelTolerance ||
+                    Math.Abs(expectedPixels[before + 1] - actualPixels[after + 1]) > ChannelTolerance ||
+                    Math.Abs(expectedPixels[before + 2] - actualPixels[after + 2]) > ChannelTolerance ||
+                    expectedPixels[before + 3] != actualPixels[after + 3];
             }
-            if (differs) diff.SetPixel(x, y, new SKColor(255, 0, 128));
+            if (!differs) continue;
+            var target = y * diff.RowBytes + x * 4;
+            diffPixels[target] = 255;
+            diffPixels[target + 1] = 0;
+            diffPixels[target + 2] = 128;
+            diffPixels[target + 3] = 255;
         }
         return diff;
     }
