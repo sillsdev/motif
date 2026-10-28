@@ -127,7 +127,7 @@ public sealed class DenseTableFrameScreenshots
                         var shown = inspector.FindControl<ItemsControl>("WarningsInspectorSelectedDetails")!;
                         Assert.Same(selected, Assert.Single(shown.Items));
                         var title = Assert.Single(shown.GetVisualDescendants().OfType<CopyableTextBlock>(),
-                            text => ReferenceEquals(text.DataContext, selected) && text.Text == selected.TableItemText);
+                            text => ReferenceEquals(text.DataContext, selected) && text.Text == selected.TableItemName);
                         Assert.True(title.IsEffectivelyVisible);
                         var top = title.TranslatePoint(default, window)!.Value;
                         var bottom = title.TranslatePoint(new Point(title.Bounds.Width, title.Bounds.Height), window)!.Value;

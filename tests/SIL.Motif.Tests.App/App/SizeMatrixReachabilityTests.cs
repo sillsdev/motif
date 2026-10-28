@@ -1,7 +1,10 @@
 using Avalonia;
 using Avalonia.Headless;
+using Avalonia.Controls;
 using Avalonia.Styling;
+using Avalonia.VisualTree;
 using SIL.Motif.App;
+using SIL.Motif.App.Controls.WordPresentation;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using Xunit;
@@ -12,6 +15,75 @@ namespace SIL.Motif.Tests.App;
 [Trait("MotifTestLevel", "System")]
 public sealed class SizeMatrixReachabilityTests
 {
+    [Fact]
+    public void ListsWordRowsAreReachableInAShortScaledWindow()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, window) = await PageScreenshots.OpenOverSampleData();
+            try
+            {
+                workspace.PageModel<TextsPageModel>().Tab = TextsTab.Lists;
+                workspace.CurrentPage = WorkspacePage.Texts;
+                var size = MatrixSizes.Read().Single(item => item.Name == "short");
+                SizeMatrixScreenshots.ApplySize(window, size, 150);
+                PageScreenshots.Settle(window);
+                Assert.Contains(window.GetVisualDescendants().OfType<WordRow>(), row => row.IsEffectivelyVisible);
+                var findings = ReachabilityAssertions.InspectReachabilityAndTitleBar(window,
+                    new LayoutFindingContext("2c-texts-lists", "short", 150, "light"));
+                Assert.DoesNotContain(findings, finding => finding.Check == LayoutCheckNames.UnreachableControl &&
+                    finding.Control.Type == nameof(WordRow));
+            }
+            finally
+            {
+                WindowZoomPolicy.Apply(Application.Current!, ZoomPolicy.DefaultPercent);
+                window.Close();
+            }
+        }, TimeSpan.FromMinutes(2));
+    }
+
+    [Fact]
+    public void LargeListsKeepRowsVirtualizedAndTheLastRowReachable()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, window) = await PageScreenshots.OpenOverSampleData();
+            try
+            {
+                workspace.PageModel<TextsPageModel>().Tab = TextsTab.Lists;
+                workspace.CurrentPage = WorkspacePage.Texts;
+                SizeMatrixScreenshots.ApplySize(window, MatrixSizes.Read().Single(item => item.Name == "short"), 150);
+                PageScreenshots.Settle(window);
+                var panel = Assert.Single(window.GetVisualDescendants().OfType<TextsListsPanel>());
+                var list = panel.FindControl<ListBox>("TextsListsPanelWordsItems")!;
+                var sample = Assert.IsType<CompareWordViewModel>(list.Items[0]);
+                var lists = workspace.PageModel<TextsPageModel>().TextsLists;
+                lists.Compare.LoadSources(Enumerable.Range(0, 200)
+                    .Select(index => sample.Source with { Word = $"word-{index:000}" }).ToArray());
+                lists.SelectListCommand.Execute(lists.Lists.First(item => item.HasWords));
+                PageScreenshots.Settle(window);
+                Assert.Equal(200, list.ItemCount);
+                var outer = Assert.Single(list.GetVisualAncestors().OfType<ScrollViewer>(),
+                    scroll => scroll is not WordListSlot);
+                Assert.True(list.Bounds.Height <= outer.Bounds.Height,
+                    $"List height {list.Bounds.Height} exceeds viewport {outer.Bounds.Height}; realized {list.GetRealizedContainers().Count()}.");
+                Assert.InRange(list.GetRealizedContainers().Count(), 1, 40);
+                outer.ScrollToEnd();
+                list.ScrollIntoView(list.ItemCount - 1);
+                PageScreenshots.Settle(window);
+                var last = Assert.IsAssignableFrom<Control>(list.ContainerFromIndex(list.ItemCount - 1));
+                var bounds = new Rect(last.Bounds.Size).TransformToAABB(last.TransformToVisual(window)!.Value);
+                Assert.True(new Rect(window.ClientSize).Contains(bounds), $"Last row is outside the window: {bounds}.");
+                Assert.InRange(list.GetRealizedContainers().Count(), 1, 40);
+            }
+            finally
+            {
+                WindowZoomPolicy.Apply(Application.Current!, ZoomPolicy.DefaultPercent);
+                window.Close();
+            }
+        }, TimeSpan.FromMinutes(2));
+    }
+
     [Fact]
     public void EveryPageKeepsControlsReachableAtSmallAndScaledSizes()
     {

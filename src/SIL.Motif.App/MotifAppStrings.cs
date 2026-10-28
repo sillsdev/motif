@@ -3694,4 +3694,20 @@ public static class MotifAppStrings
     public static string TraceContextualFailureNotRecorded => Text("MotifApp.TraceContextualFailureNotRecorded");
 
     public static string TraceStepApplied => Text("MotifApp.TraceStepApplied");
+
+    public static string ReviewApplyLosesAnalysis => Text("MotifApp.ReviewApplyLosesAnalysis");
+    public static string ReviewApplyNotReady => Text("MotifApp.ReviewApplyNotReady");
+    public static string ReviewApplyDoesNotFit => Text("MotifApp.ReviewApplyDoesNotFit");
+    public static string ReviewApplyReconciliationNeeded => Text("MotifApp.ReviewApplyReconciliationNeeded");
+    public static string ReviewApplyUncertain => Text("MotifApp.ReviewApplyUncertain");
+    public static string ReviewApplyFieldWorksHoldsProject => Text("MotifApp.ReviewApplyFieldWorksHoldsProject");
+    public static string ReviewApplyFieldWorksSavedSince => Text("MotifApp.ReviewApplyFieldWorksSavedSince");
+    public static string ReviewApplyNotMeasured => Text("MotifApp.ReviewApplyNotMeasured");
+    public static string ReviewApplyTrialNeeded => Text("MotifApp.ReviewApplyTrialNeeded");
+    public static string ReviewApplyNothingToApply => Text("MotifApp.ReviewApplyNothingToApply");
+    public static string ReviewApplyFitNotChecked => Text("MotifApp.ReviewApplyFitNotChecked");
+    public static string ReviewApplyApplying => Text("MotifApp.ReviewApplyApplying");
+    public static string ReviewApplyMeasuring => Text("MotifApp.ReviewApplyMeasuring");
+    public static string ReviewApplyChooseChange => Text("MotifApp.ReviewApplyChooseChange");
+    public static string ReviewApply => Text("MotifApp.ReviewApply");
 }

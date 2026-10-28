@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:app="clr-namespace:SIL.Motif.App"
+             xmlns:conv="clr-namespace:Avalonia.Data.Converters;assembly=Avalonia.Base"
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
              xmlns:controls="clr-namespace:SIL.Motif.App.Controls"
              xmlns:word="clr-namespace:SIL.Motif.App.Controls.WordPresentation"
@@ -11,6 +12,46 @@
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/ReviewScoped.axaml" />
   </UserControl.Styles>
   <UserControl.Resources>
+    <DataTemplate x:Key="ApplyShortReasonTemplate" x:DataType="vm:ApplyBlocker">
+      <StackPanel Classes="applyReason"
+                  Classes.ReconciliationNeeded="{Binding Kind, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:ApplyBlockerKind.ReconciliationNeeded}}"
+                  Classes.NoLongerFits="{Binding Kind, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:ApplyBlockerKind.NoLongerFits}}"
+                  Classes.Uncertain="{Binding Kind, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:ApplyBlockerKind.Uncertain}}"
+                  Classes.FieldWorksHoldsProject="{Binding Kind, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:ApplyBlockerKind.FieldWorksHoldsProject}}"
+                  Classes.FieldWorksSavedSince="{Binding Kind, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:ApplyBlockerKind.FieldWorksSavedSince}}"
+                  Classes.LosesApprovedAnalysis="{Binding Kind, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:ApplyBlockerKind.LosesApprovedAnalysis}}"
+                  Classes.NotMeasured="{Binding Kind, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:ApplyBlockerKind.NotMeasured}}"
+                  Classes.TrialNeeded="{Binding Kind, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:ApplyBlockerKind.TrialNeeded}}"
+                  Classes.NothingToApply="{Binding Kind, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:ApplyBlockerKind.NothingToApply}}"
+                  Classes.NotReady="{Binding Kind, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:ApplyBlockerKind.NotReady}}"
+                  Classes.FitNotChecked="{Binding Kind, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:ApplyBlockerKind.FitNotChecked}}">
+        <StackPanel.Styles>
+          <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/ReviewScoped.axaml" />
+        </StackPanel.Styles>
+        <views:CopyableTextBlock Classes="reviewBlockedTitle applyShortReason blockerReason reasonReconciliationNeeded"
+                                 Text="{x:Static app:MotifAppStrings.ReviewApplyReconciliationNeeded}" TextWrapping="Wrap" />
+        <views:CopyableTextBlock Classes="reviewBlockedTitle applyShortReason blockerReason reasonNoLongerFits"
+                                 Text="{x:Static app:MotifAppStrings.ReviewApplyDoesNotFit}" TextWrapping="Wrap" />
+        <views:CopyableTextBlock Classes="reviewBlockedTitle applyShortReason blockerReason reasonUncertain"
+                                 Text="{x:Static app:MotifAppStrings.ReviewApplyUncertain}" TextWrapping="Wrap" />
+        <views:CopyableTextBlock Classes="reviewBlockedTitle applyShortReason blockerReason reasonFieldWorksHoldsProject"
+                                 Text="{x:Static app:MotifAppStrings.ReviewApplyFieldWorksHoldsProject}" TextWrapping="Wrap" />
+        <views:CopyableTextBlock Classes="reviewBlockedTitle applyShortReason blockerReason reasonFieldWorksSavedSince"
+                                 Text="{x:Static app:MotifAppStrings.ReviewApplyFieldWorksSavedSince}" TextWrapping="Wrap" />
+        <views:CopyableTextBlock Classes="reviewBlockedTitle applyShortReason blockerReason reasonLosesApprovedAnalysis"
+                                 Text="{x:Static app:MotifAppStrings.ReviewApplyLosesAnalysis}" TextWrapping="Wrap" />
+        <views:CopyableTextBlock Classes="reviewBlockedTitle applyShortReason blockerReason reasonNotMeasured"
+                                 Text="{x:Static app:MotifAppStrings.ReviewApplyNotMeasured}" TextWrapping="Wrap" />
+        <views:CopyableTextBlock Classes="reviewBlockedTitle applyShortReason blockerReason reasonTrialNeeded"
+                                 Text="{x:Static app:MotifAppStrings.ReviewApplyTrialNeeded}" TextWrapping="Wrap" />
+        <views:CopyableTextBlock Classes="reviewBlockedTitle applyShortReason blockerReason reasonNothingToApply"
+                                 Text="{x:Static app:MotifAppStrings.ReviewApplyNothingToApply}" TextWrapping="Wrap" />
+        <views:CopyableTextBlock Classes="reviewBlockedTitle applyShortReason blockerReason reasonNotReady"
+                                 Text="{x:Static app:MotifAppStrings.ReviewApplyNotReady}" TextWrapping="Wrap" />
+        <views:CopyableTextBlock Classes="reviewBlockedTitle applyShortReason blockerReason reasonFitNotChecked"
+                                 Text="{x:Static app:MotifAppStrings.ReviewApplyFitNotChecked}" TextWrapping="Wrap" />
+      </StackPanel>
+    </DataTemplate>
     <DataTemplate x:Key="ApplyFooterTemplate" x:DataType="vm:ReviewPageModel">
       <Border Classes="reviewFooter" IsVisible="{Binding ShowsSideCards}">
         <Border.Styles>
@@ -75,6 +116,31 @@
           </Style>
         </Border.Styles>
     <StackPanel x:Name="ApplyActions" Classes="reviewCompact">
+      <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Intent.Space.Related}">
+        <Button Content="{x:Static app:MotifAppStrings.ReviewApply}" Command="{Binding ApplyCommand}"
+                IsEnabled="{Binding CanApply}" AutomationProperties.Name="{x:Static app:MotifAppStrings.ApplyToFieldWorksProjectAccessibleName}"
+                ToolTip.Tip="{Binding ApplyDisabledReason}" ToolTip.ShowOnDisabled="True"
+                Classes="reviewAction reviewApplyTooltip"
+                views:ClearTipPlacement.IsEnabled="True"
+                AutomationProperties.AutomationId="{x:Static app:AutomationIds.ApplyChanges}" />
+        <StackPanel Grid.Column="1" VerticalAlignment="Center" IsVisible="{Binding !CanApply}">
+          <ContentControl Content="{Binding ApplyBlockers[0]}" ContentTemplate="{StaticResource ApplyShortReasonTemplate}"
+                          IsVisible="{Binding IsApplyBlocked}" />
+          <StackPanel IsVisible="{Binding !IsApplyBlocked}">
+            <views:CopyableTextBlock Classes="reviewBlockedTitle applyShortReason"
+                                     Text="{x:Static app:MotifAppStrings.ReviewApplyApplying}" TextWrapping="Wrap"
+                                     IsVisible="{Binding IsApplying}" />
+            <StackPanel IsVisible="{Binding !IsApplying}">
+              <views:CopyableTextBlock Classes="reviewBlockedTitle applyShortReason"
+                                       Text="{x:Static app:MotifAppStrings.ReviewApplyMeasuring}" TextWrapping="Wrap"
+                                       IsVisible="{Binding IsMeasuring}" />
+              <views:CopyableTextBlock Classes="reviewBlockedTitle applyShortReason"
+                                       Text="{x:Static app:MotifAppStrings.ReviewApplyChooseChange}" TextWrapping="Wrap"
+                                       IsVisible="{Binding !IsMeasuring}" />
+            </StackPanel>
+          </StackPanel>
+        </StackPanel>
+      </Grid>
       <WrapPanel Classes="reviewToolbar">
         <ItemsControl x:Name="ApplyBlockers" ItemsSource="{Binding ApplyBlockers}"
                       AutomationProperties.Name="{x:Static app:MotifAppStrings.WhatBlocksApplyAccessibleName}">
@@ -97,12 +163,6 @@
         </ItemsControl>
         <Button Classes="reviewAction" Content="{x:Static app:MotifAppStrings.Cancel}" Command="{Binding CancelMeasureCommand}"
                 IsVisible="{Binding IsMeasuring}" />
-        <Button Content="{Binding ApplyButtonText}" Command="{Binding ApplyCommand}"
-                IsEnabled="{Binding CanApply}" AutomationProperties.Name="{x:Static app:MotifAppStrings.ApplyToFieldWorksProjectAccessibleName}"
-                ToolTip.Tip="{Binding ApplyDisabledReason}" ToolTip.ShowOnDisabled="True"
-                Classes="reviewAction reviewApplyTooltip"
-                views:ClearTipPlacement.IsEnabled="True"
-                AutomationProperties.AutomationId="{x:Static app:AutomationIds.ApplyChanges}" />
         <Button Classes="reviewAction" Content="{Binding BackText}" Command="{Binding KeepEditingCommand}" IsVisible="{Binding ShowsBackButton}"
                 AutomationProperties.AutomationId="{x:Static app:AutomationIds.ReviewBack}" />
         <Button Classes="reviewAction" Content="{x:Static app:MotifAppStrings.Decline}" Command="{Binding DeclineCommand}" IsVisible="{Binding ShowsDecline}"

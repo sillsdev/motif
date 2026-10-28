@@ -85,10 +85,10 @@ public sealed class ReviewDenseTableFrameScreenshots
                             ? "InspectorFooterHost" : "PageActionFooterHost")!.Content);
                         var apply = Assert.Single(panel.InspectorActions.GetVisualDescendants().OfType<Button>(), button =>
                             AutomationProperties.GetAutomationId(button) == "motif-apply-changes");
-                        var reason = Assert.Single(panel.InspectorFooter.GetVisualDescendants().OfType<CopyableTextBlock>(), text =>
-                            AutomationProperties.GetName(text) == "Why Apply is unavailable");
+                        var reason = Assert.Single(panel.InspectorActions.GetVisualDescendants().OfType<CopyableTextBlock>(), text =>
+                            text.Classes.Contains("applyShortReason") && text.IsEffectivelyVisible);
                         AssertReachable(apply, panel.InspectorActions);
-                        AssertReachable(reason, footer);
+                        AssertReachable(reason, panel.InspectorActions);
                         LayoutAssertions.AssertCurrent(window);
                     }
                     catch (Exception failure) { failures.Add($"{state}-apply: {failure.Message}"); }

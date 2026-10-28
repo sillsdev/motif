@@ -7365,4 +7365,64 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <value>applied</value>
     <comment>Try a Word step chip text when a rule applied.</comment>
   </data>
+  <data name="MotifApp.ReviewApplyLosesAnalysis" xml:space="preserve">
+    <value>Applying would lose an approved analysis.</value>
+    <comment>Short reason beside Apply; the affected words appear in the details.</comment>
+  </data>
+  <data name="MotifApp.ReviewApplyNotReady" xml:space="preserve">
+    <value>These changes are not ready to apply.</value>
+    <comment>Short reason beside Apply; readiness details appear above.</comment>
+  </data>
+  <data name="MotifApp.ReviewApplyDoesNotFit" xml:space="preserve">
+    <value>A change no longer fits the project.</value>
+    <comment>Short reason beside Apply; the affected changes appear in the details.</comment>
+  </data>
+  <data name="MotifApp.ReviewApply" xml:space="preserve">
+    <value>Apply</value>
+    <comment>Button that applies the reviewed changes to the FieldWorks project.</comment>
+  </data>
+  <data name="MotifApp.ReviewApplyReconciliationNeeded" xml:space="preserve">
+    <value>Refresh to check whether FieldWorks has these changes.</value>
+    <comment>Short reason shown beside Apply in Review changes.</comment>
+  </data>
+  <data name="MotifApp.ReviewApplyUncertain" xml:space="preserve">
+    <value>A change needs to be checked.</value>
+    <comment>Short reason shown beside Apply in Review changes.</comment>
+  </data>
+  <data name="MotifApp.ReviewApplyFieldWorksHoldsProject" xml:space="preserve">
+    <value>Close the project in FieldWorks first.</value>
+    <comment>Short reason shown beside Apply in Review changes.</comment>
+  </data>
+  <data name="MotifApp.ReviewApplyFieldWorksSavedSince" xml:space="preserve">
+    <value>Refresh after the FieldWorks save.</value>
+    <comment>Short reason shown beside Apply in Review changes.</comment>
+  </data>
+  <data name="MotifApp.ReviewApplyNotMeasured" xml:space="preserve">
+    <value>Check these changes before applying.</value>
+    <comment>Short reason shown beside Apply in Review changes.</comment>
+  </data>
+  <data name="MotifApp.ReviewApplyTrialNeeded" xml:space="preserve">
+    <value>Try this Proposal before applying.</value>
+    <comment>Short reason shown beside Apply in Review changes.</comment>
+  </data>
+  <data name="MotifApp.ReviewApplyNothingToApply" xml:space="preserve">
+    <value>There is nothing to apply.</value>
+    <comment>Short reason shown beside Apply in Review changes.</comment>
+  </data>
+  <data name="MotifApp.ReviewApplyFitNotChecked" xml:space="preserve">
+    <value>Refresh to check whether the changes fit.</value>
+    <comment>Short reason shown beside Apply in Review changes.</comment>
+  </data>
+  <data name="MotifApp.ReviewApplyApplying" xml:space="preserve">
+    <value>Applying changes to FieldWorks…</value>
+    <comment>Short reason shown beside Apply in Review changes.</comment>
+  </data>
+  <data name="MotifApp.ReviewApplyMeasuring" xml:space="preserve">
+    <value>Checking these changes…</value>
+    <comment>Short reason shown beside Apply in Review changes.</comment>
+  </data>
+  <data name="MotifApp.ReviewApplyChooseChange" xml:space="preserve">
+    <value>Choose a change in Texts to begin.</value>
+    <comment>Short reason shown beside Apply in Review changes.</comment>
+  </data>
 </root>

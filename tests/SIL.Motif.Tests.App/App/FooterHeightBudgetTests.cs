@@ -2,6 +2,7 @@ using Avalonia.Automation;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Presenters;
+using Avalonia.Controls.Templates;
 using Avalonia.Controls.Primitives;
 using Avalonia.Headless;
 using Avalonia.Layout;
@@ -206,12 +207,178 @@ public sealed class FooterHeightBudgetTests(AvaloniaHeadlessFixture avalonia)
                         $"'{text.Text}' comes before the reason."));
                 var minimum = (double)window.FindResource("Component.Shell.FooterDetailsMinHeight")!;
                 Assert.True(details.Bounds.Height >= minimum - 0.5, $"The details are {details.Bounds.Height} tall.");
+                details.ScrollToEnd();
+                PageScreenshots.Settle(window);
+                var shortReason = Assert.Single(window.GetVisualDescendants().OfType<CopyableTextBlock>(), text =>
+                    text.Classes.Contains("applyShortReason") && text.IsEffectivelyVisible);
+                var apply = Assert.Single(window.GetVisualDescendants().OfType<Button>(), button =>
+                    AutomationProperties.GetAutomationId(button) == AutomationIds.ApplyChanges);
+                var client = new Rect(window.ClientSize);
+                var reasonBounds = new Rect(shortReason.Bounds.Size).TransformToAABB(shortReason.TransformToVisual(window)!.Value);
+                var applyBounds = new Rect(apply.Bounds.Size).TransformToAABB(apply.TransformToVisual(window)!.Value);
+                Assert.True(client.Contains(reasonBounds) && client.Contains(applyBounds) &&
+                    !shortReason.GetVisualAncestors().Contains(details) && !string.IsNullOrWhiteSpace(shortReason.Text),
+                    $"The reason {reasonBounds} and Apply {applyBounds} must remain visible after scrolling {view}.");
+                var under = reasonBounds.Top >= applyBounds.Bottom - 1 && reasonBounds.Left < applyBounds.Right &&
+                    reasonBounds.Right > applyBounds.Left;
+                var beside = reasonBounds.Left >= applyBounds.Right - 1 && reasonBounds.Top < applyBounds.Bottom &&
+                    reasonBounds.Bottom > applyBounds.Top;
+                Assert.True(under || beside, $"The reason {reasonBounds} must sit beside or under Apply {applyBounds}.");
             }
             finally
             {
                 window.Close();
             }
         }, TimeSpan.FromMinutes(3));
+    }
+
+    [Fact]
+    public void LongApplyBlockerKeepsItsReasonAndButtonVisible()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var fake = new FakeCommandClient();
+            fake.PendingChangesIs(new SIL.Motif.Contract.Responses.PendingChangesSnapshot("draft/one", "revision/one",
+                [new SIL.Motif.Contract.Responses.PendingChange("one", "wordform/one", "kitabu", "approve",
+                    "assessment/one", "book", ["op/one"])],
+                [new SIL.Motif.Contract.Responses.ChangeFit("one", true, [])]));
+            fake.MeasurePendingCompletesWith(
+                SIL.Motif.Tests.Support.TestFixtures.PendingMeasureResponseFactory.Create("job/one", "revision/one",
+                    FakeCommandClient.CompleteNumbers with
+                    {
+                        WordsLosingApprovedAnalysis = Enumerable.Range(0, 80).Select(i => $"word{i}").ToArray(),
+                    }));
+            var (workspace, window) = await ReviewScreenshots.OpenAsync(fake);
+            try
+            {
+                workspace.CurrentPage = WorkspacePage.Review;
+                var page = workspace.PageModel<ReviewPageModel>();
+                PageScreenshots.Settle(window);
+                Assert.True(page.MeasureCommand.CanExecute(null));
+                await page.MeasureCommand.ExecuteAsync(null);
+                LayoutInvariantFixtures.Apply(window, new LayoutCell(640, 600, 150));
+                PageScreenshots.Settle(window);
+                Assert.Equal(ApplyBlockerKind.LosesApprovedAnalysis, page.ApplyBlockers[0].Kind);
+                var reason = Assert.Single(window.GetVisualDescendants().OfType<CopyableTextBlock>(), text =>
+                    text.Classes.Contains("applyShortReason") && text.IsEffectivelyVisible);
+                var apply = Assert.Single(window.GetVisualDescendants().OfType<Button>(), button =>
+                    AutomationProperties.GetAutomationId(button) == AutomationIds.ApplyChanges);
+                var client = new Rect(window.ClientSize);
+                var reasonBounds = new Rect(reason.Bounds.Size).TransformToAABB(reason.TransformToVisual(window)!.Value);
+                var applyBounds = new Rect(apply.Bounds.Size).TransformToAABB(apply.TransformToVisual(window)!.Value);
+                Assert.True(client.Contains(reasonBounds) && client.Contains(applyBounds),
+                    $"Long blocker: reason {reasonBounds}, Apply {applyBounds}, client {client}.");
+                Assert.Equal(MotifAppStrings.ReviewApplyLosesAnalysis, reason.Text);
+                Assert.Contains("word79", page.ApplyDisabledReason);
+            }
+            finally { window.Close(); }
+        }, TimeSpan.FromMinutes(3));
+    }
+
+    [Fact]
+    public void EveryApplyBlockerShowsItsLocalizedShortReason()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, main) = await ReviewScreenshots.OpenAsync(ReviewDenseTableTests.MixedChanges());
+            var window = new MotifTestWindow { Width = 640, Height = 600 };
+            try
+            {
+                var panel = new ReviewPanel(workspace.PageModel<ReviewPageModel>());
+                Assert.True(panel.Resources.ContainsKey("ApplyShortReasonTemplate"));
+                var template = Assert.IsAssignableFrom<IDataTemplate>(panel.Resources["ApplyShortReasonTemplate"]);
+                var resources = new System.Resources.ResourceManager("SIL.Motif.App.MotifAppStrings", typeof(MotifAppStrings).Assembly);
+                window.Show();
+                foreach (var kind in Enum.GetValues<ApplyBlockerKind>())
+                {
+                    var resourceName = kind switch
+                    {
+                        ApplyBlockerKind.NoLongerFits => "ReviewApplyDoesNotFit",
+                        ApplyBlockerKind.LosesApprovedAnalysis => "ReviewApplyLosesAnalysis",
+                        ApplyBlockerKind.NotReady => "ReviewApplyNotReady",
+                        _ => "ReviewApply" + kind,
+                    };
+                    var expected = resources.GetString("MotifApp." + resourceName);
+                    Assert.False(string.IsNullOrWhiteSpace(expected), $"Missing resource for {kind}.");
+                    var blocker = new ApplyBlocker(kind, "unlocalized sentinel");
+                    var content = Assert.IsAssignableFrom<Control>(template.Build(blocker));
+                    content.DataContext = blocker;
+                    window.Content = content;
+                    PageScreenshots.Settle(window);
+                    var reason = Assert.Single(content.GetVisualDescendants().OfType<CopyableTextBlock>(),
+                        text => text.Classes.Contains("applyShortReason") && text.IsEffectivelyVisible);
+                    Assert.Equal(expected, reason.Text);
+                }
+            }
+            finally
+            {
+                window.Close();
+                main.Close();
+                await workspace.DisposeAsync();
+            }
+        }, TimeSpan.FromMinutes(3));
+    }
+
+    [Fact]
+    public void EmptyAndApplyingStatesShowLocalizedShortReasons()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var empty = new FakeCommandClient();
+            empty.PendingChangesIs(new SIL.Motif.Contract.Responses.PendingChangesSnapshot("draft/one", "revision/empty", [], []));
+            var (emptyWorkspace, emptyWindow) = await ReviewScreenshots.OpenAsync(empty);
+            try
+            {
+                emptyWorkspace.CurrentPage = WorkspacePage.Review;
+                PageScreenshots.Settle(emptyWindow);
+                AssertPinnedReason(emptyWindow, MotifAppStrings.ReviewApplyChooseChange);
+            }
+            finally
+            {
+                emptyWindow.Close();
+                await emptyWorkspace.DisposeAsync();
+            }
+
+            var fake = new FakeCommandClient();
+            fake.PendingChangesIs(new SIL.Motif.Contract.Responses.PendingChangesSnapshot("draft/one", "revision/one",
+                [new SIL.Motif.Contract.Responses.PendingChange("one", "wordform/one", "kitabu", "approve",
+                    "assessment/one", "book", ["op/one"])],
+                [new SIL.Motif.Contract.Responses.ChangeFit("one", true, [])]));
+            fake.MeasurePendingCompletesWith(
+                SIL.Motif.Tests.Support.TestFixtures.PendingMeasureResponseFactory.Create("job/one", "revision/one",
+                    FakeCommandClient.CompleteNumbers));
+            var completion = new TaskCompletionSource<SIL.Motif.Contract.Commands.CommandOutcome<SIL.Motif.Contract.Responses.ApplyPendingResult>>(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+            fake.ApplyPendingHandler = (_, _) => completion.Task;
+            var (workspace, window) = await ReviewScreenshots.OpenAsync(fake);
+            Task? applying = null;
+            try
+            {
+                workspace.CurrentPage = WorkspacePage.Review;
+                PageScreenshots.Settle(window);
+                var page = workspace.PageModel<ReviewPageModel>();
+                await page.MeasureCommand.ExecuteAsync(null);
+                applying = page.ApplyCommand.ExecuteAsync(null);
+                PageScreenshots.Settle(window);
+                Assert.True(page.IsApplying);
+                AssertPinnedReason(window, MotifAppStrings.ReviewApplyApplying);
+            }
+            finally
+            {
+                completion.TrySetResult(SIL.Motif.Contract.Commands.CommandOutcome<SIL.Motif.Contract.Responses.ApplyPendingResult>.Refused(
+                    new SIL.Motif.Contract.Commands.Refusal("job.wait-cancelled", SIL.Motif.Contract.Responses.FailureReason.Cancelled, "Cancelled.")));
+                if (applying is not null) await applying.WaitAsync(TimeSpan.FromSeconds(15));
+                window.Close();
+                await workspace.DisposeAsync();
+            }
+        }, TimeSpan.FromMinutes(3));
+    }
+
+    private static void AssertPinnedReason(Window window, string expected)
+    {
+        var reason = Assert.Single(window.GetVisualDescendants().OfType<CopyableTextBlock>(), text =>
+            text.Classes.Contains("applyShortReason") && text.IsEffectivelyVisible);
+        Assert.Equal(expected, reason.Text);
     }
 
     [Fact]

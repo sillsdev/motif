@@ -40,6 +40,11 @@ public sealed class ReaderWarningNoteScreenshots
                 originalWrapping = note.TextWrapping;
                 note.BringIntoView();
                 PageScreenshots.Settle(window);
+                var pageScroll = Assert.Single(note.GetVisualAncestors().OfType<ScrollViewer>(),
+                    scroll => scroll.Name == "AnalyzeTextsScroll");
+                pageScroll.ScrollToEnd();
+                PageScreenshots.Settle(window);
+                AssertInsideScrollViewers(window, note);
                 AssertInsideWindow(window, note);
                 LayoutAssertions.AssertCurrent(window);
                 Save(window, dark, "after");
@@ -47,6 +52,8 @@ public sealed class ReaderWarningNoteScreenshots
                 note.TextWrapping = TextWrapping.NoWrap;
                 PageScreenshots.Settle(window);
                 note.BringIntoView();
+                PageScreenshots.Settle(window);
+                pageScroll.ScrollToEnd();
                 PageScreenshots.Settle(window);
                 AssertInsideWindow(window, note);
                 Save(window, dark, "baseline-reproduced");
@@ -63,6 +70,17 @@ public sealed class ReaderWarningNoteScreenshots
                 await workspace.DisposeAsync();
             }
         }, TimeSpan.FromMinutes(2));
+    }
+
+    private static void AssertInsideScrollViewers(Window window, Control control)
+    {
+        var bounds = new Rect(control.Bounds.Size).TransformToAABB(control.TransformToVisual(window)!.Value);
+        foreach (var scroll in control.GetVisualAncestors().OfType<ScrollViewer>())
+        {
+            var viewport = new Rect(scroll.Bounds.Size).TransformToAABB(scroll.TransformToVisual(window)!.Value);
+            Assert.True(viewport.Inflate(1).Contains(bounds),
+                $"The warning note {bounds} is clipped by {scroll.Name}: {viewport}, offset {scroll.Offset}.");
+        }
     }
 
     private static void AssertInsideWindow(Window window, Control control)

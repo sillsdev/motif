@@ -138,6 +138,42 @@
     <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="Foreground" Value="{DynamicResource Intent.Warning.Text}" />
   </Style>
+  <Style Selector="StackPanel.applyReason :is(TextBlock).blockerReason">
+    <Setter Property="IsVisible" Value="False" />
+  </Style>
+  <Style Selector="StackPanel.applyReason.ReconciliationNeeded :is(TextBlock).reasonReconciliationNeeded">
+    <Setter Property="IsVisible" Value="True" />
+  </Style>
+  <Style Selector="StackPanel.applyReason.NoLongerFits :is(TextBlock).reasonNoLongerFits">
+    <Setter Property="IsVisible" Value="True" />
+  </Style>
+  <Style Selector="StackPanel.applyReason.Uncertain :is(TextBlock).reasonUncertain">
+    <Setter Property="IsVisible" Value="True" />
+  </Style>
+  <Style Selector="StackPanel.applyReason.FieldWorksHoldsProject :is(TextBlock).reasonFieldWorksHoldsProject">
+    <Setter Property="IsVisible" Value="True" />
+  </Style>
+  <Style Selector="StackPanel.applyReason.FieldWorksSavedSince :is(TextBlock).reasonFieldWorksSavedSince">
+    <Setter Property="IsVisible" Value="True" />
+  </Style>
+  <Style Selector="StackPanel.applyReason.LosesApprovedAnalysis :is(TextBlock).reasonLosesApprovedAnalysis">
+    <Setter Property="IsVisible" Value="True" />
+  </Style>
+  <Style Selector="StackPanel.applyReason.NotMeasured :is(TextBlock).reasonNotMeasured">
+    <Setter Property="IsVisible" Value="True" />
+  </Style>
+  <Style Selector="StackPanel.applyReason.TrialNeeded :is(TextBlock).reasonTrialNeeded">
+    <Setter Property="IsVisible" Value="True" />
+  </Style>
+  <Style Selector="StackPanel.applyReason.NothingToApply :is(TextBlock).reasonNothingToApply">
+    <Setter Property="IsVisible" Value="True" />
+  </Style>
+  <Style Selector="StackPanel.applyReason.NotReady :is(TextBlock).reasonNotReady">
+    <Setter Property="IsVisible" Value="True" />
+  </Style>
+  <Style Selector="StackPanel.applyReason.FitNotChecked :is(TextBlock).reasonFitNotChecked">
+    <Setter Property="IsVisible" Value="True" />
+  </Style>
   <Style Selector=":is(TextBlock).reviewBlocker">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Small}" />
   </Style>

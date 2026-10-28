@@ -290,6 +290,9 @@ public sealed class ReviewWorkspacePaneTests
                 Assert.True(page.IsMeasuring);
                 Assert.Equal("Checking these changes…", page.ApplyDisabledReason);
                 AssertVisibleDisabledReason(host, page);
+                var shortReason = Assert.Single(host.GetVisualDescendants().OfType<CopyableTextBlock>(), text =>
+                    text.Classes.Contains("applyShortReason") && text.IsEffectivelyVisible);
+                Assert.Equal(MotifAppStrings.ReviewApplyMeasuring, shortReason.Text);
 
                 if (cancel)
                 {

@@ -6,7 +6,11 @@
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              x:Class="SIL.Motif.App.Views.TextsListsPanel"
              x:DataType="views:TextsListsPanel">
-  <Grid RowDefinitions="Auto,Auto,Auto,*" RowSpacing="{DynamicResource Intent.Space.Related}"
+  <UserControl.Styles>
+    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/TextsListsScoped.axaml" />
+  </UserControl.Styles>
+  <ScrollViewer x:Name="TextsListsScroll" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+  <Grid x:Name="TextsListsHost" RowDefinitions="Auto,Auto,Auto,*" RowSpacing="{DynamicResource Intent.Space.Related}"
         Margin="{DynamicResource Component.TextsPage.PageInset}">
     <ItemsControl x:Name="TextsListsPanelListsItems" ItemsSource="{Binding Lists.Lists}" AutomationProperties.Name="{x:Static app:MotifAppStrings.WordListsAccessibleName}">
       <ItemsControl.ItemsPanel>
@@ -73,7 +77,7 @@
       </StackPanel>
     </DockPanel>
 
-    <views:WordListSlot Grid.Row="3" Schema="{x:Static word:WordListSchemas.All}"
+    <views:WordListSlot Grid.Row="3" Classes="textsListsWords" Schema="{x:Static word:WordListSchemas.All}"
                         ShowsMeaning="{Binding Lists.ShowsMeaning}" IsVisible="{Binding Lists.HasSelectedList}"
                         AutomationProperties.AutomationId="{x:Static app:AutomationIds.ListsWordsSlot}">
       <Grid RowDefinitions="Auto,*" AutomationProperties.AutomationId="{x:Static app:AutomationIds.ListsWordsGrid}">
@@ -94,4 +98,5 @@
                              IsVisible="{Binding !Lists.HasSelectedList}"
                              VerticalAlignment="Center" HorizontalAlignment="Center" />
   </Grid>
+  </ScrollViewer>
 </UserControl>
