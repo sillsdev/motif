@@ -1,4 +1,3 @@
-using System.Runtime.CompilerServices;
 using Avalonia;
 using Avalonia.Automation.Peers;
 using Avalonia.Controls;
@@ -16,7 +15,6 @@ namespace SIL.Motif.App.Controls.WordPresentation;
 internal sealed class InterlinearWord : Control
 {
     private const double Gap = 4;
-    private static readonly ConditionalWeakTable<TextStyles, Dictionary<RunKey, TextLayout>> Layouts = new();
     private readonly List<Run> _runs = [];
     private ResultsTokenViewModel? _data;
     private TextStyles? _styles;
@@ -161,15 +159,9 @@ internal sealed class InterlinearWord : Control
     private static TextLayout Shape(string text, string? writingSystem, TextStyles styles, IBrush foreground)
     {
         var style = styles.Resolve(TextStyleRequest.Linguistic(writingSystem, "Normal"));
-        var key = new RunKey(text, writingSystem, style.Revision, style.FontSize ?? 14, foreground);
-        var cache = Layouts.GetOrCreateValue(styles);
-        if (cache.TryGetValue(key, out var cached)) return cached;
-        if (cache.Count >= 2048) cache.Clear();
-        var layout = new TextLayout(text, new Typeface(style.FontFamily ?? FontFamily.Default,
+        return new TextLayout(text, new Typeface(style.FontFamily ?? FontFamily.Default,
             style.Emphasis ?? FontStyle.Normal, style.Weight ?? FontWeight.Normal), style.FontSize ?? 14,
             foreground, flowDirection: style.FlowDirection, fontFeatures: style.FontFeatures);
-        cache.Add(key, layout);
-        return layout;
     }
 
     public override void Render(DrawingContext context)
@@ -329,7 +321,6 @@ internal sealed class InterlinearWord : Control
         }
     }
 
-    private readonly record struct RunKey(string Text, string? WritingSystem, long Revision, double Size, IBrush Foreground);
     private readonly record struct ModelKey(TextStyles Styles, long StyleRevision, long DataRevision, double Width, IBrush Foreground);
     internal sealed record Run(string Text, TextLayout Layout, Rect Bounds, FlowDirection Direction);
     private sealed record Column(string FormText, string GlossText, TextLayout Form, TextLayout Gloss,

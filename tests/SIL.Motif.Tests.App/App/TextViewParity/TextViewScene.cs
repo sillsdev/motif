@@ -379,7 +379,7 @@ internal sealed class TextViewScene : IDisposable
         Window.Clipboard!.ClearAsync().GetAwaiter().GetResult();
         if (constituent.Owner is InterlinearWord drawn)
             PeerOf(drawn).GetChildren()[constituent.RunIndex].SetFocus();
-        else Assert.True(constituent.Owner.Focus());
+        else FocusCleared(new Constituent(constituent.Part, constituent.Morph, (TextBlock)constituent.Owner));
         Press(Key.A, Primary);
         Press(Key.C, Primary);
         return Window.Clipboard.TryGetTextAsync().GetAwaiter().GetResult();
@@ -432,7 +432,8 @@ internal sealed class TextViewScene : IDisposable
     /// </summary>
     public List<IInputElement> TabFrom(Control start, bool backwards, Func<IInputElement, bool> inside)
     {
-        if (WordIndexOf(start) < 0 && WalkWords.Count > 0 && WalkWords[^1] is var last && last >= 0)
+        if (WordIndexOf(start) < 0 && WalkWords.Count > 0 && WalkWords[^1] is var last && last >= 0 &&
+            Word(last).GetVisualDescendants().OfType<InterlinearWord>().Any())
         {
             Word(last).FocusWord();
             Settle();

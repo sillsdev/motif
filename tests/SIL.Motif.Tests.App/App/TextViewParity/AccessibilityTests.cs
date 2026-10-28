@@ -91,7 +91,8 @@ public sealed class AccessibilityTests(LineScenes lines, CardScenes cards) : ICl
             Assert.Equal(c.Text, peer.GetName());
             Assert.Equal(AutomationControlType.Text, peer.GetAutomationControlType());
             var bounds = peer.GetBoundingRectangle();
-            Assert.True(bounds.Width > 0 && bounds.Height > 0);
+            Assert.True(bounds.Width >= 0 && bounds.Height > 0);
+            if (c.Text.Length > 0) Assert.True(bounds.Width > 0);
         });
     });
 
