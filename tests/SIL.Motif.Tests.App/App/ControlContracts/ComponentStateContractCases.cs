@@ -158,23 +158,14 @@ internal static class ComponentStateContractCases
             StateStimulus.KeyboardFocus, StatePart.Self, Button.BorderBrushProperty, "Intent.Focus");
         yield return new(revealFocus, "keyboard focus on a FieldWorks link", () => Alone(Press("revealControl", "revealLink")),
             StateStimulus.KeyboardFocus, StatePart.Self, Button.BorderBrushProperty, "Intent.Focus");
-        const string revealAtRest = ":is(Control).hoverReveal :is(Button).revealOnHover";
-        const string revealOnPointer = ":is(Control).hoverReveal:pointerover :is(Button).revealOnHover";
-        const string revealOnFocus = ":is(Control).hoverReveal:focus-within :is(Button).revealOnHover";
-        const string revealWhenOpen = ":is(Control).hoverReveal.open :is(Button).revealOnHover";
+        const string revealAtRest = ".hoverReveal :is(Button).revealOnHover";
         yield return new(revealAtRest, "at rest", () => RevealOwner(), StateStimulus.None,
             StatePart.Self, Visual.OpacityProperty, "Component.HoverReveal.VisibleOpacity");
-        yield return new(revealOnPointer, "revealed by pointer hover", () => RevealOwner(), StateStimulus.Pointer,
-            StatePart.Self, Visual.OpacityProperty, "Component.HoverReveal.VisibleOpacity");
-        yield return new(revealOnFocus, "revealed by keyboard focus", () => RevealOwner(), StateStimulus.KeyboardFocusInside,
-            StatePart.Self, Visual.OpacityProperty, "Component.HoverReveal.VisibleOpacity");
-        yield return new(revealWhenOpen, "revealed when the row is open", () => RevealOwner(open: true), StateStimulus.None,
-            StatePart.Self, Visual.OpacityProperty, "Component.HoverReveal.VisibleOpacity");
 
-        const string textRevealAtRest = ":is(Control).hoverReveal :is(TextBlock).revealOnHover";
-        const string textRevealOnPointer = ":is(Control).hoverReveal:pointerover :is(TextBlock).revealOnHover";
-        const string textRevealOnFocus = ":is(Control).hoverReveal:focus-within :is(TextBlock).revealOnHover";
-        const string textRevealWhenOpen = ":is(Control).hoverReveal.open :is(TextBlock).revealOnHover";
+        const string textRevealAtRest = ".hoverReveal :is(TextBlock).revealOnHover";
+        const string textRevealOnPointer = ".hoverReveal:pointerover :is(TextBlock).revealOnHover";
+        const string textRevealOnFocus = ".hoverReveal:focus-within :is(TextBlock).revealOnHover";
+        const string textRevealWhenOpen = ".hoverReveal.open :is(TextBlock).revealOnHover";
         yield return new(textRevealAtRest, "at rest", () => RevealTextOwner(), StateStimulus.None,
             StatePart.Text, Visual.OpacityProperty, "Component.HoverReveal.HiddenOpacity");
         yield return new(textRevealOnPointer, "revealed by pointer hover", () => RevealTextOwner(), StateStimulus.Pointer,

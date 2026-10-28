@@ -63,57 +63,57 @@
     <Setter Property="(views:WordListSizingHints.ScrollbarGutter)" Value="{StaticResource Component.WordListSlot.ScrollbarGutter}" />
     <Setter Property="(views:WordListSizingHints.StackBreakpoint)" Value="{StaticResource Component.WordListSlot.StackBreakpoint}" />
   </Style>
-  <Style Selector="views|WordListSlot :is(Control).wordPresentationColumnTick">
+  <Style Selector=":is(Control).wordPresentationColumnTick">
     <Setter Property="(views:WordListSizingHints.Minimum)" Value="{StaticResource Component.WordListSlot.Tick.Minimum}" />
     <Setter Property="(views:WordListSizingHints.Preferred)" Value="{StaticResource Component.WordListSlot.Tick.Preferred}" />
     <Setter Property="(views:WordListSizingHints.Maximum)" Value="{StaticResource Component.WordListSlot.Tick.Maximum}" />
   </Style>
-  <Style Selector="views|WordListSlot :is(Control).wordPresentationColumnWord">
+  <Style Selector=":is(Control).wordPresentationColumnWord">
     <Setter Property="(views:WordListSizingHints.Minimum)" Value="{StaticResource Component.WordListSlot.Word.Minimum}" />
     <Setter Property="(views:WordListSizingHints.Preferred)" Value="{StaticResource Component.WordListSlot.Word.Preferred}" />
     <Setter Property="(views:WordListSizingHints.Maximum)" Value="{StaticResource Component.WordListSlot.Word.Maximum}" />
   </Style>
-  <Style Selector="views|WordListSlot :is(Control).wordPresentationColumnOpinion">
+  <Style Selector=":is(Control).wordPresentationColumnOpinion">
     <Setter Property="(views:WordListSizingHints.Minimum)" Value="{StaticResource Component.WordListSlot.Opinion.Minimum}" />
     <Setter Property="(views:WordListSizingHints.Preferred)" Value="{StaticResource Component.WordListSlot.Opinion.Preferred}" />
     <Setter Property="(views:WordListSizingHints.Maximum)" Value="{StaticResource Component.WordListSlot.Opinion.Maximum}" />
   </Style>
-  <Style Selector="views|WordListSlot :is(Control).wordPresentationColumnFieldWorks">
+  <Style Selector=":is(Control).wordPresentationColumnFieldWorks">
     <Setter Property="(views:WordListSizingHints.Minimum)" Value="{StaticResource Component.WordListSlot.FieldWorks.Minimum}" />
     <Setter Property="(views:WordListSizingHints.Preferred)" Value="{StaticResource Component.WordListSlot.FieldWorks.Preferred}" />
     <Setter Property="(views:WordListSizingHints.Maximum)" Value="{StaticResource Component.WordListSlot.FieldWorks.Maximum}" />
   </Style>
-  <Style Selector="views|WordListSlot :is(Control).wordPresentationColumnPanGloss">
+  <Style Selector=":is(Control).wordPresentationColumnPanGloss">
     <Setter Property="(views:WordListSizingHints.Minimum)" Value="{StaticResource Component.WordListSlot.PanGloss.Minimum}" />
     <Setter Property="(views:WordListSizingHints.Preferred)" Value="{StaticResource Component.WordListSlot.PanGloss.Preferred}" />
     <Setter Property="(views:WordListSizingHints.Maximum)" Value="{StaticResource Component.WordListSlot.PanGloss.Maximum}" />
   </Style>
-  <Style Selector="views|WordListSlot :is(Control).wordPresentationColumnMeaning">
+  <Style Selector=":is(Control).wordPresentationColumnMeaning">
     <Setter Property="(views:WordListSizingHints.Minimum)" Value="{StaticResource Component.WordListSlot.Meaning.Minimum}" />
     <Setter Property="(views:WordListSizingHints.Preferred)" Value="{StaticResource Component.WordListSlot.Meaning.Preferred}" />
     <Setter Property="(views:WordListSizingHints.Maximum)" Value="{StaticResource Component.WordListSlot.Meaning.Maximum}" />
   </Style>
-  <Style Selector="views|WordListSlot :is(Control).wordPresentationColumnWarnings">
+  <Style Selector=":is(Control).wordPresentationColumnWarnings">
     <Setter Property="(views:WordListSizingHints.Minimum)" Value="{StaticResource Component.WordListSlot.Warnings.Minimum}" />
     <Setter Property="(views:WordListSizingHints.Preferred)" Value="{StaticResource Component.WordListSlot.Warnings.Preferred}" />
     <Setter Property="(views:WordListSizingHints.Maximum)" Value="{StaticResource Component.WordListSlot.Warnings.Maximum}" />
   </Style>
-  <Style Selector="views|WordListSlot :is(Control).wordPresentationColumnPlaces">
+  <Style Selector=":is(Control).wordPresentationColumnPlaces">
     <Setter Property="(views:WordListSizingHints.Minimum)" Value="{StaticResource Component.WordListSlot.Places.Minimum}" />
     <Setter Property="(views:WordListSizingHints.Preferred)" Value="{StaticResource Component.WordListSlot.Places.Preferred}" />
     <Setter Property="(views:WordListSizingHints.Maximum)" Value="{StaticResource Component.WordListSlot.Places.Maximum}" />
   </Style>
-  <Style Selector="views|WordListSlot :is(Control).wordPresentationColumnTime">
+  <Style Selector=":is(Control).wordPresentationColumnTime">
     <Setter Property="(views:WordListSizingHints.Minimum)" Value="{StaticResource Component.WordListSlot.Time.Minimum}" />
     <Setter Property="(views:WordListSizingHints.Preferred)" Value="{StaticResource Component.WordListSlot.Time.Preferred}" />
     <Setter Property="(views:WordListSizingHints.Maximum)" Value="{StaticResource Component.WordListSlot.Time.Maximum}" />
   </Style>
-  <Style Selector="views|WordListSlot :is(Control).wordPresentationColumnRead">
+  <Style Selector=":is(Control).wordPresentationColumnRead">
     <Setter Property="(views:WordListSizingHints.Minimum)" Value="{StaticResource Component.WordListSlot.Read.Minimum}" />
     <Setter Property="(views:WordListSizingHints.Preferred)" Value="{StaticResource Component.WordListSlot.Read.Preferred}" />
     <Setter Property="(views:WordListSizingHints.Maximum)" Value="{StaticResource Component.WordListSlot.Read.Maximum}" />
   </Style>
-  <Style Selector="views|WordListSlot :is(Control).wordPresentationColumnNext">
+  <Style Selector=":is(Control).wordPresentationColumnNext">
     <Setter Property="(views:WordListSizingHints.Minimum)" Value="{StaticResource Component.WordListSlot.Next.Minimum}" />
     <Setter Property="(views:WordListSizingHints.Preferred)" Value="{StaticResource Component.WordListSlot.Next.Preferred}" />
     <Setter Property="(views:WordListSizingHints.Maximum)" Value="{StaticResource Component.WordListSlot.Next.Maximum}" />

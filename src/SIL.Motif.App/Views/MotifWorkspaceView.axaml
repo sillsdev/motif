@@ -157,25 +157,25 @@
     <Border x:Name="StatusBar" Grid.Row="1" Classes="statusBar">
       <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Group}">
         <StackPanel Classes="statusGroup" Orientation="Horizontal">
-          <views:CopyableTextBlock Classes="statusFull" Text="{x:Static app:MotifAppStrings.TechDemoStatus}"
+          <views:CopyableTextBlock Classes="statusFull statusTip" Text="{x:Static app:MotifAppStrings.TechDemoStatus}"
                      ToolTip.Tip="{x:Static app:MotifAppStrings.TechDemoStatusTip}" />
-          <Button Classes="statusCompact" Content="{x:Static app:MotifAppStrings.TechDemoCompact}" Click="OnStatusReportProblemClick"
+          <Button Classes="statusCompact statusTip" Content="{x:Static app:MotifAppStrings.TechDemoCompact}" Click="OnStatusReportProblemClick"
                   AutomationProperties.Name="{x:Static app:MotifAppStrings.ReportProblemAccessibleName}"
                   ToolTip.Tip="{x:Static app:MotifAppStrings.TechDemoCompactTip}" />
           <HyperlinkButton Content="{x:Static app:MotifAppStrings.ReportProblem}" Classes="statusFull" Click="OnStatusReportProblemClick"
                            AutomationProperties.Name="{x:Static app:MotifAppStrings.ReportProblemAccessibleName}" />
         </StackPanel>
         <Grid Grid.Column="1">
-          <views:CopyableTextBlock x:Name="StatusSelectionSummary"
+          <views:CopyableTextBlock x:Name="StatusSelectionSummary" Classes="statusTip"
                      AutomationProperties.AutomationId="{x:Static app:AutomationIds.SidebarSelectionSummary}" Text="{Binding SelectionSummaryText}"
                      TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding SelectionSummaryText}" />
-          <TextBlock x:Name="KeyboardShortcutStatusLine" IsVisible="False" TextTrimming="CharacterEllipsis"
+          <TextBlock x:Name="KeyboardShortcutStatusLine" Classes="statusTip" IsVisible="False" TextTrimming="CharacterEllipsis"
                      AutomationProperties.LiveSetting="Polite" AutomationProperties.Name="{x:Static app:MotifAppStrings.KeyboardShortcutStatusAccessibleName}" />
         </Grid>
         <StackPanel Grid.Column="2" Classes="statusGroup" Orientation="Horizontal">
           <TextBlock x:Name="StatusFilterHides" Text="{Binding FilterHidesText}" IsVisible="{Binding FilterHidesText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                      VerticalAlignment="Center" AutomationProperties.LiveSetting="Polite" />
-          <Button x:Name="StatusChanges" x:DataType="vm:PageViewModel" IsVisible="{Binding HasBadge}"
+          <Button x:Name="StatusChanges" Classes="statusTip" x:DataType="vm:PageViewModel" IsVisible="{Binding HasBadge}"
                   Command="{Binding Model.ShowPageCommand}" CommandParameter="{x:Static vm:WorkspacePage.Review}"
                   AutomationProperties.Name="{x:Static app:MotifAppStrings.ReviewChangesAccessibleName}"
                   ToolTip.Tip="{Binding ChangesTip}">
@@ -184,7 +184,7 @@
               <TextBlock Classes="statusFull" Text="{Binding ChangesTip}" />
             </StackPanel>
           </Button>
-          <Button x:Name="StatusWarnings" x:DataType="vm:PageViewModel" IsVisible="{Binding HasBadge}"
+          <Button x:Name="StatusWarnings" Classes="statusTip" x:DataType="vm:PageViewModel" IsVisible="{Binding HasBadge}"
                   Command="{Binding Model.ShowPageCommand}" CommandParameter="{x:Static vm:WorkspacePage.Warnings}"
                   AutomationProperties.Name="{x:Static app:MotifAppStrings.OpenWarningsAccessibleName}" ToolTip.Tip="{Binding WarningsTip}">
             <StackPanel Orientation="Horizontal">
@@ -193,7 +193,7 @@
               <TextBlock Classes="statusFull" Text="{Binding WarningsTip}" />
             </StackPanel>
           </Button>
-          <Button x:Name="StatusParseProgress" IsVisible="{Binding ShowsParseAllWordsProgress}"
+          <Button x:Name="StatusParseProgress" Classes="statusTip" IsVisible="{Binding ShowsParseAllWordsProgress}"
                   AutomationProperties.Name="{x:Static app:MotifAppStrings.SeeParseProgressAccessibleName}" ToolTip.Tip="{Binding ActiveParseProgress.StatusText}">
             <StackPanel Classes="statusGroup" Orientation="Horizontal">
               <TextBlock Text="{Binding ActiveParseProgress.StatusText}" Classes="statusFull"
@@ -221,7 +221,7 @@
                          AutomationProperties.Name="{x:Static app:MotifAppStrings.ParseAllWordsProgressAccessibleName}"
                          AutomationProperties.AutomationId="{x:Static app:AutomationIds.ParseAllWordsProgress}" />
             <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
-              <Button Content="{x:Static app:MotifAppStrings.Cancel}" Command="{Binding CancelParsingCommand}"
+              <Button Classes="statusTip" Content="{x:Static app:MotifAppStrings.Cancel}" Command="{Binding CancelParsingCommand}"
                       ToolTip.Tip="{x:Static app:MotifAppStrings.CancelParsingTip}"
                       AutomationProperties.Name="{x:Static app:MotifAppStrings.CancelParsingAccessibleName}"
                       AutomationProperties.AutomationId="{x:Static app:AutomationIds.CancelAssessment}" />

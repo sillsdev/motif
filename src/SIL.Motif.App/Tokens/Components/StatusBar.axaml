@@ -23,7 +23,7 @@
     <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.DividerTop}" />
     <Setter Property="ClipToBounds" Value="True" />
   </Style>
-  <Style Selector="Border.statusBar :is(Control)">
+  <Style Selector=":is(Control).statusTip">
     <Setter Property="views:ClearTipPlacement.IsEnabled" Value="True" />
     <Setter Property="views:ClearTipPlacement.Anchor" Value="{ReflectionBinding $parent[Panel]}" />
   </Style>
