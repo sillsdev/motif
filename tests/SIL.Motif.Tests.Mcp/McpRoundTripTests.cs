@@ -41,6 +41,26 @@ namespace SIL.Motif.Tests.Mcp;
 public sealed class McpRoundTripTests(PristineProjectFixture pristine)
 {
     [Fact]
+    public async Task EntryDoNotParseToolStagesWithoutApplying()
+    {
+        using var project = new WalkthroughProject(pristine);
+        var projectHash = HashProject(project.FwDataPath);
+        await using var session = await Session.StartAsync(project.FwDataPath, new McpLaunchOptions());
+        await session.CallAsync("motif_start_proposal", ("draft", "entry-flag"),
+            ("label", "Flag entry"), ("rationale", "Review the entry flag."));
+
+        var result = await session.CallAsync("motif_set_entry_do_not_parse", ("draft", "entry-flag"),
+            ("target", CanonicalId.FromGuid(project.Seed.FirstEntryId).Value),
+            ("expectedDoNotParse", false), ("doNotParse", true));
+
+        Assert.True(result.GetProperty("ok").GetBoolean(), result.ToString());
+        var operation = Assert.Single(result.GetProperty("result").GetProperty("operations").EnumerateArray());
+        Assert.Equal(LexEntryDoNotUseForParsingOperationKinds.SetDoNotUseForParsing,
+            operation.GetProperty("kind").GetString());
+        Assert.Equal(projectHash, HashProject(project.FwDataPath));
+    }
+
+    [Fact]
     public async Task LexiconRowsAndSourceStayBoundToTheCaptureUntilAReplacementBaseline()
     {
         using var project = new WalkthroughProject(pristine,

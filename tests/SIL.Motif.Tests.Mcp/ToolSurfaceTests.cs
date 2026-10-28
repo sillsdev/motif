@@ -29,6 +29,17 @@ public sealed class ToolSurfaceTests
         Assert.All(AgentTools.All, tool => Assert.NotEqual(AgentClass.HumanOnly, tool.Class));
     }
 
+    [Fact]
+    public void EntryFlagToolIsDraftOnlyAndExplainsItsParserLimitation()
+    {
+        var tool = AgentTools.All.Single(item => item.Name == "motif_set_entry_do_not_parse");
+        Assert.Equal(AgentClass.Draft, tool.Class);
+        Assert.Contains("ignore", tool.Description, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("not only compounds", tool.Description, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(new[] { "draft", "target", "expectedDoNotParse", "doNotParse", "project" }.Order(StringComparer.Ordinal),
+            tool.ArgumentNames.Order(StringComparer.Ordinal));
+    }
+
     private static readonly string[] BatchlessComposers =
         ["retire-allomorph", "retire-redundant-zero-affix", "compose-record-parsimony-disposition"];
 
@@ -275,7 +286,7 @@ public sealed class ToolSurfaceTests
         Assert.DoesNotContain("intentsJson", batch.Tool.ArgumentNames);
         var branches = intents["items"]!["oneOf"]!.AsArray();
         var verbs = branches.Select(branch => branch!["properties"]!["verb"]!["enum"]![0]!.GetValue<string>()).ToArray();
-        Assert.Equal(32, verbs.Length);
+        Assert.Equal(33, verbs.Length);
         Assert.Equal(new[]
         {
             "compose-author-lexeme-form",
@@ -285,6 +296,7 @@ public sealed class ToolSurfaceTests
             "compose-edit-phoneme",
             "compose-edit-compound-rule",
             "compose-set-no-default-compounding",
+            "compose-set-entry-do-not-parse",
             "compose-rewrite-lexeme-form",
             "compose-author-natural-class",
             "compose-edit-natural-class",

@@ -45,6 +45,7 @@ public sealed class InflectionClassEditorCliTests
     [Theory]
     [InlineData("compose-edit-compound-rule")]
     [InlineData("compose-set-no-default-compounding")]
+    [InlineData("compose-set-entry-do-not-parse")]
     [InlineData("compose-rewrite-lexeme-form")]
     public void EditorVerbsThatAreDraftAgentToolsStillReachCliUsage(string verb)
     {

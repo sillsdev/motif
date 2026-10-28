@@ -18,6 +18,7 @@ internal static class ComposerDefinitions
         new EditStemAllomorphStemNameDefinition(),
         new EditStemInflectionClassDefinition(),
         new SetNoDefaultCompoundingDefinition(),
+        new SetEntryDoNotParseDefinition(),
         new RewriteLexemeFormDefinition(),
         new SetStemPartOfSpeechDefinition(),
         new RetireAllomorphDefinition(),

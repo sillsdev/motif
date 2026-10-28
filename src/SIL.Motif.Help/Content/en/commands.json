@@ -502,6 +502,20 @@
     ],
     "redirect": "Only turns existing compounding off or on; it builds and fixes nothing. Trial known compounds before and after, and ask the linguist first (guide workflow)."
   },
+  "compose-set-entry-do-not-parse": {
+    "title": "Set entry parsing flag",
+    "description": "Stages the FieldWorks do-not-parse flag on a lexical entry. This flag is intended to exclude the entry from all parsing, not only compounds; PanGloss 0.10.0 and the FieldWorks HermitCrab loader currently ignore it, so a Trial cannot demonstrate that exclusion.",
+    "source": "Hand-written from the FieldWorks model and parser importer.",
+    "fields": {
+      "draft": "Draft name.",
+      "target": "Id of the lexical entry.",
+      "expectedDoNotParse": "The flag value currently stored on the entry.",
+      "doNotParse": "The flag value to store: true to mark the entry do-not-parse, false to clear it."
+    },
+    "goals": ["Mark a lexical entry do not parse", "Clear a lexical entry do-not-parse flag"],
+    "guides": ["workflow", "ask-the-linguist"],
+    "redirect": "Whole-entry exclusion, not compound-only. Current PanGloss and FieldWorks HermitCrab ignore it; ask the linguist before staging."
+  },
   "compose-set-no-default-compounding": {
     "title": "Set default compounding",
     "description": "Stages one explicit change to the parser's built-in default compounding in a Draft. A project with no compound rules of its own still has the parser join any two stems unless default compounding is turned off; the expected value guards against stale evidence, and only a person can Apply.",

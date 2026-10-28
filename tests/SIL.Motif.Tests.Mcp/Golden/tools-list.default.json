@@ -3904,6 +3904,64 @@
                     "type": "string",
                     "description": "Composing verb for this intent.",
                     "enum": [
+                      "compose-set-entry-do-not-parse"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for compose-set-entry-do-not-parse.",
+                    "properties": {
+                      "target": {
+                        "type": "string",
+                        "description": "Id of the lexical entry."
+                      },
+                      "expectedDoNotParse": {
+                        "type": "boolean",
+                        "description": "The flag value currently stored on the entry."
+                      },
+                      "doNotParse": {
+                        "type": "boolean",
+                        "description": "The flag value to store: true to mark the entry do-not-parse, false to clear it."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "target",
+                      "expectedDoNotParse",
+                      "doNotParse"
+                    ]
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
                       "compose-rewrite-lexeme-form"
                     ]
                   },
@@ -5087,6 +5145,46 @@
         "draft",
         "expectedNoDefaultCompounding",
         "noDefaultCompounding",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_set_entry_do_not_parse",
+    "description": "Set entry parsing flag. Research first: motif_guide topic workflow or ask-the-linguist; check best practice. Whole-entry exclusion, not compound-only. Current PanGloss and FieldWorks HermitCrab ignore it; ask the linguist before staging. Stages the FieldWorks do-not-parse flag on a lexical entry. This flag is intended to exclude the entry from all parsing, not only compounds; PanGloss 0.10.0 and the FieldWorks HermitCrab loader currently ignore it, so a Trial cannot demonstrate that exclusion.\nCommand: compose-set-entry-do-not-parse. Agent class: Draft.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "Draft name."
+        },
+        "target": {
+          "type": "string",
+          "description": "Id of the lexical entry."
+        },
+        "expectedDoNotParse": {
+          "type": "boolean",
+          "description": "The flag value currently stored on the entry."
+        },
+        "doNotParse": {
+          "type": "boolean",
+          "description": "The flag value to store: true to mark the entry do-not-parse, false to clear it."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "draft",
+        "target",
+        "expectedDoNotParse",
+        "doNotParse",
         "project"
       ],
       "additionalProperties": false
