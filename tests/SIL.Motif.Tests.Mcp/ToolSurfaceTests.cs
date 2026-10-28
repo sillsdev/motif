@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using SIL.LCModel;
+using SIL.LCModel.Core.Text;
 using SIL.LCModel.Infrastructure;
 using SIL.Motif.Commands;
 using SIL.Motif.Commands.Baselines;
@@ -457,6 +458,11 @@ public sealed class DetailedNaturalClassMemberToolTests(PristineProjectFixture p
         Guid phonemeGuid = default;
         Guid otherPhonemeGuid = default;
         Guid naturalClassGuid = default;
+        Guid duplicateClassGuid = default;
+        Guid environmentGuid = default;
+        Guid duplicateEnvironmentGuid = default;
+        var suggestionGuids = new List<Guid>();
+        var baselineEnvironmentCount = 0;
         using var project = new WalkthroughProject(pristine, configure: (cache, _, _) =>
         {
             NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
@@ -488,9 +494,38 @@ public sealed class DetailedNaturalClassMemberToolTests(PristineProjectFixture p
                 naturalClass.Abbreviation.set_String(cache.DefaultAnalWs, "N");
                 naturalClass.SegmentsRC.Add(phoneme);
                 naturalClass.SegmentsRC.Add(otherPhoneme);
+                var duplicateClass = services.GetInstance<IPhNCSegmentsFactory>().Create();
+                phonology.NaturalClassesOS.Add(duplicateClass);
+                duplicateClass.Name.set_String(cache.DefaultAnalWs, "nasals");
+                duplicateClass.Abbreviation.set_String(cache.DefaultAnalWs, "N2");
+                duplicateClass.SegmentsRC.Add(phoneme);
+                var environment = services.GetInstance<IPhEnvironmentFactory>().Create();
+                phonology.EnvironmentsOS.Add(environment);
+                environment.Name.set_String(cache.DefaultAnalWs, "after nasal");
+                environment.StringRepresentation = TsStringUtils.MakeString("/ [N] _", cache.DefaultVernWs);
+                var duplicateEnvironment = services.GetInstance<IPhEnvironmentFactory>().Create();
+                phonology.EnvironmentsOS.Add(duplicateEnvironment);
+                duplicateEnvironment.Name.set_String(cache.DefaultAnalWs, "after nasal");
+                duplicateEnvironment.StringRepresentation = TsStringUtils.MakeString("/ [N] _", cache.DefaultVernWs);
+                var namedEnvironment = services.GetInstance<IPhEnvironmentFactory>().Create();
+                phonology.EnvironmentsOS.Add(namedEnvironment);
+                namedEnvironment.Name.set_String(cache.DefaultAnalWs, "after a nasal");
+                namedEnvironment.StringRepresentation = TsStringUtils.MakeString("/ [N] _", cache.DefaultVernWs);
+                for (var index = 0; index < 13; index++)
+                {
+                    var suggestion = services.GetInstance<IPhEnvironmentFactory>().Create();
+                    phonology.EnvironmentsOS.Add(suggestion);
+                    suggestion.Name.set_String(cache.DefaultAnalWs, "zzz candidate");
+                    suggestion.StringRepresentation = TsStringUtils.MakeString("/ [N] _", cache.DefaultVernWs);
+                    suggestionGuids.Add(suggestion.Guid);
+                }
+                baselineEnvironmentCount = phonology.EnvironmentsOS.Count;
                 phonemeGuid = phoneme.Guid;
                 otherPhonemeGuid = otherPhoneme.Guid;
                 naturalClassGuid = naturalClass.Guid;
+                duplicateClassGuid = duplicateClass.Guid;
+                environmentGuid = environment.Guid;
+                duplicateEnvironmentGuid = duplicateEnvironment.Guid;
             });
         });
         var managedRoot = RunnerOptions.ResolveRoot();
@@ -571,6 +606,70 @@ public sealed class DetailedNaturalClassMemberToolTests(PristineProjectFixture p
                 ("expectedMembers", memberIds), ("members", new[] { memberId })), CancellationToken.None);
         Assert.False(namedEdit.IsError ?? false, namedEdit.StructuredContent?.GetRawText());
         Assert.Equal(1, namedEdit.StructuredContent!.Value.GetProperty("result").GetProperty("operationCount").GetInt32());
+
+        var start = await MotifMcpServer.CallAsync(editContext, experimentalTools, "motif_start_proposal",
+            Arguments(("project", project.FwDataPath), ("draft", "named-references"), ("label", "Use named references"),
+                ("rationale", "Check explicit sound references.")), CancellationToken.None);
+        Assert.False(start.IsError ?? false, start.StructuredContent?.GetRawText());
+        async Task<ModelContextProtocol.Protocol.CallToolResult> AddEnvironment(string reference, string name) =>
+            await MotifMcpServer.CallAsync(context, grammarTools, "motif_add_environment",
+                Arguments(("project", project.FwDataPath), ("draft", "named-references"), ("name", name),
+                    ("left", new[] { new { naturalClass = reference } }), ("right", Array.Empty<object>())), CancellationToken.None);
+        var missingClass = await AddEnvironment("absent", "missing class");
+        Assert.True(missingClass.IsError);
+        Assert.Equal("draft.invalid", missingClass.StructuredContent!.Value.GetProperty("code").GetString());
+        Assert.Contains(CanonicalId.FromGuid(naturalClassGuid).Value, missingClass.StructuredContent.Value.GetProperty("message").GetString());
+        var ambiguousClass = await AddEnvironment("nasals", "ambiguous class");
+        Assert.True(ambiguousClass.IsError);
+        var classMessage = ambiguousClass.StructuredContent!.Value.GetProperty("message").GetString()!;
+        Assert.Contains("ambiguous", classMessage);
+        Assert.Contains(CanonicalId.FromGuid(naturalClassGuid).Value, classMessage);
+        Assert.Contains(CanonicalId.FromGuid(duplicateClassGuid).Value, classMessage);
+        Assert.False((await AddEnvironment("N", "named class")).IsError ?? false);
+        Assert.False((await AddEnvironment(CanonicalId.FromGuid(naturalClassGuid).Value, "identified class")).IsError ?? false);
+
+        var replacement = await MotifMcpServer.CallAsync(context, grammarTools, "motif_add_natural_class",
+            Arguments(("project", project.FwDataPath), ("draft", "named-references"), ("name", "replacement nasals"),
+                ("abbreviation", "RN"), ("members", new[] { memberId })), CancellationToken.None);
+        Assert.False(replacement.IsError ?? false, replacement.StructuredContent?.GetRawText());
+        var creation = replacement.StructuredContent!.Value.GetProperty("result").GetProperty("operations")
+            .EnumerateArray().Single(operation => operation.GetProperty("kind").GetString()!.EndsWith("/createNaturalClasses"));
+        var namedClass = await AddEnvironment("replacement nasals", "after replacement");
+        Assert.False(namedClass.IsError ?? false, namedClass.StructuredContent?.GetRawText());
+        async Task<ModelContextProtocol.Protocol.CallToolResult> Relink(string target) =>
+            await MotifMcpServer.CallAsync(editContext, experimentalTools, "motif_relink_natural_class",
+                Arguments(("project", project.FwDataPath), ("draft", "named-references"), ("source", "N"),
+                    ("replacement", "replacement nasals"), ("replacementCreationOperation", creation.GetProperty("operationId").GetString()),
+                    ("environments", new[] { new { target, expectedLeft = new[] { new { naturalClass = "N" } }, expectedRight = Array.Empty<object>() } }),
+                    ("ruleContexts", Array.Empty<string>())), CancellationToken.None);
+        var missingEnvironment = await Relink("absent");
+        Assert.True(missingEnvironment.IsError);
+        Assert.Equal("draft.invalid", missingEnvironment.StructuredContent!.Value.GetProperty("code").GetString());
+        var missingMessage = missingEnvironment.StructuredContent.Value.GetProperty("message").GetString()!;
+        Assert.Contains(CanonicalId.FromGuid(environmentGuid).Value, missingMessage);
+        Assert.Equal(12, Regex.Matches(missingMessage, @"\[[A-Za-z0-9_-]{22}\]").Count);
+        Assert.Contains($"Total: {baselineEnvironmentCount + 3}", missingMessage);
+        Assert.Contains("motif_grammar(kind=environments)", missingMessage);
+        var suggestions = await Relink("zzz");
+        Assert.True(suggestions.IsError);
+        var suggestionMessage = suggestions.StructuredContent!.Value.GetProperty("message").GetString()!;
+        Assert.All(suggestionGuids, guid => Assert.Contains(CanonicalId.FromGuid(guid).Value, suggestionMessage));
+        Assert.DoesNotContain("Total:", suggestionMessage);
+        var manyAmbiguous = await Relink("zzz candidate");
+        Assert.True(manyAmbiguous.IsError);
+        var manyMessage = manyAmbiguous.StructuredContent!.Value.GetProperty("message").GetString()!;
+        Assert.Contains("ambiguous", manyMessage);
+        Assert.All(suggestionGuids, guid => Assert.Contains(CanonicalId.FromGuid(guid).Value, manyMessage));
+        var ambiguousEnvironment = await Relink("after nasal");
+        Assert.True(ambiguousEnvironment.IsError);
+        var environmentMessage = ambiguousEnvironment.StructuredContent!.Value.GetProperty("message").GetString()!;
+        Assert.Contains("ambiguous", environmentMessage);
+        Assert.Contains(CanonicalId.FromGuid(environmentGuid).Value, environmentMessage);
+        Assert.Contains(CanonicalId.FromGuid(duplicateEnvironmentGuid).Value, environmentMessage);
+        var namedRelink = await Relink("AFTER A NASAL");
+        Assert.False(namedRelink.IsError ?? false, namedRelink.StructuredContent?.GetRawText());
+        var identifiedRelink = await Relink(CanonicalId.FromGuid(environmentGuid).Value);
+        Assert.False(identifiedRelink.IsError ?? false, identifiedRelink.StructuredContent?.GetRawText());
     }
 
     private static Dictionary<string, JsonElement> Arguments(params (string Name, object? Value)[] values) =>

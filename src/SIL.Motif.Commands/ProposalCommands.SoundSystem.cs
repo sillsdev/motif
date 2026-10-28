@@ -350,17 +350,17 @@ public static partial class ProposalCommands
 
         var candidates = matches.Length > 0 ? matches : environments.Where(environment =>
             ContainsReferenceName(environment.Name.BestAnalysisAlternative.Text, reference)).ToArray();
-        if (candidates.Length == 0) candidates = environments;
-        var displayedCandidates = matches.Length == 0 ? candidates.Take(12) : candidates;
-        var candidateText = string.Join(", ", displayedCandidates
-            .OrderBy(environment => EnvironmentDisplayName(environment), StringComparer.Ordinal)
-            .ThenBy(environment => environment.Guid)
+        var fallback = candidates.Length == 0;
+        if (fallback) candidates = environments;
+        var ordered = candidates.OrderBy(environment => EnvironmentDisplayName(environment), StringComparer.Ordinal)
+            .ThenBy(environment => environment.Guid);
+        var candidateText = string.Join(", ", (fallback ? ordered.Take(12) : ordered)
             .Select(environment => $"{EnvironmentDisplayName(environment)} [{CanonicalId.FromGuid(environment.Guid).Value}]"));
-        if (matches.Length == 0 && candidates.Length > 12) candidateText += $", and {candidates.Length - 12} more";
         if (candidateText.Length == 0) candidateText = "none";
         var status = matches.Length == 0 ? "was not found" : "is ambiguous";
+        var guidance = fallback ? $" Total: {candidates.Length}. Use motif_grammar(kind=environments) for the full list." : "";
         throw new InvalidOperationException(
-            $"Environment reference '{reference}' {status}. Candidates: {candidateText}.");
+            $"Environment reference '{reference}' {status}. Candidates: {candidateText}.{guidance}");
     }
 
     private static string EnvironmentDisplayName(IPhEnvironment environment)

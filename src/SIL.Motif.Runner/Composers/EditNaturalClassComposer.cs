@@ -112,16 +112,17 @@ public static class EditNaturalClassComposer
 
         var candidates = matches.Length > 0 ? matches : naturalClasses.Where(naturalClass => NaturalClassNames(naturalClass)
             .Any(name => ContainsName(name, reference))).ToArray();
-        if (candidates.Length == 0) candidates = naturalClasses;
-        var displayedCandidates = matches.Length == 0 ? candidates.Take(12) : candidates;
-        var candidateText = string.Join(", ", displayedCandidates.OrderBy(NaturalClassDisplayName, StringComparer.Ordinal)
-            .ThenBy(naturalClass => naturalClass.Guid)
+        var fallback = candidates.Length == 0;
+        if (fallback) candidates = naturalClasses;
+        var ordered = candidates.OrderBy(NaturalClassDisplayName, StringComparer.Ordinal)
+            .ThenBy(naturalClass => naturalClass.Guid);
+        var candidateText = string.Join(", ", (fallback ? ordered.Take(12) : ordered)
             .Select(naturalClass => $"{NaturalClassDisplayName(naturalClass)} [{SoundSystemAuthoring.Id(naturalClass).Value}]"));
-        if (matches.Length == 0 && candidates.Length > 12) candidateText += $", and {candidates.Length - 12} more";
         if (candidateText.Length == 0) candidateText = "none";
         var status = matches.Length == 0 ? "was not found" : "is ambiguous";
+        var guidance = fallback ? $" Total: {candidates.Length}. Use motif_grammar(kind=natural_classes) for the full list." : "";
         throw new InvalidOperationException(
-            $"'{ConstructName}': natural class reference '{reference}' {status}. Candidates: {candidateText}.");
+            $"'{ConstructName}': natural class reference '{reference}' {status}. Candidates: {candidateText}.{guidance}");
     }
 
     private static IPhNCSegments ResolveSegmentClass(LcmCache cache, CanonicalId id)

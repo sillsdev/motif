@@ -40,8 +40,43 @@ public sealed class EditNaturalClassComposerTests(PristineProjectFixture pristin
         Assert.Contains("ambiguous", ambiguous.Message);
         Assert.Contains(naturalClass.Value, ambiguous.Message);
         Assert.Contains(duplicate.Value, ambiguous.Message);
+        Assert.Contains("vo\u0301wels", ambiguous.Message.Normalize(System.Text.NormalizationForm.FormD),
+            StringComparison.OrdinalIgnoreCase);
         Assert.Throws<ContractParseException>(() => EditNaturalClassIntentParser.Parse(JsonSerializer.SerializeToElement(
             new { target = "vówels", expectedMembers = new[] { a.Value }, members = new[] { a.Value } })));
+    }
+
+    [Fact]
+    public void MissingReferenceBoundsFallbackButNotSuggestionsOrAmbiguousMatches()
+    {
+        using var cache = pristine.NewScratch();
+        var authored = new List<OperationEnvelope>();
+        var phoneme = CreatePhoneme(cache, authored, "a");
+        var classes = Enumerable.Range(0, 13)
+            .Select(index => CreateSegmentClass(cache, authored, $"class {index}", $"C{index}", [phoneme]))
+            .ToArray();
+
+        var refusal = Assert.Throws<InvalidOperationException>(() =>
+            EditNaturalClassComposer.ResolveNaturalClassReference(cache, "absent"));
+
+        Assert.Equal(12, classes.Count(id => refusal.Message.Contains(id.Value, StringComparison.Ordinal)));
+        Assert.Contains("Total: 13", refusal.Message);
+        Assert.Contains("motif_grammar(kind=natural_classes)", refusal.Message);
+        var suggestions = Assert.Throws<InvalidOperationException>(() =>
+            EditNaturalClassComposer.ResolveNaturalClassReference(cache, "class"));
+        Assert.All(classes, id => Assert.Contains(id.Value, suggestions.Message));
+        Assert.DoesNotContain("Total:", suggestions.Message);
+
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+        {
+            foreach (var naturalClass in cache.LangProject.PhonologicalDataOA.NaturalClassesOS)
+                naturalClass.Name.set_String(cache.DefaultAnalWs, "shared name");
+        });
+        var ambiguous = Assert.Throws<InvalidOperationException>(() =>
+            EditNaturalClassComposer.ResolveNaturalClassReference(cache, "shared name"));
+        Assert.Contains("ambiguous", ambiguous.Message);
+        Assert.All(classes, id => Assert.Contains(id.Value, ambiguous.Message));
+        Assert.DoesNotContain("Total:", ambiguous.Message);
     }
 
     [Fact]
