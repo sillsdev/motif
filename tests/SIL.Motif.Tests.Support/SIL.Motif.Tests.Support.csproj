@@ -28,7 +28,7 @@
     that uses Support. Building them here means a single-project build produces both without the whole solution.
   -->
   <ItemGroup>
-    <ProjectReference Include="..\..\src\SIL.Motif.Cli\SIL.Motif.Cli.csproj" ReferenceOutputAssembly="false" Private="false" />
+    <ProjectReference Include="..\..\src\SIL.Motif.Cli\SIL.Motif.Cli.csproj" Private="false" />
     <ProjectReference Include="..\..\src\SIL.Motif.Worker\SIL.Motif.Worker.csproj" ReferenceOutputAssembly="false" Private="false" />
   </ItemGroup>
 

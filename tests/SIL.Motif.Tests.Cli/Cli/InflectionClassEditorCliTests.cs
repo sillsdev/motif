@@ -3,6 +3,7 @@ using System.IO;
 using System.Reflection;
 using SIL.Motif.Commands.Catalog;
 using System.Text.Json.Serialization;
+using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 
 namespace SIL.Motif.Tests.Cli;

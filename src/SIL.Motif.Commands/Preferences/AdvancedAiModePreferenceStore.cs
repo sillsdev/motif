@@ -100,7 +100,7 @@ public sealed class FileAdvancedAiModePreferenceStore : IAdvancedAiModePreferenc
     /// <summary>Creates a store using the installed user's preference path or the test override.</summary>
     public static FileAdvancedAiModePreferenceStore ForInstallation()
     {
-        var configuredPath = Environment.GetEnvironmentVariable(PathEnvironmentVariable);
+        var configuredPath = SIL.Motif.Host.AmbientEnvironment.Get(PathEnvironmentVariable);
         return new FileAdvancedAiModePreferenceStore(
             string.IsNullOrWhiteSpace(configuredPath) ? DefaultPath : configuredPath);
     }

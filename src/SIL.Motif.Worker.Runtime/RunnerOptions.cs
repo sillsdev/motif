@@ -100,7 +100,7 @@ public sealed record RunnerOptions
 
     private static string? Value(string name)
     {
-        var value = Environment.GetEnvironmentVariable(name);
+        var value = SIL.Motif.Host.AmbientEnvironment.Get(name);
         return string.IsNullOrWhiteSpace(value) ? null : value;
     }
 

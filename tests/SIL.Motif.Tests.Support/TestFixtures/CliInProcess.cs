@@ -2,11 +2,16 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using SIL.Motif.Tests.TestFixtures;
+using System.Linq;
+using System.Threading.Tasks;
 
-namespace SIL.Motif.Tests.Cli;
+namespace SIL.Motif.Tests.TestFixtures;
 
-internal static class CliInProcess
+/// <summary>
+/// Runs <c>Program.Run</c> in the test process with the same isolated environment <see cref="CliProcess"/> would give a
+/// child, so a test that asserts only stdout, stderr, exit code and files does not pay for a process start.
+/// </summary>
+public static class CliInProcess
 {
     public static CliProcessResult RunCommandLine(
         string workerRoot, string? parserPath, bool developerCommands, string commandLine)
@@ -23,6 +28,22 @@ internal static class CliInProcess
         return new CliProcessResult(result.ExitCode, result.Output, result.Error);
     }
 
+    /// <summary>The in-process counterpart of <see cref="CliProcess.RunAsync(string, string?, bool, string[])"/>.</summary>
+    public static Task<CliProcessResult> RunAsync(
+        string workerRoot, string? parserPath, bool developerCommands, params string[] arguments)
+    {
+        var result = Run(CliProcess.CreateStartInfo(workerRoot, parserPath, developerCommands), arguments);
+        return Task.FromResult(new CliProcessResult(result.ExitCode, result.Output, result.Error));
+    }
+
+    /// <summary>The in-process counterpart of <see cref="CliProcess.RunAsync(ProcessStartInfo)"/>.</summary>
+    public static Task<(int ExitCode, string Output, string Error)> RunAsync(ProcessStartInfo start) =>
+        Task.FromResult(Run(start, start.ArgumentList.ToArray()));
+
+    /// <summary>Runs a command line with the environment of <paramref name="start"/>.</summary>
+    public static (int ExitCode, string Output, string Error) RunCommandLine(ProcessStartInfo start, string commandLine) =>
+        Run(start, SplitCommandLine(commandLine));
+
     public static (int ExitCode, string Output, string Error) Run(ProcessStartInfo start, params string[] arguments)
     {
         var environment = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
@@ -36,7 +57,7 @@ internal static class CliInProcess
         return (exitCode, output.ToString(), error.ToString());
     }
 
-    private static string[] SplitCommandLine(string commandLine)
+    public static string[] SplitCommandLine(string commandLine)
     {
         var arguments = new List<string>();
         var token = new System.Text.StringBuilder();

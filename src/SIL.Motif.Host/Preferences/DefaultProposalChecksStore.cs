@@ -124,7 +124,7 @@ public sealed class FileDefaultProposalChecksStore : IDefaultProposalChecksStore
     /// <summary>Creates a store using the installed user's preference path or the test override.</summary>
     public static FileDefaultProposalChecksStore ForInstallation()
     {
-        var configuredPath = Environment.GetEnvironmentVariable(PathEnvironmentVariable);
+        var configuredPath = SIL.Motif.Host.AmbientEnvironment.Get(PathEnvironmentVariable);
         return new FileDefaultProposalChecksStore(
             string.IsNullOrWhiteSpace(configuredPath) ? DefaultPath : configuredPath);
     }

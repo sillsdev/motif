@@ -50,7 +50,7 @@ public sealed class ProcessRunnerLauncher : IJobRunnerLauncher
     public static IJobRunnerLauncher FromEnvironment()
     {
         var options = JobRunnerLaunchOptions.FromEnvironment();
-        return string.IsNullOrEmpty(Environment.GetEnvironmentVariable(SuppressVariable))
+        return string.IsNullOrEmpty(SIL.Motif.Host.AmbientEnvironment.Get(SuppressVariable))
             ? new ProcessRunnerLauncher(options)
             : new NoRunnerLauncher(options);
     }
@@ -58,7 +58,7 @@ public sealed class ProcessRunnerLauncher : IJobRunnerLauncher
     /// <summary>The runner executable <see cref="ExecutableVariable"/> names, or <see langword="null"/>.</summary>
     public static string? ConfiguredExecutable()
     {
-        var configured = Environment.GetEnvironmentVariable(ExecutableVariable);
+        var configured = SIL.Motif.Host.AmbientEnvironment.Get(ExecutableVariable);
         return string.IsNullOrWhiteSpace(configured) ? null : configured;
     }
 

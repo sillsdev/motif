@@ -21,9 +21,15 @@ namespace SIL.Motif.Mcp;
 /// What wakes the job runner after a job is queued, or <see langword="null"/> for the one the environment selects.
 /// </param>
 /// <param name="AdvancedAiModeEnabled">Whether the process has confirmed the user's Advanced AI mode choice.</param>
+/// <param name="ParserPath">The parser the server's jobs use, or <see langword="null"/> to locate one.</param>
+/// <param name="Environment">
+/// The environment variables the server's settings read (worker root, test timeouts), or <see langword="null"/>
+/// for the process's own. An in-process host gives its server its own without touching the process.
+/// </param>
 public sealed record McpLaunchOptions(
     string? Profile = null, string? ActivityLogPath = null, IJobRunnerLauncher? Runner = null,
-    bool AdvancedAiModeEnabled = false, string? ParserPath = null);
+    bool AdvancedAiModeEnabled = false, string? ParserPath = null,
+    IReadOnlyDictionary<string, string?>? Environment = null);
 
 /// <summary>
 /// The MCP server over Motif's command catalog: it lists the tools a profile selects and runs each call
@@ -41,7 +47,7 @@ public static class MotifMcpServer
     public static async Task RunAsync(McpLaunchOptions options, Stream input, Stream output, TextWriter log,
         CancellationToken cancellation)
     {
-
+        using var ambient = options.Environment is null ? null : SIL.Motif.Host.AmbientEnvironment.Push(options.Environment);
         var profile = options.Profile is null ? ToolProfile.Builtin : ToolProfile.Load(options.Profile);
         var context = new ServerContext(string.Empty, MotifProductVersion.CurrentText,
             options.Runner ?? ProcessRunnerLauncher.FromEnvironment(), new ActivityLog(options.ActivityLogPath), profile, log, options.AdvancedAiModeEnabled, options.ParserPath);

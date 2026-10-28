@@ -30,7 +30,7 @@ public sealed class PostApplyBaselineRefreshTests(PristineProjectFixture pristin
             CliProcess.EnableAdvancedAiMode(start, root);
             var result = arguments[0] is "dry-run" or "apply"
                 ? await CliProcess.RunAsync(start)
-                : SIL.Motif.Tests.Cli.CliInProcess.Run(start, arguments);
+                : SIL.Motif.Tests.TestFixtures.CliInProcess.Run(start, arguments);
             output.WriteLine($"{arguments[0]} exit={result.ExitCode}; stdout={result.Output}; stderr={result.Error}");
             return result;
         }

@@ -323,7 +323,7 @@ internal sealed class MotifSqliteStore : IDisposable
 
     private static bool HasShortTestTimeout(string path)
     {
-        var testPath = Environment.GetEnvironmentVariable("MOTIF_TEST_SQLITE_SHORT_TIMEOUT_FOR");
+        var testPath = AmbientEnvironment.Get("MOTIF_TEST_SQLITE_SHORT_TIMEOUT_FOR");
         var comparison = OperatingSystem.IsWindows() || OperatingSystem.IsMacOS()
             ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
         return !string.IsNullOrWhiteSpace(testPath) &&
