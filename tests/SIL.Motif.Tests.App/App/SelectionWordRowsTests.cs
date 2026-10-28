@@ -305,11 +305,7 @@ public sealed class SelectionWordRowsTests
                     await pages.PageRefresh;
                     PageScreenshots.Settle(window);
                     Assert.Equal(20, row.Occurrences.Count);
-                    foreach (var item in row.Occurrences)
-                    {
-                        weak.Add(new WeakReference<object>(item));
-                        visited.Add((item.TextId, item.SourceOffset));
-                    }
+                    ObserveOccurrences(row.Occurrences, weak, visited);
                     Assert.Equal(20, reads.Reader!.Diagnostics.LiveLineModels);
                     Assert.Equal(20, reads.Reader.Diagnostics.LivePinnedModels);
                     Assert.Equal(20, reads.Reader.Diagnostics.LeasedOccurrenceContexts);
