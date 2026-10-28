@@ -26,7 +26,7 @@ public sealed class ApplyProposalTests(PristineProjectFixture pristine)
     [Fact]
     public async Task FinalizesADraftThenApplies()
     {
-        var (path, runner, pending) = await TriedPendingChange("finalize-then-apply");
+        var (path, pending) = await TriedPendingChange("finalize-then-apply");
 
         var applied = await Task.Run(() => PendingChangesWorkflow.Apply(
             new ApplyProposalRequest(path, pending.DraftId!, pending.Revision))).WaitAsync(StepBound);
@@ -36,13 +36,12 @@ public sealed class ApplyProposalTests(PristineProjectFixture pristine)
         Assert.Equal(pending.DraftId, applied.Value.Receipt!.ProposalId);
         Assert.Equal("Marked 1 word as incorrectly spelled.", applied.Value.Summary);
         Assert.Empty(PendingChanges.Load(new PendingChangesRequest(path, ProductVersion)).Value!.Changes);
-        GC.KeepAlive(runner);
     }
 
     [Fact]
     public async Task AppliesAFinalizedProposalFromItsCurrentTrial()
     {
-        var (path, _, pending) = await TriedPendingChange("apply-finalized");
+        var (path, pending) = await TriedPendingChange("apply-finalized");
         Assert.True(ProposalCommands.Finalize(new FinalizeRequest(path, ProductVersion,
             PendingChanges.DraftName, pending.Revision)).Succeeded);
 
@@ -56,7 +55,7 @@ public sealed class ApplyProposalTests(PristineProjectFixture pristine)
     [Fact]
     public async Task AProposalReopenedForReviewIsAppliedUnderItsOwnId()
     {
-        var (path, _, pending) = await TriedPendingChange("apply-reopened");
+        var (path, pending) = await TriedPendingChange("apply-reopened");
         Assert.True(ProposalCommands.Finalize(new FinalizeRequest(path, ProductVersion,
             PendingChanges.DraftName, pending.Revision)).Succeeded);
         var reopened = ProposalCommands.Reopen(new ReopenRequest(path, ProductVersion, "review/" + pending.DraftId,
@@ -100,7 +99,7 @@ public sealed class ApplyProposalTests(PristineProjectFixture pristine)
     [Fact]
     public async Task RefusesWhenTheTrialIsNotCurrent()
     {
-        var (path, _, pending) = await TriedPendingChange("stale-trial");
+        var (path, pending) = await TriedPendingChange("stale-trial");
         var added = ProposalCommands.AddSetGloss(new AddSetGlossRequest(path, ProductVersion,
             PendingChanges.DraftName, CanonicalId.Mint().Value, "en", "a gloss added after the Trial"));
         Assert.True(added.Succeeded, added.Refusal?.Message);
@@ -149,16 +148,17 @@ public sealed class ApplyProposalTests(PristineProjectFixture pristine)
         Assert.Equal("Nothing to apply.", response.RootElement.GetProperty("summary").GetString());
     }
 
-    private async Task<(string Path, IJobRunnerLauncher Runner, PendingChangesSnapshot Pending)> TriedPendingChange(
+    private async Task<(string Path, PendingChangesSnapshot Pending)> TriedPendingChange(
         string word)
     {
         var (path, pending) = await NewPendingChange(word);
-        var runner = IsolatedRunner.Process(RootFor(path));
+        await using var runner = new InProcessRunnerLauncher(IsolatedRunner.Options(RootFor(path)));
         var measured = await PendingChangesWorkflow.Measure(new MeasurePendingRequest(path, pending.DraftId,
             pending.Revision, [word]), new Progress<MeasureProgress>(), CancellationToken.None, StepBound, runner)
             .WaitAsync(StepBound + TimeSpan.FromSeconds(30));
         Assert.True(measured.Succeeded, measured.Refusal?.Message);
-        return (path, runner, PendingChanges.Load(new PendingChangesRequest(path, ProductVersion)).Value!);
+        await runner.WhenIdleAsync().WaitAsync(StepBound);
+        return (path, PendingChanges.Load(new PendingChangesRequest(path, ProductVersion)).Value!);
     }
 
     private Task<(string Path, PendingChangesSnapshot Pending)> NewPendingChange(string word)
