@@ -608,7 +608,12 @@ public sealed class ProgressiveDisplayTests
     }
 
     [Fact]
-    public void ExpandedDerivationTreeRealizesOnlyNearbyChildren()
+    public void ExpandedDerivationTreeRealizesOnlyNearbyChildren() => CheckExpandedDerivationTree(20);
+
+    [SlowScaleFact]
+    public void ExpandedDerivationTreeNavigatesSixtyChildrenInEachDirection() => CheckExpandedDerivationTree(60);
+
+    private static void CheckExpandedDerivationTree(int navigationSteps)
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
@@ -635,14 +640,17 @@ public sealed class ProgressiveDisplayTests
                 Assert.InRange(root.GetRealizedContainers().Count(), 1, 64);
                 tree.SelectedItem = children[0];
                 Assert.True(Assert.IsType<TreeViewItem>(root.ContainerFromIndex(0)).Focus());
-                for (var index = 0; index < 60; index++)
+                var scroll = Assert.IsType<ScrollViewer>(window.Content);
+                var initialOffset = scroll.Offset.Y;
+                for (var index = 0; index < navigationSteps; index++)
                 {
                     window.KeyPress(Key.Down, RawInputModifiers.None, PhysicalKey.None, null);
                     window.KeyRelease(Key.Down, RawInputModifiers.None, PhysicalKey.None, null);
                     LayoutInvariantEngineTests.Settle(window);
                 }
-                Assert.Same(children[60], tree.SelectedItem);
-                for (var index = 0; index < 60; index++)
+                Assert.Same(children[navigationSteps], tree.SelectedItem);
+                Assert.True(scroll.Offset.Y > initialOffset);
+                for (var index = 0; index < navigationSteps; index++)
                 {
                     window.KeyPress(Key.Up, RawInputModifiers.None, PhysicalKey.None, null);
                     window.KeyRelease(Key.Up, RawInputModifiers.None, PhysicalKey.None, null);
@@ -666,13 +674,13 @@ public sealed class ProgressiveDisplayTests
                 PageScreenshots.Settle(window);
                 tree.SelectedItem = roots[0];
                 Assert.True(Assert.IsType<TreeViewItem>(tree.ContainerFromIndex(0)).Focus());
-                for (var index = 0; index < 60; index++)
+                for (var index = 0; index < navigationSteps; index++)
                 {
                     window.KeyPress(Key.Down, RawInputModifiers.None, PhysicalKey.None, null);
                     window.KeyRelease(Key.Down, RawInputModifiers.None, PhysicalKey.None, null);
                     LayoutInvariantEngineTests.Settle(window);
                 }
-                Assert.Same(roots[60], tree.SelectedItem);
+                Assert.Same(roots[navigationSteps], tree.SelectedItem);
                 tree.ScrollIntoView(1999);
                 PageScreenshots.Settle(window);
                 Assert.NotNull(tree.ContainerFromIndex(1999));
@@ -869,11 +877,16 @@ public sealed class ProgressiveDisplayTests
     }
 
     [Fact]
-    public void RecentProjectMenuKeepsOnePageAndCanReachTheLastProject()
+    public void RecentProjectMenuKeepsOnePageAndCanReachTheLastProject() => CheckRecentProjectPages(200);
+
+    [SlowScaleFact]
+    public void RecentProjectMenuReachesTheLastOfTwoThousandProjects() => CheckRecentProjectPages(2000);
+
+    private static void CheckRecentProjectPages(int projectCount)
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var projects = Enumerable.Range(0, 2000).Select(index =>
+            var projects = Enumerable.Range(0, projectCount).Select(index =>
                 new SIL.Motif.Commands.Queries.KnownProjectSummary(
                     Path.Combine(Path.GetTempPath(), $"project-{index}.fwdata"), PageScreenshots.CaptureStartAt)).ToArray();
             var (workspace, window) = await LayoutInvariantFixtures.OpenFreshSampleData(parse: false,
@@ -883,17 +896,17 @@ public sealed class ProgressiveDisplayTests
                 var menu = window.FindControl<MenuItem>("OpenRecentMenuItem")!;
                 window.OpenFileMenu();
                 await workspace.RefreshKnownProjectsAsync();
-                Assert.Equal(2000, workspace.RecentProjects.Count);
+                Assert.Equal(projectCount, workspace.RecentProjects.Count);
                 PageScreenshots.Settle(window);
                 window.OpenRecentMenu();
                 PageScreenshots.Settle(window);
                 var first = workspace.RecentProjects[0];
-                for (var page = 0; page < 100; page++)
+                for (var page = 0; page < projectCount / 20; page++)
                 {
                     Assert.InRange(menu.Items.Count, 20, 22);
                     Assert.Equal(workspace.RecentProjects.Skip(page * 20).Take(20),
                         window.RecentProjectItems.Select(item => item.CommandParameter));
-                    if (page == 99) break;
+                    if (page == projectCount / 20 - 1) break;
                     var next = Assert.Single(menu.Items.OfType<MenuItem>(), item => Equals(item.Header, "Show 20 more"));
                     Assert.True(next.StaysOpenOnClick);
                     Assert.True(next.Focus());
@@ -908,7 +921,7 @@ public sealed class ProgressiveDisplayTests
                 var previous = Assert.Single(menu.Items.OfType<MenuItem>(), item => Equals(item.Header, "Previous 20"));
                 previous.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(MenuItem.ClickEvent));
                 PageScreenshots.Settle(window);
-                Assert.Same(workspace.RecentProjects[1960], window.RecentProjectItems[0].CommandParameter);
+                Assert.Same(workspace.RecentProjects[projectCount - 40], window.RecentProjectItems[0].CommandParameter);
             }
             finally { window.Close(); }
         }, TimeSpan.FromSeconds(30));
