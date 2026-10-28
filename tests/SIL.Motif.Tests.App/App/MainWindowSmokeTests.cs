@@ -389,6 +389,7 @@ public sealed class MainWindowSmokeTests
         _avalonia.Invoke(() =>
         {
             var (workspace, window, _) = NewComposedWindow();
+            using var closer = window.CloseOnExit();
             window.EnsureAllPageViews();
             window.RealizeLazyContent();
 
@@ -709,6 +710,7 @@ public sealed class MainWindowSmokeTests
         _avalonia.Invoke(() =>
         {
             var (workspace, window, _) = NewComposedWindow();
+            using var closer = window.CloseOnExit();
             window.Show();
             foreach (var page in Enum.GetValues<WorkspacePage>())
             foreach (var tab in Enum.GetValues<TextsTab>())
@@ -1018,7 +1020,8 @@ public sealed class MainWindowSmokeTests
     {
         _avalonia.Invoke(() =>
         {
-            var (workspace, _, _) = NewComposedWindow();
+            var (workspace, window, _) = NewComposedWindow();
+            using var closer = window.CloseOnExit();
             ((IProgress<AssessmentProgress>)workspace.Assess).Report(
                 new AssessmentProgress(AssessmentStage.Parsing, 1, 2, "Parsing the Selection..."));
             workspace.Assess.Refusal = new Refusal(

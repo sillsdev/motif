@@ -16,7 +16,10 @@ public abstract class SceneSet : IDisposable
     internal TextViewScene Get(string name)
     {
         if (!_scenes.TryGetValue(name, out var scene))
+        {
             _scenes[name] = scene = Open(TextViewSample.Named(name));
+            WindowLeakNetAttribute.Keep(scene.Window);
+        }
         scene.Reset();
         return scene;
     }

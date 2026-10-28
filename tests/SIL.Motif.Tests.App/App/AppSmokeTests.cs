@@ -23,6 +23,7 @@ public sealed class AppSmokeTests
             Assert.IsType<SIL.Motif.App.App>(Application.Current);
 
             var window = new MainWindow();
+            using var closer = window.CloseOnExit();
 
             Assert.NotNull(window);
             Assert.Equal("Motif (tech demo)", window.Title);

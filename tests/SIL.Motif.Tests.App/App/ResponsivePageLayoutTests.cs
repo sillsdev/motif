@@ -85,7 +85,10 @@ public sealed class ResponsivePageLayoutTests(ResponsivePageLayoutTests.SampleWi
         internal async Task<(WorkspaceShellViewModel Workspace, MainWindow Window)> GetAsync()
         {
             if (_window is null)
+            {
                 (_workspace, _window) = await PageScreenshots.OpenOverSampleData(seedReaderToken: false);
+                WindowLeakNetAttribute.Keep(_window);
+            }
             return (_workspace!, _window);
         }
 
