@@ -20,6 +20,40 @@ namespace SIL.Motif.Tests.App;
 public sealed class TextsListsPanelTests(AvaloniaHeadlessFixture avalonia)
 {
     [Fact]
+    public void HidingTheListsKeepsTheirControlsAndBindingsSoShowingThemAgainRebuildsNothing()
+    {
+        avalonia.Invoke(() =>
+        {
+            var compare = new CompareViewModel();
+            compare.Load([Word("approved-timeout", "timed-out", ProjectStanding.Approved)]);
+            var lists = new TextsListsViewModel(compare);
+            var panel = new TextsListsPanel(lists);
+            var host = new Border { Child = panel };
+            var window = new MotifTestWindow { Content = host, Width = 1200, Height = 800 };
+            try
+            {
+                window.Show();
+                window.UpdateLayout();
+                var words = panel.FindControl<ListBox>("TextsListsPanelWordsItems")!;
+                var before = panel.GetVisualDescendants().Where(visual => !words.IsVisualAncestorOf(visual) && visual != words).ToArray();
+                Assert.NotEmpty(before);
+                Assert.Same(panel, panel.DataContext);
+
+                host.IsVisible = false;
+                window.UpdateLayout();
+                Assert.Same(panel, panel.DataContext);
+
+                host.IsVisible = true;
+                window.UpdateLayout();
+                var after = panel.GetVisualDescendants().Where(visual => !words.IsVisualAncestorOf(visual) && visual != words).ToArray();
+                var rebuilt = after.Count(visual => !before.Contains(visual));
+                Assert.True(rebuilt == 0, $"{rebuilt} of {after.Length} controls were rebuilt on the second show");
+            }
+            finally { window.Close(); }
+        });
+    }
+
+    [Fact]
     public void EachListedWordIsTheOneWordRow_WithItsOutcome_AndNoMeaningTheListAlreadyNames()
     {
         avalonia.Invoke(() =>
