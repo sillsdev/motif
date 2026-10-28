@@ -1,6 +1,8 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
+using SIL.Motif.App.ViewModels;
 
 namespace SIL.Motif.App.Views;
 
@@ -8,6 +10,9 @@ namespace SIL.Motif.App.Views;
 public sealed partial class SetupDialog : UserControl
 {
     public SetupDialog() => AvaloniaXamlLoader.Load(this);
+
+    private void OnStepLimitLostFocus(object? sender, RoutedEventArgs e) =>
+        (DataContext as SetupViewModel)?.ValidateStepLimit();
 
     /// <summary>Fits the setup surface inside the window's unscaled client area.</summary>
     /// <param name="maxLogicalWidth">The available width before display zoom is applied.</param>

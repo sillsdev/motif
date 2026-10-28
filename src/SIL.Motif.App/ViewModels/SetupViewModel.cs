@@ -29,6 +29,7 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
     private ParserStepRate _parserStepRate = StepLimitEstimator.TypicalMachineRate;
     private string _runningStepLimitText = string.Empty;
     private bool _syncingSelectionLimits;
+    private bool _stepLimitErrorShown;
 
     public SetupViewModel(WorkspaceContext context, TextWordsViewModel words)
     {
@@ -41,7 +42,7 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
         SkipCommand = new AsyncRelayCommand(SkipAsync);
         CancelCommand = new RelayCommand(Cancel, () => !_isSaving);
         BackCommand = new RelayCommand(() => Step--, () => Step > 0);
-        NextCommand = new RelayCommand(() => Step++, () => Step < 3);
+        NextCommand = new RelayCommand(Next, () => Step < 3);
         FinishCommand = new AsyncRelayCommand(FinishAsync, CanFinish);
         Selection.PropertyChanged += OnSelectionChanged;
         context.Assess.PropertyChanged += OnAssessmentChanged;
@@ -126,7 +127,7 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
     {
         get
         {
-            if (!IsStepLimitValid) return MotifAppStrings.EnterPositiveWholeNumberOfAttempts;
+            if (!IsStepLimitValid) return StepLimitValidationMessage ?? string.Empty;
             var estimate = CurrentStepLimitEstimate;
             if (estimate is null) return MotifAppStrings.SetupNoAttemptLimitEstimate;
             if (estimate.PerWordTimeLimitMs is not { } limitMs || limitMs > int.MaxValue)
@@ -152,6 +153,7 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
             : Selection.PerWordStepLimit is { } steps && steps is > 0 and <= long.MaxValue &&
               decimal.Truncate(steps) == steps ? new StepCap(decimal.ToInt64(steps)) : _configuredStepLimit;
         _syncingSelectionLimits = true;
+        _stepLimitErrorShown = false;
         try
         {
             IsStepLimitUnbounded = stepLimit.IsUnbounded;
@@ -214,9 +216,27 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
     [NotifyPropertyChangedFor(nameof(StepLimitEstimateText))]
     private bool _isStepLimitUnbounded;
 
-    public string? StepLimitValidationMessage => IsStepLimitUnbounded || IsStepLimitValid
-        ? null
-        : MotifAppStrings.EnterPositiveWholeNumberOfAttempts;
+    // Shown on leave or confirm; cleared once the input is valid.
+    public string? StepLimitValidationMessage => _stepLimitErrorShown && !IsStepLimitValid
+        ? MotifAppStrings.EnterPositiveWholeNumberOfAttempts
+        : null;
+
+    /// <summary>Checks the attempt limit and shows its error when invalid.</summary>
+    /// <returns>Whether the limit is valid.</returns>
+    public bool ValidateStepLimit()
+    {
+        var valid = IsStepLimitValid;
+        _stepLimitErrorShown = !valid;
+        OnPropertyChanged(nameof(StepLimitValidationMessage));
+        OnPropertyChanged(nameof(StepLimitEstimateText));
+        return valid;
+    }
+
+    private void Next()
+    {
+        if (IsLimitsStep && !ValidateStepLimit()) return;
+        Step++;
+    }
 
     private bool IsStepLimitValid => IsStepLimitUnbounded ||
         StepLimitSteps is > 0 and var steps && decimal.Truncate(steps) == steps && steps <= long.MaxValue;
@@ -438,11 +458,7 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
             shapes.Add(UsageArgumentShape.Number("perWordTimeLimitSeconds"));
         using var usageAction = _context.Commands.BeginUsageAction("selection set-default", [.. shapes]);
         var runFirstAssessment = !IsEditingExistingSelection;
-        if (!IsStepLimitValid)
-        {
-            OnPropertyChanged(nameof(StepLimitValidationMessage));
-            return;
-        }
+        if (!ValidateStepLimit()) return;
         if (!Selection.CanAssess)
         {
             ShownRefusal = WindowRefusal.Plain(MotifAppStrings.SetupChooseTextOrWord);
@@ -589,6 +605,7 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
 
     private void SetStepLimit(StepCap stepLimit)
     {
+        _stepLimitErrorShown = false;
         IsStepLimitUnbounded = stepLimit.IsUnbounded;
         StepLimitSteps = stepLimit.Steps ?? StepLimitSteps ?? StepCap.DefaultSteps;
     }
@@ -628,7 +645,9 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
 
     partial void OnIsStepLimitUnboundedChanged(bool value)
     {
-        if (!_syncingSelectionLimits) UpdateStepLimit();
+        if (_syncingSelectionLimits) return;
+        UpdateStepLimit();
+        ValidateStepLimit();
     }
 
     private void UpdateStepLimit()
