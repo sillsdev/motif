@@ -59,6 +59,11 @@ internal static class LayoutInvariantFixtures
     /// <summary>Low resolution, a half-screen window, and low resolution zoomed in.</summary>
     internal static IReadOnlyList<LayoutCell> Cells { get; } = [new(640, 600, 100), new(960, 780, 100), new(640, 600, 150)];
 
+    /// <summary>MOTIF_SLOW_SCALE=1 inspects every cell; the gate inspects the tightest one, low resolution zoomed in.</summary>
+    internal static bool InspectsEveryCell { get; } = Environment.GetEnvironmentVariable("MOTIF_SLOW_SCALE") == "1";
+
+    internal static IReadOnlyList<LayoutCell> GridCells { get; } = InspectsEveryCell ? Cells : [Cells[2]];
+
     internal static TextWordsResponse QuickWords()
     {
         var source = PageScreenshots.TextWords();

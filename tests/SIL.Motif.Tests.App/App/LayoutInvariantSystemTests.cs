@@ -169,7 +169,7 @@ public sealed class LayoutInvariantSystemTests(ITestOutputHelper output)
                     void InspectGrid(string scene, Action? prepare = null)
                     {
                         prepare ??= scene.Contains("/inspector-", StringComparison.Ordinal) ? ShowObjectInspector : null;
-                        foreach (var cell in LayoutInvariantFixtures.Cells)
+                        foreach (var cell in LayoutInvariantFixtures.GridCells)
                         {
                             run.Inspect(window, scene, cell, quick: false, workspace, prepare);
                         }

@@ -75,8 +75,10 @@ internal sealed class LayoutInvariantRun(string tier, ITestOutputHelper output) 
         finally { dispatcher.ShutdownStarted -= OnShutdownStarted; }
     }
 
-    internal void AssertFindings() => LayoutInvariantWorkList.AssertNoUnexpected(
-        _findings, LayoutInvariantWorkList.For(tier), _inspected);
+    // The gate inspects fewer cells than the work list names; the opt-in run owns the rest.
+    internal void AssertFindings() => LayoutInvariantWorkList.AssertNoUnexpected(_findings,
+        LayoutInvariantWorkList.For(tier).Where(entry => tier != "full" || LayoutInvariantFixtures.GridCells.Any(cell =>
+            cell.Name == entry.Context.Size && cell.Zoom == entry.Context.Zoom)).ToList(), _inspected);
 
     public void Dispose()
     {
