@@ -59,6 +59,36 @@
   in a Parsimony or Retirement folder. Off by default, and a normal run pays nothing for it. Instrumented
   tests run slower, and the summary covers only the projects this run selected, so pair it with -Project.
 
+  .PARAMETER Changed
+  Run only the test classes the current diff can affect, for a landing that should take a minute or two. The diff is
+  `git diff <Base>` plus untracked files. A class is selected when the coverage map says it executes a changed
+  source file, when it is declared in a changed or added test file, or when it is in the smoke set
+  (tests/test-smoke-classes.txt); every selected class runs at every level, as under -All. Each selected class is
+  printed with its seconds and the reason. Anything the map cannot vouch for runs the full suite instead, with the
+  reason printed: no map, a map from another history or more than -MaxMapAge commits old, a build, project or
+  tooling file, new shared test code, a source file outside src/ and tests/, or a data file no source names. The
+  tooling regression scripts run only in that fallback. -All stays the full gate; docs/testing-changed-files.md has
+  the rules.
+
+  .PARAMETER Base
+  The ref -Changed diffs against. Defaults to the merge-base of HEAD with origin/main, then with main.
+
+  .PARAMETER Explain
+  With -Changed, print the selection and its reasons, and the estimated time, then stop: nothing is built or run.
+
+  .PARAMETER BuildMap
+  Build the coverage map -Changed reads: one full-suite run under coverlet (restored on demand; no project references
+  it) in which every test process runs one class at a time in a private copy of its test folder, and
+  SIL.Motif.Tests.Support records which source files each class executed. It takes about as long as the full gate
+  plus instrumentation, so run it nightly or on request, not per landing. The map goes to
+  bin/.cache/test-map/coverage-map.json, keyed by HEAD, or to -MapPath.
+
+  .PARAMETER MapPath
+  The coverage map file -Changed reads and -BuildMap writes.
+
+  .PARAMETER MaxMapAge
+  The most commits the map's commit may trail HEAD before -Changed runs everything. Default 40.
+
   .PARAMETER NoProcessSweep
   Keep the worktree lock and process policy but skip stale-process cleanup.
 
@@ -74,6 +104,12 @@ param(
     [string] $Project,
     [string] $Filter,
     [switch] $Coverage,
+    [switch] $Changed,
+    [string] $Base,
+    [switch] $Explain,
+    [switch] $BuildMap,
+    [string] $MapPath,
+    [int] $MaxMapAge = 40,
     [switch] $NoProcessSweep
 )
 
@@ -132,9 +168,31 @@ if (Test-Path -LiteralPath $fixtureCache) {
 }
 $env:MOTIF_TEST_FIXTURE_CACHE = $fixtureCache
 if ($All -and $System) { throw 'Choose either -All or -System.' }
-$levelSelection = if ($All) { 'All' } elseif ($System) { 'System' } else { 'Unit,Integration' }
+if ($Changed -and ($All -or $System -or $Project -or $Filter -or $BuildMap)) {
+    throw '-Changed selects its own classes; do not combine it with -All, -System, -Project, -Filter or -BuildMap.'
+}
+if ($BuildMap -and ($System -or $Project -or $Filter -or $Coverage)) {
+    throw '-BuildMap runs the whole suite; do not combine it with -System, -Project, -Filter or -Coverage.'
+}
+if ($Explain -and -not $Changed) { throw '-Explain belongs to -Changed.' }
+if ($BuildMap) { $All = [switch]::Present }
+$levelSelection = if ($All -or $Changed) { 'All' } elseif ($System) { 'System' } else { 'Unit,Integration' }
 
 if ($Filter -and -not $Project) { throw '-Filter requires -Project.' }
+
+# -Changed picks classes from the diff and the coverage map; unknown means everything.
+$changedSelection = $null
+$changedPlan = $null
+$defaultMapPath = Join-Path $repoRoot 'bin/.cache/test-map/coverage-map.json'
+if ($Changed) {
+    Import-Module (Join-Path $repoRoot 'tools/MotifChangedTests.psm1') -Force
+    $changedSelection = Select-MotifChangedTests -RepoRoot $repoRoot -Base $Base -MaxMapAge $MaxMapAge `        -MapPath $(if ($MapPath) { $MapPath } else { $defaultMapPath }) `        -SmokePath (Join-Path $repoRoot 'tests/test-smoke-classes.txt')
+    $changedPlan = Get-MotifChangedPlan -Selection $changedSelection `        -WeightsPath (Join-Path $repoRoot 'tests/test-shard-weights.json')
+    Write-MotifChangedSelection -Selection $changedSelection -Plan $changedPlan
+    if ($Explain) { return }
+    if ($changedSelection.Full) { $All = [switch]::Present }
+}
+$changedClasses = $Changed -and -not $changedSelection.Full
 
 function Write-Step {
     param([string] $Text)
@@ -172,7 +230,7 @@ if ($buildExitCode -ne 0) {
 
 # A -Project run is an iteration; a full run, which CI and landing use, runs the regressions beside the tests.
 $regressions = @()
-if (-not $Project) {
+if (-not $Project -and -not $changedClasses) {
     $regressions = @(
         @{ Name = 'offline restore'; Title = 'offline restore regression'; Script = 'OfflineRestore.Tests.ps1' }
         @{ Name = 'tool environment regression'; Title = 'tool environment regression'; Script = 'MotifToolEnvironment.Tests.ps1' }
@@ -183,6 +241,7 @@ if (-not $Project) {
         @{ Name = 'artifact preparation host regression'; Title = 'artifact preparation host regression'; Script = 'Test-PrepareTestArtifacts.Tests.ps1'; Configured = $true }
         @{ Name = 'publication policy regression'; Title = 'publication policy regression'; Script = 'MotifReleasePublication.Tests.ps1' }
         @{ Name = 'help golden regression'; Title = 'help golden gate regression'; Script = 'MotifHelpGolden.Tests.ps1' }
+        @{ Name = 'changed-files selection regression'; Title = 'changed-files selection regression'; Script = 'MotifChangedTests.Tests.ps1' }
     )
     if ($All) {
         $regressions += @{ Name = 'capture screen regression'; Title = 'capture screenshot tooling regression'; Script = 'Capture-Screens.Tests.ps1' }
@@ -218,7 +277,8 @@ foreach ($projectFile in Get-ChildItem -LiteralPath $testsRoot -Filter '*.csproj
     if ($defaultLevel -notin @('Unit', 'Integration', 'System')) {
         throw "MotifTestDefaultLevel must be Unit, Integration or System in $projectPath"
     }
-    if (-not $All -and -not $System -and $defaultLevel -eq 'System') { continue }
+    if (-not $All -and -not $System -and -not $changedClasses -and $defaultLevel -eq 'System') { continue }
+    if ($changedClasses -and -not $changedPlan.Projects.Contains($projectFile.BaseName)) { continue }
     if ($Project -and $projectFile.BaseName -ne $Project) { continue }
     $testProjects += [pscustomobject]@{
         Name = $projectFile.BaseName; Path = $projectPath; Shards = $shards; DefaultLevel = $defaultLevel
@@ -239,12 +299,13 @@ $projectConcurrency = Get-MotifTestProcessConcurrency -ProcessorCount $available
 # The biggest projects start first, so the throttle does not leave one long shard running alone at the end.
 $testRuns = @(foreach ($testProject in @($testProjects | Sort-Object -Property Shards -Descending)) {
     $runShards = $testProject.Shards
-    if ($Filter) { $runShards = 1 }
+    if ($changedClasses) { $runShards = [Math]::Min($runShards, $changedPlan.Projects[$testProject.Name].Shards) }
+    elseif ($Filter) { $runShards = 1 }
     elseif (-not $All) { $runShards = [Math]::Max(1, [int][Math]::Ceiling($runShards / 2.0)) }
     for ($index = 0; $index -lt $runShards; $index++) {
         $label = if ($runShards -eq 1) { $testProject.Name } else { "$($testProject.Name).shard$index" }
         [pscustomobject]@{
-            Project = $testProject.Name; Label = $label; Assembly = $testProject.Assembly
+            Project = $testProject.Name; Label = $label; Assembly = $testProject.Assembly; CoverageSettings = ''
             Shard = if ($runShards -eq 1) { '' } else { "$index/$runShards" }
             NeedsPortable = ($testProject.Name -eq 'SIL.Motif.Tests.Cli')
         }
@@ -280,6 +341,21 @@ if (-not $env:MOTIF_PANGLOSS_EXE) {
 
 $coverageAdapter = ''
 $coverageSettings = ''
+$mapDirectory = ''
+$classSelectionFile = ''
+if ($BuildMap) {
+    Import-Module (Join-Path $repoRoot 'tools/MotifCoverage.psm1') -Force
+    Import-Module (Join-Path $repoRoot 'tools/MotifChangedTests.psm1') -Force
+    Write-Step 'coverage collector (coverage-map build: the whole suite, one class at a time per process)'
+    $coverageAdapter = Install-MotifCoverageCollector -RepoRoot $repoRoot
+    $mapDirectory = Join-Path $resultsRoot 'coverage-map'
+    New-Item -ItemType Directory -Force -Path $mapDirectory | Out-Null
+    $coverageSettings = Join-Path $repoRoot 'tools/coverage/map.runsettings'
+}
+if ($changedClasses) {
+    $classSelectionFile = Join-Path $resultsRoot 'class-selection.txt'
+    Set-Content -LiteralPath $classSelectionFile -Value @($changedPlan.SelectionEntries)
+}
 if ($Coverage) {
     Import-Module (Join-Path $repoRoot 'tools/MotifCoverage.psm1') -Force
     Write-Step 'coverage collector'
@@ -288,7 +364,7 @@ if ($Coverage) {
 }
 
 # This one sweeps processes and kills the test run's, so it finishes first.
-if (-not $Project) {
+if (-not $Project -and -not $changedClasses) {
     $phaseClocks['process hygiene regression'] = [Diagnostics.Stopwatch]::StartNew()
     Write-Step 'worktree process hygiene regression'
     & pwsh -NoProfile -File (Join-Path $repoRoot 'tools/Test-MotifProcessHygiene.Tests.ps1')
@@ -303,6 +379,12 @@ $phaseClocks['test artifact preparation'] = [Diagnostics.Stopwatch]::StartNew()
 $selectedProjectNames = @($testRuns | Select-Object -ExpandProperty Project -Unique)
 $artifactRequirements = Get-MotifTestArtifactRequirements -All:$All -System:$System `
     -SelectedProjects $selectedProjectNames -Filter $Filter
+if ($changedClasses) {
+    # Only the classes that read a prepared artifact need it prepared.
+    $artifactRequirements = [pscustomobject]@{
+        PortableWorkerPackage = $changedPlan.NeedsPortable; ExplainedWordCardFixture = $changedPlan.NeedsExplainedWordCard
+    }
+}
 $preparePortable = $artifactRequirements.PortableWorkerPackage
 $prepareExplainedWordCard = $artifactRequirements.ExplainedWordCardFixture
 $prepareTestArtifacts = Join-Path $repoRoot 'tools/Prepare-TestArtifacts.ps1'
@@ -361,12 +443,22 @@ $jobs = foreach ($run in $testRuns) {
     $projectInput = Join-Path $resultsRoot "$($run.Label).stdin"
     $inputToken = "$($run.Label)-$([guid]::NewGuid().ToString('N'))"
     [IO.File]::WriteAllText($projectInput, $inputToken)
+    $runSettings = $coverageSettings
+    $runAssembly = $run.Assembly
+    if ($BuildMap) {
+        $runAssembly = New-MotifMapRunDirectory -ProductDirectory (Join-Path $repoRoot "bin/$Configuration") `
+            -Destination (Join-Path $repoRoot 'bin') -Label $run.Label -Assembly $run.Assembly
+        $runSettings = New-MotifMapRunSettings -Template $coverageSettings -Project $run.Project `
+            -TestProjects @($testProjects.Name) -OutputPath (Join-Path $resultsRoot "$($run.Label).runsettings")
+    }
     Start-ThreadJob -Name $run.Label -ThrottleLimit $projectConcurrency `
-        -ArgumentList $run.Label, $run.Assembly, $run.Shard, $Filter, $levelSelection, $Configuration,
+        -ArgumentList $run.Label, $runAssembly, $run.Shard, $Filter, $levelSelection, $Configuration,
             $projectResults, $projectLog, $projectErrorLog, $projectInput, $inputToken, $coverageAdapter,
-            $coverageSettings, $testThreads, $(if ($run.NeedsPortable) { $portablePrepare } else { $null }) -ScriptBlock {
+            $runSettings, $testThreads, $(if ($run.NeedsPortable) { $portablePrepare } else { $null }),
+            $mapDirectory, $classSelectionFile -ScriptBlock {
         param($name, $assemblyPath, $shard, $filter, $levels, $configuration, $projectResults, $log, $errorLog,
-            $inputPath, $inputToken, $coverageAdapter, $coverageSettings, $threads, $portablePrepare)
+            $inputPath, $inputToken, $coverageAdapter, $coverageSettings, $threads, $portablePrepare,
+            $mapDirectory, $classSelectionFile)
         $projectClock = [Diagnostics.Stopwatch]::StartNew()
         if ($portablePrepare) {
             $portablePrepare.WaitForExit()
@@ -403,6 +495,8 @@ $jobs = foreach ($run in $testRuns) {
         # Passed to the test host alone: a thread job's own environment is shared with every other job.
         if ($shard) { $arguments += @('--environment', ('"MOTIF_TEST_SHARD={0}"' -f $shard)) }
         $arguments += @('--environment', ('"MOTIF_TEST_LEVELS={0}"' -f $levels))
+        if ($mapDirectory) { $arguments += @('--environment', ('"MOTIF_TEST_COVERAGE_MAP_DIR={0}"' -f $mapDirectory)) }
+        if ($classSelectionFile) { $arguments += @('--environment', ('"MOTIF_TEST_CLASS_SELECTION={0}"' -f $classSelectionFile)) }
         # Avalonia code stays unoptimized without call counting, so the App project turns it on.
         if ($name -like 'SIL.Motif.Tests.App*') {
             $arguments += @('--environment', 'DOTNET_TC_CallCounting=1')
@@ -533,6 +627,19 @@ if ($Coverage) {
         $coverageSummary.parsimony.percent, $coverageSummary.parsimony.covered, $coverageSummary.parsimony.total,
         (Join-Path $resultsRoot 'coverage/coverage-summary.md'))
 }
+if ($BuildMap) {
+    $mapTarget = if ($MapPath) { $MapPath } else { $defaultMapPath }
+    $mapCommit = (& git -C $repoRoot rev-parse HEAD).Trim()
+    if (& git -C $repoRoot status --porcelain --untracked-files=no) {
+        Write-Host '  the worktree has uncommitted changes; the map is keyed by HEAD but measures the working tree' -ForegroundColor Yellow
+    }
+    Get-ChildItem -LiteralPath (Join-Path $repoRoot 'bin') -Directory -Filter 'map-run-*' | Remove-Item -Recurse -Force
+    $mapResult = Merge-MotifCoverageMap -InputDirectory $mapDirectory -OutputPath $mapTarget -RepoRoot $repoRoot `
+        -Commit $mapCommit -ResultsDirectory $resultsRoot
+    Write-Host ('  coverage map: {0} classes over {1} source files, commit {2}, written to {3}' -f
+        $mapResult.Classes, $mapResult.Files, $mapCommit.Substring(0, 9), $mapResult.Path)
+    if ($failed) { Write-Host '  the suite had failures, so the classes that failed have partial coverage' -ForegroundColor Yellow }
+}
 Write-PhaseDuration 'whole gate'
 
 if ($failed) {
@@ -542,7 +649,9 @@ if ($failed) {
 }
 
 Write-Host ''
-if ($All) { Write-Host 'Tests OK: full suite.' -ForegroundColor Green }
+if ($changedClasses) { Write-Host "Tests OK: $($changedPlan.ClassCount) selected classes (-Changed); the full suite is -All." -ForegroundColor Green }
+elseif ($BuildMap) { Write-Host 'Coverage map built from a full-suite run.' -ForegroundColor Green }
+elseif ($All) { Write-Host 'Tests OK: full suite.' -ForegroundColor Green }
 elseif ($System) { Write-Host 'Tests OK: System subset.' -ForegroundColor Green }
 else { Write-Host 'Tests OK: Unit+Integration subset; default run is not a merge gate.' -ForegroundColor Green }
 exit 0
