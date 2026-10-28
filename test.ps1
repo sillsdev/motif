@@ -170,108 +170,25 @@ if ($buildExitCode -ne 0) {
     exit 1
 }
 
-# A -Project run is an iteration; the tooling regressions run in a full run, which CI and landing use.
+# A -Project run is an iteration; the tooling regressions run in a full run, which CI and landing use. They are
+# independent of the test processes and cost about 20 s one after another, so they start beside the test
+# processes and report after them.
+$regressions = @()
 if (-not $Project) {
-    $phaseClocks['offline restore'] = [Diagnostics.Stopwatch]::StartNew()
-    Write-Step 'offline restore regression'
-    & pwsh -NoProfile -File (Join-Path $repoRoot 'tools/OfflineRestore.Tests.ps1')
-    Write-PhaseDuration 'offline restore'
-    if ($LASTEXITCODE -ne 0) {
-        Write-PhaseDuration 'whole gate'
-        exit 1
-    }
-
-    $phaseClocks['tool environment regression'] = [Diagnostics.Stopwatch]::StartNew()
-    Write-Step 'tool environment regression'
-    & pwsh -NoProfile -File (Join-Path $repoRoot 'tools/MotifToolEnvironment.Tests.ps1')
-    Write-PhaseDuration 'tool environment regression'
-    if ($LASTEXITCODE -ne 0) {
-        Write-PhaseDuration 'whole gate'
-        exit 1
-    }
-
-    $phaseClocks['resource sizing regression'] = [Diagnostics.Stopwatch]::StartNew()
-    Write-Step 'node, slot and thread sizing regression'
-    & pwsh -NoProfile -File (Join-Path $repoRoot 'tools/MotifTestResources.Tests.ps1')
-    Write-PhaseDuration 'resource sizing regression'
-    if ($LASTEXITCODE -ne 0) {
-        Write-PhaseDuration 'whole gate'
-        exit 1
-    }
-
-    $phaseClocks['artifact plan regression'] = [Diagnostics.Stopwatch]::StartNew()
-    Write-Step 'test artifact plan regression'
-    & pwsh -NoProfile -File (Join-Path $repoRoot 'tools/Test-MotifTestRunPlan.Tests.ps1')
-    Write-PhaseDuration 'artifact plan regression'
-    if ($LASTEXITCODE -ne 0) {
-        Write-PhaseDuration 'whole gate'
-        exit 1
-    }
-
-    $phaseClocks['process hygiene regression'] = [Diagnostics.Stopwatch]::StartNew()
-    Write-Step 'worktree process hygiene regression'
-    & pwsh -NoProfile -File (Join-Path $repoRoot 'tools/Test-MotifProcessHygiene.Tests.ps1')
-    Write-PhaseDuration 'process hygiene regression'
-    if ($LASTEXITCODE -ne 0) {
-        Write-PhaseDuration 'whole gate'
-        exit 1
-    }
-
-    $phaseClocks['release version regression'] = [Diagnostics.Stopwatch]::StartNew()
-    Write-Step 'release version regression'
-    & pwsh -NoProfile -File (Join-Path $repoRoot 'tools/MotifReleaseVersion.Tests.ps1')
-    Write-PhaseDuration 'release version regression'
-    if ($LASTEXITCODE -ne 0) {
-        Write-PhaseDuration 'whole gate'
-        exit 1
-    }
-
-    $phaseClocks['PanGloss interface regression'] = [Diagnostics.Stopwatch]::StartNew()
-    Write-Step 'PanGloss interface regression'
-    & pwsh -NoProfile -File (Join-Path $repoRoot 'tools/Test-PanGlossInterfaces.Tests.ps1') -Configuration $Configuration
-    Write-PhaseDuration 'PanGloss interface regression'
-    if ($LASTEXITCODE -ne 0) {
-        Write-PhaseDuration 'whole gate'
-        exit 1
-    }
-
-    $phaseClocks['artifact preparation host regression'] = [Diagnostics.Stopwatch]::StartNew()
-    Write-Step 'artifact preparation host regression'
-    & pwsh -NoProfile -File (Join-Path $repoRoot 'tools/Test-PrepareTestArtifacts.Tests.ps1') `
-        -Configuration $Configuration
-    Write-PhaseDuration 'artifact preparation host regression'
-    if ($LASTEXITCODE -ne 0) {
-        Write-PhaseDuration 'whole gate'
-        exit 1
-    }
-
-    $phaseClocks['publication policy regression'] = [Diagnostics.Stopwatch]::StartNew()
-    Write-Step 'publication policy regression'
-    & pwsh -NoProfile -File (Join-Path $repoRoot 'tools/MotifReleasePublication.Tests.ps1')
-    Write-PhaseDuration 'publication policy regression'
-    if ($LASTEXITCODE -ne 0) {
-        Write-PhaseDuration 'whole gate'
-        exit 1
-    }
-
-    $phaseClocks['help golden regression'] = [Diagnostics.Stopwatch]::StartNew()
-    Write-Step 'help golden gate regression'
-    & pwsh -NoProfile -File (Join-Path $repoRoot 'tools/MotifHelpGolden.Tests.ps1')
-    Write-PhaseDuration 'help golden regression'
-    if ($LASTEXITCODE -ne 0) {
-        Write-PhaseDuration 'whole gate'
-        exit 1
-    }
-
+    $regressions = @(
+        @{ Name = 'offline restore'; Title = 'offline restore regression'; Script = 'OfflineRestore.Tests.ps1' }
+        @{ Name = 'tool environment regression'; Title = 'tool environment regression'; Script = 'MotifToolEnvironment.Tests.ps1' }
+        @{ Name = 'resource sizing regression'; Title = 'node, slot and thread sizing regression'; Script = 'MotifTestResources.Tests.ps1' }
+        @{ Name = 'artifact plan regression'; Title = 'test artifact plan regression'; Script = 'Test-MotifTestRunPlan.Tests.ps1' }
+        @{ Name = 'process hygiene regression'; Title = 'worktree process hygiene regression'; Script = 'Test-MotifProcessHygiene.Tests.ps1' }
+        @{ Name = 'release version regression'; Title = 'release version regression'; Script = 'MotifReleaseVersion.Tests.ps1' }
+        @{ Name = 'PanGloss interface regression'; Title = 'PanGloss interface regression'; Script = 'Test-PanGlossInterfaces.Tests.ps1'; Configured = $true }
+        @{ Name = 'artifact preparation host regression'; Title = 'artifact preparation host regression'; Script = 'Test-PrepareTestArtifacts.Tests.ps1'; Configured = $true }
+        @{ Name = 'publication policy regression'; Title = 'publication policy regression'; Script = 'MotifReleasePublication.Tests.ps1' }
+        @{ Name = 'help golden regression'; Title = 'help golden gate regression'; Script = 'MotifHelpGolden.Tests.ps1' }
+    )
     if ($All) {
-        $phaseClocks['capture screen regression'] = [Diagnostics.Stopwatch]::StartNew()
-        Write-Step 'capture screenshot tooling regression'
-        & pwsh -NoProfile -File (Join-Path $repoRoot 'tools/Capture-Screens.Tests.ps1')
-        Write-PhaseDuration 'capture screen regression'
-        if ($LASTEXITCODE -ne 0) {
-            Write-PhaseDuration 'whole gate'
-            exit 1
-        }
+        $regressions += @{ Name = 'capture screen regression'; Title = 'capture screenshot tooling regression'; Script = 'Capture-Screens.Tests.ps1' }
     }
 }
 
@@ -407,6 +324,22 @@ if ($preparePortable) {
 }
 Write-PhaseDuration 'test artifact preparation'
 
+$regressionRuns = foreach ($regression in $regressions) {
+    $scriptPath = Join-Path $repoRoot "tools/$($regression.Script)"
+    $regressionArguments = @('-NoProfile', '-File', ('"{0}"' -f $scriptPath))
+    if ($regression.Configured) { $regressionArguments += @('-Configuration', $Configuration) }
+    $regressionName = $regression.Name -replace '\s', '-'
+    $regressionInput = Join-Path $resultsRoot "regression-$regressionName.stdin"
+    [IO.File]::WriteAllText($regressionInput, "regression-$regressionName")
+    $regressionLog = Join-Path $resultsRoot "regression-$regressionName.log"
+    $regressionClock = [Diagnostics.Stopwatch]::StartNew()
+    $regressionProcess = Start-Process -FilePath 'pwsh' -ArgumentList $regressionArguments -PassThru -NoNewWindow `
+        -RedirectStandardInput $regressionInput -RedirectStandardOutput $regressionLog `
+        -RedirectStandardError (Join-Path $resultsRoot "regression-$regressionName.stderr.log")
+    [void] $regressionProcess.Handle
+    [pscustomobject]@{ Regression = $regression; Process = $regressionProcess; Clock = $regressionClock; Log = $regressionLog }
+}
+
 Write-Step ("dotnet test ($levelSelection levels, $($testProjects.Count) projects in $($testRuns.Count) processes, " +
     "up to $projectConcurrency at a time, $(if ($testThreads -gt 0) { "$testThreads xUnit threads each" } else { 'default xUnit threads' }); " +
     "$availableProcessors processors)")
@@ -507,7 +440,22 @@ $jobs = foreach ($run in $testRuns) {
 $outcomes = @($jobs | Receive-Job -Wait -AutoRemoveJob | Sort-Object Name)
 Write-PhaseDuration 'test processes'
 
-$failed = $false
+# The regressions ran beside the tests; their output and verdicts come now, in their old order.
+$regressionFailed = $false
+foreach ($run in $regressionRuns) {
+    $run.Process.WaitForExit()
+    Write-Step $run.Regression.Title
+    foreach ($log in @($run.Log, ($run.Log -replace '\.log$', '.stderr.log'))) {
+        if (Test-Path -LiteralPath $log) { Get-Content -LiteralPath $log | Write-Host }
+    }
+    Write-Host ('  {0,-34} {1,6:N1} s' -f $run.Regression.Name, $run.Clock.Elapsed.TotalSeconds)
+    if ($run.Process.ExitCode -ne 0) {
+        Write-Host "  $($run.Regression.Name) FAILED with exit code $($run.Process.ExitCode)" -ForegroundColor Red
+        $regressionFailed = $true
+    }
+}
+
+$failed = $regressionFailed
 $totals = @{ total = 0; passed = 0; failed = 0; notExecuted = 0 }
 $skipCategories = [ordered]@{ platform = 0; capture = 0; harness = 0; 'parser-absent' = 0; capability = 0; other = 0 }
 $missingParserTests = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
