@@ -1,4 +1,3 @@
-using System.Reflection;
 using System.Reflection.Metadata;
 using System.Reflection.Metadata.Ecma335;
 using System.Reflection.PortableExecutable;
@@ -19,15 +18,15 @@ internal sealed class CoverageSourceResolver(string root)
     private const byte Call = 0x28;
 
     /// <summary>Maps each of <paramref name="indices"/> to the repository-relative source files of its method.</summary>
-    internal Dictionary<int, string[]> Resolve(Assembly assembly, HashSet<int> indices)
+    internal Dictionary<int, string[]> Resolve(string dllPath, HashSet<int> indices)
     {
-        using var stream = File.OpenRead(assembly.Location);
+        using var stream = File.OpenRead(dllPath);
         using var pe = new PEReader(stream);
         var metadata = pe.GetMetadataReader();
         var hitTokens = HitMethodTokens(metadata);
-        if (!pe.TryOpenAssociatedPortablePdb(assembly.Location,
+        if (!pe.TryOpenAssociatedPortablePdb(dllPath,
                 path => File.Exists(path) ? File.OpenRead(path) : null, out var pdbProvider, out _) || pdbProvider is null)
-            throw new InvalidOperationException($"No portable PDB for {assembly.Location}; the coverage map needs one.");
+            throw new InvalidOperationException($"No portable PDB for {dllPath}; the coverage map needs one.");
         using var pdbProviderScope = pdbProvider;
         var pdb = pdbProvider.GetMetadataReader();
 

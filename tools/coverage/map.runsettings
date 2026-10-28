@@ -6,7 +6,7 @@
         <Configuration>
           <Format>json</Format>
           <!-- The tests are instrumented too, so a helper or a new test file is a covered file like any other. -->
-          <Include>[SIL.Motif.*]*</Include>
+          <Include>[SIL.Motif.*]*,[motif]*</Include>
           <Exclude>[SIL.Motif.FakePanGloss]*</Exclude>
           <SingleHit>true</SingleHit>
           <SkipAutoProps>true</SkipAutoProps>

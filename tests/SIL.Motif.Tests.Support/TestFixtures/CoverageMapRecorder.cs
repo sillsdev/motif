@@ -1,4 +1,7 @@
 using System.Reflection;
+using System.Reflection.Metadata;
+using System.Reflection.PortableExecutable;
+using System.Text;
 using System.Text.Json;
 using Xunit.Abstractions;
 
@@ -20,10 +23,11 @@ internal sealed class CoverageMapRecorder
     private readonly string _directory;
     private readonly string _root;
     private readonly object _gate = new();
-    private readonly Dictionary<Assembly, FieldInfo?> _trackers = [];
-    private readonly Dictionary<Assembly, HashSet<int>> _ambient = [];
-    private readonly Dictionary<Assembly, HashSet<int>> _collectionBase = [];
-    private readonly Dictionary<string, Dictionary<Assembly, HashSet<int>>> _collectionBases = [];
+    private readonly Dictionary<Assembly, (FieldInfo? Hits, FieldInfo? Path)> _trackers = [];
+    private List<(string Dll, string HitsFile)>? _childModules;
+    private readonly Dictionary<string, HashSet<int>> _ambient = [];
+    private readonly Dictionary<string, HashSet<int>> _collectionBase = [];
+    private readonly Dictionary<string, Dictionary<string, HashSet<int>>> _collectionBases = [];
     private readonly List<ClassRecord> _classes = [];
     private string _collection = "";
     private string? _assemblyName;
@@ -77,12 +81,12 @@ internal sealed class CoverageMapRecorder
         }
     }
 
-    private Dictionary<Assembly, HashSet<int>> Take()
+    private Dictionary<string, HashSet<int>> Take()
     {
-        var taken = new Dictionary<Assembly, HashSet<int>>();
+        var taken = new Dictionary<string, HashSet<int>>();
         foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
         {
-            if (assembly.IsDynamic || HitsArrayOf(assembly) is not { } field || field.GetValue(null) is not int[] hits) continue;
+            if (assembly.IsDynamic || TrackerOf(assembly).Hits is not { } field || field.GetValue(null) is not int[] hits) continue;
             HashSet<int>? set = null;
             for (var index = 0; index < hits.Length; index++)
             {
@@ -90,31 +94,84 @@ internal sealed class CoverageMapRecorder
                 (set ??= []).Add(index);
                 hits[index] = 0;
             }
-            if (set is not null) taken[assembly] = set;
+            if (set is not null) taken[assembly.Location] = set;
+        }
+        // Child processes load the same instrumented files and add their hits to a shared file when they exit.
+        foreach (var (dll, hitsFile) in ChildModules())
+        {
+            if (TakeChildHits(hitsFile) is not { } childHits) continue;
+            if (!taken.TryGetValue(dll, out var existing)) taken[dll] = existing = [];
+            existing.UnionWith(childHits);
         }
         return taken;
     }
 
-    private FieldInfo? HitsArrayOf(Assembly assembly)
+    private (FieldInfo? Hits, FieldInfo? Path) TrackerOf(Assembly assembly)
     {
         if (_trackers.TryGetValue(assembly, out var known)) return known;
-        FieldInfo? field = null;
-        try
-        {
-            field = assembly.GetTypes()
-                .FirstOrDefault(type => type.Namespace == CoverageSourceResolver.TrackerNamespace)
-                ?.GetField("HitsArray", BindingFlags.Public | BindingFlags.Static);
-        }
-        catch (ReflectionTypeLoadException exception)
-        {
-            field = exception.Types
-                .FirstOrDefault(type => type?.Namespace == CoverageSourceResolver.TrackerNamespace)
-                ?.GetField("HitsArray", BindingFlags.Public | BindingFlags.Static);
-        }
-        return _trackers[assembly] = field;
+        Type? tracker;
+        try { tracker = assembly.GetTypes().FirstOrDefault(type => type.Namespace == CoverageSourceResolver.TrackerNamespace); }
+        catch (ReflectionTypeLoadException exception) { tracker = exception.Types.FirstOrDefault(type => type?.Namespace == CoverageSourceResolver.TrackerNamespace); }
+        var flags = BindingFlags.Public | BindingFlags.Static;
+        return _trackers[assembly] = (tracker?.GetField("HitsArray", flags), tracker?.GetField("HitsFilePath", flags));
     }
 
-    private static void Merge(Dictionary<Assembly, HashSet<int>> into, Dictionary<Assembly, HashSet<int>> from)
+    // The instrumented Motif files beside the test assembly, each with the file its tracker merges hits into.
+    private List<(string Dll, string HitsFile)> ChildModules()
+    {
+        if (_childModules is not null) return _childModules;
+        var modules = new List<(string, string)>();
+        foreach (var dll in Directory.EnumerateFiles(AppContext.BaseDirectory, "*.dll"))
+        {
+            var name = Path.GetFileName(dll);
+            if (!name.StartsWith("SIL.Motif.", StringComparison.Ordinal) && name != "motif.dll") continue;
+            try
+            {
+                using var stream = File.OpenRead(dll);
+                using var pe = new PEReader(stream);
+                var metadata = pe.GetMetadataReader();
+                foreach (var handle in metadata.TypeDefinitions)
+                {
+                    var type = metadata.GetTypeDefinition(handle);
+                    if (metadata.GetString(type.Namespace) != CoverageSourceResolver.TrackerNamespace) continue;
+                    modules.Add((dll, Path.Combine(Path.GetTempPath(), metadata.GetString(type.Name))));
+                    break;
+                }
+            }
+            catch (BadImageFormatException) { }
+        }
+        return _childModules = modules;
+    }
+
+    // The file holds a slot count, then one int per slot; reading clears it, so each class gets its own children.
+    private static HashSet<int>? TakeChildHits(string path)
+    {
+        for (var attempt = 0; attempt < 5; attempt++)
+        {
+            try
+            {
+                if (!File.Exists(path)) return null;
+                using var stream = new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+                if (stream.Length < sizeof(int)) return null;
+                using var reader = new BinaryReader(stream, Encoding.UTF8, leaveOpen: true);
+                var length = reader.ReadInt32();
+                HashSet<int>? set = null;
+                var zero = new byte[sizeof(int)];
+                for (var index = 0; index < length && stream.Position + sizeof(int) <= stream.Length; index++)
+                {
+                    if (reader.ReadInt32() == 0) continue;
+                    (set ??= []).Add(index);
+                    stream.Seek(-sizeof(int), SeekOrigin.Current);
+                    stream.Write(zero);
+                }
+                return set;
+            }
+            catch (IOException) { Thread.Sleep(20); }
+        }
+        return null;
+    }
+
+    private static void Merge(Dictionary<string, HashSet<int>> into, Dictionary<string, HashSet<int>> from)
     {
         foreach (var (assembly, set) in from)
         {
@@ -123,20 +180,20 @@ internal sealed class CoverageMapRecorder
         }
     }
 
-    private static Dictionary<Assembly, HashSet<int>> Copy(Dictionary<Assembly, HashSet<int>> source) =>
+    private static Dictionary<string, HashSet<int>> Copy(Dictionary<string, HashSet<int>> source) =>
         source.ToDictionary(pair => pair.Key, pair => new HashSet<int>(pair.Value));
 
     private void Write()
     {
         var resolver = new CoverageSourceResolver(_root);
-        var files = new Dictionary<Assembly, Dictionary<int, string[]>>();
-        var needed = new Dictionary<Assembly, HashSet<int>>();
+        var files = new Dictionary<string, Dictionary<int, string[]>>();
+        var needed = new Dictionary<string, HashSet<int>>();
         Merge(needed, _ambient);
         foreach (var record in _classes) Merge(needed, record.Hits);
         foreach (var bases in _collectionBases.Values) Merge(needed, bases);
-        foreach (var (assembly, indices) in needed) files[assembly] = resolver.Resolve(assembly, indices);
+        foreach (var (dll, indices) in needed) files[dll] = resolver.Resolve(dll, indices);
 
-        string[] FilesOf(params Dictionary<Assembly, HashSet<int>>[] hits) => hits
+        string[] FilesOf(params Dictionary<string, HashSet<int>>[] hits) => hits
             .SelectMany(set => set)
             .SelectMany(pair => pair.Value.SelectMany(index => files[pair.Key].GetValueOrDefault(index) ?? []))
             .Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
@@ -157,7 +214,7 @@ internal sealed class CoverageMapRecorder
     }
 
     private sealed record ClassRecord(
-        string Name, string Collection, Dictionary<Assembly, HashSet<int>> Hits, double Seconds, int Tests, int Skipped);
+        string Name, string Collection, Dictionary<string, HashSet<int>> Hits, double Seconds, int Tests, int Skipped);
 
     private sealed class RecordingSink(CoverageMapRecorder recorder, IMessageSink inner) : Xunit.LongLivedMarshalByRefObject, IMessageSink
     {
