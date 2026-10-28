@@ -80,11 +80,16 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
                     try
                     {
                         var surface = await VerifySurfaceAsync(_executable, containment, token).ConfigureAwait(false);
-                        var admission = PanGlossSurface.CheckRequest(_executable, request, surface);
+                        var effectiveRequest = request is PanGlossRequest.Batch batch &&
+                            surface.Capabilities?.BatchTsv >= PanGlossInterfaceVersions.BatchTsvWorkColumnsVersion &&
+                            surface.Capabilities.Commands.TryGetValue("batch", out var batchCommand) &&
+                            batchCommand.Flags.ContainsKey("--work-columns")
+                                ? batch with { WorkColumns = true } : request;
+                        var admission = PanGlossSurface.CheckRequest(_executable, effectiveRequest, surface);
                         if (!admission.IsValid)
                             return new PanGlossOutcome.Unavailable(admission.Message)
                                 { Containment = containment.Report };
-                        var outcome = await LaunchAsync(_executable, request, containment, cap, token).ConfigureAwait(false);
+                        var outcome = await LaunchAsync(_executable, effectiveRequest, containment, cap, token).ConfigureAwait(false);
                         return outcome with { Containment = containment.Report };
                     }
                     catch (OperationCanceledException) when (token.IsCancellationRequested)

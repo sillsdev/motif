@@ -23,7 +23,9 @@ public static class PanGlossInterfaceVersions
     public const int FactsContextVersion = 1;
     /// <summary>The stats manifest version reported by <c>pangloss --describe</c>.</summary>
     public const int StatsManifestVersion = 1;
-    /// <summary>The exact number of fields in a completed batch TSV row.</summary>
+    /// <summary>The first batch TSV version supporting the optional per-word work columns.</summary>
+    public const int BatchTsvWorkColumnsVersion = 2;
+    /// <summary>The exact number of fields in a completed batch TSV row without optional columns.</summary>
     public const int BatchTsvCompletionColumnCount = 5;
     /// <summary>The zero-based batch TSV position of the word index.</summary>
     public const int BatchTsvIndexColumn = 0;

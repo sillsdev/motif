@@ -1029,7 +1029,7 @@ public sealed class PanGlossInvokerTests : IDisposable
         Assert.EndsWith("out.tsv", argv[3], StringComparison.Ordinal);
         Assert.Equal(["--word-timeout-ms", "1500", "--step-cap",
             StepCap.DefaultSteps.ToString(CultureInfo.InvariantCulture), "--work-cap",
-            (StepCap.DefaultSteps * StepCap.WorkCapMultiplier).ToString(CultureInfo.InvariantCulture), "--threads",
+            (StepCap.DefaultSteps * StepCap.WorkCapMultiplier).ToString(CultureInfo.InvariantCulture), "--work-columns", "--threads",
             PanGlossCpuBudget.DefaultBatchThreadCount.ToString(CultureInfo.InvariantCulture), "--stats", "--cache", cache], argv[4..]);
         Assert.True(File.Exists(cache));
     }
@@ -1045,7 +1045,7 @@ public sealed class PanGlossInvokerTests : IDisposable
 
         Assert.Equal(["--word-timeout-ms", "1000", "--step-cap",
             StepCap.DefaultSteps.ToString(CultureInfo.InvariantCulture), "--work-cap",
-            (StepCap.DefaultSteps * StepCap.WorkCapMultiplier).ToString(CultureInfo.InvariantCulture), "--threads",
+            (StepCap.DefaultSteps * StepCap.WorkCapMultiplier).ToString(CultureInfo.InvariantCulture), "--work-columns", "--threads",
             PanGlossCpuBudget.DefaultBatchThreadCount.ToString(CultureInfo.InvariantCulture)], Argv(project)[4..]);
     }
 
@@ -1061,7 +1061,7 @@ public sealed class PanGlossInvokerTests : IDisposable
 
         Assert.Equal(["--word-timeout-ms", "1000", "--step-cap",
             StepCap.DefaultSteps.ToString(CultureInfo.InvariantCulture), "--work-cap",
-            (StepCap.DefaultSteps * StepCap.WorkCapMultiplier).ToString(CultureInfo.InvariantCulture), "--threads", "3"], Argv(project)[4..]);
+            (StepCap.DefaultSteps * StepCap.WorkCapMultiplier).ToString(CultureInfo.InvariantCulture), "--work-columns", "--threads", "3"], Argv(project)[4..]);
     }
 
     [Fact]
@@ -1117,7 +1117,7 @@ public sealed class PanGlossInvokerTests : IDisposable
             new PanGlossRequest.Batch(project, ["motifa"], TimeSpan.FromMilliseconds(700), PerWordStepLimit: 123),
             "test:batch-budget", CancellationToken.None);
 
-        Assert.Equal(["--word-timeout-ms", "700", "--step-cap", "123", "--work-cap", "12300", "--threads",
+        Assert.Equal(["--word-timeout-ms", "700", "--step-cap", "123", "--work-cap", "12300", "--work-columns", "--threads",
             PanGlossCpuBudget.DefaultBatchThreadCount.ToString(CultureInfo.InvariantCulture)], Argv(project)[4..]);
     }
 

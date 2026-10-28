@@ -205,6 +205,7 @@ public static class WordTraceQuery
                 root is null ? new TraceStep("NoTrace", null, null, null, null, []) : ConvertTree(root), [], []))
         {
             ParserSteps = details?.Steps,
+            ParserWorkSteps = details?.WorkSteps,
             ParserElapsedMs = details is null ? null : details.ElapsedNs / 1_000_000.0,
             Guessed = details?.Guessed ?? false,
             SearchStatus = complete ? "complete" : "incomplete",

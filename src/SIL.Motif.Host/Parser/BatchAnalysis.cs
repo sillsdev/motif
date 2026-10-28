@@ -149,6 +149,7 @@ public static class BatchTsvParser
     {
         var results = new List<WordAnalysis>();
         int? stepsColumn = null, workStepsColumn = null;
+        var hasHeader = false;
 
         foreach (var raw in tsv.Split('\n'))
         {
@@ -158,7 +159,8 @@ public static class BatchTsvParser
             var columns = line.Split('\t');
             if (IsHeader(columns))
             {
-                // Step columns are read by name; a headerless TSV declares none, so none is guessed for it.
+                // A header names its columns; the optional headerless layout appends both counters.
+                hasHeader = true;
                 stepsColumn = Array.IndexOf(columns, "steps") is var steps and >= 0 ? steps : null;
                 workStepsColumn = Array.IndexOf(columns, "work_steps") is var work and >= 0 ? work : null;
                 continue;
@@ -179,8 +181,8 @@ public static class BatchTsvParser
                 Outcome: ToOutcome(columns[3], columns[4]),
                 Signature: columns[4])
             {
-                Steps = ReadCounter(columns, stepsColumn),
-                WorkSteps = ReadCounter(columns, workStepsColumn),
+                Steps = ReadCounter(columns, stepsColumn ?? (!hasHeader && columns.Length is 7 or 8 ? columns.Length - 2 : null)),
+                WorkSteps = ReadCounter(columns, workStepsColumn ?? (!hasHeader && columns.Length is 7 or 8 ? columns.Length - 1 : null)),
             });
         }
 

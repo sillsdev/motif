@@ -12,7 +12,7 @@ internal sealed record PanGlossSurfaceCheck(
 
 internal sealed record PanGlossCapabilities(
     ImmutableDictionary<string, PanGlossCommandCapabilities> Commands,
-    bool FactsContractSupported, int? ServeProtocol = null)
+    bool FactsContractSupported, int? ServeProtocol = null, int? BatchTsv = null)
 {
     internal string? ValidateRequest(PanGlossRequest request)
     {
@@ -227,7 +227,10 @@ internal static class PanGlossSurface
         int? serveProtocol = root.TryGetProperty("interfaces", out var interfaces) &&
             interfaces.ValueKind == JsonValueKind.Object && interfaces.TryGetProperty("serveProtocol", out var serveElement) &&
             serveElement.ValueKind == JsonValueKind.Number && serveElement.TryGetInt32(out var served) ? served : null;
-        return new PanGlossCapabilities(byName.ToImmutable(), HasFactsIdentity(root), serveProtocol);
+        int? batchTsv = root.TryGetProperty("interfaces", out interfaces) &&
+            interfaces.ValueKind == JsonValueKind.Object && interfaces.TryGetProperty("batchTsv", out var batchElement) &&
+            batchElement.ValueKind == JsonValueKind.Number && batchElement.TryGetInt32(out var batchVersion) ? batchVersion : null;
+        return new PanGlossCapabilities(byName.ToImmutable(), HasFactsIdentity(root), serveProtocol, batchTsv);
     }
 
     private static bool HasFactsIdentity(JsonElement root)

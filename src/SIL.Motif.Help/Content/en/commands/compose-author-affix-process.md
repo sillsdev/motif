@@ -19,7 +19,7 @@ Add `--cite-source <text>` and optionally `--cite-locator <text>` to record the 
 
 ## When not to use this
 
-- For nasal assimilation or substitution, use a phonological rule with `compose-author-phonological-rule`; one unconstrained affix process was measured about 300 times slower than a rule on a Cebuano draft, whereas Verb-restricted processes merged on one entry stopped no words with compounding off.
+- For nasal assimilation or substitution, use a phonological rule with `compose-author-phonological-rule`; an unconstrained affix process may require substantial parser work, while Verb-restricted processes merged on one entry stopped no words with compounding off.
 - For a form that changes with its sound context, keep allomorphs under one entry with environments, using `compose-author-alternate-form`.
 - For another pattern-based form of an affix that already uses a process, use `compose-author-affix-process-allomorph`.
 - For a plain prefix or suffix, use `compose-author-lexical-entry` and a slot.

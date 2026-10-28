@@ -67,6 +67,9 @@ public sealed record TrialRecord(
     /// <summary>The root ParseTime word results when the caller requested them.</summary>
     public IReadOnlyList<AssessmentWordResult> WordResults { get; init; } = [];
 
+    /// <summary>Parser work compared with the Baseline on the Trial words, when available.</summary>
+    public TrialWork? Work { get; init; }
+
     /// <summary>A grammar-check failure that did not prevent the Trial from continuing.</summary>
     public string? GrammarCheckWarning { get; init; }
 

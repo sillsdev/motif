@@ -68,6 +68,7 @@ public static class CommandTextRenderer
             ParsimonyLatestReportResponse r => "Latest Parsimony Report " + r.ReportId + "\n  Baseline bundle: " + r.BundleId,
             ParsimonyExpectationProjection p => RenderParsimonyExpectations(p),
             FindComposerResponse r => RenderFindComposer(r),
+            TrialRecord r => RenderTrial(r),
             ReviewNumbersResponse r => RenderReviewNumbers(r),
             MeasurePendingResult r => RenderReviewNumbers(r.Numbers),
             CompareResponse r => RenderCompare(r),
@@ -104,6 +105,23 @@ public static class CommandTextRenderer
             _ => throw new NotSupportedException($"No text rendering registered for '{typeof(T)}'."),
         };
         return new CommandResult(0, text);
+    }
+
+    private static string RenderTrial(TrialRecord trial)
+    {
+        var text = new StringBuilder();
+        text.AppendLine($"Trial {trial.JobId}: {trial.Status} ({trial.Freshness})");
+        if (trial.Work is not { } work) return text.AppendLine("Parser work is unavailable.").ToString();
+        if (work.PercentChange is { } change)
+            text.AppendLine(change == 0 ? "These words took the same parser work."
+                : $"These words took {Math.Abs(change):0.#}% {(change > 0 ? "more" : "less")} work to parse.");
+        else text.AppendLine("Parser work cannot be compared for every Trial word.");
+        foreach (var word in work.IncreasedWords)
+            text.AppendLine($"  {word.Word}: {word.PercentMore:0.#}% more work");
+        text.AppendLine($"Stopped: {work.WorkLimitStops} at the work or attempt limit; {work.TimeSafetyNetStops} at the time safety net.");
+        if (work.WorkLimitWords.Count > 0) text.AppendLine("  Work or attempt limit: " + string.Join(", ", work.WorkLimitWords));
+        if (work.TimeSafetyNetWords.Count > 0) text.AppendLine("  Time safety net: " + string.Join(", ", work.TimeSafetyNetWords));
+        return text.ToString();
     }
 
     private static string RenderActivity(ActivitySummary summary)
@@ -705,7 +723,7 @@ public static class CommandTextRenderer
             $"rejected words matched {response.Accuracy.RejectedWordsInMatchCell:N0}/{response.Accuracy.RejectedWordCount:N0}  " +
             $"candidates confirmed {response.Accuracy.CandidatesConfirmed:N0}/{response.Accuracy.CandidateWordCount:N0}");
         var slowest = response.Timing.SlowestWords.FirstOrDefault();
-        text.AppendLine($"Timing     median {FormatMs(response.Timing.MedianMs)}  p95 {FormatMs(response.Timing.Percentile95Ms)}  " +
+        text.AppendLine($"Time on this computer     median {FormatMs(response.Timing.MedianMs)}  p95 {FormatMs(response.Timing.Percentile95Ms)}  " +
             (slowest is null ? "slowest (none)" : $"slowest {slowest.Word} {slowest.ElapsedMs:N0} ms"));
         if (response.Timing.Attribution.MeasuredWordCount > 0)
         {
@@ -966,7 +984,7 @@ public static class CommandTextRenderer
     private static string RenderTiming(TimingResponse response)
     {
         var text = new StringBuilder();
-        text.AppendLine($"Timing for {response.WordCount:N0} word(s) from {response.WordSet} ({response.AssessmentId})");
+        text.AppendLine($"Time on this computer for {response.WordCount:N0} word(s) from {response.WordSet} ({response.AssessmentId})");
         text.AppendLine("  " + (response.EvidenceRelation switch
         {
             TimingEvidenceRelation.Current => "Current Baseline",
@@ -1149,6 +1167,8 @@ public static class CommandTextRenderer
         text.AppendLine(response.Complete
             ? $"  Search: complete, {response.ParserSteps?.ToString("N0") ?? "unknown"} analysis attempts"
             : "  Search: stopped early. " + (response.StopReason ?? "The parser did not finish."));
+        if (response.ParserWorkSteps is { } workSteps)
+            text.AppendLine($"  Parser work: {workSteps:N0}");
         if (response.Provenance is { Warning.Length: > 0 } provenance)
             text.AppendLine("  Warning: " + provenance.Warning);
         if (response.HostCapture?.Baseline is { } baseline)

@@ -9,3 +9,5 @@ Name the words to try inline, or in a UTF-8 file with one word per line: `--word
 Word files must be at most 8 MiB of valid UTF-8 text without NUL bytes; an initial UTF-8 signature is accepted. A larger file is refused with `assess.words-file-too-large`; invalid UTF-8 or NUL bytes with `assess.words-file-not-text`. Split a large list into smaller files, or save a non-text file as UTF-8 with one word per line, then repeat the call.
 
 Trial summaries report `beforeOutcomes` and `afterOutcomes` with the same `timedOut`, `capped` and `skipped` counts as Assess. The `unfinished` Difference category includes words unfinished on either side and is not a stop count for one run.
+
+The Trial compares total parser work with the Baseline over the same words and lists up to five words requiring more than 5% extra work. A stopped search or missing work count makes the comparison unavailable. Stops at the work or attempt limit are separate from stops at the time safety net. Work counts are deterministic for the same parser, grammar, word and limits; elapsed time describes time on this computer.

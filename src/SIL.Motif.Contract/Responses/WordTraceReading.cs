@@ -191,6 +191,8 @@ public sealed record WordTraceResponse(
     WordTraceReading Reading)
 {
     public long? ParserSteps { get; init; }
+    /// <summary>Total parser work for this word, when the trace reported it.</summary>
+    public long? ParserWorkSteps { get; init; }
     public double? ParserElapsedMs { get; init; }
     public bool Guessed { get; init; }
     public IReadOnlyList<TraceEffort> Effort { get; init; } = [];

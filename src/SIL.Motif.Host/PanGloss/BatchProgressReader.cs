@@ -88,7 +88,7 @@ internal sealed class BatchProgressReader(IReadOnlyList<string> words)
                 _sawRow = true;
             }
         }
-        else if (cells.Length == PanGlossInterfaceVersions.BatchTsvCompletionColumnCount &&
+        else if (cells.Length >= PanGlossInterfaceVersions.BatchTsvCompletionColumnCount &&
                  !_completedIndexes.Contains(index))
         {
             if (double.TryParse(cells[PanGlossInterfaceVersions.BatchTsvElapsedMsColumn], NumberStyles.Float,

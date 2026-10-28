@@ -93,7 +93,11 @@ internal static class TrialResults
             var currentProposal = new ProposalRepository(database).Get(proposal.ProposalId);
             var currentDigest = SIL.Motif.Contract.Canonicalization.IntentDigest.Compute(
                 SIL.Motif.Contract.Parsing.ProposalJsonParser.Parse(JobCommands.CanonicalProposalJson(currentProposal)));
-            var result = new JsonObject { ["summary"] = summary, ["difference"] = differenceId,
+            var beforeTime = before.FirstOrDefault(record => record.Kind == "ParseTime");
+            var afterTime = after.FirstOrDefault(record => record.Kind == "ParseTime" && beforeTime is not null &&
+                record.Assessor == beforeTime.Assessor && record.BaselineToken == beforeTime.BaselineToken);
+            var work = afterTime is not null ? TrialWorkComparison.Compare(beforeTime, afterTime) : null;
+            var result = new JsonObject { ["summary"] = summary, ["work"] = ProjectionJson.ToNode(work), ["difference"] = differenceId,
                 ["contentDigest"] = pair.After.ProposalIntentDigest, ["baseline"] = JsonNode.Parse(pair.After.BaselineToken),
                 ["evidenceCurrent"] = currentDigest == pair.After.ProposalIntentDigest &&
                     measuredBaseline is not null && new BaselineRepository(database).IsCurrentEvidence(job.ProjectKey, measuredBaseline),

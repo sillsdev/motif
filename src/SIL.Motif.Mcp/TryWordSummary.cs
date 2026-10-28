@@ -33,6 +33,8 @@ internal static class TryWordSummary
             ["complete"] = response.Complete,
             ["searchStatus"] = response.SearchStatus,
             ["elapsedMs"] = response.ElapsedMs,
+            ["attempts"] = response.ParserSteps,
+            ["workSteps"] = response.ParserWorkSteps,
         };
         if (response.StopReason is { Length: > 0 }) result["stopReason"] = response.StopReason;
         if (response.InvalidShape) result["invalidShape"] = true;

@@ -61,7 +61,7 @@ internal static class Program
         new("phonology-examples", ["grammar", "request.json", "out.json?"], [], RunPhonologyExamples),
         new("batch", ["grammar", "words.txt", "out.tsv"],
             [new("--word-timeout-ms", true), new("--step-cap", true), new("--work-cap", true), new("--threads", true),
-                new("--stats", false),
+                new("--stats", false), new("--work-columns", false),
                 new("--cache", true), new("--analyses", true)], RunBatch),
         new("facts", ["snapshot.json"],
             [new("--out", true), new("--context", true), new("--stats", true),
@@ -212,7 +212,7 @@ internal static class Program
         {
             schema_version = 1,
             binary = "pangloss",
-            interfaces = new { serveProtocol = 1 },
+            interfaces = new { serveProtocol = 1, batchTsv = 2 },
             facts = new
             {
                 format = FactsArtifact.Format,
@@ -270,6 +270,7 @@ internal static class Program
         string? cachePath = null;
         string? analysesPath = null;
         var wordTimeoutMs = 0;
+        var workColumns = args.Contains("--work-columns");
         for (var i = 4; i < args.Length; i++)
         {
             if (args[i] == "--word-timeout-ms" && i + 1 < args.Length)
@@ -321,7 +322,7 @@ internal static class Program
             case "crash":
                 throw new InvalidOperationException("The fake parser was told to crash during batch analysis.");
             case "malformedReport":
-                File.WriteAllText(outPath, BatchTsv(behaviour, words));
+                File.WriteAllText(outPath, BatchTsv(behaviour, words, workColumns));
                 if (analysesPath is { } malformedPath)
                     File.WriteAllText(malformedPath,
                         "{\"schema\":\"fieldworks-parse-analysis/v1\",\"index\":0,\"word\":\"motifa\",\"elapsedMs\":3,\"capped\":false,\"timedOut\":false,\"invalidShape\":false,\"analyses\":[{\"morphs\":[]}],\"unavailable\":[]}\n");
@@ -332,7 +333,7 @@ internal static class Program
             default:
                 if (behaviour.StreamProgress)
                 {
-                    var rows = BatchTsv(behaviour, words).Split('\n', StringSplitOptions.RemoveEmptyEntries);
+                    var rows = BatchTsv(behaviour, words, workColumns).Split('\n', StringSplitOptions.RemoveEmptyEntries);
                     using var stream = new FileStream(outPath, FileMode.Create, FileAccess.Write, FileShare.ReadWrite);
                     using var writer = new StreamWriter(stream) { AutoFlush = true };
                     for (var index = 0; index < words.Length; index++)
@@ -347,7 +348,7 @@ internal static class Program
                         writer.WriteLine(rows[index]);
                     }
                 }
-                else File.WriteAllText(outPath, BatchTsv(behaviour, words));
+                else File.WriteAllText(outPath, BatchTsv(behaviour, words, workColumns));
                 if (analysesPath is not null) File.WriteAllText(analysesPath, BatchMorphology(behaviour, words));
                 if (cachePath is not null)
                 {
@@ -365,7 +366,7 @@ internal static class Program
     }
 
     // idx\tword\tms\tstatus\tsignature — the row shape Motif's BatchTsvParser reads.
-    private static string BatchTsv(Behaviour behaviour, IReadOnlyList<string> words)
+    private static string BatchTsv(Behaviour behaviour, IReadOnlyList<string> words, bool workColumns)
     {
         var builder = new System.Text.StringBuilder();
         for (var i = 0; i < words.Count; i++)
@@ -380,7 +381,9 @@ internal static class Program
             var signature = known?.Signature ?? (known is { Outcome: "complete" } ? words[i] + "-sig" : "-");
             builder.Append(i).Append('\t').Append(words[i]).Append('\t')
                 .Append((known?.ElapsedMs ?? 3).ToString(CultureInfo.InvariantCulture)).Append('\t')
-                .Append(status).Append('\t').Append(signature).Append('\n');
+                .Append(status).Append('\t').Append(signature);
+            if (workColumns) builder.Append('\t').Append(known?.Attempts ?? 1).Append('\t').Append(known?.WorkSteps);
+            builder.Append('\n');
         }
         return builder.ToString();
     }

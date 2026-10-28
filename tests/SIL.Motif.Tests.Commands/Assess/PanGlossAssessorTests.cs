@@ -272,7 +272,7 @@ public sealed class PanGlossAssessorTests : IDisposable
         Assert.Equal(29, recovered.Steps);
         Assert.Equal(29, recovered.Morphology!.Attempts);
         Assert.Null(recovered.Passes);
-        Assert.Null(recovered.WorkSteps);
+        Assert.Equal(2900, recovered.WorkSteps);
         var invocation = Assert.IsType<BatchInvocationEvidence>(timing.Invocation);
         Assert.Null(invocation.StoppedWordRetry!.Failure);
         Assert.Equal(invocation.TsvSha256, BatchInvocationEvidence.DigestFile(invocation.TsvPath));

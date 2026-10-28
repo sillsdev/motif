@@ -89,6 +89,8 @@ public abstract record PanGlossRequest
     {
         public bool CollectAnalyses { get; init; }
 
+        internal bool WorkColumns { get; init; }
+
         /// <summary>Allows a retry to finish without a statistics cache, leaving its unavailable counters unknown.</summary>
         internal bool AllowMissingStatsCache { get; init; }
 
@@ -129,6 +131,7 @@ public abstract record PanGlossRequest
             startInfo.ArgumentList.Add((PerWordStepLimit ?? StepCap.Default).ToArgument());
             startInfo.ArgumentList.Add("--work-cap");
             startInfo.ArgumentList.Add((PerWordStepLimit ?? StepCap.Default).ToWorkCapArgument());
+            if (WorkColumns) startInfo.ArgumentList.Add("--work-columns");
             startInfo.ArgumentList.Add("--threads");
             startInfo.ArgumentList.Add(ThreadCount.ToString(CultureInfo.InvariantCulture));
             if (CollectAnalyses)

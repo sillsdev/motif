@@ -61,6 +61,16 @@ public sealed class WorkStepsReadingTests : IDisposable
     }
 
     [Fact]
+    public void HeaderlessWorkColumnsAndWatchdogRowsAreRead()
+    {
+        var rows = BatchTsvParser.Parse("0\tword\t3\tok\tsig\t12\t345\n1\tother\t8\tTIMEOUT\t-\n");
+        Assert.Equal((12L, 345L), (rows[0].Steps, rows[0].WorkSteps));
+        Assert.Null(rows[1].WorkSteps);
+        var guessed = Assert.Single(BatchTsvParser.Parse("0\tword\t3\tok\tsig\ttrue\t12\t345\n"));
+        Assert.Equal((12L, 345L), (guessed.Steps, guessed.WorkSteps));
+    }
+
+    [Fact]
     public void TheCurrentBatchTsvHasNoStepColumnsAndStillParses()
     {
         var analysed = new BatchRow(0, NewWord(), 3, "ok", "sig");

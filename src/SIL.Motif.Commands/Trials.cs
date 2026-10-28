@@ -225,6 +225,12 @@ public static class Trials
         var wordResults = !includeWordResults || rootAssessmentId is null
             ? []
             : assessments.Get(rootAssessmentId).Words?.Select(AssessmentWordRows.FromRecorded).ToArray() ?? [];
+        var trialAssessment = rootAssessmentId is null ? null : assessments.Get(rootAssessmentId);
+        var baselineAssessment = (input.BaselineAssessmentIds ?? []).Select(assessments.Get)
+            .FirstOrDefault(record => record.Kind == AssessmentKinds.ParseTime && trialAssessment is not null &&
+                record.Assessor == trialAssessment.Assessor && record.BaselineToken == trialAssessment.BaselineToken);
+        var work = trialAssessment is not null
+            ? TrialWorkComparison.Compare(baselineAssessment, trialAssessment) : null;
         var grammarCheckId = new GrammarCheckRepository(database).GetLatest(tokenJson, proposalId, intentDigest) is null
             ? null
             : "trial:" + proposalId + ":" + intentDigest;
@@ -243,6 +249,7 @@ public static class Trials
             Label = label,
             GrammarCheckId = grammarCheckId,
             WordResults = wordResults,
+            Work = work,
             GrammarCheckWarning = completion?.GrammarCheckWarning,
         };
     }
