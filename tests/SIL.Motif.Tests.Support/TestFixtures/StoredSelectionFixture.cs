@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Microsoft.Data.Sqlite;
 using SIL.Motif.Commands.SelectionReading;
 using SIL.Motif.Commands.Store;
 using SIL.Motif.Contract;
@@ -32,7 +33,7 @@ public sealed partial class StoredSelectionFixture : IDisposable
         ProjectPath = Path.Combine(_root, "project.fwdata");
         var project = new ProjectLocator(ProjectPath, "project");
         _projectKey = ProjectWorkspaceKey.Compute(project);
-        _database = new ProjectDatabaseCatalog(MotifSchema.CurrentSchema, new Version(1, 0)).OpenOwned(project);
+        _database = OpenFromEmptySchemaTemplate(project);
         var token = baseline ?? new BaselineToken("fixture-project", "sha256:" + new string('a', 64), "1",
             "2026-09-05T11:02:00Z", "sha256:" + new string('b', 64));
         _baseline = token;
@@ -65,6 +66,43 @@ public sealed partial class StoredSelectionFixture : IDisposable
     }
 
     public string ProjectPath { get; }
+
+    // Created once per process; each fixture copies it and rewrites the one path it records.
+    private static readonly Lazy<string> EmptySchemaTemplate = new(CreateEmptySchemaTemplate);
+
+    private static string CreateEmptySchemaTemplate()
+    {
+        var folder = Path.Combine(Path.GetTempPath(), TemporaryRootFolder, "schema-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(folder);
+        var template = new ProjectLocator(Path.Combine(folder, "project.fwdata"), "project");
+        new ProjectDatabaseCatalog(MotifSchema.CurrentSchema, new Version(1, 0)).OpenOwned(template).Dispose();
+        AppDomain.CurrentDomain.ProcessExit += (_, _) =>
+        {
+            try { Directory.Delete(folder, recursive: true); }
+            catch { /* best effort */ }
+        };
+        return ProjectDatabaseCatalog.DatabasePathFor(template);
+    }
+
+    private static MotifDatabase OpenFromEmptySchemaTemplate(ProjectLocator project)
+    {
+        var path = ProjectDatabaseCatalog.DatabasePathFor(project);
+        File.Copy(EmptySchemaTemplate.Value, path);
+        using (var connection = new SqliteConnection(new SqliteConnectionStringBuilder
+        {
+            DataSource = path,
+            Mode = SqliteOpenMode.ReadWrite,
+            Pooling = false,
+        }.ToString()))
+        {
+            connection.Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = "UPDATE MotifMetadata SET FullFwDataPath = $path WHERE Id = 1;";
+            command.Parameters.AddWithValue("$path", project.FullFwDataPath);
+            command.ExecuteNonQuery();
+        }
+        return new ProjectDatabaseCatalog(MotifSchema.CurrentSchema, new Version(1, 0)).OpenOwned(project);
+    }
 
     /// <summary>Publishes the current warning evidence before a fixture opens its reader.</summary>
     public void RecordGrammarCheck(GrammarCheckResponse check) => new GrammarCheckRepository(_database).Save(
