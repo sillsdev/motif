@@ -104,14 +104,15 @@ public sealed class RichTooltipContentTests(ITestOutputHelper output)
                 foreach (var scene in Enum.GetValues<TooltipScene>())
                 {
                     await scenes.Reach(scene);
+                    var fresh = new List<(Control Control, TooltipOwner Owner)>();
                     foreach (var (control, owner) in scenes.RealizedOwners(failures, scene))
                     {
                         if (owner.Scene != scene) continue;
                         output.WriteLine($"{scene}: {owner.Key}: {ToolTip.GetTip(control)}");
                         if (ToolTip.GetTip(control) is string tip) words.Add($"{tip} ⟨{owner.Key}⟩");
-                        if (!seen.Add(owner.Key)) continue;
-                        CheckReadable(scenes, control, owner, failures, words, gaps);
+                        if (seen.Add(owner.Key)) fresh.Add((control, owner));
                     }
+                    CheckReadable(scenes, fresh, failures, words, gaps);
                     await scenes.Leave(scene);
                 }
             }
@@ -134,9 +135,11 @@ public sealed class RichTooltipContentTests(ITestOutputHelper output)
         WindowWordsTests.AssertWindowWords(words);
     }
 
-    private static void CheckReadable(TooltipScenes scenes, Control control, TooltipOwner owner, List<string> failures, List<string> words,
-        HashSet<string> gaps)
+    // A theme restyles the whole window, so each scene sets it once per theme, not once per owner.
+    private static void CheckReadable(TooltipScenes scenes, IReadOnlyList<(Control Control, TooltipOwner Owner)> owners,
+        List<string> failures, List<string> words, HashSet<string> gaps)
     {
+        if (owners.Count == 0) return;
         var prior = Application.Current!.RequestedThemeVariant;
         try
         {
@@ -144,28 +147,30 @@ public sealed class RichTooltipContentTests(ITestOutputHelper output)
             {
                 Application.Current!.RequestedThemeVariant = theme;
                 PageScreenshots.Settle(scenes.Window);
-                var texts = TooltipScenes.OpenTipTexts(control);
-                if (texts.Count == 0)
-                {
-                    if (owner.Gap is null) failures.Add($"{theme} {owner}: the open tooltip shows no words");
-                    else gaps.Add(owner.Key);
-                    continue;
-                }
                 Assert.True(Application.Current.TryGetResource("Intent.Type.Small", theme, out var small));
-                foreach (var text in texts)
+                foreach (var (control, owner) in owners)
                 {
-                    words.Add($"{TooltipScenes.WordsOf(text)} ⟨{owner.Key}, opened⟩");
-                    var ratio = ContrastTests.Effective(text);
-                    if (ratio < Readable) failures.Add($"{theme} {owner}: '{TooltipScenes.WordsOf(text)}' is {ratio:F2}:1");
-                    if (!Equals(small, text.FontSize)) failures.Add($"{theme} {owner}: type is {text.FontSize}, not Intent.Type.Small");
+                    var texts = TooltipScenes.OpenTipTexts(control);
+                    if (texts.Count == 0)
+                    {
+                        if (owner.Gap is null) failures.Add($"{theme} {owner}: the open tooltip shows no words");
+                        else gaps.Add(owner.Key);
+                    }
+                    foreach (var text in texts)
+                    {
+                        words.Add($"{TooltipScenes.WordsOf(text)} ⟨{owner.Key}, opened⟩");
+                        var ratio = ContrastTests.Effective(text);
+                        if (ratio < Readable) failures.Add($"{theme} {owner}: '{TooltipScenes.WordsOf(text)}' is {ratio:F2}:1");
+                        if (!Equals(small, text.FontSize)) failures.Add($"{theme} {owner}: type is {text.FontSize}, not Intent.Type.Small");
+                    }
+                    ToolTip.SetIsOpen(control, false);
+                    Avalonia.Threading.Dispatcher.UIThread.RunJobs();
                 }
-                ToolTip.SetIsOpen(control, false);
-                PageScreenshots.Settle(scenes.Window);
             }
         }
         finally
         {
-            ToolTip.SetIsOpen(control, false);
+            foreach (var (control, _) in owners) ToolTip.SetIsOpen(control, false);
             Application.Current!.RequestedThemeVariant = prior;
             PageScreenshots.Settle(scenes.Window);
         }
