@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -53,6 +54,9 @@ public enum PreferenceWriteState
 /// <summary>The saved outer window size in DIPs and optional native-pixel position.</summary>
 public sealed record WindowPlacement(double Width, double Height, int? X, int? Y);
 
+/// <summary>The sort and filter a person left on one view of one project; null parts mean the view's default.</summary>
+public sealed record ViewState(string? SortColumn, bool SortDescending, string? Filter);
+
 /// <summary>The complete user preference snapshot shared by the Motif window.</summary>
 public sealed record UserPreferences(
     int FormatVersion,
@@ -65,7 +69,34 @@ public sealed record UserPreferences(
 {
     /// <summary>The defaults used when no usable preference file exists.</summary>
     public static UserPreferences Defaults { get; } =
-        new(1, ZoomPolicy.DefaultPercent, UserTheme.System, SettingsGroup.Display, null, TracePresentation.Plain, false);
+        new(FileUserPreferencesStore.LatestFormatVersion, ZoomPolicy.DefaultPercent, UserTheme.System,
+            SettingsGroup.Display, null, TracePresentation.Plain, false);
+
+    /// <summary>Whether each "More options" section, keyed by window or section name, is expanded (format 2).</summary>
+    public IReadOnlyDictionary<string, bool> ExpandedSections { get; init; } =
+        ImmutableSortedDictionary<string, bool>.Empty.WithComparers(StringComparer.Ordinal);
+
+    /// <summary>Per-project view state: project key, then view name (format 2). Lives only in user preferences.</summary>
+    public IReadOnlyDictionary<string, IReadOnlyDictionary<string, ViewState>> ProjectViews { get; init; } =
+        ImmutableSortedDictionary<string, IReadOnlyDictionary<string, ViewState>>.Empty
+            .WithComparers(StringComparer.Ordinal);
+
+    /// <summary>Value equality, including the two maps, so a re-read file equals the snapshot that was saved.</summary>
+    public bool Equals(UserPreferences? other) =>
+        other is not null && FormatVersion == other.FormatVersion && ZoomPercent == other.ZoomPercent &&
+        Theme == other.Theme && LastSettingsGroup == other.LastSettingsGroup && Equals(Window, other.Window) &&
+        Trace == other.Trace && HasSeenTechDemoNotice == other.HasSeenTechDemoNotice &&
+        ExpandedSections.Count == other.ExpandedSections.Count &&
+        ExpandedSections.All(pair => other.ExpandedSections.TryGetValue(pair.Key, out var v) && v == pair.Value) &&
+        ProjectViews.Count == other.ProjectViews.Count &&
+        ProjectViews.All(project => other.ProjectViews.TryGetValue(project.Key, out var views) &&
+            views.Count == project.Value.Count &&
+            project.Value.All(view => views.TryGetValue(view.Key, out var state) && Equals(state, view.Value)));
+
+    /// <inheritdoc />
+    public override int GetHashCode() =>
+        HashCode.Combine(FormatVersion, ZoomPercent, Theme, LastSettingsGroup, Window, Trace, HasSeenTechDemoNotice,
+            ExpandedSections.Count + ProjectViews.Count);
 }
 
 /// <summary>A stable code and user-facing explanation for a preference-file problem.</summary>
@@ -102,9 +133,12 @@ public interface IUserPreferencesStore
 /// <summary>The validated file-backed store shared by all App presentation preferences.</summary>
 public sealed class FileUserPreferencesStore : IUserPreferencesStore, IDisposable
 {
-    private const int CurrentFormatVersion = 1;
+    /// <summary>The format written on every save. Format 1 files are read and upgraded in memory.</summary>
+    public const int LatestFormatVersion = 2;
+
+    private const int CurrentFormatVersion = LatestFormatVersion;
     private static readonly TimeSpan LockTimeout = TimeSpan.FromMilliseconds(750);
-    private static readonly string[] RequiredProperties =
+    private static readonly string[] FormatOneProperties =
     [
         nameof(UserPreferences.FormatVersion),
         nameof(UserPreferences.ZoomPercent),
@@ -113,6 +147,12 @@ public sealed class FileUserPreferencesStore : IUserPreferencesStore, IDisposabl
         nameof(UserPreferences.Window),
         nameof(UserPreferences.Trace),
         nameof(UserPreferences.HasSeenTechDemoNotice),
+    ];
+    private static readonly string[] RequiredProperties =
+    [
+        .. FormatOneProperties,
+        nameof(UserPreferences.ExpandedSections),
+        nameof(UserPreferences.ProjectViews),
     ];
     private static readonly JsonSerializerOptions JsonOptions = CreateJsonOptions();
     private readonly string _path;
@@ -421,9 +461,11 @@ public sealed class FileUserPreferencesStore : IUserPreferencesStore, IDisposabl
         {
             if (!File.Exists(_path)) return (UserPreferences.Defaults, PreferenceState.Missing, null);
             var json = File.ReadAllText(_path);
-            if (!HasExactShape(json)) return RefusedRead();
+            if (!HasExactShape(json, out var version)) return RefusedRead();
             var preferences = JsonSerializer.Deserialize<UserPreferences>(json, JsonOptions);
             if (preferences is null) return RefusedRead();
+            // A format 1 file keeps every preference; it is upgraded here and written as format 2 on the next save.
+            if (version == 1) preferences = preferences with { FormatVersion = LatestFormatVersion };
             return (Validate(preferences), PreferenceState.Ready, null);
         }
         catch (Exception exception) when (exception is JsonException or InvalidDataException or ArgumentException)
@@ -464,13 +506,18 @@ public sealed class FileUserPreferencesStore : IUserPreferencesStore, IDisposabl
         }
     }
 
-    private static bool HasExactShape(string json)
+    private static bool HasExactShape(string json, out int version)
     {
+        version = 0;
         using var document = JsonDocument.Parse(json);
         if (document.RootElement.ValueKind != JsonValueKind.Object) return false;
+        if (!document.RootElement.TryGetProperty(nameof(UserPreferences.FormatVersion), out var versionElement) ||
+            !versionElement.TryGetInt32(out version)) return false;
+        // An unknown (for example newer) version has no known shape: it is refused, never rewritten.
+        var required = version switch { 1 => FormatOneProperties, LatestFormatVersion => RequiredProperties, _ => null };
+        if (required is null) return false;
         var names = document.RootElement.EnumerateObject().Select(property => property.Name).ToArray();
-        return names.Length == RequiredProperties.Length &&
-            RequiredProperties.All(name => names.Contains(name, StringComparer.Ordinal));
+        return names.Length == required.Length && required.All(name => names.Contains(name, StringComparer.Ordinal));
     }
 
     internal static UserPreferences Validate(UserPreferences value)
@@ -483,7 +530,19 @@ public sealed class FileUserPreferencesStore : IUserPreferencesStore, IDisposabl
              !double.IsFinite(window.Height) || window.Height <= 0 ||
              (window.X is null) != (window.Y is null)))
             throw new InvalidDataException("The saved window placement is incomplete.");
-        return value;
+        if (value.ExpandedSections is null || value.ProjectViews is null ||
+            value.ExpandedSections.Keys.Any(string.IsNullOrWhiteSpace) ||
+            value.ProjectViews.Any(project => string.IsNullOrWhiteSpace(project.Key) || project.Value is null ||
+                project.Value.Any(view => string.IsNullOrWhiteSpace(view.Key) || view.Value is null)))
+            throw new InvalidDataException("The saved view state is incomplete.");
+        // Sorted ordinally so the file is stable and a re-read equals what was saved.
+        return value with
+        {
+            ExpandedSections = value.ExpandedSections.ToImmutableSortedDictionary(StringComparer.Ordinal),
+            ProjectViews = value.ProjectViews.ToImmutableSortedDictionary(project => project.Key,
+                project => (IReadOnlyDictionary<string, ViewState>)project.Value.ToImmutableSortedDictionary(
+                    StringComparer.Ordinal), StringComparer.Ordinal),
+        };
     }
 
     private static (UserPreferences Preferences, PreferenceState State, PreferenceProblem? Problem) RefusedRead() =>
