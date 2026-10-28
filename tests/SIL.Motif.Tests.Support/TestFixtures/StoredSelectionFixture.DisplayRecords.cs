@@ -145,7 +145,9 @@ public sealed partial class StoredSelectionFixture
                 "fixture", "sha256:fixture-source", "sha256:fixture-parser", "fixture-words", "sha256:fixture-words",
                 "fixture-tsv", "sha256:fixture-tsv", "fixture-stderr", "sha256:fixture-stderr", null,
                 StepCap.Default, 1, false) },
-            SavedUtc: DateTimeOffset.UtcNow.ToString("O")
+            SavedUtc: (response.Words.Where(word => word.Origin?.AssessmentId == root)
+                .Select(word => (DateTimeOffset?)word.Origin!.MeasuredUtc).FirstOrDefault() ?? DateTimeOffset.UtcNow)
+                .ToString("O")
         );
         RecordAssessment(record);
         foreach (var replacement in response.TimingOverrideAssessmentIds.Select((id, index) => (id, index)))

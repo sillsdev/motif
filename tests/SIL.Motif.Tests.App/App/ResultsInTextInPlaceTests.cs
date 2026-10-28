@@ -1,6 +1,7 @@
 using System.Collections.Specialized;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Commands.SelectionReading;
 using SIL.Motif.Contract.Responses;
 using Xunit;
 
@@ -38,12 +39,21 @@ public sealed partial class ResultsInTextViewModelTests
             .ToArray(),
     };
 
+    private static async Task<DateTimeOffset> MeasurementTime(SelectionModelFixture fixture)
+    {
+        var result = await fixture.Reads.Reader!.ReadLinePagesAsync(TextId, [new TextLinePage(1, 0, 20)]);
+        Assert.True(result.Succeeded, result.Refusal?.Message);
+        using var read = result.Value!;
+        return read.Value.Assessments["kitabu"].Origin!.MeasuredUtc;
+    }
+
     [Fact]
     public void AnEqualPublicationKeepsEveryLineAndTheOpenCard()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             var (inText, fixture, source, assess) = await LoadedForRepublish();
+            var measured = await MeasurementTime(fixture);
             var lines = SelectionModelFixture.VisibleLines(inText);
             Assert.Equal(2, lines.Count);
             var firstTokens = lines.Select(line => line.Tokens.ToArray()).ToArray();
@@ -63,6 +73,8 @@ public sealed partial class ResultsInTextViewModelTests
 
             await fixture.RepublishAsync(source, assess.Result);
             await Settled(inText);
+
+            Assert.Equal(measured, await MeasurementTime(fixture));
 
             Assert.Same(pages, inText.LinePages);
             Assert.Equal(lines, SelectionModelFixture.VisibleLines(inText));
