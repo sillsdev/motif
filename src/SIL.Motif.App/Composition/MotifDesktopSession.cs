@@ -53,6 +53,7 @@ public sealed class MotifDesktopSession
         if (_closing) return Closed;
         _closing = true;
         _detach?.Invoke();
+        Workspace.Context.ViewMemory.OpenProject(null);
         Workspace.Context.TryWordSessions.Shutdown();
         try
         {

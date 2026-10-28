@@ -597,7 +597,16 @@ public sealed partial class TraceWordViewModel : ObservableObject
     [ObservableProperty]
     private string _ruleFilter = string.Empty;
 
-    partial void OnRuleFilterChanged(string value) => RebuildFilteredRoots();
+    private ProjectFilterMemory? _filterMemory;
+
+    internal void UseViewMemory(ProjectViewMemory memory) => _filterMemory = new(memory, "Trace",
+        () => RuleFilter, saved => RuleFilter = saved ?? string.Empty);
+
+    partial void OnRuleFilterChanged(string value)
+    {
+        RebuildFilteredRoots();
+        _filterMemory?.Changed();
+    }
 
     [ObservableProperty]
     private string _morphFilter = string.Empty;
@@ -686,6 +695,7 @@ public sealed partial class TraceWordViewModel : ObservableObject
     public void SetProjectPath(string? fwDataPath)
     {
         _projectPath = fwDataPath;
+        _filterMemory?.Open(fwDataPath);
         OnPropertyChanged(nameof(ProjectPath));
         OnPropertyChanged(nameof(IsStandalone));
         TryCommand.NotifyCanExecuteChanged();

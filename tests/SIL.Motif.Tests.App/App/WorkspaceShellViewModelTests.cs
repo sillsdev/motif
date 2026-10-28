@@ -1297,4 +1297,157 @@ public sealed class WorkspaceShellViewModelTests
         Assert.Equal("typed early", store.GetViewState(KeyOf(IdentityA, PathOne), "Statistics")!.Filter);
         Assert.Null(store.GetViewState(KeyOf(null, PathOne), "Statistics"));
     }
+
+    private static string FilterOf(WorkspaceShellViewModel workspace, string view) => view switch
+    {
+        "AssessWords" => workspace.Assess.Words.SelectedFilter.ToString(),
+        "Review" => workspace.PageModel<ReviewPageModel>().SelectedFilterIndex.ToString(),
+        "Trace" => workspace.Assess.Trace.RuleFilter,
+        _ => throw new ArgumentException(view),
+    };
+
+    private static void ChooseViewFilter(WorkspaceShellViewModel workspace, string view)
+    {
+        switch (view)
+        {
+            case "AssessWords": workspace.Assess.Words.SelectedFilter = ResultsWordFilter.Missed; break;
+            case "Review": workspace.PageModel<ReviewPageModel>().SelectedFilterIndex = 2; break;
+            case "Trace": workspace.Assess.Trace.RuleFilter = "rule"; break;
+        }
+    }
+
+    [Theory]
+    [InlineData("AssessWords", "Missed", "All")]
+    [InlineData("Review", "2", "0")]
+    [InlineData("Trace", "rule", "")]
+    public async Task ViewFiltersFollowProjectsAndRestoreInFreshWorkspace(string view, string chosen, string fallback)
+    {
+        var (fake, picker, _, _, workspace) = NewWorkspace();
+        var store = new CountingPreferencesStore(new MemoryUserPreferencesStore());
+        workspace.Context.ViewMemory.UseStore(store);
+        workspace.Context.ViewIdentityReader = _ => Task.FromResult<string?>(null);
+        await ChooseProjectAsync(fake, picker, workspace, PathOne);
+        ChooseViewFilter(workspace, view);
+        Assert.Equal(chosen, FilterOf(workspace, view));
+        var saved = store.GetViewState(KeyOf(null, PathOne), view)!.Filter;
+        if (view == "Review") Assert.Equal("StillFits", saved);
+        var writes = store.Updates;
+        await ChooseProjectAsync(fake, picker, workspace, PathTwo);
+        Assert.Equal(fallback, FilterOf(workspace, view));
+        await ChooseProjectAsync(fake, picker, workspace, PathOne);
+        Assert.Equal(chosen, FilterOf(workspace, view));
+
+        var (fake2, picker2, _, _, fresh) = NewWorkspace();
+        fresh.Context.ViewMemory.UseStore(store);
+        fresh.Context.ViewIdentityReader = _ => Task.FromResult<string?>(null);
+        await ChooseProjectAsync(fake2, picker2, fresh, PathOne);
+        Assert.Equal(chosen, FilterOf(fresh, view));
+        Assert.Equal(writes, store.Updates);
+    }
+
+    [Theory]
+    [InlineData("AssessWords", "All")]
+    [InlineData("Review", "0")]
+    public async Task UnknownSavedViewFilterFallsBack(string view, string fallback)
+    {
+        var (fake, picker, _, _, workspace) = NewWorkspace();
+        var store = new CountingPreferencesStore(new MemoryUserPreferencesStore());
+        store.SetViewState(KeyOf(null, PathOne), view, new ViewState(null, false, "2"));
+        workspace.Context.ViewMemory.UseStore(store);
+        workspace.Context.ViewIdentityReader = _ => Task.FromResult<string?>(null);
+        var writes = store.Updates;
+        await ChooseProjectAsync(fake, picker, workspace, PathOne);
+        Assert.Equal(fallback, FilterOf(workspace, view));
+        Assert.Equal(writes, store.Updates);
+    }
+
+    [Theory]
+    [InlineData("AssessWords", "Missed")]
+    [InlineData("Review", "2")]
+    [InlineData("Trace", "rule")]
+    public async Task ViewFilterChangedBeforeIdentityIsHeld(string view, string chosen)
+    {
+        var (fake, picker, _, _, workspace) = NewWorkspace();
+        var store = new CountingPreferencesStore(new MemoryUserPreferencesStore());
+        store.SetViewState(KeyOf(IdentityA, PathOne), view, new ViewState(null, false, "older"));
+        var identity = new TaskCompletionSource<string?>();
+        workspace.Context.ViewMemory.UseStore(store);
+        workspace.Context.ViewIdentityReader = _ => identity.Task;
+        await ChooseProjectAsync(fake, picker, workspace, PathOne);
+        var writes = store.Updates;
+        ChooseViewFilter(workspace, view);
+        Assert.Equal(writes, store.Updates);
+        identity.SetResult(IdentityA);
+        Assert.Equal(chosen, FilterOf(workspace, view));
+        Assert.Equal(writes + 1, store.Updates);
+        Assert.NotEqual("older", store.GetViewState(KeyOf(IdentityA, PathOne), view)!.Filter);
+    }
+
+    [Fact]
+    public async Task TextWordsFilterChangedBeforeIdentityIsHeld()
+    {
+        var (fake, picker, _, _, workspace) = NewWorkspace();
+        var store = new CountingPreferencesStore(new MemoryUserPreferencesStore());
+        var identity = new TaskCompletionSource<string?>();
+        workspace.Context.ViewMemory.UseStore(store);
+        workspace.Context.ViewIdentityReader = _ => identity.Task;
+        await ChooseProjectAsync(fake, picker, workspace, PathOne);
+        var words = workspace.PageModel<TextsPageModel>().Words;
+        var writes = store.Updates;
+        words.SetStatusFilterCommand.Execute(WordProjectStatus.Approved);
+        Assert.Equal(writes, store.Updates);
+        identity.SetResult(IdentityA);
+        Assert.Equal(WordProjectStatus.Approved, words.StatusFilter);
+        Assert.Equal(writes + 1, store.Updates);
+        Assert.Equal("Approved", store.GetViewState(KeyOf(IdentityA, PathOne), "TextWords")!.Filter);
+    }
+
+    [Fact]
+    public async Task AnOlderIdentityReadCannotResolveAReopenedPath()
+    {
+        var (fake, picker, _, _, workspace) = NewWorkspace();
+        var reads = new Queue<TaskCompletionSource<string?>>(new[] { new TaskCompletionSource<string?>(), new TaskCompletionSource<string?>() });
+        var first = reads.Peek();
+        workspace.Context.ViewIdentityReader = _ => reads.Dequeue().Task;
+        await ChooseProjectAsync(fake, picker, workspace, PathOne);
+        var second = reads.Peek();
+        await ChooseProjectAsync(fake, picker, workspace, PathOne);
+        first.SetResult(IdentityA);
+        Assert.True(workspace.Context.ViewMemory.IsPending);
+        second.SetResult(null);
+        Assert.Equal(KeyOf(null, PathOne), workspace.Context.ViewMemory.ProjectKey);
+    }
+
+
+    [Fact]
+    public async Task TraceOnlySavesTheRuleFilterInViewMemory()
+    {
+        var (fake, picker, _, _, workspace) = NewWorkspace();
+        var store = new CountingPreferencesStore(new MemoryUserPreferencesStore());
+        workspace.Context.ViewMemory.UseStore(store);
+        workspace.Context.ViewIdentityReader = _ => Task.FromResult<string?>(null);
+        await ChooseProjectAsync(fake, picker, workspace, PathOne);
+        var writes = store.Updates;
+        workspace.Assess.Trace.SearchText = "private search";
+        workspace.Assess.Trace.MorphFilter = "morph";
+        workspace.Assess.Trace.OutcomeFilter = TraceOutcomeFilter.Failed;
+        Assert.Equal(writes, store.Updates);
+        Assert.Null(store.GetViewState(KeyOf(null, PathOne), "Trace"));
+        workspace.Assess.Trace.RuleFilter = "rule";
+        Assert.Equal(writes + 1, store.Updates);
+        workspace.Assess.Trace.SearchText = "another search";
+        workspace.Assess.Trace.MorphFilter = "another morph";
+        workspace.Assess.Trace.OutcomeFilter = TraceOutcomeFilter.Succeeded;
+        Assert.Equal(writes + 1, store.Updates);
+        Assert.Equal(new ViewState(null, false, "rule"), store.GetViewState(KeyOf(null, PathOne), "Trace"));
+        var (fake2, picker2, _, _, fresh) = NewWorkspace();
+        fresh.Context.ViewMemory.UseStore(store);
+        fresh.Context.ViewIdentityReader = _ => Task.FromResult<string?>(null);
+        await ChooseProjectAsync(fake2, picker2, fresh, PathOne);
+        Assert.Equal("rule", fresh.Assess.Trace.RuleFilter);
+        Assert.Equal(string.Empty, fresh.Assess.Trace.SearchText);
+        Assert.Equal(string.Empty, fresh.Assess.Trace.MorphFilter);
+        Assert.Equal(TraceOutcomeFilter.All, fresh.Assess.Trace.OutcomeFilter);
+    }
+
 }

@@ -105,6 +105,43 @@ public sealed class DesktopPreferenceOwnershipTests(AvaloniaHeadlessFixture aval
         }, TimeSpan.FromSeconds(30));
     }
 
+    [Fact]
+    public void ClosingSessionInvalidatesPendingViewIdentityBeforeDisposal()
+    {
+        using var folder = new TemporaryFolder();
+        var path = System.IO.Path.Combine(folder.Path, "user-preferences.json");
+        var store = new FileUserPreferencesStore(path, TimeSpan.FromMinutes(5));
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var composition = MotifAppComposition.Create(Options(folder.Path) with
+            {
+                OwnedUserPreferencesFactory = () => store,
+            });
+            var session = new MotifDesktopSession(composition, Task.CompletedTask);
+            var memory = session.Workspace.Context.ViewMemory;
+            var resolved = false;
+            memory.KeyResolved += () =>
+            {
+                resolved = true;
+                memory.Save(memory.ProjectKey, "Trace", new ViewState(null, false, "rule"));
+            };
+            try
+            {
+                session.Window.Show();
+                memory.BeginOpen("project.fwdata");
+            }
+            finally
+            {
+                await session.CloseAsync();
+            }
+            memory.Resolve("project.fwdata", null);
+            Assert.False(resolved);
+            Assert.Null(memory.ProjectKey);
+            using var reopened = new FileUserPreferencesStore(path);
+            Assert.Empty(reopened.Current.ProjectViews);
+        }, TimeSpan.FromSeconds(30));
+    }
+
     [MethodImpl(MethodImplOptions.NoInlining)]
     private static async Task<WeakReference[]> CloseOwnedSessionAsync(string root)
     {

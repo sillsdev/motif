@@ -145,6 +145,8 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
         ArgumentNullException.ThrowIfNull(baseline);
         Selection = selection;
         Assess = assess;
+        assess.Words.UseViewMemory(ViewMemory);
+        assess.Trace.UseViewMemory(ViewMemory);
         Changes = changes;
         Commands = commands;
         TryWordSessions = tryWordSessions ?? NoTryWordSessions.Instance;
@@ -955,17 +957,19 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
         ProjectPath = projectPath;
         ViewMemory.BeginOpen(projectPath);
         Assess.ProjectPath = projectPath;
-        _ = ResolveViewKeyAsync(projectPath);
+        var generation = Volatile.Read(ref _openGeneration);
+        _ = ResolveViewKeyAsync(projectPath, generation).ContinueWith(task => _ = task.Exception,
+            TaskScheduler.Default);
         return Task.CompletedTask;
     }
 
     // Best effort: any failure leaves the project keyed by its path.
-    private async Task ResolveViewKeyAsync(string projectPath)
+    private async Task ResolveViewKeyAsync(string projectPath, int generation)
     {
         string? identity;
         try { identity = await ViewIdentityReader(projectPath).ConfigureAwait(true); }
         catch (Exception) { identity = null; }
-        ViewMemory.Resolve(projectPath, identity);
+        if (IsCurrentOpen(generation)) ViewMemory.Resolve(projectPath, identity);
     }
 
     // Restoring the chosen Texts first prevents evidence from opening the reader over the previous Selection.

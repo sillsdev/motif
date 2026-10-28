@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using SIL.Motif.App.Services;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.PanGloss;
@@ -209,7 +210,20 @@ public sealed partial class AssessWordsViewModel : ObservableObject
     }
 
     partial void OnWordFilterChanged(string value) => Refresh();
-    partial void OnSelectedFilterChanged(ResultsWordFilter value) => Refresh();
+    private ProjectFilterMemory? _filterMemory;
+
+    internal void UseViewMemory(ProjectViewMemory memory) => _filterMemory = new(memory, "AssessWords",
+        () => SelectedFilter == ResultsWordFilter.All ? null : SelectedFilter.ToString(),
+        saved => SelectedFilter = saved is not null && Enum.GetNames<ResultsWordFilter>().Contains(saved, StringComparer.Ordinal)
+            ? Enum.Parse<ResultsWordFilter>(saved) : ResultsWordFilter.All);
+
+    internal void SetProjectPath(string? path) => _filterMemory?.Open(path);
+
+    partial void OnSelectedFilterChanged(ResultsWordFilter value)
+    {
+        Refresh();
+        _filterMemory?.Changed();
+    }
 
     private IReadOnlySet<string>? _onlyWords;
 

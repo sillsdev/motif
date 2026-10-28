@@ -42,6 +42,7 @@ public sealed partial class ReviewPageModel : PageModel
 
     public ReviewPageModel(WorkspaceContext context) : base(context)
     {
+        InitializeFilterMemory();
         ParseProgress = new ParseProgressViewModel(context.Clock);
         Changes.PropertyChanged += OnChangesChanged;
         context.PropertyChanged += OnContextPropertyChanged;
@@ -1398,8 +1399,15 @@ public sealed partial class ReviewPageModel : PageModel
         ApplyCommand.NotifyCanExecuteChanged();
     }
 
+    protected override Task OnProjectOpenedAsync(string projectPath, CancellationToken cancellationToken)
+    {
+        _filterMemory?.Open(projectPath);
+        return Task.CompletedTask;
+    }
+
     protected override void OnProjectCleared()
     {
+        _filterMemory?.Open(null);
         _walked = false;
         _selectedFilterIndex = 0;
         OnPropertyChanged(nameof(SelectedFilterIndex));

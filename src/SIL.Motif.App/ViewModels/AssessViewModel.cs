@@ -144,6 +144,7 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
     partial void OnProjectPathChanged(string? value)
     {
         RunCommand.NotifyCanExecuteChanged();
+        Words.SetProjectPath(value);
         Trace.SetProjectPath(value);
     }
 

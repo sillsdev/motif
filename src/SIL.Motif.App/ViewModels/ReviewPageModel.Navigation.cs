@@ -1,10 +1,20 @@
 using CommunityToolkit.Mvvm.Input;
+using SIL.Motif.App.Services;
 
 namespace SIL.Motif.App.ViewModels;
 
 public sealed partial class ReviewPageModel
 {
     private int _selectedFilterIndex;
+    private static readonly string[] FilterNames = ["All", "NotLookedAt", "StillFits", "NeedsAttention"];
+    private ProjectFilterMemory? _filterMemory;
+
+    private void InitializeFilterMemory() => _filterMemory = new(Context.ViewMemory, "Review",
+        () => _selectedFilterIndex == 0 ? null : FilterNames[_selectedFilterIndex], saved =>
+        {
+            var index = Array.IndexOf(FilterNames, saved);
+            SelectedFilterIndex = index < 0 ? 0 : index;
+        });
     private IReadOnlyList<object>? _tableEntries;
 
     /// <summary>The shared table's typed changes and actionable group headings.</summary>
@@ -39,6 +49,7 @@ public sealed partial class ReviewPageModel
             EnsureVisibleCurrent();
             AfterMove();
             InvalidateVisibleEntries();
+            _filterMemory?.Changed();
         }
     }
 
