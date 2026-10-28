@@ -1170,6 +1170,8 @@ public sealed partial class ComponentStyleTests
             Button.ForegroundProperty, "Intent.Marking.Link");
         yield return new("TextsPage", "results kept while a parse runs", host => Add(host, Stack("waiting")),
             Visual.OpacityProperty, "Intent.Opacity.Waiting");
+        yield return new("TextsListsScoped", "a words list's minimum height", TextsListsWordSlot,
+            Control.MinHeightProperty, "Component.TextsPage.ListWordsMinHeight");
 
         yield return new("Interaction", "the focus ring", host => Add(host, new SIL.Motif.App.Views.FocusRing()),
             Border.BorderBrushProperty, "Intent.Focus");
@@ -1404,6 +1406,16 @@ public sealed partial class ComponentStyleTests
         list.Items.Add(item);
         host.Children.Add(list);
         return item;
+    }
+
+    private static WordListSlot TextsListsWordSlot(Panel host)
+    {
+        var rows = new ListBox { Classes = { "wordRows" } };
+        Grid.SetRow(rows, 1);
+        var content = new Grid { RowDefinitions = new RowDefinitions("Auto,*") };
+        content.Children.Add(new SIL.Motif.App.Controls.WordPresentation.WordRowHeader());
+        content.Children.Add(rows);
+        return Add(host, new WordListSlot { Classes = { "textsListsWords" }, Content = content });
     }
 
     private static ListBox WordRows(Panel host)
