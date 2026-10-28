@@ -17,6 +17,13 @@ The default `./test.ps1` run is not a merge gate: it selects Unit and Integratio
 developer loop. Pass `-All` to run every level. CI and release validation use `-All`; the workflow runs
 on Windows, Ubuntu 22.04, and macOS.
 
+**`./test.ps1 -Changed` is the quick landing check; `-All` stays the gate.** It runs only the test classes the
+diff against the merge-base with `origin/main` can affect, chosen from a coverage map that `./test.ps1 -BuildMap`
+measures (one instrumented full run: nightly or on request), prints why each class was selected, and runs the full
+suite instead when anything is unknown (no map, an old map, a build, project or tooling file, new shared test code,
+a data file no source names). `-Changed -Explain` shows the selection without building. See
+[docs/testing-changed-files.md](docs/testing-changed-files.md).
+
 **One machine, many worktrees: the scripts size themselves.** `build.ps1` passes `-m:N` to restore and build, with
 `N = MOTIF_BUILD_NODES` or, on a developer machine, a quarter of the processors (minimum two). CI is uncapped: no `-m`, no slot, and xUnit keeps its own thread default.
 `test.ps1` gives each xUnit host `MaxParallelThreads = MOTIF_TEST_THREADS` or its share of the processors (minimum

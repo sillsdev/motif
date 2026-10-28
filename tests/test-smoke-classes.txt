@@ -1,0 +1,8 @@
+# Classes -Changed always runs: fast, broad coverage, one or two per test project.
+SIL.Motif.Tests.App.Walkthrough.W1ChooseProjectAndCaptureBaselineTests
+SIL.Motif.Tests.Retirement.RedundantZeroAffixRecipeAcceptanceTests
+SIL.Motif.Tests.Cli.WarningsArgvTests
+SIL.Motif.Tests.Mcp.EditPhonemeAcceptanceTests
+SIL.Motif.Tests.Jobs.TrialAtomicCompletionProjectionTests
+SIL.Motif.Tests.Worker.BaselineDryRunIntegrationTests
+SIL.Motif.Tests.Generator.Slice3GeneratedFilesAreUpToDateTests
