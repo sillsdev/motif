@@ -1,6 +1,7 @@
 <!--
   The fixed status line: notices, Selection, pending changes, warnings and parse progress.
   Colours come from Intent keys only; sizes and gaps from Intent keys or this file's own Component keys.
+  A status-bar control with a tooltip needs the class `statusTip`.
 -->
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"

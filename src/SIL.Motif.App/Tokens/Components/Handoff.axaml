@@ -1,11 +1,10 @@
-<!-- The Handoff resources, and the styles that controls outside Handoff reach. The rest are in HandoffScoped.axaml. -->
 <!--
   The AI Handoff page: what goes in, the files written, and the steps to a chat.
   Colours come from Intent keys only; sizes and gaps from Intent keys or this file's own Component keys.
+  Holds the resources and the styles that controls outside Handoff reach; the rest are in HandoffScoped.axaml.
 -->
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-
   <Styles.Resources>
     <StaticResource x:Key="Component.Handoff.HeaderPadding" ResourceKey="Intent.Inset.Panel" />
     <StaticResource x:Key="Component.Handoff.PageMargin" ResourceKey="Intent.Inset.Page" />
@@ -65,5 +64,4 @@
     <Setter Property="HorizontalAlignment" Value="Center" />
     <Setter Property="VerticalAlignment" Value="Center" />
   </Style>
-
 </Styles>

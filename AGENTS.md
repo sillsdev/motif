@@ -309,6 +309,8 @@ entries in the tool's `Allowlist`, each with a one-line reason. An entry that no
 anything fails the run, so an entry cannot outlive the value it excuses. A new value goes in
 `Primitives.axaml`. A new shared meaning goes in `Intent.axaml`, and its header lists it. A new
 component file gets a `StyleInclude` in `App.axaml` and a case in `ComponentStyleTests`.
+Page-only styles go in `Tokens/Components/<Page>Scoped.axaml` instead, included by the owning view
+(and by pane DataTemplate roots), never in `App.axaml`; `DesignTokenTests` enforces this.
 
 ## Help text and the documentation site
 

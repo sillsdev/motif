@@ -16,54 +16,54 @@
         <Border.Styles>
           <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/ReviewScoped.axaml" />
         </Border.Styles>
-    <StackPanel Classes="reviewRelated reviewFooterDetails">
-      <views:CopyableTextBlock x:Name="ApplyFullReason" Classes="reviewBlockedTitle" Text="{Binding ApplyDisabledReason}"
-                               IsVisible="{Binding !CanApply}" TextWrapping="Wrap"
-                               AutomationProperties.Name="{x:Static app:MotifAppStrings.WhyApplyIsUnavailableAccessibleName}" />
-      <views:RefusalBlock Classes="refusalFlow" DataContext="{Binding MeasurementRefusal}" />
-      <views:TrialBaselineNoticeBlock DataContext="{Binding BaselineNotice}" />
-      <views:RefusalBlock Classes="refusalFlow" DataContext="{Binding ShownApplyRefusal}" />
-      <views:RefusalBlock Classes="refusalFlow" DataContext="{Binding DeclineRefusal}" />
-      <views:RefusalBlock Classes="refusalFlow" DataContext="{Binding Changes.ShownRefusal}" />
+      <StackPanel Classes="reviewRelated reviewFooterDetails">
+        <views:CopyableTextBlock x:Name="ApplyFullReason" Classes="reviewBlockedTitle" Text="{Binding ApplyDisabledReason}"
+                                 IsVisible="{Binding !CanApply}" TextWrapping="Wrap"
+                                 AutomationProperties.Name="{x:Static app:MotifAppStrings.WhyApplyIsUnavailableAccessibleName}" />
+        <views:RefusalBlock Classes="refusalFlow" DataContext="{Binding MeasurementRefusal}" />
+        <views:TrialBaselineNoticeBlock DataContext="{Binding BaselineNotice}" />
+        <views:RefusalBlock Classes="refusalFlow" DataContext="{Binding ShownApplyRefusal}" />
+        <views:RefusalBlock Classes="refusalFlow" DataContext="{Binding DeclineRefusal}" />
+        <views:RefusalBlock Classes="refusalFlow" DataContext="{Binding Changes.ShownRefusal}" />
 
-      <StackPanel Classes="reviewCompact" IsVisible="{Binding HasReceipt}">
-        <views:CopyableTextBlock Classes="section-title" Text="{x:Static app:MotifAppStrings.AppliedToTheFieldWorksProject}" />
-        <views:CopyableTextBlock Text="{Binding ReceiptText}" TextWrapping="Wrap"
-                                 AutomationProperties.AutomationId="{x:Static app:AutomationIds.ApplyReceipt}" />
+        <StackPanel Classes="reviewCompact" IsVisible="{Binding HasReceipt}">
+          <views:CopyableTextBlock Classes="section-title" Text="{x:Static app:MotifAppStrings.AppliedToTheFieldWorksProject}" />
+          <views:CopyableTextBlock Text="{Binding ReceiptText}" TextWrapping="Wrap"
+                                   AutomationProperties.AutomationId="{x:Static app:AutomationIds.ApplyReceipt}" />
+        </StackPanel>
+        <views:CopyableTextBlock Classes="section-title" Text="{Binding ApplyTitle}"
+                                 AutomationProperties.HelpText="{Binding ProjectName}"
+                                 AutomationProperties.AutomationId="{x:Static app:AutomationIds.ReviewApplyTitle}"
+                                 TextWrapping="Wrap" />
+        <views:CopyableTextBlock Classes="muted" Text="{Binding CountText}" TextWrapping="Wrap"
+                                 AutomationProperties.AutomationId="{x:Static app:AutomationIds.ReviewApplyCount}" />
+        <ItemsControl x:Name="ApplyChecks" ItemsSource="{Binding ApplyChecks}" IsVisible="{Binding HasApplyChecks}"
+                      AutomationProperties.Name="{x:Static app:MotifAppStrings.WhatApplyChecksAccessibleName}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate><StackPanel Classes="reviewCompact" /></ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:ApplyCheck">
+              <Border Classes="reviewPill reviewCheck" Classes.failed="{Binding !Passed}">
+                <views:CopyableTextBlock Text="{Binding MarkedText}" />
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <HyperlinkButton Classes="reviewLink" Content="{x:Static app:MotifAppStrings.ShowThem}"
+                         Command="{Binding ShowNeedsAttentionCommand}"
+                         IsVisible="{Binding HasChangesNeedingAttention}"
+                         AutomationProperties.Name="{x:Static app:MotifAppStrings.ShowChangesThatNoLongerFitAccessibleName}" />
+        <views:CopyableTextBlock x:Name="ReviewNumbersText" Classes="muted" Text="{Binding NumbersText}"
+                                 IsVisible="{Binding ShowsNumbersText}" TextWrapping="Wrap" />
+        <views:CopyableTextBlock x:Name="ReviewMeasurementProgress" Text="{Binding MeasurementProgressText}"
+                                 IsVisible="{Binding IsMeasuring}" TextWrapping="Wrap" />
+        <views:CopyableTextBlock Text="{Binding ApplyBlockReason}" TextWrapping="Wrap"
+                                 IsVisible="{Binding IsApplying}" />
+        <views:CopyableTextBlock x:Name="ApplyBackupNote"
+                                 Text="{x:Static app:MotifAppStrings.FieldWorksMustBeClosedOrIt}"
+                                 TextWrapping="Wrap" />
       </StackPanel>
-      <views:CopyableTextBlock Classes="section-title" Text="{Binding ApplyTitle}"
-                               AutomationProperties.HelpText="{Binding ProjectName}"
-                               AutomationProperties.AutomationId="{x:Static app:AutomationIds.ReviewApplyTitle}"
-                               TextWrapping="Wrap" />
-      <views:CopyableTextBlock Classes="muted" Text="{Binding CountText}" TextWrapping="Wrap"
-                               AutomationProperties.AutomationId="{x:Static app:AutomationIds.ReviewApplyCount}" />
-      <ItemsControl x:Name="ApplyChecks" ItemsSource="{Binding ApplyChecks}" IsVisible="{Binding HasApplyChecks}"
-                    AutomationProperties.Name="{x:Static app:MotifAppStrings.WhatApplyChecksAccessibleName}">
-        <ItemsControl.ItemsPanel>
-          <ItemsPanelTemplate><StackPanel Classes="reviewCompact" /></ItemsPanelTemplate>
-        </ItemsControl.ItemsPanel>
-        <ItemsControl.ItemTemplate>
-          <DataTemplate x:DataType="vm:ApplyCheck">
-            <Border Classes="reviewPill reviewCheck" Classes.failed="{Binding !Passed}">
-              <views:CopyableTextBlock Text="{Binding MarkedText}" />
-            </Border>
-          </DataTemplate>
-        </ItemsControl.ItemTemplate>
-      </ItemsControl>
-      <HyperlinkButton Classes="reviewLink" Content="{x:Static app:MotifAppStrings.ShowThem}"
-                       Command="{Binding ShowNeedsAttentionCommand}"
-                       IsVisible="{Binding HasChangesNeedingAttention}"
-                       AutomationProperties.Name="{x:Static app:MotifAppStrings.ShowChangesThatNoLongerFitAccessibleName}" />
-      <views:CopyableTextBlock x:Name="ReviewNumbersText" Classes="muted" Text="{Binding NumbersText}"
-                               IsVisible="{Binding ShowsNumbersText}" TextWrapping="Wrap" />
-      <views:CopyableTextBlock x:Name="ReviewMeasurementProgress" Text="{Binding MeasurementProgressText}"
-                               IsVisible="{Binding IsMeasuring}" TextWrapping="Wrap" />
-      <views:CopyableTextBlock Text="{Binding ApplyBlockReason}" TextWrapping="Wrap"
-                               IsVisible="{Binding IsApplying}" />
-      <views:CopyableTextBlock x:Name="ApplyBackupNote"
-                               Text="{x:Static app:MotifAppStrings.FieldWorksMustBeClosedOrIt}"
-                               TextWrapping="Wrap" />
-    </StackPanel>
       </Border>
     </DataTemplate>
     <DataTemplate x:Key="ApplyActionsTemplate" x:DataType="vm:ReviewPageModel">
