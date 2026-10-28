@@ -445,15 +445,7 @@ public sealed class HelpCommandTests
 
     private static CliRun Run(bool advancedAi, bool developerCommands, params string[] arguments)
     {
-        var start = new ProcessStartInfo(BuildOutput.Cli)
-        {
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true,
-        };
-        foreach (var argument in arguments)
-            start.ArgumentList.Add(argument);
+        var start = new ProcessStartInfo(BuildOutput.Cli);
         if (developerCommands)
             start.Environment[CommandSurfacePolicy.DeveloperCommandsEnvironmentVariable] = "1";
         else
@@ -465,11 +457,8 @@ public sealed class HelpCommandTests
 
         try
         {
-            using var process = Process.Start(start)!;
-            var outputTask = process.StandardOutput.ReadToEndAsync();
-            var errorTask = process.StandardError.ReadToEndAsync();
-            Assert.True(process.WaitForExit(30000), "The CLI did not exit within its bound.");
-            return new CliRun(process.ExitCode, outputTask.GetAwaiter().GetResult(), errorTask.GetAwaiter().GetResult());
+            var result = CliInProcess.Run(start, arguments);
+            return new CliRun(result.ExitCode, result.Output, result.Error);
         }
         finally
         {

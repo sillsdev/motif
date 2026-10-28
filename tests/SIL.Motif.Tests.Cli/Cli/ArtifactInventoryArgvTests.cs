@@ -884,29 +884,11 @@ public sealed class ArtifactInventoryArgvTests : IDisposable
 
     private CliRun RunInventory(bool developerCommands = true)
     {
-        var start = new ProcessStartInfo(BuildOutput.Cli)
-        {
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            RedirectStandardInput = true,
-            UseShellExecute = false,
-            CreateNoWindow = true,
-        };
-        start.ArgumentList.Add("store");
-        start.ArgumentList.Add("artifacts");
-        start.ArgumentList.Add("--root");
-        start.ArgumentList.Add(_root);
-        start.ArgumentList.Add("--stores");
-        start.ArgumentList.Add(StoresManifest);
-        start.ArgumentList.Add("--json");
+        var start = new ProcessStartInfo(BuildOutput.Cli);
         start.Environment[RunnerOptions.RootVariable] = _workerRoot;
         start.Environment["MOTIF_DEVELOPER_COMMANDS"] = developerCommands ? "1" : null;
-        using var process = Process.Start(start)!;
-        process.StandardInput.Close();
-        var outputTask = process.StandardOutput.ReadToEndAsync();
-        var errorTask = process.StandardError.ReadToEndAsync();
-        Assert.True(process.WaitForExit(60000), "The artifact inventory CLI did not exit within its bound.");
-        return new CliRun(process.ExitCode, outputTask.GetAwaiter().GetResult(), errorTask.GetAwaiter().GetResult());
+        var result = CliInProcess.Run(start, "store", "artifacts", "--root", _root, "--stores", StoresManifest, "--json");
+        return new CliRun(result.ExitCode, result.Output, result.Error);
     }
 
     private static Dictionary<string, FileState> SnapshotTree(string root) =>

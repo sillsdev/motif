@@ -42,7 +42,7 @@ public sealed class TraceFailureProjectTests(PristineProjectFixture pristine, IT
         var captured = BaselineCaptureCommand.Capture(new(project), _root);
         Assert.True(captured.Succeeded, captured.Refusal?.Message);
         var parser = PanGlossExecutable.TryLocate()!;
-        var result = await CliProcess.RunAsync(_root, parser, false, "trace", "--project", project, "--word", "mtu", "--json");
+        var result = await CliInProcess.RunAsync(_root, parser, false, "trace", "--project", project, "--word", "mtu", "--json");
         Assert.True(result.ExitCode == 0, result.Error);
         var response = ProjectionJson.Deserialize<WordTraceResponse>(result.Output)!;
         Assert.True(response.Complete);
@@ -53,7 +53,7 @@ public sealed class TraceFailureProjectTests(PristineProjectFixture pristine, IT
         Assert.Equal(reason, Assert.Single(response.Reading.NoParseReasons));
         var saved = Path.Combine(_root, "empty-mtu.trace.json");
         File.WriteAllText(saved, response.DiagnosticJson);
-        var text = await CliProcess.RunAsync(_root, null, false, "trace", "--load", saved);
+        var text = await CliInProcess.RunAsync(_root, null, false, "trace", "--load", saved);
         Assert.True(text.ExitCode == 0, text.Error);
         Assert.Contains(reason, text.Output);
         output.WriteLine(text.Output);
@@ -80,12 +80,12 @@ public sealed class TraceFailureProjectTests(PristineProjectFixture pristine, IT
                      ("nbaya", "builds a form that differs from the word being parsed"),
                  })
         {
-            var text = await CliProcess.RunAsync(_root, parser, false, "trace", "--project", project, "--word", word);
+            var text = await CliInProcess.RunAsync(_root, parser, false, "trace", "--project", project, "--word", word);
             output.WriteLine(word + ":\n" + text.Output + text.Error);
             Assert.True(text.ExitCode == 0, text.Error);
             Assert.Contains(expected, text.Output);
             reasons.Add(expected);
-            var json = await CliProcess.RunAsync(_root, parser, false, "trace", "--project", project, "--word", word, "--json");
+            var json = await CliInProcess.RunAsync(_root, parser, false, "trace", "--project", project, "--word", word, "--json");
             Assert.True(json.ExitCode == 0, json.Error);
             var response = ProjectionJson.Deserialize<WordTraceResponse>(json.Output)!;
             Assert.True(response.Complete);
@@ -103,7 +103,7 @@ public sealed class TraceFailureProjectTests(PristineProjectFixture pristine, IT
             }
         }
         Assert.Equal(3, reasons.Distinct().Count());
-        var control = await CliProcess.RunAsync(_root, parser, false, "trace", "--project", project, "--word", "mbaya", "--json");
+        var control = await CliInProcess.RunAsync(_root, parser, false, "trace", "--project", project, "--word", "mbaya", "--json");
         Assert.True(control.ExitCode == 0, control.Error);
         Assert.True(ProjectionJson.Deserialize<WordTraceResponse>(control.Output)!.Parsed);
         output.WriteLine("Recorded diagnostics: " + _root);

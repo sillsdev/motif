@@ -208,7 +208,7 @@ public sealed class ProjectTagArgvTests : IDisposable
     {
         var start = CliProcess.CreateStartInfo(_workerRoot, null, developerCommands: true, arguments: arguments);
         CliProcess.EnableAdvancedAiMode(start, _workerRoot);
-        return await CliProcess.RunAsync(start);
+        return await CliInProcess.RunAsync(start);
     }
 
     private static string ProcessFailure((int ExitCode, string Output, string Error) result) =>
