@@ -80,9 +80,7 @@ public sealed class CatalogExecutionTests
             using (var database = catalog.OpenOwned(locator))
                 new JobRepository(database).Create("job-1", workspaceKey, "baseline-refresh", "{}",
                     JobTimestamp.FormatUtc(DateTimeOffset.UtcNow));
-            using (var machine = MachineDatabase.Open(RunnerOptions.ResolveRoot()))
-                new KnownProjectRegistry(machine).Record(workspaceKey, projectPath, DateTimeOffset.UtcNow);
-
+            // Unregistered: a runner on this root would claim the queued job and write while cleanup deletes.
             var expected = JobCommands.Show(new ShowJobRequest(projectPath, "job-1", "1.0"));
             Assert.True(expected.Succeeded);
             var expectedJson = JsonNode.Parse(ProjectionJson.Serialize(expected.Value!));
