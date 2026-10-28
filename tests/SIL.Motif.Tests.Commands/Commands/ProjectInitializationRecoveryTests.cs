@@ -576,6 +576,8 @@ public sealed class ProjectInitializationRecoveryTests : IDisposable
             "FullyQualifiedName=SIL.Motif.Tests.Commands.ProjectInitializationRecoveryTests.InitializationCrashAfterSaveRetriesAsNoOp");
         childStart.RedirectStandardInput = true;
         childStart.Environment.Remove(ShardedTestFramework.ShardVariable);
+        childStart.Environment.Remove(TestClassSelection.Variable);
+        childStart.Environment.Remove(ShardedTestFramework.CoverageMapVariable);
         childStart.Environment.Remove(ShardedTestFramework.WeightsVariable);
         childStart.Environment[CrashChildVariable] = mode;
         childStart.Environment[CrashProjectVariable] = project;

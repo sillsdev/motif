@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="XPlat Code Coverage">
+        <Configuration>
+          <Format>json</Format>
+          <!-- The tests are instrumented too, so a helper or a new test file is a covered file like any other. -->
+          <Include>[SIL.Motif.*]*</Include>
+          <Exclude>[SIL.Motif.FakePanGloss]*</Exclude>
+          <SingleHit>true</SingleHit>
+          <SkipAutoProps>true</SkipAutoProps>
+          <IncludeTestAssembly>true</IncludeTestAssembly>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+  <!-- Theory data is read while the class runs, so the code that makes it belongs to that class and not to all. -->
+  <xUnit>
+    <PreEnumerateTheories>false</PreEnumerateTheories>
+    <ParallelizeTestCollections>false</ParallelizeTestCollections>
+  </xUnit>
+</RunSettings>

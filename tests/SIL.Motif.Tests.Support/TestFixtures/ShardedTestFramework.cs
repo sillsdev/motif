@@ -42,6 +42,11 @@ public sealed class ShardedTestFramework(IMessageSink messageSink) : XunitTestFr
     /// </summary>
     public const string WeightsVariable = "MOTIF_TEST_SHARD_WEIGHTS";
 
+    /// <summary>
+    /// The environment variable naming the folder a coverage-map build writes to; see <see cref="CoverageMapRecorder"/>.
+    /// </summary>
+    public const string CoverageMapVariable = "MOTIF_TEST_COVERAGE_MAP_DIR";
+
     /// <summary>The seconds a class missing from the weights file is assumed to take.</summary>
     public const double UnknownWeight = 1.0;
 
@@ -128,6 +133,10 @@ public sealed class ShardedTestFramework(IMessageSink messageSink) : XunitTestFr
             cases = cases.GroupBy(ClassOf)
                 .Where(group => TestLevelClassifier.IsSelected(group.First(), defaultLevel, selectedLevels))
                 .SelectMany(group => group).ToArray();
+            if (TestClassSelection.Current() is { } selection)
+                cases = cases.Where(testCase => selection.Includes(ClassOf(testCase))).ToArray();
+            var recorder = CoverageMapRecorder.FromEnvironment(executionOptions);
+            if (recorder is not null) executionMessageSink = recorder.Wrap(executionMessageSink);
 
             var shard = CurrentShard();
             if (shard is not { } s)

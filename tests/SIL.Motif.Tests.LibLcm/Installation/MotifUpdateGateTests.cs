@@ -102,6 +102,8 @@ public sealed class MotifUpdateGateTests
             "FullyQualifiedName=SIL.Motif.Tests.LibLcm.Installation.MotifUpdateGateTests.ActivitiesCanShareTheGateAcrossProcesses");
         // The child runs one named test, so it must not inherit this process's shard, which may exclude it.
         childStart.Environment.Remove(ShardedTestFramework.ShardVariable);
+        childStart.Environment.Remove(TestClassSelection.Variable);
+        childStart.Environment.Remove(ShardedTestFramework.CoverageMapVariable);
         childStart.Environment.Remove(ShardedTestFramework.WeightsVariable);
         childStart.Environment[ChildGateNameVariable] = gateName;
         childStart.Environment[ChildReadyPathVariable] = readyFile;

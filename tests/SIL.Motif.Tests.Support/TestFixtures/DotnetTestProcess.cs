@@ -31,6 +31,8 @@ internal static class DotnetTestProcess
         start.Environment.Remove("ICU_DATA");
         // The child names one test; a shard of the parent run would filter that class out.
         start.Environment.Remove(ShardedTestFramework.ShardVariable);
+        start.Environment.Remove(TestClassSelection.Variable);
+        start.Environment.Remove(ShardedTestFramework.CoverageMapVariable);
         return start;
     }
 }

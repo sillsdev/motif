@@ -67,4 +67,15 @@ public sealed class ShardedTestFrameworkTests
     [InlineData("a/b")]
     public void AMalformedShardValueIsRefusedRatherThanRunningNothing(string value) =>
         Assert.Throws<InvalidOperationException>(() => ShardedTestFramework.ParseShard(value));
+
+    [Fact]
+    public void AClassSelectionKeepsNamedClassesAndPrefixedNestedOnes()
+    {
+        var selection = new TestClassSelection(["# a comment", "A.B.Kept", "", "A.C.Outer+*"]);
+
+        Assert.True(selection.Includes("A.B.Kept"));
+        Assert.True(selection.Includes("A.C.Outer+Inner"));
+        Assert.False(selection.Includes("A.B.KeptToo"));
+        Assert.False(selection.Includes("A.C.Outer"));
+    }
 }
