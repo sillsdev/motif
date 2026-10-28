@@ -154,6 +154,7 @@ public sealed partial class MainWindow : Window
         var view = _workspaceView
             ?? throw new InvalidOperationException("MainWindow.axaml has no element named 'WorkspaceView'.");
         DataContext = workspace;
+        workspace.Context.ViewMemory.UseStore(_preferences);
         _host = new MotifWorkspaceHost(workspace, this, _preferences, _applicationFacts, _uriLauncher,
             _problemReportServices, ShowProblemReportAsync);
         ConfigureZoom();

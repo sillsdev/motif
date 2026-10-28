@@ -313,6 +313,9 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     /// <summary>Whether a project has been chosen.</summary>
     public bool HasProject => ProjectPath is not null;
 
+    /// <summary>Where views remember their sort and filter for the open project.</summary>
+    public ProjectViewMemory ViewMemory { get; } = new();
+
     /// <summary>The open project's file name, or a prompt before one is chosen.</summary>
     public string ProjectName => ProjectPath is null ? "Choose a project" : Path.GetFileName(ProjectPath);
 
@@ -423,6 +426,7 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
         CurrentPage = WorkspacePage.Overview;
         Inspector = null;
         ProjectPath = null;
+        ViewMemory.OpenProject(null);
         Assess.ProjectPath = null;
     }
 
@@ -941,12 +945,27 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
 
     void IProjectStateParticipant.ClearProject() => ClearOwnProjectState();
 
+    /// <summary>Reads the saved LangProject GUID that keys a project's remembered views; off the UI thread by default.</summary>
+    internal Func<string, Task<string?>> ViewIdentityReader { get; set; } =
+        path => Task.Run(() => KnownProjectsQuery.ReadProjectIdentity(path));
+
     Task IProjectStateParticipant.OpenProjectAsync(string projectPath, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         ProjectPath = projectPath;
+        ViewMemory.BeginOpen(projectPath);
         Assess.ProjectPath = projectPath;
+        _ = ResolveViewKeyAsync(projectPath);
         return Task.CompletedTask;
+    }
+
+    // Best effort: any failure leaves the project keyed by its path.
+    private async Task ResolveViewKeyAsync(string projectPath)
+    {
+        string? identity;
+        try { identity = await ViewIdentityReader(projectPath).ConfigureAwait(true); }
+        catch (Exception) { identity = null; }
+        ViewMemory.Resolve(projectPath, identity);
     }
 
     // Restoring the chosen Texts first prevents evidence from opening the reader over the previous Selection.

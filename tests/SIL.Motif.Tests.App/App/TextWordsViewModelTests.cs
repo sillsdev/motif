@@ -1,5 +1,6 @@
 using System.Linq;
 using System.Globalization;
+using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Commands;
@@ -706,6 +707,206 @@ public sealed class TextWordsViewModelTests : IAsyncLifetime
                 words.Rows.Select(row => row.FormWritingSystem).Order());
             Assert.Equal("1 words · 1 distinct", selection.Texts[0].CountsText);
             await fake.ReaderOwner.StopAsync();
+        }, TimeSpan.FromSeconds(180));
+    }
+
+    private const string OtherProjectPath = @"C:\projects\two.fwdata";
+
+    private static readonly TextWordsResponse ThreeWords = new(
+        [
+            new TextWord("kitabu", null,
+                [new WordOccurrence(TextId, "Alpha", 1, "s", "approved", Analysis("k1", "book"))],
+                [Analysis("k1", "book")], []),
+            new TextWord("nitakupa", null, [new WordOccurrence(TextId, "Alpha", 2, "s", "unanalysed", null)], [], []),
+            new TextWord("wewe", null, [new WordOccurrence(TextId, "Alpha", 3, "s", "unanalysed", null)], [], []),
+        ],
+        [], HasBaseline: true);
+
+    private (FakeCommandClient Fake, TextWordsViewModel Words, ProjectViewMemory Memory) Remembering(
+        CountingPreferencesStore store, string? open = ProjectPath)
+    {
+        var (fake, _, words) = NewViewModel();
+        var memory = new ProjectViewMemory(store);
+        memory.OpenProject(open);
+        words.Memory = memory;
+        return (fake, words, memory);
+    }
+
+    private static CountingPreferencesStore NewStore() => new(new MemoryUserPreferencesStore());
+
+    [Fact]
+    public void TheStatusFilterIsRememberedPerProject()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (_, words, memory) = Remembering(NewStore());
+            await words.SetProjectAsync(ProjectPath);
+            words.SetStatusFilterCommand.Execute(WordProjectStatus.NotPresent);
+
+            memory.OpenProject(null);
+            words.ClearProject();
+            memory.OpenProject(OtherProjectPath);
+            await words.SetProjectAsync(OtherProjectPath);
+            Assert.Null(words.StatusFilter);
+            Assert.True(words.IsAllFilter);
+
+            memory.OpenProject(null);
+            words.ClearProject();
+            memory.OpenProject(ProjectPath);
+            await words.SetProjectAsync(ProjectPath);
+            Assert.Equal(WordProjectStatus.NotPresent, words.StatusFilter);
+        }, TimeSpan.FromSeconds(180));
+    }
+
+    [Fact]
+    public void AFreshViewModelOnTheSameStoreRestoresTheFilterAndShowsWhatItHidesAtOnce()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var store = NewStore();
+            var (_, first, _) = Remembering(store);
+            await first.SetProjectAsync(ProjectPath);
+            first.SetStatusFilterCommand.Execute(WordProjectStatus.NotPresent);
+
+            var (fake, second, _) = Remembering(store);
+            await second.SetProjectAsync(ProjectPath);
+            await PublishAsync(fake, ThreeWords);
+
+            Assert.Equal(WordProjectStatus.NotPresent, second.StatusFilter);
+            Assert.Equal("filter hides 1 word", second.FilterHidesText);
+            Assert.Equal(2, second.Rows.Count);
+        }, TimeSpan.FromSeconds(180));
+    }
+
+    [Fact]
+    public void TheSeveralFilterIsRememberedToo()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var store = NewStore();
+            var (_, first, _) = Remembering(store);
+            await first.SetProjectAsync(ProjectPath);
+            first.ShowSeveralCommand.Execute(null);
+
+            var (_, second, _) = Remembering(store);
+            await second.SetProjectAsync(ProjectPath);
+
+            Assert.True(second.SeveralOnly);
+            Assert.Null(second.StatusFilter);
+        }, TimeSpan.FromSeconds(180));
+    }
+
+    [Fact]
+    public void AStaleOrUnknownSavedFilterFallsBackToAll()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            foreach (var stale in new[] { "RemovedStatus", "1", "approved", "" })
+            {
+                var store = NewStore();
+                store.SetViewState(ProjectViewMemory.KeyFor(ProjectPath), "TextWords", new ViewState(null, false, stale));
+                var (_, words, _) = Remembering(store);
+                await words.SetProjectAsync(ProjectPath);
+
+                Assert.True(words.IsAllFilter, stale);
+            }
+
+            var good = NewStore();
+            good.SetViewState(ProjectViewMemory.KeyFor(ProjectPath), "TextWords", new ViewState(null, false, "Approved"));
+            var (_, restored, _) = Remembering(good);
+            await restored.SetProjectAsync(ProjectPath);
+            Assert.Equal(WordProjectStatus.Approved, restored.StatusFilter);
+        }, TimeSpan.FromSeconds(180));
+    }
+
+    [Fact]
+    public void RestoringNeverWritesAndEachChipClickWritesOnceAndClearingIsRemembered()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var store = NewStore();
+            var (_, words, _) = Remembering(store);
+            await words.SetProjectAsync(ProjectPath);
+            Assert.Equal(0, store.Updates);
+
+            words.SetStatusFilterCommand.Execute(WordProjectStatus.Approved);
+            Assert.Equal(1, store.Updates);
+            words.ShowSeveralCommand.Execute(null);
+            Assert.Equal(2, store.Updates);
+
+            await words.SetProjectAsync(ProjectPath);
+            words.ClearProject();
+            Assert.Equal(2, store.Updates);
+
+            await words.SetProjectAsync(ProjectPath);
+            Assert.True(words.SeveralOnly);
+            words.SetStatusFilterCommand.Execute(null);
+            Assert.Equal(3, store.Updates);
+            Assert.Null(store.GetViewState(ProjectViewMemory.KeyFor(ProjectPath), "TextWords"));
+
+            var (_, again, _) = Remembering(store);
+            await again.SetProjectAsync(ProjectPath);
+            Assert.True(again.IsAllFilter);
+        }, TimeSpan.FromSeconds(180));
+    }
+
+    [Fact]
+    public void AProjectSwitchNeverRestoresOrSavesIntoAModelOfTheWrongProject()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var store = NewStore();
+            store.SetViewState(ProjectViewMemory.KeyFor(ProjectPath), "TextWords",
+                new ViewState(null, false, nameof(WordProjectStatus.Approved)));
+            var (_, words, memory) = Remembering(store);
+            var seeded = store.Updates;
+
+            // The workspace has moved on to project one while this model is told about project two.
+            await words.SetProjectAsync(OtherProjectPath);
+            Assert.True(words.IsAllFilter);
+
+            words.SetStatusFilterCommand.Execute(WordProjectStatus.Rejected);
+            Assert.Equal(seeded, store.Updates);
+            Assert.Equal(ProjectViewMemory.KeyFor(ProjectPath), memory.ProjectKey);
+
+            await words.SetProjectAsync(ProjectPath);
+            Assert.Equal(WordProjectStatus.Approved, words.StatusFilter);
+            words.SetStatusFilterCommand.Execute(WordProjectStatus.Rejected);
+            Assert.Equal(seeded + 1, store.Updates);
+        }, TimeSpan.FromSeconds(180));
+    }
+
+    [Fact]
+    public void AProjectWithAnIdKeepsItsFilterWhenItMovesAndOneWithoutKeepsThePathFallback()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            const string id = "6f1c2d3e-0000-4000-8000-00000000abcd";
+            const string moved = @"D:\elsewhere\renamed.fwdata";
+            var store = NewStore();
+            var (_, words, memory) = Remembering(store, open: null);
+            memory.OpenProject(ProjectPath, id);
+            await words.SetProjectAsync(ProjectPath);
+            words.SetStatusFilterCommand.Execute(WordProjectStatus.Rejected);
+
+            memory.OpenProject(null);
+            words.ClearProject();
+            memory.OpenProject(moved, id);
+            await words.SetProjectAsync(moved);
+            Assert.Equal(WordProjectStatus.Rejected, words.StatusFilter);
+
+            memory.OpenProject(null);
+            words.ClearProject();
+            memory.OpenProject(ProjectPath);
+            await words.SetProjectAsync(ProjectPath);
+            Assert.True(words.IsAllFilter);
+            words.SetStatusFilterCommand.Execute(WordProjectStatus.Approved);
+
+            memory.OpenProject(null);
+            words.ClearProject();
+            memory.OpenProject(moved);
+            await words.SetProjectAsync(moved);
+            Assert.True(words.IsAllFilter);
         }, TimeSpan.FromSeconds(180));
     }
 }

@@ -1197,4 +1197,104 @@ public sealed class WorkspaceShellViewModelTests
             return Task.FromResult(allowedEffects);
         }
     }
+
+    private const string IdentityA = "6f1c2d3e-0000-4000-8000-00000000abcd";
+    private const string PathOne = @"C:\projects\one.fwdata";
+    private const string PathTwo = @"C:\projects\two.fwdata";
+
+    private static string KeyOf(string? id, string path) => ProjectPreferenceKey.For(id, path);
+
+    private static CountingPreferencesStore SeedStatistics(string key, string filter)
+    {
+        var store = new CountingPreferencesStore(new MemoryUserPreferencesStore());
+        store.SetViewState(key, "Statistics", new ViewState(null, false, filter));
+        return store;
+    }
+
+    [Fact]
+    public async Task TheViewKeyResolvesAfterTheOpenAndOnlyThenDoTheViewsRestore()
+    {
+        var (fake, picker, _, _, workspace) = NewWorkspace();
+        var store = SeedStatistics(KeyOf(IdentityA, PathOne), "remembered");
+        var identity = new TaskCompletionSource<string?>();
+        workspace.Context.ViewMemory.UseStore(store);
+        workspace.Context.ViewIdentityReader = _ => identity.Task;
+
+        await ChooseProjectAsync(fake, picker, workspace, PathOne);
+        var statistics = workspace.PageModel<TimingPageModel>().Statistics;
+
+        Assert.True(workspace.Context.ViewMemory.IsPending);
+        Assert.Null(workspace.Context.ViewMemory.ProjectKey);
+        Assert.Equal(string.Empty, statistics.FilterText);
+
+        identity.SetResult(IdentityA);
+
+        Assert.Equal(KeyOf(IdentityA, PathOne), workspace.Context.ViewMemory.ProjectKey);
+        Assert.Equal("remembered", statistics.FilterText);
+    }
+
+    [Fact]
+    public async Task AProjectSwitchBeforeTheIdentityResolvesNeverRestoresIntoTheNewProject()
+    {
+        var (fake, picker, _, _, workspace) = NewWorkspace();
+        var store = SeedStatistics(KeyOf(IdentityA, PathOne), "one's filter");
+        var readers = new Dictionary<string, TaskCompletionSource<string?>>
+        {
+            [PathOne] = new(),
+            [PathTwo] = new(),
+        };
+        workspace.Context.ViewMemory.UseStore(store);
+        workspace.Context.ViewIdentityReader = path => readers[path].Task;
+
+        await ChooseProjectAsync(fake, picker, workspace, PathOne);
+        await ChooseProjectAsync(fake, picker, workspace, PathTwo);
+        var statistics = workspace.PageModel<TimingPageModel>().Statistics;
+
+        readers[PathOne].SetResult(IdentityA);
+
+        Assert.Null(workspace.Context.ViewMemory.ProjectKey);
+        Assert.Equal(string.Empty, statistics.FilterText);
+
+        readers[PathTwo].SetResult(null);
+
+        Assert.Equal(KeyOf(null, PathTwo), workspace.Context.ViewMemory.ProjectKey);
+        Assert.Equal(string.Empty, statistics.FilterText);
+    }
+
+    [Fact]
+    public async Task AFailedIdentityReadKeysTheProjectByItsPath()
+    {
+        var (fake, picker, _, _, workspace) = NewWorkspace();
+        var store = SeedStatistics(KeyOf(null, PathOne), "by path");
+        workspace.Context.ViewMemory.UseStore(store);
+        workspace.Context.ViewIdentityReader = _ => Task.FromException<string?>(new IOException("unreadable"));
+
+        await ChooseProjectAsync(fake, picker, workspace, PathOne);
+
+        Assert.Equal(KeyOf(null, PathOne), workspace.Context.ViewMemory.ProjectKey);
+        Assert.Equal("by path", workspace.PageModel<TimingPageModel>().Statistics.FilterText);
+    }
+
+    [Fact]
+    public async Task AChangeMadeBeforeTheKeyResolvesIsHeldAndSavedUnderTheFinalKey()
+    {
+        var (fake, picker, _, _, workspace) = NewWorkspace();
+        var store = SeedStatistics(KeyOf(IdentityA, PathOne), "older");
+        var identity = new TaskCompletionSource<string?>();
+        workspace.Context.ViewMemory.UseStore(store);
+        workspace.Context.ViewIdentityReader = _ => identity.Task;
+        await ChooseProjectAsync(fake, picker, workspace, PathOne);
+        var statistics = workspace.PageModel<TimingPageModel>().Statistics;
+        var seeded = store.Updates;
+
+        statistics.FilterText = "typed early";
+        Assert.Equal(seeded, store.Updates);
+
+        identity.SetResult(IdentityA);
+
+        Assert.Equal("typed early", statistics.FilterText);
+        Assert.Equal(seeded + 1, store.Updates);
+        Assert.Equal("typed early", store.GetViewState(KeyOf(IdentityA, PathOne), "Statistics")!.Filter);
+        Assert.Null(store.GetViewState(KeyOf(null, PathOne), "Statistics"));
+    }
 }

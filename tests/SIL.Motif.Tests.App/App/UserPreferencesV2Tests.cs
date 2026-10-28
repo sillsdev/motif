@@ -127,4 +127,39 @@ public sealed class UserPreferencesV2Tests
 
         public void Dispose() => Directory.Delete(_path, recursive: true);
     }
+
+    [Fact]
+    public void AnAllZeroGuidIsNoIdAndFallsBackToThePath()
+    {
+        var path = ProjectPreferenceKey.For(null, "/x/a.fwdata");
+        Assert.Equal(path, ProjectPreferenceKey.For(Guid.Empty.ToString(), "/x/a.fwdata"));
+        Assert.Equal(path, ProjectPreferenceKey.For("{00000000-0000-0000-0000-000000000000}", "/x/a.fwdata"));
+        Assert.StartsWith("id:", ProjectPreferenceKey.For(Guid.NewGuid().ToString(), "/x/a.fwdata"));
+    }
+
+    [Fact]
+    public void ProjectViewsAreCappedAndTheNewestProjectIsAlwaysKept()
+    {
+        var store = new MemoryUserPreferencesStore();
+        for (var index = 0; index < UserPreferenceViewState.MaxProjects + 25; index++)
+            store.SetViewState($"path:/p{index:D4}", "v", new ViewState(null, false, "f"));
+
+        Assert.Equal(UserPreferenceViewState.MaxProjects, store.Current.ProjectViews.Count);
+        Assert.NotNull(store.GetViewState($"path:/p{UserPreferenceViewState.MaxProjects + 24:D4}", "v"));
+
+        store.SetViewState("path:/p0100", "other", new ViewState(null, false, "g"));
+        Assert.Equal(UserPreferenceViewState.MaxProjects, store.Current.ProjectViews.Count);
+    }
+
+    [Fact]
+    public void AStoredFilterIsCutToTheLimit()
+    {
+        var store = new MemoryUserPreferencesStore();
+        store.SetViewState("id:a", "v", new ViewState("c", true, new string('x', 900)));
+
+        var saved = store.GetViewState("id:a", "v");
+        Assert.Equal(UserPreferenceViewState.MaxFilterLength, saved!.Filter!.Length);
+        Assert.Equal("c", saved.SortColumn);
+        Assert.True(saved.SortDescending);
+    }
 }

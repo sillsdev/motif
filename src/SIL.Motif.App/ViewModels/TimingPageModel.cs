@@ -31,7 +31,7 @@ public sealed partial class TimingPageModel : PageModel
 
     public TimingPageModel(WorkspaceContext context) : base(context)
     {
-        Statistics = new StatisticsViewModel(context.Commands);
+        Statistics = new StatisticsViewModel(context.Commands) { Memory = context.ViewMemory };
         LoadFocusedTimingCommand = new AsyncRelayCommand(LoadFocusedTimingAsync,
             () => Focus is not null && Context.ProjectPath is not null);
         SelectWordSetCommand = new AsyncRelayCommand<string>(SelectWordSetAsync);
@@ -519,6 +519,7 @@ public sealed partial class TimingPageModel : PageModel
     protected override Task OnProjectOpenedAsync(string projectPath, CancellationToken cancellationToken)
     {
         Statistics.ProjectPath = projectPath;
+        Statistics.RestoreView();
         _grammarWarnings = Context.GrammarSummary?.Findings ?? [];
         LoadFocusedTimingCommand.NotifyCanExecuteChanged();
         NotifySourceAvailability();

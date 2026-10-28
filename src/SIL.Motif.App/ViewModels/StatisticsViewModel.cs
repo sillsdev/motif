@@ -28,6 +28,11 @@ public sealed partial class StatisticsViewModel : ObservableObject
 {
     private readonly ICommandClient _commandClient;
     private readonly List<StatsRowViewModel> _allRows = [];
+    private const string ViewName = "Statistics";
+    private static readonly string[] KnownColumns = ["attempts", "passes", "elapsedMs", "kind", "object", "word", "completion"];
+    private ProjectViewMemory? _memory;
+    private string? _viewKey;
+    private bool _restoring;
 
     public StatisticsViewModel(ICommandClient commandClient)
     {
@@ -218,7 +223,75 @@ public sealed partial class StatisticsViewModel : ObservableObject
 
     partial void OnProjectPathChanged(string? value) => LoadCommand.NotifyCanExecuteChanged();
 
-    partial void OnFilterTextChanged(string value) => ApplyView();
+    partial void OnFilterTextChanged(string value)
+    {
+        ApplyView();
+        SaveView();
+    }
+
+    /// <summary>Where this view remembers its sort and filter per project; the workspace supplies it.</summary>
+    public ProjectViewMemory? Memory
+    {
+        get => _memory;
+        set
+        {
+            if (_memory is not null) _memory.KeyResolved -= OnKeyResolved;
+            _memory = value;
+            _viewKey = null;
+            _changedBeforeKey = false;
+            if (_memory is not null) _memory.KeyResolved += OnKeyResolved;
+        }
+    }
+
+    // A change made while the project's key is unknown is held and saved under the key once it resolves.
+    private bool _changedBeforeKey;
+
+    private void OnKeyResolved()
+    {
+        if (!_changedBeforeKey)
+        {
+            RestoreView();
+            return;
+        }
+        _changedBeforeKey = false;
+        _viewKey = _memory?.ProjectKey;
+        SaveView();
+    }
+
+    /// <summary>
+    /// Restores the sort and filter saved for the open project, or the defaults when none is saved or the saved sort
+    /// column is no longer known. Restoring never writes to the store.
+    /// </summary>
+    public void RestoreView()
+    {
+        _viewKey = _memory?.ProjectKey;
+        _changedBeforeKey = false;
+        var saved = _memory?.Load(_viewKey, ViewName);
+        _restoring = true;
+        try
+        {
+            SortColumn = saved?.SortColumn is { } column && KnownColumns.Contains(column) ? column : null;
+            SortDescending = SortColumn is not null && saved!.SortDescending;
+            FilterText = saved?.Filter ?? string.Empty;
+        }
+        finally { _restoring = false; }
+        ApplyView();
+    }
+
+    private void SaveView()
+    {
+        if (_restoring || _memory is null) return;
+        if (_viewKey is null)
+        {
+            _changedBeforeKey = _memory.IsPending;
+            return;
+        }
+        var state = SortColumn is null && FilterText.Length == 0
+            ? null
+            : new ViewState(SortColumn, SortColumn is not null && SortDescending,
+                FilterText.Length == 0 ? null : FilterText);
+        _memory.Save(_viewKey, ViewName, state);
+    }
 
     /// <summary>Sorts by <paramref name="column"/>, toggling direction on a repeated click of the same column.</summary>
     public void SortBy(string column)
@@ -230,6 +303,7 @@ public sealed partial class StatisticsViewModel : ObservableObject
             SortDescending = false;
         }
         ApplyView();
+        SaveView();
     }
 
     private bool CanLoad() => ProjectPath is not null;
@@ -247,8 +321,8 @@ public sealed partial class StatisticsViewModel : ObservableObject
         HasLoaded = false;
         _allRows.Clear();
         Rows.Clear();
-        SortColumn = null;
-        FilterText = string.Empty;
+        // Back to what this project last had (the defaults when no project is open); never a write.
+        RestoreView();
         _wordScope = null;
         OnPropertyChanged(nameof(ScopeNote));
         OnlyIncomplete = false;

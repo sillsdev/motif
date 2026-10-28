@@ -113,13 +113,11 @@ public sealed partial class TextWordsViewModel : ObservableObject
         });
         SetStatusFilterCommand = new RelayCommand<WordProjectStatus?>(status =>
         {
-            SeveralOnly = false;
-            StatusFilter = status;
+            ChooseFilter(status, several: false);
         });
         ShowSeveralCommand = new RelayCommand(() =>
         {
-            StatusFilter = null;
-            SeveralOnly = true;
+            ChooseFilter(null, several: true);
         });
         OnReaderPropertyChanged(_selectionReads, new PropertyChangedEventArgs(nameof(WorkspaceSelection.Summary)));
         IsLoading = _selectionReads.IsLoading;
@@ -289,8 +287,98 @@ public sealed partial class TextWordsViewModel : ObservableObject
     }
 
     partial void OnSearchTextChanged(string value) => ApplyFilter();
-    partial void OnStatusFilterChanged(WordProjectStatus? value) => ApplyFilter();
-    partial void OnSeveralOnlyChanged(bool value) => ApplyFilter();
+    partial void OnStatusFilterChanged(WordProjectStatus? value)
+    {
+        ApplyFilter();
+        SaveView();
+    }
+
+    partial void OnSeveralOnlyChanged(bool value)
+    {
+        ApplyFilter();
+        SaveView();
+    }
+
+    // One chip is ever active; setting both properties is one user change, so one save.
+    private void ChooseFilter(WordProjectStatus? status, bool several)
+    {
+        var wasRestoring = _restoring;
+        _restoring = true;
+        try
+        {
+            SeveralOnly = several;
+            StatusFilter = status;
+        }
+        finally { _restoring = wasRestoring; }
+        SaveView();
+    }
+
+    private const string ViewName = "TextWords";
+    private const string SeveralFilterName = "Several";
+    private ProjectViewMemory? _memory;
+    private string? _viewKey;
+    private bool _restoring;
+
+    /// <summary>Where this view remembers its status filter per project; the workspace supplies it.</summary>
+    public ProjectViewMemory? Memory
+    {
+        get => _memory;
+        set
+        {
+            if (_memory is not null) _memory.KeyResolved -= OnKeyResolved;
+            _memory = value;
+            _viewKey = null;
+            _changedBeforeKey = false;
+            if (_memory is not null) _memory.KeyResolved += OnKeyResolved;
+        }
+    }
+
+    // A change made while the project's key is unknown is held and saved under the key once it resolves.
+    private bool _changedBeforeKey;
+
+    private void OnKeyResolved()
+    {
+        if (_projectPath is null || _memory is null || !_memory.IsOpenPath(_projectPath)) return;
+        if (!_changedBeforeKey)
+        {
+            RestoreView(_projectPath);
+            return;
+        }
+        _changedBeforeKey = false;
+        _viewKey = _memory.ProjectKey;
+        SaveView();
+    }
+
+    // Restores the saved filter by name, never position; an unknown name means All. Never writes.
+    private void RestoreView(string? fwDataPath)
+    {
+        _viewKey = null;
+        _changedBeforeKey = false;
+        if (_memory is null || fwDataPath is null) return;
+        if (!_memory.IsOpenPath(fwDataPath) || _memory.ProjectKey is not { } key) return;
+        _viewKey = key;
+        var saved = _memory.Load(key, ViewName)?.Filter;
+        _restoring = true;
+        try
+        {
+            SeveralOnly = saved == SeveralFilterName;
+            StatusFilter = saved is not null && Enum.GetNames<WordProjectStatus>().Contains(saved, StringComparer.Ordinal)
+                ? Enum.Parse<WordProjectStatus>(saved) : null;
+        }
+        finally { _restoring = false; }
+    }
+
+    private void SaveView()
+    {
+        if (_restoring || _memory is null) return;
+        if (_viewKey is null)
+        {
+            _changedBeforeKey = _memory.IsPending && _projectPath is not null && _memory.IsOpenPath(_projectPath);
+            return;
+        }
+        var filter = SeveralOnly ? SeveralFilterName : StatusFilter?.ToString();
+        _memory.Save(_viewKey, ViewName, filter is null ? null : new ViewState(null, false, filter));
+    }
 
     /// <summary>Sets the project name used by rows that borrow the workspace reader.</summary>
     public Task SetProjectAsync(string? fwDataPath, CancellationToken cancellationToken = default)
@@ -298,6 +386,7 @@ public sealed partial class TextWordsViewModel : ObservableObject
         cancellationToken.ThrowIfCancellationRequested();
         ClearProject();
         _projectPath = fwDataPath;
+        RestoreView(fwDataPath);
         if (fwDataPath is not null)
             OnReaderPropertyChanged(_selectionReads, new PropertyChangedEventArgs(nameof(WorkspaceSelection.Summary)));
         IsLoading = _selectionReads.IsLoading;
@@ -317,8 +406,15 @@ public sealed partial class TextWordsViewModel : ObservableObject
         OccurrenceCount = 0;
         ApprovedCount = 0;
         SearchText = string.Empty;
-        StatusFilter = null;
-        SeveralOnly = false;
+        _restoring = true;
+        try
+        {
+            StatusFilter = null;
+            SeveralOnly = false;
+        }
+        finally { _restoring = false; }
+        _viewKey = null;
+        _changedBeforeKey = false;
         HasBaseline = false;
         IsLoading = false;
         Refusal = null;

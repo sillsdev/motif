@@ -33,6 +33,7 @@ public sealed partial class TextsPageModel : PageModel
     public TextsPageModel(WorkspaceContext context) : base(context)
     {
         Words = new TextWordsViewModel(context.Commands, context.Selection, context.SelectionReads);
+        Words.Memory = context.ViewMemory;
         Words.OpenWord = context.OpenWord;
         Words.HandOff = context.HandOff;
         Assess.TextWords = Words;

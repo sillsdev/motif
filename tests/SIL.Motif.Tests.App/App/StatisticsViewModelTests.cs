@@ -1,6 +1,7 @@
 using SIL.Motif.App;
 using System.Linq;
 using System.Text.Json;
+using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
@@ -426,5 +427,167 @@ public sealed class StatisticsViewModelTests
         Assert.Equal(roots.AttemptsHeat, entry.AttemptsHeat);
         Assert.True(moreRoots.AttemptsHeat < roots.AttemptsHeat);
         Assert.Contains("own kind", statistics.ShadingNote, StringComparison.Ordinal);
+    }
+
+    private const string OtherPath = @"C:\projects\two.fwdata";
+
+    private static (StatisticsViewModel Statistics, ProjectViewMemory Memory, CountingPreferencesStore Store) Remembering(
+        CountingPreferencesStore? store = null, string? open = ProjectPath)
+    {
+        store ??= new CountingPreferencesStore(new MemoryUserPreferencesStore());
+        var memory = new ProjectViewMemory(store);
+        memory.OpenProject(open);
+        var statistics = new StatisticsViewModel(new FakeCommandClient()) { ProjectPath = open, Memory = memory };
+        statistics.RestoreView();
+        return (statistics, memory, store);
+    }
+
+    [Fact]
+    public void SortAndFilterAreRememberedPerProject()
+    {
+        var (statistics, memory, _) = Remembering();
+        statistics.SortBy("attempts");
+        statistics.SortBy("attempts");
+        statistics.FilterText = "rare";
+
+        memory.OpenProject(null);
+        statistics.Reset();
+        memory.OpenProject(OtherPath);
+        statistics.RestoreView();
+        Assert.Null(statistics.SortColumn);
+        Assert.False(statistics.SortDescending);
+        Assert.Equal(string.Empty, statistics.FilterText);
+
+        memory.OpenProject(null);
+        statistics.Reset();
+        memory.OpenProject(ProjectPath);
+        statistics.RestoreView();
+        Assert.Equal("attempts", statistics.SortColumn);
+        Assert.True(statistics.SortDescending);
+        Assert.Equal("rare", statistics.FilterText);
+    }
+
+    [Fact]
+    public void AFreshViewModelOnTheSameStoreRestoresSortAndFilter()
+    {
+        var (first, _, store) = Remembering();
+        first.SortBy("word");
+        first.FilterText = "abc";
+
+        var (second, _, _) = Remembering(store);
+
+        Assert.Equal("word", second.SortColumn);
+        Assert.False(second.SortDescending);
+        Assert.Equal("abc", second.FilterText);
+    }
+
+    [Fact]
+    public void AnUnknownSavedSortColumnFallsBackToFetchedOrder()
+    {
+        var store = new CountingPreferencesStore(new MemoryUserPreferencesStore());
+        store.SetViewState(ProjectPreferenceKey.For(null, ProjectPath), "Statistics", new ViewState("columnFromTheFuture", true, "x"));
+
+        var (statistics, _, _) = Remembering(store);
+
+        Assert.Null(statistics.SortColumn);
+        Assert.False(statistics.SortDescending);
+        Assert.Equal("x", statistics.FilterText);
+
+        store.SetViewState(ProjectPreferenceKey.For(null, ProjectPath), "Statistics", new ViewState("passes", true, "x"));
+        var (known, _, _) = Remembering(store);
+        Assert.Equal("passes", known.SortColumn);
+        Assert.True(known.SortDescending);
+    }
+
+    [Fact]
+    public void RestoringAndResettingNeverWriteButEachUserChangeDoes()
+    {
+        var (statistics, _, store) = Remembering();
+        Assert.Equal(0, store.Updates);
+
+        statistics.FilterText = "rare";
+        Assert.Equal(1, store.Updates);
+        statistics.SortBy("kind");
+        Assert.Equal(2, store.Updates);
+
+        statistics.RestoreView();
+        statistics.Reset();
+        Assert.Equal(2, store.Updates);
+        Assert.Equal("rare", statistics.FilterText);
+    }
+
+    [Fact]
+    public void ClearingTheFilterIsRememberedAsCleared()
+    {
+        var (statistics, _, store) = Remembering();
+        statistics.SortBy("kind");
+        statistics.FilterText = "rare";
+        statistics.FilterText = string.Empty;
+
+        var (second, _, _) = Remembering(store);
+
+        Assert.Equal(string.Empty, second.FilterText);
+        Assert.Equal("kind", second.SortColumn);
+    }
+
+    [Fact]
+    public void AViewModelLeftOverFromAnotherProjectNeverSavesIntoTheOpenOne()
+    {
+        var (statistics, memory, store) = Remembering();
+        memory.OpenProject(OtherPath);
+
+        statistics.FilterText = "stale";
+
+        Assert.Equal(0, store.Updates);
+        Assert.Null(store.GetViewState(ProjectPreferenceKey.For(null, OtherPath), "Statistics"));
+        Assert.Null(store.GetViewState(ProjectPreferenceKey.For(null, ProjectPath), "Statistics"));
+
+        memory.OpenProject(ProjectPath);
+        statistics.FilterText = "current";
+        Assert.Equal(1, store.Updates);
+        Assert.Equal("current", store.GetViewState(ProjectPreferenceKey.For(null, ProjectPath), "Statistics")!.Filter);
+    }
+
+    [Fact]
+    public void WithNoProjectOpenNothingIsRestoredOrSaved()
+    {
+        var (statistics, _, store) = Remembering(open: null);
+
+        statistics.FilterText = "x";
+
+        Assert.Equal(0, store.Updates);
+        var (open, _, openStore) = Remembering();
+        open.FilterText = "x";
+        Assert.Equal(1, openStore.Updates);
+    }
+
+    [Fact]
+    public void AProjectWithAnIdKeepsItsViewWhenItMovesAndOneWithoutKeepsThePathFallback()
+    {
+        const string id = "6f1c2d3e-0000-4000-8000-00000000abcd";
+        var (statistics, memory, store) = Remembering(open: null);
+        memory.OpenProject(ProjectPath, id);
+        statistics.RestoreView();
+        statistics.SortBy("passes");
+        statistics.FilterText = "moved";
+
+        memory.OpenProject(@"D:\elsewhere\renamed.fwdata", id);
+        var (moved, _, _) = (new StatisticsViewModel(new FakeCommandClient()) { Memory = memory }, memory, store);
+        moved.RestoreView();
+        Assert.Equal("passes", moved.SortColumn);
+        Assert.Equal("moved", moved.FilterText);
+
+        memory.OpenProject(ProjectPath);
+        moved.RestoreView();
+        Assert.Null(moved.SortColumn);
+        Assert.Equal(string.Empty, moved.FilterText);
+
+        moved.FilterText = "by path";
+        memory.OpenProject(@"D:\elsewhere\renamed.fwdata");
+        moved.RestoreView();
+        Assert.Equal(string.Empty, moved.FilterText);
+        memory.OpenProject(ProjectPath);
+        moved.RestoreView();
+        Assert.Equal("by path", moved.FilterText);
     }
 }
