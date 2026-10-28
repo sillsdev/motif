@@ -507,8 +507,8 @@ $jobs = foreach ($run in $testRuns) {
         # Avalonia code stays unoptimized without call counting, so the App project turns it on.
         if ($name -like 'SIL.Motif.Tests.App*') {
             $arguments += @('--environment', 'DOTNET_TC_CallCounting=1')
-            # Layout allocates short-lived objects: a 64 MB first generation and no background GC thread save CPU.
-            $arguments += @('--environment', 'DOTNET_GCgen0size=0x4000000', '--environment', 'DOTNET_gcConcurrent=0')
+            # Layout allocates short-lived objects: no background GC thread saves CPU.
+            $arguments += @('--environment', 'DOTNET_gcConcurrent=0')
         }
         $arguments += @('--environment', ('"TESTINGPLATFORM_TELEMETRY_OPTOUT={0}"' -f $env:TESTINGPLATFORM_TELEMETRY_OPTOUT))
         $arguments += @('--environment', ('"MOTIF_TEST_STDIN_TOKEN={0}"' -f $inputToken))
