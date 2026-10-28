@@ -3208,15 +3208,15 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
     private async Task<string> PublishBaselineAsync(PristineProjectFixture fixture, BaselineToken? token = null,
         string directory = "published-baseline")
     {
-        using var cache = fixture.NewScratch();
-        _seededText = SeededProject.SeedText(cache, fixture.Seed);
-        new FwDataProjectLoader().Save(cache);
+        var template = PublishedBaselineTemplate<SeededText>.Get("seeded-text", fixture,
+            cache => SeededProject.SeedText(cache, fixture.Seed));
+        _seededText = template.Metadata;
         var publishedRoot = Path.Combine(_root, directory);
-        var fwDataPath = await PublishedBaselineFixture.PublishAsync(cache, publishedRoot);
+        var fwDataPath = template.CopyTo(publishedRoot);
         _baselines.Record(_projectKey,
             new BaselinePublication(publishedRoot, fwDataPath, token ?? _token),
             DateTimeOffset.Parse("2026-10-05T00:00:00Z"), DateTimeOffset.Parse("2026-10-05T00:00:00Z"),
-            TextWordsProjectionBuilder.Build(cache, CancellationToken.None), ProjectSummaryReader.Read(cache));
+            template.Projection, template.Summary);
         return publishedRoot;
     }
 

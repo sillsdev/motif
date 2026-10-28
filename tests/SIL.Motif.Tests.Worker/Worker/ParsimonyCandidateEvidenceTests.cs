@@ -55,13 +55,15 @@ public sealed class ParsimonyCandidateEvidenceTests : IDisposable
         _pristine = pristine;
         _seed = pristine.Seed;
         Directory.CreateDirectory(_root);
-        using var master = pristine.NewScratch();
-        SeedAdhocProhibition(master);
-        SeededProject.SeedText(master, _seed);
-        new FwDataProjectLoader().Save(master);
+        var template = PublishedBaselineTemplate<AdhocIds>.Get("adhoc-prohibition-text", pristine, master =>
+        {
+            var prohibitionGuid = SeedAdhocProhibition(master);
+            SeededProject.SeedText(master, _seed);
+            return new AdhocIds(prohibitionGuid);
+        });
+        _prohibitionGuid = template.Metadata.ProhibitionGuid;
         _publishedRoot = Path.Combine(_root, "baseline");
-        _publishedFwDataPath = PublishedBaselineFixture.PublishAsync(master, _publishedRoot)
-            .GetAwaiter().GetResult();
+        _publishedFwDataPath = template.CopyTo(_publishedRoot);
         _project = new ProjectLocator(Path.Combine(_root, "live", NewLangProjFixture.ProjectName + ".fwdata"),
             "candidate-evidence-project");
         Directory.CreateDirectory(Path.GetDirectoryName(_project.FullFwDataPath)!);
@@ -73,11 +75,10 @@ public sealed class ParsimonyCandidateEvidenceTests : IDisposable
         _projectKey = ProjectWorkspaceKey.Compute(_project);
         _token = new BaselineToken("candidate-evidence-project", "sha256:" + new string('1', 64),
             "projection-v1", "2026-10-07T00:00:00Z", "sha256:" + new string('2', 64));
-        using var saved = new FwDataProjectLoader().LoadScratchCache(_publishedFwDataPath);
         _baselines.Record(_projectKey,
             new BaselinePublication(_publishedRoot, _publishedFwDataPath, _token),
             DateTimeOffset.Parse("2026-10-07T00:00:00Z"), DateTimeOffset.Parse("2026-10-07T00:00:00Z"),
-            TextWordsProjectionBuilder.Build(saved, CancellationToken.None), ProjectSummaryReader.Read(saved));
+            template.Projection, template.Summary);
     }
 
     public void Dispose()
@@ -323,8 +324,11 @@ public sealed class ParsimonyCandidateEvidenceTests : IDisposable
             """;
     }
 
-    private void SeedAdhocProhibition(LcmCache cache)
+    private sealed record AdhocIds(Guid ProhibitionGuid);
+
+    private Guid SeedAdhocProhibition(LcmCache cache)
     {
+        Guid prohibitionGuid = default;
         var services = cache.ServiceLocator;
         var entries = services.GetInstance<ILexEntryRepository>();
         var first = entries.GetObject(_seed.FirstEntryId);
@@ -335,8 +339,9 @@ public sealed class ParsimonyCandidateEvidenceTests : IDisposable
             cache.LangProject.MorphologicalDataOA.AdhocCoProhibitionsOC.Add(prohibition);
             prohibition.FirstAllomorphRA = first.LexemeFormOA;
             prohibition.RestOfAllosRS.Add(second.LexemeFormOA);
-            _prohibitionGuid = prohibition.Guid;
+            prohibitionGuid = prohibition.Guid;
         });
+        return prohibitionGuid;
     }
 
     private string DisableProhibitionProposal(Guid targetId)

@@ -69,14 +69,14 @@ public sealed class TrialJobHandlerTests : IDisposable
         _output = output;
         Directory.CreateDirectory(_root);
 
-        using var master = pristine.NewScratch();
         _seed = pristine.Seed;
-        _opinionAnalysisId = SeedWordformsForSelectionTests(master);
-        _phonologicalDataId = master.LangProject.PhonologicalDataOA.Guid;
-        _loader.Save(master);
+        var template = PublishedBaselineTemplate<TrialTemplateIds>.Get("trial-wordforms", pristine, master =>
+            new TrialTemplateIds(SeedWordformsForSelectionTests(master), master.LangProject.PhonologicalDataOA.Guid));
+        _opinionAnalysisId = template.Metadata.OpinionAnalysisId;
+        _phonologicalDataId = template.Metadata.PhonologicalDataId;
 
         _publishedRoot = Path.Combine(_root, "published");
-        var fwDataPath = PublishedBaselineFixture.PublishAsync(master, _publishedRoot).GetAwaiter().GetResult();
+        var fwDataPath = template.CopyTo(_publishedRoot);
         _project = new ProjectLocator(Path.Combine(_root, "live", NewLangProjFixture.ProjectName + ".fwdata"),
             "live-project-identity");
 
@@ -92,7 +92,7 @@ public sealed class TrialJobHandlerTests : IDisposable
         _baselines.Record(ProjectWorkspaceKey.Compute(_project),
             new BaselinePublication(_publishedRoot, fwDataPath, _token),
             DateTimeOffset.Parse("2026-08-29T00:00:00Z"), DateTimeOffset.Parse("2026-08-29T00:00:00Z"),
-            TextWordsProjectionBuilder.Build(master, CancellationToken.None));
+            template.Projection);
     }
 
     public void Dispose()
@@ -1208,6 +1208,8 @@ public sealed class TrialJobHandlerTests : IDisposable
     private const string AnalysedWordform = "zzmotiftrialanalysed";
     private const string UnanalysedWordform = "zzmotiftrialunanalysed";
     private const string OpinionWordform = "zzmotiftrialopinion";
+
+    private sealed record TrialTemplateIds(Guid OpinionAnalysisId, Guid PhonologicalDataId);
 
     private static Guid SeedWordformsForSelectionTests(LcmCache cache)
     {
