@@ -140,15 +140,14 @@ public sealed class EditPhonemeAcceptanceTests(PristineProjectFixture pristine)
         return intent;
     }
 
-    private static ToolProcessResult RunCli(string path, string draft, Dictionary<string, object?> intent, string root)
+    private static (int ExitCode, string Output, string Error) RunCli(string path, string draft, Dictionary<string, object?> intent, string root)
     {
         var preference = Path.Combine(root, "advanced-ai.json");
         new FileAdvancedAiModePreferenceStore(preference).SetEnabled(true);
         var start = new ProcessStartInfo(BuildOutput.Cli);
         start.Environment[FileAdvancedAiModePreferenceStore.PathEnvironmentVariable] = preference;
-        foreach (var argument in new[] { "compose-edit-phoneme", "--project", path, "--draft", draft,
-                     "--intent", JsonSerializer.Serialize(intent), "--json" }) start.ArgumentList.Add(argument);
-        return ToolProcess.Run(start);
+        return CliInProcess.Run(start, "compose-edit-phoneme", "--project", path, "--draft", draft,
+            "--intent", JsonSerializer.Serialize(intent), "--json");
     }
 
     private static string ReadDraft(string path, string name)

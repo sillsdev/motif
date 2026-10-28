@@ -75,7 +75,7 @@ public sealed class ParsimonyArgvTests : IDisposable
     {
         new FileAdvancedAiModePreferenceStore(_preferencePath).SetEnabled(true);
 
-        var result = await CliProcess.RunAsync(StartWithParser(_preferencePath, null,
+        var result = await CliInProcess.RunAsync(StartWithParser(_preferencePath, null,
             "parsimony", "--project", _project, "--dry-run", "job/none", "--measure", "all", "--json"));
 
         Assert.NotEqual(0, result.ExitCode);
@@ -183,7 +183,7 @@ public sealed class ParsimonyArgvTests : IDisposable
         var start = StartWithParser(_preferencePath, "missing-pangloss",
             "parsimony", "--project", Path.Combine(_root, "missing.fwdata"), "--json");
 
-        var result = await CliProcess.RunAsync(start);
+        var result = await CliInProcess.RunAsync(start);
 
         Assert.Equal(2, result.ExitCode);
         Assert.Empty(result.Output);
@@ -218,7 +218,7 @@ public sealed class ParsimonyArgvTests : IDisposable
 
         var start = StartWithParser(_preferencePath, Path.Combine(_root, "parser-not-installed"),
             "parsimony", "show", "--project", _project, reportId, "--json");
-        var result = await CliProcess.RunAsync(start);
+        var result = await CliInProcess.RunAsync(start);
 
         Assert.Equal(0, result.ExitCode);
         Assert.Empty(result.Error);
@@ -271,7 +271,7 @@ public sealed class ParsimonyArgvTests : IDisposable
         new FileAdvancedAiModePreferenceStore(_preferencePath).SetEnabled(true);
         var project = _pristine.CopyProjectFile();
 
-        var result = await CliProcess.RunAsync(StartWithParser(_preferencePath, null,
+        var result = await CliInProcess.RunAsync(StartWithParser(_preferencePath, null,
             "parsimony", "latest", "--project", project));
 
         Assert.NotEqual(0, result.ExitCode);

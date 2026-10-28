@@ -34,21 +34,21 @@ public sealed class AssessRoundTripArgvTests : IDisposable
         Assert.True(setup.ExitCode == 0, setup.FailureDetails);
 
         var parser = CopyFakeParser(new { words = new[] { new { word = "motifa", outcome = "complete" } } });
-        var assessed = await CliProcess.RunAsync(_workerRoot, parser, false, "assess", project, "--json");
+        var assessed = await CliInProcess.RunAsync(_workerRoot, parser, false, "assess", project, "--json");
 
         Assert.True(assessed.ExitCode == 0, assessed.FailureDetails);
         var response = ProjectionJson.Deserialize<AssessCommandResponse>(assessed.Output)!;
         Assert.Contains("motifa", response.Selection.Words);
         Assert.NotEmpty(response.AssessmentIds);
 
-        var timingResult = await CliProcess.RunAsync(_workerRoot, null, false,
+        var timingResult = await CliInProcess.RunAsync(_workerRoot, null, false,
             "timing", "--project", project, "--json");
         Assert.True(timingResult.ExitCode == 0, timingResult.FailureDetails);
         var timing = ProjectionJson.Deserialize<TimingResponse>(timingResult.Output)!;
         Assert.Contains(timing.AssessmentId, response.AssessmentIds);
         Assert.Contains(timing.Words, row => row.Word == "motifa");
 
-        var overviewResult = await CliProcess.RunAsync(_workerRoot, null, false,
+        var overviewResult = await CliInProcess.RunAsync(_workerRoot, null, false,
             "overview", "--project", project, "--json");
         Assert.True(overviewResult.ExitCode == 0, overviewResult.FailureDetails);
         var overview = ProjectionJson.Deserialize<OverviewResponse>(overviewResult.Output)!;
@@ -74,7 +74,7 @@ public sealed class AssessRoundTripArgvTests : IDisposable
             },
         });
 
-        var assessed = await CliProcess.RunAsync(_workerRoot, parser, false,
+        var assessed = await CliInProcess.RunAsync(_workerRoot, parser, false,
             "assess", project, "--words", wordsPath, "--json");
 
         Assert.True(assessed.ExitCode == 0, assessed.FailureDetails);
@@ -100,14 +100,14 @@ public sealed class AssessRoundTripArgvTests : IDisposable
                 new { word = "motifb", outcome = "complete" },
             },
         });
-        var first = await CliProcess.RunAsync(_workerRoot, parser, false, "assess", project, "--json");
+        var first = await CliInProcess.RunAsync(_workerRoot, parser, false, "assess", project, "--json");
         Assert.True(first.ExitCode == 0, first.FailureDetails);
         var firstResponse = ProjectionJson.Deserialize<AssessCommandResponse>(first.Output)!;
         var baseId = firstResponse.Words.First().Origin!.AssessmentId;
         var wordsPath = Path.Combine(_root, "reparse.txt");
         File.WriteAllLines(wordsPath, ["motifa"]);
 
-        var replacement = await CliProcess.RunAsync(_workerRoot, parser, false,
+        var replacement = await CliInProcess.RunAsync(_workerRoot, parser, false,
             "assess", project, "--words", wordsPath, "--replaces", baseId, "--json");
 
         Assert.True(replacement.ExitCode == 0, replacement.FailureDetails);

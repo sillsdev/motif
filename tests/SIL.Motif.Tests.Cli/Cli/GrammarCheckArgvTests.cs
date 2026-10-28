@@ -153,23 +153,13 @@ public sealed class GrammarCheckArgvTests(PristineProjectFixture pristine) : IDi
 
     private CliRun RunWith(string parserPath, string? preferencePath, params string[] arguments)
     {
-        var start = new ProcessStartInfo(BuildOutput.Cli)
-        {
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true,
-        };
-        foreach (var argument in arguments) start.ArgumentList.Add(argument);
+        var start = new ProcessStartInfo(BuildOutput.Cli);
         start.Environment[RunnerOptions.RootVariable] = _managedRoot;
         start.Environment[PanGlossExecutable.PathVariable] = parserPath;
         if (preferencePath is not null)
             start.Environment[FileDefaultProposalChecksStore.PathEnvironmentVariable] = preferencePath;
-        using var process = Process.Start(start)!;
-        var outputTask = process.StandardOutput.ReadToEndAsync();
-        var errorTask = process.StandardError.ReadToEndAsync();
-        process.WaitForExit();
-        return new CliRun(process.ExitCode, outputTask.GetAwaiter().GetResult(), errorTask.GetAwaiter().GetResult());
+        var result = CliInProcess.Run(start, arguments);
+        return new CliRun(result.ExitCode, result.Output, result.Error);
     }
 
     private sealed record CliRun(int ExitCode, string Output, string Error);

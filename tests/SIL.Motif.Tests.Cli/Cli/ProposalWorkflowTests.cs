@@ -929,7 +929,7 @@ public sealed class ProposalWorkflowTests : IDisposable
             _fwDataPath, ProductVersion, created.Value.ProposalId, Force: true));
         Assert.Equal("apply.change-no-longer-fits", apply.Refusal?.Code);
         var bytes = File.ReadAllBytes(_fwDataPath);
-        var cli = await CliProcess.RunAsync(_workerRoot, null, developerCommands: false,
+        var cli = await CliInProcess.RunAsync(_workerRoot, null, developerCommands: false,
             "apply", created.Value.ProposalId, "--project", _fwDataPath, "--force", "--json");
         Assert.Equal(2, cli.ExitCode);
         Assert.Empty(cli.Output);
@@ -1055,25 +1055,13 @@ public sealed class ProposalWorkflowTests : IDisposable
         AssertAppliedLogEntryCount(1);
         AssertReceiptCount(proposalId, GetRecord(proposalId).IntentDigest!, 0);
 
-        var start = new ProcessStartInfo(BuildOutput.Cli)
-        {
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true,
-        };
-        foreach (var argument in new[] { "apply", proposalId, "--project", _fwDataPath,
-                     "--force", "--json" })
-            start.ArgumentList.Add(argument);
+        var start = new ProcessStartInfo(BuildOutput.Cli);
         start.Environment["MOTIF_DEVELOPER_COMMANDS"] = "1";
         start.Environment[RunnerOptions.RootVariable] = _workerRoot;
-        using var process = Process.Start(start)!;
-        var output = process.StandardOutput.ReadToEndAsync();
-        var error = process.StandardError.ReadToEndAsync();
-        Assert.True(process.WaitForExit(60000));
-        Assert.Equal(2, process.ExitCode);
-        Assert.Empty(await output);
-        var failure = JsonNode.Parse(await error)!;
+        var applied = CliInProcess.Run(start, "apply", proposalId, "--project", _fwDataPath, "--force", "--json");
+        Assert.Equal(2, applied.ExitCode);
+        Assert.Empty(applied.Output);
+        var failure = JsonNode.Parse(applied.Error)!;
         Assert.Equal("apply.applied-content-mismatch", failure["code"]?.GetValue<string>());
         Assert.DoesNotContain("rollback", failure["message"]?.GetValue<string>() ?? "",
             StringComparison.OrdinalIgnoreCase);
@@ -1273,22 +1261,12 @@ public sealed class ProposalWorkflowTests : IDisposable
 
     private string RunPreflightCli(string proposalId, bool json)
     {
-        var start = new ProcessStartInfo(BuildOutput.Cli)
-        {
-            Arguments = $"preflight --project \"{_fwDataPath}\" {proposalId}" + (json ? " --json" : ""),
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true,
-        };
+        var start = new ProcessStartInfo(BuildOutput.Cli);
         start.Environment["MOTIF_DEVELOPER_COMMANDS"] = "1";
-        using var process = Process.Start(start)!;
-        var output = process.StandardOutput.ReadToEndAsync();
-        var error = process.StandardError.ReadToEndAsync();
-        Assert.True(process.WaitForExit(60000));
-        Assert.Equal(0, process.ExitCode);
-        _ = error.GetAwaiter().GetResult();
-        return output.GetAwaiter().GetResult();
+        var result = CliInProcess.RunCommandLine(start,
+            $"preflight --project \"{_fwDataPath}\" {proposalId}" + (json ? " --json" : ""));
+        Assert.Equal(0, result.ExitCode);
+        return result.Output;
     }
 
 }

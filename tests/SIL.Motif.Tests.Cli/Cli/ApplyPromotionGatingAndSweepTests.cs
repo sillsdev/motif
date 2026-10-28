@@ -266,14 +266,14 @@ public sealed class ApplyPromotionGatingAndSweepTests
         var arguments = new List<string> { "apply", id, "--project", _fwDataPath, "--json" };
         if (force)
         {
-            var notReady = await CliProcess.RunAsync(root, null, developerCommands: false, arguments.ToArray());
+            var notReady = await CliInProcess.RunAsync(root, null, developerCommands: false, arguments.ToArray());
             Assert.Equal(2, notReady.ExitCode);
             Assert.Empty(notReady.Output);
             Assert.Equal("apply.not-ready", ProjectionJson.Deserialize<FailureEnvelope>(notReady.Error)!.Code);
             arguments.Add("--force");
         }
 
-        var applied = await CliProcess.RunAsync(root, null, developerCommands: false, arguments.ToArray());
+        var applied = await CliInProcess.RunAsync(root, null, developerCommands: false, arguments.ToArray());
 
         Assert.True(applied.ExitCode == 0, applied.Error + applied.Output);
         Assert.Empty(applied.Error);
@@ -310,7 +310,7 @@ public sealed class ApplyPromotionGatingAndSweepTests
         var bytes = File.ReadAllBytes(_fwDataPath);
         var root = Path.Combine(Path.GetDirectoryName(_fwDataPath)!, "released-drift-worker");
 
-        var refused = await CliProcess.RunAsync(root, null, developerCommands: false,
+        var refused = await CliInProcess.RunAsync(root, null, developerCommands: false,
             "apply", id, "--project", _fwDataPath, "--force", "--json");
 
         Assert.NotEqual(0, refused.ExitCode);

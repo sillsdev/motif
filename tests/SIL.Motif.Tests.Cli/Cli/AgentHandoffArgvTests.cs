@@ -24,21 +24,21 @@ public sealed class AgentHandoffArgvTests : IDisposable
     public async Task AHandoffFromARetainedRunWritesFiveFilesAndRefusesAFullFolder()
     {
         var project = _pristine.CopyProjectFile();
-        var baseline = await CliProcess.RunAsync(_workerRoot, null, false,
+        var baseline = await CliInProcess.RunAsync(_workerRoot, null, false,
             "baseline", "capture", "--project", project, "--json");
         Assert.True(baseline.ExitCode == 0, baseline.FailureDetails);
-        var selection = await CliProcess.RunAsync(_workerRoot, null, false, "selection", "set-default", "--project", project,
+        var selection = await CliInProcess.RunAsync(_workerRoot, null, false, "selection", "set-default", "--project", project,
             "--name", "Default", "--add-words", "motifa", "--json");
         Assert.True(selection.ExitCode == 0, selection.FailureDetails);
 
         var parser = CopyFakeParser();
-        var assess = await CliProcess.RunAsync(_workerRoot, parser, false, "assess", project, "--json");
+        var assess = await CliInProcess.RunAsync(_workerRoot, parser, false, "assess", project, "--json");
         Assert.True(assess.ExitCode == 0, assess.FailureDetails);
         var assessed = ProjectionJson.Deserialize<AssessCommandResponse>(assess.Output)!;
         Assert.NotEmpty(assessed.InvocationId);
 
         var destination = Path.Combine(_root, "handoff");
-        var handoffResult = await CliProcess.RunAsync(_workerRoot, null, false, "handoff", project, "--out", destination,
+        var handoffResult = await CliInProcess.RunAsync(_workerRoot, null, false, "handoff", project, "--out", destination,
             "--invocation", assessed.InvocationId, "--json");
 
         Assert.True(handoffResult.ExitCode == 0, handoffResult.FailureDetails);
@@ -56,7 +56,7 @@ public sealed class AgentHandoffArgvTests : IDisposable
         Directory.CreateDirectory(fullDestination);
         var keep = Path.Combine(fullDestination, "keep.txt");
         File.WriteAllText(keep, "preserve");
-        var full = await CliProcess.RunAsync(_workerRoot, null, false, "handoff", project, "--out", fullDestination,
+        var full = await CliInProcess.RunAsync(_workerRoot, null, false, "handoff", project, "--out", fullDestination,
             "--invocation", assessed.InvocationId, "--json");
         Assert.Equal(FailureEnvelope.ExitCodeFor(FailureReason.InvalidArgument), full.ExitCode);
         Assert.Equal("handoff.destination-exists", ProjectionJson.Deserialize<FailureEnvelope>(full.Error)!.Code);
@@ -64,7 +64,7 @@ public sealed class AgentHandoffArgvTests : IDisposable
         Assert.Single(Directory.GetFiles(fullDestination));
 
         var missingDestination = Path.Combine(_root, "missing-run");
-        var missing = await CliProcess.RunAsync(_workerRoot, null, false, "handoff", project, "--out", missingDestination,
+        var missing = await CliInProcess.RunAsync(_workerRoot, null, false, "handoff", project, "--out", missingDestination,
             "--invocation", "missing-invocation", "--json");
         Assert.Equal(FailureEnvelope.ExitCodeFor(FailureReason.NotFound), missing.ExitCode);
         Assert.Equal("handoff.invocation-not-found", ProjectionJson.Deserialize<FailureEnvelope>(missing.Error)!.Code);

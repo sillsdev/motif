@@ -1,8 +1,10 @@
+using System.IO.Pipelines;
 using ModelContextProtocol.Client;
 using ModelContextProtocol.Protocol;
 using SIL.Motif.Commands.Preferences;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Host.Store;
+using SIL.Motif.Mcp;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker;
 using Xunit;
@@ -230,22 +232,42 @@ public sealed class McpOpenProjectTests
         return cache.ProjectId.Path;
     }
 
-    private static async Task<McpClient> StartClient(string workerRoot, string preferencePath, string? shortTimeoutPath = null)
+    /// <summary>An in-process MCP server over pipes, given the environment a spawned server would get.</summary>
+    private sealed class OpenedClient(McpClient client, CancellationTokenSource stop, Task server) : IAsyncDisposable
     {
-        var transport = new StdioClientTransport(new StdioClientTransportOptions
+        public Task<IList<McpClientTool>> ListToolsAsync() => client.ListToolsAsync().AsTask();
+
+        public Task<CallToolResult> CallToolAsync(string name, Dictionary<string, object?> arguments) =>
+            client.CallToolAsync(name, arguments).AsTask();
+
+        public async ValueTask DisposeAsync()
         {
-            EnvironmentVariables = new Dictionary<string, string?>
-            {
-                [FileAdvancedAiModePreferenceStore.PathEnvironmentVariable] = preferencePath,
-                [RunnerOptions.RootVariable] = workerRoot,
-                ["MOTIF_TEST_SQLITE_SHORT_TIMEOUT_FOR"] = shortTimeoutPath,
-            },
-            Name = "motif MCP explicit-open regression",
-            Command = BuildOutput.Cli,
-            Arguments = ["mcp"],
-            WorkingDirectory = Path.GetDirectoryName(preferencePath)!,
-        });
-        return await McpClient.CreateAsync(transport);
+            await client.DisposeAsync();
+            stop.Cancel();
+            try { await server.WaitAsync(TimeSpan.FromSeconds(10)); }
+            catch (Exception exception) when (exception is OperationCanceledException or TimeoutException) { }
+            stop.Dispose();
+        }
+    }
+
+    private static async Task<OpenedClient> StartClient(string workerRoot, string preferencePath, string? shortTimeoutPath = null)
+    {
+        var environment = new Dictionary<string, string?>
+        {
+            [FileAdvancedAiModePreferenceStore.PathEnvironmentVariable] = preferencePath,
+            [RunnerOptions.RootVariable] = workerRoot,
+            ["MOTIF_TEST_SQLITE_SHORT_TIMEOUT_FOR"] = shortTimeoutPath,
+        };
+        var toServer = new Pipe();
+        var fromServer = new Pipe();
+        var stop = new CancellationTokenSource();
+        var options = new McpLaunchOptions(AdvancedAiModeEnabled: true, Environment: environment);
+        var server = Task.Run(() => MotifMcpServer.RunAsync(options, toServer.Reader.AsStream(),
+            fromServer.Writer.AsStream(), TextWriter.Null, stop.Token));
+        var connecting = McpClient.CreateAsync(
+            new StreamClientTransport(toServer.Writer.AsStream(), fromServer.Reader.AsStream()));
+        if (await Task.WhenAny(connecting, server) == server) await server;
+        return new OpenedClient(await connecting, stop, server);
     }
 
     private static string ErrorText(CallToolResult result) => string.Join(Environment.NewLine,
