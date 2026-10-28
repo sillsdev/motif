@@ -227,7 +227,7 @@
             </StackPanel>
           </Grid>
         </Border>
-        <Expander Header="{x:Static app:MotifAppStrings.Details}" AutomationProperties.Name="{Binding DetailsAccessibleName}">
+        <Expander Header="{x:Static app:MotifAppStrings.Details}" IsExpanded="{Binding DetailsExpanded, Mode=TwoWay}" AutomationProperties.Name="{Binding DetailsAccessibleName}">
 
                       <Border Classes="settingsWritingSystemRow">
                         <Grid RowDefinitions="Auto,Auto" RowSpacing="{DynamicResource Intent.Space.Compact}">
@@ -315,7 +315,7 @@
             </StackPanel>
           </Grid>
         </Border>
-        <Expander Header="{x:Static app:MotifAppStrings.Details}" AutomationProperties.Name="{Binding DetailsAccessibleName}">
+        <Expander Header="{x:Static app:MotifAppStrings.Details}" IsExpanded="{Binding DetailsExpanded, Mode=TwoWay}" AutomationProperties.Name="{Binding DetailsAccessibleName}">
 
                       <Border Classes="settingsWritingSystemRow">
                         <Grid RowDefinitions="Auto,Auto" RowSpacing="{DynamicResource Intent.Space.Compact}">
@@ -444,7 +444,7 @@
                   <Button Grid.Column="1" Content="{x:Static app:MotifAppStrings.ReportProblem}" Classes="settingsAction"
                           Click="OnReportProblemRequested" AutomationProperties.Name="{x:Static app:MotifAppStrings.ReportProblemAccessibleName}" />
                 </Grid>
-                <Expander Header="{x:Static app:MotifAppStrings.WhatReportIncludes}" IsExpanded="{Binding ReportIncludesExpanded}"
+                <Expander Header="{x:Static app:MotifAppStrings.WhatReportIncludes}" IsExpanded="{Binding ReportIncludesExpanded, Mode=TwoWay}"
                           Classes="settingsReportDetails" AutomationProperties.Name="{x:Static app:MotifAppStrings.WhatReportIncludesAccessibleName}">
                   <views:CopyableTextBlock Classes="settingsReportList" TextWrapping="Wrap"
                              Text="{x:Static app:MotifAppStrings.ReportIncludesList}" />

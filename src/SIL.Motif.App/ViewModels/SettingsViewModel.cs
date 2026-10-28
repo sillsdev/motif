@@ -62,12 +62,23 @@ internal sealed partial class SettingsGroupOption : ObservableObject
     private bool _hasWarning;
 }
 
-internal sealed class WritingSystemSettingsRow
+/// <summary>Stable preference keys for the Settings disclosures; never localized text.</summary>
+internal static class SettingsExpanderKeys
+{
+    public const string ShortcutList = "Settings.ShortcutList";
+    public const string ReportIncludes = "Settings.ReportIncludes";
+    public const string VernacularDetails = "Settings.VernacularDetails";
+    public const string AnalysisDetails = "Settings.AnalysisDetails";
+}
+
+internal sealed class WritingSystemSettingsRow : ObservableObject
 {
     public WritingSystemSettingsRow(WritingSystemDisplay writingSystem, TextStyles resolver,
-        bool isAlsoInVernacular = false)
+        bool isAlsoInVernacular = false, bool detailsExpanded = false, Action<bool>? onDetailsExpanded = null)
     {
         WritingSystem = writingSystem;
+        _detailsExpanded = detailsExpanded;
+        _onDetailsExpanded = onDetailsExpanded;
         var normal = resolver.Resolve(TextStyleRequest.Linguistic(writingSystem.Id));
         FontSourceText = !normal.RequestedFontInstalled ? MotifAppStrings.FontSourceFallback :
             resolver.RequestedFontIsBundled(normal.RequestedFontFamily)
@@ -81,6 +92,22 @@ internal sealed class WritingSystemSettingsRow
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
         MissingFontFamilies = missingFonts;
+    }
+
+    private readonly Action<bool>? _onDetailsExpanded;
+    private bool _detailsExpanded;
+
+    /// <summary>Whether the Details disclosure is open; every change is reported so it can be remembered.</summary>
+    public bool DetailsExpanded
+    {
+        get => _detailsExpanded;
+        set
+        {
+            if (_detailsExpanded == value) return;
+            _detailsExpanded = value;
+            OnPropertyChanged();
+            _onDetailsExpanded?.Invoke(value);
+        }
     }
 
     public WritingSystemDisplay WritingSystem { get; }
@@ -189,6 +216,8 @@ internal sealed partial class SettingsViewModel : ObservableObject
             new(SettingsGroup.About, MotifAppStrings.AboutMotif),
         ]);
         _selectedGroup = MapSettingsGroup(saved.LastSettingsGroup);
+        _shortcutListShown = Remembered(SettingsExpanderKeys.ShortcutList);
+        _reportIncludesExpanded = Remembered(SettingsExpanderKeys.ReportIncludes);
         RefreshNavigationOptions(SelectedGroup);
         ApplyTheme();
         _preferences.Changed += OnPreferencesChanged;
@@ -450,7 +479,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
 
     partial void OnSelectedGroupChanged(SettingsGroup value)
     {
-        if (value == SettingsGroup.KeyboardShortcuts) ShortcutListShown = true;
+        if (value == SettingsGroup.KeyboardShortcuts) ShowShortcutList();
         OnPropertyChanged(nameof(IsDisplaySelected));
         OnPropertyChanged(nameof(IsKeyboardShortcutsSelected));
         OnPropertyChanged(nameof(IsParsingSelected));
@@ -496,7 +525,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
 
     partial void OnShortcutSearchChanged(string value)
     {
-        if (ShortcutSearchHasText) ShortcutListShown = true;
+        if (ShortcutSearchHasText) ShowShortcutList();
         RefreshShortcutList();
         ClearShortcutSearchCommand.NotifyCanExecuteChanged();
         OnPropertyChanged(nameof(ShowNoShortcutMatches));
@@ -712,14 +741,17 @@ internal sealed partial class SettingsViewModel : ObservableObject
         AnalysisWritingSystems.Clear();
         foreach (var system in systems.Where(system => system.Kind == WritingSystemKind.Vernacular)
                      .OrderBy(system => system.Position))
-            VernacularWritingSystems.Add(new WritingSystemSettingsRow(system,
-                _workspace.Context.TextStyles));
+            VernacularWritingSystems.Add(new WritingSystemSettingsRow(system, _workspace.Context.TextStyles,
+                detailsExpanded: Remembered(SettingsExpanderKeys.VernacularDetails),
+                onDetailsExpanded: expanded => RememberDetails(SettingsExpanderKeys.VernacularDetails, VernacularWritingSystems, expanded)));
         var vernacularIds = systems.Where(system => system.Kind == WritingSystemKind.Vernacular)
             .Select(system => system.Id).ToHashSet(StringComparer.Ordinal);
         foreach (var system in systems.Where(system => system.Kind == WritingSystemKind.Analysis)
                      .OrderBy(system => system.Position))
             AnalysisWritingSystems.Add(new WritingSystemSettingsRow(system,
-                _workspace.Context.TextStyles, vernacularIds.Contains(system.Id)));
+                _workspace.Context.TextStyles, vernacularIds.Contains(system.Id),
+                Remembered(SettingsExpanderKeys.AnalysisDetails),
+                expanded => RememberDetails(SettingsExpanderKeys.AnalysisDetails, AnalysisWritingSystems, expanded)));
         OnPropertyChanged(nameof(HasWritingSystems));
         OnPropertyChanged(nameof(HasVernacularWritingSystems));
         OnPropertyChanged(nameof(HasAnalysisWritingSystems));
@@ -756,6 +788,39 @@ internal sealed partial class SettingsViewModel : ObservableObject
                 WindowThemeChoice.Dark => ThemeVariant.Dark,
                 _ => ThemeVariant.Default,
             };
+    }
+
+    partial void OnShortcutListShownChanged(bool value) => Remember(SettingsExpanderKeys.ShortcutList, value);
+
+    partial void OnReportIncludesExpandedChanged(bool value) => Remember(SettingsExpanderKeys.ReportIncludes, value);
+
+    private bool Remembered(string key) => _preferences.GetExpanded(key) ?? false;
+
+    private void Remember(string key, bool expanded)
+    {
+        if (_suppressPreferenceWrites) return;
+        _preferences.SetExpanded(key, expanded);
+        UpdatePreferenceProblem();
+    }
+
+    // A toggle applies to the whole list, so rows never disagree.
+    private void RememberDetails(string key, IEnumerable<WritingSystemSettingsRow> rows, bool expanded)
+    {
+        if (_suppressPreferenceWrites) return;
+        Remember(key, expanded);
+        var suppressed = _suppressPreferenceWrites;
+        _suppressPreferenceWrites = true;
+        try { foreach (var row in rows.ToArray()) row.DetailsExpanded = expanded; }
+        finally { _suppressPreferenceWrites = suppressed; }
+    }
+
+    // Opening for the user's own action (group, search) is not a remembered choice.
+    private void ShowShortcutList()
+    {
+        var suppressed = _suppressPreferenceWrites;
+        _suppressPreferenceWrites = true;
+        try { ShortcutListShown = true; }
+        finally { _suppressPreferenceWrites = suppressed; }
     }
 
     private void Persist(Func<UserPreferences, UserPreferences> edit)
