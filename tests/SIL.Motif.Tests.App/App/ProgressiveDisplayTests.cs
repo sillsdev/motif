@@ -240,7 +240,7 @@ public sealed class ProgressiveDisplayTests
                 Path.Combine(AppDirectory(), "Controls", "WordPresentation"), "*.cs", SearchOption.AllDirectories))
             .Where(path => File.ReadAllText(path).Contains("Children.Add(", StringComparison.Ordinal) ||
                 File.ReadAllText(path).Contains("ProgressivePanel.Populate(this", StringComparison.Ordinal))
-            .Select(path => Path.GetFileNameWithoutExtension(path).Replace(".axaml", string.Empty)).Order().ToArray();
+            .Select(path => Path.GetFileName(path).Split('.')[0]).Distinct().Order().ToArray();
         Assert.Equal(new[] { "FilterChip", "GrammarWarningPartsBlock", "HeatCell", "MainWindow", "MarkChip", "MorphemePanel", "MotifWorkspaceView", "NamedMark", "OutcomeBar", "OverviewShareBar", "ProgressivePanel", "WordCard", "WordRow", "WordRowHeader", "WordStripToken", "WorkspaceLayoutHost" },
             codeBuilt);
     }
