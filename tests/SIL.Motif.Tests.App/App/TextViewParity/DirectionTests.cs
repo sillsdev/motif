@@ -96,17 +96,17 @@ public sealed class DirectionTests(LineScenes lines, CardScenes cards) : IClassF
     {
         var scene = lines.Get(name);
         var expectedForms = scene.Sample.RightToLeft ? FlowDirection.RightToLeft : FlowDirection.LeftToRight;
-        var constituents = scene.Constituents(0);
-        Assert.Equal(expectedForms, scene.Constituent(0, Part.Word).Visual.FlowDirection);
+        var constituents = scene.SemanticConstituents(0);
+        Assert.Equal(expectedForms, scene.SemanticConstituent(0, Part.Word).Direction);
         foreach (var c in constituents.Where(c => c.Part is Part.FieldWorksForm or Part.PanGlossForm))
-            Assert.Equal(expectedForms, c.Visual.FlowDirection);
+            Assert.Equal(expectedForms, c.Direction);
         // Glosses are English in both samples: left-to-right even under right-to-left forms.
         foreach (var c in constituents.Where(c => c.Part is Part.FieldWorksGloss or Part.PanGlossGloss))
-            Assert.Equal(FlowDirection.LeftToRight, c.Visual.FlowDirection);
+            Assert.Equal(FlowDirection.LeftToRight, c.Direction);
         foreach (var (form, gloss) in new[] { (Part.FieldWorksForm, Part.FieldWorksGloss), (Part.PanGlossForm, Part.PanGlossGloss) })
-            foreach (var morph in Enumerable.Range(0, scene.Constituents(0).Count(c => c.Part == form)))
+            foreach (var morph in Enumerable.Range(0, scene.SemanticConstituents(0).Count(c => c.Part == form)))
             {
-                var (f, g) = (scene.Bounds(scene.Constituent(0, form, morph).Visual), scene.Bounds(scene.Constituent(0, gloss, morph).Visual));
+                var (f, g) = (scene.SemanticBounds(scene.SemanticConstituent(0, form, morph)), scene.SemanticBounds(scene.SemanticConstituent(0, gloss, morph)));
                 Assert.True(g.Top >= f.Bottom - Epsilon, "A gloss belongs under its form.");
                 Assert.True(Math.Abs(f.Center.X - g.Center.X) <= Epsilon + Math.Abs(f.Width - g.Width) / 2,
                     $"The gloss of morpheme {morph} is not in its form's column.");
@@ -149,10 +149,10 @@ public sealed class DirectionTests(LineScenes lines, CardScenes cards) : IClassF
 
     private static void AssertOrder(TextViewScene scene, int word, Part part, bool rightToLeft)
     {
-        var parts = scene.Constituents(word).Where(c => c.Part == part).ToArray();
+        var parts = scene.SemanticConstituents(word).Where(c => c.Part == part).ToArray();
         for (var i = 1; i < parts.Length; i++)
         {
-            var (before, after) = (scene.Bounds(parts[i - 1].Visual), scene.Bounds(parts[i].Visual));
+            var (before, after) = (scene.SemanticBounds(parts[i - 1]), scene.SemanticBounds(parts[i]));
             if (rightToLeft) Assert.True(after.Right <= before.Left + Epsilon, $"Word {word} {part} {i} is not left of {i - 1}.");
             else Assert.True(after.Left >= before.Right - Epsilon, $"Word {word} {part} {i} is not right of {i - 1}.");
         }

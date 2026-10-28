@@ -88,6 +88,9 @@ internal sealed class KeyboardShortcutHandlerAttribute(params string[] actionSco
     public IReadOnlyList<string> ActionScopes { get; } = actionScopes;
 }
 
+[AttributeUsage(AttributeTargets.Method)]
+internal sealed class TextEditingKeyHandlerAttribute : Attribute { }
+
 internal sealed record KeyboardShortcutBinding(
     KeyboardShortcutEntry Row,
     Key Key,

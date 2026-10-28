@@ -32,6 +32,9 @@ internal sealed record Constituent(Part Part, int Morph, TextBlock Visual)
     public string Text => Visual.Text ?? string.Empty;
 }
 
+internal sealed record SemanticConstituent(Part Part, int Morph, Control Owner, int RunIndex, string Text,
+    FlowDirection Direction);
+
 /// <summary>Records the typed requests a word makes of its list host.</summary>
 internal sealed class RecordingHost : IWordPresentationHost
 {
@@ -87,7 +90,10 @@ internal sealed class TextViewScene : IDisposable
     /// <summary>A reader line of <paramref name="words"/> words and its gutter, at <paramref name="width"/>.</summary>
     public static TextViewScene Line(TextViewSample sample, int words, double width) => Open(sample, words, width, line: true);
 
-    private static TextViewScene Open(TextViewSample sample, int words, double width, bool line)
+    public static TextViewScene ScrollableLine(TextViewSample sample, int words, double width) =>
+        Open(sample, words, width, line: true, scroll: true);
+
+    private static TextViewScene Open(TextViewSample sample, int words, double width, bool line, bool scroll = false)
     {
         WalkthroughFonts.Register();
         var window = new MotifTestWindow { Width = width, Height = 400 };
@@ -95,7 +101,8 @@ internal sealed class TextViewScene : IDisposable
         scene._log = new LayoutLog();
         scene.ConfigureStyles(window);
         for (var i = 0; i < words; i++) scene._tokens.Add(sample.Token(i));
-        window.Content = line ? scene.BuildLine() : scene.BuildStrip(scene._tokens[0]);
+        var body = line ? scene.BuildLine() : scene.BuildStrip(scene._tokens[0]);
+        window.Content = scroll ? new ScrollViewer { Content = body } : body;
         window.Show();
         scene._openWidth = width;
         scene.Settle();
@@ -272,6 +279,123 @@ internal sealed class TextViewScene : IDisposable
     public Constituent Constituent(int word, Part part, int morph = 0) =>
         Constituents(word).Single(item => item.Part == part && item.Morph == morph);
 
+    public IReadOnlyList<SemanticConstituent> SemanticConstituents(int index)
+    {
+        var strip = Word(index);
+        if (strip.GetVisualDescendants().OfType<InterlinearWord>().FirstOrDefault() is not { } drawn)
+            return Constituents(index).Select(c => new SemanticConstituent(c.Part, c.Morph, c.Visual, -1,
+                c.Text, c.Visual.FlowDirection)).ToArray();
+        var result = new List<SemanticConstituent>();
+        void Add(Part part, int morph, int runIndex)
+        {
+            var run = drawn.Runs[runIndex];
+            result.Add(new SemanticConstituent(part, morph, drawn, runIndex, run.Text, run.Direction));
+        }
+        Add(Part.Word, 0, 0);
+        var runIndex = 1;
+        for (var morph = 0; morph < TokenOf(index).PrimaryFieldWorksMorphs.Count; morph++)
+        {
+            Add(Part.FieldWorksForm, morph, runIndex++);
+            Add(Part.FieldWorksGloss, morph, runIndex++);
+        }
+        if (TokenOf(index).ShowsPanGlossReading)
+            for (var morph = 0; morph < TokenOf(index).PanGlossReadingMorphs.Count; morph++)
+            {
+                Add(Part.PanGlossForm, morph, runIndex++);
+                Add(Part.PanGlossGloss, morph, runIndex++);
+            }
+        return result;
+    }
+
+    public Rect SemanticBounds(SemanticConstituent constituent)
+    {
+        if (constituent.Owner is not InterlinearWord drawn) return Bounds(constituent.Owner);
+        var bounds = drawn.Runs[constituent.RunIndex].Bounds;
+        var first = drawn.TranslatePoint(bounds.TopLeft, Window)!.Value;
+        var last = drawn.TranslatePoint(bounds.BottomRight, Window)!.Value;
+        return new Rect(Math.Min(first.X, last.X), Math.Min(first.Y, last.Y),
+            Math.Abs(last.X - first.X), Math.Abs(last.Y - first.Y));
+    }
+
+    public SemanticConstituent SemanticConstituent(int word, Part part, int morph = 0) =>
+        SemanticConstituents(word).Single(item => item.Part == part && item.Morph == morph);
+
+    public bool SemanticReaches(SemanticConstituent constituent)
+    {
+        var point = SemanticBounds(constituent).Center;
+        var hit = VisualAt(point);
+        if (constituent.Owner is InterlinearWord drawn)
+            return ReferenceEquals(hit, drawn) && Window.TranslatePoint(point, drawn) is { } local &&
+                drawn.HitRun(local) == constituent.RunIndex;
+        return hit is not null && (ReferenceEquals(hit, constituent.Owner) || constituent.Owner.IsVisualAncestorOf(hit));
+    }
+
+    public AutomationPeer SemanticPeer(SemanticConstituent constituent) => constituent.Owner is InterlinearWord drawn
+        ? PeerOf(drawn).GetChildren()[constituent.RunIndex] : PeerOf(constituent.Owner);
+
+    public void FocusSemantic(SemanticConstituent constituent)
+    {
+        if (constituent.Owner is InterlinearWord) SemanticPeer(constituent).SetFocus();
+        else
+        {
+            constituent.Owner.Focusable = true;
+            Assert.True(constituent.Owner.Focus());
+        }
+    }
+
+    public string? CopySemanticRange(SemanticConstituent constituent, int start, int end)
+    {
+        if (constituent.Owner is not InterlinearWord drawn)
+            return CopyRangeByKeyboard(new Constituent(constituent.Part, constituent.Morph, (TextBlock)constituent.Owner), start, end);
+        Window.Clipboard!.ClearAsync().GetAwaiter().GetResult();
+        drawn.SelectRange(constituent.RunIndex, start, end);
+        Press(Key.C, Primary);
+        return Window.Clipboard.TryGetTextAsync().GetAwaiter().GetResult();
+    }
+
+    public string? CopySemanticDrag(SemanticConstituent constituent, double fraction) =>
+        constituent.Owner is InterlinearWord ? CopySemanticByDrag(constituent, fraction) :
+            CopyByDrag(new Constituent(constituent.Part, constituent.Morph, (TextBlock)constituent.Owner), fraction);
+
+    public string? CopySemanticByDrag(SemanticConstituent constituent, double fraction)
+    {
+        Window.Clipboard!.ClearAsync().GetAwaiter().GetResult();
+        Window.MouseMove(SemanticBounds(constituent).Center);
+        Settle();
+        var bounds = SemanticBounds(constituent);
+        var rtl = constituent.Direction == FlowDirection.RightToLeft;
+        var from = new Point(rtl ? bounds.Right - 1 : bounds.Left + 1, bounds.Center.Y);
+        var to = new Point(rtl ? bounds.Right - 1 - (bounds.Width - 2) * fraction : bounds.Left + 1 + (bounds.Width - 2) * fraction, bounds.Center.Y);
+        Window.MouseDown(from, Avalonia.Input.MouseButton.Left);
+        Window.MouseMove(to, RawInputModifiers.LeftMouseButton);
+        Window.MouseUp(to, Avalonia.Input.MouseButton.Left);
+        Dispatcher.UIThread.RunJobs();
+        Press(Key.C, Primary);
+        return Window.Clipboard.TryGetTextAsync().GetAwaiter().GetResult();
+    }
+
+    public string? CopySemanticAll(SemanticConstituent constituent)
+    {
+        Window.Clipboard!.ClearAsync().GetAwaiter().GetResult();
+        if (constituent.Owner is InterlinearWord drawn)
+            PeerOf(drawn).GetChildren()[constituent.RunIndex].SetFocus();
+        else Assert.True(constituent.Owner.Focus());
+        Press(Key.A, Primary);
+        Press(Key.C, Primary);
+        return Window.Clipboard.TryGetTextAsync().GetAwaiter().GetResult();
+    }
+
+    public string? CopySemanticKeyboardPrefix(SemanticConstituent constituent)
+    {
+        Window.Clipboard!.ClearAsync().GetAwaiter().GetResult();
+        if (constituent.Owner is InterlinearWord drawn)
+            PeerOf(drawn).GetChildren()[constituent.RunIndex].SetFocus();
+        else Assert.True(constituent.Owner.Focus());
+        Press(constituent.Direction == FlowDirection.RightToLeft ? Key.Left : Key.Right, RawInputModifiers.Shift);
+        Press(Key.C, Primary);
+        return Window.Clipboard.TryGetTextAsync().GetAwaiter().GetResult();
+    }
+
     public Point Centre(Constituent constituent)
     {
         var bounds = Bounds(constituent.Visual);
@@ -308,21 +432,36 @@ internal sealed class TextViewScene : IDisposable
     /// </summary>
     public List<IInputElement> TabFrom(Control start, bool backwards, Func<IInputElement, bool> inside)
     {
+        if (WordIndexOf(start) < 0 && WalkWords.Count > 0 && WalkWords[^1] is var last && last >= 0)
+        {
+            Word(last).FocusWord();
+            Settle();
+        }
         Assert.True(start.Focus(), "The start of the tab walk cannot take focus.");
         var stops = new List<IInputElement> { start };
+        var visited = new HashSet<(IInputElement Element, int Run)> { (start, start is InterlinearWord first ? first.SelectedRunIndex : -1) };
         WalkWords = [WordIndexOf(start)];
+        WalkRuns = [start is InterlinearWord initial ? initial.SelectedRunIndex : -1];
         for (var press = 0; press < 400; press++)
         {
             var focused = Tab(backwards);
-            if (focused is null || !inside(focused) || stops.Contains(focused)) break;
+            if (focused is null || !inside(focused) ||
+                !visited.Add((focused, focused is InterlinearWord drawn ? drawn.SelectedRunIndex : -1))) break;
             stops.Add(focused);
             WalkWords.Add(WordIndexOf(focused));
+            WalkRuns.Add(focused is InterlinearWord word ? word.SelectedRunIndex : -1);
         }
         return stops;
     }
 
     /// <summary>The word each stop of the last tab walk was in, read when focus was there (a button may leave later).</summary>
     public List<int> WalkWords { get; private set; } = [];
+    public List<int> WalkRuns { get; private set; } = [];
+
+    public IReadOnlyList<(Control Owner, int Run)> SemanticStops(IReadOnlyList<IInputElement> stops, int word) =>
+        stops.Select((stop, i) => (stop, i)).Where(x => WalkWords[x.i] == word &&
+            (x.stop is InterlinearWord || x.stop is CopyableTextBlock))
+            .Select(x => ((Control)x.stop, WalkRuns[x.i])).ToArray();
 
     public IInputElement? Focused => Window.FocusManager!.GetFocusedElement();
 
@@ -421,7 +560,7 @@ internal sealed class TextViewScene : IDisposable
 
     // ---- the seam: layout ------------------------------------------------------------------------------------
 
-    public CountingHost? Counter => Window.Content as CountingHost;
+    public CountingHost? Counter => Window.Content is ScrollViewer scroll ? scroll.Content as CountingHost : Window.Content as CountingHost;
 
     public IEnumerable<Visual> Everything() => Window.GetVisualDescendants();
 
@@ -450,16 +589,24 @@ internal sealed class TextViewScene : IDisposable
 
         public int Arranges { get; private set; }
 
+        public long MeasureTicks { get; private set; }
+
+        public long ArrangeTicks { get; private set; }
+
         protected override Size MeasureOverride(Size availableSize)
         {
             Measures++;
-            return base.MeasureOverride(availableSize);
+            var start = System.Diagnostics.Stopwatch.GetTimestamp();
+            try { return base.MeasureOverride(availableSize); }
+            finally { MeasureTicks += System.Diagnostics.Stopwatch.GetTimestamp() - start; }
         }
 
         protected override Size ArrangeOverride(Size finalSize)
         {
             Arranges++;
-            return base.ArrangeOverride(finalSize);
+            var start = System.Diagnostics.Stopwatch.GetTimestamp();
+            try { return base.ArrangeOverride(finalSize); }
+            finally { ArrangeTicks += System.Diagnostics.Stopwatch.GetTimestamp() - start; }
         }
     }
 

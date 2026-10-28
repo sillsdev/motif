@@ -21,7 +21,7 @@ public sealed class SelectionAndCopyTests(WordScenes words, CardScenes cards) :
         {
             var scene = words.Get(name);
             var sample = scene.Sample;
-            var constituents = scene.Constituents(0);
+            var constituents = scene.SemanticConstituents(0);
             Assert.Equal([sample.WordText(0)], constituents.Where(c => c.Part == Part.Word).Select(c => c.Text));
             Assert.Equal(sample.StoredForms(0), constituents.Where(c => c.Part == Part.FieldWorksForm).Select(c => c.Text));
             Assert.Equal(sample.ParserForms(0), constituents.Where(c => c.Part == Part.PanGlossForm).Select(c => c.Text));
@@ -29,7 +29,7 @@ public sealed class SelectionAndCopyTests(WordScenes words, CardScenes cards) :
                 constituents.Where(c => c.Part == Part.FieldWorksGloss).Select(c => c.Text));
             Assert.Equal(sample.ParserForms(0).Select(form => sample.Glosses[Array.IndexOf(sample.Forms, form)]),
                 constituents.Where(c => c.Part == Part.PanGlossGloss).Select(c => c.Text));
-            Assert.All(constituents, c => Assert.IsAssignableFrom<SelectableTextBlock>(c.Visual));
+            Assert.All(constituents, c => Assert.Equal(c.Text, scene.CopySemanticAll(c)));
         });
 
     [Theory]
@@ -38,10 +38,10 @@ public sealed class SelectionAndCopyTests(WordScenes words, CardScenes cards) :
     public void EveryConstituentOfAWordCopiesItsWholeTextFromTheKeyboard(string name) => Run(() =>
     {
         var scene = words.Get(name);
-        var all = scene.Constituents(0);
+        var all = scene.SemanticConstituents(0);
         Assert.NotEmpty(all);
         foreach (var constituent in all)
-            Assert.Equal(constituent.Text, scene.CopyAllByKeyboard(constituent));
+            Assert.Equal(constituent.Text, scene.CopySemanticAll(constituent));
         Assert.Empty(scene.Host.Requests);
 
     });
@@ -52,11 +52,11 @@ public sealed class SelectionAndCopyTests(WordScenes words, CardScenes cards) :
     public void ASubstringInsideAGlossCopiesExactlyThatSubstring(string name) => Run(() =>
     {
         var scene = words.Get(name);
-        var gloss = scene.Constituent(0, Part.PanGlossGloss, 3);
+        var gloss = scene.SemanticConstituent(0, Part.PanGlossGloss, 3);
         Assert.True(gloss.Text.Length >= 4, "The sample gloss needs at least four characters to select inside.");
-        Assert.Equal(gloss.Text[1..^1], scene.CopyRangeByKeyboard(gloss, 1, gloss.Text.Length - 1));
-        var storedGloss = scene.Constituent(0, Part.FieldWorksGloss, 2);
-        Assert.Equal(storedGloss.Text[..1], scene.CopyRangeByKeyboard(storedGloss, 0, 1));
+        Assert.Equal(gloss.Text[1..^1], scene.CopySemanticRange(gloss, 1, gloss.Text.Length - 1));
+        var storedGloss = scene.SemanticConstituent(0, Part.FieldWorksGloss, 2);
+        Assert.Equal(storedGloss.Text[..1], scene.CopySemanticRange(storedGloss, 0, 1));
     });
 
     [Theory]
@@ -65,11 +65,11 @@ public sealed class SelectionAndCopyTests(WordScenes words, CardScenes cards) :
     public void ASubstringInsideAFormCopiesExactlyThatSubstring(string name) => Run(() =>
     {
         var scene = words.Get(name);
-        var form = scene.Constituent(0, Part.FieldWorksForm, 2);
+        var form = scene.SemanticConstituent(0, Part.FieldWorksForm, 2);
         Assert.True(form.Text.Length >= 3);
-        Assert.Equal(form.Text[..2], scene.CopyRangeByKeyboard(form, 0, 2));
-        var word = scene.Constituent(0, Part.Word);
-        Assert.Equal(word.Text[1..4], scene.CopyRangeByKeyboard(word, 1, 4));
+        Assert.Equal(form.Text[..2], scene.CopySemanticRange(form, 0, 2));
+        var word = scene.SemanticConstituent(0, Part.Word);
+        Assert.Equal(word.Text[1..4], scene.CopySemanticRange(word, 1, 4));
     });
 
     [Theory]
@@ -78,8 +78,8 @@ public sealed class SelectionAndCopyTests(WordScenes words, CardScenes cards) :
     public void DraggingAcrossAGlossSelectsItsStartInReadingOrderAndOpensNothing(string name) => Run(() =>
     {
         var scene = words.Get(name);
-        var gloss = scene.Constituent(0, Part.PanGlossGloss, 3);
-        var copied = scene.CopyByDrag(gloss, 0.3);
+        var gloss = scene.SemanticConstituent(0, Part.PanGlossGloss, 3);
+        var copied = scene.CopySemanticDrag(gloss, 0.3);
         Assert.False(string.IsNullOrEmpty(copied), "The drag selected nothing.");
         Assert.StartsWith(copied!, gloss.Text);
         Assert.True(copied!.Length < gloss.Text.Length, "A partial drag copied the whole gloss.");
@@ -92,10 +92,10 @@ public sealed class SelectionAndCopyTests(WordScenes words, CardScenes cards) :
     public void DraggingAcrossAFormSelectsItsStartInTheFormsOwnDirection(string name) => Run(() =>
     {
         var scene = words.Get(name);
-        foreach (var form in new[] { scene.Constituent(0, Part.Word), scene.Constituent(0, Part.FieldWorksForm, 2) })
+        foreach (var form in new[] { scene.SemanticConstituent(0, Part.Word), scene.SemanticConstituent(0, Part.FieldWorksForm, 2) })
         {
             scene.Host.Requests.Clear();
-            var copied = scene.CopyByDrag(form, 0.6);
+            var copied = scene.CopySemanticDrag(form, 0.6);
             Assert.False(string.IsNullOrEmpty(copied), $"The drag selected nothing in {form.Part}.");
             Assert.StartsWith(copied!, form.Text);
             Assert.True(copied!.Length < form.Text.Length);

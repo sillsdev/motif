@@ -38,6 +38,7 @@ public sealed partial class WordStripToken : Border
     private readonly Panel _stripStack;
     private readonly Panel _stripContent;
     private readonly Control _wordText;
+    private readonly InterlinearWord? _drawnWord;
     private readonly Control _verdictGlyph;
     private readonly Control _markFace;
     private readonly Border _actions;
@@ -85,6 +86,8 @@ public sealed partial class WordStripToken : Border
         _stripStack = this.FindControl<Panel>("StripStack")!;
         _stripContent = this.FindControl<Panel>("StripContent")!;
         _wordText = this.FindControl<Control>("WordText")!;
+        if (Environment.GetEnvironmentVariable("MOTIF_TEXTVIEW_STAGE3") == "1")
+            _drawnWord = new InterlinearWord();
         _verdictGlyph = this.FindControl<Control>("VerdictGlyph")!;
         _markFace = this.FindControl<Control>("MarkFace")!;
         _actions = this.FindControl<Border>("StripActions")!;
@@ -96,7 +99,19 @@ public sealed partial class WordStripToken : Border
         _strip.KeyDown += OnKeyDown;
         PointerEntered += (_, _) => Overlay.Claim(this);
         PointerExited += (_, _) => ReleaseOverlayIfIdle();
-        GotFocus += (_, _) => Overlay.Claim(this);
+        GotFocus += (_, e) =>
+        {
+            Overlay.Claim(this);
+            if (_drawnWord is null || !ReferenceEquals(e.NewFocusedElement, _drawnWord) ||
+                e.NavigationMethod != NavigationMethod.Tab || (e.KeyModifiers & KeyModifiers.Shift) == 0 ||
+                e.OldFocusedElement is Visual previous && this.IsVisualAncestorOf(previous)) return;
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (!_drawnWord.IsFocused) return;
+                Overlay.Buttons.Children.OfType<Button>().LastOrDefault(button => button.IsEffectivelyVisible &&
+                    button.IsEffectivelyEnabled && button.IsTabStop && button.Focusable)?.Focus(NavigationMethod.Tab, KeyModifiers.Shift);
+            });
+        };
         LostFocus += (_, _) => Dispatcher.UIThread.Post(ReleaseOverlayIfIdle);
     }
 
@@ -157,8 +172,16 @@ public sealed partial class WordStripToken : Border
     protected override Size MeasureOverride(Size availableSize)
     {
         var size = base.MeasureOverride(availableSize);
-        LineMetrics = new RunningTextLineMetrics(
-            MeasuredLineHeight(_wordLine), MeasuredLineHeight(_fieldWorksLine), MeasuredLineHeight(_panGlossLine));
+        if (_drawnWord is { } drawn)
+        {
+            var metrics = drawn.LineMetrics;
+            LineMetrics = new RunningTextLineMetrics(metrics.Word,
+                metrics.FieldWorks + MeasuredLineHeight(_fieldWorksLine),
+                metrics.PanGloss + MeasuredLineHeight(_panGlossLine));
+        }
+        else
+            LineMetrics = new RunningTextLineMetrics(
+                MeasuredLineHeight(_wordLine), MeasuredLineHeight(_fieldWorksLine), MeasuredLineHeight(_panGlossLine));
         return size;
     }
 
@@ -166,6 +189,7 @@ public sealed partial class WordStripToken : Border
 
     private void OnDataChanged()
     {
+        if (_drawnWord is not null) _drawnWord.Data = Data;
         if (_observedData is not null) _observedData.PropertyChanged -= OnDataPropertyChanged;
         if (ReferenceEquals(Overlay.Owner, this)) Overlay.Release(this);
         if (Data is not { } data)
@@ -203,6 +227,11 @@ public sealed partial class WordStripToken : Border
 
     private void OnDataPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (_drawnWord is { } drawn)
+        {
+            if (Dispatcher.UIThread.CheckAccess()) drawn.RefreshData();
+            else Dispatcher.UIThread.Post(drawn.RefreshData);
+        }
         if (e.PropertyName == nameof(ResultsTokenViewModel.HoverSummary))
         {
             if (Dispatcher.UIThread.CheckAccess()) SetCurrentAutomationName();
@@ -245,7 +274,7 @@ public sealed partial class WordStripToken : Border
         if (ShowsSelectionCheckBox)
             line.Add(active ? overlay.SelectionBox : Part(ref _selectionGlyph, "SelectionGlyph"));
         if (data?.ShowUnread == true) line.Add(Part(ref _unreadMark, "UnreadMark"));
-        line.Add(_wordText);
+        line.Add(_drawnWord is { } drawn ? drawn : _wordText);
         line.Add(_verdictGlyph);
         if (data?.HasNamedWarning == true) line.Add(Part(ref _namedWarning, "NamedWarning"));
         if (active) line.Add(overlay.Buttons);
@@ -258,7 +287,7 @@ public sealed partial class WordStripToken : Border
         Reconcile(_wordLinePanel, line);
 
         var fieldWorks = new List<Control>(3);
-        if (data?.HasFieldWorksAnalyses == true)
+        if (_drawnWord is null && data?.HasFieldWorksAnalyses == true)
         {
             var created = _fieldWorksMorphology is null;
             fieldWorks.Add(Part(ref _fieldWorksMorphology, "FieldWorksMorphology"));
@@ -268,12 +297,14 @@ public sealed partial class WordStripToken : Border
         if (data?.HasNothingStored == true) fieldWorks.Add(Part(ref _nothingStored, "NothingStored"));
         FillRow(_fieldWorksLine, fieldWorks, ref _fieldWorksColumns);
 
-        var rows = new List<Control>(3) { _wordLine, _fieldWorksLine };
-        if (data is { Verdict: not OccurrenceVerdict.Matches })
+        var rows = new List<Control>(3) { _wordLine };
+        if (_drawnWord is null || fieldWorks.Count > 0) rows.Add(_fieldWorksLine);
+        if (data is { Verdict: not OccurrenceVerdict.Matches } &&
+            (_drawnWord is null || data.HasMorePanGlossReadings || data.ShowsPanGlossNote))
         {
             var panGlossLine = Part(ref _panGlossLine, "PanGlossLine");
             var panGloss = new List<Control>(3);
-            if (data.ShowsPanGlossReading)
+            if (_drawnWord is null && data.ShowsPanGlossReading)
             {
                 var created = _panGlossMorphology is null;
                 panGloss.Add(Part(ref _panGlossMorphology, "PanGlossMorphology"));
@@ -437,7 +468,8 @@ public sealed partial class WordStripToken : Border
             case KeyboardShortcutBehavior.NextWord:
                 e.Handled = true;
                 var previous = entry.Behavior == KeyboardShortcutBehavior.PreviousWord;
-                if (_wordText.FlowDirection == Avalonia.Media.FlowDirection.RightToLeft) previous = !previous;
+                var direction = _drawnWord?.Runs.FirstOrDefault()?.Direction ?? _wordText.FlowDirection;
+                if (direction == Avalonia.Media.FlowDirection.RightToLeft) previous = !previous;
                 await NavigateAsync(token, previous ? WordAction.NavigatePrevious : WordAction.NavigateNext);
                 break;
             case KeyboardShortcutBehavior.PreviousLine:

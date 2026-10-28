@@ -38,6 +38,12 @@ public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture ava
     public void ShortcutCatalogMatchesRegisteredHandlersAndGeneratedHelp()
     {
         var assembly = typeof(KeyboardShortcutRegistry).Assembly;
+        var editingHandlers = assembly.GetTypes()
+            .SelectMany(type => type.GetMethods(BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public |
+                BindingFlags.NonPublic | BindingFlags.DeclaredOnly))
+            .Where(method => method.IsDefined(typeof(TextEditingKeyHandlerAttribute), inherit: false))
+            .Select(method => $"{method.DeclaringType!.Name}.{method.Name}").ToArray();
+        Assert.Equal(["InterlinearWord.OnKeyDown"], editingHandlers);
         var handlers = assembly.GetTypes()
             .SelectMany(type => type.GetMethods(BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public |
                 BindingFlags.NonPublic | BindingFlags.DeclaredOnly))
@@ -47,6 +53,7 @@ public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture ava
             .SelectMany(type => type.GetMethods(BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public |
                 BindingFlags.NonPublic | BindingFlags.DeclaredOnly))
             .Where(method => method.GetParameters().Any(parameter => parameter.ParameterType == typeof(KeyEventArgs)))
+            .Where(method => !method.IsDefined(typeof(TextEditingKeyHandlerAttribute), inherit: false))
             .Select(method => $"{method.DeclaringType!.Name}.{method.Name}").Order(StringComparer.Ordinal).ToArray();
         Assert.Equal(keyEventHandlers, handlers.Select(method => $"{method.DeclaringType!.Name}.{method.Name}")
             .Order(StringComparer.Ordinal));
@@ -494,6 +501,7 @@ public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture ava
             .SelectMany(type => type.GetMethods(BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public |
                 BindingFlags.NonPublic | BindingFlags.DeclaredOnly))
             .Where(method => method.GetParameters().Any(parameter => parameter.ParameterType == typeof(KeyEventArgs)))
+            .Where(method => !method.IsDefined(typeof(TextEditingKeyHandlerAttribute), inherit: false))
             .ToArray();
         foreach (var handler in keyEventHandlers)
         {

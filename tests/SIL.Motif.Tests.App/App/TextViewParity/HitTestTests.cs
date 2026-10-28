@@ -32,12 +32,12 @@ public sealed class HitTestTests(LineScenes lines, CardScenes cards) : IClassFix
     public void ThePointAtTheCentreOfEachConstituentIsInsideIt(string name) => Run(() =>
     {
         var scene = lines.Get(name);
-        var others = scene.Constituents(1);
+        var others = scene.SemanticConstituents(1);
         foreach (var constituent in others)
         {
-            var hit = scene.VisualAt(scene.Centre(constituent));
-            Assert.True(hit is not null && Reaches(constituent, hit),
-                $"{constituent.Part} {constituent.Morph} '{constituent.Text}' is not what the pointer reaches at its centre ({scene.Bounds(constituent.Visual)} in a {scene.Window.Width} window): {hit?.GetType().Name}.");
+            var hit = scene.VisualAt(scene.SemanticBounds(constituent).Center);
+            Assert.True(hit is not null && scene.SemanticReaches(constituent),
+                $"{constituent.Part} {constituent.Morph} '{constituent.Text}' is not what the pointer reaches at its centre ({scene.SemanticBounds(constituent)} in a {scene.Window.Width} window): {hit?.GetType().Name}.");
         }
     });
 
@@ -49,10 +49,10 @@ public sealed class HitTestTests(LineScenes lines, CardScenes cards) : IClassFix
         var scene = lines.Get(name);
         var key = scene.TokenOf(2).PresentationKey;
         var failed = new List<string>();
-        foreach (var constituent in scene.Constituents(2))
+        foreach (var constituent in scene.SemanticConstituents(2))
         {
             scene.Host.Requests.Clear();
-            scene.Click(scene.Centre(constituent));
+            scene.Click(scene.SemanticBounds(constituent).Center);
             if (!scene.Host.Requests.Any(r => r.Action == WordAction.OpenCard && r.Key == key))
                 failed.Add($"{constituent.Part} {constituent.Morph}");
         }
@@ -68,7 +68,7 @@ public sealed class HitTestTests(LineScenes lines, CardScenes cards) : IClassFix
         for (var i = 0; i < 4; i++)
         {
             scene.Host.Requests.Clear();
-            scene.Click(scene.Centre(scene.Constituent(i, Part.Word)));
+            scene.Click(scene.SemanticBounds(scene.SemanticConstituent(i, Part.Word)).Center);
             var opened = scene.Host.Requests.Where(r => r.Action == WordAction.OpenCard).Select(r => r.Key).ToList();
             Assert.Equal([scene.TokenOf(i).PresentationKey], opened);
         }

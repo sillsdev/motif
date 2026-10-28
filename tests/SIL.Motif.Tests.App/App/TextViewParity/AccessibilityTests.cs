@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Automation.Peers;
 using Xunit;
 
 namespace SIL.Motif.Tests.App.TextViewParity;
@@ -44,7 +45,7 @@ public sealed class AccessibilityTests(LineScenes lines, CardScenes cards) : ICl
     {
         var scene = lines.Get(name);
         var names = TextViewScene.PeerNames(scene.Word(1));
-        foreach (var constituent in scene.Constituents(1).Where(c => c.Text.Length > 0))
+        foreach (var constituent in scene.SemanticConstituents(1).Where(c => c.Text.Length > 0))
             Assert.Contains(names, n => n.Contains(constituent.Text, StringComparison.Ordinal));
     });
 
@@ -82,7 +83,16 @@ public sealed class AccessibilityTests(LineScenes lines, CardScenes cards) : ICl
         var word = scene.AccessibleWord(2);
         Assert.True(word.Focusable);
         Assert.True(word.IsEffectivelyEnabled);
-        Assert.All(scene.Constituents(2), c => Assert.NotNull(TextViewScene.PeerOf(c.Visual)));
+        var constituents = scene.SemanticConstituents(2);
+        Assert.NotEmpty(constituents);
+        Assert.All(constituents, c =>
+        {
+            var peer = scene.SemanticPeer(c);
+            Assert.Equal(c.Text, peer.GetName());
+            Assert.Equal(AutomationControlType.Text, peer.GetAutomationControlType());
+            var bounds = peer.GetBoundingRectangle();
+            Assert.True(bounds.Width > 0 && bounds.Height > 0);
+        });
     });
 
     [Theory]

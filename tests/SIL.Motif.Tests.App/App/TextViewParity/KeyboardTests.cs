@@ -44,8 +44,8 @@ public sealed class KeyboardTests(LineScenes lines, CardScenes cards) : IClassFi
         {
             var inWord = stops.Where((_, i) => scene.WalkWords[i] == word).ToList();
             Assert.Same(scene.Word(word), inWord[0]);
-            var constituents = scene.Constituents(word).Select(c => (object)c.Visual).ToList();
-            Assert.Equal(constituents, inWord.OfType<CopyableTextBlock>().Cast<object>().ToList());
+            var constituents = scene.SemanticConstituents(word).Select(c => (c.Owner, c.RunIndex)).ToList();
+            Assert.Equal(constituents, scene.SemanticStops(stops, word));
             var buttons = inWord.OfType<Button>().ToList();
             Assert.NotEmpty(buttons);
             Assert.All(buttons, button => Assert.True(button.IsEnabled));
@@ -118,9 +118,8 @@ public sealed class KeyboardTests(LineScenes lines, CardScenes cards) : IClassFi
     public void ReaderKeysWorkWhileASelectableConstituentOfTheWordHoldsFocus(string name) => Run(() =>
     {
         var scene = lines.Get(name);
-        var gloss = scene.Constituent(2, Part.FieldWorksGloss, 1);
-        gloss.Visual.Focusable = true;
-        Assert.True(gloss.Visual.Focus());
+        var gloss = scene.SemanticConstituent(2, Part.FieldWorksGloss, 1);
+        scene.FocusSemantic(gloss);
         scene.Press(Key.Right);
         var request = Assert.Single(scene.Host.Requests);
         Assert.Equal(scene.Sample.RightToLeft ? WordAction.NavigatePrevious : WordAction.NavigateNext, request.Action);

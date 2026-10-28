@@ -98,7 +98,7 @@ public sealed class LayoutInvariantTests(LineScenes lines, WordScenes words, Car
         {
             scene.Resize(width);
             var word = scene.WordBounds(0).Inflate(0.5);
-            var items = scene.Constituents(0).Where(c => c.Text.Length > 0).Select(c => (c, b: scene.Bounds(c.Visual))).ToList();
+            var items = scene.SemanticConstituents(0).Where(c => c.Text.Length > 0).Select(c => (c, b: scene.SemanticBounds(c))).ToList();
             foreach (var (c, b) in items)
                 Assert.True(word.Contains(b), $"{c.Part} {c.Morph} leaves its word at width {width}: {b} outside {word}.");
             foreach (var (a, b) in items.SelectMany((x, i) => items.Skip(i + 1).Select(y => (x, y))))
