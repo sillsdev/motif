@@ -266,8 +266,10 @@ public sealed class SelectionWordRowsTests
         for (var index = 0; index < rows.Count; index++) _ = rows[index];
     }
 
-    [Fact]
-    public void OpenWordCardVisitsEveryOccurrencePageAndReleasesItsCapturedContexts()
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void OpenWordCardVisitsEveryOccurrencePageAndReleasesItsCapturedContexts(bool forceInlineReattach)
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
@@ -304,8 +306,7 @@ public sealed class SelectionWordRowsTests
                 {
                     await pages.PageRefresh;
                     PageScreenshots.Settle(window);
-                    Assert.Equal(20, row.Occurrences.Count);
-                    ObserveOccurrences(row.Occurrences, weak, visited);
+                    ObserveCurrentPage(row, weak, visited);
                     Assert.Equal(20, reads.Reader!.Diagnostics.LiveLineModels);
                     Assert.Equal(20, reads.Reader.Diagnostics.LivePinnedModels);
                     Assert.Equal(20, reads.Reader.Diagnostics.LeasedOccurrenceContexts);
@@ -324,8 +325,10 @@ public sealed class SelectionWordRowsTests
                 pages.FullItemsSource = null;
                 pages.FullItemsSource = row.OccurrenceSource;
                 window.Content = pages;
+                // Forces the inline-completion path that once kept the last page rooted.
+                if (forceInlineReattach) SpinUntilRefreshed(pages);
                 await pages.PageRefresh;
-                Assert.Equal(0, row.Occurrences[0].SourceOffset);
+                AssertFirstOccurrenceOffset(row);
                 Assert.Equal(1, reads.Reader.Diagnostics.TextRowsDeserialized);
                 row.Listed.IsOpen = false;
                 await list.CardPending;
@@ -343,6 +346,32 @@ public sealed class SelectionWordRowsTests
                 await reads.StopAsync();
             }
         }, TimeSpan.FromSeconds(45));
+    }
+
+    private static void SpinUntilRefreshed(ProgressiveItemsControl pages)
+    {
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        while (!pages.PageRefresh.IsCompleted)
+        {
+            if (watch.Elapsed > TimeSpan.FromSeconds(10))
+                throw new TimeoutException("PageRefresh did not complete within 10 s of reattaching the pages.");
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            Thread.Sleep(1);
+        }
+    }
+
+    // Own frame: keeps the reattached page off the lambda frame.
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void AssertFirstOccurrenceOffset(TextWordRowViewModel row) =>
+        Assert.Equal(0, row.Occurrences[0].SourceOffset);
+
+    // Own frame: an unoptimized caller slot would keep the page alive.
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void ObserveCurrentPage(TextWordRowViewModel row, List<WeakReference<object>> weak,
+        HashSet<(Guid, int)> visited)
+    {
+        Assert.Equal(20, row.Occurrences.Count);
+        ObserveOccurrences(row.Occurrences, weak, visited);
     }
 
     [MethodImpl(MethodImplOptions.NoInlining)]
