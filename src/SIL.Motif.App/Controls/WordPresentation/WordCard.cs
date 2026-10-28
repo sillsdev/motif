@@ -142,7 +142,18 @@ public sealed partial class WordCard : UserControl
     {
         CancelHostedRead();
         if (Host is not null) Document = null;
+        ReleaseTabOnceActiveElement(e);
         base.OnDetachedFromVisualTree(e);
+    }
+
+    // Avalonia keeps a focused card as its list's tab-once element, which would pin the closed card's visuals.
+    private void ReleaseTabOnceActiveElement(VisualTreeAttachmentEventArgs e)
+    {
+        var containers = this.GetVisualAncestors().Concat(e.Parent is { } parent ?
+            parent.GetSelfAndVisualAncestors() : []);
+        foreach (var container in containers.OfType<InputElement>())
+            if (ReferenceEquals(KeyboardNavigation.GetTabOnceActiveElement(container), this))
+                KeyboardNavigation.SetTabOnceActiveElement(container, null);
     }
 
     /// <summary>Applies several state changes and builds the sections once afterwards.</summary>
