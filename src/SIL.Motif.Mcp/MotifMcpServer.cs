@@ -47,7 +47,7 @@ public static class MotifMcpServer
     public static async Task RunAsync(McpLaunchOptions options, Stream input, Stream output, TextWriter log,
         CancellationToken cancellation)
     {
-        using var ambient = options.Environment is null ? null : SIL.Motif.Host.AmbientEnvironment.Push(options.Environment);
+        using var ambient = options.Environment is null ? null : AmbientEnvironment.Push(options.Environment);
         var profile = options.Profile is null ? ToolProfile.Builtin : ToolProfile.Load(options.Profile);
         var context = new ServerContext(string.Empty, MotifProductVersion.CurrentText,
             options.Runner ?? ProcessRunnerLauncher.FromEnvironment(), new ActivityLog(options.ActivityLogPath), profile, log, options.AdvancedAiModeEnabled, options.ParserPath);

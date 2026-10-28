@@ -92,17 +92,7 @@ internal static int Run(
     IReadOnlyDictionary<string, string?> environment,
     Action<string, Action<string>?> startRunner)
 {
-    using var ambient = SIL.Motif.Host.AmbientEnvironment.Push(environment);
-    return RunWithAmbientEnvironment(args, output, error, environment, startRunner);
-}
-
-private static int RunWithAmbientEnvironment(
-    string[] args,
-    TextWriter output,
-    TextWriter error,
-    IReadOnlyDictionary<string, string?> environment,
-    Action<string, Action<string>?> startRunner)
-{
+    using var ambient = AmbientEnvironment.Push(environment);
 if (ArtifactInventoryCli.IsInvocation(args))
     return ArtifactInventoryCli.Run(args, output, error,
         environment.GetValueOrDefault(CommandSurfacePolicy.DeveloperCommandsEnvironmentVariable));

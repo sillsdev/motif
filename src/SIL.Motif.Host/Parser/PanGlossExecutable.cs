@@ -23,7 +23,7 @@ public static class PanGlossExecutable
     public static string? TryLocate()
     {
         return TryLocate(
-            SIL.Motif.Host.AmbientEnvironment.Get(PathVariable),
+            AmbientEnvironment.Get(PathVariable),
             AppContext.BaseDirectory,
             FileName,
             TryFindRepositoryRoot());
@@ -48,7 +48,7 @@ public static class PanGlossExecutable
     /// PanGloss has to be.
     /// </summary>
     public static string NotFoundMessage => NotFoundMessageFor(PlacesSearched(
-        SIL.Motif.Host.AmbientEnvironment.Get(PathVariable), AppContext.BaseDirectory, FileName,
+        AmbientEnvironment.Get(PathVariable), AppContext.BaseDirectory, FileName,
         TryFindRepositoryRoot()));
 
     /// <summary>The not-found sentence for the given places, in the order discovery looked at them.</summary>

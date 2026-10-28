@@ -1,6 +1,7 @@
 using System;
 using System.Globalization;
 using System.IO;
+using SIL.Motif.Host;
 using SIL.Motif.Host.Parser;
 
 namespace SIL.Motif.Worker;
@@ -100,7 +101,7 @@ public sealed record RunnerOptions
 
     private static string? Value(string name)
     {
-        var value = SIL.Motif.Host.AmbientEnvironment.Get(name);
+        var value = AmbientEnvironment.Get(name);
         return string.IsNullOrWhiteSpace(value) ? null : value;
     }
 

@@ -5,6 +5,7 @@ using System.Globalization;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
+using SIL.Motif.Host;
 using WorkerRunnerOptions = SIL.Motif.Worker.RunnerOptions;
 using WorkerRunnerIdentity = SIL.Motif.Worker.RunnerIdentity;
 
@@ -50,7 +51,7 @@ public sealed class ProcessRunnerLauncher : IJobRunnerLauncher
     public static IJobRunnerLauncher FromEnvironment()
     {
         var options = JobRunnerLaunchOptions.FromEnvironment();
-        return string.IsNullOrEmpty(SIL.Motif.Host.AmbientEnvironment.Get(SuppressVariable))
+        return string.IsNullOrEmpty(AmbientEnvironment.Get(SuppressVariable))
             ? new ProcessRunnerLauncher(options)
             : new NoRunnerLauncher(options);
     }
@@ -58,7 +59,7 @@ public sealed class ProcessRunnerLauncher : IJobRunnerLauncher
     /// <summary>The runner executable <see cref="ExecutableVariable"/> names, or <see langword="null"/>.</summary>
     public static string? ConfiguredExecutable()
     {
-        var configured = SIL.Motif.Host.AmbientEnvironment.Get(ExecutableVariable);
+        var configured = AmbientEnvironment.Get(ExecutableVariable);
         return string.IsNullOrWhiteSpace(configured) ? null : configured;
     }
 

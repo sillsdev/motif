@@ -44,12 +44,13 @@ public sealed class CliProcessSmokeTests : IDisposable
     }
 
     [Fact]
-    public async Task ArtifactInventoryAnswersFromARealProcess()
+    public async Task ArtifactInventoryRefusesMissingArgumentsFromARealProcess()
     {
         var result = await CliProcess.RunAsync(_root, null, true, "store", "artifacts", "--json");
 
-        Assert.True(result.ExitCode == 0 || result.Error.Length > 0, result.FailureDetails);
-        Assert.True(result.Output.Length > 0 || result.Error.Length > 0, result.FailureDetails);
+        Assert.NotEqual(0, result.ExitCode);
+        Assert.Empty(result.Output);
+        Assert.Contains("Usage: motif store artifacts", result.Error, StringComparison.Ordinal);
     }
 
     [Fact]
