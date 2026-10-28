@@ -313,7 +313,10 @@ public sealed class HumanJudgmentReaderTests : IDisposable
         using var cache = NewLangProjFixture.CreateCache(_root);
         var fieldId = NotebookJudgmentFixture.InitializeReservedField(cache);
         var projectId = Id(cache.LangProject.Guid);
-        var (left, right) = FindJudgmentIdsWithOneVisibleId();
+        var left = Id(Identity(995243));
+        var right = Id(Identity(1380965));
+        Assert.NotEqual(left, right);
+        Assert.Equal(HumanJudgmentCodec.VisibleId(left), HumanJudgmentCodec.VisibleId(right));
         var firstJudgment = Disposition(projectId, Id(Identity(2400)), "LexEntry", Identity(2401)) with { JudgmentId = left };
         var secondJudgment = Disposition(projectId, Id(Identity(2402)), "LexEntry", Identity(2403)) with { JudgmentId = right };
         var third = Disposition(projectId, Id(Identity(2404)), "LexEntry", Identity(2405)) with
@@ -326,18 +329,6 @@ public sealed class HumanJudgmentReaderTests : IDisposable
         Assert.Equal(Id(Identity(2404)), Assert.Single(snapshot.Judgments).RecordId);
         Assert.Equal(2, snapshot.Unavailable.Count);
         Assert.All(snapshot.Unavailable, item => Assert.Equal("duplicate-id", item.Kind));
-    }
-
-    private static (string Left, string Right) FindJudgmentIdsWithOneVisibleId()
-    {
-        var seen = new Dictionary<string, string>(StringComparer.Ordinal);
-        for (var index = 1; ; index++)
-        {
-            var id = Id(Identity(index));
-            var visible = HumanJudgmentCodec.VisibleId(id);
-            if (seen.TryGetValue(visible, out var earlier)) return (earlier, id);
-            seen[visible] = id;
-        }
     }
 
     [Fact]
