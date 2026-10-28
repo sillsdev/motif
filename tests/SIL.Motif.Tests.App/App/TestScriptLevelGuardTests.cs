@@ -111,7 +111,7 @@ public sealed class TestScriptLevelGuardTests
         var script = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "test.ps1"));
 
         Assert.Contains("Write-PhaseDuration 'build gate'", script, StringComparison.Ordinal);
-        Assert.Contains("Write-PhaseDuration 'offline restore'", script, StringComparison.Ordinal);
+        Assert.Contains("Write-PhaseDuration 'process hygiene regression'", script, StringComparison.Ordinal);
         Assert.Contains("Write-PhaseDuration 'test slot wait'", script, StringComparison.Ordinal);
         Assert.Contains("Write-PhaseDuration 'test artifact preparation'", script, StringComparison.Ordinal);
         Assert.Contains("Write-PhaseDuration 'test processes'", script, StringComparison.Ordinal);

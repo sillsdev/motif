@@ -170,9 +170,7 @@ if ($buildExitCode -ne 0) {
     exit 1
 }
 
-# A -Project run is an iteration; the tooling regressions run in a full run, which CI and landing use. They are
-# independent of the test processes and cost about 20 s one after another, so they start beside the test
-# processes and report after them.
+# A -Project run is an iteration; a full run, which CI and landing use, runs the regressions beside the tests.
 $regressions = @()
 if (-not $Project) {
     $regressions = @(
@@ -180,7 +178,6 @@ if (-not $Project) {
         @{ Name = 'tool environment regression'; Title = 'tool environment regression'; Script = 'MotifToolEnvironment.Tests.ps1' }
         @{ Name = 'resource sizing regression'; Title = 'node, slot and thread sizing regression'; Script = 'MotifTestResources.Tests.ps1' }
         @{ Name = 'artifact plan regression'; Title = 'test artifact plan regression'; Script = 'Test-MotifTestRunPlan.Tests.ps1' }
-        @{ Name = 'process hygiene regression'; Title = 'worktree process hygiene regression'; Script = 'Test-MotifProcessHygiene.Tests.ps1' }
         @{ Name = 'release version regression'; Title = 'release version regression'; Script = 'MotifReleaseVersion.Tests.ps1' }
         @{ Name = 'PanGloss interface regression'; Title = 'PanGloss interface regression'; Script = 'Test-PanGlossInterfaces.Tests.ps1'; Configured = $true }
         @{ Name = 'artifact preparation host regression'; Title = 'artifact preparation host regression'; Script = 'Test-PrepareTestArtifacts.Tests.ps1'; Configured = $true }
@@ -290,6 +287,18 @@ if ($Coverage) {
     $coverageSettings = Join-Path $repoRoot 'tools/coverage/coverage.runsettings'
 }
 
+# This one sweeps processes and kills the test run's, so it finishes first.
+if (-not $Project) {
+    $phaseClocks['process hygiene regression'] = [Diagnostics.Stopwatch]::StartNew()
+    Write-Step 'worktree process hygiene regression'
+    & pwsh -NoProfile -File (Join-Path $repoRoot 'tools/Test-MotifProcessHygiene.Tests.ps1')
+    $hygieneExitCode = $LASTEXITCODE
+    Write-PhaseDuration 'process hygiene regression'
+    if ($hygieneExitCode -ne 0) {
+        Write-PhaseDuration 'whole gate'
+        exit 1
+    }
+}
 $phaseClocks['test artifact preparation'] = [Diagnostics.Stopwatch]::StartNew()
 $selectedProjectNames = @($testRuns | Select-Object -ExpandProperty Project -Unique)
 $artifactRequirements = Get-MotifTestArtifactRequirements -All:$All -System:$System `
@@ -327,17 +336,16 @@ Write-PhaseDuration 'test artifact preparation'
 $regressionRuns = foreach ($regression in $regressions) {
     $scriptPath = Join-Path $repoRoot "tools/$($regression.Script)"
     $regressionArguments = @('-NoProfile', '-File', ('"{0}"' -f $scriptPath))
-    if ($regression.Configured) { $regressionArguments += @('-Configuration', $Configuration) }
+    if ($regression.ContainsKey('Configured')) { $regressionArguments += @('-Configuration', $Configuration) }
     $regressionName = $regression.Name -replace '\s', '-'
     $regressionInput = Join-Path $resultsRoot "regression-$regressionName.stdin"
     [IO.File]::WriteAllText($regressionInput, "regression-$regressionName")
     $regressionLog = Join-Path $resultsRoot "regression-$regressionName.log"
-    $regressionClock = [Diagnostics.Stopwatch]::StartNew()
     $regressionProcess = Start-Process -FilePath 'pwsh' -ArgumentList $regressionArguments -PassThru -NoNewWindow `
         -RedirectStandardInput $regressionInput -RedirectStandardOutput $regressionLog `
         -RedirectStandardError (Join-Path $resultsRoot "regression-$regressionName.stderr.log")
     [void] $regressionProcess.Handle
-    [pscustomobject]@{ Regression = $regression; Process = $regressionProcess; Clock = $regressionClock; Log = $regressionLog }
+    [pscustomobject]@{ Regression = $regression; Process = $regressionProcess; Log = $regressionLog }
 }
 
 Write-Step ("dotnet test ($levelSelection levels, $($testProjects.Count) projects in $($testRuns.Count) processes, " +
@@ -448,7 +456,7 @@ foreach ($run in $regressionRuns) {
     foreach ($log in @($run.Log, ($run.Log -replace '\.log$', '.stderr.log'))) {
         if (Test-Path -LiteralPath $log) { Get-Content -LiteralPath $log | Write-Host }
     }
-    Write-Host ('  {0,-34} {1,6:N1} s' -f $run.Regression.Name, $run.Clock.Elapsed.TotalSeconds)
+    Write-Host ('  {0,-34} done' -f $run.Regression.Name)
     if ($run.Process.ExitCode -ne 0) {
         Write-Host "  $($run.Regression.Name) FAILED with exit code $($run.Process.ExitCode)" -ForegroundColor Red
         $regressionFailed = $true
