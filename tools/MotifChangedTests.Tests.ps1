@@ -109,6 +109,16 @@ $mapPath = Join-Path $outside 'map.json'
     Write-RepoFile 'strangers/other.json' '{}'
     Assert-True (Select-Now).Full 'an unnamed data file must fall back'
     Remove-Item -Recurse (Join-Path $root 'strangers')
+    # A data file named only by code no mapped class executes cannot be shown inert, so it runs everything.
+    Write-RepoFile 'extras/unmapped.json' '{}'
+    Write-RepoFile 'src/SIL.Motif.A/Reader.cs' 'class Reader { string p = "unmapped.json"; }'
+    Invoke-Git add -A
+    Invoke-Git commit -q -m reader
+    $readerBase = (& git -C $root rev-parse HEAD).Trim()
+    Add-Content -LiteralPath (Join-Path $root 'extras/unmapped.json') -Value ' '
+    $unmapped = Select-MotifChangedTests -RepoRoot $root -MapPath $mapPath -Base $readerBase -SmokePath $smoke -IgnoreMapAge
+    Assert-True ($unmapped.Full -and ($unmapped.FullReasons -join ' ') -match 'unmapped\.json') 'a data file read only by unmapped code must fall back'
+    Invoke-Git reset -q --hard $commit
 
     # A missing, foreign or old map runs everything.
     Assert-True (Select-MotifChangedTests -RepoRoot $root -MapPath (Join-Path $outside 'none.json') -Base $commit).Full 'no map'

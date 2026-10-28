@@ -175,7 +175,11 @@ if ($BuildMap -and ($System -or $Project -or $Filter -or $Coverage)) {
     throw '-BuildMap runs the whole suite; do not combine it with -System, -Project, -Filter or -Coverage.'
 }
 if ($Explain -and -not $Changed) { throw '-Explain belongs to -Changed.' }
-if ($BuildMap) { $All = [switch]::Present }
+if ($BuildMap) {
+    $All = [switch]::Present
+    Import-Module (Join-Path $repoRoot 'tools/MotifChangedTests.psm1') -Force
+    Assert-MotifSymlinkSupport -Directory (Join-Path $repoRoot 'bin')
+}
 $levelSelection = if ($All -or $Changed) { 'All' } elseif ($System) { 'System' } else { 'Unit,Integration' }
 
 if ($Filter -and -not $Project) { throw '-Filter requires -Project.' }
@@ -186,8 +190,11 @@ $changedPlan = $null
 $defaultMapPath = Join-Path $repoRoot 'bin/.cache/test-map/coverage-map.json'
 if ($Changed) {
     Import-Module (Join-Path $repoRoot 'tools/MotifChangedTests.psm1') -Force
-    $changedSelection = Select-MotifChangedTests -RepoRoot $repoRoot -Base $Base -MaxMapAge $MaxMapAge `        -MapPath $(if ($MapPath) { $MapPath } else { $defaultMapPath }) `        -SmokePath (Join-Path $repoRoot 'tests/test-smoke-classes.txt')
-    $changedPlan = Get-MotifChangedPlan -Selection $changedSelection `        -WeightsPath (Join-Path $repoRoot 'tests/test-shard-weights.json')
+    $changedSelection = Select-MotifChangedTests -RepoRoot $repoRoot -Base $Base -MaxMapAge $MaxMapAge `
+        -MapPath $(if ($MapPath) { $MapPath } else { $defaultMapPath }) `
+        -SmokePath (Join-Path $repoRoot 'tests/test-smoke-classes.txt')
+    $changedPlan = Get-MotifChangedPlan -Selection $changedSelection `
+        -WeightsPath (Join-Path $repoRoot 'tests/test-shard-weights.json')
     Write-MotifChangedSelection -Selection $changedSelection -Plan $changedPlan
     if ($Explain) { return }
     if ($changedSelection.Full) { $All = [switch]::Present }
@@ -649,7 +656,8 @@ if ($failed) {
 }
 
 Write-Host ''
-if ($changedClasses) { Write-Host "Tests OK: $($changedPlan.ClassCount) selected classes (-Changed); the full suite is -All." -ForegroundColor Green }
+if ($changedClasses -and $changedPlan.ClassCount -eq 0) { Write-Host 'No tests ran: the changes touch only files no test executes (-Changed); the full suite is -All.' -ForegroundColor Yellow }
+elseif ($changedClasses) { Write-Host "Tests OK: $($changedPlan.ClassCount) selected classes (-Changed); the full suite is -All." -ForegroundColor Green }
 elseif ($BuildMap) { Write-Host 'Coverage map built from a full-suite run.' -ForegroundColor Green }
 elseif ($All) { Write-Host 'Tests OK: full suite.' -ForegroundColor Green }
 elseif ($System) { Write-Host 'Tests OK: System subset.' -ForegroundColor Green }

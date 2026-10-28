@@ -332,9 +332,9 @@ function Select-MotifChangedTests {
             foreach ($className in (Get-Coverers $fileIndex[$reader])) { Add-Class $className "$path is read by $reader"; $matched = $true }
         }
         if ($matched) { $anyCodeChange = $true; continue }
-        if ($readers.Count -gt 0) { $selection.Ignored.Add("$path is named only by code no test class executes"); continue }
-        if ($script:InertPatterns | Where-Object { $path -match $_ }) { $selection.Ignored.Add("$path is documentation or tooling metadata no test names"); continue }
-        Add-Full "$path is a non-code input and no source names it"
+        if ($script:InertPatterns | Where-Object { $path -match $_ }) { $selection.Ignored.Add("$path is documentation or tooling metadata no test executes"); continue }
+        $why = if ($readers.Count -gt 0) { 'is named only by code no mapped test class executes' } else { 'is a non-code input and no source names it' }
+        Add-Full "$path $why"
     }
 
     if ($declared.Count -gt 0) {
@@ -364,7 +364,28 @@ function Select-MotifChangedTests {
             if ($classes.Contains($entry)) { Add-Class $entry 'smoke set' }
         }
     }
+    if ($anyCodeChange -and $selection.Classes.Count -eq 0) { Add-Full 'a code change selected no test class' }
     return $selection
+}
+
+<#
+  .SYNOPSIS
+  Fails before a long map build when this machine cannot create symbolic links, which New-MotifMapRunDirectory needs.
+#>
+function Assert-MotifSymlinkSupport {
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string] $Directory)
+    New-Item -ItemType Directory -Force -Path $Directory | Out-Null
+    $target = Join-Path $Directory "symlink-probe-$([guid]::NewGuid().ToString('N'))"
+    $link = $target + '.link'
+    Set-Content -LiteralPath $target -Value 'probe'
+    try {
+        try { [void] (New-Item -ItemType SymbolicLink -Path $link -Target $target -ErrorAction Stop) }
+        catch { throw "-BuildMap links test output into per-process folders and cannot create symbolic links here ($($_.Exception.Message)). On Windows turn on Developer Mode (Settings > System > For developers) or run elevated; see docs/testing-changed-files.md." }
+    }
+    finally {
+        Remove-Item -LiteralPath $link, $target -Force -ErrorAction SilentlyContinue
+    }
 }
 
 <#
@@ -531,4 +552,4 @@ function Write-MotifChangedSelection {
         $Selection.Classes.Count, $Plan.Seconds, $Plan.EstimatedSeconds, $Plan.Projects.Count)
 }
 
-Export-ModuleMember -Function Merge-MotifCoverageMap, Select-MotifChangedTests, Read-MotifCoverageMap, New-MotifMapRunSettings, Get-MotifChangedPlan, Write-MotifChangedSelection, New-MotifMapRunDirectory
+Export-ModuleMember -Function Assert-MotifSymlinkSupport, Merge-MotifCoverageMap, Select-MotifChangedTests, Read-MotifCoverageMap, New-MotifMapRunSettings, Get-MotifChangedPlan, Write-MotifChangedSelection, New-MotifMapRunDirectory
