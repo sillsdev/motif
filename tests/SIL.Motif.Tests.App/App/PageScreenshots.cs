@@ -822,6 +822,42 @@ public sealed class PageScreenshots
         bool renderForCapture = true, Action<string, double>? recordSetup = null, bool composeWindow = true,
         bool activateTextsPage = true, Action<MainWindow>? configureWindow = null, bool seedReaderToken = true)
     {
+        MainWindow? window = null;
+        SampleWorkspace? sample = null;
+        sample = await OpenSampleCore(parse, configure, leaveSetupOpen, capturedWords, capturedAssessment,
+            advancedAiModeEnabled, assistantConnections, recordSetup, composeWindow, activateTextsPage, seedReaderToken,
+            attachShell: workspace =>
+            {
+                IUserPreferencesStore preferences = preferencesStore ?? (settingsFilePath is null
+                    ? new MemoryUserPreferencesStore()
+                    : new FileUserPreferencesStore(settingsFilePath));
+                window = new MainWindow(rememberBounds: false, uriLauncher: null, preferencesStore: preferences);
+                configureWindow?.Invoke(window);
+                if (composeWindow) window.Compose(workspace);
+                else workspace.UpdateWindowWidth(window.Width);
+                window.Closed += async (_, _) => await sample!.DisposeAsync();
+                window.Show();
+            },
+            settle: () =>
+            {
+                if (renderForCapture) Settle(window!);
+                else LayoutInvariantEngineTests.Settle(window!);
+            });
+        return (sample.Workspace, window!);
+    }
+
+    /// <summary>
+    /// The sample project over the fakes and reader fixture with no window: <paramref name="attachShell"/> is called
+    /// with the shell before the project opens (a windowed caller composes its window there) and
+    /// <paramref name="settle"/> lets bindings and layout catch up (default: run queued dispatcher jobs).
+    /// </summary>
+    internal static async Task<SampleWorkspace> OpenSampleCore(
+        bool parse, Action<FakeCommandClient, AssessCommandResponse>? configure, bool leaveSetupOpen,
+        TextWordsResponse? capturedWords, AssessCommandResponse? capturedAssessment, bool advancedAiModeEnabled,
+        SIL.Motif.Commands.Assistants.IAssistantConnectionService? assistantConnections,
+        Action<string, double>? recordSetup, bool composeWindow, bool activateTextsPage, bool seedReaderToken,
+        Action<WorkspaceShellViewModel>? attachShell, Action? settle)
+    {
         var stage = System.Diagnostics.Stopwatch.StartNew();
         void Record(string name) { recordSetup?.Invoke(name, stage.Elapsed.TotalMilliseconds); stage.Restart(); }
         var fake = new FakeCommandClient();
@@ -901,24 +937,13 @@ public sealed class PageScreenshots
             new Folder(), new Drag(),
             fake, clock, techDemoNotice: FirstRunNotice(), advancedAiModeEnabled: advancedAiModeEnabled,
             assistantConnections: assistantConnections);
-        IUserPreferencesStore preferences = preferencesStore ?? (settingsFilePath is null
-            ? new MemoryUserPreferencesStore()
-            : new FileUserPreferencesStore(settingsFilePath));
-        var window = new MainWindow(rememberBounds: false, uriLauncher: null, preferencesStore: preferences);
-        configureWindow?.Invoke(window);
-        if (composeWindow) window.Compose(workspace);
-        else workspace.UpdateWindowWidth(window.Width);
-        window.Closed += async (_, _) =>
-        {
-            await workspace.Context.StopProjectWorkAsync();
-            readerFixture.Dispose();
-        };
-        window.Show();
+        var sample = new SampleWorkspace(workspace, fake, readerFixture);
+        attachShell?.Invoke(workspace);
 
         Record("compose-and-show");
         await workspace.SetProjectAsync(readerFixture.ProjectPath);
         Record("open-project");
-        if (leaveSetupOpen) return (workspace, window);
+        if (leaveSetupOpen) return sample;
         workspace.Context.Setup?.SkipCommand.Execute(null);
         foreach (var text in selection.Texts) text.IsChecked = true;
         await Task.Yield();
@@ -926,7 +951,7 @@ public sealed class PageScreenshots
         if (!parse)
         {
             await workspace.Context.EvidencePublication;
-            return (workspace, window);
+            return sample;
         }
         Record("select-texts");
         if (activateTextsPage)
@@ -948,8 +973,7 @@ public sealed class PageScreenshots
             workspace.CurrentPage = WorkspacePage.Texts;
             textsPage.Tab = TextsTab.AnalyzeTexts;
             textsPage.ShowAnalyzeViewCommand.Execute(AnalyzeTextsView.TextReader);
-            if (renderForCapture) Settle(window);
-            else LayoutInvariantEngineTests.Settle(window);
+            (settle ?? (() => Dispatcher.UIThread.RunJobs()))();
         }
         var reader = textsPage.ResultsInText;
         await reader.SelectionRefresh;
@@ -963,7 +987,7 @@ public sealed class PageScreenshots
         Record("handoff");
         clock.Advance(TimeSpan.FromDays(1).Add(TimeSpan.FromMinutes(35)));
         workspace.PageModel<AiHandoffPageModel>().Handoff.LatestAssessmentAt = clock.GetLocalNow();
-        return (workspace, window);
+        return sample;
     }
 
     /// <summary>

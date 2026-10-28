@@ -42,6 +42,22 @@ internal static class FakeComposedWindow
         return (workspace, window);
     }
 
+    /// <summary>The same shell view model as <see cref="Create"/> with no window, so no clipboard.</summary>
+    public static WorkspaceShellViewModel CreateWorkspace(FakeCommandClient? fake = null,
+        SIL.Motif.Host.Preferences.IDefaultProposalChecksStore? defaultProposalChecks = null,
+        TechDemoNoticeViewModel? techDemoNotice = null)
+    {
+        fake ??= new FakeCommandClient();
+        var selection = new SelectionViewModel(fake);
+        return new WorkspaceShellViewModel(
+            new ProjectViewModel(fake, new NoProjectPicker()),
+            new BaselineViewModel(fake),
+            selection,
+            new AssessViewModel(fake, selection),
+            new NoFolderPicker(), new NoDragSource(), fake,
+            defaultProposalChecks: defaultProposalChecks, techDemoNotice: techDemoNotice);
+    }
+
     private sealed class NoProjectPicker : IProjectPicker
     {
         public Task<string?> PickProjectFileAsync(CancellationToken cancellationToken = default) =>
