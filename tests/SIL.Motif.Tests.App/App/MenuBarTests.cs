@@ -107,8 +107,12 @@ public sealed class MenuBarTests
         {
             // Prove the lookup reaches the top bar before claiming the project flyout button is absent.
             Assert.NotNull(window.FindInWindowOrWorkspace<Menu>("MainMenu"));
-            Assert.Null(window.FindInWindowOrWorkspace<Button>("ProjectMenuButton"));
-            Assert.DoesNotContain(window.GetVisualDescendants().OfType<Button>(), button => button.Name == "ProjectMenuButton");
+            // The project menu is the File item in the menu bar, and no button carries its id.
+            var fileMenu = window.FindInWindowOrWorkspace<MenuItem>("FileMenu")!;
+            Assert.Equal(AutomationIds.ProjectMenu, Avalonia.Automation.AutomationProperties.GetAutomationId(fileMenu));
+            Assert.Same(window.FindInWindowOrWorkspace<Menu>("MainMenu"), fileMenu.Parent);
+            Assert.DoesNotContain(window.GetVisualDescendants().OfType<Button>(),
+                button => Avalonia.Automation.AutomationProperties.GetAutomationId(button) == AutomationIds.ProjectMenu);
             var options = window.FindInWindowOrWorkspace<MenuItem>("OptionsMenuItem")!;
             Assert.Same(window.FindInWindowOrWorkspace<MenuItem>("ToolsMenu"), options.Parent);
             Assert.Equal("OpenSettings", options.Tag);

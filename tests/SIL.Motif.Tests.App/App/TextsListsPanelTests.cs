@@ -48,6 +48,13 @@ public sealed class TextsListsPanelTests(AvaloniaHeadlessFixture avalonia)
                 var after = panel.GetVisualDescendants().Where(visual => !words.IsVisualAncestorOf(visual) && visual != words).ToArray();
                 var rebuilt = after.Count(visual => !before.Contains(visual));
                 Assert.True(rebuilt == 0, $"{rebuilt} of {after.Length} controls were rebuilt on the second show");
+
+                // The bindings are still live: a view-model change after the re-show reaches the same control.
+                var search = panel.FindControl<TextBox>("ListsWordSearch")!;
+                Assert.True(string.IsNullOrEmpty(search.Text));
+                compare.SearchText = "timeout";
+                window.UpdateLayout();
+                Assert.Equal("timeout", search.Text);
             }
             finally { window.Close(); }
         });
