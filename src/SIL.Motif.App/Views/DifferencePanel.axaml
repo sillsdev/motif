@@ -6,6 +6,11 @@
              xmlns:word="clr-namespace:SIL.Motif.App.Controls.WordPresentation"
              x:Class="SIL.Motif.App.Views.DifferencePanel"
              x:DataType="views:DifferencePanel">
+  <Grid>
+  <views:CopyableTextBlock x:Name="DifferenceEmptyState" Classes="muted" TextWrapping="Wrap"
+             Text="{x:Static app:MotifAppStrings.DifferenceEmptyState}"
+             Margin="{DynamicResource Component.DifferencePanel.PanelInset}"
+             IsVisible="{Binding !Difference.HasDifference}" />
   <ScrollViewer x:Name="DifferenceScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
                 IsVisible="{Binding Difference.HasDifference}">
   <Grid RowDefinitions="Auto,Auto,Auto" RowSpacing="{DynamicResource Intent.Space.Related}"
@@ -57,4 +62,5 @@
     </views:WordListSlot>
   </Grid>
   </ScrollViewer>
+  </Grid>
 </UserControl>

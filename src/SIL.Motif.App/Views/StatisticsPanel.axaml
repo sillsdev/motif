@@ -98,7 +98,7 @@
             </DataTemplate>
           </DataGridTemplateColumn.CellTemplate>
         </DataGridTemplateColumn>
-        <DataGridTemplateColumn Header="{x:Static app:MotifAppStrings.StatisticsColumnCompletion}" Tag="completion" ClipboardContentBinding="{ReflectionBinding CompletionStatus}">
+        <DataGridTemplateColumn Header="{x:Static app:MotifAppStrings.StatisticsColumnCompletion}" Tag="completion" MinWidth="{StaticResource Component.Statistics.CompletionMinWidth}" ClipboardContentBinding="{ReflectionBinding CompletionStatus}">
           <DataGridTemplateColumn.CellTemplate>
             <DataTemplate x:DataType="vm:StatsRowViewModel">
               <views:MarkChip Mark="{Binding CompletionMark}" Text="{Binding CompletionShort}" Compact="True"

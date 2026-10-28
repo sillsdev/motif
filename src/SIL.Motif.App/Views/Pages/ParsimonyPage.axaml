@@ -210,19 +210,20 @@
             </DataTemplate>
             <DataTemplate DataType="vm:ParsimonyListRow" x:DataType="vm:ParsimonyListRow">
               <Grid>
-                <Border Classes="denseTableRow" AutomationProperties.AutomationId="{Binding AutomationId}">
+                <Border Classes="denseTableRow" Height="{StaticResource Component.Parsimony.RowHeight}" MinHeight="{DynamicResource Component.DenseTable.RowHeight}"
+                        AutomationProperties.AutomationId="{Binding AutomationId}">
                   <Grid controls:DenseTable.Columns="2* 1.2* 1.5* 1.2* Component.Parsimony.Column.DecisionsWidth Component.DenseTable.MenuSize"
                         controls:DenseTable.CompactColumns="* 0 0 0 Component.Parsimony.Column.DecisionsWidth Component.DenseTable.MenuSize">
-                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Intent.Space.Compact}"
-                          VerticalAlignment="Center">
+                    <WrapPanel Orientation="Horizontal" ItemSpacing="{StaticResource Intent.Space.Compact}"
+                               LineSpacing="{StaticResource Intent.Space.Minimal}" VerticalAlignment="Center">
                       <views:CopyableTextBlock Classes="denseTableCell denseTableItem" Text="{Binding Items}"
                                                TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
                                                VerticalAlignment="Center"
                                                AutomationProperties.Name="{Binding Items}" />
-                      <views:MarkChip Grid.Column="1" Text="{Binding Disposition}" Compact="True"
+                      <views:MarkChip Text="{Binding Disposition}" Compact="True"
                                       VerticalAlignment="Center" IsVisible="{Binding HasDisposition}"
                                       AutomationProperties.AutomationId="{x:Static app:AutomationIds.ParsimonyDecision}" />
-                    </Grid>
+                    </WrapPanel>
                     <Border Grid.Column="1" controls:DenseTable.Secondary="True">
                       <views:CopyableTextBlock Classes="denseTableCell" Text="{Binding Description}"
                                                TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
@@ -316,19 +317,20 @@
           <ListBox.ItemTemplate>
             <DataTemplate x:DataType="vm:ParsimonySuppressedItem">
               <Grid>
-                <Border Classes="denseTableRow" AutomationProperties.AutomationId="{Binding AutomationId}">
+                <Border Classes="denseTableRow" Height="{StaticResource Component.Parsimony.RowHeight}" MinHeight="{DynamicResource Component.DenseTable.RowHeight}"
+                        AutomationProperties.AutomationId="{Binding AutomationId}">
                   <Grid controls:DenseTable.Columns="{StaticResource SuppressedColumns}"
                         controls:DenseTable.CompactColumns="{StaticResource SuppressedCompactColumns}">
-                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Intent.Space.Compact}"
-                          VerticalAlignment="Center">
+                    <WrapPanel Orientation="Horizontal" ItemSpacing="{StaticResource Intent.Space.Compact}"
+                               LineSpacing="{StaticResource Intent.Space.Minimal}" VerticalAlignment="Center">
                       <views:CopyableTextBlock Classes="denseTableCell denseTableItem" Text="{Binding Title}"
                                                TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
                                                VerticalAlignment="Center"
                                                AutomationProperties.Name="{Binding Title}" />
-                      <views:MarkChip Grid.Column="1" Text="{Binding Decision}" Compact="True"
+                      <views:MarkChip Text="{Binding Decision}" Compact="True"
                                       VerticalAlignment="Center" IsVisible="{Binding HasDecision}"
                                       AutomationProperties.AutomationId="{x:Static app:AutomationIds.ParsimonyDecision}" />
-                    </Grid>
+                    </WrapPanel>
                     <Border Grid.Column="1" controls:DenseTable.Secondary="True">
                       <views:CopyableTextBlock Classes="denseTableCell" Text="{Binding Identity}"
                                                TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"

@@ -2709,6 +2709,10 @@ Never included unless you tick it in the preview: local details, which may conta
     <value>Copy the starter prompt</value>
     <comment>Accessible name (read aloud by screen readers) of a control on the AI Handoff panel: "Copy the starter prompt". Not visible on screen.</comment>
   </data>
+  <data name="MotifApp.DifferenceEmptyState" xml:space="preserve">
+    <value>Nothing to compare yet. Once two runs can be compared, the words that moved between cells are listed here.</value>
+    <comment>Shown in place of the What changed list when there is no comparison between two runs to show.</comment>
+  </data>
   <data name="MotifApp.MovesBetweenCellsWorstFirstAccessibleName" xml:space="preserve">
     <value>Moves between cells, worst first</value>
     <comment>Accessible name (read by screen readers) on the Proposal difference panel.</comment>

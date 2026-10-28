@@ -10,6 +10,7 @@
     <StaticResource x:Key="Component.Parsimony.Column.DecisionsWidth" ResourceKey="Primitive.Size.110" />
     <StaticResource x:Key="Component.Parsimony.SidePanelWidth" ResourceKey="Primitive.Size.320" />
     <StaticResource x:Key="Component.Parsimony.InspectorWidth" ResourceKey="Primitive.Size.320" />
+    <StaticResource x:Key="Component.Parsimony.RowHeight" ResourceKey="Primitive.Size.Unset" />
   </Styles.Resources>
 
 </Styles>

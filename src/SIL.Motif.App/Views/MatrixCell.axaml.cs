@@ -19,8 +19,12 @@ public sealed partial class MatrixCell : UserControl
     public MatrixCell()
     {
         AvaloniaXamlLoader.Load(this);
-        SizeChanged += (_, e) => this.FindControl<Border>("CellBox")!.Classes.Set("narrow",
-            e.NewSize.Width < (double)this.FindResource("Component.MatrixCell.UnitMinWidth")!);
+        SizeChanged += (_, e) =>
+        {
+            var box = this.FindControl<Border>("CellBox")!;
+            box.Classes.Set("narrow", e.NewSize.Width < (double)this.FindResource("Component.MatrixCell.UnitMinWidth")!);
+            box.Classes.Set("tight", e.NewSize.Width < (double)this.FindResource("Component.MatrixCell.LabelBesideMinWidth")!);
+        };
     }
 
     /// <summary>Whether this cell shows its label, places, and refusal details.</summary>

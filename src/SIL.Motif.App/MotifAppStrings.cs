@@ -1511,6 +1511,8 @@ public static class MotifAppStrings
 
     public static string CopyTheStarterPromptAccessibleName => Text("MotifApp.CopyTheStarterPromptAccessibleName");
 
+    public static string DifferenceEmptyState => Text("MotifApp.DifferenceEmptyState");
+
     public static string MovesBetweenCellsWorstFirstAccessibleName => Text("MotifApp.MovesBetweenCellsWorstFirstAccessibleName");
 
     public static string WordsInTheChosenMoveAccessibleName => Text("MotifApp.WordsInTheChosenMoveAccessibleName");

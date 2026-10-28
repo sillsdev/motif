@@ -18,6 +18,7 @@
     <StaticResource x:Key="Component.MatrixCell.HiddenPlacesSize" ResourceKey="Primitive.Space.0" />
     <StaticResource x:Key="Component.MatrixCell.MarkerSize" ResourceKey="Primitive.Size.8" />
     <StaticResource x:Key="Component.MatrixCell.UnitMinWidth" ResourceKey="Primitive.Size.48" />
+    <StaticResource x:Key="Component.MatrixCell.LabelBesideMinWidth" ResourceKey="Primitive.Size.110" />
     <StaticResource x:Key="Component.MatrixCell.CompactWidth" ResourceKey="Primitive.Size.40" />
     <StaticResource x:Key="Component.MatrixCell.CompactHeight" ResourceKey="Primitive.Size.22" />
     <StaticResource x:Key="Component.MatrixCell.MarkerMargin" ResourceKey="Primitive.Inset.0_0_4_0" />
@@ -68,6 +69,15 @@
   </Style>
   <Style Selector="Border.matrixCell :is(TextBlock).matrixCellLabel">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
+    <Setter Property="TextWrapping" Value="Wrap" />
+  </Style>
+  <!-- A cell too narrow to hold its places and its label side by side puts the label on its own line and trims it, so no word breaks inside. -->
+  <Style Selector="Border.matrixCell.tight :is(TextBlock).matrixCellLabel">
+    <Setter Property="Grid.Row" Value="1" />
+    <Setter Property="Grid.Column" Value="0" />
+    <Setter Property="Grid.ColumnSpan" Value="2" />
+    <Setter Property="TextWrapping" Value="NoWrap" />
+    <Setter Property="TextTrimming" Value="CharacterEllipsis" />
   </Style>
   <Style Selector="Border.matrixCell.compact">
     <Setter Property="Width" Value="{DynamicResource Component.MatrixCell.CompactWidth}" />

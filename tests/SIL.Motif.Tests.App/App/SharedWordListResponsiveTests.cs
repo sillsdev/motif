@@ -90,6 +90,58 @@ public sealed class SharedWordListResponsiveTests
     public void DifferenceActionsStayVisibleAndReceivePointerBeforeFocus() => CheckActions(DifferenceScene);
 
     [Fact]
+    public void MatrixCellLabelsNeverBreakInsideAWord()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var failures = new List<string>();
+            var measured = 0;
+            await VisitWordListScenes(async (scene, _, _, window) =>
+            {
+                await Task.CompletedTask;
+                foreach (var size in Sizes)
+                {
+                    ApplySize(window, size, Themes[0]);
+                    var labels = window.GetVisualDescendants().OfType<TextBlock>()
+                        .Where(text => text.Classes.Contains("matrixCellLabel") && text.IsEffectivelyVisible
+                            && !string.IsNullOrEmpty(text.Text) && text.Bounds.Width > 0).ToArray();
+                    measured += labels.Length;
+                    foreach (var label in labels)
+                    {
+                        var broken = MidWordBreaks(label);
+                        if (broken is not null)
+                            failures.Add($"640x{size.Height} at {size.Zoom}%: '{label.Text}' breaks inside '{broken}' in a {label.Bounds.Width:0.#} px cell label.");
+                    }
+                }
+            }, [Scenes[0]]);
+
+            Assert.True(measured > 0, "No visible Matrix cell label was measured.");
+            Assert.True(failures.Count == 0, string.Join(Environment.NewLine, failures));
+        }, TimeSpan.FromMinutes(3));
+    }
+
+    // A line break with no whitespace at the join splits a word.
+    private static string? MidWordBreaks(TextBlock label)
+    {
+        var text = label.Text!;
+        var lines = label.TextLayout.TextLines;
+        for (var index = 1; index < lines.Count; index++)
+        {
+            var start = lines[index].FirstTextSourceIndex;
+            if (start <= 0 || start >= text.Length) continue;
+            if (!char.IsWhiteSpace(text[start - 1]) && !char.IsWhiteSpace(text[start]))
+            {
+                var from = start;
+                while (from > 0 && !char.IsWhiteSpace(text[from - 1])) from--;
+                var to = start;
+                while (to < text.Length && !char.IsWhiteSpace(text[to])) to++;
+                return text[from..to];
+            }
+        }
+        return null;
+    }
+
+    [Fact]
     public void ReviewChangesKeepTheirDenseTableBodyVisibleAcrossZoomAndThemes()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>

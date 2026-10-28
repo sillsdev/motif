@@ -22,10 +22,10 @@
         <TextBlock Classes="matrixCellCount" Text="{Binding CountNumberText}" AutomationProperties.AutomationId="{x:Static app:AutomationIds.MatrixCellCount}" />
         <StackPanel x:Name="CellDetails" Classes="matrixCellDetails">
           <TextBlock Classes="matrixCellUnit" Text="{Binding CountUnitText}" />
-          <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Intent.Space.Compact}">
+          <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" ColumnSpacing="{DynamicResource Intent.Space.Compact}">
             <TextBlock Classes="matrixCellPlaces" Text="{Binding PlacesText}" IsVisible="{Binding ShowsPlaces}" AutomationProperties.AutomationId="{x:Static app:AutomationIds.MatrixCellPlaces}" />
             <TextBlock Grid.Column="1" Classes="matrixCellLabel" Text="{Binding Label}" AutomationProperties.AutomationId="{x:Static app:AutomationIds.MatrixCellLabel}"
-                       IsVisible="{Binding ShowsLabel}" TextWrapping="Wrap" />
+                       IsVisible="{Binding ShowsLabel}" />
           </Grid>
           <views:MarkChip Mark="{Binding RefusalMark}" Text="{Binding RefusalBadgeText}" Compact="True"
                           WrapText="True" IsVisible="{Binding HasRefusals}" HorizontalAlignment="Stretch" />

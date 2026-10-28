@@ -6,5 +6,6 @@
     <StaticResource x:Key="Component.Statistics.CellMargin" ResourceKey="Primitive.Inset.4_2_4_2" />
     <StaticResource x:Key="Component.Statistics.ViewportHeight" ResourceKey="Primitive.Size.480" />
     <StaticResource x:Key="Component.Statistics.MinimumViewportHeight" ResourceKey="Primitive.Size.360" />
+    <StaticResource x:Key="Component.Statistics.CompletionMinWidth" ResourceKey="Primitive.Size.130" />
   </Styles.Resources>
 </Styles>
