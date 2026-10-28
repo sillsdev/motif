@@ -12,8 +12,8 @@
   that remains is the `pangloss` executable, a separate Rust build gated by `RealParserFactAttribute`
   -- those tests skip, rather than fail, when it is not built.
 
-  Each test project runs in one or more separate processes, with concurrent processes capped at a third of the
-  available processor count (at least two, at most eight; MOTIF_TEST_PROCESSES sets it). The gate is bound by
+  Each test project runs in one or more separate processes, with concurrent processes capped at 0.6 of the
+  available processor count and at one per 2 GB of memory (at least two, at most twelve; MOTIF_TEST_PROCESSES sets it). The gate is bound by
   total process time, and App tests run one at a time inside a process (one UI dispatcher), so the App project is
   split into many shards that run side by side. Machine-wide test slots still bound how many suites run at once. Classes that open a LibLCM cache share a serialized xUnit collection within their
   assembly, because two caches opening in one process race; a project that declares
@@ -320,7 +320,7 @@ $duplicateNames = @($testProjects | Group-Object Name | Where-Object Count -gt 1
 if ($duplicateNames.Count -gt 0) { throw "Test project names must be unique: $($duplicateNames.Name -join ', ')" }
 Import-Module (Join-Path $repoRoot 'tools/MotifTestRunPlan.psm1') -Force
 $availableProcessors = [Environment]::ProcessorCount
-# A third of the processors, at most eight; see the help text. MOTIF_TEST_PROCESSES overrides.
+# 0.6 of the processors, one per 2 GB, at most twelve; see the help text. MOTIF_TEST_PROCESSES overrides.
 $projectConcurrency = Get-MotifTestProcessConcurrency -ProcessorCount $availableProcessors
 # The biggest projects start first, so the throttle does not leave one long shard running alone at the end.
 $testRuns = @(foreach ($testProject in @($testProjects | Sort-Object -Property Shards -Descending)) {
