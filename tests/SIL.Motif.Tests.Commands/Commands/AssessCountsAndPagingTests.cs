@@ -6,6 +6,7 @@ using System.Text.Json.Nodes;
 using SIL.Motif.Commands.Assess;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Host.Parser;
 using Xunit;
 
 namespace SIL.Motif.Tests.Commands;
@@ -41,6 +42,25 @@ public sealed class AssessCountsAndPagingTests
         var counts = AssessmentCounts.Of(Fixture());
 
         Assert.Equal(new AssessmentCounts(7, 3, 1, 1, 1, 1, Accepted: 2, GuessOnly: 1), counts);
+    }
+
+    [Fact]
+    public void RecordedWordsUseTheSameStopCountsAsTheAssessmentResponse()
+    {
+        var recorded = new[]
+        {
+            new AssessedWord("finished", "no-analysis", []),
+            new AssessedWord("time", "timed-out", []),
+            new AssessedWord("cap", "capped", []),
+            new AssessedWord("invalid", "skipped", []),
+        };
+        var responseRows = recorded.Select(word => Word(word.Word, word.Outcome));
+        var expected = AssessmentCounts.Of(responseRows);
+
+        Assert.Equal(expected, AssessSummary.Counts(recorded));
+        Assert.Equal(1, expected.TimedOut);
+        Assert.Equal(1, expected.Capped);
+        Assert.Equal(1, expected.Skipped);
     }
 
     [Fact]

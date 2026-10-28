@@ -85,7 +85,9 @@ internal static class TrialResults
                     ["words"] = new JsonArray(words.Take(5).Select(row => (JsonNode)JsonValue.Create(row.Word)!).ToArray()) };
             }
             summary["counts"] = new JsonObject { ["before"] = pair.Before.Words!.Count, ["after"] = pair.After.Words!.Count,
-                ["changed"] = storedRows.Count };
+                ["changed"] = storedRows.Count,
+                ["beforeOutcomes"] = ProjectionJson.ToNode(AssessSummary.Counts(pair.Before.Words!)),
+                ["afterOutcomes"] = ProjectionJson.ToNode(AssessSummary.Counts(pair.After.Words!)) };
             var measuredBaseline = JsonSerializer.Deserialize<SIL.Motif.Contract.Baselines.BaselineToken>(pair.After.BaselineToken,
                 MotifJson.CreateOptions());
             var currentProposal = new ProposalRepository(database).Get(proposal.ProposalId);

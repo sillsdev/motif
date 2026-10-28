@@ -30,6 +30,12 @@ JSON returns the Baseline, Selection, and Assessment results. Each word's `compa
 
 The comparison's `availability` distinguishes `Available` (analysis identities were compared), `RecordedGradesOnly` (recorded reading grades are known, but matched analysis identities are unknown), and `Unavailable` (no morphology comparison was recorded or reconstructed). Unavailable evidence is not a known empty set. An incomplete search makes no claim that an Approved or undecided analysis was not built. No grammar verdict is inferred from the measurements.
 
+## Limits
+
+Assess and Trial use the Default Selection's per-word step cap and time policy, including for a supplied word list. A Trial's automatic before Assessment uses the exact limits frozen for the Trial. A time stop can vary with machine load; compare `capped` and `timedOut` separately, and inspect the recorded limits before comparing independent runs. A stopped word is not evidence that no analysis exists.
+
+An external scheduler may also impose a whole-run deadline. Set that deadline for the size of this particular run; it is separate from the per-word parser limits. A wrapper's deadline must actually apply to the chosen priority and environment. A deadline that cancels the run leaves no complete Assessment.
+
 ## A large list
 
 `--words <file>` reads a UTF-8 file with one word per line, so a list of thousands of words needs no other preparation. The full JSON result grows with the list. Add `--summary` to print only the counts and one page of words, each with its outcome and whether its reading was accepted or guess-only; `--offset <n>` and `--limit <n>` choose the page (default 25 words from the start), and the output says which words it shows, such as “showing 1-25 of 7206”. The Assessment is stored whole either way.

@@ -40,6 +40,20 @@ public sealed class TrialBaselineLimitsTests : IDisposable
     }
 
     [Fact]
+    public void AssessingNamedWordsUsesTheSameSavedLimitsAsATrial()
+    {
+        SaveDefault(SelectionLimitPolicy.Explicit(new StepCap(5000), 2500));
+        var assess = TrialBaselines.Assess(_project.FwDataPath, [SeededProject.FirstForm],
+            _project.ManagedRoot, _parser, CancellationToken.None);
+        Assert.True(assess.Succeeded, assess.Refusal?.Message);
+        var (_, trial) = RunPair(NewRequest());
+        using var database = ProjectMotifDatabase.Open(_project.FwDataPath);
+        var before = new AssessmentRepository(database).Get(assess.Value!.Measurements
+            .First(item => item.Kind == "ParseTime").AssessmentId);
+        AssertLimits(before, trial, new StepCap(5000), 2500);
+    }
+
+    [Fact]
     public void AutomaticBaselineAndTrialPreserveExplicitRequestLimitsOverTheSavedSelection()
     {
         SaveDefault(SelectionLimitPolicy.Explicit(new StepCap(5000), 2500));
@@ -59,8 +73,7 @@ public sealed class TrialBaselineLimitsTests : IDisposable
 
         var (before, trial) = RunPair(NewRequest() with { Limits = supplied });
 
-        Assert.Equal(new StepCap(123), before.Invocation!.PerWordStepLimit);
-        Assert.Equal(supplied, trial.Limits);
+        AssertLimits(before, trial, new StepCap(123), null);
     }
 
     [Fact]

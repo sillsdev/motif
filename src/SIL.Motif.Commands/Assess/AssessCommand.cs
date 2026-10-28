@@ -90,11 +90,16 @@ public static class AssessCommand
     public static CommandOutcome<AssessCommandResponse> Assess(
         AssessRequest request, string managedRoot, string? parserPath,
         Action<AssessmentProgress>? onProgress, CancellationToken cancellationToken)
+        => AssessWithLimits(request, managedRoot, parserPath, onProgress, cancellationToken, null);
+
+    internal static CommandOutcome<AssessCommandResponse> AssessWithLimits(
+        AssessRequest request, string managedRoot, string? parserPath,
+        Action<AssessmentProgress>? onProgress, CancellationToken cancellationToken, TrialLimits? limits)
     {
         var ownership = WorkspaceOwnership.Bootstrap(managedRoot);
         using var invoker = new PanGlossInvoker(parserPath);
         var assessor = new LazyPanGlossAssessor(() => new PanGlossAssessor(new StatsCacheStore(ownership), invoker));
-        return Run(request, managedRoot, assessor, invoker, onProgress, cancellationToken);
+        return RunCore(request, managedRoot, assessor, invoker, onProgress, cancellationToken, null, limits);
     }
 
     /// <summary>
@@ -118,7 +123,7 @@ public static class AssessCommand
 
     private static CommandOutcome<AssessCommandResponse> RunCore(
         AssessRequest request, string managedRoot, IAssessor assessor, IPanGlossInvoker invoker,
-        Action<AssessmentProgress>? onProgress, CancellationToken cancellationToken, ProjectParseLease? admission)
+        Action<AssessmentProgress>? onProgress, CancellationToken cancellationToken, ProjectParseLease? admission, TrialLimits? frozenLimits = null)
     {
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(assessor);
@@ -172,8 +177,7 @@ public static class AssessCommand
 
             SelectionRequest selectionRequest;
             string? namedSelection = null;
-            SelectionParsingLimits? defaultLimits = null;
-            var usesDefaultSelection = request.Selection is null;
+            SelectionParsingLimits? defaultLimits = namedSelections.GetDefault()?.Limits;
             if (request.Selection is null)
             {
                 var saved = namedSelections.GetDefault();
@@ -255,14 +259,17 @@ public static class AssessCommand
                         "assess.unsupported-kind", FailureReason.Refused,
                         $"The Assessor does not declare required Assessment kind '{unsupported[0]}'.",
                         new Dictionary<string, string> { ["kind"] = unsupported[0].ToString() }));
-                var stepLimit = request.PerWordStepLimit ?? selectionRequest.PerWordStepLimit ?? configured.PerWordStepLimit;
-                TimeSpan? timeLimit = request.PerWordLimitMs is { } ms
-                    ? TimeSpan.FromMilliseconds(ms)
-                    : stepLimit.IsUnbounded ? null
-                    : usesDefaultSelection && defaultLimits?.TimeMode == SelectionTimeLimitMode.Explicit
-                        ? TimeSpan.FromMilliseconds(defaultLimits.ExplicitPerWordLimitMs!.Value)
-                        : ParseRunLimits.SafetyNetTime(stepLimit, ParseRunLimits.ReadRate(assessments));
-                scope = new AssessmentScope.Words(composition.Selection.Words, collected, timeLimit, stepLimit);
+                var stepLimit = request.PerWordStepLimit ?? selectionRequest.PerWordStepLimit ??
+                    defaultLimits?.PerWordStepLimit ?? configured.PerWordStepLimit;
+                var policy = defaultLimits is null
+                    ? SelectionLimitPolicy.Estimated(stepLimit)
+                    : defaultLimits with { PerWordStepLimit = stepLimit };
+                var limits = frozenLimits ?? (request.PerWordLimitMs is { } ms
+                    ? new TrialLimits(TimeSpan.FromMilliseconds(ms), stepLimit)
+                    : ParseRunLimits.Resolve(policy, ParseRunLimits.ReadRate(assessments)));
+                scope = new AssessmentScope.Words(composition.Selection.Words, collected,
+                    limits.PerWordLimit, limits.PerWordStepLimit);
+                var timeLimit = limits.PerWordLimit;
                 var latestWordProgress = new TrialWordProgress(0, scope.WordForms.Count, null);
                 onProgress?.Invoke(new AssessmentProgress(
                     AssessmentStage.Parsing, 0, composition.Selection.Words.Count, "Parsing the Selection...")

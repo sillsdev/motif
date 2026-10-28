@@ -23,11 +23,9 @@ public static class TrialBaselines
     /// <summary>Measures the before words under the deterministic limits chosen for their Trial.</summary>
     internal static CommandOutcome<AssessCommandResponse> Assess(string projectPath, IReadOnlyList<string> words,
         string managedRoot, string? parserPath, CancellationToken cancellationToken, TrialLimits? limits) =>
-        AssessCommand.Assess(new AssessRequest(projectPath,
-            words.Count == 0 ? null : new SelectionRequest(false, [], words, false, null),
-            PerWordLimitMs: limits?.PerWordLimit is { } time ? (int)time.TotalMilliseconds : null,
-            PerWordStepLimit: limits?.PerWordStepLimit),
-            managedRoot, parserPath ?? PanGlossExecutable.TryLocate(), null, cancellationToken);
+        AssessCommand.AssessWithLimits(new AssessRequest(projectPath,
+            words.Count == 0 ? null : new SelectionRequest(false, [], words, false, null)),
+            managedRoot, parserPath ?? PanGlossExecutable.TryLocate(), null, cancellationToken, limits);
 
     /// <summary>
     /// Queues a Trial that carries its Baseline Assessments, so <c>difference produce</c> has a before side.

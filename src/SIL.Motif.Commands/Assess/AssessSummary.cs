@@ -24,6 +24,10 @@ public static class AssessSummary
         int limit, bool detailed) =>
         Build(assessmentId, words.Select(AssessmentWordRows.FromRecorded).ToArray(), null, offset, limit, detailed);
 
+    /// <summary>Counts recorded words using the same outcome categories as an Assessment response.</summary>
+    public static AssessmentCounts Counts(IReadOnlyList<AssessedWord> words) =>
+        AssessmentCounts.Of(words.Select(AssessmentWordRows.FromRecorded));
+
     private static JsonObject Build(string? assessmentId, IReadOnlyList<AssessmentWordResult> words,
         string? invocationId, int offset, int limit, bool detailed)
     {
