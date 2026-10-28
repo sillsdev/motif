@@ -567,27 +567,24 @@ public sealed class InspectorTests
             var raw = System.IO.File.ReadAllText(System.IO.Path.Combine(AppContext.BaseDirectory,
                 "TestFixtures", $"trace-details-v3-{word}.json"));
             var response = WordTraceQuery.LoadDiagnostic(raw).Value!;
-            var (workspace, window) = await PageScreenshots.OpenOverSampleData(parse: false);
-            try
-            {
-                var step = Steps(response.Reading.Root).Single(item => item.EventEvidence?.ProducerStepId == producerId);
-                var selected = new TraceStepViewModel(step, null, refs: response.Reading.Refs.ToDictionary(item => item.Id));
-                Assert.NotNull(selected.InspectSubject);
-                workspace.Context.OpenInspector(selected.InspectSubject!, word,
-                    new InspectorTrace(word, null), selected.Captured);
-                await workspace.Inspector.Loading;
-                Settle(window);
-                Assert.True(workspace.Inspector.IsOpen);
-                Assert.Equal($"In this trace of {word}", workspace.Inspector.TraceTitle);
-                var details = workspace.Inspector.TraceDetails;
-                Assert.Contains(details, detail => detail.Label == "Producer event ID" && detail.Value == producerId);
-                Assert.Contains(details, detail => detail.Value.Contains(firstOperand, StringComparison.Ordinal) &&
-                    detail.Value.Contains(secondOperand, StringComparison.Ordinal));
-                if (subrule is not null)
-                    Assert.Contains(details, detail => detail.Label == "Subrule" && detail.Value == subrule.ToString());
-                Assert.DoesNotContain(workspace.Inspector.Facts, detail => detail.Value.Contains(firstOperand, StringComparison.Ordinal));
-            }
-            finally { window.Close(); }
+            await using var sample = await SampleWorkspace.Open(parse: false);
+            var workspace = sample.Workspace;
+            var step = Steps(response.Reading.Root).Single(item => item.EventEvidence?.ProducerStepId == producerId);
+            var selected = new TraceStepViewModel(step, null, refs: response.Reading.Refs.ToDictionary(item => item.Id));
+            Assert.NotNull(selected.InspectSubject);
+            workspace.Context.OpenInspector(selected.InspectSubject!, word,
+                new InspectorTrace(word, null), selected.Captured);
+            await workspace.Inspector.Loading;
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            Assert.True(workspace.Inspector.IsOpen);
+            Assert.Equal($"In this trace of {word}", workspace.Inspector.TraceTitle);
+            var details = workspace.Inspector.TraceDetails;
+            Assert.Contains(details, detail => detail.Label == "Producer event ID" && detail.Value == producerId);
+            Assert.Contains(details, detail => detail.Value.Contains(firstOperand, StringComparison.Ordinal) &&
+                detail.Value.Contains(secondOperand, StringComparison.Ordinal));
+            if (subrule is not null)
+                Assert.Contains(details, detail => detail.Label == "Subrule" && detail.Value == subrule.ToString());
+            Assert.DoesNotContain(workspace.Inspector.Facts, detail => detail.Value.Contains(firstOperand, StringComparison.Ordinal));
         }, Deadline);
 
         static IEnumerable<TraceStep> Steps(TraceStep step) => new[] { step }.Concat(step.Children.SelectMany(Steps));

@@ -45,7 +45,7 @@ public sealed class OverviewTileNavigationTests
     {
         AvaloniaHeadlessFixture.RunUntilComplete(() =>
         {
-            var (workspace, window) = FakeComposedWindow.Create();
+            var workspace = FakeComposedWindow.CreateWorkspace();
             try
             {
                 var cells = (IReadOnlyList<TextsListCell>)[
@@ -61,7 +61,7 @@ public sealed class OverviewTileNavigationTests
             }
             finally
             {
-                Close(workspace, window);
+                workspace.DisposeAsync().AsTask().GetAwaiter().GetResult();
             }
 
             return Task.CompletedTask;

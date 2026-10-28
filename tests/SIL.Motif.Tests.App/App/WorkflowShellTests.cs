@@ -551,7 +551,7 @@ public sealed class WorkflowShellTests
         var notificationThread = -1;
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (workspace, window) = NewComposedWindow();
+            var workspace = NewWorkspace();
             try
             {
                 owningThread = Environment.CurrentManagedThreadId;
@@ -569,7 +569,6 @@ public sealed class WorkflowShellTests
             }
             finally
             {
-                window.Close();
                 await workspace.DisposeAsync();
             }
         }, TimeSpan.FromSeconds(10));
