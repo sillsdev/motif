@@ -28,7 +28,9 @@ public sealed class PostApplyBaselineRefreshTests(PristineProjectFixture pristin
             var start = CliProcess.Start(options, arguments);
             start.Environment[CommandSurfacePolicy.DeveloperCommandsEnvironmentVariable] = "1";
             CliProcess.EnableAdvancedAiMode(start, root);
-            var result = await CliProcess.RunAsync(start);
+            var result = arguments[0] is "dry-run" or "apply"
+                ? await CliProcess.RunAsync(start)
+                : SIL.Motif.Tests.Cli.CliInProcess.Run(start, arguments);
             output.WriteLine($"{arguments[0]} exit={result.ExitCode}; stdout={result.Output}; stderr={result.Error}");
             return result;
         }

@@ -70,8 +70,11 @@ public sealed class BlankProjectFirstProposalTests(ITestOutputHelper output)
             foreach (var letter in new[] { "k", "w", "a", "h", "e", "r", "i", "t" })
             {
                 var intent = JsonSerializer.Serialize(new { name = letter, representations = new[] { letter } });
-                var composed = await RunAsync(runner, preferencePath, "compose-author-phoneme",
-                    "--project", projectPath, "--draft", draft, "--intent", intent);
+                string[] arguments = ["compose-author-phoneme", "--project", projectPath,
+                    "--draft", draft, "--intent", intent];
+                var composed = letter == "k"
+                    ? await RunAsync(runner, preferencePath, arguments)
+                    : RunInProcess(runner, preferencePath, arguments);
                 Report("compose " + letter, composed);
                 Assert.True(composed.ExitCode == 0, composed.Error + Environment.NewLine + composed.Output);
             }
@@ -132,5 +135,15 @@ public sealed class BlankProjectFirstProposalTests(ITestOutputHelper output)
         start.Environment[FileAdvancedAiModePreferenceStore.PathEnvironmentVariable] = preferencePath;
         start.Environment[SIL.Motif.Commands.Catalog.CommandSurfacePolicy.DeveloperCommandsEnvironmentVariable] = "1";
         return CliProcess.RunAsync(start);
+    }
+
+    private static (int ExitCode, string Output, string Error) RunInProcess(
+        JobRunnerLaunchOptions runner, string preferencePath, params string[] arguments)
+    {
+        var start = CliProcess.Start(runner, arguments);
+        start.Environment[FileAdvancedAiModePreferenceStore.PathEnvironmentVariable] = preferencePath;
+        start.Environment[SIL.Motif.Commands.Catalog.CommandSurfacePolicy.DeveloperCommandsEnvironmentVariable] = "1";
+        var result = CliInProcess.Run(start, arguments);
+        return (result.ExitCode, result.Output, result.Error);
     }
 }

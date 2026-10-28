@@ -46,7 +46,7 @@ using Xunit;
 namespace SIL.Motif.Tests.Cli;
 
 [Collection(LcmCacheParallelCollections.Group0)]
-public sealed class ComposeRecordParsimonyDispositionTests : IDisposable
+public sealed class ComposeRecordParsimonyDispositionTests : IDisposable, IClassFixture<ComposeRecordParsimonyDispositionTests.ProjectFixture>
 {
     private const string ProductVersion = "0.1.0";
     private readonly string _root = Path.Combine(Path.GetTempPath(), "motif-record-disposition-" + Guid.NewGuid().ToString("N"));
@@ -60,108 +60,141 @@ public sealed class ComposeRecordParsimonyDispositionTests : IDisposable
     private readonly RecipeObjectIds _recipeObjects;
     private readonly string _negativeCaseId;
 
-    public ComposeRecordParsimonyDispositionTests(PristineProjectFixture pristine)
+    public sealed class ProjectFixture : IDisposable
+    {
+        private readonly PristineProjectFixture _pristine = new();
+        internal readonly string ProjectPath;
+        internal readonly CanonicalId RecordTypeId;
+        internal readonly string[] MemberGuids;
+        internal readonly string EntryGuid;
+        internal readonly string MsaId;
+        internal readonly RecipeObjectIds RecipeObjects;
+        internal readonly string NegativeCaseId;
+
+        public ProjectFixture()
+        {
+            var pristine = _pristine;
+            ProjectPath = pristine.CopyProjectFile();
+            using var cache = new FwDataProjectLoader().LoadCache(ProjectPath);
+            ICmPossibility recordType = null!;
+            IMoStemAllomorph duplicate = null!;
+            IMoInflAffMsa recipeMsa = null!;
+            IMoInflAffMsa secondRecipeMsa = null!;
+            IMoInflAffMsa thirdRecipeMsa = null!;
+            IMoInflAffMsa fourthRecipeMsa = null!;
+            IMoInflAffixSlot recipeSlot = null!;
+            IMoInflAffixSlot secondRecipeSlot = null!;
+            IMoInflAffixTemplate recipeTemplate = null!;
+            IPhNCSegments recipeNaturalClass = null!;
+            IMoMorphAdhocProhib[] recipeProhibitions = [];
+            string[] alternationMembers = [];
+            IWfiWordform caseWordform = null!;
+            string[] memberGuids = [];
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            {
+                var notebook = cache.LangProject.ResearchNotebookOA;
+                var recordTypes = notebook.RecTypesOA ?? cache.ServiceLocator
+                    .GetInstance<ICmPossibilityListFactory>().Create();
+                notebook.RecTypesOA = recordTypes;
+                recordType = cache.ServiceLocator.GetInstance<ICmPossibilityFactory>().Create();
+                recordTypes.PossibilitiesOS.Add(recordType);
+                recordType.Name.set_String(cache.DefaultAnalWs,
+                    TsStringUtils.MakeString("Motif human judgment", cache.DefaultAnalWs));
+
+                var entry = cache.ServiceLocator.GetInstance<ILexEntryRepository>()
+                    .GetObject(pristine.Seed.FirstEntryId);
+                var original = Assert.IsAssignableFrom<IMoStemAllomorph>(entry.LexemeFormOA);
+                duplicate = cache.ServiceLocator.GetInstance<IMoStemAllomorphFactory>().Create();
+                entry.AlternateFormsOS.Add(duplicate);
+                duplicate.Form.set_String(cache.DefaultVernWs, "another-form");
+                memberGuids = [original.Guid.ToString("D"), duplicate.Guid.ToString("D")];
+
+                var firstEntry = cache.ServiceLocator.GetInstance<ILexEntryRepository>()
+                    .GetObject(pristine.Seed.FirstEntryId);
+                var secondEntry = cache.ServiceLocator.GetInstance<ILexEntryRepository>()
+                    .GetObject(pristine.Seed.SecondEntryId);
+                var category = cache.ServiceLocator.GetInstance<IPartOfSpeechRepository>()
+                    .GetObject(pristine.Seed.PartOfSpeechId);
+                recipeMsa = cache.ServiceLocator.GetInstance<IMoInflAffMsaFactory>().Create(
+                    firstEntry, SandboxGenericMSA.Create(MsaType.kInfl, category));
+                secondRecipeMsa = cache.ServiceLocator.GetInstance<IMoInflAffMsaFactory>().Create(
+                    secondEntry, SandboxGenericMSA.Create(MsaType.kInfl, category));
+                thirdRecipeMsa = cache.ServiceLocator.GetInstance<IMoInflAffMsaFactory>().Create(
+                    firstEntry, SandboxGenericMSA.Create(MsaType.kInfl, category));
+                fourthRecipeMsa = cache.ServiceLocator.GetInstance<IMoInflAffMsaFactory>().Create(
+                    secondEntry, SandboxGenericMSA.Create(MsaType.kInfl, category));
+                recipeSlot = cache.ServiceLocator.GetInstance<IMoInflAffixSlotFactory>().Create();
+                category.AffixSlotsOC.Add(recipeSlot);
+                recipeSlot.Name.set_String(cache.DefaultAnalWs, "Recipe position");
+                secondRecipeSlot = cache.ServiceLocator.GetInstance<IMoInflAffixSlotFactory>().Create();
+                category.AffixSlotsOC.Add(secondRecipeSlot);
+                secondRecipeSlot.Name.set_String(cache.DefaultAnalWs, "Following position");
+                recipeMsa.SlotsRC.Add(recipeSlot);
+                thirdRecipeMsa.SlotsRC.Add(recipeSlot);
+                secondRecipeMsa.SlotsRC.Add(secondRecipeSlot);
+                fourthRecipeMsa.SlotsRC.Add(secondRecipeSlot);
+                recipeTemplate = cache.ServiceLocator.GetInstance<IMoInflAffixTemplateFactory>().Create();
+                category.AffixTemplatesOS.Add(recipeTemplate);
+                recipeTemplate.Name.set_String(cache.DefaultAnalWs, "Recipe order");
+                recipeTemplate.SuffixSlotsRS.Add(recipeSlot);
+                recipeTemplate.SuffixSlotsRS.Add(secondRecipeSlot);
+
+                recipeNaturalClass = cache.ServiceLocator.GetInstance<IPhNCSegmentsFactory>().Create();
+                cache.LangProject.PhonologicalDataOA.NaturalClassesOS.Add(recipeNaturalClass);
+                recipeNaturalClass.Name.set_String(cache.DefaultAnalWs, "Recipe segment class");
+
+                recipeProhibitions = [
+                    CreateMorphemeProhibition(cache, recipeMsa, secondRecipeMsa),
+                    CreateMorphemeProhibition(cache, thirdRecipeMsa, fourthRecipeMsa),
+                ];
+                alternationMembers = CreateAlternationFamily(cache, category);
+                caseWordform = cache.ServiceLocator.GetInstance<IWfiWordformFactory>().Create(
+                    TsStringUtils.MakeString("pka", cache.DefaultVernWs));
+            });
+            RecordTypeId = CanonicalId.FromGuid(recordType.Guid);
+            MemberGuids = memberGuids;
+            EntryGuid = pristine.Seed.FirstEntryId.ToString("D");
+            MsaId = CanonicalId.FromGuid(cache.ServiceLocator.GetInstance<ILexEntryRepository>()
+                .GetObject(pristine.Seed.FirstEntryId).MorphoSyntaxAnalysesOC.First().Guid).Value;
+            var caseId = Guid.NewGuid();
+            NegativeCaseId = CanonicalId.FromGuid(caseId).Value;
+            RecipeObjects = new RecipeObjectIds(
+                CanonicalId.FromGuid(recipeMsa.Guid).Value,
+                CanonicalId.FromGuid(recipeSlot.Guid).Value,
+                CanonicalId.FromGuid(recipeTemplate.Guid).Value,
+                CanonicalId.FromGuid(recipeNaturalClass.Guid).Value,
+                CanonicalId.FromGuid(cache.ServiceLocator.GetInstance<ILexEntryRepository>()
+                    .GetObject(pristine.Seed.FirstEntryId).LexemeFormOA!.Guid).Value,
+                CanonicalId.FromGuid(cache.ServiceLocator.GetInstance<ILexEntryRepository>()
+                    .GetObject(pristine.Seed.SecondEntryId).LexemeFormOA!.Guid).Value,
+                CanonicalId.FromGuid(caseWordform.Guid).Value,
+                recipeProhibitions.Select(item => CanonicalId.FromGuid(item.Guid).Value).ToArray(),
+                alternationMembers);
+            new FwDataProjectLoader().Save(cache);
+        }
+
+        public void Dispose() => _pristine.Dispose();
+    }
+
+    public ComposeRecordParsimonyDispositionTests(ProjectFixture fixture)
     {
         Directory.CreateDirectory(_root);
         _workerRoot = Path.Combine(_root, "worker");
         _preferencePath = Path.Combine(_root, "advanced-ai-mode.json");
-        _projectPath = pristine.CopyProjectFile();
-        using var cache = new FwDataProjectLoader().LoadCache(_projectPath);
-        ICmPossibility recordType = null!;
-        IMoStemAllomorph duplicate = null!;
-        IMoInflAffMsa recipeMsa = null!;
-        IMoInflAffMsa secondRecipeMsa = null!;
-        IMoInflAffMsa thirdRecipeMsa = null!;
-        IMoInflAffMsa fourthRecipeMsa = null!;
-        IMoInflAffixSlot recipeSlot = null!;
-        IMoInflAffixSlot secondRecipeSlot = null!;
-        IMoInflAffixTemplate recipeTemplate = null!;
-        IPhNCSegments recipeNaturalClass = null!;
-        IMoMorphAdhocProhib[] recipeProhibitions = [];
-        string[] alternationMembers = [];
-        IWfiWordform caseWordform = null!;
-        string[] memberGuids = [];
-        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
-        {
-            var notebook = cache.LangProject.ResearchNotebookOA;
-            var recordTypes = notebook.RecTypesOA ?? cache.ServiceLocator
-                .GetInstance<ICmPossibilityListFactory>().Create();
-            notebook.RecTypesOA = recordTypes;
-            recordType = cache.ServiceLocator.GetInstance<ICmPossibilityFactory>().Create();
-            recordTypes.PossibilitiesOS.Add(recordType);
-            recordType.Name.set_String(cache.DefaultAnalWs,
-                TsStringUtils.MakeString("Motif human judgment", cache.DefaultAnalWs));
-
-            var entry = cache.ServiceLocator.GetInstance<ILexEntryRepository>()
-                .GetObject(pristine.Seed.FirstEntryId);
-            var original = Assert.IsAssignableFrom<IMoStemAllomorph>(entry.LexemeFormOA);
-            duplicate = cache.ServiceLocator.GetInstance<IMoStemAllomorphFactory>().Create();
-            entry.AlternateFormsOS.Add(duplicate);
-            duplicate.Form.set_String(cache.DefaultVernWs, "another-form");
-            memberGuids = [original.Guid.ToString("D"), duplicate.Guid.ToString("D")];
-
-            var firstEntry = cache.ServiceLocator.GetInstance<ILexEntryRepository>()
-                .GetObject(pristine.Seed.FirstEntryId);
-            var secondEntry = cache.ServiceLocator.GetInstance<ILexEntryRepository>()
-                .GetObject(pristine.Seed.SecondEntryId);
-            var category = cache.ServiceLocator.GetInstance<IPartOfSpeechRepository>()
-                .GetObject(pristine.Seed.PartOfSpeechId);
-            recipeMsa = cache.ServiceLocator.GetInstance<IMoInflAffMsaFactory>().Create(
-                firstEntry, SandboxGenericMSA.Create(MsaType.kInfl, category));
-            secondRecipeMsa = cache.ServiceLocator.GetInstance<IMoInflAffMsaFactory>().Create(
-                secondEntry, SandboxGenericMSA.Create(MsaType.kInfl, category));
-            thirdRecipeMsa = cache.ServiceLocator.GetInstance<IMoInflAffMsaFactory>().Create(
-                firstEntry, SandboxGenericMSA.Create(MsaType.kInfl, category));
-            fourthRecipeMsa = cache.ServiceLocator.GetInstance<IMoInflAffMsaFactory>().Create(
-                secondEntry, SandboxGenericMSA.Create(MsaType.kInfl, category));
-            recipeSlot = cache.ServiceLocator.GetInstance<IMoInflAffixSlotFactory>().Create();
-            category.AffixSlotsOC.Add(recipeSlot);
-            recipeSlot.Name.set_String(cache.DefaultAnalWs, "Recipe position");
-            secondRecipeSlot = cache.ServiceLocator.GetInstance<IMoInflAffixSlotFactory>().Create();
-            category.AffixSlotsOC.Add(secondRecipeSlot);
-            secondRecipeSlot.Name.set_String(cache.DefaultAnalWs, "Following position");
-            recipeMsa.SlotsRC.Add(recipeSlot);
-            thirdRecipeMsa.SlotsRC.Add(recipeSlot);
-            secondRecipeMsa.SlotsRC.Add(secondRecipeSlot);
-            fourthRecipeMsa.SlotsRC.Add(secondRecipeSlot);
-            recipeTemplate = cache.ServiceLocator.GetInstance<IMoInflAffixTemplateFactory>().Create();
-            category.AffixTemplatesOS.Add(recipeTemplate);
-            recipeTemplate.Name.set_String(cache.DefaultAnalWs, "Recipe order");
-            recipeTemplate.SuffixSlotsRS.Add(recipeSlot);
-            recipeTemplate.SuffixSlotsRS.Add(secondRecipeSlot);
-
-            recipeNaturalClass = cache.ServiceLocator.GetInstance<IPhNCSegmentsFactory>().Create();
-            cache.LangProject.PhonologicalDataOA.NaturalClassesOS.Add(recipeNaturalClass);
-            recipeNaturalClass.Name.set_String(cache.DefaultAnalWs, "Recipe segment class");
-
-            recipeProhibitions = [
-                CreateMorphemeProhibition(cache, recipeMsa, secondRecipeMsa),
-                CreateMorphemeProhibition(cache, thirdRecipeMsa, fourthRecipeMsa),
-            ];
-            alternationMembers = CreateAlternationFamily(cache, category);
-            caseWordform = cache.ServiceLocator.GetInstance<IWfiWordformFactory>().Create(
-                TsStringUtils.MakeString("pka", cache.DefaultVernWs));
-        });
-        _recordTypeId = CanonicalId.FromGuid(recordType.Guid);
-        _memberGuids = memberGuids;
-        _entryGuid = pristine.Seed.FirstEntryId.ToString("D");
-        _msaId = CanonicalId.FromGuid(cache.ServiceLocator.GetInstance<ILexEntryRepository>()
-            .GetObject(pristine.Seed.FirstEntryId).MorphoSyntaxAnalysesOC.First().Guid).Value;
-        var caseId = Guid.NewGuid();
-        _negativeCaseId = CanonicalId.FromGuid(caseId).Value;
-        _recipeObjects = new RecipeObjectIds(
-            CanonicalId.FromGuid(recipeMsa.Guid).Value,
-            CanonicalId.FromGuid(recipeSlot.Guid).Value,
-            CanonicalId.FromGuid(recipeTemplate.Guid).Value,
-            CanonicalId.FromGuid(recipeNaturalClass.Guid).Value,
-            CanonicalId.FromGuid(cache.ServiceLocator.GetInstance<ILexEntryRepository>()
-                .GetObject(pristine.Seed.FirstEntryId).LexemeFormOA!.Guid).Value,
-            CanonicalId.FromGuid(cache.ServiceLocator.GetInstance<ILexEntryRepository>()
-                .GetObject(pristine.Seed.SecondEntryId).LexemeFormOA!.Guid).Value,
-            CanonicalId.FromGuid(caseWordform.Guid).Value,
-            recipeProhibitions.Select(item => CanonicalId.FromGuid(item.Guid).Value).ToArray(),
-            alternationMembers);
-        new FwDataProjectLoader().Save(cache);
+        var source = Path.GetDirectoryName(fixture.ProjectPath)!;
+        var destination = Path.Combine(_root, "project");
+        foreach (var directory in Directory.GetDirectories(source, "*", SearchOption.AllDirectories))
+            Directory.CreateDirectory(Path.Combine(destination, Path.GetRelativePath(source, directory)));
+        Directory.CreateDirectory(destination);
+        foreach (var file in Directory.GetFiles(source, "*", SearchOption.AllDirectories))
+            File.Copy(file, Path.Combine(destination, Path.GetRelativePath(source, file)));
+        _projectPath = Path.Combine(destination, Path.GetFileName(fixture.ProjectPath));
+        _recordTypeId = fixture.RecordTypeId;
+        _memberGuids = fixture.MemberGuids;
+        _entryGuid = fixture.EntryGuid;
+        _msaId = fixture.MsaId;
+        _recipeObjects = fixture.RecipeObjects;
+        _negativeCaseId = fixture.NegativeCaseId;
     }
 
     [Theory]
@@ -192,8 +225,11 @@ public sealed class ComposeRecordParsimonyDispositionTests : IDisposable
         };
         if (disposition == "ask") arguments.AddRange(["--question", "Should these forms remain listed?"]);
         arguments.Add("--json");
-        var cli = await CliProcess.RunAsync(CliProcess.CreateStartInfoWithAdvancedAiModePath(
-            _workerRoot, null, developerCommands: false, _preferencePath, [.. arguments]));
+        var start = CliProcess.CreateStartInfoWithAdvancedAiModePath(
+            _workerRoot, null, developerCommands: false, _preferencePath, [.. arguments]);
+        var cli = disposition == "fix"
+            ? await CliProcess.RunAsync(start)
+            : CliInProcess.Run(start, [.. arguments]);
 
         Assert.True(cli.ExitCode == 0, cli.Error + Environment.NewLine + cli.Output);
         var composed = ProjectionJson.Deserialize<ComposedOperationsResponse>(cli.Output);
@@ -253,7 +289,7 @@ public sealed class ComposeRecordParsimonyDispositionTests : IDisposable
 
     [Theory]
     [MemberData(nameof(RecipeDispositionRoutes))]
-    public async Task AFirstWaveRecipeDispositionUsesItsExactFindingWithoutEditingGrammar(
+    public void AFirstWaveRecipeDispositionUsesItsExactFindingWithoutEditingGrammar(
         string measureId, string disposition)
     {
         SeedReviewedNegativeForRecipeFinding();
@@ -278,8 +314,9 @@ public sealed class ComposeRecordParsimonyDispositionTests : IDisposable
         };
         if (disposition == "ask") arguments.AddRange(["--question", recipe.Question]);
         arguments.Add("--json");
-        var cli = await CliProcess.RunAsync(CliProcess.CreateStartInfoWithAdvancedAiModePath(
-            _workerRoot, null, developerCommands: false, _preferencePath, [.. arguments]));
+        var start = CliProcess.CreateStartInfoWithAdvancedAiModePath(
+            _workerRoot, null, developerCommands: false, _preferencePath, [.. arguments]);
+        var cli = CliInProcess.Run(start, [.. arguments]);
 
         Assert.True(cli.ExitCode == 0, cli.Error + Environment.NewLine + cli.Output);
         var composed = ProjectionJson.Deserialize<ComposedOperationsResponse>(cli.Output);
@@ -1161,7 +1198,7 @@ public sealed class ComposeRecordParsimonyDispositionTests : IDisposable
 
     private sealed record RecipeReport(string ReportId, string BundleId, ParsimonyFinding Finding);
 
-    private sealed record RecipeObjectIds(
+    internal sealed record RecipeObjectIds(
         string InflectionalMsaId,
         string SlotId,
         string TemplateId,

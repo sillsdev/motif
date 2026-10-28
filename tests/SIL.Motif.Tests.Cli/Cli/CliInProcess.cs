@@ -19,6 +19,12 @@ internal static class CliInProcess
     {
         var start = CliProcess.CreateStartInfo(workerRoot, parserPath, developerCommands);
         if (developerCommands) CliProcess.EnableAdvancedAiMode(start, workerRoot);
+        var result = Run(start, arguments);
+        return new CliProcessResult(result.ExitCode, result.Output, result.Error);
+    }
+
+    public static (int ExitCode, string Output, string Error) Run(ProcessStartInfo start, params string[] arguments)
+    {
         var environment = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
         foreach (var entry in start.Environment)
             environment[entry.Key] = entry.Value;
@@ -27,7 +33,7 @@ internal static class CliInProcess
         using var error = new StringWriter();
         var exitCode = global::SIL.Motif.Cli.Program.Run(
             arguments, output, error, environment, static (_, _) => { });
-        return new CliProcessResult(exitCode, output.ToString(), error.ToString());
+        return (exitCode, output.ToString(), error.ToString());
     }
 
     private static string[] SplitCommandLine(string commandLine)
