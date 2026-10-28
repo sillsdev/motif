@@ -99,6 +99,7 @@ public sealed class RichTooltipContentTests(ITestOutputHelper output)
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             var scenes = await TooltipScenes.Open();
+            var prior = Application.Current!.RequestedThemeVariant;
             try
             {
                 foreach (var scene in Enum.GetValues<TooltipScene>())
@@ -118,6 +119,7 @@ public sealed class RichTooltipContentTests(ITestOutputHelper output)
             }
             finally
             {
+                Application.Current!.RequestedThemeVariant = prior;
                 scenes.Close();
             }
         }, TimeSpan.FromMinutes(3));
@@ -135,18 +137,22 @@ public sealed class RichTooltipContentTests(ITestOutputHelper output)
         WindowWordsTests.AssertWindowWords(words);
     }
 
-    // A theme restyles the whole window, so each scene sets it once per theme, not once per owner.
+    // A theme restyles the whole window, so a scene starts in the theme the last one ended in and switches once.
     private static void CheckReadable(TooltipScenes scenes, IReadOnlyList<(Control Control, TooltipOwner Owner)> owners,
         List<string> failures, List<string> words, HashSet<string> gaps)
     {
         if (owners.Count == 0) return;
-        var prior = Application.Current!.RequestedThemeVariant;
+        var themes = Application.Current!.ActualThemeVariant == ThemeVariant.Dark
+            ? new[] { ThemeVariant.Dark, ThemeVariant.Light } : new[] { ThemeVariant.Light, ThemeVariant.Dark };
         try
         {
-            foreach (var theme in new[] { ThemeVariant.Light, ThemeVariant.Dark })
+            foreach (var theme in themes)
             {
-                Application.Current!.RequestedThemeVariant = theme;
-                PageScreenshots.Settle(scenes.Window);
+                if (Application.Current!.ActualThemeVariant != theme)
+                {
+                    Application.Current!.RequestedThemeVariant = theme;
+                    PageScreenshots.Settle(scenes.Window);
+                }
                 Assert.True(Application.Current.TryGetResource("Intent.Type.Small", theme, out var small));
                 foreach (var (control, owner) in owners)
                 {
@@ -171,8 +177,6 @@ public sealed class RichTooltipContentTests(ITestOutputHelper output)
         finally
         {
             foreach (var (control, _) in owners) ToolTip.SetIsOpen(control, false);
-            Application.Current!.RequestedThemeVariant = prior;
-            PageScreenshots.Settle(scenes.Window);
         }
     }
 }
