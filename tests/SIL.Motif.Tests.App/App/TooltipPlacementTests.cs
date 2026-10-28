@@ -62,12 +62,12 @@ public sealed class TooltipPlacementTests
             var prior = Application.Current!.RequestedThemeVariant;
             try
             {
+                Application.Current!.RequestedThemeVariant = ThemeVariant.Light;
                 foreach (var width in new[] { 1040, 1240 })
                 {
                     scenes.Width = width;
                     foreach (var scene in owners.Select(owner => owner.Scene).Distinct().Order())
                     {
-                        Application.Current!.RequestedThemeVariant = ThemeVariant.Light;
                         await scenes.Reach(scene);
                         if (scene == TooltipScene.ParseProgress)
                             scenes.ParseProgressStatusButton.Flyout?.Hide();
@@ -148,7 +148,6 @@ public sealed class TooltipPlacementTests
                                 control.ClearValue(ToolTip.ShowDelayProperty);
                             }
                         }
-                        Application.Current!.RequestedThemeVariant = prior;
                         await scenes.Leave(scene);
                     }
                 }
