@@ -813,6 +813,9 @@ public sealed class PageScreenshots
     /// and with <paramref name="leaveSetupOpen"/> it stops with first-run setup still showing.
     /// Component fixtures can omit shell composition with <paramref name="composeWindow"/> and build their own view.
     /// A test that never reads the selected reader token can skip seeding it with <paramref name="seedReaderToken"/>.
+    /// A composed window is attached after the sample is populated (the live window rebinding on every state change
+    /// costs several times the populate); a test that checks what the window shows while the data arrives passes
+    /// <paramref name="windowFirst"/> to attach it first.
     /// </summary>
     internal static async Task<(WorkspaceShellViewModel Workspace, MainWindow Window)> OpenOverSampleData(
         bool parse = true, Action<FakeCommandClient, AssessCommandResponse>? configure = null, bool leaveSetupOpen = false,
@@ -820,10 +823,27 @@ public sealed class PageScreenshots
         AssessCommandResponse? capturedAssessment = null, bool advancedAiModeEnabled = false, IUserPreferencesStore? preferencesStore = null,
         SIL.Motif.Commands.Assistants.IAssistantConnectionService? assistantConnections = null,
         bool renderForCapture = true, Action<string, double>? recordSetup = null, bool composeWindow = true,
-        bool activateTextsPage = true, Action<MainWindow>? configureWindow = null, bool seedReaderToken = true)
+        bool activateTextsPage = true, Action<MainWindow>? configureWindow = null, bool seedReaderToken = true,
+        bool windowFirst = false)
     {
         MainWindow? window = null;
         SampleWorkspace? sample = null;
+        if (composeWindow && !windowFirst)
+        {
+            var populated = await OpenSampleCore(parse, configure, leaveSetupOpen, capturedWords, capturedAssessment,
+                advancedAiModeEnabled, assistantConnections, recordSetup, composeWindow: false, activateTextsPage,
+                seedReaderToken, attachShell: null, settle: null);
+            IUserPreferencesStore store = preferencesStore ?? (settingsFilePath is null
+                ? new MemoryUserPreferencesStore()
+                : new FileUserPreferencesStore(settingsFilePath));
+            var late = new MainWindow(rememberBounds: false, uriLauncher: null, preferencesStore: store);
+            configureWindow?.Invoke(late);
+            late.Compose(populated.Workspace);
+            late.Closed += async (_, _) => await populated.DisposeAsync();
+            late.Show();
+            if (renderForCapture) Settle(late); else LayoutInvariantEngineTests.Settle(late);
+            return (populated.Workspace, late);
+        }
         sample = await OpenSampleCore(parse, configure, leaveSetupOpen, capturedWords, capturedAssessment,
             advancedAiModeEnabled, assistantConnections, recordSetup, composeWindow, activateTextsPage, seedReaderToken,
             attachShell: workspace =>

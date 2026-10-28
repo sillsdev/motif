@@ -902,7 +902,7 @@ public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture ava
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (workspace, window) = await AnalyzeTextsLayoutTests.OpenAnalyzeTexts();
+            var (workspace, window) = await AnalyzeTextsLayoutTests.OpenAnalyzeTexts(windowFirst: true);
             try
             {
                 var inText = workspace.PageModel<TextsPageModel>().ResultsInText;

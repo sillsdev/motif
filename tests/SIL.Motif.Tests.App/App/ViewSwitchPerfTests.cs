@@ -67,6 +67,7 @@ public sealed class ViewSwitchPerfTests
                 var preferences = new MemoryUserPreferencesStore();
                 preferences.Update(current => current with { ZoomPercent = zoom });
                 var (workspace, window) = await PageScreenshots.OpenOverSampleData(
+                    windowFirst: true,
                     activateTextsPage: false,
                     preferencesStore: preferences,
                     configureWindow: initialWindow =>
