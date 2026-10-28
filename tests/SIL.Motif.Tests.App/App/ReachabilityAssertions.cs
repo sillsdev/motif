@@ -493,6 +493,7 @@ internal static class ReachabilityAssertions
                 };
                 var needed = edge is "left" or "right" ? clearance : clearance * VerticalClearanceShare;
                 if (distance < -Tolerance || distance >= needed - Tolerance) continue;
+                if (IsScrollingBoundary(ancestors[..index], edge, box, thickness, ink, layoutRoot)) continue;
                 findings.Add(new LayoutFinding(context.Scene, context.Size, context.Zoom, context.Theme,
                     LayoutCheckNames.EdgeCrowding, Describe(text), LayoutBounds.From(ink),
                     $"{ControlIdentity(text)}:{edge}:{ControlIdentity(ancestor)}",
@@ -502,6 +503,30 @@ internal static class ReachabilityAssertions
         }
 
         return findings;
+    }
+
+    private static bool IsScrollingBoundary(IEnumerable<Control> inner, string edge, Rect box,
+        Thickness thickness, Rect ink, Visual root)
+    {
+        foreach (var viewer in inner.OfType<ScrollViewer>())
+        {
+            var viewport = BoundsIn(viewer, root);
+            var matches = edge switch
+            {
+                "left" => viewer.Offset.X > Tolerance && Math.Abs(viewport.Left - box.Left - thickness.Left) <= Tolerance
+                    && ink.Left <= viewport.Left + Tolerance,
+                "right" => viewer.Offset.X + viewer.Viewport.Width < viewer.Extent.Width - Tolerance
+                    && Math.Abs(viewport.Right - box.Right + thickness.Right) <= Tolerance
+                    && ink.Right >= viewport.Right - Tolerance,
+                "top" => viewer.Offset.Y > Tolerance && Math.Abs(viewport.Top - box.Top - thickness.Top) <= Tolerance
+                    && ink.Top <= viewport.Top + Tolerance,
+                _ => viewer.Offset.Y + viewer.Viewport.Height < viewer.Extent.Height - Tolerance
+                    && Math.Abs(viewport.Bottom - box.Bottom + thickness.Bottom) <= Tolerance
+                    && ink.Bottom >= viewport.Bottom - Tolerance,
+            };
+            if (matches) return true;
+        }
+        return false;
     }
 
     // The sides on which this ancestor draws something the eye reads as an edge.

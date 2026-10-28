@@ -215,6 +215,9 @@ function Merge-MotifCaptureBatches {
     }
     $issues = [Collections.Generic.List[string]]::new()
     foreach ($issue in $CatalogIssues) { $issues.Add($issue) }
+    foreach ($run in $Runs) {
+        foreach ($skip in $run.stageSkips) { $issues.Add("Screenshot skipped for missing stage: $skip") }
+    }
     $results = @($Batches | ForEach-Object { Read-MotifCaptureBatch $OutputDirectory $Plan $_ })
     $candidates = @($results | ForEach-Object { $_.Cells })
     $valid = @($candidates | Group-Object { Get-MotifCaptureCellKey $_.Row } | ForEach-Object {
@@ -256,15 +259,36 @@ function Invoke-MotifCaptureRun {
     Write-MotifCaptureAtomicText $Log ("Filter: $Filter`n" + ($Environment | ConvertTo-Json) + "`n")
     $saved = Set-MotifCaptureEnvironment $Environment
     try {
-        $code = & $RunTests $Filter $Log
+        $result = & $RunTests $Filter $Log
+        $stageSkips = @()
+        if ($result -is [System.Collections.IDictionary]) {
+            $code = $result.exitCode
+            $stageSkips = @($result.stageSkips)
+        }
+        else { $code = $result }
         if ($code -isnot [int] -and $code -isnot [long]) { throw 'Screenshot runner must return one integer exit code.' }
     }
     catch {
         [IO.File]::AppendAllText($Log, $_.Exception.ToString() + "`n")
         $code = 1
+        $stageSkips = @()
     }
     finally { Restore-MotifCaptureEnvironment $saved }
-    return [pscustomobject]@{ filter = $Filter; exitCode = $code; log = $Log }
+    return [pscustomobject]@{ filter = $Filter; exitCode = $code; log = $Log; stageSkips = $stageSkips }
+}
+
+function Get-MotifCaptureStageSkips {
+    param([string] $ResultsDirectory)
+
+    foreach ($file in Get-ChildItem -LiteralPath $ResultsDirectory -Filter '*.trx' -Recurse -ErrorAction SilentlyContinue) {
+        [xml] $document = [IO.File]::ReadAllText($file.FullName)
+        foreach ($result in $document.SelectNodes("//*[local-name()='UnitTestResult' and @outcome='NotExecuted']")) {
+            $reason = $result.InnerText.Trim()
+            if ($reason -match '(?i)MOTIF_[A-Z0-9_]*STAGE|stage.{0,100}(missing|unset|required)|(?:missing|unset|set|requires?).{0,100}stage') {
+                "$($result.testName): $reason"
+            }
+        }
+    }
 }
 
 function Invoke-MotifAllCaptures {
@@ -282,14 +306,33 @@ function Invoke-MotifAllCaptures {
     $runs.Add($catalog)
     try { $plan = Read-MotifCapturePlan $OutputDirectory; $batches = @(Split-MotifCaptureScenes $plan.scenes) }
     catch { $issues.Add("Capture catalog unavailable: $($_.Exception.Message)") }
+    $otherEnvironment = Get-MotifCaptureEnvironment -OutputDirectory $OutputDirectory -All
+    $otherEnvironment['MOTIF_PROPOSALS_CAPTURE_STAGE'] = 'after'
+    $prefix = 'proposals-workspace-automatic-after'
+    Get-ChildItem -LiteralPath $OutputDirectory -Filter "$prefix-*" -File -ErrorAction SilentlyContinue |
+        Remove-Item -Force
     $runs.Add((Invoke-MotifCaptureRun $RunTests 'FullyQualifiedName~Screenshot&FullyQualifiedName!~SizeMatrixScreenshots' `
-        (Join-Path $OutputDirectory 'matrix/batches/other-screenshots.log') $allEnvironment))
+        (Join-Path $OutputDirectory 'matrix/batches/other-screenshots.log') $otherEnvironment))
+    foreach ($size in @('thin640x600', 'half960x780', 'full1920x1080', 'short960x600')) {
+        foreach ($theme in @('light', 'dark')) {
+            foreach ($zoom in @(100, 150)) {
+                $file = "$prefix-$size-$theme-$zoom.png"
+                if (-not (Test-Path -LiteralPath (Join-Path $OutputDirectory $file) -PathType Leaf)) {
+                    $issues.Add("Missing Proposals capture: $file")
+                }
+            }
+        }
+    }
+    if (-not (Test-Path -LiteralPath (Join-Path $OutputDirectory "$prefix-states.txt") -PathType Leaf)) {
+        $issues.Add('Missing Proposals capture state inventory.')
+    }
     foreach ($batch in $batches) {
         Clear-MotifCaptureBatchLiveArtifacts $OutputDirectory
         $paths = Get-MotifCaptureBatchPaths $OutputDirectory $batch
         $environment = Get-MotifCaptureBatchEnvironment $OutputDirectory $plan $batch
         $run = Invoke-MotifCaptureRun $RunTests `
             'FullyQualifiedName~SizeMatrixScreenshots.CaptureScenesAtEveryMatrixSizeAndWriteAllFindings' $paths.Log $environment
+        $runs.Add($run)
         Save-MotifCaptureBatch $OutputDirectory $batch $run.exitCode
     }
     return Merge-MotifCaptureBatches $OutputDirectory $plan $batches $runs.ToArray() $issues.ToArray()

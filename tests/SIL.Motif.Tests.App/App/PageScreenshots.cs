@@ -32,7 +32,7 @@ using Xunit;
 namespace SIL.Motif.Tests.App;
 
 /// <summary>Runs only when <c>MOTIF_SCREENSHOTS</c> names a folder, so the ordinary suite never writes images.</summary>
-public sealed class ScreenshotFactAttribute : FactAttribute
+public class ScreenshotFactAttribute : FactAttribute
 {
     public const string FolderVariable = "MOTIF_SCREENSHOTS";
 
@@ -183,7 +183,7 @@ public sealed class PageScreenshots
                 Assert.Contains(window.GetVisualDescendants().OfType<CopyableTextBlock>(),
                     text => text.Text == recent.WordformCountText);
                 var folderButton = Assert.Single(window.GetVisualDescendants().OfType<HyperlinkButton>(),
-                    button => Equals(button.Content, "Open folder"));
+                    button => Equals(button.Content, SIL.Motif.App.MotifAppStrings.OpenFolder));
                 Assert.True(folderButton.IsEffectivelyEnabled,
                     $"Enabled={folderButton.IsEnabled}; command={folderButton.Command}; " +
                     $"parameter={folderButton.CommandParameter}; canExecute={folderButton.Command?.CanExecute(folderButton.CommandParameter)}; " +
@@ -260,13 +260,20 @@ public sealed class PageScreenshots
             {
                 await workspace.Project.LoadKnownProjectsAsync();
                 workspace.CurrentPage = WorkspacePage.Overview;
+                var menu = window.FindInWindowOrWorkspace<Menu>("MainMenu")!;
+                var compactMenu = menu.Items.OfType<MenuItem>().FirstOrDefault(item =>
+                    AutomationProperties.GetAutomationId(item) == SIL.Motif.App.AutomationIds.MenuButton);
+                if (compactMenu is not null)
+                {
+                    compactMenu.IsSubMenuOpen = true;
+                    Settle(window);
+                }
                 window.OpenFileMenu();
                 Settle(window);
-                window.OpenRecentMenu();
+                var recentItem = window.OpenRecentMenu();
                 Settle(window);
 
-                var submenu = Assert.Single(window.GetVisualDescendants().OfType<MenuItem>(),
-                    item => item.Name == "OpenRecentMenuItem").GetVisualDescendants().OfType<Avalonia.Controls.Primitives.Popup>().Single();
+                var submenu = recentItem.GetVisualDescendants().OfType<Avalonia.Controls.Primitives.Popup>().Single();
                 var submenuPresenter = Assert.IsAssignableFrom<Control>(submenu.Child);
                 var submenuBounds = new Rect(submenuPresenter.TranslatePoint(default, window)!.Value,
                     submenuPresenter.Bounds.Size);
@@ -336,23 +343,22 @@ public sealed class PageScreenshots
                             }
                             if (state == "stale")
                             {
-                                var renderedText = window.GetVisualDescendants().OfType<CopyableTextBlock>()
-                                    .Where(text => text.IsEffectivelyVisible)
-                                    .Select(text => text.Text?.Replace('\u202f', ' ')).ToArray();
-                                var baselineDate = WindowTimeText.Format(BaselineSaveAt, workspace.Context.Clock).Replace('\u202f', ' ');
-                                Assert.Contains(renderedText, text => text?.Contains(baselineDate, StringComparison.Ordinal) == true);
-                                if (width == 1240)
-                                    Assert.Contains(renderedText, text => text?.Contains($"Baseline of {baselineDate}", StringComparison.Ordinal) == true);
-                                else
-                                    Assert.DoesNotContain(renderedText, text => text?.Contains("Baseline of", StringComparison.Ordinal) == true);
-                                Assert.Contains(renderedText, text => text?.Contains("saved Fri 2 Oct, 6:47 PM", StringComparison.Ordinal) == true);
-                                Assert.DoesNotContain(renderedText, text => text?.Contains(
-                                    "FieldWorks has changed since the Baseline behind these numbers", StringComparison.Ordinal) == true);
                                 Assert.True(workspace.FreshnessIsStale);
                                 var card = ProjectCardAccess.Open(window);
                                 var freshnessDetail = card.GetVisualDescendants().OfType<CopyableTextBlock>().Single(text =>
                                     AutomationProperties.GetAutomationId(text) == SIL.Motif.App.AutomationIds.FreshnessDetail);
+                                Assert.True(freshnessDetail.IsEffectivelyVisible);
                                 Assert.Equal(workspace.FreshnessDetail, freshnessDetail.Text);
+                                var detail = freshnessDetail.Text!.Replace('\u202f', ' ');
+                                var baselineDate = WindowTimeText.Format(DateTimeOffset.Parse(Token().CapturedUtc), workspace.Context.Clock).Replace('\u202f', ' ');
+                                var savedDate = WindowTimeText.Format(CaptureStartAt, workspace.Context.Clock).Replace('\u202f', ' ');
+                                Assert.Contains(baselineDate, detail, StringComparison.Ordinal);
+                                Assert.Contains($"saved {savedDate}", detail, StringComparison.Ordinal);
+                                if (width == 1240)
+                                    Assert.Contains($"Baseline of {baselineDate}", detail, StringComparison.Ordinal);
+                                else
+                                    Assert.DoesNotContain("Baseline of", detail, StringComparison.Ordinal);
+                                Assert.DoesNotContain("FieldWorks has changed since the Baseline behind these numbers", detail, StringComparison.Ordinal);
                                 ProjectCardAccess.Close(window);
                             }
                             var file = $"overview-{state}-{width}-{theme}.png";

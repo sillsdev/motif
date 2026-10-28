@@ -414,13 +414,13 @@ public sealed class ReviewScreenshots
                 Save(window, Path.Combine(folder, "retirement-review-connected-four-parts.png"));
 
                 var readingTitle = Assert.Single(panel.GetVisualDescendants().OfType<CopyableTextBlock>(),
-                    control => control.Text == "Tested readings");
+                    control => control.Text == MotifAppStrings.TestedReadings);
                 ScrollTo(scroll, readingTitle);
                 PageScreenshots.Settle(window);
                 visibleTexts = window.GetVisualDescendants().OfType<CopyableTextBlock>()
                     .Where(control => control.IsEffectivelyVisible).Select(control => control.Text).ToArray();
                 Assert.Contains("The sound rule could not be traced for this reading", visibleTexts);
-                Assert.Contains("Resolved", visibleTexts);
+                Assert.Contains(string.Format(MotifAppStrings.ProblemFindingFormat, "Resolved"), visibleTexts);
                 SaveAll(window, folder, "retirement-review-reading-evidence");
 
                 // A refusal, not the stored path, so it stays a hand-built state.

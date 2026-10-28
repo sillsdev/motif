@@ -553,4 +553,4 @@ updateSheet();
 Export-ModuleMember -Function ConvertTo-MotifCaptureValues, Get-MotifCaptureEnvironment,
     Resolve-MotifCaptureOutputPath, Clear-MotifCaptureOutput, Resolve-MotifCaptureLatest, Write-MotifCaptureLatest,
     Set-MotifCaptureEnvironment, Restore-MotifCaptureEnvironment, New-MotifCaptureSheet, Split-MotifCaptureScenes, Read-MotifCapturePlan,
-    Save-MotifCaptureBatch, Merge-MotifCaptureBatches, Invoke-MotifAllCaptures
+    Save-MotifCaptureBatch, Merge-MotifCaptureBatches, Get-MotifCaptureStageSkips, Invoke-MotifAllCaptures

@@ -6,7 +6,8 @@ Captures the layout size matrix, then builds the contact sheet and the pixel dif
 By default the size matrix captures each scene in 7 cells: thin, half, full and short at 100% light; half at
 150% light; and thin and full at 100% dark. -All captures every scene at all 4 sizes x 2 zooms (100, 150) x
 2 themes. -All may fail on real defects in cells the expected-findings list does not name, and it still
-retains PNGs and findings. capture-completeness.json reports missing cells and batch failures.
+retains PNGs and findings. It captures the Proposals pane after staging; capture-completeness.json reports
+missing cells, missing-stage skips and batch failures.
 -Scenes, -Sizes, -Zooms and -Themes narrow the default run and cannot be combined with -All.
 
 .PARAMETER Scenes
@@ -115,7 +116,9 @@ else {
                 Write-Host "Running: pwsh ./test.ps1 -All -Project SIL.Motif.Tests.App -Configuration $Configuration -Filter '$Filter'"
                 & pwsh -NoProfile -File $testScript -All -Project 'SIL.Motif.Tests.App' `
                     -Configuration $Configuration -Filter $Filter 2>&1 | Tee-Object -FilePath $Log -Append | Out-Host
-                return $LASTEXITCODE
+                $code = $LASTEXITCODE
+                $results = Join-Path $repoRoot "bin/$Configuration/test-results"
+                return @{ exitCode = $code; stageSkips = @(Get-MotifCaptureStageSkips -ResultsDirectory $results) }
             }
             $completeness = Invoke-MotifAllCaptures -OutputDirectory $outputDirectory -RunTests $runner
             Write-Host "Matrix: $($completeness.captured.Count)/$($completeness.expected.Count) validated cells; complete=$($completeness.complete)."

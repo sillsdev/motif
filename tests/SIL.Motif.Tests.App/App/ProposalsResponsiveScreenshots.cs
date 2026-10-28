@@ -5,6 +5,7 @@ using Avalonia.Headless;
 using Avalonia.Media.Imaging;
 using Avalonia.Styling;
 using Avalonia.VisualTree;
+using SIL.Motif.App;
 using SIL.Motif.App.Controls;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
@@ -15,11 +16,21 @@ using Xunit;
 
 namespace SIL.Motif.Tests.App;
 
+/// <summary>A screenshot capture that also needs its before-or-after stage named, so it skips rather than fails when unset.</summary>
+public sealed class ProposalsCaptureFactAttribute : ScreenshotFactAttribute
+{
+    public ProposalsCaptureFactAttribute()
+    {
+        if (Skip is null && string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(ProposalsResponsiveScreenshots.CaptureStageVariable)))
+            Skip = $"Set {ProposalsResponsiveScreenshots.CaptureStageVariable} to before or after to capture the Proposals pane.";
+    }
+}
+
 [Collection(AvaloniaHeadlessCollection.Name)]
 [Trait("MotifTestLevel", "System")]
 public sealed class ProposalsResponsiveScreenshots
 {
-    private const string CaptureStageVariable = "MOTIF_PROPOSALS_CAPTURE_STAGE";
+    internal const string CaptureStageVariable = "MOTIF_PROPOSALS_CAPTURE_STAGE";
 
     private static readonly (string Name, double Width, double Height)[] Sizes =
     [
@@ -41,7 +52,7 @@ public sealed class ProposalsResponsiveScreenshots
         (150, "150"),
     ];
 
-    [ScreenshotFact]
+    [ProposalsCaptureFact]
     public void CaptureProposalsAutomaticPaneAtFourSizesBothThemesAndZooms()
     {
         var folder = Environment.GetEnvironmentVariable(ScreenshotFactAttribute.FolderVariable)!;
@@ -123,7 +134,7 @@ public sealed class ProposalsResponsiveScreenshots
                                     $"Proposal identity has {tracks.ColumnDefinitions[0].ActualWidth:0.#} DIP; " +
                                     $"at least {minimumIdentityWidth:0.#} DIP is needed.");
                                 if (sizeName == "full1920x1080" && zoom == 100)
-                                    foreach (var heading in new[] { "Built by", "Coverage", "Warnings", "Word time" })
+                                    foreach (var heading in new[] { MotifAppStrings.BuiltBy, MotifAppStrings.Coverage, MotifAppStrings.Warnings, MotifAppStrings.WordTime })
                                         Assert.Contains(page.GetVisualDescendants().OfType<TextBlock>(), text =>
                                             text.Classes.Contains("denseTableHeading") && text.Text == heading &&
                                             text.IsEffectivelyVisible);

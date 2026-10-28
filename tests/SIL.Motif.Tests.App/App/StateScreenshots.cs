@@ -11,6 +11,7 @@ using Avalonia.Threading;
 using Avalonia.VisualTree;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
+using SIL.Motif.App.Controls.WordPresentation;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Baselines;
@@ -648,44 +649,36 @@ public sealed class StateScreenshots(ITestOutputHelper output)
         yield return new("overview", "slowest-summary", async stage =>
         {
             stage.Open(WorkspacePage.Overview);
-            const string summaryName = "Slowest words and recorded times";
-            await stage.Until(() => stage.Visible<TextBlock>(text =>
-                AutomationProperties.GetName(text) == summaryName &&
-                text.Text?.Contains("mwalimu", StringComparison.Ordinal) == true &&
-                text.Text.Contains("hawajafika", StringComparison.Ordinal)).Any(),
-                "the Speed tile's slowest-word summary");
-            var text = stage.Named<TextBlock>(summaryName).Text ?? string.Empty;
-            Assert.Contains("700 ms", text, StringComparison.Ordinal);
-            Assert.Contains("48 ms", text, StringComparison.Ordinal);
-            return $"The Speed tile keeps its slowest words compact: {text}.";
+            IEnumerable<Border> Rows() => stage.Visible<Border>(border =>
+                border.Classes.Contains("overviewTableRow") && border.DataContext is OverviewSlowWord);
+            await stage.Until(() => new[] { "mwalimu", "hawajafika" }.All(word =>
+                Rows().Any(row => ((OverviewSlowWord)row.DataContext!).Word == word)), "the slowest-word rows");
+            foreach (var (word, time) in new[] { ("mwalimu", "700 ms"), ("hawajafika", "48 ms") })
+            {
+                var row = Assert.Single(Rows(), candidate => ((OverviewSlowWord)candidate.DataContext!).Word == word);
+                Assert.Contains(row.GetVisualDescendants().OfType<TextBlock>(), text =>
+                    text.IsEffectivelyVisible && text.Text == time);
+            }
+            return "The slowest words and their recorded times are shown on Overview.";
         })
         { Height = 1000 };
         yield return new("review", "word-rows", async stage =>
         {
-            stage.Open(WorkspacePage.Review);
-            await stage.Until(() => stage.WordRows("review").Any(), "the staged change's row");
-            return "Review changes with chakula staged, as a word row with its staged arrow and Undo.";
+            await stage.ReviewChangeRow();
+            return "Review changes with chakula staged in the table, with its staged arrow and Undo.";
         })
         { Setup = stage => stage.StageChakula(), Teardown = stage => stage.UnstageChakula() };
         yield return new("review", "word-row-hover", async stage =>
         {
-            stage.Open(WorkspacePage.Review);
-            await stage.Until(() => stage.WordRows("review").Any(), "the staged change's row");
-            var row = stage.WordRows("review").First();
-            return await stage.Hover(null, () => row.GetVisualDescendants().OfType<Border>()
-                .First(border => border.Classes.Contains("wordPresentationFrame")), "the staged change's row");
+            var row = await stage.ReviewChangeRow();
+            return await stage.Hover(null, () => row, "the staged change's row");
         })
         { Height = 1000, Setup = stage => stage.StageChakula(), Teardown = stage => stage.UnstageChakula() };
         yield return new("review", "word-row-opened", async stage =>
         {
-            stage.Open(WorkspacePage.Review);
-            return await stage.OpenWordRow("review");
+            return await stage.OpenReviewChange();
         })
-        { Height = 1000, Setup = stage => stage.StageChakula(), Teardown = async stage =>
-            {
-                await stage.CloseWordRows();
-                await stage.UnstageChakula();
-            } };
+        { Height = 1000, Setup = stage => stage.StageChakula(), Teardown = stage => stage.UnstageChakula() };
         yield return new("analyze", "word-list", async stage =>
         {
             stage.ShowWordList();
@@ -998,30 +991,30 @@ public sealed class StateScreenshots(ITestOutputHelper output)
         public async Task<string> OpenWarningRow(string code, bool named)
         {
             Open(WorkspacePage.Warnings);
-            var row = Workspace.PageModel<WarningsPageModel>().Grammar.Warnings.Rows
-                .Cast<GrammarWarningRowViewModel>()
+            var warnings = Workspace.PageModel<WarningsPageModel>().Grammar.Warnings;
+            var row = warnings.Rows.Cast<GrammarWarningRowViewModel>()
                 .First(candidate => candidate.GroupCode == code && (candidate.Warning.Subject.Count > 0) == named);
-            row.IsOpen = true;
-            var container = Visible<Border>(border => border.Classes.Contains("warningRow") && border.DataContext == row).Single();
-            container.BringIntoView();
+            warnings.OpenDetailsCommand.Execute(row);
             await Until(() => (row.HasReachStateText
-                ? Visible<TextBlock>(block => block.Classes.Contains("warningState")
-                    && block.Text == row.ReachStateText).Any()
+                ? Visible<TextBlock>(block => block.Text == row.ReachStateText).Any()
                 : Visible<TextBlock>(block => block.Text == row.NoExactUsesText).Any())
                 && (!row.HasGuidance || Visible<TextBlock>(block => block.Text == MotifAppStrings.WhatToDoInFieldWorks).Any()),
                 "the finding details and producer guidance when present");
             return $"Opened the {row.PanGlossTitle} finding{(named ? " with a named item" : ", which names no item")}.";
         }
 
-        public Task<string> HoverWarningPartLink()
+        public async Task<string> HoverWarningPartLink()
         {
             Open(WorkspacePage.Warnings);
-            var row = Workspace.PageModel<WarningsPageModel>().Grammar.Warnings.Rows
-                .Cast<GrammarWarningRowViewModel>().First(candidate => candidate.Warning.Subject.Any(part => part.FieldWorksLink is not null));
-            row.IsOpen = true;
-            PageScreenshots.Settle(Window);
+            var warnings = Workspace.PageModel<WarningsPageModel>().Grammar.Warnings;
+            var row = warnings.Rows.Cast<GrammarWarningRowViewModel>()
+                .First(candidate => candidate.GroupCode == "conversion.unsegmentable-form");
+            warnings.OpenDetailsCommand.Execute(row);
+            await Until(() => Visible<HyperlinkButton>(button => button.Classes.Contains("warningObjectLink")).Any(),
+                "the finding's FieldWorks link");
             var link = Visible<HyperlinkButton>(button => button.Classes.Contains("warningObjectLink")).First();
-            return Hover(null, () => link, "a FieldWorks link in a finding", requireTooltip: true);
+            link.BringIntoView();
+            return await Hover(null, () => link, "a FieldWorks link in a finding", requireTooltip: true);
         }
 
         public Task CloseWarningRow()
@@ -1104,6 +1097,44 @@ public sealed class StateScreenshots(ITestOutputHelper output)
         {
             Workspace.Context.TryWord("hawajafika");
             return Workspace.Assess.Trace.TryCommand.ExecutionTask!;
+        }
+
+        public async Task<Border> ReviewChangeRow()
+        {
+            Open(WorkspacePage.Review);
+            var panel = Assert.Single(Visible<ReviewPanel>(_ => true));
+            await Until(() => panel.Page.TableEntries.OfType<ReviewListEntryViewModel>()
+                .Any(entry => entry.Change?.Word == "chakula"), "the staged change in Review");
+            var entry = Assert.Single(panel.Page.TableEntries.OfType<ReviewListEntryViewModel>(),
+                candidate => candidate.Change?.Word == "chakula");
+            var list = panel.FindControl<ListBox>("ReviewItems")!;
+            list.ScrollIntoView(entry);
+            await Until(() => list.ContainerFromItem(entry) is not null, "the staged change's row");
+            var row = Assert.Single(list.ContainerFromItem(entry)!.GetVisualDescendants().OfType<Border>(),
+                border => border.Classes.Contains("denseTableRow"));
+            Assert.Contains(row.GetVisualDescendants().OfType<TextBlock>(), text => text.Text == "chakula");
+            Assert.Contains(row.GetVisualDescendants().OfType<Button>(), button => Equals(button.Content, MotifAppStrings.Undo));
+            return row;
+        }
+
+        public async Task<string> OpenReviewChange()
+        {
+            var row = await ReviewChangeRow();
+            var entry = Assert.IsType<ReviewListEntryViewModel>(row.DataContext);
+            var menu = Assert.Single(row.GetVisualDescendants().OfType<Button>(),
+                button => button.Classes.Contains("denseTableMenu"));
+            HeadlessClick.Click(Window, menu, "Row actions");
+            var flyout = Assert.IsType<Flyout>(menu.Flyout);
+            var body = Assert.IsAssignableFrom<Control>(flyout.Content);
+            var details = Assert.Single(body.GetVisualDescendants().OfType<Button>(),
+                button => Equals(button.Content, MotifAppStrings.Details));
+            HeadlessClick.Click(TopLevel.GetTopLevel(details) ?? Window, details, "Details for this change");
+            PageScreenshots.Settle(Window);
+            var panel = Assert.Single(Visible<ReviewPanel>(_ => true));
+            Assert.Same(entry.Review, panel.Page.Current);
+            var card = Assert.Single(panel.InspectorContent.GetVisualDescendants().OfType<WordCard>());
+            Assert.Equal(entry.Change!.Presentation.Key, card.Document!.Key);
+            return "Opened Details for chakula; its word card is in the inspector.";
         }
 
         /// <summary>The visible word rows of the list named <paramref name="list"/> in the rows' automation ids.</summary>
@@ -1341,6 +1372,9 @@ public sealed class TryWordReviewScreenshots
                 trace.SelectedCandidate.IsTreeContextExpanded = true;
                 var registered = window.GetVisualDescendants().OfType<TryAWordPage>().Single();
                 var inspectorContent = ((SIL.Motif.App.Views.Shell.IWorkspacePaneProvider)registered).InspectorContent!;
+                // The shell's pane slot still parents the inspector; detach it so the capture window can host it alone.
+                var shellHost = inspectorContent.GetVisualParent() as Panel;
+                shellHost?.Children.Remove(inspectorContent);
                 var inspectorWindow = new MotifTestWindow
                 {
                     Content = inspectorContent, Width = width, Height = 5000,
@@ -1367,6 +1401,7 @@ public sealed class TryWordReviewScreenshots
                 {
                     inspectorWindow.Content = null;
                     inspectorWindow.Close();
+                    shellHost?.Children.Add(inspectorContent);
                 }
                 Save("steps-expanded");
 

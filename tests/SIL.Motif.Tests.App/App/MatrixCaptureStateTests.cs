@@ -1,4 +1,6 @@
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Headless;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using Xunit;
@@ -106,6 +108,43 @@ public sealed class MatrixCaptureStateTests
         {
             Directory.Delete(root, recursive: true);
         }
+    }
+
+    [Fact]
+    public void CaptureMovesThePointerAwayFromAnOpenTooltip()
+    {
+        var root = CreateCaptureFolder();
+        try
+        {
+            AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+            {
+                var (workspace, window) = await PageScreenshots.OpenOverSampleData(parse: false);
+                var owner = window.FindInWindowOrWorkspace<Button>("SettingsButton")!;
+                try
+                {
+                    window.Width = 900;
+                    window.Height = 700;
+                    PageScreenshots.Settle(window);
+                    ToolTip.SetShowDelay(owner, 0);
+                    window.MouseMove(ClearTipPlacement.AreaOf(owner, window).Center);
+                    PageScreenshots.Settle(window);
+                    await Task.Yield();
+                    PageScreenshots.Settle(window);
+                    Assert.True(ToolTip.GetIsOpen(owner));
+                    await CaptureScene(root, window, workspace, "overview-tip", WorkspacePage.Overview, null,
+                        [new MatrixSize("full", 900, 700)]);
+                    Assert.False(ToolTip.GetIsOpen(owner));
+                }
+                finally
+                {
+                    ToolTip.SetIsOpen(owner, false);
+                    owner.ClearValue(ToolTip.ShowDelayProperty);
+                    window.Close();
+                    await workspace.DisposeAsync();
+                }
+            }, TimeSpan.FromMinutes(3));
+        }
+        finally { Directory.Delete(root, recursive: true); }
     }
 
     private static async Task AssertSceneSaveRejected(string root, MainWindow window,

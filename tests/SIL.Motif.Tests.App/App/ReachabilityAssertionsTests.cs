@@ -486,6 +486,37 @@ public sealed class ReachabilityAssertionsTests(AvaloniaHeadlessFixture avalonia
     }
 
     [Fact]
+    public void ScrollViewportEdgeIsNotAPaintedPanelEdge()
+    {
+        avalonia.Invoke(() =>
+        {
+            var text = new TextBlock { Text = "At the viewport edge", FontSize = 14 };
+            var canvas = new Canvas { Height = 200, Width = 180, Children = { text } };
+            var viewer = new ScrollViewer { Content = canvas, Background = Brushes.Transparent, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
+            var panel = new Border { Name = "WorkingPageHost", Height = 100, Width = 200, BorderBrush = Brushes.Gray,
+                BorderThickness = new Thickness(1), Child = viewer };
+            var window = new MotifTestWindow { Width = 240, Height = 140, Content = panel };
+            try
+            {
+                window.Show();
+                PageScreenshots.Settle(window);
+                Canvas.SetTop(text, viewer.Viewport.Height - text.TextLayout.Height + 1);
+                Canvas.SetLeft(text, 10);
+                PageScreenshots.Settle(window);
+                var context = new LayoutFindingContext("synthetic", "thin", 100, "light");
+                Assert.True(viewer.Extent.Height > viewer.Viewport.Height);
+                Assert.DoesNotContain(ReachabilityAssertions.EdgeCrowdingFindings(text, context, window),
+                    finding => finding.Detail.Contains("bottom edge"));
+                canvas.Height = viewer.Viewport.Height;
+                PageScreenshots.Settle(window);
+                Assert.Contains(ReachabilityAssertions.EdgeCrowdingFindings(text, context, window),
+                    finding => finding.Detail.Contains("bottom edge"));
+            }
+            finally { window.Close(); }
+        });
+    }
+
+    [Fact]
     public void ASparseWindowIsReportedAsMostlyEmpty()
     {
         avalonia.Invoke(() =>

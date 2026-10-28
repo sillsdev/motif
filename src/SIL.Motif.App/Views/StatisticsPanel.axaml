@@ -88,7 +88,7 @@
             </DataTemplate>
           </DataGridTemplateColumn.CellTemplate>
         </DataGridTemplateColumn>
-        <DataGridTemplateColumn Header="{x:Static app:MotifAppStrings.Word}" Tag="word" ClipboardContentBinding="{ReflectionBinding Word}">
+        <DataGridTemplateColumn Header="{x:Static app:MotifAppStrings.Word}" Tag="word" MinWidth="{StaticResource Component.Statistics.WordMinWidth}" ClipboardContentBinding="{ReflectionBinding Word}">
           <DataGridTemplateColumn.CellTemplate>
             <DataTemplate x:DataType="vm:StatsRowViewModel">
               <views:CopyableTextBlock Text="{Binding Word}" TextTrimming="CharacterEllipsis"

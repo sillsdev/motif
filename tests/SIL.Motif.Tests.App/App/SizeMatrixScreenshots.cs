@@ -244,6 +244,8 @@ public sealed class SizeMatrixScreenshots
             var size = sizes.Single(item => item.Name == point.Size);
             Application.Current!.RequestedThemeVariant = point.Theme == "dark" ? ThemeVariant.Dark : ThemeVariant.Light;
             ApplySize(window, size, point.Zoom);
+            // An earlier click leaves the pointer on a navigation-rail button, whose tooltip would overlay the page.
+            window.MouseMove(new Point(1, 1));
             PageScreenshots.Settle(window);
 
             var context = new LayoutFindingContext(scene, size.Name, point.Zoom, point.Theme);

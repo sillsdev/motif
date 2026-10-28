@@ -2,9 +2,12 @@ using System.Globalization;
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
+using Avalonia.Layout;
 using SIL.Motif.App;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
+using SIL.Motif.Contract.Responses;
 using Avalonia.VisualTree;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
@@ -48,6 +51,72 @@ public sealed class TdcLayoutFixTests
                 var needed = text.TextLayout.WidthIncludingTrailingWhitespace;
                 Assert.True(needed <= text.Bounds.Width + 0.5,
                     $"The Completion heading needs {needed:0.#} px but its column leaves {text.Bounds.Width:0.#} px.");
+            }
+            finally
+            {
+                window.Close();
+                await workspace.DisposeAsync();
+            }
+        }, TimeSpan.FromMinutes(2));
+    }
+
+    [Theory]
+    [InlineData(1040)]
+    [InlineData(900)]
+    [InlineData(800)]
+    [InlineData(640)]
+    public void TheStatisticsWordHeadingAndOtherColumnHeadingsFit(int width)
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, window) = await PageScreenshots.OpenOverSampleData(seedReaderToken: false);
+            try
+            {
+                window.Width = width;
+                window.Height = 1300;
+                workspace.CurrentPage = WorkspacePage.Timing;
+                var morph = PageScreenshots.SampleMorph("wa-");
+                workspace.Context.OpenInspector(InspectorSubject.Morpheme(
+                    morph.AllomorphId, morph.GrammaticalInfoId, morph.Form, "3PL")!);
+                await workspace.Inspector.Loading;
+                LayoutInvariantEngineTests.Settle(window);
+                var statistics = window.GetVisualDescendants().OfType<Expander>()
+                    .First(expander => expander.Header as string == MotifAppStrings.TimingDetailedStatisticsHeading
+                        && expander.IsEffectivelyVisible);
+                statistics.IsExpanded = true;
+                LayoutInvariantEngineTests.Settle(window);
+                var headers = statistics.GetVisualDescendants().OfType<DataGridColumnHeader>()
+                    .Where(header => header.IsEffectivelyVisible).ToArray();
+                var word = Assert.Single(headers, header => header.Content as string == MotifAppStrings.Word);
+                var wordText = Assert.Single(word.GetVisualDescendants().OfType<TextBlock>(),
+                    text => text.IsEffectivelyVisible && text.Text == MotifAppStrings.Word);
+                var needed = wordText.TextLayout.WidthIncludingTrailingWhitespace;
+                Assert.True(needed <= wordText.Bounds.Width + 0.5,
+                    $"The Word heading needs {needed:0.#} px but its column leaves {wordText.Bounds.Width:0.#} px.");
+                foreach (var header in headers)
+                foreach (var text in header.GetVisualDescendants().OfType<TextBlock>()
+                    .Where(text => text.IsEffectivelyVisible && !string.IsNullOrEmpty(text.Text)))
+                    LayoutAssertions.AssertTextFits(text);
+                if (width == 640)
+                {
+                    var grid = Assert.Single(statistics.GetVisualDescendants().OfType<DataGrid>());
+                    var lastHeading = Assert.Single(headers.SelectMany(header => header.GetVisualDescendants().OfType<TextBlock>()),
+                        text => text.Text == MotifAppStrings.StatsHeaderWordTime);
+                    var bar = Assert.Single(grid.GetVisualDescendants().OfType<ScrollBar>(),
+                        candidate => candidate.IsEffectivelyVisible && candidate.Orientation == Orientation.Horizontal);
+                    var before = LayoutAssertions.BoundsIn(lastHeading, grid);
+                    Assert.True(before.Right > grid.Bounds.Width);
+                    bar.IsVisible = false;
+                    Assert.ThrowsAny<Xunit.Sdk.XunitException>(() => LayoutAssertions.AssertTextFits(lastHeading));
+                    bar.IsVisible = true;
+                    var column = Assert.Single(grid.Columns, candidate => Equals(candidate.Header, MotifAppStrings.StatsHeaderWordTime));
+                    grid.ScrollIntoView(grid.ItemsSource!.Cast<object>().First(), column);
+                    LayoutInvariantEngineTests.Settle(window);
+                    var after = LayoutAssertions.BoundsIn(lastHeading, grid);
+                    Assert.True(after.Left >= -0.5 && after.Right <= grid.Bounds.Width + 0.5,
+                        $"The heading stayed at {after} in a {grid.Bounds.Width:0.#} px grid after scrolling to {bar.Value:0.#}/{bar.Maximum:0.#}.");
+                    LayoutAssertions.AssertTextFits(lastHeading);
+                }
             }
             finally
             {

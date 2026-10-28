@@ -48,6 +48,18 @@ function Write-AllFixture {
     [IO.File]::WriteAllText((Join-Path $matrix 'findings.json'), '[' + $rawFinding + ']')
     return $rawFinding
 }
+function Write-AllProposalsFixture {
+    param([string] $Output)
+    $prefix = 'proposals-workspace-automatic-after'
+    foreach ($size in @('thin640x600', 'half960x780', 'full1920x1080', 'short960x600')) {
+        foreach ($theme in @('light', 'dark')) {
+            foreach ($zoom in @(100, 150)) {
+                [IO.File]::WriteAllText((Join-Path $Output "$prefix-$size-$theme-$zoom.png"), 'capture')
+            }
+        }
+    }
+    [IO.File]::WriteAllText((Join-Path $Output "$prefix-states.txt"), 'states')
+}
 try {
     $scenes = @(1..21 | ForEach-Object { "scene-$_" })
     $batches = @(Split-MotifCaptureScenes -Scenes $scenes)
@@ -82,7 +94,8 @@ try {
     $calls = [Collections.Generic.List[object]]::new()
     $runner = {
         param($Filter, $Log)
-        $calls.Add(@{ filter = $Filter; scenes = $env:MOTIF_CAPTURE_SCENES; mode = $env:MOTIF_CAPTURE_MATRIX })
+        $calls.Add(@{ filter = $Filter; scenes = $env:MOTIF_CAPTURE_SCENES; mode = $env:MOTIF_CAPTURE_MATRIX
+            stage = $env:MOTIF_PROPOSALS_CAPTURE_STAGE })
         if ($Filter -like '*WriteCaptureMatrixPlan') {
             [IO.Directory]::CreateDirectory((Join-Path $env:MOTIF_SCREENSHOTS 'matrix')) | Out-Null
             $plan | ConvertTo-Json -Depth 8 | Set-Content (Join-Path $env:MOTIF_SCREENSHOTS 'matrix/capture-plan.json')
@@ -101,14 +114,66 @@ try {
         }
         [IO.File]::WriteAllBytes((Join-Path $env:MOTIF_SCREENSHOTS 'other.png'), [Convert]::FromBase64String(
             'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p68AAAAASUVORK5CYII='))
+        Write-AllProposalsFixture $env:MOTIF_SCREENSHOTS
         return 0
     }
     $orchestrated = Join-Path $fixtureRoot 'orchestrated'
-    $result = Invoke-MotifAllCaptures -OutputDirectory $orchestrated -RunTests $runner
+    $savedStage = Set-MotifCaptureEnvironment @{ MOTIF_PROPOSALS_CAPTURE_STAGE = 'before' }
+    try {
+        $result = Invoke-MotifAllCaptures -OutputDirectory $orchestrated -RunTests $runner
+        Assert-AllEqual $env:MOTIF_PROPOSALS_CAPTURE_STAGE 'before' 'caller stage restored after full capture'
+    }
+    finally { Restore-MotifCaptureEnvironment $savedStage }
     Assert-AllEqual $result.success $true 'fresh sequential orchestration succeeds'
     Assert-AllEqual $calls.Count 5 'catalog once, other classes once, three matrix processes'
     Assert-AllEqual $calls[1].filter 'FullyQualifiedName~Screenshot&FullyQualifiedName!~SizeMatrixScreenshots' 'other screenshot filter excludes the whole matrix class'
+    Assert-AllEqual $calls[1].stage 'after' 'full capture selects a Proposals stage'
     Assert-AllEqual (($calls | Select-Object -Skip 2 | ForEach-Object { ($_.scenes -split ',').Count }) -join ',') '7,7,7' 'runner sees bounded batches'
+    $trxDirectory = Join-Path $fixtureRoot 'trx'
+    [IO.Directory]::CreateDirectory($trxDirectory) | Out-Null
+    [IO.File]::WriteAllText((Join-Path $trxDirectory 'screenshots.trx'), @'
+<TestRun><Results>
+  <UnitTestResult testName="AnotherScreenshot" outcome="NotExecuted"><Output><ErrorInfo><Message>Set MOTIF_ANOTHER_STAGE before capture.</Message></ErrorInfo></Output></UnitTestResult>
+  <UnitTestResult testName="OptionalProject" outcome="NotExecuted"><Output><ErrorInfo><Message>Set a project path.</Message></ErrorInfo></Output></UnitTestResult>
+  <UnitTestResult testName="PassedScreenshot" outcome="Passed"><Output><ErrorInfo><Message>Set MOTIF_PASSED_STAGE.</Message></ErrorInfo></Output></UnitTestResult>
+</Results></TestRun>
+'@)
+    $stageSkips = @(Get-MotifCaptureStageSkips $trxDirectory)
+    Assert-AllEqual $stageSkips.Count 1 'only missing-stage skips are reported'
+    Assert-AllEqual ($stageSkips[0] -like 'AnotherScreenshot:*MOTIF_ANOTHER_STAGE*') $true 'skip names its test and stage'
+    $skippingRunner = {
+        param($Filter, $Log)
+        $code = & $runner $Filter $Log
+        if ($Filter -like '*!~SizeMatrixScreenshots') { return @{ exitCode = $code; stageSkips = $stageSkips } }
+        return $code
+    }
+    $skipOutput = Join-Path $fixtureRoot 'stage-skip'
+    $result = Invoke-MotifAllCaptures $skipOutput $skippingRunner
+    Assert-AllEqual $result.complete $false 'missing-stage skip makes an otherwise complete capture incomplete'
+    Assert-AllEqual $result.success $false 'missing-stage skip fails the capture'
+    Assert-AllEqual (($result.issues -join ' ') -like '*AnotherScreenshot*MOTIF_ANOTHER_STAGE*') $true 'completeness explains skipped stage'
+    $matrixSkippingRunner = {
+        param($Filter, $Log)
+        $code = & $runner $Filter $Log
+        if ($Filter -like '*CaptureScenesAtEveryMatrixSizeAndWriteAllFindings') {
+            return @{ exitCode = $code; stageSkips = @('MatrixScreenshot: missing stage') }
+        }
+        return $code
+    }
+    $result = Invoke-MotifAllCaptures (Join-Path $fixtureRoot 'matrix-stage-skip') $matrixSkippingRunner
+    Assert-AllEqual $result.complete $false 'a matrix batch missing-stage skip makes capture incomplete'
+    Assert-AllEqual (($result.issues -join ' ') -like '*MatrixScreenshot: missing stage*') $true 'matrix skip is identified'
+    $missingRunner = {
+        param($Filter, $Log)
+        $code = & $runner $Filter $Log
+        if ($Filter -like '*!~SizeMatrixScreenshots') {
+            Remove-Item (Join-Path $env:MOTIF_SCREENSHOTS 'proposals-workspace-automatic-after-thin640x600-light-100.png')
+        }
+        return $code
+    }
+    $result = Invoke-MotifAllCaptures (Join-Path $fixtureRoot 'missing-proposals') $missingRunner
+    Assert-AllEqual $result.complete $false 'missing Proposals image makes capture incomplete'
+    Assert-AllEqual (($result.issues -join ' ') -like '*Missing Proposals capture*') $true 'missing capture is identified'
     New-MotifCaptureSheet -OutputDirectory $orchestrated | Out-Null
     $html = [IO.File]::ReadAllText((Join-Path $orchestrated 'index.html'))
     Assert-AllEqual ([regex]::Matches($html, 'src="other.png"').Count) 1 'other photo appears once'

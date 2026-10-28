@@ -430,6 +430,32 @@ internal static class LayoutAssertions
 
     private static bool DataGridCanRevealText(TextBlock text, Visual clippedBy)
     {
+        var header = text.GetVisualAncestors().OfType<DataGridColumnHeader>().FirstOrDefault();
+        var headerGrid = header?.GetVisualAncestors().OfType<DataGrid>().FirstOrDefault();
+        if (header is not null && headerGrid is not null &&
+            (ReferenceEquals(clippedBy, headerGrid) || headerGrid.GetVisualAncestors().Contains(clippedBy)))
+        {
+            var horizontal = headerGrid.GetVisualDescendants().OfType<ScrollBar>().FirstOrDefault(bar =>
+                bar.IsEffectivelyVisible && bar.Orientation == Avalonia.Layout.Orientation.Horizontal && bar.Maximum > bar.Minimum);
+            if (horizontal is null) return false;
+            var headerBounds = BoundsIn(text, headerGrid);
+            var clip = ReferenceEquals(clippedBy, headerGrid) ? new Rect(headerGrid.Bounds.Size) :
+                BoundsIn(clippedBy, headerGrid);
+            var headerVisibleY = headerBounds.Top >= Math.Max(0, clip.Top) - Tolerance &&
+                headerBounds.Bottom <= Math.Min(headerGrid.Bounds.Height, clip.Bottom) + Tolerance;
+            var scroll = text.GetVisualAncestors().OfType<ScrollViewer>().FirstOrDefault(candidate =>
+                ReferenceEquals(clippedBy, candidate) ||
+                clippedBy is ScrollContentPresenter && clippedBy.GetVisualAncestors().Contains(candidate) ||
+                candidate.GetVisualAncestors().Contains(clippedBy) && Contains(
+                    BoundsIn(clippedBy, candidate), new Rect(candidate.Bounds.Size)));
+            if (!headerVisibleY && scroll?.Content is Visual content && scroll.VerticalScrollBarVisibility != ScrollBarVisibility.Disabled)
+            {
+                var contentBounds = BoundsIn(text, content);
+                headerVisibleY = contentBounds.Top >= -Tolerance && contentBounds.Bottom <= scroll.Extent.Height + Tolerance;
+            }
+            return headerVisibleY && headerBounds.Left >= Math.Max(0, clip.Left) - (horizontal.Value - horizontal.Minimum) - Tolerance &&
+                headerBounds.Right <= Math.Min(headerGrid.Bounds.Width, clip.Right) + horizontal.Maximum - horizontal.Value + Tolerance;
+        }
         var row = text.GetVisualAncestors().OfType<DataGridRow>().FirstOrDefault();
         var grid = row?.GetVisualAncestors().OfType<DataGrid>().FirstOrDefault();
         if (row is null || grid is null || !row.GetVisualAncestors().Contains(clippedBy) ||
