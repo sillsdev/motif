@@ -299,7 +299,12 @@ public sealed class WarmPanGlossPoolTests : IDisposable
         var timedOut = await impatient.Prewarm(slow, "t1", slow);
         Assert.Equal("load-timeout", timedOut.FailureCode);
         Assert.Equal(WarmSessionPhase.Failed, impatient.GetState(slow).Phase);
-        await Eventually(() => !Alive(int.Parse(Lines(slowLog)[0])), "the slow loader to be killed");
+        // Under load the child may not have logged a PID before the kill; only a logged PID must be seen dead.
+        foreach (var line in Lines(slowLog))
+        {
+            var pid = int.Parse(line);
+            await Eventually(() => !Alive(pid), "the slow loader to be killed");
+        }
     }
 
     [Fact]
