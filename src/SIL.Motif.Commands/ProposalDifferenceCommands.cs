@@ -59,8 +59,8 @@ public static class ProposalDifferenceCommands
             if (!trial.AssessmentIds.TryGetValue(AssessmentKinds.ParseTime, out var afterId))
                 return Refuse("difference.no-parse-assessment", FailureReason.Refused,
                     "The Trial recorded no ParseTime Assessment, so there are no parses to compare.");
-            var after = assessments.Get(afterId);
-            var recorded = (input.BaselineAssessmentIds ?? []).Select(assessments.Get).ToArray();
+            var after = assessments.GetSelected(afterId);
+            var recorded = (input.BaselineAssessmentIds ?? []).Select(assessments.GetSelected).ToArray();
             var before = recorded.FirstOrDefault(record =>
                 record.Kind == AssessmentKinds.ParseTime && record.Assessor == after.Assessor &&
                 record.BaselineToken == after.BaselineToken);

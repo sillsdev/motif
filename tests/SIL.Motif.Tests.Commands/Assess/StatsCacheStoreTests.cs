@@ -1,5 +1,11 @@
 using SIL.Motif.Tests.TestFixtures;
+using SIL.Motif.Commands;
+using SIL.Motif.Contract.Projects;
+using SIL.Motif.Host.Assess;
+using SIL.Motif.Host.Corpus;
 using SIL.Motif.Host.PanGloss;
+using SIL.Motif.Host.Parser;
+using SIL.Motif.Host.Store;
 using SIL.Motif.Worker.Assess;
 using SIL.Motif.Worker.Store;
 using Xunit;
@@ -10,11 +16,18 @@ public sealed class StatsCacheStoreTests : IDisposable
 {
     private readonly string _root = Path.Combine(Path.GetTempPath(), "SIL.Motif.Tests.CommandScratch", Guid.NewGuid().ToString("N"));
     private readonly StatsCacheStore _store;
+    private readonly MotifDatabase _database;
+    private readonly ProjectLocator _project;
 
     public StatsCacheStoreTests()
     {
         Directory.CreateDirectory(_root);
-        _store = new StatsCacheStore(WorkspaceOwnership.Bootstrap(_root));
+        var projectRoot = Path.Combine(_root, "project");
+        Directory.CreateDirectory(projectRoot);
+        _project = new ProjectLocator(Path.Combine(projectRoot, "project.fwdata"), "project");
+        _database = MotifDatabase.OpenOwned(Path.Combine(projectRoot, "project.motif.db"), _project,
+            MotifSchema.CurrentSchema, new Version(1, 0));
+        _store = new StatsCacheStore(WorkspaceOwnership.Bootstrap(_root), _database.FullPath);
     }
 
     [Fact]
@@ -29,7 +42,7 @@ public sealed class StatsCacheStoreTests : IDisposable
     }
 
     [Fact]
-    public void NewInvocationDeletesOnlyExpiredStatisticsCaches()
+    public void NewInvocationDeletesAnExpiredNonemptyDirectory()
     {
         var old = _store.DirectoryFor("old");
         var fresh = _store.DirectoryFor("fresh");
@@ -37,13 +50,15 @@ public sealed class StatsCacheStoreTests : IDisposable
         Directory.CreateDirectory(fresh);
         File.WriteAllText(Path.Combine(old, "stats.sqlite"), "old");
         File.WriteAllText(Path.Combine(old, "source.fwdata"), "source");
+        File.WriteAllText(Path.Combine(old, "retry-stats.sqlite"), "retry");
+        Directory.CreateDirectory(Path.Combine(old, "nested"));
+        File.WriteAllText(Path.Combine(old, "nested", "other"), "other");
         File.WriteAllText(Path.Combine(fresh, "stats.sqlite"), "fresh");
         File.SetLastWriteTimeUtc(Path.Combine(old, "stats.sqlite"), DateTime.UtcNow.AddDays(-31));
 
         _store.DirectoryFor("next");
 
-        Assert.False(File.Exists(Path.Combine(old, "stats.sqlite")));
-        Assert.True(File.Exists(Path.Combine(old, "source.fwdata")));
+        Assert.False(Directory.Exists(old));
         Assert.True(File.Exists(Path.Combine(fresh, "stats.sqlite")));
     }
 
@@ -78,6 +93,89 @@ public sealed class StatsCacheStoreTests : IDisposable
 
         Assert.False(Directory.Exists(cacheOnly));
         Assert.False(Directory.Exists(empty));
+    }
+
+    [Fact]
+    public void RetainedAssessmentProtectsItsEntireInvocationUntilItIsPruned()
+    {
+        var directory = _store.DirectoryFor("cited");
+        Directory.CreateDirectory(directory);
+        var cache = Path.Combine(directory, "stats.sqlite");
+        File.WriteAllText(cache, "cache");
+        File.WriteAllText(Path.Combine(directory, "source.fwdata"), "source");
+        File.WriteAllText(Path.Combine(directory, "retry-stats.sqlite"), "retry");
+        File.SetLastWriteTimeUtc(cache, DateTime.UtcNow.AddDays(-31));
+        var invocation = new BatchInvocationEvidence("cited", Path.Combine(directory, "source.fwdata"),
+            "sha256:source", "sha256:executable", "words.txt", "sha256:words", "rows.tsv", "sha256:rows",
+            "stderr.txt", "sha256:stderr", 1000, 200000, 1, true);
+        var repository = new AssessmentRepository(_database);
+        NewAssessmentRecord Record(string id, string saved, BatchInvocationEvidence? run) => new(
+            id, null, null, "pangloss", "ParseTime", "{}", "scope",
+            new AssessmentSubject.Words(Selection.Create("fixture", ["word"]), "none", "1"),
+            "{}", "outcome", "semantic", "sha256:source", "model", "pipeline", 0,
+            new AssessmentRecordMaterial.Words([new AssessedWord("word", "complete", [])], null, null, [], run), saved);
+        repository.Record(Record("cited", "2026-01-01T00:00:00Z", invocation));
+        repository.Record(Record("recent", "2026-01-02T00:00:00Z", null));
+        using (var connection = _database.OpenConnection())
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = "INSERT INTO AssessmentPins VALUES ('cited', 'test', '2026-01-01T00:00:00Z');";
+            command.ExecuteNonQuery();
+        }
+        using var lease = ProjectParseLease.TryAcquire(_database)!;
+        Assert.True(StorePruneCommand.RunHeld(_database, _project, lease, 1).Succeeded);
+        _store.DirectoryFor("sweep-one");
+        Assert.True(File.Exists(cache));
+        Assert.True(File.Exists(Path.Combine(directory, "source.fwdata")));
+        Assert.True(File.Exists(Path.Combine(directory, "retry-stats.sqlite")));
+
+        using (var connection = _database.OpenConnection())
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = "DELETE FROM AssessmentPins WHERE AssessmentId = 'cited';";
+            command.ExecuteNonQuery();
+        }
+        Assert.True(StorePruneCommand.RunHeld(_database, _project, lease, 1).Succeeded);
+        _store.DirectoryFor("sweep-two");
+        Assert.False(Directory.Exists(directory));
+    }
+
+    [Fact]
+    public void UnknownOwnershipPreservesAnExpiredDirectory()
+    {
+        var directory = Path.Combine(_root, "assessment-runs", "unknown");
+        Directory.CreateDirectory(directory);
+        var cache = Path.Combine(directory, "stats.sqlite");
+        File.WriteAllText(cache, "cache");
+        File.SetLastWriteTimeUtc(cache, DateTime.UtcNow.AddDays(-31));
+        _store.DirectoryFor("sweep-unknown");
+        Assert.True(File.Exists(cache));
+    }
+
+    [Fact]
+    public void ExpiredOwnerMarkerWithoutAnInvocationDirectoryIsRemoved()
+    {
+        var directory = _store.DirectoryFor("abandoned");
+        var owner = directory + ".owner";
+        File.SetLastWriteTimeUtc(owner, DateTime.UtcNow.AddDays(-31));
+        _store.DirectoryFor("next");
+        Assert.False(File.Exists(owner));
+    }
+
+    [RequiresSymbolicLinkFact]
+    public void AnExpiredInvocationContainingALinkIsPreserved()
+    {
+        var directory = _store.DirectoryFor("linked");
+        Directory.CreateDirectory(directory);
+        var cache = Path.Combine(directory, "stats.sqlite");
+        File.WriteAllText(cache, "cache");
+        var outside = Path.Combine(_root, "outside-link-target");
+        File.WriteAllText(outside, "keep");
+        File.CreateSymbolicLink(Path.Combine(directory, "linked-file"), outside);
+        File.SetLastWriteTimeUtc(cache, DateTime.UtcNow.AddDays(-31));
+        _store.DirectoryFor("next");
+        Assert.True(Directory.Exists(directory));
+        Assert.Equal("keep", File.ReadAllText(outside));
     }
 
     [Theory]
@@ -127,6 +225,7 @@ public sealed class StatsCacheStoreTests : IDisposable
 
     public void Dispose()
     {
+        _database.Dispose();
         try { Directory.Delete(_root, recursive: true); }
         catch (DirectoryNotFoundException) { }
         catch (IOException) { }

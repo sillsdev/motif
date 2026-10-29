@@ -29,10 +29,11 @@ public sealed class PhonologyAssessmentRepository(MotifDatabase database)
         if (continuation is not null && (continuation.OwnerId != assessmentId || continuation.AfterOrdinal < 0))
             throw new ArgumentException("The result cursor belongs to another Assessment or is invalid.");
         using var connection = database.OpenConnection();
-        var header = ReadHeader(connection, assessmentId);
+        using var transaction = connection.BeginTransaction(deferred: true);
+        var header = ReadHeader(connection, assessmentId, transaction);
         if (continuation?.AfterOrdinal >= header.ExampleSet.Revision.ExampleCount)
             throw new ArgumentException("The result cursor is outside this Assessment.");
-        using var command = Command(connection, null,
+        using var command = Command(connection, transaction,
             "SELECT Ordinal, SummaryJson, ExampleId FROM PhonologyAssessmentRows WHERE AssessmentId = $id AND Ordinal > $after " +
             "ORDER BY Ordinal LIMIT $limit;", ("$id", assessmentId), ("$after", continuation?.AfterOrdinal ?? -1),
             ("$limit", pageSize + 1));
@@ -65,8 +66,9 @@ public sealed class PhonologyAssessmentRepository(MotifDatabase database)
     public PhonologyExampleResultResponse ReadExample(string assessmentId, string exampleId)
     {
         using var connection = database.OpenConnection();
-        var header = ReadHeader(connection, assessmentId);
-        using var command = Command(connection, null,
+        using var transaction = connection.BeginTransaction(deferred: true);
+        var header = ReadHeader(connection, assessmentId, transaction);
+        using var command = Command(connection, transaction,
             "SELECT Ordinal, EvidenceJson FROM PhonologyAssessmentRows WHERE AssessmentId = $id AND ExampleId = $example;",
             ("$id", assessmentId), ("$example", exampleId));
         RepositoryReadCounters.QueryExecuted();
@@ -83,14 +85,16 @@ public sealed class PhonologyAssessmentRepository(MotifDatabase database)
     public IReadOnlyList<PhonologyDependency> ReadDependencies(string assessmentId)
     {
         using var connection = database.OpenConnection();
-        ReadHeader(connection, assessmentId);
-        return ReadDependencies(connection, assessmentId);
+        using var transaction = connection.BeginTransaction(deferred: true);
+        ReadHeader(connection, assessmentId, transaction);
+        return ReadDependencies(connection, assessmentId, transaction);
     }
 
-    internal static AssessmentRecordDetails.PhonologyExamples ReadDetails(SqliteConnection connection, string assessmentId)
+    internal static AssessmentRecordDetails.PhonologyExamples ReadDetails(SqliteConnection connection, string assessmentId,
+        SqliteTransaction? transaction = null)
     {
-        var header = ReadHeader(connection, assessmentId);
-        using var command = Command(connection, null,
+        var header = ReadHeader(connection, assessmentId, transaction);
+        using var command = Command(connection, transaction,
             "SELECT Ordinal, EvidenceJson, ExampleId FROM PhonologyAssessmentRows WHERE AssessmentId = $id ORDER BY Ordinal;",
             ("$id", assessmentId));
         RepositoryReadCounters.QueryExecuted();
@@ -105,7 +109,7 @@ public sealed class PhonologyAssessmentRepository(MotifDatabase database)
             rows.Add(detail);
         }
         if (rows.Count != header.ExampleSet.Revision.ExampleCount) throw new InvalidDataException("The retained result count differs.");
-        return new AssessmentRecordDetails.PhonologyExamples(header, rows, ReadDependencies(connection, assessmentId));
+        return new AssessmentRecordDetails.PhonologyExamples(header, rows, ReadDependencies(connection, assessmentId, transaction));
     }
 
     internal static void Insert(SqliteConnection connection, SqliteTransaction transaction,
@@ -209,9 +213,10 @@ public sealed class PhonologyAssessmentRepository(MotifDatabase database)
         row.OrderedRuleIds.Count, row.VisitedRuleIds.Count, row.AppliedRuleIds.Count, row.AppliedRuleIds.Take(32).ToArray(),
         Math.Max(0, row.AppliedRuleIds.Count - 32));
 
-    private static PhonologyAssessmentHeader ReadHeader(SqliteConnection connection, string assessmentId)
+    private static PhonologyAssessmentHeader ReadHeader(SqliteConnection connection, string assessmentId,
+        SqliteTransaction? transaction = null)
     {
-        using var command = Command(connection, null,
+        using var command = Command(connection, transaction,
             "SELECT b.HeaderJson FROM PhonologyAssessmentBindings b JOIN Assessments a ON a.AssessmentId = b.AssessmentId " +
             "WHERE b.AssessmentId = $id AND a.SubjectKind = 'phonologyExamples' AND a.Kind = 'PhonologyExamples';",
             ("$id", assessmentId));
@@ -220,9 +225,10 @@ public sealed class PhonologyAssessmentRepository(MotifDatabase database)
         return Decode<PhonologyAssessmentHeader>(json);
     }
 
-    private static IReadOnlyList<PhonologyDependency> ReadDependencies(SqliteConnection connection, string assessmentId)
+    private static IReadOnlyList<PhonologyDependency> ReadDependencies(SqliteConnection connection, string assessmentId,
+        SqliteTransaction? transaction = null)
     {
-        using var command = Command(connection, null,
+        using var command = Command(connection, transaction,
             "SELECT Ordinal, Path, Sha256 FROM PhonologyAssessmentDependencies WHERE AssessmentId = $id ORDER BY Ordinal;",
             ("$id", assessmentId));
         RepositoryReadCounters.QueryExecuted();

@@ -48,6 +48,9 @@ internal sealed class MotifSqliteStoreDescriptor
     /// database whose deletion between calls must be noticed, as the machine database's is, stays unpooled.
     /// </remarks>
     public bool PooledConnections { get; init; }
+
+    /// <summary>Enables incremental reclamation when creating a new database.</summary>
+    public bool IncrementalVacuum { get; init; }
 }
 
 /// <summary>
@@ -120,6 +123,7 @@ internal sealed class MotifSqliteStore : IDisposable
 
             if (schema == 0)
             {
+                if (descriptor.IncrementalVacuum) Execute(connection, "PRAGMA auto_vacuum = INCREMENTAL;");
                 Execute(connection, "BEGIN IMMEDIATE;");
                 try
                 {

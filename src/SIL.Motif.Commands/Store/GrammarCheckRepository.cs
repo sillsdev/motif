@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
+using Microsoft.Data.Sqlite;
 using SIL.Motif.Contract;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Contract.Baselines;
@@ -46,7 +47,17 @@ public sealed class GrammarCheckRepository(MotifDatabase database)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(baselineToken);
         using var connection = _database.OpenConnection();
+        return ReadLatestStored(connection, null, baselineToken, proposalId, intentDigest);
+    }
+
+    internal GrammarCheckResponse? GetLatest(SqliteConnection connection, SqliteTransaction transaction, string baselineToken)
+        => ReadLatestStored(connection, transaction, baselineToken, null, null)?.Response;
+
+    private static GrammarCheckStoredRecord? ReadLatestStored(SqliteConnection connection, SqliteTransaction? transaction,
+        string baselineToken, string? proposalId, string? intentDigest)
+    {
         using var command = connection.CreateCommand();
+        command.Transaction = transaction;
         command.CommandText = proposalId is null
             ? "SELECT BaselineToken, ProposalId, IntentDigest, SelectionSha256, ParserStamp, ResponseGzip, CheckedUtc " +
               "FROM GrammarChecks WHERE BaselineToken = $baseline AND ProposalId IS NULL AND IntentDigest IS NULL;"

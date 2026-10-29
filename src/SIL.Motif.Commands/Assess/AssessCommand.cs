@@ -98,7 +98,8 @@ public static class AssessCommand
     {
         var ownership = WorkspaceOwnership.Bootstrap(managedRoot);
         using var invoker = new PanGlossInvoker(parserPath);
-        var assessor = new LazyPanGlossAssessor(() => new PanGlossAssessor(new StatsCacheStore(ownership), invoker));
+        var assessor = new LazyPanGlossAssessor(() => new PanGlossAssessor(
+            new StatsCacheStore(ownership, Path.ChangeExtension(Path.GetFullPath(request.ProjectPath), ".motif.db")), invoker));
         return RunCore(request, managedRoot, assessor, invoker, onProgress, cancellationToken, null, limits);
     }
 
@@ -149,10 +150,13 @@ public static class AssessCommand
                 return CommandOutcome<AssessCommandResponse>.Refused(refusal);
             }
             AssessmentScopeConfiguration configured;
+            int standaloneAssessmentCount;
             try
             {
                 // The project's declared default scope sets the kinds and limits a run is held to, as `config show` reports.
-                var scopes = new ProjectConfigurationReader().Read(project).Scopes;
+                var configuration = new ProjectConfigurationReader().Read(project);
+                var scopes = configuration.Scopes;
+                standaloneAssessmentCount = configuration.StandaloneAssessmentCount;
                 configured = scopes.FirstOrDefault(declared => declared.Name == AssessmentScopeConfiguration.DefaultName)
                     ?? scopes[0];
             }
@@ -652,6 +656,17 @@ public static class AssessCommand
                 }
                 // Retained before any housekeeping so a later failure cannot delete artifacts the saved Assessment uses.
                 foreach (var lease in artifactLeases) lease.Retain();
+                try
+                {
+                    var pruned = StorePruneCommand.RunHeld(database, project, admission ?? parseLease!, standaloneAssessmentCount);
+                    if (!pruned.Succeeded)
+                        ProjectDiagnosticLog.Append(request.ProjectPath, "Assess saved its Assessment but could not prune old evidence.",
+                            new InvalidOperationException(pruned.Refusal!.Message));
+                }
+                catch (Exception exception) when (exception is not OperationCanceledException)
+                {
+                    ProjectDiagnosticLog.Append(request.ProjectPath, "Assess saved its Assessment but could not prune old evidence.", exception);
+                }
                 try
                 {
                     ClearParserRefusal(database, request.ProjectPath, baseline.Token);

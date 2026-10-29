@@ -132,8 +132,7 @@ public static class ProposalStandingsCommand
         var id = EvidenceSets.Current(database, project).Value?.MeasurementIds
             .GetValueOrDefault(AssessmentKinds.Correctness);
         if (id is null) return null;
-        try { return new AssessmentRepository(database).Get(id); }
-        catch (KeyNotFoundException) { return null; }
+        return new AssessmentRepository(database).GetSelected(id);
     }
 
     private static TrialSummary Summarize(MotifDatabase database, ProjectLocator project, Candidate candidate,

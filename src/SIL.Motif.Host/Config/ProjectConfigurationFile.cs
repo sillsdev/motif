@@ -18,8 +18,8 @@ public sealed class ProjectConfigurationException : Exception
 }
 
 /// <summary>
-/// Parses and renders the small TOML subset <c>&lt;project&gt;.motif.toml</c> needs: two fixed tables
-/// (<c>[regression]</c>, <c>[apply]</c>) and one array of tables (<c>[[scope]]</c>), each with a closed set
+/// Parses and renders the small TOML subset <c>&lt;project&gt;.motif.toml</c> needs: fixed tables
+/// (<c>[regression]</c>, <c>[apply]</c>, <c>[retention]</c>) and an array (<c>[[scope]]</c>), each with a closed set
 /// of keys. No nested tables, dotted keys, or multiline strings — the file this project writes never needs
 /// them, and a hand-rolled reader can refuse an unknown key exactly, which is the one requirement a general
 /// TOML library's forgiving-by-design parsing would fight rather than help with.
@@ -28,10 +28,12 @@ public static class ProjectConfigurationFile
 {
     private const string RegressionTable = "regression";
     private const string ApplyTable = "apply";
+    private const string RetentionTable = "retention";
     private const string ScopeTable = "scope";
 
     private static readonly HashSet<string> RegressionKeys = new(StringComparer.Ordinal) { "gate" };
     private static readonly HashSet<string> ApplyKeys = new(StringComparer.Ordinal) { "purge-on-apply" };
+    private static readonly HashSet<string> RetentionKeys = new(StringComparer.Ordinal) { "standalone-assessments-per-kind" };
 
     private static readonly HashSet<string> ScopeKeys = new(StringComparer.Ordinal)
         { "name", "query", "assessor", "collect", "per-word-limit-ms", "per-word-step-limit", "timing-detail-words" };
@@ -47,6 +49,7 @@ public static class ProjectConfigurationFile
 
         bool? gate = null;
         bool? purge = null;
+        int? standaloneCount = null;
         var scopes = new List<AssessmentScopeConfiguration>();
         string? section = null;
         var inScope = false;
@@ -76,7 +79,7 @@ public static class ProjectConfigurationFile
                 var name = HeaderName(trimmed, "[", "]", path, lineNumber);
                 if (name == ScopeTable)
                     throw Malformed(path, lineNumber, "'scope' must be declared as '[[scope]]', not '[scope]'");
-                if (name != RegressionTable && name != ApplyTable)
+                if (name != RegressionTable && name != ApplyTable && name != RetentionTable)
                     throw Malformed(path, lineNumber, $"unknown table '[{name}]'");
                 section = name;
                 continue;
@@ -102,6 +105,10 @@ public static class ProjectConfigurationFile
                     if (!ApplyKeys.Contains(key)) throw UnknownKey(path, lineNumber, key, "[apply]");
                     purge = ParseBool(path, lineNumber, key, rawValue);
                     break;
+                case RetentionTable:
+                    if (!RetentionKeys.Contains(key)) throw UnknownKey(path, lineNumber, key, "[retention]");
+                    standaloneCount = ParsePositiveInteger(path, lineNumber, key, rawValue);
+                    break;
                 case ScopeTable:
                     if (key == "engine")
                         throw Malformed(path, lineNumber,
@@ -119,7 +126,8 @@ public static class ProjectConfigurationFile
             throw new ProjectConfigurationException(
                 $"{path}: scope name '{duplicate.Key}' is declared more than once.");
 
-        return new ProjectConfiguration(scopes, gate ?? true, purge ?? true);
+        return new ProjectConfiguration(scopes, gate ?? true, purge ?? true,
+            standaloneCount ?? ProjectConfiguration.DefaultStandaloneAssessmentCount);
     }
 
     /// <summary>Renders a resolved configuration back to the same TOML shape <see cref="Parse"/> reads.</summary>
@@ -132,6 +140,9 @@ public static class ProjectConfigurationFile
         sb.AppendLine();
         sb.AppendLine($"[{ApplyTable}]");
         sb.AppendLine($"purge-on-apply = {Bool(configuration.PurgeOnApply)}");
+        sb.AppendLine();
+        sb.AppendLine($"[{RetentionTable}]");
+        sb.AppendLine($"standalone-assessments-per-kind = {configuration.StandaloneAssessmentCount}");
 
         foreach (var scope in configuration.Scopes)
         {
@@ -231,7 +242,7 @@ public static class ProjectConfigurationFile
     private static string Unquote(string quoted) =>
         quoted[1..^1].Replace("\\\"", "\"").Replace("\\\\", "\\");
 
-    private static int ParsePositiveMilliseconds(string path, int lineNumber, string key, string rawValue)
+    private static int ParsePositiveInteger(string path, int lineNumber, string key, string rawValue)
     {
         if (!int.TryParse(rawValue, out var value) || value <= 0)
             throw Malformed(path, lineNumber, $"'{key}' must be a positive whole number, found '{rawValue}'");
@@ -276,7 +287,7 @@ public static class ProjectConfigurationFile
                 case "query": _query = ParseString(path, lineNumber, key, rawValue); break;
                 case "assessor": _assessor = ParseString(path, lineNumber, key, rawValue); break;
                 case "collect": _collect = ParseStringArray(path, lineNumber, key, rawValue); break;
-                case "per-word-limit-ms": _perWordLimitMs = ParsePositiveMilliseconds(path, lineNumber, key, rawValue); break;
+                case "per-word-limit-ms": _perWordLimitMs = ParsePositiveInteger(path, lineNumber, key, rawValue); break;
                 case "timing-detail-words":
                     if (!int.TryParse(rawValue, out var detail) || detail is < 0 or > AssessmentScopeConfiguration.MaximumTimingDetailWords)
                         throw Malformed(path, lineNumber, $"'{key}' must be between 0 and {AssessmentScopeConfiguration.MaximumTimingDetailWords}");

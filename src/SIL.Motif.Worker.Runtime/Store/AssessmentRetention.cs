@@ -1,9 +1,11 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text;
 using Microsoft.Data.Sqlite;
 using SIL.Motif.Contract.Parsimony;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Assess;
+using SIL.Motif.Host.Store;
 
 namespace SIL.Motif.Worker.Store;
 
@@ -70,10 +72,152 @@ internal static class AssessmentRetention
         }
         if (removable.Count == 0) return 0;
 
+        DeleteAssessments(connection, transaction, removable, removeInvocations: false);
+        return removable.Count;
+    }
+
+    /// <summary>Prunes unreferenced standalone Assessments while the project parse lease is held.</summary>
+    public static int SweepStandalone(SqliteConnection connection, SqliteTransaction transaction,
+        ProjectParseLease lease, int keepPerKind, IReadOnlyCollection<string> currentEvidence)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(keepPerKind);
+        ArgumentNullException.ThrowIfNull(currentEvidence);
+        lease.EnsureHeld(connection, transaction);
+        var all = ReadIds(connection, transaction, "SELECT AssessmentId FROM Assessments;");
+        var removable = ReadIds(connection, transaction, """
+            SELECT AssessmentId FROM (
+                SELECT AssessmentId, ROW_NUMBER() OVER (PARTITION BY Kind ORDER BY SavedUtc DESC, AssessmentId DESC) AS rank
+                FROM Assessments WHERE ProposalId IS NULL
+            ) WHERE rank > CAST($keep AS INTEGER);
+            """, ("$keep", keepPerKind.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+        if (removable.Count == 0) return 0;
+        removable.ExceptWith(currentEvidence);
+        removable.ExceptWith(ReadIds(connection, transaction, """
+            SELECT AssessmentId FROM Reports WHERE AssessmentId IS NOT NULL
+            UNION SELECT BeforeAssessmentId FROM ProposalDifferences
+            UNION SELECT AfterAssessmentId FROM ProposalDifferences
+            UNION SELECT AssessmentId FROM AssessmentPins
+            UNION SELECT CurrentAssessmentId FROM MotifMetadata WHERE CurrentAssessmentId IS NOT NULL;
+            """));
+        removable.ExceptWith(ReadFrozenReportAssessmentIds(connection, transaction));
+        foreach (var sql in new[]
+        {
+            "SELECT ProposalJson FROM ProposalRevisions;",
+            "SELECT DraftJson FROM Proposals WHERE DraftJson IS NOT NULL;",
+            "SELECT AnchorJson FROM Proposals WHERE AnchorJson IS NOT NULL;",
+            "SELECT ReceiptJson FROM Receipts;",
+            "SELECT RecordJson FROM AppliedIndex WHERE RecordJson IS NOT NULL;",
+            "SELECT InputJson FROM Jobs WHERE Kind = 'trial';",
+            "SELECT ResultJson FROM Jobs WHERE Kind = 'trial' AND ResultJson IS NOT NULL;",
+        })
+            removable.ExceptWith(ReadJsonReferences(connection, transaction, sql, all));
+
+        var replacements = ReadPairs(connection, transaction,
+            "SELECT AssessmentId, ReplacesAssessmentId FROM Assessments WHERE ReplacesAssessmentId IS NOT NULL;");
+        var invocationMembers = ReadPairs(connection, transaction,
+            "SELECT InvocationId, AssessmentId FROM RetainedInvocationMembers;")
+            .GroupBy(pair => pair.Replacement, StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.Select(pair => pair.Root).ToArray(), StringComparer.Ordinal);
+        var invocationReferences = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
+        using (var command = Command(connection, transaction,
+                   "SELECT InvocationId, SelectionDescriptorJson FROM RetainedInvocations;"))
+        using (var reader = command.ExecuteReader())
+            while (reader.Read()) invocationReferences.Add(reader.GetString(0), References(reader.GetString(1), all));
+        var assessmentReferences = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
+        using (var command = Command(connection, transaction, "SELECT AssessmentId, ScopeJson FROM Assessments;"))
+        using (var reader = command.ExecuteReader())
+            while (reader.Read()) assessmentReferences.Add(reader.GetString(0), References(reader.GetString(1), all));
+
+        bool changed;
+        do
+        {
+            changed = false;
+            foreach (var (replacement, root) in replacements)
+                if (!removable.Contains(replacement) && removable.Remove(root)) changed = true;
+            foreach (var (assessment, references) in assessmentReferences)
+                if (!removable.Contains(assessment))
+                    foreach (var reference in references) if (removable.Remove(reference)) changed = true;
+            foreach (var (invocation, members) in invocationMembers)
+            {
+                if (members.All(removable.Contains)) continue;
+                foreach (var member in members) if (removable.Remove(member)) changed = true;
+                if (!invocationReferences.TryGetValue(invocation, out var references))
+                    throw new InvalidDataException("A retained invocation is missing its aggregate.");
+                foreach (var reference in references) if (removable.Remove(reference)) changed = true;
+            }
+        } while (changed);
+        if (removable.Count == 0) return 0;
+        DeleteAssessments(connection, transaction, removable, removeInvocations: true);
+        return removable.Count;
+    }
+
+    private static HashSet<string> ReadJsonReferences(SqliteConnection connection, SqliteTransaction transaction,
+        string sql, HashSet<string> assessmentIds)
+    {
+        var references = new HashSet<string>(StringComparer.Ordinal);
+        using var command = Command(connection, transaction, sql);
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            var value = reader.GetValue(0);
+            var json = value is byte[] bytes ? new UTF8Encoding(false, true).GetString(bytes) : (string)value;
+            references.UnionWith(References(json, assessmentIds));
+        }
+        return references;
+    }
+
+    private static HashSet<string> References(string json, HashSet<string> assessmentIds)
+    {
+        var references = new HashSet<string>(StringComparer.Ordinal);
+        try
+        {
+            using var document = JsonDocument.Parse(json);
+            Visit(document.RootElement);
+        }
+        catch (JsonException exception)
+        {
+            throw new InvalidDataException("Stored evidence has malformed JSON; its Assessment citations are unknown.", exception);
+        }
+        return references;
+
+        void Visit(JsonElement value)
+        {
+            switch (value.ValueKind)
+            {
+                case JsonValueKind.Object:
+                    foreach (var property in value.EnumerateObject()) Visit(property.Value);
+                    break;
+                case JsonValueKind.Array:
+                    foreach (var item in value.EnumerateArray()) Visit(item);
+                    break;
+                case JsonValueKind.String:
+                    var text = value.GetString()!;
+                    if (assessmentIds.Contains(text)) references.Add(text);
+                    else if (text.Length > 1 && text[0] is '{' or '[')
+                    {
+                        try { using var nested = JsonDocument.Parse(text); Visit(nested.RootElement); }
+                        catch (JsonException) { }
+                    }
+                    break;
+            }
+        }
+    }
+
+    private static void DeleteAssessments(SqliteConnection connection, SqliteTransaction transaction,
+        HashSet<string> removable, bool removeInvocations)
+    {
         Execute(connection, transaction, "CREATE TEMP TABLE IF NOT EXISTS RemovedAssessments (AssessmentId TEXT PRIMARY KEY);");
         Execute(connection, transaction, "DELETE FROM temp.RemovedAssessments;");
         foreach (var id in removable)
             Execute(connection, transaction, "INSERT INTO temp.RemovedAssessments (AssessmentId) VALUES ($id);", ("$id", id));
+        if (removeInvocations)
+        {
+            Execute(connection, transaction, "CREATE TEMP TABLE IF NOT EXISTS RemovedInvocations (InvocationId TEXT PRIMARY KEY);");
+            Execute(connection, transaction, "DELETE FROM temp.RemovedInvocations;");
+            Execute(connection, transaction, "INSERT OR IGNORE INTO temp.RemovedInvocations SELECT InvocationId FROM RetainedInvocationMembers WHERE AssessmentId IN (SELECT AssessmentId FROM temp.RemovedAssessments);");
+            Execute(connection, transaction, "DELETE FROM RetainedInvocationMembers WHERE AssessmentId IN (SELECT AssessmentId FROM temp.RemovedAssessments);");
+            Execute(connection, transaction, "DELETE FROM RetainedInvocations WHERE InvocationId IN (SELECT InvocationId FROM temp.RemovedInvocations) AND NOT EXISTS (SELECT 1 FROM RetainedInvocationMembers m WHERE m.InvocationId = RetainedInvocations.InvocationId);");
+        }
         foreach (var sql in new[]
         {
             "DELETE FROM PhonologyAssessmentDependencies WHERE AssessmentId IN (SELECT AssessmentId FROM temp.RemovedAssessments);",
@@ -97,7 +241,8 @@ internal static class AssessmentRetention
             "DELETE FROM temp.RemovedAssessments;",
         })
             Execute(connection, transaction, sql);
-        return removable.Count;
+        if (removeInvocations)
+            Execute(connection, transaction, "DELETE FROM AssessmentInvocations WHERE NOT EXISTS (SELECT 1 FROM Assessments a WHERE a.InvocationId = AssessmentInvocations.InvocationId) AND NOT EXISTS (SELECT 1 FROM RetainedInvocations r WHERE r.ArtifactInvocationId = AssessmentInvocations.InvocationId);");
     }
 
     private static HashSet<string> ReadFrozenReportAssessmentIds(SqliteConnection connection,

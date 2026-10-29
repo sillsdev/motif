@@ -40,12 +40,14 @@ public static class CompareCommands
         return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, _) =>
         {
             var repository = new AssessmentRepository(database);
+            using var connection = database.OpenConnection();
+            using var transaction = connection.BeginTransaction();
             AssessmentRecord from;
             AssessmentRecord to;
             try
             {
-                from = repository.Get(request.FromAssessmentId);
-                to = repository.Get(request.ToAssessmentId);
+                from = repository.Get(connection, transaction, request.FromAssessmentId);
+                to = repository.Get(connection, transaction, request.ToAssessmentId);
             }
             catch (KeyNotFoundException exception)
             {
@@ -88,7 +90,7 @@ public static class CompareCommands
                 ? ("mixed", "mixed")
                 : (from.TokeniserName, from.TokeniserVersion);
 
-            repository.Record(new NewAssessmentRecord(
+            AssessmentRepository.InsertRecords(connection, transaction, [new NewAssessmentRecord(
                 AssessmentId: assessmentId,
                 ProposalId: null,
                 ProposalIntentDigest: null,
@@ -104,12 +106,13 @@ public static class CompareCommands
                 ModelFingerprint: "motif-comparison",
                 Pipeline: "compare",
                 DiagnosticCount: comparison.TokeniserMismatch || comparison.ParserMismatch ? 1 : 0,
-                Material: new AssessmentRecordMaterial.Words(words, null, null, [])));
+                Material: new AssessmentRecordMaterial.Words(words, null, null, []))]);
 
             // Read back the row just recorded, so this can't disagree with a later report of the same row.
-            var stored = repository.Get(assessmentId);
+            var stored = repository.Get(connection, transaction, assessmentId);
             var rendered = ReportCommands.Catalog.Resolve(DifferenceReportProducer.KindName)
                 .Produce(ReportInput.FromAssessment(stored.ToReportable()), new ReportQuery(), AssessorCatalog.Empty);
+            transaction.Commit();
 
             return CommandOutcome<CompareResponse>.Success(new CompareResponse(
                 assessmentId, request.FromAssessmentId, request.ToAssessmentId, from.Assessor,

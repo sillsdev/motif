@@ -374,6 +374,9 @@ public static class CliVerbCatalog
             "Project", "store", "store delete-refused",
             new[] { "store delete-refused --project <fwdata> [--json]" }),
         new CliVerbDescriptor(
+            "Project", "store", "store prune",
+            new[] { "store prune --project <fwdata> [--json]" }),
+        new CliVerbDescriptor(
             "Project", "store", "store artifacts",
             new[] { "store artifacts --root <worker-root> --stores <stores.json> --json" }),
         new CliVerbDescriptor(

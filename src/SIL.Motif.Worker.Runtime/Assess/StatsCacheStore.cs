@@ -1,5 +1,7 @@
+using Microsoft.Data.Sqlite;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.PanGloss;
+using SIL.Motif.Host.Store;
 using SIL.Motif.Worker.Store;
 
 namespace SIL.Motif.Worker.Assess;
@@ -10,9 +12,13 @@ public sealed class StatsCacheStore : IAssessorCachePathResolver
 {
     private const string RootSegment = "assessment-runs";
     private readonly IWorkspaceOwnership _ownership;
+    private readonly string? _projectStorePath;
 
-    public StatsCacheStore(IWorkspaceOwnership ownership) =>
+    public StatsCacheStore(IWorkspaceOwnership ownership, string? projectStorePath = null)
+    {
         _ownership = ownership ?? throw new ArgumentNullException(nameof(ownership));
+        _projectStorePath = projectStorePath is null ? null : Path.GetFullPath(projectStorePath);
+    }
 
     /// <inheritdoc />
     public string DirectoryFor(string invocationId)
@@ -29,6 +35,7 @@ public sealed class StatsCacheStore : IAssessorCachePathResolver
         RequireOwned(path);
         try { SweepExpired(); }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException) { }
+        if (_projectStorePath is not null) RecordOwner(path, _projectStorePath);
         return path;
     }
 
@@ -53,10 +60,25 @@ public sealed class StatsCacheStore : IAssessorCachePathResolver
                 {
                     if ((File.GetAttributes(cache) & FileAttributes.ReparsePoint) != 0 ||
                         File.GetLastWriteTimeUtc(cache) >= nowUtc - maximumAge) continue;
-                    File.Delete(cache);
                 }
                 else if (Directory.GetLastWriteTimeUtc(directory) >= nowUtc - maximumAge) continue;
-                if (!Directory.EnumerateFileSystemEntries(directory).Any()) Directory.Delete(directory);
+                if (IsReferencedOrUnknown(directory, cache) || !ContainsOnlyOwnedEntries(directory)) continue;
+                Directory.Delete(directory, recursive: true);
+                File.Delete(OwnerPath(directory));
+            }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
+        }
+        foreach (var owner in Directory.EnumerateFiles(root, "*.owner"))
+        {
+            try
+            {
+                var directory = owner[..^".owner".Length];
+                if (!_ownership.IsOwned(owner) || (File.GetAttributes(owner) & FileAttributes.ReparsePoint) != 0 ||
+                    Directory.Exists(directory) || File.GetLastWriteTimeUtc(owner) >= nowUtc - maximumAge) continue;
+                using var lease = StatsCacheLock.Create(directory);
+                if (lease.TryAcquire() && !Directory.Exists(directory) &&
+                    File.GetLastWriteTimeUtc(owner) < nowUtc - maximumAge) File.Delete(owner);
             }
             catch (IOException) { }
             catch (UnauthorizedAccessException) { }
@@ -64,6 +86,75 @@ public sealed class StatsCacheStore : IAssessorCachePathResolver
     }
 
     internal void SweepExpired() => SweepExpired(DateTime.UtcNow, MaximumAge());
+
+    private void RecordOwner(string directory, string projectStorePath)
+    {
+        var owner = OwnerPath(directory);
+        RequireOwned(owner);
+        try
+        {
+            using var stream = new FileStream(owner, FileMode.CreateNew, FileAccess.Write, FileShare.Read);
+            using var writer = new StreamWriter(stream);
+            writer.Write(projectStorePath);
+        }
+        catch (IOException) when (File.Exists(owner))
+        {
+            var comparison = OperatingSystem.IsWindows() || OperatingSystem.IsMacOS()
+                ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+            if ((File.GetAttributes(owner) & FileAttributes.ReparsePoint) != 0 ||
+                !string.Equals(File.ReadAllText(owner), projectStorePath, comparison))
+                throw new InvalidOperationException("The invocation directory has another project owner.");
+        }
+    }
+
+    private bool IsReferencedOrUnknown(string directory, string cache)
+    {
+        var owner = OwnerPath(directory);
+        try
+        {
+            if (!_ownership.IsOwned(owner) || !File.Exists(owner) ||
+                (File.GetAttributes(owner) & FileAttributes.ReparsePoint) != 0) return true;
+            var storePath = File.ReadAllText(owner);
+            if (!Path.IsPathFullyQualified(storePath) || !File.Exists(storePath)) return true;
+            using var connection = new SqliteConnection(new SqliteConnectionStringBuilder
+            {
+                DataSource = storePath, Mode = SqliteOpenMode.ReadOnly, Pooling = false, DefaultTimeout = 1,
+            }.ToString());
+            connection.Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = "PRAGMA application_id;";
+            if (Convert.ToInt64(command.ExecuteScalar(), System.Globalization.CultureInfo.InvariantCulture) != MotifSchema.ApplicationId)
+                return true;
+            command.CommandText = "PRAGMA user_version;";
+            if (Convert.ToInt64(command.ExecuteScalar(), System.Globalization.CultureInfo.InvariantCulture) != MotifSchema.CurrentSchema)
+                return true;
+            command.CommandText = "SELECT 1 FROM Assessments WHERE InvocationId = $invocation OR CachePath = $cache LIMIT 1;";
+            command.Parameters.AddWithValue("$invocation", Path.GetFileName(directory));
+            command.Parameters.AddWithValue("$cache", cache);
+            return command.ExecuteScalar() is not null;
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or SqliteException or ArgumentException)
+        {
+            return true;
+        }
+    }
+
+    private bool ContainsOnlyOwnedEntries(string directory)
+    {
+        var pending = new Stack<string>();
+        pending.Push(directory);
+        while (pending.TryPop(out var current))
+            foreach (var entry in Directory.EnumerateFileSystemEntries(current))
+            {
+                if (!_ownership.IsOwned(entry)) return false;
+                var attributes = File.GetAttributes(entry);
+                if ((attributes & FileAttributes.ReparsePoint) != 0) return false;
+                if ((attributes & FileAttributes.Directory) != 0) pending.Push(entry);
+            }
+        return true;
+    }
+
+    private static string OwnerPath(string directory) => directory + ".owner";
 
     private static TimeSpan MaximumAge() =>
         int.TryParse(Environment.GetEnvironmentVariable("MOTIF_STATS_CACHE_MAX_AGE_DAYS"), out var days) && days is > 0 and <= 3650

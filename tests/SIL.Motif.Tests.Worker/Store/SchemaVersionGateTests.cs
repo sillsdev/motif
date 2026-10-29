@@ -18,6 +18,18 @@ public sealed class SchemaVersionGateTests : IDisposable
     public SchemaVersionGateTests() => Directory.CreateDirectory(_root);
 
     [Fact]
+    public void NewProjectStoresUseIncrementalVacuum()
+    {
+        var path = Path.Combine(_root, "incremental.motif.db");
+        var locator = new ProjectLocator(Path.Combine(_root, "incremental.fwdata"), "incremental");
+        using var database = MotifDatabase.OpenOwned(path, locator, MotifSchema.CurrentSchema, new Version(1, 0));
+        using var connection = database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = "PRAGMA auto_vacuum;";
+        Assert.Equal(2L, command.ExecuteScalar());
+    }
+
+    [Fact]
     public void AStoreWithoutTimingIdentityDomainsIsRefusedWithoutRewritingIt()
     {
         var path = Path.Combine(_root, "untyped-timing.motif.db");

@@ -127,6 +127,11 @@ public static class ProjectStoreCommand
         {
             return operation();
         }
+        catch (AssessmentExpiredException exception)
+        {
+            return CommandOutcome<T>.Refused(new Refusal(RefusalCodes.AssessmentExpired,
+                FailureReason.NotFound, exception.Message, Fact(fwDataPath)));
+        }
         catch (ProjectBaselineBusyException)
         {
             return CommandOutcome<T>.Refused(new Refusal("project.busy", FailureReason.Busy,

@@ -90,10 +90,10 @@ At runner startup, orphan copies older than 24 hours are removed; set `MOTIF_TRI
 to a positive integer up to 87,600 to change that age. Active Trials are protected. Set
 `MOTIF_RETAIN_TRIAL_SCRATCH=1` in the runner's environment to keep all Trial copies.
 
-Per-object statistics caches older than 30 days are removed when the runner starts or another Assessment begins;
-`MOTIF_STATS_CACHE_MAX_AGE_DAYS` changes that age (positive integer, at most 3,650). A statistics query or Handoff
-that needs a removed cache asks for a new Assessment. Other retained Assessment evidence is not removed by this
-cache cleanup. Project grammar checks keep the two most recent Baselines; `MOTIF_GRAMMAR_BASELINE_MAX_ROWS`
+Invocation directories older than 30 days are removed when the runner starts or another Assessment begins if no
+retained Assessment refers to them. This removes their source and statistics files together;
+`MOTIF_STATS_CACHE_MAX_AGE_DAYS` changes the age (positive integer, at most 3,650). Directories with unknown or
+unavailable project ownership are kept. Project grammar checks keep the two most recent Baselines; `MOTIF_GRAMMAR_BASELINE_MAX_ROWS`
 sets another positive limit. Trial grammar checks keep the newest five rows per Proposal;
 `MOTIF_GRAMMAR_CHECK_MAX_ROWS` sets another positive limit. Responses are compressed.
 

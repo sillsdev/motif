@@ -25,12 +25,24 @@ public sealed class JobRepository
     internal MotifDatabase Database => _database;
 
     public JobRecord Create(JobRecord requested)
+        => Create(requested, null);
+
+    internal JobRecord Create(JobRecord requested, IReadOnlyList<string>? requiredAssessments)
     {
         var record = Normalize(requested);
         using var connection = _database.OpenConnection();
         using var transaction = connection.BeginTransaction();
         try
         {
+            if (requiredAssessments is { Count: > 0 })
+            {
+                using var check = connection.CreateCommand();
+                check.Transaction = transaction;
+                check.CommandText = "SELECT value FROM json_each($ids) WHERE NOT EXISTS " +
+                    "(SELECT 1 FROM Assessments WHERE AssessmentId = value) LIMIT 1;";
+                check.Parameters.AddWithValue("$ids", JsonSerializer.Serialize(requiredAssessments));
+                if (check.ExecuteScalar() is string missing) throw new AssessmentExpiredException(missing);
+            }
             Insert(connection, transaction, record);
             transaction.Commit();
             return record;
@@ -45,6 +57,11 @@ public sealed class JobRepository
     public JobRecord Create(string jobId, string projectKey, string kind, string inputJson, string createdUtc,
         string? lineageId = null) => Create(new JobRecord(jobId, projectKey, kind, JobStatus.Queued, 1, inputJson,
             null, createdUtc, createdUtc, null, lineageId));
+
+    internal JobRecord CreateTrial(string jobId, string projectKey, string inputJson, string createdUtc,
+        IReadOnlyList<string>? requiredAssessments) => Create(new JobRecord(jobId, projectKey,
+            TrialJobHandler.TrialKind, JobStatus.Queued, 1, inputJson, null, createdUtc, createdUtc, null, null),
+            requiredAssessments);
 
     public JobRecord? Get(string jobId)
     {

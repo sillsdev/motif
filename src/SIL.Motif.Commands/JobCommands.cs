@@ -181,8 +181,8 @@ public static class JobCommands
                 request.Limits ?? ResolveTrialLimits(database, project, request.Scope),
                 request.BaselineAssessmentIds, request.NegativeWords);
             var inputJson = JsonSerializer.Serialize(input, MotifJson.CreateOptions());
-            var created = jobs.Create(jobId, workspaceKey, TrialKind,
-                JobParserPin.Stamp(inputJson, parserPath), NowStamp());
+            var created = jobs.CreateTrial(jobId, workspaceKey,
+                JobParserPin.Stamp(inputJson, parserPath), NowStamp(), request.BaselineAssessmentIds);
             return CommandOutcome<JobEnqueuedResponse>.Success(
                 new JobEnqueuedResponse(created.JobId, TrialKind, workspaceKey));
         });

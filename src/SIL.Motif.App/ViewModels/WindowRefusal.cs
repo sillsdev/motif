@@ -100,6 +100,7 @@ public sealed partial record WindowRefusal
         [C.AssessWordsFileEmpty] = () => MotifAppStrings.RefusalAssessWordsFileEmpty,
         [C.AssessWordsFileUnreadable] = () => MotifAppStrings.RefusalAssessWordsFileUnreadable,
         [C.AssessmentCancelled] = () => MotifAppStrings.RefusalAssessmentCancelled,
+        [C.AssessmentExpired] = () => MotifAppStrings.RefusalAssessmentExpired,
 
         [C.BaselineBusy] = () => MotifAppStrings.RefusalBaselineBusy,
         [C.BaselineCopyUnloadable] = () => MotifAppStrings.RefusalBaselineCopyUnloadable,

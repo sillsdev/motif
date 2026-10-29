@@ -1928,10 +1928,12 @@ try
             break;
 
         case "store":
-            if (positionals.Count != 1 || positionals[0] != "delete-refused" ||
+            if (positionals.Count != 1 || positionals[0] is not ("delete-refused" or "prune") ||
                 !flags.TryGetValue("project", out var storeProject))
-                return Usage(UsageLineFor("store delete-refused"), asJson);
-            result = RenderCommand(ProjectStoreReset.DeleteRefused(new ProjectStoreResetRequest(storeProject)));
+                return Usage(UsageLineFor(positionals.Count == 1 && positionals[0] == "prune" ? "store prune" : "store delete-refused"), asJson);
+            result = positionals[0] == "prune"
+                ? RenderCommand(StorePruneCommand.Run(new StorePruneRequest(storeProject)))
+                : RenderCommand(ProjectStoreReset.DeleteRefused(new ProjectStoreResetRequest(storeProject)));
             break;
 
         case "assess":

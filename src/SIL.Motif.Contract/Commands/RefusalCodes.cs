@@ -217,6 +217,8 @@ public static class RefusalCodes
     public const string AssessmentAggregateUnavailable = "assessment.aggregate-unavailable";
     /// <summary>The exact Baseline an Assessment was made against is no longer available.</summary>
     public const string AssessmentBaselineUnavailable = "assessment.baseline-unavailable";
+    /// <summary>Previously selected Assessment evidence is no longer retained.</summary>
+    public const string AssessmentExpired = "assessment.expired";
     /// <summary>An Assessment's stored evidence could not be read.</summary>
     public const string AssessmentInvalidEvidence = "assessment.invalid-evidence";
     /// <summary>An Assessment id is not a valid Motif id.</summary>

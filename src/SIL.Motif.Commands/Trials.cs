@@ -224,9 +224,9 @@ public static class Trials
         var rootAssessmentId = assessmentIds.GetValueOrDefault(AssessmentKinds.ParseTime);
         var wordResults = !includeWordResults || rootAssessmentId is null
             ? []
-            : assessments.Get(rootAssessmentId).Words?.Select(AssessmentWordRows.FromRecorded).ToArray() ?? [];
-        var trialAssessment = rootAssessmentId is null ? null : assessments.Get(rootAssessmentId);
-        var baselineAssessment = (input.BaselineAssessmentIds ?? []).Select(assessments.Get)
+            : assessments.GetSelected(rootAssessmentId).Words?.Select(AssessmentWordRows.FromRecorded).ToArray() ?? [];
+        var trialAssessment = rootAssessmentId is null ? null : assessments.GetSelected(rootAssessmentId);
+        var baselineAssessment = (input.BaselineAssessmentIds ?? []).Select(assessments.GetSelected)
             .FirstOrDefault(record => record.Kind == AssessmentKinds.ParseTime && trialAssessment is not null &&
                 record.Assessor == trialAssessment.Assessor && record.BaselineToken == trialAssessment.BaselineToken);
         var work = trialAssessment is not null

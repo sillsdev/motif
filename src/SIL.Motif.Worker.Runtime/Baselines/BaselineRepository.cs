@@ -159,6 +159,13 @@ public sealed class BaselineRepository
         RequireProjectKey(projectKey);
         using var connection = _database.OpenConnection();
         using var transaction = connection.BeginTransaction(deferred: true);
+        return GetCurrentEvidence(connection, transaction, projectKey);
+    }
+
+    internal CurrentBaselineEvidence? GetCurrentEvidence(SqliteConnection connection, SqliteTransaction transaction,
+        string projectKey)
+    {
+        RequireProjectKey(projectKey);
         using var command = connection.CreateCommand();
         command.Transaction = transaction;
         command.CommandText = EvidenceSelectSql + " WHERE b.ProjectKey = $project;";

@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
+using Microsoft.Data.Sqlite;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
 
@@ -46,6 +47,21 @@ public sealed class ProjectParseLease : IDisposable
     public static Refusal BusyRefusal() => new(RefusalCodes.ParseAlreadyRunning, FailureReason.Busy,
         "A parse is already running for this project in another Motif window or process. " +
         "Use that window to see its progress or cancel it.");
+
+    /// <summary>Checks that this lease still admits writes to the transaction's project store.</summary>
+    public void EnsureHeld(SqliteConnection connection, SqliteTransaction transaction)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        var comparison = OperatingSystem.IsWindows() || OperatingSystem.IsMacOS()
+            ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        if (!string.Equals(Path.GetFullPath(connection.DataSource), _database.FullPath, comparison))
+            throw new InvalidOperationException("The parse lease belongs to another project store.");
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = "SELECT Token FROM ActiveParse WHERE Id = 1;";
+        if (!string.Equals(command.ExecuteScalar() as string, _token, StringComparison.Ordinal))
+            throw new InvalidOperationException("The project parse lease is no longer held.");
+    }
 
     public void Dispose()
     {

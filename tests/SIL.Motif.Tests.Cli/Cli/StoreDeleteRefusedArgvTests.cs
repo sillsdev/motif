@@ -71,6 +71,19 @@ public sealed class StoreDeleteRefusedArgvTests : IDisposable
         Assert.Contains(CommandCatalog.All, command => command.Name == "store delete-refused");
     }
 
+    [Fact]
+    public void PruneIsAvailableOnTheReleasedSurfaceAndReportsSizes()
+    {
+        var result = Run($"store prune --project \"{Project}\" --json", developerCommands: false);
+
+        Assert.True(result.ExitCode == 0, result.Error);
+        using var document = JsonDocument.Parse(result.Output);
+        Assert.Equal(0, document.RootElement.GetProperty("assessmentsRemoved").GetInt32());
+        Assert.True(document.RootElement.GetProperty("bytesBefore").GetInt64() > 0);
+        Assert.True(document.RootElement.GetProperty("bytesAfter").GetInt64() > 0);
+        Assert.True(document.RootElement.GetProperty("checkpointComplete").GetBoolean());
+    }
+
     private void RefusedStore()
     {
         Assert.True(ProjectStoreCommand.Run<string>(

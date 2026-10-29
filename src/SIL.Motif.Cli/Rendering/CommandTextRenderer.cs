@@ -10,6 +10,7 @@ using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Commands;
 using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Worker.Jobs;
 using SIL.Motif.Host.PanGloss;
@@ -50,6 +51,8 @@ public static class CommandTextRenderer
             CorpusListProjection p => ProjectionText.Render(p),
             CorpusDetailProjection p => ProjectionText.Render(p),
             ProjectConfigurationProjection p => ProjectionText.Render(p),
+            StorePruneResponse r => $"Removed {r.AssessmentsRemoved} Assessments; store: {r.BytesBefore} to {r.BytesAfter} bytes." +
+                (r.CheckpointComplete ? "" : " Reclamation is incomplete while readers are active.") + Environment.NewLine,
             DryRunProjection p => ProjectionText.Render(p),
             RetirementProposalReviewProjection p => ProjectionText.Render(p),
             RetirementReviewQueryResponse r => RenderRetirementReview(r),

@@ -86,6 +86,11 @@ public static class StoredGrammarCheckQuery
                     evidence.Words.Select(AssessmentWordRows.FromRecorded).ToArray(), evidence.ObjectTimings, evidence.TimingDetail);
                 return CommandOutcome<StoredGrammarCheckResponse>.Success(new(check, Provenance: stored!.Provenance));
             }
+            catch (AssessmentExpiredException exception)
+            {
+                return CommandOutcome<StoredGrammarCheckResponse>.Refused(new Refusal(
+                    RefusalCodes.AssessmentExpired, FailureReason.NotFound, exception.Message));
+            }
             catch (Exception exception) when (exception is InvalidDataException or KeyNotFoundException)
             {
                 return CommandOutcome<StoredGrammarCheckResponse>.Refused(new Refusal(
@@ -116,7 +121,7 @@ public static class StoredGrammarCheckQuery
     {
         var repository = new AssessmentRepository(database);
         var ids = new[] { set.RootAssessmentId }.Concat(set.ReplacementAssessmentIds).ToArray();
-        var records = ids.Select(id => repository.Get(id!)).ToArray();
+        var records = ids.Select(id => repository.GetSelected(id!)).ToArray();
         if (records.Any(record => record.ProposalId?.Value != set.Origin.ProposalId ||
             record.ProposalIntentDigest != set.Origin.IntentDigest ||
             record.BaselineToken != JsonSerializer.Serialize(set.Baseline, MotifJson.CreateOptions())))

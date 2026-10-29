@@ -196,7 +196,7 @@ public sealed class EvidenceSetReadsTests : IDisposable
         var result = StoredGrammarCheckQuery.Query(fixture.Database, fixture.Project, set);
 
         Assert.False(result.Succeeded);
-        Assert.Equal("assessment.invalid-evidence", result.Refusal?.Code);
+        Assert.Equal("assessment.expired", result.Refusal?.Code);
     }
 
     [Fact]

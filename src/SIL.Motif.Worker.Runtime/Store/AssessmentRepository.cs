@@ -19,6 +19,10 @@ using SIL.Motif.Worker.Jobs;
 
 namespace SIL.Motif.Worker.Store;
 
+/// <summary>Previously selected Assessment evidence is no longer in the store.</summary>
+public sealed class AssessmentExpiredException(string id)
+    : Exception($"Assessment '{id}' is no longer available. Refresh the evidence and try again.");
+
 /// <summary>
 /// Durable Assessment storage: one immutable measurement per row, plus the project's single pointer to
 /// its current Assessment. Callers use this seam without depending on the normalized detail tables.
@@ -639,12 +643,24 @@ public sealed class AssessmentRepository : IAssessmentRepository
     public AssessmentRecord Get(string assessmentId)
     {
         using var connection = _database.OpenConnection();
-        var header = GetHeader(connection, assessmentId) ??
+        using var transaction = connection.BeginTransaction(deferred: true);
+        return Get(connection, transaction, assessmentId);
+    }
+
+    internal AssessmentRecord GetSelected(string assessmentId)
+    {
+        try { return Get(assessmentId); }
+        catch (KeyNotFoundException) { throw new AssessmentExpiredException(assessmentId); }
+    }
+
+    internal AssessmentRecord Get(SqliteConnection connection, SqliteTransaction transaction, string assessmentId)
+    {
+        var header = ReadHeader(connection, transaction, assessmentId) ??
             throw new KeyNotFoundException($"Assessment '{assessmentId}' was not found.");
         return header.Subject is AssessmentSubject.PhonologyExamples
-            ? header with { Details = PhonologyAssessmentRepository.ReadDetails(connection, header.AssessmentId) }
+            ? header with { Details = PhonologyAssessmentRepository.ReadDetails(connection, header.AssessmentId, transaction) }
             : header with { Details = LoadWordDetails(connection, header,
-                ReadWords(connection, assessmentId), ReadObjectTimings(connection, assessmentId)) };
+                ReadWords(connection, assessmentId, null, transaction), ReadObjectTimings(connection, assessmentId, transaction), transaction) };
     }
 
     public AssessmentRecord? GetHeader(string assessmentId)
@@ -709,10 +725,17 @@ public sealed class AssessmentRepository : IAssessmentRepository
             throw new ArgumentException("This read requires a Words Assessment kind.");
         if (string.IsNullOrWhiteSpace(kind)) throw new ArgumentException("A kind is required.", nameof(kind));
         using var connection = _database.OpenConnection();
+        using var transaction = connection.BeginTransaction(deferred: true);
+        return ListBaselineAssessments(connection, transaction, kind);
+    }
 
+    internal IReadOnlyList<AssessmentRecord> ListBaselineAssessments(SqliteConnection connection,
+        SqliteTransaction transaction, string kind)
+    {
         var headers = new List<AssessmentRecord>();
         using (var command = connection.CreateCommand())
         {
+            command.Transaction = transaction;
             command.CommandText =
                 HeaderSelectSql + " WHERE Kind = $kind AND ProposalId IS NULL ORDER BY SavedUtc, AssessmentId;";
             command.Parameters.AddWithValue("$kind", kind);
@@ -723,7 +746,8 @@ public sealed class AssessmentRepository : IAssessmentRepository
 
         return headers.Select(header => header with
         {
-            Details = LoadWordDetails(connection, header, ReadWords(connection, header.AssessmentId), ReadObjectTimings(connection, header.AssessmentId))
+            Details = LoadWordDetails(connection, header, ReadWords(connection, header.AssessmentId, null, transaction),
+                ReadObjectTimings(connection, header.AssessmentId, transaction), transaction)
         }).ToList();
     }
 
@@ -738,9 +762,17 @@ public sealed class AssessmentRepository : IAssessmentRepository
         ArgumentException.ThrowIfNullOrWhiteSpace(selectionSha256);
         ArgumentNullException.ThrowIfNull(selectionWords);
         using var connection = _database.OpenConnection();
+        using var transaction = connection.BeginTransaction(deferred: true);
+        return FindLatestBaselineAssessment(connection, transaction, kind, baselineToken, selectionSha256, selectionWords);
+    }
+
+    internal AssessmentRecord? FindLatestBaselineAssessment(SqliteConnection connection, SqliteTransaction transaction,
+        string kind, string baselineToken, string selectionSha256, IReadOnlyList<string> selectionWords)
+    {
         AssessmentRecord? header;
         using (var command = connection.CreateCommand())
         {
+            command.Transaction = transaction;
             command.CommandText = HeaderSelectSql + """
                  WHERE Kind = $kind AND ProposalId IS NULL AND BaselineToken = $baseline
                    AND SelectionSha256 = $selectionSha AND SelectionWordsJson = $selectionWords
@@ -758,7 +790,8 @@ public sealed class AssessmentRepository : IAssessmentRepository
         if (header is null) return null;
         return header with
         {
-            Details = LoadWordDetails(connection, header, ReadWords(connection, header.AssessmentId), ReadObjectTimings(connection, header.AssessmentId))
+            Details = LoadWordDetails(connection, header, ReadWords(connection, header.AssessmentId, null, transaction),
+                ReadObjectTimings(connection, header.AssessmentId, transaction), transaction)
         };
     }
 
@@ -832,6 +865,22 @@ public sealed class AssessmentRepository : IAssessmentRepository
         return rows;
     }
 
+    internal string? FindSameInvocationId(SqliteConnection connection, SqliteTransaction transaction,
+        string kind, string baselineToken, string invocationId)
+    {
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = """
+            SELECT AssessmentId FROM Assessments WHERE Kind = $kind AND ProposalId IS NULL
+                AND BaselineToken = $baseline AND InvocationId = $invocation
+            ORDER BY SavedUtc DESC, AssessmentId DESC LIMIT 1;
+            """;
+        command.Parameters.AddWithValue("$kind", kind);
+        command.Parameters.AddWithValue("$baseline", baselineToken);
+        command.Parameters.AddWithValue("$invocation", invocationId);
+        return command.ExecuteScalar() as string;
+    }
+
     internal IReadOnlyList<AssessmentRecord> ReadSelectedWords(
         SqliteConnection connection, SqliteTransaction transaction,
         IReadOnlyList<AssessmentRecord> headers, IReadOnlyCollection<string> wordForms)
@@ -857,9 +906,20 @@ public sealed class AssessmentRepository : IAssessmentRepository
         if (wordForms.Count == 0 || assessmentIds is { Count: 0 }) return [];
 
         using var connection = _database.OpenConnection();
+        using var transaction = connection.BeginTransaction(deferred: true);
         var headers = new List<AssessmentRecord>();
+        if (assessmentIds is not null)
+        {
+            using var check = connection.CreateCommand();
+            check.Transaction = transaction;
+            check.CommandText = "SELECT value FROM json_each($ids) WHERE NOT EXISTS " +
+                "(SELECT 1 FROM Assessments WHERE AssessmentId = value) LIMIT 1;";
+            check.Parameters.AddWithValue("$ids", JsonSerializer.Serialize(assessmentIds));
+            if (check.ExecuteScalar() is string missing) throw new AssessmentExpiredException(missing);
+        }
         using (var command = connection.CreateCommand())
         {
+            command.Transaction = transaction;
             command.CommandText = assessmentIds is null
                 ? HeaderSelectSql + " WHERE Kind = $kind AND ProposalId IS NULL AND BaselineToken = $baseline " +
                   "ORDER BY SavedUtc DESC, AssessmentId DESC LIMIT 1;"
@@ -877,7 +937,8 @@ public sealed class AssessmentRepository : IAssessmentRepository
         var selectedForms = wordForms.ToHashSet(StringComparer.Ordinal);
         return headers.Select(header => header with
         {
-            Details = LoadWordDetails(connection, header, ReadWords(connection, header.AssessmentId, selectedForms), new StoredTimings([], null)),
+            Details = LoadWordDetails(connection, header, ReadWords(connection, header.AssessmentId, selectedForms, transaction),
+                new StoredTimings([], null), transaction),
         }).ToArray();
     }
 
@@ -909,22 +970,25 @@ public sealed class AssessmentRepository : IAssessmentRepository
     public AssessmentRecord? GetCurrent()
     {
         using var connection = _database.OpenConnection();
+        using var transaction = connection.BeginTransaction(deferred: true);
         string? currentId;
         using (var command = connection.CreateCommand())
         {
+            command.Transaction = transaction;
             command.CommandText = "SELECT CurrentAssessmentId FROM MotifMetadata WHERE Id = 1;";
             RepositoryReadCounters.QueryExecuted();
             currentId = command.ExecuteScalar() as string;
         }
         if (currentId is null) return null;
 
-        var header = ReadHeader(connection, null, currentId) ?? throw new InvalidDataException(
+        var header = ReadHeader(connection, transaction, currentId) ?? throw new InvalidDataException(
             $"MotifMetadata points at current Assessment '{currentId}', which is not recorded " +
             "(store inconsistency).");
         header.RequireWords();
         return header with
         {
-            Details = LoadWordDetails(connection, header, ReadWords(connection, currentId), ReadObjectTimings(connection, currentId))
+            Details = LoadWordDetails(connection, header, ReadWords(connection, currentId, null, transaction),
+                ReadObjectTimings(connection, currentId, transaction), transaction)
         };
     }
 

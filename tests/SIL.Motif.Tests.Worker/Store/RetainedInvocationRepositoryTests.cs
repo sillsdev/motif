@@ -299,6 +299,44 @@ public sealed class RetainedInvocationRepositoryTests : IDisposable
         Assert.Equal("C:/managed/baseline-a/project.fwdata", runA.BaselineFwDataPath);
     }
 
+    [Fact]
+    public void StandaloneSweepKeepsAnInvocationTogetherAndRemovesItWhenNoMemberIsRetained()
+    {
+        using var database = OpenDatabase("sweep-invocation.fwdata");
+        var retained = NewRetained("old") with
+        {
+            Members = [new RetainedInvocationMember("ParseTime", "old-parse"),
+                new RetainedInvocationMember("ObjectTiming", "old-timing")],
+        };
+        var invocations = new RetainedInvocationRepository(database);
+        invocations.Record(retained, [
+            NewAssessment("old-parse", "ParseTime", "old") with { SavedUtc = "2026-01-01T00:00:00Z" },
+            NewAssessment("old-timing", "ObjectTiming", "old") with { SavedUtc = "2026-01-01T00:00:00Z" },
+        ]);
+        var assessments = new AssessmentRepository(database);
+        assessments.Record(NewAssessment("new-parse", "ParseTime", "new-parse") with
+            { SavedUtc = "2026-01-02T00:00:00Z" });
+        using var lease = ProjectParseLease.TryAcquire(database)!;
+        using var connection = database.OpenConnection();
+        using (var transaction = connection.BeginTransaction())
+        {
+            Assert.Equal(0, AssessmentRetention.SweepStandalone(connection, transaction, lease, 1, []));
+            transaction.Commit();
+        }
+        Assert.Equal(2, invocations.Get("old").Members.Count);
+
+        assessments.Record(NewAssessment("new-timing", "ObjectTiming", "new-timing") with
+            { SavedUtc = "2026-01-03T00:00:00Z" });
+        using (var transaction = connection.BeginTransaction())
+        {
+            Assert.Equal(2, AssessmentRetention.SweepStandalone(connection, transaction, lease, 1, []));
+            transaction.Commit();
+        }
+        Assert.Throws<KeyNotFoundException>(() => invocations.Get("old"));
+        Assert.NotNull(assessments.Get("new-parse"));
+        Assert.NotNull(assessments.Get("new-timing"));
+    }
+
     private RetainedInvocationRecord NewRetained(string invocationId, BaselineToken? baseline = null) => new(
         invocationId, "different-inputs", baseline ?? NewBaseline('b'), "C:/managed/baseline-a",
         "C:/managed/baseline-a/project.fwdata", Utc("2020-01-01T00:00:00Z"),

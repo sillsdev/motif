@@ -62,7 +62,9 @@ public sealed class RetainedInvocationRepository
         if (string.IsNullOrWhiteSpace(invocationId))
             throw new ArgumentException("An invocation id is required.", nameof(invocationId));
 
-        return ReadComplete(invocationId, includeWords: true);
+        using var connection = _database.OpenConnection();
+        using var transaction = connection.BeginTransaction(deferred: true);
+        return ReadComplete(connection, transaction, invocationId, includeWords: true);
     }
 
     /// <summary>Lists validated retained invocations for one project, oldest saved result first.</summary>
@@ -71,7 +73,9 @@ public sealed class RetainedInvocationRepository
         if (string.IsNullOrWhiteSpace(projectKey))
             throw new ArgumentException("A project workspace key is required.", nameof(projectKey));
         using var connection = _database.OpenConnection();
+        using var transaction = connection.BeginTransaction(deferred: true);
         using var command = connection.CreateCommand();
+        command.Transaction = transaction;
         command.CommandText = "SELECT InvocationId FROM RetainedInvocations " +
             "WHERE ProjectKey = $project ORDER BY SavedUtc, InvocationId;";
         command.Parameters.AddWithValue("$project", projectKey);
@@ -79,28 +83,28 @@ public sealed class RetainedInvocationRepository
         var ids = new List<string>();
         while (reader.Read()) ids.Add(reader.GetString(0));
         reader.Dispose();
-        return ids.Select(id => ReadComplete(id, includeWords: false)).ToArray();
+        return ids.Select(id => ReadComplete(connection, transaction, id, includeWords: false)).ToArray();
     }
 
-    private RetainedInvocationRecord ReadComplete(string invocationId, bool includeWords)
+    private RetainedInvocationRecord ReadComplete(SqliteConnection connection, SqliteTransaction transaction,
+        string invocationId, bool includeWords)
     {
-        using var connection = _database.OpenConnection();
-        var stored = ReadAggregate(connection, invocationId) ??
+        var stored = ReadAggregate(connection, transaction, invocationId) ??
             throw new KeyNotFoundException($"Retained invocation '{invocationId}' was not found.");
-        var members = ReadMembers(connection, invocationId);
+        var members = ReadMembers(connection, transaction, invocationId);
         var repository = new AssessmentRepository(_database);
         var assessments = new List<AssessmentRecord>(members.Count);
         foreach (var member in members)
         {
             var assessment = includeWords
-                ? repository.Get(member.AssessmentId)
-                : repository.GetHeader(member.AssessmentId);
+                ? repository.Get(connection, transaction, member.AssessmentId)
+                : repository.GetHeader(connection, transaction, member.AssessmentId);
             if (assessment is null)
                 throw new InvalidDataException("A retained invocation is missing an expected Assessment member.");
             assessments.Add(assessment);
         }
         var complete = stored.Record with { Members = members, Assessments = assessments };
-        ValidateStoredAggregate(complete, ReadExpectedKinds(stored.ExpectedKindsJson));
+        ValidateStoredAggregate(complete, ReadExpectedKinds(stored.ExpectedKindsJson), connection, transaction);
         return complete;
     }
 
@@ -139,7 +143,8 @@ public sealed class RetainedInvocationRepository
     }
 
     private void ValidateStoredAggregate(
-        RetainedInvocationRecord retained, IReadOnlyList<string> expectedKinds)
+        RetainedInvocationRecord retained, IReadOnlyList<string> expectedKinds,
+        SqliteConnection connection, SqliteTransaction transaction)
     {
         ValidateIdentity(retained, "has invalid identity or provenance");
         if (retained.ArtifactInvocationId != retained.InvocationId)
@@ -166,7 +171,7 @@ public sealed class RetainedInvocationRepository
             else if (sharedInvocation != invocation)
                 throw new InvalidDataException("A retained invocation's members disagree about shared evidence.");
         }
-        ValidateRetrySource(retained.Selection, baselineJson);
+        ValidateRetrySource(retained.Selection, baselineJson, connection, transaction);
     }
 
     private static void ValidateIdentity(RetainedInvocationRecord retained, string failure)
@@ -237,14 +242,15 @@ public sealed class RetainedInvocationRepository
             throw new InvalidDataException("A retained Selection descriptor digest is invalid.");
     }
 
-    private void ValidateRetrySource(SelectionDescriptor selection, string baselineJson)
+    private void ValidateRetrySource(SelectionDescriptor selection, string baselineJson,
+        SqliteConnection? connection = null, SqliteTransaction? transaction = null)
     {
         if (selection.RetryFailed || selection.RetryWorkOver is not null)
         {
             if (string.IsNullOrWhiteSpace(selection.RetrySourceAssessmentId))
                 throw new InvalidDataException("A retry Selection must name its source Assessment.");
             ValidateRetrySourceIfPresent(selection.RetrySourceAssessmentId, baselineJson,
-                new AssessmentRepository(_database));
+                new AssessmentRepository(_database), connection, transaction);
         }
         else if (selection.RetrySourceAssessmentId is not null)
         {
@@ -253,11 +259,13 @@ public sealed class RetainedInvocationRepository
     }
 
     private static void ValidateRetrySourceIfPresent(
-        string? assessmentId, string baselineJson, AssessmentRepository assessments)
+        string? assessmentId, string baselineJson, AssessmentRepository assessments,
+        SqliteConnection? connection, SqliteTransaction? transaction)
     {
         if (assessmentId is null) return;
         AssessmentRecord source;
-        try { source = assessments.GetHeader(assessmentId) ?? throw new KeyNotFoundException(); }
+        try { source = (connection is null || transaction is null ? assessments.GetHeader(assessmentId)
+            : assessments.GetHeader(connection, transaction, assessmentId)) ?? throw new KeyNotFoundException(); }
         catch (KeyNotFoundException exception)
         {
             throw new InvalidDataException("A retained invocation names a missing retry source Assessment.", exception);
@@ -321,9 +329,10 @@ public sealed class RetainedInvocationRepository
         }
     }
 
-    private static StoredAggregate? ReadAggregate(SqliteConnection connection, string invocationId)
+    private static StoredAggregate? ReadAggregate(SqliteConnection connection, SqliteTransaction transaction, string invocationId)
     {
         using var command = connection.CreateCommand();
+        command.Transaction = transaction;
         command.CommandText = "SELECT InvocationId, ProjectKey, BaselineToken, BaselineRootDirectory, " +
             "BaselineFwDataPath, BaselineSourceLastWriteUtc, BaselinePublishedUtc, SavedUtc, " +
             "SelectionDescriptorJson, SelectionDescriptorSha256, ExpectedKindsJson, Assessor, ScopeJson, " +
@@ -374,9 +383,10 @@ public sealed class RetainedInvocationRepository
     }
 
     private static IReadOnlyList<RetainedInvocationMember> ReadMembers(
-        SqliteConnection connection, string invocationId)
+        SqliteConnection connection, SqliteTransaction transaction, string invocationId)
     {
         using var command = connection.CreateCommand();
+        command.Transaction = transaction;
         command.CommandText = "SELECT Kind, AssessmentId FROM RetainedInvocationMembers " +
             "WHERE InvocationId = $invocation ORDER BY Kind;";
         command.Parameters.AddWithValue("$invocation", invocationId);

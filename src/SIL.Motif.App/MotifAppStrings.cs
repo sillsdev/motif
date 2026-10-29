@@ -2865,6 +2865,7 @@ public static class MotifAppStrings
     public static string RefusalAssessWordsFileUnreadable => Text("MotifApp.RefusalAssessWordsFileUnreadable");
 
     public static string RefusalAssessmentCancelled => Text("MotifApp.RefusalAssessmentCancelled");
+    public static string RefusalAssessmentExpired => Text("MotifApp.RefusalAssessmentExpired");
 
     public static string RefusalBaselineBusy => Text("MotifApp.RefusalBaselineBusy");
 

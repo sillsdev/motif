@@ -31,6 +31,7 @@ public sealed class ProjectConfigurationTests : IDisposable
 
         Assert.True(configuration.GateOnRegression);
         Assert.True(configuration.PurgeOnApply);
+        Assert.Equal(20, configuration.StandaloneAssessmentCount);
         var scope = Assert.Single(configuration.Scopes);
         Assert.Equal(AssessmentScopeConfiguration.DefaultName, scope.Name);
         Assert.Equal(AssessmentScopeConfiguration.DefaultQueryText, scope.Query);
@@ -39,6 +40,15 @@ public sealed class ProjectConfigurationTests : IDisposable
         Assert.Equal(2000, scope.TimingDetailWords);
         Assert.Empty(scope.Collect);
         Assert.Equal(TimeSpan.FromSeconds(1), scope.PerWordLimit);
+    }
+
+    [Fact]
+    public void RetentionCountRoundTripsAndRejectsNonpositiveValues()
+    {
+        var configuration = ProjectConfigurationFile.Parse("[retention]\nstandalone-assessments-per-kind = 7\n", "project.toml");
+        Assert.Equal(7, ProjectConfigurationFile.Parse(ProjectConfigurationFile.Render(configuration), "project.toml").StandaloneAssessmentCount);
+        Assert.Throws<ProjectConfigurationException>(() =>
+            ProjectConfigurationFile.Parse("[retention]\nstandalone-assessments-per-kind = 0\n", "project.toml"));
     }
 
     [Theory]

@@ -111,6 +111,7 @@ public sealed class MotifDatabase : IDisposable
             Name = "Motif database",
             ApplicationId = MotifSchema.ApplicationId,
             CurrentSchema = supportedSchema,
+            IncrementalVacuum = true,
             ValidateSchema = MotifSchema.ValidateSchema,
             Create = (connection, transaction) => MotifSchema.Create(connection, transaction, project, timeProvider),
             // Every job, progress and Proposal write goes through here, so its files stay open between calls.

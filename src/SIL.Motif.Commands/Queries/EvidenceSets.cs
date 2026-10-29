@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Microsoft.Data.Sqlite;
 using SIL.Motif.Commands;
 using SIL.Motif.Commands.Store;
 using SIL.Motif.Contract;
@@ -60,8 +61,16 @@ public static class EvidenceSets
     {
         ArgumentNullException.ThrowIfNull(database);
         ArgumentNullException.ThrowIfNull(project);
-        var current = new BaselineRepository(database).GetCurrentEvidence(ProjectWorkspaceKey.Compute(project));
-        var saved = includeDefaultSelection ? new NamedSelectionRepository(database).GetDefault() : null;
+        using var connection = database.OpenConnection();
+        using var transaction = connection.BeginTransaction(deferred: true);
+        return ResolveCurrent(database, project, includeDefaultSelection, connection, transaction);
+    }
+
+    internal static CommandOutcome<CurrentEvidenceResolution> ResolveCurrent(MotifDatabase database,
+        ProjectLocator project, bool includeDefaultSelection, SqliteConnection connection, SqliteTransaction transaction)
+    {
+        var current = new BaselineRepository(database).GetCurrentEvidence(connection, transaction, ProjectWorkspaceKey.Compute(project));
+        var saved = includeDefaultSelection ? new NamedSelectionRepository(database).GetDefault(connection, transaction) : null;
         ResolvedSelectionSnapshot? selection = null;
         AssessmentRecord? assessment = null;
         IReadOnlyList<AssessmentRecord> reruns = [];
@@ -74,7 +83,7 @@ public static class EvidenceSets
             selection = resolved.Value!;
             var tokenJson = JsonSerializer.Serialize(current.Baseline.Token, MotifJson.CreateOptions());
             var repository = new AssessmentRepository(database);
-            assessment = repository.FindLatestBaselineAssessment(AssessmentKind.ParseTime.ToStoredKind(), tokenJson,
+            assessment = repository.FindLatestBaselineAssessment(connection, transaction, AssessmentKind.ParseTime.ToStoredKind(), tokenJson,
                 selection.Selection.Sha256, selection.Selection.Words);
             string? correctnessAssessmentId = null;
             string? objectTimingAssessmentId = null;
@@ -82,15 +91,15 @@ public static class EvidenceSets
             {
                 if (assessment.Invocation?.InvocationId is { } invocationId)
                 {
-                    string? SameInvocation(AssessmentKind kind) => repository
-                        .ListBaselineAssessments(kind.ToStoredKind())
-                        .LastOrDefault(candidate => candidate.BaselineToken == tokenJson &&
-                            candidate.Invocation?.InvocationId == invocationId)?.AssessmentId;
+                    string? SameInvocation(AssessmentKind kind) => repository.FindSameInvocationId(
+                        connection, transaction, kind.ToStoredKind(), tokenJson, invocationId);
                     correctnessAssessmentId = SameInvocation(AssessmentKind.Correctness);
                     objectTimingAssessmentId = SameInvocation(AssessmentKind.ObjectTiming);
                 }
-                reruns = AssessmentWordOverlay.ReplacementsFor(assessment,
-                    repository.ListBaselineAssessments(AssessmentKind.ParseTime.ToStoredKind()));
+                var replacementHeaders = repository.ReadReplacementHeaders(connection, transaction,
+                    AssessmentKind.ParseTime.ToStoredKind(), tokenJson, assessment.AssessmentId);
+                reruns = AssessmentWordOverlay.ReplacementsFor(assessment, replacementHeaders)
+                    .Select(header => repository.Get(connection, transaction, header.AssessmentId)).ToArray();
                 selection = selection with
                 {
                     Selection = selection.Selection with { Provenance = assessment.Selection.Provenance },
@@ -102,7 +111,7 @@ public static class EvidenceSets
                     measurementIds[AssessmentKinds.Correctness] = correctnessAssessmentId;
                 if (objectTimingAssessmentId is not null)
                     measurementIds[AssessmentKinds.ObjectTiming] = objectTimingAssessmentId;
-                var grammarCheckId = new GrammarCheckRepository(database).GetLatest(tokenJson) is null
+                var grammarCheckId = new GrammarCheckRepository(database).GetLatest(connection, transaction, tokenJson) is null
                     ? null
                     : tokenJson;
                 var measuredWords = AssessmentEvidenceSet.Create(assessment, reruns).Words

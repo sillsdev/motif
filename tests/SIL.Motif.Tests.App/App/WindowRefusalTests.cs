@@ -163,7 +163,7 @@ public sealed class WindowRefusalTests
 
         var shown = WindowRefusal.From(refusal);
 
-        Assert.Equal("This Motif store is from another version", shown.Heading);
+        Assert.Equal("This Motif Store Is from Another Version", shown.Heading);
         Assert.Equal("Motif cannot open this store. Delete it and reopen the project to continue. " +
             "Changes not applied yet are lost; your FieldWorks project is not touched.", shown.Sentence);
         Assert.Contains(StorePath, shown.Details);

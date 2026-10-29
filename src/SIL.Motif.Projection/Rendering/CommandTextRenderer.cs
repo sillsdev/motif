@@ -413,6 +413,7 @@ public static class CommandTextRenderer
         var sb = new StringBuilder();
         sb.AppendLine($"Regression gate: {(projection.GateOnRegression ? "on" : "off")}");
         sb.AppendLine($"Purge on apply:  {(projection.PurgeOnApply ? "on" : "off")}");
+        sb.AppendLine($"Standalone Assessments per kind: {projection.StandaloneAssessmentCount}");
         sb.AppendLine($"Scopes ({projection.Scopes.Count}):");
         foreach (var scope in projection.Scopes)
         {

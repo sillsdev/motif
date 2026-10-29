@@ -165,7 +165,7 @@
       "slug": "config-show",
       "title": "Show project settings",
       "description": "Reads the project\u0027s Assessment scopes and settings. Use it to see the limits and options Motif will use for a later Assessment.",
-      "helpPage": "# Show project settings\n\n\u0060config show\u0060 reads the named Assessment scopes and related settings stored beside one FieldWorks project.\n\n## When to use it\n\nUse it before measuring when you want to confirm which Assessor, Assessment kinds, or resource limits a named scope selects. A scope provides context for an Assessment; it does not gate whether two measurements can be compared. The Default Selection\u0027s parsing limits are saved separately; use [selection show](cmd:selection%20show) to read them.\n\n## Example\n\n\u0060\u0060\u0060powershell\nmotif config show --project \u0022C:\\FieldWorks\\Projects\\Koro\\Koro.fwdata\u0022\n\u0060\u0060\u0060\n\n## What it prints\n\nThe command prints the saved project settings, or their structured form when \u0060--json\u0060 is supplied. It reads configuration and does not run PanGloss.\n\nEach Assessment scope\u0027s \u0060timing-detail-words\u0060 limits the number of costliest words whose individual object timings are stored. The default is 2,000 and the allowed range is 0\u201310,000. Set it in \u0060\u003Cproject\u003E.motif.toml\u0060 beside the project, for example:\n\n\u0060\u0060\u0060toml\n[[scope]]\nname = \u0022default\u0022\ntiming-detail-words = 1000\n\u0060\u0060\u0060\n\n## Related commands\n\n- [Measure a Selection](cmd:assess) uses the configured scope when one is named.\n- [Show the Default Selection](cmd:selection%20show) reads the project\u0027s usual word list.\n- [Set Selection limits](cmd:selection%20set-limits) changes its step cap or time policy.\n",
+      "helpPage": "# Show project settings\n\n\u0060config show\u0060 reads the named Assessment scopes and related settings stored beside one FieldWorks project.\n\n## When to use it\n\nUse it before measuring when you want to confirm which Assessor, Assessment kinds, or resource limits a named scope selects. A scope provides context for an Assessment; it does not gate whether two measurements can be compared. The Default Selection\u0027s parsing limits are saved separately; use [selection show](cmd:selection%20show) to read them.\n\n## Example\n\n\u0060\u0060\u0060powershell\nmotif config show --project \u0022C:\\FieldWorks\\Projects\\Koro\\Koro.fwdata\u0022\n\u0060\u0060\u0060\n\n## What it prints\n\nThe command prints the saved project settings, or their structured form when \u0060--json\u0060 is supplied. It reads configuration and does not run PanGloss.\n\nEach Assessment scope\u0027s \u0060timing-detail-words\u0060 limits the number of costliest words whose individual object timings are stored. The default is 2,000 and the allowed range is 0\u201310,000. Set it in \u0060\u003Cproject\u003E.motif.toml\u0060 beside the project, for example:\n\n\u0060\u0060\u0060toml\n[[scope]]\nname = \u0022default\u0022\ntiming-detail-words = 1000\n\u0060\u0060\u0060\n\nMotif keeps the newest 20 standalone Assessments per kind, as well as Assessments needed by current or cited evidence. To change the count, add this project setting:\n\n\u0060\u0060\u0060toml\n[retention]\nstandalone-assessments-per-kind = 20\n\u0060\u0060\u0060\n\n## Related commands\n\n- [Measure a Selection](cmd:assess) uses the configured scope when one is named.\n- [Show the Default Selection](cmd:selection%20show) reads the project\u0027s usual word list.\n- [Set Selection limits](cmd:selection%20set-limits) changes its step cap or time policy.\n",
       "usage": [
         "Usage: motif config show --project \u003Cfwdata\u003E [--json]"
       ],
@@ -577,6 +577,19 @@
       ],
       "surface": "Released",
       "url": "https://motif-docs.pages.dev/reference/commands/stats/"
+    },
+    {
+      "kind": "command",
+      "code": "store prune",
+      "slug": "store-prune",
+      "title": "Prune project store",
+      "description": "Removes older standalone Assessments that are no longer needed by retained evidence. It also reclaims available space in the project store.",
+      "helpPage": "# Prune the project store\n\n\u0060store prune\u0060 removes older standalone Assessments that are not needed by retained evidence and reclaims available store space.\n\nMotif keeps the newest 20 standalone Assessments of each kind by default, along with pinned, current, and cited evidence. Set \u0060standalone-assessments-per-kind\u0060 in the \u0060[retention]\u0060 section of the project configuration to change the count. Motif also prunes after a successful Assessment.\n\n\u0060\u0060\u0060powershell\nmotif store prune --project \u0022C:\\FieldWorks\\Projects\\Koro\\Koro.fwdata\u0022\n\u0060\u0060\u0060\n\nThe result reports the number removed and the store file size before and after reclamation. Active readers can postpone reclaiming some space; run the command again after they finish.\n",
+      "usage": [
+        "Usage: motif store prune --project \u003Cfwdata\u003E [--json]"
+      ],
+      "surface": "Released",
+      "url": "https://motif-docs.pages.dev/reference/commands/store-prune/"
     },
     {
       "kind": "command",

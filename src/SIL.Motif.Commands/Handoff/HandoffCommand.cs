@@ -98,7 +98,8 @@ public static class HandoffCommand
     {
         var ownership = WorkspaceOwnership.Bootstrap(managedRoot);
         using var invoker = new PanGlossInvoker(parserPath);
-        var assessor = new LazyPanGlossAssessor(() => new PanGlossAssessor(new StatsCacheStore(ownership), invoker));
+        var assessor = new LazyPanGlossAssessor(() => new PanGlossAssessor(
+            new StatsCacheStore(ownership, Path.ChangeExtension(Path.GetFullPath(request.ProjectPath), ".motif.db")), invoker));
         return Run(request, managedRoot, assessor, invoker, onProgress, cancellationToken);
     }
 

@@ -7,7 +7,11 @@ namespace SIL.Motif.Contract.Responses;
 public sealed record ProjectConfigurationProjection(
     bool GateOnRegression,
     bool PurgeOnApply,
-    IReadOnlyList<AssessmentScopeProjection> Scopes);
+    IReadOnlyList<AssessmentScopeProjection> Scopes)
+{
+    /// <summary>Recent standalone Assessments kept per kind alongside cited evidence.</summary>
+    public int StandaloneAssessmentCount { get; init; } = 20;
+}
 
 /// <summary>One declared Assessment scope, as reported by <c>config show</c>.</summary>
 public sealed record AssessmentScopeProjection(

@@ -5403,6 +5403,10 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <value>Measuring was cancelled. Nothing was recorded.</value>
     <comment>Sentence the window shows when the command refuses with code C.AssessmentCancelled. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
+  <data name="MotifApp.RefusalAssessmentExpired" xml:space="preserve">
+    <value>That measurement is no longer available. Refresh and try again.</value>
+    <comment>Sentence the window shows when the command refuses with code C.AssessmentExpired.</comment>
+  </data>
   <data name="MotifApp.RefusalBaselineBusy" xml:space="preserve">
     <value>Another Motif task is reading this project. Try again in a moment.</value>
     <comment>Sentence the window shows when the command refuses with code C.BaselineBusy. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>

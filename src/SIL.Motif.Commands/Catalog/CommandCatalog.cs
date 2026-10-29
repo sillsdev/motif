@@ -214,6 +214,7 @@ public static class CommandCatalog
         new CommandDescriptor("selection set-limits", typeof(SetSelectionLimitsRequest), typeof(NamedSelectionProjection), CommandSurface.Released, AgentClass.HumanOnly),
         new CommandDescriptor("setup skip", typeof(SkipSetupRequest), typeof(ProjectSetupResponse), CommandSurface.Released, AgentClass.HumanOnly),
         new CommandDescriptor("store delete-refused", typeof(ProjectStoreResetRequest), typeof(ProjectStoreResetResponse), CommandSurface.Developer, AgentClass.HumanOnly),
+        new CommandDescriptor("store prune", typeof(StorePruneRequest), typeof(StorePruneResponse), CommandSurface.Released, AgentClass.HumanOnly) { ExposeAsAgentTool = false },
         new CommandDescriptor("store artifacts", typeof(ArtifactInventoryRequest), typeof(ArtifactInventoryResponse),
             CommandSurface.Developer, AgentClass.HumanOnly) { ExposeAsAgentTool = false },
         new CommandDescriptor("texts list", typeof(TextInventoryRequest), typeof(TextInventoryResponse), CommandSurface.Released, AgentClass.Read),

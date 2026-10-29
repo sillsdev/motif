@@ -106,7 +106,7 @@ public static class ProjectJobHandlers
             var ownership = WorkspaceOwnership.Bootstrap(options.Root);
             catalog = new AssessorCatalog(new IAssessor[]
             {
-                new PanGlossAssessor(new StatsCacheStore(ownership), invoker),
+                new PanGlossAssessor(new StatsCacheStore(ownership, database.FullPath), invoker),
             });
         }
         catch (ArgumentException)

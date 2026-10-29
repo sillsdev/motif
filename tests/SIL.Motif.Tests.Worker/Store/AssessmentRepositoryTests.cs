@@ -13,6 +13,7 @@ using SIL.Motif.Host.Parser;
 using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Worker.Store;
+using SIL.Motif.Worker.Jobs;
 using Xunit;
 
 namespace SIL.Motif.Tests.Store;
@@ -374,6 +375,192 @@ public sealed class AssessmentRepositoryTests : IDisposable
         var addedBytes = afterBytes - baselineBytes;
         Console.WriteLine($"Held-out Assessment file growth: {addedBytes} bytes (before {baselineBytes}, after {afterBytes})");
         Assert.True(addedBytes <= 10_000_000, $"Held-out Assessment added {addedBytes} bytes.");
+    }
+
+    [Fact]
+    public void StandaloneSweepKeepsRecentPinnedCurrentTrialAndReplacementEvidence()
+    {
+        var repository = NewRepository("standalone-roots.fwdata", out var database);
+        using var owned = database;
+        var start = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
+        var ids = new[] { "old", "pinned", "current", "trial", "root", "replacement", "newest" };
+        for (var i = 0; i < ids.Length; i++)
+            repository.Record(NewAssessment(ids[i], null, null, "ParseTime", savedUtc: start.AddMinutes(i).ToString("O"))
+                with { ReplacesAssessmentId = ids[i] == "replacement" ? "root" : null });
+        Execute(database, "INSERT INTO AssessmentPins VALUES ('pinned', 'test', '2026-01-01T00:00:00Z');", "unused");
+        new JobRepository(database).Create("job", "project", "trial", "{\"baselineAssessmentIds\":[\"trial\"]}",
+            "2026-01-01T00:00:00Z");
+        using var lease = ProjectParseLease.TryAcquire(database)!;
+        using var connection = database.OpenConnection();
+        using var transaction = connection.BeginTransaction();
+        var removed = AssessmentRetention.SweepStandalone(connection, transaction, lease, 2, ["current"]);
+        transaction.Commit();
+
+        Assert.Equal(1, removed);
+        Assert.Throws<KeyNotFoundException>(() => repository.Get("old"));
+        foreach (var id in ids.Skip(1)) Assert.Equal(id, repository.Get(id).AssessmentId);
+    }
+
+    [Fact]
+    public void PruneKeepsAnExistingReadSnapshotCompleteAndExpiredInputsAreRefused()
+    {
+        var repository = NewRepository("standalone-snapshot.fwdata", out var database);
+        using var owned = database;
+        repository.Record(NewAssessment("old", null, null, "ParseTime", savedUtc: "2026-01-01T00:00:00Z"));
+        repository.Record(NewAssessment("new", null, null, "ParseTime", savedUtc: "2026-01-02T00:00:00Z"));
+        using var readerConnection = database.OpenConnection();
+        using var readerTransaction = readerConnection.BeginTransaction(deferred: true);
+        var typed = (AssessmentRepository)repository;
+        Assert.Equal(2, typed.Get(readerConnection, readerTransaction, "old").Words!.Count);
+        using var lease = ProjectParseLease.TryAcquire(database)!;
+        using (var writer = database.OpenConnection())
+        using (var transaction = writer.BeginTransaction())
+        {
+            Assert.Equal(1, AssessmentRetention.SweepStandalone(writer, transaction, lease, 1, []));
+            transaction.Commit();
+        }
+        Assert.Equal(2, typed.Get(readerConnection, readerTransaction, "old").Words!.Count);
+        readerTransaction.Dispose();
+        Assert.Throws<AssessmentExpiredException>(() => repository.ReadBaselineAssessmentWords(
+            "ParseTime", "{\"baseline\":true}", ["old"], ["bo"]));
+        Assert.Throws<AssessmentExpiredException>(() => new JobRepository(database).CreateTrial("late", "project",
+            "{}", "2026-01-03T00:00:00Z", ["old"]));
+        Assert.Null(new JobRepository(database).Get("late"));
+    }
+
+    [Fact]
+    public void StandaloneSweepRequiresTheMatchingLeaseAndRollsBackOnFailure()
+    {
+        var repository = NewRepository("standalone-rollback.fwdata", out var database);
+        using var owned = database;
+        _ = NewRepository("other-lease.fwdata", out var other);
+        using var otherOwned = other;
+        repository.Record(NewAssessment("old", null, null, "ParseTime", savedUtc: "2026-01-01T00:00:00Z"));
+        repository.Record(NewAssessment("new", null, null, "ParseTime", savedUtc: "2026-01-02T00:00:00Z"));
+        using var otherLease = ProjectParseLease.TryAcquire(other)!;
+        using var connection = database.OpenConnection();
+        using (var transaction = connection.BeginTransaction())
+            Assert.Throws<InvalidOperationException>(() => AssessmentRetention.SweepStandalone(
+                connection, transaction, otherLease, 1, []));
+        Execute(database, "CREATE TRIGGER FailStandaloneSweep BEFORE DELETE ON Assessments " +
+            "BEGIN SELECT RAISE(ABORT, 'forced failure'); END;", "unused");
+        using var lease = ProjectParseLease.TryAcquire(database)!;
+        using (var transaction = connection.BeginTransaction())
+            Assert.Throws<SqliteException>(() => AssessmentRetention.SweepStandalone(connection, transaction, lease, 1, []));
+        Assert.Equal(2, repository.Get("old").Words!.Count);
+        Assert.Equal(2, repository.Get("new").Words!.Count);
+    }
+
+    [Fact]
+    public void TwoHundredHeldOutAssessmentsStayBoundedAfterIncrementalReclamation()
+    {
+        var repository = NewRepository("standalone-growth.fwdata", out var database);
+        using var owned = database;
+        var words = Enumerable.Range(0, 7206).Select(index =>
+        {
+            var word = SIL.Motif.Tests.TestFixtures.CorrectnessFixture.Word($"word-{index:D5}", true);
+            var analyses = Enumerable.Range(0, 6).Select(analysis => new ParseAnalysis(
+                Enumerable.Range(0, 5).Select(morph => new ParseMorph(
+                    $"{index:D8}-1111-1111-1111-{morph:D12}",
+                    $"22222222-2222-2222-2222-{analysis:D12}", null, null)).ToArray())).ToArray();
+            return word with { Morphology = word.Morphology! with { Index = index, Analyses = analyses } };
+        }).ToArray();
+        var selection = Selection.Create("held-out", words.Select(word => word.Word).ToArray());
+        var rows = words.Take(2000).SelectMany(word => Enumerable.Range(0, 100).Select(index =>
+            new AssessmentObjectTiming("morph_rule", $"rule-{index}", "authored", "analysis", $"Rule {index}",
+                word.Word, 1, 1, 1000))).ToArray();
+        var evidence = new AssessmentTimingEvidence([], 2000, false, 720600);
+        var start = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
+        long atTwenty = 0;
+        long final = 0;
+        long beforePrune = 0;
+        long afterPrune = 0;
+        using var lease = ProjectParseLease.TryAcquire(database)!;
+        for (var i = 0; i < 200; i++)
+        {
+            var id = $"assessment-{i:D3}";
+            var saved = start.AddMinutes(i).ToString("O");
+            if (i == 0)
+            {
+                var assessment = NewAssessment(id, null, null, "ParseTime", words, saved) with
+                    { Subject = new AssessmentSubject.Words(selection, "whitespace", "1") };
+                assessment = assessment with { Material = assessment.RequireWordMaterial() with
+                { ObjectTimings = rows, TimingEvidence = evidence } };
+                repository.Record(assessment);
+                Assert.All(words, word => Assert.Empty(word.Analyses));
+            }
+            else CloneHeldOutAssessment(database, $"assessment-{i - 1:D3}", id, saved);
+            using var connection = database.OpenConnection();
+            if (i == 20)
+            {
+                using var before = connection.CreateCommand();
+                before.CommandText = "PRAGMA wal_checkpoint(TRUNCATE);";
+                using var checkpoint = before.ExecuteReader();
+                Assert.True(checkpoint.Read());
+                Assert.Equal(0L, checkpoint.GetInt64(0));
+                beforePrune = new FileInfo(database.FullPath).Length;
+            }
+            using (var transaction = connection.BeginTransaction())
+            {
+                AssessmentRetention.SweepStandalone(connection, transaction, lease, 20, []);
+                transaction.Commit();
+            }
+            using var command = connection.CreateCommand();
+            command.CommandText = "PRAGMA wal_checkpoint(TRUNCATE);";
+            using (var checkpoint = command.ExecuteReader()) { Assert.True(checkpoint.Read()); Assert.Equal(0L, checkpoint.GetInt64(0)); }
+            command.CommandText = "PRAGMA incremental_vacuum;";
+            command.ExecuteNonQuery();
+            command.CommandText = "PRAGMA wal_checkpoint(TRUNCATE);";
+            using (var checkpoint = command.ExecuteReader()) { Assert.True(checkpoint.Read()); Assert.Equal(0L, checkpoint.GetInt64(0)); }
+            final = new FileInfo(database.FullPath).Length;
+            if (i == 19) atTwenty = final;
+            if (i == 20) afterPrune = final;
+        }
+        Console.WriteLine($"Prune: {beforePrune} to {afterPrune} bytes; at 20: {atTwenty}; at 200: {final}.");
+        Assert.True(afterPrune < beforePrune, $"Prune did not shrink {beforePrune} bytes (after {afterPrune}).");
+        Assert.True(final < 1_000_000_000, $"Store grew to {final} bytes.");
+        Assert.True(final <= atTwenty + 20_000_000, $"Store grew from {atTwenty} to {final} bytes after retention started.");
+    }
+
+    private static void CloneHeldOutAssessment(MotifDatabase database, string previous, string id, string saved)
+    {
+        using var connection = database.OpenConnection();
+        using var transaction = connection.BeginTransaction();
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.Parameters.AddWithValue("$previous", previous);
+        command.Parameters.AddWithValue("$id", id);
+        command.Parameters.AddWithValue("$saved", saved);
+        command.CommandText = """
+            INSERT INTO Assessments (AssessmentId, SelectionName, SelectionWordsJson, SelectionSha256,
+                SelectionProvenanceJson, OutcomeDigest, SemanticDigest, GrammarSourceSha256, ModelFingerprint,
+                Pipeline, DiagnosticCount, SavedUtc, ProposalId, ProposalIntentDigest, Assessor, Kind, ScopeJson,
+                ScopeDigest, TokeniserName, TokeniserVersion, BaselineToken, CachePath, CacheDigest, InvocationId,
+                ReplacesAssessmentId, SubjectKind, SubjectJson)
+            SELECT $id, SelectionName, SelectionWordsJson, SelectionSha256, SelectionProvenanceJson,
+                OutcomeDigest, SemanticDigest, GrammarSourceSha256, ModelFingerprint, Pipeline, DiagnosticCount,
+                $saved, ProposalId, ProposalIntentDigest, Assessor, Kind, ScopeJson, ScopeDigest, TokeniserName,
+                TokeniserVersion, BaselineToken, CachePath, CacheDigest, InvocationId, ReplacesAssessmentId,
+                SubjectKind, SubjectJson FROM Assessments WHERE AssessmentId = $previous;
+            """;
+        Assert.Equal(1, command.ExecuteNonQuery());
+        var wordsTable = "Assessed" + "Words";
+        command.CommandText = $"""
+            INSERT INTO {wordsTable} (AssessmentId, OrdinalIndex, Word, Outcome, ElapsedMs, ElapsedNs,
+                RawSignature, MorphologyJson, CorrectnessJson, ProjectStanding, OccurrenceCount, ReadingGradesJson,
+                AnalysisComparisonJson, MissedApprovedCount, MissedApprovedJson, IsIncomplete, Attempts, Passes, WorkSteps)
+            SELECT $id, OrdinalIndex, Word, Outcome, ElapsedMs, ElapsedNs, RawSignature, MorphologyJson,
+                CorrectnessJson, ProjectStanding, OccurrenceCount, ReadingGradesJson, AnalysisComparisonJson,
+                MissedApprovedCount, MissedApprovedJson, IsIncomplete, Attempts, Passes, WorkSteps
+                FROM {wordsTable} WHERE AssessmentId = $previous ORDER BY OrdinalIndex;
+            """;
+        Assert.Equal(7206, command.ExecuteNonQuery());
+        command.CommandText = """
+            INSERT INTO AssessmentObjectTimings (AssessmentId, Detail, Evidence)
+            SELECT $id, Detail, Evidence FROM AssessmentObjectTimings WHERE AssessmentId = $previous;
+            """;
+        Assert.Equal(1, command.ExecuteNonQuery());
+        transaction.Commit();
     }
 
     private static void WriteSyntheticStatistics(string path, IReadOnlyList<AssessedWord> words)

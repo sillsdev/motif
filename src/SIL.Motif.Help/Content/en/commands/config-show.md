@@ -24,6 +24,13 @@ name = "default"
 timing-detail-words = 1000
 ```
 
+Motif keeps the newest 20 standalone Assessments per kind, as well as Assessments needed by current or cited evidence. To change the count, add this project setting:
+
+```toml
+[retention]
+standalone-assessments-per-kind = 20
+```
+
 ## Related commands
 
 - [Measure a Selection](cmd:assess) uses the configured scope when one is named.

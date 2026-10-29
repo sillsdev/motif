@@ -38,5 +38,5 @@ public static class ConfigCommands
             .Select(scope => new AssessmentScopeProjection(
                 scope.Name, scope.Query, scope.Assessor, scope.Collect,
                 (long)scope.PerWordLimit.TotalMilliseconds, scope.PerWordStepLimit) { TimingDetailWords = scope.TimingDetailWords })
-            .ToArray());
+            .ToArray()) { StandaloneAssessmentCount = configuration.StandaloneAssessmentCount };
 }
