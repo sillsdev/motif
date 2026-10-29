@@ -83,7 +83,7 @@ public sealed class TryWordPageTests
         _avalonia.Invoke(() =>
         {
             var page = new TryWordPageModel(NewContext(out _));
-            page.Trace.Result = WordTraceQuery.LoadDiagnostic(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "TestFixtures", "trace-details-v3-hawajafika.json"))).Value!;
+            page.Trace.Result = WordTraceQuery.LoadDiagnostic(SIL.Motif.Tests.TestFixtures.TestTraceFixture.Read(Path.Combine(AppContext.BaseDirectory, "TestFixtures", "trace-details-v3-hawajafika.json"))).Value!;
             var window = new MotifTestWindow { Content = new TryWordPanel(page), Width = 1240, Height = 2400 };
             try
             {
@@ -791,7 +791,7 @@ public sealed class TryWordPageTests
         _avalonia.Invoke(() =>
         {
             var page = new TryWordPageModel(NewContext(out _));
-            page.Trace.Result = WordTraceQuery.LoadDiagnostic(File.ReadAllText(Path.Combine(
+            page.Trace.Result = WordTraceQuery.LoadDiagnostic(SIL.Motif.Tests.TestFixtures.TestTraceFixture.Read(Path.Combine(
                 AppContext.BaseDirectory, "TestFixtures", "trace-details-v3-matinlu.json"))).Value!;
             page.Trace.RuleFilter = "lu";
             page.Trace.IsExpert = true;
@@ -1501,7 +1501,7 @@ public sealed class TryWordPageTests
             [new TraceCandidate([], true, null, "Built the word", [
                 new TraceStep("MorphologicalRule", "Plural", "dog", "dogs", null, []) { OutcomeStatus = "succeeded" }])], []));
 
-    private static WordTraceResponse MatinluTrace() => WordTraceQuery.LoadDiagnostic(File.ReadAllText(
+    private static WordTraceResponse MatinluTrace() => WordTraceQuery.LoadDiagnostic(SIL.Motif.Tests.TestFixtures.TestTraceFixture.Read(
         Path.Combine(AppContext.BaseDirectory, "TestFixtures", "trace-details-v3-matinlu.json"))).Value!;
 
     private static readonly WordMeasurementOrigin DogsOrigin = new("assessment-parse", "invocation/one",
@@ -1762,7 +1762,7 @@ public sealed class TryWordPageTests
         {
             var (context, fake) = NewContext();
             context.ProjectPath = context.Assess.ProjectPath = ProjectPath;
-            fake.TraceWordCompletesWith(WordTraceQuery.LoadDiagnostic(File.ReadAllText(
+            fake.TraceWordCompletesWith(WordTraceQuery.LoadDiagnostic(SIL.Motif.Tests.TestFixtures.TestTraceFixture.Read(
                 Path.Combine(AppContext.BaseDirectory, "TestFixtures", "trace-details-v3-matinlu.json"))).Value!);
             var page = new TryWordPageModel(context);
             context.TryWord("matinlu");

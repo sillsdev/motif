@@ -143,7 +143,7 @@ public sealed class TraceEvidenceBoundaryTests
     }
 
     private static WordTraceReading Fixture(string name) => WordTraceQuery.LoadDiagnostic(
-        System.IO.File.ReadAllText(System.IO.Path.Combine(AppContext.BaseDirectory,
+        SIL.Motif.Tests.TestFixtures.TestTraceFixture.Read(System.IO.Path.Combine(AppContext.BaseDirectory,
             "TestFixtures", $"trace-details-v3-{name}.json"))).Value!.Reading;
 
     private static System.Collections.Generic.IEnumerable<TraceStep> Walk(TraceStep step) =>
@@ -172,7 +172,7 @@ public sealed class TraceEvidenceBoundaryTests
     [Fact]
     public void ZodutFamilyReplacementRetainsTheReplacementAndPartialSearch()
     {
-        var json = System.IO.File.ReadAllText(System.IO.Path.Combine(AppContext.BaseDirectory,
+        var json = SIL.Motif.Tests.TestFixtures.TestTraceFixture.Read(System.IO.Path.Combine(AppContext.BaseDirectory,
             "TestFixtures", "trace-details-v3-zodut-synthetic.json"));
         var document = PanGlossTraceDiagnosticReader.Read(json);
         var response = WordTraceQuery.LoadDiagnostic(json).Value!;

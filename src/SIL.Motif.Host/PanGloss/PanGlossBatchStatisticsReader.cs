@@ -229,6 +229,7 @@ public static class PanGlossBatchStatisticsReader
         FROM fact AS f
         JOIN word AS w ON w.word_id = f.word_id
         JOIN object AS o ON o.object_id = f.object_id
+        WHERE o.kind <> 'unattributed'
         GROUP BY w.form, o.key, o.identity_quality, o.kind, o.label, f.direction
         """;
 

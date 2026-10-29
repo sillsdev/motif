@@ -267,7 +267,9 @@ try {
     $connection.Open()
     $command = $connection.CreateCommand()
     $command.CommandText = 'SELECT schema_version FROM cache_identity WHERE cache_id = 1'
-    [Console]::Out.Write([string] $command.ExecuteScalar())
+    $schema = [string] $command.ExecuteScalar()
+    $command.CommandText = 'SELECT counter_semantics FROM run LIMIT 1'
+    [Console]::Out.Write($schema + ',' + [string] $command.ExecuteScalar())
 }
 finally { $connection.Dispose() }
 '@
@@ -280,7 +282,9 @@ finally { $connection.Dispose() }
     if ($statsReader.ExitCode -ne 0) {
         throw "PanGloss interface check could not read the stats cache version; the reader exited $($statsReader.ExitCode). $($statsReader.StandardError.Trim())"
     }
-    Assert-Interface 'stats cache schema_version' $interfaces.statsCacheVersion $statsReader.StandardOutput.Trim()
+    $statsVersions = $statsReader.StandardOutput.Trim().Split(',')
+    Assert-Interface 'stats cache schema_version' $interfaces.statsCacheVersion $statsVersions[0]
+    Assert-Interface 'stats counter_semantics' $interfaces.statsCounterSemanticsVersion $statsVersions[1]
 
     $compile = Invoke-PanGloss @(
         'parse', $brokenGrammar, $word, '--trace', '--trace-format', 'json', '--trace-details')

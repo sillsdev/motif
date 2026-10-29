@@ -19,7 +19,7 @@ public sealed class WorkStepsReadingTests : IDisposable
     [Fact]
     public void TheTraceFixtureReportsItsWorkStepsAlongsideItsSteps()
     {
-        var raw = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "TestFixtures", "trace-details-v3-kapita.json"));
+        var raw = SIL.Motif.Tests.TestFixtures.TestTraceFixture.Read(Path.Combine(AppContext.BaseDirectory, "TestFixtures", "trace-details-v3-kapita.json"));
 
         var details = PanGlossTraceDiagnosticReader.Read(raw).Details;
 
@@ -30,7 +30,7 @@ public sealed class WorkStepsReadingTests : IDisposable
     [Fact]
     public void ATraceWithoutWorkStepsLeavesItNull()
     {
-        var raw = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "TestFixtures", "trace-details-v3-kapita.json"))
+        var raw = SIL.Motif.Tests.TestFixtures.TestTraceFixture.Read(Path.Combine(AppContext.BaseDirectory, "TestFixtures", "trace-details-v3-kapita.json"))
             .Replace(",\"workSteps\":237", string.Empty, StringComparison.Ordinal);
         Assert.DoesNotContain("workSteps\":237", raw, StringComparison.Ordinal);
 

@@ -702,7 +702,7 @@ internal static class Program
     // The embedded tree stays verbatim so malformed-tree tests exercise the consumer boundary.
     private static string TraceEnvelope(string word, string signature, string? treeJson, bool capped, bool timedOut,
         IReadOnlyList<JsonElement>? analyses) =>
-        "{\"schemaVersion\":\"pangloss.trace-details.v3\",\"word\":" + JsonSerializer.Serialize(word, Unescaped) +
+        "{\"schemaVersion\":\"pangloss.trace-details.v4\",\"word\":" + JsonSerializer.Serialize(word, Unescaped) +
         ",\"search\":{\"completed\":" + (capped || timedOut ? "false" : "true") +
         ",\"capped\":" + (capped ? "true" : "false") +
         ",\"timedOut\":" + (timedOut ? "true" : "false") +

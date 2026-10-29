@@ -446,7 +446,7 @@ internal sealed class TooltipScenes
                 Show(WorkspacePage.TryAWord);
                 break;
             case TooltipScene.TryAWordRecordedDetails:
-                _client.TraceWordCompletesWith(WordTraceQuery.LoadDiagnostic(File.ReadAllText(Path.Combine(
+                _client.TraceWordCompletesWith(WordTraceQuery.LoadDiagnostic(SIL.Motif.Tests.TestFixtures.TestTraceFixture.Read(Path.Combine(
                     AppContext.BaseDirectory, "TestFixtures", "trace-details-v3-matinlu.json"))).Value!);
                 Workspace.Context.TryWord("matinlu");
                 await Workspace.Assess.Trace.TryCommand.ExecutionTask!;

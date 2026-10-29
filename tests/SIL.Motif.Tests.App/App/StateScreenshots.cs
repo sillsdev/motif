@@ -1290,7 +1290,7 @@ public sealed class TryWordReviewScreenshots
             var trace = page.Trace;
             var defaultWordContext = client!.WordContextHandler;
             var project = workspace.Context.ProjectPath;
-            var sample = WordTraceQuery.LoadDiagnostic(File.ReadAllText(Path.Combine(
+            var sample = WordTraceQuery.LoadDiagnostic(SIL.Motif.Tests.TestFixtures.TestTraceFixture.Read(Path.Combine(
                 AppContext.BaseDirectory, "TestFixtures", "trace-details-v3-matinlu.json"))).Value!;
             var captured = WordTraceQuery.LoadDiagnostic(SIL.Motif.Tests.TestFixtures.TraceEnvelope.CapturedRuleLabel).Value!;
             var unknown = WordTraceQuery.LoadDiagnostic(SIL.Motif.Tests.TestFixtures.TraceEnvelope.CapturedRuleLabel

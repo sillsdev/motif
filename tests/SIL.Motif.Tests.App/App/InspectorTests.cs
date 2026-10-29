@@ -564,7 +564,7 @@ public sealed class InspectorTests
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var raw = System.IO.File.ReadAllText(System.IO.Path.Combine(AppContext.BaseDirectory,
+            var raw = SIL.Motif.Tests.TestFixtures.TestTraceFixture.Read(System.IO.Path.Combine(AppContext.BaseDirectory,
                 "TestFixtures", $"trace-details-v3-{word}.json"));
             var response = WordTraceQuery.LoadDiagnostic(raw).Value!;
             await using var sample = await SampleWorkspace.Open(parse: false);

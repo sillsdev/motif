@@ -277,7 +277,7 @@
     }
   ],
   "diagnosticJson": "<varies>",
-  "diagnosticFormat": "pangloss.trace-details.v3",
+  "diagnosticFormat": "pangloss.trace-details.v4",
   "searchStatus": "complete",
   "invalidShape": false,
   "hostCapture": {

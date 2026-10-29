@@ -14,13 +14,13 @@ namespace SIL.Motif.Tests.App;
 public sealed class DesktopFileAndClipboardSeamTests
 {
     private const string ValidDiagnosticJson = """
-        {"schemaVersion":"pangloss.trace-details.v3","word":"word",
+        {"schemaVersion":"pangloss.trace-details.v4","word":"word",
          "search":{"completed":false,"capped":false,"timedOut":false,"invalidShape":false,"steps":1,"elapsedNs":2},
          "result":{"signature":"-","guessed":false,"analyses":[]},"categories":{},"trace":null}
         """;
 
     private const string InvalidShapeDiagnosticJson = """
-        {"schemaVersion":"pangloss.trace-details.v3","word":"word",
+        {"schemaVersion":"pangloss.trace-details.v4","word":"word",
          "search":{"completed":false,"capped":false,"timedOut":false,"invalidShape":true,"steps":0,"elapsedNs":0},
          "result":{"signature":"-","guessed":false,"analyses":[]},"categories":{},"trace":null}
         """;

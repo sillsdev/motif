@@ -264,7 +264,10 @@ public sealed class TraceArgvTests(PristineProjectFixture pristine) : IDisposabl
     [Fact]
     public async Task ASavedTraceLoadsIntoTheReadingTheWindowBuildsFromIt()
     {
-        var path = Path.Combine(AppContext.BaseDirectory, "TestFixtures", "trace-details-v3-kumata.json");
+        Directory.CreateDirectory(_managedRoot);
+        var fixture = Path.Combine(AppContext.BaseDirectory, "TestFixtures", "trace-details-v3-kumata.json");
+        var path = Path.Combine(_managedRoot, "adapted-trace.json");
+        File.WriteAllText(path, SIL.Motif.Tests.TestFixtures.TestTraceFixture.Read(fixture));
 
         var result = await CliInProcess.RunAsync(_managedRoot, null, false, "trace", "--load", path, "--json");
 

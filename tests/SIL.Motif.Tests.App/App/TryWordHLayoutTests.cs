@@ -246,7 +246,7 @@ public sealed class TryWordHLayoutTests
         {
             var (workspace, frame) = await PageScreenshots.OpenSampleModelsOnly();
             var model = workspace.PageModel<TryWordPageModel>();
-            model.Trace.Result = SIL.Motif.Commands.Queries.WordTraceQuery.LoadDiagnostic(File.ReadAllText(
+            model.Trace.Result = SIL.Motif.Commands.Queries.WordTraceQuery.LoadDiagnostic(SIL.Motif.Tests.TestFixtures.TestTraceFixture.Read(
                 Path.Combine(AppContext.BaseDirectory, "TestFixtures", "trace-details-v3-matinlu.json"))).Value!;
             var page = PageRegistry.For(WorkspacePage.TryAWord).CreateView(model);
             SIL.Motif.App.WindowZoomPolicy.EnablePopupTransforms(page);

@@ -168,8 +168,8 @@ public sealed class PanGlossTracerTests
     }
 
     [Theory]
-    [InlineData("{\"schemaVersion\":\"pangloss.trace-details.v3\",\"search\":{")]
-    [InlineData("{\"schemaVersion\":\"pangloss.trace-details.v3\",\"search\":{},\"result\":{},\"categories\":{},\"trace\":null}")]
+    [InlineData("{\"schemaVersion\":\"pangloss.trace-details.v4\",\"search\":{")]
+    [InlineData("{\"schemaVersion\":\"pangloss.trace-details.v4\",\"search\":{},\"result\":{},\"categories\":{},\"trace\":null}")]
     [InlineData("sagd\t32+PAST|sag+?d\n{\"type\":\"WordAnalysis\",\"inputShape\":\"sagd\",\"children\":[]}")]
     [InlineData("no JSON anywhere in this output")]
     public async Task MalformedOrTruncatedOutputIsATypedRefusal_NotAnException(string standardOutput)

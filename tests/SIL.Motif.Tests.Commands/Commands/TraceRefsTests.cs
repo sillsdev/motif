@@ -268,7 +268,7 @@ public sealed class TraceRefsTests : IDisposable
         Assert.All(attached.Reading.Refs, reference => Assert.Null(reference.FieldWorks));
     }
 
-    private static WordTraceResponse Load(string fixture) => WordTraceQuery.LoadDiagnostic(File.ReadAllText(
+    private static WordTraceResponse Load(string fixture) => WordTraceQuery.LoadDiagnostic(SIL.Motif.Tests.TestFixtures.TestTraceFixture.Read(
         Path.Combine(AppContext.BaseDirectory, "TestFixtures", fixture))).Value!;
 
     private (string FwDataPath, Guid PhonRule, Guid AffixEntry, Guid AffixMsa) ProjectWithRules()

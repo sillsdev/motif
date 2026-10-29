@@ -96,7 +96,7 @@ public sealed class WorkspaceShellViewModelTests
             return CommandOutcome<WordContextResponse>.Success(new("motifa", false));
         };
         var trace = workspace.Assess.Trace;
-        trace.Result = WordTraceQuery.LoadDiagnostic(File.ReadAllText(Path.Combine(AppContext.BaseDirectory,
+        trace.Result = WordTraceQuery.LoadDiagnostic(SIL.Motif.Tests.TestFixtures.TestTraceFixture.Read(Path.Combine(AppContext.BaseDirectory,
             "TestFixtures", "trace-details-v3-hawajafika.json"))).Value!;
         trace.SetWord("motifa");
         var running = trace.TryCommand.ExecuteAsync(null);

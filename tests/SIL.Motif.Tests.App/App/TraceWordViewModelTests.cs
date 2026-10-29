@@ -771,7 +771,7 @@ public sealed class TraceWordViewModelTests
     public void LoadingProducerEnvelopeKeepsRawJsonAndRecordedRichAnalysis()
     {
         const string json = """
-            {"schemaVersion":"pangloss.trace-details.v3","word":"sagd",
+            {"schemaVersion":"pangloss.trace-details.v4","word":"sagd",
              "search":{"completed":true,"capped":false,"timedOut":false,"invalidShape":false,"steps":1,"elapsedNs":9},
              "result":{"signature":"a","guessed":false,"analyses":[
                {"analysisId":"analysis-0","index":0,"surface":"sagd","morphemes":"root",
@@ -896,7 +896,7 @@ public sealed class TraceWordViewModelTests
         Assert.Equal("Parsed: 1 analysis", trace.AnalysesHeading);
     }
 
-    private static WordTraceResponse MatinluTrace() => WordTraceQuery.LoadDiagnostic(File.ReadAllText(
+    private static WordTraceResponse MatinluTrace() => WordTraceQuery.LoadDiagnostic(SIL.Motif.Tests.TestFixtures.TestTraceFixture.Read(
         Path.Combine(AppContext.BaseDirectory, "TestFixtures", "trace-details-v3-matinlu.json"))).Value!;
 
     private static void AssertNoMilliseconds(string text) => Assert.DoesNotMatch(@"\bms\b|<\s*1\b", text);

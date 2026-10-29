@@ -463,7 +463,7 @@ public sealed class PageScreenshots
         using var document = JsonDocument.Parse(TraceFixture());
         var root = document.RootElement;
         var grammar = root.GetProperty("provenance").GetProperty("grammar");
-        Assert.Equal("pangloss.trace-details.v3", root.GetProperty("schemaVersion").GetString());
+        Assert.Equal("pangloss.trace-details.v4", root.GetProperty("schemaVersion").GetString());
         Assert.Equal("synthetic", root.GetProperty("fixture").GetProperty("kind").GetString());
         var failed = Descendants(root.GetProperty("trace"))
             .Single(node => node.TryGetProperty("type", out var type) && type.GetString() == "Failed");
@@ -1184,7 +1184,7 @@ public sealed class PageScreenshots
     /// <summary>The Inspector test trace with authored identities added to its recorded morphemes.</summary>
     internal static WordTraceResponse TraceWithIdentities()
     {
-        var document = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(Path.Combine(
+        var document = System.Text.Json.Nodes.JsonNode.Parse(SIL.Motif.Tests.TestFixtures.TestTraceFixture.Read(Path.Combine(
             AppContext.BaseDirectory, "TestFixtures", "trace-details-v3-matinlu.json")))!;
         void Walk(System.Text.Json.Nodes.JsonNode? node)
         {
@@ -1463,7 +1463,7 @@ public sealed class PageScreenshots
     internal static string SampleTrace() => TraceFixture();
 
     private static string TraceFixture() =>
-        File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "TestFixtures", "trace-details-v3-hawajafika.json"));
+        SIL.Motif.Tests.TestFixtures.TestTraceFixture.Read(Path.Combine(AppContext.BaseDirectory, "TestFixtures", "trace-details-v3-hawajafika.json"));
 
     internal static BaselineToken Token() =>
         new("11111111-1111-1111-1111-111111111111", "sha256:" + new string('a', 64), "1", "2026-09-22T10:00:00Z", "sha256:" + new string('b', 64));

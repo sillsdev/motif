@@ -17,7 +17,7 @@ namespace SIL.Motif.Tests.App.Walkthrough;
 public sealed class DesktopSeamWalkthroughTests
 {
     private const string DiagnosticJson = """
-        {"schemaVersion":"pangloss.trace-details.v3","word":"word",
+        {"schemaVersion":"pangloss.trace-details.v4","word":"word",
          "search":{"completed":false,"capped":false,"timedOut":false,"invalidShape":false,"steps":1,"elapsedNs":2},
          "result":{"signature":"-","guessed":false,"analyses":[]},"categories":{},"trace":null}
         """;

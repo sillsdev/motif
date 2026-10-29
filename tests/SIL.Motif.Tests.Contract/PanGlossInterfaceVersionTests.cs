@@ -25,6 +25,8 @@ public sealed class PanGlossInterfaceVersionTests
             interfaces.GetProperty("traceDetailsSchemaId").GetString());
         Assert.Equal(PanGlossInterfaceVersions.StatsCacheVersion,
             interfaces.GetProperty("statsCacheVersion").GetInt32());
+        Assert.Equal(PanGlossInterfaceVersions.StatsCounterSemanticsVersion,
+            interfaces.GetProperty("statsCounterSemanticsVersion").GetInt32());
         Assert.Equal(PanGlossInterfaceVersions.CompileErrorSchemaVersion,
             interfaces.GetProperty("compileErrorSchemaVersion").GetInt32());
         Assert.Equal(PanGlossInterfaceVersions.CompileErrorSchemaVersion, PanGlossCompileError.SchemaVersion);

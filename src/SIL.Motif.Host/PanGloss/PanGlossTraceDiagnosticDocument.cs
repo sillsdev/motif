@@ -88,7 +88,7 @@ public sealed record PanGlossTraceDiagnosticDocument(
     IReadOnlyList<PanGlossTraceAttempt> Attempts,
     string RawJson)
 {
-    public bool IsV3 => string.Equals(SchemaVersion, PanGlossTraceDiagnosticReader.SchemaV3, StringComparison.Ordinal);
+    public bool IsV4 => string.Equals(SchemaVersion, PanGlossTraceDiagnosticReader.SchemaV4, StringComparison.Ordinal);
 }
 
 public sealed class PanGlossTraceDiagnosticFormatException : FormatException
@@ -99,7 +99,7 @@ public sealed class PanGlossTraceDiagnosticFormatException : FormatException
 
 public static class PanGlossTraceDiagnosticReader
 {
-    public const string SchemaV3 = PanGlossInterfaceVersions.TraceDetailsSchemaId;
+    public const string SchemaV4 = PanGlossInterfaceVersions.TraceDetailsSchemaId;
 
     public static PanGlossTraceDiagnosticDocument Read(string json)
     {
@@ -134,9 +134,9 @@ public static class PanGlossTraceDiagnosticReader
             throw new PanGlossTraceDiagnosticFormatException("The diagnostic document must be a JSON object.");
 
         var schema = RequiredString(envelope, "schemaVersion");
-        if (schema != SchemaV3)
+        if (schema != SchemaV4)
             throw new PanGlossTraceDiagnosticFormatException(
-                $"Unsupported diagnostic schema '{schema}'. Motif requires {SchemaV3}. Update PanGloss and Motif together.");
+                $"Unsupported diagnostic schema '{schema}'. Motif requires {SchemaV4}. Update PanGloss and Motif together.");
 
         var search = RequiredObject(envelope, "search");
         var result = RequiredObject(envelope, "result");
@@ -434,6 +434,8 @@ public static class PanGlossTraceDiagnosticReader
         var value = property.Value;
         if (value.ValueKind != JsonValueKind.Object)
             throw new PanGlossTraceDiagnosticFormatException($"Category '{property.Name}' must be a JSON object.");
+        if (property.Name == "unattributed")
+            return new PanGlossTraceCategory(property.Name, 0, 0, 0, 0, 0, 0, 0, null);
         var timed = RequiredBool(value, "timingAvailable");
         var self = Required(value, "selfElapsedNs", timed ? JsonValueKind.Number : JsonValueKind.Null);
         return new PanGlossTraceCategory(

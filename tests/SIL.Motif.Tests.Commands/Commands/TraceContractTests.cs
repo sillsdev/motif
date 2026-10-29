@@ -91,7 +91,7 @@ public sealed class TraceContractTests
     public void ProjectionCodeAndFailureOwnerEvidenceSurviveTypedProjection()
     {
         const string json = """
-            {"schemaVersion":"pangloss.trace-details.v3","word":"word",
+            {"schemaVersion":"pangloss.trace-details.v4","word":"word",
              "search":{"completed":true,"capped":false,"timedOut":false,"invalidShape":false,"steps":1,"elapsedNs":2},
              "result":{"signature":"x","guessed":false,"analyses":[{"analysisId":"a","projection":{
                 "status":"unavailable","error":"Projection failed","errorCode":"RecordedCode"},"morphs":[]}]},

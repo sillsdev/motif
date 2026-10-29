@@ -256,9 +256,9 @@ public sealed class TraceReaderReviewTests(AvaloniaHeadlessFixture avalonia)
 
     private static TraceWordViewModel Scene(string scene) => scene switch
     {
-        "matinlu" => Model(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "TestFixtures", "trace-details-v3-matinlu.json"))),
+        "matinlu" => Model(SIL.Motif.Tests.TestFixtures.TestTraceFixture.Read(Path.Combine(AppContext.BaseDirectory, "TestFixtures", "trace-details-v3-matinlu.json"))),
         "matinlu-context" => MatinluContext(),
-        "zodut" => Model(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "TestFixtures", "trace-details-v3-zodut-synthetic.json"))),
+        "zodut" => Model(SIL.Motif.Tests.TestFixtures.TestTraceFixture.Read(Path.Combine(AppContext.BaseDirectory, "TestFixtures", "trace-details-v3-zodut-synthetic.json"))),
         "missing" => Model(TraceEnvelope.Of("", "{\"type\":\"Failed\",\"children\":[]}")),
         "unknown" => Model(TraceEnvelope.Of("", "{\"type\":\"Failed\",\"failureReason\":\"FutureReason\",\"children\":[]}")),
         "captured-label" => Model(TraceEnvelope.CapturedRuleLabel),

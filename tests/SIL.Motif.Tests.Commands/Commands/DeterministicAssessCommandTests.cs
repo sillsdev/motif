@@ -1882,7 +1882,7 @@ public sealed class DeterministicAssessCommandTests : IDisposable
         {
             command.CommandText = """
                 CREATE TABLE cache_identity (cache_id INTEGER PRIMARY KEY, schema_version INTEGER NOT NULL);
-                INSERT INTO cache_identity VALUES (1, 9);
+                INSERT INTO cache_identity VALUES (1, 10);
                 CREATE TABLE word (word_id INTEGER PRIMARY KEY, form TEXT NOT NULL, elapsed_ns INTEGER NOT NULL,
                     attempts INTEGER NOT NULL, passes INTEGER NOT NULL, work INTEGER);
                 CREATE TABLE object (object_id INTEGER PRIMARY KEY, key TEXT NOT NULL, kind TEXT NOT NULL,
@@ -1921,7 +1921,7 @@ public sealed class DeterministicAssessCommandTests : IDisposable
         using var command = connection.CreateCommand();
         command.CommandText = """
             CREATE TABLE cache_identity (cache_id INTEGER PRIMARY KEY, schema_version INTEGER NOT NULL);
-            INSERT INTO cache_identity VALUES (1, 9);
+            INSERT INTO cache_identity VALUES (1, 10);
             CREATE TABLE word (
                 word_id INTEGER PRIMARY KEY, form TEXT NOT NULL, elapsed_ns INTEGER NOT NULL,
                 attempts INTEGER NOT NULL, passes INTEGER NOT NULL, capped INTEGER NOT NULL,
