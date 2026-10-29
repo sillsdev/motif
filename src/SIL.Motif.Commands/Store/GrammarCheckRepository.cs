@@ -48,10 +48,10 @@ public sealed class GrammarCheckRepository(MotifDatabase database)
         using var connection = _database.OpenConnection();
         using var command = connection.CreateCommand();
         command.CommandText = proposalId is null
-            ? "SELECT BaselineToken, ProposalId, IntentDigest, SelectionSha256, ParserStamp, ResponseJson, CheckedUtc " +
+            ? "SELECT BaselineToken, ProposalId, IntentDigest, SelectionSha256, ParserStamp, ResponseGzip, CheckedUtc " +
               "FROM GrammarChecks WHERE BaselineToken = $baseline AND ProposalId IS NULL AND IntentDigest IS NULL;"
             : """
-                SELECT BaselineToken, ProposalId, IntentDigest, SelectionSha256, ParserStamp, ResponseJson, CheckedUtc
+                SELECT BaselineToken, ProposalId, IntentDigest, SelectionSha256, ParserStamp, ResponseGzip, CheckedUtc
                 FROM GrammarChecks
                 WHERE BaselineToken = $baseline AND ProposalId = $proposal AND IntentDigest = $intent;
                 """;
@@ -67,7 +67,8 @@ public sealed class GrammarCheckRepository(MotifDatabase database)
         RepositoryReadCounters.RecordDeserialized();
         try
         {
-            var response = JsonSerializer.Deserialize<GrammarCheckResponse>(reader.GetString(5), MotifJson.CreateOptions())
+            var response = JsonSerializer.Deserialize<GrammarCheckResponse>(
+                GrammarCheckStorage.Decompress(reader.GetFieldValue<byte[]>(5)), MotifJson.CreateOptions())
                 ?? throw new InvalidDataException("Stored grammar findings are incomplete.");
             var proposal = NullableString(reader, 1);
             var intentDigestValue = NullableString(reader, 2);
@@ -141,18 +142,19 @@ public sealed class GrammarCheckRepository(MotifDatabase database)
         using var connection = _database.OpenConnection();
         using var command = connection.CreateCommand();
         command.CommandText = """
-            INSERT INTO GrammarChecks (BaselineToken, SelectionSha256, ParserStamp, ResponseJson, CheckedUtc)
+            INSERT INTO GrammarChecks (BaselineToken, SelectionSha256, ParserStamp, ResponseGzip, CheckedUtc)
             VALUES ($baseline, $selection, $parser, $response, $checked)
             ON CONFLICT DO UPDATE SET
                 SelectionSha256 = excluded.SelectionSha256,
                 ParserStamp = excluded.ParserStamp,
-                ResponseJson = excluded.ResponseJson,
+                ResponseGzip = excluded.ResponseGzip,
                 CheckedUtc = excluded.CheckedUtc;
             """;
         command.Parameters.AddWithValue("$baseline", baselineToken);
         command.Parameters.AddWithValue("$selection", selectionSha256);
         command.Parameters.AddWithValue("$parser", (object?)parserStamp ?? DBNull.Value);
-        command.Parameters.AddWithValue("$response", JsonSerializer.Serialize(recordedResponse, MotifJson.CreateOptions()));
+        command.Parameters.AddWithValue("$response", GrammarCheckStorage.Compress(
+            JsonSerializer.Serialize(recordedResponse, MotifJson.CreateOptions())));
         command.Parameters.AddWithValue("$checked", checkedUtc.ToString("O", CultureInfo.InvariantCulture));
         command.ExecuteNonQuery();
         return recordedResponse;

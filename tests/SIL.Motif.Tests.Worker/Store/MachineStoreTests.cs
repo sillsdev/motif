@@ -84,6 +84,17 @@ public sealed class MachineStoreTests : IDisposable
     }
 
     [Fact]
+    public void UsageKeepsTheNewestRowsWithinTheLimit()
+    {
+        using var database = MachineDatabase.Open(_root);
+        var log = new MachineUsageLog(database, 3);
+        for (var i = 0; i < 8; i++) log.Append(Entry("usage", i));
+
+        Assert.Equal(new[] { "index:5", "index:6", "index:7" },
+            log.ReadAll().Select(entry => Assert.Single(entry.ArgumentShape)));
+    }
+
+    [Fact]
     public void OpeningAProjectDatabaseAsAMachineDatabaseIsRefused()
     {
         var path = Path.Combine(_root, "motif.db");

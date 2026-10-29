@@ -16,7 +16,7 @@ public static class MotifSchema
     public const int ApplicationId = 0x4D4F5446;
 
     /// <summary>The schema generation this assembly creates and requires.</summary>
-    public const int CurrentSchema = 51;
+    public const int CurrentSchema = 52;
 
     /// <summary>The worker version an open at the given schema ceiling requires.</summary>
     internal static Version MinimumWorkerVersion(int schema) => schema is >= 1 and <= CurrentSchema
@@ -460,7 +460,7 @@ public static class MotifSchema
         "ParserRefusals" => [C("BaselineToken", "TEXT", false, 1), C("RefusalJson", "TEXT", true)],
         "GrammarChecks" =>
         [C("BaselineToken", "TEXT", true), C("ProposalId", "TEXT"), C("IntentDigest", "TEXT"),
-            C("SelectionSha256", "TEXT", true), C("ParserStamp", "TEXT"), C("ResponseJson", "TEXT", true),
+            C("SelectionSha256", "TEXT", true), C("ParserStamp", "TEXT"), C("ResponseGzip", "BLOB", true),
             C("CheckedUtc", "TEXT", true)],
         "PendingChangeFits" =>
         [C("DraftRevision", "TEXT", true, 1), C("ProjectLastWriteUtcTicks", "INTEGER", true, 2),
@@ -994,7 +994,7 @@ public static class MotifSchema
             IntentDigest TEXT NULL,
             SelectionSha256 TEXT NOT NULL,
             ParserStamp TEXT NULL,
-            ResponseJson TEXT NOT NULL,
+            ResponseGzip BLOB NOT NULL,
             CheckedUtc TEXT NOT NULL
         );
         CREATE UNIQUE INDEX IX_GrammarChecks_Project ON GrammarChecks(BaselineToken) WHERE ProposalId IS NULL;

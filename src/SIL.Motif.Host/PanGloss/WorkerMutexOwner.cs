@@ -152,6 +152,7 @@ internal enum WorkerLockAccess
 internal static class WorkerLockPaths
 {
     internal const string TestRegistryNamespaceVariable = "MOTIF_TEST_WORKER_LOCK_REGISTRY_NAMESPACE";
+    internal const string TestLockNamespaceVariable = "MOTIF_TEST_WORKER_LOCK_NAMESPACE";
 
     internal static string GetLockPath(string name, bool machineWide)
     {
@@ -159,6 +160,12 @@ internal static class WorkerLockPaths
             OperatingSystem.IsWindows() ? "user:" + Environment.UserName + ":" + name :
                 "user:" + UnixNative.GetEffectiveUserId() + ":" + name;
         var directory = machineWide && !OperatingSystem.IsWindows() ? "/tmp" : Path.GetTempPath();
+        var testNamespace = Environment.GetEnvironmentVariable(TestLockNamespaceVariable);
+        if (!string.IsNullOrWhiteSpace(testNamespace))
+        {
+            directory = Path.GetFullPath(testNamespace);
+            Directory.CreateDirectory(directory);
+        }
         var digest = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(identity))).ToLowerInvariant();
         return Path.Combine(directory, "motif-lock-" + digest);
     }

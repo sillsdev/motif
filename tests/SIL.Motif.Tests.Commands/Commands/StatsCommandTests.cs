@@ -89,6 +89,23 @@ public sealed class StatsCommandTests : IDisposable
     }
 
     [Fact]
+    public void ADeletedStatisticsCacheIsRefusedWithoutInvokingTheParser()
+    {
+        var project = _pristine.CopyProjectFile();
+        var id = RecordAssessment(project, null, "cache.sqlite");
+        using var database = OpenDatabase(project);
+        var record = new AssessmentRepository(database).Get(id);
+        File.Delete(record.CachePath!);
+        var fake = Completing("must not run");
+
+        var result = Run(project, null, StatsOutputKind.Text, [], fake);
+
+        Assert.Equal("stats.no-cache", result.Refusal!.Code);
+        Assert.Contains("run a new Assessment", result.Refusal.Message);
+        Assert.Empty(fake.Requests);
+    }
+
+    [Fact]
     public void TheCurrentBaselineAssessmentIsQueriedByDefaultAndForwardingIsExact()
     {
         var fwDataPath = _pristine.CopyProjectFile();

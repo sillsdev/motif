@@ -15,5 +15,9 @@ internal static class ProcessPanGlossQueueInitializer
         var lockRegistryNamespace = Environment.GetEnvironmentVariable(WorkerLockPaths.TestRegistryNamespaceVariable);
         if (string.IsNullOrWhiteSpace(lockRegistryNamespace)) lockRegistryNamespace = processNamespace;
         Environment.SetEnvironmentVariable(WorkerLockPaths.TestRegistryNamespaceVariable, lockRegistryNamespace);
+        var lockNamespace = Environment.GetEnvironmentVariable(WorkerLockPaths.TestLockNamespaceVariable);
+        if (string.IsNullOrWhiteSpace(lockNamespace))
+            lockNamespace = Path.Combine(Path.GetTempPath(), "SIL.Motif.Tests.WorkerLockRegistries", processNamespace);
+        Environment.SetEnvironmentVariable(WorkerLockPaths.TestLockNamespaceVariable, lockNamespace);
     }
 }

@@ -771,7 +771,7 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
     }
 
     [Fact]
-    public async Task TryWordParsesAWordWithADraftsChangesAndNamesTheDraftItTracedAgainst()
+    public async Task TryWordReportsWhenTheTrialCopyWasDiscarded()
     {
         using var project = new WalkthroughProject(pristine);
         Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(project.FwDataPath), project.ManagedRoot).Succeeded);
@@ -795,27 +795,19 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
         Assert.False(baseline.GetProperty("parsed").GetBoolean(), baseline.ToString());
         Assert.Equal("baseline", baseline.GetProperty("tracedAgainst").GetString());
 
-        // The Trial's copy is where the Draft's changes live; let the fake parser accept the word only there.
         var scratch = SIL.Motif.Worker.Jobs.TrialScratchPath.ProjectFile(
             SIL.Motif.Worker.Jobs.TrialScratchPath.ForJob(trial.GetProperty("result").GetProperty("job").GetString()!));
-        Assert.NotNull(scratch);
-        FakeParser.Behave(Path.GetDirectoryName(scratch)!, FakeParser.TraceBehavior(word, "draft-sig", "DraftRule"));
+        Assert.Null(scratch);
 
-        var traced = await session.CallAsync("motif_try_word", ("word", word), ("proposal", proposalId));
-        Assert.True(traced.GetProperty("ok").GetBoolean(), traced.ToString());
-        Assert.True(traced.GetProperty("result").GetProperty("parsed").GetBoolean(), traced.ToString());
-        Assert.Contains(proposalId, traced.GetProperty("result").GetProperty("tracedAgainst").GetString());
+        var traced = await session.Client.CallToolAsync("motif_try_word", new Dictionary<string, object?>
+        {
+            ["project"] = project.FwDataPath, ["word"] = word, ["proposal"] = proposalId,
+        });
+        Assert.True(traced.IsError);
+        Assert.Contains("trial.scratch-gone", ((TextContentBlock)traced.Content[0]).Text);
+        Assert.Contains("MOTIF_RETAIN_TRIAL_SCRATCH", ((TextContentBlock)traced.Content[0]).Text);
         var still = (await session.CallAsync("motif_try_word", ("word", word))).GetProperty("result");
         Assert.False(still.GetProperty("parsed").GetBoolean());
-
-        var concise = traced.GetProperty("result");
-        var detailed = (await session.CallAsync("motif_try_word", ("word", word), ("proposal", proposalId),
-            ("detail", "detailed"))).GetProperty("result");
-        Assert.Contains(proposalId, detailed.GetProperty("tracedAgainst").GetString());
-        Assert.True(detailed.GetProperty("parsed").GetBoolean());
-        Assert.Equal(word, detailed.GetProperty("word").GetString());
-        Assert.True(detailed.TryGetProperty("reading", out _), "detailed keeps the full response shape");
-        Assert.False(concise.TryGetProperty("reading", out _));
 
         var unknown = await session.Client.CallToolAsync("motif_try_word", new Dictionary<string, object?>
         {

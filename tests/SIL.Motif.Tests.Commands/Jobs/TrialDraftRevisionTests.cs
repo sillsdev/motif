@@ -12,13 +12,15 @@ using Xunit;
 namespace SIL.Motif.Tests.Jobs;
 
 [Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group3)]
-public sealed class TrialDraftRevisionTests
+public sealed class TrialDraftRevisionTests : IDisposable
 {
     private const string ProductVersion = "1.0";
+    private readonly string _root = Path.Combine(Path.GetTempPath(), "SIL.Motif.Tests.CommandScratch", Guid.NewGuid().ToString("N"));
     private readonly string _fwDataPath;
 
     public TrialDraftRevisionTests(PristineProjectFixture pristine)
     {
+        Directory.CreateDirectory(_root);
         using var scratch = pristine.NewScratch();
         _fwDataPath = scratch.ProjectId.Path;
     }
@@ -117,7 +119,7 @@ public sealed class TrialDraftRevisionTests
     {
         var id = NewDraftWithOneGloss("pinned-trial");
         var parser = FakeParser.CopyReportingVersion(
-            Path.Combine(Path.GetTempPath(), "motif-pin-" + Guid.NewGuid().ToString("N")), "0.8.8");
+            Path.Combine(_root, "pin"), "0.8.8");
         ParserExecutableIdentity.ReadVersion(parser);
 
         var queued = JobCommands.EnqueueTrial(new EnqueueTrialRequest(_fwDataPath, ProductVersion, id,
@@ -152,7 +154,7 @@ public sealed class TrialDraftRevisionTests
     public void AParserThatCannotBeIdentifiedStillPinsTheTrialByItsBytes()
     {
         var id = NewDraftWithOneGloss("unidentifiable-trial");
-        var broken = Path.Combine(Path.GetTempPath(), "motif-broken-" + Guid.NewGuid().ToString("N"));
+        var broken = Path.Combine(_root, "broken");
         File.WriteAllText(broken, "not an executable");
 
         var queued = JobCommands.EnqueueTrial(new EnqueueTrialRequest(_fwDataPath, ProductVersion, id,
@@ -170,7 +172,7 @@ public sealed class TrialDraftRevisionTests
     {
         var id = NewDraftWithOneGloss("stranded-trial");
         var parser = FakeParser.CopyReportingVersion(
-            Path.Combine(Path.GetTempPath(), "motif-stranded-" + Guid.NewGuid().ToString("N")), "0.8.8");
+            Path.Combine(_root, "stranded"), "0.8.8");
         ParserExecutableIdentity.ReadVersion(parser);
         var queued = JobCommands.EnqueueTrial(new EnqueueTrialRequest(_fwDataPath, ProductVersion, id,
             Words: ["word"]), parser);
@@ -228,4 +230,6 @@ public sealed class TrialDraftRevisionTests
         command.Parameters.AddWithValue("$kind", JobCommands.TrialKind);
         return (long)command.ExecuteScalar()!;
     }
+
+    public void Dispose() => Directory.Delete(_root, recursive: true);
 }

@@ -914,7 +914,7 @@ internal static class GeneratedArtifactReferences
 
     private static void CaptureGrammarChecks(PrivateArtifactStoreSnapshot store, SnapshotBuilder builder)
     {
-        using var command = Command(store, "SELECT rowid, BaselineToken, ResponseJson FROM GrammarChecks ORDER BY rowid;");
+        using var command = Command(store, "SELECT rowid, BaselineToken, ResponseGzip FROM GrammarChecks ORDER BY rowid;");
         using var reader = command.ExecuteReader();
         while (reader.Read())
         {
@@ -931,15 +931,14 @@ internal static class GeneratedArtifactReferences
                 AddBaselineToken(builder, store.StoreIdentity, parsedRowToken, recordId,
                     "grammar-check-baseline-token");
             }
-            catch (Exception exception) when (IsStoredDataFailure(exception))
+            catch (Exception exception) when (IsStoredDataFailure(exception) || exception is InvalidCastException)
             {
                 builder.Incomplete(ArtifactReferenceFamily.Baselines, store.StoreIdentity,
                     "grammar-check-reference-unrecognized", recordId);
             }
             try
             {
-                var json = NullableString(reader, 2)
-                    ?? throw new InvalidDataException("Grammar Check response is absent.");
+                var json = GrammarCheckStorage.Decompress(reader.GetFieldValue<byte[]>(2));
                 RequireObjectShape(json, "Grammar Check response", "Findings", "HasBaseline", "Locale",
                     "CheckedLexemeCount", "CheckedRuleCount", "Advisories", "Summary", "Provenance", "ObjectTimingDetail");
                 using var document = JsonDocument.Parse(json);
@@ -979,7 +978,7 @@ internal static class GeneratedArtifactReferences
                     builder.Incomplete(ArtifactReferenceFamily.Baselines, store.StoreIdentity,
                         "grammar-check-reference-unrecognized", recordId);
             }
-            catch (Exception exception) when (IsStoredDataFailure(exception))
+            catch (Exception exception) when (IsStoredDataFailure(exception) || exception is InvalidCastException)
             {
                 builder.Incomplete(ArtifactReferenceFamily.Baselines, store.StoreIdentity,
                     "grammar-check-reference-unrecognized", recordId);

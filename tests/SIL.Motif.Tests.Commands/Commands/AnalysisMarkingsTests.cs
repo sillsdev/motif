@@ -27,8 +27,9 @@ using Xunit;
 namespace SIL.Motif.Tests.Commands;
 
 [Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group0)]
-public sealed class AnalysisMarkingsTests(PristineProjectFixture pristine)
+public sealed class AnalysisMarkingsTests(PristineProjectFixture pristine) : IDisposable
 {
+    private readonly string _root = Path.Combine(Path.GetTempPath(), "SIL.Motif.Tests.CommandScratch", Guid.NewGuid().ToString("N"));
     [Fact]
     public void AcceptNewSetAddsEachMissingReadingOnceAndUndoRemovesTheAction()
     {
@@ -328,7 +329,7 @@ public sealed class AnalysisMarkingsTests(PristineProjectFixture pristine)
                 .Create(TsStringUtils.MakeString(word, cache.DefaultVernWs)).Guid);
         var path = cache.ProjectId.Path;
         new FwDataProjectLoader().Save(cache);
-        var root = Path.Combine(Path.GetTempPath(), "motif-analysis-markings-" + Guid.NewGuid().ToString("N"));
+        var root = Path.Combine(_root, Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(root);
         Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), root).Succeeded);
         var token = CurrentBaseline(path).Baseline.Token;
@@ -394,11 +395,16 @@ public sealed class AnalysisMarkingsTests(PristineProjectFixture pristine)
         ));
     }
 
-    private static void CaptureBaseline(string path)
+    private void CaptureBaseline(string path)
     {
-        var root = Path.Combine(Path.GetTempPath(), "motif-analysis-markings-refresh-" + Guid.NewGuid().ToString("N"));
+        var root = Path.Combine(_root, Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(root);
         Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), root).Succeeded);
+    }
+
+    public void Dispose()
+    {
+        if (Directory.Exists(_root)) Directory.Delete(_root, recursive: true);
     }
 
     private static void AssertStoredAnalysisInCurrentBaseline(Scenario scenario, Guid analysisId)

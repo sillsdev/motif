@@ -1475,10 +1475,10 @@ public sealed class GeneratedArtifactReferencesTests : IDisposable
 
     private static void InsertGrammarCheck(SqliteConnection connection, SqliteTransaction transaction,
         BaselineToken token, GrammarCheckResponse response) => Execute(connection, transaction,
-        "INSERT INTO GrammarChecks (BaselineToken, SelectionSha256, ResponseJson, CheckedUtc) " +
+        "INSERT INTO GrammarChecks (BaselineToken, SelectionSha256, ResponseGzip, CheckedUtc) " +
         "VALUES ($token, $selection, $response, '2026-01-01T00:00:00Z');",
         ("$token", JsonSerializer.Serialize(token, MotifJson.CreateOptions())), ("$selection", Digest('2')),
-        ("$response", JsonSerializer.Serialize(response, MotifJson.CreateOptions())));
+        ("$response", GrammarCheckStorage.Compress(JsonSerializer.Serialize(response, MotifJson.CreateOptions()))));
 
     private void InsertInvocation(MotifDatabase database, BatchInvocationEvidence invocation)
     {
@@ -1520,7 +1520,7 @@ public sealed class GeneratedArtifactReferencesTests : IDisposable
     }
 
     private static void Execute(SqliteConnection connection, SqliteTransaction? transaction, string sql,
-        params (string Name, string? Value)[] parameters)
+        params (string Name, object? Value)[] parameters)
     {
         using var command = connection.CreateCommand();
         command.Transaction = transaction;

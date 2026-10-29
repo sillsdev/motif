@@ -17,7 +17,7 @@ public sealed class JobParserPinTests : IDisposable
 {
     private const string Project = "project-key";
     private readonly string _root =
-        Path.Combine(Path.GetTempPath(), "motif-pin-" + Guid.NewGuid().ToString("N"));
+        Path.Combine(Path.GetTempPath(), "SIL.Motif.Tests.CommandScratch", Guid.NewGuid().ToString("N"));
     private readonly MotifDatabase _database;
     private readonly string _oldParser;
     private readonly string _newParser;

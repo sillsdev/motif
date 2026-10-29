@@ -269,10 +269,10 @@ public sealed class TrialJobHandlerTests : IDisposable
 
         Assert.Equal(JobStatus.Completed, completed.Status);
         Assert.NotNull(checkedPath);
-        Assert.True(File.Exists(checkedPath));
+        Assert.False(File.Exists(checkedPath));
         using var connection = _database.OpenConnection();
         using var command = connection.CreateCommand();
-        command.CommandText = "SELECT ProposalId, IntentDigest, SelectionSha256, ResponseJson FROM GrammarChecks WHERE BaselineToken = $token;";
+        command.CommandText = "SELECT ProposalId, IntentDigest, SelectionSha256, ResponseGzip FROM GrammarChecks WHERE BaselineToken = $token;";
         command.Parameters.AddWithValue("$token", JsonSerializer.Serialize(_token,
             SIL.Motif.Contract.MotifJson.CreateOptions()));
         using var reader = command.ExecuteReader();
@@ -280,7 +280,7 @@ public sealed class TrialJobHandlerTests : IDisposable
         Assert.Equal(proposalId.Value, reader.GetString(0));
         Assert.Equal(IntentDigest.Compute(ProposalJsonParser.Parse(proposalJson)), reader.GetString(1));
         Assert.False(string.IsNullOrWhiteSpace(reader.GetString(2)));
-        using var response = JsonDocument.Parse(reader.GetString(3));
+        using var response = JsonDocument.Parse(GrammarCheckStorage.Decompress(reader.GetFieldValue<byte[]>(3)));
         Assert.True(response.RootElement.GetProperty("HasBaseline").GetBoolean());
         var provenance = response.RootElement.GetProperty("Provenance");
         Assert.Equal(DateTimeOffset.Parse("2026-08-29T00:00:00Z"),
@@ -577,7 +577,7 @@ public sealed class TrialJobHandlerTests : IDisposable
         Assert.Contains(afterSecond, a => a.AssessmentId == firstAssessmentId);
         Assert.Equal(2, afterSecond.Select(a => a.AssessmentId).Distinct().Count());
         Assert.False(Directory.Exists(TrialScratchPath.ForJob(firstJob.JobId)));
-        Assert.True(Directory.Exists(TrialScratchPath.ForJob(secondJob.JobId)));
+        Assert.False(Directory.Exists(TrialScratchPath.ForJob(secondJob.JobId)));
 
         // The first is still readable, byte-for-byte the same header it was recorded with.
         var firstStillThere = _assessments.Get(firstAssessmentId);
@@ -585,7 +585,7 @@ public sealed class TrialJobHandlerTests : IDisposable
     }
 
     [Fact]
-    public void StartupSweepKeepsTheLatestTrialScratchRemovesOlderCopiesAndLeavesUnattributedFolders()
+    public void StartupSweepRemovesExpiredCompletedAndOrphanCopies()
     {
         using var lanes = new ProjectLaneRegistry(_ => _token);
         var handler = BuildHandler(lanes, new FakeAssessor("pangloss", [AssessmentKind.Correctness]));
@@ -604,12 +604,14 @@ public sealed class TrialJobHandlerTests : IDisposable
         Directory.CreateDirectory(olderPath);
         Directory.CreateDirectory(latestPath);
         Directory.CreateDirectory(orphanPath);
+        foreach (var path in new[] { olderPath, latestPath, orphanPath })
+            Directory.SetLastWriteTimeUtc(path, DateTime.UtcNow.AddDays(-2));
 
         TrialScratchRetention.Sweep([(_database, ProjectWorkspaceKey.Compute(_project))], scratchRoot);
 
         Assert.False(Directory.Exists(olderPath));
-        Assert.True(Directory.Exists(latestPath));
-        Assert.True(Directory.Exists(orphanPath));
+        Assert.False(Directory.Exists(latestPath));
+        Assert.False(Directory.Exists(orphanPath));
     }
 
     [Fact]
@@ -620,7 +622,7 @@ public sealed class TrialJobHandlerTests : IDisposable
     }
 
     [Fact]
-    public void StartupSweepKeepsTheLastCompletedScratchWhileANewerTrialIsActive()
+    public void StartupSweepKeepsActiveScratchAndFreshOrphans()
     {
         using var lanes = new ProjectLaneRegistry(_ => _token);
         var handler = BuildHandler(lanes, new FakeAssessor("pangloss", [AssessmentKind.Correctness]));
@@ -638,12 +640,44 @@ public sealed class TrialJobHandlerTests : IDisposable
         Directory.CreateDirectory(completedPath);
         Directory.CreateDirectory(activePath);
         Directory.CreateDirectory(orphanPath);
+        Directory.SetLastWriteTimeUtc(completedPath, DateTime.UtcNow.AddDays(-2));
+        Directory.SetLastWriteTimeUtc(activePath, DateTime.UtcNow.AddDays(-2));
 
         TrialScratchRetention.Sweep([(_database, ProjectWorkspaceKey.Compute(_project))], scratchRoot);
 
-        Assert.True(Directory.Exists(completedPath));
+        Assert.False(Directory.Exists(completedPath));
         Assert.True(Directory.Exists(activePath));
         Assert.True(Directory.Exists(orphanPath));
+    }
+
+    [Fact]
+    public void StartupSweepPreservesAnExpiredCopyHeldByAnotherTrial()
+    {
+        var scratchRoot = Path.Combine(_root, "leased-trial-scratch");
+        var path = Path.Combine(scratchRoot, Path.GetFileName(TrialScratchPath.ForJob("foreign")));
+        Directory.CreateDirectory(path);
+        Directory.SetLastWriteTimeUtc(path, DateTime.UtcNow.AddDays(-2));
+        using var lease = TrialScratchRetention.Lock(path);
+        Assert.True(lease.TryAcquire());
+
+        TrialScratchRetention.Sweep([], scratchRoot);
+
+        Assert.True(Directory.Exists(path));
+    }
+
+    [Fact]
+    public void AnExplicitlyRetainedTrialKeepsItsCopy()
+    {
+        using var lanes = new ProjectLaneRegistry(_ => _token);
+        var proposalId = CanonicalId.Mint("proposal/");
+        var proposalJson = BuildSetGlossProposalJson(proposalId, _seed.FirstSenseId, "retained scratch");
+        SaveCommittedProposal(proposalId, proposalJson);
+        var handler = BuildHandler(lanes, new FakeAssessor("pangloss", [AssessmentKind.Correctness]),
+            retainScratch: () => true);
+        var job = CreateTrialJob(proposalJson);
+
+        Assert.Equal(JobStatus.Completed, RunAndFinish(handler, job.JobId).Status);
+        Assert.True(Directory.Exists(TrialScratchPath.ForJob(job.JobId)));
     }
 
     [Fact]
@@ -855,7 +889,7 @@ public sealed class TrialJobHandlerTests : IDisposable
         Assert.Equal(0, pinsAtBoundary);
         Assert.Equal(0, CountJobBundlePins(job.JobId));
         Assert.True(Directory.Exists(assessor.InvocationDirectory));
-        Assert.True(Directory.Exists(TrialScratchPath.ForJob(job.JobId)));
+        Assert.False(Directory.Exists(TrialScratchPath.ForJob(job.JobId)));
         Assert.Single(jobs.ListAttempts(job.JobId));
     }
 
@@ -918,7 +952,7 @@ public sealed class TrialJobHandlerTests : IDisposable
         Assert.Equal(JobStatus.Completed, savedJob.Status);
         Assert.NotNull(savedJob.ResultJson);
         Assert.True(Directory.Exists(assessor.InvocationDirectory));
-        Assert.True(Directory.Exists(TrialScratchPath.ForJob(job.JobId)));
+        Assert.False(Directory.Exists(TrialScratchPath.ForJob(job.JobId)));
         Assert.NotNull(new AssessmentRepository(reopened).Get(savedAssessment.AssessmentId).Invocation);
     }
 
@@ -960,7 +994,7 @@ public sealed class TrialJobHandlerTests : IDisposable
         var savedAssessment = Assert.Single(_assessments.ListByProposal(proposalId));
         Assert.NotNull(_assessments.Get(savedAssessment.AssessmentId).Invocation);
         Assert.True(Directory.Exists(assessor.InvocationDirectory));
-        Assert.True(Directory.Exists(TrialScratchPath.ForJob(job.JobId)));
+        Assert.False(Directory.Exists(TrialScratchPath.ForJob(job.JobId)));
     }
 
     [Fact]
@@ -998,7 +1032,7 @@ public sealed class TrialJobHandlerTests : IDisposable
         Assert.Equal(JobStatus.Completed, _jobs.Get(job.JobId)!.Status);
         Assert.Single(_assessments.ListByProposal(proposalId));
         Assert.True(Directory.Exists(assessor.InvocationDirectory));
-        Assert.True(Directory.Exists(TrialScratchPath.ForJob(job.JobId)));
+        Assert.False(Directory.Exists(TrialScratchPath.ForJob(job.JobId)));
     }
 
     [Fact]
@@ -1062,7 +1096,7 @@ public sealed class TrialJobHandlerTests : IDisposable
         Assert.NotNull(savedJob.ResultJson);
         Assert.Single(_assessments.ListByProposal(proposalId));
         Assert.True(Directory.Exists(assessor.InvocationDirectory));
-        Assert.True(Directory.Exists(TrialScratchPath.ForJob(job.JobId)));
+        Assert.False(Directory.Exists(TrialScratchPath.ForJob(job.JobId)));
     }
 
     [Fact]
@@ -1156,6 +1190,7 @@ public sealed class TrialJobHandlerTests : IDisposable
 
         Assert.Equal(JobStatus.CompletedWithAssessmentFailure, completed.Status);
         Assert.True(completed.DryRunPublished);
+        Assert.False(Directory.Exists(TrialScratchPath.ForJob(job.JobId)));
     }
 
     [Fact]
@@ -1173,6 +1208,7 @@ public sealed class TrialJobHandlerTests : IDisposable
 
         Assert.Equal(JobStatus.Cancelled, completed.Status);
         Assert.True(completed.DryRunPublished);
+        Assert.False(Directory.Exists(TrialScratchPath.ForJob(job.JobId)));
     }
 
     [Fact]
@@ -1200,8 +1236,7 @@ public sealed class TrialJobHandlerTests : IDisposable
         Assert.Equal(JobStatus.Completed, completed.Status);
         Assert.Equal(digestBefore, Sha256Of(fwDataPath));
         Assert.NotNull(preparedDirectory);
-        Assert.True(Directory.Exists(preparedDirectory),
-            "the scratch directory remains available for reads of this Trial's evidence.");
+        Assert.False(Directory.Exists(preparedDirectory));
     }
 
     // One wordform carries a human-approved analysis; the other has none, and a resolved Selection excludes it.
@@ -1302,7 +1337,7 @@ public sealed class TrialJobHandlerTests : IDisposable
         Func<LcmCache?, CancellationToken, Task<string>>? prepareForAssessment = null,
         IProjectConfigurationReader? configuration = null,
         Func<string, string, Action<bool>?, CancellationToken, Task<GrammarCheckResponse?>>? grammarHealth = null,
-        IAssessmentRepository? assessments = null)
+        IAssessmentRepository? assessments = null, Func<bool>? retainScratch = null)
     {
         var catalog = new AssessorCatalog(new[] { assessor });
         var factory = new ScratchCacheFactory(_loader);
@@ -1317,7 +1352,7 @@ public sealed class TrialJobHandlerTests : IDisposable
                 return Task.FromResult<(IReadOnlyCollection<Guid>, DryRunScratch?)>((appliedProposalIds, scratch));
             },
             (scratch, plan, _) => Task.FromResult(ProposalDryRunner.Run(scratch!, plan)),
-            prepareForAssessment ?? DefaultPrepareForAssessment, _root, grammarHealth);
+            prepareForAssessment ?? DefaultPrepareForAssessment, _root, grammarHealth, retainScratch);
     }
 
     private sealed class TrialArtifactAssessor : IAssessor

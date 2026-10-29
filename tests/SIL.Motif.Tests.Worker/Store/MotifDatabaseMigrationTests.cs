@@ -315,7 +315,7 @@ public sealed class MotifDatabaseMigrationTests : IDisposable
                 "ExplicitPerWordLimitMs|INTEGER|0|0|", "PerWordStepLimit|INTEGER|0|0|", "Revision|INTEGER|1|0|"],
             ["DefaultSelection"] = ["Id|INTEGER|0|1|", "SelectionName|TEXT|1|0|"],
             ["GrammarChecks"] = ["BaselineToken|TEXT|1|0|", "ProposalId|TEXT|0|0|", "IntentDigest|TEXT|0|0|",
-                "SelectionSha256|TEXT|1|0|", "ParserStamp|TEXT|0|0|", "ResponseJson|TEXT|1|0|",
+                "SelectionSha256|TEXT|1|0|", "ParserStamp|TEXT|0|0|", "ResponseGzip|BLOB|1|0|",
                 "CheckedUtc|TEXT|1|0|"],
             ["Assessments"] = ["AssessmentId|TEXT|0|1|", "SelectionName|TEXT|0|0|", "SelectionWordsJson|TEXT|0|0|",
                 "SelectionSha256|TEXT|0|0|", "SelectionProvenanceJson|TEXT|0|0|", "OutcomeDigest|TEXT|0|0|",

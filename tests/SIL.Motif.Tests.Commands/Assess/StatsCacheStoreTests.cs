@@ -1,4 +1,5 @@
 using SIL.Motif.Tests.TestFixtures;
+using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Worker.Assess;
 using SIL.Motif.Worker.Store;
 using Xunit;
@@ -7,7 +8,7 @@ namespace SIL.Motif.Tests.Assess;
 
 public sealed class StatsCacheStoreTests : IDisposable
 {
-    private readonly string _root = Path.Combine(Path.GetTempPath(), "motif-assessment-runs-" + Guid.NewGuid().ToString("N"));
+    private readonly string _root = Path.Combine(Path.GetTempPath(), "SIL.Motif.Tests.CommandScratch", Guid.NewGuid().ToString("N"));
     private readonly StatsCacheStore _store;
 
     public StatsCacheStoreTests()
@@ -25,6 +26,41 @@ public sealed class StatsCacheStoreTests : IDisposable
         Assert.Equal(Path.Combine(_root, "assessment-runs", "invocation-one"), first);
         Assert.True(Directory.Exists(Path.GetDirectoryName(first)));
         Assert.False(Directory.Exists(first));
+    }
+
+    [Fact]
+    public void NewInvocationDeletesOnlyExpiredStatisticsCaches()
+    {
+        var old = _store.DirectoryFor("old");
+        var fresh = _store.DirectoryFor("fresh");
+        Directory.CreateDirectory(old);
+        Directory.CreateDirectory(fresh);
+        File.WriteAllText(Path.Combine(old, "stats.sqlite"), "old");
+        File.WriteAllText(Path.Combine(old, "source.fwdata"), "source");
+        File.WriteAllText(Path.Combine(fresh, "stats.sqlite"), "fresh");
+        File.SetLastWriteTimeUtc(Path.Combine(old, "stats.sqlite"), DateTime.UtcNow.AddDays(-31));
+
+        _store.DirectoryFor("next");
+
+        Assert.False(File.Exists(Path.Combine(old, "stats.sqlite")));
+        Assert.True(File.Exists(Path.Combine(old, "source.fwdata")));
+        Assert.True(File.Exists(Path.Combine(fresh, "stats.sqlite")));
+    }
+
+    [Fact]
+    public void ExpiredCacheWithAnActiveReaderOrWriterIsPreserved()
+    {
+        var directory = _store.DirectoryFor("busy");
+        Directory.CreateDirectory(directory);
+        var cache = Path.Combine(directory, "stats.sqlite");
+        File.WriteAllText(cache, "busy");
+        File.SetLastWriteTimeUtc(cache, DateTime.UtcNow.AddDays(-31));
+        using var lease = StatsCacheLock.Create(directory);
+        Assert.True(lease.TryAcquire());
+
+        _store.DirectoryFor("next");
+
+        Assert.True(File.Exists(cache));
     }
 
     [Theory]

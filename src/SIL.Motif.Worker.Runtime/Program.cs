@@ -86,6 +86,12 @@ internal static class WorkerRuntime
             return 0;
         }
 
+        try { new SIL.Motif.Worker.Assess.StatsCacheStore(ownership).SweepExpired(); }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            Console.Error.WriteLine("warning: statistics cache cleanup failed: " + exception.Message);
+        }
+
         using var shutdown = new CancellationTokenSource();
         Console.CancelKeyPress += (_, eventArgs) =>
         {

@@ -93,6 +93,7 @@ internal sealed class TrialJobHandler
     private readonly Func<DryRunScratch?, PrerequisiteExecutionPlan, CancellationToken, Task<DryRunModel>> _runDryRun;
     private readonly Func<LcmCache?, CancellationToken, Task<string>> _prepareForAssessment;
     private readonly Func<string, string, Action<bool>?, CancellationToken, Task<GrammarCheckResponse?>>? _grammarHealth;
+    private readonly Func<bool> _retainScratch;
 
     /// <param name="baselines">This project's published-Baseline store.</param>
     /// <param name="proposals">
@@ -119,7 +120,8 @@ internal sealed class TrialJobHandler
             Task<(IReadOnlyCollection<Guid> AppliedProposalIds, DryRunScratch? Scratch)>> openScratch,
         Func<DryRunScratch?, PrerequisiteExecutionPlan, CancellationToken, Task<DryRunModel>> runDryRun,
         Func<LcmCache?, CancellationToken, Task<string>> prepareForAssessment, string workerRoot,
-        Func<string, string, Action<bool>?, CancellationToken, Task<GrammarCheckResponse?>>? grammarHealth = null)
+        Func<string, string, Action<bool>?, CancellationToken, Task<GrammarCheckResponse?>>? grammarHealth = null,
+        Func<bool>? retainScratch = null)
     {
         _baselines = baselines ?? throw new ArgumentNullException(nameof(baselines));
         ArgumentNullException.ThrowIfNull(proposals);
@@ -133,6 +135,7 @@ internal sealed class TrialJobHandler
         _runDryRun = runDryRun ?? throw new ArgumentNullException(nameof(runDryRun));
         _prepareForAssessment = prepareForAssessment ?? throw new ArgumentNullException(nameof(prepareForAssessment));
         _grammarHealth = grammarHealth;
+        _retainScratch = retainScratch ?? (() => TrialScratchRetention.RetainRequested);
     }
 
     /// <summary>Runs one claimed Trial job through to a terminal outcome, or parks it waiting for a Baseline.</summary>
@@ -168,9 +171,13 @@ internal sealed class TrialJobHandler
         // Reported while queued behind the lane; the lane's own dispatch resumes this directly into Running.
         claim.Transition(JobStatus.WaitingForBaseline);
 
-        var scratchRoot = AllocateScratchRoot(claim.Job.JobId);
+        var scratchRoot = TrialScratchPath.ForJob(claim.Job.JobId);
+        using var scratchLease = TrialScratchRetention.Lock(scratchRoot);
+        while (!scratchLease.TryAcquire())
+            await Task.Delay(50, cancellationToken).ConfigureAwait(false);
+        AllocateScratchRoot(claim.Job.JobId);
         CandidateRun candidate;
-        var preserveScratch = false;
+        var preserveScratch = _retainScratch();
         try
         {
             var words = input.WordList is { } list ? JobWordLists.Read(claim.Database, list) : input.Words;
@@ -180,18 +187,23 @@ internal sealed class TrialJobHandler
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            TryDeleteDirectory(scratchRoot);
+            if (!preserveScratch) TryDeleteDirectory(scratchRoot);
             var detail = JsonSerializer.Serialize(new { detail = exception.Message });
             // A successful terminal status may not carry a failure category, so only Failed gets one here.
             return claim.Job.DryRunPublished
                 ? new JobOutcome(JobStatus.CompletedWithAssessmentFailure, JobFailureCategory.None, detail)
                 : new JobOutcome(JobStatus.Failed, JobFailureCategory.Unknown, detail);
         }
+        catch (OperationCanceledException)
+        {
+            if (!preserveScratch) TryDeleteDirectory(scratchRoot);
+            throw;
+        }
 
         // The run already happened; cancellation now must still stop it from becoming durable further.
         if (cancellationToken.IsCancellationRequested)
         {
-            TryDeleteDirectory(scratchRoot);
+            if (!preserveScratch) TryDeleteDirectory(scratchRoot);
             return new JobOutcome(JobStatus.Cancelled, JobFailureCategory.Cancellation);
         }
 
@@ -253,7 +265,6 @@ internal sealed class TrialJobHandler
                 }
                 catch (TrialPublicationOutcomeUnknownException exception)
                 {
-                    preserveScratch = true;
                     preserveArtifacts = true;
                     ReportTrialMaintenanceFailure(claim.JobId, "confirm publication", exception);
                     ReleaseSettledTrialParseLease(parseLease, claim.JobId);
@@ -262,7 +273,6 @@ internal sealed class TrialJobHandler
                 }
 
                 published = true;
-                preserveScratch = true;
                 foreach (var lease in artifactLeases)
                 {
                     try { lease.Retain(); }
@@ -273,15 +283,6 @@ internal sealed class TrialJobHandler
                     }
                 }
 
-                try
-                {
-                    TrialScratchRetention.DeleteEarlier(claim.Database, workspaceKey,
-                        proposal.ProposalId.Value, claim.Job.JobId);
-                }
-                catch (Exception exception)
-                {
-                    ReportTrialMaintenanceFailure(claim.JobId, "remove earlier Trial scratch", exception);
-                }
                 ReleaseSettledTrialParseLease(parseLease, claim.JobId);
                 return null;
             }

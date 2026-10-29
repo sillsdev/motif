@@ -23,6 +23,14 @@ public sealed class UnixWorkerMutexTests
     private const string ClearRegistryNamespaceVariable = "MOTIF_UNIX_WORKER_LOCK_TEST_CLEAR_REGISTRY_NAMESPACE";
     private const string IterationsVariable = "MOTIF_UNIX_WORKER_LOCK_TEST_ITERATIONS";
 
+    [Fact]
+    public void TestLocksLiveUnderTheSweptNamespace()
+    {
+        var path = WorkerLockPaths.GetLockPath("test-" + Guid.NewGuid().ToString("N"), machineWide: true);
+        Assert.Contains(Path.Combine(Path.GetTempPath(), "SIL.Motif.Tests.WorkerLockRegistries"), path,
+            StringComparison.Ordinal);
+    }
+
     [UnixWorkerLockFact]
     public async Task ReleaseKeepsLockFilesAndConcurrentProcessesNeverOverlap()
     {

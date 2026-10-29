@@ -27,11 +27,25 @@ public sealed class StatsEvidenceReplay : IDisposable
         if (string.IsNullOrWhiteSpace(evidence.SourcePath) || string.IsNullOrWhiteSpace(evidence.SourceBytesSha256) ||
             string.IsNullOrWhiteSpace(cachePath) || string.IsNullOrWhiteSpace(cacheDigest))
             throw new InvalidDataException("The Assessment is missing retained source or statistics evidence.");
+        if (!File.Exists(cachePath))
+            throw new InvalidDataException("The statistics cache is no longer available; run a new Assessment.");
+        using var cacheLock = StatsCacheLock.Create(Path.GetDirectoryName(Path.GetFullPath(cachePath))!);
+        if (!SpinWait.SpinUntil(cacheLock.TryAcquire, TimeSpan.FromSeconds(5)))
+            throw new InvalidDataException("The statistics cache is busy; try the query again.");
         var replay = new StatsEvidenceReplay(Directory.CreateTempSubdirectory("motif-stats-replay-").FullName);
         try
         {
             var sourceDigest = CopyAndDigest(evidence.SourcePath, replay.GrammarPath);
-            var statsDigest = CopyAndDigest(cachePath, replay.CachePath);
+            string statsDigest;
+            try { statsDigest = CopyAndDigest(cachePath, replay.CachePath); }
+            catch (FileNotFoundException exception)
+            {
+                throw new InvalidDataException("The statistics cache is no longer available; run a new Assessment.", exception);
+            }
+            catch (DirectoryNotFoundException exception)
+            {
+                throw new InvalidDataException("The statistics cache is no longer available; run a new Assessment.", exception);
+            }
             if (!string.Equals(sourceDigest, evidence.SourceBytesSha256, StringComparison.Ordinal) ||
                 !string.Equals(statsDigest, cacheDigest, StringComparison.Ordinal))
                 throw new InvalidDataException("The retained source or statistics bytes do not match the recorded Assessment.");

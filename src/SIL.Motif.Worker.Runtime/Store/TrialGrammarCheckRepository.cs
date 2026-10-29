@@ -30,23 +30,35 @@ public sealed class TrialGrammarCheckRepository(MotifDatabase database)
                 Trial: new TrialGrammarCheckIdentity(proposalId.Value, intentDigest)),
         };
         using var connection = _database.OpenConnection();
+        using var transaction = connection.BeginTransaction();
         using var command = connection.CreateCommand();
+        command.Transaction = transaction;
         command.CommandText = """
-            INSERT INTO GrammarChecks (BaselineToken, ProposalId, IntentDigest, SelectionSha256, ParserStamp, ResponseJson, CheckedUtc)
+            INSERT INTO GrammarChecks (BaselineToken, ProposalId, IntentDigest, SelectionSha256, ParserStamp, ResponseGzip, CheckedUtc)
             VALUES ($baseline, $proposal, $intent, $selection, NULL, $response, $checked)
             ON CONFLICT DO UPDATE SET
                 IntentDigest = excluded.IntentDigest,
                 SelectionSha256 = excluded.SelectionSha256,
                 ParserStamp = excluded.ParserStamp,
-                ResponseJson = excluded.ResponseJson,
+                ResponseGzip = excluded.ResponseGzip,
                 CheckedUtc = excluded.CheckedUtc;
+            DELETE FROM GrammarChecks WHERE rowid IN (
+                SELECT rowid FROM GrammarChecks WHERE ProposalId = $proposal
+                ORDER BY CheckedUtc DESC, rowid DESC LIMIT -1 OFFSET $maximum);
             """;
         command.Parameters.AddWithValue("$baseline", JsonSerializer.Serialize(baseline, MotifJson.CreateOptions()));
         command.Parameters.AddWithValue("$proposal", proposalId.Value);
         command.Parameters.AddWithValue("$intent", intentDigest);
         command.Parameters.AddWithValue("$selection", selectionSha256);
-        command.Parameters.AddWithValue("$response", JsonSerializer.Serialize(recordedResponse, MotifJson.CreateOptions()));
+        command.Parameters.AddWithValue("$response", GrammarCheckStorage.Compress(
+            JsonSerializer.Serialize(recordedResponse, MotifJson.CreateOptions())));
         command.Parameters.AddWithValue("$checked", checkedUtc.ToString("O", CultureInfo.InvariantCulture));
+        command.Parameters.AddWithValue("$maximum", MaximumRows());
         command.ExecuteNonQuery();
+        transaction.Commit();
     }
+
+    private static int MaximumRows() =>
+        int.TryParse(Environment.GetEnvironmentVariable("MOTIF_GRAMMAR_CHECK_MAX_ROWS"), out var maximum) && maximum > 0
+            ? maximum : 5;
 }

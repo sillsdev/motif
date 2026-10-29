@@ -1,4 +1,5 @@
 using SIL.Motif.Host.Assess;
+using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Worker.Store;
 
 namespace SIL.Motif.Worker.Assess;
@@ -26,8 +27,39 @@ public sealed class StatsCacheStore : IAssessorCachePathResolver
         RequireOwned(path);
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         RequireOwned(path);
+        try { SweepExpired(); }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException) { }
         return path;
     }
+
+    internal void SweepExpired(DateTime nowUtc, TimeSpan maximumAge)
+    {
+        var root = Path.Combine(_ownership.WorkerRoot, RootSegment);
+        RequireOwned(root);
+        if (!Directory.Exists(root)) return;
+        foreach (var directory in Directory.EnumerateDirectories(root))
+        {
+            var cache = Path.Combine(directory, "stats.sqlite");
+            try
+            {
+                if (!_ownership.IsOwned(directory) || !File.Exists(cache) ||
+                    (File.GetAttributes(cache) & FileAttributes.ReparsePoint) != 0 ||
+                    File.GetLastWriteTimeUtc(cache) >= nowUtc - maximumAge) continue;
+                using var lease = StatsCacheLock.Create(directory);
+                if (!lease.TryAcquire() || !File.Exists(cache) ||
+                    File.GetLastWriteTimeUtc(cache) >= nowUtc - maximumAge) continue;
+                File.Delete(cache);
+            }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
+        }
+    }
+
+    internal void SweepExpired() => SweepExpired(DateTime.UtcNow, MaximumAge());
+
+    private static TimeSpan MaximumAge() =>
+        int.TryParse(Environment.GetEnvironmentVariable("MOTIF_STATS_CACHE_MAX_AGE_DAYS"), out var days) && days is > 0 and <= 3650
+            ? TimeSpan.FromDays(days) : TimeSpan.FromDays(30);
 
     private void RequireOwned(string path)
     {

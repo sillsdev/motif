@@ -80,6 +80,26 @@ Install the .NET 10 SDK, then from the repository root:
 
 Use these rather than `dotnet build` or `dotnet test`: they run the checks a bare build skips. [AGENTS.md](AGENTS.md) is the guide for contributors. It covers the test levels, the build layout, staging SIL ICU on Linux and macOS (`bash tools/stage-sil-icu.sh`), building against a local libpalaso, and the comment and design-token rules. [CONTEXT.md](CONTEXT.md) is the glossary, and its terms are binding. All Motif projects target `net10.0`.
 
+The machine usage log keeps the newest 10,000 entries. Set `MOTIF_USAGE_MAX_ROWS` to a positive integer
+to choose another limit; the limit is enforced when an entry is recorded. SQLite can reuse freed pages,
+but deleting entries does not immediately shrink an existing database file.
+
+Trial copies are discarded after the Trial, so inspection or tracing against a Trial requires a retained copy.
+Set `MOTIF_RETAIN_TRIAL_SCRATCH=1` in the runner's environment before running the Trial to retain it temporarily.
+At runner startup, unleased copies older than 24 hours are removed; set `MOTIF_TRIAL_SCRATCH_MAX_AGE_HOURS`
+to a positive integer up to 87,600 to change that age. Active Trials are protected.
+
+Per-object statistics caches older than 30 days are removed when the runner starts or another Assessment begins;
+`MOTIF_STATS_CACHE_MAX_AGE_DAYS` changes that age (positive integer, at most 3,650). A statistics query or Handoff
+that needs a removed cache asks for a new Assessment. Other retained Assessment evidence is not removed by this
+cache cleanup. Grammar checks keep the newest five rows per Proposal; `MOTIF_GRAMMAR_CHECK_MAX_ROWS` sets a
+different positive row limit. Responses are compressed, and the project-store schema changes with that format.
+
+The optional `MOTIF_TRACE=1` JSONL trace rotates at 10 MiB, keeping the current file and one previous file
+with a `.1` suffix. `MOTIF_TRACE_MAX_BYTES` selects another positive limit for each file; an individual line larger
+than the limit is dropped. `MOTIF_TRACE_FILE` selects the path; otherwise the trace uses a per-user file in the
+temporary folder. Multiple processes coordinate writes to the same path.
+
 After building, run the command or the window from `bin/<Configuration>`:
 
 ```powershell

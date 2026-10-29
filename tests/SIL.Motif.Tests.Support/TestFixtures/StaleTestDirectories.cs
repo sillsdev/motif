@@ -20,7 +20,7 @@ public static class StaleTestDirectories
     /// <summary>The test-owned roots under the temporary directory that <see cref="SweepTemporaryRoots"/> clears.</summary>
     public static readonly string[] TemporaryRoots =
         ["SIL.Motif.Tests.Pristine", "SIL.Motif.Tests.Large", "SIL.Motif.Tests.WritingSystems", WorkerRootsFolder,
-            "SIL.Motif.Tests.WorkerLockRegistries", Path.Combine("SIL.Motif.Walkthrough", "engine"),
+            "SIL.Motif.Tests.WorkerLockRegistries", "SIL.Motif.Tests.CommandScratch", Path.Combine("SIL.Motif.Walkthrough", "engine"),
             "SIL.Motif.WalkthroughDiffs", StoredSelectionFixture.TemporaryRootFolder];
 
     /// <summary>Sweeps each of <see cref="TemporaryRoots"/>; never throws.</summary>

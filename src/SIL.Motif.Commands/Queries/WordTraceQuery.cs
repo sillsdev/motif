@@ -114,7 +114,8 @@ public static class WordTraceQuery
                 var scratchProject = TrialScratchPath.ProjectFile(scratchRoot);
                 if (scratchProject is null)
                     return CommandOutcome<WordTraceResponse>.Refused(new Refusal("trial.scratch-gone",
-                        FailureReason.NotFound, "The Proposal's copy is gone. Try it again."));
+                        FailureReason.NotFound, "The Trial copy was discarded. Set MOTIF_RETAIN_TRIAL_SCRATCH=1 " +
+                        "in the runner environment and run the Trial again to trace it."));
                 baseline = new BaselineRecord(workspaceKey, trial.Baseline, scratchRoot, scratchProject,
                     currentBaseline?.SourceLastWriteUtc ?? DateTimeOffset.MinValue,
                     currentBaseline?.PublishedUtc ?? DateTimeOffset.MinValue);

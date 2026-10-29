@@ -1,8 +1,10 @@
 using System.Diagnostics;
 using System.Globalization;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Avalonia.Controls;
+using SIL.Motif.Host.PanGloss;
 
 namespace SIL.Motif.App.Services;
 
@@ -50,7 +52,10 @@ public static class MotifTrace
         if (Environment.GetEnvironmentVariable(EnableVariable) != "1") return null;
         var path = Environment.GetEnvironmentVariable(FileVariable);
         if (string.IsNullOrWhiteSpace(path))
-            path = Path.Combine(Path.GetTempPath(), $"motif-trace-{Environment.ProcessId}.jsonl");
+        {
+            var user = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Environment.UserName)))[..16];
+            path = Path.Combine(Path.GetTempPath(), $"motif-trace-{user}.jsonl");
+        }
         return StartListening(path);
     }
 
@@ -59,8 +64,15 @@ public static class MotifTrace
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
         if (Path.GetDirectoryName(Path.GetFullPath(filePath)) is { Length: > 0 } folder) Directory.CreateDirectory(folder);
-        return new JsonLinesSink(filePath);
+        return new JsonLinesSink(filePath, MaximumBytes());
     }
+
+    internal static IDisposable StartListening(string filePath, long maximumBytes) =>
+        new JsonLinesSink(filePath, maximumBytes);
+
+    private static long MaximumBytes() =>
+        long.TryParse(Environment.GetEnvironmentVariable("MOTIF_TRACE_MAX_BYTES"), out var maximum) && maximum > 0
+            ? maximum : 10 * 1024 * 1024;
 
     /// <summary>Starts a span under the open switch (or free-standing when none is open); <see langword="null"/> when off.</summary>
     public static Activity? Begin(string name)
@@ -154,13 +166,26 @@ public static class MotifTrace
     private sealed class JsonLinesSink : IDisposable
     {
         private readonly object _gate = new();
-        private readonly StreamWriter _writer;
+        private readonly string _path;
+        private readonly long _maximumBytes;
+        private readonly WorkerMutexOwner _fileLock;
         private readonly ActivityListener _listener;
 
-        public JsonLinesSink(string path)
+        public JsonLinesSink(string path, long maximumBytes)
         {
-            _writer = new StreamWriter(new FileStream(path, FileMode.Append, FileAccess.Write, FileShare.ReadWrite),
-                new UTF8Encoding(false));
+            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maximumBytes);
+            _path = Path.GetFullPath(path);
+            _maximumBytes = maximumBytes;
+            var identity = OperatingSystem.IsWindows() || OperatingSystem.IsMacOS() ? _path.ToUpperInvariant() : _path;
+            var digest = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(identity)));
+            _fileLock = WorkerMutexOwner.ForRoot("Global\\Motif.Trace." + digest[..2]);
+            lock (_gate) WithFileLock(() =>
+            {
+                if (File.Exists(_path) && new FileInfo(_path).Length > _maximumBytes)
+                    using (new FileStream(_path, FileMode.Truncate, FileAccess.Write, FileShare.ReadWrite)) { }
+                if (File.Exists(_path + ".1") && new FileInfo(_path + ".1").Length > _maximumBytes)
+                    File.Delete(_path + ".1");
+            });
             _listener = new ActivityListener
             {
                 ShouldListenTo = source => source.Name == SourceName,
@@ -181,14 +206,31 @@ public static class MotifTrace
                 ["ms"] = Math.Round(activity.Duration.TotalMilliseconds, 3),
             };
             foreach (var tag in activity.TagObjects) line[tag.Key] = tag.Value;
-            var text = JsonSerializer.Serialize(line);
-            lock (_gate) _writer.WriteLine(text);
+            var bytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(line) + "\n");
+            if (bytes.LongLength > _maximumBytes) return;
+            lock (_gate) WithFileLock(() =>
+            {
+                if (File.Exists(_path) && new FileInfo(_path).Length > _maximumBytes - bytes.LongLength)
+                    File.Move(_path, _path + ".1", overwrite: true);
+                using var file = new FileStream(_path, FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite);
+                file.Seek(0, SeekOrigin.End);
+                file.Write(bytes);
+            });
+        }
+
+        private void WithFileLock(Action action)
+        {
+            if (!SpinWait.SpinUntil(_fileLock.TryAcquire, TimeSpan.FromSeconds(1))) return;
+            try { action(); }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
+            finally { _fileLock.Release(); }
         }
 
         public void Dispose()
         {
             _listener.Dispose();
-            lock (_gate) _writer.Dispose();
+            lock (_gate) _fileLock.Dispose();
         }
     }
 }

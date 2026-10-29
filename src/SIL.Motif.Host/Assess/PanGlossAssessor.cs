@@ -104,6 +104,9 @@ public sealed class PanGlossAssessor : IAssessor
                 $"The candidate must contain exactly one .fwdata source; found {sources.Length}.");
         var invocationId = Guid.NewGuid().ToString("N");
         var directory = _paths.DirectoryFor(invocationId);
+        using var cacheLock = StatsCacheLock.Create(directory);
+        while (!cacheLock.TryAcquire())
+            await Task.Delay(50, cancellationToken).ConfigureAwait(false);
         var cachePath = wanted.Contains(AssessmentKind.ObjectTiming) ? Path.Combine(directory, "stats.sqlite") : null;
         AssessmentArtifactLease? artifactLease = null;
         try

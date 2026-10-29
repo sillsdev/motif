@@ -137,12 +137,12 @@ public static class StatsCommand
                     Fact(("projectPath", request.ProjectPath))));
             }
 
-            if (string.IsNullOrWhiteSpace(assessment.CachePath) || string.IsNullOrWhiteSpace(assessment.CacheDigest))
+            if (string.IsNullOrWhiteSpace(assessment.CachePath) || string.IsNullOrWhiteSpace(assessment.CacheDigest) ||
+                !File.Exists(assessment.CachePath))
             {
                 return CommandOutcome<StatsCommandResponse>.Refused(new Refusal(
                     "stats.no-cache", FailureReason.Refused,
-                    "The resolved Assessment was recorded without a per-object statistics cache and cannot " +
-                    "be queried.",
+                    "The per-object statistics cache is unavailable; run a new Assessment to query it.",
                     Fact(("assessmentId", assessment.AssessmentId))));
             }
 
