@@ -504,7 +504,7 @@
   },
   "compose-set-entry-do-not-parse": {
     "title": "Set entry parsing flag",
-    "description": "Stages the FieldWorks do-not-parse flag on a lexical entry. This flag is intended to exclude the entry from all parsing, not only compounds; PanGloss 0.10.0 and the FieldWorks HermitCrab loader currently ignore it, so a Trial cannot demonstrate that exclusion.",
+    "description": "Stages the FieldWorks do-not-parse flag on a lexical entry. PanGloss excludes the entire entry from parsing, not just compounds. The FieldWorks HermitCrab loader currently ignores this flag.",
     "source": "Hand-written from the FieldWorks model and parser importer.",
     "fields": {
       "draft": "Draft name.",
@@ -514,7 +514,7 @@
     },
     "goals": ["Mark a lexical entry do not parse", "Clear a lexical entry do-not-parse flag"],
     "guides": ["workflow", "ask-the-linguist"],
-    "redirect": "Whole-entry exclusion, not compound-only. Current PanGloss and FieldWorks HermitCrab ignore it; ask the linguist before staging."
+    "redirect": "Whole-entry exclusion, not compound-only. PanGloss honors it; FieldWorks HermitCrab currently ignores it. Ask the linguist before staging."
   },
   "compose-set-no-default-compounding": {
     "title": "Set default compounding",

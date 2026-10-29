@@ -30,12 +30,13 @@ public sealed class ToolSurfaceTests
     }
 
     [Fact]
-    public void EntryFlagToolIsDraftOnlyAndExplainsItsParserLimitation()
+    public void EntryFlagToolIsDraftOnlyAndExplainsParserSupport()
     {
         var tool = AgentTools.All.Single(item => item.Name == "motif_set_entry_do_not_parse");
         Assert.Equal(AgentClass.Draft, tool.Class);
-        Assert.Contains("ignore", tool.Description, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("not only compounds", tool.Description, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("PanGloss honors it", tool.Description, StringComparison.Ordinal);
+        Assert.Contains("FieldWorks HermitCrab currently ignores it", tool.Description, StringComparison.Ordinal);
+        Assert.Contains("not just compounds", tool.Description, StringComparison.Ordinal);
         Assert.Equal(new[] { "draft", "target", "expectedDoNotParse", "doNotParse", "project" }.Order(StringComparer.Ordinal),
             tool.ArgumentNames.Order(StringComparer.Ordinal));
     }

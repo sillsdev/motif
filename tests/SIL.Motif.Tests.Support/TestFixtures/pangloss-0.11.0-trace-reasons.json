@@ -1,0 +1,31 @@
+{
+  "version": "0.11.0",
+  "source": "rust/crates/pg-rules/src/trace.rs",
+  "commit": "acfbe87f3a49a8c94dd9d5ccd4a428689bc9e1ef",
+  "provenance": "annotated v0.11.0 source tag; trace reason source unchanged since v0.8.11",
+  "codes": [
+    "ObligatorySyntacticFeatures",
+    "AllomorphCoOccurrenceRules",
+    "Environments",
+    "MorphemeCoOccurrenceRules",
+    "DisjunctiveAllomorph",
+    "SurfaceFormMismatch",
+    "Pattern",
+    "HeadPattern",
+    "NonHeadPattern",
+    "RequiredSyntacticFeatureStruct",
+    "HeadRequiredSyntacticFeatureStruct",
+    "NonHeadRequiredSyntacticFeatureStruct",
+    "HeadProdRestrictMprFeatures",
+    "NonHeadProdRestrictMprFeatures",
+    "RequiredMprFeatures",
+    "ExcludedMprFeatures",
+    "RequiredStemName",
+    "ExcludedStemName",
+    "PartialParse",
+    "BoundRoot",
+    "NonPartialRuleProhibitedAfterFinalTemplate",
+    "NonPartialRuleRequiredAfterNonFinalTemplate",
+    "MaxApplicationCount"
+  ]
+}

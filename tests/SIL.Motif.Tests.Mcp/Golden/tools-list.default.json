@@ -5155,7 +5155,7 @@
   },
   {
     "name": "motif_set_entry_do_not_parse",
-    "description": "Set entry parsing flag. Research first: motif_guide topic workflow or ask-the-linguist; check best practice. Whole-entry exclusion, not compound-only. Current PanGloss and FieldWorks HermitCrab ignore it; ask the linguist before staging. Stages the FieldWorks do-not-parse flag on a lexical entry. This flag is intended to exclude the entry from all parsing, not only compounds; PanGloss 0.10.0 and the FieldWorks HermitCrab loader currently ignore it, so a Trial cannot demonstrate that exclusion.\nCommand: compose-set-entry-do-not-parse. Agent class: Draft.",
+    "description": "Set entry parsing flag. Research first: motif_guide topic workflow or ask-the-linguist; check best practice. Whole-entry exclusion, not compound-only. PanGloss honors it; FieldWorks HermitCrab currently ignores it. Ask the linguist before staging. Stages the FieldWorks do-not-parse flag on a lexical entry. PanGloss excludes the entire entry from parsing, not just compounds. The FieldWorks HermitCrab loader currently ignores this flag.\nCommand: compose-set-entry-do-not-parse. Agent class: Draft.",
     "inputSchema": {
       "type": "object",
       "properties": {
