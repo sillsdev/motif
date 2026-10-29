@@ -27,6 +27,9 @@ a scope decision about what the queue is for, not an oversight to patch.
 
 ## Not verified, rather than verified working
 
+The following three gaps are accepted for the beta. The Windows gate W13 ran with failures tracked
+as Drover T-id; it did not pass.
+
 **Nobody has run the window against a real parser end to end.** The plan's own acceptance — complete
 the workflow, then re-capture while a lock file is held — has not been performed.
 
