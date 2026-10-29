@@ -406,10 +406,8 @@ public sealed class ReachabilityAssertionsTests(AvaloniaHeadlessFixture avalonia
 
                 var reportOnly = new List<LayoutFinding>();
                 var inspected = ReachabilityAssertions.Inspect(window, context, reportOnly: reportOnly);
-                Assert.Equal(ReachabilityAssertions.MidWordWrapFailsTheRun,
-                    inspected.Any(item => item.Check == LayoutCheckNames.MidWordWrap));
-                Assert.Equal(!ReachabilityAssertions.MidWordWrapFailsTheRun,
-                    reportOnly.Any(item => item.Control.Name == "SplitWord"));
+                Assert.Contains(inspected, item => item.Check == LayoutCheckNames.MidWordWrap);
+                Assert.DoesNotContain(reportOnly, item => item.Control.Name == "SplitWord");
             }
             finally { window.Close(); }
         });

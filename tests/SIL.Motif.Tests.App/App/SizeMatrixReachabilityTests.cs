@@ -17,6 +17,36 @@ namespace SIL.Motif.Tests.App;
 public sealed class SizeMatrixReachabilityTests
 {
     [Fact]
+    public void TextsDoesNotBreakWordsAtThinSize()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, window) = await PageScreenshots.OpenOverSampleData();
+            try
+            {
+                var findings = new List<LayoutFinding>();
+                foreach (var (scene, page, tab) in PageScreenshots.Views().Where(view => view.Page == WorkspacePage.Texts))
+                {
+                    workspace.PageModel<TextsPageModel>().Tab = tab;
+                    workspace.CurrentPage = page;
+                    if (tab == TextsTab.AnalyzeTexts) await AnalyzeTextsLayoutTests.SettleReaderAsync(workspace, window);
+                    SizeMatrixScreenshots.ApplySize(window, MatrixSizes.Read().Single(size => size.Name == "thin"), 100);
+                    PageScreenshots.Settle(window);
+                    var context = new LayoutFindingContext(scene, "thin", 100, "light");
+                    findings.AddRange(window.GetVisualDescendants().OfType<TextBlock>()
+                        .SelectMany(text => ReachabilityAssertions.MidWordWrapFindings(text, context, window)));
+                }
+                Assert.True(findings.Count == 0, string.Join(Environment.NewLine, findings));
+            }
+            finally
+            {
+                WindowZoomPolicy.Apply(Application.Current!, ZoomPolicy.DefaultPercent);
+                window.Close();
+            }
+        }, TimeSpan.FromMinutes(2));
+    }
+
+    [Fact]
     public void ListsHandoffIsReachableAtThinScaledSizeInBothThemes()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>

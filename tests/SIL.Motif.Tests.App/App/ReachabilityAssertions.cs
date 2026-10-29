@@ -24,12 +24,8 @@ internal static class ReachabilityAssertions
 {
     internal const double Tolerance = LayoutAssertions.Tolerance;
 
-    /// <summary>
-    /// Whether a <c>mid-word-wrap</c> finding fails the run that sees it. While false, the engine logs each one to
-    /// the list a caller passes as <c>reportOnly</c> instead of returning it. Flip it to true once the known
-    /// mid-word breaks are fixed.
-    /// </summary>
-    internal static readonly bool MidWordWrapFailsTheRun = false;
+    /// <summary>Whether a <c>mid-word-wrap</c> finding fails the run that sees it.</summary>
+    internal static readonly bool MidWordWrapFailsTheRun = true;
 
     /// <summary>
     /// Whether an <c>edge-crowding</c> finding fails the run that sees it. While false, the engine logs each one to
