@@ -1726,7 +1726,7 @@ Never included unless you tick it in the preview: local details, which may conta
     <comment>Explanatory sentence in the Setup dialog: setup selection description.</comment>
   </data>
   <data name="MotifApp.SetupLimitsDescription" xml:space="preserve">
-    <value>Choose the maximum number of analysis attempts per word. PanGloss derives an inner search-work limit at 100 times that value. Motif estimates how long a word may take and gives it extra time to finish.</value>
+    <value>Choose the maximum number of analysis attempts per word. PanGloss derives an inner search-work limit at 100 times that value.</value>
     <comment>Explanatory sentence in the Setup dialog: setup limits description.</comment>
   </data>
   <data name="MotifApp.SetupChoicesKeptCaption" xml:space="preserve">
@@ -1965,10 +1965,6 @@ Never included unless you tick it in the preview: local details, which may conta
     <value>No writing systems were recorded in the Baseline.</value>
     <comment>Message when the Baseline recorded no writing systems; Baseline is a Motif noun.</comment>
   </data>
-  <data name="MotifApp.StepLimitEstimateDefault" xml:space="preserve">
-    <value>The estimate uses parser statistics from the last parse when available.</value>
-    <comment>Caption under the step limit when no estimate has been made yet.</comment>
-  </data>
   <data name="MotifApp.TimeLimitPositiveRefusal" xml:space="preserve">
     <value>Enter a per-word time limit greater than zero.</value>
     <comment>Message beside the time limit when it is zero, negative or empty.</comment>
@@ -2029,21 +2025,17 @@ Never included unless you tick it in the preview: local details, which may conta
     <value>Setting up {0} · step {1} of 4</value>
     <comment>Caption of the Setup dialog: {0} is the project name and {1} the current step number out of four.</comment>
   </data>
-  <data name="MotifApp.SetupNoAttemptLimitEstimate" xml:space="preserve">
-    <value>No analysis attempt limit. Motif will not apply a per-word time limit.</value>
-    <comment>Estimate shown in Setup when no analysis attempt limit is chosen.</comment>
+  <data name="MotifApp.SetupNoAttemptLimit" xml:space="preserve">
+    <value>No analysis attempt limit.</value>
+    <comment>Caption when no analysis attempt limit is chosen.</comment>
   </data>
-  <data name="MotifApp.EstimateUnderOneMillisecond" xml:space="preserve">
-    <value>less than 1 ms</value>
-    <comment>A time estimate under one millisecond; ms is the unit symbol.</comment>
+  <data name="MotifApp.SetupAttemptLimitFormat" xml:space="preserve">
+    <value>Motif stops a word after {0}.</value>
+    <comment>Caption for the per-word limit: {0} is a count such as "200,000 analysis attempts".</comment>
   </data>
-  <data name="MotifApp.EstimateMillisecondsFormat" xml:space="preserve">
-    <value>{0:N0} ms</value>
-    <comment>A time estimate in milliseconds: {0} is the number; ms is the unit symbol.</comment>
-  </data>
-  <data name="MotifApp.EstimateSecondsFormat" xml:space="preserve">
-    <value>{0:0.#} s</value>
-    <comment>A time estimate in seconds: {0} is the number; s is the unit symbol.</comment>
+  <data name="MotifApp.AnalysisAttemptsPattern" xml:space="preserve">
+    <value>{0, plural, one {# analysis attempt} other {# analysis attempts}}</value>
+    <comment>Count of analysis attempts in the per-word limit. # is the count.</comment>
   </data>
   <data name="MotifApp.NoAddedWords" xml:space="preserve">
     <value>No added words</value>
@@ -2076,22 +2068,6 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.SetupChooseTextOrWord" xml:space="preserve">
     <value>Choose at least one text or add a word before continuing.</value>
     <comment>Message in Setup when nothing is chosen to parse.</comment>
-  </data>
-  <data name="MotifApp.SetupEstimateUnlimitedTypicalFormat" xml:space="preserve">
-    <value>At this limit a word takes up to about {0}. Motif will not apply a per-word time limit. The estimate uses a typical machine.</value>
-    <comment>Estimate in Setup: {0} is a time such as 3 s; no per-word time limit applies; the estimate assumes a typical computer.</comment>
-  </data>
-  <data name="MotifApp.SetupEstimateUnlimitedMeasuredFormat" xml:space="preserve">
-    <value>At this limit a word takes up to about {0}. Motif will not apply a per-word time limit. The estimate uses the parser statistics from the last parse.</value>
-    <comment>Estimate in Setup: {0} is a time such as 3 s; no per-word time limit applies; the estimate uses measured parser statistics.</comment>
-  </data>
-  <data name="MotifApp.SetupEstimateLimitedTypicalFormat" xml:space="preserve">
-    <value>At this limit a word takes up to about {0}. Motif stops a word after {1}. The estimate uses a typical machine.</value>
-    <comment>Estimate in Setup: {0} and {1} are times such as 3 s; Motif stops a word after the second; the estimate assumes a typical computer.</comment>
-  </data>
-  <data name="MotifApp.SetupEstimateLimitedMeasuredFormat" xml:space="preserve">
-    <value>At this limit a word takes up to about {0}. Motif stops a word after {1}. The estimate uses the parser statistics from the last parse.</value>
-    <comment>Estimate in Setup: {0} and {1} are times such as 3 s; Motif stops a word after the second; the estimate uses measured parser statistics.</comment>
   </data>
   <data name="MotifApp.CrashHeadline" xml:space="preserve">
     <value>Motif ran into a problem it could not recover from</value>

@@ -130,8 +130,8 @@ public sealed class SetupRealClientTests(PristineProjectFixture pristine)
             SetupWalkthroughActions.ClickSetupButton(walkthrough, SIL.Motif.App.MotifAppStrings.SetupNextLimits);
             Assert.Equal(3100m, walkthrough.Find<Avalonia.Controls.NumericUpDown>(
                 "Analysis attempt limit per word").Value);
-            Assert.Contains("At this limit a word takes up to about",
-                walkthrough.Workspace.Context.Setup!.StepLimitEstimateText, StringComparison.Ordinal);
+            Assert.Equal($"Motif stops a word after {3100:N0} analysis attempts.",
+                walkthrough.Workspace.Context.Setup!.StepLimitEstimateText);
 
             SetupWalkthroughActions.ClickSetupButton(walkthrough, "Back");
             SetupWalkthroughActions.SetSetupTextChecked(walkthrough, SeededProject.TextTitle, false);

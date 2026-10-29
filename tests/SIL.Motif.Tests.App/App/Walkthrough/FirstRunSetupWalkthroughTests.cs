@@ -247,15 +247,15 @@ public sealed class FirstRunSetupWalkthroughTests(PristineProjectFixture pristin
 
             SetupWalkthroughActions.OpenConfigure(walkthrough);
             walkthrough.WaitUntil(
-                () => setup.StepLimitEstimateText.Contains("parser statistics from the last parse", StringComparison.Ordinal),
-                WalkthroughSteps.Remaining(deadline), "Configure did not load the parser rate from the completed run");
+                () => setup.StepLimitSteps == 3100,
+                WalkthroughSteps.Remaining(deadline), "Configure did not load the saved attempt limit");
             SetupWalkthroughActions.ClickSetupButton(walkthrough, SIL.Motif.App.MotifAppStrings.SetupNextTexts);
             Assert.True(walkthrough.Workspace.Context.Setup!.Selection.Texts
                 .Single(text => text.Title == SeededProject.TextTitle).IsChecked);
             Assert.False(walkthrough.Workspace.Context.Setup.Selection.Texts
                 .Single(text => text.Title == TwoTextWalkthroughProject.SecondTextTitle).IsChecked);
             SetupWalkthroughActions.ClickSetupButton(walkthrough, SIL.Motif.App.MotifAppStrings.SetupNextLimits);
-            Assert.Contains("At this limit a word takes up to about", setup.StepLimitEstimateText, StringComparison.Ordinal);
+            Assert.Equal($"Motif stops a word after {3100:N0} analysis attempts.", setup.StepLimitEstimateText);
             Assert.Equal(3100m, walkthrough.Find<NumericUpDown>("Analysis attempt limit per word").Value);
             SetupWalkthroughActions.ClickSetupButton(walkthrough, SIL.Motif.App.MotifAppStrings.SetupNextFirstRun);
             walkthrough.Click(SIL.Motif.App.MotifAppStrings.UseThisSelection);

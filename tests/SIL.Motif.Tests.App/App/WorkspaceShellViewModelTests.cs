@@ -516,6 +516,31 @@ public sealed class WorkspaceShellViewModelTests
         Assert.Null(Assert.Single(fake.AssessRequests).PerWordLimitMs);
     }
 
+    [Theory]
+    [InlineData(1, "Motif stops a word after 1 analysis attempt.")]
+    [InlineData(200000, "Motif stops a word after 200,000 analysis attempts.")]
+    public void SetupLimitTextStatesAnalysisAttemptsWithoutTime(int limit, string expected)
+    {
+        var (_, _, _, _, workspace) = NewWorkspace();
+        var setup = workspace.Context.Setup!;
+        setup.StepLimitSteps = limit;
+
+        Assert.Equal(expected, setup.StepLimitEstimateText);
+        Assert.DoesNotContain("ms", setup.StepLimitEstimateText, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("millisecond", setup.StepLimitEstimateText, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void SetupUnlimitedTextDoesNotMentionTime()
+    {
+        var (_, _, _, _, workspace) = NewWorkspace();
+        var setup = workspace.Context.Setup!;
+        setup.IsStepLimitUnbounded = true;
+
+        Assert.Equal("No analysis attempt limit.", setup.StepLimitEstimateText);
+        Assert.DoesNotContain("time", setup.StepLimitEstimateText, StringComparison.OrdinalIgnoreCase);
+    }
+
     [Fact]
     public async Task FirstRunCanUseNoStepLimit()
     {

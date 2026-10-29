@@ -128,17 +128,9 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
         get
         {
             if (!IsStepLimitValid) return StepLimitValidationMessage ?? string.Empty;
-            var estimate = CurrentStepLimitEstimate;
-            if (estimate is null) return MotifAppStrings.SetupNoAttemptLimitEstimate;
-            if (estimate.PerWordTimeLimitMs is not { } limitMs || limitMs > int.MaxValue)
-                return string.Format(estimate.IsTypicalMachine
-                    ? MotifAppStrings.SetupEstimateUnlimitedTypicalFormat
-                    : MotifAppStrings.SetupEstimateUnlimitedMeasuredFormat,
-                    FormatEstimate(estimate.EstimatedMilliseconds));
-            return string.Format(estimate.IsTypicalMachine
-                ? MotifAppStrings.SetupEstimateLimitedTypicalFormat
-                : MotifAppStrings.SetupEstimateLimitedMeasuredFormat,
-                FormatEstimate(estimate.EstimatedMilliseconds), FormatEstimate(limitMs));
+            if (IsStepLimitUnbounded) return MotifAppStrings.SetupNoAttemptLimit;
+            return string.Format(MotifAppStrings.SetupAttemptLimitFormat,
+                PluralText.Format(MotifAppStrings.AnalysisAttemptsPattern, (long)StepLimitSteps!.Value));
         }
     }
 
@@ -250,13 +242,6 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
         limits.EstimatedMilliseconds is { } milliseconds
             ? new StepLimitEstimate(milliseconds, limits.PerWordTimeLimitMs, limits.IsTypicalMachine)
             : null;
-
-    private static string FormatEstimate(decimal milliseconds) => milliseconds switch
-    {
-        < 1m => MotifAppStrings.EstimateUnderOneMillisecond,
-        < 1000m => string.Format(MotifAppStrings.EstimateMillisecondsFormat, decimal.Ceiling(milliseconds)),
-        _ => string.Format(MotifAppStrings.EstimateSecondsFormat, milliseconds / 1000m),
-    };
 
     private void OpenFirstTimeSetup()
     {

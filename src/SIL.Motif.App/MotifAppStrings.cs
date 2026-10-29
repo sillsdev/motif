@@ -1139,8 +1139,6 @@ public static class MotifAppStrings
 
     public static string WritingSystemsEmptyBaseline => Text("MotifApp.WritingSystemsEmptyBaseline");
 
-    public static string StepLimitEstimateDefault => Text("MotifApp.StepLimitEstimateDefault");
-
     public static string TimeLimitPositiveRefusal => Text("MotifApp.TimeLimitPositiveRefusal");
 
     public static string ParsingFooterRunning => Text("MotifApp.ParsingFooterRunning");
@@ -1171,13 +1169,11 @@ public static class MotifAppStrings
 
     public static string SetupStepCaptionFormat => Text("MotifApp.SetupStepCaptionFormat");
 
-    public static string SetupNoAttemptLimitEstimate => Text("MotifApp.SetupNoAttemptLimitEstimate");
+    public static string SetupNoAttemptLimit => Text("MotifApp.SetupNoAttemptLimit");
 
-    public static string EstimateUnderOneMillisecond => Text("MotifApp.EstimateUnderOneMillisecond");
+    public static string SetupAttemptLimitFormat => Text("MotifApp.SetupAttemptLimitFormat");
 
-    public static string EstimateMillisecondsFormat => Text("MotifApp.EstimateMillisecondsFormat");
-
-    public static string EstimateSecondsFormat => Text("MotifApp.EstimateSecondsFormat");
+    public static string AnalysisAttemptsPattern => Text("MotifApp.AnalysisAttemptsPattern");
 
     public static string NoAddedWords => Text("MotifApp.NoAddedWords");
 
@@ -1194,14 +1190,6 @@ public static class MotifAppStrings
     public static string SetupFirstRunDescription => Text("MotifApp.SetupFirstRunDescription");
 
     public static string SetupChooseTextOrWord => Text("MotifApp.SetupChooseTextOrWord");
-
-    public static string SetupEstimateUnlimitedTypicalFormat => Text("MotifApp.SetupEstimateUnlimitedTypicalFormat");
-
-    public static string SetupEstimateUnlimitedMeasuredFormat => Text("MotifApp.SetupEstimateUnlimitedMeasuredFormat");
-
-    public static string SetupEstimateLimitedTypicalFormat => Text("MotifApp.SetupEstimateLimitedTypicalFormat");
-
-    public static string SetupEstimateLimitedMeasuredFormat => Text("MotifApp.SetupEstimateLimitedMeasuredFormat");
 
     public static string CrashHeadline => Text("MotifApp.CrashHeadline");
 

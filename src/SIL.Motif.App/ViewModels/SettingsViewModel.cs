@@ -329,7 +329,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
         IsNoStepLimit != _lastGoodNoStepLimit || StepLimit != _lastGoodStepLimit ||
         TimeLimitSeconds != _lastGoodTimeLimitSeconds;
     public string StepLimitEstimateText => _workspace.Context.Setup?.StepLimitEstimateText ??
-        MotifAppStrings.StepLimitEstimateDefault;
+        string.Empty;
     public bool IsTimeLimitEnabled => HasProject && HasSavedSelection && !IsNoStepLimit;
     public bool IsNoStepLimit
     {
