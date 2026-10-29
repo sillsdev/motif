@@ -1718,11 +1718,11 @@ Never included unless you tick it in the preview: local details, which may conta
     <comment>Heading of the first Setup step, shown when a project is found.</comment>
   </data>
   <data name="MotifApp.SetupSelectionTitle" xml:space="preserve">
-    <value>What should Motif measure every time?</value>
+    <value>What Should Motif Measure Every Time?</value>
     <comment>Label or heading in the Setup dialog: setup selection title.</comment>
   </data>
   <data name="MotifApp.SetupLimitsTitle" xml:space="preserve">
-    <value>How much work should each word get?</value>
+    <value>How Much Work Should Each Word Get?</value>
     <comment>Label or heading in the Setup dialog: setup limits title.</comment>
   </data>
   <data name="MotifApp.SetupFoundProjectDescription" xml:space="preserve">
@@ -2062,7 +2062,7 @@ Never included unless you tick it in the preview: local details, which may conta
     <comment>Heading of the last Setup step when editing the saved Selection.</comment>
   </data>
   <data name="MotifApp.SetupFirstRunTitle" xml:space="preserve">
-    <value>Ready for the first run?</value>
+    <value>Ready for the First Run?</value>
     <comment>Heading of the last Setup step of first-time setup.</comment>
   </data>
   <data name="MotifApp.SetupUseSelectionDescription" xml:space="preserve">
@@ -3194,7 +3194,7 @@ Never included unless you tick it in the preview: local details, which may conta
     <comment>Accessible name (read aloud by screen readers) of a control on the refusal notice: "Original refusal details". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.DeleteMotifsStore" xml:space="preserve">
-    <value>Delete Motif's store?</value>
+    <value>Delete Motif's Store?</value>
     <comment>Question heading of the confirmation shown before Motif deletes its own store (its working file for the project) after it was refused; FieldWorks data is not touched.</comment>
   </data>
   <data name="MotifApp.KeepMotifsStore" xml:space="preserve">
@@ -3334,8 +3334,8 @@ Never included unless you tick it in the preview: local details, which may conta
     <comment>Fragment on a word card meaning FieldWorks holds no analysis; shown in lowercase inside a longer line.</comment>
   </data>
   <data name="MotifApp.WordCardChangeSentence" xml:space="preserve">
-    <value>Sentence when the change was made</value>
-    <comment>Heading or field label on the word card: "Sentence when the change was made".</comment>
+    <value>Sentence When the Change Was Made</value>
+    <comment>Heading or field label on the word card: "Sentence When the Change Was Made".</comment>
   </data>
   <data name="MotifApp.InFieldWorksNow" xml:space="preserve">
     <value>In FieldWorks · Now</value>
@@ -3382,8 +3382,8 @@ Never included unless you tick it in the preview: local details, which may conta
     <comment>Small uppercase label on a word card marking analyses PanGloss did not build; keep it uppercase.</comment>
   </data>
   <data name="MotifApp.WordCardApprovedNotBuilt" xml:space="preserve">
-    <value>Approved analyses PanGloss did not build</value>
-    <comment>Heading or field label on the word card: "Approved analyses PanGloss did not build".</comment>
+    <value>Approved Analyses PanGloss Did Not Build</value>
+    <comment>Heading or field label on the word card: "Approved Analyses PanGloss Did Not Build".</comment>
   </data>
   <data name="MotifApp.PanGlossHelp" xml:space="preserve">
     <value>PanGloss Help</value>
@@ -3602,7 +3602,7 @@ Never included unless you tick it in the preview: local details, which may conta
     <comment>Heading of the Timing by-kind section when nothing is stored for the words.</comment>
   </data>
   <data name="MotifApp.TimingScopeFormat" xml:space="preserve">
-    <value>Where the time went, for these {0} words: by kind of rule</value>
+    <value>Where the Time Went, for These {0} Words: by Kind of Rule</value>
     <comment>Heading of the Timing by-kind section; {0} is how many words.</comment>
   </data>
   <data name="MotifApp.TimingPercentileSummaryFormat" xml:space="preserve">
@@ -3618,7 +3618,7 @@ Never included unless you tick it in the preview: local details, which may conta
     <comment>Under a word on the Timing page: the time one rule took and the whole time the word took; {0} is the rule time and {1} the whole time.</comment>
   </data>
   <data name="MotifApp.TimingRuleWordsTitleFormat" xml:space="preserve">
-    <value>Words where {0} took longest</value>
+    <value>Words Where {0} Took Longest</value>
     <comment>Heading over the words a rule took longest in; {0} is the rule name.</comment>
   </data>
   <data name="MotifApp.TimingStoppedAtSearchLimit" xml:space="preserve">
@@ -5812,7 +5812,7 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <comment>Title of the folded details of a refusal that carries grammar issues found by the parser. The dot separates the two parts.</comment>
   </data>
   <data name="MotifApp.RefusalStoreOtherVersionHeading" xml:space="preserve">
-    <value>This Motif store is from another version</value>
+    <value>This Motif Store Is from Another Version</value>
     <comment>Heading above the refusal sentence when Motif's store was written by another version of Motif.</comment>
   </data>
   <data name="MotifApp.StatisticsColumnKind" xml:space="preserve">
@@ -6474,11 +6474,11 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <comment>Count of attempts shown beside a Try a Word stop group. # is the count.</comment>
   </data>
   <data name="MotifApp.TraceClosestAttemptsHeadingOne" xml:space="preserve">
-    <value>The attempt that got furthest</value>
+    <value>The Attempt That Got Furthest</value>
     <comment>Heading over the single closest attempt on the Try a Word page.</comment>
   </data>
   <data name="MotifApp.TraceClosestAttemptsHeadingMany" xml:space="preserve">
-    <value>Attempts that got furthest</value>
+    <value>Attempts That Got Furthest</value>
     <comment>Heading over the closest attempts on the Try a Word page.</comment>
   </data>
   <data name="MotifApp.TraceMoreAttemptsCountPattern" xml:space="preserve">
@@ -6834,11 +6834,11 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <comment>Try a Word notice when the diagnostic recorded no attempt that ended.</comment>
   </data>
   <data name="MotifApp.TraceWhyOtherAttemptsFailed" xml:space="preserve">
-    <value>Why the other attempts failed</value>
+    <value>Why the Other Attempts Failed</value>
     <comment>Try a Word heading over the groups of failed attempts for a word that parsed.</comment>
   </data>
   <data name="MotifApp.TraceWhyNotParsed" xml:space="preserve">
-    <value>Why it did not parse</value>
+    <value>Why It Did Not Parse</value>
     <comment>Try a Word heading over the groups of failed attempts for a word that did not parse.</comment>
   </data>
   <data name="MotifApp.TraceWritingSystemsNotRecorded" xml:space="preserve">

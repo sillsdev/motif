@@ -24,8 +24,8 @@ unbuilt design chose ICU JSON with live language switching. It was never built a
    docs site share them, and FieldWorks' own help is not .resx either. The window's shortcut labels (the
    `shortcut-*` entries) move to .resx. The docs site reads the neutral .resx for control Titles.
 3. **Changing the language requires a restart,** as in FieldWorks. Live switching is not built.
-4. **Commands and field labels use Title Case, as in FieldWorks; messages stay sentence case.** The words of ADR 0046
-   stand. The case change is made in the .resx values during extraction.
+4. **Commands, field labels, and clause and question headings use Title Case; messages stay sentence case.**
+   The words of ADR 0046 stand. The case change is made in the .resx values during extraction.
 5. **Counts:** the guide handles only whole sentences with placeholders. Where Motif needs a count sentence
    ("1 change", "N changes not applied yet"), a plural pattern is the value, and the gap is registered as a proposal
    to send upstream.

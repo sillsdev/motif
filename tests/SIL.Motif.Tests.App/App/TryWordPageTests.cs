@@ -90,7 +90,7 @@ public sealed class TryWordPageTests
                 window.Show();
                 Settle(window);
                 var texts = VisibleTexts(window).ToArray();
-                Assert.Contains("Why it did not parse", texts);
+                Assert.Contains("Why It Did Not Parse", texts);
                 Assert.Contains(TraceFailureSentences.Explain("RequiredSyntacticFeatureStruct"), texts);
                 Assert.Contains("RequiredSyntacticFeatureStruct", texts);
                 Assert.DoesNotContain(texts, text => text.Contains("Explanation not recorded", StringComparison.Ordinal));
@@ -1800,7 +1800,7 @@ public sealed class TryWordPageTests
                 Assert.DoesNotContain("Recorded twice", visible);
                 Assert.Single(visible, text => text == "Analysis 1");
                 Assert.True(TopOf(view, "Parsed · 2 analyses", window) < TopOf(view, MotifAppStrings.RecordedTrace, window));
-                Assert.DoesNotContain("Why the other attempts failed", visible);
+                Assert.DoesNotContain("Why the Other Attempts Failed", visible);
                 Assert.DoesNotContain("Further derivation is prohibited after a final template.", visible);
                 Assert.DoesNotContain("Rules on this word's best path", visible);
                 var plainDetails = view.GetVisualDescendants().OfType<TextBlock>()

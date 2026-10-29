@@ -61,6 +61,19 @@ public sealed class MotifAppStringsTests
     {
         Assert.Equal("See What Changed", MotifAppStrings.SeeWhatChanged);
         Assert.Equal("Parse the words you chose.", MotifAppStrings.ParseAllWordsTip);
+        Assert.Equal("What Should Motif Measure Every Time?", MotifAppStrings.SetupSelectionTitle);
+        Assert.Equal("How Much Work Should Each Word Get?", MotifAppStrings.SetupLimitsTitle);
+        Assert.Equal("Ready for the First Run?", MotifAppStrings.SetupFirstRunTitle);
+        Assert.Equal("Delete Motif's Store?", MotifAppStrings.DeleteMotifsStore);
+        Assert.Equal("Sentence When the Change Was Made", MotifAppStrings.WordCardChangeSentence);
+        Assert.Equal("Approved Analyses PanGloss Did Not Build", MotifAppStrings.WordCardApprovedNotBuilt);
+        Assert.Equal("Where the Time Went, for These {0} Words: by Kind of Rule", MotifAppStrings.TimingScopeFormat);
+        Assert.Equal("Words Where {0} Took Longest", MotifAppStrings.TimingRuleWordsTitleFormat);
+        Assert.Equal("This Motif Store Is from Another Version", MotifAppStrings.RefusalStoreOtherVersionHeading);
+        Assert.Equal("The Attempt That Got Furthest", MotifAppStrings.TraceClosestAttemptsHeadingOne);
+        Assert.Equal("Attempts That Got Furthest", MotifAppStrings.TraceClosestAttemptsHeadingMany);
+        Assert.Equal("Why the Other Attempts Failed", MotifAppStrings.TraceWhyOtherAttemptsFailed);
+        Assert.Equal("Why It Did Not Parse", MotifAppStrings.TraceWhyNotParsed);
     }
 
     [Fact]

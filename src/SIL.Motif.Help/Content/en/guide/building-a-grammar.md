@@ -16,7 +16,7 @@ You make grammar and lexicon changes in FieldWorks. Motif shows what the parser 
 
 Our own suggestion, which has no source: Motif measures only the Default Selection, so you can leave one Text out of it and add it later to see how the grammar does on words you did not tune it to.
 
-**In Motif.** Setup asks you to choose texts or add words in **What should Motif measure every time?**; choose **Configure…** from the project menu to change it later (see [Choosing what to measure](guide:first-run-setup)). In **Analyze texts**, **Word list** or **Lists**, choose **Incorrect spelling** on a word, or press **S** in Analyze texts; the change stays pending until you review and apply it (see [Texts](guide:texts) and [Keyboard shortcuts](guide:keyboard-shortcuts)).
+**In Motif.** Setup asks you to choose texts or add words in **What Should Motif Measure Every Time?**; choose **Configure…** from the project menu to change it later (see [Choosing what to measure](guide:first-run-setup)). In **Analyze texts**, **Word list** or **Lists**, choose **Incorrect spelling** on a word, or press **S** in Analyze texts; the change stays pending until you review and apply it (see [Texts](guide:texts) and [Keyboard shortcuts](guide:keyboard-shortcuts)).
 
 ## Sounds
 
