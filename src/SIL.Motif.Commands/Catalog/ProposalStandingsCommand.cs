@@ -172,7 +172,7 @@ public static class ProposalStandingsCommand
             Pair<int>(today?.Accuracy.ApprovedWordCount ?? 0, after?.Accuracy.ApprovedWordCount ?? 0, true,
                 (before, now) => PairedMoves.Count(before, now)),
             Pair(wordTimeToday, after?.Timing.Attribution.WordTimeMs, wordTimeToday is not null, PairedMoves.Time),
-            warnings, lost, noLongerFits);
+            warnings, lost, noLongerFits) { Work = trial.Work };
     }
 
     private static int LostApproved(MotifDatabase database, TrialRecord trial, AssessmentRecord? before,

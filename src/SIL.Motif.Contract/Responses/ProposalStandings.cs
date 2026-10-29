@@ -48,7 +48,11 @@ public sealed record TrialSummary(
     Paired<double?> WordTimeMs,
     Paired<int?> WarningCount,
     int LostApproved,
-    int NoLongerFits);
+    int NoLongerFits)
+{
+    /// <summary>Parser work measured for this Trial against its Baseline, when available.</summary>
+    public TrialWork? Work { get; init; }
+}
 
 /// <summary>One Proposal as the Proposals page and <c>motif proposals</c> list it.</summary>
 /// <param name="ProposalId">The Proposal's canonical id.</param>

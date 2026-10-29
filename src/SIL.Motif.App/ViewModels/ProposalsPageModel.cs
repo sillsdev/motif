@@ -657,7 +657,8 @@ public sealed partial class ProposalsPageModel : PageModel
         var standing = run.IsRunning ? TrialStanding.Trying : card.Standing;
         return new ProposalCardViewModel(card, labels, standing, run.IsRunning ? null : run.ShownRefusal,
             run.IsRunning ? null : run.BaselineNotice,
-            !run.IsRunning && run.JobId is not null && run.JobId == card.Trial?.JobId ? run.WorkNotice : null);
+            run.IsRunning ? null : run.JobId is not null && run.JobId == card.Trial?.JobId
+                ? run.WorkNotice : TrialWorkNotice.For(card.Trial?.Work));
     }
 
     private async Task SelectGroupFilterAsync(ProposalListFilter filter)

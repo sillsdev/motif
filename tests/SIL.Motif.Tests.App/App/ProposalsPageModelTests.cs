@@ -297,6 +297,18 @@ public sealed class ProposalsPageModelTests
                 new("parse-approved", 3, "3 parses approved")]));
     }
 
+    [Theory]
+    [InlineData(5.0, null)]
+    [InlineData(5.1, "This Trial makes parsing about 6% more work than the Baseline.")]
+    public async Task ReopenedInspectorShowsTheStoredTrialsWorkNotice(double percent, string? expected)
+    {
+        var trial = Summary(TrialFreshness.Current) with { Work = new TrialWork(1, 100, 106, percent, [], 0, 0) };
+        var (_, _, page) = await OpenAsync(Standings(Card("p/a", "A", ProposalGroup.WaitingForYou,
+            trial: trial, standing: TrialStanding.Current)));
+
+        Assert.Equal(expected, page.SelectedProposal!.WorkNotice);
+    }
+
     [Fact]
     public async Task NumbersShowBeforeAndAfterAndAChipNamesWhatWasLost()
     {

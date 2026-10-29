@@ -59,6 +59,33 @@ public sealed class ProposalStandingsCommandTests : IDisposable
     }
 
     [Fact]
+    public void StoredTrialWorkIsIncludedInTheProposalSummary()
+    {
+        using var fixture = new TrialsTests.ProjectFixture(_root);
+        var proposal = fixture.SaveProposal();
+        fixture.RecordWorkAssessment(proposal, "before", true, "matching");
+        fixture.RecordWorkAssessment(proposal, "after", false, "matching");
+        fixture.CreateJob(proposal.Json, "2026-09-24T11:00:00Z", "trial", ["after"],
+            baselineAssessmentIds: ["before"]);
+
+        var standings = Read(fixture);
+        using var json = JsonDocument.Parse(ProjectionJson.Serialize(standings));
+        var trial = Assert.Single(json.RootElement.GetProperty("proposals").EnumerateArray()).GetProperty("trial");
+        var work = trial.GetProperty("work");
+
+        Assert.Equal(100, work.GetProperty("baselineWork").GetInt64());
+        Assert.Equal(110, work.GetProperty("trialWorkSteps").GetInt64());
+        Assert.Equal(10, work.GetProperty("percentChange").GetDouble());
+        Assert.True(work.GetProperty("workIncreaseWarning").GetBoolean());
+        var card = Assert.Single(standings.Proposals);
+        var withoutWork = standings with { Proposals = [card with { Trial = card.Trial! with { Work = null } }] };
+        using var emptyJson = JsonDocument.Parse(ProjectionJson.Serialize(withoutWork));
+        var emptyTrial = Assert.Single(emptyJson.RootElement.GetProperty("proposals").EnumerateArray())
+            .GetProperty("trial");
+        Assert.False(emptyTrial.TryGetProperty("work", out _));
+    }
+
+    [Fact]
     public void AProposalWhoseBaselineMovedNeedsAnotherTry()
     {
         using var fixture = new TrialsTests.ProjectFixture(_root);
