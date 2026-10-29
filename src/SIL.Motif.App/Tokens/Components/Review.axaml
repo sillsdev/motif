@@ -4,7 +4,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
   <Styles.Resources>
-    <StaticResource x:Key="Component.Review.PageMargin" ResourceKey="Intent.Inset.Page" />
+    <StaticResource x:Key="Component.Review.PageMargin" ResourceKey="Primitive.Inset.8_4_8_4" />
     <StaticResource x:Key="Component.Review.FooterActionHeight" ResourceKey="Primitive.Size.22" />
     <StaticResource x:Key="Component.Review.FooterPadding" ResourceKey="Primitive.Inset.8_0_8_0" />
     <StaticResource x:Key="Component.Review.GroupMargin" ResourceKey="Primitive.Inset.0_0_8_8" />

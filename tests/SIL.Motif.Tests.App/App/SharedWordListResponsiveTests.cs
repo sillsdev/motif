@@ -142,6 +142,45 @@ public sealed class SharedWordListResponsiveTests
     }
 
     [Fact]
+    public void ReviewApplyFooterFitsAtMinimumScaledWindow()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var fake = new FakeCommandClient();
+            fake.PendingChangesIs(ReviewScreenshots.Blocked());
+            var (workspace, window) = await ReviewScreenshots.OpenAsync(fake);
+            try
+            {
+                workspace.CurrentPage = WorkspacePage.Review;
+                foreach (var theme in Themes)
+                {
+                    ApplySize(window, new ResponsiveSize(600, 150), theme);
+                    var minimum = (double)window.FindResource("Component.Shell.WorkingPageMinHeight")!;
+                    Assert.InRange(minimum, 130, 131);
+                    var page = Assert.Single(window.GetVisualDescendants().OfType<ContentControl>(),
+                        control => control.Name == "WorkingPageHost");
+                    var apply = Assert.Single(window.GetVisualDescendants().OfType<Button>(),
+                        button => AutomationProperties.GetAutomationId(button) == AutomationIds.ApplyChanges && button.IsEffectivelyVisible);
+                    var bounds = new Rect(apply.Bounds.Size).TransformToAABB(apply.TransformToVisual(window)!.Value);
+                    Assert.True(page.Bounds.Height >= 130, $"Review page height is {page.Bounds.Height} in {theme.Name}.");
+                    Assert.True(new Rect(window.ClientSize).Contains(bounds), $"Apply is outside the window: {bounds} in {theme.Name}.");
+                    Assert.All(apply.GetVisualAncestors().OfType<Control>().Where(control => control.ClipToBounds), ancestor =>
+                    {
+                        var clip = new Rect(ancestor.Bounds.Size).TransformToAABB(ancestor.TransformToVisual(window)!.Value);
+                        Assert.True(clip.Contains(bounds), $"Apply {bounds} is clipped by {ancestor.Name}: {clip} in {theme.Name}.");
+                    });
+                }
+            }
+            finally
+            {
+                Application.Current!.RequestedThemeVariant = ThemeVariant.Light;
+                WindowZoomPolicy.Apply(Application.Current!, ZoomPolicy.DefaultPercent);
+                window.Close();
+            }
+        }, TimeSpan.FromMinutes(2));
+    }
+
+    [Fact]
     public void ReviewChangesKeepTheirDenseTableBodyVisibleAcrossZoomAndThemes()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
