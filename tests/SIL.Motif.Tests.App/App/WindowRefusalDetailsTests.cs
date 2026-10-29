@@ -55,7 +55,7 @@ public sealed class WindowRefusalDetailsTests
 
         AssertWindowWords(details);
         Assert.Contains("The project file is read-only.", details);
-        Assert.Contains(Path.Combine(Path.GetTempPath(), "projects", "one.fwdata"), details);
+        Assert.Contains("projectPath: one.fwdata", details);
     }
 
     [Fact]

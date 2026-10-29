@@ -307,7 +307,7 @@ public sealed class HandoffViewModelTests
 
         Assert.Equal(RunState.Refused, handoff.State);
         Assert.Same(refusal, handoff.Refusal);
-        Assert.Contains($"outputDirectory: {OutputDirectory}", handoff.ShownRefusal!.Details);
+        Assert.Contains($"outputDirectory: {Path.GetFileName(OutputDirectory)}", handoff.ShownRefusal!.Details);
         Assert.True(handoff.RunCommand.CanExecute(null));
     }
 

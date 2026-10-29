@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Text.RegularExpressions;
+using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
@@ -71,7 +72,24 @@ public sealed class WindowRefusalTests
         Assert.Equal(WindowRefusal.GenericSentence, shown.Sentence);
         Assert.True(shown.HasDetails);
         Assert.Contains("Something new went wrong in the command.", shown.Details);
-        Assert.Contains(projectPath, shown.Details);
+        Assert.Contains("projectPath: one.fwdata", shown.Details);
+    }
+
+    [Fact]
+    public void APathFactShowsItsFileNameInTheWindowAndItsFullPathInTheReport()
+    {
+        var projectPath = Path.Combine(Path.GetTempPath(), "projects", "one", "one.fwdata");
+        var refusal = new Refusal("future.never-mapped", FailureReason.Refused,
+            "Something new went wrong in the command.",
+            new Dictionary<string, string> { ["projectPath"] = projectPath });
+
+        var shown = WindowRefusal.From(refusal);
+
+        Assert.Contains("projectPath: one.fwdata", shown.Details);
+        Assert.DoesNotContain(projectPath, shown.Details);
+        Assert.Equal(projectPath, shown.Facts["projectPath"]);
+        Assert.Contains(projectPath, ProblemReport.FromRefusal(shown).ToText(includeLocalDetails: true));
+        Assert.DoesNotContain(projectPath, ProblemReport.FromRefusal(shown).ToText());
     }
 
     [Fact]

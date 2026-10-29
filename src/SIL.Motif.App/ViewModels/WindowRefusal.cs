@@ -227,12 +227,14 @@ public sealed partial record WindowRefusal
         [C.WordTraceParserUnavailable] = () => ParserUnusable,
     };
 
-    private WindowRefusal(string code, string sentence, string? details, IReadOnlyDictionary<string, string> facts,
-        FailureReason? reason, Exception? failureException = null, ParserCompileDiagnostic? parserDiagnostic = null)
+    private WindowRefusal(string code, string sentence, string? details, string? reportDetails,
+        IReadOnlyDictionary<string, string> facts, FailureReason? reason, Exception? failureException = null,
+        ParserCompileDiagnostic? parserDiagnostic = null)
     {
         Code = code;
         Sentence = sentence;
         Details = details;
+        ReportDetails = reportDetails;
         Facts = facts;
         Reason = reason;
         FailureException = failureException;
@@ -254,8 +256,14 @@ public sealed partial record WindowRefusal
     /// <summary>The window's plain summary, shown before any fatal issues and folded details.</summary>
     public string Sentence { get; }
 
-    /// <summary>The command's own message and facts, or <see langword="null"/> when there is nothing to add.</summary>
+    /// <summary>
+    /// The command's own message and facts, or <see langword="null"/> when there is nothing to add. A fact whose
+    /// value is a path shows only its file name.
+    /// </summary>
     public string? Details { get; }
+
+    /// <summary>Details with full local paths, for the problem report.</summary>
+    internal string? ReportDetails { get; }
 
     public bool HasDetails => Details is not null;
 
@@ -297,7 +305,7 @@ public sealed partial record WindowRefusal
         ArgumentException.ThrowIfNullOrWhiteSpace(sentenceWhenUnmapped);
         var diagnostic = refusal.ParserDiagnostic ?? ParserCompileDiagnosticReader.Read(refusal.Message);
         return new WindowRefusal(refusal.Code, diagnostic?.Summary ?? SentenceFor(refusal, sentenceWhenUnmapped),
-            diagnostic is null ? DetailsOf(refusal) : CompileDetails(refusal, diagnostic),
+            DetailsFor(refusal, diagnostic, forReport: false), DetailsFor(refusal, diagnostic, forReport: true),
             refusal.Facts, refusal.Reason, parserDiagnostic: diagnostic);
     }
 
@@ -305,7 +313,8 @@ public sealed partial record WindowRefusal
     public static WindowRefusal Plain(string sentence)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(sentence);
-        return new WindowRefusal(WindowCheckCode, sentence, null, ImmutableDictionary<string, string>.Empty, null);
+        return new WindowRefusal(WindowCheckCode, sentence, null, null,
+            ImmutableDictionary<string, string>.Empty, null);
     }
 
     /// <summary>
@@ -318,7 +327,8 @@ public sealed partial record WindowRefusal
         ArgumentException.ThrowIfNullOrWhiteSpace(sentence);
         ArgumentNullException.ThrowIfNull(exception);
         var details = WindowSafe(exception.Message);
-        return new WindowRefusal(code, sentence, details.Length == 0 ? null : details,
+        var text = details.Length == 0 ? null : details;
+        return new WindowRefusal(code, sentence, text, text,
             ImmutableDictionary<string, string>.Empty, null, exception);
     }
 
@@ -343,7 +353,7 @@ public sealed partial record WindowRefusal
         return Sentences.TryGetValue(refusal.Code, out var sentence) ? sentence() : sentenceWhenUnmapped;
     }
 
-    private static string CompileDetails(Refusal refusal, ParserCompileDiagnostic diagnostic)
+    private static string CompileDetails(Refusal refusal, ParserCompileDiagnostic diagnostic, bool forReport)
     {
         var lines = new List<string> { diagnostic.Summary };
         foreach (var issue in diagnostic.Issues)
@@ -356,11 +366,11 @@ public sealed partial record WindowRefusal
         }
         lines.AddRange(refusal.Facts.Where(fact =>
                 fact.Key is not "standardError" and not "standardOutput" and not "parserMessage")
-            .OrderBy(fact => fact.Key, StringComparer.Ordinal).Select(fact => $"{fact.Key}: {fact.Value}"));
+            .OrderBy(fact => fact.Key, StringComparer.Ordinal).Select(fact => FactLine(fact, forReport)));
         return string.Join(Environment.NewLine, lines);
     }
 
-    private static string? DetailsOf(Refusal refusal)
+    private static string? DetailsOf(Refusal refusal, bool forReport)
     {
         var lines = new List<string>();
         var message = WindowSafe(refusal.Message);
@@ -369,8 +379,20 @@ public sealed partial record WindowRefusal
             .Where(fact => fact.Key != RefusalFactNames.ParserNotFound)
             .Where(fact => !CliTerm().IsMatch(fact.Key) && !CliTerm().IsMatch(fact.Value))
             .OrderBy(fact => fact.Key, StringComparer.Ordinal)
-            .Select(fact => $"{fact.Key}: {fact.Value}"));
+            .Select(fact => FactLine(fact, forReport)));
         return lines.Count == 0 ? null : string.Join(Environment.NewLine, lines);
+    }
+
+    private static string? DetailsFor(Refusal refusal, ParserCompileDiagnostic? diagnostic, bool forReport) =>
+        diagnostic is null ? DetailsOf(refusal, forReport) : CompileDetails(refusal, diagnostic, forReport);
+
+    // Path-valued facts show only their file name here; ReportDetails keeps the whole path.
+    private static string FactLine(KeyValuePair<string, string> fact, bool forReport)
+    {
+        var pathValued = fact.Key.EndsWith("Path", StringComparison.OrdinalIgnoreCase) ||
+            Path.IsPathRooted(fact.Value);
+        if (forReport || !pathValued) return $"{fact.Key}: {fact.Value}";
+        return $"{fact.Key}: {Path.GetFileName(fact.Value)}";
     }
 
     private static string WindowSafe(string text) => string.Join(" ", SentenceBreak().Split(text.Trim())

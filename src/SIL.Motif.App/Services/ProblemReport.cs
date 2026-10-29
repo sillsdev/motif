@@ -74,7 +74,7 @@ public sealed record ProblemReport
         ArgumentNullException.ThrowIfNull(refusal);
         return Create(refusal.Operation, refusal.Code, ExitStatusFor(refusal.Reason),
             refusal.FailureException is { } failure ? SanitizedStackFor(failure) : "Unavailable",
-            refusal.Facts, refusal.Details, facts ?? ApplicationFacts.Current) with
+            refusal.Facts, refusal.ReportDetails, facts ?? ApplicationFacts.Current) with
         {
             FailureSummary = refusal.ParserDiagnostic?.Summary,
         };
