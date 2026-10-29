@@ -23,6 +23,35 @@ namespace SIL.Motif.Tests.App;
 
 public sealed partial class ReviewUndoRealClientTests
 {
+    [Fact]
+    public async Task RemovingAStagedAddOnlyCancelsThePendingChange()
+    {
+        using var project = new WalkthroughProject(pristine);
+        var otherId = AddHomograph(project);
+        CaptureBaseline(project);
+        var real = RealCommandClient.Create(project.ManagedRoot, FakeParser.ExecutablePath);
+        await StageHomographChoice(project, real, otherId, ChangeKinds.AddCandidate);
+        var changes = new ChangesViewModel(real);
+        await changes.OpenProjectAsync(project.FwDataPath);
+        var staged = Assert.Single(changes.Items);
+        Assert.Equal(ChangeKinds.AddCandidate, staged.Kind);
+        using (var before = new FwDataProjectLoader().LoadScratchCache(project.FwDataPath))
+            Assert.Empty(before.ServiceLocator.GetInstance<IWfiWordformRepository>().GetObject(otherId).AnalysesOC);
+
+        await changes.RemoveCommand.ExecuteAsync(staged);
+
+        Assert.Null(changes.LastRefusal);
+        Assert.Empty(changes.Items);
+        var persisted = await real.LoadPendingChangesAsync(new PendingChangesRequest(project.FwDataPath,
+            MotifProductVersion.CurrentText), CancellationToken.None);
+        Assert.True(persisted.Succeeded, persisted.Refusal?.Message);
+        Assert.Empty(persisted.Value!.Changes);
+        using var after = new FwDataProjectLoader().LoadScratchCache(project.FwDataPath);
+        Assert.Empty(after.ServiceLocator.GetInstance<IWfiWordformRepository>().GetObject(otherId).AnalysesOC);
+        Assert.NotEmpty(after.ServiceLocator.GetInstance<IWfiWordformRepository>()
+            .GetObject(project.Text.AnalysedWordformId).AnalysesOC);
+    }
+
     [Theory]
     [InlineData("checked")]
     [InlineData("text")]
