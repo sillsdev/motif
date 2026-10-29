@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Automation.Peers;
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
@@ -35,6 +36,7 @@ internal sealed class InterlinearWord : Control
 
     internal void RefreshData()
     {
+        AutomationProperties.SetName(this, _data?.HoverSummary);
         _dataRevision++;
         InvalidateMeasure();
     }

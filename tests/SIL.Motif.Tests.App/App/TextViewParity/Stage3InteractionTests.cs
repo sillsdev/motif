@@ -8,8 +8,8 @@ internal sealed class Stage3TheoryAttribute : TheoryAttribute
 {
     public Stage3TheoryAttribute()
     {
-        if (Environment.GetEnvironmentVariable("MOTIF_TEXTVIEW_STAGE3") != "1")
-            Skip = "The drawn reader is opt-in.";
+        if (Environment.GetEnvironmentVariable("MOTIF_TEXTVIEW_STAGE3") == "0")
+            Skip = "The drawn reader is switched off by MOTIF_TEXTVIEW_STAGE3=0.";
     }
 }
 
@@ -154,6 +154,7 @@ public sealed class Stage3InteractionTests(WordScenes words, LineScenes lines)
         var constituents = scene.SemanticConstituents(1);
         var drawn = Assert.IsType<InterlinearWord>(constituents[0].Owner);
         var peer = TextViewScene.PeerOf(drawn);
+        Assert.Equal(scene.TokenOf(1).HoverSummary, peer.GetName());
         var children = peer.GetChildren();
         Assert.Equal(constituents.Count, children.Count);
         foreach (var constituent in constituents)

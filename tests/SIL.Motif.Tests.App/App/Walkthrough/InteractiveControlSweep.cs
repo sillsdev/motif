@@ -124,7 +124,7 @@ internal static class InteractiveControlSweep
     private static IReadOnlyList<InteractiveControlFamily> FamiliesOf(Control control)
     {
         if (FamilyOf(control) is not { } family) return [];
-        if (control.Focusable && (control is WordRow or WordStripToken or WordCard))
+        if (control.Focusable && (control is WordRow or WordStripToken or WordCard or InterlinearWord))
             return [family, InteractiveControlFamily.FocusableSurface];
         return [family];
     }
@@ -252,7 +252,7 @@ internal static class InteractiveControlSweep
         MorphemePanel => InteractiveControlFamily.Morpheme,
         NamedMark => InteractiveControlFamily.Mark,
         WordListSlot => InteractiveControlFamily.Container,
-        WordRow or WordStripToken => InteractiveControlFamily.Occurrence,
+        WordRow or WordStripToken or InterlinearWord => InteractiveControlFamily.Occurrence,
         ScrollViewer { Classes: var classes } when classes.Contains("refusalViewport") =>
             InteractiveControlFamily.ScrollViewport,
         ScrollViewer { Name: "TextsParseStatusScroll" or "PageActionFooterViewport" or "InspectorFooterViewport" } => InteractiveControlFamily.ScrollViewport,

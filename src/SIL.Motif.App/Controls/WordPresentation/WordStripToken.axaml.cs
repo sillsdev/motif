@@ -31,7 +31,8 @@ public sealed partial class WordStripToken : Border
     public static readonly StyledProperty<bool> ShowsSelectionCheckBoxProperty =
         AvaloniaProperty.Register<WordStripToken, bool>(nameof(ShowsSelectionCheckBox));
 
-    private static readonly bool Stage3Enabled = Environment.GetEnvironmentVariable("MOTIF_TEXTVIEW_STAGE3") == "1";
+    // Set MOTIF_TEXTVIEW_STAGE3=0 to show the legacy word text and morphology rows instead.
+    private static readonly bool Stage3Enabled = Environment.GetEnvironmentVariable("MOTIF_TEXTVIEW_STAGE3") != "0";
 
     private readonly Border _strip;
     private readonly Control _wordLine;
