@@ -33,7 +33,7 @@
     <StaticResource x:Key="Component.TextsPage.ReaderActionGap" ResourceKey="Primitive.Inset.0_0_4_0" />
     <StaticResource x:Key="Component.TextsPage.ActionMenuWidth" ResourceKey="Primitive.Size.420" />
     <StaticResource x:Key="Component.TextsPage.AnalyzeMinHeight" ResourceKey="Primitive.Size.360" />
-    <StaticResource x:Key="Component.TextsPage.ListWordsMinHeight" ResourceKey="Primitive.Size.240" />
+    <StaticResource x:Key="Component.TextsPage.ListWordsMinHeight" ResourceKey="Primitive.Size.248" />
     <StaticResource x:Key="Component.TextsPage.SelectionListHeight" ResourceKey="Primitive.Size.320" />
     <StaticResource x:Key="Component.TextsPage.AddedWordsHeight" ResourceKey="Primitive.Size.90" />
   </Styles.Resources>

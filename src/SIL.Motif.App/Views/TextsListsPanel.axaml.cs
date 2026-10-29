@@ -19,7 +19,7 @@ public sealed partial class TextsListsPanel : UserControl
         {
             this.FindControl<ItemsControl>("TextsListsPanelListsItems")!,
             this.FindControl<DockPanel>("ListHeader")!,
-            this.FindControl<DockPanel>("ListControls")!,
+            this.FindControl<WrapPanel>("ListControls")!,
         };
         void FitHeight()
         {

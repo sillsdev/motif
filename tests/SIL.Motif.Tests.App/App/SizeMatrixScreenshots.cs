@@ -469,8 +469,6 @@ internal static class ExpectedMatrixFindings
     [
         new("open-recent-projects", "popup-outside-window", new("FlyoutPresenter", Name: "motif-project-menu-flyout"), null, [..AllMatrixPoints], "The recent-project menu overlaps the top bar at these sizes.", "matrix/open-recent-projects-thin-100-light.png",
             "V25", "recent-projects menu overlaps the top bar", "UF"),
-        new("2c-texts-lists", "unreachable-control", new("Button", Name: "motif-handoff-list"), null, [new("thin", 150, "light"), new("thin", 150, "dark")], "The list's AI Handoff action sits beyond the narrow page at this zoom.", "matrix/2c-texts-lists-thin-150-light.png",
-            "H02", "list handoff action beyond the page", "Analyze texts"),
     ];
 
     internal static void AssertNoUnexpected(IEnumerable<LayoutFinding> source, bool requireAllExpected,

@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Headless;
 using Avalonia.Controls;
 using Avalonia.Styling;
@@ -15,6 +16,36 @@ namespace SIL.Motif.Tests.App;
 [Trait("MotifTestLevel", "System")]
 public sealed class SizeMatrixReachabilityTests
 {
+    [Fact]
+    public void ListsHandoffIsReachableAtThinScaledSizeInBothThemes()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, window) = await PageScreenshots.OpenOverSampleData();
+            try
+            {
+                workspace.PageModel<TextsPageModel>().Tab = TextsTab.Lists;
+                workspace.CurrentPage = WorkspacePage.Texts;
+                foreach (var theme in new[] { ThemeVariant.Light, ThemeVariant.Dark })
+                {
+                    Application.Current!.RequestedThemeVariant = theme;
+                    SizeMatrixScreenshots.ApplySize(window, MatrixSizes.Read().Single(size => size.Name == "thin"), 150);
+                    PageScreenshots.Settle(window);
+                    var button = Assert.Single(window.GetVisualDescendants().OfType<Button>(),
+                        item => AutomationProperties.GetAutomationId(item) == AutomationIds.HandOffList);
+                    Assert.True(button.IsEffectivelyVisible && button.IsEffectivelyEnabled);
+                    Assert.True(ReachabilityAssertions.IsReachable(button, window), $"Handoff is unreachable in {theme}.");
+                }
+            }
+            finally
+            {
+                Application.Current!.RequestedThemeVariant = ThemeVariant.Light;
+                WindowZoomPolicy.Apply(Application.Current!, ZoomPolicy.DefaultPercent);
+                window.Close();
+            }
+        }, TimeSpan.FromMinutes(2));
+    }
+
     [Fact]
     public void ListsWordRowsAreReachableInAShortScaledWindow()
     {
