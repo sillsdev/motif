@@ -63,6 +63,7 @@
                                  AutomationProperties.Name="{x:Static app:MotifAppStrings.WhyApplyIsUnavailableAccessibleName}" />
         <views:RefusalBlock Classes="refusalFlow" DataContext="{Binding MeasurementRefusal}" />
         <views:TrialBaselineNoticeBlock DataContext="{Binding BaselineNotice}" />
+        <views:TrialWorkNoticeBlock DataContext="{Binding WorkNotice}" />
         <views:RefusalBlock Classes="refusalFlow" DataContext="{Binding ShownApplyRefusal}" />
         <views:RefusalBlock Classes="refusalFlow" DataContext="{Binding DeclineRefusal}" />
         <views:RefusalBlock Classes="refusalFlow" DataContext="{Binding Changes.ShownRefusal}" />

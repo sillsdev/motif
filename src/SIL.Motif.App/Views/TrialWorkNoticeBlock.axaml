@@ -1,0 +1,14 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:conv="clr-namespace:Avalonia.Data.Converters;assembly=Avalonia.Base"
+             xmlns:app="clr-namespace:SIL.Motif.App"
+             xmlns:views="clr-namespace:SIL.Motif.App.Views"
+             x:Class="SIL.Motif.App.Views.TrialWorkNoticeBlock"
+             x:DataType="x:String"
+             IsVisible="{Binding Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}">
+  <Border x:Name="TrialWorkNotice" Classes="notice"
+          IsVisible="{Binding Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}"
+          AutomationProperties.Name="{x:Static app:MotifAppStrings.TrialWorkNoticeAccessibleName}">
+    <views:CopyableTextBlock x:Name="TrialWorkNoticeText" Text="{Binding}" TextWrapping="Wrap" />
+  </Border>
+</UserControl>

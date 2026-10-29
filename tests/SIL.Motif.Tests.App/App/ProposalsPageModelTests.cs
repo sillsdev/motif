@@ -208,6 +208,31 @@ public sealed class ProposalsPageModelTests
     }
 
     [Fact]
+    public async Task InspectorNoticeDoesNotFollowAnOlderTrialAfterTheListRefreshes()
+    {
+        var first = Card("p/one", "One", ProposalGroup.WaitingForYou,
+            trial: Summary(TrialFreshness.Current) with { JobId = "job/one" });
+        var (fake, context, page) = await OpenAsync(Standings(first));
+        fake.EnqueueTrialCompletesWith(new JobEnqueuedResponse("job/one", "trial", "project/test"));
+        fake.ReadTrialCompletesWith(Trial("p/one", TrialFreshness.Current) with
+        {
+            JobId = "job/one",
+            Work = new TrialWork(3, 1000, 1200, 20, [], 0, 0),
+        });
+
+        await page.TryAgainCommand.ExecuteAsync(page.SelectedProposal);
+        Assert.Equal("This Trial makes parsing about 20% more work than the Baseline.",
+            page.SelectedProposal?.WorkNotice);
+
+        fake.ProposalStandingsCompleteWith(Standings(first with
+        {
+            Trial = first.Trial! with { JobId = "job/two" },
+        }));
+        await context.PublishBaselineCapturedAsync();
+        Assert.Null(page.SelectedProposal?.WorkNotice);
+    }
+
+    [Fact]
     public async Task AGrammarProposalAndAnAnalysisProposalAskForTheSameThingFromThePage()
     {
         var (fake, _, page) = await OpenAsync(Standings(

@@ -232,6 +232,14 @@
     <value>Trial not compared against a Baseline</value>
     <comment>Accessible name of the notice beside a Trial queued without a Baseline.</comment>
   </data>
+  <data name="MotifApp.TrialWorkNotice" xml:space="preserve">
+    <value>This Trial makes parsing about {0}% more work than the Baseline.</value>
+    <comment>Notice beside a Trial that makes parsing more work; {0} is the whole-number percent.</comment>
+  </data>
+  <data name="MotifApp.TrialWorkNoticeAccessibleName" xml:space="preserve">
+    <value>Trial parsing work increased</value>
+    <comment>Accessible name of the notice beside a Trial that makes parsing more work.</comment>
+  </data>
   <data name="MotifApp.ProjectSummaryAccessibleName" xml:space="preserve">
     <value>Project summary</value>
     <comment>Accessible name announced by screen readers.</comment>

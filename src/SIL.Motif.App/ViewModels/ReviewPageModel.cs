@@ -266,12 +266,14 @@ public sealed partial class ReviewPageModel : PageModel
         {
             RefreshWordCardState();
             RaiseApplyState();
+            OnPropertyChanged(nameof(WorkNotice));
             TryAgainCommand.NotifyCanExecuteChanged();
             return;
         }
         if (e.PropertyName is not (nameof(WorkspaceContext.Lens) or nameof(WorkspaceContext.EvidenceLens))) return;
         RefreshWordCardState();
         RaiseModeState();
+        OnPropertyChanged(nameof(WorkNotice));
         // A new Trial changes the evidence a looked-at mark was judged against, so the marks are read again.
         if (e.PropertyName == nameof(WorkspaceContext.Lens) && Context.CurrentPage == WorkspacePage.Review)
             _reviewTask = LoadReviewAsync();
@@ -856,6 +858,13 @@ public sealed partial class ReviewPageModel : PageModel
     /// </summary>
     public string? BaselineNotice { get; private set; }
 
+    /// <summary>
+    /// The note in the window's words that the Trial from the latest Try again makes parsing more work
+    /// than the Baseline, or <see langword="null"/> when it does not.
+    /// </summary>
+    public string? WorkNotice => Context.Lens is { } lens && lens.ProposalId == Changes.TargetProposalId &&
+        !Context.TrialRun.IsRunning(lens.ProposalId) ? TrialWorkNotice.For(lens.Trial?.Work) : null;
+
     /// <summary>Whether the measured changes can be applied to the FieldWorks project.</summary>
     public bool CanApply => HasReviewItems && Changes.Items.All(item => item.Fit is { StillFits: true }) &&
         ApplyBlockers.Count == 0 && !IsMeasuring && !IsApplying;
@@ -1151,7 +1160,11 @@ public sealed partial class ReviewPageModel : PageModel
 
     private void OnChangesChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(ChangesViewModel.TargetProposalId)) RaiseModeState();
+        if (e.PropertyName == nameof(ChangesViewModel.TargetProposalId))
+        {
+            RaiseModeState();
+            OnPropertyChanged(nameof(WorkNotice));
+        }
         if (e.PropertyName == nameof(ChangesViewModel.Snapshot))
         {
             if (Context.CurrentPage == WorkspacePage.Review)
@@ -1341,6 +1354,7 @@ public sealed partial class ReviewPageModel : PageModel
         {
             _measurementCancellation?.Cancel();
             _applyCancellation?.Cancel();
+            OnPropertyChanged(nameof(WorkNotice));
         }
         if (e.PropertyName is nameof(WorkspaceContext.Baseline)) RaiseApplyState();
     }

@@ -69,13 +69,15 @@ public sealed class ProposalCardViewModel : ObservableObject
     private bool _isSelected;
 
     public ProposalCardViewModel(ProposalCard card, IReadOnlyDictionary<string, string>? labels = null,
-        TrialStanding? standing = null, WindowRefusal? refusal = null, string? baselineNotice = null)
+        TrialStanding? standing = null, WindowRefusal? refusal = null, string? baselineNotice = null,
+        string? workNotice = null)
     {
         ArgumentNullException.ThrowIfNull(card);
         Card = card;
         Standing = standing ?? card.Standing;
         ShownRefusal = refusal;
         BaselineNotice = baselineNotice;
+        WorkNotice = workNotice;
         Words = TrialStandingWords.For(Standing);
         OpenAutomationId = AutomationIds.ForProposalOpen(card.ProposalId);
         TryAgainAutomationId = AutomationIds.ForProposalTryAgain(card.ProposalId);
@@ -117,6 +119,12 @@ public sealed class ProposalCardViewModel : ObservableObject
     /// <see langword="null"/> when it was; shown next to the Trial's result.
     /// </summary>
     public string? BaselineNotice { get; }
+
+    /// <summary>
+    /// The note in the window's words that the Trial makes parsing more work than the Baseline, or
+    /// <see langword="null"/> when it does not; shown next to the Trial's result.
+    /// </summary>
+    public string? WorkNotice { get; }
 
     public string ProposalId => Card.ProposalId;
 
@@ -648,7 +656,8 @@ public sealed partial class ProposalsPageModel : PageModel
         var run = Context.TrialRun.StateFor(card.ProposalId);
         var standing = run.IsRunning ? TrialStanding.Trying : card.Standing;
         return new ProposalCardViewModel(card, labels, standing, run.IsRunning ? null : run.ShownRefusal,
-            run.IsRunning ? null : run.BaselineNotice);
+            run.IsRunning ? null : run.BaselineNotice,
+            !run.IsRunning && run.JobId is not null && run.JobId == card.Trial?.JobId ? run.WorkNotice : null);
     }
 
     private async Task SelectGroupFilterAsync(ProposalListFilter filter)

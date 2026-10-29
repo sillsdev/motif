@@ -21,14 +21,23 @@ namespace SIL.Motif.App.ViewModels;
 /// <param name="BaselineWarning">
 /// Why the queued Trial was not compared against a Baseline, or <see langword="null"/> when it was.
 /// </param>
+/// <param name="Work">
+/// The Trial's parsing work measured against the Baseline's, or <see langword="null"/> when it has none.
+/// </param>
 public sealed record TrialRunState(string ProposalId, bool IsRunning, string? JobId, TrialWordProgress? Progress,
-    Refusal? Refusal, string? BaselineWarning = null)
+    Refusal? Refusal, string? BaselineWarning = null, TrialWork? Work = null)
 {
     /// <summary>
     /// The warning in the window's words, to show next to the Trial's result, or <see langword="null"/> when the Trial
     /// was compared against a Baseline.
     /// </summary>
     public string? BaselineNotice => TrialBaselineNotice.For(BaselineWarning);
+
+    /// <summary>
+    /// The note in the window's words that the Trial makes parsing more work than the Baseline, or
+    /// <see langword="null"/> when it does not.
+    /// </summary>
+    public string? WorkNotice => TrialWorkNotice.For(Work);
 
     /// <summary>The refusal in the window's words, with the command's own account under Details.</summary>
     public WindowRefusal? ShownRefusal => Refusal is null ? null : WindowRefusal.From(Refusal);
@@ -137,7 +146,10 @@ public sealed partial class TrialRunViewModel : ObservableObject
             if (ReferenceEquals(run.Session, _session))
             {
                 _running.Remove(run.ProposalId);
-                Set(run.ProposalId, Current(run.ProposalId) with { IsRunning = false, Refusal = outcome.Refusal });
+                Set(run.ProposalId, Current(run.ProposalId) with
+                {
+                    IsRunning = false, Refusal = outcome.Refusal, Work = outcome.Value?.Work,
+                });
             }
         }
         run.Cancellation.Dispose();
