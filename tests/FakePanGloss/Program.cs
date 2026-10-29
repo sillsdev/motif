@@ -96,7 +96,7 @@ internal static class Program
         if (args is ["--version"])
         {
             var versionFile = Path.Combine(AppContext.BaseDirectory, VersionFileName);
-            Console.WriteLine(File.Exists(versionFile) ? File.ReadAllText(versionFile).Trim() : "pangloss 0.10.0");
+            Console.WriteLine(File.Exists(versionFile) ? File.ReadAllText(versionFile).Trim() : "pangloss " + PinnedVersion());
             return 0;
         }
         if (args is ["--allocate-memory", var requestedBytes])
@@ -115,6 +115,14 @@ internal static class Program
         var name = args[0] == "--describe" ? "describe" : args[0];
         var command = Dispatch.FirstOrDefault(command => command.Name == name);
         return command is null ? Unrecognised(args[0]) : command.Run(args);
+    }
+
+    /// <summary>The version the embedded pin names, which the default <c>--version</c> reports.</summary>
+    private static string PinnedVersion()
+    {
+        using var stream = typeof(Program).Assembly.GetManifestResourceStream("pangloss-release.json")!;
+        using var pin = JsonDocument.Parse(stream);
+        return pin.RootElement.GetProperty("version").GetString()!;
     }
 
     private static int ProbeMemoryLimit(string requestedBytes, string? holdMilliseconds = null)

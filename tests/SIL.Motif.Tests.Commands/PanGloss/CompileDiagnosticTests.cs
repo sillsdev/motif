@@ -1,6 +1,8 @@
 using System.Text;
+using System.Text.Json;
 using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Generator;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 
@@ -12,7 +14,9 @@ public sealed class CompileDiagnosticTests
     public void ConfiguredParserIdentityNamesItsFileAndReportedVersion()
     {
         var identity = ParserExecutableIdentity.Read(FakeParser.ExecutablePath);
-        Assert.Equal(Path.GetFileName(FakeParser.ExecutablePath) + " 0.10.0", identity);
+        using var pin = JsonDocument.Parse(File.ReadAllText(Path.Combine(RepoPaths.FindRepoRoot(), "pangloss-release.json")));
+        var pinnedVersion = pin.RootElement.GetProperty("version").GetString();
+        Assert.Equal(Path.GetFileName(FakeParser.ExecutablePath) + " " + pinnedVersion, identity);
         Assert.DoesNotContain(Path.GetDirectoryName(FakeParser.ExecutablePath)!, identity);
     }
 

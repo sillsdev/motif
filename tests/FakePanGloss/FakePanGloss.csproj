@@ -20,5 +20,7 @@
 
   <ItemGroup>
     <EmbeddedResource Include="facts-schema.sql" />
+    <!-- The repository's PanGloss pin, embedded so the fake's default version output reports the pinned release. -->
+    <EmbeddedResource Include="$(MSBuildThisFileDirectory)..\..\pangloss-release.json" LogicalName="pangloss-release.json" />
   </ItemGroup>
 </Project>
