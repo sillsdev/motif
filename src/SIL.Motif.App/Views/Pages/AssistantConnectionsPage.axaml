@@ -17,6 +17,8 @@
             <views:CopyableTextBlock Text="When this is on, connected assistants can read Known projects and draft Proposals through Motif. They cannot Apply a Proposal. Restart open assistant sessions after changing this setting."
                                       TextWrapping="Wrap" />
             <CheckBox Content="Turn on Advanced AI mode" IsChecked="{Binding IsEnabled}" />
+            <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.ParsimonyRequiresAdvancedAi}"
+                                     TextWrapping="Wrap" IsVisible="{Binding !IsEnabled}" />
           </StackPanel>
         </Border>
 

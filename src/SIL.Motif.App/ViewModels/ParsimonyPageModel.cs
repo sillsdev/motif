@@ -624,7 +624,8 @@ public sealed partial class ParsimonyPageModel : PageModel
     public IRelayCommand<string> SelectDecisionFilterCommand { get; }
 
     /// <summary>What the findings panel says while there are no measured findings to list, so absence never reads as zero.</summary>
-    public string UnavailableText => IsListed ? string.Empty
+    public string UnavailableText => State == ParsimonyPageState.Off ? MotifAppStrings.ParsimonyRequiresAdvancedAi
+        : IsListed ? string.Empty
         : Message.Length > 0 ? Message : MotifAppStrings.ParsimonyFindingsNotAvailable;
 
     /// <summary>Selects one Active finding and shows its evidence, unless the link belongs to another project or Report.</summary>

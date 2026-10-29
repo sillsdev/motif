@@ -3753,6 +3753,10 @@ Never included unless you tick it in the preview: local details, which may conta
     <value>{0} ({1})</value>
     <comment>A Parsimony filter choice with its count; {0} is the choice name such as Kept and {1} how many findings match.</comment>
   </data>
+  <data name="MotifApp.ParsimonyRequiresAdvancedAi" xml:space="preserve">
+    <value>Parsimony is available when Advanced AI mode is on.</value>
+    <comment>Explains why Parsimony is unavailable when Advanced AI mode is off. Parsimony is a feature name; Advanced AI mode names the setting.</comment>
+  </data>
   <data name="MotifApp.ParsimonyNoReport" xml:space="preserve">
     <value>No Parsimony Report yet.</value>
     <comment>Shown on the Parsimony page when no Report is stored. Parsimony Report is a feature name.</comment>

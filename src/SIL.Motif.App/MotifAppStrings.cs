@@ -2038,6 +2038,8 @@ public static class MotifAppStrings
 
     public static string ParsimonyReportUnavailable => Text("MotifApp.ParsimonyReportUnavailable");
 
+    public static string ParsimonyRequiresAdvancedAi => Text("MotifApp.ParsimonyRequiresAdvancedAi");
+
     public static string ParsimonyNoReport => Text("MotifApp.ParsimonyNoReport");
 
     public static string ParsimonyNoReportNextStep => Text("MotifApp.ParsimonyNoReportNextStep");

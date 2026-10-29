@@ -13,6 +13,33 @@ namespace SIL.Motif.Tests.App;
 [Collection(AvaloniaHeadlessCollection.Name)]
 public sealed class AiPageTextLayoutTests(AiPageLayoutSample fixture) : IClassFixture<AiPageLayoutSample>
 {
+    [Fact]
+    public void AdvancedAiSettingsExplainWhyParsimonyIsUnavailable()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, window) = await fixture.GetAsync();
+            var assistants = workspace.PageModel<AssistantConnectionsPageModel>();
+            var oldEnabled = assistants.IsEnabled;
+            try
+            {
+                assistants.IsEnabled = false;
+                workspace.ShowPageCommand.Execute(WorkspacePage.AiAssistants);
+                Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
+                var page = window.PageView<AssistantConnectionsPage>();
+                Assert.Contains(page.GetVisualDescendants().OfType<CopyableTextBlock>(),
+                    text => text.IsEffectivelyVisible &&
+                        text.Text == "Parsimony is available when Advanced AI mode is on.");
+            }
+            finally
+            {
+                assistants.IsEnabled = oldEnabled;
+                workspace.CurrentPage = WorkspacePage.Overview;
+            }
+        }, TimeSpan.FromMinutes(2));
+    }
+
     [Theory]
     [InlineData(WorkspacePage.AiAssistants)]
     [InlineData(WorkspacePage.AiHandoff)]

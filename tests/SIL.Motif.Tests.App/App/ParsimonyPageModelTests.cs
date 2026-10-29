@@ -48,6 +48,7 @@ public sealed class ParsimonyPageModelTests
         await context.OpenProjectAsync(ProjectA);
 
         Assert.Equal(ParsimonyPageState.Off, page.State);
+        Assert.Equal("Parsimony is available when Advanced AI mode is on.", page.UnavailableText);
         Assert.Empty(fake.ReadLatestParsimonyRequests);
         Assert.Empty(fake.ShowParsimonyReportRequests);
         Assert.False(context.CanOpenPage(WorkspacePage.Parsimony));
