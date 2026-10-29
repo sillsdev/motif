@@ -128,7 +128,7 @@ public static partial class PluralText
     }
 
     /// <summary>Picks the branch for <paramref name="count"/> and replaces <c>#</c> with the formatted count.</summary>
-    public static string Format(string pattern, int count, CultureInfo? culture = null)
+    public static string Format(string pattern, long count, CultureInfo? culture = null)
     {
         culture ??= CultureInfo.CurrentCulture;
         Dictionary<string, string> branches;

@@ -6447,11 +6447,35 @@ Motif starts a check automatically when this project opens. Use Reload to read a
   </data>
   <data name="MotifApp.TraceInParserFormat" xml:space="preserve">
     <value>{0} in the parser, {1}</value>
-    <comment>Try a Word trace summary part. {0} is the time spent in the parser; {1} is the overall time sentence.</comment>
+    <comment>Try a Word trace summary part. {0} is the parser work as a count of work steps; {1} is the overall time sentence.</comment>
   </data>
-  <data name="MotifApp.TraceParserTimeFormat" xml:space="preserve">
-    <value>Parser time · {0}</value>
-    <comment>Try a Word line giving the recorded parser time. {0} is a duration.</comment>
+  <data name="MotifApp.ParserWorkFormat" xml:space="preserve">
+    <value>Parser: {0}</value>
+    <comment>Try a Word line giving the parser work. {0} is a count of work steps, such as 1,234 work steps.</comment>
+  </data>
+  <data name="MotifApp.ParserWorkNotRecorded" xml:space="preserve">
+    <value>Parser work not recorded</value>
+    <comment>Try a Word line shown when the trace did not record its parser work.</comment>
+  </data>
+  <data name="MotifApp.WorkStepsPattern" xml:space="preserve">
+    <value>{0, plural, one {# work step} other {# work steps}}</value>
+    <comment>Count of parser work steps. # is the count.</comment>
+  </data>
+  <data name="MotifApp.WorkStepsNotRecorded" xml:space="preserve">
+    <value>work steps not recorded</value>
+    <comment>Summary fragment shown in place of a parser work count that the trace did not record.</comment>
+  </data>
+  <data name="MotifApp.DurationSecondsFormat" xml:space="preserve">
+    <value>{0:0.0} s</value>
+    <comment>A duration of one second or more, with one decimal place; {0} is the seconds, such as 1.5 s.</comment>
+  </data>
+  <data name="MotifApp.DurationMillisecondsFormat" xml:space="preserve">
+    <value>{0:0} ms</value>
+    <comment>A duration from 10 milliseconds to under one second, in whole milliseconds; {0} is the milliseconds, such as 287 ms.</comment>
+  </data>
+  <data name="MotifApp.DurationSubMillisecondsFormat" xml:space="preserve">
+    <value>{0:0.0#} ms</value>
+    <comment>A duration under 10 milliseconds, with up to three decimal places; {0} is the milliseconds, such as 0.19 ms.</comment>
   </data>
   <data name="MotifApp.TraceDroppedPathsPattern" xml:space="preserve">
     <value>{0, plural, one {# other path the parser tried and dropped (normal)} other {# other paths the parser tried and dropped (normal)}}</value>

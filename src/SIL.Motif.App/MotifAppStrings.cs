@@ -3237,7 +3237,19 @@ public static class MotifAppStrings
 
     public static string TraceInParserFormat => Text("MotifApp.TraceInParserFormat");
 
-    public static string TraceParserTimeFormat => Text("MotifApp.TraceParserTimeFormat");
+    public static string ParserWorkFormat => Text("MotifApp.ParserWorkFormat");
+
+    public static string ParserWorkNotRecorded => Text("MotifApp.ParserWorkNotRecorded");
+
+    public static string WorkStepsPattern => Text("MotifApp.WorkStepsPattern");
+
+    public static string WorkStepsNotRecorded => Text("MotifApp.WorkStepsNotRecorded");
+
+    public static string DurationSecondsFormat => Text("MotifApp.DurationSecondsFormat");
+
+    public static string DurationMillisecondsFormat => Text("MotifApp.DurationMillisecondsFormat");
+
+    public static string DurationSubMillisecondsFormat => Text("MotifApp.DurationSubMillisecondsFormat");
 
     public static string TraceDroppedPathsPattern => Text("MotifApp.TraceDroppedPathsPattern");
 

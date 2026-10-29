@@ -1,7 +1,9 @@
+using System.Globalization;
 using System.Linq;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 
 namespace SIL.Motif.Tests.App;
@@ -206,4 +208,70 @@ public sealed class AssessWordsViewModelTests
 
         Assert.Equal("mtoto", table.SelectedRow!.Word);
     }
+
+    [Theory]
+    [InlineData(0L, "0 work steps")]
+    [InlineData(1L, "1 work step")]
+    [InlineData(1234L, "1,234 work steps")]
+    [InlineData(20_000_000_000L, "20,000,000,000 work steps")]
+    public void AWordsWorkIsCountedInWorkStepsAndNeverInMilliseconds(long steps, string expected)
+    {
+        using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
+        var table = new AssessWordsViewModel();
+        table.Load([Word("kitabu", "analysed", [Reading("book")], ["approved"]) with { WorkSteps = steps, ElapsedMs = 1234 }]);
+
+        var row = Assert.Single(table.Rows);
+        Assert.Equal(steps, row.WorkSteps);
+        Assert.Equal(expected, row.WorkStepsText);
+        AssertNoMilliseconds(row.WorkStepsText);
+    }
+
+    [Fact]
+    public void AWordWithNoRecordedWorkSaysSoInsteadOfShowingMilliseconds()
+    {
+        using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
+        var table = new AssessWordsViewModel();
+        // A stored Assessment has a parse time and no work count.
+        table.Load([Word("kitabu", "analysed", [Reading("book")], ["approved"]) with { ElapsedMs = 1234 }]);
+
+        var row = Assert.Single(table.Rows);
+        Assert.Null(row.WorkSteps);
+        Assert.Equal("work steps not recorded", row.WorkStepsText);
+        AssertNoMilliseconds(row.WorkStepsText);
+    }
+
+    [Fact]
+    public void ARefusedWordShowsNoWorkText()
+    {
+        var table = new AssessWordsViewModel();
+        table.Load([Word("x y", "skipped") with { WorkSteps = 5 }]);
+
+        Assert.Equal(string.Empty, Assert.Single(table.Rows).WorkStepsText);
+    }
+
+    [Theory]
+    [InlineData("analysed")]
+    [InlineData("no-analysis")]
+    [InlineData("timed-out")]
+    public void ATriedWordWithNoRecordedWorkSaysSoEvenWithoutATime(string outcome)
+    {
+        using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
+        var table = new AssessWordsViewModel();
+        table.Load([Word("x y", outcome) with { ElapsedMs = null, WorkSteps = null }]);
+
+        var row = Assert.Single(table.Rows);
+        Assert.Equal("work steps not recorded", row.WorkStepsText);
+        AssertNoMilliseconds(row.WorkStepsText);
+    }
+
+    [Fact]
+    public void ASkippedWordWithNoRecordedWorkShowsNoWorkText()
+    {
+        var table = new AssessWordsViewModel();
+        table.Load([Word("x y", "skipped") with { ElapsedMs = null, WorkSteps = null }]);
+
+        Assert.Equal(string.Empty, Assert.Single(table.Rows).WorkStepsText);
+    }
+
+    private static void AssertNoMilliseconds(string text) => Assert.DoesNotMatch(@"\bms\b|<\s*1\b", text);
 }

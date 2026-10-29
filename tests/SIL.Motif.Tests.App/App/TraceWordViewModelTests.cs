@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.Commands.Queries;
@@ -81,15 +82,43 @@ public sealed class TraceWordViewModelTests
 
         Assert.Equal("Search incomplete", trace.AnswerText);
         Assert.Equal(Mark.Stopped, trace.AnswerMark);
-        Assert.StartsWith("Parsed · ", trace.PageSummaryText);
+        Assert.StartsWith("Parsed", trace.SummaryText, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void PageSummaryNamesTheAnswerAnalysisCountAndParserTime()
+    public void TheParserWorkLineNamesWorkStepsAndNeverMilliseconds()
     {
-        var trace = new TraceWordViewModel { Result = MatinluTrace() };
+        using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
+        var trace = new TraceWordViewModel { Result = MatinluTrace() with { ParserWorkSteps = 1234 } };
 
-        Assert.Equal("Parsed · 2 analyses · 0.19 ms", trace.PageSummaryText);
+        Assert.Equal("Parser: 1,234 work steps", trace.ParserWorkText);
+        AssertNoMilliseconds(trace.ParserWorkText);
+    }
+
+    [Fact]
+    public void AMissingParserWorkCountSaysSoInsteadOfShowingTheRecordedMilliseconds()
+    {
+        using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
+        // The trace has a parser time and no work count.
+        var trace = new TraceWordViewModel { Result = MatinluTrace() with { ParserWorkSteps = null } };
+
+        Assert.Equal("Parser work not recorded", trace.ParserWorkText);
+        Assert.Contains("work steps not recorded", trace.SummaryText, StringComparison.Ordinal);
+        Assert.DoesNotContain("0.19 ms", trace.SummaryText, StringComparison.Ordinal);
+        AssertNoMilliseconds(trace.ParserWorkText);
+    }
+
+    [Fact]
+    public void ARefusedTraceNamesNoParserWork()
+    {
+        using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
+        var trace = new TraceWordViewModel
+        {
+            Result = MatinluTrace() with { Parsed = false, InvalidShape = true, ParserSteps = null, ParserWorkSteps = null },
+        };
+
+        Assert.Equal(string.Empty, trace.ParserWorkText);
+        Assert.DoesNotContain("work steps", trace.SummaryText, StringComparison.Ordinal);
     }
 
     [Theory]
@@ -193,7 +222,8 @@ public sealed class TraceWordViewModelTests
             Result = response with { Complete = true, ElapsedMs = 0, ParserSteps = null, ParserElapsedMs = null, HostCapture = null },
         };
         Assert.NotEmpty(trace.Candidates);
-        Assert.Equal("No parse", trace.PageSummaryText);
+        Assert.StartsWith("No parse", trace.SummaryText, StringComparison.Ordinal);
+        Assert.Contains("work steps not recorded", trace.SummaryText, StringComparison.Ordinal);
     }
 
     private static TraceStep Leaf(string type, string? source = null, string? failure = null) =>
@@ -245,6 +275,7 @@ public sealed class TraceWordViewModelTests
             TraceReadingBuilder.Build("kitabu", Leaf("WordAnalysis"), [], []))
         {
             ParserSteps = 12345,
+            ParserWorkSteps = 2345,
             ParserElapsedMs = 0.2876,
             Effort = [new TraceEffort("Root lookups", 2, 0, 0, 1, 0, 0, null)],
         });
@@ -257,7 +288,8 @@ public sealed class TraceWordViewModelTests
         Assert.True(trace.HasResult);
         Assert.Contains("No parse", trace.SummaryText, StringComparison.Ordinal);
         Assert.Contains("12,345 analysis attempts", trace.SummaryText, StringComparison.Ordinal);
-        Assert.Contains("0.29 ms in the parser, 1.5 s overall", trace.SummaryText, StringComparison.Ordinal);
+        Assert.Contains("2,345 work steps in the parser, 1.5 s overall", trace.SummaryText, StringComparison.Ordinal);
+        AssertNoMilliseconds(trace.SummaryText);
         Assert.Equal("The parser stopped at a search limit.", trace.StopReason);
         var root = Assert.Single(trace.Effort);
         Assert.Equal("1 found no root", root.Missed);
@@ -866,4 +898,6 @@ public sealed class TraceWordViewModelTests
 
     private static WordTraceResponse MatinluTrace() => WordTraceQuery.LoadDiagnostic(File.ReadAllText(
         Path.Combine(AppContext.BaseDirectory, "TestFixtures", "trace-details-v3-matinlu.json"))).Value!;
+
+    private static void AssertNoMilliseconds(string text) => Assert.DoesNotMatch(@"\bms\b|<\s*1\b", text);
 }

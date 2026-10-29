@@ -167,8 +167,7 @@ public sealed partial class TraceWordViewModel : ObservableObject
         OnPropertyChanged(nameof(GrammarSourceText));
         OnPropertyChanged(nameof(HasDiagnosticJson));
         OnPropertyChanged(nameof(SummaryText));
-        OnPropertyChanged(nameof(PageSummaryText));
-        OnPropertyChanged(nameof(ParserTimeText));
+        OnPropertyChanged(nameof(ParserWorkText));
         OnPropertyChanged(nameof(StopReason));
         OnPropertyChanged(nameof(HasStopReason));
         OnPropertyChanged(nameof(Analyses));
@@ -213,24 +212,12 @@ public sealed partial class TraceWordViewModel : ObservableObject
 
     public string SummaryText => Result is not { } result ? string.Empty : Summarize(result);
 
-    /// <summary>The result, logical analysis count, and recorded parser time shown on the Try a Word page.</summary>
-    public string PageSummaryText
-    {
-        get
-        {
-            if (Result is not { } result) return string.Empty;
-
-            var parts = new List<string> { result.Parsed ? MotifAppStrings.TraceParsed : result.InvalidShape ? ParserRefusals.Title : MotifAppStrings.OutcomeNoParse };
-            if (result.Parsed)
-                parts.Add(PluralText.Format(MotifAppStrings.TraceAnalysesPattern, _analyses.Count));
-            if (result.ParserElapsedMs is { } parserMs) parts.Add(FormatMs(parserMs));
-            return string.Join(" · ", parts);
-        }
-    }
-
-    /// <summary>The recorded parser duration, independent of the result outcome and analysis count.</summary>
-    public string ParserTimeText => Result?.ParserElapsedMs is { } milliseconds
-        ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.TraceParserTimeFormat, FormatMs(milliseconds)) : string.Empty;
+    /// <summary>The parser work for this trace as a count of work steps, or a note that none was recorded; blank for a refused trace, which did no parser work.</summary>
+    public string ParserWorkText => Result is not { InvalidShape: false } result ? string.Empty
+        : result.ParserWorkSteps is { } steps
+            ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.ParserWorkFormat,
+                PluralText.Format(MotifAppStrings.WorkStepsPattern, steps))
+            : MotifAppStrings.ParserWorkNotRecorded;
 
     public string? StopReason => Result is { Complete: false } result ? result.StopReason : null;
 
@@ -245,22 +232,31 @@ public sealed partial class TraceWordViewModel : ObservableObject
         var parts = new List<string> { result.Parsed ? MotifAppStrings.TraceParsed : result.InvalidShape ? ParserRefusals.Title : MotifAppStrings.OutcomeNoParse };
         if (result.Guessed) parts.Add(MotifAppStrings.TraceGuessed);
         if (result.ParserSteps is { } steps)
-            parts.Add(PluralText.Format(MotifAppStrings.TraceAnalysisAttemptsPattern, (int)Math.Clamp(steps, 0L, int.MaxValue)));
+            parts.Add(PluralText.Format(MotifAppStrings.TraceAnalysisAttemptsPattern, steps));
         var overall = result.HostCapture?.WallElapsedMs is { } capturedElapsed
             ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.TraceOverallFormat, FormatMs(capturedElapsed))
             : result.ElapsedMs > 0 ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.TraceOverallFormat, FormatMs(result.ElapsedMs))
             : MotifAppStrings.TraceOverallNotRecorded;
-        parts.Add(result.ParserElapsedMs is { } parserMs
-            ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.TraceInParserFormat, FormatMs(parserMs), overall)
-            : overall);
+        if (result.InvalidShape)
+            parts.Add(overall);
+        else if (result.ParserWorkSteps is { } work)
+        {
+            parts.Add(string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.TraceInParserFormat,
+                PluralText.Format(MotifAppStrings.WorkStepsPattern, work), overall));
+        }
+        else
+        {
+            parts.Add(MotifAppStrings.WorkStepsNotRecorded);
+            parts.Add(overall);
+        }
         return string.Join("  ·  ", parts);
     }
 
     internal static string FormatMs(double ms) => ms switch
     {
-        >= 1000 => $"{ms / 1000:0.0} s",
-        >= 10 => $"{ms:0} ms",
-        _ => $"{ms:0.0#} ms",
+        >= 1000 => string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.DurationSecondsFormat, ms / 1000),
+        >= 10 => string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.DurationMillisecondsFormat, ms),
+        _ => string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.DurationSubMillisecondsFormat, ms),
     };
 
     private static string? DeepestRuleStepId(TraceStep root)
@@ -450,8 +446,7 @@ public sealed partial class TraceWordViewModel : ObservableObject
         OnPropertyChanged(nameof(ExpectedMorphs));
         OnPropertyChanged(nameof(FurthestAttempt));
         OnPropertyChanged(nameof(HasComparison));
-        OnPropertyChanged(nameof(PageSummaryText));
-        OnPropertyChanged(nameof(ParserTimeText));
+        OnPropertyChanged(nameof(ParserWorkText));
         OnPropertyChanged(nameof(ShowsChosenWord));
         OnPropertyChanged(nameof(ShowsOtherWord));
     }

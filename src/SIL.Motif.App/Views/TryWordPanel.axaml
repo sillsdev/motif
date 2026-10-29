@@ -111,9 +111,9 @@
           <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Compact}">
             <views:CopyableTextBlock Text="{Binding TracedGrammarText}" Classes="muted" TextWrapping="Wrap"
                                      FontSize="{DynamicResource Intent.Type.Label}" />
-            <views:CopyableTextBlock Grid.Column="1" Text="{Binding Trace.ParserTimeText}" Classes="muted" TextWrapping="Wrap"
+            <views:CopyableTextBlock Grid.Column="1" Text="{Binding Trace.ParserWorkText}" Classes="muted" TextWrapping="Wrap"
                                      FontSize="{DynamicResource Intent.Type.Label}" AutomationProperties.Name="{x:Static app:MotifAppStrings.TryAWordSummaryAccessibleName}"
-                                     IsVisible="{Binding Trace.ParserTimeText, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
+                                     IsVisible="{Binding Trace.ParserWorkText, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
           </Grid>
           <views:CopyableTextBlock Text="{Binding TraceBaselineWarning}" Classes="status" TextWrapping="Wrap"
                                    IsVisible="{Binding TraceBaselineWarning, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />

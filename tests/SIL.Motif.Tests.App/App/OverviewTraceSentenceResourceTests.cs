@@ -42,7 +42,13 @@ public sealed class OverviewTraceSentenceResourceTests
         { "TraceOverallFormat", "{0} overall" },
         { "TraceOverallNotRecorded", "overall time not recorded" },
         { "TraceInParserFormat", "{0} in the parser, {1}" },
-        { "TraceParserTimeFormat", "Parser time · {0}" },
+        { "ParserWorkFormat", "Parser: {0}" },
+        { "ParserWorkNotRecorded", "Parser work not recorded" },
+        { "WorkStepsPattern", "{0, plural, one {# work step} other {# work steps}}" },
+        { "WorkStepsNotRecorded", "work steps not recorded" },
+        { "DurationSecondsFormat", "{0:0.0} s" },
+        { "DurationMillisecondsFormat", "{0:0} ms" },
+        { "DurationSubMillisecondsFormat", "{0:0.0#} ms" },
         { "TraceDroppedPathsPattern", "{0, plural, one {# other path the parser tried and dropped (normal)} other {# other paths the parser tried and dropped (normal)}}" },
         { "TraceAttemptsFailedPattern", "{0, plural, one {# attempt failed · choose a group to see its recorded outcomes} other {# attempts failed · choose a group to see its recorded outcomes}}" },
         { "TraceAttemptsPattern", "{0, plural, one {# attempt} other {# attempts}}" },
@@ -308,6 +314,8 @@ public sealed class OverviewTraceSentenceResourceTests
     [InlineData("OverviewWarningWarningsPattern", 2, "2 warnings")]
     [InlineData("OverviewWarningInformationPattern", 1, "1 information finding")]
     [InlineData("OverviewWarningInformationPattern", 5, "5 information findings")]
+    [InlineData("WorkStepsPattern", 1, "1 work step")]
+    [InlineData("WorkStepsPattern", 1234, "1,234 work steps")]
     public void CountSentencesGoThroughThePluralHelper(string accessor, int count, string expected)
     {
         using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
@@ -341,6 +349,36 @@ public sealed class OverviewTraceSentenceResourceTests
             "\"Parsed", "\"guessed\"", "\"1 attempt\"", "? \"failed\" : \"succeeded\"", "all recorded steps",
         ];
         Assert.DoesNotContain(fragments, fragment => code.Contains(fragment, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void TheAssessRowBuildsNoMillisecondsOrEnglishWorkTextOfItsOwn()
+    {
+        var code = CodeOf("AssessWordsViewModel.cs");
+        string[] fragments = ["work step", " ms\"", "<1 ms"];
+        Assert.DoesNotContain(fragments, fragment => code.Contains(fragment, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void TheTraceLineBuildsNoEnglishWorkTextOfItsOwn()
+    {
+        var code = CodeOf("TraceWordViewModel.cs");
+        string[] fragments = ["work step", "Parser work"];
+        Assert.DoesNotContain(fragments, fragment => code.Contains(fragment, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void TheTraceLineBuildsNoMillisecondOrSecondUnitOfItsOwn()
+    {
+        var code = CodeOf("TraceWordViewModel.cs");
+        string[] fragments = [" ms\"", "} s\""];
+        Assert.DoesNotContain(fragments, fragment => code.Contains(fragment, StringComparison.Ordinal));
+    }
+
+    private static string CodeOf(string file)
+    {
+        var path = Path.Combine(RepoPaths.FindRepoRoot(), "src", "SIL.Motif.App", "ViewModels", file);
+        return string.Join('\n', File.ReadAllLines(path).Where(line => !line.TrimStart().StartsWith("//", StringComparison.Ordinal)));
     }
 
     [Theory]
@@ -465,10 +503,10 @@ public sealed class OverviewTraceSentenceResourceTests
     }
 
     [Theory]
-    [InlineData(-5L, "0 analysis attempts")]
     [InlineData(1L, "1 analysis attempt")]
-    [InlineData(long.MaxValue, "2,147,483,647 analysis attempts")]
-    public void ParserStepsAreClampedIntoTheCountRangeOfThePluralHelper(long steps, string expected)
+    [InlineData(int.MaxValue + 1L, "2,147,483,648 analysis attempts")]
+    [InlineData(long.MaxValue, "9,223,372,036,854,775,807 analysis attempts")]
+    public void ParserStepsAboveTheIntRangeAreCountedInFull(long steps, string expected)
     {
         using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
         var trace = new TraceWordViewModel { Result = TraceWith(steps) };
