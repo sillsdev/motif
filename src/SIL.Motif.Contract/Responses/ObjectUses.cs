@@ -69,6 +69,9 @@ public sealed record ObjectUseRef
 /// <param name="AssessmentId">The stored Assessment the words and timings come from.</param>
 public sealed record ObjectUsesResponse(string AssessmentId)
 {
+    /// <summary>Completeness of per-word object timing detail used by this result.</summary>
+    public ObjectTimingDetail? ObjectTimingDetail { get; init; }
+
     /// <summary>The producing run and measurement time for each word supplying this query's evidence.</summary>
     public IReadOnlyDictionary<string, WordMeasurementOrigin> WordOrigins { get; init; } =
         new Dictionary<string, WordMeasurementOrigin>(StringComparer.Ordinal);

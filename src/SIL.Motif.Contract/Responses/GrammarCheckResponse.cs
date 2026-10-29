@@ -8,6 +8,9 @@ namespace SIL.Motif.Contract.Responses;
 /// <param name="HasBaseline">False when the project has no Baseline yet, so there was no grammar to read.</param>
 public sealed record GrammarCheckResponse(IReadOnlyList<GrammarWarning> Findings, bool HasBaseline)
 {
+    /// <summary>Completeness of per-word object timing detail used by this result.</summary>
+    public ObjectTimingDetail? ObjectTimingDetail { get; init; }
+
     public string Locale { get; init; } = string.Empty;
 
     /// <summary>The number of lexical entries in the Baseline checked by PanGloss, or null when its inventory is unknown.</summary>

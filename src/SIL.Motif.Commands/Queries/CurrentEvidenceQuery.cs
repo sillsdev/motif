@@ -87,6 +87,11 @@ public sealed record CurrentEvidenceSnapshot(
     public IReadOnlyList<AssessmentObjectTiming> EffectiveObjectTimings => EvidenceSet?.ObjectTimings ??
         (MatchingAssessment is { } assessment ? AssessmentWordOverlay.ApplyObjectTimings(assessment, RerunAssessments) : []);
 
+    /// <summary>Whether the effective object timing detail covers its contributing words.</summary>
+    public ObjectTimingDetail TimingDetail => EvidenceSet?.TimingDetail ??
+        (MatchingAssessment is { } assessment ? AssessmentEvidenceSet.Create(assessment, RerunAssessments).TimingDetail
+            : new ObjectTimingDetail(false, "Object timing is unavailable."));
+
     /// <summary>
     /// The matching Assessment as an <c>assess</c> run returns it: its words after later subset runs, worded by
     /// the same row builder a run uses, with its completion summary and its measurements by kind.

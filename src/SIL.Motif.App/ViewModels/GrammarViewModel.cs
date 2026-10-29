@@ -143,6 +143,8 @@ public sealed partial class GrammarViewModel : ObservableObject
             HasChecked = true;
         }
         if (check is null) return;
+        Warnings.ObjectTimingDetailText = check.ObjectTimingDetail is { IsComplete: false } detail
+            ? detail.Description ?? MotifAppStrings.ObjectTimingDetailIncomplete : string.Empty;
         Warnings.Load(check.Findings);
         HasBaseline = check.HasBaseline;
         HasChecked = true;
@@ -156,6 +158,7 @@ public sealed partial class GrammarViewModel : ObservableObject
         Refusal = null;
         HasBaseline = false;
         HasChecked = false;
+        Warnings.ObjectTimingDetailText = string.Empty;
         Warnings.Load(null);
         CheckCommand.NotifyCanExecuteChanged();
     }
@@ -187,11 +190,15 @@ public sealed partial class GrammarViewModel : ObservableObject
             // The table is filled before the state flips, so no view sees "checked" before its findings arrive.
             if (outcome.Succeeded)
             {
-                Warnings.Load(outcome.Value!.Findings, preserveResolved);
-                HasBaseline = outcome.Value.HasBaseline;
+                var check = outcome.Value!;
+                Warnings.ObjectTimingDetailText = check.ObjectTimingDetail is { IsComplete: false } detail
+                    ? detail.Description ?? MotifAppStrings.ObjectTimingDetailIncomplete : string.Empty;
+                Warnings.Load(check.Findings, preserveResolved);
+                HasBaseline = check.HasBaseline;
             }
             else
             {
+                Warnings.ObjectTimingDetailText = string.Empty;
                 Warnings.Load(null);
                 HasBaseline = false;
                 Refusal = outcome.Refusal;

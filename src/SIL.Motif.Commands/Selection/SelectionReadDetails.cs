@@ -70,6 +70,9 @@ public sealed record SelectionPresentationState(
     SIL.Motif.Contract.Responses.PendingChangesSnapshot PendingChanges,
     IReadOnlyList<SIL.Motif.Contract.Responses.GrammarWarning> Warnings)
 {
+    /// <summary>Completeness of the object timing detail used for warning attribution.</summary>
+    public SIL.Motif.Contract.Responses.ObjectTimingDetail? ObjectTimingDetail { get; init; }
+
     public IReadOnlyDictionary<TextWordKey, IReadOnlyList<SelectionPendingChange>> PendingByWord { get; init; } =
         new Dictionary<TextWordKey, IReadOnlyList<SelectionPendingChange>>();
 

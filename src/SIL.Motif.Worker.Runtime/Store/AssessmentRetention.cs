@@ -85,6 +85,14 @@ internal static class AssessmentRetention
                 WHERE AssessmentId IN (SELECT AssessmentId FROM temp.RemovedAssessments));
             """,
             "DELETE FROM AssessedWords WHERE AssessmentId IN (SELECT AssessmentId FROM temp.RemovedAssessments);",
+            """
+            DELETE FROM AssessmentWordPayloads WHERE Hash NOT IN (
+                SELECT MorphologyJson FROM AssessedWords WHERE MorphologyJson IS NOT NULL
+                UNION SELECT CorrectnessJson FROM AssessedWords WHERE CorrectnessJson IS NOT NULL
+                UNION SELECT ReadingGradesJson FROM AssessedWords WHERE ReadingGradesJson IS NOT NULL
+                UNION SELECT AnalysisComparisonJson FROM AssessedWords WHERE AnalysisComparisonJson IS NOT NULL
+                UNION SELECT MissedApprovedJson FROM AssessedWords WHERE MissedApprovedJson IS NOT NULL);
+            """,
             "DELETE FROM Assessments WHERE AssessmentId IN (SELECT AssessmentId FROM temp.RemovedAssessments);",
             "DELETE FROM temp.RemovedAssessments;",
         })

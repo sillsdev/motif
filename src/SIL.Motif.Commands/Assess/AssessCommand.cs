@@ -211,6 +211,12 @@ public static class AssessCommand
                     composition = composition with { Selection = composition.Selection with { Name = namedSelection } };
             }
 
+            if (request.FullObjectTimingDetail && (request.Selection is null ||
+                composition.Selection.Words.Count > AssessmentScopeConfiguration.DefaultTimingDetailWords))
+                return CommandOutcome<AssessCommandResponse>.Refused(new Refusal(
+                    "assess.timing-detail-selection", FailureReason.InvalidArgument,
+                    $"Full object timing requires an explicit Selection of at most {AssessmentScopeConfiguration.DefaultTimingDetailWords} words."));
+
             if (request.ReplaceAssessmentId is { } replacedId)
             {
                 AssessmentRecord? replaced;
@@ -391,9 +397,11 @@ public static class AssessCommand
                 // Require one batch statistics row for each resolved word before recording.
                 IReadOnlyDictionary<string, PanGlossWordStatistics>? wordStats = null;
                 IReadOnlyList<AssessmentObjectTiming> objectTimings = [];
+                AssessmentTimingEvidence? timingEvidence = null;
                 if (statsCachePath is null)
                 {
                     summaryMarkdown = "(no per-object statistics were collected)" + Environment.NewLine;
+                    timingEvidence = new AssessmentTimingEvidence([], 0, false, 0) { StatisticsUnavailable = true };
                 }
                 else
                 {
@@ -411,14 +419,13 @@ public static class AssessCommand
                         return CommandOutcome<AssessCommandResponse>.Refused(ParserUnavailable(request.ProjectPath, exception.Message));
                     }
                     using var replayLease = replay;
-                    PanGlossBatchStatistics<AssessmentObjectTiming> batchStatistics;
+                    BoundedPanGlossStatistics batchStatistics;
                     try
                     {
-                        batchStatistics = PanGlossBatchStatisticsReader.Read(
+                        batchStatistics = PanGlossBatchStatisticsReader.ReadBounded(
                             replay.CachePath, composition.Selection.Words,
-                            row => new AssessmentObjectTiming(row.Kind, row.Key, row.IdentityQuality, row.Direction,
-                                row.Object, row.Word, row.Attempts, row.Passes, row.ElapsedNs),
-                            ObjectTimingRowCapForTests.Value ?? PanGlossBatchStatisticsReader.DefaultMaxObjectTimingRows);
+                            request.FullObjectTimingDetail ? composition.Selection.Words.Count :
+                                ObjectTimingRowCapForTests.Value ?? configured.TimingDetailWords);
                     }
                     catch (Exception exception) when (exception is IOException or InvalidDataException or
                         UnauthorizedAccessException or SqliteException)
@@ -428,18 +435,31 @@ public static class AssessCommand
                     }
                     wordStats = batchStatistics.Words.ToDictionary(pair => pair.Key, pair => pair.Value,
                         StringComparer.Ordinal);
-                    objectTimings = batchStatistics.ObjectTimings;
+                    objectTimings = batchStatistics.ObjectTimings.Select(row => new AssessmentObjectTiming(
+                        row.Kind, row.Key, row.IdentityQuality, row.Direction, row.Object, row.Word,
+                        row.Attempts, row.Passes, row.ElapsedNs)).ToArray();
+                    timingEvidence = new AssessmentTimingEvidence(batchStatistics.Aggregates,
+                        batchStatistics.DetailWordCount, batchStatistics.DetailComplete, batchStatistics.TotalObjectTimingRows)
+                    {
+                        AttributedNs = batchStatistics.AttributedNs, UnattributedNs = batchStatistics.UnattributedNs,
+                        OverrunNs = batchStatistics.OverrunNs,
+                    };
                     summaryMarkdown = $"Batch statistics: {batchStatistics.Words.Count} words; " +
                         $"{batchStatistics.TotalObjectTimingRows} object timing rows.";
-                    if (batchStatistics.Truncated)
-                        summaryMarkdown += $" Only the first {batchStatistics.ObjectTimings.Count} of " +
-                            $"{batchStatistics.TotalObjectTimingRows} object timing rows were kept; the rest were not recorded.";
+                    if (!batchStatistics.DetailComplete)
+                        summaryMarkdown += $" Object timing detail kept for the {batchStatistics.DetailWordCount} costliest words.";
                 }
 
                 if (cancellationToken.IsCancellationRequested)
                     return CommandOutcome<AssessCommandResponse>.Refused(Cancelled(request.ProjectPath));
-                wordStats = BatchAnalysis.OverlayRetryStatistics(wordStats,
-                    produced.Select(item => item.Raw).OfType<AssessmentRaw.Batch>().SelectMany(item => item.Analysis.Words));
+                var batchWords = produced.Select(item => item.Raw).OfType<AssessmentRaw.Batch>()
+                    .SelectMany(item => item.Analysis.Words).ToArray();
+                wordStats = BatchAnalysis.OverlayRetryStatistics(wordStats, batchWords);
+                if (timingEvidence is { StatisticsUnavailable: false } && batchWords.Any(word => word.WasRetried))
+                {
+                    timingEvidence = timingEvidence with { DetailComplete = false, HasRetriedWords = true };
+                    summaryMarkdown += " Object timing describes the initial pass; some words were retried.";
+                }
                 var namingCache = baselineReader.Cache;
                 var projectName = Path.GetFileNameWithoutExtension(request.ProjectPath);
                 var wordContext = ReadProjectWordContext(namingCache, composition.Selection.Words,
@@ -520,6 +540,7 @@ public static class AssessCommand
                         }).ToArray(),
                         ObjectTimings = record.Kind == AssessmentKind.ParseTime.ToStoredKind()
                             ? objectTimings : record.RequireWordMaterial().ObjectTimings,
+                        TimingEvidence = record.Kind == AssessmentKind.ParseTime.ToStoredKind() ? timingEvidence : null,
                         },
                     }).ToList();
                 }

@@ -322,9 +322,22 @@ public sealed partial class TimingPageModel : PageModel
     public bool IsStepLimitSelected => _wordSet is TimingWordSet.StepLimited && _explicitWords is null;
     public bool IsSlowestSelected => _wordSet is TimingWordSet.Slowest && _explicitWords is null;
     public bool IsAllSelected => _wordSet is TimingWordSet.All && _explicitWords is null;
-    public string ScopeLabel => KindTiming is null ? MotifAppStrings.TimingNoStoredTimingForWords :
-        string.Format(CultureInfo.CurrentCulture, MotifAppStrings.TimingScopeFormat,
-            KindTiming.WordCount.ToString("N0", CultureInfo.CurrentCulture));
+    public string ScopeLabel
+    {
+        get
+        {
+            if (KindTiming is null) return MotifAppStrings.TimingNoStoredTimingForWords;
+            var label = string.Format(CultureInfo.CurrentCulture, MotifAppStrings.TimingScopeFormat,
+                KindTiming.WordCount.ToString("N0", CultureInfo.CurrentCulture));
+            if (KindTiming.ObjectTimingDetail is not { IsComplete: false } detail) return label;
+            var notes = detail.DetailWordCounts.Select(count => string.Format(CultureInfo.CurrentCulture,
+                MotifAppStrings.TimingDetailLimitedFormat, count.ToString("N0", CultureInfo.CurrentCulture)));
+            return label + Environment.NewLine + string.Join(" ", notes) +
+                (detail.HasRetriedWords ? " " + MotifAppStrings.TimingDetailRetried : string.Empty) +
+                (detail.StatisticsUnavailable ? " " + MotifAppStrings.TimingNoStoredTimingForWords : string.Empty) +
+                (!KindTiming.ObjectTimingAggregatesAvailable ? " " + MotifAppStrings.TimingObjectTotalsUnavailable : string.Empty);
+        }
+    }
     public string PercentileSummary => KindTiming is null ? string.Empty :
         KindTiming.WordCount == 0 ? MotifAppStrings.TimingNoWordsInSelection :
         string.Format(CultureInfo.CurrentCulture, MotifAppStrings.TimingPercentileSummaryFormat,

@@ -16,6 +16,10 @@ using SIL.Motif.Worker.Store;
 using SIL.Motif.Worker.Jobs;
 using SIL.Motif.Host.Texts;
 using SIL.Motif.Host.Parser;
+using SIL.Motif.Host.PanGloss;
+using SIL.Motif.Host.Assess;
+using SIL.Motif.Host.Corpus;
+using System.Text.Json;
 using Xunit;
 
 namespace SIL.Motif.Tests.Commands;
@@ -436,6 +440,40 @@ public sealed class EvidenceSetReadsTests : IDisposable
         Assert.Equal("timing.invalid-override", wrongOverride.Refusal?.Code);
         Assert.Equal("stats.wrong-assessment", statsWrong.Refusal?.Code);
         Assert.Equal("stats.no-assessment", statsMissing.Refusal?.Code);
+    }
+
+    [Fact]
+    public void PartialTimingUsesExactWholeRunTotalsAndDoesNotGuessFilteredTotals()
+    {
+        using var fixture = new TrialsTests.ProjectFixture(_root, includeSecondWord: true);
+        var words = new[]
+        {
+            new AssessedWord("cat", "analysed", []) { ElapsedMs = 10 },
+            new AssessedWord("dog", "analysed", []) { ElapsedMs = 20 },
+        };
+        var detail = new AssessmentObjectTiming("morph_rule", "rule", "authored", "analysis", "Rule", "dog", 2, null, 2_000_000);
+        var evidence = new AssessmentTimingEvidence(
+            [new PanGlossObjectTimingAggregate("morph_rule", "rule", "authored", "analysis", "Rule", 2, 5, 3, 5_000_000, 3_000_000)
+                { WordsTouchedAcrossDirections = 2, WordsTouchedForKind = 2 }], 1, false, 2)
+        { AttributedNs = 5_000_000, UnattributedNs = 25_000_000, OverrunNs = 0 };
+        new AssessmentRepository(fixture.Database).Record(new NewAssessmentRecord(
+            "partial-timing", null, null, "pangloss", AssessmentKinds.ParseTime, "{}", "scope",
+            new AssessmentSubject.Words(Selection.Create("Default", ["cat", "dog"]), "whitespace", "1"),
+            JsonSerializer.Serialize(fixture.Token, MotifJson.CreateOptions()), "outcome", "semantic", "grammar", "model", "pipeline", 0,
+            new AssessmentRecordMaterial.Words(words, null, null, [detail]) { TimingEvidence = evidence }));
+
+        var all = TimingCommand.Timing(new TimingRequest(fixture.Project.FullFwDataPath, AssessmentId: "partial-timing"));
+        var filtered = TimingCommand.Timing(new TimingRequest(fixture.Project.FullFwDataPath,
+            AssessmentId: "partial-timing", ExplicitWords: ["cat"]));
+
+        Assert.True(all.Succeeded, all.Refusal?.Message);
+        Assert.True(all.Value!.ObjectTimingAggregatesAvailable);
+        Assert.False(all.Value.ObjectTimingDetail!.IsComplete);
+        Assert.Equal(5, Assert.Single(all.Value.Aggregates).SelfMs);
+        Assert.True(filtered.Succeeded, filtered.Refusal?.Message);
+        Assert.False(filtered.Value!.ObjectTimingAggregatesAvailable);
+        Assert.Empty(filtered.Value.Aggregates);
+        Assert.Equal(10, filtered.Value.Attribution.WordTimeMs);
     }
 
     private static async Task AssertTrialEvidenceRefused(TrialsTests.ProjectFixture fixture, EvidenceSet set)

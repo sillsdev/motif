@@ -83,7 +83,7 @@ public static class StoredGrammarCheckQuery
                 var records = ReadTrialComponents(database, set);
                 var evidence = AssessmentEvidenceSet.Create(records[0], records.Skip(1).ToArray());
                 check = WarningWordsQuery.WithYourWords(check,
-                    evidence.Words.Select(AssessmentWordRows.FromRecorded).ToArray(), evidence.ObjectTimings);
+                    evidence.Words.Select(AssessmentWordRows.FromRecorded).ToArray(), evidence.ObjectTimings, evidence.TimingDetail);
                 return CommandOutcome<StoredGrammarCheckResponse>.Success(new(check, Provenance: stored!.Provenance));
             }
             catch (Exception exception) when (exception is InvalidDataException or KeyNotFoundException)

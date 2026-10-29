@@ -57,6 +57,7 @@ public static class WarningsCommand
             CheckedLexemeCount = check?.CheckedLexemeCount,
             CheckedRuleCount = check?.CheckedRuleCount,
             Advisories = check?.Advisories ?? [],
+            ObjectTimingDetail = check?.ObjectTimingDetail,
         };
     }
 

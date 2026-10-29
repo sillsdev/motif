@@ -387,6 +387,8 @@ internal sealed class TrialJobHandler
             {
                 Material = record.RequireWordMaterial() with
                 {
+                    TimingEvidence = item.Kind == AssessmentKind.ParseTime
+                        ? new AssessmentTimingEvidence([], 0, false, 0) { StatisticsUnavailable = true } : null,
                     Rows = record.RequireWordMaterial().Rows.Select(word =>
                     {
                         word = TrialWordStatistics.Apply(word, wordStatistics);

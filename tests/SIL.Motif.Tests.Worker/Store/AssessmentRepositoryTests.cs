@@ -25,6 +25,46 @@ public sealed class AssessmentRepositoryTests : IDisposable
     public AssessmentRepositoryTests() => Directory.CreateDirectory(_root);
 
     [Fact]
+    public void WordEvidenceIsCompressedAndRoundTrips()
+    {
+        var repository = NewRepository("compressed-word.fwdata", out var database);
+        using var ownedDatabase = database;
+        var word = SIL.Motif.Tests.TestFixtures.CorrectnessFixture.Word("same", true);
+        repository.Record(NewAssessment("compressed", null, null, "Correctness", [word]));
+
+        using var connection = database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT typeof(MorphologyJson), typeof(CorrectnessJson) FROM AssessedWords WHERE AssessmentId = 'compressed';";
+        using var reader = command.ExecuteReader();
+        Assert.True(reader.Read());
+        Assert.Equal("blob", reader.GetString(0));
+        Assert.Equal("blob", reader.GetString(1));
+        var restored = Assert.Single(repository.Get("compressed").Words!);
+        Assert.Equal(JsonSerializer.Serialize(word.Morphology), JsonSerializer.Serialize(restored.Morphology));
+        Assert.Equal(JsonSerializer.Serialize(word.Correctness), JsonSerializer.Serialize(restored.Correctness));
+    }
+
+    [Fact]
+    public void IdenticalEvidenceIsSharedAcrossKindsAndDifferentEvidenceSurvives()
+    {
+        var repository = NewRepository("shared-words.fwdata", out var database);
+        using var ownedDatabase = database;
+        var word = SIL.Motif.Tests.TestFixtures.CorrectnessFixture.Word("same", true);
+        var changed = word with { Morphology = word.Morphology! with { Capped = true } };
+        repository.RecordBatch([
+            NewAssessment("parse", null, null, "ParseTime", [word]),
+            NewAssessment("correct", null, null, "Correctness", [word]),
+            NewAssessment("different", null, null, "Correctness", [changed]),
+        ]);
+        using var connection = database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT COUNT(DISTINCT MorphologyJson) FROM AssessedWords;";
+        Assert.Equal(2L, command.ExecuteScalar());
+        Assert.False(Assert.Single(repository.Get("parse").Words!).Morphology!.Capped);
+        Assert.True(Assert.Single(repository.Get("different").Words!).Morphology!.Capped);
+    }
+
+    [Fact]
     public void AttemptsAndWorkStepsSurviveReadBackAndAMissingWorkStaysNull()
     {
         var repository = NewRepository("work-steps.fwdata", out var database);
@@ -256,6 +296,147 @@ public sealed class AssessmentRepositoryTests : IDisposable
         var unsupported = Assert.Single(stored.ObjectTimings, row => row.Direction == "synthesis");
         Assert.Null(unsupported.Passes);
         Assert.Null(unsupported.ElapsedNs);
+    }
+
+    [Fact]
+    public void TimingTotalsAndDetailAvailabilitySurviveReadBack()
+    {
+        var repository = NewRepository("timing-evidence.fwdata", out var database);
+        using var ownedDatabase = database;
+        var record = NewAssessment("timing-evidence", null, null, "ParseTime");
+        var evidence = new AssessmentTimingEvidence(
+            [new PanGlossObjectTimingAggregate("morph_rule", "rule", "authored", "analysis", "Rule", 3, 12, 7, 900, 500)],
+            1, false, 4);
+        repository.Record(record with { Material = record.RequireWordMaterial() with { TimingEvidence = evidence } });
+
+        var stored = repository.Get("timing-evidence").TimingEvidence!;
+        Assert.False(stored.DetailComplete);
+        Assert.Equal(1, stored.DetailWordCount);
+        Assert.Equal(4, stored.TotalObjectTimingRows);
+        Assert.Equal(evidence.Aggregates, stored.Aggregates);
+    }
+
+    [Fact]
+    public void HeldOutAssessmentAddsLessThanTenMegabytesToTheCheckpointedStore()
+    {
+        var repository = NewRepository("held-out-size.fwdata", out var database);
+        using var ownedDatabase = database;
+        static long Checkpoint(MotifDatabase store)
+        {
+            using var connection = store.OpenConnection();
+            using var command = connection.CreateCommand();
+            command.CommandText = "PRAGMA wal_checkpoint(TRUNCATE);";
+            using var reader = command.ExecuteReader();
+            Assert.True(reader.Read());
+            Assert.Equal(0L, reader.GetInt64(0));
+            return new FileInfo(store.FullPath).Length;
+        }
+
+        var baselineBytes = Checkpoint(database);
+        var words = Enumerable.Range(0, 7206).Select(index =>
+        {
+            var word = SIL.Motif.Tests.TestFixtures.CorrectnessFixture.Word($"word-{index:D5}", true);
+            var analyses = Enumerable.Range(0, 6).Select(analysis => new ParseAnalysis(
+                Enumerable.Range(0, 5).Select(morph => new ParseMorph(
+                    $"{index:D8}-1111-1111-1111-{morph:D12}",
+                    $"22222222-2222-2222-2222-{analysis:D12}", null, null)).ToArray())).ToArray();
+            return word with { Morphology = word.Morphology! with { Index = index, Analyses = analyses } };
+        }).ToArray();
+        Assert.True(JsonSerializer.SerializeToUtf8Bytes(words[0].Morphology).Length > 3000);
+        var cachePath = Path.Combine(_root, "synthetic-statistics.sqlite");
+        WriteSyntheticStatistics(cachePath, words);
+        var statistics = PanGlossBatchStatisticsReader.ReadBounded(cachePath, words.Select(word => word.Word).ToArray(), 2000);
+        Assert.Equal(720600, statistics.TotalObjectTimingRows);
+        Assert.Equal(2000, statistics.DetailWordCount);
+        Assert.Equal(200000, statistics.ObjectTimings.Count);
+        var timings = statistics.ObjectTimings.Select(row => new AssessmentObjectTiming(row.Kind, row.Key,
+            row.IdentityQuality, row.Direction, row.Object, row.Word, row.Attempts, row.Passes, row.ElapsedNs)).ToArray();
+        var selection = Selection.Create("held-out", words.Select(word => word.Word).ToArray());
+        var first = NewAssessment("held-out-parse", null, null, "ParseTime", words) with
+        {
+            Subject = new AssessmentSubject.Words(selection, "whitespace", "1"),
+        };
+        first = first with { Material = first.RequireWordMaterial() with
+        {
+            ObjectTimings = timings,
+            TimingEvidence = new AssessmentTimingEvidence(statistics.Aggregates, statistics.DetailWordCount,
+                statistics.DetailComplete, statistics.TotalObjectTimingRows)
+            { AttributedNs = statistics.AttributedNs, UnattributedNs = statistics.UnattributedNs, OverrunNs = statistics.OverrunNs },
+        } };
+        var second = first with
+        {
+            AssessmentId = "held-out-correctness", Kind = "Correctness",
+            Material = first.RequireWordMaterial() with { ObjectTimings = [], TimingEvidence = null },
+        };
+        repository.RecordBatch([first, second]);
+
+        var afterBytes = Checkpoint(database);
+        var addedBytes = afterBytes - baselineBytes;
+        Console.WriteLine($"Held-out Assessment file growth: {addedBytes} bytes (before {baselineBytes}, after {afterBytes})");
+        Assert.True(addedBytes <= 10_000_000, $"Held-out Assessment added {addedBytes} bytes.");
+    }
+
+    private static void WriteSyntheticStatistics(string path, IReadOnlyList<AssessedWord> words)
+    {
+        using var connection = new SqliteConnection($"Data Source={path};Pooling=False");
+        connection.Open();
+        using var transaction = connection.BeginTransaction();
+        using var setup = connection.CreateCommand();
+        setup.Transaction = transaction;
+        setup.CommandText = """
+            CREATE TABLE cache_identity (cache_id INTEGER PRIMARY KEY, schema_version INTEGER NOT NULL);
+            CREATE TABLE word (word_id INTEGER PRIMARY KEY, form TEXT NOT NULL, elapsed_ns INTEGER NOT NULL,
+                attempts INTEGER NOT NULL, passes INTEGER NOT NULL);
+            CREATE TABLE object (object_id INTEGER PRIMARY KEY, key TEXT NOT NULL, kind TEXT NOT NULL,
+                label TEXT NOT NULL, identity_quality TEXT NOT NULL);
+            CREATE TABLE fact (word_id INTEGER NOT NULL, object_id INTEGER NOT NULL, direction TEXT NOT NULL,
+                attempts INTEGER NOT NULL, self_time_ns INTEGER);
+            INSERT INTO cache_identity VALUES (1, $version);
+            """;
+        setup.Parameters.AddWithValue("$version", PanGlossInterfaceVersions.StatsCacheVersion);
+        setup.ExecuteNonQuery();
+        using var insertObject = connection.CreateCommand();
+        insertObject.Transaction = transaction;
+        insertObject.CommandText = "INSERT INTO object VALUES ($id, $key, 'morph_rule', $label, 'authored')";
+        var objectId = insertObject.Parameters.Add("$id", SqliteType.Integer);
+        var objectKey = insertObject.Parameters.Add("$key", SqliteType.Text);
+        var objectLabel = insertObject.Parameters.Add("$label", SqliteType.Text);
+        for (var rule = 0; rule < 100; rule++)
+        {
+            objectId.Value = rule + 1;
+            objectKey.Value = $"rule-{rule:D4}";
+            objectLabel.Value = $"Rule {rule}";
+            insertObject.ExecuteNonQuery();
+        }
+        using var insertWord = connection.CreateCommand();
+        insertWord.Transaction = transaction;
+        insertWord.CommandText = "INSERT INTO word VALUES ($id, $form, $elapsed, 10, 1)";
+        var wordId = insertWord.Parameters.Add("$id", SqliteType.Integer);
+        var wordForm = insertWord.Parameters.Add("$form", SqliteType.Text);
+        var wordElapsed = insertWord.Parameters.Add("$elapsed", SqliteType.Integer);
+        using var insertFact = connection.CreateCommand();
+        insertFact.Transaction = transaction;
+        insertFact.CommandText = "INSERT INTO fact VALUES ($word, $object, 'analysis', $attempts, $elapsed)";
+        var factWord = insertFact.Parameters.Add("$word", SqliteType.Integer);
+        var factObject = insertFact.Parameters.Add("$object", SqliteType.Integer);
+        var factAttempts = insertFact.Parameters.Add("$attempts", SqliteType.Integer);
+        var factElapsed = insertFact.Parameters.Add("$elapsed", SqliteType.Integer);
+        for (var index = 0; index < words.Count; index++)
+        {
+            wordId.Value = index + 1;
+            wordForm.Value = words[index].Word;
+            wordElapsed.Value = index * 1000L + 1;
+            insertWord.ExecuteNonQuery();
+            factWord.Value = index + 1;
+            for (var rule = 0; rule < 100; rule++)
+            {
+                factObject.Value = rule + 1;
+                factAttempts.Value = (index + rule) % 37;
+                factElapsed.Value = (index * 7919L + rule * 97L) % 1_000_000;
+                insertFact.ExecuteNonQuery();
+            }
+        }
+        transaction.Commit();
     }
 
     [Fact]
@@ -544,6 +725,40 @@ public sealed class AssessmentRepositoryTests : IDisposable
         repository.DeleteByProposal(proposal, exceptAssessmentId: null);
 
         Assert.Empty(repository.ListByProposal(proposal));
+    }
+
+    [Fact]
+    public void SweepReclaimsOrphanedPayloadsButKeepsSharedPayloads()
+    {
+        var repository = NewRepository("sweep-payloads.fwdata", out var database);
+        var proposal = CanonicalId.Mint("proposal/");
+        SeedProposal(database, proposal.Value);
+        var shared = SIL.Motif.Tests.TestFixtures.CorrectnessFixture.Word("shared", true);
+        var removed = SIL.Motif.Tests.TestFixtures.CorrectnessFixture.Word("removed", true);
+        repository.Record(NewAssessment("removed", proposal, "sha256:intent", "Correctness", [shared, removed]));
+        repository.Record(NewAssessment("kept", null, null, "Correctness", [shared]));
+        var before = int.Parse(Scalar(database, "SELECT CAST(COUNT(*) AS TEXT) FROM AssessmentWordPayloads;"));
+
+        repository.DeleteByProposal(proposal, exceptAssessmentId: null);
+
+        var after = int.Parse(Scalar(database, "SELECT CAST(COUNT(*) AS TEXT) FROM AssessmentWordPayloads;"));
+        Assert.True(after > 0 && after < before);
+        Assert.Equal("shared", Assert.Single(repository.Get("kept").Words!).Morphology!.Word);
+    }
+
+    [Fact]
+    public void MissingReferencedWordPayloadIsNotReadAsEmptyEvidence()
+    {
+        var repository = NewRepository("missing-payload.fwdata", out var database);
+        var word = SIL.Motif.Tests.TestFixtures.CorrectnessFixture.Word("word", true);
+        repository.Record(NewAssessment("assessment", null, null, "Correctness", [word]));
+        using (var connection = database.OpenConnection())
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText = "PRAGMA foreign_keys = OFF; DELETE FROM AssessmentWordPayloads;";
+            command.ExecuteNonQuery();
+        }
+        Assert.Throws<InvalidDataException>(() => repository.Get("assessment"));
     }
 
     [Fact]

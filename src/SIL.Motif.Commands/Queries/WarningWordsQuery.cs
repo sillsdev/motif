@@ -42,21 +42,23 @@ public static class WarningWordsQuery
             return check with { Findings = check.Findings.Select(finding => finding with { YourWords = null }).ToArray() };
         check = StoredParseWarnings.Merge(check, current.Value);
         return WithYourWords(check, assessment.Words, current.Value.EffectiveObjectTimings,
-            includeResolvedReadings: true);
+            includeResolvedReadings: true, current.Value.TimingDetail);
     }
 
     /// <summary><paramref name="check"/> with each finding's words in <paramref name="words"/>.</summary>
     public static GrammarCheckResponse WithYourWords(GrammarCheckResponse check,
-        IReadOnlyList<AssessmentWordResult> words, IReadOnlyList<AssessmentObjectTiming> timings)
-        => WithYourWords(check, words, timings, includeResolvedReadings: false);
+        IReadOnlyList<AssessmentWordResult> words, IReadOnlyList<AssessmentObjectTiming> timings,
+        ObjectTimingDetail? detail = null)
+        => WithYourWords(check, words, timings, includeResolvedReadings: false, detail);
 
     private static GrammarCheckResponse WithYourWords(GrammarCheckResponse check,
         IReadOnlyList<AssessmentWordResult> words, IReadOnlyList<AssessmentObjectTiming> timings,
-        bool includeResolvedReadings)
+        bool includeResolvedReadings, ObjectTimingDetail? detail)
     {
         ArgumentNullException.ThrowIfNull(check);
         return check with
         {
+            ObjectTimingDetail = detail,
             Findings = check.Findings.Select(finding =>
                 finding with { YourWords = YourWordsOf(finding, words, timings, includeResolvedReadings) }).ToArray(),
         };

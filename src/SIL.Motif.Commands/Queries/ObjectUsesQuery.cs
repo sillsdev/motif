@@ -45,9 +45,11 @@ public static class ObjectUsesQuery
             var timings = snapshot.EffectiveObjectTimings;
             var facts = request.Ref is { } asked && snapshot.Baseline is { } baseline
                 ? FactsOf(asked, baseline, snapshot.Navigation!) : null;
+            var result = Read(assessment.Words, timings, WithTimingKey(request.Ref, facts), request.Words);
             return CommandOutcome<ObjectUsesResponse>.Success(
-                Read(assessment.Words, timings, WithTimingKey(request.Ref, facts), request.Words) with
+                result with
                 {
+                    ObjectTimingDetail = snapshot.TimingDetail,
                     AssessmentId = record.AssessmentId,
                     WordOrigins = snapshot.EffectiveWords.Where(word => word.Origin is not null).ToDictionary(
                         word => word.Word, word => word.Origin!, StringComparer.Ordinal),

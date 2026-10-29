@@ -105,6 +105,23 @@ public static class TimingCommand
             var selectedNames = selectedWords.Select(word => word.Word).ToHashSet(StringComparer.Ordinal);
             var objectRows = evidenceSet.ObjectTimings.Where(row => selectedNames.Contains(row.Word)).ToArray();
             var aggregates = TimingAggregation.Aggregate(selectedWords, objectRows, request.By, request.Rule, request.Top);
+            var aggregatesAvailable = true;
+            if (!evidenceSet.TimingDetail.IsComplete)
+            {
+                var wholeRun = evidenceSet.Components.Count == 1 && selectedWords.Count == evidenceSet.Words.Count;
+                if (!wholeRun || assessment.TimingEvidence is not { HasRetriedWords: false, StatisticsUnavailable: false } timingEvidence)
+                {
+                    var wordTimes = selectedWords.Select(TimingAggregation.WordTimeMs).OfType<double>().ToArray();
+                    aggregates = ([], [], new WordTimeAttribution(wordTimes.Length, wordTimes.Sum(), 0, null, null, 0, false));
+                    aggregatesAvailable = false;
+                }
+                else
+                {
+                    var totals = TimingAggregation.AggregateTotals(selectedWords, timingEvidence, request.By,
+                        assessment.Invocation?.InvocationId is { } invocation ? "invocation:" + invocation : null);
+                    aggregates = (totals.Aggregates, aggregates.CostliestWords, totals.Attribution);
+                }
+            }
             var summary = TimingAggregation.SummarizeWords(selectedWords, request.Top);
             BaselineToken? measuredBaseline;
             try { measuredBaseline = JsonSerializer.Deserialize<BaselineToken>(assessment.BaselineToken, MotifJson.CreateOptions()); }
@@ -137,6 +154,8 @@ public static class TimingCommand
                 summary.MedianMs, summary.Percentile95Ms, summary.SlowestWords,
                 namedAggregates, aggregates.CostliestWords)
             {
+                ObjectTimingDetail = evidenceSet.TimingDetail,
+                ObjectTimingAggregatesAvailable = aggregatesAvailable,
                 IsStale = relation is TimingEvidenceRelation.Historical or TimingEvidenceRelation.SavedSince,
                 EvidenceRelation = relation,
                 Baseline = measuredBaseline,

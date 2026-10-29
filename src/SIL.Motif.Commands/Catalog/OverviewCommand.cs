@@ -116,7 +116,27 @@ public static class OverviewCommand
             var assessment = evidence.MatchingAssessment;
             var assessedWords = evidence.EffectiveWords;
             var metrics = OverviewMetrics.Build(words, occurrenceSnapshot, assessedWords);
-            var timing = TimingAggregation.SummarizeWords(assessedWords, evidence.EffectiveObjectTimings);
+            var timing = TimingAggregation.SummarizeWords(assessedWords, evidence.EffectiveObjectTimings) with
+            { ObjectTimingDetail = evidence.TimingDetail };
+            if (!evidence.TimingDetail.IsComplete)
+            {
+                var components = evidence.EvidenceSet?.Components;
+                if (components is { Count: 1 } && components[0].TimingEvidence is { HasRetriedWords: false, StatisticsUnavailable: false } totals &&
+                    assessedWords.Count == components[0].Words?.Count)
+                {
+                    var projected = TimingAggregation.AggregateTotals(assessedWords, totals, "kind");
+                    timing = timing with { Kinds = projected.Aggregates, Attribution = projected.Attribution };
+                }
+                else
+                {
+                    var wordTimes = assessedWords.Select(TimingAggregation.WordTimeMs).OfType<double>().ToArray();
+                    timing = timing with
+                    {
+                        Kinds = [], ObjectTimingAggregatesAvailable = false,
+                        Attribution = new WordTimeAttribution(wordTimes.Length, wordTimes.Sum(), 0, null, null, 0, false),
+                    };
+                }
+            }
             var storedCheck = evidence.Baseline is null ? null : evidence.Set is
                 { GrammarCheckId: not null, Origin: { Kind: EvidenceOriginKind.Trial, ProposalId: { } proposalId,
                     IntentDigest: { } intentDigest } } trialEvidence
@@ -142,7 +162,7 @@ public static class OverviewCommand
             {
                 storedCheck = StoredParseWarnings.Merge(storedCheck, associationEvidence);
                 storedCheck = associationEvidence.WordContextAvailable && assessmentRows is not null
-                    ? WarningWordsQuery.WithYourWords(storedCheck, assessmentRows.Words, evidence.EffectiveObjectTimings)
+                    ? WarningWordsQuery.WithYourWords(storedCheck, assessmentRows.Words, evidence.EffectiveObjectTimings, evidence.TimingDetail)
                     : storedCheck with
                     {
                         Findings = storedCheck.Findings.Select(finding => finding with { YourWords = null }).ToArray(),

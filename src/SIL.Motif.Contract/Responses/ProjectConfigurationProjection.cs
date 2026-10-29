@@ -16,4 +16,8 @@ public sealed record AssessmentScopeProjection(
     string Assessor,
     IReadOnlyList<string> Collect,
     long PerWordLimitMs,
-    StepCap PerWordStepLimit);
+    StepCap PerWordStepLimit)
+{
+    /// <summary>Maximum slowest words retaining per-object timing detail in an ordinary Assessment.</summary>
+    public int TimingDetailWords { get; init; } = 2000;
+}

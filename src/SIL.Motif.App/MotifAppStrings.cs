@@ -1305,6 +1305,8 @@ public static class MotifAppStrings
 
     public static string MedianWordTime => Text("MotifApp.MedianWordTime");
 
+    public static string ObjectTimingDetailIncomplete => Text("MotifApp.ObjectTimingDetailIncomplete");
+
     public static string TimingMatrixCellHeading => Text("MotifApp.TimingMatrixCellHeading");
 
     public static string ListFromTexts => Text("MotifApp.ListFromTexts");
@@ -1960,6 +1962,9 @@ public static class MotifAppStrings
     public static string TimingNoStoredTimingForWords => Text("MotifApp.TimingNoStoredTimingForWords");
 
     public static string TimingScopeFormat => Text("MotifApp.TimingScopeFormat");
+    public static string TimingDetailLimitedFormat => Text("MotifApp.TimingDetailLimitedFormat");
+    public static string TimingDetailRetried => Text("MotifApp.TimingDetailRetried");
+    public static string TimingObjectTotalsUnavailable => Text("MotifApp.TimingObjectTotalsUnavailable");
 
     public static string TimingPercentileSummaryFormat => Text("MotifApp.TimingPercentileSummaryFormat");
 

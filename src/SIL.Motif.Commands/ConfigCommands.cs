@@ -37,6 +37,6 @@ public static class ConfigCommands
         configuration.Scopes
             .Select(scope => new AssessmentScopeProjection(
                 scope.Name, scope.Query, scope.Assessor, scope.Collect,
-                (long)scope.PerWordLimit.TotalMilliseconds, scope.PerWordStepLimit))
+                (long)scope.PerWordLimit.TotalMilliseconds, scope.PerWordStepLimit) { TimingDetailWords = scope.TimingDetailWords })
             .ToArray());
 }

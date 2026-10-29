@@ -164,6 +164,8 @@
 
       <StackPanel Grid.Row="1" Spacing="{DynamicResource Intent.Space.Snug}">
         <views:RefusalBlock DataContext="{Binding InText.ReadStateRefusal}" />
+        <views:CopyableTextBlock Classes="muted" Text="{Binding InText.ObjectTimingDetailText}" TextWrapping="Wrap"
+                                 IsVisible="{Binding InText.ObjectTimingDetailText, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
         <views:CopyableTextBlock Classes="muted" Text="{Binding InText.ReadStateNotice}" TextWrapping="Wrap"
                                  IsVisible="{Binding InText.HasReadStateNotice}" />
         <views:CopyableTextBlock Classes="muted" Text="{Binding InText.Changes.CollectionNotice}" TextWrapping="Wrap"

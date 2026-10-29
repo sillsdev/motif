@@ -36,8 +36,18 @@ public sealed class ProjectConfigurationTests : IDisposable
         Assert.Equal(AssessmentScopeConfiguration.DefaultQueryText, scope.Query);
         Assert.Equal(AssessmentScopeConfiguration.DefaultAssessorName, scope.Assessor);
         Assert.Equal(StepCap.Default, scope.PerWordStepLimit);
+        Assert.Equal(2000, scope.TimingDetailWords);
         Assert.Empty(scope.Collect);
         Assert.Equal(TimeSpan.FromSeconds(1), scope.PerWordLimit);
+    }
+
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(10001)]
+    public void TimingDetailWordCountIsBounded(int count)
+    {
+        var text = $"[[scope]]\nname = \"default\"\ntiming-detail-words = {count}\n";
+        Assert.Throws<ProjectConfigurationException>(() => ProjectConfigurationFile.Parse(text, "project.toml"));
     }
 
     [Fact]

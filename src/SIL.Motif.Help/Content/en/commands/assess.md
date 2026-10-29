@@ -36,6 +36,8 @@ The comparison's `availability` distinguishes `Available` (analysis identities w
 
 Assess and Trial use the Default Selection's per-word step cap and time policy, including for a supplied word list. A Trial's automatic before Assessment uses the exact limits frozen for the Trial. A time stop can vary with machine load; compare `capped` and `timedOut` separately, and inspect the recorded limits before comparing independent runs. A stopped word is not evidence that no analysis exists.
 
+When object statistics are available, Motif keeps whole-run timing totals and per-object detail for the 2,000 words with the most work steps by default. If work steps are unavailable, it uses elapsed time. A named scope can set `timing-detail-words` in `<project>.motif.toml` to a number from 0 to 10,000. Results identify when word-level detail is incomplete. To keep detail for every word in an explicitly supplied Selection of at most 2,000 words, pass `--full-object-timing` with the Selection. A retry records object timings from the initial pass; it does not supply object timings for the retried result.
+
 An external scheduler may also impose a whole-run deadline. Set that deadline for the size of this particular run; it is separate from the per-word parser limits. A wrapper's deadline must actually apply to the chosen priority and environment. A deadline that cancels the run leaves no complete Assessment.
 
 ## A large list

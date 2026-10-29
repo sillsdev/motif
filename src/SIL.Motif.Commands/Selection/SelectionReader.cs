@@ -223,6 +223,7 @@ public sealed class SelectionReader : IDisposable, IAsyncDisposable
     private string? _warningDigest;
     private IReadOnlyList<AssessmentWordResult> _assessmentResults = [];
     private IReadOnlyList<AssessmentObjectTiming> _objectTimings = [];
+    private ObjectTimingDetail? _timingDetail;
     private IReadOnlyList<string> _parseWarningLines = [];
     private readonly HashSet<SelectionReadLease> _leases = [];
     private readonly Dictionary<SelectionReadLease, SelectionLeaseResource> _leaseResources = [];
@@ -276,6 +277,7 @@ public sealed class SelectionReader : IDisposable, IAsyncDisposable
         _assessmentWordsDeserialized = evidence?.WordRows ?? 0;
         _assessmentResults = evidence?.Words.Select(AssessmentWordRows.FromRecorded).ToArray() ?? [];
         _objectTimings = evidence?.ObjectTimings ?? [];
+        _timingDetail = evidence?.TimingDetail;
         _parseWarningLines = evidence?.ParseWarningLines ?? [];
         _writingSystems = source.Summary.WritingSystems;
     }
@@ -454,7 +456,7 @@ public sealed class SelectionReader : IDisposable, IAsyncDisposable
                 ?? new GrammarCheckResponse([], true);
             var warningEvidence = StoredParseWarnings.Merge(grammarCheck, _parseWarningLines);
             var warnings = WarningWordsQuery.WithYourWords(warningEvidence,
-                _assessmentResults, _objectTimings).Findings;
+                _assessmentResults, _objectTimings, _timingDetail).Findings;
             if (!IsCurrent(context)) return EvidenceChanged<SelectionPresentationState>();
 
             var readDigest = Digest(context.TextIds.Select(textId => new
@@ -467,6 +469,7 @@ public sealed class SelectionReader : IDisposable, IAsyncDisposable
             var words = index.Build().Words;
             var state = new SelectionPresentationState(readOccurrences, pending, warnings)
             {
+                ObjectTimingDetail = _timingDetail,
                 PendingByWord = PendingByWord(words, pending),
                 WarningsByWord = WarningsByWord(words, warnings),
             };
@@ -675,6 +678,7 @@ public sealed class SelectionReader : IDisposable, IAsyncDisposable
                 _writingSystems = null;
                 _assessmentResults = [];
                 _objectTimings = [];
+                _timingDetail = null;
                 leases = _leases.ToArray();
                 ClearDetailCachesLocked();
                 drain = _activeReadsDrained?.Task ?? Task.CompletedTask;
@@ -878,7 +882,8 @@ public sealed class SelectionReader : IDisposable, IAsyncDisposable
         return new SelectionReadEvidence(descriptor.Origin, root,
             replacements.Select(run => run.AssessmentId).ToArray(), evidence.Words, evidence.ObjectTimings,
             evidence.Components.SelectMany(run => run.Invocation?.GrammarWarningLines ?? [])
-                .Distinct(StringComparer.Ordinal).ToArray(), evidence.Components.Count, wordRows, descriptor);
+                .Distinct(StringComparer.Ordinal).ToArray(), evidence.Components.Count, wordRows, descriptor)
+            { TimingDetail = evidence.TimingDetail };
     }
 
     private static TrialEvidenceExpectation? TrialOf(EvidenceSet? shown) =>
@@ -946,7 +951,8 @@ public sealed class SelectionReader : IDisposable, IAsyncDisposable
             evidence.Words, evidence.ObjectTimings,
             evidence.Components.SelectMany(run => run.Invocation?.GrammarWarningLines ?? [])
                 .Distinct(StringComparer.Ordinal).ToArray(), evidence.Components.Count,
-            evidence.Components.Sum(component => component.Words?.Count ?? 0), descriptor);
+            evidence.Components.Sum(component => component.Words?.Count ?? 0), descriptor)
+            { TimingDetail = evidence.TimingDetail };
     }
 
     private static SelectionReadEvidence ResolveDisplayedEvidence(MotifDatabase database, SqliteConnection connection,
@@ -1004,7 +1010,8 @@ public sealed class SelectionReader : IDisposable, IAsyncDisposable
             replacements.Select(run => run.AssessmentId).ToArray(), evidence.Words, evidence.ObjectTimings,
             evidence.Components.SelectMany(run => run.Invocation?.GrammarWarningLines ?? [])
                 .Distinct(StringComparer.Ordinal).ToArray(), evidence.Components.Count,
-            evidence.Components.Sum(component => component.Words?.Count ?? 0), descriptor);
+            evidence.Components.Sum(component => component.Words?.Count ?? 0), descriptor)
+            { TimingDetail = evidence.TimingDetail };
     }
 
     private static void ValidateSuppliedSnapshot(CurrentEvidenceSnapshot? snapshot, BaselineRecord baseline,
@@ -2007,6 +2014,7 @@ public sealed class SelectionReader : IDisposable, IAsyncDisposable
             _obsolete = true;
             _assessmentResults = [];
             _objectTimings = [];
+            _timingDetail = null;
             ClearDetailCachesLocked();
             leases = _leases.ToArray();
         }
@@ -2158,7 +2166,10 @@ public sealed class SelectionReader : IDisposable, IAsyncDisposable
         IReadOnlyList<string> ReplacementIds, IReadOnlyList<AssessedWord> Words,
         IReadOnlyList<AssessmentObjectTiming> ObjectTimings, IReadOnlyList<string> ParseWarningLines,
         int HeaderRows, int WordRows,
-        SelectionEvidenceExpectation Descriptor);
+        SelectionEvidenceExpectation Descriptor)
+    {
+        public ObjectTimingDetail? TimingDetail { get; init; }
+    }
 
     private sealed record SelectionOpenSnapshot(CurrentBaselineSelectionIndexRead Source,
         SelectionReadEvidence? Evidence, SelectionReadContext Context, int BaselineWordformFactsRead);

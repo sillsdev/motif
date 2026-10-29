@@ -128,6 +128,9 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
     private Action<GrammarWarningRowViewModel>? _handOffWords;
     private WordRowRoutes? _wordRoutes;
 
+    [ObservableProperty]
+    private string _objectTimingDetailText = string.Empty;
+
     public GrammarWarningsViewModel()
     {
         Rows = new DataGridCollectionView(_all) { Filter = Matches };

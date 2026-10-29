@@ -18,6 +18,8 @@ public sealed record AssessmentScopeConfiguration
     public const string DefaultName = "default";
     public const string DefaultQueryText = "all wordforms";
     public const string DefaultAssessorName = "pangloss";
+    public const int DefaultTimingDetailWords = 2000;
+    public const int MaximumTimingDetailWords = 10000;
     public static readonly StepCap DefaultPerWordStepLimit = StepCap.Default;
 
     public static readonly TimeSpan DefaultPerWordLimit = TimeSpan.FromSeconds(1);
@@ -28,7 +30,8 @@ public sealed record AssessmentScopeConfiguration
         string assessor,
         IReadOnlyList<string> collect,
         TimeSpan perWordLimit,
-        StepCap? perWordStepLimit = null)
+        StepCap? perWordStepLimit = null,
+        int timingDetailWords = DefaultTimingDetailWords)
     {
         Name = RequireNonBlank(name, nameof(name));
         Query = RequireNonBlank(query, nameof(query));
@@ -39,6 +42,9 @@ public sealed record AssessmentScopeConfiguration
             throw new ArgumentOutOfRangeException(nameof(perWordLimit), "A per-word limit must be positive.");
         PerWordLimit = perWordLimit;
         PerWordStepLimit = perWordStepLimit ?? DefaultPerWordStepLimit;
+        if (timingDetailWords is < 0 or > MaximumTimingDetailWords)
+            throw new ArgumentOutOfRangeException(nameof(timingDetailWords));
+        TimingDetailWords = timingDetailWords;
     }
 
     /// <summary>The scope's name, unique within a project's declarations.</summary>
@@ -58,6 +64,9 @@ public sealed record AssessmentScopeConfiguration
 
     /// <summary>The per-word analysis-attempt cap, or an explicit request for no attempt cap.</summary>
     public StepCap PerWordStepLimit { get; }
+
+    /// <summary>Maximum slowest words with per-object timing detail in an ordinary Assessment.</summary>
+    public int TimingDetailWords { get; }
 
     /// <summary>The scope declared when a project names none of its own.</summary>
     public static AssessmentScopeConfiguration Default() => new(

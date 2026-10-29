@@ -1,5 +1,7 @@
 using System.Globalization;
+using System.IO.Compression;
 using System.Runtime.ExceptionServices;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -237,6 +239,7 @@ public sealed record AssessmentRecord(
     public BatchInvocationEvidence? Invocation => Details switch { AssessmentRecordDetails.Words w => w.Invocation,
         AssessmentRecordDetails.Unloaded u => u.Invocation, _ => null };
     public IReadOnlyList<AssessmentObjectTiming> ObjectTimings => WordDetails()?.ObjectTimings ?? [];
+    public AssessmentTimingEvidence? TimingEvidence => WordDetails()?.TimingEvidence;
 }
 
 /// <summary>
@@ -485,6 +488,22 @@ public sealed class AssessmentRepository : IAssessmentRepository
     private static void InsertPrepared(
         SqliteConnection connection, SqliteTransaction transaction, IReadOnlyList<PreparedAssessment> assessments)
     {
+        var payloads = new Dictionary<string, object?[]>(StringComparer.Ordinal);
+        foreach (var prepared in assessments)
+            foreach (var row in prepared.Words)
+                foreach (var index in new[] { 8, 9, 12, 14, 18 })
+                    if (row[index] is byte[] payload)
+                    {
+                        var hash = SHA256.HashData(payload);
+                        var key = Convert.ToHexString(hash);
+                        if (payloads.TryGetValue(key, out var existing) &&
+                            !payload.AsSpan().SequenceEqual((byte[])existing[1]!))
+                            throw new InvalidDataException("Word payload hash collision.");
+                        payloads[key] = [hash, payload];
+                        row[index] = hash;
+                    }
+        InsertRows(connection, transaction, "AssessmentWordPayloads", ["Hash", "Payload"], payloads.Values.ToArray(),
+            " ON CONFLICT(Hash) DO UPDATE SET Payload = CASE WHEN Payload = excluded.Payload THEN Payload ELSE NULL END");
         foreach (var prepared in assessments)
         {
             var assessment = prepared.Record;
@@ -535,8 +554,7 @@ public sealed class AssessmentRepository : IAssessmentRepository
 
     private static readonly string[] ObjectTimingColumns =
     [
-        "AssessmentId", "OrdinalIndex", "Kind", "Key", "IdentityQuality", "Direction", "Object", "Word", "Attempts",
-        "Passes", "ElapsedNs",
+        "AssessmentId", "Detail", "Evidence",
     ];
 
     private static PreparedAssessment Prepare(NewAssessmentRecord assessment)
@@ -551,15 +569,15 @@ public sealed class AssessmentRepository : IAssessmentRepository
             [
                 null, assessment.AssessmentId, wordIndex, word.Word, word.Outcome, word.ElapsedMs, word.ElapsedNs,
                 word.RawSignature,
-                word.Morphology is null ? null : JsonSerializer.Serialize(word.Morphology, ParseMorphEvidence.JsonOptions),
-                word.Correctness is null ? null : JsonSerializer.Serialize(word.Correctness, ParseMorphEvidence.JsonOptions),
+                word.Morphology is null ? null : Compress(JsonSerializer.Serialize(word.Morphology, ParseMorphEvidence.JsonOptions)),
+                word.Correctness is null ? null : Compress(JsonSerializer.Serialize(word.Correctness, ParseMorphEvidence.JsonOptions)),
                 word.ProjectStanding, word.OccurrenceCount,
-                word.ReadingGrades is null ? null : JsonSerializer.Serialize(word.ReadingGrades),
+                word.ReadingGrades is null ? null : Compress(JsonSerializer.Serialize(word.ReadingGrades)),
                 word.MissedApprovedCount,
-                word.MissedApproved is null ? null : JsonSerializer.Serialize(word.MissedApproved, ParseMorphEvidence.JsonOptions),
+                word.MissedApproved is null ? null : Compress(JsonSerializer.Serialize(word.MissedApproved, ParseMorphEvidence.JsonOptions)),
                 word.IsIncomplete ? 1 : 0, word.Attempts, word.Passes,
                 word.AnalysisComparison is null ? null
-                    : JsonSerializer.Serialize(word.AnalysisComparison, ParseMorphEvidence.JsonOptions),
+                    : Compress(JsonSerializer.Serialize(word.AnalysisComparison, ParseMorphEvidence.JsonOptions)),
                 word.WorkSteps,
             ]);
             for (var analysisIndex = 0; analysisIndex < word.Analyses.Count; analysisIndex++)
@@ -573,11 +591,10 @@ public sealed class AssessmentRepository : IAssessmentRepository
             }
         }
         var wordsMaterial = assessment.Material as AssessmentRecordMaterial.Words;
-        var timings = (wordsMaterial?.ObjectTimings ?? []).Select((row, index) => new object?[]
-        {
-            assessment.AssessmentId, index, row.Kind, row.Key, row.IdentityQuality, row.Direction, row.Object,
-            row.Word, row.Attempts, row.Passes, row.ElapsedNs,
-        }).ToArray();
+        object?[][] timings = wordsMaterial is null ||
+            (wordsMaterial.ObjectTimings.Count == 0 && wordsMaterial.TimingEvidence is null)
+            ? [] : [[assessment.AssessmentId, Compress(JsonSerializer.Serialize(wordsMaterial.ObjectTimings)),
+                wordsMaterial.TimingEvidence is null ? null : Compress(JsonSerializer.Serialize(wordsMaterial.TimingEvidence))]];
         var selection = (assessment.Subject as AssessmentSubject.Words)?.Selection;
         return new PreparedAssessment(assessment,
             wordsMaterial?.Invocation is null ? null : JsonSerializer.Serialize(wordsMaterial.Invocation, InvocationJsonOptions),
@@ -860,7 +877,7 @@ public sealed class AssessmentRepository : IAssessmentRepository
         var selectedForms = wordForms.ToHashSet(StringComparer.Ordinal);
         return headers.Select(header => header with
         {
-            Details = LoadWordDetails(connection, header, ReadWords(connection, header.AssessmentId, selectedForms), []),
+            Details = LoadWordDetails(connection, header, ReadWords(connection, header.AssessmentId, selectedForms), new StoredTimings([], null)),
         }).ToArray();
     }
 
@@ -1026,7 +1043,7 @@ public sealed class AssessmentRepository : IAssessmentRepository
     private const int RowsPerStatement = 100;
 
     private static void InsertRows(SqliteConnection connection, SqliteTransaction transaction, string table,
-        IReadOnlyList<string> columns, IReadOnlyList<object?[]> rows)
+        IReadOnlyList<string> columns, IReadOnlyList<object?[]> rows, string suffix = "")
     {
         for (var start = 0; start < rows.Count; start += RowsPerStatement)
         {
@@ -1047,33 +1064,28 @@ public sealed class AssessmentRepository : IAssessmentRepository
                 }
                 sql.Append(')');
             }
-            command.CommandText = sql.Append(';').ToString();
+            command.CommandText = sql.Append(suffix).Append(';').ToString();
             command.ExecuteNonQuery();
         }
     }
 
-    private static IReadOnlyList<AssessmentObjectTiming> ReadObjectTimings(SqliteConnection connection,
+    private sealed record StoredTimings(IReadOnlyList<AssessmentObjectTiming> Rows, AssessmentTimingEvidence? Evidence);
+
+    private static StoredTimings ReadObjectTimings(SqliteConnection connection,
         string assessmentId, SqliteTransaction? transaction = null)
     {
         using var command = connection.CreateCommand();
         command.Transaction = transaction;
-        command.CommandText = """
-            SELECT Kind, Key, IdentityQuality, Direction, Object, Word, Attempts, Passes, ElapsedNs
-            FROM AssessmentObjectTimings WHERE AssessmentId = $id ORDER BY OrdinalIndex;
-            """;
+        command.CommandText = "SELECT Detail, Evidence FROM AssessmentObjectTimings WHERE AssessmentId = $id;";
         command.Parameters.AddWithValue("$id", assessmentId);
         RepositoryReadCounters.QueryExecuted();
         using var reader = command.ExecuteReader();
-        var rows = new List<AssessmentObjectTiming>();
-        while (reader.Read())
-        {
-            RepositoryReadCounters.RecordDeserialized();
-            rows.Add(new AssessmentObjectTiming(reader.GetString(0), reader.GetString(1), reader.GetString(2),
-                reader.GetString(3), reader.GetString(4), reader.GetString(5),
-                reader.IsDBNull(6) ? null : reader.GetInt32(6), reader.IsDBNull(7) ? null : reader.GetInt32(7),
-                reader.IsDBNull(8) ? null : reader.GetInt64(8)));
-        }
-        return rows;
+        if (!reader.Read()) return new StoredTimings([], null);
+        var rows = JsonSerializer.Deserialize<AssessmentObjectTiming[]>(Decompress(reader, 0))
+            ?? throw new InvalidDataException("Stored object timing detail is missing.");
+        var evidence = reader.IsDBNull(1) ? null : JsonSerializer.Deserialize<AssessmentTimingEvidence>(Decompress(reader, 1))
+            ?? throw new InvalidDataException("Stored object timing evidence is missing.");
+        return new StoredTimings(rows, evidence);
     }
 
     private const string HeaderSelectSql = """
@@ -1143,11 +1155,12 @@ public sealed class AssessmentRepository : IAssessmentRepository
     }
 
     private static AssessmentRecordDetails.Words LoadWordDetails(SqliteConnection connection,
-        AssessmentRecord header, IReadOnlyList<AssessedWord> rows, IReadOnlyList<AssessmentObjectTiming> timings,
+        AssessmentRecord header, IReadOnlyList<AssessedWord> rows, StoredTimings timings,
         SqliteTransaction? transaction = null)
     {
         header.RequireWords();
-        return new AssessmentRecordDetails.Words(rows, header.CachePath, header.CacheDigest, timings, header.Invocation);
+        return new AssessmentRecordDetails.Words(rows, header.CachePath, header.CacheDigest, timings.Rows, header.Invocation)
+            { TimingEvidence = timings.Evidence };
     }
 
     private static BatchInvocationEvidence ReadInvocation(string json)
@@ -1165,6 +1178,22 @@ public sealed class AssessmentRepository : IAssessmentRepository
         }
     }
 
+    private static byte[] Compress(string value)
+    {
+        using var output = new MemoryStream();
+        using (var compressed = new BrotliStream(output, CompressionLevel.Optimal, leaveOpen: true))
+            compressed.Write(Encoding.UTF8.GetBytes(value));
+        return output.ToArray();
+    }
+
+    private static string Decompress(SqliteDataReader reader, int ordinal)
+    {
+        using var input = new MemoryStream((byte[])reader.GetValue(ordinal), writable: false);
+        using var compressed = new BrotliStream(input, CompressionMode.Decompress);
+        using var text = new StreamReader(compressed, Encoding.UTF8);
+        return text.ReadToEnd();
+    }
+
     // One streaming pass over a word/analysis join, grouped by word — no N+1 querying.
     private static List<AssessedWord> ReadWords(SqliteConnection connection, string assessmentId,
         IReadOnlySet<string>? wordForms = null, SqliteTransaction? transaction = null)
@@ -1174,9 +1203,14 @@ public sealed class AssessmentRepository : IAssessmentRepository
         command.CommandText = """
             SELECT aw.AssessedWordId, aw.Word, aw.Outcome, aw.ElapsedMs, aw.ElapsedNs,
                    pa.CategoryGuid, pa.MorphemeGuidsJson, pa.RootIndex, pa.IdentityDigest, aw.RawSignature,
-                   aw.MorphologyJson, aw.CorrectnessJson, aw.OrdinalIndex, aw.ProjectStanding, aw.OccurrenceCount,
-                   aw.ReadingGradesJson, aw.MissedApprovedCount, aw.IsIncomplete, aw.MissedApprovedJson, aw.Attempts, aw.Passes, aw.AnalysisComparisonJson,
-                   aw.WorkSteps
+                   (SELECT Payload FROM AssessmentWordPayloads WHERE Hash = aw.MorphologyJson), (SELECT Payload FROM AssessmentWordPayloads WHERE Hash = aw.CorrectnessJson), aw.OrdinalIndex, aw.ProjectStanding, aw.OccurrenceCount,
+                   (SELECT Payload FROM AssessmentWordPayloads WHERE Hash = aw.ReadingGradesJson), aw.MissedApprovedCount, aw.IsIncomplete, (SELECT Payload FROM AssessmentWordPayloads WHERE Hash = aw.MissedApprovedJson), aw.Attempts, aw.Passes, (SELECT Payload FROM AssessmentWordPayloads WHERE Hash = aw.AnalysisComparisonJson),
+                   aw.WorkSteps,
+                   (aw.MorphologyJson IS NOT NULL AND NOT EXISTS (SELECT 1 FROM AssessmentWordPayloads WHERE Hash = aw.MorphologyJson)) OR
+                   (aw.CorrectnessJson IS NOT NULL AND NOT EXISTS (SELECT 1 FROM AssessmentWordPayloads WHERE Hash = aw.CorrectnessJson)) OR
+                   (aw.ReadingGradesJson IS NOT NULL AND NOT EXISTS (SELECT 1 FROM AssessmentWordPayloads WHERE Hash = aw.ReadingGradesJson)) OR
+                   (aw.AnalysisComparisonJson IS NOT NULL AND NOT EXISTS (SELECT 1 FROM AssessmentWordPayloads WHERE Hash = aw.AnalysisComparisonJson)) OR
+                   (aw.MissedApprovedJson IS NOT NULL AND NOT EXISTS (SELECT 1 FROM AssessmentWordPayloads WHERE Hash = aw.MissedApprovedJson))
             FROM AssessedWords aw
             LEFT JOIN ParsedAnalyses pa ON pa.AssessedWordId = aw.AssessedWordId
             WHERE aw.AssessmentId = $id
@@ -1215,6 +1249,7 @@ public sealed class AssessmentRepository : IAssessmentRepository
             var wordId = reader.GetInt64(0);
             if (wordId != currentWordId)
             {
+                if (reader.GetBoolean(23)) throw new InvalidDataException("An Assessment word payload is missing.");
                 if (currentWordId is not null)
                 {
                     RepositoryReadCounters.RecordDeserialized();
@@ -1234,20 +1269,20 @@ public sealed class AssessmentRepository : IAssessmentRepository
                 currentElapsedNs = reader.IsDBNull(4) ? null : reader.GetInt64(4);
                 currentSignature = reader.IsDBNull(9) ? null : reader.GetString(9);
                 currentMorphology = reader.IsDBNull(10) ? null
-                    : JsonSerializer.Deserialize<ParseWordEvidence>(reader.GetString(10), ParseMorphEvidence.JsonOptions);
+                    : JsonSerializer.Deserialize<ParseWordEvidence>(Decompress(reader, 10), ParseMorphEvidence.JsonOptions);
                 currentCorrectness = reader.IsDBNull(11) ? null
-                    : JsonSerializer.Deserialize<WordCorrectness>(reader.GetString(11), ParseMorphEvidence.JsonOptions);
+                    : JsonSerializer.Deserialize<WordCorrectness>(Decompress(reader, 11), ParseMorphEvidence.JsonOptions);
                 currentStanding = reader.IsDBNull(13) ? null : reader.GetString(13);
                 currentOccurrenceCount = reader.IsDBNull(14) ? null : reader.GetInt32(14);
-                currentReadingGrades = reader.IsDBNull(15) ? null : JsonSerializer.Deserialize<string[]>(reader.GetString(15));
+                currentReadingGrades = reader.IsDBNull(15) ? null : JsonSerializer.Deserialize<string[]>(Decompress(reader, 15));
                 currentMissedApprovedCount = reader.IsDBNull(16) ? null : reader.GetInt32(16);
                 currentIncomplete = reader.GetInt32(17) != 0;
                 currentMissedApproved = reader.IsDBNull(18) ? null
-                    : JsonSerializer.Deserialize<ParserReading[]>(reader.GetString(18), ParseMorphEvidence.JsonOptions);
+                    : JsonSerializer.Deserialize<ParserReading[]>(Decompress(reader, 18), ParseMorphEvidence.JsonOptions);
                 currentAttempts = reader.IsDBNull(19) ? null : reader.GetInt32(19);
                 currentPasses = reader.IsDBNull(20) ? null : reader.GetInt32(20);
                 currentComparison = reader.IsDBNull(21) ? null
-                    : JsonSerializer.Deserialize<WordAnalysisComparison>(reader.GetString(21), ParseMorphEvidence.JsonOptions);
+                    : JsonSerializer.Deserialize<WordAnalysisComparison>(Decompress(reader, 21), ParseMorphEvidence.JsonOptions);
                 currentWorkSteps = reader.IsDBNull(22) ? null : reader.GetInt64(22);
                 currentAnalyses = [];
             }

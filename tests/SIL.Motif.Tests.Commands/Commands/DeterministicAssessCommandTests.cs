@@ -1585,7 +1585,7 @@ public sealed class DeterministicAssessCommandTests : IDisposable
     }
 
     [Fact]
-    public void ObjectTimingsPastTheCapAreCountedNotKeptAndTheSummarySaysSo()
+    public void ObjectTimingsKeepCostliestWordsAndTheSummarySaysSo()
     {
         using var seeded = NewSeededScratch();
         AssessCommand.ObjectTimingRowCapForTests.Value = 1;
@@ -1595,7 +1595,7 @@ public sealed class DeterministicAssessCommandTests : IDisposable
 
             Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
             Assert.Contains("2 object timing rows", outcome.Value!.SummaryMarkdown, StringComparison.Ordinal);
-            Assert.Contains("Only the first 1 of 2 object timing rows were kept", outcome.Value.SummaryMarkdown,
+            Assert.Contains("Object timing detail kept for the 1 costliest words", outcome.Value.SummaryMarkdown,
                 StringComparison.Ordinal);
             var parse = outcome.Value.AssessmentIds.Select(OpenRepository(seeded.FwDataPath).Get)
                 .Single(record => record.Kind == AssessmentKind.ParseTime.ToStoredKind());

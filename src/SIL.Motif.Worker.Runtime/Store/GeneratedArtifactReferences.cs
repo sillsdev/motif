@@ -941,12 +941,12 @@ internal static class GeneratedArtifactReferences
                 var json = NullableString(reader, 2)
                     ?? throw new InvalidDataException("Grammar Check response is absent.");
                 RequireObjectShape(json, "Grammar Check response", "Findings", "HasBaseline", "Locale",
-                    "CheckedLexemeCount", "CheckedRuleCount", "Advisories", "Summary", "Provenance");
+                    "CheckedLexemeCount", "CheckedRuleCount", "Advisories", "Summary", "Provenance", "ObjectTimingDetail");
                 using var document = JsonDocument.Parse(json);
                 var root = document.RootElement;
                 RequireObjectShape(root, "Grammar Check response",
                     ["Findings", "HasBaseline", "Locale", "CheckedLexemeCount", "CheckedRuleCount", "Advisories",
-                        "Summary", "Provenance"], ["Findings", "HasBaseline"]);
+                        "Summary", "Provenance", "ObjectTimingDetail"], ["Findings", "HasBaseline"]);
                 var valid = ValidateNullableObjectArray(root, "Findings") &&
                     ValidateOptionalObjectArray(root, "Advisories") && ValidateOptionalObjectArray(root, "Summary");
                 foreach (var provenance in Properties(root, "Provenance"))

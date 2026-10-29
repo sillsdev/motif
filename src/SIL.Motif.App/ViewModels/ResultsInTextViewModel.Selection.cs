@@ -512,7 +512,8 @@ public sealed partial class ResultsInTextViewModel
         ShowProposalOn(token);
         token.IsUncertainChanged = token.Occurrence is { } changed && _uncertainHighlights.Contains(changed);
         token.SetWarningEvidence(ResultsTokenViewModel.WarningEvidenceFor(token.Form,
-            _nativePresentation is { } presentation ? new GrammarCheckResponse(presentation.Warnings, true) : null,
+            _nativePresentation is { } presentation ? new GrammarCheckResponse(presentation.Warnings, true)
+                { ObjectTimingDetail = presentation.ObjectTimingDetail } : null,
             _assess.Result?.Words ?? []));
     }
 
@@ -596,7 +597,7 @@ public sealed partial class ResultsInTextViewModel
             nameof(ShowWordCheckboxes), nameof(SelectMenuLabel), nameof(SelectedReadStateCount),
             nameof(HasSelectedReadStateOccurrences), nameof(DiffersCount), nameof(NewCount), nameof(NoParseCount),
             nameof(MatchesCount), nameof(LimitCount), nameof(NotAssessedCount), nameof(NeedsALookCount),
-            nameof(NamedInWarningCount), nameof(HasWarningEvidence), nameof(HasNotAssessed),
+            nameof(NamedInWarningCount), nameof(HasWarningEvidence), nameof(ObjectTimingDetailText), nameof(HasNotAssessed),
             nameof(ChosenTextsAnalysisCount), nameof(HasChosenTextAnalyses), nameof(ChosenTextsRemoveHeader),
             nameof(ChosenTextsRemovalPreview) }) OnPropertyChanged(name);
         SelectAllWordsCommand.NotifyCanExecuteChanged();

@@ -163,6 +163,9 @@ public enum InspectorResolution
 /// <param name="Resolution">Whether the Baseline holds the subject as one consistent object.</param>
 public sealed record InspectResponse(InspectorSubject Subject, InspectorResolution Resolution)
 {
+    /// <summary>Completeness of per-word object timing detail used by this result.</summary>
+    public ObjectTimingDetail? ObjectTimingDetail { get; init; }
+
     /// <summary>Whether FieldWorks has been saved since the Baseline the facts were read from.</summary>
     public bool IsStale { get; init; }
 

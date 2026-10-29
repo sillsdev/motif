@@ -734,8 +734,10 @@ public static class CommandTextRenderer
             if (attribution.NotAttributedShare is { } notAttributed)
                 split = split.Append($"not attributed {FormatShare(notAttributed)}");
             text.AppendLine($"           {attribution.MeasuredWordCount:N0} words, {attribution.WordTimeMs / 1000:N1} s " +
-                $"total word time: {string.Join(", ", split)}");
+                (response.Timing.ObjectTimingAggregatesAvailable
+                    ? $"total word time: {string.Join(", ", split)}" : "total word time; object timing totals unavailable"));
         }
+        if (response.Timing.ObjectTimingDetail is { IsComplete: false, Description: { } detail }) text.AppendLine(detail);
         if (response.Warnings is not null)
             text.AppendLine($"Warnings   {response.Warnings.Count?.ToString("N0") ?? "unknown"} findings " +
                 $"({CountLabel(response.Warnings.ErrorCount, "error", "errors")}, " +
@@ -841,6 +843,7 @@ public static class CommandTextRenderer
             $"({CountLabel(response.ErrorCount, "error", "errors")}, {CountLabel(response.WarningCount, "warning", "warnings")}, " +
             $"{response.InformationCount:N0} information)");
         text.AppendLine(CheckedInventory(response.CheckedLexemeCount, response.CheckedRuleCount));
+        if (response.ObjectTimingDetail is { IsComplete: false, Description: { } detail }) text.AppendLine(detail);
         foreach (var advisory in response.Advisories)
             text.AppendLine($"Advisory: {advisory.Message}");
         if (response.YourWords is { } touched)
@@ -974,6 +977,7 @@ public static class CommandTextRenderer
             $"({CountLabel(errorCount, "error", "errors")}, {CountLabel(warningCount, "warning", "warnings")}, " +
             $"{informationCount:N0} information)");
         text.AppendLine(CheckedInventory(response.CheckedLexemeCount, response.CheckedRuleCount));
+        if (response.ObjectTimingDetail is { IsComplete: false, Description: { } detail }) text.AppendLine(detail);
         foreach (var advisory in response.Advisories)
             text.AppendLine($"Advisory: {advisory.Message}");
         foreach (var summary in response.Summary)
@@ -994,6 +998,7 @@ public static class CommandTextRenderer
             TimingEvidenceRelation.SavedSince => "FieldWorks saved since the measured Baseline",
             _ => "Baseline relationship unknown",
         }));
+        if (response.ObjectTimingDetail is { IsComplete: false, Description: { } detail }) text.AppendLine("  " + detail);
         if (response.SourceLastWriteUtc is { } capturedSave)
             text.AppendLine($"  Measured FieldWorks save: {capturedSave:O}");
         if (response.Baseline is { } baseline)
@@ -1004,7 +1009,8 @@ public static class CommandTextRenderer
         var attribution = response.Attribution;
         text.AppendLine($"  Total word time: {attribution.WordTimeMs:N2} ms for {attribution.MeasuredWordCount:N0} " +
             "measured word(s); every share below is of this total");
-        text.AppendLine($"  By {response.By}:");
+        text.AppendLine(response.ObjectTimingAggregatesAvailable
+            ? $"  By {response.By}:" : "  Object timing totals unavailable for these words.");
         foreach (var row in response.Aggregates)
             text.AppendLine($"    {row.Name}{(response.By == "rule" ? $" [{row.Kind}:{row.Key}]" : string.Empty)}: " +
                 $"{row.SelfMs:N2} ms ({FormatShare(row.ShareOfWordTime)}), {FormatCalls(row.Calls, row.Kind)}, " +
@@ -1038,6 +1044,7 @@ public static class CommandTextRenderer
         text.AppendLine(name is null ? $"Uses ({response.AssessmentId})" : $"Uses of {name} ({response.AssessmentId})");
         if (response.IsStale)
             text.AppendLine("  Warning: FieldWorks has changed since the current Baseline.");
+        if (response.ObjectTimingDetail is { IsComplete: false, Description: { } detail }) text.AppendLine("  " + detail);
         if (response.Facts is { } facts)
             AppendFacts(text, facts);
         if (response.Uses is { } uses)

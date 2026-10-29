@@ -12,6 +12,43 @@ namespace SIL.Motif.Commands.Queries;
 /// </remarks>
 public static class TimingAggregation
 {
+    /// <summary>Projects exact whole-run object totals without deriving them from retained word detail.</summary>
+    public static (IReadOnlyList<TimingAggregateRow> Aggregates, WordTimeAttribution Attribution) AggregateTotals(
+        IReadOnlyList<AssessedWord> words, AssessmentTimingEvidence evidence, string by, string? scope = null)
+    {
+        ArgumentNullException.ThrowIfNull(words);
+        ArgumentNullException.ThrowIfNull(evidence);
+        if (by is not ("kind" or "rule")) throw new ArgumentException("Grouping must be 'kind' or 'rule'.", nameof(by));
+        if (evidence.HasRetriedWords) throw new ArgumentException("The totals precede a retry.", nameof(evidence));
+        var wordTimes = words.Select(WordTimeNs).OfType<long>().ToArray();
+        var wordTime = wordTimes.Sum() / 1_000_000d;
+        var rows = evidence.Aggregates;
+        var projected = rows.GroupBy(row => by == "kind" ? ObjectIdentity.Create(row.Kind, row.Kind, "structural") :
+                ObjectIdentity.Create(row.Kind, row.Key, row.IdentityQuality, scope))
+            .Where(group => group.Any(row => row.ElapsedNs is not null && row.WordsTouched > 0))
+            .Select(group =>
+            {
+                var first = group.First();
+                var self = group.Sum(row => row.ElapsedNs ?? 0) / 1_000_000d;
+                var recordedCalls = group.Where(row => row.Attempts is not null).ToArray();
+                long? calls = recordedCalls.Length == 0 ? null : recordedCalls.Sum(row => row.Attempts!.Value);
+                return new TimingAggregateRow(by == "kind" ? first.Kind : first.Key,
+                    by == "kind" ? first.Kind : first.Object, self, wordTime > 0 ? self / wordTime : null,
+                    by == "kind" ? group.Max(row => row.WordsTouchedForKind) : group.Max(row => row.WordsTouchedAcrossDirections))
+                {
+                    Kind = first.Kind, IdentityQuality = by == "kind" ? "" : first.IdentityQuality,
+                    Scope = by == "kind" ? null : scope, Calls = calls,
+                    CallsArePartial = recordedCalls.Length > 0 && recordedCalls.Length < group.Count(),
+                };
+            }).OrderByDescending(row => row.SelfMs).ThenBy(row => row.Name, StringComparer.Ordinal)
+            .ThenBy(row => row.Key, StringComparer.Ordinal).ToArray();
+        var attributed = evidence.AttributedNs.GetValueOrDefault() / 1_000_000d;
+        double? remaining = evidence.UnattributedNs is { } remainder ? remainder / 1_000_000d : null;
+        var overrun = evidence.OverrunNs.GetValueOrDefault() / 1_000_000d;
+        return (projected, new WordTimeAttribution(wordTimes.Length, wordTime, attributed, remaining,
+            remaining is { } value && wordTime > 0 ? value / wordTime : null, overrun, overrun > 0));
+    }
+
     /// <summary>Builds median, nearest-rank 95th percentile, and the requested slowest words.</summary>
     public static OverviewTiming SummarizeWords(IEnumerable<AssessedWord> words, int top = 3)
     {

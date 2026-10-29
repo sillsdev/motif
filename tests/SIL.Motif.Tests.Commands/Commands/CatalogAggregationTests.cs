@@ -2,6 +2,7 @@ using SIL.Motif.Commands.Queries;
 using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Parser;
+using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Worker.Store;
 using System.Text.Json;
 using Xunit;
@@ -10,6 +11,28 @@ namespace SIL.Motif.Tests.Commands;
 
 public sealed class CatalogAggregationTests
 {
+    [Fact]
+    public void WholeRunTotalsDoNotDependOnRetainedWordDetail()
+    {
+        var evidence = new AssessmentTimingEvidence(
+        [
+            new PanGlossObjectTimingAggregate("morph_rule", "rule", "authored", "analysis", "Rule", 2,
+                3_000_000_000, 9, 4_000_000, 3_000_000)
+                { WordsTouchedAcrossDirections = 2, WordsTouchedForKind = 2 },
+            new PanGlossObjectTimingAggregate("morph_rule", "rule", "authored", "synthesis", "Rule", 1,
+                7, 7, null, null) { WordsTouchedAcrossDirections = 2, WordsTouchedForKind = 2 },
+        ], 1, false, 3)
+        { AttributedNs = 4_000_000, UnattributedNs = 16_000_000, OverrunNs = 0 };
+
+        var result = TimingAggregation.AggregateTotals([Timed("a", 10), Timed("b", 10)], evidence, "rule");
+
+        var row = Assert.Single(result.Aggregates);
+        Assert.Equal(3_000_000_007, row.Calls);
+        Assert.Equal(2, row.WordsTouched);
+        Assert.Equal(4, row.SelfMs);
+        Assert.Equal(16, result.Attribution.NotAttributedMs);
+    }
+
     [Fact]
     public void LocalTimingOrdinalsRemainSeparateAndRequireTheMatchingScope()
     {

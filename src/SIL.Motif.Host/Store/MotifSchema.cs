@@ -16,7 +16,7 @@ public static class MotifSchema
     public const int ApplicationId = 0x4D4F5446;
 
     /// <summary>The schema generation this assembly creates and requires.</summary>
-    public const int CurrentSchema = 50;
+    public const int CurrentSchema = 51;
 
     /// <summary>The worker version an open at the given schema ceiling requires.</summary>
     internal static Version MinimumWorkerVersion(int schema) => schema is >= 1 and <= CurrentSchema
@@ -59,7 +59,7 @@ public static class MotifSchema
     {
         var expectedTables = new HashSet<string>(StringComparer.Ordinal)
         {
-            "MotifMetadata", "Corpora", "CorpusDocuments", "Assessments", "AssessedWords", "AssessmentInvocations",
+            "MotifMetadata", "Corpora", "CorpusDocuments", "Assessments", "AssessedWords", "AssessmentWordPayloads", "AssessmentInvocations",
             "ParsedAnalyses", "AssessmentPins", "Proposals", "ProposalRevisions",
             "Receipts", "Reports", "AppliedIndex", "Jobs", "Baselines", "RetainedInvocations",
             "RetainedInvocationMembers", "NamedSelections", "DefaultSelection", "AssessmentObjectTimings",
@@ -418,7 +418,12 @@ public static class MotifSchema
         "BaselineTextWords" => [new("Baselines", "ProjectKey", "ProjectKey", "NO ACTION", "NO ACTION", "NONE")],
         "BaselineTextWordforms" => [new("Baselines", "ProjectKey", "ProjectKey", "NO ACTION", "NO ACTION", "NONE")],
         "BaselineTextReadIndex" => [new("Baselines", "ProjectKey", "ProjectKey", "NO ACTION", "NO ACTION", "NONE")],
-        "AssessedWords" => [new("Assessments", "AssessmentId", "AssessmentId", "NO ACTION", "NO ACTION", "NONE")],
+        "AssessedWords" => [new("AssessmentWordPayloads", "MissedApprovedJson", "Hash", "NO ACTION", "NO ACTION", "NONE"),
+            new("AssessmentWordPayloads", "AnalysisComparisonJson", "Hash", "NO ACTION", "NO ACTION", "NONE"),
+            new("AssessmentWordPayloads", "ReadingGradesJson", "Hash", "NO ACTION", "NO ACTION", "NONE"),
+            new("AssessmentWordPayloads", "CorrectnessJson", "Hash", "NO ACTION", "NO ACTION", "NONE"),
+            new("AssessmentWordPayloads", "MorphologyJson", "Hash", "NO ACTION", "NO ACTION", "NONE"),
+            new("Assessments", "AssessmentId", "AssessmentId", "NO ACTION", "NO ACTION", "NONE")],
         "ParsedAnalyses" => [new("AssessedWords", "AssessedWordId", "AssessedWordId", "NO ACTION", "NO ACTION", "NONE")],
         "AssessmentPins" => [new("Assessments", "AssessmentId", "AssessmentId", "NO ACTION", "NO ACTION", "NONE")],
         "ParsimonyBundleReferences" => [new("ParsimonyBundles", "BundleId", "BundleId", "NO ACTION", "CASCADE", "NONE")],
@@ -493,19 +498,17 @@ public static class MotifSchema
             C("Assessor", "TEXT", true), C("Kind", "TEXT", true), C("ScopeJson", "TEXT", true),
             C("ScopeDigest", "TEXT", true), C("TokeniserName", "TEXT"), C("TokeniserVersion", "TEXT"),
             C("BaselineToken", "TEXT", true), C("CachePath", "TEXT"), C("CacheDigest", "TEXT"), C("InvocationId", "TEXT"), C("ReplacesAssessmentId", "TEXT"), C("SubjectKind", "TEXT", true), C("SubjectJson", "TEXT")],
+        "AssessmentWordPayloads" => [C("Hash", "BLOB", true, 1), C("Payload", "BLOB", true)],
         "AssessedWords" =>
         [C("AssessedWordId", "INTEGER", false, 1), C("AssessmentId", "TEXT", true), C("OrdinalIndex", "INTEGER", true),
             C("Word", "TEXT", true), C("Outcome", "TEXT", true), C("ElapsedMs", "INTEGER"), C("ElapsedNs", "INTEGER"),
             C("RawSignature", "TEXT"),
-            C("MorphologyJson", "TEXT"), C("CorrectnessJson", "TEXT"), C("ProjectStanding", "TEXT"),
-            C("OccurrenceCount", "INTEGER"), C("ReadingGradesJson", "TEXT"), C("AnalysisComparisonJson", "TEXT"), C("MissedApprovedCount", "INTEGER"),
-            C("MissedApprovedJson", "TEXT"), C("IsIncomplete", "INTEGER", true, defaultValue: "0"),
+            C("MorphologyJson", "BLOB"), C("CorrectnessJson", "BLOB"), C("ProjectStanding", "TEXT"),
+            C("OccurrenceCount", "INTEGER"), C("ReadingGradesJson", "BLOB"), C("AnalysisComparisonJson", "BLOB"), C("MissedApprovedCount", "INTEGER"),
+            C("MissedApprovedJson", "BLOB"), C("IsIncomplete", "INTEGER", true, defaultValue: "0"),
             C("Attempts", "INTEGER"), C("Passes", "INTEGER"), C("WorkSteps", "INTEGER")],
-        "AssessmentObjectTimings" =>
-        [C("AssessmentId", "TEXT", true, 1), C("OrdinalIndex", "INTEGER", true, 2), C("Kind", "TEXT", true),
-            C("Key", "TEXT", true), C("IdentityQuality", "TEXT", true), C("Direction", "TEXT", true),
-            C("Object", "TEXT", true), C("Word", "TEXT", true), C("Attempts", "INTEGER"), C("Passes", "INTEGER"),
-            C("ElapsedNs", "INTEGER")],
+        "AssessmentObjectTimings" => [C("AssessmentId", "TEXT", true, 1), C("Detail", "BLOB", true),
+            C("Evidence", "BLOB")],
         "BaselineSummaries" => [C("ProjectKey", "TEXT", false, 1), C("SummaryJson", "TEXT", true)],
         "BaselineTextWords" => [C("ProjectKey", "TEXT", true, 1), C("TextId", "TEXT", true, 2),
             C("BundleDigest", "TEXT", true), C("TextJson", "TEXT", true)],
@@ -803,6 +806,11 @@ public static class MotifSchema
         CREATE INDEX IX_Assessments_Proposal ON Assessments(ProposalId);
         CREATE INDEX IX_Assessments_Kind ON Assessments(Kind);
 
+        CREATE TABLE AssessmentWordPayloads (
+            Hash BLOB NOT NULL PRIMARY KEY,
+            Payload BLOB NOT NULL
+        ) WITHOUT ROWID;
+
         CREATE TABLE AssessedWords (
             AssessedWordId INTEGER PRIMARY KEY AUTOINCREMENT,
             AssessmentId TEXT NOT NULL REFERENCES Assessments(AssessmentId),
@@ -812,14 +820,14 @@ public static class MotifSchema
             ElapsedMs INTEGER NULL,
             ElapsedNs INTEGER NULL,
             RawSignature TEXT NULL,
-            MorphologyJson TEXT NULL,
-            CorrectnessJson TEXT NULL,
+            MorphologyJson BLOB NULL REFERENCES AssessmentWordPayloads(Hash),
+            CorrectnessJson BLOB NULL REFERENCES AssessmentWordPayloads(Hash),
             ProjectStanding TEXT NULL,
             OccurrenceCount INTEGER NULL,
-            ReadingGradesJson TEXT NULL,
-            AnalysisComparisonJson TEXT NULL,
+            ReadingGradesJson BLOB NULL REFERENCES AssessmentWordPayloads(Hash),
+            AnalysisComparisonJson BLOB NULL REFERENCES AssessmentWordPayloads(Hash),
             MissedApprovedCount INTEGER NULL,
-            MissedApprovedJson TEXT NULL,
+            MissedApprovedJson BLOB NULL REFERENCES AssessmentWordPayloads(Hash),
             IsIncomplete INTEGER NOT NULL DEFAULT 0 CHECK (IsIncomplete IN (0, 1)),
             Attempts INTEGER NULL,
             Passes INTEGER NULL,
@@ -839,19 +847,10 @@ public static class MotifSchema
         CREATE INDEX IX_ParsedAnalyses_Word ON ParsedAnalyses(AssessedWordId);
 
         CREATE TABLE AssessmentObjectTimings (
-            AssessmentId TEXT NOT NULL REFERENCES Assessments(AssessmentId),
-            OrdinalIndex INTEGER NOT NULL,
-            Kind TEXT NOT NULL,
-            Key TEXT NOT NULL,
-            IdentityQuality TEXT NOT NULL,
-            Direction TEXT NOT NULL,
-            Object TEXT NOT NULL,
-            Word TEXT NOT NULL,
-            Attempts INTEGER NULL,
-            Passes INTEGER NULL,
-            ElapsedNs INTEGER NULL,
-            PRIMARY KEY (AssessmentId, OrdinalIndex)
-        );
+            AssessmentId TEXT NOT NULL PRIMARY KEY REFERENCES Assessments(AssessmentId),
+            Detail BLOB NOT NULL,
+            Evidence BLOB NULL
+        ) WITHOUT ROWID;
 
         CREATE TABLE AssessmentPins (
             AssessmentId TEXT NOT NULL REFERENCES Assessments(AssessmentId),

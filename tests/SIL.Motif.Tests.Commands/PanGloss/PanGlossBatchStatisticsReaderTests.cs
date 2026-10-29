@@ -50,6 +50,103 @@ public sealed class PanGlossBatchStatisticsReaderTests : IDisposable
         Assert.Equal(all.ObjectTimings.Take(2), capped.ObjectTimings);
     }
 
+    [Fact]
+    public void KeepsTheSlowestWordsAndAggregatesEveryWord()
+    {
+        var path = Path.Combine(_root, "bounded.sqlite");
+        WriteCache(path);
+        using (var connection = new SqliteConnection($"Data Source={path};Pooling=False"))
+        {
+            connection.Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = "INSERT INTO word VALUES (2, 'slow', 900000, 3, 0); " +
+                "INSERT INTO fact VALUES (2, 1, 'analysis', 7, 400000);";
+            command.ExecuteNonQuery();
+        }
+
+        var result = PanGlossBatchStatisticsReader.ReadBounded(path, ["word", "slow"], 1);
+
+        Assert.Equal(1, result.DetailWordCount);
+        Assert.False(result.DetailComplete);
+        Assert.All(result.ObjectTimings, row => Assert.Equal("slow", row.Word));
+        var aggregate = Assert.Single(result.Aggregates, row => row.Key.Contains("entry-a", StringComparison.Ordinal) &&
+            row.Direction == "analysis");
+        Assert.Equal(11, aggregate.Attempts);
+        Assert.Equal(7, aggregate.MaxAttempts);
+        Assert.Equal(580_000, aggregate.ElapsedNs);
+        Assert.Equal(2, aggregate.WordsTouched);
+    }
+
+    [Fact]
+    public void BoundedDetailRanksWorkAboveElapsedTime()
+    {
+        var path = Path.Combine(_root, "work-ranking.sqlite");
+        WriteCache(path);
+        using (var connection = new SqliteConnection($"Data Source={path};Pooling=False"))
+        {
+            connection.Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = "ALTER TABLE word ADD COLUMN work INTEGER; " +
+                "UPDATE word SET work = 100 WHERE word_id = 1; " +
+                "INSERT INTO word VALUES (2, 'slow', 900000, 3, 0, 1); " +
+                "INSERT INTO fact VALUES (2, 1, 'analysis', 7, 400000);";
+            command.ExecuteNonQuery();
+        }
+
+        var result = PanGlossBatchStatisticsReader.ReadBounded(path, ["word", "slow"], 1);
+        Assert.NotEmpty(result.ObjectTimings);
+        Assert.All(result.ObjectTimings, row => Assert.Equal("word", row.Word));
+    }
+
+    [Fact]
+    public void BoundedTotalsCombineAliasesBeforeTakingPerWordMaxima()
+    {
+        var path = Path.Combine(_root, "aliases.sqlite");
+        WriteCache(path);
+        using (var connection = new SqliteConnection($"Data Source={path};Pooling=False"))
+        {
+            connection.Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = """
+                INSERT INTO object VALUES
+                    (4, 'ABCDEFAB-0000-4000-8000-000000000001', 'morph_rule', 'First', 'authored'),
+                    (5, 'abcdefab-0000-4000-8000-000000000001', 'morph_rule', 'Second', 'authored');
+                INSERT INTO fact VALUES (1, 4, 'analysis', 3, 200), (1, 5, 'analysis', 4, 300);
+                """;
+            command.ExecuteNonQuery();
+        }
+
+        var result = PanGlossBatchStatisticsReader.ReadBounded(path, ["word"], 0);
+
+        Assert.False(result.DetailComplete);
+        Assert.Empty(result.ObjectTimings);
+        var aggregate = Assert.Single(result.Aggregates, row => row.Key == "abcdefab-0000-4000-8000-000000000001");
+        Assert.Equal(7, aggregate.Attempts);
+        Assert.Equal(7, aggregate.MaxAttempts);
+        Assert.Equal(500, aggregate.MaxElapsedNs);
+        Assert.Equal(1, aggregate.WordsTouched);
+    }
+
+    [Fact]
+    public void ZeroWorkDoesNotCreateRecordedObjectTime()
+    {
+        var path = Path.Combine(_root, "zero.sqlite");
+        WriteCache(path);
+        using (var connection = new SqliteConnection($"Data Source={path};Pooling=False"))
+        {
+            connection.Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = "UPDATE fact SET attempts = 0, self_time_ns = 0;";
+            command.ExecuteNonQuery();
+        }
+
+        var result = PanGlossBatchStatisticsReader.ReadBounded(path, ["word"], 0);
+
+        Assert.Null(result.AttributedNs);
+        Assert.Null(result.UnattributedNs);
+        Assert.All(result.Aggregates, row => Assert.Equal(0, row.WordsTouched));
+    }
+
     public void Dispose() => Directory.Delete(_root, recursive: true);
 
     [Fact]

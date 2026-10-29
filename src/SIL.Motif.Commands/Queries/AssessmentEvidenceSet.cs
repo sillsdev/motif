@@ -14,6 +14,17 @@ public sealed class AssessmentEvidenceSet
         Words = Array.AsReadOnly(AssessmentWordOverlay.Apply(WordsOf(assessment), replacements.Select(run =>
             run with { Details = ((AssessmentRecordDetails.Words)run.Details) with { Rows = WordsOf(run) } }).ToArray()).ToArray());
         ObjectTimings = Array.AsReadOnly(AssessmentWordOverlay.ApplyObjectTimings(assessment, replacements).ToArray());
+        var limited = Components.Select(component => component.TimingEvidence)
+            .Where(evidence => evidence is { DetailComplete: false }).Select(evidence => evidence!).ToArray();
+        TimingDetail = limited.Length == 0 ? new ObjectTimingDetail(true) : new ObjectTimingDetail(false,
+            string.Join(" ", limited.Select(evidence =>
+                evidence.StatisticsUnavailable ? "Object timing was not collected." :
+                $"Object timing detail kept for the {evidence.DetailWordCount} costliest words" +
+                (evidence.HasRetriedWords ? " from the initial pass; some words were retried." : "."))))
+        { DetailWordCounts = limited.Where(evidence => !evidence.StatisticsUnavailable)
+                .Select(evidence => evidence.DetailWordCount).ToArray(),
+            HasRetriedWords = limited.Any(evidence => evidence.HasRetriedWords),
+            StatisticsUnavailable = limited.Any(evidence => evidence.StatisticsUnavailable) };
     }
 
     /// <summary>The complete run followed by the explicit replacements contributing answers.</summary>
@@ -22,6 +33,9 @@ public sealed class AssessmentEvidenceSet
     public IReadOnlyList<AssessedWord> Words { get; }
     /// <summary>The object times from the same producing runs as <see cref="Words"/>.</summary>
     public IReadOnlyList<AssessmentObjectTiming> ObjectTimings { get; }
+
+    /// <summary>Whether per-word object timing detail covers the contributing runs.</summary>
+    public ObjectTimingDetail TimingDetail { get; }
 
     /// <summary>Creates a value snapshot after replacement policy has selected its component runs.</summary>
     public static AssessmentEvidenceSet Create(AssessmentRecord assessment, IReadOnlyList<AssessmentRecord> replacements) =>

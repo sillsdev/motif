@@ -15,6 +15,21 @@ namespace SIL.Motif.Tests.Commands;
 public sealed class WarningWordsQueryTests
 {
     [Fact]
+    public void IncompleteObjectDetailReturnsKeptWordsWithCompletenessFlag()
+    {
+        var finding = Finding("missing", Subject("Rule", "rule",
+            new WarningReach(WarningWordsPath.Uses) { TimingKeys = [new TraceTimingKey("morph_rule", "rule")] }));
+        var detail = new ObjectTimingDetail(false, "Object timing detail kept for the 1 costliest words.");
+
+        var word = new AssessmentWordResult("kept", "analysed", false, "Search completed", 1, null);
+        var timing = new AssessmentObjectTiming("morph_rule", "rule", "authored", "analysis", "rule", "kept", 1, null, 10);
+        var result = WarningWordsQuery.WithYourWords(new GrammarCheckResponse([finding], true), [word], [timing], detail);
+
+        Assert.Equal(detail, result.ObjectTimingDetail);
+        Assert.Equal("kept", Assert.Single(Assert.Single(result.Findings).YourWords!.Words).Row.Word);
+    }
+
+    [Fact]
     public void TypedWordsUseParserAnalysisIdentitiesWithoutFieldWorksAnalyses()
     {
         var word = new AssessmentWordResult("trois", "analysed", false, "Search completed", 1, null)

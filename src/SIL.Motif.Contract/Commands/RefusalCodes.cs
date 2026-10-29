@@ -42,6 +42,7 @@ public static class RefusalCodes
     public const string AssessMeasurementsIncomplete = "assess.measurements-incomplete";
     public const string AssessParserMemoryLimit = "assess.parser-memory-limit";
     public const string AssessParserUnavailable = "assess.parser-unavailable";
+    public const string AssessTimingDetailSelection = "assess.timing-detail-selection";
     public const string AssessUnsupportedKind = "assess.unsupported-kind";
     public const string AssessWordsAmbiguous = "assess.words-ambiguous";
     public const string AssessWordsFileEmpty = "assess.words-file-empty";

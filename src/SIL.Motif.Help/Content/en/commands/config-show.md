@@ -16,6 +16,14 @@ motif config show --project "C:\FieldWorks\Projects\Koro\Koro.fwdata"
 
 The command prints the saved project settings, or their structured form when `--json` is supplied. It reads configuration and does not run PanGloss.
 
+Each Assessment scope's `timing-detail-words` limits the number of costliest words whose individual object timings are stored. The default is 2,000 and the allowed range is 0–10,000. Set it in `<project>.motif.toml` beside the project, for example:
+
+```toml
+[[scope]]
+name = "default"
+timing-detail-words = 1000
+```
+
 ## Related commands
 
 - [Measure a Selection](cmd:assess) uses the configured scope when one is named.

@@ -337,7 +337,7 @@ public static class CliVerbCatalog
             {
                 "assess <project> [--texts <guid,guid>] [--all-wordforms] [--words <file>] " +
                 "[--retry-failed] [--retry-work-over <steps>] [--retry-source-assessment <id>] " +
-                "[--replaces <assessment-id>] " +
+                "[--replaces <assessment-id>] [--full-object-timing] " +
                 "[--time-limit-ms <ms>] [--step-cap <attempts|unbounded>] [--summary [--offset <n>] [--limit <n>]] [--json]",
                 "The default per-word limit is 200,000 analysis attempts. PanGloss derives an inner search-work limit at 100 times that value.",
             }),

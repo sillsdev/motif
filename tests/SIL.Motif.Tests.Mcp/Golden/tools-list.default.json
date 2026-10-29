@@ -4466,7 +4466,7 @@
   },
   {
     "name": "motif_assess",
-    "description": "Measure a Selection. Runs PanGloss over chosen Texts or word forms and stores the resulting Assessments. After FieldWorks saves project changes, capture a new Baseline before measuring them.\nCommand: assess. Agent class: Evaluate.\nSelection: The words or Texts to measure; null uses the saved Default Selection.\nPerWordLimitMs: The per-word duration limit in milliseconds; null keeps the configured limit.\nPerWordStepLimit: The per-word parser step cap; null keeps the configured cap.\nReplaceAssessmentId: The prior complete Assessment to replace for an explicit reparse.",
+    "description": "Measure a Selection. Runs PanGloss over chosen Texts or word forms and stores the resulting Assessments. After FieldWorks saves project changes, capture a new Baseline before measuring them.\nCommand: assess. Agent class: Evaluate.\nSelection: The words or Texts to measure; null uses the saved Default Selection.\nPerWordLimitMs: The per-word duration limit in milliseconds; null keeps the configured limit.\nPerWordStepLimit: The per-word parser step cap; null keeps the configured cap.\nReplaceAssessmentId: The prior complete Assessment to replace for an explicit reparse.\nFullObjectTimingDetail: Retain object detail for every word in a bounded explicit Selection.",
     "inputSchema": {
       "type": "object",
       "properties": {

@@ -305,10 +305,26 @@ public sealed partial class OverviewPageModel : PageModel
     public bool HasTimingKindShares => TimingKindShares.Count > 0;
 
     /// <summary>Names the measured overrun if parser-object timers exceed total word time.</summary>
-    public string TimingAttributionNote => Overview?.Timing.Attribution is { Overrun: true } attribution
-        ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.OverviewTimingOverrunFormat,
-            TimingShare.FormatDuration(attribution.OverrunMs))
-        : string.Empty;
+    public string TimingAttributionNote
+    {
+        get
+        {
+            if (Overview?.Timing is not { } timing) return string.Empty;
+            var notes = new List<string>();
+            if (timing.ObjectTimingDetail is { IsComplete: false } detail)
+            {
+                notes.AddRange(detail.DetailWordCounts.Select(count => string.Format(CultureInfo.CurrentCulture,
+                    MotifAppStrings.TimingDetailLimitedFormat, count.ToString("N0", CultureInfo.CurrentCulture))));
+                if (detail.HasRetriedWords) notes.Add(MotifAppStrings.TimingDetailRetried);
+                if (detail.StatisticsUnavailable) notes.Add(MotifAppStrings.TimingNoStoredTimingForWords);
+            }
+            if (timing.Attribution is { Overrun: true } attribution)
+                notes.Add(string.Format(CultureInfo.CurrentCulture, MotifAppStrings.OverviewTimingOverrunFormat,
+                    TimingShare.FormatDuration(attribution.OverrunMs)));
+            if (!timing.ObjectTimingAggregatesAvailable) notes.Add(MotifAppStrings.TimingObjectTotalsUnavailable);
+            return string.Join(" ", notes);
+        }
+    }
 
     /// <summary>The stored-result groups ranked for a useful next step.</summary>
     public IReadOnlyList<OverviewLookFirstRow> LookFirstRows

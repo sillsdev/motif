@@ -305,7 +305,8 @@ public sealed partial class InspectorViewModel : ObservableObject
         Uses = response?.Uses.Value is { } uses ? InspectorWordsViewModel.ForUses(uses, Title, _context.TryWord) : null;
         UsesNote = Note(response?.Uses);
         RanIn = response?.RanIn.Value is { } ranIn ? InspectorWordsViewModel.ForRanIn(ranIn, _context.TryWord) : null;
-        RanInNote = Note(response?.RanIn);
+        RanInNote = response?.ObjectTimingDetail is { IsComplete: false } detail && response.RanIn.Value is not null
+            ? detail.Description ?? MotifAppStrings.ObjectTimingDetailIncomplete : Note(response?.RanIn);
         RanInTitle = subject.Kind == InspectorSubjectKind.Morpheme ? "Time in your words" : "Words it ran in";
         Warnings = [.. (response?.Warnings.Value ?? []).Select(InspectorWarningViewModel.Of)];
         WarningsNote = Note(response?.Warnings);

@@ -1938,7 +1938,7 @@ try
             if (positionals.Count != 1) return Usage(AssessUsage(), asJson);
             if (flags.Keys.Any(flag => flag is not ("texts" or "all-wordforms" or "words" or "retry-failed" or
                     "retry-work-over" or "retry-source-assessment" or "replaces" or "time-limit-ms" or "step-cap" or
-                    "summary" or "offset" or "limit" or "json"))) return Usage(AssessUsage(), asJson);
+                    "summary" or "offset" or "limit" or "full-object-timing" or "json"))) return Usage(AssessUsage(), asJson);
             flags.TryGetValue("replaces", out var assessReplaces);
             if (assessReplaces is not null && !CanonicalId.TryParse(assessReplaces, out _))
                 return Usage(AssessUsage(), asJson);
@@ -2005,7 +2005,8 @@ try
                 result = RunWithConsoleCancellation(cancellationToken =>
                 {
                     var assessed = AssessCommand.Assess(
-                        new AssessRequest(positionals[0], assessSelection, assessTimeLimitMs, assessStepCap, assessReplaces),
+                        new AssessRequest(positionals[0], assessSelection, assessTimeLimitMs, assessStepCap, assessReplaces,
+                            flags.ContainsKey("full-object-timing")),
                         asJson ? null : progress => error.WriteLine(progress.Message), cancellationToken);
                     if (!assessSummary || !assessed.Succeeded) return RenderCommand(assessed);
                     alreadyRendered = true;

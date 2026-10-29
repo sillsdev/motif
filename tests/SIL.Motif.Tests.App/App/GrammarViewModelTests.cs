@@ -27,6 +27,19 @@ public sealed class GrammarViewModelTests
         Assert.False(grammar.CheckCommand.CanExecute(null));
     }
 
+    [Fact]
+    public void StoredWarningsExposeIncompleteTimingDetailAndClearItOnProjectChange()
+    {
+        var grammar = new GrammarViewModel(new FakeCommandClient());
+        grammar.LoadStored(ProjectPath, new GrammarCheckResponse([], true)
+        {
+            ObjectTimingDetail = new ObjectTimingDetail(false, "Detail kept for one word."),
+        });
+        Assert.Equal("Detail kept for one word.", grammar.Warnings.ObjectTimingDetailText);
+        grammar.Clear();
+        Assert.Empty(grammar.Warnings.ObjectTimingDetailText);
+    }
+
     // A view knows only what it is told: the last notified value of each state must match the outcome.
     [Fact]
     public async Task AViewThatOnlyListensSeesTheFindingsTableAndNeverTheEmptyStateOnceFindingsArrive()

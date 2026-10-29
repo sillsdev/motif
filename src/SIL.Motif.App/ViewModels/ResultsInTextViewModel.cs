@@ -263,6 +263,8 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
     public int NamedInWarningCount => _nativeAnalyze?.NamedInWarningCount ?? 0;
     /// <summary>Whether stored exact or candidate warning evidence names any chosen word.</summary>
     public bool HasWarningEvidence => _nativePresentation?.Warnings.Count > 0;
+    public string ObjectTimingDetailText => _nativePresentation?.ObjectTimingDetail is { IsComplete: false } detail
+        ? detail.Description ?? MotifAppStrings.ObjectTimingDetailIncomplete : string.Empty;
     public bool HasNotAssessed => NotAssessedCount > 0;
     public int SelectedTextAnalysisCount => NativeAnalysisIds(AnalysisOperationScope.SelectedText).Count;
     public int ChosenTextsAnalysisCount => NativeAnalysisIds(AnalysisOperationScope.ChosenTexts).Count;

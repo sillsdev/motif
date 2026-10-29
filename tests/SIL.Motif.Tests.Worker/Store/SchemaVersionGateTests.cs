@@ -167,7 +167,7 @@ public sealed class SchemaVersionGateTests : IDisposable
     public void APreviousWorkStepsShapeIsRefusedAndCanBeReset()
     {
         const int previousSchema = 49;
-        Assert.Equal(50, MotifSchema.CurrentSchema);
+        Assert.True(MotifSchema.CurrentSchema > 49);
         var path = Path.Combine(_root, "previous-work-steps.motif.db");
         var locator = new ProjectLocator(Path.Combine(_root, "previous-work-steps.fwdata"), "previous-work-steps");
         using (MotifDatabase.OpenOwned(path, locator, MotifSchema.CurrentSchema, new Version(1, 0))) { }
@@ -190,7 +190,7 @@ public sealed class SchemaVersionGateTests : IDisposable
         Assert.False(File.Exists(path));
         using var reset = MotifDatabase.OpenOwned(path, locator, MotifSchema.CurrentSchema, new Version(1, 0));
         using var reopened = reset.OpenConnection();
-        Assert.Equal(50, PragmaUserVersion(path));
+        Assert.Equal(MotifSchema.CurrentSchema, PragmaUserVersion(path));
         using var shape = reopened.CreateCommand();
         shape.CommandText = "SELECT COUNT(*) FROM pragma_table_info('AssessedWords') WHERE name = 'WorkSteps';";
         Assert.Equal(1L, shape.ExecuteScalar());
@@ -199,7 +199,7 @@ public sealed class SchemaVersionGateTests : IDisposable
     [Fact]
     public void AStoreStampedWithSchemaFortySevenIsRefusedByThePhonologyAssessmentGeneration()
     {
-        Assert.Equal(50, MotifSchema.CurrentSchema);
+        Assert.True(MotifSchema.CurrentSchema > 49);
         var path = Path.Combine(_root, "schema47.motif.db");
         var locator = new ProjectLocator(Path.Combine(_root, "schema47.fwdata"), "schema47");
         using (MotifDatabase.OpenOwned(path, locator, MotifSchema.CurrentSchema, new Version(1, 0))) { }

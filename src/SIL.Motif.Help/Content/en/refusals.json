@@ -67,6 +67,10 @@
     "why": "The parser is not installed here, so words cannot be assessed. Tell the linguist; evaluation tools cannot run.",
     "source": "Hand-written from the Motif MCP refusal advice."
   },
+  "assess.timing-detail-selection": {
+    "why": "Full object timing needs an explicit Selection of no more than 2,000 words. Choose a smaller Selection or omit full object timing.",
+    "source": "Hand-written for bounded object timing."
+  },
   "grammarcheck.parser-unavailable": {
     "why": "The parser is not installed here, so the grammar cannot be checked. Tell the linguist; evaluation tools cannot run.",
     "source": "Hand-written from the Motif MCP refusal advice."

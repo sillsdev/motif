@@ -34,7 +34,7 @@ public static class ProjectConfigurationFile
     private static readonly HashSet<string> ApplyKeys = new(StringComparer.Ordinal) { "purge-on-apply" };
 
     private static readonly HashSet<string> ScopeKeys = new(StringComparer.Ordinal)
-        { "name", "query", "assessor", "collect", "per-word-limit-ms", "per-word-step-limit" };
+        { "name", "query", "assessor", "collect", "per-word-limit-ms", "per-word-step-limit", "timing-detail-words" };
 
     /// <summary>
     /// Resolves TOML text into a fully-defaulted configuration. Malformed input, an unrecognised table, or
@@ -143,6 +143,7 @@ public static class ProjectConfigurationFile
             sb.AppendLine($"collect = [{string.Join(", ", scope.Collect.Select(Quote))}]");
             sb.AppendLine($"per-word-limit-ms = {(long)scope.PerWordLimit.TotalMilliseconds}");
             sb.AppendLine($"per-word-step-limit = {scope.PerWordStepLimit.ToArgument()}");
+            sb.AppendLine($"timing-detail-words = {scope.TimingDetailWords}");
         }
         return sb.ToString();
     }
@@ -265,6 +266,7 @@ public static class ProjectConfigurationFile
         private List<string>? _collect;
         private int? _perWordLimitMs;
         private StepCap? _perWordStepLimit;
+        private int? _timingDetailWords;
 
         public void Set(string key, string rawValue, string path, int lineNumber)
         {
@@ -275,6 +277,11 @@ public static class ProjectConfigurationFile
                 case "assessor": _assessor = ParseString(path, lineNumber, key, rawValue); break;
                 case "collect": _collect = ParseStringArray(path, lineNumber, key, rawValue); break;
                 case "per-word-limit-ms": _perWordLimitMs = ParsePositiveMilliseconds(path, lineNumber, key, rawValue); break;
+                case "timing-detail-words":
+                    if (!int.TryParse(rawValue, out var detail) || detail is < 0 or > AssessmentScopeConfiguration.MaximumTimingDetailWords)
+                        throw Malformed(path, lineNumber, $"'{key}' must be between 0 and {AssessmentScopeConfiguration.MaximumTimingDetailWords}");
+                    _timingDetailWords = detail;
+                    break;
                 case "per-word-step-limit":
                     _perWordStepLimit = ParseStepLimit(path, lineNumber, key, rawValue);
                     break;
@@ -293,7 +300,7 @@ public static class ProjectConfigurationFile
                 _perWordLimitMs is { } ms
                     ? TimeSpan.FromMilliseconds(ms)
                     : AssessmentScopeConfiguration.DefaultPerWordLimit,
-                _perWordStepLimit);
+                _perWordStepLimit, _timingDetailWords ?? AssessmentScopeConfiguration.DefaultTimingDetailWords);
         }
     }
 }

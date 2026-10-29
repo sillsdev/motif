@@ -2297,6 +2297,10 @@ Never included unless you tick it in the preview: local details, which may conta
     <value>median word time</value>
     <comment>Lowercase fragment inside a Timing sentence: the middle value of the per-word times.</comment>
   </data>
+  <data name="MotifApp.ObjectTimingDetailIncomplete" xml:space="preserve">
+    <value>Object timing detail is incomplete.</value>
+    <comment>Sentence shown in place of a rule or object timing description when the detail is missing.</comment>
+  </data>
   <data name="MotifApp.TimingMatrixCellHeading" xml:space="preserve">
     <value>Matrix Cell</value>
     <comment>Heading or field label on the Timing page: "Matrix Cell".</comment>
@@ -3508,6 +3512,18 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.TimingStoppedCaption" xml:space="preserve">
     <value>stopped at a search limit</value>
     <comment>Caption under the count of words that stopped at a parser search limit.</comment>
+  </data>
+  <data name="MotifApp.TimingDetailLimitedFormat" xml:space="preserve">
+    <value>Object timing detail kept for the {0} costliest words.</value>
+    <comment>Timing page note; {0} is the number of words with per-object detail.</comment>
+  </data>
+  <data name="MotifApp.TimingDetailRetried" xml:space="preserve">
+    <value>Some words were retried after the object timings were recorded.</value>
+    <comment>Timing page note when retries differ from the first-pass object timing.</comment>
+  </data>
+  <data name="MotifApp.TimingObjectTotalsUnavailable" xml:space="preserve">
+    <value>Object timing totals are unavailable for these words.</value>
+    <comment>Timing note when incomplete detail prevents calculating object totals.</comment>
   </data>
   <data name="MotifApp.TimingAllWordsButtonFormat" xml:space="preserve">
     <value>All {0}</value>

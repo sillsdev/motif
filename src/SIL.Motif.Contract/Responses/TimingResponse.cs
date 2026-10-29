@@ -15,6 +15,12 @@ public sealed record TimingResponse(
     IReadOnlyList<TimingAggregateRow> Aggregates,
     IReadOnlyList<WordRuleTiming> CostliestWords)
 {
+    /// <summary>Completeness of per-word object timing detail used by this result.</summary>
+    public ObjectTimingDetail? ObjectTimingDetail { get; init; }
+
+    /// <summary>Whether the object totals describe all words in the requested Selection.</summary>
+    public bool ObjectTimingAggregatesAvailable { get; init; } = true;
+
     /// <summary>Whether the selected measurement uses a historical Baseline or predates the live file's save.</summary>
     public bool IsStale { get; init; }
 

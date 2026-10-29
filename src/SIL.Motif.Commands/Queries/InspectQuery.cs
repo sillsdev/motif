@@ -72,6 +72,7 @@ public static class InspectQuery
             };
             var response = new InspectResponse(subject, resolution)
             {
+                ObjectTimingDetail = snapshot.TimingDetail,
                 IsStale = snapshot.Freshness == EvidenceFreshness.Stale,
                 BaselineDigest = snapshot.Baseline?.Token.BundleDigest,
                 AssessmentId = snapshot.MatchingAssessment?.AssessmentId,
@@ -248,7 +249,7 @@ public static class InspectQuery
                 "The grammar hasn't been checked since the last Refresh.")
             : InspectorSection<IReadOnlyList<GrammarWarning>>.Of(
                 WarningsNaming((snapshot.Assessment is { } assessment
-                    ? WarningWordsQuery.WithYourWords(check, assessment.Words, snapshot.EffectiveObjectTimings)
+                    ? WarningWordsQuery.WithYourWords(check, assessment.Words, snapshot.EffectiveObjectTimings, snapshot.TimingDetail)
                     : check).Findings, subject, timingKey));
     }
 

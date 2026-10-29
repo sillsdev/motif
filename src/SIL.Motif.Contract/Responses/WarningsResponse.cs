@@ -9,6 +9,9 @@ public sealed record WarningsResponse(
     int WarningCount,
     int InformationCount)
 {
+    /// <summary>Completeness of the object timing detail used to associate words with findings.</summary>
+    public ObjectTimingDetail? ObjectTimingDetail { get; init; }
+
     /// <summary>The current Baseline's latest parser refusal, even before grammar findings exist.</summary>
     public SIL.Motif.Contract.Commands.Refusal? LastParserRefusal { get; init; }
 

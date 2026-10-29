@@ -111,6 +111,12 @@ public sealed record OverviewTiming(
     IReadOnlyList<SlowWordTiming> SlowestWords,
     int StepLimitedWordCount)
 {
+    /// <summary>Completeness of per-word object timing detail used by this result.</summary>
+    public ObjectTimingDetail? ObjectTimingDetail { get; init; }
+
+    /// <summary>Whether the object timing totals describe all words in the current evidence.</summary>
+    public bool ObjectTimingAggregatesAvailable { get; init; } = true;
+
     /// <summary>The number of words with a recorded parse time, which the percentiles are taken over.</summary>
     public int MeasuredWordCount { get; init; }
 

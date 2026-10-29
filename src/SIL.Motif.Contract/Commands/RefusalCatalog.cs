@@ -211,6 +211,8 @@ public static class RefusalCatalog
             NextStep.PersonStep()),
         Spec(RefusalCodes.AssessParserUnavailable, FailureReason.Refused,
             NextStep.PersonStep()),
+        Spec(RefusalCodes.AssessTimingDetailSelection, FailureReason.InvalidArgument,
+            NextStep.Repeat()),
         Spec(RefusalCodes.AssessUnsupportedKind, FailureReason.Refused),
         Spec(RefusalCodes.AssessWordsAmbiguous, FailureReason.InvalidArgument,
             NextStep.Repeat()),
