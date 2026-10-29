@@ -56,6 +56,7 @@
     Intent.Proposal.Text          readable text on Intent.Proposal.Fill
     Intent.Marking.Text           text on compact analysis marks and lines
     Intent.Marking.Border         edges of compact analysis marks and controls
+    Intent.Input.Border           text input frame
     Intent.Marking.Surface        the surface of compact analysis controls
     Intent.Marking.Divider        dividers in compact analysis details
     Intent.Marking.Hover          the hovered surface of a compact analysis control
@@ -304,6 +305,7 @@
       <SolidColorBrush x:Key="Intent.Danger.Text" Color="{StaticResource Primitive.Color.Rose950}" />
       <SolidColorBrush x:Key="Intent.Marking.Text" Color="{StaticResource Primitive.Color.Slate950}" />
       <SolidColorBrush x:Key="Intent.Marking.Border" Color="{StaticResource Primitive.Color.Grey550}" />
+      <SolidColorBrush x:Key="Intent.Input.Border" Color="{StaticResource Primitive.Color.Grey550}" />
       <SolidColorBrush x:Key="Intent.Marking.Surface" Color="{StaticResource Primitive.Color.Grey0}" />
       <SolidColorBrush x:Key="Intent.Marking.Divider" Color="{StaticResource Primitive.Color.Grey200}" />
       <SolidColorBrush x:Key="Intent.Marking.Hover" Color="{StaticResource Primitive.Color.Slate50}" />
@@ -397,6 +399,7 @@
       <SolidColorBrush x:Key="Intent.Danger.Text" Color="{StaticResource Primitive.Color.Rose200}" />
       <SolidColorBrush x:Key="Intent.Marking.Text" Color="{StaticResource Primitive.Color.Slate50}" />
       <SolidColorBrush x:Key="Intent.Marking.Border" Color="{StaticResource Primitive.Color.Slate700}" />
+      <SolidColorBrush x:Key="Intent.Input.Border" Color="{StaticResource Primitive.Color.Slate700}" />
       <SolidColorBrush x:Key="Intent.Marking.Surface" Color="{StaticResource Primitive.Color.Slate975}" />
       <SolidColorBrush x:Key="Intent.Marking.Divider" Color="{StaticResource Primitive.Color.Slate700}" />
       <SolidColorBrush x:Key="Intent.Marking.Hover" Color="{StaticResource Primitive.Color.Grey800}" />

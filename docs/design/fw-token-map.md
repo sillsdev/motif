@@ -31,7 +31,8 @@ Light theme only. Same means the same value, or one alias of the same Semi step.
 | (none) | FwWsAbbrevBrush | n/a / #404040 | FW only | Writing-system abbreviation gutter ink; Motif has no data-tree writing-system gutter. Intent.Text is the nearest role |
 | Intent.Marking.Divider | FwSliceRuleBrush, FwSectionRuleBrush, FwPickerBorderBrush, FwDialogGroupSeparatorBrush | #D3D3D3 (Grey200) / LightGray (#D3D3D3) | Same (adopted) | Was #D5DCE4 (Slate200). Motif's divider is the key its analysis rules and strips use. Decorative, so no contrast bar. Dark unchanged. Pinned |
 | Intent.Border | same four | Semi (about #EDEDED) / LightGray | Different (not adopted) | A Semi role, never overridden (ADR 0074). Follow-up 3 |
-| Intent.Marking.Border | FwDialogFieldBorderBrush | #7A7A7A (Grey550) / #7A7A7A | Same (adopted) | Was #AEB8C3 (Slate400, 2.01:1). Edges Motif's compact controls such as action chips; #7A7A7A is 4.29:1 on Surface and 4.18:1 on Surface.Subtle, above the 3:1 a control boundary needs. Dark unchanged. Pinned. Motif's text boxes still take Semi's own border (follow-up 3). FieldWorks uses #7A7A7A only on input and host frames; Motif also applies it to chip and hover-reveal edges, as a deliberate extension. Those edges go from 2.0:1 to 4.3:1, which meets the 3:1 non-text bar. Owner visual check pending |
+| Intent.Marking.Border | FwDialogFieldBorderBrush | #7A7A7A (Grey550) / #7A7A7A | Same (adopted) | Was #AEB8C3 (Slate400, 2.01:1). Edges Motif's compact controls such as action chips; #7A7A7A is 4.29:1 on Surface and 4.18:1 on Surface.Subtle, above the 3:1 a control boundary needs. Dark unchanged. Pinned. FieldWorks uses #7A7A7A only on input and host frames; Motif also applies it to chip and hover-reveal edges, as a deliberate extension. Those edges go from 2.0:1 to 4.3:1, which meets the 3:1 non-text bar. Owner visual check pending |
+| Intent.Input.Border | FwDialogFieldBorderBrush | #7A7A7A (Grey550) / #7A7A7A | Same (adopted) | TextBox input frames use this Motif-owned token; dark uses Slate700. Pinned by DesignTokenTests and ComponentStyleTests. |
 | Intent.Marking.Divider | FwBrowseGridLineBrush | #D3D3D3 / #DCDCDC | Different | Both faint grid dividers; Motif uses the rule colour above for both. Decorative |
 | Intent.Text | FwSectionHeaderBrush | Semi Text0 / #696969 | Different (not adopted) | FieldWorks takes SystemColors.ControlDarkDark; Motif's section heading is Intent.Text at semibold 13 (Intent.Type.Section, Intent.Weight.Section), a Semi role. Follow-up 1 |
 | Intent.TextFaint | FwDisabledOptionBrush | Semi / Gray (#808080) | Different | FieldWorks keeps legacy Gray for an unavailable option because Semi's disabled text is lighter. Motif shows an unavailable control at Intent.Opacity.Dimmed (0.35) and a disabled reason beside it. Different mechanism, not a value |
@@ -111,8 +112,8 @@ Adopted in this slice (each passes contrast, each pinned): selected row, field b
    Ratio about 3.7:1, under 4.5:1 (was about 4.1:1 on #E8F1FF, which also missed). Pinned as a known gap by
    `MutedTextOnTheWordCardHeaderStillFallsShortOfAa`. TextMuted is a Semi role and is never overridden, so the fix is a
    Motif-owned muted-on-selected key, or a lighter selected fill; owner decision.
-3. Semi-role colours (Intent.Border rules, text-box frames): FieldWorks' LightGray rule (#D3D3D3, decorative) and
-   #7A7A7A input frame need a Motif-owned text-box and card theme, since a Semi key is never overridden app-wide.
+3. Semi-role colours (Intent.Border rules): FieldWorks' LightGray rule (#D3D3D3, decorative) needs a
+   Motif-owned card theme, since a Semi key is never overridden app-wide. TextBox frames now use Intent.Input.Border.
 4. Dialog padding and menu density (8 against 10, 8,4 against 8,3): only if Motif's views are hosted beside FieldWorks
    dialogs and the seam shows; otherwise Motif keeps its own.
 5. Interface font and size (Andika per FieldWorks 1196, 11 against 13): adopt FieldWorks' font token once 1196 lands.

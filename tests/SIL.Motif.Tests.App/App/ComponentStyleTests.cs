@@ -1173,6 +1173,8 @@ public sealed partial class ComponentStyleTests
         yield return new("TextsListsScoped", "a words list's minimum height", TextsListsWordSlot,
             Control.MinHeightProperty, "Component.TextsPage.ListWordsMinHeight");
 
+        yield return new("Interaction", "text input border", host => Add(host, new TextBox()),
+            Border.BorderBrushProperty, "Intent.Input.Border");
         yield return new("Interaction", "the focus ring", host => Add(host, new SIL.Motif.App.Views.FocusRing()),
             Border.BorderBrushProperty, "Intent.Focus");
         yield return new("Interaction", "the focus ring", host => Add(host, new SIL.Motif.App.Views.FocusRing()),

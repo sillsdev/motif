@@ -30,6 +30,24 @@ public sealed class DesignTokenTests
     public DesignTokenTests(AvaloniaHeadlessFixture avalonia) => _avalonia = avalonia;
 
     [Fact]
+    public void TextBoxUsesFieldWorksInputBorderInLightTheme()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var textBox = new TextBox { Text = "Text" };
+            var window = new MotifTestWindow { Content = textBox, RequestedThemeVariant = ThemeVariant.Light };
+            try
+            {
+                window.Show();
+                Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
+                Assert.Equal(Color.Parse("#7A7A7A"), Assert.IsAssignableFrom<ISolidColorBrush>(textBox.BorderBrush).Color);
+            }
+            finally { window.Close(); }
+        });
+    }
+
+    [Fact]
     public void EveryIntentKeyResolvesInBothThemeVariants()
     {
         var keys = IntentKeys();

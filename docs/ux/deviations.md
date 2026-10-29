@@ -39,6 +39,7 @@ These differ from FieldWorks on the surface and are recorded so nobody reopens t
 | Avalonia 12 and net10 | Avalonia 11.3.x, Semi 11.3.x on net48 (`Directory.Packages.props`, lines 183-184) | Avalonia 12.1.2, Semi 12.1.0, net10.0 | Same path, reached earlier: FieldWorks is on 11 only because of .NET Framework 4.8 and will move to Avalonia 12 and net10 before the codebases merge ([ADR 0071](../adr/0071-motif-is-ahead-on-avalonia-12-and-net10.md)) |
 | Language change | [Localizable text][G-loc] and a restart to change language | Restart | Matches FieldWorks; the earlier live-switching design is superseded |
 | Apply is one-way | [Saving and undo][G-undo]: one undo per field; [Bulk Edit][G-bulk]: preview, marked not saved, one named step | Apply is one-way by design: Motif has no unapply. Undo exists only before Apply | Proposals, Dry Run and Trials exist to test before Apply, and FieldWorks' own undo covers only a subset of its commands ([ADR 0016](../adr/0016-scratch-cache-copy-not-undo.md), [ADR 0005](../adr/0005-schema-operations-non-undoable-uow.md)) |
+| Detail-view section commands | [Sections and expansion][G-sections]: section commands appear on the section header; the guide's decisions name a Field options link for detail views | Motif has no detail-view section commands | The rule has no commands to govern in Motif; apply it if such commands are added |
 
 [G-loc]: https://github.com/sillsdev/FieldWorks/blob/8b57dd6f7/Docs/ux/README.md#L151
 [G-btn]: https://github.com/sillsdev/FieldWorks/blob/8b57dd6f7/Docs/ux/README.md#L188
@@ -48,3 +49,4 @@ These differ from FieldWorks on the surface and are recorded so nobody reopens t
 [G-keys]: https://github.com/sillsdev/FieldWorks/blob/8b57dd6f7/Docs/ux/README.md#L89
 [G-undo]: https://github.com/sillsdev/FieldWorks/blob/8b57dd6f7/Docs/ux/README.md#L431
 [G-bulk]: https://github.com/sillsdev/FieldWorks/blob/8b57dd6f7/Docs/ux/README.md#L324
+[G-sections]: https://github.com/sillsdev/FieldWorks/blob/8b57dd6f7/Docs/ux/README.md#L399
