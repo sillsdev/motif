@@ -1104,14 +1104,14 @@ public sealed partial class ParsimonyPageModel : PageModel
     private ParsimonyListRow RowFor(ParsimonyFindingDispositionViewRow row, string path)
     {
         if (_rowsByFinding.TryGetValue(row.Finding.FindingId, out var existing)) return existing;
-        var link = new ParsimonyFindingLink(path, row.ReportId, row.Finding.FindingId);
+        var link = row.ReportId is { } reportId ? new ParsimonyFindingLink(path, reportId, row.Finding.FindingId) : null;
         var made = new ParsimonyListRow(false, string.Empty, string.Empty, string.Empty, Describe(row.Finding),
             ItemsText(row.Finding, RowItemNames), TierLabel(row.Finding.Tier),
             VerificationLabel(row.Finding.Verification), StatusOf(row), link,
             row.Finding.FindingId == _selectedFindingId, SelectFindingCommand,
-            new AsyncRelayCommand(() => StageDecisionForRowAsync(link, "keep"), () => CanStageRow(link)),
-            new AsyncRelayCommand(() => StageDecisionForRowAsync(link, "defer"), () => CanStageRow(link)),
-            new AsyncRelayCommand(() => StageDecisionForRowAsync(link, "ask"), () => CanStageRow(link)),
+            new AsyncRelayCommand(() => link is null ? Task.CompletedTask : StageDecisionForRowAsync(link, "keep"), () => link is not null && CanStageRow(link)),
+            new AsyncRelayCommand(() => link is null ? Task.CompletedTask : StageDecisionForRowAsync(link, "defer"), () => link is not null && CanStageRow(link)),
+            new AsyncRelayCommand(() => link is null ? Task.CompletedTask : StageDecisionForRowAsync(link, "ask"), () => link is not null && CanStageRow(link)),
             AutomationIds.ForParsimonyFinding(row.Finding.FindingId));
         _rowsByFinding[row.Finding.FindingId] = made;
         if (made.IsSelected) _selectedRow = made;
@@ -1239,7 +1239,7 @@ public sealed partial class ParsimonyPageModel : PageModel
         if (_reportsById.Count == 0 || _reportProjectPath is null || SelectedRecordType is null || _selectedFindingId is null) return;
         var row = _activeRows.FirstOrDefault(item => string.Equals(item.Finding.FindingId, _selectedFindingId,
             StringComparison.Ordinal));
-        if (row is null) return;
+        if (row?.ReportId is not { } reportId) return;
         var question = QuestionText.Trim();
         if (disposition == "ask" && question.Length == 0)
         {
@@ -1255,7 +1255,7 @@ public sealed partial class ParsimonyPageModel : PageModel
         try
         {
             var outcome = await Context.Commands.RecordParsimonyDispositionAsync(new RecordParsimonyDispositionFromFindingRequest(
-                path, MotifProductVersion.CurrentText, row.ReportId, row.Finding.FindingId, disposition,
+                path, MotifProductVersion.CurrentText, reportId, row.Finding.FindingId, disposition,
                 SelectedRecordType.Id, PendingChanges.DraftName,
                 disposition is "keep" or "defer" && reason.Length > 0 ? reason : null,
                 disposition == "ask" ? question : null), CancellationToken.None).ConfigureAwait(true);

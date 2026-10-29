@@ -35,7 +35,7 @@ internal static class MenuShortcutDisplay
             AutomationProperties.SetName(item, header.Replace("_", string.Empty, StringComparison.Ordinal));
     }
 
-    private static void ShowText(MenuItem item, TextBlock? part, string text)
+    private static void ShowText(MenuItem item, TextBlock? part, string? text)
     {
         var block = part ?? item.GetVisualDescendants().OfType<TextBlock>().FirstOrDefault(candidate =>
             candidate.Text == item.InputGesture?.ToString());

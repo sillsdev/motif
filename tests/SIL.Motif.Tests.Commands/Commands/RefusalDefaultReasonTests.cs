@@ -100,7 +100,7 @@ public sealed class RefusalDefaultReasonTests
 
         Assert.True(problems.Count == 0, "\n" + string.Join("\n", problems));
         Assert.True(undetermined.Count == 0, "Not determinable and not listed:\n" + string.Join("\n", undetermined));
-        Assert.Empty(NotDeterminable.Keys.Where(code => !RefusalCatalog.Specs.ContainsKey(code)));
+        Assert.DoesNotContain(NotDeterminable.Keys, code => !RefusalCatalog.Specs.ContainsKey(code));
     }
 
     private static string Show(Dictionary<string, int> counts) =>

@@ -72,6 +72,7 @@ public sealed class ParsimonyJobHandler
         var admission = ParsimonyAdmission.CheckReport(input.MeasureId, input.ScopeBinding?.Kind, input.AssessmentIds,
             MeasureRunner.Supports);
         if (admission is not null) return Failure(JobFailureCategory.Semantic, admission.Message);
+        var scope = input.ScopeBinding ?? throw new InvalidDataException("The Parsimony job has no evidence scope.");
         var assessmentIds = input.AssessmentIds ?? [];
         var measureIds = input.MeasureId == ParsimonyAdmission.AllMeasures
             ? ParsimonyAdmission.SupportedMeasureIds() : [input.MeasureId];
@@ -89,7 +90,7 @@ public sealed class ParsimonyJobHandler
         var claimToken = claimed.Job.ClaimToken;
         if (string.IsNullOrWhiteSpace(claimToken))
             return Failure(JobFailureCategory.Infrastructure, "The Parsimony job has no active writer claim.");
-        var reused = _pipeline.TryReuseBaseline(_database, claimed, claimToken, current, input.ScopeBinding,
+        var reused = _pipeline.TryReuseBaseline(_database, claimed, claimToken, current, scope,
             measureIds, assessmentIds, StagesFor(claimed, ParsimonyStages.ReuseSteps(measureIds.Count)),
             cancellationToken);
         if (reused is not null) return Completed(reused.ReportIds, reused.BundleId, assessmentIds);
@@ -158,7 +159,7 @@ public sealed class ParsimonyJobHandler
             File.Copy(facts.Path, factsPath, overwrite: false);
             Enter("evidence");
             using var cache = new FwDataProjectLoader().LoadScratchCache(privateProjectPath);
-            var projection = EvidenceProjectionBuilder.Build(cache, textWords.Projection, input.ScopeBinding,
+            var projection = EvidenceProjectionBuilder.Build(cache, textWords.Projection, scope,
                 cancellationToken);
             var parserDigest = parserIdentity is null ? "unavailable" : EvidenceBundlePipeline.RemoveDigestPrefix(parserIdentity);
             ParserOverlayProjection parserOverlay;
@@ -182,10 +183,10 @@ public sealed class ParsimonyJobHandler
 
             var materialKey = EvidenceBundlePipeline.MaterialKey(EvidenceBundlePipeline.BaselineJobOrigin,
                 "baseline", baseline.Token, facts.ModelFingerprint, parserDigest, facts.SchemaVersion,
-                evidenceDigest.SchemaVersion, input.ScopeBinding, assessmentIds, null);
+                evidenceDigest.SchemaVersion, scope, assessmentIds, null);
             var prepared = _pipeline.Prepare(new EvidenceBundleBuild(bundleId, baseline.Token, "baseline", null,
                 materialKey, factsPath, EvidenceBundlePipeline.RemoveDigestPrefix(facts.OutputSha256), facts.SchemaVersion,
-                facts.ModelFingerprint, workingEvidencePath, evidenceDigest, input.ScopeBinding, measureIds[0],
+                facts.ModelFingerprint, workingEvidencePath, evidenceDigest, scope, measureIds[0],
                 assessmentIds, reportableAssessments, null, root, IncludeDispositionProjection: true,
                 MoreMeasureIds: [.. measureIds.Skip(1)]),
                 (stagingDirectory, finalPlan) => (staging, finalDirectory) = (stagingDirectory, finalPlan), stages,

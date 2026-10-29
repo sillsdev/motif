@@ -431,7 +431,7 @@ public sealed class CompareViewModelTests
             Readings =
             [
                 new ParserReading([
-                    new ParserReadingMorph("a-", "3SG", null, null, false, null),
+                    new ParserReadingMorph("a-", "3SG", string.Empty, null, false, null),
                     new ParserReadingMorph("kul", "eat", "v", null, false, null),
                 ]),
             ],

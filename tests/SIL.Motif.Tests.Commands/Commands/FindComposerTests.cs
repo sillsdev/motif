@@ -61,20 +61,20 @@ public sealed class FindComposerTests
         }
     }
 
-    public static TheoryData<string, string, string> GoalsTheRuleLoses
+    public static TheoryData<string, string> GoalsTheRuleLoses
     {
         get
         {
-            var lost = new TheoryData<string, string, string>();
+            var lost = new TheoryData<string, string>();
             foreach (var row in GoalsByExpectedVerb.Where(row => LostSubjects.Contains((string)row[0])))
-                lost.Add((string)row[0], (string)row[1], (string)row[2]);
+                lost.Add((string)row[1], (string)row[2]);
             return lost;
         }
     }
 
     [Theory(Skip = "The overlap rule does not cover this goal's wording, so it gives a different answer.")]
     [MemberData(nameof(GoalsTheRuleLoses))]
-    public void FindComposerFindsTheComposerForAGoalTheRuleLoses(string subject, string goal, string expected) =>
+    public void FindComposerFindsTheComposerForAGoalTheRuleLoses(string goal, string expected) =>
         Assert.Contains(expected, Run(goal, null).Results.Take(3).Select(result => result.Verb));
 
     [Fact]

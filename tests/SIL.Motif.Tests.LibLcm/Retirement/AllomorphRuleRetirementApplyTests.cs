@@ -27,7 +27,6 @@ using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Host.Assess;
-using SIL.Motif.Commands.Assess;
 using SIL.Motif.Projection.Retirement;
 using SIL.Motif.Host.Parser;
 using Xunit;

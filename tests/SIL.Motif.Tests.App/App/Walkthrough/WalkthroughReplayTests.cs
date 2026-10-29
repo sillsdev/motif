@@ -30,7 +30,6 @@ using SIL.Motif.App.Walkthroughs;
 using SIL.Motif.Commands;
 using SIL.Motif.Commands.Preferences;
 using SIL.Motif.Commands.Store;
-using SIL.Motif.Commands.Requests;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Host;
 using SIL.Motif.Host.Store;

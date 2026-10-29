@@ -463,8 +463,9 @@ public sealed class TraceArgvTests(PristineProjectFixture pristine) : IDisposabl
         var project = pristine.CopyProjectFile();
         var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(project), _managedRoot);
         Assert.True(captured.Succeeded, captured.Refusal?.Message);
-        ConfigureTracedParser(captured.Value!);
-        return (project, captured.Value);
+        var baseline = Assert.IsType<BaselineCaptureResponse>(captured.Value);
+        ConfigureTracedParser(baseline);
+        return (project, baseline);
     }
 
     private void ConfigureTracedParser(BaselineCaptureResponse baseline)

@@ -14,7 +14,6 @@ using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Composition;
 using SIL.Motif.App;
 using SIL.Motif.App.Services;
-using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using SIL.Motif.Commands;
 using SIL.Motif.Commands.Preferences;

@@ -51,8 +51,8 @@ public sealed class WordStripOverlayTests
                 var panel = Panel(window);
                 var strips = Strips(panel).Cast<WordStripToken>().ToArray();
                 Assert.True(strips.Length >= 2);
-                Assert.Empty(panel.GetVisualDescendants().OfType<WordDispositionButtons>()
-                    .Where(buttons => buttons.GetVisualAncestors().OfType<WordStripToken>().Any()));
+                Assert.DoesNotContain(panel.GetVisualDescendants().OfType<WordDispositionButtons>(),
+                    buttons => buttons.GetVisualAncestors().OfType<WordStripToken>().Any());
                 Assert.All(strips, strip => Assert.NotEmpty(strip.GetVisualDescendants().OfType<DispositionFace>()));
 
                 strips[0].FocusWord();
@@ -65,8 +65,8 @@ public sealed class WordStripOverlayTests
                 Assert.Empty(strips[0].GetVisualDescendants().OfType<WordDispositionButtons>());
                 Assert.NotEmpty(strips[0].GetVisualDescendants().OfType<DispositionFace>());
                 Assert.Single(strips[1].GetVisualDescendants().OfType<WordDispositionButtons>());
-                Assert.Single(panel.GetVisualDescendants().OfType<WordDispositionButtons>()
-                    .Where(buttons => buttons.GetVisualAncestors().OfType<WordStripToken>().Any()));
+                Assert.Single(panel.GetVisualDescendants().OfType<WordDispositionButtons>(),
+                    buttons => buttons.GetVisualAncestors().OfType<WordStripToken>().Any());
             }
             finally
             {

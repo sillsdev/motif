@@ -66,7 +66,7 @@ public sealed class StoredAnalysisIncompleteGroupingTests
     {
         var row = Assert.Single(Load(
             Finding("ajoocha", "a1"), Finding("ajoocha", "a2"), Finding("aachwɛ", "a3"), Other()).Rows
-            .Cast<GrammarWarningRowViewModel>().Where(row => row.GroupCode == Code));
+            .Cast<GrammarWarningRowViewModel>(), row => row.GroupCode == Code);
 
         Assert.Equal(3, row.RepeatCount);
         var detail = Assert.Single(row.Details);

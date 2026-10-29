@@ -28,6 +28,7 @@ public static class LangProjectTextsOperationKinds
 {
     public const string Create = "texts/langProject/createTexts";
 
+#pragma warning disable CA2255 // Load-time registration makes these kinds available before parsing and dispatch.
     [ModuleInitializer]
     internal static void Register()
     {
@@ -35,6 +36,7 @@ public static class LangProjectTextsOperationKinds
         OperationHandlerRegistry.Register(Create, new CreateTextHandler());
         OperationSlotRegistry.RegisterOwningCreate(Create, SnapshotFields.LangProjectTexts, false);
     }
+#pragma warning restore CA2255
 }
 
 /// <summary>One occurrence-bearing segment of a created paragraph.</summary>

@@ -26,7 +26,7 @@ namespace SIL.Motif.Tests.App;
 /// </summary>
 [Collection(AvaloniaHeadlessCollection.Name)]
 [Trait("MotifTestLevel", "System")]
-public sealed class ParsimonyStateScreenshots(ITestOutputHelper output)
+public sealed class ParsimonyStateScreenshots
 {
     public static TheoryData<string, int> Sizes => new()
     {

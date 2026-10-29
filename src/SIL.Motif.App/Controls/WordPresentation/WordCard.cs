@@ -149,7 +149,7 @@ public sealed partial class WordCard : UserControl
     // Avalonia keeps a focused card as its list's tab-once element, which would pin the closed card's visuals.
     private void ReleaseTabOnceActiveElement(VisualTreeAttachmentEventArgs e)
     {
-        var containers = this.GetVisualAncestors().Concat(e.Parent is { } parent ?
+        var containers = this.GetVisualAncestors().Concat(e.AttachmentPoint is { } parent ?
             parent.GetSelfAndVisualAncestors() : []);
         foreach (var container in containers.OfType<InputElement>())
             if (ReferenceEquals(KeyboardNavigation.GetTabOnceActiveElement(container), this))

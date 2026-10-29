@@ -55,7 +55,7 @@ public sealed class SettingsPageMatrixScreenshots
                         SettingsTestAccess.AssertReachable(window, page.FindControl<Button>("SettingsClose")!);
                         using var capture = window.CaptureRenderedFrame() ??
                             throw new InvalidOperationException("The registered Settings page did not render.");
-                        capture.Save(Path.Combine(folder, $"settings-page-{slug}-{size}-{zoom}-{theme.Key.ToString().ToLowerInvariant()}.png"),
+                        capture.Save(Path.Combine(folder, $"settings-page-{slug}-{size}-{zoom}-{(theme.Key?.ToString() ?? throw new InvalidOperationException("Theme key is missing.")).ToLowerInvariant()}.png"),
                             Avalonia.Media.Imaging.PngBitmapEncoderOptions.Default);
                     }
                     var themeName = theme == ThemeVariant.Dark ? "dark" : "light";

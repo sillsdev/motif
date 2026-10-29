@@ -1395,7 +1395,8 @@ public sealed class TryWordReviewScreenshots
                     LayoutAssertions.AssertCurrent(inspectorWindow);
                     using var bitmap = inspectorWindow.CaptureRenderedFrame();
                     Assert.NotNull(bitmap);
-                    bitmap.Save(Path.Combine(folder, $"state-try-a-word-steps-inspector-{width}-{theme}.png"));
+                    bitmap.Save(Path.Combine(folder, $"state-try-a-word-steps-inspector-{width}-{theme}.png"),
+                        PngBitmapEncoderOptions.Default);
                 }
                 finally
                 {

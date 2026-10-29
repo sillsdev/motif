@@ -18,6 +18,7 @@ public static class MoMorphDataNoDefaultCompoundingOperationKinds
 {
     public const string Set = "grammar/moMorphData/setNoDefaultCompounding";
 
+#pragma warning disable CA2255 // Load-time registration makes these kinds available before parsing and dispatch.
     [ModuleInitializer]
     internal static void Register()
     {
@@ -25,6 +26,7 @@ public static class MoMorphDataNoDefaultCompoundingOperationKinds
         OperationHandlerRegistry.Register(Set, MoMorphDataNoDefaultCompoundingHandler.Instance);
         OperationSlotRegistry.RegisterScalar(Set, SnapshotFields.MoMorphDataNoDefaultCompounding);
     }
+#pragma warning restore CA2255
 }
 
 /// <summary>The closed <c>after</c> payload <c>{ "value": true|false }</c> of the set operation.</summary>

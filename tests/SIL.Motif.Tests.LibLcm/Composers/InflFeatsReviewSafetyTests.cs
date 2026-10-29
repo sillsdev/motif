@@ -164,7 +164,7 @@ public sealed class InflFeatsReviewSafetyTests : IDisposable
         AssertNativeComplexRequirement(_cache, msa, incumbent, nestedFeature, nestedValues[0]);
         ProposalApplier.Apply(_cache, proposal, dryRun.Anchor, "native-complex-tests");
         var closed = Assert.IsAssignableFrom<IFsClosedValue>(Assert.Single(
-            Get<IMoInflAffMsa>(_cache, msa).InflFeatsOA!.FeatureSpecsOC.Where(spec => spec.FeatureRA.Guid == feature.ToGuid())));
+            Get<IMoInflAffMsa>(_cache, msa).InflFeatsOA!.FeatureSpecsOC, spec => spec.FeatureRA.Guid == feature.ToGuid()));
         Assert.Equal(feature.ToGuid(), closed.FeatureRA.Guid);
         if (edit == "clear-value") Assert.Null(closed.ValueRA);
         else Assert.Equal(values[1].ToGuid(), closed.ValueRA.Guid);
@@ -274,7 +274,7 @@ public sealed class InflFeatsReviewSafetyTests : IDisposable
         var structure = Get<IMoInflAffMsa>(cache, msa).InflFeatsOA!;
         Assert.Equal(expected.Structure.ToGuid(), structure.Guid);
         var complex = Assert.IsAssignableFrom<IFsComplexValue>(
-            Assert.Single(structure.FeatureSpecsOC.Where(spec => spec.Guid == expected.Spec.ToGuid())));
+            Assert.Single(structure.FeatureSpecsOC, spec => spec.Guid == expected.Spec.ToGuid()));
         Assert.Equal(structure.Guid, complex.Owner.Guid);
         Assert.Equal(expected.Feature.ToGuid(), complex.FeatureRA.Guid);
         var definition = Assert.IsAssignableFrom<IFsComplexFeature>(complex.FeatureRA);

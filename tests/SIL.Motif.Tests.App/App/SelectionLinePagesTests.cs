@@ -164,7 +164,7 @@ public sealed class SelectionLinePagesTests
             var oldSource = (IProgressivePageSource)owner.Lines[0].TokenSource!;
             host.IsVisible = false;
             await owner.Pending;
-            Assert.Equal(0, owner.Lines.Count);
+            Assert.Empty(owner.Lines);
             Assert.Equal(0, oldSource.Count);
             Assert.Equal(0, reader.Diagnostics.LiveLineModels);
             Assert.Equal(0, reader.Diagnostics.LiveTokenModels);

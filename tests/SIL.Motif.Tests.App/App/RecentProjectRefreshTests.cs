@@ -63,7 +63,7 @@ public sealed class RecentProjectRefreshTests
                 Assert.Null(workspace.Context.Baseline?.Token);
                 Assert.Contains(workspace.RecentProjects, row => row.ProjectIdentity == files.FirstIdentity.ToString("D"));
                 Assert.DoesNotContain(workspace.RecentProjects, row => row.ProjectIdentity == files.SecondIdentity.ToString("D"));
-                Assert.Empty(lookup.Calls.Where(call => call.OnDispatcher));
+                Assert.DoesNotContain(lookup.Calls, call => call.OnDispatcher);
                 Assert.Single(lookup.Calls, call => call.Path == files.FirstPath);
                 Assert.Single(lookup.Calls, call => call.Path == files.SecondPath);
                 Assert.All(publications, thread => Assert.Equal(dispatcherThread, thread));
@@ -101,7 +101,7 @@ public sealed class RecentProjectRefreshTests
                 await opening;
 
                 Assert.Empty(workspace.RecentProjects);
-                Assert.Empty(lookup.Calls.Where(call => call.OnDispatcher));
+                Assert.DoesNotContain(lookup.Calls, call => call.OnDispatcher);
                 Assert.Single(lookup.Calls);
                 workspace.Project.KnownProjects.Add(files.CopyOf(Guid.NewGuid(), "additional.fwdata"));
                 Assert.Single(workspace.RecentProjects);

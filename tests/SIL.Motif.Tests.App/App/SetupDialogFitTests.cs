@@ -6,7 +6,7 @@ namespace SIL.Motif.Tests.App;
 
 /// <summary>The Setup dialog is sized to the window before it is ever shown, so it never opens wider than the window.</summary>
 [Collection(AvaloniaHeadlessCollection.Name)]
-public sealed class SetupDialogFitTests(AvaloniaHeadlessFixture avalonia)
+public sealed class SetupDialogFitTests
 {
     [Fact]
     public void FittingADialogThatWasNeverMeasuredNarrowsItsSurface()

@@ -25,8 +25,8 @@ public sealed class HelpCatalogTests
     {
         var catalog = HelpCatalog.Load(System.Globalization.CultureInfo.GetCultureInfo("en"));
         var help = Assert.IsType<HelpEntry>(catalog.Find(HelpEntryKind.Command, "apply --all-pending"));
-        var example = Assert.Single(help.HelpPage.Split('\n')
-            .Where(line => line.StartsWith("motif apply --all-pending", StringComparison.Ordinal)));
+        var example = Assert.Single(Assert.IsType<string>(help.HelpPage).Split('\n'),
+            line => line.StartsWith("motif apply --all-pending", StringComparison.Ordinal));
         var usage = Assert.Single(CliVerbCatalog.All
             .Single(verb => verb.CommandName == "apply --all-pending").UsageLines);
 

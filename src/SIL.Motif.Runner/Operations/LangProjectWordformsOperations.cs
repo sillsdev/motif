@@ -28,6 +28,7 @@ public static class LangProjectWordformsOperationKinds
 {
     public const string Create = "analysis/langProject/createWordforms";
 
+#pragma warning disable CA2255 // Load-time registration makes these kinds available before parsing and dispatch.
     [ModuleInitializer]
     internal static void Register()
     {
@@ -35,6 +36,7 @@ public static class LangProjectWordformsOperationKinds
         OperationHandlerRegistry.Register(Create, new CreateWordformHandler());
         OperationSlotRegistry.RegisterOwningCreate(Create, SnapshotFields.LangProjectWordforms, false);
     }
+#pragma warning restore CA2255
 }
 
 /// <summary>The closed payload of <see cref="LangProjectWordformsOperationKinds.Create"/>.</summary>

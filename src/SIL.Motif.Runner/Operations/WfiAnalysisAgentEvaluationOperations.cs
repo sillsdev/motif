@@ -25,6 +25,7 @@ public static class WfiAnalysisAgentEvaluationOperationKinds
 {
     public const string Add = "analysis/wfiAnalysis/addAgentEvaluations";
 
+#pragma warning disable CA2255 // Load-time registration makes these kinds available before parsing and dispatch.
     [ModuleInitializer]
     internal static void Register()
     {
@@ -34,6 +35,7 @@ public static class WfiAnalysisAgentEvaluationOperationKinds
             OperationSlotRegistry.Target(operation), SnapshotFields.WfiAnalysisEvaluations,
             OperationSlotRegistry.MemberKey(AgentEvaluationPayload.Parse(OperationSlotRegistry.After(operation)).AgentId)));
     }
+#pragma warning restore CA2255
 }
 
 /// <summary>The parsed closed payload of <see cref="WfiAnalysisAgentEvaluationOperationKinds.Add"/>.</summary>

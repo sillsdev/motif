@@ -140,7 +140,7 @@ public sealed class Stage3InteractionTests(WordScenes words, LineScenes lines)
             var item = scene.SemanticConstituents(i).Single(c => c.Part == Part.Word);
             scene.Host.Requests.Clear();
             scene.Click(scene.SemanticBounds(item).Center);
-            var request = Assert.Single(scene.Host.Requests.Where(r => r.Action == WordAction.OpenCard));
+            var request = Assert.Single(scene.Host.Requests, r => r.Action == WordAction.OpenCard);
             Assert.Equal(scene.TokenOf(i).PresentationKey, request.Key);
         }
     });

@@ -215,20 +215,20 @@ public sealed class RealParserSwahiliNumeralProofTests(PristineProjectFixture pr
         var invarCreator = creators[invarClass];
         var defaults = proposal.Operations.Where(operation =>
             operation.Kind.Contains("DefaultInflectionClass", StringComparison.Ordinal)).ToArray();
-        var concordDefault = Assert.Single(defaults.Where(operation => operation.Target == fixture.Adjective));
-        var invarDefault = Assert.Single(defaults.Where(operation => operation.Target == fixture.Invariable));
+        var concordDefault = Assert.Single(defaults, operation => operation.Target == fixture.Adjective);
+        var invarDefault = Assert.Single(defaults, operation => operation.Target == fixture.Invariable);
         Assert.Contains(concordCreator, concordDefault.DependsOn.Select(dependency => dependency.OperationId));
         Assert.Contains(invarCreator, invarDefault.DependsOn.Select(dependency => dependency.OperationId));
         foreach (var form in new[] { fixture.NPrefix.Form, fixture.WaPrefix.Form })
         {
-            var edit = Assert.Single(proposal.Operations.Where(operation =>
+            var edit = Assert.Single(proposal.Operations, operation =>
                 operation.Kind == MoAffixFormInflectionClassesOperationKinds.AddRefInflectionClasses &&
-                operation.Target == form));
+                operation.Target == form);
             Assert.Contains(concordCreator, edit.DependsOn.Select(dependency => dependency.OperationId));
         }
-        var zeroClassWrite = Assert.Single(proposal.Operations.Where(operation =>
+        var zeroClassWrite = Assert.Single(proposal.Operations, operation =>
             operation.Kind == MoAffixFormInflectionClassesOperationKinds.AddRefInflectionClasses &&
-            operation.Target == zero.Form));
+            operation.Target == zero.Form);
         Assert.Contains(invarCreator, zeroClassWrite.DependsOn.Select(dependency => dependency.OperationId));
     }
 

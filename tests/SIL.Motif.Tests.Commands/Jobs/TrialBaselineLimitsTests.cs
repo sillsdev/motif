@@ -158,8 +158,8 @@ public sealed class TrialBaselineLimitsTests : IDisposable
         var trial = TrialJobInput.Parse(new JobRepository(database).Get(queued.Value.Job.JobId)!.InputJson);
         Assert.NotNull(trial.BaselineAssessmentIds);
         var repository = new AssessmentRepository(database);
-        var before = Assert.Single(trial.BaselineAssessmentIds.Select(repository.Get)
-            .Where(assessment => assessment.Kind == "ParseTime"));
+        var before = Assert.Single(trial.BaselineAssessmentIds.Select(repository.Get),
+            assessment => assessment.Kind == "ParseTime");
         Assert.Contains(SeededProject.FirstForm, before.Selection.Words);
         Assert.NotNull(before.Invocation);
         return (before, trial);

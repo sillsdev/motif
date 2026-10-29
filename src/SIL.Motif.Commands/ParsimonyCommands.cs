@@ -468,18 +468,19 @@ public static class ParsimonyCommands
             var stored = ReadReport(database, request.ReportId);
             if (!stored.Succeeded) return CommandOutcome<ComposedOperationsResponse>.Refused(stored.Refusal!);
 
+            var report = stored.Value ?? throw new InvalidDataException("A successful report read returned no report.");
             var workspaceKey = ProjectWorkspaceKey.Compute(project);
             var baselines = new BaselineRepository(database);
             var current = baselines.GetCurrentPublished(workspaceKey);
-            var evidenceIsCurrent = current is not null && current.Token == stored.Value!.Inputs.BaselineToken;
+            var evidenceIsCurrent = current is not null && current.Token == report.Inputs.BaselineToken;
             // A Report measured just before an Apply may still confirm its decision was recorded; it stages nothing.
             var measuredBeforeApply = !evidenceIsCurrent &&
-                baselines.GetLatestCaptured(workspaceKey)?.Token == stored.Value!.Inputs.BaselineToken;
+                baselines.GetLatestCaptured(workspaceKey)?.Token == report.Inputs.BaselineToken;
             if (!evidenceIsCurrent && !measuredBeforeApply)
                 return Refused<ComposedOperationsResponse>(ParsimonyRefusalCodes.ReportBaselineMismatch,
                     FailureReason.Refused, ReportBaselineMismatch);
 
-            var matches = stored.Value.Findings.Where(item =>
+            var matches = report.Findings.Where(item =>
                 string.Equals(item.FindingId, request.FindingId, StringComparison.Ordinal)).ToArray();
             if (matches.Length == 0)
                 return Refused<ComposedOperationsResponse>(ParsimonyRefusalCodes.FindingNotInReport,
@@ -493,7 +494,7 @@ public static class ParsimonyCommands
             var finding = matches[0];
 
             return ProposalCommands.ComposeRecordParsimonyDispositionFromFinding(
-                database, project, request, stored.Value, finding, evidenceIsCurrent);
+                database, project, request, report, finding, evidenceIsCurrent);
         });
     }
 

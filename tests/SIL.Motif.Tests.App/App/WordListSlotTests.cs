@@ -191,8 +191,8 @@ public sealed class WordListSlotTests(AvaloniaHeadlessFixture avalonia)
                         .First(ancestor => !string.IsNullOrEmpty(AutomationProperties.GetName(ancestor)));
                     Assert.Equal(caption.Text, AutomationProperties.GetName(cell));
                 }
-                Assert.Empty(wideRows.GetVisualDescendants().OfType<TextBlock>()
-                    .Where(block => block.Classes.Contains("wordPresentationCaption")));
+                Assert.DoesNotContain(wideRows.GetVisualDescendants().OfType<TextBlock>(),
+                    block => block.Classes.Contains("wordPresentationCaption"));
             }
             finally
             {

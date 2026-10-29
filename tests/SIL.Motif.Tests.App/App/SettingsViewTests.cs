@@ -1426,8 +1426,8 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                     ToolTip.SetIsOpen(zoom, true);
                     PageScreenshots.Settle(window);
                     Assert.True(ToolTip.GetIsOpen(zoom));
-                    var tip = Assert.Single(window.GetVisualDescendants().OfType<ToolTip>()
-                        .Where(candidate => candidate.IsEffectivelyVisible));
+                    var tip = Assert.Single(window.GetVisualDescendants().OfType<ToolTip>(),
+                        candidate => candidate.IsEffectivelyVisible);
                     var captureRoot = TopLevel.GetTopLevel(tip) ?? window;
                     using var frame = captureRoot.CaptureRenderedFrame() ??
                         throw new InvalidOperationException("No dark tooltip frame rendered.");

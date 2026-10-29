@@ -80,7 +80,8 @@ internal static class AiPageTextLayoutChecks
                     using var frame = window.CaptureRenderedFrame() ??
                         throw new InvalidOperationException("The AI page did not render.");
                     frame.Save(Path.Combine(folder,
-                        $"ai-text-{destination}-{width}-{height}-{zoom}-{(dark ? "dark" : "light")}.png"));
+                        $"ai-text-{destination}-{width}-{height}-{zoom}-{(dark ? "dark" : "light")}.png"),
+                        Avalonia.Media.Imaging.PngBitmapEncoderOptions.Default);
                 }
                 LayoutAssertions.AssertCurrent(page);
             }

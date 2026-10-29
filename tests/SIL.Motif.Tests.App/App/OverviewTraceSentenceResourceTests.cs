@@ -340,7 +340,7 @@ public sealed class OverviewTraceSentenceResourceTests
             "Parser time", "} overall", "overall time not recorded", "got furthest", "source records",
             "\"Parsed", "\"guessed\"", "\"1 attempt\"", "? \"failed\" : \"succeeded\"", "all recorded steps",
         ];
-        Assert.Empty(fragments.Where(fragment => code.Contains(fragment, StringComparison.Ordinal)));
+        Assert.DoesNotContain(fragments, fragment => code.Contains(fragment, StringComparison.Ordinal));
     }
 
     [Theory]
@@ -416,7 +416,7 @@ public sealed class OverviewTraceSentenceResourceTests
             "Reason not recorded",
             "Evaluator details",
         ];
-        Assert.Empty(fragments.Where(fragment => code.Contains(fragment, StringComparison.Ordinal)));
+        Assert.DoesNotContain(fragments, fragment => code.Contains(fragment, StringComparison.Ordinal));
     }
 
     [Fact]
@@ -434,7 +434,7 @@ public sealed class OverviewTraceSentenceResourceTests
             "\"Not checked yet\"", "\"Warnings\"", "could not read this project", "\"Same outcome\"", "\"Kept\"",
             "\"can't read\"", "of the words in your Selection", "No places in",
         ];
-        Assert.Empty(fragments.Where(fragment => code.Contains(fragment, StringComparison.Ordinal)));
+        Assert.DoesNotContain(fragments, fragment => code.Contains(fragment, StringComparison.Ordinal));
     }
 
     private static WordTraceResponse TraceWith(long? parserSteps, params TraceStep[] children) => new(

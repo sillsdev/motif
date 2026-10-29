@@ -3,6 +3,7 @@ using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Headless;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
@@ -75,6 +76,42 @@ public sealed class WordPresentationTests
             {
                 window.Close();
             }
+        }, TimeSpan.FromSeconds(15));
+    }
+
+    [Fact]
+    public void DetachingCardClearsItsAncestorsTabOnceActiveElement()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(() =>
+        {
+            var card = new WordCard();
+            var parent = new StackPanel { Children = { card } };
+            var window = new MotifTestWindow { Content = parent };
+            VisualTreeAttachmentEventArgs? detached = null;
+            card.DetachedFromVisualTree += (_, args) => detached = args;
+            try
+            {
+                window.Show();
+                KeyboardNavigation.SetTabOnceActiveElement(parent, card);
+                KeyboardNavigation.SetTabOnceActiveElement(window, card);
+                Assert.Same(card, KeyboardNavigation.GetTabOnceActiveElement(parent));
+                Assert.Same(card, KeyboardNavigation.GetTabOnceActiveElement(window));
+
+                parent.Children.Remove(card);
+
+                Assert.NotNull(detached);
+                Assert.Same(parent, detached.AttachmentPoint);
+                var legacyParent = typeof(VisualTreeAttachmentEventArgs).GetProperty("Parent");
+                Assert.NotNull(legacyParent);
+                Assert.Same(detached.AttachmentPoint, legacyParent.GetValue(detached));
+                Assert.Null(KeyboardNavigation.GetTabOnceActiveElement(parent));
+                Assert.Null(KeyboardNavigation.GetTabOnceActiveElement(window));
+            }
+            finally
+            {
+                window.Close();
+            }
+            return Task.CompletedTask;
         }, TimeSpan.FromSeconds(15));
     }
 

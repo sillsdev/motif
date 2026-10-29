@@ -28,7 +28,9 @@ public sealed class ActivityEffectivenessTests
         await MotifMcpServer.CallAsync(context, MotifMcpServer.Expose(ToolProfile.Builtin), "motif_add_phoneme",
             Args(("project", context.ProjectPath)), CancellationToken.None);
 
-        Assert.Equal(["compose-author-phoneme"], Assert.Single(log.Entries).Composers);
+        var composers = Assert.Single(log.Entries).Composers;
+        Assert.NotNull(composers);
+        Assert.Equal(["compose-author-phoneme"], composers);
     }
 
     [Fact]
@@ -46,7 +48,9 @@ public sealed class ActivityEffectivenessTests
         await MotifMcpServer.CallAsync(context, MotifMcpServer.Expose(ToolProfile.Builtin), "motif_compose_batch",
             Args(("project", context.ProjectPath), ("draft", "d"), ("intents", intents)), CancellationToken.None);
 
-        Assert.Equal(["compose-author-phoneme", "compose-author-natural-class"], Assert.Single(log.Entries).Composers);
+        var composers = Assert.Single(log.Entries).Composers;
+        Assert.NotNull(composers);
+        Assert.Equal(["compose-author-phoneme", "compose-author-natural-class"], composers);
     }
 
     [Fact]

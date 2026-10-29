@@ -11,7 +11,7 @@ using Xunit;
 namespace SIL.Motif.Tests.App;
 
 [Collection(AvaloniaHeadlessCollection.Name)]
-public sealed class MoreOptionsTests(AvaloniaHeadlessFixture avalonia)
+public sealed class MoreOptionsTests
 {
     private static WritingSystemDisplay Ws(string id, WritingSystemKind kind) =>
         new(id, id, id.ToUpperInvariant(), kind, 0, true, "Sans", "", false, new Dictionary<string, double> { ["Normal"] = 11 });

@@ -46,7 +46,7 @@ public sealed class FontPackagePinnedFixtureTests
             Assert.Equal("725e6cd58be6495e0e53f367608db36d9f818498bccba739d742892c5a3d8151", descriptor.ArchiveSha256);
             Assert.Equal(descriptor.ArchiveBytes, bytes.Length);
             Assert.Equal(descriptor.ArchiveSha256, Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant());
-            Assert.Equal(1, package.Faces.Count);
+            Assert.Single(package.Faces);
             Face(package.Faces[0], "AbyssinicaSIL-2.300/AbyssinicaSIL-Regular.ttf", 268264,
                 "f0e4fb92ee26967a3e6462342494956a3798b952345f917e1388913bb191cf2b",
                 "Abyssinica SIL", "Version 2.300", "Regular", 400, false, 192);

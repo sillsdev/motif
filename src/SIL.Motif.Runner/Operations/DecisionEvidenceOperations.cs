@@ -22,6 +22,7 @@ public static class DecisionEvidenceOperationKinds
 {
     public const string Record = "analysis/decisionEvidence/record";
 
+#pragma warning disable CA2255 // Load-time registration makes these kinds available before parsing and dispatch.
     [ModuleInitializer]
     internal static void Register()
     {
@@ -30,6 +31,7 @@ public static class DecisionEvidenceOperationKinds
         OperationSlotRegistry.Register(Record, operation => new OperationSlot(
             OperationSlotRegistry.Target(operation), SnapshotFields.DecisionEvidenceRecorded));
     }
+#pragma warning restore CA2255
 }
 
 /// <summary>The closed, empty payload of <see cref="DecisionEvidenceOperationKinds.Record"/>.</summary>

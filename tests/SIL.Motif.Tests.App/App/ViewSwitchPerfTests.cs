@@ -214,7 +214,8 @@ public sealed class ViewSwitchPerfTests
         var jobs = new Stopwatch();
         var iterations = 0;
         var layoutUpdates = 0;
-        var manager = Avalonia.VisualTree.VisualExtensions.GetLayoutManager(window);
+        var manager = Avalonia.VisualTree.VisualExtensions.GetLayoutManager(window)
+            ?? throw new InvalidOperationException("The window has no layout manager.");
         EventHandler onLayout = (_, _) => layoutUpdates++;
         manager.LayoutUpdated += onLayout;
         while (MotifTrace.CurrentSwitch is not null && clock.Elapsed < TimeSpan.FromSeconds(10))

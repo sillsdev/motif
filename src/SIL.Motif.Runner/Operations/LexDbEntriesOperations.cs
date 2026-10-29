@@ -21,6 +21,7 @@ public static class LexDbEntriesOperationKinds
 {
     public const string Create = "lexical/lexDb/createEntries";
 
+#pragma warning disable CA2255 // Load-time registration makes these kinds available before parsing and dispatch.
     [ModuleInitializer]
     internal static void Register()
     {
@@ -35,4 +36,5 @@ public static class LexDbEntriesOperationKinds
             }, false, false, Array.Empty<string>(), "LexEntry"));
         OperationSlotRegistry.RegisterOwningCreate(Create, SnapshotFields.LexDbEntries, false);
     }
+#pragma warning restore CA2255
 }

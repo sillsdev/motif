@@ -380,8 +380,8 @@ public sealed class ProposalDifferenceCommandsTests : IDisposable
         Assert.True(bestEffort.Succeeded, bestEffort.Refusal?.Message);
         Assert.Equal("no parser", bestEffort.Value!.BaselineWarning);
         Assert.Single(new JobRepository(fixture.Database)
-            .ListByProjectAndKind(ProjectWorkspaceKey.Compute(fixture.Project), TrialJobHandler.TrialKind)
-            .Where(job => job.JobId != "trial-1"));
+            .ListByProjectAndKind(ProjectWorkspaceKey.Compute(fixture.Project), TrialJobHandler.TrialKind),
+            job => job.JobId != "trial-1");
     }
 
     [Theory]
@@ -401,9 +401,9 @@ public sealed class ProposalDifferenceCommandsTests : IDisposable
         Assert.False(outcome.Succeeded);
         Assert.Null(outcome.Value);
         Assert.Equal(FailureReason.Cancelled, outcome.Refusal!.Reason);
-        Assert.Empty(new JobRepository(fixture.Database)
-            .ListByProjectAndKind(ProjectWorkspaceKey.Compute(fixture.Project), TrialJobHandler.TrialKind)
-            .Where(job => job.JobId != "trial-1"));
+        Assert.DoesNotContain(new JobRepository(fixture.Database)
+            .ListByProjectAndKind(ProjectWorkspaceKey.Compute(fixture.Project), TrialJobHandler.TrialKind),
+            job => job.JobId != "trial-1");
     }
 
     [Fact]

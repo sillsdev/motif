@@ -106,8 +106,8 @@ public sealed class TryWordHLayoutTests
                 // A very short window keeps the full analysis rows, so there the row starts in view and scrolls the rest.
                 Assert.True(height < 600 || origin.Y + first.Bounds.Height <= presenter.Bounds.Height + fontMetricSlack,
                     $"First attempt bottom {origin.Y + first.Bounds.Height} exceeds viewport {presenter.Bounds.Height}.");
-                Assert.Single(page.GetVisualDescendants().OfType<TextBlock>().Where(block =>
-                    block.IsEffectivelyVisible && block.Text?.StartsWith("Parsed", StringComparison.Ordinal) == true));
+                Assert.Single(page.GetVisualDescendants().OfType<TextBlock>(), block =>
+                    block.IsEffectivelyVisible && block.Text?.StartsWith("Parsed", StringComparison.Ordinal) == true);
                 var analyses = panel.FindControl<ProgressiveItemsControl>("TryWordParserAnalysesItems")!;
                 Assert.Same(model.Trace.Analyses, analyses.FullItemsSource);
                 var details = Named<Expander>(page, "Full parser analysis details");
@@ -420,7 +420,7 @@ public sealed class TryWordHLayoutTests
             {
                 using var bitmap = window.CaptureRenderedFrame();
                 Assert.NotNull(bitmap);
-                bitmap.Save(Path.Combine(folder, name + ".png"));
+                bitmap.Save(Path.Combine(folder, name + ".png"), Avalonia.Media.Imaging.PngBitmapEncoderOptions.Default);
             }
         }, TimeSpan.FromMinutes(5));
     }
