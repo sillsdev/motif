@@ -437,7 +437,7 @@ public static class AssessCommand
                         StringComparer.Ordinal);
                     objectTimings = batchStatistics.ObjectTimings.Select(row => new AssessmentObjectTiming(
                         row.Kind, row.Key, row.IdentityQuality, row.Direction, row.Object, row.Word,
-                        row.Attempts, row.Passes, row.ElapsedNs)).ToArray();
+                        row.Attempts, row.Passes, row.ElapsedNs) { WorkSteps = row.WorkSteps }).ToArray();
                     timingEvidence = new AssessmentTimingEvidence(batchStatistics.Aggregates,
                         batchStatistics.DetailWordCount, batchStatistics.DetailComplete, batchStatistics.TotalObjectTimingRows)
                     {

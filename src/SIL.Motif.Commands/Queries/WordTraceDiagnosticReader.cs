@@ -89,12 +89,13 @@ internal static class TraceDiagnosticProjection
     }
     private static IReadOnlyList<TraceEffort> BuildEffort(PanGlossTraceDetails details) =>
         details.Categories
-            .Where(category => category.Attempts != 0 || category.Work != 0 || category.Outputs != 0 || category.Uses != 0 || category.NotApplied != 0 || category.NoRoot != 0 || category.SurfaceMismatch != 0 || category.SelfElapsedNs is > 0)
+            .Where(category => category.Attempts != 0 || category.Work != 0 || category.Outputs != 0 || category.Uses != 0 || category.NotApplied != 0 || category.NoRoot != 0 || category.SurfaceMismatch != 0 || category.SelfElapsedNs is > 0 || category.WorkSteps is > 0 || category.Kind == "unattributed")
             .Select(category => new TraceEffort(
                 KindName(category.Kind), category.Attempts, category.Outputs, category.NotApplied, category.NoRoot,
                 category.SurfaceMismatch, category.Uses, category.SelfElapsedNs / 1_000_000.0)
             {
                 Work = category.Work,
+                WorkSteps = category.WorkSteps,
             })
             .ToArray();
 
@@ -106,6 +107,7 @@ internal static class TraceDiagnosticProjection
         "rootIndex" => "Root lookups",
         "guesser" => "Guesser",
         "overlay" => "Supplied roots",
+        "unattributed" => "Unattributed",
         _ => kind,
     };
 

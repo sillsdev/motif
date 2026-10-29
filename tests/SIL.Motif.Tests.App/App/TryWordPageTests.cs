@@ -492,10 +492,9 @@ public sealed class TryWordPageTests
     public TryWordPageTests(AvaloniaHeadlessFixture avalonia) => _avalonia = avalonia;
 
     [Theory]
-    [InlineData(1800000, 1, 0.9, 0.5, "50%")]
-    [InlineData(400000, 0, 0.3, 0.75, "75%")]
-    public void EarlierTimingUsesTheResponsesPreciseShare(long ns, int roundedMs, double selfMs,
-        double share, string expected)
+    [InlineData(10, 5, "50%")]
+    [InlineData(20, 15, "75%")]
+    public void EarlierWorkUsesTheWordsTotalForShares(long total, long steps, string expected)
     {
         RunOnAvalonia(async () =>
         {
@@ -506,22 +505,49 @@ public sealed class TryWordPageTests
             fake.TraceWordCompletesWith(DogsTrace());
             fake.TimingCompletesWith(DogsTiming() with
             {
-                Words = [new TimingWordRow("dogs", roundedMs, TimingCompletion.Finished) { ElapsedNs = ns, Origin = DogsOrigin }],
-                Aggregates = [new TimingAggregateRow("same-label-key", "Plural", selfMs, share, 1)],
+                Words = [new TimingWordRow("dogs", 0, TimingCompletion.Finished) { WorkSteps = total, Origin = DogsOrigin }],
+                WorkStepAggregates = [new TimingWorkAggregate("rule", "Plural", "", steps, false)],
             });
+            context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.UtcNow, false));
+            context.TryWord("dogs");
+            await page.Trace.TryCommand.ExecutionTask!;
+            Assert.Equal(expected, Assert.Single(page.EarlierRuleTimes).ShareText);
+            Assert.Null(Assert.Single(page.EarlierRuleTimes).KindTip);
+        });
+    }
+
+    [Fact]
+    public void EarlierParseShowsRuleWorkStepsAndUnattributedRemainder()
+    {
+        RunOnAvalonia(async () =>
+        {
+            using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
+            var (context, fake) = NewContext();
+            context.ProjectPath = context.Assess.ProjectPath = ProjectPath;
+            var page = new TryWordPageModel(context);
+            fake.TraceWordCompletesWith(DogsTrace());
+            var json = System.Text.Json.JsonSerializer.SerializeToNode(DogsTiming())!;
+            json["Words"]![0]!["WorkSteps"] = 19;
+            json["WorkStepAggregates"] = System.Text.Json.Nodes.JsonNode.Parse("""
+                [{"Key":"plural","Name":"Plural","Kind":"morph_rule","WorkSteps":12,"IsUnattributed":false},
+                 {"Key":"unattributed","Name":"Unattributed","Kind":"unattributed","WorkSteps":7,"IsUnattributed":true}]
+                """);
+            fake.TimingCompletesWith(System.Text.Json.JsonSerializer.Deserialize<TimingResponse>(json.ToJsonString())!);
             context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.UtcNow, false));
 
             context.TryWord("dogs");
             await page.Trace.TryCommand.ExecutionTask!;
 
-            Assert.Equal(expected, Assert.Single(page.EarlierRuleTimes).ShareText);
-            Assert.Null(Assert.Single(page.EarlierRuleTimes).KindTip);
-            Assert.DoesNotContain("Not attributed", page.EarlierRuleTimes.Select(row => row.Rule));
+            Assert.Equal(2, page.EarlierRuleTimes.Count);
+            Assert.Equal("12 work steps", page.EarlierRuleTimes.Single(row => row.Rule == "Plural").TimeText);
+            Assert.Equal("7 work steps", page.EarlierRuleTimes.Single(row => row.IsOtherTime).TimeText);
+            Assert.All(page.EarlierRuleTimes, row => Assert.DoesNotMatch(@"\bms\b|millisecond", row.TimeText));
+            Assert.DoesNotMatch(@"\bms\b|millisecond", page.EarlierTimingSource);
         });
     }
 
     [Fact]
-    public void EarlierTimingReportsOnlyTheRecordedResidualAndOverrun()
+    public void EarlierParseDoesNotSubstituteTimeForMissingWorkSteps()
     {
         RunOnAvalonia(async () =>
         {
@@ -529,20 +555,12 @@ public sealed class TryWordPageTests
             context.ProjectPath = context.Assess.ProjectPath = ProjectPath;
             var page = new TryWordPageModel(context);
             fake.TraceWordCompletesWith(DogsTrace());
-            fake.TimingCompletesWith(DogsTiming() with
-            {
-                Attribution = new WordTimeAttribution(1, 10, 4, 2, 0.2, 0.7, true),
-            });
+            fake.TimingCompletesWith(DogsTiming() with { WorkStepAggregates = [] });
             context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.UtcNow, false));
-
             context.TryWord("dogs");
             await page.Trace.TryCommand.ExecutionTask!;
-
-            Assert.Equal("2 ms", page.EarlierRuleTimes.Single(row => row.IsOtherTime).TimeText);
-            Assert.Equal("Morphological rules", page.EarlierRuleTimes.Single(row => !row.IsOtherTime).KindTip);
-            Assert.Null(page.EarlierRuleTimes.Single(row => row.IsOtherTime).KindTip);
-            Assert.Contains("0.7 ms", page.EarlierOverrunText);
-            Assert.DoesNotContain("round", page.EarlierOverrunText, StringComparison.OrdinalIgnoreCase);
+            Assert.False(page.HasEarlierTiming);
+            Assert.Empty(page.EarlierRuleTimes);
         });
     }
 
@@ -1368,7 +1386,8 @@ public sealed class TryWordPageTests
             fake.TimingCompletesWith(new TimingResponse("assessment-1", "selected", "rule", 1, 10, 10, [],
                 [new TimingAggregateRow("Plural", "Plural", 4, 0.4, 1) { Kind = "morph_rule" }], [])
             {
-                Words = [new TimingWordRow("dogs", 10, TimingCompletion.Finished) { ElapsedNs = 10_000_000, Origin = DogsOrigin }],
+                Words = [new TimingWordRow("dogs", 10, TimingCompletion.Finished) { ElapsedNs = 10_000_000, WorkSteps = 10, Origin = DogsOrigin }],
+                WorkStepAggregates = [new("plural", "Plural", "morph_rule", 4, false), new("unattributed", "Unattributed", "unattributed", 6, true)],
                 Attribution = new WordTimeAttribution(1, 10, 4, 6, 0.6, 0, false),
             });
             context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.UtcNow, false));
@@ -1376,10 +1395,10 @@ public sealed class TryWordPageTests
             context.TryWord("dogs");
             await page.Trace.TryCommand.ExecutionTask!;
 
-            // The stored share is of the word's whole parse time in that parse, not of the rules' recorded time.
+            // The share uses the word's total work, including work outside object scopes.
             Assert.True(page.HasEarlierTiming);
-            Assert.Equal("Share of 10 ms", page.EarlierShareHeader);
-            Assert.Equal([("Plural", "Morphological rules", "4 ms", "40%"), ("Not attributed", "", "6 ms", "60%")],
+            Assert.Equal("Share of 10 work steps", page.EarlierShareHeader);
+            Assert.Equal([("Plural", "Morphological rules", "4 work steps", "40%"), ("Not attributed", "", "6 work steps", "60%")],
                 page.EarlierRuleTimes.Select(time => (time.Rule, time.KindLabel, time.TimeText, time.ShareText)));
             Assert.Contains("dogs", page.RecentWords);
             var request = Assert.Single(fake.TimingRequests);
@@ -1404,7 +1423,8 @@ public sealed class TryWordPageTests
             fake.TimingCompletesWith(new TimingResponse("assessment-1", "selected", "rule", 1, 10, 10, [],
                 [new TimingAggregateRow("Plural", "Plural", 4, 0.4, 1)], [])
             {
-                Words = [new TimingWordRow("dogs", 10, TimingCompletion.Finished) { Origin = DogsOrigin }],
+                Words = [new TimingWordRow("dogs", 10, TimingCompletion.Finished) { WorkSteps = 4, Origin = DogsOrigin }],
+                WorkStepAggregates = [new("plural", "Plural", "morph_rule", 4, false)],
             });
 
             await context.PublishCurrentEvidenceAsync(new CurrentEvidenceSnapshot("one", DateTimeOffset.UtcNow, null,
@@ -1412,7 +1432,7 @@ public sealed class TryWordPageTests
             context.TryWord("dogs");
             await page.Trace.TryCommand.ExecutionTask!;
 
-            Assert.Equal("4 ms", Assert.Single(page.EarlierRuleTimes).TimeText);
+            Assert.Equal("4 work steps", Assert.Single(page.EarlierRuleTimes).TimeText);
             Assert.Equal("assessment-1", Assert.Single(fake.TimingRequests).AssessmentId);
         });
     }
@@ -1436,8 +1456,8 @@ public sealed class TryWordPageTests
             await page.Trace.TryCommand.ExecutionTask!;
 
             var when = parsedAt.ToLocalTime().ToString("ddd d MMM, h:mm tt", CultureInfo.CurrentCulture);
-            Assert.Equal($"Time from the parse of {when}", page.EarlierTimingTitle);
-            Assert.Equal("Not from this traced search. In that parse dogs took 10 ms; each rule's time covers that parse's " +
+            Assert.Equal($"Work from the parse of {when}", page.EarlierTimingTitle);
+            Assert.Equal("Not from this traced search. In that parse dogs took 10 work steps; each rule's work covers that parse's " +
                 "whole search for the word, including attempts that stopped.",
                 page.EarlierTimingSource);
 
@@ -1455,7 +1475,7 @@ public sealed class TryWordPageTests
                 Assert.DoesNotContain(texts, text => text is not null &&
                     (text.Contains("time", StringComparison.OrdinalIgnoreCase) || text.EndsWith('%')));
                 var earlier = Assert.Single(window.GetLogicalDescendants().OfType<Border>(), border =>
-                    AutomationProperties.GetName(border) == "Time from an earlier parse");
+                    AutomationProperties.GetName(border) == "Work from an earlier parse");
                 Assert.True(earlier.IsEffectivelyVisible);
             }
             finally
@@ -1531,7 +1551,8 @@ public sealed class TryWordPageTests
     private static TimingResponse DogsTiming() => new("assessment-parse", "selected", "rule", 1, 10, 10, [],
         [new TimingAggregateRow("Plural", "Plural", 4, 0.4, 1) { Kind = "morph_rule" }], [])
     {
-        Words = [new TimingWordRow("dogs", 10, TimingCompletion.Finished) { ElapsedNs = 10_000_000, Origin = DogsOrigin }],
+        Words = [new TimingWordRow("dogs", 10, TimingCompletion.Finished) { ElapsedNs = 10_000_000, WorkSteps = 10, Origin = DogsOrigin }],
+        WorkStepAggregates = [new("plural", "Plural", "morph_rule", 4, false), new("unattributed", "Unattributed", "unattributed", 6, true)],
     };
 
     [Fact]
@@ -1751,7 +1772,7 @@ public sealed class TryWordPageTests
 
             Assert.False(page.HasEarlierTiming);
             Assert.Empty(page.EarlierRuleTimes);
-            Assert.Equal("8.0 ms", Assert.Single(page.Trace.Effort).Time);
+            Assert.Equal("work steps not recorded", Assert.Single(page.Trace.Effort).Time);
         });
     }
 

@@ -229,17 +229,13 @@ public static class PanGlossBatchStatisticsReader
         FROM fact AS f
         JOIN word AS w ON w.word_id = f.word_id
         JOIN object AS o ON o.object_id = f.object_id
-        WHERE o.kind <> 'unattributed'
         GROUP BY w.form, o.key, o.identity_quality, o.kind, o.label, f.direction
         """;
 
-    internal const string ObjectTimingsQuery = """
-        SELECT w.form, o.key, o.identity_quality, o.kind, o.label, f.direction,
-               SUM(f.attempts), SUM(f.self_time_ns)
-        """ + "\n" + ObjectTimingsFrom + """
-
-        ORDER BY w.form, o.kind, o.key, f.direction;
-        """;
+    private const string ObjectTimingsQuery =
+        "SELECT w.form, o.key, o.identity_quality, o.kind, o.label, f.direction, " +
+        "SUM(f.attempts), SUM(f.self_time_ns), SUM(f.work_steps)\n" + ObjectTimingsFrom +
+        "\nORDER BY w.form, o.kind, o.key, f.direction;";
 
     private static (IReadOnlyList<T> Rows, long Total) ReadObjectTimings<T>(
         SqliteConnection connection, IReadOnlyDictionary<string, PanGlossWordStatistics> words,
@@ -271,13 +267,16 @@ public static class PanGlossBatchStatisticsReader
         var kind = reader.GetString(3);
         var label = reader.GetString(4);
         var direction = reader.GetString(5);
-        if (string.IsNullOrWhiteSpace(key) || !IsKnownIdentityQuality(identityQuality) || !IsKnownKind(kind) ||
-            !IsKnownDirection(direction) || !words.ContainsKey(word))
+        var unattributed = kind == "unattributed" && key == "unattributed" &&
+            identityQuality == "synthetic" && direction == "unattributed";
+        if (string.IsNullOrWhiteSpace(key) || !IsKnownIdentityQuality(identityQuality) ||
+            (!unattributed && (!IsKnownKind(kind) || !IsKnownDirection(direction))) || !words.ContainsKey(word))
             throw new InvalidDataException("The batch statistics cache contains an invalid object fact row.");
         if (string.IsNullOrWhiteSpace(label)) label = key;
         int? attempts = SupportsCounter(kind, "attempts") ? ReadCounter(reader, 6, "object attempts", word) : null;
         long? nanoseconds = SupportsTimer(kind, direction) ? ReadElapsedNs(reader, 7, "object", word) : null;
-        return new PanGlossObjectTiming(kind, key, identityQuality, direction, label, word, attempts, null, nanoseconds);
+        return new PanGlossObjectTiming(kind, key, identityQuality, direction, label, word, attempts, null, nanoseconds)
+        { WorkSteps = reader.IsDBNull(8) ? null : ReadWork(reader, 8, word) };
     }
 
     private static long CountObjectTimings(SqliteConnection connection)

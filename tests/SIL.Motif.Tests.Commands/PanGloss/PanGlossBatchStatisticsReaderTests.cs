@@ -35,6 +35,35 @@ public sealed class PanGlossBatchStatisticsReaderTests : IDisposable
     }
 
     [Fact]
+    public void ObjectAndUnattributedWorkStepsReconcileToTheWordTotal()
+    {
+        var path = Path.Combine(_root, "work.sqlite");
+        WriteCache(path);
+        using (var connection = new SqliteConnection($"Data Source={path};Pooling=False"))
+        {
+            connection.Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = """
+                ALTER TABLE word ADD COLUMN work INTEGER;
+                UPDATE word SET work = 19;
+                UPDATE fact SET work_steps = 0;
+                UPDATE fact SET work_steps = 12 WHERE object_id = 1 AND direction = 'analysis';
+                INSERT INTO object VALUES (4, 'unattributed', 'unattributed', 'Unattributed', 'synthetic');
+                INSERT INTO fact VALUES (1, 4, 'unattributed', 0, 0, 7);
+                """;
+            command.ExecuteNonQuery();
+        }
+
+        var result = PanGlossBatchStatisticsReader.ReadBounded(path, ["word"], 1);
+
+        Assert.Equal(19, result.Words["word"].WorkSteps);
+        Assert.Equal(19, result.ObjectTimings.Sum(row => row.WorkSteps));
+        Assert.Equal(7, Assert.Single(result.ObjectTimings, row => row.Kind == "unattributed").WorkSteps);
+        Assert.Equal(12, Assert.Single(result.ObjectTimings,
+            row => row.Key.Contains("entry-a", StringComparison.Ordinal) && row.Direction == "analysis").WorkSteps);
+    }
+
+    [Fact]
     public void KeepsTheFirstRowsInQueryOrderAndCountsTheRestWhenCapped()
     {
         var path = Path.Combine(_root, "capped.sqlite");
@@ -60,7 +89,7 @@ public sealed class PanGlossBatchStatisticsReaderTests : IDisposable
             connection.Open();
             using var command = connection.CreateCommand();
             command.CommandText = "INSERT INTO word VALUES (2, 'slow', 900000, 3, 0); " +
-                "INSERT INTO fact VALUES (2, 1, 'analysis', 7, 400000);";
+                "INSERT INTO fact (word_id, object_id, direction, attempts, self_time_ns) VALUES (2, 1, 'analysis', 7, 400000);";
             command.ExecuteNonQuery();
         }
 
@@ -89,7 +118,7 @@ public sealed class PanGlossBatchStatisticsReaderTests : IDisposable
             command.CommandText = "ALTER TABLE word ADD COLUMN work INTEGER; " +
                 "UPDATE word SET work = 100 WHERE word_id = 1; " +
                 "INSERT INTO word VALUES (2, 'slow', 900000, 3, 0, 1); " +
-                "INSERT INTO fact VALUES (2, 1, 'analysis', 7, 400000);";
+                "INSERT INTO fact (word_id, object_id, direction, attempts, self_time_ns) VALUES (2, 1, 'analysis', 7, 400000);";
             command.ExecuteNonQuery();
         }
 
@@ -111,7 +140,7 @@ public sealed class PanGlossBatchStatisticsReaderTests : IDisposable
                 INSERT INTO object VALUES
                     (4, 'ABCDEFAB-0000-4000-8000-000000000001', 'morph_rule', 'First', 'authored'),
                     (5, 'abcdefab-0000-4000-8000-000000000001', 'morph_rule', 'Second', 'authored');
-                INSERT INTO fact VALUES (1, 4, 'analysis', 3, 200), (1, 5, 'analysis', 4, 300);
+                INSERT INTO fact (word_id, object_id, direction, attempts, self_time_ns) VALUES (1, 4, 'analysis', 3, 200), (1, 5, 'analysis', 4, 300);
                 """;
             command.ExecuteNonQuery();
         }
@@ -190,14 +219,14 @@ public sealed class PanGlossBatchStatisticsReaderTests : IDisposable
                 object_id INTEGER NOT NULL,
                 direction TEXT NOT NULL,
                 attempts INTEGER NOT NULL,
-                self_time_ns INTEGER);
+                self_time_ns INTEGER, work_steps INTEGER);
             INSERT INTO cache_identity VALUES (1, $version);
             INSERT INTO word VALUES (1, 'word', 725001, 11, 2);
             INSERT INTO object VALUES
                 (1, 'lex_entry:entry-a#00000000-0000-4000-8000-000000000001@Main', 'lex_entry', 'Shared label', 'authored'),
                 (2, 'lex_entry:entry-b#00000000-0000-4000-8000-000000000002@Main', 'lex_entry', 'Shared label', 'authored'),
                 (3, 'endo#', 'morph_rule', '', 'authored');
-            INSERT INTO fact VALUES
+            INSERT INTO fact (word_id, object_id, direction, attempts, self_time_ns) VALUES
                 (1, 1, 'analysis', 4, 180000),
                 (1, 2, 'analysis', 5, 220000),
                 (1, 1, 'synthesis', 6, NULL),

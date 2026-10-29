@@ -16,6 +16,9 @@ public sealed record AssessmentObjectTiming(
     [System.Text.Json.Serialization.JsonIgnore]
     public string? Scope { get; init; }
 
+    /// <summary>Work-budget reservations attributed to this object, when recorded.</summary>
+    public long? WorkSteps { get; init; }
+
     /// <summary>The recorded self time in milliseconds, or null when that kind and direction are not timed.</summary>
     public double? ElapsedMs => ElapsedNs is { } elapsed ? elapsed / 1_000_000d : null;
 }

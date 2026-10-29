@@ -162,13 +162,37 @@ public static class TimingCommand
                 SourceLastWriteUtc = measuredSave,
                 CurrentProjectIsStale = currentEvidence.Freshness == EvidenceFreshness.Stale,
                 Attribution = aggregates.Attribution,
+                WorkStepAggregates = evidenceSet.TimingDetail.IsComplete
+                    ? WorkStepsByObject(objectRows, selectedWords) : [],
                 Words = selectedWords.Select(word => new TimingWordRow(word.Word, word.ElapsedMs,
                     IsStepLimited(word) ? TimingCompletion.StepLimit :
                     word.Outcome == WordOutcome.TimedOut.ToStoredOutcome() || word.Morphology?.TimedOut == true ? "Time limit" :
                     ParserRefusals.Of(word.Morphology, word.Outcome) is not null ? TimingCompletion.Refused : TimingCompletion.Finished)
-                    { ElapsedNs = word.ElapsedNs, Origin = word.Origin }).ToArray(),
+                    { ElapsedNs = word.ElapsedNs, WorkSteps = word.WorkSteps, Origin = word.Origin }).ToArray(),
             });
         });
+    }
+
+    private static IReadOnlyList<TimingWorkAggregate> WorkStepsByObject(
+        IReadOnlyList<AssessmentObjectTiming> rows, IReadOnlyList<AssessedWord> words)
+    {
+        var byWord = rows.ToLookup(row => row.Word, StringComparer.Ordinal);
+        if (words.Any(word => word.WorkSteps is not { } total ||
+            !byWord[word.Word].Any(row => row.Kind == "unattributed") ||
+            byWord[word.Word].Any(row => row.WorkSteps is null ||
+                ObjectIdentity.Create(row.Kind, row.Key, row.IdentityQuality, row.Scope) is null) ||
+            byWord[word.Word].Sum(row => row.WorkSteps!.Value) != total)) return [];
+        return rows.Where(row => row.WorkSteps is not null)
+            .GroupBy(row => ObjectIdentity.Create(row.Kind, row.Key, row.IdentityQuality, row.Scope))
+            .Where(group => group.Key is not null)
+            .Select(group =>
+            {
+                var first = group.First();
+                return new TimingWorkAggregate(first.Key, first.Object, first.Kind,
+                    group.Sum(row => row.WorkSteps!.Value), first.Kind == "unattributed");
+            })
+            .OrderBy(row => row.IsUnattributed).ThenByDescending(row => row.WorkSteps)
+            .ThenBy(row => row.Name, StringComparer.Ordinal).ToArray();
     }
 
     private static IReadOnlyList<TimingAggregateRow> NameLexicalEntries(

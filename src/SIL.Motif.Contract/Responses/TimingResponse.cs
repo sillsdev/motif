@@ -15,6 +15,9 @@ public sealed record TimingResponse(
     IReadOnlyList<TimingAggregateRow> Aggregates,
     IReadOnlyList<WordRuleTiming> CostliestWords)
 {
+    /// <summary>Work steps attributed to objects and to the unattributed remainder.</summary>
+    public IReadOnlyList<TimingWorkAggregate> WorkStepAggregates { get; init; } = [];
+
     /// <summary>Completeness of per-word object timing detail used by this result.</summary>
     public ObjectTimingDetail? ObjectTimingDetail { get; init; }
 
@@ -81,6 +84,8 @@ public sealed record TimingWordRow(string Word, int? ElapsedMs, string Completio
 {
     /// <summary>The exact parse duration in nanoseconds, when recorded; it takes precedence over <see cref="ElapsedMs"/>.</summary>
     public long? ElapsedNs { get; init; }
+    /// <summary>Total work-budget reservations for this word, when recorded.</summary>
+    public long? WorkSteps { get; init; }
     /// <summary>The producing measurement, including its recorded time.</summary>
     public WordMeasurementOrigin? Origin { get; init; }
 }
@@ -130,6 +135,9 @@ public sealed record TimingAggregateRow(
     /// <summary>Whether some rows lack a call count; <see cref="Calls"/> then totals recorded counts only.</summary>
     public bool CallsArePartial { get; init; }
 }
+
+/// <summary>Work steps for one object or for the unattributed remainder.</summary>
+public sealed record TimingWorkAggregate(string Key, string Name, string Kind, long WorkSteps, bool IsUnattributed);
 
 /// <summary>One word's time under a selected parser object.</summary>
 /// <param name="Word">The word form.</param>

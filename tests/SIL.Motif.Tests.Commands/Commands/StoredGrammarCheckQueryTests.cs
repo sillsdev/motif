@@ -363,7 +363,7 @@ public sealed class StoredGrammarCheckQueryTests : IDisposable
             CREATE TABLE object (object_id INTEGER PRIMARY KEY, key TEXT NOT NULL, kind TEXT NOT NULL,
                 label TEXT NOT NULL, identity_quality TEXT NOT NULL);
             CREATE TABLE fact (word_id INTEGER NOT NULL, object_id INTEGER NOT NULL,
-                direction TEXT NOT NULL, attempts INTEGER NOT NULL, self_time_ns INTEGER NOT NULL);
+                direction TEXT NOT NULL, attempts INTEGER NOT NULL, self_time_ns INTEGER NOT NULL, work_steps INTEGER);
             INSERT INTO object VALUES (1, $key, 'phon_rule', 'Vowel harmony', 'authored');
             """;
         command.Parameters.AddWithValue("$key", ruleKey);

@@ -3026,12 +3026,12 @@ Never included unless you tick it in the preview: local details, which may conta
     <comment>Accessible name (read aloud by screen readers) of a control on the Try a Word page: "Plain trace steps". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.TimeFromAnEarlierParseAccessibleName" xml:space="preserve">
-    <value>Time from an earlier parse</value>
-    <comment>Accessible name (read aloud by screen readers) of a region on the Try a Word page: "Time from an earlier parse". Not visible on screen.</comment>
+    <value>Work from an earlier parse</value>
+    <comment>Accessible name (read aloud by screen readers) of a region on the Try a Word page: "Work from an earlier parse". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.EarlierRuleTimesAccessibleName" xml:space="preserve">
-    <value>Earlier rule times</value>
-    <comment>Accessible name (read aloud by screen readers) of a list on the Try a Word page: "Earlier rule times". Not visible on screen.</comment>
+    <value>Earlier rule work</value>
+    <comment>Accessible name (read aloud by screen readers) of a list on the Try a Word page: "Earlier rule work". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.SelectedAttempt" xml:space="preserve">
     <value>Selected Attempt</value>
@@ -3555,7 +3555,7 @@ Never included unless you tick it in the preview: local details, which may conta
   </data>
   <data name="MotifApp.TimingNotAttributedLabel" xml:space="preserve">
     <value>Not attributed</value>
-    <comment>Label of the table row for parse time that the parser recorded without a named kind of rule.</comment>
+    <comment>Label of a table row for parse time or work the parser did not attribute to an object.</comment>
   </data>
   <data name="MotifApp.TimingShareHeaderFormat" xml:space="preserve">
     <value>SHARE OF {0}</value>
@@ -4616,28 +4616,20 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <comment>Plural pattern: how many further rules are summed into one line of the earlier rule times; # is the count.</comment>
   </data>
   <data name="MotifApp.TryWordEarlierTimingTitleFormat" xml:space="preserve">
-    <value>Time from the parse of {0:ddd d MMM, h:mm tt}</value>
-    <comment>Title over the earlier rule times on the Try a Word page; {0} is the date and time of that parse.</comment>
+    <value>Work from the parse of {0:ddd d MMM, h:mm tt}</value>
+    <comment>Title over earlier rule work on Try a Word; {0} is the date and time of that parse.</comment>
   </data>
   <data name="MotifApp.TryWordEarlierSourceWithWordFormat" xml:space="preserve">
-    <value>Not from this traced search. In that parse {0} took {1}; each rule's time covers that parse's whole search for the word, including attempts that stopped.</value>
-    <comment>Note over the earlier rule times on the Try a Word page; {0} is the word and {1} the time it took.</comment>
+    <value>Not from this traced search. In that parse {0} took {1}; each rule's work covers that parse's whole search for the word, including attempts that stopped.</value>
+    <comment>Note over earlier rule work on Try a Word; {0} is the word and {1} is the work-step count.</comment>
   </data>
   <data name="MotifApp.TryWordEarlierSourceFormat" xml:space="preserve">
-    <value>Not from this traced search. Each rule's time covers that parse's whole search for {0}, including attempts that stopped.</value>
-    <comment>Note over the earlier rule times on the Try a Word page; {0} is the word.</comment>
+    <value>Not from this traced search. Each rule's work covers that parse's whole search for {0}, including attempts that stopped.</value>
+    <comment>Note over earlier rule work on Try a Word; {0} is the word.</comment>
   </data>
   <data name="MotifApp.TryWordShareOfFormat" xml:space="preserve">
     <value>Share of {0}</value>
-    <comment>Column heading of the earlier rule times: the share of the word time; {0} is the word time.</comment>
-  </data>
-  <data name="MotifApp.TryWordWordShare" xml:space="preserve">
-    <value>Word share</value>
-    <comment>Column heading of the earlier rule times when the word time is not known.</comment>
-  </data>
-  <data name="MotifApp.TryWordOverrunFormat" xml:space="preserve">
-    <value>Recorded object timers exceeded word time by {0}.</value>
-    <comment>Try a Word: the recorded object timers added up to more than the word time; {0} is the excess time.</comment>
+    <comment>Column heading of the earlier rule times: the share of the word work; {0} is the total work steps.</comment>
   </data>
   <data name="MotifApp.TryWordOpinionCountFormat" xml:space="preserve">
     <value>{0} {1}</value>
@@ -7440,5 +7432,17 @@ Motif starts a check automatically when this project opens. Use Reload to read a
   <data name="MotifApp.ReviewApplyChooseChange" xml:space="preserve">
     <value>Choose a change in Texts to begin.</value>
     <comment>Short reason shown beside Apply in Review changes.</comment>
+  </data>
+  <data name="MotifApp.TraceEffortDescription" xml:space="preserve">
+    <value>Category totals show parser work for this word, including work not attributed to a category.</value>
+    <comment>Try a Word: explains that the effort table sums work over the traced search.</comment>
+  </data>
+  <data name="MotifApp.TraceSegmentsExaminedLabel" xml:space="preserve">
+    <value>Segments examined</value>
+    <comment>Try a Word: heading for the count of shape segments examined by a parser category.</comment>
+  </data>
+  <data name="MotifApp.TraceWorkStepsLabel" xml:space="preserve">
+    <value>Work steps</value>
+    <comment>Heading for parser work-budget reservations, measured in work steps.</comment>
   </data>
 </root>

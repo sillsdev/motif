@@ -2478,9 +2478,7 @@ public static class MotifAppStrings
 
     public static string TryWordShareOfFormat => Text("MotifApp.TryWordShareOfFormat");
 
-    public static string TryWordWordShare => Text("MotifApp.TryWordWordShare");
 
-    public static string TryWordOverrunFormat => Text("MotifApp.TryWordOverrunFormat");
 
     public static string TryWordOpinionCountFormat => Text("MotifApp.TryWordOpinionCountFormat");
 
@@ -3715,4 +3713,7 @@ public static class MotifAppStrings
     public static string ReviewApplyMeasuring => Text("MotifApp.ReviewApplyMeasuring");
     public static string ReviewApplyChooseChange => Text("MotifApp.ReviewApplyChooseChange");
     public static string ReviewApply => Text("MotifApp.ReviewApply");
+    public static string TraceEffortDescription => Text("MotifApp.TraceEffortDescription");
+    public static string TraceSegmentsExaminedLabel => Text("MotifApp.TraceSegmentsExaminedLabel");
+    public static string TraceWorkStepsLabel => Text("MotifApp.TraceWorkStepsLabel");
 }

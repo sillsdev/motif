@@ -312,6 +312,54 @@ public sealed class DeterministicAssessCommandTests : IDisposable
     }
 
     [Fact]
+    public void StoredTimingPreservesRuleAndUnattributedWorkSteps()
+    {
+        using var seeded = NewSeededScratch();
+        var form = SeededProject.AnalysedWordForm;
+        var cachePath = Path.Combine(_managedRootsParent, "work-stats.sqlite");
+        WriteStatsCache(cachePath, (form, 4, 1, 2, 2_000_000L, 99_000_000L));
+        using (var connection = new SqliteConnection($"Data Source={cachePath};Pooling=False"))
+        {
+            connection.Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = """
+                ALTER TABLE word ADD COLUMN work INTEGER;
+                UPDATE word SET work = 19;
+                UPDATE fact SET work_steps = 12;
+                INSERT INTO object VALUES (2, 'unattributed', 'unattributed', 'Unattributed', 'synthetic');
+                INSERT INTO fact VALUES (1, 2, 'unattributed', 0, 0, 7);
+                """;
+            command.ExecuteNonQuery();
+        }
+        var digest = BatchInvocationEvidence.DigestFile(cachePath);
+        var assessor = new FakeAssessor("fake-assessor", CollectedKinds, kind => kind switch
+        {
+            AssessmentKind.ParseTime => new AssessmentRaw.Batch(new SIL.Motif.Host.Parser.BatchAnalysis(
+                [new(0, form, 99, SIL.Motif.Host.Parser.WordOutcome.Analysed, "complete")],
+                1000, seeded.FwDataPath, []) { PerWordStepLimit = StepCap.Default }),
+            AssessmentKind.ObjectTiming => new AssessmentRaw.FileCache(cachePath, digest),
+            _ => new AssessmentRaw.WordMeasurements([]),
+        })
+        {
+            CaptureEvidence = (scope, candidate) => FakeAssessmentEvidence.Capture(_managedRootsParent, scope, candidate),
+        };
+        var assessed = AssessCommand.Run(new AssessRequest(seeded.FwDataPath,
+            new SelectionRequest(false, [], [form], false, null)), NewManagedRoot(), assessor,
+            NewInvoker(), null, CancellationToken.None);
+        Assert.True(assessed.Succeeded, assessed.Refusal?.Message);
+        var stored = assessed.Value!.AssessmentIds.Select(OpenRepository(seeded.FwDataPath).Get)
+            .Single(record => record.Kind == AssessmentKind.ParseTime.ToStoredKind());
+        Assert.Equal(19, stored.ObjectTimings.Sum(row => row.WorkSteps));
+
+        var timing = TimingCommand.Timing(new TimingRequest(seeded.FwDataPath,
+            stored.AssessmentId, By: "rule", ExplicitWords: [form]));
+        Assert.True(timing.Succeeded, timing.Refusal?.Message);
+        Assert.Equal(19, Assert.Single(timing.Value!.Words).WorkSteps);
+        Assert.Equal(12, Assert.Single(timing.Value.WorkStepAggregates, row => !row.IsUnattributed).WorkSteps);
+        Assert.Equal(7, Assert.Single(timing.Value.WorkStepAggregates, row => row.IsUnattributed).WorkSteps);
+    }
+
+    [Fact]
     public void DefaultSelectionFeedsAssessOverviewAndStoredTiming()
     {
         using var seeded = NewSeededScratch();
@@ -719,7 +767,7 @@ public sealed class DeterministicAssessCommandTests : IDisposable
                 using var command = connection.CreateCommand();
                 command.CommandText = """
                     INSERT INTO object VALUES (2, 'mrule#1:Verb template', 'morph_rule', 'Verb template', 'structural');
-                    INSERT INTO fact SELECT word_id, 2, 'analysis', 3, 4000000 FROM word WHERE form = 'motifa';
+                    INSERT INTO fact (word_id, object_id, direction, attempts, self_time_ns) SELECT word_id, 2, 'analysis', 3, 4000000 FROM word WHERE form = 'motifa';
                     """;
                 command.ExecuteNonQuery();
             }
@@ -1888,7 +1936,7 @@ public sealed class DeterministicAssessCommandTests : IDisposable
                 CREATE TABLE object (object_id INTEGER PRIMARY KEY, key TEXT NOT NULL, kind TEXT NOT NULL,
                     label TEXT NOT NULL, identity_quality TEXT NOT NULL);
                 CREATE TABLE fact (word_id INTEGER NOT NULL, object_id INTEGER NOT NULL,
-                    direction TEXT NOT NULL, attempts INTEGER NOT NULL, self_time_ns INTEGER NOT NULL);
+                    direction TEXT NOT NULL, attempts INTEGER NOT NULL, self_time_ns INTEGER NOT NULL, work_steps INTEGER);
                 """;
             command.ExecuteNonQuery();
         }
@@ -1929,7 +1977,7 @@ public sealed class DeterministicAssessCommandTests : IDisposable
             CREATE TABLE object (object_id INTEGER PRIMARY KEY, key TEXT NOT NULL, kind TEXT NOT NULL,
                 label TEXT NOT NULL, identity_quality TEXT NOT NULL);
             CREATE TABLE fact (word_id INTEGER NOT NULL, object_id INTEGER NOT NULL,
-                direction TEXT NOT NULL, attempts INTEGER NOT NULL, self_time_ns INTEGER NOT NULL);
+                direction TEXT NOT NULL, attempts INTEGER NOT NULL, self_time_ns INTEGER NOT NULL, work_steps INTEGER);
             INSERT INTO object VALUES (1, 'mrule#0:Verb template', 'morph_rule', 'Verb template', 'structural');
             """;
         command.ExecuteNonQuery();

@@ -605,8 +605,8 @@ public sealed class PageScreenshots
                 await TryTheSampleWord(workspace);
                 var page = workspace.PageModel<TryWordPageModel>();
                 Assert.True(page.HasEarlierTiming);
-                Assert.Contains("hawajafika took 48 ms", page.EarlierTimingSource);
-                Assert.Equal("Share of 48 ms", page.EarlierShareHeader);
+                Assert.Contains("hawajafika took 447 work steps", page.EarlierTimingSource);
+                Assert.Equal("Share of 447 work steps", page.EarlierShareHeader);
             }
             finally { window.Close(); }
         }, TimeSpan.FromSeconds(30));

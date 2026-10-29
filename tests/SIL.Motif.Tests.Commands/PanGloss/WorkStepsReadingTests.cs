@@ -170,7 +170,7 @@ public sealed class WorkStepsReadingTests : IDisposable
                 identity_quality TEXT NOT NULL);
             CREATE TABLE fact (
                 word_id INTEGER NOT NULL, object_id INTEGER NOT NULL, direction TEXT NOT NULL,
-                attempts INTEGER NOT NULL, self_time_ns INTEGER);
+                attempts INTEGER NOT NULL, self_time_ns INTEGER, work_steps INTEGER);
             INSERT INTO cache_identity VALUES (1, {{PanGlossInterfaceVersions.StatsCacheVersion}});
             INSERT INTO word VALUES (1, 'word', 725001, 11, 2{{(withWork ? ", 777" : string.Empty)}});
             """;

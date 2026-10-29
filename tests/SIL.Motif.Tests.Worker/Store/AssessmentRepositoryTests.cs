@@ -390,7 +390,7 @@ public sealed class AssessmentRepositoryTests : IDisposable
             CREATE TABLE object (object_id INTEGER PRIMARY KEY, key TEXT NOT NULL, kind TEXT NOT NULL,
                 label TEXT NOT NULL, identity_quality TEXT NOT NULL);
             CREATE TABLE fact (word_id INTEGER NOT NULL, object_id INTEGER NOT NULL, direction TEXT NOT NULL,
-                attempts INTEGER NOT NULL, self_time_ns INTEGER);
+                attempts INTEGER NOT NULL, self_time_ns INTEGER, work_steps INTEGER);
             INSERT INTO cache_identity VALUES (1, $version);
             """;
         setup.Parameters.AddWithValue("$version", PanGlossInterfaceVersions.StatsCacheVersion);
@@ -416,7 +416,7 @@ public sealed class AssessmentRepositoryTests : IDisposable
         var wordElapsed = insertWord.Parameters.Add("$elapsed", SqliteType.Integer);
         using var insertFact = connection.CreateCommand();
         insertFact.Transaction = transaction;
-        insertFact.CommandText = "INSERT INTO fact VALUES ($word, $object, 'analysis', $attempts, $elapsed)";
+        insertFact.CommandText = "INSERT INTO fact (word_id, object_id, direction, attempts, self_time_ns) VALUES ($word, $object, 'analysis', $attempts, $elapsed)";
         var factWord = insertFact.Parameters.Add("$word", SqliteType.Integer);
         var factObject = insertFact.Parameters.Add("$object", SqliteType.Integer);
         var factAttempts = insertFact.Parameters.Add("$attempts", SqliteType.Integer);

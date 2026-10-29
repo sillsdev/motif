@@ -32,7 +32,8 @@ internal static class SampleEvidence
 
     private static AssessmentObjectTiming Timer(string kind, string key, string name, string word, double ms, int calls) =>
         new(kind, key, Guid.TryParse(key, out _) ? "authored" : "structural", "synthesis", name, word,
-            calls, null, (long)(ms * 1_000_000)) { Scope = Guid.TryParse(key, out _) ? null : "sample-grammar" };
+            calls, null, (long)(ms * 1_000_000))
+        { Scope = Guid.TryParse(key, out _) ? null : "sample-grammar", WorkSteps = calls * 2L + 1 };
 
     private static IReadOnlyList<AssessedWord> Measured(AssessCommandResponse assessment) =>
         assessment.Words.Select(word => new AssessedWord(word.Word, word.Outcome, [], word.ElapsedMs)
@@ -47,6 +48,12 @@ internal static class SampleEvidence
         var words = Measured(assessment).Where(word => selected is null || selected.Contains(word.Word)).ToArray();
         var summary = TimingAggregation.SummarizeWords(words);
         var aggregation = TimingAggregation.Aggregate(words, ObjectTimings, by, rule, 20);
+        var selectedNames = words.Select(word => word.Word).ToHashSet(StringComparer.Ordinal);
+        var work = ObjectTimings.Where(row => selectedNames.Contains(row.Word)).ToArray();
+        var workByObject = work.GroupBy(row => (row.Kind, row.Key, row.Object))
+            .Select(group => new TimingWorkAggregate(group.Key.Key, group.Key.Object, group.Key.Kind,
+                group.Sum(row => row.WorkSteps!.Value), false)).ToList();
+        if (words.Length > 0) workByObject.Add(new("unattributed", "Unattributed", "unattributed", 5L * words.Length, true));
         return new TimingResponse("assessment/one", "all", by, words.Length, summary.MedianMs, summary.Percentile95Ms,
             summary.SlowestWords, aggregation.Aggregates, aggregation.CostliestWords)
         {
@@ -54,10 +61,12 @@ internal static class SampleEvidence
                 word.IsIncomplete ? TimingCompletion.StepLimit : TimingCompletion.Finished)
             {
                 ElapsedNs = word.ElapsedMs * 1_000_000L,
+                WorkSteps = work.Where(row => row.Word == word.Word).Sum(row => row.WorkSteps!.Value) + 5,
                 Origin = new WordMeasurementOrigin("assessment/one", "invocation/one",
                     DateTimeOffset.Parse("2026-09-22T10:18:00Z")),
             }).ToArray(),
             Attribution = aggregation.Attribution,
+            WorkStepAggregates = workByObject,
         };
     }
 

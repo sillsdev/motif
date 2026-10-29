@@ -145,7 +145,7 @@ public sealed class AssessmentArtifactLifetimeTests(PristineProjectFixture prist
                 CREATE TABLE object (object_id INTEGER PRIMARY KEY, key TEXT NOT NULL, kind TEXT NOT NULL,
                     label TEXT NOT NULL, identity_quality TEXT NOT NULL);
                 CREATE TABLE fact (word_id INTEGER NOT NULL, object_id INTEGER NOT NULL,
-                    direction TEXT NOT NULL, attempts INTEGER NOT NULL, self_time_ns INTEGER NOT NULL);
+                    direction TEXT NOT NULL, attempts INTEGER NOT NULL, self_time_ns INTEGER NOT NULL, work_steps INTEGER);
                 """;
             command.ExecuteNonQuery();
             foreach (var word in words)

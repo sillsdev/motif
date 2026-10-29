@@ -330,7 +330,7 @@
           <views:CopyableTextBlock Classes="muted" Text="{Binding EarlierTimingSource}" TextWrapping="Wrap" />
           <Grid ColumnDefinitions="2*,*,*" ColumnSpacing="{DynamicResource Intent.Space.Related}">
             <TextBlock Classes="muted" Text="{x:Static app:MotifAppStrings.MeasuredObject}" FontWeight="{DynamicResource Intent.Weight.Section}" />
-            <TextBlock Grid.Column="1" Classes="muted" Text="{x:Static app:MotifAppStrings.TimeLabel}" FontWeight="{DynamicResource Intent.Weight.Section}" TextAlignment="Right" />
+            <TextBlock Grid.Column="1" Classes="muted" Text="{x:Static app:MotifAppStrings.TraceWorkStepsLabel}" FontWeight="{DynamicResource Intent.Weight.Section}" TextAlignment="Right" />
             <TextBlock Grid.Column="2" Classes="muted" Text="{Binding EarlierShareHeader}" FontWeight="{DynamicResource Intent.Weight.Strong}" TextAlignment="Right" IsVisible="{Binding HasEarlierShares}" />
           </Grid>
           <ItemsControl x:Name="TryWordPanelEarlierRuleTimesItems" ItemsSource="{Binding EarlierRuleTimes}" AutomationProperties.Name="{x:Static app:MotifAppStrings.EarlierRuleTimesAccessibleName}">
@@ -349,7 +349,6 @@
               </DataTemplate>
             </ItemsControl.ItemTemplate>
           </ItemsControl>
-          <views:CopyableTextBlock Text="{Binding EarlierOverrunText}" Classes="muted" TextWrapping="Wrap" IsVisible="{Binding EarlierOverrunText, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
         </StackPanel>
       </Border>
     </StackPanel>

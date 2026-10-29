@@ -293,7 +293,7 @@ public sealed class TraceWordViewModelTests
         Assert.Equal("The parser stopped at a search limit.", trace.StopReason);
         var root = Assert.Single(trace.Effort);
         Assert.Equal("1 found no root", root.Missed);
-        Assert.Equal("not timed", root.Time);
+        Assert.Equal("work steps not recorded", root.Time);
 
         trace.Reset();
         Assert.False(trace.HasResult);
@@ -358,6 +358,27 @@ public sealed class TraceWordViewModelTests
         trace.SelectStopGroupCommand.Execute(trace.StopGroups[0]);
         Assert.Null(trace.SelectedStopGroup);
         Assert.Equal(3, trace.ClosestAttempts.Count);
+    }
+
+    [Fact]
+    public void EffortShowsWorkStepsAndTheUnattributedRemainder()
+    {
+        const string json = """
+        {"schemaVersion":"pangloss.trace-details.v4","word":"word",
+         "search":{"completed":true,"capped":false,"timedOut":false,"invalidShape":false,
+                   "steps":3,"workSteps":19,"elapsedNs":1000000},
+         "result":{"signature":"","guessed":false,"analyses":[]},
+         "categories":{"morphRule":{"attempts":1,"work":8,"work_steps":12,"outputs":1,
+          "notApplied":0,"noRoot":0,"surfaceMismatch":0,"uses":0,"timingAvailable":true,"selfElapsedNs":500000},
+          "unattributed":{"work_steps":7}},"trace":null}
+        """;
+        var outcome = WordTraceQuery.LoadDiagnostic(json);
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        var model = new TraceWordViewModel(new FakeCommandClient()) { Result = outcome.Value! };
+        Assert.Equal(2, model.Effort.Count);
+        Assert.Equal("12 work steps", model.Effort.Single(row => row.Kind == "Affix and derivation rules").Time);
+        Assert.Equal("7 work steps", model.Effort.Single(row => row.Kind == "Not attributed").Time);
+        Assert.All(model.Effort, row => Assert.DoesNotMatch(@"\bms\b|millisecond", row.Time));
     }
 
     [Fact]

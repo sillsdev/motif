@@ -253,19 +253,19 @@
           <Expander Header="Aggregate parser effort by category" IsExpanded="False" IsVisible="{Binding HasEffort}"
                     AutomationProperties.Name="Aggregate parser effort">
             <StackPanel Spacing="{DynamicResource Intent.Space.Snug}">
-              <views:CopyableTextBlock Classes="muted" Text="Category totals are aggregate counts and time, not timing assigned to individual rule steps."
+              <views:CopyableTextBlock Classes="muted" Text="{x:Static app:MotifAppStrings.TraceEffortDescription}"
                                         TextWrapping="Wrap" />
               <!-- The header and every row share one set of fixed widths, so the columns line up; each number
                    cell is shaded by how large it is against the rest of its column. -->
               <Grid RowDefinitions="Auto,*" RowSpacing="{DynamicResource Intent.Space.Compact}">
               <Grid ColumnDefinitions="2*,*,*,*,*,3*,*" ColumnSpacing="{DynamicResource Intent.Space.Compact}" Margin="{DynamicResource Component.TryWord.SmallBottomInset}">
                 <views:CopyableTextBlock Classes="muted" Text="Kind" />
-                <views:CopyableTextBlock Grid.Column="1" Classes="muted number" Text="Work" Margin="{DynamicResource Intent.Gap.AfterRelated}" />
+                <views:CopyableTextBlock Grid.Column="1" Classes="muted number" Text="{x:Static app:MotifAppStrings.TraceSegmentsExaminedLabel}" Margin="{DynamicResource Intent.Gap.AfterRelated}" />
                 <views:CopyableTextBlock Grid.Column="2" Classes="muted number" Text="Uses" Margin="{DynamicResource Intent.Gap.AfterRelated}" />
                 <views:CopyableTextBlock Grid.Column="3" Classes="muted number" Text="Tried" Margin="{DynamicResource Intent.Gap.AfterRelated}" />
                 <views:CopyableTextBlock Grid.Column="4" Classes="muted number" Text="Produced" Margin="{DynamicResource Intent.Gap.AfterRelated}" />
                 <views:CopyableTextBlock Grid.Column="5" Classes="muted" Text="Did not succeed" Margin="{DynamicResource Component.TryWord.SmallInset}" />
-                <views:CopyableTextBlock Grid.Column="6" Classes="muted number" Text="Time" Margin="{DynamicResource Intent.Gap.AfterRelated}" />
+                <views:CopyableTextBlock Grid.Column="6" Classes="muted number" Text="{x:Static app:MotifAppStrings.TraceWorkStepsLabel}" Margin="{DynamicResource Intent.Gap.AfterRelated}" />
               </Grid>
               <ItemsControl x:Name="DiagnosticPanelEffortItems" Grid.Row="1" ItemsSource="{Binding Effort}" AutomationProperties.Name="Parser effort rows">
                 <ItemsControl.ItemsPanel>

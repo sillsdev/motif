@@ -14,6 +14,9 @@ public sealed record PanGlossObjectTiming(
     string Kind, string Key, string IdentityQuality, string Direction, string Object, string Word,
     int? Attempts, int? Passes, long? ElapsedNs)
 {
+    /// <summary>Work-budget reservations attributed to this object, when recorded.</summary>
+    public long? WorkSteps { get; init; }
+
     /// <summary>The recorded self time in milliseconds, or null when PanGloss does not time this direction.</summary>
     public double? ElapsedMs => ElapsedNs is { } elapsed ? elapsed / 1_000_000d : null;
 }

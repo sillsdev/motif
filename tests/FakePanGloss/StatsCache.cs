@@ -31,7 +31,7 @@ internal static class StatsCache
                 CREATE TABLE object (object_id INTEGER PRIMARY KEY, key TEXT NOT NULL, identity_quality TEXT NOT NULL,
                                      kind TEXT NOT NULL, label TEXT NOT NULL);
                 CREATE TABLE fact (word_id INTEGER NOT NULL, object_id INTEGER NOT NULL,
-                                   direction TEXT NOT NULL, attempts INTEGER NOT NULL, self_time_ns INTEGER);
+                                   direction TEXT NOT NULL, attempts INTEGER NOT NULL, self_time_ns INTEGER, work_steps INTEGER);
                 INSERT INTO cache_identity VALUES (1, 10);
                 """;
             create.ExecuteNonQuery();

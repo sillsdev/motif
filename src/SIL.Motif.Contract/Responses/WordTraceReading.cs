@@ -236,6 +236,7 @@ public sealed record TraceEffort(
     string Kind, long Attempts, long Outputs, long NotApplied, long NoRoot, long SurfaceMismatch, long Uses, double? SelfMs)
 {
     public long Work { get; init; }
+    public long? WorkSteps { get; init; }
     public bool TimingAvailable => SelfMs is not null;
 }
 

@@ -435,7 +435,8 @@ public static class PanGlossTraceDiagnosticReader
         if (value.ValueKind != JsonValueKind.Object)
             throw new PanGlossTraceDiagnosticFormatException($"Category '{property.Name}' must be a JSON object.");
         if (property.Name == "unattributed")
-            return new PanGlossTraceCategory(property.Name, 0, 0, 0, 0, 0, 0, 0, null);
+            return new PanGlossTraceCategory(property.Name, 0, 0, 0, 0, 0, 0, 0, null)
+                { WorkSteps = OptionalLong(value, "work_steps") };
         var timed = RequiredBool(value, "timingAvailable");
         var self = Required(value, "selfElapsedNs", timed ? JsonValueKind.Number : JsonValueKind.Null);
         return new PanGlossTraceCategory(
@@ -447,7 +448,7 @@ public static class PanGlossTraceDiagnosticReader
             RequiredLong(value, "noRoot"),
             RequiredLong(value, "surfaceMismatch"),
             RequiredLong(value, "uses"),
-            timed ? self.GetInt64() : null);
+            timed ? self.GetInt64() : null) { WorkSteps = OptionalLong(value, "work_steps") };
     }
 
     private static JsonElement Required(JsonElement owner, string name, JsonValueKind kind) =>

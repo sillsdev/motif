@@ -182,28 +182,24 @@ public sealed class TryWordPageModel : PageModel
     public ObservableCollection<string> RecentWords { get; } = [];
 
     /// <summary>
-    /// The traced word's rule times from the earlier parse named in <see cref="EarlierTimingTitle"/>, then the time
-    /// that parse recorded against no rule; empty when no parse can be named as their source.
+    /// The traced word's rule work from the named earlier parse, including its unattributed work.
     /// </summary>
     public ObservableCollection<TryWordEarlierRuleTime> EarlierRuleTimes { get; } = [];
 
-    /// <summary>Whether timing from a named earlier parse is shown beside this try.</summary>
+    /// <summary>Whether work from a named earlier parse is shown beside this try.</summary>
     public bool HasEarlierTiming => EarlierRuleTimes.Count > 0;
 
-    /// <summary>Which parse the earlier timing comes from, by when it ran.</summary>
+    /// <summary>Which parse the earlier work comes from, by when it ran.</summary>
     public string EarlierTimingTitle { get; private set; } = string.Empty;
 
-    /// <summary>That the earlier timing is not this try's, and what its rule times cover.</summary>
+    /// <summary>That the earlier work is not this try's, and what its rule counts cover.</summary>
     public string EarlierTimingSource { get; private set; } = string.Empty;
 
-    /// <summary>The share column's heading, naming the word's whole time it divides by; empty without one.</summary>
+    /// <summary>The share column's heading, naming the total work it divides by; empty without one.</summary>
     public string EarlierShareHeader { get; private set; } = string.Empty;
 
-    /// <summary>Whether the earlier parse kept the word's whole time, so its rule times have shares.</summary>
+    /// <summary>Whether the earlier parse kept the word's total work, so its rule counts have shares.</summary>
     public bool HasEarlierShares => EarlierShareHeader.Length > 0;
-
-    /// <summary>The overrun the earlier parse recorded when its object timers exceeded the word's time; else empty.</summary>
-    public string EarlierOverrunText { get; private set; } = string.Empty;
 
     /// <summary>Opens Texts on the current word, even when the word is absent from its list.</summary>
     public IRelayCommand OpenInTextsCommand { get; }
@@ -422,55 +418,53 @@ public sealed class TryWordPageModel : PageModel
         _earlierTiming = timing;
         OnPropertyChanged(nameof(TraceBaselineWarning));
         EarlierRuleTimes.Clear();
-        EarlierTimingTitle = EarlierTimingSource = EarlierShareHeader = EarlierOverrunText = string.Empty;
-        if (timing is { Aggregates.Count: > 0 } && Trace.Result is { } result &&
-            timing.Words.FirstOrDefault(word => word.Word == result.Word)?.Origin is { } origin)
+        EarlierTimingTitle = EarlierTimingSource = EarlierShareHeader = string.Empty;
+        if (timing is { WorkStepAggregates.Count: > 0 } && Trace.Result is { } result &&
+            timing.Words.FirstOrDefault(word => word.Word == result.Word) is { Origin: { } origin } word)
         {
-            var wordMs = timing.Words.FirstOrDefault(word => word.Word == result.Word)?.ElapsedNs is >= 0 and var ns
-                ? ns / 1_000_000d : timing.Attribution.MeasuredWordCount > 0 ? (double?)timing.Attribution.WordTimeMs : null;
-            static string ShareOf(double? share) => share?.ToString("P0", CultureInfo.CurrentCulture) ?? string.Empty;
-            foreach (var rule in timing.Aggregates.Take(EarlierRuleLimit))
+            var total = word.WorkSteps;
+            string ShareOf(long steps) => total is > 0
+                ? ((double)steps / total.Value).ToString("P0", CultureInfo.CurrentCulture) : string.Empty;
+            var rules = timing.WorkStepAggregates.Where(row => !row.IsUnattributed).ToArray();
+            foreach (var rule in rules.Take(EarlierRuleLimit))
                 EarlierRuleTimes.Add(new TryWordEarlierRuleTime(rule.Name, TimingShare.KindName(rule.Kind),
-                    SpeedText.PerWord(rule.SelfMs), ShareOf(rule.ShareOfWordTime), IsOtherTime: false));
-            if (timing.Aggregates.Skip(EarlierRuleLimit).ToArray() is { Length: > 0 } rest)
+                    PluralText.Format(MotifAppStrings.WorkStepsPattern, rule.WorkSteps), ShareOf(rule.WorkSteps), false));
+            if (rules.Skip(EarlierRuleLimit).ToArray() is { Length: > 0 } rest)
             {
-                var restMs = rest.Sum(rule => rule.SelfMs);
+                var steps = rest.Sum(rule => rule.WorkSteps);
                 EarlierRuleTimes.Add(new TryWordEarlierRuleTime(PluralText.Format(MotifAppStrings.TryWordOtherRulesPattern, rest.Length),
-                    string.Empty, SpeedText.PerWord(restMs),
-                    ShareOf(rest.All(rule => rule.ShareOfWordTime is not null) ? rest.Sum(rule => rule.ShareOfWordTime) : null),
-                    IsOtherTime: false));
+                    string.Empty, PluralText.Format(MotifAppStrings.WorkStepsPattern, steps), ShareOf(steps), false));
             }
-            if (timing.Attribution.NotAttributedMs is { } other && other >= TimingShare.SmallestShownMs)
+            foreach (var other in timing.WorkStepAggregates.Where(row => row.IsUnattributed))
                 EarlierRuleTimes.Add(new TryWordEarlierRuleTime(MotifAppStrings.TimingNotAttributedLabel, string.Empty,
-                    SpeedText.PerWord(other), ShareOf(timing.Attribution.NotAttributedShare), IsOtherTime: true));
-            EarlierTimingTitle = string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.TryWordEarlierTimingTitleFormat, origin.MeasuredUtc.ToLocalTime());
-            EarlierTimingSource = wordMs is { } took
-                ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.TryWordEarlierSourceWithWordFormat, result.Word, SpeedText.PerWord(took))
-                : string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.TryWordEarlierSourceFormat, result.Word);
-            EarlierShareHeader = timing.Aggregates.Any(rule => rule.ShareOfWordTime is not null)
-                ? wordMs is { } whole ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.TryWordShareOfFormat, SpeedText.PerWord(whole)) : MotifAppStrings.TryWordWordShare : string.Empty;
-            if (timing.Attribution.Overrun)
-                EarlierOverrunText = string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.TryWordOverrunFormat, SpeedText.PerWord(timing.Attribution.OverrunMs));
+                    PluralText.Format(MotifAppStrings.WorkStepsPattern, other.WorkSteps), ShareOf(other.WorkSteps), true));
+            EarlierTimingTitle = string.Format(CultureInfo.CurrentCulture, MotifAppStrings.TryWordEarlierTimingTitleFormat, origin.MeasuredUtc.ToLocalTime());
+            EarlierTimingSource = total is { } count
+                ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.TryWordEarlierSourceWithWordFormat,
+                    result.Word, PluralText.Format(MotifAppStrings.WorkStepsPattern, count))
+                : string.Format(CultureInfo.CurrentCulture, MotifAppStrings.TryWordEarlierSourceFormat, result.Word);
+            EarlierShareHeader = total is > 0
+                ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.TryWordShareOfFormat,
+                    PluralText.Format(MotifAppStrings.WorkStepsPattern, total.Value)) : string.Empty;
         }
         OnPropertyChanged(nameof(HasEarlierTiming));
         OnPropertyChanged(nameof(EarlierTimingTitle));
         OnPropertyChanged(nameof(EarlierTimingSource));
         OnPropertyChanged(nameof(EarlierShareHeader));
         OnPropertyChanged(nameof(HasEarlierShares));
-        OnPropertyChanged(nameof(EarlierOverrunText));
     }
 }
 
-/// <summary>One rule's time for the traced word in an earlier parse, or that parse's time against no rule.</summary>
+/// <summary>One rule's work for the traced word in an earlier parse, or work attributed to no object.</summary>
 /// <param name="Rule">The rule's name, or what the row gathers.</param>
 /// <param name="KindLabel">The rule's kind as the window names it; empty for a gathered row.</param>
-/// <param name="TimeText">The time the earlier parse recorded.</param>
-/// <param name="ShareText">Its share of the word's whole time in that parse; empty when that time was not kept.</param>
-/// <param name="IsOtherTime">Whether this is the time the parser recorded against no rule.</param>
+/// <param name="TimeText">The work steps the earlier parse recorded.</param>
+/// <param name="ShareText">Its share of the word's total work; empty when that total was not kept.</param>
+/// <param name="IsOtherTime">Whether the work was not attributed to an object.</param>
 public sealed record TryWordEarlierRuleTime(string Rule, string KindLabel, string TimeText, string ShareText,
     bool IsOtherTime)
 {
-    /// <summary>The recorded timing kind, absent for rows that gather several kinds or record no object time.</summary>
+    /// <summary>The recorded kind, absent for rows that gather several kinds or unattributed work.</summary>
     public string? KindTip => KindLabel.Length > 0 ? KindLabel : null;
 }
 

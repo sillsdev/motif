@@ -55,4 +55,8 @@ public sealed record PanGlossTraceCategory(
     long NoRoot,
     long SurfaceMismatch,
     long Uses,
-    long? SelfElapsedNs);
+    long? SelfElapsedNs)
+{
+    /// <summary>Work-budget reservations attributed to this kind, when recorded.</summary>
+    public long? WorkSteps { get; init; }
+}
