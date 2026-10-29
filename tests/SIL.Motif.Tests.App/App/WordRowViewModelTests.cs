@@ -1,9 +1,11 @@
 using SIL.Motif.App;
+using System.Globalization;
 using System.Text.Json;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 
 namespace SIL.Motif.Tests.App;
@@ -119,6 +121,7 @@ public sealed class WordRowViewModelTests
     private static WordRow Alikula() => new("alikula", WordRowOutcome.Different, "Built something else", WordRowTone.Problem)
     {
         Gloss = "3SG PST cut FV",
+        MeaningCode = "approved-different",
         Opinion = ProjectStanding.Approved,
         FieldWorksMorphemes = [Kul],
         PanGlossMorphemes =
@@ -146,9 +149,73 @@ public sealed class WordRowViewModelTests
             row.PanGlossMorphemes.Select(morph => (morph.Morph.Form, morph.IsDifferent)));
         Assert.True(row.HasPanGlossMorphemes);
         Assert.Equal("×3", row.PlacesText);
-        Assert.Equal("12 ms", row.ElapsedText);
+        Assert.Equal("work steps not recorded", row.WorkStepsText);
         Assert.False(row.HasWarningsNamed);
         Assert.Equal("alikula · Approved · PanGloss: Different · Built something else", row.Summary);
+    }
+
+    [Theory]
+    [InlineData(0L, "0 work steps")]
+    [InlineData(1L, "1 work step")]
+    [InlineData(1234L, "1,234 work steps")]
+    [InlineData(20_000_000_000L, "20,000,000,000 work steps")]
+    public void TheRowCountsItsWorkInWorkStepsAndNeverInMilliseconds(long steps, string expected)
+    {
+        using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
+        var row = new WordRowViewModel(Alikula() with { WorkSteps = steps, ElapsedMs = 1234 });
+
+        Assert.Equal(expected, row.WorkStepsText);
+        Assert.DoesNotMatch(@"\bms\b|<\s*1\b", row.WorkStepsText);
+    }
+
+    [Fact]
+    public void AWordWhoseWorkCountIsMissingSaysSoInsteadOfShowingMilliseconds()
+    {
+        using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
+        var row = new WordRowViewModel(Alikula() with { WorkSteps = null, ElapsedMs = 1234 });
+
+        Assert.Equal("work steps not recorded", row.WorkStepsText);
+        Assert.DoesNotMatch(@"\bms\b|<\s*1\b", row.WorkStepsText);
+    }
+
+    [Fact]
+    public void ATriedWordWithNoCountSaysSoEvenWhenNoTimeWasRecorded()
+    {
+        using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
+        var row = new WordRowViewModel(Alikula() with { WorkSteps = null, ElapsedMs = null });
+
+        Assert.Equal("work steps not recorded", row.WorkStepsText);
+    }
+
+    [Fact]
+    public void ATimedOutWordWithNoCountSaysSoAndShowsNoMilliseconds()
+    {
+        using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
+        var row = new WordRowViewModel(Alikula() with
+        {
+            Outcome = WordRowOutcome.Stopped, MeaningCode = "unknown", WorkSteps = null, ElapsedMs = null,
+        });
+
+        Assert.Equal("work steps not recorded", row.WorkStepsText);
+        Assert.DoesNotMatch(@"\bms\b", row.WorkStepsText);
+    }
+
+    [Fact]
+    public void ARefusedWordShowsNoWorkTextEvenWhenItHasACount()
+    {
+        using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
+        var row = new WordRowViewModel(Alikula() with { MeaningCode = "refused", WorkSteps = 5, ElapsedMs = 12 });
+
+        Assert.Equal(string.Empty, row.WorkStepsText);
+    }
+
+    [Fact]
+    public void ANeverParsedWordShowsNoWorkText()
+    {
+        using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
+        var row = WordRowViewModel.NotParsed("kitabu");
+
+        Assert.Equal(string.Empty, row.WorkStepsText);
     }
 
     [Fact]

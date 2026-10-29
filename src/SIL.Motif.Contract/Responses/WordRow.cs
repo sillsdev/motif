@@ -117,6 +117,13 @@ public sealed record WordRow(string Word, WordRowOutcome Outcome, string Meaning
 
     /// <summary>How long the parser took over the word, or <see langword="null"/> when it was not measured.</summary>
     public int? ElapsedMs { get; init; }
+
+    /// <summary>
+    /// The total parser work reserved for the word across all phases, when PanGloss reported it; deterministic for a
+    /// grammar, word and PanGloss version, unlike elapsed time.
+    /// </summary>
+    public long? WorkSteps { get; init; }
+
     /// <summary>The producing measurement, independent of the other words shown beside this one.</summary>
     public WordMeasurementOrigin? Origin { get; init; }
 

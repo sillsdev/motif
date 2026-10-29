@@ -7,11 +7,13 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using System.Globalization;
 using SIL.Motif.App.Controls.WordPresentation;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Tests.App.Walkthrough;
+using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 using ContractWordRow = SIL.Motif.Contract.Responses.WordRow;
 using WordRow = SIL.Motif.App.Controls.WordPresentation.WordRow;
@@ -268,6 +270,45 @@ public sealed class WordPresentationTests
             {
                 window.Close();
             }
+        }, TimeSpan.FromSeconds(15));
+    }
+
+    [Fact]
+    public void TheTimeCellShowsWorkStepsAndNeverMilliseconds()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(() =>
+        {
+            using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
+            var key = new WordPresentationKey("entry:time-cell");
+            var row = new WordRow
+            {
+                Data = new WordPresentation(key, 1,
+                    new WordRowViewModel(new ContractWordRow("kitabu", WordRowOutcome.Same, "Kept", WordRowTone.Fine)
+                    {
+                        MeaningCode = "kept",
+                        WorkSteps = 1234,
+                        ElapsedMs = 12,
+                    }),
+                    WordListOwner.ReadOnly),
+                State = new WordInteractionState(key),
+                Host = new RecordingHost(),
+            };
+            var window = new MotifTestWindow { Content = row, Width = 900, Height = 120 };
+            try
+            {
+                window.Show();
+                Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
+
+                var time = Assert.Single(window.GetVisualDescendants().OfType<CopyableTextBlock>(),
+                    text => text.Classes.Contains("wordPresentationTime"));
+                Assert.Equal("1,234 work steps", time.Text);
+            }
+            finally
+            {
+                window.Close();
+            }
+            return Task.CompletedTask;
         }, TimeSpan.FromSeconds(15));
     }
 

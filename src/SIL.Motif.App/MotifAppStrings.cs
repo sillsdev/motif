@@ -2743,10 +2743,6 @@ public static class MotifAppStrings
 
     public static string WordRowDifferentEntryFormat => Text("MotifApp.WordRowDifferentEntryFormat");
 
-    public static string WordRowLessThanMs => Text("MotifApp.WordRowLessThanMs");
-
-    public static string WordRowMsFormat => Text("MotifApp.WordRowMsFormat");
-
     public static string WordRowMeasuredFormat => Text("MotifApp.WordRowMeasuredFormat");
 
     public static string WordRowUnread => Text("MotifApp.WordRowUnread");

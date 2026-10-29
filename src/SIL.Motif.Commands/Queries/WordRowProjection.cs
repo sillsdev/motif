@@ -39,6 +39,7 @@ public static class WordRowProjection
             PanGlossReadingCount = word.Morphology?.Analyses.Count ?? word.Readings?.Count ?? 0,
             Places = facts?.Places ?? word.OccurrenceCount,
             ElapsedMs = comparison.MeaningCode == "refused" ? null : word.ElapsedMs,
+            WorkSteps = comparison.MeaningCode == "refused" ? null : word.WorkSteps,
             Origin = word.Origin,
             IsUnread = facts?.IsUnread,
             WordAnalysesLink = word.TryWordLink,

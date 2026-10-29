@@ -497,7 +497,7 @@ public sealed class WordRow : UserControl
 
     private static Control TimeCell(WordPresentation data)
     {
-        var timeText = data.TimeText ?? data.Facts.ElapsedText;
+        var timeText = data.TimeText ?? data.Facts.WorkStepsText;
         var cell = (CopyableTextBlock)Text(timeText, "wordPresentationNumber");
         cell.Classes.Add("wordPresentationTime");
         cell.TextTrimming = TextTrimming.CharacterEllipsis;

@@ -396,10 +396,8 @@ public sealed class AssessWordRowViewModel
     /// <summary>What PanGloss built for this word against what FieldWorks holds: its Matrix column.</summary>
     public ParserOutcome ParserOutcome => WindowWords.OutcomeOf(CompareViewModel.Place(this).Column);
 
-    /// <summary>The parser work for this word as a count of work steps; blank for a word the parser refused or skipped.</summary>
-    public string WorkStepsText => Result == ParserRefusals.Title ? string.Empty
-        : WorkSteps is { } steps ? PluralText.Format(MotifAppStrings.WorkStepsPattern, steps)
-        : MotifAppStrings.WorkStepsNotRecorded;
+    /// <summary>The parser work for this word as a count of work steps, as its word row shows it.</summary>
+    public string WorkStepsText => WordRow.WorkStepsText;
 
     public IReadOnlyList<ParserReadingViewModel> Readings { get; }
     public bool HasReadings => Readings.Count > 0;

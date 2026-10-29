@@ -1,4 +1,5 @@
 using System.Linq;
+using System.Text.Json;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Responses;
 using Xunit;
@@ -185,6 +186,44 @@ public sealed class WordRowProjectionTests
         Assert.Null(row.IsUnread);
         Assert.Null(row.WarningsNamed);
         Assert.Equal("silfw://localhost/link?tool=Analyses", row.WordAnalysesLink);
+    }
+
+    [Fact]
+    public void TheRowCarriesTheWordsWorkStepsBesideItsTime()
+    {
+        var row = WordRowProjection.Of(Alikula(new ParserReading([A, Li, Ku, L, Fv])) with { WorkSteps = 1234 });
+
+        Assert.Equal((1234L, 12), (row.WorkSteps, row.ElapsedMs));
+    }
+
+    [Fact]
+    public void AWordWithNoRecordedWorkCountCarriesNoWorkSteps()
+    {
+        var row = WordRowProjection.Of(Alikula(new ParserReading([A, Li, Ku, L, Fv])));
+
+        Assert.Null(row.WorkSteps);
+    }
+
+    [Fact]
+    public void ARefusedWordCarriesNoWorkStepsEvenWhenItsResultHasThem()
+    {
+        var row = WordRowProjection.Of(new AssessmentWordResult("zz", "skipped", false, "Skipped", 0, null) { WorkSteps = 5 });
+
+        Assert.Null(row.ElapsedMs);
+        Assert.Null(row.WorkSteps);
+    }
+
+    [Fact]
+    public void TheRowJsonCarriesWorkStepsAsACamelCaseCountThatIsNullWhenUnrecorded()
+    {
+        var options = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+        var recorded = JsonSerializer.Serialize(
+            WordRowProjection.Of(Alikula(new ParserReading([A, Li, Ku, L, Fv])) with { WorkSteps = 1234 }), options);
+        var unrecorded = JsonSerializer.Serialize(
+            WordRowProjection.Of(Alikula(new ParserReading([A, Li, Ku, L, Fv]))), options);
+
+        Assert.Contains("\"workSteps\":1234", recorded);
+        Assert.Contains("\"workSteps\":null", unrecorded);
     }
 
     [Fact]

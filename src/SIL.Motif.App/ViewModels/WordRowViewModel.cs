@@ -317,9 +317,13 @@ public sealed partial class WordRowViewModel : ObservableObject
         ? PluralText.Format(MotifAppStrings.ComparePlacesPattern, places)
         : string.Empty;
 
-    /// <summary>How long the parser took, or empty for a word it did not time.</summary>
-    public string ElapsedText => _row.ElapsedMs is not { } ms ? string.Empty : ms == 0 ? MotifAppStrings.WordRowLessThanMs
-        : string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.WordRowMsFormat, ms.ToString("N0", System.Globalization.CultureInfo.CurrentCulture));
+    /// <summary>
+    /// The parser work for the word as a count of work steps. A refused, skipped, never-parsed or unassessed word
+    /// shows nothing; a word the parser tried without a count says the count is not recorded.
+    /// </summary>
+    public string WorkStepsText => _row.MeaningCode is "refused" or "not-parsed" ? string.Empty
+        : _row.WorkSteps is { } steps ? PluralText.Format(MotifAppStrings.WorkStepsPattern, steps)
+        : MotifAppStrings.WorkStepsNotRecorded;
 
     /// <summary>When this word's producing measurement was recorded, independent of its neighbours.</summary>
     public string MeasuredText => _row.Origin is { } origin

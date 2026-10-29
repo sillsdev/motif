@@ -273,5 +273,14 @@ public sealed class AssessWordsViewModelTests
         Assert.Equal(string.Empty, Assert.Single(table.Rows).WorkStepsText);
     }
 
+    [Fact]
+    public void AnUnassessedWordShowsNoWorkText()
+    {
+        var table = new AssessWordsViewModel();
+        table.Load([Word("x y", "unassessed") with { ElapsedMs = null, WorkSteps = null }]);
+
+        Assert.Equal(string.Empty, Assert.Single(table.Rows).WorkStepsText);
+    }
+
     private static void AssertNoMilliseconds(string text) => Assert.DoesNotMatch(@"\bms\b|<\s*1\b", text);
 }

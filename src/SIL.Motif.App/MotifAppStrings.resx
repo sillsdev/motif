@@ -5155,14 +5155,6 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <value>Different entry: {0} instead of {1}</value>
     <comment>Tip over a morpheme whose lexical entry differs; {0} is the entry PanGloss built and {1} the entry FieldWorks holds.</comment>
   </data>
-  <data name="MotifApp.WordRowLessThanMs" xml:space="preserve">
-    <value>&lt;1 ms</value>
-    <comment>Parse time of a word that took under a millisecond.</comment>
-  </data>
-  <data name="MotifApp.WordRowMsFormat" xml:space="preserve">
-    <value>{0} ms</value>
-    <comment>A parse time in milliseconds; {0} is the number.</comment>
-  </data>
   <data name="MotifApp.WordRowMeasuredFormat" xml:space="preserve">
     <value>Measured {0}</value>
     <comment>Tip on a word: when its parse time was measured; {0} is a date and time.</comment>
