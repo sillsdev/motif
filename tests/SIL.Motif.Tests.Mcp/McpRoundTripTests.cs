@@ -157,6 +157,8 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
         var phoneme = await session.CallAsync("motif_add_phoneme", ("draft", "affix-authoring"),
             ("name", "z"), ("representations", new[] { "z" }));
         Assert.True(phoneme.GetProperty("ok").GetBoolean(), phoneme.ToString());
+        Assert.StartsWith($"Draft now has {phoneme.GetProperty("result").GetProperty("operationCount").GetInt32()} operations.",
+            phoneme.GetProperty("next").GetString(), StringComparison.Ordinal);
         var phonemeCreate = Assert.Single(phoneme.GetProperty("result").GetProperty("operations").EnumerateArray(),
             operation => operation.GetProperty("kind").GetString()!.EndsWith("/createPhonemes", StringComparison.Ordinal));
         var phonemeId = phonemeCreate.GetProperty("entityId").GetString()!;
@@ -165,6 +167,8 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
             ("name", "after a"), ("left", new[] { new { phoneme = phonemeId } }),
             ("right", Array.Empty<object>()));
         Assert.True(environment.GetProperty("ok").GetBoolean(), environment.ToString());
+        Assert.StartsWith($"Draft now has {environment.GetProperty("result").GetProperty("operationCount").GetInt32()} operations.",
+            environment.GetProperty("next").GetString(), StringComparison.Ordinal);
         var environmentCreate = Assert.Single(environment.GetProperty("result").GetProperty("operations").EnumerateArray(),
             operation => operation.GetProperty("kind").GetString()!.EndsWith("/createEnvironments", StringComparison.Ordinal));
         var environmentId = environmentCreate.GetProperty("entityId").GetString()!;

@@ -19,8 +19,14 @@ internal sealed record ToolOutcome(JsonNode? Value, Refusal? Refusal, string? Ne
     /// <summary>Converts a command's typed outcome using the same JSON the CLI prints with <c>--json</c>.</summary>
     public static ToolOutcome From<T>(CommandOutcome<T> outcome, Func<T, string?>? next = null) where T : class =>
         outcome.Succeeded
-            ? Ok(JsonNode.Parse(ProjectionJson.Serialize(outcome.Value!))!, next?.Invoke(outcome.Value!))
+            ? Ok(JsonNode.Parse(ProjectionJson.Serialize(outcome.Value!))!, ComposeHint(outcome.Value!, next?.Invoke(outcome.Value!)))
             : Refused(outcome.Refusal!);
+
+    private static string? ComposeHint<T>(T value, string? next) where T : class =>
+        value is ComposedOperationsResponse composed &&
+        (next is null || !next.StartsWith("Draft now has ", StringComparison.Ordinal))
+            ? $"Draft now has {composed.OperationCount} operations." + (next is null ? "" : $" {next}")
+            : next;
 
     public static ToolOutcome From(CommandOutcome<JsonObject> outcome, string? next = null) =>
         outcome.Succeeded ? Ok(outcome.Value!, next) : Refused(outcome.Refusal!);

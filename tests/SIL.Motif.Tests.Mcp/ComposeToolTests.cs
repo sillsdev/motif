@@ -1,4 +1,6 @@
 using SIL.Motif.Commands;
+using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Responses;
 using SIL.Motif.Mcp;
 using Xunit;
 
@@ -7,6 +9,17 @@ namespace SIL.Motif.Tests.Mcp;
 [Trait("MotifTestLevel", "Unit")]
 public sealed class ComposeToolTests
 {
+    [Fact]
+    public void ComposerHintsNameTheOperationCountWithoutRepeatingAnExistingCount()
+    {
+        var result = CommandOutcome<ComposedOperationsResponse>.Success(new("draft", "composer", [], 3));
+
+        Assert.Equal("Draft now has 3 operations.", ToolOutcome.From(result).Next);
+        Assert.Equal("Draft now has 3 operations. Try it.", ToolOutcome.From(result, _ => "Try it.").Next);
+        Assert.Equal("Draft now has 3 changes. Try it.",
+            ToolOutcome.From(result, _ => "Draft now has 3 changes. Try it.").Next);
+    }
+
     private static AgentTool Tool => AgentTools.All.Single(tool => tool.Name == "motif_compose");
 
     private static string[] Verbs(AgentTool tool, string property) =>
