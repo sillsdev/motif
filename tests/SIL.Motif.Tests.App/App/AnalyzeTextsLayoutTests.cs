@@ -92,7 +92,8 @@ public sealed class AnalyzeTextsLayoutTests
             {
                 var inText = workspace.PageModel<TextsPageModel>().ResultsInText;
                 inText.CloseTokenCard();
-                Settle(window);
+                // Wait for the reader's pending line reads before reading any line's words.
+                await SettleReaderAsync(workspace, window);
                 var panel = Panel(window);
                 var sungura = RealizedLines(inText).SelectMany(line => line.Tokens).Single(token => token.Form == "Sungura");
                 var watoto = RealizedLines(inText).SelectMany(line => line.Tokens).Single(token => token.Form == "watoto");
@@ -101,10 +102,10 @@ public sealed class AnalyzeTextsLayoutTests
 
                 Assert.True(StripOf(panel, "Sungura").Focus());
                 window.KeyPress(Key.Right, RawInputModifiers.None, PhysicalKey.None, null);
-                Settle(window);
+                await SettleReaderAsync(workspace, window);
                 Assert.Same(RealizedLines(inText)[0].Tokens.Single(token => token.Form == "alikula"), FocusedToken(panel));
                 window.KeyPress(Key.Right, RawInputModifiers.None, PhysicalKey.None, null);
-                Settle(window);
+                await SettleReaderAsync(workspace, window);
                 Assert.Same(RealizedLines(inText)[0].Tokens.Single(token => token.Form == "chakula"), FocusedToken(panel));
                 window.KeyPress(Key.Down, RawInputModifiers.None, PhysicalKey.None, null);
                 Settle(window);
