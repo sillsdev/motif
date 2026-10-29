@@ -172,6 +172,12 @@ public static class WordTraceQuery
                     "wordtrace.parser-unavailable", FailureReason.Refused, outcome.Message)),
             };
             var refusals = new ParserRefusalRepository(database);
+            if (result.Succeeded && (outcome.Steps is not null || outcome.WorkSteps is not null))
+                result = CommandOutcome<WordTraceResponse>.Success(result.Value! with
+                {
+                    ParserSteps = outcome.Steps ?? result.Value.ParserSteps,
+                    ParserWorkSteps = outcome.WorkSteps ?? result.Value.ParserWorkSteps,
+                });
             if (result.Succeeded) refusals.Clear(baseline.Token);
             else if (result.Refusal?.ParserDiagnostic is not null) refusals.Save(baseline.Token, result.Refusal);
             return result.Succeeded ? CommandOutcome<WordTraceResponse>.Success(

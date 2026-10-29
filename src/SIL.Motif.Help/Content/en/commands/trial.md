@@ -11,3 +11,5 @@ Word files must be at most 8 MiB of valid UTF-8 text without NUL bytes; an initi
 Trial summaries report `beforeOutcomes` and `afterOutcomes` with the same `timedOut`, `capped` and `skipped` counts as Assess. The `unfinished` Difference category includes words unfinished on either side and is not a stop count for one run.
 
 The Trial compares total parser work with the Baseline over the same words and lists up to five words requiring more than 5% extra work. A stopped search or missing work count makes the comparison unavailable. Stops at the work or attempt limit are separate from stops at the time safety net. Work counts are deterministic for the same parser, grammar, word and limits; elapsed time describes time on this computer.
+
+When total parser work increases by more than 5%, the completed Trial reports a warning. This warning does not block the Trial.

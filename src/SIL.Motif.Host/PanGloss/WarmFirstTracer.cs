@@ -38,7 +38,8 @@ public sealed class WarmFirstTracer(WarmPanGlossPool pool, IPanGlossTracer cold,
             case WarmParseResult.Completed completed:
                 var interpreted = PanGlossTracer.Interpret(word, completed.ExitCode, completed.Json, completed.Elapsed);
                 // A reply Motif cannot read is the resident parser's fault, not the word's: the cold path decides.
-                if (interpreted is not PanGlossTraceOutcome.Malformed) return interpreted;
+                if (interpreted is not PanGlossTraceOutcome.Malformed)
+                    return interpreted with { Steps = completed.Steps, WorkSteps = completed.WorkSteps };
                 break;
         }
         return await cold.TraceAsync(grammarPath, word, cancellationToken, timeout).ConfigureAwait(false);

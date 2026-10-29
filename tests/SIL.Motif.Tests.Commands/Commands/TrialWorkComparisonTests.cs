@@ -37,4 +37,14 @@ public sealed class TrialWorkComparisonTests
     }
 
     private static AssessedWord Word(string word, long work) => new(word, "analysed", []) { WorkSteps = work };
+
+    [Theory]
+    [InlineData(104L, false)]
+    [InlineData(105L, false)]
+    [InlineData(106L, true)]
+    public void WarnsOnlyWhenTotalWorkRisesMoreThanFivePercent(long work, bool warning)
+    {
+        var result = TrialWorkComparison.Compare([Word("word", 100)], [Word("word", work)]);
+        Assert.Equal(warning, result.WorkIncreaseWarning);
+    }
 }

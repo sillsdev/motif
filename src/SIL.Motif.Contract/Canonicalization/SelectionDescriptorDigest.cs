@@ -23,7 +23,7 @@ public static class SelectionDescriptorDigest
         var projection = new DescriptorProjection(
             descriptor.TextIds.Select(id => id.ToString("D")).ToArray(),
             descriptor.PastedWords.ToArray(), descriptor.AllWordforms, descriptor.RetryFailed,
-            descriptor.RetrySourceAssessmentId, descriptor.RetrySlowerThan?.Ticks,
+            descriptor.RetrySourceAssessmentId, descriptor.RetryWorkOver,
             descriptor.ResolvedWords.ToArray(), descriptor.ResolvedSha256,
             descriptor.SourceCounts.Select(entry => new SourceCountProjection(entry.Source, entry.Count)).ToArray());
         var json = JsonSerializer.Serialize(projection, Options);
@@ -36,7 +36,7 @@ public static class SelectionDescriptorDigest
         bool AllWordforms,
         bool RetryFailed,
         string? RetrySourceAssessmentId,
-        long? RetrySlowerThanTicks,
+        long? RetryWorkOver,
         IReadOnlyList<string> ResolvedWords,
         string ResolvedSha256,
         IReadOnlyList<SourceCountProjection> SourceCounts);

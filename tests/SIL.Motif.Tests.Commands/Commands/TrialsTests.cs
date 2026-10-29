@@ -15,6 +15,7 @@ using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.Corpus;
+using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.Parser;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Host.Texts;
@@ -33,6 +34,30 @@ public sealed class TrialsTests : IDisposable
         Guid.NewGuid().ToString("N"));
 
     public TrialsTests() => Directory.CreateDirectory(_root);
+
+    [Theory]
+    [InlineData("matching", true)]
+    [InlineData("assessor", false)]
+    [InlineData("token", false)]
+    [InlineData("executable", false)]
+    [InlineData("missing-executable", false)]
+    [InlineData("step-limit", false)]
+    public void TrialProjectionComparesOnlyCompatibleAssessments(string mismatch, bool comparable)
+    {
+        using var fixture = new ProjectFixture(_root);
+        var proposal = fixture.SaveProposal();
+        fixture.RecordWorkAssessment(proposal, "before", true, mismatch);
+        fixture.RecordWorkAssessment(proposal, "after", false, mismatch);
+        fixture.CreateJob(proposal.Json, "2026-09-24T11:00:00Z", "trial", ["after"],
+            baselineAssessmentIds: ["before"]);
+
+        var trial = Trials.LatestFor(fixture.Database, fixture.Project, proposal.Id.Value)!;
+        Assert.NotNull(trial.Work);
+        Assert.Equal(comparable ? 100L : null, trial.Work.BaselineWork);
+        Assert.Equal(comparable ? 110L : null, trial.Work.TrialWorkSteps);
+        Assert.Equal(comparable, trial.Work.WorkIncreaseWarning);
+        Assert.Equal(JobStatus.Completed, trial.Status);
+    }
 
     [Fact]
     public void LatestForReadsTheNewestCompletedTrialOfTheProposal()
@@ -483,9 +508,10 @@ public sealed class TrialsTests : IDisposable
 
         public string CreateJob(string proposalJson, string createdUtc, string jobId,
             IReadOnlyList<string> assessmentIds, bool allWords = false,
-            IReadOnlyList<SIL.Motif.Model.Effects.ExpectedEffect>? effects = null, BaselineToken? baseline = null)
+            IReadOnlyList<SIL.Motif.Model.Effects.ExpectedEffect>? effects = null, BaselineToken? baseline = null,
+            IReadOnlyList<string>? baselineAssessmentIds = null)
         {
-            var job = CreateRunningJob(proposalJson, createdUtc, jobId, allWords);
+            var job = CreateRunningJob(proposalJson, createdUtc, jobId, ["cat"], allWords, baselineAssessmentIds);
             var dryRun = PublishedDryRun(ProposalJsonParser.Parse(proposalJson), effects);
             job = _jobs.PublishDryRun(job.JobId, dryRun, job.Version);
             var completion = JsonSerializer.Serialize(new
@@ -524,7 +550,7 @@ public sealed class TrialsTests : IDisposable
             => CreateRunningJob(proposalJson, createdUtc, jobId, ["cat"], allWords);
 
         public JobRecord CreateRunningJob(string proposalJson, string createdUtc, string jobId,
-            IReadOnlyList<string>? words, bool allWords = false)
+            IReadOnlyList<string>? words, bool allWords = false, IReadOnlyList<string>? baselineAssessmentIds = null)
         {
             var input = JsonSerializer.Serialize(new
             {
@@ -532,6 +558,7 @@ public sealed class TrialsTests : IDisposable
                 scope = (string?)null,
                 words,
                 allWords,
+                baselineAssessmentIds,
                 limits = (TrialLimits?)null,
             }, MotifJson.CreateOptions());
             var job = _jobs.Create(jobId, ProjectWorkspaceKey.Compute(Project), TrialJobHandler.TrialKind,
@@ -568,6 +595,22 @@ public sealed class TrialsTests : IDisposable
             Material: new AssessmentRecordMaterial.Words([new AssessedWord("cat", outcome, []) { ProjectStanding = projectStanding }], null, null, []),
             SavedUtc: "2026-09-24T11:00:00Z"
         ));
+        }
+
+        public void RecordWorkAssessment(SavedProposal proposal, string id, bool before, string mismatch)
+        {
+            var token = before && mismatch == "token" ? _tokenJson + " " : _tokenJson;
+            var assessor = before && mismatch == "assessor" ? "other" : "pangloss";
+            var executable = mismatch == "missing-executable" ? "" : before && mismatch == "executable" ? "other" : "parser";
+            var stepLimit = before && mismatch == "step-limit" ? new StepCap(100) : new StepCap(200);
+            var invocation = new BatchInvocationEvidence("invocation-" + id, "source", "source-hash", executable,
+                "words", "words-hash", "tsv", "tsv-hash", "stderr", "stderr-hash", null, stepLimit, 1, false);
+            _assessments.Record(new NewAssessmentRecord(id, before ? null : proposal.Id,
+                before ? null : proposal.Digest, assessor, AssessmentKinds.ParseTime, "{}", "scope",
+                new AssessmentSubject.Words(Selection.Create("Default", ["cat"]), "whitespace", "1"),
+                token, "outcome", "semantic", "grammar", "model", "pipeline", 0,
+                new AssessmentRecordMaterial.Words([new AssessedWord("cat", "analysed", [])
+                    { WorkSteps = before ? 100 : 110 }], null, null, []) { Invocation = invocation }));
         }
 
         public void RecordProjectAssessment(string assessmentId, string kind, string outcome)

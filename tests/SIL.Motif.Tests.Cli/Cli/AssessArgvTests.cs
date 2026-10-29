@@ -52,23 +52,34 @@ public sealed class AssessArgvTests : IDisposable
     }
 
     [Fact]
-    public void AnUnparseableRetrySlowerThanIsAUsageFailure()
+    public void AnUnparseableRetryWorkOverIsAUsageFailure()
     {
         var missing = Path.Combine(_workerRoot, "absent.fwdata");
 
-        var result = Run($"assess \"{missing}\" --retry-slower-than not-a-number");
+        var result = Run($"assess \"{missing}\" --retry-work-over not-a-number " +
+            $"--retry-source-assessment {CanonicalId.Mint("assessment/").Value}");
 
         Assert.Equal(1, result.ExitCode);
         Assert.Contains("Usage: motif assess <project>", result.Error, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void ANegativeRetrySlowerThanIsAUsageFailure()
+    public void ANegativeRetryWorkOverIsAUsageFailure()
     {
         var missing = Path.Combine(_workerRoot, "absent.fwdata");
 
-        var result = Run($"assess \"{missing}\" --retry-slower-than -5");
+        var result = Run($"assess \"{missing}\" --retry-work-over -5 " +
+            $"--retry-source-assessment {CanonicalId.Mint("assessment/").Value}");
 
+        Assert.Equal(1, result.ExitCode);
+        Assert.Contains("Usage: motif assess <project>", result.Error, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void RemovedMillisecondRetryOptionIsNotSilentlyIgnored()
+    {
+        var missing = Path.Combine(_workerRoot, "absent.fwdata");
+        var result = Run($"assess \"{missing}\" --retry-slower-than 100");
         Assert.Equal(1, result.ExitCode);
         Assert.Contains("Usage: motif assess <project>", result.Error, StringComparison.Ordinal);
     }
@@ -114,7 +125,7 @@ public sealed class AssessArgvTests : IDisposable
         var assessmentId = CanonicalId.Mint("assessment/").Value;
 
         var result = Run(
-            $"assess \"{missing}\" --retry-failed --retry-slower-than 10 " +
+            $"assess \"{missing}\" --retry-failed --retry-work-over 10 " +
             $"--retry-source-assessment {assessmentId} --json");
 
         var envelope = Envelope(result.Error);

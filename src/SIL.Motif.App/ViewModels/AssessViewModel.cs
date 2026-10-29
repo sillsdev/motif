@@ -290,8 +290,11 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
             _runDefaultSelection = false;
             _defaultPerWordLimitMs = null;
             _defaultStepLimit = null;
-            var request = new AssessRequest(ProjectPath!, runDefault ? null : _selection.BuildRequest(),
-                timeLimitMs, requestedStepLimit);
+            var selection = runDefault ? null : _selection.BuildRequest();
+            if (selection is { } retry && (retry.RetryFailed || retry.RetryWorkOver is not null))
+                selection = retry with { RetrySourceAssessmentId = _previous?.Measurements
+                    .FirstOrDefault(measurement => measurement.Kind == AssessmentKinds.ParseTime)?.AssessmentId };
+            var request = new AssessRequest(ProjectPath!, selection, timeLimitMs, requestedStepLimit);
             return await ParseProgress.TrackAsync(() => _commandClient.AssessAsync(request, this, cancellationToken)).ConfigureAwait(true);
         }
 

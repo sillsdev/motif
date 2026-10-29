@@ -8,6 +8,9 @@ public sealed record TrialWork(
     int WordCount, long? BaselineWork, long? TrialWorkSteps, double? PercentChange,
     IReadOnlyList<TrialWorkIncrease> IncreasedWords, int WorkLimitStops, int TimeSafetyNetStops)
 {
+    /// <summary>Whether completed words required more than 5% additional parser work.</summary>
+    public bool WorkIncreaseWarning => PercentChange is > 5;
+
     /// <summary>Trial words stopped by the work or attempt cap.</summary>
     public IReadOnlyList<string> WorkLimitWords { get; init; } = [];
     /// <summary>Trial words stopped by the time safety net.</summary>

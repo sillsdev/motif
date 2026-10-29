@@ -1936,13 +1936,16 @@ try
 
         case "assess":
             if (positionals.Count != 1) return Usage(AssessUsage(), asJson);
+            if (flags.Keys.Any(flag => flag is not ("texts" or "all-wordforms" or "words" or "retry-failed" or
+                    "retry-work-over" or "retry-source-assessment" or "replaces" or "time-limit-ms" or "step-cap" or
+                    "summary" or "offset" or "limit" or "json"))) return Usage(AssessUsage(), asJson);
             flags.TryGetValue("replaces", out var assessReplaces);
             if (assessReplaces is not null && !CanonicalId.TryParse(assessReplaces, out _))
                 return Usage(AssessUsage(), asJson);
             var assessRetryFailed = flags.ContainsKey("retry-failed");
-            var hasAssessRetrySlowerThan = flags.ContainsKey("retry-slower-than");
+            var hasAssessRetryWorkOver = flags.ContainsKey("retry-work-over");
             var hasAssessRetrySource = flags.TryGetValue("retry-source-assessment", out var assessRetrySource);
-            if (hasAssessRetrySource != (assessRetryFailed || hasAssessRetrySlowerThan))
+            if (hasAssessRetrySource != (assessRetryFailed || hasAssessRetryWorkOver))
                 return Usage(AssessUsage(), asJson);
             if (hasAssessRetrySource && !CanonicalId.TryParse(assessRetrySource, out _))
                 return Usage(AssessUsage(), asJson);
@@ -1965,16 +1968,16 @@ try
                     (!int.TryParse(assessLimitRaw, out assessPageLimit) || assessPageLimit < 1) ||
                 (flags.ContainsKey("offset") || flags.ContainsKey("limit")) && !assessSummary)
                 return Usage(AssessUsage(), asJson);
-            TimeSpan? assessRetrySlowerThan = null;
-            if (hasAssessRetrySlowerThan)
+            long? assessRetryWorkOver = null;
+            if (hasAssessRetryWorkOver)
             {
-                var assessRetrySlowerThanRaw = flags["retry-slower-than"];
-                if (!long.TryParse(assessRetrySlowerThanRaw, out var assessRetrySlowerThanMs) ||
-                    assessRetrySlowerThanMs < 0)
+                var assessRetryWorkOverRaw = flags["retry-work-over"];
+                if (!long.TryParse(assessRetryWorkOverRaw, out var assessRetryWorkOverLabel) ||
+                    assessRetryWorkOverLabel < 0)
                 {
                     return Usage(AssessUsage(), asJson);
                 }
-                assessRetrySlowerThan = TimeSpan.FromMilliseconds(assessRetrySlowerThanMs);
+                assessRetryWorkOver = assessRetryWorkOverLabel;
             }
             int? assessTimeLimitMs = null;
             if (flags.TryGetValue("time-limit-ms", out var assessTimeLimitRaw))
@@ -1990,10 +1993,10 @@ try
                 catch (FormatException) { return Usage(AssessUsage(), asJson); }
             }
             var selectionWasRequested = flags.ContainsKey("all-wordforms") || flags.ContainsKey("texts") ||
-                assessWordsFile is not null || assessRetryFailed || assessRetrySlowerThan is not null;
+                assessWordsFile is not null || assessRetryFailed || assessRetryWorkOver is not null;
             var assessSelection = selectionWasRequested
                 ? new SelectionRequest(flags.ContainsKey("all-wordforms"), assessTextIds,
-                    assessWords, assessRetryFailed, assessRetrySlowerThan, assessRetrySource)
+                    assessWords, assessRetryFailed, assessRetryWorkOver, assessRetrySource)
                 : null;
             using (var activityLease = MotifUpdateGate.TryAcquire())
             {

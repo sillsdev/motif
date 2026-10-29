@@ -670,8 +670,10 @@ internal static class Program
             }
             var envelope = TraceEnvelope(word, behaviour.TraceSignature ?? word + "-sig", behaviour.TraceJson,
                 behaviour.TraceCapped, behaviour.TraceTimedOut, behaviour.TraceAnalyses);
+            var counts = (behaviour.ServeSteps is { } steps ? ",\"steps\":" + steps.ToString(CultureInfo.InvariantCulture) : "") +
+                (behaviour.ServeWorkSteps is { } work ? ",\"workSteps\":" + work.ToString(CultureInfo.InvariantCulture) : "");
             output.WriteLine("{\"id\":" + JsonSerializer.Serialize(id) + ",\"type\":\"result\",\"exitCode\":" +
-                behaviour.ServeExitCode.ToString(CultureInfo.InvariantCulture) + ",\"result\":" + envelope + "}");
+                behaviour.ServeExitCode.ToString(CultureInfo.InvariantCulture) + counts + ",\"status\":\"future-status\",\"result\":" + envelope + "}");
         }
         GC.KeepAlive(hog);
         return 0;
@@ -989,6 +991,8 @@ internal static class Program
         public int ServeProtocol { get; init; } = 1;
         public string? ServeArgvLog { get; init; }
         public int ServeExitCode { get; init; }
+        public long? ServeSteps { get; init; }
+        public long? ServeWorkSteps { get; init; }
         public int ServeAllocateBytes { get; init; }
 
         internal static Behaviour Read(string? directory, string? subcommand = null)

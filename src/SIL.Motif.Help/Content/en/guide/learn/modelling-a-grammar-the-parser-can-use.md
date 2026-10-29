@@ -28,7 +28,7 @@ Features, their values, and inflection classes link by reference, not by name: t
 
 ## When a grammar is slow
 
-When a parse takes longer than expected, use [Timing](cmd:timing) after [Parse all words](term:parse-all-words) to inspect the recorded run costs before changing the grammar. The Learn page **Why a grammar is slow** explains how to read Timing.
+When a parse takes longer than expected, use [Timing](cmd:timing) after [Parse all words](term:parse-all-words) to inspect the time recorded on this computer. The Learn page **Why a grammar is slow** explains how to read Timing. Compare parser work when judging a grammar change.
 
 ## Change one thing at a time
 

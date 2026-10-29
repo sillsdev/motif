@@ -71,6 +71,23 @@ public sealed class WorkStepsReadingTests : IDisposable
     }
 
     [Fact]
+    public void HeaderlessSevenAndEightColumnRowsPreserveWorkAndOutcomes()
+    {
+        var rows = BatchTsvParser.Parse("0\tquick\t1\tok\tsig\t4\t501\n" +
+            "1\tguessed\t2\tok\tsig\ttrue\t7\t900\n" +
+            "2\tstopped\t3\tCAP\t-\tfalse\t200\t20000\n" +
+            "3\tunknown\t4\tok\t-\t-\t-\n");
+        Assert.Equal(("quick", WordOutcome.Analysed, 4L, 501L),
+            (rows[0].Word, rows[0].Outcome, rows[0].Steps, rows[0].WorkSteps));
+        Assert.Equal(("guessed", WordOutcome.Analysed, 7L, 900L),
+            (rows[1].Word, rows[1].Outcome, rows[1].Steps, rows[1].WorkSteps));
+        Assert.Equal((WordOutcome.Capped, 200L, 20000L), (rows[2].Outcome, rows[2].Steps, rows[2].WorkSteps));
+        Assert.Equal(WordOutcome.NoAnalysis, rows[3].Outcome);
+        Assert.Null(rows[3].Steps);
+        Assert.Null(rows[3].WorkSteps);
+    }
+
+    [Fact]
     public void TheCurrentBatchTsvHasNoStepColumnsAndStillParses()
     {
         var analysed = new BatchRow(0, NewWord(), 3, "ok", "sig");

@@ -8,6 +8,8 @@ Use this to measure how a grammar parses the project's usual words, named Texts,
 
 To parse some words again and update their main results, pass `--replaces <assessment-id>` with the id of the complete ParseTime Assessment they belong to. The replacement must use that same Baseline and contain only words in that Assessment. Each replaced word keeps the new run's id and measurement time; untouched words keep theirs. A run without `--replaces` records a separate measurement without replacing words in an existing run.
 
+To select words whose recorded parser work exceeds a threshold, use `--retry-work-over <steps> --retry-source-assessment <id>`. Words without a recorded work count cannot match this selector.
+
 ## Example
 
 ```powershell

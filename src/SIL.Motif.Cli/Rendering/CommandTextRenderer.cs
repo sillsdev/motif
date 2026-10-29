@@ -116,6 +116,8 @@ public static class CommandTextRenderer
             text.AppendLine(change == 0 ? "These words took the same parser work."
                 : $"These words took {Math.Abs(change):0.#}% {(change > 0 ? "more" : "less")} work to parse.");
         else text.AppendLine("Parser work cannot be compared for every Trial word.");
+        if (work.WorkIncreaseWarning)
+            text.AppendLine("Warning: parser work increased by more than 5% over the Baseline.");
         foreach (var word in work.IncreasedWords)
             text.AppendLine($"  {word.Word}: {word.PercentMore:0.#}% more work");
         text.AppendLine($"Stopped: {work.WorkLimitStops} at the work or attempt limit; {work.TimeSafetyNetStops} at the time safety net.");
@@ -1129,7 +1131,7 @@ public static class CommandTextRenderer
         {
             var timing = word.Calls is null && word.ElapsedNs is null ? "" :
                 $", {CountLabel(word.Calls, "call", "calls")}, " +
-                (word.ElapsedNs is { } ns ? (ns / 1_000_000d).ToString("N3", CultureInfo.CurrentCulture) + " ms" : "time not recorded");
+                (word.ElapsedNs is { } ns ? "time on this computer: " + (ns / 1_000_000d).ToString("N3", CultureInfo.CurrentCulture) + " ms" : "time not recorded");
             text.AppendLine($"    {word.Row.Word}: {word.Row.Meaning}{timing}");
             if (word.Row.MeaningDetail.Length > 0) text.AppendLine("      " + word.Row.MeaningDetail);
         }

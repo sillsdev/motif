@@ -12,7 +12,7 @@ namespace SIL.Motif.Tests.App;
 /// <summary>
 /// Pins <see cref="SelectionViewModel"/>: loading a project's current Baseline Texts, toggling Texts by
 /// GUID, searching, pasted-word line splitting and whitespace handling, All wordforms, Retry failed,
-/// Retry-slower-than validation, source counts in the summary, <see cref="SelectionViewModel.CanAssess"/>,
+/// Retry-work validation, source counts in the summary, <see cref="SelectionViewModel.CanAssess"/>,
 /// and that changing project resets every field.
 /// </summary>
 public sealed class SelectionViewModelTests
@@ -325,14 +325,14 @@ public sealed class SelectionViewModelTests
     }
 
     [Fact]
-    public void RetrySlowerThanMillisecondsComposesAStrictlyGreaterThanThreshold()
+    public void RetryWorkOverComposesAStrictlyGreaterThanThreshold()
     {
-        var viewModel = new SelectionViewModel(new FakeCommandClient()) { RetrySlowerThanMilliseconds = 500 };
+        var viewModel = new SelectionViewModel(new FakeCommandClient()) { RetryWorkOver = 500 };
 
         Assert.True(viewModel.CanAssess);
         Assert.Null(viewModel.ThresholdValidationMessage);
-        Assert.Equal(TimeSpan.FromMilliseconds(500), viewModel.BuildRequest().RetrySlowerThan);
-        Assert.Equal("retry slower than 500 ms", viewModel.SummaryText);
+        Assert.Equal(500, viewModel.BuildRequest().RetryWorkOver);
+        Assert.Equal("retry words over 500 work steps", viewModel.SummaryText);
     }
 
     [Fact]
@@ -341,22 +341,32 @@ public sealed class SelectionViewModelTests
         var viewModel = new SelectionViewModel(new FakeCommandClient())
         {
             AllWordforms = true,
-            RetrySlowerThanMilliseconds = -1,
+            RetryWorkOver = -1,
         };
 
         Assert.False(viewModel.CanAssess);
         Assert.NotNull(viewModel.ThresholdValidationMessage);
-        Assert.Null(viewModel.BuildRequest().RetrySlowerThan);
+        Assert.Null(viewModel.BuildRequest().RetryWorkOver);
+    }
+
+    [Theory]
+    [InlineData(1.5)]
+    [InlineData(9223372036854775808.0)]
+    public void FractionalOrOverflowingWorkThresholdIsInvalid(double number)
+    {
+        var viewModel = new SelectionViewModel(new FakeCommandClient()) { RetryWorkOver = (decimal)number };
+        Assert.False(viewModel.CanAssess);
+        Assert.NotNull(viewModel.ThresholdValidationMessage);
     }
 
     [Fact]
     public void ZeroIsAValidThreshold()
     {
-        var viewModel = new SelectionViewModel(new FakeCommandClient()) { RetrySlowerThanMilliseconds = 0 };
+        var viewModel = new SelectionViewModel(new FakeCommandClient()) { RetryWorkOver = 0 };
 
         Assert.True(viewModel.CanAssess);
         Assert.Null(viewModel.ThresholdValidationMessage);
-        Assert.Equal(TimeSpan.Zero, viewModel.BuildRequest().RetrySlowerThan);
+        Assert.Equal(0, viewModel.BuildRequest().RetryWorkOver);
     }
 
     [Fact]
@@ -383,7 +393,7 @@ public sealed class SelectionViewModelTests
         viewModel.PastedWords = "leftover";
         viewModel.AllWordforms = true;
         viewModel.RetryFailed = true;
-        viewModel.RetrySlowerThanMilliseconds = 250;
+        viewModel.RetryWorkOver = 250;
         viewModel.SearchText = "Al";
 
         fake.ListTextsCompletesWith(new TextInventoryResponse([new TextChoiceSummary(BetaId, "Beta")], HasBaseline: true));
@@ -393,7 +403,7 @@ public sealed class SelectionViewModelTests
         Assert.Equal(string.Empty, viewModel.PastedWords);
         Assert.False(viewModel.AllWordforms);
         Assert.False(viewModel.RetryFailed);
-        Assert.Null(viewModel.RetrySlowerThanMilliseconds);
+        Assert.Null(viewModel.RetryWorkOver);
         var text = Assert.Single(viewModel.Texts);
         Assert.Equal(BetaId, text.Id);
         Assert.False(text.IsChecked);

@@ -469,6 +469,8 @@ public static class RefusalCodes
     public const string SelectionRetrySourceRequired = "selection.retry-source-required";
     /// <summary>A source Assessment id was given without a retry kind.</summary>
     public const string SelectionRetrySourceWithoutRetry = "selection.retry-source-without-retry";
+    /// <summary>The retry parser-work threshold is invalid.</summary>
+    public const string SelectionRetryWorkInvalid = "selection.retry-work-invalid";
     /// <summary>The saved Selection changed since the window last read it.</summary>
     public const string SelectionRevisionConflict = "selection.revision-conflict";
 

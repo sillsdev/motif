@@ -309,10 +309,10 @@ public sealed class RetainedInvocationRepositoryTests : IDisposable
 
     private static SelectionDescriptor NewSelectionDescriptor(
         IReadOnlyList<Guid> textIds, IReadOnlyList<string> pastedWords, bool allWordforms,
-        bool retryFailed, string? retrySource, TimeSpan? retrySlowerThan)
+        bool retryFailed, string? retrySource, long? retryWorkOver)
     {
         var descriptor = new SelectionDescriptor(
-            textIds, pastedWords, allWordforms, retryFailed, retrySource, retrySlowerThan,
+            textIds, pastedWords, allWordforms, retryFailed, retrySource, retryWorkOver,
             ["word"], Selection.Create("project", ["word"]).Sha256, [new("pasted-words", 1)]);
         return descriptor with { DescriptorSha256 = SelectionDescriptorDigest.Compute(descriptor) };
     }

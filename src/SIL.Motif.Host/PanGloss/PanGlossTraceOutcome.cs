@@ -21,6 +21,12 @@ public abstract record PanGlossTraceOutcome
     /// </summary>
     public PanGlossTraceDetails? Details { get; init; }
 
+    /// <summary>Analysis attempts in the resident parser's result envelope, if supplied.</summary>
+    public long? Steps { get; init; }
+
+    /// <summary>Total parser work in the resident parser's result envelope, if supplied.</summary>
+    public long? WorkSteps { get; init; }
+
     /// <summary>The parsed diagnostic document, including its exact raw JSON, when one was emitted.</summary>
     public PanGlossTraceDiagnosticDocument? Document { get; init; }
 

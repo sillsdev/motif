@@ -239,7 +239,7 @@ public sealed class RetainedInvocationRepository
 
     private void ValidateRetrySource(SelectionDescriptor selection, string baselineJson)
     {
-        if (selection.RetryFailed || selection.RetrySlowerThan is not null)
+        if (selection.RetryFailed || selection.RetryWorkOver is not null)
         {
             if (string.IsNullOrWhiteSpace(selection.RetrySourceAssessmentId))
                 throw new InvalidDataException("A retry Selection must name its source Assessment.");

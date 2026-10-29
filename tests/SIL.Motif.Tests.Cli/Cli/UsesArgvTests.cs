@@ -82,7 +82,7 @@ public sealed class UsesArgvTests(PristineProjectFixture pristine) : IDisposable
             "    wamekata: Lost",
             "    Not counting 1 disapproved",
             "  Words it ran in: 1 word (Lost 1)",
-            $"    walikata: Lost, 3 calls, {1.5.ToString("N3", System.Globalization.CultureInfo.CurrentCulture)} ms",
+            $"    walikata: Lost, 3 calls, time on this computer: {1.5.ToString("N3", System.Globalization.CultureInfo.CurrentCulture)} ms",
             "  What these words share:",
             "    wa- 3PL: 2 words (walikata, wamekata)",
             "    kat cut: 2 words (walikata, wamekata)",

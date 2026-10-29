@@ -13,14 +13,14 @@ namespace SIL.Motif.App.ViewModels;
 /// <summary>
 /// Composes one <see cref="SelectionRequest"/> from the four agreed sources (design decision 4): a
 /// searchable checked list of the current Baseline's Texts, pasted or typed words, All wordforms, Retry
-/// failed, and a Retry-slower-than threshold. Every source is client-side bookkeeping only — actually
+/// failed, and a parser-work threshold. Every source is client-side bookkeeping only — actually
 /// resolving a Selection's words happens later, inside the Assess command's own
 /// <see cref="SIL.Motif.Commands.Assess.SelectionComposer"/>, which is the one place that opens a project.
 /// </summary>
 public sealed partial class SelectionViewModel : ObservableObject, IProjectStateParticipant
 {
     private const string NothingSelectedYet = "Nothing selected yet.";
-    private const string NegativeThresholdMessage = "The retry-slower-than threshold must not be negative.";
+    private const string NegativeThresholdMessage = "The parser work threshold must be a whole nonnegative number.";
     private const string InvalidStepLimitMessage = "The per-word analysis attempt limit must be a positive whole number.";
 
     private readonly ICommandClient _commandClient;
@@ -93,7 +93,7 @@ public sealed partial class SelectionViewModel : ObservableObject, IProjectState
     private bool _perWordStepLimitUnbounded;
 
     [ObservableProperty]
-    private decimal? _retrySlowerThanMilliseconds;
+    private decimal? _retryWorkOver;
 
     /// <summary>Why the last read or write was refused, in the window's words.</summary>
     [ObservableProperty]
@@ -119,7 +119,7 @@ public sealed partial class SelectionViewModel : ObservableObject, IProjectState
 
     partial void OnRetryFailedChanged(bool value) => Recompute();
 
-    partial void OnRetrySlowerThanMillisecondsChanged(decimal? value) => Recompute();
+    partial void OnRetryWorkOverChanged(decimal? value) => Recompute();
 
     partial void OnPerWordStepLimitChanged(decimal? value) => Recompute();
 
@@ -128,9 +128,9 @@ public sealed partial class SelectionViewModel : ObservableObject, IProjectState
     /// <summary>Composes the current state into the one request every source agrees to combine into.</summary>
     public SelectionRequest BuildRequest()
     {
-        var threshold = ThresholdValidationMessage is null && RetrySlowerThanMilliseconds is { } ms
-            ? TimeSpan.FromMilliseconds((double)ms)
-            : (TimeSpan?)null;
+        var threshold = ThresholdValidationMessage is null && RetryWorkOver is { } stepsThreshold
+            ? decimal.ToInt64(stepsThreshold)
+            : (long?)null;
         var stepLimit = PerWordStepLimitUnbounded ? StepCap.Unbounded
             : StepLimitValidationMessage is null && PerWordStepLimit is { } steps
                 ? new StepCap(decimal.ToInt64(steps))
@@ -161,7 +161,7 @@ public sealed partial class SelectionViewModel : ObservableObject, IProjectState
         PastedWords = string.Empty;
         AllWordforms = false;
         RetryFailed = false;
-        RetrySlowerThanMilliseconds = null;
+        RetryWorkOver = null;
         PerWordTimeLimitSeconds = null;
         PerWordStepLimit = null;
         PerWordStepLimitUnbounded = false;
@@ -229,7 +229,7 @@ public sealed partial class SelectionViewModel : ObservableObject, IProjectState
         PastedWords = saved is null ? string.Empty : string.Join(Environment.NewLine, saved.AddedWords);
         AllWordforms = false;
         RetryFailed = false;
-        RetrySlowerThanMilliseconds = null;
+        RetryWorkOver = null;
         Recompute();
     }
 
@@ -300,8 +300,9 @@ public sealed partial class SelectionViewModel : ObservableObject, IProjectState
         OnPropertyChanged(nameof(AreAllTextsSelected));
         PastedWordEntries = SplitPastedWords(PastedWords);
 
-        var hasThreshold = RetrySlowerThanMilliseconds is not null;
-        var thresholdValid = !hasThreshold || RetrySlowerThanMilliseconds >= 0;
+        var hasThreshold = RetryWorkOver is not null;
+        var thresholdValid = !hasThreshold || RetryWorkOver is >= 0 and <= long.MaxValue &&
+            decimal.Truncate(RetryWorkOver.Value) == RetryWorkOver;
         ThresholdValidationMessage = thresholdValid ? null : NegativeThresholdMessage;
         var stepLimitValid = PerWordStepLimitUnbounded || PerWordStepLimit is null ||
             PerWordStepLimit is > 0 and <= long.MaxValue && decimal.Truncate(PerWordStepLimit.Value) == PerWordStepLimit;
@@ -325,7 +326,7 @@ public sealed partial class SelectionViewModel : ObservableObject, IProjectState
         if (ChosenTextIds.Count > 0) parts.Add(Pluralize(ChosenTextIds.Count, "text"));
         if (PastedWordEntries.Count > 0) parts.Add(Pluralize(PastedWordEntries.Count, "pasted word"));
         if (RetryFailed) parts.Add("retry failed");
-        if (includeThreshold) parts.Add($"retry slower than {RetrySlowerThanMilliseconds} ms");
+        if (includeThreshold) parts.Add($"retry words over {RetryWorkOver} work steps");
         if (PerWordStepLimitUnbounded)
             parts.Add("no analysis attempt limit");
         else if (StepLimitValidationMessage is null && PerWordStepLimit is { } steps)

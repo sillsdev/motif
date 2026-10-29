@@ -322,7 +322,7 @@
   },
   "stats": {
     "title": "Query parse statistics",
-    "description": "Forwards statistics options to PanGloss using the grammar and cache recorded for an Assessment. Use it to inspect parse costs after an Assessment is available.",
+    "description": "Forwards statistics options to PanGloss using the grammar and cache recorded for an Assessment. Use it to inspect parser work after an Assessment is available.",
     "source": "Hand-written from docs/cli-api.md and command behavior."
   },
   "selection show": {

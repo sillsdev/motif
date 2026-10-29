@@ -95,9 +95,9 @@
           <TextBlock Classes="muted" Text="{x:Static app:MotifAppStrings.SaveADefaultSelectionToEdit}"
                      IsVisible="{Binding Settings.HasProjectWithoutSelection}" TextWrapping="Wrap" />
           <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-            <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.RetrySlowerThanMs}" />
-            <NumericUpDown Value="{Binding Selection.RetrySlowerThanMilliseconds}" Minimum="0"
-                           AutomationProperties.Name="{x:Static app:MotifAppStrings.RetrySlowerThanInMillisecondsAccessibleName}" />
+            <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.RetryWorkOverLabel}" />
+            <NumericUpDown Value="{Binding Selection.RetryWorkOver}" Minimum="0" Increment="1" FormatString="N0"
+                           AutomationProperties.Name="{x:Static app:MotifAppStrings.RetryWorkOverAccessibleName}" />
           </StackPanel>
           <views:CopyableTextBlock Classes="error" Text="{Binding Selection.StepLimitValidationMessage}"
                      IsVisible="{Binding Selection.StepLimitValidationMessage, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />

@@ -602,9 +602,9 @@ public static class MotifAppStrings
 
     public static string SaveADefaultSelectionToEdit => Text("MotifApp.SaveADefaultSelectionToEdit");
 
-    public static string RetrySlowerThanMs => Text("MotifApp.RetrySlowerThanMs");
+    public static string RetryWorkOverLabel => Text("MotifApp.RetryWorkOverLabel");
 
-    public static string RetrySlowerThanInMillisecondsAccessibleName => Text("MotifApp.RetrySlowerThanInMillisecondsAccessibleName");
+    public static string RetryWorkOverAccessibleName => Text("MotifApp.RetryWorkOverAccessibleName");
 
     public static string WhyApplyIsUnavailableAccessibleName => Text("MotifApp.WhyApplyIsUnavailableAccessibleName");
 

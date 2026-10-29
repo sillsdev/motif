@@ -14,6 +14,7 @@ public static class TrialWorkComparison
         var after = trial.Invocation;
         var compatible = baseline is not null && baseline.Assessor == trial.Assessor &&
             baseline.BaselineToken == trial.BaselineToken && before is not null && after is not null &&
+            !string.IsNullOrWhiteSpace(before.ExecutableBytesSha256) &&
             before.ExecutableBytesSha256 == after.ExecutableBytesSha256 &&
             before.PerWordStepLimit == after.PerWordStepLimit;
         return Compare(compatible ? baseline!.Words ?? [] : [], trial.Words ?? []);

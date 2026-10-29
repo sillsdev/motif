@@ -89,11 +89,12 @@ public sealed class WordTraceQueryTests : IDisposable
             return inner.TraceAsync(grammarPath, word, cancellationToken, timeout);
         }
 
-        public Task<PanGlossTraceOutcome> TraceAsync(string projectKey, string stateToken, string grammarPath,
+        public async Task<PanGlossTraceOutcome> TraceAsync(string projectKey, string stateToken, string grammarPath,
             string word, CancellationToken cancellationToken, TimeSpan? timeout = null)
         {
             WarmCalls.Add((projectKey, stateToken, grammarPath));
-            return inner.TraceAsync(grammarPath, word, cancellationToken, timeout);
+            return (await inner.TraceAsync(grammarPath, word, cancellationToken, timeout)) with
+                { Steps = 13, WorkSteps = 401 };
         }
     }
 
@@ -110,6 +111,8 @@ public sealed class WordTraceQueryTests : IDisposable
         var outcome = WordTraceQuery.Query(new WordTraceRequest(path, "sagd"), warm, CancellationToken.None);
 
         Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        Assert.Equal(13, outcome.Value!.ParserSteps);
+        Assert.Equal(401, outcome.Value.ParserWorkSteps);
         var call = Assert.Single(warm.WarmCalls);
         Assert.Equal(path, call.Project);
         Assert.Matches("^sha256:[0-9a-f]{64}\\|sha256:[0-9a-f]{64}$", call.Token);

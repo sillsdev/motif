@@ -77,6 +77,22 @@ public sealed class WarmPanGlossPoolTests : IDisposable
     }
 
     [Fact]
+    public async Task OptionalServeCountsSurviveTheEnvelopeAndTracePath()
+    {
+        var (grammar, _, _) = Project("counts", new { ServeSteps = 13L, ServeWorkSteps = 401L });
+        using var pool = Pool();
+        var answer = Assert.IsType<WarmParseResult.Completed>(
+            await pool.TryWordAsync(grammar, "t1", grammar, "motifa", true, CancellationToken.None));
+        Assert.Equal(13, answer.Steps);
+        Assert.Equal(401, answer.WorkSteps);
+        using var cold = new PanGlossInvoker(FakeParser.ExecutablePath);
+        using var tracer = new WarmFirstTracer(pool, new PanGlossTracer(cold));
+        var trace = await tracer.TraceAsync(grammar, "t1", grammar, "motifa", CancellationToken.None);
+        Assert.Equal(13, trace.Steps);
+        Assert.Equal(401, trace.WorkSteps);
+    }
+
+    [Fact]
     public async Task AWarmAnswerIsByteForByteTheColdAnswer()
     {
         var (grammar, _, _) = Project("equal");
@@ -90,6 +106,8 @@ public sealed class WarmPanGlossPoolTests : IDisposable
             await invoker.RunAsync(new PanGlossRequest.Trace(grammar, "motifa"), "cold", CancellationToken.None));
 
         Assert.Equal(cold.Output.Trim(), warm.Json);
+        Assert.Null(warm.Steps);
+        Assert.Null(warm.WorkSteps);
     }
 
     [Fact]

@@ -44,7 +44,13 @@ public abstract record WarmParseResult
     /// The parser's reply: <paramref name="Json"/> is exactly the JSON a cold <c>parse --trace-format json --trace-details</c> prints
     /// and <paramref name="ExitCode"/> the cold command's exit code, to be read as if from the cold process.
     /// </summary>
-    public sealed record Completed(string Json, int ExitCode, TimeSpan Elapsed) : WarmParseResult;
+    public sealed record Completed(string Json, int ExitCode, TimeSpan Elapsed) : WarmParseResult
+    {
+        /// <summary>The analysis attempts reported by the result envelope, if present.</summary>
+        public long? Steps { get; init; }
+        /// <summary>The total parser work reported by the result envelope, if present.</summary>
+        public long? WorkSteps { get; init; }
+    }
 
     /// <summary>The caller cancelled; the resident process was killed and the next call restarts it.</summary>
     public sealed record Cancelled : WarmParseResult;
@@ -507,7 +513,11 @@ public sealed class WarmPanGlossPool : IDisposable
                     {
                         if (!root.TryGetProperty("exitCode", out var exit) || !exit.TryGetInt32(out var exitCode))
                             return new WarmParseResult.Fallback("serve-protocol", "A result line carried no exit code.");
-                        return new WarmParseResult.Completed(result.GetRawText(), exitCode, clock.Elapsed);
+                        return new WarmParseResult.Completed(result.GetRawText(), exitCode, clock.Elapsed)
+                        {
+                            Steps = ReadOptionalCount(root, "steps"),
+                            WorkSteps = ReadOptionalCount(root, "workSteps"),
+                        };
                     }
                     var code = root.TryGetProperty("code", out var c) ? c.GetString() ?? "error" : "error";
                     var message = root.TryGetProperty("message", out var m) ? m.GetString() ?? "" : "";
@@ -523,6 +533,10 @@ public sealed class WarmPanGlossPool : IDisposable
                 return new WarmParseResult.Fallback(died.Code, died.Message);
             }
         }
+
+        private static long? ReadOptionalCount(JsonElement root, string name) =>
+            root.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.Number &&
+            value.TryGetInt64(out var count) && count >= 0 ? count : null;
 
         private (string Code, string Message) Died()
         {

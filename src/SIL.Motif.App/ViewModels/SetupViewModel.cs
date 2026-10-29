@@ -612,7 +612,7 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
 
     private void CaptureSnapshot() => _snapshot = new SelectionSnapshot(
         Selection.ChosenTextIds.ToArray(), Selection.PastedWords, Selection.AllWordforms,
-        Selection.RetryFailed, Selection.RetrySlowerThanMilliseconds, Selection.PerWordTimeLimitSeconds,
+        Selection.RetryFailed, Selection.RetryWorkOver, Selection.PerWordTimeLimitSeconds,
         Selection.PerWordStepLimitUnbounded ? StepCap.Unbounded
             : Selection.PerWordStepLimit is { } steps ? new StepCap(decimal.ToInt64(steps)) : StepCap.Default);
 
@@ -622,7 +622,7 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
             DefaultSelectionName, snapshot.TextIds, SplitAddedWords(snapshot.PastedWords), string.Empty, string.Empty));
         Selection.AllWordforms = snapshot.AllWordforms;
         Selection.RetryFailed = snapshot.RetryFailed;
-        Selection.RetrySlowerThanMilliseconds = snapshot.RetrySlowerThanMilliseconds;
+        Selection.RetryWorkOver = snapshot.RetryWorkOver;
         Selection.PerWordTimeLimitSeconds = snapshot.PerWordTimeLimitSeconds;
         Selection.PerWordStepLimit = snapshot.PerWordStepLimit.Steps;
         Selection.PerWordStepLimitUnbounded = snapshot.PerWordStepLimit.IsUnbounded;
@@ -703,7 +703,7 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
 
     private sealed record SelectionSnapshot(
         IReadOnlyList<Guid> TextIds, string PastedWords, bool AllWordforms, bool RetryFailed,
-        decimal? RetrySlowerThanMilliseconds, decimal? PerWordTimeLimitSeconds, StepCap PerWordStepLimit);
+        decimal? RetryWorkOver, decimal? PerWordTimeLimitSeconds, StepCap PerWordStepLimit);
 }
 
 public sealed partial class SetupStepIndicator : ObservableObject

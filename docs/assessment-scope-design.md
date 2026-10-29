@@ -211,7 +211,7 @@ architecture.
 
 ### Word limits have a default
 
-A scope carries a per-word limit, defaulting to about **one second, or an equivalent cap on attempts**.
+A scope carries a per-word analysis-attempt cap, defaulting to **200,000 attempts**, and a time safety net.
 PanGloss distinguishes the two mechanisms and their outcomes: `--word-timeout-ms` sets a wall-clock
 bound and marks a word `timed_out`; `--step-cap` bounds analysis attempts and marks a word `capped`.
 PanGloss derives an inner search-work limit at 100 times the attempt limit. Both are distinct from a word

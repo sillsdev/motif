@@ -892,12 +892,12 @@
     <value>Save a Default Selection to edit its shared parsing limits.</value>
     <comment>Window text.</comment>
   </data>
-  <data name="MotifApp.RetrySlowerThanMs" xml:space="preserve">
-    <value>Retry slower than (ms)</value>
+  <data name="MotifApp.RetryWorkOverLabel" xml:space="preserve">
+    <value>Retry words over (work steps)</value>
     <comment>Window text.</comment>
   </data>
-  <data name="MotifApp.RetrySlowerThanInMillisecondsAccessibleName" xml:space="preserve">
-    <value>Retry slower than, in milliseconds</value>
+  <data name="MotifApp.RetryWorkOverAccessibleName" xml:space="preserve">
+    <value>Retry words over, in work steps</value>
     <comment>Accessible name announced by screen readers.</comment>
   </data>
   <data name="MotifApp.WhyApplyIsUnavailableAccessibleName" xml:space="preserve">

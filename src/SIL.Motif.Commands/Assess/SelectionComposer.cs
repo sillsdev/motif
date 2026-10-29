@@ -54,6 +54,11 @@ public static class SelectionComposer
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(assessmentRepository);
 
+        if (request.RetryWorkOver is < 0)
+            return CommandOutcome<SelectionComposition>.Refused(new Refusal(
+                "selection.retry-work-invalid", FailureReason.InvalidArgument,
+                "The retry work threshold must be non-negative."));
+
         var provenance = new List<SelectionProvenanceEntry>();
         var words = new List<string>();
 
@@ -85,13 +90,13 @@ public static class SelectionComposer
         if (request.Words.Count > 0) Contribute(provenance, words, "pasted-words", pasted);
 
         AssessmentRecord? retrySource = null;
-        if (request.RetryFailed || request.RetrySlowerThan is not null)
+        if (request.RetryFailed || request.RetryWorkOver is not null)
         {
             if (string.IsNullOrWhiteSpace(request.RetrySourceAssessmentId))
             {
                 return CommandOutcome<SelectionComposition>.Refused(new Refusal(
                     "selection.retry-source-required", FailureReason.InvalidArgument,
-                    "RetryFailed and RetrySlowerThan require an explicit source Assessment id."));
+                    "RetryFailed and RetryWorkOver require an explicit source Assessment id."));
             }
             try
             {
@@ -133,17 +138,17 @@ public static class SelectionComposer
                 Contribute(provenance, words, "retry-failed", failed);
             }
 
-            if (request.RetrySlowerThan is not null)
+            if (request.RetryWorkOver is not null)
             {
-                var slow = WordsSlowerThan(retrySource, request.RetrySlowerThan.Value);
-                Contribute(provenance, words, "retry-slower-than", slow);
+                var overThreshold = WordsOverWork(retrySource, request.RetryWorkOver.Value);
+                Contribute(provenance, words, "retry-work-over", overThreshold);
             }
         }
         else if (request.RetrySourceAssessmentId is not null)
         {
             return CommandOutcome<SelectionComposition>.Refused(new Refusal(
                 "selection.retry-source-without-retry", FailureReason.InvalidArgument,
-                "RetrySourceAssessmentId requires RetryFailed or RetrySlowerThan."));
+                "RetrySourceAssessmentId requires RetryFailed or RetryWorkOver."));
         }
 
         if (words.Count == 0)
@@ -157,7 +162,7 @@ public static class SelectionComposer
         var projection = new SelectionProjection(selection.Words, provenance);
         var descriptor = new SelectionDescriptor(
             textIds, pasted, request.AllWordforms, request.RetryFailed,
-            retrySource?.AssessmentId, request.RetrySlowerThan, selection.Words, selection.Sha256,
+            retrySource?.AssessmentId, request.RetryWorkOver, selection.Words, selection.Sha256,
             projection.Provenance);
         descriptor = descriptor with { DescriptorSha256 = SelectionDescriptorDigest.Compute(descriptor) };
         return CommandOutcome<SelectionComposition>.Success(new SelectionComposition(selection, projection, descriptor));
@@ -237,15 +242,13 @@ public static class SelectionComposer
         }
     }
 
-    // A stored elapsed time is the real "how slow" signal; a timed-out word still recorded one (its cap).
-    private static IEnumerable<string> WordsSlowerThan(AssessmentRecord? run, TimeSpan threshold)
+    private static IEnumerable<string> WordsOverWork(AssessmentRecord? run, long threshold)
     {
         if (run?.Words is null) yield break;
 
-        var thresholdMs = threshold.TotalMilliseconds;
         foreach (var word in run.Words)
         {
-            if (word.ElapsedMs is { } elapsed && elapsed > thresholdMs) yield return word.Word;
+            if (word.WorkSteps is { } work && work > threshold) yield return word.Word;
         }
     }
 }

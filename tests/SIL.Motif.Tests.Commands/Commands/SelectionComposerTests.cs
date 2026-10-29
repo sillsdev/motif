@@ -162,7 +162,7 @@ public sealed class SelectionComposerTests : IDisposable
     }
 
     [Fact]
-    public void RetrySlowerThanSourceContributesWordsStrictlyAboveTheThreshold()
+    public void RetryWorkOverSourceContributesWordsStrictlyAboveTheThreshold()
     {
         var repository = NewRepository();
         RecordParseTimeRunWithBaseline(repository, "run-1", "2020-01-01T00:00:00Z", CurrentBaselineToken,
@@ -170,13 +170,39 @@ public sealed class SelectionComposerTests : IDisposable
             ("slow", WordOutcome.TimedOut, 5000));
 
         var outcome = SelectionComposer.Compose(
-            _cache, NoSources with { RetrySlowerThan = TimeSpan.FromMilliseconds(500), RetrySourceAssessmentId = "run-1" },
+            _cache, NoSources with { RetryWorkOver = 500, RetrySourceAssessmentId = "run-1" },
             repository, CurrentBaselineToken);
 
         Assert.True(outcome.Succeeded);
         Assert.Equal(["slow"], outcome.Value!.Selection.Words);
         var entry = Assert.Single(outcome.Value.Projection.Provenance);
-        Assert.Equal(new SelectionProvenanceEntry("retry-slower-than", 1), entry);
+        Assert.Equal(new SelectionProvenanceEntry("retry-work-over", 1), entry);
+    }
+
+    [Fact]
+    public void RetryWorkUsesStepsRatherThanElapsedTimeAndIgnoresMissingCounts()
+    {
+        var repository = NewRepository();
+        var words = new[]
+        {
+            new AssessedWord("quick", "analysed", [], 1) { WorkSteps = 501 },
+            new AssessedWord("slow", "analysed", [], 9000) { WorkSteps = 2 },
+            new AssessedWord("equal", "analysed", [], 8000) { WorkSteps = 500 },
+            new AssessedWord("unknown", "analysed", [], 9000),
+        };
+        repository.Record(new NewAssessmentRecord("work", null, null, "test", "ParseTime", "{}", "scope",
+            new AssessmentSubject.Words(Selection.Create("run", words.Select(word => word.Word)), "none", "1"),
+            CurrentBaselineToken, "outcome", "semantic", "grammar", "model", "pipeline", 0,
+            new AssessmentRecordMaterial.Words(words, null, null, [])));
+
+        var result = SelectionComposer.Compose(_cache,
+            NoSources with { RetryWorkOver = 500, RetrySourceAssessmentId = "work" }, repository, CurrentBaselineToken);
+        Assert.True(result.Succeeded);
+        Assert.Equal(["quick"], result.Value!.Selection.Words);
+        var invalid = SelectionComposer.Compose(_cache,
+            NoSources with { RetryWorkOver = -1, RetrySourceAssessmentId = "work" }, repository, CurrentBaselineToken);
+        Assert.False(invalid.Succeeded);
+        Assert.Equal("selection.retry-work-invalid", invalid.Refusal!.Code);
     }
 
     [Fact]
@@ -274,10 +300,10 @@ public sealed class SelectionComposerTests : IDisposable
             ("slow", WordOutcome.TimedOut, 5000));
 
         var lowThreshold = SelectionComposer.Compose(
-            _cache, NoSources with { RetrySlowerThan = TimeSpan.FromMilliseconds(500), RetrySourceAssessmentId = "run-1" },
+            _cache, NoSources with { RetryWorkOver = 500, RetrySourceAssessmentId = "run-1" },
             repository, CurrentBaselineToken);
         var highThreshold = SelectionComposer.Compose(
-            _cache, NoSources with { RetrySlowerThan = TimeSpan.FromMilliseconds(1000), RetrySourceAssessmentId = "run-1" },
+            _cache, NoSources with { RetryWorkOver = 1000, RetrySourceAssessmentId = "run-1" },
             repository, CurrentBaselineToken);
 
         Assert.True(lowThreshold.Succeeded);
@@ -366,7 +392,7 @@ public sealed class SelectionComposerTests : IDisposable
         string kind, CanonicalId? proposalId, params (string Word, WordOutcome Outcome, int ElapsedMs)[] words)
     {
         var assessedWords = words
-            .Select(w => new AssessedWord(w.Word, w.Outcome.ToStoredOutcome(), Array.Empty<ParsedAnalysis>(), w.ElapsedMs))
+            .Select(w => new AssessedWord(w.Word, w.Outcome.ToStoredOutcome(), Array.Empty<ParsedAnalysis>(), w.ElapsedMs) { WorkSteps = w.ElapsedMs })
             .ToList();
 
         repository.Record(new NewAssessmentRecord(

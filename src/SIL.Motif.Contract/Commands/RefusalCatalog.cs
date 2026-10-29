@@ -486,6 +486,7 @@ public static class RefusalCatalog
         Spec(RefusalCodes.SelectionRetrySourceProjectMismatch, FailureReason.InvalidArgument),
         Spec(RefusalCodes.SelectionRetrySourceRequired, FailureReason.InvalidArgument),
         Spec(RefusalCodes.SelectionRetrySourceWithoutRetry, FailureReason.InvalidArgument),
+        Spec(RefusalCodes.SelectionRetryWorkInvalid, FailureReason.InvalidArgument),
         Spec(RefusalCodes.SelectionRevisionConflict, FailureReason.Refused),
         Spec(RefusalCodes.StatsFormatConflict, FailureReason.InvalidArgument),
         Spec(RefusalCodes.StatsWrongAssessment, FailureReason.InvalidArgument),

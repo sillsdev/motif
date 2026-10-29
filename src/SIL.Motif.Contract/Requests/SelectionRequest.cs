@@ -15,10 +15,9 @@ namespace SIL.Motif.Contract.Requests;
 /// rather than treated as a blank word.
 /// </param>
 /// <param name="RetryFailed">The words the previous Baseline run found no analysis for.</param>
-/// <param name="RetrySlowerThan">
-/// Non-null to also include the words whose previous Baseline run recorded an elapsed time strictly
-/// greater than this threshold. A word that timed out comes back only when its recorded cap itself
-/// clears the threshold, not merely because it timed out.
+/// <param name="RetryWorkOver">
+/// Non-null to include words whose recorded parser work strictly exceeds this number of work steps.
+/// Words without a recorded work count are not selected.
 /// </param>
 /// <param name="RetrySourceAssessmentId">
 /// The exact Baseline ParseTime Assessment to use for retry. It is required when either retry option is set
@@ -30,6 +29,6 @@ public sealed record SelectionRequest(
     IReadOnlyList<Guid> TextIds,
     IReadOnlyList<string> Words,
     bool RetryFailed,
-    TimeSpan? RetrySlowerThan,
+    long? RetryWorkOver,
     string? RetrySourceAssessmentId = null,
     StepCap? PerWordStepLimit = null);

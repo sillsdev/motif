@@ -113,6 +113,20 @@ public sealed class AssessViewModelTests
     }
 
     [Fact]
+    public async Task RetryWorkUsesThePreviousAssessmentAsItsSource()
+    {
+        var (fake, selection, assess) = NewViewModel();
+        fake.AssessCompletesWith(NewResponse() with
+        { Measurements = [new ProducedAssessmentReference("assessment/one", AssessmentKinds.ParseTime, "invocation/one")] });
+        await assess.RunCommand.ExecuteAsync(null);
+        selection.RetryWorkOver = 500;
+        await assess.RunCommand.ExecuteAsync(null);
+        var request = fake.AssessRequests[1].Selection!;
+        Assert.Equal(500, request.RetryWorkOver);
+        Assert.Equal("assessment/one", request.RetrySourceAssessmentId);
+    }
+
+    [Fact]
     public async Task RerunningCanUseALargerStepCapForTheChosenWords()
     {
         var (fake, _, assess) = NewViewModel();
