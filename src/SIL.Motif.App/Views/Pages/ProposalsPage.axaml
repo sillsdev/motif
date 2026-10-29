@@ -151,7 +151,7 @@
     </StackPanel>
     <Border Grid.Row="1" Grid.Column="0" Classes="denseTableColumnHeader" IsVisible="{Binding IsListed}">
       <Grid ColumnSpacing="{DynamicResource Intent.Space.Group}"
-            controls:DenseTable.Columns="3* Narrow Narrow * * * * Actions"
+            controls:DenseTable.Columns="3* Narrow Narrow * * * * Component.Proposals.ActionsWidth"
             controls:DenseTable.CompactColumns="* 0 Narrow 0 0 0 0 Actions">
         <views:CopyableTextBlock Classes="denseTableHeading" Text="{x:Static app:MotifAppStrings.Proposal}" VerticalAlignment="Center" />
         <Border Grid.Column="1" controls:DenseTable.Secondary="True">
@@ -200,7 +200,7 @@
             <Border Classes="denseTableRow" AutomationProperties.AutomationId="{Binding RowAutomationId}"
                     AutomationProperties.Name="{Binding AccessibleRowName}">
               <Grid ColumnSpacing="{DynamicResource Intent.Space.Group}"
-                    controls:DenseTable.Columns="3* Narrow Narrow * * * * Actions"
+                    controls:DenseTable.Columns="3* Narrow Narrow * * * * Component.Proposals.ActionsWidth"
                     controls:DenseTable.CompactColumns="* 0 Narrow 0 0 0 0 Actions">
                 <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Compact}"
                       VerticalAlignment="Center">
@@ -245,14 +245,17 @@
                 </Border>
                 <StackPanel Grid.Column="7" Orientation="Horizontal"
                             Spacing="{DynamicResource Intent.Space.Minimal}" VerticalAlignment="Center">
-                  <Button Classes="denseTableAction" Content="{Binding TryText}" IsVisible="{Binding CanTry}"
-                          Command="{Binding $parent[UserControl].((vm:ProposalsPageModel)DataContext).TryAgainCommand}"
-                          CommandParameter="{Binding}"
-                          AutomationProperties.AutomationId="{Binding TryAgainAutomationId}" />
-                  <Button Classes="denseTableAction" Content="{x:Static app:MotifAppStrings.Reopen}" IsVisible="{Binding CanReopen}"
-                          Command="{Binding $parent[UserControl].((vm:ProposalsPageModel)DataContext).ReopenCommand}"
-                          CommandParameter="{Binding}"
-                          AutomationProperties.AutomationId="{Binding ReopenAutomationId}" />
+                  <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Minimal}"
+                              controls:DenseTable.Secondary="True">
+                    <Button Classes="denseTableAction" Content="{Binding TryText}" IsVisible="{Binding CanTry}"
+                            Command="{Binding $parent[UserControl].((vm:ProposalsPageModel)DataContext).TryAgainCommand}"
+                            CommandParameter="{Binding}"
+                            AutomationProperties.AutomationId="{Binding TryAgainAutomationId}" />
+                    <Button Classes="denseTableAction" Content="{x:Static app:MotifAppStrings.Reopen}" IsVisible="{Binding CanReopen}"
+                            Command="{Binding $parent[UserControl].((vm:ProposalsPageModel)DataContext).ReopenCommand}"
+                            CommandParameter="{Binding}"
+                            AutomationProperties.AutomationId="{Binding ReopenAutomationId}" />
+                  </StackPanel>
                   <Button Classes="denseTableAction" Content="{x:Static app:MotifAppStrings.Open}" IsVisible="{Binding ShowsOpenAction}"
                           Command="{Binding $parent[UserControl].((vm:ProposalsPageModel)DataContext).OpenCommand}"
                           CommandParameter="{Binding}"

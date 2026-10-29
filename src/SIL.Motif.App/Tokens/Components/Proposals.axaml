@@ -4,6 +4,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
   <Styles.Resources>
+    <StaticResource x:Key="Component.Proposals.ActionsWidth" ResourceKey="Primitive.Size.176" />
     <StaticResource x:Key="Component.Proposals.PageMargin" ResourceKey="Intent.Inset.Page" />
   </Styles.Resources>
 

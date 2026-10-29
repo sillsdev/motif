@@ -233,7 +233,7 @@ public sealed class ProposalCardViewModel : ObservableObject
     public string TableWordTimeText => WordTime?.Value ?? TrialStandingWords.NotTried.Status;
 
     /// <summary>Whether the row's main action should open the Proposal.</summary>
-    public bool ShowsOpenAction => !CanTry && !CanReopen;
+    public bool ShowsOpenAction => !CanReopen;
 
     /// <summary>Whether the numbers come from an earlier try and should read as old.</summary>
     public bool NumbersAreOld => HasNumbers && Standing.Kind == TrialStandingKind.NeedsAnotherTry;

@@ -334,6 +334,7 @@ public sealed class ProposalsPageModelTests
         Assert.True(baselineMoved.NumbersAreOld);
         Assert.Equal(MotifAppStrings.TryAgain, baselineMoved.TryText);
         Assert.True(baselineMoved.CanTry);
+        Assert.True(baselineMoved.ShowsOpenAction);
         Assert.DoesNotContain("Needs another try", baselineMoved.StatusText);
     }
 
