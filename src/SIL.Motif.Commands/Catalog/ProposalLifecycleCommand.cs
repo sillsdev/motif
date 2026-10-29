@@ -70,6 +70,7 @@ public static class ProposalLifecycleCommand
             Review.ReviewMarks.ClearAll(connection, transaction, id);
             ProposalDeletion.Delete(connection, transaction, record.ProposalId);
             transaction.Commit();
+            TrialScratchRetention.DeleteJobs(trials.Select(job => job.JobId));
         }
         catch (ProposalRetainedByExampleSetException exception)
         {

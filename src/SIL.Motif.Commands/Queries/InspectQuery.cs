@@ -56,8 +56,7 @@ public static class InspectQuery
                 var scratchProject = TrialScratchPath.ProjectFile(scratchRoot);
                 if (scratchProject is null)
                     return CommandOutcome<InspectResponse>.Refused(new Refusal("trial.scratch-gone",
-                        FailureReason.NotFound, "The Trial copy was discarded. Set MOTIF_RETAIN_TRIAL_SCRATCH=1 " +
-                        "in the runner environment and run the Trial again to inspect it."));
+                        FailureReason.NotFound, "The Trial's details were cleared. Run the Trial again to bring them back."));
                 snapshot = ForTrial(database, project, snapshot, selected.Value!, scratchRoot, scratchProject);
             }
 

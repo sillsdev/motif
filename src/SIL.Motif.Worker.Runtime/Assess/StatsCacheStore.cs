@@ -42,13 +42,21 @@ public sealed class StatsCacheStore : IAssessorCachePathResolver
             var cache = Path.Combine(directory, "stats.sqlite");
             try
             {
-                if (!_ownership.IsOwned(directory) || !File.Exists(cache) ||
-                    (File.GetAttributes(cache) & FileAttributes.ReparsePoint) != 0 ||
-                    File.GetLastWriteTimeUtc(cache) >= nowUtc - maximumAge) continue;
+                if (!_ownership.IsOwned(directory)) continue;
+                var hasCache = File.Exists(cache);
+                if (hasCache && ((File.GetAttributes(cache) & FileAttributes.ReparsePoint) != 0 ||
+                    File.GetLastWriteTimeUtc(cache) >= nowUtc - maximumAge)) continue;
+                if (!hasCache && Directory.GetLastWriteTimeUtc(directory) >= nowUtc - maximumAge) continue;
                 using var lease = StatsCacheLock.Create(directory);
-                if (!lease.TryAcquire() || !File.Exists(cache) ||
-                    File.GetLastWriteTimeUtc(cache) >= nowUtc - maximumAge) continue;
-                File.Delete(cache);
+                if (!lease.TryAcquire()) continue;
+                if (File.Exists(cache))
+                {
+                    if ((File.GetAttributes(cache) & FileAttributes.ReparsePoint) != 0 ||
+                        File.GetLastWriteTimeUtc(cache) >= nowUtc - maximumAge) continue;
+                    File.Delete(cache);
+                }
+                else if (Directory.GetLastWriteTimeUtc(directory) >= nowUtc - maximumAge) continue;
+                if (!Directory.EnumerateFileSystemEntries(directory).Any()) Directory.Delete(directory);
             }
             catch (IOException) { }
             catch (UnauthorizedAccessException) { }

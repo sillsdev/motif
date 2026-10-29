@@ -46,6 +46,30 @@ public sealed class GrammarCheckStorageTests : IDisposable
         Assert.True(rows.GetInt32(1) < 2000);
     }
 
+    [Fact]
+    public void ProjectChecksKeepTheTwoNewestBaselinesEvenWhenAnOldCheckIsRepeated()
+    {
+        Directory.CreateDirectory(_root);
+        var project = new ProjectLocator(Path.Combine(_root, "project.fwdata"), "project");
+        using var database = MotifDatabase.OpenOwned(Path.Combine(_root, "motif.db"), project,
+            MotifSchema.CurrentSchema, new Version(1, 0));
+        var writer = new GrammarCheckRepository(database);
+        var response = new GrammarCheckResponse([], true);
+        string Token(int day) => JsonSerializer.Serialize(new BaselineToken("project", "sha256:" + new string('a', 64),
+            "1", $"2026-08-{day:00}T00:00:00Z", "sha256:" + new string('b', 64)), MotifJson.CreateOptions());
+        var first = Token(1);
+        var second = Token(2);
+        var third = Token(3);
+        writer.Save(first, "selection", null, response);
+        writer.Save(second, "selection", null, response);
+        writer.Save(third, "selection", null, response);
+        writer.Save(first, "selection", null, response);
+
+        Assert.Null(writer.GetLatest(first));
+        Assert.NotNull(writer.GetLatest(second));
+        Assert.NotNull(writer.GetLatest(third));
+    }
+
     public void Dispose()
     {
         if (Directory.Exists(_root)) Directory.Delete(_root, recursive: true);

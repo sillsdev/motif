@@ -84,16 +84,18 @@ The machine usage log keeps the newest 10,000 entries. Set `MOTIF_USAGE_MAX_ROWS
 to choose another limit; the limit is enforced when an entry is recorded. SQLite can reuse freed pages,
 but deleting entries does not immediately shrink an existing database file.
 
-Trial copies are discarded after the Trial, so inspection or tracing against a Trial requires a retained copy.
-Set `MOTIF_RETAIN_TRIAL_SCRATCH=1` in the runner's environment before running the Trial to retain it temporarily.
-At runner startup, unleased copies older than 24 hours are removed; set `MOTIF_TRIAL_SCRATCH_MAX_AGE_HOURS`
-to a positive integer up to 87,600 to change that age. Active Trials are protected.
+The newest three Trial copies per project are retained for inspection and tracing; older copies and copies of
+applied or discarded Proposals are removed. `MOTIF_TRIAL_SCRATCH_MAX_COUNT` sets another positive count.
+At runner startup, orphan copies older than 24 hours are removed; set `MOTIF_TRIAL_SCRATCH_MAX_AGE_HOURS`
+to a positive integer up to 87,600 to change that age. Active Trials are protected. Set
+`MOTIF_RETAIN_TRIAL_SCRATCH=1` in the runner's environment to keep all Trial copies.
 
 Per-object statistics caches older than 30 days are removed when the runner starts or another Assessment begins;
 `MOTIF_STATS_CACHE_MAX_AGE_DAYS` changes that age (positive integer, at most 3,650). A statistics query or Handoff
 that needs a removed cache asks for a new Assessment. Other retained Assessment evidence is not removed by this
-cache cleanup. Grammar checks keep the newest five rows per Proposal; `MOTIF_GRAMMAR_CHECK_MAX_ROWS` sets a
-different positive row limit. Responses are compressed, and the project-store schema changes with that format.
+cache cleanup. Project grammar checks keep the two most recent Baselines; `MOTIF_GRAMMAR_BASELINE_MAX_ROWS`
+sets another positive limit. Trial grammar checks keep the newest five rows per Proposal;
+`MOTIF_GRAMMAR_CHECK_MAX_ROWS` sets another positive limit. Responses are compressed.
 
 The optional `MOTIF_TRACE=1` JSONL trace rotates at 10 MiB, keeping the current file and one previous file
 with a `.1` suffix. `MOTIF_TRACE_MAX_BYTES` selects another positive limit for each file; an individual line larger

@@ -253,7 +253,7 @@ public sealed class ReviewPageModelTests
         "FieldWorks had not parsed this paragraph when you made this decision.")]
     [InlineData("The words in the source sentence have changed.",
         "The words in the sentence have changed since you made this decision.")]
-    [InlineData(ChangeFitReasons.TrialScratchGone, "The copy this change was tried on is gone. Try it again.")]
+    [InlineData(ChangeFitReasons.TrialScratchGone, "The Trial's details were cleared. Run the Trial again to bring them back.")]
     public void UncertainReasonsAreInTheLinguistsWords(string reason, string expected)
     {
         var fit = new ChangeFit("uncertain", ChangeFitStatus.Uncertain, [reason])

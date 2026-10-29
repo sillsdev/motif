@@ -140,7 +140,9 @@ public sealed class GrammarCheckRepository(MotifDatabase database)
                 checkedUtc, sourceLastWriteUtc, Trial: null),
         };
         using var connection = _database.OpenConnection();
+        using var transaction = connection.BeginTransaction();
         using var command = connection.CreateCommand();
+        command.Transaction = transaction;
         command.CommandText = """
             INSERT INTO GrammarChecks (BaselineToken, SelectionSha256, ParserStamp, ResponseGzip, CheckedUtc)
             VALUES ($baseline, $selection, $parser, $response, $checked)
@@ -157,6 +159,30 @@ public sealed class GrammarCheckRepository(MotifDatabase database)
             JsonSerializer.Serialize(recordedResponse, MotifJson.CreateOptions())));
         command.Parameters.AddWithValue("$checked", checkedUtc.ToString("O", CultureInfo.InvariantCulture));
         command.ExecuteNonQuery();
+        var rows = new List<(long RowId, DateTimeOffset Captured)>();
+        using (var read = connection.CreateCommand())
+        {
+            read.Transaction = transaction;
+            read.CommandText = "SELECT rowid, BaselineToken FROM GrammarChecks WHERE ProposalId IS NULL;";
+            using var reader = read.ExecuteReader();
+            while (reader.Read())
+                rows.Add((reader.GetInt64(0), DateTimeOffset.Parse(ReadBaselineToken(reader.GetString(1)).CapturedUtc,
+                    CultureInfo.InvariantCulture)));
+        }
+        foreach (var row in rows.OrderByDescending(row => row.Captured).ThenByDescending(row => row.RowId)
+                     .Skip(MaximumProjectRows()))
+        {
+            using var delete = connection.CreateCommand();
+            delete.Transaction = transaction;
+            delete.CommandText = "DELETE FROM GrammarChecks WHERE rowid = $id;";
+            delete.Parameters.AddWithValue("$id", row.RowId);
+            delete.ExecuteNonQuery();
+        }
+        transaction.Commit();
         return recordedResponse;
     }
+
+    private static int MaximumProjectRows() =>
+        int.TryParse(Environment.GetEnvironmentVariable("MOTIF_GRAMMAR_BASELINE_MAX_ROWS"), out var maximum) && maximum > 0
+            ? maximum : 2;
 }

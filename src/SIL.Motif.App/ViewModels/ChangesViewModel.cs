@@ -923,7 +923,7 @@ public sealed partial class ChangeViewModel(string kind, string word, string rea
             ChangeFitReasonKind.MorphReferenceMissing => $"a morpheme in {analysis} was deleted or changed in FieldWorks",
             ChangeFitReasonKind.ReadingAlreadyExists => "FieldWorks already has this analysis",
             ChangeFitReasonKind.BaselineNotCurrent => "FieldWorks saved the project since you decided; check again",
-            ChangeFitReasonKind.TrialScratchGone => "the copy this change was tried on is gone; try it again",
+            ChangeFitReasonKind.TrialScratchGone => "the Trial's details were cleared; run the Trial again to bring them back",
             ChangeFitReasonKind.CannotCheck => "Motif can no longer check this change; undo it and make it again",
             _ => "FieldWorks changed this word since you decided",
         };
@@ -936,7 +936,7 @@ public sealed partial class ChangeViewModel(string kind, string word, string rea
     public string UncertaintyReason => Fit?.Uncertainty?.Reason switch
     {
         null => string.Empty,
-        ChangeFitReasons.TrialScratchGone => "The copy this change was tried on is gone. Try it again.",
+        ChangeFitReasons.TrialScratchGone => "The Trial's details were cleared. Run the Trial again to bring them back.",
         "The source Segment is gone or no longer resolves uniquely." =>
             "The sentence this decision refers to is no longer available.",
         "The source occurrence no longer resolves uniquely." =>

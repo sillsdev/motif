@@ -178,6 +178,7 @@ internal sealed class TrialJobHandler
         AllocateScratchRoot(claim.Job.JobId);
         CandidateRun candidate;
         var preserveScratch = _retainScratch();
+        if (preserveScratch) TrialScratchRetention.MarkRetained(scratchRoot);
         try
         {
             var words = input.WordList is { } list ? JobWordLists.Read(claim.Database, list) : input.Words;
@@ -312,7 +313,16 @@ internal sealed class TrialJobHandler
         }
         finally
         {
-            if (!preserveScratch) TryDeleteDirectory(scratchRoot);
+            if (!preserveScratch)
+            {
+                if (TrialScratchRetention.IsMarkedForDeletion(scratchRoot)) TryDeleteDirectory(scratchRoot);
+                scratchLease.Release();
+                try { TrialScratchRetention.PruneProject(claim.Database, workspaceKey, claim.JobId); }
+                catch (Exception exception)
+                {
+                    ReportTrialMaintenanceFailure(claim.JobId, "prune Trial copies", exception);
+                }
+            }
         }
     }
 

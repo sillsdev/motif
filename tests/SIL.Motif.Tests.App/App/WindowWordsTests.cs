@@ -176,6 +176,8 @@ public sealed partial class WindowWordsTests
             .Where(text => text.Length > 0).ToArray();
 
         Assert.NotEmpty(shown);
+        Assert.All(shown, text => Assert.Contains("Trial", text, StringComparison.Ordinal));
+        Assert.All(shown, text => Assert.Contains("cleared", text, StringComparison.Ordinal));
         Assert.DoesNotContain(shown, text => text.Contains("Proposal", StringComparison.OrdinalIgnoreCase));
         AssertWindowWords(shown);
     }

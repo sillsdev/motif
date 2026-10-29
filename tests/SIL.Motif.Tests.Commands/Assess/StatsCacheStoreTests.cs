@@ -63,6 +63,23 @@ public sealed class StatsCacheStoreTests : IDisposable
         Assert.True(File.Exists(cache));
     }
 
+    [Fact]
+    public void ExpiredCachesAndPreviouslyEmptyDirectoriesAreRemovedWithoutRemovingOtherArtifacts()
+    {
+        var cacheOnly = _store.DirectoryFor("cache-only");
+        var empty = _store.DirectoryFor("empty");
+        Directory.CreateDirectory(cacheOnly);
+        Directory.CreateDirectory(empty);
+        File.WriteAllText(Path.Combine(cacheOnly, "stats.sqlite"), "cache");
+        File.SetLastWriteTimeUtc(Path.Combine(cacheOnly, "stats.sqlite"), DateTime.UtcNow.AddDays(-31));
+        Directory.SetLastWriteTimeUtc(empty, DateTime.UtcNow.AddDays(-31));
+
+        _store.DirectoryFor("next");
+
+        Assert.False(Directory.Exists(cacheOnly));
+        Assert.False(Directory.Exists(empty));
+    }
+
     [Theory]
     [InlineData("")]
     [InlineData("..")]

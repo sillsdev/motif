@@ -352,6 +352,7 @@ public sealed class ProposalRepository : IProposalRepository
         using var transaction = connection.BeginTransaction(deferred: false);
         ProposalDeletion.Delete(connection, transaction, proposalId);
         transaction.Commit();
+        TrialScratchRetention.DeleteProposal(_database, proposalId);
     }
 
     private static void AddParameters(SqliteCommand command, ProposalRevisionRecord revision, byte[] bytes, string created)
@@ -960,6 +961,7 @@ public sealed class ProposalRepository : IProposalRepository
             drift.ExecuteNonQuery();
         }
         transaction.Commit();
+        TrialScratchRetention.DeleteProposal(_database, receipt.ProposalId);
     }
 
     // On the caller's own transaction: a second connection cannot see uncommitted rows, leaving a window.
@@ -1020,16 +1022,18 @@ public sealed class ProposalRepository : IProposalRepository
         using var connection = _database.OpenConnection();
         using var transaction = connection.BeginTransaction();
         bool wasReopened;
+        CanonicalId proposalId;
         using (var find = connection.CreateCommand())
         {
             find.Transaction = transaction;
-            find.CommandText = "SELECT CurrentIntentDigest, DraftJson FROM Proposals WHERE DraftName = $name;";
+            find.CommandText = "SELECT CurrentIntentDigest, DraftJson, ProposalId FROM Proposals WHERE DraftName = $name;";
             find.Parameters.AddWithValue("$name", draftName);
             using var reader = find.ExecuteReader();
             if (!reader.Read()) throw new KeyNotFoundException($"Draft '{draftName}' was not found.");
             if (expectedJson is not null && (reader.IsDBNull(1) || reader.GetString(1) != expectedJson))
                 throw new DraftChangedException(draftName);
             wasReopened = !reader.IsDBNull(0);
+            proposalId = CanonicalId.Parse(reader.GetString(2));
         }
         using var command = connection.CreateCommand();
         command.Transaction = transaction;
@@ -1040,6 +1044,7 @@ public sealed class ProposalRepository : IProposalRepository
         command.Parameters.AddWithValue("$name", draftName);
         command.ExecuteNonQuery();
         transaction.Commit();
+        TrialScratchRetention.DeleteProposal(_database, proposalId);
         return wasReopened;
     }
 

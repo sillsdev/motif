@@ -520,6 +520,8 @@ public sealed class EvidenceSetReadsTests : IDisposable
 
         Assert.False(result.Succeeded);
         Assert.Equal("trial.scratch-gone", result.Refusal?.Code);
+        Assert.Contains("details were cleared", result.Refusal!.Message, StringComparison.Ordinal);
+        Assert.Contains("Run the Trial again", result.Refusal.Message, StringComparison.Ordinal);
     }
 
     public void Dispose()

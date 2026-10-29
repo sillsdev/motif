@@ -5704,7 +5704,7 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <comment>Sentence the window shows when the command refuses with code RefusalCodes.SelectionReaderInvalid. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalTrialScratchGone" xml:space="preserve">
-    <value>The copy these changes were tried on is gone. Try them again.</value>
+    <value>The Trial's details were cleared. Run the Trial again to bring them back.</value>
     <comment>Sentence the window shows when the command refuses with code trial.scratch-gone. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalTrialNone" xml:space="preserve">
