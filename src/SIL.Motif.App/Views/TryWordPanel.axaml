@@ -331,7 +331,7 @@
           <Grid ColumnDefinitions="2*,*,*" ColumnSpacing="{DynamicResource Intent.Space.Related}">
             <TextBlock Classes="muted" Text="{x:Static app:MotifAppStrings.MeasuredObject}" FontWeight="{DynamicResource Intent.Weight.Section}" />
             <TextBlock Grid.Column="1" Classes="muted" Text="{x:Static app:MotifAppStrings.TraceWorkStepsLabel}" FontWeight="{DynamicResource Intent.Weight.Section}" TextAlignment="Right" />
-            <TextBlock Grid.Column="2" Classes="muted" Text="{Binding EarlierShareHeader}" FontWeight="{DynamicResource Intent.Weight.Strong}" TextAlignment="Right" IsVisible="{Binding HasEarlierShares}" />
+            <TextBlock Grid.Column="2" Classes="muted" Text="{Binding EarlierShareHeader}" FontWeight="{DynamicResource Intent.Weight.Strong}" TextAlignment="Right" TextWrapping="Wrap" IsVisible="{Binding HasEarlierShares}" />
           </Grid>
           <ItemsControl x:Name="TryWordPanelEarlierRuleTimesItems" ItemsSource="{Binding EarlierRuleTimes}" AutomationProperties.Name="{x:Static app:MotifAppStrings.EarlierRuleTimesAccessibleName}">
             <ItemsControl.ItemsPanel>

@@ -1486,6 +1486,36 @@ public sealed class TryWordPageTests
     }
 
     [Fact]
+    public void EarlierParseWorkHeadingFitsANarrowPage()
+    {
+        RunOnAvalonia(async () =>
+        {
+            var (context, fake) = NewContext();
+            context.ProjectPath = context.Assess.ProjectPath = ProjectPath;
+            var page = new TryWordPageModel(context);
+            fake.TraceWordCompletesWith(DogsTrace());
+            fake.TimingCompletesWith(DogsTiming());
+            context.PublishEvidence(new WorkspaceEvidence(Assessment(), DogsOrigin.MeasuredUtc, false));
+            context.TryWord("dogs");
+            await page.Trace.TryCommand.ExecutionTask!;
+
+            var window = new MotifTestWindow { Content = PageRegistry.For(WorkspacePage.TryAWord).CreateView(page),
+                Width = 320, Height = 1600 };
+            try
+            {
+                window.Show();
+                window.UpdateLayout();
+                var heading = Assert.Single(window.GetVisualDescendants().OfType<TextBlock>(),
+                    text => text.IsEffectivelyVisible && text.Text == page.EarlierShareHeader);
+                Assert.All(heading.TextLayout.TextLines, line => Assert.True(
+                    line.WidthIncludingTrailingWhitespace <= heading.Bounds.Width + 0.5,
+                    $"The earlier parse share heading needs {line.WidthIncludingTrailingWhitespace} but has {heading.Bounds.Width}."));
+            }
+            finally { window.Close(); }
+        });
+    }
+
+    [Fact]
     public void ReturnedTimingOriginNamesTheWordsParseAfterARerun()
     {
         RunOnAvalonia(async () =>
