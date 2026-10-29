@@ -154,6 +154,20 @@ public sealed class ReviewListWalkTests
     }
 
     [Fact]
+    public async Task UndoAllOfProposalWordChangesRemovesTheirOperationsTogether()
+    {
+        var first = WordChange("w1");
+        var second = WordChange("w2");
+        var (fake, _, page) = await OpenWith([WordEntry(first), WordEntry(second)],
+            proposalWords: [(first, new ChangeFit("w1", true, [])), (second, new ChangeFit("w2", true, []))]);
+
+        await page.UndoAllCommand.ExecuteAsync(null);
+
+        Assert.Equal(["op-w2", "op-w1"], Assert.Single(fake.RemoveOperationsRequests).OperationIds);
+        Assert.Empty(fake.PendingRemoveRequests);
+    }
+
+    [Fact]
     public async Task UndoOfARuleWithDependentsPromptsWithTheirTitles()
     {
         var (fake, _, page) = await OpenWith(Rule("rule"), Rule("retarget", dependsOn: "rule"), Rule("other"));
@@ -432,13 +446,13 @@ public sealed class ReviewListWalkTests
     }
 
     [Fact]
-    public async Task AProposalOffersNoUndoAllNoWayBackAndNoNumbersCheck()
+    public async Task AProposalOffersUndoAllButNoWayBackOrNumbersCheck()
     {
         var word = WordChange("w1");
         var (_, _, page) = await OpenWith([Rule("a"), WordEntry(word)],
             proposalWords: [(word, new ChangeFit("w1", true, []))]);
 
-        Assert.False(page.ShowsUndoAll);
+        Assert.True(page.ShowsUndoAll);
         Assert.False(page.ShowsBackButton);
         Assert.False(page.ShowsNumbersText);
     }

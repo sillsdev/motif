@@ -135,11 +135,8 @@ public sealed partial class ReviewPageModel : PageModel
     /// <summary>The toolbar's Undo all, with the count it takes out.</summary>
     public string UndoAllText => $"Undo all {_entries.Count:N0}";
 
-    /// <summary>
-    /// Whether the toolbar offers Undo all: only for the pending changes, since taking every change out of a Proposal
-    /// is setting the Proposal aside, not reviewing it.
-    /// </summary>
-    public bool ShowsUndoAll => HasEntries && !InProposalMode;
+    /// <summary>Whether the toolbar offers Undo all when the review list has entries.</summary>
+    public bool ShowsUndoAll => HasEntries;
 
     /// <summary>The question shown when an Undo would also take out dependent changes, or null.</summary>
     public UndoPromptViewModel? UndoPrompt { get; private set; }
@@ -464,12 +461,11 @@ public sealed partial class ReviewPageModel : PageModel
         if (_selectedFilterIndex == 1) InvalidateVisibleEntries();
     }
 
-    // The pending changes are taken out whole through the one Draft discard path; a Proposal never offers Undo all.
     private async Task UndoAllAsync()
     {
         if (InProposalMode)
         {
-            await UndoEntriesAsync(_entries.ToArray(), confirmed: true).ConfigureAwait(true);
+            await UndoEntriesAsync(_entries.ToArray(), confirmed: true, removeTogether: true).ConfigureAwait(true);
             return;
         }
         UndoRefusal = null;
@@ -482,7 +478,8 @@ public sealed partial class ReviewPageModel : PageModel
     internal Task UndoAsync(ReviewEntryViewModel? entry) =>
         entry is null ? Task.CompletedTask : UndoEntriesAsync([entry], confirmed: false);
 
-    private async Task UndoEntriesAsync(IReadOnlyList<ReviewEntryViewModel> targets, bool confirmed)
+    private async Task UndoEntriesAsync(IReadOnlyList<ReviewEntryViewModel> targets, bool confirmed,
+        bool removeTogether = false)
     {
         if (Context.ProjectPath is not { } project || targets.Count == 0) return;
         UndoRefusal = null;
@@ -491,7 +488,7 @@ public sealed partial class ReviewPageModel : PageModel
         OnPropertyChanged(nameof(UndoPrompt));
 
         // A word change goes back through the staging commands, which keep their Undo history, in either mode.
-        if (targets.All(target => target.Change is not null) && DependentsOf(targets).Count == 0)
+        if (!removeTogether && targets.All(target => target.Change is not null) && DependentsOf(targets).Count == 0)
         {
             using (Changes.BeginStagingAction())
             {
