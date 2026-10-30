@@ -1,11 +1,14 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Automation.Peers;
 using Avalonia.Headless;
 using Avalonia.Layout;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using SIL.Motif.App.Controls.WordPresentation;
+using SIL.Motif.App.Controls;
+using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using SIL.Motif.Commands.Queries;
@@ -38,6 +41,7 @@ public sealed class ReaderMorphologyVisibilityTests(AvaloniaHeadlessFixture aval
             }, result);
         var strip = new WordStripToken { Data = token, DataContext = token, VerticalAlignment = VerticalAlignment.Top };
         var window = new MotifTestWindow { Content = strip };
+        WritingSystemText.SetResolver(window, new TextStyles());
         try
         {
             window.Show();
@@ -62,10 +66,18 @@ public sealed class ReaderMorphologyVisibilityTests(AvaloniaHeadlessFixture aval
                 {
                     Assert.False(token.PresentationState.IsOpen);
                     Assert.True(token.HasMorePanGlossReadings);
-                    var panGlossLine = AnalyzeTextsLayoutTests.PanGlossLineOf(strip);
-                    Assert.True(panGlossLine!.IsEffectivelyVisible);
-                    AssertComplete(AnalyzeTextsLayoutTests.MorphologyOf(strip.FindControl<Control>("FieldWorksLine")!), token.PrimaryFieldWorksMorphs);
-                    AssertComplete(AnalyzeTextsLayoutTests.MorphologyOf(panGlossLine), token.PanGlossReadingMorphs);
+                    if (AnalyzeTextsLayoutTests.DrawnWord(strip) is { } drawn)
+                    {
+                        AssertComplete(drawn, "fieldworks", token.PrimaryFieldWorksMorphs);
+                        AssertComplete(drawn, "pangloss", token.PanGlossReadingMorphs);
+                    }
+                    else
+                    {
+                        var panGlossLine = AnalyzeTextsLayoutTests.PanGlossLineOf(strip);
+                        Assert.True(panGlossLine!.IsEffectivelyVisible);
+                        AssertComplete(AnalyzeTextsLayoutTests.MorphologyOf(strip.FindControl<Control>("FieldWorksLine")!), token.PrimaryFieldWorksMorphs);
+                        AssertComplete(AnalyzeTextsLayoutTests.MorphologyOf(panGlossLine), token.PanGlossReadingMorphs);
+                    }
                     LayoutAssertions.AssertCurrent(window);
                 }
                 catch (Exception failure)
@@ -79,6 +91,19 @@ public sealed class ReaderMorphologyVisibilityTests(AvaloniaHeadlessFixture aval
         {
             window.Close();
         }
+    }
+
+    private static void AssertComplete(InterlinearWord word, string part, IReadOnlyList<ParserReadingMorphViewModel> morphs)
+    {
+        Assert.True(word.IsEffectivelyVisible);
+        Assert.True(morphs.Count > 2);
+        var runs = AnalyzeTextsLayoutTests.DrawnRow(word, part).ToArray();
+        Assert.Equal(morphs.SelectMany(morph => new[] { morph.Form, morph.GlossOrPlaceholder }),
+            runs.Select(run => run.Text));
+        var peers = ControlAutomationPeer.CreatePeerForElement(word).GetChildren();
+        Assert.Equal(word.Runs.Select(run => run.Text), peers.Select(peer => peer.GetName()));
+        Assert.All(runs, run => Assert.True(run.Bounds.Width > 0 && run.Bounds.Height > 0 &&
+            new Rect(word.Bounds.Size).Contains(run.Bounds), $"'{run.Text}' is outside the drawn word: {run.Bounds}."));
     }
 
     private static void AssertComplete(MorphemePanel panel, IReadOnlyList<ParserReadingMorphViewModel> morphs)

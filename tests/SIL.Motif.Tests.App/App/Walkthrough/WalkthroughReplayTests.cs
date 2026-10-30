@@ -454,13 +454,30 @@ internal static class WalkthroughReplayTestRunner
             token => token.Form == WritingSystemTestData.Form &&
                 token.FormWritingSystem == SeededProject.RightToLeftTag);
         var panel = Assert.Single(walkthrough.Window.GetLogicalDescendants().OfType<ResultsInTextPanel>());
-        var word = Assert.Single(panel.GetVisualDescendants().OfType<TextBlock>(), text =>
-            text.IsEffectivelyVisible && text.Text == WritingSystemTestData.Form &&
-            text.Classes.Contains("stripWord"));
-        Assert.Equal(walkthrough.Workspace.Context.TextStyles
-            .Resolve(TextStyleRequest.Linguistic(SeededProject.RightToLeftTag, "Normal")).FontSize, word.FontSize);
-        Assert.Equal(FlowDirection.RightToLeft, word.FlowDirection);
-        Assert.DoesNotContain("Andika", word.FontFamily!.Name, StringComparison.OrdinalIgnoreCase);
+        var strip = AnalyzeTextsLayoutTests.StripOf(panel, WritingSystemTestData.Form);
+        Control word;
+        if (AnalyzeTextsLayoutTests.DrawnWord(strip) is { } drawn)
+        {
+            var run = Assert.Single(AnalyzeTextsLayoutTests.DrawnRow(drawn, "word"));
+            Assert.Equal(WritingSystemTestData.Form, run.Text);
+            var properties = AnalyzeTextsLayoutTests.RunProperties(run);
+            Assert.Equal(walkthrough.Workspace.Context.TextStyles
+                .Resolve(TextStyleRequest.Linguistic(SeededProject.RightToLeftTag, "Normal")).FontSize,
+                properties.FontRenderingEmSize);
+            Assert.Equal(FlowDirection.RightToLeft, run.Direction);
+            Assert.DoesNotContain("Andika", properties.Typeface.FontFamily.Name, StringComparison.OrdinalIgnoreCase);
+            word = drawn;
+        }
+        else
+        {
+            var text = Assert.Single(strip.GetVisualDescendants().OfType<TextBlock>(), item =>
+                item.IsEffectivelyVisible && item.Text == WritingSystemTestData.Form && item.Classes.Contains("stripWord"));
+            Assert.Equal(walkthrough.Workspace.Context.TextStyles
+                .Resolve(TextStyleRequest.Linguistic(SeededProject.RightToLeftTag, "Normal")).FontSize, text.FontSize);
+            Assert.Equal(FlowDirection.RightToLeft, text.FlowDirection);
+            Assert.DoesNotContain("Andika", text.FontFamily!.Name, StringComparison.OrdinalIgnoreCase);
+            word = text;
+        }
         var lineBody = Assert.Single(word.GetVisualAncestors()
             .OfType<SIL.Motif.App.Controls.RunningTextPanel>(), runningText =>
             runningText.Classes.Contains("resultsLineBody"));
