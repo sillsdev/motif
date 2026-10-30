@@ -508,9 +508,9 @@
       "adjacency": "Where the first cannot occur relative to the rest: anywhere (the default), somewhere-to-right, somewhere-to-left, adjacent-to-right or adjacent-to-left."
     },
     "goals": [
-      "Forbid two morphemes from occurring together in one word",
-      "Block a specific allomorph from combining with another",
-      "Stop a spurious split of a word into morphemes that never co-occur"
+      "Forbid two morphemes from occurring together",
+      "Block a specific allomorph from combining with a certain form",
+      "Stop a spurious split into morphemes that never co-occur"
     ],
     "guides": [
       "ask-the-linguist",

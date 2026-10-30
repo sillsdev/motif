@@ -179,6 +179,10 @@
     "why": "Choose allomorphs that exist: a lexeme form or alternate form of an entry in the project or created earlier in this Draft.",
     "source": "Hand-written from the Motif MCP refusal advice."
   },
+  "adhoc-prohibition.self": {
+    "why": "The first morpheme or allomorph is also in the rest. A rule against itself bans it from every word, or does nothing, so choose a different one for the rest.",
+    "source": "Hand-written from the Motif MCP refusal advice."
+  },
   "adhoc-prohibition.duplicate": {
     "why": "This prohibition already exists in the project or earlier in this Draft. To turn an existing one off or on, use compose-edit-adhoc-prohibition.",
     "source": "Hand-written from the Motif MCP refusal advice."

@@ -423,6 +423,7 @@ public static class RefusalCatalog
         Spec(RefusalCodes.AdhocProhibitionInvalidMorpheme, FailureReason.Refused),
         Spec(RefusalCodes.AdhocProhibitionInvalidAllomorph, FailureReason.Refused),
         Spec(RefusalCodes.AdhocProhibitionDuplicate, FailureReason.Refused),
+        Spec(RefusalCodes.AdhocProhibitionSelf, FailureReason.Refused),
         Spec(RefusalCodes.AdhocProhibitionNoMorphologyData, FailureReason.Refused),
         Spec(RefusalCodes.DraftNameCollision, FailureReason.Refused),
         Spec(RefusalCodes.DraftNotFound, FailureReason.NotFound),

@@ -65,6 +65,9 @@ public static class AdhocProhibition
             RefusalCodes.AdhocProhibitionNoMorphologyData, "The project has no morphology data to own an ad hoc prohibition.");
         if (payload.Rest.Count == 0)
             throw new InvalidOperationException("An ad hoc prohibition needs at least one morpheme or allomorph in the rest, as FieldWorks requires.");
+        if (payload.Rest.Contains(payload.First))
+            throw new AdhocRefusal(RefusalCodes.AdhocProhibitionSelf,
+                "The first morpheme or allomorph must not also be in the rest: the parser would ban it from every word, or ignore the rule.");
         var first = Resolve(cache, payload, payload.First);
         var rest = payload.Rest.Select(id => Resolve(cache, payload, id)).ToArray();
         if (morphData.AdhocCoProhibitionsOC.Any(existing => Same(existing, payload, first, rest)))

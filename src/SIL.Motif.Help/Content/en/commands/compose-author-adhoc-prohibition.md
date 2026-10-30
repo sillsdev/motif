@@ -9,7 +9,7 @@ motif compose-author-adhoc-prohibition --project language.fwdata --draft <name> 
 
 A morpheme is a grammatical analysis (MSA) of an entry; an allomorph is a lexeme form or alternate form. Both may be created earlier in the same Draft. `adjacency` defaults to `anywhere`, as in FieldWorks; the other values are `somewhere-to-right`, `somewhere-to-left`, `adjacent-to-right` and `adjacent-to-left`, stating where the first cannot occur relative to the rest, which are read left to right. The prohibition is created enabled.
 
-The Dry Run states the rule plainly, for example "morpheme 'pa-' cannot occur in the same word as 'bago'". The command refuses an unknown morpheme or allomorph, an empty rest, and a prohibition that already exists in the project or earlier in the Draft. A form may be prohibited next to itself, as FieldWorks allows. Review the Dry Run and compare Trials before a person Applies the Proposal; the CLI and MCP both stage a Draft, and MCP cannot Apply it.
+The Dry Run states the rule plainly, for example "morpheme 'pa-' cannot occur in the same word as 'bago'". The command refuses an unknown morpheme or allomorph, an empty rest, and a prohibition that already exists in the project or earlier in the Draft. It also refuses a first morpheme or allomorph that appears in the rest, because the parser would ban it from every word or ignore the rule. Review the Dry Run and compare Trials before a person Applies the Proposal; the CLI and MCP both stage a Draft, and MCP cannot Apply it.
 
 ## When not to use this
 

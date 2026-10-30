@@ -101,14 +101,14 @@ public sealed class AuthorAdhocProhibitionComposerTests : IDisposable
     }
 
     [Fact]
-    public void AMorphemeMayBeProhibitedNextToItselfAsFieldWorksAllows()
+    public void AFirstMorphemeOrAllomorphThatIsAlsoInTheRestIsRefused()
     {
-        var (a, _, _) = Seed();
+        var (a, b, _) = Seed();
         var msa = Id(a.MorphoSyntaxAnalysesOC.Single());
-        var proposal = Proposal(AuthorAdhocProhibitionComposer.Build(_cache, new("morpheme", msa, [msa], "anywhere")));
-        ProposalApplier.Apply(_cache, proposal, ScratchDryRun.Of(_cache, proposal).Anchor, "tester");
-        var created = Assert.IsAssignableFrom<IMoMorphAdhocProhib>(Assert.Single(_cache.LangProject.MorphologicalDataOA.AdhocCoProhibitionsOC));
-        Assert.Equal(created.FirstMorphemeRA.Guid, Assert.Single(created.RestOfMorphsRS).Guid);
+        Assert.Equal(RefusalCodes.AdhocProhibitionSelf, Code(() => AuthorAdhocProhibitionComposer.Build(_cache,
+            new("morpheme", msa, [Id(b.MorphoSyntaxAnalysesOC.Single()), msa], "anywhere"))));
+        Assert.Equal(RefusalCodes.AdhocProhibitionSelf, Code(() => AuthorAdhocProhibitionComposer.Build(_cache,
+            new("allomorph", Id(a.LexemeFormOA), [Id(a.LexemeFormOA)], "adjacent-to-left"))));
     }
 
     [Fact]
