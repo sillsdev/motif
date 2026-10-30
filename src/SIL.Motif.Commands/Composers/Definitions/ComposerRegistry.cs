@@ -11,6 +11,8 @@ internal static class ComposerDefinitions
         new AuthorFeatureValueDefinition(),
         new DeleteEmptySenseDefinition(),
         new MoveSenseToEntryDefinition(),
+        new DeleteSenseDefinition(),
+        new RemoveAlternateFormDefinition(),
         new LinkVariantDefinition(),
         new MakeVariantOfDefinition(),
         new EditMorphTypeDefinition(),

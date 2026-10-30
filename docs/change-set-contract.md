@@ -549,6 +549,25 @@ refers to, are refused. The effects are `lexical/lexEntry/senses` for the old an
 for the sense and each sub-sense, and `lexical/lexEntry/morphoSyntaxAnalyses` of the old entry when it loses an
 analysis. The composer is `compose-move-sense-to-entry`, CLI-first.
 
+`lexical/lexSense/remove` targets one `LexSense`, top-level or a sub-sense, and has the closed `after` shape
+`{ "owner": "<id>", "topLevel": true | false, "entry": "<id>", "msas": ["<id>", ...] }`. It deletes the sense, its
+sub-senses and its examples (LibLCM cascades them). Unlike `lexical/lexSense/delete` the sense may carry content,
+so the operation refuses what LibLCM would silently unlink: an entry's only sense (as FieldWorks does), and any
+sense, sub-sense or example that a lexical relation, entry reference component or morph bundle still refers to,
+naming the referrer. `owner` is the entry (`topLevel` true) or the parent sense that must still own the target.
+`msas` lists the analyses of `entry` that no remaining sense uses and nothing else refers to; they are deleted with
+the sense, and a listing that no longer matches makes the Draft stale. The effects are `lexical/lexEntry/senses` of
+the entry or `lexical/lexSense/senses` of the parent sense, whose preview lists every deleted sense with its gloss
+and definition and every deleted analysis, and `lexical/lexEntry/morphoSyntaxAnalyses` when an analysis goes. The
+composer is `compose-delete-sense`, CLI-first.
+
+`lexical/lexEntry/removeAlternateForm` targets one `LexEntry` and has the closed `after` shape
+`{ "form": "<id>" }`. The form must be one of the entry's alternate forms, never its lexeme form, and nothing may
+refer to it (a morph bundle, an ad hoc prohibition or any other object); the refusal names the referrer. The effect
+is `lexical/lexEntry/alternateForms`, whose preview gives the removed form's text, class and morph type. The composer
+is `compose-remove-alternate-form`, CLI-first. `lexical/lexEntry/deleteAlternateForm` remains the guarded retirement
+of an exact-duplicate affix form.
+
 `analysis/wfiWordform/createAnalyses` targets a `WfiWordform`, supplies a fresh `entityId`, and has
 the closed `after` shape `{ "morphs": [{ "form": "<id>", "msa": "<id>",
 "inflType": "<id>", "guessedString": "..." }] }`. `morphs` is nonempty and ordered. The form,

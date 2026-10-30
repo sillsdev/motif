@@ -714,6 +714,36 @@
       "Split a sense into an entry of its own"
     ]
   },
+  "compose-delete-sense": {
+    "title": "Delete a sense",
+    "description": "Deletes one top-level or nested meaning that carries content, with what it owns, because the meaning is kept elsewhere; Motif stages a Draft for a person to review and Apply. It refuses an entry's only meaning and any meaning that a relation, cross-reference or parser analysis refers to.",
+    "source": "Hand-written from the closed intent and composer contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "target": "Id of the sense or sub-sense to delete.",
+      "owner": "Id of the entry that owns a top-level sense, or of the parent sense of a sub-sense."
+    },
+    "goals": [
+      "Delete a meaning that now duplicates a separate entry",
+      "Delete a nested meaning that repeats its parent",
+      "Clean up meanings folded into a root entry"
+    ]
+  },
+  "compose-remove-alternate-form": {
+    "title": "Remove an alternate form",
+    "description": "Removes one alternate form (allomorph) of an entry that nothing refers to; Motif stages a Draft for a person to review and Apply. It refuses the lexeme form and a form that a parser analysis or any other object refers to.",
+    "source": "Hand-written from the closed intent and composer contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "entry": "Id of the entry that owns the alternate form.",
+      "form": "Id of the alternate form to remove."
+    },
+    "goals": [
+      "Remove an alternate form that was added as a stand-in for an entry",
+      "Remove a redundant allomorph",
+      "Drop an alternate spelling nothing uses"
+    ]
+  },
   "compose-rewrite-lexeme-form": {
     "title": "Rewrite lexeme forms",
     "description": "Rewrites the lexeme form of many existing entries in one Draft, each guarded by the form it must hold now, and can keep the old spelling as the citation form. Use it when the lexeme form carries stress marks the parser cannot match; Motif stages a Draft and never Applies it automatically. Only a person can Apply.",
