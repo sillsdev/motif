@@ -78,8 +78,14 @@ internal static class AssessmentRetention
 
     /// <summary>Prunes unreferenced standalone Assessments while the project parse lease is held.</summary>
     public static int SweepStandalone(SqliteConnection connection, SqliteTransaction transaction,
-        ProjectParseLease lease, int keepPerKind, IReadOnlyCollection<string> currentEvidence)
+        ProjectParseLease lease, int keepPerKind, IReadOnlyCollection<string> currentEvidence) =>
+        SweepStandalone(connection, transaction, lease, keepPerKind, currentEvidence, out _);
+
+    public static int SweepStandalone(SqliteConnection connection, SqliteTransaction transaction,
+        ProjectParseLease lease, int keepPerKind, IReadOnlyCollection<string> currentEvidence,
+        out IReadOnlyList<string> removedInvocations)
     {
+        removedInvocations = [];
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(keepPerKind);
         ArgumentNullException.ThrowIfNull(currentEvidence);
         lease.EnsureHeld(connection, transaction);
@@ -147,7 +153,25 @@ internal static class AssessmentRetention
             }
         } while (changed);
         if (removable.Count == 0) return 0;
+        var invocations = ReadPairs(connection, transaction,
+            "SELECT AssessmentId, InvocationId FROM Assessments WHERE InvocationId IS NOT NULL;")
+            .Where(pair => removable.Contains(pair.Replacement)).Select(pair => pair.Root).ToHashSet(StringComparer.Ordinal);
+        foreach (var (assessment, path) in ReadPairs(connection, transaction,
+                     "SELECT AssessmentId, CachePath FROM Assessments WHERE CachePath IS NOT NULL;"))
+            if (removable.Contains(assessment) && Path.IsPathFullyQualified(path) && Path.GetDirectoryName(path) is { } directory)
+                invocations.Add(Path.GetFullPath(directory));
+        foreach (var (invocation, artifact) in ReadPairs(connection, transaction,
+                     "SELECT InvocationId, ArtifactInvocationId FROM RetainedInvocations;"))
+            if (invocationMembers.TryGetValue(invocation, out var members) && members.All(removable.Contains))
+                invocations.Add(artifact);
+        foreach (var (assessment, retry) in ReadPairs(connection, transaction, """
+                     SELECT a.AssessmentId, json_extract(i.EvidenceJson, '$.StoppedWordRetry.RetryInvocationId')
+                     FROM Assessments a JOIN AssessmentInvocations i ON a.InvocationId = i.InvocationId
+                     WHERE json_extract(i.EvidenceJson, '$.StoppedWordRetry.RetryInvocationId') IS NOT NULL;
+                     """))
+            if (removable.Contains(assessment)) invocations.Add(retry);
         DeleteAssessments(connection, transaction, removable, removeInvocations: true);
+        removedInvocations = invocations.ToArray();
         return removable.Count;
     }
 

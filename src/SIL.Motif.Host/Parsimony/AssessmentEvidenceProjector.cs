@@ -218,7 +218,10 @@ public static class AssessmentEvidenceProjector
             assessment.Threads < 1 || string.IsNullOrWhiteSpace(assessment.InvocationId))
             throw new InvalidDataException(
                 $"Assessment '{assessment.AssessmentId}' does not match the exact source and parser for this Report.");
-        if (assessment.SourcePath is null || !File.Exists(assessment.SourcePath) ||
+        if (assessment.SourcePath is null)
+            throw new InvalidDataException($"Assessment '{assessment.AssessmentId}' has no retained source matching this Report.");
+        using var sourceLock = StatsCacheLock.AcquireForFile(assessment.SourcePath);
+        if (!File.Exists(assessment.SourcePath) ||
             BatchInvocationEvidence.DigestFile(assessment.SourcePath) != sourceSha256)
             throw new InvalidDataException(
                 $"Assessment '{assessment.AssessmentId}' has no retained source matching this Report.");
@@ -228,14 +231,19 @@ public static class AssessmentEvidenceProjector
         out IReadOnlyList<ParseWordEvidence> cases, out string? reason)
     {
         cases = [];
-        if (assessment.SidecarPath is null || assessment.SidecarSha256 is null ||
-            !File.Exists(assessment.SidecarPath))
+        if (assessment.SidecarPath is null || assessment.SidecarSha256 is null)
         {
             reason = "The retained morphology sidecar is unavailable.";
             return false;
         }
         try
         {
+            using var sidecarLock = StatsCacheLock.AcquireForFile(assessment.SidecarPath);
+            if (!File.Exists(assessment.SidecarPath))
+            {
+                reason = "The retained morphology sidecar is unavailable.";
+                return false;
+            }
             if (BatchInvocationEvidence.DigestFile(assessment.SidecarPath) != assessment.SidecarSha256)
             {
                 reason = "The retained morphology sidecar digest does not match its Assessment.";

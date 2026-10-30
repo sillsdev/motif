@@ -36,7 +36,8 @@ internal static class ParserAssessmentMaterial
             if (invocation is null || string.IsNullOrWhiteSpace(invocation.SourcePath))
                 throw new InvalidDataException(
                     $"Parser Assessment '{assessmentId}' has no retained candidate source; rerun its Trial.");
-            AssessmentSourceArtifactStore.Verify(invocation.SourcePath, invocation.SourceBytesSha256);
+            using (StatsCacheLock.AcquireForFile(invocation.SourcePath))
+                AssessmentSourceArtifactStore.Verify(invocation.SourcePath, invocation.SourceBytesSha256);
             var next = new ParserAssessmentSourceArtifact(invocation.SourcePath, invocation.SourceBytesSha256);
             if (artifact is not null && artifact != next)
                 throw new InvalidDataException("Parser Assessments do not share one retained candidate source.");

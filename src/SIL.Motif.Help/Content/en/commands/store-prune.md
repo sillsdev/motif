@@ -8,4 +8,4 @@ Motif keeps the newest 20 standalone Assessments of each kind by default, along 
 motif store prune --project "C:\FieldWorks\Projects\Koro\Koro.fwdata"
 ```
 
-The result reports the number removed and the store file size before and after reclamation. Active readers can postpone reclaiming some space; run the command again after they finish.
+The result reports the number of Assessments and invocation directories removed and the store file size before and after reclamation. Directories whose ownership cannot be proven are kept; the result reports their count, total size and parent path so they can be inspected. Active readers can postpone reclaiming some space; run the command again after they finish.

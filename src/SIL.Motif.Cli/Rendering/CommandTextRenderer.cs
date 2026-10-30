@@ -51,8 +51,11 @@ public static class CommandTextRenderer
             CorpusListProjection p => ProjectionText.Render(p),
             CorpusDetailProjection p => ProjectionText.Render(p),
             ProjectConfigurationProjection p => ProjectionText.Render(p),
-            StorePruneResponse r => $"Removed {r.AssessmentsRemoved} Assessments; store: {r.BytesBefore} to {r.BytesAfter} bytes." +
-                (r.CheckpointComplete ? "" : " Reclamation is incomplete while readers are active.") + Environment.NewLine,
+            StorePruneResponse r => string.Format(CultureInfo.CurrentCulture, CliStrings.StorePruneFormat,
+                r.AssessmentsRemoved, r.BytesBefore, r.BytesAfter, r.InvocationDirectoriesRemoved,
+                r.UnownedDirectoriesKept, r.UnownedBytesKept, r.InvocationParentPath) +
+                (r.UnownedSizeComplete ? "" : CliStrings.StorePruneSizeIncomplete) +
+                (r.CheckpointComplete ? "" : CliStrings.StorePruneIncomplete) + Environment.NewLine,
             DryRunProjection p => ProjectionText.Render(p),
             RetirementProposalReviewProjection p => ProjectionText.Render(p),
             RetirementReviewQueryResponse r => RenderRetirementReview(r),

@@ -7,6 +7,8 @@ using SIL.Motif.Host;
 using SIL.Motif.Host.Config;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Worker.Store;
+using SIL.Motif.Worker.Assess;
+using SIL.Motif.Worker;
 
 namespace SIL.Motif.Commands;
 
@@ -14,7 +16,9 @@ namespace SIL.Motif.Commands;
 public sealed record StorePruneRequest(string ProjectPath);
 
 /// <summary>The number of removed Assessments and project-store file sizes around reclamation.</summary>
-public sealed record StorePruneResponse(int AssessmentsRemoved, long BytesBefore, long BytesAfter, bool CheckpointComplete);
+public sealed record StorePruneResponse(int AssessmentsRemoved, long BytesBefore, long BytesAfter, bool CheckpointComplete,
+    int InvocationDirectoriesRemoved = 0, int UnownedDirectoriesKept = 0, long UnownedBytesKept = 0,
+    bool UnownedSizeComplete = true, string? InvocationParentPath = null);
 
 /// <summary>Removes older unreferenced standalone Assessments and reclaims their database pages.</summary>
 public static class StorePruneCommand
@@ -38,7 +42,7 @@ public static class StorePruneCommand
         });
 
     internal static CommandOutcome<StorePruneResponse> RunHeld(MotifDatabase database, ProjectLocator project,
-        ProjectParseLease lease, int keepPerKind)
+        ProjectParseLease lease, int keepPerKind, string? managedRoot = null)
     {
         using var connection = database.OpenConnection();
         using var timeout = connection.CreateCommand();
@@ -53,6 +57,7 @@ public static class StorePruneCommand
             timeout.CommandText = $"PRAGMA busy_timeout = {previousTimeout};";
             timeout.ExecuteNonQuery();
             int removed;
+            IReadOnlyList<string> removedInvocations;
             using (var transaction = connection.BeginTransaction())
             {
                 lease.EnsureHeld(connection, transaction);
@@ -61,9 +66,12 @@ public static class StorePruneCommand
                 var set = current.Value!.Set;
                 var roots = set is null ? [] : new[] { set.RootAssessmentId }.OfType<string>()
                     .Concat(set.ReplacementAssessmentIds).Concat(set.MeasurementIds.Values).ToArray();
-                removed = AssessmentRetention.SweepStandalone(connection, transaction, lease, keepPerKind, roots);
+                removed = AssessmentRetention.SweepStandalone(connection, transaction, lease, keepPerKind, roots, out removedInvocations);
                 transaction.Commit();
             }
+            var ownership = WorkspaceOwnership.Bootstrap(managedRoot ?? RunnerOptions.ResolveRoot());
+            var cache = new StatsCacheStore(ownership, database.FullPath);
+            var reclaimed = cache.Reclaim(database, lease, removedInvocations);
             timeout.CommandText = "PRAGMA busy_timeout = 0;";
             timeout.ExecuteNonQuery();
             var first = Checkpoint(connection);
@@ -81,7 +89,8 @@ public static class StorePruneCommand
             var last = Checkpoint(connection);
             var after = new FileInfo(database.FullPath).Length;
             return CommandOutcome<StorePruneResponse>.Success(new StorePruneResponse(removed, before, after,
-                beforeCheckpoint && first && last && vacuumed));
+                beforeCheckpoint && first && last && vacuumed, reclaimed.Pruned, reclaimed.UnownedCount,
+                reclaimed.UnownedBytes, reclaimed.SizeComplete, reclaimed.Parent));
         }
         finally
         {

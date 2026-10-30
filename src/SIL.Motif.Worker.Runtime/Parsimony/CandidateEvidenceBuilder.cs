@@ -372,9 +372,16 @@ public sealed class ParsimonyCandidateEvidenceBuilder
                 }
                 else
                 {
-                    AssessmentSourceArtifactStore.Verify(assessmentSource.SourcePath,
-                        assessmentSource.SourceBytesSha256);
-                    using var assessedCandidate = _loader.LoadScratchCache(assessmentSource.SourcePath);
+                    var copiedSource = Path.Combine(copyRoot, "assessed-source.fwdata");
+                    Directory.CreateDirectory(copyRoot);
+                    using (StatsCacheLock.AcquireForFile(assessmentSource.SourcePath))
+                    {
+                        AssessmentSourceArtifactStore.Verify(assessmentSource.SourcePath,
+                            assessmentSource.SourceBytesSha256);
+                        File.Copy(assessmentSource.SourcePath, copiedSource);
+                        AssessmentSourceArtifactStore.Verify(copiedSource, assessmentSource.SourceBytesSha256);
+                    }
+                    using var assessedCandidate = _loader.LoadScratchCache(copiedSource);
                     var assessedWords = TextWordsProjectionBuilder.Build(assessedCandidate, laneToken);
                     candidateEvidence = EvidenceProjectionBuilder.Build(assessedCandidate, assessedWords, scope,
                         laneToken);
@@ -382,7 +389,7 @@ public sealed class ParsimonyCandidateEvidenceBuilder
                         throw new InvalidDataException(
                             "The retained Trial source does not reproduce the candidate state in the Dry Run.");
                     candidateJudgments = HumanJudgmentReader.Read(assessedCandidate);
-                    candidatePath = assessmentSource.SourcePath;
+                    candidatePath = copiedSource;
                     candidateSourceSha256 = assessmentSource.SourceBytesSha256;
                 }
                 result = new CandidateProjectStates(baselinePath, candidatePath, dryRun,

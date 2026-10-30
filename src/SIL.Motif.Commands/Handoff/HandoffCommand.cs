@@ -231,8 +231,7 @@ public static class HandoffCommand
                         item.Kind.IsStoredKind(AssessmentKind.ObjectTiming));
                     if (sourceAssessment?.Invocation is null ||
                         string.IsNullOrWhiteSpace(sourceAssessment.Invocation.SourcePath) ||
-                        string.IsNullOrWhiteSpace(sourceAssessment.Invocation.SourceBytesSha256) ||
-                        !File.Exists(sourceAssessment.Invocation.SourcePath))
+                        string.IsNullOrWhiteSpace(sourceAssessment.Invocation.SourceBytesSha256))
                         return CommandOutcome<HandoffCommandResponse>.Refused(new Refusal(
                             "handoff.source-unavailable", FailureReason.Refused,
                             $"Retained invocation '{request.InvocationId}' has no available source evidence.",
@@ -541,7 +540,7 @@ public static class HandoffCommand
         {
             var evidence = assessment.Invocation;
             if (evidence is null || string.IsNullOrWhiteSpace(evidence.SourcePath) ||
-                string.IsNullOrWhiteSpace(evidence.SourceBytesSha256) || !File.Exists(evidence.SourcePath))
+                string.IsNullOrWhiteSpace(evidence.SourceBytesSha256))
                 return new Refusal(
                     "handoff.source-unavailable", FailureReason.Refused,
                     $"Retained invocation '{invocationId}' has no available source evidence.",
@@ -549,13 +548,15 @@ public static class HandoffCommand
 
             try
             {
-                if (BatchInvocationEvidence.DigestFile(evidence.SourcePath) != evidence.SourceBytesSha256)
+                using var sourceLock = StatsCacheLock.AcquireForFile(evidence.SourcePath);
+                if (!File.Exists(evidence.SourcePath) ||
+                    BatchInvocationEvidence.DigestFile(evidence.SourcePath) != evidence.SourceBytesSha256)
                     return new Refusal(
                         "handoff.source-unavailable", FailureReason.Refused,
                         $"Retained invocation '{invocationId}' has changed source evidence.",
                         Fact(("invocationId", invocationId)));
             }
-            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidDataException)
             {
                 return new Refusal(
                     "handoff.source-unavailable", FailureReason.Refused, exception.Message,

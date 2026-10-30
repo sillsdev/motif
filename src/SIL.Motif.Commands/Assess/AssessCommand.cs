@@ -706,7 +706,7 @@ public static class AssessCommand
                 foreach (var lease in artifactLeases) lease.Retain();
                 try
                 {
-                    var pruned = StorePruneCommand.RunHeld(database, project, admission ?? parseLease!, standaloneAssessmentCount);
+                    var pruned = StorePruneCommand.RunHeld(database, project, admission ?? parseLease!, standaloneAssessmentCount, managedRoot);
                     if (!pruned.Succeeded)
                         ProjectDiagnosticLog.Append(request.ProjectPath, "Assess saved its Assessment but could not prune old evidence.",
                             new InvalidOperationException(pruned.Refusal!.Message));
