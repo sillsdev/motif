@@ -104,6 +104,15 @@
   <Style Selector=":is(TextBlock).stripWord.stoppedVerdict">
     <Setter Property="TextDecorations" Value="{DynamicResource Component.WordStrip.StoppedUnderline}" />
   </Style>
+  <Style Selector="word|InterlinearWord.differentVerdict">
+    <Setter Property="TextDecorations" Value="{DynamicResource Component.WordStrip.DifferentUnderline}" />
+  </Style>
+  <Style Selector="word|InterlinearWord.noParseVerdict">
+    <Setter Property="TextDecorations" Value="{DynamicResource Component.WordStrip.NoParseUnderline}" />
+  </Style>
+  <Style Selector="word|InterlinearWord.stoppedVerdict">
+    <Setter Property="TextDecorations" Value="{DynamicResource Component.WordStrip.StoppedUnderline}" />
+  </Style>
   <Style Selector="CheckBox.stripCheck">
     <Setter Property="MinHeight" Value="{DynamicResource Component.WordStrip.WordRowHeight}" />
     <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />

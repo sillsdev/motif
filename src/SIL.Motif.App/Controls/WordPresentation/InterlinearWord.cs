@@ -15,6 +15,15 @@ namespace SIL.Motif.App.Controls.WordPresentation;
 /// <summary>An experimental drawn representation of a word and its compact interlinear readings.</summary>
 internal sealed class InterlinearWord : Control
 {
+    public static readonly StyledProperty<TextDecorationCollection?> TextDecorationsProperty =
+        AvaloniaProperty.Register<InterlinearWord, TextDecorationCollection?>(nameof(TextDecorations));
+
+    public TextDecorationCollection? TextDecorations
+    {
+        get => GetValue(TextDecorationsProperty);
+        set => SetValue(TextDecorationsProperty, value);
+    }
+
     private const double Gap = 4;
     private readonly List<Run> _runs = [];
     private ResultsTokenViewModel? _data;
@@ -37,6 +46,10 @@ internal sealed class InterlinearWord : Control
     internal void RefreshData()
     {
         AutomationProperties.SetName(this, _data?.HoverSummary);
+        AutomationProperties.SetAutomationId(this, _data?.WordAutomationId);
+        Classes.Set("differentVerdict", _data?.HasDifferentVerdictCue == true);
+        Classes.Set("noParseVerdict", _data?.HasNoParseVerdictCue == true);
+        Classes.Set("stoppedVerdict", _data?.HasStoppedVerdictCue == true);
         _dataRevision++;
         InvalidateMeasure();
     }
@@ -64,6 +77,11 @@ internal sealed class InterlinearWord : Control
     static InterlinearWord()
     {
         TextElement.ForegroundProperty.Changed.AddClassHandler<InterlinearWord>((word, _) => word.InvalidateMeasure());
+        TextDecorationsProperty.Changed.AddClassHandler<InterlinearWord>((word, _) =>
+        {
+            word._modelKey = null;
+            word.InvalidateMeasure();
+        });
     }
 
     protected override Size MeasureOverride(Size availableSize)
@@ -85,7 +103,7 @@ internal sealed class InterlinearWord : Control
         var key = new ModelKey(styles, styles.Revision, _dataRevision, availableSize.Width, foreground);
         if (_modelKey == key) return _modelSize;
         _runs.Clear();
-        var word = Shape(_data.Text, _data.TextWritingSystem, styles, foreground);
+        var word = Shape(_data.Text, _data.TextWritingSystem, styles, foreground, TextDecorations);
         var rtl = styles.Resolve(TextStyleRequest.Linguistic(_data.TextWritingSystem, "Normal")).FlowDirection == FlowDirection.RightToLeft;
         var widthLimit = double.IsFinite(availableSize.Width) ? Math.Max(1, availableSize.Width) : double.PositiveInfinity;
         var field = ShapeMorphs(_data.PrimaryFieldWorksMorphs, styles, foreground);
@@ -158,12 +176,13 @@ internal sealed class InterlinearWord : Control
             styles.Resolve(TextStyleRequest.Linguistic(m.FormWritingSystem, "Normal")).FlowDirection,
             styles.Resolve(TextStyleRequest.Linguistic(m.GlossWritingSystem, "Normal")).FlowDirection)).ToList();
 
-    private static TextLayout Shape(string text, string? writingSystem, TextStyles styles, IBrush foreground)
+    private static TextLayout Shape(string text, string? writingSystem, TextStyles styles, IBrush foreground,
+        TextDecorationCollection? decorations = null)
     {
         var style = styles.Resolve(TextStyleRequest.Linguistic(writingSystem, "Normal"));
         return new TextLayout(text, new Typeface(style.FontFamily ?? FontFamily.Default,
             style.Emphasis ?? FontStyle.Normal, style.Weight ?? FontWeight.Normal), style.FontSize ?? 14,
-            foreground, flowDirection: style.FlowDirection, fontFeatures: style.FontFeatures);
+            foreground, textDecorations: decorations, flowDirection: style.FlowDirection, fontFeatures: style.FontFeatures);
     }
 
     public override void Render(DrawingContext context)
