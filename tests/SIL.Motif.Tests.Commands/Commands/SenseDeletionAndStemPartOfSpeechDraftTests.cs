@@ -171,6 +171,99 @@ public sealed class SenseDeletionAndStemPartOfSpeechDraftTests(PristineProjectFi
     }
 
     [Fact]
+    public void LinkingToAnEntryCreatedEarlierInTheDraftDryRunsAndApplies()
+    {
+        using var cache = pristine.NewScratch();
+        var path = cache.ProjectId.Path;
+        var vernacular = cache.WritingSystemFactory.GetStrFromWs(cache.DefaultVernWs);
+        var analysis = cache.WritingSystemFactory.GetStrFromWs(cache.DefaultAnalWs);
+        var seed = EmptySenseSeed.Add(cache, "variant-link");
+        Guid referenceId = default, typeId = default;
+        SIL.LCModel.Infrastructure.NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+        {
+            var services = cache.ServiceLocator;
+            var entry = services.GetInstance<ILexEntryRepository>().GetObject(seed.EntryId);
+            var reference = services.GetInstance<ILexEntryRefFactory>().Create();
+            entry.EntryRefsOS.Add(reference);
+            reference.RefType = LexEntryRefTags.krtVariant;
+            referenceId = reference.Guid;
+            var list = cache.LangProject.LexDbOA.VariantEntryTypesOA;
+            if (list is null)
+            {
+                list = services.GetInstance<ICmPossibilityListFactory>().Create();
+                cache.LangProject.LexDbOA.VariantEntryTypesOA = list;
+            }
+            var type = services.GetInstance<ILexEntryTypeFactory>().Create();
+            list.PossibilitiesOS.Add(type);
+            typeId = type.Guid;
+        });
+        new FwDataProjectLoader().Save(cache);
+        const string draft = "entry-and-variant";
+        Assert.True(ProposalCommands.New(new(path, Version, draft, "Add and link")).Succeeded);
+        var authored = ProposalCommands.ComposeAuthorLexicalEntry(new(path, Version, draft, Json(new
+        {
+            form = "mainform", formWs = vernacular, morphType = Id(MoMorphTypeTags.kguidMorphStem),
+            gloss = "meaning", analysisWs = analysis,
+            msa = new { kind = "stem", category = Id(pristine.Seed.PartOfSpeechId) },
+        })));
+        Assert.True(authored.Succeeded, authored.Refusal?.Message);
+        var created = Assert.Single(authored.Value!.Operations, operation => operation.Kind == "lexical/lexDb/createEntries");
+        var linked = ProposalCommands.ComposeIntent(new(path, Version, draft, "compose-link-variant",
+            Json(new { target = Id(referenceId), component = created.EntityId, variantType = Id(typeId) })));
+        Assert.True(linked.Succeeded, linked.Refusal?.Message);
+        Assert.True(DraftRationale.Write(path, Version, draft, "Create an entry and link its variant.").Succeeded);
+        var finalized = ProposalCommands.Finalize(new(path, Version, draft));
+        Assert.True(finalized.Succeeded, finalized.Refusal?.Message);
+        var stored = ProjectStoreCommand.Run<Proposal>(path, Version, (database, _) =>
+            CommandOutcome<Proposal>.Success(ProposalJsonParser.Parse(new ProposalRepository(database)
+                .Get(CanonicalId.Parse(finalized.Value!.ProposalId)).ProposalJson!)));
+        Assert.True(stored.Succeeded, stored.Refusal?.Message);
+        var proposal = stored.Value!;
+        var link = Assert.Single(proposal.Operations, operation => operation.Kind == VariantLinkOperationKinds.Set);
+        Assert.Contains(link.DependsOn, dependency => dependency.OperationId == CanonicalId.Parse(created.OperationId));
+        using var scratch = DryRunScratch.Adopt(new FwDataProjectLoader().LoadScratchCache(path), "created entry variant");
+        var dry = ProposalDryRunner.Run(scratch, proposal);
+        ProposalApplier.Apply(cache, proposal, dry.Anchor, "tester");
+        var referenceAfter = cache.ServiceLocator.GetInstance<ILexEntryRefRepository>().GetObject(referenceId);
+        Assert.Equal(CanonicalId.Parse(created.EntityId!).ToGuid(), Assert.Single(referenceAfter.ComponentLexemesRS).Guid);
+        Assert.Equal(typeId, Assert.Single(referenceAfter.VariantEntryTypesRS).Guid);
+    }
+
+    [Fact]
+    public void ExistingAnalysisCanUseAPartOfSpeechCreatedEarlierInTheDraft()
+    {
+        using var cache = pristine.NewScratch();
+        var path = cache.ProjectId.Path;
+        var analysisWs = cache.WritingSystemFactory.GetStrFromWs(cache.DefaultAnalWs);
+        var seed = EmptySenseSeed.Add(cache, "existing-analysis");
+        new FwDataProjectLoader().Save(cache);
+        const string draft = "created-category";
+        Assert.True(ProposalCommands.New(new(path, Version, draft, "Create and use a category")).Succeeded);
+        var category = ProposalCommands.ComposeAuthorPartOfSpeech(new(path, Version, draft,
+            Json(new { name = "New category", ws = analysisWs })));
+        Assert.True(category.Succeeded, category.Refusal?.Message);
+        var created = Assert.Single(category.Value!.Operations, operation => operation.EntityId is not null);
+        var set = ProposalCommands.ComposeIntent(new(path, Version, draft, PosVerb,
+            Json(new { target = Id(seed.MsaId), expectedPartOfSpeech = (string?)null, partOfSpeech = created.EntityId })));
+        Assert.True(set.Succeeded, set.Refusal?.Message);
+        Assert.True(DraftRationale.Write(path, Version, draft, "Create a category and assign it.").Succeeded);
+        var finalized = ProposalCommands.Finalize(new(path, Version, draft));
+        Assert.True(finalized.Succeeded, finalized.Refusal?.Message);
+        var stored = ProjectStoreCommand.Run<Proposal>(path, Version, (database, _) =>
+            CommandOutcome<Proposal>.Success(ProposalJsonParser.Parse(new ProposalRepository(database)
+                .Get(CanonicalId.Parse(finalized.Value!.ProposalId)).ProposalJson!)));
+        Assert.True(stored.Succeeded, stored.Refusal?.Message);
+        var proposal = stored.Value!;
+        var operation = Assert.Single(proposal.Operations, op => op.Kind == MoStemMsaPartOfSpeechOperationKinds.SetPartOfSpeech);
+        Assert.Contains(operation.DependsOn, dependency => dependency.OperationId == CanonicalId.Parse(created.OperationId));
+        using var scratch = DryRunScratch.Adopt(new FwDataProjectLoader().LoadScratchCache(path), "created category");
+        var dry = ProposalDryRunner.Run(scratch, proposal);
+        ProposalApplier.Apply(cache, proposal, dry.Anchor, "tester");
+        var msa = cache.ServiceLocator.GetInstance<IMoStemMsaRepository>().GetObject(seed.MsaId);
+        Assert.Equal(CanonicalId.Parse(created.EntityId!).ToGuid(), msa.PartOfSpeechRA.Guid);
+    }
+
+    [Fact]
     public void LinkingThenDeletingInOneBatchDeclaresTheDependencyAndDryRuns()
     {
         using var cache = pristine.NewScratch();

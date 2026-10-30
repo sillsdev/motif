@@ -56,6 +56,22 @@ public sealed class VariantLinkComposerTests : IDisposable
         Assert.Equal(type.Guid, Assert.Single(reference.VariantEntryTypesRS).Guid);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ChangesToEitherReferenceFieldAfterDryRunRequireAnotherDryRun(bool changeType)
+    {
+        var (_, reference, target, type) = Seed();
+        var proposal = Proposal(LinkVariantComposer.Build(_cache, new(Id(reference), Id(target), Id(type))));
+        var dry = ScratchDryRun.Of(_cache, proposal);
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+        {
+            if (changeType) reference.VariantEntryTypesRS.Add(type);
+            else reference.ComponentLexemesRS.Add(target);
+        });
+        Assert.Throws<PreconditionRefusal>(() => ProposalApplier.Apply(_cache, proposal, dry.Anchor, "tester"));
+    }
+
     [Fact]
     public void SelfAndIndirectCyclesAreRefusedAtComposeAndWhenTheGraphChangesBeforeDryRun()
     {

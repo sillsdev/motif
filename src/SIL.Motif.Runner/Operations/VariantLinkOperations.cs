@@ -114,7 +114,9 @@ internal sealed class VariantLinkHandler : ICompoundOperationHandler
 
     public IReadOnlyList<ExpectedEffect> ReadCurrentFootprintEffects(LcmCache cache, OperationEnvelope operation)
     {
-        var (id, reference, _, _, beforeComponents, beforeTypes) = Resolve(cache, operation);
+        var (id, reference) = TargetResolution.Resolve<ILexEntryRef>(cache, operation, Kind);
+        var beforeComponents = ReferenceSequenceFieldSnapshotting.ReadAlternatives(reference.ComponentLexemesRS);
+        var beforeTypes = ReferenceSequenceFieldSnapshotting.ReadAlternatives(reference.VariantEntryTypesRS);
         return Effects(id, reference, beforeComponents, beforeTypes);
     }
 

@@ -37,7 +37,9 @@ public interface IOperationHandler
     /// Reads the target's CURRENT, pre-mutation footprint with no mutation and no unit of work at
     /// all — legal at any transaction state (docs/adr/0006, decision 1). Returns an
     /// <see cref="ExpectedEffect"/> whose <c>Before</c> and <c>After</c> are the same value; only
-    /// <c>Before</c> participates in <see cref="FootprintDigest"/>.
+    /// <c>Before</c> participates in <see cref="FootprintDigest"/>. Do not resolve proposed references
+    /// merely to validate them: a dependency may create them after this read. Validate them when
+    /// applying the operation.
     /// </summary>
     ExpectedEffect ReadCurrentFootprint(LcmCache cache, OperationEnvelope operation);
 }
@@ -49,7 +51,8 @@ public interface ICompoundOperationHandler : IOperationHandler
     IReadOnlyList<ExpectedEffect> ApplyAndCaptureEffects(
         LcmCache cache, OperationEnvelope operation, List<CanonicalId> touchedTargets);
 
-    /// <summary>Reads every field in the operation's pre-mutation footprint without changing the cache.</summary>
+    /// <summary>Reads every field in the operation's pre-mutation footprint under the same rules as
+    /// <see cref="IOperationHandler.ReadCurrentFootprint"/>.</summary>
     IReadOnlyList<ExpectedEffect> ReadCurrentFootprintEffects(LcmCache cache, OperationEnvelope operation);
 }
 
