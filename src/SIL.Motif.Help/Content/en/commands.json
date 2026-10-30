@@ -1234,5 +1234,18 @@
     "title": "Check phonology examples",
     "description": "Queues an advisory check of one saved Example Set revision against the current Baseline's grammar and records the result as an Assessment. It never changes the FieldWorks project, Readiness or Apply.",
     "source": "The shared command catalog and typed request contract."
+  },
+  "compose-edit-morph-type": {
+    "title": "Edit a form’s morph type",
+    "description": "Change an existing stem form’s morph type within the stem family. Review the form and its before and after types in the Dry Run.",
+    "source": "Hand-written from the closed intent and composer contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "target": "Id of the existing stem form.",
+      "morphType": "Id of the desired stem-family morph type."
+    },
+    "goals": [
+      "Change the morph type of an existing stem form"
+    ]
   }
 }

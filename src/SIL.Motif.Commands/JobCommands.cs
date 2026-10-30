@@ -287,6 +287,8 @@ public static class JobCommands
             if (job is null) return CommandOutcome<DryRunProjection>.Refused(JobNotFound(request.JobId));
             if (job.Status != JobStatus.CompletedDryRunOnly || job.DryRunJson is null)
             {
+                if (job.Status == JobStatus.Failed && ReadDryRunRefusal(job) is { } refusal)
+                    return CommandOutcome<DryRunProjection>.Refused(refusal);
                 return CommandOutcome<DryRunProjection>.Refused(new Refusal(
                     "job.dry-run-incomplete", FailureReason.Refused,
                     "Dry Run job '" + request.JobId + "' finished as " + JobStatusJson.ToWire(job.Status) +
@@ -375,6 +377,27 @@ public static class JobCommands
                 WordsNotDone = int.TryParse(FailureField(job.ResultJson, "wordsNotDone"), out var notDone) ? notDone : null,
             });
         });
+    }
+
+    private static Refusal? ReadDryRunRefusal(JobRecord job)
+    {
+        if (FailureCodeOf(job) is not { } code || job.ResultJson is null) return null;
+        try
+        {
+            using var document = JsonDocument.Parse(job.ResultJson);
+            var root = document.RootElement;
+            if (!root.TryGetProperty("reason", out var reason) ||
+                !Enum.TryParse<FailureReason>(reason.GetString(), out var parsedReason) ||
+                !Enum.IsDefined(parsedReason) || !root.TryGetProperty("message", out var message) ||
+                string.IsNullOrWhiteSpace(message.GetString())) return null;
+            var facts = new Dictionary<string, string>(StringComparer.Ordinal);
+            if (root.TryGetProperty("facts", out var values) && values.ValueKind == JsonValueKind.Object)
+                foreach (var item in values.EnumerateObject())
+                    if (item.Value.ValueKind == JsonValueKind.String) facts[item.Name] = item.Value.GetString()!;
+            return new Refusal(code, parsedReason, message.GetString()!, facts);
+        }
+        catch (JsonException) { return null; }
+        catch (InvalidOperationException) { return null; }
     }
 
     private static string? FailureCodeOf(JobRecord job) =>

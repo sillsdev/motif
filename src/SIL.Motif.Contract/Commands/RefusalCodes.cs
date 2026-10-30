@@ -312,6 +312,12 @@ public static class RefusalCodes
     /// <summary>The variant reference changed after the link was composed.</summary>
     public const string VariantStaleReference = "variant.stale-reference";
 
+    /// <summary>The form's morph type changed since the edit was composed.</summary>
+    public const string MorphTypeStaleSource = "morph-type.stale-source";
+
+    /// <summary>The morph-type edit would leave the supported stem family.</summary>
+    public const string MorphTypeIncompatibleFamily = "morph-type.incompatible-family";
+
     /// <summary>A Draft with that name already exists.</summary>
     public const string DraftNameCollision = "draft.name-collision";
     /// <summary>No Draft has that name.</summary>

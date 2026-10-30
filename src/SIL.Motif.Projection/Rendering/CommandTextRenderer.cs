@@ -447,6 +447,10 @@ public static class CommandTextRenderer
 
             foreach (var change in effect.Changes)
                 sb.AppendLine($"      [{change.Ws}] \"{change.Before ?? "(absent)"}\" -> \"{change.After ?? "(absent)"}\"");
+            if (effect.Preview is { } preview && preview.ValueKind == System.Text.Json.JsonValueKind.Object &&
+                preview.TryGetProperty("beforeTypeName", out var beforeType) && beforeType.ValueKind == JsonValueKind.String &&
+                preview.TryGetProperty("afterTypeName", out var afterType) && afterType.ValueKind == JsonValueKind.String)
+                sb.AppendLine($"      morph type: {beforeType.GetString()} -> {afterType.GetString()}");
         }
     }
 }

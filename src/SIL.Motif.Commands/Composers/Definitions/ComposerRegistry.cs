@@ -11,6 +11,7 @@ internal static class ComposerDefinitions
         new AuthorFeatureValueDefinition(),
         new DeleteEmptySenseDefinition(),
         new LinkVariantDefinition(),
+        new EditMorphTypeDefinition(),
         new EditPhonemeDefinition(),
         new EditAffixInflectionClassesDefinition(),
         new EditDerivationalAffixRestrictionDefinition(),

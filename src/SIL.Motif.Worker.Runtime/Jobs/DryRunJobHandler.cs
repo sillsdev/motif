@@ -11,6 +11,7 @@ using SIL.Motif.Contract.Projects;
 using SIL.Motif.Model.DryRun;
 using SIL.Motif.Model.Effects;
 using SIL.Motif.Runner.DryRun;
+using SIL.Motif.Runner.Execution;
 using SIL.Motif.Worker.Baselines;
 using SIL.Motif.Worker.Projects;
 using SIL.Motif.Worker.Scheduling;
@@ -117,22 +118,30 @@ internal sealed class DryRunJobHandler
         claim.Transition(JobStatus.WaitingForBaseline);
 
         DryRunModel? dryRun = null;
-        await lane.EnqueueAsync(ProjectWorkItem.DryRun(async (_, laneToken) =>
+        try
         {
-            claim.Transition(JobStatus.Running);
-            var (appliedProposalIds, scratch) = await _openScratch(fwDataPath, laneToken)
-                .ConfigureAwait(false);
-            try
+            await lane.EnqueueAsync(ProjectWorkItem.DryRun(async (_, laneToken) =>
             {
-                var plan = input.BuildExecutionPlan(appliedProposalIds);
-                dryRun = await _runDryRun(scratch, plan, laneToken).ConfigureAwait(false);
-            }
-            finally
-            {
-                scratch?.Dispose();
-            }
-        }),
-            cancellationToken).ConfigureAwait(false);
+                claim.Transition(JobStatus.Running);
+                var (appliedProposalIds, scratch) = await _openScratch(fwDataPath, laneToken)
+                    .ConfigureAwait(false);
+                try
+                {
+                    var plan = input.BuildExecutionPlan(appliedProposalIds);
+                    dryRun = await _runDryRun(scratch, plan, laneToken).ConfigureAwait(false);
+                }
+                finally
+                {
+                    scratch?.Dispose();
+                }
+            }), cancellationToken).ConfigureAwait(false);
+        }
+        catch (ProposalRefusalException exception)
+        {
+            return new JobOutcome(JobStatus.Failed, JobFailureCategory.Semantic,
+                JsonSerializer.Serialize(new { code = exception.Code, reason = exception.Reason.ToString(),
+                    message = exception.Message, facts = exception.Facts }));
+        }
 
         // The run already happened; cancellation now must still stop it from becoming durable.
         if (cancellationToken.IsCancellationRequested)

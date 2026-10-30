@@ -30,6 +30,7 @@ public sealed class ToolSurfaceTests
     }
 
     [Theory]
+    [InlineData("motif_edit_morph_type", new[] { "draft", "target", "morphType", "project" })]
     [InlineData("motif_link_variant", new[] { "draft", "target", "component", "variantType", "project" })]
     [InlineData("motif_delete_empty_sense", new[] { "draft", "target", "entry", "project" })]
     public void VariantComposersHaveTypedDraftOnlyTools(string name, string[] arguments)
@@ -299,12 +300,13 @@ public sealed class ToolSurfaceTests
         Assert.DoesNotContain("intentsJson", batch.Tool.ArgumentNames);
         var branches = intents["items"]!["oneOf"]!.AsArray();
         var verbs = branches.Select(branch => branch!["properties"]!["verb"]!["enum"]![0]!.GetValue<string>()).ToArray();
-        Assert.Equal(35, verbs.Length);
+        Assert.Equal(36, verbs.Length);
         Assert.Equal(new[]
         {
             "compose-author-lexeme-form",
             "compose-delete-empty-sense",
             "compose-link-variant",
+            "compose-edit-morph-type",
             "compose-author-feature-structure",
             "compose-author-feature-value",
             "compose-author-phoneme",

@@ -166,5 +166,13 @@
   "variant.stale-reference": {
     "why": "The variant reference changed. Compose the link again against the current project.",
     "source": "Hand-written from the Motif MCP refusal advice."
+  },
+  "morph-type.stale-source": {
+    "why": "The form's morph type changed after this edit was composed. Inspect the form and compose the edit again.",
+    "source": "Hand-written from the Motif MCP refusal advice."
+  },
+  "morph-type.incompatible-family": {
+    "why": "This edit supports only a stem form changing between stem-family morph types. Changing between stem and affix needs a compatible analysis and a different authoring path.",
+    "source": "Hand-written from the Motif MCP refusal advice."
   }
 }

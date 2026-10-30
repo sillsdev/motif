@@ -407,6 +407,8 @@ public static class RefusalCatalog
         Spec(RefusalCodes.DraftInvalid, FailureReason.InvalidArgument),
         Spec(RefusalCodes.VariantComponentRequired, FailureReason.Refused),
         Spec(RefusalCodes.SenseAnalysisContent, FailureReason.Refused),
+        Spec(RefusalCodes.MorphTypeIncompatibleFamily, FailureReason.Refused),
+        Spec(RefusalCodes.MorphTypeStaleSource, FailureReason.Refused),
         Spec(RefusalCodes.VariantInvalidReference, FailureReason.Refused),
         Spec(RefusalCodes.VariantInvalidComponent, FailureReason.Refused),
         Spec(RefusalCodes.VariantInvalidType, FailureReason.Refused),
