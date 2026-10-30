@@ -308,7 +308,7 @@
       "code": "jobs wait",
       "slug": "jobs-wait",
       "title": "Wait for a job",
-      "description": "Waits for a job to finish and reports its result. A parsing time limit returns exit code 5 with word counts.",
+      "description": "Waits for a job to reach a terminal state and reports its result. A parsing time limit returns exit code 5 with word counts.",
       "helpPage": "# Wait for a job\n\n\u0060jobs wait\u0060 waits for a durable job to finish and reports its status.\n\n\u0060\u0060\u0060powershell\nmotif jobs wait \u003CjobId\u003E --project \u0022C:\\FieldWorks\\Projects\\Koro\\Koro.fwdata\u0022 --json\n\u0060\u0060\u0060\n\nUse \u0060--wait-timeout-ms\u0060 to limit how long to wait. If parsing stops at its time limit, the command exits with code 5 and reports the number of words done and not done. Use [Inspect a job](cmd:jobs%20show) to read its status later.\n",
       "usage": [
         "Usage: motif jobs wait \u003CjobId\u003E --project \u003Cfwdata\u003E [--wait-timeout-ms \u003Cms\u003E] [--json]"
@@ -603,6 +603,20 @@
       ],
       "surface": "Released",
       "url": "https://motif-docs.pages.dev/reference/commands/store-prune/"
+    },
+    {
+      "kind": "command",
+      "code": "store upgrade",
+      "slug": "store-upgrade",
+      "title": "Upgrade project store",
+      "description": "Carries authored work into the current store and keeps a backup of the old store. Computed results are discarded and can be recreated.",
+      "helpPage": "# Upgrade a project store\n\n\u0060store upgrade\u0060 carries authored work from an older Motif store into the current format. Motif keeps the old\nstore as a versioned backup and discards computed results, which can be recreated.\n\n\u0060\u0060\u0060powershell\nmotif store upgrade --project \u0022C:\\FieldWorks\\Projects\\Koro\\Koro.fwdata\u0022\n\u0060\u0060\u0060\n\nOpening a project also upgrades its older store automatically. The upgrade report beside the store lists the\nrows carried, tables discarded, and any Proposal revisions that the current Motif cannot read.\n\nTo inspect an older store without changing it, give an existing source and a new output path:\n\n\u0060\u0060\u0060powershell\nmotif store upgrade --source old.motif.db --out upgraded.motif.db --json\n\u0060\u0060\u0060\n",
+      "usage": [
+        "Usage: motif store upgrade --project \u003Cfwdata\u003E [--json]",
+        "Usage: motif store upgrade --source \u003Cold.db\u003E --out \u003Cnew.db\u003E [--json]"
+      ],
+      "surface": "Released",
+      "url": "https://motif-docs.pages.dev/reference/commands/store-upgrade/"
     },
     {
       "kind": "command",

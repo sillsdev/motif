@@ -30,86 +30,6 @@ public sealed class SchemaVersionGateTests : IDisposable
     }
 
     [Fact]
-    public void AStoreWithoutTimingIdentityDomainsIsRefusedWithoutRewritingIt()
-    {
-        var path = Path.Combine(_root, "untyped-timing.motif.db");
-        var locator = new ProjectLocator(Path.Combine(_root, "untyped-timing.fwdata"), "untyped-timing");
-        using (MotifDatabase.OpenOwned(path, locator, MotifSchema.CurrentSchema, new Version(1, 0))) { }
-        using (var connection = new SqliteConnection($"Data Source={path};Pooling=False"))
-        {
-            connection.Open();
-            using var command = connection.CreateCommand();
-            command.CommandText = "PRAGMA user_version = 33;";
-            command.ExecuteNonQuery();
-        }
-        var refusal = Assert.Throws<MotifStoreVersionException>(() =>
-            MotifDatabase.OpenOwned(path, locator, MotifSchema.CurrentSchema, new Version(1, 0)));
-        Assert.Contains("delete", refusal.Message, StringComparison.OrdinalIgnoreCase);
-        Assert.Equal(33, PragmaUserVersion(path));
-    }
-
-    [Fact]
-    public void StoresWithLabelBasedNaturalClassReachAreRefusedWithoutRewrite()
-    {
-        var path = Path.Combine(_root, "natural-class-reach.motif.db");
-        var locator = new ProjectLocator(Path.Combine(_root, "project.fwdata"), "project");
-        using (MotifDatabase.OpenOwned(path, locator, MotifSchema.CurrentSchema, new Version(1, 0))) { }
-        using (var connection = new SqliteConnection($"Data Source={path};Pooling=False"))
-        {
-            connection.Open();
-            using var command = connection.CreateCommand();
-            command.CommandText = "PRAGMA user_version = 34;";
-            command.ExecuteNonQuery();
-        }
-        var refusal = Assert.Throws<MotifStoreVersionException>(() =>
-            MotifDatabase.OpenOwned(path, locator, MotifSchema.CurrentSchema, new Version(1, 0)));
-        Assert.Contains("delete", refusal.Message, StringComparison.OrdinalIgnoreCase);
-        Assert.Equal(34, PragmaUserVersion(path));
-    }
-
-    [Fact]
-    public void StoresWithoutAnalysisComparisonAreRefusedWithoutRewrite()
-    {
-        var path = Path.Combine(_root, "no-analysis-comparison.motif.db");
-        var locator = new ProjectLocator(Path.Combine(_root, "project.fwdata"), "project");
-        using (MotifDatabase.OpenOwned(path, locator, MotifSchema.CurrentSchema, new Version(1, 0))) { }
-        using (var connection = new SqliteConnection($"Data Source={path};Pooling=False"))
-        {
-            connection.Open();
-            using var command = connection.CreateCommand();
-            command.CommandText = "PRAGMA user_version = 35;";
-            command.ExecuteNonQuery();
-        }
-
-        var refusal = Assert.Throws<MotifStoreVersionException>(() =>
-            MotifDatabase.OpenOwned(path, locator, MotifSchema.CurrentSchema, new Version(1, 0)));
-
-        Assert.Contains("delete", refusal.Message, StringComparison.OrdinalIgnoreCase);
-        Assert.Equal(35, PragmaUserVersion(path));
-    }
-
-    [Fact]
-    public void StoresWithoutRecordedPanGlossEvidenceAreRefusedWithoutRewrite()
-    {
-        var path = Path.Combine(_root, "no-recorded-pangloss-evidence.motif.db");
-        var locator = new ProjectLocator(Path.Combine(_root, "project.fwdata"), "project");
-        using (MotifDatabase.OpenOwned(path, locator, MotifSchema.CurrentSchema, new Version(1, 0))) { }
-        using (var connection = new SqliteConnection($"Data Source={path};Pooling=False"))
-        {
-            connection.Open();
-            using var command = connection.CreateCommand();
-            command.CommandText = "PRAGMA user_version = 36;";
-            command.ExecuteNonQuery();
-        }
-
-        var refusal = Assert.Throws<MotifStoreVersionException>(() =>
-            MotifDatabase.OpenOwned(path, locator, MotifSchema.CurrentSchema, new Version(1, 0)));
-
-        Assert.Contains("delete", refusal.Message, StringComparison.OrdinalIgnoreCase);
-        Assert.Equal(36, PragmaUserVersion(path));
-    }
-
-    [Fact]
     public void AnOlderBuildIsRefusedWithSomethingTheUserCanActOn()
     {
         var path = Path.Combine(_root, "project.motif.db");
@@ -152,8 +72,14 @@ public sealed class SchemaVersionGateTests : IDisposable
             columns);
     }
 
-    [Fact]
-    public void ADatabaseStampedWithADifferentSchemaIsRefusedRatherThanMigrated()
+    [Theory]
+    [InlineData(33)]
+    [InlineData(34)]
+    [InlineData(35)]
+    [InlineData(36)]
+    [InlineData(47)]
+    [InlineData(49)]
+    public void AnOlderSchemaIsUpgradedAndItsBackupIsKept(int oldSchema)
     {
         var path = Path.Combine(_root, "stale.motif.db");
         var locator = new ProjectLocator(Path.Combine(_root, "stale.fwdata"), "stale");
@@ -162,71 +88,13 @@ public sealed class SchemaVersionGateTests : IDisposable
         {
             connection.Open();
             using var command = connection.CreateCommand();
-            command.CommandText = $"PRAGMA user_version = {MotifSchema.CurrentSchema - 1};";
+            command.CommandText = $"PRAGMA user_version = {oldSchema};";
             command.ExecuteNonQuery();
         }
-
-        var refusal = Assert.Throws<MotifStoreVersionException>(() =>
-            MotifDatabase.OpenOwned(path, locator, MotifSchema.CurrentSchema, new Version(1, 0)));
-
-        // Pre-1.0 Motif has no upgrade path, so the remedy is deletion, not a version number to chase.
-        Assert.Contains("delete", refusal.Message, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains(path, refusal.Message, StringComparison.Ordinal);
-        Assert.Equal(MotifSchema.CurrentSchema - 1, PragmaUserVersion(path));
-    }
-
-    [Fact]
-    public void APreviousWorkStepsShapeIsRefusedAndCanBeReset()
-    {
-        const int previousSchema = 49;
-        Assert.True(MotifSchema.CurrentSchema > 49);
-        var path = Path.Combine(_root, "previous-work-steps.motif.db");
-        var locator = new ProjectLocator(Path.Combine(_root, "previous-work-steps.fwdata"), "previous-work-steps");
+        Assert.False(MotifDatabase.DeleteIfOtherVersion(path, locator, MotifSchema.CurrentSchema, new Version(1, 0)));
         using (MotifDatabase.OpenOwned(path, locator, MotifSchema.CurrentSchema, new Version(1, 0))) { }
-        using (var connection = new SqliteConnection($"Data Source={path};Pooling=False"))
-        {
-            connection.Open();
-            using var command = connection.CreateCommand();
-            command.CommandText = $"ALTER TABLE AssessedWords DROP COLUMN WorkSteps; PRAGMA user_version = {previousSchema};";
-            command.ExecuteNonQuery();
-        }
-
-        var refusal = Assert.Throws<MotifStoreVersionException>(() =>
-            MotifDatabase.OpenOwned(path, locator, MotifSchema.CurrentSchema, new Version(1, 0)));
-        Assert.Equal(Path.GetFullPath(path), refusal.StorePath);
-        Assert.Contains("delete", refusal.Message, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("recreate", refusal.Message, StringComparison.OrdinalIgnoreCase);
-        Assert.Equal(previousSchema, PragmaUserVersion(path));
-
-        Assert.True(MotifDatabase.DeleteIfOtherVersion(path, locator, MotifSchema.CurrentSchema, new Version(1, 0)));
-        Assert.False(File.Exists(path));
-        using var reset = MotifDatabase.OpenOwned(path, locator, MotifSchema.CurrentSchema, new Version(1, 0));
-        using var reopened = reset.OpenConnection();
         Assert.Equal(MotifSchema.CurrentSchema, PragmaUserVersion(path));
-        using var shape = reopened.CreateCommand();
-        shape.CommandText = "SELECT COUNT(*) FROM pragma_table_info('AssessedWords') WHERE name = 'WorkSteps';";
-        Assert.Equal(1L, shape.ExecuteScalar());
-    }
-
-    [Fact]
-    public void AStoreStampedWithSchemaFortySevenIsRefusedByThePhonologyAssessmentGeneration()
-    {
-        Assert.True(MotifSchema.CurrentSchema > 49);
-        var path = Path.Combine(_root, "schema47.motif.db");
-        var locator = new ProjectLocator(Path.Combine(_root, "schema47.fwdata"), "schema47");
-        using (MotifDatabase.OpenOwned(path, locator, MotifSchema.CurrentSchema, new Version(1, 0))) { }
-        using (var connection = new SqliteConnection($"Data Source={path};Pooling=False"))
-        {
-            connection.Open();
-            using var command = connection.CreateCommand();
-            command.CommandText = "PRAGMA user_version = 47;";
-            command.ExecuteNonQuery();
-        }
-
-        var refusal = Assert.Throws<MotifStoreVersionException>(() =>
-            MotifDatabase.OpenOwned(path, locator, MotifSchema.CurrentSchema, new Version(1, 0)));
-        Assert.Contains("delete", refusal.Message, StringComparison.OrdinalIgnoreCase);
-        Assert.Equal(47, PragmaUserVersion(path));
+        Assert.Equal(oldSchema, PragmaUserVersion(path + $".schema{oldSchema}.bak"));
     }
 
     [Fact]
@@ -240,7 +108,7 @@ public sealed class SchemaVersionGateTests : IDisposable
         {
             connection.Open();
             using var command = connection.CreateCommand();
-            // The shape this task's column replaces: no migration exists, so this must be refused outright.
+            // A damaged current schema must not be silently repaired.
             command.CommandText = "DROP TABLE Baselines; CREATE TABLE Baselines (" +
                 "ProjectKey TEXT PRIMARY KEY, ProjectIdentity TEXT NOT NULL, " +
                 "SemanticSnapshotDigest TEXT NOT NULL, ProjectionVersion TEXT NOT NULL, " +
@@ -265,7 +133,7 @@ public sealed class SchemaVersionGateTests : IDisposable
         {
             connection.Open();
             using var command = connection.CreateCommand();
-            // The shape this task's column replaces: no migration exists, so this must be refused outright.
+            // A damaged current schema must not be silently repaired.
             command.CommandText = "DROP TABLE AssessedWords; CREATE TABLE AssessedWords (" +
                 "AssessedWordId INTEGER PRIMARY KEY AUTOINCREMENT, " +
                 "AssessmentId TEXT NOT NULL REFERENCES Assessments(AssessmentId), " +

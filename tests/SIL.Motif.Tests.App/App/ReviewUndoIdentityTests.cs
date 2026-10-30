@@ -270,7 +270,7 @@ public sealed partial class ReviewUndoRealClientTests
             {
                 connection.Open();
                 using var command = connection.CreateCommand();
-                command.CommandText = $"PRAGMA user_version = {MotifSchema.CurrentSchema - 1};";
+                command.CommandText = $"PRAGMA user_version = {MotifSchema.CurrentSchema + 1};";
                 command.ExecuteNonQuery();
             }
             await workspace.Context.Changes.ReloadAsync();

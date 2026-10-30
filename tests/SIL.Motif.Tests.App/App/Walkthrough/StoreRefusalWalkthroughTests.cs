@@ -19,7 +19,7 @@ namespace SIL.Motif.Tests.App.Walkthrough;
 public sealed class StoreRefusalWalkthroughTests(PristineProjectFixture pristine)
 {
     [Fact]
-    public void ARefusedOlderStoreCanBeExplainedKeptOrDeletedFromTheWindow()
+    public void ARefusedNewerStoreCanBeExplainedKeptOrDeletedFromTheWindow()
     {
         using var project = new WalkthroughProject(pristine);
         var storePath = StorePath(project.FwDataPath);
@@ -36,17 +36,17 @@ public sealed class StoreRefusalWalkthroughTests(PristineProjectFixture pristine
             Assert.True(File.Exists(storePath));
             WithStore(storePath, command =>
             {
-                command.CommandText = $"PRAGMA user_version = {MotifSchema.CurrentSchema - 1};";
+                command.CommandText = $"PRAGMA user_version = {MotifSchema.CurrentSchema + 1};";
                 return command.ExecuteNonQuery();
             });
-            var oldStoreBytes = ReadSharedBytes(storePath);
-            Assert.Equal(MotifSchema.CurrentSchema - 1, UserVersion(storePath));
+            var newerStoreBytes = ReadSharedBytes(storePath);
+            Assert.Equal(MotifSchema.CurrentSchema + 1, UserVersion(storePath));
 
             var refresh = walkthrough.Workspace.RefreshCommand.ExecuteAsync(null);
             walkthrough.WaitUntil(
                 () => walkthrough.Workspace.Baseline.ShownRefusal?.Code == RefusalCodes.StoreOtherVersion &&
                     refresh.IsCompleted && !walkthrough.Workspace.RefreshCommand.IsRunning,
-                WalkthroughSteps.Remaining(deadline), "refreshing the older store did not show its refusal");
+                WalkthroughSteps.Remaining(deadline), "refreshing the newer store did not show its refusal");
             refresh.GetAwaiter().GetResult();
 
             var refusal = Assert.IsType<SIL.Motif.App.ViewModels.WindowRefusal>(
@@ -54,7 +54,7 @@ public sealed class StoreRefusalWalkthroughTests(PristineProjectFixture pristine
             var block = walkthrough.Find<RefusalBlock>("Refresh refusal");
             Assert.True(block.IsEffectivelyVisible);
             Assert.False(walkthrough.Named<Border>("TechDemoNotice").IsEffectivelyVisible);
-            InteractiveControlSweep.AssertScene(walkthrough, "older store refused",
+            InteractiveControlSweep.AssertScene(walkthrough, "newer store refused",
                 InteractiveControlFamily.Action,
                 InteractiveControlFamily.Link,
                 InteractiveControlFamily.Disclosure,
@@ -68,7 +68,8 @@ public sealed class StoreRefusalWalkthroughTests(PristineProjectFixture pristine
             Assert.True(sentence.IsEffectivelyVisible);
             Assert.DoesNotContain(block.GetLogicalDescendants().OfType<CopyableTextBlock>(),
                 text => text.Text == walkthrough.Workspace.Baseline.HeldStatusText && text.IsEffectivelyVisible);
-            Assert.Contains(storePath, refusal.Details, StringComparison.Ordinal);
+            Assert.Equal(storePath, refusal.Facts[RefusalFactNames.StorePath]);
+            Assert.Contains($"schema {MotifSchema.CurrentSchema + 1}", refusal.Details, StringComparison.Ordinal);
             CaptureIfRequested(walkthrough, "refusal-refresh-after.png");
 
             var details = walkthrough.FindRefusalDetails();
@@ -87,9 +88,9 @@ public sealed class StoreRefusalWalkthroughTests(PristineProjectFixture pristine
             Assert.False(question.IsEffectivelyVisible);
             Assert.True(block.FindDeleteButton().IsEffectivelyVisible);
             walkthrough.WaitUntilProjectIsQuiet(
-                WalkthroughSteps.Remaining(deadline), "keeping the older store left the project being read");
-            Assert.Equal(oldStoreBytes, ReadSharedBytes(storePath));
-            Assert.Equal(MotifSchema.CurrentSchema - 1, UserVersion(storePath));
+                WalkthroughSteps.Remaining(deadline), "keeping the newer store left the project being read");
+            Assert.Equal(newerStoreBytes, ReadSharedBytes(storePath));
+            Assert.Equal(MotifSchema.CurrentSchema + 1, UserVersion(storePath));
 
             walkthrough.ClickDeleteButton();
             Assert.True(question.IsEffectivelyVisible);

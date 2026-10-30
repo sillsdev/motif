@@ -18,8 +18,8 @@ public sealed class MotifDatabase : IDisposable
     private MotifDatabase(MotifSqliteStore store) => _store = store;
 
     /// <summary>
-    /// Opens a project database with a shared active-use lease, creating it if absent. An existing database at
-    /// any other schema is refused rather than migrated: pre-1.0 Motif has no upgrade path.
+    /// Opens a project database with a shared active-use lease, creating it if absent. Older project stores
+    /// carry authored data into the current schema; newer stores are refused.
     /// </summary>
     /// <param name="path">The sibling Motif database path.</param>
     /// <param name="project">The project locator that must match persisted metadata.</param>
@@ -45,14 +45,12 @@ public sealed class MotifDatabase : IDisposable
     /// <summary>
     /// Deletes a project database that <see cref="OpenOwned"/> would refuse with a
     /// <see cref="MotifStoreVersionException"/>, because another version of Motif made it. Any other refusal is
-    /// thrown as <see cref="OpenOwned"/> throws it, and nothing is deleted.
+    /// thrown as <see cref="OpenOwned"/> throws it, and nothing is deleted. An older store is kept for upgrade.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The guarantee is that this never deletes a database this version of Motif can use. A database refused as
-    /// another version's is never opened or written by this version, because <see cref="OpenOwned"/> refuses it,
-    /// and it is never migrated. So the only change that can turn the file at this path into a usable database is
-    /// creation, and creation holds the creation lock this method decides and deletes under. A database created
+    /// The guarantee is that this never deletes a database this version of Motif can use or upgrade. Creation
+    /// and upgrade hold the creation lock this method decides and deletes under. A database created
     /// while this waits for that lock is found usable and kept, pinned by
     /// `ADatabaseCreatedWhileTheDeleteWaitsIsKept`; a delete that gets the lock first deletes, and the next open
     /// creates a fresh database, pinned by `ADeleteThatWinsTheLockIsFollowedByACleanRecreate`.
@@ -116,6 +114,8 @@ public sealed class MotifDatabase : IDisposable
             Create = (connection, transaction) => MotifSchema.Create(connection, transaction, project, timeProvider),
             // Every job, progress and Proposal write goes through here, so its files stay open between calls.
             PooledConnections = true,
+            Upgrade = supportedSchema == MotifSchema.CurrentSchema
+                ? (output, _, backup) => MotifStoreUpgrade.Build(path, output, project, false, backup, workerVersion) : null,
             BeforeOpen = connection =>
             {
                 var metadata = MotifSchema.ReadMetadata(connection);

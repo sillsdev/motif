@@ -127,6 +127,8 @@ public sealed class ToolSurfaceTests
             "compose-set-stem-part-of-speech",
             "project tag",
             "store artifacts",
+            "store prune",
+            "store upgrade",
         }, optedOut);
 
         var artifactInventory = Assert.Single(CommandCatalog.All,
@@ -153,7 +155,7 @@ public sealed class ToolSurfaceTests
 
         Assert.All(CommandCatalog.All.Except(numeralEditors).Where(command =>
             command.Name != "activity" && command.Name != "project tag" &&
-            command.Name != "store artifacts"), command =>
+            command.Name != "store artifacts" && command.Name != "store prune" && command.Name != "store upgrade"), command =>
             Assert.True(command.ExposeAsAgentTool));
         Assert.DoesNotContain(AgentTools.All, tool => tool.Name == "motif_activity" && tool.Requests.Count > 0);
     }

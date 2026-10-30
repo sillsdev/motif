@@ -59,7 +59,7 @@ Linguists and language teams who keep their grammar in FieldWorks (FLEx) and wan
 
 ## What it is not yet
 
-- It is a **tech demo**. The window and the commands will change, and before 1.0 a Motif file from an older version may be refused rather than upgraded.
+- It is a **tech demo**. The window and the commands will change, and opening an older project store carries its authored data forward while computed results are regenerated.
 - It does not replace FieldWorks. You still edit the grammar there. Motif applies only the changes you have reviewed.
 - Installers are for invited testers. There is no automatic update, and the Windows beta may be unsigned.
 

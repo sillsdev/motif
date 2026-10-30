@@ -6,9 +6,8 @@ namespace SIL.Motif.Host.Store;
 
 /// <summary>Owns the single, current SQLite schema for Motif's paired project database.</summary>
 /// <remarks>
-/// Motif is pre-1.0: a database is either exactly this shape or it is refused outright. There is no
-/// migration ladder here — an older database is not upgraded, it is rejected with an actionable error
-/// telling the developer to delete the file and let Motif recreate it.
+/// A project store uses this shape after an upgrade has carried its authored data forward.
+/// Computed data is recreated when needed.
 /// </remarks>
 public static class MotifSchema
 {

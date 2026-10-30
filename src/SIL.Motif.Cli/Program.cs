@@ -1934,6 +1934,31 @@ try
             break;
 
         case "store":
+            if (positionals.Count == 1 && positionals[0] == "upgrade")
+            {
+                if (flags.TryGetValue("source", out var upgradeSource) && flags.TryGetValue("out", out var upgradeOutput) &&
+                    !flags.ContainsKey("project") && flags.Keys.All(key => key is "source" or "out" or "json"))
+                {
+                    var upgradeReport = ProjectStoreUpgrade.Copy(upgradeSource, upgradeOutput);
+                    output.WriteLine(JsonSerializer.Serialize(upgradeReport, new JsonSerializerOptions { WriteIndented = true }));
+                    return 0;
+                }
+                if (flags.TryGetValue("project", out var upgradeProject) &&
+                    flags.Keys.All(key => key is "project" or "json"))
+                {
+                    var upgradeOutcome = ProjectStoreCommand.Run(upgradeProject, CliProductVersion(), (database, _) =>
+                        CommandOutcome<string>.Success(File.Exists(database.FullPath + ".upgrade.json")
+                            ? File.ReadAllText(database.FullPath + ".upgrade.json") : "{}"));
+                    if (!upgradeOutcome.Succeeded)
+                    {
+                        result = RenderCommand(upgradeOutcome);
+                        break;
+                    }
+                    output.WriteLine(upgradeOutcome.Value);
+                    return 0;
+                }
+                return Usage(UsageLineFor("store upgrade"), asJson);
+            }
             if (positionals.Count != 1 || positionals[0] is not ("delete-refused" or "prune") ||
                 !flags.TryGetValue("project", out var storeProject))
                 return Usage(UsageLineFor(positionals.Count == 1 && positionals[0] == "prune" ? "store prune" : "store delete-refused"), asJson);
@@ -2082,8 +2107,8 @@ try
                         return Usage(jobsWaitUsage, asJson);
                     if (ParseWaitTimeout(flags, jobsWaitUsage, asJson, out var jobsWaitTimeout) is { } jobsWaitError)
                         return jobsWaitError;
-                    result = RenderCommand(JobCommands.WaitForJob(
-                        new WaitForJobRequest(jobsWaitProject, positionals[1], CliProductVersion(), jobsWaitTimeout)));
+                    result = RenderCommand(JobCommands.Wait(
+                        new JobsWaitRequest(jobsWaitProject, positionals[1], CliProductVersion(), jobsWaitTimeout)));
                     break;
 
                 case "show":

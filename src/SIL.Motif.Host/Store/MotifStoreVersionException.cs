@@ -2,7 +2,7 @@ namespace SIL.Motif.Host.Store;
 
 /// <summary>
 /// A Motif store was made by another version of Motif, older or newer. Before 1.0 a stored shape is either
-/// the current one or refused, never migrated.
+/// the current one or a version this build cannot use.
 /// </summary>
 /// <remarks>
 /// It stays a <see cref="NotSupportedException"/> so every caller that already treats an unsupported store

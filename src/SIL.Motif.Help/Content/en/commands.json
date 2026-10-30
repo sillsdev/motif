@@ -19,6 +19,11 @@
     "description": "Reads the project's Assessment scopes and settings. Use it to see the limits and options Motif will use for a later Assessment.",
     "source": "Hand-written from docs/cli-api.md and command behavior."
   },
+  "store upgrade": {
+    "title": "Upgrade project store",
+    "description": "Carries authored work into the current store and keeps a backup of the old store. Computed results are discarded and can be recreated.",
+    "source": "Hand-written from the project store upgrade behavior."
+  },
   "store prune": {
     "title": "Prune project store",
     "description": "Removes older standalone Assessments that are no longer needed by retained evidence. It also reclaims available space in the project store.",
@@ -427,7 +432,7 @@
   },
   "jobs wait": {
     "title": "Wait for a job",
-    "description": "Waits for a job to finish and reports its result. A parsing time limit returns exit code 5 with word counts.",
+    "description": "Waits for a job to reach a terminal state and reports its result. A parsing time limit returns exit code 5 with word counts.",
     "source": "Hand-written from command behavior."
   },
   "jobs show": {

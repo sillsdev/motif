@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="SourceMissing" xml:space="preserve"><value>The source store does not exist.</value></data>
+  <data name="OutputExists" xml:space="preserve"><value>The output store already exists.</value></data>
+  <data name="SourceVersion" xml:space="preserve"><value>The source must be an older Motif project store.</value></data>
+  <data name="ProjectMismatch" xml:space="preserve"><value>The database is registered to a different project locator.</value></data>
+  <data name="NoColumns" xml:space="preserve"><value>No matching columns in {0}.</value></data>
+  <data name="CountChanged" xml:space="preserve"><value>The count for {0} changed during the upgrade.</value></data>
+  <data name="ReferencesInvalid" xml:space="preserve"><value>The upgraded store has invalid references.</value></data>
+  <data name="RecoveryFailed" xml:space="preserve"><value>The interrupted store upgrade cannot be recovered.</value></data>
+  <data name="ReportInvalid" xml:space="preserve"><value>The upgrade report is invalid.</value></data>
+  <data name="BackupMissing" xml:space="preserve"><value>The interrupted upgrade backup is missing.</value></data>
+  <data name="Suppressed" xml:space="preserve"><value>Open this project in Motif to upgrade its store.</value></data>
+  <data name="BackupExists" xml:space="preserve"><value>The store upgrade backup already exists.</value></data>
+  <data name="MissingIdentity" xml:space="preserve"><value>The source is missing the required identity column {0}.</value></data>
+  <data name="NewerWorker" xml:space="preserve"><value>The source store requires a newer version of Motif.</value></data>
+  <data name="UnknownTable" xml:space="preserve"><value>The source store contains unclassified tables: {0}.</value></data>
+  <data name="IntegrityFailed" xml:space="preserve"><value>The upgraded store failed its integrity check.</value></data>
+  <data name="MissingMetadata" xml:space="preserve"><value>The source store is missing its project identity.</value></data>
+  <data name="UnsupportedSchema" xml:space="preserve"><value>The {0} at '{1}' is schema {2}, but this build requires exactly schema {3}. This store cannot be upgraded by this build; delete it and let Motif recreate it.</value></data>
+</root>

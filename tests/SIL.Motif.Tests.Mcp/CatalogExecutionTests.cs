@@ -25,6 +25,16 @@ public sealed class CatalogExecutionTests
     public CatalogExecutionTests(ITestOutputHelper output) => _output = output;
 
     [Fact]
+    public void JobWaitAndTrialHaveDistinctCatalogRoutes()
+    {
+        var trial = AgentTools.All.Single(tool => tool.Name == "motif_trial");
+        var wait = AgentTools.All.Single(tool => tool.Name == "motif_jobs_wait");
+        Assert.Contains(typeof(WaitForJobRequest), trial.Requests);
+        Assert.DoesNotContain(typeof(JobsWaitRequest), trial.Requests);
+        Assert.Contains(typeof(JobsWaitRequest), wait.Requests);
+    }
+
+    [Fact]
     public async Task CatalogHandlerArgumentExceptionKeepsItsOriginalMessage()
     {
         var context = new ServerContext("", "1.0", new NoRunnerLauncher(

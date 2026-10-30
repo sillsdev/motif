@@ -393,14 +393,9 @@ site step and uploads bin/Release/media.
     read on, the body is for whoever implements or audits it. A status line like "Slice A built;
     the poisoning guard now fires for real" fails the rule — it names machinery only.
 
-18. **No migration code before 1.0.** Users see Motif as a tech demo; for storage it is pre-1.0: there is no database, no file, and no
-    on-disk shape in the world worth preserving, and every line written to carry an old one forward
-    is a line paid for with nothing. A stored shape is either the current one or it is refused with
-    an error telling the developer to delete it and let Motif recreate it. This applies to schema
-    generations, format upgraders, back-compat readers, and deprecated flags kept as aliases — a
-    rename is a rename, not a rename plus a bridge. Before 1.0, the window may offer a button that
-    deletes a refused store so Motif can recreate it. 1.0 is the release that brings real Proposals,
-    beyond pending changes and Review changes. From then on, a stored shape changes only with a migration.
+18. **Project store upgrades preserve authored data.** Opening an older project store carries Proposals and
+    other authored data into a fresh current-schema store, retains the old store as a backup, and discards
+    computed results for recomputation. Newer schemas are refused. The machine store retains its own policy.
 
 ## Compatibility targets
 

@@ -344,6 +344,10 @@ public static class JobCommands
                 ["wordsNotDone"] = (stopped.WordsNotDone ?? 0).ToString(System.Globalization.CultureInfo.InvariantCulture) }));
     }
 
+    /// <summary>Waits for a queued job to reach a terminal state.</summary>
+    public static CommandOutcome<JobStatusResponse> Wait(JobsWaitRequest request) =>
+        WaitForJob(new WaitForJobRequest(request.FwDataPath, request.JobId, request.ProductVersion, request.Timeout));
+
     /// <summary>Reports what the durable store currently says about one job.</summary>
     public static CommandOutcome<JobStatusResponse> Show(ShowJobRequest request)
     {

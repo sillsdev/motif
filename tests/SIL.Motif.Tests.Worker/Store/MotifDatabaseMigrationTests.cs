@@ -312,7 +312,8 @@ public sealed class MotifDatabaseMigrationTests : IDisposable
             ["AssessmentInvocations"] = ["InvocationId|TEXT|0|1|", "EvidenceJson|TEXT|1|0|"],
             ["NamedSelections"] = ["SelectionName|TEXT|0|1|", "TextIdsJson|TEXT|1|0|", "AddedWordsJson|TEXT|1|0|",
                 "CreatedUtc|TEXT|1|0|", "UpdatedUtc|TEXT|1|0|", "TimeLimitMode|TEXT|1|0|",
-                "ExplicitPerWordLimitMs|INTEGER|0|0|", "PerWordStepLimit|INTEGER|0|0|", "Revision|INTEGER|1|0|"],
+                "ExplicitPerWordLimitMs|INTEGER|0|0|", "PerWordStepLimit|INTEGER|0|0|", "Revision|INTEGER|1|0|",
+                "AssessBudgetSeconds|INTEGER|1|0|3600"],
             ["DefaultSelection"] = ["Id|INTEGER|0|1|", "SelectionName|TEXT|1|0|"],
             ["GrammarChecks"] = ["BaselineToken|TEXT|1|0|", "ProposalId|TEXT|0|0|", "IntentDigest|TEXT|0|0|",
                 "SelectionSha256|TEXT|1|0|", "ParserStamp|TEXT|0|0|", "ResponseGzip|BLOB|1|0|",
@@ -578,19 +579,16 @@ public sealed class MotifDatabaseMigrationTests : IDisposable
     }
 
     [Fact]
-    public void PreviousSchemaIsRefusedWithoutMigration()
+    public void PreviousSchemaWithoutMetadataIsRefusedWithoutWrites()
     {
         var previousSchema = MotifSchema.CurrentSchema - 1;
         var path = DatabasePath("previous-schema.fwdata");
         using (var connection = NewConnection(path))
             Execute(connection, $"PRAGMA application_id = {MotifSchema.ApplicationId}; PRAGMA user_version = {previousSchema};");
 
-        var refusal = Assert.Throws<MotifStoreVersionException>(() => MotifDatabase.OpenOwned(
+        Assert.Throws<InvalidDataException>(() => MotifDatabase.OpenOwned(
             path, Locator("schema-40.fwdata"), MotifSchema.CurrentSchema, new Version(1, 0)));
 
-        Assert.Contains($"schema {previousSchema}", refusal.Message);
-        Assert.Contains($"schema {MotifSchema.CurrentSchema}", refusal.Message);
-        Assert.Contains("recreate", refusal.Message);
         using var check = NewConnection(path);
         Assert.Equal(previousSchema, PragmaInt(check, "user_version"));
         Assert.Equal(MotifSchema.ApplicationId, PragmaInt(check, "application_id"));

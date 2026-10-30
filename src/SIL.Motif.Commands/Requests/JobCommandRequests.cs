@@ -45,6 +45,12 @@ public sealed record WaitForJobRequest(string FwDataPath, string JobId, string P
 /// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
 /// <param name="JobId">The exact job identity returned when evidence was queued.</param>
 /// <param name="ProductVersion">The Motif product version used to open its paired store.</param>
+/// <param name="Timeout">The maximum wait for a result before returning progress.</param>
+public sealed record JobsWaitRequest(string FwDataPath, string JobId, string ProductVersion, TimeSpan Timeout);
+
+/// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
+/// <param name="JobId">The exact job identity returned when evidence was queued.</param>
+/// <param name="ProductVersion">The Motif product version used to open its paired store.</param>
 public sealed record ShowJobRequest(string FwDataPath, string JobId, string ProductVersion);
 
 /// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>

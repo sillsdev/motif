@@ -19,7 +19,7 @@ public sealed class StoreOtherVersionRefusalTests : IDisposable
     public StoreOtherVersionRefusalTests() => Directory.CreateDirectory(_root);
 
     [Fact]
-    public void AStoreAtAnOlderSchemaIsRefusedByCodeWithItsPathAndLeftUntouched()
+    public void AStoreAtAnOlderSchemaIsUpgradedAndItsOriginalKept()
     {
         var project = Project("older");
         var storePath = Path.ChangeExtension(project, ".motif.db");
@@ -30,12 +30,8 @@ public sealed class StoreOtherVersionRefusalTests : IDisposable
         var result = ProjectStoreCommand.Run<string>(
             project, "1.0", (_, _) => CommandOutcome<string>.Success(string.Empty));
 
-        Assert.False(result.Succeeded);
-        Assert.Equal(RefusalCodes.StoreOtherVersion, result.Refusal!.Code);
-        Assert.Equal(FailureReason.Refused, result.Refusal.Reason);
-        Assert.Equal(Path.GetFullPath(storePath), result.Refusal.Facts["storePath"]);
-        Assert.Equal(project, result.Refusal.Facts["fwDataPath"]);
-        Assert.Equal(before, File.ReadAllBytes(storePath));
+        Assert.True(result.Succeeded);
+        Assert.Equal(before, File.ReadAllBytes(storePath + $".schema{MotifSchema.CurrentSchema - 1}.bak"));
     }
 
     [Fact]

@@ -26,7 +26,7 @@ public sealed class ProjectStoreResetTests : IDisposable
         var project = Project("older");
         var storePath = StorePathOf(project);
         Open(project);
-        Execute(storePath, $"PRAGMA user_version = {MotifSchema.CurrentSchema - 1};");
+        Execute(storePath, $"PRAGMA user_version = {MotifSchema.CurrentSchema + 1};");
         var neighbour = Path.Combine(_root, "neighbour.motif.db");
         File.WriteAllText(neighbour, "another project's store");
         var projectBytes = File.ReadAllBytes(project);
@@ -86,7 +86,7 @@ public sealed class ProjectStoreResetTests : IDisposable
             new Version(1, 0));
         Assert.Equal(storePath, concurrentHolder.FullPath);
         using var connection = holder.OpenConnection();
-        Execute(connection, $"PRAGMA user_version = {MotifSchema.CurrentSchema - 1};");
+        Execute(connection, $"PRAGMA user_version = {MotifSchema.CurrentSchema + 1};");
 
         var outcome = ProjectStoreReset.DeleteRefused(new ProjectStoreResetRequest(project), "1.0");
 
@@ -94,7 +94,7 @@ public sealed class ProjectStoreResetTests : IDisposable
         Assert.Equal(RefusalCodes.ProjectBusy, outcome.Refusal!.Code);
         Assert.Equal(storePath, outcome.Refusal.Facts[RefusalFactNames.StorePath]);
         Assert.True(File.Exists(storePath));
-        Assert.Equal((long)(MotifSchema.CurrentSchema - 1), Scalar(storePath, "PRAGMA user_version;"));
+        Assert.Equal((long)(MotifSchema.CurrentSchema + 1), Scalar(storePath, "PRAGMA user_version;"));
     }
 
     [Fact]
@@ -103,7 +103,7 @@ public sealed class ProjectStoreResetTests : IDisposable
         var project = Project("locked");
         var storePath = StorePathOf(project);
         Open(project);
-        Execute(storePath, $"PRAGMA user_version = {MotifSchema.CurrentSchema - 1};");
+        Execute(storePath, $"PRAGMA user_version = {MotifSchema.CurrentSchema + 1};");
         using var creationLock = HoldCreationLock(storePath);
 
         var outcome = ProjectStoreReset.DeleteRefused(
@@ -150,7 +150,7 @@ public sealed class ProjectStoreResetTests : IDisposable
         var project = Project("won");
         var storePath = StorePathOf(project);
         Open(project);
-        Execute(storePath, $"PRAGMA user_version = {MotifSchema.CurrentSchema - 1};");
+        Execute(storePath, $"PRAGMA user_version = {MotifSchema.CurrentSchema + 1};");
         using var deleteWaiting = new ManualResetEventSlim();
         Task<bool> deleting;
 

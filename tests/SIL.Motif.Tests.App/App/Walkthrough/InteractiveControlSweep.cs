@@ -38,7 +38,7 @@ internal static class InteractiveControlSweep
             ["word card with a reading"] = [AutomationIds.AnalyzeTextsTab],
             ["opened diagnostic window"] = [AutomationIds.TryWordInput, AutomationIds.TryWordRun],
             ["completed Handoff"] = [AutomationIds.WriteHandoff],
-            ["older store refused"] = [AutomationIds.ProjectMenu],
+            ["newer store refused"] = [AutomationIds.ProjectMenu],
             ["ready to assess pasted words"] = [AutomationIds.RunAssessment],
             ["parse progress with stopped words"] = [AutomationIds.ParseProgressDetails, AutomationIds.ParseStoppedWords, AutomationIds.CancelAssessment],
             ["parse with no progress"] = [AutomationIds.ParseProgressDetails, AutomationIds.ParseNoProgress, AutomationIds.ParseReportProblem, AutomationIds.CancelAssessment],
