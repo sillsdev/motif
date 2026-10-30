@@ -1363,6 +1363,13 @@ internal static class GeneratedArtifactReferences
         return hasBaselineBinding;
     }
 
+    // A failure's user-facing detail, plus the optional exception type and full text kept for diagnosis.
+    private static readonly string[] JobFailureProperties = ["detail", "exceptionType", "exception"];
+
+    private static bool IsDetailFailureShape(string[] names) =>
+        names.Contains("detail", StringComparer.Ordinal) &&
+        names.All(name => JobFailureProperties.Contains(name, StringComparer.Ordinal));
+
     private static void CaptureNonSuccessJobResult(string kind, JobStatus? status, bool dryRunPublished, string json)
     {
         if (status == JobStatus.Cancelled && dryRunPublished)
@@ -1379,12 +1386,15 @@ internal static class GeneratedArtifactReferences
         if (parsed.RootElement.ValueKind != JsonValueKind.Object)
             throw new InvalidDataException("A non-success job result must be an object.");
         var properties = parsed.RootElement.EnumerateObject().Select(property => property.Name).ToArray();
-        if (properties.Length == 1 && properties[0] == "detail")
+        if (IsDetailFailureShape(properties))
         {
-            RequireObjectShape(json, "job failure result", "detail");
+            RequireObjectShape(json, "job failure result", JobFailureProperties);
             var detail = parsed.RootElement.GetProperty("detail");
             if (detail.ValueKind != JsonValueKind.String || string.IsNullOrWhiteSpace(detail.GetString()))
                 throw new InvalidDataException("The job failure result has no detail.");
+            foreach (var optional in JobFailureProperties.Skip(1))
+                if (parsed.RootElement.TryGetProperty(optional, out var value) && value.ValueKind != JsonValueKind.String)
+                    throw new InvalidDataException("The job failure result's diagnostic must be text.");
             return;
         }
         if (status == JobStatus.Failed && properties.Length == 1 && properties[0] == "failure")
@@ -1407,7 +1417,7 @@ internal static class GeneratedArtifactReferences
             var names = candidate.RootElement.ValueKind == JsonValueKind.Object
                 ? candidate.RootElement.EnumerateObject().Select(property => property.Name).ToArray()
                 : [];
-            if (names.Length == 1 && names[0] is "detail" or "failure")
+            if (IsDetailFailureShape(names) || (names.Length == 1 && names[0] == "failure"))
             {
                 CaptureNonSuccessJobResult(ProjectJobHandlers.BaselineRefreshKind, JobStatus.Failed, false, json);
                 return;
@@ -1691,7 +1701,7 @@ internal static class GeneratedArtifactReferences
 
     private static void CaptureKnownJobFailureResult(string json)
     {
-        RequireObjectShape(json, "job failure result", "detail");
+        RequireObjectShape(json, "job failure result", JobFailureProperties);
         var failure = JsonSerializer.Deserialize<JobFailureReferenceCompletion>(json, StrictJsonOptions)
             ?? throw new InvalidDataException("The job failure result is null.");
         if (string.IsNullOrWhiteSpace(failure.Detail))
@@ -2433,7 +2443,9 @@ internal static class GeneratedArtifactReferences
         [property: JsonPropertyName("revisionId")] string RevisionId);
 
     private sealed record JobFailureReferenceCompletion(
-        [property: JsonPropertyName("detail")] string Detail);
+        [property: JsonPropertyName("detail")] string Detail,
+        [property: JsonPropertyName("exceptionType")] string? ExceptionType = null,
+        [property: JsonPropertyName("exception")] string? Exception = null);
 
     private sealed class SnapshotBuilder
     {

@@ -844,6 +844,12 @@ public sealed class GeneratedArtifactReferencesTests : IDisposable
         }, MotifJson.CreateOptions());
         var detail = JsonSerializer.Serialize(new { detail = "Assessment could not finish." }, MotifJson.CreateOptions());
         var cancelledPublished = "{\"assessmentDisposition\":\"cancelled\"}";
+        var detailWithException = JsonSerializer.Serialize(new
+        {
+            detail = "Assessment could not finish.",
+            exceptionType = "System.IO.IOException",
+            exception = "System.IO.IOException: Assessment could not finish.\n   at Stack.Frame()",
+        }, MotifJson.CreateOptions());
         var failedRefresh = JsonSerializer.Serialize(new
         {
             detail = "The project is in use.",
@@ -864,6 +870,12 @@ public sealed class GeneratedArtifactReferencesTests : IDisposable
                 "failed", "{}", failedRefresh, null);
             InsertJob(connection, transaction, "trial-partial", TrialJobHandler.TrialKind,
                 "completed-with-assessment-failure", trialInput, detail, published, dryRunPublished: true);
+            InsertJob(connection, transaction, "trial-partial-exception", TrialJobHandler.TrialKind,
+                "completed-with-assessment-failure", trialInput, detailWithException, published, dryRunPublished: true);
+            InsertJob(connection, transaction, "trial-runner-failed-exception", TrialJobHandler.TrialKind,
+                "failed", trialInput, detailWithException, null);
+            InsertJob(connection, transaction, "baseline-refresh-runner-failure", ProjectJobHandlers.BaselineRefreshKind,
+                "failed", "{}", detailWithException, null);
             InsertJob(connection, transaction, "trial-cancelled-before-publication", TrialJobHandler.TrialKind,
                 "cancelled", trialInput, null, null);
             InsertJob(connection, transaction, "trial-cancelled-after-publication", TrialJobHandler.TrialKind,
@@ -884,6 +896,10 @@ public sealed class GeneratedArtifactReferencesTests : IDisposable
             item.Reason == "retained-job-record");
         Assert.DoesNotContain(references.Diagnostics, item => item.RecordId == "Jobs/baseline-refresh-success");
         Assert.DoesNotContain(references.Diagnostics, item => item.RecordId == "Jobs/baseline-refresh-failure");
+        Assert.DoesNotContain(references.Diagnostics, item => item.Code == "job-result-shape-unrecognized");
+        Assert.DoesNotContain(references.Diagnostics, item => item.RecordId == "Jobs/baseline-refresh-runner-failure");
+        Assert.DoesNotContain(references.Diagnostics, item => item.RecordId == "Jobs/trial-runner-failed-exception/ResultJson");
+        Assert.DoesNotContain(references.Diagnostics, item => item.RecordId == "Jobs/trial-partial-exception/ResultJson");
         Assert.Contains(references.Diagnostics, item => item.Code == "job-baseline-binding-missing" &&
             item.RecordId == "Jobs/trial-partial");
         Assert.Contains(references.Diagnostics, item => item.Code == "job-baseline-binding-missing" &&

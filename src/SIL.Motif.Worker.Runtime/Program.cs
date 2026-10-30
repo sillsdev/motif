@@ -622,7 +622,7 @@ internal static class WorkerRuntime
             }
         }
 
-        var reason = latest.ResultJson ?? "the Baseline refresh did not succeed.";
+        var reason = FailureDetailOf(latest.ResultJson) ?? "the Baseline refresh did not succeed.";
         var detail = JsonSerializer.Serialize(new
         {
             detail = "The Baseline this job needs could not be produced after repeated attempts: " + reason
@@ -630,6 +630,22 @@ internal static class WorkerRuntime
         foreach (var job in parked)
             runtime.Jobs.Transition(job.JobId, JobStatus.Failed, job.Version, JobFailureCategory.Infrastructure,
                 detail);
+    }
+
+    // Only the user-facing detail; the exception type and stack stay in the job's own ResultJson.
+    private static string? FailureDetailOf(string? resultJson)
+    {
+        if (resultJson is null) return null;
+        try
+        {
+            using var document = JsonDocument.Parse(resultJson);
+            if (document.RootElement.ValueKind == JsonValueKind.Object &&
+                document.RootElement.TryGetProperty("detail", out var detail) &&
+                detail.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(detail.GetString()))
+                return detail.GetString();
+        }
+        catch (JsonException) { }
+        return resultJson;
     }
 
     private static void EnqueueBaselineRefresh(Projects.ProjectRuntime runtime, DateTimeOffset now) =>
