@@ -9,7 +9,7 @@ using SIL.Motif.Runner.Operations;
 
 namespace SIL.Motif.Runner.Composers;
 
-/// <summary>Deletes one wholly empty sense of an entry, and the stem analysis only that sense uses.</summary>
+/// <summary>Deletes one wholly empty sense of an entry, and the analysis only that sense uses.</summary>
 /// <param name="Target">The sense to delete.</param>
 /// <param name="Entry">The entry that owns the sense, named so a wrong sense id is refused rather than deleted.</param>
 public sealed record DeleteEmptySenseIntent(CanonicalId Target, CanonicalId Entry);
@@ -33,7 +33,7 @@ public static class DeleteEmptySenseComposer
 {
     /// <summary>The rationale each operation carries; a Draft still needs its own Rationale to finalize.</summary>
     public const string OperationRationale =
-        "Authored by the DeleteEmptySense composer: the sense is wholly empty, so removing it loses no content.";
+        "Authored by the DeleteEmptySense composer: the sense is empty and its analysis is safe to remove.";
 
     public static IReadOnlyList<OperationEnvelope> Build(LcmCache cache, DeleteEmptySenseIntent intent)
     {
@@ -58,15 +58,20 @@ public static class DeleteEmptySenseComposer
         {
             if (msa.Owner?.Guid != entry.Guid)
                 throw new InvalidOperationException("The sense's analysis is not owned by its entry.");
-            if (LexSenseEmptiness.FirstPopulatedField(cache, msa) is { } msaField)
-                throw new InvalidOperationException(
-                    $"The sense's analysis has content in '{msaField}'; only an analysis with no content is deleted, so the deletion can be reversed exactly.");
+            VariantSenseAnalysisSafety.Check(cache, entry, msa);
             if (msa.ReferringObjects.Any(other => other.Guid != sense.Guid))
                 throw new InvalidOperationException(
                     "Other objects, such as parser analyses, still refer to the sense's analysis, so it cannot be deleted with the sense.");
             deletedMsa = CanonicalId.FromGuid(msa.Guid);
         }
-        var after = JsonSerializer.SerializeToElement(new { msa = deletedMsa?.Value });
+        var variant = deletedMsa is not null && VariantSenseAnalysisSafety.PartOfSpeech(msa) is not null
+            ? entry.EntryRefsOS.First(reference => reference.RefType == LexEntryRefTags.krtVariant &&
+                                                   reference.ComponentLexemesRS.Count > 0) : null;
+        var after = JsonSerializer.SerializeToElement(new
+        {
+            msa = deletedMsa?.Value,
+            variant = variant is null ? null : CanonicalId.FromGuid(variant.Guid).Value,
+        });
         return [new(CanonicalId.Mint(), LexSenseDeleteOperationKinds.DeleteSense,
             target: LexicalFormAuthoring.Normalize(intent.Target), after: after, rationale: OperationRationale)];
     }

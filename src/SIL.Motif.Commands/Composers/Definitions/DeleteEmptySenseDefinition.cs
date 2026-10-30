@@ -6,8 +6,7 @@ using SIL.Motif.Runner.Composers;
 namespace SIL.Motif.Commands;
 
 /// <summary>
-/// Deletes one wholly empty sense of an entry together with the stem analysis only that sense uses. A sense with any
-/// content is refused and no flag overrides that, because deleting it would lose a person's work.
+/// Deletes an empty sense and its unused analysis. A part-of-speech-only analysis is allowed for a linked variant.
 /// </summary>
 internal sealed class DeleteEmptySenseDefinition : ComposerDefinition<DeleteEmptySenseIntent>
 {
@@ -27,7 +26,7 @@ internal sealed class DeleteEmptySenseDefinition : ComposerDefinition<DeleteEmpt
 
     /// <inheritdoc />
     public override ComposerExposure Exposure { get; } =
-        new(CommandSurface.AdvancedAi, AgentClass.Draft, ToolName: "motif_delete_empty_sense", AgentTool: false);
+        new(CommandSurface.AdvancedAi, AgentClass.Draft, ToolName: "motif_delete_empty_sense");
 
     /// <inheritdoc />
     public override DeleteEmptySenseIntent Parse(JsonElement authored) => DeleteEmptySenseIntentParser.Parse(authored);

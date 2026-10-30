@@ -13,8 +13,8 @@ Both fields are required and the intent is closed. The command refuses, and chan
 - `entry` is not the entry that owns the sense;
 - anything else refers to the sense.
 
-The sense's analysis is deleted with it only when no other sense of the entry uses it and nothing else, such as a parser analysis, refers to it. If another sense uses it, the analysis stays. If something else refers to it, the command refuses.
+An analysis containing only a part of speech is allowed only when the entry has a variant reference with a component target. The Dry Run records the removed part of speech. The sense's analysis is deleted with it only when no other sense of the entry uses it and nothing else, such as a parser analysis, refers to it. If another sense uses it, the analysis stays. If something else refers to it, the command refuses.
 
 Run many at once with `compose-batch`, one entry per sense, so a whole clean-up becomes one Proposal. Each operation carries a rationale; the Draft still needs its own Rationale (`proposal rationale`) before Finalize.
 
-Use this editor through the CLI; it is not exposed as an MCP tool. Add `--cite-source <text>` and optionally `--cite-locator <text>` to cite every operation this command produces. Review the Dry Run effects before Finalize; only a person can Apply the Proposal.
+Use this editor through the CLI or MCP. Add `--cite-source <text>` and optionally `--cite-locator <text>` to cite every operation this command produces. Review the Dry Run effects before Finalize; only a person can Apply the Proposal.

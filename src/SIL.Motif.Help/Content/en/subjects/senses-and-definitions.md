@@ -12,7 +12,7 @@ A sense is one meaning of an entry, with its gloss and definition. A word with s
 ## Composers, in order
 
 1. `compose-author-lexical-entry` creates a new entry together with its first sense, gloss and definition.
-2. `compose-delete-empty-sense` deletes a wholly empty sense and the stem analysis only it uses; a sense with any content is refused.
+2. `compose-delete-empty-sense` deletes an empty sense and the analysis only it uses; a part-of-speech-only analysis requires a linked variant and a sense with content is refused.
 
 ## Pitfalls
 

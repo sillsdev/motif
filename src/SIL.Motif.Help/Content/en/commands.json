@@ -653,9 +653,21 @@
     ],
     "redirect": "Restrict a slot's affix by feature value; do not copy affixes or slots per value. Arbitrary lexical grouping is an inflection class (guide feature-conditioned-slots)."
   },
+  "compose-link-variant": {
+    "title": "Link a variant",
+    "description": "Links a variant reference to its main entry or sense and sets its variant type. Self-links and cycles are refused; Motif stages a Draft for a person to review and Apply.",
+    "source": "Hand-written from the closed intent and composer contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "target": "Id of the existing variant reference.",
+      "component": "Id of the main entry or sense.",
+      "variantType": "Id of a type in the project's variant types list."
+    },
+    "goals": ["Link a variant to its main entry", "Replace a variant's target or type"]
+  },
   "compose-delete-empty-sense": {
     "title": "Delete an empty sense",
-    "description": "Deletes one wholly empty sense of an entry, and the stem analysis only that sense uses. A sense with any content is refused; Motif stages a Draft for a person to review and Apply.",
+    "description": "Deletes an empty sense and its unused analysis. An analysis containing only a part of speech is allowed when the entry has a linked variant reference; Motif stages a Draft for a person to review and Apply.",
     "source": "Hand-written from the closed intent and composer contract.",
     "fields": {
       "draft": "Draft name.",

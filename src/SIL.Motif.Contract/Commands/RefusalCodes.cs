@@ -293,6 +293,25 @@ public static class RefusalCodes
 
     /// <summary>A Draft request or its content is not valid.</summary>
     public const string DraftInvalid = "draft.invalid";
+
+    /// <summary>A part-of-speech-only sense analysis needs a linked variant.</summary>
+    public const string VariantComponentRequired = "draft.variant-component-required";
+
+    /// <summary>An analysis contains information the empty-sense deletion cannot safely remove.</summary>
+    public const string SenseAnalysisContent = "draft.sense-analysis-content";
+    /// <summary>The selected object is not a variant reference owned by an entry.</summary>
+    public const string VariantInvalidReference = "variant.invalid-reference";
+    /// <summary>The selected component is not an entry or sense.</summary>
+    public const string VariantInvalidComponent = "variant.invalid-component";
+    /// <summary>The selected type is not a variant type.</summary>
+    public const string VariantInvalidType = "variant.invalid-type";
+    /// <summary>A variant cannot refer to its own entry or sense.</summary>
+    public const string VariantSelfLink = "variant.self-link";
+    /// <summary>The link would create a cycle of variants.</summary>
+    public const string VariantCycle = "variant.cycle";
+    /// <summary>The variant reference changed after the link was composed.</summary>
+    public const string VariantStaleReference = "variant.stale-reference";
+
     /// <summary>A Draft with that name already exists.</summary>
     public const string DraftNameCollision = "draft.name-collision";
     /// <summary>No Draft has that name.</summary>

@@ -29,6 +29,17 @@ public sealed class ToolSurfaceTests
         Assert.All(AgentTools.All, tool => Assert.NotEqual(AgentClass.HumanOnly, tool.Class));
     }
 
+    [Theory]
+    [InlineData("motif_link_variant", new[] { "draft", "target", "component", "variantType", "project" })]
+    [InlineData("motif_delete_empty_sense", new[] { "draft", "target", "entry", "project" })]
+    public void VariantComposersHaveTypedDraftOnlyTools(string name, string[] arguments)
+    {
+        var tool = AgentTools.All.Single(item => item.Name == name);
+        Assert.Equal(AgentClass.Draft, tool.Class);
+        Assert.Equal(arguments.Order(StringComparer.Ordinal), tool.ArgumentNames.Order(StringComparer.Ordinal));
+        Assert.False(tool.InputSchema["additionalProperties"]!.GetValue<bool>());
+    }
+
     [Fact]
     public void EntryFlagToolIsDraftOnlyAndExplainsParserSupport()
     {
@@ -119,7 +130,6 @@ public sealed class ToolSurfaceTests
         Assert.Equal(new[]
         {
             "activity",
-            "compose-delete-empty-sense",
             "compose-edit-affix-inflection-classes",
             "compose-edit-part-of-speech-inflection-class-default",
             "compose-edit-stem-allomorph-stem-name",
@@ -142,9 +152,9 @@ public sealed class ToolSurfaceTests
         var numeralEditors = CommandCatalog.All.Where(command =>
             command.Name is "compose-edit-part-of-speech-inflection-class-default" or
                 "compose-edit-affix-inflection-classes" or "compose-edit-stem-allomorph-stem-name" or
-                "compose-edit-stem-inflection-class" or "compose-delete-empty-sense" or
+                "compose-edit-stem-inflection-class" or
                 "compose-set-stem-part-of-speech").ToArray();
-        Assert.Equal(6, numeralEditors.Length);
+        Assert.Equal(5, numeralEditors.Length);
         Assert.All(numeralEditors, command =>
         {
             Assert.Equal(CommandSurface.AdvancedAi, command.Surface);
@@ -289,10 +299,12 @@ public sealed class ToolSurfaceTests
         Assert.DoesNotContain("intentsJson", batch.Tool.ArgumentNames);
         var branches = intents["items"]!["oneOf"]!.AsArray();
         var verbs = branches.Select(branch => branch!["properties"]!["verb"]!["enum"]![0]!.GetValue<string>()).ToArray();
-        Assert.Equal(33, verbs.Length);
+        Assert.Equal(35, verbs.Length);
         Assert.Equal(new[]
         {
             "compose-author-lexeme-form",
+            "compose-delete-empty-sense",
+            "compose-link-variant",
             "compose-author-feature-structure",
             "compose-author-feature-value",
             "compose-author-phoneme",
@@ -399,7 +411,8 @@ public sealed class ToolSurfaceTests
     {
         foreach (var tool in AgentTools.All.Where(tool => tool.Requests.Count > 0))
         {
-            var commands = CommandCatalog.All.Where(command => tool.Requests.Contains(command.RequestType));
+            var commands = CommandCatalog.All.Where(command => tool.Requests.Contains(command.RequestType))
+                .GroupBy(command => command.RequestType).Select(group => group.First());
             Assert.Equal(CatalogTools.Describe(commands), tool.Description);
             foreach (var command in commands)
                 foreach (var field in command.RequestType.GetProperties().Where(field =>

@@ -64,6 +64,7 @@ public sealed class HelpCatalogTests
     {
         ["compose-author-text"] = "adds a text to analyse, not grammar",
         ["compose-delete-empty-sense"] = "removes an empty sense, which encodes no phenomenon",
+        ["compose-link-variant"] = "links existing entries and senses rather than encoding a grammar rule",
         ["compose-record-parsimony-disposition"] = "records a review decision about a Parsimony finding",
     };
 

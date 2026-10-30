@@ -43,6 +43,14 @@
     "why": "That is not a well-formed Proposal id, so it cannot be looked up. Use a proposalId a tool returned, or one from the Proposal list; do not type one.",
     "source": "Hand-written from the Motif MCP refusal advice."
   },
+  "draft.variant-component-required": {
+    "why": "The analysis has a part of speech, but the entry has no linked variant reference. Establish its main entry or sense before removing the empty sense; ask when the identity is uncertain.",
+    "source": "Hand-written for variant sense deletion."
+  },
+  "draft.sense-analysis-content": {
+    "why": "The analysis has content beyond an allowed part of speech, so deleting it could lose information. Review the named field and keep the sense until its content is resolved.",
+    "source": "Hand-written for variant sense deletion."
+  },
   "draft.revision-conflict": {
     "why": "The Draft changed after you last read it, so this change would overwrite newer work. Read the Draft again with its id, then retry.",
     "source": "Hand-written from the Motif MCP refusal advice."
@@ -134,5 +142,29 @@
   "assess.words-file-not-text": {
     "why": "The words file at {wordsFile} must be valid UTF-8 text without NUL bytes. Save it as UTF-8 with one word per line, then repeat the call.",
     "source": "Word-list file input contract."
+  },
+  "variant.invalid-reference": {
+    "why": "Choose an existing variant reference owned by an entry.",
+    "source": "Hand-written from the Motif MCP refusal advice."
+  },
+  "variant.invalid-component": {
+    "why": "Choose an existing main entry or sense as the component.",
+    "source": "Hand-written from the Motif MCP refusal advice."
+  },
+  "variant.invalid-type": {
+    "why": "Choose a type from the project’s variant types list.",
+    "source": "Hand-written from the Motif MCP refusal advice."
+  },
+  "variant.self-link": {
+    "why": "A variant cannot link to itself. Choose a different main entry or sense.",
+    "source": "Hand-written from the Motif MCP refusal advice."
+  },
+  "variant.cycle": {
+    "why": "This link would create a cycle. Choose a main entry or sense outside the variant chain.",
+    "source": "Hand-written from the Motif MCP refusal advice."
+  },
+  "variant.stale-reference": {
+    "why": "The variant reference changed. Compose the link again against the current project.",
+    "source": "Hand-written from the Motif MCP refusal advice."
   }
 }

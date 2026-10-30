@@ -16,8 +16,9 @@ A lexical entry is a stem or affix with its forms, senses, glosses and grammatic
 4. `compose-author-alternate-form` adds a variant form under the entry.
 5. `compose-author-feature-structure` attaches grammatical features to the entry's analysis.
 6. `compose-set-stem-part-of-speech` gives an existing stem analysis its part of speech.
-7. `compose-delete-empty-sense` deletes a wholly empty sense and the stem analysis only it uses.
-8. `compose-rewrite-lexeme-form` rewrites the lexeme forms of existing entries in one batch, for example to drop stress marks the parser cannot match.
+7. `compose-link-variant` links a variant reference to its main entry or sense and sets its type.
+8. `compose-delete-empty-sense` deletes an empty sense and the analysis only it uses; an analysis with only a part of speech requires a linked variant.
+9. `compose-rewrite-lexeme-form` rewrites the lexeme forms of existing entries in one batch, for example to drop stress marks the parser cannot match.
 
 ## Pitfalls
 

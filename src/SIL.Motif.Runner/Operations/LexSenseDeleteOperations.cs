@@ -5,6 +5,9 @@ using SIL.LCModel.Core.Cellar;
 using SIL.LCModel.Core.KernelInterfaces;
 using SIL.LCModel.Infrastructure;
 using SIL.Motif.Contract.Ids;
+using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Responses;
+using SIL.Motif.Runner.Execution;
 using SIL.Motif.Contract.Model;
 using SIL.Motif.Contract.Parsing;
 using SIL.Motif.Model.Effects;
@@ -36,24 +39,25 @@ public static class LexSenseDeleteOperationKinds
 }
 
 /// <summary>
-/// The closed payload of a sense deletion: <c>{ "msa": "&lt;id&gt;" | null }</c>. The id names the analysis the sense
-/// points at when nothing else uses it, so a reader of the Proposal sees both deletions; null leaves the analysis alone.
+/// The closed payload of a sense deletion names the analysis to delete or null, and may name the variant reference
+/// that permits deletion of a part-of-speech-only analysis. The variant identity also declares its dependency.
 /// </summary>
 /// <param name="Msa">The analysis deleted with the sense, or null when none is.</param>
-public sealed record LexSenseDeletePayload(CanonicalId? Msa)
+/// <param name="Variant">The linked variant reference, or null when it is not needed.</param>
+public sealed record LexSenseDeletePayload(CanonicalId? Msa, CanonicalId? Variant)
 {
     /// <summary>Parses the closed payload, refusing any other property and a missing <c>msa</c>.</summary>
     public static LexSenseDeletePayload Parse(JsonElement after)
     {
         const string kind = LexSenseDeleteOperationKinds.DeleteSense;
         ClosedPayloadParsing.RequireObject(after, kind);
-        ClosedPayloadParsing.RejectUnknownProperties(after, ["msa"], kind);
+        ClosedPayloadParsing.RejectUnknownProperties(after, ["msa", "variant"], kind);
         if (!after.TryGetProperty("msa", out var msa))
             throw new ContractParseException($"'{kind}' operation 'after.msa' is required: an id, or null for none.");
-        return msa.ValueKind == JsonValueKind.Null
-            ? new LexSenseDeletePayload((CanonicalId?)null)
-            : new LexSenseDeletePayload(
-                CanonicalId.FromGuid(ClosedPayloadParsing.GetRequiredCanonicalId(after, "msa", kind).ToGuid()));
+        CanonicalId? variant = after.TryGetProperty("variant", out var value) && value.ValueKind != JsonValueKind.Null
+            ? CanonicalId.FromGuid(ClosedPayloadParsing.GetRequiredCanonicalId(after, "variant", kind).ToGuid()) : null;
+        return new LexSenseDeletePayload(msa.ValueKind == JsonValueKind.Null ? null :
+            CanonicalId.FromGuid(ClosedPayloadParsing.GetRequiredCanonicalId(after, "msa", kind).ToGuid()), variant);
     }
 }
 
@@ -120,6 +124,45 @@ public static class LexSenseEmptiness
     }
 }
 
+internal sealed class VariantComponentRequiredException : ProposalRefusalException
+{
+    internal VariantComponentRequiredException() : base(RefusalCodes.VariantComponentRequired, FailureReason.Refused,
+        "Analysis content in PartOfSpeech requires a variant reference with a component target.",
+        new Dictionary<string, string>()) { }
+}
+
+internal sealed class SenseAnalysisContentException : ProposalRefusalException
+{
+    internal SenseAnalysisContentException(string field) : base(RefusalCodes.SenseAnalysisContent, FailureReason.Refused,
+        $"The sense's analysis has content in '{field}'.", new Dictionary<string, string> { ["field"] = field }) { }
+}
+
+internal static class VariantSenseAnalysisSafety
+{
+    internal static IPartOfSpeech? PartOfSpeech(IMoMorphSynAnalysis? msa) => msa switch
+    {
+        IMoStemMsa stem => stem.PartOfSpeechRA,
+        IMoInflAffMsa inflection => inflection.PartOfSpeechRA,
+        IMoUnclassifiedAffixMsa unclassified => unclassified.PartOfSpeechRA,
+        _ => null,
+    };
+
+    internal static void Check(LcmCache cache, ILexEntry entry, IMoMorphSynAnalysis msa, bool requireLinked = true)
+    {
+        if (PartOfSpeech(msa) is not null)
+        {
+            if (requireLinked && !entry.EntryRefsOS.Any(reference => reference.RefType == LexEntryRefTags.krtVariant &&
+                                                     reference.ComponentLexemesRS.Count > 0))
+                throw new VariantComponentRequiredException();
+            if (LexSenseEmptiness.FirstPopulatedField(cache, msa, "PartOfSpeech") is { } extra)
+                throw new SenseAnalysisContentException(extra);
+            return;
+        }
+        if (LexSenseEmptiness.FirstPopulatedField(cache, msa) is { } field)
+            throw new SenseAnalysisContentException(field);
+    }
+}
+
 internal sealed class LexSenseDeleteHandler : ICompoundOperationHandler
 {
     internal static readonly LexSenseDeleteHandler Instance = new();
@@ -161,7 +204,7 @@ internal sealed class LexSenseDeleteHandler : ICompoundOperationHandler
 
     public IReadOnlyList<ExpectedEffect> ReadCurrentFootprintEffects(LcmCache cache, OperationEnvelope operation)
     {
-        var (_, sense, entry, msa) = Resolve(cache, operation);
+        var (_, sense, entry, msa) = Resolve(cache, operation, footprint: true);
         var entryId = CanonicalId.FromGuid(entry.Guid);
         var senses = ReadSenses(entry);
         var effects = new List<ExpectedEffect>
@@ -177,7 +220,7 @@ internal sealed class LexSenseDeleteHandler : ICompoundOperationHandler
     }
 
     private static (CanonicalId Id, ILexSense Sense, ILexEntry Entry, IMoMorphSynAnalysis? Msa) Resolve(
-        LcmCache cache, OperationEnvelope operation)
+        LcmCache cache, OperationEnvelope operation, bool footprint = false)
     {
         var payload = LexSenseDeletePayload.Parse(operation.After ??
             throw new ContractParseException($"'{Kind}' operation requires 'after'."));
@@ -192,15 +235,17 @@ internal sealed class LexSenseDeleteHandler : ICompoundOperationHandler
         var current = sense.MorphoSyntaxAnalysisRA;
         if (payload.Msa is null)
             return (id, sense, entry, null);
+        if (VariantSenseAnalysisSafety.PartOfSpeech(current) is not null &&
+            !footprint && payload.Variant is { } variant && !entry.EntryRefsOS.Any(reference =>
+                reference.Guid == variant.ToGuid() && reference.RefType == LexEntryRefTags.krtVariant &&
+                reference.ComponentLexemesRS.Count > 0))
+            throw new VariantComponentRequiredException();
         if (current is null || current.Guid != payload.Msa.Value.ToGuid())
             throw new InvalidOperationException(
                 $"'{Kind}' names an analysis the sense no longer points at; recompute the Draft.");
         if (current.Owner?.Guid != entry.Guid)
             throw new InvalidOperationException($"'{Kind}' deletes only an analysis the sense's own entry owns.");
-        if (LexSenseEmptiness.FirstPopulatedField(cache, current) is { } msaField)
-            throw new InvalidOperationException(
-                $"'{Kind}' deletes only an analysis with no content, so the deletion can be reversed exactly; " +
-                $"the analysis has content in '{msaField}'.");
+        VariantSenseAnalysisSafety.Check(cache, entry, current, requireLinked: !footprint);
         if (entry.SensesOS.Any(other => other.Guid != sense.Guid && other.MorphoSyntaxAnalysisRA?.Guid == current.Guid))
             throw new InvalidOperationException($"'{Kind}' refuses an analysis another sense of the entry uses.");
         if (current.ReferringObjects.Any(other => other.Guid != sense.Guid))
@@ -224,16 +269,27 @@ internal sealed class LexSenseDeleteHandler : ICompoundOperationHandler
                 index,
                 after = Neighbour(index - 1),
                 before = Neighbour(index + 1),
-                analysis = msa is null ? null : CanonicalId.FromGuid(msa.Guid).Value,
+                analysis = sense.MorphoSyntaxAnalysisRA is { } linkedAnalysis
+                    ? CanonicalId.FromGuid(linkedAnalysis.Guid).Value : null,
             },
+            linkedVariants = VariantSenseAnalysisSafety.PartOfSpeech(sense.MorphoSyntaxAnalysisRA) is not null
+                ? entry.EntryRefsOS.Where(reference => reference.RefType == LexEntryRefTags.krtVariant)
+                    .Select(reference => new
+                    {
+                        id = CanonicalId.FromGuid(reference.Guid).Value,
+                        components = reference.ComponentLexemesRS.Select(component =>
+                            CanonicalId.FromGuid(component.Guid).Value).ToArray(),
+                    }).ToArray() : null,
             deletedAnalysis = msa is null ? null : new
             {
                 id = CanonicalId.FromGuid(msa.Guid).Value,
                 @class = msa.ClassName,
-                content = "none",
+                content = VariantSenseAnalysisSafety.PartOfSpeech(msa) is not null ? "partOfSpeech" : "none",
+                partOfSpeech = VariantSenseAnalysisSafety.PartOfSpeech(msa) is { } pos
+                    ? CanonicalId.FromGuid(pos.Guid).Value : null,
             },
             reversal = "createSenses with the same id and placement, createMorphoSyntaxAnalyses of the same class and id, " +
-                "then setMorphoSyntaxAnalysis on the sense",
+                "restore any recorded part of speech, then setMorphoSyntaxAnalysis on the sense",
         });
     }
 

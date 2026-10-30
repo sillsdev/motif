@@ -9,6 +9,7 @@ using SIL.Motif.Contract.Parsing;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Runner.DryRun;
+using SIL.Motif.Runner.Apply;
 using SIL.Motif.Runner.Operations;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker.Store;
@@ -24,12 +25,12 @@ public sealed class SenseDeletionAndStemPartOfSpeechDraftTests(PristineProjectFi
     private const string PosVerb = "compose-set-stem-part-of-speech";
 
     [Fact]
-    public void BothComposersAreCliFirstAndNeverOfferedToAnAgent()
+    public void DeletionIsOfferedToAnAgentAndPartOfSpeechRemainsCliFirst()
     {
         foreach (var verb in new[] { DeleteVerb, PosVerb })
         {
             var descriptor = Assert.Single(ProposalCommands.ComposerDescriptors, composer => composer.Verb == verb);
-            Assert.False(descriptor.IsAgentTool);
+            Assert.Equal(verb == DeleteVerb, descriptor.IsAgentTool);
             Assert.Contains(verb, ProposalCommands.DraftComposers.Keys);
         }
     }
@@ -120,6 +121,108 @@ public sealed class SenseDeletionAndStemPartOfSpeechDraftTests(PristineProjectFi
         Assert.Contains("differs from the expected", stale.Refusal!.Message, StringComparison.Ordinal);
 
         Assert.Equal(before, ReadDraft(path, draft).Operations.Count);
+    }
+
+    [Fact]
+    public void LinkedVariantWithPartOfSpeechCanBeComposedAndUnlinkedVariantIsRefused()
+    {
+        using var cache = pristine.NewScratch();
+        var path = cache.ProjectId.Path;
+        var linked = EmptySenseSeed.Add(cache, "linked");
+        var unlinked = EmptySenseSeed.Add(cache, "unlinked");
+        var extra = EmptySenseSeed.Add(cache, "extra");
+        SIL.LCModel.Infrastructure.NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+        {
+            var entries = cache.ServiceLocator.GetInstance<ILexEntryRepository>();
+            var main = entries.GetObject(pristine.Seed.FirstEntryId);
+            foreach (var seed in new[] { linked, unlinked, extra })
+            {
+                var entry = entries.GetObject(seed.EntryId);
+                ((IMoStemMsa)entry.MorphoSyntaxAnalysesOC.Single()).PartOfSpeechRA =
+                    cache.ServiceLocator.GetInstance<IPartOfSpeechRepository>().GetObject(pristine.Seed.PartOfSpeechId);
+                var reference = cache.ServiceLocator.GetInstance<ILexEntryRefFactory>().Create();
+                entry.EntryRefsOS.Add(reference);
+                reference.RefType = LexEntryRefTags.krtVariant;
+                if (seed != unlinked) reference.ComponentLexemesRS.Add(main);
+                if (seed == extra)
+                {
+                    var category = ((IMoStemMsa)entry.MorphoSyntaxAnalysesOC.Single()).PartOfSpeechRA;
+                    var cls = cache.ServiceLocator.GetInstance<IMoInflClassFactory>().Create();
+                    category.InflectionClassesOC.Add(cls);
+                    ((IMoStemMsa)entry.MorphoSyntaxAnalysesOC.Single()).InflectionClassRA = cls;
+                }
+            }
+        });
+        new FwDataProjectLoader().Save(cache);
+        Assert.True(ProposalCommands.New(new(path, Version, "variants", "Variants")).Succeeded);
+        var refused = ProposalCommands.ComposeIntent(new(path, Version, "variants", DeleteVerb,
+            Json(new { target = Id(unlinked.SenseId), entry = Id(unlinked.EntryId) })));
+        Assert.False(refused.Succeeded);
+        Assert.Equal(RefusalCodes.VariantComponentRequired, refused.Refusal!.Code);
+        Assert.Contains("component target", refused.Refusal.Message, StringComparison.Ordinal);
+        var content = ProposalCommands.ComposeIntent(new(path, Version, "variants", DeleteVerb,
+            Json(new { target = Id(extra.SenseId), entry = Id(extra.EntryId) })));
+        Assert.False(content.Succeeded);
+        Assert.Equal(RefusalCodes.SenseAnalysisContent, content.Refusal!.Code);
+        Assert.Equal("InflectionClass", content.Refusal.Facts["field"]);
+        var accepted = ProposalCommands.ComposeIntent(new(path, Version, "variants", DeleteVerb,
+            Json(new { target = Id(linked.SenseId), entry = Id(linked.EntryId) })));
+        Assert.True(accepted.Succeeded, accepted.Refusal?.Message);
+    }
+
+    [Fact]
+    public void LinkingThenDeletingInOneBatchDeclaresTheDependencyAndDryRuns()
+    {
+        using var cache = pristine.NewScratch();
+        var path = cache.ProjectId.Path;
+        var seed = EmptySenseSeed.Add(cache, "variant");
+        Guid referenceId = default, typeId = default;
+        SIL.LCModel.Infrastructure.NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+        {
+            var services = cache.ServiceLocator;
+            var entry = services.GetInstance<ILexEntryRepository>().GetObject(seed.EntryId);
+            ((IMoStemMsa)entry.MorphoSyntaxAnalysesOC.Single()).PartOfSpeechRA =
+                services.GetInstance<IPartOfSpeechRepository>().GetObject(pristine.Seed.PartOfSpeechId);
+            var reference = services.GetInstance<ILexEntryRefFactory>().Create();
+            entry.EntryRefsOS.Add(reference);
+            reference.RefType = LexEntryRefTags.krtVariant;
+            referenceId = reference.Guid;
+            var list = cache.LangProject.LexDbOA.VariantEntryTypesOA;
+            if (list is null)
+            {
+                list = services.GetInstance<ICmPossibilityListFactory>().Create();
+                cache.LangProject.LexDbOA.VariantEntryTypesOA = list;
+            }
+            var type = services.GetInstance<ILexEntryTypeFactory>().Create();
+            list.PossibilitiesOS.Add(type);
+            typeId = type.Guid;
+        });
+        new FwDataProjectLoader().Save(cache);
+        Assert.True(ProposalCommands.New(new(path, Version, "link", "Link variant")).Succeeded);
+        var self = ProposalCommands.ComposeIntent(new(path, Version, "link", "compose-link-variant",
+            Json(new { target = Id(referenceId), component = Id(seed.EntryId), variantType = Id(typeId) })));
+        Assert.False(self.Succeeded);
+        Assert.Equal(RefusalCodes.VariantSelfLink, self.Refusal!.Code);
+        var batch = ProposalCommands.ComposeBatch(new(path, Version, "link", Json(new
+        {
+            intents = new object[]
+            {
+                new { verb = "compose-link-variant", intent = new { target = Id(referenceId),
+                    component = Id(pristine.Seed.FirstEntryId), variantType = Id(typeId) } },
+                new { verb = DeleteVerb, intent = new { target = Id(seed.SenseId), entry = Id(seed.EntryId) } },
+            },
+        })));
+        Assert.True(batch.Succeeded, batch.Refusal?.Message);
+        var proposal = ReadDraft(path, "link");
+        var link = Assert.Single(proposal.Operations, operation => operation.Kind == VariantLinkOperationKinds.Set);
+        var deletion = Assert.Single(proposal.Operations, operation => operation.Kind == LexSenseDeleteOperationKinds.DeleteSense);
+        Assert.Contains(deletion.DependsOn, dependency => dependency.OperationId == link.OperationId);
+        using var scratch = DryRunScratch.Adopt(new FwDataProjectLoader().LoadScratchCache(path), "variant preview");
+        var dryRun = ProposalDryRunner.Run(scratch, proposal);
+        Assert.Equal(4, dryRun.ExpectedEffects.Count);
+        ProposalApplier.Apply(cache, proposal, dryRun.Anchor, "tester");
+        Assert.False(cache.ServiceLocator.ObjectRepository.IsValidObjectId(seed.SenseId));
+        Assert.False(cache.ServiceLocator.ObjectRepository.IsValidObjectId(seed.MsaId));
     }
 
     private (string Path, EmptySenseSeed[] Variants, EmptySenseSeed[] Stems) Open(int variants, int stems)

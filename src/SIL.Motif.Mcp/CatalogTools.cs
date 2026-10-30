@@ -34,13 +34,14 @@ internal static class CatalogTools
                 tools.Add(Prepare(adapter));
                 continue;
             }
-            var commands = eligible.Where(command => adapter.Requests.Contains(command.RequestType)).ToArray();
+            var commands = eligible.Where(command => adapter.Requests.Contains(command.RequestType))
+                .GroupBy(command => command.RequestType).Select(group => group.First()).ToArray();
             if (adapter.Requests.Count > 0 && commands.Length == 0) continue;
-            if (commands.Length != adapter.Requests.Count)
+            if (commands.Select(command => command.RequestType).Distinct().Count() != adapter.Requests.Distinct().Count())
                 throw new InvalidOperationException($"Tool '{adapter.Name}' mixes eligible and unavailable commands.");
             foreach (var command in commands) served.Add(command.RequestType);
             var description = commands.Length == 0 ? ReadDescription(adapter.Name) : Describe(commands);
-            tools.Add(Prepare(adapter with { Description = description, Requests = commands.Select(c => c.RequestType).ToArray() }));
+            tools.Add(Prepare(adapter with { Description = description, Requests = commands.Select(c => c.RequestType).Distinct().ToArray() }));
         }
         foreach (var command in eligible.Where(command => !served.Contains(command.RequestType)))
             tools.Add(Prepare(Create(command)));

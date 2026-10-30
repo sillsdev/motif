@@ -3635,6 +3635,117 @@
                     "type": "string",
                     "description": "Composing verb for this intent.",
                     "enum": [
+                      "compose-delete-empty-sense"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for compose-delete-empty-sense.",
+                    "properties": {
+                      "target": {
+                        "type": "string",
+                        "description": "Id of the empty sense to delete."
+                      },
+                      "entry": {
+                        "type": "string",
+                        "description": "Id of the entry that owns the sense; a different owner is refused."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "target",
+                      "entry"
+                    ]
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
+                      "compose-link-variant"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for compose-link-variant.",
+                    "properties": {
+                      "target": {
+                        "type": "string",
+                        "description": "Id of the existing variant reference."
+                      },
+                      "component": {
+                        "type": "string",
+                        "description": "Id of the main entry or sense."
+                      },
+                      "variantType": {
+                        "type": "string",
+                        "description": "Id of a type in the project\u0027s variant types list."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "target",
+                      "component",
+                      "variantType"
+                    ]
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
                       "compose-edit-phoneme"
                     ]
                   },
