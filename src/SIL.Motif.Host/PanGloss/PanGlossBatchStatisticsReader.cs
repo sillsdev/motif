@@ -56,6 +56,7 @@ public static class PanGlossBatchStatisticsReader
             throw new InvalidDataException(
                 $"The PanGloss batch statistics cache has schema version {schemaVersion}; " +
                 $"Motif requires version {PanGlossInterfaceVersions.StatsCacheVersion}.");
+        ValidateCounterSemantics(connection);
 
         var words = ReadWords(connection);
         var unexpected = words.Keys.FirstOrDefault(word => !expected.Contains(word));
@@ -93,6 +94,7 @@ public static class PanGlossBatchStatisticsReader
         if (version != PanGlossInterfaceVersions.StatsCacheVersion)
             throw new InvalidDataException($"The PanGloss batch statistics cache has schema version {version}; " +
                 $"Motif requires version {PanGlossInterfaceVersions.StatsCacheVersion}.");
+        ValidateCounterSemantics(connection);
         var words = ReadWords(connection);
         var unexpected = words.Keys.FirstOrDefault(word => !expected.Contains(word));
         if (unexpected is not null)
@@ -192,6 +194,31 @@ public static class PanGlossBatchStatisticsReader
         }
         if (value is long version && version is >= 0 and <= int.MaxValue) return (int)version;
         throw new InvalidDataException("The PanGloss batch statistics cache has no valid cache identity.");
+    }
+
+    private static void ValidateCounterSemantics(SqliteConnection connection)
+    {
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT counter_semantics FROM run";
+        try
+        {
+            using var reader = command.ExecuteReader();
+            var found = false;
+            while (reader.Read())
+            {
+                found = true;
+                if (reader.GetValue(0) is not long version)
+                    throw new InvalidDataException("The PanGloss batch statistics cache has no valid counter semantics.");
+                if (version != PanGlossInterfaceVersions.StatsCounterSemanticsVersion)
+                    throw new InvalidDataException($"The PanGloss batch statistics cache has counter semantics {version}; " +
+                        $"Motif requires version {PanGlossInterfaceVersions.StatsCounterSemanticsVersion}.");
+            }
+            if (!found) throw new InvalidDataException("The PanGloss batch statistics cache has no run counter semantics.");
+        }
+        catch (SqliteException exception)
+        {
+            throw new InvalidDataException("The PanGloss batch statistics cache has no valid counter semantics.", exception);
+        }
     }
 
     // The word table's work column is read only where the cache declares it, so a cache without one still reads.
@@ -298,8 +325,8 @@ public static class PanGlossBatchStatisticsReader
 
     internal static bool SupportsTimer(string kind, string direction) => kind switch
     {
-        "morph_rule" or "phon_rule" => true,
-        "lex_entry" or "root_index" or "guesser" or "overlay" => direction == "analysis",
+        "morph_rule" or "phon_rule" or "lex_entry" => true,
+        "root_index" or "guesser" or "overlay" => direction == "analysis",
         _ => false,
     };
 

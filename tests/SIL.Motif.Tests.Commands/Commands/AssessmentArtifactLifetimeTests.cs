@@ -137,6 +137,8 @@ public sealed class AssessmentArtifactLifetimeTests(PristineProjectFixture prist
             using var command = connection.CreateCommand();
             command.CommandText = """
                 CREATE TABLE cache_identity (cache_id INTEGER PRIMARY KEY, schema_version INTEGER NOT NULL);
+                CREATE TABLE run (counter_semantics INTEGER NOT NULL);
+                INSERT INTO run VALUES (7);
                 INSERT INTO cache_identity VALUES (1, 10);
                 CREATE TABLE word (
                     word_id INTEGER PRIMARY KEY, form TEXT NOT NULL, elapsed_ns INTEGER NOT NULL,

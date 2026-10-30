@@ -1,8 +1,8 @@
 {
-  "version": "0.12.0",
+  "version": "0.12.1",
   "source": "rust/crates/pg-rules/src/trace.rs",
-  "commit": "b2d75ca820212cc4d3a66ebe2043bbbeeb093158",
-  "provenance": "annotated v0.12.0 source tag; trace reason source unchanged since v0.8.11",
+  "commit": "9a5c4400874bdb7b2e5d823e1d7d44dcdb8721b2",
+  "provenance": "annotated v0.12.1 source tag",
   "codes": [
     "ObligatorySyntacticFeatures",
     "AllomorphCoOccurrenceRules",
@@ -26,6 +26,7 @@
     "BoundRoot",
     "NonPartialRuleProhibitedAfterFinalTemplate",
     "NonPartialRuleRequiredAfterNonFinalTemplate",
-    "MaxApplicationCount"
+    "MaxApplicationCount",
+    "AllomorphNotApplicable"
   ]
 }

@@ -11,7 +11,7 @@ public sealed class PanGlossBatchStatisticsReaderTests : IDisposable
     public PanGlossBatchStatisticsReaderTests() => Directory.CreateDirectory(_root);
 
     [Fact]
-    public void ReadsByIdentityAndKeepsUnsupportedMeasurementsNull()
+    public void ReadsByIdentityAndKeepsLexicalSynthesisTime()
     {
         var path = Path.Combine(_root, "stats.sqlite");
         WriteCache(path);
@@ -27,10 +27,10 @@ public sealed class PanGlossBatchStatisticsReaderTests : IDisposable
         Assert.Contains(sameLabel, row => row.Key ==
             "lex_entry:entry-b#00000000-0000-4000-8000-000000000002@Main");
         Assert.All(sameLabel, row => Assert.Equal("authored", row.IdentityQuality));
-        var unsupported = Assert.Single(sameLabel, row => row.Direction == "synthesis");
-        Assert.Null(unsupported.Passes);
-        Assert.Null(unsupported.ElapsedNs);
-        Assert.Equal(6, unsupported.Attempts);
+        var synthesis = Assert.Single(sameLabel, row => row.Direction == "synthesis");
+        Assert.Null(synthesis.Passes);
+        Assert.Equal(130_000, synthesis.ElapsedNs);
+        Assert.Equal(6, synthesis.Attempts);
         Assert.Equal("endo#", Assert.Single(result.ObjectTimings, row => row.Key == "endo#").Object);
     }
 
@@ -190,6 +190,47 @@ public sealed class PanGlossBatchStatisticsReaderTests : IDisposable
             StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData(6)]
+    [InlineData(8)]
+    public void RefusesAStoredCounterSemanticsVersionThatDiffersFromThePin(int semantics)
+    {
+        var path = Path.Combine(_root, "wrong-semantics.sqlite");
+        WriteCache(path);
+        using (var connection = new SqliteConnection($"Data Source={path};Pooling=False"))
+        {
+            connection.Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = "UPDATE run SET counter_semantics = $semantics";
+            command.Parameters.AddWithValue("$semantics", semantics);
+            command.ExecuteNonQuery();
+        }
+
+        var error = Assert.Throws<InvalidDataException>(() => PanGlossBatchStatisticsReader.Read(path, ["word"]));
+        Assert.Contains($"counter semantics {semantics}", error.Message, StringComparison.Ordinal);
+        Assert.Throws<InvalidDataException>(() => PanGlossBatchStatisticsReader.ReadBounded(path, ["word"], 1));
+    }
+
+    [Theory]
+    [InlineData("DELETE FROM run")]
+    [InlineData("INSERT INTO run VALUES (6)")]
+    [InlineData("DROP TABLE run")]
+    public void RefusesMissingOrMixedCounterSemantics(string mutation)
+    {
+        var path = Path.Combine(_root, "invalid-semantics.sqlite");
+        WriteCache(path);
+        using (var connection = new SqliteConnection($"Data Source={path};Pooling=False"))
+        {
+            connection.Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = mutation;
+            command.ExecuteNonQuery();
+        }
+
+        Assert.Throws<InvalidDataException>(() => PanGlossBatchStatisticsReader.Read(path, ["word"]));
+        Assert.Throws<InvalidDataException>(() => PanGlossBatchStatisticsReader.ReadBounded(path, ["word"], 1));
+    }
+
     private static void WriteCache(string path, int version = PanGlossInterfaceVersions.StatsCacheVersion)
     {
         using var connection = new SqliteConnection(new SqliteConnectionStringBuilder
@@ -202,6 +243,8 @@ public sealed class PanGlossBatchStatisticsReaderTests : IDisposable
         using var command = connection.CreateCommand();
         command.CommandText = """
             CREATE TABLE cache_identity (cache_id INTEGER PRIMARY KEY, schema_version INTEGER NOT NULL);
+            CREATE TABLE run (counter_semantics INTEGER NOT NULL);
+            INSERT INTO run VALUES (7);
             CREATE TABLE word (
                 word_id INTEGER PRIMARY KEY,
                 form TEXT NOT NULL,
@@ -229,7 +272,7 @@ public sealed class PanGlossBatchStatisticsReaderTests : IDisposable
             INSERT INTO fact (word_id, object_id, direction, attempts, self_time_ns) VALUES
                 (1, 1, 'analysis', 4, 180000),
                 (1, 2, 'analysis', 5, 220000),
-                (1, 1, 'synthesis', 6, NULL),
+                (1, 1, 'synthesis', 6, 130000),
                 (1, 3, 'analysis', 2, 1000);
             """;
         command.Parameters.AddWithValue("$version", version);

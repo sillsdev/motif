@@ -20,7 +20,7 @@ public sealed class GrammarHealthReleaseTests
         var unknown = Assert.Single(response.Findings, finding => finding.Code == "fwdata.unknown-morph-type-guid");
         Assert.Equal("Unknown morph type reference", unknown.Title);
         Assert.Equal("docs/diagnostics/fwdata.unknown-morph-type-guid.md", unknown.HelpPath);
-        Assert.Contains("/v0.12.0/", unknown.HelpUrl);
+        Assert.Contains("/v0.12.1/", unknown.HelpUrl);
         var authored = Assert.Single(unknown.Subject, subject => subject.Status == GrammarSubjectStatus.Object);
         Assert.Equal("xxx", authored.Title);
         Assert.Equal("00000000-0000-0000-0000-000000000044", authored.SubjectGuid);

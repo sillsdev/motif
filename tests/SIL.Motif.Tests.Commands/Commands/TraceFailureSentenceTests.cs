@@ -11,7 +11,7 @@ public sealed class TraceFailureSentenceTests
     public void EveryPinnedPanGlossReasonHasOneWindowSentence()
     {
         using var catalog = JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory,
-            "TestFixtures", "pangloss-0.12.0-trace-reasons.json")));
+            "TestFixtures", "pangloss-0.12.1-trace-reasons.json")));
         var repository = new DirectoryInfo(AppContext.BaseDirectory);
         while (repository is not null && !File.Exists(Path.Combine(repository.FullName, "pangloss-release.json")))
             repository = repository.Parent;
@@ -19,7 +19,7 @@ public sealed class TraceFailureSentenceTests
         using var pin = JsonDocument.Parse(File.ReadAllText(Path.Combine(repository!.FullName, "pangloss-release.json")));
         Assert.Equal(pin.RootElement.GetProperty("version").GetString(), catalog.RootElement.GetProperty("version").GetString());
         var codes = catalog.RootElement.GetProperty("codes").EnumerateArray().Select(item => item.GetString()!).ToArray();
-        Assert.Equal(23, codes.Length);
+        Assert.Equal(24, codes.Length);
         Assert.Equal(codes.Order(), TraceFailureSentences.Catalog.Keys.Order());
         Assert.All(codes, code => Assert.DoesNotContain("not recorded", TraceFailureSentences.Explain(code)));
     }
@@ -32,6 +32,8 @@ public sealed class TraceFailureSentenceTests
         Assert.Equal("ja- needs an inflection feature the word doesn't have. Required: Polarity: negative.",
             TraceFailureSentences.Explain("RequiredSyntacticFeatureStruct", "ja-", "Polarity: negative"));
         Assert.DoesNotContain("17", TraceFailureSentences.Explain("RequiredSyntacticFeatureStruct", null, "{\"17\":0}"));
+        Assert.Equal("This attempt did not use this allomorph.",
+            TraceFailureSentences.Explain("AllomorphNotApplicable"));
         Assert.Equal("PanGloss didn't record why.", TraceFailureSentences.Explain(null));
         Assert.Equal("PanGloss recorded an unfamiliar reason: FutureCode.", TraceFailureSentences.Explain("FutureCode"));
     }

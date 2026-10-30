@@ -76,10 +76,10 @@ cp bin/Release/tests/seeded-advice-raw.json \
 
 `GrammarHealth/schema-v4-stored-analysis-no-longer-parses.json` is a synthetic schema-4 information finding based on the PanGloss 0.8.3 metadata. It keeps the wordform, stored analysis, morph, MSA and rule subjects together so the Warnings test covers the finding's full subject list.
 
-`pangloss-0.8.11-trace-reasons.json` records the reason codes retained by the current pin in `rust/crates/pg-rules/src/trace.rs` at PanGloss tag `v0.8.11`, source commit `bc71b295b94d04ef9df3e8471b277a2b7abee21d`. The trace source is unchanged from PanGloss 0.8.4 through the current pin, 0.12.0; the fixture retains its original capture provenance.
+`pangloss-0.8.11-trace-reasons.json` records the reason codes retained by the current pin in `rust/crates/pg-rules/src/trace.rs` at PanGloss tag `v0.8.11`, source commit `bc71b295b94d04ef9df3e8471b277a2b7abee21d`. The trace source is unchanged from PanGloss 0.8.4 through 0.12.0; the fixture retains its original capture provenance.
 
 `GrammarHealth/schema-v4-stored-analysis-budget.json` is a trimmed PanGloss 0.8.3 `grammar-health` report of the mbugwe sample: three `grammar.stored-analysis.incomplete` warnings (two for one wordform) and the one `grammar.stored-analysis.budget-reached` information finding, as the parser wrote them.
 
-`pangloss-0.12.0-trace-reasons.json` is the current pin's annotated reason catalog at source commit `b2d75ca820212cc4d3a66ebe2043bbbeeb093158`. Its 23 codes match the unchanged `rust/crates/pg-rules/src/trace.rs` source. The earlier 0.8.11 catalog retains its original provenance.
+`pangloss-0.12.1-trace-reasons.json` is the current pin's annotated reason catalog at source commit `9a5c4400874bdb7b2e5d823e1d7d44dcdb8721b2`. Its 24 codes match the `rust/crates/pg-rules/src/trace.rs` source. The earlier 0.8.11 catalog retains its original provenance.
 
 The live `RealParserTraceTests` golden grammar still produces signature `32+PAST|sag+?d` and a completed, uncapped search on 0.10.0. Identical-input release probes at 200,000 steps observed both `NonPartialRuleProhibitedAfterFinalTemplate` and `PartialParse` on 0.8.11, and only `PartialParse` on 0.10.0. The live test pins the latter exact reasons; older raw captures remain unchanged. The Motif summary matches the new raw producer trace, so no reader suppression or relaxed assertion is needed.

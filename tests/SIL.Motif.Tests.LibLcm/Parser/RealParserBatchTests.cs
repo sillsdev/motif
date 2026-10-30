@@ -260,6 +260,8 @@ public sealed class RealParserBatchTests(PristineProjectFixture pristine)
             Assert.IsType<PanGlossOutcome.Completed>(second);
             Assert.Equal(PanGlossInterfaceVersions.StatsCacheVersion, ReadInt64(cachePath,
                 "SELECT schema_version FROM cache_identity WHERE cache_id = 1;"));
+            Assert.Equal(PanGlossInterfaceVersions.StatsCounterSemanticsVersion, ReadInt64(cachePath,
+                "SELECT counter_semantics FROM run LIMIT 1;"));
             var objectKeys = ReadStrings(cachePath, "SELECT key FROM object ORDER BY object_id;");
             Assert.Contains(objectKeys, key => key.StartsWith("lex_entry:", StringComparison.Ordinal));
             var allomorphKeys = ReadStrings(cachePath,
@@ -272,6 +274,8 @@ public sealed class RealParserBatchTests(PristineProjectFixture pristine)
             Assert.NotNull(counters.WorkSteps);
             Assert.Equal(ReadInt64(cachePath, "SELECT work FROM word LIMIT 1;"), counters.WorkSteps);
             Assert.True(counters.WorkSteps >= counters.Attempts);
+            Assert.Equal(counters.WorkSteps, statistics.ObjectTimings.Sum(row => row.WorkSteps));
+            Assert.Single(statistics.ObjectTimings, row => row.Kind == "unattributed");
             Assert.Contains(statistics.ObjectTimings,
                 row => row.Key.StartsWith("lex_entry:", StringComparison.Ordinal));
 

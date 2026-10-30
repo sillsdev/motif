@@ -32,6 +32,7 @@ public static class TraceFailureSentences
         ["NonPartialRuleProhibitedAfterFinalTemplate"] = "{0} can't apply after the last template.",
         ["NonPartialRuleRequiredAfterNonFinalTemplate"] = "{0} needs a rule after a non-final template.",
         ["MaxApplicationCount"] = "{0} reached the rule's application limit.",
+        ["AllomorphNotApplicable"] = "{0} did not use this allomorph.",
     };
 
     /// <summary>Uses only a recorded code, explicitly attributed rule, and named required operand.</summary>
