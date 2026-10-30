@@ -94,4 +94,51 @@ public sealed class ProposalSlotIndexTests
         Assert.Equal(first.OperationId.Value, refusal.Facts["existingOperationId"]);
         Assert.Equal(duplicate.OperationId.Value, refusal.Facts["duplicateOperationId"]);
     }
+
+    private static OperationEnvelope MoveExample(CanonicalId example, CanonicalId from, CanonicalId to) => new(
+        CanonicalId.Mint(), LexExampleOperationKinds.Move, target: example,
+        after: JsonSerializer.SerializeToElement(new { fromSense = from.Value, toSense = to.Value }));
+
+    private static OperationEnvelope RemoveSense(CanonicalId sense, CanonicalId entry) => new(
+        CanonicalId.Mint(), LexSenseRemoveOperationKinds.Remove, target: sense,
+        after: JsonSerializer.SerializeToElement(new { owner = entry.Value, topLevel = true, entry = entry.Value, msas = Array.Empty<string>() }));
+
+    /// <summary>Runs each case through both checkers, which must agree.</summary>
+    private static void AssertSlots(bool conflicts, params OperationEnvelope[] operations)
+    {
+        Assert.Equal(conflicts, Incremental([], operations) is not null);
+        Assert.Equal(conflicts, ProposalOperationSlotValidator.FindConflict(operations) is not null);
+    }
+
+    [Fact]
+    public void MovingAnExampleOutOfASenseThenDeletingThatSenseIsAllowed()
+    {
+        var (example, from, to, entry) = (CanonicalId.Mint(), CanonicalId.Mint(), CanonicalId.Mint(), CanonicalId.Mint());
+        AssertSlots(false, MoveExample(example, from, to), RemoveSense(from, entry));
+        AssertSlots(false, MoveExample(example, from, to), MoveExample(CanonicalId.Mint(), from, to), RemoveSense(from, entry));
+    }
+
+    [Fact]
+    public void ADeletionStillConflictsWithAMoveIntoTheSenseOrAnEditOfItsFields()
+    {
+        var (example, from, to, entry) = (CanonicalId.Mint(), CanonicalId.Mint(), CanonicalId.Mint(), CanonicalId.Mint());
+        AssertSlots(true, MoveExample(example, from, to), RemoveSense(to, entry));
+        AssertSlots(true, RemoveSense(to, entry), MoveExample(example, from, to));
+        AssertSlots(true, Gloss(from, "en"), RemoveSense(from, entry));
+        AssertSlots(true, RemoveSense(from, entry), Gloss(from, "en"));
+    }
+
+    [Fact]
+    public void DeletingASenseThenMovingAnExampleOutOfItIsRefused()
+    {
+        var (example, from, to, entry) = (CanonicalId.Mint(), CanonicalId.Mint(), CanonicalId.Mint(), CanonicalId.Mint());
+        AssertSlots(true, RemoveSense(from, entry), MoveExample(example, from, to));
+    }
+
+    [Fact]
+    public void ReleasingASenseStillConflictsWithAnotherMoveOfTheSameExample()
+    {
+        var (example, from, to, to2) = (CanonicalId.Mint(), CanonicalId.Mint(), CanonicalId.Mint(), CanonicalId.Mint());
+        AssertSlots(true, MoveExample(example, from, to), MoveExample(example, from, to2));
+    }
 }

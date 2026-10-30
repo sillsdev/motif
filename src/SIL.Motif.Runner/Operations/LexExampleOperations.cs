@@ -52,7 +52,7 @@ public static class LexExampleOperationKinds
             return
             [
                 new(example, OwnerField),
-                new(payload.FromSense, SnapshotFields.LexSenseExamples, member),
+                new(payload.FromSense, SnapshotFields.LexSenseExamples, member, ReleasesMember: true),
                 new(payload.ToSense, SnapshotFields.LexSenseExamples, member),
             ];
         });

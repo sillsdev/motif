@@ -129,6 +129,70 @@ public sealed class ExampleDraftTests(PristineProjectFixture pristine)
         Assert.Empty(cache.ServiceLocator.GetInstance<ILexSenseRepository>().GetObject(senses[1]).ExamplesOS);
     }
 
+    [Fact]
+    public void AnExampleMovedOutOfASenseLetsTheSameDraftDeleteThatSenseThenFinalizeDryRunAndApply()
+    {
+        using var cache = pristine.NewScratch();
+        var path = cache.ProjectId.Path;
+        Guid entryId = default, exampleId = default;
+        var senses = new List<Guid>();
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+        {
+            var services = cache.ServiceLocator;
+            var entry = services.GetInstance<ILexEntryFactory>().Create();
+            entryId = entry.Guid;
+            var form = services.GetInstance<IMoStemAllomorphFactory>().Create();
+            entry.LexemeFormOA = form;
+            form.MorphTypeRA = services.GetInstance<IMoMorphTypeRepository>().GetObject(MoMorphTypeTags.kguidMorphStem);
+            form.Form.set_String(cache.DefaultVernWs, "tinuud");
+            var msa = services.GetInstance<IMoStemMsaFactory>().Create();
+            entry.MorphoSyntaxAnalysesOC.Add(msa);
+            msa.PartOfSpeechRA = services.GetInstance<IPartOfSpeechRepository>().GetObject(pristine.Seed.PartOfSpeechId);
+            foreach (var gloss in new[] { "kept", "folded" })
+            {
+                var sense = services.GetInstance<ILexSenseFactory>().Create();
+                entry.SensesOS.Add(sense);
+                sense.Gloss.set_String(cache.DefaultAnalWs, gloss);
+                sense.MorphoSyntaxAnalysisRA = msa;
+                senses.Add(sense.Guid);
+            }
+            var example = services.GetInstance<ILexExampleSentenceFactory>().Create();
+            entry.SensesOS[1].ExamplesOS.Add(example);
+            example.Example.set_String(cache.DefaultVernWs, "tinuud ko");
+            exampleId = example.Guid;
+        });
+        new FwDataProjectLoader().Save(cache);
+        const string draft = "fold";
+        Assert.True(ProposalCommands.New(new(path, Version, draft, "Fold")).Succeeded);
+
+        var moved = ProposalCommands.ComposeIntent(new(path, Version, draft, "compose-move-example", Json(new
+        {
+            example = Id(exampleId), toSense = Id(senses[0]),
+        })));
+        Assert.True(moved.Succeeded, moved.Refusal?.Message);
+        var deleted = ProposalCommands.ComposeIntent(new(path, Version, draft, "compose-delete-sense",
+            Json(new { target = Id(senses[1]), owner = Id(entryId) })));
+        Assert.True(deleted.Succeeded, deleted.Refusal?.Message);
+
+        Assert.True(DraftRationale.Write(path, Version, draft, "The folded sense keeps nothing but its example.").Succeeded);
+        var finalized = ProposalCommands.Finalize(new(path, Version, draft));
+        Assert.True(finalized.Succeeded, finalized.Refusal?.Message);
+        var stored = ProjectStoreCommand.Run<Proposal>(path, Version, (database, _) =>
+            CommandOutcome<Proposal>.Success(ProposalJsonParser.Parse(new ProposalRepository(database)
+                .Get(CanonicalId.Parse(finalized.Value!.ProposalId)).ProposalJson!)));
+        Assert.True(stored.Succeeded, stored.Refusal?.Message);
+        var proposal = stored.Value!;
+
+        using var scratch = DryRunScratch.Adopt(new FwDataProjectLoader().LoadScratchCache(path), "fold");
+        var dry = ProposalDryRunner.Run(scratch, proposal);
+        ProposalApplier.Apply(cache, proposal, dry.Anchor, "tester");
+
+        var root = cache.ServiceLocator.GetInstance<ILexEntryRepository>().GetObject(entryId);
+        Assert.Equal([senses[0]], root.SensesOS.Select(sense => sense.Guid));
+        Assert.Equal(exampleId, Assert.Single(root.SensesOS[0].ExamplesOS).Guid);
+        Assert.False(cache.ServiceLocator.GetInstance<ICmObjectRepository>().IsValidObjectId(senses[1]));
+    }
+
     private static string Id(Guid guid) => CanonicalId.FromGuid(guid).Value;
 
     private static string Json(object value) => JsonSerializer.Serialize(value);

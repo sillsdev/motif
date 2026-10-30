@@ -5,9 +5,17 @@ using SIL.Motif.Contract.Parsing;
 
 namespace SIL.Motif.Runner.Operations;
 
-/// <summary>An addressed field value, entire field, or deleted entity. A null field denotes entity deletion.</summary>
+/// <summary>
+/// An addressed field value, entire field, or deleted entity. A null field denotes entity deletion. A slot that
+/// <paramref name="ReleasesMember"/> takes a member out of the target's list and leaves the target itself alone,
+/// so deleting the target afterwards is safe; it still conflicts with every other slot on the same member.
+/// </summary>
 public readonly record struct OperationSlot(
-    CanonicalId Target, string? Field, string? Discriminator = null, bool WholeField = false);
+    CanonicalId Target, string? Field, string? Discriminator = null, bool WholeField = false, bool ReleasesMember = false)
+{
+    /// <summary>The slot without its release flag, which is how two operations on the same member are matched.</summary>
+    internal OperationSlot Key => this with { ReleasesMember = false };
+}
 
 /// <summary>Closed slot policies for every operation kind, registered with its handler.</summary>
 public static class OperationSlotRegistry

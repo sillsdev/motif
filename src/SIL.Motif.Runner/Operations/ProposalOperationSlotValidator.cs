@@ -53,21 +53,21 @@ public static class ProposalOperationSlotValidator
                     var field = (slot.Target, slot.Field);
                     if (wholeFields.TryGetValue(field, out existing)) return (existing, operation);
                     if (slot.WholeField && fields.TryGetValue(field, out existing)) return (existing, operation);
-                    if (exact.TryGetValue(slot, out existing)) return (existing, operation);
+                    if (exact.TryGetValue(slot.Key, out existing)) return (existing, operation);
                 }
             }
 
             // Checking the whole footprint first avoids conflicts between overlapping slots within one operation.
             foreach (var slot in slots)
             {
-                targets.TryAdd(slot.Target, operation);
+                if (!slot.ReleasesMember) targets.TryAdd(slot.Target, operation);
                 if (slot.Field is null)
                     deletions.TryAdd(slot.Target, operation);
                 else
                 {
                     fields.TryAdd((slot.Target, slot.Field), operation);
                     if (slot.WholeField) wholeFields.TryAdd((slot.Target, slot.Field), operation);
-                    exact.TryAdd(slot, operation);
+                    exact.TryAdd(slot.Key, operation);
                 }
             }
         }

@@ -61,7 +61,7 @@ public sealed class ProposalSlotIndex
                 var field = (slot.Target, slot.Field);
                 if (_wholeFields.TryGetValue(field, out hit)) Consider(hit);
                 if (slot.WholeField && _fields.TryGetValue(field, out hit)) Consider(hit);
-                if (_exact.TryGetValue(slot, out hit)) Consider(hit);
+                if (_exact.TryGetValue(slot.Key, out hit)) Consider(hit);
             }
         }
         return best?.Operation;
@@ -75,14 +75,14 @@ public sealed class ProposalSlotIndex
             _hasWordformCreate = true;
         foreach (var slot in slots)
         {
-            _targets.TryAdd(slot.Target, entry);
+            if (!slot.ReleasesMember) _targets.TryAdd(slot.Target, entry);
             if (slot.Field is null)
                 _deletions.TryAdd(slot.Target, entry);
             else
             {
                 _fields.TryAdd((slot.Target, slot.Field), entry);
                 if (slot.WholeField) _wholeFields.TryAdd((slot.Target, slot.Field), entry);
-                _exact.TryAdd(slot, entry);
+                _exact.TryAdd(slot.Key, entry);
             }
         }
     }
