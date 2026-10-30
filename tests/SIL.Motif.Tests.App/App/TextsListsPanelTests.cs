@@ -190,7 +190,7 @@ public sealed class TextsListsPanelTests(AvaloniaHeadlessFixture avalonia)
                 var lineHeight = lines.Max(text => text.Bounds.Height);
                 Assert.True(header.Bounds.Height <= lineHeight + 1, $"The header is {header.Bounds.Height} high, not one line");
 
-                var controls = panel.FindControl<DockPanel>("ListControls")!;
+                var controls = panel.FindControl<Control>("ListControls")!;
                 var shown = controls.GetVisualDescendants().OfType<Control>()
                     .Where(control => control is Button or ComboBox && control.IsEffectivelyVisible).ToArray();
                 Assert.Equal(4, shown.Length);
