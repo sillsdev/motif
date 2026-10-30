@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using SIL.LCModel;
+using SIL.LCModel.Core.Text;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Model;
 using SIL.Motif.Contract.Parsing;
@@ -107,6 +108,52 @@ public sealed class EditPhonemeComposerTests(PristineProjectFixture pristine)
             user => user.Kind == "environment" && user.Name == "after t");
         // Adding a spelling leaves the environment's own string valid.
         Assert.Single(EditPhonemeComposer.Build(cache, new(t, ["ts"], [])), o => o.Kind.EndsWith("/createCodes", StringComparison.Ordinal));
+    }
+
+    private static void StoreCode(LcmCache cache, CanonicalId id, string text) =>
+        SIL.LCModel.Infrastructure.NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            Find(cache, id).CodesOS[0].Representation.set_String(cache.DefaultVernWs,
+                TsStringUtils.MakeString(text, cache.DefaultVernWs)));
+
+    [Fact]
+    public void RespellsAStoredCodeWithTrailingWhitespaceUsingItsExactSpelling()
+    {
+        using var cache = pristine.NewScratch();
+        var glottal = Phoneme(cache, "glottal stop", "g");
+        StoreCode(cache, glottal, "- ");
+
+        SoundSystemComposerTests.Execute(cache, EditPhonemeComposer.Build(cache, new(glottal, [], [new("- ", "-")])));
+
+        Assert.Equal(["-"], Codes(cache, glottal));
+    }
+
+    [Fact]
+    public void StillRefusesARespellToAValueWithWhitespace()
+    {
+        using var cache = pristine.NewScratch();
+        var glottal = Phoneme(cache, "glottal stop", "g");
+        StoreCode(cache, glottal, "- ");
+
+        Assert.StartsWith(EditPhonemeComposer.Invalid,
+            Refusal(() => EditPhonemeComposer.Build(cache, new(glottal, [], [new("- ", "- ")]))));
+        Assert.StartsWith(EditPhonemeComposer.Invalid,
+            Refusal(() => EditPhonemeComposer.Build(cache, new(glottal, [], [new("- ", "a b")]))));
+    }
+
+    [Fact]
+    public void RuleComposerRefusalOnAStoredCodeWithWhitespaceNamesTheRepair()
+    {
+        using var cache = pristine.NewScratch();
+        var glottal = Phoneme(cache, "glottal stop", "g");
+        var a = Phoneme(cache, "a", "a");
+        StoreCode(cache, glottal, "- ");
+
+        var message = Refusal(() => AuthorEnvironmentComposer.Build(cache,
+            new("after glottal", [new(Phoneme: glottal)], [new(Phoneme: a)])));
+
+        Assert.Contains("phoneme-code-malformed", message);
+        Assert.Contains("'- '", message);
+        Assert.Contains("compose-edit-phoneme", message);
     }
 
     [Fact]

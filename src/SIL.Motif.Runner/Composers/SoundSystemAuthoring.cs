@@ -266,7 +266,17 @@ internal static class SoundSystemAuthoring
         if (!phoneme.CodesOS.Any(c => !string.IsNullOrWhiteSpace(c.Representation.get_String(cache.DefaultVernWs)?.Text)))
             throw new InvalidOperationException("A phoneme needs a usable vernacular code before it can be referenced.");
         foreach (var code in phoneme.CodesOS)
-            RequireLiteral(code.Representation.get_String(cache.DefaultVernWs)?.Text!);
+        {
+            var text = code.Representation.get_String(cache.DefaultVernWs)?.Text;
+            try { RequireLiteral(text!); }
+            catch (InvalidOperationException exception)
+            {
+                throw new InvalidOperationException(
+                    $"phoneme-code-malformed: phoneme {Id(phoneme).Value} stores the code '{text}', which is not a valid grapheme " +
+                    $"({exception.Message}). Repair it first with compose-edit-phoneme, respelling '{text}' to a valid spelling " +
+                    "(the from spelling matches the stored code exactly, including whitespace).");
+            }
+        }
         return phoneme;
     }
 

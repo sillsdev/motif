@@ -23,7 +23,7 @@ public static class EditPhonemeComposer
     /// <summary>Refusal name: the target is not a phoneme of the first phoneme set.</summary>
     public const string NotInInventory = "phoneme-not-in-inventory";
 
-    /// <summary>Refusal name: a spelling is blank or holds whitespace or environment syntax.</summary>
+    /// <summary>Refusal name: a new spelling is blank or holds whitespace or environment syntax.</summary>
     public const string Invalid = "phoneme-representation-invalid";
 
     /// <summary>Refusal name: a spelling already belongs to a phoneme or boundary, or is given twice.</summary>
@@ -46,7 +46,7 @@ public static class EditPhonemeComposer
         var ws = cache.DefaultVernWs;
         var own = phoneme.CodesOS.ToDictionary(code => Spelling(cache, code) ?? string.Empty, code => code, StringComparer.Ordinal);
         var added = intent.Add.Select(Literal).ToArray();
-        var respelled = intent.Respell.Select(r => (From: Literal(r.From), To: Literal(r.To))).ToArray();
+        var respelled = intent.Respell.Select(r => (From: r.From.Normalize(NormalizationForm.FormD), To: Literal(r.To))).ToArray();
 
         var incoming = added.Concat(respelled.Select(r => r.To)).ToArray();
         if (incoming.Distinct(StringComparer.Ordinal).Count() != incoming.Length ||
