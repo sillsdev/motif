@@ -1263,7 +1263,9 @@
       "morphType": "Id of the desired stem-family morph type."
     },
     "goals": [
-      "Change the morph type of an existing stem form"
+      "Change the morph type of an existing stem form",
+      "Make a stem form a clitic by changing its morph type",
+      "Correct a stem form's morph type without recreating the entry"
     ]
   },
   "compose-edit-clitic-attachment": {
@@ -1277,7 +1279,9 @@
       "categories": "Ids of the parts of speech it should attach to; empty removes the restriction."
     },
     "goals": [
-      "Restrict the categories a clitic attaches to"
+      "Restrict the categories a clitic attaches to",
+      "Remove the Attaches to Categories restriction from a clitic",
+      "Replace the set of parts of speech a clitic attaches to"
     ]
   }
 }
