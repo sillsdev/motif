@@ -127,6 +127,7 @@ internal sealed class AlternateFormRemoveHandler : IOperationHandler
                 entry = entry.HeadWord?.Text,
                 @class = form.ClassName,
                 text = form.Form.BestVernacularAlternative?.Text,
+                forms = RemovalPreview.AllWritingSystems(form.Cache, form.Form),
                 morphType = form.MorphTypeRA?.Name.BestAnalysisAlternative?.Text,
                 index,
                 environments = (form as IMoStemAllomorph)?.PhoneEnvRC.Count ?? (form as IMoAffixAllomorph)?.PhoneEnvRC.Count ?? 0,

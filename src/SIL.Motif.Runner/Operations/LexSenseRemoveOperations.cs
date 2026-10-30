@@ -292,8 +292,6 @@ internal sealed class LexSenseRemoveHandler : ICompoundOperationHandler
     private static JsonElement Preview(SenseRemovalPlan plan)
     {
         var sense = plan.Sense;
-        string? Text(IMultiAccessorBase field) => field.BestAnalysisAlternative?.Text is { } text &&
-            !text.StartsWith("***", StringComparison.Ordinal) ? text : null;
         var siblings = plan.TopLevel ? plan.Entry.SensesOS.Cast<ICmObject>().ToList()
             : ((ILexSense)plan.Owner).SensesOS.Cast<ICmObject>().ToList();
         var index = siblings.FindIndex(item => item.Guid == sense.Guid);
@@ -313,10 +311,13 @@ internal sealed class LexSenseRemoveHandler : ICompoundOperationHandler
             deletedSenses = plan.Subtree.Select(item => new
             {
                 id = CanonicalId.FromGuid(item.Guid).Value,
-                gloss = Text(item.Gloss),
-                definition = Text(item.Definition),
+                parent = item.Guid == sense.Guid ? null : CanonicalId.FromGuid(item.Owner.Guid).Value,
+                gloss = RemovalPreview.AllWritingSystems(item.Cache, item.Gloss),
+                definition = RemovalPreview.AllWritingSystems(item.Cache, item.Definition),
+                notes = RemovalPreview.SenseNotes(item),
                 analysis = item.MorphoSyntaxAnalysisRA is { } msa ? CanonicalId.FromGuid(msa.Guid).Value : null,
-                examples = item.ExamplesOS.Count,
+                examples = item.ExamplesOS.Select(RemovalPreview.Example).ToArray(),
+                pictures = item.PicturesOS.Select(RemovalPreview.Picture).ToArray(),
             }).ToArray(),
             deletedAnalyses = plan.OrphanedAnalyses.Select(msa => new
             {
@@ -325,8 +326,60 @@ internal sealed class LexSenseRemoveHandler : ICompoundOperationHandler
                 partOfSpeech = VariantSenseAnalysisSafety.PartOfSpeech(msa) is { } pos
                     ? pos.Name.BestAnalysisAlternative?.Text : null,
             }).ToArray(),
-            reversal = "createSenses with the same ids, placements, glosses, definitions and examples, " +
+            reversal = "createSenses with the same ids, placements, glosses, definitions, notes, examples, translations and pictures, " +
                 "recreate any deleted analysis with the same class and id, and point the senses at it",
         });
     }
+}
+
+/// <summary>Reads everything a deletion removes into plain dictionaries, in every writing system, for the Dry Run preview.</summary>
+internal static class RemovalPreview
+{
+    /// <summary>Every non-empty alternative of a multilingual field, keyed by writing-system tag.</summary>
+    internal static Dictionary<string, string> AllWritingSystems(LcmCache cache, IMultiAccessorBase? field)
+    {
+        var result = new Dictionary<string, string>(StringComparer.Ordinal);
+        if (field is null)
+            return result;
+        var manager = cache.ServiceLocator.WritingSystemManager;
+        foreach (var ws in field.AvailableWritingSystemIds)
+            if (field.get_String(ws)?.Text is { Length: > 0 } text)
+                result[manager.Get(ws)?.Id ?? ws.ToString(System.Globalization.CultureInfo.InvariantCulture)] = text;
+        return result;
+    }
+
+    /// <summary>The sense's note fields that hold text, keyed by field name.</summary>
+    internal static Dictionary<string, Dictionary<string, string>> SenseNotes(ILexSense sense)
+    {
+        var fields = new (string Name, IMultiAccessorBase Field)[]
+        {
+            ("generalNote", sense.GeneralNote), ("anthropologyNote", sense.AnthroNote), ("grammarNote", sense.GrammarNote),
+            ("phonologyNote", sense.PhonologyNote), ("semanticsNote", sense.SemanticsNote),
+            ("sociolinguisticsNote", sense.SocioLinguisticsNote), ("discourseNote", sense.DiscourseNote),
+            ("bibliography", sense.Bibliography), ("restrictions", sense.Restrictions), ("encyclopedicInfo", sense.EncyclopedicInfo),
+        };
+        return fields.Select(item => (item.Name, Text: AllWritingSystems(sense.Cache, item.Field))).Where(item => item.Text.Count != 0)
+            .ToDictionary(item => item.Name, item => item.Text, StringComparer.Ordinal);
+    }
+
+    /// <summary>An example sentence: its text, reference and every translation.</summary>
+    internal static object Example(ILexExampleSentence example) => new
+    {
+        id = CanonicalId.FromGuid(example.Guid).Value,
+        text = AllWritingSystems(example.Cache, example.Example),
+        reference = example.Reference?.Text,
+        translations = example.TranslationsOC.Select(translation => new
+        {
+            type = translation.TypeRA?.Name.BestAnalysisAlternative?.Text,
+            text = AllWritingSystems(example.Cache, translation.Translation),
+        }).ToArray(),
+    };
+
+    /// <summary>A picture: its file and caption.</summary>
+    internal static object Picture(ICmPicture picture) => new
+    {
+        id = CanonicalId.FromGuid(picture.Guid).Value,
+        file = picture.PictureFileRA?.InternalPath,
+        caption = AllWritingSystems(picture.Cache, picture.Caption),
+    };
 }

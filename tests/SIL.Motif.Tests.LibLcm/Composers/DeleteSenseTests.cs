@@ -174,6 +174,78 @@ public sealed class DeleteSenseTests : IDisposable
     }
 
     [Fact]
+    public void ThePreviewShowsExampleTextTranslationsAndEveryWritingSystemOfGlossAndDefinition()
+    {
+        var root = Root("bisagra", sharedAnalysis: true, "hinge", "duplicate");
+        var french = FrenchWs();
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+        {
+            var sense = Sense(root.Senses[1]);
+            sense.Gloss.set_String(french, "doublon");
+            sense.Definition.set_String(_cache.DefaultAnalWs, "a second copy");
+            sense.Definition.set_String(french, "une seconde copie");
+            sense.GeneralNote.set_String(_cache.DefaultAnalWs, "check with the elder");
+            var example = _cache.ServiceLocator.GetInstance<ILexExampleSentenceFactory>().Create();
+            sense.ExamplesOS.Add(example);
+            example.Example.set_String(_cache.DefaultVernWs, "gibuksan ang bisagra");
+            var translation = _cache.ServiceLocator.GetInstance<ICmTranslationFactory>().Create(example,
+                _cache.ServiceLocator.GetInstance<ICmPossibilityRepository>().GetObject(CmPossibilityTags.kguidTranFreeTranslation));
+            translation.Translation.set_String(_cache.DefaultAnalWs, "the hinge was opened");
+            translation.Translation.set_String(french, "la charniere fut ouverte");
+        });
+
+        var preview = Preview(Compose(root.Senses[1], root.Entry), root.Entry);
+        foreach (var expected in new[]
+                 {
+                     "duplicate", "doublon", "a second copy", "une seconde copie", "check with the elder",
+                     "gibuksan ang bisagra", "the hinge was opened", "la charniere fut ouverte",
+                 })
+            Assert.Contains(expected, preview, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ThePreviewOfASubsenseShowsItsDetailAndNothingOfItsSiblings()
+    {
+        var root = Root("bisagra", sharedAnalysis: true, "hinge");
+        var french = FrenchWs();
+        var subs = new List<Guid>();
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+        {
+            var parent = Sense(root.Senses[0]);
+            foreach (var gloss in new[] { "even, including", "even so" })
+            {
+                var sub = _cache.ServiceLocator.GetInstance<ILexSenseFactory>().Create();
+                parent.SensesOS.Add(sub);
+                sub.Gloss.set_String(_cache.DefaultAnalWs, gloss);
+                sub.MorphoSyntaxAnalysisRA = parent.MorphoSyntaxAnalysisRA;
+                subs.Add(sub.Guid);
+            }
+            var target = Sense(subs[0]);
+            target.Gloss.set_String(french, "meme");
+            target.Definition.set_String(french, "y compris");
+            var example = _cache.ServiceLocator.GetInstance<ILexExampleSentenceFactory>().Create();
+            target.ExamplesOS.Add(example);
+            example.Example.set_String(_cache.DefaultVernWs, "bisan ikaw");
+        });
+
+        var preview = Preview(Compose(subs[0], root.Senses[0]), root.Senses[0]);
+        foreach (var expected in new[] { "sub-sense", "even, including", "meme", "y compris", "bisan ikaw" })
+            Assert.Contains(expected, preview, StringComparison.Ordinal);
+        Assert.DoesNotContain("even so", preview, StringComparison.Ordinal);
+    }
+
+    private string Preview(IReadOnlyList<OperationEnvelope> operations, Guid owner) =>
+        Assert.Single(ScratchDryRun.Of(_cache, Proposal(operations)).ExpectedEffects,
+            e => e.CanonicalId == Id(owner) && e.Preview is not null).Preview!.Value.GetRawText();
+
+    private int FrenchWs()
+    {
+        var manager = _cache.ServiceLocator.WritingSystemManager;
+        manager.GetOrSet("fr", out var french);
+        return french.Handle;
+    }
+
+    [Fact]
     public void AWrongOwnerOrAStaleOwnerIsRefused()
     {
         var root = Root("ayu", sharedAnalysis: true, "tree", "kaayu", "maayu");

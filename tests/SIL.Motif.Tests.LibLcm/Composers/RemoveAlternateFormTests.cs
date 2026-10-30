@@ -90,6 +90,20 @@ public sealed class RemoveAlternateFormTests : IDisposable
     }
 
     [Fact]
+    public void ThePreviewShowsTheFormInEveryWritingSystem()
+    {
+        var (entry, forms) = EntryWithAlternates("tuig", "tinuig");
+        _cache.ServiceLocator.WritingSystemManager.GetOrSet("fr", out var french);
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+            ((IMoForm)Repository.GetObject(forms[0])).Form.set_String(french.Handle, "tinuigue"));
+        var effect = Assert.Single(ScratchDryRun.Of(_cache, Proposal(Compose(entry, forms[0]))).ExpectedEffects,
+            e => e.Field == SnapshotFields.LexEntryAlternateForms);
+        var preview = effect.Preview!.Value.GetRawText();
+        Assert.Contains("tinuig", preview, StringComparison.Ordinal);
+        Assert.Contains("tinuigue", preview, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ThePayloadIsClosed()
     {
         using var unknown = JsonDocument.Parse($"{{\"form\":\"{Id(Guid.NewGuid()).Value}\",\"force\":true}}");
