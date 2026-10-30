@@ -1305,6 +1305,10 @@ public static class MotifAppStrings
 
     public static string SecondsPerWord => Text("MotifApp.SecondsPerWord");
 
+    public static string AssessBudgetStoppedFormat => Text("MotifApp.AssessBudgetStoppedFormat");
+    public static string AssessBudgetLabel => Text("MotifApp.AssessBudgetLabel");
+    public static string AssessBudgetCaption => Text("MotifApp.AssessBudgetCaption");
+    public static string AssessBudgetRefusal => Text("MotifApp.AssessBudgetRefusal");
     public static string AnalysisAttemptLimit => Text("MotifApp.AnalysisAttemptLimit");
 
     public static string ReadingTheParseTimes => Text("MotifApp.ReadingTheParseTimes");

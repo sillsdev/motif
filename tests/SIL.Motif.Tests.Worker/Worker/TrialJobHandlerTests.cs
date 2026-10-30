@@ -33,6 +33,7 @@ using SIL.Motif.Runner.AppliedLog;
 using SIL.Motif.Runner.DryRun;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker.Baselines;
+using SIL.Motif.Worker.Assess;
 using SIL.Motif.Worker.Jobs;
 using SIL.Motif.Worker.Projects;
 using SIL.Motif.Worker;
@@ -107,6 +108,96 @@ public sealed class TrialJobHandlerTests : IDisposable
         }
         _database.Dispose();
         try { Directory.Delete(_root, recursive: true); } catch { /* best-effort */ }
+    }
+
+    [Fact]
+    public void BudgetStopIsTerminalAndDoesNotPublishCandidateAssessments()
+    {
+        using var lanes = new ProjectLaneRegistry(_ => _token);
+        var handler = BuildHandler(lanes, new FakeAssessor("pangloss", [AssessmentKind.Correctness]));
+        var proposalId = CanonicalId.Mint("proposal/");
+        var proposalJson = BuildSetGlossProposalJson(proposalId, _seed.FirstSenseId, "trial text");
+        SaveCommittedProposal(proposalId, proposalJson);
+        var job = CreateTrialJob(proposalJson);
+        using var stop = new CancellationTokenSource();
+        stop.Cancel();
+        TrialJobHandler.BudgetStopForTests.Value = stop.Token;
+        try
+        {
+            var finished = RunAndFinish(handler, job.JobId);
+            Assert.Equal(JobStatus.StoppedByBudget, finished.Status);
+            Assert.Contains("words done", finished.ResultJson);
+            Assert.Empty(_assessments.ListByProposal(proposalId));
+        }
+        finally { TrialJobHandler.BudgetStopForTests.Value = null; }
+    }
+
+    [Fact]
+    public async Task BudgetClockIncludesTimeSinceClaim()
+    {
+        using var lanes = new ProjectLaneRegistry(_ => _token);
+        var handler = BuildHandler(lanes, new FakeAssessor("pangloss", [AssessmentKind.Correctness]));
+        var proposalId = CanonicalId.Mint("proposal/");
+        var proposalJson = BuildSetGlossProposalJson(proposalId, _seed.FirstSenseId, "claim clock");
+        SaveCommittedProposal(proposalId, proposalJson);
+        var job = CreateTrialJob(proposalJson, [UnanalysedWordform], startRunning: false);
+        var claimed = new JobClaims(_database).Claim(ProjectWorkspaceKey.Compute(_project), "clock-worker",
+            JobTimestamp.FormatUtc(DateTimeOffset.UtcNow), TimeSpan.FromMinutes(5))!;
+        Assert.Equal(job.JobId, claimed.JobId);
+        TrialJobHandler.BudgetDurationForTests.Value = TimeSpan.FromMilliseconds(50);
+        try
+        {
+            await Task.Delay(100);
+            var claim = new ClaimedJob(_jobs, claimed);
+            var outcome = await handler.RunAsync(claim, _project, CancellationToken.None);
+            Assert.Equal(JobStatus.StoppedByBudget, outcome!.Status);
+            Assert.True(new JobClaims(_database).Finish(job.JobId, claimed.ClaimToken!, outcome.Status, outcome.Category, outcome.ResultJson));
+            Assert.Equal(JobStatus.StoppedByBudget, _jobs.Get(job.JobId)!.Status);
+            Assert.Empty(_assessments.ListByProposal(proposalId));
+        }
+        finally { TrialJobHandler.BudgetDurationForTests.Value = null; }
+    }
+
+    [Fact]
+    public async Task BudgetTimerStopsTheWorkerParserProcess()
+    {
+        var parserPath = FakeParser.Copy(Path.Combine(_root, "budget-parser"));
+        var heartbeat = Path.Combine(_root, "budget-heartbeat");
+        var processIdPath = Path.Combine(_root, "budget-parser-id");
+        FakeParser.BehaveBesideExecutable(parserPath, new { heartbeatPath = heartbeat, processIdPath });
+        using var invoker = new PanGlossInvoker(parserPath);
+        using var lanes = new ProjectLaneRegistry(_ => _token);
+        var assessor = new PanGlossAssessor(new StatsCacheStore(WorkspaceOwnership.Bootstrap(Path.Combine(_root, "worker"))), invoker);
+        var handler = BuildHandler(lanes, assessor);
+        var proposalId = CanonicalId.Mint("proposal/");
+        var proposalJson = BuildSetGlossProposalJson(proposalId, _seed.FirstSenseId, "budget test");
+        SaveCommittedProposal(proposalId, proposalJson);
+        var job = CreateTrialJob(proposalJson, [UnanalysedWordform], startRunning: false);
+        var claimed = new JobClaims(_database).Claim(ProjectWorkspaceKey.Compute(_project), "budget-worker",
+            JobTimestamp.FormatUtc(DateTimeOffset.UtcNow), TimeSpan.FromMinutes(5))!;
+        Assert.Equal(job.JobId, claimed.JobId);
+        TrialJobHandler.BudgetDurationForTests.Value = TimeSpan.FromSeconds(12);
+        try
+        {
+            var pending = handler.RunAsync(new ClaimedJob(_jobs, claimed), _project, CancellationToken.None);
+            var until = Stopwatch.StartNew();
+            while ((!File.Exists(heartbeat) || !File.Exists(processIdPath)) && !pending.IsCompleted && until.Elapsed < TimeSpan.FromSeconds(20))
+                await Task.Delay(25);
+            Assert.True(File.Exists(heartbeat) && File.Exists(processIdPath), "The held fake parser did not start.");
+            var processId = int.Parse(File.ReadAllText(processIdPath), System.Globalization.CultureInfo.InvariantCulture);
+            var outcome = await pending.WaitAsync(TimeSpan.FromSeconds(25));
+            Assert.Equal(JobStatus.StoppedByBudget, outcome!.Status);
+            Assert.Contains("1 not done", outcome.ResultJson);
+            try
+            {
+                using var parser = Process.GetProcessById(processId);
+                await parser.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(10));
+                Assert.True(parser.HasExited);
+            }
+            catch (ArgumentException) { }
+            Assert.Empty(_assessments.ListByProposal(proposalId));
+        }
+        finally { TrialJobHandler.BudgetDurationForTests.Value = null; }
     }
 
     [Fact]

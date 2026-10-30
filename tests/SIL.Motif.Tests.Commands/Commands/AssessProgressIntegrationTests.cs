@@ -1,5 +1,8 @@
 using SIL.Motif.Commands.Assess;
 using SIL.Motif.Contract.Jobs;
+using SIL.Motif.Contract.Commands;
+using SIL.Motif.Worker.Jobs;
+using SIL.Motif.Worker.Store;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Tests.TestFixtures;
@@ -11,6 +14,57 @@ namespace SIL.Motif.Tests.Commands;
 [Trait("MotifTestLevel", "Integration")]
 public sealed class AssessProgressIntegrationTests(PristineProjectFixture pristine)
 {
+    [Fact]
+    public async Task BudgetStopsTheParserRecordsCountsAndPublishesNoAssessment()
+    {
+        using var project = new WalkthroughProject(pristine);
+        var parser = FakeParser.CopyRecordingInvocations(project.ManagedRoot);
+        var release = Path.Combine(project.ManagedRoot, "budget-release");
+        FakeParser.BehaveBesideExecutable(parser, new
+        {
+            streamProgress = true,
+            holdEachWordUntil = release,
+            words = new[]
+            {
+                new { word = "a-fast", outcome = "complete", elapsedMs = 10 },
+                new { word = "b-held", outcome = "complete", elapsedMs = 10 },
+            },
+        });
+        using var stop = new CancellationTokenSource();
+        var secondStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        AssessCommand.BudgetStopForTests.Value = stop.Token;
+        try
+        {
+            var run = Task.Run(() => AssessCommand.Assess(
+                new AssessRequest(project.FwDataPath,
+                    new SelectionRequest(false, [], ["a-fast", "b-held"], false, null)),
+                project.ManagedRoot, parser, progress =>
+                {
+                    if (progress is { Stage: AssessmentStage.Parsing, CurrentWord: "a-fast" })
+                        File.WriteAllText(release + ".0", string.Empty);
+                    if (progress is { Stage: AssessmentStage.Parsing, Completed: 1, CurrentWord: "b-held" })
+                        secondStarted.TrySetResult();
+                }, CancellationToken.None));
+            await secondStarted.Task.WaitAsync(TimeSpan.FromSeconds(60));
+            stop.Cancel();
+            var outcome = await run.WaitAsync(TimeSpan.FromSeconds(60));
+            Assert.False(outcome.Succeeded);
+            Assert.Equal(RefusalCodes.AssessmentStoppedByBudget, outcome.Refusal!.Code);
+            Assert.Equal("1", outcome.Refusal.Facts["wordsDone"]);
+            Assert.Equal("1", outcome.Refusal.Facts["wordsNotDone"]);
+            using var database = ProjectMotifDatabase.Open(project.FwDataPath);
+            var job = new JobRepository(database).Get(outcome.Refusal.Facts["jobId"]);
+            Assert.Equal(JobStatus.StoppedByBudget, job!.Status);
+            Assert.Empty(new AssessmentRepository(database).ListByKind("ParseTime"));
+        }
+        finally
+        {
+            AssessCommand.BudgetStopForTests.Value = null;
+            File.WriteAllText(release + ".0", string.Empty);
+            File.WriteAllText(release + ".1", string.Empty);
+        }
+    }
+
     [Fact]
     public async Task PublicAssessForwardsFlushedRowsBeforeTheNextWordCompletes()
     {

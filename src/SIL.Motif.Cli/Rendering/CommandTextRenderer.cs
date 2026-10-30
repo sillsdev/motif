@@ -567,7 +567,8 @@ public static class CommandTextRenderer
         var text = new StringBuilder();
         text.AppendLine("Job " + response.JobId);
         text.AppendLine("  Kind:    " + response.Kind);
-        text.AppendLine("  Status:  " + response.Status);
+        text.AppendLine("  Status:  " + (response.Status is JobStatus.StoppedByBudget
+            ? JobStatusJson.ToWire(JobStatus.StoppedByBudget) : response.Status?.ToString()));
         text.AppendLine("  Attempt: " + response.Attempt);
         text.AppendLine("  Updated: " + response.UpdatedUtc);
         if (response.QueueOrder is { } queueOrder)

@@ -681,6 +681,32 @@ public sealed class GeneratedArtifactReferencesTests : IDisposable
     }
 
     [Fact]
+    public void BudgetStopsAreRecognizedAndKeepTheTrialBaseline()
+    {
+        using var database = OpenDatabase("budget-stops.fwdata");
+        var token = NewBaseline('d');
+        var result = JsonSerializer.Serialize(new
+        {
+            code = "assessment.stopped-by-budget", message = "Stopped.", wordsDone = 1, wordsNotDone = 2,
+            baselineToken = token,
+        }, MotifJson.CreateOptions());
+        using (var connection = database.OpenConnection())
+        using (var transaction = connection.BeginTransaction())
+        {
+            InsertJob(connection, transaction, "assess", "assess", "stopped-by-budget", "{}",
+                "{\"code\":\"assessment.stopped-by-budget\",\"message\":\"Stopped.\",\"wordsDone\":1,\"wordsNotDone\":2}", null);
+            var input = JsonSerializer.Serialize(new TrialJobInput("{}", null), MotifJson.CreateOptions());
+            InsertJob(connection, transaction, "trial", TrialJobHandler.TrialKind, "stopped-by-budget", input, result, null);
+            transaction.Commit();
+        }
+        var references = Capture(database);
+        Assert.True(references.FamilyCompleteness.Single(item => item.Family == ArtifactReferenceFamily.Jobs).IsComplete,
+            string.Join(",", references.Diagnostics.Select(item => item.Code)));
+        Assert.Contains(references.References, item => item.Target == token.BundleDigest &&
+            item.Reason == "budget-stop-baseline-token");
+    }
+
+    [Fact]
     public void MissingSuccessfulJobResultsMarkJobsIncompleteAndRetainUncertainty()
     {
         using var database = OpenDatabase("missing-successful-job-results.fwdata");

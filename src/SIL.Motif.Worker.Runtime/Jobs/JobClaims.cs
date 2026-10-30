@@ -33,6 +33,11 @@ public sealed class JobClaims : IJobClaimProtocol
         "(CASE WHEN json_valid(InputJson) THEN json_extract(InputJson, '" + JobParserPin.KeyPath + "') END IS NULL " +
         "OR json_extract(InputJson, '" + JobParserPin.KeyPath + "') = $parser)";
 
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<JobRecord, System.Diagnostics.Stopwatch> ClaimTimers = new();
+
+    internal static System.Diagnostics.Stopwatch TimerFor(JobRecord job) =>
+        ClaimTimers.GetValue(job, _ => System.Diagnostics.Stopwatch.StartNew());
+
     private readonly MotifDatabase _database;
     private readonly JobRepository _jobs;
     private readonly string? _parserKey;
@@ -131,6 +136,7 @@ public sealed class JobClaims : IJobClaimProtocol
             claimed = JobRepository.Read(reader);
         }
         transaction.Commit();
+        ClaimTimers.Add(claimed, System.Diagnostics.Stopwatch.StartNew());
         return claimed;
     }
 
@@ -193,12 +199,25 @@ public sealed class JobClaims : IJobClaimProtocol
         if (string.IsNullOrWhiteSpace(claimToken))
             throw new ArgumentException("A claim token is required.", nameof(claimToken));
 
-        var current = _jobs.Get(jobId);
-        if (current is null || current.Status is not (JobStatus.Running or JobStatus.WaitingForBaseline or
-                JobStatus.WaitingForProjectHost)) return false;
-        if (!string.Equals(current.ClaimToken, claimToken, StringComparison.Ordinal)) return false;
-        _jobs.Transition(jobId, status, current.Version, category, resultJson);
-        return true;
+        for (var attempt = 0; attempt < 3; attempt++)
+        {
+            var current = _jobs.Get(jobId);
+            if (current is null || current.Status is not (JobStatus.Running or JobStatus.WaitingForBaseline or
+                    JobStatus.WaitingForProjectHost)) return false;
+            if (!string.Equals(current.ClaimToken, claimToken, StringComparison.Ordinal)) return false;
+            var cancelled = status == JobStatus.StoppedByBudget && current.CancellationRequested;
+            try
+            {
+                _jobs.Transition(jobId, cancelled ? JobStatus.Cancelled : status, current.Version,
+                    cancelled ? JobFailureCategory.Cancellation : category, cancelled ? null : resultJson);
+                return true;
+            }
+            catch (InvalidOperationException) when (status == JobStatus.StoppedByBudget && attempt < 2 &&
+                _jobs.Get(jobId) is { CancellationRequested: true } changed && changed.Version != current.Version)
+            {
+            }
+        }
+        return false;
     }
 
     private static string Normalize(string value) => JobTimestamp.FormatUtc(DateTimeOffset.Parse(value,

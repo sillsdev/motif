@@ -49,6 +49,7 @@ public static class RefusalCodes
     public const string AssessWordsFileNotText = "assess.words-file-not-text";
     public const string AssessWordsFileTooLarge = "assess.words-file-too-large";
     public const string AssessWordsFileUnreadable = "assess.words-file-unreadable";
+    public const string AssessmentStoppedByBudget = "assessment.stopped-by-budget";
     public const string AssessmentCancelled = "assessment.cancelled";
 
     public const string BaselineBusy = "baseline.busy";

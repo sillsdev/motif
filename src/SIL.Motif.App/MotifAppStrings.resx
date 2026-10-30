@@ -7453,4 +7453,8 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <value>Work steps</value>
     <comment>Heading for parser work-budget reservations, measured in work steps.</comment>
   </data>
+  <data name="MotifApp.AssessBudgetLabel" xml:space="preserve"><value>Time Limit for the Whole Parse (seconds)</value><comment>Label in Parsing settings for the time allowed for the entire parse.</comment></data>
+  <data name="MotifApp.AssessBudgetCaption" xml:space="preserve"><value>Stop the whole parse after this time. The default is one hour.</value><comment>Explains the whole-parse time limit on the Parsing settings page.</comment></data>
+  <data name="MotifApp.AssessBudgetRefusal" xml:space="preserve"><value>Enter a whole number from 60 to 4,294,967 seconds.</value><comment>Message when the whole-parse time limit is empty or outside the allowed range.</comment></data>
+  <data name="MotifApp.AssessBudgetStoppedFormat" xml:space="preserve"><value>Parsing stopped at the time limit: {0} words done, {1} not done. No results were saved.</value><comment>Stopped parse message: {0} is the number of words done and {1} is the number not done.</comment></data>
 </root>

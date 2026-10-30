@@ -5,6 +5,7 @@ using SIL.Motif.Contract;
 using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Canonicalization;
+using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Parsing;
@@ -79,6 +80,8 @@ public sealed record TrialJobInput(
 /// </remarks>
 internal sealed class TrialJobHandler
 {
+    internal static readonly AsyncLocal<CancellationToken?> BudgetStopForTests = new();
+    internal static readonly AsyncLocal<TimeSpan?> BudgetDurationForTests = new();
     /// <summary>The durable job kind this handler drives.</summary>
     internal const string TrialKind = "trial";
 
@@ -141,6 +144,39 @@ internal sealed class TrialJobHandler
     /// <summary>Runs one claimed Trial job through to a terminal outcome, or parks it waiting for a Baseline.</summary>
     internal async Task<JobOutcome?> RunAsync(ClaimedJob claim, ProjectLocator project, CancellationToken cancellationToken)
     {
+        var seconds = new NamedSelectionRepository(claim.Database).GetDefault()?.Limits.AssessBudgetSeconds ?? 3600;
+        var remaining = (BudgetDurationForTests.Value ?? TimeSpan.FromSeconds(seconds)) - claim.ClaimElapsed;
+        using var budget = new CancellationTokenSource();
+        using var forcedBudget = BudgetStopForTests.Value?.Register(budget.Cancel);
+        if (remaining <= TimeSpan.Zero) budget.Cancel();
+        else budget.CancelAfter(remaining);
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, budget.Token);
+        var progress = new BudgetProgress();
+        try
+        {
+            return await RunBudgetedAsync(claim, project, progress, linked.Token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            if (!budget.IsCancellationRequested || cancellationToken.IsCancellationRequested)
+                return new JobOutcome(JobStatus.Cancelled, JobFailureCategory.Cancellation);
+            var completed = Volatile.Read(ref progress.Done);
+            var unfinished = Math.Max(0, Volatile.Read(ref progress.Total) - completed);
+            var message = $"Parsing stopped at the time limit: {completed} words done, {unfinished} not done. No Assessment was saved.";
+            var baseline = _baselines.GetCurrentPublished(ProjectWorkspaceKey.Compute(project));
+            return new JobOutcome(JobStatus.StoppedByBudget, ResultJson: JsonSerializer.Serialize(new
+            {
+                code = RefusalCodes.AssessmentStoppedByBudget, message, wordsDone = completed, wordsNotDone = unfinished,
+                baselineToken = baseline?.Token,
+            }, MotifJson.CreateOptions()));
+        }
+    }
+
+    private sealed class BudgetProgress { public int Done; public int Total; }
+
+    private async Task<JobOutcome?> RunBudgetedAsync(ClaimedJob claim, ProjectLocator project,
+        BudgetProgress progress, CancellationToken cancellationToken)
+    {
         ArgumentNullException.ThrowIfNull(project);
         ArgumentNullException.ThrowIfNull(claim);
         if (claim.Job.Status != JobStatus.Running)
@@ -162,6 +198,7 @@ internal sealed class TrialJobHandler
         }
 
         var input = TrialJobInput.Parse(claim.Job.InputJson);
+        progress.Total = input.Words?.Count ?? 0;
         var proposal = ProposalJsonParser.Parse(input.ProposalJson);
         var configuration = _configuration.Read(project);
         var scopeConfiguration = ResolveScope(configuration, input.Scope);
@@ -205,9 +242,10 @@ internal sealed class TrialJobHandler
         if (cancellationToken.IsCancellationRequested)
         {
             if (!preserveScratch) TryDeleteDirectory(scratchRoot);
-            return new JobOutcome(JobStatus.Cancelled, JobFailureCategory.Cancellation);
+            cancellationToken.ThrowIfCancellationRequested();
         }
 
+        progress.Total = candidate.Scope.WordForms.Count;
         try
         {
             string? grammarCheckWarning = null;
@@ -244,7 +282,11 @@ internal sealed class TrialJobHandler
                 _grammarHealth is null ? 1 : 2, "assessment");
             var batchWait = claim.ObserveParserWait(batchPhase);
             var produced = await assessor.ProduceAsync(candidate.Scope, candidate.ExportedDirectory,
-                    progress => claim.PublishTrialProgress(progress with { PerWordLimitMs = limitMs }),
+                    wordProgress =>
+                    {
+                        Interlocked.Exchange(ref progress.Done, wordProgress.Completed);
+                        claim.PublishTrialProgress(wordProgress with { PerWordLimitMs = limitMs });
+                    },
                     batchWait.Observe, cancellationToken)
                 .ConfigureAwait(false);
             var artifactLeases = produced.Select(item => item.ArtifactLease).OfType<AssessmentArtifactLease>().Distinct().ToArray();
@@ -302,10 +344,7 @@ internal sealed class TrialJobHandler
                 }
             }
         }
-        catch (OperationCanceledException)
-        {
-            return new JobOutcome(JobStatus.Cancelled, JobFailureCategory.Cancellation);
-        }
+        catch (OperationCanceledException) { throw; }
         catch (Exception exception)
         {
             var detail = JsonSerializer.Serialize(new { detail = exception.Message });

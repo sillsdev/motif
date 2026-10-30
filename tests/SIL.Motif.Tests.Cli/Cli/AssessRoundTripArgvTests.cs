@@ -2,6 +2,8 @@ using System.Diagnostics;
 using System.Globalization;
 using Microsoft.Data.Sqlite;
 using SIL.Motif.Contract.Projects;
+using SIL.Motif.Commands;
+using SIL.Motif.Host;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Tests.TestFixtures;
@@ -129,6 +131,92 @@ public sealed class AssessRoundTripArgvTests : IDisposable
     }
 
     [Fact]
+    public async Task WholeRunLimitExitsFiveAndDoesNotStorePartialResults()
+    {
+        var project = _pristine.CopyProjectFile();
+        await CaptureBaseline(project);
+        var wordsPath = Path.Combine(_root, "budget-words.txt");
+        File.WriteAllText(wordsPath, "motifa" + Environment.NewLine);
+        var heartbeat = Path.Combine(_root, "budget-heartbeat.txt");
+        var parserIdPath = Path.Combine(_root, "budget-parser-id.txt");
+        var parser = CopyFakeParser(new { heartbeatPath = heartbeat, processIdPath = parserIdPath });
+        var start = CliProcess.CreateStartInfo(_workerRoot, parser, false,
+            "assess", project, "--words", wordsPath, "--max-seconds", "60", "--json");
+        start.Environment["MOTIF_TEST_ASSESS_BUDGET_PROJECT"] = project;
+        using var launched = InterruptibleCli.Start(start);
+        var process = launched.Process;
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(45);
+        int? parserId = null;
+        while (!process.HasExited && DateTime.UtcNow < deadline)
+        {
+            if (File.Exists(heartbeat) && TryReadProcessId(parserIdPath) is { } parsedId)
+            {
+                parserId = parsedId;
+                break;
+            }
+            await Task.Delay(25);
+        }
+        if (parserId is null)
+        {
+            if (!process.HasExited) process.Kill(entireProcessTree: true);
+            await launched.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(30));
+            Assert.Fail("The fake parser did not start: " + launched.ReadStderr());
+        }
+        await launched.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(30));
+        var error = launched.ReadStderr();
+        Assert.True(launched.ExitCode == 5, error);
+        var failure = ProjectionJson.Deserialize<FailureEnvelope>(error)!;
+        Assert.Equal("assessment.stopped-by-budget", failure.Code);
+        Assert.Equal(FailureReason.StoppedByBudget, failure.Reason);
+        Assert.Equal("0", failure.Detail!["wordsDone"]);
+        Assert.Equal("1", failure.Detail["wordsNotDone"]);
+        await AssertProcessStopped(parserId!.Value);
+        Assert.Equal(0L, ReadAssessmentCount(project));
+        Assert.Equal(0L, ReadInvocationCount(project));
+    }
+
+    [Fact]
+    public async Task TrialWaitReportsBeforeBudgetStopAndLeavesOneJob()
+    {
+        var project = _pristine.CopyProjectFile();
+        await CaptureBaseline(project);
+        var draft = CliInProcess.Run(_workerRoot, null, true, "new", "--project", project, "--draft", "budget");
+        Assert.True(draft.ExitCode == 0, draft.FailureDetails);
+        var operation = CliInProcess.Run(_workerRoot, null, true, "add-set-gloss", "--project", project,
+            "--draft", "budget", "--target", "agent_AAECAwQFBgcICQoLDA0ODw", "--ws", "en", "--text", "hello");
+        Assert.True(operation.ExitCode == 0, operation.FailureDetails);
+        var label = CliInProcess.Run(_workerRoot, null, true, "label", "--project", project, "--draft", "budget", "Budget Trial");
+        Assert.True(label.ExitCode == 0, label.FailureDetails);
+        Assert.True(DraftRationale.Write(project, MotifProductVersion.CurrentText, "budget", "a rationale").Succeeded);
+        var finalized = CliInProcess.Run(_workerRoot, null, true, "finalize", "--project", project, "--draft", "budget");
+        Assert.True(finalized.ExitCode == 0, finalized.FailureDetails);
+        const string marker = "-> Proposal ";
+        var begin = finalized.Output.IndexOf(marker, StringComparison.Ordinal) + marker.Length;
+        Assert.True(begin >= marker.Length, finalized.Output);
+        var proposal = finalized.Output[begin..finalized.Output.IndexOf(' ', begin)];
+        var wordsPath = Path.Combine(_root, "trial-budget-words.txt");
+        File.WriteAllText(wordsPath, "motifa" + Environment.NewLine);
+        var heartbeat = Path.Combine(_root, "trial-budget-heartbeat");
+        var parserIdPath = Path.Combine(_root, "trial-budget-parser-id");
+        var parser = CopyFakeParser(new { heartbeatPath = heartbeat, processIdPath = parserIdPath });
+        var start = CliProcess.CreateStartInfo(_workerRoot, parser, true,
+            "trial", "--project", project, proposal, "--words", wordsPath, "--wait", "--json");
+        CliProcess.EnableAdvancedAiMode(start, _workerRoot);
+        start.Environment["MOTIF_TEST_ASSESS_BUDGET_PROJECT"] = project;
+        using var launched = InterruptibleCli.Start(start);
+        await launched.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(40));
+        var error = launched.ReadStderr();
+        Assert.True(launched.ExitCode == 5, error);
+        var failure = ProjectionJson.Deserialize<FailureEnvelope>(error)!;
+        Assert.Equal("assessment.stopped-by-budget", failure.Code);
+        Assert.Equal("1", failure.Detail!["wordsNotDone"]);
+        Assert.True(File.Exists(heartbeat));
+        await AssertProcessStopped(TryReadProcessId(parserIdPath)!.Value);
+        Assert.Equal(1L, ReadCount(project, "Jobs"));
+        Assert.Equal(0L, ReadAssessmentCount(project));
+    }
+
+    [Fact]
     public async Task InterruptingAssessStopsTheParserAndStoresNothing()
     {
         var project = _pristine.CopyProjectFile();
@@ -172,7 +260,10 @@ public sealed class AssessRoundTripArgvTests : IDisposable
         Assert.Equal(0L, ReadInvocationCount(project));
         var statsCacheRoot = Path.Combine(_workerRoot, "assessment-runs");
         if (Directory.Exists(statsCacheRoot))
-            Assert.Empty(Directory.EnumerateFileSystemEntries(statsCacheRoot));
+        {
+            Assert.Empty(Directory.EnumerateDirectories(statsCacheRoot));
+            Assert.All(Directory.EnumerateFiles(statsCacheRoot), path => Assert.EndsWith(".owner", path, StringComparison.Ordinal));
+        }
     }
 
     public void Dispose()

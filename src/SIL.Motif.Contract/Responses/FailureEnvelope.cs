@@ -24,6 +24,9 @@ public enum FailureReason
     /// <summary>The caller asked to stop; nothing was recorded.</summary>
     Cancelled,
 
+    /// <summary>The Assessment exceeded its whole-run time limit.</summary>
+    StoppedByBudget,
+
     /// <summary>Well-formed, and not attemptable now: a held lock, a busy store, a lease elsewhere.</summary>
     Busy,
 
@@ -87,6 +90,7 @@ public sealed record FailureEnvelope
         FailureReason.NotFound => 2,
         FailureReason.Refused => 2,
         FailureReason.Cancelled => 2,
+        FailureReason.StoppedByBudget => 5,
         FailureReason.Busy => 3,
         FailureReason.StoreInconsistent => 4,
         _ => 4,

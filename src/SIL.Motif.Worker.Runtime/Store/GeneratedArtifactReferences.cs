@@ -1062,6 +1062,7 @@ internal static class GeneratedArtifactReferences
                 builder.Incomplete(ArtifactReferenceFamily.Jobs, store.StoreIdentity,
                     "job-kind-cannot-publish-dry-run", rootId);
             if (parsedStatus is { } executionStatus && MayHaveExecuted(executionStatus) &&
+                (executionStatus != JobStatus.StoppedByBudget || dryRunPublished) &&
                 kind is "dry-run" or TrialJobHandler.TrialKind && !inputHasBaselineBinding &&
                 !resultHasBaselineBinding)
                 builder.Incomplete(ArtifactReferenceFamily.Jobs, store.StoreIdentity,
@@ -1073,7 +1074,7 @@ internal static class GeneratedArtifactReferences
 
     private static bool MayHaveExecuted(JobStatus status) => status is JobStatus.Running or JobStatus.Completed or
         JobStatus.CompletedDryRunOnly or JobStatus.CompletedWithAssessmentFailure or JobStatus.Failed or
-        JobStatus.Cancelled or JobStatus.Interrupted;
+        JobStatus.Cancelled or JobStatus.Interrupted or JobStatus.StoppedByBudget;
 
     private static bool IsExpectedSuccessfulJobStatus(string kind, JobStatus status) => kind switch
     {
@@ -1097,6 +1098,9 @@ internal static class GeneratedArtifactReferences
         {
             switch (kind)
             {
+                case "assess":
+                    RequireObjectShape(json, "Assess job input");
+                    break;
                 case ProjectJobHandlers.BaselineRefreshKind:
                     RequireObjectShape(json, "Baseline refresh job input");
                     break;
@@ -1228,6 +1232,21 @@ internal static class GeneratedArtifactReferences
         var hasBaselineBinding = false;
         try
         {
+            if (status == JobStatus.StoppedByBudget && kind is "assess" or TrialJobHandler.TrialKind)
+            {
+                RequireObjectShape(json, "Budget stop result",
+                    ["code", "message", "wordsDone", "wordsNotDone", "baselineToken"],
+                    ["code", "message", "wordsDone", "wordsNotDone"]);
+                using var document = JsonDocument.Parse(json);
+                if (document.RootElement.TryGetProperty("baselineToken", out var token))
+                {
+                    var baseline = JsonSerializer.Deserialize<BaselineToken>(token.GetRawText(), StrictJsonOptions)
+                        ?? throw new InvalidDataException("The budget stop has no Baseline token.");
+                    AddBaselineToken(builder, storeIdentity, baseline, recordId, "budget-stop-baseline-token");
+                    hasBaselineBinding = true;
+                }
+                return hasBaselineBinding;
+            }
             if (kind == ProjectJobHandlers.BaselineRefreshKind)
             {
                 if (status == JobStatus.Completed)

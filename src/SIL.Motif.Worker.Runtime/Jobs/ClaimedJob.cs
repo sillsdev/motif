@@ -16,6 +16,7 @@ public sealed class ClaimedJob
     private readonly JobRepository _jobs;
     private readonly string _jobId;
     private readonly string? _capturedClaimToken;
+    private readonly System.Diagnostics.Stopwatch _claimTimer;
     private readonly object _progressGate = new();
     private long _progressGeneration;
 
@@ -25,12 +26,15 @@ public sealed class ClaimedJob
         ArgumentNullException.ThrowIfNull(claimed);
         _jobId = claimed.JobId;
         _capturedClaimToken = claimed.ClaimToken;
+        _claimTimer = JobClaims.TimerFor(claimed);
         Job = claimed;
     }
 
     internal SIL.Motif.Host.Store.MotifDatabase Database => _jobs.Database;
 
     internal string? CapturedClaimToken => _capturedClaimToken;
+
+    internal TimeSpan ClaimElapsed => _claimTimer.Elapsed;
 
     /// <summary>This job's id, stable for the life of the claim.</summary>
     public string JobId => _jobId;

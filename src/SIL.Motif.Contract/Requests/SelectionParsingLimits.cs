@@ -14,11 +14,13 @@ public enum SelectionTimeLimitMode
 public sealed record SelectionParsingLimits(
     StepCap PerWordStepLimit,
     SelectionTimeLimitMode TimeMode,
-    int? ExplicitPerWordLimitMs)
+    int? ExplicitPerWordLimitMs,
+    int? AssessBudgetSeconds = null)
 {
     /// <summary>Explains why this limit policy cannot be saved, or returns <see langword="null"/>.</summary>
     public string? ValidationError()
     {
+        if (AssessBudgetSeconds is < 60 or > 4294967) return "The Assessment time limit must be between 60 and 4294967 seconds.";
         if (PerWordStepLimit is null) return "A per-word step cap is required.";
         if (!Enum.IsDefined(TimeMode)) return "The Selection time-limit mode is unknown.";
         if (PerWordStepLimit.IsUnbounded)
@@ -50,14 +52,14 @@ public sealed record SetDefaultSelectionRequest(
     {
         get => Limits.TimeMode == SelectionTimeLimitMode.Explicit ? Limits.ExplicitPerWordLimitMs : null;
         init => Limits = new SelectionParsingLimits(Limits.PerWordStepLimit,
-            value is null ? SelectionTimeLimitMode.Estimated : SelectionTimeLimitMode.Explicit, value);
+            value is null ? SelectionTimeLimitMode.Estimated : SelectionTimeLimitMode.Explicit, value, Limits.AssessBudgetSeconds);
     }
 
     [JsonIgnore]
     public StepCap PerWordStepLimit
     {
         get => Limits.PerWordStepLimit;
-        init => Limits = new SelectionParsingLimits(value, Limits.TimeMode, Limits.ExplicitPerWordLimitMs);
+        init => Limits = new SelectionParsingLimits(value, Limits.TimeMode, Limits.ExplicitPerWordLimitMs, Limits.AssessBudgetSeconds);
     }
 
     /// <summary>Creates a Selection request for callers that supply the former explicit-millisecond shape.</summary>

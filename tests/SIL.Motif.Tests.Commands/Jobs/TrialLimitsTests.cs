@@ -25,6 +25,38 @@ public sealed class TrialLimitsTests
     }
 
     [Fact]
+    public void WholeRunBudgetIsValidatedAndPersistsWithSelectionLimits()
+    {
+        var limits = new SelectionParsingLimits(StepCap.Default, SelectionTimeLimitMode.Estimated, null, 90);
+        SaveDefault(limits);
+        using var database = ProjectMotifDatabase.Open(_fwDataPath);
+        var repository = new NamedSelectionRepository(database);
+        var saved = repository.GetDefault()!;
+        Assert.Equal(90, saved.Limits.AssessBudgetSeconds);
+        repository.SetLimits(saved.Name, saved.Revision.ToString(), limits with { AssessBudgetSeconds = 120 });
+        Assert.Equal(120, repository.GetDefault()!.Limits.AssessBudgetSeconds);
+        Assert.NotNull((limits with { AssessBudgetSeconds = 0 }).ValidationError());
+        Assert.NotNull((limits with { AssessBudgetSeconds = 59 }).ValidationError());
+        Assert.Null((limits with { AssessBudgetSeconds = 60 }).ValidationError());
+    }
+
+    [Fact]
+    public void OmittedBudgetKeepsSavedValueThroughBothSelectionCommands()
+    {
+        SaveDefault(new SelectionParsingLimits(StepCap.Default, SelectionTimeLimitMode.Estimated, null, 120));
+        var current = SelectionCommands.ReadDefault(new ReadDefaultSelectionRequest(_fwDataPath)).Value!.Selection!;
+        var omitted = new SelectionParsingLimits(StepCap.Default, SelectionTimeLimitMode.Estimated, null);
+        var changed = SelectionCommands.SetLimits(new SetSelectionLimitsRequest(_fwDataPath,
+            current.Name, current.Revision, omitted));
+        Assert.True(changed.Succeeded, changed.Refusal?.Message);
+        Assert.Equal(120, changed.Value!.Limits.AssessBudgetSeconds);
+        var replaced = SelectionCommands.SetDefault(new SetDefaultSelectionRequest(_fwDataPath,
+            current.Name, [], ["word"], omitted, changed.Value.Revision));
+        Assert.True(replaced.Succeeded, replaced.Refusal?.Message);
+        Assert.Equal(120, replaced.Value!.Selection!.Limits.AssessBudgetSeconds);
+    }
+
+    [Fact]
     public void ATrialHonoursTheDefaultSelectionsStepCapAndSizesTheTimeLimitAsASafetyNet()
     {
         SaveDefault(new SelectionParsingLimits(new StepCap(5000), SelectionTimeLimitMode.Estimated, null));

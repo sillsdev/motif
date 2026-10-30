@@ -32,6 +32,19 @@ public sealed class JobLeaseTests : IDisposable
     }
 
     [Fact]
+    public void CancellationWinsWhenTheBudgetAndCallerStopRace()
+    {
+        var jobs = new JobRepository(_database);
+        var claims = new JobClaims(_database);
+        jobs.Create("job-1", Project, "trial", "{}", Now());
+        var claimed = claims.Claim(Project, "runner-a", Now(), Lease())!;
+        jobs.RequestCancellation(claimed.JobId);
+        Assert.True(claims.Finish(claimed.JobId, claimed.ClaimToken!, JobStatus.StoppedByBudget,
+            JobFailureCategory.None, "{}"));
+        Assert.Equal(JobStatus.Cancelled, jobs.Get(claimed.JobId)!.Status);
+    }
+
+    [Fact]
     public void ExactlyOneOfTwoClaimantsWinsOneQueuedJob()
     {
         var jobs = new JobRepository(_database);

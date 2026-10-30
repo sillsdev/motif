@@ -269,6 +269,7 @@ public static class CommandCatalog
         new CommandDescriptor("dry-run --wait", typeof(WaitForDryRunRequest), typeof(DryRunProjection), CommandSurface.AdvancedAi, AgentClass.Evaluate),
         new CommandDescriptor("trial", typeof(EnqueueTrialRequest), typeof(JobEnqueuedResponse), CommandSurface.AdvancedAi, AgentClass.Evaluate),
         new CommandDescriptor("trial --wait", typeof(WaitForJobRequest), typeof(JobStatusResponse), CommandSurface.AdvancedAi, AgentClass.Evaluate),
+        new CommandDescriptor("jobs wait", typeof(WaitForJobRequest), typeof(JobStatusResponse), CommandSurface.Released, AgentClass.Read),
         new CommandDescriptor("jobs show", typeof(ShowJobRequest), typeof(JobStatusResponse), CommandSurface.Released, AgentClass.Read),
         new CommandDescriptor("jobs assessments", typeof(JobAssessmentsRequest), typeof(JobAssessmentsResponse), CommandSurface.Released, AgentClass.Read),
         new CommandDescriptor("jobs list", typeof(ListActiveJobsRequest), typeof(JobQueueListResponse), CommandSurface.Released, AgentClass.Read),

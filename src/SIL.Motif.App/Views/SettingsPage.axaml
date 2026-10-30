@@ -110,6 +110,21 @@
                       AutomationProperties.Name="{x:Static app:MotifAppStrings.ChooseWhatToParseAccessibleName}" />
               <StackPanel IsVisible="{Binding HasSavedSelection}" Classes="settingsPage">
                 <Border Classes="settingsRow">
+                  <Grid Classes="settingsRow" ColumnDefinitions="*,Auto">
+                    <StackPanel Classes="settingsLabel">
+                      <views:CopyableTextBlock Classes="settingsLabelText" Text="{x:Static app:MotifAppStrings.AssessBudgetLabel}" />
+                      <views:CopyableTextBlock Classes="settingsCaption" Text="{x:Static app:MotifAppStrings.AssessBudgetCaption}" TextWrapping="Wrap" />
+                    </StackPanel>
+                    <NumericUpDown Grid.Column="1" Classes="settingsNumber" Classes.refused="{Binding HasAssessBudgetRefusal}"
+                                   Value="{Binding AssessBudgetSeconds}"
+                                   Minimum="60" Maximum="4294967" Increment="60" FormatString="N0"
+                                   LostFocus="OnParsingLimitLostFocus" KeyDown="OnParsingLimitKeyDown"
+                                   AutomationProperties.Name="{x:Static app:MotifAppStrings.AssessBudgetLabel}" />
+                  </Grid>
+                </Border>
+                <views:CopyableTextBlock Classes="settingsRefusal" Text="{Binding AssessBudgetRefusal}"
+                           IsVisible="{Binding HasAssessBudgetRefusal}" TextWrapping="Wrap" />
+                <Border Classes="settingsRow">
                 <Grid Classes="settingsRow" ColumnDefinitions="*,Auto">
                   <StackPanel Classes="settingsLabel">
                     <views:CopyableTextBlock Classes="settingsLabelText" Text="{x:Static app:MotifAppStrings.StepLimitPerWordLabel}" />

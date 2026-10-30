@@ -29,6 +29,17 @@ public sealed class WindowRefusalTests
         return data;
     }
 
+    [Fact]
+    public void BudgetStopShowsWordCountsInTheWindow()
+    {
+        var refusal = new Refusal(RefusalCodes.AssessmentStoppedByBudget, FailureReason.StoppedByBudget,
+            "Parsing stopped.", new Dictionary<string, string> { ["wordsDone"] = "3", ["wordsNotDone"] = "5" });
+        var shown = WindowRefusal.From(refusal);
+        Assert.Contains("3 words done", shown.Sentence);
+        Assert.Contains("5 not done", shown.Sentence);
+        Assert.False(shown.OffersProblemReport);
+    }
+
     [Theory]
     [MemberData(nameof(CatalogueCodes))]
     public void EveryCodeTheWindowReachesHasItsOwnSentence(string code)

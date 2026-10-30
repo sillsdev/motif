@@ -62,6 +62,21 @@ public sealed class JobRepository
         IReadOnlyList<string>? requiredAssessments) => Create(new JobRecord(jobId, projectKey,
             TrialJobHandler.TrialKind, JobStatus.Queued, 1, inputJson, null, createdUtc, createdUtc, null, null),
             requiredAssessments);
+    /// <summary>Records an Assessment that stopped before it could publish evidence.</summary>
+    public JobRecord RecordBudgetStop(string jobId, string projectKey, string kind, string inputJson,
+        string resultJson, string createdUtc)
+    {
+        JobJson.ValidateStructured(inputJson, nameof(inputJson));
+        JobJson.ValidateStructured(resultJson, nameof(resultJson));
+        var timestamp = JobTimestamp.FormatUtc(ValidateUtc(createdUtc, nameof(createdUtc)));
+        var record = new JobRecord(jobId, projectKey, kind, JobStatus.StoppedByBudget, 1, inputJson,
+            resultJson, timestamp, timestamp, LineageId: jobId, ArchivedUtc: timestamp);
+        using var connection = _database.OpenConnection();
+        using var transaction = connection.BeginTransaction();
+        Insert(connection, transaction, record);
+        transaction.Commit();
+        return record;
+    }
 
     public JobRecord? Get(string jobId)
     {
@@ -113,7 +128,7 @@ public sealed class JobRepository
         using var connection = _database.OpenConnection();
         using var command = connection.CreateCommand();
         command.CommandText = SelectSql + " WHERE Status NOT IN ('completed','completed-dry-run-only'," +
-            "'completed-with-assessment-failure','failed','cancelled','interrupted')" +
+            "'completed-with-assessment-failure','failed','cancelled','interrupted','stopped-by-budget')" +
             (projectKey is null ? "" : " AND ProjectKey = $project") + " ORDER BY UpdatedUtc;";
         if (projectKey is not null) command.Parameters.AddWithValue("$project", projectKey);
         using var reader = command.ExecuteReader();
@@ -132,7 +147,7 @@ public sealed class JobRepository
         using var connection = _database.OpenConnection();
         using var command = connection.CreateCommand();
         command.CommandText = SelectSqlWithQueueOrder + " WHERE Status NOT IN ('completed','completed-dry-run-only'," +
-            "'completed-with-assessment-failure','failed','cancelled','interrupted')" +
+            "'completed-with-assessment-failure','failed','cancelled','interrupted','stopped-by-budget')" +
             (projectKey is null ? "" : " AND ProjectKey = $project") + " ORDER BY QueueOrder, JobId;";
         if (projectKey is not null) command.Parameters.AddWithValue("$project", projectKey);
         using var reader = command.ExecuteReader();
@@ -660,7 +675,7 @@ public sealed class JobRepository
         using var command = connection.CreateCommand();
         command.CommandText = "DELETE FROM ParsimonyBundleReferences WHERE ReferenceKind='job' AND NOT EXISTS (" +
             "SELECT 1 FROM Jobs AS j WHERE j.JobId=ParsimonyBundleReferences.ReferenceId AND j.Status NOT IN " +
-            "('completed','completed-dry-run-only','completed-with-assessment-failure','failed','cancelled','interrupted'));";
+            "('completed','completed-dry-run-only','completed-with-assessment-failure','failed','cancelled','interrupted','stopped-by-budget'));";
         return command.ExecuteNonQuery();
     }
 

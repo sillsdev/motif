@@ -31,6 +31,25 @@ public sealed class AssessArgvTests : IDisposable
         catch (IOException) { } catch (UnauthorizedAccessException) { }
     }
 
+    [Theory]
+    [InlineData("0")]
+    [InlineData("59")]
+    [InlineData("not-a-number")]
+    public void InvalidWholeRunTimeLimitIsRejected(string seconds)
+    {
+        var missing = Path.Combine(_workerRoot, "absent.fwdata");
+        var result = Run($"assess \"{missing}\" --max-seconds {seconds}");
+        Assert.True(result.ExitCode == 1, result.Error);
+    }
+
+    [Fact]
+    public void MinimumWholeRunTimeLimitReachesProjectValidation()
+    {
+        var missing = Path.Combine(_workerRoot, "absent.fwdata");
+        var result = Run($"assess \"{missing}\" --max-seconds 60 --json");
+        Assert.Equal("project.not-found", Envelope(result.Error).Code);
+    }
+
     [Fact]
     public void OmittingTheProjectIsAUsageFailureNamingTheVerb()
     {

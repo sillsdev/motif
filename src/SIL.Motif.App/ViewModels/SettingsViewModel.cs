@@ -159,6 +159,8 @@ internal sealed partial class SettingsViewModel : ObservableObject
     private string? _writingSystemTargetId;
     private SetupViewModel? _observedSetup;
     private bool _updatingEstimate;
+    private decimal? _lastGoodAssessBudgetSeconds = 3600;
+    private decimal? _assessBudgetSeconds = 3600;
     private decimal? _lastGoodStepLimit;
     private decimal? _lastGoodTimeLimitSeconds;
     private decimal? _stepLimitBeforeNoStep;
@@ -325,7 +327,20 @@ internal sealed partial class SettingsViewModel : ObservableObject
     private string _timeLimitRefusal = string.Empty;
     public bool HasStepLimitRefusal => !string.IsNullOrEmpty(StepLimitRefusal);
     public bool HasTimeLimitRefusal => !string.IsNullOrEmpty(TimeLimitRefusal);
+    public string AssessBudgetRefusal { get => _assessBudgetRefusal; private set => SetProperty(ref _assessBudgetRefusal, value); }
+    private string _assessBudgetRefusal = string.Empty;
+    public bool HasAssessBudgetRefusal => !string.IsNullOrEmpty(AssessBudgetRefusal);
+    public decimal? AssessBudgetSeconds
+    {
+        get => _assessBudgetSeconds;
+        set
+        {
+            if (SetProperty(ref _assessBudgetSeconds, value))
+                OnPropertyChanged(nameof(HasUncommittedParsingLimitChanges));
+        }
+    }
     public bool HasUncommittedParsingLimitChanges =>
+        AssessBudgetSeconds != _lastGoodAssessBudgetSeconds ||
         IsNoStepLimit != _lastGoodNoStepLimit || StepLimit != _lastGoodStepLimit ||
         TimeLimitSeconds != _lastGoodTimeLimitSeconds;
     public string StepLimitEstimateText => _workspace.Context.Setup?.StepLimitEstimateText ??
@@ -578,6 +593,15 @@ internal sealed partial class SettingsViewModel : ObservableObject
     public async Task<WindowRefusal?> CommitParsingLimitsAsync()
     {
         if (!HasProject || !HasSavedSelection) return null;
+        if (AssessBudgetSeconds is null or < 60 or > 4294967 ||
+            decimal.Truncate(AssessBudgetSeconds.Value) != AssessBudgetSeconds.Value)
+        {
+            AssessBudgetRefusal = MotifAppStrings.AssessBudgetRefusal;
+            OnPropertyChanged(nameof(HasAssessBudgetRefusal));
+            return WindowRefusal.Plain(AssessBudgetRefusal);
+        }
+        AssessBudgetRefusal = string.Empty;
+        OnPropertyChanged(nameof(HasAssessBudgetRefusal));
         if (_workspace.Selection.StepLimitValidationMessage is not null || !IsNoStepLimit &&
             (StepLimit is null or <= 0 || decimal.Truncate(StepLimit.Value) != StepLimit.Value))
         {
@@ -616,6 +640,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
             OnPropertyChanged(nameof(HasTimeLimitRefusal));
             return WindowRefusal.Plain(TimeLimitRefusal);
         }
+        limits = limits with { AssessBudgetSeconds = decimal.ToInt32(AssessBudgetSeconds!.Value) };
         var refusal = await _workspace.Context.Setup!.SaveParsingLimitsAsync(limits).ConfigureAwait(true);
         if (refusal is null)
         {
@@ -667,6 +692,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
     public void CancelParsingLimitEdit()
     {
         _timeLimitBeforeNoStep = null;
+        AssessBudgetSeconds = _lastGoodAssessBudgetSeconds;
         _workspace.Selection.PerWordStepLimitUnbounded = _lastGoodNoStepLimit;
         _workspace.Selection.PerWordStepLimit = _lastGoodStepLimit;
         _workspace.Selection.PerWordTimeLimitSeconds = _lastGoodTimeLimitSeconds;
@@ -678,6 +704,8 @@ internal sealed partial class SettingsViewModel : ObservableObject
 
     private void RememberGoodValues()
     {
+        _lastGoodAssessBudgetSeconds = _workspace.Context.Setup?.CurrentSelectionLimits.AssessBudgetSeconds ?? 3600;
+        AssessBudgetSeconds = _lastGoodAssessBudgetSeconds;
         _lastGoodNoStepLimit = _workspace.Selection.PerWordStepLimitUnbounded;
         if (_workspace.Selection.StepLimitValidationMessage is null && _workspace.Selection.PerWordStepLimit is > 0)
             _lastGoodStepLimit = _workspace.Selection.PerWordStepLimit;
@@ -686,6 +714,8 @@ internal sealed partial class SettingsViewModel : ObservableObject
         else _lastGoodTimeLimitSeconds = null;
         _stepLimitRefusal = string.Empty;
         TimeLimitRefusal = string.Empty;
+        AssessBudgetRefusal = string.Empty;
+        OnPropertyChanged(nameof(HasAssessBudgetRefusal));
         OnPropertyChanged(nameof(StepLimitRefusal));
         OnPropertyChanged(nameof(HasStepLimitRefusal));
         OnPropertyChanged(nameof(HasTimeLimitRefusal));

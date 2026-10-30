@@ -406,6 +406,26 @@ public sealed class ProposalDifferenceCommandsTests : IDisposable
             job => job.JobId != "trial-1");
     }
 
+    [Theory]
+    [InlineData(BaselineMode.BestEffort)]
+    [InlineData(BaselineMode.Required)]
+    public void AStoppedBeforeAssessmentRecordsAStoppedTrial(BaselineMode mode)
+    {
+        using var fixture = new Fixture(_root, noBaselineIds: true);
+        var request = new SIL.Motif.Commands.Requests.EnqueueTrialRequest(fixture.ProjectPath, "1.0", fixture.ProposalId,
+            Words: ["sita"]);
+        Func<IReadOnlyList<string>, CommandOutcome<AssessCommandResponse>> stopped = _ =>
+            CommandOutcome<AssessCommandResponse>.Refused(new Refusal(RefusalCodes.AssessmentStoppedByBudget,
+                FailureReason.StoppedByBudget, "Parsing stopped at the time limit: 0 words done, 1 not done.",
+                new Dictionary<string, string> { ["wordsDone"] = "0", ["wordsNotDone"] = "1" }));
+        var result = TrialWorkflow.Enqueue(request, stopped, mode);
+        Assert.True(result.Succeeded, result.Refusal?.Message);
+        var job = new JobRepository(fixture.Database).Get(result.Value!.Job.JobId)!;
+        Assert.Equal(JobStatus.StoppedByBudget, job.Status);
+        Assert.Contains("1 not done", job.ResultJson);
+        Assert.Null(result.Value.BaselineWarning);
+    }
+
     [Fact]
     public void RequiredQueuesWithTheBaselineWhenItIsAssessed()
     {

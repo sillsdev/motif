@@ -25,7 +25,7 @@ public static class TrialBaselines
         string managedRoot, string? parserPath, CancellationToken cancellationToken, TrialLimits? limits) =>
         AssessCommand.AssessWithLimits(new AssessRequest(projectPath,
             words.Count == 0 ? null : new SelectionRequest(false, [], words, false, null)),
-            managedRoot, parserPath ?? PanGlossExecutable.TryLocate(), null, cancellationToken, limits);
+            managedRoot, parserPath ?? PanGlossExecutable.TryLocate(), null, cancellationToken, limits, recordBudgetStop: false);
 
     /// <summary>
     /// Queues a Trial that carries its Baseline Assessments, so <c>difference produce</c> has a before side.
@@ -75,7 +75,10 @@ public static class TrialBaselines
         if (!before.Succeeded)
         {
             // A cancelled measurement is the caller stopping, not a missing Baseline: nothing is queued.
-            if (onBaselineUnavailable is null || before.Refusal!.Reason == FailureReason.Cancelled) return CommandOutcome<JobEnqueuedResponse>.Refused(before.Refusal!);
+            if (before.Refusal!.Reason == FailureReason.StoppedByBudget)
+                return JobCommands.EnqueueStoppedTrial(request with { Words = words }, expectedParserPath, before.Refusal);
+            if (onBaselineUnavailable is null || before.Refusal.Reason == FailureReason.Cancelled)
+                return CommandOutcome<JobEnqueuedResponse>.Refused(before.Refusal);
             onBaselineUnavailable(before.Refusal!.Message);
             return JobCommands.EnqueueTrial(request, expectedParserPath);
         }

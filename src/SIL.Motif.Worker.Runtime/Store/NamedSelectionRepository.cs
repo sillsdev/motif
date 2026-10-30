@@ -39,7 +39,7 @@ public sealed class NamedSelectionRepository(MotifDatabase database)
         command.Transaction = transaction;
         command.CommandText = """
             SELECT s.SelectionName, s.TextIdsJson, s.AddedWordsJson, s.CreatedUtc, s.UpdatedUtc,
-                s.TimeLimitMode, s.ExplicitPerWordLimitMs, s.PerWordStepLimit, s.Revision
+                s.TimeLimitMode, s.ExplicitPerWordLimitMs, s.PerWordStepLimit, s.Revision, s.AssessBudgetSeconds
             FROM DefaultSelection d JOIN NamedSelections s ON s.SelectionName = d.SelectionName
             WHERE d.Id = 1;
             """;
@@ -58,7 +58,7 @@ public sealed class NamedSelectionRepository(MotifDatabase database)
         using var command = connection.CreateCommand();
         command.CommandText = """
             SELECT SelectionName, TextIdsJson, AddedWordsJson, CreatedUtc, UpdatedUtc,
-                TimeLimitMode, ExplicitPerWordLimitMs, PerWordStepLimit, Revision
+                TimeLimitMode, ExplicitPerWordLimitMs, PerWordStepLimit, Revision, AssessBudgetSeconds
             FROM NamedSelections WHERE SelectionName = $name;
             """;
         command.Parameters.AddWithValue("$name", name.Trim());
@@ -84,6 +84,7 @@ public sealed class NamedSelectionRepository(MotifDatabase database)
 
         using var connection = _database.OpenConnection();
         using var transaction = connection.BeginTransaction(deferred: false);
+        limits = limits with { AssessBudgetSeconds = limits.AssessBudgetSeconds ?? GetDefault(connection, transaction)?.Limits.AssessBudgetSeconds ?? 3600 };
         var existing = ReadRevision(connection, transaction, name);
         if (existing is null && expectedRevision is not null || existing is not null &&
             (!TryParseRevision(expectedRevision, out var expected) || expected != existing.Value.Revision))
@@ -97,8 +98,8 @@ public sealed class NamedSelectionRepository(MotifDatabase database)
             insert.CommandText = """
                 INSERT INTO NamedSelections
                     (SelectionName, TextIdsJson, AddedWordsJson, CreatedUtc, UpdatedUtc,
-                     TimeLimitMode, ExplicitPerWordLimitMs, PerWordStepLimit, Revision)
-                VALUES ($name, $texts, $words, $created, $updated, $timeMode, $timeLimit, $stepLimit, $revision);
+                     TimeLimitMode, ExplicitPerWordLimitMs, PerWordStepLimit, Revision, AssessBudgetSeconds)
+                VALUES ($name, $texts, $words, $created, $updated, $timeMode, $timeLimit, $stepLimit, $revision, $budget);
                 """;
             AddInputParameters(insert, name, canonicalTextIds, canonicalWords, limits, now, revision);
             insert.Parameters.AddWithValue("$created", now);
@@ -111,7 +112,7 @@ public sealed class NamedSelectionRepository(MotifDatabase database)
             update.CommandText = """
                 UPDATE NamedSelections SET TextIdsJson = $texts, AddedWordsJson = $words,
                     UpdatedUtc = $updated, TimeLimitMode = $timeMode,
-                    ExplicitPerWordLimitMs = $timeLimit, PerWordStepLimit = $stepLimit, Revision = $revision
+                    ExplicitPerWordLimitMs = $timeLimit, PerWordStepLimit = $stepLimit, Revision = $revision, AssessBudgetSeconds = $budget
                 WHERE SelectionName = $name AND Revision = $expected;
                 """;
             AddInputParameters(update, name, canonicalTextIds, canonicalWords, limits, now, revision);
@@ -142,11 +143,12 @@ public sealed class NamedSelectionRepository(MotifDatabase database)
         if (current is null || !StringComparer.Ordinal.Equals(current.Name, name.Trim()) || current.Revision != expected)
             throw new SelectionRevisionConflictException("The Selection changed before its limits could be saved.");
 
+        limits = limits with { AssessBudgetSeconds = limits.AssessBudgetSeconds ?? current.Limits.AssessBudgetSeconds ?? 3600 };
         using var update = connection.CreateCommand();
         update.Transaction = transaction;
         update.CommandText = """
             UPDATE NamedSelections SET UpdatedUtc = $updated, TimeLimitMode = $timeMode,
-                ExplicitPerWordLimitMs = $timeLimit, PerWordStepLimit = $stepLimit, Revision = $revision
+                ExplicitPerWordLimitMs = $timeLimit, PerWordStepLimit = $stepLimit, Revision = $revision, AssessBudgetSeconds = $budget
             WHERE SelectionName = $name AND Revision = $expected;
             """;
         update.Parameters.AddWithValue("$updated", now);
@@ -167,7 +169,7 @@ public sealed class NamedSelectionRepository(MotifDatabase database)
         command.Transaction = transaction;
         command.CommandText = """
             SELECT s.SelectionName, s.TextIdsJson, s.AddedWordsJson, s.CreatedUtc, s.UpdatedUtc,
-                s.TimeLimitMode, s.ExplicitPerWordLimitMs, s.PerWordStepLimit, s.Revision
+                s.TimeLimitMode, s.ExplicitPerWordLimitMs, s.PerWordStepLimit, s.Revision, s.AssessBudgetSeconds
             FROM DefaultSelection d JOIN NamedSelections s ON s.SelectionName = d.SelectionName
             WHERE d.Id = 1;
             """;
@@ -218,6 +220,7 @@ public sealed class NamedSelectionRepository(MotifDatabase database)
 
     private static void AddLimitParameters(SqliteCommand command, SelectionParsingLimits limits)
     {
+        command.Parameters.AddWithValue("$budget", limits.AssessBudgetSeconds ?? 3600);
         command.Parameters.AddWithValue("$timeMode", limits.TimeMode.ToString());
         command.Parameters.AddWithValue("$timeLimit",
             limits.ExplicitPerWordLimitMs is { } timeLimit ? timeLimit : DBNull.Value);
@@ -233,7 +236,7 @@ public sealed class NamedSelectionRepository(MotifDatabase database)
             var limits = new SelectionParsingLimits(
                 reader.IsDBNull(7) ? StepCap.Unbounded : new StepCap(reader.GetInt64(7)),
                 mode,
-                reader.IsDBNull(6) ? null : reader.GetInt32(6));
+                reader.IsDBNull(6) ? null : reader.GetInt32(6), reader.GetInt32(9));
             var invalid = limits.ValidationError();
             if (invalid is not null) throw new InvalidDataException(invalid);
             return new NamedSelectionRecord(

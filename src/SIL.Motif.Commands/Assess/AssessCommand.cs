@@ -32,6 +32,7 @@ using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.Texts;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Worker.Projects;
+using SIL.Motif.Worker.Jobs;
 using SIL.Motif.Worker.Store;
 
 namespace SIL.Motif.Commands.Assess;
@@ -56,6 +57,8 @@ namespace SIL.Motif.Commands.Assess;
 /// </remarks>
 public static class AssessCommand
 {
+    internal static readonly AsyncLocal<CancellationToken?> BudgetStopForTests = new();
+
     // assess has no configured query text; SelectionComposer already resolved the words themselves.
     private const string ScopeQuery = "assess";
 
@@ -94,13 +97,13 @@ public static class AssessCommand
 
     internal static CommandOutcome<AssessCommandResponse> AssessWithLimits(
         AssessRequest request, string managedRoot, string? parserPath,
-        Action<AssessmentProgress>? onProgress, CancellationToken cancellationToken, TrialLimits? limits)
+        Action<AssessmentProgress>? onProgress, CancellationToken cancellationToken, TrialLimits? limits, bool recordBudgetStop = true)
     {
         var ownership = WorkspaceOwnership.Bootstrap(managedRoot);
         using var invoker = new PanGlossInvoker(parserPath);
         var assessor = new LazyPanGlossAssessor(() => new PanGlossAssessor(
             new StatsCacheStore(ownership, Path.ChangeExtension(Path.GetFullPath(request.ProjectPath), ".motif.db")), invoker));
-        return RunCore(request, managedRoot, assessor, invoker, onProgress, cancellationToken, null, limits);
+        return RunCore(request, managedRoot, assessor, invoker, onProgress, cancellationToken, null, limits, recordBudgetStop);
     }
 
     /// <summary>
@@ -124,11 +127,12 @@ public static class AssessCommand
 
     private static CommandOutcome<AssessCommandResponse> RunCore(
         AssessRequest request, string managedRoot, IAssessor assessor, IPanGlossInvoker invoker,
-        Action<AssessmentProgress>? onProgress, CancellationToken cancellationToken, ProjectParseLease? admission, TrialLimits? frozenLimits = null)
+        Action<AssessmentProgress>? onProgress, CancellationToken cancellationToken, ProjectParseLease? admission, TrialLimits? frozenLimits = null, bool recordBudgetStop = true)
     {
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(assessor);
         ArgumentNullException.ThrowIfNull(invoker);
+        var started = System.Diagnostics.Stopwatch.StartNew();
 
         return ProjectStoreCommand.Run(request.ProjectPath, ResolveProductVersion(), (database, project) =>
         {
@@ -171,6 +175,54 @@ public static class AssessCommand
             var assessments = new AssessmentRepository(database);
             var retainedInvocations = new RetainedInvocationRepository(database);
             var namedSelections = new NamedSelectionRepository(database);
+            var defaultLimits = namedSelections.GetDefault()?.Limits;
+            var seconds = request.BudgetSeconds ?? defaultLimits?.AssessBudgetSeconds ?? 3600;
+            if (seconds is < 60 or > 4294967)
+                return CommandOutcome<AssessCommandResponse>.Refused(new Refusal(
+                    RefusalCodes.AssessInvalidLimit, FailureReason.InvalidArgument,
+                    "The Assessment time limit must be between 60 and 4294967 seconds."));
+            using var budget = new CancellationTokenSource();
+            using var forcedBudget = BudgetStopForTests.Value?.Register(budget.Cancel);
+            using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, budget.Token);
+            var callerToken = cancellationToken;
+            var testBudgetProject = Environment.GetEnvironmentVariable("MOTIF_TEST_ASSESS_BUDGET_PROJECT");
+            var duration = testBudgetProject is not null && string.Equals(Path.GetFullPath(testBudgetProject),
+                Path.GetFullPath(request.ProjectPath), OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal)
+                ? TimeSpan.FromSeconds(8) : TimeSpan.FromSeconds(seconds);
+            var remaining = duration - started.Elapsed;
+            if (remaining <= TimeSpan.Zero) budget.Cancel();
+            else budget.CancelAfter(remaining);
+            cancellationToken = linked.Token;
+            var done = 0;
+            var total = 0;
+            var originalProgress = onProgress;
+            onProgress = progress =>
+            {
+                if (progress.Stage == AssessmentStage.Parsing)
+                {
+                    Interlocked.Exchange(ref done, progress.Completed);
+                    if (progress.Total is { } count) Interlocked.Exchange(ref total, count);
+                }
+                originalProgress?.Invoke(progress);
+            };
+            Refusal Stop()
+            {
+                if (callerToken.IsCancellationRequested || !budget.IsCancellationRequested)
+                    return Cancelled(request.ProjectPath);
+                var completed = Volatile.Read(ref done);
+                var unfinished = Math.Max(0, Volatile.Read(ref total) - completed);
+                var message = $"Parsing stopped at the time limit: {completed} words done, {unfinished} not done. No Assessment was saved.";
+                var jobId = CanonicalId.Mint("job/").Value;
+                var resultJson = JsonSerializer.Serialize(new
+                {
+                    code = RefusalCodes.AssessmentStoppedByBudget, message, wordsDone = completed, wordsNotDone = unfinished,
+                });
+                if (recordBudgetStop)
+                    new JobRepository(database).RecordBudgetStop(jobId, workspaceKey, "assess", "{}", resultJson,
+                        JobTimestamp.FormatUtc(DateTimeOffset.UtcNow));
+                return new Refusal(RefusalCodes.AssessmentStoppedByBudget, FailureReason.StoppedByBudget, message,
+                    new Dictionary<string, string> { ["jobId"] = jobId, ["wordsDone"] = completed.ToString(), ["wordsNotDone"] = unfinished.ToString() });
+            }
 
             onProgress?.Invoke(new AssessmentProgress(
                 AssessmentStage.Capturing, 0, null, "Ensuring a current Baseline exists..."));
@@ -181,7 +233,6 @@ public static class AssessCommand
 
             SelectionRequest selectionRequest;
             string? namedSelection = null;
-            SelectionParsingLimits? defaultLimits = namedSelections.GetDefault()?.Limits;
             if (request.Selection is null)
             {
                 var saved = namedSelections.GetDefault();
@@ -313,7 +364,7 @@ public static class AssessCommand
             }
             catch (OperationCanceledException)
             {
-                return CommandOutcome<AssessCommandResponse>.Refused(Cancelled(request.ProjectPath));
+                return CommandOutcome<AssessCommandResponse>.Refused(Stop());
             }
             catch (AssessorUnavailableException ex)
             {
@@ -354,7 +405,7 @@ public static class AssessCommand
                         "The Assessor did not return exactly one measurement for every required kind."));
                 }
                 if (cancellationToken.IsCancellationRequested)
-                    return CommandOutcome<AssessCommandResponse>.Refused(Cancelled(request.ProjectPath));
+                    return CommandOutcome<AssessCommandResponse>.Refused(Stop());
                 var scopeJson = ScopeCodec.Write(
                     new StoredScope.Trial(ScopeQuery, scope.WordForms, scope.Collect, scope.PerWordLimit, scope.PerWordStepLimit));
                 var scopeDigest = AssessmentMaterial.Digest(scopeJson);
@@ -455,7 +506,7 @@ public static class AssessCommand
                 }
 
                 if (cancellationToken.IsCancellationRequested)
-                    return CommandOutcome<AssessCommandResponse>.Refused(Cancelled(request.ProjectPath));
+                    return CommandOutcome<AssessCommandResponse>.Refused(Stop());
                 var batchWords = produced.Select(item => item.Raw).OfType<AssessmentRaw.Batch>()
                     .SelectMany(item => item.Analysis.Words).ToArray();
                 wordStats = BatchAnalysis.OverlayRetryStatistics(wordStats, batchWords);
@@ -550,7 +601,7 @@ public static class AssessCommand
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                 {
-                    return CommandOutcome<AssessCommandResponse>.Refused(Cancelled(request.ProjectPath));
+                    return CommandOutcome<AssessCommandResponse>.Refused(Stop());
                 }
                 var currentBaseline = baselines.GetCurrentPublished(workspaceKey);
                 if (currentBaseline is null || currentBaseline.Token != baseline.Token)
@@ -617,7 +668,7 @@ public static class AssessCommand
                     }
                     catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                     {
-                        return CommandOutcome<AssessCommandResponse>.Refused(Cancelled(request.ProjectPath));
+                        return CommandOutcome<AssessCommandResponse>.Refused(Stop());
                     }
                 }
 
@@ -645,14 +696,14 @@ public static class AssessCommand
                 onProgress?.Invoke(new AssessmentProgress(
                     AssessmentStage.Complete, assessmentIds.Count, assessmentIds.Count, completionSummary));
                 if (cancellationToken.IsCancellationRequested)
-                    return CommandOutcome<AssessCommandResponse>.Refused(Cancelled(request.ProjectPath));
+                    return CommandOutcome<AssessCommandResponse>.Refused(Stop());
                 try
                 {
                     retainedInvocations.Record(retained, pendingRecords, cancellationToken);
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                 {
-                    return CommandOutcome<AssessCommandResponse>.Refused(Cancelled(request.ProjectPath));
+                    return CommandOutcome<AssessCommandResponse>.Refused(Stop());
                 }
                 // Retained before any housekeeping so a later failure cannot delete artifacts the saved Assessment uses.
                 foreach (var lease in artifactLeases) lease.Retain();

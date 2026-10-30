@@ -13,13 +13,14 @@ public sealed class JobStateMachine
             [JobStatus.Queued] = new HashSet<JobStatus>
                 { JobStatus.WaitingForBaseline, JobStatus.WaitingForProjectHost, JobStatus.Running, JobStatus.Failed, JobStatus.Cancelled },
             [JobStatus.WaitingForBaseline] = new HashSet<JobStatus>
-                { JobStatus.Queued, JobStatus.Running, JobStatus.Failed, JobStatus.Cancelled },
+                { JobStatus.Queued, JobStatus.Running, JobStatus.Failed, JobStatus.Cancelled, JobStatus.StoppedByBudget },
             [JobStatus.WaitingForProjectHost] = new HashSet<JobStatus>
-                { JobStatus.Queued, JobStatus.Running, JobStatus.Failed, JobStatus.Cancelled },
+                { JobStatus.Queued, JobStatus.Running, JobStatus.Failed, JobStatus.Cancelled, JobStatus.StoppedByBudget },
             [JobStatus.Running] = new HashSet<JobStatus>
                 { JobStatus.WaitingForBaseline, JobStatus.Completed, JobStatus.CompletedDryRunOnly,
-                    JobStatus.CompletedWithAssessmentFailure, JobStatus.Failed, JobStatus.Cancelled, JobStatus.Interrupted },
+                    JobStatus.CompletedWithAssessmentFailure, JobStatus.Failed, JobStatus.Cancelled, JobStatus.Interrupted, JobStatus.StoppedByBudget },
             [JobStatus.Interrupted] = new HashSet<JobStatus>(),
+            [JobStatus.StoppedByBudget] = new HashSet<JobStatus>(),
             [JobStatus.Completed] = new HashSet<JobStatus>(),
             [JobStatus.CompletedDryRunOnly] = new HashSet<JobStatus>(),
             [JobStatus.CompletedWithAssessmentFailure] = new HashSet<JobStatus>(),
@@ -32,7 +33,7 @@ public sealed class JobStateMachine
     public JobStateMachine(IJobClock? clock = null) => _clock = clock ?? new SystemJobClock();
 
     public static bool IsTerminal(JobStatus status) => status is JobStatus.Completed or JobStatus.CompletedDryRunOnly or
-        JobStatus.CompletedWithAssessmentFailure or JobStatus.Failed or JobStatus.Cancelled or JobStatus.Interrupted;
+        JobStatus.CompletedWithAssessmentFailure or JobStatus.Failed or JobStatus.Cancelled or JobStatus.Interrupted or JobStatus.StoppedByBudget;
 
     public static IReadOnlySet<JobStatus> LegalNextStatuses(JobStatus status) =>
         Transitions.TryGetValue(status, out var next) ? next : throw new ArgumentOutOfRangeException(nameof(status));

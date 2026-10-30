@@ -16,7 +16,7 @@ public static class MotifSchema
     public const int ApplicationId = 0x4D4F5446;
 
     /// <summary>The schema generation this assembly creates and requires.</summary>
-    public const int CurrentSchema = 53;
+    public const int CurrentSchema = 54;
 
     /// <summary>The worker version an open at the given schema ceiling requires.</summary>
     internal static Version MinimumWorkerVersion(int schema) => schema is >= 1 and <= CurrentSchema
@@ -455,7 +455,7 @@ public static class MotifSchema
         [C("SelectionName", "TEXT", false, 1), C("TextIdsJson", "TEXT", true), C("AddedWordsJson", "TEXT", true),
             C("CreatedUtc", "TEXT", true), C("UpdatedUtc", "TEXT", true),
             C("TimeLimitMode", "TEXT", true), C("ExplicitPerWordLimitMs", "INTEGER"),
-            C("PerWordStepLimit", "INTEGER"), C("Revision", "INTEGER", true)],
+            C("PerWordStepLimit", "INTEGER"), C("Revision", "INTEGER", true), C("AssessBudgetSeconds", "INTEGER", true, defaultValue: "3600")],
         "DefaultSelection" => [C("Id", "INTEGER", false, 1), C("SelectionName", "TEXT", true)],
         "ParserRefusals" => [C("BaselineToken", "TEXT", false, 1), C("RefusalJson", "TEXT", true)],
         "GrammarChecks" =>
@@ -750,7 +750,8 @@ public static class MotifSchema
             TimeLimitMode TEXT NOT NULL CHECK (TimeLimitMode IN ('Estimated', 'Explicit')),
             ExplicitPerWordLimitMs INTEGER NULL CHECK (ExplicitPerWordLimitMs IS NULL OR ExplicitPerWordLimitMs > 0),
             PerWordStepLimit INTEGER NULL CHECK (PerWordStepLimit IS NULL OR PerWordStepLimit > 0),
-            Revision INTEGER NOT NULL CHECK (Revision > 0)
+            Revision INTEGER NOT NULL CHECK (Revision > 0),
+            AssessBudgetSeconds INTEGER NOT NULL DEFAULT 3600 CHECK (AssessBudgetSeconds >= 60)
         );
 
         CREATE TABLE DefaultSelection (

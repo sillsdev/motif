@@ -425,6 +425,11 @@
     "description": "Queues a job to capture the project's saved state as a Baseline. Use it when you want to monitor the capture through the job queue.",
     "source": "Hand-written from docs/cli-api.md and command behavior."
   },
+  "jobs wait": {
+    "title": "Wait for a job",
+    "description": "Waits for a job to finish and reports its result. A parsing time limit returns exit code 5 with word counts.",
+    "source": "Hand-written from command behavior."
+  },
   "jobs show": {
     "title": "Inspect a job",
     "description": "Reads the stored status of one durable job. Use it to inspect a Baseline Refresh, Dry Run, Trial, or Parsimony job's current lifecycle state.",

@@ -226,6 +226,24 @@ public sealed class JobVerbArgvTests : IDisposable
     }
 
     [Fact]
+    public void WaitingForABudgetStoppedJobExitsFiveWithCounts()
+    {
+        Enqueue();
+        using var database = ProjectMotifDatabase.Open(Project);
+        var jobs = new JobRepository(database);
+        var project = SIL.Motif.Worker.Projects.ProjectWorkspaceKey.Compute(
+            new SIL.Motif.Contract.Projects.ProjectLocator(Path.GetFullPath(Project), Path.GetFileNameWithoutExtension(Project)));
+        jobs.RecordBudgetStop("budget-job", project, "trial", "{}",
+            "{\"code\":\"assessment.stopped-by-budget\",\"message\":\"Parsing stopped: 1 word done, 2 not done.\",\"wordsDone\":1,\"wordsNotDone\":2}",
+            DateTimeOffset.UtcNow.ToString("O"));
+        var result = Run($"jobs wait budget-job --project \"{Project}\" --json");
+        Assert.Equal(5, result.ExitCode);
+        Assert.Equal("assessment.stopped-by-budget", Envelope(result.Error).Code);
+        Assert.Equal("1", Envelope(result.Error).Detail!["wordsDone"]);
+        Assert.Equal("2", Envelope(result.Error).Detail!["wordsNotDone"]);
+    }
+
+    [Fact]
     public void AJobIdNobodyQueuedIsNotFoundRatherThanACrash()
     {
         Enqueue();

@@ -17,7 +17,8 @@ public enum JobStatus
     CompletedWithAssessmentFailure,
     Failed,
     Cancelled,
-    Interrupted
+    Interrupted,
+    StoppedByBudget
 }
 
 /// <summary>Closed persisted categories used to decide whether recovery may retry a job.</summary>
@@ -88,6 +89,7 @@ public static class JobStatusJson
         JobStatus.Failed => "failed",
         JobStatus.Cancelled => "cancelled",
         JobStatus.Interrupted => "interrupted",
+        JobStatus.StoppedByBudget => "stopped-by-budget",
         _ => throw new ArgumentOutOfRangeException(nameof(status))
     };
 
@@ -103,6 +105,7 @@ public static class JobStatusJson
         "failed" => JobStatus.Failed,
         "cancelled" => JobStatus.Cancelled,
         "interrupted" => JobStatus.Interrupted,
+        "stopped-by-budget" => JobStatus.StoppedByBudget,
         _ => throw new JsonException($"Unknown job status '{value}'.")
     };
 }

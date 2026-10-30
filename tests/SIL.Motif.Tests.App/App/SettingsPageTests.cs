@@ -332,6 +332,42 @@ public sealed class SettingsPageTests
         }, TimeSpan.FromMinutes(2));
     }
     [Fact]
+    public void WholeRunLimitIsSavedFromParsingSettings()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            FakeCommandClient? fake = null;
+            var (workspace, frame) = await PageScreenshots.OpenOverSampleData(parse: false,
+                configure: (client, _) =>
+                {
+                    fake = client;
+                    client.DefaultSelectionIs(new NamedSelectionProjection("Default", [], ["word"],
+                        string.Empty, string.Empty,
+                        new SelectionParsingLimits(StepCap.Default, SelectionTimeLimitMode.Estimated, null, 600), "1"));
+                });
+            try
+            {
+                var settings = SettingsTestAccess.Model(frame);
+                settings.OpenGroup(Group.Parsing);
+                Assert.Equal(600m, settings.AssessBudgetSeconds);
+                settings.AssessBudgetSeconds = null;
+                Assert.NotNull(await settings.CommitParsingLimitsAsync());
+                Assert.True(settings.HasAssessBudgetRefusal);
+                settings.AssessBudgetSeconds = 120;
+                Assert.Null(await settings.CommitParsingLimitsAsync());
+                var saved = await fake!.ReadDefaultSelectionAsync(
+                    new ReadDefaultSelectionRequest(workspace.Context.ProjectPath!), CancellationToken.None);
+                Assert.Equal(120, saved.Value!.Selection!.Limits.AssessBudgetSeconds);
+            }
+            finally
+            {
+                frame.Close();
+                await workspace.DisposeAsync();
+            }
+        }, TimeSpan.FromMinutes(2));
+    }
+
+    [Fact]
     public void IndividualParsingAndCheckResetsKeepOtherChoicesAndPersist()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>

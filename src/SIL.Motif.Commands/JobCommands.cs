@@ -133,7 +133,13 @@ public static class JobCommands
     /// measures <see cref="DerivedTrialWords"/>, so every front end tries a Proposal the same way.
     /// </summary>
     public static CommandOutcome<JobEnqueuedResponse> EnqueueTrial(EnqueueTrialRequest request,
-        string? parserPath = null)
+        string? parserPath = null) => EnqueueTrialCore(request, parserPath, null);
+
+    internal static CommandOutcome<JobEnqueuedResponse> EnqueueStoppedTrial(EnqueueTrialRequest request,
+        string? parserPath, Refusal stop) => EnqueueTrialCore(request, parserPath, stop);
+
+    private static CommandOutcome<JobEnqueuedResponse> EnqueueTrialCore(EnqueueTrialRequest request,
+        string? parserPath, Refusal? stop)
     {
         if (request.Words?.Any(word => string.IsNullOrWhiteSpace(word) ||
                 !string.Equals(word, word.Trim(), StringComparison.Ordinal)) == true)
@@ -181,8 +187,13 @@ public static class JobCommands
                 request.Limits ?? ResolveTrialLimits(database, project, request.Scope),
                 request.BaselineAssessmentIds, request.NegativeWords);
             var inputJson = JsonSerializer.Serialize(input, MotifJson.CreateOptions());
-            var created = jobs.CreateTrial(jobId, workspaceKey,
-                JobParserPin.Stamp(inputJson, parserPath), NowStamp(), request.BaselineAssessmentIds);
+            var stamped = JobParserPin.Stamp(inputJson, parserPath);
+            var created = stop is null
+                ? jobs.CreateTrial(jobId, workspaceKey, stamped, NowStamp(), request.BaselineAssessmentIds)
+                : jobs.RecordBudgetStop(jobId, workspaceKey, TrialKind, stamped,
+                    JsonSerializer.Serialize(new { code = stop.Code, message = stop.Message,
+                        wordsDone = int.Parse(stop.Facts["wordsDone"], System.Globalization.CultureInfo.InvariantCulture),
+                        wordsNotDone = int.Parse(stop.Facts["wordsNotDone"], System.Globalization.CultureInfo.InvariantCulture) }), NowStamp());
             return CommandOutcome<JobEnqueuedResponse>.Success(
                 new JobEnqueuedResponse(created.JobId, TrialKind, workspaceKey));
         });
@@ -318,13 +329,20 @@ public static class JobCommands
     }
 
     /// <summary>
-    /// Polls one job until it reaches a terminal state, then returns it exactly as <see cref="Show"/>
-    /// does — used by verbs, such as <c>trial</c>, whose completion has no Dry-Run-specific anchor to
-    /// bind and so needs no projection of its own beyond the job's own terminal status.
+    /// Polls one job until it reaches a terminal state and returns its status. A budget stop is a refusal
+    /// so a waiting command reports the same failure as a direct Assessment.
     /// </summary>
-    public static CommandOutcome<JobStatusResponse> WaitForJob(WaitForJobRequest request, Action? wakeRunner = null) =>
-        JobWait.WaitAsync(request.FwDataPath, request.JobId, null, CancellationToken.None,
+    public static CommandOutcome<JobStatusResponse> WaitForJob(WaitForJobRequest request, Action? wakeRunner = null)
+    {
+        var result = JobWait.WaitAsync(request.FwDataPath, request.JobId, null, CancellationToken.None,
             request.Timeout, request.ProductVersion, wakeRunner: wakeRunner).GetAwaiter().GetResult();
+        if (result.Value is not { Status: JobStatus.StoppedByBudget } stopped) return result;
+        return CommandOutcome<JobStatusResponse>.Refused(new Refusal(RefusalCodes.AssessmentStoppedByBudget,
+            FailureReason.StoppedByBudget, stopped.FailureDetail ?? "Parsing stopped at the time limit.",
+            new Dictionary<string, string> { ["jobId"] = stopped.JobId,
+                ["wordsDone"] = (stopped.WordsDone ?? 0).ToString(System.Globalization.CultureInfo.InvariantCulture),
+                ["wordsNotDone"] = (stopped.WordsNotDone ?? 0).ToString(System.Globalization.CultureInfo.InvariantCulture) }));
+    }
 
     /// <summary>Reports what the durable store currently says about one job.</summary>
     public static CommandOutcome<JobStatusResponse> Show(ShowJobRequest request)
@@ -349,12 +367,14 @@ public static class JobCommands
                 StageProgress = stageProgress,
                 FailureCode = FailureCodeOf(job),
                 FailureDetail = FailureCodeOf(job) is null ? null : FailureField(job.ResultJson, "message"),
+                WordsDone = int.TryParse(FailureField(job.ResultJson, "wordsDone"), out var done) ? done : null,
+                WordsNotDone = int.TryParse(FailureField(job.ResultJson, "wordsNotDone"), out var notDone) ? notDone : null,
             });
         });
     }
 
     private static string? FailureCodeOf(JobRecord job) =>
-        job.Status == JobStatus.Failed && FailureField(job.ResultJson, "code") is { } code &&
+        job.Status is JobStatus.Failed or JobStatus.StoppedByBudget && FailureField(job.ResultJson, "code") is { } code &&
         (code == RefusalCodes.JobParserUnavailable || RefusalCatalog.Specs.ContainsKey(code)) ? code : null;
 
     /// <summary>A string a failed job's result records under <paramref name="name"/>, if any.</summary>
@@ -365,8 +385,8 @@ public static class JobCommands
         {
             using var document = JsonDocument.Parse(resultJson);
             return document.RootElement.ValueKind == JsonValueKind.Object &&
-                document.RootElement.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String
-                ? value.GetString() : null;
+                document.RootElement.TryGetProperty(name, out var value)
+                ? value.ValueKind == JsonValueKind.String ? value.GetString() : value.ToString() : null;
         }
         catch (JsonException)
         {

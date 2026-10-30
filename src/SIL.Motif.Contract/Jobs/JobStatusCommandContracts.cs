@@ -81,6 +81,14 @@ public sealed record JobStatusResponse
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyOrder(14)] public string? FailureDetail { get; init; }
 
+    /// <summary>Words completed when a budget stopped this job.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? WordsDone { get; init; }
+
+    /// <summary>Words remaining when a budget stopped this job.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? WordsNotDone { get; init; }
+
     private static string RequireNonBlank(string? value, string parameterName) =>
         string.IsNullOrWhiteSpace(value)
             ? throw new ArgumentException("A nonblank value is required.", parameterName)

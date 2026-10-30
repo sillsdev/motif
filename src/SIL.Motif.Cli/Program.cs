@@ -1839,6 +1839,9 @@ try
                         : Array.Empty<string>();
                     if (!TryReadSelectionLimits(flags, out var limits))
                         return Usage(UsageLineFor("selection set-default"), asJson);
+                    var existingSelection = SelectionCommands.ReadDefault(new ReadDefaultSelectionRequest(selectionProject));
+                    if (existingSelection.Value?.Selection is { } savedSelection)
+                        limits = limits with { AssessBudgetSeconds = savedSelection.Limits.AssessBudgetSeconds };
                     result = RenderCommand(SelectionCommands.SetDefault(new SetDefaultSelectionRequest(
                         selectionProject, selectionName, selectionTexts, addedWords, limits,
                         flags.GetValueOrDefault("expected-revision"))));
@@ -1848,6 +1851,9 @@ try
                         !flags.TryGetValue("expected-revision", out var expectedRevision) ||
                         !TryReadSelectionLimits(flags, out var limitsForSelection))
                         return Usage(UsageLineFor("selection set-limits"), asJson);
+                    var currentSelection = SelectionCommands.ReadDefault(new ReadDefaultSelectionRequest(selectionProject));
+                    if (currentSelection.Value?.Selection is { } savedLimits)
+                        limitsForSelection = limitsForSelection with { AssessBudgetSeconds = savedLimits.Limits.AssessBudgetSeconds };
                     result = RenderCommand(SelectionCommands.SetLimits(new SetSelectionLimitsRequest(
                         selectionProject, limitSelectionName, expectedRevision, limitsForSelection)));
                     break;
@@ -1940,7 +1946,7 @@ try
             if (positionals.Count != 1) return Usage(AssessUsage(), asJson);
             if (flags.Keys.Any(flag => flag is not ("texts" or "all-wordforms" or "words" or "retry-failed" or
                     "retry-work-over" or "retry-source-assessment" or "replaces" or "time-limit-ms" or "step-cap" or
-                    "summary" or "offset" or "limit" or "full-object-timing" or "json"))) return Usage(AssessUsage(), asJson);
+                    "summary" or "offset" or "limit" or "full-object-timing" or "max-seconds" or "json"))) return Usage(AssessUsage(), asJson);
             flags.TryGetValue("replaces", out var assessReplaces);
             if (assessReplaces is not null && !CanonicalId.TryParse(assessReplaces, out _))
                 return Usage(AssessUsage(), asJson);
@@ -1988,6 +1994,13 @@ try
                     return Usage(AssessUsage(), asJson);
                 assessTimeLimitMs = parsedTimeLimitMs;
             }
+            int? assessBudgetSeconds = null;
+            if (flags.TryGetValue("max-seconds", out var assessBudgetRaw))
+            {
+                if (!int.TryParse(assessBudgetRaw, out var parsedBudget) || parsedBudget is < 60 or > 4294967)
+                    return Usage(AssessUsage(), asJson);
+                assessBudgetSeconds = parsedBudget;
+            }
             StepCap? assessStepCap = null;
             if (flags.TryGetValue("step-cap", out var assessStepCapRaw))
             {
@@ -2008,7 +2021,7 @@ try
                 {
                     var assessed = AssessCommand.Assess(
                         new AssessRequest(positionals[0], assessSelection, assessTimeLimitMs, assessStepCap, assessReplaces,
-                            flags.ContainsKey("full-object-timing")),
+                            flags.ContainsKey("full-object-timing"), assessBudgetSeconds),
                         asJson ? null : progress => error.WriteLine(progress.Message), cancellationToken);
                     if (!assessSummary || !assessed.Succeeded) return RenderCommand(assessed);
                     alreadyRendered = true;
@@ -2063,6 +2076,16 @@ try
                 return Usage(JobsUsage(), asJson);
             switch (positionals[0])
             {
+                case "wait":
+                    const string jobsWaitUsage = "Usage: motif jobs wait <jobId> --project <fwdata> [--wait-timeout-ms <ms>] [--json]";
+                    if (positionals.Count != 2 || !flags.TryGetValue("project", out var jobsWaitProject))
+                        return Usage(jobsWaitUsage, asJson);
+                    if (ParseWaitTimeout(flags, jobsWaitUsage, asJson, out var jobsWaitTimeout) is { } jobsWaitError)
+                        return jobsWaitError;
+                    result = RenderCommand(JobCommands.WaitForJob(
+                        new WaitForJobRequest(jobsWaitProject, positionals[1], CliProductVersion(), jobsWaitTimeout)));
+                    break;
+
                 case "show":
                     if (positionals.Count != 2 || !flags.TryGetValue("project", out var jobsShowProject))
                         return Usage("Usage: motif jobs show <jobId> --project <fwdata> [--json]", asJson);
@@ -2310,7 +2333,7 @@ static bool TryReadSelectionLimits(IReadOnlyDictionary<string, string> flags, ou
 }
 
 static string JobsUsage() =>
-    "Usage: motif jobs show <jobId> --project <fwdata> [--json] OR " +
+    "Usage: motif jobs wait <jobId> --project <fwdata> [--json] OR motif jobs show <jobId> --project <fwdata> [--json] OR " +
     "motif jobs assessments <jobId> --project <fwdata> [--json] OR motif jobs list --all [--json] OR " +
     "motif jobs cancel <jobId> --project <fwdata> [--json] OR motif jobs requeue <jobId> --project <fwdata> " +
     "[--json] OR " + JobsMoveUsage();

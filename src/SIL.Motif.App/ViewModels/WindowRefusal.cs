@@ -282,7 +282,7 @@ public sealed partial record WindowRefusal
 
     /// <summary>Whether this refusal can be reported as a problem rather than a cancelled or invalid action.</summary>
     public bool OffersProblemReport => Code != WindowCheckCode &&
-        Reason is not FailureReason.Cancelled and not FailureReason.InvalidArgument;
+        Reason is not FailureReason.Cancelled and not FailureReason.InvalidArgument and not FailureReason.StoppedByBudget;
 
     /// <summary>
     /// Whether this refusal is a store made by another version of Motif that names its file, the one refusal a
@@ -347,6 +347,9 @@ public sealed partial record WindowRefusal
 
     private static string SentenceFor(Refusal refusal, string sentenceWhenUnmapped)
     {
+        if (refusal.Code == C.AssessmentStoppedByBudget)
+            return string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.AssessBudgetStoppedFormat,
+                refusal.Facts.GetValueOrDefault("wordsDone") ?? "0", refusal.Facts.GetValueOrDefault("wordsNotDone") ?? "0");
         if (refusal.Code == C.StoreInconsistent) return StoreDamaged;
         if (refusal.Code == C.StoreOtherVersion) return StoreFromOtherVersion;
         if (refusal.Facts.ContainsKey(RefusalFactNames.ParserNotFound) && ParserUnusableCodes.Contains(refusal.Code))

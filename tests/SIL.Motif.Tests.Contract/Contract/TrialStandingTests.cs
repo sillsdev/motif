@@ -21,6 +21,7 @@ public sealed class TrialStandingTests
     [InlineData(JobStatus.Failed)]
     [InlineData(JobStatus.Cancelled)]
     [InlineData(JobStatus.Interrupted)]
+    [InlineData(JobStatus.StoppedByBudget)]
     [InlineData(JobStatus.CompletedWithAssessmentFailure)]
     [InlineData(JobStatus.CompletedDryRunOnly)]
     [InlineData(JobStatus.Completed)]

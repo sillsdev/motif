@@ -235,7 +235,7 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
         : "These are the results from before this parse.";
 
     /// <summary>Whether the last parse was refused rather than cancelled, so the page offers Report a problem.</summary>
-    public bool OffersProblemReport => !IsActive && Refusal is { Reason: not FailureReason.Cancelled };
+    public bool OffersProblemReport => !IsActive && Refusal is { Reason: not (FailureReason.Cancelled or FailureReason.StoppedByBudget) };
 
     private void OnResultChanged(object? sender, PropertyChangedEventArgs e)
     {

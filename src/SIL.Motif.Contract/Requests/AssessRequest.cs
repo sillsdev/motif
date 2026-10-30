@@ -13,6 +13,7 @@ namespace SIL.Motif.Contract.Requests;
 /// <param name="PerWordLimitMs">The per-word duration limit in milliseconds; null keeps the configured limit.</param>
 /// <param name="PerWordStepLimit">The per-word parser step cap; null keeps the configured cap.</param>
 /// <param name="ReplaceAssessmentId">The prior complete Assessment to replace for an explicit reparse.</param>
+/// <param name="BudgetSeconds">Whole-run time limit in seconds; null uses the saved Parsing setting.</param>
 /// <param name="FullObjectTimingDetail">Retain object detail for every word in a bounded explicit Selection.</param>
 public sealed record AssessRequest(
     string ProjectPath,
@@ -20,4 +21,5 @@ public sealed record AssessRequest(
     int? PerWordLimitMs = null,
     StepCap? PerWordStepLimit = null,
     string? ReplaceAssessmentId = null,
-    bool FullObjectTimingDetail = false);
+    bool FullObjectTimingDetail = false,
+    int? BudgetSeconds = null);

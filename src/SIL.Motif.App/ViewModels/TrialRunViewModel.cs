@@ -174,7 +174,16 @@ public sealed partial class TrialRunViewModel : ObservableObject
             MotifProductVersion.CurrentText, Timeout.InfiniteTimeSpan), new StatusProgress(this, run), token)
             .ConfigureAwait(true);
         if (!waited.Succeeded) return CommandOutcome<TrialRecord?>.Refused(waited.Refusal!);
-        if (waited.Value!.Status != JobStatus.Completed)
+        if (waited.Value!.Status == JobStatus.StoppedByBudget)
+            return CommandOutcome<TrialRecord?>.Refused(new Refusal(C.AssessmentStoppedByBudget,
+                FailureReason.StoppedByBudget, waited.Value.FailureDetail ?? string.Format(MotifAppStrings.AssessBudgetStoppedFormat,
+                    waited.Value.WordsDone ?? 0, waited.Value.WordsNotDone ?? 0),
+                new Dictionary<string, string>
+                {
+                    ["wordsDone"] = (waited.Value.WordsDone ?? 0).ToString(),
+                    ["wordsNotDone"] = (waited.Value.WordsNotDone ?? 0).ToString(),
+                }));
+        if (waited.Value.Status != JobStatus.Completed)
         {
             return CommandOutcome<TrialRecord?>.Refused(new Refusal(C.TrialMeasurementIncomplete,
                 FailureReason.Refused, "Trial job '" + jobId + "' finished as " +

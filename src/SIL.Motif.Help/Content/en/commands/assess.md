@@ -38,7 +38,7 @@ Assess and Trial use the Default Selection's per-word step cap and time policy, 
 
 When object statistics are available, Motif keeps whole-run timing totals and per-object detail for the 2,000 words with the most work steps by default. If work steps are unavailable, it uses elapsed time. A named scope can set `timing-detail-words` in `<project>.motif.toml` to a number from 0 to 10,000. Results identify when word-level detail is incomplete. To keep detail for every word in an explicitly supplied Selection of at most 2,000 words, pass `--full-object-timing` with the Selection. A retry records object timings from the initial pass; it does not supply object timings for the retried result.
 
-An external scheduler may also impose a whole-run deadline. Set that deadline for the size of this particular run; it is separate from the per-word parser limits. A wrapper's deadline must actually apply to the chosen priority and environment. A deadline that cancels the run leaves no complete Assessment.
+Each Assessment has a whole-run time limit, including retries. The project Parsing setting defaults to 3,600 seconds; `--max-seconds <seconds>` overrides it for this run, with a minimum of 60 seconds. If the limit is reached, Motif stops the parser, reports the number of words done and not done, records a `stopped-by-budget` job, and saves no Assessment. The command exits with code 5.
 
 ## A large list
 
