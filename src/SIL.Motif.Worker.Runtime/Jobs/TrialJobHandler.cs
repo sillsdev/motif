@@ -226,7 +226,7 @@ internal sealed class TrialJobHandler
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
             if (!preserveScratch) TryDeleteDirectory(scratchRoot);
-            var detail = JsonSerializer.Serialize(new { detail = exception.Message });
+            var detail = JobFailureDetail.Serialize(exception);
             // A successful terminal status may not carry a failure category, so only Failed gets one here.
             return claim.Job.DryRunPublished
                 ? new JobOutcome(JobStatus.CompletedWithAssessmentFailure, JobFailureCategory.None, detail)
@@ -347,7 +347,7 @@ internal sealed class TrialJobHandler
         catch (OperationCanceledException) { throw; }
         catch (Exception exception)
         {
-            var detail = JsonSerializer.Serialize(new { detail = exception.Message });
+            var detail = JobFailureDetail.Serialize(exception);
             return new JobOutcome(JobStatus.CompletedWithAssessmentFailure, JobFailureCategory.None, detail);
         }
         finally

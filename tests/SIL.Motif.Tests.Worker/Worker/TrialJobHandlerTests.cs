@@ -1363,6 +1363,9 @@ public sealed class TrialJobHandlerTests : IDisposable
 
         Assert.Equal(JobStatus.CompletedWithAssessmentFailure, completed.Status);
         Assert.True(completed.DryRunPublished);
+        Assert.Contains("disk full", completed.ResultJson, StringComparison.Ordinal);
+        Assert.Contains("System.IO.IOException", completed.ResultJson, StringComparison.Ordinal);
+        Assert.Contains("\"exceptionType\":\"System.IO.IOException\"", completed.ResultJson, StringComparison.Ordinal);
     }
 
     [Fact]

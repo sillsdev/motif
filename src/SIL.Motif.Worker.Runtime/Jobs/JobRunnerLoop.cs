@@ -117,7 +117,7 @@ public sealed class JobRunnerLoop
         catch (Exception exception)
         {
             if (Volatile.Read(ref claimLost) == 0)
-                FinishWithDetail(claimed, JobStatus.Failed, JobFailureCategory.Unknown, exception.Message);
+                Finish(claimed, JobStatus.Failed, JobFailureCategory.Unknown, JobFailureDetail.Serialize(exception));
         }
         finally
         {
