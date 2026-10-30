@@ -323,6 +323,7 @@ public sealed class SampleProjectSpikeTests(ITestOutputHelper output)
             {
                 var actual = JsonNode.Parse(json)!;
                 var pinned = JsonNode.Parse(await File.ReadAllTextAsync(expectedPath))!;
+                SampleParserWorkPins.ApplyTurkic(pinned);
                 RemoveWallClock(actual);
                 RemoveWallClock(pinned);
                 Assert.True(JsonNode.DeepEquals(pinned, actual), "Pinned parser results changed; update expected.json intentionally.");

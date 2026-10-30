@@ -171,6 +171,7 @@ public sealed class SyntheticBantuSampleTests(ITestOutputHelper output)
             {
                 var actual = JsonNode.Parse(json)!;
                 var pinned = JsonNode.Parse(await File.ReadAllTextAsync(expectedPath))!;
+                SampleParserWorkPins.ApplyBantu(pinned);
                 RemoveWallClock(actual);
                 RemoveWallClock(pinned);
                 Assert.True(JsonNode.DeepEquals(pinned, actual),
