@@ -1140,6 +1140,7 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
         var slotOperation = Assert.Single(slotEdit.GetProperty("result").GetProperty("operations").EnumerateArray());
         Assert.Equal("grammar/moInflAffixSlot/setOptional", slotOperation.GetProperty("kind").GetString());
         Assert.Equal(1, slotEdit.GetProperty("result").GetProperty("operationCount").GetInt32());
+        Assert.StartsWith("Draft now has 1 change.", slotEdit.GetProperty("next").GetString(), StringComparison.Ordinal);
 
         await session.CallAsync("motif_start_proposal", ("draft", "slot-create"),
             ("label", "Add a category-owned slot"), ("rationale", "The affix needs a new position class."));
@@ -1376,6 +1377,29 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
             operation.After.Values.Any(value => value.ValueKind == JsonValueKind.String && value.GetString() == phonemeId));
         Assert.Contains(draft.Operations, operation => operation.Kind == "grammar/phSimpleContextNC/setFeatureStructure" &&
             operation.After.Values.Any(value => value.ValueKind == JsonValueKind.String && value.GetString() == naturalClassId));
+    }
+
+    [Fact]
+    public async Task EditingOnePhonemeRepresentationReportsOneOperation()
+    {
+        using var project = new WalkthroughProject(pristine);
+        string phonemeId;
+        using (var cache = new FwDataProjectLoader().LoadScratchCache(project.FwDataPath))
+        {
+            var phoneme = cache.LangProject.PhonologicalDataOA.PhonemeSetsOS[0].PhonemesOC
+                .Single(item => item.CodesOS.Any(code => code.Representation.get_String(cache.DefaultVernWs)?.Text == "m"));
+            phonemeId = CanonicalId.FromGuid(phoneme.Guid).Value;
+        }
+
+        await using var session = await Session.StartAsync(project.FwDataPath, new McpLaunchOptions(Profile: "phonology"));
+        await session.CallAsync("motif_start_proposal", ("draft", "respell"),
+            ("label", "Respell a phoneme"), ("rationale", "Keep its identity."));
+        var result = await session.CallAsync("motif_edit_phoneme", ("draft", "respell"), ("target", phonemeId),
+            ("respell", new object[] { new { from = "m", to = "mh" } }));
+
+        Assert.True(result.GetProperty("ok").GetBoolean(), result.ToString());
+        Assert.Equal(1, result.GetProperty("result").GetProperty("operationCount").GetInt32());
+        Assert.StartsWith("Draft now has 1 operation.", result.GetProperty("next").GetString(), StringComparison.Ordinal);
     }
 
     [Fact]

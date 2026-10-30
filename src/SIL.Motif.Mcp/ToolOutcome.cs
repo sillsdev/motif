@@ -22,11 +22,26 @@ internal sealed record ToolOutcome(JsonNode? Value, Refusal? Refusal, string? Ne
             ? Ok(JsonNode.Parse(ProjectionJson.Serialize(outcome.Value!))!, ComposeHint(outcome.Value!, next?.Invoke(outcome.Value!)))
             : Refused(outcome.Refusal!);
 
-    private static string? ComposeHint<T>(T value, string? next) where T : class =>
-        value is ComposedOperationsResponse composed &&
-        (next is null || !next.StartsWith("Draft now has ", StringComparison.Ordinal))
-            ? $"Draft now has {composed.OperationCount} operations." + (next is null ? "" : $" {next}")
-            : next;
+    private static string? ComposeHint<T>(T value, string? next) where T : class
+    {
+        if (value is ComposedOperationsResponse composed &&
+            (next is null || !next.StartsWith("Draft now has ", StringComparison.Ordinal)))
+        {
+            var noun = composed.OperationCount == 1 ? "operation" : "operations";
+            next = $"Draft now has {composed.OperationCount} {noun}." + (next is null ? "" : $" {next}");
+        }
+
+        const string prefix = "Draft now has 1 ";
+        if (next is null || !next.StartsWith(prefix, StringComparison.Ordinal)) return next;
+        foreach (var plural in new[] { "operations", "changes", "member changes", "moves" })
+        {
+            var counted = prefix + plural;
+            if (next.StartsWith(counted, StringComparison.Ordinal) &&
+                (next.Length == counted.Length || next[counted.Length] is '.' or ' '))
+                return prefix + plural[..^1] + next[counted.Length..];
+        }
+        return next;
+    }
 
     public static ToolOutcome From(CommandOutcome<JsonObject> outcome, string? next = null) =>
         outcome.Succeeded ? Ok(outcome.Value!, next) : Refused(outcome.Refusal!);

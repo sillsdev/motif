@@ -20,6 +20,32 @@ public sealed class ComposeToolTests
             ToolOutcome.From(result, _ => "Draft now has 3 changes. Try it.").Next);
     }
 
+    [Theory]
+    [InlineData(0, "operations", "changes")]
+    [InlineData(1, "operation", "change")]
+    [InlineData(3, "operations", "changes")]
+    public void ComposerHintsUseTheCountForBothFallbackAndExistingHints(int count, string operation, string change)
+    {
+        var result = CommandOutcome<ComposedOperationsResponse>.Success(new("draft", "composer", [], count));
+        Assert.Equal($"Draft now has {count} {operation}. Try it.", ToolOutcome.From(result, _ => "Try it.").Next);
+        Assert.Equal($"Draft now has {count} {operation}. Try it.",
+            ToolOutcome.From(result, _ => $"Draft now has {count} operations. Try it.").Next);
+        Assert.Equal($"Draft now has {count} {change}. Try it.",
+            ToolOutcome.From(result, _ => $"Draft now has {count} changes. Try it.").Next);
+        Assert.Equal($"Draft now has {count} member {change}. Try it.",
+            ToolOutcome.From(result, _ => $"Draft now has {count} member changes. Try it.").Next);
+        Assert.Equal($"Draft now has {count} {(count == 1 ? "move" : "moves")}. Try it.",
+            ToolOutcome.From(result, _ => $"Draft now has {count} moves. Try it.").Next);
+    }
+
+    [Fact]
+    public void BatchHintsKeepTheirAdviceAndUseTheSingularCount()
+    {
+        var result = CommandOutcome<ComposedBatchResponse>.Success(new("draft", [], 1));
+        Assert.Equal("Draft now has 1 change from 1 step. Try it.",
+            ToolOutcome.From(result, _ => "Draft now has 1 changes from 1 step. Try it.").Next);
+    }
+
     private static AgentTool Tool => AgentTools.All.Single(tool => tool.Name == "motif_compose");
 
     private static string[] Verbs(AgentTool tool, string property) =>
