@@ -55,7 +55,7 @@ public sealed class AuthorAdhocProhibitionDraftTests(PristineProjectFixture pris
         var dry = ProposalDryRunner.Run(scratch, proposal);
         var statements = dry.ExpectedEffects.Where(effect => effect.Field == SnapshotFields.MoMorphDataAdhocCoProhibitions)
             .Select(effect => effect.Preview!.Value.GetProperty("prohibits").GetString()).ToArray();
-        Assert.Contains("morpheme 'pamil' cannot occur immediately to the left of ya", statements);
+        Assert.Contains("morpheme 'pamil' cannot occur immediately to the left of ya (the first comes before the rest in the word)", statements);
         Assert.Contains("allomorph 'pamil' cannot occur in the same word as ya", statements);
         ProposalApplier.Apply(cache, proposal, dry.Anchor, "tester");
         var created = cache.LangProject.MorphologicalDataOA.AdhocCoProhibitionsOC;
