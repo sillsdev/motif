@@ -3,6 +3,7 @@ using System.Globalization;
 using Microsoft.Data.Sqlite;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Commands;
+using SIL.Motif.Commands.Assess;
 using SIL.Motif.Host;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Store;
@@ -140,39 +141,25 @@ public sealed class AssessRoundTripArgvTests : IDisposable
         var heartbeat = Path.Combine(_root, "budget-heartbeat.txt");
         var parserIdPath = Path.Combine(_root, "budget-parser-id.txt");
         var parser = CopyFakeParser(new { heartbeatPath = heartbeat, processIdPath = parserIdPath });
-        var start = CliProcess.CreateStartInfo(_workerRoot, parser, false,
-            "assess", project, "--words", wordsPath, "--max-seconds", "60", "--json");
-        start.Environment["MOTIF_TEST_ASSESS_BUDGET_PROJECT"] = project;
-        using var launched = InterruptibleCli.Start(start);
-        var process = launched.Process;
-        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(45);
-        int? parserId = null;
-        while (!process.HasExited && DateTime.UtcNow < deadline)
+        AssessCommand.BudgetDurationForTests.Value = TimeSpan.FromSeconds(8);
+        try
         {
-            if (File.Exists(heartbeat) && TryReadProcessId(parserIdPath) is { } parsedId)
-            {
-                parserId = parsedId;
-                break;
-            }
-            await Task.Delay(25);
+            var result = await Task.Run(() => CliInProcess.Run(_workerRoot, parser, false,
+                "assess", project, "--words", wordsPath, "--max-seconds", "60", "--json"))
+                .WaitAsync(TimeSpan.FromSeconds(45));
+            Assert.True(result.ExitCode == 5, result.FailureDetails);
+            var failure = ProjectionJson.Deserialize<FailureEnvelope>(result.Error)!;
+            Assert.Equal("assessment.stopped-by-budget", failure.Code);
+            Assert.Equal(FailureReason.StoppedByBudget, failure.Reason);
+            Assert.Equal("0", failure.Detail!["wordsDone"]);
+            Assert.Equal("1", failure.Detail["wordsNotDone"]);
+            Assert.True(File.Exists(heartbeat), result.FailureDetails);
+            Assert.NotNull(TryReadProcessId(parserIdPath));
+            await AssertProcessStopped(TryReadProcessId(parserIdPath)!.Value);
+            Assert.Equal(0L, ReadAssessmentCount(project));
+            Assert.Equal(0L, ReadInvocationCount(project));
         }
-        if (parserId is null)
-        {
-            if (!process.HasExited) process.Kill(entireProcessTree: true);
-            await launched.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(30));
-            Assert.Fail("The fake parser did not start: " + launched.ReadStderr());
-        }
-        await launched.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(30));
-        var error = launched.ReadStderr();
-        Assert.True(launched.ExitCode == 5, error);
-        var failure = ProjectionJson.Deserialize<FailureEnvelope>(error)!;
-        Assert.Equal("assessment.stopped-by-budget", failure.Code);
-        Assert.Equal(FailureReason.StoppedByBudget, failure.Reason);
-        Assert.Equal("0", failure.Detail!["wordsDone"]);
-        Assert.Equal("1", failure.Detail["wordsNotDone"]);
-        await AssertProcessStopped(parserId!.Value);
-        Assert.Equal(0L, ReadAssessmentCount(project));
-        Assert.Equal(0L, ReadInvocationCount(project));
+        finally { AssessCommand.BudgetDurationForTests.Value = null; }
     }
 
     [Fact]
@@ -199,21 +186,23 @@ public sealed class AssessRoundTripArgvTests : IDisposable
         var heartbeat = Path.Combine(_root, "trial-budget-heartbeat");
         var parserIdPath = Path.Combine(_root, "trial-budget-parser-id");
         var parser = CopyFakeParser(new { heartbeatPath = heartbeat, processIdPath = parserIdPath });
-        var start = CliProcess.CreateStartInfo(_workerRoot, parser, true,
-            "trial", "--project", project, proposal, "--words", wordsPath, "--wait", "--json");
-        CliProcess.EnableAdvancedAiMode(start, _workerRoot);
-        start.Environment["MOTIF_TEST_ASSESS_BUDGET_PROJECT"] = project;
-        using var launched = InterruptibleCli.Start(start);
-        await launched.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(40));
-        var error = launched.ReadStderr();
-        Assert.True(launched.ExitCode == 5, error);
-        var failure = ProjectionJson.Deserialize<FailureEnvelope>(error)!;
-        Assert.Equal("assessment.stopped-by-budget", failure.Code);
-        Assert.Equal("1", failure.Detail!["wordsNotDone"]);
-        Assert.True(File.Exists(heartbeat));
-        await AssertProcessStopped(TryReadProcessId(parserIdPath)!.Value);
-        Assert.Equal(1L, ReadCount(project, "Jobs"));
-        Assert.Equal(0L, ReadAssessmentCount(project));
+        AssessCommand.BudgetDurationForTests.Value = TimeSpan.FromSeconds(8);
+        try
+        {
+            var result = await Task.Run(() => CliInProcess.Run(_workerRoot, parser, true,
+                "trial", "--project", project, proposal, "--words", wordsPath, "--wait", "--json"))
+                .WaitAsync(TimeSpan.FromSeconds(45));
+            Assert.True(result.ExitCode == 5, result.FailureDetails);
+            var failure = ProjectionJson.Deserialize<FailureEnvelope>(result.Error)!;
+            Assert.Equal("assessment.stopped-by-budget", failure.Code);
+            Assert.Equal("1", failure.Detail!["wordsNotDone"]);
+            Assert.True(File.Exists(heartbeat), result.FailureDetails);
+            Assert.NotNull(TryReadProcessId(parserIdPath));
+            await AssertProcessStopped(TryReadProcessId(parserIdPath)!.Value);
+            Assert.Equal(1L, ReadCount(project, "Jobs"));
+            Assert.Equal(0L, ReadAssessmentCount(project));
+        }
+        finally { AssessCommand.BudgetDurationForTests.Value = null; }
     }
 
     [Fact]
@@ -226,8 +215,10 @@ public sealed class AssessRoundTripArgvTests : IDisposable
         var heartbeat = Path.Combine(_root, "parser-heartbeat.txt");
         var parserIdPath = Path.Combine(_root, "parser-process-id.txt");
         var parser = CopyFakeParser(new { heartbeatPath = heartbeat, processIdPath = parserIdPath });
-        using var launched = InterruptibleCli.Start(CliProcess.CreateStartInfo(_workerRoot, parser, false,
-            "assess", project, "--words", wordsPath, "--json"));
+        var start = CliProcess.CreateStartInfo(_workerRoot, parser, false,
+            "assess", project, "--words", wordsPath, "--json");
+        start.Environment["MOTIF_TEST_ASSESS_BUDGET_PROJECT"] = project;
+        using var launched = InterruptibleCli.Start(start);
         var process = launched.Process;
 
         var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(30);
@@ -244,6 +235,7 @@ public sealed class AssessRoundTripArgvTests : IDisposable
         Assert.True(parserId is not null,
             $"The fake parser did not start its held batch.{Environment.NewLine}" +
             launched.ReadStderr() + launched.ReadStdout());
+        await Task.Delay(TimeSpan.FromSeconds(9));
         Assert.False(process.HasExited, "The CLI exited before cancellation was sent.");
 
         Assert.True(launched.Interrupt(), "Could not send Ctrl+Break to the CLI process group.");

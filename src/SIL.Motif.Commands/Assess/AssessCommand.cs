@@ -58,6 +58,7 @@ namespace SIL.Motif.Commands.Assess;
 public static class AssessCommand
 {
     internal static readonly AsyncLocal<CancellationToken?> BudgetStopForTests = new();
+    internal static readonly AsyncLocal<TimeSpan?> BudgetDurationForTests = new();
 
     // assess has no configured query text; SelectionComposer already resolved the words themselves.
     private const string ScopeQuery = "assess";
@@ -185,11 +186,7 @@ public static class AssessCommand
             using var forcedBudget = BudgetStopForTests.Value?.Register(budget.Cancel);
             using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, budget.Token);
             var callerToken = cancellationToken;
-            var testBudgetProject = Environment.GetEnvironmentVariable("MOTIF_TEST_ASSESS_BUDGET_PROJECT");
-            var duration = testBudgetProject is not null && string.Equals(Path.GetFullPath(testBudgetProject),
-                Path.GetFullPath(request.ProjectPath), OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal)
-                ? TimeSpan.FromSeconds(8) : TimeSpan.FromSeconds(seconds);
-            var remaining = duration - started.Elapsed;
+            var remaining = (BudgetDurationForTests.Value ?? TimeSpan.FromSeconds(seconds)) - started.Elapsed;
             if (remaining <= TimeSpan.Zero) budget.Cancel();
             else budget.CancelAfter(remaining);
             cancellationToken = linked.Token;

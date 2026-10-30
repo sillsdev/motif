@@ -26,6 +26,21 @@ public sealed class ClaimedJobTests : IDisposable
     }
 
     [Fact]
+    public void OnlyTheTrackedClaimRecordHasAClaimTimer()
+    {
+        var jobs = new JobRepository(_database);
+        var queued = jobs.Create("job-timer", Project, "trial", "{}", Now());
+        Assert.Throws<InvalidOperationException>(() => JobClaims.TimerFor(queued));
+        Assert.Throws<InvalidOperationException>(() => new ClaimedJob(jobs, queued).ClaimElapsed);
+
+        var claimed = new JobClaims(_database).Claim(Project, "timer-runner", Now(), Lease())!;
+        var timer = JobClaims.TimerFor(claimed);
+        Assert.Same(timer, JobClaims.TimerFor(claimed));
+        Assert.InRange(new ClaimedJob(jobs, claimed).ClaimElapsed, TimeSpan.Zero, timer.Elapsed + TimeSpan.FromSeconds(1));
+        Assert.Throws<InvalidOperationException>(() => JobClaims.TimerFor(jobs.Get(claimed.JobId)!));
+    }
+
+    [Fact]
     public void ATransitionCanFollowAnotherWithoutTheCallerEverSupplyingAVersion()
     {
         var jobs = new JobRepository(_database);

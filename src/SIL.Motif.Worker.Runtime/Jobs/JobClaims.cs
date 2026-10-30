@@ -36,7 +36,8 @@ public sealed class JobClaims : IJobClaimProtocol
     private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<JobRecord, System.Diagnostics.Stopwatch> ClaimTimers = new();
 
     internal static System.Diagnostics.Stopwatch TimerFor(JobRecord job) =>
-        ClaimTimers.GetValue(job, _ => System.Diagnostics.Stopwatch.StartNew());
+        ClaimTimers.TryGetValue(job, out var timer) ? timer
+            : throw new InvalidOperationException("The job record has no tracked claim time.");
 
     private readonly MotifDatabase _database;
     private readonly JobRepository _jobs;

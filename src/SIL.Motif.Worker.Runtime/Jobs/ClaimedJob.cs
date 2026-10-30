@@ -16,7 +16,7 @@ public sealed class ClaimedJob
     private readonly JobRepository _jobs;
     private readonly string _jobId;
     private readonly string? _capturedClaimToken;
-    private readonly System.Diagnostics.Stopwatch _claimTimer;
+    private readonly JobRecord _claimedRecord;
     private readonly object _progressGate = new();
     private long _progressGeneration;
 
@@ -26,7 +26,7 @@ public sealed class ClaimedJob
         ArgumentNullException.ThrowIfNull(claimed);
         _jobId = claimed.JobId;
         _capturedClaimToken = claimed.ClaimToken;
-        _claimTimer = JobClaims.TimerFor(claimed);
+        _claimedRecord = claimed;
         Job = claimed;
     }
 
@@ -34,7 +34,7 @@ public sealed class ClaimedJob
 
     internal string? CapturedClaimToken => _capturedClaimToken;
 
-    internal TimeSpan ClaimElapsed => _claimTimer.Elapsed;
+    internal TimeSpan ClaimElapsed => JobClaims.TimerFor(_claimedRecord).Elapsed;
 
     /// <summary>This job's id, stable for the life of the claim.</summary>
     public string JobId => _jobId;

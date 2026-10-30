@@ -124,7 +124,7 @@ public sealed class TrialJobHandlerTests : IDisposable
         TrialJobHandler.BudgetStopForTests.Value = stop.Token;
         try
         {
-            var finished = RunAndFinish(handler, job.JobId);
+            var finished = RunAndFinish(handler, job);
             Assert.Equal(JobStatus.StoppedByBudget, finished.Status);
             Assert.Contains("words done", finished.ResultJson);
             Assert.Empty(_assessments.ListByProposal(proposalId));
@@ -210,7 +210,7 @@ public sealed class TrialJobHandlerTests : IDisposable
         SaveCommittedProposal(proposalId, proposalJson);
 
         var job = CreateTrialJob(proposalJson);
-        var completed = RunAndFinish(handler, job.JobId);
+        var completed = RunAndFinish(handler, job);
 
         Assert.Equal(JobStatus.Completed, completed.Status);
         Assert.True(completed.DryRunPublished);
@@ -228,7 +228,7 @@ public sealed class TrialJobHandlerTests : IDisposable
         SaveCommittedProposal(proposalId, proposalJson);
         var job = CreateTrialJob(proposalJson);
 
-        var completed = RunAndFinish(handler, job.JobId);
+        var completed = RunAndFinish(handler, job);
 
         Assert.Equal(JobStatus.Completed, completed.Status);
         var header = Assert.Single(_assessments.ListByProposal(proposalId));
@@ -304,7 +304,7 @@ public sealed class TrialJobHandlerTests : IDisposable
         var proposalJson = BuildSetGlossProposalJson(proposalId, _seed.FirstSenseId, "cancel retained source");
         SaveCommittedProposal(proposalId, proposalJson);
         var job = CreateTrialJob(proposalJson);
-        var claim = ClaimedJob.Of(_jobs, job.JobId);
+        var claim = new ClaimedJob(_jobs, job);
 
         var outcome = await handler.RunAsync(claim, _project, cancellation.Token);
 
@@ -336,7 +336,7 @@ public sealed class TrialJobHandlerTests : IDisposable
                 return DefaultPrepareForAssessment(cache, ct);
             });
 
-        var completed = RunAndFinish(handler, job.JobId);
+        var completed = RunAndFinish(handler, job);
 
         Assert.Equal(JobStatus.Completed, completed.Status);
         Assert.NotNull(preparedRuleOrder);
@@ -359,7 +359,7 @@ public sealed class TrialJobHandlerTests : IDisposable
         SaveCommittedProposal(proposalId, proposalJson);
         var job = CreateTrialJob(proposalJson);
 
-        var completed = RunAndFinish(handler, job.JobId);
+        var completed = RunAndFinish(handler, job);
 
         Assert.Equal(JobStatus.Completed, completed.Status);
         Assert.NotNull(checkedPath);
@@ -418,7 +418,7 @@ public sealed class TrialJobHandlerTests : IDisposable
         SaveCommittedProposal(proposalId, proposalJson);
         var job = CreateTrialJob(proposalJson);
 
-        var completed = RunAndFinish(handler, job.JobId);
+        var completed = RunAndFinish(handler, job);
 
         Assert.Equal(JobStatus.Completed, completed.Status);
         Assert.Contains("grammar-health unavailable", completed.ResultJson, StringComparison.Ordinal);
@@ -437,7 +437,7 @@ public sealed class TrialJobHandlerTests : IDisposable
 
         var list = externalList ? JobWordLists.Store(_database, [UnanalysedWordform]) : null;
         var job = CreateTrialJob(proposalJson, externalList ? null : [UnanalysedWordform], wordList: list);
-        var completed = RunAndFinish(handler, job.JobId);
+        var completed = RunAndFinish(handler, job);
 
         Assert.Equal(JobStatus.Completed, completed.Status);
         var assessmentId = JsonDocument.Parse(completed.ResultJson!).RootElement
@@ -458,7 +458,7 @@ public sealed class TrialJobHandlerTests : IDisposable
         var handler = BuildHandler(lanes, assessor);
         var job = CreateTrialJob(proposalJson, [OpinionWordform]);
 
-        var completed = RunAndFinish(handler, job.JobId);
+        var completed = RunAndFinish(handler, job);
 
         Assert.Equal(JobStatus.Completed, completed.Status);
         var assessmentId = JsonDocument.Parse(completed.ResultJson!).RootElement
@@ -486,7 +486,7 @@ public sealed class TrialJobHandlerTests : IDisposable
         };
         var handler = BuildHandler(lanes, assessor);
 
-        var completed = RunAndFinish(handler, job.JobId);
+        var completed = RunAndFinish(handler, job);
 
         Assert.Equal(UnanalysedWordform, whileRunning?.CurrentWord);
         Assert.Equal(0, whileRunning?.Completed);
@@ -589,7 +589,7 @@ public sealed class TrialJobHandlerTests : IDisposable
         var handler = BuildHandler(lanes, assessor);
         using var lease = ProjectParseLease.TryAcquire(_database);
         Assert.NotNull(lease);
-        var claim = ClaimedJob.Of(_jobs, job.JobId);
+        var claim = new ClaimedJob(_jobs, job);
 
         var outcome = await handler.RunAsync(claim, _project, CancellationToken.None);
 
@@ -612,7 +612,7 @@ public sealed class TrialJobHandlerTests : IDisposable
         var statusBefore = _proposals.Get(proposalId).Status;
 
         var job = CreateTrialJob(proposalJson);
-        var completed = RunAndFinish(handler, job.JobId);
+        var completed = RunAndFinish(handler, job);
 
         Assert.Equal(JobStatus.Completed, completed.Status);
         var statusAfter = _proposals.Get(proposalId).Status;
@@ -631,7 +631,7 @@ public sealed class TrialJobHandlerTests : IDisposable
         var expectedDigest = IntentDigest.Compute(ProposalJsonParser.Parse(draftJson));
 
         var job = CreateTrialJob(draftJson);
-        var completed = RunAndFinish(handler, job.JobId);
+        var completed = RunAndFinish(handler, job);
 
         Assert.Equal(JobStatus.Completed, completed.Status);
 
@@ -658,13 +658,13 @@ public sealed class TrialJobHandlerTests : IDisposable
         SaveCommittedProposal(proposalId, proposalJson);
 
         var firstJob = CreateTrialJob(proposalJson);
-        RunAndFinish(handler, firstJob.JobId);
+        RunAndFinish(handler, firstJob);
         var afterFirst = _assessments.ListByProposal(proposalId);
         Assert.Single(afterFirst);
         var firstAssessmentId = afterFirst[0].AssessmentId;
 
         var secondJob = CreateTrialJob(proposalJson, createdUtc: "2026-08-29T00:00:01Z");
-        RunAndFinish(handler, secondJob.JobId);
+        RunAndFinish(handler, secondJob);
         var afterSecond = _assessments.ListByProposal(proposalId);
 
         Assert.Equal(2, afterSecond.Count);
@@ -690,7 +690,7 @@ public sealed class TrialJobHandlerTests : IDisposable
         for (var i = 0; i < 4; i++)
         {
             var job = CreateTrialJob(proposals[i % 2], createdUtc: $"2026-08-29T00:00:0{i}Z");
-            Assert.Equal(JobStatus.Completed, RunAndFinish(handler, job.JobId).Status);
+            Assert.Equal(JobStatus.Completed, RunAndFinish(handler, job).Status);
             paths.Add(TrialScratchPath.ForJob(job.JobId));
         }
 
@@ -711,7 +711,7 @@ public sealed class TrialJobHandlerTests : IDisposable
         SaveCommittedProposal(id, json);
         if (!apply) _proposals.ReopenAsDraft(id, "discarded", json);
         var job = CreateTrialJob(json);
-        Assert.Equal(JobStatus.Completed, RunAndFinish(handler, job.JobId).Status);
+        Assert.Equal(JobStatus.Completed, RunAndFinish(handler, job).Status);
         var path = TrialScratchPath.ForJob(job.JobId);
         Assert.True(Directory.Exists(path));
 
@@ -736,7 +736,7 @@ public sealed class TrialJobHandlerTests : IDisposable
         SaveCommittedProposal(id, json);
         _proposals.ReopenAsDraft(id, "held", json);
         var job = CreateTrialJob(json);
-        Assert.Equal(JobStatus.Completed, RunAndFinish(handler, job.JobId).Status);
+        Assert.Equal(JobStatus.Completed, RunAndFinish(handler, job).Status);
         var path = TrialScratchPath.ForJob(job.JobId);
         using (var lease = TrialScratchRetention.Lock(path))
         {
@@ -776,9 +776,9 @@ public sealed class TrialJobHandlerTests : IDisposable
         var proposalJson = BuildSetGlossProposalJson(proposalId, _seed.FirstSenseId, "scratch retention");
         SaveCommittedProposal(proposalId, proposalJson);
         var firstJob = CreateTrialJob(proposalJson, createdUtc: "2026-08-29T11:00:00Z");
-        RunAndFinish(handler, firstJob.JobId);
+        RunAndFinish(handler, firstJob);
         var latestJob = CreateTrialJob(proposalJson, createdUtc: "2026-08-29T12:00:00Z");
-        RunAndFinish(handler, latestJob.JobId);
+        RunAndFinish(handler, latestJob);
 
         var scratchRoot = Path.Combine(_root, "startup-trial-scratch");
         var olderPath = Path.Combine(scratchRoot, Path.GetFileName(TrialScratchPath.ForJob(firstJob.JobId))!);
@@ -813,7 +813,7 @@ public sealed class TrialJobHandlerTests : IDisposable
         var proposalJson = BuildSetGlossProposalJson(proposalId, _seed.FirstSenseId, "active scratch retention");
         SaveCommittedProposal(proposalId, proposalJson);
         var completedJob = CreateTrialJob(proposalJson, createdUtc: "2026-08-29T11:00:00Z");
-        RunAndFinish(handler, completedJob.JobId);
+        RunAndFinish(handler, completedJob);
         var activeJob = CreateTrialJob(proposalJson, createdUtc: "2026-08-29T12:00:00Z", startRunning: false);
 
         var scratchRoot = Path.Combine(_root, "active-trial-scratch");
@@ -861,7 +861,7 @@ public sealed class TrialJobHandlerTests : IDisposable
         for (var i = 0; i < 4; i++)
         {
             var job = CreateTrialJob(proposalJson, createdUtc: $"2026-08-29T00:00:0{i}Z");
-            Assert.Equal(JobStatus.Completed, RunAndFinish(handler, job.JobId).Status);
+            Assert.Equal(JobStatus.Completed, RunAndFinish(handler, job).Status);
             paths.Add(TrialScratchPath.ForJob(job.JobId));
         }
         Assert.All(paths, path => Assert.True(Directory.Exists(path)));
@@ -880,7 +880,7 @@ public sealed class TrialJobHandlerTests : IDisposable
         SaveCommittedProposal(proposalId, proposalJson);
 
         var job = CreateTrialJob(proposalJson);
-        var completed = RunAndFinish(handler, job.JobId);
+        var completed = RunAndFinish(handler, job);
 
         Assert.Equal(JobStatus.Completed, completed.Status);
         var recorded = Assert.Single(_assessments.ListByProposal(proposalId));
@@ -907,7 +907,7 @@ public sealed class TrialJobHandlerTests : IDisposable
         SaveCommittedProposal(proposalId, proposalJson);
 
         var job = CreateTrialJob(proposalJson, allWords: true);
-        var completed = RunAndFinish(handler, job.JobId);
+        var completed = RunAndFinish(handler, job);
 
         Assert.Equal(JobStatus.Completed, completed.Status);
         using var result = JsonDocument.Parse(completed.ResultJson!);
@@ -930,7 +930,7 @@ public sealed class TrialJobHandlerTests : IDisposable
         SaveCommittedProposal(proposalId, proposalJson);
 
         var job = CreateTrialJob(proposalJson);
-        var completed = RunAndFinish(handler, job.JobId);
+        var completed = RunAndFinish(handler, job);
 
         Assert.Equal(JobStatus.Completed, completed.Status);
         var header = Assert.Single(_assessments.ListByProposal(proposalId));
@@ -955,7 +955,7 @@ public sealed class TrialJobHandlerTests : IDisposable
         var claims = new JobClaims(_database, clock);
         var held = claims.Claim(ProjectWorkspaceKey.Compute(_project), "runner-old", clock.UtcNow.ToString("O"),
             TimeSpan.FromSeconds(2))!;
-        var claim = ClaimedJob.Of(jobs, held.JobId);
+        var claim = new ClaimedJob(jobs, held);
         var assessor = new TrialArtifactAssessor(Path.Combine(_root, "stale-trial-artifacts"));
         var (assessmentProxy, barrier) = AssessmentRepositoryBarrier.Create(_assessments);
         var handler = BuildHandler(lanes, assessor, assessments: assessmentProxy);
@@ -1027,7 +1027,7 @@ public sealed class TrialJobHandlerTests : IDisposable
         var claims = new JobClaims(_database, clock);
         var held = claims.Claim(ProjectWorkspaceKey.Compute(_project), "runner-commit-first",
             clock.UtcNow.ToString("O"), TimeSpan.FromSeconds(2))!;
-        var claim = ClaimedJob.Of(jobs, held.JobId);
+        var claim = new ClaimedJob(jobs, held);
         var assessor = new TrialArtifactAssessor(Path.Combine(_root, "commit-first-artifacts"));
         CreateJobBundlePin(job.JobId);
         var (assessmentProxy, barrier) = AssessmentRepositoryBarrier.Create(_assessments);
@@ -1093,7 +1093,7 @@ public sealed class TrialJobHandlerTests : IDisposable
         var job = CreateTrialJob(proposalJson, startRunning: false);
         var held = new JobClaims(_database).Claim(ProjectWorkspaceKey.Compute(_project), "runner-collision",
             DateTimeOffset.Parse("2026-08-29T01:00:00Z").ToString("O"), TimeSpan.FromMinutes(2))!;
-        var claim = ClaimedJob.Of(_jobs, held.JobId);
+        var claim = new ClaimedJob(_jobs, held);
         CreateJobBundlePin(job.JobId);
         var assessor = new TrialArtifactAssessor(Path.Combine(_root, "collision-artifacts"),
             kinds: [AssessmentKind.ParseTime, AssessmentKind.ObjectTiming]);
@@ -1132,7 +1132,7 @@ public sealed class TrialJobHandlerTests : IDisposable
         var handler = BuildHandler(lanes, assessor, assessments: assessmentProxy);
         var databasePath = _database.FullPath;
 
-        var outcome = await handler.RunAsync(ClaimedJob.Of(_jobs, job.JobId), _project, CancellationToken.None);
+        var outcome = await handler.RunAsync(new ClaimedJob(_jobs, job), _project, CancellationToken.None);
 
         Assert.Null(outcome);
         using var reopened = MotifDatabase.OpenOwned(databasePath, _project,
@@ -1169,7 +1169,7 @@ public sealed class TrialJobHandlerTests : IDisposable
         var handler = BuildHandler(lanes, assessor,
             assessments: new AssessmentRepository(_database, storage));
 
-        var outcome = await handler.RunAsync(ClaimedJob.Of(_jobs, job.JobId), _project, CancellationToken.None);
+        var outcome = await handler.RunAsync(new ClaimedJob(_jobs, job), _project, CancellationToken.None);
 
         _output.WriteLine("Outcome null: {0}; read-backs: {1}; cleanup path: {2}; artifacts exist: {3}.",
             outcome is null, storage.ReadBackCount, string.Join(",", storage.Events),
@@ -1210,7 +1210,7 @@ public sealed class TrialJobHandlerTests : IDisposable
         var handler = BuildHandler(lanes, assessor,
             assessments: new AssessmentRepository(_database, storage));
 
-        var outcome = await handler.RunAsync(ClaimedJob.Of(_jobs, job.JobId), _project, CancellationToken.None);
+        var outcome = await handler.RunAsync(new ClaimedJob(_jobs, job), _project, CancellationToken.None);
 
         Assert.Equal(JobStatus.CompletedWithAssessmentFailure, outcome?.Status);
         Assert.Contains("injected ambiguous commit failure", outcome!.ResultJson, StringComparison.Ordinal);
@@ -1243,7 +1243,7 @@ public sealed class TrialJobHandlerTests : IDisposable
         var handler = BuildHandler(lanes, assessor,
             assessments: new AssessmentRepository(_database, storage));
 
-        var outcome = await handler.RunAsync(ClaimedJob.Of(_jobs, job.JobId), _project, CancellationToken.None);
+        var outcome = await handler.RunAsync(new ClaimedJob(_jobs, job), _project, CancellationToken.None);
 
         Assert.Equal(JobStatus.CompletedWithAssessmentFailure, outcome?.Status);
         Assert.Contains("injected pre-commit failure", outcome!.ResultJson, StringComparison.Ordinal);
@@ -1276,7 +1276,7 @@ public sealed class TrialJobHandlerTests : IDisposable
         var handler = BuildHandler(lanes, assessor,
             assessments: new AssessmentRepository(_database, storage));
 
-        var outcome = await handler.RunAsync(ClaimedJob.Of(_jobs, job.JobId), _project, CancellationToken.None);
+        var outcome = await handler.RunAsync(new ClaimedJob(_jobs, job), _project, CancellationToken.None);
 
         Assert.Null(outcome);
         Assert.Equal(["commit", "transaction-dispose", "connection-close", "connection-dispose"], storage.Events);
@@ -1302,7 +1302,7 @@ public sealed class TrialJobHandlerTests : IDisposable
         var claims = new JobClaims(_database, clock);
         var held = claims.Claim(ProjectWorkspaceKey.Compute(_project), "runner-live", clock.UtcNow.ToString("O"),
             TimeSpan.FromMinutes(2))!;
-        var claim = ClaimedJob.Of(jobs, held.JobId);
+        var claim = new ClaimedJob(jobs, held);
         var assessor = new TrialArtifactAssessor(Path.Combine(_root, "current-trial-artifacts"));
         var (assessmentProxy, barrier) = AssessmentRepositoryBarrier.Create(_assessments);
         var handler = BuildHandler(lanes, assessor, assessments: assessmentProxy);
@@ -1342,7 +1342,7 @@ public sealed class TrialJobHandlerTests : IDisposable
                 return DefaultPrepareForAssessment(cache, ct);
             });
 
-        var completed = RunAndFinish(handler, job.JobId);
+        var completed = RunAndFinish(handler, job);
 
         Assert.Equal(JobStatus.Completed, completed.Status);
         Assert.True(publishedBeforePrepare, "the Dry Run must already be published while the candidate is prepared for Assessment.");
@@ -1359,7 +1359,7 @@ public sealed class TrialJobHandlerTests : IDisposable
             prepareForAssessment: (_, _) => throw new IOException("disk full"));
 
         var job = CreateTrialJob(proposalJson);
-        var completed = RunAndFinish(handler, job.JobId);
+        var completed = RunAndFinish(handler, job);
 
         Assert.Equal(JobStatus.CompletedWithAssessmentFailure, completed.Status);
         Assert.True(completed.DryRunPublished);
@@ -1376,7 +1376,7 @@ public sealed class TrialJobHandlerTests : IDisposable
             _ => throw new IOException("pangloss assess exited 1")));
 
         var job = CreateTrialJob(proposalJson);
-        var completed = RunAndFinish(handler, job.JobId);
+        var completed = RunAndFinish(handler, job);
 
         Assert.Equal(JobStatus.CompletedWithAssessmentFailure, completed.Status);
         Assert.True(completed.DryRunPublished);
@@ -1394,7 +1394,7 @@ public sealed class TrialJobHandlerTests : IDisposable
             _ => throw new OperationCanceledException()));
 
         var job = CreateTrialJob(proposalJson);
-        var completed = RunAndFinish(handler, job.JobId);
+        var completed = RunAndFinish(handler, job);
 
         Assert.Equal(JobStatus.Cancelled, completed.Status);
         Assert.True(completed.DryRunPublished);
@@ -1421,7 +1421,7 @@ public sealed class TrialJobHandlerTests : IDisposable
             });
 
         var job = CreateTrialJob(proposalJson);
-        var completed = RunAndFinish(handler, job.JobId);
+        var completed = RunAndFinish(handler, job);
 
         Assert.Equal(JobStatus.Completed, completed.Status);
         Assert.Equal(digestBefore, Sha256Of(fwDataPath));
@@ -1515,12 +1515,12 @@ public sealed class TrialJobHandlerTests : IDisposable
         return [$"{prefix}-0", $"{prefix}-1"];
     }
 
-    private JobRecord RunAndFinish(TrialJobHandler handler, string jobId)
+    private JobRecord RunAndFinish(TrialJobHandler handler, JobRecord job)
     {
-        var claim = ClaimedJob.Of(_jobs, jobId);
+        var claim = new ClaimedJob(_jobs, job);
         var outcome = handler.RunAsync(claim, _project, CancellationToken.None).GetAwaiter().GetResult();
         if (outcome is not null) claim.Transition(outcome.Status, outcome.Category, outcome.ResultJson);
-        return _jobs.Get(jobId)!;
+        return _jobs.Get(job.JobId)!;
     }
 
     private TrialJobHandler BuildHandler(ProjectLaneRegistry lanes, IAssessor assessor,
