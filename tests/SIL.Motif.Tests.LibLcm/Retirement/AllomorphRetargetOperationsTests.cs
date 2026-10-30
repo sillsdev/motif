@@ -140,6 +140,51 @@ public sealed class AllomorphRetargetOperationsTests : IDisposable
         Assert.Equal(_seed.FirstEntryId, _replacement.Owner!.Guid);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void CreatedAffixCanBeRetargetedInTheSameProposal(bool includeAdhoc)
+    {
+        var entry = _cache.ServiceLocator.GetInstance<ILexEntryRepository>().GetObject(_seed.FirstEntryId);
+        IMoAlloAdhocProhib? rule = null;
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+        {
+            var lexeme = _cache.ServiceLocator.GetInstance<IMoAffixAllomorphFactory>().Create();
+            entry.LexemeFormOA = lexeme;
+            lexeme.MorphTypeRA = _retired.MorphTypeRA;
+            lexeme.Form.set_String(_cache.DefaultVernWs, "ka");
+            if (!includeAdhoc) return;
+            rule = _cache.ServiceLocator.GetInstance<IMoAlloAdhocProhibFactory>().Create();
+            _cache.LangProject.MorphologicalDataOA.AdhocCoProhibitionsOC.Add(rule);
+            rule.Disabled = true;
+            rule.FirstAllomorphRA = _retired;
+        });
+        new FwDataProjectLoader().Save(_cache);
+        var author = AuthorAlternateFormComposer.Build(_cache, new(
+            CanonicalId.FromGuid(entry.Guid), "ra", _cache.WritingSystemFactory.GetStrFromWs(_cache.DefaultVernWs),
+            CanonicalId.FromGuid(MoMorphTypeTags.kguidMorphPrefix),
+            Placement: new Placement(CanonicalId.FromGuid(_replacement.Guid), null)));
+        var create = Assert.Single(author);
+        var authorProposal = Proposal(author);
+        using var staged = new FwDataProjectLoader().LoadScratchCache(_cache.ProjectId.Path);
+        var authorDryRun = ScratchDryRun.Of(staged, authorProposal);
+        ProposalApplier.Apply(staged, authorProposal, authorDryRun.Anchor, "staging");
+        var created = (IMoAffixAllomorph)staged.ServiceLocator.GetInstance<IMoFormRepository>()
+            .GetObject(create.EntityId!.Value.ToGuid());
+        var retarget = AllomorphRetargetComposer.Build(staged, Intent(created, staged), () => CanonicalId.Mint())
+            .Select(operation => DependsOn(operation, create.OperationId))
+            .OrderBy(operation => includeAdhoc && operation.Kind == AllomorphRetargetOperationKinds.RetargetAdhocReferences ? 0 : 1)
+            .ToArray();
+        Assert.Contains(retarget, operation => operation.Kind == AllomorphRetargetOperationKinds.SetBundleMorph);
+        if (includeAdhoc)
+            Assert.Contains(retarget, operation => operation.Kind == AllomorphRetargetOperationKinds.RetargetAdhocReferences);
+        var proposal = Proposal(author.Concat(retarget).ToArray());
+        var dryRun = ScratchDryRun.Of(_cache, proposal);
+        ProposalApplier.Apply(_cache, proposal, dryRun.Anchor, "retirement-tests");
+        Assert.Equal(create.EntityId.Value.ToGuid(), _bundle.MorphRA!.Guid);
+        if (includeAdhoc) Assert.Equal(create.EntityId.Value.ToGuid(), rule!.FirstAllomorphRA!.Guid);
+    }
+
     [Fact]
     public void RetainedFormRetargetAllowsOwnedDependentsButRetirementRefusesThem()
     {
@@ -866,28 +911,30 @@ public sealed class AllomorphRetargetOperationsTests : IDisposable
             operation.StorageIdOverride, operation.Rationale, operation.Confidence, operation.Provenance,
             operation.Extensions);
 
-    private RetireAllomorphIntent Intent(IMoAffixAllomorph destination)
+    private RetireAllomorphIntent Intent(IMoAffixAllomorph destination, LcmCache? staged = null)
     {
+        var cache = staged ?? _cache;
+        var retired = cache.ServiceLocator.GetInstance<IMoFormRepository>().GetObject(_retired.Guid);
         var entryId = CanonicalId.FromGuid(_seed.FirstEntryId);
         var retiredId = CanonicalId.FromGuid(_retired.Guid);
-        var footprint = AllomorphReferenceFootprintReader.Read(_cache, [_retired.Guid]);
+        var footprint = AllomorphReferenceFootprintReader.Read(cache, [_retired.Guid]);
         var bundles = footprint.References.Where(item => item.Kind == "bundle-morph").ToArray();
         var adHoc = footprint.References.Where(item => item.Kind.StartsWith("adhoc-", StringComparison.Ordinal)).ToArray();
         var roles = bundles.Select(item => (item.Msa!.Value, item.InflType)).Distinct()
             .Select(role => new AllomorphRoleReplacement(retiredId.Value,
                 CanonicalId.FromGuid(role.Value).Value,
                 role.InflType is { } infl ? CanonicalId.FromGuid(infl).Value : null, "whole",
-                Identity(destination, entryId, "alternate"))).ToArray();
+                Identity(destination, entryId, "alternate", cache))).ToArray();
         var intent = new RetireAllomorphIntent(
             entryId.Value, AllomorphRetirementScope.Affix,
-            [Identity(_retired, entryId, "alternate")],
+            [Identity((IMoAffixAllomorph)retired, entryId, "alternate", cache)],
             roles,
             bundles.Select(item => new RetirementBundle(CanonicalId.FromGuid(item.Bundle!.Value).Value,
                 CanonicalId.FromGuid(item.Analysis!.Value).Value, CanonicalId.FromGuid(item.Wordform!.Value).Value,
                 retiredId.Value, CanonicalId.FromGuid(item.Msa!.Value).Value,
                 item.InflType is { } infl ? CanonicalId.FromGuid(infl).Value : null, "whole")).ToArray(),
             adHoc.Select(item => new AdhocOccurrenceReplacement(CanonicalId.FromGuid(item.Rule!.Value).Value,
-                item.Field, item.Ordinal, retiredId.Value, Identity(destination, entryId, "alternate"))).ToArray());
+                item.Field, item.Ordinal, retiredId.Value, Identity(destination, entryId, "alternate", cache))).ToArray());
         return intent;
     }
 
@@ -913,9 +960,9 @@ public sealed class AllomorphRetargetOperationsTests : IDisposable
         Assert.Equal(_retired.Guid, _bundle.MorphRA!.Guid);
     }
 
-    private AllomorphIdentity Identity(IMoAffixAllomorph form, CanonicalId entry, string location) =>
+    private AllomorphIdentity Identity(IMoAffixAllomorph form, CanonicalId entry, string location, LcmCache? staged = null) =>
         new(CanonicalId.FromGuid(form.Guid).Value, entry.Value, form.ClassName, location, "prefix",
-            AllomorphRetirementSemanticDigest.Compute(_cache, form), null);
+            AllomorphRetirementSemanticDigest.Compute(staged ?? _cache, form), null);
 
     private IMoAffixAllomorph AddAlternate(ILexEntry entry, string form) =>
         AddAlternate(_cache, entry, form);

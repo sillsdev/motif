@@ -15,14 +15,14 @@ internal static class AllomorphRetargetContextReader
 {
     public static ExpectedEffect BundleEffect(
         LcmCache cache, CanonicalId target, IWfiMorphBundle bundle,
-        IMoAffixAllomorph source, IMoAffixAllomorph replacement)
+        IMoAffixAllomorph source, CanonicalId replacement)
     {
         if (bundle.Owner is not IWfiAnalysis analysis || analysis.Owner is not IWfiWordform wordform)
             throw new InvalidOperationException("A bundle retarget requires a bundle in an analysis of a wordform.");
         var values = new
         {
             source = FormState(cache, source),
-            replacement = FormState(cache, replacement),
+            replacement = ExistingFormState(cache, replacement),
             bundle = BundleState(cache, bundle),
             wordform = WordformState(cache, wordform),
             textUses = ReadTextUses(cache, wordform)
@@ -42,8 +42,7 @@ internal static class AllomorphRetargetContextReader
             {
                 source = FormState(cache, BundleMorphHandler.ResolveAffix(cache, pair.before,
                     AllomorphRetargetOperationKinds.RetargetAdhocReferences)),
-                replacement = FormState(cache, BundleMorphHandler.ResolveAffix(cache, pair.after,
-                    AllomorphRetargetOperationKinds.RetargetAdhocReferences))
+                replacement = ExistingFormState(cache, pair.after)
             })
             .ToArray();
         return Effect(target, new
@@ -61,6 +60,14 @@ internal static class AllomorphRetargetContextReader
             Encoding.UTF8.GetBytes(JsonSerializer.Serialize(state)))).ToLowerInvariant();
         var value = new Dictionary<string, string>(StringComparer.Ordinal) { ["digest"] = digest };
         return new ExpectedEffect(target, SnapshotFields.AllomorphRetargetContext, value, value);
+    }
+
+    private static object ExistingFormState(LcmCache cache, CanonicalId id)
+    {
+        if (!cache.ServiceLocator.ObjectRepository.TryGetObject(id.ToGuid(), out var found))
+            return new { id = id.ToGuid().ToString("D"), absent = true };
+        return found is IMoAffixAllomorph form ? FormState(cache, form)
+            : new { id = id.ToGuid().ToString("D"), existingClass = found.ClassName };
     }
 
     private static object FormState(LcmCache cache, IMoAffixAllomorph form)

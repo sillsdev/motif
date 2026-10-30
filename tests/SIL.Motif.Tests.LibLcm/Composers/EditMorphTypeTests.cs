@@ -10,6 +10,7 @@ using System.Text.Json;
 using SIL.Motif.Runner.Apply;
 using SIL.Motif.Runner.Composers;
 using SIL.Motif.Runner.Execution;
+using SIL.Motif.Runner.Operations;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 
@@ -103,6 +104,22 @@ public sealed class EditMorphTypeTests : IDisposable
         Assert.Equal(RefusalCodes.MorphTypeStaleSource, refusal.Code);
         Assert.Equal(Id(form).Value, refusal.Facts["form"]);
         Assert.Equal(Type(MoMorphTypeTags.kguidMorphRoot).Value, refusal.Facts["actualMorphType"]);
+    }
+
+    [Fact]
+    public void FootprintReadsExistingFormWithoutResolvingProposedType()
+    {
+        var form = _cache.ServiceLocator.GetInstance<ILexEntryRepository>().GetObject(_seed.FirstEntryId).LexemeFormOA;
+        var missing = CanonicalId.Mint();
+        var operation = new OperationEnvelope(CanonicalId.Mint(), EditMorphTypeOperationKinds.Set,
+            target: Id(form), after: JsonSerializer.SerializeToElement(new
+            {
+                morphType = missing.Value, expectedMorphType = Id(form.MorphTypeRA).Value
+            }));
+        var proposal = Proposal([operation]);
+        Assert.NotEmpty(FootprintProbe.ComputeCurrentFootprintDigest(_cache, proposal));
+        Assert.ThrowsAny<Exception>(() => ScratchDryRun.Of(_cache, proposal));
+        Assert.NotEqual(missing.ToGuid(), form.MorphTypeRA.Guid);
     }
 
     [Fact]

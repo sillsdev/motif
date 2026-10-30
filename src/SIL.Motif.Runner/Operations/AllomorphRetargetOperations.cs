@@ -135,14 +135,13 @@ internal sealed class BundleMorphHandler : ICompoundOperationHandler
             AllomorphRetargetOperationKinds.SetBundleMorph);
         RequireCensus(cache, payload.RetiredForms, payload.CensusDigest);
         var source = ResolveAffix(cache, payload.RetiredForm, AllomorphRetargetOperationKinds.SetBundleMorph);
-        var replacement = ResolveAffix(cache, payload.Replacement, AllomorphRetargetOperationKinds.SetBundleMorph);
         var morph = ReferenceFieldSnapshotting.ReadAlternatives(bundle.MorphRA);
         var form = MultiAlternativesFieldSnapshotting.ReadAlternatives(cache, bundle.Form);
         return
         [
             new ExpectedEffect(id, SnapshotFields.WfiMorphBundleMorph, morph, morph),
             new ExpectedEffect(id, SnapshotFields.WfiMorphBundleForm, form, form),
-            AllomorphRetargetContextReader.BundleEffect(cache, id, bundle, source, replacement),
+            AllomorphRetargetContextReader.BundleEffect(cache, id, bundle, source, payload.Replacement),
             CensusEffect(cache, payload.RetiredForms, id)
         ];
     }

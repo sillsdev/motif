@@ -71,7 +71,7 @@ internal sealed class EditMorphTypeHandler : IOperationHandler
 
     public ExpectedEffect ReadCurrentFootprint(LcmCache cache, OperationEnvelope operation)
     {
-        var (id, form, _) = Resolve(cache, operation);
+        var (id, form) = TargetResolution.Resolve<IMoForm>(cache, operation, EditMorphTypeOperationKinds.Set);
         var current = ReferenceFieldSnapshotting.ReadAlternatives(form.MorphTypeRA);
         return new(id, SnapshotFields.MoFormMorphType, current, current);
     }
