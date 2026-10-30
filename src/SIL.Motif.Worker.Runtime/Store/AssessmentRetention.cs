@@ -72,8 +72,7 @@ internal static class AssessmentRetention
         }
         if (removable.Count == 0) return 0;
 
-        DeleteAssessments(connection, transaction, removable, removeInvocations: false);
-        return removable.Count;
+        return DeleteAssessments(connection, transaction, removable, removeInvocations: false).Count;
     }
 
     /// <summary>Prunes unreferenced standalone Assessments while the project parse lease is held.</summary>
@@ -81,9 +80,16 @@ internal static class AssessmentRetention
         ProjectParseLease lease, int keepPerKind, IReadOnlyCollection<string> currentEvidence) =>
         SweepStandalone(connection, transaction, lease, keepPerKind, currentEvidence, out _);
 
+    /// <summary>
+    /// Removes the removable standalone Assessments one at a time, checking <paramref name="cancellationToken"/> between
+    /// Assessments and reporting each removal to <paramref name="progress"/>. A stopped sweep has removed whole
+    /// Assessments only, so the caller may commit what it did; <paramref name="removedInvocations"/> names only the
+    /// artifacts of Assessments that were removed.
+    /// </summary>
     public static int SweepStandalone(SqliteConnection connection, SqliteTransaction transaction,
         ProjectParseLease lease, int keepPerKind, IReadOnlyCollection<string> currentEvidence,
-        out IReadOnlyList<string> removedInvocations)
+        out IReadOnlyList<string> removedInvocations, CancellationToken cancellationToken = default,
+        Action<string>? progress = null)
     {
         removedInvocations = [];
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(keepPerKind);
@@ -153,26 +159,29 @@ internal static class AssessmentRetention
             }
         } while (changed);
         if (removable.Count == 0) return 0;
-        var invocations = ReadPairs(connection, transaction,
-            "SELECT AssessmentId, InvocationId FROM Assessments WHERE InvocationId IS NOT NULL;")
-            .Where(pair => removable.Contains(pair.Replacement)).Select(pair => pair.Root).ToHashSet(StringComparer.Ordinal);
+        // An artifact goes only when every Assessment needing it was removed.
+        var artifacts = new List<(string Artifact, string[] Requires)>();
+        foreach (var (assessment, invocation) in ReadPairs(connection, transaction,
+                     "SELECT AssessmentId, InvocationId FROM Assessments WHERE InvocationId IS NOT NULL;"))
+            if (removable.Contains(assessment)) artifacts.Add((invocation, [assessment]));
         foreach (var (assessment, path) in ReadPairs(connection, transaction,
                      "SELECT AssessmentId, CachePath FROM Assessments WHERE CachePath IS NOT NULL;"))
             if (removable.Contains(assessment) && Path.IsPathFullyQualified(path) && Path.GetDirectoryName(path) is { } directory)
-                invocations.Add(Path.GetFullPath(directory));
+                artifacts.Add((Path.GetFullPath(directory), [assessment]));
         foreach (var (invocation, artifact) in ReadPairs(connection, transaction,
                      "SELECT InvocationId, ArtifactInvocationId FROM RetainedInvocations;"))
             if (invocationMembers.TryGetValue(invocation, out var members) && members.All(removable.Contains))
-                invocations.Add(artifact);
+                artifacts.Add((artifact, members));
         foreach (var (assessment, retry) in ReadPairs(connection, transaction, """
                      SELECT a.AssessmentId, json_extract(i.EvidenceJson, '$.StoppedWordRetry.RetryInvocationId')
                      FROM Assessments a JOIN AssessmentInvocations i ON a.InvocationId = i.InvocationId
                      WHERE json_extract(i.EvidenceJson, '$.StoppedWordRetry.RetryInvocationId') IS NOT NULL;
                      """))
-            if (removable.Contains(assessment)) invocations.Add(retry);
-        DeleteAssessments(connection, transaction, removable, removeInvocations: true);
-        removedInvocations = invocations.ToArray();
-        return removable.Count;
+            if (removable.Contains(assessment)) artifacts.Add((retry, [assessment]));
+        var deleted = DeleteAssessments(connection, transaction, removable, removeInvocations: true, cancellationToken, progress);
+        removedInvocations = artifacts.Where(entry => entry.Requires.All(deleted.Contains))
+            .Select(entry => entry.Artifact).Distinct(StringComparer.Ordinal).ToArray();
+        return deleted.Count;
     }
 
     private static HashSet<string> ReadJsonReferences(SqliteConnection connection, SqliteTransaction transaction,
@@ -227,46 +236,61 @@ internal static class AssessmentRetention
         }
     }
 
-    private static void DeleteAssessments(SqliteConnection connection, SqliteTransaction transaction,
-        HashSet<string> removable, bool removeInvocations)
+    /// <summary>Removes whole Assessments one by one, stopping between them on cancellation.</summary>
+    private static HashSet<string> DeleteAssessments(SqliteConnection connection, SqliteTransaction transaction,
+        HashSet<string> removable, bool removeInvocations, CancellationToken cancellationToken = default,
+        Action<string>? progress = null)
     {
+        var deleted = new HashSet<string>(StringComparer.Ordinal);
         Execute(connection, transaction, "CREATE TEMP TABLE IF NOT EXISTS RemovedAssessments (AssessmentId TEXT PRIMARY KEY);");
         Execute(connection, transaction, "DELETE FROM temp.RemovedAssessments;");
-        foreach (var id in removable)
-            Execute(connection, transaction, "INSERT INTO temp.RemovedAssessments (AssessmentId) VALUES ($id);", ("$id", id));
         if (removeInvocations)
         {
             Execute(connection, transaction, "CREATE TEMP TABLE IF NOT EXISTS RemovedInvocations (InvocationId TEXT PRIMARY KEY);");
             Execute(connection, transaction, "DELETE FROM temp.RemovedInvocations;");
-            Execute(connection, transaction, "INSERT OR IGNORE INTO temp.RemovedInvocations SELECT InvocationId FROM RetainedInvocationMembers WHERE AssessmentId IN (SELECT AssessmentId FROM temp.RemovedAssessments);");
-            Execute(connection, transaction, "DELETE FROM RetainedInvocationMembers WHERE AssessmentId IN (SELECT AssessmentId FROM temp.RemovedAssessments);");
-            Execute(connection, transaction, "DELETE FROM RetainedInvocations WHERE InvocationId IN (SELECT InvocationId FROM temp.RemovedInvocations) AND NOT EXISTS (SELECT 1 FROM RetainedInvocationMembers m WHERE m.InvocationId = RetainedInvocations.InvocationId);");
         }
-        foreach (var sql in new[]
+        var number = 0;
+        foreach (var id in removable.Order(StringComparer.Ordinal))
         {
-            "DELETE FROM PhonologyAssessmentDependencies WHERE AssessmentId IN (SELECT AssessmentId FROM temp.RemovedAssessments);",
-            "DELETE FROM PhonologyAssessmentRows WHERE AssessmentId IN (SELECT AssessmentId FROM temp.RemovedAssessments);",
-            "DELETE FROM PhonologyAssessmentBindings WHERE AssessmentId IN (SELECT AssessmentId FROM temp.RemovedAssessments);",
-            "DELETE FROM AssessmentObjectTimings WHERE AssessmentId IN (SELECT AssessmentId FROM temp.RemovedAssessments);",
-            """
-            DELETE FROM ParsedAnalyses WHERE AssessedWordId IN (SELECT AssessedWordId FROM AssessedWords
-                WHERE AssessmentId IN (SELECT AssessmentId FROM temp.RemovedAssessments));
-            """,
-            "DELETE FROM AssessedWords WHERE AssessmentId IN (SELECT AssessmentId FROM temp.RemovedAssessments);",
-            """
-            DELETE FROM AssessmentWordPayloads WHERE Hash NOT IN (
-                SELECT MorphologyJson FROM AssessedWords WHERE MorphologyJson IS NOT NULL
-                UNION SELECT CorrectnessJson FROM AssessedWords WHERE CorrectnessJson IS NOT NULL
-                UNION SELECT ReadingGradesJson FROM AssessedWords WHERE ReadingGradesJson IS NOT NULL
-                UNION SELECT AnalysisComparisonJson FROM AssessedWords WHERE AnalysisComparisonJson IS NOT NULL
-                UNION SELECT MissedApprovedJson FROM AssessedWords WHERE MissedApprovedJson IS NOT NULL);
-            """,
-            "DELETE FROM Assessments WHERE AssessmentId IN (SELECT AssessmentId FROM temp.RemovedAssessments);",
-            "DELETE FROM temp.RemovedAssessments;",
-        })
-            Execute(connection, transaction, sql);
+            if (cancellationToken.IsCancellationRequested) break;
+            Execute(connection, transaction, "INSERT INTO temp.RemovedAssessments (AssessmentId) VALUES ($id);", ("$id", id));
+            if (removeInvocations)
+            {
+                Execute(connection, transaction, "INSERT OR IGNORE INTO temp.RemovedInvocations SELECT InvocationId FROM RetainedInvocationMembers WHERE AssessmentId IN (SELECT AssessmentId FROM temp.RemovedAssessments);");
+                Execute(connection, transaction, "DELETE FROM RetainedInvocationMembers WHERE AssessmentId IN (SELECT AssessmentId FROM temp.RemovedAssessments);");
+                Execute(connection, transaction, "DELETE FROM RetainedInvocations WHERE InvocationId IN (SELECT InvocationId FROM temp.RemovedInvocations) AND NOT EXISTS (SELECT 1 FROM RetainedInvocationMembers m WHERE m.InvocationId = RetainedInvocations.InvocationId);");
+            }
+            foreach (var sql in new[]
+            {
+                "DELETE FROM PhonologyAssessmentDependencies WHERE AssessmentId IN (SELECT AssessmentId FROM temp.RemovedAssessments);",
+                "DELETE FROM PhonologyAssessmentRows WHERE AssessmentId IN (SELECT AssessmentId FROM temp.RemovedAssessments);",
+                "DELETE FROM PhonologyAssessmentBindings WHERE AssessmentId IN (SELECT AssessmentId FROM temp.RemovedAssessments);",
+                "DELETE FROM AssessmentObjectTimings WHERE AssessmentId IN (SELECT AssessmentId FROM temp.RemovedAssessments);",
+                """
+                DELETE FROM ParsedAnalyses WHERE AssessedWordId IN (SELECT AssessedWordId FROM AssessedWords
+                    WHERE AssessmentId IN (SELECT AssessmentId FROM temp.RemovedAssessments));
+                """,
+                "DELETE FROM AssessedWords WHERE AssessmentId IN (SELECT AssessmentId FROM temp.RemovedAssessments);",
+                "DELETE FROM Assessments WHERE AssessmentId IN (SELECT AssessmentId FROM temp.RemovedAssessments);",
+                "DELETE FROM temp.RemovedAssessments;",
+            })
+                Execute(connection, transaction, sql);
+            deleted.Add(id);
+            progress?.Invoke($"Removed Assessment {id} ({++number} of {removable.Count}).");
+        }
+        // Payloads are shared by hash; a stopped sweep leaves orphans for the next one.
+        if (!cancellationToken.IsCancellationRequested)
+            Execute(connection, transaction, """
+                DELETE FROM AssessmentWordPayloads WHERE Hash NOT IN (
+                    SELECT MorphologyJson FROM AssessedWords WHERE MorphologyJson IS NOT NULL
+                    UNION SELECT CorrectnessJson FROM AssessedWords WHERE CorrectnessJson IS NOT NULL
+                    UNION SELECT ReadingGradesJson FROM AssessedWords WHERE ReadingGradesJson IS NOT NULL
+                    UNION SELECT AnalysisComparisonJson FROM AssessedWords WHERE AnalysisComparisonJson IS NOT NULL
+                    UNION SELECT MissedApprovedJson FROM AssessedWords WHERE MissedApprovedJson IS NOT NULL);
+                """);
         if (removeInvocations)
             Execute(connection, transaction, "DELETE FROM AssessmentInvocations WHERE NOT EXISTS (SELECT 1 FROM Assessments a WHERE a.InvocationId = AssessmentInvocations.InvocationId) AND NOT EXISTS (SELECT 1 FROM RetainedInvocations r WHERE r.ArtifactInvocationId = AssessmentInvocations.InvocationId);");
+        return deleted;
     }
 
     private static HashSet<string> ReadFrozenReportAssessmentIds(SqliteConnection connection,

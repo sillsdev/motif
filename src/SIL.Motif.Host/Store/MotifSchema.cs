@@ -15,7 +15,7 @@ public static class MotifSchema
     public const int ApplicationId = 0x4D4F5446;
 
     /// <summary>The schema generation this assembly creates and requires.</summary>
-    public const int CurrentSchema = 54;
+    public const int CurrentSchema = 55;
 
     /// <summary>The worker version an open at the given schema ceiling requires.</summary>
     internal static Version MinimumWorkerVersion(int schema) => schema is >= 1 and <= CurrentSchema
@@ -72,6 +72,8 @@ public static class MotifSchema
         var expectedIndexes = new HashSet<string>(StringComparer.Ordinal)
         {
             "IX_AssessedWords_Assessment", "IX_AssessedWords_Word", "IX_ParsedAnalyses_Word",
+            "IX_AssessedWords_MorphologyJson", "IX_AssessedWords_CorrectnessJson", "IX_AssessedWords_ReadingGradesJson",
+            "IX_AssessedWords_AnalysisComparisonJson", "IX_AssessedWords_MissedApprovedJson",
             "IX_Jobs_Lineage_Attempt", "IX_Jobs_Status_Updated", "IX_Jobs_Lease", "IX_Jobs_QueueOrder",
             "IX_Proposals_DraftName", "IX_Proposals_OpenRole", "IX_Assessments_Proposal", "IX_Assessments_Kind",
             "IX_RetainedInvocations_Project", "IX_RetainedInvocationMembers_Assessment",
@@ -338,7 +340,9 @@ public static class MotifSchema
 
     private static string IndexTableFor(string index) => index switch
     {
-        "IX_AssessedWords_Assessment" or "IX_AssessedWords_Word" => "AssessedWords",
+        "IX_AssessedWords_Assessment" or "IX_AssessedWords_Word" or "IX_AssessedWords_MorphologyJson" or
+            "IX_AssessedWords_CorrectnessJson" or "IX_AssessedWords_ReadingGradesJson" or
+            "IX_AssessedWords_AnalysisComparisonJson" or "IX_AssessedWords_MissedApprovedJson" => "AssessedWords",
         "IX_ParsedAnalyses_Word" => "ParsedAnalyses",
         "IX_Jobs_Lineage_Attempt" or "IX_Jobs_Status_Updated" or "IX_Jobs_Lease" or "IX_Jobs_QueueOrder" => "Jobs",
         "IX_Proposals_DraftName" or "IX_Proposals_OpenRole" => "Proposals",
@@ -363,12 +367,18 @@ public static class MotifSchema
         "IX_PhonologyExampleSets_Name" or "IX_PhonologyExampleSetRevisions_SetRevision" or "IX_PhonologyExamples_RevisionExampleId";
 
     private static bool IsPartialIndex(string index) => index is "IX_Proposals_OpenRole" or "IX_GrammarChecks_Project" or
-        "IX_GrammarChecks_Proposal";
+        "IX_GrammarChecks_Proposal" or "IX_AssessedWords_MorphologyJson" or "IX_AssessedWords_CorrectnessJson" or
+        "IX_AssessedWords_ReadingGradesJson" or "IX_AssessedWords_AnalysisComparisonJson" or "IX_AssessedWords_MissedApprovedJson";
 
     private static IReadOnlyList<string> IndexColumnsFor(string index) => index switch
     {
         "IX_AssessedWords_Assessment" => ["AssessmentId"],
         "IX_AssessedWords_Word" => ["AssessmentId", "Word"],
+        "IX_AssessedWords_MorphologyJson" => ["MorphologyJson"],
+        "IX_AssessedWords_CorrectnessJson" => ["CorrectnessJson"],
+        "IX_AssessedWords_ReadingGradesJson" => ["ReadingGradesJson"],
+        "IX_AssessedWords_AnalysisComparisonJson" => ["AnalysisComparisonJson"],
+        "IX_AssessedWords_MissedApprovedJson" => ["MissedApprovedJson"],
         "IX_ParsedAnalyses_Word" => ["AssessedWordId"],
         "IX_Jobs_Lineage_Attempt" => ["LineageId", "Attempt"],
         "IX_Jobs_Status_Updated" => ["Status", "UpdatedUtc"],
@@ -835,6 +845,12 @@ public static class MotifSchema
         );
         CREATE INDEX IX_AssessedWords_Assessment ON AssessedWords(AssessmentId);
         CREATE INDEX IX_AssessedWords_Word ON AssessedWords(AssessmentId, Word);
+        -- Payload foreign keys: deleting an unused payload looks each child column up, so each needs an index.
+        CREATE INDEX IX_AssessedWords_MorphologyJson ON AssessedWords(MorphologyJson) WHERE MorphologyJson IS NOT NULL;
+        CREATE INDEX IX_AssessedWords_CorrectnessJson ON AssessedWords(CorrectnessJson) WHERE CorrectnessJson IS NOT NULL;
+        CREATE INDEX IX_AssessedWords_ReadingGradesJson ON AssessedWords(ReadingGradesJson) WHERE ReadingGradesJson IS NOT NULL;
+        CREATE INDEX IX_AssessedWords_AnalysisComparisonJson ON AssessedWords(AnalysisComparisonJson) WHERE AnalysisComparisonJson IS NOT NULL;
+        CREATE INDEX IX_AssessedWords_MissedApprovedJson ON AssessedWords(MissedApprovedJson) WHERE MissedApprovedJson IS NOT NULL;
 
         CREATE TABLE ParsedAnalyses (
             AssessedWordId INTEGER NOT NULL REFERENCES AssessedWords(AssessedWordId),

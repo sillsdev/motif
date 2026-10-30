@@ -18,6 +18,21 @@ public static class ProjectDiagnosticLog
         return Path.Combine(Path.GetDirectoryName(full)!, Path.GetFileNameWithoutExtension(full) + FileSuffix);
     }
 
+    /// <summary>Appends one UTC-stamped progress line; it returns <see langword="false"/> when the log cannot be written.</summary>
+    public static bool AppendLine(string fwDataPath, string line)
+    {
+        try
+        {
+            var stamp = DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture);
+            File.AppendAllText(PathFor(fwDataPath), $"{stamp} {line}{Environment.NewLine}");
+            return true;
+        }
+        catch (Exception logFailure) when (logFailure is IOException or UnauthorizedAccessException)
+        {
+            return false;
+        }
+    }
+
     /// <summary>
     /// Appends one UTC-stamped entry, and returns <see langword="false"/> instead of throwing when the log cannot be
     /// written, because the failure being recorded already happened and must not be replaced by this one.

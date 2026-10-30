@@ -42,8 +42,10 @@ public static class StorePruneCommand
         });
 
     internal static CommandOutcome<StorePruneResponse> RunHeld(MotifDatabase database, ProjectLocator project,
-        ProjectParseLease lease, int keepPerKind, string? managedRoot = null)
+        ProjectParseLease lease, int keepPerKind, string? managedRoot = null,
+        CancellationToken cancellationToken = default, Action<string>? progress = null)
     {
+        progress ??= line => ProjectDiagnosticLog.AppendLine(project.FullFwDataPath, line);
         using var connection = database.OpenConnection();
         using var timeout = connection.CreateCommand();
         timeout.CommandText = "PRAGMA busy_timeout;";
@@ -66,12 +68,19 @@ public static class StorePruneCommand
                 var set = current.Value!.Set;
                 var roots = set is null ? [] : new[] { set.RootAssessmentId }.OfType<string>()
                     .Concat(set.ReplacementAssessmentIds).Concat(set.MeasurementIds.Values).ToArray();
-                removed = AssessmentRetention.SweepStandalone(connection, transaction, lease, keepPerKind, roots, out removedInvocations);
+                removed = AssessmentRetention.SweepStandalone(connection, transaction, lease, keepPerKind, roots, out removedInvocations,
+                    cancellationToken, progress);
                 transaction.Commit();
             }
+            // A stopped sweep committed whole removals; the rest wait for the next prune, so skip the slow compaction.
+            var stopped = cancellationToken.IsCancellationRequested;
             var ownership = WorkspaceOwnership.Bootstrap(managedRoot ?? RunnerOptions.ResolveRoot());
             var cache = new StatsCacheStore(ownership, database.FullPath);
             var reclaimed = cache.Reclaim(database, lease, removedInvocations);
+            if (stopped)
+                return CommandOutcome<StorePruneResponse>.Success(new StorePruneResponse(removed, before,
+                    new FileInfo(database.FullPath).Length, false, reclaimed.Pruned, reclaimed.UnownedCount,
+                    reclaimed.UnownedBytes, reclaimed.SizeComplete, reclaimed.Parent));
             timeout.CommandText = "PRAGMA busy_timeout = 0;";
             timeout.ExecuteNonQuery();
             var first = Checkpoint(connection);
