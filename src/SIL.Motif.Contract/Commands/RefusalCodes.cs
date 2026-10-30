@@ -309,6 +309,10 @@ public static class RefusalCodes
     public const string VariantSelfLink = "variant.self-link";
     /// <summary>The link would create a cycle of variants.</summary>
     public const string VariantCycle = "variant.cycle";
+    /// <summary>The entry to make a variant is not an entry.</summary>
+    public const string VariantInvalidEntry = "variant.invalid-entry";
+    /// <summary>The entry already has a variant reference to that component.</summary>
+    public const string VariantAlreadyLinked = "variant.already-linked";
     /// <summary>The variant reference changed after the link was composed.</summary>
     public const string VariantStaleReference = "variant.stale-reference";
 

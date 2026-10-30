@@ -3746,6 +3746,64 @@
                     "type": "string",
                     "description": "Composing verb for this intent.",
                     "enum": [
+                      "compose-make-variant-of"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for compose-make-variant-of.",
+                    "properties": {
+                      "entry": {
+                        "type": "string",
+                        "description": "Id of the entry that becomes the variant."
+                      },
+                      "component": {
+                        "type": "string",
+                        "description": "Id of the main entry or sense it is a variant of."
+                      },
+                      "variantType": {
+                        "type": "string",
+                        "description": "Id of a type in the project\u0027s variant types list, such as Spelling Variant."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "entry",
+                      "component",
+                      "variantType"
+                    ]
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
                       "compose-edit-morph-type"
                     ]
                   },

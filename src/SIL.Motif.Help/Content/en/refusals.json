@@ -155,6 +155,14 @@
     "why": "Choose a type from the project’s variant types list.",
     "source": "Hand-written from the Motif MCP refusal advice."
   },
+  "variant.invalid-entry": {
+    "why": "Choose an existing entry, or an entry created earlier in this Draft, as the entry to make a variant.",
+    "source": "Hand-written from the Motif MCP refusal advice."
+  },
+  "variant.already-linked": {
+    "why": "This entry is already a variant of that entry or sense. To change the variant type, use compose-link-variant on the existing variant reference.",
+    "source": "Hand-written from the Motif MCP refusal advice."
+  },
   "variant.self-link": {
     "why": "A variant cannot link to itself. Choose a different main entry or sense.",
     "source": "Hand-written from the Motif MCP refusal advice."

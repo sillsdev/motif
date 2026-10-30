@@ -60,6 +60,8 @@ public sealed class RefusalDefaultReasonTests
         ["clitic-attachment.invalid-category"] = "reason not determinable statically: CliticAttachmentRefusal carries Refused for each code",
         ["clitic-attachment.not-clitic"] = "reason not determinable statically: CliticAttachmentRefusal carries Refused for each code",
         ["clitic-attachment.stale-source"] = "reason not determinable statically: CliticAttachmentRefusal carries Refused for each code",
+        ["variant.invalid-entry"] = "reason not determinable statically: the variant link helper carries Refused for each code",
+        ["variant.already-linked"] = "reason not determinable statically: the variant link helper carries Refused for each code",
         ["variant.cycle"] = "reason not determinable statically: the variant link helper carries Refused for each code",
         ["variant.invalid-component"] = "reason not determinable statically: the variant link helper carries Refused for each code",
         ["variant.invalid-reference"] = "reason not determinable statically: the variant link helper carries Refused for each code",

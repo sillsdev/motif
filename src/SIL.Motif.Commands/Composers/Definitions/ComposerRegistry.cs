@@ -12,6 +12,7 @@ internal static class ComposerDefinitions
         new DeleteEmptySenseDefinition(),
         new MoveSenseToEntryDefinition(),
         new LinkVariantDefinition(),
+        new MakeVariantOfDefinition(),
         new EditMorphTypeDefinition(),
         new EditCliticAttachmentDefinition(),
         new EditPhonemeDefinition(),

@@ -43,6 +43,16 @@ public static class VariantLinkSafety
             "The target must be a variant reference owned by an entry.");
         if (reference.RefType != LexEntryRefTags.krtVariant || reference.Owner is not ILexEntry source)
             throw Refuse(RefusalCodes.VariantInvalidReference, "The target must be a variant reference owned by an entry.");
+        var (component, type) = CheckLink(cache, source, componentId, typeId);
+        return (reference, component, type);
+    }
+
+
+    /// <summary>Checks a proposed component and variant type for a variant entry: the component must be an entry or
+    /// sense, the type must be in the variant types list, and the link must be neither a self-link nor a cycle.</summary>
+    public static (ICmObject Component, ILexEntryType Type) CheckLink(
+        LcmCache cache, ILexEntry source, CanonicalId componentId, CanonicalId typeId)
+    {
         var component = ResolveObject<ICmObject>(cache, componentId, RefusalCodes.VariantInvalidComponent,
             "The component must be an entry or sense.");
         var destination = OwningEntry(component) ?? throw Refuse(RefusalCodes.VariantInvalidComponent, "The component must be an entry or sense.");
@@ -67,12 +77,20 @@ public static class VariantLinkSafety
                          .SelectMany(r => r.ComponentLexemesRS).Select(OwningEntry).OfType<ILexEntry>())
                 pending.Push(next);
         }
-        return (reference, component, type);
+        return (component, type);
+    }
+
+    /// <summary>Throws the already-linked error when the source entry is a variant of the component.</summary>
+    public static void RequireNotLinked(ILexEntry source, ICmObject component)
+    {
+        if (source.EntryRefsOS.Any(r => r.RefType == LexEntryRefTags.krtVariant &&
+                                        r.ComponentLexemesRS.Any(c => c.Guid == component.Guid)))
+            throw Refuse(RefusalCodes.VariantAlreadyLinked, "The entry is already a variant of that entry or sense.");
     }
 
     internal static VariantLinkRefusalException Refuse(string code, string message) => new(code, message);
 
-    private static T ResolveObject<T>(LcmCache cache, CanonicalId id, string code, string message) where T : ICmObject
+    internal static T ResolveObject<T>(LcmCache cache, CanonicalId id, string code, string message) where T : ICmObject
     {
         try { return ReferenceFieldLowering.Resolve<T>(cache, id, VariantLinkOperationKinds.Set); }
         catch (Exception exception) when (exception is InvalidOperationException or KeyNotFoundException or ArgumentException)

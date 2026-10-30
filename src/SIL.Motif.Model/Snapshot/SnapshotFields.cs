@@ -75,6 +75,9 @@ public static partial class SnapshotFields
     /// <summary>The ordered alternate forms owned by a lexical entry.</summary>
     public const string LexEntryAlternateForms = "lexical/lexEntry/alternateForms";
 
+    /// <summary>The variant and complex-form references owned by a lexical entry; only creation of a variant reference is staged.</summary>
+    public const string LexEntryEntryRefs = "lexical/lexEntry/entryRefs";
+
     /// <summary>
     /// The Canonical Semantic Snapshot / expected-effect projection shape version, recorded on
     /// <see cref="SIL.Motif.Model.DryRun.BoundDryRunAnchor.ProjectionVersion"/>. Bump this

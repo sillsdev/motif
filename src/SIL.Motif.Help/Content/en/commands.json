@@ -665,6 +665,22 @@
     },
     "goals": ["Link a variant to its main entry", "Replace a variant's target or type"]
   },
+  "compose-make-variant-of": {
+    "title": "Make an entry a variant",
+    "description": "Makes an existing entry, or one created earlier in the Draft, a variant of another entry or sense by creating its variant reference with a variant type, as Add Variant does in FieldWorks. Self-links, cycles and a second link to the same component are refused; Motif stages a Draft for a person to review and Apply.",
+    "source": "Hand-written from the closed intent and composer contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "entry": "Id of the entry that becomes the variant.",
+      "component": "Id of the main entry or sense it is a variant of.",
+      "variantType": "Id of a type in the project's variant types list, such as Spelling Variant."
+    },
+    "goals": [
+      "Mark an entry as a spelling variant of another entry",
+      "Make one existing entry a variant of another",
+      "Record a dialect or free variant of a main entry"
+    ]
+  },
   "compose-delete-empty-sense": {
     "title": "Delete an empty sense",
     "description": "Deletes an empty sense and its unused analysis. An analysis containing only a part of speech is allowed when the entry has a linked variant reference; Motif stages a Draft for a person to review and Apply.",
