@@ -115,7 +115,53 @@ public static class AdhocProhibition
             _ => "immediately to the left of",
         };
         var others = string.Join(" and ", rest.Select(Label));
-        return $"{noun} '{Label(first)}' cannot occur {relation} {others}";
+        var side = payload.Adjacency switch
+        {
+            "somewhere-to-right" or "adjacent-to-right" => " (the first comes after the rest in the word)",
+            "somewhere-to-left" or "adjacent-to-left" => " (the first comes before the rest in the word)",
+            _ => "",
+        };
+        return $"{noun} '{Label(first)}' cannot occur {relation} {others}{side}";
+    }
+
+    /// <summary>
+    /// A sentence saying the rule can never match, or null. The adjacency says where the first sits relative to the
+    /// rest, so a prefix as the first with an adjacency to its right, or a suffix with one to its left, points away
+    /// from every stem and suffix it is paired with. Nothing is warned when a rest member could lie on that side
+    /// (another affix of the same side) or when a morph type is not clearly a prefix, a suffix or a stem.
+    /// </summary>
+    public static string? DirectionWarning(AdhocProhibitionPayload payload, ICmObject first, IReadOnlyList<ICmObject> rest)
+    {
+        var toRight = payload.Adjacency is "somewhere-to-right" or "adjacent-to-right";
+        var toLeft = payload.Adjacency is "somewhere-to-left" or "adjacent-to-left";
+        var firstSide = SideOf(first);
+        var impossible = firstSide switch
+        {
+            MorphSide.Prefix when toRight => rest.All(item => SideOf(item) is MorphSide.Stem or MorphSide.Suffix),
+            MorphSide.Suffix when toLeft => rest.All(item => SideOf(item) is MorphSide.Stem or MorphSide.Prefix),
+            _ => false,
+        };
+        if (!impossible) return null;
+        var correct = payload.Adjacency.Replace(toRight ? "right" : "left", toRight ? "left" : "right", StringComparison.Ordinal);
+        return $"The first is a {(firstSide == MorphSide.Prefix ? "prefix" : "suffix")}, which never comes " +
+               $"{(toRight ? "after" : "before")} the rest in a word, so this rule can never match. " +
+               $"Adjacency names where the first sits relative to the rest; for this pair use anywhere or {correct}.";
+    }
+
+    private enum MorphSide { Other, Prefix, Suffix, Stem }
+
+    private static MorphSide SideOf(ICmObject item)
+    {
+        var type = item is IMoForm form ? form.MorphTypeRA : item.OwnerOfClass<ILexEntry>()?.LexemeFormOA?.MorphTypeRA;
+        if (type is null) return MorphSide.Other;
+        var guid = type.Guid;
+        if (guid == MoMorphTypeTags.kguidMorphPrefix || guid == MoMorphTypeTags.kguidMorphProclitic
+            || guid == MoMorphTypeTags.kguidMorphPrefixingInterfix) return MorphSide.Prefix;
+        if (guid == MoMorphTypeTags.kguidMorphSuffix || guid == MoMorphTypeTags.kguidMorphEnclitic
+            || guid == MoMorphTypeTags.kguidMorphSuffixingInterfix) return MorphSide.Suffix;
+        if (guid == MoMorphTypeTags.kguidMorphStem || guid == MoMorphTypeTags.kguidMorphRoot
+            || guid == MoMorphTypeTags.kguidMorphBoundStem || guid == MoMorphTypeTags.kguidMorphBoundRoot) return MorphSide.Stem;
+        return MorphSide.Other;
     }
 
     private static string Label(ICmObject item)
@@ -219,11 +265,14 @@ internal sealed class AdhocProhibitionCreateHandler : IOperationHandler
         JsonSerializer.SerializeToElement(new
         {
             prohibits = AdhocProhibition.Describe(payload, first, rest),
+            warning = AdhocProhibition.DirectionWarning(payload, first, rest),
             kind = payload.Kind,
             adjacency = payload.Adjacency,
             first = payload.First.Value,
             rest = payload.Rest.Select(id => id.Value).ToArray(),
-        });
+        }, OmitNull);
+
+    private static readonly JsonSerializerOptions OmitNull = new() { DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull };
 
     private static Dictionary<string, string> Read(IMoMorphData data, CanonicalId entityId) =>
         data.AdhocCoProhibitionsOC.Any(item => item.Guid == entityId.ToGuid())

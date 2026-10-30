@@ -505,7 +505,7 @@
       "kind": "morpheme for a prohibition between morphemes (grammatical analyses of entries), or allomorph for one between forms.",
       "first": "Id of the first morpheme or allomorph, the one the prohibition is stated about.",
       "rest": "Ids of the morphemes or allomorphs it cannot occur with, left to right when the adjacency is not anywhere.",
-      "adjacency": "Where the first cannot occur relative to the rest: anywhere (the default), somewhere-to-right, somewhere-to-left, adjacent-to-right or adjacent-to-left."
+      "adjacency": "Where the first sits relative to the rest: anywhere (the default), somewhere-to-right or adjacent-to-right (the first is after the rest in the word), somewhere-to-left or adjacent-to-left (the first is before the rest). A prefix as first with a stem as rest needs anywhere, somewhere-to-left or adjacent-to-left; a suffix as first with a stem as rest needs anywhere, somewhere-to-right or adjacent-to-right."
     },
     "goals": [
       "Forbid two morphemes from occurring together",

@@ -66,8 +66,69 @@ public sealed class AuthorAdhocProhibitionComposerTests : IDisposable
         var proposal = Proposal(AuthorAdhocProhibitionComposer.Build(_cache,
             new("morpheme", Id(a.MorphoSyntaxAnalysesOC.Single()), [Id(b.MorphoSyntaxAnalysesOC.Single())], "somewhere-to-right")));
         var preview = Assert.Single(ScratchDryRun.Of(_cache, proposal).ExpectedEffects).Preview!.Value;
-        Assert.Equal("morpheme 'aaa' cannot occur somewhere to the right of bbb", preview.GetProperty("prohibits").GetString());
+        Assert.Equal("morpheme 'aaa' cannot occur somewhere to the right of bbb (the first comes after the rest in the word)", preview.GetProperty("prohibits").GetString());
         Assert.Contains("cannot occur somewhere to the right of", proposal.Operations.Single().Rationale);
+    }
+
+    [Fact]
+    public void TheDryRunSpellsOutWhichSideTheFirstIsOnForEveryDirection()
+    {
+        var (a, b, _) = Seed();
+        string Says(string adjacency) => Assert.Single(ScratchDryRun.Of(_cache, Proposal(Build("allomorph", a, [b], adjacency))).ExpectedEffects)
+            .Preview!.Value.GetProperty("prohibits").GetString()!;
+        Assert.Equal("allomorph 'aaa' cannot occur in the same word as bbb", Says("anywhere"));
+        Assert.EndsWith("immediately to the right of bbb (the first comes after the rest in the word)", Says("adjacent-to-right"));
+        Assert.EndsWith("somewhere to the left of bbb (the first comes before the rest in the word)", Says("somewhere-to-left"));
+        Assert.EndsWith("immediately to the left of bbb (the first comes before the rest in the word)", Says("adjacent-to-left"));
+    }
+
+    [Fact]
+    public void APrefixFirstWithAnAdjacencyToItsRightOfTheStemWarnsInTheDryRunButIsStillStaged()
+    {
+        var (stem, _, _) = Seed();
+        var prefix = SeedAffix("pa", MoMorphTypeTags.kguidMorphPrefix, MsaType.kInfl);
+        foreach (var adjacency in new[] { "somewhere-to-right", "adjacent-to-right" })
+        {
+            var warning = PreviewWarning(Build("allomorph", prefix, [stem], adjacency));
+            Assert.Contains("never match", warning);
+            Assert.Contains(adjacency.Replace("right", "left"), warning);
+        }
+        foreach (var adjacency in new[] { "anywhere", "somewhere-to-left", "adjacent-to-left" })
+            Assert.Null(PreviewWarning(Build("allomorph", prefix, [stem], adjacency)));
+        var morpheme = AuthorAdhocProhibitionComposer.Build(_cache, new("morpheme", Id(prefix.MorphoSyntaxAnalysesOC.Single()),
+            [Id(stem.MorphoSyntaxAnalysesOC.Single())], "adjacent-to-right"));
+        Assert.Contains("never match", PreviewWarning(morpheme));
+        Assert.Contains("never match", Assert.Single(morpheme).Rationale);
+    }
+
+    [Fact]
+    public void ASuffixFirstWithAnAdjacencyToItsLeftOfTheStemWarnsButAPrefixAmongTheRestDoesNot()
+    {
+        var (stem, _, _) = Seed();
+        var suffix = SeedAffix("an", MoMorphTypeTags.kguidMorphSuffix, MsaType.kInfl);
+        var prefix = SeedAffix("pa", MoMorphTypeTags.kguidMorphPrefix, MsaType.kInfl);
+        Assert.Contains("never match", PreviewWarning(Build("allomorph", suffix, [stem], "somewhere-to-left")));
+        Assert.Null(PreviewWarning(Build("allomorph", suffix, [stem], "somewhere-to-right")));
+        Assert.Null(PreviewWarning(Build("allomorph", prefix, [SeedAffix("ka", MoMorphTypeTags.kguidMorphPrefix, MsaType.kInfl)], "adjacent-to-right")));
+        Assert.Null(PreviewWarning(Build("allomorph", stem, [prefix], "adjacent-to-right")));
+    }
+
+    private string? PreviewWarning(IReadOnlyList<OperationEnvelope> operations)
+    {
+        var preview = Assert.Single(ScratchDryRun.Of(_cache, Proposal(operations)).ExpectedEffects).Preview!.Value;
+        return preview.TryGetProperty("warning", out var warning) ? warning.GetString() : null;
+    }
+
+    private ILexEntry SeedAffix(string form, Guid morphType, MsaType msa)
+    {
+        ILexEntry entry = null!;
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+        {
+            var type = _cache.ServiceLocator.GetInstance<IMoMorphTypeRepository>().GetObject(morphType);
+            entry = _cache.ServiceLocator.GetInstance<ILexEntryFactory>().Create(type,
+                TsStringUtils.MakeString(form, _cache.DefaultVernWs), "gloss " + form, new SandboxGenericMSA { MsaType = msa });
+        });
+        return entry;
     }
 
     [Fact]

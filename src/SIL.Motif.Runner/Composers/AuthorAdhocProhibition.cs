@@ -42,6 +42,7 @@ public static class AuthorAdhocProhibitionComposer
                 first = intent.First.Value,
                 rest = intent.Rest.Select(id => id.Value).ToArray(),
                 adjacency = intent.Adjacency,
-            }), rationale: "Prohibit this co-occurrence: " + AdhocProhibition.Describe(payload, first, rest) + ".")];
+            }), rationale: "Prohibit this co-occurrence: " + AdhocProhibition.Describe(payload, first, rest) + "." +
+                (AdhocProhibition.DirectionWarning(payload, first, rest) is { } warning ? " Warning: " + warning : ""))];
     }
 }
