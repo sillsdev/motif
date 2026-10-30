@@ -729,6 +729,42 @@
       "Clean up meanings folded into a root entry"
     ]
   },
+  "compose-move-example": {
+    "title": "Move an example to another sense",
+    "description": "Moves one example sentence, with its translations, from its sense to another sense, which may belong to another entry, keeping its identity; Motif stages a Draft for a person to review and Apply. It refuses an example that any other object refers to, a move to the sense that already owns it, an unknown example or sense, and a neighbour that is not an example of the target sense.",
+    "source": "Hand-written from the closed intent and composer contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "example": "Id of the example sentence to move.",
+      "toSense": "Id of the sense that owns the example afterwards.",
+      "after": "Optional id of an example of the target sense to place it after. Absent, it goes last.",
+      "before": "Optional id of an example of the target sense to place it before; not together with after."
+    },
+    "goals": [
+      "Keep an example when a duplicate meaning is deleted",
+      "Put an example under the meaning it illustrates",
+      "Gather the examples of two entries onto one meaning"
+    ]
+  },
+  "compose-add-example": {
+    "title": "Add an example to a sense",
+    "description": "Adds one new example sentence to a sense, with its text in one or more writing systems and optional translations; Motif stages a Draft for a person to review and Apply. It refuses an unknown sense, a writing system the project does not have, empty or repeated text, and a neighbour that is not an example of the sense.",
+    "source": "Hand-written from the closed intent and composer contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "sense": "Id of the sense that gets the example.",
+      "text": "The example: a list of objects with ws (writing-system tag) and text, one per writing system.",
+      "reference": "Optional reference string of the example, such as a citation.",
+      "translations": "Optional list of translations, each with an optional type (free, literal or back; free by default) and text, a list of ws and text objects.",
+      "after": "Optional id of an example of the sense to place it after. Absent, it goes last.",
+      "before": "Optional id of an example of the sense to place it before; not together with after."
+    },
+    "goals": [
+      "Record a sentence that shows how a meaning is used",
+      "Add an example with a translation",
+      "Give a new meaning its first example"
+    ]
+  },
   "compose-remove-alternate-form": {
     "title": "Remove an alternate form",
     "description": "Removes one alternate form (allomorph) of an entry that nothing refers to; Motif stages a Draft for a person to review and Apply. It refuses the lexeme form and a form that a parser analysis or any other object refers to.",

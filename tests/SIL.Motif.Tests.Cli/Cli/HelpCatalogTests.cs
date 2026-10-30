@@ -68,6 +68,8 @@ public sealed class HelpCatalogTests
         ["compose-edit-morph-type"] = "changes an existing stem form within its morph-type family",
         ["compose-delete-sense"] = "removes a sense kept elsewhere, a lexical clean-up rather than a grammar rule",
         ["compose-remove-alternate-form"] = "removes an unused alternate form, a lexical clean-up rather than a grammar rule",
+        ["compose-move-example"] = "moves an example sentence to another sense, a lexical clean-up rather than a grammar rule",
+        ["compose-add-example"] = "adds an example sentence to a sense, a lexical addition rather than a grammar rule",
         ["compose-move-sense-to-entry"] = "moves a sense into an entry of its own, a lexical restructuring rather than a grammar rule",
         ["compose-link-variant"] = "links existing entries and senses rather than encoding a grammar rule",
         ["compose-make-variant-of"] = "links existing entries rather than encoding a grammar rule",

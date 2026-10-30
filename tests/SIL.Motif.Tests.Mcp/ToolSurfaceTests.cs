@@ -133,11 +133,13 @@ public sealed class ToolSurfaceTests
         Assert.Equal(new[]
         {
             "activity",
+            "compose-add-example",
             "compose-delete-sense",
             "compose-edit-affix-inflection-classes",
             "compose-edit-part-of-speech-inflection-class-default",
             "compose-edit-stem-allomorph-stem-name",
             "compose-edit-stem-inflection-class",
+            "compose-move-example",
             "compose-move-sense-to-entry",
             "compose-remove-alternate-form",
             "compose-set-stem-part-of-speech",
@@ -160,8 +162,9 @@ public sealed class ToolSurfaceTests
                 "compose-edit-affix-inflection-classes" or "compose-edit-stem-allomorph-stem-name" or
                 "compose-edit-stem-inflection-class" or "compose-move-sense-to-entry" or
                 "compose-delete-sense" or "compose-remove-alternate-form" or
+                "compose-move-example" or "compose-add-example" or
                 "compose-set-stem-part-of-speech").ToArray();
-        Assert.Equal(8, numeralEditors.Length);
+        Assert.Equal(10, numeralEditors.Length);
         Assert.All(numeralEditors, command =>
         {
             Assert.Equal(CommandSurface.AdvancedAi, command.Surface);

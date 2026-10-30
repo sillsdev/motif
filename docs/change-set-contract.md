@@ -562,6 +562,25 @@ and definition in every writing system, notes, source, scientific name, semantic
 with translations, and pictures (file and caption), and every deleted analysis, and `lexical/lexEntry/morphoSyntaxAnalyses` when an analysis goes. The
 composer is `compose-delete-sense`, CLI-first.
 
+`lexical/lexSense/createExamples` targets one `LexSense`, supplies a fresh `entityId`, and has the closed `after`
+shape `{ "text": [{ "ws": "<tag>", "text": "..." }], "reference": "..." | null, "translations": [{ "id": "<id>",
+"type": "free" | "literal" | "back", "text": [{ "ws": "<tag>", "text": "..." }] }] }`. Only `text` is required; each
+list is nonempty, names a writing system once and holds no empty text, and the translation ids are fresh. The example
+joins `LexSense.Examples` at the operation's placement, which a sense that already has examples requires. The sense may
+be created by an earlier operation of the same Draft, so the footprint reads it only when it exists. The effect is
+`lexical/lexSense/examples` of the sense, and its preview shows the whole example in every writing system, the
+translations, and the sense with its entry and gloss.
+
+`lexical/lexExampleSentence/moveToSense` targets one `LexExampleSentence` and has the closed `after` shape
+`{ "fromSense": "<id>", "toSense": "<id>" }`, with the place among the target's examples in the operation's
+placement. LibLCM moves an owned object by giving it a new owner, so the example keeps its identity, text, reference
+and translations; FieldWorks offers no such move. `fromSense` must still own the example (otherwise the Draft is
+stale), `toSense` may be created by an earlier operation of the Draft and must differ from `fromSense`, and any object
+outside the example that refers to it refuses the move, because the meaning of an owner-relative reference cannot be
+judged. The effects are `lexical/lexSense/examples` of both senses, each with a preview of the full example in every
+writing system with its translations, and both senses with their entries and glosses. The composers are
+`compose-move-example` and `compose-add-example`, CLI-first.
+
 `lexical/lexEntry/removeAlternateForm` targets one `LexEntry` and has the closed `after` shape
 `{ "form": "<id>" }`. The form must be one of the entry's alternate forms, never its lexeme form, and nothing may
 refer to it (a morph bundle, an ad hoc prohibition or any other object); the refusal names the referrer. The effect

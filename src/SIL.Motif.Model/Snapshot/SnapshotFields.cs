@@ -75,6 +75,9 @@ public static partial class SnapshotFields
     /// <summary>The ordered sub-senses owned by a lexical sense.</summary>
     public const string LexSenseSubsenses = "lexical/lexSense/senses";
 
+    /// <summary>The ordered example sentences owned by a lexical sense.</summary>
+    public const string LexSenseExamples = "lexical/lexSense/examples";
+
     /// <summary>The ordered alternate forms owned by a lexical entry.</summary>
     public const string LexEntryAlternateForms = "lexical/lexEntry/alternateForms";
 
