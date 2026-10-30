@@ -534,6 +534,21 @@ analysis's id and class, and `lexical/lexEntry/createSenses`, `lexical/lexEntry/
 `lexical/lexEntry/senses` map and, when an analysis is deleted, its `lexical/lexEntry/morphoSyntaxAnalyses` map.
 The composers are `compose-delete-empty-sense` and `compose-set-stem-part-of-speech`, both CLI-first.
 
+`lexical/lexSense/moveToEntry` targets one top-level `LexSense` and has the closed `after` shape
+`{ "entry": "<id>", "msa": "<id>", "fromEntry": "<id>", "deleteMsa": "<id>" | null }`. It follows FieldWorks'
+"move sense to a copy of its entry" (`LexEntry.MoveSenseToCopy`): the sense keeps its identity, glosses,
+definitions, examples and sub-senses, and is appended as the only sense of `entry`, whose analysis `msa` the sense
+and its sub-senses then point at. `entry` and `msa` are normally created by earlier operations of the same Draft
+(the composer declares both dependencies), so they are resolved only when the move is applied, and the footprint
+reads an absent `entry` as empty. Apply requires `entry` to own no sense yet and `msa` to belong to it. `fromEntry`
+must still own the sense, and, as FieldWorks offers the move only when an entry has two or more senses, it must
+own at least two. `deleteMsa` names the old entry's analysis that no remaining sense uses and nothing else refers
+to, or is null; FieldWorks removes such an analysis too, so the old entry keeps only analyses its senses use. A
+sub-sense whose analysis differs from the sense's own, and a sense that a parser analysis (`WfiMorphBundle`) still
+refers to, are refused. The effects are `lexical/lexEntry/senses` for the old and new entry, `lexical/lexSense/morphoSyntaxAnalysis`
+for the sense and each sub-sense, and `lexical/lexEntry/morphoSyntaxAnalyses` of the old entry when it loses an
+analysis. The composer is `compose-move-sense-to-entry`, CLI-first.
+
 `analysis/wfiWordform/createAnalyses` targets a `WfiWordform`, supplies a fresh `entityId`, and has
 the closed `after` shape `{ "morphs": [{ "form": "<id>", "msa": "<id>",
 "inflType": "<id>", "guessedString": "..." }] }`. `morphs` is nonempty and ordered. The form,

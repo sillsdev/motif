@@ -680,6 +680,24 @@
       "Clean up blank senses left by an import"
     ]
   },
+  "compose-move-sense-to-entry": {
+    "title": "Move a sense to a new entry",
+    "description": "Moves one sense, with its sub-senses and examples, out of its entry into a new entry of its own, so a derived word folded into its root as a sense gets its own lexeme form and analysis; Motif stages a Draft for a person to review and Apply.",
+    "source": "Hand-written from the closed intent and composer contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "sense": "Id of the top-level sense to move.",
+      "form": "Lexeme form of the new entry, without affix hyphens.",
+      "formWs": "Vernacular writing system tag of the form.",
+      "morphType": "Id of the new form's morph type, such as stem.",
+      "msa": "Optional grammatical info of the new entry: kind (stem, inflectional, derivational, unclassified), category, and for some kinds toCategory, slots or inflectionClass. Absent means a copy of the sense's own analysis."
+    },
+    "goals": [
+      "Give a derived word its own entry",
+      "Take a headword out of its root's senses",
+      "Split a sense into an entry of its own"
+    ]
+  },
   "compose-rewrite-lexeme-form": {
     "title": "Rewrite lexeme forms",
     "description": "Rewrites the lexeme form of many existing entries in one Draft, each guarded by the form it must hold now, and can keep the old spelling as the citation form. Use it when the lexeme form carries stress marks the parser cannot match; Motif stages a Draft and never Applies it automatically. Only a person can Apply.",

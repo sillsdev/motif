@@ -144,9 +144,14 @@ public static class AuthorLexicalEntryComposer
         LcmCache cache, AuthorLexicalEntryIntent intent, Func<CanonicalId>? mintId = null) =>
         BuildEntry(cache, intent, mintId, null);
 
-    /// <summary>Builds an entry whose lexeme form is created from <paramref name="formPayload"/> when it is given.</summary>
+    /// <summary>
+    /// Builds an entry whose lexeme form is created from <paramref name="formPayload"/> when it is given. With
+    /// <paramref name="withSense"/> false the entry gets no sense, gloss or definition, because a sense that already
+    /// exists is moved into it afterwards.
+    /// </summary>
     internal static IReadOnlyList<OperationEnvelope> BuildEntry(
-        LcmCache cache, AuthorLexicalEntryIntent intent, Func<CanonicalId>? mintId, object? formPayload)
+        LcmCache cache, AuthorLexicalEntryIntent intent, Func<CanonicalId>? mintId, object? formPayload,
+        bool withSense = true)
     {
         ArgumentNullException.ThrowIfNull(cache);
         ArgumentNullException.ThrowIfNull(intent);
@@ -166,12 +171,13 @@ public static class AuthorLexicalEntryComposer
         };
         RequireMsaShape(intent.Msa);
         var form = formPayload is null ? LexicalFormAuthoring.RequireText(intent.Form, "form", ConstructName) : "";
-        var gloss = LexicalFormAuthoring.RequireText(intent.Gloss, "gloss", ConstructName);
-        var definition = intent.Definition is null
+        var gloss = withSense ? LexicalFormAuthoring.RequireText(intent.Gloss, "gloss", ConstructName) : "";
+        var definition = intent.Definition is null || !withSense
             ? null : LexicalFormAuthoring.RequireText(intent.Definition, "definition", ConstructName);
         if (formPayload is null)
             LexicalFormAuthoring.RequireWritingSystem(cache, intent.FormWritingSystem, vernacular: true, ConstructName);
-        LexicalFormAuthoring.RequireWritingSystem(cache, intent.AnalysisWritingSystem, vernacular: false, ConstructName);
+        if (withSense)
+            LexicalFormAuthoring.RequireWritingSystem(cache, intent.AnalysisWritingSystem, vernacular: false, ConstructName);
 
         var morphType = LexicalFormAuthoring.Resolve<IMoMorphType>(cache, intent.MorphType, ConstructName);
         var formClass = MoFormConcreteClassSelection.ClassFor(morphType, ConstructName);
@@ -254,6 +260,7 @@ public static class AuthorLexicalEntryComposer
                 break;
         }
 
+        if (!withSense) return operations;
         var senseId = Mint();
         var createSense = Add(LexEntrySensesOperationKinds.Create, entryId, new { }, entityId: senseId,
             dependsOn: afterEntry);

@@ -136,6 +136,7 @@ public sealed class ToolSurfaceTests
             "compose-edit-part-of-speech-inflection-class-default",
             "compose-edit-stem-allomorph-stem-name",
             "compose-edit-stem-inflection-class",
+            "compose-move-sense-to-entry",
             "compose-set-stem-part-of-speech",
             "project tag",
             "store artifacts",
@@ -154,9 +155,9 @@ public sealed class ToolSurfaceTests
         var numeralEditors = CommandCatalog.All.Where(command =>
             command.Name is "compose-edit-part-of-speech-inflection-class-default" or
                 "compose-edit-affix-inflection-classes" or "compose-edit-stem-allomorph-stem-name" or
-                "compose-edit-stem-inflection-class" or
+                "compose-edit-stem-inflection-class" or "compose-move-sense-to-entry" or
                 "compose-set-stem-part-of-speech").ToArray();
-        Assert.Equal(5, numeralEditors.Length);
+        Assert.Equal(6, numeralEditors.Length);
         Assert.All(numeralEditors, command =>
         {
             Assert.Equal(CommandSurface.AdvancedAi, command.Surface);

@@ -293,7 +293,7 @@ internal sealed class LexSenseDeleteHandler : ICompoundOperationHandler
         });
     }
 
-    private static Dictionary<string, string> ReadSenses(ILexEntry entry)
+    internal static Dictionary<string, string> ReadSenses(ILexEntry entry)
     {
         var result = new Dictionary<string, string>(StringComparer.Ordinal);
         for (var i = 0; i < entry.SensesOS.Count; i++)
@@ -302,7 +302,7 @@ internal sealed class LexSenseDeleteHandler : ICompoundOperationHandler
         return result;
     }
 
-    private static Dictionary<string, string> ReadAnalyses(ILexEntry entry)
+    internal static Dictionary<string, string> ReadAnalyses(ILexEntry entry)
     {
         var result = new Dictionary<string, string>(StringComparer.Ordinal);
         var ids = entry.MorphoSyntaxAnalysesOC.Select(msa => CanonicalId.FromGuid(msa.Guid).Value)

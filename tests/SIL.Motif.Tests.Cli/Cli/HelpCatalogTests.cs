@@ -66,6 +66,7 @@ public sealed class HelpCatalogTests
         ["compose-delete-empty-sense"] = "removes an empty sense, which encodes no phenomenon",
         ["compose-edit-clitic-attachment"] = "restricts the categories a clitic attaches to, a lexical property of one analysis",
         ["compose-edit-morph-type"] = "changes an existing stem form within its morph-type family",
+        ["compose-move-sense-to-entry"] = "moves a sense into an entry of its own, a lexical restructuring rather than a grammar rule",
         ["compose-link-variant"] = "links existing entries and senses rather than encoding a grammar rule",
         ["compose-record-parsimony-disposition"] = "records a review decision about a Parsimony finding",
     };

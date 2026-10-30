@@ -10,6 +10,7 @@ internal static class ComposerDefinitions
         new AuthorAffixProcessAllomorphDefinition(),
         new AuthorFeatureValueDefinition(),
         new DeleteEmptySenseDefinition(),
+        new MoveSenseToEntryDefinition(),
         new LinkVariantDefinition(),
         new EditMorphTypeDefinition(),
         new EditCliticAttachmentDefinition(),
