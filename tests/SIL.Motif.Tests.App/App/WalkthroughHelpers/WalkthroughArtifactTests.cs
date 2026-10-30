@@ -257,6 +257,52 @@ public sealed class WalkthroughArtifactTests(AvaloniaHeadlessFixture avalonia)
     }
 
     [Fact]
+    public void CaptionLeaderUsesClearChannelBetweenControlsAboveAndBesideItsTarget()
+    {
+        var callouts = new[]
+        {
+            new WalkthroughCaptureCallout("word", "Word", new Rect(40, 28, 210, 39)),
+            new WalkthroughCaptureCallout("fix", "Fix", new Rect(962, 10, 85, 75)),
+            new WalkthroughCaptureCallout("pangloss", "PanGloss", new Rect(40, 67, 891, 77)),
+            new WalkthroughCaptureCallout("action", "Action", new Rect(1147, 96, 115, 62)),
+            new WalkthroughCaptureCallout("fieldworks", "FieldWorks", new Rect(20, 138, 1112, 92)),
+        };
+        using var font = new SKFont(SKTypeface.Default, 40);
+        var labels = WalkthroughArtifacts.ArrangeCaptionColumnLabels(callouts, 2300, font, 2.5, 1400);
+        var leaders = WalkthroughArtifacts.ArrangeCaptionColumnLeaderPaths(labels, new Point(60, 300), 1330, 2.5);
+        var pan = leaders.Single(leader => leader.AutomationId == "pangloss");
+
+        foreach (var target in callouts.Where(callout => callout.AutomationId != "pangloss"))
+        {
+            var bounds = target.Bounds.Translate(new Point(60, 300));
+            for (var index = 1; index < pan.Points.Count; index++)
+                Assert.False(SegmentIntersectsRect(pan.Points[index - 1], pan.Points[index], bounds));
+        }
+        Assert.All(leaders.Where(leader => leader != pan), leader => Assert.False(LeaderPathsIntersect(pan, leader)));
+    }
+
+    [Fact]
+    public void CaptionLeaderExitsBesideTextRowsThatTouch()
+    {
+        var callouts = new[]
+        {
+            new WalkthroughCaptureCallout("word", "Word", new Rect(30, 17, 129, 59)),
+            new WalkthroughCaptureCallout("fix", "Fix", new Rect(255, 10, 90, 75)),
+            new WalkthroughCaptureCallout("fieldworks", "FieldWorks", new Rect(40, 76, 183, 78)),
+            new WalkthroughCaptureCallout("pangloss", "PanGloss", new Rect(40, 154, 183, 78)),
+        };
+        using var font = new SKFont(SKTypeface.Default, 40);
+        var labels = WalkthroughArtifacts.ArrangeCaptionColumnLabels(callouts, 1500, font, 2.5, 700);
+        var leaders = WalkthroughArtifacts.ArrangeCaptionColumnLeaderPaths(labels, new Point(60, 300), 600, 2.5);
+        var field = leaders.Single(leader => leader.AutomationId == "fieldworks");
+        var panBounds = callouts.Single(callout => callout.AutomationId == "pangloss").Bounds.Translate(new Point(60, 300));
+
+        for (var index = 1; index < field.Points.Count; index++)
+            Assert.False(SegmentIntersectsRect(field.Points[index - 1], field.Points[index], panBounds));
+        Assert.All(leaders.Where(leader => leader != field), leader => Assert.False(LeaderPathsIntersect(field, leader)));
+    }
+
+    [Fact]
     public void ExplainedWordCardSetCaptionsUsePlainWords()
     {
         var root = FindRepositoryRoot();

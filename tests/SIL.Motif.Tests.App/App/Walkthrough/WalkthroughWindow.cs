@@ -390,7 +390,30 @@ public sealed class WalkthroughWindow : IDisposable
                 candidate.IsEffectivelyVisible);
         }
 
+        if (control is null && DrawnRow(automationId) is { } drawn)
+            control = drawn;
+
         return control;
+    }
+
+    private InterlinearWord? DrawnRow(string automationId)
+    {
+        if (!automationId.StartsWith("motif-word-", StringComparison.Ordinal) ||
+            !(automationId.EndsWith("-fieldworks", StringComparison.Ordinal) ||
+              automationId.EndsWith("-pangloss", StringComparison.Ordinal))) return null;
+        var wordId = automationId[..automationId.LastIndexOf('-')] + "-word";
+        return AllControls().OfType<InterlinearWord>().SingleOrDefault(word =>
+            AutomationProperties.GetAutomationId(word) == wordId && DrawnRuns(word, automationId).Any());
+    }
+
+    private static IEnumerable<InterlinearWord.Run> DrawnRuns(InterlinearWord word, string automationId)
+    {
+        var metrics = word.LineMetrics;
+        return automationId.EndsWith("-word", StringComparison.Ordinal) ? word.Runs.Take(1) :
+            automationId.EndsWith("-fieldworks", StringComparison.Ordinal)
+                ? word.Runs.Where(run => run.Bounds.Top >= metrics.Word &&
+                    run.Bounds.Top < metrics.Word + metrics.FieldWorks)
+                : word.Runs.Where(run => run.Bounds.Top >= metrics.Word + metrics.FieldWorks);
     }
 
     internal string DescribeAutomationId(string automationId)
@@ -533,6 +556,8 @@ public sealed class WalkthroughWindow : IDisposable
     {
         var target = FindByAutomationId(automationId);
         if (!target.IsEffectivelyVisible) return false;
+        if (target is InterlinearWord drawn)
+            return DrawnRuns(drawn, automationId).Any(run => !string.IsNullOrWhiteSpace(run.Text));
         var controls = target.GetVisualDescendants().OfType<Control>().Prepend(target)
             .Where(control => control.IsEffectivelyVisible).ToArray();
         return controls.OfType<TextBlock>().Any(text => !string.IsNullOrWhiteSpace(text.Text)) ||
@@ -569,6 +594,12 @@ public sealed class WalkthroughWindow : IDisposable
         }
         var origin = control.TranslatePoint(new Point(), Window)
             ?? throw new InvalidOperationException($"AutomationId '{automationId}' is outside the main window.");
+        if (control is InterlinearWord drawn)
+        {
+            var runs = DrawnRuns(drawn, automationId).ToArray();
+            if (runs.Length == 0) throw new InvalidOperationException($"AutomationId '{automationId}' has no drawn text.");
+            return runs.Select(run => run.Bounds).Aggregate((left, right) => left.Union(right)).Translate(origin);
+        }
         return new Rect(origin, control.Bounds.Size);
     }
 

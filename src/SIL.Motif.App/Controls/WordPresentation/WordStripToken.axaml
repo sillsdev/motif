@@ -15,7 +15,7 @@
           ToolTip.Tip="{Binding TooltipSummary}" views:ClearTipPlacement.IsEnabled="True">
   <Grid x:Name="StripContent" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}">
     <StackPanel x:Name="StripStack" Classes="stripStack stripRows">
-      <StackPanel x:Name="WordLine" Classes="stripWordRow" Orientation="Horizontal">
+      <word:WordLinePanel x:Name="WordLine" Classes="stripWordRow" Orientation="Horizontal">
         <views:CopyableTextBlock x:Name="WordText" Classes="stripWord" Text="{Binding Text}" VerticalAlignment="Center"
                                  controls:WritingSystemText.Id="{Binding TextWritingSystem}" controls:WritingSystemText.StyleName="Normal"
                                  Classes.differentVerdict="{Binding HasDifferentVerdictCue}"
@@ -28,7 +28,7 @@
                                Classes.approved="{Binding Disposition.IsMarkApproved}" Classes.unknown="{Binding Disposition.IsMarkUnknown}"
                                Classes.disapproved="{Binding Disposition.IsMarkDisapproved}" Classes.absent="{Binding Disposition.IsMarkAbsent}"
                                Classes.changed="{Binding Disposition.IsChanged}" />
-      </StackPanel>
+      </word:WordLinePanel>
       <Border x:Name="FieldWorksLine" Classes="stripRow stripFieldWorks analysisRow"
               AutomationProperties.AutomationId="{Binding FieldWorksAutomationId}" />
     </StackPanel>

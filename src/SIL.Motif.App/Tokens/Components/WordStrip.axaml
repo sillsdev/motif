@@ -69,7 +69,7 @@
   <Style Selector=":is(Border).wordStrip.dimmed">
     <Setter Property="Opacity" Value="{DynamicResource Intent.Opacity.Dimmed}" />
   </Style>
-  <Style Selector="StackPanel.stripWordRow">
+  <Style Selector=":is(StackPanel).stripWordRow">
     <Setter Property="MinHeight" Value="{DynamicResource Component.WordStrip.WordRowHeight}" />
   </Style>
   <Style Selector=":is(Control).analysisRow">
@@ -88,7 +88,7 @@
   <Style Selector="StackPanel.stripActionRow">
     <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Minimal}" />
   </Style>
-  <Style Selector="StackPanel.stripWordRow">
+  <Style Selector=":is(StackPanel).stripWordRow">
     <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Compact}" />
   </Style>
   <Style Selector=":is(TextBlock).stripWord">

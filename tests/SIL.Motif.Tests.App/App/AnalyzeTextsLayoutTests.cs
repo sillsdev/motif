@@ -685,7 +685,11 @@ public sealed class AnalyzeTextsLayoutTests
                 Assert.True(BoundsIn(prompt, page).Bottom <= BoundsIn(strips[0], page).Top,
                     "The prompt sits above the text.");
                 var sungura = strips[0];
-                Assert.Contains("hare", ReaderRowText(sungura, "fieldworks"), StringComparison.Ordinal);
+                if (DrawnWord(sungura) is { } drawn)
+                    Assert.Contains(DrawnRow(drawn, "fieldworks"), run => run.Text == "hare");
+                else
+                    Assert.Contains(sungura.GetVisualDescendants().OfType<TextBlock>(), text =>
+                        text.Text == "hare" && text.IsEffectivelyVisible);
                 Assert.Contains(sungura.GetVisualDescendants().OfType<TextBlock>(), text =>
                     text.Text == "Not parsed yet" && text.IsEffectivelyVisible);
                 Assert.DoesNotContain(panel.GetVisualDescendants().OfType<FilterChip>(), chip => chip.IsEffectivelyVisible);
@@ -1000,6 +1004,9 @@ public sealed class AnalyzeTextsLayoutTests
                 var unread = Part(alikula, "unread");
                 Assert.True(BoundsIn(unread, panel).Right <= BoundsIn(Part(alikula, "word"), panel).Left,
                     "The Unread dot comes before the word.");
+                var unreadCenter = BoundsIn(unread, panel).Center.Y;
+                var wordCenter = ReaderRowBounds(alikula, "word", panel).Center.Y;
+                Assert.InRange(Math.Abs(unreadCenter - wordCenter), 0, 1);
                 Assert.DoesNotContain(unread.GetVisualDescendants().OfType<TextBlock>(), text => text.IsEffectivelyVisible);
                 await workspace.PageModel<TextsPageModel>().ResultsInText.OpenTokenCardAsync(
                     ResultsInTextPanel.TokenOf(alikula)!);
@@ -1432,15 +1439,19 @@ public sealed class AnalyzeTextsLayoutTests
 
     private static void AssertNativeMetric(WordStripToken strip, string rowName, double metric)
     {
+        var row = rowName == "PanGlossLine" ? PanGlossLineOf(strip) : strip.FindControl<Control>(rowName);
         if (DrawnWord(strip) is { } drawn)
         {
             var part = rowName switch { "WordLine" => "word", "FieldWorksLine" => "fieldworks", _ => "pangloss" };
             var runs = DrawnRow(drawn, part).ToArray();
-            if (runs.Length > 0)
-                Assert.True(metric >= runs.Max(run => run.Bounds.Bottom) - runs.Min(run => run.Bounds.Top));
+            var drawnHeight = runs.Length == 0 ? 0 :
+                runs.Max(run => run.Bounds.Bottom) - runs.Min(run => run.Bounds.Top);
+            var visibleNativeHeight = row is null ? 0 : MaxNativeTextHeight(row);
+            Assert.True(metric >= Math.Max(drawnHeight, visibleNativeHeight),
+                $"{strip.Data?.Form} {rowName}: metric={metric}, drawn={drawnHeight}, native={visibleNativeHeight}.");
+            if (row is null && runs.Length == 0) Assert.Equal(0, metric);
             return;
         }
-        var row = rowName == "PanGlossLine" ? PanGlossLineOf(strip) : strip.FindControl<Control>(rowName);
         if (row is null)
         {
             Assert.Equal(0, metric);

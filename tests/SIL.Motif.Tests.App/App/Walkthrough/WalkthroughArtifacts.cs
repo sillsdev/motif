@@ -478,9 +478,12 @@ internal static class WalkthroughArtifacts
             foreach (var callout in rows[rowIndex])
             {
                 var target = callout.Bounds;
-                var side = rowIndex > 0 && SideExit(callout, rows[rowIndex], item => item.Bounds);
+                var side = rowIndex > 0 && (SideExit(callout, rows[rowIndex], item => item.Bounds) ||
+                    ClearRightExit(callout, rowIndex, rows, item => item.Bounds));
                 var top = rowIndex == 0 || TopExit(callout, rowIndex, rows, item => item.Bounds);
-                targetPoints[callout.AutomationId] = side ? new Point(target.Right, target.Center.Y) :
+                var channel = top ? SideChannel(callout, rowIndex, rows, item => item.Bounds) : null;
+                targetPoints[callout.AutomationId] = channel is { } channelY ? new Point(target.Right, channelY) :
+                    side ? new Point(target.Right, target.Center.Y) :
                     new Point(target.Center.X, top ? target.Top : target.Bottom);
             }
         }
@@ -569,6 +572,31 @@ internal static class WalkthroughArtifacts
         var nextTop = rows[index + 1].Min(other => bounds(other).Top);
         return rows[index].Any(other => SideExit(other, rows[index], bounds) &&
             bounds(other).Bottom >= nextTop && bounds(item).Right <= bounds(other).Left);
+    }
+
+    private static double? SideChannel<T>(T item, int index, List<List<T>> rows, Func<T, Rect> bounds)
+    {
+        if (index == 0) return null;
+        var target = bounds(item);
+        var right = rows[index].Where(other => bounds(other).Left >= target.Right).ToArray();
+        if (right.Length == 0) return null;
+        var lower = Math.Max(target.Top, rows.Take(index).SelectMany(row => row)
+            .Where(other => bounds(other).Right > target.Right).Select(other => bounds(other).Bottom)
+            .DefaultIfEmpty(target.Top).Max());
+        var upper = Math.Min(target.Bottom, right.Min(other => bounds(other).Top));
+        return lower < upper ? (lower + upper) / 2 : null;
+    }
+
+    private static bool ClearRightExit<T>(T item, int index, List<List<T>> rows, Func<T, Rect> bounds)
+    {
+        if (index + 1 >= rows.Count) return false;
+        var target = bounds(item);
+        if (rows[index + 1].Min(other => bounds(other).Top) > target.Bottom + 0.01) return false;
+        return rows.SelectMany(row => row).Where(other => !ReferenceEquals(other, item)).All(other =>
+        {
+            var obstacle = bounds(other);
+            return obstacle.Right <= target.Right || obstacle.Top > target.Center.Y || obstacle.Bottom < target.Center.Y;
+        });
     }
 
     private static bool SideExit<T>(T item, IReadOnlyList<T> row, Func<T, Rect> bounds)
