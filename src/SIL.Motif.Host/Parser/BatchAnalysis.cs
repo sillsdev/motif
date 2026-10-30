@@ -67,6 +67,12 @@ public sealed record WordAnalysis(int Index, string Word, int ElapsedMs, WordOut
     public SIL.Motif.Contract.Responses.ParseWordEvidence? Morphology { get; init; }
     public SIL.Motif.Contract.Responses.WordCorrectness? Correctness { get; init; }
 
+    /// <summary>
+    /// The word whose lowercase second pass produced this row, or null for a word that was asked for. Such a row is a
+    /// wordform of its own with its own readings; the original keeps the readings of its own parse.
+    /// </summary>
+    public string? LowercaseOf { get; init; }
+
     /// <summary>Whether this row replaced a timed-out first-pass row with a retry result.</summary>
     public bool WasRetried { get; init; }
 

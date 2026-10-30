@@ -129,49 +129,34 @@ public static class WordTraceQuery
 
             onProgress?.Invoke(new AssessmentProgress(AssessmentStage.Parsing, 0, 1, $"Tracing {request.Word}")
                 { CurrentWord = request.Word });
-            var clock = Stopwatch.StartNew();
             // A Proposal's Trial copy is scratch, so it never gets a resident session.
-            var outcome = tracer is IWarmPanGlossTracer warm && request.ProposalId is null
+            PanGlossTraceOutcome Trace(string word) => tracer is IWarmPanGlossTracer warm && request.ProposalId is null
                 ? warm.TraceAsync(request.ProjectPath, TryWordSessions.TokenText(baseline.Token), baseline.FwDataPath,
-                    request.Word, cancellationToken).GetAwaiter().GetResult()
-                : tracer.TraceAsync(baseline.FwDataPath, request.Word, cancellationToken).GetAwaiter().GetResult();
+                    word, cancellationToken).GetAwaiter().GetResult()
+                : tracer.TraceAsync(baseline.FwDataPath, word, cancellationToken).GetAwaiter().GetResult();
+            var clock = Stopwatch.StartNew();
+            var outcome = Trace(request.Word);
             var elapsedMs = (int)clock.ElapsedMilliseconds;
-
-            var result = outcome switch
+            var result = Shape(outcome, request, elapsedMs);
+            // FieldWorks' lowercase second pass: its own wordform, parsed even when this one parsed (ADR 0078).
+            if (result.Succeeded && LowercasePass.ForProjectIfNeeded(baseline.FwDataPath, [request.Word]).LowercaseOf(request.Word) is { } lower)
             {
-                PanGlossTraceOutcome.Completed completed => LiveSuccess(
-                    completed.Document,
-                    completed.Word,
-                    completed.Tree,
-                    completed.Summary,
-                    complete: true,
-                    stopReason: null,
-                    completed.Details,
-                    elapsedMs),
-                PanGlossTraceOutcome.Incomplete incomplete => LiveSuccess(
-                    incomplete.Document,
-                    incomplete.Word,
-                    incomplete.Tree,
-                    incomplete.Summary,
-                    complete: false,
-                    stopReason: incomplete.Reason,
-                    incomplete.Details,
-                    elapsedMs),
-                PanGlossTraceOutcome.Cancelled => CommandOutcome<WordTraceResponse>.Refused(new Refusal(
-                    "wordtrace.cancelled", FailureReason.Cancelled, "The trace was cancelled.")),
-                PanGlossTraceOutcome.Declined declined => CommandOutcome<WordTraceResponse>.Refused(
-                    declined.ParserRefusal is { } failure
-                        ? ParserExecutionRefusal.From(RefusalCodes.WordTraceParserRefused, request.ProjectPath, failure)
-                        : new Refusal("wordtrace.parser-refused", FailureReason.Refused, declined.Detail,
-                            parserDiagnostic: ParserCompileDiagnosticReader.Read(declined.Detail))),
-                PanGlossTraceOutcome.Unavailable unavailable => CommandOutcome<WordTraceResponse>.Refused(new Refusal(
-                    "wordtrace.parser-unavailable", FailureReason.Refused, unavailable.Detail,
-                    ParserNotFoundFact.Mark(null, unavailable.ExecutableMissing))),
-                PanGlossTraceOutcome.Malformed malformed => CommandOutcome<WordTraceResponse>.Refused(new Refusal(
-                    "wordtrace.malformed-output", FailureReason.Refused, malformed.Detail)),
-                _ => CommandOutcome<WordTraceResponse>.Refused(new Refusal(
-                    "wordtrace.parser-unavailable", FailureReason.Refused, outcome.Message)),
-            };
+                clock.Restart();
+                var lowerOutcome = Trace(lower);
+                if (lowerOutcome is PanGlossTraceOutcome.Cancelled)
+                    return Shape(lowerOutcome, request, 0);
+                var lowerResult = Shape(lowerOutcome, request, (int)clock.ElapsedMilliseconds);
+                if (lowerResult.Succeeded)
+                    result = CommandOutcome<WordTraceResponse>.Success(result.Value! with
+                    {
+                        Lowercase = lowerResult.Value! with
+                        {
+                            ParserSteps = lowerOutcome.Steps ?? lowerResult.Value.ParserSteps,
+                            ParserWorkSteps = lowerOutcome.WorkSteps ?? lowerResult.Value.ParserWorkSteps,
+                        },
+                    });
+            }
+
             var refusals = new ParserRefusalRepository(database);
             if (result.Succeeded && (outcome.Steps is not null || outcome.WorkSteps is not null))
                 result = CommandOutcome<WordTraceResponse>.Success(result.Value! with
@@ -184,6 +169,46 @@ public static class WordTraceQuery
             return result.Succeeded ? CommandOutcome<WordTraceResponse>.Success(
                 TraceDiagnosticCapture.Attach(result.Value!, baseline, project, elapsedMs, hostEvidence)) : result;
         });
+    }
+
+    private static CommandOutcome<WordTraceResponse> Shape(
+        PanGlossTraceOutcome outcome, WordTraceRequest request, int elapsedMs)
+    {
+        return outcome switch
+        {
+            PanGlossTraceOutcome.Completed completed => LiveSuccess(
+                completed.Document,
+                completed.Word,
+                completed.Tree,
+                completed.Summary,
+                complete: true,
+                stopReason: null,
+                completed.Details,
+                elapsedMs),
+            PanGlossTraceOutcome.Incomplete incomplete => LiveSuccess(
+                incomplete.Document,
+                incomplete.Word,
+                incomplete.Tree,
+                incomplete.Summary,
+                complete: false,
+                stopReason: incomplete.Reason,
+                incomplete.Details,
+                elapsedMs),
+            PanGlossTraceOutcome.Cancelled => CommandOutcome<WordTraceResponse>.Refused(new Refusal(
+                "wordtrace.cancelled", FailureReason.Cancelled, "The trace was cancelled.")),
+            PanGlossTraceOutcome.Declined declined => CommandOutcome<WordTraceResponse>.Refused(
+                declined.ParserRefusal is { } failure
+                    ? ParserExecutionRefusal.From(RefusalCodes.WordTraceParserRefused, request.ProjectPath, failure)
+                    : new Refusal("wordtrace.parser-refused", FailureReason.Refused, declined.Detail,
+                        parserDiagnostic: ParserCompileDiagnosticReader.Read(declined.Detail))),
+            PanGlossTraceOutcome.Unavailable unavailable => CommandOutcome<WordTraceResponse>.Refused(new Refusal(
+                "wordtrace.parser-unavailable", FailureReason.Refused, unavailable.Detail,
+                ParserNotFoundFact.Mark(null, unavailable.ExecutableMissing))),
+            PanGlossTraceOutcome.Malformed malformed => CommandOutcome<WordTraceResponse>.Refused(new Refusal(
+                "wordtrace.malformed-output", FailureReason.Refused, malformed.Detail)),
+            _ => CommandOutcome<WordTraceResponse>.Refused(new Refusal(
+                "wordtrace.parser-unavailable", FailureReason.Refused, outcome.Message)),
+        };
     }
 
     private static CommandOutcome<WordTraceResponse> LiveSuccess(

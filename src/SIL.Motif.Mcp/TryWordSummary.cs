@@ -36,6 +36,13 @@ internal static class TryWordSummary
             ["attempts"] = response.ParserSteps,
             ["workSteps"] = response.ParserWorkSteps,
         };
+        if (response.Lowercase is { } lowercase)
+        {
+            // Its own wordform: the readings above stay those of the word as written.
+            var lowerSummary = Concise(lowercase);
+            lowerSummary.Remove("more");
+            result["lowercase"] = lowerSummary;
+        }
         if (response.StopReason is { Length: > 0 }) result["stopReason"] = response.StopReason;
         if (response.InvalidShape) result["invalidShape"] = true;
         if (response.Guessed) result["guessed"] = true;

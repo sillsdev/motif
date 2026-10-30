@@ -37,6 +37,7 @@ public sealed class PanGlossAssessor : IAssessor
     private readonly IAssessorCachePathResolver _paths;
     private readonly IPanGlossInvoker _invoker;
     private readonly Func<string, string> _sourceDigest;
+    private readonly Func<string, IReadOnlyList<string>, LowercasePass> _lowercasePass;
 
     public PanGlossAssessor(IAssessorCachePathResolver paths, IPanGlossInvoker invoker)
         : this(paths, invoker, BatchInvocationEvidence.DigestFile)
@@ -44,8 +45,10 @@ public sealed class PanGlossAssessor : IAssessor
     }
 
     internal PanGlossAssessor(IAssessorCachePathResolver paths, IPanGlossInvoker invoker,
-        Func<string, string> sourceDigest)
+        Func<string, string> sourceDigest,
+        Func<string, IReadOnlyList<string>, LowercasePass>? lowercasePass = null)
     {
+        _lowercasePass = lowercasePass ?? ((source, words) => LowercasePass.ForProjectIfNeeded(source, words));
         _paths = paths ?? throw new ArgumentNullException(nameof(paths));
         _invoker = invoker ?? throw new ArgumentNullException(nameof(invoker));
         _sourceDigest = sourceDigest ?? throw new ArgumentNullException(nameof(sourceDigest));
@@ -102,6 +105,9 @@ public sealed class PanGlossAssessor : IAssessor
         if (sources.Length != 1)
             throw new AssessorUnavailableException(AssessorName,
                 $"The candidate must contain exactly one .fwdata source; found {sources.Length}.");
+        // The one seam for Assess and Trial: appended lowercase wordforms parse in the same batch (ADR 0078).
+        var (parsedWords, lowercaseOrigin) = _lowercasePass(sources[0], requestedWords).Expand(requestedWords);
+        requestedWords = parsedWords.ToArray();
         var invocationId = Guid.NewGuid().ToString("N");
         var directory = _paths.DirectoryFor(invocationId);
         using var cacheLock = StatsCacheLock.Create(directory);
@@ -195,14 +201,16 @@ public sealed class PanGlossAssessor : IAssessor
                             ? WordOutcome.Analysed : WordOutcome.NoAnalysis;
                     if (row.ElapsedMs != item.ElapsedMs || row.Outcome != expectedOutcome)
                         throw new InvalidDataException("TSV and morphology evidence describe different search outcomes.");
+                    var origin = lowercaseOrigin.GetValueOrDefault(row.Word);
                     if (retried is null || !retried.RetriedIndices.Contains(row.Index))
-                        return row with { Morphology = item };
+                        return row with { Morphology = item, LowercaseOf = origin };
                     var statistics = retried.RetryStatistics?.GetValueOrDefault(row.Word);
                     var attempts = statistics?.Attempts ??
                         (row.Steps is <= int.MaxValue and { } steps ? (int)steps : item.Attempts);
                     return row with
                     {
                         Morphology = item with { Attempts = attempts },
+                        LowercaseOf = origin,
                         WasRetried = true,
                         Steps = statistics?.Attempts ?? row.Steps ?? item.Attempts,
                         Passes = statistics?.Passes,

@@ -119,6 +119,56 @@ public sealed class WordTraceQueryTests : IDisposable
         Assert.Equal(0, warm.ColdCalls);
     }
 
+    private sealed class WordRecordingTracer : IPanGlossTracer
+    {
+        public List<string> Words { get; } = [];
+
+        public Task<PanGlossTraceOutcome> TraceAsync(string grammarPath, string word, CancellationToken cancellationToken,
+            TimeSpan? timeout = null)
+        {
+            Words.Add(word);
+            return new PanGlossTracer(new FakeInvoker
+            {
+                Respond = _ => new PanGlossOutcome.Completed(
+                    GoldenStandardOutput.Replace("\"word\":\"sagd\"", $"\"word\":\"{word}\""), string.Empty, TimeSpan.Zero),
+            }).TraceAsync(grammarPath, word, cancellationToken, timeout)
+                .ContinueWith(task => task.Result with { WorkSteps = 100 + Words.Count }, cancellationToken);
+        }
+    }
+
+    [Fact]
+    public void ACapitalisedWordIsTracedAsWrittenAndThenItsLowercaseFormAsAWordformOfItsOwn()
+    {
+        var path = _pristine.CopyProjectFile();
+        Capture(path);
+        var tracer = new WordRecordingTracer();
+
+        var outcome = WordTraceQuery.Query(new WordTraceRequest(path, "Sagd"), tracer, CancellationToken.None);
+
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        Assert.Equal(["Sagd", "sagd"], tracer.Words);
+        Assert.Equal("sagd", outcome.Value!.Lowercase!.Word);
+        Assert.Null(outcome.Value.Lowercase.Lowercase);
+        Assert.Equal(101, outcome.Value.ParserWorkSteps);
+        Assert.Equal(102, outcome.Value.Lowercase.ParserWorkSteps);
+        Assert.Equal(203, outcome.Value.TotalParserWorkSteps);
+    }
+
+    [Fact]
+    public void AnAlreadyLowercaseWordIsTracedOnce()
+    {
+        var path = _pristine.CopyProjectFile();
+        Capture(path);
+        var tracer = new WordRecordingTracer();
+
+        var outcome = WordTraceQuery.Query(new WordTraceRequest(path, "sagd"), tracer, CancellationToken.None);
+
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        Assert.Equal(["sagd"], tracer.Words);
+        Assert.Null(outcome.Value!.Lowercase);
+        Assert.Equal(101, outcome.Value.TotalParserWorkSteps);
+    }
+
     [Fact]
     public void TheExplicitParserOverloadUsesTheResidentSessionOnlyWhenWarmIsOn()
     {

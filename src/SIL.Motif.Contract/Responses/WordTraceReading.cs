@@ -194,6 +194,18 @@ public sealed record WordTraceResponse(
     /// <summary>Total parser work for this word, when the trace reported it.</summary>
     public long? ParserWorkSteps { get; init; }
     public double? ParserElapsedMs { get; init; }
+
+    /// <summary>
+    /// The trace of this word's lowercase form, present when that form differs from <see cref="Word"/> and its
+    /// trace could be read. It is a wordform of its own: the readings above stay those of <see cref="Word"/> as written.
+    /// </summary>
+    public WordTraceResponse? Lowercase { get; init; }
+
+    /// <summary>Parser work for the word as written plus its lowercase pass, when the trace reported both.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public long? TotalParserWorkSteps => ParserWorkSteps is null && Lowercase?.ParserWorkSteps is null
+        ? null : (ParserWorkSteps ?? 0) + (Lowercase?.ParserWorkSteps ?? 0);
+
     public bool Guessed { get; init; }
     public IReadOnlyList<TraceEffort> Effort { get; init; } = [];
     public string DiagnosticJson { get; init; } = string.Empty;

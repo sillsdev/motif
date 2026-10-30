@@ -1185,6 +1185,10 @@ public static class CommandTextRenderer
             : "  Search: stopped early. " + (response.StopReason ?? "The parser did not finish."));
         if (response.ParserWorkSteps is { } workSteps)
             text.AppendLine($"  Parser work: {workSteps:N0}");
+        if (response.Lowercase is { } lowercase)
+            text.AppendLine($"  Lowercase form {lowercase.Word}: " + (lowercase.Parsed
+                ? $"parsed, {lowercase.Reading.Analyses.Count:N0} {(lowercase.Reading.Analyses.Count == 1 ? "analysis" : "analyses")}"
+                : "no parse") + (lowercase.ParserWorkSteps is { } lowerWork ? $", parser work {lowerWork:N0}" : string.Empty));
         if (response.Provenance is { Warning.Length: > 0 } provenance)
             text.AppendLine("  Warning: " + provenance.Warning);
         if (response.HostCapture?.Baseline is { } baseline)
