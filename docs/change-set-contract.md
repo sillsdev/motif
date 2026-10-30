@@ -558,13 +558,16 @@ naming the referrer. `owner` is the entry (`topLevel` true) or the parent sense 
 `msas` lists the analyses of `entry` that no remaining sense uses and nothing else refers to; they are deleted with
 the sense, and a listing that no longer matches makes the Draft stale. The effects are `lexical/lexEntry/senses` of
 the entry or `lexical/lexSense/senses` of the parent sense, whose preview lists every deleted sense with its gloss
-and definition and every deleted analysis, and `lexical/lexEntry/morphoSyntaxAnalyses` when an analysis goes. The
+and definition in every writing system, notes, source, scientific name, semantic domains and status (by name), examples
+with translations, and pictures (file and caption), and every deleted analysis, and `lexical/lexEntry/morphoSyntaxAnalyses` when an analysis goes. The
 composer is `compose-delete-sense`, CLI-first.
 
 `lexical/lexEntry/removeAlternateForm` targets one `LexEntry` and has the closed `after` shape
 `{ "form": "<id>" }`. The form must be one of the entry's alternate forms, never its lexeme form, and nothing may
 refer to it (a morph bundle, an ad hoc prohibition or any other object); the refusal names the referrer. The effect
-is `lexical/lexEntry/alternateForms`, whose preview gives the removed form's text, class and morph type. The composer
+is `lexical/lexEntry/alternateForms`, whose preview gives the removed form's class, its text in every writing system, its morph type, position and
+environment count. A writing system that cannot be resolved is shown by its handle in both previews. A reversal entry
+that lists a deleted sense blocks the deletion like any other referrer. The composer
 is `compose-remove-alternate-form`, CLI-first. `lexical/lexEntry/deleteAlternateForm` remains the guarded retirement
 of an exact-duplicate affix form.
 

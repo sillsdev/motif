@@ -1,5 +1,6 @@
 using System.Text.Json;
 using SIL.LCModel;
+using SIL.LCModel.Core.Text;
 using SIL.LCModel.Infrastructure;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Model;
@@ -232,6 +233,76 @@ public sealed class DeleteSenseTests : IDisposable
         foreach (var expected in new[] { "sub-sense", "even, including", "meme", "y compris", "bisan ikaw" })
             Assert.Contains(expected, preview, StringComparison.Ordinal);
         Assert.DoesNotContain("even so", preview, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ThePreviewShowsSourceScientificNameDomainsStatusAndPictureByName()
+    {
+        var root = Root("bisagra", sharedAnalysis: true, "hinge", "duplicate");
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+        {
+            var services = _cache.ServiceLocator;
+            var sense = Sense(root.Senses[1]);
+            var ws = _cache.DefaultAnalWs;
+            sense.Source = TsStringUtils.MakeString("Wolff 1972", ws);
+            sense.ScientificName = TsStringUtils.MakeString("Tectona grandis", ws);
+            var domains = _cache.LangProject.SemanticDomainListOA ??=
+                services.GetInstance<ICmPossibilityListFactory>().Create();
+            var domain = services.GetInstance<ICmSemanticDomainFactory>().Create();
+            domains.PossibilitiesOS.Add(domain);
+            domain.Name.set_String(ws, "Tools");
+            domain.Abbreviation.set_String(ws, "6.7");
+            sense.SemanticDomainsRC.Add(domain);
+            var status = services.GetInstance<ICmPossibilityFactory>().Create();
+            (_cache.LangProject.StatusOA ??= services.GetInstance<ICmPossibilityListFactory>().Create()).PossibilitiesOS.Add(status);
+            status.Name.set_String(ws, "Confirmed");
+            sense.StatusRA = status;
+            var folder = services.GetInstance<ICmFolderFactory>().Create();
+            _cache.LangProject.PicturesOC.Add(folder);
+            var file = services.GetInstance<ICmFileFactory>().Create();
+            folder.FilesOC.Add(file);
+            file.InternalPath = "Pictures/hinge.png";
+            var picture = services.GetInstance<ICmPictureFactory>().Create();
+            sense.PicturesOS.Add(picture);
+            picture.PictureFileRA = file;
+            picture.Caption.set_String(ws, "a brass hinge");
+        });
+
+        var preview = Preview(Compose(root.Senses[1], root.Entry), root.Entry);
+        foreach (var expected in new[]
+                 {
+                     "Wolff 1972", "Tectona grandis", "Tools", "6.7", "Confirmed",
+                     "Pictures/hinge.png", "a brass hinge",
+                 })
+            Assert.Contains(expected, preview, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AReversalEntryThatListsTheSenseBlocksTheDeletionNamingIt()
+    {
+        var root = Root("bisagra", sharedAnalysis: true, "hinge", "duplicate");
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+        {
+            var services = _cache.ServiceLocator;
+            var index = services.GetInstance<IReversalIndexFactory>().Create();
+            _cache.LangProject.LexDbOA.ReversalIndexesOC.Add(index);
+            index.WritingSystem = "en";
+            var reversal = services.GetInstance<IReversalIndexEntryFactory>().Create();
+            index.EntriesOC.Add(reversal);
+            reversal.SensesRS.Add(Sense(root.Senses[1]));
+        });
+        var error = Assert.Throws<InvalidOperationException>(() => Compose(root.Senses[1], root.Entry));
+        Assert.Contains("ReversalIndexEntry", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ThePreviewShowsTheHandleOfAWritingSystemItCannotResolve()
+    {
+        var root = Root("bisagra", sharedAnalysis: true, "hinge", "duplicate");
+        const int unknown = 987654321;
+        var field = Sense(root.Senses[1]).Gloss;
+        Assert.Equal("987654321", RemovalPreview.WritingSystemName(_cache, unknown));
+        Assert.NotNull(field);
     }
 
     private string Preview(IReadOnlyList<OperationEnvelope> operations, Guid owner) =>

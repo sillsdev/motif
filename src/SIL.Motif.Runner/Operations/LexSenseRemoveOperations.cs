@@ -2,6 +2,7 @@ using System.Runtime.CompilerServices;
 using System.Text.Json;
 using SIL.LCModel;
 using SIL.LCModel.Core.KernelInterfaces;
+using SIL.LCModel.Core.Text;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Model;
 using SIL.Motif.Contract.Parsing;
@@ -288,6 +289,8 @@ internal sealed class LexSenseRemoveHandler : ICompoundOperationHandler
         return result;
     }
 
+    private static string? Text(ITsString? text) => text?.Text is { Length: > 0 } value ? value : null;
+
     /// <summary>The recorded before-state: every sense and analysis that goes.</summary>
     private static JsonElement Preview(SenseRemovalPlan plan)
     {
@@ -315,6 +318,10 @@ internal sealed class LexSenseRemoveHandler : ICompoundOperationHandler
                 gloss = RemovalPreview.AllWritingSystems(item.Cache, item.Gloss),
                 definition = RemovalPreview.AllWritingSystems(item.Cache, item.Definition),
                 notes = RemovalPreview.SenseNotes(item),
+                source = Text(item.Source),
+                scientificName = Text(item.ScientificName),
+                semanticDomains = item.SemanticDomainsRC.Select(RemovalPreview.PossibilityName).ToArray(),
+                status = item.StatusRA is { } status ? RemovalPreview.PossibilityName(status) : null,
                 analysis = item.MorphoSyntaxAnalysisRA is { } msa ? CanonicalId.FromGuid(msa.Guid).Value : null,
                 examples = item.ExamplesOS.Select(RemovalPreview.Example).ToArray(),
                 pictures = item.PicturesOS.Select(RemovalPreview.Picture).ToArray(),
@@ -326,7 +333,7 @@ internal sealed class LexSenseRemoveHandler : ICompoundOperationHandler
                 partOfSpeech = VariantSenseAnalysisSafety.PartOfSpeech(msa) is { } pos
                     ? pos.Name.BestAnalysisAlternative?.Text : null,
             }).ToArray(),
-            reversal = "createSenses with the same ids, placements, glosses, definitions, notes, examples, translations and pictures, " +
+            reversal = "createSenses with the same ids, placements, glosses, definitions, notes, source, scientific name, semantic domains, status, examples, translations and pictures, " +
                 "recreate any deleted analysis with the same class and id, and point the senses at it",
         });
     }
@@ -341,11 +348,43 @@ internal static class RemovalPreview
         var result = new Dictionary<string, string>(StringComparer.Ordinal);
         if (field is null)
             return result;
-        var manager = cache.ServiceLocator.WritingSystemManager;
         foreach (var ws in field.AvailableWritingSystemIds)
             if (field.get_String(ws)?.Text is { Length: > 0 } text)
-                result[manager.Get(ws)?.Id ?? ws.ToString(System.Globalization.CultureInfo.InvariantCulture)] = text;
+                result[WritingSystemName(cache, ws)] = text;
         return result;
+    }
+
+    /// <summary>The writing-system tag, or the numeric handle when the handle cannot be resolved.</summary>
+    internal static string WritingSystemName(LcmCache cache, int handle)
+    {
+        try
+        {
+            if (cache.ServiceLocator.WritingSystemManager.Get(handle)?.Id is { Length: > 0 } tag)
+                return tag;
+        }
+        catch (ArgumentException)
+        {
+        }
+        catch (KeyNotFoundException)
+        {
+        }
+        return handle.ToString(System.Globalization.CultureInfo.InvariantCulture);
+    }
+
+    /// <summary>A possibility as a reader knows it: abbreviation and name.</summary>
+    internal static string PossibilityName(ICmPossibility item)
+    {
+        var name = item.Name.BestAnalysisAlternative?.Text;
+        var abbreviation = item.Abbreviation.BestAnalysisAlternative?.Text;
+        var named = string.IsNullOrEmpty(name) || name.StartsWith("***", StringComparison.Ordinal) ? null : name;
+        var abbreviated = string.IsNullOrEmpty(abbreviation) || abbreviation.StartsWith("***", StringComparison.Ordinal) ? null : abbreviation;
+        return (abbreviated, named) switch
+        {
+            ({ } a, { } n) => $"{a} {n}",
+            ({ } a, null) => a,
+            (null, { } n) => n,
+            _ => CanonicalId.FromGuid(item.Guid).Value,
+        };
     }
 
     /// <summary>The sense's note fields that hold text, keyed by field name.</summary>
