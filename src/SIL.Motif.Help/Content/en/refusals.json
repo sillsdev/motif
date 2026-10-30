@@ -171,6 +171,18 @@
     "why": "The form's morph type changed after this edit was composed. Inspect the form and compose the edit again.",
     "source": "Hand-written from the Motif MCP refusal advice."
   },
+  "clitic-attachment.not-clitic": {
+    "why": "Attaches to Categories can be edited here only on a stem analysis of a proclitic, enclitic or clitic entry. Change the form's morph type first, in the same Draft if needed.",
+    "source": "Hand-written from the Motif MCP refusal advice."
+  },
+  "clitic-attachment.invalid-category": {
+    "why": "Every category must be a part of speech in this project. Read the project's parts of speech and compose the edit again.",
+    "source": "Hand-written from the Motif MCP refusal advice."
+  },
+  "clitic-attachment.stale-source": {
+    "why": "The clitic's Attaches to Categories changed after this edit was composed. Read the current set and compose the edit again.",
+    "source": "Hand-written from the Motif MCP refusal advice."
+  },
   "morph-type.incompatible-family": {
     "why": "This edit supports only a stem form changing between stem-family morph types. Changing between stem and affix needs a compatible analysis and a different authoring path.",
     "source": "Hand-written from the Motif MCP refusal advice."

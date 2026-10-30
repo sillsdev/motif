@@ -429,6 +429,9 @@ public static class CommandTextRenderer
         return sb.ToString();
     }
 
+    private static string CategoryList(JsonElement names) =>
+        names.GetArrayLength() == 0 ? "(any)" : string.Join(", ", names.EnumerateArray().Select(name => name.GetString()));
+
     private static void AppendEffects(StringBuilder sb, IReadOnlyList<EffectView> effects)
     {
         foreach (var effect in effects)
@@ -451,6 +454,10 @@ public static class CommandTextRenderer
                 preview.TryGetProperty("beforeTypeName", out var beforeType) && beforeType.ValueKind == JsonValueKind.String &&
                 preview.TryGetProperty("afterTypeName", out var afterType) && afterType.ValueKind == JsonValueKind.String)
                 sb.AppendLine($"      morph type: {beforeType.GetString()} -> {afterType.GetString()}");
+            if (effect.Preview is { } categories && categories.ValueKind == JsonValueKind.Object &&
+                categories.TryGetProperty("beforeCategoryNames", out var beforeNames) && beforeNames.ValueKind == JsonValueKind.Array &&
+                categories.TryGetProperty("afterCategoryNames", out var afterNames) && afterNames.ValueKind == JsonValueKind.Array)
+                sb.AppendLine($"      Attaches to Categories: {CategoryList(beforeNames)} -> {CategoryList(afterNames)}");
         }
     }
 }

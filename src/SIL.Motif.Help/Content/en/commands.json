@@ -1247,5 +1247,19 @@
     "goals": [
       "Change the morph type of an existing stem form"
     ]
+  },
+  "compose-edit-clitic-attachment": {
+    "title": "Edit a clitic’s Attaches to Categories",
+    "description": "Set the Attaches to Categories of a clitic stem analysis to an exact set of parts of speech. Review the before and after category names in the Dry Run.",
+    "source": "Hand-written from the closed intent and composer contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "target": "Id of the clitic’s stem analysis (MoStemMsa).",
+      "expectedCategories": "Ids of the parts of speech it attaches to now; the edit is refused if they differ.",
+      "categories": "Ids of the parts of speech it should attach to; empty removes the restriction."
+    },
+    "goals": [
+      "Restrict the categories a clitic attaches to"
+    ]
   }
 }

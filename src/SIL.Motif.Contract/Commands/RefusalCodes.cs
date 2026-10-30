@@ -318,6 +318,15 @@ public static class RefusalCodes
     /// <summary>The morph-type edit would leave the supported stem family.</summary>
     public const string MorphTypeIncompatibleFamily = "morph-type.incompatible-family";
 
+    /// <summary>The target is not a stem analysis of a proclitic, enclitic or clitic entry.</summary>
+    public const string CliticAttachmentNotClitic = "clitic-attachment.not-clitic";
+
+    /// <summary>A named category is not a part of speech in the project.</summary>
+    public const string CliticAttachmentInvalidCategory = "clitic-attachment.invalid-category";
+
+    /// <summary>The clitic's Attaches to Categories changed since the edit was composed.</summary>
+    public const string CliticAttachmentStaleSource = "clitic-attachment.stale-source";
+
     /// <summary>A Draft with that name already exists.</summary>
     public const string DraftNameCollision = "draft.name-collision";
     /// <summary>No Draft has that name.</summary>
