@@ -286,6 +286,7 @@ public static class AssessCommand
             }
 
             AssessmentScope.Words scope;
+            IReadOnlyList<string> parsedWords = composition.Selection.Words;
             var exportedCandidate = Path.GetDirectoryName(baseline.FwDataPath)!;
             IReadOnlyList<ProducedAssessment> produced;
             try
@@ -327,11 +328,14 @@ public static class AssessCommand
                     ? new TrialLimits(TimeSpan.FromMilliseconds(ms), stepLimit)
                     : ParseRunLimits.Resolve(policy, ParseRunLimits.ReadRate(assessments)));
                 scope = new AssessmentScope.Words(composition.Selection.Words, collected,
-                    limits.PerWordLimit, limits.PerWordStepLimit);
+                    limits.PerWordLimit, limits.PerWordStepLimit)
+                { Casing = LowercasePass.ForCache(baselineReader.Cache) };
+                // The lowercase wordforms are rows of their own, so every per-word context and total covers them.
+                parsedWords = scope.ParsedWords;
                 var timeLimit = limits.PerWordLimit;
-                var latestWordProgress = new TrialWordProgress(0, scope.WordForms.Count, null);
+                var latestWordProgress = new TrialWordProgress(0, parsedWords.Count, null);
                 onProgress?.Invoke(new AssessmentProgress(
-                    AssessmentStage.Parsing, 0, composition.Selection.Words.Count, "Parsing the Selection...")
+                    AssessmentStage.Parsing, 0, parsedWords.Count, "Parsing the Selection...")
                     { PerWordLimitMs = timeLimit is { } wordLimit ? (int)wordLimit.TotalMilliseconds : null });
                 Action<bool>? onAdmissionWait = onProgress is null ? null : waiting =>
                 {
@@ -476,8 +480,8 @@ public static class AssessCommand
                     try
                     {
                         batchStatistics = PanGlossBatchStatisticsReader.ReadBounded(
-                            replay.CachePath, composition.Selection.Words,
-                            request.FullObjectTimingDetail ? composition.Selection.Words.Count :
+                            replay.CachePath, parsedWords,
+                            request.FullObjectTimingDetail ? parsedWords.Count :
                                 ObjectTimingRowCapForTests.Value ?? configured.TimingDetailWords);
                     }
                     catch (Exception exception) when (exception is IOException or InvalidDataException or
@@ -515,10 +519,10 @@ public static class AssessCommand
                 }
                 var namingCache = baselineReader.Cache;
                 var projectName = Path.GetFileNameWithoutExtension(request.ProjectPath);
-                var wordContext = ReadProjectWordContext(namingCache, composition.Selection.Words,
+                var wordContext = ReadProjectWordContext(namingCache, parsedWords,
                     composition.Descriptor.TextIds);
                 var navigation = SavedProjectNavigation.Read(project.FullFwDataPath, baseline.Token.ProjectIdentity);
-                var storedContext = BaselineWordContext.Read(namingCache, navigation, composition.Selection.Words,
+                var storedContext = BaselineWordContext.Read(namingCache, navigation, parsedWords,
                     wordContext.Approved, wordContext.Rejected, wordContext.Candidates);
                 // Named once and recorded, so a later read of the stored words glosses them as this run does.
                 var namedMissed = new Dictionary<string, ParserReading[]?>(StringComparer.Ordinal);

@@ -201,6 +201,9 @@ public sealed record WordTraceResponse(
     /// </summary>
     public WordTraceResponse? Lowercase { get; init; }
 
+    /// <summary>Why the lowercase form's trace is missing, when one was due and the parser could not give it.</summary>
+    public string? LowercaseFailure { get; init; }
+
     /// <summary>Parser work for the word as written plus its lowercase pass, when the trace reported both.</summary>
     [System.Text.Json.Serialization.JsonIgnore]
     public long? TotalParserWorkSteps => ParserWorkSteps is null && Lowercase?.ParserWorkSteps is null

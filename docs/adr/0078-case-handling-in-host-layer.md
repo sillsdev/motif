@@ -27,6 +27,9 @@ case rule has no writing system to take its casing from. The host knows the writ
 - There is no case-required lexicon flag. A lexeme cannot say it must be capitalised.
 - Mid-word capitals, such as Irish *hÉireann*, are not handled: the pass lowercases the whole word or not at all.
 - *Bill* and *bill* both get readings, under separate wordforms. Neither suppresses the other.
+- Case is taken from the project's default vernacular writing system, not per wordform. FieldWorks uses each
+  wordform's own writing system; a parser word here is a bare string, so a second vernacular writing system whose
+  casing differs (a Turkish and an English pair, or a case alias) is lowercased by the default's rules.
 - Unicode case folding is never used for matching. It is lossy (ß folds to ss, İ to i plus a combining dot) and is
   not locale-aware for Turkish and Azeri.
 

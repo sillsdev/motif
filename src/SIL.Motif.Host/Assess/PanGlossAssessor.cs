@@ -106,7 +106,8 @@ public sealed class PanGlossAssessor : IAssessor
             throw new AssessorUnavailableException(AssessorName,
                 $"The candidate must contain exactly one .fwdata source; found {sources.Length}.");
         // The one seam for Assess and Trial: appended lowercase wordforms parse in the same batch (ADR 0078).
-        var (parsedWords, lowercaseOrigin) = _lowercasePass(sources[0], requestedWords).Expand(requestedWords);
+        var (parsedWords, lowercaseOrigin) = (wordsScope.Casing ?? _lowercasePass(sources[0], requestedWords))
+            .Expand(requestedWords);
         requestedWords = parsedWords.ToArray();
         var invocationId = Guid.NewGuid().ToString("N");
         var directory = _paths.DirectoryFor(invocationId);

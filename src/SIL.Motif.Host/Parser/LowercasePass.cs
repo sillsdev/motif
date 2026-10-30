@@ -39,6 +39,13 @@ public sealed class LowercasePass
         return new LowercasePass(new CaseFunctions(writingSystem));
     }
 
+    /// <summary>The pass for an open project's default vernacular writing system, so no second load is needed.</summary>
+    public static LowercasePass ForCache(SIL.LCModel.LcmCache cache)
+    {
+        ArgumentNullException.ThrowIfNull(cache);
+        return For(cache.ServiceLocator.WritingSystems.DefaultVernacularWritingSystem);
+    }
+
     /// <summary>
     /// The pass for the project's default vernacular writing system, which is the one the parser's words are in.
     /// A project that cannot be opened gets <see cref="None"/>: the parser reads the same file and reports the

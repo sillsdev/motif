@@ -1183,8 +1183,10 @@ public static class CommandTextRenderer
         text.AppendLine(response.Complete
             ? $"  Search: complete, {response.ParserSteps?.ToString("N0") ?? "unknown"} analysis attempts"
             : "  Search: stopped early. " + (response.StopReason ?? "The parser did not finish."));
-        if (response.ParserWorkSteps is { } workSteps)
-            text.AppendLine($"  Parser work: {workSteps:N0}");
+        if (response.TotalParserWorkSteps is { } workSteps)
+            text.AppendLine($"  Parser work: {workSteps:N0}" + (response.Lowercase is null ? string.Empty : " (with the lowercase form)"));
+        if (response.LowercaseFailure is { } lowercaseFailure)
+            text.AppendLine("  " + lowercaseFailure);
         if (response.Lowercase is { } lowercase)
             text.AppendLine($"  Lowercase form {lowercase.Word}: " + (lowercase.Parsed
                 ? $"parsed, {lowercase.Reading.Analyses.Count:N0} {(lowercase.Reading.Analyses.Count == 1 ? "analysis" : "analyses")}"

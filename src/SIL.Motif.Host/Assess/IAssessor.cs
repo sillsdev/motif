@@ -88,6 +88,18 @@ public abstract record AssessmentScope
             PerWordStepLimit = perWordStepLimit ?? StepCap.Default;
         }
 
+        /// <summary>
+        /// The casing the run's lowercase second pass uses, taken from a project the caller already has open.
+        /// When null the assessor opens the candidate project itself, only if a word could change.
+        /// </summary>
+        public Parser.LowercasePass? Casing { get; init; }
+
+        /// <summary>
+        /// <see cref="WordForms"/> plus the lowercase wordforms the second pass appends: every row the parser will
+        /// answer, and so the count a progress total starts from.
+        /// </summary>
+        public IReadOnlyList<string> ParsedWords => Casing?.Expand(WordForms).Words ?? WordForms;
+
         /// <summary>The resolved word list this run was told to try — not a query, the words themselves.</summary>
         public IReadOnlyList<string> WordForms { get; }
 

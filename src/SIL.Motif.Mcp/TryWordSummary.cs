@@ -34,8 +34,9 @@ internal static class TryWordSummary
             ["searchStatus"] = response.SearchStatus,
             ["elapsedMs"] = response.ElapsedMs,
             ["attempts"] = response.ParserSteps,
-            ["workSteps"] = response.ParserWorkSteps,
+            ["workSteps"] = response.TotalParserWorkSteps,
         };
+        if (response.LowercaseFailure is { } lowercaseFailure) result["lowercaseFailure"] = lowercaseFailure;
         if (response.Lowercase is { } lowercase)
         {
             // Its own wordform: the readings above stay those of the word as written.

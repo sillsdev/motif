@@ -154,6 +154,34 @@ public sealed class WordTraceQueryTests : IDisposable
         Assert.Equal(203, outcome.Value.TotalParserWorkSteps);
     }
 
+    private sealed class RefusingLowercaseTracer : IPanGlossTracer
+    {
+        public Task<PanGlossTraceOutcome> TraceAsync(string grammarPath, string word, CancellationToken cancellationToken,
+            TimeSpan? timeout = null) =>
+            new PanGlossTracer(new FakeInvoker
+            {
+                Respond = _ => char.IsLower(word[0])
+                    ? new PanGlossOutcome.Unavailable("parser went away")
+                    : new PanGlossOutcome.Completed(
+                        GoldenStandardOutput.Replace("\"word\":\"sagd\"", $"\"word\":\"{word}\""), string.Empty, TimeSpan.Zero),
+            }).TraceAsync(grammarPath, word, cancellationToken, timeout);
+    }
+
+    [Fact]
+    public void AFailedLowercaseTraceIsReportedNotDropped()
+    {
+        var path = _pristine.CopyProjectFile();
+        Capture(path);
+
+        var outcome = WordTraceQuery.Query(new WordTraceRequest(path, "Sagd"), new RefusingLowercaseTracer(),
+            CancellationToken.None);
+
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        Assert.Null(outcome.Value!.Lowercase);
+        Assert.Contains("'sagd'", outcome.Value.LowercaseFailure);
+        Assert.Contains("parser went away", outcome.Value.LowercaseFailure);
+    }
+
     [Fact]
     public void AnAlreadyLowercaseWordIsTracedOnce()
     {

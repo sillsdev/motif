@@ -159,6 +159,35 @@ public sealed class TrialJobHandlerTests : IDisposable
     }
 
     [Fact]
+    public void ATrialOfACapitalisedWordRecordsItsLowercaseWordformAsARowOfItsOwn()
+    {
+        var parserPath = FakeParser.Copy(Path.Combine(_root, "lowercase-parser"));
+        FakeParser.BehaveBesideExecutable(parserPath, new
+        {
+            words = new[] { new { word = "zzmotiftrialanalysed", outcome = "complete" } },
+        });
+        using var invoker = new PanGlossInvoker(parserPath,
+            new MachinePanGlossQueue(["Local\\MotifTrialLowercase-" + Guid.NewGuid().ToString("N")]));
+        using var lanes = new ProjectLaneRegistry(_ => _token);
+        var assessor = new PanGlossAssessor(
+            new StatsCacheStore(WorkspaceOwnership.Bootstrap(Path.Combine(_root, "worker"))), invoker);
+        var handler = BuildHandler(lanes, assessor);
+        var proposalId = CanonicalId.Mint("proposal/");
+        var proposalJson = BuildSetGlossProposalJson(proposalId, _seed.FirstSenseId, "lowercase trial");
+        SaveCommittedProposal(proposalId, proposalJson);
+        var job = CreateTrialJob(proposalJson, ["Zzmotiftrialanalysed"]);
+
+        var finished = RunAndFinish(handler, job);
+
+        Assert.Equal(JobStatus.Completed, finished.Status);
+        var recorded = _assessments.ListByProposal(proposalId).Select(item => _assessments.Get(item.AssessmentId))
+            .First(item => item.Words is { Count: > 0 });
+        Assert.Equal(["Zzmotiftrialanalysed"], recorded.Selection.Words);
+        Assert.Equal(["Zzmotiftrialanalysed", "zzmotiftrialanalysed"], recorded.Words!.Select(row => row.Word));
+        Assert.Equal("analysed", recorded.Words![1].Outcome);
+    }
+
+    [Fact]
     public async Task BudgetTimerStopsTheWorkerParserProcess()
     {
         var parserPath = FakeParser.Copy(Path.Combine(_root, "budget-parser"));

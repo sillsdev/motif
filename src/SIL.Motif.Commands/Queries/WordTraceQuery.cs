@@ -146,7 +146,12 @@ public static class WordTraceQuery
                 if (lowerOutcome is PanGlossTraceOutcome.Cancelled)
                     return Shape(lowerOutcome, request, 0);
                 var lowerResult = Shape(lowerOutcome, request, (int)clock.ElapsedMilliseconds);
-                if (lowerResult.Succeeded)
+                if (!lowerResult.Succeeded)
+                    result = CommandOutcome<WordTraceResponse>.Success(result.Value! with
+                    {
+                        LowercaseFailure = $"The trace of the lowercase form '{lower}' failed: {lowerResult.Refusal!.Message}",
+                    });
+                else
                     result = CommandOutcome<WordTraceResponse>.Success(result.Value! with
                     {
                         Lowercase = lowerResult.Value! with

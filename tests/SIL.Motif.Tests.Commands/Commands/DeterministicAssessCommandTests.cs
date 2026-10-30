@@ -27,6 +27,7 @@ using SIL.Motif.Host.Store;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Tests.Parser;
 using SIL.Motif.Host.PanGloss;
+using SIL.Motif.Worker.Assess;
 using SIL.Motif.Worker.Projects;
 using SIL.Motif.Worker.Store;
 using Xunit;
@@ -79,6 +80,30 @@ public sealed class DeterministicAssessCommandTests : IDisposable
         var repository = OpenRepository(seeded.FwDataPath);
         Assert.Single(repository.ListBaselineAssessments(AssessmentKind.ParseTime.ToStoredKind()));
         Assert.Single(repository.ListBaselineAssessments(AssessmentKind.ObjectTiming.ToStoredKind()));
+    }
+
+    [Fact]
+    public void ACapitalisedSelectionWordIsAssessedWithItsLowercaseWordformAsARowOfItsOwn()
+    {
+        using var seeded = NewSeededScratch();
+        var parser = FakeParser.Copy(Path.Combine(_managedRootsParent, "lowercase-parser"));
+        FakeParser.BehaveBesideExecutable(parser, new { words = new[] { new { word = "balay", outcome = "complete" } } });
+        using var invoker = new PanGlossInvoker(parser,
+            new MachinePanGlossQueue(["Local\\MotifAssessLowercase-" + Guid.NewGuid().ToString("N")]));
+        var assessor = new PanGlossAssessor(new StatsCacheStore(WorkspaceOwnership.Bootstrap(NewManagedRoot())), invoker);
+        var progress = new List<AssessmentProgress>();
+
+        var outcome = AssessCommand.Run(new AssessRequest(seeded.FwDataPath,
+            new SelectionRequest(false, [], ["Balay"], false, null)), NewManagedRoot(), assessor, invoker,
+            progress.Add, CancellationToken.None);
+
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        var words = outcome.Value!.Words;
+        Assert.Equal(["Balay", "balay"], words.Select(word => word.Word));
+        Assert.Equal(["no-analysis", "analysed"], words.Select(word => word.Outcome));
+        Assert.All(words, word => Assert.True(word.StoredAnalysesAvailable));
+        Assert.Equal(["Balay"], OpenRepository(seeded.FwDataPath).Get(outcome.Value.AssessmentIds[0]).Selection.Words);
+        Assert.All(progress.Where(item => item.Stage == AssessmentStage.Parsing), item => Assert.Equal((int?)2, item.Total));
     }
 
     [Fact]

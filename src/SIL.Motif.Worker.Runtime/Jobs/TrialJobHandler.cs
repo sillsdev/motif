@@ -275,7 +275,7 @@ internal sealed class TrialJobHandler
                 }
             }
             var limitMs = candidate.Scope.PerWordLimit is { } limit ? (int?)limit.TotalMilliseconds : null;
-            var initialProgress = new TrialWordProgress(0, candidate.Scope.WordForms.Count, null)
+            var initialProgress = new TrialWordProgress(0, candidate.Scope.ParsedWords.Count, null)
                 { PerWordLimitMs = limitMs };
             claim.PublishTrialProgress(initialProgress);
             var batchPhase = new JobStageProgress("batch", _grammarHealth is null ? 1 : 2,
@@ -395,8 +395,9 @@ internal sealed class TrialJobHandler
                         allWords ? WordQueryResolver.AllWordformsQueryText : scopeConfiguration.Query, cache).ToArray();
                 var scope = new AssessmentScope.Words(words, ParseCollect(scopeConfiguration.Collect),
                     limits is { } selectedLimits ? selectedLimits.PerWordLimit : scopeConfiguration.PerWordLimit,
-                    limits?.PerWordStepLimit ?? scopeConfiguration.PerWordStepLimit);
-                var projectStandings = ReadProjectStandings(cache, words);
+                    limits?.PerWordStepLimit ?? scopeConfiguration.PerWordStepLimit)
+                    { Casing = cache is null ? null : LowercasePass.ForCache(cache) };
+                var projectStandings = ReadProjectStandings(cache, scope.ParsedWords);
                 var exportedDirectory = await _prepareForAssessment(cache, laneToken).ConfigureAwait(false);
                 candidate = new CandidateRun(dryRun, scope, Selection.Create(scopeConfiguration.Name, words),
                     exportedDirectory, Path.GetFullPath(cache?.ProjectId.Path
@@ -426,7 +427,7 @@ internal sealed class TrialJobHandler
         var baselineTokenJson = JsonSerializer.Serialize(baselineToken, MotifJson.CreateOptions());
 
         var records = new List<NewAssessmentRecord>();
-        var wordStatistics = TrialWordStatistics.Read(produced, scope.WordForms);
+        var wordStatistics = TrialWordStatistics.Read(produced, scope.ParsedWords);
         foreach (var item in produced)
         {
             var assessmentId = CanonicalId.Mint("assessment/").Value;
