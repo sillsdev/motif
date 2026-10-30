@@ -58,7 +58,8 @@ public static class ActivityQuery
     {
         if (!File.Exists(request.LogPath))
             return CommandOutcome<ActivitySummary>.Refused(new Refusal("activity.log-unreadable", FailureReason.NotFound,
-                $"There is no activity log at '{request.LogPath}'. Start the server with motif mcp --activity-log <file>."));
+                $"There is no activity log at '{Path.GetFileName(request.LogPath)}'. Start the server with motif mcp --activity-log <file>.",
+                new Dictionary<string, string> { ["logPath"] = request.LogPath }));
         var calls = new List<ActivityCall>();
         try
         {
@@ -74,7 +75,8 @@ public static class ActivityQuery
         catch (IOException exception)
         {
             return CommandOutcome<ActivitySummary>.Refused(new Refusal("activity.log-unreadable", FailureReason.NotFound,
-                $"The activity log at '{request.LogPath}' could not be read: {exception.Message}"));
+                $"The activity log at '{Path.GetFileName(request.LogPath)}' could not be read.",
+                new Dictionary<string, string> { ["logPath"] = request.LogPath, ["exceptionDetail"] = exception.Message }));
         }
         return CommandOutcome<ActivitySummary>.Success(Summarize(calls));
     }

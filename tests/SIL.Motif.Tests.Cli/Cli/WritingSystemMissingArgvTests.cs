@@ -142,7 +142,8 @@ public sealed class WritingSystemMissingArgvTests(PristineProjectFixture pristin
         var store = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(path))!, "WritingSystemStore");
         Assert.Equal("project.writing-system-missing", failure.Code);
         Assert.Equal(FailureReason.Refused, failure.Reason);
-        Assert.Contains(store, failure.Message, StringComparison.Ordinal);
+        Assert.Contains("WritingSystemStore", failure.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain(store, failure.Message, StringComparison.Ordinal);
         Assert.Equal(store, failure.Detail!["projectWritingSystemStore"]);
         Assert.DoesNotContain("rolls back", error, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("damaged", error, StringComparison.OrdinalIgnoreCase);

@@ -27,7 +27,8 @@ public static class ConfigCommands
             catch (ProjectConfigurationException exception)
             {
                 return CommandOutcome<ProjectConfigurationProjection>.Refused(new Refusal(
-                    "config.invalid", FailureReason.Refused, exception.Message));
+                    "config.invalid", FailureReason.Refused, exception.Message,
+                    new Dictionary<string, string> { ["configPath"] = ProjectConfigurationReader.PathFor(project) }));
             }
         });
 

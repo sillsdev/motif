@@ -521,7 +521,7 @@ internal sealed class MotifSqliteStore : IDisposable
         // Without an upgrade callback, there is no safe way to open an older schema.
         if (schema != 0 && schema != descriptor.CurrentSchema)
             throw new MotifStoreVersionException(fullPath,
-                StoreUpgradeMessages.Format("UnsupportedSchema", descriptor.Name, fullPath, schema, descriptor.CurrentSchema));
+                StoreUpgradeMessages.Format("UnsupportedSchema", descriptor.Name, Path.GetFileName(fullPath), schema, descriptor.CurrentSchema));
         return schema;
     }
 

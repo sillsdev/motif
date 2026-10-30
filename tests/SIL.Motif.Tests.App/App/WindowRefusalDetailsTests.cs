@@ -73,6 +73,146 @@ public sealed class WindowRefusalDetailsTests
         Assert.DoesNotContain("ConversionIssue", ProblemReport.FromRefusal(shown).ToText(true));
     }
 
+    [Fact]
+    public void StructuredCompilePathsKeepProseInBothWindowSurfacesAndFullPathsInReport()
+    {
+        const string text = "Cannot read /home/alice/private/project.fwdata.";
+        const string advice = @"Check C:\Users\alice\private\rules.txt and \\server\private\source.xml.";
+        var output = System.Text.Json.JsonSerializer.Serialize(new
+        {
+            status = "compile_error", schema_version = 1,
+            issues = new[] { new { fatal = true, code = "Invalid", kind = "Grammar", text, advice } },
+        });
+        var shown = WindowRefusal.From(new Refusal(RefusalCodes.AssessParserUnavailable,
+            FailureReason.Refused, output));
+
+        var issue = Assert.Single(shown.CompileIssues);
+        Assert.Equal("Cannot read project.fwdata.", issue.Text);
+        Assert.Equal("Check rules.txt and source.xml.", issue.Advice);
+        Assert.Contains(issue.Text, shown.Details);
+        Assert.Contains(issue.Advice, shown.Details);
+        Assert.DoesNotContain("/home/alice", shown.Details);
+        Assert.DoesNotContain(@"C:\Users", shown.Details);
+        Assert.DoesNotContain(@"\\server", shown.Details);
+        var report = ProblemReport.FromRefusal(shown).ToText(includeLocalDetails: true);
+        Assert.Contains(text, report);
+        Assert.Contains(advice, report);
+    }
+
+    [Theory]
+    [InlineData("See 'relative/private/project.fwdata'.", "See 'project.fwdata'.")]
+    [InlineData("See '/home/alice/Secret Folder/private/project.fwdata'.", "See 'project.fwdata'.")]
+    [InlineData(@"See 'C:\Users\alice\Secret Folder\private\project.fwdata'.", "See 'project.fwdata'.")]
+    [InlineData(@"See [\\server\Secret Folder\private\project.fwdata].", "See [Secret project.fwdata].")]
+    [InlineData(@"See '\\server\Secret Folder\private\project.fwdata'.", "See 'project.fwdata'.")]
+    [InlineData("See '/home/alice/language's.fwdata'.", "See 'language's.fwdata'.")]
+    [InlineData("See \"/home/alice/a\"b.fwdata\".", "See \"a\"b.fwdata\".")]
+    [InlineData("See (C:/Users/alice/project.fwdata).", "See (project.fwdata).")]
+    [InlineData("File path='/home/alice/private/project.fwdata'.", "File path='project.fwdata'.")]
+    [InlineData(@"Path:'C:\Users\Alice Secret\project.fwdata'.", "Path:'project.fwdata'.")]
+    [InlineData("Path:\"/home/Alice Secret/project.fwdata\".", "Path:\"project.fwdata\".")]
+    [InlineData(@"Don't change Alice's word. Path:'C:\Users\Alice Secret\project.fwdata'.",
+        "Don't change Alice's word. Path:'project.fwdata'.")]
+    [InlineData(@"Read private\alice\project.fwdata now.", "Read project.fwdata now.")]
+    [InlineData(@"Read C:private\alice\project.fwdata now.", "Read project.fwdata now.")]
+    [InlineData("Read ./private/file, ../private/file, and ~/private/file.", "Read file, file, and file.")]
+    [InlineData("Read relative/private/folder and relative/123/file.fwdata.", "Read relative/private/folder and relative/123/file.fwdata.")]
+    [InlineData("Could not read private/project.fwdata.", "Could not read project.fwdata.")]
+    [InlineData("Nasal assimilation before /p/ is unexpected.", "Nasal assimilation before /p/ is unexpected.")]
+    [InlineData("The rule /p/ -> [b] is unexpected.", "The rule /p/ -> [b] is unexpected.")]
+    [InlineData(@"Keep /private.fwdata and \private.fwdata.", @"Keep /private.fwdata and \private.fwdata.")]
+    [InlineData("Keep relative/123/folder and https://example.org/a/b?x=1/2.",
+        "Keep relative/123/folder and https://example.org/a/b?x=1/2.")]
+    [InlineData("See ftp://example.org/files/example and http://example.org/a/b.",
+        "See ftp://example.org/files/example and http://example.org/a/b.")]
+    [InlineData("Expected 1/2 forms on 10/30/2026; see https://example.org/grammar/guide.",
+        "Expected 1/2 forms on 10/30/2026; see https://example.org/grammar/guide.")]
+    public void StructuredCompileTextKeepsProseAndShortensPathTokens(string text, string expected)
+    {
+        var diagnostic = new ParserCompileDiagnostic("Cannot compile.",
+            [new ParserCompileIssue("Invalid", "Grammar", null, null, text, text)], text);
+        var shown = WindowRefusal.From(new Refusal(RefusalCodes.AssessParserUnavailable,
+            FailureReason.Refused, text, parserDiagnostic: diagnostic));
+
+        var issue = Assert.Single(shown.CompileIssues);
+        Assert.Equal(expected, issue.Text);
+        Assert.Equal(expected, issue.Advice);
+        Assert.Contains(expected, shown.Details);
+        Assert.Contains(text, ProblemReport.FromRefusal(shown).ToText(includeLocalDetails: true));
+    }
+
+    [Theory]
+    [InlineData("/private/Alice's Secret Folder/project.fwdata", "/private/Alice's Secret Folder")]
+    [InlineData(@"C:\private\Alice's Secret Folder\project.fwdata", @"C:\private\Alice's Secret Folder")]
+    public void StructuredCompileTextReplacesKnownPathsAndTheirDirectories(string path, string directory)
+    {
+        var text = $"Cannot read '{path}'. Check directory '{directory}'.";
+        var diagnostic = new ParserCompileDiagnostic("Cannot compile.",
+            [new ParserCompileIssue("Invalid", "Grammar", null, null, text, text)], text);
+        var shown = WindowRefusal.From(new Refusal(RefusalCodes.AssessParserUnavailable,
+            FailureReason.Refused, text, new Dictionary<string, string> { ["projectPath"] = path }, diagnostic));
+
+        var issue = Assert.Single(shown.CompileIssues);
+        Assert.Equal("Cannot read 'project.fwdata'. Check directory 'project.fwdata'.", issue.Text);
+        Assert.Equal(issue.Text, issue.Advice);
+        Assert.Contains(issue.Text, shown.Details);
+        Assert.DoesNotContain("Secret", shown.Details);
+        Assert.Contains(text, ProblemReport.FromRefusal(shown).ToText(includeLocalDetails: true));
+    }
+
+    [Theory]
+    [InlineData("//private.fwdata", "The root is /; 1/2 remains.")]
+    [InlineData(@"C:\\private.fwdata", @"The C:\ drive remains available.")]
+    public void RepeatedSeparatorsDoNotTurnARootIntoAReplaceableDirectory(string path, string text)
+    {
+        var diagnostic = new ParserCompileDiagnostic("Cannot compile.",
+            [new ParserCompileIssue("Invalid", "Grammar", null, null, text, text)], text);
+        var shown = WindowRefusal.From(new Refusal(RefusalCodes.AssessParserUnavailable,
+            FailureReason.Refused, text, new Dictionary<string, string> { ["projectPath"] = path }, diagnostic));
+
+        var issue = Assert.Single(shown.CompileIssues);
+        Assert.Equal(text, issue.Text);
+        Assert.Equal(text, issue.Advice);
+        Assert.Contains(text, shown.Details);
+        Assert.Contains(path, ProblemReport.FromRefusal(shown).ToText(includeLocalDetails: true));
+    }
+
+    [Fact]
+    public void StructuredCompileTextWithoutPathsIsUnchanged()
+    {
+        const string text = "The environment's expression [a b] cannot be read.";
+        var diagnostic = new ParserCompileDiagnostic("Cannot compile.",
+            [new ParserCompileIssue("Invalid", "Grammar", null, null, text, text)], text);
+        var shown = WindowRefusal.From(new Refusal(RefusalCodes.AssessParserUnavailable,
+            FailureReason.Refused, text, parserDiagnostic: diagnostic));
+
+        var issue = Assert.Single(shown.CompileIssues);
+        Assert.Equal(text, issue.Text);
+        Assert.Equal(text, issue.Advice);
+        Assert.Contains(text, shown.Details);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void LongStructuredCompileTextIsProcessedWithin100Milliseconds(bool hasPath)
+    {
+        var text = new string('(', 100_000) + (hasPath ? "/private/file" : "x");
+        var diagnostic = new ParserCompileDiagnostic("Cannot compile.",
+            [new ParserCompileIssue("Invalid", "Grammar", null, null, text, text)], text);
+        var refusal = new Refusal(RefusalCodes.AssessParserUnavailable, FailureReason.Refused, text,
+            parserDiagnostic: diagnostic);
+        _ = WindowRefusal.From(new Refusal(RefusalCodes.AssessParserUnavailable, FailureReason.Refused, "warmup"));
+
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        var shown = WindowRefusal.From(refusal);
+        var issue = Assert.Single(shown.CompileIssues);
+        clock.Stop();
+
+        Assert.Equal(hasPath ? new string('(', 100_000) + "file" : text, issue.Text);
+        Assert.True(clock.Elapsed < TimeSpan.FromMilliseconds(100), $"Took {clock.Elapsed.TotalMilliseconds:F1} ms.");
+    }
+
     [Theory]
     [InlineData("Conversion(ConversionError { issues: [ConversionIssue { code:")]
     [InlineData("pangloss batch: compile one.fwdata: semantic conversion failed")]
@@ -136,9 +276,10 @@ public sealed class WindowRefusalDetailsTests
         Assert.Equal(
             "Motif could not find PanGloss, so it cannot measure words. Install PanGloss beside Motif, then try again.",
             missing.Sentence);
-        Assert.Equal("Motif could not run PanGloss, so it cannot measure words. The details say why.",
+        Assert.Equal("Motif could not run PanGloss, so it cannot measure words. Review a problem report for technical details.",
             unusable.Sentence);
-        Assert.Contains("access is denied", unusable.Details);
+        Assert.Null(unusable.Details);
+        Assert.Contains("access is denied", ProblemReport.FromRefusal(unusable).ToText(includeLocalDetails: true));
     }
 
     [Fact]
@@ -149,7 +290,8 @@ public sealed class WindowRefusalDetailsTests
 
         Assert.Equal("Motif could not open this project.", shown.Sentence);
         Assert.Equal(WindowRefusal.OpenFailedCode, shown.Code);
-        Assert.Equal("The file is locked.", shown.Details);
+        Assert.Null(shown.Details);
+        Assert.Contains("The file is locked.", ProblemReport.FromRefusal(shown).ToText(includeLocalDetails: true));
     }
 
     [Fact]
@@ -170,7 +312,8 @@ public sealed class WindowRefusalDetailsTests
         Assert.True(workspace.HasOpenRefusal);
         Assert.Equal(WindowRefusal.OpenFailedCode, refusal.Code);
         Assert.Equal("Motif could not open this project.", refusal.Sentence);
-        Assert.Equal("The project could not be read.", refusal.Details);
+        Assert.Null(refusal.Details);
+        Assert.Contains("The project could not be read.", ProblemReport.FromRefusal(refusal).ToText(includeLocalDetails: true));
     }
 
     [Fact]
@@ -200,7 +343,8 @@ public sealed class WindowRefusalDetailsTests
 
         Assert.NotNull(shown);
         Assert.Equal("Motif could not read that diagnostic file.", shown.Sentence);
-        Assert.Equal("The file is in use.", shown.Details);
+        Assert.Null(shown.Details);
+        Assert.Contains("The file is in use.", ProblemReport.FromRefusal(shown).ToText(includeLocalDetails: true));
     }
 
     private static void AssertWindowWords(string text)

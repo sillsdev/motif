@@ -104,8 +104,9 @@ public sealed class ProjectTagRegistryTests : IDisposable
         var refusal = Assert.Throws<MotifStoreVersionException>(() => MachineDatabase.Open(_root));
 
         Assert.Equal(TaggedMachineSchema, MachineSchema.CurrentSchema);
-        Assert.Equal($"The Motif machine database at '{path}' is schema {OriginalMachineSchema}, but this build requires exactly schema {TaggedMachineSchema}. Motif does not migrate before 1.0 — delete the database file and let Motif recreate it.",
+        Assert.Equal($"The Motif machine database at '{Path.GetFileName(path)}' is schema {OriginalMachineSchema}, but this build requires exactly schema {TaggedMachineSchema}. This store cannot be upgraded by this build; delete it and let Motif recreate it.",
             refusal.Message);
+        Assert.Equal(Path.GetFullPath(path), refusal.StorePath);
         Assert.Equal(before, SHA256.HashData(File.ReadAllBytes(path)));
         Assert.Equal(OriginalMachineSchema, ReadUserVersion(path));
     }

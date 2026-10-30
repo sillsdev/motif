@@ -128,7 +128,7 @@ public static class HandoffCommand
         {
             return CommandOutcome<HandoffCommandResponse>.Refused(new Refusal(
                 "handoff.destination-exists", FailureReason.InvalidArgument,
-                $"The destination '{request.OutputDirectory}' already exists and is not empty.",
+                $"The destination '{Path.GetFileName(Path.TrimEndingDirectorySeparator(request.OutputDirectory))}' already exists and is not empty.",
                 Fact(("outputDirectory", request.OutputDirectory))));
         }
 

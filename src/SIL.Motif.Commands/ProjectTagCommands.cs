@@ -46,7 +46,8 @@ public static class ProjectTagCommands
     {
         if (string.IsNullOrWhiteSpace(projectPath) || !File.Exists(projectPath))
             return CommandOutcome<ProjectTagResponse>.Refused(new Refusal(RefusalCodes.ProjectInvalid,
-                FailureReason.InvalidArgument, $"Project file not found: '{projectPath}'."));
+                FailureReason.InvalidArgument, $"Project file not found: '{Path.GetFileName(projectPath)}'.",
+                new Dictionary<string, string> { ["projectPath"] = projectPath }));
 
         var fullPath = Path.GetFullPath(projectPath);
         var project = new ProjectLocator(fullPath, Path.GetFileNameWithoutExtension(fullPath));
@@ -72,8 +73,8 @@ public static class ProjectTagCommands
             NotSupportedException or Microsoft.Data.Sqlite.SqliteException or ArgumentException)
         {
             return CommandOutcome<ProjectTagResponse>.Refused(new Refusal(RefusalCodes.ProjectTagUnavailable,
-                FailureReason.Refused, "Motif could not use its machine store to read or set this project tag: " +
-                exception.Message));
+                FailureReason.Refused, "Motif could not use its machine store to read or set this project tag.",
+                new Dictionary<string, string> { ["projectPath"] = projectPath, ["exceptionDetail"] = exception.Message }));
         }
     }
 }

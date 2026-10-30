@@ -33,13 +33,13 @@ public static class WordListFile
         catch (Exception exception) when (exception is FileNotFoundException or DirectoryNotFoundException)
         {
             return Refused(RefusalCodes.AssessWordsFileUnreadable,
-                $"The words file '{wordsFile}' does not exist.", wordsFile);
+                $"The words file '{Path.GetFileName(wordsFile)}' does not exist.", wordsFile);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException
             or NotSupportedException)
         {
             return Refused(RefusalCodes.AssessWordsFileUnreadable,
-                $"The words file '{wordsFile}' could not be read: {exception.Message}", wordsFile);
+                $"The words file '{Path.GetFileName(wordsFile)}' could not be read.", wordsFile, exception.Message);
         }
     }
 
@@ -59,12 +59,12 @@ public static class WordListFile
         }
         if (buffer.Length == MaxBytes && stream.ReadByte() != -1)
             return Refused(RefusalCodes.AssessWordsFileTooLarge,
-                $"The words file '{wordsFile}' exceeds 8 MiB; split it into smaller word lists and repeat the call.", wordsFile);
+                $"The words file '{Path.GetFileName(wordsFile)}' exceeds 8 MiB; split it into smaller word lists and repeat the call.", wordsFile);
         var bytes = buffer.GetBuffer();
         var length = (int)buffer.Length;
         if (Array.IndexOf(bytes, (byte)0, 0, length) >= 0)
             return Refused(RefusalCodes.AssessWordsFileNotText,
-                $"The words file '{wordsFile}' contains NUL bytes; save it as UTF-8 text with one word per line.", wordsFile);
+                $"The words file '{Path.GetFileName(wordsFile)}' contains NUL bytes; save it as UTF-8 text with one word per line.", wordsFile);
         string text;
         try
         {
@@ -74,7 +74,7 @@ public static class WordListFile
         catch (DecoderFallbackException)
         {
             return Refused(RefusalCodes.AssessWordsFileNotText,
-                $"The words file '{wordsFile}' is not valid UTF-8 text; save it as UTF-8 with one word per line.", wordsFile);
+                $"The words file '{Path.GetFileName(wordsFile)}' is not valid UTF-8 text; save it as UTF-8 with one word per line.", wordsFile);
         }
         using var reader = new StringReader(text);
         var words = new List<string>();
@@ -85,11 +85,14 @@ public static class WordListFile
         }
         return words.Count == 0
             ? Refused(RefusalCodes.AssessWordsFileEmpty,
-                $"The words file '{wordsFile}' has no words; write one word per line.", wordsFile)
+                $"The words file '{Path.GetFileName(wordsFile)}' has no words; write one word per line.", wordsFile)
             : CommandOutcome<IReadOnlyList<string>>.Success(words);
     }
 
-    private static CommandOutcome<IReadOnlyList<string>> Refused(string code, string message, string file) =>
-        CommandOutcome<IReadOnlyList<string>>.Refused(new Refusal(code, FailureReason.InvalidArgument, message,
-            new Dictionary<string, string> { ["wordsFile"] = file }));
+    private static CommandOutcome<IReadOnlyList<string>> Refused(string code, string message, string file, string? exception = null)
+    {
+        var facts = new Dictionary<string, string> { ["wordsFile"] = file };
+        if (exception is not null) facts["exceptionDetail"] = exception;
+        return CommandOutcome<IReadOnlyList<string>>.Refused(new Refusal(code, FailureReason.InvalidArgument, message, facts));
+    }
 }

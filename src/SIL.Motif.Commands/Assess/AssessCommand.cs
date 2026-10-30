@@ -168,7 +168,8 @@ public static class AssessCommand
             catch (ProjectConfigurationException exception)
             {
                 return CommandOutcome<AssessCommandResponse>.Refused(new Refusal(
-                    "config.invalid", FailureReason.Refused, exception.Message));
+                    "config.invalid", FailureReason.Refused, exception.Message,
+                    new Dictionary<string, string> { ["configPath"] = ProjectConfigurationReader.PathFor(project) }));
             }
 
             var workspaceKey = ProjectWorkspaceKey.Compute(project);

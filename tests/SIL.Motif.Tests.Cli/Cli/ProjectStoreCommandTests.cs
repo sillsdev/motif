@@ -115,7 +115,7 @@ public sealed class ProjectStoreCommandTests : IDisposable
         Assert.False(result.Succeeded);
         Assert.Equal("project.operation-io", result.Refusal!.Code);
         Assert.Equal(FailureReason.Refused, result.Refusal.Reason);
-        Assert.Equal("The output directory is read-only.", result.Refusal.Message);
+        Assert.Equal("The output directory is read-only.", result.Refusal.Facts["exceptionDetail"]);
         Assert.Equal(project, result.Refusal.Facts["fwDataPath"]);
         Assert.Equal(2, FailureEnvelope.ExitCodeFor(result.Refusal.Reason));
     }
@@ -131,7 +131,7 @@ public sealed class ProjectStoreCommandTests : IDisposable
         Assert.False(result.Succeeded);
         Assert.Equal("project.operation-io", result.Refusal!.Code);
         Assert.Equal(FailureReason.Refused, result.Refusal.Reason);
-        Assert.Equal("The output volume is full.", result.Refusal.Message);
+        Assert.Equal("The output volume is full.", result.Refusal.Facts["exceptionDetail"]);
     }
 
     [Fact]

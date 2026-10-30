@@ -66,7 +66,7 @@ public static class ProjectStoreReset
         catch (Exception exception) when (exception is ArgumentException or IOException)
         {
             return Refused(exception is FileNotFoundException ? "project.not-found" : "project.invalid",
-                FailureReason.InvalidArgument, exception.Message, request.ProjectPath, null);
+                FailureReason.InvalidArgument, "Motif could not find or use this project.", request.ProjectPath, null, exception.Message);
         }
 
         var storePath = ProjectDatabaseCatalog.DatabasePathFor(project);
@@ -79,31 +79,32 @@ public static class ProjectStoreReset
         }
         catch (MotifStoreLockException exception)
         {
-            return Refused("project.busy", FailureReason.Busy, exception.Message, request.ProjectPath, storePath);
+            return Refused("project.busy", FailureReason.Busy, "The project store is in use.", request.ProjectPath, storePath, exception.Message);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
             return Refused("project.store-io", FailureReason.Refused,
-                $"Motif could not delete its file for this project, '{storePath}': {exception.Message}",
-                request.ProjectPath, storePath);
+                $"Motif could not delete its file for this project, '{Path.GetFileName(storePath)}'.",
+                request.ProjectPath, storePath, exception.Message);
         }
         catch (InvalidDataException exception)
         {
-            return Refused("store.inconsistent", FailureReason.StoreInconsistent, exception.Message,
-                request.ProjectPath, storePath);
+            return Refused("store.inconsistent", FailureReason.StoreInconsistent, "Motif could not read this project store.",
+                request.ProjectPath, storePath, exception.Message);
         }
         catch (NotSupportedException exception)
         {
-            return Refused("store.unsupported", FailureReason.Refused, exception.Message, request.ProjectPath,
-                storePath);
+            return Refused("store.unsupported", FailureReason.Refused, "Motif cannot use this project store.", request.ProjectPath,
+                storePath, exception.Message);
         }
     }
 
     private static CommandOutcome<ProjectStoreResetResponse> Refused(
-        string code, FailureReason reason, string message, string fwDataPath, string? storePath)
+        string code, FailureReason reason, string message, string fwDataPath, string? storePath, string? exception = null)
     {
         var facts = new Dictionary<string, string>(StringComparer.Ordinal) { ["fwDataPath"] = fwDataPath };
         if (storePath is not null) facts[RefusalFactNames.StorePath] = storePath;
+        if (exception is not null) facts["exceptionDetail"] = exception;
         return CommandOutcome<ProjectStoreResetResponse>.Refused(new Refusal(code, reason, message, facts));
     }
 }

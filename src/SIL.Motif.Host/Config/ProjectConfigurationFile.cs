@@ -124,7 +124,7 @@ public static class ProjectConfigurationFile
         var duplicate = scopes.GroupBy(s => s.Name, StringComparer.Ordinal).FirstOrDefault(g => g.Count() > 1);
         if (duplicate is not null)
             throw new ProjectConfigurationException(
-                $"{path}: scope name '{duplicate.Key}' is declared more than once.");
+                $"{Path.GetFileName(path)}: scope name '{duplicate.Key}' is declared more than once.");
 
         return new ProjectConfiguration(scopes, gate ?? true, purge ?? true,
             standaloneCount ?? ProjectConfiguration.DefaultStandaloneAssessmentCount);
@@ -263,10 +263,10 @@ public static class ProjectConfigurationFile
     private static string Quote(string value) => "\"" + value.Replace("\\", "\\\\").Replace("\"", "\\\"") + "\"";
 
     private static ProjectConfigurationException Malformed(string path, int lineNumber, string reason) =>
-        new($"{path}, line {lineNumber}: {reason}.");
+        new($"{Path.GetFileName(path)}, line {lineNumber}: {reason}.");
 
     private static ProjectConfigurationException UnknownKey(string path, int lineNumber, string key, string table) =>
-        new($"{path}, line {lineNumber}: unknown key '{key}' in {table}.");
+        new($"{Path.GetFileName(path)}, line {lineNumber}: unknown key '{key}' in {table}.");
 
     /// Accumulates one <c>[[scope]]</c> table's raw keys until the next header flushes it into a value.
     private sealed class ScopeBuilder
@@ -302,7 +302,7 @@ public static class ProjectConfigurationFile
         public AssessmentScopeConfiguration Build(string path, int lineNumber)
         {
             if (_name is null)
-                throw new ProjectConfigurationException($"{path}: a '[[scope]]' table must declare 'name'.");
+                throw new ProjectConfigurationException($"{Path.GetFileName(path)}: a '[[scope]]' table must declare 'name'.");
             return new AssessmentScopeConfiguration(
                 _name,
                 _query ?? AssessmentScopeConfiguration.DefaultQueryText,

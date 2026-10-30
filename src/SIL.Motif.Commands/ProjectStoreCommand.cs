@@ -65,7 +65,9 @@ public static class ProjectStoreCommand
         {
             return CommandOutcome<T>.Refused(new Refusal(
                 exception is FileNotFoundException ? "project.not-found" : "project.invalid",
-                FailureReason.InvalidArgument, exception.Message, Fact(fwDataPath)));
+                FailureReason.InvalidArgument, exception is FileNotFoundException
+                    ? $"Project file not found: '{Path.GetFileName(fwDataPath)}'."
+                    : "The project path is invalid.", OperationFacts(fwDataPath, exception)));
         }
 
         var catalog = new ProjectDatabaseCatalog(MotifSchema.CurrentSchema, ParseVersion(productVersion));
@@ -77,7 +79,7 @@ public static class ProjectStoreCommand
         catch (MotifStoreLockException exception)
         {
             return CommandOutcome<T>.Refused(
-                new Refusal("project.busy", FailureReason.Busy, exception.Message, Fact(fwDataPath)));
+                new Refusal("project.busy", FailureReason.Busy, "The project store is in use.", OperationFacts(fwDataPath, exception)));
         }
         catch (IOException exception)
         {
@@ -154,12 +156,12 @@ public static class ProjectStoreCommand
         catch (LcmInitializationException exception)
         {
             return CommandOutcome<T>.Refused(new Refusal("project.unloadable", FailureReason.Refused,
-                exception.Message, Fact(fwDataPath)));
+                "Motif could not read the project.", OperationFacts(fwDataPath, exception)));
         }
         catch (BaselineSummaryMissingException exception)
         {
             return CommandOutcome<T>.Refused(new Refusal("store.inconsistent", FailureReason.StoreInconsistent,
-                exception.Message, Fact(fwDataPath)));
+                "Motif could not read the project store.", OperationFacts(fwDataPath, exception)));
         }
         catch (IOException exception)
         {
@@ -182,22 +184,19 @@ public static class ProjectStoreCommand
     private static Dictionary<string, string> Fact(string fwDataPath) =>
         new(StringComparer.Ordinal) { ["fwDataPath"] = fwDataPath };
 
-    private static string MessageFor(Exception exception) =>
-        string.IsNullOrWhiteSpace(exception.Message)
-            ? "The project could not access required storage."
-            : exception.Message;
+    private const string StorageFailureMessage = "The project could not access required storage.";
 
     // BUSY, LOCKED and IOERR clear when storage recovers, so a caller may retry them.
     private static Refusal StoreRefusal(Exception exception, string ioCode, string fwDataPath) => exception switch
     {
         IOException { InnerException: Microsoft.Data.Sqlite.SqliteException { SqliteErrorCode: 5 or 6 or 10 } } => new Refusal(
-            ioCode, FailureReason.Busy, MessageFor(exception), OperationFacts(fwDataPath, exception)),
+            ioCode, FailureReason.Busy, StorageFailureMessage, OperationFacts(fwDataPath, exception)),
         IOException or UnauthorizedAccessException => new Refusal(
-            ioCode, FailureReason.Refused, MessageFor(exception), OperationFacts(fwDataPath, exception)),
+            ioCode, FailureReason.Refused, StorageFailureMessage, OperationFacts(fwDataPath, exception)),
         NotSupportedException => new Refusal(
-            "store.unsupported", FailureReason.Refused, exception.Message, Fact(fwDataPath)),
+            "store.unsupported", FailureReason.Refused, "Motif cannot use this project store.", OperationFacts(fwDataPath, exception)),
         InvalidDataException => new Refusal(
-            "store.inconsistent", FailureReason.StoreInconsistent, exception.Message, Fact(fwDataPath)),
+            "store.inconsistent", FailureReason.StoreInconsistent, "Motif could not read the project store.", OperationFacts(fwDataPath, exception)),
         _ => throw new ArgumentOutOfRangeException(nameof(exception), exception.GetType(),
             "The exception is not a recognized project-store failure."),
     };
@@ -205,6 +204,7 @@ public static class ProjectStoreCommand
     internal static Dictionary<string, string> OperationFacts(string fwDataPath, Exception exception)
     {
         var facts = Fact(fwDataPath);
+        facts["exceptionDetail"] = exception.Message;
         AddPublicationFacts(facts, exception);
         return facts;
     }
@@ -234,8 +234,7 @@ public static class ProjectStoreCommand
     /// <summary>
     /// The setup refusal for a project whose writing system cannot be loaded, explained for
     /// <paramref name="fwDataPath"/> when the caller named one, so a failure met in a private copy names the
-    /// project's own <c>WritingSystemStore</c>. Configuration, not damage: the message names the store, the
-    /// repository and the remedy.
+    /// project's own <c>WritingSystemStore</c>. The facts retain the store and repository, and the message gives a remedy.
     /// </summary>
     public static Refusal WritingSystemRefusal(ProjectWritingSystemsUnavailableException failure, string? fwDataPath)
     {
@@ -248,7 +247,9 @@ public static class ProjectStoreCommand
         if (!string.IsNullOrWhiteSpace(fwDataPath)) facts["fwDataPath"] = fwDataPath;
         if (exception.WritingSystem is { } tag) facts["writingSystem"] = tag;
         if (exception.Repository is { } repository) facts["writingSystemRepository"] = repository;
-        return new Refusal("project.writing-system-missing", FailureReason.Refused, exception.Message, facts);
+        facts["exceptionDetail"] = exception.Message;
+        return new Refusal("project.writing-system-missing", FailureReason.Refused,
+            "The project's WritingSystemStore is unavailable. Open the project once in FieldWorks to write its writing systems.", facts);
     }
 
     /// <summary>
@@ -263,7 +264,7 @@ public static class ProjectStoreCommand
     {
         var full = Path.GetFullPath(fwDataPath);
         if (!File.Exists(full))
-            throw new FileNotFoundException("Project file not found: '" + full + "'.", full);
+            throw new FileNotFoundException("Project file not found: '" + Path.GetFileName(full) + "'.", full);
         return new ProjectLocator(full, Path.GetFileNameWithoutExtension(full));
     }
 }

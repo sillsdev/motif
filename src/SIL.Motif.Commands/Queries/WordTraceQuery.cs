@@ -36,7 +36,8 @@ public static class WordTraceQuery
         {
             return CommandOutcome<WordTraceResponse>.Refused(new Refusal(
                 "wordtrace.diagnostic-unreadable", FailureReason.NotFound,
-                $"Motif could not read the saved trace '{request.DiagnosticPath}': {exception.Message}"));
+                $"Motif could not read the saved trace '{Path.GetFileName(request.DiagnosticPath)}'.",
+                new Dictionary<string, string> { ["diagnosticPath"] = request.DiagnosticPath, ["exceptionDetail"] = exception.Message }));
         }
         return LoadDiagnostic(json);
     }

@@ -5272,7 +5272,7 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <comment>Sentence the window shows for a refusal about PanGloss not being found. PanGloss is the parser product name; FieldWorks is a product name; .motif.db and .fwdata are file extensions.</comment>
   </data>
   <data name="MotifApp.RefusalParserUnusable" xml:space="preserve">
-    <value>Motif could not run PanGloss, so it cannot measure words. The details say why.</value>
+    <value>Motif could not run PanGloss, so it cannot measure words. Review a problem report for technical details.</value>
     <comment>Sentence the window shows for a refusal about PanGloss not being runnable. PanGloss is the parser product name; FieldWorks is a product name; .motif.db and .fwdata are file extensions.</comment>
   </data>
   <data name="MotifApp.RefusalParserWrong" xml:space="preserve">

@@ -413,7 +413,8 @@ public sealed class ProjectInitializationRecoveryTests : IDisposable
         Assert.False(outcome.Succeeded);
         Assert.NotNull(outcome.Refusal);
         Assert.Equal(copy, outcome.Refusal.Facts!["recoveryCopyPath"]);
-        Assert.Contains($"Close FieldWorks, then copy {copy} over {fullProject}.", outcome.Refusal.Message);
+        Assert.Contains($"Close FieldWorks, then copy {Path.GetFileName(copy)} over {Path.GetFileName(fullProject)}.", outcome.Refusal.Message);
+        Assert.DoesNotContain(copy, outcome.Refusal.Message);
         Assert.Equal(before, File.ReadAllBytes(project));
     }
 

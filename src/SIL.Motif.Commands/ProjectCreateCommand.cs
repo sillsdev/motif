@@ -85,16 +85,16 @@ public static class ProjectCreateCommand
         }
         catch (Exception exception) when (exception is ArgumentException or IOException or NotSupportedException)
         {
-            return Refused("project-create.invalid-folder", FailureReason.InvalidArgument, exception.Message,
-                ("folder", request.ParentFolder));
+            return Refused("project-create.invalid-folder", FailureReason.InvalidArgument, "The project folder is invalid.",
+                ("folder", request.ParentFolder), ("exceptionDetail", exception.Message));
         }
         if (!Directory.Exists(parentFolder))
             return Refused("project-create.folder-not-found", FailureReason.NotFound,
-                $"The folder '{parentFolder}' does not exist. Create it first, or name an existing folder.",
+                $"The folder '{Path.GetFileName(Path.TrimEndingDirectorySeparator(parentFolder))}' does not exist. Create it first, or name an existing folder.",
                 ("folder", parentFolder));
         if (Directory.Exists(projectFolder) || File.Exists(projectFolder))
             return Refused("project-create.exists", FailureReason.Refused,
-                $"'{projectFolder}' already exists. Motif never overwrites a project; choose another name or folder.",
+                $"'{Path.GetFileName(projectFolder)}' already exists. Motif never overwrites a project; choose another name or folder.",
                 ("projectFolder", projectFolder));
 
         try
@@ -122,8 +122,8 @@ public static class ProjectCreateCommand
         {
             RemoveCreatedFolder(projectFolder);
             return Refused("project-create.failed", FailureReason.Refused,
-                "LibLCM could not create the project, and Motif removed what it had written: " + exception.Message,
-                ("projectFolder", projectFolder));
+                "LibLCM could not create the project, and Motif removed what it had written.",
+                ("projectFolder", projectFolder), ("exceptionDetail", exception.Message));
         }
     }
 

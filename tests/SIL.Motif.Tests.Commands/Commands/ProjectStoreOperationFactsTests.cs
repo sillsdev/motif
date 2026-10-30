@@ -28,12 +28,12 @@ public sealed class ProjectStoreOperationFactsTests : IDisposable
         var refusal = outcome.Refusal!;
         Assert.Equal("project.operation-io", refusal.Code);
         Assert.Equal(FailureReason.Refused, refusal.Reason);
-        Assert.Equal(exception.Message, refusal.Message);
+        Assert.Equal(exception.Message, refusal.Facts["exceptionDetail"]);
         Assert.Equal(projectPath, refusal.Facts["fwDataPath"]);
         Assert.Equal("archive-extraction", refusal.Facts["baselinePublicationPhase"]);
         Assert.Equal("0x80070020", refusal.Facts["exceptionHResult"]);
         Assert.Equal(typeof(IOException).FullName, refusal.Facts["exceptionType"]);
-        Assert.Equal(4, refusal.Facts.Count);
+        Assert.Equal(5, refusal.Facts.Count);
     }
 
     [Fact]
@@ -52,12 +52,12 @@ public sealed class ProjectStoreOperationFactsTests : IDisposable
         var refusal = outcome.Refusal!;
         Assert.Equal("project.operation-io", refusal.Code);
         Assert.Equal(FailureReason.Refused, refusal.Reason);
-        Assert.Equal(exception.Message, refusal.Message);
+        Assert.Equal(exception.Message, refusal.Facts["exceptionDetail"]);
         Assert.Equal(projectPath, refusal.Facts["fwDataPath"]);
         Assert.Equal("incoming-reclamation", refusal.Facts["baselinePublicationPhase"]);
         Assert.Equal("0x80070005", refusal.Facts["exceptionHResult"]);
         Assert.Equal(typeof(UnauthorizedAccessException).FullName, refusal.Facts["exceptionType"]);
-        Assert.Equal(4, refusal.Facts.Count);
+        Assert.Equal(5, refusal.Facts.Count);
     }
 
     [Fact]
@@ -73,8 +73,8 @@ public sealed class ProjectStoreOperationFactsTests : IDisposable
         var refusal = outcome.Refusal!;
         Assert.Equal("project.operation-io", refusal.Code);
         Assert.Equal(FailureReason.Refused, refusal.Reason);
-        Assert.Equal(exception.Message, refusal.Message);
-        Assert.Single(refusal.Facts);
+        Assert.Equal(exception.Message, refusal.Facts["exceptionDetail"]);
+        Assert.Equal(2, refusal.Facts.Count);
         Assert.Equal(projectPath, refusal.Facts["fwDataPath"]);
     }
 

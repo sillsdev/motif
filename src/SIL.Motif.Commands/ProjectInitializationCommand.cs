@@ -45,13 +45,13 @@ public static class ProjectInitializationCommand
             projectPath = Path.GetFullPath(request.ProjectPath);
             if (!File.Exists(projectPath))
                 return Refused("project.not-found", FailureReason.NotFound,
-                    $"Project file not found: '{projectPath}'.", ("fwDataPath", projectPath));
+                    $"Project file not found: '{Path.GetFileName(projectPath)}'.", ("fwDataPath", projectPath));
             recoveryCopyPath = ProjectInitializationRecovery.GetRecoveryCopyPath(projectPath, workerRoot);
         }
         catch (Exception exception) when (exception is ArgumentException or IOException or UnauthorizedAccessException)
         {
-            return Refused("project.invalid", FailureReason.InvalidArgument, exception.Message,
-                ("fwDataPath", request.ProjectPath));
+            return Refused("project.invalid", FailureReason.InvalidArgument, "Motif could not use the project path.",
+                ("fwDataPath", request.ProjectPath), ("exceptionDetail", exception.Message));
         }
 
         loader ??= new FwDataProjectLoader();
@@ -70,10 +70,10 @@ public static class ProjectInitializationCommand
         {
             if (File.Exists(recoveryCopyPath))
                 return UnknownOutcome(projectPath, recoveryCopyPath,
-                    "Motif could not reopen the saved project after an initialization attempt. " + exception.Message);
+                    "Motif could not reopen the saved project after an initialization attempt.", exception.Message);
             return Refused("project.unloadable", FailureReason.Refused,
-                "Motif could not establish ownership of and read the saved project: " + exception.Message,
-                ("fwDataPath", projectPath));
+                "Motif could not establish ownership of and read the saved project.",
+                ("fwDataPath", projectPath), ("exceptionDetail", exception.Message));
         }
 
         HumanJudgmentFieldInspection initialInspection;
@@ -87,10 +87,10 @@ public static class ProjectInitializationCommand
             cache.Dispose();
             if (File.Exists(recoveryCopyPath))
                 return UnknownOutcome(projectPath, recoveryCopyPath,
-                    "Motif could not inspect the saved judgment field after an initialization attempt. " + exception.Message);
+                    "Motif could not inspect the saved judgment field after an initialization attempt.", exception.Message);
             return Refused("project.unloadable", FailureReason.Refused,
-                "Motif could not inspect the saved project's custom-field definitions: " + exception.Message,
-                ("fwDataPath", projectPath));
+                "Motif could not inspect the saved project's custom-field definitions.",
+                ("fwDataPath", projectPath), ("exceptionDetail", exception.Message));
         }
 
         if (initialInspection.State == HumanJudgmentFieldState.Compatible)
@@ -117,7 +117,7 @@ public static class ProjectInitializationCommand
                 catch (Exception exception)
                 {
                     return UnknownOutcome(projectPath, retainedRecoveryCopy,
-                        "Motif could not compare the saved project with its initialization recovery copy. " + exception.Message);
+                        "Motif could not compare the saved project with its initialization recovery copy.", exception.Message);
                 }
             }
             return DefinitionRefusal(initialInspection, projectPath, retainedRecoveryCopy);
@@ -156,9 +156,8 @@ public static class ProjectInitializationCommand
         {
             cache.Dispose();
             return Refused("initialization.recovery-copy-failed", FailureReason.Refused,
-                "Motif could not make and verify a private recovery copy, so it did not change the project. " +
-                exception.Message,
-                ("fwDataPath", projectPath));
+                "Motif could not make and verify a private recovery copy, so it did not change the project.",
+                ("fwDataPath", projectPath), ("exceptionDetail", exception.Message));
         }
 
         if (cancellationToken.IsCancellationRequested)
@@ -208,7 +207,7 @@ public static class ProjectInitializationCommand
     private static string RestoreStepIfRetained(string projectPath, string? recoveryCopyPath) =>
         recoveryCopyPath is null
             ? string.Empty
-            : " " + ProjectInitializationRecovery.RestoreStep(projectPath, recoveryCopyPath);
+            : " " + ProjectInitializationRecovery.RestoreStep(Path.GetFileName(projectPath), Path.GetFileName(recoveryCopyPath));
 
     private static CommandOutcome<ProjectInitializationResponse> VerifyAfterAttempt(
         string projectPath,
@@ -224,10 +223,10 @@ public static class ProjectInitializationCommand
         catch (Exception exception)
         {
             return UnknownOutcome(projectPath, recoveryCopyPath,
-                "Motif could not reopen the saved project to establish the initialization result. " +
-                (exception is ProjectWritingSystemsUnavailableException && writeFailure is not null
-                    ? writeFailure.Message + " " + exception.Message
-                    : writeFailure?.Message ?? exception.Message));
+                exception is ProjectWritingSystemsUnavailableException
+                    ? "Motif could not reopen the saved project because WritingSystemStore is unavailable."
+                    : "Motif could not reopen the saved project to establish the initialization result.",
+                writeFailure is null ? exception.Message : writeFailure.Message + " " + exception.Message);
         }
 
         HumanJudgmentFieldInspection inspection;
@@ -239,7 +238,7 @@ public static class ProjectInitializationCommand
         {
             verifiedCache.Dispose();
             return UnknownOutcome(projectPath, recoveryCopyPath,
-                "Motif reopened the project but could not verify its reserved field: " + exception.Message);
+                "Motif reopened the project but could not verify its reserved field.", exception.Message);
         }
 
         try
@@ -249,7 +248,7 @@ public static class ProjectInitializationCommand
         catch (Exception exception)
         {
             return UnknownOutcome(projectPath, recoveryCopyPath,
-                "Motif could not close the verification cache cleanly: " + exception.Message);
+                "Motif could not close the verification cache cleanly.", exception.Message);
         }
 
         if (inspection.State == HumanJudgmentFieldState.Compatible)
@@ -272,14 +271,14 @@ public static class ProjectInitializationCommand
                     return Refused("initialization.not-saved", FailureReason.Refused,
                         "The project remains unchanged and Motif did not initialize it. Correct the reported save problem and retry." +
                         RestoreStepIfRetained(projectPath, retainedCopy),
-                        ("fwDataPath", projectPath), ("saveFailure", writeFailure?.Message),
+                        ("fwDataPath", projectPath), ("exceptionDetail", writeFailure?.Message),
                         ("recoveryCopyPath", retainedCopy));
                 }
             }
             catch (Exception exception)
             {
                 return UnknownOutcome(projectPath, recoveryCopyPath,
-                    "Motif could not compare the saved project with its recovery copy after the save attempt. " + exception.Message);
+                    "Motif could not compare the saved project with its recovery copy after the save attempt.", exception.Message);
             }
         }
 
@@ -290,7 +289,7 @@ public static class ProjectInitializationCommand
             HumanJudgmentFieldState.OldFormat => "The saved project holds judgments in the old format.",
             _ => "The saved project differs from its recovery copy, but has no compatible reserved judgment definition.",
         };
-        return UnknownOutcome(projectPath, recoveryCopyPath, reason + " " + (writeFailure?.Message ?? string.Empty));
+        return UnknownOutcome(projectPath, recoveryCopyPath, reason, writeFailure?.Message);
     }
 
     private static CommandOutcome<ProjectInitializationResponse> DefinitionRefusal(
@@ -301,8 +300,8 @@ public static class ProjectInitializationCommand
         var definitions = string.Join("; ", inspection.Definitions.Select(definition => definition.Description));
         var recoveryMessage = recoveryCopyPath is null
             ? string.Empty
-            : " Keep the retained recovery copy at '" + recoveryCopyPath + "' while resolving the schema. " +
-                ProjectInitializationRecovery.RestoreStep(projectPath, recoveryCopyPath);
+            : " Keep the retained recovery copy at '" + Path.GetFileName(recoveryCopyPath) + "' while resolving the schema. " +
+                ProjectInitializationRecovery.RestoreStep(Path.GetFileName(projectPath), Path.GetFileName(recoveryCopyPath));
         if (inspection.State == HumanJudgmentFieldState.OldFormat)
             return Refused("judgment.old-format", FailureReason.Refused,
                 SIL.Motif.Projection.HumanJudgments.HumanJudgmentFieldResolver.OldFormatMessage + recoveryMessage,
@@ -323,11 +322,12 @@ public static class ProjectInitializationCommand
     }
 
     private static CommandOutcome<ProjectInitializationResponse> UnknownOutcome(
-        string projectPath, string recoveryCopyPath, string explanation) =>
+        string projectPath, string recoveryCopyPath, string explanation, string? exception = null) =>
         Refused("initialization.outcome-unknown", FailureReason.StoreInconsistent,
             explanation.Trim() + " Do not retry or restore automatically. Inspect the saved project and recovery copy at '" +
-            recoveryCopyPath + "' first. " + ProjectInitializationRecovery.RestoreStep(projectPath, recoveryCopyPath),
-            ("fwDataPath", projectPath), ("recoveryCopyPath", recoveryCopyPath));
+            Path.GetFileName(recoveryCopyPath) + "' first. " +
+            ProjectInitializationRecovery.RestoreStep(Path.GetFileName(projectPath), Path.GetFileName(recoveryCopyPath)),
+            ("fwDataPath", projectPath), ("recoveryCopyPath", recoveryCopyPath), ("exceptionDetail", exception));
 
     private static bool DeleteVerifiedRecoveryCopy(string recoveryCopyPath)
     {

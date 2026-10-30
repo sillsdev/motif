@@ -2,7 +2,11 @@ using System.Reflection;
 using System.Text.RegularExpressions;
 using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
+using SIL.Motif.Commands;
+using SIL.Motif.Commands.Assess;
+using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Generator;
 using Xunit;
@@ -104,6 +108,57 @@ public sealed class WindowRefusalTests
     }
 
     [Fact]
+    public void RefusalMessageReplacesKnownPathAndDirectoryBeforeWindowFiltering()
+    {
+        const string path = "/private/Secret Folder/project.fwdata";
+        const string message = "Cannot read '/private/Secret Folder/project.fwdata'. Check '/private/Secret Folder'.";
+        var shown = WindowRefusal.From(new Refusal("future.never-mapped", FailureReason.Refused, message,
+            new Dictionary<string, string> { ["projectPath"] = path }));
+
+        Assert.Contains("Cannot read 'project.fwdata'. Check 'project.fwdata'.", shown.Details);
+        Assert.Contains(message, ProblemReport.FromRefusal(shown).ToText(includeLocalDetails: true));
+    }
+
+    [Fact]
+    public void MissingParserReplacesKnownProjectDirectoryButKeepsSearchText()
+    {
+        const string message = "Could not find PanGloss. Looked for it at: /opt/motif/pangloss.";
+        var shown = WindowRefusal.From(new Refusal(RefusalCodes.AssessParserUnavailable, FailureReason.Refused,
+            message, new Dictionary<string, string>
+            {
+                [RefusalFactNames.ParserNotFound] = "true", ["projectPath"] = "/opt/motif/project.fwdata",
+            }));
+
+        Assert.Contains("Looked for it at: project.fwdata/pangloss.", shown.Details);
+        Assert.DoesNotContain("/opt/motif", shown.Details);
+        Assert.Contains(message, ProblemReport.FromRefusal(shown).ToText(includeLocalDetails: true));
+    }
+
+    [Fact]
+    public void KnownDriveRootDoesNotReplaceAnUnrelatedDriveReference()
+    {
+        const string message = "The C: drive is unavailable.";
+        var shown = WindowRefusal.From(new Refusal("future.never-mapped", FailureReason.Refused, message,
+            new Dictionary<string, string> { ["projectPath"] = @"C:\project.fwdata" }));
+
+        Assert.Contains(message, shown.Details);
+        Assert.Contains(@"C:\project.fwdata", ProblemReport.FromRefusal(shown).ToText(includeLocalDetails: true));
+    }
+
+    [Theory]
+    [InlineData(@"private\alice\project.fwdata")]
+    [InlineData(@"C:private\alice\project.fwdata")]
+    public void BackslashPathFactsShowOnlyTheFileNameOnEveryPlatform(string path)
+    {
+        var shown = WindowRefusal.From(new Refusal("future.never-mapped", FailureReason.Refused,
+            "The project could not be read.", new Dictionary<string, string> { ["projectPath"] = path }));
+
+        Assert.Contains("projectPath: project.fwdata", shown.Details);
+        Assert.DoesNotContain(path, shown.Details);
+        Assert.Contains(path, ProblemReport.FromRefusal(shown).ToText(includeLocalDetails: true));
+    }
+
+    [Fact]
     public void DetailsDropTheCommandsCliRemedyButKeepItsReason()
     {
         var refusal = new Refusal(RefusalCodes.SelectionDefaultMissing, FailureReason.Refused,
@@ -165,7 +220,7 @@ public sealed class WindowRefusalTests
     public void AStoreFromAnotherVersionNamesTheFileAndKeepsAStableCode()
     {
         var refusal = new Refusal(RefusalCodes.StoreOtherVersion, FailureReason.Refused,
-            $"The Motif project database at '{StorePath}' is schema 3, but this build requires exactly schema 4.",
+            $"The Motif project database at '{Path.GetFileName(StorePath)}' is schema 3, but this build requires exactly schema 4.",
             new Dictionary<string, string>
             {
                 ["fwDataPath"] = @"C:\projects\one.fwdata",
@@ -177,9 +232,125 @@ public sealed class WindowRefusalTests
         Assert.Equal("This Motif Store Is from Another Version", shown.Heading);
         Assert.Equal("Motif cannot open this store. Delete it and reopen the project to continue. " +
             "Changes not applied yet are lost; your FieldWorks project is not touched.", shown.Sentence);
-        Assert.Contains(StorePath, shown.Details);
+        Assert.Contains(Path.GetFileName(StorePath), shown.Details);
+        Assert.DoesNotContain(StorePath, shown.Details);
+        Assert.Contains(StorePath, ProblemReport.FromRefusal(shown).ToText(includeLocalDetails: true));
         Assert.Equal(RefusalCodes.StoreOtherVersion, shown.Code);
         Assert.Equal(StorePath, shown.Facts["storePath"]);
+    }
+
+    [Fact]
+    public void MissingProjectInitializationShowsTheNameAndReportsThePath()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "private \"folder", "language's file.fwdata");
+        var result = ProjectInitializationCommand.Initialize(
+            new ProjectInitializationRequest(path, ProjectInitializationCommand.ConfirmationPhrase), Path.GetTempPath());
+        var refusal = Assert.IsType<Refusal>(result.Refusal);
+        var shown = WindowRefusal.From(refusal);
+
+        Assert.Contains("language's file.fwdata", shown.Details);
+        Assert.DoesNotContain(path, shown.Details);
+        Assert.Equal(path, refusal.Facts["fwDataPath"]);
+        Assert.Contains(path, ProblemReport.FromRefusal(shown).ToText(includeLocalDetails: true));
+    }
+
+    [Theory]
+    [InlineData("words")]
+    [InlineData("trace")]
+    public void UnreadableFileRefusalShowsTheNameAndReportsThePath(string kind)
+    {
+        var path = Path.Combine(Path.GetTempPath(), "private \"folder", "language's file.txt");
+        var refusal = kind == "words"
+            ? WordListFile.Resolve(null, path).Refusal
+            : WordTraceQuery.Load(new WordTraceLoadRequest(path)).Refusal;
+        var shown = WindowRefusal.From(Assert.IsType<Refusal>(refusal));
+
+        Assert.Contains("language's file.txt", shown.Details);
+        Assert.DoesNotContain(path, shown.Details);
+        Assert.Contains(path, ProblemReport.FromRefusal(shown).ToText(includeLocalDetails: true));
+    }
+
+    [Theory]
+    [InlineData("/private/a\"b/sub/language's file.fwdata")]
+    [InlineData(@"C:\private user's folder\file.txt")]
+    [InlineData(@"\\server\private folder\file.txt")]
+    [InlineData("relative folder/a'b/file.txt")]
+    public void UnstructuredExceptionTextStaysInTheProblemReport(string path)
+    {
+        var exception = new IOException($"Could not read '{path}'.");
+        var shown = WindowRefusal.Failure(WindowRefusal.OpenFailedCode, "Motif could not open this project.", exception);
+
+        Assert.DoesNotContain(path, shown.Details ?? string.Empty);
+        Assert.DoesNotContain("private", shown.Details ?? string.Empty);
+        Assert.Contains(path, ProblemReport.FromRefusal(shown).ToText(includeLocalDetails: true));
+    }
+
+    [Fact]
+    public void ALongUnterminatedExceptionMessageIsNotParsedIntoWindowDetails()
+    {
+        var message = "Could not read '/private/" + new string('a', 100000);
+        var shown = WindowRefusal.Failure(WindowRefusal.OpenFailedCode, "Motif could not open this project.",
+            new IOException(message));
+
+        Assert.DoesNotContain("/private/", shown.Details ?? string.Empty);
+        Assert.Contains(message, ProblemReport.FromRefusal(shown).ToText(includeLocalDetails: true));
+    }
+
+    [Fact]
+    public void FileNotFoundExceptionKeepsThePathAsAReportFact()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "private \"folder", "language's file.txt");
+        var shown = WindowRefusal.Failure(WindowRefusal.OpenFailedCode, "Motif could not open this project.",
+            new FileNotFoundException("File not found.", path));
+
+        Assert.Contains("language's file.txt", shown.Details);
+        Assert.DoesNotContain(path, shown.Details);
+        Assert.Equal(path, shown.Facts["filePath"]);
+        Assert.Contains(path, ProblemReport.FromRefusal(shown).ToText(includeLocalDetails: true));
+    }
+
+    [Theory]
+    [InlineData("/private/a\"b/sub/language's file.fwdata")]
+    [InlineData(@"C:\private user's folder\file.txt")]
+    [InlineData(@"\\server\private folder\file.txt")]
+    [InlineData("relative folder/a'b/file.txt")]
+    public void UnstructuredRefusalTextWithAPathIsOnlyInTheProblemReport(string path)
+    {
+        var refusal = new Refusal("future.failure", FailureReason.Refused, $"Could not read '{path}'.");
+        var shown = WindowRefusal.From(refusal);
+
+        Assert.Null(shown.Details);
+        Assert.Contains(path, ProblemReport.FromRefusal(shown).ToText(includeLocalDetails: true));
+    }
+
+    [Fact]
+    public void UnterminatedRefusalPathIsNotParsedIntoWindowDetails()
+    {
+        var message = "Could not read '/private/" + new string('a', 100000);
+        var shown = WindowRefusal.From(new Refusal("future.failure", FailureReason.Refused, message));
+
+        Assert.Null(shown.Details);
+        Assert.Contains(message, ProblemReport.FromRefusal(shown).ToText(includeLocalDetails: true));
+    }
+
+    [Theory]
+    [InlineData("tag")]
+    [InlineData("activity")]
+    [InlineData("create")]
+    public void OtherPathRefusalsShowTheNameAndReportThePath(string kind)
+    {
+        var path = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "language's file");
+        var refusal = kind switch
+        {
+            "tag" => ProjectTagCommands.Read(new ReadProjectTagRequest(path), Path.GetTempPath()).Refusal,
+            "activity" => ActivityQuery.Read(new ActivityRequest(path)).Refusal,
+            _ => ProjectCreateCommand.Create(new ProjectCreateRequest(path, "New", "swh")).Refusal,
+        };
+        var shown = WindowRefusal.From(Assert.IsType<Refusal>(refusal));
+
+        Assert.Contains("language's file", shown.Details);
+        Assert.DoesNotContain(path, shown.Details);
+        Assert.Contains(path, ProblemReport.FromRefusal(shown).ToText(includeLocalDetails: true));
     }
 
     [Fact]
