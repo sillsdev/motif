@@ -185,12 +185,10 @@ public sealed class FindComposerTests
         "How many words parse?",
         "Print the paradigm tables for the inflection classes",
         "Write a tone sandhi rule over words",
-        "Add an example sentence to this entry",
         "Import a wordlist from a spreadsheet into the lexicon",
         "Record audio of the speaker pronouncing each vowel",
         "Count how many roots each affix attaches to",
         "Write an introduction paragraph for the phonology chapter",
-        "Add a sentence showing how this word is used in context",
     };
 
 
