@@ -13,6 +13,6 @@ Add `--cite-source <text>` and optionally `--cite-locator <text>` to record the 
 
 ## When not to use this
 
-- It cannot add a prohibition, only turn an existing one off or on; do not use it to forbid a combination you could model.
+- It cannot add a prohibition, only turn an existing one off or on; to create one use `compose-author-adhoc-prohibition`, and not for a combination you could model.
 - If a slot, template, required feature or environment can express the restriction, author that instead ([guide](guide:encoding/suffix-prefix-slots)).
 - If the evidence does not say whether to switch one off, ask the linguist ([guide](guide:encoding/ask-the-linguist)).

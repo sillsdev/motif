@@ -171,6 +171,22 @@
     "why": "This link would create a cycle. Choose a main entry or sense outside the variant chain.",
     "source": "Hand-written from the Motif MCP refusal advice."
   },
+  "adhoc-prohibition.invalid-morpheme": {
+    "why": "Choose morphemes that exist: the grammatical analysis (MSA) of an entry in the project or created earlier in this Draft.",
+    "source": "Hand-written from the Motif MCP refusal advice."
+  },
+  "adhoc-prohibition.invalid-allomorph": {
+    "why": "Choose allomorphs that exist: a lexeme form or alternate form of an entry in the project or created earlier in this Draft.",
+    "source": "Hand-written from the Motif MCP refusal advice."
+  },
+  "adhoc-prohibition.duplicate": {
+    "why": "This prohibition already exists in the project or earlier in this Draft. To turn an existing one off or on, use compose-edit-adhoc-prohibition.",
+    "source": "Hand-written from the Motif MCP refusal advice."
+  },
+  "adhoc-prohibition.no-morphology-data": {
+    "why": "The project has no morphology data to hold an ad hoc prohibition. Open it once in FieldWorks, then compose again.",
+    "source": "Hand-written from the Motif MCP refusal advice."
+  },
   "variant.stale-reference": {
     "why": "The variant reference changed. Compose the link again against the current project.",
     "source": "Hand-written from the Motif MCP refusal advice."

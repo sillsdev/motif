@@ -15,7 +15,7 @@ One morpheme can have different spoken or written forms in different sound conte
 2. `compose-author-alternate-form` adds a stem or affix variant under an existing entry. When variants already exist, give the exact placement.
 3. `compose-edit-allomorph-condition` changes where an existing variant may appear.
 4. `order-allomorphs` reorders the variants of an entry.
-5. `compose-edit-adhoc-prohibition` switches a prohibition between two forms on or off.
+5. `compose-edit-adhoc-prohibition` switches a prohibition between two forms on or off, and `compose-author-adhoc-prohibition` creates one between morphemes or allomorphs.
 6. `retire-allomorph` removes a form that is no longer needed, moving what refers to it first.
 
 ## Pitfalls

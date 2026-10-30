@@ -17,6 +17,7 @@ internal static class ComposerDefinitions
         new RemoveAlternateFormDefinition(),
         new LinkVariantDefinition(),
         new MakeVariantOfDefinition(),
+        new AuthorAdhocProhibitionDefinition(),
         new EditMorphTypeDefinition(),
         new EditCliticAttachmentDefinition(),
         new EditPhonemeDefinition(),

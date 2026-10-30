@@ -81,6 +81,9 @@ public static partial class SnapshotFields
     /// <summary>The ordered alternate forms owned by a lexical entry.</summary>
     public const string LexEntryAlternateForms = "lexical/lexEntry/alternateForms";
 
+    /// <summary>The ad hoc prohibitions (morpheme and allomorph co-occurrence rules) owned by the project's morphology data; only creation is staged.</summary>
+    public const string MoMorphDataAdhocCoProhibitions = "grammar/moMorphData/adhocCoProhibitions";
+
     /// <summary>The variant and complex-form references owned by a lexical entry; only creation of a variant reference is staged.</summary>
     public const string LexEntryEntryRefs = "lexical/lexEntry/entryRefs";
 

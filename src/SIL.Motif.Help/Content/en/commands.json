@@ -496,6 +496,29 @@
     ],
     "redirect": "Only disables or enables an existing prohibition. Prefer a slot, template, feature or environment that removes the need (guides suffix-prefix-slots, feature-conditioned-slots)."
   },
+  "compose-author-adhoc-prohibition": {
+    "title": "Create an ad hoc prohibition",
+    "description": "Creates a morpheme or allomorph co-occurrence prohibition, FieldWorks' ad hoc rule, naming a first morpheme or allomorph and the ones it cannot occur with. The Dry Run says plainly what is prohibited next to what; duplicates and unknown morphemes or allomorphs are refused, and only a person can Apply the Draft.",
+    "source": "Hand-written from the closed intent and composer contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "kind": "morpheme for a prohibition between morphemes (grammatical analyses of entries), or allomorph for one between forms.",
+      "first": "Id of the first morpheme or allomorph, the one the prohibition is stated about.",
+      "rest": "Ids of the morphemes or allomorphs it cannot occur with, left to right when the adjacency is not anywhere.",
+      "adjacency": "Where the first cannot occur relative to the rest: anywhere (the default), somewhere-to-right, somewhere-to-left, adjacent-to-right or adjacent-to-left."
+    },
+    "goals": [
+      "Forbid two morphemes from occurring together in one word",
+      "Block a specific allomorph from combining with another",
+      "Stop a spurious split of a word into morphemes that never co-occur"
+    ],
+    "guides": [
+      "ask-the-linguist",
+      "suffix-prefix-slots",
+      "feature-conditioned-slots"
+    ],
+    "redirect": "Last resort. Prefer a slot, template, feature or environment that removes the need before forbidding a combination (guides suffix-prefix-slots, feature-conditioned-slots)."
+  },
   "compose-edit-compound-rule": {
     "title": "Turn a compound rule off or on",
     "description": "Stages one explicit Disabled value for an endocentric or exocentric compound rule in a Draft. FieldWorks compound rules join any two stems, so a rule that builds non-words can be switched off; the expected value guards against stale evidence, and only a person can Apply.",

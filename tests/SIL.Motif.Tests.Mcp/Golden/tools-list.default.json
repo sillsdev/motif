@@ -3804,6 +3804,82 @@
                     "type": "string",
                     "description": "Composing verb for this intent.",
                     "enum": [
+                      "compose-author-adhoc-prohibition"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for compose-author-adhoc-prohibition.",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "morpheme",
+                          "allomorph"
+                        ],
+                        "description": "morpheme for a prohibition between morphemes (grammatical analyses of entries), or allomorph for one between forms."
+                      },
+                      "first": {
+                        "type": "string",
+                        "description": "Id of the first morpheme or allomorph, the one the prohibition is stated about."
+                      },
+                      "rest": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Ids of the morphemes or allomorphs it cannot occur with, left to right when the adjacency is not anywhere."
+                      },
+                      "adjacency": {
+                        "type": "string",
+                        "enum": [
+                          "anywhere",
+                          "somewhere-to-right",
+                          "somewhere-to-left",
+                          "adjacent-to-right",
+                          "adjacent-to-left"
+                        ],
+                        "description": "Where the first cannot occur relative to the rest: anywhere (the default), somewhere-to-right, somewhere-to-left, adjacent-to-right or adjacent-to-left."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "kind",
+                      "first",
+                      "rest"
+                    ]
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
                       "compose-edit-morph-type"
                     ]
                   },
