@@ -11,6 +11,7 @@ using SIL.Motif.App.Views;
 using SIL.Motif.Tests.App.ControlContracts;
 using Xunit;
 using WordRow = SIL.Motif.App.Controls.WordPresentation.WordRow;
+using WordStripToken = SIL.Motif.App.Controls.WordPresentation.WordStripToken;
 
 namespace SIL.Motif.Tests.App;
 
@@ -49,6 +50,7 @@ public sealed class TooltipPlacementTests
         const string themeName = "light";
         var failures = new List<string>();
         var gapsSeen = new HashSet<string>(StringComparer.Ordinal);
+        var legacyDisapprovedMarkSeen = false;
         var owners = TooltipOwners.All.Where(owner => owner.Pending is null &&
             (RequiredOwnersAtEachWidth.Contains(owner.Key) || owner.Scene >= TooltipScene.FrameSidePanel ||
                 owner.Key is "status parse progress" or "Help" or "Settings")).ToList();
@@ -129,7 +131,12 @@ public sealed class TooltipPlacementTests
                                     Assert.True(tip.MaxWidth <= 280,
                                         $"{where}: the Apply tooltip must stay within the Review side rail.");
                                 var covered = Covered(scenes.Window, control, tip).ToList();
-                                if (covered.Count > 0 && Gaps.ContainsKey(owner.Key)) gapsSeen.Add(owner.Key);
+                                var drawnReaderMark = owner.Key == "disapproved mark on a strip" &&
+                                    control.GetVisualAncestors().OfType<WordStripToken>()
+                                        .Any(strip => AnalyzeTextsLayoutTests.DrawnWord(strip) is not null);
+                                if (owner.Key == "disapproved mark on a strip" && !drawnReaderMark)
+                                    legacyDisapprovedMarkSeen = true;
+                                if (covered.Count > 0 && Gaps.ContainsKey(owner.Key) && !drawnReaderMark) gapsSeen.Add(owner.Key);
                                 else failures.AddRange(covered.Select(name =>
                                     $"{where}: covers {name}; {PlacementDetails(scenes.Window, control, tip)}"));
                                 if (!new Rect(scenes.Window.Bounds.Size).Contains(Area(tip, scenes.Window)))
@@ -159,7 +166,8 @@ public sealed class TooltipPlacementTests
             }
         }, TimeSpan.FromMinutes(10));
 
-        failures.AddRange(Gaps.Where(gap => !gapsSeen.Contains(gap.Key))
+        failures.AddRange(Gaps.Where(gap => !gapsSeen.Contains(gap.Key) &&
+                (gap.Key != "disapproved mark on a strip" || legacyDisapprovedMarkSeen))
             .Select(gap => $"{gap.Key}: covers nothing now, so remove its reported gap ({gap.Value})"));
         failures.AddRange(owners.Where(owner => !placedOwners.Contains(owner.Key))
             .Select(owner => $"{owner}: no reachable scene exposed its tooltip for placement."));
