@@ -162,7 +162,7 @@ public sealed class MainWindowSmokeTests
                 var helpDescription = helpView.FindControl<TextBlock>("HelpDescription");
                 Assert.False(helpDescription?.IsVisible);
                 var markdownRenderer = Assert.Single(helpView.GetVisualDescendants().OfType<MarkdownRenderer>());
-                const string expectedSentence = "to inspect timing for the words with the longest recorded times";
+                const string expectedSentence = "to inspect timing for the words with the most work steps";
                 const string expectedAltText = "Saved parse timings on the Timing page";
                 const string expectedSection = "does not repeat those words in a separate list beside a rule's costliest words";
                 const string expectedOpening = "opens on All";
@@ -1922,7 +1922,10 @@ public sealed class MainWindowSmokeTests
             ApprovedWordsUnknown = 14,
             ApprovedWordsSkipped = 2,
         },
-        new OverviewTiming(8.4, 123.5, [new SlowWordTiming("miboko", 1000)], 55),
+        new OverviewTiming(8.4, 123.5, [new SlowWordTiming("miboko", 1000) { WorkSteps = 10_000 }], 55)
+        {
+            Work = new WordWorkSummary(120, 24_000, 84, 1_235),
+        },
         new OverviewWarningsSummary(6, 1, "environment failed validation", 4)
         {
             WarningCount = 1,

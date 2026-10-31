@@ -549,7 +549,7 @@ public sealed class PageScreenshots
     }
 
     [Fact]
-    public void DefaultTimingSceneShowsTheSamplesRecordedTimes()
+    public void DefaultTimingSceneShowsTheSamplesRecordedWorkSteps()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
@@ -572,7 +572,7 @@ public sealed class PageScreenshots
                 Assert.Equal(9, timing.KindTiming.WordCount);
                 Assert.Equal(Assessment().Words.Select(word => word.Word).Order(),
                     timing.KindTiming.Words.Select(word => word.Word).Order());
-                Assert.Equal("795 ms", timing.HeadlineTotal);
+                Assert.Equal("3,581 work steps", timing.HeadlineTotal);
             }
             finally { window.Close(); }
         }, TimeSpan.FromMinutes(1));
@@ -592,6 +592,9 @@ public sealed class PageScreenshots
         Assert.Equal(overview.Timing.StepLimitedWordCount, overview.LookFirst.StepLimitedWords.Count);
         Assert.Equal(overview.Accuracy.ApprovedWordsNoParse, overview.LookFirst.ApprovedLostWords.Count);
         Assert.Equal(overview.Timing.Kinds.Select(row => row.SelfMs), timing.Aggregates.Select(row => row.SelfMs));
+        Assert.Equal(overview.Timing.Work, timing.Work);
+        Assert.Equal(overview.Timing.WorkStepAggregates.Select(row => (row.Key, row.WorkSteps)),
+            timing.WorkStepAggregates.Select(row => (row.Key, row.WorkSteps)));
     }
 
     [Fact]
