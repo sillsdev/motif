@@ -23,11 +23,11 @@ namespace SIL.Motif.Tests.TestFixtures;
 internal static class ProcessRunnerEnvironmentInitializer
 {
     /// <summary>The namespace this process sets, so a test proving no worker override is set can allow this one.</summary>
-    internal static string Namespace { get; } = "motif-test-" + Environment.ProcessId + "-" + Guid.NewGuid().ToString("N");
+    internal static string Namespace { get; } = "motif-test-" + ProcessIdentity.Name;
 
     /// <summary>The worker root this process sets, under a root <see cref="StaleTestDirectories"/> sweeps.</summary>
     internal static string Root { get; } = Path.Combine(
-        Path.GetTempPath(), StaleTestDirectories.WorkerRootsFolder, Environment.ProcessId + "-" + Guid.NewGuid().ToString("N"));
+        Path.GetTempPath(), StaleTestDirectories.WorkerRootsFolder, ProcessIdentity.Name);
 
     [ModuleInitializer]
     internal static void Install()

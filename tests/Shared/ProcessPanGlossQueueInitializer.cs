@@ -9,7 +9,7 @@ internal static class ProcessPanGlossQueueInitializer
     [ModuleInitializer]
     internal static void Install()
     {
-        var processNamespace = Environment.ProcessId + "-" + Guid.NewGuid().ToString("N");
+        var processNamespace = ProcessIdentity.Name;
         Environment.SetEnvironmentVariable(MachinePanGlossQueue.TestSlotNamespaceVariable, processNamespace);
         Environment.SetEnvironmentVariable(MotifUpdateGate.TestNamespaceVariable, processNamespace);
         var lockRegistryNamespace = Environment.GetEnvironmentVariable(WorkerLockPaths.TestRegistryNamespaceVariable);
