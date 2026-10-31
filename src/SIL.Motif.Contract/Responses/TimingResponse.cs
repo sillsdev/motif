@@ -18,6 +18,9 @@ public sealed record TimingResponse(
     /// <summary>Work steps attributed to objects and to the unattributed remainder.</summary>
     public IReadOnlyList<TimingWorkAggregate> WorkStepAggregates { get; init; } = [];
 
+    /// <summary>The selected words' parser work: how many carried a count, their total, and the per-word median and 95th percentile.</summary>
+    public WordWorkSummary Work { get; init; } = WordWorkSummary.None;
+
     /// <summary>Completeness of per-word object timing detail used by this result.</summary>
     public ObjectTimingDetail? ObjectTimingDetail { get; init; }
 
@@ -136,8 +139,35 @@ public sealed record TimingAggregateRow(
     public bool CallsArePartial { get; init; }
 }
 
+/// <summary>
+/// Parser work steps over some words: how many of them carried a count, the counts added up, and their per-word
+/// median and nearest-rank 95th percentile. Work steps do not depend on the speed of the computer.
+/// </summary>
+/// <param name="MeasuredWordCount">How many of the words recorded a work count.</param>
+/// <param name="TotalWorkSteps">The recorded counts added up.</param>
+/// <param name="MedianWorkSteps">The per-word median, or null when no word recorded a count.</param>
+/// <param name="Percentile95WorkSteps">The per-word nearest-rank 95th percentile, or null when no word recorded a count.</param>
+public sealed record WordWorkSummary(int MeasuredWordCount, long TotalWorkSteps, double? MedianWorkSteps,
+    double? Percentile95WorkSteps)
+{
+    /// <summary>No word recorded a work count.</summary>
+    public static WordWorkSummary None { get; } = new(0, 0, null, null);
+}
+
 /// <summary>Work steps for one object or for the unattributed remainder.</summary>
-public sealed record TimingWorkAggregate(string Key, string Name, string Kind, long WorkSteps, bool IsUnattributed);
+public sealed record TimingWorkAggregate(string Key, string Name, string Kind, long WorkSteps, bool IsUnattributed)
+{
+    /// <summary>How stable <see cref="Key"/> is: <c>authored</c>, <c>structural</c> or <c>synthetic</c>.</summary>
+    public string IdentityQuality { get; init; } = string.Empty;
+
+    /// <summary>The saved grammar scope required by a grammar-local key.</summary>
+    public string? Scope { get; init; }
+
+    /// <summary>The object's address, which matches a <see cref="TimingAggregateRow.TimingKey"/> for the same object.</summary>
+    [JsonIgnore]
+    public TraceTimingKey TimingKey => new(Kind, ObjectIdentity.CanonicalKey(Key, IdentityQuality) ?? Key)
+        { IdentityQuality = IdentityQuality, Scope = Scope };
+}
 
 /// <summary>One word's time under a selected parser object.</summary>
 /// <param name="Word">The word form.</param>
@@ -147,6 +177,12 @@ public sealed record WordRuleTiming(string Word, double SelfMs, long? Calls)
 {
     /// <summary>The word's whole parse time in milliseconds, or null when none was recorded.</summary>
     public double? WordTimeMs { get; init; }
+
+    /// <summary>The work steps this object did in the word, or null when not recorded.</summary>
+    public long? WorkSteps { get; init; }
+
+    /// <summary>The word's total work steps, or null when not recorded.</summary>
+    public long? WordWorkSteps { get; init; }
 
     /// <summary><see cref="SelfMs"/> as a share of <see cref="WordTimeMs"/>, from 0 to 1, when it has one.</summary>
     public double? ShareOfWordTime { get; init; }

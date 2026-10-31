@@ -117,7 +117,11 @@ public static class OverviewCommand
             var assessedWords = evidence.EffectiveWords;
             var metrics = OverviewMetrics.Build(words, occurrenceSnapshot, assessedWords);
             var timing = TimingAggregation.SummarizeWords(assessedWords, evidence.EffectiveObjectTimings) with
-            { ObjectTimingDetail = evidence.TimingDetail };
+            {
+                ObjectTimingDetail = evidence.TimingDetail,
+                WorkStepAggregates = evidence.TimingDetail.IsComplete
+                    ? TimingAggregation.WorkStepsByObject(evidence.EffectiveObjectTimings, assessedWords) : [],
+            };
             if (!evidence.TimingDetail.IsComplete)
             {
                 var components = evidence.EvidenceSet?.Components;
@@ -349,6 +353,8 @@ internal static class OverviewLookFirstBuilder
         var stoppedNames = stopped.Select(word => word.Word).ToHashSet(StringComparer.Ordinal);
         var stoppedTimes = measuredWords.Where(word => stoppedNames.Contains(word.Word))
             .Select(TimingAggregation.WordTimeMs).Where(time => time is not null).Select(time => time!.Value).ToArray();
+        var stoppedWork = measuredWords.Where(word => stoppedNames.Contains(word.Word))
+            .Select(word => word.WorkSteps).OfType<long>().ToArray();
         var namedIds = (grammarCheck?.Findings ?? []).SelectMany(finding => finding.Subject)
             .Where(part => part.Reach is not null).SelectMany(part => part.Reach!.AllomorphIds
                 .Concat(part.Reach.GrammaticalInfoIds)).Select(IdKey).ToHashSet(StringComparer.Ordinal);
@@ -372,6 +378,7 @@ internal static class OverviewLookFirstBuilder
                 ? stoppedTimes.Sum() : null,
             candidateDifferent)
         {
+            StepLimitedWordWorkSteps = stoppedWork.Length == stopped.Length && stopped.Length > 0 ? stoppedWork.Sum() : null,
             SharedLostMorphemesAvailable = associationsAvailable,
             ApprovedSameTextDifferentEntryWords = sameTextDifferentEntry,
             ApprovedSameTextDifferentEntryAvailable = identityComparisonAvailable,

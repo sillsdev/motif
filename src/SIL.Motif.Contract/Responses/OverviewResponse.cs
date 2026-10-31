@@ -120,6 +120,12 @@ public sealed record OverviewTiming(
     /// <summary>The number of words with a recorded parse time, which the percentiles are taken over.</summary>
     public int MeasuredWordCount { get; init; }
 
+    /// <summary>The selection's parser work: how many words carried a count, the total, and the per-word median and 95th percentile.</summary>
+    public WordWorkSummary Work { get; init; } = WordWorkSummary.None;
+
+    /// <summary>Work steps by parser object and the unattributed remainder; empty when per-object work is not complete.</summary>
+    public IReadOnlyList<TimingWorkAggregate> WorkStepAggregates { get; init; } = [];
+
     /// <summary>The measured words' object time by kind, each a share of their total word time.</summary>
     public IReadOnlyList<TimingAggregateRow> Kinds { get; init; } = [];
 
@@ -138,6 +144,9 @@ public sealed record OverviewLookFirst(
     /// <summary>Approved words whose recorded analyses share forms and glosses but name different entries.</summary>
     public IReadOnlyList<string> ApprovedSameTextDifferentEntryWords { get; init; } = [];
 
+    /// <summary>The stopped words' work steps added up, or null when any stopped word has no count.</summary>
+    public long? StepLimitedWordWorkSteps { get; init; }
+
     /// <summary>Whether the Baseline entries needed to identify that group were read.</summary>
     public bool ApprovedSameTextDifferentEntryAvailable { get; init; } = true;
 
@@ -154,8 +163,12 @@ public sealed record OverviewLookFirst(
 /// <param name="NamedByWarning">Whether a stored grammar warning names this allomorph or grammatical info.</param>
 public sealed record OverviewSharedMorpheme(string Form, int WordCount, bool NamedByWarning);
 
-/// <summary>A word among the slowest measured words, with its exact parse duration in milliseconds.</summary>
-public sealed record SlowWordTiming(string Word, double ElapsedMs);
+/// <summary>A word among the slowest measured words (most work steps first), with its exact parse duration in milliseconds.</summary>
+public sealed record SlowWordTiming(string Word, double ElapsedMs)
+{
+    /// <summary>The word's parser work steps, or null when not recorded.</summary>
+    public long? WorkSteps { get; init; }
+}
 
 /// <summary>Counts of grammar findings and the largest diagnostic category.</summary>
 public sealed record OverviewWarningsSummary(int? Count, int? LeftOut, string? LargestKind, int? LargestKindCount)

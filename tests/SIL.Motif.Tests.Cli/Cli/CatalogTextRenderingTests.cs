@@ -333,6 +333,25 @@ public sealed class CatalogTextRenderingTests
     }
 
     [Fact]
+    public void TimingTextListsTheCostliestWordsByTheirWorkStepsAndSaysWhenNoneWereRecorded()
+    {
+        using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
+        var response = new TimingResponse("assessment/1", "all", "rule", 3, 8, 400, [], [],
+            [
+                new WordRuleTiming("mwalimu", 5, 3) { WorkSteps = 7000, WordWorkSteps = 9000, WordTimeMs = 50, ShareOfWordTime = 0.1 },
+                new WordRuleTiming("kitabu", 40, 2) { WorkSteps = 900, WordWorkSteps = 900, WordTimeMs = 80, ShareOfWordTime = 0.5 },
+                new WordRuleTiming("hawajafika", 60, 1) { WordTimeMs = 100, ShareOfWordTime = 0.6 },
+            ]);
+
+        var output = CommandTextRenderer.Render(CommandOutcome<TimingResponse>.Success(response), asJson: false).Output;
+
+        Assert.Contains("mwalimu: 7,000 of its 9,000 work steps, 5.00 ms", output, StringComparison.Ordinal);
+        Assert.Contains("kitabu: 900 of its 900 work steps, 40.00 ms", output, StringComparison.Ordinal);
+        Assert.Contains("hawajafika: work steps not recorded, 60.00 ms", output, StringComparison.Ordinal);
+        Assert.True(output.IndexOf("mwalimu", StringComparison.Ordinal) < output.IndexOf("kitabu", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void GrammarCheckTextAndJsonIdentifyErrorsSeparatelyFromWarnings()
     {
         var response = new GrammarCheckResponse(

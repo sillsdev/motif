@@ -1030,12 +1030,15 @@ public static class CommandTextRenderer
         {
             text.AppendLine("  Costliest words:");
             foreach (var word in response.CostliestWords)
-                text.AppendLine($"    {word.Word}: {word.SelfMs:N2} ms" + (word.WordTimeMs is { } whole
+                text.AppendLine($"    {word.Word}: {FormatWordWork(word)}, {word.SelfMs:N2} ms" + (word.WordTimeMs is { } whole
                     ? $" ({FormatShare(word.ShareOfWordTime)} of its {whole:N2} ms)" : string.Empty) +
                     $", {FormatCalls(word.Calls, null)}");
         }
         return text.ToString();
     }
+
+    private static string FormatWordWork(WordRuleTiming word) => word.WorkSteps is { } steps
+        ? $"{steps:N0} of its {word.WordWorkSteps ?? steps:N0} work steps" : "work steps not recorded";
 
     private static string FormatShare(double? share) => share is { } value
         ? value.ToString("P1", CultureInfo.CurrentCulture) : "no word time";
