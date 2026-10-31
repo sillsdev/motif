@@ -48,7 +48,7 @@ public sealed class StatisticsViewModelTests
     {
         var (fake, statistics) = NewViewModel();
         fake.StatsCompletesWith(RowsResponse(
-            """{"kind":"word","form":"abc","attempts":3,"passes":1,"elapsed_ns":12500000}"""));
+            """{"kind":"word","form":"abc","attempts":3,"passes":1,"elapsed_ns":12500000,"work":1234}"""));
 
         await statistics.LoadCommand.ExecuteAsync(null);
 
@@ -64,8 +64,8 @@ public sealed class StatisticsViewModelTests
         Assert.Equal("abc", row.Word);
         Assert.Equal(3, row.Attempts);
         Assert.Equal(1, row.Passes);
-        Assert.Equal(12.5, row.ElapsedMs);
-        Assert.Equal("12.5", row.ElapsedText);
+        Assert.Equal(1234, row.WorkSteps);
+        Assert.Equal("1,234", row.WorkText);
         Assert.False(statistics.IsStale);
         Assert.Null(statistics.Refusal);
         var entry = Assert.Single(fake.UsageEntries);
@@ -114,15 +114,15 @@ public sealed class StatisticsViewModelTests
         var (fake, statistics) = NewViewModel();
         statistics.WordScope = ["beta", "gamma"];
         fake.StatsCompletesWith(RowsResponse(
-            """{"kind":"word","form":"alpha","attempts":2,"elapsed_ns":10000000}""",
-            """{"kind":"word","form":"beta","attempts":4,"elapsed_ns":20000000}""",
-            """{"kind":"word","form":"gamma","attempts":8,"elapsed_ns":40000000}"""));
+            """{"kind":"word","form":"alpha","attempts":2,"elapsed_ns":10000000,"work":100}""",
+            """{"kind":"word","form":"beta","attempts":4,"elapsed_ns":20000000,"work":200}""",
+            """{"kind":"word","form":"gamma","attempts":8,"elapsed_ns":40000000,"work":400}"""));
 
         await statistics.LoadCommand.ExecuteAsync(null);
 
         Assert.Equal(["beta", "gamma"], statistics.Rows.Select(row => row.Word));
         Assert.Equal(2, statistics.RowCount);
-        Assert.Equal(0.7, statistics.Rows.Single(row => row.Word == "gamma").ElapsedHeat, precision: 6);
+        Assert.Equal(0.7, statistics.Rows.Single(row => row.Word == "gamma").WorkHeat, precision: 6);
         Assert.Equal("By word · the same 2 words selected in Timing.", statistics.ScopeNote);
     }
 
@@ -254,24 +254,26 @@ public sealed class StatisticsViewModelTests
         var (fake, statistics) = NewViewModel();
         fake.StatsCompletesWith(RowsResponse(
             """{"engine":"hc","filters":{"by_kind":false,"direction":null,"exclude_censored":false,"kind":null,"object":null,"sort":null,"stratum":null,"top":null,"word":null},"grammar_hash":"acc80fced0c2a72bb26b2a14c02280c96f2eeb0b9a19d2fb13d9a155ca172d37","meta":true,"orientation":"word","totals":{"attempts":0,"rows":3,"time_ns":322800},"unmeasured":{}}""",
-            """{"attempts":0,"capped":false,"elapsed_ns":122200,"form":"motifa","passes":1,"timed_out":false}"""));
+            """{"attempts":0,"capped":false,"elapsed_ns":122200,"form":"motifa","passes":1,"timed_out":false,"work":4321}"""));
         await statistics.LoadCommand.ExecuteAsync(null);
         Assert.Equal("word", Assert.Single(statistics.Metadata).GetProperty("orientation").GetString());
         var word = Assert.Single(statistics.Rows);
         Assert.Equal("motifa", word.Word);
-        Assert.Equal(0.1222, word.ElapsedMs);
+        Assert.Equal(4321, word.WorkSteps);
         Assert.Equal(1, word.Passes);
         Assert.Equal("Search completed", word.CompletionStatus);
 
         fake.StatsCompletesWith(RowsResponse(
             """{"engine":"hc","filters":{"by_kind":false,"direction":null,"exclude_censored":false,"kind":null,"object":null,"sort":null,"stratum":null,"top":null,"word":null},"grammar_hash":"acc80fced0c2a72bb26b2a14c02280c96f2eeb0b9a19d2fb13d9a155ca172d37","meta":true,"orientation":"object","totals":{"attempts_by_kind":{"lex_entry":2,"root_index":9},"attributed_pct":4.368029739776952,"rows":5,"rows_shown":5,"run_elapsed_ns":322800,"time_ns":14100,"uses":2},"unmeasured":{}}""",
-            """{"amp":null,"attempts":1,"identity_quality":"authored","kind":"lex_entry","label":"lex_entry: first seeded gloss","no_root":null,"not_applied":null,"outputs":null,"surface_mismatch":0,"time_ns":7600,"uses":1,"work":null}"""));
+            """{"amp":null,"attempts":1,"identity_quality":"authored","kind":"lex_entry","label":"lex_entry: first seeded gloss","no_root":null,"not_applied":null,"outputs":null,"surface_mismatch":0,"time_ns":7600,"uses":1,"work":99}"""));
         await statistics.LoadCommand.ExecuteAsync(null);
         Assert.Equal("object", Assert.Single(statistics.Metadata).GetProperty("orientation").GetString());
         var item = Assert.Single(statistics.Rows);
         Assert.Equal("lex_entry: first seeded gloss", item.Object);
         Assert.Equal("lex_entry", item.Kind);
-        Assert.Equal(0.0076, item.ElapsedMs);
+        // An object row's work is the grammar object's own count in a different unit, not parser work steps.
+        Assert.Null(item.WorkSteps);
+        Assert.Equal(99, item.Details["work"].GetInt32());
         Assert.Null(item.Passes);
         Assert.Null(item.CompletionStatus);
         Assert.Equal("authored", item.Details["identity_quality"].GetString());
@@ -402,8 +404,43 @@ public sealed class StatisticsViewModelTests
         await statistics.LoadCommand.ExecuteAsync(null);
 
         Assert.Equal(MotifAppStrings.StatsHeaderAnalysisAttempts, statistics.CountHeader);
-        Assert.Equal(MotifAppStrings.StatsHeaderWordTime, statistics.TimeHeader);
+        Assert.Equal(MotifAppStrings.StatsHeaderWorkSteps, statistics.WorkHeader);
         Assert.DoesNotContain("statistics pass", statistics.ShadingNote, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task AWordWithNoWorkCountSaysWorkStepsNotRecordedAndNeverShowsMilliseconds()
+    {
+        using var culture = new CultureScope(System.Globalization.CultureInfo.GetCultureInfo("en-US"));
+        var (fake, statistics) = NewViewModel();
+        fake.StatsCompletesWith(RowsResponse(
+            """{"kind":"word","form":"counted","attempts":3,"elapsed_ns":12500000,"work":1234}""",
+            """{"kind":"word","form":"uncounted","attempts":3,"elapsed_ns":12500000}"""));
+
+        await statistics.LoadCommand.ExecuteAsync(null);
+
+        Assert.Equal("1,234", statistics.Rows.Single(row => row.Word == "counted").WorkText);
+        var uncounted = statistics.Rows.Single(row => row.Word == "uncounted");
+        Assert.Null(uncounted.WorkSteps);
+        Assert.Equal(MotifAppStrings.WorkStepsNotRecorded, uncounted.WorkText);
+        Assert.Equal(0, uncounted.WorkHeat);
+        Assert.DoesNotContain("ms", MotifAppStrings.StatsHeaderWorkSteps, StringComparison.Ordinal);
+        Assert.DoesNotContain("ms)", statistics.WorkHeader, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task SortingByWorkStepsOrdersWordsByTheirWork()
+    {
+        var (fake, statistics) = NewViewModel();
+        fake.StatsCompletesWith(RowsResponse(
+            """{"kind":"word","form":"big","attempts":1,"work":900}""",
+            """{"kind":"word","form":"small","attempts":9,"work":5}""",
+            """{"kind":"word","form":"middle","attempts":5,"work":70}"""));
+
+        await statistics.LoadCommand.ExecuteAsync(null);
+        statistics.SortBy("workSteps");
+
+        Assert.Equal(["small", "middle", "big"], statistics.Rows.Select(row => row.Word));
     }
 
     [Fact]
@@ -419,7 +456,7 @@ public sealed class StatisticsViewModelTests
         await statistics.LoadCommand.ExecuteAsync(null);
 
         Assert.Equal(MotifAppStrings.StatsHeaderAttempts, statistics.CountHeader);
-        Assert.Equal(MotifAppStrings.StatsHeaderOwnTime, statistics.TimeHeader);
+        Assert.False(statistics.ShowsWorkSteps);
         var entry = statistics.Rows.Single(row => row.Object == "entry");
         var roots = statistics.Rows.Single(row => row.Object == "roots");
         var moreRoots = statistics.Rows.Single(row => row.Object == "more roots");

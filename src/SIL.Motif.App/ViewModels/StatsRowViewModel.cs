@@ -8,7 +8,7 @@ public sealed class StatsRowViewModel
 {
     private static readonly HashSet<string> KnownColumns = new(StringComparer.Ordinal)
     {
-        "kind", "label", "form", "attempts", "passes", "elapsed_ns", "time_ns", "capped", "timed_out",
+        "kind", "label", "form", "attempts", "passes", "capped", "timed_out",
     };
 
     private readonly string _rawText;
@@ -22,7 +22,8 @@ public sealed class StatsRowViewModel
         Object = ReadText(row, "label");
         Attempts = ReadNumber(row, "attempts");
         Passes = ReadNumber(row, "passes");
-        ElapsedMs = ReadNumber(row, Word is null ? "time_ns" : "elapsed_ns") / 1_000_000;
+        // Only a word row's work is parser work steps; a grammar object's own work counts a different thing.
+        WorkSteps = Word is null ? null : ReadNumber(row, "work");
         var capped = ReadBoolean(row, "capped");
         var timedOut = ReadBoolean(row, "timed_out");
         _capped = capped == true;
@@ -35,7 +36,7 @@ public sealed class StatsRowViewModel
             : capped == false && timedOut == false ? MotifAppStrings.StatsSearchCompleted : MotifAppStrings.StatsCompletionUnavailable;
         Details = row.ValueKind == JsonValueKind.Object
             ? row.EnumerateObject()
-                .Where(property => !KnownColumns.Contains(property.Name))
+                .Where(property => !KnownColumns.Contains(property.Name) && !(Word is not null && property.Name == "work"))
                 .ToDictionary(property => property.Name, property => property.Value.Clone(), StringComparer.Ordinal)
             : new Dictionary<string, JsonElement>();
         _rawText = row.GetRawText();
@@ -46,7 +47,8 @@ public sealed class StatsRowViewModel
     public string? Word { get; }
     public double? Attempts { get; }
     public double? Passes { get; }
-    public double? ElapsedMs { get; }
+    /// <summary>The parser work steps PanGloss recorded for a word, or null for a grammar object or an uncounted word.</summary>
+    public double? WorkSteps { get; }
     public bool IsIncomplete { get; }
     /// <summary>Whether this statistics invocation's parse finished for the word.</summary>
     internal bool? SearchFinished { get; }
@@ -67,20 +69,19 @@ public sealed class StatsRowViewModel
     /// <summary>The numbers as the table shows them, grouped for reading; empty where the parser gave none.</summary>
     public string AttemptsText => Format(Attempts, "N0");
     public string PassesText => Format(Passes, "N0");
-    /// <summary>Elapsed time in milliseconds, retaining its recorded fractional precision.</summary>
-    public string ElapsedText => ElapsedMs is { } elapsed
-        ? elapsed.ToString("#,0.######", CultureInfo.CurrentCulture) : string.Empty;
+    /// <summary>The work steps as the table shows them, or a note that none were recorded.</summary>
+    public string WorkText => WorkSteps is { } work ? work.ToString("N0", CultureInfo.CurrentCulture) : MotifAppStrings.WorkStepsNotRecorded;
 
     /// <summary>How strongly each number is shaded against the largest in its current scope.</summary>
     public double AttemptsHeat { get; private set; }
     public double PassesHeat { get; private set; }
-    public double ElapsedHeat { get; private set; }
+    public double WorkHeat { get; private set; }
 
-    internal void ShadeAgainst(double largestAttempts, double largestPasses, double largestElapsed)
+    internal void ShadeAgainst(double largestAttempts, double largestPasses, double largestWork)
     {
         AttemptsHeat = HeatOf(Attempts, largestAttempts);
         PassesHeat = HeatOf(Passes, largestPasses);
-        ElapsedHeat = HeatOf(ElapsedMs, largestElapsed);
+        WorkHeat = HeatOf(WorkSteps, largestWork);
     }
 
     // The same scale Try a Word's effort table uses, so a shade means the same thing in both.
@@ -101,7 +102,7 @@ public sealed class StatsRowViewModel
     {
         "attempts" => Attempts,
         "passes" => Passes,
-        "elapsedMs" => ElapsedMs,
+        "workSteps" => WorkSteps,
         _ => null,
     };
 

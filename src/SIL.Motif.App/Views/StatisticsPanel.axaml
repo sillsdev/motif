@@ -124,11 +124,11 @@
             </DataTemplate>
           </DataGridTemplateColumn.CellTemplate>
         </DataGridTemplateColumn>
-        <DataGridTemplateColumn Header="{x:Static app:MotifAppStrings.StatisticsColumnElapsedMs}" Tag="elapsedMs" Width="Auto" ClipboardContentBinding="{ReflectionBinding ElapsedMs}">
+        <DataGridTemplateColumn Header="{x:Static app:MotifAppStrings.StatsHeaderWorkSteps}" Tag="workSteps" Width="Auto" ClipboardContentBinding="{ReflectionBinding WorkSteps}">
           <DataGridTemplateColumn.CellTemplate>
             <DataTemplate x:DataType="vm:StatsRowViewModel">
-              <views:HeatCell Text="{Binding ElapsedText}" TextToolTip="{Binding ElapsedText}"
-                              Intensity="{Binding ElapsedHeat}" Margin="{DynamicResource Component.Statistics.CellMargin}" />
+              <views:HeatCell Text="{Binding WorkText}" TextToolTip="{Binding WorkText}"
+                              Intensity="{Binding WorkHeat}" Margin="{DynamicResource Component.Statistics.CellMargin}" />
             </DataTemplate>
           </DataGridTemplateColumn.CellTemplate>
         </DataGridTemplateColumn>

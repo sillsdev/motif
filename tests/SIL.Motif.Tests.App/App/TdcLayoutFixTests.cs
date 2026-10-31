@@ -101,7 +101,7 @@ public sealed class TdcLayoutFixTests
                 {
                     var grid = Assert.Single(statistics.GetVisualDescendants().OfType<DataGrid>());
                     var lastHeading = Assert.Single(headers.SelectMany(header => header.GetVisualDescendants().OfType<TextBlock>()),
-                        text => text.Text == MotifAppStrings.StatsHeaderWordTime);
+                        text => text.Text == MotifAppStrings.StatsHeaderWorkSteps);
                     var bar = Assert.Single(grid.GetVisualDescendants().OfType<ScrollBar>(),
                         candidate => candidate.IsEffectivelyVisible && candidate.Orientation == Orientation.Horizontal);
                     var before = LayoutAssertions.BoundsIn(lastHeading, grid);
@@ -109,7 +109,7 @@ public sealed class TdcLayoutFixTests
                     bar.IsVisible = false;
                     Assert.ThrowsAny<Xunit.Sdk.XunitException>(() => LayoutAssertions.AssertTextFits(lastHeading));
                     bar.IsVisible = true;
-                    var column = Assert.Single(grid.Columns, candidate => Equals(candidate.Header, MotifAppStrings.StatsHeaderWordTime));
+                    var column = Assert.Single(grid.Columns, candidate => Equals(candidate.Header, MotifAppStrings.StatsHeaderWorkSteps));
                     grid.ScrollIntoView(grid.ItemsSource!.Cast<object>().First(), column);
                     LayoutInvariantEngineTests.Settle(window);
                     var after = LayoutAssertions.BoundsIn(lastHeading, grid);

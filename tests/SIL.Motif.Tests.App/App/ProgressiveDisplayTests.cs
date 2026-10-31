@@ -712,7 +712,7 @@ public sealed class ProgressiveDisplayTests
                 var pageScroll = Assert.Single(grid.GetVisualAncestors().OfType<ScrollViewer>());
                 pageScroll.Offset = new Vector(0, Math.Max(0, pageScroll.Extent.Height - pageScroll.Viewport.Height));
                 PageScreenshots.Settle(window);
-                var numericColumns = grid.Columns.Where(column => column.Tag is "attempts" or "passes" or "elapsedMs").ToArray();
+                var numericColumns = grid.Columns.Where(column => column.Tag is "attempts" or "passes" or "workSteps").ToArray();
                 Assert.Equal(3, numericColumns.Length);
                 var numericColumnWidths = numericColumns.ToDictionary(column => column, column => column.Width);
                 foreach (var column in numericColumns)

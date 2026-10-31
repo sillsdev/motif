@@ -2278,9 +2278,7 @@ public static class MotifAppStrings
 
     public static string StatsHeaderAttempts => Text("MotifApp.StatsHeaderAttempts");
 
-    public static string StatsHeaderWordTime => Text("MotifApp.StatsHeaderWordTime");
-
-    public static string StatsHeaderOwnTime => Text("MotifApp.StatsHeaderOwnTime");
+    public static string StatsHeaderWorkSteps => Text("MotifApp.StatsHeaderWorkSteps");
 
     public static string StatsShadingWord => Text("MotifApp.StatsShadingWord");
 
@@ -3086,8 +3084,6 @@ public static class MotifAppStrings
     public static string StatisticsColumnCompletion => Text("MotifApp.StatisticsColumnCompletion");
 
     public static string StatisticsColumnAnalyses => Text("MotifApp.StatisticsColumnAnalyses");
-
-    public static string StatisticsColumnElapsedMs => Text("MotifApp.StatisticsColumnElapsedMs");
 
     public static string TimingDetailedStatisticsHeading => Text("MotifApp.TimingDetailedStatisticsHeading");
 

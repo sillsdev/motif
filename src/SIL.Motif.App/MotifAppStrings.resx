@@ -4227,21 +4227,17 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <value>Attempts</value>
     <comment>Column heading of the statistics table for a grammar object: how many times it was tried.</comment>
   </data>
-  <data name="MotifApp.StatsHeaderWordTime" xml:space="preserve">
-    <value>Word Time (ms)</value>
-    <comment>Column heading of the statistics table for a word: the parse time in milliseconds.</comment>
-  </data>
-  <data name="MotifApp.StatsHeaderOwnTime" xml:space="preserve">
-    <value>Own Time (ms)</value>
-    <comment>Column heading of the statistics table for a grammar object: the time spent in the object itself, in milliseconds.</comment>
+  <data name="MotifApp.StatsHeaderWorkSteps" xml:space="preserve">
+    <value>Work Steps</value>
+    <comment>Column heading of the statistics table for a word: the parser work steps spent on the word. A work step is one unit of parser work; the count does not depend on how fast the computer is.</comment>
   </data>
   <data name="MotifApp.StatsShadingWord" xml:space="preserve">
-    <value>Shading: darker is larger, against the largest in its column. Analysis attempts and word time are the parser's own record of the parse; whether a word finished comes from the last parse.</value>
+    <value>Shading: darker is larger, against the largest in its column. Analysis attempts and work steps are the parser's own record of the parse; whether a word finished comes from the last parse.</value>
     <comment>Note under the statistics table for words, explaining the shading.</comment>
   </data>
   <data name="MotifApp.StatsShadingObject" xml:space="preserve">
-    <value>Shading: darker is larger. An attempt is a different event for each kind (a rule tried, an entry matched, a root looked up), so attempts are shaded only against rows of their own kind. Own time leaves out time spent in the objects this one called.</value>
-    <comment>Note under the statistics table for grammar objects, explaining the shading.</comment>
+    <value>Shading: darker is larger. An attempt is a different event for each kind (a rule tried, an entry matched, a root looked up), so attempts are shaded only against rows of their own kind. Work steps for each kind of rule and for each rule are in the tables above.</value>
+    <comment>Note under the statistics table for grammar objects, explaining the shading and where the parser work for each rule is shown.</comment>
   </data>
   <data name="MotifApp.StatsScopeObjectFormat" xml:space="preserve">
     <value>{0} · all rows from the complete parse; selected words do not filter them.</value>
@@ -5837,10 +5833,6 @@ Motif starts a check automatically when this project opens. Use Reload to read a
   </data>
   <data name="MotifApp.StatisticsColumnAnalyses" xml:space="preserve">
     <value>Analyses</value>
-    <comment>Heading of a table column on the detailed statistics table on the Timing page.</comment>
-  </data>
-  <data name="MotifApp.StatisticsColumnElapsedMs" xml:space="preserve">
-    <value>Elapsed (ms)</value>
     <comment>Heading of a table column on the detailed statistics table on the Timing page.</comment>
   </data>
   <data name="MotifApp.TimingDetailedStatisticsHeading" xml:space="preserve">
