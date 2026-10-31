@@ -4,8 +4,8 @@
 
 The figure strip shows the project's counts: words you chose to measure, places in your texts, wordforms, rules, and lexemes. **Look first** points to recorded words or timings worth inspecting. Five table sections follow:
 
-- **Speed**: how many words were timed, their total and median time, and the time recorded for each kind of grammar work.
-- **Slowest Words**: the measured words with the longest times. **Stopped** marks a word explicitly recorded as hitting a parser search limit.
+- **Speed**: how many words were measured, their total and median work steps, and the work recorded for each kind of grammar work. A line beneath shows how long the whole run took on this computer.
+- **Slowest Words**: the measured words with the most work steps, each with its work steps. **Stopped** marks a word explicitly recorded as hitting a parser search limit.
 - **Text Coverage**: how many of your chosen words parse, and how many places in your texts they cover (each time a word occurs in a text). If no chosen words occur in the chosen Texts, it says there are no places to cover.
 - **Approved Analyses Kept**: how many words with an approved analysis the grammar rebuilt exactly. When no analysis is approved yet, it says there is nothing to rebuild.
 - **Grammar Warnings**: what the grammar check found, with errors counted separately.

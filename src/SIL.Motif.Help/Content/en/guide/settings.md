@@ -18,7 +18,7 @@ The Parsing group edits the current project's Default Selection. Setup, Settings
 
 **Texts to Parse** shows the selected Text count; **Use All Texts** saves every project Text in the Default Selection while keeping its added words and parsing limits.
 
-When the step limit is finite, the time limit can follow Motif's estimate or use an explicit value. An explicit value remains in force when the step limit changes until you choose the estimate again. With no step limit there is no time limit, and an explicit override is cleared. Enter commits a number; leaving the field also commits it. If Motif refuses the value, the saved Selection stays as it was. Escape restores the last accepted value before it closes Settings.
+When the step limit is finite, the time limit can follow Motif's estimate or use an explicit value. An explicit value remains in force when the step limit changes until you choose the estimate again. When it follows the estimate, a parse gives each word ten times the estimated time as a safety net, so a slow computer reaches the step limit first; Setup, Settings and the command line all work this way. With no step limit there is no time limit, and an explicit override is cleared. Enter commits a number; leaving the field also commits it. If Motif refuses the value, the saved Selection stays as it was. Escape restores the last accepted value before it closes Settings.
 
 ## Default Proposal Checks
 
