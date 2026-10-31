@@ -75,7 +75,7 @@ public sealed class WritingSystemMissingToolTests(PristineProjectFixture pristin
         var structured = result.StructuredContent!.Value;
         Assert.True(structured.GetProperty("code").GetString() == "project.writing-system-missing", structured.GetRawText());
         var store = Path.Combine(Path.GetDirectoryName(path)!, "WritingSystemStore");
-        Assert.Contains(store, structured.GetProperty("message").GetString(), StringComparison.Ordinal);
+        Assert.DoesNotContain(store, structured.GetProperty("message").GetString(), StringComparison.Ordinal);
         Assert.Equal(store, structured.GetProperty("facts").GetProperty("projectWritingSystemStore").GetString());
         Assert.DoesNotContain("SIL.Motif.BaselineRead", structured.GetRawText(), StringComparison.Ordinal);
     }
