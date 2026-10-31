@@ -4,6 +4,7 @@ using System.Text.RegularExpressions;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.PanGloss;
+using SIL.Motif.Host.Parser;
 using C = SIL.Motif.Contract.Commands.RefusalCodes;
 
 namespace SIL.Motif.App.ViewModels;
@@ -387,13 +388,17 @@ public sealed partial record WindowRefusal
         var lines = new List<string>();
         var missingParser = refusal.Facts.ContainsKey(RefusalFactNames.ParserNotFound) &&
             ParserUnusableCodes.Contains(refusal.Code);
-        var message = forReport ? refusal.Message : WindowSafe(ReplaceKnownPaths(refusal.Message, refusal.Facts));
+        // The window names the missing file, not the folders searched; those stay in the report's local details.
+        var message = forReport ? refusal.Message
+            : missingParser ? string.Format(System.Globalization.CultureInfo.CurrentCulture,
+                MotifAppStrings.RefusalParserMissingDetailsFormat, PanGlossExecutable.ExecutableFileName)
+            : WindowSafe(ReplaceKnownPaths(refusal.Message, refusal.Facts));
         if (!forReport && !missingParser && HasPathSeparator(message)) message = string.Empty;
         if (message.Length > 0) lines.Add(message);
         lines.AddRange(refusal.Facts
             .Where(fact => fact.Key != RefusalFactNames.ParserNotFound)
             .Where(fact => forReport || fact.Key != "exceptionDetail")
-            .Where(fact => forReport || missingParser || !HasPathSeparator(fact.Value) || IsPathFact(fact) || IsAssessmentId(fact))
+            .Where(fact => forReport || !HasPathSeparator(fact.Value) || IsPathFact(fact) || IsAssessmentId(fact))
             .Where(fact => forReport || (!CliTerm().IsMatch(fact.Key) && !CliTerm().IsMatch(fact.Value)))
             .OrderBy(fact => fact.Key, StringComparer.Ordinal)
             .Select(fact => FactLine(fact, forReport)));

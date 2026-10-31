@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Text.RegularExpressions;
+using SIL.Motif.App;
 using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.Commands;
@@ -9,6 +10,7 @@ using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Generator;
+using SIL.Motif.Host.Parser;
 using Xunit;
 
 namespace SIL.Motif.Tests.App;
@@ -23,6 +25,10 @@ public sealed class WindowRefusalTests
         Path.GetTempPath(), "SIL", "Motif", "projects", "one", "Project.motif.db");
     private static readonly string ParserPath = Path.Combine(Path.GetTempPath(), "Motif",
         OperatingSystem.IsWindows() ? "pangloss.exe" : "pangloss");
+
+    // The checkbox label ends with a bracketed note; the window text quotes the part before it.
+    private static readonly string IncludeLocalDetailsLabel =
+        MotifAppStrings.IncludeLocalDetails.Split(" (")[0];
 
     private static readonly string[] BannedOnScreen = ["Proposal", "Draft", "Preflight", "motif "];
 
@@ -120,7 +126,7 @@ public sealed class WindowRefusalTests
     }
 
     [Fact]
-    public void MissingParserReplacesKnownProjectDirectoryButKeepsSearchText()
+    public void MissingParserNamesTheFileButNoFolderAndPointsAtTheReport()
     {
         const string message = "Could not find PanGloss. Looked for it at: /opt/motif/pangloss.";
         var shown = WindowRefusal.From(new Refusal(RefusalCodes.AssessParserUnavailable, FailureReason.Refused,
@@ -129,9 +135,28 @@ public sealed class WindowRefusalTests
                 [RefusalFactNames.ParserNotFound] = "true", ["projectPath"] = "/opt/motif/project.fwdata",
             }));
 
-        Assert.Contains("Looked for it at: project.fwdata/pangloss.", shown.Details);
+        Assert.Contains(PanGlossExecutable.ExecutableFileName, shown.Details);
+        Assert.Contains(MotifAppStrings.ReportProblem, shown.Details);
+        Assert.Contains(IncludeLocalDetailsLabel, shown.Details);
+        Assert.DoesNotContain("Looked for it at", shown.Details, StringComparison.Ordinal);
         Assert.DoesNotContain("/opt/motif", shown.Details);
+        Assert.Contains("projectPath: project.fwdata", shown.Details);
         Assert.Contains(message, ProblemReport.FromRefusal(shown).ToText(includeLocalDetails: true));
+    }
+
+    [Fact]
+    public void TheCopiedReportOfAMissingParserHoldsEverySearchedPlaceOnceLocalDetailsAreIncluded()
+    {
+        var first = Path.Combine(Path.GetTempPath(), "PanGloss", "dist", "<version>", PanGlossExecutable.ExecutableFileName);
+        var second = Path.Combine(Path.GetTempPath(), "Motif", PanGlossExecutable.ExecutableFileName);
+        var refusal = new Refusal(RefusalCodes.AssessParserUnavailable, FailureReason.Refused,
+            PanGlossExecutable.NotFoundMessageFor([first, second]),
+            new Dictionary<string, string> { [RefusalFactNames.ParserNotFound] = "true" });
+        var report = ProblemReport.FromRefusal(WindowRefusal.From(refusal));
+
+        var withDetails = report.ToText(includeLocalDetails: true);
+        Assert.Contains($"Looked for it at: {first}; {second}.", withDetails, StringComparison.Ordinal);
+        Assert.DoesNotContain(Path.GetTempPath(), report.ToText(), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -198,7 +223,7 @@ public sealed class WindowRefusalTests
     [InlineData(RefusalCodes.GrammarCheckParserUnavailable)]
     [InlineData(RefusalCodes.WordTraceParserUnavailable)]
     [InlineData(RefusalCodes.HandoffParserUnavailable)]
-    public void AMissingParserSaysSoAndTheDetailsNameThePlacesMotifLooked(string code)
+    public void AMissingParserSaysSoAndTheDetailsNameTheFileAndPointAtTheReport(string code)
     {
         var refusal = new Refusal(code, FailureReason.Refused,
             $"Could not find the pangloss executable. Looked for it at: {ParserPath}. " +
@@ -211,7 +236,14 @@ public sealed class WindowRefusalTests
         Assert.Equal(
             "Motif could not find PanGloss, so it cannot measure words. Install PanGloss beside Motif, then try again.",
             shown.Sentence);
-        Assert.Contains(ParserPath, shown.Details);
+        Assert.Contains(Path.GetFileName(ParserPath), shown.Details);
+        Assert.True(shown.OffersProblemReport);
+        Assert.Contains(MotifAppStrings.ReportProblem, shown.Details);
+        Assert.Contains(IncludeLocalDetailsLabel, shown.Details);
+        Assert.DoesNotContain(ParserPath, shown.Details, StringComparison.Ordinal);
+        Assert.DoesNotContain(Path.GetDirectoryName(ParserPath)!, shown.Details, StringComparison.Ordinal);
+        Assert.DoesNotContain("Looked for it at", shown.Details, StringComparison.Ordinal);
+        Assert.Contains(ParserPath, ProblemReport.FromRefusal(shown).ToText(includeLocalDetails: true));
         Assert.DoesNotContain("cargo", shown.Details, StringComparison.Ordinal);
         Assert.DoesNotContain(RefusalFactNames.ParserNotFound, shown.Details, StringComparison.Ordinal);
     }

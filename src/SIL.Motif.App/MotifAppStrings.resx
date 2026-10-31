@@ -5263,6 +5263,10 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <value>Motif could not find PanGloss, so it cannot measure words. Install PanGloss beside Motif, then try again.</value>
     <comment>Sentence the window shows for a refusal about PanGloss not being found. PanGloss is the parser product name; FieldWorks is a product name; .motif.db and .fwdata are file extensions.</comment>
   </data>
+  <data name="MotifApp.RefusalParserMissingDetailsFormat" xml:space="preserve">
+    <value>Motif looked for {0} and it was not there. Where Motif looked is in the problem report: choose Report a Problem, tick Include Local Details, then copy the report.</value>
+    <comment>Details the window shows for a refusal about PanGloss not being found. {0} is the parser's file name, such as pangloss.exe, without a folder. Report a Problem and Include Local Details are quoted UI labels: translate them exactly as MotifApp.ReportProblem and MotifApp.IncludeLocalDetails (the part before the bracket) are translated. PanGloss is the parser product name.</comment>
+  </data>
   <data name="MotifApp.RefusalParserUnusable" xml:space="preserve">
     <value>Motif could not run PanGloss, so it cannot measure words. Review a problem report for technical details.</value>
     <comment>Sentence the window shows for a refusal about PanGloss not being runnable. PanGloss is the parser product name; FieldWorks is a product name; .motif.db and .fwdata are file extensions.</comment>

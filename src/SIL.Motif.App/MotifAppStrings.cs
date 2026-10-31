@@ -2800,6 +2800,8 @@ public static class MotifAppStrings
 
     public static string RefusalParserMissing => Text("MotifApp.RefusalParserMissing");
 
+    public static string RefusalParserMissingDetailsFormat => Text("MotifApp.RefusalParserMissingDetailsFormat");
+
     public static string RefusalParserUnusable => Text("MotifApp.RefusalParserUnusable");
 
     public static string RefusalParserWrong => Text("MotifApp.RefusalParserWrong");

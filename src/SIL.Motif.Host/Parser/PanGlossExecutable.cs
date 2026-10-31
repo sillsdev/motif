@@ -8,8 +8,11 @@ public static class PanGlossExecutable
     /// <summary>Overrides discovery. Set this when the parser lives somewhere unusual, or in CI.</summary>
     public const string PathVariable = "MOTIF_PANGLOSS_EXE";
 
-    private static string FileName =>
+    /// <summary>The parser's file name on this operating system, without any folder.</summary>
+    public static string ExecutableFileName =>
         OperatingSystem.IsWindows() ? "pangloss.exe" : "pangloss";
+
+    private static string FileName => ExecutableFileName;
 
     /// <summary>
     /// Returns the executable's path, or <c>null</c> when it cannot be found. A configured override is
