@@ -80,6 +80,6 @@ cp bin/Release/tests/seeded-advice-raw.json \
 
 `GrammarHealth/schema-v4-stored-analysis-budget.json` is a trimmed PanGloss 0.8.3 `grammar-health` report of the mbugwe sample: three `grammar.stored-analysis.incomplete` warnings (two for one wordform) and the one `grammar.stored-analysis.budget-reached` information finding, as the parser wrote them.
 
-`pangloss-0.12.1-trace-reasons.json` is the current pin's annotated reason catalog at source commit `9a5c4400874bdb7b2e5d823e1d7d44dcdb8721b2`. Its 24 codes match the `rust/crates/pg-rules/src/trace.rs` source. The earlier 0.8.11 catalog retains its original provenance.
+`pangloss-0.12.2-trace-reasons.json` is the current pin's annotated reason catalog at source commit `494e3b0b7b82e09b04541880a989165b5f154197`. Its 24 codes match the `rust/crates/pg-rules/src/trace.rs` source. The earlier 0.8.11 catalog retains its original provenance.
 
 The live `RealParserTraceTests` golden grammar still produces signature `32+PAST|sag+?d` and a completed, uncapped search on 0.10.0. Identical-input release probes at 200,000 steps observed both `NonPartialRuleProhibitedAfterFinalTemplate` and `PartialParse` on 0.8.11, and only `PartialParse` on 0.10.0. The live test pins the latter exact reasons; older raw captures remain unchanged. The Motif summary matches the new raw producer trace, so no reader suppression or relaxed assertion is needed.

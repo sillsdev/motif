@@ -106,6 +106,7 @@ public sealed record TimingShare(string Label, string Kind, long? WorkSteps, dou
         "phon_rule" => MotifAppStrings.TimingKindPhonologicalRules,
         "root_index" => MotifAppStrings.TimingKindRootLookup,
         "lex_entry" => MotifAppStrings.TimingKindLexicalEntries,
+        "parser" => MotifAppStrings.TimingKindParser,
         _ => kind.Replace('_', ' '),
     };
 }

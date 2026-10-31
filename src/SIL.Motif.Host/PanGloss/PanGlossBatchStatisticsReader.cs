@@ -299,6 +299,9 @@ public static class PanGlossBatchStatisticsReader
         if (string.IsNullOrWhiteSpace(key) || !IsKnownIdentityQuality(identityQuality) ||
             (!unattributed && (!IsKnownKind(kind) || !IsKnownDirection(direction))) || !words.ContainsKey(word))
             throw new InvalidDataException("The batch statistics cache contains an invalid object fact row.");
+        if (kind == "parser" && (identityQuality != "synthetic" || reader.GetInt64(6) != 0 ||
+                !key.StartsWith("parser:", StringComparison.Ordinal)))
+            throw new InvalidDataException("The batch statistics cache contains an invalid parser fact row.");
         if (string.IsNullOrWhiteSpace(label)) label = key;
         int? attempts = SupportsCounter(kind, "attempts") ? ReadCounter(reader, 6, "object attempts", word) : null;
         long? nanoseconds = SupportsTimer(kind, direction) ? ReadElapsedNs(reader, 7, "object", word) : null;
@@ -314,18 +317,20 @@ public static class PanGlossBatchStatisticsReader
     }
 
     internal static bool IsKnownKind(string kind) => kind is
-        "morph_rule" or "phon_rule" or "lex_entry" or "root_index" or "guesser" or "overlay";
+        "morph_rule" or "phon_rule" or "lex_entry" or "root_index" or "guesser" or "overlay" or "parser";
 
     internal static bool IsKnownIdentityQuality(string identityQuality) => identityQuality is
         "authored" or "structural" or "synthetic";
 
     internal static bool IsKnownDirection(string direction) => direction is "analysis" or "synthesis";
 
-    internal static bool SupportsCounter(string kind, string counter) => counter == "attempts" && IsKnownKind(kind);
+    // Parser rows carry only work and self time, so they have no attempts.
+    internal static bool SupportsCounter(string kind, string counter) =>
+        counter == "attempts" && IsKnownKind(kind) && kind != "parser";
 
     internal static bool SupportsTimer(string kind, string direction) => kind switch
     {
-        "morph_rule" or "phon_rule" or "lex_entry" => true,
+        "morph_rule" or "phon_rule" or "lex_entry" or "parser" => true,
         "root_index" or "guesser" or "overlay" => direction == "analysis",
         _ => false,
     };

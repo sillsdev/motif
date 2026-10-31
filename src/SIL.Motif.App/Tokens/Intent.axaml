@@ -108,6 +108,7 @@
     Intent.Timing.PhonRule        phonological rules
     Intent.Timing.Lexicon         lexical entries
     Intent.Timing.RootLookup      root lookup
+    Intent.Timing.Parser          the parser's own bookkeeping
     Intent.Timing.Unattributed    parser time no rule's timer accounts for
 
   Spacing (double, for Spacing, and for Width and Height of gaps):
@@ -349,6 +350,7 @@
       <SolidColorBrush x:Key="Intent.Timing.PhonRule" Color="{StaticResource Primitive.Color.Violet600}" />
       <SolidColorBrush x:Key="Intent.Timing.Lexicon" Color="{StaticResource Primitive.Color.Green700}" />
       <SolidColorBrush x:Key="Intent.Timing.RootLookup" Color="{StaticResource Primitive.Color.Amber700}" />
+      <SolidColorBrush x:Key="Intent.Timing.Parser" Color="{StaticResource Primitive.Color.Teal950}" />
       <SolidColorBrush x:Key="Intent.Timing.Unattributed" Color="{StaticResource Primitive.Color.Slate600}" />
     </ResourceDictionary>
     <ResourceDictionary x:Key="Dark">
@@ -443,6 +445,7 @@
       <SolidColorBrush x:Key="Intent.Timing.PhonRule" Color="{StaticResource Primitive.Color.Violet300}" />
       <SolidColorBrush x:Key="Intent.Timing.Lexicon" Color="{StaticResource Primitive.Color.Green300}" />
       <SolidColorBrush x:Key="Intent.Timing.RootLookup" Color="{StaticResource Primitive.Color.Amber300}" />
+      <SolidColorBrush x:Key="Intent.Timing.Parser" Color="{StaticResource Primitive.Color.Cyan400}" />
       <SolidColorBrush x:Key="Intent.Timing.Unattributed" Color="{StaticResource Primitive.Color.Slate600}" />
     </ResourceDictionary>
   </ResourceDictionary.ThemeDictionaries>

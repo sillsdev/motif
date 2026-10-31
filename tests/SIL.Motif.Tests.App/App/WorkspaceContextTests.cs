@@ -614,6 +614,7 @@ public sealed class WorkspaceContextTests
     [InlineData("phon_rule", "Phonological rules")]
     [InlineData("root_index", "Root lookup")]
     [InlineData("lex_entry", "Lexical entries")]
+    [InlineData("parser", "Parser")]
     public void TimingDisplaysReadableRuleKindLabels(string storedKind, string label) =>
         Assert.Equal(label, TimingShare.KindName(storedKind));
 

@@ -231,5 +231,8 @@
   <Style Selector="Border.overviewShareFill.root_index">
     <Setter Property="Background" Value="{DynamicResource Intent.Timing.RootLookup}" />
   </Style>
+  <Style Selector="Border.overviewShareFill.parser">
+    <Setter Property="Background" Value="{DynamicResource Intent.Timing.Parser}" />
+  </Style>
 
 </Styles>

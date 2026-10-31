@@ -410,6 +410,7 @@ public sealed class ContrastTests(AvaloniaHeadlessFixture avalonia)
     [InlineData("phon_rule", "Intent.Timing.PhonRule")]
     [InlineData("lex_entry", "Intent.Timing.Lexicon")]
     [InlineData("root_index", "Intent.Timing.RootLookup")]
+    [InlineData("parser", "Intent.Timing.Parser")]
     [InlineData("anything else", "Intent.Timing.Unattributed")]
     public void ATimingKindKeepsItsOwnColourWhereverItFallsInTheBar(string kind, string key)
     {
@@ -442,7 +443,7 @@ public sealed class ContrastTests(AvaloniaHeadlessFixture avalonia)
     }
 
     private static IBrush?[] KindBrushes(TimingKindBar bar) =>
-        [bar.MorphRuleBrush, bar.PhonRuleBrush, bar.LexiconBrush, bar.RootLookupBrush, bar.UnattributedBrush];
+        [bar.MorphRuleBrush, bar.PhonRuleBrush, bar.LexiconBrush, bar.RootLookupBrush, bar.ParserBrush, bar.UnattributedBrush];
 
     // Each owner restyles the text inside it, and a tooltip's text is its owner's logical descendant.
     public static TheoryData<string> TooltipOwners() => new() { "plain", "stagedStrip", "markChip", "ruleRow", "handoffQuestion" };

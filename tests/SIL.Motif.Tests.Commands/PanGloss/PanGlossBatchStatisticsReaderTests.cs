@@ -64,6 +64,61 @@ public sealed class PanGlossBatchStatisticsReaderTests : IDisposable
     }
 
     [Fact]
+    public void ReadsTheSyntheticParserRowsWithWorkAndTimeButNoAttempts()
+    {
+        var path = Path.Combine(_root, "parser-rows.sqlite");
+        WriteCache(path);
+        using (var connection = new SqliteConnection($"Data Source={path};Pooling=False"))
+        {
+            connection.Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = """
+                INSERT INTO object VALUES (4, 'parser:surface_match', 'parser', 'parser: surface_match', 'synthetic');
+                INSERT INTO fact VALUES (1, 4, 'synthesis', 0, 4146, 15);
+                """;
+            command.ExecuteNonQuery();
+        }
+
+        var result = PanGlossBatchStatisticsReader.Read(path, ["word"]);
+
+        var parser = Assert.Single(result.ObjectTimings, row => row.Kind == "parser");
+        Assert.Null(parser.Attempts);
+        Assert.Equal(4146, parser.ElapsedNs);
+        Assert.Equal(15, parser.WorkSteps);
+        var bounded = PanGlossBatchStatisticsReader.ReadBounded(path, ["word"], 1);
+        Assert.Single(bounded.ObjectTimings, row => row.Kind == "parser");
+        // Object time is 180000 + 220000 + 130000 + 1000 from the base cache, plus the parser row's 4146.
+        Assert.Equal(535_146, bounded.AttributedNs);
+        Assert.Equal(725_001 - 535_146, bounded.UnattributedNs);
+        Assert.Equal(0, bounded.OverrunNs);
+    }
+
+    [Theory]
+    [InlineData("'parser:surface_match', 'parser', 'parser: surface_match', 'authored'", "synthesis", 0, 4146)]
+    [InlineData("'surface_match', 'parser', 'parser: surface_match', 'synthetic'", "synthesis", 0, 4146)]
+    [InlineData("'parser:surface_match', 'parser', 'parser: surface_match', 'synthetic'", "synthesis", 3, 4146)]
+    [InlineData("'parser:surface_match', 'parser', 'parser: surface_match', 'synthetic'", "synthesis", 0, -1)]
+    [InlineData("'parser:surface_match', 'parser', 'parser: surface_match', 'synthetic'", "unattributed", 0, 4146)]
+    public void RefusesAMalformedParserRow(string objectColumns, string direction, int attempts, int selfTimeNs)
+    {
+        var path = Path.Combine(_root, "bad-parser-row.sqlite");
+        WriteCache(path);
+        using (var connection = new SqliteConnection($"Data Source={path};Pooling=False"))
+        {
+            connection.Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = $"""
+                INSERT INTO object VALUES (4, {objectColumns});
+                INSERT INTO fact VALUES (1, 4, '{direction}', {attempts}, {selfTimeNs}, 15);
+                """;
+            command.ExecuteNonQuery();
+        }
+
+        Assert.Throws<InvalidDataException>(() => PanGlossBatchStatisticsReader.Read(path, ["word"]));
+        Assert.Throws<InvalidDataException>(() => PanGlossBatchStatisticsReader.ReadBounded(path, ["word"], 1));
+    }
+
+    [Fact]
     public void KeepsTheFirstRowsInQueryOrderAndCountsTheRestWhenCapped()
     {
         var path = Path.Combine(_root, "capped.sqlite");
@@ -192,7 +247,7 @@ public sealed class PanGlossBatchStatisticsReaderTests : IDisposable
 
     [Theory]
     [InlineData(6)]
-    [InlineData(8)]
+    [InlineData(9)]
     public void RefusesAStoredCounterSemanticsVersionThatDiffersFromThePin(int semantics)
     {
         var path = Path.Combine(_root, "wrong-semantics.sqlite");
@@ -213,7 +268,7 @@ public sealed class PanGlossBatchStatisticsReaderTests : IDisposable
 
     [Theory]
     [InlineData("DELETE FROM run")]
-    [InlineData("INSERT INTO run VALUES (6)")]
+    [InlineData("INSERT INTO run VALUES (7)")]
     [InlineData("DROP TABLE run")]
     public void RefusesMissingOrMixedCounterSemantics(string mutation)
     {
@@ -244,7 +299,7 @@ public sealed class PanGlossBatchStatisticsReaderTests : IDisposable
         command.CommandText = """
             CREATE TABLE cache_identity (cache_id INTEGER PRIMARY KEY, schema_version INTEGER NOT NULL);
             CREATE TABLE run (counter_semantics INTEGER NOT NULL);
-            INSERT INTO run VALUES (7);
+            INSERT INTO run VALUES (8);
             CREATE TABLE word (
                 word_id INTEGER PRIMARY KEY,
                 form TEXT NOT NULL,

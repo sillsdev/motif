@@ -27,6 +27,8 @@ public sealed class TimingKindBar : Control
         AvaloniaProperty.Register<TimingKindBar, IBrush?>(nameof(LexiconBrush));
     public static readonly StyledProperty<IBrush?> RootLookupBrushProperty =
         AvaloniaProperty.Register<TimingKindBar, IBrush?>(nameof(RootLookupBrush));
+    public static readonly StyledProperty<IBrush?> ParserBrushProperty =
+        AvaloniaProperty.Register<TimingKindBar, IBrush?>(nameof(ParserBrush));
     public static readonly StyledProperty<IBrush?> UnattributedBrushProperty =
         AvaloniaProperty.Register<TimingKindBar, IBrush?>(nameof(UnattributedBrush));
     public static readonly DirectProperty<TimingKindBar, IReadOnlyList<TimingKindLegendEntry>> LegendProperty =
@@ -35,7 +37,8 @@ public sealed class TimingKindBar : Control
     private IReadOnlyList<TimingKindLegendEntry> _legend = [];
 
     static TimingKindBar() => AffectsRender<TimingKindBar>(RowsProperty, MorphRuleBrushProperty,
-        PhonRuleBrushProperty, LexiconBrushProperty, RootLookupBrushProperty, UnattributedBrushProperty);
+        PhonRuleBrushProperty, LexiconBrushProperty, RootLookupBrushProperty, ParserBrushProperty,
+        UnattributedBrushProperty);
 
     public TimingKindBar()
     {
@@ -77,6 +80,13 @@ public sealed class TimingKindBar : Control
         set => SetValue(RootLookupBrushProperty, value);
     }
 
+    /// <summary>The part for the parser's own bookkeeping.</summary>
+    public IBrush? ParserBrush
+    {
+        get => GetValue(ParserBrushProperty);
+        set => SetValue(ParserBrushProperty, value);
+    }
+
     /// <summary>The part for time the parser did not attribute to a named kind.</summary>
     public IBrush? UnattributedBrush
     {
@@ -98,6 +108,7 @@ public sealed class TimingKindBar : Control
         "phon_rule" => PhonRuleBrush,
         "lex_entry" => LexiconBrush,
         "root_index" => RootLookupBrush,
+        "parser" => ParserBrush,
         _ => UnattributedBrush,
     };
 
@@ -106,7 +117,8 @@ public sealed class TimingKindBar : Control
         base.OnPropertyChanged(change);
         if (change.Property == RowsProperty || change.Property == MorphRuleBrushProperty ||
             change.Property == PhonRuleBrushProperty || change.Property == LexiconBrushProperty ||
-            change.Property == RootLookupBrushProperty || change.Property == UnattributedBrushProperty)
+            change.Property == RootLookupBrushProperty || change.Property == ParserBrushProperty ||
+            change.Property == UnattributedBrushProperty)
             Legend = Rows is { } rows ? [.. rows.Select(row => new TimingKindLegendEntry(row, BrushFor(row.Kind)))] : [];
     }
 

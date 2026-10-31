@@ -126,6 +126,7 @@ public sealed class OverviewHLayoutTests
                 (Mark.Of(MeaningTone.Problem), null, "Intent.Consequence.Problem.Edge"),
                 (null, "morph_rule", "Intent.Timing.MorphRule"),
                 (null, "phon_rule", "Intent.Timing.PhonRule"),
+                (null, "parser", "Intent.Timing.Parser"),
             };
             var bars = examples.Select(example => new OverviewShareBar
                 { Value = 1, Total = 2, Mark = example.Mark, Kind = example.Kind }).ToArray();

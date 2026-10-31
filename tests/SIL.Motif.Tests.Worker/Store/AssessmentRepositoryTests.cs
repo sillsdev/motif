@@ -573,7 +573,7 @@ public sealed class AssessmentRepositoryTests : IDisposable
         setup.CommandText = """
             CREATE TABLE cache_identity (cache_id INTEGER PRIMARY KEY, schema_version INTEGER NOT NULL);
             CREATE TABLE run (counter_semantics INTEGER NOT NULL);
-            INSERT INTO run VALUES (7);
+            INSERT INTO run VALUES (8);
             CREATE TABLE word (word_id INTEGER PRIMARY KEY, form TEXT NOT NULL, elapsed_ns INTEGER NOT NULL,
                 attempts INTEGER NOT NULL, passes INTEGER NOT NULL);
             CREATE TABLE object (object_id INTEGER PRIMARY KEY, key TEXT NOT NULL, kind TEXT NOT NULL,

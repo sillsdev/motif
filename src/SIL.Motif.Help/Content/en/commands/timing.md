@@ -16,7 +16,7 @@ motif timing --project "C:\FieldWorks\Projects\Koro\Koro.fwdata" --proposal <pro
 
 ## What it prints
 
-The command prints time on this computer, a secondary figure affected by machine load, as the selected words' total word time: each word's parse time, added up. Every kind or rule is shown with its own measured time and its share of that same total. **Not attributed** is the part of the total that no rule or lookup recorded, such as parser work outside every rule's timer; it is never shared out among the rules. If rules ever recorded more time than their words took, the command says so instead of showing a negative remainder.
+The command prints time on this computer, a secondary figure affected by machine load, as the selected words' total word time: each word's parse time, added up. Every kind or rule is shown with its own measured time and its share of that same total. The **parser** kind is the parser's own work, such as moving between strata and matching surface forms, which belongs to no single rule or lookup. **Not attributed** is the part of the total that no rule, lookup or parser work recorded, such as time outside every timer; it is never shared out among the rules. If rules ever recorded more time than their words took, the command says so instead of showing a negative remainder.
 
 A word that stopped at a limit counts the time it spent before stopping. Calls are counted per kind of rule, because a call to one kind is not a call to another; they are never added across kinds.
 

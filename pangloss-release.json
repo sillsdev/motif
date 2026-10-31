@@ -1,8 +1,8 @@
 {
-  "version": "0.12.1",
-  "tag": "v0.12.1",
+  "version": "0.12.2",
+  "tag": "v0.12.2",
   "interfaces": {
-    "sourceTag": "v0.12.1",
+    "sourceTag": "v0.12.2",
     "describeSchemaVersion": 1,
     "grammarHealthSchemaVersion": 4,
     "traceDetailsSchemaId": "pangloss.trace-details.v4",
@@ -54,24 +54,24 @@
         "--json": false
       }
     },
-    "statsCounterSemanticsVersion": 7
+    "statsCounterSemanticsVersion": 8
   },
   "assets": {
     "win-x64": {
-      "url": "https://github.com/sillsdev/PanGloss/releases/download/v0.12.1/pangloss-win-x64.exe",
-      "sha256": "02e3fa6322c89d895925bc2baf300f442ea93da6ee887bdc5b8a270ed92ef725"
+      "url": "https://github.com/sillsdev/PanGloss/releases/download/v0.12.2/pangloss-win-x64.exe",
+      "sha256": "dc264e5b0515bbd51bc505a8f84c58dad289806b3c8345fcac860d760ce2157e"
     },
     "linux-x64": {
-      "url": "https://github.com/sillsdev/PanGloss/releases/download/v0.12.1/pangloss-linux-x64",
-      "sha256": "cb8d4db7265835c66d1e243a16edad389bfe53337fac941d1c6d3c549fb55a74"
+      "url": "https://github.com/sillsdev/PanGloss/releases/download/v0.12.2/pangloss-linux-x64",
+      "sha256": "1965a4805a5deff9b5b2ebbbf5628ddb8b65a08ef98dd11a1852ddec6cddc38d"
     },
     "osx-arm64": {
-      "url": "https://github.com/sillsdev/PanGloss/releases/download/v0.12.1/pangloss-osx-arm64",
-      "sha256": "dc54969ff8282abc943e49aa8ddc1269cbe8baa6c9ef3c33b9d9d9bb322b8f5f"
+      "url": "https://github.com/sillsdev/PanGloss/releases/download/v0.12.2/pangloss-osx-arm64",
+      "sha256": "d309401f469440ed319df14f266d0218222858623af8a59de00c373845f0121c"
     },
     "osx-x64": {
-      "url": "https://github.com/sillsdev/PanGloss/releases/download/v0.12.1/pangloss-osx-x64",
-      "sha256": "6a75d9876dee5b80fe334b19a77dfe35b77303f5692062eb412fcb8281fad0db"
+      "url": "https://github.com/sillsdev/PanGloss/releases/download/v0.12.2/pangloss-osx-x64",
+      "sha256": "1458c07dcc96ef72895e6ad86e4cd5567b39cfc5e853388612ae31887c309675"
     }
   }
 }

@@ -856,6 +856,8 @@ public sealed partial class ComponentStyleTests
             SIL.Motif.App.Views.TimingKindBar.LexiconBrushProperty, "Intent.Timing.Lexicon");
         yield return new("TimingScoped", "the kind bar's root lookup", host => Add(host, new SIL.Motif.App.Views.TimingKindBar()),
             SIL.Motif.App.Views.TimingKindBar.RootLookupBrushProperty, "Intent.Timing.RootLookup");
+        yield return new("TimingScoped", "the kind bar's parser", host => Add(host, new SIL.Motif.App.Views.TimingKindBar()),
+            SIL.Motif.App.Views.TimingKindBar.ParserBrushProperty, "Intent.Timing.Parser");
         yield return new("TimingScoped", "the kind bar's time no rule accounts for", host => Add(host, new SIL.Motif.App.Views.TimingKindBar()),
             SIL.Motif.App.Views.TimingKindBar.UnattributedBrushProperty, "Intent.Timing.Unattributed");
         yield return new("TimingScoped", "a rule row", host => Add(host, Press("timingRuleRow")), Button.PaddingProperty,

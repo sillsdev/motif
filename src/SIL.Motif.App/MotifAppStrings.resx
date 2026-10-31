@@ -3733,6 +3733,10 @@ Never included unless you tick it in the preview: local details, which may conta
     <value>Lexical entries</value>
     <comment>Name of the kind of parser time spent in lexical entries.</comment>
   </data>
+  <data name="MotifApp.TimingKindParser" xml:space="preserve">
+    <value>Parser</value>
+    <comment>Name of the kind of parser time spent in the parser's own bookkeeping, outside any rule or lookup.</comment>
+  </data>
   <data name="MotifApp.TimingGrammarWarningTip" xml:space="preserve">
     <value>A grammar warning names this rule · Open the warning</value>
     <comment>Tooltip on a timing row that has a grammar warning; the dot is a separator. Open the Warning names the link next to it.</comment>

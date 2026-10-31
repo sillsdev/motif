@@ -2026,6 +2026,8 @@ public static class MotifAppStrings
 
     public static string TimingKindLexicalEntries => Text("MotifApp.TimingKindLexicalEntries");
 
+    public static string TimingKindParser => Text("MotifApp.TimingKindParser");
+
     public static string TimingGrammarWarningTip => Text("MotifApp.TimingGrammarWarningTip");
 
     public static string TimingUnknownQuality => Text("MotifApp.TimingUnknownQuality");
