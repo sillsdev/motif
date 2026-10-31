@@ -896,6 +896,24 @@ public sealed class WorkspaceShellViewModelTests
     }
 
     [Fact]
+    public async Task LaterRunsAfterSetupLeaveAnEstimatedTimeLimitToTheCommandsSafetyNet()
+    {
+        var (fake, projectPicker, _, _, workspace) = NewWorkspace();
+        fake.DefaultSelectionResponseIs(new DefaultSelectionResponse(new NamedSelectionProjection("Default", [TextId], [],
+            "created", "updated", new SelectionParsingLimits(new StepCap(1234), SelectionTimeLimitMode.Estimated, null),
+            "revision")));
+        fake.ListTextsCompletesWith(new TextInventoryResponse([new TextChoiceSummary(TextId, "Alpha")], true));
+        await ChooseProjectAsync(fake, projectPicker, workspace, ProjectPath, NewToken());
+        fake.AssessCompletesWith(NewAssessResponse("estimated limits"));
+        Assert.NotNull(workspace.Selection.PerWordTimeLimitSeconds);
+
+        await workspace.Assess.RunCommand.ExecuteAsync(null);
+
+        var request = Assert.Single(fake.AssessRequests);
+        Assert.Null(request.PerWordLimitMs);
+    }
+
+    [Fact]
     public async Task LaterRunsUseLimitsSavedWithTheDefaultSelection()
     {
         var (fake, projectPicker, _, _, workspace) = NewWorkspace();

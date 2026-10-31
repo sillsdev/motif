@@ -384,6 +384,7 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     internal void AttachSetup(SetupViewModel setup)
     {
         Setup = setup;
+        Assess.SavedExplicitTimeLimitMs = () => setup.SavedExplicitTimeLimitMs;
         OnPropertyChanged(nameof(Setup));
         _projectParticipants.Add(setup);
         setup.PropertyChanged += (_, e) =>

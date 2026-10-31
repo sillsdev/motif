@@ -78,6 +78,9 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
         return _context.Assess.RunDefaultSelectionAsync(limitMs, stepLimit);
     }
 
+    /// <summary>The time limit the saved Selection chose itself; an estimated time is left to the command.</summary>
+    internal int? SavedExplicitTimeLimitMs => ExplicitTimeLimitMs(CurrentSelectionLimits);
+
     // An estimated time is left to the command, which sizes the same safety net the CLI uses.
     private static int? ExplicitTimeLimitMs(SelectionParsingLimits limits) =>
         limits.TimeMode == SelectionTimeLimitMode.Explicit ? limits.ExplicitPerWordLimitMs : null;

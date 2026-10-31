@@ -40,6 +40,9 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
         Compare.ChosenCellsChanged += (_, _) => Words.ShowOnly(Compare.ChosenWords);
     }
 
+    /// <summary>The time limit the saved Selection chose itself; null leaves the time to the command's safety net.</summary>
+    internal Func<int?> SavedExplicitTimeLimitMs { get; set; } = static () => null;
+
     private IReadOnlyList<string>? _rerunWords;
     private int? _rerunLimitMs;
     private StepCap? _rerunStepLimit;
@@ -285,7 +288,7 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
         {
             var runDefault = _runDefaultSelection;
             var timeLimitMs = runDefault ? _defaultPerWordLimitMs
-                : _selection.PerWordTimeLimitSeconds is > 0 and var seconds ? (int)(seconds * 1000) : null;
+                : SavedExplicitTimeLimitMs();
             var requestedStepLimit = runDefault ? _defaultStepLimit : null;
             _runDefaultSelection = false;
             _defaultPerWordLimitMs = null;
