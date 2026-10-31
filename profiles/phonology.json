@@ -66,6 +66,12 @@
       "tool": "motif_edit_phoneme"
     },
     {
+      "tool": "motif_merge_phoneme"
+    },
+    {
+      "tool": "motif_split_phoneme"
+    },
+    {
       "tool": "motif_edit_derivational_affix_restriction"
     },
     {

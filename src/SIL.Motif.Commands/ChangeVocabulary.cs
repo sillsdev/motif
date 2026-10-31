@@ -127,6 +127,8 @@ public static class ChangeVocabulary
             ["AuthorFeatureValue"] = ("Add feature value", "Add a feature value"),
             ["AuthorFeatureStructure"] = ("Add feature structure", "Add a feature structure"),
             ["AuthorLexemeForm"] = ("Add lexeme form", "Add a lexeme form"),
+            ["MergePhoneme"] = ("Merge into phoneme", "Merge one phoneme into another"),
+            ["SplitPhoneme"] = ("Split out phoneme", "Split a spelling out into its own phoneme"),
             ["EditNaturalClass"] = ("Change natural class", "Change a natural class"),
             ["RelinkNaturalClass"] = ("Point to natural class", "Point to another natural class"),
             ["EditAdhocProhibition"] = ("Change restriction", "Change a co-occurrence restriction"),

@@ -109,6 +109,20 @@ public sealed class OperationSlotCoverageTests
     }
 
     [Theory]
+    [InlineData("grammar/phPhonemeSet/deletePhonemes", "grammar/phTerminalUnit/setName", false)]
+    [InlineData("grammar/phPhonemeSet/deletePhonemes", "grammar/phTerminalUnit/setName", true)]
+    [InlineData("grammar/phTerminalUnit/deleteCodes", "grammar/phCode/setRepresentation", false)]
+    [InlineData("grammar/phTerminalUnit/deleteCodes", "grammar/phCode/setRepresentation", true)]
+    public void PhonemeAndCodeDeletionConflictWithWritesInEitherOrder(string deleteKind, string writeKind, bool deleteFirst)
+    {
+        var target = CanonicalId.Mint();
+        var deletion = Envelope(deleteKind, target, "{}");
+        var write = Envelope(writeKind, target, "{\"ws\":\"en\",\"text\":\"x\"}");
+
+        Assert.NotNull(ProposalOperationSlotValidator.FindConflict(deleteFirst ? [deletion, write] : [write, deletion]));
+    }
+
+    [Theory]
     [InlineData(false)]
     [InlineData(true)]
     public void BoundMemberCleanupAndGraphDeletionOnItsOwnerDoNotConflict(bool deleteFirst)

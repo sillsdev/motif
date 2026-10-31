@@ -110,6 +110,26 @@ public sealed class EditPhonemeComposerTests(PristineProjectFixture pristine)
         Assert.Single(EditPhonemeComposer.Build(cache, new(t, ["ts"], [])), o => o.Kind.EndsWith("/createCodes", StringComparison.Ordinal));
     }
 
+    [Fact]
+    public void RefusesToRespellARepresentationAnUnparsedEnvironmentWritesWithoutSpaces()
+    {
+        using var cache = pristine.NewScratch();
+        var t = Phoneme(cache, "t", "t");
+        Phoneme(cache, "a", "a");
+        SIL.LCModel.Infrastructure.NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+        {
+            var environment = cache.ServiceLocator.GetInstance<IPhEnvironmentFactory>().Create();
+            cache.LangProject.PhonologicalDataOA.EnvironmentsOS.Add(environment);
+            environment.Name.set_String(cache.DefaultAnalWs, "unspaced");
+            environment.StringRepresentation = TsStringUtils.MakeString("/ a_ta", cache.DefaultVernWs);
+        });
+
+        Assert.StartsWith(EditPhonemeComposer.Referenced,
+            Refusal(() => EditPhonemeComposer.Build(cache, new(t, [], [new("t", "ts")]))));
+        Assert.Contains(EditPhonemeComposer.ReadAffectedUsers(cache, new(t, ["ts"], [])),
+            user => user.Kind == "environment" && user.Name == "unspaced");
+    }
+
     private static void StoreCode(LcmCache cache, CanonicalId id, string text) =>
         SIL.LCModel.Infrastructure.NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
             Find(cache, id).CodesOS[0].Representation.set_String(cache.DefaultVernWs,

@@ -1086,6 +1086,46 @@
     ],
     "redirect": "Edit a phoneme for a real contrast, not only to record a surface variant, unless a rule needs it as an output segment (guides nasal-assimilation, conditioned-allomorphs)."
   },
+  "compose-merge-phoneme": {
+    "title": "Merge a phoneme into another",
+    "description": "Stages a merge of one phoneme into another: each spelling of the first becomes another way to write the second, and the first phoneme is removed from the inventory and from its natural classes. It refuses a spelling another phoneme has, a natural class the first phoneme alone fills, and a rule or environment that uses the first phoneme. Dry Run and Trial before a person Applies the Proposal.",
+    "source": "Authored from the typed command contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "source": "Id of the phoneme to merge away.",
+      "target": "Id of the phoneme that keeps its identity and gains the spellings."
+    },
+    "goals": [
+      "Write one vowel with two letters that the language does not tell apart",
+      "Merge a spare phoneme into the phoneme it is a spelling of",
+      "Fold an orphan phoneme left by a respelling back into its sound"
+    ],
+    "guides": [
+      "nasal-assimilation",
+      "conditioned-allomorphs"
+    ],
+    "redirect": "Merge phonemes only when the language has no contrast between them, since the contrast cannot be recovered from the words afterwards (guides nasal-assimilation, conditioned-allomorphs)."
+  },
+  "compose-split-phoneme": {
+    "title": "Split a spelling into a phoneme",
+    "description": "Stages the move of one spelling of a phoneme into a new phoneme of its own, which undoes a merge. The phoneme keeps its other spellings, and the new phoneme starts with no natural class and no features. It refuses a spelling an environment writes. Dry Run and Trial before a person Applies the Proposal.",
+    "source": "Authored from the typed command contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "source": "Id of the phoneme that has the spelling now.",
+      "representation": "The spelling to move out, such as o.",
+      "name": "Name of the new phoneme."
+    },
+    "goals": [
+      "Undo a merge by giving a spelling its own phoneme again",
+      "Separate a spelling that turned out to be a real contrast"
+    ],
+    "guides": [
+      "nasal-assimilation",
+      "conditioned-allomorphs"
+    ],
+    "redirect": "Split a spelling out only for a real contrast, then add the new phoneme to its natural classes (guides nasal-assimilation, conditioned-allomorphs)."
+  },
   "compose-author-natural-class": {
     "title": "Author a natural class",
     "description": "Stages a named segment natural class with explicitly declared phoneme members in a Draft. Members may name existing phonemes or phonemes created earlier through declared dependencies. Only a person can Apply.",

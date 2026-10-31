@@ -1757,6 +1757,81 @@
     "idempotentHint": false
   },
   {
+    "name": "motif_merge_phoneme",
+    "description": "Merge a phoneme into another. Research first: motif_guide topic nasal-assimilation or conditioned-allomorphs; check best practice. Merge phonemes only when the language has no contrast between them, since the contrast cannot be recovered from the words afterwards (guides nasal-assimilation, conditioned-allomorphs). Stages a merge of one phoneme into another: each spelling of the first becomes another way to write the second, and the first phoneme is removed from the inventory and from its natural classes. It refuses a spelling another phoneme has, a natural class the first phoneme alone fills, and a rule or environment that uses the first phoneme. Dry Run and Trial before a person Applies the Proposal.\nCommand: compose-merge-phoneme. Agent class: Draft.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "Draft name."
+        },
+        "source": {
+          "type": "string",
+          "description": "Id of the phoneme to merge away."
+        },
+        "target": {
+          "type": "string",
+          "description": "Id of the phoneme that keeps its identity and gains the spellings."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "draft",
+        "source",
+        "target",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_split_phoneme",
+    "description": "Split a spelling into a phoneme. Research first: motif_guide topic nasal-assimilation or conditioned-allomorphs; check best practice. Split a spelling out only for a real contrast, then add the new phoneme to its natural classes (guides nasal-assimilation, conditioned-allomorphs). Stages the move of one spelling of a phoneme into a new phoneme of its own, which undoes a merge. The phoneme keeps its other spellings, and the new phoneme starts with no natural class and no features. It refuses a spelling an environment writes. Dry Run and Trial before a person Applies the Proposal.\nCommand: compose-split-phoneme. Agent class: Draft.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "Draft name."
+        },
+        "source": {
+          "type": "string",
+          "description": "Id of the phoneme that has the spelling now."
+        },
+        "representation": {
+          "type": "string",
+          "description": "The spelling to move out, such as o."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the new phoneme."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "draft",
+        "source",
+        "representation",
+        "name",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
     "name": "motif_edit_derivational_affix_restriction",
     "description": "Restrict a derivational affix. Research first: motif_guide topic suffix-prefix-slots; check best practice. For a derivational affix only. An inflectional affix is restricted by the inflection classes on its form (compose-edit-affix-inflection-classes). Sets, replaces or explicitly clears the From Inflection Class and can set the exact From Exception Features on an existing affix entry\u0027s derivational grammatical info. Omitted fields stay unchanged. Motif stages a Draft for a person to review and Apply.\nCommand: compose-edit-derivational-affix-restriction. Agent class: Draft.",
     "inputSchema": {

@@ -1403,6 +1403,49 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
     }
 
     [Fact]
+    public async Task MergePhonemeToolStagesTheMergeAndNeverApplies()
+    {
+        using var project = new WalkthroughProject(pristine);
+        string sourceId;
+        string targetId;
+        Guid sourceGuid;
+        int phonemeCount;
+        using (var cache = new FwDataProjectLoader().LoadScratchCache(project.FwDataPath))
+        {
+            var set = cache.LangProject.PhonologicalDataOA.PhonemeSetsOS[0];
+            IPhPhoneme Find(string letter) => set.PhonemesOC.Single(item => item.CodesOS.Any(code =>
+                code.Representation.get_String(cache.DefaultVernWs)?.Text == letter));
+            sourceGuid = Find("m").Guid;
+            sourceId = CanonicalId.FromGuid(sourceGuid).Value;
+            targetId = CanonicalId.FromGuid(Find("n").Guid).Value;
+            phonemeCount = set.PhonemesOC.Count;
+        }
+
+        await using var session = await Session.StartAsync(project.FwDataPath, new McpLaunchOptions(Profile: "phonology"));
+        await session.CallAsync("motif_start_proposal", ("draft", "merge"),
+            ("label", "Merge m into n"), ("rationale", "The language writes one nasal two ways."));
+        var merged = await session.CallAsync("motif_merge_phoneme", ("draft", "merge"),
+            ("source", sourceId), ("target", targetId));
+
+        Assert.True(merged.GetProperty("ok").GetBoolean(), merged.ToString());
+        using (var database = ProjectMotifDatabase.Open(project.FwDataPath))
+        {
+            var draft = ProposalCommands.DeserializeDraft(new ProposalRepository(database).GetDraft("merge").ProposalJson!);
+            Assert.Contains(draft.ComposerProvenance, item => item.GetProperty("composer").GetString() == "MergePhoneme");
+            Assert.Contains(draft.Operations, operation => operation.Kind == "grammar/phPhonemeSet/deletePhonemes");
+        }
+
+        var refused = await Assert.ThrowsAnyAsync<Exception>(() => session.CallAsync("motif_merge_phoneme",
+            ("draft", "merge"), ("source", targetId), ("target", targetId)));
+        Assert.Contains("phoneme-merge-same", refused.Message, StringComparison.Ordinal);
+
+        using var unchanged = new FwDataProjectLoader().LoadScratchCache(project.FwDataPath);
+        var phonemes = unchanged.LangProject.PhonologicalDataOA.PhonemeSetsOS[0].PhonemesOC;
+        Assert.Equal(phonemeCount, phonemes.Count);
+        Assert.Contains(phonemes, item => item.Guid == sourceGuid);
+    }
+
+    [Fact]
     public async Task EditPhonemeToolStagesADigraphOnAnEarlierPhonemeAndNeverApplies()
     {
         using var project = new WalkthroughProject(pristine);

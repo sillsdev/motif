@@ -21,6 +21,8 @@ internal static class ComposerDefinitions
         new EditMorphTypeDefinition(),
         new EditCliticAttachmentDefinition(),
         new EditPhonemeDefinition(),
+        new MergePhonemeDefinition(),
+        new SplitPhonemeDefinition(),
         new EditAffixInflectionClassesDefinition(),
         new EditDerivationalAffixRestrictionDefinition(),
         new EditCompoundRuleDefinition(),

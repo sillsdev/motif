@@ -301,20 +301,23 @@ internal static class SoundSystemAuthoring
         internal List<OperationEnvelope> Operations { get; } = new();
 
         internal CanonicalId Create(string kind, CanonicalId owner, object? after = null,
-            Placement? placement = null, CanonicalId? entityId = null)
+            Placement? placement = null, CanonicalId? entityId = null, IReadOnlyList<OperationEnvelope>? requires = null)
         {
             var id = entityId ?? _mint();
-            var operation = Add(kind, owner, after ?? new { }, id, placement);
+            var operation = Add(kind, owner, after ?? new { }, id, placement, requires);
             _creates.Add(id, operation.OperationId);
             return id;
         }
 
-        internal OperationEnvelope Add(string kind, CanonicalId target, object after, CanonicalId? entityId = null, Placement? placement = null)
+        /// <param name="requires">Earlier operations this one must run after although it names none of their objects.</param>
+        internal OperationEnvelope Add(string kind, CanonicalId target, object after, CanonicalId? entityId = null,
+            Placement? placement = null, IReadOnlyList<OperationEnvelope>? requires = null)
         {
             var referenced = new List<CanonicalId> { target };
             if (placement?.After is { } left) referenced.Add(left);
             if (placement?.Before is { } right) referenced.Add(right);
-            var dependencies = referenced.Where(_creates.ContainsKey).Select(id => _creates[id]).Distinct()
+            var dependencies = referenced.Where(_creates.ContainsKey).Select(id => _creates[id])
+                .Concat(requires?.Select(item => item.OperationId) ?? []).Distinct()
                 .Select(id => new OperationDependency(id)).ToArray();
             var operation = new OperationEnvelope(_mint(), kind, entityId, target, JsonSerializer.SerializeToElement(after),
                 placement, dependencies, rationale: rationale);

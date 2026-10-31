@@ -112,7 +112,7 @@ public static class EditPhonemeComposer
                 : "Pick a spelling that no phoneme has, or edit that phoneme instead.");
     }
 
-    private static IPhPhoneme Resolve(LcmCache cache, CanonicalId id)
+    internal static IPhPhoneme Resolve(LcmCache cache, CanonicalId id)
     {
         var phoneme = ReferenceFieldLowering.Resolve<IPhPhoneme>(cache, id, "EditPhoneme");
         if (!SoundSystemAuthoring.FirstSet(cache).PhonemesOC.Contains(phoneme))
@@ -120,23 +120,40 @@ public static class EditPhonemeComposer
         return phoneme;
     }
 
-    private static string Literal(string text)
+    internal static string Literal(string text)
     {
         try { return SoundSystemAuthoring.RequireLiteral(text); }
         catch (InvalidOperationException exception) { throw new InvalidOperationException($"{Invalid}: {exception.Message}"); }
     }
 
-    private static string? Spelling(LcmCache cache, IPhCode code) =>
+    internal static string? Spelling(LcmCache cache, IPhCode code) =>
         code.Representation.get_String(cache.DefaultVernWs)?.Text is { Length: > 0 } text
             ? text.Normalize(NormalizationForm.FormD) : null;
 
-    private static IEnumerable<ComposedRelatedObject> ReadEnvironmentsWriting(LcmCache cache, string spelling) =>
-        cache.LangProject.PhonologicalDataOA.EnvironmentsOS
-            .Where(environment => Regex.Split(environment.StringRepresentation?.Text?.Normalize(NormalizationForm.FormD) ?? string.Empty,
-                @"[\s\[\]()/_]+").Contains(spelling, StringComparer.Ordinal))
+    internal static IEnumerable<ComposedRelatedObject> ReadEnvironmentsWriting(LcmCache cache, string spelling)
+    {
+        var inventory = SoundSystemAuthoring.FirstSet(cache);
+        var codes = inventory.PhonemesOC.Cast<IPhTerminalUnit>().Concat(inventory.BoundaryMarkersOC)
+            .SelectMany(unit => unit.CodesOS).Select(code => Spelling(cache, code)).OfType<string>()
+            .Append(spelling).Distinct(StringComparer.Ordinal).OrderByDescending(code => code.Length).ToArray();
+        return cache.LangProject.PhonologicalDataOA.EnvironmentsOS
+            .Where(environment => Tokenise(environment.StringRepresentation?.Text, codes).Contains(spelling, StringComparer.Ordinal))
             .Select(environment => new ComposedRelatedObject("environment", SoundSystemAuthoring.Id(environment).Value,
                 Named(environment.Name.BestAnalysisAlternative.Text, environment.Guid)));
+    }
 
-    private static string Named(string? name, Guid guid) =>
+    // Reads an environment string as the longest project codes found left to right, skipping [class] references.
+    private static IEnumerable<string> Tokenise(string? environment, IReadOnlyList<string> codes)
+    {
+        var text = Regex.Replace(environment?.Normalize(NormalizationForm.FormD) ?? string.Empty, @"\[[^\]]*\]", " ");
+        for (var at = 0; at < text.Length;)
+        {
+            var code = codes.FirstOrDefault(candidate => string.CompareOrdinal(text, at, candidate, 0, candidate.Length) == 0);
+            if (code is null) at++;
+            else { yield return code; at += code.Length; }
+        }
+    }
+
+    internal static string Named(string? name, Guid guid) =>
         string.IsNullOrWhiteSpace(name) || name == "***" ? guid.ToString("D") : name;
 }
