@@ -70,13 +70,17 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
     {
         if (!CanRunDefaultSelection) return Task.CompletedTask;
         var resolved = SelectionLimitPolicy.Resolve(_savedSelection!.Limits, _parserStepRate);
-        var limitMs = resolved.PerWordTimeLimitMs;
+        var limitMs = ExplicitTimeLimitMs(_savedSelection.Limits);
         var stepLimit = resolved.PerWordStepLimit;
         RunningStepLimitText = stepLimit.IsUnbounded
             ? MotifAppStrings.RunningNoStepLimit
             : string.Format(MotifAppStrings.RunningStepLimitFormat, stepLimit.Steps ?? StepCap.DefaultSteps);
         return _context.Assess.RunDefaultSelectionAsync(limitMs, stepLimit);
     }
+
+    // An estimated time is left to the command, which sizes the same safety net the CLI uses.
+    private static int? ExplicitTimeLimitMs(SelectionParsingLimits limits) =>
+        limits.TimeMode == SelectionTimeLimitMode.Explicit ? limits.ExplicitPerWordLimitMs : null;
 
     /// <summary>The step limit captured by the parse running now.</summary>
     public string RunningStepLimitText
@@ -494,7 +498,7 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
         _awaitingFirstRun = true;
         try
         {
-            await _context.Assess.RunDefaultSelectionAsync(timeLimitMs, stepLimit).ConfigureAwait(true);
+            await _context.Assess.RunDefaultSelectionAsync(ExplicitTimeLimitMs(limits), stepLimit).ConfigureAwait(true);
         }
         finally
         {

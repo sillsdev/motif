@@ -355,7 +355,8 @@ public sealed class WorkspaceShellViewModelTests
             savedLimits.GetProperty("PerWordStepLimit").GetProperty("steps").GetInt64());
         var assess = Assert.Single(fake.AssessRequests);
         Assert.Null(assess.Selection);
-        Assert.Equal(8_000, assess.PerWordLimitMs);
+        // The estimated time is not sent as a limit, so the command sizes the safety net the way the CLI does.
+        Assert.Null(assess.PerWordLimitMs);
         Assert.Equal(StepCap.Default, assess.PerWordStepLimit);
         Assert.Collection(fake.UsageEntries,
             entry => Assert.Equal("project browse", entry.Command),
@@ -871,6 +872,27 @@ public sealed class WorkspaceShellViewModelTests
         Assert.Equal(timeLimitSeconds, workspace.Selection.PerWordTimeLimitSeconds);
         Assert.Equal(stepLimit, setup.StepLimitSteps);
         Assert.Equal(SIL.Motif.App.MotifAppStrings.UseThisSelection, setup.FinishButtonText);
+    }
+
+    [Theory]
+    [InlineData(SelectionTimeLimitMode.Estimated, null)]
+    [InlineData(SelectionTimeLimitMode.Explicit, 450)]
+    public async Task RunningTheSavedSelectionSendsATimeLimitOnlyWhenTheSelectionChoseOne(
+        SelectionTimeLimitMode mode, int? expectedLimitMs)
+    {
+        var (fake, projectPicker, _, _, workspace) = NewWorkspace();
+        fake.DefaultSelectionResponseIs(new DefaultSelectionResponse(new NamedSelectionProjection("Default", [TextId], [],
+            "created", "updated", new SelectionParsingLimits(new StepCap(1234), mode, mode == SelectionTimeLimitMode.Explicit ? 450 : null),
+            "revision")));
+        fake.ListTextsCompletesWith(new TextInventoryResponse([new TextChoiceSummary(TextId, "Alpha")], true));
+        await ChooseProjectAsync(fake, projectPicker, workspace, ProjectPath, NewToken());
+        fake.AssessCompletesWith(NewAssessResponse("saved selection"));
+
+        await workspace.Context.Setup!.RunDefaultSelectionAsync();
+
+        var request = Assert.Single(fake.AssessRequests);
+        Assert.Equal(expectedLimitMs, request.PerWordLimitMs);
+        Assert.Equal(new StepCap(1234), request.PerWordStepLimit);
     }
 
     [Fact]
