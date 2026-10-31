@@ -7,6 +7,7 @@ using Avalonia.Layout;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using SIL.Motif.App.ViewModels;
+using SIL.Motif.Commands.Queries;
 using SIL.Motif.App.Views;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Commands;
@@ -18,8 +19,9 @@ using Xunit;
 namespace SIL.Motif.Tests.App;
 
 /// <summary>
-/// Pins that every share on the Timing page is of the chosen words' whole measured parse time, that the time no
-/// rule recorded is shown as unattributed, and that no count is shown without saying what it counts.
+/// Pins that every share on the Timing page is of the chosen words' whole parser work, that the work no rule
+/// recorded is shown as unattributed, that work is counted in steps and never shown as milliseconds, and that no
+/// count is shown without saying what it counts.
 /// </summary>
 [Collection(AvaloniaHeadlessCollection.Name)]
 [Trait("MotifTestLevel", "Unit")]
@@ -62,6 +64,17 @@ public sealed class TimingSharesTests
         Assert.Equal(expected, TimingShare.FormatDuration(milliseconds));
     }
 
+    // The words' work steps are ten for each recorded millisecond, so a fixture reads the same in either unit.
+    private static long? WorkOf(int? milliseconds) => milliseconds * 10L;
+
+    private static readonly TimingWorkAggregate[] KindWork =
+    [
+        new("morph_rule", "morph_rule", "morph_rule", 4_800, false),
+        new("phon_rule", "phon_rule", "phon_rule", 1_600, false),
+        new("root_index", "root_index", "root_index", 400, false),
+        new("unattributed", "Not attributed", "unattributed", 1_200, true),
+    ];
+
     [Fact]
     public async Task TwoKindsSharingAKeySelectOnlyTheClickedObject()
     {
@@ -77,21 +90,46 @@ public sealed class TimingSharesTests
     }
 
     [Fact]
-    public async Task KindSharesAreOfTheWordsWholeParseTimeWithOtherTimeApart()
+    public async Task KindSharesAreOfTheWordsWholeWorkWithOtherWorkApart()
     {
         using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
-        var timing = await LoadedTiming(NineWords, Kinds, Rules);
+        var timing = await LoadedTiming(NineWords, Kinds, Rules, work: KindWork);
 
         Assert.Equal(
-            [("Morphological rules", "60%", "480 ms"), ("Phonological rules", "20%", "160 ms"),
-                ("Root lookup", "5%", "40 ms"), ("Not attributed", "15%", "120 ms")],
-            timing.KindShares.Select(share => (share.Label, share.ShareText, share.TimeText)));
+            [("Morphological rules", "60%", "4,800 work steps"), ("Phonological rules", "20%", "1,600 work steps"),
+                ("Root lookup", "5%", "400 work steps"), ("Not attributed", "15%", "1,200 work steps")],
+            timing.KindShares.Select(share => (share.Label, share.ShareText, share.WorkText)));
         Assert.Null(timing.KindShares[^1].Source);
         Assert.Equal(1d, timing.KindShares.Sum(share => share.Share!.Value), precision: 6);
-        Assert.Equal("Every share is of the 800 ms these 9 words took to parse.", timing.ShareDenominatorText);
-        Assert.Equal("Not attributed: 120 ms (15%).", timing.NotAttributedText);
-        Assert.Empty(timing.OverrunText);
+        Assert.Equal("Every share is of the 8,000 work steps these 9 words needed to parse.", timing.ShareDenominatorText);
+        Assert.Equal("Not attributed: 1,200 work steps (15%).", timing.NotAttributedText);
         Assert.Equal(["420 calls", "70 calls", "Not counted"], timing.KindCallShares.Select(share => share.CallsText));
+    }
+
+    [Fact]
+    public void TheHeadlineCountsWorkStepsAndNothingOnThePageIsInMilliseconds()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
+            var timing = await LoadedTiming(NineWords, Kinds, Rules, work: KindWork);
+            var window = new MotifTestWindow { Width = 1240, Height = 1400, Content = new TimingPage(timing) };
+            try
+            {
+                window.Show();
+                window.UpdateLayout();
+                Dispatcher.UIThread.RunJobs();
+                Assert.Equal("8,000 work steps", timing.HeadlineTotal);
+                Assert.Equal("90 work steps", timing.HeadlineMedian);
+                Assert.Equal("Median 90 work steps · 95th percentile 7,000 work steps", timing.PercentileSummary);
+                Assert.DoesNotContain(VisibleText(window), text => System.Text.RegularExpressions.Regex.IsMatch(
+                    text, @"\d\s?(ms|s)\b|millisecond", System.Text.RegularExpressions.RegexOptions.IgnoreCase));
+            }
+            finally
+            {
+                window.Close();
+            }
+        }, TimeSpan.FromSeconds(10));
     }
 
     [Fact]
@@ -108,30 +146,17 @@ public sealed class TimingSharesTests
     }
 
     [Fact]
-    public async Task SharesUseTheResponseForFractionalWordTime()
-    {
-        using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
-        var timing = await LoadedTiming([("fast", 1)],
-            [new TimingAggregateRow("morph_rule", "morph_rule", 0.9, 0.5, 1)], [],
-            attribution: new WordTimeAttribution(1, 1.8, 0.9, 0.9, 0.5, 0, false),
-            elapsedNs: [1_800_000]);
-
-        Assert.Equal("50%", timing.KindShares.Single(share => share.Source is not null).ShareText);
-        Assert.Equal("1.8 ms", timing.HeadlineTotal);
-    }
-
-    [Fact]
-    public async Task RuleSharesUseTheSameWholeParseTimeAndCountNoAttempts()
+    public async Task RuleSharesUseTheSameWholeWorkAndCountNoAttempts()
     {
         using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
         var timing = await LoadedTiming(NineWords, Kinds, Rules);
 
-        Assert.Equal("SHARE OF 800 ms", timing.RuleShareHeader);
-        Assert.Equal([("Subject agreement", "Morphological rules", "288 ms", "36%", "6"),
-                ("Vowel harmony", "Phonological rules", "120 ms", "15%", "7")],
-            timing.RuleShares.Select(share => (share.Label, share.KindLabel, share.TimeText, share.ShareText,
+        Assert.Equal("SHARE OF 8,000 work steps", timing.RuleShareHeader);
+        Assert.Equal([("Subject agreement", "Morphological rules", "2,880", "36%", "6"),
+                ("Vowel harmony", "Phonological rules", "1,200", "15%", "7")],
+            timing.RuleShares.Select(share => (share.Label, share.KindLabel, share.WorkCountText, share.ShareText,
                 share.WordsText)));
-        Assert.Equal("288 ms · 36% of these 9 words' 800 ms · recorded in 6 words", timing.RuleSummary);
+        Assert.Equal("2,880 work steps · 36% of these 9 words' 8,000 work steps · recorded in 6 words", timing.RuleSummary);
         Assert.DoesNotContain("attempt", timing.RuleSummary, StringComparison.OrdinalIgnoreCase);
     }
 
@@ -171,85 +196,85 @@ public sealed class TimingSharesTests
         Assert.Equal("guid-2", timing.SelectedRule?.Key);
         Assert.Equal("Plural", timing.SelectedRuleName);
         Assert.Equal([false, true], timing.RuleRows.Select(row => row.IsChosen));
-        Assert.StartsWith("100 ms", timing.RuleSummary, StringComparison.Ordinal);
+        Assert.StartsWith("1,000 work steps", timing.RuleSummary, StringComparison.Ordinal);
     }
 
     [Fact]
-    public async Task ARulesCostliestWordsSayTheyAreTheRulesTimeNotTheWordsWholeTime()
+    public async Task ARulesCostliestWordsSayTheyAreTheRulesWorkNotTheWordsWholeWork()
     {
         using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
         var timing = await LoadedTiming(NineWords, Kinds, Rules,
-            [new WordRuleTiming("mwalimu", 180, 900) { WordTimeMs = 700 },
-                new WordRuleTiming("hawajafika", 34, 200) { WordTimeMs = 48 }]);
+            [new WordRuleTiming("mwalimu", 180, 900) { WordTimeMs = 700, WorkSteps = 1_800, WordWorkSteps = 7_000 },
+                new WordRuleTiming("hawajafika", 34, 200) { WordTimeMs = 48, WorkSteps = 340, WordWorkSteps = 480 }]);
 
-        Assert.Equal(["180 ms of its 700 ms", "34 ms of its 48 ms"],
+        Assert.Equal(["1,800 work steps of its 7,000 work steps", "340 work steps of its 480 work steps"],
             timing.CostliestRuleWordRows.Select(word => word.TimeText));
     }
 
     [Fact]
-    public async Task CostliestRuleWordsUseTheirExactWholeParseTimeWhenMillisecondsAreRoundedOrMissing()
+    public async Task ACostliestWordWithNoRuleWorkCountSaysWorkStepsNotRecordedAndNeverMilliseconds()
     {
         using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
-        var timing = await LoadedTiming([("rounded", 0), ("nanoseconds-only", null)], Kinds, Rules,
-            [
-                new WordRuleTiming("rounded", 0.4, 1) { WordTimeMs = 0.8 },
-                new WordRuleTiming("nanoseconds-only", 0.2, 1) { WordTimeMs = 0.5 },
-            ], elapsedNs: [800_000, 500_000]);
+        var timing = await LoadedTiming(NineWords, Kinds, Rules,
+            [new WordRuleTiming("mwalimu", 180, 900) { WordTimeMs = 700 }]);
 
-        Assert.Equal(["0.4 ms of its 0.8 ms", "0.2 ms of its 0.5 ms"],
-            timing.CostliestRuleWordRows.Select(word => word.TimeText));
+        Assert.Equal(["work steps not recorded"], timing.CostliestRuleWordRows.Select(word => word.TimeText));
     }
 
     [Fact]
-    public async Task UnattributedTimeAndOverrunAreShownSeparately()
+    public async Task UnattributedWorkIsShownApart()
     {
         using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
         var timing = await LoadedTiming([("dogs", 10), ("cats", 20)],
             [new TimingAggregateRow("morph_rule", "morph_rule", 17, 17d / 30, 2)], [],
-            attribution: new WordTimeAttribution(2, 30, 17, 15, 0.5, 2, true));
+            work: [new("morph_rule", "morph_rule", "morph_rule", 150, false),
+                new("unattributed", "Not attributed", "unattributed", 150, true)]);
 
-        var notAttributed = timing.KindShares.Single(share => share.Source is null);
-        Assert.Equal("15 ms", notAttributed.TimeText);
+        var notAttributed = timing.KindShares.Single(share => share.IsNotAttributed);
+        Assert.Equal("150 work steps", notAttributed.WorkText);
         Assert.Equal("50%", notAttributed.ShareText);
-        Assert.Equal("Not attributed: 15 ms (50%).", timing.NotAttributedText);
-        Assert.Equal("Overrun: 2 ms.", timing.OverrunText);
+        Assert.Equal("Not attributed: 150 work steps (50%).", timing.NotAttributedText);
     }
 
     [Fact]
-    public async Task MissingObjectTimingStaysNotRecorded()
+    public async Task WorkNotKeptByObjectSaysSoInsteadOfInventingShares()
     {
         using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
-        var timing = await LoadedTiming([("dogs", 10)], [], [],
-            attribution: new WordTimeAttribution(1, 10, 0, null, null, 0, false));
+        var timing = await LoadedTiming([("dogs", 10)], [new TimingAggregateRow("morph_rule", "morph_rule", 4, 0.4, 1)],
+            [new TimingAggregateRow("Plural", "Plural", 4, 0.4, 1) { Kind = "morph_rule" }], work: []);
 
-        var notAttributed = Assert.Single(timing.KindShares);
-        Assert.Equal("Not attributed", notAttributed.Label);
-        Assert.Equal("Not recorded", notAttributed.TimeText);
-        Assert.Equal("Not recorded", notAttributed.ShareText);
+        Assert.Equal("100 work steps", timing.HeadlineTotal);
+        Assert.Empty(timing.KindShares);
+        Assert.Equal("Work steps by kind and by rule were not kept for these words, so no shares are shown.",
+            timing.ShareDenominatorText);
         Assert.Equal("Not attributed: Not recorded.", timing.NotAttributedText);
-        Assert.Empty(timing.OverrunText);
+        var rule = Assert.Single(timing.RuleRows).Share;
+        Assert.Equal("Plural", rule.Label);
+        Assert.Equal("Not recorded", rule.WorkCountText);
+        Assert.Equal("—", rule.ShareText);
     }
 
     [Fact]
     public async Task MissingPercentilesAreNamedAsNotRecorded()
     {
         using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
-        var timing = await LoadedTiming(NineWords, Kinds, Rules, medianMs: null, percentile95Ms: null);
+        var timing = await LoadedTiming(NineWords, Kinds, Rules, summary: new WordWorkSummary(9, 8_000, null, null));
 
         Assert.Equal("Median not recorded · 95th percentile not recorded", timing.PercentileSummary);
     }
 
     [Fact]
-    public async Task ShareUsesTheWholeWordTimeDenominatorFromTheResponse()
+    public async Task ShareUsesTheWholeWorkDenominatorFromTheResponse()
     {
         using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
-        var timing = await LoadedTiming([("mwalimu", 800)],
+        var timing = await LoadedTiming([("mwalimu", 80)],
             [new TimingAggregateRow("morph_rule", "morph_rule", 300, 0.375, 1) { Calls = 4 }], [],
-            attribution: new WordTimeAttribution(1, 800, 300, 500, 0.625, 0, false));
+            work: [new("morph_rule", "morph_rule", "morph_rule", 300, false),
+                new("unattributed", "Not attributed", "unattributed", 500, true)]);
 
-        Assert.Equal("800 ms", timing.HeadlineTotal);
+        Assert.Equal("800 work steps", timing.HeadlineTotal);
         Assert.Equal("38%", timing.KindShares.Single(share => share.Source is not null).ShareText);
-        Assert.Equal("Not attributed: 500 ms (62%).", timing.NotAttributedText);
+        Assert.Equal("Not attributed: 500 work steps (62%).", timing.NotAttributedText);
     }
 
     [Fact]
@@ -292,7 +317,7 @@ public sealed class TimingSharesTests
         var timing = await LoadedTiming([("dogs", 10), ("cats", null), ("birds", 6)], [], []);
 
         Assert.Equal("for 2 of these 3 words", timing.HeadlineTotalCaption);
-        Assert.Equal("Every share is of the 16 ms 2 of these 3 words took to parse; 1 has no parse time.",
+        Assert.Equal("Every share is of the 160 work steps 2 of these 3 words needed to parse; 1 has no work steps recorded.",
             timing.ShareDenominatorText);
     }
 
@@ -337,12 +362,13 @@ public sealed class TimingSharesTests
                 Dispatcher.UIThread.RunJobs();
                 var shown = window.GetLogicalDescendants().OfType<TextBlock>()
                     .Where(text => text.IsEffectivelyVisible).Select(text => text.Text).ToArray();
-                Assert.Contains("SHARE OF 800 ms", shown);
-                Assert.Contains("TIME", shown);
+                Assert.Contains("SHARE OF 8,000 work steps", shown);
+                Assert.Contains("WORK STEPS", shown);
                 Assert.Contains("Not attributed", shown);
-                Assert.Contains("Every share is of the 800 ms these 9 words took to parse.", shown);
+                Assert.Contains("Every share is of the 8,000 work steps these 9 words needed to parse.", shown);
                 Assert.DoesNotContain("ATTEMPTS", shown);
                 Assert.DoesNotContain("SHARE OF TIME", shown);
+                Assert.DoesNotContain("TIME", shown);
             }
             finally
             {
@@ -558,23 +584,35 @@ public sealed class TimingSharesTests
 
     private static async Task<TimingPageModel> LoadedTiming((string Word, int? Ms)[] words,
         TimingAggregateRow[] kinds, TimingAggregateRow[] rules, WordRuleTiming[]? costliest = null,
-        WordTimeAttribution? attribution = null, IReadOnlyList<long?>? elapsedNs = null,
-        TraceTimingKey? requestedRule = null, double? medianMs = 9, double? percentile95Ms = 700,
-        string? stepLimitedWord = null)
+        IReadOnlyList<long?>? elapsedNs = null, TraceTimingKey? requestedRule = null,
+        string? stepLimitedWord = null, IReadOnlyList<TimingWorkAggregate>? work = null, WordWorkSummary? summary = null)
     {
         var fake = new FakeCommandClient();
         var context = WorkspaceContextTests.NewContext(fake);
         var timing = new TimingPageModel(context);
+        var wordWork = words.Select(word => WorkOf(word.Ms)).ToArray();
+        var wholeWork = wordWork.Sum() ?? 0;
+        // By default the work steps by object are the rules given, with the rest of the words' work unattributed.
+        work ??= wholeWork == 0 ? [] :
+        [
+            .. rules.Select(rule => new TimingWorkAggregate(rule.Key, rule.Name, rule.Kind, (long)(rule.SelfMs * 10), false)
+                { IdentityQuality = rule.IdentityQuality, Scope = rule.Scope }),
+            new TimingWorkAggregate("unattributed", "Not attributed", "unattributed",
+                Math.Max(0, wholeWork - rules.Sum(rule => (long)(rule.SelfMs * 10))), true),
+        ];
         fake.OnTiming((request, _) => Task.FromResult(CommandOutcome<TimingResponse>.Success(
-            new TimingResponse("assessment-parse", request.WordSet, request.By, words.Length, medianMs, percentile95Ms, [],
+            new TimingResponse("assessment-parse", request.WordSet, request.By, words.Length, 9, 700, [],
                 request.By == "kind" ? kinds : rules, request.Rule is null ? [] : costliest ?? [])
             {
                 Words = words.Select((word, index) => new TimingWordRow(word.Word, word.Ms,
                     word.Word == stepLimitedWord ? TimingCompletion.StepLimit : TimingCompletion.Finished)
                 {
                     ElapsedNs = elapsedNs is not null && index < elapsedNs.Count ? elapsedNs[index] : null,
+                    WorkSteps = wordWork[index],
                 }).ToArray(),
-                Attribution = attribution ?? AttributionFor(words, kinds),
+                Attribution = AttributionFor(words, kinds),
+                WorkStepAggregates = work,
+                Work = summary ?? TimingAggregation.SummarizeWork(wordWork),
             })));
         await context.OpenProjectAsync(ProjectPath);
         context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.Now, WasRerun: false));

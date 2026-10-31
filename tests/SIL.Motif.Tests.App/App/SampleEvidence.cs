@@ -40,7 +40,11 @@ internal static class SampleEvidence
         {
             Morphology = word.Morphology, IsIncomplete = word.IsIncomplete, ProjectStanding = word.ProjectStanding,
             ReadingGrades = word.ReadingGrades,
+            WorkSteps = WorkStepsOf(word.Word),
         }).ToArray();
+
+    // The word's object work plus a fixed unattributed remainder, so objects and remainder add up to the total.
+    private static long WorkStepsOf(string word) => ObjectTimings.Where(row => row.Word == word).Sum(row => row.WorkSteps!.Value) + 5;
 
     public static TimingResponse Timing(AssessCommandResponse assessment, string by, TraceTimingKey? rule = null,
         IReadOnlyList<string>? selected = null)
@@ -52,7 +56,8 @@ internal static class SampleEvidence
         var work = ObjectTimings.Where(row => selectedNames.Contains(row.Word)).ToArray();
         var workByObject = work.GroupBy(row => (row.Kind, row.Key, row.Object))
             .Select(group => new TimingWorkAggregate(group.Key.Key, group.Key.Object, group.Key.Kind,
-                group.Sum(row => row.WorkSteps!.Value), false)).ToList();
+                group.Sum(row => row.WorkSteps!.Value), false)
+                { IdentityQuality = group.First().IdentityQuality, Scope = group.First().Scope }).ToList();
         if (words.Length > 0) workByObject.Add(new("unattributed", "Unattributed", "unattributed", 5L * words.Length, true));
         return new TimingResponse("assessment/one", "all", by, words.Length, summary.MedianMs, summary.Percentile95Ms,
             summary.SlowestWords, aggregation.Aggregates, aggregation.CostliestWords)
@@ -61,12 +66,13 @@ internal static class SampleEvidence
                 word.IsIncomplete ? TimingCompletion.StepLimit : TimingCompletion.Finished)
             {
                 ElapsedNs = word.ElapsedMs * 1_000_000L,
-                WorkSteps = work.Where(row => row.Word == word.Word).Sum(row => row.WorkSteps!.Value) + 5,
+                WorkSteps = WorkStepsOf(word.Word),
                 Origin = new WordMeasurementOrigin("assessment/one", "invocation/one",
                     DateTimeOffset.Parse("2026-09-22T10:18:00Z")),
             }).ToArray(),
             Attribution = aggregation.Attribution,
             WorkStepAggregates = workByObject,
+            Work = TimingAggregation.SummarizeWork(words.Select(word => (long?)word.WorkSteps)),
         };
     }
 
@@ -77,7 +83,10 @@ internal static class SampleEvidence
         int Outcome(WordRowOutcome outcome) => comparisons.Count(row => row.Outcome == outcome);
         int Cell(string standing, WordRowOutcome outcome) => comparisons.Count(row => row.Standing == standing && row.Outcome == outcome);
         int Standing(string standing) => comparisons.Count(row => row.Standing == standing);
-        var timing = TimingAggregation.SummarizeWords(Measured(assessment), ObjectTimings);
+        var timing = TimingAggregation.SummarizeWords(Measured(assessment), ObjectTimings) with
+        {
+            WorkStepAggregates = Timing(assessment, "rule").WorkStepAggregates,
+        };
         var warnings = SeededGrammarFindings.All();
         var saved = DateTimeOffset.Parse("2026-09-22T09:18:00Z");
         var parsed = Outcome(WordRowOutcome.Same) + Outcome(WordRowOutcome.Different);
@@ -112,7 +121,11 @@ internal static class SampleEvidence
                     { Standing: ProjectStanding.Approved, Outcome: WordRowOutcome.NoParse }).Select(word => word.Word).ToArray(),
                 [], words.Where(word => word.IsIncomplete).Select(word => word.Word).ToArray(),
                 words.Where(word => word.IsIncomplete).Sum(word => word.ElapsedMs),
-                Cell(ProjectStanding.Candidate, WordRowOutcome.Different)) { SharedLostMorphemesAvailable = true },
+                Cell(ProjectStanding.Candidate, WordRowOutcome.Different))
+            {
+                SharedLostMorphemesAvailable = true,
+                StepLimitedWordWorkSteps = words.Where(word => word.IsIncomplete).Sum(word => WorkStepsOf(word.Word)),
+            },
         };
     }
 }

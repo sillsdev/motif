@@ -224,6 +224,7 @@
             </DockPanel>
             <TextBlock Classes="overviewTileDetail" Text="{Binding SpeedMain}" TextWrapping="Wrap" AutomationProperties.AutomationId="{x:Static app:AutomationIds.OverviewSpeed}" />
             <TextBlock Classes="overviewMuted" Text="{Binding SpeedMedian}" TextWrapping="Wrap" />
+            <TextBlock Classes="overviewMuted" Text="{Binding SpeedElapsed}" TextWrapping="Wrap" IsVisible="{Binding SpeedElapsed, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
             <TextBlock Classes="overviewMuted" Text="{Binding SpeedDetails}" TextWrapping="Wrap" IsVisible="{Binding SpeedDetails, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
             <views:ProgressiveItemsControl x:Name="OverviewTimingRows" Grid.IsSharedSizeScope="True" FullItemsSource="{Binding TimingKindShares}" AutomationProperties.Name="{x:Static app:MotifAppStrings.OverviewTimeByKindAccessibleName}">
               <ItemsControl.ItemTemplate>
@@ -238,7 +239,7 @@
                       </Grid.ColumnDefinitions>
                       <TextBlock Text="{Binding Label}" TextWrapping="Wrap" />
                       <TextBlock Grid.Column="1" Text="{Binding ShareText}" FontWeight="{DynamicResource Intent.Weight.Section}" HorizontalAlignment="Right" />
-                      <TextBlock Grid.Column="2" Text="{Binding TimeText}" Classes="overviewMuted" HorizontalAlignment="Right" />
+                      <TextBlock Grid.Column="2" Text="{Binding WorkText}" Classes="overviewMuted" HorizontalAlignment="Right" />
                       <views:OverviewShareBar Grid.Column="3" Value="{Binding Share}" Total="1" Kind="{Binding Kind}" />
                     </Grid>
                   </Border>
@@ -261,7 +262,7 @@
                         <views:CopyableTextBlock Text="{Binding Word}" FontWeight="{DynamicResource Intent.Weight.Section}" TextWrapping="Wrap" controls:WritingSystemText.Id="{Binding $parent[views:OverviewPage].Page.Context.TextStyles.DefaultVernacularId}" controls:WritingSystemText.StyleName="Normal" />
                       </HyperlinkButton>
                       <views:MarkChip Grid.Column="1" Mark="{Binding Outcome}" Text="{Binding Outcome.Word}" IsVisible="{Binding HasOutcome}" />
-                      <TextBlock Grid.Column="2" Text="{Binding TimeText}" Classes="overviewMuted" HorizontalAlignment="Right" />
+                      <TextBlock Grid.Column="2" Text="{Binding WorkText}" Classes="overviewMuted" HorizontalAlignment="Right" />
                     </Grid>
                   </Border>
                 </DataTemplate>

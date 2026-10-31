@@ -193,7 +193,7 @@
                             <Border Classes="outcomeSegment swatch" Background="{Binding Brush}" />
                             <views:CopyableTextBlock Text="{Binding Row.Label}" />
                             <views:CopyableTextBlock Text="{Binding Row.ShareText}" FontWeight="{DynamicResource Intent.Weight.Strong}" />
-                            <views:CopyableTextBlock Classes="muted" Text="{Binding Row.TimeText, StringFormat='{}· {0}'}" />
+                            <views:CopyableTextBlock Classes="muted" Text="{Binding Row.WorkText, StringFormat='{}· {0}'}" />
                           </StackPanel>
                         </DataTemplate>
                       </ItemsControl.ItemTemplate>
@@ -219,11 +219,6 @@
                       </DataTemplate>
                     </ItemsControl.ItemTemplate>
                   </ItemsControl>
-                  <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
-                    <views:CopyableTextBlock Classes="muted" Text="{Binding OverrunText}"
-                                             IsVisible="{Binding HasOverrun}"
-                                             AutomationProperties.Name="{x:Static app:MotifAppStrings.TimingOverrunAccessibleName}" />
-                  </StackPanel>
                 </StackPanel>
               </Border>
 
@@ -288,7 +283,7 @@
                               <views:CopyableTextBlock Grid.Column="1" Classes="muted" Text="{Binding Share.KindLabel}"
                                                        TextTrimming="CharacterEllipsis"
                                                        IsVisible="{Binding $parent[views:TimingPage].Page.Context.Inspector, Converter={x:Static ObjectConverters.IsNull}}" />
-                              <views:CopyableTextBlock Grid.Column="2" Classes="muted" Text="{Binding Share.TimeText}"
+                              <views:CopyableTextBlock Grid.Column="2" Classes="muted" Text="{Binding Share.WorkCountText}"
                                                        TextTrimming="CharacterEllipsis" />
                               <views:CopyableTextBlock Grid.Column="3" Text="{Binding Share.ShareText}"
                                                        TextTrimming="CharacterEllipsis" />

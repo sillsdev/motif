@@ -1407,8 +1407,6 @@ public static class MotifAppStrings
 
     public static string CallsByKindAccessibleName => Text("MotifApp.CallsByKindAccessibleName");
 
-    public static string TimingOverrunAccessibleName => Text("MotifApp.TimingOverrunAccessibleName");
-
     public static string TimingByRuleAccessibleName => Text("MotifApp.TimingByRuleAccessibleName");
 
     public static string OpenTheGrammarWarningAccessibleName => Text("MotifApp.OpenTheGrammarWarningAccessibleName");
@@ -1941,6 +1939,8 @@ public static class MotifAppStrings
 
     public static string TimingNoSharesShown => Text("MotifApp.TimingNoSharesShown");
 
+    public static string TimingWorkByObjectUnavailable => Text("MotifApp.TimingWorkByObjectUnavailable");
+
     public static string TimingShareOfFormat => Text("MotifApp.TimingShareOfFormat");
 
     public static string TimingShareOfOneMissingFormat => Text("MotifApp.TimingShareOfOneMissingFormat");
@@ -1952,8 +1952,6 @@ public static class MotifAppStrings
     public static string TimingNotAttributedWithShareFormat => Text("MotifApp.TimingNotAttributedWithShareFormat");
 
     public static string TimingNotAttributedFormat => Text("MotifApp.TimingNotAttributedFormat");
-
-    public static string TimingOverrunFormat => Text("MotifApp.TimingOverrunFormat");
 
     public static string TimingNoStoredTimingForWords => Text("MotifApp.TimingNoStoredTimingForWords");
 
@@ -3197,6 +3195,8 @@ public static class MotifAppStrings
 
     public static string OverviewSpeedMedianFormat => Text("MotifApp.OverviewSpeedMedianFormat");
 
+    public static string OverviewSpeedElapsedFormat => Text("MotifApp.OverviewSpeedElapsedFormat");
+
     public static string OverviewSpeedMedianWithPercentileFormat => Text("MotifApp.OverviewSpeedMedianWithPercentileFormat");
 
     public static string OverviewSpeedStoppedPattern => Text("MotifApp.OverviewSpeedStoppedPattern");
@@ -3206,8 +3206,6 @@ public static class MotifAppStrings
     public static string OverviewSlowestWordFormat => Text("MotifApp.OverviewSlowestWordFormat");
 
     public static string OverviewSlowestStoppedWordFormat => Text("MotifApp.OverviewSlowestStoppedWordFormat");
-
-    public static string OverviewTimingOverrunFormat => Text("MotifApp.OverviewTimingOverrunFormat");
 
     public static string TraceParsed => Text("MotifApp.TraceParsed");
 

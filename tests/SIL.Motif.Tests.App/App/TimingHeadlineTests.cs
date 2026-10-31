@@ -33,7 +33,7 @@ public sealed class TimingHeadlineTests
     ];
 
     [Fact]
-    public async Task TheHeadlineGivesTotalTimeMedianAndStoppedWordsForAllWords()
+    public async Task TheHeadlineGivesTotalWorkMedianAndStoppedWordsForAllWords()
     {
         var (fake, context) = NewContext();
         var timing = new TimingPageModel(context);
@@ -43,9 +43,9 @@ public sealed class TimingHeadlineTests
         context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.Now, WasRerun: false));
 
         Assert.True(timing.HasHeadline);
-        Assert.Equal("800 ms", timing.HeadlineTotal);
+        Assert.Equal("8,000 work steps", timing.HeadlineTotal);
         Assert.Equal("for all 9 words", timing.HeadlineTotalCaption);
-        Assert.Equal("9 ms", timing.HeadlineMedian);
+        Assert.Equal("90 work steps", timing.HeadlineMedian);
         Assert.Equal("1", timing.HeadlineStopped);
         Assert.Equal("stopped at a search limit", timing.HeadlineStoppedCaption);
         Assert.True(timing.IsAllSelected);
@@ -64,7 +64,7 @@ public sealed class TimingHeadlineTests
             Response(request) with
             {
                 Words = NineWords.Select(word => new TimingWordRow(word.Word, word.Ms,
-                    word.Word == "mwalimu" ? "Time limit" : word.Completion)).ToArray(),
+                    word.Word == "mwalimu" ? "Time limit" : word.Completion) { WorkSteps = word.Ms * 10L }).ToArray(),
             })));
         await context.OpenProjectAsync(ProjectPath);
 
@@ -90,7 +90,7 @@ public sealed class TimingHeadlineTests
     }
 
     [Fact]
-    public async Task NanosecondOnlyWordsCountAsMeasuredForTheHeadline()
+    public async Task WordsWithWorkStepsButNoMillisecondsCountAsMeasuredForTheHeadline()
     {
         var (fake, context) = NewContext();
         var timing = new TimingPageModel(context);
@@ -99,10 +99,11 @@ public sealed class TimingHeadlineTests
             {
                 Words =
                 [
-                    new TimingWordRow("quick", null, TimingCompletion.Finished) { ElapsedNs = 800_000 },
-                    new TimingWordRow("quicker", null, TimingCompletion.Finished) { ElapsedNs = 200_000 },
+                    new TimingWordRow("quick", null, TimingCompletion.Finished) { ElapsedNs = 800_000, WorkSteps = 80 },
+                    new TimingWordRow("quicker", null, TimingCompletion.Finished) { ElapsedNs = 200_000, WorkSteps = 20 },
                     new TimingWordRow("missing", null, TimingCompletion.Finished),
                 ],
+                Work = new WordWorkSummary(2, 100, 50, 80),
                 Attribution = new WordTimeAttribution(2, 1, 1, 0, 0, 0, false),
             })));
         await context.OpenProjectAsync(ProjectPath);
@@ -110,6 +111,7 @@ public sealed class TimingHeadlineTests
         context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.Now, WasRerun: false));
 
         Assert.True(timing.HasHeadline);
+        Assert.Equal("100 work steps", timing.HeadlineTotal);
         Assert.Equal("for 2 of the 3 words", timing.HeadlineTotalCaption);
     }
 
@@ -119,7 +121,7 @@ public sealed class TimingHeadlineTests
         var (fake, context) = NewContext();
         var timing = new TimingPageModel(context);
         fake.OnTiming((request, _) => Task.FromResult(CommandOutcome<TimingResponse>.Success(
-            Response(request) with { MedianMs = null, Percentile95Ms = null })));
+            Response(request) with { Work = new WordWorkSummary(9, 8_000, null, null) })));
         await context.OpenProjectAsync(ProjectPath);
 
         context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.Now, WasRerun: false));
@@ -139,7 +141,7 @@ public sealed class TimingHeadlineTests
 
         Assert.False(timing.HasHeadline);
         Assert.True(timing.ShowNoTimingRecorded);
-        Assert.Equal("No parse times were recorded for these words.", TimingPageModel.NoTimingRecordedText);
+        Assert.Equal("No work steps were recorded for these words.", TimingPageModel.NoTimingRecordedText);
         Assert.Empty(fake.TimingRequests);
     }
 
@@ -275,7 +277,7 @@ public sealed class TimingHeadlineTests
                 Dispatcher.UIThread.RunJobs();
                 var texts = window.GetLogicalDescendants().OfType<TextBlock>()
                     .Where(text => text.IsEffectivelyVisible).ToArray();
-                var headline = texts.First(text => text.Text == "800 ms");
+                var headline = texts.First(text => text.Text == "8,000 work steps");
                 var lookAt = texts.First(text => text.Text == "Words");
                 Assert.True(headline.TranslatePoint(default, window)!.Value.Y <
                     lookAt.TranslatePoint(default, window)!.Value.Y);
@@ -333,8 +335,10 @@ public sealed class TimingHeadlineTests
             [new SlowWordTiming("mwalimu", 700), new SlowWordTiming("hawajafika", 48)],
             request.By == "kind" ? [new TimingAggregateRow("Morphological rules", "Morphological rules", 800, 1, 9)] : [], [])
         {
-            Words = NineWords.Select(word => new TimingWordRow(word.Word, word.Ms, word.Completion)).ToArray(),
+            Words = NineWords.Select(word => new TimingWordRow(word.Word, word.Ms, word.Completion) { WorkSteps = word.Ms * 10L }).ToArray(),
             Attribution = new WordTimeAttribution(9, 800, 800, 0, 0, 0, false),
+            Work = new WordWorkSummary(9, 8_000, 90, 7_000),
+            WorkStepAggregates = request.By == "kind" ? [new TimingWorkAggregate("morph_rule", "morph_rule", "morph_rule", 8_000, false)] : [],
         };
 
     private static AssessCommandResponse Assessment() => new(

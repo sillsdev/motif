@@ -144,7 +144,7 @@ public sealed class OverviewPageWordsTests
     }
 
     [Fact]
-    public async Task TheSpeedTileLeadsWithTheStoredWordCountAndTotalParseTime()
+    public async Task TheSpeedTileLeadsWithTheStoredWordCountAndTotalWorkSteps()
     {
         using var culture = new CultureScope(System.Globalization.CultureInfo.GetCultureInfo("en-US"));
         var (fake, context) = NewContext();
@@ -153,10 +153,11 @@ public sealed class OverviewPageWordsTests
 
         await context.OpenProjectAsync(ProjectPath);
 
-        Assert.Equal("142 words · 38.0 s total word time", page.SpeedMain);
-        Assert.Equal("median 6.4 ms a word · 95th percentile 48 ms", page.SpeedMedian);
+        Assert.Equal("142 words · 380,000 work steps in total", page.SpeedMain);
+        Assert.Equal("Took 38.0 s on this computer", page.SpeedElapsed);
+        Assert.Equal("median 64 work steps a word · 95th percentile 482 work steps", page.SpeedMedian);
         Assert.Equal("3 stopped at a search limit", page.SpeedDetails);
-        Assert.Equal([("mwalimu", "700 ms"), ("hawajafika", "48 ms")],
+        Assert.Equal([("mwalimu", "7,000 work steps"), ("hawajafika", "480 work steps")],
             page.SlowestWordRows.Select(row => (row.Word, row.TimeText)));
         Assert.Equal([("Morphological rules", "56%"), ("Phonological rules", "21%"),
                       ("Lexical entries", "7%"), ("Root lookup", "4%"), ("Not attributed", "12%")],
@@ -181,7 +182,7 @@ public sealed class OverviewPageWordsTests
                     .Select(text => text.Text ?? string.Empty).ToArray();
                 Assert.Contains("mwalimu", words);
                 Assert.Contains("Stopped", words);
-                Assert.Contains("700 ms", words);
+                Assert.Contains("7,000 work steps", words);
                 Assert.Empty(slowest.GetLogicalDescendants().OfType<SIL.Motif.App.Controls.WordPresentation.WordRow>());
             }
             finally
@@ -192,7 +193,7 @@ public sealed class OverviewPageWordsTests
     }
 
     [Fact]
-    public async Task TheSpeedTileRoundsPercentilesAndSlowestWordsForReading()
+    public async Task TheSpeedTileRoundsMedianWorkToWholeStepsAndNamesAWordWithNoCount()
     {
         using var culture = new CultureScope(System.Globalization.CultureInfo.GetCultureInfo("en-US"));
         var (fake, context) = NewContext();
@@ -201,18 +202,19 @@ public sealed class OverviewPageWordsTests
         {
             Timing = Populated().Timing with
             {
-                MedianMs = 0.123456,
-                Percentile95Ms = 0.654321,
-                SlowestWords = [new SlowWordTiming("z-slowest", 0.800001), new SlowWordTiming("a-next", 0.8)],
+                Work = new WordWorkSummary(2, 9, 1.5, 7.2),
+                SlowestWords = [new SlowWordTiming("z-slowest", 0.800001) { WorkSteps = 8 },
+                    new SlowWordTiming("a-next", 0.8)],
                 MeasuredWordCount = 2,
             },
         });
 
         await context.OpenProjectAsync(ProjectPath);
 
-        Assert.Equal("median 0.1 ms a word · 95th percentile 0.7 ms", page.SpeedMedian);
-        Assert.Equal([("z-slowest", "0.8 ms"), ("a-next", "0.8 ms")],
+        Assert.Equal("median 2 work steps a word · 95th percentile 7 work steps", page.SpeedMedian);
+        Assert.Equal([("z-slowest", "8 work steps"), ("a-next", "work steps not recorded")],
             page.SlowestWordRows.Select(row => (row.Word, row.TimeText)));
+        Assert.DoesNotContain(page.SlowestTableRows, row => row.WorkText.Contains("ms", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -239,16 +241,17 @@ public sealed class OverviewPageWordsTests
         var mwalimu = page.SlowestWordRows[0];
         Assert.True(mwalimu.HasCard);
         Assert.Same(context.Assess.Words.Find("mwalimu")!.WordRow, mwalimu.Row);
-        Assert.Equal("700 ms", mwalimu.TimeText);
+        Assert.Equal("7,000 work steps", mwalimu.TimeText);
         Assert.Equal(Mark.Stopped, page.SlowestTableRows[0].Outcome);
         Assert.Null(page.SlowestTableRows[1].Outcome);
     }
 
     [Theory]
-    [InlineData(1, 0.045, "1 word · 45 ms total word time")]
-    [InlineData(9, 0.8, "9 words · 800 ms total word time")]
-    [InlineData(1318, 612.4, "1,318 words · 612.4 s total word time")]
-    public async Task TheSpeedHeadlineReadsInTheUnitThatSuitsTheTotal(int words, double seconds, string expected)
+    [InlineData(1, 45, 0.045, "1 word · 45 work steps in total", "Took 45 ms on this computer")]
+    [InlineData(9, 8_000, 0.8, "9 words · 8,000 work steps in total", "Took 800 ms on this computer")]
+    [InlineData(1318, 6_124_000, 612.4, "1,318 words · 6,124,000 work steps in total", "Took 612.4 s on this computer")]
+    public async Task TheSpeedHeadlineCountsWorkStepsAndKeepsTheRunsElapsedTimeApart(int words, long work,
+        double seconds, string expectedMain, string expectedElapsed)
     {
         using var culture = new CultureScope(System.Globalization.CultureInfo.GetCultureInfo("en-US"));
         var (fake, context) = NewContext();
@@ -256,25 +259,30 @@ public sealed class OverviewPageWordsTests
         fake.OverviewCompletesWith(Populated() with
         {
             AssessmentElapsedSeconds = seconds,
-            Timing = Populated().Timing with { MeasuredWordCount = words },
+            Timing = Populated().Timing with { Work = new WordWorkSummary(words, work, 1, 1) },
         });
 
         await context.OpenProjectAsync(ProjectPath);
 
-        Assert.Equal(expected, page.SpeedMain);
+        Assert.Equal(expectedMain, page.SpeedMain);
+        Assert.Equal(expectedElapsed, page.SpeedElapsed);
     }
 
     [Theory]
-    [InlineData(0.04, 0.4)]
-    [InlineData(0.05, 0.5)]
-    public async Task APositiveSubMillisecondResidualAndItsShareRemainOnTheOverview(double residualMs, double share)
+    [InlineData(4, 0.4)]
+    [InlineData(5, 0.5)]
+    public async Task APositiveUnattributedRemainderAndItsShareRemainOnTheOverview(long residual, double share)
     {
         var timing = new OverviewTiming(0.1, 0.1, [], 0)
         {
             MeasuredWordCount = 1,
-            Kinds = [new TimingAggregateRow("morph_rule", "morph_rule", 0.1 - residualMs, 1 - share, 1)
-                { Kind = "morph_rule" }],
-            Attribution = new WordTimeAttribution(1, 0.1, 0.1 - residualMs, residualMs, share, 0, false),
+            Work = new WordWorkSummary(1, 10, 10, 10),
+            Kinds = [new TimingAggregateRow("morph_rule", "morph_rule", 0.1, 1, 1) { Kind = "morph_rule" }],
+            WorkStepAggregates =
+            [
+                new TimingWorkAggregate("morph_rule", "morph_rule", "morph_rule", 10 - residual, false),
+                new TimingWorkAggregate("unattributed", "Not attributed", "unattributed", residual, true),
+            ],
         };
         var response = Populated() with { Timing = timing };
         var (fake, context) = NewContext();
@@ -283,13 +291,13 @@ public sealed class OverviewPageWordsTests
 
         await context.OpenProjectAsync(ProjectPath);
 
-        var residual = Assert.Single(page.TimingKindShares, row => row.IsNotAttributed);
-        Assert.Equal(residualMs, residual.ElapsedMs);
-        Assert.Equal(TimingShare.FormatPercent(share), residual.ShareText);
+        var other = Assert.Single(page.TimingKindShares, row => row.IsNotAttributed);
+        Assert.Equal(residual, other.WorkSteps);
+        Assert.Equal(TimingShare.FormatPercent(share), other.ShareText);
     }
 
     [Fact]
-    public async Task ZeroAndUnavailableResidualsDoNotAppearAsMeasuredPositiveShares()
+    public async Task ZeroAndUnavailableUnattributedWorkDoNotAppearAsMeasuredPositiveShares()
     {
         var (fake, context) = NewContext();
         var page = new OverviewPageModel(context);
@@ -297,7 +305,12 @@ public sealed class OverviewPageWordsTests
         {
             Timing = Populated().Timing with
             {
-                Attribution = new WordTimeAttribution(1, 0.1, 0.1, 0, 0, 0, false),
+                Work = new WordWorkSummary(1, 10, 10, 10),
+                WorkStepAggregates =
+                [
+                    new TimingWorkAggregate("morph_rule", "morph_rule", "morph_rule", 10, false),
+                    new TimingWorkAggregate("unattributed", "Not attributed", "unattributed", 0, true),
+                ],
             },
         });
 
@@ -306,13 +319,29 @@ public sealed class OverviewPageWordsTests
 
         fake.OverviewCompletesWith(Populated() with
         {
-            Timing = Populated().Timing with
-            {
-                Attribution = new WordTimeAttribution(1, 0.1, 0.1, null, null, 0, false),
-            },
+            Timing = Populated().Timing with { WorkStepAggregates = [] },
         });
         await page.RetryOverviewCommand.ExecuteAsync(null);
-        Assert.DoesNotContain(page.TimingKindShares, row => row.IsNotAttributed);
+        Assert.Empty(page.TimingKindShares);
+        Assert.Contains("Work steps by kind and by rule were not kept", page.TimingAttributionNote);
+    }
+
+    [Fact]
+    public async Task AnOlderStoreWithTimesButNoWorkStepsStillShowsHowLongTheRunTook()
+    {
+        using var culture = new CultureScope(System.Globalization.CultureInfo.GetCultureInfo("en-US"));
+        var (fake, context) = NewContext();
+        var page = new OverviewPageModel(context);
+        fake.OverviewCompletesWith(Populated() with
+        {
+            AssessmentElapsedSeconds = 38.0,
+            Timing = Populated().Timing with { MeasuredWordCount = 5, Work = WordWorkSummary.None },
+        });
+
+        await context.OpenProjectAsync(ProjectPath);
+
+        Assert.Equal("No work steps recorded", page.SpeedMain);
+        Assert.Equal("Took 38.0 s on this computer", page.SpeedElapsed);
     }
 
     [Fact]
@@ -328,7 +357,8 @@ public sealed class OverviewPageWordsTests
 
         await context.OpenProjectAsync(ProjectPath);
 
-        Assert.Equal("No parse times recorded", page.SpeedMain);
+        Assert.Equal("No work steps recorded", page.SpeedMain);
+        Assert.Equal(string.Empty, page.SpeedElapsed);
         Assert.Equal(string.Empty, page.SpeedMedian);
         Assert.Equal(string.Empty, page.SpeedDetails);
     }
@@ -696,7 +726,7 @@ public sealed class OverviewPageWordsTests
         Assert.Contains("3 words use kat (named by a grammar warning)", rows[0].Detail);
         Assert.Equal("2", rows[1].Number);
         Assert.Contains("3 words stopped at a search limit", rows[1].Summary);
-        Assert.Equal("33.6 s of 38.0 s total word time", rows[1].Detail);
+        Assert.Equal("336,000 of 380,000 work steps in total", rows[1].Detail);
         Assert.Equal("3", rows[2].Number);
         Assert.Contains("3 Unknown words differ", rows[2].Summary);
         Assert.Equal(string.Empty, rows[2].Detail);
@@ -831,7 +861,7 @@ public sealed class OverviewPageWordsTests
 
             var shown = VisibleText(page);
 
-            Assert.Contains("142 words · 38.0 s total word time", shown);
+            Assert.Contains("142 words · 380,000 work steps in total", shown);
             Assert.DoesNotContain(shown, text => text.Contains("cccccccc", StringComparison.Ordinal));
             Assert.DoesNotContain(shown, text => text.Contains("dddddddd", StringComparison.Ordinal));
             Assert.DoesNotContain(shown, text => text.Contains("grammar ", StringComparison.Ordinal) &&
@@ -926,10 +956,20 @@ public sealed class OverviewPageWordsTests
             ApprovedWordsNoParse = 8,
             ApprovedWordsUnknown = 2,
         },
-        new OverviewTiming(6.4, 48.2, [new SlowWordTiming("mwalimu", 700), new SlowWordTiming("hawajafika", 48)],
+        new OverviewTiming(6.4, 48.2, [new SlowWordTiming("mwalimu", 700) { WorkSteps = 7_000 },
+                new SlowWordTiming("hawajafika", 48) { WorkSteps = 480 }],
             StepLimitedWords.Length)
         {
             MeasuredWordCount = 142,
+            Work = new WordWorkSummary(142, 380_000, 64, 482),
+            WorkStepAggregates =
+            [
+                new TimingWorkAggregate("morph_rule", "morph_rule", "morph_rule", 212_800, false),
+                new TimingWorkAggregate("phon_rule", "phon_rule", "phon_rule", 79_800, false),
+                new TimingWorkAggregate("lex_entry", "lex_entry", "lex_entry", 26_600, false),
+                new TimingWorkAggregate("root_index", "root_index", "root_index", 15_200, false),
+                new TimingWorkAggregate("unattributed", "Not attributed", "unattributed", 45_600, true),
+            ],
             Kinds =
             [
                 new TimingAggregateRow("morph_rule", "morph_rule", 21280, 0.56, 142) { Kind = "morph_rule" },
@@ -959,7 +999,7 @@ public sealed class OverviewPageWordsTests
             ["lost-1", "lost-2", "lost-3", "lost-4", "lost-5", "lost-6"],
             [new OverviewSharedMorpheme("kat", 3, true), new OverviewSharedMorpheme("ja-", 3, false)],
             StepLimitedWords, 33600, 3)
-        { SharedLostMorphemesAvailable = true },
+        { SharedLostMorphemesAvailable = true, StepLimitedWordWorkSteps = 336_000 },
         SelectionResolved = true,
         WordCoveragePercent = 83.1,
         ProjectFileName = "Sample.fwdata",

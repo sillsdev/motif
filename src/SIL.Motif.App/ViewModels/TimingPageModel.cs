@@ -119,8 +119,8 @@ public sealed partial class TimingPageModel : PageModel
     /// <summary>The stored timing response's word count and percentiles in one line.</summary>
     public string StoredTimingSummary => StoredTiming is not { } timing ? string.Empty :
         string.Format(CultureInfo.CurrentCulture, MotifAppStrings.TimingStoredSummaryFormat,
-            timing.WordCount.ToString("N0", CultureInfo.CurrentCulture), FormatPercentile(timing.MedianMs),
-            FormatPercentile(timing.Percentile95Ms));
+            timing.WordCount.ToString("N0", CultureInfo.CurrentCulture), FormatWork(timing.Work.MedianWorkSteps),
+            FormatWork(timing.Work.Percentile95WorkSteps));
 
     /// <summary>The selected words' stored totals grouped by kind.</summary>
     public TimingResponse? KindTiming { get; private set; }
@@ -162,9 +162,9 @@ public sealed partial class TimingPageModel : PageModel
     /// <summary>Whether the chosen words have measured parse times to lead the page with.</summary>
     public bool HasHeadline => MeasuredWords.Count > 0;
 
-    /// <summary>The chosen words' summed parse time, as PanGloss measured it.</summary>
-    public string HeadlineTotal => HasHeadline ? TimingShare.FormatDuration(WordTimeMs)
-        : string.Empty;
+    /// <summary>The chosen words' summed parser work, as PanGloss counted it.</summary>
+    public string HeadlineTotal => HasHeadline && KindTiming is { } timing
+        ? TimingShare.FormatWorkSteps(timing.Work.TotalWorkSteps) : string.Empty;
 
     /// <summary>Which words the total covers: all of them, or the group chosen above, and how many were timed.</summary>
     public string HeadlineTotalCaption => !HasHeadline ? string.Empty
@@ -178,9 +178,9 @@ public sealed partial class TimingPageModel : PageModel
             ? MotifAppStrings.TimingCaptionAllWordsFormat : MotifAppStrings.TimingCaptionTheseWordsFormat,
             MeasuredWords.Count.ToString("N0", CultureInfo.CurrentCulture));
 
-    /// <summary>The chosen words' median parse time.</summary>
-    public string HeadlineMedian => HasHeadline && KindTiming?.MedianMs is { } median
-        ? TimingShare.FormatDuration(median) : string.Empty;
+    /// <summary>The chosen words' median parser work.</summary>
+    public string HeadlineMedian => HasHeadline && KindTiming?.Work.MedianWorkSteps is { } median
+        ? TimingShare.FormatWorkSteps(median) : string.Empty;
 
     /// <summary>How many of the chosen words stopped at a parser search limit.</summary>
     public string HeadlineStopped => KindTiming?.Words
@@ -225,11 +225,9 @@ public sealed partial class TimingPageModel : PageModel
     public bool HasRerunMeasurements => RerunMeasurementsText.Length > 0;
 
     private IReadOnlyList<TimingWordRow> MeasuredWords =>
-        KindTiming?.Words.Where(word => TimingAggregation.WordTimeMs(word) is not null).ToArray() ?? [];
+        KindTiming?.Words.Where(word => word.WorkSteps is not null).ToArray() ?? [];
 
     private int ChosenWordCount => KindTiming?.Words.Count ?? 0;
-
-    private double WordTimeMs => KindTiming?.Attribution.WordTimeMs ?? 0;
 
     private string MeasuredWordsPhrase => MeasuredWords.Count < ChosenWordCount
         ? string.Format(CultureInfo.CurrentCulture, IsAllSelected
@@ -241,24 +239,33 @@ public sealed partial class TimingPageModel : PageModel
             ? MotifAppStrings.TimingPhraseAllWordsFormat : MotifAppStrings.TimingPhraseTheseWordsFormat,
             MeasuredWords.Count.ToString("N0", CultureInfo.CurrentCulture));
 
-    /// <summary>The chosen words' time by kind, with the recorded unattributed time.</summary>
-    public IReadOnlyList<TimingShare> KindShares
+    /// <summary>The chosen words' work by kind, with the recorded unattributed work; empty when work by object was not kept.</summary>
+    public IReadOnlyList<TimingShare> KindShares => !HasHeadline || WorkByObject(KindTiming) is not { } work ? []
+        : TimingShare.ByKind(work, KindTiming!.Work.TotalWorkSteps, KindTiming.Aggregates,
+            MotifAppStrings.TimingNotAttributedLabel, 0, alwaysShowUnattributed: true);
+
+    /// <summary>The per-kind call counts, kept behind the page's call-count disclosure.</summary>
+    public IReadOnlyList<TimingShare> KindCallShares => CallSharesOf(KindTiming?.Aggregates);
+
+    /// <summary>The chosen words' work by rule, each a share of the same whole work as the kinds.</summary>
+    public IReadOnlyList<TimingShare> RuleShares
     {
         get
         {
-            var shares = SharesOf(KindTiming?.Aggregates, byKind: true);
-            if (!HasHeadline || KindTiming is not { } timing) return shares;
-            var attribution = timing.Attribution;
-            return [.. shares, new TimingShare(MotifAppStrings.TimingNotAttributedLabel, string.Empty, attribution.NotAttributedMs,
-                attribution.NotAttributedShare, 0, null)];
+            if (RuleTiming is not { } timing) return [];
+            if (WorkByObject(timing) is not { } work) return CallSharesOf(timing.Aggregates);
+            var total = timing.Work.TotalWorkSteps;
+            return [.. work.Where(row => !row.IsUnattributed).Select(row =>
+            {
+                var source = timing.Aggregates.FirstOrDefault(time =>
+                    ObjectIdentity.Same(time.TimingKey.Identity, row.TimingKey.Identity)) ??
+                    new TimingAggregateRow(row.Key, row.Name, 0, null, 0)
+                        { Kind = row.Kind, IdentityQuality = row.IdentityQuality, Scope = row.Scope };
+                return new TimingShare(row.Name, row.Kind, row.WorkSteps, TimingShare.ShareOf(row.WorkSteps, total),
+                    source.WordsTouched, source);
+            })];
         }
     }
-
-    /// <summary>The per-kind call counts, kept behind the page's call-count disclosure.</summary>
-    public IReadOnlyList<TimingShare> KindCallShares => SharesOf(KindTiming?.Aggregates, byKind: true);
-
-    /// <summary>The chosen words' time by rule, each a share of the same whole parse time as the kinds.</summary>
-    public IReadOnlyList<TimingShare> RuleShares => SharesOf(RuleTiming?.Aggregates, byKind: false);
 
     /// <summary>The rule table's share column, named by what it divides by.</summary>
     public string RuleShareHeader => HasHeadline
@@ -272,6 +279,7 @@ public sealed partial class TimingPageModel : PageModel
         {
             if (KindTiming is null) return string.Empty;
             if (!HasHeadline) return MotifAppStrings.TimingNoSharesShown;
+            if (WorkByObject(KindTiming) is null) return MotifAppStrings.TimingWorkByObjectUnavailable;
             var missing = ChosenWordCount - MeasuredWords.Count;
             return missing switch
             {
@@ -285,32 +293,29 @@ public sealed partial class TimingPageModel : PageModel
         }
     }
 
-    /// <summary>What the response recorded as unattributed time and overrun.</summary>
+    /// <summary>What the response recorded as work the parser did not attribute to an object.</summary>
     public string NotAttributedText
     {
         get
         {
             if (!HasHeadline || KindTiming is not { } timing) return string.Empty;
-            var attribution = timing.Attribution;
-            if (attribution.NotAttributedMs is not { } time) return MotifAppStrings.TimingNotAttributedNotRecorded;
-            return attribution.NotAttributedShare is { } share
+            if (WorkByObject(timing)?.FirstOrDefault(row => row.IsUnattributed) is not { } other)
+                return MotifAppStrings.TimingNotAttributedNotRecorded;
+            return TimingShare.ShareOf(other.WorkSteps, timing.Work.TotalWorkSteps) is { } share
                 ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.TimingNotAttributedWithShareFormat,
-                    TimingShare.FormatDuration(time), TimingShare.FormatPercent(share))
+                    TimingShare.FormatWorkSteps(other.WorkSteps), TimingShare.FormatPercent(share))
                 : string.Format(CultureInfo.CurrentCulture, MotifAppStrings.TimingNotAttributedFormat,
-                    TimingShare.FormatDuration(time));
+                    TimingShare.FormatWorkSteps(other.WorkSteps));
         }
     }
 
-    /// <summary>The measured object time beyond total word time, when the response records an overrun.</summary>
-    public string OverrunText => !HasHeadline || KindTiming is not { } timing || !timing.Attribution.Overrun
-        ? string.Empty : string.Format(CultureInfo.CurrentCulture, MotifAppStrings.TimingOverrunFormat,
-            TimingShare.FormatDuration(timing.Attribution.OverrunMs));
+    // The per-object work, only when the command could make it add up to the words' totals.
+    private static IReadOnlyList<TimingWorkAggregate>? WorkByObject(TimingResponse? timing) =>
+        timing is { WorkStepAggregates.Count: > 0 } ? timing.WorkStepAggregates : null;
 
-    public bool HasOverrun => HasHeadline && KindTiming?.Attribution.Overrun == true;
+    private static IReadOnlyList<TimingShare> CallSharesOf(IReadOnlyList<TimingAggregateRow>? rows) => rows is null ? [] :
+        [.. rows.Select(row => new TimingShare(TimingShare.KindName(row.Name), row.Kind, null, null, row.WordsTouched, row))];
 
-    private IReadOnlyList<TimingShare> SharesOf(IReadOnlyList<TimingAggregateRow>? rows, bool byKind) => rows is null ? [] :
-        [.. rows.Select(row => new TimingShare(byKind ? TimingShare.KindName(row.Name) : row.Name, row.Kind, row.SelfMs,
-            row.ShareOfWordTime, row.WordsTouched, row))];
     public bool HasSelectedWords => KindTiming?.WordCount > 0;
     public bool ShowEmptySelection => KindTiming is { WordCount: 0 };
     public bool ShowStaleTiming => HasTiming && Context.Evidence.IsStale;
@@ -341,10 +346,10 @@ public sealed partial class TimingPageModel : PageModel
     public string PercentileSummary => KindTiming is null ? string.Empty :
         KindTiming.WordCount == 0 ? MotifAppStrings.TimingNoWordsInSelection :
         string.Format(CultureInfo.CurrentCulture, MotifAppStrings.TimingPercentileSummaryFormat,
-            FormatPercentile(KindTiming.MedianMs), FormatPercentile(KindTiming.Percentile95Ms));
+            FormatWork(KindTiming.Work.MedianWorkSteps), FormatWork(KindTiming.Work.Percentile95WorkSteps));
 
-    private static string FormatPercentile(double? milliseconds) => milliseconds is { } value
-        ? TimingShare.FormatDuration(value) : MotifAppStrings.TimingNotRecordedLower;
+    private static string FormatWork(double? workSteps) => workSteps is { } value
+        ? TimingShare.FormatWorkSteps(value) : MotifAppStrings.TimingNotRecordedLower;
     /// <summary>The complete address selected here or requested by another page.</summary>
     public TraceTimingKey? SelectedRule { get; private set; }
     public TimingAggregateRow? SelectedRuleRow => RuleTiming?.Aggregates.FirstOrDefault(row => ObjectIdentity.Same(row.TimingKey.Identity, SelectedRule?.Identity));
@@ -364,14 +369,15 @@ public sealed partial class TimingPageModel : PageModel
     public IReadOnlyList<WordRuleTiming> CostliestRuleWords => RuleDetail?.CostliestWords.Take(5).ToArray() ?? [];
 
     /// <summary>
-    /// The selected rule's costliest words as word rows, each with the rule's time in it beside that word's whole
-    /// parse time.
+    /// The selected rule's costliest words as word rows, each with the rule's work in it beside that word's whole
+    /// work.
     /// </summary>
     public IReadOnlyList<ListedWordViewModel> CostliestRuleWordRows => [.. CostliestRuleWords.Select(word =>
-        Listed(word.Word, word.WordTimeMs is { } whole
-            ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.TimingRuleTimeOfFormat,
-                TimingShare.FormatDuration(word.SelfMs), TimingShare.FormatDuration(whole))
-            : TimingShare.FormatDuration(word.SelfMs)))];
+        Listed(word.Word, word.WorkSteps is not { } part ? MotifAppStrings.WorkStepsNotRecorded
+            : word.WordWorkSteps is { } whole
+                ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.TimingRuleTimeOfFormat,
+                    TimingShare.FormatWorkSteps(part), TimingShare.FormatWorkSteps(whole))
+                : TimingShare.FormatWorkSteps(part)))];
 
     /// <summary>The heading over the chosen rule's costliest words, naming the rule.</summary>
     public string RuleWordsTitle => string.Format(CultureInfo.CurrentCulture,
@@ -390,7 +396,7 @@ public sealed partial class TimingPageModel : PageModel
         return listed;
     }
 
-    /// <summary>The selected rule's time, its share of the chosen words' whole parse time, and its words.</summary>
+    /// <summary>The selected rule's work, its share of the chosen words' whole work, and its words.</summary>
     public string RuleSummary
     {
         get
@@ -399,9 +405,9 @@ public sealed partial class TimingPageModel : PageModel
                 return Focus?.Rule is null ? string.Empty : MotifAppStrings.TimingNoStoredTimingForRule;
             var recorded = PluralText.Format(MotifAppStrings.TimingRecordedInWordsPattern, rule.Words);
             return rule.Share is null
-                ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.TimingRuleSummaryFormat, rule.TimeText, recorded)
+                ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.TimingRuleSummaryFormat, rule.WorkText, recorded)
                 : string.Format(CultureInfo.CurrentCulture, MotifAppStrings.TimingRuleSummaryShareFormat,
-                    rule.TimeText, rule.ShareText, MeasuredWordsPhrase, HeadlineTotal, recorded);
+                    rule.WorkText, rule.ShareText, MeasuredWordsPhrase, HeadlineTotal, recorded);
         }
     }
     public IReadOnlyList<CompareCellViewModel> MatrixCells =>
@@ -907,8 +913,8 @@ public sealed partial class TimingPageModel : PageModel
             nameof(ShowNoTimingRecorded), nameof(HasHeadline), nameof(HeadlineTotal),
             nameof(HeadlineTotalCaption), nameof(HeadlineMedian), nameof(HeadlineStopped),
             nameof(KindShares), nameof(RuleShares), nameof(RuleShareHeader), nameof(ShareDenominatorText),
-            nameof(NotAttributedText), nameof(OverrunText), nameof(KindCallShares), nameof(HasKindCalls),
-            nameof(HasOverrun), nameof(RerunMeasurementsText), nameof(HasRerunMeasurements),
+            nameof(NotAttributedText), nameof(KindCallShares), nameof(HasKindCalls),
+            nameof(RerunMeasurementsText), nameof(HasRerunMeasurements),
             nameof(CostliestRuleWordRows), nameof(RuleWordsTitle),
         }) OnPropertyChanged(property);
         RaiseFocusState();
@@ -957,93 +963,4 @@ public sealed partial class TimingPageModel : PageModel
         OnPropertyChanged(nameof(ShowNoEvidence));
         OnPropertyChanged(nameof(StoredTimingSummary));
     }
-}
-
-/// <summary>
-/// One part of some words' measured parse time: a kind of rule, one rule, or the other time the parser recorded
-/// without a named kind. Its share is always of the words' whole parse time, never of the named kinds' time.
-/// </summary>
-/// <param name="Label">The kind's or rule's name as the window shows it.</param>
-/// <param name="Kind">The stored kind, for a rule; empty for unattributed time.</param>
-/// <param name="ElapsedMs">The time the parser recorded, in milliseconds, or null when not recorded.</param>
-/// <param name="Share">The share of the words' whole parse time, or <see langword="null"/> when none was kept.</param>
-/// <param name="Words">How many words the parser recorded this part's time in.</param>
-/// <param name="Source">The command's row behind it, or <see langword="null"/> for unattributed time.</param>
-public sealed record TimingShare(string Label, string Kind, double? ElapsedMs, double? Share, int Words,
-    TimingAggregateRow? Source)
-{
-    /// <summary>Minimum time shown as a separate entry in the compact timing views.</summary>
-    public const double SmallestShownMs = 0.05;
-
-    /// <summary>Whether this row carries the response's unattributed time.</summary>
-    public bool IsNotAttributed => Source is null;
-
-    /// <summary>The window's name for this part's stored kind.</summary>
-    public string KindLabel => Kind.Length == 0 ? string.Empty : KindName(Kind);
-
-    public string TimeText => ElapsedMs is { } time ? FormatDuration(time) : MotifAppStrings.TimingNotRecorded;
-
-    public string ShareText => Share is { } share ? FormatPercent(share) :
-        IsNotAttributed ? MotifAppStrings.TimingNotRecorded : "—";
-
-    public string WordsText => Words.ToString("N0", CultureInfo.CurrentCulture);
-
-    public string CallsText => Source is null ? string.Empty : Source.Calls is { } calls
-        ? Source.CallsArePartial
-            ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.TimingCallsPartialFormat,
-                calls.ToString("N0", CultureInfo.CurrentCulture))
-            : PluralText.Format(MotifAppStrings.TimingCallsPattern, (int)calls)
-        : MotifAppStrings.TimingNotCounted;
-
-    /// <summary>Formats recorded times as whole milliseconds, tenths below ten, and seconds from ten seconds.</summary>
-    /// <param name="milliseconds">The measured time.</param>
-    public static string FormatDuration(double milliseconds)
-    {
-        var culture = CultureInfo.CurrentCulture;
-        if (Math.Round(milliseconds) >= 10_000) return (milliseconds / 1000).ToString("N1", culture) + " s";
-        if (milliseconds >= 10) return milliseconds.ToString("N0", culture) + " ms";
-        if (milliseconds > 0 && milliseconds < 0.05) return "<0.1 ms";
-        return milliseconds.ToString("#,0.#", culture) + " ms";
-    }
-
-    /// <summary>Shows whole percentages, with positive shares below one percent shown as less than one percent.</summary>
-    /// <param name="share">The fraction of total word time.</param>
-    public static string FormatPercent(double share)
-    {
-        var culture = CultureInfo.CurrentCulture;
-        if (share > 0 && share < 0.01) return "<" + 0.01.ToString("P0", culture);
-        return share.ToString("P0", culture);
-    }
-
-    /// <summary>The window's name for a stored parser kind.</summary>
-    public static string KindName(string kind) => kind switch
-    {
-        "morph_rule" => MotifAppStrings.TimingKindMorphologicalRules,
-        "phon_rule" => MotifAppStrings.TimingKindPhonologicalRules,
-        "root_index" => MotifAppStrings.TimingKindRootLookup,
-        "lex_entry" => MotifAppStrings.TimingKindLexicalEntries,
-        _ => kind.Replace('_', ' '),
-    };
-}
-
-/// <summary>One row of the Timing page's by-rule table, and whether it is the chosen rule.</summary>
-/// <param name="Share">The rule's time and its share of the words' whole parse time.</param>
-/// <param name="IsChosen">Whether the side card describes this rule.</param>
-public sealed record TimingRuleRow(TimingShare Share, bool IsChosen)
-{
-    public TimingRuleRow(TimingShare share, bool isChosen, string? warningCode) : this(share, isChosen) =>
-        WarningCode = warningCode;
-
-    /// <summary>The rule's timing, as the command reported it.</summary>
-    public TimingAggregateRow Row => Share.Source!;
-
-    public string? WarningCode { get; }
-
-    public bool HasGrammarWarning => WarningCode is not null;
-
-    public static string GrammarWarningTooltip => MotifAppStrings.TimingGrammarWarningTip;
-
-    /// <summary>The rule as the inspector looks it up, by the kind and key the timings record it under.</summary>
-    public InspectorSubject InspectSubject => InspectorSubject.Rule(Row.TimingKey, Row.Name,
-        Row.IdentityQuality is { Length: > 0 } quality ? quality : MotifAppStrings.TimingUnknownQuality);
 }

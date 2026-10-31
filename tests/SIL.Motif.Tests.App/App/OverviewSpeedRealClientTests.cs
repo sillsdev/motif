@@ -31,7 +31,7 @@ public sealed class OverviewSpeedRealClientTests(PristineProjectFixture pristine
         Path.Combine(Path.GetTempPath(), "Motif.OverviewSpeed", Guid.NewGuid().ToString("N"));
 
     [Fact]
-    public async Task TheSpeedHeadlineIsTheStoredWordCountAndTheirSummedParseTime()
+    public async Task TheSpeedHeadlineIsTheStoredWordCountAndTheirSummedWorkSteps()
     {
         Directory.CreateDirectory(_managedRoot);
         using var cache = pristine.NewScratch();
@@ -57,10 +57,11 @@ public sealed class OverviewSpeedRealClientTests(PristineProjectFixture pristine
             Assert.True(composed.Succeeded, composed.Refusal?.Message);
             var selection = composed.Value!.Selection;
             Assert.True(selection.Words.Count >= 2, "the seeded Text needs at least two words");
-            // The last word carries no time, so the headline must count only measured words.
+            // The last word carries no time and no work count, so the headline must count only measured words.
             words = selection.Words.Select((word, index) => new AssessedWord(word, "no-analysis", [],
                 index == selection.Words.Count - 1 ? null : (index + 1) * 100)
             {
+                WorkSteps = index == selection.Words.Count - 1 ? null : (index + 1) * 1_000L,
                 ProjectStanding = ProjectStanding.NotPresent,
                 IsIncomplete = false,
             }).ToArray();
@@ -87,24 +88,28 @@ public sealed class OverviewSpeedRealClientTests(PristineProjectFixture pristine
 
         var measured = words.Where(word => word.ElapsedMs is not null).ToArray();
         var totalMs = measured.Sum(word => word.ElapsedMs!.Value);
+        var totalWork = measured.Sum(word => word.WorkSteps!.Value);
         var client = RealCommandClient.Create(_managedRoot);
         var read = await client.OverviewAsync(new OverviewRequest(projectPath), CancellationToken.None);
 
         Assert.True(read.Succeeded, read.Refusal?.Message);
         Assert.Equal(measured.Length, read.Value!.Timing.MeasuredWordCount);
         Assert.Equal(totalMs / 1000d, read.Value.AssessmentElapsedSeconds);
+        Assert.Equal(measured.Length, read.Value.Timing.Work.MeasuredWordCount);
+        Assert.Equal(totalWork, read.Value.Timing.Work.TotalWorkSteps);
 
         var context = WorkspaceContextTests.NewContext(client);
         var overview = new OverviewPageModel(context);
         var timing = new TimingPageModel(context);
         await context.OpenProjectAsync(projectPath);
 
-        var expectedTotal = TimingShare.FormatDuration(totalMs);
-        // The total is the words' parse times added up, not how long the run took, so it never reads "in".
-        Assert.Equal($"{measured.Length:N0} {(measured.Length == 1 ? "word" : "words")} · {expectedTotal} total word time",
+        var expectedTotal = TimingShare.FormatWorkSteps(totalWork);
+        // The total is the words' work steps added up; how long the run took on this computer is a separate line.
+        Assert.Equal($"{measured.Length:N0} {(measured.Length == 1 ? "word" : "words")} · {expectedTotal} in total",
             overview.SpeedMain);
+        Assert.Equal($"Took {TimingShare.FormatDuration(totalMs)} on this computer", overview.SpeedElapsed);
         Assert.True(timing.HasHeadline, timing.TimingRefusal?.Sentence ?? "Timing read no stored words");
-        Assert.Equal(TimingShare.FormatDuration(totalMs), timing.HeadlineTotal);
+        Assert.Equal(expectedTotal, timing.HeadlineTotal);
         // The caption counts the measured words against every chosen word, so the untimed one is not hidden.
         Assert.Equal($"for {measured.Length:N0} of the {words.Count:N0} words", timing.HeadlineTotalCaption);
     }

@@ -19,18 +19,18 @@ public sealed class OverviewTraceSentenceResourceTests
     public static TheoryData<string, string> Entries => new()
     {
         { "OverviewSpeedWordsPattern", "{0, plural, one {# word} other {# words}}" },
-        { "OverviewSpeedMainFormat", "{0} · {1} total word time" },
-        { "OverviewSpeedNoTimes", "No parse times recorded" },
+        { "OverviewSpeedMainFormat", "{0} · {1} in total" },
+        { "OverviewSpeedElapsedFormat", "Took {0} on this computer" },
+        { "OverviewSpeedNoTimes", "No work steps recorded" },
         { "OverviewSpeedMedianFormat", "median {0} a word" },
         { "OverviewSpeedMedianWithPercentileFormat", "median {0} a word · 95th percentile {1}" },
         { "OverviewSpeedStoppedPattern", "{0, plural, one {# stopped at a search limit} other {# stopped at a search limit}}" },
         { "OverviewSlowestSummaryFormat", "Slowest: {0}" },
         { "OverviewSlowestWordFormat", "{0} · {1}" },
         { "OverviewSlowestStoppedWordFormat", "{0} Stopped · {1}" },
-        { "OverviewTimingOverrunFormat", "Object timers exceed total word time by {0}." },
         { "OverviewSeeWordsPattern", "{0, plural, one {See the # word} other {See the # words}}" },
         { "OverviewStoppedWordsRowPattern", "{0, plural, one {# word stopped at a search limit.} other {# words stopped at a search limit.}}" },
-        { "OverviewStoppedWordsDetailFormat", "{0} of {1} total word time" },
+        { "OverviewStoppedWordsDetailFormat", "{0} of {1} in total" },
         { "TraceParsed", "Parsed" },
         { "TraceSearchIncomplete", "Search incomplete" },
         { "TraceAnalysesPattern", "{0, plural, one {# analysis} other {# analyses}}" },
@@ -343,7 +343,7 @@ public sealed class OverviewTraceSentenceResourceTests
         string[] fragments =
         [
             "total word time", "stopped at a search limit", "Slowest: ", "Object timers exceed", "\"median ",
-            "No parse times recorded", "analysis attempt", "tried and dropped", "choose a group to see",
+            "No parse times recorded", "No work steps recorded", "on this computer", "analysis attempt", "tried and dropped", "choose a group to see",
             "Show the other", "Search incomplete", "Search complete", "hidden by filters", "Recorded twice",
             "Parser time", "} overall", "overall time not recorded", "got furthest", "source records",
             "\"Parsed", "\"guessed\"", "\"1 attempt\"", "? \"failed\" : \"succeeded\"", "all recorded steps",

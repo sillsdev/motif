@@ -565,9 +565,15 @@ public sealed class WorkspaceContextTests
             new TimingResponse("assessment-1", request.WordSet, request.By, 2, 6, 6, [],
                 request.By == "kind" ? kindRows : ruleRows, [])
             {
-                Words = [new TimingWordRow("word-1", 6, TimingCompletion.StepLimit),
-                    new TimingWordRow("word-2", 6, TimingCompletion.StepLimit)],
+                Words = [new TimingWordRow("word-1", 6, TimingCompletion.StepLimit) { WorkSteps = 60 },
+                    new TimingWordRow("word-2", 6, TimingCompletion.StepLimit) { WorkSteps = 60 }],
                 Attribution = new WordTimeAttribution(2, 12, 12, 0, 0, 0, false),
+                Work = new WordWorkSummary(2, 120, 60, 60),
+                WorkStepAggregates =
+                [
+                    new TimingWorkAggregate("Verb template", "Verb template", "morph_rule", 100, false),
+                    new TimingWorkAggregate("Other rule", "Other rule", "morph_rule", 20, false),
+                ],
             })));
         await context.OpenProjectAsync(ProjectPath);
         context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.Now, WasRerun: false));
@@ -577,7 +583,7 @@ public sealed class WorkspaceContextTests
         Assert.Equal(kindRows, timing.KindTiming!.Aggregates);
         Assert.Equal(ruleRows, timing.RuleTiming!.Aggregates);
         Assert.Equal("morph_rule", timing.SelectedRuleRow!.Kind);
-        Assert.Equal("10 ms · 83% of these 2 words' 12 ms · recorded in 2 words", timing.RuleSummary);
+        Assert.Equal("100 work steps · 83% of these 2 words' 120 work steps · recorded in 2 words", timing.RuleSummary);
     }
 
     // The chosen row needs its own look; hover's grey alone could not tell it from the row under the pointer.
@@ -726,7 +732,7 @@ public sealed class WorkspaceContextTests
         await timing.SelectWordSetCommand.ExecuteAsync("step-limit");
 
         Assert.True(timing.ShowEmptySelection);
-        Assert.Equal("No words in this selection have recorded parse time.", timing.PercentileSummary);
+        Assert.Equal("No words in this selection have recorded work steps.", timing.PercentileSummary);
         Assert.False(timing.HandOffWordsCommand.CanExecute(null));
         Assert.False(timing.RerunWordsCommand.CanExecute(null));
     }
