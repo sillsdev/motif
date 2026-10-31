@@ -45,7 +45,7 @@ public sealed class ProjectOpenFailureTests
         var refusal = await refusalShown.Task.WaitAsync(TimeSpan.FromSeconds(5));
 
         Assert.Equal(OpenRefusal, refusal);
-        Assert.Equal("The project could not be read.", workspace.OpenRefusal!.Details);
+        AssertExceptionTextOnlyInTheReport(workspace.OpenRefusal!);
         Assert.False(workspace.HasRefreshRefusal);
         fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(token, DateTimeOffset.UtcNow, false));
         picker.PathToReturn = ProjectB;
@@ -80,7 +80,7 @@ public sealed class ProjectOpenFailureTests
         await workspace.OpenRecentProjectCommand.ExecuteAsync(new RecentProjectViewModel(ProjectA));
 
         Assert.Equal(OpenRefusal, workspace.OpenRefusal!.Sentence);
-        Assert.Equal("The project could not be read.", workspace.OpenRefusal.Details);
+        AssertExceptionTextOnlyInTheReport(workspace.OpenRefusal);
         fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(token, DateTimeOffset.UtcNow, false));
         await workspace.OpenRecentProjectCommand.ExecuteAsync(new RecentProjectViewModel(ProjectB));
         Assert.Equal(ProjectB, workspace.Context.ProjectPath);
@@ -117,6 +117,14 @@ public sealed class ProjectOpenFailureTests
         Assert.Equal("Motif cannot restore that file. Choose a .fwbackup file that FieldWorks made.",
             workspace.OpenRefusal.Sentence);
         Assert.False(workspace.HasProject);
+    }
+
+    // An escaped exception's text is kept for the problem report; the window shows only its sentence.
+    private static void AssertExceptionTextOnlyInTheReport(WindowRefusal refusal)
+    {
+        Assert.Null(refusal.Details);
+        Assert.Contains("The project could not be read.",
+            ProblemReport.FromRefusal(refusal).ToText(includeLocalDetails: true), StringComparison.Ordinal);
     }
 
     private static WorkspaceShellViewModel NewWorkspace(FakeCommandClient fake)

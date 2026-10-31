@@ -152,7 +152,7 @@ public sealed class SetupRealClientTests(PristineProjectFixture pristine)
             Assert.Equal(6600, changed.Value.Selection.PerWordStepLimit!.Steps);
             var rate = SelectionLimitEstimateQuery.ReadParserStepRate(project.FwDataPath);
             Assert.True(rate.Succeeded, rate.Refusal?.Message);
-            var estimatedTimeLimitMs = StepLimitEstimator.Calculate(new StepCap(6600), rate.Value!)!.PerWordTimeLimitMs;
+            var safetyNetMs = (int)ParseRunLimits.SafetyNetTime(new StepCap(6600), rate.Value!)!.Value.TotalMilliseconds;
             Assert.Equal(SelectionTimeLimitMode.Estimated, changed.Value.Selection.Limits.TimeMode);
             Assert.Null(changed.Value.Selection.Limits.ExplicitPerWordLimitMs);
             Assert.Null(changed.Value.Selection.PerWordLimitMs);
@@ -173,7 +173,7 @@ public sealed class SetupRealClientTests(PristineProjectFixture pristine)
             Assert.Empty(current.Value!.DefaultSelection!.TextIds);
             Assert.Equal("motifb", Assert.Single(current.Value.DefaultSelection.AddedWords));
             Assert.Equal("motifb", Assert.Single(current.Value.Selection!.Selection.Words));
-            Assert.Equal(estimatedTimeLimitMs, matchingAssessment!.Invocation!.PerWordTimeoutMs);
+            Assert.Equal(safetyNetMs, matchingAssessment!.Invocation!.PerWordTimeoutMs);
             Assert.Equal(6600, matchingAssessment.Invocation.PerWordStepLimit.Steps);
         }, WalkthroughSteps.Remaining(deadline));
     }

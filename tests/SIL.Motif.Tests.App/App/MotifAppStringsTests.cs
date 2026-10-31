@@ -67,8 +67,8 @@ public sealed class MotifAppStringsTests
         Assert.Equal("Delete Motif's Store?", MotifAppStrings.DeleteMotifsStore);
         Assert.Equal("Sentence When the Change Was Made", MotifAppStrings.WordCardChangeSentence);
         Assert.Equal("Approved Analyses PanGloss Did Not Build", MotifAppStrings.WordCardApprovedNotBuilt);
-        Assert.Equal("Where the Time Went, for These {0} Words: by Kind of Rule", MotifAppStrings.TimingScopeFormat);
-        Assert.Equal("Words Where {0} Took Longest", MotifAppStrings.TimingRuleWordsTitleFormat);
+        Assert.Equal("Where the Work Went, for These {0} Words: by Kind of Rule", MotifAppStrings.TimingScopeFormat);
+        Assert.Equal("Words Where {0} Did the Most Work", MotifAppStrings.TimingRuleWordsTitleFormat);
         Assert.Equal("This Motif Store Is from Another Version", MotifAppStrings.RefusalStoreOtherVersionHeading);
         Assert.Equal("The Attempt That Got Furthest", MotifAppStrings.TraceClosestAttemptsHeadingOne);
         Assert.Equal("Attempts That Got Furthest", MotifAppStrings.TraceClosestAttemptsHeadingMany);

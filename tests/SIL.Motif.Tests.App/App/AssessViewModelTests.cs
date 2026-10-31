@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Baselines;
@@ -225,7 +226,11 @@ public sealed class AssessViewModelTests
 
         Assert.Equal(RunState.Refused, assess.State);
         Assert.Same(refusal, assess.Refusal);
-        Assert.Contains($"projectPath: {Path.GetFileName(ProjectPath)}", assess.ShownRefusal!.Details);
+        // The window names the file, never the folder; the problem report keeps the whole path.
+        Assert.Contains("PanGloss is not built here.", assess.ShownRefusal!.Details);
+        Assert.Contains("projectPath: one.fwdata", assess.ShownRefusal.Details);
+        Assert.DoesNotContain(@"C:\projects", assess.ShownRefusal.Details);
+        Assert.Contains(ProjectPath, ProblemReport.FromRefusal(assess.ShownRefusal).ToText(includeLocalDetails: true));
         Assert.True(assess.RunCommand.CanExecute(null));
         Assert.Equal("assess", Assert.Single(fake.UsageEntries).Command);
     }

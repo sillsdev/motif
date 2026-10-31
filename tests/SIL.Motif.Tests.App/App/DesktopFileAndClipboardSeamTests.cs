@@ -113,7 +113,10 @@ public sealed class DesktopFileAndClipboardSeamTests
 
         Assert.Equal(WindowRefusal.DiagnosticNotWrittenCode, tools.Error?.Code);
         Assert.Equal("Motif could not copy the diagnostic.", tools.Error?.Sentence);
-        Assert.Contains("clipboard is busy", tools.Error?.Details, StringComparison.Ordinal);
+        // An exception's own text is for the problem report, not the window.
+        Assert.Null(tools.Error?.Details);
+        Assert.Contains("clipboard is busy",
+            ProblemReport.FromRefusal(tools.Error!).ToText(includeLocalDetails: true), StringComparison.Ordinal);
     }
 
     [Fact]

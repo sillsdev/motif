@@ -1038,7 +1038,7 @@ internal static class TooltipOwners
         {
             Pending = "Try a Word's compact results replace the recorded-analyses view this scene used to show",
         },
-        new("WORDS column", "Views/Pages/TimingPage.axaml", "How many of these words the parser recorded time for this rule in",
+        new("WORDS column", "Views/Pages/TimingPage.axaml", "How many of these words the parser recorded work for this rule in",
             TooltipScene.Timing, control => control is CopyableTextBlock { Text: "WORDS" }),
         new("grammar warning named this rule", "Views/Pages/TimingPage.axaml",
             "{x:Static vm:TimingRuleRow.GrammarWarningTooltip}", TooltipScene.Timing,
