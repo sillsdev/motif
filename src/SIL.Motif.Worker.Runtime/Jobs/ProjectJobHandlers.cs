@@ -91,14 +91,16 @@ public static class ProjectJobHandlers
             trial.AfterCommit = (claim, baseline) =>
                 _ = ParsimonyAutoRun.Enqueue(database, claim.Job, baseline, retryFailed: true);
             handlers[TrialJobHandler.TrialKind] = (job, token) => trial.RunAsync(job, project, token);
-            _ = TryReconcile(database, baselines, workspaceKey);
+            if (Reconciled.TryAdd(workspaceKey, 0)) _ = TryReconcile(database, baselines, workspaceKey);
         }
 
         return new JobRunnerLoop(new JobClaims(database, parserKey: ParserIdentity.KeyOf(options.ParserPath)), workspaceKey, ownerId: ownerId,
             lease: options.Lease, poll: TimeSpan.Zero, handlers: handlers);
     }
 
-    // A runner that stopped between a Trial's commit and its follow-on enqueue catches up on its next sweep.
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, byte> Reconciled = new();
+
+    // A runner that stopped between a Trial's commit and its enqueue catches up once per process.
     private static bool TryReconcile(MotifDatabase database, BaselineRepository baselines, string workspaceKey)
     {
         try

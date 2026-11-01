@@ -67,6 +67,12 @@ public static class ProposalParsimonyStatusCommand
         if (trial is null)
             return Make(ProposalParsimonyState.NotYetRun, new ProposalParsimonyReason("status-no-trial",
                 "Parsimony runs after the Proposal's Trial finishes, and no Trial has finished."));
+        if (job is null && SkippedForTimeout(database, trial, parserKey) is { } skipped)
+            return Make(ProposalParsimonyState.Failed, new ProposalParsimonyReason("status-skipped-timeout",
+                "Parsimony already timed out on this grammar with this PanGloss, so it is not queued again by itself."),
+                failure: new ProposalParsimonyFailure(ProposalParsimonyFailureCategory.TimedOut,
+                    "PanGloss ran past its time limit on this grammar. Run `motif parsimony` to try again; a new " +
+                    "Baseline or PanGloss clears this.", false, skipped.UpdatedUtc));
         if (job is null)
             return Make(ProposalParsimonyState.NotYetRun, new ProposalParsimonyReason("status-not-queued",
                 "The Trial has finished and no Parsimony run exists for it yet."));
@@ -93,13 +99,19 @@ public static class ProposalParsimonyStatusCommand
     {
         var recorded = ParsimonyCandidateJobInputKey(job);
         var current = CurrentInputs(database, job.ProjectKey, trial, parserKey);
-        var reasons = recorded is null || current is null ? [] : Differences(recorded, current);
         var grammar = ReadGrammar(job);
+        if (recorded is null || current is null)
+            return make(ProposalParsimonyState.Stale, new ProposalParsimonyReason("status-freshness-unknown",
+                "Whether these results are still current could not be checked."),
+                new ProposalParsimonyStale([], recorded?.ToKey() ?? "", current?.ToKey() ?? ""), null, grammar);
+        var reasons = Differences(recorded, current);
         if (reasons.Count > 0)
             return make(ProposalParsimonyState.Stale, new ProposalParsimonyReason("status-stale",
                 "These results were measured against inputs that have since changed."),
                 new ProposalParsimonyStale(reasons, recorded!.ToKey(), current!.ToKey()), null, grammar);
-        return make(ProposalParsimonyState.Ready, null, null, null, grammar);
+        return make(ProposalParsimonyState.Ready, new ProposalParsimonyReason("status-freshness-partial",
+            "Checked against the Baseline, Proposal, prerequisites, PanGloss and measures. A changed human judgment " +
+            "or Parsimony Selection is not checked; run again after changing either."), null, null, grammar);
     }
 
     private static ParsimonyAutoInputs? ParsimonyCandidateJobInputKey(JobRecord job)
@@ -183,15 +195,21 @@ public static class ProposalParsimonyStatusCommand
         return ahead.Contains("trial", StringComparer.Ordinal) ? "trial" : "parse";
     }
 
+    private static JobRecord? SkippedForTimeout(MotifDatabase database, JobRecord trial, string parserKey)
+    {
+        var current = CurrentInputs(database, trial.ProjectKey, trial, parserKey);
+        return current is null ? null
+            : ParsimonyAutoRun.TimedOutBefore(database, trial.ProjectKey, current.Baseline, current.Parser);
+    }
+
     private static ProposalParsimonyFailure FailureOf(JobRecord job)
     {
-        var detail = ResultDetail(job.ResultJson);
+        var detail = ParsimonyAutoRun.FailureDetail(job);
         var category = job.Status switch
         {
             JobStatus.Cancelled => ProposalParsimonyFailureCategory.Cancelled,
             JobStatus.StoppedByBudget => ProposalParsimonyFailureCategory.TimedOut,
-            _ when Mentions(detail, "time limit", "timed out", "wall-clock", "wall clock") =>
-                ProposalParsimonyFailureCategory.TimedOut,
+            _ when ParsimonyAutoRun.IsTimedOut(job) => ProposalParsimonyFailureCategory.TimedOut,
             _ when job.FailureCategory == JobFailureCategory.Cancellation => ProposalParsimonyFailureCategory.Cancelled,
             _ when Mentions(detail, "PanGloss changed", "executable", "not found", "unavailable") =>
                 ProposalParsimonyFailureCategory.ParserUnavailable,
@@ -216,22 +234,6 @@ public static class ProposalParsimonyStatusCommand
 
     private static bool Mentions(string? text, params string[] needles) =>
         text is not null && needles.Any(needle => text.Contains(needle, StringComparison.OrdinalIgnoreCase));
-
-    private static string? ResultDetail(string? resultJson)
-    {
-        if (string.IsNullOrWhiteSpace(resultJson)) return null;
-        try
-        {
-            using var document = JsonDocument.Parse(resultJson);
-            return document.RootElement.ValueKind == JsonValueKind.Object &&
-                document.RootElement.TryGetProperty("detail", out var detail) &&
-                detail.ValueKind == JsonValueKind.String ? detail.GetString() : null;
-        }
-        catch (JsonException)
-        {
-            return null;
-        }
-    }
 
     private static ProposalParsimonyGroup UnrunGrammar() => new(ParsimonyMeasureGroup.Grammar,
         ProposalParsimonyGroupState.NotYetRun, null, null, [], []);

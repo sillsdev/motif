@@ -12,6 +12,12 @@ Parsimony is advisory. A failed, timed-out or cancelled run never changes the Tr
 motif parsimony status --project "C:\FieldWorks\Projects\Koro\Koro.fwdata" --proposal proposal/AbCd --json
 ```
 
+## Timeouts and freshness
+
+When PanGloss ran past its time limit on a grammar, Motif does not queue another automatic run for the same Baseline and PanGloss; the status reads `failed` with category `timed-out`. Run `motif parsimony` by hand to try again. A new Baseline or a new PanGloss clears this by itself.
+
+A `ready` status was checked against the Baseline, the Proposal, its prerequisites, PanGloss and the measures. A changed human judgment or Parsimony Selection is not checked.
+
 ## Related commands
 
 - [Review grammar parsimony](cmd:parsimony) runs a measure or group by hand.

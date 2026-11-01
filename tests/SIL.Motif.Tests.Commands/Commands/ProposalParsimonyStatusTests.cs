@@ -62,19 +62,20 @@ public sealed class ProposalParsimonyStatusTests : IDisposable
         return read.Value!;
     }
 
-    private string ProposalJson(string gloss = "a gloss")
+    private string ProposalJson(string gloss = "a gloss", string? proposalId = null)
     {
         var operationId = CanonicalId.Mint("operation/").Value;
         var target = CanonicalId.FromGuid(Guid.NewGuid()).Value;
         var quoted = JsonSerializer.Serialize(gloss);
         return $$$"""
-            {"contractVersions": {"lexical": "1.0"}, "proposalId": "{{{_proposalId}}}",
+            {"contractVersions": {"lexical": "1.0"}, "proposalId": "{{{proposalId ?? _proposalId}}}",
              "operations": [{"operationId": "{{{operationId}}}", "kind": "lexical/lexSense/setGloss",
               "target": "{{{target}}}", "after": {"ws": "en", "text": {{{quoted}}} }}]}
             """;
     }
 
-    private JobRecord CommitTrial(MotifDatabase database, string? proposalJson = null, BaselineToken? token = null)
+    private JobRecord CommitTrial(MotifDatabase database, string? proposalJson = null, BaselineToken? token = null,
+        bool publish = false)
     {
         var jobs = new JobRepository(database);
         var input = new TrialJobInput(proposalJson ?? ProposalJson(), null, ["word"], false, []);
@@ -85,17 +86,19 @@ public sealed class ProposalParsimonyStatusTests : IDisposable
             baselineToken = token ?? _token,
             assessmentIds = Array.Empty<string>(),
             allWords = false,
-        }, Options));
+        }, Options), publishDryRun: publish);
         return jobs.Get(trial.JobId)!;
     }
 
     private static void Finish(JobRepository jobs, JobRecord job, JobStatus status, string? result,
-        JobFailureCategory category = JobFailureCategory.None)
+        JobFailureCategory category = JobFailureCategory.None, bool publishDryRun = false)
     {
         var claimed = new JobClaims(jobs.Database, null, JobParserPin.KeyOf(job.InputJson)).Claim(job.ProjectKey, "status-test",
             "2026-11-01T00:00:01.0000000Z", TimeSpan.FromMinutes(5));
         Assert.Equal(job.JobId, claimed!.JobId);
-        new ClaimedJob(jobs, claimed).Transition(status, category, result);
+        var handle = new ClaimedJob(jobs, claimed);
+        if (publishDryRun) handle.PublishDryRun("{}");
+        handle.Transition(status, category, result);
     }
 
     private JobRecord QueueParsimony(MotifDatabase database, JobRecord trial) =>
@@ -284,6 +287,9 @@ public sealed class ProposalParsimonyStatusTests : IDisposable
     [Theory]
     [InlineData(JobStatus.Failed, JobFailureCategory.Infrastructure, "PanGloss exceeded the wall-clock time limit.",
         ProposalParsimonyFailureCategory.TimedOut, false)]
+    [InlineData(JobStatus.Failed, JobFailureCategory.Infrastructure,
+        "pangloss facts did not finish within 10 minutes and was stopped.",
+        ProposalParsimonyFailureCategory.TimedOut, false)]
     [InlineData(JobStatus.Failed, JobFailureCategory.Infrastructure, "PanGloss changed during the comparison.",
         ProposalParsimonyFailureCategory.ParserUnavailable, true)]
     [InlineData(JobStatus.Failed, JobFailureCategory.ParserRefusal, "The facts were refused.",
@@ -312,6 +318,80 @@ public sealed class ProposalParsimonyStatusTests : IDisposable
         Assert.Equal(retryable, status.Failure.Retryable);
         using var after = OpenDatabase();
         Assert.Equal(trial, new JobRepository(after).Get(trial.JobId));
+    }
+
+    private const string RealTimeout = "pangloss facts did not finish within 10 minutes and was stopped.";
+
+    [Fact]
+    public void ATimedOutRunStopsLaterTrialsOfAnyProposalFromQueuingAnotherOnTheSameBaselineAndParser()
+    {
+        var other = CanonicalId.Mint("proposal/").Value;
+        using (var database = OpenDatabase())
+        {
+            var job = QueueParsimony(database, CommitTrial(database));
+            Finish(new JobRepository(database), job, JobStatus.Failed, JsonSerializer.Serialize(new { detail = RealTimeout }),
+                JobFailureCategory.Infrastructure);
+            var rerun = CommitTrial(database);
+            var second = CommitTrial(database, ProposalJson("b", other));
+
+            Assert.Null(ParsimonyAutoRun.Enqueue(database, rerun, _token, retryFailed: true));
+            Assert.Null(ParsimonyAutoRun.Enqueue(database, second, _token, retryFailed: true));
+        }
+
+        var status = Read(_parser, other);
+
+        Assert.Equal(ProposalParsimonyState.Failed, status.State);
+        Assert.Equal("status-skipped-timeout", status.StateReason!.Code);
+        Assert.Equal(ProposalParsimonyFailureCategory.TimedOut, status.Failure!.Category);
+        Assert.False(status.Failure.Retryable);
+        using var after = OpenDatabase();
+        Assert.Single(new JobRepository(after).ListByProjectAndKind(_projectKey, ParsimonyCandidateEvidenceBuilder.JobKind));
+    }
+
+    [Fact]
+    public void ANewParserOrANewBaselineClearsTheTimeoutSkip()
+    {
+        using var database = OpenDatabase();
+        var job = QueueParsimony(database, CommitTrial(database));
+        Finish(new JobRepository(database), job, JobStatus.Failed, JsonSerializer.Serialize(new { detail = RealTimeout }),
+            JobFailureCategory.Infrastructure);
+        var newBaseline = new BaselineToken("project", "sha256:" + new string('7', 64), "projection-v1",
+            "2026-10-06T00:00:00Z", "sha256:" + new string('6', 64));
+        var onNewBaseline = CommitTrial(database, token: newBaseline);
+
+        Assert.NotNull(ParsimonyAutoRun.Enqueue(database, onNewBaseline, newBaseline, retryFailed: true));
+        var inputs = ParsimonyAutoInputs.For(onNewBaseline.InputJson, _token);
+        Assert.NotNull(ParsimonyAutoRun.TimedOutBefore(database, _projectKey, inputs.Baseline, inputs.Parser));
+        Assert.Null(ParsimonyAutoRun.TimedOutBefore(database, _projectKey, inputs.Baseline, "another-parser"));
+    }
+
+    [Fact]
+    public void ASweepAfterAnUpgradeQueuesAtMostFiveRuns()
+    {
+        using var database = OpenDatabase();
+        for (var i = 0; i < 7; i++)
+        {
+            var id = CanonicalId.Mint("proposal/").Value;
+            _ = CommitTrial(database, ProposalJson("g" + i, id), publish: true);
+        }
+
+        var queued = ParsimonyAutoRun.Reconcile(database, _projectKey, _token, DateTimeOffset.UtcNow);
+
+        Assert.Equal(5, queued.Count);
+    }
+
+    [Fact]
+    public void AReadyRunSaysWhichChangesItDoesNotCheck()
+    {
+        using (var database = OpenDatabase())
+        {
+            var job = QueueParsimony(database, CommitTrial(database));
+            Finish(new JobRepository(database), job, JobStatus.Completed, Response(job));
+        }
+
+        var status = Read(_parser);
+
+        Assert.Equal("status-freshness-partial", status.StateReason!.Code);
     }
 
     [Fact]

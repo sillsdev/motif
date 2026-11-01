@@ -69,7 +69,8 @@ public static class ParsimonyAutoRun
 {
     private const string TrialKind = "trial";
     private static readonly TimeSpan ReconcileWindow = TimeSpan.FromHours(24);
-    private const int ReconcileLimit = 50;
+    private const int ReconcileLimit = 5;
+    private const int ReconcileScan = 50;
 
     /// <summary>Queues the comparison for one committed Trial unless one for the same inputs already exists.</summary>
     /// <param name="database">The project's store.</param>
@@ -85,6 +86,7 @@ public static class ParsimonyAutoRun
         var inputs = ParsimonyAutoInputs.For(trial.InputJson, baseline);
         var key = inputs.ToKey();
         var jobs = new JobRepository(database);
+        if (TimedOutBefore(database, trial.ProjectKey, inputs.Baseline, inputs.Parser) is not null) return null;
         if (Existing(database, trial.ProjectKey, key) is { } existing &&
             (!retryFailed || existing is not (JobStatus.Failed or JobStatus.Cancelled or JobStatus.Interrupted)))
             return null;
@@ -124,7 +126,7 @@ public static class ParsimonyAutoRun
             command.Parameters.AddWithValue("$project", projectKey);
             command.Parameters.AddWithValue("$kind", TrialKind);
             command.Parameters.AddWithValue("$since", since);
-            command.Parameters.AddWithValue("$limit", ReconcileLimit);
+            command.Parameters.AddWithValue("$limit", ReconcileScan);
             using var reader = command.ExecuteReader();
             while (reader.Read()) trialIds.Add(reader.GetString(0));
         }
@@ -142,6 +144,7 @@ public static class ParsimonyAutoRun
                 var proposalId = ParsimonyAutoInputs.For(trial.InputJson, measured).ProposalId;
                 if (!seen.Add(proposalId)) continue;
                 if (Enqueue(database, trial, measured, retryFailed: false) is { } queuedId) queued.Add(queuedId);
+                if (queued.Count >= ReconcileLimit) break;
             }
             catch (Exception exception) when (exception is InvalidDataException or JsonException or
                                                   InvalidOperationException or ArgumentException)
@@ -150,6 +153,77 @@ public static class ParsimonyAutoRun
             }
         }
         return queued;
+    }
+
+    /// <summary>The words a failed job's result gives as its reason, or null.</summary>
+    /// <param name="job">The job.</param>
+    public static string? FailureDetail(JobRecord job)
+    {
+        ArgumentNullException.ThrowIfNull(job);
+        if (string.IsNullOrWhiteSpace(job.ResultJson)) return null;
+        try
+        {
+            using var document = JsonDocument.Parse(job.ResultJson);
+            return document.RootElement.ValueKind == JsonValueKind.Object &&
+                document.RootElement.TryGetProperty("detail", out var detail) &&
+                detail.ValueKind == JsonValueKind.String ? detail.GetString() : null;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>Whether a candidate job stopped because PanGloss ran past its time limit.</summary>
+    /// <param name="job">The job.</param>
+    public static bool IsTimedOut(JobRecord job)
+    {
+        ArgumentNullException.ThrowIfNull(job);
+        if (job.Status == JobStatus.StoppedByBudget) return true;
+        if (job.Status is not (JobStatus.Failed or JobStatus.Interrupted)) return false;
+        var detail = FailureDetail(job);
+        return detail is not null && TimeoutWords.Any(word => detail.Contains(word, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static readonly string[] TimeoutWords =
+        ["time limit", "timed out", "wall-clock", "wall clock", "did not finish within", "was stopped"];
+
+    /// <summary>
+    /// The newest candidate job that timed out on this Baseline with this PanGloss, unless a later one on the same
+    /// pair finished, or null. A new Baseline or a different PanGloss never matches, so either one clears it.
+    /// </summary>
+    /// <param name="database">The project's store.</param>
+    /// <param name="projectKey">The project's workspace key.</param>
+    /// <param name="baselineDigest">The Baseline digest of the inputs key.</param>
+    /// <param name="parserKey">The parser key of the inputs key.</param>
+    public static JobRecord? TimedOutBefore(MotifDatabase database, string projectKey, string baselineDigest,
+        string parserKey)
+    {
+        ArgumentNullException.ThrowIfNull(database);
+        var ids = new List<string>();
+        using (var connection = database.OpenConnection())
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = "SELECT JobId FROM Jobs WHERE ProjectKey = $project AND Kind = $kind AND " +
+                "json_extract(json_extract(InputJson, '$.inputsKey'), '$.baseline') = $baseline AND " +
+                "json_extract(json_extract(InputJson, '$.inputsKey'), '$.parser') = $parser " +
+                "ORDER BY CreatedUtc DESC, JobId DESC LIMIT 10;";
+            command.Parameters.AddWithValue("$project", projectKey);
+            command.Parameters.AddWithValue("$kind", ParsimonyCandidateEvidenceBuilder.JobKind);
+            command.Parameters.AddWithValue("$baseline", baselineDigest);
+            command.Parameters.AddWithValue("$parser", parserKey);
+            using var reader = command.ExecuteReader();
+            while (reader.Read()) ids.Add(reader.GetString(0));
+        }
+        var jobs = new JobRepository(database);
+        foreach (var id in ids)
+        {
+            var job = jobs.Get(id);
+            if (job is null) continue;
+            if (job.Status == JobStatus.Completed) return null;
+            if (IsTimedOut(job)) return job;
+        }
+        return null;
     }
 
     /// <summary>The newest automatic comparison job for a Proposal, whatever its status, or null.</summary>
