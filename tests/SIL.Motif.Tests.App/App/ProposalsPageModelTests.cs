@@ -1,3 +1,4 @@
+using System.Globalization;
 using SIL.Motif.App;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.Contract.Assess;
@@ -6,6 +7,7 @@ using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 
 namespace SIL.Motif.Tests.App;
@@ -156,7 +158,7 @@ public sealed class ProposalsPageModelTests
         Assert.Equal("10 of 12", noAfterRow.ApprovedKept!.Value);
         Assert.Equal("60% → 64.5%", triedRow.TableCoverageText);
         Assert.Equal("3 → 3", triedRow.TableWarningsText);
-        Assert.Equal("2.5 s → 2.6 s", triedRow.TableWordTimeText);
+        Assert.Equal("—", triedRow.TableWorkText);
         Assert.Equal("Not tried yet", untriedRow.TableApprovedKeptText);
         Assert.Equal("Not tried yet", untriedRow.TableCoverageText);
         Assert.Equal("Draft", pendingRow.TableStatusText);
@@ -322,12 +324,34 @@ public sealed class ProposalsPageModelTests
         Assert.Equal("60% → 64.5%", card.Numbers[0].Value);
         Assert.True(card.Numbers[0].Moved);
         Assert.Equal("10 of 12 → 9 of 12", card.Numbers[1].Value);
-        Assert.Equal(["Coverage", "Approved kept", "Word time", "Warnings"], card.Numbers.Select(n => n.Label));
+        Assert.Equal(["Coverage", "Approved kept", "Work", "Warnings", "Time on this computer"], card.Numbers.Select(n => n.Label));
         Assert.Equal("1 lost", card.LostChip);
         Assert.Null(card.FitChip);
         Assert.Equal("also changes words in Other", card.AlsoChip);
         Assert.False(card.HasStatus);
         Assert.False(card.NumbersAreOld);
+    }
+
+    [Fact]
+    public async Task TheWorkNumberComparesWorkStepsAndTheTimeComesLastLabelledAsTimeOnThisComputer()
+    {
+        using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
+        var trial = Summary(TrialFreshness.Current) with { Work = new TrialWork(3, 1000, 1200, 20, [], 0, 0) };
+        var (_, _, page) = await OpenAsync(Standings(
+            Card("p/a", "A", ProposalGroup.WaitingForYou, trial: trial, standing: TrialStanding.Current),
+            Card("p/b", "B", ProposalGroup.WaitingForYou, trial: Summary(TrialFreshness.Current),
+                standing: TrialStanding.Current)));
+
+        var compared = page.Groups[0].Cards[0];
+        var unavailable = page.Groups[0].Cards[1];
+
+        Assert.Equal("1,000 → 1,200", compared.Work!.Value);
+        Assert.True(compared.Work.Moved);
+        Assert.Equal("1,000 → 1,200", compared.TableWorkText);
+        Assert.Equal("Time on this computer", compared.Numbers[^1].Label);
+        Assert.Equal("2.5 s → 2.6 s", compared.Numbers[^1].Value);
+        Assert.Equal("—", unavailable.Work!.Value);
+        Assert.False(unavailable.Work.Moved);
     }
 
     [Fact]

@@ -1188,9 +1188,9 @@
     <value>Warnings</value>
     <comment>Window text.</comment>
   </data>
-  <data name="MotifApp.WordTime" xml:space="preserve">
-    <value>Word Time</value>
-    <comment>Window text.</comment>
+  <data name="MotifApp.ProposalWork" xml:space="preserve">
+    <value>Work</value>
+    <comment>Column heading on the Proposals page for the parser work, in work steps, a Trial took beside the Baseline's.</comment>
   </data>
   <data name="MotifApp.ProposalsAccessibleName" xml:space="preserve">
     <value>Proposals</value>

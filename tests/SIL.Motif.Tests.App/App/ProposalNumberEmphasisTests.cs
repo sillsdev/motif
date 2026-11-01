@@ -46,7 +46,7 @@ public sealed class ProposalNumberEmphasisTests
                     (card.ApprovedKept!, card.TableApprovedKeptText),
                     (card.Coverage!, card.TableCoverageText),
                     (card.Warnings!, card.TableWarningsText),
-                    (card.WordTime!, card.TableWordTimeText),
+                    (card.Work!, card.TableWorkText),
                 };
                 var failures = new List<string>();
                 Capture(window, dark, "wide");

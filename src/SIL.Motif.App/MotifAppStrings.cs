@@ -751,7 +751,7 @@ public static class MotifAppStrings
 
     public static string Warnings => Text("MotifApp.Warnings");
 
-    public static string WordTime => Text("MotifApp.WordTime");
+    public static string ProposalWork => Text("MotifApp.ProposalWork");
 
     public static string ProposalsAccessibleName => Text("MotifApp.ProposalsAccessibleName");
 

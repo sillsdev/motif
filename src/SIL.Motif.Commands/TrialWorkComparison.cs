@@ -1,4 +1,5 @@
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Commands.Queries;
 using SIL.Motif.Host.Parser;
 using SIL.Motif.Worker.Store;
 
@@ -24,20 +25,28 @@ public static class TrialWorkComparison
     public static TrialWork Compare(IReadOnlyList<AssessedWord> baseline, IReadOnlyList<AssessedWord> trial)
     {
         var before = baseline.ToDictionary(word => word.Word, StringComparer.Ordinal);
-        var workWords = trial.Where(word => word.Outcome == "capped").Select(word => word.Word).ToArray();
-        var timeWords = trial.Where(word => word.Outcome == "timed-out").Select(word => word.Word).ToArray();
+        var stops = trial.Select(word => (word.Word, Limit: StopLimit.From(word.Outcome, word.Morphology))).ToArray();
+        var workWords = stops.Where(stop => stop.Limit is StopLimit.Work or StopLimit.Both).Select(stop => stop.Word).ToArray();
+        var timeWords = stops.Where(stop => stop.Limit is StopLimit.Time).Select(stop => stop.Word).ToArray();
         var workStops = workWords.Length;
         var timeStops = timeWords.Length;
+        var pairs = trial.Select(word => (After: word, Before: before.GetValueOrDefault(word.Word))).ToArray();
+        // Time is secondary and only comparable over the same words; it never decides the work comparison.
+        var beforeTime = pairs.Select(pair => pair.Before is null ? null : TimingAggregation.WordTimeMs(pair.Before)).ToArray();
+        var afterTime = pairs.Select(pair => TimingAggregation.WordTimeMs(pair.After)).ToArray();
+        var timed = pairs.Length > 0 && beforeTime.All(time => time is not null) && afterTime.All(time => time is not null);
         TrialWork WithStops(TrialWork result) => result with
         {
             WorkLimitWords = workWords,
             TimeSafetyNetWords = timeWords,
+            BaselineTimeMs = timed ? beforeTime.Sum(time => time!.Value) : null,
+            TrialTimeMs = timed ? afterTime.Sum(time => time!.Value) : null,
         };
-        var pairs = trial.Select(word => (After: word, Before: before.GetValueOrDefault(word.Word))).ToArray();
         if (pairs.Length == 0 || pairs.Any(pair => pair.Before is null ||
                 pair.Before.IsIncomplete || pair.After.IsIncomplete ||
-                pair.Before.Outcome is "capped" or "timed-out" or "skipped" ||
-                pair.After.Outcome is "capped" or "timed-out" or "skipped" ||
+                StopLimit.From(pair.Before.Outcome, pair.Before.Morphology) is not null ||
+                StopLimit.From(pair.After.Outcome, pair.After.Morphology) is not null ||
+                pair.Before.Outcome is "skipped" || pair.After.Outcome is "skipped" ||
                 pair.Before.WorkSteps is null or < 0 || pair.After.WorkSteps is null or < 0))
             return WithStops(new TrialWork(trial.Count, null, null, null, [], workStops, timeStops));
 

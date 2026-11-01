@@ -119,16 +119,22 @@ public static class CommandTextRenderer
         text.AppendLine($"Trial {trial.JobId}: {trial.Status} ({trial.Freshness})");
         if (trial.Work is not { } work) return text.AppendLine("Parser work is unavailable.").ToString();
         if (work.PercentChange is { } change)
-            text.AppendLine(change == 0 ? "These words took the same parser work."
-                : $"These words took {Math.Abs(change):0.#}% {(change > 0 ? "more" : "less")} work to parse.");
+            text.AppendLine((change == 0 ? "These words took the same parser work"
+                : $"These words took {Math.Abs(change):0.#}% {(change > 0 ? "more" : "less")} work to parse") +
+                $" ({work.BaselineWork:N0} work steps in the Baseline, {work.TrialWorkSteps:N0} in the Trial).");
         else text.AppendLine("Parser work cannot be compared for every Trial word.");
         if (work.WorkIncreaseWarning)
             text.AppendLine("Warning: parser work increased by more than 5% over the Baseline.");
+        if (work.IncreasedWords.Count > 0) text.AppendLine("Words with more than 5% extra work:");
         foreach (var word in work.IncreasedWords)
-            text.AppendLine($"  {word.Word}: {word.PercentMore:0.#}% more work");
-        text.AppendLine($"Stopped: {work.WorkLimitStops} at the work or attempt limit; {work.TimeSafetyNetStops} at the time safety net.");
-        if (work.WorkLimitWords.Count > 0) text.AppendLine("  Work or attempt limit: " + string.Join(", ", work.WorkLimitWords));
+            text.AppendLine($"  {word.Word}: {word.BaselineWork:N0} to {word.TrialWork:N0} work steps " +
+                $"({word.Ratio:0.00}x, {word.PercentMore:0.#}% more work)");
+        text.AppendLine($"Stopped: {work.WorkLimitStops} at the work limit; {work.TimeSafetyNetStops} at the time safety net.");
+        if (work.WorkLimitWords.Count > 0) text.AppendLine("  Work limit: " + string.Join(", ", work.WorkLimitWords));
         if (work.TimeSafetyNetWords.Count > 0) text.AppendLine("  Time safety net: " + string.Join(", ", work.TimeSafetyNetWords));
+        if (work.BaselineTimeMs is { } baselineMs && work.TrialTimeMs is { } trialMs)
+            text.AppendLine($"Time on this computer: {baselineMs:N0} ms in the Baseline, {trialMs:N0} ms in the Trial " +
+                "(it changes with machine load).");
         return text.ToString();
     }
 

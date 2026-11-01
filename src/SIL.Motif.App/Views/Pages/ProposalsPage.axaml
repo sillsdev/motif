@@ -168,7 +168,7 @@
           <views:CopyableTextBlock Classes="denseTableHeading" Text="{x:Static app:MotifAppStrings.Warnings}" VerticalAlignment="Center" />
         </Border>
         <Border Grid.Column="6" controls:DenseTable.Secondary="True">
-          <views:CopyableTextBlock Classes="denseTableHeading" Text="{x:Static app:MotifAppStrings.WordTime}" VerticalAlignment="Center" />
+          <views:CopyableTextBlock Classes="denseTableHeading" Text="{x:Static app:MotifAppStrings.ProposalWork}" VerticalAlignment="Center" />
         </Border>
         <Border Grid.Column="7" />
       </Grid>
@@ -239,9 +239,9 @@
                              TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
                 </Border>
                 <Border Grid.Column="6" controls:DenseTable.Secondary="True">
-                  <TextBlock Classes="denseTableCell proposalNumber" Classes.moved="{Binding WordTime.Moved}"
-                             Text="{Binding TableWordTimeText}"
-                             TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                  <TextBlock Classes="denseTableCell proposalNumber" Classes.moved="{Binding Work.Moved}"
+                             Text="{Binding TableWorkText}"
+                             TextWrapping="Wrap" VerticalAlignment="Center" />
                 </Border>
                 <StackPanel Grid.Column="7" Orientation="Horizontal"
                             Spacing="{DynamicResource Intent.Space.Minimal}" VerticalAlignment="Center">

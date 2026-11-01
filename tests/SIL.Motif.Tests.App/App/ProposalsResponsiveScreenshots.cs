@@ -134,7 +134,7 @@ public sealed class ProposalsResponsiveScreenshots
                                     $"Proposal identity has {tracks.ColumnDefinitions[0].ActualWidth:0.#} DIP; " +
                                     $"at least {minimumIdentityWidth:0.#} DIP is needed.");
                                 if (sizeName == "full1920x1080" && zoom == 100)
-                                    foreach (var heading in new[] { MotifAppStrings.BuiltBy, MotifAppStrings.Coverage, MotifAppStrings.Warnings, MotifAppStrings.WordTime })
+                                    foreach (var heading in new[] { MotifAppStrings.BuiltBy, MotifAppStrings.Coverage, MotifAppStrings.Warnings, MotifAppStrings.ProposalWork })
                                         Assert.Contains(page.GetVisualDescendants().OfType<TextBlock>(), text =>
                                             text.Classes.Contains("denseTableHeading") && text.Text == heading &&
                                             text.IsEffectivelyVisible);

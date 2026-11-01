@@ -8,7 +8,7 @@ using SIL.Motif.Contract.Responses;
 
 namespace SIL.Motif.App.ViewModels;
 
-/// <summary>One of a card's four numbers, as "before → after" when the Trial measured it.</summary>
+/// <summary>One of a card's numbers, as "before → after" when the Trial measured it.</summary>
 /// <param name="Label">What the number is.</param>
 /// <param name="Value">The number, or today's number alone when the Proposal has no Trial values yet.</param>
 /// <param name="Moved">Whether the Trial moved the number enough to highlight it.</param>
@@ -24,9 +24,15 @@ internal static class ProposalNumberText
     [
         new("Coverage", Show(trial.TextCoveragePercent, Percent), trial.TextCoveragePercent.Moved),
         new("Approved kept", ShowKept(trial), trial.ApprovedKept.Moved || trial.ApprovedTotal.Moved),
-        new("Word time", Show(trial.WordTimeMs, Time), trial.WordTimeMs.Moved),
+        new("Work", ShowWork(trial.Work), trial.Work is { BaselineWork: { } before, TrialWorkSteps: { } after } && before != after),
         new("Warnings", Show(trial.WarningCount, Count), trial.WarningCount.Moved),
+        new("Time on this computer", Show(trial.WordTimeMs, Time), trial.WordTimeMs.Moved),
     ];
+
+    // Work steps are the cost; with no comparison the cell says so, never a time in their place.
+    private static string ShowWork(TrialWork? work) => work is { BaselineWork: { } before, TrialWorkSteps: { } after }
+        ? $"{before.ToString("N0", CultureInfo.CurrentCulture)} → {after.ToString("N0", CultureInfo.CurrentCulture)}"
+        : "—";
 
     private static string ShowKept(TrialSummary trial)
     {
@@ -201,7 +207,7 @@ public sealed class ProposalCardViewModel : ObservableObject
     /// <summary>What the Proposal changes in one line, such as "2 rules · 1 allomorph · 3 parses approved".</summary>
     public string KindsText => KindsIn(Card.ChangeKinds);
 
-    /// <summary>The card's four numbers in order, or empty when the Proposal was never tried.</summary>
+    /// <summary>The card's numbers in order, the time on this computer last, or empty when the Proposal was never tried.</summary>
     public IReadOnlyList<ProposalNumber> Numbers { get; } = [];
 
     public bool HasNumbers => Numbers.Count > 0;
@@ -212,8 +218,8 @@ public sealed class ProposalCardViewModel : ObservableObject
     /// <summary>Approved words kept before and after.</summary>
     public ProposalNumber? ApprovedKept => Numbers.Count > 1 ? Numbers[1] : null;
 
-    /// <summary>Parse time before and after.</summary>
-    public ProposalNumber? WordTime => Numbers.Count > 2 ? Numbers[2] : null;
+    /// <summary>Parser work, in work steps, in the Baseline and in the Trial.</summary>
+    public ProposalNumber? Work => Numbers.Count > 2 ? Numbers[2] : null;
 
     /// <summary>Warning count before and after.</summary>
     public ProposalNumber? Warnings => Numbers.Count > 3 ? Numbers[3] : null;
@@ -229,8 +235,8 @@ public sealed class ProposalCardViewModel : ObservableObject
     /// <summary>The Warnings value for the table, or the existing no-Trial wording.</summary>
     public string TableWarningsText => Warnings?.Value ?? TrialStandingWords.NotTried.Status;
 
-    /// <summary>The Word time value for the table, or the existing no-Trial wording.</summary>
-    public string TableWordTimeText => WordTime?.Value ?? TrialStandingWords.NotTried.Status;
+    /// <summary>The Work value for the table, or the existing no-Trial wording.</summary>
+    public string TableWorkText => Work?.Value ?? TrialStandingWords.NotTried.Status;
 
     /// <summary>Whether the row's main action should open the Proposal.</summary>
     public bool ShowsOpenAction => !CanReopen;

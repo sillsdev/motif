@@ -59,6 +59,9 @@ internal static class ProposalsCaptureFixture
             // H supplies kept counts; these fixture totals are synthetic and stay explicit.
             new Paired<int>(totalBefore, totalAfter, true, true, false, null),
             new Paired<double?>(timeBeforeMs, timeAfterMs, true, true, false, null),
-            new Paired<int?>(warningsBefore, warningsAfter, true, true, false, null), 0, 0);
+            new Paired<int?>(warningsBefore, warningsAfter, true, true, false, null), 0, 0)
+        {
+            Work = new TrialWork(keptBefore, 52_000 + totalBefore, 52_000 + totalBefore + keptAfter, null, [], 0, 0),
+        };
     }
 }

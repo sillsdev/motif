@@ -5,6 +5,7 @@ using SIL.Motif.Cli.Rendering;
 using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Parsimony;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
@@ -388,6 +389,35 @@ public sealed class CatalogTextRenderingTests
         Assert.Contains("recorded 2.00 ms more than their words' own time on this computer", output, StringComparison.Ordinal);
         Assert.DoesNotContain("attempts", output, StringComparison.Ordinal);
         Assert.DoesNotContain("37.5%", output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TrialTextLeadsWithWorkNamesEachIncreasedWordAndSplitsTheStopsBeforeTimeOnThisComputer()
+    {
+        var work = new TrialWork(3, 1000, 1180, 18,
+            [new TrialWorkIncrease("mwalimu", 100, 150, 50), new TrialWorkIncrease("kitabu", 200, 220, 10)], 1, 2)
+        {
+            WorkLimitWords = ["hawajafika"],
+            TimeSafetyNetWords = ["a", "b"],
+            BaselineTimeMs = 4200,
+            TrialTimeMs = 4500,
+        };
+        var trial = new TrialRecord("job/1", "p/1", "sha256:x", new BaselineToken("project", "sha256:" + new string('a', 64), "1",
+                "2026-10-05T00:00:00Z", "sha256:" + new string('b', 64)),
+            null, new Dictionary<string, string>(), [], false, null, JobStatus.Completed, null, TrialFreshness.Current)
+        { Work = work };
+
+        var output = CommandTextRenderer.Render(CommandOutcome<TrialRecord>.Success(trial), asJson: false).Output;
+
+        Assert.Contains("These words took 18% more work to parse (1,000 work steps in the Baseline, 1,180 in the Trial).", output, StringComparison.Ordinal);
+        Assert.Contains("Warning: parser work increased by more than 5% over the Baseline.", output, StringComparison.Ordinal);
+        Assert.Contains("  mwalimu: 100 to 150 work steps (1.50x, 50% more work)", output, StringComparison.Ordinal);
+        Assert.Contains("  kitabu: 200 to 220 work steps (1.10x, 10% more work)", output, StringComparison.Ordinal);
+        Assert.Contains("Stopped: 1 at the work limit; 2 at the time safety net.", output, StringComparison.Ordinal);
+        Assert.Contains("  Work limit: hawajafika", output, StringComparison.Ordinal);
+        Assert.Contains("  Time safety net: a, b", output, StringComparison.Ordinal);
+        Assert.Contains("Time on this computer: 4,200 ms in the Baseline, 4,500 ms in the Trial", output, StringComparison.Ordinal);
+        Assert.True(output.IndexOf("work steps", StringComparison.Ordinal) < output.IndexOf("Time on this computer", StringComparison.Ordinal));
     }
 
     [Fact]
