@@ -235,5 +235,5 @@
       "pattern": "^[\\s\\S]*[A-Za-z0-9_-]{22}(?![\\s\\S])"
     }
   },
-  "$comment": "Runtime semantic validation also requires unique local names, a unique final remaining part, a copied remaining-stem part, at least one copied or modified input, a modified part that is a segment or class part and not the remaining stem, a modification feature class defined by closed phonological features, inserted material or deletion or repeated copying, and at most 256 expanded mappings. Project references and affix morphology are resolved against the loaded project. Duplicate JSON properties are refused by the parser."
+  "$comment": "Runtime semantic validation also requires unique local names, a unique final remaining part, a copied remaining-stem part, at least one copied or modified input, a modified part that is an input part (a segment, a class, or the remaining stem, in which case every segment of the stem takes the features), a modification feature class defined by closed phonological features, inserted material or deletion or repeated copying, and at most 256 expanded mappings. Project references and affix morphology are resolved against the loaded project. Duplicate JSON properties are refused by the parser."
 }

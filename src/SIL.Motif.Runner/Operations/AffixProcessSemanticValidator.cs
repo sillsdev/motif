@@ -14,6 +14,23 @@ internal static class AffixProcessSemanticValidator
         foreach (var process in FindAffectedProcesses(cache, operations)) Validate(cache, process);
     }
 
+    /// <summary>The fact shown in a Dry Run for an affix process of one input and one output; it is allowed, never refused.</summary>
+    internal const string OneInputOneOutputWarning =
+        "This affix process has one input and one output. FieldWorks and PanGloss skip such a process when they load " +
+        "the grammar, so it will not parse; add another part to the process.";
+
+    /// <summary>Adds one Dry Run warning per touched affix process with exactly one input and one output (HCLoader.IsValidRuleForm).</summary>
+    internal static void AppendUnparsedShapeWarnings(LcmCache cache,
+        IReadOnlyList<OperationEnvelope> operations, List<SIL.Motif.Model.Effects.ExpectedEffect> effects)
+    {
+        var preview = System.Text.Json.JsonSerializer.SerializeToElement(new { warning = OneInputOneOutputWarning });
+        foreach (var process in FindAffectedProcesses(cache, operations))
+            if (process.InputOS.Count == 1 && process.OutputOS.Count == 1)
+                effects.Add(new(CanonicalId.FromGuid(process.Guid), "dryRunWarning",
+                    new Dictionary<string, string>(),
+                    new Dictionary<string, string> { ["warning"] = OneInputOneOutputWarning }, preview));
+    }
+
     internal static IReadOnlyList<IMoAffixProcess> FindAffectedProcesses(LcmCache cache,
         IReadOnlyList<OperationEnvelope> operations)
     {
@@ -117,7 +134,7 @@ internal static class AffixProcessSemanticValidator
             switch (output)
             {
                 case IMoModifyFromInput modify when modify.ContentRA is { } part && copies.ContainsKey(part.Guid) &&
-                    part.Owner?.Guid == process.Guid && part is not IPhVariable && modify.ModificationRA is { } features:
+                    part.Owner?.Guid == process.Guid && modify.ModificationRA is { } features:
                     RequireFeatureClass(cache, CanonicalId.FromGuid(features.Guid));
                     copies[part.Guid]++;
                     inserted = true;

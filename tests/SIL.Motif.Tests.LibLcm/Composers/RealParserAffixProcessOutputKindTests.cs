@@ -44,6 +44,65 @@ public sealed class RealParserAffixProcessOutputKindTests(PristineProjectFixture
             Assert.Empty(await Readings(tracer, path, control, names));
     }
 
+    /// <summary>
+    /// A modify of the remaining stem, written as FieldWorks' UI writes it (MoModifyFromInput whose content is the stem
+    /// variable) beside an inserted affix segment, voices every segment of the stem and the real parser derives it.
+    /// </summary>
+    [RealParserFact]
+    public async Task ModifyFromInputOnTheRemainingStemVoicesEverySegmentAndParsesTheDerivedForms()
+    {
+        using var cache = pristine.NewScratch();
+        var world = Build(cache, "pt", "ptp");
+        var operations = AuthorAffixProcessComposer.Build(cache, new AuthorAffixProcessIntent(
+            CanonicalId.FromGuid(MoMorphTypeTags.kguidMorphPrefix), "process", Anal(cache),
+            new LexicalEntryMsa(LexicalEntryMsaKind.Unclassified, world.Category), [new("rest", Remaining: true)],
+            [new(InsertClass: world.AOnly), new(Modify: "rest", ModifyFeatures: world.Voiced)]));
+        var dryRun = ScratchDryRun.Of(cache, Proposal(operations));
+        Assert.DoesNotContain(dryRun.ExpectedEffects, effect => effect.Field == "dryRunWarning");
+        var process = Created(ApplyOps(cache, operations), LexEntryLexemeFormOperationKinds.CreateLexemeForm);
+        var names = new Dictionary<CanonicalId, string>(world.Names, CanonicalId.ByGuid) { [process] = "VOICE" };
+        var modify = Assert.Single(cache.ServiceLocator.GetInstance<IMoAffixProcessRepository>().AllInstances()
+            .Single(candidate => candidate.Guid == process.ToGuid()).OutputOS.OfType<IMoModifyFromInput>());
+        Assert.IsAssignableFrom<IPhVariable>(modify.ContentRA);
+        var path = cache.ProjectId.Path;
+        new FwDataProjectLoader().Save(cache);
+        using var invoker = new PanGlossInvoker();
+        var tracer = new PanGlossTracer(invoker);
+
+        Assert.Equal(["pt+VOICE"], await Readings(tracer, path, "abd", names));
+        Assert.Equal(["ptp+VOICE"], await Readings(tracer, path, "abdb", names));
+        Assert.Equal(["pt"], await Readings(tracer, path, "pt", names));
+        foreach (var control in new[] { "apt", "abt", "adb" })
+            Assert.Empty(await Readings(tracer, path, control, names));
+    }
+
+    /// <summary>
+    /// FieldWorks' loader (HCLoader.IsValidRuleForm) and PanGloss skip an affix process with exactly one input and one
+    /// output, so the Dry Run warns and the real parser never uses it, whatever the part.
+    /// </summary>
+    [RealParserFact]
+    public async Task AProcessWithOneInputAndOneOutputWarnsInDryRunAndIsDroppedByTheParser()
+    {
+        using var cache = pristine.NewScratch();
+        var world = Build(cache, "pt");
+        var operations = AuthorAffixProcessComposer.Build(cache, new AuthorAffixProcessIntent(
+            CanonicalId.FromGuid(MoMorphTypeTags.kguidMorphPrefix), "process", Anal(cache),
+            new LexicalEntryMsa(LexicalEntryMsaKind.Unclassified, world.Category), [new("rest", Remaining: true)],
+            [new(Modify: "rest", ModifyFeatures: world.Voiced)]));
+        var dryRun = ScratchDryRun.Of(cache, Proposal(operations));
+        var warning = Assert.Single(dryRun.ExpectedEffects, effect => effect.Field == "dryRunWarning");
+        Assert.Contains("skip such a process", warning.After["warning"], StringComparison.Ordinal);
+        var process = Created(ApplyOps(cache, operations), LexEntryLexemeFormOperationKinds.CreateLexemeForm);
+        var names = new Dictionary<CanonicalId, string>(world.Names, CanonicalId.ByGuid) { [process] = "VOICE" };
+        var path = cache.ProjectId.Path;
+        new FwDataProjectLoader().Save(cache);
+        using var invoker = new PanGlossInvoker();
+        var tracer = new PanGlossTracer(invoker);
+
+        Assert.Equal(["pt"], await Readings(tracer, path, "pt", names));
+        Assert.Empty(await Readings(tracer, path, "bd", names));
+    }
+
     [RealParserFact]
     public async Task InsertByClassInsertsASegmentOfTheClassAndParsesTheDerivedForms()
     {
@@ -83,7 +142,7 @@ public sealed class RealParserAffixProcessOutputKindTests(PristineProjectFixture
         Assert.False(details.Capped || details.TimedOut || details.InvalidShape, word);
         var readings = outcome.Document!.Analyses.Select(analysis => string.Join("+", analysis.Morphs.Select(morph =>
             names.TryGetValue(CanonicalId.FromGuid(Guid.Parse(morph.FormId!)), out var name) ? name : "?" + morph.Form)))
-            .Distinct().ToArray();
+            .Distinct().Order().ToArray();
         output.WriteLine($"{word}: {(readings.Length == 0 ? "no analysis" : string.Join(" | ", readings))}");
         return readings;
     }
@@ -114,7 +173,7 @@ public sealed class RealParserAffixProcessOutputKindTests(PristineProjectFixture
                 new LexicalEntryMsa(LexicalEntryMsaKind.Stem, category)))), LexEntryLexemeFormOperationKinds.CreateLexemeForm)] = stem;
         return new World(category, names, Class("Voiceless", "VL", [features.VoiceMinus]),
             Class("Voiced", "VD", [features.VoicePlus]), Class("Voiced labial", "VLB", [features.VoicePlus, features.Labial]),
-            Class("B only", "BO", members: [phonemes["b"]]), Class("B or d", "BD", members: [phonemes["b"], phonemes["d"]]));
+            Class("B only", "BO", members: [phonemes["b"]]), Class("B or d", "BD", members: [phonemes["b"], phonemes["d"]]), Class("A only", "AO", members: [phonemes["a"]]));
     }
 
     private static CanonicalId Process(LcmCache cache, CanonicalId category, IReadOnlyList<AffixProcessInputPart> input,
@@ -160,5 +219,5 @@ public sealed class RealParserAffixProcessOutputKindTests(PristineProjectFixture
         PhonologicalFeatureValue Labial, PhonologicalFeatureValue Coronal, PhonologicalFeatureValue Vowel);
 
     private sealed record World(CanonicalId Category, Dictionary<CanonicalId, string> Names, CanonicalId Voiceless,
-        CanonicalId Voiced, CanonicalId VoicedLabial, CanonicalId BSegments, CanonicalId BdSegments);
+        CanonicalId Voiced, CanonicalId VoicedLabial, CanonicalId BSegments, CanonicalId BdSegments, CanonicalId AOnly);
 }

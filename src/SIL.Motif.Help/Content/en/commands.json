@@ -246,7 +246,7 @@
       "draft": "Draft name.",
       "entry": "Id of the existing or earlier-staged affix entry whose lexeme form is an affix process.",
       "input": "Ordered pattern parts, each with a name and one of phoneme, naturalClass or remaining true; the remaining-stem part is last.",
-      "output": "Ordered realization, each item exactly one of: copy of a named input part; insert of phoneme ids; insertClass, the id of a natural class one of whose segments is inserted; modify, the name of a phoneme or natural-class input part, with features, the id of a feature natural class laid over the copied part. An input part left out of the output is deleted.",
+      "output": "Ordered realization, each item exactly one of: copy of a named input part; insert of phoneme ids; insertClass, the id of a natural class one of whose segments is inserted (a class of several segments leaves the choice of member to the parser); modify, the name of an input part (a phoneme, a natural class or the remaining stem), with features, the id of a feature natural class laid over the copied part. An input part left out of the output is deleted.",
       "inflectionClasses": "Optional ids of inflection classes of the stems this form attaches to. Inflectional affixes only; a derivational affix is refused (use compose-edit-derivational-affix-restriction).",
       "placement": "The neighbouring alternate form ids, after, before or both; required when the entry already has alternate forms."
     },
@@ -1105,7 +1105,7 @@
       "formWs": "Vernacular writing system tag for form.",
       "msa": "Affix grammatical info: kind inflectional, derivational or unclassified, its category, and for derivational toCategory, for inflectional slots.",
       "input": "Ordered pattern parts, each with a name and one of phoneme, naturalClass or remaining true; the remaining-stem part is last.",
-      "output": "Ordered realization, each item exactly one of: copy of a named input part; insert of phoneme ids; insertClass, the id of a natural class one of whose segments is inserted; modify, the name of a phoneme or natural-class input part, with features, the id of a feature natural class laid over the copied part. An input part left out of the output is deleted."
+      "output": "Ordered realization, each item exactly one of: copy of a named input part; insert of phoneme ids; insertClass, the id of a natural class one of whose segments is inserted (a class of several segments leaves the choice of member to the parser); modify, the name of an input part (a phoneme, a natural class or the remaining stem), with features, the id of a feature natural class laid over the copied part. An input part left out of the output is deleted."
     },
     "goals": [
       "Add an infix that is inserted after the first consonant of a stem",

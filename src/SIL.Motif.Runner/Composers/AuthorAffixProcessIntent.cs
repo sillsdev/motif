@@ -129,10 +129,7 @@ internal static class AffixProcessIntentShape
             }
             else if (step.Modify is { } modified)
             {
-                var target = input.FirstOrDefault(part => part.Name == modified)
-                    ?? throw new InvalidOperationException($"Unknown input part '{modified}'.");
-                if (target.Remaining)
-                    throw new InvalidOperationException("The remaining-stem part cannot be modified; modify a segment or class part.");
+                if (!copies.ContainsKey(modified)) throw new InvalidOperationException($"Unknown input part '{modified}'.");
                 copies[modified]++;
                 expanded++;
                 inserts = true;

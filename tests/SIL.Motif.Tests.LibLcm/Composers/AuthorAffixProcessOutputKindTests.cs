@@ -107,8 +107,15 @@ public sealed class AuthorAffixProcessOutputKindTests : IDisposable
             [new(InsertClass: Id(_segments)), new(Copy: "rest")]));
     }
 
+    [Fact]
+    public void AModifyOfTheRemainingStemIsAllowed()
+    {
+        AuthorAffixProcessComposer.Build(_cache, Intent(
+            [new("c", Phoneme: Id(_voiceless)), new("rest", Remaining: true)],
+            [new(Copy: "c"), new(Modify: "rest", ModifyFeatures: Id(_voicedClass))]));
+    }
+
     [Theory]
-    [InlineData("remaining")]
     [InlineData("segment-class")]
     [InlineData("unknown-part")]
     [InlineData("no-features")]
@@ -119,7 +126,6 @@ public sealed class AuthorAffixProcessOutputKindTests : IDisposable
         var parts = new AffixProcessInputPart[] { new("c", Phoneme: Id(_voiceless)), new("rest", Remaining: true) };
         AffixProcessOutputStep step = problem switch
         {
-            "remaining" => new(Modify: "rest", ModifyFeatures: Id(_voicedClass)),
             "segment-class" => new(Modify: "c", ModifyFeatures: Id(_segments)),
             "unknown-part" => new(Modify: "x", ModifyFeatures: Id(_voicedClass)),
             "no-features" => new(Modify: "c"),

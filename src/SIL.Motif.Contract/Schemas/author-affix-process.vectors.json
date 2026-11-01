@@ -887,7 +887,7 @@
     },
     {
       "name": "modify-remaining-stem",
-      "accept": false,
+      "accept": true,
       "intent": {
         "morphType": "AAAAAAAAAAAAAAAAAAAAAA",
         "gloss": "MUT",

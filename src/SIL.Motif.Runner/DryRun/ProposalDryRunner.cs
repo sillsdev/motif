@@ -107,6 +107,7 @@ public static class ProposalDryRunner
             LexicalFormSemanticValidator.ValidateProposal(cache, proposal.Operations);
             InflFeatsSemanticValidator.ValidateProposal(cache, proposal.Operations);
             AffixProcessSnapshots.AppendGraphEffects(processBefore, cache, effects);
+            AffixProcessSemanticValidator.AppendUnparsedShapeWarnings(cache, proposal.Operations, effects);
         }
 
         var effectDigest = ExpectedEffectSetDigest.Compute(effects);
