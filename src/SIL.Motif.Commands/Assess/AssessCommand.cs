@@ -38,7 +38,7 @@ using SIL.Motif.Worker.Store;
 namespace SIL.Motif.Commands.Assess;
 
 /// <summary>
-/// Measures the current Baseline synchronously (design decision 4): ensures a Baseline exists, composes a
+/// Measures the current Baseline synchronously (design decision 4): ensures a Baseline of the saved project exists, composes a
 /// Selection from whichever of the four agreed sources were asked for, runs the Assessor over it through the
 /// PanGloss batch invocation, records every produced Assessment, and reads its statistics cache as a text summary.
 /// </summary>
@@ -784,7 +784,10 @@ public static class AssessCommand
         ProjectLocator project, string workspaceKey, BaselineRepository baselines)
     {
         var current = baselines.GetCurrentPublished(workspaceKey);
-        if (current is null)
+        // A store that never saw an Apply cannot call its Baseline old; a different save time does.
+        var savedSince = current is not null && File.Exists(project.FullFwDataPath) &&
+            File.GetLastWriteTimeUtc(project.FullFwDataPath).Ticks != current.SourceLastWriteUtc.UtcDateTime.Ticks;
+        if (current is null || savedSince)
             return BaselineCaptureCommand.Capture(new BaselineCaptureRequest(projectPath), managedRoot);
 
         var held = File.Exists(project.FullFwDataPath + ".lock");

@@ -1486,6 +1486,112 @@ public sealed class DeterministicAssessCommandTests : IDisposable
         Assert.True(second.Value!.Baseline.ReusedExistingBytes);
     }
 
+    // A fresh store records no Apply, so only the project's save time shows the Baseline is old.
+    [Fact]
+    public void ARunAfterTheProjectWasSavedAgainMeasuresTheSavedProjectNotTheOlderBaseline()
+    {
+        using var seeded = NewSeededScratch();
+        var managedRoot = NewManagedRoot();
+        var invoker = NewInvoker();
+        var first = AssessCommand.Run(
+            new AssessRequest(seeded.FwDataPath, AllWordforms), managedRoot, NewAssessor(), invoker,
+            onProgress: null, CancellationToken.None);
+        Assert.True(first.Succeeded, first.Refusal?.Message);
+
+        var cache = seeded.Cache;
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor,
+            () => cache.ServiceLocator.GetInstance<ILexEntryFactory>().Create());
+        new FwDataProjectLoader().Save(cache);
+        File.SetLastWriteTimeUtc(seeded.FwDataPath, first.Value!.Baseline.SourceLastWriteUtc.AddMinutes(5).UtcDateTime);
+
+        var second = AssessCommand.Run(
+            new AssessRequest(seeded.FwDataPath, AllWordforms), managedRoot, NewAssessor(), invoker,
+            onProgress: null, CancellationToken.None);
+
+        Assert.True(second.Succeeded, second.Refusal?.Message);
+        Assert.False(second.Value!.Baseline.ReusedExistingBytes);
+        Assert.NotEqual(first.Value.Baseline.Token, second.Value.Baseline.Token);
+        Assert.Equal(new DateTimeOffset(File.GetLastWriteTimeUtc(seeded.FwDataPath), TimeSpan.Zero),
+            second.Value.Baseline.SourceLastWriteUtc);
+    }
+
+    // A restored backup can keep an older save time yet differ from the Baseline.
+    [Fact]
+    public void ARunAfterAnOlderSavedFileWasRestoredMeasuresTheRestoredProject()
+    {
+        using var seeded = NewSeededScratch();
+        var managedRoot = NewManagedRoot();
+        var invoker = NewInvoker();
+        var first = AssessCommand.Run(
+            new AssessRequest(seeded.FwDataPath, AllWordforms), managedRoot, NewAssessor(), invoker,
+            onProgress: null, CancellationToken.None);
+        Assert.True(first.Succeeded, first.Refusal?.Message);
+
+        var cache = seeded.Cache;
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor,
+            () => cache.ServiceLocator.GetInstance<ILexEntryFactory>().Create());
+        new FwDataProjectLoader().Save(cache);
+        File.SetLastWriteTimeUtc(seeded.FwDataPath, first.Value!.Baseline.SourceLastWriteUtc.AddMinutes(-5).UtcDateTime);
+
+        var second = AssessCommand.Run(
+            new AssessRequest(seeded.FwDataPath, AllWordforms), managedRoot, NewAssessor(), invoker,
+            onProgress: null, CancellationToken.None);
+
+        Assert.True(second.Succeeded, second.Refusal?.Message);
+        Assert.False(second.Value!.Baseline.ReusedExistingBytes);
+        Assert.NotEqual(first.Value.Baseline.Token, second.Value.Baseline.Token);
+    }
+
+    [Fact]
+    public void ALaterSaveTimeWithTheSameContentAdvancesTheBaselineSaveTimeAndIsNotRecapturedAgain()
+    {
+        using var seeded = NewSeededScratch();
+        var managedRoot = NewManagedRoot();
+        var invoker = NewInvoker();
+        var first = AssessCommand.Run(
+            new AssessRequest(seeded.FwDataPath, AllWordforms), managedRoot, NewAssessor(), invoker,
+            onProgress: null, CancellationToken.None);
+        Assert.True(first.Succeeded, first.Refusal?.Message);
+        File.SetLastWriteTimeUtc(seeded.FwDataPath, first.Value!.Baseline.SourceLastWriteUtc.AddMinutes(5).UtcDateTime);
+
+        var touched = AssessCommand.Run(
+            new AssessRequest(seeded.FwDataPath, AllWordforms), managedRoot, NewAssessor(), invoker,
+            onProgress: null, CancellationToken.None);
+        var after = AssessCommand.Run(
+            new AssessRequest(seeded.FwDataPath, AllWordforms), managedRoot, NewAssessor(), invoker,
+            onProgress: null, CancellationToken.None);
+
+        Assert.True(touched.Succeeded, touched.Refusal?.Message);
+        Assert.Equal(first.Value.Baseline.Token.SemanticIdentity, touched.Value!.Baseline.Token.SemanticIdentity);
+        Assert.Equal(new DateTimeOffset(File.GetLastWriteTimeUtc(seeded.FwDataPath), TimeSpan.Zero),
+            touched.Value.Baseline.SourceLastWriteUtc);
+        Assert.True(after.Succeeded, after.Refusal?.Message);
+        Assert.True(after.Value!.Baseline.ReusedExistingBytes);
+        Assert.Equal(touched.Value.Baseline.SourceLastWriteUtc, after.Value.Baseline.SourceLastWriteUtc);
+    }
+
+    [Fact]
+    public void ACaptureRefusalOnAnIncompleteSavedFileIsPassedThrough()
+    {
+        using var seeded = NewSeededScratch();
+        var managedRoot = NewManagedRoot();
+        var invoker = NewInvoker();
+        var first = AssessCommand.Run(
+            new AssessRequest(seeded.FwDataPath, AllWordforms), managedRoot, NewAssessor(), invoker,
+            onProgress: null, CancellationToken.None);
+        Assert.True(first.Succeeded, first.Refusal?.Message);
+        var whole = File.ReadAllText(seeded.FwDataPath);
+        File.WriteAllText(seeded.FwDataPath, whole[..(whole.Length / 2)]);
+        File.SetLastWriteTimeUtc(seeded.FwDataPath, first.Value!.Baseline.SourceLastWriteUtc.AddMinutes(5).UtcDateTime);
+
+        var second = AssessCommand.Run(
+            new AssessRequest(seeded.FwDataPath, AllWordforms), managedRoot, NewAssessor(), invoker,
+            onProgress: null, CancellationToken.None);
+
+        Assert.False(second.Succeeded);
+        Assert.Equal("baseline.source-incomplete", second.Refusal!.Code);
+    }
+
     [Fact]
     public void ExplicitReparseRecordsItsRootAndRejectsWordsOutsideIt()
     {
@@ -2072,6 +2178,7 @@ public sealed class DeterministicAssessCommandTests : IDisposable
     {
         public string FwDataPath => cache.ProjectId.Path;
         public SeededText Seeded => seeded;
+        public LcmCache Cache => cache;
 
         public void Dispose() => cache.Dispose();
     }
