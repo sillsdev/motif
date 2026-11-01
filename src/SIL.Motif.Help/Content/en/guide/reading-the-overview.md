@@ -7,3 +7,6 @@ The [Overview](term:overview) brings together saved results and project counts. 
 For the full page tour—including freshness, timing, warnings and the links beside each table—see [Overview](guide:overview). Opening the page shows stored results; it does not start a parse. After saving in FieldWorks, press **Refresh**, then **Parse all words** to measure your current [Default Selection](term:default-selection) against the saved project. See [Parse all words](guide:assessment).
 
 ![Overview results after Parse all words](shot:review-apply-refresh-parse/parsed)
+
+
+The **Look first** row for unparsed words lists the ten chosen words with no completed parse that occur most often, with their counts, and the total. Under it, the words are grouped only by what the parser stored: a refusal code, the work limit or time limit that stopped the search, or no analysis. Motif does not guess a cause. Words that FieldWorks marks as an incorrect spelling are counted apart and not listed. When the Selection has no counts of places in Texts, the first ten words by spelling are listed instead, and the row says so. The link opens those words in the Matrix.

@@ -101,6 +101,34 @@ public sealed class EvidenceSetReadsTests : IDisposable
     }
 
     [Fact]
+    public void OverviewForATrialListsTheWordsTheTrialLeavesUnparsedAndLeftOutCountsOnlyFromItsOwnBaseline()
+    {
+        using var fixture = new TrialsTests.ProjectFixture(_root, includeSecondWord: true);
+        var proposal = fixture.SaveProposal();
+        fixture.SetDefaultSelection([fixture.TextId], []);
+        fixture.RecordProjectAssessment("project-root", AssessmentKinds.ParseTime,
+            ParsedWord("cat", 1), ParsedWord("dog", 3));
+        fixture.RecordAssessment(proposal, "trial-root", AssessmentKinds.ParseTime, "no-analysis");
+        fixture.CreateJob(proposal.Json, "2026-09-24T11:00:00Z", "trial", ["trial-root"], allWords: false);
+        var trial = Trials.LatestFor(fixture.Database, fixture.Project, proposal.Id.Value)!;
+        var set = EvidenceSets.ForTrial(fixture.Database, fixture.Project, trial);
+        Assert.True(set.Succeeded, set.Refusal?.Message);
+
+        var sameBaseline = OverviewCommand.Overview(fixture.Database, fixture.Project, set.Value!).Value!;
+        var today = OverviewCommand.Overview(new OverviewRequest(fixture.Project.FullFwDataPath)).Value!;
+        fixture.RecordBaseline("sha256:" + new string('b', 64), "2026-09-24T11:30:00Z",
+            semanticDigest: "sha256:" + new string('2', 64));
+        var otherBaseline = OverviewCommand.Overview(fixture.Database, fixture.Project, set.Value!).Value!;
+
+        Assert.Equal(0, today.LookFirst.UnparsedWords!.Words);
+        Assert.Equal(["cat"], sameBaseline.LookFirst.UnparsedWords!.Top.Select(word => word.Word));
+        Assert.Equal((0, 0), (sameBaseline.TextCoverage.DigitOnlyOccurrences, sameBaseline.TextCoverage.OtherWritingSystemOccurrences));
+        Assert.Equal(["cat"], otherBaseline.LookFirst.UnparsedWords!.Top.Select(word => word.Word));
+        Assert.Null(otherBaseline.TextCoverage.DigitOnlyOccurrences);
+        Assert.Null(otherBaseline.TextCoverage.OtherWritingSystemOccurrences);
+    }
+
+    [Fact]
     public void OverviewWithUnknownProposalRefusesTrialNone()
     {
         using var fixture = new TrialsTests.ProjectFixture(_root);

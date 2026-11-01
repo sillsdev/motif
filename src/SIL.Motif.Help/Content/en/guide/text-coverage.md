@@ -2,6 +2,6 @@
 
 [Text Coverage](term:text-coverage) shows what share of the Default Selection’s words, and their places in the chosen Texts, parsed in the last saved parse. The Overview reports both selected words and their places, so the two numbers may differ: one word form can appear many times in a Text.
 
-Use the breakdown to see parsed words alongside words with no parse, incomplete searches, or other recorded outcomes. A word that stopped at the work limit or the time safety net did not complete its search, so read that outcome separately from a completed search with no parse.
+Use the breakdown to see parsed words alongside words with no parse, incomplete searches, or other recorded outcomes. Digit-only places and places in other writing systems are counted apart in a line beneath the share, from the Text summaries saved with the Baseline. A word the parser refuses as an invalid shape stays in the share. A word that stopped at the work limit or the time safety net did not complete its search, so read that outcome separately from a completed search with no parse.
 
 Text Coverage is about the selected Texts and words. It is not the same as **Accuracy**, which compares parser readings with approved analyses, or grammar coverage over an outside Corpus. Choose **Texts** to inspect words and places; read [Parse all words](term:parse-all-words) to understand which run the Overview is showing.

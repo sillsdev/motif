@@ -97,6 +97,8 @@ public sealed partial class OverviewPageModel : PageModel
     [NotifyPropertyChangedFor(nameof(TextCoverageMain))]
     [NotifyPropertyChangedFor(nameof(TextCoverageWords))]
     [NotifyPropertyChangedFor(nameof(TextCoverageSegments))]
+    [NotifyPropertyChangedFor(nameof(TextCoverageLeftOut))]
+    [NotifyPropertyChangedFor(nameof(HasTextCoverageLeftOut))]
     [NotifyPropertyChangedFor(nameof(AccuracyMain))]
     [NotifyPropertyChangedFor(nameof(AccuracyCaption))]
     [NotifyPropertyChangedFor(nameof(AccuracyBreakdown))]
@@ -374,11 +376,77 @@ public sealed partial class OverviewPageModel : PageModel
                     string.Empty,
                     PluralText.Format(MotifAppStrings.OverviewSeeWordsPattern, data.UnknownDifferentWordCount),
                     new RelayCommand(() => OpenCell(WordProjectStatus.Candidate, CompareColumnKind.NoMatch))));
+            if (data.UnparsedWords is { Words: > 0 } unparsed)
+                rows.Add(UnparsedRow((rows.Count + 1).ToString(CultureInfo.CurrentCulture), unparsed));
             return rows;
         }
     }
 
     public bool HasLookFirstRows => LookFirstRows.Count > 0;
+
+    private OverviewLookFirstRow UnparsedRow(string number, OverviewUnparsedWords unparsed)
+    {
+        var reasons = unparsed.Groups.Select(UnparsedReasonText).ToList();
+        if (unparsed.GroupCount > unparsed.Groups.Count)
+            reasons.Add(PluralText.Format(MotifAppStrings.OverviewUnparsedMoreReasonsPattern,
+                unparsed.GroupCount - unparsed.Groups.Count));
+        var detail = new List<string> { string.Join(" · ", reasons) };
+        detail.Add(unparsed.RankedByOccurrences
+            ? PluralText.Format(MotifAppStrings.OverviewUnparsedPlacesPattern, unparsed.Occurrences)
+            : MotifAppStrings.OverviewUnparsedByFormNote);
+        if (unparsed.IncorrectSpellingWords > 0)
+            detail.Add(PluralText.Format(MotifAppStrings.OverviewUnparsedIncorrectSpellingPattern,
+                unparsed.IncorrectSpellingWords));
+        var stopped = unparsed.Groups.Any(IsStopped) || unparsed.Top.Any(word => IsStopped(word.Kind));
+        var unlisted = unparsed.GroupCount > unparsed.Groups.Count;
+        var columns = new List<CompareColumnKind>();
+        if (unlisted || unparsed.Groups.Any(group => !IsStopped(group))) columns.Add(CompareColumnKind.NoParse);
+        if (unlisted || stopped) columns.Add(CompareColumnKind.Timeout);
+        var cells = columns.SelectMany(column => Enum.GetValues<WordProjectStatus>()
+            .Where(status => status != WordProjectStatus.IncorrectSpelling)
+            .Select(status => new TextsListCell(status, column))).ToArray();
+        return new OverviewLookFirstRow(number, PluralText.Format(MotifAppStrings.OverviewUnparsedPattern, unparsed.Words),
+            string.Join(Environment.NewLine, detail),
+            PluralText.Format(MotifAppStrings.OverviewSeeWordsPattern, unparsed.Words),
+            new RelayCommand(() => Context.OpenTexts(TextsTab.Matrix, cells)))
+        {
+            Words = [.. unparsed.Top.Select(word => new OverviewRowWord(word.Word,
+                unparsed.RankedByOccurrences ? Number(word.Occurrences) : string.Empty))],
+        };
+    }
+
+    private static bool IsStopped(OverviewUnparsedGroup group) => IsStopped(group.Kind);
+
+    private static bool IsStopped(string kind) => kind is UnparsedKind.WorkLimit or UnparsedKind.TimeLimit
+        or UnparsedKind.BothLimits or UnparsedKind.Stopped;
+
+    private static string UnparsedReasonText(OverviewUnparsedGroup group) => group.Kind switch
+    {
+        UnparsedKind.Refused => string.Format(CultureInfo.CurrentCulture, MotifAppStrings.OverviewUnparsedRefusedFormat,
+            PluralText.Format(MotifAppStrings.OverviewUnparsedRefusedPattern, group.Words), group.Code),
+        UnparsedKind.WorkLimit => PluralText.Format(MotifAppStrings.OverviewUnparsedWorkLimitPattern, group.Words),
+        UnparsedKind.TimeLimit => PluralText.Format(MotifAppStrings.OverviewUnparsedTimeLimitPattern, group.Words),
+        UnparsedKind.BothLimits => PluralText.Format(MotifAppStrings.OverviewUnparsedBothLimitsPattern, group.Words),
+        UnparsedKind.Stopped => PluralText.Format(MotifAppStrings.OverviewUnparsedStoppedPattern, group.Words),
+        _ => PluralText.Format(MotifAppStrings.OverviewUnparsedNoAnalysisPattern, group.Words),
+    };
+
+    /// <summary>The digit-only and other-writing-system places Text Coverage leaves out, or empty when none.</summary>
+    public string TextCoverageLeftOut
+    {
+        get
+        {
+            if (!HasAssessment || Overview?.TextCoverage is not { DigitOnlyOccurrences: { } digits,
+                    OtherWritingSystemOccurrences: { } other }) return string.Empty;
+            var parts = new List<string>();
+            if (digits > 0) parts.Add(PluralText.Format(MotifAppStrings.OverviewCoverageDigitsPattern, digits));
+            if (other > 0) parts.Add(PluralText.Format(MotifAppStrings.OverviewCoverageOtherWritingSystemPattern, other));
+            return parts.Count == 0 ? string.Empty : string.Format(CultureInfo.CurrentCulture,
+                MotifAppStrings.OverviewCoverageLeftOutFormat, string.Join(" · ", parts));
+        }
+    }
+
+    public bool HasTextCoverageLeftOut => TextCoverageLeftOut.Length > 0;
 
     /// <summary>How many Selection words produced a completed parse.</summary>
     public string TextCoverageMain => !HasAssessment || Overview is not { } overview ? MotifAppStrings.OverviewNotParsedYet :
@@ -678,7 +746,19 @@ public sealed partial class OverviewPageModel : PageModel
 /// <param name="LinkText">The destination described by its link.</param>
 /// <param name="OpenCommand">Opens the exact Matrix cell or Timing word set.</param>
 public sealed record OverviewLookFirstRow(
-    string Number, string Summary, string Detail, string LinkText, IRelayCommand OpenCommand);
+    string Number, string Summary, string Detail, string LinkText, IRelayCommand OpenCommand)
+{
+    /// <summary>The words the row names, each with its count of places; empty for a row that names none.</summary>
+    public IReadOnlyList<OverviewRowWord> Words { get; init; } = [];
+
+    /// <summary>Whether the row names any words.</summary>
+    public bool HasWords => Words.Count > 0;
+}
+
+/// <summary>One word on an Overview row with the count of places shown beside it, or nothing.</summary>
+/// <param name="Word">The word as written in the Selection.</param>
+/// <param name="CountText">Its places in the chosen Texts, formatted, or empty.</param>
+public sealed record OverviewRowWord(string Word, string CountText);
 
 /// <summary>One warning kind in the Overview, keeping exact matches apart from spelling candidates.</summary>
 /// <param name="Name">The kind's window name.</param>

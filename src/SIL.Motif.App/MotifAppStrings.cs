@@ -3875,4 +3875,34 @@ public static class MotifAppStrings
     public static string DroppedKindStratum => Text("MotifApp.DroppedKindStratum");
 
     public static string DroppedKindOther => Text("MotifApp.DroppedKindOther");
+
+    public static string OverviewUnparsedPattern => Text("MotifApp.OverviewUnparsedPattern");
+
+    public static string OverviewUnparsedPlacesPattern => Text("MotifApp.OverviewUnparsedPlacesPattern");
+
+    public static string OverviewUnparsedByFormNote => Text("MotifApp.OverviewUnparsedByFormNote");
+
+    public static string OverviewUnparsedNoAnalysisPattern => Text("MotifApp.OverviewUnparsedNoAnalysisPattern");
+
+    public static string OverviewUnparsedWorkLimitPattern => Text("MotifApp.OverviewUnparsedWorkLimitPattern");
+
+    public static string OverviewUnparsedTimeLimitPattern => Text("MotifApp.OverviewUnparsedTimeLimitPattern");
+
+    public static string OverviewUnparsedBothLimitsPattern => Text("MotifApp.OverviewUnparsedBothLimitsPattern");
+
+    public static string OverviewUnparsedStoppedPattern => Text("MotifApp.OverviewUnparsedStoppedPattern");
+
+    public static string OverviewUnparsedRefusedPattern => Text("MotifApp.OverviewUnparsedRefusedPattern");
+
+    public static string OverviewUnparsedRefusedFormat => Text("MotifApp.OverviewUnparsedRefusedFormat");
+
+    public static string OverviewUnparsedMoreReasonsPattern => Text("MotifApp.OverviewUnparsedMoreReasonsPattern");
+
+    public static string OverviewUnparsedIncorrectSpellingPattern => Text("MotifApp.OverviewUnparsedIncorrectSpellingPattern");
+
+    public static string OverviewCoverageLeftOutFormat => Text("MotifApp.OverviewCoverageLeftOutFormat");
+
+    public static string OverviewCoverageDigitsPattern => Text("MotifApp.OverviewCoverageDigitsPattern");
+
+    public static string OverviewCoverageOtherWritingSystemPattern => Text("MotifApp.OverviewCoverageOtherWritingSystemPattern");
 }

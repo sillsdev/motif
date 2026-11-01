@@ -780,6 +780,8 @@ public static class CommandTextRenderer
             $"{response.TextCoverage.NoParseWords:N0} no parse  {response.TextCoverage.UnknownWords:N0} limit  " +
             $"{response.TextCoverage.SkippedWords:N0} skipped");
         text.AppendLine($"           {response.TextCoverage.ParsedOccurrences:N0}/{response.TextCoverage.TotalOccurrences:N0} occurrences covered ({occurrenceCoverage})");
+        OverviewMeasuresTextRenderer.AppendLeftOut(text, response.TextCoverage);
+        OverviewMeasuresTextRenderer.AppendUnparsed(text, response.LookFirst.UnparsedWords);
         text.AppendLine($"Accuracy   {response.Accuracy.ApprovedWordsKept:N0}/{response.Accuracy.ApprovedWordCount:N0} approved kept  " +
             $"{response.Accuracy.Violations:N0} violations  {response.Accuracy.UnknownWords:N0} unknown");
         text.AppendLine($"           rejected analyses rebuilt {response.Accuracy.RejectedAnalysesRebuilt:N0}  " +

@@ -75,6 +75,18 @@ public sealed record OverviewTextCoverage(
 
     /// <summary>The share of selected Text occurrences with a completed parse.</summary>
     public double? OccurrenceCoveragePercent { get; init; }
+
+    /// <summary>
+    /// Digit-only tokens in the chosen Texts, which Text Coverage leaves out and counts apart; null when the
+    /// Selection names no Texts or the stored Text summaries do not describe this evidence.
+    /// </summary>
+    public int? DigitOnlyOccurrences { get; init; }
+
+    /// <summary>
+    /// Places in the chosen Texts recorded only in another writing system, which Text Coverage leaves out and
+    /// counts apart; null when <see cref="DigitOnlyOccurrences"/> is.
+    /// </summary>
+    public int? OtherWritingSystemOccurrences { get; init; }
 }
 
 /// <summary>Word counts placed by the Compare matrix's shared classification rules.</summary>
@@ -152,6 +164,9 @@ public sealed record OverviewLookFirst(
 
     /// <summary>Whether shared lost-morpheme associations were read; false means unknown, rather than none.</summary>
     public bool SharedLostMorphemesAvailable { get; init; }
+
+    /// <summary>The words with no completed parse, ranked and grouped by recorded reason; null without a matching run.</summary>
+    public OverviewUnparsedWords? UnparsedWords { get; init; }
 
     /// <summary>An empty list of priorities when the project has no matching Parse all words.</summary>
     public static OverviewLookFirst Empty { get; } = new([], [], [], null, 0);

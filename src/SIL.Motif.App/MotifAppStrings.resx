@@ -7939,4 +7939,64 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <value>part of the grammar</value>
     <comment>Kind of a grammar object the window has no more specific word for.</comment>
   </data>
+  <data name="MotifApp.OverviewUnparsedPattern" xml:space="preserve">
+    <value>{0, plural, one {# word did not parse.} other {# words did not parse.}}</value>
+    <comment>Overview Look First row: how many words in the Selection have no completed parse. # is the count.</comment>
+  </data>
+  <data name="MotifApp.OverviewUnparsedPlacesPattern" xml:space="preserve">
+    <value>{0, plural, one {They appear # time in the Texts; the most often used come first.} other {They appear # times in the Texts; the most often used come first.}}</value>
+    <comment>Overview Look First row: how often the unparsed words appear in the chosen Texts. # is the count of places.</comment>
+  </data>
+  <data name="MotifApp.OverviewUnparsedByFormNote" xml:space="preserve">
+    <value>This Selection has no counts of places in Texts, so the first words by spelling are listed.</value>
+    <comment>Overview Look First row: said when the unparsed words are listed by spelling because the Selection has no place counts.</comment>
+  </data>
+  <data name="MotifApp.OverviewUnparsedNoAnalysisPattern" xml:space="preserve">
+    <value>{0, plural, one {# has no analysis} other {# have no analysis}}</value>
+    <comment>Overview Look First row: unparsed words whose search finished without an analysis. # is the count.</comment>
+  </data>
+  <data name="MotifApp.OverviewUnparsedWorkLimitPattern" xml:space="preserve">
+    <value>{0, plural, one {# stopped at the work limit} other {# stopped at the work limit}}</value>
+    <comment>Overview Look First row: unparsed words stopped by the parser work limit. # is the count.</comment>
+  </data>
+  <data name="MotifApp.OverviewUnparsedTimeLimitPattern" xml:space="preserve">
+    <value>{0, plural, one {# stopped at the time limit} other {# stopped at the time limit}}</value>
+    <comment>Overview Look First row: unparsed words stopped by the per-word time safety net. # is the count.</comment>
+  </data>
+  <data name="MotifApp.OverviewUnparsedBothLimitsPattern" xml:space="preserve">
+    <value>{0, plural, one {# stopped at the work and time limits} other {# stopped at the work and time limits}}</value>
+    <comment>Overview Look First row: unparsed words stopped when both the work limit and the time safety net fired. # is the count.</comment>
+  </data>
+  <data name="MotifApp.OverviewUnparsedStoppedPattern" xml:space="preserve">
+    <value>{0, plural, one {# stopped before finishing} other {# stopped before finishing}}</value>
+    <comment>Overview Look First row: unparsed words whose stored result says the search did not finish but not which limit ended it. # is the count.</comment>
+  </data>
+  <data name="MotifApp.OverviewUnparsedRefusedPattern" xml:space="preserve">
+    <value>{0, plural, one {# word refused by PanGloss} other {# words refused by PanGloss}}</value>
+    <comment>Overview Look First row: unparsed words PanGloss refused. # is the count; the refusal code follows in parentheses.</comment>
+  </data>
+  <data name="MotifApp.OverviewUnparsedRefusedFormat" xml:space="preserve">
+    <value>{0} ({1})</value>
+    <comment>Overview Look First row: a refused-word count followed by the parser's recorded refusal code. {0} is the count text, {1} the code.</comment>
+  </data>
+  <data name="MotifApp.OverviewUnparsedMoreReasonsPattern" xml:space="preserve">
+    <value>{0, plural, one {and # more reason} other {and # more reasons}}</value>
+    <comment>Overview Look First row: how many reasons the row does not list. # is the count.</comment>
+  </data>
+  <data name="MotifApp.OverviewUnparsedIncorrectSpellingPattern" xml:space="preserve">
+    <value>{0, plural, one {# word marked as an incorrect spelling in FieldWorks is not listed.} other {# words marked as incorrect spellings in FieldWorks are not listed.}}</value>
+    <comment>Overview Look First row: unparsed words the project marks as incorrect spellings, left out of the list. # is the count.</comment>
+  </data>
+  <data name="MotifApp.OverviewCoverageLeftOutFormat" xml:space="preserve">
+    <value>Not counted in Text Coverage: {0}.</value>
+    <comment>Overview Text Coverage tile: what the share leaves out. {0} is the list of left-out places.</comment>
+  </data>
+  <data name="MotifApp.OverviewCoverageDigitsPattern" xml:space="preserve">
+    <value>{0, plural, one {# place with only digits} other {# places with only digits}}</value>
+    <comment>Overview Text Coverage tile: places in the chosen Texts that are only digits. # is the count.</comment>
+  </data>
+  <data name="MotifApp.OverviewCoverageOtherWritingSystemPattern" xml:space="preserve">
+    <value>{0, plural, one {# place in another writing system} other {# places in other writing systems}}</value>
+    <comment>Overview Text Coverage tile: places in the chosen Texts written in another writing system. # is the count.</comment>
+  </data>
 </root>

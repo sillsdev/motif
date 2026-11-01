@@ -181,6 +181,15 @@ public static class OverviewCommand
                 ? OverviewLookFirstBuilder.Build(assessmentRows.Words, evidence.EffectiveWords, storedCheck,
                     associationEvidence.WordContextAvailable)
                 : OverviewLookFirst.Empty;
+            if (assessedWords.Count > 0)
+                lookFirst = lookFirst with
+                {
+                    UnparsedWords = OverviewUnparsedBuilder.Build(metrics.Words, selection?.OccurrencesByWord),
+                };
+            var summaryIsMeasured = evidence.Set?.Baseline is not { } measuredBaseline ||
+                evidence.Baseline?.Token == measuredBaseline;
+            var leftOut = summaryIsMeasured
+                ? OverviewUnparsedBuilder.LeftOut(summary, evidence.DefaultSelection?.TextIds) : null;
             var warningCounts = WarningsCommand.FromCheck(storedCheck);
             var largestKind = warningCounts.ByKind.FirstOrDefault();
             return CommandOutcome<OverviewResponse>.Success(new OverviewResponse(
@@ -193,7 +202,11 @@ public static class OverviewCommand
                     assessment.SavedUtc, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind),
                 assessment is null ? null : timing.Attribution.WordTimeMs / 1000d,
                 assessment?.GrammarSourceSha256, selection?.Selection.Sha256,
-                metrics.TextCoverage, metrics.Accuracy,
+                metrics.TextCoverage with
+                {
+                    DigitOnlyOccurrences = leftOut?.DigitOnly,
+                    OtherWritingSystemOccurrences = leftOut?.OtherWritingSystem,
+                }, metrics.Accuracy,
                 timing,
                 Warnings: storedCheck is null ? null : new OverviewWarningsSummary(
                     warningCounts.TotalCount, warningCounts.WarningCount, largestKind?.GroupName,
@@ -227,7 +240,7 @@ public static class OverviewCommand
 
 internal static class OverviewMetrics
 {
-    public static (OverviewTextCoverage TextCoverage, OverviewAccuracy Accuracy) Build(
+    public static (OverviewTextCoverage TextCoverage, OverviewAccuracy Accuracy, IReadOnlyList<PlacedWord> Words) Build(
         IReadOnlyList<string> selectionWords,
         TextOccurrenceSnapshot? occurrences,
         IReadOnlyList<AssessedWord> assessedWords)
@@ -253,18 +266,21 @@ internal static class OverviewMetrics
         var approvedNoParse = 0;
         var approvedUnknown = 0;
         var approvedSkipped = 0;
+        var placed = new List<PlacedWord>(selectionWords.Count);
 
         foreach (var form in selectionWords)
         {
             if (!byWord.TryGetValue(form, out var word))
             {
                 if (assessedWords.Count > 0) unknown++;
+                placed.Add(new PlacedWord(form, null, CompareColumnKind.Skipped, string.Empty));
                 continue;
             }
             var comparison = CompareSemantics.Compare(new CompareWordFacts(word.ProjectStanding, word.Outcome,
                 word.IsIncomplete, word.Morphology, word.ReadingGrades, word.MissedApprovedCount ?? 0)
             { AnalysisComparison = word.AnalysisComparison });
             var placement = CompareSemantics.PlacementOf(comparison);
+            placed.Add(new PlacedWord(form, word, placement.Column, comparison.MeaningCode));
             rejectedAnalysesRebuilt += comparison.Availability == AnalysisComparisonAvailability.Available
                 ? comparison.Readings.Count(reading => reading.Matches.Any(match => match.Opinion == ReadingGrade.Disapproved))
                 : word.ReadingGrades?.Count(grade => grade == ReadingGrade.Disapproved) ?? 0;
@@ -339,7 +355,8 @@ internal static class OverviewMetrics
                 ApprovedWordsNoParse = approvedNoParse,
                 ApprovedWordsUnknown = approvedUnknown,
                 ApprovedWordsSkipped = approvedSkipped,
-            });
+            },
+            placed);
     }
 
     internal static double? Percent(int numerator, int denominator) => denominator == 0

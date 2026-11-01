@@ -135,6 +135,22 @@
                         <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" />
                         <TextBlock Classes="overviewMuted" Text="{Binding Detail}" TextWrapping="Wrap"
                                    IsVisible="{Binding Detail, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                        <ItemsControl x:Name="OverviewPageLookFirstWordsItems" ItemsSource="{Binding Words}" IsVisible="{Binding HasWords}">
+                          <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate><WrapPanel Classes="overviewRowWords" /></ItemsPanelTemplate>
+                          </ItemsControl.ItemsPanel>
+                          <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:OverviewRowWord">
+                              <StackPanel Classes="overviewRowWord">
+                                <TextBlock Text="{Binding Word}" FontWeight="{DynamicResource Intent.Weight.Section}"
+                                           controls:WritingSystemText.Id="{Binding $parent[views:OverviewPage].Page.Context.TextStyles.DefaultVernacularId}"
+                                           controls:WritingSystemText.StyleName="Normal" />
+                                <TextBlock Classes="overviewMuted" Text="{Binding CountText}"
+                                           IsVisible="{Binding CountText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                              </StackPanel>
+                            </DataTemplate>
+                          </ItemsControl.ItemTemplate>
+                        </ItemsControl>
                       </StackPanel>
                       <TextBlock Grid.Column="2" Classes="overviewLookFirstAction" Text="{Binding LinkText}"
                                  VerticalAlignment="Center" />
@@ -158,6 +174,8 @@
             <TextBlock Classes="overviewTileValue" Text="{Binding TextCoverageMain}" TextWrapping="Wrap"
                        AutomationProperties.AutomationId="{x:Static app:AutomationIds.OverviewTextCoverage}" />
             <TextBlock Classes="overviewMuted" Text="{Binding TextCoverageWords}" TextWrapping="Wrap" />
+            <TextBlock Classes="overviewMuted" Text="{Binding TextCoverageLeftOut}" TextWrapping="Wrap"
+                       IsVisible="{Binding HasTextCoverageLeftOut}" />
             <ItemsControl x:Name="OverviewCoverageRows" Grid.IsSharedSizeScope="True" ItemsSource="{Binding TextCoverageSegments}" AutomationProperties.Name="{x:Static app:MotifAppStrings.TextCoverageOutcomesAccessibleName}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:OutcomeSegment">

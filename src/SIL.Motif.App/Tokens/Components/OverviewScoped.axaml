@@ -126,6 +126,14 @@
   <Style Selector="StackPanel.overviewLookFirstWords">
     <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Minimal}" />
   </Style>
+  <Style Selector="WrapPanel.overviewRowWords">
+    <Setter Property="ItemSpacing" Value="{DynamicResource Intent.Space.Group}" />
+    <Setter Property="LineSpacing" Value="{DynamicResource Intent.Space.Minimal}" />
+  </Style>
+  <Style Selector="StackPanel.overviewRowWord">
+    <Setter Property="Orientation" Value="Horizontal" />
+    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Minimal}" />
+  </Style>
   <Style Selector=":is(TextBlock).overviewLookFirstNumber">
     <Setter Property="Foreground" Value="{DynamicResource Intent.Accent}" />
     <Setter Property="FontWeight" Value="SemiBold" />
