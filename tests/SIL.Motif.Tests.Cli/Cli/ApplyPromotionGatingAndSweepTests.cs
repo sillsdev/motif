@@ -236,6 +236,68 @@ public sealed class ApplyPromotionGatingAndSweepTests
     }
 
     [Fact]
+    public void ANewerNotReadyAssessmentDoesNotHideAnOlderReadyOne_AndTheSweepKeepsTheOneRead()
+    {
+        WriteConfiguration(gateOnRegression: true, purgeOnApply: true);
+        var proposalId = FinalizeAndTrial("older-ready", "older ready gloss");
+        var intentDigest = GetRecord(proposalId).IntentDigest!;
+        PromotePrevious(("alpha", true));
+        var olderReadyId = RecordAssessment(proposalId, intentDigest, "Correctness", ("alpha", true));
+        System.Threading.Thread.Sleep(30);
+        var newerRegressingId = RecordAssessment(proposalId, intentDigest, "Correctness", ("alpha", false));
+
+        var result = ProposalCommands.Apply(new ApplyRequest(_fwDataPath, ProductVersion, proposalId));
+
+        Assert.True(result.Succeeded, result.Refusal?.Message);
+        Assert.Equal("applied", GetRecord(proposalId).Status);
+        using var database = ProjectMotifDatabase.Open(_fwDataPath);
+        var assessments = new AssessmentRepository(database);
+        Assert.Equal(olderReadyId, assessments.GetCurrent()!.AssessmentId);
+        Assert.Throws<KeyNotFoundException>(() => assessments.Get(newerRegressingId));
+        Assert.Equal(new[] { olderReadyId },
+            assessments.ListByProposal(CanonicalId.Parse(proposalId)).Select(record => record.AssessmentId));
+    }
+
+    [Fact]
+    public void WhenBothAssessmentsAreReadyTheNewestIsTheOneRead()
+    {
+        WriteConfiguration(gateOnRegression: true, purgeOnApply: true);
+        var proposalId = FinalizeAndTrial("both-ready", "both ready gloss");
+        var intentDigest = GetRecord(proposalId).IntentDigest!;
+        PromotePrevious(("alpha", true));
+        RecordAssessment(proposalId, intentDigest, "Correctness", ("alpha", true));
+        System.Threading.Thread.Sleep(30);
+        var newerId = RecordAssessment(proposalId, intentDigest, "Correctness", ("alpha", true));
+
+        var result = ProposalCommands.Apply(new ApplyRequest(_fwDataPath, ProductVersion, proposalId));
+
+        Assert.True(result.Succeeded, result.Refusal?.Message);
+        Assert.Equal(newerId, GetCurrentAssessmentId());
+    }
+
+    [Fact]
+    public void WhenNoAssessmentIsReadyTheRefusalNamesTheNewestInItsFactsAndMessage()
+    {
+        WriteConfiguration(gateOnRegression: true, purgeOnApply: true);
+        var proposalId = FinalizeAndTrial("none-ready", "none ready gloss");
+        var intentDigest = GetRecord(proposalId).IntentDigest!;
+        PromotePrevious(("alpha", true));
+        RecordAssessment(proposalId, intentDigest, "Correctness", ("alpha", false));
+        System.Threading.Thread.Sleep(30);
+        var newestId = RecordAssessment(proposalId, intentDigest, "Correctness", ("alpha", false));
+
+        var result = ProposalCommands.Apply(new ApplyRequest(_fwDataPath, ProductVersion, proposalId));
+
+        Assert.Equal("apply.regression", result.Refusal!.Code);
+        Assert.Equal(newestId, result.Refusal.Facts["assessmentId"]);
+        Assert.Equal(proposalId, result.Refusal.Facts["proposalId"]);
+        Assert.Contains($"Apply read Correctness Assessment {newestId}", result.Refusal.Message, StringComparison.Ordinal);
+        Assert.Contains("the other 1 Assessment(s) of this revision were checked too and none is ready",
+            result.Refusal.Message, StringComparison.Ordinal);
+        Assert.Equal("proposed", GetRecord(proposalId).Status);
+    }
+
+    [Fact]
     public void RegressionGated_WithForce_AppliesAnyway()
     {
         WriteConfiguration(gateOnRegression: true, purgeOnApply: true);

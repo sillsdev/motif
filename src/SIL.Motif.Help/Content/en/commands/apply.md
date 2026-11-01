@@ -10,7 +10,7 @@ motif apply <proposalId> --project <fwdata> [--force] [--autonomous] [--message 
 
 ## Readiness and `--force`
 
-Without `--force`, Apply can be refused with `apply.not-ready` when its current evidence does not satisfy Readiness. A timing-only Trial supplies no Correctness Assessment. A Trial that requests Correctness can record a result with zero approved expectations; that result supplies no comparison of approved readings. In a project with no stems, inspect the recorded parse results and approved comparisons before deciding whether to proceed.
+Without `--force`, Apply can be refused with `apply.not-ready` when its current evidence does not satisfy Readiness. A timing-only Trial supplies no Correctness Assessment. A Trial that requests Correctness can record a result with zero approved expectations; that result supplies no comparison of approved readings. In a project with no stems, inspect the recorded parse results and approved comparisons before deciding whether to proceed. Apply and the Review window read the newest Correctness Assessment of the revision that leaves the Proposal ready, checking the newest ten at most and stopping at the first ready one; an older Assessment past those ten is not read.
 
 `--force` skips the Readiness reasons for this command. It does not create or change an Assessment, and it does not bypass checks that the proposed changes still fit the current project. Changes that no longer fit, or whose fit is uncertain, remain refused.
 

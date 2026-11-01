@@ -1560,17 +1560,55 @@ public static partial class ProposalCommands
         ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
             BuildApplyProjection(database, project, request.ProposalId, request.Force, request.Attribution));
 
-    /// <summary>The latest <c>Correctness</c> Assessment recorded against this exact revision, if any.</summary>
-    internal static AssessmentRecord? FindCandidateAssessment(
-        AssessmentRepository assessments, CanonicalId proposalId, string intentDigest)
-    {
-        var candidateId = assessments.ListByProposal(proposalId)
+    /// <summary>The Correctness Assessments of one Proposal revision, newest first.</summary>
+    internal static IReadOnlyList<string> CandidateAssessmentIds(
+        AssessmentRepository assessments, CanonicalId proposalId, string intentDigest) =>
+        assessments.ListByProposal(proposalId)
             .Where(header => string.Equals(header.ProposalIntentDigest, intentDigest, StringComparison.Ordinal) &&
                 string.Equals(header.Kind, RegressionChecker.RequiredKind, StringComparison.Ordinal))
-            .Select(header => header.AssessmentId)
-            .LastOrDefault();
-        return candidateId is null ? null : assessments.Get(candidateId);
+            .Select(header => header.AssessmentId).Reverse().ToArray();
+
+    /// <summary>How many of a revision's newest Correctness Assessments Review and Apply load in full.</summary>
+    internal const int MaxCandidatesRead = 10;
+
+    /// <summary>The Assessment Readiness read, why, how many were weighed, and how many were left unread.</summary>
+    internal sealed record CandidateChoice(AssessmentRecord? Candidate, Readiness.Decision Decision, int Considered,
+        int Unread = 0);
+
+    /// <summary>
+    /// Takes the newest Assessment of the revision that leaves the Proposal ready, so a later Trial of another
+    /// Selection never hides an Apply-ready one; a newer ready Assessment always wins over an older one. It stops at
+    /// the first ready one and loads no more than the newest <see cref="MaxCandidatesRead"/>, so a Proposal with
+    /// many Trials costs a bounded read on every Review refresh; older ones are counted as unread. When none is
+    /// ready the newest is the one reported.
+    /// </summary>
+    internal static CandidateChoice ChooseCandidate(IReadOnlyList<string> idsNewestFirst,
+        Func<string, AssessmentRecord> load, Func<AssessmentRecord?, Readiness.Decision> evaluate)
+    {
+        if (idsNewestFirst.Count == 0) return new CandidateChoice(null, evaluate(null), 0);
+        var read = Math.Min(idsNewestFirst.Count, MaxCandidatesRead);
+        var unread = idsNewestFirst.Count - read;
+        CandidateChoice? newest = null;
+        for (var index = 0; index < read; index++)
+        {
+            var candidate = load(idsNewestFirst[index]);
+            var decision = evaluate(candidate);
+            newest ??= new CandidateChoice(candidate, decision, read, unread);
+            if (decision.Reasons.Count == 0) return new CandidateChoice(candidate, decision, read, unread);
+        }
+        return newest!;
     }
+
+    /// <summary>Names the Assessment Readiness read, so a refusal says which Trial's evidence it judged.</summary>
+    internal static string DescribeCandidate(AssessmentRecord? candidate, int considered, int unread = 0) =>
+        candidate is null ? "" :
+        $" Apply read Correctness Assessment {candidate.AssessmentId} (Selection '{candidate.Selection.Name}', " +
+        $"{candidate.Selection.Words.Count} words, saved {candidate.SavedUtc})" +
+        (considered > 1
+            ? $"; the other {considered - 1} Assessment(s) of this revision were checked too and none is ready"
+            : "") +
+        (unread > 0 ? $"; {unread} older Assessment(s) were not read, as only the newest {MaxCandidatesRead} are" : "") +
+        ".";
 
     internal static SIL.Motif.Model.DryRun.DryRun? FindCurrentBoundDryRun(
         MotifDatabase database,
@@ -1779,8 +1817,9 @@ public static partial class ProposalCommands
                     : "Review the Correctness evidence and resolve the reported readiness reasons before applying.";
                 return CommandOutcome<ApplyProjection>.Refused(new Refusal(
                     readiness.IsRegression ? "apply.regression" : "apply.not-ready", FailureReason.Refused,
-                    $"Proposal {id} is not ready to apply: {string.Join("; ", readiness.Reasons)}. {guidance}",
-                    Fact(("proposalId", id))));
+                    $"Proposal {id} is not ready to apply: {string.Join("; ", readiness.Reasons)}. {guidance}" +
+                    DescribeCandidate(candidate, authorization.Considered, authorization.Unread),
+                    Fact(("proposalId", id), ("assessmentId", candidate?.AssessmentId))));
             }
 
             var loader = new FwDataProjectLoader();
