@@ -219,25 +219,18 @@ public static class ParsimonyCommands
 
         return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
         {
-            var dryRun = new JobRepository(database).Get(request.DryRunJobId);
-            if (dryRun is null || dryRun.Kind != JobCommands.DryRunKind ||
-                dryRun.Status != JobStatus.CompletedDryRunOnly || !dryRun.DryRunPublished ||
-                dryRun.DryRunJson is null)
-                return CommandOutcome<JobEnqueuedResponse>.Refused(new Refusal(
-                    ParsimonyRefusalCodes.DryRunRequired, FailureReason.Refused,
-                    ParsimonyAdmission.DryRunRequiredMessage));
-
             DryRunJobInput dryRunInput;
             DryRunSourceBinding sourceBinding;
+            ParsimonyCandidateSource? candidateSource;
             try
             {
-                dryRunInput = DryRunJobInput.Parse(dryRun.InputJson);
-                if (dryRun.ResultJson is null)
-                    throw new InvalidDataException("The completed Dry Run has no source binding.");
-                var completion = DryRunJobCompletion.Parse(dryRun.ResultJson);
-                sourceBinding = completion.SourceBaseline;
-                if (dryRunInput.SourceBaseline is not null && dryRunInput.SourceBaseline != sourceBinding)
-                    throw new InvalidDataException("The Dry Run input and result name different Baseline sources.");
+                candidateSource = ParsimonyCandidateSource.Read(database, request.DryRunJobId);
+                if (candidateSource is null)
+                    return CommandOutcome<JobEnqueuedResponse>.Refused(new Refusal(
+                        ParsimonyRefusalCodes.DryRunRequired, FailureReason.Refused,
+                        ParsimonyAdmission.DryRunRequiredMessage));
+                dryRunInput = candidateSource.DryRunInput;
+                sourceBinding = candidateSource.Source;
             }
             catch (Exception exception) when (exception is InvalidDataException or ArgumentException or IOException)
             {
@@ -245,6 +238,7 @@ public static class ParsimonyCommands
                     ParsimonyRefusalCodes.DryRunEvidenceMissing, FailureReason.Refused,
                     "This Dry Run lacks frozen source or prerequisite evidence. Rerun its Dry Run."));
             }
+            var dryRun = candidateSource.Job;
             if (assessmentIds.Count > 0)
             {
                 var invalid = ValidateAssessmentReferences(database, assessmentIds, sourceBinding.Token,

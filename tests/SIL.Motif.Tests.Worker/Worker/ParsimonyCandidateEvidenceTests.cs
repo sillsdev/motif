@@ -233,10 +233,80 @@ public sealed class ParsimonyCandidateEvidenceTests : IDisposable
         Assert.Contains("facts", FakeParser.Invocations(parserPath));
     }
 
-    private async Task<(JobOutcome? Outcome, ClaimedJob Claim, string ParserPath)> RunCandidateAsync(
-        Func<PanGlossInvoker, string, IPanGlossInvoker> wrapInvoker)
+    [Fact]
+    public async Task ACommittedTrialIsASourceThatReadsAsItsDryRunDoes()
     {
-        var proposalJson = DisableProhibitionProposal(_prohibitionGuid);
+        ParsimonyCandidateSource? fromDryRun = null;
+        ParsimonyCandidateSource? fromTrial = null;
+        JobRecord? trialJob = null;
+        var (outcome, _, _) = await RunCandidateAsync((invoker, _) => invoker, sourceOf: (dryRun, json) =>
+        {
+            trialJob = CompleteTrial(dryRun.DryRunJson!, json, JobStatus.Completed);
+            fromDryRun = ParsimonyCandidateSource.Read(_database, dryRun.JobId);
+            fromTrial = ParsimonyCandidateSource.Read(_database, trialJob.JobId);
+            return trialJob;
+        });
+
+        Assert.Equal(fromDryRun!.DryRunInput.Proposal, fromTrial!.DryRunInput.Proposal);
+        Assert.Equal(fromDryRun.DryRunInput.Prerequisites, fromTrial.DryRunInput.Prerequisites);
+        Assert.Equal(fromDryRun.Source, fromTrial.Source);
+        Assert.Equal(fromDryRun.PublishedDryRunJson, fromTrial.PublishedDryRunJson);
+        var completed = Assert.IsType<JobOutcome>(outcome);
+        Assert.True(completed.Status == JobStatus.Completed, completed.ResultJson);
+        var response = JsonSerializer.Deserialize<ParsimonyCandidateEvidenceResponse>(completed.ResultJson!,
+            SIL.Motif.Contract.MotifJson.CreateOptions())!;
+        Assert.Equal(trialJob!.JobId, response.Candidate.DryRunJobId);
+        using var published = JsonDocument.Parse(fromTrial.PublishedDryRunJson);
+        Assert.Equal(published.RootElement.GetProperty("effectDigest").GetString(),
+            response.Candidate.DryRunEffectDigest);
+    }
+
+    [Theory]
+    [InlineData(JobStatus.CompletedWithAssessmentFailure)]
+    [InlineData(JobStatus.Failed)]
+    public void ATrialThatDidNotCommitIsNotASource(JobStatus status)
+    {
+        var trial = CompleteTrial("{}", DisableProhibitionProposal(_prohibitionGuid), status);
+
+        Assert.Null(ParsimonyCandidateSource.Read(_database, trial.JobId));
+    }
+
+    [Fact]
+    public void ACommittedTrialIsNotASourceOnceTheBaselineIsNoLongerCurrent()
+    {
+        var trial = CompleteTrial("{}", DisableProhibitionProposal(_prohibitionGuid),
+            JobStatus.Completed, new BaselineToken("candidate-evidence-project", "sha256:" + new string('3', 64),
+                "projection-v1", "2026-10-08T00:00:00Z", "sha256:" + new string('4', 64)));
+
+        var exception = Assert.Throws<InvalidDataException>(() => ParsimonyCandidateSource.Read(_database, trial.JobId));
+        Assert.Contains("Baseline changed", exception.Message, StringComparison.Ordinal);
+    }
+
+    private JobRecord CompleteTrial(string publishedDryRunJson, string proposalJson, JobStatus status,
+        BaselineToken? measured = null)
+    {
+        var options = SIL.Motif.Contract.MotifJson.CreateOptions();
+        var input = new TrialJobInput(proposalJson, null, ["word"], false, []);
+        var trial = _jobs.Create(CanonicalId.Mint("job/").Value, _projectKey, "trial",
+            JsonSerializer.Serialize(input, options), "2026-10-07T00:00:30Z");
+        var claim = Claim(trial.JobId);
+        claim.PublishDryRun(publishedDryRunJson);
+        var result = JsonSerializer.Serialize(new
+        {
+            baselineToken = measured ?? _token,
+            assessmentIds = Array.Empty<string>(),
+            allWords = false,
+        }, options);
+        claim.Transition(status, status == JobStatus.Failed ? JobFailureCategory.Unknown : JobFailureCategory.None,
+            result);
+        return _jobs.Get(trial.JobId)!;
+    }
+
+    private async Task<(JobOutcome? Outcome, ClaimedJob Claim, string ParserPath)> RunCandidateAsync(
+        Func<PanGlossInvoker, string, IPanGlossInvoker> wrapInvoker, string? proposalText = null,
+        Func<JobRecord, string, JobRecord>? sourceOf = null)
+    {
+        var proposalJson = proposalText ?? DisableProhibitionProposal(_prohibitionGuid);
         var source = new DryRunSourceBinding(_token, _publishedRoot, _publishedFwDataPath,
             "sha256:" + DigestFile(_publishedFwDataPath));
         var dryRunInput = new DryRunJobInput(DryRunJobInput.CurrentSchemaVersion,
@@ -262,13 +332,14 @@ public sealed class ParsimonyCandidateEvidenceTests : IDisposable
             dryRunClaim, _project);
         Assert.Equal(JobStatus.CompletedDryRunOnly, completedDryRun.Status);
 
-        var parserPath = FakeParser.CopyRecordingInvocations(Path.Combine(_root, "parser"));
+        var parserPath = FakeParser.CopyRecordingInvocations(Path.Combine(_root, "parser-" + Guid.NewGuid().ToString("N")));
         FakeParser.WriteFactsFixture(parserPath, FactsFixture(disableChangedRule: false));
         FakeParser.WriteCandidateFactsFixture(parserPath, FactsFixture(disableChangedRule: true));
         using var invoker = new PanGlossInvoker(parserPath);
         var scope = new ParsimonyScopeBinding(ParsimonyEvidenceScopeKind.ProjectApproved, null);
+        var sourceJob = sourceOf is null ? dryRunJob : sourceOf(_jobs.Get(dryRunJob.JobId)!, proposalJson);
         var candidateInput = new ParsimonyCandidateJobInput(ParsimonyCandidateJobInput.CurrentSchemaVersion,
-            dryRunJob.JobId, "P-adhoc-duplicate", scope);
+            sourceJob.JobId, "P-adhoc-duplicate", scope);
         var candidateJob = _jobs.Create(CanonicalId.Mint("job/").Value, _projectKey,
             ParsimonyCandidateEvidenceBuilder.JobKind,
             JsonSerializer.Serialize(candidateInput, SIL.Motif.Contract.MotifJson.CreateOptions()),

@@ -82,31 +82,26 @@ public sealed class ParsimonyCandidateEvidenceBuilder
             throw new InvalidOperationException("The job does not address this project's candidate Parsimony evidence.");
 
         ParsimonyCandidateJobInput input;
-        JobRecord? dryRun;
+        ParsimonyCandidateSource candidateSource;
         DryRunJobInput dryRunInput;
         DryRunSourceBinding source;
         try
         {
             input = ParsimonyCandidateJobInput.Parse(claim.Job.InputJson);
-            dryRun = new JobRepository(_database).Get(input.DryRunJobId);
-            if (dryRun is null || dryRun.Kind != ProjectJobHandlers.DryRunKind ||
-                dryRun.Status != JobStatus.CompletedDryRunOnly || !dryRun.DryRunPublished || dryRun.DryRunJson is null)
+            var read = ParsimonyCandidateSource.Read(_database, input.DryRunJobId);
+            if (read is null)
                 return Failure(JobFailureCategory.Semantic,
-                    "Candidate evidence requires the completed Dry Run with its published effects.");
-            dryRunInput = DryRunJobInput.Parse(dryRun.InputJson);
-            if (dryRun.ResultJson is null)
-                throw new InvalidDataException("The completed Dry Run has no exact source result.");
-            var completion = DryRunJobCompletion.Parse(dryRun.ResultJson);
-            source = completion.SourceBaseline;
-            if (dryRunInput.SourceBaseline is not null && dryRunInput.SourceBaseline != source)
-                throw new InvalidDataException("The Dry Run input and result name different Baseline sources.");
-            source.Validate();
+                    "Candidate evidence requires the completed Dry Run or Trial with its published effects.");
+            candidateSource = read;
+            dryRunInput = candidateSource.DryRunInput;
+            source = candidateSource.Source;
         }
         catch (Exception exception) when (exception is InvalidDataException or ArgumentException or IOException or JsonException)
         {
             return Failure(JobFailureCategory.Semantic,
                 "The Dry Run lacks sufficient frozen source or Proposal evidence. Rerun its Dry Run. " + exception.Message);
         }
+        var dryRun = candidateSource.Job;
 
         var admission = ParsimonyAdmission.Check(input.MeasureId, input.ScopeBinding?.Kind, input.AssessmentIds);
         if (admission is not null) return Failure(JobFailureCategory.Semantic, admission.Message);
@@ -141,7 +136,7 @@ public sealed class ParsimonyCandidateEvidenceBuilder
             var parserIdentity = EvidenceBundlePipeline.RemoveDigestPrefix(parserBefore);
             _publisher.CreateWorkingDirectory(beforeBundleId);
             _publisher.CreateWorkingDirectory(afterBundleId);
-            var prepared = await PrepareProjectStatesAsync(dryRunInput, dryRun.DryRunJson!, source,
+            var prepared = await PrepareProjectStatesAsync(dryRunInput, candidateSource.PublishedDryRunJson, source,
                 Path.Combine(afterWorking, "project-copies"), input.ScopeBinding!, assessmentSource,
                 cancellationToken)
                 .ConfigureAwait(false);
