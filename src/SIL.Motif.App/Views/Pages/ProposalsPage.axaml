@@ -125,6 +125,8 @@
                           AutomationProperties.AutomationId="{Binding SelectedDeleteAutomationId}" />
                 </WrapPanel>
               </StackPanel>
+              <!-- After the actions, so advice that grows never pushes Try again or Open in Review changes down. -->
+              <views:ProposalParsimonyPanel DataContext="{Binding Parsimony}" />
             </StackPanel>
           </StackPanel>
           </Border>

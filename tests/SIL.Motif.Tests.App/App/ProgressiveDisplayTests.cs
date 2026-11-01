@@ -47,7 +47,7 @@ public sealed class ProgressiveDisplayTests
         "ComparePanel", "DiagnosticPanel", "DifferencePanel", "ExpertTracePanel", "GrammarPanel", "HandoffPanel",
         "Inspector", "MiniMatrix", "MotifWorkspaceView", "OverviewInspector", "Pages/AssistantConnectionsPage", "Pages/OverviewPage", "Pages/ParsimonyPage",
         "Pages/ProposalsPage", "Pages/TimingPage",
-        "ProposalDifferencePanel", "RefusalBlock", "ResultsInTextPanel", "ReviewWordRow",
+        "ProposalDifferencePanel", "ProposalParsimonyPanel", "RefusalBlock", "ResultsInTextPanel", "ReviewWordRow",
         "RetirementProposalReviewPanel", "ReviewInspector", "ReviewPanel", "SelectionPanel", "SettingsPage", "SettingsNavigation", "SetupDialog", "StatisticsPanel", "TextWordsPanel", "TextsListsPanel",
         "TraceAnalysesView", "TryWordAttemptInspector", "TryWordPanel", "WarningsFilterPanel", "WarningsInspectorPanel", "WordCard", "WordDispositionButtons",
     ];
@@ -1118,6 +1118,9 @@ public sealed class ProgressiveDisplayTests
                     (_, _) => Task.FromResult(CommandOutcome<ProposalDifferenceResponse>.Refused(
                         new Refusal("difference.none", FailureReason.NotFound, "None."))), _ => { }),
             },
+            "ProposalParsimonyPanel" => new ProposalParsimonyPanel { DataContext = new ProposalParsimonyViewModel(
+                (_, _) => Task.FromResult(CommandOutcome<SIL.Motif.Contract.Parsimony.ProposalParsimonyStatus>.Success(
+                    ProposalParsimonyStatusFixtures.Ready("proposal/scale")))) },
             "RefusalBlock" => new RefusalBlock { DataContext = CompileRefusal(1) },
             "ResultsInTextPanel" => new ResultsInTextPanel(texts.ResultsInText),
             "RetirementProposalReviewPanel" => new RetirementProposalReviewPanel

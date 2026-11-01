@@ -386,7 +386,13 @@ public sealed partial class ProposalsPageModel : PageModel
     private bool _includeSetAside;
     private ProposalStandings _standings = new([], 0);
 
-    public ProposalsPageModel(WorkspaceContext context) : base(context)
+    public ProposalsPageModel(WorkspaceContext context) : this(context, null)
+    {
+    }
+
+    // Tests pass their own wait between two Parsimony reads so no clock decides a result.
+    internal ProposalsPageModel(WorkspaceContext context, Func<TimeSpan, CancellationToken, Task>? parsimonyDelay)
+        : base(context)
     {
         OpenCommand = new AsyncRelayCommand<ProposalCardViewModel>(OpenAsync);
         OpenInReviewCommand = new AsyncRelayCommand<ProposalCardViewModel>(OpenInReviewAsync);
@@ -403,6 +409,9 @@ public sealed partial class ProposalsPageModel : PageModel
             (request, progress, cancellationToken) =>
                 Context.Commands.ProduceProposalDifferenceAsync(request, progress, cancellationToken),
             () => [.. Context.Selection.AllTexts.Select(text => new DifferenceTextChoice(text.Id, text.Title))]);
+        Parsimony = new ProposalParsimonyViewModel(
+            (request, cancellationToken) => Context.Commands.ReadProposalParsimonyStatusAsync(request, cancellationToken),
+            parsimonyDelay);
         Context.Selection.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(SelectionViewModel.TextCount)) Difference.RefreshTexts();
@@ -433,6 +442,12 @@ public sealed partial class ProposalsPageModel : PageModel
 
     /// <summary>The selected Proposal's saved Difference, or the offer to make one.</summary>
     public ProposalDifferenceViewModel Difference { get; }
+
+    /// <summary>The selected Proposal's automatic Parsimony advice, kept current while its job runs.</summary>
+    public ProposalParsimonyViewModel Parsimony { get; }
+
+    /// <summary>The watch of the selected Proposal's Parsimony status that is under way, or the last one that ended.</summary>
+    public Task ParsimonyWatching { get; private set; } = Task.CompletedTask;
 
     /// <summary>The read of the selected Proposal's Difference that is under way, or the last one that finished.</summary>
     public Task DifferenceReading { get; private set; } = Task.CompletedTask;
@@ -627,6 +642,7 @@ public sealed partial class ProposalsPageModel : PageModel
         SelectedGroupFilter = null;
         SetSelectedProposal(null);
         ClearDifference();
+        Parsimony.Stop();
         ShownRefusal = null;
         Apply(new ProposalStandings([], 0));
         State = ProposalsPageState.Loading;
@@ -778,8 +794,11 @@ public sealed partial class ProposalsPageModel : PageModel
         {
             // A re-read of the list deselects for a moment; it settles the Difference when it finishes.
             if (!_rereading) ClearDifference();
+            // Only the brief empty selection of a re-read keeps a watch; any other end closes it.
+            if (value is not null || !_rereading) Parsimony.Stop();
             return;
         }
+        ParsimonyWatching = Parsimony.Watch(path, value.ProposalId);
         // The same Proposal chosen again, as when the list was re-read, only refreshes what its card offers.
         if (value.ProposalId == _differenceProposalId && path == _differenceProject)
         {
@@ -807,10 +826,18 @@ public sealed partial class ProposalsPageModel : PageModel
     private void EndReread()
     {
         _rereading = false;
-        if (SelectedProposal is null) ClearDifference();
+        if (SelectedProposal is null)
+        {
+            ClearDifference();
+            Parsimony.Stop();
+        }
     }
 
-    protected override Task OnStopWorkAsync() => Difference.StopAsync();
+    protected override Task OnStopWorkAsync()
+    {
+        Parsimony.Stop();
+        return Difference.StopAsync();
+    }
 
     // Decided keeps no new Difference, untried has no Trial, and deferred can make its words again.
     private static DifferenceOffer DifferenceOfferFor(ProposalCard card) =>

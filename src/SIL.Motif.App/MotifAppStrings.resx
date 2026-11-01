@@ -8143,4 +8143,260 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <value>{0, plural, one {# word did not parse and is marked as an incorrect spelling in FieldWorks.} other {# words did not parse and are marked as incorrect spellings in FieldWorks.}}</value>
     <comment>Note under Text Coverage when every unparsed word is marked as an incorrect spelling; # is the count</comment>
   </data>
+  <data name="MotifApp.ProposalParsimonyTitle" xml:space="preserve">
+    <value>Parsimony</value>
+    <comment>Heading of the Proposal inspector section that shows the automatic Parsimony advice.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyAccessibleName" xml:space="preserve">
+    <value>Parsimony advice for the selected Proposal</value>
+    <comment>Accessible name of the Proposal inspector's Parsimony section.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyReading" xml:space="preserve">
+    <value>Reading Parsimony status…</value>
+    <comment>Shown while the Parsimony status of the selected Proposal is first read.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyUnreadable" xml:space="preserve">
+    <value>Parsimony status could not be read.</value>
+    <comment>Sentence beside a refusal when the Parsimony status of a Proposal could not be read.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyStateNotSetUp" xml:space="preserve">
+    <value>Not Set Up</value>
+    <comment>Parsimony state label: Parsimony cannot run because PanGloss is not set up. Also a group's label when the group needs something not set up.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyStateNotYetRun" xml:space="preserve">
+    <value>Not Yet Run</value>
+    <comment>Parsimony state label: nothing has measured the Proposal or the group yet.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyStateQueued" xml:space="preserve">
+    <value>Queued</value>
+    <comment>Parsimony state label: the advice is waiting behind other work.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyStateRunning" xml:space="preserve">
+    <value>Running</value>
+    <comment>Parsimony state label: the advice is being measured now.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyStateReady" xml:space="preserve">
+    <value>Ready</value>
+    <comment>Parsimony state label: the advice is measured and its checked inputs are unchanged.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyStateStale" xml:space="preserve">
+    <value>Out of Date</value>
+    <comment>Parsimony state label: the advice was measured before an input changed.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyStateFailed" xml:space="preserve">
+    <value>Did Not Finish</value>
+    <comment>Parsimony state label: the advice job stopped before it finished. It is never a blocker.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyStateAbstained" xml:space="preserve">
+    <value>Could Not Judge</value>
+    <comment>Parsimony group label: no measure of the group could compute, so nothing was judged.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyNotSetUp" xml:space="preserve">
+    <value>Parsimony cannot run until PanGloss is set up. Nothing else is affected.</value>
+    <comment>Sentence under the Parsimony state when PanGloss is not set up.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyNotYetRunNoTrial" xml:space="preserve">
+    <value>Parsimony advice comes after this Proposal's Trial. No Trial has finished yet.</value>
+    <comment>Sentence under the Parsimony state when the Proposal has no finished Trial.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyNotYetRunWaiting" xml:space="preserve">
+    <value>This Proposal's Trial has finished. Parsimony has not started on it yet.</value>
+    <comment>Sentence under the Parsimony state when the Trial finished and no Parsimony run exists yet.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyQueuedOther" xml:space="preserve">
+    <value>Parsimony is waiting for other work to finish before it starts.</value>
+    <comment>Sentence under the Queued Parsimony state.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyQueuedTrial" xml:space="preserve">
+    <value>Parsimony is waiting for a Trial to finish before it starts.</value>
+    <comment>Sentence under the Queued Parsimony state when a Trial holds the queue.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyQueuedParse" xml:space="preserve">
+    <value>Parsimony is waiting for a parse to finish before it starts.</value>
+    <comment>Sentence under the Queued Parsimony state when a parse holds the queue.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyRunning" xml:space="preserve">
+    <value>Parsimony is measuring this Proposal's candidate.</value>
+    <comment>Sentence under the Running Parsimony state when the step is not known.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyRunningStepFormat" xml:space="preserve">
+    <value>Parsimony is measuring this Proposal's candidate: step {0} of {1}.</value>
+    <comment>Sentence under the Running Parsimony state; {0} is the step and {1} the number of steps.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyRunningStageFormat" xml:space="preserve">
+    <value>Parsimony is measuring this Proposal's candidate: {0}, step {1} of {2}.</value>
+    <comment>Sentence under the Running Parsimony state; {0} names the step, {1} is the step and {2} the number of steps.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyStageFacts" xml:space="preserve">
+    <value>reading the grammar</value>
+    <comment>Name of the Parsimony step that reads the grammar's facts, inside a sentence.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyStageValidate" xml:space="preserve">
+    <value>checking the evidence</value>
+    <comment>Name of the Parsimony step that checks the stored evidence, inside a sentence.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyStageMeasure" xml:space="preserve">
+    <value>measuring</value>
+    <comment>Name of the Parsimony step that runs the measures, inside a sentence.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyStageRender" xml:space="preserve">
+    <value>writing the findings</value>
+    <comment>Name of the Parsimony step that writes the findings, inside a sentence.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyStageWaitingForParser" xml:space="preserve">
+    <value>waiting for the parser</value>
+    <comment>Name of the Parsimony step that waits for the parser, inside a sentence.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyReady" xml:space="preserve">
+    <value>Parsimony advice is ready. It was checked against the Baseline, this Proposal, its prerequisites, PanGloss and the measures.</value>
+    <comment>Sentence under the Ready Parsimony state.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyReadyBehind" xml:space="preserve">
+    <value>A changed human judgment or Parsimony Selection is not checked here, so the advice may be behind on those.</value>
+    <comment>Note under the Ready Parsimony state: it does not claim the advice is current on judgments or the Selection.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyStaleFormat" xml:space="preserve">
+    <value>This advice was measured before something changed: {0}. It may no longer be right.</value>
+    <comment>Sentence under the Out of Date Parsimony state; {0} lists what changed.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyStaleUnknown" xml:space="preserve">
+    <value>Whether this advice is still current could not be checked.</value>
+    <comment>Sentence under the Out of Date Parsimony state when the changes could not be named.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyChangedBaseline" xml:space="preserve">
+    <value>the Baseline</value>
+    <comment>What changed since Parsimony measured, inside a list.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyChangedProposal" xml:space="preserve">
+    <value>this Proposal</value>
+    <comment>What changed since Parsimony measured, inside a list.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyChangedPrerequisite" xml:space="preserve">
+    <value>a Proposal it depends on</value>
+    <comment>What changed since Parsimony measured, inside a list.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyChangedParser" xml:space="preserve">
+    <value>PanGloss</value>
+    <comment>What changed since Parsimony measured, inside a list.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyChangedSchema" xml:space="preserve">
+    <value>the layout of the stored evidence</value>
+    <comment>What changed since Parsimony measured, inside a list.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyChangedMeasures" xml:space="preserve">
+    <value>the measures</value>
+    <comment>What changed since Parsimony measured, inside a list.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyChangedSelection" xml:space="preserve">
+    <value>the Parsimony Selection</value>
+    <comment>What changed since Parsimony measured, inside a list.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyChangedJudgments" xml:space="preserve">
+    <value>a human judgment</value>
+    <comment>What changed since Parsimony measured, inside a list.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyFailedFormat" xml:space="preserve">
+    <value>Parsimony advice did not finish. {0} The Trial, Readiness and Apply are not affected.</value>
+    <comment>Sentence under the Did Not Finish Parsimony state; {0} gives the cause.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyFailedTimedOut" xml:space="preserve">
+    <value>PanGloss ran past its time limit on this grammar.</value>
+    <comment>Cause of a Parsimony job that did not finish.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyFailedNotAgain" xml:space="preserve">
+    <value>It is not asked for again by itself on this grammar with this PanGloss.</value>
+    <comment>Added to a timed-out Parsimony job that Motif will not queue again by itself.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyFailedParserUnavailable" xml:space="preserve">
+    <value>PanGloss was missing or was replaced during the run.</value>
+    <comment>Cause of a Parsimony job that did not finish.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyFailedFactsFailed" xml:space="preserve">
+    <value>PanGloss could not read the grammar.</value>
+    <comment>Cause of a Parsimony job that did not finish.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyFailedEvidenceFailed" xml:space="preserve">
+    <value>Motif could not build the evidence for this Proposal.</value>
+    <comment>Cause of a Parsimony job that did not finish.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyFailedCancelled" xml:space="preserve">
+    <value>The run was cancelled.</value>
+    <comment>Cause of a Parsimony job that did not finish.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyFailedInternal" xml:space="preserve">
+    <value>Something unexpected stopped the run.</value>
+    <comment>Cause of a Parsimony job that did not finish.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyGroupGrammar" xml:space="preserve">
+    <value>Grammar Group</value>
+    <comment>Label of the Parsimony Grammar group in the Proposal inspector.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyGroupText" xml:space="preserve">
+    <value>Text Group</value>
+    <comment>Label of the Parsimony Text group in the Proposal inspector.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyGrammarNotYetRun" xml:space="preserve">
+    <value>Not measured for the current inputs yet.</value>
+    <comment>Note under the Grammar group when it has not been measured.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyGroupAbstained" xml:space="preserve">
+    <value>No measure could judge: each was not available or inconclusive. This is not a clean result.</value>
+    <comment>Note under a Parsimony group where no measure computed.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyGroupFailed" xml:space="preserve">
+    <value>Its measures failed while reading the evidence.</value>
+    <comment>Note under a Parsimony group whose measures failed.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyTextGroupManual" xml:space="preserve">
+    <value>The Text Group does not run on its own.</value>
+    <comment>Note under the Parsimony Text group when it has not been run.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyTextGroupNeedsSelection" xml:space="preserve">
+    <value>The Text Group does not run on its own, and it needs a Parsimony Selection first.</value>
+    <comment>Note under the Parsimony Text group when no Parsimony Selection is set up.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyCountsHeader" xml:space="preserve">
+    <value>Counts by Measure</value>
+    <comment>Header of the fold-away list of a Parsimony group's per-measure counts.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyCountsNote" xml:space="preserve">
+    <value>Counts are per measure and are not added together.</value>
+    <comment>Note above a Parsimony group's per-measure counts.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyMeasureCountsFormat" xml:space="preserve">
+    <value>{0}: {1} new, {2} resolved, {3} unchanged, {4} with changed evidence</value>
+    <comment>One measure's counts; {0} is the measure's name, then findings this Proposal adds, removes, leaves and changes the evidence of.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyMeasureNotRun" xml:space="preserve">
+    <value>{0}: not run</value>
+    <comment>One measure that was not run; {0} is the measure's name.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyMeasureNotAvailable" xml:space="preserve">
+    <value>{0}: not available</value>
+    <comment>One measure whose evidence was not available; {0} is the measure's name.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyMeasureInconclusive" xml:space="preserve">
+    <value>{0}: inconclusive</value>
+    <comment>One measure that could not attribute its evidence; {0} is the measure's name.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyMeasureFailed" xml:space="preserve">
+    <value>{0}: failed</value>
+    <comment>One measure that failed while reading the evidence; {0} is the measure's name.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyMeasureNoCounts" xml:space="preserve">
+    <value>{0}: no counts</value>
+    <comment>One measure that computed but has no counts; {0} is the measure's name.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyStateUnknown" xml:space="preserve">
+    <value>Not Known</value>
+    <comment>Parsimony state label for a state this window does not know.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyUnknown" xml:space="preserve">
+    <value>This window does not know where the Parsimony advice stands.</value>
+    <comment>Sentence for a Parsimony state this window does not know.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyChangedUnknown" xml:space="preserve">
+    <value>something changed</value>
+    <comment>What changed since Parsimony measured, inside a list, when this window does not know the kind of change.</comment>
+  </data>
 </root>

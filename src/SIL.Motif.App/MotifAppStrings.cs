@@ -3965,4 +3965,130 @@ public static class MotifAppStrings
     public static string OverviewUnparsedSelectionPlacesPattern => Text("MotifApp.OverviewUnparsedSelectionPlacesPattern");
 
     public static string OverviewUnparsedOnlyIncorrectSpellingPattern => Text("MotifApp.OverviewUnparsedOnlyIncorrectSpellingPattern");
+
+    public static string ProposalParsimonyTitle => Text("MotifApp.ProposalParsimonyTitle");
+
+    public static string ProposalParsimonyAccessibleName => Text("MotifApp.ProposalParsimonyAccessibleName");
+
+    public static string ProposalParsimonyReading => Text("MotifApp.ProposalParsimonyReading");
+
+    public static string ProposalParsimonyUnreadable => Text("MotifApp.ProposalParsimonyUnreadable");
+
+    public static string ProposalParsimonyStateNotSetUp => Text("MotifApp.ProposalParsimonyStateNotSetUp");
+
+    public static string ProposalParsimonyStateNotYetRun => Text("MotifApp.ProposalParsimonyStateNotYetRun");
+
+    public static string ProposalParsimonyStateQueued => Text("MotifApp.ProposalParsimonyStateQueued");
+
+    public static string ProposalParsimonyStateRunning => Text("MotifApp.ProposalParsimonyStateRunning");
+
+    public static string ProposalParsimonyStateReady => Text("MotifApp.ProposalParsimonyStateReady");
+
+    public static string ProposalParsimonyStateStale => Text("MotifApp.ProposalParsimonyStateStale");
+
+    public static string ProposalParsimonyStateFailed => Text("MotifApp.ProposalParsimonyStateFailed");
+
+    public static string ProposalParsimonyStateAbstained => Text("MotifApp.ProposalParsimonyStateAbstained");
+
+    public static string ProposalParsimonyNotSetUp => Text("MotifApp.ProposalParsimonyNotSetUp");
+
+    public static string ProposalParsimonyNotYetRunNoTrial => Text("MotifApp.ProposalParsimonyNotYetRunNoTrial");
+
+    public static string ProposalParsimonyNotYetRunWaiting => Text("MotifApp.ProposalParsimonyNotYetRunWaiting");
+
+    public static string ProposalParsimonyQueuedOther => Text("MotifApp.ProposalParsimonyQueuedOther");
+
+    public static string ProposalParsimonyQueuedTrial => Text("MotifApp.ProposalParsimonyQueuedTrial");
+
+    public static string ProposalParsimonyQueuedParse => Text("MotifApp.ProposalParsimonyQueuedParse");
+
+    public static string ProposalParsimonyRunning => Text("MotifApp.ProposalParsimonyRunning");
+
+    public static string ProposalParsimonyRunningStepFormat => Text("MotifApp.ProposalParsimonyRunningStepFormat");
+
+    public static string ProposalParsimonyRunningStageFormat => Text("MotifApp.ProposalParsimonyRunningStageFormat");
+
+    public static string ProposalParsimonyStageFacts => Text("MotifApp.ProposalParsimonyStageFacts");
+
+    public static string ProposalParsimonyStageValidate => Text("MotifApp.ProposalParsimonyStageValidate");
+
+    public static string ProposalParsimonyStageMeasure => Text("MotifApp.ProposalParsimonyStageMeasure");
+
+    public static string ProposalParsimonyStageRender => Text("MotifApp.ProposalParsimonyStageRender");
+
+    public static string ProposalParsimonyStageWaitingForParser => Text("MotifApp.ProposalParsimonyStageWaitingForParser");
+
+    public static string ProposalParsimonyReady => Text("MotifApp.ProposalParsimonyReady");
+
+    public static string ProposalParsimonyReadyBehind => Text("MotifApp.ProposalParsimonyReadyBehind");
+
+    public static string ProposalParsimonyStaleFormat => Text("MotifApp.ProposalParsimonyStaleFormat");
+
+    public static string ProposalParsimonyStaleUnknown => Text("MotifApp.ProposalParsimonyStaleUnknown");
+
+    public static string ProposalParsimonyChangedBaseline => Text("MotifApp.ProposalParsimonyChangedBaseline");
+
+    public static string ProposalParsimonyChangedProposal => Text("MotifApp.ProposalParsimonyChangedProposal");
+
+    public static string ProposalParsimonyChangedPrerequisite => Text("MotifApp.ProposalParsimonyChangedPrerequisite");
+
+    public static string ProposalParsimonyChangedParser => Text("MotifApp.ProposalParsimonyChangedParser");
+
+    public static string ProposalParsimonyChangedSchema => Text("MotifApp.ProposalParsimonyChangedSchema");
+
+    public static string ProposalParsimonyChangedMeasures => Text("MotifApp.ProposalParsimonyChangedMeasures");
+
+    public static string ProposalParsimonyChangedSelection => Text("MotifApp.ProposalParsimonyChangedSelection");
+
+    public static string ProposalParsimonyChangedJudgments => Text("MotifApp.ProposalParsimonyChangedJudgments");
+    public static string ProposalParsimonyStateUnknown => Text("MotifApp.ProposalParsimonyStateUnknown");
+    public static string ProposalParsimonyUnknown => Text("MotifApp.ProposalParsimonyUnknown");
+    public static string ProposalParsimonyChangedUnknown => Text("MotifApp.ProposalParsimonyChangedUnknown");
+
+    public static string ProposalParsimonyFailedFormat => Text("MotifApp.ProposalParsimonyFailedFormat");
+
+    public static string ProposalParsimonyFailedTimedOut => Text("MotifApp.ProposalParsimonyFailedTimedOut");
+
+    public static string ProposalParsimonyFailedNotAgain => Text("MotifApp.ProposalParsimonyFailedNotAgain");
+
+    public static string ProposalParsimonyFailedParserUnavailable => Text("MotifApp.ProposalParsimonyFailedParserUnavailable");
+
+    public static string ProposalParsimonyFailedFactsFailed => Text("MotifApp.ProposalParsimonyFailedFactsFailed");
+
+    public static string ProposalParsimonyFailedEvidenceFailed => Text("MotifApp.ProposalParsimonyFailedEvidenceFailed");
+
+    public static string ProposalParsimonyFailedCancelled => Text("MotifApp.ProposalParsimonyFailedCancelled");
+
+    public static string ProposalParsimonyFailedInternal => Text("MotifApp.ProposalParsimonyFailedInternal");
+
+
+    public static string ProposalParsimonyGroupGrammar => Text("MotifApp.ProposalParsimonyGroupGrammar");
+
+    public static string ProposalParsimonyGroupText => Text("MotifApp.ProposalParsimonyGroupText");
+
+    public static string ProposalParsimonyGrammarNotYetRun => Text("MotifApp.ProposalParsimonyGrammarNotYetRun");
+
+    public static string ProposalParsimonyGroupAbstained => Text("MotifApp.ProposalParsimonyGroupAbstained");
+
+    public static string ProposalParsimonyGroupFailed => Text("MotifApp.ProposalParsimonyGroupFailed");
+
+    public static string ProposalParsimonyTextGroupManual => Text("MotifApp.ProposalParsimonyTextGroupManual");
+
+    public static string ProposalParsimonyTextGroupNeedsSelection => Text("MotifApp.ProposalParsimonyTextGroupNeedsSelection");
+
+    public static string ProposalParsimonyCountsHeader => Text("MotifApp.ProposalParsimonyCountsHeader");
+
+    public static string ProposalParsimonyCountsNote => Text("MotifApp.ProposalParsimonyCountsNote");
+
+    public static string ProposalParsimonyMeasureCountsFormat => Text("MotifApp.ProposalParsimonyMeasureCountsFormat");
+
+    public static string ProposalParsimonyMeasureNotRun => Text("MotifApp.ProposalParsimonyMeasureNotRun");
+
+    public static string ProposalParsimonyMeasureNotAvailable => Text("MotifApp.ProposalParsimonyMeasureNotAvailable");
+
+    public static string ProposalParsimonyMeasureInconclusive => Text("MotifApp.ProposalParsimonyMeasureInconclusive");
+
+    public static string ProposalParsimonyMeasureFailed => Text("MotifApp.ProposalParsimonyMeasureFailed");
+
+    public static string ProposalParsimonyMeasureNoCounts => Text("MotifApp.ProposalParsimonyMeasureNoCounts");
 }

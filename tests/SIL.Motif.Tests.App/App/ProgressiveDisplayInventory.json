@@ -860,6 +860,13 @@
     "control": "ItemsControl"
   },
   {
+    "view": "ProposalParsimonyPanel",
+    "name": "ParsimonyGroups",
+    "source": "Groups",
+    "mode": "finite",
+    "control": "ItemsControl"
+  },
+  {
     "view": "ProposalDifferencePanel",
     "name": "DifferenceCheckChips",
     "source": "CheckChips",

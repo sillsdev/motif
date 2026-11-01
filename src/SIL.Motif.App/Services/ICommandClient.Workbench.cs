@@ -34,6 +34,13 @@ public partial interface ICommandClient
         ProposalDifferenceShowRequest request, CancellationToken cancellationToken);
 
     /// <summary>
+    /// Reads whether Parsimony has measured a Proposal's candidate. It reads stored jobs and Reports only, so it
+    /// queues nothing, starts no parse, and never changes the Trial, Readiness or Apply.
+    /// </summary>
+    Task<CommandOutcome<ProposalParsimonyStatus>> ReadProposalParsimonyStatusAsync(
+        ReadProposalParsimonyStatusRequest request, CancellationToken cancellationToken);
+
+    /// <summary>
     /// Makes a Proposal's Difference for one Text from its Trial's stored parses and the Baseline's decisions, the
     /// way <c>difference produce</c> does. Progress reports each stage; cancelling saves nothing.
     /// </summary>

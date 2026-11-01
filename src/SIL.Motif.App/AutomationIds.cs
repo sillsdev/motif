@@ -111,6 +111,10 @@ public static class AutomationIds
     public const string ProposalsClearFilter = "motif-proposals-clear-filter";
     /// <summary>The saved Difference section of the Proposal inspector.</summary>
     public const string ProposalDifferencePanel = "motif-proposal-difference";
+    /// <summary>The automatic Parsimony advice section of the Proposal inspector.</summary>
+    public const string ProposalParsimonyPanel = "motif-proposal-parsimony";
+    public const string ProposalParsimonyState = "motif-proposal-parsimony-state";
+    public const string ProposalParsimonyGroups = "motif-proposal-parsimony-groups";
     public const string ProposalDifferenceClear = "motif-proposal-difference-clear";
     public const string ProposalDifferenceText = "motif-proposal-difference-text";
     public const string ProposalDifferenceSaved = "motif-proposal-difference-saved";

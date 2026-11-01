@@ -26,6 +26,12 @@ public sealed partial class CommandClient
             ? Task.FromResult(WaitCancelled<ProposalStandings>())
             : Task.Run(() => ProposalStandingsCommand.Read(request));
 
+    public Task<CommandOutcome<ProposalParsimonyStatus>> ReadProposalParsimonyStatusAsync(
+        ReadProposalParsimonyStatusRequest request, CancellationToken cancellationToken) =>
+        cancellationToken.IsCancellationRequested
+            ? Task.FromResult(WaitCancelled<ProposalParsimonyStatus>())
+            : Task.Run(() => ProposalParsimonyStatusCommand.Read(request, _options.ParserPath));
+
     public Task<CommandOutcome<ProposalDifferenceResponse>> ReadProposalDifferenceAsync(
         ProposalDifferenceShowRequest request, CancellationToken cancellationToken) =>
         cancellationToken.IsCancellationRequested

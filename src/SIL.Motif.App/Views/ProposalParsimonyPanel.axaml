@@ -1,0 +1,52 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="clr-namespace:SIL.Motif.App"
+             xmlns:views="clr-namespace:SIL.Motif.App.Views"
+             xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
+             x:Class="SIL.Motif.App.Views.ProposalParsimonyPanel"
+             x:DataType="vm:ProposalParsimonyViewModel"
+             IsVisible="{Binding IsVisible}"
+             AutomationProperties.Name="{x:Static app:MotifAppStrings.ProposalParsimonyAccessibleName}"
+             AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalParsimonyPanel}">
+  <Border Classes="inspectorSection">
+    <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
+      <TextBlock Classes="inspectorSectionTitle" Text="{x:Static app:MotifAppStrings.ProposalParsimonyTitle}" />
+      <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" IsVisible="{Binding IsLoading}"
+                               Text="{Binding ReadingText}" />
+      <Grid Classes="inspectorFact" ColumnDefinitions="Auto,*" IsVisible="{Binding ShowsStatus}">
+        <TextBlock x:Name="ParsimonyState" Classes="inspectorFactLabel" Text="{Binding StateLabel}"
+                   AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalParsimonyState}" />
+        <views:CopyableTextBlock x:Name="ParsimonySentence" Grid.Column="1" TextWrapping="Wrap"
+                                 Text="{Binding Sentence}" />
+      </Grid>
+      <views:CopyableTextBlock x:Name="ParsimonyNote" Classes="muted" TextWrapping="Wrap"
+                               Text="{Binding Note}" IsVisible="{Binding HasNote}" />
+      <views:RefusalBlock DataContext="{Binding ShownRefusal}" />
+      <ItemsControl x:Name="ParsimonyGroups" ItemsSource="{Binding Groups}" IsVisible="{Binding ShowsStatus}"
+                    AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalParsimonyGroups}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate><StackPanel Spacing="{DynamicResource Intent.Space.Compact}" /></ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:ProposalParsimonyGroupViewModel">
+            <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}"
+                        AutomationProperties.Name="{Binding AccessibleName}">
+              <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Text="{Binding Title}" />
+                <TextBlock Grid.Column="1" Classes="muted" Text="{Binding StateLabel}" />
+              </Grid>
+              <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" Text="{Binding Note}"
+                                       IsVisible="{Binding HasNote}" />
+              <Expander Header="{x:Static app:MotifAppStrings.ProposalParsimonyCountsHeader}" IsVisible="{Binding HasMeasures}">
+                <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
+                  <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" Text="{Binding CountsNote}" />
+                  <views:CopyableTextBlock TextWrapping="Wrap" Text="{Binding MeasuresText}" />
+                </StackPanel>
+              </Expander>
+            </StackPanel>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </StackPanel>
+  </Border>
+</UserControl>

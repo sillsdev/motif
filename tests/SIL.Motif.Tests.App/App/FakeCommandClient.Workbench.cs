@@ -160,6 +160,26 @@ public sealed partial class FakeCommandClient
         return _proposalDifference(request, cancellationToken);
     }
 
+    // A project with no Parsimony job answers "not yet run", the plain state of a Proposal nothing has measured.
+    private Func<ReadProposalParsimonyStatusRequest, CancellationToken, Task<CommandOutcome<ProposalParsimonyStatus>>>
+        _proposalParsimonyStatus = (request, _) => Completed(ProposalParsimonyStatusFixtures.NotYetRun(request.ProposalId));
+
+    public List<ReadProposalParsimonyStatusRequest> ProposalParsimonyStatusRequests { get; } = [];
+
+    public void ProposalParsimonyStatusIs(ProposalParsimonyStatus status) =>
+        _proposalParsimonyStatus = (_, _) => Completed(status);
+
+    public void OnProposalParsimonyStatus(
+        Func<ReadProposalParsimonyStatusRequest, CancellationToken, Task<CommandOutcome<ProposalParsimonyStatus>>>
+            behavior) => _proposalParsimonyStatus = behavior;
+
+    public Task<CommandOutcome<ProposalParsimonyStatus>> ReadProposalParsimonyStatusAsync(
+        ReadProposalParsimonyStatusRequest request, CancellationToken cancellationToken)
+    {
+        ProposalParsimonyStatusRequests.Add(request);
+        return _proposalParsimonyStatus(request, cancellationToken);
+    }
+
     private Func<ProposalDifferenceProduceRequest, IProgress<AssessmentProgress>?, CancellationToken,
         Task<CommandOutcome<ProposalDifferenceResponse>>> _produceProposalDifference = (_, _, _) =>
         Refused<ProposalDifferenceResponse>(new Refusal("difference.no-trial", FailureReason.NotFound, "No Trial."));
