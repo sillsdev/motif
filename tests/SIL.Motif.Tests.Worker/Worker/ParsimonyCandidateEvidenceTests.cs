@@ -304,7 +304,7 @@ public sealed class ParsimonyCandidateEvidenceTests : IDisposable
 
     private async Task<(JobOutcome? Outcome, ClaimedJob Claim, string ParserPath)> RunCandidateAsync(
         Func<PanGlossInvoker, string, IPanGlossInvoker> wrapInvoker, string? proposalText = null,
-        Func<JobRecord, string, JobRecord>? sourceOf = null)
+        Func<JobRecord, string, JobRecord>? sourceOf = null, bool baselineReportFirst = false)
     {
         var proposalJson = proposalText ?? DisableProhibitionProposal(_prohibitionGuid);
         var source = new DryRunSourceBinding(_token, _publishedRoot, _publishedFwDataPath,
@@ -337,6 +337,8 @@ public sealed class ParsimonyCandidateEvidenceTests : IDisposable
         FakeParser.WriteCandidateFactsFixture(parserPath, FactsFixture(disableChangedRule: true));
         using var invoker = new PanGlossInvoker(parserPath);
         var scope = new ParsimonyScopeBinding(ParsimonyEvidenceScopeKind.ProjectApproved, null);
+        if (baselineReportFirst) await RunBaselineReportAsync(invoker, parserPath, scope);
+        _invocationsBeforeCandidate = FakeParser.Invocations(parserPath).Count;
         var sourceJob = sourceOf is null ? dryRunJob : sourceOf(_jobs.Get(dryRunJob.JobId)!, proposalJson);
         var candidateInput = new ParsimonyCandidateJobInput(ParsimonyCandidateJobInput.CurrentSchemaVersion,
             sourceJob.JobId, "P-adhoc-duplicate", scope);
@@ -351,6 +353,48 @@ public sealed class ParsimonyCandidateEvidenceTests : IDisposable
 
         var outcome = await handler.RunAsync(candidateClaim, CancellationToken.None);
         return (outcome, candidateClaim, parserPath);
+    }
+
+    private int _invocationsBeforeCandidate;
+
+    private async Task RunBaselineReportAsync(PanGlossInvoker invoker, string parserPath, ParsimonyScopeBinding scope)
+    {
+        var job = _jobs.Create(CanonicalId.Mint("job/").Value, _projectKey, ParsimonyJobHandler.JobKind,
+            JsonSerializer.Serialize(new ParsimonyJobInput("P-adhoc-duplicate", scope),
+                SIL.Motif.Contract.MotifJson.CreateOptions()), "2026-10-07T00:00:30Z");
+        var claim = Claim(job.JobId);
+        var handler = new ParsimonyJobHandler(_database, _baselines, _projectKey, _project,
+            new RunnerOptions { Root = Path.Combine(_root, "worker"), ParserPath = parserPath }, invoker);
+        var outcome = await handler.RunAsync(claim, CancellationToken.None);
+        Assert.True(outcome!.Status == JobStatus.Completed, outcome.ResultJson);
+        claim.Transition(outcome.Status, outcome.Category, outcome.ResultJson);
+    }
+
+    [Fact]
+    public async Task TheCandidateReusesTheStoredBaselineSideAndParsesOnlyTheCandidate()
+    {
+        var (outcome, claim, parserPath) = await RunCandidateAsync((invoker, _) => invoker,
+            baselineReportFirst: true);
+
+        var completed = Assert.IsType<JobOutcome>(outcome);
+        Assert.True(completed.Status == JobStatus.Completed, completed.ResultJson);
+        claim.Transition(completed.Status, completed.Category, completed.ResultJson);
+        Assert.Equal(["import", "facts"], FakeParser.Invocations(parserPath).Skip(_invocationsBeforeCandidate));
+        var response = JsonSerializer.Deserialize<ParsimonyCandidateEvidenceResponse>(completed.ResultJson!,
+            SIL.Motif.Contract.MotifJson.CreateOptions())!;
+        Assert.Equal("baseline", response.Before.Inputs.InputKind);
+        Assert.Equal("candidate", response.After.Inputs.InputKind);
+        Assert.Contains(response.FindingChanges, item => item.Change is "evidence-changed" or "removed");
+    }
+
+    [Fact]
+    public async Task TheCandidateBuildsBothSidesWhenNoBaselineSideIsStored()
+    {
+        var (outcome, _, parserPath) = await RunCandidateAsync((invoker, _) => invoker);
+
+        Assert.Equal(JobStatus.Completed, Assert.IsType<JobOutcome>(outcome).Status);
+        Assert.Equal(["import", "facts", "import", "facts"], FakeParser.Invocations(parserPath)
+            .Skip(_invocationsBeforeCandidate).Where(command => command != "describe"));
     }
 
     /// <summary>Appends a byte to the parser before the candidate facts run, as a replacement would.</summary>
