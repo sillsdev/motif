@@ -106,6 +106,13 @@ public static class ParsimonyCommands
         });
     }
 
+    private sealed record GroupStartState(bool HasBaseline, bool HasSelection);
+
+    private static readonly Refusal NoParsimonySelectionRefusal = new(
+        ParsimonyRefusalCodes.ParsimonySelectionNotConfigured, FailureReason.Refused,
+        "No Parsimony Selection is saved. Choose Texts with `motif selection set-parsimony " +
+        "--project <fwdata> --name <name> --texts <guid,...>`; the set is reused on every run.");
+
     /// <summary>The sentence shown once when the Text group was left out of an all-groups run.</summary>
     public const string TextGroupSkippedNote =
         "The Text group was not run: no Parsimony Selection is saved. Choose Texts with " +
@@ -131,11 +138,17 @@ public static class ParsimonyCommands
         var assessmentIds = request.AssessmentIds ?? [];
         var needsTexts = ids.Any(id => MeasureCatalog.Find(id)!.Group == ParsimonyMeasureGroup.Text);
 
-        var hasBaseline = ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
-            CommandOutcome<string>.Success(new BaselineRepository(database)
-                .GetCurrentEvidence(ProjectWorkspaceKey.Compute(project)) is null ? string.Empty : "current"));
-        if (!hasBaseline.Succeeded) return CommandOutcome<JobEnqueuedResponse>.Refused(hasBaseline.Refusal!);
-        if (hasBaseline.Value!.Length == 0)
+        var wholeGroup = group == ParsimonyGroupRequest.All &&
+            (request.MeasureId is null || request.MeasureId == ParsimonyAdmission.AllMeasures);
+        var state = ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
+            CommandOutcome<GroupStartState>.Success(new GroupStartState(
+                new BaselineRepository(database).GetCurrentEvidence(ProjectWorkspaceKey.Compute(project)) is not null,
+                new NamedSelectionRepository(database).GetParsimony() is not null)));
+        if (!state.Succeeded) return CommandOutcome<JobEnqueuedResponse>.Refused(state.Refusal!);
+        // A refusal must leave the project untouched, so it comes before any Baseline is captured.
+        if (needsTexts && !state.Value!.HasSelection && !wholeGroup)
+            return CommandOutcome<JobEnqueuedResponse>.Refused(NoParsimonySelectionRefusal);
+        if (!state.Value!.HasBaseline)
         {
             var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(request.FwDataPath));
             if (!captured.Succeeded) return CommandOutcome<JobEnqueuedResponse>.Refused(captured.Refusal!);
@@ -163,16 +176,13 @@ public static class ParsimonyCommands
             if (needsTexts)
             {
                 var saved = new NamedSelectionRepository(database).GetParsimony();
-                if (saved is null && group == ParsimonyGroupRequest.All && request.MeasureId is null)
+                if (saved is null && wholeGroup)
                 {
                     ids = ParsimonyAdmission.MeasureIdsFor(ParsimonyGroupRequest.Grammar);
                     note = TextGroupSkippedNote;
                 }
                 else if (saved is null)
-                    return CommandOutcome<JobEnqueuedResponse>.Refused(new Refusal(
-                        ParsimonyRefusalCodes.ParsimonySelectionNotConfigured, FailureReason.Refused,
-                        "No Parsimony Selection is saved. Choose Texts with `motif selection set-parsimony " +
-                        "--project <fwdata> --name <name> --texts <guid,...>`; the set is reused on every run."));
+                    return CommandOutcome<JobEnqueuedResponse>.Refused(NoParsimonySelectionRefusal);
                 else
                 {
                     var resolved = CurrentEvidenceQuery.ResolveSelection(current.Summary, saved);

@@ -58,6 +58,29 @@ public sealed class ParsimonyGroupEnqueueTests
     }
 
     [Fact]
+    public void ARefusalForAMissingParsimonySelectionCapturesNothing()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "group-refusal-" + Guid.NewGuid().ToString("N") + ".fwdata");
+        File.WriteAllText(path, "not a project");
+
+        var queued = ParsimonyCommands.EnqueueGroup(new EnqueueParsimonyGroupRequest(path, "1.0", "text"));
+
+        Assert.Equal("parsimony.parsimony-selection-not-configured", queued.Refusal!.Code);
+    }
+
+    [Fact]
+    public void AllMeasuresInTheAllGroupIsTheWholeGroupAndGetsTheNoteToo()
+    {
+        using var fixture = Fixture();
+
+        var queued = ParsimonyCommands.EnqueueGroup(
+            new EnqueueParsimonyGroupRequest(fixture.ProjectPath, "1.0", "all", "all"));
+
+        Assert.True(queued.Succeeded, queued.Refusal?.Message);
+        Assert.Equal(ParsimonyCommands.TextGroupSkippedNote, queued.Value!.Note);
+    }
+
+    [Fact]
     public void AllWithoutAParsimonySelectionRunsTheGrammarGroupAndSaysOnceHowToSetTheOtherUp()
     {
         using var fixture = Fixture();
