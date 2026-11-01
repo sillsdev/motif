@@ -22,6 +22,43 @@ public static class ParsimonyAdmission
     public static IReadOnlyList<string> SupportedMeasureIds() =>
         [.. MeasureCatalog.All.Where(measure => MeasureRunner.Supports(measure.Id)).Select(measure => measure.Id)];
 
+    /// <summary>The measure ids of a group this build runs, in catalog order.</summary>
+    /// <param name="group">The requested group.</param>
+    public static IReadOnlyList<string> MeasureIdsFor(ParsimonyGroupRequest group) =>
+        [.. SupportedMeasureIds().Where(id => group == ParsimonyGroupRequest.All ||
+            MeasureCatalog.Find(id)!.Group == (group == ParsimonyGroupRequest.Grammar
+                ? ParsimonyMeasureGroup.Grammar : ParsimonyMeasureGroup.Text))];
+
+    /// <summary>
+    /// Resolves a group request, optionally narrowed to one measure, into the measure ids to run.
+    /// Null measure ids means the whole group; a measure outside the group is refused.
+    /// </summary>
+    /// <param name="group">The requested group.</param>
+    /// <param name="measureId">One named measure, or null for the whole group.</param>
+    /// <param name="measureIds">The ids to run when the request is admissible.</param>
+    public static Refusal? ResolveGroup(ParsimonyGroupRequest group, string? measureId,
+        out IReadOnlyList<string> measureIds)
+    {
+        measureIds = [];
+        if (!Enum.IsDefined(group))
+            return new Refusal(ParsimonyRefusalCodes.InvalidGroup, FailureReason.InvalidArgument,
+                "Group must be 'grammar', 'text' or 'all'.");
+        var ids = MeasureIdsFor(group);
+        if (measureId is null || measureId == AllMeasures)
+        {
+            measureIds = ids;
+            return null;
+        }
+        if (MeasureCatalog.Find(measureId) is null)
+            return new Refusal(ParsimonyRefusalCodes.InvalidMeasure, FailureReason.InvalidArgument,
+                $"Unknown Parsimony measure '{measureId}'.");
+        if (!ids.Contains(measureId, StringComparer.Ordinal))
+            return new Refusal(ParsimonyRefusalCodes.MeasureOutsideGroup, FailureReason.InvalidArgument,
+                $"Parsimony measure '{measureId}' is not in the {ParsimonyGroupRequests.Wire(group)} group.");
+        measureIds = [measureId];
+        return null;
+    }
+
     /// <summary>Checks the request fields common to the report and candidate measures; null means admissible.</summary>
     /// <param name="measureId">The requested measure id.</param>
     /// <param name="evidenceScope">The requested evidence scope, or null when the request names none.</param>

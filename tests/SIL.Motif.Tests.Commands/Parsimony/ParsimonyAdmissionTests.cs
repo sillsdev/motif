@@ -72,6 +72,38 @@ public sealed class ParsimonyAdmissionTests
     }
 
     [Fact]
+    public void GroupsExpandToTheFiveGrammarAndNineTextMeasures()
+    {
+        Assert.Equal(5, ParsimonyAdmission.MeasureIdsFor(ParsimonyGroupRequest.Grammar).Count);
+        Assert.Equal(9, ParsimonyAdmission.MeasureIdsFor(ParsimonyGroupRequest.Text).Count);
+        Assert.Equal(ParsimonyAdmission.SupportedMeasureIds(), ParsimonyAdmission.MeasureIdsFor(ParsimonyGroupRequest.All));
+        Assert.Equal(["grammar", "text", "all"], ParsimonyGroupRequests.Names);
+        Assert.All(ParsimonyGroupRequests.Names, name =>
+        {
+            Assert.True(ParsimonyGroupRequests.TryParse(name, out var group));
+            Assert.Equal(name, ParsimonyGroupRequests.Wire(group));
+        });
+        Assert.False(ParsimonyGroupRequests.TryParse("both", out _));
+    }
+
+    [Fact]
+    public void ANamedMeasureOutsideTheGroupIsRefused()
+    {
+        var refusal = ParsimonyAdmission.ResolveGroup(ParsimonyGroupRequest.Grammar, Known, out var none);
+
+        Assert.NotNull(refusal);
+        Assert.Equal("parsimony.measure-outside-group", refusal.Code);
+        Assert.Equal($"Parsimony measure '{Known}' is not in the grammar group.", refusal.Message);
+        Assert.Empty(none);
+        Assert.Null(ParsimonyAdmission.ResolveGroup(ParsimonyGroupRequest.All, Known, out var one));
+        Assert.Equal([Known], one);
+        Assert.Null(ParsimonyAdmission.ResolveGroup(ParsimonyGroupRequest.Text, null, out var whole));
+        Assert.Equal(9, whole.Count);
+        Assert.Equal("parsimony.invalid-group",
+            ParsimonyAdmission.ResolveGroup((ParsimonyGroupRequest)9, null, out _)!.Code);
+    }
+
+    [Fact]
     public void RefusalCodesKeepTheirWireSpelling()
     {
         Assert.Equal("parsimony.measure-unavailable", ParsimonyRefusalCodes.MeasureUnavailable);
