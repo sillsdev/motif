@@ -62,15 +62,15 @@ internal static class ProposalDifferenceSummaries
         var afterParser = after.Invocation;
         if (beforeParser?.ExecutableBytesSha256 is { } beforeSha && afterParser?.ExecutableBytesSha256 is { } afterSha &&
             !string.Equals(beforeSha, afterSha, StringComparison.Ordinal))
-            warnings.Add($"The before side was parsed by {ParserIdentity.Describe(beforeParser.ExecutableVersion, beforeSha)} " +
+            warnings.Add($"{ProposalDifferenceWarnings.ParserDiffers}{ParserIdentity.Describe(beforeParser.ExecutableVersion, beforeSha)} " +
                 $"and the after side by {ParserIdentity.Describe(afterParser.ExecutableVersion, afterSha)}. A word that " +
                 "differs may differ because the parser changed, not the grammar.");
         if (!string.Equals(before.TokeniserName, after.TokeniserName, StringComparison.Ordinal) ||
             !string.Equals(before.TokeniserVersion, after.TokeniserVersion, StringComparison.Ordinal))
-            warnings.Add($"The before side was tokenised with {before.TokeniserName} {before.TokeniserVersion} and the " +
+            warnings.Add($"{ProposalDifferenceWarnings.TokeniserDiffers}{before.TokeniserName} {before.TokeniserVersion} and the " +
                 $"after side with {after.TokeniserName} {after.TokeniserVersion}, so the two may have measured different words.");
         if (Retried(before) != Retried(after))
-            warnings.Add("Only one side reran words stopped at the per-word time limit under a longer limit, " +
+            warnings.Add(ProposalDifferenceWarnings.RetryDiffers + " under a longer limit, " +
                 "so the two runs used different effective per-word limits.");
         return [.. warnings];
     }

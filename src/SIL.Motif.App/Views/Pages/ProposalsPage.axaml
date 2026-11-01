@@ -103,6 +103,7 @@
                                            TextWrapping="Wrap" />
                 </StackPanel>
               </Border>
+              <views:ProposalDifferencePanel DataContext="{Binding Difference}" />
               <views:RefusalBlock DataContext="{Binding SelectedProposal.ShownRefusal}" />
               <views:TrialBaselineNoticeBlock DataContext="{Binding SelectedProposal.BaselineNotice}" />
               <views:TrialWorkNoticeBlock DataContext="{Binding SelectedProposal.WorkNotice}" />

@@ -373,7 +373,7 @@ public sealed partial class WindowWordsTests
         root.GetVisualDescendants().OfType<Control>().Where(control => control is FlyoutPresenter or MenuFlyoutPresenter);
 
     // Hidden text too, as the sample reaches few states; both trees, as a DataGrid's cells are only visual.
-    private static IEnumerable<string> Rendered(Control root)
+    internal static IEnumerable<string> Rendered(Control root)
     {
         var texts = new List<string?>();
         var controls = root.GetSelfAndLogicalDescendants().OfType<Control>()

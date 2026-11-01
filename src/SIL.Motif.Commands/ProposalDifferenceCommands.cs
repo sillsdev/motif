@@ -30,6 +30,9 @@ public static class ProposalDifferenceCommands
 {
     private const string NoStateName = "unavailable";
 
+    // Built once: fresh options per word rebuilt the converter metadata every time.
+    private static readonly JsonSerializerOptions Json = MotifJson.CreateOptions();
+
     /// <summary>Compares the Trial's before and after parses of one Text and saves the result.</summary>
     public static CommandOutcome<ProposalDifferenceResponse> Produce(ProposalDifferenceProduceRequest request)
     {
@@ -100,7 +103,7 @@ public static class ProposalDifferenceCommands
             try { built = Build(text, before!.Words!, after.Words!); }
             catch (DifferenceRefusalException refusal) { return CommandOutcome<ProposalDifferenceResponse>.Refused(refusal.Refusal); }
             var summary = ProposalDifferenceSummaries.Create(built, trial.JobId, request.ProposalId, before, after, text,
-                JsonSerializer.Serialize(read.Baseline.Token, MotifJson.CreateOptions()));
+                JsonSerializer.Serialize(read.Baseline.Token, Json));
             try { saved.Publish(new NewProposalDifference(summary, built.Words)); }
             catch (ProposalDecidedException) { return Decided(); }
             return Show(database, summary.DifferenceId, new ProposalDifferenceFilter(), 0, 25);
@@ -115,7 +118,7 @@ public static class ProposalDifferenceCommands
     // Same Trial job, same Baseline and the same policy: the saved result already answers this request.
     private static bool IsSameComparison(ProposalDifferenceSummary summary, TrialRecord trial) =>
         summary.TrialJobId == trial.JobId && summary.Policy == new ProposalDifferencePolicy() &&
-        JsonSerializer.Deserialize<BaselineToken>(summary.BaselineToken, MotifJson.CreateOptions()) is { } token &&
+        JsonSerializer.Deserialize<BaselineToken>(summary.BaselineToken, Json) is { } token &&
         token.HasSameSemanticIdentity(trial.Baseline);
 
     // Says which condition left the Trial without a usable before side, and what to do about it.
@@ -138,7 +141,8 @@ public static class ProposalDifferenceCommands
     }
 
     /// <summary>Reads a saved Difference's summary and one page of its matching words.</summary>
-    public static CommandOutcome<ProposalDifferenceResponse> Show(ProposalDifferenceShowRequest request)
+    public static CommandOutcome<ProposalDifferenceResponse> Show(ProposalDifferenceShowRequest request,
+        CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
         if (request.Offset < 0 || request.Limit is < 1 or > 200)
@@ -151,6 +155,29 @@ public static class ProposalDifferenceCommands
                 return Refuse("difference.invalid-bucket", FailureReason.InvalidArgument,
                     "Choose a category code such as delta.regression, delta.overgeneration or delta.improved.unique.");
             bucket = parsed;
+        }
+        HumanAgreementLimitation? limitation = null;
+        if (request.Limitation is not null)
+        {
+            if (!TryParseLimitation(request.Limitation, out var parsedLimitation))
+                return Refuse("difference.invalid-limitation", FailureReason.InvalidArgument,
+                    "Choose a limitation code such as capped, timed-out, projection-unavailable or parser-refused.");
+            limitation = parsedLimitation;
+        }
+        if (request.OccurrenceOffset is < 0 || request.OccurrenceLimit is < 1 or > 200)
+            return Refuse(RefusalCodes.DifferenceInvalidPage, FailureReason.InvalidArgument,
+                "Occurrence offset must be zero or more and occurrence limit between 1 and 200.");
+        if (request.Word is null && (request.OccurrenceOffset is not null || request.OccurrenceLimit is not null))
+            return Refuse("difference.occurrence-needs-word", FailureReason.InvalidArgument,
+                "Occurrence offset and occurrence limit page one word's places, so give the word as well.");
+        string? word = null;
+        if (request.Word is not null)
+        {
+            var trimmed = request.Word.Trim();
+            if (trimmed.Length == 0)
+                return Refuse("difference.invalid-word", FailureReason.InvalidArgument,
+                    "Give the word to show places for, or leave the word out.");
+            word = Nfd(trimmed);
         }
         foreach (var state in new[] { request.BeforeState, request.AfterState })
             if (state is not null && !IsStateName(state))
@@ -168,19 +195,23 @@ public static class ProposalDifferenceCommands
                 return Refuse("difference.none", FailureReason.NotFound,
                     "No saved Difference was found. Run: motif difference produce --project <fwdata> --proposal <id> --text <guid>");
             return Show(database, id, new ProposalDifferenceFilter(request.CouldBeBad, bucket,
-                request.BeforeState, request.AfterState), request.Offset, request.Limit);
+                request.BeforeState, request.AfterState, limitation, word), request.Offset, request.Limit,
+                word is null ? null : new ProposalDifferenceOccurrenceRequest(word,
+                    request.OccurrenceOffset ?? 0, request.OccurrenceLimit ?? 25), cancellationToken);
         });
     }
 
     private static CommandOutcome<ProposalDifferenceResponse> Show(MotifDatabase database,
-        string differenceId, ProposalDifferenceFilter filter, int offset, int limit)
+        string differenceId, ProposalDifferenceFilter filter, int offset, int limit,
+        ProposalDifferenceOccurrenceRequest? occurrences = null, CancellationToken cancellationToken = default)
     {
-        var page = new ProposalDifferenceRepository(database).ReadPage(differenceId, filter, offset, limit);
+        var page = new ProposalDifferenceRepository(database).ReadPage(differenceId, filter, offset, limit, occurrences,
+            cancellationToken);
         if (page is null)
             return Refuse("difference.none", FailureReason.NotFound, "There is no Difference with that id.");
         var next = offset + page.Words.Count < page.Matching ? offset + page.Words.Count : (int?)null;
         return CommandOutcome<ProposalDifferenceResponse>.Success(new ProposalDifferenceResponse(
-            page.Saved.Summary, page.Words, page.Matching, next, page.Saved.WordDetailKept));
+            page.Saved.Summary, page.Words, page.Matching, next, page.Saved.WordDetailKept, page.Occurrences));
     }
 
     private static CommandOutcome<ProposalDifferenceResponse> Refuse(string code, FailureReason reason, string message) =>
@@ -198,6 +229,18 @@ public static class ProposalDifferenceCommands
         catch (JsonException) { bucket = default; return false; }
     }
 
+    private static bool TryParseLimitation(string code, out HumanAgreementLimitation limitation)
+    {
+        try
+        {
+            var options = new JsonSerializerOptions();
+            options.Converters.Add(new StrictStringEnumConverter<HumanAgreementLimitation>());
+            limitation = JsonSerializer.Deserialize<HumanAgreementLimitation>(JsonSerializer.Serialize(code), options);
+            return true;
+        }
+        catch (JsonException) { limitation = default; return false; }
+    }
+
     private static bool IsStateName(string name) => name == NoStateName ||
         Enum.GetValues<HumanAgreementApprovalState>().Any(state => ProposalDifferenceRepository.ApprovalStateName(state) == name);
 
@@ -209,7 +252,7 @@ public static class ProposalDifferenceCommands
         var byForm = new Dictionary<string, AssessedWord>(StringComparer.Ordinal);
         foreach (var group in words.GroupBy(word => Nfd(word.Word)))
         {
-            var distinct = group.Select(word => JsonSerializer.Serialize(word.Morphology, MotifJson.CreateOptions()))
+            var distinct = group.Select(word => JsonSerializer.Serialize(word.Morphology, Json))
                 .Distinct(StringComparer.Ordinal).Count();
             if (distinct > 1)
                 throw new DifferenceRefusalException(new Refusal("difference.duplicate-parse-rows", FailureReason.StoreInconsistent,

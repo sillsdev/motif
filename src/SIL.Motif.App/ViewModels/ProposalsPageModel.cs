@@ -393,6 +393,9 @@ public sealed partial class ProposalsPageModel : PageModel
         ReopenCommand = new AsyncRelayCommand<ProposalCardViewModel>(ReopenAsync);
         SelectGroupFilterCommand = new AsyncRelayCommand<ProposalListFilter>(SelectGroupFilterAsync);
         SelectProposalCommand = new RelayCommand<ProposalCardViewModel>(SelectProposal);
+        Difference = new ProposalDifferenceViewModel(
+            (request, cancellationToken) => Context.Commands.ReadProposalDifferenceAsync(request, cancellationToken),
+            word => Context.OpenWord(word));
         Context.TrialRun.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(TrialRunViewModel.States) && State == ProposalsPageState.Listed)
@@ -416,6 +419,12 @@ public sealed partial class ProposalsPageModel : PageModel
         nameof(SelectedOpenAutomationId), nameof(SelectedTryAgainAutomationId), nameof(SelectedReopenAutomationId),
         nameof(SelectedDeleteAutomationId))]
     private ProposalCardViewModel? _selectedProposal;
+
+    /// <summary>The selected Proposal's saved Difference, which stays hidden while it has none.</summary>
+    public ProposalDifferenceViewModel Difference { get; }
+
+    /// <summary>The read of the selected Proposal's Difference that is under way, or the last one that finished.</summary>
+    public Task DifferenceReading { get; private set; } = Task.CompletedTask;
 
     /// <summary>The Inspector's Open in Review changes id for the selected Proposal.</summary>
     public string? SelectedOpenAutomationId => SelectedProposal?.InspectorOpenAutomationId;
@@ -720,7 +729,17 @@ public sealed partial class ProposalsPageModel : PageModel
 
     partial void OnSelectedProposalChanging(ProposalCardViewModel? value) => _selectedProposal?.SetSelected(false);
 
-    partial void OnSelectedProposalChanged(ProposalCardViewModel? value) => value?.SetSelected(true);
+    partial void OnSelectedProposalChanged(ProposalCardViewModel? value)
+    {
+        value?.SetSelected(true);
+        if (value is null || value.Card.IsPendingDraft || Context.ProjectPath is not { } path)
+        {
+            Difference.Clear();
+            DifferenceReading = Task.CompletedTask;
+            return;
+        }
+        DifferenceReading = Difference.LoadAsync(path, value.ProposalId);
+    }
 
     private Task OpenAsync(ProposalCardViewModel? card) => OpenProposalAsync(card, WorkspacePage.Overview);
 

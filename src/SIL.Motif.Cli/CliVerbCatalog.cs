@@ -408,7 +408,8 @@ public static class CliVerbCatalog
             new[]
             {
                 "difference show --project <fwdata> (--proposal <id> | --difference <id>) [--could-be-bad] " +
-                "[--bucket <code>] [--before <state>] [--after <state>] [--offset <n>] [--limit <n>] [--json]",
+                "[--bucket <code>] [--limitation <code>] [--before <state>] [--after <state>] [--offset <n>] [--limit <n>] " +
+                "[--word <word> [--occurrence-offset <n>] [--occurrence-limit <n>]] [--json]",
             }),
         new CliVerbDescriptor(
             "Project", "grammar", "grammar check",

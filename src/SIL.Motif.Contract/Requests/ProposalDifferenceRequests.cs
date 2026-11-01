@@ -18,6 +18,11 @@ public sealed record ProposalDifferenceProduceRequest(string ProjectPath, string
 /// <param name="AfterState">The approval state a listed word has after the Proposal.</param>
 /// <param name="Offset">How many matching words to skip.</param>
 /// <param name="Limit">How many matching words to return.</param>
+/// <param name="Limitation">The limitation code that either side of a listed word must carry, such as <c>capped</c>.</param>
+/// <param name="Word">One exact word to list, whose Text occurrences are then returned a page at a time.</param>
+/// <param name="OccurrenceOffset">How many of that word's Text occurrences to skip (default 0); only with a word.</param>
+/// <param name="OccurrenceLimit">How many of that word's Text occurrences to return (default 25); only with a word.</param>
 public sealed record ProposalDifferenceShowRequest(string ProjectPath, string? ProposalId = null,
     string? DifferenceId = null, bool CouldBeBad = false, string? Bucket = null, string? BeforeState = null,
-    string? AfterState = null, int Offset = 0, int Limit = 25);
+    string? AfterState = null, int Offset = 0, int Limit = 25, string? Limitation = null, string? Word = null,
+    int? OccurrenceOffset = null, int? OccurrenceLimit = null);

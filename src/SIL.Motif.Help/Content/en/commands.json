@@ -1203,7 +1203,7 @@
   },
   "difference show": {
     "title": "Read a saved comparison",
-    "description": "Reads a saved comparison of a Trial with FieldWorks' recorded decisions: totals, a before and after table and a page of changed words. Filter to words that could be bad, to one category, or to one approval state.",
+    "description": "Reads a saved comparison of a Trial with FieldWorks' recorded decisions: totals, a before and after table and a page of changed words. Filter to words that could be bad, to one category, to one approval state or to one limitation, and page through one word's places in the Text.",
     "source": "Authored from the Proposal Difference contract."
   },
   "motif_activity": {

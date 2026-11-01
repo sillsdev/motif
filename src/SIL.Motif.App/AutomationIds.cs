@@ -109,6 +109,12 @@ public static class AutomationIds
     public const string Pages = "motif-pages";
     public const string ProposalsSetAside = "motif-proposals-set-aside";
     public const string ProposalsClearFilter = "motif-proposals-clear-filter";
+    /// <summary>The saved Difference section of the Proposal inspector.</summary>
+    public const string ProposalDifferencePanel = "motif-proposal-difference";
+    public const string ProposalDifferenceClear = "motif-proposal-difference-clear";
+    public const string ProposalDifferenceMoreWords = "motif-proposal-difference-more-words";
+    public const string ProposalDifferenceMorePlaces = "motif-proposal-difference-more-places";
+    public const string ProposalDifferenceOpenWord = "motif-proposal-difference-open-word";
     /// <summary>The Proposals page's grouped table.</summary>
     public const string ProposalsTable = "motif-proposals-table";
 

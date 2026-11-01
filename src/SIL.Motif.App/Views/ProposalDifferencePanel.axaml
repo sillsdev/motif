@@ -1,0 +1,119 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="clr-namespace:SIL.Motif.App"
+             xmlns:views="clr-namespace:SIL.Motif.App.Views"
+             xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
+             x:Class="SIL.Motif.App.Views.ProposalDifferencePanel"
+             x:DataType="vm:ProposalDifferenceViewModel"
+             IsVisible="{Binding IsVisible}"
+             AutomationProperties.Name="{x:Static app:MotifAppStrings.ProposalDifferencePanelAccessibleName}"
+             AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalDifferencePanel}">
+  <UserControl.Resources>
+    <DataTemplate x:Key="DifferenceChipTemplate" x:DataType="vm:DifferenceChipViewModel">
+      <views:FilterChip Label="{Binding Label}" Count="{Binding Count}" IsActive="{Binding IsActive}"
+                        Command="{Binding ChooseCommand}" IsEnabled="{Binding CanChoose}" />
+    </DataTemplate>
+    <ItemsPanelTemplate x:Key="DifferenceChipsPanel"><WrapPanel /></ItemsPanelTemplate>
+  </UserControl.Resources>
+  <Border Classes="inspectorSection">
+    <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
+      <TextBlock Classes="inspectorSectionTitle" Text="{x:Static app:MotifAppStrings.ProposalDifferenceTitle}" />
+      <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap"
+                               Text="{x:Static app:MotifAppStrings.ProposalDifferenceAdvice}" />
+      <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" IsVisible="{Binding IsLoading}"
+                               Text="{x:Static app:MotifAppStrings.ProposalDifferenceReading}" />
+      <views:RefusalBlock DataContext="{Binding ShownRefusal}" />
+      <StackPanel IsVisible="{Binding IsShown}" Spacing="{DynamicResource Intent.Space.Compact}">
+        <views:CopyableTextBlock x:Name="DifferenceHeadline" Classes="inspectorSectionTitle" TextWrapping="Wrap"
+                                 Text="{Binding HeadlineText}" />
+        <views:CopyableTextBlock x:Name="DifferenceCompared" TextWrapping="Wrap" Text="{Binding ComparedText}" />
+        <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" Text="{Binding UnboundText}"
+                                 IsVisible="{Binding HasUnbound}" />
+        <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" Text="{Binding OutsideText}"
+                                 IsVisible="{Binding HasOutside}" />
+        <views:CopyableTextBlock x:Name="DifferenceDetailRemoved" Classes="muted" TextWrapping="Wrap"
+                                 Text="{x:Static app:MotifAppStrings.ProposalDifferenceDetailRemoved}"
+                                 IsVisible="{Binding IsSummaryOnly}" />
+        <TextBlock Classes="muted" Text="{x:Static app:MotifAppStrings.ProposalDifferenceCheckTitle}" />
+        <ItemsControl x:Name="DifferenceCheckChips" ItemsSource="{Binding CheckChips}"
+                      ItemsPanel="{StaticResource DifferenceChipsPanel}"
+                      ItemTemplate="{StaticResource DifferenceChipTemplate}" />
+        <TextBlock Classes="muted" Text="{x:Static app:MotifAppStrings.ProposalDifferenceImprovedTitle}"
+                   IsVisible="{Binding HasImproved}" />
+        <ItemsControl x:Name="DifferenceImprovedChips" ItemsSource="{Binding ImprovedChips}"
+                      ItemsPanel="{StaticResource DifferenceChipsPanel}"
+                      ItemTemplate="{StaticResource DifferenceChipTemplate}" />
+        <TextBlock Classes="muted" Text="{x:Static app:MotifAppStrings.ProposalDifferenceMovedTitle}"
+                   IsVisible="{Binding HasMoved}" />
+        <ItemsControl x:Name="DifferenceMovedChips" ItemsSource="{Binding MovedChips}"
+                      ItemsPanel="{StaticResource DifferenceChipsPanel}"
+                      ItemTemplate="{StaticResource DifferenceChipTemplate}" />
+        <TextBlock Classes="muted" Text="{x:Static app:MotifAppStrings.ProposalDifferenceLimitsTitle}"
+                   IsVisible="{Binding HasLimitations}" />
+        <ItemsControl x:Name="DifferenceLimitationChips" ItemsSource="{Binding LimitationChips}"
+                      ItemsPanel="{StaticResource DifferenceChipsPanel}"
+                      ItemTemplate="{StaticResource DifferenceChipTemplate}" />
+        <Button x:Name="DifferenceClearFilters" HorizontalAlignment="Left"
+                Content="{x:Static app:MotifAppStrings.ProposalDifferenceClear}"
+                IsVisible="{Binding HasFilter}" Command="{Binding ClearFiltersCommand}"
+                AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalDifferenceClear}" />
+        <StackPanel IsVisible="{Binding ShowsWordList}" Spacing="{DynamicResource Intent.Space.Compact}">
+          <TextBlock Classes="inspectorSectionTitle" Text="{x:Static app:MotifAppStrings.ProposalDifferenceWordsTitle}" />
+          <views:CopyableTextBlock x:Name="DifferenceReadingMore" Classes="muted" TextWrapping="Wrap"
+                                   IsVisible="{Binding IsReadingMore}"
+                                   Text="{x:Static app:MotifAppStrings.ProposalDifferenceReading}" />
+          <views:CopyableTextBlock x:Name="DifferenceWordsStatus" Classes="muted" TextWrapping="Wrap"
+                                   Text="{Binding WordsStatusText}" IsVisible="{Binding !ShowsNoMatchingWords}" />
+          <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap"
+                                   Text="{x:Static app:MotifAppStrings.ProposalDifferenceNoMatching}"
+                                   IsVisible="{Binding ShowsNoMatchingWords}" />
+          <ItemsControl x:Name="DifferenceWordChips" ItemsSource="{Binding Words}"
+                        ItemsPanel="{StaticResource DifferenceChipsPanel}"
+                        ItemTemplate="{StaticResource DifferenceChipTemplate}" />
+          <views:CopyableTextBlock x:Name="DifferenceNarrowHint" Classes="muted" TextWrapping="Wrap"
+                                   Text="{x:Static app:MotifAppStrings.ProposalDifferenceNarrowHint}"
+                                   IsVisible="{Binding ShowsNarrowHint}" />
+          <Button x:Name="DifferenceShowMoreWords" HorizontalAlignment="Left"
+                  Content="{x:Static app:MotifAppStrings.ProposalDifferenceMoreWords}"
+                  IsVisible="{Binding CanShowMoreWords}" Command="{Binding ShowMoreWordsCommand}"
+                  AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalDifferenceMoreWords}" />
+          <StackPanel x:Name="DifferenceSelectedWord" IsVisible="{Binding HasSelectedWord}"
+                      Spacing="{DynamicResource Intent.Space.Compact}">
+            <TextBlock Classes="inspectorSectionTitle" Text="{Binding SelectedWordTitle}" />
+            <views:CopyableTextBlock Text="{Binding SelectedWordMovedText}" TextWrapping="Wrap" />
+            <views:CopyableTextBlock Classes="muted" Text="{Binding SelectedWordBucketsText}" TextWrapping="Wrap" />
+            <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" IsVisible="{Binding ShowsNoPlaces}"
+                                     Text="{x:Static app:MotifAppStrings.ProposalDifferenceNoPlaces}" />
+            <ItemsControl x:Name="DifferencePlaces" ItemsSource="{Binding Places}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="x:String">
+                  <views:CopyableTextBlock Text="{Binding}" />
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <views:CopyableTextBlock x:Name="DifferencePlacesStatus" Classes="muted" TextWrapping="Wrap"
+                                     Text="{Binding PlacesStatusText}" IsVisible="{Binding ShowsPlacesStatus}" />
+            <Button x:Name="DifferenceShowMorePlaces" HorizontalAlignment="Left"
+                    Content="{x:Static app:MotifAppStrings.ProposalDifferenceMorePlaces}"
+                    IsVisible="{Binding CanShowMorePlaces}" Command="{Binding ShowMorePlacesCommand}"
+                    AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalDifferenceMorePlaces}" />
+            <Button x:Name="DifferenceOpenWord" HorizontalAlignment="Left"
+                    Content="{x:Static app:MotifAppStrings.ProposalDifferenceOpenWord}"
+                    Command="{Binding OpenWordCommand}"
+                    AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalDifferenceOpenWord}" />
+          </StackPanel>
+        </StackPanel>
+        <StackPanel IsVisible="{Binding HasNotes}" Spacing="{DynamicResource Intent.Space.Compact}">
+          <TextBlock Classes="muted" Text="{x:Static app:MotifAppStrings.ProposalDifferenceNotesTitle}" />
+          <ItemsControl x:Name="DifferenceNotes" ItemsSource="{Binding Notes}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="x:String">
+                <views:CopyableTextBlock Classes="muted" Text="{Binding}" TextWrapping="Wrap" />
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </StackPanel>
+    </StackPanel>
+  </Border>
+</UserControl>

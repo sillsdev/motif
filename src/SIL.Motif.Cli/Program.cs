@@ -1676,18 +1676,25 @@ try
             {
                 var differenceOffset = 0;
                 var differenceLimit = 25;
+                int? occurrenceOffset = null;
+                int? occurrenceLimit = null;
                 if (!flags.TryGetValue("project", out var deltaShowProject) ||
                     !(flags.ContainsKey("proposal") || flags.ContainsKey("difference")) ||
                     flags.TryGetValue("offset", out var differenceOffsetText) &&
                     !int.TryParse(differenceOffsetText, NumberStyles.None, CultureInfo.InvariantCulture, out differenceOffset) ||
                     flags.TryGetValue("limit", out var differenceLimitText) &&
-                    !int.TryParse(differenceLimitText, NumberStyles.None, CultureInfo.InvariantCulture, out differenceLimit))
+                    !int.TryParse(differenceLimitText, NumberStyles.None, CultureInfo.InvariantCulture, out differenceLimit) ||
+                    flags.TryGetValue("occurrence-offset", out var occurrenceOffsetText) &&
+                    !TryParseCount(occurrenceOffsetText, out occurrenceOffset) ||
+                    flags.TryGetValue("occurrence-limit", out var occurrenceLimitText) &&
+                    !TryParseCount(occurrenceLimitText, out occurrenceLimit))
                     return Usage(UsageLineFor("difference show"), asJson);
                 result = RenderCommand(ProposalDifferenceCommands.Show(new ProposalDifferenceShowRequest(deltaShowProject,
                     flags.GetValueOrDefault("proposal"), flags.GetValueOrDefault("difference"),
                     flags.ContainsKey("could-be-bad"), flags.GetValueOrDefault("bucket"),
                     flags.GetValueOrDefault("before"), flags.GetValueOrDefault("after"), differenceOffset,
-                    differenceLimit)), asJson);
+                    differenceLimit, flags.GetValueOrDefault("limitation"), flags.GetValueOrDefault("word"),
+                    occurrenceOffset, occurrenceLimit)), asJson);
                 break;
             }
             return Usage(UsageLineFor("difference"), asJson);
@@ -2308,6 +2315,14 @@ static string StatsUsage() => "Usage: motif " + UsageLineFor("stats");
 static string HandoffUsage() => "Usage: motif " + UsageLineFor("handoff");
 
 /// <summary>Parses a comma-separated GUID list; an absent flag is an empty list, not a failure.</summary>
+static bool TryParseCount(string? text, out int? count)
+{
+    count = null;
+    if (!int.TryParse(text, NumberStyles.None, CultureInfo.InvariantCulture, out var parsed)) return false;
+    count = parsed;
+    return true;
+}
+
 static bool TryParseGuidList(string? raw, out List<Guid> guids)
 {
     guids = new List<Guid>();

@@ -261,6 +261,10 @@ public static class RefusalCodes
     public const string DifferenceProposalDecided = "difference.proposal-decided";
     /// <summary>A Difference category code is not one the product defines.</summary>
     public const string DifferenceInvalidBucket = "difference.invalid-bucket";
+    /// <summary>A Difference limitation code is not one the product defines.</summary>
+    public const string DifferenceInvalidLimitation = "difference.invalid-limitation";
+    /// <summary>A Difference place offset or limit was given without the word whose places they page.</summary>
+    public const string DifferenceOccurrenceNeedsWord = "difference.occurrence-needs-word";
     /// <summary>A Difference page offset or limit is out of range.</summary>
     public const string DifferenceInvalidPage = "difference.invalid-page";
     /// <summary>The Proposal id for a Difference is not a Motif id.</summary>
@@ -269,6 +273,8 @@ public static class RefusalCodes
     public const string DifferenceInvalidState = "difference.invalid-state";
     /// <summary>The Text id for a Difference is not a GUID.</summary>
     public const string DifferenceInvalidText = "difference.invalid-text";
+    /// <summary>The word for a Difference word read is empty.</summary>
+    public const string DifferenceInvalidWord = "difference.invalid-word";
     /// <summary>The project has no Baseline to compare decisions against.</summary>
     public const string DifferenceNoBaseline = "difference.no-baseline";
     /// <summary>The Trial has no before-side Assessment to compare with.</summary>
@@ -574,6 +580,8 @@ public static class RefusalCodes
     public const string WindowDiagnosticUnreadable = "window.diagnostic-unreadable";
     /// <summary>The action needs an open project and none is open.</summary>
     public const string WindowNoProject = "window.no-project";
+    /// <summary>The window could not read a Proposal's saved Difference.</summary>
+    public const string WindowDifferenceReadFailed = "window.difference-read-failed";
     /// <summary>The window could not open the chosen project.</summary>
     public const string WindowOpenFailed = "window.open-failed";
     /// <summary>The window could not open a Proposal.</summary>

@@ -117,6 +117,14 @@ internal sealed class ToolArgs
         throw new ToolArgumentException("tool.invalid-argument", $"Argument '{name}' must be an integer.");
     }
 
+    /// <summary>An integer argument, or <see langword="null"/> when it was not given.</summary>
+    public int? OptionalInt(string name)
+    {
+        if (!_arguments.TryGetPropertyValue(name, out var node) || node is null) return null;
+        if (node is JsonValue value && value.TryGetValue<int>(out var number)) return number;
+        throw new ToolArgumentException("tool.invalid-argument", $"Argument '{name}' must be an integer.");
+    }
+
     public IReadOnlyList<string> List(string name)
     {
         if (!_arguments.TryGetPropertyValue(name, out var node)) return [];

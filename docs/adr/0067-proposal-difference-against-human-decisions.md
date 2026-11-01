@@ -48,6 +48,8 @@ A Difference compares one completed Trial's before and after parses, restricted 
 
 The window reads the same bounded query as the CLI and MCP and never reclassifies a word. It shows the summary alone once the word detail is gone.
 
+The Proposal inspector holds the section, shown only while the selected Proposal has a saved Difference. Its counts, matrix, category and limitation chips come from the summary; a chip sends the query's own filter (category, before and after state, limitation, could-be-bad), so the window and the CLI list the same words. A word's Text places are read a page at a time through the same query (`--word`, `motif_proposal_difference` `word`). The lists stop at 100 words and 100 places and ask for a narrower filter, so the section stays small however large a Difference is. With only the summary left its chips count but no longer filter. The window shows approval states and categories in plain labels, never the `delta.*` codes. The older in-session comparison is the Trial summary and keeps its own panel on the Texts page.
+
 ## Parser and tokeniser
 
 As ADR 0042's amendment of 2026-10-20 says, a differing parser or tokeniser annotates a comparison and does not stop it. The summary records both sides' parser version and hash, grammar hash, Selection and tokeniser, and carries a warning naming both when the parser hashes differ or the tokeniser differs or either side reran stopped words under a longer limit, because a change in the parser looks exactly like a change in the grammar. A side that recorded no parser is not a mismatch.

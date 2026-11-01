@@ -143,6 +143,23 @@ public sealed partial class FakeCommandClient
         return _proposalStandings(request, cancellationToken);
     }
 
+    private Func<ProposalDifferenceShowRequest, CancellationToken, Task<CommandOutcome<ProposalDifferenceResponse>>>
+        _proposalDifference = (_, _) => Refused<ProposalDifferenceResponse>(
+            new Refusal("difference.none", FailureReason.NotFound, "No saved Difference was found."));
+
+    public List<ProposalDifferenceShowRequest> ProposalDifferenceRequests { get; } = [];
+
+    public void OnProposalDifference(
+        Func<ProposalDifferenceShowRequest, CancellationToken, Task<CommandOutcome<ProposalDifferenceResponse>>>
+            behavior) => _proposalDifference = behavior;
+
+    public Task<CommandOutcome<ProposalDifferenceResponse>> ReadProposalDifferenceAsync(
+        ProposalDifferenceShowRequest request, CancellationToken cancellationToken)
+    {
+        ProposalDifferenceRequests.Add(request);
+        return _proposalDifference(request, cancellationToken);
+    }
+
     public List<DeleteProposalRequest> DeleteProposalRequests { get; } = [];
 
     private Func<DeleteProposalRequest, CommandOutcome<ProposalDeletedResponse>> _deleteProposal = request =>

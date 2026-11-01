@@ -860,6 +860,55 @@
     "control": "ItemsControl"
   },
   {
+    "view": "ProposalDifferencePanel",
+    "name": "DifferenceCheckChips",
+    "source": "CheckChips",
+    "mode": "finite",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "ProposalDifferencePanel",
+    "name": "DifferenceImprovedChips",
+    "source": "ImprovedChips",
+    "mode": "finite",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "ProposalDifferencePanel",
+    "name": "DifferenceMovedChips",
+    "source": "MovedChips",
+    "mode": "inline",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "ProposalDifferencePanel",
+    "name": "DifferenceLimitationChips",
+    "source": "LimitationChips",
+    "mode": "finite",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "ProposalDifferencePanel",
+    "name": "DifferenceWordChips",
+    "source": "Words",
+    "mode": "inline",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "ProposalDifferencePanel",
+    "name": "DifferencePlaces",
+    "source": "Places",
+    "mode": "inline",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "ProposalDifferencePanel",
+    "name": "DifferenceNotes",
+    "source": "Notes",
+    "mode": "finite",
+    "control": "ItemsControl"
+  },
+  {
     "view": "WarningsFilterPanel",
     "name": "WarningsAreaFilterItems",
     "source": "AreaFilters",

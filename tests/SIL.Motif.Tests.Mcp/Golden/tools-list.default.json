@@ -5042,7 +5042,7 @@
   },
   {
     "name": "motif_proposal_difference",
-    "description": "Read a saved comparison. Reads a saved comparison of a Trial with FieldWorks\u0027 recorded decisions: totals, a before and after table and a page of changed words. Filter to words that could be bad, to one category, or to one approval state.\nCommand: difference show. Agent class: Read.\nProposalId: The Proposal whose newest Difference is read; ignored when a Difference id is given.\nDifferenceId: The saved Difference to read.\nCouldBeBad: Whether to list only words filed under a could-be-bad category.\nBucket: The stable category code that listed words must belong to.\nBeforeState: The approval state a listed word had before the Proposal.\nAfterState: The approval state a listed word has after the Proposal.\nOffset: How many matching words to skip.\nLimit: How many matching words to return.",
+    "description": "Read a saved comparison. Reads a saved comparison of a Trial with FieldWorks\u0027 recorded decisions: totals, a before and after table and a page of changed words. Filter to words that could be bad, to one category, to one approval state or to one limitation, and page through one word\u0027s places in the Text.\nCommand: difference show. Agent class: Read.\nProposalId: The Proposal whose newest Difference is read; ignored when a Difference id is given.\nDifferenceId: The saved Difference to read.\nCouldBeBad: Whether to list only words filed under a could-be-bad category.\nBucket: The stable category code that listed words must belong to.\nBeforeState: The approval state a listed word had before the Proposal.\nAfterState: The approval state a listed word has after the Proposal.\nOffset: How many matching words to skip.\nLimit: How many matching words to return.\nLimitation: The limitation code that either side of a listed word must carry, such as capped.\nWord: One exact word to list, whose Text occurrences are then returned a page at a time.\nOccurrenceOffset: How many of that word\u0027s Text occurrences to skip (default 0); only with a word.\nOccurrenceLimit: How many of that word\u0027s Text occurrences to return (default 25); only with a word.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -5073,6 +5073,35 @@
             "delta.improved.unique",
             "delta.improved.negative-rejection"
           ]
+        },
+        "limitation": {
+          "type": "string",
+          "description": "Limitation code that either side of a listed word must carry.",
+          "enum": [
+            "capped",
+            "timed-out",
+            "projection-unavailable",
+            "parser-refused",
+            "invalid-shape",
+            "malformed-evidence",
+            "invalid-expected-morphology"
+          ]
+        },
+        "word": {
+          "type": "string",
+          "description": "One exact word to list; its places in the Text are returned a page at a time."
+        },
+        "occurrence_offset": {
+          "type": "integer",
+          "description": "Places of that word to skip.",
+          "minimum": 0,
+          "maximum": 1000000
+        },
+        "occurrence_limit": {
+          "type": "integer",
+          "description": "Places of that word per page, maximum 200.",
+          "minimum": 1,
+          "maximum": 200
         },
         "before_state": {
           "type": "string",

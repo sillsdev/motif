@@ -47,7 +47,7 @@ public sealed class ProgressiveDisplayTests
         "ComparePanel", "DiagnosticPanel", "DifferencePanel", "ExpertTracePanel", "GrammarPanel", "HandoffPanel",
         "Inspector", "MiniMatrix", "MotifWorkspaceView", "OverviewInspector", "Pages/AssistantConnectionsPage", "Pages/OverviewPage", "Pages/ParsimonyPage",
         "Pages/ProposalsPage", "Pages/TimingPage",
-        "RefusalBlock", "ResultsInTextPanel", "ReviewWordRow",
+        "ProposalDifferencePanel", "RefusalBlock", "ResultsInTextPanel", "ReviewWordRow",
         "RetirementProposalReviewPanel", "ReviewInspector", "ReviewPanel", "SelectionPanel", "SettingsPage", "SettingsNavigation", "SetupDialog", "StatisticsPanel", "TextWordsPanel", "TextsListsPanel",
         "TraceAnalysesView", "TryWordAttemptInspector", "TryWordPanel", "WarningsFilterPanel", "WarningsInspectorPanel", "WordCard", "WordDispositionButtons",
     ];
@@ -1111,6 +1111,12 @@ public sealed class ProgressiveDisplayTests
                         Enumerable.Range(0, 500).Select(index =>
                             new WordCardSentenceToken($"sentence-{index}", null, index == 499)).ToArray(),
                         "Check again", "Undo")),
+            },
+            "ProposalDifferencePanel" => new ProposalDifferencePanel
+            {
+                DataContext = new ProposalDifferenceViewModel(
+                    (_, _) => Task.FromResult(CommandOutcome<ProposalDifferenceResponse>.Refused(
+                        new Refusal("difference.none", FailureReason.NotFound, "None."))), _ => { }),
             },
             "RefusalBlock" => new RefusalBlock { DataContext = CompileRefusal(1) },
             "ResultsInTextPanel" => new ResultsInTextPanel(texts.ResultsInText),

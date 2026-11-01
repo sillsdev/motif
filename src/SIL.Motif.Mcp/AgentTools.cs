@@ -932,13 +932,20 @@ internal static class AgentTools
                 ("bucket", Schema.String("Category code that listed words must have.",
                     Enum.GetValues<SIL.Motif.Contract.Responses.ProposalDifferenceBucket>()
                         .Select(SIL.Motif.Worker.Store.ProposalDifferenceRepository.BucketName).ToArray()), false),
+                ("limitation", Schema.String("Limitation code that either side of a listed word must carry.",
+                    Enum.GetValues<SIL.Motif.Contract.Responses.HumanAgreementLimitation>()
+                        .Select(SIL.Motif.Worker.Store.ProposalDifferenceRepository.LimitationName).ToArray()), false),
+                ("word", Schema.String("One exact word to list; its places in the Text are returned a page at a time."), false),
+                ("occurrence_offset", Schema.Integer("Places of that word to skip.", 0, 1000000), false),
+                ("occurrence_limit", Schema.Integer("Places of that word per page, maximum 200.", 1, 200), false),
                 ("before_state", Schema.String("Approval state a listed word had before the Proposal.", ApprovalStates), false),
                 ("after_state", Schema.String("Approval state a listed word has after the Proposal.", ApprovalStates), false),
                 ("offset", Schema.Integer("Words to skip.", 0, 1000000), false),
                 ("limit", Schema.Integer("Page size, maximum 200.", 1, 200), false)), true, true, false, true,
             (c, a, ct) => Task.FromResult(ToolOutcome.From(ProposalDifferenceCommands.Show(new ProposalDifferenceShowRequest(
                 c.ProjectPath, a.Optional("proposal"), a.Optional("difference"), a.Flag("could_be_bad"), a.Optional("bucket"),
-                a.Optional("before_state"), a.Optional("after_state"), a.Int("offset", 0), a.Int("limit", 25))))))
+                a.Optional("before_state"), a.Optional("after_state"), a.Int("offset", 0), a.Int("limit", 25),
+                a.Optional("limitation"), a.Optional("word"), a.OptionalInt("occurrence_offset"), a.OptionalInt("occurrence_limit"))))))
             { Requests = [typeof(ProposalDifferenceShowRequest)] },
         new("motif_difference_produce", string.Empty, AgentClass.Evaluate,
             Schema.Object(("proposal", Schema.String("Proposal whose completed Trial is compared."), true),

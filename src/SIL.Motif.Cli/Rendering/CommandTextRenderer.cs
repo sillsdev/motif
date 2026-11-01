@@ -839,6 +839,13 @@ public static class CommandTextRenderer
             text.AppendLine($"    {word.Word} x{word.Occurrences}: {word.BeforeState} -> {word.AfterState}" +
                 (word.Buckets.Count == 0 ? "" : " [" + string.Join(", ", word.Buckets.Select(BucketCode)) + "]"));
         if (response.NextOffset is { } next) text.AppendLine($"  More: --offset {next}");
+        if (response.Occurrences is { } places)
+        {
+            text.AppendLine($"  Places of {places.Word}: showing {places.Places.Count} of {places.Total:N0}");
+            foreach (var place in places.Places)
+                text.AppendLine($"    line {place.LineNumber}, word {place.OccurrenceIndex + 1} (segment {place.SegmentId})");
+            if (places.NextOffset is { } nextPlace) text.AppendLine($"  More places: --occurrence-offset {nextPlace}");
+        }
         return text.ToString();
     }
 

@@ -180,6 +180,28 @@ public sealed class HumanAgreementDifferenceClassifierTests
         Assert.Contains(ProposalDifferenceChange.Changed, nullToGuess.Changes);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void AnalysesThatDifferOnlyInReadingOrderAreUnchanged(bool withDisapprovedReading)
+    {
+        var decisions = withDisapprovedReading
+            ? new[] { Decision(IdA, ReadingGrade.Approved, FormA), Decision(IdB, ReadingGrade.Disapproved, FormB) }
+            : Approved();
+        var facts = Compare(Evidence(A(), B()), Evidence(B(), A()), decisions);
+
+        Assert.True(facts.CompleteComparison);
+        Assert.Empty(facts.Changes);
+        Assert.Empty(facts.Buckets);
+        Assert.Empty(facts.GainedIdentities);
+        Assert.Empty(facts.LostIdentities);
+        Assert.False(facts.CouldBeBad);
+        Assert.False(facts.Improved);
+        Assert.Equal(facts.ObservedBefore.Select(item => item.Morphs[0].Form), facts.ObservedAfter.Select(item => item.Morphs[0].Form));
+        Assert.Equal(facts.Before.ApprovedState, facts.After.ApprovedState);
+        Assert.Equal(facts.Before.ProducedIdentityCount, facts.After.ProducedIdentityCount);
+    }
+
     [Fact]
     public void PairOwnsAllInputAndOutputLists()
     {

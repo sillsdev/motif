@@ -27,6 +27,12 @@ public partial interface ICommandClient
     Task<CommandOutcome<ProposalStandings>> ProposalStandingsAsync(
         ProposalStandingsRequest request, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Reads a Proposal's saved Difference: its summary, one page of changed words, and one word's Text places.
+    /// </summary>
+    Task<CommandOutcome<ProposalDifferenceResponse>> ReadProposalDifferenceAsync(
+        ProposalDifferenceShowRequest request, CancellationToken cancellationToken);
+
     /// <summary>Deletes a declined, superseded or withdrawn Proposal that never applied, with its Trials.</summary>
     Task<CommandOutcome<ProposalDeletedResponse>> DeleteProposalAsync(
         DeleteProposalRequest request, CancellationToken cancellationToken);

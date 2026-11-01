@@ -1,5 +1,8 @@
 using Avalonia;
+using System.Globalization;
 using Avalonia.Automation;
+using Avalonia.Automation.Peers;
+using Avalonia.Automation.Provider;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
@@ -70,6 +73,16 @@ public sealed class FilterChip : Button
         set => SetValue(IsActiveProperty, value);
     }
 
+    /// <summary>Exposes the chip as a button that is on while its filter is in force, as well as invokable.</summary>
+    protected override AutomationPeer OnCreateAutomationPeer() => new FilterChipAutomationPeer(this);
+
+    private sealed class FilterChipAutomationPeer(FilterChip owner) : ButtonAutomationPeer(owner), IToggleProvider
+    {
+        public ToggleState ToggleState => owner.IsActive ? ToggleState.On : ToggleState.Off;
+
+        public void Toggle() => ((IInvokeProvider)this).Invoke();
+    }
+
     private void Rebuild()
     {
         Classes.Set("active", IsActive);
@@ -90,6 +103,9 @@ public sealed class FilterChip : Button
         row.Children.Add(count);
         Grid.SetColumn(count, 2);
         Content = row;
-        AutomationProperties.SetName(this, $"Show {Label}");
+        AutomationProperties.SetName(this, string.Format(CultureInfo.CurrentCulture,
+            MotifAppStrings.FilterChipAccessibleNameFormat, Label));
+        // A long label is trimmed to fit its chip, so the whole label is also the tooltip.
+        ToolTip.SetTip(this, string.IsNullOrEmpty(Label) ? null : Label);
     }
 }

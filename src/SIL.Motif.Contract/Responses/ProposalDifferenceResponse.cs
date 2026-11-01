@@ -116,6 +116,31 @@ public sealed record ProposalDifferenceWord(
             (nameof(Buckets), Buckets), (nameof(Facts), Facts));
 }
 
+/// <summary>One place in a Text where a compared word occurs.</summary>
+/// <param name="TextId">The GUID of the Text.</param>
+/// <param name="SegmentId">The GUID of the Text's line (segment) holding the word.</param>
+/// <param name="OccurrenceIndex">The word's position among the tokens of that line.</param>
+/// <param name="LineNumber">The line's number in the Text, counted from one.</param>
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
+public sealed record ProposalDifferenceOccurrencePlace(
+    [property: JsonRequired] string TextId,
+    [property: JsonRequired] string SegmentId,
+    [property: JsonRequired] int OccurrenceIndex,
+    [property: JsonRequired] int LineNumber) : IJsonOnDeserialized
+{
+    void IJsonOnDeserialized.OnDeserialized() =>
+        ClosedShape.RequireNonNull(nameof(ProposalDifferenceOccurrencePlace), (nameof(TextId), TextId),
+            (nameof(SegmentId), SegmentId));
+}
+
+/// <summary>One page of the places in the Text where a single word occurs.</summary>
+/// <param name="Word">The word whose places are listed.</param>
+/// <param name="Places">The requested page, in Text order (line, then position in the line).</param>
+/// <param name="Total">How many places the word has, before paging.</param>
+/// <param name="NextOffset">The offset of the next page, or null at the end.</param>
+public sealed record ProposalDifferenceOccurrencePage(
+    string Word, IReadOnlyList<ProposalDifferenceOccurrencePlace> Places, int Total, int? NextOffset);
+
 /// <summary>A saved Difference's summary and one page of its words.</summary>
 /// <param name="Summary">The totals, matrix and category counts, always first.</param>
 /// <param name="Words">The requested page of matching words, ordered by word.</param>
@@ -124,6 +149,9 @@ public sealed record ProposalDifferenceWord(
 /// <param name="WordDetailKept">
 /// False once the Proposal has been decided: the summary stays, the word detail is gone, and <paramref name="Words"/> is empty.
 /// </param>
+/// <param name="Occurrences">
+/// The requested word's Text places, only when a word was asked for and the word detail is kept; otherwise null.
+/// </param>
 public sealed record ProposalDifferenceResponse(
     ProposalDifferenceSummary Summary, IReadOnlyList<ProposalDifferenceWord> Words, int MatchingWords,
-    int? NextOffset, bool WordDetailKept);
+    int? NextOffset, bool WordDetailKept, ProposalDifferenceOccurrencePage? Occurrences = null);

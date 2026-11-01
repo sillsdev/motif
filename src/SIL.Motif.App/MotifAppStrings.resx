@@ -1348,6 +1348,250 @@
     <value>{0, plural, one {# proposal} other {# proposals}}</value>
     <comment>Plural pattern: a count of Proposals; # is the count.</comment>
   </data>
+  <data name="MotifApp.ProposalDifferenceTitle" xml:space="preserve">
+    <value>Difference</value>
+    <comment>Heading of the Proposal inspector section that shows the saved Difference.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferenceAdvice" xml:space="preserve">
+    <value>Advice only. It compares what the Proposal builds with the Approved analyses saved in FieldWorks, and changes nothing.</value>
+    <comment>Intro line under the Difference heading.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferenceReading" xml:space="preserve">
+    <value>Reading the Difference.</value>
+    <comment>Shown while the saved Difference is read.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferenceUnreadable" xml:space="preserve">
+    <value>The Difference could not be read.</value>
+    <comment>Fallback sentence when the saved Difference cannot be read.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferenceWordCountPattern" xml:space="preserve">
+    <value>{0, plural, one {# word} other {# words}}</value>
+    <comment>Plural pattern: a count of words; # is the count.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferenceOccurrenceCountPattern" xml:space="preserve">
+    <value>{0, plural, one {# occurrence} other {# occurrences}}</value>
+    <comment>Plural pattern: a count of occurrences of words in a Text; # is the count.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferenceHeadlineFormat" xml:space="preserve">
+    <value>{0} to check, {1} improved</value>
+    <comment>Headline of the Difference: {0} is a count of words such as '3 words', {1} likewise.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferenceComparedFormat" xml:space="preserve">
+    <value>Compared {0} ({1}) in {2}.</value>
+    <comment>What the Difference compared: {0} is a count of words, {1} a count of occurrences, {2} the Text title.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferenceUnboundFormat" xml:space="preserve">
+    <value>{0} could not be matched to one measured word.</value>
+    <comment>{0} is a count of occurrences such as '2 occurrences'.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferenceOutsideFormat" xml:space="preserve">
+    <value>Not in this Text: {0} the Trial measured.</value>
+    <comment>{0} is a count of words such as '3 words'.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferenceDetailRemoved" xml:space="preserve">
+    <value>Word detail was removed when this Proposal was decided. The summary is kept.</value>
+    <comment>Shown when only the Difference summary is left.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferenceMovedTitle" xml:space="preserve">
+    <value>Where Words Moved</value>
+    <comment>Heading of the before and after approval state chips.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferenceCheckTitle" xml:space="preserve">
+    <value>May Have Got Worse</value>
+    <comment>Heading of the chips for words that may have got worse.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferenceImprovedTitle" xml:space="preserve">
+    <value>Improved</value>
+    <comment>Heading of the chips for words that improved.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferenceLimitsTitle" xml:space="preserve">
+    <value>Stopped Searches</value>
+    <comment>Heading of the chips for words whose search stopped early.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferenceNotesTitle" xml:space="preserve">
+    <value>Notes</value>
+    <comment>Heading of the notes about how the two sides were measured.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferenceCheckChip" xml:space="preserve">
+    <value>Words to Check</value>
+    <comment>Chip that lists every word that may have got worse.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferenceClear" xml:space="preserve">
+    <value>Clear Filters</value>
+    <comment>Button that removes every chosen filter.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferenceWordsTitle" xml:space="preserve">
+    <value>Words</value>
+    <comment>Heading of the list of words.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferenceShowingFormat" xml:space="preserve">
+    <value>Showing {0} of {1}.</value>
+    <comment>{0} is how many words are listed and {1} how many match.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferenceNoMatching" xml:space="preserve">
+    <value>No words match.</value>
+    <comment>Shown when no word matches the chosen filters.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferenceNarrowHint" xml:space="preserve">
+    <value>Choose a filter above to narrow the list.</value>
+    <comment>Shown when the list of words stops before all matching words are listed.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferenceMoreWords" xml:space="preserve">
+    <value>Show More Words</value>
+    <comment>Button that lists the next page of words.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferenceMorePlaces" xml:space="preserve">
+    <value>Show More Places</value>
+    <comment>Button that lists the next page of a word's places in the Text.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferencePlacesTitleFormat" xml:space="preserve">
+    <value>Places of {0}</value>
+    <comment>{0} is the chosen word.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferenceStatesFormat" xml:space="preserve">
+    <value>{0} → {1}</value>
+    <comment>Before and after approval states of a word; {0} is before and {1} is after.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferencePlaceFormat" xml:space="preserve">
+    <value>Line {0}, word {1}</value>
+    <comment>A place in a Text: {0} is the line number and {1} the word's position in the line.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferenceNoPlaces" xml:space="preserve">
+    <value>No places are listed for this word.</value>
+    <comment>Shown when a word has no places in the Text.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferenceOpenWord" xml:space="preserve">
+    <value>Open Word</value>
+    <comment>Button that opens the chosen word in the Texts page.</comment>
+  </data>
+  <data name="MotifApp.FilterChipAccessibleNameFormat" xml:space="preserve">
+    <value>Show {0}</value>
+    <comment>Accessible name of a filter chip; {0} is the chip's label.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferenceNoteParser" xml:space="preserve">
+    <value>The two runs used different parser versions. A word that differs may differ because the parser changed, not the grammar.</value>
+    <comment>Note on a saved Difference whose two runs were parsed by different parser versions.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferenceNoteTokeniser" xml:space="preserve">
+    <value>The two runs split the Text into words differently, so they may have measured different words.</value>
+    <comment>Note on a saved Difference whose two runs used different tokenisers.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferenceNoteRetry" xml:space="preserve">
+    <value>Only one run tried again, with a longer time limit, the words that stopped at the per-word time limit, so the two runs used different time limits.</value>
+    <comment>Note on a saved Difference where only one run retried words stopped at the per-word time limit.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferenceNoteOther" xml:space="preserve">
+    <value>This comparison carries another note that the window does not show.</value>
+    <comment>Shown once for any note on a saved Difference that the window has no wording for, such as one from an older version.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferencePanelAccessibleName" xml:space="preserve">
+    <value>Proposal Difference</value>
+    <comment>Accessible name of the Proposal Difference section.</comment>
+  </data>
+  <data name="MotifApp.DifferenceStateNoParse" xml:space="preserve">
+    <value>No Parse</value>
+    <comment>Approval state: the parser built nothing.</comment>
+  </data>
+  <data name="MotifApp.DifferenceStateNoApprovedMatch" xml:space="preserve">
+    <value>No Approved Match</value>
+    <comment>Approval state: the parser built readings but none match an Approved analysis.</comment>
+  </data>
+  <data name="MotifApp.DifferenceStateApprovedWithAlternatives" xml:space="preserve">
+    <value>Approved Match With Alternatives</value>
+    <comment>Approval state: an Approved analysis is built along with other readings.</comment>
+  </data>
+  <data name="MotifApp.DifferenceStateApprovedUnique" xml:space="preserve">
+    <value>One Approved Match</value>
+    <comment>Approval state: only the Approved analysis is built.</comment>
+  </data>
+  <data name="MotifApp.DifferenceStateNoApprovedExpectations" xml:space="preserve">
+    <value>No Approved Analyses</value>
+    <comment>Approval state: FieldWorks has no Approved analysis for the word.</comment>
+  </data>
+  <data name="MotifApp.DifferenceStateIncomplete" xml:space="preserve">
+    <value>Search Incomplete</value>
+    <comment>Approval state: the search stopped before it could be settled.</comment>
+  </data>
+  <data name="MotifApp.DifferenceStateUnavailable" xml:space="preserve">
+    <value>Unavailable</value>
+    <comment>Approval state: no state could be established.</comment>
+  </data>
+  <data name="MotifApp.DifferenceStateNotMeasured" xml:space="preserve">
+    <value>Not Measured</value>
+    <comment>Approval state: the parser did not look at the word.</comment>
+  </data>
+  <data name="MotifApp.DifferenceStateConflictingDecisions" xml:space="preserve">
+    <value>Conflicting Decisions</value>
+    <comment>Approval state: FieldWorks decisions for the word contradict each other.</comment>
+  </data>
+  <data name="MotifApp.DifferenceBucketRegression" xml:space="preserve">
+    <value>Lost an Approved Analysis</value>
+    <comment>Category: an Approved analysis was built before and is not now.</comment>
+  </data>
+  <data name="MotifApp.DifferenceBucketNewCompetingParse" xml:space="preserve">
+    <value>New Competing Parse</value>
+    <comment>Category: a new reading now competes with the Approved analysis.</comment>
+  </data>
+  <data name="MotifApp.DifferenceBucketOvergeneration" xml:space="preserve">
+    <value>Misspelling Now Parses</value>
+    <comment>Category: a word marked as a misspelling now gets a parse.</comment>
+  </data>
+  <data name="MotifApp.DifferenceBucketNewWrongReading" xml:space="preserve">
+    <value>New Reading to Check</value>
+    <comment>Category: a reading is built that FieldWorks does not approve.</comment>
+  </data>
+  <data name="MotifApp.DifferenceBucketAnalysisChanged" xml:space="preserve">
+    <value>Analyses Changed</value>
+    <comment>Category: the readings built for the word changed.</comment>
+  </data>
+  <data name="MotifApp.DifferenceBucketAmbiguityBlowup" xml:space="preserve">
+    <value>Many More Parses</value>
+    <comment>Category: the word now gets many more readings.</comment>
+  </data>
+  <data name="MotifApp.DifferenceBucketLostParse" xml:space="preserve">
+    <value>Lost Its Parse</value>
+    <comment>Category: a word with no Approved analysis no longer parses.</comment>
+  </data>
+  <data name="MotifApp.DifferenceBucketImprovedApprovedMatch" xml:space="preserve">
+    <value>Gained an Approved Analysis</value>
+    <comment>Category: an Approved analysis is built that was missing.</comment>
+  </data>
+  <data name="MotifApp.DifferenceBucketImprovedUnique" xml:space="preserve">
+    <value>Now One Approved Match</value>
+    <comment>Category: the word now builds only its Approved analysis.</comment>
+  </data>
+  <data name="MotifApp.DifferenceBucketImprovedNegativeRejection" xml:space="preserve">
+    <value>Dropped a Disapproved Reading</value>
+    <comment>Category: a reading FieldWorks disapproves is no longer built.</comment>
+  </data>
+  <data name="MotifApp.DifferenceLimitationCapped" xml:space="preserve">
+    <value>Stopped at the Work Limit</value>
+    <comment>Search limit: the search stopped at the work limit.</comment>
+  </data>
+  <data name="MotifApp.DifferenceLimitationTimedOut" xml:space="preserve">
+    <value>Stopped at the Time Limit</value>
+    <comment>Search limit: the search stopped at the time limit.</comment>
+  </data>
+  <data name="MotifApp.DifferenceLimitationProjectionUnavailable" xml:space="preserve">
+    <value>Analysis Unavailable</value>
+    <comment>Search limit: the parser's analysis could not be read.</comment>
+  </data>
+  <data name="MotifApp.DifferenceLimitationParserRefused" xml:space="preserve">
+    <value>Parser Refused</value>
+    <comment>Search limit: the parser refused the word.</comment>
+  </data>
+  <data name="MotifApp.DifferenceLimitationInvalidShape" xml:space="preserve">
+    <value>Unusable Parser Result</value>
+    <comment>Search limit: the parser's result had an unusable shape.</comment>
+  </data>
+  <data name="MotifApp.DifferenceLimitationMalformedEvidence" xml:space="preserve">
+    <value>Unreadable Saved Decisions</value>
+    <comment>Search limit: the saved FieldWorks decisions could not be read.</comment>
+  </data>
+  <data name="MotifApp.DifferenceLimitationInvalidExpectedMorphology" xml:space="preserve">
+    <value>Unreadable Approved Analysis</value>
+    <comment>Search limit: an Approved analysis could not be read.</comment>
+  </data>
   <data name="MotifApp.ProblemFindingFormat" xml:space="preserve">
     <value>Problem: {0}</value>
     <comment>Line saying whether the problem the sound change addressed remains; {0} is Resolved or Still present.</comment>
@@ -2699,11 +2943,11 @@ Never included unless you tick it in the preview: local details, which may conta
   </data>
   <data name="MotifApp.MovesBetweenCellsWorstFirstAccessibleName" xml:space="preserve">
     <value>Moves between cells, worst first</value>
-    <comment>Accessible name (read by screen readers) on the Proposal difference panel.</comment>
+    <comment>Accessible name (read by screen readers) on the Trial summary panel (the What changed tab).</comment>
   </data>
   <data name="MotifApp.WordsInTheChosenMoveAccessibleName" xml:space="preserve">
     <value>Words in the chosen move</value>
-    <comment>Accessible name (read by screen readers) on the Proposal difference panel.</comment>
+    <comment>Accessible name (read by screen readers) on the Trial summary panel (the What changed tab).</comment>
   </data>
   <data name="MotifApp.StatisticsStaleNotice" xml:space="preserve">
     <value>Showing the last successful statistics; they may be out of date.</value>
