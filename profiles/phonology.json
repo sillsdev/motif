@@ -81,6 +81,9 @@
       "tool": "motif_edit_exception_features"
     },
     {
+      "tool": "motif_edit_phonological_rule_features"
+    },
+    {
       "tool": "motif_add_feature_value"
     },
     {

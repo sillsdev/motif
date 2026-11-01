@@ -29,6 +29,7 @@ internal static class ComposerDefinitions
         new EditDerivationalAffixRestrictionDefinition(),
         new AuthorExceptionFeatureDefinition(),
         new EditExceptionFeaturesDefinition(),
+        new EditPhonologicalRuleFeaturesDefinition(),
         new EditCompoundRuleDefinition(),
         new EditPartOfSpeechInflectionClassDefaultDefinition(),
         new EditStemAllomorphStemNameDefinition(),

@@ -938,6 +938,25 @@
     ],
     "redirect": "For a stem, clitic or inflectional affix. A derivational affix uses compose-edit-derivational-affix-restriction (guides suffix-prefix-slots)."
   },
+  "compose-edit-phonological-rule-features": {
+    "title": "Set rule features",
+    "description": "Sets the exact exception features or inflection classes a phonological rewrite rule requires of a stem, and the ones it excludes. An empty list clears a set. Motif stages a Draft for a person to review and Apply.",
+    "source": "Authored from the typed command contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "rule": "Id of an existing regular rewrite rule with one right-hand side.",
+      "requiredFeatures": "Exact set of exception feature or inflection class ids a stem must all carry; an empty list clears it.",
+      "excludedFeatures": "Exact set of ids a stem must carry none of; an empty list clears it."
+    },
+    "goals": [
+      "Keep a sound rule off the stems that must stay unchanged",
+      "Make a sound rule apply only to a tagged class of stems"
+    ],
+    "guides": [
+      "suffix-prefix-slots"
+    ],
+    "redirect": "For a rule that exists. Tag the stems with compose-edit-exception-features first."
+  },
   "compose-edit-allomorph-condition": {
     "title": "Edit an allomorph condition",
     "description": "Changes the environment references on one existing stem or affix allomorph after checking its current list. Shared environments remain unchanged for every other allomorph that uses them. Only a person can Apply.",

@@ -39,7 +39,11 @@ public static class CmPossibilityListPossibilitiesOperationKinds
                             cache.ServiceLocator.GetInstance<ICmPossibilityFactory>().Create(guid, owner);
                         }
                         else
-                            throw new InvalidOperationException("A new item needs a part of speech or an exception feature.");
-            }, true, false, new[] { "PartOfSpeech", "CmPossibility" }, "CmPossibility", false));
+                        {
+                            if (cache.LangProject.PhonologicalDataOA?.PhonRuleFeatsOA != owner)
+                                throw new InvalidOperationException("Only the phonological rule features list accepts a PhPhonRuleFeat item.");
+                            owner.PossibilitiesOS.Add(cache.ServiceLocator.GetInstance<IPhPhonRuleFeatFactory>().Create(guid));
+                        }
+            }, true, false, new[] { "PartOfSpeech", "CmPossibility", "PhPhonRuleFeat" }, "CmPossibility", false));
     }
 }

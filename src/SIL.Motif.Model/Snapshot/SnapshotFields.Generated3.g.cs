@@ -202,6 +202,9 @@ public static partial class SnapshotFields
     /// <summary>A <c>PhNaturalClass</c>'s <c>Abbreviation</c> basic MultiUnicode field.</summary>
     public const string PhNaturalClassAbbreviation = "grammar/phNaturalClass/abbreviation";
 
+    /// <summary>A <c>PhPhonRuleFeat</c>'s <c>Item</c> rel/atomic CmObject field.</summary>
+    public const string PhPhonRuleFeatItem = "grammar/phPhonRuleFeat/item";
+
     /// <summary>A <c>PhSegRuleRHS</c>'s <c>ExclRuleFeats</c> rel/col PhPhonRuleFeat field.</summary>
     public const string PhSegRuleRHSExclRuleFeats = "grammar/phSegRuleRHS/exclRuleFeats";
 

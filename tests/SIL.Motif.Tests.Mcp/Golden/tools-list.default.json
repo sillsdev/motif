@@ -4536,6 +4536,68 @@
                     "type": "string",
                     "description": "Composing verb for this intent.",
                     "enum": [
+                      "compose-edit-phonological-rule-features"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for compose-edit-phonological-rule-features.",
+                    "properties": {
+                      "rule": {
+                        "type": "string",
+                        "description": "Id of an existing regular rewrite rule with one right-hand side."
+                      },
+                      "requiredFeatures": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Exact set of exception feature or inflection class ids a stem must all carry; an empty list clears it."
+                      },
+                      "excludedFeatures": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Exact set of ids a stem must carry none of; an empty list clears it."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "rule"
+                    ]
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
                       "compose-edit-compound-rule"
                     ]
                   },
@@ -6115,6 +6177,50 @@
         "draft",
         "msa",
         "exceptionFeatures",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_edit_phonological_rule_features",
+    "description": "Set rule features. Research first: motif_guide topic suffix-prefix-slots; check best practice. For a rule that exists. Tag the stems with compose-edit-exception-features first. Sets the exact exception features or inflection classes a phonological rewrite rule requires of a stem, and the ones it excludes. An empty list clears a set. Motif stages a Draft for a person to review and Apply.\nCommand: compose-edit-phonological-rule-features. Agent class: Draft.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "Draft name."
+        },
+        "rule": {
+          "type": "string",
+          "description": "Id of an existing regular rewrite rule with one right-hand side."
+        },
+        "requiredFeatures": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Exact set of exception feature or inflection class ids a stem must all carry; an empty list clears it."
+        },
+        "excludedFeatures": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Exact set of ids a stem must carry none of; an empty list clears it."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "draft",
+        "rule",
         "project"
       ],
       "additionalProperties": false

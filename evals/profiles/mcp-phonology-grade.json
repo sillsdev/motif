@@ -95,6 +95,10 @@
       "class": "Draft"
     },
     {
+      "name": "motif_edit_phonological_rule_features",
+      "class": "Draft"
+    },
+    {
       "name": "motif_add_part_of_speech",
       "class": "Draft"
     },

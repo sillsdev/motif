@@ -86,6 +86,59 @@ public sealed class RealParserExceptionFeatureTests(PristineProjectFixture prist
         Assert.Equal(["pag+lilit"], await Readings(tracer, path, "paglilit", names));
     }
 
+    [RealParserFact]
+    public async Task ARuleThatExcludesOrRequiresAnExceptionFeatureAppliesOnlyToTheStemsItAllows()
+    {
+        using var cache = pristine.NewScratch();
+        RealParserProject.PrepareForParsing(cache, Letters);
+        var ws = Anal(cache);
+        var verb = AddCategory(cache, "Verb");
+        var names = new Dictionary<CanonicalId, string>(CanonicalId.ByGuid);
+        var kept = AddStem(cache, "kaun", verb);
+        names[kept.Form] = "kaun";
+        names[AddStem(cache, "taun", verb).Form] = "taun";
+        var created = ApplyOps(cache, AuthorPhonologicalRuleComposer.Build(cache, new("u becomes i between a and n",
+            PhonologicalRuleDirection.Simultaneous, [new(Phoneme: Phoneme(cache, "u"))],
+            [new(Phoneme: Phoneme(cache, "i"))], [new(Phoneme: Phoneme(cache, "a"))],
+            [new(Phoneme: Phoneme(cache, "n"))])));
+        var rule = Created(created, PhPhonDataPhonRulesOperationKinds.Create);
+        var path = cache.ProjectId.Path;
+        new FwDataProjectLoader().Save(cache);
+        using var invoker = new PanGlossInvoker();
+        var tracer = new PanGlossTracer(invoker);
+
+        Assert.Empty(await Readings(tracer, path, "kaun", names));
+        Assert.Equal(["kaun"], await Readings(tracer, path, "kain", names));
+        Assert.Empty(await Readings(tracer, path, "taun", names));
+        Assert.Equal(["taun"], await Readings(tracer, path, "tain", names));
+
+        var feature = Created(ApplyOps(cache, AuthorExceptionFeatureComposer.Build(cache,
+            new("Keeps u", ws, "ku"))), CmPossibilityListPossibilitiesOperationKinds.Create);
+        ApplyOps(cache, EditExceptionFeaturesComposer.Build(cache, new(kept.Msa, [feature])));
+        ApplyOps(cache, EditPhonologicalRuleFeaturesComposer.Build(cache, new(rule, ExcludedFeatures: [feature])));
+        new FwDataProjectLoader().Save(cache);
+
+        Assert.Equal(["kaun"], await Readings(tracer, path, "kaun", names));
+        Assert.Empty(await Readings(tracer, path, "kain", names));
+        Assert.Empty(await Readings(tracer, path, "taun", names));
+        Assert.Equal(["taun"], await Readings(tracer, path, "tain", names));
+
+        ApplyOps(cache, EditPhonologicalRuleFeaturesComposer.Build(cache,
+            new(rule, RequiredFeatures: [feature], ExcludedFeatures: [])));
+        new FwDataProjectLoader().Save(cache);
+
+        Assert.Empty(await Readings(tracer, path, "kaun", names));
+        Assert.Equal(["kaun"], await Readings(tracer, path, "kain", names));
+        Assert.Equal(["taun"], await Readings(tracer, path, "taun", names));
+        Assert.Empty(await Readings(tracer, path, "tain", names));
+
+        ApplyOps(cache, EditPhonologicalRuleFeaturesComposer.Build(cache, new(rule, RequiredFeatures: [])));
+        new FwDataProjectLoader().Save(cache);
+
+        Assert.Equal(["kaun"], await Readings(tracer, path, "kain", names));
+        Assert.Equal(["taun"], await Readings(tracer, path, "tain", names));
+    }
+
     private async Task<string[]> Readings(PanGlossTracer tracer, string path, string word,
         IReadOnlyDictionary<CanonicalId, string> names)
     {

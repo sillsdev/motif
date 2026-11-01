@@ -140,7 +140,11 @@ public static class OwningCreateCatalogWriter
             "    cache.ServiceLocator.GetInstance<ICmPossibilityFactory>().Create(guid, owner);\n" +
             "}\n" +
             "else\n" +
-            "    throw new InvalidOperationException(\"A new item needs a part of speech or an exception feature.\");", PositionMatters: false),
+            "{\n" +
+            "    if (cache.LangProject.PhonologicalDataOA?.PhonRuleFeatsOA != owner)\n" +
+            "        throw new InvalidOperationException(\"Only the phonological rule features list accepts a PhPhonRuleFeat item.\");\n" +
+            "    owner.PossibilitiesOS.Add(cache.ServiceLocator.GetInstance<IPhPhonRuleFeatFactory>().Create(guid));\n" +
+            "}", PositionMatters: false),
         new("CmPossibility", "SubPossibilities", "CmPossibility", FieldCard.Seq,
             "if (owner is not IPartOfSpeech parent)\n" +
             "    throw new InvalidOperationException(\"Only a part of speech accepts a PartOfSpeech subcategory.\");\n" +
@@ -245,7 +249,7 @@ public static class OwningCreateCatalogWriter
                     "PhPhonContext" => "new[] { \"PhSimpleContextSeg\", \"PhSimpleContextNC\", \"PhSimpleContextBdry\", \"PhSequenceContext\" }",
                     "StPara" => "new[] { \"StTxtPara\" }",
                     "CmPossibility" when creation.Owner == "CmPossibilityList" =>
-                        "new[] { \"PartOfSpeech\", \"CmPossibility\" }",
+                        "new[] { \"PartOfSpeech\", \"CmPossibility\", \"PhPhonRuleFeat\" }",
                     "CmPossibility" => "new[] { \"PartOfSpeech\" }",
                     "FsFeatDefn" => "new[] { \"FsClosedFeature\" }",
                     "MoMorphSynAnalysis" => "new[] { \"MoStemMsa\", \"MoInflAffMsa\", \"MoDerivAffMsa\", \"MoUnclassifiedAffixMsa\" }",
