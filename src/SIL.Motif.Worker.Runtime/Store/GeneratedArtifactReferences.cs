@@ -1175,7 +1175,8 @@ internal static class GeneratedArtifactReferences
                 case ParsimonyCandidateEvidenceBuilder.JobKind:
                 {
                     RequireObjectShape(json, "candidate Parsimony job input", "schemaVersion", "dryRunJobId",
-                        "measureId", "scopeBinding", "assessmentIds", "retirementExpectationTranslation");
+                        "measureId", "scopeBinding", "assessmentIds", "retirementExpectationTranslation",
+                        "measureIds", "inputsKey");
                     var strictInput = JsonSerializer.Deserialize<ParsimonyCandidateJobInput>(json, StrictJsonOptions)
                         ?? throw new InvalidDataException("The candidate Parsimony job input is null.");
                     if (strictInput.RetirementExpectationTranslation is { } translation &&
@@ -1445,7 +1446,7 @@ internal static class GeneratedArtifactReferences
 
         var valid = IsObjectShape(root, "candidate Parsimony job result",
             ["SchemaVersion", "MeasureId", "Candidate", "Before", "After", "FindingChanges",
-                "ApprovedAnalysisPreservation"],
+                "ApprovedAnalysisPreservation", "MoreMeasures"],
             ["SchemaVersion", "MeasureId", "Candidate", "Before", "After", "FindingChanges",
                 "ApprovedAnalysisPreservation"]);
         var schemaVersions = Properties(root, "SchemaVersion").ToArray();
@@ -1471,6 +1472,22 @@ internal static class GeneratedArtifactReferences
         foreach (var report in afterReports)
             valid &= CaptureParsimonyCandidateReportReferences(storeIdentity, recordId,
                 "parsimony-candidate-after", report, builder);
+
+        foreach (var more in Properties(root, "MoreMeasures"))
+        {
+            if (more.ValueKind != JsonValueKind.Array) { valid = false; continue; }
+            foreach (var item in more.EnumerateArray())
+            {
+                valid &= IsObjectShape(item, "candidate Parsimony measure result",
+                    ["MeasureId", "Before", "After", "FindingChanges"], ["MeasureId", "Before", "After", "FindingChanges"]);
+                foreach (var report in Properties(item, "Before"))
+                    valid &= CaptureParsimonyCandidateReportReferences(storeIdentity, recordId,
+                        "parsimony-candidate-before", report, builder);
+                foreach (var report in Properties(item, "After"))
+                    valid &= CaptureParsimonyCandidateReportReferences(storeIdentity, recordId,
+                        "parsimony-candidate-after", report, builder);
+            }
+        }
 
         try
         {

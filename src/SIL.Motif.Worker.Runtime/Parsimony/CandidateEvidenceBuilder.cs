@@ -112,7 +112,7 @@ public sealed class ParsimonyCandidateEvidenceBuilder
         var claimToken = claim.Job.ClaimToken;
         if (string.IsNullOrWhiteSpace(claimToken))
             return Failure(JobFailureCategory.Infrastructure, "The candidate Parsimony job has no active writer claim.");
-        IReadOnlyList<string> measureIds = [input.MeasureId];
+        var measureIds = input.RunMeasureIds;
 
         var beforeBundleId = "parsimony-bundle-" + Guid.NewGuid().ToString("N");
         var afterBundleId = "parsimony-bundle-" + Guid.NewGuid().ToString("N");
@@ -164,7 +164,8 @@ public sealed class ParsimonyCandidateEvidenceBuilder
                 source.Token, prepared.DryRun.EffectDigest, AnchorDigest(prepared.PublishedAnchor),
                 source.SourceSha256, prepared.CandidateSourceSha256, candidateFacts.ModelFingerprint,
                 parserIdentity, candidateFacts.SchemaVersion, EvidenceSchema.Version, input.ScopeBinding!,
-                judgmentDigest, input.RetirementExpectationTranslation?.MappingDigest);
+                judgmentDigest, input.RetirementExpectationTranslation?.MappingDigest,
+                measureIds.Count > 1 ? measureIds : null);
             var baselineTokenJson = EvidenceBundlePipeline.TokenJson(source.Token);
             ParsimonyArtifactDigest? beforeEvidence = null;
             var beforeEvidencePath = Path.Combine(beforeWorking, "evidence.sqlite");
@@ -244,7 +245,8 @@ public sealed class ParsimonyCandidateEvidenceBuilder
             var response = new ParsimonyCandidateEvidenceResponse(1, input.MeasureId, binding,
                 beforeResponse, after.Response, CompareFindings(beforeResponse, after.Response),
                 CompareApprovedAnalyses(ApprovedTuples(prepared.BaselineEvidence),
-                    ApprovedTuples(prepared.CandidateEvidence)));
+                    ApprovedTuples(prepared.CandidateEvidence)),
+                MoreMeasureResults(measureIds, before, reused, after));
             return new JobOutcome(JobStatus.Completed, ResultJson: JsonSerializer.Serialize(response,
                 MotifJson.CreateOptions()));
         }
@@ -270,12 +272,30 @@ public sealed class ParsimonyCandidateEvidenceBuilder
         }
     }
 
+    private static IReadOnlyList<ParsimonyCandidateMeasureResult>? MoreMeasureResults(
+        IReadOnlyList<string> measureIds, PreparedEvidenceBundle? before, ReusedBeforeSide? reused,
+        PreparedEvidenceBundle after)
+    {
+        if (measureIds.Count < 2) return null;
+        var web = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+        ParsimonyReportResponse Read(ReportRecord record) =>
+            JsonSerializer.Deserialize<ParsimonyReportResponse>(record.ReportJson, web)
+            ?? throw new InvalidDataException("A stored group Report is empty.");
+        var afterMore = (after.MoreReports ?? []).Select(Read).ToArray();
+        var beforeMore = reused is not null ? reused.Responses.Skip(1).ToArray()
+            : (before!.MoreReports ?? []).Select(Read).ToArray();
+        if (afterMore.Length != measureIds.Count - 1 || beforeMore.Length != afterMore.Length)
+            throw new InvalidDataException("The group run did not produce one Report per measure on both sides.");
+        return [.. measureIds.Skip(1).Select((id, index) => new ParsimonyCandidateMeasureResult(id,
+            beforeMore[index], afterMore[index], CompareFindings(beforeMore[index], afterMore[index])))];
+    }
+
     internal static string ComputeCandidateIdentity(FrozenProposalRevision proposal,
         IReadOnlyList<FrozenProposalRevision> prerequisites, BaselineToken baselineToken,
         string dryRunEffectDigest, string dryRunAnchorDigest, string baselineSourceSha256,
         string candidateSourceSha256, string modelFingerprint, string parserIdentity, int factsSchemaVersion,
         int evidenceSchemaVersion, ParsimonyScopeBinding scopeBinding, string humanJudgmentDigest,
-        string? retirementExpectationMappingDigest = null)
+        string? retirementExpectationMappingDigest = null, IReadOnlyList<string>? groupMeasureIds = null)
     {
         ArgumentNullException.ThrowIfNull(proposal);
         ArgumentNullException.ThrowIfNull(prerequisites);
@@ -302,6 +322,7 @@ public sealed class ParsimonyCandidateEvidenceBuilder
             humanJudgmentDigest,
             retirementExpectationMappingDigest,
         }, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        if (groupMeasureIds is not null) material += "|measures:" + string.Join(',', groupMeasureIds);
         return Hash(material);
     }
 

@@ -15,9 +15,15 @@ public sealed record ParsimonyCandidateJobInput(
     [property: JsonPropertyName("scopeBinding")] ParsimonyScopeBinding? ScopeBinding,
     [property: JsonPropertyName("assessmentIds")] IReadOnlyList<string>? AssessmentIds = null,
     [property: JsonPropertyName("retirementExpectationTranslation")]
-    RetirementExpectationTranslation? RetirementExpectationTranslation = null)
+    RetirementExpectationTranslation? RetirementExpectationTranslation = null,
+    [property: JsonPropertyName("measureIds")] IReadOnlyList<string>? MeasureIds = null,
+    [property: JsonPropertyName("inputsKey")] string? InputsKey = null)
 {
     public const int CurrentSchemaVersion = 3;
+
+    /// <summary>The measures this job runs on both sides: the named list, or the single measure.</summary>
+    [JsonIgnore]
+    public IReadOnlyList<string> RunMeasureIds => MeasureIds ?? [MeasureId];
 
     public static ParsimonyCandidateJobInput Parse(string json)
     {
@@ -25,7 +31,7 @@ public sealed record ParsimonyCandidateJobInput(
             if (document.RootElement.ValueKind != JsonValueKind.Object || document.RootElement.EnumerateObject()
                 .Any(property => property.Name is not
                     ("schemaVersion" or "dryRunJobId" or "measureId" or "scopeBinding" or "assessmentIds" or
-                     "retirementExpectationTranslation")))
+                     "retirementExpectationTranslation" or "measureIds" or "inputsKey")))
             throw new InvalidDataException("The candidate Parsimony job input contains unsupported fields.");
         var input = JsonSerializer.Deserialize<ParsimonyCandidateJobInput>(json, MotifJson.CreateOptions())
             ?? throw new InvalidDataException("The candidate Parsimony job has no input.");
@@ -35,6 +41,10 @@ public sealed record ParsimonyCandidateJobInput(
             throw new InvalidDataException("The candidate Parsimony job input is incomplete.");
         if (ParsimonyAdmission.CheckAssessmentIds(input.AssessmentIds) is { } refusal)
             throw new InvalidDataException(refusal.Message);
+        if (input.MeasureIds is { } measureIds && (measureIds.Count == 0 || measureIds[0] != input.MeasureId ||
+            measureIds.Distinct(StringComparer.Ordinal).Count() != measureIds.Count ||
+            measureIds.Any(id => MeasureCatalog.Find(id) is null || !MeasureRunner.Supports(id))))
+            throw new InvalidDataException("The candidate Parsimony job input names measures this build cannot run.");
         if (input.RetirementExpectationTranslation is { } translation)
             _ = RetirementExpectationTranslationCodec.Parse(
                 RetirementExpectationTranslationCodec.ToJson(translation));

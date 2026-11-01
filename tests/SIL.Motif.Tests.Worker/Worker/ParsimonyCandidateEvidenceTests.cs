@@ -14,6 +14,7 @@ using SIL.Motif.Host.Baselines;
 using SIL.Motif.Host.Config;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Host.PanGloss;
+using SIL.Motif.Host.Parsimony;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Host.Texts;
 using SIL.Motif.LiveHost.Baselines;
@@ -304,7 +305,8 @@ public sealed class ParsimonyCandidateEvidenceTests : IDisposable
 
     private async Task<(JobOutcome? Outcome, ClaimedJob Claim, string ParserPath)> RunCandidateAsync(
         Func<PanGlossInvoker, string, IPanGlossInvoker> wrapInvoker, string? proposalText = null,
-        Func<JobRecord, string, JobRecord>? sourceOf = null, bool baselineReportFirst = false)
+        Func<JobRecord, string, JobRecord>? sourceOf = null, bool baselineReportFirst = false,
+        IReadOnlyList<string>? groupMeasureIds = null)
     {
         var proposalJson = proposalText ?? DisableProhibitionProposal(_prohibitionGuid);
         var source = new DryRunSourceBinding(_token, _publishedRoot, _publishedFwDataPath,
@@ -337,11 +339,11 @@ public sealed class ParsimonyCandidateEvidenceTests : IDisposable
         FakeParser.WriteCandidateFactsFixture(parserPath, FactsFixture(disableChangedRule: true));
         using var invoker = new PanGlossInvoker(parserPath);
         var scope = new ParsimonyScopeBinding(ParsimonyEvidenceScopeKind.ProjectApproved, null);
-        if (baselineReportFirst) await RunBaselineReportAsync(invoker, parserPath, scope);
+        if (baselineReportFirst) await RunBaselineReportAsync(invoker, parserPath, scope, groupMeasureIds);
         _invocationsBeforeCandidate = FakeParser.Invocations(parserPath).Count;
         var sourceJob = sourceOf is null ? dryRunJob : sourceOf(_jobs.Get(dryRunJob.JobId)!, proposalJson);
         var candidateInput = new ParsimonyCandidateJobInput(ParsimonyCandidateJobInput.CurrentSchemaVersion,
-            sourceJob.JobId, "P-adhoc-duplicate", scope);
+            sourceJob.JobId, groupMeasureIds?[0] ?? "P-adhoc-duplicate", scope, MeasureIds: groupMeasureIds);
         var candidateJob = _jobs.Create(CanonicalId.Mint("job/").Value, _projectKey,
             ParsimonyCandidateEvidenceBuilder.JobKind,
             JsonSerializer.Serialize(candidateInput, SIL.Motif.Contract.MotifJson.CreateOptions()),
@@ -357,10 +359,60 @@ public sealed class ParsimonyCandidateEvidenceTests : IDisposable
 
     private int _invocationsBeforeCandidate;
 
-    private async Task RunBaselineReportAsync(PanGlossInvoker invoker, string parserPath, ParsimonyScopeBinding scope)
+    public static TheoryData<bool> BaselineSideStored => new() { false, true };
+
+    [Theory]
+    [MemberData(nameof(BaselineSideStored))]
+    public async Task AGroupRunMeasuresEveryGroupMeasureOnBothSidesInOneCandidateBuild(bool baselineStored)
+    {
+        var group = ParsimonyAdmission.MeasureIdsFor(ParsimonyGroupRequest.Grammar);
+        Assert.True(group.Count > 1);
+
+        var (outcome, claim, parserPath) = await RunCandidateAsync((invoker, _) => invoker,
+            baselineReportFirst: baselineStored, groupMeasureIds: group);
+
+        var completed = Assert.IsType<JobOutcome>(outcome);
+        Assert.True(completed.Status == JobStatus.Completed, completed.ResultJson);
+        claim.Transition(completed.Status, completed.Category, completed.ResultJson);
+        var response = JsonSerializer.Deserialize<ParsimonyCandidateEvidenceResponse>(completed.ResultJson!,
+            SIL.Motif.Contract.MotifJson.CreateOptions())!;
+        Assert.Equal(group[0], response.MeasureId);
+        Assert.Equal(group.Skip(1), response.MoreMeasures!.Select(item => item.MeasureId));
+        Assert.All(response.MoreMeasures!, item =>
+        {
+            Assert.NotEqual(item.Before.ReportId, item.After.ReportId);
+            Assert.Equal(response.Before.Inputs.BundleId, item.Before.Inputs.BundleId);
+            Assert.Equal(response.After.Inputs.BundleId, item.After.Inputs.BundleId);
+        });
+        var invocations = FakeParser.Invocations(parserPath).Skip(_invocationsBeforeCandidate)
+            .Where(command => command != "describe").ToArray();
+        Assert.Equal(baselineStored ? 2 : 4, invocations.Length);
+    }
+
+    [Fact]
+    public void AGroupInputKeepsItsFirstMeasureAndRefusesUnknownOrRepeatedMeasures()
+    {
+        var group = ParsimonyAdmission.MeasureIdsFor(ParsimonyGroupRequest.Grammar);
+        var scope = new ParsimonyScopeBinding(ParsimonyEvidenceScopeKind.ProjectApproved, null);
+        string Json(string measureId, IReadOnlyList<string> ids) => JsonSerializer.Serialize(
+            new ParsimonyCandidateJobInput(ParsimonyCandidateJobInput.CurrentSchemaVersion, "job/x", measureId,
+                scope, MeasureIds: ids), SIL.Motif.Contract.MotifJson.CreateOptions());
+
+        Assert.Equal(group, ParsimonyCandidateJobInput.Parse(Json(group[0], group)).RunMeasureIds);
+        Assert.Throws<InvalidDataException>(() => ParsimonyCandidateJobInput.Parse(Json(group[1], group)));
+        Assert.Throws<InvalidDataException>(() => ParsimonyCandidateJobInput.Parse(Json(group[0], [group[0], group[0]])));
+        Assert.Throws<InvalidDataException>(() => ParsimonyCandidateJobInput.Parse(Json(group[0], [group[0], "P-nope"])));
+        Assert.Equal([group[0]], ParsimonyCandidateJobInput.Parse(JsonSerializer.Serialize(
+            new ParsimonyCandidateJobInput(3, "job/x", group[0], scope),
+            SIL.Motif.Contract.MotifJson.CreateOptions())).RunMeasureIds);
+    }
+
+    private async Task RunBaselineReportAsync(PanGlossInvoker invoker, string parserPath, ParsimonyScopeBinding scope,
+        IReadOnlyList<string>? groupMeasureIds)
     {
         var job = _jobs.Create(CanonicalId.Mint("job/").Value, _projectKey, ParsimonyJobHandler.JobKind,
-            JsonSerializer.Serialize(new ParsimonyJobInput("P-adhoc-duplicate", scope),
+            JsonSerializer.Serialize(groupMeasureIds is null ? new ParsimonyJobInput("P-adhoc-duplicate", scope)
+                : new ParsimonyJobInput(ParsimonyAdmission.AllMeasures, scope, null, groupMeasureIds),
                 SIL.Motif.Contract.MotifJson.CreateOptions()), "2026-10-07T00:00:30Z");
         var claim = Claim(job.JobId);
         var handler = new ParsimonyJobHandler(_database, _baselines, _projectKey, _project,

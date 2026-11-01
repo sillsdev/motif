@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Parsimony;
 
@@ -41,4 +42,10 @@ public sealed record ParsimonyCandidateEvidenceResponse(
     ParsimonyReportResponse Before,
     ParsimonyReportResponse After,
     IReadOnlyList<ParsimonyCandidateFindingChange> FindingChanges,
-    ParsimonyApprovedAnalysisPreservation ApprovedAnalysisPreservation);
+    ParsimonyApprovedAnalysisPreservation ApprovedAnalysisPreservation,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    IReadOnlyList<ParsimonyCandidateMeasureResult>? MoreMeasures = null);
+
+/// <summary>One further measure of a group run: its paired Reports and finding changes.</summary>
+public sealed record ParsimonyCandidateMeasureResult(string MeasureId, ParsimonyReportResponse Before,
+    ParsimonyReportResponse After, IReadOnlyList<ParsimonyCandidateFindingChange> FindingChanges);
