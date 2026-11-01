@@ -85,7 +85,8 @@ internal sealed class TextViewScene : IDisposable
     private LayoutLog? _log;
 
     /// <summary>One word alone in a window, as the reader draws a word strip.</summary>
-    public static TextViewScene SingleWord(TextViewSample sample, double width = 900) => Open(sample, 1, width, line: false);
+    public static TextViewScene SingleWord(TextViewSample sample, double width = 900, StripState state = StripState.Conflict) =>
+        Open(sample, 1, width, line: false, state: state);
 
     /// <summary>A reader line of <paramref name="words"/> words and its gutter, at <paramref name="width"/>.</summary>
     public static TextViewScene Line(TextViewSample sample, int words, double width) => Open(sample, words, width, line: true);
@@ -93,14 +94,15 @@ internal sealed class TextViewScene : IDisposable
     public static TextViewScene ScrollableLine(TextViewSample sample, int words, double width) =>
         Open(sample, words, width, line: true, scroll: true);
 
-    private static TextViewScene Open(TextViewSample sample, int words, double width, bool line, bool scroll = false)
+    private static TextViewScene Open(TextViewSample sample, int words, double width, bool line, bool scroll = false,
+        StripState state = StripState.Conflict)
     {
         WalkthroughFonts.Register();
         var window = new MotifTestWindow { Width = width, Height = 400 };
         var scene = new TextViewScene(sample, window);
         scene._log = new LayoutLog();
         scene.ConfigureStyles(window);
-        for (var i = 0; i < words; i++) scene._tokens.Add(sample.Token(i));
+        for (var i = 0; i < words; i++) scene._tokens.Add(sample.Token(i, state));
         var body = line ? scene.BuildLine() : scene.BuildStrip(scene._tokens[0]);
         window.Content = scroll ? new ScrollViewer { Content = body } : body;
         window.Show();

@@ -35,6 +35,9 @@ public sealed partial class WordStripToken
             if (data?.Disposition.HasReadings == true) line.Add(Part(ref _addFace, "AddFace"));
         }
         if (data?.HasDisapprovedReading == true) line.Add(Part(ref _disapprovedMark, "DisapprovedChip"));
+        var noteFirst = _drawnWord is not null && data is { HasNothingStored: true, ShowsPanGlossReading: true };
+        if (_drawnWord is not null) _drawnWord.FieldWorksNote = noteFirst ? _fieldWorksLine : null;
+        if (noteFirst) line.Add(_fieldWorksLine);
         Reconcile(_wordLinePanel, line);
 
         var fieldWorks = new List<Control>(3);
@@ -49,7 +52,7 @@ public sealed partial class WordStripToken
         FillRow(_fieldWorksLine, fieldWorks, ref _fieldWorksColumns);
 
         var rows = new List<Control>(3) { _wordLine };
-        if (_drawnWord is null || fieldWorks.Count > 0) rows.Add(_fieldWorksLine);
+        if (!noteFirst && (_drawnWord is null || fieldWorks.Count > 0)) rows.Add(_fieldWorksLine);
         if (data is { Verdict: not OccurrenceVerdict.Matches } &&
             (_drawnWord is null || data.HasMorePanGlossReadings || data.ShowsPanGlossNote))
         {

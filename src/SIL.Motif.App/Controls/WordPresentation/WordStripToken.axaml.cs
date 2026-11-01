@@ -179,7 +179,7 @@ public sealed partial class WordStripToken : Border
         {
             var metrics = drawn.LineMetrics;
             LineMetrics = new RunningTextLineMetrics(metrics.Word,
-                metrics.FieldWorks + MeasuredLineHeight(_fieldWorksLine),
+                metrics.FieldWorks + (ReferenceEquals(_fieldWorksLine.Parent, _stripStack) ? MeasuredLineHeight(_fieldWorksLine) : 0),
                 metrics.PanGloss + MeasuredLineHeight(_panGlossLine));
         }
         else

@@ -538,9 +538,18 @@ internal static class WalkthroughArtifacts
                     $"Caption target rows need a gutter between '{string.Join(",", row.Select(label => label.AutomationId))}' " +
                     $"at {rowBottom:0.##} and '{string.Join(",", rows[rowIndex + 1].Select(label => label.AutomationId))}' " +
                     $"at {nextTop:0.##}.");
+            // A target from another row can reach into the gutter, so the leaders run below it.
+            var reaching = labels.Where(other => !row.Contains(other) &&
+                other.TargetBounds.Left > row.Min(label => label.TargetPoint.X) &&
+                other.TargetBounds.Top + targetOffset.Y < nextTop && other.TargetBounds.Bottom + targetOffset.Y > rowBottom)
+                .Select(other => (Top: other.TargetBounds.Top + targetOffset.Y, Bottom: other.TargetBounds.Bottom + targetOffset.Y))
+                .ToArray();
+            var even = Enumerable.Range(1, row.Length).Select(i => rowBottom + gutterHeight * i / (row.Length + 1)).ToArray();
+            var blocked = reaching.Length > 0 && even.Any(y => reaching.Any(box => y >= box.Top && y <= box.Bottom));
+            var gutterTop = blocked && reaching.Max(box => box.Bottom) < nextTop ? reaching.Max(box => box.Bottom) : rowBottom;
             for (var index = 0; index < row.Length; index++)
                 gutterYs[row[index].AutomationId ?? string.Empty] =
-                    rowBottom + gutterHeight * (index + 1) / (row.Length + 1);
+                    gutterTop + (nextTop - gutterTop) * (index + 1) / (row.Length + 1);
         }
 
         return labels.Select(label =>

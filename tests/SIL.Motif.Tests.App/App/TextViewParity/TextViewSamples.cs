@@ -4,6 +4,9 @@ using SIL.Motif.Contract.Responses;
 
 namespace SIL.Motif.Tests.App.TextViewParity;
 
+/// <summary>The comparison a sample word's strip shows.</summary>
+public enum StripState { Conflict, Agrees, NothingStored, NothingStoredNarrow }
+
 /// <summary>
 /// A tiny lexicon in one script, with the writing systems of its forms and glosses. Every test of the text view
 /// runs over these, so a left-to-right and a right-to-left sample differ only in their data.
@@ -67,9 +70,13 @@ internal sealed record TextViewSample(
         new Guid(System.Security.Cryptography.MD5.HashData(System.Text.Encoding.UTF8.GetBytes(kind + form))).ToString("D");
 
     /// <summary>A word whose stored reading differs from PanGloss's, so the strip shows both morphology lines.</summary>
-    public ResultsTokenViewModel Token(int word, string title = "Parity")
+    public ResultsTokenViewModel Token(int word, string title = "Parity") => Token(word, StripState.Conflict, title);
+
+    /// <summary>A word in the given state: PanGloss disagrees, PanGloss agrees, or FieldWorks holds nothing for it.</summary>
+    public ResultsTokenViewModel Token(int word, StripState state, string title = "Parity")
     {
-        var text = WordText(word);
+        var narrow = state == StripState.NothingStoredNarrow;
+        var text = narrow ? StoredForms(word)[0].Trim('-') : WordText(word);
         var stored = new ParserReading([.. StoredForms(word).Select(form => Morph(form, parser: false))])
         {
             StoredAnalysisId = Guid.Parse($"00000000-0000-0000-0000-{word + 1:D12}").ToString("D"),
@@ -80,7 +87,7 @@ internal sealed record TextViewSample(
             Identity = new ApprovedMorphology([.. stored.Morphs.Select(morph =>
                 new ApprovedMorph(morph.AllomorphId!, morph.GrammaticalInfoId!, null, [morph.Form]))]),
         };
-        var parser = new ParserReading([.. ParserForms(word).Select(form => Morph(form, parser: true))]);
+        var parser = new ParserReading([.. (narrow ? ParserForms(word).Take(1) : ParserForms(word)).Select(form => Morph(form, parser: true))]);
         var analysis = new ProjectAnalysis(stored.StoredAnalysisId!, stored.Morphs)
         {
             StoredAnalysisId = stored.StoredAnalysisId,
@@ -89,15 +96,18 @@ internal sealed record TextViewSample(
         };
         ParseAnalysis Raw(ParserReading reading) => new([.. reading.Morphs.Select(morph =>
             new ParseMorph(morph.AllomorphId!, morph.GrammaticalInfoId!, null, null))]);
+        var nothing = state is StripState.NothingStored or StripState.NothingStoredNarrow;
+        var agrees = state == StripState.Agrees;
+        ParserReading[] readings = agrees ? [stored] : nothing ? [parser] : [parser, stored];
         var result = new AssessmentWordResult(text, "analysed", false, "Complete", 3, null)
         {
-            Morphology = new ParseWordEvidence("v1", 0, text, 3, false, false, false, [Raw(parser), Raw(stored)], []),
-            Readings = [parser, stored],
-            ReadingGrades = ["no-opinion", "approved"],
-            ProjectStanding = ProjectStanding.Approved,
+            Morphology = new ParseWordEvidence("v1", 0, text, 3, false, false, false, [.. readings.Select(Raw)], []),
+            Readings = readings,
+            ReadingGrades = [.. readings.Select(reading => ReferenceEquals(reading, stored) ? "approved" : "no-opinion")],
+            ProjectStanding = nothing ? ProjectStanding.Candidate : ProjectStanding.Approved,
             OccurrenceCount = 1,
-            StoredAnalyses = [stored],
-            ExpectedAnalysis = stored,
+            StoredAnalyses = nothing ? [] : [stored],
+            ExpectedAnalysis = nothing ? null : stored,
             WordWritingSystem = FormWritingSystem,
         };
         return new ResultsTokenViewModel(title, 1, new TextToken(text, text, null, "approved")
@@ -107,9 +117,9 @@ internal sealed record TextViewSample(
             GlossWritingSystem = GlossWritingSystem,
             CategoryWritingSystem = GlossWritingSystem,
             WordformId = Guid.Parse($"00000000-0000-0000-0001-{word + 1:D12}"),
-            Analysis = analysis,
-            StoredAnalyses = [analysis],
-            StoredAnalysisId = analysis.StoredAnalysisId,
+            Analysis = nothing ? null : analysis,
+            StoredAnalyses = nothing ? [] : [analysis],
+            StoredAnalysisId = nothing ? null : analysis.StoredAnalysisId,
         }, result);
     }
 }

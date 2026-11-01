@@ -12,6 +12,9 @@ using SIL.Motif.App.ViewModels;
 
 namespace SIL.Motif.App.Controls.WordPresentation;
 
+/// <summary>Which of a word's rows a drawn run belongs to.</summary>
+internal enum ReadingSource { Word, FieldWorks, PanGloss }
+
 /// <summary>An experimental drawn representation of a word and its compact interlinear readings.</summary>
 internal sealed class InterlinearWord : Control
 {
@@ -26,6 +29,9 @@ internal sealed class InterlinearWord : Control
 
     private const double Gap = 4;
     private readonly List<Run> _runs = [];
+    private readonly List<Rect> _rules = [];
+    private Rect _noteBand;
+    private Control? _fieldWorksNote;
     private ResultsTokenViewModel? _data;
     private TextStyles? _styles;
     private ModelKey? _modelKey;
@@ -56,6 +62,28 @@ internal sealed class InterlinearWord : Control
 
     internal RunningTextLineMetrics LineMetrics { get; private set; }
     internal IReadOnlyList<Run> Runs => _runs;
+
+    /// <summary>The divider drawn between a word's FieldWorks reading and its PanGloss reading, in this control's coordinates.</summary>
+    internal IReadOnlyList<Rect> Rules => _rules;
+
+    /// <summary>Where the host arranges <see cref="FieldWorksNote"/>, in this control's coordinates; empty without a note.</summary>
+    internal Rect NoteBand => _noteBand;
+
+    /// <summary>
+    /// A control the host arranges in the FieldWorks row when FieldWorks holds nothing and PanGloss shows a reading,
+    /// so the note reads first and the reading follows it. The note is measured here, never drawn here.
+    /// </summary>
+    internal Control? FieldWorksNote
+    {
+        get => _fieldWorksNote;
+        set
+        {
+            if (ReferenceEquals(_fieldWorksNote, value)) return;
+            _fieldWorksNote = value;
+            _modelKey = null;
+            InvalidateMeasure();
+        }
+    }
     internal int SelectedRunIndex => _selected;
     internal int HitRun(Point point) => _runs.FindIndex(run => run.Bounds.Contains(point));
     internal void SelectRange(int index, int start, int end)
@@ -72,6 +100,7 @@ internal sealed class InterlinearWord : Control
         Focusable = true;
         IsTabStop = true;
         FlowDirection = FlowDirection.LeftToRight;
+        ActualThemeVariantChanged += (_, _) => InvalidateMeasure();
     }
 
     static InterlinearWord()
@@ -100,27 +129,55 @@ internal sealed class InterlinearWord : Control
             return default;
         }
         var foreground = TextElement.GetForeground(this) ?? Brushes.Black;
-        var key = new ModelKey(styles, styles.Revision, _dataRevision, availableSize.Width, foreground);
+        var panGlossBrush = FindBrush("Intent.Outcome.Different") ?? foreground;
+        var note = _fieldWorksNote is { IsVisible: true } visibleNote ? visibleNote : null;
+        var noteHeight = 0d;
+        var noteWidth = 0d;
+        if (note is not null)
+        {
+            note.Measure(Size.Infinity);
+            noteHeight = note.DesiredSize.Height;
+            noteWidth = note.DesiredSize.Width;
+        }
+        var scale = TopLevel.GetTopLevel(this)?.RenderScaling ?? 1;
+        var key = new ModelKey(styles, styles.Revision, _dataRevision, availableSize.Width, foreground, panGlossBrush, noteHeight, noteWidth, scale);
         if (_modelKey == key) return _modelSize;
         _runs.Clear();
+        _rules.Clear();
+        _noteBand = default;
         var word = Shape(_data.Text, _data.TextWritingSystem, styles, foreground, TextDecorations);
         var rtl = styles.Resolve(TextStyleRequest.Linguistic(_data.TextWritingSystem, "Normal")).FlowDirection == FlowDirection.RightToLeft;
         var widthLimit = double.IsFinite(availableSize.Width) ? Math.Max(1, availableSize.Width) : double.PositiveInfinity;
         var field = ShapeMorphs(_data.PrimaryFieldWorksMorphs, styles, foreground);
-        var pan = _data.ShowsPanGlossReading ? ShapeMorphs(_data.PanGlossReadingMorphs, styles, foreground) : [];
+        var pan = _data.ShowsPanGlossReading ? ShapeMorphs(_data.PanGlossReadingMorphs, styles, panGlossBrush) : [];
         var wordWidth = word.WidthIncludingTrailingWhitespace;
         var fieldWidth = ColumnsWidth(field);
         var panWidth = ColumnsWidth(pan);
-        _width = Math.Min(widthLimit, Math.Max(wordWidth, Math.Max(fieldWidth, panWidth)));
-        if (!double.IsFinite(_width)) _width = Math.Max(wordWidth, Math.Max(fieldWidth, panWidth));
-        var y = word.Height;
-        _runs.Add(new Run(_data.Text, word, new Rect(rtl ? _width - wordWidth : 0, 0, wordWidth, word.Height),
-            rtl ? FlowDirection.RightToLeft : FlowDirection.LeftToRight));
-        var fieldHeight = Place(field, y, _width, rtl);
+        var contentWidth = Math.Max(Math.Max(wordWidth, noteWidth), Math.Max(fieldWidth, panWidth));
+        _width = Math.Min(widthLimit, contentWidth);
+        if (!double.IsFinite(_width)) _width = contentWidth;
+        var wordHeight = WholePixels(InkHeight(word), scale);
+        var y = wordHeight;
+        _runs.Add(new Run(_data.Text, word, new Rect(rtl ? _width - wordWidth : 0, 0, wordWidth, wordHeight),
+            rtl ? FlowDirection.RightToLeft : FlowDirection.LeftToRight, ReadingSource.Word));
+        var fieldHeight = Place(field, y, _width, rtl, ReadingSource.FieldWorks, scale);
+        if (note is not null && field.Count == 0 && pan.Count > 0)
+        {
+            _noteBand = new Rect(0, y, _width, noteHeight);
+            fieldHeight = noteHeight;
+        }
         y += fieldHeight;
-        var panHeight = Place(pan, y, _width, rtl);
+        var panHeight = 0d;
+        if (pan.Count > 0 && fieldHeight > 0)
+        {
+            var thickness = FindThickness("Component.WordStrip.RowRule")?.Top ?? 1;
+            var space = FindNumber("Intent.Space.Minimal") ?? 2;
+            _rules.Add(new Rect(0, y + space, _width, thickness));
+            panHeight = space + thickness + space;
+        }
+        panHeight += Place(pan, y + panHeight, _width, rtl, ReadingSource.PanGloss, scale);
         y += panHeight;
-        LineMetrics = new RunningTextLineMetrics(word.Height, fieldHeight, panHeight);
+        LineMetrics = new RunningTextLineMetrics(wordHeight, fieldHeight, panHeight);
         if (_selected >= _runs.Count) _selected = -1;
         if (_selected >= 0)
         {
@@ -133,9 +190,26 @@ internal sealed class InterlinearWord : Control
         return _modelSize;
     }
 
+    private IBrush? FindBrush(string key) => this.TryFindResource(key, ActualThemeVariant, out var value) ? value as IBrush : null;
+
+    private double? FindNumber(string key) => this.TryFindResource(key, ActualThemeVariant, out var value) && value is double number ? number : null;
+
+    private Thickness? FindThickness(string key) => this.TryFindResource(key, ActualThemeVariant, out var value) && value is Thickness thickness ? thickness : null;
+
+    internal static double WholePixels(double value, double scale) => Math.Ceiling(value * scale - 1e-6) / scale;
+
+    // Stacked marks and tall fallback faces paint past the shaped line box, so a band holds the outlines.
+    private static double InkHeight(TextLayout layout)
+    {
+        var bottom = layout.Height;
+        foreach (var shaped in layout.TextLines[0].TextRuns.OfType<ShapedTextRun>())
+            if (shaped.GlyphRun.BuildGeometry()?.Bounds is { Height: > 0 } ink) bottom = Math.Max(bottom, ink.Bottom);
+        return bottom;
+    }
+
     private static double ColumnsWidth(List<Column> columns) => columns.Sum(c => c.Width) + Math.Max(0, columns.Count - 1) * Gap;
 
-    private double Place(List<Column> columns, double top, double width, bool rtl)
+    private double Place(List<Column> columns, double top, double width, bool rtl, ReadingSource source, double scale)
     {
         if (columns.Count == 0) return 0;
         List<List<Column>> groups = [[]];
@@ -154,14 +228,14 @@ internal sealed class InterlinearWord : Control
         var y = top;
         foreach (var group in groups)
         {
-            var formHeight = group.Max(c => c.Form.Height);
-            var glossHeight = group.Max(c => c.Gloss.Height);
+            var formHeight = WholePixels(group.Max(c => InkHeight(c.Form)), scale);
+            var glossHeight = WholePixels(group.Max(c => InkHeight(c.Gloss)), scale);
             var x = rtl ? width : 0;
             foreach (var column in group)
             {
                 if (rtl) x -= column.Width;
-                _runs.Add(new Run(column.FormText, column.Form, new Rect(x, y, column.Form.WidthIncludingTrailingWhitespace, formHeight), column.FormDirection));
-                _runs.Add(new Run(column.GlossText, column.Gloss, new Rect(x, y + formHeight, column.Gloss.WidthIncludingTrailingWhitespace, glossHeight), column.GlossDirection));
+                _runs.Add(new Run(column.FormText, column.Form, new Rect(x, y, column.Form.WidthIncludingTrailingWhitespace, formHeight), column.FormDirection, source));
+                _runs.Add(new Run(column.GlossText, column.Gloss, new Rect(x, y + formHeight, column.Gloss.WidthIncludingTrailingWhitespace, glossHeight), column.GlossDirection, source));
                 x += rtl ? -Gap : column.Width + Gap;
             }
             y += formHeight + glossHeight;
@@ -187,6 +261,8 @@ internal sealed class InterlinearWord : Control
 
     public override void Render(DrawingContext context)
     {
+        if (_rules.Count > 0 && FindBrush("Intent.Marking.Divider") is { } divider)
+            foreach (var rule in _rules) context.FillRectangle(divider, rule);
         for (var i = 0; i < _runs.Count; i++)
         {
             var run = _runs[i];
@@ -342,8 +418,9 @@ internal sealed class InterlinearWord : Control
         }
     }
 
-    private readonly record struct ModelKey(TextStyles Styles, long StyleRevision, long DataRevision, double Width, IBrush Foreground);
-    internal sealed record Run(string Text, TextLayout Layout, Rect Bounds, FlowDirection Direction);
+    private readonly record struct ModelKey(TextStyles Styles, long StyleRevision, long DataRevision, double Width, IBrush Foreground,
+        IBrush PanGlossForeground, double NoteHeight, double NoteWidth, double Scale);
+    internal sealed record Run(string Text, TextLayout Layout, Rect Bounds, FlowDirection Direction, ReadingSource Source);
     private sealed record Column(string FormText, string GlossText, TextLayout Form, TextLayout Gloss,
         FlowDirection FormDirection, FlowDirection GlossDirection)
     {
