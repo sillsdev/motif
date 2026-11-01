@@ -34,11 +34,13 @@ Checked against FieldWorks `HCLoader.cs`, PanGloss `compile/affixes.rs`, and a p
 
 These stay until each gap is fixed in its own change, and each fix should cite this ADR:
 
-- No composer changes an existing affix between inflectional and derivational, although Black's advice is to pick one and change it later.
-- `compose-edit-morph-type` accepts only stem-family morph types; an affix whose type is wrong (prefix versus suffix, infix versus circumfix) cannot be corrected in place.
-- `compose-edit-affix-inflection-classes` cannot reach a reduplicating affix process, so an inflectional reduplication affix's class restriction can be set only when it is authored.
+- ~~No composer changes an existing affix between inflectional and derivational, although Black's advice is to pick one and change it later.~~ Closed in 1569bfe8e (G1).
+- ~~`compose-edit-morph-type` accepts only stem-family morph types; an affix whose type is wrong (prefix versus suffix, infix versus circumfix) cannot be corrected in place.~~ Closed in c884e2795 (G2).
+- ~~`compose-edit-affix-inflection-classes` cannot reach a reduplicating affix process, so an inflectional reduplication affix's class restriction can be set only when it is authored.~~ Closed in bec69734b (G3).
 - The process composer allows only exact copies and single inserted phonemes, while LibLCM and PanGloss also hold insert-by-class and modify-from-input, which partial reduplication with changed sounds needs.
 - A derivational MSA must name a destination category; LibLCM allows it empty.
+- Open: `compose-change-affix-kind` refuses when an ad-hoc prohibition refers to the old MSA; LibLCM can hold that reference to any MSA, so the refusal is avoidable.
+- Open: a circumfix is refused in `compose-edit-morph-type` and `compose-edit-affix-inflection-classes` because Motif has no two-part circumfix authoring yet, not because of LibLCM.
 
 ## Consequences
 
