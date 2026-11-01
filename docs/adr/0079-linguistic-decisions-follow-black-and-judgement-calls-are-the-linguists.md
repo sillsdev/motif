@@ -38,10 +38,11 @@ These stay until each gap is fixed in its own change, and each fix should cite t
 - ~~`compose-edit-morph-type` accepts only stem-family morph types; an affix whose type is wrong (prefix versus suffix, infix versus circumfix) cannot be corrected in place.~~ Closed in c884e2795 (G2).
 - ~~`compose-edit-affix-inflection-classes` cannot reach a reduplicating affix process, so an inflectional reduplication affix's class restriction can be set only when it is authored.~~ Closed in bec69734b (G3).
 - ~~The process composer allows only exact copies and single inserted phonemes, while LibLCM and PanGloss also hold insert-by-class and modify-from-input, which partial reduplication with changed sounds needs.~~ Closed in b8ae3c178 (G4).
+- ~~`compose-author-phonological-rule` demands a left context, although LibLCM and FieldWorks' loader allow a rule with none.~~ Closed in 17b91c7aa.
 - A derivational MSA must name a destination category; LibLCM allows it empty.
 - Open: `compose-change-affix-kind` refuses when an ad-hoc prohibition refers to the old MSA; LibLCM can hold that reference to any MSA, so the refusal is avoidable.
 - Open: a circumfix is refused in `compose-edit-morph-type` and `compose-edit-affix-inflection-classes` because Motif has no two-part circumfix authoring yet, not because of LibLCM.
-- Open: the affix-process composers refuse a modify on the remaining stem, avoidable because FieldWorks' UI allows it and HermitCrab's ModifyFromInput applies to every node in the captured range.
+- ~~Open: the affix-process composers refuse a modify on the remaining stem, avoidable because FieldWorks' UI allows it and HermitCrab's ModifyFromInput applies to every node in the captured range.~~ Closed in cd0f93fb7. An affix process with one input and one output is allowed, but FieldWorks and PanGloss skip it when loading, so the Dry Run warns.
 
 ## Consequences
 
