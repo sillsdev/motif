@@ -35,6 +35,24 @@ public sealed class MeasureCatalogTests
     }
 
     [Fact]
+    public void FiveMeasuresRunInTheGrammarGroupAndNineInTheTextGroup()
+    {
+        string[] grammar =
+        [
+            "P-adhoc-duplicate", "P-allo-alternation-family", "P-allo-duplicate-form", "P-statement-unused",
+            "R-allo-unconditioned",
+        ];
+        Assert.Equal(grammar, MeasureCatalog.All.Where(measure => measure.Group == ParsimonyMeasureGroup.Grammar)
+            .Select(measure => measure.Id).Order(StringComparer.Ordinal));
+        Assert.Equal(9, MeasureCatalog.All.Count(measure => measure.Group == ParsimonyMeasureGroup.Text));
+        Assert.All(MeasureCatalog.All.Where(measure => measure.Tier == ParsimonyTier.Parser),
+            measure => Assert.Equal(ParsimonyMeasureGroup.Text, measure.Group));
+        Assert.Equal(ParsimonyTier.Text, MeasureCatalog.Find("B-affix-null-vs-optional")!.Tier);
+        Assert.DoesNotContain(ParsimonyCapabilities.ApprovedSignatures,
+            MeasureCatalog.Find("P-allo-alternation-family")!.RequiredCapabilities);
+    }
+
+    [Fact]
     public void MissingCapabilitiesAreReturnedByTheirStableNames()
     {
         var missing = MeasureCatalog.MissingCapabilities("P-adhoc-duplicate", ["load-facts"]);

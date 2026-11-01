@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json.Serialization;
 
 namespace SIL.Motif.Contract.Parsimony;
 
@@ -96,9 +97,9 @@ public static class MeasureCatalog
             ParsimonyGroupKind.AlternationFamily, ParsimonyQueryIds.AlloAlternationFamily,
             AtLeastTwoMorphemes(), [ParsimonyViews.AlternationFamilies, ParsimonyViews.AllomorphContext],
             ["chomsky-halle-1968", "albright-hayes-2003", "ellison-1994", "lan-rasin-katzir-2019",
-            "rasin-berger-lan-katzir-2018"], "morphemes", ParsimonyCapabilities.ApprovedSignatures,
+            "rasin-berger-lan-katzir-2018"], "morphemes",
             ParsimonyCapabilities.AuthorPhonologicalRule, ParsimonyCapabilities.FeatureAssignments,
-            ParsimonyCapabilities.ObservedContext, ParsimonyCapabilities.PhonemeTokenization,
+            ParsimonyCapabilities.PhonemeTokenization,
             ParsimonyCapabilities.RetireAllomorphIntent),
         DefineGroupRegistered("B-adhoc-is-slot-order", ParsimonyAxis.Both, ParsimonyTier.Text,
             ParsimonyGroupKind.AdhocSlotOrder, ParsimonyQueryIds.AdhocSlotOrder, Threshold(),
@@ -107,7 +108,7 @@ public static class MeasureCatalog
             ParsimonyCapabilities.AuthorAffixTemplate, ParsimonyCapabilities.EditAffixTemplate,
             ParsimonyCapabilities.EditAdhocDisabled, ParsimonyCapabilities.OrderedAdhocTargets,
             ParsimonyCapabilities.PairedVerification, ParsimonyCapabilities.TemplateEmbeddings),
-        DefineRegistered("B-affix-null-vs-optional", ParsimonyAxis.Both, ParsimonyTier.Static,
+        DefineRegistered("B-affix-null-vs-optional", ParsimonyAxis.Both, ParsimonyTier.Text,
             ParsimonyAttachmentKind.AuthoredObject, ParsimonyAuthoredObjectKind.InflectionalMsa,
             ParsimonyQueryIds.NullOptional, Threshold(), [ParsimonyViews.NullOptional,
             ParsimonyViews.AffixContext, ParsimonyViews.AllomorphContext, ParsimonyViews.ApprovedMorphSequences,
@@ -275,6 +276,19 @@ public static class MeasureCatalog
         new(ParsimonyThresholdOperator.GreaterThanOrEqual, 2, "1");
 }
 
+/// <summary>The two groups a Parsimony run is made of, by what a measure reads.</summary>
+[JsonConverter(typeof(JsonStringEnumConverter<ParsimonyMeasureGroup>))]
+public enum ParsimonyMeasureGroup
+{
+    /// <summary>Reads only the frozen grammar facts and needs no Texts, Selection or Assessment.</summary>
+    [JsonStringEnumMemberName("grammar")]
+    Grammar,
+
+    /// <summary>Reads Approved analyses or parser outcomes of a Parsimony Selection.</summary>
+    [JsonStringEnumMemberName("text")]
+    Text,
+}
+
 /// <summary>One fixed measure definition and its evidence, identity, capability, and recipe contracts.</summary>
 /// <param name="Id">The stable measure ID.</param>
 /// <param name="Axis">The axis examined by the measure.</param>
@@ -302,4 +316,10 @@ public sealed record MeasureDefinition(
     ParsimonyMeasureThreshold? Threshold,
     IReadOnlyList<string> EvidenceViews,
     IReadOnlyList<string> CitationKeys,
-    string Unit);
+    string Unit)
+{
+    /// <summary>The group the measure runs in: Grammar when it reads no words, otherwise Text.</summary>
+    public ParsimonyMeasureGroup Group => Tier == ParsimonyTier.Static
+        ? ParsimonyMeasureGroup.Grammar
+        : ParsimonyMeasureGroup.Text;
+}

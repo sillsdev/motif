@@ -3857,6 +3857,30 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
     }
 
     [Fact]
+    public async Task GrammarMeasuresNeverNeedTheScopeAndTextTierMeasuresAlwaysDo()
+    {
+        await PublishBaselineAsync(_pristine);
+        var (bundleId, bundle) = await RunScopedMeasureJobAsync("R-tmpl-precedence",
+            new ParsimonyScopeBinding(ParsimonyEvidenceScopeKind.ProjectApproved, null), "read-set-worker");
+        AddNamedMeasureFacts(bundle.GrammarFactsPath);
+        AddTemplateMeasureFacts(bundle.GrammarFactsPath, bundle.EvidencePath);
+        AddPositiveAndNegativeAlternativeTemplates(bundle.GrammarFactsPath, bundle.EvidencePath);
+        AddEnvironmentAndNaturalClassFacts(bundle.GrammarFactsPath);
+        AddEnvironmentAndNaturalClassEvidence(bundle.EvidencePath);
+
+        using var session = OpenScopedSession(bundle, ParsimonyEvidenceScopeKind.DefaultSelection);
+        foreach (var measure in MeasureCatalog.All.Where(measure => measure.Tier != ParsimonyTier.Parser))
+        {
+            var run = MeasureRunner.Execute(measure.Id, session, bundleId).Run;
+            var refused = run.Status == ParsimonyMeasureStatus.Inconclusive &&
+                run.Detail!.Contains("the Default Selection is not saved.", StringComparison.Ordinal);
+            if (measure.Group == ParsimonyMeasureGroup.Grammar) Assert.False(refused, measure.Id);
+            // These two ask for the scope only when the grammar has candidates, which this fixture lacks.
+            else if (measure.Id is not ("B-affix-unslotted" or "B-adhoc-is-slot-order")) Assert.True(refused, measure.Id);
+        }
+    }
+
+    [Fact]
     public async Task AMeasureThatCouldNotLookAddsANotCheckedNote()
     {
         await PublishBaselineAsync(_pristine);
