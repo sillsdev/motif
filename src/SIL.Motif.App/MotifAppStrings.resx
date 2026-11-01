@@ -1360,6 +1360,14 @@
     <value>Reading the Difference.</value>
     <comment>Shown while the saved Difference is read.</comment>
   </data>
+  <data name="MotifApp.UnreadableProposalsPattern" xml:space="preserve">
+    <value>{0, plural, one {# Proposal could not be read, so it is not listed. Nothing was changed or deleted.} other {# Proposals could not be read, so they are not listed. Nothing was changed or deleted.}}</value>
+    <comment>Plural pattern: a count of stored Proposals that could not be read; # is the count.</comment>
+  </data>
+  <data name="MotifApp.UnreadableProposalsNamesFormat" xml:space="preserve">
+    <value>Not read: {0}.</value>
+    <comment>Names the Proposals that could not be read; {0} is a comma-separated list of names.</comment>
+  </data>
   <data name="MotifApp.ProposalDifferenceUnreadable" xml:space="preserve">
     <value>The Difference could not be read.</value>
     <comment>Fallback sentence when the saved Difference cannot be read.</comment>

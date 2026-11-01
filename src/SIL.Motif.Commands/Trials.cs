@@ -66,6 +66,9 @@ public static class Trials
         foreach (var group in ReadCandidates(context.Jobs, proposalId: null)
             .GroupBy(candidate => candidate.Proposal.ProposalId))
         {
+            // A Proposal whose own content cannot be read has no standing; the Proposals listing reports it.
+            try { _ = context.CurrentIntentDigest(group.Key); }
+            catch (Exception exception) when (IsUnreadableStoredProposal(exception)) { continue; }
             if (Choose(group, context, includeWordResults: false) is { } record)
                 latest[record.ProposalId] = record;
         }
@@ -172,7 +175,8 @@ public static class Trials
                     ? new TrialCandidate(readJob, input, proposal)
                     : null;
             }
-            catch (Exception exception) when (exception is JsonException or InvalidDataException or ArgumentException)
+            catch (Exception exception) when (exception is JsonException or InvalidDataException or
+                ArgumentException or ContractParseException)
             {
                 candidate = null;
             }
@@ -290,6 +294,10 @@ public static class Trials
         if (current is null || current.Baseline.Token != source) return TrialFreshness.BaselineMoved;
         return currentIntentDigest == intentDigest ? TrialFreshness.Current : TrialFreshness.ProposalChanged;
     }
+
+    /// <summary>Whether a failure came from stored Proposal or Draft content that cannot be parsed.</summary>
+    internal static bool IsUnreadableStoredProposal(Exception exception) =>
+        exception is ContractParseException or JsonException or InvalidDataException;
 
     private static string? ReadCurrentIntentDigest(ProposalRecord? record)
     {

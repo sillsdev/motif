@@ -182,9 +182,10 @@ public static class CommandTextRenderer
     private static string RenderProposalStandings(ProposalStandings standings)
     {
         if (standings.Proposals.Count == 0)
-            return standings.SetAsideCount == 0
+            return (standings.SetAsideCount == 0
                 ? "No Proposals yet." + Environment.NewLine
-                : "No open Proposals. " + ClosedProposalHint(standings.SetAsideCount);
+                : "No open Proposals. " + ClosedProposalHint(standings.SetAsideCount)) +
+                UnreadableProposalsText(standings);
 
         var text = new StringBuilder("Proposals" + Environment.NewLine);
         foreach (var group in standings.Proposals.GroupBy(card => card.Group).OrderBy(group => group.Key))
@@ -207,6 +208,19 @@ public static class CommandTextRenderer
             text.AppendLine();
             text.AppendLine(ClosedProposalHint(standings.SetAsideCount - closedShown));
         }
+        return text.Append(UnreadableProposalsText(standings)).ToString();
+    }
+
+    private static string UnreadableProposalsText(ProposalStandings standings)
+    {
+        if (standings.Unreadable.Count == 0) return string.Empty;
+        var text = new StringBuilder(Environment.NewLine);
+        text.AppendLine(standings.Unreadable.Count == 1
+            ? "1 Proposal could not be read, so it is not listed. Nothing was changed or deleted."
+            : $"{standings.Unreadable.Count.ToString(CultureInfo.CurrentCulture)} Proposals could not be read, " +
+                "so they are not listed. Nothing was changed or deleted.");
+        foreach (var item in standings.Unreadable)
+            text.AppendLine($"  {item.ProposalId} ({item.Label}): {item.Reason}");
         return text.ToString();
     }
 

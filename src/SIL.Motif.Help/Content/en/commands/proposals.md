@@ -17,6 +17,8 @@ motif proposals --project "C:\FieldWorks\Projects\Koro\Koro.fwdata" --include-se
 
 Each Proposal carries its label, status and group: **WaitingForYou** (a complete Trial matches the project and the Proposal as they are now), **NeedsAnotherTry** (the project or the Proposal moved since the Trial, or its latest Trial is running or did not finish), **NotTried** (no Trial exists), **NotAppliedYet** (your own collected changes) or **SetAside** (closed: applied, rejected, superseded or withdrawn). Closed Proposals are counted in `setAsideCount` and listed only with `--include-set-aside`. A deferred Proposal is still open and is grouped by its Trial like a proposed one.
 
+A stored Proposal or Draft whose content cannot be read is left out of the list and named in `unreadable`, with its id and why. Motif does not change or delete it. The window says how many could not be read and names them.
+
 A Proposal also lists its change kinds, such as two rules, one allomorph and one approved parse, and the ids of other Proposals that change one of the same words. Its Trial summary pairs five numbers, each as a value before and after: Text Coverage, approved words kept, approved words, parse time on this computer and the warning count. The Trial's parser work, in work steps against the Baseline, is reported beside them, and that is the figure to compare. The window shows it as **Work**, blank when the Trial cannot be compared with today's parse, and adds the time on this computer last. A Trial over only the touched words still pairs the totals: every word it did not measure keeps today's value. Chips count approved words the Trial lost and changes that no longer fit.
 
 ## Trying a Proposal again

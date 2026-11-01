@@ -88,7 +88,20 @@ public sealed record ProposalCard(
     public bool HasNote { get; init; }
 }
 
+/// <summary>A stored Proposal or Draft whose content cannot be read, so it has no card.</summary>
+/// <param name="ProposalId">The Proposal's canonical id.</param>
+/// <param name="Label">What the Proposal is called, or its id when it has no label.</param>
+/// <param name="Reason">Why the content could not be read, in one line.</param>
+public sealed record UnreadableProposal(string ProposalId, string Label, string Reason);
+
 /// <summary>Every Proposal in the project, grouped by what the person should do with it.</summary>
 /// <param name="Proposals">The listed Proposals, grouped in display order.</param>
 /// <param name="SetAsideCount">How many closed (applied, rejected, superseded, withdrawn) Proposals exist.</param>
-public sealed record ProposalStandings(IReadOnlyList<ProposalCard> Proposals, int SetAsideCount);
+public sealed record ProposalStandings(IReadOnlyList<ProposalCard> Proposals, int SetAsideCount)
+{
+    /// <summary>
+    /// Stored Proposals and Drafts that could not be read. They stay in the store untouched and are left out of
+    /// <see cref="Proposals"/> and <see cref="SetAsideCount"/>.
+    /// </summary>
+    public IReadOnlyList<UnreadableProposal> Unreadable { get; init; } = [];
+}

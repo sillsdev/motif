@@ -148,6 +148,10 @@
                                Text="{x:Static app:MotifAppStrings.ReadingProposals}" />
       <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" IsVisible="{Binding IsEmpty}"
                                Text="{x:Static app:MotifAppStrings.NoProposalsYetChangesYouCollect}" />
+      <StackPanel Classes="proposalsHeading" IsVisible="{Binding HasUnreadable}">
+        <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" Text="{Binding UnreadableText}" />
+        <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" Text="{Binding UnreadableNamesText}" />
+      </StackPanel>
       <views:RefusalBlock DataContext="{Binding ShownRefusal}" />
     </StackPanel>
     <Border Grid.Row="1" Grid.Column="0" Classes="denseTableColumnHeader" IsVisible="{Binding IsListed}">

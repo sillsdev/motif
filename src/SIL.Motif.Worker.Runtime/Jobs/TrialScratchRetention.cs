@@ -54,7 +54,7 @@ internal static class TrialScratchRetention
             return proposals.TryGetValue(id, out var status) && status != ProposalLifecycle.ToWire(ProposalStatus.Applied);
         }
         catch (Exception exception) when (exception is JsonException or InvalidDataException or
-            ArgumentException or InvalidOperationException) { return true; }
+            ArgumentException or InvalidOperationException or ContractParseException) { return true; }
     }
 
     internal static IReadOnlyList<string> JobsForProposal(MotifDatabase database, CanonicalId proposalId)
@@ -73,7 +73,7 @@ internal static class TrialScratchRetention
                 if (ProposalJsonParser.Parse(input.ProposalJson).ProposalId == proposalId) jobs.Add(reader.GetString(0));
             }
             catch (Exception exception) when (exception is JsonException or InvalidDataException or
-                ArgumentException or InvalidOperationException) { }
+                ArgumentException or InvalidOperationException or ContractParseException) { }
         }
         return jobs;
     }

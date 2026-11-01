@@ -455,6 +455,18 @@ public sealed partial class ProposalsPageModel : PageModel
         nameof(FilterEmptyText), nameof(ListGroups))]
     private ProposalListFilter? _selectedGroupFilter;
 
+    /// <summary>How many stored Proposals could not be read, as a sentence; empty when all could be read.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasUnreadable))]
+    private string _unreadableText = string.Empty;
+
+    /// <summary>The Proposals that could not be read, by name and id; empty when all could be read.</summary>
+    [ObservableProperty]
+    private string _unreadableNamesText = string.Empty;
+
+    /// <summary>Whether some stored Proposals could not be read.</summary>
+    public bool HasUnreadable => IsListed && UnreadableText.Length > 0;
+
     /// <summary>The words of the link that loads applied and set-aside Proposals.</summary>
     [ObservableProperty]
     private string _setAsideLinkText = string.Empty;
@@ -463,7 +475,7 @@ public sealed partial class ProposalsPageModel : PageModel
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsLoading), nameof(IsEmpty), nameof(IsListed), nameof(IsRefused),
         nameof(TotalProposalCountText), nameof(IsFilteredEmpty), nameof(IsNoProposalsToShow), nameof(ShowSelectProposalPrompt),
-        nameof(HasSetAsideLink), nameof(HasSelectedProposal), nameof(ListGroups))]
+        nameof(HasSetAsideLink), nameof(HasSelectedProposal), nameof(ListGroups), nameof(HasUnreadable))]
     private ProposalsPageState _state = ProposalsPageState.Loading;
 
     /// <summary>The refusal from the last read or action, in the window's words, or null.</summary>
@@ -680,7 +692,14 @@ public sealed partial class ProposalsPageModel : PageModel
             .Select(entry => new ProposalGroupViewModel(entry.Item1, entry.Item2,
                 cards.Where(card => card.Card.Group == entry.Item1).ToArray()))
             .Where(group => group.Cards.Count > 0).ToArray();
-        State = cards.Length == 0 && standings.SetAsideCount == 0 ? ProposalsPageState.Empty : ProposalsPageState.Listed;
+        State = cards.Length == 0 && standings.SetAsideCount == 0 && standings.Unreadable.Count == 0
+            ? ProposalsPageState.Empty : ProposalsPageState.Listed;
+        UnreadableText = standings.Unreadable.Count == 0 ? string.Empty
+            : PluralText.Format(MotifAppStrings.UnreadableProposalsPattern, standings.Unreadable.Count);
+        UnreadableNamesText = standings.Unreadable.Count == 0 ? string.Empty
+            : string.Format(CultureInfo.CurrentCulture, MotifAppStrings.UnreadableProposalsNamesFormat,
+                string.Join(", ", standings.Unreadable.Select(item =>
+                    item.Label == item.ProposalId ? item.ProposalId : $"{item.Label} ({item.ProposalId})")));
         UpdateRows(selectedId);
         SetAsideLinkText = _includeSetAside ? "Hide closed"
             : standings.SetAsideCount == 0 ? string.Empty

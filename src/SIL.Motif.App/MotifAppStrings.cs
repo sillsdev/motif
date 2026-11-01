@@ -830,6 +830,8 @@ public static class MotifAppStrings
     public static string WordCountPattern => Text("MotifApp.WordCountPattern");
 
     public static string ProposalCountPattern => Text("MotifApp.ProposalCountPattern");
+    public static string UnreadableProposalsPattern => Text("MotifApp.UnreadableProposalsPattern");
+    public static string UnreadableProposalsNamesFormat => Text("MotifApp.UnreadableProposalsNamesFormat");
     public static string ProposalDifferenceTitle => Text("MotifApp.ProposalDifferenceTitle");
     public static string ProposalDifferenceAdvice => Text("MotifApp.ProposalDifferenceAdvice");
     public static string ProposalDifferenceReading => Text("MotifApp.ProposalDifferenceReading");

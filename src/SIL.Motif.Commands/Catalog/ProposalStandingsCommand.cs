@@ -44,8 +44,20 @@ public static class ProposalStandingsCommand
         OperationRegistryBootstrap.Initialize();
         var repository = new ProposalRepository(database);
         var latestTrials = Trials.LatestForAll(database, project);
-        var candidates = repository.List(new ProposalListFilter(IncludeArchived: true))
-            .Where(IsListed).Select(record => Load(record, latestTrials)).ToArray();
+        var candidates = new List<Candidate>();
+        var unreadable = new List<UnreadableProposal>();
+        foreach (var record in repository.List(new ProposalListFilter(IncludeArchived: true)).Where(IsListed))
+        {
+            try
+            {
+                candidates.Add(Load(record, latestTrials));
+            }
+            catch (Exception exception) when (Trials.IsUnreadableStoredProposal(exception))
+            {
+                unreadable.Add(new UnreadableProposal(record.ProposalId.Value,
+                    record.Label ?? record.ProposalId.Value, ReasonOf(exception)));
+            }
+        }
         // Today's Overview reads the Baseline, so a project with no Trial must not pay for it on every open.
         var today = new Lazy<OverviewResponse?>(() =>
             OverviewCommand.OverviewCurrent(database, project) is { Succeeded: true } read ? read.Value : null);
@@ -84,7 +96,13 @@ public static class ProposalStandingsCommand
         var setAside = candidates.Count(candidate => GroupOf(candidate) == ProposalGroup.SetAside);
         return CommandOutcome<ProposalStandings>.Success(new ProposalStandings(
             cards.OrderBy(card => card.Group).ThenBy(card => card.Label, StringComparer.CurrentCultureIgnoreCase)
-                .ToArray(), setAside));
+                .ToArray(), setAside) { Unreadable = unreadable });
+    }
+
+    private static string ReasonOf(Exception exception)
+    {
+        var line = exception.Message.Split('\n', 2)[0].Trim();
+        return line.Length <= 200 ? line : line[..200] + "...";
     }
 
     private static bool IsListed(ProposalRecord record) =>
