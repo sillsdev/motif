@@ -32,6 +32,11 @@ public sealed partial class CommandClient
             ? Task.FromResult(WaitCancelled<ProposalDifferenceResponse>())
             : Task.Run(() => ProposalDifferenceCommands.Show(request, cancellationToken), cancellationToken);
 
+    public Task<CommandOutcome<ProposalDifferenceResponse>> ProduceProposalDifferenceAsync(
+        ProposalDifferenceProduceRequest request, IProgress<AssessmentProgress>? progress,
+        CancellationToken cancellationToken) =>
+        Task.Run(() => ProposalDifferenceCommands.Produce(request, progress, cancellationToken));
+
     public Task<CommandOutcome<ProposalDeletedResponse>> DeleteProposalAsync(
         DeleteProposalRequest request, CancellationToken cancellationToken) =>
         cancellationToken.IsCancellationRequested

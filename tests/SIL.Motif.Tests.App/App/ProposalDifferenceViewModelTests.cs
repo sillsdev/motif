@@ -23,7 +23,7 @@ public sealed class ProposalDifferenceViewModelTests
         Assert.Single(chips, chip => chip.Label == label);
 
     [Fact]
-    public async Task ADifferenceThatWasNeverSavedLeavesTheSectionHidden()
+    public async Task ADifferenceThatWasNeverSavedLeavesTheSectionOpenToOfferMakingOne()
     {
         var model = new ProposalDifferenceViewModel(
             (_, _) => Task.FromResult(CommandOutcome<ProposalDifferenceResponse>.Refused(
@@ -32,8 +32,8 @@ public sealed class ProposalDifferenceViewModelTests
 
         await model.LoadAsync(Project, "proposal/one");
 
-        Assert.Equal(ProposalDifferenceState.None, model.State);
-        Assert.False(model.IsVisible);
+        Assert.Equal(ProposalDifferenceState.Absent, model.State);
+        Assert.True(model.IsVisible);
         Assert.Null(model.ShownRefusal);
     }
 

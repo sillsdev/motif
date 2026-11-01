@@ -20,11 +20,57 @@
       <TextBlock Classes="inspectorSectionTitle" Text="{x:Static app:MotifAppStrings.ProposalDifferenceTitle}" />
       <views:CopyableTextBlock x:Name="DifferenceReferenceNote" TextWrapping="Wrap"
                                Text="{Binding ReferenceNoteText}" IsVisible="{Binding HasReferenceNote}" />
-      <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" Text="{Binding AdviceText}" />
+      <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" Text="{Binding AdviceText}"
+                               IsVisible="{Binding HasAdviceText}" />
       <views:CopyableTextBlock x:Name="DifferenceEvidenceUnreadable" Classes="muted" TextWrapping="Wrap"
                                Text="{Binding UnreadableEvidenceText}" IsVisible="{Binding HasUnreadableEvidence}" />
       <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" IsVisible="{Binding IsLoading}"
                                Text="{x:Static app:MotifAppStrings.ProposalDifferenceReading}" />
+      <views:CopyableTextBlock x:Name="DifferenceNotTried" Classes="muted" TextWrapping="Wrap"
+                               IsVisible="{Binding ShowsNotTriedNote}"
+                               Text="{x:Static app:MotifAppStrings.ProposalDifferenceNotTried}" />
+      <views:CopyableTextBlock x:Name="DifferenceDecidedNote" Classes="muted" TextWrapping="Wrap"
+                               IsVisible="{Binding ShowsDecidedNote}"
+                               Text="{x:Static app:MotifAppStrings.ProposalDifferenceDecidedNone}" />
+      <views:CopyableTextBlock x:Name="DifferenceNoTexts" Classes="muted" TextWrapping="Wrap"
+                               IsVisible="{Binding ShowsNoTextsNote}"
+                               Text="{x:Static app:MotifAppStrings.ProposalDifferenceNoTexts}" />
+      <StackPanel x:Name="DifferenceMakeControls" IsVisible="{Binding ShowsMakeControls}"
+                  Spacing="{DynamicResource Intent.Space.Compact}">
+        <views:CopyableTextBlock x:Name="DifferenceMakeAdvice" Classes="muted" TextWrapping="Wrap"
+                                 IsVisible="{Binding ShowsMakeAdvice}"
+                                 Text="{x:Static app:MotifAppStrings.ProposalDifferenceMakeAdvice}" />
+        <TextBlock Classes="muted" Text="{x:Static app:MotifAppStrings.ProposalDifferenceTextLabel}" />
+        <ComboBox x:Name="DifferenceText" ItemsSource="{Binding TextChoices}" SelectedItem="{Binding SelectedText}"
+                  IsEnabled="{Binding !Maker.IsActive}"
+                  AutomationProperties.Name="{x:Static app:MotifAppStrings.ProposalDifferenceTextAccessibleName}"
+                  AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalDifferenceText}">
+          <ComboBox.ItemTemplate>
+            <DataTemplate x:DataType="vm:DifferenceTextChoice">
+              <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" />
+            </DataTemplate>
+          </ComboBox.ItemTemplate>
+        </ComboBox>
+        <Button x:Name="DifferenceMake" HorizontalAlignment="Left" Command="{Binding Maker.RunCommand}"
+                AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalDifferenceMake}">
+          <TextBlock Text="{Binding MakeLabel}" />
+        </Button>
+        <StackPanel x:Name="DifferenceMaking" IsVisible="{Binding Maker.IsActive}"
+                    Spacing="{DynamicResource Intent.Space.Compact}">
+          <ProgressBar x:Name="DifferenceProgress" Minimum="0" Maximum="1" Value="{Binding Maker.ProgressFraction}"
+                       IsIndeterminate="{Binding Maker.IsIndeterminate}"
+                       AutomationProperties.Name="{x:Static app:MotifAppStrings.ProposalDifferenceProgressAccessibleName}"
+                       AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalDifferenceProgress}" />
+          <views:CopyableTextBlock x:Name="DifferenceProgressText" Classes="muted" TextWrapping="Wrap"
+                                   Text="{Binding Maker.ProgressText}" />
+          <Button x:Name="DifferenceCancel" HorizontalAlignment="Left"
+                  Content="{x:Static app:MotifAppStrings.Cancel}" Command="{Binding Maker.CancelCommand}"
+                  AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalDifferenceCancel}" />
+        </StackPanel>
+        <views:CopyableTextBlock x:Name="DifferenceCancelled" Classes="muted" TextWrapping="Wrap"
+                                 IsVisible="{Binding Maker.WasCancelled}" Text="{Binding Maker.CancelledText}" />
+        <views:RefusalBlock x:Name="DifferenceMakeRefusal" DataContext="{Binding Maker.FailureShown}" />
+      </StackPanel>
       <views:RefusalBlock DataContext="{Binding ShownRefusal}" />
       <StackPanel IsVisible="{Binding IsShown}" Spacing="{DynamicResource Intent.Space.Compact}">
         <views:CopyableTextBlock x:Name="DifferenceHeadline" Classes="inspectorSectionTitle" TextWrapping="Wrap"

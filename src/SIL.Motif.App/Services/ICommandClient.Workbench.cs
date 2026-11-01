@@ -33,6 +33,14 @@ public partial interface ICommandClient
     Task<CommandOutcome<ProposalDifferenceResponse>> ReadProposalDifferenceAsync(
         ProposalDifferenceShowRequest request, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Makes a Proposal's Difference for one Text from its Trial's stored parses and the Baseline's decisions, the
+    /// way <c>difference produce</c> does. Progress reports each stage; cancelling saves nothing.
+    /// </summary>
+    Task<CommandOutcome<ProposalDifferenceResponse>> ProduceProposalDifferenceAsync(
+        ProposalDifferenceProduceRequest request, IProgress<AssessmentProgress>? progress,
+        CancellationToken cancellationToken);
+
     /// <summary>Deletes a declined, superseded or withdrawn Proposal that never applied, with its Trials.</summary>
     Task<CommandOutcome<ProposalDeletedResponse>> DeleteProposalAsync(
         DeleteProposalRequest request, CancellationToken cancellationToken);

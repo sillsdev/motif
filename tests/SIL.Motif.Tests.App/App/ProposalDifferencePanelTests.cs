@@ -53,15 +53,16 @@ public sealed class ProposalDifferencePanelTests
     }
 
     [Fact]
-    public void TheSectionStaysHiddenWhileTheProposalHasNoSavedDifference()
+    public void TheSectionStaysOpenToOfferMakingOneWhileTheProposalHasNoSavedDifference()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             var (model, panel, window) = await OpenAsync(fixture: null);
             try
             {
-                Assert.Equal(ProposalDifferenceState.None, model.Difference.State);
-                Assert.False(panel.IsEffectivelyVisible);
+                Assert.Equal(ProposalDifferenceState.Absent, model.Difference.State);
+                Assert.True(panel.IsEffectivelyVisible);
+                Assert.False(panel.FindControl<Control>("DifferenceHeadline")!.IsEffectivelyVisible);
             }
             finally
             {

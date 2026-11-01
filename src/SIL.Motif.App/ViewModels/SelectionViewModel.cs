@@ -45,6 +45,9 @@ public sealed partial class SelectionViewModel : ObservableObject, IProjectState
     /// <summary>The number of Texts in the current project, whether or not the list is filtered.</summary>
     public int TextCount => _allTexts.Count;
 
+    /// <summary>Every Text in the current project, including Texts hidden by the filter.</summary>
+    internal IReadOnlyList<TextChoiceViewModel> AllTexts => _allTexts;
+
     /// <summary>The identities of every Text in the project, including Texts hidden by the filter.</summary>
     internal IReadOnlyList<Guid> AllTextIds => _allTexts.Select(text => text.Id).ToArray();
 

@@ -1546,6 +1546,62 @@
     <value>Proposal Difference</value>
     <comment>Accessible name of the Proposal Difference section.</comment>
   </data>
+  <data name="MotifApp.ProposalDifferenceMakeAdvice" xml:space="preserve">
+    <value>Choose a Text to compare. This can take a while, and you can cancel it.</value>
+    <comment>Line above the Make Difference button: what it needs and that a long run can be cancelled.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferenceTextLabel" xml:space="preserve">
+    <value>Text</value>
+    <comment>Label of the list that chooses which Text the Difference compares.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferenceMake" xml:space="preserve">
+    <value>Make Difference</value>
+    <comment>Button that makes the selected Proposal's Difference for the chosen Text; Title Case as in FieldWorks.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferenceMakeAgain" xml:space="preserve">
+    <value>Make Difference Again</value>
+    <comment>Same button when the Proposal already has a Difference; making it again replaces the saved one when the Proposal was tried again.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferenceMaking" xml:space="preserve">
+    <value>Making the Difference.</value>
+    <comment>Shown while the Difference is being made and its progress is not known yet.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferenceMakingReadingText" xml:space="preserve">
+    <value>Reading the Text.</value>
+    <comment>Shown while the Difference reads the chosen Text before comparing words.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferenceMakingFormat" xml:space="preserve">
+    <value>Compared {0} of {1} words.</value>
+    <comment>Progress while a Difference is made: {0} is the number of words compared so far, {1} the number to compare.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferenceCancelling" xml:space="preserve">
+    <value>Cancelling.</value>
+    <comment>Shown after Cancel is chosen while a Difference is being made.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferenceNoTexts" xml:space="preserve">
+    <value>The project has no Texts to compare. Refresh the project to read them.</value>
+    <comment>Shown instead of the Make Difference button when the Baseline lists no Texts.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferenceNotTried" xml:space="preserve">
+    <value>Try this Proposal first. A Difference compares its last try with the decisions saved in FieldWorks.</value>
+    <comment>Shown instead of the Make Difference button when the Proposal was never tried.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferenceDecidedNone" xml:space="preserve">
+    <value>This Proposal is decided and has no saved Difference. One can no longer be made for it.</value>
+    <comment>Shown instead of the Make Difference button when a decided Proposal has no saved Difference.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferenceMakeFailed" xml:space="preserve">
+    <value>The Difference could not be made.</value>
+    <comment>Fallback sentence when making the Difference fails with something the window has no sentence for.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferenceProgressAccessibleName" xml:space="preserve">
+    <value>Making the Difference</value>
+    <comment>Accessible name of the progress bar shown while a Difference is made.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferenceTextAccessibleName" xml:space="preserve">
+    <value>Text to compare</value>
+    <comment>Accessible name of the list that chooses the Text a Difference compares.</comment>
+  </data>
   <data name="MotifApp.DifferenceStateNoParse" xml:space="preserve">
     <value>No Parse</value>
     <comment>Approval state: the parser built nothing.</comment>
@@ -5872,6 +5928,50 @@ Motif starts a check automatically when this project opens. Use Reload to read a
   <data name="MotifApp.RefusalGrammarCheckTimedOut" xml:space="preserve">
     <value>The grammar check took too long and was stopped. Try again.</value>
     <comment>Sentence the window shows when the command refuses with code C.GrammarCheckTimedOut. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
+  </data>
+  <data name="MotifApp.RefusalDifferenceCancelled" xml:space="preserve">
+    <value>Making the Difference was cancelled. Nothing was saved.</value>
+    <comment>Sentence the window shows when the command refuses with code C.DifferenceCancelled. Proposal, Baseline, Text and FieldWorks are Motif terms and product names; try means a Trial.</comment>
+  </data>
+  <data name="MotifApp.RefusalDifferenceNoTrial" xml:space="preserve">
+    <value>These changes have no finished try yet. Try them first, then make their Difference.</value>
+    <comment>Sentence the window shows when the command refuses with code C.DifferenceNoTrial. Proposal, Baseline, Text and FieldWorks are Motif terms and product names; try means a Trial.</comment>
+  </data>
+  <data name="MotifApp.RefusalDifferenceTrialIncomplete" xml:space="preserve">
+    <value>The last try did not finish. Try the changes again, then make their Difference.</value>
+    <comment>Sentence the window shows when the command refuses with code C.DifferenceTrialIncomplete. Proposal, Baseline, Text and FieldWorks are Motif terms and product names; try means a Trial.</comment>
+  </data>
+  <data name="MotifApp.RefusalDifferenceNoParseAssessment" xml:space="preserve">
+    <value>The last try recorded no parses to compare. Try the changes again.</value>
+    <comment>Sentence the window shows when the command refuses with code C.DifferenceNoParseAssessment. Proposal, Baseline, Text and FieldWorks are Motif terms and product names; try means a Trial.</comment>
+  </data>
+  <data name="MotifApp.RefusalDifferenceNoBefore" xml:space="preserve">
+    <value>The last try has no parses from before the changes to compare with. Try the changes again.</value>
+    <comment>Sentence the window shows when the command refuses with code C.DifferenceNoBefore. Proposal, Baseline, Text and FieldWorks are Motif terms and product names; try means a Trial.</comment>
+  </data>
+  <data name="MotifApp.RefusalDifferenceNoBaseline" xml:space="preserve">
+    <value>The project has no Baseline yet. Refresh the project, then make the Difference.</value>
+    <comment>Sentence the window shows when the command refuses with code C.DifferenceNoBaseline. Proposal, Baseline, Text and FieldWorks are Motif terms and product names; try means a Trial.</comment>
+  </data>
+  <data name="MotifApp.RefusalDifferenceBaselineChanged" xml:space="preserve">
+    <value>The project changed after this try, so the decisions saved in FieldWorks may differ. Try the changes again.</value>
+    <comment>Sentence the window shows when the command refuses with code C.DifferenceBaselineChanged. Proposal, Baseline, Text and FieldWorks are Motif terms and product names; try means a Trial.</comment>
+  </data>
+  <data name="MotifApp.RefusalDifferenceTextNotFound" xml:space="preserve">
+    <value>That Text is not in the project's current Baseline. Choose another Text.</value>
+    <comment>Sentence the window shows when the command refuses with code C.DifferenceTextNotFound. Proposal, Baseline, Text and FieldWorks are Motif terms and product names; try means a Trial.</comment>
+  </data>
+  <data name="MotifApp.RefusalDifferenceProposalDecided" xml:space="preserve">
+    <value>These changes are decided, so a new Difference would not be kept.</value>
+    <comment>Sentence the window shows when the command refuses with code C.DifferenceProposalDecided. Proposal, Baseline, Text and FieldWorks are Motif terms and product names; try means a Trial.</comment>
+  </data>
+  <data name="MotifApp.RefusalDifferenceDuplicateParseRows" xml:space="preserve">
+    <value>The last try holds several different parses for one word, so they cannot be compared. Try the changes again.</value>
+    <comment>Sentence the window shows when the command refuses with code C.DifferenceDuplicateParseRows. Proposal, Baseline, Text and FieldWorks are Motif terms and product names; try means a Trial.</comment>
+  </data>
+  <data name="MotifApp.RefusalDifferenceUnexpectedOpinion" xml:space="preserve">
+    <value>A decision saved in FieldWorks could not be read. Refresh the project, then make the Difference.</value>
+    <comment>Sentence the window shows when the command refuses with code C.DifferenceUnexpectedOpinion. Proposal, Baseline, Text and FieldWorks are Motif terms and product names; try means a Trial.</comment>
   </data>
   <data name="MotifApp.RefusalHandoffCancelled" xml:space="preserve">
     <value>The AI Handoff was cancelled.</value>

@@ -34,7 +34,7 @@ internal sealed class ProposalDifferenceFixture
     public int PlacesPerWord { get; init; } = 3;
 
     /// <summary>The decisions the Difference was read against; by default a person's.</summary>
-    public string Reference { get; init; } = ProposalDifferenceReferences.Human;
+    public string Reference { get; set; } = ProposalDifferenceReferences.Human;
 
     /// <summary>Why the first word's decisions were staged, when a named program staged them.</summary>
     public IReadOnlyList<ProposalDifferenceWordEvidence>? FirstWordEvidence { get; init; }
@@ -45,10 +45,16 @@ internal sealed class ProposalDifferenceFixture
     /// <summary>Applied Proposals the read could not parse; like the product, only read with words on the page.</summary>
     public IReadOnlyList<ProposalDifferenceUnreadableEvidence>? Unreadable { get; init; }
 
+    /// <summary>The Text the saved Difference compares; a test sets it to the Text it made or saved.</summary>
+    public string TextId { get; set; } = "text/one";
+
+    /// <summary>The title of that Text.</summary>
+    public string TextTitle { get; set; } = "Genesis 1";
+
     public List<ProposalDifferenceShowRequest> Requests { get; } = [];
 
     public ProposalDifferenceSummary Summary => new("difference/one", "proposal/one", "job/one", "assessment/b",
-        "assessment/a", "text/one", "Genesis 1", "baseline/one", new ProposalDifferencePolicy(), _words.Count,
+        "assessment/a", TextId, TextTitle, "baseline/one", new ProposalDifferencePolicy(), _words.Count,
         _words.Sum(word => word.Occurrences), 2, 12, CheckWords, ImprovedWords,
         [
             new(ProposalDifferenceBucket.Regression, 10, 20), new(ProposalDifferenceBucket.AnalysisChanged, 5, 9),

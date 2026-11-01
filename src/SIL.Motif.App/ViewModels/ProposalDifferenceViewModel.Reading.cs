@@ -6,15 +6,20 @@ namespace SIL.Motif.App.ViewModels;
 
 public sealed partial class ProposalDifferenceViewModel
 {
-    /// <summary>Reads the newest saved Difference of a Proposal; the section stays hidden when there is none.</summary>
+    /// <summary>Reads the newest saved Difference of a Proposal; with none, the section offers to make one.</summary>
     /// <param name="projectPath">The open project.</param>
     /// <param name="proposalId">The Proposal whose Difference is read.</param>
     /// <param name="cancellationToken">Cancels the read.</param>
-    public async Task LoadAsync(string projectPath, string proposalId, CancellationToken cancellationToken = default)
+    /// <param name="offer">Whether a Difference can be made for the Proposal at all.</param>
+    public async Task LoadAsync(string projectPath, string proposalId, CancellationToken cancellationToken = default,
+        DifferenceOffer offer = DifferenceOffer.Available)
     {
         var generation = Reset();
+        Maker.Reset();
         _projectPath = projectPath;
         _proposalId = proposalId;
+        _offer = offer;
+        RefreshTexts();
         State = ProposalDifferenceState.Loading;
         var read = await ReadAsync(Request(0), Restart(ref _loadCancellation, cancellationToken)).ConfigureAwait(true);
         if (generation != _generation || read is null) return;
@@ -22,26 +27,35 @@ public sealed partial class ProposalDifferenceViewModel
         {
             if (read.Refusal?.Code == RefusalCodes.DifferenceNone)
             {
-                State = ProposalDifferenceState.None;
+                State = ProposalDifferenceState.Absent;
                 return;
             }
             ShownRefusal = WindowRefusal.From(read.Refusal!, MotifAppStrings.ProposalDifferenceUnreadable);
             State = ProposalDifferenceState.Refused;
             return;
         }
-        var response = read.Value!;
+        Adopt(read.Value!);
+    }
+
+    // Shows a Difference whose summary and first page of words were just read or just made.
+    private void Adopt(ProposalDifferenceResponse response)
+    {
         _differenceId = response.Summary.DifferenceId;
         Summary = response.Summary;
         WordDetailKept = response.WordDetailKept;
         BuildChips(response.Summary, response.WordDetailKept);
         ApplyWords(response, replace: true);
         State = ProposalDifferenceState.Shown;
+        // After the Texts were listed, so the list follows the Text the shown Difference compares.
+        SelectedText = ChoiceOfSummary(TextChoices) ?? SelectedText;
+        OnPropertyChanged(nameof(MakeLabel));
     }
 
     /// <summary>Forgets the Difference, as when no Proposal is selected or the project closes.</summary>
     public void Clear()
     {
         Reset();
+        Maker.Reset();
         _projectPath = null;
         _proposalId = null;
         State = ProposalDifferenceState.None;

@@ -112,6 +112,10 @@ public static class AutomationIds
     /// <summary>The saved Difference section of the Proposal inspector.</summary>
     public const string ProposalDifferencePanel = "motif-proposal-difference";
     public const string ProposalDifferenceClear = "motif-proposal-difference-clear";
+    public const string ProposalDifferenceText = "motif-proposal-difference-text";
+    public const string ProposalDifferenceMake = "motif-proposal-difference-make";
+    public const string ProposalDifferenceCancel = "motif-proposal-difference-cancel";
+    public const string ProposalDifferenceProgress = "motif-proposal-difference-progress";
     public const string ProposalDifferenceMoreWords = "motif-proposal-difference-more-words";
     public const string ProposalDifferenceMorePlaces = "motif-proposal-difference-more-places";
     public const string ProposalDifferenceOpenWord = "motif-proposal-difference-open-word";

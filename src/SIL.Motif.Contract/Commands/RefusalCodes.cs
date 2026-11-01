@@ -272,6 +272,8 @@ public static class RefusalCodes
 
     /// <summary>The project changed after the Trial ran, so its recorded decisions may differ.</summary>
     public const string DifferenceBaselineChanged = "difference.baseline-changed";
+    /// <summary>Making a Difference was cancelled before anything was saved.</summary>
+    public const string DifferenceCancelled = "difference.cancelled";
     /// <summary>One side of a Difference holds several different parses for a word.</summary>
     public const string DifferenceDuplicateParseRows = "difference.duplicate-parse-rows";
     /// <summary>The Proposal is decided, so a new comparison would lose its word detail at once.</summary>
@@ -601,6 +603,9 @@ public static class RefusalCodes
     public const string WindowNoProject = "window.no-project";
     /// <summary>The window could not read a Proposal's saved Difference.</summary>
     public const string WindowDifferenceReadFailed = "window.difference-read-failed";
+
+    /// <summary>The window could not make a Proposal's Difference.</summary>
+    public const string WindowDifferenceMakeFailed = "window.difference-make-failed";
     /// <summary>The window could not open the chosen project.</summary>
     public const string WindowOpenFailed = "window.open-failed";
     /// <summary>The window could not open a Proposal.</summary>

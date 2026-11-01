@@ -62,8 +62,11 @@ public sealed class ProposalDifferenceRepository
     /// Stores the summary, words, Text positions and categories together, or none of them, replacing any Difference
     /// the Proposal already has for the same Text. The Proposal's status is read inside that transaction.
     /// </summary>
+    /// <param name="difference">The summary and its words.</param>
+    /// <param name="cancellationToken">Checked once more just before the commit; a cancel rolls everything back.</param>
     /// <exception cref="ProposalDecidedException">The Proposal is decided, so nothing is stored.</exception>
-    public void Publish(NewProposalDifference difference)
+    /// <exception cref="OperationCanceledException">The token was cancelled before the commit, so nothing is stored.</exception>
+    public void Publish(NewProposalDifference difference, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(difference);
         var summary = difference.Summary;
@@ -111,6 +114,7 @@ public sealed class ProposalDifferenceRepository
                     "INSERT INTO ProposalDifferenceBuckets (DifferenceId, CaseKey, Bucket) VALUES ($id, $key, $bucket);",
                     ("$id", summary.DifferenceId), ("$key", word.Word), ("$bucket", BucketName(bucket)));
         }
+        cancellationToken.ThrowIfCancellationRequested();
         transaction.Commit();
     }
 

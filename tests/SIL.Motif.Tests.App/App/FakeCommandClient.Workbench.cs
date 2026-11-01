@@ -160,6 +160,24 @@ public sealed partial class FakeCommandClient
         return _proposalDifference(request, cancellationToken);
     }
 
+    private Func<ProposalDifferenceProduceRequest, IProgress<AssessmentProgress>?, CancellationToken,
+        Task<CommandOutcome<ProposalDifferenceResponse>>> _produceProposalDifference = (_, _, _) =>
+        Refused<ProposalDifferenceResponse>(new Refusal("difference.no-trial", FailureReason.NotFound, "No Trial."));
+
+    public List<ProposalDifferenceProduceRequest> ProduceProposalDifferenceRequests { get; } = [];
+
+    public void OnProduceProposalDifference(
+        Func<ProposalDifferenceProduceRequest, IProgress<AssessmentProgress>?, CancellationToken,
+            Task<CommandOutcome<ProposalDifferenceResponse>>> behavior) => _produceProposalDifference = behavior;
+
+    public Task<CommandOutcome<ProposalDifferenceResponse>> ProduceProposalDifferenceAsync(
+        ProposalDifferenceProduceRequest request, IProgress<AssessmentProgress>? progress,
+        CancellationToken cancellationToken)
+    {
+        ProduceProposalDifferenceRequests.Add(request);
+        return _produceProposalDifference(request, progress, cancellationToken);
+    }
+
     public List<DeleteProposalRequest> DeleteProposalRequests { get; } = [];
 
     private Func<DeleteProposalRequest, CommandOutcome<ProposalDeletedResponse>> _deleteProposal = request =>

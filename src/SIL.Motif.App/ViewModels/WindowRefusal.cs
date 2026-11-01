@@ -141,6 +141,17 @@ public sealed partial record WindowRefusal
         [C.ChangeWordformMissing] = () => MotifAppStrings.RefusalChangeWordformMissing,
 
         [C.ConfigInvalid] = () => MotifAppStrings.RefusalConfigInvalid,
+        [C.DifferenceCancelled] = () => MotifAppStrings.RefusalDifferenceCancelled,
+        [C.DifferenceNoTrial] = () => MotifAppStrings.RefusalDifferenceNoTrial,
+        [C.DifferenceTrialIncomplete] = () => MotifAppStrings.RefusalDifferenceTrialIncomplete,
+        [C.DifferenceNoParseAssessment] = () => MotifAppStrings.RefusalDifferenceNoParseAssessment,
+        [C.DifferenceNoBefore] = () => MotifAppStrings.RefusalDifferenceNoBefore,
+        [C.DifferenceNoBaseline] = () => MotifAppStrings.RefusalDifferenceNoBaseline,
+        [C.DifferenceBaselineChanged] = () => MotifAppStrings.RefusalDifferenceBaselineChanged,
+        [C.DifferenceTextNotFound] = () => MotifAppStrings.RefusalDifferenceTextNotFound,
+        [C.DifferenceProposalDecided] = () => MotifAppStrings.RefusalDifferenceProposalDecided,
+        [C.DifferenceDuplicateParseRows] = () => MotifAppStrings.RefusalDifferenceDuplicateParseRows,
+        [C.DifferenceUnexpectedOpinion] = () => MotifAppStrings.RefusalDifferenceUnexpectedOpinion,
         [C.DraftRevisionConflict] = () => MotifAppStrings.RefusalDraftRevisionConflict,
 
         [C.GrammarCheckCancelled] = () => MotifAppStrings.RefusalGrammarCheckCancelled,

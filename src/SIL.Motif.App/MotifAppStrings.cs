@@ -882,6 +882,20 @@ public static class MotifAppStrings
     public static string DifferenceEvidenceTierUndecided => Text("MotifApp.DifferenceEvidenceTierUndecided");
     public static string ProposalDifferenceNoteOther => Text("MotifApp.ProposalDifferenceNoteOther");
     public static string ProposalDifferencePanelAccessibleName => Text("MotifApp.ProposalDifferencePanelAccessibleName");
+    public static string ProposalDifferenceMakeAdvice => Text("MotifApp.ProposalDifferenceMakeAdvice");
+    public static string ProposalDifferenceTextLabel => Text("MotifApp.ProposalDifferenceTextLabel");
+    public static string ProposalDifferenceMake => Text("MotifApp.ProposalDifferenceMake");
+    public static string ProposalDifferenceMakeAgain => Text("MotifApp.ProposalDifferenceMakeAgain");
+    public static string ProposalDifferenceMaking => Text("MotifApp.ProposalDifferenceMaking");
+    public static string ProposalDifferenceMakingReadingText => Text("MotifApp.ProposalDifferenceMakingReadingText");
+    public static string ProposalDifferenceMakingFormat => Text("MotifApp.ProposalDifferenceMakingFormat");
+    public static string ProposalDifferenceCancelling => Text("MotifApp.ProposalDifferenceCancelling");
+    public static string ProposalDifferenceNoTexts => Text("MotifApp.ProposalDifferenceNoTexts");
+    public static string ProposalDifferenceNotTried => Text("MotifApp.ProposalDifferenceNotTried");
+    public static string ProposalDifferenceDecidedNone => Text("MotifApp.ProposalDifferenceDecidedNone");
+    public static string ProposalDifferenceMakeFailed => Text("MotifApp.ProposalDifferenceMakeFailed");
+    public static string ProposalDifferenceProgressAccessibleName => Text("MotifApp.ProposalDifferenceProgressAccessibleName");
+    public static string ProposalDifferenceTextAccessibleName => Text("MotifApp.ProposalDifferenceTextAccessibleName");
     public static string DifferenceStateNoParse => Text("MotifApp.DifferenceStateNoParse");
     public static string DifferenceStateNoApprovedMatch => Text("MotifApp.DifferenceStateNoApprovedMatch");
     public static string DifferenceStateApprovedWithAlternatives => Text("MotifApp.DifferenceStateApprovedWithAlternatives");
@@ -3030,6 +3044,28 @@ public static class MotifAppStrings
     public static string RefusalGrammarCheckParserRefused => Text("MotifApp.RefusalGrammarCheckParserRefused");
 
     public static string RefusalGrammarCheckTimedOut => Text("MotifApp.RefusalGrammarCheckTimedOut");
+
+    public static string RefusalDifferenceCancelled => Text("MotifApp.RefusalDifferenceCancelled");
+
+    public static string RefusalDifferenceNoTrial => Text("MotifApp.RefusalDifferenceNoTrial");
+
+    public static string RefusalDifferenceTrialIncomplete => Text("MotifApp.RefusalDifferenceTrialIncomplete");
+
+    public static string RefusalDifferenceNoParseAssessment => Text("MotifApp.RefusalDifferenceNoParseAssessment");
+
+    public static string RefusalDifferenceNoBefore => Text("MotifApp.RefusalDifferenceNoBefore");
+
+    public static string RefusalDifferenceNoBaseline => Text("MotifApp.RefusalDifferenceNoBaseline");
+
+    public static string RefusalDifferenceBaselineChanged => Text("MotifApp.RefusalDifferenceBaselineChanged");
+
+    public static string RefusalDifferenceTextNotFound => Text("MotifApp.RefusalDifferenceTextNotFound");
+
+    public static string RefusalDifferenceProposalDecided => Text("MotifApp.RefusalDifferenceProposalDecided");
+
+    public static string RefusalDifferenceDuplicateParseRows => Text("MotifApp.RefusalDifferenceDuplicateParseRows");
+
+    public static string RefusalDifferenceUnexpectedOpinion => Text("MotifApp.RefusalDifferenceUnexpectedOpinion");
 
     public static string RefusalHandoffCancelled => Text("MotifApp.RefusalHandoffCancelled");
 

@@ -43,14 +43,43 @@ public static class ProposalDifferenceCommands
     /// staged through Applied Proposals, never a person's). It is an argument, not a request field, so the default
     /// agent tool is unchanged.
     /// </summary>
+    /// <param name="request">The Proposal, the Text and, optionally, one completed Trial.</param>
+    /// <param name="reference">Which decisions the parses are compared with.</param>
     public static CommandOutcome<ProposalDifferenceResponse> Produce(ProposalDifferenceProduceRequest request,
-        string reference)
+        string reference) => Produce(request, reference, null, default);
+
+    /// <summary>The same, told how far it has got and able to be cancelled.</summary>
+    /// <param name="request">The Proposal, the Text and, optionally, one completed Trial.</param>
+    /// <param name="reference">Which decisions the parses are compared with.</param>
+    /// <param name="progress">Told how far the comparison has got; the CLI and MCP pass none.</param>
+    /// <param name="cancellationToken">
+    /// Stops the comparison; a cancelled run saves nothing and returns <c>difference.cancelled</c>.
+    /// </param>
+    public static CommandOutcome<ProposalDifferenceResponse> Produce(ProposalDifferenceProduceRequest request,
+        string reference, IProgress<AssessmentProgress>? progress, CancellationToken cancellationToken) =>
+        ProduceCore(request, reference, progress, cancellationToken);
+
+    /// <summary>
+    /// The window's Make Difference: compared with the decisions the Proposal's saved Difference for the Text was
+    /// read against, or a person's when it has none, resolved inside the store run so a write by another process
+    /// can never be replaced by the other reference.
+    /// </summary>
+    /// <param name="request">The Proposal, the Text and, optionally, one completed Trial.</param>
+    /// <param name="progress">Told how far the comparison has got.</param>
+    /// <param name="cancellationToken">Stops the comparison; a cancelled run saves nothing.</param>
+    public static CommandOutcome<ProposalDifferenceResponse> Produce(ProposalDifferenceProduceRequest request,
+        IProgress<AssessmentProgress>? progress, CancellationToken cancellationToken) =>
+        ProduceCore(request, null, progress, cancellationToken);
+
+    private static CommandOutcome<ProposalDifferenceResponse> ProduceCore(ProposalDifferenceProduceRequest request,
+        string? reference, IProgress<AssessmentProgress>? progress, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
-        if (reference is not (ProposalDifferenceReferences.Human or ProposalDifferenceReferences.SourceValidated))
+        if (reference is not (null or ProposalDifferenceReferences.Human or ProposalDifferenceReferences.SourceValidated))
             return Refuse("difference.invalid-reference", FailureReason.InvalidArgument,
                 "The reference is human or source-validated. To read a Proposal against both, produce a Difference " +
                 "against each in turn; a Proposal keeps one Difference per Text, so the newer replaces the older.");
+        if (cancellationToken.IsCancellationRequested) return Cancelled();
         return ProjectStoreCommand.Run(request.ProjectPath, MotifProductVersion.CurrentText, (database, project) =>
         {
             if (!CanonicalId.TryParse(request.ProposalId, out _))
@@ -71,12 +100,13 @@ public static class ProposalDifferenceCommands
                 return Refuse("difference.trial-incomplete", FailureReason.Refused,
                     "The Trial did not complete. Trial the Proposal again before comparing it.");
 
-            var sourceValidated = reference == ProposalDifferenceReferences.SourceValidated
-                ? SourceValidatedDecisions.Read(database) : null;
             var saved = new ProposalDifferenceRepository(database);
             var existing = saved.FindFor(request.ProposalId, textId.ToString("D"));
+            var resolved = reference ?? existing?.Summary.Reference ?? ProposalDifferenceReferences.Human;
+            var sourceValidated = resolved == ProposalDifferenceReferences.SourceValidated
+                ? SourceValidatedDecisions.Read(database) : null;
             var decided = saved.ProposalIsDecided(request.ProposalId);
-            if (existing is not null && IsSameComparison(existing.Summary, trial, reference, sourceValidated?.Digest) &&
+            if (existing is not null && IsSameComparison(existing.Summary, trial, resolved, sourceValidated?.Digest) &&
                 (existing.WordDetailKept || decided))
                 return Show(database, existing.Summary.DifferenceId, new ProposalDifferenceFilter(), 0, 25);
             if (decided) return Decided();
@@ -117,15 +147,23 @@ public static class ProposalDifferenceCommands
             var text = read.Texts.Single();
 
             Built built;
-            try { built = Build(text, before!.Words!, after.Words!, sourceValidated); }
+            try { built = Build(text, before!.Words!, after.Words!, sourceValidated, progress, cancellationToken); }
             catch (DifferenceRefusalException refusal) { return CommandOutcome<ProposalDifferenceResponse>.Refused(refusal.Refusal); }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { return Cancelled(); }
             var summary = ProposalDifferenceSummaries.Create(built, trial.JobId, request.ProposalId, before, after, text,
-                JsonSerializer.Serialize(read.Baseline.Token, Json), reference, sourceValidated?.Digest, sourceValidated?.Unreadable);
-            try { saved.Publish(new NewProposalDifference(summary, built.Words)); }
+                JsonSerializer.Serialize(read.Baseline.Token, Json), resolved, sourceValidated?.Digest, sourceValidated?.Unreadable);
+            if (cancellationToken.IsCancellationRequested) return Cancelled();
+            // Publish checks the token once more just before it commits, and rolls back when it was cancelled.
+            try { saved.Publish(new NewProposalDifference(summary, built.Words), cancellationToken); }
             catch (ProposalDecidedException) { return Decided(); }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { return Cancelled(); }
             return Show(database, summary.DifferenceId, new ProposalDifferenceFilter(), 0, 25);
         });
     }
+
+    private static CommandOutcome<ProposalDifferenceResponse> Cancelled() =>
+        Refuse(RefusalCodes.DifferenceCancelled, FailureReason.Cancelled,
+            "The comparison was cancelled before anything was saved.");
 
     private static CommandOutcome<ProposalDifferenceResponse> Decided() =>
         Refuse("difference.proposal-decided", FailureReason.Refused,
@@ -296,8 +334,10 @@ public static class ProposalDifferenceCommands
     }
 
     private static Built Build(SIL.Motif.Host.Texts.BaselineTextReadIndex text, IReadOnlyList<AssessedWord> beforeWords,
-        IReadOnlyList<AssessedWord> afterWords, SourceValidatedDecisions? sourceValidated)
+        IReadOnlyList<AssessedWord> afterWords, SourceValidatedDecisions? sourceValidated,
+        IProgress<AssessmentProgress>? progress = null, CancellationToken cancellationToken = default)
     {
+        progress?.Report(new AssessmentProgress(AssessmentStage.SelectingWords, 0, null, "Reading the Text."));
         var before = OnePerForm(beforeWords, "before");
         var after = OnePerForm(afterWords, "after");
         var wordforms = text.Wordforms.ToDictionary(wordform => wordform.WordformId);
@@ -305,6 +345,8 @@ public static class ProposalDifferenceCommands
         var unbound = 0;
         var inText = new HashSet<string>(StringComparer.Ordinal);
         foreach (var line in text.Lines)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
             foreach (var token in line.Tokens)
             {
                 foreach (var form in token.Forms) inText.Add(Nfd(form.Text));
@@ -316,10 +358,18 @@ public static class ProposalDifferenceCommands
                 list.Add((wordformId, new ProposalDifferenceOccurrence(text.TextId.ToString("D"),
                     line.SegmentId.ToString("D"), token.OccurrenceIndex, line.Number)));
             }
+        }
 
         var words = new List<NewProposalDifferenceWord>();
+        var done = 0;
+        // About a hundred reports however many words: each one is posted to the window.
+        var every = Math.Max(1, byForm.Count / 100);
         foreach (var (form, tokens) in byForm.OrderBy(pair => pair.Key, StringComparer.Ordinal))
         {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (done++ % every == 0)
+                progress?.Report(new AssessmentProgress(AssessmentStage.Finalizing, done - 1, byForm.Count,
+                    "Comparing words."));
             var ids = tokens.Select(token => token.Wordform).Distinct().ToArray();
             if (ids.Length != 1) { unbound += tokens.Count; continue; }
             var wordform = wordforms[ids[0]];

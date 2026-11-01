@@ -380,6 +380,9 @@ public enum ProposalsPageState
 public sealed partial class ProposalsPageModel : PageModel
 {
     private int _readGeneration;
+    private bool _rereading;
+    private string? _differenceProposalId;
+    private string? _differenceProject;
     private bool _includeSetAside;
     private ProposalStandings _standings = new([], 0);
 
@@ -396,7 +399,14 @@ public sealed partial class ProposalsPageModel : PageModel
         SelectProposalCommand = new RelayCommand<ProposalCardViewModel>(SelectProposal);
         Difference = new ProposalDifferenceViewModel(
             (request, cancellationToken) => Context.Commands.ReadProposalDifferenceAsync(request, cancellationToken),
-            word => Context.OpenWord(word));
+            word => Context.OpenWord(word),
+            (request, progress, cancellationToken) =>
+                Context.Commands.ProduceProposalDifferenceAsync(request, progress, cancellationToken),
+            () => [.. Context.Selection.AllTexts.Select(text => new DifferenceTextChoice(text.Id, text.Title))]);
+        Context.Selection.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(SelectionViewModel.TextCount)) Difference.RefreshTexts();
+        };
         Context.TrialRun.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(TrialRunViewModel.States) && State == ProposalsPageState.Listed)
@@ -421,7 +431,7 @@ public sealed partial class ProposalsPageModel : PageModel
         nameof(SelectedDeleteAutomationId))]
     private ProposalCardViewModel? _selectedProposal;
 
-    /// <summary>The selected Proposal's saved Difference, which stays hidden while it has none.</summary>
+    /// <summary>The selected Proposal's saved Difference, or the offer to make one.</summary>
     public ProposalDifferenceViewModel Difference { get; }
 
     /// <summary>The read of the selected Proposal's Difference that is under way, or the last one that finished.</summary>
@@ -600,9 +610,11 @@ public sealed partial class ProposalsPageModel : PageModel
     protected override void OnProjectCleared()
     {
         _readGeneration++;
+        _rereading = false;
         _includeSetAside = false;
         SelectedGroupFilter = null;
         SetSelectedProposal(null);
+        ClearDifference();
         ShownRefusal = null;
         Apply(new ProposalStandings([], 0));
         State = ProposalsPageState.Loading;
@@ -622,27 +634,37 @@ public sealed partial class ProposalsPageModel : PageModel
         var generation = ++_readGeneration;
         State = ProposalsPageState.Loading;
         ShownRefusal = null;
+        var keepSelected = SelectedProposal?.ProposalId;
+        _rereading = true;
         SetSelectedProposal(null);
         Rows = [];
-        var read = await Context.Commands.ProposalStandingsAsync(
-            new ProposalStandingsRequest(projectPath, _includeSetAside), cancellationToken).ConfigureAwait(true);
-        if (generation != _readGeneration || projectPath != Context.ProjectPath) return;
-        if (!read.Succeeded)
+        try
         {
-            _includeSetAside = false;
-            SelectedGroupFilter = null;
-            Apply(new ProposalStandings([], 0));
-            ShownRefusal = WindowRefusal.From(read.Refusal!, "The Proposals could not be read.");
-            State = ProposalsPageState.Refused;
-            return;
+            var read = await Context.Commands.ProposalStandingsAsync(
+                new ProposalStandingsRequest(projectPath, _includeSetAside), cancellationToken).ConfigureAwait(true);
+            if (generation != _readGeneration || projectPath != Context.ProjectPath) return;
+            if (!read.Succeeded)
+            {
+                _includeSetAside = false;
+                SelectedGroupFilter = null;
+                Apply(new ProposalStandings([], 0));
+                ShownRefusal = WindowRefusal.From(read.Refusal!, "The Proposals could not be read.");
+                State = ProposalsPageState.Refused;
+                return;
+            }
+            ShownRefusal = null;
+            Apply(read.Value!, keepSelected);
         }
-        ShownRefusal = null;
-        Apply(read.Value!);
+        finally
+        {
+            if (generation == _readGeneration) EndReread();
+        }
     }
 
-    private void Apply(ProposalStandings standings)
+    // A re-read deselects first, so it names the Proposal to keep selected when the list comes back.
+    private void Apply(ProposalStandings standings, string? keepSelectedId = null)
     {
-        var selectedId = SelectedProposal?.ProposalId;
+        var selectedId = SelectedProposal?.ProposalId ?? keepSelectedId;
         _standings = standings;
         var labels = standings.Proposals.ToDictionary(card => card.ProposalId, card => card.Label,
             StringComparer.Ordinal);
@@ -735,12 +757,47 @@ public sealed partial class ProposalsPageModel : PageModel
         value?.SetSelected(true);
         if (value is null || value.Card.IsPendingDraft || Context.ProjectPath is not { } path)
         {
-            Difference.Clear();
-            DifferenceReading = Task.CompletedTask;
+            // A re-read of the list deselects for a moment; it settles the Difference when it finishes.
+            if (!_rereading) ClearDifference();
             return;
         }
-        DifferenceReading = Difference.LoadAsync(path, value.ProposalId);
+        // The same Proposal chosen again, as when the list was re-read, only refreshes what its card offers.
+        if (value.ProposalId == _differenceProposalId && path == _differenceProject)
+        {
+            var offer = DifferenceOfferFor(value.Card);
+            // Its word detail goes when it is decided, so a change of that state reads again, never mid-run.
+            if (Difference.IsDecidedChangedBy(offer) && !Difference.Maker.IsActive)
+                DifferenceReading = Difference.LoadAsync(path, value.ProposalId, offer: offer);
+            else
+                Difference.SetOffer(offer);
+            return;
+        }
+        _differenceProposalId = value.ProposalId;
+        _differenceProject = path;
+        DifferenceReading = Difference.LoadAsync(path, value.ProposalId, offer: DifferenceOfferFor(value.Card));
     }
+
+    private void ClearDifference()
+    {
+        _differenceProposalId = _differenceProject = null;
+        Difference.Clear();
+        DifferenceReading = Task.CompletedTask;
+    }
+
+    // Ends a re-read of the list: a Proposal no longer there leaves no Difference to show.
+    private void EndReread()
+    {
+        _rereading = false;
+        if (SelectedProposal is null) ClearDifference();
+    }
+
+    protected override Task OnStopWorkAsync() => Difference.StopAsync();
+
+    // A decided Proposal keeps no word detail, so a new Difference would not be kept; an untried one has no Trial.
+    private static DifferenceOffer DifferenceOfferFor(ProposalCard card) =>
+        card.Group == ProposalGroup.SetAside ? DifferenceOffer.Decided
+        : card.Standing.Kind == TrialStandingKind.NotTried ? DifferenceOffer.NotTried
+        : DifferenceOffer.Available;
 
     private Task OpenAsync(ProposalCardViewModel? card) => OpenProposalAsync(card, WorkspacePage.Overview);
 

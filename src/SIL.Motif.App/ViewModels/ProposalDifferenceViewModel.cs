@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -11,11 +12,14 @@ namespace SIL.Motif.App.ViewModels;
 /// <summary>Where the Proposal inspector's Difference section is.</summary>
 public enum ProposalDifferenceState
 {
-    /// <summary>No Difference is saved, so the section is not shown.</summary>
+    /// <summary>No Proposal is selected, so the section is not shown.</summary>
     None,
 
     /// <summary>The saved Difference is being read.</summary>
     Loading,
+
+    /// <summary>The Proposal has no saved Difference; the section offers to make one.</summary>
+    Absent,
 
     /// <summary>The Difference is shown.</summary>
     Shown,
@@ -31,6 +35,8 @@ public enum ProposalDifferenceState
 /// <remarks>
 /// Once the Proposal is decided only the summary is left (<see cref="IsSummaryOnly"/>): the chips show their counts
 /// but do not filter, and the word list and places give way to a note saying the word detail was removed.
+/// A person makes the Difference with <see cref="Maker"/>, from the same command the CLI and MCP use; the section
+/// offers that with or without a saved Difference, and the window never applies anything because of it.
 /// </remarks>
 public sealed partial class ProposalDifferenceViewModel : ObservableObject
 {
@@ -46,6 +52,8 @@ public sealed partial class ProposalDifferenceViewModel : ObservableObject
     private readonly Func<ProposalDifferenceShowRequest, CancellationToken,
         Task<CommandOutcome<ProposalDifferenceResponse>>> _read;
     private readonly Action<string> _openWord;
+    private readonly Func<IReadOnlyList<DifferenceTextChoice>> _textSource;
+    private DifferenceOffer _offer;
     private int _generation;
     private int _wordsGeneration;
     private int _placesGeneration;
@@ -65,14 +73,25 @@ public sealed partial class ProposalDifferenceViewModel : ObservableObject
     private CancellationTokenSource? _wordsCancellation;
     private CancellationTokenSource? _placesCancellation;
 
+    /// <summary>Creates the section's model.</summary>
+    /// <param name="read">Reads the saved Difference through the shared bounded query.</param>
+    /// <param name="openWord">Opens a word on the Texts page.</param>
+    /// <param name="produce">Makes the Difference; without it nothing is offered to make.</param>
+    /// <param name="texts">The Texts a Difference can compare, as the Baseline lists them now.</param>
     public ProposalDifferenceViewModel(
         Func<ProposalDifferenceShowRequest, CancellationToken, Task<CommandOutcome<ProposalDifferenceResponse>>> read,
-        Action<string> openWord)
+        Action<string> openWord,
+        Func<ProposalDifferenceProduceRequest, IProgress<AssessmentProgress>, CancellationToken,
+            Task<CommandOutcome<ProposalDifferenceResponse>>>? produce = null,
+        Func<IReadOnlyList<DifferenceTextChoice>>? texts = null)
     {
         ArgumentNullException.ThrowIfNull(read);
         ArgumentNullException.ThrowIfNull(openWord);
         _read = read;
         _openWord = openWord;
+        _textSource = texts ?? (() => []);
+        Maker = new ProposalDifferenceMaker(produce ?? NotAvailable, Describe, AdoptMade);
+        Maker.PropertyChanged += OnMakerChanged;
         ClearFiltersCommand = new AsyncRelayCommand(ClearFiltersAsync);
         ShowMoreWordsCommand = new AsyncRelayCommand(ShowMoreWordsAsync);
         ShowMorePlacesCommand = new AsyncRelayCommand(ShowMorePlacesAsync);
@@ -82,7 +101,7 @@ public sealed partial class ProposalDifferenceViewModel : ObservableObject
     /// <summary>Where the section is.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsVisible), nameof(IsLoading), nameof(IsShown), nameof(IsRefused),
-        nameof(IsReadingMore))]
+        nameof(IsReadingMore), nameof(MakeLabel))]
     private ProposalDifferenceState _state;
 
     /// <summary>Why the Difference or a page of it could not be read, in the window's words.</summary>
@@ -105,6 +124,10 @@ public sealed partial class ProposalDifferenceViewModel : ObservableObject
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsSummaryOnly), nameof(ShowsWordList))]
     private bool _wordDetailKept = true;
+
+    partial void OnStateChanged(ProposalDifferenceState value) => RaiseMake();
+
+    partial void OnWordDetailKeptChanged(bool value) => RaiseMake();
 
     /// <summary>Every before and after pair with its word count.</summary>
     [ObservableProperty]
@@ -207,7 +230,18 @@ public sealed partial class ProposalDifferenceViewModel : ObservableObject
     /// <summary>Says at the top when the decisions are a named program's, not a person's.</summary>
     public string ReferenceNoteText => ProposalDifferenceWords.ReferenceNote(Summary);
 
-    public bool HasReferenceNote => ReferenceNoteText.Length > 0;
+    // A run's reference is the store's to pick, so neither line speaks until the run ends.
+    public bool HasReferenceNote => !Maker.IsActive && ReferenceNoteText.Length > 0;
+
+    /// <summary>Whether the intro line shows; it waits while a Difference is being made.</summary>
+    public bool HasAdviceText => !Maker.IsActive;
+
+    private void OnMakerChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(ProposalDifferenceMaker.IsActive)) return;
+        OnPropertyChanged(nameof(HasAdviceText));
+        OnPropertyChanged(nameof(HasReferenceNote));
+    }
 
     /// <summary>Names the Applied Proposals whose staged decisions could not be read.</summary>
     public string UnreadableEvidenceText => ProposalDifferenceWords.Unreadable(UnreadableEvidence, Summary?.Warnings);
