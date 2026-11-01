@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using Microsoft.Data.Sqlite;
+using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Worker.Store;
@@ -28,6 +29,10 @@ public sealed class JobRepository
         => Create(requested, null);
 
     internal JobRecord Create(JobRecord requested, IReadOnlyList<string>? requiredAssessments)
+        => Create(requested, requiredAssessments, null, null);
+
+    private JobRecord Create(JobRecord requested, IReadOnlyList<string>? requiredAssessments,
+        CanonicalId? proposalId, string? draftName)
     {
         var record = Normalize(requested);
         using var connection = _database.OpenConnection();
@@ -43,6 +48,8 @@ public sealed class JobRepository
                 check.Parameters.AddWithValue("$ids", JsonSerializer.Serialize(requiredAssessments));
                 if (check.ExecuteScalar() is string missing) throw new AssessmentExpiredException(missing);
             }
+            if (proposalId is { } id && !ProposalStillThere(connection, transaction, id, draftName))
+                throw new TrialProposalGoneException(id.Value, draftName);
             Insert(connection, transaction, record);
             transaction.Commit();
             return record;
@@ -58,10 +65,27 @@ public sealed class JobRepository
         string? lineageId = null) => Create(new JobRecord(jobId, projectKey, kind, JobStatus.Queued, 1, inputJson,
             null, createdUtc, createdUtc, null, lineageId));
 
+    /// <summary>
+    /// Queues a Trial for a Proposal, or for the named Draft of one, after checking in the same write transaction
+    /// that it still exists, so a discard or delete that committed after the caller read it cannot leave a job behind.
+    /// </summary>
+    /// <exception cref="TrialProposalGoneException">The Proposal or its Draft no longer exists.</exception>
     internal JobRecord CreateTrial(string jobId, string projectKey, string inputJson, string createdUtc,
-        IReadOnlyList<string>? requiredAssessments) => Create(new JobRecord(jobId, projectKey,
-            TrialJobHandler.TrialKind, JobStatus.Queued, 1, inputJson, null, createdUtc, createdUtc, null, null),
-            requiredAssessments);
+        IReadOnlyList<string>? requiredAssessments, CanonicalId proposalId, string? draftName) => Create(
+            new JobRecord(jobId, projectKey, TrialJobHandler.TrialKind, JobStatus.Queued, 1, inputJson, null,
+                createdUtc, createdUtc, null, null), requiredAssessments, proposalId, draftName);
+
+    private static bool ProposalStillThere(SqliteConnection connection, SqliteTransaction transaction,
+        CanonicalId proposalId, string? draftName)
+    {
+        using var find = connection.CreateCommand();
+        find.Transaction = transaction;
+        find.CommandText = "SELECT 1 FROM Proposals WHERE ProposalId = $id AND ($draft IS NULL OR DraftName = $draft);";
+        find.Parameters.AddWithValue("$id", proposalId.Value);
+        find.Parameters.AddWithValue("$draft", (object?)draftName ?? DBNull.Value);
+        return find.ExecuteScalar() is not null;
+    }
+
     /// <summary>Records an Assessment that stopped before it could publish evidence.</summary>
     public JobRecord RecordBudgetStop(string jobId, string projectKey, string kind, string inputJson,
         string resultJson, string createdUtc)
@@ -1038,3 +1062,9 @@ public sealed class JobRepository
 
 /// <summary>One job together with the <c>QueueOrder</c> it was read under.</summary>
 public readonly record struct JobQueueEntry(JobRecord Job, double QueueOrder);
+
+/// <summary>A Trial was to be queued for a Proposal or Draft that no longer exists.</summary>
+public sealed class TrialProposalGoneException(string proposalId, string? draftName)
+    : Exception(draftName is null
+        ? $"Proposal '{proposalId}' no longer exists."
+        : $"Draft '{draftName}' of Proposal '{proposalId}' no longer exists.");

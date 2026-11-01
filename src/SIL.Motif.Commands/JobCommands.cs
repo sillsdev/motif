@@ -191,15 +191,36 @@ public static class JobCommands
                 request.BaselineAssessmentIds, request.NegativeWords);
             var inputJson = JsonSerializer.Serialize(input, MotifJson.CreateOptions());
             var stamped = JobParserPin.Stamp(inputJson, parserPath);
-            var created = stop is null
-                ? jobs.CreateTrial(jobId, workspaceKey, stamped, NowStamp(), request.BaselineAssessmentIds)
-                : jobs.RecordBudgetStop(jobId, workspaceKey, TrialKind, stamped,
-                    JsonSerializer.Serialize(new { code = stop.Code, message = stop.Message,
-                        wordsDone = int.Parse(stop.Facts["wordsDone"], System.Globalization.CultureInfo.InvariantCulture),
-                        wordsNotDone = int.Parse(stop.Facts["wordsNotDone"], System.Globalization.CultureInfo.InvariantCulture) }), NowStamp());
+            if (stop is null)
+                return QueueTrial(jobs, record, jobId, workspaceKey, stamped, request.BaselineAssessmentIds);
+            var stopped = jobs.RecordBudgetStop(jobId, workspaceKey, TrialKind, stamped,
+                JsonSerializer.Serialize(new { code = stop.Code, message = stop.Message,
+                    wordsDone = int.Parse(stop.Facts["wordsDone"], System.Globalization.CultureInfo.InvariantCulture),
+                    wordsNotDone = int.Parse(stop.Facts["wordsNotDone"], System.Globalization.CultureInfo.InvariantCulture) }),
+                NowStamp());
+            return CommandOutcome<JobEnqueuedResponse>.Success(
+                new JobEnqueuedResponse(stopped.JobId, TrialKind, workspaceKey));
+        });
+    }
+
+    // The job is inserted only if the Proposal, or the Draft the Trial was read from, still exists in that write.
+    internal static CommandOutcome<JobEnqueuedResponse> QueueTrial(JobRepository jobs, ProposalRecord record,
+        string jobId, string workspaceKey, string stampedInput, IReadOnlyList<string>? requiredAssessments)
+    {
+        try
+        {
+            var created = jobs.CreateTrial(jobId, workspaceKey, stampedInput, NowStamp(), requiredAssessments,
+                record.ProposalId, record.DraftName);
             return CommandOutcome<JobEnqueuedResponse>.Success(
                 new JobEnqueuedResponse(created.JobId, TrialKind, workspaceKey));
-        });
+        }
+        catch (TrialProposalGoneException)
+        {
+            return CommandOutcome<JobEnqueuedResponse>.Refused(new Refusal(RefusalCodes.TrialProposalGone,
+                FailureReason.NotFound,
+                "The Proposal was discarded or deleted while the Trial was being queued, so nothing was tried.",
+                new Dictionary<string, string>(StringComparer.Ordinal) { ["proposalId"] = record.ProposalId.Value }));
+        }
     }
 
     /// <summary>Snapshots effective limits for both sides of a Trial.</summary>

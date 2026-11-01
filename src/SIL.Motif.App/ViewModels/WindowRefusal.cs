@@ -232,6 +232,7 @@ public sealed partial record WindowRefusal
         [C.TrialMeasurementIncomplete] = () => MotifAppStrings.RefusalTrialMeasurementIncomplete,
         [NoProjectCode] = () => MotifAppStrings.RefusalNoProjectCode,
         [C.TrialNothingPending] = () => MotifAppStrings.RefusalTrialNothingPending,
+        [C.TrialProposalGone] = () => MotifAppStrings.RefusalTrialProposalGone,
         [C.TrialUpdateInProgress] = () => MotifAppStrings.RefusalTrialUpdateInProgress,
 
         [C.WordTraceCancelled] = () => MotifAppStrings.RefusalWordTraceCancelled,

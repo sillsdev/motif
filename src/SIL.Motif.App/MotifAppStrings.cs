@@ -3187,6 +3187,8 @@ public static class MotifAppStrings
 
     public static string RefusalTrialNothingPending => Text("MotifApp.RefusalTrialNothingPending");
 
+    public static string RefusalTrialProposalGone => Text("MotifApp.RefusalTrialProposalGone");
+
     public static string RefusalTrialUpdateInProgress => Text("MotifApp.RefusalTrialUpdateInProgress");
 
     public static string RefusalWordTraceCancelled => Text("MotifApp.RefusalWordTraceCancelled");

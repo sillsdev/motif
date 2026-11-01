@@ -426,7 +426,7 @@ public sealed class AssessmentRepositoryTests : IDisposable
         Assert.Throws<AssessmentExpiredException>(() => repository.ReadBaselineAssessmentWords(
             "ParseTime", "{\"baseline\":true}", ["old"], ["bo"]));
         Assert.Throws<AssessmentExpiredException>(() => new JobRepository(database).CreateTrial("late", "project",
-            "{}", "2026-01-03T00:00:00Z", ["old"]));
+            "{}", "2026-01-03T00:00:00Z", ["old"], CanonicalId.Mint("proposal/"), null));
         Assert.Null(new JobRepository(database).Get("late"));
     }
 
