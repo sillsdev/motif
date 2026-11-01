@@ -615,7 +615,7 @@ _Avoid_: HC XML, export, projection
 > | --- | --- | --- |
 > | **parse coverage** | What share of a word list parsed. The raw figure | PanGloss |
 > | **grammar coverage** | How much of a language the grammar reaches — parse coverage reported over a named Corpus, with provenance | Motif |
-> | **Text Coverage** | What share of the Default Selection's words, and of their occurrences in the chosen Texts, parse. Measured over the project's own Texts; the same share over a Corpus is grammar coverage | Motif |
+> | **Text Coverage** | What share of the Default Selection's words in the project's vernacular writing systems, and of their occurrences in the chosen Texts, parse. Digit-only tokens and words in other writing systems are counted separately; words the parser refuses as invalid shape stay in the share. Measured over the project's own Texts; the same share over a Corpus is grammar coverage | Motif |
 > | **feature coverage** | Which declared grammar features, and which combinations of them, the analysed words actually exercise. What a Hole is an absence in | Motif |
 > | **test coverage** | What the manual analyses assert. Always qualified in prose and API names — this repo has literal unit tests | Motif |
 > | **model coverage** | Whether the generator accounts for every field in LibLCM's model. The terms in this section concern this one | Motif |

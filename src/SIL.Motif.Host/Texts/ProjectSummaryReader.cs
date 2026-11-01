@@ -22,6 +22,8 @@ public static class ProjectSummaryReader
                 {
                     InterlinearizedWordCount = occurrences.InterlinearizedOccurrencesByWord.Count,
                     InterlinearizedOccurrenceCount = occurrences.InterlinearizedOccurrences,
+                    DigitOccurrenceCount = occurrences.DigitOccurrences,
+                    OtherWritingSystemOccurrenceCount = occurrences.OtherWritingSystemOccurrences,
                 };
             })
             .OrderBy(text => text.TextId.ToString("D"), StringComparer.Ordinal)

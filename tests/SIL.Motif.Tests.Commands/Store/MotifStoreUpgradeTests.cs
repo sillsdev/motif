@@ -1,8 +1,12 @@
 using System.Text.Json;
 using Microsoft.Data.Sqlite;
+using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Host.Store;
+using SIL.Motif.Host.Texts;
 using SIL.Motif.Tests.TestFixtures;
+using SIL.Motif.Worker.Baselines;
+using SIL.Motif.Worker.Projects;
 using Xunit;
 
 namespace SIL.Motif.Tests.Commands;
@@ -116,7 +120,7 @@ public sealed class MotifStoreUpgradeTests : IDisposable
     [Fact]
     public void UpgradeFromBeforeSummariesStartCarriesNoDifferenceSummary()
     {
-        SeedDifferences(MotifSchema.CurrentSchema - 1);
+        SeedDifferences(MotifStoreUpgrade.FirstSummarySchema - 1);
 
         var report = MotifStoreUpgrade.Copy(Source, Path.Combine(_root, "copy.db"));
 
@@ -125,6 +129,45 @@ public sealed class MotifStoreUpgradeTests : IDisposable
         using var upgraded = Connect(Path.Combine(_root, "copy.db"));
         Assert.Equal(0, Count(upgraded, "ProposalDifferences"));
         Assert.Equal(2, Count(upgraded, "Proposals"));
+    }
+
+    [Fact]
+    public void UpgradeFromSchema56KeepsProposalsAndTheirDifferenceSummariesAndDropsTheBaselineAndItsSummary()
+    {
+        // Schema 57 changed the words a Baseline's summary lists, so no older summary may survive.
+        var key = ProjectWorkspaceKey.Compute(Project);
+        using (var database = MotifDatabase.OpenOwned(Source, Project, MotifSchema.CurrentSchema, new Version(1, 0)))
+        {
+            var token = new BaselineToken("project-id", "sha256:" + new string('1', 64), "projection-v1",
+                "2026-09-24T10:00:00Z", "sha256:" + new string('a', 64));
+            var saved = DateTimeOffset.Parse("2026-09-24T10:00:00Z");
+            new BaselineRepository(database).Record(key,
+                new BaselinePublication(Path.Combine(_root, "baseline"), Path.Combine(_root, "baseline", "b.fwdata"), token),
+                saved, saved, TestTextWords.Empty, new ProjectSummarySnapshot(1, 1, 1, 0, 0, ["1990"], []));
+            using var seed = database.OpenConnection();
+            Execute(seed, """
+                INSERT INTO Proposals (ProposalId, Status) VALUES ('rej', 'rejected'), ('open', 'proposed');
+                INSERT INTO ProposalDifferences VALUES
+                    ('d-rej', 'rej', 'j', 'b', 'a', 't1', 'tok', 'summary', 'x', '2020-02-01', NULL),
+                    ('d-open', 'open', 'j', 'b', 'a', 't1', 'tok', 'undecided', 'x', '2020-01-01', NULL);
+                """);
+        }
+        using (var old = Connect(Source)) Execute(old, "PRAGMA user_version = 56;");
+
+        var report = MotifStoreUpgrade.Copy(Source, Path.Combine(_root, "copy.db"));
+
+        Assert.Equal(56, report.SourceSchema);
+        Assert.Equal(57, report.TargetSchema);
+        Assert.Contains("BaselineSummaries", report.Dropped);
+        Assert.Contains("Baselines", report.Dropped);
+        Assert.Equal(2, report.Carried["Proposals"]);
+        Assert.Equal(1, report.Carried["ProposalDifferences"]);
+        using var upgraded = Connect(Path.Combine(_root, "copy.db"));
+        Assert.Equal(0, Count(upgraded, "Baselines"));
+        Assert.Equal(0, Count(upgraded, "BaselineSummaries"));
+        Assert.Equal(2, Count(upgraded, "Proposals"));
+        Assert.Equal("summary", Text(upgraded, "SELECT SummaryJson FROM ProposalDifferences WHERE ProposalId = 'rej';"));
+        Assert.Equal(1, Count(upgraded, "ProposalDifferences WHERE WordDetailDroppedUtc IS NOT NULL"));
     }
 
     [Fact]

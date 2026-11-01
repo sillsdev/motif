@@ -456,7 +456,8 @@ public sealed class BaselineRepository
                 summary.Texts.Any(text => text is null || text.WordCount < 0 || text.OccurrenceCount < 0 ||
                     text.InterlinearizedWordCount < 0 || text.InterlinearizedWordCount > text.WordCount ||
                     text.InterlinearizedOccurrenceCount < 0 ||
-                    text.InterlinearizedOccurrenceCount > text.OccurrenceCount) ||
+                    text.InterlinearizedOccurrenceCount > text.OccurrenceCount ||
+                    text.DigitOccurrenceCount < 0 || text.OtherWritingSystemOccurrenceCount < 0) ||
                 summary.WritingSystems is null || summary.WritingSystems.Any(ws => ws is null ||
                     string.IsNullOrEmpty(ws.Id) || ws.Name is null || ws.Abbreviation is null ||
                     ws.FontFamily is null || ws.FontFeatures is null || !Enum.IsDefined(ws.Kind) ||

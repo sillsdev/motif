@@ -200,9 +200,7 @@ public static class SelectionComposer
             {
                 if (!byWordform.TryGetValue(wordform.Guid, out var spellings))
                 {
-                    spellings = wordform.Form.AvailableWritingSystemIds.Order()
-                        .Select(ws => wordform.Form.get_String(ws)?.Text).OfType<string>()
-                        .Where(form => form.Length > 0).ToArray();
+                    spellings = TextWordForms.Classify(cache, wordform, form => form).Forms;
                     byWordform.Add(wordform.Guid, spellings);
                 }
                 forms.AddRange(spellings);

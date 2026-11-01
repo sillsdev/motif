@@ -1,3 +1,6 @@
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using SIL.Motif.Contract;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Host.Store;
@@ -210,6 +213,27 @@ public sealed class BaselineRepositoryTests : IDisposable
 
         Assert.Contains("project summary is malformed", exception.Message, StringComparison.Ordinal);
         Assert.IsType<System.Text.Json.JsonException>(exception.InnerException);
+    }
+
+    [Theory]
+    [InlineData(nameof(ProjectTextSummary.DigitOccurrenceCount))]
+    [InlineData(nameof(ProjectTextSummary.OtherWritingSystemOccurrenceCount))]
+    public void GetCurrentEvidenceRejectsNegativeTextCoverageCounts(string countName)
+    {
+        using var database = OpenDatabase("negative-text-coverage-count");
+        var repository = new BaselineRepository(database);
+        repository.Record("workspace", Publication("negative-text-coverage-count", "sha256:" + new string('a', 64)),
+            DateTimeOffset.Parse("2026-08-23T12:00:00Z"),
+            DateTimeOffset.Parse("2026-08-23T11:00:00Z"), TestTextWords.Empty, Summary());
+        var summaryJson = JsonNode.Parse(JsonSerializer.Serialize(Summary(), MotifJson.CreateOptions()))!.AsObject();
+        summaryJson["Texts"]!.AsArray()[0]!.AsObject()[countName] = -1;
+        Execute(database, "UPDATE BaselineSummaries SET SummaryJson = $summary WHERE ProjectKey = $project;",
+            "workspace", summaryJson.ToJsonString());
+
+        var exception = Assert.Throws<InvalidDataException>(() => repository.GetCurrentEvidence("workspace"));
+
+        Assert.Contains("invalid counts", exception.InnerException!.Message, StringComparison.Ordinal);
+        Assert.IsType<JsonException>(exception.InnerException);
     }
 
     [Fact]

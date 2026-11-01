@@ -34,7 +34,15 @@ public sealed record ProjectTextSummary(
     [System.Text.Json.Serialization.JsonRequired]
     public int InterlinearizedWordCount { get; init; }
 
-    /// <summary>The analysed occurrences in this captured Text, counted by spelling.</summary>
+    /// <summary>The analysed occurrences in this captured Text, each counted once regardless of spelling.</summary>
     [System.Text.Json.Serialization.JsonRequired]
     public int InterlinearizedOccurrenceCount { get; init; }
+
+    /// <summary>The digit-only tokens in this Text, which Text Coverage leaves out and counts apart.</summary>
+    [System.Text.Json.Serialization.JsonRequired]
+    public int DigitOccurrenceCount { get; init; }
+
+    /// <summary>The words in this Text recorded only in non-vernacular writing systems, counted apart.</summary>
+    [System.Text.Json.Serialization.JsonRequired]
+    public int OtherWritingSystemOccurrenceCount { get; init; }
 }
