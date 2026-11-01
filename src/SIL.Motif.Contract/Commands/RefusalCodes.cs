@@ -315,6 +315,8 @@ public static class RefusalCodes
     public const string DifferenceNoTrial = "difference.no-trial";
     /// <summary>No saved Difference matches the request.</summary>
     public const string DifferenceNone = "difference.none";
+    /// <summary>A Text or reference was named without the Proposal whose saved Differences it chooses among.</summary>
+    public const string DifferenceTextNeedsProposal = "difference.text-needs-proposal";
     /// <summary>The current Baseline has no Text with the requested id.</summary>
     public const string DifferenceTextNotFound = "difference.text-not-found";
     /// <summary>The Trial did not complete, so there is nothing to compare.</summary>

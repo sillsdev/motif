@@ -113,6 +113,7 @@ public static class AutomationIds
     public const string ProposalDifferencePanel = "motif-proposal-difference";
     public const string ProposalDifferenceClear = "motif-proposal-difference-clear";
     public const string ProposalDifferenceText = "motif-proposal-difference-text";
+    public const string ProposalDifferenceSaved = "motif-proposal-difference-saved";
     public const string ProposalDifferenceMake = "motif-proposal-difference-make";
     public const string ProposalDifferenceCancel = "motif-proposal-difference-cancel";
     public const string ProposalDifferenceProgress = "motif-proposal-difference-progress";

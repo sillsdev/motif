@@ -2,11 +2,18 @@ using Microsoft.Data.Sqlite;
 
 namespace SIL.Motif.Worker.Store;
 
-/// <summary>Drops a Proposal Difference's word detail once its Proposal is decided, keeping the summary (ADR 0067).</summary>
+/// <summary>
+/// Drops a Proposal Difference's word detail once its Proposal is decided or deferred, keeping the summary (ADR 0067).
+/// </summary>
 internal static class ProposalDifferenceRetention
 {
-    /// <summary>Whether a Proposal that enters this status still wants the word detail of its Differences.</summary>
-    internal static bool KeepsWordDetail(string status) => !ProposalLifecycle.IsTerminal(status);
+    /// <summary>
+    /// Whether a Proposal that enters this status still wants the word detail of its Differences. A deferred Proposal
+    /// is set aside, so it does not; making the Difference again there is an explicit request and keeps its words
+    /// until the Proposal next changes status.
+    /// </summary>
+    internal static bool KeepsWordDetail(string status) =>
+        !ProposalLifecycle.IsTerminal(status) && ProposalLifecycle.Parse(status) is not ProposalStatus.Deferred;
 
     /// <summary>
     /// Deletes the word, Text-position and category rows of every Difference of the Proposal and stamps when it

@@ -41,6 +41,7 @@ public sealed partial class ProposalDifferenceViewModel
     private void Adopt(ProposalDifferenceResponse response)
     {
         _differenceId = response.Summary.DifferenceId;
+        SetSaved(response);
         Summary = response.Summary;
         WordDetailKept = response.WordDetailKept;
         BuildChips(response.Summary, response.WordDetailKept);
@@ -70,6 +71,7 @@ public sealed partial class ProposalDifferenceViewModel
         Stop(ref _wordsCancellation);
         Stop(ref _placesCancellation);
         _differenceId = null;
+        SetSaved(null);
         _checkOnly = false;
         _bucket = _limitation = _beforeState = _afterState = null;
         _nextWordOffset = _nextPlaceOffset = null;

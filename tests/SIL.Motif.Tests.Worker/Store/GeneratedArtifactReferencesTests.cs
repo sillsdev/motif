@@ -97,8 +97,8 @@ public sealed class GeneratedArtifactReferencesTests : IDisposable
             Execute(connection, transaction,
                 "INSERT INTO ProposalDifferences " +
                 "(DifferenceId, ProposalId, TrialJobId, BeforeAssessmentId, AfterAssessmentId, TextId, " +
-                "BaselineToken, SummaryJson, SummaryDigest, CreatedUtc) " +
-                "VALUES ('difference-one', 'proposal-one', 'trial-one', $before, $after, 'text-one', " +
+                "Reference, BaselineToken, SummaryJson, SummaryDigest, CreatedUtc) " +
+                "VALUES ('difference-one', 'proposal-one', 'trial-one', $before, $after, 'text-one', 'human', " +
                 "'{}', '{}', 'sha256:summary', '2026-01-01T00:00:00Z');",
                 ("$before", before.Id), ("$after", after.Id));
             Execute(connection, transaction,

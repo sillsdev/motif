@@ -33,7 +33,7 @@ public enum ProposalDifferenceState
 /// the Text places of one chosen word. It reads only the shared bounded query and never classifies live state.
 /// </summary>
 /// <remarks>
-/// Once the Proposal is decided only the summary is left (<see cref="IsSummaryOnly"/>): the chips show their counts
+/// Once the Proposal is decided or deferred only the summary is left (<see cref="IsSummaryOnly"/>): the chips show their counts
 /// but do not filter, and the word list and places give way to a note saying the word detail was removed.
 /// A person makes the Difference with <see cref="Maker"/>, from the same command the CLI and MCP use; the section
 /// offers that with or without a saved Difference, and the window never applies anything because of it.
@@ -112,7 +112,8 @@ public sealed partial class ProposalDifferenceViewModel : ObservableObject
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HeadlineText), nameof(ComparedText), nameof(UnboundText), nameof(HasUnbound),
         nameof(OutsideText), nameof(HasOutside), nameof(HasNotes), nameof(Notes), nameof(AdviceText),
-        nameof(ReferenceNoteText), nameof(HasReferenceNote), nameof(UnreadableEvidenceText), nameof(HasUnreadableEvidence))]
+        nameof(ReferenceNoteText), nameof(HasReferenceNote), nameof(UnreadableEvidenceText), nameof(HasUnreadableEvidence),
+        nameof(BasisText))]
     private ProposalDifferenceSummary? _summary;
 
     /// <summary>The Applied Proposals whose staged decisions could not be read at the last read.</summary>
@@ -120,7 +121,7 @@ public sealed partial class ProposalDifferenceViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(UnreadableEvidenceText), nameof(HasUnreadableEvidence))]
     private IReadOnlyList<ProposalDifferenceUnreadableEvidence> _unreadableEvidence = [];
 
-    /// <summary>Whether the word detail is still kept; false once the Proposal is decided.</summary>
+    /// <summary>Whether the word detail is still kept; false once the Proposal is decided or deferred.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsSummaryOnly), nameof(ShowsWordList))]
     private bool _wordDetailKept = true;
@@ -191,7 +192,7 @@ public sealed partial class ProposalDifferenceViewModel : ObservableObject
     /// <summary>Whether a later read, such as a filter's words or a word's places, is still running.</summary>
     public bool IsReadingMore => _reads > 0 && State == ProposalDifferenceState.Shown;
 
-    /// <summary>Whether only the summary is left because the Proposal was decided.</summary>
+    /// <summary>Whether only the summary is left because the Proposal was decided or deferred.</summary>
     public bool IsSummaryOnly => !WordDetailKept;
 
     public bool ShowsWordList => WordDetailKept;

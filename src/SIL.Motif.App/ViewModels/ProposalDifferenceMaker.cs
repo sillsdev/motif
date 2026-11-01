@@ -17,7 +17,17 @@ public enum DifferenceOffer
 
     /// <summary>The Proposal is decided, so a new Difference would not be kept.</summary>
     Decided,
+
+    /// <summary>The Proposal is deferred: its words were dropped, and making the Difference again brings them back.</summary>
+    Deferred,
 }
+
+/// <summary>One of the selected Proposal's saved Differences, named for the list that switches between them.</summary>
+/// <param name="DifferenceId">The id that reads it.</param>
+/// <param name="TextId">The Text's GUID.</param>
+/// <param name="Reference">Whose decisions it was read against, <c>human</c> or <c>source-validated</c>.</param>
+/// <param name="Label">The Text and the decisions in the window's words.</param>
+public sealed record DifferenceSavedChoice(string DifferenceId, string TextId, string Reference, string Label);
 
 /// <summary>One Text a Difference can compare.</summary>
 /// <param name="Id">The Text's own GUID, the only thing the request carries.</param>

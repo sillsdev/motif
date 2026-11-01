@@ -27,9 +27,9 @@ public static class MotifStoreUpgrade
     /// <summary>The first store schema whose Difference summaries have the shape current code reads (ADR 0067).</summary>
     internal const int FirstSummarySchema = 56;
 
-    // Only a decided Proposal's newest Difference per Text is carried; the rest is produced again from a Trial.
+    // Only a decided or deferred Proposal's newest Difference per Text is carried; a Trial makes the rest again.
     private const string DecidedDifferences = "ProposalId IN (SELECT ProposalId FROM old.Proposals WHERE Status IN " +
-        "('applied','rejected','withdrawn','superseded')) AND rowid = (SELECT d.rowid FROM old.ProposalDifferences d " +
+        "('applied','rejected','withdrawn','superseded','deferred')) AND rowid = (SELECT d.rowid FROM old.ProposalDifferences d " +
         "WHERE d.ProposalId = old.ProposalDifferences.ProposalId AND d.TextId = old.ProposalDifferences.TextId " +
         "ORDER BY d.CreatedUtc DESC, d.DifferenceId DESC LIMIT 1)";
 
@@ -182,6 +182,8 @@ public static class MotifStoreUpgrade
                 ("NamedSelections", "Revision") => "1",
                 ("NamedSelections", "TimeLimitMode") => "'Estimated'",
                 ("NamedSelections", "TextIdsJson" or "AddedWordsJson") => "'[]'",
+                ("ProposalDifferences", "Reference") => "CASE WHEN json_valid(SummaryJson) " +
+                    "THEN COALESCE(json_extract(SummaryJson, '$.Reference'), 'human') ELSE 'human' END",
                 _ when type.Contains("INT", StringComparison.Ordinal) => "0",
                 _ when type.Contains("REAL", StringComparison.Ordinal) || type.Contains("FLOAT", StringComparison.Ordinal) => "0.0",
                 _ when type.Contains("BLOB", StringComparison.Ordinal) => "X''",

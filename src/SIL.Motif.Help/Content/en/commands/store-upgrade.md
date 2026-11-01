@@ -2,8 +2,8 @@
 
 `store upgrade` carries authored work from an older Motif store into the current format. Motif keeps the old
 store as a versioned backup and discards computed results, which can be recreated. The one computed result it
-keeps is the saved Difference summary of each decided Proposal, because it cannot be recreated once the Proposal
-is decided; the word detail under it is discarded. Summaries are kept from schema 56 on; an upgrade from an
+keeps is the saved Difference summary of each decided or deferred Proposal, because it cannot be recreated once
+the Proposal is set aside; the word detail under it is discarded. Summaries are kept from schema 56 on; an upgrade from an
 older schema drops them, because they are in a shape this Motif cannot read.
 
 ```powershell

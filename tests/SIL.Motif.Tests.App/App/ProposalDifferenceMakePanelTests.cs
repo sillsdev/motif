@@ -101,7 +101,7 @@ public sealed class ProposalDifferenceMakePanelTests
     }
 
     [Fact]
-    public void ASourceValidatedDifferenceKeepsItsNotesBesideTheMakeControlsAndStaysSourceValidatedWhenMadeAgain()
+    public void ASourceValidatedDifferenceKeepsItsNotesBesideTheMakeControlsAndOffersAHumanOneBesideIt()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
@@ -149,7 +149,8 @@ public sealed class ProposalDifferenceMakePanelTests
 
                 AssertNotesShow();
                 Assert.True(Named(panel, "DifferenceMakeControls").IsEffectivelyVisible);
-                Assert.Equal("Make Difference Again", Label(Assert.IsType<Button>(Named(panel, "DifferenceMake"))));
+                // Only a saved Difference against people's decisions is made again; this Text has none.
+                Assert.Equal("Make Difference", Label(Assert.IsType<Button>(Named(panel, "DifferenceMake"))));
 
                 Click(panel, "DifferenceMake", window);
                 await started.Task;

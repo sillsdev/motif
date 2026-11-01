@@ -167,8 +167,8 @@ public sealed class MotifStoreUpgradeTests : IDisposable
             Execute(seed, """
                 INSERT INTO Proposals (ProposalId, Status) VALUES ('rej', 'rejected'), ('open', 'proposed');
                 INSERT INTO ProposalDifferences VALUES
-                    ('d-rej', 'rej', 'j', 'b', 'a', 't1', 'tok', 'summary', 'x', '2020-02-01', NULL),
-                    ('d-open', 'open', 'j', 'b', 'a', 't1', 'tok', 'undecided', 'x', '2020-01-01', NULL);
+                    ('d-rej', 'rej', 'j', 'b', 'a', 't1', 'human', 'tok', 'summary', 'x', '2020-02-01', NULL),
+                    ('d-open', 'open', 'j', 'b', 'a', 't1', 'human', 'tok', 'undecided', 'x', '2020-01-01', NULL);
                 """);
         }
         using (var old = Connect(Source)) Execute(old, "PRAGMA user_version = 56;");
@@ -187,6 +187,33 @@ public sealed class MotifStoreUpgradeTests : IDisposable
         Assert.Equal(2, Count(upgraded, "Proposals"));
         Assert.Equal("summary", Text(upgraded, "SELECT SummaryJson FROM ProposalDifferences WHERE ProposalId = 'rej';"));
         Assert.Equal(1, Count(upgraded, "ProposalDifferences WHERE WordDetailDroppedUtc IS NOT NULL"));
+    }
+
+    [Fact]
+    public void UpgradeFromSchema57KeepsDecidedAndDeferredSummariesWithTheReferenceEachNamesAndDropsTheRest()
+    {
+        SeedDifferences(MotifSchema.CurrentSchema - 2);
+        using (var old = Connect(Source))
+            Execute(old, """
+                INSERT INTO Proposals (ProposalId, Status) VALUES ('def', 'deferred');
+                INSERT INTO ProposalDifferences VALUES
+                    ('d-def', 'def', 'j', 'b', 'a', 't1', 'tok', '{"Reference":"source-validated"}', 'x', '2020-03-01'),
+                    ('d-def2', 'def', 'j', 'b', 'a', 't2', 'tok', '{"DifferenceId":"d-def2"}', 'x', '2020-03-01');
+                INSERT INTO ProposalDifferenceCases VALUES ('d-def', 'w', 'w', 1, 'a', 'b', 0, '{}', 'x');
+                """);
+
+        var report = MotifStoreUpgrade.Build(Source, Path.Combine(_root, "copy.db"), null, true, null,
+            firstSummarySchema: MotifSchema.CurrentSchema - 2);
+
+        Assert.Equal(MotifSchema.CurrentSchema - 2, report.SourceSchema);
+        Assert.Equal(4, report.Carried["ProposalDifferences"]);
+        using var upgraded = Connect(Path.Combine(_root, "copy.db"));
+        Assert.Equal("source-validated", Text(upgraded, "SELECT Reference FROM ProposalDifferences WHERE DifferenceId = 'd-def';"));
+        Assert.Equal("human", Text(upgraded, "SELECT Reference FROM ProposalDifferences WHERE DifferenceId = 'd-def2';"));
+        Assert.Equal("human", Text(upgraded, "SELECT Reference FROM ProposalDifferences WHERE DifferenceId = 'd-new';"));
+        Assert.Equal(0, Count(upgraded, "ProposalDifferences WHERE ProposalId = 'open'"));
+        Assert.Equal(4, Count(upgraded, "ProposalDifferences WHERE WordDetailDroppedUtc IS NOT NULL"));
+        Assert.Equal(0, Count(upgraded, "ProposalDifferenceCases"));
     }
 
     [Fact]
@@ -345,6 +372,7 @@ public sealed class MotifStoreUpgradeTests : IDisposable
         Execute(old, $$"""
             DROP INDEX IX_ProposalDifferences_ProposalText;
             ALTER TABLE ProposalDifferences DROP COLUMN WordDetailDroppedUtc;
+            ALTER TABLE ProposalDifferences DROP COLUMN Reference;
             CREATE INDEX IX_ProposalDifferences_ProposalText ON ProposalDifferences(ProposalId, TextId);
             INSERT INTO Proposals (ProposalId, Status) VALUES ('rej', 'rejected'), ('open', 'proposed');
             INSERT INTO ProposalDifferences VALUES

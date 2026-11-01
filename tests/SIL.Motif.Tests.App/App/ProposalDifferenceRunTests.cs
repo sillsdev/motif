@@ -249,6 +249,40 @@ public sealed class ProposalDifferenceRunTests
         Assert.False(difference.OffersMake);
     }
 
+    [Fact]
+    public async Task ADeferredCardShownWithOnlyItsSummaryOffersToMakeTheDifferenceAgain()
+    {
+        var scene = new Shown();
+        scene.Fixture.WordDetailKept = false;
+        scene.Cards[0] = scene.Cards[0] with { Status = "deferred" };
+        await scene.OpenAsync();
+        var difference = scene.Page.Difference;
+
+        Assert.True(difference.IsSummaryOnly);
+        Assert.True(difference.OffersMake);
+        Assert.True(difference.ShowsRemakeHint);
+    }
+
+    [Fact]
+    public async Task ADeferredProposalWithRemadeWordsLosesThemWhenItIsDeclinedWhileShown()
+    {
+        var scene = new Shown();
+        scene.Cards[0] = scene.Cards[0] with { Status = "deferred" };
+        await scene.OpenAsync();
+        var difference = scene.Page.Difference;
+        Assert.NotEmpty(difference.Words);
+        Assert.True(difference.OffersMake);
+
+        scene.Fixture.WordDetailKept = false;
+        scene.Cards[0] = scene.Cards[0] with { Group = ProposalGroup.SetAside, Status = "rejected" };
+        await scene.Context.PublishBaselineCapturedAsync(openFirstRunSetup: false);
+
+        Assert.Equal("p/one", scene.Page.SelectedProposal!.ProposalId);
+        Assert.True(difference.IsSummaryOnly);
+        Assert.Empty(difference.Words);
+        Assert.False(difference.OffersMake);
+    }
+
     private static ProposalDifferenceFixture SourceValidatedWithUnreadable() => new()
     {
         TextId = GenesisId.ToString("D"), Reference = ProposalDifferenceReferences.SourceValidated,

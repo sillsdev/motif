@@ -1397,8 +1397,56 @@
     <comment>{0} is a count of words such as '3 words'.</comment>
   </data>
   <data name="MotifApp.ProposalDifferenceDetailRemoved" xml:space="preserve">
-    <value>Word detail was removed when this Proposal was decided. The summary is kept.</value>
+    <value>The words were removed when this Proposal was decided or deferred. The summary is kept.</value>
     <comment>Shown when only the Difference summary is left.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferenceRemakeHint" xml:space="preserve">
+    <value>Choose Make Difference Again to see the words.</value>
+    <comment>Shown with the summary of a deferred Proposal, whose Difference can be made again to bring its words back; Make Difference Again is the button's own name.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferenceBasisFormat" xml:space="preserve">
+    <value>Text: {0}. Compared with {1}.</value>
+    <comment>Says which Text a saved Difference compares and whose decisions it was read against; {0} is the Text title, {1} the decisions.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferenceBasisHuman" xml:space="preserve">
+    <value>the Approved analyses people saved in FieldWorks</value>
+    <comment>Completes the sentence 'Compared with ...' for a Difference read against a person's decisions.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferenceBasisSourceValidated" xml:space="preserve">
+    <value>decisions a named program staged from cited sources, not a person's</value>
+    <comment>Completes the sentence 'Compared with ...' for a Difference read against a program's decisions.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferenceSavedTitle" xml:space="preserve">
+    <value>Saved Differences</value>
+    <comment>Label of the list that switches between the Proposal's saved Differences, one per Text and set of decisions.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferenceSavedAccessibleName" xml:space="preserve">
+    <value>Saved Differences of this Proposal</value>
+    <comment>Accessible name of the list of the Proposal's saved Differences.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferenceSavedItemFormat" xml:space="preserve">
+    <value>{0}, {1}, made {2}</value>
+    <comment>One saved Difference in the list: {0} is the Text title, {1} says whose decisions it was read against, {2} is when it was made.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferenceSavedTextFormat" xml:space="preserve">
+    <value>{0} ({1})</value>
+    <comment>A Text title made unique in the list of saved Differences: {0} is the title, {1} the start of the Text's id, used when two Texts share a title.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferenceSavedUnreadablePattern" xml:space="preserve">
+    <value>{0, plural, one {# saved Difference could not be read.} other {# saved Differences could not be read.}}</value>
+    <comment>Plural pattern: a count of the Proposal's saved Differences whose summary could not be read and are left out of the list; # is the count.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferenceSavedHuman" xml:space="preserve">
+    <value>people's decisions</value>
+    <comment>Part of a saved Difference's name in the list: it was read against a person's decisions.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferenceSavedSourceValidated" xml:space="preserve">
+    <value>a program's decisions</value>
+    <comment>Part of a saved Difference's name in the list: it was read against a program's decisions, not a person's.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferenceSavedMorePattern" xml:space="preserve">
+    <value>{0, plural, one {# more saved Difference is not listed.} other {# more saved Differences are not listed.}}</value>
+    <comment>Plural pattern: a count of the Proposal's saved Differences the list leaves out; # is the count.</comment>
   </data>
   <data name="MotifApp.ProposalDifferenceMovedTitle" xml:space="preserve">
     <value>Where Words Moved</value>

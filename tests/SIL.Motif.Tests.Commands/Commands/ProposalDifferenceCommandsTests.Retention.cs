@@ -39,20 +39,69 @@ public sealed partial class ProposalDifferenceCommandsTests
     }
 
     [Fact]
-    public void AnUndecidedTransitionKeepsWordDetailAndADecidingOneDropsIt()
+    public void DeferringDropsWordDetailAndDecidingFromDeferredLeavesOnlyTheSummary()
     {
         using var fixture = new Fixture(_root);
         var produced = ProposalDifferenceCommands.Produce(fixture.ProduceRequest()).Value!.Summary;
         var proposals = new ProposalRepository(fixture.Database);
         var id = CanonicalId.Parse(fixture.ProposalId);
+        Assert.Equal(2, fixture.Count("ProposalDifferenceCases", produced.DifferenceId));
 
         Assert.True(proposals.Transition(id, ["proposed"], "deferred").Moved);
-        Assert.Equal(2, fixture.Count("ProposalDifferenceCases", produced.DifferenceId));
-        Assert.True(ProposalDifferenceCommands.Show(fixture.ShowRequest()).Value!.WordDetailKept);
 
-        Assert.True(proposals.Transition(id, ["deferred"], "rejected").Moved);
         foreach (var table in WordTables) Assert.Equal(0, fixture.Count(table, produced.DifferenceId));
         Assert.False(ProposalDifferenceCommands.Show(fixture.ShowRequest()).Value!.WordDetailKept);
+        Assert.True(proposals.Transition(id, ["deferred"], "rejected").Moved);
+        Assert.False(ProposalDifferenceCommands.Show(fixture.ShowRequest()).Value!.WordDetailKept);
+    }
+
+    [Fact]
+    public void DeferringTheProposalKeepsTheSummaryIdenticalAndMarksItAsHavingNoWords()
+    {
+        using var fixture = new Fixture(_root);
+        var produced = ProposalDifferenceCommands.Produce(fixture.ProduceRequest()).Value!.Summary;
+
+        new ProposalRepository(fixture.Database).SetStatus(CanonicalId.Parse(fixture.ProposalId), "deferred", null);
+
+        var read = ProposalDifferenceCommands.Show(fixture.ShowRequest());
+        Assert.True(read.Succeeded, read.Refusal?.Message);
+        Assert.False(read.Value!.WordDetailKept);
+        Assert.Empty(read.Value.Words);
+        Assert.Equal(0, read.Value.MatchingWords);
+        Assert.Equal(Json(produced), Json(read.Value.Summary));
+        Assert.Equal(1, fixture.Count("ProposalDifferences", produced.DifferenceId));
+    }
+
+    [Fact]
+    public void ADeferredProposalMakesTheDifferenceAgainAndGetsItsWordsBack()
+    {
+        using var fixture = new Fixture(_root);
+        var first = ProposalDifferenceCommands.Produce(fixture.ProduceRequest()).Value!.Summary;
+        new ProposalRepository(fixture.Database).SetStatus(CanonicalId.Parse(fixture.ProposalId), "deferred", null);
+
+        var again = ProposalDifferenceCommands.Produce(fixture.ProduceRequest());
+
+        Assert.True(again.Succeeded, again.Refusal?.Message);
+        Assert.NotEqual(first.DifferenceId, again.Value!.Summary.DifferenceId);
+        Assert.True(again.Value.WordDetailKept);
+        Assert.Equal(2, again.Value.MatchingWords);
+        Assert.Equal(1, fixture.DifferenceRows());
+    }
+
+    [Fact]
+    public void RemakingInTheDeferredStateKeepsItsWordsUntilTheProposalNextChangesStatus()
+    {
+        using var fixture = new Fixture(_root);
+        ProposalDifferenceCommands.Produce(fixture.ProduceRequest());
+        var proposals = new ProposalRepository(fixture.Database);
+        var id = CanonicalId.Parse(fixture.ProposalId);
+        proposals.SetStatus(id, "deferred", null);
+        var remade = ProposalDifferenceCommands.Produce(fixture.ProduceRequest()).Value!.Summary;
+
+        Assert.Equal(2, fixture.Count("ProposalDifferenceCases", remade.DifferenceId));
+        Assert.True(proposals.Transition(id, ["deferred"], "withdrawn").Moved);
+
+        foreach (var table in WordTables) Assert.Equal(0, fixture.Count(table, remade.DifferenceId));
     }
 
     [Fact]

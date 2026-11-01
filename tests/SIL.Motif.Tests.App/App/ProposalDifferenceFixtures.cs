@@ -51,6 +51,15 @@ internal sealed class ProposalDifferenceFixture
     /// <summary>The title of that Text.</summary>
     public string TextTitle { get; set; } = "Genesis 1";
 
+    /// <summary>Other Differences the Proposal has saved, listed beside the one this fixture answers with.</summary>
+    public List<ProposalDifferenceSaved> SavedOthers { get; } = [];
+
+    /// <summary>How many more saved Differences the bounded list leaves out.</summary>
+    public int SavedNotListed { get; set; }
+
+    /// <summary>How many saved Differences the read could not open and so left out of the list.</summary>
+    public int SavedUnreadable { get; set; }
+
     public List<ProposalDifferenceShowRequest> Requests { get; } = [];
 
     public ProposalDifferenceSummary Summary => new("difference/one", "proposal/one", "job/one", "assessment/b",
@@ -90,7 +99,9 @@ internal sealed class ProposalDifferenceFixture
                     ? (request.OccurrenceOffset ?? 0) + placePage.Count : null);
         }
         return CommandOutcome<ProposalDifferenceResponse>.Success(new ProposalDifferenceResponse(
-            Summary, page, matching.Count, next, WordDetailKept, places, page.Count > 0 ? Unreadable : null));
+            Summary, page, matching.Count, next, WordDetailKept, places, page.Count > 0 ? Unreadable : null,
+            SavedOthers.Prepend(new ProposalDifferenceSaved("difference/one", TextId, TextTitle, Reference,
+                "2026-10-31T00:00:00Z", WordDetailKept)).ToList(), SavedOthers.Count + 1 + SavedNotListed + SavedUnreadable, SavedUnreadable));
     }
 
     private static bool Matches(ProposalDifferenceShowRequest request, ProposalDifferenceWord word) =>

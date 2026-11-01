@@ -812,10 +812,11 @@ public sealed partial class ProposalsPageModel : PageModel
 
     protected override Task OnStopWorkAsync() => Difference.StopAsync();
 
-    // A decided Proposal keeps no word detail, so a new Difference would not be kept; an untried one has no Trial.
+    // Decided keeps no new Difference, untried has no Trial, and deferred can make its words again.
     private static DifferenceOffer DifferenceOfferFor(ProposalCard card) =>
         card.Group == ProposalGroup.SetAside ? DifferenceOffer.Decided
         : card.Standing.Kind == TrialStandingKind.NotTried ? DifferenceOffer.NotTried
+        : card.Status == "deferred" ? DifferenceOffer.Deferred
         : DifferenceOffer.Available;
 
     private Task OpenAsync(ProposalCardViewModel? card) => OpenProposalAsync(card, WorkspacePage.Overview);

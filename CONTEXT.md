@@ -222,9 +222,10 @@ _Avoid_: parse success, grammar coverage, first match
 A saved comparison of one Trial's before and after parses for one Text, set against the Approved
 expectations in the Baseline the Trial measured ([ADR 0067](docs/adr/0067-proposal-difference-against-human-decisions.md)).
 It is a standalone result, not an Assessment kind: it cites the Trial's two Assessments by id and carries
-every fact it needs by value, so it does not keep them alive. There is one per Proposal and Text, and a new
-one replaces the old. A small summary lasts as long as its Proposal; the per-word detail is dropped as soon
-as the Proposal is applied, rejected, withdrawn or superseded. The `delta.*` codes on the wire are stable
+every fact it needs by value, so it does not keep them alive. There is one per Proposal, Text and reference
+(a person's decisions or a program's), so several sit side by side, and a new one replaces only the one for the same
+Text and reference. A small summary lasts as long as its Proposal; the per-word detail is dropped as soon
+as the Proposal is applied, rejected, withdrawn, superseded or deferred, and a deferred Proposal can make it again. The `delta.*` codes on the wire are stable
 identifiers, not vocabulary.
 _Avoid_: diff, delta, grammar delta, score change, improvement
 

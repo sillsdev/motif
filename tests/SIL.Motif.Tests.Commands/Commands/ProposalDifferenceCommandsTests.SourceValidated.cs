@@ -91,22 +91,6 @@ public sealed partial class ProposalDifferenceCommandsTests
     }
 
     [Fact]
-    public void ProducingAgainstTheOtherReferenceReplacesTheSavedDifferenceForTheText()
-    {
-        using var fixture = new Fixture(_root);
-        var human = ProposalDifferenceCommands.Produce(fixture.ProduceRequest()).Value!.Summary;
-
-        var sourceValidated = ProduceSourceValidated(fixture.ProduceRequest()).Value!.Summary;
-        var backToHuman = ProposalDifferenceCommands.Produce(fixture.ProduceRequest()).Value!.Summary;
-
-        Assert.NotEqual(human.DifferenceId, sourceValidated.DifferenceId);
-        Assert.NotEqual(sourceValidated.DifferenceId, backToHuman.DifferenceId);
-        Assert.Equal(1, fixture.Count("ProposalDifferences", backToHuman.DifferenceId));
-        Assert.Equal(0, fixture.Count("ProposalDifferences", sourceValidated.DifferenceId));
-        Assert.Null(backToHuman.DecisionsDigest);
-    }
-
-    [Fact]
     public void AnAgentEvaluationWithoutDecisionEvidenceIsNotSourceValidated()
     {
         LoadAgentEvaluationKind();

@@ -99,7 +99,7 @@ public sealed class ProposalRepositoryTests : IDisposable
         using (var connection = database.OpenConnection())
             foreach (var sql in new[]
             {
-                "INSERT INTO ProposalDifferences VALUES ('difference/1', $id, 'job', 'b', 'a', 'text', 'token', '{}', 'd', 'now', NULL);",
+                "INSERT INTO ProposalDifferences VALUES ('difference/1', $id, 'job', 'b', 'a', 'text', 'human', 'token', '{}', 'd', 'now', NULL);",
                 "INSERT INTO ProposalDifferenceCases VALUES ('difference/1', 'w', 'w', 1, 'x', 'y', 0, '{}', 'd');",
                 "INSERT INTO ProposalDifferenceOccurrences VALUES ('difference/1', 'text', 'seg', 0, 1, 'w');",
                 "INSERT INTO ProposalDifferenceBuckets VALUES ('difference/1', 'w', 'delta.regression');",

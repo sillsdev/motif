@@ -15,7 +15,7 @@ public static class MotifSchema
     public const int ApplicationId = 0x4D4F5446;
 
     /// <summary>The schema generation this assembly creates and requires.</summary>
-    public const int CurrentSchema = 58;
+    public const int CurrentSchema = 59;
 
     /// <summary>The worker version an open at the given schema ceiling requires.</summary>
     internal static Version MinimumWorkerVersion(int schema) => schema is >= 1 and <= CurrentSchema
@@ -396,7 +396,7 @@ public static class MotifSchema
         "IX_ParsimonyBuildClaims_Project" => ["ProjectKey"],
         "IX_GrammarChecks_Project" => ["BaselineToken"],
         "IX_GrammarChecks_Proposal" => ["BaselineToken", "ProposalId", "IntentDigest"],
-        "IX_ProposalDifferences_ProposalText" => ["ProposalId", "TextId"],
+        "IX_ProposalDifferences_ProposalText" => ["ProposalId", "TextId", "Reference"],
         "IX_ProposalDifferenceOccurrences_Order" => ["DifferenceId", "TextId", "LineNumber", "OccurrenceIndex"],
         "IX_ProposalDifferenceBuckets_Bucket" => ["DifferenceId", "Bucket", "CaseKey"],
         "IX_PhonologyExampleSets_Name" => ["Name"],
@@ -549,7 +549,7 @@ public static class MotifSchema
         "ProposalDifferences" =>
         [C("DifferenceId", "TEXT", false, 1), C("ProposalId", "TEXT", true), C("TrialJobId", "TEXT", true),
             C("BeforeAssessmentId", "TEXT", true), C("AfterAssessmentId", "TEXT", true), C("TextId", "TEXT", true),
-            C("BaselineToken", "TEXT", true), C("SummaryJson", "TEXT", true), C("SummaryDigest", "TEXT", true),
+            C("Reference", "TEXT", true), C("BaselineToken", "TEXT", true), C("SummaryJson", "TEXT", true), C("SummaryDigest", "TEXT", true),
             C("CreatedUtc", "TEXT", true), C("WordDetailDroppedUtc", "TEXT", false)],
         "ProposalDifferenceCases" =>
         [C("DifferenceId", "TEXT", true, 1), C("CaseKey", "TEXT", true, 2), C("Word", "TEXT", true),
@@ -1043,14 +1043,15 @@ public static class MotifSchema
             BeforeAssessmentId TEXT NOT NULL,
             AfterAssessmentId TEXT NOT NULL,
             TextId TEXT NOT NULL,
+            Reference TEXT NOT NULL,
             BaselineToken TEXT NOT NULL,
             SummaryJson TEXT NOT NULL,
             SummaryDigest TEXT NOT NULL,
             CreatedUtc TEXT NOT NULL,
             WordDetailDroppedUtc TEXT
         );
-        -- A Proposal has one Difference per Text; a new one replaces the old.
-        CREATE UNIQUE INDEX IX_ProposalDifferences_ProposalText ON ProposalDifferences(ProposalId, TextId);
+        -- A Proposal keeps one Difference per Text and reference; a new one replaces only that one.
+        CREATE UNIQUE INDEX IX_ProposalDifferences_ProposalText ON ProposalDifferences(ProposalId, TextId, Reference);
 
         CREATE TABLE ProposalDifferenceCases (
             DifferenceId TEXT NOT NULL REFERENCES ProposalDifferences(DifferenceId) ON DELETE CASCADE,

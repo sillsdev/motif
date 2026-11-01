@@ -1737,7 +1737,8 @@ try
                     flags.ContainsKey("could-be-bad"), flags.GetValueOrDefault("bucket"),
                     flags.GetValueOrDefault("before"), flags.GetValueOrDefault("after"), differenceOffset,
                     differenceLimit, flags.GetValueOrDefault("limitation"), flags.GetValueOrDefault("word"),
-                    occurrenceOffset, occurrenceLimit)), asJson);
+                    occurrenceOffset, occurrenceLimit, flags.GetValueOrDefault("text"),
+                    flags.GetValueOrDefault("reference"))), asJson);
                 break;
             }
             return Usage(UsageLineFor("difference"), asJson);

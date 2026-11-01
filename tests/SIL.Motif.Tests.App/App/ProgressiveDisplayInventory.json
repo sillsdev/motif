@@ -910,6 +910,13 @@
   },
   {
     "view": "ProposalDifferencePanel",
+    "name": "DifferenceSaved",
+    "source": "SavedChoices",
+    "mode": "popup",
+    "control": "ComboBox"
+  },
+  {
+    "view": "ProposalDifferencePanel",
     "name": "DifferenceNotes",
     "source": "Notes",
     "mode": "finite",

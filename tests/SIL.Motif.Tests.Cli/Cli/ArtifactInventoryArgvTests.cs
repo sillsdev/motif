@@ -847,9 +847,9 @@ public sealed class ArtifactInventoryArgvTests : IDisposable
             INSERT INTO Reports (ReportId, ReportJson, EvidenceJson, Kind, CreatedUtc)
             VALUES ('report-frozen', $report, $frozen, 'parsimony', '2026-10-24T00:00:00Z');
             INSERT INTO ProposalDifferences (DifferenceId, ProposalId, TrialJobId, BeforeAssessmentId,
-                AfterAssessmentId, TextId, BaselineToken, SummaryJson, SummaryDigest, CreatedUtc)
+                AfterAssessmentId, TextId, Reference, BaselineToken, SummaryJson, SummaryDigest, CreatedUtc)
             VALUES ('difference-cited', 'missing-proposal', 'trial-job', 'assessment-cited', 'assessment-cited',
-                'text', 'baseline', '{}', 'summary', '2026-10-24T00:00:00Z');
+                'text', 'human', 'baseline', '{}', 'summary', '2026-10-24T00:00:00Z');
             """;
         command.Parameters.AddWithValue("$invocation", invocationId);
         command.Parameters.AddWithValue("$frozen", CreateFrozenReportEvidence("assessment-cited"));

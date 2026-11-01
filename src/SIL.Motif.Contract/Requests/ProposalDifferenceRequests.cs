@@ -22,7 +22,10 @@ public sealed record ProposalDifferenceProduceRequest(string ProjectPath, string
 
 /// <summary>Reads a saved Proposal Difference: its summary first, then one page of changed words.</summary>
 /// <param name="ProjectPath">The recorded project path.</param>
-/// <param name="ProposalId">The Proposal whose newest Difference is read; ignored when a Difference id is given.</param>
+/// <param name="ProposalId">
+/// The Proposal whose newest Difference is read, narrowed by <paramref name="TextId"/> and
+/// <paramref name="Reference"/>; ignored when a Difference id is given.
+/// </param>
 /// <param name="DifferenceId">The saved Difference to read.</param>
 /// <param name="CouldBeBad">Whether to list only words filed under a could-be-bad category.</param>
 /// <param name="Bucket">The stable category code that listed words must belong to.</param>
@@ -34,7 +37,9 @@ public sealed record ProposalDifferenceProduceRequest(string ProjectPath, string
 /// <param name="Word">One exact word to list, whose Text occurrences are then returned a page at a time.</param>
 /// <param name="OccurrenceOffset">How many of that word's Text occurrences to skip (default 0); only with a word.</param>
 /// <param name="OccurrenceLimit">How many of that word's Text occurrences to return (default 25); only with a word.</param>
+/// <param name="TextId">Read the Proposal's Difference for this Text GUID; only with a Proposal.</param>
+/// <param name="Reference">Read the Proposal's Difference against <c>human</c> or <c>source-validated</c> decisions; only with a Proposal.</param>
 public sealed record ProposalDifferenceShowRequest(string ProjectPath, string? ProposalId = null,
     string? DifferenceId = null, bool CouldBeBad = false, string? Bucket = null, string? BeforeState = null,
     string? AfterState = null, int Offset = 0, int Limit = 25, string? Limitation = null, string? Word = null,
-    int? OccurrenceOffset = null, int? OccurrenceLimit = null);
+    int? OccurrenceOffset = null, int? OccurrenceLimit = null, string? TextId = null, string? Reference = null);

@@ -49,6 +49,17 @@ public sealed class ProposalDifferenceToolTests
     }
 
     [Fact]
+    public void TheReadToolNamesTheTextAndReferenceOfTheDifferenceToRead()
+    {
+        var tool = MotifMcpServer.Expose(ToolProfile.Builtin).Single(tool => tool.Name == "motif_proposal_difference");
+        var properties = (System.Text.Json.Nodes.JsonObject)tool.Tool.InputSchema["properties"]!;
+
+        Assert.NotNull(properties["text"]);
+        var references = properties["reference"]!["enum"]!.AsArray().Select(node => node!.GetValue<string>()).ToArray();
+        Assert.Equal(["human", "source-validated"], references);
+    }
+
+    [Fact]
     public async Task TheNewArgumentsReachTheSharedCommandAndAreRefusedWithItsCodes()
     {
         var directory = Path.Combine(Path.GetTempPath(), "motif-proposal-difference-" + Guid.NewGuid().ToString("N"));

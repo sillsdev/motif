@@ -36,6 +36,12 @@ public sealed record ProposalDifferenceOccurrenceRequest(string Word, int Offset
 /// <summary>A saved Difference's summary and whether its word detail is still stored.</summary>
 public sealed record SavedProposalDifference(ProposalDifferenceSummary Summary, bool WordDetailKept);
 
+/// <summary>The Differences a Proposal has saved, newest first, bounded to the most listed.</summary>
+/// <param name="Items">The newest saved Differences, at most <see cref="ProposalDifferenceRepository.MostListed"/>.</param>
+/// <param name="Total">How many the Proposal has saved, before the bound.</param>
+/// <param name="Unreadable">How many of the newest ones could not be read, so they are not in <paramref name="Items"/>.</param>
+public sealed record ProposalDifferenceList(IReadOnlyList<ProposalDifferenceSaved> Items, int Total, int Unreadable = 0);
+
 /// <summary>The Proposal was decided before its Difference could be stored, so full word rows would outlive their purpose.</summary>
 public sealed class ProposalDecidedException : InvalidOperationException
 {
@@ -53,6 +59,9 @@ public sealed class ProposalDifferenceRepository
     // One options instance for all rows: fresh options per row rebuilt the converter metadata every time.
     private static readonly JsonSerializerOptions Json = MotifJson.CreateOptions();
 
+    /// <summary>The most saved Differences one Proposal's list names; the rest are counted.</summary>
+    public const int MostListed = 50;
+
     private readonly MotifDatabase _database;
 
     public ProposalDifferenceRepository(MotifDatabase database) =>
@@ -60,7 +69,8 @@ public sealed class ProposalDifferenceRepository
 
     /// <summary>
     /// Stores the summary, words, Text positions and categories together, or none of them, replacing any Difference
-    /// the Proposal already has for the same Text. The Proposal's status is read inside that transaction.
+    /// the Proposal already has for the same Text and reference, and no other. The Proposal's status is read inside
+    /// that transaction.
     /// </summary>
     /// <param name="difference">The summary and its words.</param>
     /// <param name="cancellationToken">Checked once more just before the commit; a cancel rolls everything back.</param>
@@ -82,15 +92,16 @@ public sealed class ProposalDifferenceRepository
                 throw new ProposalDecidedException();
         }
         // The child rows go with it: their foreign keys cascade.
-        Execute(connection, transaction, "DELETE FROM ProposalDifferences WHERE ProposalId = $proposal AND TextId = $text;",
-            ("$proposal", summary.ProposalId), ("$text", summary.TextId));
+        Execute(connection, transaction,
+            "DELETE FROM ProposalDifferences WHERE ProposalId = $proposal AND TextId = $text AND Reference = $reference;",
+            ("$proposal", summary.ProposalId), ("$text", summary.TextId), ("$reference", summary.Reference));
         Execute(connection, transaction,
             "INSERT INTO ProposalDifferences (DifferenceId, ProposalId, TrialJobId, BeforeAssessmentId, " +
-            "AfterAssessmentId, TextId, BaselineToken, SummaryJson, SummaryDigest, CreatedUtc) VALUES " +
-            "($id, $proposal, $job, $before, $after, $text, $baseline, $json, $digest, $created);",
+            "AfterAssessmentId, TextId, Reference, BaselineToken, SummaryJson, SummaryDigest, CreatedUtc) VALUES " +
+            "($id, $proposal, $job, $before, $after, $text, $reference, $baseline, $json, $digest, $created);",
             ("$id", summary.DifferenceId), ("$proposal", summary.ProposalId), ("$job", summary.TrialJobId),
             ("$before", summary.BeforeAssessmentId), ("$after", summary.AfterAssessmentId), ("$text", summary.TextId),
-            ("$baseline", summary.BaselineToken), ("$json", summaryJson), ("$digest", Sha(summaryJson)),
+            ("$reference", summary.Reference), ("$baseline", summary.BaselineToken), ("$json", summaryJson), ("$digest", Sha(summaryJson)),
             ("$created", summary.CreatedUtc));
         foreach (var word in difference.Words)
         {
@@ -141,15 +152,60 @@ public sealed class ProposalDifferenceRepository
         return JsonSerializer.Serialize(value, options).Trim('"');
     }
 
-    /// <summary>The newest Difference id saved for a Proposal, or null when it has none.</summary>
-    public string? LatestFor(string proposalId)
+    /// <summary>
+    /// The newest Difference id saved for a Proposal, narrowed to a Text and a reference when given, or null when
+    /// it has none.
+    /// </summary>
+    public string? LatestFor(string proposalId, string? textId = null, string? reference = null)
     {
         using var connection = _database.OpenConnection();
         using var command = connection.CreateCommand();
         command.CommandText = "SELECT DifferenceId FROM ProposalDifferences WHERE ProposalId = $proposal " +
+            "AND ($text IS NULL OR TextId = $text) AND ($reference IS NULL OR Reference = $reference) " +
             "ORDER BY CreatedUtc DESC, DifferenceId DESC LIMIT 1;";
         command.Parameters.AddWithValue("$proposal", proposalId);
+        command.Parameters.AddWithValue("$text", (object?)textId ?? DBNull.Value);
+        command.Parameters.AddWithValue("$reference", (object?)reference ?? DBNull.Value);
         return command.ExecuteScalar() as string;
+    }
+
+    /// <summary>
+    /// The Differences a Proposal has saved, one per Text and reference, newest first, so a caller can say which
+    /// Text and reference each belongs to. Only the first <see cref="MostListed"/> are named; the total counts all.
+    /// A summary that no longer matches its digest or cannot be read is left out and counted, not thrown.
+    /// </summary>
+    public ProposalDifferenceList ListFor(string proposalId)
+    {
+        using var connection = _database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT SummaryJson, SummaryDigest, WordDetailDroppedUtc, COUNT(*) OVER () " +
+            "FROM ProposalDifferences WHERE ProposalId = $proposal " +
+            "ORDER BY CreatedUtc DESC, DifferenceId DESC LIMIT $limit;";
+        command.Parameters.AddWithValue("$proposal", proposalId);
+        command.Parameters.AddWithValue("$limit", MostListed);
+        var items = new List<ProposalDifferenceSaved>();
+        var total = 0;
+        var unreadable = 0;
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            total = reader.GetInt32(3);
+            var json = reader.GetString(0);
+            ProposalDifferenceSummary summary;
+            try
+            {
+                summary = string.Equals(Sha(json), reader.GetString(1), StringComparison.Ordinal)
+                    ? Read<ProposalDifferenceSummary>(json, "summary") : throw new InvalidDataException("Digest mismatch.");
+            }
+            catch (InvalidDataException)
+            {
+                unreadable++;
+                continue;
+            }
+            items.Add(new ProposalDifferenceSaved(summary.DifferenceId, summary.TextId, summary.TextTitle,
+                summary.Reference, summary.CreatedUtc, reader.IsDBNull(2)));
+        }
+        return new ProposalDifferenceList(items, total, unreadable);
     }
 
     /// <summary>The stored summary, refused when its bytes no longer match the digest saved with it.</summary>
@@ -178,14 +234,16 @@ public sealed class ProposalDifferenceRepository
         return new SavedProposalDifference(Read<ProposalDifferenceSummary>(json, "summary"), reader.IsDBNull(2));
     }
 
-    /// <summary>The saved Difference of a Proposal for one Text, or null when it has none.</summary>
-    public SavedProposalDifference? FindFor(string proposalId, string textId)
+    /// <summary>The saved Difference of a Proposal for one Text and reference, or null when it has none.</summary>
+    public SavedProposalDifference? FindFor(string proposalId, string textId, string reference)
     {
         using var connection = _database.OpenConnection();
         using var command = connection.CreateCommand();
-        command.CommandText = "SELECT DifferenceId FROM ProposalDifferences WHERE ProposalId = $proposal AND TextId = $text;";
+        command.CommandText = "SELECT DifferenceId FROM ProposalDifferences " +
+            "WHERE ProposalId = $proposal AND TextId = $text AND Reference = $reference;";
         command.Parameters.AddWithValue("$proposal", proposalId);
         command.Parameters.AddWithValue("$text", textId);
+        command.Parameters.AddWithValue("$reference", reference);
         return command.ExecuteScalar() is string id ? GetSaved(id) : null;
     }
 

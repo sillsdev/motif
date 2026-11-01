@@ -436,6 +436,7 @@ public static class RefusalCatalog
         Spec(RefusalCodes.DifferenceNone, FailureReason.NotFound),
         Spec(RefusalCodes.DifferenceOccurrenceNeedsWord, FailureReason.InvalidArgument),
         Spec(RefusalCodes.DifferenceProposalDecided, FailureReason.Refused),
+        Spec(RefusalCodes.DifferenceTextNeedsProposal, FailureReason.InvalidArgument),
         Spec(RefusalCodes.DifferenceTextNotFound, FailureReason.NotFound),
         Spec(RefusalCodes.DifferenceTrialIncomplete, FailureReason.Refused),
         Spec(RefusalCodes.DifferenceUnexpectedOpinion, FailureReason.StoreInconsistent),

@@ -108,7 +108,7 @@ public sealed partial class ProposalDifferenceCommandsTests
         Assert.Equal(0, fixture.Count("ProposalDifferences", first.DifferenceId));
         Assert.Equal(0, fixture.Count("ProposalDifferenceCases", first.DifferenceId));
         Assert.Equal(1, fixture.Count("ProposalDifferences", "difference/newer"));
-        Assert.Equal("difference/newer", second.FindFor(first.ProposalId, first.TextId)!.Summary.DifferenceId);
+        Assert.Equal("difference/newer", second.FindFor(first.ProposalId, first.TextId, first.Reference)!.Summary.DifferenceId);
     }
 
     private static string DefaultSelectionSha() =>

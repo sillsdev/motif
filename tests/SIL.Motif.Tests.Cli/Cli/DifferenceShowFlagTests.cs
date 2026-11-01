@@ -24,6 +24,17 @@ public sealed class DifferenceShowFlagTests
     }
 
     [Theory]
+    [InlineData("--reference", "nonsense", "difference.invalid-reference")]
+    [InlineData("--text", "not-a-guid", "difference.invalid-text")]
+    public void TheTextAndReferenceFlagsReachTheSharedCommandAndAreCheckedThere(string flag, string value, string code)
+    {
+        var (exitCode, text) = RunShow(flag, value);
+
+        Assert.NotEqual(0, exitCode);
+        Assert.Contains(code, text, StringComparison.Ordinal);
+    }
+
+    [Theory]
     [InlineData("--occurrence-offset", "1")]
     [InlineData("--occurrence-limit", "10")]
     public void PlaceFlagsWithoutAWordAreRefusedInsteadOfIgnored(string flag, string value)
@@ -90,5 +101,58 @@ public sealed class DifferenceShowFlagTests
         Assert.Contains("line 4, word 1", rendered.Output);
         Assert.Contains("line 9, word 3", rendered.Output);
         Assert.Contains("--occurrence-offset 2", rendered.Output);
+    }
+
+    private static ProposalDifferenceSummary SummaryOf(string id, string reference, string title)
+    {
+        var pin = new ProposalDifferenceSidePin("1", "s", "g", "sel", "s", "tok", "1");
+        return new ProposalDifferenceSummary(id, "proposal/1", "job/1", "a/b", "a/a", "text/" + id, title,
+            "baseline/1", new ProposalDifferencePolicy(), 1, 3, 0, 1, 0, 0, [], [], "pangloss", null, pin, pin, [], 0,
+            [], "2026-10-31T00:00:00Z", reference);
+    }
+
+    [Fact]
+    public void TheRenderingListsEverySavedDifferenceWithItsTextAndReferenceAndMarksTheShownOne()
+    {
+        var shown = SummaryOf("difference/1", "human", "Genesis 1");
+        var response = new ProposalDifferenceResponse(shown, [], 0, null, true, null, null,
+            [new("difference/1", "text/difference/1", "Genesis 1", "human", "2026-10-31T00:00:00Z", true),
+             new("difference/2", "text/difference/2", "Exodus 1", "source-validated", "2026-10-30T00:00:00Z", false)], 2);
+
+        var rendered = CommandTextRenderer.Render(CommandOutcome<ProposalDifferenceResponse>.Success(response), asJson: false);
+
+        Assert.Contains("Saved Differences of this Proposal", rendered.Output);
+        Assert.Contains("* Genesis 1", rendered.Output);
+        Assert.Contains("Exodus 1", rendered.Output);
+        Assert.Contains("source-validated", rendered.Output);
+        Assert.Contains("difference/2", rendered.Output);
+        Assert.Contains("summary only", rendered.Output);
+        Assert.Contains("made 2026-10-31T00:00:00Z", rendered.Output);
+        Assert.Contains("made 2026-10-30T00:00:00Z", rendered.Output);
+        Assert.DoesNotContain("could not be read", rendered.Output);
+    }
+
+    [Fact]
+    public void TheRenderingSaysHowManySavedDifferencesCouldNotBeReadAndStillListsTheRest()
+    {
+        var response = new ProposalDifferenceResponse(SummaryOf("difference/1", "human", "Genesis 1"), [], 0, null, true, null,
+            null, [new("difference/1", "text/difference/1", "Genesis 1", "human", "2026-10-31T00:00:00Z", true)], 3, 2);
+
+        var rendered = CommandTextRenderer.Render(CommandOutcome<ProposalDifferenceResponse>.Success(response), asJson: false);
+
+        Assert.Contains("* Genesis 1", rendered.Output);
+        Assert.Contains("2 saved Differences of this Proposal could not be read and are not listed", rendered.Output);
+    }
+
+    [Fact]
+    public void ASummaryOnlyDifferenceSaysDecidedOrDeferredAndOffersToMakeItAgain()
+    {
+        var response = new ProposalDifferenceResponse(SummaryOf("difference/1", "human", "Genesis 1"), [], 0, null, false);
+
+        var rendered = CommandTextRenderer.Render(CommandOutcome<ProposalDifferenceResponse>.Success(response), asJson: false);
+
+        Assert.Contains("decided or deferred", rendered.Output);
+        Assert.Contains("deferred", rendered.Output);
+        Assert.Contains("again", rendered.Output, StringComparison.OrdinalIgnoreCase);
     }
 }

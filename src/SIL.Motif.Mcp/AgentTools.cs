@@ -930,8 +930,13 @@ internal static class AgentTools
                 ("limit", Schema.Integer("Page size, maximum 200.", 1, 200), false)), true, true, false, true,
             (c, a, ct) => Task.FromResult(TrialResults.Read(c, a))),
         new("motif_proposal_difference", string.Empty, AgentClass.Read,
-            Schema.Object(("proposal", Schema.String("Proposal whose newest saved Difference to read."), false),
+            Schema.Object(("proposal", Schema.String("Proposal whose newest saved Difference to read; the response lists every " +
+                    "Difference the Proposal has saved with its Text and reference."), false),
                 ("difference", Schema.String("Saved Difference id; takes precedence over proposal."), false),
+                ("text", Schema.String("With a proposal, read its Difference for this Text GUID."), false),
+                ("reference", Schema.String("With a proposal, read its Difference against these decisions.",
+                    [SIL.Motif.Contract.Requests.ProposalDifferenceReferences.Human,
+                     SIL.Motif.Contract.Requests.ProposalDifferenceReferences.SourceValidated]), false),
                 ("could_be_bad", Schema.Boolean("List only words filed under a could-be-bad category."), false),
                 ("bucket", Schema.String("Category code that listed words must have.",
                     Enum.GetValues<SIL.Motif.Contract.Responses.ProposalDifferenceBucket>()
@@ -949,7 +954,8 @@ internal static class AgentTools
             (c, a, ct) => Task.FromResult(ToolOutcome.From(ProposalDifferenceCommands.Show(new ProposalDifferenceShowRequest(
                 c.ProjectPath, a.Optional("proposal"), a.Optional("difference"), a.Flag("could_be_bad"), a.Optional("bucket"),
                 a.Optional("before_state"), a.Optional("after_state"), a.Int("offset", 0), a.Int("limit", 25),
-                a.Optional("limitation"), a.Optional("word"), a.OptionalInt("occurrence_offset"), a.OptionalInt("occurrence_limit"))))))
+                a.Optional("limitation"), a.Optional("word"), a.OptionalInt("occurrence_offset"), a.OptionalInt("occurrence_limit"),
+                a.Optional("text"), a.Optional("reference"))))))
             { Requests = [typeof(ProposalDifferenceShowRequest)] },
         new("motif_difference_produce", string.Empty, AgentClass.Evaluate,
             Schema.Object(("proposal", Schema.String("Proposal whose completed Trial is compared."), true),
@@ -963,8 +969,8 @@ internal static class AgentTools
         new("motif_difference_produce_source_validated",
             "Compare a Trial with source-validated decisions. Compares a completed Trial's parses with the decisions a " +
             "named non-human agent staged from cited sources through Applied Proposals, never a person's, and saves " +
-            "the result. A Proposal keeps one Difference per Text, so this replaces a saved comparison against " +
-            "human decisions. It reads stored evidence, runs no parser and never blocks an Apply.",
+            "the result. A Proposal keeps one Difference per Text and reference, so this sits beside a saved " +
+            "comparison against human decisions and replaces only an earlier source-validated one. It reads stored evidence, runs no parser and never blocks an Apply.",
             AgentClass.Evaluate,
             Schema.Object(("proposal", Schema.String("Proposal whose completed Trial is compared."), true),
                 ("text", Schema.String("GUID of the Text whose source-validated decisions are compared."), true),

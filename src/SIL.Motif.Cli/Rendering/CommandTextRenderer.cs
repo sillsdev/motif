@@ -908,9 +908,22 @@ public static class CommandTextRenderer
         foreach (var limit in summary.Limitations)
             text.AppendLine($"  Limit {System.Text.Json.JsonSerializer.Serialize(limit.Limitation).Trim('"')}: " +
                 $"{CountLabel(limit.Words, "word", "words")}, {CountLabel(limit.Occurrences, "occurrence", "occurrences")}");
+        if (response.Saved is { Count: > 0 } saved)
+        {
+            text.AppendLine($"  Saved Differences of this Proposal: {saved.Count:N0}" +
+                (response.SavedTotal > saved.Count ? $" of {response.SavedTotal:N0}" : ""));
+            foreach (var other in saved)
+                text.AppendLine($"    {(other.DifferenceId == summary.DifferenceId ? "*" : "-")} {other.TextTitle} ({other.TextId}), " +
+                    $"{(other.Reference == ProposalDifferenceReferences.SourceValidated ? "source-validated" : "human")} decisions, " +
+                    $"made {other.CreatedUtc}, {other.DifferenceId}{(other.WordDetailKept ? "" : ", summary only")}");
+        }
+        if (response.SavedUnreadable > 0)
+            text.AppendLine($"  {CountLabel(response.SavedUnreadable, "saved Difference", "saved Differences")} of this " +
+                "Proposal could not be read and " + (response.SavedUnreadable == 1 ? "is" : "are") + " not listed");
         if (!response.WordDetailKept)
         {
-            text.AppendLine("  Word detail is no longer kept: the Proposal was decided, only this summary remains");
+            text.AppendLine("  Word detail is no longer kept: the Proposal was decided or deferred, only this summary remains");
+            text.AppendLine("  A deferred Proposal can make the Difference again to see its words: motif difference produce");
             return text.ToString();
         }
         text.AppendLine($"  Showing {response.Words.Count} of {response.MatchingWords} matching words");

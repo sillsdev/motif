@@ -25,9 +25,12 @@ public sealed partial class ProposalDifferenceViewModel
         Maker.Refresh();
     }
 
-    /// <summary>Whether a Difference can be made now: offered, undecided, and not being read.</summary>
-    public bool OffersMake => _offer == DifferenceOffer.Available && WordDetailKept &&
+    /// <summary>Whether a Difference can be made now: offered, not decided, and not being read.</summary>
+    public bool OffersMake => _offer is DifferenceOffer.Available or DifferenceOffer.Deferred &&
         State is ProposalDifferenceState.Absent or ProposalDifferenceState.Shown;
+
+    /// <summary>Whether the section says the words are gone and making the Difference again brings them back.</summary>
+    public bool ShowsRemakeHint => IsSummaryOnly && OffersMake;
 
     /// <summary>Whether the Text list and the Make Difference button are shown.</summary>
     public bool ShowsMakeControls => OffersMake && TextChoices.Count > 0;
@@ -44,8 +47,8 @@ public sealed partial class ProposalDifferenceViewModel
     /// <summary>Whether the note that a decided Proposal can no longer have a Difference is shown.</summary>
     public bool ShowsDecidedNote => State == ProposalDifferenceState.Absent && _offer == DifferenceOffer.Decided;
 
-    /// <summary>The button's words: making it again only while the chosen Text is the one the shown Difference compares.</summary>
-    public string MakeLabel => State == ProposalDifferenceState.Shown && ShownTextIsChosen()
+    /// <summary>The button's words: making it again only while the Proposal has a Difference for the chosen Text made against people's decisions.</summary>
+    public string MakeLabel => State == ProposalDifferenceState.Shown && SavedForChosenText()
         ? MotifAppStrings.ProposalDifferenceMakeAgain : MotifAppStrings.ProposalDifferenceMake;
 
     /// <summary>
@@ -60,10 +63,15 @@ public sealed partial class ProposalDifferenceViewModel
         RaiseMake();
     }
 
-    /// <summary>Whether <paramref name="offer"/> moves the Proposal into or out of the decided state.</summary>
+    /// <summary>
+    /// Whether <paramref name="offer"/> moves the Proposal into, out of or between states that keep no word detail, as
+    /// deferred to decided does when the words made again are dropped.
+    /// </summary>
     /// <param name="offer">The offer the Proposal's card now makes.</param>
     public bool IsDecidedChangedBy(DifferenceOffer offer) =>
-        (_offer == DifferenceOffer.Decided) != (offer == DifferenceOffer.Decided);
+        _offer != offer && (KeepsNoWords(_offer) || KeepsNoWords(offer));
+
+    private static bool KeepsNoWords(DifferenceOffer offer) => offer is DifferenceOffer.Decided or DifferenceOffer.Deferred;
 
     /// <summary>Cancels a run in progress and returns once it has ended, so no command outlives the project.</summary>
     public Task StopAsync() => Maker.DisposeAsync().AsTask();
@@ -76,6 +84,11 @@ public sealed partial class ProposalDifferenceViewModel
         if (SelectedText is { } chosen && choices.Contains(chosen)) return;
         SelectedText = ChoiceOfSummary(choices) ?? choices.FirstOrDefault();
     }
+
+    // The window makes a Difference against people's decisions only, so only a saved one of those is made again.
+    private bool SavedForChosenText() => SelectedText is { } chosen &&
+        SavedChoices.Any(saved => saved.Reference == ProposalDifferenceReferences.Human &&
+            string.Equals(saved.TextId, chosen.Id.ToString("D"), StringComparison.Ordinal));
 
     private bool ShownTextIsChosen() => SelectedText is { } chosen && ChoiceOfSummary(TextChoices) == chosen;
 
@@ -103,6 +116,7 @@ public sealed partial class ProposalDifferenceViewModel
         OnPropertyChanged(nameof(ShowsMakeAdvice));
         OnPropertyChanged(nameof(ShowsNotTriedNote));
         OnPropertyChanged(nameof(ShowsDecidedNote));
+        OnPropertyChanged(nameof(ShowsRemakeHint));
         Maker.Refresh();
     }
 

@@ -73,6 +73,22 @@
       </StackPanel>
       <views:RefusalBlock DataContext="{Binding ShownRefusal}" />
       <StackPanel IsVisible="{Binding IsShown}" Spacing="{DynamicResource Intent.Space.Compact}">
+        <StackPanel x:Name="DifferenceSavedChoices" IsVisible="{Binding ShowsSavedChoices}"
+                    Spacing="{DynamicResource Intent.Space.Compact}">
+          <TextBlock Classes="muted" Text="{x:Static app:MotifAppStrings.ProposalDifferenceSavedTitle}" />
+          <ComboBox x:Name="DifferenceSaved" ItemsSource="{Binding SavedChoices}" SelectedItem="{Binding SelectedSaved}"
+                    AutomationProperties.Name="{x:Static app:MotifAppStrings.ProposalDifferenceSavedAccessibleName}"
+                    AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalDifferenceSaved}">
+            <ComboBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:DifferenceSavedChoice">
+                <TextBlock Text="{Binding Label}" TextTrimming="CharacterEllipsis" />
+              </DataTemplate>
+            </ComboBox.ItemTemplate>
+          </ComboBox>
+        </StackPanel>
+        <views:CopyableTextBlock x:Name="DifferenceSavedNote" Classes="muted" TextWrapping="Wrap"
+                                 Text="{Binding SavedNoteText}" IsVisible="{Binding HasSavedNote}" />
+        <views:CopyableTextBlock x:Name="DifferenceBasis" TextWrapping="Wrap" Text="{Binding BasisText}" />
         <views:CopyableTextBlock x:Name="DifferenceHeadline" Classes="inspectorSectionTitle" TextWrapping="Wrap"
                                  Text="{Binding HeadlineText}" />
         <views:CopyableTextBlock x:Name="DifferenceCompared" TextWrapping="Wrap" Text="{Binding ComparedText}" />
@@ -83,6 +99,9 @@
         <views:CopyableTextBlock x:Name="DifferenceDetailRemoved" Classes="muted" TextWrapping="Wrap"
                                  Text="{x:Static app:MotifAppStrings.ProposalDifferenceDetailRemoved}"
                                  IsVisible="{Binding IsSummaryOnly}" />
+        <views:CopyableTextBlock x:Name="DifferenceRemakeHint" Classes="muted" TextWrapping="Wrap"
+                                 Text="{x:Static app:MotifAppStrings.ProposalDifferenceRemakeHint}"
+                                 IsVisible="{Binding ShowsRemakeHint}" />
         <TextBlock Classes="muted" Text="{x:Static app:MotifAppStrings.ProposalDifferenceCheckTitle}" />
         <ItemsControl x:Name="DifferenceCheckChips" ItemsSource="{Binding CheckChips}"
                       ItemsPanel="{StaticResource DifferenceChipsPanel}"

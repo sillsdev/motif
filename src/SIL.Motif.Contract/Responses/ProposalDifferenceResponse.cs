@@ -188,13 +188,27 @@ public sealed record ProposalDifferenceOccurrencePlace(
 public sealed record ProposalDifferenceOccurrencePage(
     string Word, IReadOnlyList<ProposalDifferenceOccurrencePlace> Places, int Total, int? NextOffset);
 
+/// <summary>
+/// One of a Proposal's saved Differences, named by the Text and reference it belongs to; a Proposal keeps one per
+/// Text and reference, so several sit side by side.
+/// </summary>
+/// <param name="DifferenceId">The id that reads it.</param>
+/// <param name="TextId">The GUID of the Text it compares.</param>
+/// <param name="TextTitle">The Text's title when it was made.</param>
+/// <param name="Reference"><c>human</c> or <c>source-validated</c>.</param>
+/// <param name="CreatedUtc">When it was made.</param>
+/// <param name="WordDetailKept">False once its word detail was dropped and only the summary is left.</param>
+public sealed record ProposalDifferenceSaved(
+    string DifferenceId, string TextId, string TextTitle, string Reference, string CreatedUtc, bool WordDetailKept);
+
 /// <summary>A saved Difference's summary and one page of its words.</summary>
 /// <param name="Summary">The totals, matrix and category counts, always first.</param>
 /// <param name="Words">The requested page of matching words, ordered by word.</param>
 /// <param name="MatchingWords">How many words match the filter, before paging.</param>
 /// <param name="NextOffset">The offset of the next page, or null at the end.</param>
 /// <param name="WordDetailKept">
-/// False once the Proposal has been decided: the summary stays, the word detail is gone, and <paramref name="Words"/> is empty.
+/// False once the Proposal has been decided or deferred: the summary stays, the word detail is gone, and
+/// <paramref name="Words"/> is empty. A deferred Proposal can make the Difference again to see its words.
 /// </param>
 /// <param name="Occurrences">
 /// The requested word's Text places, only when a word was asked for and the word detail is kept; otherwise null.
@@ -203,7 +217,17 @@ public sealed record ProposalDifferenceOccurrencePage(
 /// For a source-validated Difference, the Applied Proposals that could not be read just now; their decisions are
 /// not counted or shown. It is read each time and never stored.
 /// </param>
+/// <param name="Saved">
+/// Every Difference the Proposal has saved, newest first and bounded to the first 50, each named by its Text and
+/// reference, so the one shown can be told from the others. Null when the response was not read for a Proposal.
+/// </param>
+/// <param name="SavedTotal">How many Differences the Proposal has saved, before the bound on <paramref name="Saved"/>.</param>
+/// <param name="SavedUnreadable">
+/// How many of the listed Differences could not be read and are left out of <paramref name="Saved"/>; the one shown
+/// is never among them.
+/// </param>
 public sealed record ProposalDifferenceResponse(
     ProposalDifferenceSummary Summary, IReadOnlyList<ProposalDifferenceWord> Words, int MatchingWords,
     int? NextOffset, bool WordDetailKept, ProposalDifferenceOccurrencePage? Occurrences = null,
-    IReadOnlyList<ProposalDifferenceUnreadableEvidence>? UnreadableEvidence = null);
+    IReadOnlyList<ProposalDifferenceUnreadableEvidence>? UnreadableEvidence = null,
+    IReadOnlyList<ProposalDifferenceSaved>? Saved = null, int SavedTotal = 0, int SavedUnreadable = 0);

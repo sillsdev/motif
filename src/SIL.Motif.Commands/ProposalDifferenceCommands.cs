@@ -60,25 +60,24 @@ public static class ProposalDifferenceCommands
         ProduceCore(request, reference, progress, cancellationToken);
 
     /// <summary>
-    /// The window's Make Difference: compared with the decisions the Proposal's saved Difference for the Text was
-    /// read against, or a person's when it has none, resolved inside the store run so a write by another process
-    /// can never be replaced by the other reference.
+    /// The window's Make Difference: against a person's decisions, replacing only the Proposal's saved Difference for
+    /// the Text and that reference, so a Difference made against source-validated decisions is never touched.
     /// </summary>
     /// <param name="request">The Proposal, the Text and, optionally, one completed Trial.</param>
     /// <param name="progress">Told how far the comparison has got.</param>
     /// <param name="cancellationToken">Stops the comparison; a cancelled run saves nothing.</param>
     public static CommandOutcome<ProposalDifferenceResponse> Produce(ProposalDifferenceProduceRequest request,
         IProgress<AssessmentProgress>? progress, CancellationToken cancellationToken) =>
-        ProduceCore(request, null, progress, cancellationToken);
+        ProduceCore(request, ProposalDifferenceReferences.Human, progress, cancellationToken);
 
     private static CommandOutcome<ProposalDifferenceResponse> ProduceCore(ProposalDifferenceProduceRequest request,
-        string? reference, IProgress<AssessmentProgress>? progress, CancellationToken cancellationToken)
+        string reference, IProgress<AssessmentProgress>? progress, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
-        if (reference is not (null or ProposalDifferenceReferences.Human or ProposalDifferenceReferences.SourceValidated))
+        if (!IsReference(reference))
             return Refuse("difference.invalid-reference", FailureReason.InvalidArgument,
                 "The reference is human or source-validated. To read a Proposal against both, produce a Difference " +
-                "against each in turn; a Proposal keeps one Difference per Text, so the newer replaces the older.");
+                "against each in turn; a Proposal keeps one Difference per Text and reference, so both are kept.");
         if (cancellationToken.IsCancellationRequested) return Cancelled();
         return ProjectStoreCommand.Run(request.ProjectPath, MotifProductVersion.CurrentText, (database, project) =>
         {
@@ -101,12 +100,11 @@ public static class ProposalDifferenceCommands
                     "The Trial did not complete. Trial the Proposal again before comparing it.");
 
             var saved = new ProposalDifferenceRepository(database);
-            var existing = saved.FindFor(request.ProposalId, textId.ToString("D"));
-            var resolved = reference ?? existing?.Summary.Reference ?? ProposalDifferenceReferences.Human;
-            var sourceValidated = resolved == ProposalDifferenceReferences.SourceValidated
+            var existing = saved.FindFor(request.ProposalId, textId.ToString("D"), reference);
+            var sourceValidated = reference == ProposalDifferenceReferences.SourceValidated
                 ? SourceValidatedDecisions.Read(database) : null;
             var decided = saved.ProposalIsDecided(request.ProposalId);
-            if (existing is not null && IsSameComparison(existing.Summary, trial, resolved, sourceValidated?.Digest) &&
+            if (existing is not null && IsSameComparison(existing.Summary, trial, reference, sourceValidated?.Digest) &&
                 (existing.WordDetailKept || decided))
                 return Show(database, existing.Summary.DifferenceId, new ProposalDifferenceFilter(), 0, 25);
             if (decided) return Decided();
@@ -151,7 +149,7 @@ public static class ProposalDifferenceCommands
             catch (DifferenceRefusalException refusal) { return CommandOutcome<ProposalDifferenceResponse>.Refused(refusal.Refusal); }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { return Cancelled(); }
             var summary = ProposalDifferenceSummaries.Create(built, trial.JobId, request.ProposalId, before, after, text,
-                JsonSerializer.Serialize(read.Baseline.Token, Json), resolved, sourceValidated?.Digest, sourceValidated?.Unreadable);
+                JsonSerializer.Serialize(read.Baseline.Token, Json), reference, sourceValidated?.Digest, sourceValidated?.Unreadable);
             if (cancellationToken.IsCancellationRequested) return Cancelled();
             // Publish checks the token once more just before it commits, and rolls back when it was cancelled.
             try { saved.Publish(new NewProposalDifference(summary, built.Words), cancellationToken); }
@@ -160,6 +158,9 @@ public static class ProposalDifferenceCommands
             return Show(database, summary.DifferenceId, new ProposalDifferenceFilter(), 0, 25);
         });
     }
+
+    private static bool IsReference(string? reference) =>
+        reference is ProposalDifferenceReferences.Human or ProposalDifferenceReferences.SourceValidated;
 
     private static CommandOutcome<ProposalDifferenceResponse> Cancelled() =>
         Refuse(RefusalCodes.DifferenceCancelled, FailureReason.Cancelled,
@@ -236,6 +237,20 @@ public static class ProposalDifferenceCommands
                     "Give the word to show places for, or leave the word out.");
             word = Nfd(trimmed);
         }
+        string? textFilter = null;
+        if (request.TextId is not null)
+        {
+            if (!Guid.TryParse(request.TextId, out var narrowedText))
+                return Refuse("difference.invalid-text", FailureReason.InvalidArgument,
+                    "The Text id is not a GUID. Use an id that `motif texts list` shows.");
+            textFilter = narrowedText.ToString("D");
+        }
+        if (request.Reference is not null && !IsReference(request.Reference))
+            return Refuse("difference.invalid-reference", FailureReason.InvalidArgument,
+                "The reference is human or source-validated.");
+        if ((request.TextId is not null || request.Reference is not null) && request.ProposalId is null)
+            return Refuse(RefusalCodes.DifferenceTextNeedsProposal, FailureReason.InvalidArgument,
+                "Text and reference choose among one Proposal's saved Differences, so give the Proposal as well.");
         foreach (var state in new[] { request.BeforeState, request.AfterState })
             if (state is not null && !IsStateName(state))
                 return Refuse("difference.invalid-state", FailureReason.InvalidArgument,
@@ -244,7 +259,13 @@ public static class ProposalDifferenceCommands
         return ProjectStoreCommand.Run(request.ProjectPath, MotifProductVersion.CurrentText, (database, _) =>
         {
             var repository = new ProposalDifferenceRepository(database);
-            var id = request.DifferenceId ?? (request.ProposalId is null ? null : repository.LatestFor(request.ProposalId));
+            var id = request.DifferenceId ?? (request.ProposalId is null ? null
+                : repository.LatestFor(request.ProposalId, textFilter, request.Reference));
+            if (id is null && request.ProposalId is not null && (textFilter ?? request.Reference) is not null &&
+                repository.ListFor(request.ProposalId).Total > 0)
+                return Refuse("difference.none", FailureReason.NotFound,
+                    "The Proposal has no saved Difference for that Text and reference. Leave them out to read the newest, " +
+                    "or read one of its other saved Differences by Text, reference or id.");
             if (id is null && request.ProposalId is not null && repository.ProposalIsDecided(request.ProposalId))
                 return Refuse("difference.none", FailureReason.NotFound,
                     "This Proposal was decided and has no saved Difference, and a new one cannot be made for a decided Proposal.");
@@ -275,8 +296,10 @@ public static class ProposalDifferenceCommands
             words = decisions.WithEvidence(words);
             if (decisions.Unreadable.Count > 0) unreadable = decisions.Unreadable;
         }
+        var list = new ProposalDifferenceRepository(database).ListFor(page.Saved.Summary.ProposalId);
         return CommandOutcome<ProposalDifferenceResponse>.Success(new ProposalDifferenceResponse(
-            page.Saved.Summary, words, page.Matching, next, page.Saved.WordDetailKept, page.Occurrences, unreadable));
+            page.Saved.Summary, words, page.Matching, next, page.Saved.WordDetailKept, page.Occurrences, unreadable,
+            list.Items, list.Total, list.Unreadable));
     }
 
     private static CommandOutcome<ProposalDifferenceResponse> Refuse(string code, FailureReason reason, string message) =>

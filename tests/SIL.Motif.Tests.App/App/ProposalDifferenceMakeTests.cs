@@ -1,3 +1,4 @@
+using System.Globalization;
 using SIL.Motif.App;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.Contract.Commands;
@@ -447,12 +448,120 @@ public sealed class ProposalDifferenceMakeTests
         var harness = new Harness(alreadyMade: true);
         harness.Fixture.WordDetailKept = false;
 
-        await harness.Model.LoadAsync(Project, "proposal/one");
+        await harness.Model.LoadAsync(Project, "proposal/one", offer: DifferenceOffer.Decided);
 
         Assert.Equal(ProposalDifferenceState.Shown, harness.Model.State);
         Assert.False(harness.Model.OffersMake);
         Assert.False(harness.Model.ShowsMakeControls);
+        Assert.False(harness.Model.ShowsRemakeHint);
         Assert.False(harness.Model.Maker.RunCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public async Task ADeferredProposalShowsItsSummaryAndOffersToMakeTheDifferenceAgainToSeeWords()
+    {
+        var harness = new Harness(alreadyMade: true);
+        harness.Fixture.WordDetailKept = false;
+
+        await harness.Model.LoadAsync(Project, "proposal/one", offer: DifferenceOffer.Deferred);
+
+        Assert.Equal(ProposalDifferenceState.Shown, harness.Model.State);
+        Assert.True(harness.Model.IsSummaryOnly);
+        Assert.Empty(harness.Model.Words);
+        Assert.True(harness.Model.OffersMake);
+        Assert.True(harness.Model.ShowsRemakeHint);
+        Assert.True(harness.Model.ShowsMakeControls);
+        Assert.Equal("Make Difference Again", harness.Model.MakeLabel);
+        Assert.True(harness.Model.Maker.RunCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public async Task AnUndecidedProposalWithWordsShowsNoRemakeHint()
+    {
+        var harness = new Harness(alreadyMade: true);
+
+        await harness.Model.LoadAsync(Project, "proposal/one");
+
+        Assert.False(harness.Model.IsSummaryOnly);
+        Assert.False(harness.Model.ShowsRemakeHint);
+    }
+
+    [Fact]
+    public async Task TheSavedDifferencesAreListedWithTheirTextAndReferenceAndChoosingOneReadsIt()
+    {
+        var harness = new Harness(alreadyMade: true);
+        harness.Fixture.SavedOthers.Add(new ProposalDifferenceSaved("difference/two", ExodusId.ToString("D"),
+            "Exodus 1", ProposalDifferenceReferences.SourceValidated, "2026-10-30T00:00:00Z", true));
+        harness.Fixture.SavedNotListed = 3;
+
+        await harness.Model.LoadAsync(Project, "proposal/one");
+
+        Assert.True(harness.Model.ShowsSavedChoices);
+        Assert.Equal(2, harness.Model.SavedChoices.Count);
+        Assert.Contains("Genesis 1", harness.Model.SavedChoices[0].Label);
+        Assert.Contains("Exodus 1", harness.Model.SavedChoices[1].Label);
+        Assert.NotEqual(harness.Model.SavedChoices[0].Label, harness.Model.SavedChoices[1].Label);
+        Assert.Equal("difference/one", harness.Model.SelectedSaved!.DifferenceId);
+        Assert.True(harness.Model.HasSavedNote);
+        Assert.Contains("3", harness.Model.SavedNoteText);
+        Assert.Contains("Genesis 1", harness.Model.BasisText);
+    }
+
+    [Fact]
+    public async Task TheSavedListTellsDifferencesOfTheSameTextApartByWhenTheyWereMade()
+    {
+        var harness = new Harness(alreadyMade: true);
+        harness.Fixture.SavedOthers.Add(new ProposalDifferenceSaved("difference/two", "text/one", "Genesis 1",
+            ProposalDifferenceReferences.Human, "2026-09-30T08:30:00Z", true));
+
+        await harness.Model.LoadAsync(Project, "proposal/one");
+
+        var labels = harness.Model.SavedChoices.Select(choice => choice.Label).ToArray();
+        Assert.Equal(2, labels.Distinct().Count());
+        Assert.Contains(DateTimeOffset.Parse("2026-10-31T00:00:00Z").ToLocalTime().ToString("g", CultureInfo.CurrentCulture),
+            labels[0]);
+        Assert.Contains(DateTimeOffset.Parse("2026-09-30T08:30:00Z").ToLocalTime().ToString("g", CultureInfo.CurrentCulture),
+            labels[1]);
+        Assert.DoesNotContain("text/one", labels[0]);
+    }
+
+    [Fact]
+    public async Task TwoTextsWithTheSameTitleAreToldApartByTheStartOfTheirId()
+    {
+        var harness = new Harness(alreadyMade: true);
+        harness.Fixture.TextId = "aaaaaaaa-1111-1111-1111-111111111111";
+        harness.Fixture.SavedOthers.Add(new ProposalDifferenceSaved("difference/two", "bbbbbbbb-2222-2222-2222-222222222222",
+            "Genesis 1", ProposalDifferenceReferences.Human, "2026-10-31T00:00:00Z", true));
+
+        await harness.Model.LoadAsync(Project, "proposal/one");
+
+        Assert.Contains("aaaaaaaa", harness.Model.SavedChoices[0].Label);
+        Assert.Contains("bbbbbbbb", harness.Model.SavedChoices[1].Label);
+    }
+
+    [Fact]
+    public async Task ASavedDifferenceThatCouldNotBeReadIsCountedInTheNoteBesideTheOnesListed()
+    {
+        var harness = new Harness(alreadyMade: true);
+        harness.Fixture.SavedUnreadable = 1;
+
+        await harness.Model.LoadAsync(Project, "proposal/one");
+
+        Assert.False(harness.Model.ShowsSavedChoices);
+        Assert.True(harness.Model.HasSavedNote);
+        Assert.Contains("could not be read", harness.Model.SavedNoteText);
+        Assert.Equal(0, harness.Model.SavedNotListed);
+    }
+
+    [Fact]
+    public async Task OneSavedDifferenceShowsNoListButStillNamesItsTextAndReference()
+    {
+        var harness = new Harness(alreadyMade: true);
+
+        await harness.Model.LoadAsync(Project, "proposal/one");
+
+        Assert.False(harness.Model.ShowsSavedChoices);
+        Assert.Contains("Genesis 1", harness.Model.BasisText);
     }
 
     [Fact]
