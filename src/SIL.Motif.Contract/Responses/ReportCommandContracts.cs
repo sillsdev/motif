@@ -56,8 +56,9 @@ public sealed record ParsimonyReportResponse(
 /// <param name="JobId">The job that stored them.</param>
 /// <param name="BundleId">The bundle every Report pins.</param>
 /// <param name="Reports">One stored Report per measure.</param>
+/// <param name="Note">A sentence the caller shows once, such as a group left out; null when there is none.</param>
 public sealed record ParsimonyReportSetResponse(string JobId, string BundleId,
-    IReadOnlyList<ParsimonyReportResponse> Reports);
+    IReadOnlyList<ParsimonyReportResponse> Reports, string? Note = null);
 
 /// <summary>The newest stored Parsimony Report, named by its id and the Parsimony bundle its inputs were measured in.</summary>
 public sealed record ParsimonyLatestReportResponse(string ReportId, string BundleId);

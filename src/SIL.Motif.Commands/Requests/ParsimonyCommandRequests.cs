@@ -12,6 +12,15 @@ public sealed record EnqueueParsimonyReportRequest(string FwDataPath, string Pro
     ParsimonyEvidenceScopeKind EvidenceScope = ParsimonyEvidenceScopeKind.DefaultSelection,
     IReadOnlyList<string>? AssessmentIds = null);
 
+/// <summary>Selects a Parsimony group, or one measure of it, to run over the project's current Baseline.</summary>
+/// <param name="FwDataPath">The recorded project path.</param>
+/// <param name="ProductVersion">The Motif product version writing the store.</param>
+/// <param name="Group">The group wire name: <c>grammar</c>, <c>text</c> or <c>all</c>.</param>
+/// <param name="MeasureId">One measure of that group, or null for the whole group.</param>
+/// <param name="AssessmentIds">The exact retained Assessments supplying evidence, when supplied.</param>
+public sealed record EnqueueParsimonyGroupRequest(string FwDataPath, string ProductVersion, string Group,
+    string? MeasureId = null, IReadOnlyList<string>? AssessmentIds = null);
+
 /// <summary>Selects a measure over the candidate grammar from a completed Dry Run.</summary>
 /// <param name="FwDataPath">The recorded project path.</param>
 /// <param name="ProductVersion">The Motif product version writing the store.</param>

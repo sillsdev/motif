@@ -1,6 +1,7 @@
 using System.Text.Json;
 using SIL.Motif.Contract.Baselines;
 using SIL.LCModel;
+using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Commands.Retirement;
@@ -102,6 +103,95 @@ public static class ParsimonyCommands
                 DateTimeOffset.UtcNow.ToString("O", System.Globalization.CultureInfo.InvariantCulture));
             return CommandOutcome<JobEnqueuedResponse>.Success(
                 new JobEnqueuedResponse(job.JobId, job.Kind, workspaceKey));
+        });
+    }
+
+    /// <summary>The sentence shown once when the Text group was left out of an all-groups run.</summary>
+    public const string TextGroupSkippedNote =
+        "The Text group was not run: no Parsimony Selection is saved. Choose Texts with " +
+        "`motif selection set-parsimony --project <fwdata> --name <name> --texts <guid,...>`, then run " +
+        "`motif parsimony --group all` again; the saved set is reused on every run.";
+
+    /// <summary>
+    /// Queues one Parsimony group over the current Baseline, capturing a Baseline first when none is current.
+    /// The Grammar group never reads Texts; the Text group reads the saved Parsimony Selection.
+    /// </summary>
+    /// <param name="request">The group, and optionally one measure of it, to queue.</param>
+    /// <param name="parserPath">The parser the woken runner will use, recorded on the job; null records none.</param>
+    public static CommandOutcome<JobEnqueuedResponse> EnqueueGroup(EnqueueParsimonyGroupRequest request,
+        string? parserPath = null)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (!ParsimonyGroupRequests.TryParse(request.Group, out var group))
+            return CommandOutcome<JobEnqueuedResponse>.Refused(new Refusal(ParsimonyRefusalCodes.InvalidGroup,
+                FailureReason.InvalidArgument, "Group must be 'grammar', 'text' or 'all'."));
+        var refusal = ParsimonyAdmission.ResolveGroup(group, request.MeasureId, out var ids) ??
+            ParsimonyAdmission.CheckAssessmentIds(request.AssessmentIds);
+        if (refusal is not null) return CommandOutcome<JobEnqueuedResponse>.Refused(refusal);
+        var assessmentIds = request.AssessmentIds ?? [];
+        var needsTexts = ids.Any(id => MeasureCatalog.Find(id)!.Group == ParsimonyMeasureGroup.Text);
+
+        var hasBaseline = ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
+            CommandOutcome<string>.Success(new BaselineRepository(database)
+                .GetCurrentEvidence(ProjectWorkspaceKey.Compute(project)) is null ? string.Empty : "current"));
+        if (!hasBaseline.Succeeded) return CommandOutcome<JobEnqueuedResponse>.Refused(hasBaseline.Refusal!);
+        if (hasBaseline.Value!.Length == 0)
+        {
+            var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(request.FwDataPath));
+            if (!captured.Succeeded) return CommandOutcome<JobEnqueuedResponse>.Refused(captured.Refusal!);
+        }
+
+        return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
+        {
+            var workspaceKey = ProjectWorkspaceKey.Compute(project);
+            var current = new BaselineRepository(database).GetCurrentEvidence(workspaceKey);
+            if (current is null)
+                return CommandOutcome<JobEnqueuedResponse>.Refused(new Refusal(
+                    ParsimonyRefusalCodes.BaselineMissing, FailureReason.Refused,
+                    "No Baseline is recorded and one could not be captured."));
+            if (assessmentIds.Count > 0)
+            {
+                var invalid = ValidateAssessmentReferences(database, assessmentIds, current.Baseline.Token,
+                    BatchInvocationEvidence.DigestFile(current.Baseline.FwDataPath), proposalId: null,
+                    proposalIntentDigest: null);
+                if (invalid is not null)
+                    return CommandOutcome<JobEnqueuedResponse>.Refused(new Refusal(
+                        ParsimonyRefusalCodes.InvalidAssessment, FailureReason.Refused, invalid));
+            }
+            var scope = new ParsimonyScopeBinding(ParsimonyEvidenceScopeKind.ProjectApproved, null);
+            string? note = null;
+            if (needsTexts)
+            {
+                var saved = new NamedSelectionRepository(database).GetParsimony();
+                if (saved is null && group == ParsimonyGroupRequest.All && request.MeasureId is null)
+                {
+                    ids = ParsimonyAdmission.MeasureIdsFor(ParsimonyGroupRequest.Grammar);
+                    note = TextGroupSkippedNote;
+                }
+                else if (saved is null)
+                    return CommandOutcome<JobEnqueuedResponse>.Refused(new Refusal(
+                        ParsimonyRefusalCodes.ParsimonySelectionNotConfigured, FailureReason.Refused,
+                        "No Parsimony Selection is saved. Choose Texts with `motif selection set-parsimony " +
+                        "--project <fwdata> --name <name> --texts <guid,...>`; the set is reused on every run."));
+                else
+                {
+                    var resolved = CurrentEvidenceQuery.ResolveSelection(current.Summary, saved);
+                    if (!resolved.Succeeded) return CommandOutcome<JobEnqueuedResponse>.Refused(resolved.Refusal!);
+                    var selection = resolved.Value!.Selection;
+                    scope = new ParsimonyScopeBinding(ParsimonyEvidenceScopeKind.ParsimonySelection,
+                        new ParsimonySelectionSnapshot(selection.Name, saved.TextIds, saved.AddedWords,
+                            selection.Words, selection.Sha256));
+                }
+            }
+            var jobId = CanonicalId.Mint("job/").Value;
+            var input = JsonSerializer.Serialize(new ParsimonyJobInput(
+                ids.Count == 1 ? ids[0] : ParsimonyAdmission.AllMeasures, scope, assessmentIds, ids, note),
+                MotifJson.CreateOptions());
+            var job = new JobRepository(database).Create(jobId, workspaceKey,
+                SIL.Motif.Worker.Parsimony.ParsimonyJobHandler.JobKind, JobParserPin.Stamp(input, parserPath),
+                DateTimeOffset.UtcNow.ToString("O", System.Globalization.CultureInfo.InvariantCulture));
+            return CommandOutcome<JobEnqueuedResponse>.Success(
+                new JobEnqueuedResponse(job.JobId, job.Kind, workspaceKey, note));
         });
     }
 
@@ -374,8 +464,25 @@ public static class ParsimonyCommands
                 reports.Add(stored.Value!);
             }
             return CommandOutcome<ParsimonyReportSetResponse>.Success(new ParsimonyReportSetResponse(
-                request.JobId, reports[0].Inputs.BundleId, reports));
+                request.JobId, reports[0].Inputs.BundleId, reports, ReadJobNote(database, request.JobId)));
         });
+    }
+
+    // The note the group enqueue stored on the job, so a later wait shows it too.
+    private static string? ReadJobNote(MotifDatabase database, string jobId)
+    {
+        var input = new JobRepository(database).Get(jobId)?.InputJson;
+        if (input is null) return null;
+        try
+        {
+            using var document = JsonDocument.Parse(input);
+            return document.RootElement.TryGetProperty("note", out var note) && note.ValueKind == JsonValueKind.String
+                ? note.GetString() : null;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 
     private static Refusal JobFailed(string fwDataPath, string productVersion, string jobId, JobStatusResponse job)

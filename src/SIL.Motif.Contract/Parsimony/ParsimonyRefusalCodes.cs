@@ -22,6 +22,7 @@ public static class ParsimonyRefusalCodes
     public const string DryRunRequired = "parsimony.dry-run-required";
     public const string FindingAmbiguous = "parsimony.finding-ambiguous";
     public const string FindingNotInReport = "parsimony.finding-not-in-report";
+    public const string BaselineMissing = "parsimony.baseline-missing";
     public const string InvalidGroup = "parsimony.invalid-group";
     public const string MeasureOutsideGroup = "parsimony.measure-outside-group";
     public const string ParsimonySelectionNotConfigured = "parsimony.parsimony-selection-not-configured";

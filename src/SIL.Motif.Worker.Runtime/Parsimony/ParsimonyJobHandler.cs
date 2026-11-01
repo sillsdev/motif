@@ -69,13 +69,17 @@ public sealed class ParsimonyJobHandler
         ArgumentNullException.ThrowIfNull(claimed);
         var input = JsonSerializer.Deserialize<ParsimonyJobInput>(claimed.Job.InputJson, MotifJson.CreateOptions())
             ?? throw new InvalidDataException("The Parsimony job has no input.");
-        var admission = ParsimonyAdmission.CheckReport(input.MeasureId, input.ScopeBinding?.Kind, input.AssessmentIds,
-            MeasureRunner.Supports);
+        var admission = input.MeasureIds is { Count: > 0 } named
+            ? named.Select(id => ParsimonyAdmission.Check(id, input.ScopeBinding?.Kind, input.AssessmentIds,
+                MeasureRunner.Supports)).FirstOrDefault(refusal => refusal is not null)
+            : ParsimonyAdmission.CheckReport(input.MeasureId, input.ScopeBinding?.Kind, input.AssessmentIds,
+                MeasureRunner.Supports);
         if (admission is not null) return Failure(JobFailureCategory.Semantic, admission.Message);
         var scope = input.ScopeBinding ?? throw new InvalidDataException("The Parsimony job has no evidence scope.");
         var assessmentIds = input.AssessmentIds ?? [];
-        var measureIds = input.MeasureId == ParsimonyAdmission.AllMeasures
-            ? ParsimonyAdmission.SupportedMeasureIds() : [input.MeasureId];
+        var measureIds = input.MeasureIds is { Count: > 0 } listed ? listed
+            : input.MeasureId == ParsimonyAdmission.AllMeasures
+                ? ParsimonyAdmission.SupportedMeasureIds() : [input.MeasureId];
 
         var current = _baselines.GetCurrentEvidence(_projectKey);
         if (current is null)
@@ -276,4 +280,6 @@ public sealed class ParsimonyJobHandler
 public sealed record ParsimonyJobInput(
     [property: JsonPropertyName("measureId")] string MeasureId,
     [property: JsonPropertyName("scopeBinding")] ParsimonyScopeBinding? ScopeBinding,
-    [property: JsonPropertyName("assessmentIds")] IReadOnlyList<string>? AssessmentIds = null);
+    [property: JsonPropertyName("assessmentIds")] IReadOnlyList<string>? AssessmentIds = null,
+    [property: JsonPropertyName("measureIds")] IReadOnlyList<string>? MeasureIds = null,
+    [property: JsonPropertyName("note")] string? Note = null);

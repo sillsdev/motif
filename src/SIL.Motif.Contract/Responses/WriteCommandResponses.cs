@@ -39,4 +39,8 @@ public sealed record CorpusBundleAddedResponse(
     string AccuracyClaimsNote);
 
 /// <summary>A durable job just entered the queue.</summary>
-public sealed record JobEnqueuedResponse(string JobId, string Kind, string ProjectKey);
+/// <param name="JobId">The queued job.</param>
+/// <param name="Kind">The job kind.</param>
+/// <param name="ProjectKey">The project workspace the job belongs to.</param>
+/// <param name="Note">A sentence the caller shows once, such as a group left out; null when there is none.</param>
+public sealed record JobEnqueuedResponse(string JobId, string Kind, string ProjectKey, string? Note = null);
