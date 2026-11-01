@@ -42,6 +42,18 @@ internal static class OverviewMeasuresTextRenderer
                 "the project marks as an incorrect spelling");
     }
 
+    public static void AppendUntaggedStems(StringBuilder text, UntaggedStems? untagged)
+    {
+        if (untagged is not { Count: > 0 }) return;
+        text.AppendLine($"Stems      {Count(untagged.Count, "entry has", "entries have")} a stem not tagged with an inflection class");
+        text.AppendLine($"{Indent}Advice only: their category has no default class and an affix of it is restricted by class, " +
+            "so the parser gives these stems no class");
+        if (untagged.Top.Count > 0)
+            text.AppendLine($"{Indent}most affixes held back: " + string.Join(", ", untagged.Top.Select(stem =>
+                $"{stem.Headword} ({stem.Category}, {Count(stem.RestrictedAffixes, "affix", "affixes")}, {stem.EntryId:D})")) +
+                (untagged.Count > untagged.Top.Count ? $" (top {untagged.Top.Count} of {untagged.Count:N0})" : string.Empty));
+    }
+
     public static void AppendNotMeasured(StringBuilder text, OverviewTextCoverage coverage)
     {
         if (coverage.NotMeasuredWords > 0)

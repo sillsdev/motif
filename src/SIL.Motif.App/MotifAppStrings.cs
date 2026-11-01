@@ -3935,6 +3935,12 @@ public static class MotifAppStrings
 
     public static string OverviewBandPlacesFormat => Text("MotifApp.OverviewBandPlacesFormat");
 
+    public static string OverviewUntaggedStemsPattern => Text("MotifApp.OverviewUntaggedStemsPattern");
+
+    public static string OverviewUntaggedStemsDetail => Text("MotifApp.OverviewUntaggedStemsDetail");
+
+    public static string OverviewUntaggedStemsLinkFormat => Text("MotifApp.OverviewUntaggedStemsLinkFormat");
+
     public static string OverviewBandCountsFormat => Text("MotifApp.OverviewBandCountsFormat");
 
     public static string OverviewUnparsedNoCountPattern => Text("MotifApp.OverviewUnparsedNoCountPattern");

@@ -393,6 +393,8 @@ public sealed partial class OverviewPageModel : PageModel
                     new RelayCommand(() => OpenCell(WordProjectStatus.Candidate, CompareColumnKind.NoMatch))));
             if (data.UnparsedWords is { Words: > 0 } unparsed)
                 rows.Add(UnparsedRow((rows.Count + 1).ToString(CultureInfo.CurrentCulture), unparsed));
+            if (data.StemsWithoutInflectionClass is { Count: > 0, Top.Count: > 0 } untagged)
+                rows.Add(UntaggedStemsRow((rows.Count + 1).ToString(CultureInfo.CurrentCulture), untagged));
             return rows;
         }
     }
@@ -430,6 +432,19 @@ public sealed partial class OverviewPageModel : PageModel
         {
             Words = [.. unparsed.Top.Select(word => new OverviewRowWord(word.Word,
                 unparsed.RankedByOccurrences && word.Occurrences is { } count ? Number(count) : string.Empty))],
+        };
+    }
+
+    private OverviewLookFirstRow UntaggedStemsRow(string number, UntaggedStems untagged)
+    {
+        var first = untagged.Top[0];
+        var subject = InspectorSubject.Morpheme(first.StemAllomorphId, null, first.Headword, null, "authored");
+        return new OverviewLookFirstRow(number, PluralText.Format(MotifAppStrings.OverviewUntaggedStemsPattern, untagged.Count),
+            MotifAppStrings.OverviewUntaggedStemsDetail,
+            string.Format(CultureInfo.CurrentCulture, MotifAppStrings.OverviewUntaggedStemsLinkFormat, first.Headword),
+            new RelayCommand(() => { if (subject is not null) Context.OpenInspector(subject); }))
+        {
+            Words = [.. untagged.Top.Select(stem => new OverviewRowWord(stem.Headword, stem.Category))],
         };
     }
 

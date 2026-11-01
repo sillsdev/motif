@@ -3,6 +3,7 @@ using System.Text.Json.Nodes;
 using Microsoft.Data.Sqlite;
 using SIL.LCModel;
 using SIL.LCModel.Core.Text;
+using SIL.LCModel.DomainServices;
 using SIL.LCModel.Infrastructure;
 using SIL.Motif.Commands;
 using SIL.Motif.Commands.Assess;
@@ -100,6 +101,62 @@ public sealed class TextCoverageSelectionParityTests(PristineProjectFixture pris
         Assert.True(overview.Succeeded, overview.Refusal?.Message);
         Assert.Contains(overview.Value!.AssessmentId, second.Value.AssessmentIds);
         Assert.Equal(3, overview.Value.SelectionWordCount);
+    }
+
+    [Fact]
+    public void AStoreUpgradedFromSchema58RecapturesItsBaselineSoTheEntriesNotTaggedWithAClassAreRead()
+    {
+        using var cache = pristine.NewScratch();
+        var text = SeedTextWithDigitsAndAnOtherWritingSystemWord(cache);
+        SeedAnAffixRestrictedByClassForTheSeededStems(cache);
+        new FwDataProjectLoader().Save(cache);
+        var path = cache.ProjectId.Path;
+        Assert.True(SelectionCommands.SetDefault(new SetDefaultSelectionRequest(path, "Default", [text.Guid], [])).Succeeded);
+        Assert.True(Assess(path).Succeeded);
+        Assert.Equal(2, OverviewCommand.Overview(new OverviewRequest(path)).Value!.LookFirst.StemsWithoutInflectionClass?.Count);
+
+        // What a schema 58 Motif stored: a summary with no measure of stems not tagged with an inflection class.
+        var project = new ProjectLocator(Path.GetFullPath(path), Path.GetFileNameWithoutExtension(path));
+        var storePath = ProjectDatabaseCatalog.DatabasePathFor(project);
+        using (var store = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = storePath, Pooling = false }.ToString()))
+        {
+            store.Open();
+            var summary = JsonNode.Parse(Scalar(store, "SELECT SummaryJson FROM BaselineSummaries;"))!.AsObject();
+            Assert.True(summary.Remove("StemsWithoutInflectionClass"));
+            using var update = store.CreateCommand();
+            update.CommandText = "UPDATE BaselineSummaries SET SummaryJson = $json; PRAGMA user_version = 58;";
+            update.Parameters.AddWithValue("$json", summary.ToJsonString());
+            update.ExecuteNonQuery();
+        }
+        SqliteConnection.ClearAllPools();
+
+        var second = Assess(path);
+
+        Assert.True(second.Succeeded, second.Refusal?.Message);
+        Assert.True(File.Exists(storePath + ".schema58.bak"));
+        Assert.False(second.Value!.Baseline.ReusedExistingBytes);
+        var overview = OverviewCommand.Overview(new OverviewRequest(path));
+        Assert.True(overview.Succeeded, overview.Refusal?.Message);
+        Assert.Contains(overview.Value!.AssessmentId, second.Value.AssessmentIds);
+        var untagged = overview.Value.LookFirst.StemsWithoutInflectionClass;
+        Assert.Equal(2, untagged?.Count);
+        Assert.All(untagged!.Top, stem => Assert.Equal(1, stem.RestrictedAffixes));
+    }
+
+    // The seeded stems have no class and their category gains an affix that only a class lets attach.
+    private void SeedAnAffixRestrictedByClassForTheSeededStems(LcmCache cache)
+    {
+        var category = cache.ServiceLocator.GetInstance<IPartOfSpeechRepository>().GetObject(pristine.Seed.PartOfSpeechId);
+        var suffixType = cache.ServiceLocator.GetInstance<IMoMorphTypeRepository>().GetObject(MoMorphTypeTags.kguidMorphSuffix);
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+        {
+            var inflectionClass = cache.ServiceLocator.GetInstance<IMoInflClassFactory>().Create();
+            category.InflectionClassesOC.Add(inflectionClass);
+            inflectionClass.Name.set_String(cache.DefaultAnalWs, "Class A");
+            var entry = cache.ServiceLocator.GetInstance<ILexEntryFactory>().Create(suffixType,
+                TsStringUtils.MakeString("ba", cache.DefaultVernWs), "gloss", SandboxGenericMSA.Create(MsaType.kInfl, category));
+            ((IMoAffixAllomorph)entry.LexemeFormOA!).InflectionClassesRC.Add(inflectionClass);
+        });
     }
 
     private CommandOutcome<AssessCommandResponse> Assess(string path)

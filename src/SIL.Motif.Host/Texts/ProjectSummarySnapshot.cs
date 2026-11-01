@@ -18,6 +18,10 @@ public sealed record ProjectSummarySnapshot(
     [System.Text.Json.Serialization.JsonRequired]
     public IReadOnlyList<WritingSystemDisplay> WritingSystems { get; init; } = [];
 
+    /// <summary>Stems not tagged with an inflection class where an affix is restricted by class; advice only.</summary>
+    [System.Text.Json.Serialization.JsonRequired]
+    public UntaggedStems StemsWithoutInflectionClass { get; init; } = UntaggedStems.None;
+
     /// <summary>An empty summary for synthetic Baselines that have no readable project model.</summary>
     public static ProjectSummarySnapshot Empty { get; } = new(0, 0, 0, 0, 0, [], []);
 }

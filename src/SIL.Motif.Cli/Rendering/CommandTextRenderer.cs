@@ -808,6 +808,7 @@ public static class CommandTextRenderer
         text.AppendLine($"           {response.TextCoverage.ParsedOccurrences:N0}/{response.TextCoverage.TotalOccurrences:N0} occurrences covered ({occurrenceCoverage})");
         OverviewMeasuresTextRenderer.AppendLeftOut(text, response.TextCoverage);
         OverviewMeasuresTextRenderer.AppendUnparsed(text, response.LookFirst.UnparsedWords);
+        OverviewMeasuresTextRenderer.AppendUntaggedStems(text, response.LookFirst.StemsWithoutInflectionClass);
         OverviewMeasuresTextRenderer.AppendNotMeasured(text, response.TextCoverage);
         OverviewMeasuresTextRenderer.AppendBands(text, response.FrequencyBands);
         OverviewMeasuresTextRenderer.AppendAmbiguity(text, response.Ambiguity);

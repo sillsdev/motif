@@ -494,7 +494,9 @@ _Avoid_: inferred preference, hidden override
 **Overview**:
 Where a project stands, read from what the last run stored: the project's counts, Text Coverage, accuracy
 against the manual analyses, timing and warnings. The window's first page and the `overview` command show the
-same numbers, computed once. A projection of stored evidence, never a trigger to rerun.
+same numbers, computed once. A projection of stored evidence, never a trigger to rerun. Its Look First rows are
+advice that ranks and links; one names the entries with a stem not tagged with an inflection class, and none of
+them stops an Apply, a Draft or an edit.
 _Avoid_: dashboard, summary, health, status, to-do list
 
 **Refresh**:

@@ -182,6 +182,12 @@ public sealed record OverviewLookFirst(
     /// <summary>The words with no completed parse, ranked and grouped by recorded reason; null without a matching run.</summary>
     public OverviewUnparsedWords? UnparsedWords { get; init; }
 
+    /// <summary>
+    /// Stems not tagged with an inflection class where an affix of the category is restricted by class, from the
+    /// Baseline; null when there are none.
+    /// </summary>
+    public UntaggedStems? StemsWithoutInflectionClass { get; init; }
+
     /// <summary>An empty list of priorities when the project has no matching Parse all words.</summary>
     public static OverviewLookFirst Empty { get; } = new([], [], [], null, 0);
 }

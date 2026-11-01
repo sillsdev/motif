@@ -118,6 +118,21 @@ public sealed class OverviewMeasuresTextTests
     }
 
     [Fact]
+    public void EntriesNotTaggedWithAnInflectionClassAreCountedAsAdviceWithTheirCategoryAndHeldBackAffixes()
+    {
+        var entry = Guid.Parse("11111111-2222-3333-4444-555555555555");
+        var untagged = new UntaggedStems(3, [new(entry, Guid.NewGuid().ToString("D"), "kat", "Noun", 2)]);
+
+        var text = Text(Overview(lookFirst: OverviewLookFirst.Empty with { StemsWithoutInflectionClass = untagged }));
+
+        Assert.Contains("3 entries have a stem not tagged with an inflection class", text, StringComparison.Ordinal);
+        Assert.Contains("Advice only", text, StringComparison.Ordinal);
+        Assert.Contains($"kat (Noun, 2 affixes, {entry:D})", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("required", text, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("missing", text, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void DigitOnlyAndOtherWritingSystemPlacesAreShownApartFromCoverage()
     {
         var coverage = new OverviewTextCoverage(43, 20, 71, 1, 555, 300)

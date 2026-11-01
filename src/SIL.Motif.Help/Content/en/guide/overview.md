@@ -2,7 +2,7 @@
 
 **Overview** is the first page you see. It shows the results of your last run: how many of your words parse, how many words with approved analyses were rebuilt exactly, which words are slow, and what the grammar check found. Opening it doesn't parse anything. Nothing here changes your FieldWorks project.
 
-The figure strip shows the project's counts: words you chose to measure, places in your texts, wordforms, rules, and lexemes. **Look first** points to recorded words or timings worth inspecting, including the unparsed words you use most. Seven table sections follow:
+The figure strip shows the project's counts: words you chose to measure, places in your texts, wordforms, rules, and lexemes. **Look first** points to recorded words or timings worth inspecting, including the unparsed words you use most and entries with a stem not tagged with an inflection class. Seven table sections follow:
 
 - **Speed**: how many words were measured, their total and median work steps, and the work recorded for each kind of grammar work. A line beneath shows how long the whole run took on this computer.
 - **Slowest Words**: the measured words with the most work steps, each with its work steps. **Stopped** marks a word explicitly recorded as hitting the work limit.

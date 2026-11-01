@@ -186,6 +186,29 @@ public sealed class OverviewMeasuresPageTests
     }
 
     [Fact]
+    public async Task EntriesNotTaggedWithAnInflectionClassGetALookFirstRowThatOpensTheFirstInTheInspector()
+    {
+        using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
+        var overview = OverviewPageWordsTests.Populated();
+        var allomorph = Guid.NewGuid().ToString("D");
+        var untagged = new UntaggedStems(2, [new(Guid.NewGuid(), allomorph, "kat", "Noun", 2),
+            new(Guid.NewGuid(), Guid.NewGuid().ToString("D"), "dog", "Noun", 1)]);
+        var fake = new FakeCommandClient();
+        var context = WorkspaceContextTests.NewContext(fake);
+        var page = new OverviewPageModel(context);
+        fake.OverviewCompletesWith(overview with { LookFirst = overview.LookFirst with { StemsWithoutInflectionClass = untagged } });
+        await context.OpenProjectAsync(ProjectPath);
+
+        var row = Assert.Single(page.LookFirstRows, candidate => candidate.Summary.Contains("inflection class", StringComparison.Ordinal));
+        Assert.Equal("2 entries have a stem not tagged with an inflection class.", row.Summary);
+        Assert.Equal("Inspect kat", row.LinkText);
+        Assert.Equal([("kat", "Noun"), ("dog", "Noun")], row.Words.Select(word => (word.Word, word.CountText)));
+        Assert.DoesNotContain("required", row.Detail, StringComparison.OrdinalIgnoreCase);
+        row.OpenCommand.Execute(null);
+        Assert.Equal(allomorph, context.Inspector!.Subject.AllomorphId);
+    }
+
+    [Fact]
     public async Task APartialParseSaysSoAndNoBandsMeansNoTile()
     {
         using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));

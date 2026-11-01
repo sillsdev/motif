@@ -32,7 +32,7 @@ internal sealed class OverviewMeasuresFixture : IDisposable
 
     public OverviewMeasuresFixture(string testRoot, IReadOnlyDictionary<string, int> textPlaces,
         int digitOnlyPlaces = 0, int otherWritingSystemPlaces = 0, IReadOnlyList<string>? addedWords = null,
-        bool chooseText = true, SelectionWordList? wordList = null)
+        bool chooseText = true, SelectionWordList? wordList = null, UntaggedStems? untagged = null)
     {
         _root = Path.Combine(testRoot, Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_root);
@@ -51,7 +51,8 @@ internal sealed class OverviewMeasuresFixture : IDisposable
             {
                 DigitOccurrenceCount = digitOnlyPlaces,
                 OtherWritingSystemOccurrenceCount = otherWritingSystemPlaces,
-            }]);
+            }])
+        { StemsWithoutInflectionClass = untagged ?? UntaggedStems.None };
         new BaselineRepository(Database).Record(ProjectWorkspaceKey.Compute(Project),
             new BaselinePublication(baselineRoot, Path.Combine(baselineRoot, "project.fwdata"), Token),
             DateTimeOffset.Parse("2026-09-24T10:30:00Z"), DateTimeOffset.Parse(Token.CapturedUtc),

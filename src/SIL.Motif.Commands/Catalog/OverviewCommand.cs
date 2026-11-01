@@ -181,6 +181,8 @@ public static class OverviewCommand
                 ? OverviewLookFirstBuilder.Build(assessmentRows.Words, evidence.EffectiveWords, storedCheck,
                     associationEvidence.WordContextAvailable)
                 : OverviewLookFirst.Empty;
+            if (summary?.StemsWithoutInflectionClass is { Count: > 0 } untagged)
+                lookFirst = lookFirst with { StemsWithoutInflectionClass = untagged };
             if (assessedWords.Count > 0)
                 lookFirst = lookFirst with
                 {

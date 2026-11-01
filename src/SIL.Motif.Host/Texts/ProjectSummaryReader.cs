@@ -36,7 +36,8 @@ public static class ProjectSummaryReader
             .Distinct(StringComparer.Ordinal).OrderBy(word => word, StringComparer.Ordinal).ToArray();
         return new ProjectSummarySnapshot(words, texts.Sum(text => text.OccurrenceCount), wordformCount,
             inventory.RuleCount, inventory.LexemeCount, wordforms, texts)
-        { WritingSystems = WritingSystemDisplayReader.Read(cache), WordWritingSystems = ReadWordWritingSystems(cache) };
+        { WritingSystems = WritingSystemDisplayReader.Read(cache), WordWritingSystems = ReadWordWritingSystems(cache),
+            StemsWithoutInflectionClass = UntaggedStemReader.Read(cache) };
     }
 
     public static IReadOnlyDictionary<string, string?> ReadWordWritingSystems(LcmCache cache) =>

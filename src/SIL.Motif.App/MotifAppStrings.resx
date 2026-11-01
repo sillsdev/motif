@@ -8079,6 +8079,18 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <value>Places covered: {0} of {1}</value>
     <comment>Parsed places and all places of the words in a frequency band</comment>
   </data>
+  <data name="MotifApp.OverviewUntaggedStemsPattern" xml:space="preserve">
+    <value>{0, plural, one {# entry has a stem not tagged with an inflection class.} other {# entries have a stem not tagged with an inflection class.}}</value>
+    <comment>Overview Look First row: how many entries have a stem with no inflection class and no default class for its category, where affixes are restricted by class. # is the count.</comment>
+  </data>
+  <data name="MotifApp.OverviewUntaggedStemsDetail" xml:space="preserve">
+    <value>These stems cannot take the affixes of their category that are restricted by inflection class. This is advice only; nothing is blocked.</value>
+    <comment>Overview Look First row detail under the not-tagged-with-an-inflection-class count.</comment>
+  </data>
+  <data name="MotifApp.OverviewUntaggedStemsLinkFormat" xml:space="preserve">
+    <value>Inspect {0}</value>
+    <comment>Link text on the not-tagged-with-an-inflection-class row; {0} is the headword of the first listed entry.</comment>
+  </data>
   <data name="MotifApp.OverviewBandCountsFormat" xml:space="preserve">
     <value>Counted occurrences covered: {0} of {1}</value>
     <comment>Parsed and all counted occurrences of the words in a frequency band when the counts come from a word list; {0} and {1} are counts</comment>
