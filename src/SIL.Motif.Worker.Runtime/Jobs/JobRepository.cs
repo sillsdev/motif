@@ -172,7 +172,7 @@ public sealed class JobRepository
         using var command = connection.CreateCommand();
         command.CommandText = SelectSqlWithQueueOrder + " WHERE Status NOT IN ('completed','completed-dry-run-only'," +
             "'completed-with-assessment-failure','failed','cancelled','interrupted','stopped-by-budget')" +
-            (projectKey is null ? "" : " AND ProjectKey = $project") + " ORDER BY QueueOrder, JobId;";
+            (projectKey is null ? "" : " AND ProjectKey = $project") + " ORDER BY " + JobClaims.ClaimOrder + ";";
         if (projectKey is not null) command.Parameters.AddWithValue("$project", projectKey);
         using var reader = command.ExecuteReader();
         var records = new List<JobQueueEntry>();

@@ -87,10 +87,31 @@ public static class ProjectJobHandlers
 
         if (TryBuildTrialHandler(database, baselines, proposals, lanes, project, options, invoker,
                 defaultChecks ?? FileDefaultProposalChecksStore.ForInstallation()) is { } trial)
+        {
+            trial.AfterCommit = (claim, baseline) =>
+                _ = ParsimonyAutoRun.Enqueue(database, claim.Job, baseline, retryFailed: true);
             handlers[TrialJobHandler.TrialKind] = (job, token) => trial.RunAsync(job, project, token);
+            _ = TryReconcile(database, baselines, workspaceKey);
+        }
 
         return new JobRunnerLoop(new JobClaims(database, parserKey: ParserIdentity.KeyOf(options.ParserPath)), workspaceKey, ownerId: ownerId,
             lease: options.Lease, poll: TimeSpan.Zero, handlers: handlers);
+    }
+
+    // A runner that stopped between a Trial's commit and its follow-on enqueue catches up on its next sweep.
+    private static bool TryReconcile(MotifDatabase database, BaselineRepository baselines, string workspaceKey)
+    {
+        try
+        {
+            _ = ParsimonyAutoRun.Reconcile(database, workspaceKey, baselines.GetCurrentPublished(workspaceKey)?.Token,
+                DateTimeOffset.UtcNow);
+            return true;
+        }
+        catch (Exception exception) when (exception is Microsoft.Data.Sqlite.SqliteException or IOException or
+                                              InvalidOperationException)
+        {
+            return false;
+        }
     }
 
     /// <summary>Builds a Trial handler, or null when the parser or root is not usable.</summary>

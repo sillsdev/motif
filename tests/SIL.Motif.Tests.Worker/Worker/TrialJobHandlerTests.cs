@@ -12,6 +12,7 @@ using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Canonicalization;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Jobs;
+using SIL.Motif.Contract.Parsimony;
 using SIL.Motif.Contract.Parsing;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Contract.Requests;
@@ -23,6 +24,7 @@ using SIL.Motif.Host.Corpus;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Host.Parser;
 using SIL.Motif.Host.PanGloss;
+using SIL.Motif.Host.Parsimony;
 using SIL.Motif.Host.Preferences;
 using SIL.Motif.Host.Store;
 using SIL.Motif.LiveHost.Baselines;
@@ -35,6 +37,7 @@ using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker.Baselines;
 using SIL.Motif.Worker.Assess;
 using SIL.Motif.Worker.Jobs;
+using SIL.Motif.Worker.Parsimony;
 using SIL.Motif.Worker.Projects;
 using SIL.Motif.Worker;
 using SIL.Motif.Worker.Scheduling;
@@ -1745,6 +1748,128 @@ public sealed class TrialJobHandlerTests : IDisposable
         var unique = Guid.NewGuid().ToString("N");
         var prefix = $"Global\\MotifPanGlossSlot-{processNamespace}-{purpose}-{unique}";
         return [$"{prefix}-0", $"{prefix}-1"];
+    }
+
+    private JobRecord[] CandidateJobs() => _jobs.ListByProjectAndKind(ProjectWorkspaceKey.Compute(_project),
+        ParsimonyCandidateEvidenceBuilder.JobKind).ToArray();
+
+    private (TrialJobHandler Handler, CanonicalId ProposalId, string ProposalJson, ProjectLaneRegistry Lanes)
+        AutoParsimonyHandler(Action<ClaimedJob, BaselineToken>? afterCommit = null)
+    {
+        var lanes = new ProjectLaneRegistry(_ => _token);
+        var handler = BuildHandler(lanes, new FakeAssessor("pangloss", [AssessmentKind.Correctness]));
+        handler.AfterCommit = afterCommit ?? ((claim, baseline) =>
+            ParsimonyAutoRun.Enqueue(_database, claim.Job, baseline, retryFailed: true));
+        var proposalId = CanonicalId.Mint("proposal/");
+        var proposalJson = BuildSetGlossProposalJson(proposalId, _seed.FirstSenseId, "auto parsimony text");
+        SaveCommittedProposal(proposalId, proposalJson);
+        return (handler, proposalId, proposalJson, lanes);
+    }
+
+    [Fact]
+    public void ACommittedTrialQueuesOneGrammarParsimonyJobAfterItsCommit()
+    {
+        var (handler, _, proposalJson, lanes) = AutoParsimonyHandler();
+        using var keepLanes = lanes;
+        var trial = RunAndFinish(handler, CreateTrialJob(proposalJson));
+
+        Assert.Equal(JobStatus.Completed, trial.Status);
+        var queued = Assert.Single(CandidateJobs());
+        Assert.Equal(JobStatus.Queued, queued.Status);
+        var input = ParsimonyCandidateJobInput.Parse(queued.InputJson);
+        Assert.Equal(trial.JobId, input.DryRunJobId);
+        Assert.Equal(ParsimonyAdmission.MeasureIdsFor(ParsimonyGroupRequest.Grammar), input.RunMeasureIds);
+        Assert.Equal(ParsimonyEvidenceScopeKind.ProjectApproved, input.ScopeBinding!.Kind);
+        Assert.Equal(ParsimonyAutoInputs.For(trial.InputJson, _token),
+            ParsimonyAutoInputs.FromKey(input.InputsKey));
+        Assert.True(string.CompareOrdinal(queued.CreatedUtc, trial.CreatedUtc) >= 0);
+    }
+
+    [Fact]
+    public void AParsimonyEnqueueThatThrowsLeavesTheTrialCompletedWithItsAssessments()
+    {
+        var (handler, proposalId, proposalJson, lanes) = AutoParsimonyHandler((_, _) =>
+            throw new InvalidOperationException("queue unavailable"));
+        using var keepLanes = lanes;
+        var trial = RunAndFinish(handler, CreateTrialJob(proposalJson));
+
+        Assert.Equal(JobStatus.Completed, trial.Status);
+        Assert.NotEmpty(_assessments.ListByProposal(proposalId));
+        Assert.Empty(CandidateJobs());
+    }
+
+    [Fact]
+    public void ATrialRunAgainForTheSameInputsKeepsOneParsimonyJob()
+    {
+        var (handler, _, proposalJson, lanes) = AutoParsimonyHandler();
+        using var keepLanes = lanes;
+        _ = RunAndFinish(handler, CreateTrialJob(proposalJson));
+        _ = RunAndFinish(handler, CreateTrialJob(proposalJson, createdUtc: "2026-08-29T00:05:00Z"));
+
+        Assert.Single(CandidateJobs());
+    }
+
+    [Theory]
+    [InlineData(JobStatus.Failed)]
+    [InlineData(JobStatus.Cancelled)]
+    [InlineData(JobStatus.StoppedByBudget)]
+    public void AParsimonyJobThatEndsBadlyLeavesTheTrialAndItsAssessmentsAsTheyWere(JobStatus ending)
+    {
+        var (handler, proposalId, proposalJson, lanes) = AutoParsimonyHandler();
+        using var keepLanes = lanes;
+        var trial = RunAndFinish(handler, CreateTrialJob(proposalJson));
+        var assessmentsBefore = JsonSerializer.Serialize(_assessments.ListByProposal(proposalId));
+        var queued = Assert.Single(CandidateJobs());
+        var claimed = new JobClaims(_database).Claim(queued.ProjectKey, "parsimony-runner",
+            DateTimeOffset.UtcNow.ToString("O"), TimeSpan.FromMinutes(5))!;
+        Assert.Equal(queued.JobId, claimed.JobId);
+
+        new ClaimedJob(_jobs, claimed).Transition(ending, ending == JobStatus.Failed
+            ? JobFailureCategory.Unknown : ending == JobStatus.Cancelled ? JobFailureCategory.Cancellation
+            : JobFailureCategory.None, "{\"detail\":\"timed out\"}");
+
+        var after = _jobs.Get(trial.JobId)!;
+        Assert.Equal(trial, after);
+        Assert.Equal(assessmentsBefore, JsonSerializer.Serialize(_assessments.ListByProposal(proposalId)));
+        Assert.Equal(ending, _jobs.Get(queued.JobId)!.Status);
+    }
+
+    [Fact]
+    public void AParseQueuedLaterIsClaimedBeforeAQueuedParsimonyJob()
+    {
+        var (handler, _, proposalJson, lanes) = AutoParsimonyHandler();
+        using var keepLanes = lanes;
+        _ = RunAndFinish(handler, CreateTrialJob(proposalJson));
+        var parsimony = Assert.Single(CandidateJobs());
+        var later = _jobs.Create(Guid.NewGuid().ToString("N"), parsimony.ProjectKey, "parsimony-report",
+            "{\"measureId\":\"all\",\"scopeBinding\":null}", "2099-01-01T00:00:00Z");
+
+        var claims = new JobClaims(_database);
+        var now = DateTimeOffset.UtcNow.ToString("O");
+        Assert.Equal(later.JobId, claims.PeekHead(parsimony.ProjectKey, now)!.Value.JobId);
+        Assert.Equal(later.JobId, claims.Claim(parsimony.ProjectKey, "runner", now, TimeSpan.FromMinutes(1))!.JobId);
+        Assert.Equal(parsimony.JobId, claims.Claim(parsimony.ProjectKey, "runner", now, TimeSpan.FromMinutes(1))!.JobId);
+    }
+
+    [Fact]
+    public void ASweepQueuesTheJobAMissedEnqueueLeftOutOnceAndOnlyForTheCurrentBaseline()
+    {
+        var (handler, _, proposalJson, lanes) = AutoParsimonyHandler((_, _) => { });
+        using var keepLanes = lanes;
+        var trial = RunAndFinish(handler, CreateTrialJob(proposalJson));
+        Assert.Empty(CandidateJobs());
+        var key = ProjectWorkspaceKey.Compute(_project);
+        var swept = DateTimeOffset.Parse(trial.UpdatedUtc).AddHours(1);
+
+        var other = new BaselineToken("live-project-identity", "sha256:" + new string('c', 64), "1",
+            "2026-08-29T00:00:00Z", "sha256:" + new string('d', 64));
+        Assert.Empty(ParsimonyAutoRun.Reconcile(_database, key, other, swept));
+        var queued = ParsimonyAutoRun.Reconcile(_database, key, _token, swept);
+        var again = ParsimonyAutoRun.Reconcile(_database, key, _token, swept);
+
+        Assert.Single(queued);
+        Assert.Empty(again);
+        Assert.Equal(trial.JobId, ParsimonyCandidateJobInput.Parse(Assert.Single(CandidateJobs()).InputJson).DryRunJobId);
     }
 
     private JobRecord RunAndFinish(TrialJobHandler handler, JobRecord job)

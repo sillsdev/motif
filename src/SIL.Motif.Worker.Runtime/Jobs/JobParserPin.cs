@@ -38,6 +38,24 @@ public static class JobParserPin
         return root.ToJsonString();
     }
 
+    /// <summary>Copies the pin of one job's input document onto another, or returns the target unchanged.</summary>
+    /// <param name="fromInputJson">The input that may carry a pin.</param>
+    /// <param name="toInputJson">The object input to stamp.</param>
+    public static string Copy(string fromInputJson, string toInputJson)
+    {
+        try
+        {
+            if (JsonNode.Parse(fromInputJson) is not JsonObject from || from[Property] is not { } pin ||
+                JsonNode.Parse(toInputJson) is not JsonObject to) return toInputJson;
+            to[Property] = pin.DeepClone();
+            return to.ToJsonString();
+        }
+        catch (JsonException)
+        {
+            return toInputJson;
+        }
+    }
+
     /// <summary>The pinned key of a job's input document, or null for a job with no pin.</summary>
     public static string? KeyOf(string inputJson)
     {

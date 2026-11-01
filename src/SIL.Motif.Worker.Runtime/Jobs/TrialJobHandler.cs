@@ -143,6 +143,9 @@ internal sealed class TrialJobHandler
         _retainScratch = retainScratch ?? (() => TrialScratchRetention.RetainRequested);
     }
 
+    /// <summary>Called once a Trial has committed, with the Baseline it measured; its failures are only reported.</summary>
+    internal Action<ClaimedJob, BaselineToken>? AfterCommit { get; set; }
+
     /// <summary>How long a parser stage of a Trial may run before it is reported as not checked.</summary>
     internal TimeSpan StageTimeout { get; set; } = PanGlossInvoker.DefaultWallClockCap;
 
@@ -329,6 +332,9 @@ internal sealed class TrialJobHandler
                 }
 
                 ReleaseSettledTrialParseLease(parseLease, claim.JobId);
+                // Advisory follow-on work: whatever it does, the committed Trial stays as it is.
+                try { AfterCommit?.Invoke(claim, baseline.Token); }
+                catch (Exception exception) { ReportTrialMaintenanceFailure(claim.JobId, "queue Parsimony", exception); }
                 return null;
             }
             finally

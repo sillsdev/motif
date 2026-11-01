@@ -55,6 +55,9 @@ public sealed class JobClaims : IJobClaimProtocol
         _parserKey = parserKey;
     }
 
+    /// <summary>Candidate Parsimony waits behind every other kind, so a parse never queues behind it.</summary>
+    internal const string ClaimOrder = "(Kind = 'parsimony-candidate'), QueueOrder, JobId";
+
     /// <summary>Reads the identity and position of one project's next claimable row, without claiming it.</summary>
     /// <remarks>
     /// This is what lets a sweep across many projects' databases pick the globally first job before it
@@ -72,7 +75,7 @@ public sealed class JobClaims : IJobClaimProtocol
         using var command = connection.CreateCommand();
         command.CommandText = "SELECT JobId, QueueOrder FROM Jobs WHERE ProjectKey = $project AND " +
             "ArchivedUtc IS NULL AND (" + QueuedAndDue + " OR " + RunningAndExpired + ") AND " + ParserMatches + " " +
-            "ORDER BY QueueOrder, JobId LIMIT 1;";
+            "ORDER BY " + ClaimOrder + " LIMIT 1;";
         command.Parameters.AddWithValue("$parser", (object?)_parserKey ?? DBNull.Value);
         command.Parameters.AddWithValue("$now", now);
         command.Parameters.AddWithValue("$project", projectKey);
@@ -111,7 +114,7 @@ public sealed class JobClaims : IJobClaimProtocol
                 "Attempt = Attempt + CASE WHEN Status = 'running' THEN 1 ELSE 0 END " +
                 "WHERE JobId = (SELECT JobId FROM Jobs WHERE ProjectKey = $project AND ArchivedUtc IS NULL " +
                 "AND (" + QueuedAndDue + " OR " + RunningAndExpired + ") AND " + ParserMatches +
-                " ORDER BY QueueOrder, JobId LIMIT 1) " +
+                " ORDER BY " + ClaimOrder + " LIMIT 1) " +
                 "AND (" + QueuedAndDue + " OR " + RunningAndExpired + ");";
             claim.Parameters.AddWithValue("$parser", (object?)_parserKey ?? DBNull.Value);
             claim.Parameters.AddWithValue("$owner", ownerId);
