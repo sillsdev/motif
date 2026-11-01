@@ -94,6 +94,11 @@
     "description": "Lists registered grammar checks, their axes, evidence tiers, citations, and fixed views. It reads the catalog without invoking PanGloss.",
     "source": "Hand-written from command behavior."
   },
+  "parsimony status": {
+    "title": "Read a Proposal's Parsimony status",
+    "description": "Says whether Parsimony has measured a Proposal's candidate after its Trial: not set up, not yet run, queued, running, ready, stale or failed, with a Grammar group and a Text group. It reads stored jobs and Reports only and never starts a run. Parsimony is advisory and never changes the Trial, Readiness or Apply.",
+    "source": "Hand-written from command behavior."
+  },
   "parsimony expectations": {
     "title": "Read Parsimony expectations",
     "description": "Reads human-confirmed negatives and native Approved and Disapproved readings from the saved FieldWorks project. The versioned projection keeps surface negatives, exact reading negatives, and native Opinions separate for later Parsimony measures and paired verification.",

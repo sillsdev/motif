@@ -169,6 +169,7 @@ public static class CommandCatalog
         new CommandDescriptor("parsimony --group", typeof(EnqueueParsimonyGroupRequest), typeof(ParsimonyReportSetResponse), CommandSurface.AdvancedAi, AgentClass.Evaluate),
         new CommandDescriptor("parsimony --dry-run", typeof(EnqueueParsimonyCandidateRequest), typeof(JobEnqueuedResponse), CommandSurface.AdvancedAi, AgentClass.Evaluate),
         new CommandDescriptor("parsimony --dry-run --wait", typeof(WaitForParsimonyCandidateRequest), typeof(ParsimonyCandidateEvidenceResponse), CommandSurface.AdvancedAi, AgentClass.Evaluate),
+        new CommandDescriptor("parsimony status", typeof(ReadProposalParsimonyStatusRequest), typeof(ProposalParsimonyStatus), CommandSurface.AdvancedAi, AgentClass.Read),
         new CommandDescriptor("parsimony show", typeof(ShowParsimonyReportRequest), typeof(ParsimonyReportResponse), CommandSurface.AdvancedAi, AgentClass.Read),
         new CommandDescriptor("parsimony latest", typeof(ReadLatestParsimonyReportRequest), typeof(ParsimonyLatestReportResponse), CommandSurface.AdvancedAi, AgentClass.Read),
         new CommandDescriptor("parsimony retirement-review", typeof(ReadRetirementReviewRequest),

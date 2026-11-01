@@ -144,3 +144,9 @@ public sealed record ReadParsimonyViewRequest(
 /// <param name="Timeout">The maximum wait for this call; the job continues after the wait ends.</param>
 public sealed record WaitForParsimonyReportSetRequest(
     string FwDataPath, string ProductVersion, string JobId, TimeSpan Timeout);
+
+/// <summary>Reads whether Parsimony has measured one Proposal's candidate.</summary>
+/// <param name="FwDataPath">The recorded project path.</param>
+/// <param name="ProductVersion">The Motif product version writing the store.</param>
+/// <param name="ProposalId">The Proposal to read the status of.</param>
+public sealed record ReadProposalParsimonyStatusRequest(string FwDataPath, string ProductVersion, string ProposalId);

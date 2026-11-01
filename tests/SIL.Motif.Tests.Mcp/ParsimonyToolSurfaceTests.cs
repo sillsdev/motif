@@ -19,6 +19,7 @@ public sealed class ParsimonyToolSurfaceTests
         "motif_parsimony_measures",
         "motif_run_parsimony_measure",
         "motif_parsimony_report",
+        "motif_parsimony_status",
         "motif_retirement_review",
         "motif_parsimony_view",
         "motif_parsimony_record_types",

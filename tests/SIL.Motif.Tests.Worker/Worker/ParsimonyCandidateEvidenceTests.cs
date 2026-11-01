@@ -399,6 +399,8 @@ public sealed class ParsimonyCandidateEvidenceTests : IDisposable
                 scope, MeasureIds: ids), SIL.Motif.Contract.MotifJson.CreateOptions());
 
         Assert.Equal(group, ParsimonyCandidateJobInput.Parse(Json(group[0], group)).RunMeasureIds);
+        var pinned = SIL.Motif.Worker.Jobs.JobParserPin.Stamp(Json(group[0], group), Environment.ProcessPath);
+        Assert.Equal(group, ParsimonyCandidateJobInput.Parse(pinned).RunMeasureIds);
         Assert.Throws<InvalidDataException>(() => ParsimonyCandidateJobInput.Parse(Json(group[1], group)));
         Assert.Throws<InvalidDataException>(() => ParsimonyCandidateJobInput.Parse(Json(group[0], [group[0], group[0]])));
         Assert.Throws<InvalidDataException>(() => ParsimonyCandidateJobInput.Parse(Json(group[0], [group[0], "P-nope"])));

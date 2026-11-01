@@ -140,11 +140,10 @@ public sealed record ProposalParsimonyReason(string Code, string Text);
 /// <param name="Status">The job's wire status, such as <c>queued</c>, <c>running</c> or <c>completed</c>.</param>
 /// <param name="Stage">The step a running job is in, or null.</param>
 /// <param name="QueuedUtc">When the job was queued.</param>
-/// <param name="StartedUtc">When a runner took it, or null while it waits.</param>
 /// <param name="FinishedUtc">When it reached a terminal status, or null.</param>
 /// <param name="QueuedBehind"><c>trial</c> or <c>parse</c> when other work holds the queue, otherwise null.</param>
 public sealed record ProposalParsimonyJob(string JobId, string Status, JobStageProgress? Stage,
-    string QueuedUtc, string? StartedUtc, string? FinishedUtc, string? QueuedBehind);
+    string QueuedUtc, string? FinishedUtc, string? QueuedBehind);
 
 /// <summary>What changed since a finished run.</summary>
 /// <param name="Reasons">Every input that differs, in a fixed order.</param>

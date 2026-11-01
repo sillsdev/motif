@@ -152,6 +152,24 @@ public static class ParsimonyAutoRun
         return queued;
     }
 
+    /// <summary>The newest automatic comparison job for a Proposal, whatever its status, or null.</summary>
+    /// <param name="database">The project's store.</param>
+    /// <param name="projectKey">The project's workspace key.</param>
+    /// <param name="proposalId">The Proposal's id.</param>
+    public static JobRecord? LatestJob(MotifDatabase database, string projectKey, string proposalId)
+    {
+        ArgumentNullException.ThrowIfNull(database);
+        using var connection = database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT JobId FROM Jobs WHERE ProjectKey = $project AND Kind = $kind AND " +
+            "json_extract(json_extract(InputJson, '$.inputsKey'), '$.proposalId') = $proposal " +
+            "ORDER BY CreatedUtc DESC, JobId DESC LIMIT 1;";
+        command.Parameters.AddWithValue("$project", projectKey);
+        command.Parameters.AddWithValue("$kind", ParsimonyCandidateEvidenceBuilder.JobKind);
+        command.Parameters.AddWithValue("$proposal", proposalId);
+        return command.ExecuteScalar() is string id ? new JobRepository(database).Get(id) : null;
+    }
+
     /// <summary>The Baseline a committed Trial's result names, or null when it names none.</summary>
     /// <param name="trial">The Trial job.</param>
     public static BaselineToken? TrialBaseline(JobRecord trial)

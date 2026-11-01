@@ -62,6 +62,25 @@ public sealed class ParsimonyArgvTests : IDisposable
     }
 
     [Fact]
+    public async Task StatusForAProposalNoTrialHasRunReadsNotYetRunAndQueuesNothing()
+    {
+        new FileAdvancedAiModePreferenceStore(_preferencePath).SetEnabled(true);
+        var project = _pristine.CopyProjectFile();
+        var proposal = CanonicalId.Mint("proposal/").Value;
+
+        var result = await CliProcess.RunAsync(StartWithParser(_preferencePath, FactsParser(),
+            "parsimony", "status", "--project", project, "--proposal", proposal, "--json"));
+
+        Assert.True(result.ExitCode == 0, result.Error + result.Output);
+        var status = JsonSerializer.Deserialize<ProposalParsimonyStatus>(result.Output,
+            new JsonSerializerOptions(JsonSerializerDefaults.Web))!;
+        Assert.Equal(ProposalParsimonyState.NotYetRun, status.State);
+        Assert.True(status.Advisory);
+        Assert.Equal(proposal, status.ProposalId);
+        Assert.Equal(2, status.Groups.Count);
+    }
+
+    [Fact]
     public async Task AllWithoutAParsimonySelectionRunsTheGrammarGroupAndSaysOnceHowToChooseTexts()
     {
         new FileAdvancedAiModePreferenceStore(_preferencePath).SetEnabled(true);

@@ -51,6 +51,18 @@ internal static class ParsimonyTools
             RunMeasure) { Requests = [typeof(EnqueueParsimonyReportRequest), typeof(WaitForParsimonyReportRequest),
             typeof(WaitForParsimonyReportSetRequest), typeof(EnqueueParsimonyGroupRequest)] },
 
+        new("motif_parsimony_status",
+            string.Empty,
+            AgentClass.Read,
+            Schema.Object(("proposal", Schema.String("The Proposal id."), true)),
+            true,
+            true,
+            false,
+            true,
+            (c, a, ct) => Task.FromResult(ToolOutcome.From(ProposalParsimonyStatusCommand.Read(
+                new ReadProposalParsimonyStatusRequest(c.ProjectPath, c.ProductVersion, a.Required("proposal")),
+                c.JobParserPath)))) { Requests = [typeof(ReadProposalParsimonyStatusRequest)] },
+
         new("motif_parsimony_report",
             string.Empty,
             AgentClass.Read,

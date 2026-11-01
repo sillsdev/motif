@@ -4,6 +4,7 @@ using SIL.Motif.Contract;
 using SIL.Motif.Contract.Parsimony;
 using SIL.Motif.Contract.Retirement;
 using SIL.Motif.Host.Parsimony;
+using SIL.Motif.Worker.Jobs;
 
 namespace SIL.Motif.Worker.Parsimony;
 
@@ -31,7 +32,7 @@ public sealed record ParsimonyCandidateJobInput(
             if (document.RootElement.ValueKind != JsonValueKind.Object || document.RootElement.EnumerateObject()
                 .Any(property => property.Name is not
                     ("schemaVersion" or "dryRunJobId" or "measureId" or "scopeBinding" or "assessmentIds" or
-                     "retirementExpectationTranslation" or "measureIds" or "inputsKey")))
+                     "retirementExpectationTranslation" or "measureIds" or "inputsKey" or JobParserPin.Property)))
             throw new InvalidDataException("The candidate Parsimony job input contains unsupported fields.");
         var input = JsonSerializer.Deserialize<ParsimonyCandidateJobInput>(json, MotifJson.CreateOptions())
             ?? throw new InvalidDataException("The candidate Parsimony job has no input.");

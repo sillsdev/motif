@@ -1303,6 +1303,16 @@ try
                 }
                 break;
             }
+            if (positionals.FirstOrDefault() == "status")
+            {
+                if (!flags.TryGetValue("project", out var statusProject) || positionals.Count != 1 ||
+                    !flags.TryGetValue("proposal", out var statusProposal))
+                    return Usage("Usage: motif parsimony status --project <fwdata> --proposal <id> [--json]", asJson);
+                result = RenderCommand(ProposalParsimonyStatusCommand.Read(new ReadProposalParsimonyStatusRequest(
+                    statusProject, CliProductVersion(), statusProposal),
+                    SIL.Motif.Host.Parser.PanGlossExecutable.TryLocate()));
+                break;
+            }
             if (positionals.FirstOrDefault() == "measures")
             {
                 if (!flags.TryGetValue("project", out var measureProject) || positionals.Count != 1)

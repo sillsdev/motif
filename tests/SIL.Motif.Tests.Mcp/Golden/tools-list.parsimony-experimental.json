@@ -1106,6 +1106,31 @@
     "idempotentHint": false
   },
   {
+    "name": "motif_parsimony_status",
+    "description": "Read a Proposal\u0027s Parsimony status. Says whether Parsimony has measured a Proposal\u0027s candidate after its Trial: not set up, not yet run, queued, running, ready, stale or failed, with a Grammar group and a Text group. It reads stored jobs and Reports only and never starts a run. Parsimony is advisory and never changes the Trial, Readiness or Apply.\nCommand: parsimony status. Agent class: Read.\nProposalId: The Proposal to read the status of.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "proposal": {
+          "type": "string",
+          "description": "The Proposal id."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "proposal",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true
+  },
+  {
     "name": "motif_parsimony_report",
     "description": "Read a Parsimony Report. Reads a stored Parsimony Report by id. It uses the saved Report and does not run PanGloss.\nCommand: parsimony show. Agent class: Read.\nReportId: The exact stored Parsimony report identity.",
     "inputSchema": {

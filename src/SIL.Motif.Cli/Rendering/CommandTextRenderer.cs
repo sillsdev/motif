@@ -71,6 +71,7 @@ public static class CommandTextRenderer
             ReportResponse r => RenderReport(r),
             ParsimonyReportResponse r => RenderParsimonyReport(r),
             ParsimonyReportSetResponse r => RenderParsimonyReportSet(r),
+            ProposalParsimonyStatus r => ParsimonyStatusText.Render(r),
             ParsimonyLatestReportResponse r => "Latest Parsimony Report " + r.ReportId + "\n  Baseline bundle: " + r.BundleId,
             ParsimonyExpectationProjection p => RenderParsimonyExpectations(p),
             FindComposerResponse r => RenderFindComposer(r),

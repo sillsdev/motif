@@ -292,6 +292,8 @@ public static class CliVerbCatalog
             new[] { "parsimony --project <fwdata> --dry-run <job-id> --wait [--measure <measure-id>] " +
                 "[--evidence-scope project-approved|default-selection] [--assessment <ParseTime-id> ...] " +
                 "[--wait-timeout-ms <ms>] [--json]" }),
+        new CliVerbDescriptor("Reports", "parsimony", "parsimony status",
+            new[] { "parsimony status --project <fwdata> --proposal <id> [--json]" }),
         new CliVerbDescriptor("Reports", "parsimony", "parsimony show",
             new[] { "parsimony show --project <fwdata> <reportId> [--json]" }),
         new CliVerbDescriptor("Reports", "parsimony", "parsimony latest",

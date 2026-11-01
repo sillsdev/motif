@@ -7,6 +7,7 @@
     { "tool": "motif_parsimony_measures" },
     { "tool": "motif_run_parsimony_measure" },
     { "tool": "motif_parsimony_report" },
+    { "tool": "motif_parsimony_status" },
     { "tool": "motif_retirement_review" },
     { "tool": "motif_parsimony_view" },
     { "tool": "motif_parsimony_record_types" },
