@@ -480,14 +480,14 @@ public sealed class DeterministicAssessCommandTests : IDisposable
         Assert.Equal(2, Assert.Single(timing.Value.Aggregates).Calls);
         Assert.Single(timing.Value.CostliestWords);
         Assert.Contains(timing.Value.Words, word => word.Word == SeededProject.AnalysedWordForm &&
-            word.Completion == "Search limit");
+            word.Completion == TimingCompletion.WorkLimit);
 
         var stepLimited = TimingCommand.Timing(new TimingRequest(seeded.FwDataPath,
             parseAssessment.AssessmentId, "step-limit", "rule", new TraceTimingKey("morph_rule", "mrule#0:Verb template") { IdentityQuality = "structural" }, 5));
         Assert.True(stepLimited.Succeeded, stepLimited.Refusal?.Message);
         Assert.Equal(1, stepLimited.Value!.WordCount);
         Assert.Equal(SeededProject.AnalysedWordForm, Assert.Single(stepLimited.Value.SlowestWords).Word);
-        Assert.Equal("Search limit", Assert.Single(stepLimited.Value.Words).Completion);
+        Assert.Equal(TimingCompletion.WorkLimit, Assert.Single(stepLimited.Value.Words).Completion);
 
         var slowest = TimingCommand.Timing(new TimingRequest(seeded.FwDataPath,
             parseAssessment.AssessmentId, "slowest", "rule", new TraceTimingKey("morph_rule", "mrule#0:Verb template") { IdentityQuality = "structural" }, 1));
@@ -761,7 +761,7 @@ public sealed class DeterministicAssessCommandTests : IDisposable
         Assert.Equal(2, timing.Value!.WordCount);
         Assert.Equal("Finished", timing.Value.Words.Single(word => word.Word == "motifa").Completion);
         Assert.Equal(10, timing.Value.Words.Single(word => word.Word == "motifa").ElapsedMs);
-        Assert.Equal("Time limit", timing.Value.Words.Single(word => word.Word == "motifb").Completion);
+        Assert.Equal(TimingCompletion.TimeSafetyNet, timing.Value.Words.Single(word => word.Word == "motifb").Completion);
         Assert.Equal(30, timing.Value.MedianMs);
         Assert.Equal(11, Assert.Single(timing.Value.Aggregates).SelfMs);
     }

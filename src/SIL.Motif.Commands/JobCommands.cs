@@ -503,11 +503,12 @@ public static class JobCommands
                     throw InvalidProgress("a stopped word must be an object");
                 var fields = stopped.EnumerateObject().ToDictionary(item => item.Name, item => item.Value,
                     StringComparer.Ordinal);
-                if (fields.Keys.Any(name => name is not ("Word" or "Reason" or "ElapsedMs")))
+                if (fields.Keys.Any(name => name is not ("Word" or "Reason" or "ElapsedMs" or "WorkSteps")))
                     throw InvalidProgress("a stopped word contains an unsupported field");
                 _ = ReadRequiredString(fields, "Word");
                 _ = ReadRequiredString(fields, "Reason");
                 _ = ReadRequiredDouble(fields, "ElapsedMs");
+                ValidateWorkSteps(fields);
             }
         }
 
@@ -518,15 +519,23 @@ public static class JobCommands
                 throw InvalidProgress("SlowestWord must be an object or null");
             var fields = slowest.EnumerateObject().ToDictionary(item => item.Name, item => item.Value,
                 StringComparer.Ordinal);
-            if (fields.Keys.Any(name => name is not ("Word" or "ElapsedMs")))
+            if (fields.Keys.Any(name => name is not ("Word" or "ElapsedMs" or "WorkSteps")))
                 throw InvalidProgress("SlowestWord contains an unsupported field");
             _ = ReadRequiredString(fields, "Word");
             _ = ReadRequiredDouble(fields, "ElapsedMs");
+            ValidateWorkSteps(fields);
         }
 
         if (properties.TryGetValue("PerWordLimitMs", out var limit) && limit.ValueKind != JsonValueKind.Null &&
             (limit.ValueKind != JsonValueKind.Number || !limit.TryGetInt32(out var milliseconds) || milliseconds <= 0))
             throw InvalidProgress("PerWordLimitMs must be a positive integer or null");
+    }
+
+    private static void ValidateWorkSteps(IReadOnlyDictionary<string, JsonElement> fields)
+    {
+        if (fields.TryGetValue("WorkSteps", out var steps) && steps.ValueKind != JsonValueKind.Null &&
+            (steps.ValueKind != JsonValueKind.Number || !steps.TryGetInt64(out var count) || count < 0))
+            throw InvalidProgress("WorkSteps must be a nonnegative integer or null");
     }
 
     private static string ReadRequiredString(IReadOnlyDictionary<string, JsonElement> properties, string name)

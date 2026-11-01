@@ -24,7 +24,7 @@ internal static class ProposalNumberText
     [
         new("Coverage", Show(trial.TextCoveragePercent, Percent), trial.TextCoveragePercent.Moved),
         new("Approved kept", ShowKept(trial), trial.ApprovedKept.Moved || trial.ApprovedTotal.Moved),
-        new("Work", ShowWork(trial.Work), trial.Work is { BaselineWork: { } before, TrialWorkSteps: { } after } && before != after),
+        new("Work", ShowWork(trial.Work), trial.Work is { } work && PairedMoves.Work(work.BaselineWork, work.TrialWorkSteps)),
         new("Warnings", Show(trial.WarningCount, Count), trial.WarningCount.Moved),
         new("Time on this computer", Show(trial.WordTimeMs, Time), trial.WordTimeMs.Moved),
     ];

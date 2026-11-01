@@ -297,9 +297,9 @@ public sealed class StatisticsViewModelTests
         Assert.Equal("Search completed", statistics.Rows[1].CompletionStatus);
         Assert.Equal(reason switch
         {
-            "work limit" => "Stopped at a search limit · Raise the analysis attempt limit under More.",
-            "time safety net" => "Ran out of time · Increase Seconds per word.",
-            _ => "Stopped at a search limit and ran out of time · Raise the analysis attempt limit under More " +
+            "work limit" => "Stopped at the work limit · Raise the analysis attempt limit under More.",
+            "time safety net" => "Stopped at the time safety net · Increase Seconds per word.",
+            _ => "Stopped at the work limit and at the time safety net · Raise the analysis attempt limit under More " +
                 "or increase Seconds per word.",
         }, statistics.IncompleteDetail);
     }
@@ -340,7 +340,7 @@ public sealed class StatisticsViewModelTests
         await statistics.LoadCommand.ExecuteAsync(null);
 
         Assert.Equal("Stopped 1", statistics.IncompleteHeadline);
-        Assert.Contains("Stopped at a search limit", statistics.IncompleteDetail, StringComparison.Ordinal);
+        Assert.Contains("Stopped at the work limit", statistics.IncompleteDetail, StringComparison.Ordinal);
     }
 
     [Fact]

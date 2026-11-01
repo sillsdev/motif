@@ -169,8 +169,8 @@ public static class TimingCommand
                     ? TimingAggregation.WorkStepsByObject(objectRows, selectedWords) : totalsWork,
                 Work = TimingAggregation.SummarizeWork(selectedWords.Select(TimingAggregation.WorkOf)),
                 Words = selectedWords.Select(word => new TimingWordRow(word.Word, word.ElapsedMs,
-                    IsStepLimited(word) ? TimingCompletion.StepLimit :
-                    word.Outcome == WordOutcome.TimedOut.ToStoredOutcome() || word.Morphology?.TimedOut == true ? "Time limit" :
+                    IsStepLimited(word) ? TimingCompletion.WorkLimit :
+                    word.Outcome == WordOutcome.TimedOut.ToStoredOutcome() || word.Morphology?.TimedOut == true ? TimingCompletion.TimeSafetyNet :
                     ParserRefusals.Of(word.Morphology, word.Outcome) is not null ? TimingCompletion.Refused : TimingCompletion.Finished)
                     { ElapsedNs = word.ElapsedNs, WorkSteps = TimingAggregation.WorkOf(word), Origin = word.Origin }).ToArray(),
             });

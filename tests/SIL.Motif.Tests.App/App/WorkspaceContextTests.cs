@@ -195,7 +195,7 @@ public sealed class WorkspaceContextTests
             new TimingResponse(request.AssessmentId!, request.WordSet, request.By, 1, ++calls, calls, [],
                 request.By == "rule" ? [new TimingAggregateRow("Fresh rule", "Fresh rule", 1, 1, 1) { Kind = "morph_rule" }] : [], [])
             {
-                Words = [new TimingWordRow("dogs", 1, calls > 3 ? "Finished" : "Search limit")],
+                Words = [new TimingWordRow("dogs", 1, calls > 3 ? "Finished" : TimingCompletion.WorkLimit)],
             })));
         await context.OpenProjectAsync(ProjectPath);
         context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.Now, WasRerun: false));
@@ -565,8 +565,8 @@ public sealed class WorkspaceContextTests
             new TimingResponse("assessment-1", request.WordSet, request.By, 2, 6, 6, [],
                 request.By == "kind" ? kindRows : ruleRows, [])
             {
-                Words = [new TimingWordRow("word-1", 6, TimingCompletion.StepLimit) { WorkSteps = 60 },
-                    new TimingWordRow("word-2", 6, TimingCompletion.StepLimit) { WorkSteps = 60 }],
+                Words = [new TimingWordRow("word-1", 6, TimingCompletion.WorkLimit) { WorkSteps = 60 },
+                    new TimingWordRow("word-2", 6, TimingCompletion.WorkLimit) { WorkSteps = 60 }],
                 Attribution = new WordTimeAttribution(2, 12, 12, 0, 0, 0, false),
                 Work = new WordWorkSummary(2, 120, 60, 60),
                 WorkStepAggregates =
@@ -648,7 +648,7 @@ public sealed class WorkspaceContextTests
         fake.TimingCompletesWith(new TimingResponse("assessment-1", "all", "kind", 2, 5, 8, [], [], [])
         {
             Words = [new TimingWordRow("dogs", 5, "Finished"),
-                new TimingWordRow("cats", 8, "Search limit")],
+                new TimingWordRow("cats", 8, TimingCompletion.WorkLimit)],
         });
         await context.OpenProjectAsync(ProjectPath);
         context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.Now, WasRerun: false));
@@ -745,7 +745,7 @@ public sealed class WorkspaceContextTests
         var timing = new TimingPageModel(context);
         fake.TimingCompletesWith(new TimingResponse("assessment-1", "all", "kind", 2, 5, 8, [], [], [])
         {
-            Words = [new TimingWordRow("dogs", 5, "Search limit"),
+            Words = [new TimingWordRow("dogs", 5, TimingCompletion.WorkLimit),
                 new TimingWordRow("cats", 8, "Finished")],
         });
         fake.AssessCompletesWith(Assessment());
@@ -812,7 +812,7 @@ public sealed class WorkspaceContextTests
         var timing = new TimingPageModel(context);
         fake.TimingCompletesWith(new TimingResponse("assessment-1", "all", "kind", 2, 5, 8, [], [], [])
         {
-            Words = [new TimingWordRow("dogs", 5, "Search limit"),
+            Words = [new TimingWordRow("dogs", 5, TimingCompletion.WorkLimit),
                 new TimingWordRow("cats", 8, "Finished")],
         });
         fake.AssessBlocksUntilCancelled(new Refusal("assessment.cancelled", FailureReason.Cancelled, "Cancelled."));

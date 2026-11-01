@@ -11,8 +11,16 @@ public sealed record TrialWordProgress(int Completed, int Total, string? Current
     public int? PerWordLimitMs { get; init; }
 }
 
-/// <summary>A completed word's measured search time, in milliseconds.</summary>
-public sealed record ParseWordTiming(string Word, double ElapsedMs);
+/// <summary>A completed word's measured search time, in milliseconds, and the parser work it took.</summary>
+public sealed record ParseWordTiming(string Word, double ElapsedMs)
+{
+    /// <summary>The parser work steps the word took, or <see langword="null"/> when the parser gave no count.</summary>
+    public long? WorkSteps { get; init; }
+}
 
 /// <summary>A flushed word result whose search stopped at a declared limit.</summary>
-public sealed record StoppedParseWord(string Word, string Reason, double ElapsedMs);
+public sealed record StoppedParseWord(string Word, string Reason, double ElapsedMs)
+{
+    /// <summary>The parser work steps the word took before it stopped, or <see langword="null"/> when none were counted.</summary>
+    public long? WorkSteps { get; init; }
+}

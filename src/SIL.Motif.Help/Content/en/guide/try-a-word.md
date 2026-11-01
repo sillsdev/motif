@@ -6,7 +6,7 @@ A live trace belongs to the open project. Switching projects or closing the proj
 
 1. Enter a word in **Type any word...**.
 2. Choose **Try it** and wait for the trace. Choose **Cancel** to interrupt a running search.
-3. Read the result and any search limit. **Search incomplete** takes precedence even if the parser found an analysis; an unfinished search cannot establish that no analysis exists.
+3. Read the result and whether the search stopped at the work limit or the time safety net. **Search incomplete** takes precedence even if the parser found an analysis; an unfinished search cannot establish that no analysis exists.
 4. Read the result summary and analysis cards, then **Recorded trace**. Each summary groups analyses with proven equal morphology. **Recorded twice** counts source records; it does not establish two different derivations. Each card shows the recorded morpheme names even when PanGloss cannot match them to FieldWorks entries. Glosses appear when recorded; absent glosses are not inferred.
 5. Select a recorded event to read its explanation. Plain translates recorded reason codes into sentences. Only a missing reason says **PanGloss didn't record why.** An unfamiliar code remains visible.
 

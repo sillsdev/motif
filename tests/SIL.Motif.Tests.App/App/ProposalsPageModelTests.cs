@@ -354,6 +354,18 @@ public sealed class ProposalsPageModelTests
         Assert.False(unavailable.Work.Moved);
     }
 
+    [Theory]
+    [InlineData(1040, false)]
+    [InlineData(1100, true)]
+    public async Task TheWorkNumberMovesOnlyPastFivePercentOfTheLargerCount(long trialWork, bool moved)
+    {
+        var trial = Summary(TrialFreshness.Current) with { Work = new TrialWork(1, 1000, trialWork, 0, [], 0, 0) };
+        var (_, _, page) = await OpenAsync(Standings(
+            Card("p/a", "A", ProposalGroup.WaitingForYou, trial: trial, standing: TrialStanding.Current)));
+
+        Assert.Equal(moved, page.Groups[0].Cards[0].Work!.Moved);
+    }
+
     [Fact]
     public async Task NumbersFromAnEarlierTrySayWhatMadeThemOldInsteadOfRepeatingTheGroup()
     {

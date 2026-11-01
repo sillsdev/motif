@@ -105,7 +105,7 @@ public static class ObjectUsesQuery
 
     /// <summary>
     /// The words whose stored per-word timings record the ref's kind and key with a call or some time, each with the
-    /// calls and self time summed over directions.
+    /// calls, self time and work steps summed over directions.
     /// </summary>
     public static ObjectUseWords RanIn(IReadOnlyList<AssessmentWordResult> words,
         IReadOnlyList<AssessmentObjectTiming> timings, ObjectUseRef reference)
@@ -127,6 +127,7 @@ public static class ObjectUsesQuery
                 Calls = calls.Calls is { } total ? checked((int)total) : null,
                 CallsArePartial = calls.IsPartial,
                 ElapsedNs = rows.Any(row => row.ElapsedNs is not null) ? rows.Sum(row => row.ElapsedNs ?? 0) : null,
+                WorkSteps = rows.All(row => row.WorkSteps is not null) ? rows.Sum(row => row.WorkSteps!.Value) : null,
             };
         }).ToArray());
     }

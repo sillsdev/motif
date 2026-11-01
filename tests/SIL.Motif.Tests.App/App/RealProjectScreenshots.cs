@@ -290,7 +290,7 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
         timing.SelectWordSetCommand.Execute("step-limit");
         walkthrough.WaitUntil(() => !timing.SelectWordSetCommand.IsRunning && timing.HasTiming,
             TimeSpan.FromMinutes(2), "Step-limit timing did not load");
-        Assert.True(timing.HasSelectedWords && timing.KindTiming!.Words.Any(word => word.Completion == "Search limit"),
+        Assert.True(timing.HasSelectedWords && timing.KindTiming!.Words.Any(word => word.Completion == SIL.Motif.Contract.Responses.TimingCompletion.WorkLimit),
             "The search-limit capture must show a recorded capped word.");
         walkthrough.Window.Height = 1650;
         foreach (var (theme, variant) in new[] { ("light", ThemeVariant.Light), ("dark", ThemeVariant.Dark) })

@@ -1101,9 +1101,10 @@ public static class CommandTextRenderer
             " (" + string.Join(", ", words.ByMeaning.Select(meaning => $"{meaning.Meaning} {meaning.Words:N0}")) + ")"));
         foreach (var word in words.Words)
         {
-            var timing = word.Calls is null && word.ElapsedNs is null ? "" :
+            var timing = word.Calls is null && word.ElapsedNs is null && word.WorkSteps is null ? "" :
                 $", {CountLabel(word.Calls, "call", "calls")}, " +
-                (word.ElapsedNs is { } ns ? "time on this computer: " + (ns / 1_000_000d).ToString("N3", CultureInfo.CurrentCulture) + " ms" : "time not recorded");
+                (word.WorkSteps is { } work ? $"{work:N0} work steps, " : "work steps not recorded, ") +
+                (word.ElapsedNs is { } ns ? "time on this computer: " + (ns / 1_000_000d).ToString("N3", CultureInfo.CurrentCulture) + " ms" : "time on this computer not recorded");
             text.AppendLine($"    {word.Row.Word}: {word.Row.Meaning}{timing}");
             if (word.Row.MeaningDetail.Length > 0) text.AppendLine("      " + word.Row.MeaningDetail);
         }

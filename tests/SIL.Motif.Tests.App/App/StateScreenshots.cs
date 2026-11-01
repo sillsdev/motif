@@ -659,7 +659,7 @@ public sealed class StateScreenshots(ITestOutputHelper output)
                 Assert.Contains(row.GetVisualDescendants().OfType<TextBlock>(), text =>
                     text.IsEffectivelyVisible && text.Text == time);
             }
-            return "The slowest words and their recorded times are shown on Overview.";
+            return "The slowest words and their work steps are shown on Overview.";
         })
         { Height = 1000 };
         yield return new("review", "word-rows", async stage =>
@@ -779,7 +779,7 @@ public sealed class StateScreenshots(ITestOutputHelper output)
             var timing = stage.Workspace.PageModel<TimingPageModel>();
             await timing.SelectWordSetCommand.ExecuteAsync("step-limit");
             await stage.Until(() => timing.ShowEmptySelection, "Timing's empty selection");
-            return "Timing when no words stopped at a search limit.";
+            return "Timing when no words stopped at the work limit.";
         });
     }
 

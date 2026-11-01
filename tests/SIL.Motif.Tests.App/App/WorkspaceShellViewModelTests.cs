@@ -1029,7 +1029,7 @@ public sealed class WorkspaceShellViewModelTests
             {
                 CurrentWord = "word-312",
                 PerWordLimitMs = 700,
-                SlowestWord = new ParseWordTiming("word-200", 54000),
+                SlowestWord = new ParseWordTiming("word-200", 54000) { WorkSteps = 90_000 },
                 StoppedWords = [new StoppedParseWord("word-201", "TIMEOUT", 700)],
             });
 
@@ -1038,8 +1038,8 @@ public sealed class WorkspaceShellViewModelTests
         Assert.Equal("Parsing 312 of 1,040 words", workspace.ParseAllWordsProgressText);
         Assert.Same(workspace.Assess.ParseProgress, workspace.ActiveParseProgress);
         Assert.Equal("312 of 1,040 words done · Parsing word-312", workspace.ActiveParseProgress.ProgressText);
-        Assert.Equal("Slowest so far: word-200 · 54 s", workspace.ActiveParseProgress.SlowestText);
-        Assert.Equal("1 word timed out after 0.7 s (word-201)", workspace.ActiveParseProgress.StoppedText);
+        Assert.Equal("Slowest so far: word-200 · 90,000 work steps", workspace.ActiveParseProgress.SlowestText);
+        Assert.Equal("1 word stopped at the time safety net after 0.7 s (word-201)", workspace.ActiveParseProgress.StoppedText);
         Assert.True(workspace.PageModel<TextsPageModel>().ShowParsePrompt);
         workspace.Assess.CancelCommand.Execute(null);
         await parsing;

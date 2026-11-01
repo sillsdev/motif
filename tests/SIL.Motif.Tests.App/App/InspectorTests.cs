@@ -446,6 +446,22 @@ public sealed class InspectorTests
     }
 
     [Fact]
+    public void RanInWordsShowWorkStepsNeverMillisecondsAndRankByThem()
+    {
+        static ObjectUseWord Word(string word) => new(new SIL.Motif.Contract.Responses.WordRow(word, WordRowOutcome.NoParse, "Lost", WordRowTone.Problem));
+        var slowButLight = Word("light") with { WorkSteps = 40, ElapsedNs = 9_000_000_000 };
+        var heavy = Word("heavy") with { WorkSteps = 5_000, ElapsedNs = 1_000_000 };
+        var unrecorded = Word("unrecorded") with { ElapsedNs = 2_000_000 };
+
+        var ranIn = InspectorWordsViewModel.ForRanIn(new ObjectUseWords([slowButLight, unrecorded, heavy], []), _ => { });
+
+        Assert.Equal(["heavy", "light", "unrecorded"], ranIn.Words.Select(word => word.Word));
+        Assert.Equal(["5,000 work steps", "40 work steps", "work steps not recorded"], ranIn.Words.Select(word => word.Detail));
+        Assert.DoesNotContain(ranIn.Words, word => word.Detail.Contains("ms", StringComparison.Ordinal));
+        Assert.Equal("PanGloss recorded no work against it in the last Parse all words.", ranIn.EmptyText);
+    }
+
+    [Fact]
     public void RanInCallSummaryMarksTheRecordedTotalWhenSomeWordsHaveNoCallCount()
     {
         var first = new ObjectUseWord(new SIL.Motif.Contract.Responses.WordRow("one", WordRowOutcome.NoParse, "Lost", WordRowTone.Problem))

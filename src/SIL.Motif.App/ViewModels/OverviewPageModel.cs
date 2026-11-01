@@ -256,7 +256,7 @@ public sealed partial class OverviewPageModel : PageModel
             : string.Format(CultureInfo.CurrentCulture, MotifAppStrings.OverviewSpeedMedianFormat, TimingShare.FormatWorkSteps(median))
         : string.Empty;
 
-    /// <summary>How many words stopped at a parser search limit, or empty when none did.</summary>
+    /// <summary>How many words stopped at the work limit, or empty when none did.</summary>
     public string SpeedDetails => Overview?.Timing is { MeasuredWordCount: > 0, StepLimitedWordCount: > 0 and var stopped }
         ? PluralText.Format(MotifAppStrings.OverviewSpeedStoppedPattern, stopped)
         : string.Empty;

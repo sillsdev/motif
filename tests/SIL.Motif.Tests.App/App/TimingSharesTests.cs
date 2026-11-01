@@ -618,7 +618,7 @@ public sealed class TimingSharesTests
                 request.By == "kind" ? kinds : rules, request.Rule is null ? [] : costliest ?? [])
             {
                 Words = words.Select((word, index) => new TimingWordRow(word.Word, word.Ms,
-                    word.Word == stepLimitedWord ? TimingCompletion.StepLimit : TimingCompletion.Finished)
+                    word.Word == stepLimitedWord ? TimingCompletion.WorkLimit : TimingCompletion.Finished)
                 {
                     ElapsedNs = elapsedNs is not null && index < elapsedNs.Count ? elapsedNs[index] : null,
                     WorkSteps = wordWork[index],

@@ -20,9 +20,18 @@ public sealed class PairedMovesTests
     public void ATimeMovesByMoreThanAShareOfTheLargerTime(double before, double after, bool moved) =>
         Assert.Equal(moved, PairedMoves.Time(before, after));
 
+    [Theory]
+    [InlineData(1000L, 1040L, false)]
+    [InlineData(1000L, 1100L, true)]
+    [InlineData(1100L, 1000L, true)]
+    public void WorkStepsMoveByMoreThanAShareOfTheLargerCount(long before, long after, bool moved) =>
+        Assert.Equal(moved, PairedMoves.Work(before, after));
+
     [Fact]
     public void AValueOnOneSideOnlyMovesAndTwoMissingValuesDoNot()
     {
+        Assert.True(PairedMoves.Work(null, 5));
+        Assert.False(PairedMoves.Work(null, null));
         Assert.True(PairedMoves.Percent(null, 50));
         Assert.True(PairedMoves.Time(10, null));
         Assert.True(PairedMoves.Count(null, 0));

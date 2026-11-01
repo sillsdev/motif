@@ -52,7 +52,7 @@ public sealed record GrammarCoverageFigure(
     public double? Fraction => Adjudicated == 0 ? null : (double)Analysed / Adjudicated;
 
     /// <summary>
-    /// Whether an attempted word's search stopped at a time or parser search limit.
+    /// Whether an attempted word's search stopped at the work limit or the time safety net.
     /// </summary>
     public bool IsIncomplete => IncompleteCount > 0;
 

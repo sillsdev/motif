@@ -182,9 +182,9 @@ public sealed partial class TimingPageModel : PageModel
     public string HeadlineMedian => HasHeadline && KindTiming?.Work.MedianWorkSteps is { } median
         ? TimingShare.FormatWorkSteps(median) : string.Empty;
 
-    /// <summary>How many of the chosen words stopped at a parser search limit.</summary>
+    /// <summary>How many of the chosen words stopped at the work limit.</summary>
     public string HeadlineStopped => KindTiming?.Words
-        .Count(word => word.Completion == TimingCompletion.StepLimit).ToString("N0", System.Globalization.CultureInfo.CurrentCulture)
+        .Count(word => word.Completion == TimingCompletion.WorkLimit).ToString("N0", System.Globalization.CultureInfo.CurrentCulture)
         ?? string.Empty;
 
     /// <summary>The caption under the stopped-word count.</summary>
@@ -207,15 +207,15 @@ public sealed partial class TimingPageModel : PageModel
     };
 
     private bool HasStepLimitedWords => KindTiming?.Words.Any(word =>
-        word.Completion == TimingCompletion.StepLimit) == true;
+        word.Completion == TimingCompletion.WorkLimit) == true;
 
     private bool HasTimeLimitedWords => KindTiming?.Words.Any(word =>
-        word.Completion == "Time limit") == true;
+        word.Completion == TimingCompletion.TimeSafetyNet) == true;
 
-    /// <summary>The stopped-words filter's label, including words stopped at a parser search limit.</summary>
+    /// <summary>The stopped-words filter's label, counting the words stopped at the work limit.</summary>
     public string StoppedWordsButtonText => string.Format(CultureInfo.CurrentCulture,
         MotifAppStrings.TimingStoppedButtonFormat, KindTiming?.Words.Count(word =>
-        word.Completion == TimingCompletion.StepLimit).ToString("N0", CultureInfo.CurrentCulture) ?? "0");
+        word.Completion == TimingCompletion.WorkLimit).ToString("N0", CultureInfo.CurrentCulture) ?? "0");
 
     /// <summary>Whether these totals include separately recorded re-run measurements.</summary>
     public string RerunMeasurementsText => CurrentTimingOverrides is { Count: > 0 } overrides
@@ -391,8 +391,8 @@ public sealed partial class TimingPageModel : PageModel
         listed.TimeText = timeText;
         listed.Note = KindTiming?.Words.FirstOrDefault(row => row.Word == word)?.Completion switch
         {
-            TimingCompletion.StepLimit => MotifAppStrings.TimingStoppedAtSearchLimit,
-            "Time limit" => MotifAppStrings.TimingStoppedAtTimeLimit,
+            TimingCompletion.WorkLimit => MotifAppStrings.TimingStoppedAtSearchLimit,
+            TimingCompletion.TimeSafetyNet => MotifAppStrings.TimingStoppedAtTimeLimit,
             _ => null,
         };
         return listed;

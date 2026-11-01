@@ -19,7 +19,7 @@ public enum ParserOutcome
     /// <summary>No analysis was built; the meaning distinguishes refusals from completed searches.</summary>
     NoParse,
 
-    /// <summary>The search reached its step or time limit, so the result is unknown.</summary>
+    /// <summary>The search reached the work limit or the time safety net, so the result is unknown.</summary>
     Stopped,
 
     /// <summary>The word has no recorded parser result.</summary>

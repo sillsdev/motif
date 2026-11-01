@@ -405,7 +405,7 @@
     <comment>Window text.</comment>
   </data>
   <data name="MotifApp.SlowestWordsAndRecordedTimesAccessibleName" xml:space="preserve">
-    <value>Slowest words and recorded times</value>
+    <value>Slowest words and their work steps</value>
     <comment>Accessible name announced by screen readers.</comment>
   </data>
   <data name="MotifApp.GrammarWarningsAccessibleName" xml:space="preserve">
@@ -3458,8 +3458,8 @@ Never included unless you tick it in the preview: local details, which may conta
     <comment>Shown on the Timing page when words were chosen by hand or from another page and none has recorded work steps.</comment>
   </data>
   <data name="MotifApp.TimingNoWordsStopped" xml:space="preserve">
-    <value>No words stopped at a search limit.</value>
-    <comment>Shown on the Timing page when the stopped-at-a-limit group is empty.</comment>
+    <value>No words stopped at the work limit.</value>
+    <comment>Shown on the Timing page when the group of words stopped at the work limit is empty.</comment>
   </data>
   <data name="MotifApp.TimingNoWordsInGroup" xml:space="preserve">
     <value>No words in this group have recorded work steps.</value>
@@ -3490,8 +3490,8 @@ Never included unless you tick it in the preview: local details, which may conta
     <comment>Caption under the total work steps when every word of a chosen group recorded work steps; {0} is how many.</comment>
   </data>
   <data name="MotifApp.TimingStoppedCaption" xml:space="preserve">
-    <value>stopped at a search limit</value>
-    <comment>Caption under the count of words that stopped at a parser search limit.</comment>
+    <value>stopped at the work limit</value>
+    <comment>Caption under the count of words that stopped at the parser work limit.</comment>
   </data>
   <data name="MotifApp.TimingDetailLimitedFormat" xml:space="preserve">
     <value>Object timing detail kept for the {0} costliest words.</value>
@@ -3510,20 +3510,20 @@ Never included unless you tick it in the preview: local details, which may conta
     <comment>Label of the All filter button on the Timing page; {0} is the number of words.</comment>
   </data>
   <data name="MotifApp.TimingAdviceBothLimits" xml:space="preserve">
-    <value>Stopped at a search limit and ran out of time · Raise the analysis attempt limit under More or increase Seconds per word.</value>
-    <comment>Advice on the Timing page when some words stopped at the search limit and others ran out of time. More and Seconds per Word name controls on the page.</comment>
+    <value>Stopped at the work limit and at the time safety net · Raise the analysis attempt limit under More or increase Seconds per word.</value>
+    <comment>Advice on the Timing page when some words stopped at the work limit and others at the time safety net. More and Seconds per Word name controls on the page.</comment>
   </data>
   <data name="MotifApp.TimingAdviceSearchLimit" xml:space="preserve">
-    <value>Stopped at a search limit · Raise the analysis attempt limit under More.</value>
-    <comment>Advice on the Timing page when words stopped at the search limit. More names a control on the page.</comment>
+    <value>Stopped at the work limit · Raise the analysis attempt limit under More.</value>
+    <comment>Advice on the Timing page when words stopped at the work limit. More names a control on the page.</comment>
   </data>
   <data name="MotifApp.TimingAdviceTimeLimit" xml:space="preserve">
-    <value>Ran out of time · Increase Seconds per word.</value>
-    <comment>Advice on the Timing page when words ran out of time. Seconds per Word names a control on the page.</comment>
+    <value>Stopped at the time safety net · Increase Seconds per word.</value>
+    <comment>Advice on the Timing page when words stopped at the time safety net. Seconds per Word names a control on the page.</comment>
   </data>
   <data name="MotifApp.TimingStoppedButtonFormat" xml:space="preserve">
     <value>Stopped {0}</value>
-    <comment>Label of the Stopped filter button on the Timing page; {0} is the number of words that stopped at a search limit.</comment>
+    <comment>Label of the Stopped filter button on the Timing page; {0} is the number of words that stopped at the work limit.</comment>
   </data>
   <data name="MotifApp.TimingRerunMeasurementsPattern" xml:space="preserve">
     <value>{0, plural, one {Includes # separate re-run measurement.} other {Includes # separate re-run measurements.}}</value>
@@ -3622,12 +3622,12 @@ Never included unless you tick it in the preview: local details, which may conta
     <comment>Heading over the words a rule did the most work in; {0} is the rule name.</comment>
   </data>
   <data name="MotifApp.TimingStoppedAtSearchLimit" xml:space="preserve">
-    <value>Stopped at a search limit</value>
-    <comment>Note on a word that stopped at a parser search limit.</comment>
+    <value>Stopped at the work limit</value>
+    <comment>Note on a word that stopped at the parser work limit.</comment>
   </data>
   <data name="MotifApp.TimingStoppedAtTimeLimit" xml:space="preserve">
-    <value>Stopped at the time limit</value>
-    <comment>Note on a word that stopped at the parser time limit.</comment>
+    <value>Stopped at the time safety net</value>
+    <comment>Note on a word that stopped at the parser time safety net.</comment>
   </data>
   <data name="MotifApp.TimingNoStoredTimingForRule" xml:space="preserve">
     <value>No stored timing for this rule.</value>
@@ -4268,7 +4268,7 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <comment>Statistics summary card: how many words stopped at a limit; {0} is the count.</comment>
   </data>
   <data name="MotifApp.StatsNoWordStopped" xml:space="preserve">
-    <value>No word is recorded as stopped at a time or search limit.</value>
+    <value>No word is recorded as stopped at the work limit or the time safety net.</value>
     <comment>Statistics summary card detail when no word stopped at a limit.</comment>
   </data>
   <data name="MotifApp.StatsEachSearchStopped" xml:space="preserve">
@@ -4393,11 +4393,11 @@ Motif starts a check automatically when this project opens. Use Reload to read a
   </data>
   <data name="MotifApp.CompareEveryWordFinished" xml:space="preserve">
     <value>Every word finished.</value>
-    <comment>Shown on the Compare page when no word timed out or was left untried.</comment>
+    <comment>Shown on the Compare page when no word stopped at a limit or was left untried.</comment>
   </data>
   <data name="MotifApp.CompareRerunWordsPattern" xml:space="preserve">
-    <value>{0, plural, one {# word timed out or was not tried.} other {# words timed out or were not tried.}}</value>
-    <comment>Plural pattern: how many words timed out or were not tried; # is the count.</comment>
+    <value>{0, plural, one {# word stopped at a limit or was not tried.} other {# words stopped at a limit or were not tried.}}</value>
+    <comment>Plural pattern: how many words stopped at a limit or were not tried; # is the count.</comment>
   </data>
   <data name="MotifApp.CompareNoCellsChosen" xml:space="preserve">
     <value>No cells chosen: every word is listed. Click a cell to list only its words; Ctrl-click adds cells.</value>
@@ -4925,7 +4925,7 @@ Motif starts a check automatically when this project opens. Use Reload to read a
   </data>
   <data name="MotifApp.ProgressSlowestFormat" xml:space="preserve">
     <value>Slowest so far: {0} · {1}</value>
-    <comment>Parse progress: the slowest word so far; {0} is the word and {1} its parse time; the dot is a separator.</comment>
+    <comment>Parse progress: the slowest word so far; {0} is the word and {1} its parser work steps with their unit; the dot is a separator.</comment>
   </data>
   <data name="MotifApp.ProgressFinishing" xml:space="preserve">
     <value>All words have been parsed; finishing the Assessment...</value>
@@ -4980,16 +4980,16 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <comment>Plural pattern: how many words stopped during the parse; # is the count.</comment>
   </data>
   <data name="MotifApp.ProgressStoppedTimedOutAfterFormat" xml:space="preserve">
-    <value>{0} timed out after {1} s ({2})</value>
-    <comment>Parse progress: words that timed out; {0} is how many words, {1} the time limit in seconds and {2} the last such word.</comment>
+    <value>{0} stopped at the time safety net after {1} s ({2})</value>
+    <comment>Parse progress: words that stopped at the time safety net; {0} is how many words, {1} the time safety net in seconds and {2} the last such word.</comment>
   </data>
   <data name="MotifApp.ProgressStoppedTimedOutFormat" xml:space="preserve">
-    <value>{0} timed out ({1})</value>
-    <comment>Parse progress: words that timed out; {0} is how many words and {1} the last such word.</comment>
+    <value>{0} stopped at the time safety net ({1})</value>
+    <comment>Parse progress: words that stopped at the time safety net; {0} is how many words and {1} the last such word.</comment>
   </data>
   <data name="MotifApp.ProgressStoppedSearchLimitFormat" xml:space="preserve">
-    <value>{0} stopped at a search limit ({1})</value>
-    <comment>Parse progress: words that stopped at the search limit; {0} is how many words and {1} the last such word.</comment>
+    <value>{0} stopped at the work limit ({1})</value>
+    <comment>Parse progress: words that stopped at the work limit; {0} is how many words and {1} the last such word.</comment>
   </data>
   <data name="MotifApp.ProgressStalledNoLimit" xml:space="preserve">
     <value>No word has finished for 1 min. This search has no per-word time limit. You can cancel it or report a problem.</value>
@@ -5032,16 +5032,16 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <comment>A duration in seconds; {0} is the seconds.</comment>
   </data>
   <data name="MotifApp.ProgressStoppedWordFormat" xml:space="preserve">
-    <value>{0} · {1} · {2} s</value>
-    <comment>One stopped word in the parse progress; {0} is the word, {1} why it stopped and {2} how long it ran; the dots are separators.</comment>
+    <value>{0} · {1} · {2}</value>
+    <comment>One stopped word in the parse progress; {0} is the word, {1} why it stopped and {2} its parser work steps with their unit; the dots are separators.</comment>
   </data>
   <data name="MotifApp.ProgressTimedOut" xml:space="preserve">
-    <value>Timed out</value>
-    <comment>Why a word stopped: it ran out of time.</comment>
+    <value>Stopped at the time safety net</value>
+    <comment>Why a word stopped: it hit the time safety net.</comment>
   </data>
   <data name="MotifApp.ProgressStoppedAtSearchLimit" xml:space="preserve">
-    <value>Stopped at a search limit</value>
-    <comment>Why a word stopped: it hit the search limit.</comment>
+    <value>Stopped at the work limit</value>
+    <comment>Why a word stopped: it hit the work limit.</comment>
   </data>
   <data name="MotifApp.OutcomeNoParse" xml:space="preserve">
     <value>No parse</value>
@@ -6382,8 +6382,8 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <comment>Overview Speed tile: the median and 95th percentile parser work steps per word. {0} and {1} are counts with their unit, such as "64 work steps".</comment>
   </data>
   <data name="MotifApp.OverviewSpeedStoppedPattern" xml:space="preserve">
-    <value>{0, plural, one {# stopped at a search limit} other {# stopped at a search limit}}</value>
-    <comment>Count sentence on the Overview Speed tile: how many words stopped at a parser search limit. # is the count.</comment>
+    <value>{0, plural, one {# stopped at the work limit} other {# stopped at the work limit}}</value>
+    <comment>Count sentence on the Overview Speed tile: how many words stopped at the parser work limit. # is the count.</comment>
   </data>
   <data name="MotifApp.OverviewSlowestSummaryFormat" xml:space="preserve">
     <value>Slowest: {0}</value>
@@ -6395,7 +6395,7 @@ Motif starts a check automatically when this project opens. Use Reload to read a
   </data>
   <data name="MotifApp.OverviewSlowestStoppedWordFormat" xml:space="preserve">
     <value>{0} Stopped · {1}</value>
-    <comment>One slowest word that stopped at a search limit. {0} is the word; {1} is its parser work steps with their unit. Stopped is the name of an outcome.</comment>
+    <comment>One slowest word that stopped at the work limit. {0} is the word; {1} is its parser work steps with their unit. Stopped is the name of an outcome.</comment>
   </data>
   <data name="MotifApp.TraceParsed" xml:space="preserve">
     <value>Parsed</value>
@@ -6562,8 +6562,8 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <comment>Link text on an Overview Look First row to open the listed words. # is the count.</comment>
   </data>
   <data name="MotifApp.OverviewStoppedWordsRowPattern" xml:space="preserve">
-    <value>{0, plural, one {# word stopped at a search limit.} other {# words stopped at a search limit.}}</value>
-    <comment>Overview Look First row: how many words stopped at a parser search limit. # is the count.</comment>
+    <value>{0, plural, one {# word stopped at the work limit.} other {# words stopped at the work limit.}}</value>
+    <comment>Overview Look First row: how many words stopped at the parser work limit. # is the count.</comment>
   </data>
   <data name="MotifApp.OverviewStoppedWordsDetailFormat" xml:space="preserve">
     <value>{0} of {1} in total</value>
@@ -6671,7 +6671,7 @@ Motif starts a check automatically when this project opens. Use Reload to read a
   </data>
   <data name="MotifApp.OverviewLabelStopped" xml:space="preserve">
     <value>stopped</value>
-    <comment>Overview bar key: words that stopped at a search limit.</comment>
+    <comment>Overview bar key: words that stopped at the work limit.</comment>
   </data>
   <data name="MotifApp.OverviewLabelCantRead" xml:space="preserve">
     <value>can't read</value>

@@ -19,6 +19,21 @@ public sealed class CompareViewModelTests
         Assert.DoesNotContain(CompareSort.MostFrequent, compare.SortChoices);
     }
 
+    [Fact]
+    public void SlowestSortsByWorkStepsDescendingWithMissingCountsLastAndTiesInInputOrder()
+    {
+        AssessWordRowViewModel Row(string word, long? steps, int elapsed) =>
+            new(Word(word, "analysed", ProjectStanding.NotPresent) with { WorkSteps = steps, ElapsedMs = elapsed });
+        var compare = new CompareViewModel();
+        compare.Load([
+            Row("none-slow", null, 9000), Row("tie-a", 500, 1), Row("big", 9000, 1),
+            Row("zero", 0, 1), Row("tie-b", 500, 1), Row("none-fast", null, 5)]);
+
+        compare.Sort = CompareSort.Slowest;
+
+        Assert.Equal(["big", "tie-a", "tie-b", "zero", "none-slow", "none-fast"], compare.Words.Select(word => word.Word));
+    }
+
     private static AssessmentWordResult Word(
         string word, string outcome, string standing, IReadOnlyList<string>? grades = null,
         bool incomplete = false, int missedApproved = 0, int? occurrences = null)

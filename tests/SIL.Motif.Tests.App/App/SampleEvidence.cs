@@ -63,7 +63,7 @@ internal static class SampleEvidence
             summary.SlowestWords, aggregation.Aggregates, aggregation.CostliestWords)
         {
             Words = words.Select(word => new TimingWordRow(word.Word, word.ElapsedMs,
-                word.IsIncomplete ? TimingCompletion.StepLimit : TimingCompletion.Finished)
+                word.IsIncomplete ? TimingCompletion.WorkLimit : TimingCompletion.Finished)
             {
                 ElapsedNs = word.ElapsedMs * 1_000_000L,
                 WorkSteps = WorkStepsOf(word.Word),

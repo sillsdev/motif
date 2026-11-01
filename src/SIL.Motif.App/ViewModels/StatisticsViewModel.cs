@@ -143,9 +143,9 @@ public sealed partial class StatisticsViewModel : ObservableObject
             var stopped = ScopeRows.Where(row => row.IsIncomplete).ToArray();
             if (stopped.Length == 0)
                 return MotifAppStrings.StatsNoWordStopped;
-            var stepLimit = stopped.Any(row => row.CompletionStatus?.Contains("work limit", StringComparison.OrdinalIgnoreCase) == true);
-            var timeLimit = stopped.Any(row => row.CompletionStatus?.Contains("time", StringComparison.OrdinalIgnoreCase) == true);
-            return (stepLimit, timeLimit) switch
+            var workLimit = stopped.Any(row => row.StoppedAtWorkLimit);
+            var timeSafetyNet = stopped.Any(row => row.StoppedAtTimeSafetyNet);
+            return (workLimit, timeSafetyNet) switch
             {
                 (true, true) => MotifAppStrings.TimingAdviceBothLimits,
                 (true, false) => MotifAppStrings.TimingAdviceSearchLimit,
@@ -216,7 +216,7 @@ public sealed partial class StatisticsViewModel : ObservableObject
     /// <summary>How many rows are in the applicable scope, before the row filter.</summary>
     public int RowCount => ScopeRows.Count();
 
-    /// <summary>How many fetched words stopped at a time or parser search limit.</summary>
+    /// <summary>How many fetched words stopped at the work limit or the time safety net.</summary>
     public int IncompleteCount => ScopeRows.Count(row => row.IsIncomplete);
 
     /// <summary>Whether the grid shows only the words that did not finish.</summary>

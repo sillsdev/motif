@@ -374,6 +374,12 @@ public sealed record ObjectUseWord(WordRow Row)
     /// <see langword="null"/> for a use, or when PanGloss does not time that kind.
     /// </summary>
     public long? ElapsedNs { get; init; }
+
+    /// <summary>
+    /// The parser work steps attributed to the object in this word, over every direction PanGloss recorded;
+    /// <see langword="null"/> for a use, or when some direction has no recorded count.
+    /// </summary>
+    public long? WorkSteps { get; init; }
 }
 
 /// <summary>How many of some words hold one meaning.</summary>

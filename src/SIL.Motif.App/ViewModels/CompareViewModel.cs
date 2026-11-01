@@ -240,7 +240,7 @@ public sealed partial class CompareViewModel : ObservableObject
     private decimal _rerunSeconds = 30;
 
     /// <summary>
-    /// The timed-out and untried words to run again: those in the chosen cells when any Unknown cell is chosen,
+    /// The stopped and untried words to run again: those in the chosen cells when any Unknown cell is chosen,
     /// otherwise every one of them.
     /// </summary>
     public IReadOnlyList<string> RerunWords
@@ -744,7 +744,7 @@ public sealed partial class CompareViewModel : ObservableObject
         matches = Sort switch
         {
             CompareSort.Alphabetical => matches.OrderBy(word => word.Word, StringComparer.CurrentCulture),
-            CompareSort.Slowest => matches.OrderByDescending(word => word.ElapsedMs ?? -1),
+            CompareSort.Slowest => matches.OrderByDescending(word => word.WorkSteps ?? -1).ThenByDescending(word => word.ElapsedMs ?? -1),
             _ => matches.OrderByDescending(word => word.Occurrences ?? 0).ThenBy(word => word.Word, StringComparer.CurrentCulture),
         };
         _listed = matches.ToArray();
@@ -851,7 +851,7 @@ public enum CompareSort
 
     Alphabetical,
 
-    /// <summary>Longest parse first.</summary>
+    /// <summary>Most parser work steps first.</summary>
     Slowest,
 }
 
@@ -1139,6 +1139,7 @@ public sealed partial class CompareWordViewModel : ObservableObject, IDisposable
         AccessibleName = string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.CompareWordAccessibleNameFormat, Word, CompareViewModel.HeldInFieldWorks(OpinionLabel), CompareViewModel.ColumnSentenceOf(Column));
         Occurrences = word.OccurrenceCount;
         ElapsedMs = word.ElapsedMs;
+        WorkSteps = word.WorkSteps;
         Meaning = WordRow.Meaning;
         Family = WordRow.HasRefusalReason ? CompareFamilyKind.Unknown : CompareViewModel.MeaningOf(Row, Column).Family;
         RowLabel = CompareViewModel.RowLabelOf(Row);
@@ -1237,6 +1238,7 @@ public sealed partial class CompareWordViewModel : ObservableObject, IDisposable
     public IReadOnlyList<ParserReadingViewModel> MissedApproved { get; }
     public FixFirstPriority? FixFirst { get; }
     public int? ElapsedMs { get; }
+    public long? WorkSteps { get; }
     public string Meaning { get; }
     public CompareFamilyKind Family { get; }
 

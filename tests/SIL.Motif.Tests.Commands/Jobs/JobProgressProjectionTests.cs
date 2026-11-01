@@ -70,6 +70,23 @@ public sealed class JobProgressProjectionTests(PristineProjectFixture pristine)
     }
 
     [Theory]
+    [InlineData("{\"Completed\":0,\"Total\":1,\"SlowestWord\":{\"Word\":\"cat\",\"ElapsedMs\":1},\"StoppedWords\":[{\"Word\":\"cat\",\"Reason\":\"CAP\",\"ElapsedMs\":1}]}", null, null)]
+    [InlineData("{\"Completed\":0,\"Total\":1,\"SlowestWord\":{\"Word\":\"cat\",\"ElapsedMs\":1,\"WorkSteps\":null},\"StoppedWords\":[{\"Word\":\"cat\",\"Reason\":\"CAP\",\"ElapsedMs\":1,\"WorkSteps\":null}]}", null, null)]
+    [InlineData("{\"Completed\":0,\"Total\":1,\"SlowestWord\":{\"Word\":\"cat\",\"ElapsedMs\":1,\"WorkSteps\":42},\"StoppedWords\":[{\"Word\":\"cat\",\"Reason\":\"CAP\",\"ElapsedMs\":1,\"WorkSteps\":7}]}", 42L, 7L)]
+    public void ShowAcceptsAbsentNullAndPresentWorkSteps(string progressJson, long? slowest, long? stopped)
+    {
+        var jobId = CreateRunningTrial(out var fwDataPath);
+        WriteProgress(fwDataPath, jobId, progressJson);
+
+        var shown = JobCommands.Show(new ShowJobRequest(fwDataPath, jobId, MotifProductVersion.CurrentText));
+
+        Assert.True(shown.Succeeded, shown.Refusal?.Message);
+        var progress = shown.Value!.TrialProgress!;
+        Assert.Equal(slowest, progress.SlowestWord!.WorkSteps);
+        Assert.Equal(stopped, Assert.Single(progress.StoppedWords!).WorkSteps);
+    }
+
+    [Theory]
     [InlineData("{\"Completed\":\"one\",\"Total\":1,\"CurrentWord\":null}")]
     [InlineData("{\"Stage\":\"import\",\"Step\":1,\"Steps\":1,\"Completed\":0,\"Total\":1,\"CurrentWord\":null}")]
     [InlineData("{\"Stage\":\"import\",\"Stage\":\"facts\",\"Step\":1,\"Steps\":2}")]
@@ -79,6 +96,11 @@ public sealed class JobProgressProjectionTests(PristineProjectFixture pristine)
     [InlineData("{\"Completed\":0,\"Total\":1,\"SlowestWord\":\"cat\"}")]
     [InlineData("{\"Completed\":0,\"Total\":1,\"PerWordLimitMs\":\"fast\"}")]
     [InlineData("{\"Completed\":0,\"Total\":1,\"SlowestWord\":{\"Word\":\"cat\",\"ElapsedMs\":\"fast\"}}")]
+    [InlineData("{\"Completed\":0,\"Total\":1,\"SlowestWord\":{\"Word\":\"cat\",\"ElapsedMs\":1,\"WorkSteps\":-1}}")]
+    [InlineData("{\"Completed\":0,\"Total\":1,\"SlowestWord\":{\"Word\":\"cat\",\"ElapsedMs\":1,\"WorkSteps\":1.5}}")]
+    [InlineData("{\"Completed\":0,\"Total\":1,\"SlowestWord\":{\"Word\":\"cat\",\"ElapsedMs\":1,\"WorkSteps\":\"many\"}}")]
+    [InlineData("{\"Completed\":0,\"Total\":1,\"StoppedWords\":[{\"Word\":\"cat\",\"Reason\":\"CAP\",\"ElapsedMs\":1,\"WorkSteps\":-5}]}")]
+    [InlineData("{\"Completed\":0,\"Total\":1,\"StoppedWords\":[{\"Word\":\"cat\",\"Reason\":\"CAP\",\"ElapsedMs\":1,\"WorkSteps\":2.5}]}")]
     public void ShowRefusesMalformedMixedAndDuplicateProgressShapes(string progressJson)
     {
         var jobId = CreateRunningTrial(out var fwDataPath);

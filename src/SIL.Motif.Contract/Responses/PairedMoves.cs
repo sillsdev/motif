@@ -16,6 +16,9 @@ public static class PairedMoves
     /// <summary>The share of the larger time that a change in time must exceed to count as a move.</summary>
     public const double TimeShare = 0.05;
 
+    /// <summary>The share of the larger work count that a change in work steps must exceed to count as a move.</summary>
+    public const double WorkShare = 0.05;
+
     /// <summary>A count moves when it differs at all.</summary>
     public static bool Count(int before, int after) => before != after;
 
@@ -34,6 +37,14 @@ public static class PairedMoves
     public static bool Time(double? before, double? after) => (before, after) switch
     {
         ({ } b, { } a) => Math.Abs(b - a) > TimeShare * Math.Max(Math.Abs(b), Math.Abs(a)),
+        (null, null) => false,
+        _ => true,
+    };
+
+    /// <summary>Work steps move by more than <see cref="WorkShare"/> of the larger of the two counts.</summary>
+    public static bool Work(long? before, long? after) => (before, after) switch
+    {
+        ({ } b, { } a) => Math.Abs(b - a) > WorkShare * Math.Max(Math.Abs(b), Math.Abs(a)),
         (null, null) => false,
         _ => true,
     };

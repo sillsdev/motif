@@ -134,7 +134,7 @@ public sealed record BatchAnalysis(
     public int Adjudicated => Analysed + NoAnalysis;
 
     /// <summary>
-    /// Whether any attempted word's search stopped at a time or parser search limit.
+    /// Whether any attempted word's search stopped at the work limit or the time safety net.
     /// </summary>
     public bool IsIncomplete => Incomplete > 0;
 }

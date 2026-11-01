@@ -51,12 +51,12 @@ public sealed class ParseProgressWalkthroughTests(PristineProjectFixture pristin
                 Assert.Contains("left", Details(window));
                 Assert.DoesNotContain("estimating", Details(window));
                 Assert.Contains("c-slow", Details(window));
-                Assert.Contains("timed out", Details(window));
+                Assert.Contains("time safety net", Details(window));
                 File.WriteAllText(release + ".3", string.Empty);
                 window.WaitUntil(() => assess.Progress?.Completed == 4,
                     WalkthroughSteps.Remaining(deadline), "the step-limited word did not update progress");
                 Assert.Contains("d-capped", Details(window));
-                Assert.Contains("search limit", Details(window));
+                Assert.Contains("work limit", Details(window));
                 var stopped = window.Find<Expander>("See stopped words while parsing");
                 var header = stopped.GetVisualDescendants().OfType<Avalonia.Controls.Primitives.ToggleButton>()
                     .Single(button => button.Name == "ExpanderHeader");

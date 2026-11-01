@@ -286,8 +286,8 @@ public sealed class AssessWordRowViewModel
         {
             "analysed" => "Parsed",
             "no-analysis" => "No parse",
-            "timed-out" => "Time limit",
-            "capped" => "Search limit",
+            "timed-out" => TimingCompletion.TimeSafetyNet,
+            "capped" => TimingCompletion.WorkLimit,
             "skipped" => ParserRefusals.Title,
             var other => other,
         };
@@ -373,8 +373,8 @@ public sealed class AssessWordRowViewModel
     /// <summary>Why a word has no analyses: a limit or a skip is not the parser finding no way to build it.</summary>
     public string NoReadingsText => Result switch
     {
-        "Time limit" => "No analyses: the parser stopped at its time limit before it could finish.",
-        "Search limit" => "No analyses: the parser stopped at a search limit before it could finish.",
+        TimingCompletion.TimeSafetyNet => "No analyses: the parser stopped at the time safety net before it could finish.",
+        TimingCompletion.WorkLimit => "No analyses: the parser stopped at the work limit before it could finish.",
         ParserRefusals.Title => Comparison.Detail,
         _ => "No analyses: the parser found no way to build this word.",
     };

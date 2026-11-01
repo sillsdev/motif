@@ -24,12 +24,12 @@ public sealed class OverviewTraceSentenceResourceTests
         { "OverviewSpeedNoTimes", "No work steps recorded" },
         { "OverviewSpeedMedianFormat", "median {0} a word" },
         { "OverviewSpeedMedianWithPercentileFormat", "median {0} a word · 95th percentile {1}" },
-        { "OverviewSpeedStoppedPattern", "{0, plural, one {# stopped at a search limit} other {# stopped at a search limit}}" },
+        { "OverviewSpeedStoppedPattern", "{0, plural, one {# stopped at the work limit} other {# stopped at the work limit}}" },
         { "OverviewSlowestSummaryFormat", "Slowest: {0}" },
         { "OverviewSlowestWordFormat", "{0} · {1}" },
         { "OverviewSlowestStoppedWordFormat", "{0} Stopped · {1}" },
         { "OverviewSeeWordsPattern", "{0, plural, one {See the # word} other {See the # words}}" },
-        { "OverviewStoppedWordsRowPattern", "{0, plural, one {# word stopped at a search limit.} other {# words stopped at a search limit.}}" },
+        { "OverviewStoppedWordsRowPattern", "{0, plural, one {# word stopped at the work limit.} other {# words stopped at the work limit.}}" },
         { "OverviewStoppedWordsDetailFormat", "{0} of {1} in total" },
         { "TraceParsed", "Parsed" },
         { "TraceSearchIncomplete", "Search incomplete" },
@@ -295,7 +295,7 @@ public sealed class OverviewTraceSentenceResourceTests
     [InlineData("TraceRecordedTimesPattern", 2, "Recorded twice")]
     [InlineData("TraceRecordedTimesPattern", 3, "Recorded 3 times")]
     [InlineData("OverviewSeeWordsPattern", 1, "See the 1 word")]
-    [InlineData("OverviewStoppedWordsRowPattern", 3, "3 words stopped at a search limit.")]
+    [InlineData("OverviewStoppedWordsRowPattern", 3, "3 words stopped at the work limit.")]
     [InlineData("OverviewSpeedWordsPattern", 1, "1 word")]
     [InlineData("OverviewSpeedWordsPattern", 1318, "1,318 words")]
     [InlineData("OverviewSeeLostWordsPattern", 1, "See the word")]
@@ -342,7 +342,7 @@ public sealed class OverviewTraceSentenceResourceTests
         var code = string.Join('\n', File.ReadAllLines(path).Where(line => !line.TrimStart().StartsWith("//", StringComparison.Ordinal)));
         string[] fragments =
         [
-            "total word time", "stopped at a search limit", "Slowest: ", "Object timers exceed", "\"median ",
+            "total word time", "stopped at the work limit", "Slowest: ", "Object timers exceed", "\"median ",
             "No parse times recorded", "No work steps recorded", "on this computer", "analysis attempt", "tried and dropped", "choose a group to see",
             "Show the other", "Search incomplete", "Search complete", "hidden by filters", "Recorded twice",
             "Parser time", "} overall", "overall time not recorded", "got furthest", "source records",

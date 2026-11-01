@@ -20,7 +20,7 @@ public sealed class ParseProgressViewModel(TimeProvider clock) : ObservableObjec
     public bool HasStoppedWords => StoppedWords.Count > 0;
     public bool HasSlowestWord => _progress?.SlowestWord is not null;
     public string SlowestText => _progress?.SlowestWord is { } word
-        ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.ProgressSlowestFormat, word.Word, SpeedText.Duration(word.ElapsedMs)) : string.Empty;
+        ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.ProgressSlowestFormat, word.Word, WorkText(word.WorkSteps)) : string.Empty;
     public double Fraction => _progress switch
     {
         { Stage: AssessmentStage.Complete } => 1,
@@ -153,6 +153,10 @@ public sealed class ParseProgressViewModel(TimeProvider clock) : ObservableObjec
             : string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.ProgressAboutLeftFormat, Duration(TimeSpan.FromSeconds(Math.Ceiling(seconds))));
     }
 
+    // A stopped or slow word's cost is its parser work, which does not change with how busy this computer is.
+    internal static string WorkText(long? workSteps) => workSteps is { } work
+        ? TimingShare.FormatWorkSteps(work) : MotifAppStrings.WorkStepsNotRecorded;
+
     private static string Duration(TimeSpan duration) => duration.TotalHours >= 1
         ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.ProgressDurationHoursFormat, (int)duration.TotalHours, duration.Minutes)
         : duration.TotalMinutes >= 1 ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.ProgressDurationMinutesFormat, (int)duration.TotalMinutes, duration.Seconds)
@@ -162,5 +166,5 @@ public sealed class ParseProgressViewModel(TimeProvider clock) : ObservableObjec
 
 public sealed record StoppedParseWordViewModel(StoppedParseWord Word)
 {
-    public string Text => string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.ProgressStoppedWordFormat, Word.Word, Word.Reason == "TIMEOUT" ? MotifAppStrings.ProgressTimedOut : MotifAppStrings.ProgressStoppedAtSearchLimit, (Word.ElapsedMs / 1000.0).ToString("0.###", System.Globalization.CultureInfo.CurrentCulture));
+    public string Text => string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.ProgressStoppedWordFormat, Word.Word, Word.Reason == "TIMEOUT" ? MotifAppStrings.ProgressTimedOut : MotifAppStrings.ProgressStoppedAtSearchLimit, ParseProgressViewModel.WorkText(Word.WorkSteps));
 }

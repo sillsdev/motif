@@ -35,6 +35,16 @@ public sealed class ParseProgressViewModelTests
     }
 
     [Fact]
+    public void AStoppedWordShowsItsWorkStepsAndNeverItsTime()
+    {
+        var capped = new StoppedParseWordViewModel(new SIL.Motif.Contract.Jobs.StoppedParseWord("kitabu", "CAP", 54000) { WorkSteps = 12_000 });
+        var timedOut = new StoppedParseWordViewModel(new SIL.Motif.Contract.Jobs.StoppedParseWord("mtoto", "TIMEOUT", 700));
+
+        Assert.Equal("kitabu · Stopped at the work limit · 12,000 work steps", capped.Text);
+        Assert.Equal("mtoto · Stopped at the time safety net · work steps not recorded", timedOut.Text);
+    }
+
+    [Fact]
     public async Task FinishingWordsAndReadingStatisticsNeverShowsANoProgressWarning()
     {
         var clock = new FixedClock(DateTimeOffset.UtcNow);
@@ -43,9 +53,9 @@ public sealed class ParseProgressViewModelTests
         var run = progress.TrackAsync(() => finish.Task);
         progress.Report(Step(5) with
         {
-            SlowestWord = new SIL.Motif.Contract.Jobs.ParseWordTiming("brief", 2.5259),
+            SlowestWord = new SIL.Motif.Contract.Jobs.ParseWordTiming("brief", 2.5259) { WorkSteps = 4321 },
         });
-        Assert.Equal("Slowest so far: brief · 2.5259 ms", progress.SlowestText);
+        Assert.Equal("Slowest so far: brief · 4,321 work steps", progress.SlowestText);
         Assert.Equal(0.98, progress.Fraction);
         Assert.Equal("All words have been parsed; finishing the Assessment...", progress.ProgressText);
         Assert.Equal("All words have been parsed; finishing the Assessment...", progress.StatusText);

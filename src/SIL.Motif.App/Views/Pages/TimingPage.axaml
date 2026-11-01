@@ -44,7 +44,7 @@
             <Button Classes="filterChip" Classes.active="{Binding IsStepLimitSelected}"
                     Content="{Binding StoppedWordsButtonText}" Command="{Binding SelectWordSetCommand}"
                     CommandParameter="step-limit"
-                    AutomationProperties.HelpText="Words stopped at a search limit." />
+                    AutomationProperties.HelpText="Words stopped at the work limit." />
             <Button Classes="filterChip" Classes.active="{Binding IsSlowestSelected}"
                     Content="{x:Static app:MotifAppStrings.Slowest}" Command="{Binding SelectWordSetCommand}"
                     CommandParameter="slowest" />

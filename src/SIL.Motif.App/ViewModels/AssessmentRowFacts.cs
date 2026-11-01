@@ -15,8 +15,8 @@ internal sealed record AssessmentRowFacts(AssessmentWordResult Source, int? Occu
     {
         "analysed" => "Parsed",
         "no-analysis" => "No parse",
-        "timed-out" => "Time limit",
-        "capped" => "Search limit",
+        "timed-out" => TimingCompletion.TimeSafetyNet,
+        "capped" => TimingCompletion.WorkLimit,
         "skipped" => ParserRefusals.Title,
         var outcome => outcome,
     };
@@ -41,6 +41,7 @@ internal sealed record AssessmentRowFacts(AssessmentWordResult Source, int? Occu
         ? WordProjectStatuses.FromStanding(standing) : null;
     public int? Occurrences => OccurrenceCount;
     public int? ElapsedMs => Source.ElapsedMs;
+    public long? WorkSteps => Source.WorkSteps;
     public FixFirstPriority? FixFirst => Source.FixFirst;
     public int ReadingCount => Source.Morphology?.Analyses.Count ?? 0;
     public bool IsChecked { get; set; }

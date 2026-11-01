@@ -58,6 +58,35 @@ public sealed class PanGlossInvokerTests : IDisposable
     }
 
     [Fact]
+    public void ProgressReadsWorkStepsFromTheLastColumnAndRanksTheSlowestWordByThem()
+    {
+        var path = Path.Combine(_root, "work-progress.tsv");
+        var reader = new BatchProgressReader(["quick", "heavy", "stopped"]);
+        // Headerless work-column rows end with steps then work steps; the slow wall clock belongs to the light word.
+        File.WriteAllText(path,
+            "0\tquick\t90000\tok\t-\t5\t40\n" +
+            "1\theavy\t10\tok\tsig\t900\t9000\n" +
+            "2\tstopped\t20\tCAP\tsig\t200000\t7000\n");
+
+        var progress = reader.Read(path);
+
+        Assert.Equal(new ParseWordTiming("heavy", 10) { WorkSteps = 9000 }, progress?.SlowestWord);
+        Assert.Equal([new StoppedParseWord("stopped", "CAP", 20) { WorkSteps = 7000 }], progress?.StoppedWords);
+    }
+
+    [Fact]
+    public void ProgressReadsWorkStepsByNameWhenTheBatchHasAHeader()
+    {
+        var path = Path.Combine(_root, "headed-progress.tsv");
+        var reader = new BatchProgressReader(["one"]);
+        File.WriteAllText(path, "index\tword\telapsed_ms\tstatus\tsignature\twork_steps\n0\tone\t12\tTIMEOUT\tsig\t321\n");
+
+        var progress = reader.Read(path);
+
+        Assert.Equal([new StoppedParseWord("one", "TIMEOUT", 12) { WorkSteps = 321 }], progress?.StoppedWords);
+    }
+
+    [Fact]
     public void BatchProgressTracksTheLatestStartedUnfinishedWord()
     {
         var path = Path.Combine(_root, "progress.tsv");
