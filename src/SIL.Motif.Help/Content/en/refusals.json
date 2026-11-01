@@ -143,6 +143,10 @@
     "why": "The words file at {wordsFile} must be valid UTF-8 text without NUL bytes. Save it as UTF-8 with one word per line, then repeat the call.",
     "source": "Word-list file input contract."
   },
+  "assess.words-multi-word": {
+    "why": "A word list line holds more than one word. Put each word on its own line with no spaces, then repeat the call.",
+    "source": "Word-list file input contract."
+  },
   "variant.invalid-reference": {
     "why": "Choose an existing variant reference owned by an entry.",
     "source": "Hand-written from the Motif MCP refusal advice."

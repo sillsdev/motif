@@ -21,7 +21,13 @@ public static class WordListFile
     {
         var inline = words ?? [];
         if (string.IsNullOrWhiteSpace(wordsFile))
-            return CommandOutcome<IReadOnlyList<string>>.Success(inline);
+        {
+            var inlineLines = inline.Select((word, index) => (Number: index + 1, Text: word.Trim()))
+                .Where(line => HasInnerSpace(line.Text)).ToArray();
+            return inlineLines.Length == 0
+                ? CommandOutcome<IReadOnlyList<string>>.Success(inline)
+                : MultiWord(inlineLines, "The word list", "entry", "");
+        }
         if (inline.Count > 0)
             return Refused(RefusalCodes.AssessWordsAmbiguous,
                 "Give either words or a words file, not both.", wordsFile);
@@ -78,15 +84,33 @@ public static class WordListFile
         }
         using var reader = new StringReader(text);
         var words = new List<string>();
-        while (reader.ReadLine() is { } line)
+        var multiWord = new List<(int Number, string Text)>();
+        for (var number = 1; reader.ReadLine() is { } line; number++)
         {
             var word = line.Trim();
-            if (word.Length > 0) words.Add(word);
+            if (word.Length == 0) continue;
+            words.Add(word);
+            if (HasInnerSpace(word)) multiWord.Add((number, word));
         }
+        if (multiWord.Count > 0)
+            return MultiWord(multiWord, $"The words file '{Path.GetFileName(wordsFile)}'", "line", wordsFile);
         return words.Count == 0
             ? Refused(RefusalCodes.AssessWordsFileEmpty,
                 $"The words file '{Path.GetFileName(wordsFile)}' has no words; write one word per line.", wordsFile)
             : CommandOutcome<IReadOnlyList<string>>.Success(words);
+    }
+
+    private static bool HasInnerSpace(string word) => word.Any(char.IsWhiteSpace);
+
+    // One word per line; a spaced line parses as no word and would block Apply with no reason.
+    private static CommandOutcome<IReadOnlyList<string>> MultiWord(
+        IReadOnlyList<(int Number, string Text)> lines, string subject, string noun, string file)
+    {
+        var shown = string.Join(", ", lines.Take(5).Select(line => $"{noun} {line.Number} \"{line.Text}\""));
+        var more = lines.Count > 5 ? $" and {lines.Count - 5} more" : "";
+        var message = $"{subject} has {lines.Count} multi-word {noun}{(lines.Count == 1 ? "" : "s")}: {shown}{more}. " +
+            $"Each {noun} must be one word with no spaces; split these onto separate {noun}s, then repeat the call.";
+        return Refused(RefusalCodes.AssessWordsMultiWord, message, file);
     }
 
     private static CommandOutcome<IReadOnlyList<string>> Refused(string code, string message, string file, string? exception = null)

@@ -1,3 +1,4 @@
+using SIL.Motif.Host.Parser;
 using SIL.Motif.Contract.Responses;
 
 namespace SIL.Motif.Host.Assess;
@@ -71,11 +72,15 @@ public static class Readiness
             if (missing.Length > 0)
                 reasons.Add($"its Assessment did not measure changed word(s): {string.Join(", ", missing)}");
         }
-        var unavailable = candidate.Words.Any(word => word.Correctness is null || word.Morphology is null ||
-                CorrectnessCoverage.Require(word, "readiness").Status is "incomplete" or "unavailable");
-        if (unavailable)
+        var lacking = candidate.Words.Where(word => word.Correctness is null || word.Morphology is null ||
+                CorrectnessCoverage.Require(word, "readiness").Status is "incomplete" or "unavailable").ToArray();
+        var unavailable = lacking.Length > 0;
+        foreach (var cause in lacking.GroupBy(LackCause))
         {
-            reasons.Add("its per-word correctness evidence is incomplete or unavailable");
+            var names = cause.Select(word => word.Word).Distinct(StringComparer.Ordinal).ToArray();
+            var shown = string.Join(", ", names.Take(5).Select(word => $"\"{word}\""));
+            var more = names.Length > 5 ? $" and {names.Length - 5} more" : "";
+            reasons.Add($"its per-word correctness evidence is incomplete or unavailable for {shown}{more}: {cause.Key}");
         }
 
         // Two Assessments only mean anything against each other when they measured the same project state.
@@ -117,6 +122,16 @@ public static class Readiness
         return new Decision(reasons, isRegression, HasDroppedGrammar: hasDroppedGrammar,
             DroppedGrammarReason: droppedReason, Dropped: hasDroppedGrammar ? droppedGrammar : null);
     }
+
+    // Names why one word lacks complete evidence, so the fix matches the cause.
+    private static string LackCause(AssessedWord word) =>
+        word.Correctness is null || word.Morphology is null
+            ? "the Assessment holds no approved-morphology evidence for them; measure them again"
+            : word.Morphology.InvalidShape
+                ? "not a single parseable word (a line with spaces is the usual cause); put one word per line with no spaces in the Trial's word list"
+                : word.Morphology.Capped || word.Morphology.TimedOut
+                    ? "the parser stopped at its work or time limit before finishing; raise the limit or rerun the Trial when the machine is quieter"
+                    : "an approved reading lacks a lexicon Form or MSA identity, or the parser reported its result unavailable; check the approved analysis";
 
     // Names each dropped object; the way forward is to fix it, in the Proposal or in FieldWorks, and try again.
     private static string DescribeDroppedGrammar(DroppedGrammar dropped) =>

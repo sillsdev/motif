@@ -5777,6 +5777,10 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <value>The file of words to measure has no words in it. Choose a file with one word on each line.</value>
     <comment>Sentence the window shows when the command refuses with code C.AssessWordsFileEmpty. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
+  <data name="MotifApp.RefusalAssessWordsMultiWord" xml:space="preserve">
+    <value>A line in the words to measure holds more than one word. Put each word on its own line with no spaces, then try again.</value>
+    <comment>Sentence the window shows when the command refuses with code C.AssessWordsMultiWord. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
+  </data>
   <data name="MotifApp.RefusalAssessWordsFileUnreadable" xml:space="preserve">
     <value>Motif could not read the file of words to measure. Check that it exists and can be opened, then try again.</value>
     <comment>Sentence the window shows when the command refuses with code C.AssessWordsFileUnreadable. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>

@@ -160,6 +160,31 @@ public sealed class WordListFileTests : IDisposable
     }
 
     [Fact]
+    public void AFileLineWithSeveralWordsIsRefusedNamingEachLine()
+    {
+        var path = Write(Encoding.UTF8.GetBytes("alpha\n\nbeta gamma\ndelta\nepsilon zeta\n"));
+
+        var outcome = WordListFile.Resolve(null, path);
+
+        AssertRefusal(outcome, "assess.words-multi-word", path);
+        var message = outcome.Refusal!.Message;
+        Assert.Contains("line 3 \"beta gamma\"", message, StringComparison.Ordinal);
+        Assert.Contains("line 5 \"epsilon zeta\"", message, StringComparison.Ordinal);
+        Assert.DoesNotContain("alpha", message, StringComparison.Ordinal);
+        Assert.Contains("one word", message, StringComparison.Ordinal);
+        Assert.NotNull(HelpCatalog.Load(CultureInfo.InvariantCulture).RefusalWhy("assess.words-multi-word"));
+    }
+
+    [Fact]
+    public void AnInlineEntryWithSeveralWordsIsRefusedNamingIt()
+    {
+        var outcome = WordListFile.Resolve(["alpha", "beta gamma"], null);
+
+        AssertRefusal(outcome, "assess.words-multi-word", "");
+        Assert.Contains("entry 2 \"beta gamma\"", outcome.Refusal!.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void AnInvalidPathRemainsAnUnreadableFileRefusal()
     {
         const string path = "invalid\0path";

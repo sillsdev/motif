@@ -23,8 +23,22 @@ public sealed class ReadinessTests
         var word = candidate.Words[0];
         candidate = candidate with { Words = [word with { Morphology = word.Morphology! with { Capped = true } }] };
         var reasons = Readiness.Assess(candidate, null, "old", "new", false);
-        Assert.Contains(reasons, reason => reason.Contains("incomplete or unavailable"));
+        Assert.Contains(reasons, reason => reason.Contains("incomplete or unavailable for \"alpha\"") &&
+            reason.Contains("work or time limit") && !reason.Contains("spaces"));
         Assert.Contains(reasons, reason => reason.Contains("different project state"));
+    }
+
+    [Fact]
+    public void AWordWithAnInvalidShapeIsToldToUseOneWordPerLine()
+    {
+        var candidate = Build("candidate", ("alpha beta", true));
+        var word = candidate.Words[0];
+        candidate = candidate with
+        {
+            Words = [word with { Morphology = word.Morphology! with { InvalidShape = true, Analyses = [] } }],
+        };
+        var reasons = Readiness.Assess(candidate, null, null, "same", false);
+        Assert.Contains(reasons, reason => reason.Contains("\"alpha beta\"") && reason.Contains("one word per line"));
     }
 
     [Fact]

@@ -102,6 +102,7 @@ public sealed partial record WindowRefusal
         [C.AssessUnsupportedKind] = () => MotifAppStrings.RefusalAssessUnsupportedKind,
         [C.AssessWordsAmbiguous] = () => MotifAppStrings.RefusalAssessWordsAmbiguous,
         [C.AssessWordsFileEmpty] = () => MotifAppStrings.RefusalAssessWordsFileEmpty,
+        [C.AssessWordsMultiWord] = () => MotifAppStrings.RefusalAssessWordsMultiWord,
         [C.AssessWordsFileUnreadable] = () => MotifAppStrings.RefusalAssessWordsFileUnreadable,
         [C.AssessmentCancelled] = () => MotifAppStrings.RefusalAssessmentCancelled,
         [C.AssessmentExpired] = () => MotifAppStrings.RefusalAssessmentExpired,
