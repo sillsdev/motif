@@ -95,6 +95,45 @@ public sealed class GrammarHealthReleaseTests
         Assert.Throws<JsonException>(() => GrammarHealthReportReader.ReadResponse(report.ToJsonString()));
     }
 
+    [Fact]
+    public void AReportWhoseFindingHasNoOriginIsRefusedSoNoFindingDefaultsToACheckFinding()
+    {
+        var report = JsonNode.Parse(CapturedReport())!.AsObject();
+        Assert.True(report["diagnostics"]![0]!.AsObject().Remove("origin"));
+
+        Assert.Throws<JsonException>(() => GrammarHealthReportReader.ReadResponse(report.ToJsonString()));
+    }
+
+    [Fact]
+    public void ARealImportFindingReadsAsImport()
+    {
+        var response = GrammarHealthReportReader.ReadResponse(CapturedReport());
+
+        var unknown = Assert.Single(response.Findings, finding => finding.Code == "fwdata.unknown-morph-type-guid");
+        Assert.Equal(GrammarFindingOrigin.Import, unknown.Origin);
+        Assert.All(response.Findings, finding => Assert.Equal(GrammarFindingOrigin.Import, finding.Origin));
+    }
+
+    [Theory]
+    [InlineData("import", false)]
+    [InlineData("check", true)]
+    public void TheOriginReadFromTheReportDecidesWhetherAnUnlistedWarningIsDroppedGrammar(string origin, bool clean)
+    {
+        var report = JsonNode.Parse(CapturedReport())!.AsObject();
+        var finding = report["diagnostics"]![0]!.AsObject();
+        finding["code"] = "grammar.brand-new-code";
+        report["summary"]![0]!["code"] = "grammar.brand-new-code";
+        finding["help_path"] = "docs/diagnostics/grammar.brand-new-code.md";
+        finding["origin"] = origin;
+        var candidate = GrammarHealthReportReader.ReadResponse(report.ToJsonString());
+
+        var result = DroppedGrammarClassifier.Classify(candidate, new GrammarCheckResponse([], HasBaseline: true),
+            new HashSet<Guid>());
+
+        Assert.Equal(clean, result.IsClean);
+        if (!clean) Assert.Equal("grammar.brand-new-code", Assert.Single(result.Introduced).Code);
+    }
+
     [Theory]
     [InlineData(3)]
     [InlineData(5)]

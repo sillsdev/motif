@@ -94,6 +94,9 @@ public static class GrammarDiagnosticLevelExtensions
 /// <summary>The stable PanGloss diagnostic codes that Motif words differently from the parser's own report.</summary>
 public static class PanGlossFindingCodes
 {
+    /// <summary>The error raised when the grammar cannot be compiled; its text says why.</summary>
+    public const string CompileFailed = "grammar.compile.failed";
+
     /// <summary>The info finding that says the stored-analysis comparison stopped at its work budget.</summary>
     public const string StoredAnalysisBudgetReached = "grammar.stored-analysis.budget-reached";
 

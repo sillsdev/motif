@@ -254,10 +254,10 @@ form. Every Trial checks for it. The Trial is *clean* only when that check ran a
 Proposal adds or edits; it is not clean when it found some, and also when the check did not run, did not
 finish, or could not compare with the Baseline's own check. "Clean" says nothing about the Correctness numbers,
 which a Trial reports separately. Apply refuses a Proposal that is not clean and the window offers Try again for
-one whose check did not finish; `--force` on the command line applies in spite of it. Findings the parser
-reports for a rule it keeps as partial, or for missing data, leave nothing out and do not count. A finding the
-Baseline already had is counted but does not make a Trial unclean, except one of the listed drops on an object
-the Proposal edits.
+one whose check did not finish; `--force` on the command line applies in spite of it. Check findings, which the
+parser reports for a rule it keeps as partial or for data that is missing, leave nothing out and do not count. A
+finding the Baseline already had is counted but does not make a Trial unclean, except one of the listed drops on an
+object the Proposal edits.
 _Avoid_: lost grammar, silent drop, dirty Trial
 
 **Evidence set**:

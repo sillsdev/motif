@@ -13,7 +13,8 @@ public sealed record DroppedGrammarObject(string MotifId, string? Kind, string? 
 /// <param name="Message">PanGloss's description of what it dropped and why.</param>
 /// <param name="Listed">
 /// True for a code on Motif's closed list of dropped-grammar codes, whose wording is specific; false for any other
-/// warning PanGloss raised about named grammar objects, which Motif reports generically rather than swallow.
+/// import finding at Warning or Error level, with or without named grammar objects, which Motif reports generically
+/// rather than swallow.
 /// </param>
 public sealed record DroppedGrammarFinding(string Code, IReadOnlyList<DroppedGrammarObject> Objects, string Message,
     bool Listed = true);

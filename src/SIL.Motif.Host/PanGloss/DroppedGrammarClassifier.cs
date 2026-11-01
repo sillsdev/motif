@@ -76,12 +76,13 @@ public static class DroppedGrammarClassifier
         ? "an object PanGloss did not identify"
         : string.Join(", ", objects.Select(item => $"{item.Kind ?? "object"} {item.Name} ({item.MotifId})"));
 
-    // Code and objects; with no object, listed codes use their text and others the code, as text names the file.
+    // Code and objects; with no object, listed codes and compile failures use their text, others the code alone.
     private static string Key(GrammarWarning finding)
     {
         var ids = finding.Subject.Select(SubjectGuid).OfType<Guid>().Select(id => id.ToString("N"))
             .Order(StringComparer.Ordinal).ToArray();
-        var rest = ids.Length > 0 ? string.Join(",", ids) : Codes.Contains(finding.Code!) ? finding.Description : "";
+        var keyedOnText = Codes.Contains(finding.Code!) || finding.Code == PanGlossFindingCodes.CompileFailed;
+        var rest = ids.Length > 0 ? string.Join(",", ids) : keyedOnText ? finding.Description : "";
         return finding.Code + "|" + rest;
     }
 

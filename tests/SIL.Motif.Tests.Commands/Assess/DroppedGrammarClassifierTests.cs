@@ -210,6 +210,30 @@ public sealed class DroppedGrammarClassifierTests
     }
 
     [Fact]
+    public void ADifferentCompileFailureInTheCandidateIsIntroducedEvenWhenTheBaselineFailedToCompile()
+    {
+        var inBaseline = CompileFailure("cannot compile the Baseline grammar");
+        var inCandidate = CompileFailure("cannot compile the candidate grammar");
+
+        var result = DroppedGrammarClassifier.Classify(Check(inCandidate), Check(inBaseline), new HashSet<Guid>());
+
+        var introduced = Assert.Single(result.Introduced);
+        Assert.Equal(PanGlossFindingCodes.CompileFailed, introduced.Code);
+        Assert.Equal(0, result.PreExisting);
+    }
+
+    [Fact]
+    public void TheSameCompileFailureInTheBaselineAndTheCandidateIsPreExisting()
+    {
+        var failure = CompileFailure("cannot compile the grammar");
+
+        var result = DroppedGrammarClassifier.Classify(Check(failure), Check(failure), new HashSet<Guid>());
+
+        Assert.True(result.IsClean);
+        Assert.Equal(1, result.PreExisting);
+    }
+
+    [Fact]
     public void TheRecordedCodeListIsTheOneOfTheReleaseTheProjectPins()
     {
         using var pinned = JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory,
@@ -236,6 +260,13 @@ public sealed class DroppedGrammarClassifierTests
             "The pinned PanGloss release no longer has these dropped-grammar codes: " + string.Join(", ", missing));
         Assert.Equal(48, DroppedGrammarClassifier.Codes.Count);
     }
+
+    private static GrammarWarning CompileFailure(string text) =>
+        Finding(PanGlossFindingCodes.CompileFailed) with
+        {
+            Severity = GrammarDiagnosticLevel.Error,
+            Description = text,
+        };
 
     private static GrammarCheckResponse Check(params GrammarWarning[] findings) => new(findings, HasBaseline: true);
 
