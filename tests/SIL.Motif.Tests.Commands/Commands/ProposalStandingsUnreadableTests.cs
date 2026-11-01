@@ -45,6 +45,7 @@ public sealed class ProposalStandingsUnreadableTests : IDisposable
         var unreadable = Assert.Single(standings.Unreadable);
         Assert.Equal(badId.Value, unreadable.ProposalId);
         Assert.Equal("Broken", unreadable.Label);
+        Assert.Null(unreadable.DraftName);
         Assert.Contains(UnknownKind, unreadable.Reason, StringComparison.Ordinal);
         Assert.Equal(badJson, repository.List(new ProposalListFilter(IncludeArchived: true))
             .Single(record => record.ProposalId == badId).ProposalJson);
@@ -69,6 +70,7 @@ public sealed class ProposalStandingsUnreadableTests : IDisposable
         Assert.Equal(new[] { garbageId.Value, wrongKindId.Value }.Order(StringComparer.Ordinal),
             standings.Unreadable.Select(item => item.ProposalId).Order(StringComparer.Ordinal));
         Assert.All(standings.Unreadable, item => Assert.False(string.IsNullOrWhiteSpace(item.Reason)));
+        Assert.Equal(["garbage", "wrong-kind"], standings.Unreadable.Select(item => item.DraftName).Order(StringComparer.Ordinal));
         Assert.Equal("this is not json", repository.GetDraft("garbage").ProposalJson);
     }
 
@@ -116,6 +118,22 @@ public sealed class ProposalStandingsUnreadableTests : IDisposable
             "lexical/lexSense/setGloss", UnknownKind, StringComparison.Ordinal), "2026-09-24T12:00:00Z", "bad-trial");
 
         Assert.Equal(["good-trial"], TrialScratchRetention.JobsForProposal(fixture.Database, good.Id));
+    }
+
+    [Fact]
+    public void AStoreFailureWhileLoadingProposalsIsNotMistakenForAnUnreadableProposal()
+    {
+        using var fixture = new TrialsTests.ProjectFixture(_root);
+        var proposal = fixture.SaveProposal();
+        fixture.CreateJob(proposal.Json, "2026-09-24T11:00:00Z", "trial", []);
+        using (var connection = fixture.Database.OpenConnection())
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText = "UPDATE ProposalRevisions SET ProposalJson = x'FFFE';";
+            command.ExecuteNonQuery();
+        }
+
+        Assert.Throws<InvalidDataException>(() => Trials.LatestForAll(fixture.Database, fixture.Project));
     }
 
     public void Dispose()

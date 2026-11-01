@@ -218,7 +218,7 @@ public static class JobCommands
         {
             return CommandOutcome<JobEnqueuedResponse>.Refused(new Refusal(RefusalCodes.TrialProposalGone,
                 FailureReason.NotFound,
-                "The Proposal was discarded or deleted while the Trial was being queued, so nothing was tried.",
+                "The Proposal was discarded, deleted or finalized while the Trial was being queued, so nothing was tried.",
                 new Dictionary<string, string>(StringComparer.Ordinal) { ["proposalId"] = record.ProposalId.Value }));
         }
     }
@@ -887,11 +887,20 @@ public static class JobCommands
     private static string NowStamp() => JobTimestamp.FormatUtc(DateTimeOffset.UtcNow);
 
     /// <summary>Returns the immutable revision or the canonical semantic content of a Draft.</summary>
-    public static string CanonicalProposalJson(ProposalRecord record) => record.DraftName is null
-        ? record.ProposalJson!
-        : ProposalCommands.BuildProposalJson(JsonSerializer.Deserialize<DraftDocument>(record.ProposalJson!,
-            new JsonSerializerOptions(JsonSerializerDefaults.Web))
-            ?? throw new InvalidDataException("The Draft has no content."));
+    public static string CanonicalProposalJson(ProposalRecord record)
+    {
+        if (record.DraftName is null) return record.ProposalJson!;
+        try
+        {
+            return ProposalCommands.BuildProposalJson(JsonSerializer.Deserialize<DraftDocument>(record.ProposalJson!,
+                new JsonSerializerOptions(JsonSerializerDefaults.Web))
+                ?? throw new ContractParseException("The Draft has no content."));
+        }
+        catch (JsonException exception)
+        {
+            throw new ContractParseException("The Draft is not valid JSON: " + exception.Message, exception);
+        }
+    }
 
     private static string SourceDigest(string path)
     {

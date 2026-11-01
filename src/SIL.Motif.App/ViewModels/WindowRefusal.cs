@@ -82,6 +82,7 @@ public sealed partial record WindowRefusal
         [C.ProposalClosed] = () => MotifAppStrings.RefusalProposalClosed,
         [C.ProposalNotFound] = () => MotifAppStrings.RefusalProposalNotFound,
         [C.ProposalRationaleEmpty] = () => MotifAppStrings.RefusalProposalRationaleEmpty,
+        [C.ProposalUnreadable] = () => MotifAppStrings.RefusalProposalUnreadable,
         [C.ApplyPreconditionFailed] = () => MotifAppStrings.RefusalApplyPreconditionFailed,
         [C.ApplyNotReady] = () => MotifAppStrings.RefusalApplyNotReady,
         [C.ApplyProjectInUse] = () => MotifAppStrings.RefusalApplyProjectInUse,

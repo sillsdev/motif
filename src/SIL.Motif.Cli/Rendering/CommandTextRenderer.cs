@@ -220,8 +220,16 @@ public static class CommandTextRenderer
             : $"{standings.Unreadable.Count.ToString(CultureInfo.CurrentCulture)} Proposals could not be read, " +
                 "so they are not listed. Nothing was changed or deleted.");
         foreach (var item in standings.Unreadable)
-            text.AppendLine($"  {item.ProposalId} ({item.Label}): {item.Reason}");
+            text.AppendLine($"  {UnreadableProposalName(item)}: {item.Reason}");
         return text.ToString();
+    }
+
+    private static string UnreadableProposalName(UnreadableProposal item)
+    {
+        var notes = new List<string>();
+        if (item.Label != item.ProposalId) notes.Add(item.Label);
+        if (item.DraftName is not null) notes.Add("draft " + item.DraftName);
+        return notes.Count == 0 ? item.ProposalId : $"{item.ProposalId} ({string.Join(", ", notes)})";
     }
 
     private static string ProposalGroupText(ProposalGroup group) => group switch

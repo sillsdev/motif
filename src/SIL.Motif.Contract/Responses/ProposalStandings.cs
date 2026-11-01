@@ -92,7 +92,8 @@ public sealed record ProposalCard(
 /// <param name="ProposalId">The Proposal's canonical id.</param>
 /// <param name="Label">What the Proposal is called, or its id when it has no label.</param>
 /// <param name="Reason">Why the content could not be read, in one line.</param>
-public sealed record UnreadableProposal(string ProposalId, string Label, string Reason);
+/// <param name="DraftName">The Draft's name, or null when the content is not held as a Draft.</param>
+public sealed record UnreadableProposal(string ProposalId, string Label, string Reason, string? DraftName = null);
 
 /// <summary>Every Proposal in the project, grouped by what the person should do with it.</summary>
 /// <param name="Proposals">The listed Proposals, grouped in display order.</param>

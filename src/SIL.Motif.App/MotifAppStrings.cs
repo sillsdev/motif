@@ -2932,6 +2932,8 @@ public static class MotifAppStrings
 
     public static string RefusalProposalRationaleEmpty => Text("MotifApp.RefusalProposalRationaleEmpty");
 
+    public static string RefusalProposalUnreadable => Text("MotifApp.RefusalProposalUnreadable");
+
     public static string RefusalApplyPreconditionFailed => Text("MotifApp.RefusalApplyPreconditionFailed");
 
     public static string RefusalApplyNotReady => Text("MotifApp.RefusalApplyNotReady");

@@ -30,11 +30,6 @@ namespace SIL.Motif.Commands;
 /// <summary>Reads the most recent stored Trial evidence for a Proposal.</summary>
 public static class Trials
 {
-    private static readonly JsonSerializerOptions DraftJsonOptions = new()
-    {
-        PropertyNameCaseInsensitive = true,
-    };
-
     /// <summary>
     /// Reads the chosen Trial for <paramref name="proposalId"/>: the newest completed or active one, else the newest
     /// that stopped; null when none is recorded.
@@ -66,6 +61,7 @@ public static class Trials
         foreach (var group in ReadCandidates(context.Jobs, proposalId: null)
             .GroupBy(candidate => candidate.Proposal.ProposalId))
         {
+            context.LoadProposals();
             // A Proposal whose own content cannot be read has no standing; the Proposals listing reports it.
             try { _ = context.CurrentIntentDigest(group.Key); }
             catch (Exception exception) when (IsUnreadableStoredProposal(exception)) { continue; }
@@ -302,11 +298,7 @@ public static class Trials
     private static string? ReadCurrentIntentDigest(ProposalRecord? record)
     {
         if (record?.ProposalJson is null) return null;
-        var json = record.DraftName is null
-            ? record.ProposalJson
-            : ProposalCommands.BuildProposalJson(JsonSerializer.Deserialize<DraftDocument>(record.ProposalJson,
-                DraftJsonOptions) ?? throw new InvalidDataException("Stored Draft content is incomplete."));
-        return IntentDigest.Compute(ProposalJsonParser.Parse(json));
+        return IntentDigest.Compute(ProposalJsonParser.Parse(JobCommands.CanonicalProposalJson(record)));
     }
 
     private static TrialCompletion? ReadCompletion(string? resultJson)
@@ -345,12 +337,14 @@ public static class Trials
         public AssessmentRepository Assessments { get; } = assessments;
         public IReadOnlyList<JobRecord> Jobs { get; } = jobs;
 
+        public void LoadProposals() => _records ??= Proposals.List(new ProposalListFilter(IncludeArchived: true))
+            .GroupBy(record => record.ProposalId).ToDictionary(group => group.Key, group => group.First());
+
         public string? CurrentIntentDigest(CanonicalId proposalId)
         {
             if (_digests.TryGetValue(proposalId, out var known)) return known;
-            _records ??= Proposals.List(new ProposalListFilter(IncludeArchived: true))
-                .GroupBy(record => record.ProposalId).ToDictionary(group => group.Key, group => group.First());
-            return _digests[proposalId] = ReadCurrentIntentDigest(_records.GetValueOrDefault(proposalId));
+            LoadProposals();
+            return _digests[proposalId] = ReadCurrentIntentDigest(_records!.GetValueOrDefault(proposalId));
         }
     }
 }

@@ -51,6 +51,26 @@ public sealed class WindowRefusalTests
         Assert.False(shown.OffersProblemReport);
     }
 
+    [Fact]
+    public void OnlyUnreadableContentSaysItWasNotReadAndInconsistentStaysGeneric()
+    {
+        Assert.Equal("Motif could not read these changes, so it did not use them. Nothing was changed or deleted.",
+            WindowRefusal.From(Refusal(RefusalCodes.ProposalUnreadable)).Sentence);
+        Assert.Equal(WindowRefusal.GenericSentence,
+            WindowRefusal.From(Refusal(RefusalCodes.ProposalInconsistent)).Sentence);
+        Assert.Contains("try again", WindowRefusal.GenericSentence, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void TheSentenceForChangesThatVanishedBeforeATrialDoesNotNameOneCause()
+    {
+        var sentence = WindowRefusal.From(Refusal(RefusalCodes.TrialProposalGone)).Sentence;
+
+        Assert.DoesNotContain("discarded", sentence, StringComparison.Ordinal);
+        Assert.DoesNotContain("deleted", sentence, StringComparison.Ordinal);
+        Assert.Contains("not checked", sentence, StringComparison.Ordinal);
+    }
+
     [Theory]
     [MemberData(nameof(CatalogueCodes))]
     public void EveryCodeTheWindowReachesHasItsOwnSentence(string code)

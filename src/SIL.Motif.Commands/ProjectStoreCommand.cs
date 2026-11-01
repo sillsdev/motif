@@ -7,7 +7,9 @@ using System.IO;
 using SIL.LCModel;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Projects;
+using SIL.Motif.Contract.Parsing;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Worker.Baselines;
 using SIL.Motif.Worker.Store;
@@ -162,6 +164,13 @@ public static class ProjectStoreCommand
         {
             return CommandOutcome<T>.Refused(new Refusal("store.inconsistent", FailureReason.StoreInconsistent,
                 "Motif could not read the project store.", OperationFacts(fwDataPath, exception)));
+        }
+        catch (ContractParseException exception)
+        {
+            var facts = OperationFacts(fwDataPath, exception);
+            facts["exceptionDetail"] = DroppedGrammarClassifier.BoundMessage(exception.Message);
+            return CommandOutcome<T>.Refused(new Refusal(RefusalCodes.ProposalUnreadable, FailureReason.Refused,
+                ProposalCommands.UnreadableContentMessage(exception), facts));
         }
         catch (IOException exception)
         {

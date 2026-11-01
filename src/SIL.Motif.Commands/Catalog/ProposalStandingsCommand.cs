@@ -55,7 +55,7 @@ public static class ProposalStandingsCommand
             catch (Exception exception) when (Trials.IsUnreadableStoredProposal(exception))
             {
                 unreadable.Add(new UnreadableProposal(record.ProposalId.Value,
-                    record.Label ?? record.ProposalId.Value, ReasonOf(exception)));
+                    record.Label ?? record.ProposalId.Value, ReasonOf(exception), record.DraftName));
             }
         }
         // Today's Overview reads the Baseline, so a project with no Trial must not pay for it on every open.

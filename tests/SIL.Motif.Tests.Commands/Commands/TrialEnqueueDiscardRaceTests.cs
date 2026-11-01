@@ -67,6 +67,20 @@ public sealed class TrialEnqueueDiscardRaceTests : IDisposable
         Assert.True(JobCommands.QueueTrial(jobs, repository.Get(proposal.Id), "job-2", Key(fixture), "{}", null).Succeeded);
     }
 
+    [Fact]
+    public void ADraftFinalizedAfterTheEnqueueReadItRefusesTheTrialWithoutNamingOnlyDiscardOrDelete()
+    {
+        using var fixture = new TrialsTests.ProjectFixture(_root);
+        var (_, draft) = NewDraft(fixture, "d");
+        Sql(fixture, "UPDATE Proposals SET DraftName = NULL, DraftJson = NULL WHERE DraftName = 'd';");
+
+        var queued = JobCommands.QueueTrial(new JobRepository(fixture.Database), draft, "job-1", Key(fixture), "{}", null);
+
+        Assert.Equal(RefusalCodes.TrialProposalGone, queued.Refusal?.Code);
+        Assert.Contains("finalized", queued.Refusal!.Message, StringComparison.Ordinal);
+        Assert.Equal(0, Count(fixture, "SELECT COUNT(*) FROM Jobs;"));
+    }
+
     public void Dispose()
     {
         if (Directory.Exists(_root)) Directory.Delete(_root, true);

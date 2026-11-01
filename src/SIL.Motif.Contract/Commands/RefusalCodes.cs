@@ -211,7 +211,7 @@ public static class RefusalCodes
     public const string TrialChangesChanged = "trial.changes-changed";
     public const string TrialMeasurementIncomplete = "trial.measurement-incomplete";
     public const string TrialNothingPending = "trial.nothing-pending";
-    /// <summary>The Proposal or its Draft was discarded or deleted while its Trial was being queued.</summary>
+    /// <summary>The Proposal or its Draft was discarded, deleted or finalized while its Trial was being queued.</summary>
     public const string TrialProposalGone = "trial.proposal-gone";
     /// <summary>A Motif update is being installed, so no Trial can be queued until it finishes.</summary>
     public const string TrialUpdateInProgress = "trial.update-in-progress";
@@ -518,6 +518,8 @@ public static class RefusalCodes
     public const string ProposalTrialRunning = "proposal.trial-running";
     /// <summary>A Proposal list was filtered by a status that does not exist.</summary>
     public const string ProposalUnknownStatus = "proposal.unknown-status";
+    /// <summary>The stored content of a Proposal or Draft does not parse as a Proposal, so it was not used.</summary>
+    public const string ProposalUnreadable = "proposal.unreadable";
 
     /// <summary>A report named an Assessment that is not in the store.</summary>
     public const string ReportAssessmentNotFound = "report.assessment-not-found";

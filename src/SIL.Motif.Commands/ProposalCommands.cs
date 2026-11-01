@@ -22,6 +22,7 @@ using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.Config;
 using SIL.Motif.Host.Corpus;
 using SIL.Motif.Host.LcmUtils;
+using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.Parser;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Model.Effects;
@@ -2271,10 +2272,17 @@ public static partial class ProposalCommands
     /// Internal: shared with <see cref="JobCommands"/>'s enqueue path.
     /// </summary>
     internal static Refusal ProposalLoadRefusal(Exception exception) =>
-        new(ProposalLoadRefusalCode(exception), ReasonForProposal(exception), exception.Message);
+        new(ProposalLoadRefusalCode(exception), ReasonForProposal(exception),
+            exception is ContractParseException parse ? UnreadableContentMessage(parse) : exception.Message);
+
+    /// <summary>The bounded message for stored content that does not parse as a Proposal.</summary>
+    internal static string UnreadableContentMessage(ContractParseException exception) =>
+        DroppedGrammarClassifier.BoundMessage(
+            "A stored Proposal or Draft could not be read as a Proposal: " + exception.Message);
 
     private static string ProposalLoadRefusalCode(Exception exception) => exception switch
     {
+        ContractParseException => RefusalCodes.ProposalUnreadable,
         FileNotFoundException or DirectoryNotFoundException => "proposal.not-found",
         ArgumentException => "proposal.invalid-id",
         KeyNotFoundException => "proposal.not-found",
