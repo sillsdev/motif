@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json;
 using SIL.LCModel;
 using SIL.Motif.Contract.Ids;
@@ -47,14 +48,32 @@ public static class SetStemPartOfSpeechComposer
         if (msa.PartOfSpeechRA?.Guid != intent.ExpectedPartOfSpeech?.ToGuid())
             throw new InvalidOperationException(
                 "The stem analysis's part of speech differs from the expected part of speech.");
-        if (msa.InflectionClassRA is { } cls &&
-            !LexicalFormAuthoring.InCategoryOrAncestor(InflectionAuthoring.OwningCategory(cls), category))
-            throw new InvalidOperationException(
-                "The stem analysis's inflection class does not belong to the new part of speech or one of its ancestors.");
         if (msa.PartOfSpeechRA?.Guid == category.Guid) return [];
         return [new(CanonicalId.Mint(), MoStemMsaPartOfSpeechOperationKinds.SetPartOfSpeech,
             target: LexicalFormAuthoring.Normalize(intent.Target),
             after: JsonSerializer.SerializeToElement(new { @ref = LexicalFormAuthoring.Normalize(intent.PartOfSpeech).Value }),
-            rationale: OperationRationale)];
+            rationale: OperationRationale + Losses(msa, category))];
+    }
+
+    /// <summary>Names the class and features LibLCM drops on the move.</summary>
+    private static string Losses(IMoStemMsa msa, IPartOfSpeech category)
+    {
+        var lost = new List<string>();
+        if (msa.PartOfSpeechRA is null) return "";
+        if (msa.InflectionClassRA is { } cls && !category.AllInflectionClasses.Contains(cls))
+            lost.Add("inflection class " + cls.ShortName);
+        if (msa.MsFeaturesOA is { } structure)
+            foreach (var spec in structure.FeatureSpecsOC.Where(spec => !Bears(category, spec.FeatureRA)))
+                lost.Add("feature " + (spec.FeatureRA?.ShortName ?? "(none)"));
+        return lost.Count == 0 ? "" : " Warning: the move drops " + string.Join(", ", lost) +
+            ", which neither the new category nor its ancestors hold; moving the stem back does not restore them; make the feature bearable by the category or an ancestor first to keep it.";
+    }
+
+    private static bool Bears(IPartOfSpeech category, IFsFeatDefn? feature)
+    {
+        if (feature is null) return false;
+        for (var current = category; current is not null; current = current.Owner as IPartOfSpeech)
+            if (current.InflectableFeatsRC.Contains(feature)) return true;
+        return false;
     }
 }
