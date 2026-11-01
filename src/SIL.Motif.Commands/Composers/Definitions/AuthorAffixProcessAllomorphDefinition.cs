@@ -27,7 +27,10 @@ internal sealed class AuthorAffixProcessAllomorphDefinition : ComposerDefinition
             Field.Flag("remaining")), required: true, many: true),
         Field.Nested("output", IntentShape.Of(
             Field.Text("copy"),
-            Field.Ids("insert", IdRole.Reference)), required: true, many: true),
+            Field.Ids("insert", IdRole.Reference),
+            Field.Id("insertClass", IdRole.Reference),
+            Field.Text("modify"),
+            Field.Id("features", IdRole.Reference)), required: true, many: true),
         Field.Ids("inflectionClasses", IdRole.Reference),
         Field.Nested("placement", IntentShape.Of(
             Field.Id("after", IdRole.Reference),

@@ -26,6 +26,11 @@ internal static class AffixProcessGraphBuilder
         }
         foreach (var phone in output.Where(step => step.Insert is not null).SelectMany(step => step.Insert!))
             AffixProcessSemanticValidator.RequirePhoneme(cache, phone);
+        foreach (var step in output)
+        {
+            if (step.InsertClass is { } insertClass) AffixProcessSemanticValidator.RequireNaturalClass(cache, insertClass);
+            if (step.ModifyFeatures is { } features) AffixProcessSemanticValidator.RequireFeatureClass(cache, features);
+        }
     }
 
     /// <summary>
@@ -57,6 +62,20 @@ internal static class AffixProcessGraphBuilder
             {
                 var id = Create(MoAffixProcessOutputOperationKinds.Create, "MoCopyFromInput", priorOutput);
                 Add(MoCopyFromInputContentOperationKinds.SetContent, id, new { @ref = parts[name].Value }, parts[name]);
+                priorOutput = id;
+            }
+            else if (step.Modify is { } modified)
+            {
+                var id = Create(MoAffixProcessOutputOperationKinds.Create, "MoModifyFromInput", priorOutput);
+                Add(MoModifyFromInputContentOperationKinds.SetContent, id, new { @ref = parts[modified].Value }, parts[modified]);
+                Add(MoModifyFromInputModificationOperationKinds.SetModification, id, new { @ref = step.ModifyFeatures!.Value.Value },
+                    step.ModifyFeatures);
+                priorOutput = id;
+            }
+            else if (step.InsertClass is { } insertClass)
+            {
+                var id = Create(MoAffixProcessOutputOperationKinds.Create, "MoInsertNC", priorOutput);
+                Add(MoInsertNCContentOperationKinds.SetContent, id, new { @ref = insertClass.Value }, insertClass);
                 priorOutput = id;
             }
             else foreach (var phone in step.Insert!)

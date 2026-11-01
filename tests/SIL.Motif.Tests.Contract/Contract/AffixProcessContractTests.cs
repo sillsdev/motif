@@ -64,7 +64,7 @@ public sealed class AffixProcessContractTests
     }
 
     [Fact]
-    public void GeneratorEmitsOnlyFlatInputAndCopySingletonInsertFactories()
+    public void GeneratorEmitsOnlyFlatInputAndCopyInsertAndModifyFactories()
     {
         var temporary = Path.Combine(Path.GetTempPath(), "motif-affix-emission-" + Guid.NewGuid().ToString("N"));
         try
@@ -83,8 +83,8 @@ public sealed class AffixProcessContractTests
             var output = File.ReadAllText(Path.Combine(temporary, "src/SIL.Motif.Runner/Operations/Generated5/MoAffixProcessOutput.g.cs"));
             Assert.Contains("IMoCopyFromInputFactory", output);
             Assert.Contains("IMoInsertPhonesFactory", output);
-            Assert.DoesNotContain("IMoInsertNCFactory", output);
-            Assert.DoesNotContain("IMoModifyFromInputFactory", output);
+            Assert.Contains("IMoInsertNCFactory", output);
+            Assert.Contains("IMoModifyFromInputFactory", output);
         }
         finally { if (Directory.Exists(temporary)) Directory.Delete(temporary, recursive: true); }
     }

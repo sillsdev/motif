@@ -55,6 +55,8 @@ internal static class AffixProcessPrerequisiteFootprint
                 Add(output);
                 if (output is IMoInsertPhones insert)
                     foreach (var phone in insert.ContentRS.OfType<IPhPhoneme>()) Phone(CanonicalId.FromGuid(phone.Guid));
+                if (output is IMoInsertNC { ContentRA: { } insertClass }) NaturalClass(CanonicalId.FromGuid(insertClass.Guid));
+                if (output is IMoModifyFromInput { ModificationRA: { } features }) NaturalClass(CanonicalId.FromGuid(features.Guid));
             }
         }
         foreach (var operation in proposal.Operations)
@@ -66,6 +68,10 @@ internal static class AffixProcessPrerequisiteFootprint
                 NaturalClass(PhSimpleContextNCFeatureStructureSetPayload.Parse(after));
             if (outputs.Contains(target) && operation.Kind == MoInsertPhonesContentOperationKinds.AddRefContent)
                 Phone(MoInsertPhonesContentMemberPayload.Parse(after, operation.Kind));
+            if (outputs.Contains(target) && operation.Kind == MoInsertNCContentOperationKinds.SetContent)
+                NaturalClass(MoInsertNCContentSetPayload.Parse(after));
+            if (outputs.Contains(target) && operation.Kind == MoModifyFromInputModificationOperationKinds.SetModification)
+                NaturalClass(MoModifyFromInputModificationSetPayload.Parse(after));
             if (msas.Contains(target))
             {
                 if (operation.Kind == MoInflAffMsaSlotsOperationKinds.AddRefSlots)

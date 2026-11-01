@@ -30,6 +30,8 @@ public static class OwningCreateCatalogWriter
             "{\n" +
             "    \"MoCopyFromInput\" => cache.ServiceLocator.GetInstance<IMoCopyFromInputFactory>().Create(guid),\n" +
             "    \"MoInsertPhones\" => cache.ServiceLocator.GetInstance<IMoInsertPhonesFactory>().Create(guid),\n" +
+            "    \"MoInsertNC\" => cache.ServiceLocator.GetInstance<IMoInsertNCFactory>().Create(guid),\n" +
+            "    \"MoModifyFromInput\" => cache.ServiceLocator.GetInstance<IMoModifyFromInputFactory>().Create(guid),\n" +
             "    _ => throw new InvalidOperationException(\"Unsupported affix output class.\"),\n" +
             "};\nowner.OutputOS.Insert(index, child);"),
         new("PhPhonData", "PhonemeSets", "PhPhonemeSet", FieldCard.Seq,
@@ -222,7 +224,7 @@ public static class OwningCreateCatalogWriter
                 .Replace("__CLASSES__", creation.Owner == "MoAffixProcess"
                     ? creation.Field == "Input"
                         ? "new[] { \"PhVariable\", \"PhSimpleContextSeg\", \"PhSimpleContextNC\" }"
-                        : "new[] { \"MoCopyFromInput\", \"MoInsertPhones\" }"
+                        : "new[] { \"MoCopyFromInput\", \"MoInsertPhones\", \"MoInsertNC\", \"MoModifyFromInput\" }"
                     : creation.Sig switch
                 {
                     "PhNaturalClass" => "new[] { \"PhNCSegments\", \"PhNCFeatures\" }",

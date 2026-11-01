@@ -257,6 +257,36 @@
         ]
       },
       "schemaAccept": true
+    },
+    {
+      "name": "modify-and-insert-class",
+      "accept": true,
+      "intent": {
+        "entry": "AAAAAAAAAAAAAAAAAAAAAA",
+        "input": [
+          {
+            "name": "c",
+            "naturalClass": "AAAAAAAAAAAAAAAAAAAAAg"
+          },
+          {
+            "name": "rest",
+            "remaining": true
+          }
+        ],
+        "output": [
+          {
+            "modify": "c",
+            "features": "AAAAAAAAAAAAAAAAAAAAAw"
+          },
+          {
+            "insertClass": "AAAAAAAAAAAAAAAAAAAAAg"
+          },
+          {
+            "copy": "rest"
+          }
+        ]
+      },
+      "schemaAccept": true
     }
   ]
 }

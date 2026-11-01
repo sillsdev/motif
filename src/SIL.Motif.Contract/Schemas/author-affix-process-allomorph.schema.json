@@ -112,6 +112,36 @@
                 }
               }
             }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "insertClass"
+            ],
+            "properties": {
+              "insertClass": {
+                "$ref": "#/$defs/CanonicalId"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "modify",
+              "features"
+            ],
+            "properties": {
+              "modify": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "\\S"
+              },
+              "features": {
+                "$ref": "#/$defs/CanonicalId"
+              }
+            }
           }
         ]
       }

@@ -68,6 +68,8 @@ internal static class AffixProcessSemanticValidator
         operation.Kind.StartsWith("grammar/moAffixForm/", StringComparison.Ordinal) ||
         operation.Kind.StartsWith("grammar/moCopyFromInput/", StringComparison.Ordinal) ||
         operation.Kind.StartsWith("grammar/moInsertPhones/", StringComparison.Ordinal) ||
+        operation.Kind.StartsWith("grammar/moInsertNC/", StringComparison.Ordinal) ||
+        operation.Kind.StartsWith("grammar/moModifyFromInput/", StringComparison.Ordinal) ||
         operation.Kind.StartsWith("grammar/phSimpleContext", StringComparison.Ordinal) ||
         operation.Kind.StartsWith("grammar/phSequenceContext/", StringComparison.Ordinal) ||
         operation.Kind.StartsWith("grammar/phIterationContext/", StringComparison.Ordinal);
@@ -114,6 +116,16 @@ internal static class AffixProcessSemanticValidator
                 throw new InvalidOperationException("Every output mapping must belong to its process.");
             switch (output)
             {
+                case IMoModifyFromInput modify when modify.ContentRA is { } part && copies.ContainsKey(part.Guid) &&
+                    part.Owner?.Guid == process.Guid && part is not IPhVariable && modify.ModificationRA is { } features:
+                    RequireFeatureClass(cache, CanonicalId.FromGuid(features.Guid));
+                    copies[part.Guid]++;
+                    inserted = true;
+                    break;
+                case IMoInsertNC insertClass when insertClass.ContentRA is { } naturalClass:
+                    RequireNaturalClass(cache, CanonicalId.FromGuid(naturalClass.Guid));
+                    inserted = true;
+                    break;
                 case IMoCopyFromInput copy when copy.ContentRA is { } part && copies.ContainsKey(part.Guid) &&
                     part.Owner?.Guid == process.Guid:
                     copies[part.Guid]++;
@@ -123,7 +135,7 @@ internal static class AffixProcessSemanticValidator
                     inserted = true;
                     break;
                 default:
-                    throw new InvalidOperationException("Affix output must copy a top-level input of the same process or insert one phoneme.");
+                    throw new InvalidOperationException("Affix output must copy or modify a top-level input of the same process, insert one phoneme, or insert one natural class.");
             }
         }
         if (process.InputOS.Last() is IPhVariable lastVariable && copies[lastVariable.Guid] == 0)
@@ -202,6 +214,11 @@ internal static class AffixProcessSemanticValidator
         }
         return naturalClass;
     }
+
+    /// <summary>A modification overlays the features of a feature natural class, so a segment class cannot serve.</summary>
+    internal static IPhNCFeatures RequireFeatureClass(LcmCache cache, CanonicalId id) =>
+        RequireNaturalClass(cache, id) as IPhNCFeatures ??
+        throw new InvalidOperationException("An affix modification needs a natural class defined by phonological features, not by segments.");
 
     internal static void RequireCategory(LcmCache cache, IPartOfSpeech category)
     {

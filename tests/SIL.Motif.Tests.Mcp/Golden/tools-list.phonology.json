@@ -1427,7 +1427,7 @@
   },
   {
     "name": "motif_add_affix_process",
-    "description": "Author an affix process. Research first: motif_guide topic workflow or conditioned-allomorphs; check best practice. Use for infixes, reduplication and stem-internal changes. Another pattern-based form of an existing entry: compose-author-affix-process-allomorph. Regular nasal assimilation is a phonological rule (guide nasal-assimilation). Stages a new affix entry whose ordered input pattern matches phonemes, a natural class or the remaining stem, and whose output copies named parts or inserts phonemes: an infix, a partial or full reduplication, or a substitution that deletes matched input by omitting it from the output (Cebuano paN- before p/b gives m). It refuses an output that copies nothing or drops the remaining stem. Dry Run and Trial before a person Applies the Proposal.\nCommand: compose-author-affix-process. Agent class: Draft.",
+    "description": "Author an affix process. Research first: motif_guide topic workflow or conditioned-allomorphs; check best practice. Use for infixes, reduplication and stem-internal changes. Another pattern-based form of an existing entry: compose-author-affix-process-allomorph. Regular nasal assimilation is a phonological rule (guide nasal-assimilation). Stages a new affix entry whose ordered input pattern matches phonemes, a natural class or the remaining stem, and whose output copies named parts, inserts phonemes, inserts a segment of a natural class, or copies a part with the features of a feature class laid over it: an infix, a partial or full reduplication, or a substitution that deletes matched input by omitting it from the output (Cebuano paN- before p/b gives m). It refuses an output that copies nothing or drops the remaining stem. Dry Run and Trial before a person Applies the Proposal.\nCommand: compose-author-affix-process. Agent class: Draft.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -1528,11 +1528,20 @@
                 "items": {
                   "type": "string"
                 }
+              },
+              "insertClass": {
+                "type": "string"
+              },
+              "modify": {
+                "type": "string"
+              },
+              "features": {
+                "type": "string"
               }
             },
             "additionalProperties": false
           },
-          "description": "Ordered realization, each item either copy of a named input part or insert of phoneme ids. An input part left out of the output is deleted."
+          "description": "Ordered realization, each item exactly one of: copy of a named input part; insert of phoneme ids; insertClass, the id of a natural class one of whose segments is inserted; modify, the name of a phoneme or natural-class input part, with features, the id of a feature natural class laid over the copied part. An input part left out of the output is deleted."
         },
         "project": {
           "type": "string",
@@ -1607,11 +1616,20 @@
                 "items": {
                   "type": "string"
                 }
+              },
+              "insertClass": {
+                "type": "string"
+              },
+              "modify": {
+                "type": "string"
+              },
+              "features": {
+                "type": "string"
               }
             },
             "additionalProperties": false
           },
-          "description": "Ordered realization, each item either copy of a named input part or insert of phoneme ids. An input part left out of the output is deleted."
+          "description": "Ordered realization, each item exactly one of: copy of a named input part; insert of phoneme ids; insertClass, the id of a natural class one of whose segments is inserted; modify, the name of a phoneme or natural-class input part, with features, the id of a feature natural class laid over the copied part. An input part left out of the output is deleted."
         },
         "inflectionClasses": {
           "type": "array",

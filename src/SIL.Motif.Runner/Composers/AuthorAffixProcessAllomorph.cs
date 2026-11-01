@@ -113,8 +113,11 @@ public static class AuthorAffixProcessAllomorphComposer
         var names = intent.Input.Select((part, index) => (part.Name, index)).ToDictionary(pair => pair.Name, pair => pair.index);
         var input = intent.Input.Select(part => part.Remaining ? "V" : part.Phoneme is { } phone
             ? "S" + phone.ToGuid() : "N" + part.NaturalClass!.Value.ToGuid());
-        var output = intent.Output.SelectMany(step => step.Copy is { } name
-            ? new[] { "C" + names[name] } : step.Insert!.Select(phone => "I" + phone.ToGuid()));
+        var output = intent.Output.SelectMany(step =>
+            step.Copy is { } name ? new[] { "C" + names[name] } :
+            step.Modify is { } modified ? new[] { "M" + names[modified] + ":" + step.ModifyFeatures!.Value.ToGuid() } :
+            step.InsertClass is { } insertClass ? new[] { "N" + insertClass.ToGuid() } :
+            step.Insert!.Select(phone => "I" + phone.ToGuid()));
         return string.Join(",", input) + ">" + string.Join(",", output);
     }
 
@@ -130,6 +133,9 @@ public static class AuthorAffixProcessAllomorphComposer
         });
         var output = process.OutputOS.SelectMany(part => part switch
         {
+            IMoModifyFromInput { ContentRA: { } content, ModificationRA: { } features } when positions.TryGetValue(content.Guid, out var index) =>
+                new[] { "M" + index + ":" + features.Guid },
+            IMoInsertNC { ContentRA: { } insertClass } => new[] { "N" + insertClass.Guid },
             IMoCopyFromInput { ContentRA: { } content } when positions.TryGetValue(content.Guid, out var index) => new[] { "C" + index },
             IMoInsertPhones insert => insert.ContentRS.Select(phone => "I" + phone.Guid),
             _ => ["?"],

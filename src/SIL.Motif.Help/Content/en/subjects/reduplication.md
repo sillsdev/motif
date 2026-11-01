@@ -17,4 +17,4 @@ Reduplication marks a meaning by copying all or part of a stem, such as the firs
 
 - A realization that only repeats nothing and inserts nothing is refused; it must copy a part more than once or insert material.
 - A stem that does not start with the pattern, such as a vowel-initial stem for a consonant-vowel copy, gets no reading; test one of each shape.
-- Reduplication that also changes the copied sounds is not supported; the copy is exact.
+- A copy is exact unless the output uses `modify`, which copies an input part with the feature values of a feature class laid over it (for a copy that is voiced, say). Use that only for a changed copy; the copy and the original stay separate output items.

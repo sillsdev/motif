@@ -825,6 +825,160 @@
           }
         ]
       }
+    },
+    {
+      "name": "modify-from-input-feature-class",
+      "accept": true,
+      "intent": {
+        "morphType": "AAAAAAAAAAAAAAAAAAAAAA",
+        "gloss": "MUT",
+        "analysisWs": "en",
+        "msa": {
+          "kind": "unclassified",
+          "category": "AAAAAAAAAAAAAAAAAAAAAA"
+        },
+        "input": [
+          {
+            "name": "c",
+            "naturalClass": "AAAAAAAAAAAAAAAAAAAAAg"
+          },
+          {
+            "name": "rest",
+            "remaining": true
+          }
+        ],
+        "output": [
+          {
+            "modify": "c",
+            "features": "AAAAAAAAAAAAAAAAAAAAAw"
+          },
+          {
+            "copy": "rest"
+          }
+        ]
+      }
+    },
+    {
+      "name": "insert-by-class",
+      "accept": true,
+      "intent": {
+        "morphType": "AAAAAAAAAAAAAAAAAAAAAA",
+        "gloss": "MUT",
+        "analysisWs": "en",
+        "msa": {
+          "kind": "unclassified",
+          "category": "AAAAAAAAAAAAAAAAAAAAAA"
+        },
+        "input": [
+          {
+            "name": "rest",
+            "remaining": true
+          }
+        ],
+        "output": [
+          {
+            "insertClass": "AAAAAAAAAAAAAAAAAAAAAg"
+          },
+          {
+            "copy": "rest"
+          }
+        ]
+      }
+    },
+    {
+      "name": "modify-remaining-stem",
+      "accept": false,
+      "intent": {
+        "morphType": "AAAAAAAAAAAAAAAAAAAAAA",
+        "gloss": "MUT",
+        "analysisWs": "en",
+        "msa": {
+          "kind": "unclassified",
+          "category": "AAAAAAAAAAAAAAAAAAAAAA"
+        },
+        "input": [
+          {
+            "name": "c",
+            "naturalClass": "AAAAAAAAAAAAAAAAAAAAAg"
+          },
+          {
+            "name": "rest",
+            "remaining": true
+          }
+        ],
+        "output": [
+          {
+            "modify": "rest",
+            "features": "AAAAAAAAAAAAAAAAAAAAAw"
+          },
+          {
+            "copy": "c"
+          }
+        ]
+      }
+    },
+    {
+      "name": "modify-without-features",
+      "accept": false,
+      "intent": {
+        "morphType": "AAAAAAAAAAAAAAAAAAAAAA",
+        "gloss": "MUT",
+        "analysisWs": "en",
+        "msa": {
+          "kind": "unclassified",
+          "category": "AAAAAAAAAAAAAAAAAAAAAA"
+        },
+        "input": [
+          {
+            "name": "c",
+            "naturalClass": "AAAAAAAAAAAAAAAAAAAAAg"
+          },
+          {
+            "name": "rest",
+            "remaining": true
+          }
+        ],
+        "output": [
+          {
+            "modify": "c"
+          },
+          {
+            "copy": "rest"
+          }
+        ]
+      }
+    },
+    {
+      "name": "copy-and-insert-class-together",
+      "accept": false,
+      "intent": {
+        "morphType": "AAAAAAAAAAAAAAAAAAAAAA",
+        "gloss": "MUT",
+        "analysisWs": "en",
+        "msa": {
+          "kind": "unclassified",
+          "category": "AAAAAAAAAAAAAAAAAAAAAA"
+        },
+        "input": [
+          {
+            "name": "c",
+            "naturalClass": "AAAAAAAAAAAAAAAAAAAAAg"
+          },
+          {
+            "name": "rest",
+            "remaining": true
+          }
+        ],
+        "output": [
+          {
+            "copy": "c",
+            "insertClass": "AAAAAAAAAAAAAAAAAAAAAg"
+          },
+          {
+            "copy": "rest"
+          }
+        ]
+      }
     }
   ]
 }

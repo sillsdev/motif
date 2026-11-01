@@ -11,8 +11,13 @@ namespace SIL.Motif.Runner.Composers;
 public sealed record AffixProcessInputPart(string Name, CanonicalId? Phoneme = null,
     CanonicalId? NaturalClass = null, bool Remaining = false);
 
-/// <summary>One realization step: copy a named input part or insert a nonempty phoneme sequence.</summary>
-public sealed record AffixProcessOutputStep(string? Copy = null, IReadOnlyList<CanonicalId>? Insert = null);
+/// <summary>
+/// One realization step: copy a named input part, insert a nonempty phoneme sequence, insert one segment of a natural
+/// class (<see cref="InsertClass"/>, FieldWorks' MoInsertNC), or copy a named non-remaining input part with the features
+/// of a feature class overlaid (<see cref="Modify"/> with <see cref="ModifyFeatures"/>, MoModifyFromInput).
+/// </summary>
+public sealed record AffixProcessOutputStep(string? Copy = null, IReadOnlyList<CanonicalId>? Insert = null,
+    CanonicalId? InsertClass = null, string? Modify = null, CanonicalId? ModifyFeatures = null);
 
 /// <summary>One new affix entry with an ordered flat stem pattern and a realization that may omit (delete) leading input parts.</summary>
 public sealed record AuthorAffixProcessIntent(CanonicalId MorphType, string Gloss, string AnalysisWritingSystem,
@@ -57,12 +62,15 @@ public static class AuthorAffixProcessIntentParser
     {
         return SoundSystemIntentParsing.Array(authored, "output").Select(step =>
         {
-            SoundSystemIntentParsing.Object(step, "affix output", "copy", "insert");
+            SoundSystemIntentParsing.Object(step, "affix output", "copy", "insert", "insertClass", "modify", "features");
             return new AffixProcessOutputStep(
                 step.TryGetProperty("copy", out _) ? SoundSystemIntentParsing.Text(step, "copy") : null,
                 step.TryGetProperty("insert", out _) ? SoundSystemIntentParsing.Array(step, "insert").Select(phone =>
                     phone.ValueKind == JsonValueKind.String && CanonicalId.TryParse(phone.GetString(), out var id)
-                        ? id : throw new ContractParseException("Inserted phonemes must be canonical identity strings.")).ToArray() : null);
+                        ? id : throw new ContractParseException("Inserted phonemes must be canonical identity strings.")).ToArray() : null,
+                step.TryGetProperty("insertClass", out _) ? SoundSystemIntentParsing.Id(step, "insertClass") : null,
+                step.TryGetProperty("modify", out _) ? SoundSystemIntentParsing.Text(step, "modify") : null,
+                step.TryGetProperty("features", out _) ? SoundSystemIntentParsing.Id(step, "features") : null);
         }).ToArray();
     }
 }
@@ -108,13 +116,31 @@ internal static class AffixProcessIntentShape
         var inserts = false;
         foreach (var step in output)
         {
-            if (step is null || (step.Copy is null) == (step.Insert is null))
-                throw new InvalidOperationException("An output step needs exactly one copy or insertion.");
+            if (step is null || (step.Copy is null ? 0 : 1) + (step.Insert is null ? 0 : 1) +
+                (step.InsertClass is null ? 0 : 1) + (step.Modify is null ? 0 : 1) != 1)
+                throw new InvalidOperationException("An output step needs exactly one copy, insertion, class insertion or modification.");
+            if ((step.Modify is null) != (step.ModifyFeatures is null))
+                throw new InvalidOperationException("A modification needs both 'modify' (an input part) and 'features' (a feature class).");
             if (step.Copy is { } name)
             {
                 if (!copies.ContainsKey(name)) throw new InvalidOperationException($"Unknown input part '{name}'.");
                 copies[name]++;
                 expanded++;
+            }
+            else if (step.Modify is { } modified)
+            {
+                var target = input.FirstOrDefault(part => part.Name == modified)
+                    ?? throw new InvalidOperationException($"Unknown input part '{modified}'.");
+                if (target.Remaining)
+                    throw new InvalidOperationException("The remaining-stem part cannot be modified; modify a segment or class part.");
+                copies[modified]++;
+                expanded++;
+                inserts = true;
+            }
+            else if (step.InsertClass is not null)
+            {
+                expanded++;
+                inserts = true;
             }
             else
             {

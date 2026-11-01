@@ -48,6 +48,8 @@ public static class AffixProcessSnapshots
                 foreach (var output in process.OutputOS)
                     Add(output, output switch
                     {
+                        IMoModifyFromInput modify => MoModifyFromInputRelationsSnapshotter.Snapshot(cache, modify),
+                        IMoInsertNC insertClass => MoInsertNCRelationsSnapshotter.Snapshot(cache, insertClass),
                         IMoCopyFromInput copy => MoCopyFromInputRelationsSnapshotter.Snapshot(cache, copy),
                         IMoInsertPhones insert => Members(insert, SnapshotFields.MoInsertPhonesContent, insert.ContentRS),
                         _ => ObjectSnapshot.Empty(CanonicalId.FromGuid(output.Guid)),

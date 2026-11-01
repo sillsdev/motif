@@ -1,6 +1,6 @@
 # Add an affix process allomorph
 
-Use this command to give an affix that already realizes itself as an affix process another pattern-based form, the way Lexicon Edit > Insert Allomorph > Affix Process does in FieldWorks. One call stages the new allomorph on an entry that exists, or that an earlier command added to the same Draft. Its `input` and `output` mean what they mean for `compose-author-affix-process`.
+Use this command to give an affix that already realizes itself as an affix process another pattern-based form, the way Lexicon Edit > Insert Allomorph > Affix Process does in FieldWorks. One call stages the new allomorph on an entry that exists, or that an earlier command added to the same Draft. Its `input` and `output` mean what they mean for `compose-author-affix-process`, including `insertClass` and `modify` with `features`.
 
 This example adds a form of an existing nasal-substitution prefix that turns a stem-initial `t`, `d` or `s` into `n`:
 

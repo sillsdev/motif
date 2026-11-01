@@ -30,9 +30,11 @@ public static class MoAffixProcessOutputOperationKinds
                         {
                             "MoCopyFromInput" => cache.ServiceLocator.GetInstance<IMoCopyFromInputFactory>().Create(guid),
                             "MoInsertPhones" => cache.ServiceLocator.GetInstance<IMoInsertPhonesFactory>().Create(guid),
+                            "MoInsertNC" => cache.ServiceLocator.GetInstance<IMoInsertNCFactory>().Create(guid),
+                            "MoModifyFromInput" => cache.ServiceLocator.GetInstance<IMoModifyFromInputFactory>().Create(guid),
                             _ => throw new InvalidOperationException("Unsupported affix output class."),
                         };
                         owner.OutputOS.Insert(index, child);
-            }, true, false, new[] { "MoCopyFromInput", "MoInsertPhones" }, "MoRuleMapping", true));
+            }, true, false, new[] { "MoCopyFromInput", "MoInsertPhones", "MoInsertNC", "MoModifyFromInput" }, "MoRuleMapping", true));
     }
 }

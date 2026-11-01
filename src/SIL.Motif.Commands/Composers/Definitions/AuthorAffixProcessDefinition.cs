@@ -37,7 +37,10 @@ internal sealed class AuthorAffixProcessDefinition : ComposerDefinition<AuthorAf
             Field.Flag("remaining")), required: true, many: true),
         Field.Nested("output", IntentShape.Of(
             Field.Text("copy"),
-            Field.Ids("insert", IdRole.Reference)), required: true, many: true));
+            Field.Ids("insert", IdRole.Reference),
+            Field.Id("insertClass", IdRole.Reference),
+            Field.Text("modify"),
+            Field.Id("features", IdRole.Reference)), required: true, many: true));
 
     /// <inheritdoc />
     public override ComposerExposure Exposure { get; } =

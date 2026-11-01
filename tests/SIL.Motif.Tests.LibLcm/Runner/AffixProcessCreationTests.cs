@@ -176,8 +176,8 @@ public sealed class AffixProcessCreationTests(PristineProjectFixture pristine)
     [InlineData("PhSequenceContext", "grammar/moAffixProcess/createInput")]
     [InlineData("PhIterationContext", "grammar/moAffixProcess/createInput")]
     [InlineData("PhSimpleContextBdry", "grammar/moAffixProcess/createInput")]
-    [InlineData("MoInsertNC", "grammar/moAffixProcess/createOutput")]
-    [InlineData("MoModifyFromInput", "grammar/moAffixProcess/createOutput")]
+    [InlineData("MoInsertAnything", "grammar/moAffixProcess/createOutput")]
+    [InlineData("MoReduplicate", "grammar/moAffixProcess/createOutput")]
     public void UnsupportedChildClassesAreRefused(string concreteClass, string kind)
     {
         using var cache = pristine.NewScratch();
