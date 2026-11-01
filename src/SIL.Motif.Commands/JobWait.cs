@@ -61,7 +61,7 @@ public static class JobWait
                 return CommandOutcome<JobStatusResponse>.Success(value);
             if (cancellationToken.IsCancellationRequested)
                 return await CancelAndRefuseAsync(projectPath, jobId, version, progress).ConfigureAwait(false);
-            if (wakeRunner is not null && value.Status == JobStatus.Queued &&
+            if (wakeRunner is not null && (value.Status == JobStatus.Queued || value.ClaimLost) &&
                 DateTimeOffset.UtcNow - lastWake >= rewake)
             {
                 lastWake = DateTimeOffset.UtcNow;
@@ -140,6 +140,7 @@ public static class JobWait
         var checkAgain = "Check again with 'jobs show " + jobId + " --project <fwdata>'.";
         AddObservedStage(status, facts);
         var unclaimed = false;
+        if (status.ClaimLost) facts["claimLost"] = "true";
         if (!cancelOnTimeout)
         {
             // A runner may claim the job between the last poll and now, so the verdict reads the store again.
@@ -174,6 +175,9 @@ public static class JobWait
                     : "Motif requested cancellation of the job.";
         }
         if (unclaimed) facts["unclaimed"] = "true";
+        if (status.ClaimLost)
+            message += " The runner that claimed it stopped, so nothing is working on it. Run any Motif command that " +
+                "queues work, or start `SIL.Motif.Worker`, to restart one; it takes the job back.";
         if (unclaimed)
             message += " No runner has claimed it: the background runner may not have started, may have exited, " +
                 "or an existing runner may not be sweeping this project. Start `SIL.Motif.Worker`, or run a " +

@@ -183,6 +183,33 @@ public sealed class JobClaims : IJobClaimProtocol
         return extended;
     }
 
+    /// <summary>
+    /// Drops this runner's claim on a row its handler parked and walked away from, leaving its status alone.
+    /// </summary>
+    /// <remarks>
+    /// A parked row nobody is working on must not look held, or a sweep that would put it back in the queue has
+    /// to wait out a lease that no heartbeat renews, and another runner cannot tell it from one in flight.
+    /// </remarks>
+    public bool ReleaseParked(string jobId, string claimToken)
+    {
+        if (string.IsNullOrWhiteSpace(claimToken))
+            throw new ArgumentException("A claim token is required.", nameof(claimToken));
+
+        using var connection = _database.OpenConnection();
+        using var transaction = connection.BeginTransaction();
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText =
+            "UPDATE Jobs SET OwnerId = NULL, ClaimToken = NULL, LeaseUntilUtc = NULL, HeartbeatUtc = NULL " +
+            "WHERE JobId = $id AND ClaimToken = $token " +
+            "AND Status IN ('waiting-for-baseline', 'waiting-for-project-host');";
+        command.Parameters.AddWithValue("$id", jobId);
+        command.Parameters.AddWithValue("$token", claimToken);
+        var released = command.ExecuteNonQuery() == 1;
+        transaction.Commit();
+        return released;
+    }
+
     /// <summary>Moves a held job to its terminal state, or reports it was no longer this runner's to move.</summary>
     /// <remarks>
     /// The token authorises this for the same reason it authorises a renewal, and the danger is larger
@@ -242,6 +269,8 @@ internal interface IJobClaimProtocol
     bool Renew(string jobId, string claimToken, string nowUtc, TimeSpan lease);
 
     bool Finish(string jobId, string claimToken, JobStatus status, JobFailureCategory category, string? resultJson);
+
+    bool ReleaseParked(string jobId, string claimToken);
 }
 
 /// <summary>

@@ -579,7 +579,10 @@ internal static class WorkerRuntime
     internal static void ReconcileParkedJobs(Projects.ProjectRuntime runtime, DateTimeOffset now,
         Func<Projects.ProjectRuntime, IReadOnlyList<JobRecord>>? listActive = null)
     {
-        var active = listActive?.Invoke(runtime) ?? runtime.Jobs.ListActive(runtime.WorkspaceKey);
+        var nowStamp = JobTimestamp.FormatUtc(now);
+        // A row still held by a live claim is in flight, here or in another runner of this project; leave it be.
+        var active = (listActive?.Invoke(runtime) ?? runtime.Jobs.ListActive(runtime.WorkspaceKey))
+            .Where(job => !job.IsHeldAt(nowStamp)).ToList();
         foreach (var job in active.Where(job => job.Status == JobStatus.WaitingForProjectHost))
             runtime.Jobs.Transition(job.JobId, JobStatus.Queued, job.Version);
         var parked = active

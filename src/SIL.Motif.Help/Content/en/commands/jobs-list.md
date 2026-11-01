@@ -4,12 +4,12 @@
 
 ## When to use it
 
-Use this to find work that is waiting or running, or to get a job id for inspection. The `--all` flag is required because the queue spans projects rather than one project path.
+Use this to find work that is waiting or running, or to get a job id for inspection. The queue spans every Known project, so no project path is given; `--all` says the same thing and may be left out.
 
 ## Example
 
 ```powershell
-motif jobs list --all --json
+motif jobs list --json
 ```
 
 ## What it prints

@@ -2121,8 +2121,12 @@ try
                 case "show":
                     if (positionals.Count != 2 || !flags.TryGetValue("project", out var jobsShowProject))
                         return Usage("Usage: motif jobs show <jobId> --project <fwdata> [--json]", asJson);
-                    result = RenderCommand(JobCommands.Show(
-                        new ShowJobRequest(jobsShowProject, positionals[1], CliProductVersion())));
+                    var shownJob = JobCommands.Show(
+                        new ShowJobRequest(jobsShowProject, positionals[1], CliProductVersion()));
+                    result = RenderCommand(shownJob);
+                    // A job nobody is running would otherwise stay put until some other command queued work.
+                    if (shownJob.Value is { } job && (job.ClaimLost || job.Status == SIL.Motif.Contract.Jobs.JobStatus.Queued))
+                        startRunner(jobsShowProject, error.WriteLine);
                     break;
 
                 case "assessments":
@@ -2133,8 +2137,8 @@ try
                     break;
 
                 case "list":
-                    if (positionals.Count != 1 || !flags.ContainsKey("all"))
-                        return Usage("Usage: motif jobs list --all [--json]", asJson);
+                    if (positionals.Count != 1)
+                        return Usage("Usage: motif jobs list [--all] [--json]", asJson);
                     result = RenderCommand(JobCommands.ListAll(new ListActiveJobsRequest(CliProductVersion())));
                     break;
 
@@ -2374,7 +2378,7 @@ static bool TryReadSelectionLimits(IReadOnlyDictionary<string, string> flags, ou
 
 static string JobsUsage() =>
     "Usage: motif jobs wait <jobId> --project <fwdata> [--json] OR motif jobs show <jobId> --project <fwdata> [--json] OR " +
-    "motif jobs assessments <jobId> --project <fwdata> [--json] OR motif jobs list --all [--json] OR " +
+    "motif jobs assessments <jobId> --project <fwdata> [--json] OR motif jobs list [--all] [--json] OR " +
     "motif jobs cancel <jobId> --project <fwdata> [--json] OR motif jobs requeue <jobId> --project <fwdata> " +
     "[--json] OR " + JobsMoveUsage();
 

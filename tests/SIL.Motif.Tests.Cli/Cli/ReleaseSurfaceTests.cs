@@ -5,6 +5,7 @@ using System.Linq;
 using SIL.Motif.Cli;
 using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Contract.Assess;
+using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Host;
@@ -321,6 +322,12 @@ public sealed class ReleaseSurfaceTests : IDisposable
                 Assert.True(result.ExitCode == 0, result.Error);
                 Assert.Empty(result.Error);
                 Assert.NotEmpty(ProjectionJson.Deserialize<ReportKindListResponse>(result.Output)!.Kinds);
+            }
+            else if (name == "jobs list")
+            {
+                Assert.True(result.ExitCode == 0, result.Error);
+                Assert.Empty(result.Error);
+                Assert.NotNull(ProjectionJson.Deserialize<JobQueueListResponse>(result.Output));
             }
             else
             {

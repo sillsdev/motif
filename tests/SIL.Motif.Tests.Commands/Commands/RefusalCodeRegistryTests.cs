@@ -30,7 +30,7 @@ public sealed class RefusalCodeRegistryTests
     // Dotted literals that are not refusal codes: finding codes, cgroup files, SQL tables, trace spans.
     private static readonly Regex NotRefusalCodes = new(
         "^(?:proposal\\.rationale$|delta\\.|cgroup\\.|cpu\\.|memory\\.|facts\\.|sil\\.lcmodel$|parse\\.allomorph\\.|" +
-        "grammar\\.(?:empty-lexicon|required-slot-empty|stored-analysis\\.)|" +
+        "job\\.claim-lost$|grammar\\.(?:empty-lexicon|required-slot-empty|stored-analysis\\.)|" +
         "compare\\.(?:apply-filter|short-matrix-walk)$|context\\.publish-to-pages$|layout\\.(?:arrange|host-measure|measure)$|" +
         "panes\\.|results-in-text\\.|review\\.(?:load|rebuild-entries)$|shell\\.(?:raise-freshness|update-notice-band)$|" +
         "switch\\.|view\\.switch$|visible-lifetime\\.)", RegexOptions.None);

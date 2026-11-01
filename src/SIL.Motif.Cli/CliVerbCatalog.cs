@@ -506,7 +506,7 @@ public static class CliVerbCatalog
         new CliVerbDescriptor(
             "Jobs", "jobs", "jobs assessments",
             new[] { "jobs assessments <jobId> --project <fwdata> [--json]" }),
-        new CliVerbDescriptor("Jobs", "jobs", "jobs list", new[] { "jobs list --all [--json]" }),
+        new CliVerbDescriptor("Jobs", "jobs", "jobs list", new[] { "jobs list [--all] [--json]" }),
         new CliVerbDescriptor(
             "Jobs", "jobs", "jobs cancel", new[] { "jobs cancel <jobId> --project <fwdata> [--json]" }),
         new CliVerbDescriptor(

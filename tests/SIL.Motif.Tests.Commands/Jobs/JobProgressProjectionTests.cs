@@ -287,6 +287,152 @@ public sealed class JobProgressProjectionTests(PristineProjectFixture pristine)
         if (queued.Status == JobStatus.Queued) jobs.Transition(queued, JobStatus.Running);
     }
 
+    [Fact]
+    public void AClaimedJobWhoseLeaseRanOutIsReportedAsClaimLost()
+    {
+        var jobId = CreateRunningTrial(out var fwDataPath);
+        SetClaim(fwDataPath, jobId, DateTimeOffset.UtcNow.AddMinutes(-3));
+
+        var shown = JobCommands.Show(new ShowJobRequest(fwDataPath, jobId, MotifProductVersion.CurrentText));
+
+        Assert.True(shown.Succeeded, shown.Refusal?.Message);
+        Assert.True(shown.Value!.ClaimLost);
+    }
+
+    [Fact]
+    public void AClaimedJobWhoseLeaseHoldsIsNotClaimLost()
+    {
+        var jobId = CreateRunningTrial(out var fwDataPath);
+        SetClaim(fwDataPath, jobId, DateTimeOffset.UtcNow.AddMinutes(3));
+
+        var shown = JobCommands.Show(new ShowJobRequest(fwDataPath, jobId, MotifProductVersion.CurrentText));
+
+        Assert.False(shown.Value!.ClaimLost);
+    }
+
+    [Fact]
+    public async Task AWaitOnAClaimLostJobWakesTheRunnerAndTheTimeoutSaysTheRunnerStopped()
+    {
+        var jobId = CreateRunningTrial(out var fwDataPath);
+        SetClaim(fwDataPath, jobId, DateTimeOffset.UtcNow.AddMinutes(-3));
+        var wakes = 0;
+
+        var waited = await JobWait.WaitAsync(fwDataPath, jobId, null, CancellationToken.None,
+            TimeSpan.FromMilliseconds(500), MotifProductVersion.CurrentText,
+            wakeRunner: () => wakes++, rewakeAfter: TimeSpan.Zero);
+
+        Assert.Equal("job.wait-timeout", waited.Refusal?.Code);
+        Assert.True(wakes >= 1, "A job whose claimer died never woke a runner.");
+        Assert.Equal("true", waited.Refusal!.Facts!["claimLost"]);
+        Assert.Contains("runner that claimed it stopped", waited.Refusal.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ALostClaimOnAParkedJobShowsTheStatusTheNextRunnerGivesItAndATypedWarning()
+    {
+        var jobId = CreateRunningTrial(out var fwDataPath);
+        SetClaim(fwDataPath, jobId, DateTimeOffset.UtcNow.AddMinutes(-3));
+        SetStatus(fwDataPath, jobId, "waiting-for-baseline");
+        RecordBaseline(fwDataPath);
+
+        var shown = JobCommands.Show(new ShowJobRequest(fwDataPath, jobId, MotifProductVersion.CurrentText));
+
+        Assert.True(shown.Succeeded, shown.Refusal?.Message);
+        Assert.Equal(JobStatus.Queued, shown.Value!.Status);
+        Assert.True(shown.Value.ClaimLost);
+        var warning = Assert.Single(shown.Value.Warnings!);
+        Assert.Equal("job.claim-lost", warning.Code);
+        Assert.Contains("waiting-for-baseline", warning.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AParkedJobWithNoBaselineYetKeepsWaitingForItEvenWithALostClaim()
+    {
+        var jobId = CreateRunningTrial(out var fwDataPath);
+        SetClaim(fwDataPath, jobId, DateTimeOffset.UtcNow.AddMinutes(-3));
+        SetStatus(fwDataPath, jobId, "waiting-for-baseline");
+
+        var shown = JobCommands.Show(new ShowJobRequest(fwDataPath, jobId, MotifProductVersion.CurrentText));
+
+        Assert.Equal(JobStatus.WaitingForBaseline, shown.Value!.Status);
+        Assert.True(shown.Value.ClaimLost);
+        Assert.Equal("job.claim-lost", Assert.Single(shown.Value.Warnings!).Code);
+    }
+
+    [Theory]
+    [InlineData("waiting-for-project-host")]
+    [InlineData("waiting-for-baseline")]
+    public void AParkedJobWhoseClaimWasReleasedOnPurposeShowsItsStoredStatusAndNoWarning(string parked)
+    {
+        var jobId = CreateRunningTrial(out var fwDataPath);
+        SetStatus(fwDataPath, jobId, parked);
+        ReleaseClaim(fwDataPath, jobId);
+        RecordBaseline(fwDataPath);
+
+        var shown = JobCommands.Show(new ShowJobRequest(fwDataPath, jobId, MotifProductVersion.CurrentText));
+
+        Assert.True(shown.Succeeded, shown.Refusal?.Message);
+        Assert.Equal(parked, JobStatusJson.ToWire(shown.Value!.Status!.Value));
+        Assert.False(shown.Value.ClaimLost);
+        Assert.Null(shown.Value.Warnings);
+    }
+
+    private static void ReleaseClaim(string fwDataPath, string jobId)
+    {
+        using var database = OpenStore(fwDataPath);
+        using var connection = database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = "UPDATE Jobs SET OwnerId = NULL, ClaimToken = NULL, LeaseUntilUtc = NULL " +
+            "WHERE JobId = $id;";
+        command.Parameters.AddWithValue("$id", jobId);
+        Assert.Equal(1, command.ExecuteNonQuery());
+    }
+
+    private static void SetStatus(string fwDataPath, string jobId, string status)
+    {
+        using var database = OpenStore(fwDataPath);
+        using var connection = database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = "UPDATE Jobs SET Status = $status WHERE JobId = $id;";
+        command.Parameters.AddWithValue("$status", status);
+        command.Parameters.AddWithValue("$id", jobId);
+        Assert.Equal(1, command.ExecuteNonQuery());
+    }
+
+    private static void RecordBaseline(string fwDataPath)
+    {
+        var project = ProjectStoreCommand.Locate(fwDataPath);
+        using var database = OpenStore(fwDataPath);
+        var token = new SIL.Motif.Contract.Baselines.BaselineToken("project-identity",
+            "sha256:" + new string('a', 64), "1", DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"),
+            "sha256:" + new string('b', 64));
+        new SIL.Motif.Worker.Baselines.BaselineRepository(database).Record(
+            SIL.Motif.Worker.Projects.ProjectWorkspaceKey.Compute(project),
+            new SIL.Motif.Worker.Baselines.BaselinePublication(Path.GetTempPath(),
+                Path.Combine(Path.GetTempPath(), "baseline.zip"), token),
+            DateTimeOffset.UtcNow, DateTimeOffset.UtcNow, TestTextWords.Empty);
+    }
+
+    private static SIL.Motif.Host.Store.MotifDatabase OpenStore(string fwDataPath) =>
+        new ProjectDatabaseCatalog(MotifSchema.CurrentSchema,
+            MotifProductVersion.CompatibilityVersion(MotifProductVersion.CurrentText))
+            .OpenOwned(ProjectStoreCommand.Locate(fwDataPath));
+
+    private static void SetClaim(string fwDataPath, string jobId, DateTimeOffset leaseUntil)
+    {
+        var project = ProjectStoreCommand.Locate(fwDataPath);
+        var catalog = new ProjectDatabaseCatalog(MotifSchema.CurrentSchema,
+            MotifProductVersion.CompatibilityVersion(MotifProductVersion.CurrentText));
+        using var database = catalog.OpenOwned(project);
+        using var connection = database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = "UPDATE Jobs SET OwnerId = 'runner-dead', ClaimToken = 'claim-dead', " +
+            "LeaseUntilUtc = $lease, HeartbeatUtc = $lease WHERE JobId = $id;";
+        command.Parameters.AddWithValue("$lease", JobTimestamp.FormatUtc(leaseUntil));
+        command.Parameters.AddWithValue("$id", jobId);
+        Assert.Equal(1, command.ExecuteNonQuery());
+    }
+
     private string CreateRunningTrial(out string fwDataPath, bool leaveQueued = false)
     {
         fwDataPath = pristine.CopyProjectFile();

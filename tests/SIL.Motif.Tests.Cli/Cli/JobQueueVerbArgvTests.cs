@@ -294,12 +294,14 @@ public sealed class JobQueueVerbArgvTests : IDisposable
     }
 
     [Fact]
-    public void ListWithoutAllIsAUsageFailureThatNamesTheFlag()
+    public void ListWithoutAllListsEveryKnownProjectsQueue()
     {
-        var result = Run("jobs list");
+        var withFlag = Run("jobs list --all --json");
+        var without = Run("jobs list --json");
 
-        Assert.Equal(1, result.ExitCode);
-        Assert.Contains("--all", result.Error, StringComparison.Ordinal);
+        Assert.Equal(0, without.ExitCode);
+        Assert.True(without.Error.Length == 0, without.Error);
+        Assert.Equal(withFlag.Output, without.Output);
     }
 
     private string ProjectDir(string name) => Path.Combine(_root, name);

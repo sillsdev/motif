@@ -70,6 +70,58 @@ public sealed class ParkedDryRunReconciliationTests : IDisposable
     }
 
     [Theory]
+    [InlineData("waiting-for-baseline")]
+    [InlineData("waiting-for-project-host")]
+    public void AParkedJobWhoseClaimIsStillHeldIsLeftForItsRunner(string parkedStatus)
+    {
+        var runtime = OpenRuntime("held-" + parkedStatus);
+        Park(runtime, "job-1", "dry-run");
+        RecordBaseline(runtime);
+        using (var connection = runtime.Jobs.Database.OpenConnection())
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = "UPDATE Jobs SET Status = $status, OwnerId = 'runner-live', ClaimToken = 'claim-live', " +
+                "LeaseUntilUtc = $lease, HeartbeatUtc = $beat WHERE JobId = 'job-1';";
+            command.Parameters.AddWithValue("$status", parkedStatus);
+            command.Parameters.AddWithValue("$lease", Stamp(_now.AddSeconds(20)));
+            command.Parameters.AddWithValue("$beat", Stamp(_now));
+            Assert.Equal(1, command.ExecuteNonQuery());
+        }
+
+        SIL.Motif.Worker.WorkerRuntime.ReconcileParkedJobs(runtime, _now);
+
+        var after = runtime.Jobs.Get("job-1")!;
+        Assert.Equal(parkedStatus == "waiting-for-baseline" ? JobStatus.WaitingForBaseline : JobStatus.WaitingForProjectHost,
+            after.Status);
+        Assert.Equal("claim-live", after.ClaimToken);
+    }
+
+    [Theory]
+    [InlineData("dry-run")]
+    [InlineData("trial")]
+    public void AParkedJobWhoseClaimLapsedIsQueuedAgainByTheNextSweepOnceTheBaselineExists(string kind)
+    {
+        var runtime = OpenRuntime("lapsed-claim-" + kind);
+        Park(runtime, "job-1", kind);
+        RecordBaseline(runtime);
+        using (var connection = runtime.Jobs.Database.OpenConnection())
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = "UPDATE Jobs SET OwnerId = 'runner-killed', ClaimToken = 'claim-killed', " +
+                "LeaseUntilUtc = $lease, HeartbeatUtc = $lease WHERE JobId = 'job-1';";
+            command.Parameters.AddWithValue("$lease", Stamp(_now.AddMinutes(-3)));
+            Assert.Equal(1, command.ExecuteNonQuery());
+        }
+        Assert.Equal(JobStatus.WaitingForBaseline, runtime.Jobs.Get("job-1")!.Status);
+
+        SIL.Motif.Worker.WorkerRuntime.ReconcileParkedJobs(runtime, _now);
+
+        var after = runtime.Jobs.Get("job-1")!;
+        Assert.Equal(JobStatus.Queued, after.Status);
+        Assert.False(after.IsHeldAt(Stamp(_now)));
+    }
+
+    [Theory]
     [InlineData("dry-run")]
     [InlineData("trial")]
     public void ACompletedRefreshDoesNotPreventCapturingTheNextBaseline(string kind)

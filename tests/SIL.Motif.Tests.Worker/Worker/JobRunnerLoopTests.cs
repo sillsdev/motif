@@ -317,6 +317,24 @@ public sealed class JobRunnerLoopTests : IDisposable
     }
 
     [Fact]
+    public async Task AHandlerThatParksItsRowAndReturnsReleasesTheClaimSoTheRowDoesNotLookHeld()
+    {
+        var jobs = new JobRepository(_database);
+        jobs.Create("job-1", Project, "demo", "{}", Stamp());
+
+        await Loop((job, _) =>
+        {
+            job.Transition(JobStatus.WaitingForBaseline);
+            return Task.FromResult<JobOutcome?>(null);
+        }).RunUntilIdleAsync(CancellationToken.None);
+
+        var parked = jobs.Get("job-1")!;
+        Assert.Equal(JobStatus.WaitingForBaseline, parked.Status);
+        Assert.Null(parked.ClaimToken);
+        Assert.Null(parked.LeaseUntilUtc);
+    }
+
+    [Fact]
     public async Task AnEmptyQueueIsNotAnError()
     {
         var jobs = new JobRepository(_database);
@@ -357,6 +375,8 @@ public sealed class JobRunnerLoopTests : IDisposable
 
         public bool Renew(string jobId, string claimToken, string nowUtc, TimeSpan lease) =>
             renew(jobId, claimToken, nowUtc, lease, ++RenewCount);
+
+        public bool ReleaseParked(string jobId, string claimToken) => inner.ReleaseParked(jobId, claimToken);
 
         public bool Finish(string jobId, string claimToken, JobStatus status, JobFailureCategory category,
             string? resultJson)

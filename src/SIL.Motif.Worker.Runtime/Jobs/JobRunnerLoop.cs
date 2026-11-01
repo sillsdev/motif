@@ -101,6 +101,7 @@ public sealed class JobRunnerLoop
         using var beating = new CancellationTokenSource();
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var claimLost = 0;
+        var parked = false;
         var heartbeat = HeartbeatAsync(claimed, beating.Token, linked,
             () => Interlocked.Exchange(ref claimLost, 1));
         try
@@ -108,6 +109,7 @@ public sealed class JobRunnerLoop
             var outcome = await handler(_claims.Wrap(claimed), linked.Token).ConfigureAwait(false);
             if (outcome is not null && Volatile.Read(ref claimLost) == 0)
                 Finish(claimed, outcome.Status, outcome.Category, outcome.ResultJson);
+            else if (outcome is null) parked = true;
         }
         catch (OperationCanceledException)
         {
@@ -124,7 +126,14 @@ public sealed class JobRunnerLoop
             beating.Cancel();
             try { await heartbeat.ConfigureAwait(false); } catch (OperationCanceledException) { }
             catch (Exception exception) { ReportHeartbeatFailure(claimed, exception); }
+            if (parked && Volatile.Read(ref claimLost) == 0) ReleaseParkedClaim(claimed);
         }
+    }
+
+    private void ReleaseParkedClaim(JobRecord claimed)
+    {
+        try { _claims.ReleaseParked(claimed.JobId, claimed.ClaimToken!); }
+        catch (Exception exception) { ReportHeartbeatFailure(claimed, exception); }
     }
 
     /// Cancels <paramref name="cancelIfRequested"/> the first heartbeat after <c>jobs cancel</c> sets the flag.

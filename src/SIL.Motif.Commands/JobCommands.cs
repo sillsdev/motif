@@ -365,8 +365,10 @@ public static class JobCommands
             var (trialProgress, stageProgress) = DecodeProgress(job.ProgressJson);
             if (JobStateMachine.IsTerminal(job.Status) && stageProgress?.Stage == "waiting-for-parser-slot")
                 stageProgress = null;
+            var lost = HasLostItsClaim(job);
+            var shown = lost ? StatusAfterRecovery(job, new BaselineRepository(database)) : job.Status;
             return CommandOutcome<JobStatusResponse>.Success(new JobStatusResponse(job.JobId, job.ProjectKey, true,
-                job.Kind, job.Status, job.Attempt, job.UpdatedUtc, job.CancellationRequested, job.FailureCategory,
+                job.Kind, shown, job.Attempt, job.UpdatedUtc, job.CancellationRequested, job.FailureCategory,
                 job.Version, entry.Value.QueueOrder)
             {
                 TrialProgress = trialProgress,
@@ -375,6 +377,8 @@ public static class JobCommands
                 FailureDetail = FailureCodeOf(job) is null ? null : FailureField(job.ResultJson, "message"),
                 WordsDone = int.TryParse(FailureField(job.ResultJson, "wordsDone"), out var done) ? done : null,
                 WordsNotDone = int.TryParse(FailureField(job.ResultJson, "wordsNotDone"), out var notDone) ? notDone : null,
+                ClaimLost = lost,
+                Warnings = lost ? [ClaimLostWarning(job.Status, shown)] : null,
             });
         });
     }
@@ -420,6 +424,25 @@ public static class JobCommands
             return null;
         }
     }
+
+    // A claimed job whose lease ran out has no runner renewing it; a parked status is then stale, not a wait.
+    private static bool HasLostItsClaim(JobRecord job) =>
+        job.ClaimToken is not null && !JobStateMachine.IsTerminal(job.Status) && job.Status != JobStatus.Queued &&
+        !job.IsHeldAt(JobTimestamp.FormatUtc(DateTimeOffset.UtcNow));
+
+    // The next runner's sweep requeues a parked job once what it waited for exists; show that, not a stale wait.
+    private static JobStatus StatusAfterRecovery(JobRecord job, BaselineRepository baselines) => job.Status switch
+    {
+        JobStatus.WaitingForProjectHost => JobStatus.Queued,
+        JobStatus.WaitingForBaseline when job.Kind is "dry-run" or "trial" &&
+            baselines.GetCurrent(job.ProjectKey) is not null => JobStatus.Queued,
+        _ => job.Status,
+    };
+
+    private static JobWarning ClaimLostWarning(JobStatus stored, JobStatus shown) => new(JobWarning.ClaimLostCode,
+        "The runner that claimed this job stopped, so nothing is working on it" +
+        (shown != stored ? $"; it was left at {JobStatusJson.ToWire(stored)} and the next runner puts it back in the queue" : "") +
+        ". Run any Motif command that queues work, or start SIL.Motif.Worker, to restart a runner.");
 
     private static (TrialWordProgress? TrialProgress, JobStageProgress? StageProgress) DecodeProgress(
         string? progressJson)

@@ -44,6 +44,49 @@ public sealed class RunnerKickRaceTests : IDisposable
     }
 
     [Fact]
+    public async Task TwoRunnersStartedTogetherOnOneRootLeaveExactlyOneOwner()
+    {
+        var options = new JobRunnerLaunchOptions(_root, null)
+        {
+            OwnerNamespace = _ownerNamespace, IdleTimeout = TimeSpan.FromSeconds(3), WorkerExecutable = BuildOutput.Worker,
+        };
+        var wake = Path.Combine(_root, "absent.fwdata");
+        var runners = Enumerable.Range(0, 2).Select(_ => StartRunner(options, wake)).ToArray();
+        try
+        {
+            var first = await Task.WhenAll(runners.Select(runner =>
+                runner.StandardOutput.ReadLineAsync().WaitAsync(TimeSpan.FromSeconds(60))));
+
+            Assert.Equal(1, first.Count(line => line is not null && line.StartsWith("existing runner:", StringComparison.Ordinal)));
+            Assert.Equal(1, first.Count(line => !string.IsNullOrWhiteSpace(line) &&
+                !line.StartsWith("existing runner:", StringComparison.Ordinal)));
+        }
+        finally
+        {
+            foreach (var runner in runners)
+            {
+                try { if (!runner.HasExited) runner.Kill(entireProcessTree: true); }
+                catch (InvalidOperationException) { }
+                runner.Dispose();
+            }
+        }
+    }
+
+    // Starts a runner with the arguments the launcher gives one, so two launches race as two commands would.
+    private static Process StartRunner(JobRunnerLaunchOptions options, string wakeProject)
+    {
+        var start = new ProcessStartInfo(options.WorkerExecutable!)
+        {
+            UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true,
+            RedirectStandardInput = true, CreateNoWindow = true,
+        };
+        foreach (var argument in ProcessRunnerLauncher.LaunchArguments(options)) start.ArgumentList.Add(argument);
+        start.ArgumentList.Add(RunnerOptions.WakeProjectArgument);
+        start.ArgumentList.Add(wakeProject);
+        return Process.Start(start)!;
+    }
+
+    [Fact]
     public async Task ACapturingCallerGetsEndOfFileWithoutWaitingForTheRunnerItKicked()
     {
         var project = _projects.CopyProjectFile();

@@ -65,6 +65,14 @@ public sealed record JobStatusResponse
     /// <summary>This job's position in the single ordered run of work, when the caller asked for one.</summary>
     [JsonPropertyOrder(10)] public double? QueueOrder { get; }
 
+    /// <summary>True when the runner that claimed this job stopped, so nothing works on it.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    [JsonPropertyOrder(15)] public bool ClaimLost { get; init; }
+
+    /// <summary>Typed notes about this job beyond its status, so a script can act on them.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    [JsonPropertyOrder(16)] public IReadOnlyList<JobWarning>? Warnings { get; init; }
+
     /// <summary>The last word-level progress published by a sequential Trial, if available.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyOrder(11)] public TrialWordProgress? TrialProgress { get; init; }
@@ -93,6 +101,15 @@ public sealed record JobStatusResponse
         string.IsNullOrWhiteSpace(value)
             ? throw new ArgumentException("A nonblank value is required.", parameterName)
             : value!;
+}
+
+/// <summary>A typed note about a job's state: a stable code a script can match, and words for a person.</summary>
+/// <param name="Code">A stable code such as <c>job.claim-lost</c>.</param>
+/// <param name="Message">What it means and what to do, in one or two sentences.</param>
+public sealed record JobWarning(string Code, string Message)
+{
+    /// <summary>The runner that claimed the job stopped, so nothing is working on it.</summary>
+    public const string ClaimLostCode = "job.claim-lost";
 }
 
 /// <summary>One project's job as it appears in the single cross-project queue <c>jobs list --all</c> reports.</summary>

@@ -580,6 +580,8 @@ public static class CommandTextRenderer
             ? JobStatusJson.ToWire(JobStatus.StoppedByBudget) : response.Status?.ToString()));
         text.AppendLine("  Attempt: " + response.Attempt);
         text.AppendLine("  Updated: " + response.UpdatedUtc);
+        foreach (var warning in response.Warnings ?? [])
+            text.AppendLine("  Warning: " + warning.Message);
         if (response.QueueOrder is { } queueOrder)
             text.AppendLine("  Queue order: " + queueOrder.ToString("R"));
         if (response.FailureCode is { } failureCode)
