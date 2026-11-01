@@ -124,7 +124,7 @@ internal static class Program
         Directory.CreateDirectory(outputRoot);
         Environment.SetEnvironmentVariable(
             "MOTIF_WRITING_SYSTEM_REPOSITORY_PATH", Path.Combine(outputRoot, "writing-systems"));
-        Environment.SetEnvironmentVariable("MOTIF_TEST_SLDR_OFFLINE", "1");
+        Environment.SetEnvironmentVariable("MOTIF_SLDR_ONLINE", null);
         Environment.SetEnvironmentVariable("MOTIF_TEST_SLDR_CACHE_PATH", Path.Combine(outputRoot, "sldr-cache"));
 
         var projectRoot = Path.Combine(outputRoot, "valid");
@@ -977,7 +977,6 @@ internal static class SampleBuilder
     private static void SetPrivateWritingSystemPaths(string outputRoot)
     {
         SetIfMissing("MOTIF_WRITING_SYSTEM_REPOSITORY_PATH", Path.Combine(outputRoot, ".writing-systems"));
-        SetIfMissing("MOTIF_TEST_SLDR_OFFLINE", "1");
         SetIfMissing("MOTIF_TEST_SLDR_CACHE_PATH", Path.Combine(outputRoot, ".sldr-cache"));
     }
 

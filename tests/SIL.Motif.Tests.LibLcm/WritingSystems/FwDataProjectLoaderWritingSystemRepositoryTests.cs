@@ -53,10 +53,10 @@ public sealed class FwDataProjectLoaderWritingSystemRepositoryTests
     }
 
     [Fact]
-    public void InitKeepsSldrLookupsOffTheNetworkWhenTheEnvironmentAsks()
+    public void InitKeepsSldrLookupsOffTheNetworkByDefault()
     {
-        Assert.False(string.IsNullOrWhiteSpace(
-            Environment.GetEnvironmentVariable(FwDataProjectLoader.SldrOfflineVariable)));
+        Assert.True(string.IsNullOrWhiteSpace(
+            Environment.GetEnvironmentVariable(FwDataProjectLoader.SldrOnlineVariable)));
         FwDataProjectLoader.Init();
 
         var destination = Path.Combine(Path.GetTempPath(), "motif-sldr-offline-" + Guid.NewGuid().ToString("N"));

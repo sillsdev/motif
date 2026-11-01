@@ -114,7 +114,7 @@ public static class PendingChangesWorkflow
         cancellationToken.ThrowIfCancellationRequested();
         if (ApplyAttributionCheck.Refusal(target.Attribution, target.Force) is { } attributionRefusal)
             return CommandOutcome<ApplyPendingResult>.Refused(attributionRefusal);
-        // A missing project has no folder to hold a lease in.
+        // Let the project loader report a missing project without leaving a sidecar lease behind.
         if (!File.Exists(target.ProjectPath))
             return ApplyLeased(target, cancellationToken, dryRunTimeout, runnerLauncher);
         using var lease = ProjectApplyLease.TryAcquire(target.ProjectPath);
@@ -124,7 +124,19 @@ public static class PendingChangesWorkflow
                 "Another Apply is already running for this project. Try again when it finishes.",
                 new Dictionary<string, string>(StringComparer.Ordinal) { ["fwDataPath"] = target.ProjectPath }));
         }
+        HoldLeaseForTest(target.ProjectPath);
         return ApplyLeased(target, cancellationToken, dryRunTimeout, runnerLauncher);
+    }
+
+    // Lets a test kill an Apply while it holds the lease, to show a dead process leaves no lock behind.
+    private static void HoldLeaseForTest(string projectPath)
+    {
+        var requested = Environment.GetEnvironmentVariable("MOTIF_TEST_HOLD_APPLY_LEASE_FOR");
+        var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        if (requested is null || !string.Equals(Path.GetFullPath(requested), Path.GetFullPath(projectPath), comparison))
+            return;
+        File.WriteAllText(ProjectApplyLease.PathFor(projectPath) + ".held", "held");
+        Thread.Sleep(Timeout.Infinite);
     }
 
     private static CommandOutcome<ApplyPendingResult> ApplyLeased(ApplyTarget target,
@@ -353,7 +365,7 @@ public static class PendingChangesWorkflow
             .ConfigureAwait(false);
         if (!waited.Succeeded) return CommandOutcome<MeasurePendingResult>.Refused(waited.Refusal!);
         if (waited.Value!.Status != JobStatus.Completed)
-            return RefuseMeasure("trial.measurement-incomplete", "The check of these words did not complete. Try it again.");
+            return CommandOutcome<MeasurePendingResult>.Refused(MeasurementIncomplete(jobId, waited.Value));
 
         var recorded = await Task.Run(() => JobCommands.Assessments(
             new JobAssessmentsRequest(request.ProjectPath, jobId, version))).ConfigureAwait(false);
@@ -494,6 +506,14 @@ public static class PendingChangesWorkflow
 
     private static string Counted(int count, string singular, string plural) =>
         $"{count} {(count == 1 ? singular : plural)}";
+
+    // The job id is a fact, not message text: it contains a slash, and the window blanks a message that has one.
+    internal static Refusal MeasurementIncomplete(string jobId, JobStatusResponse job) => new(
+        "trial.measurement-incomplete", FailureReason.Refused,
+        "The check of these words did not complete. Try it again. " +
+        $"It ended as {job.Status?.ToString() ?? "unknown"}; failure {job.FailureCategory?.ToString() ?? "none"}, " +
+        $"attempt {job.Attempt?.ToString() ?? "?"}, cancellation requested {job.CancellationRequested?.ToString() ?? "?"}.",
+        new Dictionary<string, string>(StringComparer.Ordinal) { ["jobId"] = jobId });
 
     private static CommandOutcome<MeasurePendingResult> RefuseMeasure(string code, string message) =>
         CommandOutcome<MeasurePendingResult>.Refused(new Refusal(

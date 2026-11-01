@@ -31,8 +31,8 @@ public class FwDataProjectLoader
     /// <see cref="LcmCache"/> is created; this is the classic headless-load blocker if skipped or
     /// ordered wrong. If <c>MOTIF_WRITING_SYSTEM_REPOSITORY_PATH</c> is set before the first call,
     /// its directory becomes this process's global writing-system repository. When unset, this
-    /// method leaves the current repository slot untouched. If <see cref="SldrOfflineVariable"/> is set,
-    /// the SLDR answers from its local cache and never from the network.
+    /// method leaves the current repository slot untouched. The SLDR answers from its local cache and never from
+    /// the network unless <see cref="SldrOnlineVariable"/> is set.
     /// </summary>
     public static void Init()
     {
@@ -188,22 +188,21 @@ public class FwDataProjectLoader
             innerException);
     }
     /// <summary>
-    /// Keeps a process's writing-system lookups off the network, for it and every process it starts.
-    /// <b>Test-only.</b>
+    /// Lets a process's writing-system lookups reach the SIL Locale Data Repository (SLDR) on the network, for it
+    /// and every process it starts. Unset, Motif reads writing systems only from the project's own LDML, the shared
+    /// writing-system repository and the local SLDR cache.
     /// </summary>
     /// <remarks>
-    /// An online SLDR lookup is an HTTPS request made while holding the SLDR cache's machine-wide lock
-    /// (SIL.WritingSystems <c>Sldr.GetLdmlFile</c> and <c>Sldr.DownloadLanguageTags</c>), and the first
-    /// cache opened in a process makes several of them. Concurrent processes therefore open their first
-    /// cache one network round trip at a time, and a runner a test starts waits behind every other test
-    /// process on the machine. A test process sets this at load so its lookups, and those of the runner and
-    /// command-line processes it starts, read only the local SLDR cache, as LibLCM's own tests do. Pinned by
-    /// `InitKeepsSldrLookupsOffTheNetworkWhenTheEnvironmentAsks`.
+    /// Motif reads a project's writing systems and never changes them, so it has no use for SLDR updates, and an
+    /// online lookup is a hidden network dependency: the first cache opened in a process makes several HTTPS
+    /// requests (SIL.WritingSystems <c>Sldr.GetLdmlFile</c> and <c>Sldr.DownloadLanguageTags</c>), each while holding
+    /// the SLDR cache's machine-wide lock, which breaks a sandbox without network and makes concurrent processes
+    /// open their first cache one round trip at a time. Pinned by `InitKeepsSldrLookupsOffTheNetworkByDefault`.
     /// </remarks>
-    internal const string SldrOfflineVariable = "MOTIF_TEST_SLDR_OFFLINE";
+    internal const string SldrOnlineVariable = "MOTIF_SLDR_ONLINE";
 
-    private static bool SldrOfflineRequested() =>
-        !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(SldrOfflineVariable));
+    private static bool SldrOfflineByDefault() =>
+        string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(SldrOnlineVariable));
 
     /// <summary>
     /// Points a process's SLDR cache at a private directory instead of the machine-wide one. <b>Test-only.</b>
@@ -224,7 +223,7 @@ public class FwDataProjectLoader
         var cachePath = Environment.GetEnvironmentVariable(SldrCachePathVariable);
         if (string.IsNullOrWhiteSpace(cachePath))
         {
-            Sldr.Initialize(offlineTestMode: SldrOfflineRequested());
+            Sldr.Initialize(offlineTestMode: SldrOfflineByDefault());
             return;
         }
 
@@ -233,7 +232,7 @@ public class FwDataProjectLoader
         var initialize = typeof(Sldr).GetMethod(nameof(Sldr.Initialize), BindingFlags.Static | BindingFlags.NonPublic,
             [typeof(bool), typeof(string)]) ?? throw new InvalidOperationException(
             $"SIL.WritingSystems no longer offers Sldr.Initialize(bool, string), which '{SldrCachePathVariable}' needs.");
-        initialize.Invoke(null, [SldrOfflineRequested(), Path.GetFullPath(cachePath)]);
+        initialize.Invoke(null, [SldrOfflineByDefault(), Path.GetFullPath(cachePath)]);
     }
 
     private const string WritingSystemRepositoryPathEnvironmentVariable = "MOTIF_WRITING_SYSTEM_REPOSITORY_PATH";
@@ -313,6 +312,8 @@ public class FwDataProjectLoader
         {
             if (FailsWritingSystemLoadForTest(fwDataFilePath))
                 throw new KeyNotFoundException("The writing system qaa-x-test was not found in this manager.");
+            if (HoldsProjectFileForTest(fwDataFilePath))
+                throw new IOException("Injected sharing violation.", unchecked((int)0x80070020));
             return LcmCache.CreateCacheFromLocalProjectFile(
                 fwDataFilePath,
                 null,
@@ -326,6 +327,23 @@ public class FwDataProjectLoader
         {
             throw explained;
         }
+        catch (Exception failure) when (failure is LcmInitializationException and not LcmFileLockedException ||
+            ProjectFileHeldException.IsSharingViolation(failure))
+        {
+            // Probe here, not in the filter: a filter runs before the failed open's own handles are released.
+            if (!ProjectFileHeldException.IsSharingViolation(failure) && !ProjectFileHeldException.IsHeld(fwDataFilePath))
+                throw;
+            throw new ProjectFileHeldException(fwDataFilePath);
+        }
+    }
+
+    // Test seam: names the full path of a project whose every open fails as a file another process holds does.
+    private static bool HoldsProjectFileForTest(string fwDataFilePath)
+    {
+        var held = Environment.GetEnvironmentVariable("MOTIF_TEST_HOLD_PROJECT_FILE_FOR");
+        var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        return held is { Length: > 0 } && string.Equals(
+            Path.GetFullPath(held), Path.GetFullPath(fwDataFilePath), comparison);
     }
 
     // Test seam: names a .fwdata file name whose every open, copies included, fails as LibLCM's missing tag does.

@@ -290,12 +290,12 @@ function Format-InstallProcesses {
     }))
 }
 
-# Everything under the install directory was started by this smoke, so each one is ours to stop.
+# Cleanup is limited to processes whose executable is inside this install root.
 function Stop-InstallProcesses {
     param([Parameter(Mandatory = $true)] [string] $Reason)
 
-    $deadline = [DateTime]::UtcNow.AddSeconds(30)
-    while ([DateTime]::UtcNow -lt $deadline -and @(Get-InstallProcesses).Count -gt 0) {
+    $wait = [System.Diagnostics.Stopwatch]::StartNew()
+    while ($wait.Elapsed -lt [TimeSpan]::FromSeconds(30) -and @(Get-InstallProcesses).Count -gt 0) {
         Start-Sleep -Milliseconds 500
     }
     $lingering = @(Get-InstallProcesses)
@@ -304,8 +304,8 @@ function Stop-InstallProcesses {
         foreach ($lingerer in $lingering) {
             Stop-Process -Id $lingerer.ProcessId -Force -ErrorAction SilentlyContinue
         }
-        $deadline = [DateTime]::UtcNow.AddSeconds(30)
-        while ([DateTime]::UtcNow -lt $deadline -and @(Get-InstallProcesses).Count -gt 0) {
+        $wait.Restart()
+        while ($wait.Elapsed -lt [TimeSpan]::FromSeconds(30) -and @(Get-InstallProcesses).Count -gt 0) {
             Start-Sleep -Milliseconds 250
         }
     }

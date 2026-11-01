@@ -58,7 +58,7 @@ def environment():
         "MOTIF_RUNNER_NAMESPACE": "session-" + os.urandom(16).hex(),
         "MOTIF_WRITING_SYSTEM_REPOSITORY_PATH": "/session/state/writing-systems",
         "MOTIF_TEST_SLDR_CACHE_PATH": "/session/state/sldr",
-        "MOTIF_TEST_SLDR_OFFLINE": "1", "MOTIF_DEVELOPER_COMMANDS": "1",
+        "MOTIF_DEVELOPER_COMMANDS": "1",
         "MOTIF_ADVANCED_AI_MODE_PATH": "/session/state/choice.json",
         "MOTIF_RUNNER_IDLE_SECONDS": "2", "MOTIF_PANGLOSS_EXE": "/opt/product/pangloss",
     }

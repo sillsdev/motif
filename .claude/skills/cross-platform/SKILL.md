@@ -130,8 +130,8 @@ command.
 ### Test process isolation
 
 `test.ps1` runs each test project in its own process, several at once. Each process gets a private
-writing-system repository, a private PanGloss slot namespace, and offline SLDR lookups
-(`MOTIF_TEST_SLDR_OFFLINE`). `test.ps1` sets `MOTIF_DEVELOPER_COMMANDS=1`; set it yourself when you run
+writing-system repository and a private PanGloss slot namespace; SLDR lookups are offline in every Motif
+process unless `MOTIF_SLDR_ONLINE` is set, and the test initializer clears that variable. `test.ps1` sets `MOTIF_DEVELOPER_COMMANDS=1`; set it yourself when you run
 `dotnet test` directly, or developer CLI commands refuse with exit 2.
 
 Production access to the shared writing-system repository is serialized across processes by a lock keyed

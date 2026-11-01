@@ -48,7 +48,6 @@ public sealed class MotifUpdateGateTests
         var gateName = UniqueGateName();
         var workers = new[] { new MotifUpdateGate.WorkerProcessInfo(4242, "install/current/SIL.Motif.Worker.exe") };
 
-        // The fake Worker exits the way a real idle one does: it sees the request and goes away.
         MotifUpdateGate.RetireIdleWorkers(gateName, "install/current", TimeSpan.FromSeconds(5),
             _ => MotifUpdateGate.IsRetirementRequested(gateName) ? [] : workers);
 

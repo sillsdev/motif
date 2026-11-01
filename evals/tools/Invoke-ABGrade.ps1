@@ -42,7 +42,6 @@ $measurementEnvironment = @{
     MOTIF_RUNNER_NAMESPACE = 'grade-' + [Guid]::NewGuid().ToString('N')
     MOTIF_WRITING_SYSTEM_REPOSITORY_PATH = Join-Path $configData.scratchRoot 'writing-systems'
     MOTIF_TEST_SLDR_CACHE_PATH = Join-Path $configData.scratchRoot 'sldr'
-    MOTIF_TEST_SLDR_OFFLINE = '1'
 }
 if (-not $configData.Contains('startProject') -or -not (Test-Path -LiteralPath $configData.startProject -PathType Container)) {
     throw 'This trial has no stored start project, so its Proposal cannot be measured against the project the agent worked on. Re-run the Episode.'

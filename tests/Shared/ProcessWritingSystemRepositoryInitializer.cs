@@ -11,7 +11,8 @@ internal static class ProcessWritingSystemRepositoryInitializer
     {
         StaleTestDirectories.SweepTemporaryRoots();
         ProcessWritingSystemRepository.Install();
-        Environment.SetEnvironmentVariable(FwDataProjectLoader.SldrOfflineVariable, "1");
+        // A developer who opts into online lookups must not make the suite, or the runners it starts, use the network.
+        Environment.SetEnvironmentVariable(FwDataProjectLoader.SldrOnlineVariable, null);
         Environment.SetEnvironmentVariable(FwDataProjectLoader.SldrCachePathVariable, ProcessWritingSystemRepository.SldrCachePath);
 #if MOTIF_TESTS_SUPPORT
         ProcessMemoryDiagnostics.WriteStartupCheckpoint("test host before bundled ICU initialization");

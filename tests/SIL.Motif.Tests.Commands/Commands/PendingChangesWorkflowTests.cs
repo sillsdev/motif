@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text.Json;
 using SIL.LCModel;
 using SIL.LCModel.Core.Text;
@@ -260,6 +261,61 @@ public sealed class PendingChangesWorkflowTests(PristineProjectFixture pristine,
         Assert.Equal(3, FailureEnvelope.ExitCodeFor(overlapping.Refusal!.Reason));
     }
 
+    [Fact(Timeout = 240_000)]
+    public async Task AnApplyKilledWhileItHoldsTheLeaseLeavesNoLockForTheNextApply()
+    {
+        string path;
+        Guid wordformId = Guid.Empty;
+        using (var scratch = pristine.NewScratch())
+        {
+            NonUndoableUnitOfWorkHelper.Do(scratch.ActionHandlerAccessor, () =>
+                wordformId = scratch.ServiceLocator.GetInstance<IWfiWordformFactory>()
+                    .Create(TsStringUtils.MakeString("killed-apply", scratch.DefaultVernWs)).Guid);
+            new FwDataProjectLoader().Save(scratch);
+            path = scratch.ProjectId.Path;
+        }
+        var root = NewManagedRoot(path);
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), root).Succeeded);
+        PutChange(path, LoadPending(path).Revision, wordformId, "killed-apply");
+        var held = ProjectApplyLease.PathFor(path) + ".held";
+        var start = CliProcess.Start(IsolatedRunner.Options(root), "apply", "--all-pending", "--project", path, "--json");
+        start.Environment["MOTIF_TEST_HOLD_APPLY_LEASE_FOR"] = path;
+
+        using (var child = Process.Start(start)!)
+        {
+            try
+            {
+                var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(90);
+                while (!File.Exists(held))
+                {
+                    if (child.HasExited)
+                        Assert.Fail($"The Apply exited with {child.ExitCode} before it held the lease: " +
+                            await ReadWithinAsync(child.StandardError, TimeSpan.FromSeconds(5)));
+                    if (DateTime.UtcNow >= deadline) Assert.Fail("The Apply did not take the lease within 90 s.");
+                    await Task.Delay(100);
+                }
+                Assert.Null(ProjectApplyLease.TryAcquire(path));
+            }
+            finally
+            {
+                if (!child.HasExited) child.Kill(entireProcessTree: true);
+                try
+                {
+                    await child.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(30));
+                }
+                catch (TimeoutException)
+                {
+                    Assert.Fail($"The killed Apply (process {child.Id}) had not exited after 30 s.");
+                }
+            }
+        }
+
+        using (var lease = ProjectApplyLease.TryAcquire(path)) Assert.NotNull(lease);
+        var next = PendingChangesWorkflow.Apply(new ApplyPendingRequest(path, null, null),
+            dryRunTimeout: TimeSpan.FromSeconds(5), runnerLauncher: IsolatedRunner.None(root));
+        Assert.NotEqual("apply.in-progress", next.Refusal?.Code);
+    }
+
     [Fact]
     public void ApplyAllPendingWhileTheProjectIsHeldIsBusyAndReopensTheChanges()
     {
@@ -285,6 +341,117 @@ public sealed class PendingChangesWorkflowTests(PristineProjectFixture pristine,
 
         Assert.Equal(FailureReason.Busy, outcome.Refusal?.Reason);
         Assert.Equal(3, FailureEnvelope.ExitCodeFor(outcome.Refusal!.Reason));
+        var reopened = LoadPending(path);
+        Assert.Equal(pending.DraftId, reopened.DraftId);
+        Assert.Single(reopened.Changes);
+    }
+
+    [Fact]
+    public void ASharingViolationAnywhereInTheExceptionChainMeansTheFileIsHeld()
+    {
+        var sharingViolation = new IOException("held", unchecked((int)0x80070020));
+        var lockViolation = new IOException("locked", unchecked((int)0x80070021));
+
+        Assert.True(ProjectFileHeldException.IsSharingViolation(sharingViolation));
+        Assert.True(ProjectFileHeldException.IsSharingViolation(lockViolation));
+        Assert.True(ProjectFileHeldException.IsSharingViolation(
+            new InvalidOperationException("outer", sharingViolation)));
+        Assert.False(ProjectFileHeldException.IsSharingViolation(
+            new IOException("missing", unchecked((int)0x80070002))));
+        Assert.False(ProjectFileHeldException.IsSharingViolation(new InvalidOperationException("no inner")));
+    }
+
+    [Fact]
+    public void TheUnixWouldBlockErrnoMeansHeldOnlyOnThePlatformThatUsesThatNumber()
+    {
+        Assert.Equal(OperatingSystem.IsLinux(), ProjectFileHeldException.IsSharingViolation(new IOException("flock", 11)));
+        Assert.Equal(OperatingSystem.IsMacOS(), ProjectFileHeldException.IsSharingViolation(new IOException("flock", 35)));
+    }
+
+    [Fact]
+    public void AHeldFileThatIsNotTheProjectKeepsItsIoRefusalInsteadOfProjectInUse()
+    {
+        var outcome = ProjectStoreCommand.RunOperation<ApplyPendingResult>("/p/project.fwdata",
+            () => throw new IOException("words file held", unchecked((int)0x80070020)));
+
+        Assert.Equal("project.operation-io", outcome.Refusal?.Code);
+        Assert.NotEqual(FailureReason.Busy, outcome.Refusal!.Reason);
+    }
+
+    [Fact]
+    public void AProjectFileHeldWhenItIsOpenedIsBusyAsProjectInUse()
+    {
+        var outcome = ProjectStoreCommand.RunOperation<ApplyPendingResult>("/p/project.fwdata",
+            () => throw new ProjectFileHeldException("/p/project.fwdata"));
+
+        Assert.Equal(FailureReason.Busy, outcome.Refusal?.Reason);
+        Assert.Equal("project.in-use", outcome.Refusal!.Code);
+    }
+
+    [Fact]
+    public void ApplyWhenOpeningTheProjectFindsItHeldIsBusyAndReopensTheChanges()
+    {
+        string path;
+        Guid wordformId = Guid.Empty;
+        using (var scratch = pristine.NewScratch())
+        {
+            NonUndoableUnitOfWorkHelper.Do(scratch.ActionHandlerAccessor, () =>
+                wordformId = scratch.ServiceLocator.GetInstance<IWfiWordformFactory>()
+                    .Create(TsStringUtils.MakeString("held-open", scratch.DefaultVernWs)).Guid);
+            new FwDataProjectLoader().Save(scratch);
+            path = scratch.ProjectId.Path;
+        }
+        var root = NewManagedRoot(path);
+        var runner = IsolatedRunner.None(root);
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), root).Succeeded);
+        var pending = PutChange(path, LoadPending(path).Revision, wordformId, "held-open");
+
+        CommandOutcome<ApplyPendingResult> outcome;
+        const string variable = "MOTIF_TEST_HOLD_PROJECT_FILE_FOR";
+        var previous = Environment.GetEnvironmentVariable(variable);
+        try
+        {
+            Environment.SetEnvironmentVariable(variable, path);
+            outcome = PendingChangesWorkflow.Apply(new ApplyPendingRequest(path, null, null),
+                runnerLauncher: runner);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(variable, previous);
+        }
+
+        Assert.Equal(FailureReason.Busy, outcome.Refusal?.Reason);
+        Assert.Equal("project.in-use", outcome.Refusal!.Code);
+        var reopened = LoadPending(path);
+        Assert.Equal(pending.DraftId, reopened.DraftId);
+        Assert.Single(reopened.Changes);
+    }
+
+    [Fact]
+    public void ApplyWhileAnotherProcessHasTheProjectFileOpenIsBusyAndReopensTheChanges()
+    {
+        string path;
+        Guid wordformId = Guid.Empty;
+        using (var scratch = pristine.NewScratch())
+        {
+            NonUndoableUnitOfWorkHelper.Do(scratch.ActionHandlerAccessor, () =>
+                wordformId = scratch.ServiceLocator.GetInstance<IWfiWordformFactory>()
+                    .Create(TsStringUtils.MakeString("open-file", scratch.DefaultVernWs)).Guid);
+            new FwDataProjectLoader().Save(scratch);
+            path = scratch.ProjectId.Path;
+        }
+        var root = NewManagedRoot(path);
+        var runner = IsolatedRunner.None(root);
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), root).Succeeded);
+        var pending = PutChange(path, LoadPending(path).Revision, wordformId, "open-file");
+
+        CommandOutcome<ApplyPendingResult> outcome;
+        using (new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+            outcome = PendingChangesWorkflow.Apply(new ApplyPendingRequest(path, null, null),
+                runnerLauncher: runner);
+
+        Assert.Equal(FailureReason.Busy, outcome.Refusal?.Reason);
+        Assert.Equal("project.in-use", outcome.Refusal!.Code);
         var reopened = LoadPending(path);
         Assert.Equal(pending.DraftId, reopened.DraftId);
         Assert.Single(reopened.Changes);
@@ -707,6 +874,19 @@ public sealed class PendingChangesWorkflowTests(PristineProjectFixture pristine,
 
     private static PendingChangesSnapshot LoadPending(string path) => PendingChanges.Load(
         new PendingChangesRequest(path, ProductVersion)).Value!;
+
+    // A descendant that inherited the pipe can keep it open after the child exits, so the read is bounded.
+    private static async Task<string> ReadWithinAsync(StreamReader reader, TimeSpan bound)
+    {
+        try
+        {
+            return await reader.ReadToEndAsync().WaitAsync(bound);
+        }
+        catch (TimeoutException)
+        {
+            return $"(standard error was still open after {bound.TotalSeconds:0} s)";
+        }
+    }
 
     private static PendingChangesSnapshot PutChange(string path, string revision, Guid wordformId, string word) =>
         PendingChanges.Put(new PutPendingChangeRequest(path, ProductVersion, revision,

@@ -7,6 +7,7 @@ using SIL.Motif.Commands;
 using SIL.Motif.Commands.Assess;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Generator;
@@ -75,6 +76,21 @@ public sealed class WindowRefusalTests
     {
         foreach (var banned in BannedOnScreen)
             Assert.DoesNotContain(banned, WindowRefusal.GenericSentence, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AnIncompleteCheckShowsHowItsJobEndedInTheWindowAndKeepsTheJobIdForTheReport()
+    {
+        var job = new JobStatusResponse("job/abc123", "project-key", true, "trial", JobStatus.Failed, 2, null, false,
+            JobFailureCategory.ParserRefusal, 1);
+
+        var shown = WindowRefusal.From(PendingChangesWorkflow.MeasurementIncomplete(job.JobId, job));
+
+        Assert.NotNull(shown.Details);
+        Assert.Contains("It ended as Failed", shown.Details);
+        Assert.Contains("attempt 2", shown.Details);
+        Assert.DoesNotContain("job/abc123", shown.Details);
+        Assert.Contains("job/abc123", shown.ReportDetails);
     }
 
     [Fact]

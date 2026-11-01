@@ -193,7 +193,7 @@ internal static class WorkerRuntime
             await watching.ConfigureAwait(false);
             if (shutdown.IsCancellationRequested || await RetireAsync(activity, shutdown).ConfigureAwait(false))
                 return;
-            // A request a busy runner cannot answer stays up; poll for the work to end instead of spinning.
+            // Give an in-progress sweep time to finish before retrying retirement.
             if (retirementRequested?.Invoke() == true)
             {
                 try { await Task.Delay(IdlePollInterval, shutdown).ConfigureAwait(false); }

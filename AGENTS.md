@@ -96,6 +96,8 @@ programs using the same lock.
 The same module initializer points SLDR at a private, empty cache (`MOTIF_TEST_SLDR_CACHE_PATH`): the
 machine-wide SLDR cache holds whatever earlier runs downloaded, about 1.4 MB of LDML per writing system, and a
 project whose writing systems carry it takes several hundred milliseconds longer to open, every time.
+SLDR makes no network request in any Motif process unless `MOTIF_SLDR_ONLINE` is set (the initializer clears it); offline
+still reads a local SLDR cache.
 **Nothing a test process touches may be shared with another test process**, because four suites in four
 worktrees must run at once: each process also gets its own runner namespace (`MOTIF_RUNNER_NAMESPACE`) and
 worker root (`MOTIF_WORKER_ROOT`), and the writing-system repository's default location follows its private

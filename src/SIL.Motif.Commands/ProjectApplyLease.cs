@@ -1,3 +1,5 @@
+using SIL.Motif.Host.LcmUtils;
+
 namespace SIL.Motif.Commands;
 
 /// <summary>
@@ -33,16 +35,11 @@ internal sealed class ProjectApplyLease : IDisposable
             return new ProjectApplyLease(new FileStream(PathFor(fwDataPath), FileMode.OpenOrCreate,
                 FileAccess.ReadWrite, FileShare.None));
         }
-        catch (IOException exception) when (IsHeldElsewhere(exception))
+        catch (IOException exception) when (ProjectFileHeldException.IsSharingViolation(exception))
         {
             return null;
         }
     }
 
     public void Dispose() => _stream.Dispose();
-
-    // Windows reports a sharing or lock violation; Unix reports the flock EWOULDBLOCK (11 Linux, 35 macOS).
-    private static bool IsHeldElsewhere(IOException exception) =>
-        exception.HResult is unchecked((int)0x80070020) or unchecked((int)0x80070021) ||
-        (exception.HResult & 0xffff) is 11 or 35;
 }

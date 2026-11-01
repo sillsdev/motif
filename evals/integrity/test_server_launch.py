@@ -38,7 +38,7 @@ class ServerLaunchTests(unittest.TestCase):
             env = dict(os.environ)
             env.update({'MOTIF_WORKER_ROOT': str(root / 'work'), 'MOTIF_RUNNER_NAMESPACE': 'launch-' + root.name,
                         'MOTIF_WRITING_SYSTEM_REPOSITORY_PATH': str(root / 'writing-systems'),
-                        'MOTIF_TEST_SLDR_CACHE_PATH': str(root / 'sldr'), 'MOTIF_TEST_SLDR_OFFLINE': '1',
+                        'MOTIF_TEST_SLDR_CACHE_PATH': str(root / 'sldr'),
                         'MOTIF_ADVANCED_AI_MODE_PATH': str(root / 'choice.json')})
             (root / 'choice.json').write_text('{"advancedAiMode": true}')
             prepared = subprocess.run([str(BUILDER), 'build-project', '--set', str(grammar_sets() / 'eval-t0-qaxu'),

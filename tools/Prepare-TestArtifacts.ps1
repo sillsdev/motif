@@ -48,7 +48,7 @@ $workRoot = Join-Path $stageRoot 'work'
 $packageRoot = Join-Path $stageRoot 'portable-worker-package'
 $walkthroughRoot = Join-Path $stageRoot 'walkthrough-fixtures/explained-word-card'
 $previousIntermediateRoot = [Environment]::GetEnvironmentVariable('MOTIF_PACKAGE_INTERMEDIATE_ROOT', 'Process')
-$previousSldrOffline = [Environment]::GetEnvironmentVariable('MOTIF_TEST_SLDR_OFFLINE', 'Process')
+$previousSldrOnline = [Environment]::GetEnvironmentVariable('MOTIF_SLDR_ONLINE', 'Process')
 $previousSldrCachePath = [Environment]::GetEnvironmentVariable('MOTIF_TEST_SLDR_CACHE_PATH', 'Process')
 $previousWritingSystemRepositoryPath = [Environment]::GetEnvironmentVariable(
     'MOTIF_WRITING_SYSTEM_REPOSITORY_PATH', 'Process')
@@ -279,7 +279,7 @@ try {
     if ($preparePortableWorkerPackage) { [System.IO.Directory]::CreateDirectory($packageRoot) | Out-Null }
     if ($prepareExplainedWordCardFixture) { [System.IO.Directory]::CreateDirectory($walkthroughRoot) | Out-Null }
     $env:MOTIF_PACKAGE_INTERMEDIATE_ROOT = Join-Path $publishBuildRoot 'obj'
-    $env:MOTIF_TEST_SLDR_OFFLINE = '1'
+    Remove-Item Env:MOTIF_SLDR_ONLINE -ErrorAction SilentlyContinue
     $env:MOTIF_TEST_SLDR_CACHE_PATH = Join-Path $workRoot 'sldr-cache'
     $env:MOTIF_WRITING_SYSTEM_REPOSITORY_PATH = Join-Path $workRoot 'writing-systems'
     $localPackageSource = ''
@@ -443,12 +443,7 @@ finally {
     else {
         $env:MOTIF_PACKAGE_INTERMEDIATE_ROOT = $previousIntermediateRoot
     }
-    if ($null -eq $previousSldrOffline) {
-        Remove-Item Env:MOTIF_TEST_SLDR_OFFLINE -ErrorAction SilentlyContinue
-    }
-    else {
-        $env:MOTIF_TEST_SLDR_OFFLINE = $previousSldrOffline
-    }
+    if ($null -ne $previousSldrOnline) { $env:MOTIF_SLDR_ONLINE = $previousSldrOnline }
     if ($null -eq $previousSldrCachePath) {
         Remove-Item Env:MOTIF_TEST_SLDR_CACHE_PATH -ErrorAction SilentlyContinue
     }

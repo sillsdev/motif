@@ -47,7 +47,7 @@ public static class MotifUpdateGate
     internal static bool IsRetirementRequested(string gateName)
     {
         var marker = GetRetirementMarkerPath(gateName);
-        // A marker a crashed updater left behind goes stale rather than retiring every later Worker.
+        // Bound requests so an updater crash cannot leave a permanent retirement request.
         return File.Exists(marker) && DateTime.UtcNow - File.GetLastWriteTimeUtc(marker) < RetirementRequestLifetime;
     }
 
@@ -71,9 +71,9 @@ public static class MotifUpdateGate
         File.WriteAllText(marker, DateTime.UtcNow.ToString("O"));
         try
         {
-            var deadline = DateTime.UtcNow + timeout;
+            var started = Stopwatch.GetTimestamp();
             var remaining = findWorkers(installDirectory);
-            while (remaining.Count > 0 && DateTime.UtcNow < deadline)
+            while (remaining.Count > 0 && Stopwatch.GetElapsedTime(started) < timeout)
             {
                 Thread.Sleep(RetirementPoll);
                 remaining = findWorkers(installDirectory);

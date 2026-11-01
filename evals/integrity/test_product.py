@@ -53,7 +53,7 @@ class ProductTests(unittest.TestCase):
             env.update({'MOTIF_WORKER_ROOT': str(root / 'prepare/work'),
                         'MOTIF_RUNNER_NAMESPACE': 'prepare-' + root.name,
                         'MOTIF_WRITING_SYSTEM_REPOSITORY_PATH': str(root / 'prepare/writing-systems'),
-                        'MOTIF_TEST_SLDR_CACHE_PATH': str(root / 'prepare/sldr'), 'MOTIF_TEST_SLDR_OFFLINE': '1'})
+                        'MOTIF_TEST_SLDR_CACHE_PATH': str(root / 'prepare/sldr')})
             prepared = subprocess.run([str(build / 'SIL.Motif.EvalSets'), 'build-project', '--set', str(sets / task['set']),
                                        '--start', task['start'], '--out', str(root / 'seed')],
                                       env=env, stdin=subprocess.DEVNULL, capture_output=True, timeout=120)

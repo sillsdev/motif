@@ -33,6 +33,10 @@ public sealed class ProjectCreateCommandTests : IDisposable
         Assert.Equal("Kiswahili", created.VernacularName);
         Assert.Equal(["'"], created.WordFormingCharacters);
         Assert.Equal("en", created.Analysis);
+        // Offline, 'swh' stays 'swh'; an online SLDR lookup canonicalises it to 'sw' and writes sw.ldml instead.
+        var store = Path.Combine(_root, "Kiswahili", "WritingSystemStore");
+        Assert.True(File.Exists(Path.Combine(store, "swh.ldml")));
+        Assert.False(File.Exists(Path.Combine(store, "sw.ldml")));
 
         using var cache = new FwDataProjectLoader().LoadScratchCache(created.FwDataPath);
         var vernacular = cache.ServiceLocator.WritingSystems.DefaultVernacularWritingSystem;

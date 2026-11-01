@@ -53,7 +53,6 @@ $controlEnvironment = @{
     MOTIF_RUNNER_NAMESPACE = 'prepare-' + [Guid]::NewGuid().ToString('N')
     MOTIF_WRITING_SYSTEM_REPOSITORY_PATH = Join-Path $controlRoot 'writing-systems'
     MOTIF_TEST_SLDR_CACHE_PATH = Join-Path $controlRoot 'sldr'
-    MOTIF_TEST_SLDR_OFFLINE = '1'
     MOTIF_ADVANCED_AI_MODE_PATH = Join-Path $controlRoot 'choice.json'
     MOTIF_DEVELOPER_COMMANDS = '1'
 }
