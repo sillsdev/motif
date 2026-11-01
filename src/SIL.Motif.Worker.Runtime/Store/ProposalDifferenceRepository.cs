@@ -23,6 +23,19 @@ public sealed record NewProposalDifference(ProposalDifferenceSummary Summary, IR
 public sealed record ProposalDifferenceFilter(
     bool CouldBeBad = false, ProposalDifferenceBucket? Bucket = null, string? BeforeState = null, string? AfterState = null);
 
+/// <summary>A saved Difference's summary and whether its word detail is still stored.</summary>
+public sealed record SavedProposalDifference(ProposalDifferenceSummary Summary, bool WordDetailKept);
+
+/// <summary>The Proposal was decided before its Difference could be stored, so full word rows would outlive their purpose.</summary>
+public sealed class ProposalDecidedException : InvalidOperationException
+{
+    public ProposalDecidedException() : base("The Proposal is decided, so a new Difference cannot be stored for it.") { }
+}
+
+/// <summary>A saved Difference's summary and one page of its words, all read from the same snapshot.</summary>
+public sealed record ProposalDifferencePage(
+    SavedProposalDifference Saved, int Matching, IReadOnlyList<ProposalDifferenceWord> Words);
+
 /// <summary>Stores a Proposal Difference in one transaction and reads it back by summary or page.</summary>
 public sealed class ProposalDifferenceRepository
 {
@@ -31,7 +44,11 @@ public sealed class ProposalDifferenceRepository
     public ProposalDifferenceRepository(MotifDatabase database) =>
         _database = database ?? throw new ArgumentNullException(nameof(database));
 
-    /// <summary>Stores the summary, words, Text positions and categories together, or none of them.</summary>
+    /// <summary>
+    /// Stores the summary, words, Text positions and categories together, or none of them, replacing any Difference
+    /// the Proposal already has for the same Text. The Proposal's status is read inside that transaction.
+    /// </summary>
+    /// <exception cref="ProposalDecidedException">The Proposal is decided, so nothing is stored.</exception>
     public void Publish(NewProposalDifference difference)
     {
         ArgumentNullException.ThrowIfNull(difference);
@@ -39,6 +56,17 @@ public sealed class ProposalDifferenceRepository
         var summaryJson = JsonSerializer.Serialize(summary, MotifJson.CreateOptions());
         using var connection = _database.OpenConnection();
         using var transaction = connection.BeginTransaction();
+        using (var status = connection.CreateCommand())
+        {
+            status.Transaction = transaction;
+            status.CommandText = "SELECT Status FROM Proposals WHERE ProposalId = $proposal;";
+            status.Parameters.AddWithValue("$proposal", summary.ProposalId);
+            if (status.ExecuteScalar() is string current && ProposalLifecycle.IsTerminal(current))
+                throw new ProposalDecidedException();
+        }
+        // The child rows go with it: their foreign keys cascade.
+        Execute(connection, transaction, "DELETE FROM ProposalDifferences WHERE ProposalId = $proposal AND TextId = $text;",
+            ("$proposal", summary.ProposalId), ("$text", summary.TextId));
         Execute(connection, transaction,
             "INSERT INTO ProposalDifferences (DifferenceId, ProposalId, TrialJobId, BeforeAssessmentId, " +
             "AfterAssessmentId, TextId, BaselineToken, SummaryJson, SummaryDigest, CreatedUtc) VALUES " +
@@ -103,29 +131,64 @@ public sealed class ProposalDifferenceRepository
     }
 
     /// <summary>The stored summary, refused when its bytes no longer match the digest saved with it.</summary>
-    public ProposalDifferenceSummary? GetSummary(string differenceId)
+    public ProposalDifferenceSummary? GetSummary(string differenceId) => GetSaved(differenceId)?.Summary;
+
+    /// <summary>The stored summary and whether word detail is still kept, or null when there is no such Difference.</summary>
+    public SavedProposalDifference? GetSaved(string differenceId)
     {
         using var connection = _database.OpenConnection();
+        return ReadSaved(connection, null, differenceId);
+    }
+
+    private static SavedProposalDifference? ReadSaved(SqliteConnection connection, SqliteTransaction? transaction,
+        string differenceId)
+    {
         using var command = connection.CreateCommand();
-        command.CommandText = "SELECT SummaryJson, SummaryDigest FROM ProposalDifferences WHERE DifferenceId = $id;";
+        command.Transaction = transaction;
+        command.CommandText = "SELECT SummaryJson, SummaryDigest, WordDetailDroppedUtc FROM ProposalDifferences " +
+            "WHERE DifferenceId = $id;";
         command.Parameters.AddWithValue("$id", differenceId);
         using var reader = command.ExecuteReader();
         if (!reader.Read()) return null;
         var json = reader.GetString(0);
         if (!string.Equals(Sha(json), reader.GetString(1), StringComparison.Ordinal))
             throw new InvalidDataException("The saved Difference summary does not match its digest. Delete it and compare again.");
-        return Read<ProposalDifferenceSummary>(json, "summary");
+        return new SavedProposalDifference(Read<ProposalDifferenceSummary>(json, "summary"), reader.IsDBNull(2));
     }
 
-    /// <summary>One page of matching words ordered by word, and how many words match before paging.</summary>
-    public (int Matching, IReadOnlyList<ProposalDifferenceWord> Words) ReadWords(
-        string differenceId, ProposalDifferenceFilter filter, int offset, int limit)
+    /// <summary>The saved Difference of a Proposal for one Text, or null when it has none.</summary>
+    public SavedProposalDifference? FindFor(string proposalId, string textId)
+    {
+        using var connection = _database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT DifferenceId FROM ProposalDifferences WHERE ProposalId = $proposal AND TextId = $text;";
+        command.Parameters.AddWithValue("$proposal", proposalId);
+        command.Parameters.AddWithValue("$text", textId);
+        return command.ExecuteScalar() is string id ? GetSaved(id) : null;
+    }
+
+    /// <summary>Whether the Proposal has left the undecided states, so its word detail is no longer kept.</summary>
+    public bool ProposalIsDecided(string proposalId)
+    {
+        using var connection = _database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT Status FROM Proposals WHERE ProposalId = $proposal;";
+        command.Parameters.AddWithValue("$proposal", proposalId);
+        return command.ExecuteScalar() is string status && ProposalLifecycle.IsTerminal(status);
+    }
+
+    /// <summary>
+    /// The summary, whether word detail is kept, and one page of matching words ordered by word, read together so a
+    /// decision made during the read cannot show a kept flag that disagrees with the words. Null when there is none.
+    /// </summary>
+    public ProposalDifferencePage? ReadPage(string differenceId, ProposalDifferenceFilter filter, int offset, int limit)
     {
         ArgumentNullException.ThrowIfNull(filter);
         ArgumentOutOfRangeException.ThrowIfNegative(offset);
         ArgumentOutOfRangeException.ThrowIfNegative(limit);
         using var connection = _database.OpenConnection();
         using var transaction = connection.BeginTransaction(deferred: true);
+        if (ReadSaved(connection, transaction, differenceId) is not { } saved) return null;
         var where = new StringBuilder("c.DifferenceId = $id");
         var parameters = new List<(string, object)> { ("$id", differenceId) };
         if (filter.CouldBeBad) where.Append(" AND c.CouldBeBad = 1");
@@ -167,7 +230,7 @@ public sealed class ProposalDifferenceRepository
                     reader.GetString(3), facts.Changes, facts.Buckets.Select(item => item.Bucket).Distinct().ToArray(), facts));
             }
         }
-        return (matching, words);
+        return new ProposalDifferencePage(saved, matching, words);
     }
 
     private static T Read<T>(string json, string what) where T : class

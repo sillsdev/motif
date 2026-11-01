@@ -8,6 +8,10 @@ Each word is placed in one state before and after the Proposal: no parse, parse 
 
 A token in the Text is counted as unmatched, never guessed, when it cannot be tied to exactly one measured word.
 
+A Proposal keeps one comparison per Text. Running the command again for the same Trial returns the saved one; a different Trial replaces it. The saved summary names the parser, grammar, Selection and tokeniser of both sides, so it stays readable after the Assessments behind it are removed. A parser or tokeniser that differs between the two sides is shown as a warning, not a refusal.
+
+Once the Proposal is applied, rejected, withdrawn or superseded, the word list is deleted and only the small summary stays. The command then returns the saved summary, and refuses with `difference.proposal-decided` if there is none for that Trial.
+
 ```powershell
 motif difference produce --project "C:\FieldWorks\Projects\Koro\Koro.fwdata" --proposal <proposalId> --text <textGuid> --json
 ```

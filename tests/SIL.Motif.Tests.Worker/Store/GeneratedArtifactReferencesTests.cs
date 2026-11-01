@@ -33,7 +33,7 @@ public sealed class GeneratedArtifactReferencesTests : IDisposable
     public GeneratedArtifactReferencesTests() => Directory.CreateDirectory(_root);
 
     [Fact]
-    public void CapturesBothDifferenceEdgesAndFrozenParsimonyCitationsFromADeclaredPrivateSnapshot()
+    public void CapturesFrozenParsimonyCitationsAndNoEdgesFromASavedDifferenceInADeclaredPrivateSnapshot()
     {
         using var database = OpenDatabase("one.fwdata");
         var token = NewBaseline('a');
@@ -120,10 +120,9 @@ public sealed class GeneratedArtifactReferencesTests : IDisposable
         Assert.Equal(new[] { before.Id, after.Id, frozenRoot, frozenInput, frozenEvidenceInput,
                 "assessment-direct-report" }.Order(StringComparer.Ordinal),
             references.AssessmentIds);
-        Assert.Contains(references.References, reference => reference.TargetKind == ArtifactReferenceTargetKind.Assessment &&
-            reference.Target == before.Id && reference.Reason == "proposal-difference-before");
-        Assert.Contains(references.References, reference => reference.TargetKind == ArtifactReferenceTargetKind.Assessment &&
-            reference.Target == after.Id && reference.Reason == "proposal-difference-after");
+        // The saved Difference cites before and after by id but is self-contained, so it references neither.
+        Assert.DoesNotContain(references.References, reference => reference.RetainingRecordId.StartsWith("ProposalDifferences/",
+            StringComparison.Ordinal));
         Assert.True(references.FamilyCompleteness.Single(item => item.Family == ArtifactReferenceFamily.Reports).IsComplete,
             string.Join(",", references.Diagnostics.Where(item => item.Family == ArtifactReferenceFamily.Reports)
                 .Select(item => item.Code)) + " | " + string.Join(";", references.References.Where(item =>

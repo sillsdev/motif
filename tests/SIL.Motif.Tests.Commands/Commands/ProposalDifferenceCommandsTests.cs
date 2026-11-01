@@ -15,6 +15,7 @@ using SIL.Motif.Contract.Commands;
 using SIL.Motif.Host.Analysis;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.Corpus;
+using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.Parser;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Host.Texts;
@@ -26,7 +27,7 @@ using Xunit;
 
 namespace SIL.Motif.Tests.Commands;
 
-public sealed class ProposalDifferenceCommandsTests : IDisposable
+public sealed partial class ProposalDifferenceCommandsTests : IDisposable
 {
     private const string FormA = "11111111-1111-1111-1111-111111111111";
     private const string FormB = "22222222-2222-2222-2222-222222222222";
@@ -198,8 +199,7 @@ public sealed class ProposalDifferenceCommandsTests : IDisposable
         using var fixture = new Fixture(_root);
         var other = CanonicalId.Mint("proposal/");
         var proposals = new ProposalRepository(fixture.Database);
-        proposals.SaveRevision(new ProposalRevisionRecord(other, "sha256:" + new string('4', 64), "{}", "rejected", null, null, null));
-        proposals.SetStatus(other, "rejected", null);
+        proposals.SaveRevision(new ProposalRevisionRecord(other, "sha256:" + new string('4', 64), "{}", "proposed", null, null, null));
         var produced = ProposalDifferenceCommands.Produce(fixture.ProduceRequest()).Value!;
         var summary = produced.Summary with { DifferenceId = "difference/doomed", ProposalId = other.Value };
         var facts = Assert.Single(produced.Words, word => word.Word == "mutu").Facts;
@@ -207,6 +207,8 @@ public sealed class ProposalDifferenceCommandsTests : IDisposable
         new ProposalDifferenceRepository(fixture.Database).Publish(new NewProposalDifference(summary,
             [new NewProposalDifferenceWord("w", facts, [new ProposalDifferenceOccurrence("t", "s", 0, 1)])]));
         Assert.Equal(1, fixture.Count("ProposalDifferenceOccurrences", "difference/doomed"));
+        // A store from before word detail was dropped on decision can still hold full rows for a decided Proposal.
+        fixture.Sql($"UPDATE Proposals SET Status = 'rejected' WHERE ProposalId = '{other.Value}';");
 
 
         Assert.True(fixture.Count("ProposalDifferenceBuckets", "difference/doomed") > 0);
@@ -480,7 +482,7 @@ public sealed class ProposalDifferenceCommandsTests : IDisposable
         catch (IOException) { }
     }
 
-    private sealed class Fixture : IDisposable
+    private sealed partial class Fixture : IDisposable
     {
         private readonly string _dir;
         private readonly string _tokenJson;
@@ -491,11 +493,24 @@ public sealed class ProposalDifferenceCommandsTests : IDisposable
         private readonly string _beforeAssessor;
         private readonly char _beforeTokenSeed;
         private readonly bool _beforeNoWords;
+        private readonly int _extraWords;
+        private readonly bool _cappedAfterMutu;
+        private readonly string? _beforeParserSha;
+        private readonly string? _afterParserSha;
+        private readonly string[] _outsideText;
+        private string _trialInput = "";
+        private string _trialDigest = "";
 
         public Fixture(string testRoot, bool beforeOmitsSita = false, bool ambiguousMutu = false, bool duplicateBefore = false,
             string[]? jobBaselineIds = null, bool noBaselineIds = false, string beforeAssessor = "pangloss",
-            char beforeTokenSeed = 'a', bool beforeNoWords = false)
+            char beforeTokenSeed = 'a', bool beforeNoWords = false, int extraWords = 0, bool cappedAfterMutu = false,
+            string? beforeParserSha = null, string? afterParserSha = null, string[]? outsideText = null)
         {
+            _extraWords = extraWords;
+            _cappedAfterMutu = cappedAfterMutu;
+            _beforeParserSha = beforeParserSha;
+            _afterParserSha = afterParserSha;
+            _outsideText = outsideText ?? [];
             _jobBaselineIds = noBaselineIds ? null : jobBaselineIds ?? ["before"];
             _beforeAssessor = beforeAssessor;
             _beforeTokenSeed = beforeTokenSeed;
@@ -549,9 +564,22 @@ public sealed class ProposalDifferenceCommandsTests : IDisposable
             { SourceAnalysisId = CanonicalId.FromGuid(analysisId).Value };
             TextWordsProjectedToken Token(string form, Guid wordform, int index) => new(form,
                 [new WritingSystemText(form, "swh")], wordform, "analysed", null, null, null, null, index, null);
+            var extraTokens = Enumerable.Range(0, _extraWords).Select(i => Token(ExtraWord(i), ExtraId(i), 10 + i)).ToArray();
+            var extraWordforms = Enumerable.Range(0, _extraWords).Select(i =>
+            {
+                var extraAnalysis = ExtraId(i);
+                var approvedExtra = new TextWordsProjectedAnalysis("x" + i, [])
+                {
+                    AnalysisId = extraAnalysis, Opinion = ReadingGrade.Approved,
+                    Identity = new ApprovedMorphology([new ApprovedMorph(FormA, Msa, null, [ExtraWord(i)])])
+                    { SourceAnalysisId = CanonicalId.FromGuid(extraAnalysis).Value },
+                };
+                return new TextWordsProjectedWordform(ExtraId(i), [approvedExtra], [], 0, false, [approvedExtra]);
+            }).ToArray();
             var text = new TextWordsProjectedText(TextId, "Hadithi",
                 [new TextWordsProjectedLine(1, "sita mutu sita .", [Token("sita", sitaId, 0), Token("mutu", mutuId, 1),
-                    Token("sita", sitaId, 2), .. _ambiguousMutu ? [Token("mutu", otherMutuId, 4)] : Array.Empty<TextWordsProjectedToken>(),
+                    Token("sita", sitaId, 2), .. extraTokens,
+                    .. _ambiguousMutu ? [Token("mutu", otherMutuId, 4)] : Array.Empty<TextWordsProjectedToken>(),
                     new TextWordsProjectedToken(".", [new WritingSystemText(".", "swh")], null,
                         null, null, null, null, null, 3, null)], paragraph, segment, true)], []);
             var approved = new TextWordsProjectedAnalysis("k1", [])
@@ -565,9 +593,10 @@ public sealed class ProposalDifferenceCommandsTests : IDisposable
                     new TextWordsProjectedWordform(mutuId, [], [], 0, true, []),
                     .. _ambiguousMutu ? [new TextWordsProjectedWordform(otherMutuId, [], [], 0, false, [])]
                         : Array.Empty<TextWordsProjectedWordform>(),
+                    .. extraWordforms,
                 ]),
-                new ProjectSummarySnapshot(2, _ambiguousMutu ? 4 : 3, 2, 0, 0, ["sita", "mutu"],
-                    [new ProjectTextSummary(TextId, "Hadithi", 2, _ambiguousMutu ? 4 : 3,
+                new ProjectSummarySnapshot(2 + _extraWords, (_ambiguousMutu ? 4 : 3) + _extraWords, 2 + _extraWords, 0, 0, ["sita", "mutu"],
+                    [new ProjectTextSummary(TextId, "Hadithi", 2 + _extraWords, (_ambiguousMutu ? 4 : 3) + _extraWords,
                         new Dictionary<string, int>(StringComparer.Ordinal) { ["sita"] = 2, ["mutu"] = _ambiguousMutu ? 2 : 1 })]));
         }
 
@@ -596,22 +625,34 @@ public sealed class ProposalDifferenceCommandsTests : IDisposable
             ProposalId = id.Value;
 
             var assessments = new AssessmentRepository(Database);
-            Record(assessments, "before", null, null, Word("sita", 0, Reading(FormB)), Word("mutu", 1));
-            Record(assessments, "after", id, digest, Word("sita", 0, Reading(FormA)), Word("mutu", 1, Reading(FormB)));
+            Record(assessments, "before", null, null, [Word("sita", 0, Reading(FormB)), Word("mutu", 1),
+                .. ExtraAssessed(before: true)]);
+            Record(assessments, "after", id, digest, [Word("sita", 0, Reading(FormA)),
+                _cappedAfterMutu ? Capped("mutu", 1, Reading(FormB)) : Word("mutu", 1, Reading(FormB)),
+                .. ExtraAssessed(before: false)]);
             var jobs = new JobRepository(Database);
             var input = JsonSerializer.Serialize(new
             {
                 proposalJson = json, scope = (string?)null, words = new[] { "sita", "mutu" }, allWords = false,
                 limits = (TrialLimits?)null, baselineAssessmentIds = _jobBaselineIds,
             }, MotifJson.CreateOptions());
-            var job = jobs.Create("trial-1", ProjectWorkspaceKey.Compute(Project), TrialJobHandler.TrialKind, input,
+            _trialInput = input;
+            _trialDigest = digest;
+            AddTrial("trial-1");
+        }
+
+        public string AddTrial(string key)
+        {
+            var jobs = new JobRepository(Database);
+            var job = jobs.Create(key, ProjectWorkspaceKey.Compute(Project), TrialJobHandler.TrialKind, _trialInput,
                 "2026-09-24T11:00:00Z");
             job = jobs.Transition(job.JobId, JobStatus.Running);
-            job = jobs.PublishDryRun(job.JobId, DryRun(digest), job.Version);
+            job = jobs.PublishDryRun(job.JobId, DryRun(_trialDigest), job.Version);
             jobs.Transition(job.JobId, JobStatus.Completed, JsonSerializer.Serialize(new
             {
                 baselineToken = Token, assessmentIds = new[] { "after" }, allWords = false,
             }, MotifJson.CreateOptions()));
+            return job.JobId;
         }
 
         public void CompleteTrial(string jobId)
@@ -627,7 +668,7 @@ public sealed class ProposalDifferenceCommandsTests : IDisposable
         }
 
         private void Record(AssessmentRepository assessments, string id, CanonicalId? proposal, string? digest,
-            params AssessedWord[] words)
+            AssessedWord[] words)
         {
             if (_beforeOmitsSita && id == "before") words = words.Where(word => word.Word != "sita").ToArray();
             if (_duplicateBefore && id == "before") words = [.. words, Word("sita", 5, Reading(FormA))];
@@ -641,8 +682,37 @@ public sealed class ProposalDifferenceCommandsTests : IDisposable
                 AssessmentKinds.ParseTime, "{}", "sha256:scope", new SIL.Motif.Host.Assess.AssessmentSubject.Words(
                     Selection.Create("Default", ["sita", "mutu"]), "whitespace", "1"), tokenJson,
                 "sha256:outcome", "sha256:semantic", "sha256:grammar", "fingerprint", "pipeline", 0,
-                new AssessmentRecordMaterial.Words(words, null, null, []),
+                new AssessmentRecordMaterial.Words(words, null, null, []) with { Invocation = Invocation(id, before) },
                 SavedUtc: "2026-09-24T11:00:00Z"));
+        }
+
+        private static Guid ExtraId(int index) => new(index + 1, 7, 7, 0, 0, 0, 0, 0, 0, 0, 1);
+
+        private static string ExtraWord(int index) => "w" + index.ToString("D5", System.Globalization.CultureInfo.InvariantCulture);
+
+        // A third of the extra words gain a parse, a third change it, and a third stay the same.
+        private IEnumerable<AssessedWord> ExtraAssessed(bool before)
+        {
+            for (var i = 0; i < _extraWords; i++)
+            {
+                var reading = i % 3 == 0 ? (before ? null : Reading(FormA)) : i % 3 == 1 ? Reading(before ? FormB : FormA) : Reading(FormA);
+                yield return Word(ExtraWord(i), 10 + i, reading is null ? [] : [reading]);
+            }
+            if (!before) yield break;
+            foreach (var outside in _outsideText) yield return Word(outside, 90, Reading(FormA));
+        }
+
+        private static AssessedWord Capped(string word, int index, params ParseAnalysis[] readings) =>
+            new(word, "analysed", []) { Morphology = new ParseWordEvidence("fieldworks-parse-analysis/v1", index, word, 1,
+                true, false, false, readings, []) };
+
+        private BatchInvocationEvidence? Invocation(string id, bool before)
+        {
+            var sha = before ? _beforeParserSha : _afterParserSha;
+            if (sha is null) return null;
+            return new BatchInvocationEvidence("invocation-" + id, "src", "sha256:src", sha, "words", "sha256:words",
+                "tsv", "sha256:tsv", "err", "sha256:err", null, StepCap.Default, 1, false)
+            { ExecutableVersion = before ? "0.1.0" : "0.2.0" };
         }
 
         private static AssessedWord Word(string word, int index, params ParseAnalysis[] readings) =>

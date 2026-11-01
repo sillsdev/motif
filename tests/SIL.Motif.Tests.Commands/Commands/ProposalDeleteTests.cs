@@ -179,7 +179,7 @@ public sealed class ProposalDeleteTests : IDisposable
     }
 
     [Fact]
-    public void AProposalWhoseAssessmentIsPinnedIsRefusedAndKeepsItsTrialsAndReviewMarks()
+    public void AProposalWhoseAssessmentIsPinnedIsKeptWithItsEvidenceAndSaysSo()
     {
         using var fixture = new TrialsTests.ProjectFixture(_root);
         var proposal = fixture.SaveProposal();
@@ -197,7 +197,7 @@ public sealed class ProposalDeleteTests : IDisposable
 
         var deleted = ProposalLifecycleCommand.Delete(fixture.Database, fixture.Project, proposal.Id.Value);
 
-        Assert.Equal("proposal.applied-final", deleted.Refusal?.Code);
+        Assert.Equal("proposal.evidence-retained", deleted.Refusal?.Code);
         Assert.NotNull(new ProposalRepository(fixture.Database).Get(proposal.Id));
         Assert.NotNull(new JobRepository(fixture.Database).Get("trial"));
         Assert.NotNull(new AssessmentRepository(fixture.Database).Get("pinned-root"));

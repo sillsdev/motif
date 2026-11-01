@@ -15,7 +15,7 @@ public static class MotifSchema
     public const int ApplicationId = 0x4D4F5446;
 
     /// <summary>The schema generation this assembly creates and requires.</summary>
-    public const int CurrentSchema = 55;
+    public const int CurrentSchema = 56;
 
     /// <summary>The worker version an open at the given schema ceiling requires.</summary>
     internal static Version MinimumWorkerVersion(int schema) => schema is >= 1 and <= CurrentSchema
@@ -79,7 +79,7 @@ public static class MotifSchema
             "IX_RetainedInvocations_Project", "IX_RetainedInvocationMembers_Assessment",
             "IX_ParsimonyBundles_ProjectCreated", "IX_ParsimonyReaderLeases_BundleExpiry",
             "IX_ParsimonyBuildClaims_Project", "IX_GrammarChecks_Project", "IX_GrammarChecks_Proposal",
-            "IX_ProposalDifferences_Proposal", "IX_ProposalDifferenceOccurrences_Order", "IX_ProposalDifferenceBuckets_Bucket",
+            "IX_ProposalDifferences_ProposalText", "IX_ProposalDifferenceOccurrences_Order", "IX_ProposalDifferenceBuckets_Bucket",
             "IX_PhonologyExampleSets_Name", "IX_PhonologyExampleSetRevisions_SetRevision",
             "IX_PhonologyExamples_RevisionExampleId"
         };
@@ -353,7 +353,7 @@ public static class MotifSchema
         "IX_ParsimonyReaderLeases_BundleExpiry" => "ParsimonyReaderLeases",
         "IX_ParsimonyBuildClaims_Project" => "ParsimonyBuildClaims",
         "IX_GrammarChecks_Project" or "IX_GrammarChecks_Proposal" => "GrammarChecks",
-        "IX_ProposalDifferences_Proposal" => "ProposalDifferences",
+        "IX_ProposalDifferences_ProposalText" => "ProposalDifferences",
         "IX_ProposalDifferenceOccurrences_Order" => "ProposalDifferenceOccurrences",
         "IX_ProposalDifferenceBuckets_Bucket" => "ProposalDifferenceBuckets",
         "IX_PhonologyExampleSets_Name" => "PhonologyExampleSets",
@@ -364,7 +364,8 @@ public static class MotifSchema
 
     private static bool IsUniqueIndex(string index) => index is "IX_Jobs_Lineage_Attempt" or
         "IX_Proposals_DraftName" or "IX_Proposals_OpenRole" or "IX_GrammarChecks_Project" or "IX_GrammarChecks_Proposal" or
-        "IX_PhonologyExampleSets_Name" or "IX_PhonologyExampleSetRevisions_SetRevision" or "IX_PhonologyExamples_RevisionExampleId";
+        "IX_PhonologyExampleSets_Name" or "IX_PhonologyExampleSetRevisions_SetRevision" or "IX_PhonologyExamples_RevisionExampleId" or
+        "IX_ProposalDifferences_ProposalText";
 
     private static bool IsPartialIndex(string index) => index is "IX_Proposals_OpenRole" or "IX_GrammarChecks_Project" or
         "IX_GrammarChecks_Proposal" or "IX_AssessedWords_MorphologyJson" or "IX_AssessedWords_CorrectnessJson" or
@@ -395,7 +396,7 @@ public static class MotifSchema
         "IX_ParsimonyBuildClaims_Project" => ["ProjectKey"],
         "IX_GrammarChecks_Project" => ["BaselineToken"],
         "IX_GrammarChecks_Proposal" => ["BaselineToken", "ProposalId", "IntentDigest"],
-        "IX_ProposalDifferences_Proposal" => ["ProposalId", "CreatedUtc"],
+        "IX_ProposalDifferences_ProposalText" => ["ProposalId", "TextId"],
         "IX_ProposalDifferenceOccurrences_Order" => ["DifferenceId", "TextId", "LineNumber", "OccurrenceIndex"],
         "IX_ProposalDifferenceBuckets_Bucket" => ["DifferenceId", "Bucket", "CaseKey"],
         "IX_PhonologyExampleSets_Name" => ["Name"],
@@ -548,7 +549,7 @@ public static class MotifSchema
         [C("DifferenceId", "TEXT", false, 1), C("ProposalId", "TEXT", true), C("TrialJobId", "TEXT", true),
             C("BeforeAssessmentId", "TEXT", true), C("AfterAssessmentId", "TEXT", true), C("TextId", "TEXT", true),
             C("BaselineToken", "TEXT", true), C("SummaryJson", "TEXT", true), C("SummaryDigest", "TEXT", true),
-            C("CreatedUtc", "TEXT", true)],
+            C("CreatedUtc", "TEXT", true), C("WordDetailDroppedUtc", "TEXT", false)],
         "ProposalDifferenceCases" =>
         [C("DifferenceId", "TEXT", true, 1), C("CaseKey", "TEXT", true, 2), C("Word", "TEXT", true),
             C("OccurrenceCount", "INTEGER", true), C("BeforeState", "TEXT", true), C("AfterState", "TEXT", true),
@@ -1039,9 +1040,11 @@ public static class MotifSchema
             BaselineToken TEXT NOT NULL,
             SummaryJson TEXT NOT NULL,
             SummaryDigest TEXT NOT NULL,
-            CreatedUtc TEXT NOT NULL
+            CreatedUtc TEXT NOT NULL,
+            WordDetailDroppedUtc TEXT
         );
-        CREATE INDEX IX_ProposalDifferences_Proposal ON ProposalDifferences(ProposalId, CreatedUtc);
+        -- A Proposal has one Difference per Text; a new one replaces the old.
+        CREATE UNIQUE INDEX IX_ProposalDifferences_ProposalText ON ProposalDifferences(ProposalId, TextId);
 
         CREATE TABLE ProposalDifferenceCases (
             DifferenceId TEXT NOT NULL REFERENCES ProposalDifferences(DifferenceId) ON DELETE CASCADE,

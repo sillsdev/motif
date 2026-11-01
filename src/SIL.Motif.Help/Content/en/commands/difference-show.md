@@ -4,6 +4,8 @@
 
 Choose the comparison with `--difference`, or give `--proposal` to read that Proposal's newest. Narrow the words with `--could-be-bad`, `--bucket` (a category code such as `delta.regression` or `delta.improved.unique`), `--before` and `--after` (an approval state such as `approved-unique`, `approved-with-alternatives`, `no-approved-match` or `no-parse`). Page with `--offset` and `--limit`; the default page holds 25 words and the maximum is 200.
 
+When the Proposal has been applied, rejected, withdrawn or superseded, the word list is no longer kept. The command still succeeds: it shows the summary, no words, and says that word detail is no longer kept. In the JSON, `WordDetailKept` is `false`.
+
 Categories are advice about parses and recorded decisions. A word with no recorded approval shows only that its parses changed, and a search that did not finish never proves that a reading disappeared.
 
 ```powershell

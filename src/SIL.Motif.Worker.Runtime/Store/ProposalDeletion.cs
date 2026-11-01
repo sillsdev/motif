@@ -33,41 +33,51 @@ internal static class ProposalDeletion
                 throw new InvalidOperationException("A Proposal with a Receipt is final: it and its Receipts are kept.");
         }
 
-        RefuseIfRetainedByExampleSet(connection, transaction, proposalId.Value);
-        using (var reports = connection.CreateCommand())
-        {
-            reports.Transaction = transaction;
-            reports.CommandText = "DELETE FROM Reports WHERE ProposalId = $id;";
-            reports.Parameters.AddWithValue("$id", proposalId.Value);
-            reports.ExecuteNonQuery();
-        }
-        AssessmentRetention.SweepProposal(connection, transaction, proposalId.Value, exceptAssessmentId: null);
-        using (var check = connection.CreateCommand())
-        {
-            // Detaching would turn the Assessment into Baseline evidence, which is what a Proposal-less one means.
-            check.Transaction = transaction;
-            check.CommandText = "SELECT COUNT(*) FROM Assessments WHERE ProposalId = $id;";
-            check.Parameters.AddWithValue("$id", proposalId.Value);
-            if ((long)check.ExecuteScalar()! > 0)
-                throw new InvalidOperationException("This Proposal has Assessment results that are still pinned, " +
-                    "retained, current, cited by another Proposal's Report, or replaced by a kept result, so it is kept.");
-        }
-        RefuseIfRetainedByExampleSet(connection, transaction, proposalId.Value);
-        foreach (var sql in new[] { "DELETE FROM ProposalDifferences WHERE ProposalId = $id;",
-            "DELETE FROM GrammarChecks WHERE ProposalId = $id;",
-            "DELETE FROM ProposalRevisions WHERE ProposalId = $id;" })
-        {
-            using var command = connection.CreateCommand();
-            command.Transaction = transaction;
-            command.CommandText = sql;
-            command.Parameters.AddWithValue("$id", proposalId.Value);
-            command.ExecuteNonQuery();
-        }
+        RemoveEvidence(connection, transaction, proposalId.Value);
         using var proposal = connection.CreateCommand();
         proposal.Transaction = transaction;
         proposal.CommandText = "DELETE FROM Proposals WHERE ProposalId = $id;";
         proposal.Parameters.AddWithValue("$id", proposalId.Value);
         proposal.ExecuteNonQuery();
+    }
+
+    /// <summary>
+    /// Removes the Reports, Differences, removable Assessments, grammar checks and revisions of a Proposal, or a Draft that
+    /// was never finalized, on the caller's transaction, and throws when a result is still kept for another reason.
+    /// </summary>
+    /// <exception cref="ProposalRetainedByExampleSetException">A phonology Example Set cites the Proposal.</exception>
+    /// <exception cref="ProposalEvidenceRetainedException">An Assessment of the Proposal is pinned or retained.</exception>
+    internal static void RemoveEvidence(SqliteConnection connection, SqliteTransaction transaction, string proposalId)
+    {
+        RefuseIfRetainedByExampleSet(connection, transaction, proposalId);
+        // Differences first: they cite Assessments by value only, and their rows hold the Proposal.
+        foreach (var sql in new[] { "DELETE FROM Reports WHERE ProposalId = $id;",
+            "DELETE FROM ProposalDifferences WHERE ProposalId = $id;" })
+            Execute(connection, transaction, sql, proposalId);
+        AssessmentRetention.SweepProposal(connection, transaction, proposalId, exceptAssessmentId: null);
+        using (var check = connection.CreateCommand())
+        {
+            // Detaching would turn the Assessment into Baseline evidence, which is what a Proposal-less one means.
+            check.Transaction = transaction;
+            check.CommandText = "SELECT COUNT(*) FROM Assessments WHERE ProposalId = $id;";
+            check.Parameters.AddWithValue("$id", proposalId);
+            if ((long)check.ExecuteScalar()! > 0)
+                throw new ProposalEvidenceRetainedException("This Proposal has Assessment results that are still " +
+                    "pinned, retained, current, cited by another Proposal's Report, or replaced by a kept result, so it is kept.");
+        }
+        RefuseIfRetainedByExampleSet(connection, transaction, proposalId);
+        foreach (var sql in new[] { "DELETE FROM GrammarChecks WHERE ProposalId = $id;",
+            "DELETE FROM ProposalRevisions WHERE ProposalId = $id;" })
+            Execute(connection, transaction, sql, proposalId);
+    }
+
+    private static void Execute(SqliteConnection connection, SqliteTransaction transaction, string sql, string proposalId)
+    {
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = sql;
+        command.Parameters.AddWithValue("$id", proposalId);
+        command.ExecuteNonQuery();
     }
 
     private static void RefuseIfRetainedByExampleSet(SqliteConnection connection, SqliteTransaction transaction,
@@ -77,3 +87,6 @@ internal static class ProposalDeletion
         if (count > 0) throw new ProposalRetainedByExampleSetException(count);
     }
 }
+
+/// <summary>An Assessment of the Proposal is pinned, retained or cited, so the Proposal's evidence is kept.</summary>
+internal sealed class ProposalEvidenceRetainedException(string message) : InvalidOperationException(message);

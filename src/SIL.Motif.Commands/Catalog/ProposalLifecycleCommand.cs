@@ -76,6 +76,10 @@ public static class ProposalLifecycleCommand
         {
             return Refuse<ProposalDeletedResponse>("proposal.retained-by-example-set", id, exception.Message);
         }
+        catch (ProposalEvidenceRetainedException exception)
+        {
+            return Refuse<ProposalDeletedResponse>(RefusalCodes.ProposalEvidenceRetained, id, exception.Message);
+        }
         catch (InvalidOperationException exception)
         {
             return Refuse<ProposalDeletedResponse>("proposal.applied-final", id, exception.Message);

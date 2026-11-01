@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using SIL.Motif.Contract;
+using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Jobs;
@@ -53,6 +54,13 @@ public static class ProposalDifferenceCommands
                 return Refuse("difference.trial-incomplete", FailureReason.Refused,
                     "The Trial did not complete. Trial the Proposal again before comparing it.");
 
+            var saved = new ProposalDifferenceRepository(database);
+            var existing = saved.FindFor(request.ProposalId, textId.ToString("D"));
+            var decided = saved.ProposalIsDecided(request.ProposalId);
+            if (existing is not null && IsSameComparison(existing.Summary, trial) && (existing.WordDetailKept || decided))
+                return Show(database, existing.Summary.DifferenceId, new ProposalDifferenceFilter(), 0, 25);
+            if (decided) return Decided();
+
             var assessments = new AssessmentRepository(database);
             var job = new JobRepository(database).Get(trial.JobId) ?? throw new InvalidDataException("Trial job not found.");
             var input = TrialJobInput.Parse(job.InputJson);
@@ -91,12 +99,24 @@ public static class ProposalDifferenceCommands
             Built built;
             try { built = Build(text, before!.Words!, after.Words!); }
             catch (DifferenceRefusalException refusal) { return CommandOutcome<ProposalDifferenceResponse>.Refused(refusal.Refusal); }
-            var summary = Summarize(built, trial.JobId, request.ProposalId, before.AssessmentId, after.AssessmentId,
-                text, JsonSerializer.Serialize(read.Baseline.Token, MotifJson.CreateOptions()));
-            new ProposalDifferenceRepository(database).Publish(new NewProposalDifference(summary, built.Words));
-            return Show(database, summary, new ProposalDifferenceFilter(), 0, 25);
+            var summary = ProposalDifferenceSummaries.Create(built, trial.JobId, request.ProposalId, before, after, text,
+                JsonSerializer.Serialize(read.Baseline.Token, MotifJson.CreateOptions()));
+            try { saved.Publish(new NewProposalDifference(summary, built.Words)); }
+            catch (ProposalDecidedException) { return Decided(); }
+            return Show(database, summary.DifferenceId, new ProposalDifferenceFilter(), 0, 25);
         });
     }
+
+    private static CommandOutcome<ProposalDifferenceResponse> Decided() =>
+        Refuse("difference.proposal-decided", FailureReason.Refused,
+            "The Proposal is decided, so its word detail is gone and a new comparison would not be kept. " +
+            "Read the saved summary with: motif difference show --project <fwdata> --proposal <id>");
+
+    // Same Trial job, same Baseline and the same policy: the saved result already answers this request.
+    private static bool IsSameComparison(ProposalDifferenceSummary summary, TrialRecord trial) =>
+        summary.TrialJobId == trial.JobId && summary.Policy == new ProposalDifferencePolicy() &&
+        JsonSerializer.Deserialize<BaselineToken>(summary.BaselineToken, MotifJson.CreateOptions()) is { } token &&
+        token.HasSameSemanticIdentity(trial.Baseline);
 
     // Says which condition left the Trial without a usable before side, and what to do about it.
     private static string? NoBeforeMessage(IReadOnlyList<AssessmentRecord> recorded, AssessmentRecord? before,
@@ -141,24 +161,26 @@ public static class ProposalDifferenceCommands
         {
             var repository = new ProposalDifferenceRepository(database);
             var id = request.DifferenceId ?? (request.ProposalId is null ? null : repository.LatestFor(request.ProposalId));
+            if (id is null && request.ProposalId is not null && repository.ProposalIsDecided(request.ProposalId))
+                return Refuse("difference.none", FailureReason.NotFound,
+                    "This Proposal was decided and has no saved Difference, and a new one cannot be made for a decided Proposal.");
             if (id is null)
                 return Refuse("difference.none", FailureReason.NotFound,
                     "No saved Difference was found. Run: motif difference produce --project <fwdata> --proposal <id> --text <guid>");
-            var summary = repository.GetSummary(id);
-            if (summary is null)
-                return Refuse("difference.none", FailureReason.NotFound, "There is no Difference with that id.");
-            return Show(database, summary, new ProposalDifferenceFilter(request.CouldBeBad, bucket,
+            return Show(database, id, new ProposalDifferenceFilter(request.CouldBeBad, bucket,
                 request.BeforeState, request.AfterState), request.Offset, request.Limit);
         });
     }
 
     private static CommandOutcome<ProposalDifferenceResponse> Show(MotifDatabase database,
-        ProposalDifferenceSummary summary, ProposalDifferenceFilter filter, int offset, int limit)
+        string differenceId, ProposalDifferenceFilter filter, int offset, int limit)
     {
-        var (matching, words) = new ProposalDifferenceRepository(database).ReadWords(summary.DifferenceId, filter, offset, limit);
-        var next = offset + words.Count < matching ? offset + words.Count : (int?)null;
-        return CommandOutcome<ProposalDifferenceResponse>.Success(
-            new ProposalDifferenceResponse(summary, words, matching, next));
+        var page = new ProposalDifferenceRepository(database).ReadPage(differenceId, filter, offset, limit);
+        if (page is null)
+            return Refuse("difference.none", FailureReason.NotFound, "There is no Difference with that id.");
+        var next = offset + page.Words.Count < page.Matching ? offset + page.Words.Count : (int?)null;
+        return CommandOutcome<ProposalDifferenceResponse>.Success(new ProposalDifferenceResponse(
+            page.Saved.Summary, page.Words, page.Matching, next, page.Saved.WordDetailKept));
     }
 
     private static CommandOutcome<ProposalDifferenceResponse> Refuse(string code, FailureReason reason, string message) =>
@@ -179,7 +201,8 @@ public static class ProposalDifferenceCommands
     private static bool IsStateName(string name) => name == NoStateName ||
         Enum.GetValues<HumanAgreementApprovalState>().Any(state => ProposalDifferenceRepository.ApprovalStateName(state) == name);
 
-    private sealed record Built(IReadOnlyList<NewProposalDifferenceWord> Words, int UnboundOccurrences);
+    internal sealed record Built(IReadOnlyList<NewProposalDifferenceWord> Words, int UnboundOccurrences,
+        int MeasuredWordsOutsideText);
 
     private static Dictionary<string, AssessedWord> OnePerForm(IReadOnlyList<AssessedWord> words, string side)
     {
@@ -209,9 +232,11 @@ public static class ProposalDifferenceCommands
         var wordforms = text.Wordforms.ToDictionary(wordform => wordform.WordformId);
         var byForm = new Dictionary<string, List<(Guid Wordform, ProposalDifferenceOccurrence Where)>>(StringComparer.Ordinal);
         var unbound = 0;
+        var inText = new HashSet<string>(StringComparer.Ordinal);
         foreach (var line in text.Lines)
             foreach (var token in line.Tokens)
             {
+                foreach (var form in token.Forms) inText.Add(Nfd(form.Text));
                 if (token.Status is null || token.WordformId is not { } wordformId) continue;
                 var measured = token.Forms.Select(form => Nfd(form.Text)).Where(form => form.Length > 0).Distinct(StringComparer.Ordinal)
                     .Where(form => before.ContainsKey(form) || after.ContainsKey(form)).ToArray();
@@ -235,28 +260,8 @@ public static class ProposalDifferenceCommands
                 after.GetValueOrDefault(form)?.Morphology, compiled);
             words.Add(new NewProposalDifferenceWord(form, facts, tokens.Select(token => token.Where).ToArray()));
         }
-        return new Built(words, unbound);
-    }
-
-    private static ProposalDifferenceSummary Summarize(Built built, string jobId, string proposalId, string beforeId,
-        string afterId, SIL.Motif.Host.Texts.BaselineTextReadIndex text, string baselineToken)
-    {
-        var buckets = built.Words.SelectMany(word => word.Facts.Buckets.Select(item => item.Bucket).Distinct()
-                .Select(bucket => (bucket, word)))
-            .GroupBy(pair => pair.bucket).OrderBy(group => (int)group.Key)
-            .Select(group => new ProposalDifferenceBucketCount(group.Key, group.Count(),
-                group.Sum(pair => pair.word.Occurrences.Count))).ToArray();
-        var matrix = built.Words.GroupBy(word => (Before: ProposalDifferenceRepository.StateName(word.Facts.Before),
-                After: ProposalDifferenceRepository.StateName(word.Facts.After)))
-            .OrderBy(group => group.Key.Before, StringComparer.Ordinal).ThenBy(group => group.Key.After, StringComparer.Ordinal)
-            .Select(group => new ProposalDifferenceMatrixCell(group.Key.Before, group.Key.After, group.Count(),
-                group.Sum(word => word.Occurrences.Count))).ToArray();
-        return new ProposalDifferenceSummary(CanonicalId.Mint("difference/").Value, proposalId, jobId, beforeId, afterId,
-            text.TextId.ToString("D"), text.Title, baselineToken, new ProposalDifferencePolicy(), built.Words.Count,
-            built.Words.Sum(word => word.Occurrences.Count), built.UnboundOccurrences,
-            built.Words.Count(word => word.Facts.After.ApprovedExpectedMorphologyCount > 0),
-            built.Words.Count(word => word.Facts.CouldBeBad), built.Words.Count(word => word.Facts.Improved), buckets,
-            matrix, DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture));
+        var outside = before.Keys.Concat(after.Keys).Distinct(StringComparer.Ordinal).Count(form => !inText.Contains(form));
+        return new Built(words, unbound, outside);
     }
 
     internal static string GradeOf(string opinion) => opinion switch

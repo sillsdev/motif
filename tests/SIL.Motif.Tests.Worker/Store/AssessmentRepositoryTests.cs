@@ -986,7 +986,7 @@ public sealed class AssessmentRepositoryTests : IDisposable
     }
 
     [Fact]
-    public void SweepKeepsBothAssessmentsCitedByASavedDifferenceAndItsReplacementLineage()
+    public void SweepRemovesTheAssessmentsASavedDifferenceCitesBecauseItCarriesWhatItNeedsByValue()
     {
         var repository = NewRepository("sweep-difference.fwdata", out var database);
         var proposal = CanonicalId.Mint("proposal/");
@@ -1005,11 +1005,8 @@ public sealed class AssessmentRepositoryTests : IDisposable
 
         repository.DeleteByProposal(proposal, exceptAssessmentId: null);
 
-        Assert.Equal("before", repository.Get("before").AssessmentId);
-        Assert.Equal("root", repository.Get("root").AssessmentId);
-        Assert.Equal("middle", repository.Get("middle").AssessmentId);
-        Assert.Equal("after", repository.Get("after").AssessmentId);
-        Assert.Throws<KeyNotFoundException>(() => repository.Get("uncited"));
+        foreach (var id in new[] { "before", "root", "middle", "after", "uncited" })
+            Assert.Throws<KeyNotFoundException>(() => repository.Get(id));
         Assert.Equal(("before", "after"),
             (differences.GetSummary("difference/1")!.BeforeAssessmentId,
                 differences.GetSummary("difference/1")!.AfterAssessmentId));
@@ -1226,7 +1223,7 @@ public sealed class AssessmentRepositoryTests : IDisposable
             "VALUES ('trial', 'linguist', '2026-10-13T00:00:00Z');", proposal.Value);
         var selection = Selection.Create("selection-1", ["bo", "za"]);
 
-        Assert.Throws<InvalidOperationException>(() => new ProposalRepository(database).DeleteArchived(proposal));
+        Assert.ThrowsAny<InvalidOperationException>(() => new ProposalRepository(database).DeleteArchived(proposal));
 
         Assert.Equal("baseline", repository.FindLatestBaselineAssessment(
             "ParseTime", "{\"baseline\":true}", selection.Sha256, selection.Words)!.AssessmentId);
@@ -1295,7 +1292,11 @@ public sealed class AssessmentRepositoryTests : IDisposable
     private static ProposalDifferenceSummary DifferenceSummary(string differenceId, string proposalId,
         string beforeAssessmentId, string afterAssessmentId) =>
         new(differenceId, proposalId, "trial/1", beforeAssessmentId, afterAssessmentId, "text/1", "Text", "baseline/1",
-            new ProposalDifferencePolicy(), 0, 0, 0, 0, 0, 0, [], [], "2026-10-13T00:00:00Z");
+            new ProposalDifferencePolicy(), 0, 0, 0, 0, 0, 0, [], [], "pangloss", null, SidePin(), SidePin(), [], 0, [],
+            "2026-10-13T00:00:00Z");
+
+    private static ProposalDifferenceSidePin SidePin() =>
+        new(null, null, "sha256:grammar", "Default", "sha256:selection", "whitespace", "1");
 
     // A wall-clock bound flakes under load; the statement count inside the write lock does not.
     [Fact]

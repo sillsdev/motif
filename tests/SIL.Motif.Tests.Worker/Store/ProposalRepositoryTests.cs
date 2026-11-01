@@ -86,6 +86,47 @@ public sealed class ProposalRepositoryTests : IDisposable
         Assert.Equal(firstDigest, command.ExecuteScalar());
     }
 
+    [Fact]
+    public void RecordingTheAppliedReceiptDropsTheWordDetailOfItsDifferencesAndKeepsTheSummaryRow()
+    {
+        var project = new ProjectLocator(Path.Combine(_root, "applied-detail.fwdata"), "applied-detail");
+        using var database = MotifDatabase.OpenOwned(Path.Combine(_root, "applied-detail.motif.db"), project,
+            MotifSchema.CurrentSchema, new Version(1, 0));
+        var id = CanonicalId.Mint("proposal/");
+        var repository = new ProposalRepository(database);
+        var digest = "sha256:" + new string('a', 64);
+        repository.SaveRevision(new ProposalRevisionRecord(id, digest, "{}", "proposed", null, null, null));
+        using (var connection = database.OpenConnection())
+            foreach (var sql in new[]
+            {
+                "INSERT INTO ProposalDifferences VALUES ('difference/1', $id, 'job', 'b', 'a', 'text', 'token', '{}', 'd', 'now', NULL);",
+                "INSERT INTO ProposalDifferenceCases VALUES ('difference/1', 'w', 'w', 1, 'x', 'y', 0, '{}', 'd');",
+                "INSERT INTO ProposalDifferenceOccurrences VALUES ('difference/1', 'text', 'seg', 0, 1, 'w');",
+                "INSERT INTO ProposalDifferenceBuckets VALUES ('difference/1', 'w', 'delta.regression');",
+            })
+            {
+                using var insert = connection.CreateCommand();
+                insert.CommandText = sql;
+                insert.Parameters.AddWithValue("$id", id.Value);
+                insert.ExecuteNonQuery();
+            }
+
+        repository.RecordAppliedReceipt(ReceiptFor(id, digest));
+
+        foreach (var table in new[] { "ProposalDifferenceCases", "ProposalDifferenceOccurrences", "ProposalDifferenceBuckets" })
+            Assert.Equal("0", Scalar(database, $"SELECT CAST(COUNT(*) AS TEXT) FROM {table};"));
+        Assert.NotEqual("", Scalar(database, "SELECT IFNULL(WordDetailDroppedUtc, '') FROM ProposalDifferences;"));
+        Assert.Equal("1", Scalar(database, "SELECT CAST(COUNT(*) AS TEXT) FROM ProposalDifferences;"));
+    }
+
+    private static string Scalar(MotifDatabase database, string sql)
+    {
+        using var connection = database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = sql;
+        return Convert.ToString(command.ExecuteScalar(), System.Globalization.CultureInfo.InvariantCulture) ?? "";
+    }
+
     private static Receipt ReceiptFor(CanonicalId id, string digest) => new(id, digest, false,
         "baseline", "applied", Array.Empty<ExpectedEffect>(), "sha256:effect",
         new AppliedLogEntry(id.ToGuid(), 1, "2026-09-25T00:00:00Z", "tester", digest[7..], "test"));

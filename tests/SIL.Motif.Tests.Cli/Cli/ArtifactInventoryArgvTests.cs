@@ -188,7 +188,7 @@ public sealed class ArtifactInventoryArgvTests : IDisposable
     }
 
     [Fact]
-    public void CurrentHistoryPinsReportsAndDifferenceReferencesRetainRunEvidence()
+    public void CurrentHistoryPinsAndReportsRetainRunEvidenceButASavedDifferenceDoesNot()
     {
         var invocationId = "inv-cited";
         var sourcePath = Path.Combine(_root, "assessment-sources", new string('a', 64) + ".fwdata");
@@ -210,7 +210,7 @@ public sealed class ArtifactInventoryArgvTests : IDisposable
             .Select(item => item.GetString()).ToHashSet(StringComparer.Ordinal);
         Assert.Contains("assessment-cited", retainedIds);
         Assert.Contains("report-cited", retainedIds);
-        Assert.Contains("difference-cited", retainedIds);
+        Assert.DoesNotContain("difference-cited", retainedIds);
         Assert.Contains("report-frozen", retainedIds);
         Assert.Contains(inventory.RootElement.GetProperty("diagnostics").EnumerateArray(), item =>
             item.GetProperty("code").GetString() == "frozen-report-baseline-unresolved");

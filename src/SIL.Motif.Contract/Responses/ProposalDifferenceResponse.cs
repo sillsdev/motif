@@ -19,7 +19,44 @@ public sealed record ProposalDifferenceMatrixCell(
     [property: JsonRequired] int Words,
     [property: JsonRequired] int Occurrences);
 
+/// <summary>How many words, and Text occurrences of them, a search limit or refusal touched.</summary>
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
+public sealed record ProposalDifferenceLimitationCount(
+    [property: JsonRequired]
+    [property: JsonConverter(typeof(StrictStringEnumConverter<HumanAgreementLimitation>))]
+    HumanAgreementLimitation Limitation,
+    [property: JsonRequired] int Words,
+    [property: JsonRequired] int Occurrences);
+
+/// <summary>What one side of the comparison was measured with, copied by value from its Assessment.</summary>
+/// <param name="ParserVersion">The version the parser reported, or null when the Assessment recorded none.</param>
+/// <param name="ParserSha256">The hash of the parser executable, or null when the Assessment recorded none.</param>
+/// <param name="GrammarSourceSha256">The hash of the grammar source that was parsed with.</param>
+/// <param name="SelectionName">The name of the word Selection the Assessment measured.</param>
+/// <param name="SelectionSha256">The hash of that Selection's words.</param>
+/// <param name="TokeniserName">The tokeniser that produced the Selection's words.</param>
+/// <param name="TokeniserVersion">The tokeniser's version.</param>
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
+public sealed record ProposalDifferenceSidePin(
+    [property: JsonRequired] string? ParserVersion,
+    [property: JsonRequired] string? ParserSha256,
+    [property: JsonRequired] string GrammarSourceSha256,
+    [property: JsonRequired] string SelectionName,
+    [property: JsonRequired] string SelectionSha256,
+    [property: JsonRequired] string TokeniserName,
+    [property: JsonRequired] string TokeniserVersion) : IJsonOnDeserialized
+{
+    void IJsonOnDeserialized.OnDeserialized() =>
+        ClosedShape.RequireNonNull(nameof(ProposalDifferenceSidePin), (nameof(GrammarSourceSha256), GrammarSourceSha256),
+            (nameof(SelectionName), SelectionName), (nameof(SelectionSha256), SelectionSha256),
+            (nameof(TokeniserName), TokeniserName), (nameof(TokeniserVersion), TokeniserVersion));
+}
+
 /// <summary>The totals of one saved Difference and the human decisions it was read against.</summary>
+/// <remarks>
+/// Everything the Difference needs from its Trial's Assessments is copied here by value, so it stays readable
+/// after those Assessments are removed. It holds only bounded data: no list in it grows with the number of words.
+/// </remarks>
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record ProposalDifferenceSummary(
     [property: JsonRequired] string DifferenceId,
@@ -39,6 +76,13 @@ public sealed record ProposalDifferenceSummary(
     [property: JsonRequired] int ImprovedWords,
     [property: JsonRequired] IReadOnlyList<ProposalDifferenceBucketCount> Buckets,
     [property: JsonRequired] IReadOnlyList<ProposalDifferenceMatrixCell> Matrix,
+    [property: JsonRequired] string Assessor,
+    [property: JsonRequired] string? ProposalIntentDigest,
+    [property: JsonRequired] ProposalDifferenceSidePin Before,
+    [property: JsonRequired] ProposalDifferenceSidePin After,
+    [property: JsonRequired] IReadOnlyList<string> Warnings,
+    [property: JsonRequired] int MeasuredWordsOutsideText,
+    [property: JsonRequired] IReadOnlyList<ProposalDifferenceLimitationCount> Limitations,
     [property: JsonRequired] string CreatedUtc) : IJsonOnDeserialized
 {
     void IJsonOnDeserialized.OnDeserialized() =>
@@ -47,7 +91,8 @@ public sealed record ProposalDifferenceSummary(
             (nameof(BeforeAssessmentId), BeforeAssessmentId), (nameof(AfterAssessmentId), AfterAssessmentId),
             (nameof(TextId), TextId), (nameof(TextTitle), TextTitle), (nameof(BaselineToken), BaselineToken),
             (nameof(Policy), Policy), (nameof(Buckets), Buckets), (nameof(Matrix), Matrix),
-            (nameof(CreatedUtc), CreatedUtc));
+            (nameof(Assessor), Assessor), (nameof(Before), Before), (nameof(After), After),
+            (nameof(Warnings), Warnings), (nameof(Limitations), Limitations), (nameof(CreatedUtc), CreatedUtc));
 }
 
 /// <summary>One word of a saved Difference with its states, categories and Text occurrence count.</summary>
@@ -76,6 +121,9 @@ public sealed record ProposalDifferenceWord(
 /// <param name="Words">The requested page of matching words, ordered by word.</param>
 /// <param name="MatchingWords">How many words match the filter, before paging.</param>
 /// <param name="NextOffset">The offset of the next page, or null at the end.</param>
+/// <param name="WordDetailKept">
+/// False once the Proposal has been decided: the summary stays, the word detail is gone, and <paramref name="Words"/> is empty.
+/// </param>
 public sealed record ProposalDifferenceResponse(
     ProposalDifferenceSummary Summary, IReadOnlyList<ProposalDifferenceWord> Words, int MatchingWords,
-    int? NextOffset);
+    int? NextOffset, bool WordDetailKept);

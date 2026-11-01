@@ -109,7 +109,7 @@ form. A parse run is the common kind and PanGloss is the common Assessor, but an
 neither: a C# HermitCrab or an alignment model asking whether more lexemes align each produce them too.
 One invocation of one Assessor yields several — the compiled engine's size, the time to parse a subset,
 per-rule timing, correctness against manual analysis, the difference between two sets of automatic
-analysis, which words now complete. A difference is a measurement like any other. Immutable once written, so it
+analysis, which words now complete. A Trial summary is a measurement like any other. Immutable once written, so it
 has no lifecycle of its own — the Job that produced it has the states, and *current* is a pointer the
 project holds rather than a state the Assessment carries. Motif stores Assessments and compares them; it
 never renders a verdict from one.
@@ -137,7 +137,7 @@ _Avoid_: profile, config, settings, run options
 
 **Assessment kind**:
 What one Assessment measured — the compiled engine's size, the time to parse a set of words, per-rule
-and per-morpheme timing, correctness against manual analysis, the difference between two Assessments,
+and per-morpheme timing, correctness against manual analysis, the Trial summary of two Assessments,
 or which words now complete. A closed set, because a Report can only say it was never given what it
 needs if there is a fixed list of things it could have been given. Two Assessments compare only when
 they share a kind, alongside sharing an Assessor.
@@ -210,10 +210,19 @@ whether the word's search completed.
 _Avoid_: parse success, grammar coverage, first match
 
 **Difference**:
-An Assessment kind: what changed between two other Assessments, joined on the word. Stored and citable
-like any other measurement rather than computed afresh each time it is read. Replaces the earlier term
-*Grammar Delta*, which named the same thing separately and so gave one concept two names.
+A saved comparison of one Trial's before and after parses for one Text, set against the Approved
+expectations in the Baseline the Trial measured ([ADR 0067](docs/adr/0067-proposal-difference-against-human-decisions.md)).
+It is a standalone result, not an Assessment kind: it cites the Trial's two Assessments by id and carries
+every fact it needs by value, so it does not keep them alive. There is one per Proposal and Text, and a new
+one replaces the old. A small summary lasts as long as its Proposal; the per-word detail is dropped as soon
+as the Proposal is applied, rejected, withdrawn or superseded. The `delta.*` codes on the wire are stable
+identifiers, not vocabulary.
 _Avoid_: diff, delta, grammar delta, score change, improvement
+
+**Trial summary**:
+The older whole-Trial comparison, joined on the word and stored as an Assessment of kind `Difference`
+(the `motif_difference` tool). It stays as it is and is not extended; a Difference is the newer result.
+_Avoid_: Difference, grammar delta
 
 **Dry Run**:
 What a Proposal would do, computed by applying it to a throwaway copy of the project and reading the

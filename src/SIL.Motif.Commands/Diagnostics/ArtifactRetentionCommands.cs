@@ -746,7 +746,6 @@ public static class ArtifactRetentionCommands
 
         ReadAssessmentPins(connection, transaction, assessments, references);
         ReadReports(connection, transaction, assessments, references);
-        ReadDifferences(connection, transaction, assessments, references);
         ReadRetainedMembers(connection, transaction, assessments, references);
         ReadRetainedInvocations(connection, transaction, assessmentInvocations, references);
         ReadParsimonyArtifactRoots(connection, transaction, references);
@@ -1076,32 +1075,6 @@ public static class ArtifactRetentionCommands
     private sealed record FrozenParsimonyFinding(
         [property: JsonRequired] string FindingId,
         [property: JsonRequired] string EvidenceDigest);
-
-    private static void ReadDifferences(SqliteConnection connection, SqliteTransaction transaction,
-        IReadOnlyDictionary<string, string?> assessments, StoreReferences references)
-    {
-        using var command = connection.CreateCommand();
-        command.Transaction = transaction;
-        command.CommandText = "SELECT DifferenceId, BeforeAssessmentId, AfterAssessmentId " +
-                              "FROM ProposalDifferences ORDER BY DifferenceId;";
-        using var reader = command.ExecuteReader();
-        while (reader.Read())
-        {
-            if (!references.CountRecord()) break;
-            var differenceId = reader.GetString(0);
-            foreach (var ordinal in new[] { 1, 2 })
-            {
-                var assessmentId = reader.GetString(ordinal);
-                if (!assessments.TryGetValue(assessmentId, out var invocationId))
-                {
-                    references.IncompleteReasons.Add("unknown-difference-assessment");
-                    continue;
-                }
-                if (invocationId is not null)
-                    references.AddInvocationRetainer(invocationId, "difference-citation", differenceId);
-            }
-        }
-    }
 
     private static void ReadRetainedInvocations(SqliteConnection connection, SqliteTransaction transaction,
         IReadOnlySet<string> invocations, StoreReferences references)
@@ -1938,7 +1911,7 @@ public static class ArtifactRetentionCommands
         private static string BestReason(IEnumerable<string> reasons)
         {
             var set = reasons.ToHashSet(StringComparer.Ordinal);
-            foreach (var reason in new[] { "current", "report-citation", "difference-citation", "assessment-pin",
+            foreach (var reason in new[] { "current", "report-citation", "assessment-pin",
                          "retained-invocation", "assessment-history", "baseline-record", "parsimony-bundle",
                          "parsimony-build-claim" })
                 if (set.Contains(reason)) return reason;

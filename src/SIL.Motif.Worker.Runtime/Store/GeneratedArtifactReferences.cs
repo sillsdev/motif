@@ -32,7 +32,6 @@ internal enum ArtifactReferenceFamily
     Assessments,
     InvocationArtifacts,
     Reports,
-    ProposalDifferences,
     Baselines,
     Jobs,
     WorkflowRecords,
@@ -257,8 +256,6 @@ internal static class GeneratedArtifactReferences
             () => CaptureInvocations(store, builder));
         CaptureTable(builder, ArtifactReferenceFamily.Reports, store.StoreIdentity,
             () => CaptureReports(store, builder));
-        CaptureTable(builder, ArtifactReferenceFamily.ProposalDifferences, store.StoreIdentity,
-            () => CaptureDifferences(store, builder));
         CaptureTable(builder, ArtifactReferenceFamily.Baselines, store.StoreIdentity,
             () => CaptureBaselines(store, builder));
         CaptureTable(builder, ArtifactReferenceFamily.Baselines, store.StoreIdentity,
@@ -807,23 +804,6 @@ internal static class GeneratedArtifactReferences
         if (values.Length != 1 || values[0].ValueKind == JsonValueKind.Null) return optional;
         if (values[0].ValueKind != JsonValueKind.Number) return true;
         return values[0].TryGetInt32(out var value) && Enum.IsDefined(enumType, value);
-    }
-
-    private static void CaptureDifferences(PrivateArtifactStoreSnapshot store, SnapshotBuilder builder)
-    {
-        using var command = Command(store, "SELECT DifferenceId, BeforeAssessmentId, AfterAssessmentId " +
-            "FROM ProposalDifferences ORDER BY DifferenceId;");
-        using var reader = command.ExecuteReader();
-        while (reader.Read())
-        {
-            var recordId = "ProposalDifferences/" + reader.GetString(0);
-            builder.Reference(ArtifactReferenceFamily.ProposalDifferences, store.StoreIdentity,
-                ArtifactReferenceTargetKind.Assessment, reader.GetString(1), recordId, "proposal-difference-before");
-            builder.Reference(ArtifactReferenceFamily.ProposalDifferences, store.StoreIdentity,
-                ArtifactReferenceTargetKind.Assessment, reader.GetString(2), recordId, "proposal-difference-after");
-            builder.Retain(ArtifactReferenceFamily.ProposalDifferences, store.StoreIdentity, recordId,
-                "proposal-difference-citation");
-        }
     }
 
     private static void CaptureBaselines(PrivateArtifactStoreSnapshot store, SnapshotBuilder builder)

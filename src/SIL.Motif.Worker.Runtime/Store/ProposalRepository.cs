@@ -880,6 +880,7 @@ public sealed class ProposalRepository : IProposalRepository
         foreach (var from in allowedFrom) update.Parameters.AddWithValue("$from" + index++, from);
         if (update.ExecuteNonQuery() > 0)
         {
+            DropWordDetailIfDecided(connection, transaction, proposalId.Value, to);
             transaction.Commit();
             return new StatusTransitionOutcome(true, to);
         }
@@ -906,7 +907,15 @@ public sealed class ProposalRepository : IProposalRepository
         update.Parameters.AddWithValue("$superseded", (object?)supersededBy ?? DBNull.Value);
         update.Parameters.AddWithValue("$id", proposalId.Value);
         update.ExecuteNonQuery();
+        DropWordDetailIfDecided(connection, transaction, proposalId.Value, status);
         transaction.Commit();
+    }
+
+    private void DropWordDetailIfDecided(SqliteConnection connection, SqliteTransaction transaction, string proposalId,
+        string status)
+    {
+        if (!ProposalDifferenceRetention.KeepsWordDetail(status))
+            ProposalDifferenceRetention.DropWordDetail(connection, transaction, proposalId, Now());
     }
 
     /// <inheritdoc />
@@ -952,6 +961,7 @@ public sealed class ProposalRepository : IProposalRepository
         command.CommandText = "UPDATE Proposals SET Status = 'applied' WHERE ProposalId = $id;";
         command.Parameters.AddWithValue("$id", receipt.ProposalId.Value);
         command.ExecuteNonQuery();
+        DropWordDetailIfDecided(connection, transaction, receipt.ProposalId.Value, ProposalLifecycle.ToWire(ProposalStatus.Applied));
         if (recordedDigest is null)
         {
             using var drift = connection.CreateCommand();
@@ -1016,7 +1026,23 @@ public sealed class ProposalRepository : IProposalRepository
     }
 
     /// <inheritdoc />
-    public bool DiscardDraft(string draftName, string? expectedJson = null)
+    public bool DiscardDraft(string draftName, string? expectedJson = null) =>
+        DiscardDraft(draftName, expectedJson, beforeEvidenceRemoved: null);
+
+    /// <summary>
+    /// Discards a Draft like <see cref="DiscardDraft(string, string?)"/>. A never-finalized Draft first loses the
+    /// evidence its Trials recorded, and is kept, with nothing changed, when that evidence is still pinned or retained.
+    /// </summary>
+    /// <param name="draftName">The Draft to discard.</param>
+    /// <param name="expectedJson">The content the caller read, or <see langword="null"/> to skip the check.</param>
+    /// <param name="beforeEvidenceRemoved">
+    /// Called inside the transaction for a never-finalized Draft, before its evidence goes, so the caller can remove
+    /// records the store does not link to the Proposal (its Trial jobs).
+    /// </param>
+    /// <exception cref="ProposalRetainedByExampleSetException">A phonology Example Set cites the Draft.</exception>
+    /// <exception cref="ProposalEvidenceRetainedException">A result of the Draft is pinned or retained.</exception>
+    internal bool DiscardDraft(string draftName, string? expectedJson,
+        Action<SqliteConnection, SqliteTransaction, CanonicalId>? beforeEvidenceRemoved)
     {
         if (string.IsNullOrWhiteSpace(draftName)) throw new ArgumentException("A draft name is required.", nameof(draftName));
         using var connection = _database.OpenConnection();
@@ -1034,6 +1060,11 @@ public sealed class ProposalRepository : IProposalRepository
                 throw new DraftChangedException(draftName);
             wasReopened = !reader.IsDBNull(0);
             proposalId = CanonicalId.Parse(reader.GetString(2));
+        }
+        if (!wasReopened)
+        {
+            beforeEvidenceRemoved?.Invoke(connection, transaction, proposalId);
+            ProposalDeletion.RemoveEvidence(connection, transaction, proposalId.Value);
         }
         using var command = connection.CreateCommand();
         command.Transaction = transaction;

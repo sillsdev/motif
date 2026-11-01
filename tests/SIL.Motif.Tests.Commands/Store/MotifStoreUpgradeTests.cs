@@ -95,6 +95,39 @@ public sealed class MotifStoreUpgradeTests : IDisposable
     }
 
     [Fact]
+    public void UpgradeKeepsADecidedProposalsDifferenceSummaryAndDropsItsWordsFromTheSchemaSummariesStart()
+    {
+        SeedDifferences(MotifSchema.CurrentSchema - 1);
+
+        var report = MotifStoreUpgrade.Build(Source, Path.Combine(_root, "copy.db"), null, true, null,
+            firstSummarySchema: MotifSchema.CurrentSchema - 1);
+
+        Assert.Equal(2, report.Carried["ProposalDifferences"]);
+        Assert.Contains("ProposalDifferenceCases", report.Dropped);
+        Assert.DoesNotContain("ProposalDifferences", report.Dropped);
+        using var upgraded = Connect(Path.Combine(_root, "copy.db"));
+        Assert.Equal("newer", Text(upgraded, "SELECT SummaryJson FROM ProposalDifferences WHERE TextId = 't1' AND ProposalId = 'rej';"));
+        Assert.Equal(1, Count(upgraded, "ProposalDifferences WHERE TextId = 't2'"));
+        Assert.Equal(0, Count(upgraded, "ProposalDifferences WHERE ProposalId = 'open'"));
+        Assert.Equal(2, Count(upgraded, "ProposalDifferences WHERE WordDetailDroppedUtc IS NOT NULL"));
+        Assert.Equal(0, Count(upgraded, "ProposalDifferenceCases"));
+    }
+
+    [Fact]
+    public void UpgradeFromBeforeSummariesStartCarriesNoDifferenceSummary()
+    {
+        SeedDifferences(MotifSchema.CurrentSchema - 1);
+
+        var report = MotifStoreUpgrade.Copy(Source, Path.Combine(_root, "copy.db"));
+
+        Assert.Contains("ProposalDifferences", report.Dropped);
+        Assert.False(report.Carried.ContainsKey("ProposalDifferences") && report.Carried["ProposalDifferences"] != 0);
+        using var upgraded = Connect(Path.Combine(_root, "copy.db"));
+        Assert.Equal(0, Count(upgraded, "ProposalDifferences"));
+        Assert.Equal(2, Count(upgraded, "Proposals"));
+    }
+
+    [Fact]
     public void OpenUpgradesAndKeepsTheOriginalBackup()
     {
         CreateSchema49();
@@ -242,6 +275,26 @@ public sealed class MotifStoreUpgradeTests : IDisposable
         command.ExecuteNonQuery();
     }
 
+    // A store one generation behind with an old-shape Difference table, two Texts' summaries and one word row.
+    private void SeedDifferences(int schema)
+    {
+        CreateCurrentSchemaAsOld();
+        using var old = Connect(Source);
+        Execute(old, $$"""
+            DROP INDEX IX_ProposalDifferences_ProposalText;
+            ALTER TABLE ProposalDifferences DROP COLUMN WordDetailDroppedUtc;
+            CREATE INDEX IX_ProposalDifferences_ProposalText ON ProposalDifferences(ProposalId, TextId);
+            INSERT INTO Proposals (ProposalId, Status) VALUES ('rej', 'rejected'), ('open', 'proposed');
+            INSERT INTO ProposalDifferences VALUES
+                ('d-old', 'rej', 'j', 'b', 'a', 't1', 'tok', 'older', 'x', '2020-01-01'),
+                ('d-new', 'rej', 'j', 'b', 'a', 't1', 'tok', 'newer', 'x', '2020-02-01'),
+                ('d-two', 'rej', 'j', 'b', 'a', 't2', 'tok', 'second', 'x', '2020-02-01'),
+                ('d-open', 'open', 'j', 'b', 'a', 't1', 'tok', 'undecided', 'x', '2020-01-01');
+            INSERT INTO ProposalDifferenceCases VALUES ('d-new', 'w', 'w', 1, 'a', 'b', 0, '{}', 'x');
+            PRAGMA user_version = {{schema}};
+            """);
+    }
+
     private void CreateSchema49()
     {
         using var connection = Connect(Source);
@@ -272,6 +325,18 @@ public sealed class MotifStoreUpgradeTests : IDisposable
         var connection = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = path, Pooling = false }.ToString());
         connection.Open();
         return connection;
+    }
+    private static void Execute(SqliteConnection connection, string sql)
+    {
+        using var command = connection.CreateCommand();
+        command.CommandText = sql;
+        command.ExecuteNonQuery();
+    }
+    private static string Text(SqliteConnection connection, string sql)
+    {
+        using var command = connection.CreateCommand();
+        command.CommandText = sql;
+        return (string)command.ExecuteScalar()!;
     }
     private static long Count(SqliteConnection connection, string table) => Scalar(connection, $"SELECT COUNT(*) FROM {table};");
     private static long Scalar(SqliteConnection connection, string sql)

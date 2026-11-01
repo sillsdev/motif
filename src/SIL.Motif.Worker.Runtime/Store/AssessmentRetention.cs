@@ -13,11 +13,12 @@ namespace SIL.Motif.Worker.Store;
 /// The one rule for which of a Proposal's Assessments may be removed: only those nothing else still needs.
 /// </summary>
 /// <remarks>
-/// An Assessment is kept when a Report or saved Difference cites it, a pin or a retained invocation holds it, it is the project's
+/// An Assessment is kept when a Report cites it, a pin or a retained invocation holds it, it is the project's
 /// current Assessment, or a surviving Assessment names it as the measurement it replaces, transitively. Removal
 /// never rewrites a surviving row: a Report keeps its frozen binding and a replacement keeps its lineage (ADR 0042),
 /// and an Assessment is never detached from its Proposal, because one without a Proposal is Baseline evidence.
-/// A Difference cites both compared Assessments, and a frozen Parsimony Report cites its saved Assessment inputs.
+/// A frozen Parsimony Report cites its saved Assessment inputs. A saved Difference cites its two Assessments by id
+/// but carries what it needs by value, so it keeps neither alive (ADR 0067).
 /// </remarks>
 internal static class AssessmentRetention
 {
@@ -55,8 +56,6 @@ internal static class AssessmentRetention
 
         removable.ExceptWith(ReadIds(connection, transaction, """
             SELECT AssessmentId FROM Reports WHERE AssessmentId IS NOT NULL
-            UNION SELECT BeforeAssessmentId FROM ProposalDifferences
-            UNION SELECT AfterAssessmentId FROM ProposalDifferences
             UNION SELECT AssessmentId FROM AssessmentPins
             UNION SELECT AssessmentId FROM RetainedInvocationMembers
             UNION SELECT CurrentAssessmentId FROM MotifMetadata WHERE CurrentAssessmentId IS NOT NULL;
@@ -106,8 +105,6 @@ internal static class AssessmentRetention
         removable.ExceptWith(currentEvidence);
         removable.ExceptWith(ReadIds(connection, transaction, """
             SELECT AssessmentId FROM Reports WHERE AssessmentId IS NOT NULL
-            UNION SELECT BeforeAssessmentId FROM ProposalDifferences
-            UNION SELECT AfterAssessmentId FROM ProposalDifferences
             UNION SELECT AssessmentId FROM AssessmentPins
             UNION SELECT CurrentAssessmentId FROM MotifMetadata WHERE CurrentAssessmentId IS NOT NULL;
             """));

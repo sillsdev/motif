@@ -214,5 +214,25 @@
   "morph-type.incompatible-family": {
     "why": "This edit supports only a stem form changing between stem-family morph types. Changing between stem and affix needs a compatible analysis and a different authoring path.",
     "source": "Hand-written from the Motif MCP refusal advice."
+  },
+  "proposal.evidence-retained": {
+    "why": "The Proposal's Trial results are still pinned, kept as current evidence, or cited by another Proposal's report, so it was not deleted and nothing changed. Release the pin or report that keeps them, then delete it again.",
+    "source": "Hand-written for Proposal Difference retention."
+  },
+  "draft.evidence-retained": {
+    "why": "The Draft's Trial results are still pinned, kept as current evidence, or cited by another Proposal's report, so it was not discarded and nothing changed. Release what keeps them, then discard it again.",
+    "source": "Hand-written for Proposal Difference retention."
+  },
+  "draft.retained-by-example-set": {
+    "why": "A saved phonology Example Set cites this Draft, so it was not discarded and nothing changed. Delete the Example Set first, or keep the Draft.",
+    "source": "Hand-written for Proposal Difference retention."
+  },
+  "draft.trial-running": {
+    "why": "A Trial of this Draft is still running, so it was not discarded and nothing changed. Wait for the Trial to finish, then discard the Draft.",
+    "source": "Hand-written for Proposal Difference retention."
+  },
+  "difference.proposal-decided": {
+    "why": "The Proposal has been decided, so its word detail is gone and a new comparison would not be kept. Read the saved summary with difference show instead.",
+    "source": "Hand-written for Proposal Difference retention."
   }
 }

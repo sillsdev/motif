@@ -816,6 +816,18 @@ public static class CommandTextRenderer
         text.AppendLine("  Before -> after:");
         foreach (var cell in summary.Matrix)
             text.AppendLine($"    {cell.BeforeState} -> {cell.AfterState}: {CountLabel(cell.Words, "word", "words")}");
+        foreach (var warning in summary.Warnings) text.AppendLine($"  Warning: {warning}");
+        if (summary.MeasuredWordsOutsideText > 0)
+            text.AppendLine($"  {CountLabel(summary.MeasuredWordsOutsideText, "measured word is", "measured words are")} " +
+                "not in this Text");
+        foreach (var limit in summary.Limitations)
+            text.AppendLine($"  Limit {System.Text.Json.JsonSerializer.Serialize(limit.Limitation).Trim('"')}: " +
+                $"{CountLabel(limit.Words, "word", "words")}, {CountLabel(limit.Occurrences, "occurrence", "occurrences")}");
+        if (!response.WordDetailKept)
+        {
+            text.AppendLine("  Word detail is no longer kept: the Proposal was decided, only this summary remains");
+            return text.ToString();
+        }
         text.AppendLine($"  Showing {response.Words.Count} of {response.MatchingWords} matching words");
         foreach (var word in response.Words)
             text.AppendLine($"    {word.Word} x{word.Occurrences}: {word.BeforeState} -> {word.AfterState}" +

@@ -127,6 +127,7 @@ public sealed class CommandCatalogParityTests
         "difference.no-parse-assessment",
         "difference.no-trial",
         "difference.none",
+        "difference.proposal-decided",
         "difference.text-not-found",
         "difference.trial-incomplete",
         "difference.unexpected-opinion",

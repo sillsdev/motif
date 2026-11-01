@@ -706,13 +706,16 @@ public static partial class ProposalCommands
 
     /// <summary>
     /// Discards a Draft. A never-finalized Draft (from <see cref="New"/> or <see cref="Duplicate"/>) has
-    /// its row deleted outright. A Draft <see cref="Reopen"/> produced is reverted instead — only
-    /// <c>DraftName</c>/<c>DraftJson</c> are cleared, in one transaction — leaving the Proposal it was
-    /// reopened from exactly at its prior committed revision (<see cref="ProposalRepository.DiscardDraft"/>).
+    /// its row deleted outright, after its Trial jobs and the evidence they recorded are removed in the same
+    /// transaction. It is kept, with a named refusal and nothing changed, while a Trial runs or when a result
+    /// is still pinned, retained or cited. A Draft <see cref="Reopen"/> produced is reverted instead: only
+    /// <c>DraftName</c>/<c>DraftJson</c> are cleared, in one transaction, leaving the Proposal it was
+    /// reopened from exactly at its prior committed revision
+    /// (<see cref="ProposalRepository.DiscardDraft(string, string?)"/>).
     /// </summary>
     public static CommandOutcome<DraftDiscardedResponse> DiscardDraft(DiscardDraftRequest request)
     {
-        return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, _) =>
+        return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
         {
             try
             {
@@ -721,8 +724,11 @@ public static partial class ProposalCommands
                 if (request.ExpectedRevision is not null &&
                     DraftRevision.Compute(draft.ProposalJson) != request.ExpectedRevision)
                     return CommandOutcome<DraftDiscardedResponse>.Refused(DraftRevisionConflict(request.DraftName));
-                var wasReopened = repository.DiscardDraft(request.DraftName, draft.ProposalJson);
+                var removedTrials = new List<string>();
+                var wasReopened = repository.DiscardDraft(request.DraftName, draft.ProposalJson,
+                    DraftDiscardTrials.Remover(database, project, removedTrials));
                 if (!wasReopened) Review.ReviewMarks.ClearAll(database, draft.ProposalId.Value);
+                TrialScratchRetention.DeleteJobs(removedTrials);
 
                 return CommandOutcome<DraftDiscardedResponse>.Success(
                     new DraftDiscardedResponse(request.DraftName, wasReopened));
@@ -734,6 +740,22 @@ public static partial class ProposalCommands
             catch (DraftChangedException)
             {
                 return CommandOutcome<DraftDiscardedResponse>.Refused(DraftRevisionConflict(request.DraftName));
+            }
+            catch (DraftTrialRunningException)
+            {
+                return CommandOutcome<DraftDiscardedResponse>.Refused(new Refusal(RefusalCodes.DraftTrialRunning,
+                    FailureReason.Refused, "This Draft is being tried. Wait for the try to finish, then discard it.",
+                    Fact(("draftName", request.DraftName))));
+            }
+            catch (ProposalRetainedByExampleSetException exception)
+            {
+                return CommandOutcome<DraftDiscardedResponse>.Refused(new Refusal(RefusalCodes.DraftRetainedByExampleSet,
+                    FailureReason.Refused, exception.Message, Fact(("draftName", request.DraftName))));
+            }
+            catch (ProposalEvidenceRetainedException exception)
+            {
+                return CommandOutcome<DraftDiscardedResponse>.Refused(new Refusal(RefusalCodes.DraftEvidenceRetained,
+                    FailureReason.Refused, exception.Message, Fact(("draftName", request.DraftName))));
             }
             catch (Exception ex) when (ex is not ProjectWritingSystemsUnavailableException)            {
                 return CommandOutcome<DraftDiscardedResponse>.Refused(

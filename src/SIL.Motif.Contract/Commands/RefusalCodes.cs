@@ -257,6 +257,8 @@ public static class RefusalCodes
     public const string DifferenceBaselineChanged = "difference.baseline-changed";
     /// <summary>One side of a Difference holds several different parses for a word.</summary>
     public const string DifferenceDuplicateParseRows = "difference.duplicate-parse-rows";
+    /// <summary>The Proposal is decided, so a new comparison would lose its word detail at once.</summary>
+    public const string DifferenceProposalDecided = "difference.proposal-decided";
     /// <summary>A Difference category code is not one the product defines.</summary>
     public const string DifferenceInvalidBucket = "difference.invalid-bucket";
     /// <summary>A Difference page offset or limit is out of range.</summary>
@@ -342,10 +344,16 @@ public static class RefusalCodes
     /// <summary>The clitic's Attaches to Categories changed since the edit was composed.</summary>
     public const string CliticAttachmentStaleSource = "clitic-attachment.stale-source";
 
+    /// <summary>The Draft's Trial results are still pinned or retained, so it is kept.</summary>
+    public const string DraftEvidenceRetained = "draft.evidence-retained";
     /// <summary>A Draft with that name already exists.</summary>
     public const string DraftNameCollision = "draft.name-collision";
     /// <summary>No Draft has that name.</summary>
     public const string DraftNotFound = "draft.not-found";
+    /// <summary>A phonology Example Set keeps the Draft's results.</summary>
+    public const string DraftRetainedByExampleSet = "draft.retained-by-example-set";
+    /// <summary>The Draft is being tried; wait for the try to finish before discarding it.</summary>
+    public const string DraftTrialRunning = "draft.trial-running";
 
     /// <summary>Reading grammar objects needs a Baseline and the project has none.</summary>
     public const string GrammarReadBaselineMissing = "grammar-read.baseline-missing";
@@ -451,6 +459,8 @@ public static class RefusalCodes
     public const string ProposalAlreadyApplied = "proposal.already-applied";
     /// <summary>An applied Proposal and its Receipts cannot be deleted.</summary>
     public const string ProposalAppliedFinal = "proposal.applied-final";
+    /// <summary>The Proposal's Assessment results are still pinned, retained or cited, so it is kept with them.</summary>
+    public const string ProposalEvidenceRetained = "proposal.evidence-retained";
     /// <summary>The Proposal has an open Draft that must be finalized or discarded first.</summary>
     public const string ProposalHasDraft = "proposal.has-draft";
     /// <summary>A Draft failed Proposal validation.</summary>

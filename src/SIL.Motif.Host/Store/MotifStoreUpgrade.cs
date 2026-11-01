@@ -20,9 +20,18 @@ public static class MotifStoreUpgrade
         "BaselineTextWords", "Baselines", "CurrentParsimonyBundles", "GrammarChecks", "Jobs", "ParsedAnalyses",
         "ParserRefusals", "ParsimonyBuildClaims", "ParsimonyBundleReferences", "ParsimonyBundles", "ParsimonyReaderLeases",
         "PendingChangeFits", "PhonologyAssessmentBindings", "PhonologyAssessmentDependencies", "PhonologyAssessmentRows",
-        "ProposalDifferenceBuckets", "ProposalDifferenceCases", "ProposalDifferenceOccurrences", "ProposalDifferences",
+        "ProposalDifferenceBuckets", "ProposalDifferenceCases", "ProposalDifferenceOccurrences",
         "Reports", "RetainedInvocationMembers", "RetainedInvocations"
     };
+
+    /// <summary>The first store schema whose Difference summaries have the shape current code reads (ADR 0067).</summary>
+    internal const int FirstSummarySchema = 56;
+
+    // Only a decided Proposal's newest Difference per Text is carried; the rest is produced again from a Trial.
+    private const string DecidedDifferences = "ProposalId IN (SELECT ProposalId FROM old.Proposals WHERE Status IN " +
+        "('applied','rejected','withdrawn','superseded')) AND rowid = (SELECT d.rowid FROM old.ProposalDifferences d " +
+        "WHERE d.ProposalId = old.ProposalDifferences.ProposalId AND d.TextId = old.ProposalDifferences.TextId " +
+        "ORDER BY d.CreatedUtc DESC, d.DifferenceId DESC LIMIT 1)";
 
     /// <summary>A revision that current code could not load; its bytes remain in the new store.</summary>
     public sealed record UnreadableRevision(string ProposalId, string IntentDigest, string Error);
@@ -36,7 +45,8 @@ public static class MotifStoreUpgrade
     public static Report Copy(string source, string output) => Build(source, output, null, true, null);
 
     internal static Report Build(string source, string output, ProjectLocator? expected, bool immutable, string? backup,
-        Version? worker = null, Action<SqliteConnection, bool>? onOpen = null)
+        Version? worker = null, Action<SqliteConnection, bool>? onOpen = null,
+        int firstSummarySchema = FirstSummarySchema)
     {
         source = Path.GetFullPath(source);
         output = Path.GetFullPath(output);
@@ -88,11 +98,15 @@ public static class MotifStoreUpgrade
             MotifSchema.Create(destination, transaction, metadata.Project);
             Execute(destination, "PRAGMA defer_foreign_keys = ON;", transaction);
             var tables = Names(destination, "SELECT name FROM old.sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';", transaction);
-            var unknown = tables.Except(Kept, StringComparer.Ordinal).Where(name => name != "MotifMetadata" && !Derived.Contains(name)).ToArray();
+            // Summaries written before their current shape cannot be read, so they are dropped like any derived table.
+            var carriesSummaries = version >= firstSummarySchema;
+            var kept = carriesSummaries ? Kept.Append("ProposalDifferences").ToArray() : Kept;
+            bool IsDerived(string name) => Derived.Contains(name) || (!carriesSummaries && name == "ProposalDifferences");
+            var unknown = tables.Except(kept, StringComparer.Ordinal).Where(name => name != "MotifMetadata" && !IsDerived(name)).ToArray();
             if (unknown.Length != 0) throw new InvalidDataException(StoreUpgradeMessages.Format("UnknownTable", string.Join(", ", unknown)));
-            var carried = Kept.ToDictionary(table => table, _ => 0L, StringComparer.Ordinal);
+            var carried = kept.ToDictionary(table => table, _ => 0L, StringComparer.Ordinal);
             carried["MotifMetadata"] = 1;
-            foreach (var table in Kept)
+            foreach (var table in kept)
             {
                 if (!tables.Contains(table)) continue;
                 var oldColumns = Columns(destination, "old", table, transaction);
@@ -102,16 +116,20 @@ public static class MotifStoreUpgrade
                 var names = matching.Select(Quote).ToList();
                 var values = matching.Select(name => table == "Proposals" && name == "AnchorJson" ? "NULL" : Quote(name)).ToList();
                 AddRequiredDefaults(destination, transaction, table, oldColumns, names, values);
-                Execute(destination, $"INSERT INTO main.{Quote(table)} ({string.Join(",", names)}) SELECT {string.Join(",", values)} FROM old.{Quote(table)};", transaction);
+                var where = table == "ProposalDifferences" ? " WHERE " + DecidedDifferences : "";
+                Execute(destination, $"INSERT INTO main.{Quote(table)} ({string.Join(",", names)}) SELECT {string.Join(",", values)} FROM old.{Quote(table)}{where};", transaction);
                 carried[table] = Scalar(destination, $"SELECT COUNT(*) FROM main.{Quote(table)};", transaction);
-                if (carried[table] != Scalar(destination, $"SELECT COUNT(*) FROM old.{Quote(table)};", transaction))
+                if (carried[table] != Scalar(destination, $"SELECT COUNT(*) FROM old.{Quote(table)}{where};", transaction))
                     throw new InvalidDataException(StoreUpgradeMessages.Format("CountChanged", table));
             }
+            // The word rows are not carried, so every carried summary says its word detail is gone.
+            if (carriesSummaries) Execute(destination, "UPDATE main.ProposalDifferences SET WordDetailDroppedUtc = " +
+                "strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE WordDetailDroppedUtc IS NULL;", transaction);
             var metadataColumns = Columns(destination, "old", "MotifMetadata", transaction);
             foreach (var column in new[] { "CreatedUtc", "SetupSkippedUtc" })
                 if (metadataColumns.Contains(column))
                     Execute(destination, $"UPDATE MotifMetadata SET {Quote(column)} = (SELECT {Quote(column)} FROM old.MotifMetadata WHERE Id=1);", transaction);
-            var dropped = tables.Where(Derived.Contains).Order(StringComparer.Ordinal).ToList();
+            var dropped = tables.Where(IsDerived).Order(StringComparer.Ordinal).ToList();
             var unreadable = CheckRevisions(destination, transaction);
             using (var check = destination.CreateCommand())
             {
