@@ -20,6 +20,9 @@ internal static partial class WalkthroughCaptureSettle
     [GeneratedRegex(@"\b\d{8}T\d{6}Z\b")]
     private static partial Regex WallClockStamp();
 
+    [GeneratedRegex(@"(?<=\bTried |\bBaseline of )(?:(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun) \d{1,2} [A-Z][a-z]{2}(?: \d{4})?, )?\d{1,2}:\d{2}\s[AP]M")]
+    private static partial Regex TrialTimeInBar();
+
     [GeneratedRegex(@"\[walkthrough folder\]\S*")]
     private static partial Regex MaskedFolderPath();
 
@@ -69,17 +72,20 @@ internal static partial class WalkthroughCaptureSettle
     /// <summary>
     /// Replaces text that names the run, not the product, with a fixed stand-in: the walkthrough's own folder, which
     /// holds this process's id, and a Receipt's UTC stamp, which the Apply command takes from the machine's clock.
-    /// The rest of a masked path is written with backslashes, so a Windows and a Linux run draw the same text.
+    /// The rest of a masked path is written with backslashes, so a Windows and a Linux run draw the same text. The two
+    /// times in the Proposal bar's "Tried ... on Baseline of ..." sentence come from the Trial's own run, which takes
+    /// the machine's clock, so they are shown as the capture time.
     /// </summary>
     internal static void MaskRunVaryingText(this WalkthroughWindow walkthrough)
     {
         var stamp = AppliedLogFormat.FormatTimestamp(WalkthroughReplayTestSupport.CaptureTime.UtcDateTime);
+        const string TrialTime = "12:00 PM";
         foreach (var block in walkthrough.Window.GetVisualDescendants().OfType<TextBlock>())
         {
             if (string.IsNullOrEmpty(block.Text) || block.Inlines?.Count > 0) continue;
-            var masked = WallClockStamp().Replace(MaskedFolderPath().Replace(
+            var masked = TrialTimeInBar().Replace(WallClockStamp().Replace(MaskedFolderPath().Replace(
                 block.Text.Replace(walkthrough.ManagedRoot, ManagedRootStandIn, StringComparison.OrdinalIgnoreCase),
-                path => path.Value.Replace('/', '\\')), stamp);
+                path => path.Value.Replace('/', '\\')), stamp), TrialTime);
             if (!string.Equals(masked, block.Text, StringComparison.Ordinal)) block.Text = masked;
         }
         Dispatcher.UIThread.RunJobs();
