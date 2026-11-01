@@ -127,7 +127,11 @@ public sealed class AuthorPartOfSpeechComposerTests : IDisposable
 
         var wrongClass = Assert.Throws<InvalidOperationException>(() => ScratchDryRun.Of(_cache,
             Proposal([CreateOperation(Id(_cache.LangProject.PartsOfSpeechOA), CanonicalId.Mint(), "CmPossibility")])));
-        Assert.Contains("class must be PartOfSpeech", wrongClass.Message, StringComparison.Ordinal);
+        Assert.Contains("Only the exception features list accepts a CmPossibility item", wrongClass.Message, StringComparison.Ordinal);
+
+        var otherClass = Assert.Throws<InvalidOperationException>(() => ScratchDryRun.Of(_cache,
+            Proposal([CreateOperation(Id(_cache.LangProject.PartsOfSpeechOA), CanonicalId.Mint(), "CmAnthroItem")])));
+        Assert.Contains("class must be", otherClass.Message, StringComparison.Ordinal);
     }
 
     [Fact]
