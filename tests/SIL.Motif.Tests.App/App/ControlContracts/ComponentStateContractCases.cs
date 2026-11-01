@@ -725,6 +725,8 @@ internal static class TooltipOwners
         {
             Pending = "the Matrix scene has no checked words, so the action is hidden",
         },
+        new("filter chip label", "Views/FilterChip.cs", "string.IsNullOrEmpty(Label) ? null : Label", TooltipScene.Matrix,
+            control => control is FilterChip),
         new("pending change in a Matrix cell", "Views/MatrixCell.axaml", "{Binding PendingChangeStatus}", TooltipScene.MatrixStaged,
             control => control is Ellipse && control.Classes.Contains("matrixPending")),
         new("word cell", "Controls/WordPresentation/WordRow.cs", "facts.Summary", TooltipScene.Matrix,
