@@ -52,6 +52,9 @@ public static class AssessSummary
     private static JsonNode Concise(AssessmentWordResult row)
     {
         var node = new JsonObject { ["word"] = row.Word, ["outcome"] = row.Outcome };
+        // Work is the word's cost; a skipped word was never searched, so it has none. stoppedBy names the limit.
+        if (row.WorkSteps is { } workSteps && row.Outcome != "skipped") node["workSteps"] = workSteps;
+        if (row.StoppedBy is { } stoppedBy) node["stoppedBy"] = stoppedBy;
         if (row.Outcome == "analysed")
         {
             node["reading"] = AssessmentCounts.IsAccepted(row) ? "accepted" : "guess-only";

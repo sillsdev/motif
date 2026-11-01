@@ -98,7 +98,7 @@ public static class CommandTextRenderer
             GrammarCheckResponse r => RenderGrammarCheck(r),
             WarningsResponse r => RenderWarnings(r),
             ProposalDifferenceResponse r => RenderProposalDifference(r),
-            TimingResponse r => RenderTiming(r),
+            TimingResponse r => TimingTextRenderer.RenderTiming(r),
             ActivitySummary r => RenderActivity(r),
             ObjectUsesResponse r => RenderUses(r),
             InspectResponse r => RenderInspect(r),
@@ -632,7 +632,9 @@ public static class CommandTextRenderer
         text.AppendLine("Assessment: " + page["assessment"] + "  (" + page["showing"] + ")");
         foreach (var word in page["words"]!.AsArray())
             text.AppendLine($"  {word!["word"]}: {word["outcome"]}" +
-                (word["reading"] is { } reading ? " (" + reading + ")" : string.Empty));
+                (word["reading"] is { } reading ? " (" + reading + ")" : string.Empty) +
+                (word["stoppedBy"] is { } stoppedBy ? ", stopped by " + stoppedBy : string.Empty) +
+                (word["workSteps"] is { } work ? ", " + work + " work steps" : string.Empty));
         if (page["nextOffset"] is { } next)
             text.AppendLine($"More: motif assess <project> --summary --offset {next}");
         return new CommandResult(0, text.ToString());
@@ -641,7 +643,7 @@ public static class CommandTextRenderer
     private static string CountsLine(AssessmentCounts counts) =>
         $"  Counts: {counts.Words} word(s); {counts.Analysed} analysed " +
         $"({counts.Accepted} accepted, {counts.GuessOnly} guess-only); {counts.NoAnalysis} no-analysis; " +
-        $"{counts.TimedOut} timed-out; {counts.Capped} capped; {counts.Skipped} skipped";
+        $"{counts.Capped} stopped at the work limit; {counts.TimedOut} stopped at the time safety net; {counts.Skipped} skipped";
 
     private static string RenderAssessed(AssessCommandResponse response)
     {
@@ -676,16 +678,16 @@ public static class CommandTextRenderer
         var selection = response.Selection;
         var timeLimit = selection.Limits.TimeMode switch
         {
-            SelectionTimeLimitMode.Explicit => $"{selection.Limits.ExplicitPerWordLimitMs!.Value:N0} ms",
+            SelectionTimeLimitMode.Explicit => $"{selection.Limits.ExplicitPerWordLimitMs!.Value:N0} ms on this computer",
             SelectionTimeLimitMode.Estimated when !selection.Limits.PerWordStepLimit.IsUnbounded => "estimated",
             _ => "none",
         };
         return $"Default Selection: {selection.Name}{Environment.NewLine}" +
-            $"  Texts:       {selection.TextIds.Count:N0}{Environment.NewLine}" +
-            $"  Added words: {selection.AddedWords.Count:N0}{Environment.NewLine}" +
-            $"  Time limit:  {timeLimit}{Environment.NewLine}" +
-            $"  Step limit:  {selection.Limits.PerWordStepLimit.ToArgument()}{Environment.NewLine}" +
-            $"  Updated:     {selection.UpdatedUtc}{Environment.NewLine}";
+            $"  Texts:           {selection.TextIds.Count:N0}{Environment.NewLine}" +
+            $"  Added words:     {selection.AddedWords.Count:N0}{Environment.NewLine}" +
+            $"  Work limit:      {(selection.Limits.PerWordStepLimit.Steps is { } steps ? steps.ToString("N0", CultureInfo.CurrentCulture) + " analysis attempts" : "none")}{Environment.NewLine}" +
+            $"  Time safety net: {timeLimit}{Environment.NewLine}" +
+            $"  Updated:         {selection.UpdatedUtc}{Environment.NewLine}";
     }
 
     private static string RenderTextInventory(TextInventoryResponse response)
@@ -731,20 +733,7 @@ public static class CommandTextRenderer
         text.AppendLine($"           rejected analyses rebuilt {response.Accuracy.RejectedAnalysesRebuilt:N0}  " +
             $"rejected words matched {response.Accuracy.RejectedWordsInMatchCell:N0}/{response.Accuracy.RejectedWordCount:N0}  " +
             $"candidates confirmed {response.Accuracy.CandidatesConfirmed:N0}/{response.Accuracy.CandidateWordCount:N0}");
-        var slowest = response.Timing.SlowestWords.FirstOrDefault();
-        text.AppendLine($"Time on this computer     median {FormatMs(response.Timing.MedianMs)}  p95 {FormatMs(response.Timing.Percentile95Ms)}  " +
-            (slowest is null ? "slowest (none)" : $"slowest {slowest.Word} {slowest.ElapsedMs:N0} ms"));
-        if (response.Timing.Attribution.MeasuredWordCount > 0)
-        {
-            var attribution = response.Timing.Attribution;
-            var split = response.Timing.Kinds.Select(kind => $"{kind.Name} {FormatShare(kind.ShareOfWordTime)}");
-            if (attribution.NotAttributedShare is { } notAttributed)
-                split = split.Append($"not attributed {FormatShare(notAttributed)}");
-            text.AppendLine($"           {attribution.MeasuredWordCount:N0} words, {attribution.WordTimeMs / 1000:N1} s " +
-                (response.Timing.ObjectTimingAggregatesAvailable
-                    ? $"total word time: {string.Join(", ", split)}" : "total word time; object timing totals unavailable"));
-        }
-        if (response.Timing.ObjectTimingDetail is { IsComplete: false, Description: { } detail }) text.AppendLine(detail);
+        TimingTextRenderer.AppendOverviewSpeed(text, response.Timing);
         if (response.Warnings is not null)
             text.AppendLine($"Warnings   {response.Warnings.Count?.ToString("N0") ?? "unknown"} findings " +
                 $"({CountLabel(response.Warnings.ErrorCount, "error", "errors")}, " +
@@ -994,58 +983,6 @@ public static class CommandTextRenderer
         return text.ToString();
     }
 
-    private static string RenderTiming(TimingResponse response)
-    {
-        var text = new StringBuilder();
-        text.AppendLine($"Time on this computer for {response.WordCount:N0} word(s) from {response.WordSet} ({response.AssessmentId})");
-        text.AppendLine("  " + (response.EvidenceRelation switch
-        {
-            TimingEvidenceRelation.Current => "Current Baseline",
-            TimingEvidenceRelation.Historical => "Historical Baseline",
-            TimingEvidenceRelation.SavedSince => "FieldWorks saved since the measured Baseline",
-            _ => "Baseline relationship unknown",
-        }));
-        if (response.ObjectTimingDetail is { IsComplete: false, Description: { } detail }) text.AppendLine("  " + detail);
-        if (response.SourceLastWriteUtc is { } capturedSave)
-            text.AppendLine($"  Measured FieldWorks save: {capturedSave:O}");
-        if (response.Baseline is { } baseline)
-            text.AppendLine($"  Baseline captured: {baseline.CapturedUtc}");
-        if (response.CurrentProjectIsStale)
-            text.AppendLine("  Warning: FieldWorks has changed since the current Baseline.");
-        text.AppendLine($"  Median: {FormatMs(response.MedianMs)}  p95: {FormatMs(response.Percentile95Ms)}");
-        var attribution = response.Attribution;
-        text.AppendLine($"  Total word time: {attribution.WordTimeMs:N2} ms for {attribution.MeasuredWordCount:N0} " +
-            "measured word(s); every share below is of this total");
-        text.AppendLine(response.ObjectTimingAggregatesAvailable
-            ? $"  By {response.By}:" : "  Object timing totals unavailable for these words.");
-        foreach (var row in response.Aggregates)
-            text.AppendLine($"    {row.Name}{(response.By == "rule" ? $" [{row.Kind}:{row.Key}]" : string.Empty)}: " +
-                $"{row.SelfMs:N2} ms ({FormatShare(row.ShareOfWordTime)}), {FormatCalls(row.Calls, row.Kind)}, " +
-                $"{row.WordsTouched:N0} words");
-        if (attribution.NotAttributedMs is { } notAttributed)
-            text.AppendLine($"    Not attributed: {notAttributed:N2} ms ({FormatShare(attribution.NotAttributedShare)})");
-        if (attribution.Overrun)
-            text.AppendLine($"  Warning: objects recorded {attribution.OverrunMs:N2} ms more than their words' own time.");
-        if (response.CostliestWords.Count > 0)
-        {
-            text.AppendLine("  Costliest words:");
-            foreach (var word in response.CostliestWords)
-                text.AppendLine($"    {word.Word}: {FormatWordWork(word)}, {word.SelfMs:N2} ms" + (word.WordTimeMs is { } whole
-                    ? $" ({FormatShare(word.ShareOfWordTime)} of its {whole:N2} ms)" : string.Empty) +
-                    $", {FormatCalls(word.Calls, null)}");
-        }
-        return text.ToString();
-    }
-
-    private static string FormatWordWork(WordRuleTiming word) => word.WorkSteps is { } steps
-        ? $"{steps:N0} of its {word.WordWorkSteps ?? steps:N0} work steps" : "work steps not recorded";
-
-    private static string FormatShare(double? share) => share is { } value
-        ? value.ToString("P1", CultureInfo.CurrentCulture) : "no word time";
-
-    private static string FormatCalls(long? calls, string? kind) => calls is { } value
-        ? $"{value:N0} {(kind is { Length: > 0 } ? kind + " " : string.Empty)}calls" : "calls not counted";
-
     // The words that use the object, the words it ran in, then what the asked-about words share.
     private static string RenderUses(ObjectUsesResponse response)
     {
@@ -1167,8 +1104,6 @@ public static class CommandTextRenderer
         ? percent.ToString("N0", CultureInfo.CurrentCulture) + "%"
         : "not recorded";
 
-    private static string FormatMs(double? value) => value is null ? "unknown" : value.Value.ToString("N0") + " ms";
-
     private static string ShortHash(string? value) => value is null ? "unknown" : value[..Math.Min(8, value.Length)] + "…";
 
     private static string TraceJson(WordTraceResponse response) => ProjectionJson.Serialize(response);
@@ -1187,13 +1122,13 @@ public static class CommandTextRenderer
             ? $"  Search: complete, {response.ParserSteps?.ToString("N0") ?? "unknown"} analysis attempts"
             : "  Search: stopped early. " + (response.StopReason ?? "The parser did not finish."));
         if (response.TotalParserWorkSteps is { } workSteps)
-            text.AppendLine($"  Parser work: {workSteps:N0}" + (response.Lowercase is null ? string.Empty : " (with the lowercase form)"));
+            text.AppendLine($"  Parser work: {workSteps:N0} work steps" + (response.Lowercase is null ? string.Empty : " (with the lowercase form)"));
         if (response.LowercaseFailure is { } lowercaseFailure)
             text.AppendLine("  " + lowercaseFailure);
         if (response.Lowercase is { } lowercase)
             text.AppendLine($"  Lowercase form {lowercase.Word}: " + (lowercase.Parsed
                 ? $"parsed, {lowercase.Reading.Analyses.Count:N0} {(lowercase.Reading.Analyses.Count == 1 ? "analysis" : "analyses")}"
-                : "no parse") + (lowercase.ParserWorkSteps is { } lowerWork ? $", parser work {lowerWork:N0}" : string.Empty));
+                : "no parse") + (lowercase.ParserWorkSteps is { } lowerWork ? $", parser work {lowerWork:N0} work steps" : string.Empty));
         if (response.Provenance is { Warning.Length: > 0 } provenance)
             text.AppendLine("  Warning: " + provenance.Warning);
         if (response.HostCapture?.Baseline is { } baseline)

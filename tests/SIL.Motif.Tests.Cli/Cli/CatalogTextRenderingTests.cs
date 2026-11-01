@@ -2,9 +2,11 @@ using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using SIL.Motif.Cli.Rendering;
+using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Parsimony;
+using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
@@ -100,6 +102,7 @@ public sealed class CatalogTextRenderingTests
         var json = CommandTextRenderer.Render(outcome, asJson: true).Output;
 
         Assert.Contains("3 word(s); 2 analysed (1 accepted, 1 guess-only); 1 no-analysis", text, StringComparison.Ordinal);
+        Assert.Contains("0 stopped at the work limit; 0 stopped at the time safety net; 0 skipped", text, StringComparison.Ordinal);
         Assert.Contains("\"guessOnly\": 1", json, StringComparison.Ordinal);
     }
 
@@ -161,7 +164,8 @@ public sealed class CatalogTextRenderingTests
         Assert.DoesNotContain("43/135 parse (32%)", rendered.Output);
         Assert.Contains("33/115 approved kept  18 violations  63 unknown", rendered.Output);
         Assert.Contains("rejected analyses rebuilt 2  rejected words matched 1/9", rendered.Output);
-        Assert.Contains("median 8 ms  p95 400 ms  slowest Akjulule 1,007 ms", rendered.Output);
+        Assert.Contains("Time on this computer     median 8 ms  p95 400 ms", rendered.Output);
+        Assert.DoesNotContain("Akjulule 1,007 ms", rendered.Output);
     }
 
     [Fact]
@@ -287,30 +291,74 @@ public sealed class CatalogTextRenderingTests
         Assert.Contains("FieldWorks has changed since the current Baseline", rendered.Output, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData(200_000L, "Work limit:      200,000 analysis attempts")]
+    [InlineData(null, "Work limit:      none")]
+    public void SelectionShowNamesTheWorkLimitAndTheTimeSafetyNetApart(long? steps, string expected)
+    {
+        using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
+        var limits = new SelectionParsingLimits(new StepCap(steps), SelectionTimeLimitMode.Estimated, null);
+        var selection = new NamedSelectionProjection("Default", [], [], "2026-10-31T00:00:00Z", "2026-10-31T00:00:00Z",
+            limits, "1");
+
+        var text = CommandTextRenderer.Render(
+            CommandOutcome<DefaultSelectionResponse>.Success(new DefaultSelectionResponse(selection)), asJson: false).Output;
+
+        Assert.Contains(expected, text, StringComparison.Ordinal);
+        Assert.Contains("Time safety net: ", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("Step limit", text, StringComparison.Ordinal);
+    }
+
     [Fact]
-    public void OverviewTextSplitsTotalWordTimeByKindWithNotAttributedBeside()
+    public void OverviewTextCountsParserWorkFirstAndKeepsTheRunsTimeSecond()
     {
         using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
         var response = new OverviewResponse(
             "Aweti", DateTimeOffset.Parse("2026-09-24T12:00:00Z"), null, 2, 1, 0, 2, 2, 0, 0, "assessment/1",
             DateTimeOffset.Parse("2026-09-24T11:30:00Z"), 0.8, null, null,
             new OverviewTextCoverage(2, 0, 0, 0, 2, 2), new OverviewAccuracy(0, 0, 0, 0, 0, 0, 0, 0),
-            new OverviewTiming(400, 500, [], 0)
+            new OverviewTiming(400, 500, [new SlowWordTiming("Akjulule", 1007) { WorkSteps = 7000 }], 0)
             {
                 MeasuredWordCount = 2,
-                Kinds = [new TimingAggregateRow("morph_rule", "morph_rule", 600, 0.75, 2) { Kind = "morph_rule" }],
+                Work = new WordWorkSummary(2, 8000, 4000, 7000),
+                WorkStepAggregates =
+                [
+                    new TimingWorkAggregate("morph_rule", "morph_rule", "morph_rule", 6000, false),
+                    new TimingWorkAggregate("unattributed", "unattributed", "unattributed", 2000, true),
+                ],
                 Attribution = new WordTimeAttribution(2, 800, 600, 200, 0.25, 0, false),
             },
             null);
 
         var output = CommandTextRenderer.Render(CommandOutcome<OverviewResponse>.Success(response), asJson: false).Output;
 
-        Assert.Contains("2 words, 0.8 s total word time: morph_rule 75.0%, not attributed 25.0%", output,
-            StringComparison.Ordinal);
+        Assert.Contains("Work       8,000 work steps in all for 2 words  median 4,000 work steps  p95 7,000 work steps  " +
+            "costliest Akjulule 7,000 work steps", output, StringComparison.Ordinal);
+        Assert.Contains("work by kind: morph_rule 75.0%, not attributed 25.0%", output, StringComparison.Ordinal);
+        Assert.Contains("Time on this computer     median 400 ms  p95 500 ms", output, StringComparison.Ordinal);
+        Assert.Contains("2 words, 0.8 s in all", output, StringComparison.Ordinal);
+        Assert.True(output.IndexOf("Work       ", StringComparison.Ordinal) < output.IndexOf("Time on this computer", StringComparison.Ordinal));
     }
 
     [Fact]
-    public void TimingTextSharesEveryRowOfTotalWordTimeAndCountsCallsPerKind()
+    public void OverviewTextSaysWhenWorkWasNotRecordedInsteadOfShowingATimeInItsPlace()
+    {
+        using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
+        var response = new OverviewResponse(
+            "Aweti", DateTimeOffset.Parse("2026-09-24T12:00:00Z"), null, 2, 1, 0, 2, 2, 0, 0, "assessment/1",
+            DateTimeOffset.Parse("2026-09-24T11:30:00Z"), 0.8, null, null,
+            new OverviewTextCoverage(2, 0, 0, 0, 2, 2), new OverviewAccuracy(0, 0, 0, 0, 0, 0, 0, 0),
+            new OverviewTiming(400, 500, [new SlowWordTiming("Akjulule", 1007)], 0) { MeasuredWordCount = 1 },
+            null);
+
+        var output = CommandTextRenderer.Render(CommandOutcome<OverviewResponse>.Success(response), asJson: false).Output;
+
+        Assert.Contains("Work       work steps not recorded for these words", output, StringComparison.Ordinal);
+        Assert.DoesNotContain("1,007", output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TimingTextSharesEveryRowOfTheWordsWorkAndKeepsTimeOnThisComputerAsASecondFigure()
     {
         using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
         var response = new TimingResponse("assessment/1", "all", "rule", 2, 8, 400, [],
@@ -320,16 +368,113 @@ public sealed class CatalogTextRenderingTests
             ], [])
         {
             Attribution = new WordTimeAttribution(2, 800, 500, 302, 0.3775, 2, true),
+            Work = new WordWorkSummary(2, 1000, 500, 600),
+            WorkStepAggregates =
+            [
+                new TimingWorkAggregate("guid-1", "Plural", "morph_rule", 600, false),
+                new TimingWorkAggregate("guid-2", "Plural", "lex_entry", 300, false),
+                new TimingWorkAggregate("unattributed", "unattributed", "unattributed", 100, true),
+            ],
         };
 
         var output = CommandTextRenderer.Render(CommandOutcome<TimingResponse>.Success(response), asJson: false).Output;
 
-        Assert.Contains("Total word time: 800.00 ms for 2 measured word(s)", output, StringComparison.Ordinal);
-        Assert.Contains("Plural [morph_rule:guid-1]: 300.00 ms (37.5%), 40 morph_rule calls, 2 words", output, StringComparison.Ordinal);
-        Assert.Contains("Plural [lex_entry:guid-2]: 200.00 ms (25.0%), calls not counted, 1 words", output, StringComparison.Ordinal);
-        Assert.Contains("Not attributed: 302.00 ms (37.8%)", output, StringComparison.Ordinal);
-        Assert.Contains("recorded 2.00 ms more than their words' own time", output, StringComparison.Ordinal);
+        Assert.StartsWith("Parser work for 2 word(s)", output, StringComparison.Ordinal);
+        Assert.Contains("Work: 1,000 work steps in all for 2 word(s); median 500 work steps, p95 600 work steps a word", output, StringComparison.Ordinal);
+        Assert.Contains("Plural [morph_rule:guid-1]: 600 work steps (60.0%), 40 morph_rule calls, 2 words, 300.00 ms on this computer", output, StringComparison.Ordinal);
+        Assert.Contains("Plural [lex_entry:guid-2]: 300 work steps (30.0%), calls not counted, 1 words, 200.00 ms on this computer", output, StringComparison.Ordinal);
+        Assert.Contains("Not attributed: 100 work steps (10.0%), 302.00 ms on this computer", output, StringComparison.Ordinal);
+        Assert.Contains("Time on this computer: median 8 ms  p95 400 ms; 800.00 ms in all for 2 measured word(s)", output, StringComparison.Ordinal);
+        Assert.Contains("recorded 2.00 ms more than their words' own time on this computer", output, StringComparison.Ordinal);
         Assert.DoesNotContain("attempts", output, StringComparison.Ordinal);
+        Assert.DoesNotContain("37.5%", output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TimingTextMatchesARulesWorkByItsGuidWhateverItsCaseAndNeverShowsAMissingMatchAsZero()
+    {
+        using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
+        const string authored = "AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA";
+        const string other = "BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB";
+        var response = new TimingResponse("assessment/1", "all", "rule", 2, 8, 400, [],
+            [
+                new TimingAggregateRow(authored, "Plural", 300, 0.375, 2) { Kind = "morph_rule", IdentityQuality = "authored" },
+                new TimingAggregateRow(other, "Past", 200, 0.25, 1) { Kind = "morph_rule", IdentityQuality = "authored" },
+            ], [])
+        {
+            Work = new WordWorkSummary(2, 1000, 500, 600),
+            WorkStepAggregates =
+            [
+                new TimingWorkAggregate(authored.ToLowerInvariant(), "Plural", "morph_rule", 600, false)
+                    { IdentityQuality = "authored" },
+                new TimingWorkAggregate("unattributed", "unattributed", "unattributed", 400, true),
+            ],
+        };
+
+        var output = CommandTextRenderer.Render(CommandOutcome<TimingResponse>.Success(response), asJson: false).Output;
+
+        Assert.Contains("Plural [morph_rule:" + authored + "]: 600 work steps (60.0%)", output, StringComparison.Ordinal);
+        Assert.Contains("Past [morph_rule:" + other + "]: work steps not recorded", output, StringComparison.Ordinal);
+        Assert.DoesNotContain("0 work steps (0.0%)", output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TimingTextShowsTheParsersOwnWorkAsARowAndTheSharesAddUp()
+    {
+        using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
+        var response = new TimingResponse("assessment/1", "all", "rule", 1, 8, 400, [],
+            [
+                new TimingAggregateRow("parser:strata", "parser", 50, 0.5, 1)
+                    { Kind = "parser", IdentityQuality = "synthetic" },
+            ], [])
+        {
+            Work = new WordWorkSummary(1, 100, 100, 100),
+            WorkStepAggregates =
+            [
+                new TimingWorkAggregate("parser:strata", "parser", "parser", 30, false) { IdentityQuality = "synthetic" },
+                new TimingWorkAggregate("rule-r", "R", "morph_rule", 60, false) { IdentityQuality = "authored" },
+                new TimingWorkAggregate("unattributed", "unattributed", "unattributed", 10, true),
+            ],
+        };
+
+        var output = CommandTextRenderer.Render(CommandOutcome<TimingResponse>.Success(response), asJson: false).Output;
+
+        Assert.Contains("parser [parser:parser:strata]: 30 work steps (30.0%)", output, StringComparison.Ordinal);
+        Assert.Contains("Not attributed: 10 work steps (10.0%)", output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AssessSummaryTextNamesTheLimitAndTheWorkOfAStoppedWord()
+    {
+        var page = new System.Text.Json.Nodes.JsonObject
+        {
+            ["counts"] = JsonSerializer.SerializeToNode(new AssessmentCounts(1, 0, 0, 0, 1, 0, 0, 0)),
+            ["assessment"] = "a/1",
+            ["showing"] = "showing 1-1 of 1",
+            ["words"] = new System.Text.Json.Nodes.JsonArray(new System.Text.Json.Nodes.JsonObject
+                { ["word"] = "big", ["outcome"] = "capped", ["workSteps"] = 20000, ["stoppedBy"] = "work-limit" }),
+        };
+
+        var text = CommandTextRenderer.RenderAssessSummary(page, asJson: false).Output;
+
+        Assert.Contains("big: capped, stopped by work-limit, 20000 work steps", text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TimingTextShowsNoPerRowWorkWhenItWasNotRecordedForEveryWord()
+    {
+        using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
+        var response = new TimingResponse("assessment/1", "all", "kind", 1, 8, 400, [],
+            [new TimingAggregateRow("morph_rule", "morph_rule", 300, 1, 1) { Kind = "morph_rule" }], [])
+        {
+            Attribution = new WordTimeAttribution(1, 300, 300, 0, 0, 0, false),
+        };
+
+        var output = CommandTextRenderer.Render(CommandOutcome<TimingResponse>.Success(response), asJson: false).Output;
+
+        Assert.Contains("Work steps are not recorded for these words.", output, StringComparison.Ordinal);
+        Assert.Contains("Work by kind was not recorded for every one of these words", output, StringComparison.Ordinal);
+        Assert.Contains("morph_rule: work steps not recorded", output, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -341,13 +486,20 @@ public sealed class CatalogTextRenderingTests
                 new WordRuleTiming("mwalimu", 5, 3) { WorkSteps = 7000, WordWorkSteps = 9000, WordTimeMs = 50, ShareOfWordTime = 0.1 },
                 new WordRuleTiming("kitabu", 40, 2) { WorkSteps = 900, WordWorkSteps = 900, WordTimeMs = 80, ShareOfWordTime = 0.5 },
                 new WordRuleTiming("hawajafika", 60, 1) { WordTimeMs = 100, ShareOfWordTime = 0.6 },
+                new WordRuleTiming("sikilizeni", 7, 4) { WorkSteps = 12 },
+                new WordRuleTiming("tupu", 1, 1) { WorkSteps = 0, WordWorkSteps = 0 },
             ]);
 
         var output = CommandTextRenderer.Render(CommandOutcome<TimingResponse>.Success(response), asJson: false).Output;
 
-        Assert.Contains("mwalimu: 7,000 of its 9,000 work steps, 5.00 ms", output, StringComparison.Ordinal);
-        Assert.Contains("kitabu: 900 of its 900 work steps, 40.00 ms", output, StringComparison.Ordinal);
-        Assert.Contains("hawajafika: work steps not recorded, 60.00 ms", output, StringComparison.Ordinal);
+        Assert.Contains("mwalimu: 7,000 of its 9,000 work steps, 3 calls; time on this computer 5.00 ms of its 50.00 ms", output, StringComparison.Ordinal);
+        Assert.Contains("kitabu: all of the word's 900 work steps, 2 calls; time on this computer 40.00 ms", output, StringComparison.Ordinal);
+        Assert.DoesNotContain("900 of its 900", output, StringComparison.Ordinal);
+        Assert.Contains("hawajafika: work steps not recorded, 1 calls; time on this computer 60.00 ms", output, StringComparison.Ordinal);
+        Assert.Contains("sikilizeni: 12 work steps (the word's total is not recorded), 4 calls", output, StringComparison.Ordinal);
+        Assert.Contains("tupu: 0 of its 0 work steps, 1 calls", output, StringComparison.Ordinal);
+        Assert.DoesNotContain("all of the word's 0", output, StringComparison.Ordinal);
+        Assert.DoesNotContain("12 of its 12", output, StringComparison.Ordinal);
         Assert.True(output.IndexOf("mwalimu", StringComparison.Ordinal) < output.IndexOf("kitabu", StringComparison.Ordinal));
     }
 

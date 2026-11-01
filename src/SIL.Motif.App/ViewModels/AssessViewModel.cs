@@ -43,6 +43,8 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
     /// <summary>The time limit the saved Selection chose itself; null leaves the time to the command's safety net.</summary>
     internal Func<int?> SavedExplicitTimeLimitMs { get; set; } = static () => null;
 
+    private (int? Value, bool Read) _loggedTimeLimit;
+
     private IReadOnlyList<string>? _rerunWords;
     private int? _rerunLimitMs;
     private StepCap? _rerunStepLimit;
@@ -213,8 +215,9 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
         else
         {
             shapes.Add(UsageArgumentShape.Object("selection"));
-            if (_selection.PerWordTimeLimitSeconds is not null)
-                shapes.Add(UsageArgumentShape.Number("perWordTimeLimitSeconds"));
+            _loggedTimeLimit = (SavedExplicitTimeLimitMs(), true);
+            if (_loggedTimeLimit.Value is not null)
+                shapes.Add(UsageArgumentShape.Number("perWordLimitMs"));
             if (_selection.PerWordStepLimit is not null)
                 shapes.Add(UsageArgumentShape.Number("perWordStepLimit"));
         }
@@ -287,8 +290,10 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
         if (words is null)
         {
             var runDefault = _runDefaultSelection;
+            // The limit the usage log recorded is the one sent, so a Setup change between the two cannot split them.
             var timeLimitMs = runDefault ? _defaultPerWordLimitMs
-                : SavedExplicitTimeLimitMs();
+                : _loggedTimeLimit.Read ? _loggedTimeLimit.Value : SavedExplicitTimeLimitMs();
+            _loggedTimeLimit = (null, false);
             var requestedStepLimit = runDefault ? _defaultStepLimit : null;
             _runDefaultSelection = false;
             _defaultPerWordLimitMs = null;

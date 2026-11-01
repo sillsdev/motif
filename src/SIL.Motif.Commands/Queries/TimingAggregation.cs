@@ -68,14 +68,20 @@ public static class TimingAggregation
             ? null
             : durations[Math.Max(0, (int)Math.Ceiling(durations.Length * 0.95) - 1)];
         var slowest = SelectSlowestWords(materialized, top)
-            .Select(word => new SlowWordTiming(word.Word, WordTimeMs(word)!.Value) { WorkSteps = word.WorkSteps }).ToArray();
+            .Select(word => new SlowWordTiming(word.Word, WordTimeMs(word)!.Value) { WorkSteps = WorkOf(word) }).ToArray();
         var stepLimited = materialized.Count(word => word.Outcome == "capped" || word.Morphology?.Capped == true);
         return new OverviewTiming(median, percentile95, slowest, stepLimited)
         {
             MeasuredWordCount = durations.Length,
-            Work = SummarizeWork(materialized.Select(word => word.WorkSteps)),
+            Work = SummarizeWork(materialized.Select(WorkOf)),
         };
     }
+
+    /// <summary>
+    /// A word's parser work, or null for a skipped word: it was never searched, so any stored count is not work
+    /// that was measured and must not enter a total, median or share.
+    /// </summary>
+    public static long? WorkOf(AssessedWord word) => word.Outcome == "skipped" ? null : word.WorkSteps;
 
     /// <summary>Adds up the work counts present and takes their per-word median and nearest-rank 95th percentile.</summary>
     public static WordWorkSummary SummarizeWork(IEnumerable<long?> workSteps)
@@ -99,6 +105,7 @@ public static class TimingAggregation
         ArgumentNullException.ThrowIfNull(rows);
         ArgumentNullException.ThrowIfNull(words);
         var byWord = rows.ToLookup(row => row.Word, StringComparer.Ordinal);
+        words = words.Where(word => word.Outcome != "skipped").ToArray();
         if (words.Any(word => word.WorkSteps is not { } total ||
             !byWord[word.Word].Any(row => row.Kind == "unattributed") ||
             byWord[word.Word].Any(row => row.WorkSteps is null ||
@@ -129,7 +136,7 @@ public static class TimingAggregation
         if (top < 0) throw new ArgumentOutOfRangeException(nameof(top));
         return words.Select(word => (Word: word, TimeMs: WordTimeMs(word)))
             .Where(item => item.TimeMs is not null)
-            .OrderByDescending(item => item.Word.WorkSteps ?? -1)
+            .OrderByDescending(item => WorkOf(item.Word) ?? -1)
             .ThenByDescending(item => item.TimeMs)
             .ThenBy(item => item.Word.Word, StringComparer.Ordinal)
             .Take(top).Select(item => item.Word).ToArray();
@@ -185,8 +192,8 @@ public static class TimingAggregation
         var wordTimes = new Dictionary<string, long>(StringComparer.Ordinal);
         foreach (var word in words)
             if (WordTimeNs(word) is { } time) wordTimes.TryAdd(word.Word, time);
-        var wordWork = words.Where(word => word.WorkSteps is not null).GroupBy(word => word.Word, StringComparer.Ordinal)
-            .ToDictionary(group => group.Key, group => group.First().WorkSteps, StringComparer.Ordinal);
+        var wordWork = words.Where(word => WorkOf(word) is not null).GroupBy(word => word.Word, StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => WorkOf(group.First()), StringComparer.Ordinal);
         var measured = rows.Where(row => wordTimes.ContainsKey(row.Word) &&
             HasExecutionEvidence(row.Attempts, row.ElapsedNs)).ToArray();
         var attribution = Attribute(wordTimes, measured);

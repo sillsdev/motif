@@ -12,7 +12,7 @@ Use this to focus repeatable Assessments on a linguist-chosen set of material. T
 motif selection set-default --project "C:\FieldWorks\Projects\Koro\Koro.fwdata" --name "Verb examples" --texts <textGuid> --add-words "mala,ma" --step-cap 200000 --time-mode estimated
 ```
 
-Use `--time-mode explicit --time-limit-ms <positive>` for a chosen time cap. `--time-mode estimated` rejects `--time-limit-ms`; `--step-cap none` stores no step or time cap. To replace an existing Selection, first read its revision with [selection show](cmd:selection%20show) and pass it as `--expected-revision`.
+Use `--time-mode explicit --time-limit-ms <positive>` for a chosen time safety net, in milliseconds on this computer. `--time-mode estimated` rejects `--time-limit-ms`; `--step-cap none` stores no step or time cap. To replace an existing Selection, first read its revision with [selection show](cmd:selection%20show) and pass it as `--expected-revision`.
 
 ## What it prints
 

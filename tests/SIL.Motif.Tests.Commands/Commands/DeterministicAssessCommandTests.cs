@@ -1091,7 +1091,7 @@ public sealed class DeterministicAssessCommandTests : IDisposable
         // The readings it found are real, but the search stopped early, so more may exist: Statistics agrees.
         Assert.Equal("analysed", response.Words[0].Outcome);
         Assert.True(response.Words[0].IsIncomplete);
-        Assert.Equal("INCOMPLETE — parsing did not finish (time limit)", response.Words[0].CompletionStatus);
+        Assert.Equal("INCOMPLETE — parsing did not finish (time safety net)", response.Words[0].CompletionStatus);
         Assert.StartsWith("1 search completed; 1 incomplete", response.CompletionSummary);
     }
 

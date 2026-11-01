@@ -12,12 +12,13 @@ Each word in the Assessment Selection has one record from the batch pass:
 |---|---|
 | `word` | The parsed surface form in NFC (composed Unicode). |
 | `outcome` | The outcome recorded by PanGloss, such as `analysed`, `no-analysis`, `capped`, `timed-out`, or `refused`. |
-| `elapsedMs` | Time on this computer for the batch word, when measured; machine load affects it. |
+| `workSteps` | The parser's work for the batch word, in PanGloss work steps, when recorded. It does not depend on how busy the computer was, so compare this figure between runs. It is not the analysis-attempt count. |
+| `elapsedMs` | Time on this computer for the batch word, when measured; machine load affects it, so use it only as a secondary figure. |
 | `signature` | PanGloss's opaque analysis signature, unchanged when it recorded one. |
 | `refusal` | For a refused word, the parser refusal `code` and its `reason`. |
 | `analysisCount` | The number of authoritative morphology records returned, when available. |
 
-`capped` and `timed-out` record a stopped batch search; they do not establish that no analysis exists. `refused` means PanGloss received the word and declined it. An `invalidShape` code records that the word could not be read with the project’s phonemes; missing character names are not inferred. Read other outcomes as the result the batch pass recorded, without treating timing as a verdict.
+`capped` (stopped at the work limit) and `timed-out` (stopped at the time safety net, which depends on how fast this computer is) record a stopped batch search; they do not establish that no analysis exists. `refused` means PanGloss received the word and declined it. An `invalidShape` code records that the word could not be read with the project’s phonemes; missing character names are not inferred. Read other outcomes as the result the batch pass recorded, without treating work or timing as a verdict.
 
 ## A trace in a one-word Handoff
 

@@ -75,7 +75,7 @@ A PanGloss run varies along at least five axes:
 | **Which words** | all texts; one text; every word carrying a manual analysis | Coverage over different denominators is not a delta |
 | **Which engine** | `foma`, `default` (HermitCrab) | Different questions answered — see §4 |
 | **What is collected** | parse outcomes only; outcomes plus per-object counters | A report may be unanswerable from the run |
-| **Limits** | per-word timeout, analysis-attempt cap, derived search-work cap | A timeout is *we stopped waiting*, not *it does not parse* |
+| **Limits** | per-word time safety net, analysis-attempt cap, derived search-work cap | A time stop is *we stopped waiting*, not *it does not parse* |
 | **Grammar** | the digest of the grammar actually parsed | The point of the comparison |
 
 Only the last should differ between a Baseline Assessment and a candidate's. **Everything else held equal is
@@ -213,20 +213,24 @@ architecture.
 
 A scope carries a per-word analysis-attempt cap, defaulting to **200,000 attempts**, and a time safety net.
 PanGloss distinguishes the two mechanisms and their outcomes: `--word-timeout-ms` sets a wall-clock
-bound and marks a word `timed_out`; `--step-cap` bounds analysis attempts and marks a word `capped`.
+bound and marks a word `timed_out`; `--step-cap` bounds analysis attempts and marks a word `capped`, which
+Motif reports as a stop at the work limit.
 PanGloss derives an inner search-work limit at 100 times the attempt limit. Both are distinct from a word
 that genuinely did not parse. The timeout and attempt limits are stored per word; PanGloss derives the
 work limit from the attempt limit.
 
 `--word-timeout-ms` is wall-clock inside PanGloss, so a busy machine stops slow words that finish when it is
-idle. After the batch, Motif runs each word stopped at the time limit again in one serial batch under ten times the limit (at
+idle. After the batch, Motif runs each word stopped at the time safety net again in one serial batch under ten times the limit (at
 most 50 words) and writes the retried rows over the stopped ones; the invocation evidence records the retry
 (`StoppedWordRetry`, including a failed retry and its reason) and keeps the first-pass files. A word that stops again stays stopped and still blocks
 Apply, so a runaway search is caught. A word that hit the attempt cap is not retried: load does not change it.
 Assess and Trial share this rule because both run through the one assessor.
 
 The limit is part of the scope rather than a run-time flag, because a coverage figure computed under a
-one-second cap is not comparable with one computed under ten.
+20,000-attempt cap is not comparable with one computed under 200,000. A word's cost is its `work_steps`, the
+parser's work reserved across all phases: a stop at the work limit and a count of work steps are the same on
+every computer, while wall time is only a secondary figure ("time on this computer") and the time safety net
+is not a measure of cost. Comparisons sum work steps over the same word list.
 
 ### An Assessment is not a PanGloss run — it is one measurement by one assessor
 

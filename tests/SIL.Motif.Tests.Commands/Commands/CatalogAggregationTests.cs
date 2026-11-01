@@ -139,6 +139,60 @@ public sealed class CatalogAggregationTests
     }
 
     [Fact]
+    public void ASkippedWordWithAStoredWorkCountIsNotInTheWorkMedianP95OrWordCount()
+    {
+        AssessedWord[] words =
+        [
+            new("a", "analysed", [], 10) { WorkSteps = 10 },
+            new("b", "analysed", [], 20) { WorkSteps = 20 },
+            new("c", "analysed", [], 30) { WorkSteps = 30 },
+            new("never", "skipped", [], 5) { WorkSteps = 1_000_000 },
+        ];
+
+        var overview = TimingAggregation.SummarizeWords(words, top: 4);
+        var timingCommandWork = TimingAggregation.SummarizeWork(words.Select(TimingAggregation.WorkOf));
+
+        foreach (var work in new[] { overview.Work, timingCommandWork })
+        {
+            Assert.Equal(3, work.MeasuredWordCount);
+            Assert.Equal(60, work.TotalWorkSteps);
+            Assert.Equal(20, work.MedianWorkSteps);
+            Assert.Equal(30, work.Percentile95WorkSteps);
+        }
+        Assert.Null(overview.SlowestWords.Single(word => word.Word == "never").WorkSteps);
+        Assert.Equal("c", overview.SlowestWords[0].Word);
+    }
+
+    [Fact]
+    public void ParserWorkIsAKindOfItsOwnThatAddsUpWithTheRulesAndSkippedWordsStayOut()
+    {
+        AssessedWord[] words =
+            [new("a", "analysed", [], 5) { WorkSteps = 10 }, new("never", "skipped", [], null) { WorkSteps = 500 }];
+        AssessmentObjectTiming[] rows =
+        [
+            WorkRow("morph_rule", "rule-r", "R", "a", 6),
+            new("parser", "parser:strata", "synthetic", "analysis", "parser", "a", null, null, 1_000_000L) { WorkSteps = 3 },
+            WorkRow("unattributed", "unattributed", "Other", "a", 1),
+        ];
+
+        var byObject = TimingAggregation.WorkStepsByObject(rows, words);
+
+        Assert.Equal(10, byObject.Sum(row => row.WorkSteps));
+        Assert.Equal(3, Assert.Single(byObject, row => row.Kind == "parser").WorkSteps);
+        Assert.Equal(1, TimingAggregation.SummarizeWork(words.Select(TimingAggregation.WorkOf)).MeasuredWordCount);
+    }
+
+    [Fact]
+    public void WorkStepsByObjectIgnoresASkippedWordThatHasNoObjectRows()
+    {
+        AssessedWord[] words = [new("a", "analysed", [], 5) { WorkSteps = 10 }, new("never", "skipped", [], null) { WorkSteps = 0 }];
+        AssessmentObjectTiming[] rows =
+            [WorkRow("morph_rule", "rule-r", "R", "a", 7), WorkRow("unattributed", "unattributed", "Other", "a", 3)];
+
+        Assert.Equal(7, Assert.Single(TimingAggregation.WorkStepsByObject(rows, words), row => !row.IsUnattributed).WorkSteps);
+    }
+
+    [Fact]
     public void TheSlowestWordsHaveTheMostWorkStepsThenTheMostTimeThenTheSpellingAndUncountedWordsComeLast()
     {
         var words = new[]

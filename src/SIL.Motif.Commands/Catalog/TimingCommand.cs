@@ -164,12 +164,12 @@ public static class TimingCommand
                 Attribution = aggregates.Attribution,
                 WorkStepAggregates = evidenceSet.TimingDetail.IsComplete
                     ? TimingAggregation.WorkStepsByObject(objectRows, selectedWords) : [],
-                Work = TimingAggregation.SummarizeWork(selectedWords.Select(word => word.WorkSteps)),
+                Work = TimingAggregation.SummarizeWork(selectedWords.Select(TimingAggregation.WorkOf)),
                 Words = selectedWords.Select(word => new TimingWordRow(word.Word, word.ElapsedMs,
                     IsStepLimited(word) ? TimingCompletion.StepLimit :
                     word.Outcome == WordOutcome.TimedOut.ToStoredOutcome() || word.Morphology?.TimedOut == true ? "Time limit" :
                     ParserRefusals.Of(word.Morphology, word.Outcome) is not null ? TimingCompletion.Refused : TimingCompletion.Finished)
-                    { ElapsedNs = word.ElapsedNs, WorkSteps = word.WorkSteps, Origin = word.Origin }).ToArray(),
+                    { ElapsedNs = word.ElapsedNs, WorkSteps = TimingAggregation.WorkOf(word), Origin = word.Origin }).ToArray(),
             });
         });
     }

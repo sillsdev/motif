@@ -911,6 +911,9 @@ public sealed class WorkspaceShellViewModelTests
 
         var request = Assert.Single(fake.AssessRequests);
         Assert.Null(request.PerWordLimitMs);
+        var shapes = string.Join(" ", Assert.Single(fake.UsageEntries, entry => entry.Command == "assess").ArgumentShape);
+        Assert.DoesNotContain("perWordLimitMs", shapes);
+        Assert.DoesNotContain("perWordTimeLimitSeconds", shapes);
     }
 
     [Fact]
@@ -930,6 +933,9 @@ public sealed class WorkspaceShellViewModelTests
         var request = Assert.Single(fake.AssessRequests);
         Assert.Equal(450, request.PerWordLimitMs);
         Assert.Equal(new StepCap(1234), request.Selection!.PerWordStepLimit);
+        var shapes = string.Join(" ", Assert.Single(fake.UsageEntries, entry => entry.Command == "assess").ArgumentShape);
+        Assert.Contains("perWordLimitMs", shapes);
+        Assert.DoesNotContain("perWordTimeLimitSeconds", shapes);
     }
 
     [Fact]

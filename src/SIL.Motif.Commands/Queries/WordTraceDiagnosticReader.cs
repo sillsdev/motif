@@ -144,9 +144,7 @@ public static class WordTraceDiagnosticReader
             var complete = document.Details.SearchCompleted;
             var reason = document.Details.InvalidShape
                 ? "The parser could not trace this word's shape."
-                : document.Details.Capped
-                    ? $"The parser stopped at a search limit after {document.Details.Steps:N0} analysis attempts."
-                    : document.Details.TimedOut ? "The parser stopped at its own time limit." : null;
+                : document.Details.LimitStopReason;
             var response = TraceDiagnosticProjection.Build(document, complete, reason, elapsedMs);
             return CommandOutcome<WordTraceResponse>.Success(response with
             {

@@ -321,7 +321,7 @@ public static class HandoffCommand
                             Fact(("invocationId", request.InvocationId))));
                     }
                     assessedWords = (parseAssessment.Words ?? []).Select(word =>
-                        new HandoffWriter.AssessedWordStatistics(word.Word, word.Outcome, word.ElapsedMs, word.RawSignature, word.Morphology))
+                        new HandoffWriter.AssessedWordStatistics(word.Word, word.Outcome, word.ElapsedMs, word.RawSignature, word.Morphology, word.WorkSteps))
                         .ToList();
                 }
                 else if (request.Assess)
@@ -350,7 +350,7 @@ public static class HandoffCommand
                             "The Assessment returned no identified ObjectTiming measurement for this Handoff."));
                     assessedWords = assessOutcome.Value.Words
                         .Select(word => new HandoffWriter.AssessedWordStatistics(
-                            word.Word, word.Outcome, word.ElapsedMs, word.RawSignature, word.Morphology))
+                            word.Word, word.Outcome, word.ElapsedMs, word.RawSignature, word.Morphology, word.WorkSteps))
                         .ToList();
                 }
                 else

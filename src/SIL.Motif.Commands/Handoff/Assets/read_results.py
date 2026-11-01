@@ -185,13 +185,18 @@ def word_records(records: list, surface_form: str) -> list:
 
 
 def slowest_words(records: list, count: int) -> list:
-    """The ``count`` word records with the largest ``elapsedMs``, descending.
+    """The ``count`` word records that cost the parser the most, descending.
 
-    A record with no ``elapsedMs`` (a word that was never measured) is excluded rather than
-    sorted arbitrarily against the ones that were.
+    Cost is ``workSteps``, the parser's work for the word, which does not depend on how busy the
+    computer was. A record with no ``workSteps`` is ranked by ``elapsedMs`` (time on this computer)
+    after every record that has work, and a record with neither is excluded rather than sorted
+    arbitrarily against the ones that were measured.
     """
-    timed = [record for record in records if isinstance(record.get("elapsedMs"), (int, float))]
-    return sorted(timed, key=lambda record: record["elapsedMs"], reverse=True)[:count]
+    worked = [record for record in records if isinstance(record.get("workSteps"), (int, float))]
+    timed = [record for record in records
+             if not isinstance(record.get("workSteps"), (int, float)) and isinstance(record.get("elapsedMs"), (int, float))]
+    return (sorted(worked, key=lambda record: record["workSteps"], reverse=True)
+            + sorted(timed, key=lambda record: record["elapsedMs"], reverse=True))[:count]
 
 
 # ---------------------------------------------------------------------------------------------
@@ -525,7 +530,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     word.add_argument("word")
 
     slowest = subcommands.add_parser(
-        "slowest", help="Show the N slowest parse-results.json words by elapsedMs.")
+        "slowest", help="Show the N parse-results.json words with the most workSteps (then by elapsedMs).")
     slowest.add_argument("n", type=int)
 
     trace = subcommands.add_parser(

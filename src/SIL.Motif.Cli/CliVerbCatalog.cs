@@ -340,6 +340,7 @@ public static class CliVerbCatalog
                 "[--replaces <assessment-id>] [--full-object-timing] " +
                 "[--time-limit-ms <ms>] [--step-cap <attempts|unbounded>] [--max-seconds <seconds>] [--summary [--offset <n>] [--limit <n>]] [--json]",
                 "The default per-word limit is 200,000 analysis attempts. PanGloss derives an inner search-work limit at 100 times that value.",
+                "Reaching either is a stop at the work limit, the same on every computer. --time-limit-ms is only a safety net, in milliseconds on this computer; --max-seconds is the whole run's time budget.",
             }),
 
         new CliVerbDescriptor(

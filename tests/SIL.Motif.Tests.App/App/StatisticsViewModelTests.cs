@@ -281,9 +281,9 @@ public sealed class StatisticsViewModelTests
     }
 
     [Theory]
-    [InlineData(true, false, "search limit")]
-    [InlineData(false, true, "time limit")]
-    [InlineData(true, true, "search and time limits")]
+    [InlineData(true, false, "work limit")]
+    [InlineData(false, true, "time safety net")]
+    [InlineData(true, true, "work limit and time safety net")]
     public async Task PartialFindingsRemainIncompleteAndLaterWordsCanComplete(bool capped, bool timedOut, string reason)
     {
         var (fake, statistics) = NewViewModel();
@@ -297,8 +297,8 @@ public sealed class StatisticsViewModelTests
         Assert.Equal("Search completed", statistics.Rows[1].CompletionStatus);
         Assert.Equal(reason switch
         {
-            "search limit" => "Stopped at a search limit · Raise the analysis attempt limit under More.",
-            "time limit" => "Ran out of time · Increase Seconds per word.",
+            "work limit" => "Stopped at a search limit · Raise the analysis attempt limit under More.",
+            "time safety net" => "Ran out of time · Increase Seconds per word.",
             _ => "Stopped at a search limit and ran out of time · Raise the analysis attempt limit under More " +
                 "or increase Seconds per word.",
         }, statistics.IncompleteDetail);
@@ -311,7 +311,7 @@ public sealed class StatisticsViewModelTests
         var words = new AssessWordsViewModel();
         words.Load(
         [
-            new AssessmentWordResult("slow", "timed-out", true, "INCOMPLETE — parsing did not finish (time limit)", 1000, null),
+            new AssessmentWordResult("slow", "timed-out", true, "INCOMPLETE — parsing did not finish (time safety net)", 1000, null),
             new AssessmentWordResult("quick", "analysed", false, "Search completed", 3, null),
         ]);
         Func<string, AssessWordRowViewModel?> assessmentLookup = words.Find;

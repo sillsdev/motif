@@ -161,6 +161,24 @@ public sealed class HandoffWriterTests : IDisposable
     }
 
     [Fact]
+    public void ASkippedWordHasNoWorkStepsInItsRecordButASearchedWordKeepsThem()
+    {
+        var root = Path.Combine(_root, "handoff-skipped-work");
+        Directory.CreateDirectory(root);
+
+        HandoffWriter.WriteAssessmentJson(root,
+        [
+            new HandoffWriter.AssessedWordStatistics("never", "skipped", null, null, null, 0),
+            new HandoffWriter.AssessedWordStatistics("tried", "analysed", 3, null, null, 120),
+        ], null);
+
+        using var assessment = JsonDocument.Parse(File.ReadAllText(Path.Combine(root, "parse-results.json")));
+        var records = assessment.RootElement.EnumerateArray().ToArray();
+        Assert.False(records[0].TryGetProperty("workSteps", out _));
+        Assert.Equal(120, records[1].GetProperty("workSteps").GetInt64());
+    }
+
+    [Fact]
     public void SingleWordHandoffNeverWritesZeroForAnUnmeasuredHostElapsedTime()
     {
         using var seeded = NewSeededScratch();

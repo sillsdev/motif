@@ -124,6 +124,52 @@ public sealed class AssessCountsAndPagingTests
     }
 
     [Fact]
+    public void AConciseRowCarriesTheWordsWorkStepsAndWhichLimitStoppedIt()
+    {
+        var words = new[]
+        {
+            Word("kaon", "analysed", Identified) with { WorkSteps = 1_200 },
+            Word("big", "capped") with { WorkSteps = 20_000_000 },
+            Word("slow", "timed-out"),
+        };
+
+        var rows = AssessSummary.Page(new AssessCommandResponse(null!, null!, [], "") { Words = words },
+            0, 25, false)["words"]!.AsArray();
+
+        Assert.Equal(1_200, rows[0]!["workSteps"]!.GetValue<long>());
+        Assert.Null(rows[0]!["stoppedBy"]);
+        Assert.Equal("work-limit", rows[1]!["stoppedBy"]!.GetValue<string>());
+        Assert.Equal(20_000_000, rows[1]!["workSteps"]!.GetValue<long>());
+        Assert.Equal("time-safety-net", rows[2]!["stoppedBy"]!.GetValue<string>());
+        Assert.Null(rows[2]!["workSteps"]);
+    }
+
+    [Fact]
+    public void AStoppedWordNamesTheLimitFromItsOutcomeAndEvidenceTogetherAndASkippedWordHasNoWork()
+    {
+        ParseWordEvidence Evidence(bool capped, bool timedOut) =>
+            new("s", 0, "w", 1, capped, timedOut, false, [], []);
+        var words = new[]
+        {
+            Word("a", "analysed") with { Morphology = Evidence(true, false), WorkSteps = 9 },
+            Word("b", "analysed") with { Morphology = Evidence(false, true) },
+            Word("c", "capped") with { Morphology = Evidence(false, true) },
+            Word("d", "analysed") with { Morphology = Evidence(true, true) },
+            Word("e", "skipped") with { WorkSteps = 0 },
+        };
+
+        var rows = AssessSummary.Page(new AssessCommandResponse(null!, null!, [], "") { Words = words },
+            0, 25, false)["words"]!.AsArray();
+
+        Assert.Equal("work-limit", rows[0]!["stoppedBy"]!.GetValue<string>());
+        Assert.Equal("time-safety-net", rows[1]!["stoppedBy"]!.GetValue<string>());
+        Assert.Equal("both", rows[2]!["stoppedBy"]!.GetValue<string>());
+        Assert.Equal("both", rows[3]!["stoppedBy"]!.GetValue<string>());
+        Assert.Null(rows[4]!["stoppedBy"]);
+        Assert.Null(rows[4]!["workSteps"]);
+    }
+
+    [Fact]
     public void ADetailedPageAddsReadingsForTheRowsOfThatPageOnly()
     {
         var page = AssessSummary.Page(Big(100), offset: 0, limit: 5, detailed: true);

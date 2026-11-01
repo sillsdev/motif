@@ -28,7 +28,7 @@ Then inspect the trace as diagnostic evidence. Do not invent an association betw
 | `provenance.grammar` | Captured grammar name/source kind/hash/hash semantics. |
 | `provenance.writingSystems` | Ordered vernacular and analysis writing-system tags. |
 | `hostCapture` | Optional Motif capture evidence; normally null in producer-only output. |
-| `search` | Completion flags, parser step count, and parser elapsed nanoseconds. |
+| `search` | Completion flags, `steps` (analysis attempts), `workSteps` (the parser's total work, when recorded), and parser elapsed nanoseconds. |
 | `result` | Existing signature, guessed flag, and ordered analyses. |
 | `categories` | Counters and work steps by category, including unattributed work. |
 | `trace` | The full event tree, or null when no tree was recorded. |
@@ -65,7 +65,7 @@ Template output `slots` retain slot index, identity, name, status and selected r
 
 ### Timing and counts
 
-`search.elapsedNs` measures the parser search. It excludes process startup and grammar loading. `hostCapture.wallElapsedMs`, when present, records Motif's elapsed parser invocation, including those costs. Missing overall time is unknown, not zero.
+`search.workSteps` is the parser's total work for the word across all phases. It is deterministic for a grammar, word and PanGloss version, so it is the figure to compare between runs; `search.steps` counts analysis attempts, which is a different count and the one the attempt limit bounds. `search.elapsedNs` is time on this computer, a secondary figure that machine load changes: it measures the parser search and excludes process startup and grammar loading. `hostCapture.wallElapsedMs`, when present, records Motif's elapsed parser invocation (also time on this computer), including those costs. Missing overall time is unknown, not zero.
 
 `hostCapture.lexiconEntryCount`, when present alongside `hostCapture.baseline`, counts lexical entries in the exact Baseline or Trial copy used for the trace. Zero is measured; an absent count is unknown. Motif may explain a completed, unparsed valid word with that frozen empty-lexicon fact. It never uses the current project's entries to explain a saved diagnostic or replaces an invalid-shape refusal or an incomplete search with an empty-lexicon diagnosis.
 

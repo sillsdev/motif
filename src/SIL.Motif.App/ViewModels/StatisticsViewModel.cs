@@ -143,7 +143,7 @@ public sealed partial class StatisticsViewModel : ObservableObject
             var stopped = ScopeRows.Where(row => row.IsIncomplete).ToArray();
             if (stopped.Length == 0)
                 return MotifAppStrings.StatsNoWordStopped;
-            var stepLimit = stopped.Any(row => row.CompletionStatus?.Contains("search", StringComparison.OrdinalIgnoreCase) == true);
+            var stepLimit = stopped.Any(row => row.CompletionStatus?.Contains("work limit", StringComparison.OrdinalIgnoreCase) == true);
             var timeLimit = stopped.Any(row => row.CompletionStatus?.Contains("time", StringComparison.OrdinalIgnoreCase) == true);
             return (stepLimit, timeLimit) switch
             {

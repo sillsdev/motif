@@ -14,7 +14,7 @@ motif selection show --project "C:\FieldWorks\Projects\Koro\Koro.fwdata" --json
 
 ## What it prints
 
-The command prints the saved Selection name, Text ids, added words, step cap, and whether time is estimated or explicit. JSON returns the same saved policy and its opaque revision.
+The command prints the saved Selection name, Text ids, added words, work limit (the step cap, in analysis attempts), and whether the time safety net is estimated or explicit. JSON returns the same saved policy and its opaque revision.
 
 ## Related commands
 

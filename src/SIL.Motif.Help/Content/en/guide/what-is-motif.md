@@ -1,6 +1,6 @@
 # What Motif does
 
-Motif tells you how well the FieldWorks parser handles your words: which ones parse, which of your approved analyses the grammar still builds, how long each word takes, and what the grammar check found. You can also look at one word closely and collect corrections to its analyses.
+Motif tells you how well the FieldWorks parser handles your words: which ones parse, which of your approved analyses the grammar still builds, how much parser work each word takes, and what the grammar check found. You can also look at one word closely and collect corrections to its analyses.
 
 Motif reads your saved FieldWorks project. It writes nothing to it until you open **Review changes** and choose **Apply to FieldWorks project**. FieldWorks is where you edit the project.
 

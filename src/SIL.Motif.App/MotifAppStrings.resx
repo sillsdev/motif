@@ -4156,16 +4156,16 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <comment>Accessible name of the button that copies a file path; {0} is the file path.</comment>
   </data>
   <data name="MotifApp.StatsIncompleteBoth" xml:space="preserve">
-    <value>INCOMPLETE — parsing did not finish (search and time limits)</value>
-    <comment>Completion status of a word whose parse stopped at both the search limit and the time limit.</comment>
+    <value>INCOMPLETE — parsing did not finish (work limit and time safety net)</value>
+    <comment>Completion status of a word whose parse stopped at both the work limit and the time safety net.</comment>
   </data>
   <data name="MotifApp.StatsIncompleteSearch" xml:space="preserve">
-    <value>INCOMPLETE — parsing did not finish (search limit)</value>
-    <comment>Completion status of a word whose parse stopped at the search limit.</comment>
+    <value>INCOMPLETE — parsing did not finish (work limit)</value>
+    <comment>Completion status of a word whose parse stopped at the work limit.</comment>
   </data>
   <data name="MotifApp.StatsIncompleteTime" xml:space="preserve">
-    <value>INCOMPLETE — parsing did not finish (time limit)</value>
-    <comment>Completion status of a word whose parse stopped at the time limit.</comment>
+    <value>INCOMPLETE — parsing did not finish (time safety net)</value>
+    <comment>Completion status of a word whose parse stopped at the time safety net.</comment>
   </data>
   <data name="MotifApp.StatsSearchCompleted" xml:space="preserve">
     <value>Search completed</value>
@@ -4184,16 +4184,16 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <comment>Short completion in the statistics table: no result.</comment>
   </data>
   <data name="MotifApp.StatsSearchAndTimeLimits" xml:space="preserve">
-    <value>Search and time limits</value>
-    <comment>Short completion in the statistics table: the parse stopped at both limits.</comment>
+    <value>Work limit and time safety net</value>
+    <comment>Short completion in the statistics table: the parse stopped at both the work limit and the time safety net.</comment>
   </data>
   <data name="MotifApp.StatsSearchLimit" xml:space="preserve">
-    <value>Search limit</value>
-    <comment>Short completion in the statistics table: the parse stopped at the search limit.</comment>
+    <value>Work limit</value>
+    <comment>Short completion in the statistics table: the parse stopped at the work limit.</comment>
   </data>
   <data name="MotifApp.StatsTimeLimit" xml:space="preserve">
-    <value>Time limit</value>
-    <comment>Short completion in the statistics table: the parse stopped at the time limit.</comment>
+    <value>Time safety net</value>
+    <comment>Short completion in the statistics table: the parse stopped at the time safety net.</comment>
   </data>
   <data name="MotifApp.StatsGroupByWord" xml:space="preserve">
     <value>By word</value>

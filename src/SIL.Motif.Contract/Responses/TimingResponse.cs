@@ -127,7 +127,8 @@ public sealed record TimingAggregateRow(
     /// <summary>The saved grammar scope required by a grammar-local key.</summary>
     public string? Scope { get; init; }
     [JsonIgnore]
-    public TraceTimingKey TimingKey => new(Kind, Key) { IdentityQuality = IdentityQuality, Scope = Scope };
+    public TraceTimingKey TimingKey => new(Kind, ObjectIdentity.CanonicalKey(Key, IdentityQuality) ?? Key)
+        { IdentityQuality = IdentityQuality, Scope = Scope };
 
     /// <summary>
     /// How many times the parser called objects of this one kind, in both directions; null when the kind does

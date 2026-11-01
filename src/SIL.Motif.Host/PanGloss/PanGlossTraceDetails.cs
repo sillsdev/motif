@@ -29,6 +29,23 @@ public sealed record PanGlossTraceDetails(
     /// <summary>Whether the search explored everything it meant to.</summary>
     public bool ReportedCompleted { get; init; } = true;
     public bool SearchCompleted => ReportedCompleted && !Capped && !TimedOut && !InvalidShape;
+
+    /// <summary>
+    /// Which limit ended the search, in words: the work limit counts analysis attempts (<see cref="Steps"/>) and,
+    /// when recorded, work steps (<see cref="WorkSteps"/>), which are different counts; the time safety net depends
+    /// on how fast this computer is. <see langword="null"/> when neither limit stopped it.
+    /// </summary>
+    public string? LimitStopReason => (Capped, TimedOut) switch
+    {
+        (true, false) => $"The parser stopped at the work limit after {Steps:N0} analysis attempts{WorkStepsClause}.",
+        (true, true) => $"The parser stopped at the work limit after {Steps:N0} analysis attempts{WorkStepsClause}, " +
+            "and the time safety net, which depends on how fast this computer is, also fired.",
+        (false, true) => "The parser stopped at the time safety net, which depends on how fast this computer is.",
+        _ => null,
+    };
+
+    // A zero is not a measured count of work, so it is left out rather than printed.
+    private string WorkStepsClause => WorkSteps is > 0 and var work ? $" and {work:N0} work steps" : string.Empty;
 }
 
 /// <summary>

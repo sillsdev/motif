@@ -204,7 +204,7 @@ public static class CommandTextRenderer
             {
                 var evidence = item.Morphology;
                 var limits = string.Join(" and ", new[]
-                    { evidence.Capped ? "step limit" : null, evidence.TimedOut ? "time limit" : null }.OfType<string>());
+                    { evidence.Capped ? "work limit" : null, evidence.TimedOut ? "time safety net" : null }.OfType<string>());
                 var completion = evidence.Capped || evidence.TimedOut
                     ? $"INCOMPLETE — parsing did not finish ({limits})"
                     : evidence.InvalidShape ? "Not attempted: invalid shape" : "Search completed";

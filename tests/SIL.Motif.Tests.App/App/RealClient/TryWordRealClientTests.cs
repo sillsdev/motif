@@ -62,6 +62,6 @@ public sealed class TryWordRealClientTests(PristineProjectFixture pristine)
         Assert.True(capped.Succeeded, capped.Refusal?.Message);
         Assert.False(capped.Value!.Complete);
         Assert.Equal("incomplete", capped.Value.SearchStatus);
-        Assert.Contains("search limit", capped.Value.StopReason, StringComparison.Ordinal);
+        Assert.Contains("work limit", capped.Value.StopReason, StringComparison.Ordinal);
     }
 }

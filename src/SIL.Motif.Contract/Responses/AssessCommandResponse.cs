@@ -82,11 +82,12 @@ public sealed record AssessmentWordResult(
     /// </summary>
     public long? WorkSteps { get; init; }
     /// <summary>
-    /// Which limit ended a stopped word's search: <see cref="StopLimit.Work"/> for the deterministic step or work
-    /// cap, <see cref="StopLimit.Time"/> for the wall-clock safety net, or <see langword="null"/> for a word that
-    /// was not stopped.
+    /// Which limit ended a stopped word's search, from its outcome and the parser's evidence together:
+    /// <see cref="StopLimit.Work"/> for the deterministic step or work cap, <see cref="StopLimit.Time"/> for the
+    /// wall-clock safety net, <see cref="StopLimit.Both"/> when both fired, or <see langword="null"/> for a word
+    /// that was not stopped.
     /// </summary>
-    public string? StoppedBy => StopLimit.FromOutcome(Outcome);
+    public string? StoppedBy => StopLimit.From(Outcome, Morphology);
     /// <summary>The run that measured this word; a composite result can have a different origin per word.</summary>
     public WordMeasurementOrigin? Origin { get; init; }
     /// <summary>How many chosen Text occurrences this word represents in the run's resolved Selection.</summary>
@@ -140,13 +141,19 @@ public static class StopLimit
     public const string Work = "work-limit";
 
     /// <summary>The per-word wall-clock safety net stopped the word; it depends on this computer's speed.</summary>
-    public const string Time = "time-limit";
+    public const string Time = "time-safety-net";
 
-    /// <summary>Maps a stored word outcome to the limit that stopped it, or null when it was not stopped.</summary>
-    public static string? FromOutcome(string outcome) => outcome switch
+    /// <summary>The work limit and the time safety net both fired inside the word's search.</summary>
+    public const string Both = "both";
+
+    /// <summary>
+    /// Maps a stored word outcome and the parser's evidence to the limits that stopped it, or null when it was not
+    /// stopped. A word that returned readings before a limit fired still counts as stopped.
+    /// </summary>
+    public static string? From(string outcome, ParseWordEvidence? morphology)
     {
-        "capped" => Work,
-        "timed-out" => Time,
-        _ => null,
-    };
+        var work = outcome == "capped" || morphology is { Capped: true };
+        var time = outcome == "timed-out" || morphology is { TimedOut: true };
+        return work && time ? Both : work ? Work : time ? Time : null;
+    }
 }

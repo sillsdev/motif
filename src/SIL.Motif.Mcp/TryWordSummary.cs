@@ -32,9 +32,9 @@ internal static class TryWordSummary
             ["parsed"] = response.Parsed,
             ["complete"] = response.Complete,
             ["searchStatus"] = response.SearchStatus,
-            ["elapsedMs"] = response.ElapsedMs,
-            ["attempts"] = response.ParserSteps,
             ["workSteps"] = response.TotalParserWorkSteps,
+            ["attempts"] = response.ParserSteps,
+            ["elapsedMs"] = response.ElapsedMs,
         };
         if (response.LowercaseFailure is { } lowercaseFailure) result["lowercaseFailure"] = lowercaseFailure;
         if (response.Lowercase is { } lowercase)
