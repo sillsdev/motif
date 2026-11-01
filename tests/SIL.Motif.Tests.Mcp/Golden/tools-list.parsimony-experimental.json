@@ -420,8 +420,6 @@
         "direction",
         "input",
         "output",
-        "left",
-        "right",
         "project"
       ],
       "additionalProperties": false

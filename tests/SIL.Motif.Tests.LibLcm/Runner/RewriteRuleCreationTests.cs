@@ -73,7 +73,33 @@ public sealed class RewriteRuleCreationTests(PristineProjectFixture pristine)
     }
 
     [Fact]
-    public void IncompleteRegularRuleCannotBeEnabled()
+    public void RegularRuleWithoutARightHandSideCannotBeEnabled()
+    {
+        using var cache = pristine.NewScratch();
+        var data = cache.LangProject.PhonologicalDataOA;
+        var existing = AddExistingRule(cache, "Existing rule");
+        var ids = BuildIds();
+        var proposal = BuildProposal(cache, data, existing, ids);
+        var activation = proposal.Operations.Single(operation =>
+            operation.Kind == PhSegmentRuleDisabledOperationKinds.SetDisabled);
+        var preceding = proposal.Operations.Where(operation =>
+            operation.OperationId != activation.OperationId &&
+            operation.Kind != PhRegularRuleRightHandSidesOperationKinds.Create).ToArray();
+        var enabledProposal = new Proposal(
+            proposal.ContractVersions,
+            proposal.ProposalId,
+            proposal.Requires,
+            [.. preceding,
+                new OperationEnvelope(activation.OperationId, activation.Kind, target: ids.Rule,
+                    after: JsonSerializer.SerializeToElement(new { value = false }),
+                    dependsOn: preceding.Select(operation => new OperationDependency(operation.OperationId)).ToArray())]);
+
+        var exception = Assert.Throws<InvalidOperationException>(() => ScratchDryRun.Of(cache, enabledProposal));
+        Assert.Contains("right-hand side", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void RegularRuleWithARightHandSideButNoContextsCanBeEnabled()
     {
         using var cache = pristine.NewScratch();
         var data = cache.LangProject.PhonologicalDataOA;
@@ -93,8 +119,7 @@ public sealed class RewriteRuleCreationTests(PristineProjectFixture pristine)
                     after: JsonSerializer.SerializeToElement(new { value = false }),
                     dependsOn: preceding.Select(operation => new OperationDependency(operation.OperationId)).ToArray())]);
 
-        var exception = Assert.Throws<InvalidOperationException>(() => ScratchDryRun.Of(cache, enabledProposal));
-        Assert.Contains("left and right contexts", exception.Message, StringComparison.Ordinal);
+        ScratchDryRun.Of(cache, enabledProposal);
     }
 
     [Fact]

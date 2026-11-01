@@ -56,8 +56,8 @@ public static class AuthorPhonologicalRuleIntentParser
             "output", "left", "right", "placement");
         var input = Items(authored, "input");
         var output = Items(authored, "output");
-        var left = AuthorEnvironmentIntentParser.Contexts(authored, "left");
-        var right = AuthorEnvironmentIntentParser.Contexts(authored, "right");
+        var left = OptionalContexts(authored, "left");
+        var right = OptionalContexts(authored, "right");
         RequireContextLength(left, "left");
         RequireContextLength(right, "right");
         return new(SoundSystemIntentParsing.Text(authored, "name"), Direction(authored), input, output,
@@ -104,8 +104,12 @@ public static class AuthorPhonologicalRuleIntentParser
 
     private static void RequireContextLength(EnvironmentContext[] contexts, string side)
     {
-        if (contexts.Length is 0 or > MaximumSequenceMembers)
+        if (contexts.Length > MaximumSequenceMembers)
             throw new ContractParseException(
-                $"The {side} context must contain between 1 and {MaximumSequenceMembers} simple items.");
+                $"The {side} context must contain at most {MaximumSequenceMembers} simple items.");
     }
+
+    /// <summary>A rule's left or right context may be absent, as LibLCM and FieldWorks' loader allow.</summary>
+    private static EnvironmentContext[] OptionalContexts(JsonElement authored, string name) =>
+        authored.TryGetProperty(name, out _) ? AuthorEnvironmentIntentParser.Contexts(authored, name) : [];
 }

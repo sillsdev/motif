@@ -20,7 +20,7 @@ public static class AuthorPhonologicalRuleComposer
         ArgumentNullException.ThrowIfNull(intent);
         SoundSystemAuthoring.RequireName(intent.Name);
         if (intent.Input is null || intent.Output is null || intent.Left is null || intent.Right is null)
-            throw new InvalidOperationException("Rule input, output, left context and right context must be supplied.");
+            throw new InvalidOperationException("Rule input, output, left context and right context must be supplied; a context with no items is empty.");
         if (intent.Input.Count > 1 || intent.Output.Count > 1)
             throw new InvalidOperationException("A simple rewrite rule supports at most one input and one output item.");
         RequireContextLength(intent.Left, "left");
@@ -96,6 +96,7 @@ public static class AuthorPhonologicalRuleComposer
     private static void CreateRuleContext(SoundSystemAuthoring.Builder builder, CanonicalId dataId,
         CanonicalId rhsId, IReadOnlyList<ResolvedContext> contexts, string createKind)
     {
+        if (contexts.Count == 0) return;
         if (contexts.Count == 1)
         {
             CreateOwnedSimpleContext(builder, rhsId, contexts[0], createKind);
@@ -288,8 +289,8 @@ public static class AuthorPhonologicalRuleComposer
 
     private static void RequireContextLength(IReadOnlyCollection<EnvironmentContext> contexts, string side)
     {
-        if (contexts.Count is 0 or > 8)
-            throw new InvalidOperationException($"The {side} context must contain between 1 and 8 simple items.");
+        if (contexts.Count > 8)
+            throw new InvalidOperationException($"The {side} context must contain at most 8 simple items.");
     }
 
     private static OperationEnvelope AddDependencies(List<OperationEnvelope> operations,

@@ -9,11 +9,10 @@ internal static class RegularRuleActivationGuard
         if (rule is not IPhRegularRule regularRule)
             return;
 
-        if (regularRule.RightHandSidesOS.Count == 0 || regularRule.RightHandSidesOS.Any(rhs =>
-                rhs.LeftContextOA is null || rhs.RightContextOA is null))
+        if (regularRule.RightHandSidesOS.Count == 0)
         {
             throw new InvalidOperationException(
-                "A regular rule cannot be enabled until it has a right-hand side with left and right contexts.");
+                "A regular rule cannot be enabled until it has a right-hand side; its left and right contexts are optional.");
         }
 
         RuleContextSemanticValidator.ValidateRule(rule.Owner as IPhPhonData ??

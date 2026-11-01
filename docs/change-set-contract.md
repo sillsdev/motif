@@ -144,8 +144,9 @@ Rewrite-rule creation is deliberately narrow. `grammar/phPhonData/createPhonRule
 nonempty; `grammar/phRegularRule/createRightHandSides` creates its owned right-hand sides. A new rule
 starts disabled. Its `Name` is authored per writing system and `Direction` accepts only 0
 (`LeftToRightIterative`), 1 (`RightToLeftIterative`), or 2 (`Simultaneous`). Setting `Disabled` to
-false, including through `clear`, is refused until the rule has at least one right-hand side and every
-right-hand side has both left and right contexts. Context construction is a separate family.
+false, including through `clear`, is refused until the rule has at least one right-hand side. A right-hand
+side's left and right contexts are each optional, as in LibLCM and FieldWorks' HCLoader (an absent context is
+no constraint on that side). Context construction is a separate family.
 
 Part-of-speech creation is narrow too. `lists/cmPossibilityList/createPossibilities` creates a
 `PartOfSpeech` (closed payload `{ "class": "PartOfSpeech" }`) at the top of the project's parts-of-speech
@@ -773,8 +774,8 @@ selects exactly one project phoneme, natural class, or boundary marker through i
 `PhSequenceContext.Members` is ordered and contains one to eight simple contexts; nested sequences,
 cycles, and reuse of the same context identity within or across a rule are refused. The rule's
 `StrucDesc` input and each RHS's `StrucChange` output remain ordered sequences of simple contexts.
-An empty input represents insertion, and an empty output represents deletion. An RHS has one left
-and one right context, each a supported simple context or a sequence context. These field positions
+An empty input represents insertion, and an empty output represents deletion. An RHS has at most one left
+and at most one right context, each a supported simple context or a sequence context, or absent. These field positions
 remain part of identity because LibLCM derives alpha-variable names by walking them, even though this
 slice does not support alpha variables.
 

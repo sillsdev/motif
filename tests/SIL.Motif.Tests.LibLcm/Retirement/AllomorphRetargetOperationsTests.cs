@@ -602,7 +602,7 @@ public sealed class AllomorphRetargetOperationsTests : IDisposable
     }
 
     [Fact]
-    public void RuleComposerRefusesAnEnvironmentWithOneEmptySide()
+    public void RuleComposerAllowsAnEnvironmentWithOneEmptySide()
     {
         var input = AddPhoneme("r");
         var output = AddPhoneme("t");
@@ -613,11 +613,12 @@ public sealed class AllomorphRetargetOperationsTests : IDisposable
         var naturalClass = classOperations.Single(item => item.Kind == PhPhonDataNaturalClassesOperationKinds.Create)
             .EntityId!.Value;
 
-        var refused = Assert.Throws<InvalidOperationException>(() => AuthorPhonologicalRuleComposer.Build(_cache,
+        var operations = AuthorPhonologicalRuleComposer.Build(_cache,
             new("r after a vowel", PhonologicalRuleDirection.Simultaneous,
-                [new(Phoneme: input)], [new(Phoneme: output)], [new(NaturalClass: naturalClass)], [])));
+                [new(Phoneme: input)], [new(Phoneme: output)], [new(NaturalClass: naturalClass)], []));
 
-        Assert.Contains("right context must contain between 1 and 8", refused.Message, StringComparison.Ordinal);
+        Assert.Contains(operations, item => item.Kind == PhSegRuleRHSLeftContextOperationKinds.Create);
+        Assert.DoesNotContain(operations, item => item.Kind == PhSegRuleRHSRightContextOperationKinds.Create);
     }
 
     [Fact]

@@ -751,8 +751,6 @@
         "direction",
         "input",
         "output",
-        "left",
-        "right",
         "project"
       ],
       "additionalProperties": false
@@ -2055,9 +2053,7 @@
                       "name",
                       "direction",
                       "input",
-                      "output",
-                      "left",
-                      "right"
+                      "output"
                     ]
                   },
                   "citation": {

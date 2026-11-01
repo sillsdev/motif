@@ -1009,8 +1009,8 @@ internal static class AgentTools
                 "left-to-right", "right-to-left", "simultaneous"), true),
             ("input", changedItems.DeepClone().AsObject(), true),
             ("output", changedItems.DeepClone().AsObject(), true),
-            ("left", contexts.DeepClone().AsObject(), true),
-            ("right", contexts.DeepClone().AsObject(), true),
+            ("left", contexts.DeepClone().AsObject(), false),
+            ("right", contexts.DeepClone().AsObject(), false),
             ("placement", Schema.Object(("after", Schema.String("Adjacent existing rule before the insertion gap."), false),
                 ("before", Schema.String("Adjacent existing rule after the insertion gap."), false)), false));
     }
