@@ -265,9 +265,62 @@ public sealed class EditDerivationalAffixRestrictionComposerTests : IDisposable
         }
     }
 
+    [Fact]
+    public void TheToClassIsSetAndClearedOnTheDerivationalInfoAndOmissionLeavesItUnchanged()
+    {
+        var (_, msa) = DerivationalPrefix("mi");
+        var derivedClass = AddInflectionClass(_cache, _derivedCategory, "Derived class");
+
+        var set = EditDerivationalAffixRestrictionComposer.Build(_cache, new(msa, ToInflectionClass: derivedClass));
+
+        var setOperation = Assert.Single(set);
+        Assert.Equal(MoDerivAffMsaToInflectionClassOperationKinds.SetToInflectionClass, setOperation.Kind);
+        ApplyOps(_cache, set);
+        Assert.Equal(derivedClass.ToGuid(), Get<IMoDerivAffMsa>(_cache, msa).ToInflectionClassRA!.Guid);
+        Assert.Empty(EditDerivationalAffixRestrictionComposer.Build(_cache, new(msa, ToInflectionClass: derivedClass)));
+        Assert.Empty(EditDerivationalAffixRestrictionComposer.Build(_cache, new(msa, FromExceptionFeatures: [])));
+        Assert.NotNull(Get<IMoDerivAffMsa>(_cache, msa).ToInflectionClassRA);
+
+        var clear = EditDerivationalAffixRestrictionComposer.Build(_cache, new(msa, ClearToInflectionClass: true));
+        var clearOperation = Assert.Single(clear);
+        Assert.Equal(MoDerivAffMsaToInflectionClassOperationKinds.ClearToInflectionClass, clearOperation.Kind);
+        ApplyOps(_cache, clear);
+        Assert.Null(Get<IMoDerivAffMsa>(_cache, msa).ToInflectionClassRA);
+        Assert.Empty(EditDerivationalAffixRestrictionComposer.Build(_cache, new(msa, ClearToInflectionClass: true)));
+    }
+
+    [Fact]
+    public void AToClassOfAnotherCategoryOrAnUnknownIdIsRefused()
+    {
+        var foreign = AddInflectionClass(_cache, _category, "Source category class");
+        var (_, msa) = DerivationalPrefix("mi");
+
+        var failure = Assert.Throws<InvalidOperationException>(() =>
+            EditDerivationalAffixRestrictionComposer.Build(_cache, new(msa, ToInflectionClass: foreign)));
+        Assert.Contains("does not belong to the category", failure.Message, StringComparison.Ordinal);
+        Assert.Throws<InvalidOperationException>(() =>
+            EditDerivationalAffixRestrictionComposer.Build(_cache, new(msa, ToInflectionClass: CanonicalId.Mint())));
+    }
+
+    [Fact]
+    public void ToClassSetAndClearCannotBeCombinedAndParseAsClosedFields()
+    {
+        var (_, msa) = DerivationalPrefix("mi");
+        var any = AddInflectionClass(_cache, _derivedCategory, "Derived class");
+        Assert.Throws<InvalidOperationException>(() => EditDerivationalAffixRestrictionComposer.Build(_cache,
+            new(msa, ToInflectionClass: any, ClearToInflectionClass: true)));
+        using var json = JsonDocument.Parse($$"""{"msa":"{{msa.Value}}","toInflectionClass":"{{any.Value}}"}""");
+        Assert.Equal(any, EditDerivationalAffixRestrictionIntentParser.Parse(json.RootElement).ToInflectionClass);
+        using var both = JsonDocument.Parse(
+            $$"""{"msa":"{{msa.Value}}","toInflectionClass":"{{any.Value}}","clearToInflectionClass":true}""");
+        Assert.Throws<ContractParseException>(() => EditDerivationalAffixRestrictionIntentParser.Parse(both.RootElement));
+    }
+
+    private CanonicalId _derivedCategory;
+
     private (CanonicalId Entry, CanonicalId Msa) DerivationalPrefix(string form)
     {
-        var derived = AddCategory(_cache, "Adjective");
+        var derived = _derivedCategory = AddCategory(_cache, "Adjective");
         var proposal = ApplyOps(_cache, AuthorLexicalEntryComposer.Build(_cache, new AuthorLexicalEntryIntent(form, Vern(_cache),
             MorphType(MoMorphTypeTags.kguidMorphPrefix), form, Anal(_cache),
             new LexicalEntryMsa(LexicalEntryMsaKind.Derivational, _category, derived))));

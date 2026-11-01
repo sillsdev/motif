@@ -22,8 +22,11 @@ internal sealed class EditDerivationalAffixRestrictionDefinition : ComposerDefin
         Field.Id("msa", IdRole.Target, required: true),
         Field.Id("fromInflectionClass", IdRole.Reference),
         Field.Flag("clearFromInflectionClass", trueOnly: true),
-        Field.Ids("fromExceptionFeatures", IdRole.Reference))
-        .AtMostOne("fromInflectionClass", "clearFromInflectionClass");
+        Field.Ids("fromExceptionFeatures", IdRole.Reference),
+        Field.Id("toInflectionClass", IdRole.Reference),
+        Field.Flag("clearToInflectionClass", trueOnly: true))
+        .AtMostOne("fromInflectionClass", "clearFromInflectionClass")
+        .AtMostOne("toInflectionClass", "clearToInflectionClass");
 
     /// <inheritdoc />
     public override ComposerExposure Exposure { get; } =

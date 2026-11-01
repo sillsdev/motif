@@ -10,13 +10,16 @@ using SIL.Motif.Runner.Operations;
 
 namespace SIL.Motif.Runner.Composers;
 
-/// <summary>Restricts the stems a derivational affix attaches to, on the affix entry's derivational grammatical info.</summary>
+/// <summary>Restricts the stems a derivational affix attaches to and the class of the stems it derives, on the affix entry's derivational grammatical info.</summary>
 /// <param name="Msa">The derivational grammatical info (a MoDerivAffMsa) of an existing affix entry.</param>
 /// <param name="FromInflectionClass">The inflection class, of the input category or an ancestor, that stems must belong to.</param>
 /// <param name="FromExceptionFeatures">The exact From Exception Features set; an empty list clears the links when supplied.</param>
 /// <param name="ClearFromInflectionClass">When true, clears the existing From Inflection Class; false leaves it unchanged.</param>
+/// <param name="ToInflectionClass">The inflection class, of the output category or an ancestor, that derived stems receive.</param>
+/// <param name="ClearToInflectionClass">When true, clears the existing To Inflection Class; false leaves it unchanged.</param>
 public sealed record EditDerivationalAffixRestrictionIntent(CanonicalId Msa, CanonicalId? FromInflectionClass = null,
-    IReadOnlyList<CanonicalId>? FromExceptionFeatures = null, bool ClearFromInflectionClass = false);
+    IReadOnlyList<CanonicalId>? FromExceptionFeatures = null, bool ClearFromInflectionClass = false,
+    CanonicalId? ToInflectionClass = null, bool ClearToInflectionClass = false);
 
 /// <summary>Parses the closed JSON intent for restricting a derivational affix's input.</summary>
 public static class EditDerivationalAffixRestrictionIntentParser
@@ -27,26 +30,40 @@ public static class EditDerivationalAffixRestrictionIntentParser
     public static EditDerivationalAffixRestrictionIntent Parse(JsonElement authored)
     {
         SoundSystemIntentParsing.Object(authored, ConstructName, "msa", "fromInflectionClass", "clearFromInflectionClass",
-            "fromExceptionFeatures");
-        var clearClass = false;
-        if (authored.TryGetProperty("clearFromInflectionClass", out var clearValue))
-        {
-            if (clearValue.ValueKind != JsonValueKind.True)
-                throw new ContractParseException($"'{ConstructName}': 'clearFromInflectionClass' must be true when supplied.");
-            clearClass = true;
-        }
+            "fromExceptionFeatures", "toInflectionClass", "clearToInflectionClass");
+        var clearClass = ClearFlag(authored, "clearFromInflectionClass");
+        var clearToClass = ClearFlag(authored, "clearToInflectionClass");
         var result = new EditDerivationalAffixRestrictionIntent(SoundSystemIntentParsing.Id(authored, "msa"),
             authored.TryGetProperty("fromInflectionClass", out _)
                 ? SoundSystemIntentParsing.Id(authored, "fromInflectionClass") : null,
             authored.TryGetProperty("fromExceptionFeatures", out _)
                 ? SoundSystemIntentParsing.Ids(authored, "fromExceptionFeatures", ordered: false) : null,
-            clearClass);
+            clearClass,
+            authored.TryGetProperty("toInflectionClass", out _)
+                ? SoundSystemIntentParsing.Id(authored, "toInflectionClass") : null,
+            clearToClass);
         if (result.FromInflectionClass is not null && result.ClearFromInflectionClass)
             throw new ContractParseException($"'{ConstructName}': give 'fromInflectionClass' or 'clearFromInflectionClass', not both.");
-        if (result.FromInflectionClass is null && !result.ClearFromInflectionClass && result.FromExceptionFeatures is null)
-            throw new ContractParseException(
-                $"'{ConstructName}': give 'fromInflectionClass', 'clearFromInflectionClass' or 'fromExceptionFeatures'.");
+        if (result.ToInflectionClass is not null && result.ClearToInflectionClass)
+            throw new ContractParseException($"'{ConstructName}': give 'toInflectionClass' or 'clearToInflectionClass', not both.");
+        if (!HasChange(result))
+            throw new ContractParseException($"'{ConstructName}': {NothingToChange}");
         return result;
+    }
+
+    internal const string NothingToChange = "give 'fromInflectionClass', 'clearFromInflectionClass', " +
+        "'fromExceptionFeatures', 'toInflectionClass' or 'clearToInflectionClass'.";
+
+    internal static bool HasChange(EditDerivationalAffixRestrictionIntent intent) =>
+        intent.FromInflectionClass is not null || intent.ClearFromInflectionClass || intent.FromExceptionFeatures is not null
+        || intent.ToInflectionClass is not null || intent.ClearToInflectionClass;
+
+    private static bool ClearFlag(JsonElement authored, string name)
+    {
+        if (!authored.TryGetProperty(name, out var value)) return false;
+        if (value.ValueKind != JsonValueKind.True)
+            throw new ContractParseException($"'{ConstructName}': '{name}' must be true when supplied.");
+        return true;
     }
 }
 
@@ -70,9 +87,11 @@ public static class EditDerivationalAffixRestrictionComposer
         if (intent.FromInflectionClass is not null && intent.ClearFromInflectionClass)
             throw new InvalidOperationException(
                 $"'{ConstructName}': give 'fromInflectionClass' or 'clearFromInflectionClass', not both.");
-        if (intent.FromInflectionClass is null && !intent.ClearFromInflectionClass && intent.FromExceptionFeatures is null)
+        if (intent.ToInflectionClass is not null && intent.ClearToInflectionClass)
             throw new InvalidOperationException(
-                $"'{ConstructName}': give 'fromInflectionClass', 'clearFromInflectionClass' or 'fromExceptionFeatures'.");
+                $"'{ConstructName}': give 'toInflectionClass' or 'clearToInflectionClass', not both.");
+        if (!EditDerivationalAffixRestrictionIntentParser.HasChange(intent))
+            throw new InvalidOperationException($"'{ConstructName}': {EditDerivationalAffixRestrictionIntentParser.NothingToChange}");
         var msaId = LexicalFormAuthoring.Normalize(intent.Msa);
         var msa = LexicalFormAuthoring.Resolve<IMoMorphSynAnalysis>(cache, msaId, ConstructName);
         if (msa is not IMoDerivAffMsa derivational || msa.Owner is not ILexEntry entry)
@@ -83,14 +102,19 @@ public static class EditDerivationalAffixRestrictionComposer
         if (entry.LexemeFormOA is not IMoAffixAllomorph && entry.LexemeFormOA is not IMoAffixProcess)
             throw new InvalidOperationException(
                 $"'{ConstructName}': '{msaId.Value}' belongs to an entry whose lexeme form is not an affix form.");
-        if (derivational.FromPartOfSpeechRA is not { } fromCategory)
+        var wantsFrom = intent.FromInflectionClass is not null || intent.FromExceptionFeatures is not null;
+        if (wantsFrom && derivational.FromPartOfSpeechRA is null)
             throw new InvalidOperationException(
                 $"'{ConstructName}': the derivational grammatical info has no From category, so there is no category " +
                 "to take an inflection class or exception features from.");
+        if (intent.ToInflectionClass is not null && derivational.ToPartOfSpeechRA is null)
+            throw new InvalidOperationException(
+                $"'{ConstructName}': the derivational grammatical info has no To category, so there is no category " +
+                "to take a To Inflection Class from.");
         var operations = new List<OperationEnvelope>();
         if (intent.FromInflectionClass is { } classId)
         {
-            var wanted = LexicalFormAuthoring.RequireInflectionClasses(cache, [classId], [fromCategory], ConstructName)[0];
+            var wanted = LexicalFormAuthoring.RequireInflectionClasses(cache, [classId], [derivational.FromPartOfSpeechRA!], ConstructName)[0];
             if (derivational.FromInflectionClassRA?.Guid != wanted.ToGuid())
                 operations.Add(new OperationEnvelope(CanonicalId.Mint(), MoDerivAffMsaFromInflectionClassOperationKinds.SetFromInflectionClass,
                     target: msaId, after: JsonSerializer.SerializeToElement(new { @ref = wanted.Value }), rationale: Rationale));
@@ -99,6 +123,19 @@ public static class EditDerivationalAffixRestrictionComposer
         {
             operations.Add(new OperationEnvelope(CanonicalId.Mint(),
                 MoDerivAffMsaFromInflectionClassOperationKinds.ClearFromInflectionClass,
+                target: msaId, after: JsonSerializer.SerializeToElement(new { }), rationale: Rationale));
+        }
+        if (intent.ToInflectionClass is { } toClassId)
+        {
+            var wanted = LexicalFormAuthoring.RequireInflectionClasses(cache, [toClassId], [derivational.ToPartOfSpeechRA!], ConstructName)[0];
+            if (derivational.ToInflectionClassRA?.Guid != wanted.ToGuid())
+                operations.Add(new OperationEnvelope(CanonicalId.Mint(), MoDerivAffMsaToInflectionClassOperationKinds.SetToInflectionClass,
+                    target: msaId, after: JsonSerializer.SerializeToElement(new { @ref = wanted.Value }), rationale: Rationale));
+        }
+        else if (intent.ClearToInflectionClass && derivational.ToInflectionClassRA is not null)
+        {
+            operations.Add(new OperationEnvelope(CanonicalId.Mint(),
+                MoDerivAffMsaToInflectionClassOperationKinds.ClearToInflectionClass,
                 target: msaId, after: JsonSerializer.SerializeToElement(new { }), rationale: Rationale));
         }
         if (intent.FromExceptionFeatures is { } featureIds)

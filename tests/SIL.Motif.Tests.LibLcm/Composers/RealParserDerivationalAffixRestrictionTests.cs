@@ -77,6 +77,50 @@ public sealed class RealParserDerivationalAffixRestrictionTests(PristineProjectF
         Assert.Equal(["pag+palit"], await Readings(tracer, path, "pagpalit", names));
     }
 
+    [RealParserFact]
+    public async Task ADerivedStemGetsTheToClassSoAClassRestrictedInflectionalPrefixAttachesAndClearingTakesItAway()
+    {
+        using var cache = pristine.NewScratch();
+        RealParserProject.PrepareForParsing(cache, Letters);
+        var ws = Anal(cache);
+        var verb = Created(ApplyOps(cache, AuthorPartOfSpeechComposer.Build(cache,
+            new AuthorPartOfSpeechIntent("Verb", ws, "V"))), CmPossibilityListPossibilitiesOperationKinds.Create);
+        var stemClass = AddInflectionClass(cache, verb, "Native");
+        var derivedClass = AddInflectionClass(cache, verb, "Derived");
+        var slot = Created(ApplyOps(cache, AuthorAffixSlotComposer.Build(cache,
+            new AuthorAffixSlotIntent(verb, "Outer", ws, true))), PartOfSpeechAffixSlotsOperationKinds.Create);
+        ApplyOps(cache, AuthorAffixTemplateComposer.Build(cache,
+            new AuthorAffixTemplateIntent(verb, "Verb template", ws, [slot], [], true)));
+        var names = new Dictionary<CanonicalId, string>(CanonicalId.ByGuid);
+        names[AddStem(cache, "kaun", verb, stemClass).Form] = "kaun";
+        names[Created(ApplyOps(cache, AuthorLexicalEntryComposer.Build(cache, new AuthorLexicalEntryIntent("ku",
+            Vern(cache), MorphType(MoMorphTypeTags.kguidMorphPrefix), "ku", ws,
+            new LexicalEntryMsa(LexicalEntryMsaKind.Inflectional, verb, Slots: [slot]),
+            InflectionClasses: [derivedClass]))), LexEntryLexemeFormOperationKinds.CreateLexemeForm)] = "ku";
+        var created = ApplyOps(cache, AuthorAffixProcessComposer.Build(cache, new AuthorAffixProcessIntent(
+            MorphType(MoMorphTypeTags.kguidMorphPrefix), "again", ws,
+            new LexicalEntryMsa(LexicalEntryMsaKind.Derivational, verb, verb),
+            [new("rest", Remaining: true)],
+            [new(Insert: [Phoneme(cache, "p"), Phoneme(cache, "a"), Phoneme(cache, "g")]), new(Copy: "rest")])));
+        var msa = Created(created, LexEntryMorphoSyntaxAnalysesOperationKinds.Create);
+        names[Created(created, LexEntryLexemeFormOperationKinds.CreateLexemeForm)] = "pag";
+        var path = cache.ProjectId.Path;
+        new FwDataProjectLoader().Save(cache);
+        using var invoker = new PanGlossInvoker();
+        var tracer = new PanGlossTracer(invoker);
+
+        Assert.Equal(["pag+kaun"], await Readings(tracer, path, "pagkaun", names));
+        Assert.Empty(await Readings(tracer, path, "kupagkaun", names));
+
+        ApplyOps(cache, EditDerivationalAffixRestrictionComposer.Build(cache, new(msa, ToInflectionClass: derivedClass)));
+        new FwDataProjectLoader().Save(cache);
+        Assert.Equal(["ku+pag+kaun"], await Readings(tracer, path, "kupagkaun", names));
+
+        ApplyOps(cache, EditDerivationalAffixRestrictionComposer.Build(cache, new(msa, ClearToInflectionClass: true)));
+        new FwDataProjectLoader().Save(cache);
+        Assert.Empty(await Readings(tracer, path, "kupagkaun", names));
+    }
+
     private async Task<string[]> Readings(PanGlossTracer tracer, string path, string word,
         IReadOnlyDictionary<CanonicalId, string> names)
     {

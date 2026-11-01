@@ -10,10 +10,15 @@
   "anyOf": [
     { "required": [ "fromInflectionClass" ] },
     { "required": [ "clearFromInflectionClass" ] },
-    { "required": [ "fromExceptionFeatures" ] }
+    { "required": [ "fromExceptionFeatures" ] },
+    { "required": [ "toInflectionClass" ] },
+    { "required": [ "clearToInflectionClass" ] }
   ],
   "not": {
-    "required": [ "fromInflectionClass", "clearFromInflectionClass" ]
+    "anyOf": [
+      { "required": [ "fromInflectionClass", "clearFromInflectionClass" ] },
+      { "required": [ "toInflectionClass", "clearToInflectionClass" ] }
+    ]
   },
   "properties": {
     "msa": {
@@ -23,6 +28,13 @@
       "$ref": "#/$defs/CanonicalId"
     },
     "clearFromInflectionClass": {
+      "type": "boolean",
+      "const": true
+    },
+    "toInflectionClass": {
+      "$ref": "#/$defs/CanonicalId"
+    },
+    "clearToInflectionClass": {
       "type": "boolean",
       "const": true
     },
@@ -41,5 +53,5 @@
       "pattern": "^[\\s\\S]*[A-Za-z0-9_-]{22}(?![\\s\\S])"
     }
   },
-  "$comment": "Omitting an optional field leaves it unchanged; clearFromInflectionClass true clears the class link, and an empty fromExceptionFeatures array clears that link set. Runtime validation also requires msa to be the derivational grammatical info of an existing affix entry with a From category, the class to belong to that category or an ancestor, and each exception feature to be one of the project's. Duplicate JSON properties are refused by the parser."
+  "$comment": "Omitting an optional field leaves it unchanged; clearFromInflectionClass true clears the class link, and an empty fromExceptionFeatures array clears that link set. toInflectionClass and clearToInflectionClass do the same for the To Inflection Class, which must belong to the To category or an ancestor. Runtime validation also requires msa to be the derivational grammatical info of an existing affix entry with a From category, the class to belong to that category or an ancestor, and each exception feature to be one of the project's. Duplicate JSON properties are refused by the parser."
 }

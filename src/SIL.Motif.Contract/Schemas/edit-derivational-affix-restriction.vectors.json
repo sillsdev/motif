@@ -114,7 +114,44 @@
       "intent": {
         "msa": "AAAAAAAAAAAAAAAAAAAAAA",
         "fromInflectionClass": "AAAAAAAAAAAAAAAAAAAAAQ",
-        "toInflectionClass": "AAAAAAAAAAAAAAAAAAAAAg"
+        "extraField": "AAAAAAAAAAAAAAAAAAAAAg"
+      },
+      "schemaAccept": false
+    },
+    {
+      "name": "to-class-only",
+      "accept": true,
+      "intent": {
+        "msa": "AAAAAAAAAAAAAAAAAAAAAA",
+        "toInflectionClass": "AAAAAAAAAAAAAAAAAAAAAQ"
+      },
+      "schemaAccept": true
+    },
+    {
+      "name": "clear-to-class",
+      "accept": true,
+      "intent": {
+        "msa": "AAAAAAAAAAAAAAAAAAAAAA",
+        "clearToInflectionClass": true
+      },
+      "schemaAccept": true
+    },
+    {
+      "name": "replace-and-clear-to-class",
+      "accept": false,
+      "intent": {
+        "msa": "AAAAAAAAAAAAAAAAAAAAAA",
+        "toInflectionClass": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "clearToInflectionClass": true
+      },
+      "schemaAccept": false
+    },
+    {
+      "name": "clear-to-class-must-be-true",
+      "accept": false,
+      "intent": {
+        "msa": "AAAAAAAAAAAAAAAAAAAAAA",
+        "clearToInflectionClass": false
       },
       "schemaAccept": false
     }

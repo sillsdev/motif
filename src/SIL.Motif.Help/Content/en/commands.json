@@ -867,14 +867,16 @@
   },
   "compose-edit-derivational-affix-restriction": {
     "title": "Restrict a derivational affix",
-    "description": "Sets, replaces or explicitly clears the From Inflection Class and can set the exact From Exception Features on an existing affix entry's derivational grammatical info. Omitted fields stay unchanged. Motif stages a Draft for a person to review and Apply.",
+    "description": "Sets, replaces or explicitly clears the From Inflection Class and the To Inflection Class, and can set the exact From Exception Features on an existing affix entry's derivational grammatical info. Omitted fields stay unchanged. Motif stages a Draft for a person to review and Apply.",
     "source": "Authored from the typed command contract.",
     "fields": {
       "draft": "Draft name.",
       "msa": "Id of the derivational grammatical info of an existing affix entry.",
       "fromInflectionClass": "Optional id of an inflection class owned by the From category or an ancestor; omission leaves the current link unchanged.",
       "clearFromInflectionClass": "Set true to remove the current From Inflection Class; do not combine with fromInflectionClass.",
-      "fromExceptionFeatures": "Optional exact set of valid From Exception Features; an empty list removes them all, and omission leaves the current set unchanged."
+      "fromExceptionFeatures": "Optional exact set of valid From Exception Features; an empty list removes them all, and omission leaves the current set unchanged.",
+      "toInflectionClass": "Optional id of an inflection class owned by the To category or an ancestor; derived stems get this class. Omission leaves the current link unchanged.",
+      "clearToInflectionClass": "Set true to remove the current To Inflection Class; do not combine with toInflectionClass."
     },
     "goals": [
       "Restrict a derivational affix to stems of one inflection class",

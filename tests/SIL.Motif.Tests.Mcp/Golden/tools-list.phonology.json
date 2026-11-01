@@ -1833,7 +1833,7 @@
   },
   {
     "name": "motif_edit_derivational_affix_restriction",
-    "description": "Restrict a derivational affix. Research first: motif_guide topic suffix-prefix-slots; check best practice. For a derivational affix only. An inflectional affix is restricted by the inflection classes on its form (compose-edit-affix-inflection-classes). Sets, replaces or explicitly clears the From Inflection Class and can set the exact From Exception Features on an existing affix entry\u0027s derivational grammatical info. Omitted fields stay unchanged. Motif stages a Draft for a person to review and Apply.\nCommand: compose-edit-derivational-affix-restriction. Agent class: Draft.",
+    "description": "Restrict a derivational affix. Research first: motif_guide topic suffix-prefix-slots; check best practice. For a derivational affix only. An inflectional affix is restricted by the inflection classes on its form (compose-edit-affix-inflection-classes). Sets, replaces or explicitly clears the From Inflection Class and the To Inflection Class, and can set the exact From Exception Features on an existing affix entry\u0027s derivational grammatical info. Omitted fields stay unchanged. Motif stages a Draft for a person to review and Apply.\nCommand: compose-edit-derivational-affix-restriction. Agent class: Draft.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -1861,6 +1861,15 @@
           },
           "description": "Optional exact set of valid From Exception Features; an empty list removes them all, and omission leaves the current set unchanged."
         },
+        "toInflectionClass": {
+          "type": "string",
+          "description": "Optional id of an inflection class owned by the To category or an ancestor; derived stems get this class. Omission leaves the current link unchanged."
+        },
+        "clearToInflectionClass": {
+          "type": "boolean",
+          "const": true,
+          "description": "Set true to remove the current To Inflection Class; do not combine with toInflectionClass."
+        },
         "project": {
           "type": "string",
           "description": "Known project name or recorded .fwdata path."
@@ -1878,6 +1887,14 @@
             "required": [
               "fromInflectionClass",
               "clearFromInflectionClass"
+            ]
+          }
+        },
+        {
+          "not": {
+            "required": [
+              "toInflectionClass",
+              "clearToInflectionClass"
             ]
           }
         }
