@@ -18,6 +18,10 @@ A linguist sees one morpheme with different spoken or written forms in different
 
 Sometimes one form of an affix is wrong only after one particular form of an earlier affix: a stative `-lik` fits after an applicative `-o` but not after `-e`, while `-k` fits after both. Create an allomorph prohibition with the CLI verb `compose-author-adhoc-prohibition`, which MCP offers only in Advanced AI mode (kind `allomorph`; the later form as `first`, the earlier form as `rest`, adjacency `adjacent-to-right`). The parser drops only that pair of forms. Use it between forms of different entries: in an inflectional template an entry fills one slot, so a rule between two forms of the same entry would never fire there. To choose between forms of one entry, give each its own environment, or put the narrowest first and the general form last.
 
+## Every sound except some, and a zero form chosen by class
+
+A natural class is a fixed list of sounds (or of feature values), and FieldWorks has no complement or negated class. A project file can hold a negated feature value (LibLCM stores one), but FieldWorks' parser loader cannot read it and FieldWorks offers no way to make one, so do not rely on it. For "every consonant except `<sound>`", list the sounds wanted (author the class with `motif_add_natural_class`) and add a sound to it when the inventory grows. A zero affix that should depend on the stem's class, not on the sounds around it, takes `inflectionClasses` (`motif_add_lexical_entry`, or `motif_add_alternate_form` for a form of an existing entry) and no environment; a stem of any other class gets no reading from it.
+
 ## Check with a Trial
 
 After a composer can express the change, include attested words from each sound context and words just outside those contexts. Confirm each variant appears where expected and that the unrestricted form does not win before a narrower variant. Include words that should remain unchanged.
