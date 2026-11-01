@@ -252,7 +252,10 @@ public sealed partial class OverviewPageModel : PageModel
     /// The speed headline: how many words PanGloss counted work for and their total work steps, each word's count
     /// added up. There is no comparison with another parser, because Motif does not measure one.
     /// </summary>
-    public string SpeedMain => Overview is { Timing.Work: { MeasuredWordCount: > 0 } work }
+    public string SpeedMain => SpeedIsPaired(out var proposal)
+        ? PairedHeadline(SpeedMainOf(Overview), SpeedMainOf(proposal)) : SpeedMainOf(Overview);
+
+    private static string SpeedMainOf(OverviewResponse? overview) => overview is { Timing.Work: { MeasuredWordCount: > 0 } work }
         ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.OverviewSpeedMainFormat,
             PluralText.Format(MotifAppStrings.OverviewSpeedWordsPattern, work.MeasuredWordCount),
             TimingShare.FormatWorkSteps(work.TotalWorkSteps))
@@ -544,7 +547,10 @@ public sealed partial class OverviewPageModel : PageModel
             PluralText.Format(MotifAppStrings.OverviewAnalysesPattern, word.Analyses)))];
 
     /// <summary>How many Selection words produced a completed parse.</summary>
-    public string TextCoverageMain => !HasAssessment || Overview is not { } overview ? MotifAppStrings.OverviewNotParsedYet :
+    public string TextCoverageMain => CoverageIsPaired(out var today, out var proposal)
+        ? CoveragePair(today, proposal) : CoverageMainOf(Overview);
+
+    private static string CoverageMainOf(OverviewResponse? overview) => overview?.AssessmentId is null ? MotifAppStrings.OverviewNotParsedYet :
         string.Format(CultureInfo.CurrentCulture, MotifAppStrings.OverviewCoverageMainFormat,
             Number(overview.TextCoverage.ParsedWords), Number(overview.SelectionWordCount));
 
@@ -573,7 +579,10 @@ public sealed partial class OverviewPageModel : PageModel
                 ParserRefusals.Title));
 
     /// <summary>How many approved words the grammar still builds.</summary>
-    public string AccuracyMain => !HasAssessment || Overview is not { } overview ? MotifAppStrings.OverviewNotParsedYet :
+    public string AccuracyMain => CoverageIsPaired(out var today, out var proposal)
+        ? AccuracyPair(today, proposal) : AccuracyMainOf(Overview);
+
+    private static string AccuracyMainOf(OverviewResponse? overview) => overview?.AssessmentId is null ? MotifAppStrings.OverviewNotParsedYet :
         overview.Accuracy.ApprovedWordCount == 0 ? MotifAppStrings.OverviewAccuracyNothingApproved :
         string.Format(CultureInfo.CurrentCulture, MotifAppStrings.OverviewAccuracyMainFormat,
             Number(overview.Accuracy.ApprovedWordsKept), Number(overview.Accuracy.ApprovedWordCount));
@@ -687,24 +696,24 @@ public sealed partial class OverviewPageModel : PageModel
             ? PluralText.Format(MotifAppStrings.OverviewSpeedWordsPattern, known) : string.Empty;
 
     /// <summary>The reported error, warning, and information totals for the grammar check.</summary>
-    public string WarningsCount
+    public string WarningsCount => WarningsArePaired
+        ? PairedHeadline(WarningsCountOf(Overview), WarningsCountOf(ProposalOverview)) : WarningsCountOf(Overview);
+
+    private static string WarningsCountOf(OverviewResponse? overview)
     {
-        get
-        {
-            if (Overview?.Warnings is not { } warnings) return MotifAppStrings.OverviewWarningsNotCheckedYet;
-            var warningCount = warnings.WarningCount;
-            if (warningCount is null && warnings.Count == 0) warningCount = 0;
-            if (warningCount is null && warnings.Count is { } count && warnings.ErrorCount is { } errors &&
-                warnings.InformationCount is { } information)
-                warningCount = Math.Max(0, count - errors - information);
-            if (warningCount is null) return warnings.Count is not null
-                ? MotifAppStrings.OverviewWarningsHeadlineOnly : MotifAppStrings.OverviewWarningsNotCheckedYet;
-            var headline = PluralText.Format(MotifAppStrings.OverviewWarningWarningsPattern, warningCount.Value);
-            return warnings.ErrorCount is > 0 and var errorCount
-                ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.OverviewWarningsWithErrorsFormat, headline,
-                    PluralText.Format(MotifAppStrings.OverviewWarningErrorsPattern, errorCount))
-                : headline;
-        }
+        if (overview?.Warnings is not { } warnings) return MotifAppStrings.OverviewWarningsNotCheckedYet;
+        var warningCount = warnings.WarningCount;
+        if (warningCount is null && warnings.Count == 0) warningCount = 0;
+        if (warningCount is null && warnings.Count is { } count && warnings.ErrorCount is { } errors &&
+            warnings.InformationCount is { } information)
+            warningCount = Math.Max(0, count - errors - information);
+        if (warningCount is null) return warnings.Count is not null
+            ? MotifAppStrings.OverviewWarningsHeadlineOnly : MotifAppStrings.OverviewWarningsNotCheckedYet;
+        var headline = PluralText.Format(MotifAppStrings.OverviewWarningWarningsPattern, warningCount.Value);
+        return warnings.ErrorCount is > 0 and var errorCount
+            ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.OverviewWarningsWithErrorsFormat, headline,
+                PluralText.Format(MotifAppStrings.OverviewWarningErrorsPattern, errorCount))
+            : headline;
     }
 
     /// <summary>Opens the Texts matrix that shows the words behind Text Coverage.</summary>
@@ -756,6 +765,7 @@ public sealed partial class OverviewPageModel : PageModel
     {
         _readGeneration++;
         Overview = null;
+        ShowProposalRead(null);
         OverviewRefusal = null;
     }
 
@@ -776,7 +786,7 @@ public sealed partial class OverviewPageModel : PageModel
     {
         OnPropertyChanged(nameof(LastParseRefusal));
         OnPropertyChanged(nameof(HasLastParseRefusal));
-        if (lens.Today.Assessment is null) return;
+        if (lens.Today.Assessment is null && !lens.InProposalMode && ProposalOverview is null) return;
         await History.LoadAsync(cancellationToken).ConfigureAwait(true);
         if (Context.ProjectPath is { } path) await RefreshOverviewAsync(path, cancellationToken).ConfigureAwait(true);
     }
@@ -787,11 +797,17 @@ public sealed partial class OverviewPageModel : PageModel
     private async Task RefreshOverviewAsync(string projectPath, CancellationToken cancellationToken)
     {
         var generation = ++_readGeneration;
+        var proposalId = ProposalToRead();
+        SetProposalReading(proposalId is not null);
         var overview = await Context.Commands.OverviewAsync(new OverviewRequest(projectPath), cancellationToken)
             .ConfigureAwait(true);
+        var proposal = proposalId is null ? null
+            : await Context.Commands.OverviewAsync(new OverviewRequest(projectPath, proposalId), cancellationToken)
+                .ConfigureAwait(true);
         if (generation != _readGeneration || !string.Equals(projectPath, Context.ProjectPath, StringComparison.Ordinal))
             return;
         Overview = overview.Succeeded ? overview.Value : null;
+        ShowProposalRead(proposalId == ProposalToRead() ? proposal : null);
         OnPropertyChanged(nameof(LastParseRefusal));
         OnPropertyChanged(nameof(HasLastParseRefusal));
         OverviewRefusal = overview.Succeeded || overview.Refusal is null ? null :
@@ -811,6 +827,8 @@ public sealed partial class OverviewPageModel : PageModel
             OnPropertyChanged(nameof(ProjectTitle));
             OnPropertyChanged(nameof(ProjectFileName));
         }
+        if (e.PropertyName is nameof(WorkspaceContext.Lens) or nameof(WorkspaceContext.ProposalStanding))
+            RaiseProposalNote();
         if (e.PropertyName == nameof(WorkspaceContext.Baseline))
         {
             OnPropertyChanged(nameof(SelectionIsUnresolved));

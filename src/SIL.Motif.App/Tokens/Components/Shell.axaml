@@ -32,6 +32,7 @@
     <StaticResource x:Key="Component.Shell.SidePanelCollapseWidth" ResourceKey="Primitive.Size.1200" />
     <StaticResource x:Key="Component.Shell.InspectorCollapseWidth" ResourceKey="Primitive.Size.1000" />
     <StaticResource x:Key="Component.Shell.PaneHeaderHeight" ResourceKey="Primitive.Size.28" />
+    <StaticResource x:Key="Component.Shell.ProposalBarNameMaxWidth" ResourceKey="Primitive.Size.360" />
     <StaticResource x:Key="Component.Shell.PaneButtonSize" ResourceKey="Primitive.Size.22" />
     <StaticResource x:Key="Component.Shell.PaneBodyInset" ResourceKey="Primitive.Inset.8_0_8_0" />
     <StaticResource x:Key="Component.Shell.PaneHeaderInset" ResourceKey="Primitive.Inset.12_0_4_0" />
@@ -108,5 +109,24 @@
   <Style Selector="Border.workspaceNoticeBand :is(TextBlock)">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Status}" />
     <Setter Property="Foreground" Value="{DynamicResource Intent.Warning.Text}" />
+  </Style>
+  <!-- The Proposal bar: one row across the window, in the Proposal tint so every page reads as "with a Proposal open". -->
+  <Style Selector="Border.proposalBar">
+    <Setter Property="Height" Value="{DynamicResource Component.Shell.PaneHeaderHeight}" />
+    <Setter Property="Padding" Value="{DynamicResource Component.Shell.PaneHeaderInset}" />
+    <Setter Property="Background" Value="{DynamicResource Intent.Proposal.Fill}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.DividerBottom}" />
+  </Style>
+  <Style Selector="Border.proposalBar :is(TextBlock)">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Status}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Proposal.Text}" />
+  </Style>
+  <Style Selector="Border.proposalBar :is(TextBlock).proposalBarName">
+    <Setter Property="FontWeight" Value="{DynamicResource Intent.Weight.Section}" />
+    <Setter Property="MaxWidth" Value="{DynamicResource Component.Shell.ProposalBarNameMaxWidth}" />
+  </Style>
+  <Style Selector="Border.proposalBar Button.proposalBarAction">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Proposal.Text}" />
   </Style>
 </Styles>

@@ -223,6 +223,9 @@ public sealed partial class FakeCommandClient
     public void EnqueueTrialCompletesWith(JobEnqueuedResponse response, string? baselineWarning = null) =>
         _enqueueTrial = (_, _) => Completed(new TrialEnqueued(response, baselineWarning));
 
+    public void OnEnqueueTrial(Func<SIL.Motif.Commands.Requests.EnqueueTrialRequest, CancellationToken,
+        Task<CommandOutcome<TrialEnqueued>>> behavior) => _enqueueTrial = behavior;
+
     public void EnqueueTrialRefusesWith(Refusal refusal) =>
         _enqueueTrial = (_, _) => Refused<TrialEnqueued>(refusal);
 

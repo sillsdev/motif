@@ -154,6 +154,9 @@ public sealed partial class MainWindow : Window
         var view = _workspaceView
             ?? throw new InvalidOperationException("MainWindow.axaml has no element named 'WorkspaceView'.");
         DataContext = workspace;
+        // Left is raised once the Lens is cleared; the Background post runs after the bar has collapsed.
+        workspace.ProposalBar.Left += (_, _) =>
+            Dispatcher.UIThread.Post(() => _workspaceView?.FocusCurrentPage(), DispatcherPriority.Background);
         workspace.Context.ViewMemory.UseStore(_preferences);
         _host = new MotifWorkspaceHost(workspace, this, _preferences, _applicationFacts, _uriLauncher,
             _problemReportServices, ShowProblemReportAsync);

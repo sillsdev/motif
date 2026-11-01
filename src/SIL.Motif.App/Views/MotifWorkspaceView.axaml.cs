@@ -63,6 +63,22 @@ public sealed partial class MotifWorkspaceView : UserControl
             _keyboardStatusTimer.Start();
     }
 
+    /// <summary>
+    /// Moves keyboard focus to the current page's entry in the rail, or into the page itself when the rail is hidden.
+    /// </summary>
+    internal void FocusCurrentPage()
+    {
+        if (this.FindControl<ListBox>("PageList") is { IsEffectivelyVisible: true } rail)
+        {
+            var item = rail.SelectedItem is { } selected ? rail.ContainerFromItem(selected) : null;
+            if ((item ?? rail).Focus()) return;
+        }
+        var page = _pageHost?.Children.FirstOrDefault(child => child.IsEffectivelyVisible);
+        var target = page?.GetVisualDescendants().OfType<InputElement>()
+            .FirstOrDefault(input => input.Focusable && input.IsEffectivelyVisible && input.IsEffectivelyEnabled);
+        (target ?? page as InputElement)?.Focus();
+    }
+
     /// <summary>The layout host that places the rail, page and Inspector.</summary>
     internal WorkspaceLayoutHost? Layout => _layoutHost;
 

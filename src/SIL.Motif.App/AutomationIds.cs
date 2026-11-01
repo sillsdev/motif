@@ -124,6 +124,14 @@ public static class AutomationIds
     public const string ProposalDifferenceMoreWords = "motif-proposal-difference-more-words";
     public const string ProposalDifferenceMorePlaces = "motif-proposal-difference-more-places";
     public const string ProposalDifferenceOpenWord = "motif-proposal-difference-open-word";
+    /// <summary>The bar across the window that names the open Proposal.</summary>
+    public const string ProposalBar = "motif-proposal-bar";
+    /// <summary>The Proposal bar's button that leaves Proposal mode.</summary>
+    public const string ProposalBarLeave = "motif-proposal-bar-leave";
+    /// <summary>The Proposal bar's button that tries the open Proposal.</summary>
+    public const string ProposalBarTryAgain = "motif-proposal-bar-try-again";
+    /// <summary>The Overview's note on how its numbers read while a Proposal is open.</summary>
+    public const string OverviewProposalNote = "motif-overview-proposal-note";
     /// <summary>The Proposals page's grouped table.</summary>
     public const string ProposalsTable = "motif-proposals-table";
 

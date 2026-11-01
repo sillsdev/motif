@@ -19,6 +19,6 @@ Every replay runs with the en-US culture. Before each capture it waits for the p
 
 Proven where: on the Windows maintainer machine with `MOTIF_WALKTHROUGH_STRICT_BASELINES=1`, all thirteen replay classes pass, twice in a row. Strict has not been run on Linux or macOS, and text layout differs there, so treat strict as holding on Windows only.
 
-Twelve of them are complete passes. proposals-open passes, but with one known gap:
+Twelve of them are complete passes. proposals-open passes with one known gap:
 
-overview-with-proposal (in proposals-open) shows today's numbers only. Open does enter Proposal mode in that script (the replay's wait asserts the lens is set), but the Overview does not yet show the Proposal's numbers beside today's or name the Proposal in a context bar. The reference image will change when the Overview does (T-jy).
+The two overview-with-proposal images in proposals-open show the Overview as it drew before it paired today's numbers with the Proposal's and before the Proposal bar. The Overview now draws both, and the callout points at the Text Coverage tile, so those two images are out of date. They must be regenerated on the Windows maintainer machine with `MOTIF_WALKTHROUGH_UPDATE_BASELINES=1`; a Linux render differs in text anti-aliasing and is not a valid reference. Until then strict fails on that set's overview-with-proposal capture.

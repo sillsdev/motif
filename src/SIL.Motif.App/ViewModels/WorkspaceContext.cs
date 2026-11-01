@@ -632,8 +632,11 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
 
     private EvidenceSet? ShownSelectionAssessment() => Evidence.Set;
 
-    /// <summary>Opens one Proposal and publishes its latest Trial beside the current project evidence.</summary>
-    public async Task OpenProposalAsync(string proposalId, CancellationToken cancellationToken)
+    /// <summary>
+    /// Opens one Proposal and publishes its latest Trial beside the current project evidence. The label names the
+    /// Proposal when it has no Trial to say so.
+    /// </summary>
+    public async Task OpenProposalAsync(string proposalId, CancellationToken cancellationToken, string? label = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(proposalId);
         if (ProjectPath is not { } projectPath)
@@ -648,10 +651,13 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
         await Changes.TargetAsync(proposalId, cancellationToken).ConfigureAwait(true);
         if (!IsCurrentProposalRead(openGeneration, proposalReadGeneration, projectPath)) return;
         var trial = read.Value;
-        Lens = new ProposalLens(proposalId, trial?.Label ?? proposalId, trial?.IntentDigest ?? string.Empty,
+        Lens = new ProposalLens(proposalId, FirstNamed(trial?.Label, label) ?? proposalId, trial?.IntentDigest ?? string.Empty,
             trial, MarkupView.TodayToProposal) { ReadRefusal = read.Refusal };
         await PublishToPagesAsync(cancellationToken).ConfigureAwait(true);
     }
+
+    private static string? FirstNamed(params string?[] labels) => labels.FirstOrDefault(
+        label => !string.IsNullOrWhiteSpace(label));
 
     /// <summary>Returns the pages to today's evidence and releases only the Proposal Selection reader.</summary>
     public async Task LeaveProposalAsync(CancellationToken cancellationToken = default)
@@ -745,7 +751,7 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
         var currentLens = Lens!;
         Lens = lens with
         {
-            Label = trial?.Label ?? lens.Label,
+            Label = FirstNamed(trial?.Label, lens.Label) ?? lens.ProposalId,
             IntentDigest = trial?.IntentDigest ?? lens.IntentDigest,
             Trial = trial,
             ReadRefusal = null,

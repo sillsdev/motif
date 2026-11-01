@@ -112,6 +112,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
             .ToArray();
         VisiblePages = Pages.Where(page => page.IsAvailable && PageRegistry.For(page.Page).ShowInRail).ToArray();
         Inspector = new InspectorViewModel(Context, page => PageOf(page).Title);
+        ProposalBar = new ProposalBarViewModel(Context);
         var setup = new SetupViewModel(Context, PageModel<TextsPageModel>().Words);
         PageModel<TextsPageModel>().Words.PropertyChanged += (_, e) =>
         {
@@ -206,6 +207,9 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
 
     /// <summary>The inspector beside the page, which any page opens through <see cref="WorkspaceContext.OpenInspector"/>.</summary>
     public InspectorViewModel Inspector { get; }
+
+    /// <summary>The bar across the window that names the open Proposal and leaves Proposal mode.</summary>
+    public ProposalBarViewModel ProposalBar { get; }
 
     /// <summary>The tech demo notice shown until the person acknowledges it, or <see langword="null"/> when disabled.</summary>
     public TechDemoNoticeViewModel? TechDemoNotice { get; }

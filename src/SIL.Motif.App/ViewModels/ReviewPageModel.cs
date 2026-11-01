@@ -563,7 +563,7 @@ public sealed partial class ReviewPageModel : PageModel
     private async Task RefreshProposalTrialAsync()
     {
         if (Context.Lens is { } lens && lens.ProposalId == Changes.TargetProposalId)
-            await Context.OpenProposalAsync(lens.ProposalId, CancellationToken.None).ConfigureAwait(true);
+            await Context.OpenProposalAsync(lens.ProposalId, CancellationToken.None, lens.Label).ConfigureAwait(true);
     }
 
     private IReadOnlyList<ReviewEntryViewModel> DependentsOf(IReadOnlyList<ReviewEntryViewModel> targets)

@@ -30,9 +30,13 @@ internal static class ProposalNumberText
     ];
 
     // Work steps are the cost; with no comparison the cell says so, never a time in their place.
-    private static string ShowWork(TrialWork? work) => work is { BaselineWork: { } before, TrialWorkSteps: { } after }
-        ? $"{before.ToString("N0", CultureInfo.CurrentCulture)} → {after.ToString("N0", CultureInfo.CurrentCulture)}"
+    private static string ShowWork(TrialWork? work) => HasWorkComparison(work)
+        ? $"{work!.BaselineWork!.Value.ToString("N0", CultureInfo.CurrentCulture)} → " +
+            work.TrialWorkSteps!.Value.ToString("N0", CultureInfo.CurrentCulture)
         : "—";
+
+    // TrialWorkComparison leaves both totals empty when two tries cannot be compared; the Overview asks the same.
+    public static bool HasWorkComparison(TrialWork? work) => work is { BaselineWork: not null, TrialWorkSteps: not null };
 
     private static string ShowKept(TrialSummary trial)
     {
@@ -860,7 +864,7 @@ public sealed partial class ProposalsPageModel : PageModel
         }
         try
         {
-            await Context.OpenProposalAsync(card.ProposalId, CancellationToken.None).ConfigureAwait(true);
+            await Context.OpenProposalAsync(card.ProposalId, CancellationToken.None, card.Label).ConfigureAwait(true);
             Context.OpenPage(page);
         }
         catch (InvalidOperationException exception)

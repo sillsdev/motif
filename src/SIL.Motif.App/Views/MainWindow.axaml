@@ -22,7 +22,7 @@
     </ResourceDictionary>
   </Window.Resources>
   <LayoutTransformControl x:Name="RootLayoutTransform" ClipToBounds="True">
-  <Grid RowDefinitions="Auto,*">
+  <Grid RowDefinitions="Auto,Auto,*">
 
     <!-- Top bar, one row: the icon, the menus (behind a ≡ when narrow), and the project chip and Refresh. -->
     <Border x:Name="TopBar" Classes="topBar"
@@ -116,9 +116,30 @@
       </Grid>
     </Border>
 
-    <views:MotifWorkspaceView x:Name="WorkspaceView" Grid.Row="1" />
+    <!-- While a Proposal is open the bar names it on every page; Leave returns the pages to today. -->
+    <Border x:Name="ProposalBar" Grid.Row="1" Classes="proposalBar" IsVisible="{Binding ProposalBar.IsVisible}"
+            AutomationProperties.Name="{x:Static app:MotifAppStrings.ProposalBarAccessibleName}"
+            AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalBar}">
+      <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="{DynamicResource Intent.Space.Section}">
+        <views:CopyableTextBlock Classes="proposalBarName" Text="{Binding ProposalBar.Name}" VerticalAlignment="Center"
+                                 TextTrimming="CharacterEllipsis" />
+        <views:CopyableTextBlock Grid.Column="1" Text="{Binding ProposalBar.Sentence}" VerticalAlignment="Center"
+                                 TextTrimming="CharacterEllipsis" />
+        <Button Grid.Column="2" Classes="proposalBarAction" Command="{Binding ProposalBar.TryAgainCommand}"
+                AutomationProperties.Name="{Binding ProposalBar.TryAgainAccessibleName}"
+                AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalBarTryAgain}">
+          <TextBlock Text="{Binding ProposalBar.TryAgainText}" />
+        </Button>
+        <Button Grid.Column="3" Classes="proposalBarAction" Content="{x:Static app:MotifAppStrings.ProposalBarLeave}"
+                Command="{Binding ProposalBar.LeaveCommand}"
+                AutomationProperties.Name="{x:Static app:MotifAppStrings.ProposalBarLeaveAccessibleName}"
+                AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalBarLeave}" />
+      </Grid>
+    </Border>
 
-    <views:SetupDialog x:Name="SetupDialogView" Grid.RowSpan="2" DataContext="{Binding Context.Setup}" />
+    <views:MotifWorkspaceView x:Name="WorkspaceView" Grid.Row="2" />
+
+    <views:SetupDialog x:Name="SetupDialogView" Grid.RowSpan="3" DataContext="{Binding Context.Setup}" />
   </Grid>
   </LayoutTransformControl>
 </Window>

@@ -876,10 +876,11 @@ internal static class WalkthroughReplay
         Assert.DoesNotContain(controls, ToolTip.GetIsOpen);
     }
 
-    // Open on a Proposal row enters Proposal mode, so the next page has the lens set.
+    // Open on a Proposal row enters Proposal mode: the lens is set and the Overview has read the Trial too.
     private static bool EntersProposalMode(WalkthroughWindow window, WalkthroughScript script, WalkthroughStep step) =>
         (script.Id, step.Id) != ("proposals-open", "wait-for-overview") ||
-        window.Workspace.Context is { Lens: not null, EvidencePublication.IsCompleted: true };
+        window.Workspace.Context is { Lens: not null, EvidencePublication.IsCompleted: true } &&
+        window.Workspace.PageModel<OverviewPageModel>().ProposalOverview is not null;
 
     private static bool Satisfies(WalkthroughWindow window, WalkthroughStep step)
     {

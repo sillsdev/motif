@@ -246,4 +246,12 @@
     <Setter Property="Background" Value="{DynamicResource Intent.Timing.Parser}" />
   </Style>
 
+  <Style Selector="Border.overviewProposalNote">
+    <Setter Property="Background" Value="{DynamicResource Intent.Proposal.Fill}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Component.Overview.CardRadius}" />
+    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.Notice}" />
+  </Style>
+  <Style Selector="Border.overviewProposalNote :is(TextBlock)">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Proposal.Text}" />
+  </Style>
 </Styles>

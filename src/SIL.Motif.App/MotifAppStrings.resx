@@ -8403,4 +8403,68 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <value>something changed</value>
     <comment>What changed since Parsimony measured, inside a list, when this window does not know the kind of change.</comment>
   </data>
+  <data name="MotifApp.OverviewPairFormat" xml:space="preserve">
+    <value>{0} → {1}</value>
+    <comment>Overview headline while a Proposal is open. {0} is today's headline; {1} is the headline with the Proposal; the arrow reads from today to the Proposal.</comment>
+  </data>
+  <data name="MotifApp.OverviewCoveragePairFormat" xml:space="preserve">
+    <value>{0} → {1} of {2} words parse</value>
+    <comment>Overview Text Coverage headline while a Proposal is open. {0} is today's parsed word count; {1} is the count with the Proposal; {2} is the Selection word count both share.</comment>
+  </data>
+  <data name="MotifApp.OverviewAccuracyPairFormat" xml:space="preserve">
+    <value>{0} → {1} of {2} rebuilt exactly</value>
+    <comment>Overview Accuracy headline while a Proposal is open. {0} is today's rebuilt count; {1} is the count with the Proposal; {2} is the approved count both share.</comment>
+  </data>
+  <data name="MotifApp.OverviewProposalPairedNote" xml:space="preserve">
+    <value>The four headline numbers read today's value, then the value with this Proposal. Everything else on this page is today's.</value>
+    <comment>Note on the Overview while a Proposal is open and its numbers are shown beside today's.</comment>
+  </data>
+  <data name="MotifApp.OverviewProposalOldPairedNoteFormat" xml:space="preserve">
+    <value>{0}. The four headline numbers read today's value, then the value with this Proposal. Everything else on this page is today's.</value>
+    <comment>Note on the Overview when the Proposal's numbers came from an earlier try. {0} says why they are old, for example that FieldWorks changed since the try, and ends without a full stop.</comment>
+  </data>
+  <data name="MotifApp.OverviewProposalUnpairedLeadPattern" xml:space="preserve">
+    <value>{0, plural, one {One headline shows today's value only:} other {# headlines show today's value only:}}</value>
+    <comment>Start of the Overview note sentence naming headlines that have no value with the open Proposal. # is the count; the tile names follow.</comment>
+  </data>
+  <data name="MotifApp.OverviewProposalUnpairedTodayNone" xml:space="preserve">
+    <value>Today has no result to set the Proposal's beside.</value>
+    <comment>End of the Overview note sentence when today has no value for the named headlines but the Proposal does.</comment>
+  </data>
+  <data name="MotifApp.OverviewProposalUnpairedProposalNone" xml:space="preserve">
+    <value>The Proposal has no value to set beside today's.</value>
+    <comment>End of the Overview note sentence when the Proposal has no value for the named headlines.</comment>
+  </data>
+  <data name="MotifApp.OverviewProposalUnpairedNotComparable" xml:space="preserve">
+    <value>The work steps of the two tries cannot be compared.</value>
+    <comment>End of the Overview note sentence when both sides have work steps but they were measured in ways that cannot be compared.</comment>
+  </data>
+  <data name="MotifApp.OverviewProposalTodayOnlyNote" xml:space="preserve">
+    <value>These are today's numbers only.</value>
+    <comment>Second sentence of the note on the Overview while a Proposal is open but has no numbers to show beside today's.</comment>
+  </data>
+  <data name="MotifApp.OverviewProposalUnreadableNote" xml:space="preserve">
+    <value>This Proposal's numbers could not be read.</value>
+    <comment>First sentence of the note on the Overview when the open Proposal's numbers could not be read.</comment>
+  </data>
+  <data name="MotifApp.ProposalBarLabelFormat" xml:space="preserve">
+    <value>Proposal: {0}</value>
+    <comment>Context bar text that names the open Proposal. {0} is the Proposal's label.</comment>
+  </data>
+  <data name="MotifApp.ProposalBarAccessibleName" xml:space="preserve">
+    <value>Open Proposal</value>
+    <comment>Accessible name of the bar across the window that names the open Proposal.</comment>
+  </data>
+  <data name="MotifApp.ProposalBarLeave" xml:space="preserve">
+    <value>Leave Proposal</value>
+    <comment>Button on the Proposal bar that returns every page to today's numbers.</comment>
+  </data>
+  <data name="MotifApp.ProposalBarLeaveAccessibleName" xml:space="preserve">
+    <value>Leave Proposal, and show today's numbers</value>
+    <comment>Accessible name of the Leave Proposal button on the Proposal bar; it starts with the button's visible text.</comment>
+  </data>
+  <data name="MotifApp.ProposalBarTryAgainAccessibleNameFormat" xml:space="preserve">
+    <value>{0}, the open Proposal</value>
+    <comment>Accessible name of the try button on the Proposal bar. {0} is the button's visible text, Try It or Try Again.</comment>
+  </data>
 </root>

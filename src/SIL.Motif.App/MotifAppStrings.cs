@@ -4093,4 +4093,36 @@ public static class MotifAppStrings
     public static string ProposalParsimonyMeasureFailed => Text("MotifApp.ProposalParsimonyMeasureFailed");
 
     public static string ProposalParsimonyMeasureNoCounts => Text("MotifApp.ProposalParsimonyMeasureNoCounts");
+
+    public static string OverviewPairFormat => Text("MotifApp.OverviewPairFormat");
+
+    public static string OverviewCoveragePairFormat => Text("MotifApp.OverviewCoveragePairFormat");
+
+    public static string OverviewAccuracyPairFormat => Text("MotifApp.OverviewAccuracyPairFormat");
+
+    public static string OverviewProposalPairedNote => Text("MotifApp.OverviewProposalPairedNote");
+
+    public static string OverviewProposalOldPairedNoteFormat => Text("MotifApp.OverviewProposalOldPairedNoteFormat");
+
+    public static string OverviewProposalUnpairedLeadPattern => Text("MotifApp.OverviewProposalUnpairedLeadPattern");
+
+    public static string OverviewProposalUnpairedTodayNone => Text("MotifApp.OverviewProposalUnpairedTodayNone");
+
+    public static string OverviewProposalUnpairedProposalNone => Text("MotifApp.OverviewProposalUnpairedProposalNone");
+
+    public static string OverviewProposalUnpairedNotComparable => Text("MotifApp.OverviewProposalUnpairedNotComparable");
+
+    public static string OverviewProposalTodayOnlyNote => Text("MotifApp.OverviewProposalTodayOnlyNote");
+
+    public static string OverviewProposalUnreadableNote => Text("MotifApp.OverviewProposalUnreadableNote");
+
+    public static string ProposalBarLabelFormat => Text("MotifApp.ProposalBarLabelFormat");
+
+    public static string ProposalBarAccessibleName => Text("MotifApp.ProposalBarAccessibleName");
+
+    public static string ProposalBarLeave => Text("MotifApp.ProposalBarLeave");
+
+    public static string ProposalBarLeaveAccessibleName => Text("MotifApp.ProposalBarLeaveAccessibleName");
+
+    public static string ProposalBarTryAgainAccessibleNameFormat => Text("MotifApp.ProposalBarTryAgainAccessibleNameFormat");
 }
