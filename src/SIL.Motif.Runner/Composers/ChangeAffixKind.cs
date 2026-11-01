@@ -174,9 +174,10 @@ public static class ChangeAffixKindComposer
         foreach (var slotId in slots)
         {
             var slot = LexicalFormAuthoring.Resolve<IMoInflAffixSlot>(cache, slotId, ConstructName);
-            if (category is null || !LexicalFormAuthoring.InCategoryOrAncestor(slot.Owner as IPartOfSpeech, category))
+            if (category is null || !LexicalFormAuthoring.SlotServesCategory(slot.Owner as IPartOfSpeech, category))
                 throw new InvalidOperationException(
-                    $"'{ConstructName}': slot '{slotId.Value}' does not belong to the affix category or one of its ancestors.");
+                    $"'{ConstructName}': slot '{slotId.Value}' does not belong to the affix category or one of its ancestors or subcategories." +
+                    LexicalFormAuthoring.UnrelatedSlotAdvice);
         }
 
         var senses = entry.AllSenses.Where(sense => sense.MorphoSyntaxAnalysisRA?.Guid == old.Guid).ToArray();

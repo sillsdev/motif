@@ -198,9 +198,10 @@ public static class AuthorLexicalEntryComposer
         foreach (var slotId in slots)
         {
             var slot = LexicalFormAuthoring.Resolve<IMoInflAffixSlot>(cache, slotId, ConstructName);
-            if (!LexicalFormAuthoring.InCategoryOrAncestor(slot.Owner as IPartOfSpeech, category))
+            if (!LexicalFormAuthoring.SlotServesCategory(slot.Owner as IPartOfSpeech, category))
                 throw new InvalidOperationException(
-                    $"'{ConstructName}': slot '{slotId.Value}' does not belong to the category or one of its ancestors.");
+                    $"'{ConstructName}': slot '{slotId.Value}' does not belong to the category or one of its ancestors or subcategories." +
+                    LexicalFormAuthoring.UnrelatedSlotAdvice);
         }
         if (msa.InflectionClass is { } classId)
         {

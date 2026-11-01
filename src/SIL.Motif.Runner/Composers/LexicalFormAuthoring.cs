@@ -69,6 +69,20 @@ internal static class LexicalFormAuthoring
         return current as IPartOfSpeech;
     }
 
+    /// <summary>
+    /// Whether an inflectional affix of <paramref name="category"/> can be used in a slot owned by <paramref name="owner"/>.
+    /// FieldWorks' loader requires the template's category and the affix's category to unify, and a category covers its
+    /// subcategories, so the slot may sit in the category, above it, or below it. A slot in an unrelated category
+    /// loads but never matches a word.
+    /// </summary>
+    public static bool SlotServesCategory(IPartOfSpeech? owner, IPartOfSpeech category) =>
+        owner is not null && (InCategoryOrAncestor(owner, category) || InCategoryOrAncestor(category, owner));
+
+    /// <summary>What to do instead when a slot's category is unrelated to the affix's.</summary>
+    public const string UnrelatedSlotAdvice =
+        " The parser applies a slot only to words of its category, so an affix in a slot of an unrelated category never " +
+        "matches; give the affix grammatical info in the slot's category instead.";
+
     public static bool InCategoryOrAncestor(IPartOfSpeech? owner, IPartOfSpeech category)
     {
         if (owner is null) return false;

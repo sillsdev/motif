@@ -205,7 +205,7 @@ public sealed class EditMorphotacticsComposerTests : IDisposable
         var msa = CreateInflectionalMsa(_seed.FirstEntryId, _category);
         var slotError = Assert.Throws<InvalidOperationException>(() => EditInflectionalAffixComposer.Build(_cache,
             new EditInflectionalAffixIntent(Id(msa), [], [Id(unrelatedSlot)])));
-        Assert.Contains("does not belong to the affix category or one of its ancestors", slotError.Message,
+        Assert.Contains("does not belong to the affix category or one of its ancestors or subcategories", slotError.Message,
             StringComparison.Ordinal);
         Assert.Empty(msa.SlotsRC);
     }

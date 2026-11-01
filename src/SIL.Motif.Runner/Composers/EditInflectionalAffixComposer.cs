@@ -38,7 +38,8 @@ public static class EditInflectionalAffixComposer
             var slot = ReferenceFieldLowering.Resolve<IMoInflAffixSlot>(cache, id, ConstructName);
             if (!BelongsToCategoryOrAncestor(slot, category))
                 throw new InvalidOperationException(
-                    $"'{ConstructName}': slot '{id.Value}' does not belong to the affix category or one of its ancestors.");
+                    $"'{ConstructName}': slot '{id.Value}' does not belong to the affix category or one of its ancestors or subcategories." +
+                    LexicalFormAuthoring.UnrelatedSlotAdvice);
         }
 
         var desired = intent.Slots.ToHashSet();
@@ -62,25 +63,19 @@ public static class EditInflectionalAffixComposer
             $"'{ConstructName}': target '{targetId.Value}' has no affix category.");
         if (!BelongsToCategoryOrAncestor(slotCategory, category))
             throw new InvalidOperationException(
-                $"'{ConstructName}': slot category '{slotCategory.Guid}' is not the affix category or one of its ancestors.");
+                $"'{ConstructName}': slot category '{slotCategory.Guid}' is not the affix category or one of its ancestors or subcategories." +
+                LexicalFormAuthoring.UnrelatedSlotAdvice);
 
         return new OperationEnvelope(mintId(), MoInflAffMsaSlotsOperationKinds.AddRefSlots,
             target: targetId, after: JsonSerializer.SerializeToElement(new { member = slotId.Value }),
             dependsOn: [new OperationDependency(createOperationId)], rationale: Rationale);
     }
 
-    private static bool BelongsToCategoryOrAncestor(IMoInflAffixSlot slot, IPartOfSpeech category)
-    {
-        var owner = slot.Owner as IPartOfSpeech;
-        return owner is not null && BelongsToCategoryOrAncestor(owner, category);
-    }
+    private static bool BelongsToCategoryOrAncestor(IMoInflAffixSlot slot, IPartOfSpeech category) =>
+        LexicalFormAuthoring.SlotServesCategory(slot.Owner as IPartOfSpeech, category);
 
-    private static bool BelongsToCategoryOrAncestor(IPartOfSpeech slotCategory, IPartOfSpeech category)
-    {
-        for (var current = category; current is not null; current = current.Owner as IPartOfSpeech)
-            if (slotCategory.Guid == current.Guid) return true;
-        return false;
-    }
+    private static bool BelongsToCategoryOrAncestor(IPartOfSpeech slotCategory, IPartOfSpeech category) =>
+        LexicalFormAuthoring.SlotServesCategory(slotCategory, category);
 
     private static OperationEnvelope Operation(string kind, CanonicalId target, CanonicalId slot) =>
         new(CanonicalId.Mint(), kind, target: target,

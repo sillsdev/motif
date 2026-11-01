@@ -145,7 +145,7 @@ public sealed class AuthorAffixSlotComposerTests : IDisposable
         var exception = Assert.Throws<InvalidOperationException>(() => AuthorAffixSlotComposer.Build(_cache,
             new AuthorAffixSlotIntent(Id(category), "TAM", WritingSystem(_cache), false, [Id(unrelatedMsa)])));
 
-        Assert.Contains("not the affix category or one of its ancestors", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("not the affix category or one of its ancestors or subcategories", exception.Message, StringComparison.Ordinal);
         Assert.Empty(category.AffixSlotsOC);
         Assert.Empty(unrelatedMsa.SlotsRC);
     }
