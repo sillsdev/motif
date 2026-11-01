@@ -184,14 +184,14 @@ public static class OverviewCommand
             if (assessedWords.Count > 0)
                 lookFirst = lookFirst with
                 {
-                    UnparsedWords = OverviewUnparsedBuilder.Build(metrics.Words, selection?.OccurrencesByWord) with
+                    UnparsedWords = OverviewUnparsedBuilder.Build(metrics.Words, selection?.RankCounts) with
                     {
                         ByText = (selection?.TextCount ?? 0) > 0,
                     },
                 };
             var notMeasuredWords = assessedWords.Count == 0 ? 0 : metrics.Words.Count(placed => placed.Measured is null);
             var frequencyBands = assessedWords.Count == 0 ? null : OverviewFrequencyBandBuilder.Build(
-                metrics.Words, selection?.OccurrencesByWord, (selection?.TextCount ?? 0) > 0);
+                metrics.Words, selection?.RankCounts, (selection?.TextCount ?? 0) > 0);
             var ambiguity = assessedWords.Count == 0 ? null
                 : OverviewAmbiguityBuilder.Build(metrics.Words, selection?.OccurrencesByWord);
             var summaryIsMeasured = evidence.Set?.Baseline is not { } measuredBaseline ||

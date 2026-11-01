@@ -28,14 +28,23 @@ public sealed record OverviewUnparsedWords(
 {
     /// <summary>Whether the Selection is made of chosen Texts, so the places are places in those Texts.</summary>
     public bool ByText { get; init; }
+
+    /// <summary>
+    /// How many unparsed words the Selection's word list gives no count; they are not in <see cref="Occurrences"/>
+    /// and rank after the counted words. Zero when the Selection has no counts or every word has one.
+    /// </summary>
+    public int NoCountWords { get; init; }
 }
 
 /// <summary>One unparsed word, with its places in the chosen Texts and the recorded reason it has no parse.</summary>
 /// <param name="Word">The word as written in the Selection.</param>
-/// <param name="Occurrences">Its places in the chosen Texts; zero when the Selection has no place counts.</param>
+/// <param name="Occurrences">
+/// Its places in the chosen Texts, or its count in the Selection's word list; null when the Selection gives it no
+/// count, which is not known and never zero.
+/// </param>
 /// <param name="Kind">One of <see cref="UnparsedKind"/>.</param>
 /// <param name="Code">The parser's refusal code when <paramref name="Kind"/> is <see cref="UnparsedKind.Refused"/>.</param>
-public sealed record OverviewUnparsedWord(string Word, int Occurrences, string Kind, string? Code);
+public sealed record OverviewUnparsedWord(string Word, int? Occurrences, string Kind, string? Code);
 
 /// <summary>The unparsed words that share one recorded reason.</summary>
 /// <param name="Kind">One of <see cref="UnparsedKind"/>.</param>

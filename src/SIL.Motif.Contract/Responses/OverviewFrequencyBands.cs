@@ -9,7 +9,14 @@ namespace SIL.Motif.Contract.Responses;
 /// corpus Selection is labelled by frequency band alone.
 /// </param>
 /// <param name="Bands">The bands that hold at least one word, most frequent first.</param>
-public sealed record OverviewFrequencyBands(bool ByText, IReadOnlyList<OverviewFrequencyBand> Bands);
+public sealed record OverviewFrequencyBands(bool ByText, IReadOnlyList<OverviewFrequencyBand> Bands)
+{
+    /// <summary>
+    /// Words the Selection's word list gave no count, which rank after every counted word and add nothing to a
+    /// band's occurrences; always zero for a Selection of chosen Texts.
+    /// </summary>
+    public int NoCountWords { get; init; }
+}
 
 /// <summary>One band of ranked words and how much of it has a completed parse.</summary>
 /// <param name="FirstRank">The band's first rank, counting the most frequent word as rank 1.</param>

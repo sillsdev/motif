@@ -117,6 +117,19 @@ public sealed record ResolvedSelectionSnapshot(
 {
     /// <summary>The total occurrences of selected words in the chosen Texts.</summary>
     public int TotalOccurrences => Selection.Words.Sum(word => OccurrencesByWord.GetValueOrDefault(word));
+
+    /// <summary>
+    /// The counts the Selection's word-list file gave, for the words it counted. These are the file's own figures,
+    /// never places in a Text, so Text Coverage does not read them.
+    /// </summary>
+    public IReadOnlyDictionary<string, int> WordListCounts { get; init; } = new Dictionary<string, int>();
+
+    /// <summary>
+    /// What ranks the words: places in the chosen Texts, or for a Selection with no Texts the counts of its
+    /// word-list file. A word with no entry has no count that is known.
+    /// </summary>
+    public IReadOnlyDictionary<string, int> RankCounts =>
+        TextCount == 0 && WordListCounts.Count > 0 ? WordListCounts : OccurrencesByWord;
 }
 
 /// <summary>Reads current project evidence from the paired store and live file timestamp.</summary>
@@ -242,7 +255,11 @@ public static class CurrentEvidenceQuery
         var resolvedOccurrences = selection.Words.ToDictionary(word => word,
             word => occurrences.GetValueOrDefault(word), StringComparer.Ordinal);
         return CommandOutcome<ResolvedSelectionSnapshot>.Success(new ResolvedSelectionSnapshot(
-            selection, resolvedOccurrences, saved.TextIds.Count, saved.AddedWords.Count));
+            selection, resolvedOccurrences, saved.TextIds.Count, saved.AddedWords.Count)
+        {
+            WordListCounts = saved.TextIds.Count == 0 && saved.WordList is { } list ? list.Counts
+                : new Dictionary<string, int>(),
+        });
     }
 
     private static DateTimeOffset ReadStoreCreatedUtc(MotifDatabase database)

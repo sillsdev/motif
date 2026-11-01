@@ -8079,6 +8079,18 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <value>Places covered: {0} of {1}</value>
     <comment>Parsed places and all places of the words in a frequency band</comment>
   </data>
+  <data name="MotifApp.OverviewBandCountsFormat" xml:space="preserve">
+    <value>Counted occurrences covered: {0} of {1}</value>
+    <comment>Parsed and all counted occurrences of the words in a frequency band when the counts come from a word list; {0} and {1} are counts</comment>
+  </data>
+  <data name="MotifApp.OverviewUnparsedNoCountPattern" xml:space="preserve">
+    <value>{0, plural, one {# of them has no count in the word list, so the total leaves it out.} other {# of them have no count in the word list, so the total leaves them out.}}</value>
+    <comment>Plural pattern: line of the unparsed words row when some words of a word list have no count; # is that number of words</comment>
+  </data>
+  <data name="MotifApp.OverviewBandNoCountPattern" xml:space="preserve">
+    <value>{0, plural, one {# word has no count in the word list, so it ranks after the counted words.} other {# words have no count in the word list, so they rank after the counted words.}}</value>
+    <comment>Note under the frequency bands when some words of a word list have no count; # is that number of words</comment>
+  </data>
   <data name="MotifApp.OverviewNotMeasuredPattern" xml:space="preserve">
     <value>{0, plural, one {# word in the Selection is not in the stored parse, so this leaves it out.} other {# words in the Selection are not in the stored parse, so this leaves them out.}}</value>
     <comment>Note under a measure built from the stored parse when some Selection words were not parsed; # is that count</comment>

@@ -360,7 +360,7 @@ public static class CliVerbCatalog
             new[]
             {
                 "selection set-default --project <fwdata> --name <name> [--texts <guid,guid>] " +
-                "[--add-words <word,word>] [--time-mode estimated|explicit] [--time-limit-ms <ms>] " +
+                "[--add-words <word,word> | --words-file <path>] [--time-mode estimated|explicit] [--time-limit-ms <ms>] " +
                 "[--step-cap <steps|none>] [--expected-revision <revision>] [--json]",
             }),
         new CliVerbDescriptor(

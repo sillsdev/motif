@@ -218,6 +218,8 @@
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
+              <TextBlock Classes="overviewMuted" Text="{Binding BandsNoCountNote}" TextWrapping="Wrap"
+                         IsVisible="{Binding HasBandsNoCountNote}" />
               <TextBlock Classes="overviewMuted" Text="{Binding NotMeasuredNote}" TextWrapping="Wrap"
                          IsVisible="{Binding HasNotMeasuredNote}" />
             </StackPanel>

@@ -3935,6 +3935,11 @@ public static class MotifAppStrings
 
     public static string OverviewBandPlacesFormat => Text("MotifApp.OverviewBandPlacesFormat");
 
+    public static string OverviewBandCountsFormat => Text("MotifApp.OverviewBandCountsFormat");
+
+    public static string OverviewUnparsedNoCountPattern => Text("MotifApp.OverviewUnparsedNoCountPattern");
+    public static string OverviewBandNoCountPattern => Text("MotifApp.OverviewBandNoCountPattern");
+
     public static string OverviewNotMeasuredPattern => Text("MotifApp.OverviewNotMeasuredPattern");
 
     public static string OverviewAmbiguityTitle => Text("MotifApp.OverviewAmbiguityTitle");

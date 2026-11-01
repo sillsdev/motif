@@ -1885,9 +1885,18 @@ try
                     if (!flags.TryGetValue("name", out var selectionName) ||
                         !TryParseGuidList(flags.GetValueOrDefault("texts"), out var selectionTexts))
                         return Usage(UsageLineFor("selection set-default"), asJson);
-                    var addedWords = flags.TryGetValue("add-words", out var addedWordsRaw)
+                    IReadOnlyList<string> addedWords = flags.TryGetValue("add-words", out var addedWordsRaw)
                         ? addedWordsRaw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                         : Array.Empty<string>();
+                    var wordsFilePath = flags.GetValueOrDefault("words-file");
+                    if (wordsFilePath == "true") return Usage(UsageLineFor("selection set-default"), asJson);
+                    var wordFile = WordListFile.ResolveWithCounts(addedWords, wordsFilePath);
+                    if (!wordFile.Succeeded)
+                    {
+                        result = RenderCommand(wordFile);
+                        break;
+                    }
+                    addedWords = wordFile.Value!.Words;
                     if (!TryReadSelectionLimits(flags, out var limits))
                         return Usage(UsageLineFor("selection set-default"), asJson);
                     var existingSelection = SelectionCommands.ReadDefault(new ReadDefaultSelectionRequest(selectionProject));
@@ -1895,7 +1904,7 @@ try
                         limits = limits with { AssessBudgetSeconds = savedSelection.Limits.AssessBudgetSeconds };
                     result = RenderCommand(SelectionCommands.SetDefault(new SetDefaultSelectionRequest(
                         selectionProject, selectionName, selectionTexts, addedWords, limits,
-                        flags.GetValueOrDefault("expected-revision"))));
+                        flags.GetValueOrDefault("expected-revision")) { WordList = wordFile.Value.List }));
                     break;
                 case "set-parsimony":
                     if (!flags.TryGetValue("name", out var parsimonySelectionName) ||

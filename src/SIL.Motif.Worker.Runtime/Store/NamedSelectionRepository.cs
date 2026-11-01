@@ -15,7 +15,11 @@ public sealed record NamedSelectionRecord(
     string CreatedUtc,
     string UpdatedUtc,
     SelectionParsingLimits Limits,
-    long Revision);
+    long Revision)
+{
+    /// <summary>The word-list file the added words came from and each word's count; null for typed words.</summary>
+    public SelectionWordList? WordList { get; init; }
+}
 
 /// <summary>Raised when a Selection write was based on a revision that is no longer current.</summary>
 public sealed class SelectionRevisionConflictException(string message) : InvalidOperationException(message);
@@ -67,7 +71,7 @@ public sealed class NamedSelectionRepository(MotifDatabase database)
     public NamedSelectionRecord SetParsimony(
         string name, IReadOnlyList<Guid> textIds, IReadOnlyList<string> addedWords,
         SelectionParsingLimits limits, string? expectedRevision) =>
-        Save(name, textIds, addedWords, limits, expectedRevision, "ParsimonySelection");
+        Save(name, textIds, addedWords, limits, expectedRevision, "ParsimonySelection", null);
 
     internal NamedSelectionRecord? GetDefault(SqliteConnection connection, SqliteTransaction? transaction) =>
         ReadPointer(connection, transaction, "DefaultSelection");
@@ -80,7 +84,8 @@ public sealed class NamedSelectionRepository(MotifDatabase database)
         command.Transaction = transaction;
         command.CommandText = $"""
             SELECT s.SelectionName, s.TextIdsJson, s.AddedWordsJson, s.CreatedUtc, s.UpdatedUtc,
-                s.TimeLimitMode, s.ExplicitPerWordLimitMs, s.PerWordStepLimit, s.Revision, s.AssessBudgetSeconds
+                s.TimeLimitMode, s.ExplicitPerWordLimitMs, s.PerWordStepLimit, s.Revision, s.AssessBudgetSeconds,
+                s.WordListJson
             FROM {pointerTable} d JOIN NamedSelections s ON s.SelectionName = d.SelectionName
             WHERE d.Id = 1;
             """;
@@ -99,7 +104,8 @@ public sealed class NamedSelectionRepository(MotifDatabase database)
         using var command = connection.CreateCommand();
         command.CommandText = """
             SELECT SelectionName, TextIdsJson, AddedWordsJson, CreatedUtc, UpdatedUtc,
-                TimeLimitMode, ExplicitPerWordLimitMs, PerWordStepLimit, Revision, AssessBudgetSeconds
+                TimeLimitMode, ExplicitPerWordLimitMs, PerWordStepLimit, Revision, AssessBudgetSeconds,
+                WordListJson
             FROM NamedSelections WHERE SelectionName = $name;
             """;
         command.Parameters.AddWithValue("$name", name.Trim());
@@ -110,12 +116,12 @@ public sealed class NamedSelectionRepository(MotifDatabase database)
     /// <summary>Saves Selection inputs and makes that Selection the project's default atomically.</summary>
     public NamedSelectionRecord SetDefault(
         string name, IReadOnlyList<Guid> textIds, IReadOnlyList<string> addedWords,
-        SelectionParsingLimits limits, string? expectedRevision) =>
-        Save(name, textIds, addedWords, limits, expectedRevision, "DefaultSelection");
+        SelectionParsingLimits limits, string? expectedRevision, SelectionWordList? wordList = null) =>
+        Save(name, textIds, addedWords, limits, expectedRevision, "DefaultSelection", wordList);
 
     private NamedSelectionRecord Save(
         string name, IReadOnlyList<Guid> textIds, IReadOnlyList<string> addedWords,
-        SelectionParsingLimits limits, string? expectedRevision, string pointerTable)
+        SelectionParsingLimits limits, string? expectedRevision, string pointerTable, SelectionWordList? wordList)
     {
         RequireName(name);
         ArgumentNullException.ThrowIfNull(textIds);
@@ -126,6 +132,12 @@ public sealed class NamedSelectionRepository(MotifDatabase database)
         var canonicalWords = addedWords.Select(word => word.Trim()).Where(word => word.Length > 0)
             .Select(word => word.Normalize(System.Text.NormalizationForm.FormD))
             .Distinct(StringComparer.Ordinal).OrderBy(word => word, StringComparer.Ordinal).ToArray();
+        var wordSet = canonicalWords.ToHashSet(StringComparer.Ordinal);
+        var keptList = wordList is null ? null : wordList with
+        {
+            Counts = wordList.Counts.Where(entry => wordSet.Contains(entry.Key))
+                .ToDictionary(entry => entry.Key, entry => entry.Value, StringComparer.Ordinal),
+        };
         var now = DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture);
 
         using var connection = _database.OpenConnection();
@@ -137,6 +149,8 @@ public sealed class NamedSelectionRepository(MotifDatabase database)
             throw new SelectionRevisionConflictException("The Selection changed before these inputs could be saved.");
 
         var revision = existing is { } current ? checked(current.Revision + 1) : 1;
+        if (keptList is null && existing is not null)
+            keptList = StoredListForSameInputs(connection, transaction, name, canonicalTextIds, canonicalWords);
         if (existing is null)
         {
             using var insert = connection.CreateCommand();
@@ -144,10 +158,12 @@ public sealed class NamedSelectionRepository(MotifDatabase database)
             insert.CommandText = """
                 INSERT INTO NamedSelections
                     (SelectionName, TextIdsJson, AddedWordsJson, CreatedUtc, UpdatedUtc,
-                     TimeLimitMode, ExplicitPerWordLimitMs, PerWordStepLimit, Revision, AssessBudgetSeconds)
-                VALUES ($name, $texts, $words, $created, $updated, $timeMode, $timeLimit, $stepLimit, $revision, $budget);
+                     TimeLimitMode, ExplicitPerWordLimitMs, PerWordStepLimit, Revision, AssessBudgetSeconds, WordListJson)
+                VALUES ($name, $texts, $words, $created, $updated, $timeMode, $timeLimit, $stepLimit, $revision, $budget,
+                    $wordList);
                 """;
             AddInputParameters(insert, name, canonicalTextIds, canonicalWords, limits, now, revision);
+            insert.Parameters.AddWithValue("$wordList", WordListColumn(keptList));
             insert.Parameters.AddWithValue("$created", now);
             insert.ExecuteNonQuery();
         }
@@ -158,10 +174,12 @@ public sealed class NamedSelectionRepository(MotifDatabase database)
             update.CommandText = """
                 UPDATE NamedSelections SET TextIdsJson = $texts, AddedWordsJson = $words,
                     UpdatedUtc = $updated, TimeLimitMode = $timeMode,
-                    ExplicitPerWordLimitMs = $timeLimit, PerWordStepLimit = $stepLimit, Revision = $revision, AssessBudgetSeconds = $budget
+                    ExplicitPerWordLimitMs = $timeLimit, PerWordStepLimit = $stepLimit, Revision = $revision, AssessBudgetSeconds = $budget,
+                    WordListJson = $wordList
                 WHERE SelectionName = $name AND Revision = $expected;
                 """;
             AddInputParameters(update, name, canonicalTextIds, canonicalWords, limits, now, revision);
+            update.Parameters.AddWithValue("$wordList", WordListColumn(keptList));
             update.Parameters.AddWithValue("$expected", existing.Value.Revision);
             if (update.ExecuteNonQuery() != 1)
                 throw new SelectionRevisionConflictException("The Selection changed before these inputs could be saved.");
@@ -170,7 +188,7 @@ public sealed class NamedSelectionRepository(MotifDatabase database)
         SetPointer(connection, transaction, pointerTable, name);
         transaction.Commit();
         return new NamedSelectionRecord(name, canonicalTextIds, canonicalWords,
-            existing?.CreatedUtc ?? now, now, limits, revision);
+            existing?.CreatedUtc ?? now, now, limits, revision) { WordList = keptList };
     }
 
     /// <summary>Changes only the current Default Selection's limits when its revision still matches.</summary>
@@ -211,6 +229,26 @@ public sealed class NamedSelectionRepository(MotifDatabase database)
 
     private static NamedSelectionRecord? ReadDefault(SqliteConnection connection, SqliteTransaction transaction) =>
         ReadPointer(connection, transaction, "DefaultSelection");
+
+    // A save naming no word list keeps the stored one while the Texts and words are the same; a change ends it.
+    private static SelectionWordList? StoredListForSameInputs(SqliteConnection connection, SqliteTransaction transaction,
+        string name, IReadOnlyList<Guid> textIds, IReadOnlyList<string> words)
+    {
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = "SELECT TextIdsJson, AddedWordsJson, WordListJson FROM NamedSelections WHERE SelectionName = $name;";
+        command.Parameters.AddWithValue("$name", name);
+        using var reader = command.ExecuteReader();
+        if (!reader.Read() || reader.IsDBNull(2)) return null;
+        try
+        {
+            var storedTexts = JsonSerializer.Deserialize<Guid[]>(reader.GetString(0))!;
+            var storedWords = JsonSerializer.Deserialize<string[]>(reader.GetString(1))!;
+            return storedTexts.SequenceEqual(textIds) && storedWords.SequenceEqual(words, StringComparer.Ordinal)
+                ? JsonSerializer.Deserialize<SelectionWordList>(reader.GetString(2)) : null;
+        }
+        catch (JsonException) { return null; }
+    }
 
     private static (long Revision, string CreatedUtc)? ReadRevision(
         SqliteConnection connection, SqliteTransaction transaction, string name)
@@ -280,7 +318,10 @@ public sealed class NamedSelectionRepository(MotifDatabase database)
             return new NamedSelectionRecord(
                 reader.GetString(0), JsonSerializer.Deserialize<Guid[]>(reader.GetString(1))!,
                 JsonSerializer.Deserialize<string[]>(reader.GetString(2))!, reader.GetString(3), reader.GetString(4),
-                limits, reader.GetInt64(8));
+                limits, reader.GetInt64(8))
+            {
+                WordList = reader.IsDBNull(10) ? null : JsonSerializer.Deserialize<SelectionWordList>(reader.GetString(10)),
+            };
         }
         catch (Exception exception) when (exception is JsonException or InvalidOperationException or
                                            ArgumentOutOfRangeException or ArgumentException)
@@ -288,6 +329,9 @@ public sealed class NamedSelectionRepository(MotifDatabase database)
             throw new InvalidDataException("A saved Selection has invalid stored inputs.", exception);
         }
     }
+
+    private static object WordListColumn(SelectionWordList? wordList) =>
+        wordList is null ? DBNull.Value : JsonSerializer.Serialize(wordList);
 
     private static void ValidateLimits(SelectionParsingLimits limits)
     {

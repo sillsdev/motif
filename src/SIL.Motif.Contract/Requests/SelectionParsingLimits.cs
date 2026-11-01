@@ -47,6 +47,9 @@ public sealed record SetDefaultSelectionRequest(
     SelectionParsingLimits Limits,
     string? ExpectedRevision = null)
 {
+    /// <summary>The word-list file the added words were read from, with the counts it gave; null for typed words.</summary>
+    public SelectionWordList? WordList { get; init; }
+
     [JsonIgnore]
     public int? PerWordLimitMs
     {

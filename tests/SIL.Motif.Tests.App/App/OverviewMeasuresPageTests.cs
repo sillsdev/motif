@@ -137,6 +137,55 @@ public sealed class OverviewMeasuresPageTests
     }
 
     [Fact]
+    public async Task AWordListsBandsCountOccurrencesAndSayHowManyWordsHadNoCount()
+    {
+        using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
+        var overview = OverviewPageWordsTests.Populated();
+        var (page, _) = await Open(overview with { FrequencyBands = Bands(byText: false) with { NoCountWords = 2 } });
+        var (one, _) = await Open(overview with { FrequencyBands = Bands(byText: false) with { NoCountWords = 1 } });
+        var (byText, _) = await Open(overview with { FrequencyBands = Bands(byText: true) });
+
+        Assert.Equal("Counted occurrences covered: 1,450 of 1,500", page.FrequencyBandRows[0].PlacesText);
+        Assert.True(page.HasBandsNoCountNote);
+        Assert.Contains("2 words have no count in the word list", page.BandsNoCountNote, StringComparison.Ordinal);
+        Assert.Contains("1 word has no count in the word list", one.BandsNoCountNote, StringComparison.Ordinal);
+        Assert.False(byText.HasBandsNoCountNote);
+    }
+
+    [Fact]
+    public async Task AnUnparsedWordWhoseWordListGaveNoCountShowsNoNumber()
+    {
+        using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
+        var overview = OverviewPageWordsTests.Populated();
+        var unparsed = Unparsed() with { ByText = false };
+        unparsed = unparsed with { Top = [unparsed.Top[0], unparsed.Top[1] with { Occurrences = null }] };
+        var (page, _) = await Open(overview with { LookFirst = overview.LookFirst with { UnparsedWords = unparsed } });
+
+        var row = Assert.Single(page.LookFirstRows, candidate => candidate.HasWords);
+        Assert.Equal([("kat", "41"), ("ja", string.Empty)], row.Words.Select(word => (word.Word, word.CountText)));
+    }
+
+    [Fact]
+    public async Task AnUnparsedRowSaysHowManyWordsHaveNoCountSoItsTotalIsNotTakenForComplete()
+    {
+        using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
+        var overview = OverviewPageWordsTests.Populated();
+        var many = Unparsed() with { ByText = false, NoCountWords = 3 };
+        var one = Unparsed() with { ByText = false, NoCountWords = 1 };
+        var none = Unparsed() with { ByText = false };
+
+        var (manyPage, _) = await Open(overview with { LookFirst = overview.LookFirst with { UnparsedWords = many } });
+        var (onePage, _) = await Open(overview with { LookFirst = overview.LookFirst with { UnparsedWords = one } });
+        var (nonePage, _) = await Open(overview with { LookFirst = overview.LookFirst with { UnparsedWords = none } });
+
+        Assert.Contains("3 of them have no count in the word list", Assert.Single(manyPage.LookFirstRows, row => row.HasWords).Detail,
+            StringComparison.Ordinal);
+        Assert.Contains("1 of them has no count in the word list", Assert.Single(onePage.LookFirstRows, row => row.HasWords).Detail,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("no count", Assert.Single(nonePage.LookFirstRows, row => row.HasWords).Detail, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task APartialParseSaysSoAndNoBandsMeansNoTile()
     {
         using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));

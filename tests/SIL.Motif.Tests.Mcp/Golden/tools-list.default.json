@@ -4996,7 +4996,7 @@
         },
         "wordsFile": {
           "type": "string",
-          "description": "Path to a UTF-8 file with one word per line, instead of words."
+          "description": "Path to a UTF-8 file with one word per line, or word, a tab, then a count, instead of words; counts are used only when the file is saved with the Selection."
         },
         "negative_words": {
           "type": "array",
@@ -5280,7 +5280,7 @@
         },
         "wordsFile": {
           "type": "string",
-          "description": "Path to a UTF-8 file with one word per line, instead of words."
+          "description": "Path to a UTF-8 file with one word per line, or word, a tab, then a count, instead of words; counts are used only when the file is saved with the Selection."
         },
         "assessment": {
           "type": "string",

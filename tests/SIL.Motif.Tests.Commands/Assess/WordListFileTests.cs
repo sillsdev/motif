@@ -121,7 +121,7 @@ public sealed class WordListFileTests : IDisposable
 
         var outcome = WordListFile.Read(stream, "small.txt");
 
-        Assert.Equal(["aa"], outcome.Value!);
+        Assert.Equal(["aa"], outcome.Value!.Words);
         Assert.Equal(2L, stream.Consumed);
         Assert.Equal(0, stream.MetadataReads);
     }
@@ -132,6 +132,7 @@ public sealed class WordListFileTests : IDisposable
     [InlineData("missing", "assess.words-file-unreadable", true, "read")]
     [InlineData("large", "assess.words-file-too-large", false, "8 MiB")]
     [InlineData("nul", "assess.words-file-not-text", false, "UTF-8")]
+    [InlineData("badrow", "assess.words-file-bad-row", false, "tab")]
     public void EveryWordFileRefusalHasTypedFactsRepeatGuidanceAndHelp(
         string kind, string code, bool shownInWindow, string explanation)
     {
@@ -140,6 +141,7 @@ public sealed class WordListFileTests : IDisposable
             "empty" => Encoding.UTF8.GetBytes("\uFEFF \r\n\t"),
             "large" => Enumerable.Repeat((byte)'a', ByteLimit + 1).ToArray(),
             "nul" => [0x61, 0x00],
+            "badrow" => Encoding.UTF8.GetBytes("kaon\tmany"),
             _ => [0x61],
         };
         var path = kind == "missing" ? Path.Combine(_root, "missing.txt") : Write(bytes);
@@ -199,7 +201,7 @@ public sealed class WordListFileTests : IDisposable
         return path;
     }
 
-    private static void AssertRefusal(CommandOutcome<IReadOnlyList<string>> outcome, string code, string path)
+    private static void AssertRefusal<T>(CommandOutcome<T> outcome, string code, string path) where T : class
     {
         Assert.False(outcome.Succeeded);
         Assert.Equal(code, outcome.Refusal!.Code);

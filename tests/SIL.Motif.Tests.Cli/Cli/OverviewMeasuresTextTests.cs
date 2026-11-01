@@ -30,7 +30,7 @@ public sealed class OverviewMeasuresTextTests
         var unparsed = new OverviewUnparsedWords(148, 1030, true,
             [new("kat", 41, UnparsedKind.NoAnalysis, null), new("ja", 30, UnparsedKind.Refused, "invalidShape")], 71,
             [new(UnparsedKind.NoAnalysis, null, 112, 800), new(UnparsedKind.WorkLimit, null, 30, 180),
-                new(UnparsedKind.Refused, "invalidShape", 6, 50)], 3, 4);
+                new(UnparsedKind.Refused, "invalidShape", 6, 50)], 3, 4) { ByText = true };
 
         var text = Text(Overview(lookFirst: OverviewLookFirst.Empty with { UnparsedWords = unparsed }));
 
@@ -64,6 +64,57 @@ public sealed class OverviewMeasuresTextTests
         Assert.Contains("Unparsed   2 words: 1 no analysis, 1 stopped before finishing", text, StringComparison.Ordinal);
         Assert.Contains("first by spelling: ant, zed", text, StringComparison.Ordinal);
         Assert.DoesNotContain("occurrences:", text.Split('\n').First(line => line.StartsWith("Unparsed", StringComparison.Ordinal)));
+    }
+
+    [Fact]
+    public void WhenEveryUnparsedWordIsAnIncorrectSpellingTheLineSaysNoWordsAreListed()
+    {
+        var unparsed = new OverviewUnparsedWords(0, 0, true, [], 0, [], 0, 3);
+
+        var text = Text(Overview(lookFirst: OverviewLookFirst.Empty with { UnparsedWords = unparsed }));
+
+        Assert.Contains("Unparsed   0 words listed", text, StringComparison.Ordinal);
+        Assert.Contains("Not listed: 3 words the project marks as an incorrect spelling", text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AWordListSelectionNamesItsHighestCountsAndLeavesAnUnknownCountBlank()
+    {
+        var unparsed = new OverviewUnparsedWords(2, 41, true,
+            [new("kat", 41, UnparsedKind.NoAnalysis, null), new("mid", null, UnparsedKind.NoAnalysis, null)],
+            41, [new(UnparsedKind.NoAnalysis, null, 2, 41)], 1, 0) { ByText = false };
+
+        var text = Text(Overview(lookFirst: OverviewLookFirst.Empty with { UnparsedWords = unparsed }));
+
+        Assert.Contains("highest counts: kat 41, mid", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("mid 0", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("had no count", text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AWordListSelectionSaysHowManyUnparsedWordsHadNoCountSoTheTotalIsNotTakenForComplete()
+    {
+        var unparsed = new OverviewUnparsedWords(3, 41, true,
+            [new("kat", 41, UnparsedKind.NoAnalysis, null), new("mid", null, UnparsedKind.NoAnalysis, null),
+             new("zed", null, UnparsedKind.NoAnalysis, null)],
+            41, [new(UnparsedKind.NoAnalysis, null, 3, 41)], 1, 0) { ByText = false, NoCountWords = 2 };
+
+        var text = Text(Overview(lookFirst: OverviewLookFirst.Empty with { UnparsedWords = unparsed }));
+
+        Assert.Contains("2 words had no count in the word list, so the occurrences leave them out", text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AWordListsBandsAreNotTextCoverageAndSayHowManyWordsHadNoCount()
+    {
+        var bands = new OverviewFrequencyBands(false, [new(1, null, 3, 1, 11, 9)]) { NoCountWords = 1 };
+
+        var text = Text(Overview() with { FrequencyBands = bands });
+
+        Assert.Contains("By frequency band", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("Text Coverage by frequency band", text, StringComparison.Ordinal);
+        Assert.Contains("9/11 counted occurrences covered", text, StringComparison.Ordinal);
+        Assert.Contains("1 word had no count in the word list", text, StringComparison.Ordinal);
     }
 
     [Fact]

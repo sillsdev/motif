@@ -759,6 +759,10 @@ public static class CommandTextRenderer
         return $"Default Selection: {selection.Name}{Environment.NewLine}" +
             $"  Texts:           {selection.TextIds.Count:N0}{Environment.NewLine}" +
             $"  Added words:     {selection.AddedWords.Count:N0}{Environment.NewLine}" +
+            (selection.WordList is { } list
+                ? $"  Word list:       {list.Source} {list.Sha256}, {list.Counts.Count:N0} words with a count, " +
+                  $"{selection.AddedWords.Count - list.Counts.Count:N0} with none known{Environment.NewLine}"
+                : string.Empty) +
             $"  Work limit:      {(selection.Limits.PerWordStepLimit.Steps is { } steps ? steps.ToString("N0", CultureInfo.CurrentCulture) + " analysis attempts" : "none")}{Environment.NewLine}" +
             $"  Time safety net: {timeLimit}{Environment.NewLine}" +
             $"  Updated:         {selection.UpdatedUtc}{Environment.NewLine}";

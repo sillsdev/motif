@@ -104,6 +104,8 @@ public sealed partial class OverviewPageModel : PageModel
     [NotifyPropertyChangedFor(nameof(FrequencyBandRows))]
     [NotifyPropertyChangedFor(nameof(HasFrequencyBands))]
     [NotifyPropertyChangedFor(nameof(FrequencyBandsTitle))]
+    [NotifyPropertyChangedFor(nameof(BandsNoCountNote))]
+    [NotifyPropertyChangedFor(nameof(HasBandsNoCountNote))]
     [NotifyPropertyChangedFor(nameof(NotMeasuredNote))]
     [NotifyPropertyChangedFor(nameof(HasAmbiguity))]
     [NotifyPropertyChangedFor(nameof(AmbiguityMain))]
@@ -408,6 +410,8 @@ public sealed partial class OverviewPageModel : PageModel
             ? PluralText.Format(unparsed.ByText ? MotifAppStrings.OverviewUnparsedPlacesPattern
                 : MotifAppStrings.OverviewUnparsedSelectionPlacesPattern, unparsed.Occurrences)
             : MotifAppStrings.OverviewUnparsedByFormNote);
+        if (unparsed.NoCountWords > 0)
+            detail.Add(PluralText.Format(MotifAppStrings.OverviewUnparsedNoCountPattern, unparsed.NoCountWords));
         if (unparsed.IncorrectSpellingWords > 0)
             detail.Add(PluralText.Format(MotifAppStrings.OverviewUnparsedIncorrectSpellingPattern,
                 unparsed.IncorrectSpellingWords));
@@ -425,7 +429,7 @@ public sealed partial class OverviewPageModel : PageModel
             new RelayCommand(() => Context.OpenTexts(TextsTab.Matrix, cells)))
         {
             Words = [.. unparsed.Top.Select(word => new OverviewRowWord(word.Word,
-                unparsed.RankedByOccurrences ? Number(word.Occurrences) : string.Empty))],
+                unparsed.RankedByOccurrences && word.Occurrences is { } count ? Number(count) : string.Empty))],
         };
     }
 
@@ -478,10 +482,17 @@ public sealed partial class OverviewPageModel : PageModel
                 : string.Format(CultureInfo.CurrentCulture, MotifAppStrings.OverviewBandRestFormat, Number(band.FirstRank)),
             string.Format(CultureInfo.CurrentCulture, MotifAppStrings.OverviewBandWordsFormat,
                 Number(band.ParsedWords), Number(band.Words)),
-            string.Format(CultureInfo.CurrentCulture, MotifAppStrings.OverviewBandPlacesFormat,
+            string.Format(CultureInfo.CurrentCulture, bands.ByText ? MotifAppStrings.OverviewBandPlacesFormat
+                : MotifAppStrings.OverviewBandCountsFormat,
                 Number(band.ParsedOccurrences), Number(band.Occurrences))))];
 
     public bool HasFrequencyBands => FrequencyBandRows.Count > 0;
+
+    /// <summary>Says how many words of a word list have no count, which ranks them after the counted words.</summary>
+    public string BandsNoCountNote => !HasAssessment || Overview?.FrequencyBands is not { NoCountWords: > 0 } bands
+        ? string.Empty : PluralText.Format(MotifAppStrings.OverviewBandNoCountPattern, bands.NoCountWords);
+
+    public bool HasBandsNoCountNote => BandsNoCountNote.Length > 0;
 
     /// <summary>Text Coverage by Frequency Band for a Selection of chosen Texts, otherwise By Frequency Band.</summary>
     public string FrequencyBandsTitle => Overview?.FrequencyBands is { ByText: true }

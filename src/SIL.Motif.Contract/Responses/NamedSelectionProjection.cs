@@ -15,6 +15,9 @@ public sealed record NamedSelectionProjection(
     SelectionParsingLimits Limits,
     string Revision)
 {
+    /// <summary>The word-list file the added words came from and each word's count; null for typed words.</summary>
+    public SelectionWordList? WordList { get; init; }
+
     [JsonIgnore]
     public int? PerWordLimitMs => Limits.TimeMode == SelectionTimeLimitMode.Explicit
         ? Limits.ExplicitPerWordLimitMs : null;

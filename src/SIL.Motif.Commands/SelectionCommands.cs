@@ -125,7 +125,7 @@ public static class SelectionCommands
             try
             {
                 var saved = new NamedSelectionRepository(database).SetDefault(request.Name, request.TextIds,
-                    request.AddedWords, request.Limits, request.ExpectedRevision);
+                    request.AddedWords, request.Limits, request.ExpectedRevision, request.WordList);
                 return CommandOutcome<DefaultSelectionResponse>.Success(new DefaultSelectionResponse(Project(saved)));
             }
             catch (SelectionRevisionConflictException exception)
@@ -166,5 +166,8 @@ public static class SelectionCommands
 
     private static NamedSelectionProjection Project(NamedSelectionRecord saved) => new(
         saved.Name, saved.TextIds, saved.AddedWords, saved.CreatedUtc, saved.UpdatedUtc,
-        saved.Limits, saved.Revision.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        saved.Limits, saved.Revision.ToString(System.Globalization.CultureInfo.InvariantCulture))
+    {
+        WordList = saved.WordList,
+    };
 }

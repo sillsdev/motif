@@ -806,7 +806,7 @@ internal static class AgentTools
             AgentClass.Evaluate,
             Schema.Object([("proposal", Schema.String("The proposal id."), true),
                 ("words", Schema.StringArray("Words to parse. Omit to use the words the Proposal touches."), false),
-                ("wordsFile", Schema.String("Path to a UTF-8 file with one word per line, instead of words."), false),
+                ("wordsFile", Schema.String("Path to a UTF-8 file with one word per line, or word, a tab, then a count, instead of words; counts are used only when the file is saved with the Selection."), false),
                 ("negative_words", Schema.StringArray("Attested counterexamples that should not parse."), false),
                 ("job", Schema.String("A job id from an earlier 'running' result, to keep waiting for it."), false),
                 ("wait_seconds", Schema.Integer("How long to wait for the result. Default 40.", 1, 300), false),
@@ -916,7 +916,7 @@ internal static class AgentTools
             { NeedsProject = false },
         new("motif_assess", string.Empty, AgentClass.Evaluate,
             Schema.Object([("words", Schema.StringArray("Words to assess; omit for the Default Selection."), false),
-                ("wordsFile", Schema.String("Path to a UTF-8 file with one word per line, instead of words."), false),
+                ("wordsFile", Schema.String("Path to a UTF-8 file with one word per line, or word, a tab, then a count, instead of words; counts are used only when the file is saved with the Selection."), false),
                 ("assessment", Schema.String(
                     "A stored Assessment id from an earlier result: page its words instead of measuring again."), false),
                 ("offset", Schema.Integer("Words to skip when paging. Default 0.", 0, 10000000), false),

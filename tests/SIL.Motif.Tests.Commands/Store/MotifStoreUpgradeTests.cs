@@ -62,7 +62,7 @@ public sealed class MotifStoreUpgradeTests : IDisposable
         using (var old = Connect(Source))
         {
             Execute(old, "INSERT INTO NamedSelections VALUES ('parsimony', '[]', '[\"kitabu\"]', '2020', '2020', " +
-                "'Estimated', NULL, NULL, 1, 3600); INSERT INTO ParsimonySelection VALUES (1, 'parsimony');");
+                "'Estimated', NULL, NULL, 1, 3600, NULL); INSERT INTO ParsimonySelection VALUES (1, 'parsimony');");
         }
 
         var output = Path.Combine(_root, "copy.db");

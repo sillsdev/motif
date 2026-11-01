@@ -32,6 +32,39 @@ public sealed class SelectionSetupArgvTests : IDisposable
     }
 
     [Fact]
+    public void AWordsFileWithCountsIsSavedWithTheSelectionAndShownBySource()
+    {
+        var file = Path.Combine(_root, "words.txt");
+        File.WriteAllText(file, "motifa\t7\nmotifb\nmotifa\t3\n");
+
+        var set = Run($"selection set-default --project \"{Project}\" --name Default --words-file \"{file}\" --json");
+        Assert.Equal(0, set.ExitCode);
+        var show = Run($"selection show --project \"{Project}\" --json");
+
+        Assert.Equal(0, show.ExitCode);
+        using var document = JsonDocument.Parse(show.Output);
+        var list = document.RootElement.GetProperty("selection").GetProperty("wordList");
+        Assert.Equal("words.txt", list.GetProperty("source").GetString());
+        Assert.StartsWith("sha256:", list.GetProperty("sha256").GetString(), StringComparison.Ordinal);
+        Assert.Equal(10, list.GetProperty("counts").GetProperty("motifa").GetInt32());
+        Assert.False(list.GetProperty("counts").TryGetProperty("motifb", out _));
+        var text = Run($"selection show --project \"{Project}\"");
+        Assert.Contains("Word list:", text.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AWordsFileRowWithABadCountIsRefusedWithItsLineNumber()
+    {
+        var file = Path.Combine(_root, "bad.txt");
+        File.WriteAllText(file, "motifa\t7\nmotifb\tmany\n");
+
+        var set = Run($"selection set-default --project \"{Project}\" --name Default --words-file \"{file}\"");
+
+        Assert.NotEqual(0, set.ExitCode);
+        Assert.Contains("Line 2 of the words file", set.Error, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void SetDefaultAndSetLimitsPersistTheCompleteSelectionPolicy()
     {
         var set = Run($"selection set-default --project \"{Project}\" --name Default --add-words motifa " +

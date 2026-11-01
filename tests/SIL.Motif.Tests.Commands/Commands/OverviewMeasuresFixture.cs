@@ -32,7 +32,7 @@ internal sealed class OverviewMeasuresFixture : IDisposable
 
     public OverviewMeasuresFixture(string testRoot, IReadOnlyDictionary<string, int> textPlaces,
         int digitOnlyPlaces = 0, int otherWritingSystemPlaces = 0, IReadOnlyList<string>? addedWords = null,
-        bool chooseText = true)
+        bool chooseText = true, SelectionWordList? wordList = null)
     {
         _root = Path.Combine(testRoot, Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_root);
@@ -58,7 +58,7 @@ internal sealed class OverviewMeasuresFixture : IDisposable
             TestTextWords.Empty, summary);
         new NamedSelectionRepository(Database).SetDefault("Default", chooseText ? [_textId] : [], addedWords ?? [],
             new SelectionParsingLimits(StepCap.Default, SelectionTimeLimitMode.Estimated, null),
-            expectedRevision: null);
+            expectedRevision: null, wordList);
         SelectionWords = Selection.Create("Default", [.. (chooseText ? textPlaces.Keys : []), .. addedWords ?? []]).Words;
     }
 

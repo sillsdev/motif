@@ -21,6 +21,7 @@ internal static class OverviewUnparsedBuilder
             words.Any(placed => occurrences.GetValueOrDefault(placed.Form) > 0);
         var forms = new List<string>();
         var counts = new List<long>();
+        var unknown = new List<bool>();
         var reasons = new List<(string Kind, string? Code)>();
         var incorrectSpelling = 0;
         foreach (var placed in words)
@@ -34,23 +35,27 @@ internal static class OverviewUnparsedBuilder
             }
             forms.Add(placed.Form);
             counts.Add(hasCounts ? occurrences!.GetValueOrDefault(placed.Form) : 0);
+            unknown.Add(!hasCounts || !occurrences!.ContainsKey(placed.Form));
             reasons.Add(ReasonOf(placed, word));
         }
 
-        var order = RankedWords.Order(forms, counts);
+        var order = RankedWords.Order(forms, counts, hasCounts ? unknown : null);
         var top = order.Take(OverviewMeasureLimits.TopWords).Select(index => new OverviewUnparsedWord(
-            forms[index], (int)counts[index], reasons[index].Kind, reasons[index].Code)).ToArray();
+            forms[index], unknown[index] ? null : (int)counts[index], reasons[index].Kind, reasons[index].Code)).ToArray();
         var groups = Enumerable.Range(0, forms.Count)
             .GroupBy(index => reasons[index])
             .Select(group => new OverviewUnparsedGroup(group.Key.Kind, group.Key.Code, group.Count(),
-                (int)group.Sum(index => counts[index])))
+                Saturate(group.Sum(index => counts[index]))))
             .OrderByDescending(group => group.Words)
             .ThenBy(group => group.Kind, StringComparer.Ordinal)
             .ThenBy(group => group.Code, StringComparer.Ordinal)
             .ToArray();
-        return new OverviewUnparsedWords(forms.Count, (int)counts.Sum(), hasCounts, top, top.Sum(word => word.Occurrences),
-            groups.Take(OverviewMeasureLimits.TopWords).ToArray(), groups.Length, incorrectSpelling);
+        return new OverviewUnparsedWords(forms.Count, Saturate(counts.Sum()), hasCounts, top, top.Sum(word => word.Occurrences ?? 0),
+            groups.Take(OverviewMeasureLimits.TopWords).ToArray(), groups.Length, incorrectSpelling)
+        { NoCountWords = hasCounts ? unknown.Count(isUnknown => isUnknown) : 0 };
     }
+
+    private static int Saturate(long value) => (int)Math.Min(value, int.MaxValue);
 
     /// <summary>
     /// The digit-only and other-writing-system places in the chosen Texts, from the Text summaries captured with the
@@ -79,20 +84,22 @@ internal static class OverviewUnparsedBuilder
 internal static class RankedWords
 {
     /// <summary>
-    /// The indices of <paramref name="forms"/> ordered by count descending, then by ordinal spelling. Spellings are
-    /// ranked once, so the sort itself compares only integers and a tie at any rank is settled the same way every run.
+    /// The indices of <paramref name="forms"/> ordered by count descending, then by ordinal spelling; words flagged in
+    /// <paramref name="unknown"/> come after every counted word, a known zero included. Spellings are ranked once,
+    /// so the sort itself compares only integers and a tie at any rank is settled the same way every run.
     /// </summary>
-    public static int[] Order(IReadOnlyList<string> forms, IReadOnlyList<long> counts)
+    public static int[] Order(IReadOnlyList<string> forms, IReadOnlyList<long> counts, IReadOnlyList<bool>? unknown = null)
     {
         var bySpelling = Enumerable.Range(0, forms.Count).ToArray();
         if (!IsOrdinalSorted(forms)) Array.Sort(bySpelling, (a, b) => string.CompareOrdinal(forms[a], forms[b]));
         var spellingRank = new int[forms.Count];
-        for (var rank = 0; rank < bySpelling.Length; rank++) spellingRank[bySpelling[rank]] = rank;
+        for (var place = 0; place < bySpelling.Length; place++) spellingRank[bySpelling[place]] = place;
         var keys = new ulong[forms.Count];
         var order = new int[forms.Count];
         for (var index = 0; index < keys.Length; index++)
         {
-            keys[index] = ((ulong)(uint.MaxValue - (uint)Math.Clamp(counts[index], 0, uint.MaxValue)) << 32) | (uint)spellingRank[index];
+            var rank = unknown is not null && unknown[index] ? 0u : (uint)Math.Clamp(counts[index], 0, uint.MaxValue - 1) + 1;
+            keys[index] = ((ulong)(uint.MaxValue - rank) << 32) | (uint)spellingRank[index];
             order[index] = index;
         }
         Array.Sort(keys, order);

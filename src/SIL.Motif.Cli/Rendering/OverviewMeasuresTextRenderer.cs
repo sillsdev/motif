@@ -23,15 +23,20 @@ internal static class OverviewMeasuresTextRenderer
     {
         if (unparsed is null) return;
         var places = unparsed.RankedByOccurrences ? $", {Count(unparsed.Occurrences, "occurrence", "occurrences")}" : string.Empty;
-        text.AppendLine($"Unparsed   {Count(unparsed.Words, "word", "words")}{places}" +
+        // Every unparsed word being an incorrect spelling leaves nothing to list, so say "listed".
+        var listed = unparsed.Words == 0 && unparsed.IncorrectSpellingWords > 0 ? " listed" : string.Empty;
+        text.AppendLine($"Unparsed   {Count(unparsed.Words, "word", "words")}{listed}{places}" +
             (unparsed.Groups.Count == 0 ? string.Empty : ": " + string.Join(", ", unparsed.Groups.Select(Reason))) +
             (unparsed.GroupCount > unparsed.Groups.Count
                 ? $", and {Count(unparsed.GroupCount - unparsed.Groups.Count, "more reason", "more reasons")}" : string.Empty));
         if (unparsed.Top.Count > 0)
-            text.AppendLine($"{Indent}{(unparsed.RankedByOccurrences ? "most occurrences" : "first by spelling")}: " +
-                string.Join(", ", unparsed.Top.Select(word => unparsed.RankedByOccurrences
-                    ? $"{word.Word} {word.Occurrences:N0}" : word.Word)) +
+            text.AppendLine($"{Indent}{(unparsed.RankedByOccurrences ? unparsed.ByText ? "most occurrences" : "highest counts" : "first by spelling")}: " +
+                string.Join(", ", unparsed.Top.Select(word => unparsed.RankedByOccurrences && word.Occurrences is { } count
+                    ? $"{word.Word} {count:N0}" : word.Word)) +
                 (unparsed.Words > unparsed.Top.Count ? $" (top {unparsed.Top.Count} of {unparsed.Words:N0})" : string.Empty));
+        if (unparsed.NoCountWords > 0)
+            text.AppendLine($"{Indent}{Count(unparsed.NoCountWords, "word", "words")} had no count in the word list, " +
+                "so the occurrences leave them out and they rank after the counted words");
         if (unparsed.IncorrectSpellingWords > 0)
             text.AppendLine($"{Indent}Not listed: {Count(unparsed.IncorrectSpellingWords, "word", "words")} " +
                 "the project marks as an incorrect spelling");
@@ -53,8 +58,11 @@ internal static class OverviewMeasuresTextRenderer
             var ranks = band.LastRank is { } last
                 ? $"{band.FirstRank:N0} to {last:N0}" : $"{band.FirstRank:N0} and beyond";
             text.AppendLine($"{Indent}words ranked {ranks}: {band.ParsedWords:N0}/{band.Words:N0} words parse, " +
-                $"{band.ParsedOccurrences:N0}/{band.Occurrences:N0} occurrences covered");
+                $"{band.ParsedOccurrences:N0}/{band.Occurrences:N0} {(bands.ByText ? "occurrences" : "counted occurrences")} covered");
         }
+        if (bands.NoCountWords > 0)
+            text.AppendLine($"{Indent}{Count(bands.NoCountWords, "word", "words")} " +
+                "had no count in the word list and rank after the counted words");
     }
 
     public static void AppendAmbiguity(StringBuilder text, OverviewAmbiguity? ambiguity)

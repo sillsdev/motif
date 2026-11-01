@@ -244,6 +244,8 @@ public static class RefusalCatalog
             NextStep.Repeat()),
         Spec(RefusalCodes.AssessWordsFileTooLarge, FailureReason.InvalidArgument,
             NextStep.Repeat()),
+        Spec(RefusalCodes.AssessWordsFileBadRow, FailureReason.InvalidArgument,
+            NextStep.Repeat()),
         Spec(RefusalCodes.AssessmentCancelled, FailureReason.Cancelled),
         Spec(RefusalCodes.AssessmentStoppedByBudget, FailureReason.StoppedByBudget),
         Spec(RefusalCodes.BaselineBusy, FailureReason.Busy),

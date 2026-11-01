@@ -136,4 +136,75 @@ public sealed class OverviewFrequencyBandsTests : IDisposable
         Assert.Null(wordList.FrequencyBands);
         Assert.Null(none.FrequencyBands);
     }
+
+    [Fact]
+    public void AWordListSelectionIsRankedByItsOwnCountsAndNeverCalledTextCoverage()
+    {
+        var list = new SelectionWordList("freq.tsv", "sha256:" + new string('b', 64),
+            new Dictionary<string, int> { ["zed"] = 9, ["ant"] = 2 });
+        using var fixture = new OverviewMeasuresFixture(_root, new Dictionary<string, int> { ["ignored"] = 3 },
+            addedWords: ["zed", "ant", "mid"], chooseText: false, wordList: list);
+        fixture.Assess(Parsed("zed", 1), NoAnalysis("ant"), NoAnalysis("mid"));
+
+        var response = OverviewCommand.Overview(new OverviewRequest(fixture.FwDataPath)).Value!;
+
+        var bands = response.FrequencyBands!;
+        Assert.False(bands.ByText);
+        Assert.Equal(1, bands.NoCountWords);
+        var band = Assert.Single(bands.Bands);
+        Assert.Equal((3, 1, 11, 9), (band.Words, band.ParsedWords, band.Occurrences, band.ParsedOccurrences));
+        Assert.Equal(0, response.TextCoverage.TotalOccurrences);
+        var unparsed = response.LookFirst.UnparsedWords!;
+        Assert.True(unparsed.RankedByOccurrences);
+        Assert.False(unparsed.ByText);
+        Assert.Equal([("ant", (int?)2), ("mid", null)], unparsed.Top.Select(word => (word.Word, word.Occurrences)));
+    }
+
+    [Fact]
+    public void AnExplicitZeroInAWordListShowsAsZeroAndRanksBeforeWordsWithNoCount()
+    {
+        var list = new SelectionWordList("freq.tsv", "sha256:" + new string('b', 64),
+            new Dictionary<string, int> { ["kay"] = 5, ["zed"] = 0 });
+        using var fixture = new OverviewMeasuresFixture(_root, new Dictionary<string, int> { ["ignored"] = 3 },
+            addedWords: ["kay", "zed", "ant", "bee"], chooseText: false, wordList: list);
+        fixture.Assess(Parsed("kay", 1), NoAnalysis("zed"), NoAnalysis("ant"), NoAnalysis("bee"));
+
+        var unparsed = OverviewCommand.Overview(new OverviewRequest(fixture.FwDataPath)).Value!.LookFirst.UnparsedWords!;
+
+        Assert.Equal([("zed", (int?)0), ("ant", null), ("bee", null)], unparsed.Top.Select(word => (word.Word, word.Occurrences)));
+        Assert.Equal(2, unparsed.NoCountWords);
+        Assert.Equal(0, unparsed.Occurrences);
+    }
+
+    [Fact]
+    public void NoWordsAreMissingACountWhenTheSelectionHasNoCountsOrEveryWordHasOne()
+    {
+        var list = new SelectionWordList("freq.tsv", "sha256:" + new string('b', 64),
+            new Dictionary<string, int> { ["ant"] = 2, ["bee"] = 1 });
+        using var counted = new OverviewMeasuresFixture(_root, new Dictionary<string, int> { ["ignored"] = 3 },
+            addedWords: ["ant", "bee"], chooseText: false, wordList: list);
+        counted.Assess(NoAnalysis("ant"), NoAnalysis("bee"));
+        using var typed = new OverviewMeasuresFixture(_root, new Dictionary<string, int> { ["ignored"] = 3 },
+            addedWords: ["ant", "bee"], chooseText: false);
+        typed.Assess(NoAnalysis("ant"), NoAnalysis("bee"));
+
+        Assert.Equal(0, OverviewCommand.Overview(new OverviewRequest(counted.FwDataPath)).Value!.LookFirst.UnparsedWords!.NoCountWords);
+        Assert.Equal(0, OverviewCommand.Overview(new OverviewRequest(typed.FwDataPath)).Value!.LookFirst.UnparsedWords!.NoCountWords);
+    }
+
+    [Fact]
+    public void ADefaultSelectionOfChosenTextsIgnoresAWordListsCounts()
+    {
+        var list = new SelectionWordList("freq.tsv", "sha256:" + new string('b', 64),
+            new Dictionary<string, int> { ["zed"] = 900 });
+        using var fixture = new OverviewMeasuresFixture(_root, new Dictionary<string, int> { ["one"] = 4, ["two"] = 1 },
+            addedWords: ["zed"], wordList: list);
+        fixture.Assess(Parsed("one", 1), Parsed("two", 1), NoAnalysis("zed"));
+
+        var response = OverviewCommand.Overview(new OverviewRequest(fixture.FwDataPath)).Value!;
+
+        Assert.True(response.FrequencyBands!.ByText);
+        Assert.Equal(0, response.FrequencyBands.NoCountWords);
+        Assert.Equal(5, response.FrequencyBands.Bands.Sum(band => band.Occurrences));
+    }
 }

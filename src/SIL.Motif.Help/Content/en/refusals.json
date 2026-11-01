@@ -139,6 +139,10 @@
     "why": "The words file at {wordsFile} exceeds 8 MiB, including any initial UTF-8 signature. Split it into smaller word lists, then repeat the call for each file.",
     "source": "Word-list file input contract."
   },
+  "assess.words-file-bad-row": {
+    "why": "A line of the words file at {wordsFile} is not a word, or a word and a count. Write one word per line, optionally followed by a tab and a whole-number count, with no header line, then repeat the call.",
+    "source": "Word-list file input contract."
+  },
   "assess.words-file-not-text": {
     "why": "The words file at {wordsFile} must be valid UTF-8 text without NUL bytes. Save it as UTF-8 with one word per line, then repeat the call.",
     "source": "Word-list file input contract."
