@@ -51,4 +51,20 @@ public sealed class OverviewMeasuresToolTests
         Assert.False(bands.GetProperty("bands")[1].TryGetProperty("lastRank", out _));
         Assert.Equal(3, json.RootElement.GetProperty("textCoverage").GetProperty("notMeasuredWords").GetInt32());
     }
+
+    [Fact]
+    public void TheOverviewToolCarriesTheAmbiguity()
+    {
+        var response = Overview(OverviewLookFirst.Empty, new OverviewTextCoverage(43, 20, 71, 1, 555, 300)) with
+        {
+            Ambiguity = new OverviewAmbiguity(10, 9, 1.25, 2, [new("bata", 3, 4)]),
+        };
+
+        using var json = JsonDocument.Parse(ProjectionJson.Serialize(response));
+
+        var ambiguity = json.RootElement.GetProperty("ambiguity");
+        Assert.Equal(9, ambiguity.GetProperty("countedWords").GetInt32());
+        Assert.Equal(1.25, ambiguity.GetProperty("meanAnalyses").GetDouble());
+        Assert.Equal(3, ambiguity.GetProperty("top")[0].GetProperty("analyses").GetInt32());
+    }
 }

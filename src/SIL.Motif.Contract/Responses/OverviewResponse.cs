@@ -37,6 +37,9 @@ public sealed record OverviewResponse(
     /// </summary>
     public OverviewFrequencyBands? FrequencyBands { get; init; }
 
+    /// <summary>How many analyses the parsed words have; null when no parsed word has a readable analysis count.</summary>
+    public OverviewAmbiguity? Ambiguity { get; init; }
+
     /// <summary>The producing run and measurement time for each word contributing to these composite metrics.</summary>
     public IReadOnlyDictionary<string, WordMeasurementOrigin> WordOrigins { get; init; } =
         new Dictionary<string, WordMeasurementOrigin>(StringComparer.Ordinal);

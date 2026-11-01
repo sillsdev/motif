@@ -610,7 +610,7 @@ public sealed class OverviewPageWordsTests
             {
                 var tiles = window.GetLogicalDescendants().OfType<Control>()
                     .Where(tile => tile.Classes.Contains("overviewTile")).ToArray();
-                Assert.Equal(6, tiles.Length);
+                Assert.Equal(7, tiles.Length);
                 foreach (var tile in tiles)
                 {
                     var title = tile.GetLogicalDescendants().OfType<TextBlock>()

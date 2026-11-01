@@ -19,7 +19,7 @@ public sealed class OverviewMeasuresPageTests
             ranked ? 71 : 0,
             [new(UnparsedKind.NoAnalysis, null, 112, 800), new(UnparsedKind.WorkLimit, null, 30, 180),
                 new(UnparsedKind.Refused, "invalidShape", 6, 50)],
-            groupCount, incorrectSpelling);
+            groupCount, incorrectSpelling) { ByText = true };
 
     private static async Task<(OverviewPageModel Page, TextsPageModel Texts)> Open(OverviewResponse overview)
     {
@@ -46,7 +46,7 @@ public sealed class OverviewMeasuresPageTests
         Assert.Equal("148 words did not parse.", row.Summary);
         Assert.Contains("112 have no analysis", row.Detail);
         Assert.Contains("30 stopped at the work limit", row.Detail);
-        Assert.Contains("6 words refused by PanGloss (invalidShape)", row.Detail);
+        Assert.Contains("6 can't be read by PanGloss", row.Detail);
         Assert.Contains("They appear 1,030 times in the Texts", row.Detail);
         Assert.Contains("4 words marked as incorrect spellings in FieldWorks are not listed", row.Detail);
         Assert.Equal([("kat", "41"), ("ja", "30")], row.Words.Select(word => (word.Word, word.CountText)));
@@ -152,5 +152,86 @@ public sealed class OverviewMeasuresPageTests
         Assert.Equal("1 word in the Selection is not in the stored parse, so this leaves it out.", partial.NotMeasuredNote);
         Assert.False(whole.HasFrequencyBands);
         Assert.False(whole.HasNotMeasuredNote);
+    }
+
+    [Fact]
+    public async Task AmbiguityShowsTheMeanTheManyAndTheTopWordsAndSaysWhenSomeParsedWordsWereLeftOut()
+    {
+        using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
+        var overview = OverviewPageWordsTests.Populated();
+        var (page, _) = await Open(overview with
+        {
+            Ambiguity = new OverviewAmbiguity(40, 38, 1.5, 1, [new("bata", 6, 9)]),
+            TextCoverage = overview.TextCoverage with { NotMeasuredWords = 2 },
+        });
+
+        Assert.True(page.HasAmbiguity);
+        Assert.Equal("Analyses per parsed word: 1.50", page.AmbiguityMain);
+        Assert.Equal("1 parsed word has more than one analysis.", page.AmbiguityMany);
+        Assert.Equal("Counted 38 of 40 parsed words; the rest have analyses that could not all be read.", page.AmbiguityCounted);
+        Assert.Equal("2 words in the Selection are not in the stored parse, so this leaves them out.", page.NotMeasuredNote);
+        var row = Assert.Single(page.AmbiguityRows);
+        Assert.Equal(("bata", "6 analyses"), (row.Word, row.AnalysesText));
+    }
+
+    [Fact]
+    public async Task NoAmbiguityMeansNoTileAndNoCountedNoteWhenEveryParsedWordIsCounted()
+    {
+        var overview = OverviewPageWordsTests.Populated();
+        var (none, _) = await Open(overview with { Ambiguity = null });
+        var (whole, _) = await Open(overview with { Ambiguity = new OverviewAmbiguity(5, 5, 1, 0, []) });
+
+        Assert.False(none.HasAmbiguity);
+        Assert.Empty(none.AmbiguityRows);
+        Assert.True(whole.HasAmbiguity);
+        Assert.False(whole.HasAmbiguityCounted);
+    }
+
+    [Fact]
+    public async Task ARefusalGroupNeverShowsTheParsersCodeOrEmptyBrackets()
+    {
+        var overview = OverviewPageWordsTests.Populated();
+        var unparsed = Unparsed() with
+        {
+            Groups = [new(UnparsedKind.Refused, null, 2, 5), new(UnparsedKind.Refused, "invalidShape", 1, 1)],
+        };
+        var (page, _) = await Open(overview with { LookFirst = overview.LookFirst with { UnparsedWords = unparsed } });
+
+        var detail = page.LookFirstRows[^1].Detail;
+        Assert.Contains("2 can't be read by PanGloss", detail);
+        Assert.DoesNotContain("()", detail);
+        Assert.DoesNotContain("invalidShape", detail);
+    }
+
+    [Fact]
+    public async Task APlaceCountFromASelectionThatIsNotChosenTextsDoesNotSayTheTexts()
+    {
+        using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
+        var overview = OverviewPageWordsTests.Populated();
+        var (page, _) = await Open(overview with
+        {
+            LookFirst = overview.LookFirst with { UnparsedWords = Unparsed() with { ByText = false } },
+        });
+
+        var detail = page.LookFirstRows[^1].Detail;
+        Assert.Contains("They appear 1,030 times in this Selection", detail);
+        Assert.DoesNotContain("in the Texts", detail);
+    }
+
+    [Fact]
+    public async Task IncorrectSpellingsAreStillCountedWhenTheyAreTheOnlyUnparsedWords()
+    {
+        var overview = OverviewPageWordsTests.Populated();
+        var only = new OverviewUnparsedWords(0, 0, true, [], 0, [], 0, 3) { ByText = true };
+        var (page, _) = await Open(overview with { LookFirst = overview.LookFirst with { UnparsedWords = only } });
+        var (none, _) = await Open(overview with
+        {
+            LookFirst = overview.LookFirst with { UnparsedWords = only with { IncorrectSpellingWords = 0 } },
+        });
+
+        Assert.DoesNotContain(page.LookFirstRows, row => row.HasWords);
+        Assert.True(page.HasUnparsedIncorrectSpellingNote);
+        Assert.Equal("3 words did not parse and are marked as incorrect spellings in FieldWorks.", page.UnparsedIncorrectSpellingNote);
+        Assert.False(none.HasUnparsedIncorrectSpellingNote);
     }
 }

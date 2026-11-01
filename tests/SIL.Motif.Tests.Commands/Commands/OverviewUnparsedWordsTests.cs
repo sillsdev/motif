@@ -153,6 +153,7 @@ public sealed class OverviewUnparsedWordsTests : IDisposable
         Assert.Equal(["common", "middle", "rare"], unparsed.Top.Select(word => word.Word));
         Assert.Equal((12, 5), (response.TextCoverage.DigitOnlyOccurrences, response.TextCoverage.OtherWritingSystemOccurrences));
         Assert.Equal(43, response.TextCoverage.TotalOccurrences);
+        Assert.True(unparsed.ByText);
     }
 
     [Fact]
@@ -168,6 +169,7 @@ public sealed class OverviewUnparsedWordsTests : IDisposable
         Assert.Null(response.TextCoverage.OtherWritingSystemOccurrences);
         var unparsed = response.LookFirst.UnparsedWords!;
         Assert.False(unparsed.RankedByOccurrences);
+        Assert.False(unparsed.ByText);
         Assert.Equal(["ant", "zed"], unparsed.Top.Select(word => word.Word));
     }
 

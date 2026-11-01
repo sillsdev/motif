@@ -26,7 +26,7 @@ internal static class OverviewMeasuresTextRenderer
         text.AppendLine($"Unparsed   {Count(unparsed.Words, "word", "words")}{places}" +
             (unparsed.Groups.Count == 0 ? string.Empty : ": " + string.Join(", ", unparsed.Groups.Select(Reason))) +
             (unparsed.GroupCount > unparsed.Groups.Count
-                ? $", and {unparsed.GroupCount - unparsed.Groups.Count:N0} more reasons" : string.Empty));
+                ? $", and {Count(unparsed.GroupCount - unparsed.Groups.Count, "more reason", "more reasons")}" : string.Empty));
         if (unparsed.Top.Count > 0)
             text.AppendLine($"{Indent}{(unparsed.RankedByOccurrences ? "most occurrences" : "first by spelling")}: " +
                 string.Join(", ", unparsed.Top.Select(word => unparsed.RankedByOccurrences
@@ -55,6 +55,19 @@ internal static class OverviewMeasuresTextRenderer
             text.AppendLine($"{Indent}words ranked {ranks}: {band.ParsedWords:N0}/{band.Words:N0} words parse, " +
                 $"{band.ParsedOccurrences:N0}/{band.Occurrences:N0} occurrences covered");
         }
+    }
+
+    public static void AppendAmbiguity(StringBuilder text, OverviewAmbiguity? ambiguity)
+    {
+        if (ambiguity is null) return;
+        text.AppendLine($"Ambiguity  {ambiguity.MeanAnalyses.ToString("N2", CultureInfo.CurrentCulture)} analyses per parsed word, " +
+            $"{Count(ambiguity.AmbiguousWords, "word", "words")} with more than one");
+        if (ambiguity.CountedWords < ambiguity.ParsedWords)
+            text.AppendLine($"{Indent}Counted {ambiguity.CountedWords:N0} of {ambiguity.ParsedWords:N0} parsed words; " +
+                "the rest have analyses that could not all be read");
+        if (ambiguity.Top.Count > 0)
+            text.AppendLine($"{Indent}most analyses: " + string.Join(", ", ambiguity.Top.Select(word => $"{word.Word} {word.Analyses:N0}")) +
+                (ambiguity.AmbiguousWords > ambiguity.Top.Count ? $" (top {ambiguity.Top.Count} of {ambiguity.AmbiguousWords:N0})" : string.Empty));
     }
 
     private static string Reason(OverviewUnparsedGroup group) => group.Kind switch

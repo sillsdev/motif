@@ -7972,12 +7972,8 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <comment>Overview Look First row: unparsed words whose stored result says the search did not finish but not which limit ended it. # is the count.</comment>
   </data>
   <data name="MotifApp.OverviewUnparsedRefusedPattern" xml:space="preserve">
-    <value>{0, plural, one {# word refused by PanGloss} other {# words refused by PanGloss}}</value>
+    <value>{0, plural, one {# can't be read by PanGloss} other {# can't be read by PanGloss}}</value>
     <comment>Overview Look First row: unparsed words PanGloss refused. # is the count; the refusal code follows in parentheses.</comment>
-  </data>
-  <data name="MotifApp.OverviewUnparsedRefusedFormat" xml:space="preserve">
-    <value>{0} ({1})</value>
-    <comment>Overview Look First row: a refused-word count followed by the parser's recorded refusal code. {0} is the count text, {1} the code.</comment>
   </data>
   <data name="MotifApp.OverviewUnparsedMoreReasonsPattern" xml:space="preserve">
     <value>{0, plural, one {and # more reason} other {and # more reasons}}</value>
@@ -8030,5 +8026,41 @@ Motif starts a check automatically when this project opens. Use Reload to read a
   <data name="MotifApp.OverviewNotMeasuredPattern" xml:space="preserve">
     <value>{0, plural, one {# word in the Selection is not in the stored parse, so this leaves it out.} other {# words in the Selection are not in the stored parse, so this leaves them out.}}</value>
     <comment>Note under a measure built from the stored parse when some Selection words were not parsed; # is that count</comment>
+  </data>
+  <data name="MotifApp.OverviewAmbiguityTitle" xml:space="preserve">
+    <value>Ambiguity</value>
+    <comment>Title of the Overview tile about how many analyses the parsed words have</comment>
+  </data>
+  <data name="MotifApp.OverviewAmbiguityAccessibleName" xml:space="preserve">
+    <value>Ambiguity of parsed words</value>
+    <comment>Accessible name of the Overview ambiguity tile</comment>
+  </data>
+  <data name="MotifApp.OverviewAmbiguityMeanFormat" xml:space="preserve">
+    <value>Analyses per parsed word: {0}</value>
+    <comment>Mean number of analyses; {0} is a formatted number</comment>
+  </data>
+  <data name="MotifApp.OverviewAmbiguityManyPattern" xml:space="preserve">
+    <value>{0, plural, one {# parsed word has more than one analysis.} other {# parsed words have more than one analysis.}}</value>
+    <comment>Count of parsed words with several analyses; # is the count</comment>
+  </data>
+  <data name="MotifApp.OverviewAmbiguityCountedFormat" xml:space="preserve">
+    <value>Counted {0} of {1} parsed words; the rest have analyses that could not all be read.</value>
+    <comment>Says some parsed words are left out of the ambiguity figures; {0} counted, {1} parsed</comment>
+  </data>
+  <data name="MotifApp.OverviewAmbiguityTopCaption" xml:space="preserve">
+    <value>Most analyses</value>
+    <comment>Caption above the parsed words with the most analyses</comment>
+  </data>
+  <data name="MotifApp.OverviewAnalysesPattern" xml:space="preserve">
+    <value>{0, plural, one {# analysis} other {# analyses}}</value>
+    <comment>Number of analyses of one word; # is the count</comment>
+  </data>
+  <data name="MotifApp.OverviewUnparsedSelectionPlacesPattern" xml:space="preserve">
+    <value>{0, plural, one {They appear # time in this Selection; the most often used come first.} other {They appear # times in this Selection; the most often used come first.}}</value>
+    <comment>Detail of the Overview unparsed words row when the Selection is not made of chosen Texts; # is the count of places</comment>
+  </data>
+  <data name="MotifApp.OverviewUnparsedOnlyIncorrectSpellingPattern" xml:space="preserve">
+    <value>{0, plural, one {# word did not parse and is marked as an incorrect spelling in FieldWorks.} other {# words did not parse and are marked as incorrect spellings in FieldWorks.}}</value>
+    <comment>Note under Text Coverage when every unparsed word is marked as an incorrect spelling; # is the count</comment>
   </data>
 </root>

@@ -1040,6 +1040,14 @@
   },
   {
     "view": "Pages/OverviewPage",
+    "name": "OverviewAmbiguityRows",
+    "source": "AmbiguityRows",
+    "mode": "finite",
+    "control": "ItemsControl",
+    "reason": "At most ten words, ranked beside a total."
+  },
+  {
+    "view": "Pages/OverviewPage",
     "name": "OverviewTimingRows",
     "source": "TimingKindShares",
     "mode": "paged",

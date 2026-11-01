@@ -127,6 +127,8 @@ public sealed class EvidenceSetReadsTests : IDisposable
         Assert.Equal(today.TextCoverage.ParsedWords - 1, sameBaseline.TextCoverage.ParsedWords);
         Assert.Equal(sameBaseline.TextCoverage.ParsedWords,
             sameBaseline.FrequencyBands!.Bands.Sum(band => band.ParsedWords));
+        Assert.Equal((2, 2), (today.Ambiguity!.ParsedWords, today.Ambiguity.CountedWords));
+        Assert.Equal((1, 1), (sameBaseline.Ambiguity!.ParsedWords, sameBaseline.Ambiguity.CountedWords));
         Assert.Null(otherBaseline.TextCoverage.DigitOnlyOccurrences);
         Assert.Null(otherBaseline.TextCoverage.OtherWritingSystemOccurrences);
     }

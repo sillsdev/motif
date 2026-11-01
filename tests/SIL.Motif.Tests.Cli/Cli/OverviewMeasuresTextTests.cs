@@ -41,6 +41,18 @@ public sealed class OverviewMeasuresTextTests
     }
 
     [Fact]
+    public void OneMoreReasonIsNotPluralised()
+    {
+        var unparsed = new OverviewUnparsedWords(3, 3, true, [new("kat", 3, UnparsedKind.NoAnalysis, null)], 3,
+            [new(UnparsedKind.NoAnalysis, null, 3, 3)], 2, 0);
+
+        var text = Text(Overview(lookFirst: OverviewLookFirst.Empty with { UnparsedWords = unparsed }));
+
+        Assert.Contains(", and 1 more reason", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("1 more reasons", text, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void UnparsedWordsWithoutPlaceCountsAreListedBySpellingAndNoPlacesAreInvented()
     {
         var unparsed = new OverviewUnparsedWords(2, 0, false,
@@ -138,5 +150,33 @@ public sealed class OverviewMeasuresTextTests
         Assert.Equal(3, bands.GetProperty("bands").GetArrayLength());
         Assert.Equal(98, bands.GetProperty("bands")[0].GetProperty("parsedWords").GetInt32());
         Assert.Equal(2, document.RootElement.GetProperty("textCoverage").GetProperty("notMeasuredWords").GetInt32());
+    }
+
+    [Fact]
+    public void AmbiguityReadsAsAMeanTheCountAndTheTopWordsWithoutAGrade()
+    {
+        var ambiguity = new OverviewAmbiguity(40, 38, 1.5, 12,
+            [new("bata", 6, 9), new("kata", 4, 2)]);
+
+        var text = Text(Overview() with { Ambiguity = ambiguity });
+
+        Assert.Contains("Ambiguity  1.50 analyses per parsed word, 12 words with more than one", text, StringComparison.Ordinal);
+        Assert.Contains("Counted 38 of 40 parsed words; the rest have analyses that could not all be read", text,
+            StringComparison.Ordinal);
+        Assert.Contains("most analyses: bata 6, kata 4 (top 2 of 12)", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("Ambiguity", Text(Overview()), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TheJsonCarriesTheAmbiguity()
+    {
+        var response = Overview() with { Ambiguity = new OverviewAmbiguity(2, 2, 2.0, 1, [new("bata", 3, 1)]) };
+
+        using var document = JsonDocument.Parse(
+            CommandTextRenderer.Render(CommandOutcome<OverviewResponse>.Success(response), asJson: true).Output);
+
+        var ambiguity = document.RootElement.GetProperty("ambiguity");
+        Assert.Equal(2.0, ambiguity.GetProperty("meanAnalyses").GetDouble());
+        Assert.Equal("bata", ambiguity.GetProperty("top")[0].GetProperty("word").GetString());
     }
 }

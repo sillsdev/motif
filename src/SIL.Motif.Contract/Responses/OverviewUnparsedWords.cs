@@ -24,7 +24,11 @@ public sealed record OverviewUnparsedWords(
     int TopOccurrences,
     IReadOnlyList<OverviewUnparsedGroup> Groups,
     int GroupCount,
-    int IncorrectSpellingWords);
+    int IncorrectSpellingWords)
+{
+    /// <summary>Whether the Selection is made of chosen Texts, so the places are places in those Texts.</summary>
+    public bool ByText { get; init; }
+}
 
 /// <summary>One unparsed word, with its places in the chosen Texts and the recorded reason it has no parse.</summary>
 /// <param name="Word">The word as written in the Selection.</param>

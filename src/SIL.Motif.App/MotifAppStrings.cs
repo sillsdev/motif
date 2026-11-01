@@ -3894,7 +3894,6 @@ public static class MotifAppStrings
 
     public static string OverviewUnparsedRefusedPattern => Text("MotifApp.OverviewUnparsedRefusedPattern");
 
-    public static string OverviewUnparsedRefusedFormat => Text("MotifApp.OverviewUnparsedRefusedFormat");
 
     public static string OverviewUnparsedMoreReasonsPattern => Text("MotifApp.OverviewUnparsedMoreReasonsPattern");
 
@@ -3921,4 +3920,22 @@ public static class MotifAppStrings
     public static string OverviewBandPlacesFormat => Text("MotifApp.OverviewBandPlacesFormat");
 
     public static string OverviewNotMeasuredPattern => Text("MotifApp.OverviewNotMeasuredPattern");
+
+    public static string OverviewAmbiguityTitle => Text("MotifApp.OverviewAmbiguityTitle");
+
+    public static string OverviewAmbiguityAccessibleName => Text("MotifApp.OverviewAmbiguityAccessibleName");
+
+    public static string OverviewAmbiguityMeanFormat => Text("MotifApp.OverviewAmbiguityMeanFormat");
+
+    public static string OverviewAmbiguityManyPattern => Text("MotifApp.OverviewAmbiguityManyPattern");
+
+    public static string OverviewAmbiguityCountedFormat => Text("MotifApp.OverviewAmbiguityCountedFormat");
+
+    public static string OverviewAmbiguityTopCaption => Text("MotifApp.OverviewAmbiguityTopCaption");
+
+    public static string OverviewAnalysesPattern => Text("MotifApp.OverviewAnalysesPattern");
+
+    public static string OverviewUnparsedSelectionPlacesPattern => Text("MotifApp.OverviewUnparsedSelectionPlacesPattern");
+
+    public static string OverviewUnparsedOnlyIncorrectSpellingPattern => Text("MotifApp.OverviewUnparsedOnlyIncorrectSpellingPattern");
 }

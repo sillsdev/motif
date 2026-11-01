@@ -184,11 +184,16 @@ public static class OverviewCommand
             if (assessedWords.Count > 0)
                 lookFirst = lookFirst with
                 {
-                    UnparsedWords = OverviewUnparsedBuilder.Build(metrics.Words, selection?.OccurrencesByWord),
+                    UnparsedWords = OverviewUnparsedBuilder.Build(metrics.Words, selection?.OccurrencesByWord) with
+                    {
+                        ByText = (selection?.TextCount ?? 0) > 0,
+                    },
                 };
             var notMeasuredWords = assessedWords.Count == 0 ? 0 : metrics.Words.Count(placed => placed.Measured is null);
             var frequencyBands = assessedWords.Count == 0 ? null : OverviewFrequencyBandBuilder.Build(
                 metrics.Words, selection?.OccurrencesByWord, (selection?.TextCount ?? 0) > 0);
+            var ambiguity = assessedWords.Count == 0 ? null
+                : OverviewAmbiguityBuilder.Build(metrics.Words, selection?.OccurrencesByWord);
             var summaryIsMeasured = evidence.Set?.Baseline is not { } measuredBaseline ||
                 evidence.Baseline?.Token == measuredBaseline;
             var leftOut = summaryIsMeasured
@@ -239,6 +244,7 @@ public static class OverviewCommand
                 BaselineToken = evidence.Baseline?.Token,
                 LookFirst = lookFirst,
                 FrequencyBands = frequencyBands,
+                Ambiguity = ambiguity,
             });
     }
 }

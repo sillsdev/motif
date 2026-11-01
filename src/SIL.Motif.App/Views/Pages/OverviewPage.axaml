@@ -176,6 +176,8 @@
             <TextBlock Classes="overviewMuted" Text="{Binding TextCoverageWords}" TextWrapping="Wrap" />
             <TextBlock Classes="overviewMuted" Text="{Binding TextCoverageLeftOut}" TextWrapping="Wrap"
                        IsVisible="{Binding HasTextCoverageLeftOut}" />
+            <TextBlock Classes="overviewMuted" Text="{Binding UnparsedIncorrectSpellingNote}" TextWrapping="Wrap"
+                       IsVisible="{Binding HasUnparsedIncorrectSpellingNote}" />
             <ItemsControl x:Name="OverviewCoverageRows" Grid.IsSharedSizeScope="True" ItemsSource="{Binding TextCoverageSegments}" AutomationProperties.Name="{x:Static app:MotifAppStrings.TextCoverageOutcomesAccessibleName}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:OutcomeSegment">
@@ -308,6 +310,34 @@
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </views:ProgressiveItemsControl>
+          </StackPanel>
+        </Border>
+        <Border Classes="overviewTile" IsVisible="{Binding HasAmbiguity}"
+                AutomationProperties.Name="{x:Static app:MotifAppStrings.OverviewAmbiguityTitle}">
+          <StackPanel Classes="overviewTileContent">
+            <TextBlock Classes="overviewTileTitle" Text="{x:Static app:MotifAppStrings.OverviewAmbiguityTitle}" />
+            <TextBlock Classes="overviewTileValue" Text="{Binding AmbiguityMain}" TextWrapping="Wrap" />
+            <TextBlock Classes="overviewMuted" Text="{Binding AmbiguityMany}" TextWrapping="Wrap" />
+            <TextBlock Classes="overviewMuted" Text="{Binding AmbiguityCounted}" TextWrapping="Wrap"
+                       IsVisible="{Binding HasAmbiguityCounted}" />
+            <TextBlock Classes="overviewMuted" Text="{Binding NotMeasuredNote}" TextWrapping="Wrap"
+                       IsVisible="{Binding HasNotMeasuredNote}" />
+            <ItemsControl x:Name="OverviewAmbiguityRows" ItemsSource="{Binding AmbiguityRows}"
+                          AutomationProperties.Name="{x:Static app:MotifAppStrings.OverviewAmbiguityAccessibleName}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:OverviewAmbiguityRow">
+                  <Border Classes="overviewTableRow">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Compact}">
+                      <HyperlinkButton Classes="overviewTileLink" Command="{Binding $parent[views:OverviewPage].Page.OpenWordCommand}" CommandParameter="{Binding Word}" HorizontalAlignment="Left"
+                                       AutomationProperties.Name="{Binding Word}">
+                        <views:CopyableTextBlock Text="{Binding Word}" FontWeight="{DynamicResource Intent.Weight.Section}" TextWrapping="Wrap" controls:WritingSystemText.Id="{Binding $parent[views:OverviewPage].Page.Context.TextStyles.DefaultVernacularId}" controls:WritingSystemText.StyleName="Normal" />
+                      </HyperlinkButton>
+                      <TextBlock Grid.Column="1" Text="{Binding AnalysesText}" Classes="overviewMuted" HorizontalAlignment="Right" />
+                    </Grid>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
           </StackPanel>
         </Border>
           <Border Classes="overviewTile hoverReveal" IsVisible="{Binding ShowWarningsTile}" AutomationProperties.Name="{x:Static app:MotifAppStrings.GrammarWarningsAccessibleName}">

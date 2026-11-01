@@ -99,10 +99,18 @@ public sealed partial class OverviewPageModel : PageModel
     [NotifyPropertyChangedFor(nameof(TextCoverageSegments))]
     [NotifyPropertyChangedFor(nameof(TextCoverageLeftOut))]
     [NotifyPropertyChangedFor(nameof(HasTextCoverageLeftOut))]
+    [NotifyPropertyChangedFor(nameof(UnparsedIncorrectSpellingNote))]
+    [NotifyPropertyChangedFor(nameof(HasUnparsedIncorrectSpellingNote))]
     [NotifyPropertyChangedFor(nameof(FrequencyBandRows))]
     [NotifyPropertyChangedFor(nameof(HasFrequencyBands))]
     [NotifyPropertyChangedFor(nameof(FrequencyBandsTitle))]
     [NotifyPropertyChangedFor(nameof(NotMeasuredNote))]
+    [NotifyPropertyChangedFor(nameof(HasAmbiguity))]
+    [NotifyPropertyChangedFor(nameof(AmbiguityMain))]
+    [NotifyPropertyChangedFor(nameof(AmbiguityMany))]
+    [NotifyPropertyChangedFor(nameof(AmbiguityCounted))]
+    [NotifyPropertyChangedFor(nameof(HasAmbiguityCounted))]
+    [NotifyPropertyChangedFor(nameof(AmbiguityRows))]
     [NotifyPropertyChangedFor(nameof(HasNotMeasuredNote))]
     [NotifyPropertyChangedFor(nameof(AccuracyMain))]
     [NotifyPropertyChangedFor(nameof(AccuracyCaption))]
@@ -397,7 +405,8 @@ public sealed partial class OverviewPageModel : PageModel
                 unparsed.GroupCount - unparsed.Groups.Count));
         var detail = new List<string> { string.Join(" · ", reasons) };
         detail.Add(unparsed.RankedByOccurrences
-            ? PluralText.Format(MotifAppStrings.OverviewUnparsedPlacesPattern, unparsed.Occurrences)
+            ? PluralText.Format(unparsed.ByText ? MotifAppStrings.OverviewUnparsedPlacesPattern
+                : MotifAppStrings.OverviewUnparsedSelectionPlacesPattern, unparsed.Occurrences)
             : MotifAppStrings.OverviewUnparsedByFormNote);
         if (unparsed.IncorrectSpellingWords > 0)
             detail.Add(PluralText.Format(MotifAppStrings.OverviewUnparsedIncorrectSpellingPattern,
@@ -427,8 +436,7 @@ public sealed partial class OverviewPageModel : PageModel
 
     private static string UnparsedReasonText(OverviewUnparsedGroup group) => group.Kind switch
     {
-        UnparsedKind.Refused => string.Format(CultureInfo.CurrentCulture, MotifAppStrings.OverviewUnparsedRefusedFormat,
-            PluralText.Format(MotifAppStrings.OverviewUnparsedRefusedPattern, group.Words), group.Code),
+        UnparsedKind.Refused => PluralText.Format(MotifAppStrings.OverviewUnparsedRefusedPattern, group.Words),
         UnparsedKind.WorkLimit => PluralText.Format(MotifAppStrings.OverviewUnparsedWorkLimitPattern, group.Words),
         UnparsedKind.TimeLimit => PluralText.Format(MotifAppStrings.OverviewUnparsedTimeLimitPattern, group.Words),
         UnparsedKind.BothLimits => PluralText.Format(MotifAppStrings.OverviewUnparsedBothLimitsPattern, group.Words),
@@ -453,6 +461,14 @@ public sealed partial class OverviewPageModel : PageModel
 
     public bool HasTextCoverageLeftOut => TextCoverageLeftOut.Length > 0;
 
+    /// <summary>Says how many words are marked as incorrect spellings when they are the only unparsed words.</summary>
+    public string UnparsedIncorrectSpellingNote => HasAssessment && Overview?.LookFirst.UnparsedWords is
+        { Words: 0, IncorrectSpellingWords: > 0 } unparsed
+        ? PluralText.Format(MotifAppStrings.OverviewUnparsedOnlyIncorrectSpellingPattern, unparsed.IncorrectSpellingWords)
+        : string.Empty;
+
+    public bool HasUnparsedIncorrectSpellingNote => UnparsedIncorrectSpellingNote.Length > 0;
+
     /// <summary>The rows of the frequency band tile; empty when the stored parse or the place counts are missing.</summary>
     public IReadOnlyList<OverviewBandRow> FrequencyBandRows => !HasAssessment || Overview?.FrequencyBands is not { } bands
         ? [] : [.. bands.Bands.Select(band => new OverviewBandRow(
@@ -476,6 +492,30 @@ public sealed partial class OverviewPageModel : PageModel
         ? string.Empty : PluralText.Format(MotifAppStrings.OverviewNotMeasuredPattern, coverage.NotMeasuredWords);
 
     public bool HasNotMeasuredNote => NotMeasuredNote.Length > 0;
+
+    /// <summary>Whether the stored parse gives an analysis count for at least one parsed word.</summary>
+    public bool HasAmbiguity => HasAssessment && Overview?.Ambiguity is not null;
+
+    /// <summary>The mean number of analyses of a parsed word.</summary>
+    public string AmbiguityMain => !HasAmbiguity ? string.Empty : string.Format(CultureInfo.CurrentCulture,
+        MotifAppStrings.OverviewAmbiguityMeanFormat, Overview!.Ambiguity!.MeanAnalyses.ToString("N2", CultureInfo.CurrentCulture));
+
+    /// <summary>How many parsed words have more than one analysis.</summary>
+    public string AmbiguityMany => !HasAmbiguity ? string.Empty :
+        PluralText.Format(MotifAppStrings.OverviewAmbiguityManyPattern, Overview!.Ambiguity!.AmbiguousWords);
+
+    /// <summary>Says how many parsed words the figures leave out, or nothing when they cover every parsed word.</summary>
+    public string AmbiguityCounted => Overview?.Ambiguity is { } ambiguity && HasAssessment &&
+        ambiguity.CountedWords < ambiguity.ParsedWords
+        ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.OverviewAmbiguityCountedFormat,
+            Number(ambiguity.CountedWords), Number(ambiguity.ParsedWords)) : string.Empty;
+
+    public bool HasAmbiguityCounted => AmbiguityCounted.Length > 0;
+
+    /// <summary>The parsed words with the most analyses, each opening in Texts.</summary>
+    public IReadOnlyList<OverviewAmbiguityRow> AmbiguityRows => !HasAmbiguity ? [] :
+        [.. Overview!.Ambiguity!.Top.Select(word => new OverviewAmbiguityRow(word.Word,
+            PluralText.Format(MotifAppStrings.OverviewAnalysesPattern, word.Analyses)))];
 
     /// <summary>How many Selection words produced a completed parse.</summary>
     public string TextCoverageMain => !HasAssessment || Overview is not { } overview ? MotifAppStrings.OverviewNotParsedYet :
@@ -789,6 +829,11 @@ public sealed record OverviewLookFirstRow(
 /// <param name="WordsText">How many of its words parse.</param>
 /// <param name="PlacesText">How many of its places are covered.</param>
 public sealed record OverviewBandRow(string Label, string WordsText, string PlacesText);
+
+/// <summary>A parsed word with several analyses, already worded.</summary>
+/// <param name="Word">The word as written in the Selection.</param>
+/// <param name="AnalysesText">How many analyses it has.</param>
+public sealed record OverviewAmbiguityRow(string Word, string AnalysesText);
 
 /// <summary>One word on an Overview row with the count of places shown beside it, or nothing.</summary>
 /// <param name="Word">The word as written in the Selection.</param>
