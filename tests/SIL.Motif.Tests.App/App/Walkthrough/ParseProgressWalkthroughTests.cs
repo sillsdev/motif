@@ -65,7 +65,7 @@ public sealed class ParseProgressWalkthroughTests(PristineProjectFixture pristin
                 window.Window.KeyRelease(Avalonia.Input.Key.Space, Avalonia.Input.RawInputModifiers.None, Avalonia.Input.PhysicalKey.Space, " ");
                 PageScreenshots.Settle(window.Window);
                 Assert.True(stopped.IsExpanded);
-                Assert.Contains("c-slow · Timed out", Details(window));
+                Assert.Contains("c-slow · Stopped at the time safety net", Details(window));
                 InteractiveControlSweep.AssertScene(window, "parse progress with stopped words",
                     InteractiveControlFamily.Progress, InteractiveControlFamily.Action, InteractiveControlFamily.Disclosure);
                 Capture(window, "parse-progress");
