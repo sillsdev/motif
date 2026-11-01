@@ -846,18 +846,19 @@
   },
   "compose-edit-affix-inflection-classes": {
     "title": "Edit affix class restrictions",
-    "description": "Replaces an ordinary inflectional prefix, suffix or interfix's exact class restriction set after checking the expected current ids. An empty set removes the restriction; for derivational affixes, use compose-edit-derivational-affix-restriction instead. Motif stages a Draft for a person to review and Apply.",
+    "description": "Replaces an inflectional affix form's exact class restriction set, an ordinary prefix, suffix or interfix or an affix process such as reduplication, after checking the expected current ids. An empty set removes the restriction; for derivational affixes, use compose-edit-derivational-affix-restriction instead. Motif stages a Draft for a person to review and Apply.",
     "source": "Hand-written from the closed intent and composer contract.",
     "fields": {
       "draft": "Draft name.",
-      "target": "Id of the ordinary inflectional prefix, suffix or interfix form to edit.",
+      "target": "Id of the inflectional affix form to edit: an ordinary prefix, suffix or interfix, or an affix process.",
       "expectedInflectionClasses": "Ids of the inflection classes the form is restricted to now, as an unordered set; empty when it has no restriction.",
       "inflectionClasses": "Ids of the inflection classes the form should be restricted to, as an unordered set; empty removes the restriction."
     },
     "goals": [
       "Restrict an affix to certain noun classes",
       "Remove the class restriction from a suffix",
-      "Change which classes a prefix attaches to"
+      "Change which classes a prefix attaches to",
+      "Restrict an inflectional reduplication to certain verb classes"
     ],
     "guides": [
       "suffix-prefix-slots",

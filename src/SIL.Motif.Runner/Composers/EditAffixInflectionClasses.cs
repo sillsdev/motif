@@ -10,7 +10,7 @@ using SIL.Motif.Runner.Operations;
 
 namespace SIL.Motif.Runner.Composers;
 
-/// <summary>Replaces an ordinary inflectional affix form's exact unordered class restriction; empty means unrestricted.</summary>
+/// <summary>Replaces an inflectional affix form's exact unordered class restriction, ordinary or process; empty means unrestricted.</summary>
 public sealed record EditAffixInflectionClassesIntent(CanonicalId Target,
     IReadOnlyList<CanonicalId> ExpectedInflectionClasses, IReadOnlyList<CanonicalId> InflectionClasses);
 
@@ -36,7 +36,7 @@ public static class EditAffixInflectionClassesIntentParser
     }
 }
 
-/// <summary>Edits class memberships on an ordinary affix in an entry with only usable inflectional grammatical info.</summary>
+/// <summary>Edits class memberships on an ordinary affix or an affix process in an entry with only usable inflectional grammatical info.</summary>
 public static class EditAffixInflectionClassesComposer
 {
     public static IReadOnlyList<OperationEnvelope> Build(LcmCache cache, EditAffixInflectionClassesIntent intent)
@@ -45,20 +45,27 @@ public static class EditAffixInflectionClassesComposer
         ArgumentNullException.ThrowIfNull(intent);
         var expected = EditAffixInflectionClassesIntentParser.NormalizeSet(intent.ExpectedInflectionClasses);
         var desired = EditAffixInflectionClassesIntentParser.NormalizeSet(intent.InflectionClasses);
-        var form = LexicalFormAuthoring.Resolve<IMoAffixAllomorph>(cache, intent.Target, "EditAffixInflectionClasses");
+        var form = LexicalFormAuthoring.Resolve<IMoAffixForm>(cache, intent.Target, "EditAffixInflectionClasses");
+        if (form is not (IMoAffixAllomorph or IMoAffixProcess))
+            throw new InvalidOperationException("The target must be an ordinary affix form or an affix process.");
         if (form.Owner is not ILexEntry entry)
-            throw new InvalidOperationException("The ordinary affix form must belong to a lexical entry.");
-        LexicalFormAuthoring.RequireMatchingKind(entry, MoFormConcreteClass.AffixAllomorph, "EditAffixInflectionClasses");
+            throw new InvalidOperationException("The affix form must belong to a lexical entry.");
+        var process = form is IMoAffixProcess;
+        if (!process)
+            LexicalFormAuthoring.RequireMatchingKind(entry, MoFormConcreteClass.AffixAllomorph, "EditAffixInflectionClasses");
         if (entry.LexemeFormOA.Guid != form.Guid && !entry.AlternateFormsOS.Any(alternate => alternate.Guid == form.Guid))
             throw new InvalidOperationException("The target must be the entry's lexeme form or an alternate form.");
         if (entry.LexemeFormOA.MorphTypeRA?.Guid == MoMorphTypeTags.kguidMorphCircumfix)
             throw new InvalidOperationException("Circumfix entries are outside ordinary inflection class editing.");
-        var morphType = form.MorphTypeRA?.Guid;
-        var text = form.Form.get_String(cache.DefaultVernWs)?.Text;
-        if (form.IsAbstract || string.IsNullOrWhiteSpace(text) || text.Contains('[') ||
-            (morphType != MoMorphTypeTags.kguidMorphPrefix && morphType != MoMorphTypeTags.kguidMorphSuffix &&
-             morphType != MoMorphTypeTags.kguidMorphPrefixingInterfix && morphType != MoMorphTypeTags.kguidMorphSuffixingInterfix))
-            throw new InvalidOperationException("The target must be a nonabstract ordinary prefix or suffix with a vernacular form.");
+        if (!process)
+        {
+            var morphType = form.MorphTypeRA?.Guid;
+            var text = form.Form.get_String(cache.DefaultVernWs)?.Text;
+            if (form.IsAbstract || string.IsNullOrWhiteSpace(text) ||
+                (morphType != MoMorphTypeTags.kguidMorphPrefix && morphType != MoMorphTypeTags.kguidMorphSuffix &&
+                 morphType != MoMorphTypeTags.kguidMorphPrefixingInterfix && morphType != MoMorphTypeTags.kguidMorphSuffixingInterfix))
+                throw new InvalidOperationException("The target must be a nonabstract ordinary prefix or suffix with a vernacular form.");
+        }
         var msas = entry.MorphoSyntaxAnalysesOC.ToArray();
         var hasDerivationalInfo = msas.OfType<IMoDerivAffMsa>().Any();
         var hasInflectionalInfo = msas.OfType<IMoInflAffMsa>().Any();
