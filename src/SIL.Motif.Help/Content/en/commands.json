@@ -1429,17 +1429,18 @@
   },
   "compose-edit-morph-type": {
     "title": "Edit a form’s morph type",
-    "description": "Change an existing stem form’s morph type within the stem family. Review the form and its before and after types in the Dry Run.",
+    "description": "Change an existing form’s morph type within its family: stem types among themselves, or affix types such as prefix, suffix and infix among themselves. Review the form and its before and after types in the Dry Run.",
     "source": "Hand-written from the closed intent and composer contract.",
     "fields": {
       "draft": "Draft name.",
-      "target": "Id of the existing stem form.",
-      "morphType": "Id of the desired stem-family morph type."
+      "target": "Id of the existing stem or affix form.",
+      "morphType": "Id of the desired morph type of the same family."
     },
     "goals": [
       "Change the morph type of an existing stem form",
       "Make a stem form a clitic by changing its morph type",
-      "Correct a stem form's morph type without recreating the entry"
+      "Correct a stem form's morph type without recreating the entry",
+      "Correct an affix's morph type, such as a prefix that is really a suffix, in place"
     ]
   },
   "compose-change-affix-kind": {

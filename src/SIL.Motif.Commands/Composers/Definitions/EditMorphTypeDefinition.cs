@@ -5,7 +5,7 @@ using SIL.Motif.Runner.Composers;
 
 namespace SIL.Motif.Commands;
 
-/// <summary>Changes an existing form's morph type within the stem family.</summary>
+/// <summary>Changes an existing form's morph type within the stem family or among the affix types.</summary>
 internal sealed class EditMorphTypeDefinition : ComposerDefinition<EditMorphTypeIntent>
 {
     public override string Verb => "compose-edit-morph-type";

@@ -20,7 +20,7 @@ public static class EditMorphTypeIntentParser
     }
 }
 
-/// <summary>Stages a stem-family type change without replacing the form.</summary>
+/// <summary>Stages a morph-type change within the form's family without replacing the form.</summary>
 public static class EditMorphTypeComposer
 {
     public static IReadOnlyList<OperationEnvelope> Build(LcmCache cache, EditMorphTypeIntent intent)
@@ -34,6 +34,6 @@ public static class EditMorphTypeComposer
         return [new(CanonicalId.Mint(), EditMorphTypeOperationKinds.Set, target: intent.Target,
             after: JsonSerializer.SerializeToElement(new { morphType = intent.MorphType.Value,
                 expectedMorphType = CanonicalId.FromGuid(form.MorphTypeRA.Guid).Value }),
-            rationale: "Change the existing form's morph type within the stem family.")];
+            rationale: "Change the existing form's morph type within its family.")];
     }
 }

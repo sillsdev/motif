@@ -28,28 +28,49 @@ public static class EditMorphTypeOperationKinds
 #pragma warning restore CA2255
 }
 
-/// <summary>Checks the FieldWorks stem-family classification before an in-place edit.</summary>
+/// <summary>
+/// Checks an in-place morph-type edit stays inside one family: a stem form among the stem-family types, or an
+/// affix form (ordinary or process) among the affix types. A circumfix is two parts in one entry, so no single form
+/// is edited into or out of it.
+/// </summary>
 public static class MorphTypeEditSafety
 {
     public static void Check(IMoForm form, IMoMorphType desired)
     {
-        if (form is not IMoStemAllomorph || form.MorphTypeRA is not { } current ||
-            !IsStemFamily(current) || !IsStemFamily(desired))
-            throw new MorphTypeFamilyException();
+        if (form.MorphTypeRA is not { } current)
+            throw new MorphTypeFamilyException(StemMessage);
+        var stemForm = form is IMoStemAllomorph;
+        if (!stemForm && form is not (IMoAffixAllomorph or IMoAffixProcess))
+            throw new MorphTypeFamilyException(StemMessage);
+        var wanted = stemForm ? MoFormConcreteClass.StemAllomorph : MoFormConcreteClass.AffixAllomorph;
+        if (Family(current) != wanted || Family(desired) != wanted)
+            throw new MorphTypeFamilyException(stemForm ? StemMessage : AffixMessage);
+        if (!stemForm && (IsCircumfix(current) || IsCircumfix(desired)))
+            throw new MorphTypeFamilyException(CircumfixMessage);
     }
 
-    private static bool IsStemFamily(IMoMorphType type)
+    private const string StemMessage =
+        "An in-place morph-type edit keeps a stem form among the stem-family types; changing families requires a different analysis.";
+
+    private const string AffixMessage =
+        "An in-place morph-type edit keeps an affix form among the affix types; changing families requires a different analysis.";
+
+    private const string CircumfixMessage =
+        "A circumfix is two parts in one entry, so a single form cannot be edited into or out of a circumfix; author both parts.";
+
+    private static bool IsCircumfix(IMoMorphType type) => type.Guid == MoMorphTypeTags.kguidMorphCircumfix;
+
+    private static MoFormConcreteClass? Family(IMoMorphType type)
     {
-        try { return MoFormConcreteClassSelection.ClassFor(type, EditMorphTypeOperationKinds.Set) == MoFormConcreteClass.StemAllomorph; }
-        catch (InvalidOperationException) { return false; }
+        try { return MoFormConcreteClassSelection.ClassFor(type, EditMorphTypeOperationKinds.Set); }
+        catch (InvalidOperationException) { return null; }
     }
 }
 
 internal sealed class MorphTypeFamilyException : ProposalRefusalException
 {
-    internal MorphTypeFamilyException() : base(RefusalCodes.MorphTypeIncompatibleFamily, FailureReason.Refused,
-        "An in-place morph-type edit requires a stem form and two stem-family types; changing families requires a different analysis.",
-        new Dictionary<string, string>()) { }
+    internal MorphTypeFamilyException(string message) : base(RefusalCodes.MorphTypeIncompatibleFamily, FailureReason.Refused,
+        message, new Dictionary<string, string>()) { }
 }
 
 internal sealed class EditMorphTypeHandler : IOperationHandler
