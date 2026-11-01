@@ -151,6 +151,17 @@ internal static class ComponentStateContractCases
         yield return new("Button.filterChip.active TextBlock.chipCount", "selected", ChipWithCount,
             StateStimulus.None, StatePart.Text, TextBlock.ForegroundProperty, "Intent.Primary");
 
+        const string viewFace = "Border.proposalBar ListBox.proposalBarView ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter";
+        yield return new(viewFace, "selected", ProposalViewSwitch, StateStimulus.None, StatePart.Face,
+            ContentPresenter.BackgroundProperty, "Intent.Proposal.Text");
+        yield return new("Border.proposalBar ListBox.proposalBarView ListBoxItem:selected :is(TextBlock)", "selected",
+            ProposalViewSwitch, StateStimulus.None, StatePart.Text, TextBlock.ForegroundProperty, "Intent.Proposal.Fill");
+        yield return new(viewFace, "selected and keyboard focus", ProposalViewSwitch, StateStimulus.KeyboardFocus,
+            StatePart.Ring, Border.BorderBrushProperty, "Intent.Focus");
+        yield return new("Border.proposalBar ListBox.proposalBarView ListBoxItem", "unselected and keyboard focus",
+            () => ProposalViewSwitch(focusUnselected: true), StateStimulus.KeyboardFocus, StatePart.Ring,
+            Border.BorderBrushProperty, "Intent.Focus");
+
         const string revealFocus = ":is(Button).revealControl:focus-visible";
         yield return new(revealFocus, "keyboard focus", () => Alone(Press("revealControl", "revealButton")),
             StateStimulus.KeyboardFocus, StatePart.Self, Button.BackgroundProperty, "Intent.Surface.Hover");
@@ -564,6 +575,19 @@ internal static class ComponentStateContractCases
         return (owner, button);
     }
 
+    private static (Control, Control) ProposalViewSwitch() => ProposalViewSwitch(focusUnselected: false);
+
+    private static (Control, Control) ProposalViewSwitch(bool focusUnselected)
+    {
+        var list = new ListBox { Classes = { "proposalBarView" } };
+        var chosen = new ListBoxItem { Content = "Today" };
+        var other = new ListBoxItem { Content = "Proposal" };
+        list.Items.Add(chosen);
+        list.Items.Add(other);
+        list.SelectedIndex = 0;
+        return (new Border { Classes = { "proposalBar" }, Child = list }, focusUnselected ? other : chosen);
+    }
+
     private static (Control, Control) Entry(bool collapsed, bool selected)
     {
         var list = new ListBox { Classes = { "sidebar" } };
@@ -661,6 +685,22 @@ internal static class TooltipOwners
             control => control is Button && AutomationProperties.GetAutomationId(control) == AutomationIds.ProjectCardSettings)
         {
             Pending = "the button is in the project card's pop-up; ProjectCardTests opens it",
+        },
+        new("proposal bar view switch", "Views/MainWindow.axaml", "{Binding ProposalBar.ViewTooltip}", TooltipScene.Overview,
+            control => control is ListBox && AutomationProperties.GetAutomationId(control) == AutomationIds.ProposalBarView)
+        {
+            Pending = "the bar shows only while a Proposal is open, which no tooltip scene opens; ProposalBarViewTests reads the tip",
+        },
+        new("proposal bar name", "Views/MainWindow.axaml", "{Binding ProposalBar.Name}", TooltipScene.Overview,
+            control => control is TextBlock && control.Classes.Contains("proposalBarName"))
+        {
+            Pending = "the bar shows only while a Proposal is open, which no tooltip scene opens; ProposalBarViewTests reads the tip",
+        },
+        new("proposal bar sentence", "Views/MainWindow.axaml", "{Binding ProposalBar.Sentence}", TooltipScene.Overview,
+            control => control is TextBlock && !control.Classes.Contains("proposalBarName") &&
+                control.GetVisualAncestors().OfType<Border>().Any(bar => bar.Classes.Contains("proposalBar")))
+        {
+            Pending = "the bar shows only while a Proposal is open, which no tooltip scene opens; ProposalBarViewTests reads the tip",
         },
         new("refresh", "Views/MainWindow.axaml", "Refresh", TooltipScene.Overview,
             control => control is Button && AutomationProperties.GetAutomationId(control) == AutomationIds.RefreshProject),

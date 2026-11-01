@@ -189,6 +189,24 @@ public sealed class ReviewListWalkTests
     }
 
     [Fact]
+    public async Task FlippingTheProposalViewKeepsTheUndoPromptAndTheEntriesAndTheEvidenceLens()
+    {
+        var (_, context, page) = await OpenWith(Rule("rule"), Rule("retarget", dependsOn: "rule"));
+        await page.UndoCommand.ExecuteAsync(null);
+        var prompt = page.UndoPrompt;
+        var entries = page.Entries.ToArray();
+        var lens = context.EvidenceLens;
+
+        foreach (var view in new[] { MarkupView.Proposal, MarkupView.Today, MarkupView.TodayToProposal })
+            context.ShowProposalView(view);
+
+        Assert.NotNull(prompt);
+        Assert.Same(prompt, page.UndoPrompt);
+        Assert.Equal(entries, page.Entries);
+        Assert.Same(lens, context.EvidenceLens);
+    }
+
+    [Fact]
     public async Task CancellingTheUndoPromptChangesNothing()
     {
         var (fake, _, page) = await OpenWith(Rule("rule"), Rule("retarget", dependsOn: "rule"));

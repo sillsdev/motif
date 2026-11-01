@@ -278,8 +278,12 @@ current evidence set and a Trial's have the same shape, so a page cannot tell th
 _Avoid_: context, source, data context, snapshot
 
 **Proposal mode**:
-The window's state while a Proposal is open: a context bar names it, and every page shows today's
-evidence set beside the Proposal's Trial evidence set. Leave returns to today.
+The window's state while a Proposal is open: a context bar names it and says when its Trial was run. The
+bar's view switch (Today, Today → Proposal, Proposal) shows only on a page that follows it, now the Overview, and
+chooses whether that page shows today's evidence set, the Proposal's Trial evidence set or both; every other page
+shows today's. Choosing a view is not an evidence change, so no page reloads, re-reads or re-applies for it, and
+the choice comes back when the Overview is shown again. In the Proposal view a headline stands alone, with today's
+breakdown left to the Today view. Leave, or Esc when nothing else uses it, returns to today.
 _Avoid_: compare mode, diff view, Proposal page, branch
 
 **Looked at**:

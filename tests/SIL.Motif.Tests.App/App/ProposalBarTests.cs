@@ -305,7 +305,7 @@ public sealed class ProposalBarTests
 
                 var expected = freshness == TrialFreshness.BaselineMoved
                     ? MotifAppStrings.TrialBaselineMovedSentence : MotifAppStrings.TrialProposalChangedSentence;
-                Assert.Equal(expected, workspace.ProposalBar.Sentence);
+                Assert.EndsWith(" · " + expected, workspace.ProposalBar.Sentence);
                 Assert.Equal(MotifAppStrings.TryAgain, workspace.ProposalBar.TryAgainText);
             }
             finally { window.Close(); }

@@ -77,6 +77,7 @@ public sealed partial class MainWindow : Window
         _problemReportServices = ProblemReportWindowServices.ForWindow(this, _uriLauncher);
         ConfigureWindowChrome();
         AddHandler(InputElement.KeyDownEvent, OnKeyDown, RoutingStrategies.Tunnel);
+        AddHandler(InputElement.KeyDownEvent, OnProposalEscape, RoutingStrategies.Bubble);
         if (this.FindControl<Menu>("MainMenu") is { } mainMenu) MenuShortcutDisplay.Apply(mainMenu);
         AddHandler(GotFocusEvent, RememberFocusOutsideMenu, RoutingStrategies.Bubble);
         // A command handles Click, so the close needs handledEventsToo.
@@ -396,6 +397,20 @@ public sealed partial class MainWindow : Window
         e.Handled = true;
         _workspaceView?.ShowHelp(e.Source);
     }
+
+    // Esc leaves Proposal mode only when nothing nearer used it: a page, a menu or a text box takes it first.
+    [KeyboardShortcutHandler("Window:Back")]
+    private void OnProposalEscape(object? sender, KeyEventArgs e)
+    {
+        var entry = KeyboardShortcutRegistry.Find(KeyboardShortcutScope.Window, e.Key, e.KeyModifiers);
+        if (e.Handled || entry?.Behavior != KeyboardShortcutBehavior.Back) return;
+        if (DataContext is not WorkspaceShellViewModel { ProposalBar: { IsVisible: true } bar }) return;
+        if (KeyboardShortcutRegistry.IsTextInput(e.Source) || AnyMenuOpen()) return;
+        e.Handled = true;
+        bar.LeaveCommand.Execute(null);
+    }
+
+    private bool AnyMenuOpen() => TopLevelMenus().Append(_menuButton).OfType<MenuItem>().Any(item => item.IsSubMenuOpen);
 
     /// <summary>Builds <paramref name="page"/>'s view if it has none yet, so a test can reach it without visiting it.</summary>
     internal Control EnsurePageView(WorkspacePage page) => _workspaceView!.EnsurePageView(page);

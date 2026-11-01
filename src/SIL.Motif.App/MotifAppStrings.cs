@@ -4125,4 +4125,46 @@ public static class MotifAppStrings
     public static string ProposalBarLeaveAccessibleName => Text("MotifApp.ProposalBarLeaveAccessibleName");
 
     public static string ProposalBarTryAgainAccessibleNameFormat => Text("MotifApp.ProposalBarTryAgainAccessibleNameFormat");
+
+    public static string ProposalBarSentenceFormat => Text("MotifApp.ProposalBarSentenceFormat");
+
+    public static string ProposalBarTriedFormat => Text("MotifApp.ProposalBarTriedFormat");
+
+    public static string ProposalBarTriedNoSaveFormat => Text("MotifApp.ProposalBarTriedNoSaveFormat");
+
+    public static string ProposalViewToday => Text("MotifApp.ProposalViewToday");
+
+    public static string ProposalViewTodayToProposal => Text("MotifApp.ProposalViewTodayToProposal");
+
+    public static string ProposalViewProposal => Text("MotifApp.ProposalViewProposal");
+
+    public static string ProposalViewTodayAccessibleName => Text("MotifApp.ProposalViewTodayAccessibleName");
+
+    public static string ProposalViewTodayToProposalAccessibleName => Text("MotifApp.ProposalViewTodayToProposalAccessibleName");
+
+    public static string ProposalViewProposalAccessibleName => Text("MotifApp.ProposalViewProposalAccessibleName");
+
+    public static string ProposalViewSwitchAccessibleName => Text("MotifApp.ProposalViewSwitchAccessibleName");
+
+    public static string ProposalViewTooltipFormat => Text("MotifApp.ProposalViewTooltipFormat");
+
+    public static string OverviewProposalNone => Text("MotifApp.OverviewProposalNone");
+
+    public static string OverviewProposalReading => Text("MotifApp.OverviewProposalReading");
+
+    public static string OverviewTodayViewNote => Text("MotifApp.OverviewTodayViewNote");
+
+    public static string OverviewProposalViewNote => Text("MotifApp.OverviewProposalViewNote");
+
+    public static string OverviewProposalViewOldNoteFormat => Text("MotifApp.OverviewProposalViewOldNoteFormat");
+
+    public static string OverviewProposalViewGapLeadPattern => Text("MotifApp.OverviewProposalViewGapLeadPattern");
+
+    public static string OverviewProposalNoNumbersNote => Text("MotifApp.OverviewProposalNoNumbersNote");
+
+    public static string OverviewTodayBreakdownNote => Text("MotifApp.OverviewTodayBreakdownNote");
+
+    public static string OverviewNeitherParseNote => Text("MotifApp.OverviewNeitherParseNote");
+
+    public static string OverviewProposalTodayNoneLeadPattern => Text("MotifApp.OverviewProposalTodayNoneLeadPattern");
 }

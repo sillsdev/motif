@@ -33,6 +33,7 @@
     <StaticResource x:Key="Component.Shell.InspectorCollapseWidth" ResourceKey="Primitive.Size.1000" />
     <StaticResource x:Key="Component.Shell.PaneHeaderHeight" ResourceKey="Primitive.Size.28" />
     <StaticResource x:Key="Component.Shell.ProposalBarNameMaxWidth" ResourceKey="Primitive.Size.360" />
+    <StaticResource x:Key="Component.Shell.ProposalBarSentenceMinWidth" ResourceKey="Primitive.Size.220" />
     <StaticResource x:Key="Component.Shell.PaneButtonSize" ResourceKey="Primitive.Size.22" />
     <StaticResource x:Key="Component.Shell.PaneBodyInset" ResourceKey="Primitive.Inset.8_0_8_0" />
     <StaticResource x:Key="Component.Shell.PaneHeaderInset" ResourceKey="Primitive.Inset.12_0_4_0" />
@@ -112,7 +113,7 @@
   </Style>
   <!-- The Proposal bar: one row across the window, in the Proposal tint so every page reads as "with a Proposal open". -->
   <Style Selector="Border.proposalBar">
-    <Setter Property="Height" Value="{DynamicResource Component.Shell.PaneHeaderHeight}" />
+    <Setter Property="MinHeight" Value="{DynamicResource Component.Shell.PaneHeaderHeight}" />
     <Setter Property="Padding" Value="{DynamicResource Component.Shell.PaneHeaderInset}" />
     <Setter Property="Background" Value="{DynamicResource Intent.Proposal.Fill}" />
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
@@ -125,6 +126,25 @@
   <Style Selector="Border.proposalBar :is(TextBlock).proposalBarName">
     <Setter Property="FontWeight" Value="{DynamicResource Intent.Weight.Section}" />
     <Setter Property="MaxWidth" Value="{DynamicResource Component.Shell.ProposalBarNameMaxWidth}" />
+  </Style>
+  <!-- The view switch: three choices in a row, the chosen one inverted so it reads without colour alone. -->
+  <Style Selector="Border.proposalBar ListBox.proposalBarView">
+    <Setter Property="Background" Value="{DynamicResource Intent.Proposal.Fill}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Inset.None}" />
+    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />
+  </Style>
+  <Style Selector="Border.proposalBar ListBox.proposalBarView ListBoxItem">
+    <Setter Property="MinHeight" Value="{DynamicResource Component.Shell.PaneButtonSize}" />
+    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.Chip}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Intent.Radius.Control}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Proposal.Text}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.Box}" />
+  </Style>
+  <Style Selector="Border.proposalBar ListBox.proposalBarView ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource Intent.Proposal.Text}" />
+  </Style>
+  <Style Selector="Border.proposalBar ListBox.proposalBarView ListBoxItem:selected :is(TextBlock)">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Proposal.Fill}" />
   </Style>
   <Style Selector="Border.proposalBar Button.proposalBarAction">
     <Setter Property="Foreground" Value="{DynamicResource Intent.Proposal.Text}" />

@@ -13,7 +13,7 @@ public enum MarkupView
     /// <summary>Show the project's values beside the Trial values.</summary>
     TodayToProposal,
 
-    /// <summary>Show the Trial values, falling back to today's values when no Trial exists.</summary>
+    /// <summary>Show the Trial values; where the Trial has none, say so rather than show today's.</summary>
     Proposal,
 }
 
@@ -57,7 +57,10 @@ public sealed class EvidenceLens
     public TrialEvidence? Proposal { get; }
 
     /// <summary>How a page should present a paired value.</summary>
-    public MarkupView View { get; }
+    public MarkupView View { get; private set; }
+
+    // The view is a presentation choice, so it moves in place and the lens stays the one pages already hold.
+    internal void ShowView(MarkupView view) => View = view;
 
     /// <summary>Whether the window has a Proposal open, including before its first Trial.</summary>
     public bool InProposalMode => _inProposalMode;

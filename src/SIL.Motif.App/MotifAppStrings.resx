@@ -6764,7 +6764,7 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
   </data>
   <data name="MotifApp.ShortcutStepBack" xml:space="preserve">
-    <value>Step Back in the Inspector</value>
+    <value>Step Back in the Inspector or Leave the Proposal</value>
     <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
   </data>
   <data name="MotifApp.ShortcutShowShortcuts" xml:space="preserve">
@@ -8428,8 +8428,8 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <comment>Start of the Overview note sentence naming headlines that have no value with the open Proposal. # is the count; the tile names follow.</comment>
   </data>
   <data name="MotifApp.OverviewProposalUnpairedTodayNone" xml:space="preserve">
-    <value>Today has no result to set the Proposal's beside.</value>
-    <comment>End of the Overview note sentence when today has no value for the named headlines but the Proposal does.</comment>
+    <value>Only the Proposal has a value for them.</value>
+    <comment>End of the Overview note sentence naming headlines that have no result today while the open Proposal has one.</comment>
   </data>
   <data name="MotifApp.OverviewProposalUnpairedProposalNone" xml:space="preserve">
     <value>The Proposal has no value to set beside today's.</value>
@@ -8466,5 +8466,89 @@ Motif starts a check automatically when this project opens. Use Reload to read a
   <data name="MotifApp.ProposalBarTryAgainAccessibleNameFormat" xml:space="preserve">
     <value>{0}, the open Proposal</value>
     <comment>Accessible name of the try button on the Proposal bar. {0} is the button's visible text, Try It or Try Again.</comment>
+  </data>
+  <data name="MotifApp.ProposalBarSentenceFormat" xml:space="preserve">
+    <value>{0} · {1}</value>
+    <comment>Sentence on the Proposal bar. {0} says when the Proposal was tried and on which Baseline; {1} says whether that try is still current.</comment>
+  </data>
+  <data name="MotifApp.ProposalBarTriedFormat" xml:space="preserve">
+    <value>Tried {0} on Baseline of {1}</value>
+    <comment>First part of the Proposal bar's sentence. {0} is when the Proposal was tried; {1} is when the Baseline it was tried on was saved.</comment>
+  </data>
+  <data name="MotifApp.ProposalBarTriedNoSaveFormat" xml:space="preserve">
+    <value>Tried {0} on a Baseline with no recorded save time</value>
+    <comment>First part of the Proposal bar's sentence when the Baseline's save time is not known. {0} is when the Proposal was tried.</comment>
+  </data>
+  <data name="MotifApp.ProposalViewToday" xml:space="preserve">
+    <value>Today</value>
+    <comment>Choice on the Proposal bar's view switch that shows today's numbers alone.</comment>
+  </data>
+  <data name="MotifApp.ProposalViewTodayToProposal" xml:space="preserve">
+    <value>Today → Proposal</value>
+    <comment>Choice on the Proposal bar's view switch that shows today's numbers and then the Proposal's.</comment>
+  </data>
+  <data name="MotifApp.ProposalViewProposal" xml:space="preserve">
+    <value>Proposal</value>
+    <comment>Choice on the Proposal bar's view switch that shows the Proposal's numbers alone.</comment>
+  </data>
+  <data name="MotifApp.ProposalViewTodayAccessibleName" xml:space="preserve">
+    <value>Today, show today's numbers</value>
+    <comment>Accessible name of the Today choice on the Proposal bar's view switch; it starts with the visible text.</comment>
+  </data>
+  <data name="MotifApp.ProposalViewTodayToProposalAccessibleName" xml:space="preserve">
+    <value>Today → Proposal, show today's numbers and then the Proposal's</value>
+    <comment>Accessible name of the Today to Proposal choice on the Proposal bar's view switch; it starts with the visible text.</comment>
+  </data>
+  <data name="MotifApp.ProposalViewProposalAccessibleName" xml:space="preserve">
+    <value>Proposal, show the Proposal's numbers</value>
+    <comment>Accessible name of the Proposal choice on the Proposal bar's view switch; it starts with the visible text.</comment>
+  </data>
+  <data name="MotifApp.ProposalViewSwitchAccessibleName" xml:space="preserve">
+    <value>Proposal view</value>
+    <comment>Accessible name of the Proposal bar's view switch as a group.</comment>
+  </data>
+  <data name="MotifApp.ProposalViewTooltipFormat" xml:space="preserve">
+    <value>Changes the numbers on {0}. Other pages show today's numbers.</value>
+    <comment>Tooltip of the Proposal bar's view switch. {0} lists the pages that follow the switch.</comment>
+  </data>
+  <data name="MotifApp.OverviewProposalNone" xml:space="preserve">
+    <value>None with this Proposal</value>
+    <comment>Overview headline when the open Proposal has no value for it and the view shows the Proposal's numbers alone.</comment>
+  </data>
+  <data name="MotifApp.OverviewProposalReading" xml:space="preserve">
+    <value>Reading this Proposal's numbers</value>
+    <comment>Overview headline while the open Proposal's numbers are still being read and the view shows them alone.</comment>
+  </data>
+  <data name="MotifApp.OverviewTodayViewNote" xml:space="preserve">
+    <value>This page shows today's numbers. Choose Today → Proposal or Proposal on the bar to see the Proposal's.</value>
+    <comment>Note on the Overview when a Proposal is open and the bar's view is Today.</comment>
+  </data>
+  <data name="MotifApp.OverviewProposalViewNote" xml:space="preserve">
+    <value>The four headline numbers read the value with this Proposal. Everything else on this page is today's.</value>
+    <comment>Note on the Overview when the bar's view is Proposal and the Proposal has numbers.</comment>
+  </data>
+  <data name="MotifApp.OverviewProposalViewOldNoteFormat" xml:space="preserve">
+    <value>{0}. The four headline numbers read the value with this Proposal. Everything else on this page is today's.</value>
+    <comment>Note on the Overview when the bar's view is Proposal and the numbers came from an earlier try. {0} says why they are old and ends without a full stop.</comment>
+  </data>
+  <data name="MotifApp.OverviewProposalViewGapLeadPattern" xml:space="preserve">
+    <value>{0, plural, one {One headline has no value with this Proposal:} other {# headlines have no value with this Proposal:}}</value>
+    <comment>Overview note sentence naming headlines the Proposal has no value for. # is the count; the tile names follow.</comment>
+  </data>
+  <data name="MotifApp.OverviewProposalNoNumbersNote" xml:space="preserve">
+    <value>There are no numbers with this Proposal to show.</value>
+    <comment>Second sentence of the Overview note when the bar's view is Proposal and the Proposal has no numbers.</comment>
+  </data>
+  <data name="MotifApp.OverviewTodayBreakdownNote" xml:space="preserve">
+    <value>Today's breakdown is in the Today view.</value>
+    <comment>One line under an Overview headline in the Proposal view, in place of the rows and captions that describe today's parse.</comment>
+  </data>
+  <data name="MotifApp.OverviewNeitherParseNote" xml:space="preserve">
+    <value>Neither today nor this Proposal has a parse, so no parse numbers are shown.</value>
+    <comment>Note on the Overview when the bar's view shows the Proposal's numbers and neither today nor the Proposal has a parse.</comment>
+  </data>
+  <data name="MotifApp.OverviewProposalTodayNoneLeadPattern" xml:space="preserve">
+    <value>{0, plural, one {One headline has no result today:} other {# headlines have no result today:}}</value>
+    <comment>Start of the Overview note sentence naming headlines that have no result today while the open Proposal does. # is the count; the tile names follow.</comment>
   </data>
 </root>

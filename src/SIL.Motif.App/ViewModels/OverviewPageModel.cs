@@ -172,8 +172,17 @@ public sealed partial class OverviewPageModel : PageModel
     /// <summary>Whether the project's counts were read, so they are real numbers rather than placeholders.</summary>
     public bool ShowNumbers => Overview is not null;
 
-    /// <summary>Whether the parse tiles have a read Overview and a parse to describe.</summary>
-    public bool ShowTiles => Overview is not null && !Context.NeedsAssessment;
+    /// <summary>
+    /// Whether the parse tiles have a read Overview and a parse to describe: today's, or, in the views that show
+    /// the Proposal's numbers, the open Proposal's when today has none.
+    /// </summary>
+    public bool ShowTiles => Overview is not null && (!Context.NeedsAssessment || ProposalHasParse);
+
+    /// <summary>Whether each tile shows today's own breakdown under its headline; the Proposal view does not.</summary>
+    public bool ShowTodayDetail => !ShowsProposalAlone;
+
+    /// <summary>Whether each tile says today's breakdown is in the Today view instead of showing it.</summary>
+    public bool HidesTodayDetail => ShowsProposalAlone;
 
     /// <summary>Whether the grammar warnings tile has a read Overview; it needs no parse.</summary>
     public bool ShowWarningsTile => Overview is not null;
@@ -252,10 +261,13 @@ public sealed partial class OverviewPageModel : PageModel
     /// The speed headline: how many words PanGloss counted work for and their total work steps, each word's count
     /// added up. There is no comparison with another parser, because Motif does not measure one.
     /// </summary>
-    public string SpeedMain => SpeedIsPaired(out var proposal)
-        ? PairedHeadline(SpeedMainOf(Overview), SpeedMainOf(proposal)) : SpeedMainOf(Overview);
+    public string SpeedMain => ShowsProposalAlone
+        ? ProposalAloneHeadline(Measured(ProposalOverview) ? SpeedMainOf(ProposalOverview) : null)
+        : SpeedIsPaired(out var proposal)
+            ? PairedHeadline(SpeedMainOf(Overview), SpeedMainOf(proposal)) : SpeedMainOf(Overview);
 
-    private static string SpeedMainOf(OverviewResponse? overview) => overview is { Timing.Work: { MeasuredWordCount: > 0 } work }
+    private static string SpeedMainOf(OverviewResponse? overview) =>
+        overview is { AssessmentId: not null, Timing.Work: { MeasuredWordCount: > 0 } work }
         ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.OverviewSpeedMainFormat,
             PluralText.Format(MotifAppStrings.OverviewSpeedWordsPattern, work.MeasuredWordCount),
             TimingShare.FormatWorkSteps(work.TotalWorkSteps))
@@ -547,8 +559,9 @@ public sealed partial class OverviewPageModel : PageModel
             PluralText.Format(MotifAppStrings.OverviewAnalysesPattern, word.Analyses)))];
 
     /// <summary>How many Selection words produced a completed parse.</summary>
-    public string TextCoverageMain => CoverageIsPaired(out var today, out var proposal)
-        ? CoveragePair(today, proposal) : CoverageMainOf(Overview);
+    public string TextCoverageMain => ShowsProposalAlone
+        ? ProposalAloneHeadline(ProposalOverview is { AssessmentId: not null } read ? CoverageMainOf(read) : null)
+        : CoverageIsPaired(out var today, out var proposal) ? CoveragePair(today, proposal) : CoverageMainOf(Overview);
 
     private static string CoverageMainOf(OverviewResponse? overview) => overview?.AssessmentId is null ? MotifAppStrings.OverviewNotParsedYet :
         string.Format(CultureInfo.CurrentCulture, MotifAppStrings.OverviewCoverageMainFormat,
@@ -579,8 +592,9 @@ public sealed partial class OverviewPageModel : PageModel
                 ParserRefusals.Title));
 
     /// <summary>How many approved words the grammar still builds.</summary>
-    public string AccuracyMain => CoverageIsPaired(out var today, out var proposal)
-        ? AccuracyPair(today, proposal) : AccuracyMainOf(Overview);
+    public string AccuracyMain => ShowsProposalAlone
+        ? ProposalAloneHeadline(ProposalOverview is { AssessmentId: not null } read ? AccuracyMainOf(read) : null)
+        : CoverageIsPaired(out var today, out var proposal) ? AccuracyPair(today, proposal) : AccuracyMainOf(Overview);
 
     private static string AccuracyMainOf(OverviewResponse? overview) => overview?.AssessmentId is null ? MotifAppStrings.OverviewNotParsedYet :
         overview.Accuracy.ApprovedWordCount == 0 ? MotifAppStrings.OverviewAccuracyNothingApproved :
@@ -696,8 +710,10 @@ public sealed partial class OverviewPageModel : PageModel
             ? PluralText.Format(MotifAppStrings.OverviewSpeedWordsPattern, known) : string.Empty;
 
     /// <summary>The reported error, warning, and information totals for the grammar check.</summary>
-    public string WarningsCount => WarningsArePaired
-        ? PairedHeadline(WarningsCountOf(Overview), WarningsCountOf(ProposalOverview)) : WarningsCountOf(Overview);
+    public string WarningsCount => ShowsProposalAlone
+        ? ProposalAloneHeadline(ProposalOverview?.Warnings is not null ? WarningsCountOf(ProposalOverview) : null)
+        : WarningsArePaired
+            ? PairedHeadline(WarningsCountOf(Overview), WarningsCountOf(ProposalOverview)) : WarningsCountOf(Overview);
 
     private static string WarningsCountOf(OverviewResponse? overview)
     {
@@ -827,8 +843,9 @@ public sealed partial class OverviewPageModel : PageModel
             OnPropertyChanged(nameof(ProjectTitle));
             OnPropertyChanged(nameof(ProjectFileName));
         }
-        if (e.PropertyName is nameof(WorkspaceContext.Lens) or nameof(WorkspaceContext.ProposalStanding))
-            RaiseProposalNote();
+        if (e.PropertyName is nameof(WorkspaceContext.Lens) or nameof(WorkspaceContext.ProposalStanding)
+            or nameof(WorkspaceContext.ProposalView)) RaiseProposalNote();
+        if (e.PropertyName is nameof(WorkspaceContext.Lens) or nameof(WorkspaceContext.ProposalView)) RaiseHeadlines();
         if (e.PropertyName == nameof(WorkspaceContext.Baseline))
         {
             OnPropertyChanged(nameof(SelectionIsUnresolved));

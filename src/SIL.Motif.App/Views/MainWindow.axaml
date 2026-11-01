@@ -120,21 +120,44 @@
     <Border x:Name="ProposalBar" Grid.Row="1" Classes="proposalBar" IsVisible="{Binding ProposalBar.IsVisible}"
             AutomationProperties.Name="{x:Static app:MotifAppStrings.ProposalBarAccessibleName}"
             AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalBar}">
-      <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="{DynamicResource Intent.Space.Section}">
-        <views:CopyableTextBlock Classes="proposalBarName" Text="{Binding ProposalBar.Name}" VerticalAlignment="Center"
-                                 TextTrimming="CharacterEllipsis" />
-        <views:CopyableTextBlock Grid.Column="1" Text="{Binding ProposalBar.Sentence}" VerticalAlignment="Center"
-                                 TextTrimming="CharacterEllipsis" />
-        <Button Grid.Column="2" Classes="proposalBarAction" Command="{Binding ProposalBar.TryAgainCommand}"
+      <views:ProposalBarPanel Spacing="{DynamicResource Intent.Space.Section}"
+                              MinSentenceWidth="{DynamicResource Component.Shell.ProposalBarSentenceMinWidth}">
+        <views:CopyableTextBlock views:ProposalBarPanel.Part="Name" Classes="proposalBarName" Text="{Binding ProposalBar.Name}"
+                                 VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                                 ToolTip.Tip="{Binding ProposalBar.Name}" />
+        <views:CopyableTextBlock views:ProposalBarPanel.Part="Sentence" Text="{Binding ProposalBar.Sentence}"
+                                 VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                                 ToolTip.Tip="{Binding ProposalBar.Sentence}" />
+        <views:ProposalViewSwitch views:ProposalBarPanel.Part="View" Classes="proposalBarView" IsVisible="{Binding ProposalBar.ShowsViewSwitch}"
+                 SelectedIndex="{Binding ProposalBar.SelectedViewIndex, Mode=TwoWay}"
+                 VerticalAlignment="Center" ToolTip.Tip="{Binding ProposalBar.ViewTooltip}"
+                 AutomationProperties.Name="{x:Static app:MotifAppStrings.ProposalViewSwitchAccessibleName}"
+                 AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalBarView}">
+          <ListBox.ItemsPanel>
+            <ItemsPanelTemplate>
+              <StackPanel Orientation="Horizontal" />
+            </ItemsPanelTemplate>
+          </ListBox.ItemsPanel>
+          <ListBoxItem AutomationProperties.Name="{x:Static app:MotifAppStrings.ProposalViewTodayAccessibleName}">
+            <TextBlock Text="{x:Static app:MotifAppStrings.ProposalViewToday}" />
+          </ListBoxItem>
+          <ListBoxItem AutomationProperties.Name="{x:Static app:MotifAppStrings.ProposalViewTodayToProposalAccessibleName}">
+            <TextBlock Text="{x:Static app:MotifAppStrings.ProposalViewTodayToProposal}" />
+          </ListBoxItem>
+          <ListBoxItem AutomationProperties.Name="{x:Static app:MotifAppStrings.ProposalViewProposalAccessibleName}">
+            <TextBlock Text="{x:Static app:MotifAppStrings.ProposalViewProposal}" />
+          </ListBoxItem>
+        </views:ProposalViewSwitch>
+        <Button views:ProposalBarPanel.Part="Action" Classes="proposalBarAction" Command="{Binding ProposalBar.TryAgainCommand}"
                 AutomationProperties.Name="{Binding ProposalBar.TryAgainAccessibleName}"
                 AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalBarTryAgain}">
           <TextBlock Text="{Binding ProposalBar.TryAgainText}" />
         </Button>
-        <Button Grid.Column="3" Classes="proposalBarAction" Content="{x:Static app:MotifAppStrings.ProposalBarLeave}"
+        <Button views:ProposalBarPanel.Part="Action" Classes="proposalBarAction" Content="{x:Static app:MotifAppStrings.ProposalBarLeave}"
                 Command="{Binding ProposalBar.LeaveCommand}"
                 AutomationProperties.Name="{x:Static app:MotifAppStrings.ProposalBarLeaveAccessibleName}"
                 AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalBarLeave}" />
-      </Grid>
+      </views:ProposalBarPanel>
     </Border>
 
     <views:MotifWorkspaceView x:Name="WorkspaceView" Grid.Row="2" />

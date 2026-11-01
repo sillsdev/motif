@@ -16,6 +16,7 @@ public sealed partial class OverviewPageModel
     [NotifyPropertyChangedFor(nameof(AccuracyMain))]
     [NotifyPropertyChangedFor(nameof(SpeedMain))]
     [NotifyPropertyChangedFor(nameof(WarningsCount))]
+    [NotifyPropertyChangedFor(nameof(ShowTiles))]
     private OverviewResponse? _proposalOverview;
 
     /// <summary>
@@ -27,6 +28,12 @@ public sealed partial class OverviewPageModel
         get
         {
             if (Context.Lens is null || _proposalReading) return null;
+            if (ProposalViewScope.ViewOf(Context) == MarkupView.Today && ProposalOverview is not null)
+                return MotifAppStrings.OverviewTodayViewNote;
+            if (ProposalOverview is not null && Overview?.AssessmentId is null && ProposalOverview.AssessmentId is null &&
+                ProposalViewScope.ViewOf(Context) != MarkupView.Today)
+                return MotifAppStrings.OverviewNeitherParseNote;
+            if (ShowsProposalAlone) return ProposalAloneNote();
             if (ProposalOverview is not null)
             {
                 var paired = TrialStandingWords.For(Context.ProposalStanding).OldNumbers is { } old
@@ -39,6 +46,55 @@ public sealed partial class OverviewPageModel
                 : TrialStandingWords.For(Context.ProposalStanding).Sentence;
             return why + " " + MotifAppStrings.OverviewProposalTodayOnlyNote;
         }
+    }
+
+    // Under the Proposal view each headline reads the Proposal's value alone, so no pairing or today's value shows.
+    private bool ShowsProposalAlone => Context.Lens is not null && ProposalViewScope.ViewOf(Context) == MarkupView.Proposal;
+
+    // The open Proposal has a parse the non-Today views can show even when today has none.
+    private bool ProposalHasParse => Context.Lens is not null && ProposalViewScope.ViewOf(Context) != MarkupView.Today &&
+        ProposalOverview?.AssessmentId is not null;
+
+    private bool ShowsPairs => Context.Lens is not null && ProposalViewScope.ViewOf(Context) == MarkupView.TodayToProposal;
+
+    // A value the Proposal lacks is said so, never filled with today's.
+    private string ProposalAloneHeadline(string? value) =>
+        value ?? (_proposalReading ? MotifAppStrings.OverviewProposalReading : MotifAppStrings.OverviewProposalNone);
+
+    private string ProposalAloneNote()
+    {
+        if (ProposalOverview is not { } read)
+        {
+            var why = _proposalUnreadable
+                ? MotifAppStrings.OverviewProposalUnreadableNote
+                : TrialStandingWords.For(Context.ProposalStanding).Sentence;
+            return why + " " + MotifAppStrings.OverviewProposalNoNumbersNote;
+        }
+        var note = TrialStandingWords.For(Context.ProposalStanding).OldNumbers is { } old
+            ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.OverviewProposalViewOldNoteFormat, old)
+            : MotifAppStrings.OverviewProposalViewNote;
+        var missing = new List<string>();
+        if (read.AssessmentId is null)
+        {
+            missing.Add(MotifAppStrings.TextCoverage);
+            missing.Add(MotifAppStrings.ApprovedAnalysesKept);
+        }
+        if (read.Timing.Work.MeasuredWordCount <= 0 || read.AssessmentId is null) missing.Add(MotifAppStrings.Speed);
+        if (read.Warnings is null) missing.Add(MotifAppStrings.GrammarWarnings);
+        return missing.Count == 0 ? note : note + " " +
+            PluralText.Format(MotifAppStrings.OverviewProposalViewGapLeadPattern, missing.Count) + " " +
+            string.Join(", ", missing) + ".";
+    }
+
+    private void RaiseHeadlines()
+    {
+        OnPropertyChanged(nameof(TextCoverageMain));
+        OnPropertyChanged(nameof(AccuracyMain));
+        OnPropertyChanged(nameof(SpeedMain));
+        OnPropertyChanged(nameof(WarningsCount));
+        OnPropertyChanged(nameof(ShowTiles));
+        OnPropertyChanged(nameof(ShowTodayDetail));
+        OnPropertyChanged(nameof(HidesTodayDetail));
     }
 
     /// <summary>Whether the Overview has something to say about the Proposal's numbers.</summary>
@@ -73,42 +129,44 @@ public sealed partial class OverviewPageModel
     {
         today = Overview!;
         proposal = ProposalOverview!;
-        return Overview is { AssessmentId: not null } && ProposalOverview is { AssessmentId: not null };
+        return ShowsPairs && Overview is not null && ProposalOverview is { AssessmentId: not null };
     }
 
-    private bool WarningsArePaired => Overview?.Warnings is not null && ProposalOverview?.Warnings is not null;
+    private bool WarningsArePaired => ShowsPairs && Overview is not null && ProposalOverview?.Warnings is not null;
 
-    // Work steps pair only where the Proposals page would show a Work comparison for the same Trial.
+    private static bool Measured(OverviewResponse? overview) =>
+        overview is { AssessmentId: not null, Timing.Work.MeasuredWordCount: > 0 };
+
+    // Work steps pair when the Proposal has them and today has none, or the Proposals page would compare the two.
     private bool SpeedIsPaired(out OverviewResponse proposal)
     {
         proposal = ProposalOverview!;
-        return Overview is { AssessmentId: not null, Timing.Work.MeasuredWordCount: > 0 } &&
-            ProposalOverview is { AssessmentId: not null, Timing.Work.MeasuredWordCount: > 0 } &&
-            ProposalNumberText.HasWorkComparison(Context.Lens?.Trial?.Work);
+        return ShowsPairs && Overview is not null && Measured(ProposalOverview) &&
+            (!Measured(Overview) || ProposalNumberText.HasWorkComparison(Context.Lens?.Trial?.Work));
     }
 
     private enum Gap { TodayNone, ProposalNone, NotComparable }
 
-    // Says which headlines show today's alone, grouped by why, so no reason names the wrong side.
+    // Says which headlines lack a side, grouped by why, so no reason names the wrong side.
     private string UnpairedNote()
     {
         var today = Overview;
-        var proposal = ProposalOverview;
-        var coverageGap = today?.AssessmentId is null ? Gap.TodayNone : Gap.ProposalNone;
         var gaps = new List<(Gap Gap, string Name)>();
-        if (!CoverageIsPaired(out _, out _))
+        var coverageGap = !CoverageIsPaired(out _, out _) ? Gap.ProposalNone
+            : today?.AssessmentId is null ? Gap.TodayNone : (Gap?)null;
+        if (coverageGap is { } coverage)
         {
-            gaps.Add((coverageGap, MotifAppStrings.TextCoverage));
-            gaps.Add((coverageGap, MotifAppStrings.ApprovedAnalysesKept));
+            gaps.Add((coverage, MotifAppStrings.TextCoverage));
+            gaps.Add((coverage, MotifAppStrings.ApprovedAnalysesKept));
         }
         if (!SpeedIsPaired(out _))
-            gaps.Add((today is not { AssessmentId: not null, Timing.Work.MeasuredWordCount: > 0 } ? Gap.TodayNone
-                : proposal is not { AssessmentId: not null, Timing.Work.MeasuredWordCount: > 0 } ? Gap.ProposalNone
-                : Gap.NotComparable, MotifAppStrings.Speed));
-        if (!WarningsArePaired)
-            gaps.Add((today?.Warnings is null ? Gap.TodayNone : Gap.ProposalNone, MotifAppStrings.GrammarWarnings));
+            gaps.Add((!Measured(ProposalOverview) ? Gap.ProposalNone : Gap.NotComparable, MotifAppStrings.Speed));
+        else if (!Measured(today)) gaps.Add((Gap.TodayNone, MotifAppStrings.Speed));
+        if (!WarningsArePaired) gaps.Add((Gap.ProposalNone, MotifAppStrings.GrammarWarnings));
+        else if (today?.Warnings is null) gaps.Add((Gap.TodayNone, MotifAppStrings.GrammarWarnings));
         return string.Join(" ", gaps.GroupBy(gap => gap.Gap).OrderBy(group => group.Key).Select(group =>
-            PluralText.Format(MotifAppStrings.OverviewProposalUnpairedLeadPattern, group.Count()) + " " +
+            PluralText.Format(group.Key == Gap.TodayNone ? MotifAppStrings.OverviewProposalTodayNoneLeadPattern
+                : MotifAppStrings.OverviewProposalUnpairedLeadPattern, group.Count()) + " " +
             string.Join(", ", group.Select(gap => gap.Name)) + ". " + group.Key switch
             {
                 Gap.TodayNone => MotifAppStrings.OverviewProposalUnpairedTodayNone,
@@ -122,14 +180,15 @@ public sealed partial class OverviewPageModel
 
     // Two headlines over the same Selection share one denominator, so the pair reads "7 → 8 of 9 words parse".
     private static string CoveragePair(OverviewResponse today, OverviewResponse proposal) =>
-        today.SelectionWordCount == proposal.SelectionWordCount
+        today.AssessmentId is not null && today.SelectionWordCount == proposal.SelectionWordCount
             ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.OverviewCoveragePairFormat,
                 Number(today.TextCoverage.ParsedWords), Number(proposal.TextCoverage.ParsedWords),
                 Number(today.SelectionWordCount))
             : PairedHeadline(CoverageMainOf(today), CoverageMainOf(proposal));
 
     private static string AccuracyPair(OverviewResponse today, OverviewResponse proposal) =>
-        today.Accuracy.ApprovedWordCount == proposal.Accuracy.ApprovedWordCount && today.Accuracy.ApprovedWordCount > 0
+        today.AssessmentId is not null && today.Accuracy.ApprovedWordCount == proposal.Accuracy.ApprovedWordCount &&
+        today.Accuracy.ApprovedWordCount > 0
             ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.OverviewAccuracyPairFormat,
                 Number(today.Accuracy.ApprovedWordsKept), Number(proposal.Accuracy.ApprovedWordsKept),
                 Number(today.Accuracy.ApprovedWordCount))

@@ -292,15 +292,22 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     [ObservableProperty]
     private EvidenceLens _evidenceLens = null!;
 
-    /// <summary>The Proposal open in the window, or null while the pages show today's evidence alone.</summary>
-    [ObservableProperty]
     private ProposalLens? _lens;
 
-    partial void OnLensChanged(ProposalLens? value)
+    /// <summary>The Proposal open in the window, or null while the pages show today's evidence alone.</summary>
+    public ProposalLens? Lens
     {
-        OnPropertyChanged(nameof(ProposalStanding));
-        UpdateEvidenceLens();
-        Changes.AssessmentId = AssessmentIdForLens();
+        get => _lens;
+        set
+        {
+            // A plain property, so a view change can set the field without announcing a change of evidence.
+            if (EqualityComparer<ProposalLens?>.Default.Equals(_lens, value)) return;
+            _lens = value;
+            OnPropertyChanged(nameof(ProposalStanding));
+            UpdateEvidenceLens();
+            Changes.AssessmentId = AssessmentIdForLens();
+            OnPropertyChanged();
+        }
     }
 
     /// <summary>The project setup dialog displayed over the current page.</summary>
@@ -651,9 +658,28 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
         await Changes.TargetAsync(proposalId, cancellationToken).ConfigureAwait(true);
         if (!IsCurrentProposalRead(openGeneration, proposalReadGeneration, projectPath)) return;
         var trial = read.Value;
+        // Opening the same Proposal again, as a refresh does, keeps the view the person chose on the bar.
+        var view = Lens is { } open && open.ProposalId == proposalId ? open.View : MarkupView.TodayToProposal;
         Lens = new ProposalLens(proposalId, FirstNamed(trial?.Label, label) ?? proposalId, trial?.IntentDigest ?? string.Empty,
-            trial, MarkupView.TodayToProposal) { ReadRefusal = read.Refusal };
+            trial, view) { ReadRefusal = read.Refusal };
         await PublishToPagesAsync(cancellationToken).ConfigureAwait(true);
+    }
+
+    /// <summary>How pages that follow the Proposal bar show a pair; today's while no Proposal is open.</summary>
+    public MarkupView ProposalView => Lens?.View ?? MarkupView.Today;
+
+    /// <summary>
+    /// Chooses how the pages that follow the Proposal bar show a pair: today's, today's beside the Proposal's, or the
+    /// Proposal's. It is not an evidence change, so it raises <see cref="ProposalView"/> alone: no page reloads,
+    /// re-reads or re-applies the lens. The choice belongs to the open Proposal, and leaving it forgets the choice.
+    /// </summary>
+    public void ShowProposalView(MarkupView view)
+    {
+        if (_lens is not { } lens || lens.View == view) return;
+        // Set through the field, not Lens, so listeners of the evidence lens never hear a view change.
+        _lens = lens with { View = view };
+        EvidenceLens.ShowView(view);
+        OnPropertyChanged(nameof(ProposalView));
     }
 
     private static string? FirstNamed(params string?[] labels) => labels.FirstOrDefault(
@@ -691,7 +717,7 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
         if (Lens is { } lens && lens.ProposalId == proposalId)
         {
             if (!outcome.Succeeded && TrialRun.StateFor(proposalId).JobId is null)
-                Lens = lens with { Trial = null, ReadRefusal = outcome.Refusal };
+                Lens = lens with { Trial = null, ReadRefusal = outcome.Refusal, View = ProposalView };
             else
                 await RefreshProposalTrialAsync(cancellationToken, outcome.Succeeded ? outcome : null)
                     .ConfigureAwait(true);
@@ -726,7 +752,7 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
         if (!IsCurrentProposalRead(openGeneration, proposalReadGeneration, projectPath, lens.ProposalId)) return;
         if (!read.Succeeded)
         {
-            Lens = lens with { Trial = null, ReadRefusal = read.Refusal };
+            Lens = lens with { Trial = null, ReadRefusal = read.Refusal, View = ProposalView };
             return;
         }
         var trial = read.Value;
@@ -742,7 +768,7 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
             if (!IsCurrentProposalRead(openGeneration, proposalReadGeneration, projectPath, lens.ProposalId)) return;
             if (!detailed.Succeeded)
             {
-                Lens = lens with { Trial = null, ReadRefusal = detailed.Refusal };
+                Lens = lens with { Trial = null, ReadRefusal = detailed.Refusal, View = ProposalView };
                 return;
             }
             trial = detailed.Value;

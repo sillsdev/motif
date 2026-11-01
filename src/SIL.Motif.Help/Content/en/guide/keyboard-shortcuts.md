@@ -142,7 +142,7 @@ Inside text inputs, Ctrl+C/X/V and Ctrl+Z/Y use the control's own copy, cut, pas
 | --- | --- | --- | --- | --- |
 | F or E or V or T or H | Alt+F or Alt+E or Alt+V or Alt+T or Alt+H | Alt+F or Alt+E or Alt+V or Alt+T or Alt+H | Window | Open a Menu |
 | F1 | F1 | F1 | Window | Open Help for This Page |
-| Escape | Esc | Esc | Window | Step Back in the Inspector |
+| Escape | Esc | Esc | Window | Step Back in the Inspector or Leave the Proposal |
 | ? | Shift+/ | Shift+/ | Window | Show Keyboard Shortcuts |
 | , | Ctrl+, | ⌘+, | Window | Open Settings |
 | = or Keypad + | Ctrl+= or Ctrl+Shift+= or Ctrl+Keypad + | ⌘+= or ⌘+Shift+= or ⌘+Keypad + | Window | Zoom In |

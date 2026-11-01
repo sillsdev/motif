@@ -1,7 +1,9 @@
 using System.ComponentModel;
 using System.Globalization;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using SIL.Motif.Contract.Responses;
 
 namespace SIL.Motif.App.ViewModels;
 
@@ -13,6 +15,7 @@ public sealed partial class ProposalBarViewModel : ObservableObject
 {
     private readonly WorkspaceContext _context;
     private WindowRefusal? _tryRefusal;
+    private string? _shownProposalId;
 
     /// <summary>Creates the bar over the window's context, which holds the open Proposal.</summary>
     public ProposalBarViewModel(WorkspaceContext context)
@@ -44,9 +47,53 @@ public sealed partial class ProposalBarViewModel : ObservableObject
             if (lens.ReadRefusal is { } unread) return WindowRefusal.From(unread).Sentence;
             if (_context.TrialRun.StateFor(lens.ProposalId).ShownRefusal is { } refused) return refused.Sentence;
             if (_tryRefusal is { } tried) return tried.Sentence;
-            return TrialStandingWords.For(_context.ProposalStanding).Sentence;
+            var standing = TrialStandingWords.For(_context.ProposalStanding).Sentence;
+            return TriedText(lens) is { } when
+                ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.ProposalBarSentenceFormat, when, standing)
+                : standing;
         }
     }
+
+    // A Proposal that was never tried, or whose try did not finish, has no time to give.
+    private string? TriedText(ProposalLens lens)
+    {
+        if (lens.Trial is not { CompletedUtc: { } completed } trial || _context.ProposalStanding.Kind is not
+            (TrialStandingKind.Current or TrialStandingKind.NeedsAnotherTry)) return null;
+        var tried = WindowTimeText.Format(completed, _context.Clock);
+        return DateTimeOffset.TryParse(trial.Baseline.CapturedUtc, CultureInfo.InvariantCulture,
+            DateTimeStyles.AssumeUniversal, out var saved) && saved.Year > 1
+            ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.ProposalBarTriedFormat, tried,
+                WindowTimeText.Format(saved, _context.Clock))
+            : string.Format(CultureInfo.CurrentCulture, MotifAppStrings.ProposalBarTriedNoSaveFormat, tried);
+    }
+
+    /// <summary>
+    /// The place of the open Proposal's view among the switch's three choices, which are in <see cref="MarkupView"/>'s
+    /// order; choosing one changes every page that draws the view, and no choice is shown when no Proposal is open.
+    /// </summary>
+    public int SelectedViewIndex
+    {
+        get => _context.Lens is { } lens ? (int)lens.View : -1;
+        set
+        {
+            if (Enum.IsDefined(typeof(MarkupView), value)) _context.ShowProposalView((MarkupView)value);
+            // Anything that clears the choice puts the shown choice back once the clearing has finished.
+            else if (_context.Lens is not null) Dispatcher.UIThread.Post(() => OnPropertyChanged(nameof(SelectedViewIndex)));
+        }
+    }
+
+    /// <summary>Whether the switch shows: only on a page that follows it, so no page claims a view it ignores.</summary>
+    public bool ShowsViewSwitch => _context.Lens is not null && ProposalViewScope.Pages.Contains(_context.CurrentPage);
+
+    /// <summary>Says which pages follow the switch and that the rest show today's numbers.</summary>
+    public string ViewTooltip => string.Format(CultureInfo.CurrentCulture, MotifAppStrings.ProposalViewTooltipFormat,
+        string.Join(", ", ProposalViewScope.Pages.Select(PageName)));
+
+    private static string PageName(WorkspacePage page) => page switch
+    {
+        WorkspacePage.Overview => MotifAppStrings.Overview,
+        _ => page.ToString(),
+    };
 
     /// <summary>The label of the button that tries the Proposal: "Try It" before any Trial, else "Try Again".</summary>
     public string TryAgainText => TrialStandingWords.For(_context.ProposalStanding).Action;
@@ -83,8 +130,14 @@ public sealed partial class ProposalBarViewModel : ObservableObject
 
     private void OnContextPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName == nameof(WorkspaceContext.ProposalView)) OnPropertyChanged(nameof(SelectedViewIndex));
+        if (e.PropertyName == nameof(WorkspaceContext.CurrentPage)) OnPropertyChanged(nameof(ShowsViewSwitch));
         if (e.PropertyName is not (nameof(WorkspaceContext.Lens) or nameof(WorkspaceContext.ProposalStanding))) return;
-        _tryRefusal = null;
+        if (_context.Lens?.ProposalId != _shownProposalId || e.PropertyName == nameof(WorkspaceContext.ProposalStanding))
+            _tryRefusal = null;
+        _shownProposalId = _context.Lens?.ProposalId;
+        OnPropertyChanged(nameof(SelectedViewIndex));
+        OnPropertyChanged(nameof(ShowsViewSwitch));
         OnPropertyChanged(nameof(IsVisible));
         OnPropertyChanged(nameof(Name));
         OnPropertyChanged(nameof(Sentence));

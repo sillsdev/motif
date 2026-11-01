@@ -126,6 +126,8 @@ public static class AutomationIds
     public const string ProposalDifferenceOpenWord = "motif-proposal-difference-open-word";
     /// <summary>The bar across the window that names the open Proposal.</summary>
     public const string ProposalBar = "motif-proposal-bar";
+    /// <summary>The Proposal bar's switch between today's numbers, both, and the Proposal's.</summary>
+    public const string ProposalBarView = "motif-proposal-bar-view";
     /// <summary>The Proposal bar's button that leaves Proposal mode.</summary>
     public const string ProposalBarLeave = "motif-proposal-bar-leave";
     /// <summary>The Proposal bar's button that tries the open Proposal.</summary>

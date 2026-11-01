@@ -200,22 +200,6 @@ public sealed class OverviewProposalPairTests
     }
 
     [Fact]
-    public async Task WhenTodayHasNoParseTheNoteBlamesTodayNotTheProposal()
-    {
-        var (fake, context, page) = await OpenedAsync(Trial());
-        fake.OnOverview((request, _) => Task.FromResult(CommandOutcome<OverviewResponse>.Success(
-            request.ProposalId is null ? Today() with { AssessmentId = null } : Proposal())));
-        await context.PublishBaselineCapturedAsync(openFirstRunSetup: false);
-        await context.OpenProposalAsync("proposal/one", CancellationToken.None);
-
-        Assert.DoesNotContain("→", page.TextCoverageMain);
-        Assert.DoesNotContain("→", page.AccuracyMain);
-        Assert.DoesNotContain("→", page.SpeedMain);
-        Assert.Equal(FourHeadlines + " 3 headlines show today's value only: Text Coverage, Approved Analyses Kept, " +
-            "Speed. Today has no result to set the Proposal's beside.", page.ProposalNote);
-    }
-
-    [Fact]
     public async Task ARunThatFinishesAfterLeavingDoesNotBringTheProposalBack()
     {
         var (fake, context, page) = await OpenedAsync(Trial());

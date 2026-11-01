@@ -60,7 +60,7 @@
   "shortcut-choose-cell": {"titleResource":"MotifApp.ShortcutChooseCell","description":"Toggle the focused comparison cell.","source":"Motif interface text"},
   "shortcut-open-inspector": {"titleResource":"MotifApp.ShortcutOpenInspector","description":"Open the focused morpheme in the Inspector.","source":"Motif interface text"},
   "shortcut-open-help": {"titleResource":"MotifApp.ShortcutOpenHelp","description":"Show Help for the current page.","source":"Motif interface text"},
-  "shortcut-step-back": {"titleResource":"MotifApp.ShortcutStepBack","description":"Return to the preceding Inspector level.","source":"Motif interface text"},
+  "shortcut-step-back": {"titleResource":"MotifApp.ShortcutStepBack","description":"Return to the preceding Inspector level; with nothing else using Esc, leave the open Proposal.","source":"Motif interface text"},
   "shortcut-show-shortcuts": {"titleResource":"MotifApp.ShortcutShowShortcuts","description":"Open the keyboard shortcut list.","source":"Motif interface text"},
   "shortcut-open-settings": {"titleResource":"MotifApp.ShortcutOpenSettings","description":"Open Settings at its last group.","source":"Motif interface text"},
   "shortcut-zoom-in": {"titleResource":"MotifApp.ShortcutZoomIn","description":"Increase the App's display zoom.","source":"Motif interface text"},
