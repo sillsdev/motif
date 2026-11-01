@@ -6218,7 +6218,7 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <comment>Sentence the window shows when the command refuses with code C.TrialNothingPending. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalTrialProposalGone" xml:space="preserve">
-    <value>That Proposal was discarded or deleted just now, so it was not tried.</value>
+    <value>Those changes were discarded or deleted just now, so they were not checked.</value>
     <comment>Sentence the window shows when the command refuses with code C.TrialProposalGone. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalTrialUpdateInProgress" xml:space="preserve">
