@@ -56,6 +56,25 @@ public sealed class MotifStoreUpgradeTests : IDisposable
     }
 
     [Fact]
+    public void UpgradeCarriesTheParsimonySelectionPointerBesideTheDefaultOne()
+    {
+        CreateCurrentSchemaAsOld();
+        using (var old = Connect(Source))
+        {
+            Execute(old, "INSERT INTO NamedSelections VALUES ('parsimony', '[]', '[\"kitabu\"]', '2020', '2020', " +
+                "'Estimated', NULL, NULL, 1, 3600); INSERT INTO ParsimonySelection VALUES (1, 'parsimony');");
+        }
+
+        var output = Path.Combine(_root, "copy.db");
+        var report = MotifStoreUpgrade.Copy(Source, output);
+
+        Assert.Equal(1, report.Carried["ParsimonySelection"]);
+        using var copy = Connect(output);
+        Assert.Equal("parsimony", Text(copy, "SELECT SelectionName FROM ParsimonySelection WHERE Id = 1;"));
+        Assert.Equal(0, Count(copy, "DefaultSelection"));
+    }
+
+    [Fact]
     public void Schema49CarriesRevisionsAndReportsUnreadableAndDroppedData()
     {
         CreateSchema49();
@@ -157,7 +176,7 @@ public sealed class MotifStoreUpgradeTests : IDisposable
         var report = MotifStoreUpgrade.Copy(Source, Path.Combine(_root, "copy.db"));
 
         Assert.Equal(56, report.SourceSchema);
-        Assert.Equal(57, report.TargetSchema);
+        Assert.Equal(MotifSchema.CurrentSchema, report.TargetSchema);
         Assert.Contains("BaselineSummaries", report.Dropped);
         Assert.Contains("Baselines", report.Dropped);
         Assert.Equal(2, report.Carried["Proposals"]);

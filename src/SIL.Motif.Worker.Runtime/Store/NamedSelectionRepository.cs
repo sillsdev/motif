@@ -32,15 +32,56 @@ public sealed class NamedSelectionRepository(MotifDatabase database)
         return GetDefault(connection, null);
     }
 
-    internal NamedSelectionRecord? GetDefault(SqliteConnection connection, SqliteTransaction? transaction)
+    /// <summary>Reads the Selection chosen for Parsimony's Text group, or null when none has been chosen.</summary>
+    public NamedSelectionRecord? GetParsimony()
+    {
+        using var connection = _database.OpenConnection();
+        return ReadPointer(connection, null, "ParsimonySelection");
+    }
+
+    /// <summary>Forgets the Parsimony Selection without touching the Selection it named.</summary>
+    public void ClearParsimony()
+    {
+        using var connection = _database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = "DELETE FROM ParsimonySelection WHERE Id = 1;";
+        command.ExecuteNonQuery();
+    }
+
+    /// <summary>Makes an already saved Selection the Parsimony Selection; false when no such Selection exists.</summary>
+    public bool PointParsimonyAt(string name)
+    {
+        RequireName(name);
+        using var connection = _database.OpenConnection();
+        using var transaction = connection.BeginTransaction(deferred: false);
+        if (ReadRevision(connection, transaction, name.Trim()) is null) return false;
+        SetPointer(connection, transaction, "ParsimonySelection", name.Trim());
+        transaction.Commit();
+        return true;
+    }
+
+    /// <summary>
+    /// Saves Selection inputs and makes that Selection the Parsimony Selection atomically. The Default
+    /// Selection pointer is left alone, so each keeps its own job.
+    /// </summary>
+    public NamedSelectionRecord SetParsimony(
+        string name, IReadOnlyList<Guid> textIds, IReadOnlyList<string> addedWords,
+        SelectionParsingLimits limits, string? expectedRevision) =>
+        Save(name, textIds, addedWords, limits, expectedRevision, "ParsimonySelection");
+
+    internal NamedSelectionRecord? GetDefault(SqliteConnection connection, SqliteTransaction? transaction) =>
+        ReadPointer(connection, transaction, "DefaultSelection");
+
+    private static NamedSelectionRecord? ReadPointer(SqliteConnection connection, SqliteTransaction? transaction,
+        string pointerTable)
     {
         ArgumentNullException.ThrowIfNull(connection);
         using var command = connection.CreateCommand();
         command.Transaction = transaction;
-        command.CommandText = """
+        command.CommandText = $"""
             SELECT s.SelectionName, s.TextIdsJson, s.AddedWordsJson, s.CreatedUtc, s.UpdatedUtc,
                 s.TimeLimitMode, s.ExplicitPerWordLimitMs, s.PerWordStepLimit, s.Revision, s.AssessBudgetSeconds
-            FROM DefaultSelection d JOIN NamedSelections s ON s.SelectionName = d.SelectionName
+            FROM {pointerTable} d JOIN NamedSelections s ON s.SelectionName = d.SelectionName
             WHERE d.Id = 1;
             """;
         RepositoryReadCounters.QueryExecuted();
@@ -69,7 +110,12 @@ public sealed class NamedSelectionRepository(MotifDatabase database)
     /// <summary>Saves Selection inputs and makes that Selection the project's default atomically.</summary>
     public NamedSelectionRecord SetDefault(
         string name, IReadOnlyList<Guid> textIds, IReadOnlyList<string> addedWords,
-        SelectionParsingLimits limits, string? expectedRevision)
+        SelectionParsingLimits limits, string? expectedRevision) =>
+        Save(name, textIds, addedWords, limits, expectedRevision, "DefaultSelection");
+
+    private NamedSelectionRecord Save(
+        string name, IReadOnlyList<Guid> textIds, IReadOnlyList<string> addedWords,
+        SelectionParsingLimits limits, string? expectedRevision, string pointerTable)
     {
         RequireName(name);
         ArgumentNullException.ThrowIfNull(textIds);
@@ -121,7 +167,7 @@ public sealed class NamedSelectionRepository(MotifDatabase database)
                 throw new SelectionRevisionConflictException("The Selection changed before these inputs could be saved.");
         }
 
-        SetDefaultReference(connection, transaction, name);
+        SetPointer(connection, transaction, pointerTable, name);
         transaction.Commit();
         return new NamedSelectionRecord(name, canonicalTextIds, canonicalWords,
             existing?.CreatedUtc ?? now, now, limits, revision);
@@ -163,19 +209,8 @@ public sealed class NamedSelectionRepository(MotifDatabase database)
         return current with { UpdatedUtc = now, Limits = limits, Revision = checked(current.Revision + 1) };
     }
 
-    private static NamedSelectionRecord? ReadDefault(SqliteConnection connection, SqliteTransaction transaction)
-    {
-        using var command = connection.CreateCommand();
-        command.Transaction = transaction;
-        command.CommandText = """
-            SELECT s.SelectionName, s.TextIdsJson, s.AddedWordsJson, s.CreatedUtc, s.UpdatedUtc,
-                s.TimeLimitMode, s.ExplicitPerWordLimitMs, s.PerWordStepLimit, s.Revision, s.AssessBudgetSeconds
-            FROM DefaultSelection d JOIN NamedSelections s ON s.SelectionName = d.SelectionName
-            WHERE d.Id = 1;
-            """;
-        using var reader = command.ExecuteReader();
-        return reader.Read() ? Read(reader) : null;
-    }
+    private static NamedSelectionRecord? ReadDefault(SqliteConnection connection, SqliteTransaction transaction) =>
+        ReadPointer(connection, transaction, "DefaultSelection");
 
     private static (long Revision, string CreatedUtc)? ReadRevision(
         SqliteConnection connection, SqliteTransaction transaction, string name)
@@ -188,19 +223,22 @@ public sealed class NamedSelectionRepository(MotifDatabase database)
         return reader.Read() ? (reader.GetInt64(0), reader.GetString(1)) : null;
     }
 
-    private static void SetDefaultReference(SqliteConnection connection, SqliteTransaction transaction, string name)
+    private static void SetPointer(SqliteConnection connection, SqliteTransaction transaction, string pointerTable,
+        string name)
     {
         using (var set = connection.CreateCommand())
         {
             set.Transaction = transaction;
-            set.CommandText = """
-                INSERT INTO DefaultSelection (Id, SelectionName) VALUES (1, $name)
+            set.CommandText = $"""
+                INSERT INTO {pointerTable} (Id, SelectionName) VALUES (1, $name)
                 ON CONFLICT (Id) DO UPDATE SET SelectionName = excluded.SelectionName;
                 """;
             set.Parameters.AddWithValue("$name", name);
             set.ExecuteNonQuery();
         }
 
+        // Choosing Texts for Parsimony is not first-time setup, so only the Default pointer ends a skipped setup.
+        if (pointerTable != "DefaultSelection") return;
         using var clearSkipped = connection.CreateCommand();
         clearSkipped.Transaction = transaction;
         clearSkipped.CommandText = "UPDATE MotifMetadata SET SetupSkippedUtc = NULL WHERE Id = 1;";

@@ -15,7 +15,7 @@ public static class MotifSchema
     public const int ApplicationId = 0x4D4F5446;
 
     /// <summary>The schema generation this assembly creates and requires.</summary>
-    public const int CurrentSchema = 57;
+    public const int CurrentSchema = 58;
 
     /// <summary>The worker version an open at the given schema ceiling requires.</summary>
     internal static Version MinimumWorkerVersion(int schema) => schema is >= 1 and <= CurrentSchema
@@ -61,7 +61,7 @@ public static class MotifSchema
             "MotifMetadata", "Corpora", "CorpusDocuments", "Assessments", "AssessedWords", "AssessmentWordPayloads", "AssessmentInvocations",
             "ParsedAnalyses", "AssessmentPins", "Proposals", "ProposalRevisions",
             "Receipts", "Reports", "AppliedIndex", "Jobs", "Baselines", "RetainedInvocations",
-            "RetainedInvocationMembers", "NamedSelections", "DefaultSelection", "AssessmentObjectTimings",
+            "RetainedInvocationMembers", "NamedSelections", "DefaultSelection", "ParsimonySelection", "AssessmentObjectTimings",
             "BaselineSummaries", "BaselineTextWords", "BaselineTextWordforms", "BaselineTextReadIndex", "GrammarChecks", "PendingChangeFits", "ReviewMarks",
             "ReadOccurrences", "ActiveParse", "ParserRefusals", "ParsimonyBundles", "ParsimonyBundleReferences",
             "ParsimonyReaderLeases", "ParsimonyBuildClaims", "CurrentParsimonyBundles",
@@ -219,7 +219,7 @@ public static class MotifSchema
     {
         var requiredSql = table switch
         {
-            "MotifMetadata" or "DefaultSelection" or "ActiveParse" => "CHECK (Id = 1)",
+            "MotifMetadata" or "DefaultSelection" or "ParsimonySelection" or "ActiveParse" => "CHECK (Id = 1)",
             "AssessedWords" => "AUTOINCREMENT",
             "RetainedInvocationMembers" => "UNIQUE (AssessmentId)",
             "ReadOccurrences" => "CHECK (WordIndex >= 0)",
@@ -422,7 +422,8 @@ public static class MotifSchema
         "RetainedInvocations" => [new("AssessmentInvocations", "ArtifactInvocationId", "InvocationId", "NO ACTION", "NO ACTION", "NONE")],
         "RetainedInvocationMembers" => [new("Assessments", "AssessmentId", "AssessmentId", "NO ACTION", "NO ACTION", "NONE"),
             new("RetainedInvocations", "InvocationId", "InvocationId", "NO ACTION", "NO ACTION", "NONE")],
-        "DefaultSelection" => [new("NamedSelections", "SelectionName", "SelectionName", "NO ACTION", "NO ACTION", "NONE")],
+        "DefaultSelection" or "ParsimonySelection" =>
+            [new("NamedSelections", "SelectionName", "SelectionName", "NO ACTION", "NO ACTION", "NONE")],
         "AssessmentObjectTimings" => [new("Assessments", "AssessmentId", "AssessmentId", "NO ACTION", "NO ACTION", "NONE")],
         "BaselineSummaries" => [new("Baselines", "ProjectKey", "ProjectKey", "NO ACTION", "NO ACTION", "NONE")],
         "BaselineTextWords" => [new("Baselines", "ProjectKey", "ProjectKey", "NO ACTION", "NO ACTION", "NONE")],
@@ -466,7 +467,7 @@ public static class MotifSchema
             C("CreatedUtc", "TEXT", true), C("UpdatedUtc", "TEXT", true),
             C("TimeLimitMode", "TEXT", true), C("ExplicitPerWordLimitMs", "INTEGER"),
             C("PerWordStepLimit", "INTEGER"), C("Revision", "INTEGER", true), C("AssessBudgetSeconds", "INTEGER", true, defaultValue: "3600")],
-        "DefaultSelection" => [C("Id", "INTEGER", false, 1), C("SelectionName", "TEXT", true)],
+        "DefaultSelection" or "ParsimonySelection" => [C("Id", "INTEGER", false, 1), C("SelectionName", "TEXT", true)],
         "ParserRefusals" => [C("BaselineToken", "TEXT", false, 1), C("RefusalJson", "TEXT", true)],
         "GrammarChecks" =>
         [C("BaselineToken", "TEXT", true), C("ProposalId", "TEXT"), C("IntentDigest", "TEXT"),
@@ -765,6 +766,11 @@ public static class MotifSchema
         );
 
         CREATE TABLE DefaultSelection (
+            Id INTEGER PRIMARY KEY CHECK (Id = 1),
+            SelectionName TEXT NOT NULL REFERENCES NamedSelections(SelectionName)
+        );
+
+        CREATE TABLE ParsimonySelection (
             Id INTEGER PRIMARY KEY CHECK (Id = 1),
             SelectionName TEXT NOT NULL REFERENCES NamedSelections(SelectionName)
         );

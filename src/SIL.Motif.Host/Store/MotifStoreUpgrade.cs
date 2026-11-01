@@ -11,7 +11,7 @@ namespace SIL.Motif.Host.Store;
 public static class MotifStoreUpgrade
 {
     private static readonly string[] Kept = ["Corpora", "CorpusDocuments", "Proposals", "ProposalRevisions",
-        "Receipts", "AppliedIndex", "NamedSelections", "DefaultSelection", "ReviewMarks", "ReadOccurrences",
+        "Receipts", "AppliedIndex", "NamedSelections", "DefaultSelection", "ParsimonySelection", "ReviewMarks", "ReadOccurrences",
         "PhonologyExampleSets", "PhonologyExampleSetRevisions", "PhonologyExamples"];
     private static readonly HashSet<string> Derived = new(StringComparer.Ordinal)
     {
