@@ -27,7 +27,7 @@ public static class AuthorPhonologicalRuleComposer
         RequireContextLength(intent.Right, "right");
 
         var data = cache.LangProject.PhonologicalDataOA;
-        ValidateBoundaryMarkers(cache);
+        ValidateBoundaryMarkers(cache, intent);
         ValidatePlacement(data, intent.Placement);
         var input = intent.Input.Select(item => ResolveRuleItem(cache, item, plannedNaturalClass)).ToArray();
         var output = intent.Output.Select(item => ResolveRuleItem(cache, item, plannedNaturalClass)).ToArray();
@@ -220,19 +220,25 @@ public static class AuthorPhonologicalRuleComposer
             : LangProjectTags.kguidPhRuleMorphBdry);
     }
 
-    private static void ValidateBoundaryMarkers(LcmCache cache)
+    private static void ValidateBoundaryMarkers(LcmCache cache, AuthorPhonologicalRuleIntent intent)
     {
         var firstSet = cache.LangProject.PhonologicalDataOA.PhonemeSetsOS.FirstOrDefault();
         if (firstSet is null)
             return;
 
-        var conflicts = firstSet.BoundaryMarkersOC.SelectMany(marker => marker.CodesOS
+        var named = intent.Left.Concat(intent.Right).Select(context => context.BoundaryMarker)
+            .OfType<CanonicalId>().Select(id => id.ToGuid()).ToHashSet();
+        var stored = firstSet.BoundaryMarkersOC.SelectMany(marker => marker.CodesOS
                 .SelectMany(code => code.Representation.AvailableWritingSystemIds
                     .Select(ws => code.Representation.get_String(ws)?.Text)
                     .Where(text => text is "#" or "+")
                     .Select(text => (Marker: marker, Representation: text!)))
                 .DistinctBy(item => (item.Marker.Guid, item.Representation)))
+            .ToArray();
+        var conflicts = stored
             .Where(item => item.Marker.Guid != ReservedBoundaryId(item.Representation))
+            .Where(item => named.Contains(item.Marker.Guid) || !stored.Any(other =>
+                other.Marker.Guid == ReservedBoundaryId(item.Representation) && other.Representation == item.Representation))
             .Select(item =>
             {
                 var role = item.Representation == "#" ? "word" : "morpheme";

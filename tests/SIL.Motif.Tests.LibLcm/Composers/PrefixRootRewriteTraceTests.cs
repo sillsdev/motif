@@ -105,6 +105,40 @@ public sealed class PrefixRootRewriteTraceTests(PristineProjectFixture pristine,
     }
 
     [RealParserFact]
+    public void MorphemeBoundaryRuleParsesAcrossRootAndSuffixBesideASpareDuplicatePlusMarker()
+    {
+        using var cache = pristine.NewScratch();
+        var candidate = BuildSuffixContextCandidate(cache, pristine.Seed);
+        var stray = AddBoundaryMarker(cache, Guid.NewGuid(), "+");
+        var operations = AuthorPhonologicalRuleComposer.Build(cache, new(
+            "r becomes t after a at a morpheme boundary",
+            PhonologicalRuleDirection.Simultaneous,
+            [new(Phoneme: candidate.R)],
+            [new(Phoneme: candidate.T)],
+            [new(Phoneme: candidate.A), new(Boundary: "morpheme")],
+            [new(NaturalClass: candidate.Vowels)]));
+        Assert.DoesNotContain(operations, operation => operation.After is { } after &&
+            after.TryGetProperty("ref", out var reference) && reference.GetString() == stray.Value);
+        Apply(cache, operations);
+        new FwDataProjectLoader().Save(cache);
+
+        var executable = PanGlossExecutable.TryLocate()!;
+        var retainedDirectory = Path.Combine(Path.GetTempPath(), "morpheme-boundary-rule-project-" + Guid.NewGuid().ToString("N"));
+        CopyDirectory(Path.GetDirectoryName(cache.ProjectId.Path)!, retainedDirectory);
+        var retainedProject = Path.Combine(retainedDirectory, Path.GetFileName(cache.ProjectId.Path));
+        var tracePath = Path.Combine(retainedDirectory, "ata.trace.json");
+        var parse = Run(executable, "parse", retainedProject, "ata", "--trace=" + tracePath,
+            "--trace-format", "json", "--trace-details");
+        var trace = File.Exists(tracePath) ? File.ReadAllText(tracePath) : "trace file missing";
+
+        Assert.True(parse.ExitCode == 0, $"parse ata exit={parse.ExitCode}\n{parse.Output}\n{parse.Error}\n{trace}");
+        using var document = JsonDocument.Parse(trace);
+        Assert.NotEmpty(document.RootElement.GetProperty("result").GetProperty("analyses").EnumerateArray());
+        Assert.Contains("\"outputShape\":\"ata\"", trace, StringComparison.Ordinal);
+        output.WriteLine($"Scratch={retainedProject}; Parser={executable}");
+    }
+
+    [RealParserFact]
     public void WordInitialBoundaryRuleSynthesizesThroughPrefixRootInPinnedParser()
     {
         using var cache = pristine.NewScratch();

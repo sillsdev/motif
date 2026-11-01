@@ -523,9 +523,7 @@ public sealed class PhonologicalRuleOrderConformanceTests(PristineProjectFixture
 
     [Theory]
     [InlineData("#", false, false)]
-    [InlineData("#", true, false)]
     [InlineData("+", false, false)]
-    [InlineData("+", true, false)]
     [InlineData("#", true, true)]
     [InlineData("+", true, true)]
     public void LiveRuleCompositionRejectsMisidentifiedBoundaryCodesWithoutChanges(
@@ -572,6 +570,48 @@ public sealed class PhonologicalRuleOrderConformanceTests(PristineProjectFixture
             StringComparison.Ordinal);
         Assert.Contains("re-point references to the standard boundary marker, remove the stray marker, save, and reload",
             refusal, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("#", "word")]
+    [InlineData("+", "morpheme")]
+    public void LiveRuleCompositionIgnoresASpareDuplicateBoundaryWhenTheStandardMarkerHoldsTheCode(
+        string representation, string boundary)
+    {
+        using var project = pristine.NewScratch();
+        var path = project.ProjectId.Path;
+        project.Dispose();
+        var strayGuid = Guid.NewGuid();
+        var reservedGuid = representation == "#"
+            ? LangProjectTags.kguidPhRuleWordBdry
+            : LangProjectTags.kguidPhRuleMorphBdry;
+        var loader = new FwDataProjectLoader();
+        using (var live = loader.LoadCache(path))
+        {
+            AddStoredBoundaryMarker(live, reservedGuid, representation);
+            AddStoredBoundaryMarker(live, strayGuid, representation);
+            loader.Save(live);
+        }
+
+        Assert.True(ProposalCommands.New(new(path, Version, DraftName, "Compose beside a spare duplicate")).Succeeded);
+        var intent = new JsonObject
+        {
+            ["name"] = "Boundary beside a spare duplicate",
+            ["direction"] = "simultaneous",
+            ["input"] = new JsonArray(),
+            ["output"] = new JsonArray(),
+            ["left"] = new JsonArray(new JsonObject { ["boundary"] = boundary }),
+            ["right"] = new JsonArray(new JsonObject { ["boundary"] = boundary == "word" ? "morpheme" : "word" }),
+        }.ToJsonString();
+
+        var composed = ProposalCommands.ComposeAuthorPhonologicalRule(new(path, Version, DraftName, intent));
+
+        Assert.True(composed.Succeeded, composed.Refusal?.Message);
+        var references = ReadDraft(path).Operations.Select(operation => operation.After)
+            .Where(after => after is not null && after.TryGetValue("ref", out _))
+            .Select(after => after!["ref"].GetString()).ToArray();
+        Assert.Contains(CanonicalId.FromGuid(reservedGuid).Value, references);
+        Assert.DoesNotContain(CanonicalId.FromGuid(strayGuid).Value, references);
     }
 
     [Fact]
