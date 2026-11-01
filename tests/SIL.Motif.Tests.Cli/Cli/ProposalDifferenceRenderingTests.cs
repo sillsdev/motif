@@ -40,4 +40,29 @@ public sealed class ProposalDifferenceRenderingTests
         Assert.Contains("Word detail is no longer kept", rendered.Output);
         Assert.DoesNotContain("Showing", rendered.Output);
     }
+
+    [Fact]
+    public void ASourceValidatedWordSaysWhichTierAndLevelItsDecisionsRestOnAndUnreadableRevisionsAreNamed()
+    {
+        var facts = new ProposalDifferenceCaseFacts(new ProposalDifferencePolicy(),
+            Side(), Side(), true, [], [], [], [], [], []);
+        var word = new ProposalDifferenceWord("sita", 1, "approved-unique", "no-approved-match", [],
+            [ProposalDifferenceBucket.Regression], facts,
+            [new("wordform/1", "wordform", "misspelled-typo"),
+             new("analysis/1", "analysis", "source-approved", "Source validation", "approves")]);
+        var response = new ProposalDifferenceResponse(Summary(), [word], 1, null, true, null,
+            [new("proposal/9", "Stage sita", "The stored revision could not be read.")]);
+
+        var rendered = CommandTextRenderer.Render(CommandOutcome<ProposalDifferenceResponse>.Success(response), asJson: false);
+
+        Assert.Contains("sita: source-validated misspelled-typo for wordform wordform/1", rendered.Output);
+        Assert.Contains("sita: source-validated source-approved for analysis analysis/1", rendered.Output);
+        Assert.Contains("Not counted: staged decisions of Applied Proposal proposal/9 'Stage sita' could not be read",
+            rendered.Output);
+    }
+
+    private static HumanAgreementFacts Side() =>
+        new(HumanAgreementEvidenceAvailability.Available, HumanAgreementSearchCompletion.Complete, [],
+            HumanAgreementApprovalState.ApprovedUnique, 1, 1, 1, [], [], [], [], [], [], [],
+            HumanAgreementSpellingAcceptance.NotApplicable, []);
 }

@@ -33,10 +33,24 @@ public static class ProposalDifferenceCommands
     // Built once: fresh options per word rebuilt the converter metadata every time.
     private static readonly JsonSerializerOptions Json = MotifJson.CreateOptions();
 
-    /// <summary>Compares the Trial's before and after parses of one Text and saves the result.</summary>
-    public static CommandOutcome<ProposalDifferenceResponse> Produce(ProposalDifferenceProduceRequest request)
+    /// <summary>Compares the Trial's before and after parses of one Text against human decisions and saves the result.</summary>
+    public static CommandOutcome<ProposalDifferenceResponse> Produce(ProposalDifferenceProduceRequest request) =>
+        Produce(request, ProposalDifferenceReferences.Human);
+
+    /// <summary>
+    /// Compares the Trial's before and after parses of one Text and saves the result. The reference is
+    /// <c>human</c> (FieldWorks' recorded decisions) or <c>source-validated</c> (decisions a named non-human agent
+    /// staged through Applied Proposals, never a person's). It is an argument, not a request field, so the default
+    /// agent tool is unchanged.
+    /// </summary>
+    public static CommandOutcome<ProposalDifferenceResponse> Produce(ProposalDifferenceProduceRequest request,
+        string reference)
     {
         ArgumentNullException.ThrowIfNull(request);
+        if (reference is not (ProposalDifferenceReferences.Human or ProposalDifferenceReferences.SourceValidated))
+            return Refuse("difference.invalid-reference", FailureReason.InvalidArgument,
+                "The reference is human or source-validated. To read a Proposal against both, produce a Difference " +
+                "against each in turn; a Proposal keeps one Difference per Text, so the newer replaces the older.");
         return ProjectStoreCommand.Run(request.ProjectPath, MotifProductVersion.CurrentText, (database, project) =>
         {
             if (!CanonicalId.TryParse(request.ProposalId, out _))
@@ -57,10 +71,13 @@ public static class ProposalDifferenceCommands
                 return Refuse("difference.trial-incomplete", FailureReason.Refused,
                     "The Trial did not complete. Trial the Proposal again before comparing it.");
 
+            var sourceValidated = reference == ProposalDifferenceReferences.SourceValidated
+                ? SourceValidatedDecisions.Read(database) : null;
             var saved = new ProposalDifferenceRepository(database);
             var existing = saved.FindFor(request.ProposalId, textId.ToString("D"));
             var decided = saved.ProposalIsDecided(request.ProposalId);
-            if (existing is not null && IsSameComparison(existing.Summary, trial) && (existing.WordDetailKept || decided))
+            if (existing is not null && IsSameComparison(existing.Summary, trial, reference, sourceValidated?.Digest) &&
+                (existing.WordDetailKept || decided))
                 return Show(database, existing.Summary.DifferenceId, new ProposalDifferenceFilter(), 0, 25);
             if (decided) return Decided();
 
@@ -100,10 +117,10 @@ public static class ProposalDifferenceCommands
             var text = read.Texts.Single();
 
             Built built;
-            try { built = Build(text, before!.Words!, after.Words!); }
+            try { built = Build(text, before!.Words!, after.Words!, sourceValidated); }
             catch (DifferenceRefusalException refusal) { return CommandOutcome<ProposalDifferenceResponse>.Refused(refusal.Refusal); }
             var summary = ProposalDifferenceSummaries.Create(built, trial.JobId, request.ProposalId, before, after, text,
-                JsonSerializer.Serialize(read.Baseline.Token, Json));
+                JsonSerializer.Serialize(read.Baseline.Token, Json), reference, sourceValidated?.Digest, sourceValidated?.Unreadable);
             try { saved.Publish(new NewProposalDifference(summary, built.Words)); }
             catch (ProposalDecidedException) { return Decided(); }
             return Show(database, summary.DifferenceId, new ProposalDifferenceFilter(), 0, 25);
@@ -115,9 +132,11 @@ public static class ProposalDifferenceCommands
             "The Proposal is decided, so its word detail is gone and a new comparison would not be kept. " +
             "Read the saved summary with: motif difference show --project <fwdata> --proposal <id>");
 
-    // Same Trial job, same Baseline and the same policy: the saved result already answers this request.
-    private static bool IsSameComparison(ProposalDifferenceSummary summary, TrialRecord trial) =>
+    // Same Trial, Baseline, policy, reference and staged decisions: the saved result already answers it.
+    private static bool IsSameComparison(ProposalDifferenceSummary summary, TrialRecord trial, string reference,
+        string? decisionsDigest) =>
         summary.TrialJobId == trial.JobId && summary.Policy == new ProposalDifferencePolicy() &&
+        summary.Reference == reference && summary.DecisionsDigest == decisionsDigest &&
         JsonSerializer.Deserialize<BaselineToken>(summary.BaselineToken, Json) is { } token &&
         token.HasSameSemanticIdentity(trial.Baseline);
 
@@ -210,8 +229,16 @@ public static class ProposalDifferenceCommands
         if (page is null)
             return Refuse("difference.none", FailureReason.NotFound, "There is no Difference with that id.");
         var next = offset + page.Words.Count < page.Matching ? offset + page.Words.Count : (int?)null;
+        var words = page.Words;
+        IReadOnlyList<ProposalDifferenceUnreadableEvidence>? unreadable = null;
+        if (page.Saved.Summary.Reference == ProposalDifferenceReferences.SourceValidated && words.Count > 0)
+        {
+            var decisions = SourceValidatedDecisions.Read(database);
+            words = decisions.WithEvidence(words);
+            if (decisions.Unreadable.Count > 0) unreadable = decisions.Unreadable;
+        }
         return CommandOutcome<ProposalDifferenceResponse>.Success(new ProposalDifferenceResponse(
-            page.Saved.Summary, page.Words, page.Matching, next, page.Saved.WordDetailKept, page.Occurrences));
+            page.Saved.Summary, words, page.Matching, next, page.Saved.WordDetailKept, page.Occurrences, unreadable));
     }
 
     private static CommandOutcome<ProposalDifferenceResponse> Refuse(string code, FailureReason reason, string message) =>
@@ -247,10 +274,11 @@ public static class ProposalDifferenceCommands
     internal sealed record Built(IReadOnlyList<NewProposalDifferenceWord> Words, int UnboundOccurrences,
         int MeasuredWordsOutsideText);
 
+    // Joins on the key AssessmentComparer.JoinKey gives a word, so a Trial and a comparison agree on one spelling.
     private static Dictionary<string, AssessedWord> OnePerForm(IReadOnlyList<AssessedWord> words, string side)
     {
         var byForm = new Dictionary<string, AssessedWord>(StringComparer.Ordinal);
-        foreach (var group in words.GroupBy(word => Nfd(word.Word)))
+        foreach (var group in words.GroupBy(word => word.Word.Normalize(NormalizationForm.FormD)))
         {
             var distinct = group.Select(word => JsonSerializer.Serialize(word.Morphology, Json))
                 .Distinct(StringComparer.Ordinal).Count();
@@ -268,7 +296,7 @@ public static class ProposalDifferenceCommands
     }
 
     private static Built Build(SIL.Motif.Host.Texts.BaselineTextReadIndex text, IReadOnlyList<AssessedWord> beforeWords,
-        IReadOnlyList<AssessedWord> afterWords)
+        IReadOnlyList<AssessedWord> afterWords, SourceValidatedDecisions? sourceValidated)
     {
         var before = OnePerForm(beforeWords, "before");
         var after = OnePerForm(afterWords, "after");
@@ -296,11 +324,20 @@ public static class ProposalDifferenceCommands
             if (ids.Length != 1) { unbound += tokens.Count; continue; }
             var wordform = wordforms[ids[0]];
             var decisions = wordform.Analyses.Select(analysis => new HumanAnalysisDecision(
-                CanonicalId.FromGuid(analysis.AnalysisId).Value, GradeOf(analysis.Opinion), analysis.Identity)).ToArray();
-            var compiled = HumanAgreementClassifier.Compile(decisions, wordform.IncorrectSpelling
-                ? CapturedSpellingStatus.Incorrect : CapturedSpellingStatus.Undecided);
+                CanonicalId.FromGuid(analysis.AnalysisId).Value,
+                GradeOf(sourceValidated is null ? analysis.Opinion : sourceValidated.OpinionFor(analysis.AnalysisId)),
+                analysis.Identity)).ToArray();
+            var incorrect = sourceValidated is null ? wordform.IncorrectSpelling
+                : sourceValidated.IncorrectWordforms.Contains(wordform.WordformId);
+            var compiled = HumanAgreementClassifier.Compile(decisions,
+                incorrect ? CapturedSpellingStatus.Incorrect : CapturedSpellingStatus.Undecided);
             var facts = HumanAgreementDifferenceClassifier.Compare(before.GetValueOrDefault(form)?.Morphology,
                 after.GetValueOrDefault(form)?.Morphology, compiled);
+            if (sourceValidated is not null)
+                facts = sourceValidated.MarkDisagreements(facts, wordform.Analyses.Select(analysis => analysis.AnalysisId)) with
+                {
+                    WordformId = CanonicalId.FromGuid(wordform.WordformId).Value,
+                };
             words.Add(new NewProposalDifferenceWord(form, facts, tokens.Select(token => token.Where).ToArray()));
         }
         var outside = before.Keys.Concat(after.Keys).Distinct(StringComparer.Ordinal).Count(form => !inText.Contains(form));

@@ -964,6 +964,23 @@
       "Create a text from segments of words"
     ]
   },
+  "compose-record-source-validated-decision": {
+    "title": "Stage a source-validated decision",
+    "description": "Stages, in a Draft, a decision a named program made from cited sources: an approval or disapproval of one existing analysis under a non-human agent, or the evidence for a wordform or analysis alone. It is never a person's decision and never sets spelling status; only a person can Apply.",
+    "source": "Authored from the typed composer contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "target": "Id of the existing analysis the agent decides about, or of the wordform or analysis the evidence is for.",
+      "agent": "The named non-human agent that decides: its name and the source release (version) it stands for. Give it together with member.",
+      "member": "approves or disapproves; give it together with agent. Leave both out to stage evidence alone.",
+      "evidence": "Why: the tier, the cited sources, the facts that tier requires and, optionally, the staging tool."
+    },
+    "goals": [
+      "Record that a published grammar and dictionary support an analysis",
+      "Record why a spelling is a typo or ill-formed without changing its spelling status",
+      "Stage an approval from cited sources that is clearly not a person's"
+    ]
+  },
   "compose-edit-analysis-decision": {
     "title": "Decide an analysis",
     "description": "Stages one human decision about an existing analysis or wordform in a Draft: approve, disapprove, return to unknown, mark the spelling incorrect, or store a parser reading as an unknown analysis. It names the exact canonical identity. Only a person can Apply.",
@@ -1202,6 +1219,16 @@
     "title": "Compare a Trial with decisions",
     "description": "Compares a completed Trial's parses with the approved, disapproved and misspelled decisions FieldWorks records for one Text, and saves the result. It reads stored evidence, runs no parser and never blocks an Apply.",
     "source": "Authored from the Proposal Difference contract."
+  },
+  "evidence show": {
+    "title": "Read decision evidence",
+    "description": "Reads why a program, not a person, decided about one wordform or analysis: its tier, the cited sources, the named non-human agent and the Proposal that staged it. It never shows a person's decision as source-validated.",
+    "source": "Authored from the decision evidence contract."
+  },
+  "evidence list": {
+    "title": "List decision evidence",
+    "description": "Lists source-validated decisions staged by Applied Proposals, with a count for each tier first and then one page of records. Filter to one tier.",
+    "source": "Authored from the decision evidence contract."
   },
   "difference show": {
     "title": "Read a saved comparison",

@@ -402,7 +402,7 @@ public static class CliVerbCatalog
             new[] { "warnings --project <fwdata> [--proposal <id>] [--kind <code>] [--left-out] [--json]" }),
         new CliVerbDescriptor(
             "Project", "difference", "difference produce",
-            new[] { "difference produce --project <fwdata> --proposal <id> --text <guid> [--job <id>] [--json]" }),
+            new[] { "difference produce --project <fwdata> --proposal <id> --text <guid> [--job <id>] [--reference human|source-validated] [--json]" }),
         new CliVerbDescriptor(
             "Project", "difference", "difference show",
             new[]

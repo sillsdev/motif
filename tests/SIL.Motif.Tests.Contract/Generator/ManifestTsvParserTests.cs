@@ -91,9 +91,9 @@ public class ManifestTsvParserTests
     }
 
     [Fact]
-    public void Parse_RealManifest_Has505InScopeRows()
+    public void Parse_RealManifest_Has506InScopeRows()
     {
         var rows = ManifestTsvParser.Parse(RepoPaths.DefaultManifestPath());
-        Assert.Equal(505, rows.Count(r => r.Scope == "in"));
+        Assert.Equal(506, rows.Count(r => r.Scope == "in"));
     }
 }

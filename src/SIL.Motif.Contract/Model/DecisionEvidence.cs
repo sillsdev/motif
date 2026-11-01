@@ -27,6 +27,9 @@ public sealed record DecisionEvidence
     /// <summary>The <c>type</c> value that marks a <c>provenance</c> entry as decision evidence.</summary>
     public const string ProvenanceType = "decisionEvidence";
 
+    /// <summary>The operation kind that records evidence alone; a Proposal parses only when each one carries evidence.</summary>
+    public const string RecordKind = "analysis/decisionEvidence/record";
+
     /// <summary>The tiers a source-validated decision can carry.</summary>
     public static readonly IReadOnlyList<string> Tiers =
     [

@@ -68,9 +68,26 @@ public sealed class DecisionEvidenceOperationsTests : IDisposable
         var wrong = Assert.ThrowsAny<Exception>(() => ScratchDryRun.Of(_cache, Record(_cache.LangProject.Guid, Evidence)));
         var missing = Assert.ThrowsAny<Exception>(() => ScratchDryRun.Of(_cache, Record(Guid.NewGuid(), Evidence)));
 
-        Assert.Contains("decisionEvidence", bare.Message, StringComparison.Ordinal);
-        Assert.Contains("wordform or analysis", wrong.Message, StringComparison.Ordinal);
+        Assert.Equal(DecisionRefusalCodes.EvidenceMissing, Assert.IsType<DecisionRefusalException>(bare.GetBaseException()).Code);
+        Assert.Equal(DecisionRefusalCodes.EvidenceWrongTarget, Assert.IsType<DecisionRefusalException>(wrong.GetBaseException()).Code);
         Assert.False(string.IsNullOrEmpty(missing.Message));
+    }
+
+    [Fact]
+    public void AParsedRecordOperationWithNoEvidenceIsRefusedByTheDryRunAsMissingEvidence()
+    {
+        var (wordform, _) = Seed("sita");
+        var json = $$"""
+            {"contractVersions":{"analysis":"1.0"},"proposalId":"{{CanonicalId.Mint().Value}}","requires":[],
+             "operations":[{"operationId":"{{CanonicalId.Mint().Value}}","kind":"{{DecisionEvidenceOperationKinds.Record}}",
+             "target":"{{CanonicalId.FromGuid(wordform.Guid).Value}}","after":{} }]}
+            """;
+
+        var proposal = ProposalJsonParser.Parse(json);
+        var refusal = Assert.ThrowsAny<Exception>(() => ScratchDryRun.Of(_cache, proposal));
+
+        Assert.Equal(DecisionRefusalCodes.EvidenceMissing,
+            Assert.IsType<DecisionRefusalException>(refusal.GetBaseException()).Code);
     }
 
     [Fact]

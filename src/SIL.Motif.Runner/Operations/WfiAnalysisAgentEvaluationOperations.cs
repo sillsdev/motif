@@ -78,6 +78,32 @@ public static class AgentEvaluationPayload
     }
 }
 
+/// <summary>The stable codes of the refusals the agent evaluation and decision evidence kinds raise.</summary>
+public static class DecisionRefusalCodes
+{
+    public const string AgentBuiltIn = SIL.Motif.Contract.Commands.RefusalCodes.AgentBuiltIn;
+    public const string AgentHuman = SIL.Motif.Contract.Commands.RefusalCodes.AgentHuman;
+    public const string AgentHumanName = SIL.Motif.Contract.Commands.RefusalCodes.AgentHumanName;
+    public const string AgentIdentityConflict = SIL.Motif.Contract.Commands.RefusalCodes.AgentIdentityConflict;
+    public const string AgentVersionConflict = SIL.Motif.Contract.Commands.RefusalCodes.AgentVersionConflict;
+    public const string EvidenceMissing = SIL.Motif.Contract.Commands.RefusalCodes.EvidenceMissing;
+    public const string EvidenceWrongTarget = SIL.Motif.Contract.Commands.RefusalCodes.EvidenceWrongTarget;
+
+    /// <summary>Every code, for the inventory test.</summary>
+    public static IReadOnlyList<string> All { get; } =
+    [
+        AgentBuiltIn, AgentHuman, AgentHumanName, AgentIdentityConflict, AgentVersionConflict, EvidenceMissing,
+        EvidenceWrongTarget,
+    ];
+}
+
+/// <summary>An operation refused for a stable reason; the code leads the message so a job failure carries it.</summary>
+public sealed class DecisionRefusalException(string code, string message)
+    : InvalidOperationException($"[{code}] {message}")
+{
+    public string Code { get; } = code;
+}
+
 internal sealed class AgentEvaluationHandler : IOperationHandler
 {
     private const string Kind = WfiAnalysisAgentEvaluationOperationKinds.Add;
@@ -116,23 +142,28 @@ internal sealed class AgentEvaluationHandler : IOperationHandler
     {
         var guid = payload.AgentId.ToGuid();
         if (BuiltInAgents(cache).Contains(guid))
-            throw new InvalidOperationException($"'{Kind}': agent '{payload.AgentId.Value}' is a built-in agent; " +
+            throw new DecisionRefusalException(DecisionRefusalCodes.AgentBuiltIn,
+                $"'{Kind}': agent '{payload.AgentId.Value}' is a built-in agent; " +
                 "a source-validated decision is recorded under its own non-human agent.");
         var human = cache.LangProject.DefaultUserAgent;
         if (human is not null && human.Name.AvailableWritingSystemIds.Select(ws => human.Name.get_String(ws).Text)
                 .Any(text => string.Equals(text, payload.Name, StringComparison.Ordinal)))
-            throw new InvalidOperationException($"'{Kind}': agent name '{payload.Name}' is the human agent's name.");
+            throw new DecisionRefusalException(DecisionRefusalCodes.AgentHumanName,
+                $"'{Kind}': agent name '{payload.Name}' is the human agent's name.");
         var repository = cache.ServiceLocator.GetInstance<ICmObjectRepository>();
         if (!repository.TryGetObject(guid, out var found)) return null;
         if (found is not ICmAgent existing)
-            throw new InvalidOperationException($"'{Kind}': identity '{payload.AgentId.Value}' already exists as " +
+            throw new DecisionRefusalException(DecisionRefusalCodes.AgentIdentityConflict,
+                $"'{Kind}': identity '{payload.AgentId.Value}' already exists as " +
                 $"{found.ClassName}, expected CmAgent; this is a semantic conflict.");
         if (existing.Human)
-            throw new InvalidOperationException($"'{Kind}': agent '{payload.AgentId.Value}' is a human agent.");
+            throw new DecisionRefusalException(DecisionRefusalCodes.AgentHuman,
+                $"'{Kind}': agent '{payload.AgentId.Value}' is a human agent.");
         var name = existing.Name.get_String(cache.DefaultAnalWs).Text;
         if (!string.Equals(name, payload.Name, StringComparison.Ordinal) ||
             !string.Equals(existing.Version, payload.Version, StringComparison.Ordinal))
-            throw new InvalidOperationException($"'{Kind}': agent '{payload.AgentId.Value}' exists as " +
+            throw new DecisionRefusalException(DecisionRefusalCodes.AgentVersionConflict,
+                $"'{Kind}': agent '{payload.AgentId.Value}' exists as " +
                 $"'{name}' version '{existing.Version}', not '{payload.Name}' version '{payload.Version}'; " +
                 "a new version is a new agent identity.");
         return existing;

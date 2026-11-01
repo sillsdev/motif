@@ -174,7 +174,8 @@ A naming heuristic was wrong in **both** directions, which is why this is comput
 **In scope: 494 properties across 100 classes** (494 = 214 `basic` + 148 `owning` + 132 `rel`). Was 473
 across 95 until [ADR 0025](../docs/adr/0025-parser-first-build-order.md) brought in 21 analysis rows —
 the approval half of word analysis, which has durable identity. Occurrence assignment
-(`Segment.Analyses`) came in later with the Text create, which brings the count to 505. Basic —
+(`Segment.Analyses`) came in later with the Text create, which brings the count to 505, and `CmAgent.Version` came in with the agent evaluation kind
+(`analysis/wfiAnalysis/addAgentEvaluations` writes `CmAgent.Name`, `Version` and `Human`), which brings it to 506. Basic —
 MultiUnicode 52, MultiString 51, Unicode 35, Integer 28, Boolean 25, String 10, Time 5, Guid 2,
 TextPropBinary 1. Relations — owning/atomic 69, rel/atomic 57, owning/col 39, rel/col 38, owning/seq 33,
 rel/seq 28. Excluded as `trace`: 28 props across 9 classes.

@@ -1,5 +1,17 @@
 namespace SIL.Motif.Contract.Requests;
 
+/// <summary>The references a Difference can be read against.</summary>
+public static class ProposalDifferenceReferences
+{
+    /// <summary>FieldWorks' recorded human decisions.</summary>
+    public const string Human = "human";
+
+    /// <summary>
+    /// The decisions a named non-human agent staged from cited sources through Applied Proposals, never a person's.
+    /// </summary>
+    public const string SourceValidated = "source-validated";
+}
+
 /// <summary>Compares a completed Trial's parses with FieldWorks' recorded human decisions for one Text.</summary>
 /// <param name="ProjectPath">The recorded project path.</param>
 /// <param name="ProposalId">The Proposal whose Trial is compared.</param>

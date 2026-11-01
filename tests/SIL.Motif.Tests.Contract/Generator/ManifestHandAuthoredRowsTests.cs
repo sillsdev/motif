@@ -30,8 +30,8 @@ namespace SIL.Motif.Tests.Generator;
 /// </remarks>
 public class ManifestHandAuthoredRowsTests
 {
-    // 22 = CmAgent 4 + WfiAnalysis 9 + WfiMorphBundle 5 + WfiWordform 3 + WfiGloss 1 (all ADR 0025 rows).
-    private const int ExpectedAdr0025RowCount = 22;
+    // 20 ADR 0025 rows: CmAgent 2, WfiAnalysis 9, WfiMorphBundle 5, WfiWordform 3, WfiGloss 1.
+    private const int ExpectedAdr0025RowCount = 20;
 
     private static IReadOnlyList<ManifestRow> Adr0025Rows() =>
         ManifestTsvParser.Parse(RepoPaths.DefaultManifestPath())
@@ -148,6 +148,20 @@ public class ManifestHandAuthoredRowsTests
         Assert.Contains("texts/langProject/createTexts", row.ScopeReason, StringComparison.Ordinal);
         Assert.Contains("texts/langProject/createTexts", row.Rationale, StringComparison.Ordinal);
         Assert.Contains("analysis/wfiAnalysis/delete", row.Rationale, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AgentRows_AreClassifiedAsWrittenByTheAgentEvaluationKind()
+    {
+        var rows = ManifestTsvParser.Parse(RepoPaths.DefaultManifestPath());
+        foreach (var field in new[] { "Name", "Version", "Human" })
+        {
+            var row = rows.Single(item => item.Class == "CmAgent" && item.Field == field);
+            Assert.Equal("in", row.Scope);
+            Assert.Equal("semantic-operation", row.Classification);
+            Assert.Contains("analysis/wfiAnalysis/addAgentEvaluations", row.ScopeReason, StringComparison.Ordinal);
+            Assert.Contains("addAgentEvaluations", row.Rationale, StringComparison.Ordinal);
+        }
     }
 
     [Fact]

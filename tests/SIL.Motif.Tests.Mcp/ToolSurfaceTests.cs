@@ -123,7 +123,7 @@ public sealed class ToolSurfaceTests
     }
 
     [Fact]
-    public void CliFirstCommandsAndTheActivityReaderOptOutOfDefaultToolExposure()
+    public void CliFirstCommandsTheSourceValidatedStagerAndTheActivityReaderOptOutOfDefaultToolExposure()
     {
         var optedOut = CommandCatalog.All.Where(command => !command.ExposeAsAgentTool)
             .Select(command => command.Name)
@@ -142,6 +142,7 @@ public sealed class ToolSurfaceTests
             "compose-edit-stem-inflection-class",
             "compose-move-example",
             "compose-move-sense-to-entry",
+            "compose-record-source-validated-decision",
             "compose-remove-alternate-form",
             "compose-set-stem-part-of-speech",
             "project tag",
@@ -164,8 +165,8 @@ public sealed class ToolSurfaceTests
                 "compose-edit-stem-inflection-class" or "compose-move-sense-to-entry" or
                 "compose-delete-sense" or "compose-remove-alternate-form" or
                 "compose-move-example" or "compose-add-example" or
-                "compose-set-stem-part-of-speech").ToArray();
-        Assert.Equal(10, numeralEditors.Length);
+                "compose-set-stem-part-of-speech" or "compose-record-source-validated-decision").ToArray();
+        Assert.Equal(11, numeralEditors.Length);
         Assert.All(numeralEditors, command =>
         {
             Assert.Equal(CommandSurface.AdvancedAi, command.Surface);

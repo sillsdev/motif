@@ -92,8 +92,14 @@ public sealed partial class ProposalDifferenceViewModel : ObservableObject
     /// <summary>The saved Difference's totals.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HeadlineText), nameof(ComparedText), nameof(UnboundText), nameof(HasUnbound),
-        nameof(OutsideText), nameof(HasOutside), nameof(HasNotes), nameof(Notes))]
+        nameof(OutsideText), nameof(HasOutside), nameof(HasNotes), nameof(Notes), nameof(AdviceText),
+        nameof(ReferenceNoteText), nameof(HasReferenceNote), nameof(UnreadableEvidenceText), nameof(HasUnreadableEvidence))]
     private ProposalDifferenceSummary? _summary;
+
+    /// <summary>The Applied Proposals whose staged decisions could not be read at the last read.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(UnreadableEvidenceText), nameof(HasUnreadableEvidence))]
+    private IReadOnlyList<ProposalDifferenceUnreadableEvidence> _unreadableEvidence = [];
 
     /// <summary>Whether the word detail is still kept; false once the Proposal is decided.</summary>
     [ObservableProperty]
@@ -135,7 +141,7 @@ public sealed partial class ProposalDifferenceViewModel : ObservableObject
     /// <summary>The word whose places are shown, or <see langword="null"/>.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasSelectedWord), nameof(SelectedWordTitle), nameof(SelectedWordMovedText),
-        nameof(SelectedWordBucketsText))]
+        nameof(SelectedWordBucketsText), nameof(SelectedWordEvidenceText), nameof(HasSelectedWordEvidence))]
     private ProposalDifferenceWord? _selectedWord;
 
     /// <summary>The selected word's places in the Text, a page at a time.</summary>
@@ -194,6 +200,24 @@ public sealed partial class ProposalDifferenceViewModel : ObservableObject
     public bool HasOutside => Summary is { MeasuredWordsOutsideText: > 0 };
 
     public bool HasNotes => Notes.Count > 0;
+
+    /// <summary>The intro line, true for the decisions this Difference was read against.</summary>
+    public string AdviceText => ProposalDifferenceWords.Advice(Summary);
+
+    /// <summary>Says at the top when the decisions are a named program's, not a person's.</summary>
+    public string ReferenceNoteText => ProposalDifferenceWords.ReferenceNote(Summary);
+
+    public bool HasReferenceNote => ReferenceNoteText.Length > 0;
+
+    /// <summary>Names the Applied Proposals whose staged decisions could not be read.</summary>
+    public string UnreadableEvidenceText => ProposalDifferenceWords.Unreadable(UnreadableEvidence, Summary?.Warnings);
+
+    public bool HasUnreadableEvidence => UnreadableEvidenceText.Length > 0;
+
+    /// <summary>Why the selected word's decisions were staged, when a named program staged them.</summary>
+    public string SelectedWordEvidenceText => ProposalDifferenceWords.Evidence(SelectedWord?.Evidence);
+
+    public bool HasSelectedWordEvidence => SelectedWordEvidenceText.Length > 0;
 
     /// <summary>The summary's notes in the window's words; see <see cref="ProposalDifferenceWords.Notes"/>.</summary>
     public IReadOnlyList<string> Notes => ProposalDifferenceWords.Notes(Summary?.Warnings);

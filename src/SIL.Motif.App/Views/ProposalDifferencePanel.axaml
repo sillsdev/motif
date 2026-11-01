@@ -18,8 +18,11 @@
   <Border Classes="inspectorSection">
     <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
       <TextBlock Classes="inspectorSectionTitle" Text="{x:Static app:MotifAppStrings.ProposalDifferenceTitle}" />
-      <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap"
-                               Text="{x:Static app:MotifAppStrings.ProposalDifferenceAdvice}" />
+      <views:CopyableTextBlock x:Name="DifferenceReferenceNote" TextWrapping="Wrap"
+                               Text="{Binding ReferenceNoteText}" IsVisible="{Binding HasReferenceNote}" />
+      <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" Text="{Binding AdviceText}" />
+      <views:CopyableTextBlock x:Name="DifferenceEvidenceUnreadable" Classes="muted" TextWrapping="Wrap"
+                               Text="{Binding UnreadableEvidenceText}" IsVisible="{Binding HasUnreadableEvidence}" />
       <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" IsVisible="{Binding IsLoading}"
                                Text="{x:Static app:MotifAppStrings.ProposalDifferenceReading}" />
       <views:RefusalBlock DataContext="{Binding ShownRefusal}" />
@@ -82,6 +85,8 @@
             <TextBlock Classes="inspectorSectionTitle" Text="{Binding SelectedWordTitle}" />
             <views:CopyableTextBlock Text="{Binding SelectedWordMovedText}" TextWrapping="Wrap" />
             <views:CopyableTextBlock Classes="muted" Text="{Binding SelectedWordBucketsText}" TextWrapping="Wrap" />
+            <views:CopyableTextBlock x:Name="DifferenceWordEvidence" Classes="muted" TextWrapping="Wrap"
+                                     Text="{Binding SelectedWordEvidenceText}" IsVisible="{Binding HasSelectedWordEvidence}" />
             <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" IsVisible="{Binding ShowsNoPlaces}"
                                      Text="{x:Static app:MotifAppStrings.ProposalDifferenceNoPlaces}" />
             <ItemsControl x:Name="DifferencePlaces" ItemsSource="{Binding Places}">

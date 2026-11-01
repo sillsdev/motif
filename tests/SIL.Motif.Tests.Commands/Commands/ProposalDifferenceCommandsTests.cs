@@ -498,14 +498,24 @@ public sealed partial class ProposalDifferenceCommandsTests : IDisposable
         private readonly string? _beforeParserSha;
         private readonly string? _afterParserSha;
         private readonly string[] _outsideText;
+        private readonly bool _humanApprovesSita;
+        private readonly bool _humanMarksMutuIncorrect;
+        private readonly string _sitaTrial;
+        private readonly string _sitaText;
         private string _trialInput = "";
         private string _trialDigest = "";
 
         public Fixture(string testRoot, bool beforeOmitsSita = false, bool ambiguousMutu = false, bool duplicateBefore = false,
             string[]? jobBaselineIds = null, bool noBaselineIds = false, string beforeAssessor = "pangloss",
             char beforeTokenSeed = 'a', bool beforeNoWords = false, int extraWords = 0, bool cappedAfterMutu = false,
-            string? beforeParserSha = null, string? afterParserSha = null, string[]? outsideText = null)
+            string? beforeParserSha = null, string? afterParserSha = null, string[]? outsideText = null,
+            bool humanApprovesSita = true, bool humanMarksMutuIncorrect = true, string sitaTrial = "sita",
+            string sitaText = "sita")
         {
+            _sitaTrial = sitaTrial;
+            _sitaText = sitaText;
+            _humanApprovesSita = humanApprovesSita;
+            _humanMarksMutuIncorrect = humanMarksMutuIncorrect;
             _extraWords = extraWords;
             _cappedAfterMutu = cappedAfterMutu;
             _beforeParserSha = beforeParserSha;
@@ -577,20 +587,23 @@ public sealed partial class ProposalDifferenceCommandsTests : IDisposable
                 return new TextWordsProjectedWordform(ExtraId(i), [approvedExtra], [], 0, false, [approvedExtra]);
             }).ToArray();
             var text = new TextWordsProjectedText(TextId, "Hadithi",
-                [new TextWordsProjectedLine(1, "sita mutu sita .", [Token("sita", sitaId, 0), Token("mutu", mutuId, 1),
-                    Token("sita", sitaId, 2), .. extraTokens,
+                [new TextWordsProjectedLine(1, "sita mutu sita .", [Token(_sitaText, sitaId, 0), Token("mutu", mutuId, 1),
+                    Token(_sitaText, sitaId, 2), .. extraTokens,
                     .. _ambiguousMutu ? [Token("mutu", otherMutuId, 4)] : Array.Empty<TextWordsProjectedToken>(),
                     new TextWordsProjectedToken(".", [new WritingSystemText(".", "swh")], null,
                         null, null, null, null, null, 3, null)], paragraph, segment, true)], []);
             var approved = new TextWordsProjectedAnalysis("k1", [])
-            { AnalysisId = analysisId, Opinion = ReadingGrade.Approved, Identity = identity };
+            {
+                AnalysisId = analysisId, Opinion = _humanApprovesSita ? ReadingGrade.Approved : "unknown", Identity = identity,
+            };
             new BaselineRepository(Database).Record(ProjectWorkspaceKey.Compute(Project),
                 new BaselinePublication(baselineRoot, System.IO.Path.Combine(baselineRoot, "project.fwdata"), token),
                 DateTimeOffset.Parse("2026-09-24T10:30:00Z"), DateTimeOffset.Parse(capturedUtc),
                 new TextWordsProjection([text],
                 [
-                    new TextWordsProjectedWordform(sitaId, [approved], [], 1, false, [approved, candidate]),
-                    new TextWordsProjectedWordform(mutuId, [], [], 0, true, []),
+                    new TextWordsProjectedWordform(sitaId, _humanApprovesSita ? [approved] : [], [], _humanApprovesSita ? 1 : 2, false,
+                        [approved, candidate]),
+                    new TextWordsProjectedWordform(mutuId, [], [], 0, _humanMarksMutuIncorrect, []),
                     .. _ambiguousMutu ? [new TextWordsProjectedWordform(otherMutuId, [], [], 0, false, [])]
                         : Array.Empty<TextWordsProjectedWordform>(),
                     .. extraWordforms,
@@ -625,9 +638,9 @@ public sealed partial class ProposalDifferenceCommandsTests : IDisposable
             ProposalId = id.Value;
 
             var assessments = new AssessmentRepository(Database);
-            Record(assessments, "before", null, null, [Word("sita", 0, Reading(FormB)), Word("mutu", 1),
+            Record(assessments, "before", null, null, [Word(_sitaTrial, 0, Reading(FormB)), Word("mutu", 1),
                 .. ExtraAssessed(before: true)]);
-            Record(assessments, "after", id, digest, [Word("sita", 0, Reading(FormA)),
+            Record(assessments, "after", id, digest, [Word(_sitaTrial, 0, Reading(FormA)),
                 _cappedAfterMutu ? Capped("mutu", 1, Reading(FormB)) : Word("mutu", 1, Reading(FormB)),
                 .. ExtraAssessed(before: false)]);
             var jobs = new JobRepository(Database);

@@ -319,6 +319,7 @@ public sealed class ProposalDifferenceViewModelTests
             ProposalDifferenceWarnings.ParserDiffers + "1.0 (0123456789ab) and the after side by 1.1 (ba9876543210). A word that differs...",
             ProposalDifferenceWarnings.TokeniserDiffers + "regex 1 and the after side with regex 2, so the two may differ.",
             ProposalDifferenceWarnings.RetryDiffers + " under a longer limit, so the two runs used different effective per-word limits.",
+            ProposalDifferenceWarnings.SourceValidated + ": a named non-human agent staged them from cited sources.",
             "A note an older version wrote.",
             "Another old note.",
         ];
@@ -333,6 +334,168 @@ public sealed class ProposalDifferenceViewModelTests
         WindowWordsTests.AssertWindowWords(notes);
         Assert.All(notes, text => Assert.DoesNotContain("side", text, StringComparison.OrdinalIgnoreCase));
         Assert.Empty(ProposalDifferenceWords.Notes([]));
+    }
+
+    [Fact]
+    public async Task APersonsDecisionsGetTheOrdinaryAdviceAndNoReferenceNote()
+    {
+        var (model, _, _) = Make();
+        await model.LoadAsync(Project, "proposal/one");
+
+        Assert.Equal(MotifAppStrings.ProposalDifferenceAdvice, model.AdviceText);
+        Assert.False(model.HasReferenceNote);
+        Assert.Empty(model.ReferenceNoteText);
+        Assert.False(model.HasUnreadableEvidence);
+    }
+
+    [Fact]
+    public async Task ASourceValidatedDifferenceSaysSoAtTheTopAndItsAdviceDoesNotClaimAPersonApprovedAnything()
+    {
+        var warnings = new[] { ProposalDifferenceWarnings.SourceValidated + ": a named non-human agent staged them." };
+        var (model, _, _) = Make(new ProposalDifferenceFixture
+        {
+            Reference = ProposalDifferenceReferences.SourceValidated, Warnings = warnings,
+        });
+
+        await model.LoadAsync(Project, "proposal/one");
+
+        Assert.Equal(MotifAppStrings.ProposalDifferenceAdviceSourceValidated, model.AdviceText);
+        Assert.NotEqual(MotifAppStrings.ProposalDifferenceAdvice, model.AdviceText);
+        Assert.True(model.HasReferenceNote);
+        Assert.Equal(MotifAppStrings.ProposalDifferenceNoteSourceValidated, model.ReferenceNoteText);
+        Assert.Empty(model.Notes);
+        WindowWordsTests.AssertWindowWords([model.AdviceText, model.ReferenceNoteText]);
+        Assert.DoesNotContain("person", model.AdviceText, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task AnUnreadableAppliedProposalIsNamedAboveTheWordsAndTheWordsStillShow()
+    {
+        var (model, _, _) = Make(new ProposalDifferenceFixture
+        {
+            Reference = ProposalDifferenceReferences.SourceValidated,
+            Warnings = [ProposalDifferenceWarnings.EvidenceUnreadable + ": 'Stage sita' (proposal/9)."],
+            Unreadable = [new("proposal/9", "Stage sita", "The stored revision could not be read.")],
+        });
+
+        await model.LoadAsync(Project, "proposal/one");
+
+        Assert.True(model.HasUnreadableEvidence);
+        Assert.Contains("Stage sita", model.UnreadableEvidenceText);
+        Assert.DoesNotContain("proposal/9", model.UnreadableEvidenceText);
+        Assert.NotEmpty(model.Words);
+        Assert.Empty(model.Notes);
+        WindowWordsTests.AssertWindowWords([model.UnreadableEvidenceText]);
+    }
+
+    private static ProposalDifferenceFixture SavedUnreadable(bool wordDetailKept = true) =>
+        new(wordDetailKept: wordDetailKept)
+        {
+            Reference = ProposalDifferenceReferences.SourceValidated,
+            Warnings = [ProposalDifferenceWarnings.EvidenceUnreadable + ": 'Stage sita' (proposal/9)."],
+            Unreadable = [new("proposal/9", "Stage sita", "The stored revision could not be read.")],
+        };
+
+    [Fact]
+    public async Task ADecidedProposalWithNoWordsStillSaysDecisionsWereLeftOut()
+    {
+        var (model, _, _) = Make(SavedUnreadable(wordDetailKept: false));
+
+        await model.LoadAsync(Project, "proposal/one");
+
+        Assert.Empty(model.Words);
+        Assert.True(model.HasUnreadableEvidence);
+        Assert.Equal(MotifAppStrings.ProposalDifferenceEvidenceUnreadableSaved, model.UnreadableEvidenceText);
+        Assert.DoesNotContain("proposal/9", model.UnreadableEvidenceText);
+        WindowWordsTests.AssertWindowWords([model.UnreadableEvidenceText]);
+    }
+
+    [Fact]
+    public async Task AFilterThatMatchesNothingStillSaysDecisionsWereLeftOut()
+    {
+        var (model, fixture, _) = Make(SavedUnreadable());
+        await model.LoadAsync(Project, "proposal/one");
+        Assert.Contains("Stage sita", model.UnreadableEvidenceText);
+
+        fixture.NoWordsMatch = true;
+        Chip(model.CheckChips, "Lost an Approved Analysis").ChooseCommand.Execute(null);
+        await Task.Yield();
+
+        Assert.Empty(model.Words);
+        Assert.True(model.HasUnreadableEvidence);
+        Assert.Equal(MotifAppStrings.ProposalDifferenceEvidenceUnreadableSaved, model.UnreadableEvidenceText);
+    }
+
+    [Fact]
+    public async Task ADifferenceThatLeftNothingOutSaysNothingWhenItHasNoWords()
+    {
+        var (model, _, _) = Make(new ProposalDifferenceFixture(wordDetailKept: false)
+            { Reference = ProposalDifferenceReferences.SourceValidated });
+
+        await model.LoadAsync(Project, "proposal/one");
+
+        Assert.False(model.HasUnreadableEvidence);
+    }
+
+    [Fact]
+    public async Task AChosenWordSaysWhyItsDecisionsWereStagedInTheWindowsWords()
+    {
+        var evidence = new ProposalDifferenceWordEvidence[]
+        {
+            new("wordform/1", "wordform", "misspelled-typo"),
+            new("analysis/1", "analysis", "source-approved", "Source validation", "approves"),
+        };
+        var (model, _, _) = Make(new ProposalDifferenceFixture
+        {
+            Reference = ProposalDifferenceReferences.SourceValidated, FirstWordEvidence = evidence,
+        });
+        await model.LoadAsync(Project, "proposal/one");
+        Assert.False(model.HasSelectedWordEvidence);
+
+        model.Words[0].ChooseCommand.Execute(null);
+        await Task.Yield();
+
+        Assert.True(model.HasSelectedWordEvidence);
+        Assert.Contains(MotifAppStrings.DifferenceEvidenceTierTypo, model.SelectedWordEvidenceText);
+        Assert.Contains(MotifAppStrings.DifferenceEvidenceTierSourceApproved, model.SelectedWordEvidenceText);
+        Assert.Contains("Source validation", model.SelectedWordEvidenceText);
+        Assert.DoesNotContain("misspelled-typo", model.SelectedWordEvidenceText);
+        Assert.DoesNotContain("wordform/1", model.SelectedWordEvidenceText);
+        WindowWordsTests.AssertWindowWords([model.SelectedWordEvidenceText]);
+
+        model.Words[1].ChooseCommand.Execute(null);
+        await Task.Yield();
+        Assert.False(model.HasSelectedWordEvidence);
+    }
+
+    [Fact]
+    public void AWordWithManyEvidenceRecordsShowsTheFirstFiveAndSaysThereAreMore()
+    {
+        var many = Enumerable.Range(0, 8).Select(index =>
+            new ProposalDifferenceWordEvidence($"analysis/{index}", "analysis", "source-approved", $"Agent {index}", "approves"))
+            .ToArray();
+
+        var text = ProposalDifferenceWords.Evidence(many);
+
+        Assert.Contains("Agent 4", text);
+        Assert.DoesNotContain("Agent 5", text);
+        Assert.EndsWith("…", text);
+        Assert.DoesNotContain("…", ProposalDifferenceWords.Evidence(many.Take(5).ToArray()));
+    }
+
+    [Fact]
+    public void EveryEvidenceTierTheProductWritesHasItsOwnLabel()
+    {
+        string[] tiers =
+        [
+            "source-approved", "valid-attested", "valid-productive", "misspelled-typo", "ill-formed",
+            "nonstandard-variant", "join-split", "name-foreign-number", "undecided",
+        ];
+
+        var labels = tiers.Select(ProposalDifferenceWords.EvidenceTier).ToList();
+
+        Assert.Equal(tiers.Length, labels.Distinct().Count());
+        WindowWordsTests.AssertWindowWords(labels);
     }
 
     [Theory]

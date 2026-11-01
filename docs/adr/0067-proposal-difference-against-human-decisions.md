@@ -1,6 +1,6 @@
-# ADR 0067 — Proposal Differences use captured FieldWorks decisions
+# ADR 0067 — Proposal Differences use captured FieldWorks decisions, human or source-validated
 
-People trying a grammar change can see which words still match an approved analysis and which acquire readings worth checking. Every front end shows the same evidence from the human decisions saved in FieldWorks. Motif keeps a small summary of each comparison for as long as its Proposal exists, and drops the word-by-word detail as soon as the Proposal is decided, because that detail is large and only useful while the person is still deciding.
+People trying a grammar change can see which words still match an approved analysis and which acquire readings worth checking. Every front end shows the same evidence from the human decisions saved in FieldWorks, or, when asked, from decisions a named program staged from cited sources and always labelled as not a person's. Motif keeps a small summary of each comparison for as long as its Proposal exists, and drops the word-by-word detail as soon as the Proposal is decided, because that detail is large and only useful while the person is still deciding.
 
 **Status:** accepted on 2026-10-31. The owner settled the points the first draft left open: a Difference is a standalone result and not an Assessment kind; it carries what it needs by value and no longer keeps its Trial's Assessments alive; the older `Difference` Assessment stays as it is; correct spelling, Wordform ids and writing-system bindings stay unrecorded; and the retention rule below. Wider scope and any later stored shape remain director decisions.
 
@@ -19,6 +19,22 @@ A comparison records which texts' human decisions count and the saved Baseline t
    A word with no Approved decision keeps `no-approved-expectations` and also carries its observed parse count, so a word that gained or lost every reading still shows a zero. `no-parse` is stated only when there is an Approved expectation to compare against; the parse count alone answers whether a word parsed.
 
 9. Research annotations enter FieldWorks through semantic Intents staged in Proposals and Applied by a person. Reuse existing analysis-create, evaluation and spelling families. Missing Wordform creation or Text/Segment authoring requires a separate complete operation family with closed schema, vectors, coverage, lowering, preview, Apply/read-back, rollback and conflict/diff behavior. An importer never calls LibLCM factories outside that contract or matches entries by gloss/lemma similarity.
+
+10. A Difference is read against one **reference**, recorded on its summary: `human` (the default, FieldWorks' recorded people's decisions) or
+    `source-validated` (the decisions a named non-human agent staged from cited sources through Applied Proposals, read from Motif's store as staged
+    and never from a person's evaluation or spelling status). The agent is a FieldWorks `CmAgent` with `Human = false`, written by the agent
+    evaluation operation; its evidence is a record in the same Proposal. A source-validated Difference is labelled as not a person's in every front
+    end (a note on the summary), never merged with or ranked against a human one, and each of its listed words names the evidence tier and agent
+    behind the analyses it leans on. That per-word evidence is read from the Applied Proposals when a page is read and is never stored, so the kept
+    summary grows only by the reference and a fixed-size fingerprint of the staged decisions it was read against; a new staging of decisions makes
+    the next `difference produce` read them again. Where staged agents disagree about an analysis, the word is `conflicting-decisions` whatever the
+    order the Proposals were applied in. A Proposal keeps one Difference per Text, so producing against the other reference replaces the saved
+    one; keeping both needs the Proposal-and-Text uniqueness widened in a later store generation. A typo or ill-formed evidence record makes a word form
+    incorrect for the source-validated reference only; it is tied to the changed word by its wordform id, which the word detail keeps and which dies
+    with it. Only Applied Proposals count, never the compared Proposal's own staged decisions. An Applied revision that cannot be read is named in a
+    warning and left out, and the rest still count. The reads are kept per open project and keyed by the Applied revisions, so a page or filter click
+    does not parse them again. The reference is chosen by `--reference` on the CLI and by a separate opt-in tool in the `source-validated` MCP profile;
+    the default `motif_difference_produce` is unchanged and compares people's decisions.
 
 ## Consequences and alternatives
 

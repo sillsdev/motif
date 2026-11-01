@@ -47,6 +47,13 @@ public sealed class RefusalDefaultReasonTests
     // Codes the scan cannot resolve: the reason is computed, passed through a variable, or chosen in another layer.
     private static readonly Dictionary<string, string> NotDeterminable = new(StringComparer.Ordinal)
     {
+        ["agent.built-in"] = "reason not determinable statically: an operation failure raised in the runner with the code leading its message, which carries no FailureReason",
+        ["agent.human"] = "reason not determinable statically: an operation failure raised in the runner with the code leading its message, which carries no FailureReason",
+        ["agent.human-name"] = "reason not determinable statically: an operation failure raised in the runner with the code leading its message, which carries no FailureReason",
+        ["agent.identity-conflict"] = "reason not determinable statically: an operation failure raised in the runner with the code leading its message, which carries no FailureReason",
+        ["agent.version-conflict"] = "reason not determinable statically: an operation failure raised in the runner with the code leading its message, which carries no FailureReason",
+        ["evidence.missing"] = "reason not determinable statically: an operation failure raised in the runner with the code leading its message, which carries no FailureReason",
+        ["evidence.wrong-target"] = "reason not determinable statically: an operation failure raised in the runner with the code leading its message, which carries no FailureReason",
         ["command.advanced-ai-mode-required"] = "reason not determinable statically: chosen by the caller of the availability facts, not where the code is spelled",
         ["command.developer-commands-required"] = "reason not determinable statically: chosen by the caller of the availability facts, not where the code is spelled",
         ["machine-store.inconsistent"] = "reason not determinable statically: a window problem report, which carries no FailureReason",

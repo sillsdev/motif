@@ -145,4 +145,65 @@ public sealed class ProposalDifferenceToolTests
         }
         finally { Directory.Delete(directory, true); }
     }
+
+    private static string SourceValidatedProfile() =>
+        Path.Combine(AppContext.BaseDirectory, "profiles", "source-validated.json");
+
+    [Fact]
+    public void TheDefaultProduceToolOffersNoReferenceAndTheSourceValidatedOneIsOptIn()
+    {
+        var defaults = MotifMcpServer.Expose(ToolProfile.Builtin);
+        var optIn = MotifMcpServer.Expose(ToolProfile.Load(SourceValidatedProfile()));
+
+        var produce = defaults.Single(tool => tool.Name == "motif_difference_produce");
+        var properties = (System.Text.Json.Nodes.JsonObject)produce.Tool.InputSchema["properties"]!;
+        Assert.Null(properties["reference"]);
+        Assert.DoesNotContain(defaults, tool => tool.Name == "motif_difference_produce_source_validated");
+        Assert.Contains(optIn, tool => tool.Name == "motif_difference_produce_source_validated");
+        Assert.Contains(optIn, tool => tool.Name == "motif_proposal_difference");
+    }
+
+    [Fact]
+    public async Task TheSourceValidatedProduceToolAsksForTheSourceValidatedReference()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "motif-proposal-difference-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        var project = Path.Combine(directory, "project.fwdata");
+        File.WriteAllText(project, "");
+        var seen = new System.Collections.Concurrent.ConcurrentDictionary<string, string>();
+        var original = AgentTools.ProduceSourceValidatedDifference;
+        AgentTools.ProduceSourceValidatedDifference = (request, reference) =>
+        {
+            seen[request.ProposalId] = reference;
+            return original(request, reference);
+        };
+        try
+        {
+            using (var machine = MachineDatabase.Open(RunnerOptions.ResolveRoot()))
+                new KnownProjectRegistry(machine).Record(ProjectWorkspaceKey.Compute(
+                    new ProjectLocator(project, "project")), project, DateTimeOffset.UtcNow);
+            var profile = ToolProfile.Load(SourceValidatedProfile());
+            var context = new ServerContext(project, "1.0", new NoRunnerLauncher(
+                new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), null)), new ActivityLog(null),
+                profile, TextWriter.Null, advancedAiModeEnabled: true);
+            var arguments = new Dictionary<string, JsonElement>
+            {
+                ["project"] = JsonSerializer.SerializeToElement(project),
+                ["proposal"] = JsonSerializer.SerializeToElement("proposal/none-for-reference"),
+                ["text"] = JsonSerializer.SerializeToElement(Guid.NewGuid().ToString()),
+            };
+
+            var result = await MotifMcpServer.CallAsync(context, MotifMcpServer.Expose(profile),
+                "motif_difference_produce_source_validated", arguments, CancellationToken.None);
+
+            Assert.True(result.IsError);
+            Assert.Equal("difference.invalid-proposal", result.StructuredContent!.Value.GetProperty("code").GetString());
+            Assert.Equal("source-validated", seen["proposal/none-for-reference"]);
+        }
+        finally
+        {
+            AgentTools.ProduceSourceValidatedDifference = original;
+            Directory.Delete(directory, true);
+        }
+    }
 }

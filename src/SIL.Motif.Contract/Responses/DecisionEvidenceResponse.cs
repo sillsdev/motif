@@ -3,6 +3,13 @@ using SIL.Motif.Contract.Model;
 
 namespace SIL.Motif.Contract.Responses;
 
+/// <summary>The named non-human agent whose approval or disapproval the evidence supports.</summary>
+/// <param name="Id">The agent's authored identity.</param>
+/// <param name="Name">The agent's name, such as a source validation program.</param>
+/// <param name="Version">The source release the agent stands for.</param>
+/// <param name="Opinion"><c>approves</c> or <c>disapproves</c>, as staged.</param>
+public sealed record DecisionEvidenceAgent(string Id, string Name, string Version, string Opinion);
+
 /// <summary>One source-validated decision's evidence, read from the Applied Proposal that staged it.</summary>
 /// <param name="ProposalId">The Applied Proposal holding the operation.</param>
 /// <param name="ProposalLabel">The Proposal's short description, when it has one.</param>
@@ -13,6 +20,7 @@ namespace SIL.Motif.Contract.Responses;
 /// <param name="Sources">The sources, in the order staged.</param>
 /// <param name="Detail">The tier's facts by name.</param>
 /// <param name="StagedBy">The staging tool and model as provenance text, when given.</param>
+/// <param name="Agent">The non-human agent that decided, for an agent evaluation; <c>null</c> for a record that decides nothing.</param>
 public sealed record DecisionEvidenceRow(
     string ProposalId,
     string? ProposalLabel,
@@ -22,7 +30,8 @@ public sealed record DecisionEvidenceRow(
     string Tier,
     IReadOnlyList<DecisionEvidenceSource> Sources,
     IReadOnlyDictionary<string, string> Detail,
-    string? StagedBy)
+    string? StagedBy,
+    DecisionEvidenceAgent? Agent = null)
 {
     /// <summary>Always <c>source-validated</c>: the decision was staged by a program from cited sources, not by a person.</summary>
     public string Label => "source-validated";

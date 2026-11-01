@@ -23,6 +23,10 @@ namespace SIL.Motif.Mcp;
 /// </summary>
 internal static class AgentTools
 {
+    /// <summary>What the source-validated produce tool calls; a test replaces it to see the reference passed.</summary>
+    internal static Func<ProposalDifferenceProduceRequest, string, CommandOutcome<ProposalDifferenceResponse>>
+        ProduceSourceValidatedDifference { get; set; } = ProposalDifferenceCommands.Produce;
+
     private static readonly (string, JsonObject, bool)[] NoArguments = [];
     private static readonly string[] BatchComposerVerbs =
     [
@@ -956,6 +960,31 @@ internal static class AgentTools
                 new ProposalDifferenceProduceRequest(c.ProjectPath, a.Required("proposal"), a.Required("text"),
                     a.Optional("job"))))))
             { Requests = [typeof(ProposalDifferenceProduceRequest)] },
+        new("motif_difference_produce_source_validated",
+            "Compare a Trial with source-validated decisions. Compares a completed Trial's parses with the decisions a " +
+            "named non-human agent staged from cited sources through Applied Proposals, never a person's, and saves " +
+            "the result. A Proposal keeps one Difference per Text, so this replaces a saved comparison against " +
+            "human decisions. It reads stored evidence, runs no parser and never blocks an Apply.",
+            AgentClass.Evaluate,
+            Schema.Object(("proposal", Schema.String("Proposal whose completed Trial is compared."), true),
+                ("text", Schema.String("GUID of the Text whose source-validated decisions are compared."), true),
+                ("job", Schema.String("Completed Trial job id; omit for the newest completed Trial."), false)),
+            false, false, false, true,
+            (c, a, ct) => Task.FromResult(ToolOutcome.From(ProduceSourceValidatedDifference(
+                new ProposalDifferenceProduceRequest(c.ProjectPath, a.Required("proposal"), a.Required("text"),
+                    a.Optional("job")), SIL.Motif.Contract.Requests.ProposalDifferenceReferences.SourceValidated)))),
+        new("motif_decision_evidence", string.Empty, AgentClass.Read,
+            Schema.Object(("subject", Schema.String(
+                    "Wordform or analysis id to read the evidence for; omit to list records, counted by tier first."), false),
+                ("tier", Schema.String("When listing, only records of this tier.",
+                    SIL.Motif.Contract.Model.DecisionEvidence.Tiers.ToArray()), false),
+                ("offset", Schema.Integer("Records to skip when listing.", 0, 1000000), false),
+                ("limit", Schema.Integer("Page size when listing, maximum 500.", 1, 500), false)), true, true, true, false,
+            (c, a, ct) => Task.FromResult(a.Optional("subject") is { } subject
+                ? ToolOutcome.From(ProposalCommands.EvidenceShow(new EvidenceShowRequest(c.ProjectPath, c.ProductVersion, subject)))
+                : ToolOutcome.From(ProposalCommands.EvidenceList(new EvidenceListRequest(c.ProjectPath, c.ProductVersion,
+                    a.Optional("tier"), a.Int("offset", 0), a.Int("limit", 50))))))
+            { Requests = [typeof(EvidenceShowRequest), typeof(EvidenceListRequest)] },
         ..ParsimonyTools.All,
     ];
 

@@ -94,6 +94,21 @@ public static class RefusalCodes
 
     public const string EvidenceInvalidPage = "evidence.invalid-page";
     public const string EvidenceUnknownTier = "evidence.unknown-tier";
+    /// <summary>A decision evidence record was staged without its decisionEvidence entry.</summary>
+    public const string EvidenceMissing = "evidence.missing";
+    /// <summary>A decision evidence record names something that is not an existing wordform or analysis.</summary>
+    public const string EvidenceWrongTarget = "evidence.wrong-target";
+
+    /// <summary>An agent evaluation names a built-in agent, such as the default user or parser agent.</summary>
+    public const string AgentBuiltIn = "agent.built-in";
+    /// <summary>An agent evaluation names an agent that is marked human.</summary>
+    public const string AgentHuman = "agent.human";
+    /// <summary>An agent evaluation uses the human agent's name for a non-human agent.</summary>
+    public const string AgentHumanName = "agent.human-name";
+    /// <summary>The identity named for an agent already belongs to something that is not an agent.</summary>
+    public const string AgentIdentityConflict = "agent.identity-conflict";
+    /// <summary>An agent identity already exists under another name or version.</summary>
+    public const string AgentVersionConflict = "agent.version-conflict";
 
     public const string GrammarCheckCancelled = "grammarcheck.cancelled";
     public const string GrammarCheckFailed = "grammarcheck.failed";
@@ -273,6 +288,8 @@ public static class RefusalCodes
     public const string DifferenceInvalidProposal = "difference.invalid-proposal";
     /// <summary>A Difference decision state is not one the product defines.</summary>
     public const string DifferenceInvalidState = "difference.invalid-state";
+    /// <summary>The reference for a Difference is neither human nor source-validated.</summary>
+    public const string DifferenceInvalidReference = "difference.invalid-reference";
     /// <summary>The Text id for a Difference is not a GUID.</summary>
     public const string DifferenceInvalidText = "difference.invalid-text";
     /// <summary>The word for a Difference word read is empty.</summary>

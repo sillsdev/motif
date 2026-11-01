@@ -843,14 +843,20 @@ public static class CommandTextRenderer
         var text = new StringBuilder();
         text.AppendLine($"Difference {summary.DifferenceId} for Proposal {summary.ProposalId}");
         text.AppendLine($"  Text: {summary.TextTitle} ({summary.TextId})");
-        text.AppendLine($"  Human decisions: as recorded in FieldWorks for this Text at the current Baseline; " +
-            $"{CountLabel(summary.WordsWithApprovedDecisions, "word has", "words have")} an approved analysis");
+        text.AppendLine(summary.Reference == ProposalDifferenceReferences.SourceValidated
+            ? "  Source-validated decisions (staged by a named non-human agent from cited sources, not a person's): " +
+              $"{CountLabel(summary.WordsWithApprovedDecisions, "word has", "words have")} an approved analysis"
+            : "  Human decisions: as recorded in FieldWorks for this Text at the current Baseline; " +
+              $"{CountLabel(summary.WordsWithApprovedDecisions, "word has", "words have")} an approved analysis");
         text.AppendLine($"  {CountLabel(summary.Words, "word", "words")}, {CountLabel(summary.Occurrences, "occurrence", "occurrences")} " +
             $"compared; {CountLabel(summary.UnboundOccurrences, "occurrence", "occurrences")} could not be matched to one measured word");
         text.AppendLine($"  Could be bad: {summary.CouldBeBadWords}; improved: {summary.ImprovedWords} (advisory only)");
         foreach (var bucket in summary.Buckets)
             text.AppendLine($"  {BucketCode(bucket.Bucket)}: {CountLabel(bucket.Words, "word", "words")}, " +
                 $"{CountLabel(bucket.Occurrences, "occurrence", "occurrences")}");
+        foreach (var item in response.UnreadableEvidence ?? [])
+            text.AppendLine($"  Not counted: staged decisions of Applied Proposal {item.ProposalId}" +
+                (item.Label is { Length: > 0 } ? $" '{item.Label}'" : "") + $" could not be read: {item.Reason}");
         text.AppendLine("  Before -> after:");
         foreach (var cell in summary.Matrix)
             text.AppendLine($"    {cell.BeforeState} -> {cell.AfterState}: {CountLabel(cell.Words, "word", "words")}");
@@ -870,6 +876,10 @@ public static class CommandTextRenderer
         foreach (var word in response.Words)
             text.AppendLine($"    {word.Word} x{word.Occurrences}: {word.BeforeState} -> {word.AfterState}" +
                 (word.Buckets.Count == 0 ? "" : " [" + string.Join(", ", word.Buckets.Select(BucketCode)) + "]"));
+        foreach (var word in response.Words.Where(word => word.Evidence is not null))
+            foreach (var item in word.Evidence!)
+                text.AppendLine($"    {word.Word}: source-validated {item.Tier} for {item.Level} {item.Subject}" +
+                    (item.Agent is null ? "" : $" ({item.Agent} {item.Opinion}, not a person)"));
         if (response.NextOffset is { } next) text.AppendLine($"  More: --offset {next}");
         if (response.Occurrences is { } places)
         {

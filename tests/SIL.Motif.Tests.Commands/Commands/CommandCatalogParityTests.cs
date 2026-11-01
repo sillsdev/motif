@@ -120,7 +120,7 @@ public sealed class CommandCatalogParityTests
         "difference.invalid-bucket",
         "difference.invalid-limitation",
         "difference.invalid-page",
-        "difference.invalid-proposal",
+        "difference.invalid-proposal", "difference.invalid-reference",
         "difference.invalid-state",
         "difference.invalid-text",
         "difference.invalid-word",

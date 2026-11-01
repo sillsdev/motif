@@ -36,6 +36,7 @@ internal static class ComposerDefinitions
         new RetireAllomorphDefinition(),
         new RetireRedundantZeroAffixDefinition(),
         new RecordParsimonyDispositionDefinition(),
+        new RecordSourceValidatedDecisionDefinition(),
     ];
 }
 

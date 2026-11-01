@@ -52,8 +52,10 @@ public sealed record ProposalDifferenceSidePin(
             (nameof(TokeniserName), TokeniserName), (nameof(TokeniserVersion), TokeniserVersion));
 }
 
-/// <summary>The totals of one saved Difference and the human decisions it was read against.</summary>
+/// <summary>The totals of one saved Difference and the decisions it was read against.</summary>
 /// <remarks>
+/// <see cref="Reference"/> says whether those decisions were a person's (<c>human</c>) or a named non-human agent's
+/// (<c>source-validated</c>); the two are never merged.
 /// Everything the Difference needs from its Trial's Assessments is copied here by value, so it stays readable
 /// after those Assessments are removed. It holds only bounded data: no list in it grows with the number of words.
 /// </remarks>
@@ -83,7 +85,9 @@ public sealed record ProposalDifferenceSummary(
     [property: JsonRequired] IReadOnlyList<string> Warnings,
     [property: JsonRequired] int MeasuredWordsOutsideText,
     [property: JsonRequired] IReadOnlyList<ProposalDifferenceLimitationCount> Limitations,
-    [property: JsonRequired] string CreatedUtc) : IJsonOnDeserialized
+    [property: JsonRequired] string CreatedUtc,
+    string Reference = "human",
+    string? DecisionsDigest = null) : IJsonOnDeserialized
 {
     void IJsonOnDeserialized.OnDeserialized() =>
         ClosedShape.RequireNonNull(nameof(ProposalDifferenceSummary), (nameof(DifferenceId), DifferenceId),
@@ -92,10 +96,52 @@ public sealed record ProposalDifferenceSummary(
             (nameof(TextId), TextId), (nameof(TextTitle), TextTitle), (nameof(BaselineToken), BaselineToken),
             (nameof(Policy), Policy), (nameof(Buckets), Buckets), (nameof(Matrix), Matrix),
             (nameof(Assessor), Assessor), (nameof(Before), Before), (nameof(After), After),
-            (nameof(Warnings), Warnings), (nameof(Limitations), Limitations), (nameof(CreatedUtc), CreatedUtc));
+            (nameof(Warnings), Warnings), (nameof(Limitations), Limitations), (nameof(CreatedUtc), CreatedUtc),
+            (nameof(Reference), Reference));
+}
+
+/// <summary>
+/// Why a named non-human agent decided about one wordform or analysis a word of a source-validated Difference
+/// leans on.
+/// </summary>
+/// <param name="Subject">The wordform or analysis the evidence is about.</param>
+/// <param name="Level"><c>wordform</c> or <c>analysis</c>.</param>
+/// <param name="Tier">The evidence tier, such as <c>source-approved</c>.</param>
+/// <param name="Agent">The agent's name, when the record carried a decision.</param>
+/// <param name="Opinion"><c>approves</c> or <c>disapproves</c>, when the record carried a decision.</param>
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
+public sealed record ProposalDifferenceWordEvidence(
+    [property: JsonRequired] string Subject,
+    [property: JsonRequired] string Level,
+    [property: JsonRequired] string Tier,
+    string? Agent = null,
+    string? Opinion = null) : IJsonOnDeserialized
+{
+    void IJsonOnDeserialized.OnDeserialized() =>
+        ClosedShape.RequireNonNull(nameof(ProposalDifferenceWordEvidence), (nameof(Subject), Subject),
+            (nameof(Level), Level), (nameof(Tier), Tier));
+}
+
+/// <summary>An Applied Proposal whose staged decisions could not be read, so they are not counted or shown.</summary>
+/// <param name="ProposalId">The Applied Proposal.</param>
+/// <param name="Label">Its label, when it has one.</param>
+/// <param name="Reason">Why it could not be read.</param>
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
+public sealed record ProposalDifferenceUnreadableEvidence(
+    [property: JsonRequired] string ProposalId,
+    string? Label,
+    [property: JsonRequired] string Reason) : IJsonOnDeserialized
+{
+    void IJsonOnDeserialized.OnDeserialized() =>
+        ClosedShape.RequireNonNull(nameof(ProposalDifferenceUnreadableEvidence), (nameof(ProposalId), ProposalId),
+            (nameof(Reason), Reason));
 }
 
 /// <summary>One word of a saved Difference with its states, categories and Text occurrence count.</summary>
+/// <remarks>
+/// <see cref="Evidence"/> is read from the Applied Proposals when the page is read and is never stored, so it adds
+/// nothing to the kept record.
+/// </remarks>
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record ProposalDifferenceWord(
     [property: JsonRequired] string Word,
@@ -108,7 +154,8 @@ public sealed record ProposalDifferenceWord(
     [property: JsonRequired]
     [property: JsonConverter(typeof(StrictStringEnumListConverter<ProposalDifferenceBucket>))]
     IReadOnlyList<ProposalDifferenceBucket> Buckets,
-    [property: JsonRequired] ProposalDifferenceCaseFacts Facts) : IJsonOnDeserialized
+    [property: JsonRequired] ProposalDifferenceCaseFacts Facts,
+    IReadOnlyList<ProposalDifferenceWordEvidence>? Evidence = null) : IJsonOnDeserialized
 {
     void IJsonOnDeserialized.OnDeserialized() =>
         ClosedShape.RequireNonNull(nameof(ProposalDifferenceWord), (nameof(Word), Word),
@@ -152,6 +199,11 @@ public sealed record ProposalDifferenceOccurrencePage(
 /// <param name="Occurrences">
 /// The requested word's Text places, only when a word was asked for and the word detail is kept; otherwise null.
 /// </param>
+/// <param name="UnreadableEvidence">
+/// For a source-validated Difference, the Applied Proposals that could not be read just now; their decisions are
+/// not counted or shown. It is read each time and never stored.
+/// </param>
 public sealed record ProposalDifferenceResponse(
     ProposalDifferenceSummary Summary, IReadOnlyList<ProposalDifferenceWord> Words, int MatchingWords,
-    int? NextOffset, bool WordDetailKept, ProposalDifferenceOccurrencePage? Occurrences = null);
+    int? NextOffset, bool WordDetailKept, ProposalDifferenceOccurrencePage? Occurrences = null,
+    IReadOnlyList<ProposalDifferenceUnreadableEvidence>? UnreadableEvidence = null);

@@ -1,5 +1,6 @@
 using System.Globalization;
 using SIL.Motif.Contract.Ids;
+using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Worker.Store;
@@ -20,7 +21,8 @@ internal static class ProposalDifferenceSummaries
     /// <summary>Counts the compared words and copies the pins of both Assessments.</summary>
     internal static ProposalDifferenceSummary Create(ProposalDifferenceCommands.Built built, string jobId,
         string proposalId, AssessmentRecord before, AssessmentRecord after, SIL.Motif.Host.Texts.BaselineTextReadIndex text,
-        string baselineToken)
+        string baselineToken, string reference, string? decisionsDigest,
+        IReadOnlyList<ProposalDifferenceUnreadableEvidence>? unreadable = null)
     {
         var buckets = built.Words.SelectMany(word => word.Facts.Buckets.Select(item => item.Bucket).Distinct()
                 .Select(bucket => (bucket, word)))
@@ -37,10 +39,16 @@ internal static class ProposalDifferenceSummaries
             new ProposalDifferencePolicy(), built.Words.Count, built.Words.Sum(word => word.Occurrences.Count),
             built.UnboundOccurrences, built.Words.Count(word => word.Facts.After.ApprovedExpectedMorphologyCount > 0),
             built.Words.Count(word => word.Facts.CouldBeBad), built.Words.Count(word => word.Facts.Improved), buckets,
-            matrix, after.Assessor, after.ProposalIntentDigest, Pin(before), Pin(after), Warnings(before, after),
+            matrix, after.Assessor, after.ProposalIntentDigest, Pin(before), Pin(after), Warnings(before, after, reference, unreadable),
             built.MeasuredWordsOutsideText, Limitations(built.Words),
-            DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture));
+            DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture), reference, decisionsDigest);
     }
+
+    // Names the first three, so the kept summary stays small however many Applied Proposals cannot be read.
+    internal static string NameThem(IReadOnlyList<ProposalDifferenceUnreadableEvidence> unreadable) =>
+        string.Join(", ", unreadable.Take(3).Select(item => item.Label is { Length: > 0 }
+            ? $"'{item.Label}' ({item.ProposalId})" : item.ProposalId)) +
+        (unreadable.Count > 3 ? $" and {unreadable.Count - 3} more" : "");
 
     private static ProposalDifferenceSidePin Pin(AssessmentRecord record) => new(
         record.Invocation?.ExecutableVersion, record.Invocation?.ExecutableBytesSha256, record.GrammarSourceSha256,
@@ -55,9 +63,15 @@ internal static class ProposalDifferenceSummaries
                 group.Sum(pair => pair.word.Occurrences.Count))).ToArray();
 
     // ADR 0042: a differing parser or tokeniser only annotates; a side with no recorded parser is no mismatch.
-    private static string[] Warnings(AssessmentRecord before, AssessmentRecord after)
+    private static string[] Warnings(AssessmentRecord before, AssessmentRecord after, string reference,
+        IReadOnlyList<ProposalDifferenceUnreadableEvidence>? unreadable)
     {
         var warnings = new List<string>();
+        if (reference == ProposalDifferenceReferences.SourceValidated)
+            warnings.Add(ProposalDifferenceWarnings.SourceValidated + ": a named non-human agent staged them from cited " +
+                "sources, so they are not a person's decisions.");
+        if (unreadable is { Count: > 0 })
+            warnings.Add(ProposalDifferenceWarnings.EvidenceUnreadable + ": " + NameThem(unreadable) + ".");
         var beforeParser = before.Invocation;
         var afterParser = after.Invocation;
         if (beforeParser?.ExecutableBytesSha256 is { } beforeSha && afterParser?.ExecutableBytesSha256 is { } afterSha &&

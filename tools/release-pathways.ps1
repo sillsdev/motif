@@ -279,6 +279,10 @@ try {
     if ($noDifference.ExitCode -eq 0 -or $noDifference.Output -or $noDifferenceFailure.code -ne 'difference.none') {
         throw 'The installed difference show did not report that no comparison is saved yet.'
     }
+    $noEvidence = Invoke-CliJson @('evidence', 'list', '--project', $first.ProjectPath)
+    if ($noEvidence.total -ne 0) {
+        throw 'The installed evidence list did not report that no decision evidence is staged yet.'
+    }
     [void] (Invoke-CliJson @('finalize', '--project', $first.ProjectPath, '--draft', $authoringDraft))
     $authoringApply = Invoke-CliJson @('apply', $authoringProposalId, '--project', $first.ProjectPath)
     if (-not $authoringApply.ok -or -not $authoringApply.applied -or

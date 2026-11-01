@@ -106,6 +106,8 @@ public static class ProposalCommandRenderer
     private static void AppendEvidenceRow(StringBuilder text, DecisionEvidenceRow row)
     {
         text.AppendLine($"  {row.Subject}  [{row.Tier}] source-validated, not a person  (proposal {row.ProposalId}, {row.OperationId})");
+        if (row.Agent is { } agent)
+            text.AppendLine($"    decided by: {agent.Name} (version {agent.Version}, not a person) {agent.Opinion}");
         foreach (var source in row.Sources)
             text.AppendLine($"    {source.Kind}: {source.Source}{(source.Locator is null ? "" : ", " + source.Locator)}");
         foreach (var (name, value) in row.Detail) text.AppendLine($"    {name}: {value}");

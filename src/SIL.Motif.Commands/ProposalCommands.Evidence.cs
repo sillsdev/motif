@@ -64,7 +64,7 @@ public static partial class ProposalCommands
         });
     }
 
-    private static DecisionEvidenceRow[] ReadEvidenceRows(MotifDatabase database, out int appliedCount)
+    internal static DecisionEvidenceRow[] ReadEvidenceRows(MotifDatabase database, out int appliedCount)
     {
         var repository = new ProposalRepository(database);
         var rows = new List<DecisionEvidenceRow>();
@@ -79,8 +79,16 @@ public static partial class ProposalCommands
                 var evidence = DecisionEvidence.FromProvenance(operation.Provenance);
                 var subject = operation.Target?.Value ?? operation.EntityId?.Value;
                 if (evidence is null || subject is null) continue;
+                DecisionEvidenceAgent? agent = null;
+                if (operation.Kind == SIL.Motif.Runner.Operations.WfiAnalysisAgentEvaluationOperationKinds.Add &&
+                    operation.After is { } after)
+                {
+                    var payload = SIL.Motif.Runner.Operations.AgentEvaluationPayload.Parse(after);
+                    agent = new DecisionEvidenceAgent(payload.AgentId.Value, payload.Name, payload.Version,
+                        payload.Approves ? "approves" : "disapproves");
+                }
                 rows.Add(new DecisionEvidenceRow(record.ProposalId.Value, record.Label, operation.OperationId.Value,
-                    operation.Kind, subject, evidence.Tier, evidence.Sources, evidence.Detail, evidence.StagedBy));
+                    operation.Kind, subject, evidence.Tier, evidence.Sources, evidence.Detail, evidence.StagedBy, agent));
             }
         }
         return rows.ToArray();

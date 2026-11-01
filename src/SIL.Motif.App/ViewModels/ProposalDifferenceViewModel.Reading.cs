@@ -61,6 +61,7 @@ public sealed partial class ProposalDifferenceViewModel
         _nextWordOffset = _nextPlaceOffset = null;
         ShownRefusal = null;
         Summary = null;
+        UnreadableEvidence = [];
         WordDetailKept = true;
         MovedChips = CheckChips = ImprovedChips = LimitationChips = Words = [];
         MatchingWords = 0;
@@ -105,6 +106,7 @@ public sealed partial class ProposalDifferenceViewModel
             word.Occurrences, word.Word, true, Chosen) { IsActive = word.Word == SelectedWord?.Word });
         Words = replace ? [.. added] : [.. Words, .. added];
         MatchingWords = response.MatchingWords;
+        UnreadableEvidence = response.UnreadableEvidence ?? [];
         _nextWordOffset = response.NextOffset;
         CanShowMoreWords = response.NextOffset is not null && Words.Count < MostShown;
     }

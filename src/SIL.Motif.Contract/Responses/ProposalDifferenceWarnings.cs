@@ -15,4 +15,10 @@ public static class ProposalDifferenceWarnings
 
     /// <summary>Only one run retried words stopped at the per-word time limit under a longer limit.</summary>
     public const string RetryDiffers = "Only one side reran words stopped at the per-word time limit";
+
+    /// <summary>The decisions were staged by a named non-human agent from cited sources, not made by a person.</summary>
+    public const string SourceValidated = "The decisions compared against are source-validated";
+
+    /// <summary>Applied Proposals whose staged decisions could not be read were left out of the comparison.</summary>
+    public const string EvidenceUnreadable = "Some staged decisions could not be read and are not counted";
 }

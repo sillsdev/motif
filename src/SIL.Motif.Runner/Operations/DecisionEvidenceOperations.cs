@@ -20,7 +20,7 @@ namespace SIL.Motif.Runner.Operations;
 /// </remarks>
 public static class DecisionEvidenceOperationKinds
 {
-    public const string Record = "analysis/decisionEvidence/record";
+    public const string Record = DecisionEvidence.RecordKind;
 
 #pragma warning disable CA2255 // Load-time registration makes these kinds available before parsing and dispatch.
     [ModuleInitializer]
@@ -63,11 +63,13 @@ internal sealed class RecordDecisionEvidenceHandler : IOperationHandler
         DecisionEvidenceRecordPayload.Parse(operation.After ?? throw new ContractParseException(
             $"'{Kind}' operation requires 'after'."));
         if (DecisionEvidence.FromProvenance(operation.Provenance) is null)
-            throw new InvalidOperationException($"'{Kind}' needs a decisionEvidence provenance entry; without one it records nothing.");
+            throw new DecisionRefusalException(DecisionRefusalCodes.EvidenceMissing,
+                $"'{Kind}' needs a decisionEvidence provenance entry; without one it records nothing.");
         var id = operation.Target ?? throw new InvalidOperationException($"'{Kind}' requires a target.");
         var repository = cache.ServiceLocator.GetInstance<ICmObjectRepository>();
         if (!repository.TryGetObject(id.ToGuid(), out var target) || target is not (IWfiWordform or IWfiAnalysis))
-            throw new InvalidOperationException($"'{Kind}': target '{id.Value}' must be an existing wordform or analysis.");
+            throw new DecisionRefusalException(DecisionRefusalCodes.EvidenceWrongTarget,
+                $"'{Kind}': target '{id.Value}' must be an existing wordform or analysis.");
         var state = new Dictionary<string, string> { ["target"] = target.ClassName };
         return new ExpectedEffect(id, SnapshotFields.DecisionEvidenceRecorded, state, state);
     }

@@ -1669,7 +1669,8 @@ try
                     !flags.TryGetValue("text", out var differenceText))
                     return Usage(UsageLineFor("difference produce"), asJson);
                 result = RenderCommand(ProposalDifferenceCommands.Produce(new ProposalDifferenceProduceRequest(
-                    differenceProject, differenceProposal, differenceText, flags.GetValueOrDefault("job"))), asJson);
+                    differenceProject, differenceProposal, differenceText, flags.GetValueOrDefault("job")),
+                    flags.GetValueOrDefault("reference") ?? ProposalDifferenceReferences.Human), asJson);
                 break;
             }
             if (positionals.Count == 1 && positionals[0] == "show")

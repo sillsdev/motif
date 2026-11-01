@@ -99,7 +99,11 @@ public sealed record ProposalDifferenceBucketMembership(
         ClosedShape.RequireNonNull(nameof(ProposalDifferenceBucketMembership), (nameof(AnalysisIds), AnalysisIds));
 }
 
-/// <summary>Agreement and mechanical changes against one frozen human-decision capture.</summary>
+/// <summary>Agreement and mechanical changes against one frozen capture of recorded decisions.</summary>
+/// <remarks>
+/// <c>WordformId</c> is the wordform the word was bound to. It is written only for a source-validated Difference so
+/// the evidence recorded for the wordform can be found again, and it dies with the word detail.
+/// </remarks>
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record ProposalDifferenceCaseFacts(
     [property: JsonRequired] ProposalDifferencePolicy Policy,
@@ -113,7 +117,8 @@ public sealed record ProposalDifferenceCaseFacts(
     [property: JsonRequired] IReadOnlyList<HumanAgreementProducedIdentity> ObservedAfter,
     [property: JsonRequired] IReadOnlyList<HumanAgreementProducedIdentity> GainedIdentities,
     [property: JsonRequired] IReadOnlyList<HumanAgreementProducedIdentity> LostIdentities,
-    [property: JsonRequired] IReadOnlyList<ProposalDifferenceBucketMembership> Buckets) : IJsonOnDeserialized
+    [property: JsonRequired] IReadOnlyList<ProposalDifferenceBucketMembership> Buckets,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? WordformId = null) : IJsonOnDeserialized
 {
     void IJsonOnDeserialized.OnDeserialized() =>
         ClosedShape.RequireNonNull(nameof(ProposalDifferenceCaseFacts), (nameof(Policy), Policy),

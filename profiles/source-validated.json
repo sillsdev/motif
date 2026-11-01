@@ -1,0 +1,12 @@
+{
+  "name": "source-validated",
+  "description": "Read the evidence behind decisions a program staged from cited sources, and compare a Trial with them; opt-in, outside the default surface.",
+  "tools": [
+    { "tool": "motif_overview" },
+    { "tool": "motif_grammar" },
+    { "tool": "motif_word" },
+    { "tool": "motif_proposal_difference" },
+    { "tool": "motif_difference_produce_source_validated" },
+    { "tool": "motif_decision_evidence" }
+  ]
+}

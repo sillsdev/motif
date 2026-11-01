@@ -1480,6 +1480,64 @@
     <value>Only one run tried again, with a longer time limit, the words that stopped at the per-word time limit, so the two runs used different time limits.</value>
     <comment>Note on a saved Difference where only one run retried words stopped at the per-word time limit.</comment>
   </data>
+  <data name="MotifApp.ProposalDifferenceNoteSourceValidated" xml:space="preserve">
+    <value>Compared with decisions a named program staged from cited sources. They are not a person's decisions.</value>
+    <comment>Line at the top of a saved Difference that was read against source-validated decisions instead of a person's.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferenceAdviceSourceValidated" xml:space="preserve">
+    <value>Advice only. It compares what the Proposal builds with those staged decisions, not with the Approved analyses people saved in FieldWorks, and changes nothing.</value>
+    <comment>Intro line under the Difference heading when the decisions are a named program's.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferenceEvidenceUnreadableSaved" xml:space="preserve">
+    <value>Some decisions staged by a program could not be read when this was compared, so they were not counted.</value>
+  </data>
+  <data name="MotifApp.ProposalDifferenceEvidenceUnreadableFormat" xml:space="preserve">
+    <value>Decisions staged by {0} could not be read, so they are not counted or shown.</value>
+    <comment>{0} names the Applied Proposals whose staged decisions could not be read.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferenceEvidenceFormat" xml:space="preserve">
+    <value>Staged because: {0}</value>
+    <comment>Under a selected word of a Difference read against a named program's decisions; {0} lists the reasons.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferenceEvidenceWordFormat" xml:space="preserve">
+    <value>{0}, for the word</value>
+    <comment>{0} is the kind of reason a program recorded for a whole word.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferenceEvidenceAnalysisFormat" xml:space="preserve">
+    <value>{0}, for an analysis</value>
+    <comment>{0} is the kind of reason a program recorded for one analysis.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferenceEvidenceAgentFormat" xml:space="preserve">
+    <value>{0}, for an analysis ({1} {2} it, not a person)</value>
+    <comment>{0} is the kind of reason, {1} the program's name, {2} approves or disapproves.</comment>
+  </data>
+  <data name="MotifApp.DifferenceEvidenceTierSourceApproved" xml:space="preserve">
+    <value>Supported by a dictionary, a grammar and a corpus</value>
+  </data>
+  <data name="MotifApp.DifferenceEvidenceTierValidAttested" xml:space="preserve">
+    <value>Valid and attested</value>
+  </data>
+  <data name="MotifApp.DifferenceEvidenceTierValidProductive" xml:space="preserve">
+    <value>Valid and productive</value>
+  </data>
+  <data name="MotifApp.DifferenceEvidenceTierTypo" xml:space="preserve">
+    <value>A typo</value>
+  </data>
+  <data name="MotifApp.DifferenceEvidenceTierIllFormed" xml:space="preserve">
+    <value>Ill-formed</value>
+  </data>
+  <data name="MotifApp.DifferenceEvidenceTierNonstandardVariant" xml:space="preserve">
+    <value>A nonstandard variant</value>
+  </data>
+  <data name="MotifApp.DifferenceEvidenceTierJoinSplit" xml:space="preserve">
+    <value>Words joined or split</value>
+  </data>
+  <data name="MotifApp.DifferenceEvidenceTierNameForeignNumber" xml:space="preserve">
+    <value>A name, a foreign word or a number</value>
+  </data>
+  <data name="MotifApp.DifferenceEvidenceTierUndecided" xml:space="preserve">
+    <value>Undecided</value>
+  </data>
   <data name="MotifApp.ProposalDifferenceNoteOther" xml:space="preserve">
     <value>This comparison carries another note that the window does not show.</value>
     <comment>Shown once for any note on a saved Difference that the window has no wording for, such as one from an older version.</comment>

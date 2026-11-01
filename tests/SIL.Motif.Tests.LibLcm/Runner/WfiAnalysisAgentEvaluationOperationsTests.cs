@@ -96,9 +96,9 @@ public sealed class WfiAnalysisAgentEvaluationOperationsTests : IDisposable
         var (_, analysis) = Seed("sita");
         foreach (var builtIn in new[] { _cache.LangProject.DefaultUserAgent, _cache.LangProject.DefaultParserAgent })
         {
-            var failure = Assert.ThrowsAny<Exception>(() => ScratchDryRun.Of(_cache,
-                Add(analysis, CanonicalId.FromGuid(builtIn.Guid), AgentName, Version, "approves")));
-            Assert.Contains("built-in agent", failure.Message, StringComparison.Ordinal);
+            var failure = Assert.IsType<DecisionRefusalException>(Assert.ThrowsAny<Exception>(() => ScratchDryRun.Of(_cache,
+                Add(analysis, CanonicalId.FromGuid(builtIn.Guid), AgentName, Version, "approves"))).GetBaseException());
+            Assert.Equal(DecisionRefusalCodes.AgentBuiltIn, failure.Code);
         }
     }
 
@@ -116,13 +116,9 @@ public sealed class WfiAnalysisAgentEvaluationOperationsTests : IDisposable
             human.Version = Version;
         });
 
-        var humanFailure = Assert.ThrowsAny<Exception>(() => ScratchDryRun.Of(_cache,
-            Add(analysis, CanonicalId.FromGuid(human.Guid), AgentName, Version, "approves")));
-        var classFailure = Assert.ThrowsAny<Exception>(() => ScratchDryRun.Of(_cache,
-            Add(analysis, CanonicalId.FromGuid(_cache.LangProject.Guid), AgentName, Version, "approves")));
-
-        Assert.Contains("human agent", humanFailure.Message, StringComparison.Ordinal);
-        Assert.Contains("semantic conflict", classFailure.Message, StringComparison.Ordinal);
+        Assert.Equal(DecisionRefusalCodes.AgentHuman, CodeOf(Add(analysis, CanonicalId.FromGuid(human.Guid), AgentName, Version, "approves")));
+        Assert.Equal(DecisionRefusalCodes.AgentIdentityConflict,
+            CodeOf(Add(analysis, CanonicalId.FromGuid(_cache.LangProject.Guid), AgentName, Version, "approves")));
     }
 
     [Fact]
@@ -132,10 +128,8 @@ public sealed class WfiAnalysisAgentEvaluationOperationsTests : IDisposable
         var agentId = CanonicalId.Mint();
         Apply(Add(analysis, agentId, AgentName, Version, "approves"));
 
-        var failure = Assert.ThrowsAny<Exception>(() => ScratchDryRun.Of(_cache,
-            Add(analysis, agentId, AgentName, "swh-sources-2026-11", "approves")));
-
-        Assert.Contains("new version is a new agent identity", failure.Message, StringComparison.Ordinal);
+        Assert.Equal(DecisionRefusalCodes.AgentVersionConflict,
+            CodeOf(Add(analysis, agentId, AgentName, "swh-sources-2026-11", "approves")));
     }
 
     [Fact]
@@ -145,10 +139,71 @@ public sealed class WfiAnalysisAgentEvaluationOperationsTests : IDisposable
         var humanName = _cache.LangProject.DefaultUserAgent.Name.get_String(_cache.DefaultAnalWs).Text;
         if (string.IsNullOrEmpty(humanName)) return;
 
-        var failure = Assert.ThrowsAny<Exception>(() => ScratchDryRun.Of(_cache,
-            Add(analysis, CanonicalId.Mint(), humanName, Version, "approves")));
+        Assert.Equal(DecisionRefusalCodes.AgentHumanName,
+            CodeOf(Add(analysis, CanonicalId.Mint(), humanName, Version, "approves")));
+    }
 
-        Assert.Contains("human agent's name", failure.Message, StringComparison.Ordinal);
+    [Fact]
+    public void TwoOperationsCreatingTheSameNewAgentInOneProposalCreateItOnce()
+    {
+        var (_, first) = Seed("sita");
+        var (_, second) = Seed("mutu");
+        var agentId = CanonicalId.Mint();
+        var agents = _cache.LangProject.AnalyzingAgentsOC.Count;
+        var proposal = Both(Add(first, agentId, AgentName, Version, "approves"),
+            Add(second, agentId, AgentName, Version, "disapproves"));
+
+        Apply(proposal);
+
+        Assert.Equal(agents + 1, _cache.LangProject.AnalyzingAgentsOC.Count);
+        var agent = (ICmAgent)_cache.ServiceLocator.GetInstance<ICmObjectRepository>().GetObject(agentId.ToGuid());
+        Assert.Equal(Opinions.approves, first.GetAgentOpinion(agent));
+        Assert.Equal(Opinions.disapproves, second.GetAgentOpinion(agent));
+    }
+
+    [Fact]
+    public void TwoOperationsNamingTheSameNewAgentDifferentlyInOneProposalAreRefused()
+    {
+        var (_, first) = Seed("sita");
+        var (_, second) = Seed("mutu");
+        var agentId = CanonicalId.Mint();
+
+        var failure = Both(Add(first, agentId, AgentName, Version, "approves"),
+            Add(second, agentId, "Another name", Version, "approves"));
+
+        Assert.Equal(DecisionRefusalCodes.AgentVersionConflict, CodeOf(failure));
+    }
+
+    [Fact]
+    public void TheDryRunPredictsExactlyWhatApplyDidAndTheSnapshotReadsItBack()
+    {
+        var (_, analysis) = Seed("sita");
+        var agentId = CanonicalId.Mint();
+        var proposal = Add(analysis, agentId, AgentName, Version, "approves");
+        var before = SIL.Motif.Runner.Snapshotting.AnalysisFieldSnapshots.Read(analysis);
+
+        var dryRun = ScratchDryRun.Of(_cache, proposal);
+        var receipt = ProposalApplier.Apply(_cache, proposal, dryRun.Anchor, "tester");
+
+        var predicted = Assert.Single(dryRun.ExpectedEffects);
+        var actual = Assert.Single(receipt.ActualEffects);
+        Assert.Equal(predicted.Before, actual.Before);
+        Assert.Equal(predicted.After, actual.After);
+        var diff = Assert.Single(SIL.Motif.Runner.Snapshotting.AnalysisFieldSnapshots.Diff(before,
+            SIL.Motif.Runner.Snapshotting.AnalysisFieldSnapshots.Read(analysis)));
+        Assert.Equal(SIL.Motif.Model.Snapshot.SnapshotFields.WfiAnalysisEvaluations, diff.Field);
+        Assert.Empty(diff.Before);
+        Assert.Single(diff.After);
+    }
+
+    [Fact]
+    public void EveryRefusalCodeIsUniqueAndWellFormed()
+    {
+        var codes = DecisionRefusalCodes.All;
+
+        Assert.Equal(codes.Count, codes.Distinct(StringComparer.Ordinal).Count());
+        Assert.All(codes, code => Assert.Matches("^[a-z]+(-[a-z]+)*\\.[a-z]+(-[a-z]+)*$", code));
+        Assert.Equal(7, codes.Count);
     }
 
     [Theory]
@@ -168,6 +223,13 @@ public sealed class WfiAnalysisAgentEvaluationOperationsTests : IDisposable
 
         Assert.Throws<ContractParseException>(() => AgentEvaluationPayload.Parse(document.RootElement));
     }
+
+    private string CodeOf(Proposal proposal) => Assert.IsType<DecisionRefusalException>(
+        Assert.ThrowsAny<Exception>(() => ScratchDryRun.Of(_cache, proposal)).GetBaseException()).Code;
+
+    private static Proposal Both(Proposal first, Proposal second) => new(
+        new Dictionary<string, string> { ["analysis"] = "1.0" }, CanonicalId.Mint(), null,
+        [first.Operations[0], second.Operations[0]]);
 
     private void Apply(Proposal proposal)
     {
