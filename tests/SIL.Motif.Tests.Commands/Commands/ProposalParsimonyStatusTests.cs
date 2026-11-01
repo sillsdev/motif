@@ -146,7 +146,7 @@ public sealed class ProposalParsimonyStatusTests : IDisposable
         var status = Read(_parser);
 
         Assert.Equal(ProposalParsimonyState.NotYetRun, status.State);
-        Assert.Equal("parsimony.no-trial", status.StateReason!.Code);
+        Assert.Equal("status-no-trial", status.StateReason!.Code);
         Assert.Null(status.TrialJobId);
     }
 
@@ -159,7 +159,7 @@ public sealed class ProposalParsimonyStatusTests : IDisposable
         var status = Read(_parser);
 
         Assert.Equal(ProposalParsimonyState.NotYetRun, status.State);
-        Assert.Equal("parsimony.not-queued", status.StateReason!.Code);
+        Assert.Equal("status-not-queued", status.StateReason!.Code);
         Assert.Equal(trialId, status.TrialJobId);
         using var after = OpenDatabase();
         Assert.Empty(new JobRepository(after).ListByProjectAndKind(_projectKey,

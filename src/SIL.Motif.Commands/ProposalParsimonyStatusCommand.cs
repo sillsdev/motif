@@ -26,7 +26,7 @@ namespace SIL.Motif.Commands;
 public static class ProposalParsimonyStatusCommand
 {
     /// <summary>The reason code a status carries when the parser is not set up.</summary>
-    public const string ParserMissingCode = "parsimony.parser-missing";
+    public const string ParserMissingCode = "status-parser-missing";
 
     private static readonly string[] GroupOrder = ["grammar", "text"];
 
@@ -39,7 +39,7 @@ public static class ProposalParsimonyStatusCommand
         ArgumentNullException.ThrowIfNull(request);
         if (!CanonicalId.TryParse(request.ProposalId, out var proposalId))
             return CommandOutcome<ProposalParsimonyStatus>.Refused(new Refusal(RefusalCodes.ProposalNotFound,
-                FailureReason.InvalidArgument, $"'{request.ProposalId}' is not a Proposal id."));
+                FailureReason.Refused, $"'{request.ProposalId}' is not a Proposal id."));
         return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
             CommandOutcome<ProposalParsimonyStatus>.Success(Build(database, project, proposalId.Value,
                 ParserIdentity.Read(parserPath)?.Key)));
@@ -65,24 +65,24 @@ public static class ProposalParsimonyStatusCommand
             return Make(ProposalParsimonyState.NotSetUp, new ProposalParsimonyReason(ParserMissingCode,
                 "PanGloss is not set up, so Parsimony cannot run."));
         if (trial is null)
-            return Make(ProposalParsimonyState.NotYetRun, new ProposalParsimonyReason("parsimony.no-trial",
+            return Make(ProposalParsimonyState.NotYetRun, new ProposalParsimonyReason("status-no-trial",
                 "Parsimony runs after the Proposal's Trial finishes, and no Trial has finished."));
         if (job is null)
-            return Make(ProposalParsimonyState.NotYetRun, new ProposalParsimonyReason("parsimony.not-queued",
+            return Make(ProposalParsimonyState.NotYetRun, new ProposalParsimonyReason("status-not-queued",
                 "The Trial has finished and no Parsimony run exists for it yet."));
 
         switch (job.Status)
         {
             case JobStatus.Queued or JobStatus.WaitingForBaseline:
-                return Make(ProposalParsimonyState.Queued, new ProposalParsimonyReason("parsimony.queued",
+                return Make(ProposalParsimonyState.Queued, new ProposalParsimonyReason("status-queued",
                     "Parsimony is waiting for other work to finish."));
             case JobStatus.Running:
-                return Make(ProposalParsimonyState.Running, new ProposalParsimonyReason("parsimony.running",
+                return Make(ProposalParsimonyState.Running, new ProposalParsimonyReason("status-running",
                     "Parsimony is measuring the candidate."));
             case JobStatus.Completed:
                 return Finished(database, job, trial, parserKey, Make);
             default:
-                return Make(ProposalParsimonyState.Failed, new ProposalParsimonyReason("parsimony.failed",
+                return Make(ProposalParsimonyState.Failed, new ProposalParsimonyReason("status-failed",
                     "The newest Parsimony run did not finish. The Trial is unaffected."), failure: FailureOf(job));
         }
     }
@@ -96,7 +96,7 @@ public static class ProposalParsimonyStatusCommand
         var reasons = recorded is null || current is null ? [] : Differences(recorded, current);
         var grammar = ReadGrammar(job);
         if (reasons.Count > 0)
-            return make(ProposalParsimonyState.Stale, new ProposalParsimonyReason("parsimony.stale",
+            return make(ProposalParsimonyState.Stale, new ProposalParsimonyReason("status-stale",
                 "These results were measured against inputs that have since changed."),
                 new ProposalParsimonyStale(reasons, recorded!.ToKey(), current!.ToKey()), null, grammar);
         return make(ProposalParsimonyState.Ready, null, null, null, grammar);
