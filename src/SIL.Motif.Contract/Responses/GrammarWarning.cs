@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json.Serialization;
@@ -460,4 +461,9 @@ public sealed record WarningWordsTouched(int Words, int NoParse, IReadOnlyList<O
 }
 
 /// <summary>A verified FieldWorks destination supplied by the diagnostic's advice owner.</summary>
-public sealed record GrammarFieldWorksPlace(string Tool, string Field);
+public sealed record GrammarFieldWorksPlace(string Tool, string Field)
+{
+    /// <summary>The place as people read it: the tool, then " > field" only when the place names a field.</summary>
+    public string Describe(Func<string, string> toolName) =>
+        Field.Length == 0 ? toolName(Tool) : $"{toolName(Tool)} > {Field}";
+}

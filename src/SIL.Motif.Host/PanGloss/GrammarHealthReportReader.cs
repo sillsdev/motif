@@ -65,7 +65,7 @@ public static class GrammarHealthReportReader
                 helpPath != $"docs/diagnostics/{diagnostic.Code}.md")
                 throw new JsonException("A diagnostic help path is invalid.");
             foreach (var place in diagnostic.FieldWorksPlaces)
-                if (place is null || string.IsNullOrWhiteSpace(place.Tool) || string.IsNullOrWhiteSpace(place.Field))
+                if (place is null || string.IsNullOrWhiteSpace(place.Tool) || place.Field is null)
                     throw new JsonException("A FieldWorks place is incomplete.");
             var scope = diagnostic.Subjects.Any(subject => subject?.Status == GrammarSubjectStatus.Object)
                 ? GrammarSubjectStatus.Object : diagnostic.Subjects.Any(subject => subject?.Status == GrammarSubjectStatus.UnresolvedReference)

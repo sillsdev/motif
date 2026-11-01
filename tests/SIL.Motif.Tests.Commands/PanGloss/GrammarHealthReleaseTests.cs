@@ -50,6 +50,32 @@ public sealed class GrammarHealthReleaseTests
         Assert.Equal("en", response.Locale);
     }
 
+    [Fact]
+    public void AWholeToolPlaceWithAnEmptyFieldIsRead()
+    {
+        var report = JsonNode.Parse(CapturedReport())!;
+        report["diagnostics"]![0]!["fieldworks_places"] = new JsonArray(
+            new JsonObject { ["tool"] = "AdhocCoprohibEdit", ["field"] = "" });
+
+        var response = GrammarHealthReportReader.ReadResponse(report.ToJsonString());
+
+        var place = Assert.Single(response.Findings[0].FieldWorksPlaces);
+        Assert.Equal("AdhocCoprohibEdit", place.Tool);
+        Assert.Equal(string.Empty, place.Field);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("  ")]
+    public void APlaceWithABlankToolIsStillRefused(string tool)
+    {
+        var report = JsonNode.Parse(CapturedReport())!;
+        report["diagnostics"]![0]!["fieldworks_places"] = new JsonArray(
+            new JsonObject { ["tool"] = tool, ["field"] = "" });
+
+        Assert.Throws<JsonException>(() => GrammarHealthReportReader.ReadResponse(report.ToJsonString()));
+    }
+
     [Theory]
     [InlineData("locale")]
     [InlineData("title")]

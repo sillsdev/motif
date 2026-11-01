@@ -477,6 +477,55 @@ public sealed class TrialJobHandlerTests : IDisposable
     }
 
     [Fact]
+    public void AReportWithAWholeToolPlaceLeavesTheDroppedGrammarCheckedAndApplyNotRefused()
+    {
+        var dropped = RunTrialWithGrammarHealth((_, _) => Task.FromResult<GrammarCheckResponse?>(
+            GrammarHealthReportReader.ReadResponse(ReportWithAWholeToolPlace)));
+
+        Assert.True(dropped.Checked);
+        Assert.True(dropped.IsClean);
+        Assert.Null(dropped.NotCheckedReason);
+    }
+
+    [Fact]
+    public void AReportWithABlankToolPlaceStillFailsClosedAsNotChecked()
+    {
+        var dropped = RunTrialWithGrammarHealth((_, _) => Task.FromResult<GrammarCheckResponse?>(
+            GrammarHealthReportReader.ReadResponse(ReportWithAWholeToolPlace.Replace("AdhocCoprohibEdit", " "))));
+
+        Assert.False(dropped.Checked);
+        Assert.Contains("place is incomplete", dropped.NotCheckedReason);
+    }
+
+    private const string ReportWithAWholeToolPlace = """
+        {
+          "schema_version": 4,
+          "fieldworks_project": { "name": null, "source": null },
+          "summary": [
+            { "code": "grammar.cooccurrence.target-unreachable", "group_name": "Unused ad hoc rule omitted", "level": "info", "count": 1 }
+          ],
+          "diagnostics": [
+            {
+              "level": "info",
+              "code": "grammar.cooccurrence.target-unreachable",
+              "group_name": "Unused ad hoc rule omitted",
+              "origin": "check",
+              "description": "Ad hoc rule for 'li' is never used.",
+              "guidance": null,
+              "subjects": [],
+              "title": "Unused ad hoc rule omitted",
+              "explanation": "Ad hoc rule for 'li' is never used.",
+              "help_path": null,
+              "help_body": null,
+              "fieldworks_places": [ { "tool": "AdhocCoprohibEdit", "field": "" } ],
+              "scope": "project_settings"
+            }
+          ],
+          "locale": "en"
+        }
+        """;
+
+    [Fact]
     public void ATrialWhoseGrammarCheckFailedReportsDroppedGrammarAsNotChecked()
     {
         var dropped = RunTrialWithGrammarHealth((_, _) => throw new IOException("grammar-health unavailable"));

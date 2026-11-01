@@ -930,7 +930,7 @@ public static class CommandTextRenderer
             if (finding.Explanation is { Length: > 0 } explanation) text.AppendLine($"    {explanation}");
             if (finding.Guidance is { Length: > 0 } guidance) text.AppendLine($"    {guidance}");
             foreach (var place in finding.FieldWorksPlaces)
-                text.AppendLine($"    In FieldWorks: {FieldWorksLinks.ToolName(place.Tool)} > {place.Field}");
+                text.AppendLine($"    In FieldWorks: {place.Describe(FieldWorksLinks.ToolName)}");
             foreach (var subject in finding.Subject)
             {
                 var state = subject.Status switch

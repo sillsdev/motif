@@ -15,7 +15,7 @@ internal sealed record PanGlossWarningText(
     public static PanGlossWarningText From(GrammarWarning warning)
     {
         var places = warning.FieldWorksPlaces
-            .Select(place => $"{FieldWorksLinks.ToolName(place.Tool)} > {place.Field}")
+            .Select(place => place.Describe(FieldWorksLinks.ToolName))
             .Distinct(StringComparer.Ordinal)
             .ToArray();
         var helpUrl = warning.HelpUrl is { } address ? new Uri(address) : null;
