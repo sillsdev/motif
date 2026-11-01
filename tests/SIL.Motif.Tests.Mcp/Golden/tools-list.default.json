@@ -4963,6 +4963,10 @@
                       "definition": {
                         "type": "string",
                         "description": "Optional definition of the new sense; needs gloss."
+                      },
+                      "fromInflectionClass": {
+                        "type": "string",
+                        "description": "Optional id of the one inflection class, of the derivational analysis\u0027s From category or an ancestor, that stems must belong to."
                       }
                     },
                     "additionalProperties": false,
@@ -6753,7 +6757,7 @@
   },
   {
     "name": "motif_add_morphosyntax_analysis",
-    "description": "Add a grammatical analysis. Research first: motif_guide topic suffix-prefix-slots or workflow; check best practice. Use when one form serves two categories. Changing the one analysis an entry has from one affix kind to another: compose-change-affix-kind. A brand-new entry: compose-author-lexical-entry. Stages one more grammatical info on an entry that already has one, as FieldWorks holds it: an entry owns any number of analyses, each sense points at one, and the parser loads every analysis of the entry as its own rule or stem. One suffix entry can then serve two categories. The new analysis can take existing senses of the entry, a new sense with a gloss, or neither. It refuses a stem analysis on an affix, an affix analysis on a stem, and a sense that belongs to another entry. Dry Run and Trial before a person Applies the Proposal.\nCommand: compose-add-morphosyntax-analysis. Agent class: Draft.",
+    "description": "Add a grammatical analysis. Research first: motif_guide topic suffix-prefix-slots or workflow; check best practice. Use when one form serves two categories. Changing the one analysis an entry has from one affix kind to another: compose-change-affix-kind. A brand-new entry: compose-author-lexical-entry. Stages one more grammatical info on an entry that already has one, as FieldWorks holds it: an entry owns any number of analyses, each sense points at one, and the parser loads every analysis of the entry as its own rule or stem. One suffix entry can then serve two categories. A derivational analysis can name its one From inflection class, so an entry with one analysis per class attaches to several classes. The new analysis can take existing senses of the entry, a new sense with a gloss, or neither. It refuses a stem analysis on an affix, an affix analysis on a stem, and a sense that belongs to another entry. Dry Run and Trial before a person Applies the Proposal.\nCommand: compose-add-morphosyntax-analysis. Agent class: Draft.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -6818,6 +6822,10 @@
         "definition": {
           "type": "string",
           "description": "Optional definition of the new sense; needs gloss."
+        },
+        "fromInflectionClass": {
+          "type": "string",
+          "description": "Optional id of the one inflection class, of the derivational analysis\u0027s From category or an ancestor, that stems must belong to."
         },
         "project": {
           "type": "string",

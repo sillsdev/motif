@@ -17,13 +17,15 @@ namespace SIL.Motif.Runner.Composers;
 /// <param name="Gloss">When given, a new sense with this gloss is added and points at the new analysis.</param>
 /// <param name="AnalysisWritingSystem">The writing system tag of the new sense's gloss and definition.</param>
 /// <param name="Definition">The new sense's optional definition.</param>
+/// <param name="FromInflectionClass">For a derivational analysis, the one inflection class stems must belong to.</param>
 public sealed record AddMorphoSyntaxAnalysisIntent(
     CanonicalId Entry,
     LexicalEntryMsa Msa,
     IReadOnlyList<CanonicalId>? Senses = null,
     string? Gloss = null,
     string? AnalysisWritingSystem = null,
-    string? Definition = null);
+    string? Definition = null,
+    CanonicalId? FromInflectionClass = null);
 
 /// <summary>Parses the closed JSON intent for adding a grammatical info to an entry.</summary>
 public static class AddMorphoSyntaxAnalysisIntentParser
@@ -34,7 +36,7 @@ public static class AddMorphoSyntaxAnalysisIntentParser
     public static AddMorphoSyntaxAnalysisIntent Parse(JsonElement authored)
     {
         SoundSystemIntentParsing.Object(authored, ConstructName, "entry", "msa", "senses", "gloss", "analysisWs",
-            "definition");
+            "definition", "fromInflectionClass");
         var gloss = authored.TryGetProperty("gloss", out _) ? SoundSystemIntentParsing.Text(authored, "gloss") : null;
         var analysisWs = authored.TryGetProperty("analysisWs", out _)
             ? SoundSystemIntentParsing.Text(authored, "analysisWs") : null;
@@ -44,9 +46,15 @@ public static class AddMorphoSyntaxAnalysisIntentParser
             throw new ContractParseException($"'{ConstructName}': 'gloss' and 'analysisWs' go together.");
         if (definition is not null && gloss is null)
             throw new ContractParseException($"'{ConstructName}': 'definition' belongs to a new sense, so it needs 'gloss'.");
-        return new AddMorphoSyntaxAnalysisIntent(SoundSystemIntentParsing.Id(authored, "entry"),
+        var intent = new AddMorphoSyntaxAnalysisIntent(SoundSystemIntentParsing.Id(authored, "entry"),
             AuthorLexicalEntryIntentParser.ParseMsa(authored, ConstructName),
-            AuthorLexicalEntryIntentParser.NonEmptyIds(authored, "senses"), gloss, analysisWs, definition);
+            AuthorLexicalEntryIntentParser.NonEmptyIds(authored, "senses"), gloss, analysisWs, definition,
+            authored.TryGetProperty("fromInflectionClass", out _)
+                ? SoundSystemIntentParsing.Id(authored, "fromInflectionClass") : null);
+        if (intent.FromInflectionClass is not null && intent.Msa.Kind != LexicalEntryMsaKind.Derivational)
+            throw new ContractParseException(
+                $"'{ConstructName}': only a derivational msa takes 'fromInflectionClass'.");
+        return intent;
     }
 }
 
@@ -92,12 +100,19 @@ public static class AddMorphoSyntaxAnalysisComposer
             throw new InvalidOperationException(
                 $"'{ConstructName}': entry '{entryId.Value}' has " +
                 (isStemForm ? "a stem form, so its analysis must be a stem msa." : "an affix form, so its analysis must be an affix msa, not a stem msa."));
-        AuthorLexicalEntryComposer.RequireMsaReferences(cache, msa, ConstructName);
+        var category = AuthorLexicalEntryComposer.RequireMsaReferences(cache, msa, ConstructName);
+        CanonicalId? fromClass = null;
+        if (intent.FromInflectionClass is { } classId)
+        {
+            if (msa.Kind != LexicalEntryMsaKind.Derivational)
+                throw new InvalidOperationException($"'{ConstructName}': only a derivational msa takes 'fromInflectionClass'.");
+            fromClass = LexicalFormAuthoring.RequireInflectionClasses(cache, [classId], [category], ConstructName)[0];
+        }
 
         if ((intent.Senses is null || intent.Senses.Count == 0) && intent.Gloss is null)
             throw new InvalidOperationException(
                 $"'{ConstructName}': give 'senses' or 'gloss', because an analysis no sense uses is removed by FieldWorks the next time the project is checked or opened.");
-        RequireNotDuplicate(entry, msa);
+        RequireNotDuplicate(entry, msa, fromClass);
 
         var senseIds = (intent.Senses ?? []).Select(LexicalFormAuthoring.Normalize).ToArray();
         if (senseIds.Select(id => id.ToGuid()).Distinct().Count() != senseIds.Length)
@@ -126,6 +141,9 @@ public static class AddMorphoSyntaxAnalysisComposer
         var afterMsa = new[] { new OperationDependency(createMsa) };
         foreach (var (kind, after) in AuthorLexicalEntryComposer.MsaFieldWrites(msa, msa.Slots ?? []))
             Add(kind, msaId, after, dependsOn: afterMsa);
+        if (fromClass is { } wanted)
+            Add(MoDerivAffMsaFromInflectionClassOperationKinds.SetFromInflectionClass, msaId,
+                new { @ref = wanted.Value }, dependsOn: afterMsa);
         foreach (var senseId in senseIds)
             Add(LexSenseMorphoSyntaxAnalysisOperationKinds.SetMorphoSyntaxAnalysis, senseId, new { @ref = msaId.Value },
                 dependsOn: afterMsa, rationale: goneNote.TryGetValue(senseId.ToGuid(), out var note) ? note : null);
@@ -157,7 +175,7 @@ public static class AddMorphoSyntaxAnalysisComposer
         }
     }
 
-    private static void RequireNotDuplicate(ILexEntry entry, LexicalEntryMsa msa)
+    private static void RequireNotDuplicate(ILexEntry entry, LexicalEntryMsa msa, CanonicalId? fromClass)
     {
         var slots = (msa.Slots ?? []).Select(id => id.ToGuid()).Order().ToArray();
         var found = entry.MorphoSyntaxAnalysesOC.Any(existing => existing switch
@@ -168,7 +186,8 @@ public static class AddMorphoSyntaxAnalysisComposer
                 && infl.SlotsRC.Select(slot => slot.Guid).Order().SequenceEqual(slots),
             IMoDerivAffMsa deriv => msa.Kind == LexicalEntryMsaKind.Derivational
                 && deriv.FromPartOfSpeechRA?.Guid == msa.Category.ToGuid()
-                && deriv.ToPartOfSpeechRA?.Guid == msa.ToCategory?.ToGuid(),
+                && deriv.ToPartOfSpeechRA?.Guid == msa.ToCategory?.ToGuid()
+                && deriv.FromInflectionClassRA?.Guid == fromClass?.ToGuid(),
             IMoUnclassifiedAffixMsa plain => msa.Kind == LexicalEntryMsaKind.Unclassified
                 && plain.PartOfSpeechRA?.Guid == msa.Category.ToGuid(),
             _ => false,

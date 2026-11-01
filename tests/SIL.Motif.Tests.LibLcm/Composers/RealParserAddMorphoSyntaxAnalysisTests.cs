@@ -57,6 +57,55 @@ public sealed class RealParserAddMorphoSyntaxAnalysisTests(PristineProjectFixtur
         Assert.Equal(["lilit+ig"], await Readings(tracer, path, "lilitig", names));
     }
 
+    [RealParserFact]
+    public async Task ADerivationalPrefixWithOneAnalysisPerHostClassAttachesToEachClassAndNoOther()
+    {
+        using var cache = pristine.NewScratch();
+        RealParserProject.PrepareForParsing(cache, Letters);
+        var ws = Anal(cache);
+        var verb = Created(ApplyOps(cache, AuthorPartOfSpeechComposer.Build(cache,
+            new AuthorPartOfSpeechIntent("Verb", ws, "V"))), CmPossibilityListPossibilitiesOperationKinds.Create);
+        var noun = AddCategory(cache, "Noun");
+        var first = AddInflectionClass(cache, verb, "Class 1");
+        var second = AddInflectionClass(cache, verb, "Class 2");
+        var third = AddInflectionClass(cache, verb, "Class 3");
+        var names = new Dictionary<CanonicalId, string>(CanonicalId.ByGuid);
+        names[AddStem(cache, "kaun", verb, first).Form] = "kaun";
+        names[AddStem(cache, "palit", verb, second).Form] = "palit";
+        names[AddStem(cache, "gatu", verb, third).Form] = "gatu";
+        names[AddStem(cache, "lilit", verb).Form] = "lilit";
+        var subclass = Created(ApplyOps(cache, AuthorInflectionClassComposer.Build(cache,
+            new(verb, "Class 1a", ws, Parent: first))), MoInflClassSubclassesOperationKinds.Create);
+        names[AddStem(cache, "tunal", verb, subclass).Form] = "tunal";
+        var created = ApplyOps(cache, AuthorLexicalEntryComposer.Build(cache, new AuthorLexicalEntryIntent("pag", Vern(cache),
+            MorphType(MoMorphTypeTags.kguidMorphPrefix), "agentive", ws,
+            new LexicalEntryMsa(LexicalEntryMsaKind.Derivational, verb, noun))));
+        names[Created(created, LexEntryLexemeFormOperationKinds.CreateLexemeForm)] = "pag";
+        var entry = Created(created, LexDbEntriesOperationKinds.Create);
+        var path = cache.ProjectId.Path;
+        new FwDataProjectLoader().Save(cache);
+        using var invoker = new PanGlossInvoker();
+        var tracer = new PanGlossTracer(invoker);
+
+        ApplyOps(cache, EditDerivationalAffixRestrictionComposer.Build(cache,
+            new(Created(created, LexEntryMorphoSyntaxAnalysesOperationKinds.Create), FromInflectionClass: first)));
+        new FwDataProjectLoader().Save(cache);
+        Assert.Equal(["pag+kaun"], await Readings(tracer, path, "pagkaun", names));
+        Assert.Empty(await Readings(tracer, path, "pagpalit", names));
+        Assert.Equal(["pag+tunal"], await Readings(tracer, path, "pagtunal", names));
+
+        ApplyOps(cache, AddMorphoSyntaxAnalysisComposer.Build(cache, new(entry,
+            new LexicalEntryMsa(LexicalEntryMsaKind.Derivational, verb, noun), Gloss: "agentive (class 2)",
+            AnalysisWritingSystem: ws, FromInflectionClass: second)));
+        Assert.Equal(2, Get<ILexEntry>(cache, entry).MorphoSyntaxAnalysesOC.OfType<IMoDerivAffMsa>().Count());
+        new FwDataProjectLoader().Save(cache);
+
+        Assert.Equal(["pag+kaun"], await Readings(tracer, path, "pagkaun", names));
+        Assert.Equal(["pag+palit"], await Readings(tracer, path, "pagpalit", names));
+        Assert.Empty(await Readings(tracer, path, "paggatu", names));
+        Assert.Empty(await Readings(tracer, path, "paglilit", names));
+    }
+
     private async Task<string[]> Readings(PanGlossTracer tracer, string path, string word,
         IReadOnlyDictionary<CanonicalId, string> names)
     {

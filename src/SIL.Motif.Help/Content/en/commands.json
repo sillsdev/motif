@@ -1174,7 +1174,7 @@
   },
   "compose-add-morphosyntax-analysis": {
     "title": "Add a grammatical analysis",
-    "description": "Stages one more grammatical info on an entry that already has one, as FieldWorks holds it: an entry owns any number of analyses, each sense points at one, and the parser loads every analysis of the entry as its own rule or stem. One suffix entry can then serve two categories. The new analysis can take existing senses of the entry, a new sense with a gloss, or neither. It refuses a stem analysis on an affix, an affix analysis on a stem, and a sense that belongs to another entry. Dry Run and Trial before a person Applies the Proposal.",
+    "description": "Stages one more grammatical info on an entry that already has one, as FieldWorks holds it: an entry owns any number of analyses, each sense points at one, and the parser loads every analysis of the entry as its own rule or stem. One suffix entry can then serve two categories. A derivational analysis can name its one From inflection class, so an entry with one analysis per class attaches to several classes. The new analysis can take existing senses of the entry, a new sense with a gloss, or neither. It refuses a stem analysis on an affix, an affix analysis on a stem, and a sense that belongs to another entry. Dry Run and Trial before a person Applies the Proposal.",
     "source": "Authored from the typed command contract.",
     "fields": {
       "draft": "Draft name.",
@@ -1183,11 +1183,12 @@
       "senses": "Optional ids of senses of this entry that should point at the new analysis instead of the one they have.",
       "gloss": "Optional gloss for a new sense that points at the new analysis; goes with analysisWs.",
       "analysisWs": "Analysis writing system tag of the new sense's gloss and definition.",
-      "definition": "Optional definition of the new sense; needs gloss."
+      "definition": "Optional definition of the new sense; needs gloss.",
+      "fromInflectionClass": "Optional id of the one inflection class, of the derivational analysis's From category or an ancestor, that stems must belong to."
     },
     "goals": [
       "Let a verb suffix also serve as a copula suffix",
-      "Give an entry a second category and a sense for it",
+      "Let a derivational affix attach to stems of several inflection classes",
       "Point a sense at a different grammatical analysis of its entry"
     ],
     "guides": [

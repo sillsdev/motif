@@ -87,6 +87,29 @@ public sealed class AddMorphoSyntaxAnalysisComposerTests : IDisposable
     }
 
     [Fact]
+    public void ADerivationalAnalysisCanNameItsHostClassAndOtherKindsAndForeignClassesAreRefused()
+    {
+        var hostClass = AddInflectionClass(_cache, _verb, "Class 1");
+        var copulaClass = AddInflectionClass(_cache, _copula, "Copula class");
+        var derivational = new LexicalEntryMsa(LexicalEntryMsaKind.Derivational, _verb, _copula);
+        var created = Created(ApplyOps(_cache, AddMorphoSyntaxAnalysisComposer.Build(_cache,
+            new(_suffix, derivational, Gloss: "host", AnalysisWritingSystem: Anal(_cache),
+                FromInflectionClass: hostClass))), LexEntryMorphoSyntaxAnalysesOperationKinds.Create);
+        Assert.Equal(hostClass.ToGuid(), Get<IMoDerivAffMsa>(_cache, created).FromInflectionClassRA.Guid);
+
+        var foreign = Assert.Throws<InvalidOperationException>(() => AddMorphoSyntaxAnalysisComposer.Build(_cache,
+            new(_suffix, derivational, Gloss: "x", AnalysisWritingSystem: Anal(_cache), FromInflectionClass: copulaClass)));
+        Assert.Contains("does not belong to the category", foreign.Message, StringComparison.Ordinal);
+        var inflectional = Assert.Throws<InvalidOperationException>(() => AddMorphoSyntaxAnalysisComposer.Build(_cache,
+            new(_suffix, new LexicalEntryMsa(LexicalEntryMsaKind.Inflectional, _verb), Gloss: "x",
+                AnalysisWritingSystem: Anal(_cache), FromInflectionClass: hostClass)));
+        Assert.Contains("only a derivational msa", inflectional.Message, StringComparison.Ordinal);
+        var parsed = JsonSerializer.SerializeToElement(new { entry = _suffix.Value,
+            msa = new { kind = "unclassified", category = _verb.Value }, fromInflectionClass = hostClass.Value });
+        Assert.Throws<ContractParseException>(() => AddMorphoSyntaxAnalysisIntentParser.Parse(parsed));
+    }
+
+    [Fact]
     public void AGlossNeedsItsWritingSystemAndADefinitionNeedsAGloss()
     {
         var entry = JsonSerializer.SerializeToElement(new { entry = _suffix.Value,
@@ -109,13 +132,25 @@ public sealed class AddMorphoSyntaxAnalysisComposerTests : IDisposable
     }
 
     [Fact]
-    public void AnIdenticalAnalysisIsRefused()
+    public void AnIdenticalAnalysisIsRefusedButADifferentFromClassOnTheSameEntryPasses()
     {
         var gloss = Anal(_cache);
         var same = Assert.Throws<InvalidOperationException>(() => AddMorphoSyntaxAnalysisComposer.Build(_cache,
             new(_suffix, new LexicalEntryMsa(LexicalEntryMsaKind.Inflectional, _verb), Gloss: "again",
                 AnalysisWritingSystem: gloss)));
         Assert.Contains("identical analysis", same.Message, StringComparison.Ordinal);
+
+        var one = AddInflectionClass(_cache, _verb, "Class 1");
+        var two = AddInflectionClass(_cache, _verb, "Class 2");
+        var derivational = new LexicalEntryMsa(LexicalEntryMsaKind.Derivational, _verb, _copula);
+        ApplyOps(_cache, AddMorphoSyntaxAnalysisComposer.Build(_cache,
+            new(_suffix, derivational, Gloss: "one", AnalysisWritingSystem: gloss, FromInflectionClass: one)));
+        Assert.Throws<InvalidOperationException>(() => AddMorphoSyntaxAnalysisComposer.Build(_cache,
+            new(_suffix, derivational, Gloss: "one again", AnalysisWritingSystem: gloss, FromInflectionClass: one)));
+        var other = ApplyOps(_cache, AddMorphoSyntaxAnalysisComposer.Build(_cache,
+            new(_suffix, derivational, Gloss: "two", AnalysisWritingSystem: gloss, FromInflectionClass: two)));
+        Assert.Equal(two.ToGuid(), Get<IMoDerivAffMsa>(_cache, Created(other,
+            LexEntryMorphoSyntaxAnalysesOperationKinds.Create)).FromInflectionClassRA.Guid);
     }
 
     [Fact]

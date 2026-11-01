@@ -1,5 +1,6 @@
 using System.Text.Json;
 using SIL.LCModel;
+using SIL.LCModel.Infrastructure;
 using SIL.Motif.Commands;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Host.LcmUtils;
@@ -19,7 +20,14 @@ public sealed class AddMorphoSyntaxAnalysisDraftTests(PristineProjectFixture pri
     public void AnAnalysisIsStagedOnAnExistingEntryInOneComposeAndOfferedToAgents()
     {
         using var cache = pristine.NewScratch();
-        var category = CanonicalId.FromGuid(pristine.Seed.PartOfSpeechId);
+        IPartOfSpeech second = null!;
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+        {
+            second = cache.ServiceLocator.GetInstance<IPartOfSpeechFactory>().Create();
+            cache.LangProject.PartsOfSpeechOA.PossibilitiesOS.Add(second);
+            second.Name.set_String(cache.DefaultAnalWs, "Second");
+        });
+        var category = CanonicalId.FromGuid(second.Guid);
         var entry = CanonicalId.FromGuid(pristine.Seed.FirstEntryId);
         var path = cache.ProjectId.Path;
         new FwDataProjectLoader().Save(cache);

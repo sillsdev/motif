@@ -29,7 +29,8 @@ internal sealed class AddMorphoSyntaxAnalysisDefinition : ComposerDefinition<Add
         Field.Ids("senses", IdRole.Reference),
         Field.Text("gloss"),
         Field.Text("analysisWs"),
-        Field.Text("definition"));
+        Field.Text("definition"),
+        Field.Id("fromInflectionClass", IdRole.Reference));
 
     /// <inheritdoc />
     public override ComposerExposure Exposure { get; } =
