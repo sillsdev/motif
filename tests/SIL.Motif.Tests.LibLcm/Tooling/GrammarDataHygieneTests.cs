@@ -392,15 +392,19 @@ public sealed class GrammarDataHygieneTests
             "--range" => new[] { "--range", revisions[0], revisions[1], "--repo", root },
             _ => throw new ArgumentOutOfRangeException(nameof(mode)),
         };
-        var prior = environment?.ToDictionary(p => p.Key, p => Environment.GetEnvironmentVariable(p.Key));
+        // The guard reads the process environment on purpose: give it only the variables the test names.
+        var scrubbed = ToolProcess.RepositoryTargeting;
+        var names = scrubbed.Concat(environment?.Keys ?? Enumerable.Empty<string>()).Distinct().ToArray();
+        var prior = names.ToDictionary(n => n, Environment.GetEnvironmentVariable);
         try
         {
+            foreach (var name in scrubbed) Environment.SetEnvironmentVariable(name, null);
             if (environment is not null) foreach (var pair in environment) Environment.SetEnvironmentVariable(pair.Key, pair.Value);
             return GrammarDataHygiene.Run(args);
         }
         finally
         {
-            if (prior is not null) foreach (var pair in prior) Environment.SetEnvironmentVariable(pair.Key, pair.Value);
+            foreach (var pair in prior) Environment.SetEnvironmentVariable(pair.Key, pair.Value);
         }
     }
 
@@ -435,8 +439,7 @@ public sealed class GrammarDataHygieneTests
     {
         var start = new ProcessStartInfo("git") { WorkingDirectory = root };
         foreach (var argument in args) start.ArgumentList.Add(argument);
-        if (environment is not null) foreach (var pair in environment) start.Environment[pair.Key] = pair.Value;
-        var result = ToolProcess.Run(start);
+        var result = ToolProcess.Run(start, environment is null ? null : new Dictionary<string, string?>(environment));
         if (result.ExitCode != 0 && !allowFailure) throw new InvalidOperationException($"git {string.Join(' ', args)} failed: {result.Error}");
     }
 
@@ -491,6 +494,7 @@ public sealed class GrammarDataHygieneTests
         if (timeout <= TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(timeout));
         var start = new ProcessStartInfo(file) { WorkingDirectory = cwd, UseShellExecute = false, RedirectStandardInput = true, RedirectStandardOutput = true, RedirectStandardError = true, CreateNoWindow = true };
         foreach (var argument in args) start.ArgumentList.Add(argument);
+        ToolProcess.ScrubRepositoryTargeting(start);
         foreach (var pair in environment) start.Environment[pair.Key] = pair.Value;
         using var process = Process.Start(start) ?? throw new InvalidOperationException($"Could not start child process '{file}'.");
         processStarted?.Invoke(process);

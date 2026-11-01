@@ -4,6 +4,10 @@ namespace SIL.Motif.Tests.TestFixtures;
 
 /// <summary>Runs an external tool such as <c>git</c> or <c>python</c> and captures both output streams.</summary>
 /// <remarks>
+/// No tool inherits the variables that retarget git (GIT_DIR, GIT_WORK_TREE, GIT_INDEX_FILE, GIT_COMMON_DIR,
+/// GIT_OBJECT_DIRECTORY): they are removed from every child's environment, including any set on the start info, because
+/// a script such as pwsh or sh runs git itself. A test that wants one passes it as the <c>environment</c> argument,
+/// which is applied after the scrub.
 /// The tool gets an empty standard input of its own instead of the test process's. On Windows every process
 /// that inherits one pipe shares it, and while any of them has a read pending on it, git and python block at
 /// startup when they inspect their standard input: a suite started with a pipe for its standard input hung
@@ -13,10 +17,26 @@ namespace SIL.Motif.Tests.TestFixtures;
 /// </remarks>
 public static class ToolProcess
 {
-    /// <summary>Starts <paramref name="start"/>, reads both output streams to the end, and waits for it to exit.</summary>
-    public static ToolProcessResult Run(ProcessStartInfo start)
+    // Variables that retarget git at another repository.
+    public static readonly IReadOnlyList<string> RepositoryTargeting =
+        ["GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_COMMON_DIR", "GIT_OBJECT_DIRECTORY"];
+
+    /// <summary>Removes the repository-targeting git variables from <paramref name="start"/>'s environment.</summary>
+    public static void ScrubRepositoryTargeting(ProcessStartInfo start)
     {
         ArgumentNullException.ThrowIfNull(start);
+        foreach (var name in RepositoryTargeting) start.Environment.Remove(name);
+    }
+
+    /// <summary>Starts <paramref name="start"/>, reads both output streams to the end, and waits for it to exit.</summary>
+    public static ToolProcessResult Run(ProcessStartInfo start) => Run(start, null);
+
+    /// <summary>As <see cref="Run(ProcessStartInfo)"/>, then applies <paramref name="environment"/> (a null value removes the variable).</summary>
+    public static ToolProcessResult Run(ProcessStartInfo start, IReadOnlyDictionary<string, string?>? environment)
+    {
+        ArgumentNullException.ThrowIfNull(start);
+        ScrubRepositoryTargeting(start);
+        if (environment is not null) foreach (var pair in environment) start.Environment[pair.Key] = pair.Value;
         start.UseShellExecute = false;
         start.RedirectStandardInput = true;
         start.RedirectStandardOutput = true;
