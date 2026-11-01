@@ -76,6 +76,31 @@ public sealed class SelectionSetupArgvTests : IDisposable
     }
 
     [Fact]
+    public void TheParsimonySelectionIsSavedApartFromTheDefaultSelectionAndShownWithIt()
+    {
+        var text = Guid.NewGuid();
+        Assert.Equal(0, Run($"selection set-default --project \"{Project}\" --name Default --add-words motifa --json").ExitCode);
+
+        var set = Run($"selection set-parsimony --project \"{Project}\" --name Evidence --texts {text:D} --json");
+
+        Assert.True(set.ExitCode == 0, set.Output + set.Error);
+        var show = Run($"selection show --project \"{Project}\" --json");
+        using var document = JsonDocument.Parse(show.Output);
+        Assert.Equal("Default", document.RootElement.GetProperty("selection").GetProperty("name").GetString());
+        var parsimony = document.RootElement.GetProperty("parsimonySelection");
+        Assert.Equal("Evidence", parsimony.GetProperty("name").GetString());
+        Assert.Equal(text, parsimony.GetProperty("textIds")[0].GetGuid());
+
+        var clash = Run($"selection set-parsimony --project \"{Project}\" --name Default --texts {text:D} --json");
+        Assert.NotEqual(0, clash.ExitCode);
+        Assert.Contains("selection.parsimony-name-is-default", clash.Output + clash.Error, StringComparison.Ordinal);
+        var reuse = Run($"selection set-parsimony --project \"{Project}\" --name Default --json");
+        Assert.Equal(0, reuse.ExitCode);
+        var absent = Run($"selection set-parsimony --project \"{Project}\" --name Nobody --json");
+        Assert.Contains("selection.not-found", absent.Output + absent.Error, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void SkippingSetupPersistsWithoutCreatingADefaultSelection()
     {
         var skipped = Run($"setup skip --project \"{Project}\" --json");

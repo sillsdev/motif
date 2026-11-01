@@ -730,7 +730,16 @@ public static class CommandTextRenderer
     // Human-mode dispatch always asks for text output, so response.Text is always populated here.
     private static string RenderStats(StatsCommandResponse response) => response.Text ?? string.Empty;
 
-    private static string RenderDefaultSelection(DefaultSelectionResponse response)
+    private static string RenderDefaultSelection(DefaultSelectionResponse response) =>
+        RenderDefaultOnly(response) + RenderParsimonySelection(response.ParsimonySelection);
+
+    private static string RenderParsimonySelection(NamedSelectionProjection? selection) => selection is null
+        ? "No Parsimony Selection is saved." + Environment.NewLine
+        : $"Parsimony Selection: {selection.Name}{Environment.NewLine}" +
+            $"  Texts:           {selection.TextIds.Count:N0}{Environment.NewLine}" +
+            $"  Updated:         {selection.UpdatedUtc}{Environment.NewLine}";
+
+    private static string RenderDefaultOnly(DefaultSelectionResponse response)
     {
         if (response.Selection is null)
             return "No default Selection is saved." + Environment.NewLine +

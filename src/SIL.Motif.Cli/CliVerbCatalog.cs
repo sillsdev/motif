@@ -359,6 +359,13 @@ public static class CliVerbCatalog
                 "[--step-cap <steps|none>] [--expected-revision <revision>] [--json]",
             }),
         new CliVerbDescriptor(
+            "Project", "selection", "selection set-parsimony",
+            new[]
+            {
+                "selection set-parsimony --project <fwdata> --name <name> [--texts <guid,guid>] [--json]",
+                "Without --texts the name must already be a saved Selection. The Default Selection is not changed.",
+            }),
+        new CliVerbDescriptor(
             "Project", "selection", "selection set-limits",
             new[]
             {

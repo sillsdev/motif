@@ -38,5 +38,9 @@ public sealed record NamedSelectionProjection(
     }
 }
 
-/// <summary>The saved default Selection, if present, and whether first-time setup was skipped.</summary>
-public sealed record DefaultSelectionResponse(NamedSelectionProjection? Selection, bool SetupSkipped = false);
+/// <summary>
+/// The saved default Selection, if present, whether first-time setup was skipped, and the separate Parsimony
+/// Selection that Parsimony's Text group measures, if one has been chosen.
+/// </summary>
+public sealed record DefaultSelectionResponse(NamedSelectionProjection? Selection, bool SetupSkipped = false,
+    NamedSelectionProjection? ParsimonySelection = null);

@@ -1831,7 +1831,7 @@ try
         case "selection":
             if (positionals.Count != 1 || !flags.TryGetValue("project", out var selectionProject))
                 return Usage(UsageLineFor("selection show") + " OR " + UsageLineFor("selection set-default") +
-                    " OR " + UsageLineFor("selection set-limits"), asJson);
+                    " OR " + UsageLineFor("selection set-parsimony") + " OR " + UsageLineFor("selection set-limits"), asJson);
             switch (positionals[0])
             {
                 case "show":
@@ -1854,6 +1854,14 @@ try
                         selectionProject, selectionName, selectionTexts, addedWords, limits,
                         flags.GetValueOrDefault("expected-revision"))));
                     break;
+                case "set-parsimony":
+                    if (!flags.TryGetValue("name", out var parsimonySelectionName) ||
+                        !TryParseGuidList(flags.GetValueOrDefault("texts"), out var parsimonyTexts) ||
+                        flags.ContainsKey("texts") && parsimonyTexts.Count == 0)
+                        return Usage(UsageLineFor("selection set-parsimony"), asJson);
+                    result = RenderCommand(SelectionCommands.SetParsimony(new SetParsimonySelectionRequest(
+                        selectionProject, parsimonySelectionName, flags.ContainsKey("texts") ? parsimonyTexts : null)));
+                    break;
                 case "set-limits":
                     if (!flags.TryGetValue("name", out var limitSelectionName) ||
                         !flags.TryGetValue("expected-revision", out var expectedRevision) ||
@@ -1867,7 +1875,7 @@ try
                     break;
                 default:
                     return Usage(UsageLineFor("selection show") + " OR " + UsageLineFor("selection set-default") +
-                        " OR " + UsageLineFor("selection set-limits"), asJson);
+                        " OR " + UsageLineFor("selection set-parsimony") + " OR " + UsageLineFor("selection set-limits"), asJson);
             }
             break;
 

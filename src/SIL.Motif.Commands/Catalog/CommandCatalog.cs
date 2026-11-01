@@ -211,6 +211,7 @@ public static class CommandCatalog
             typeof(ProjectInitializationResponse), CommandSurface.AdvancedAi, AgentClass.HumanOnly),
         new CommandDescriptor("selection show", typeof(ReadDefaultSelectionRequest), typeof(DefaultSelectionResponse), CommandSurface.Released, AgentClass.Read),
         new CommandDescriptor("selection set-default", typeof(SetDefaultSelectionRequest), typeof(DefaultSelectionResponse), CommandSurface.Released, AgentClass.HumanOnly),
+        new CommandDescriptor("selection set-parsimony", typeof(SetParsimonySelectionRequest), typeof(DefaultSelectionResponse), CommandSurface.Released, AgentClass.HumanOnly),
         new CommandDescriptor("selection set-limits", typeof(SetSelectionLimitsRequest), typeof(NamedSelectionProjection), CommandSurface.Released, AgentClass.HumanOnly),
         new CommandDescriptor("setup skip", typeof(SkipSetupRequest), typeof(ProjectSetupResponse), CommandSurface.Released, AgentClass.HumanOnly),
         new CommandDescriptor("store upgrade", typeof(ProjectStoreUpgradeRequest), typeof(ProjectStoreUpgradeResponse), CommandSurface.Released, AgentClass.HumanOnly) { ExposeAsAgentTool = false },

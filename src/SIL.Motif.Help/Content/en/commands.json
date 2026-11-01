@@ -337,12 +337,17 @@
   },
   "selection show": {
     "title": "Show the Default Selection",
-    "description": "Reads the saved Texts, added words, and limits that determine what an Assessment measures when no other Selection is supplied.",
+    "description": "Reads the saved Texts, added words, and limits that determine what an Assessment measures when no other Selection is supplied, and the separate Parsimony Selection.",
     "source": "Hand-written from docs/cli-api.md and command behavior."
   },
   "selection set-default": {
     "title": "Choose a Default Selection",
     "description": "Saves which project Texts and words Motif should measure by default. Use it to focus repeated Assessments on material a linguist has chosen.",
+    "source": "Hand-written from docs/cli-api.md and command behavior."
+  },
+  "selection set-parsimony": {
+    "title": "Choose a Parsimony Selection",
+    "description": "Saves the Texts that Parsimony's Text group reads, apart from the Default Selection. Every Parsimony run reuses this set until you change it.",
     "source": "Hand-written from docs/cli-api.md and command behavior."
   },
   "selection set-limits": {

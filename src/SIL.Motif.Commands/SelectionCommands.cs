@@ -1,6 +1,7 @@
 using SIL.Motif.Host.Baselines;
 using System.Text.Json;
 using SIL.LCModel;
+using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
@@ -21,9 +22,72 @@ public static class SelectionCommands
         {
             var saved = new NamedSelectionRepository(database).GetDefault();
             var setupSkipped = new ProjectSetupRepository(database).IsSkipped();
+            var parsimony = new NamedSelectionRepository(database).GetParsimony();
             return CommandOutcome<DefaultSelectionResponse>.Success(new DefaultSelectionResponse(
-                saved is null ? null : Project(saved), setupSkipped));
+                saved is null ? null : Project(saved), setupSkipped, parsimony is null ? null : Project(parsimony)));
         });
+
+    /// <summary>
+    /// Saves the Selection that Parsimony's Text group measures. The Default Selection is neither read nor changed,
+    /// so choosing evidence for Parsimony never moves what the project parses and times.
+    /// </summary>
+    public static CommandOutcome<DefaultSelectionResponse> SetParsimony(SetParsimonySelectionRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (string.IsNullOrWhiteSpace(request.Name))
+            return CommandOutcome<DefaultSelectionResponse>.Refused(new Refusal(
+                "selection.invalid", FailureReason.InvalidArgument, "A Selection name is required."));
+        if (request.TextIds is { Count: 0 })
+            return CommandOutcome<DefaultSelectionResponse>.Refused(new Refusal(
+                "selection.empty", FailureReason.InvalidArgument,
+                "Choose at least one Text before saving the Parsimony Selection."));
+
+        return ProjectStoreCommand.Run(request.ProjectPath, MotifProductVersion.CurrentText, (database, project) =>
+        {
+            var repository = new NamedSelectionRepository(database);
+            var name = request.Name.Trim();
+            if (request.TextIds is null)
+            {
+                if (!repository.PointParsimonyAt(name))
+                    return CommandOutcome<DefaultSelectionResponse>.Refused(new Refusal(
+                        "selection.not-found", FailureReason.NotFound,
+                        $"No Selection named '{name}' is saved. Name Texts with --texts to create it."));
+                return CommandOutcome<DefaultSelectionResponse>.Success(Both(repository));
+            }
+            if (repository.GetDefault() is { } current && string.Equals(current.Name, name, StringComparison.Ordinal))
+                return CommandOutcome<DefaultSelectionResponse>.Refused(new Refusal(
+                    "selection.parsimony-name-is-default", FailureReason.Refused,
+                    $"'{name}' is the Default Selection, and changing its Texts would change what the project " +
+                    "parses. Give the Parsimony Selection its own name."));
+            var baseline = new BaselineRepository(database).GetCurrentPublished(ProjectWorkspaceKey.Compute(project));
+            if (baseline is not null)
+            {
+                using var reader = BaselineReadCache.Open(baseline.FwDataPath);
+                var texts = reader.Cache.ServiceLocator.GetInstance<SIL.LCModel.ITextRepository>();
+                var missing = request.TextIds.Distinct().FirstOrDefault(id => !texts.TryGetObject(id, out _));
+                if (missing != Guid.Empty)
+                    return CommandOutcome<DefaultSelectionResponse>.Refused(new Refusal(
+                        "selection.text-not-found", FailureReason.InvalidArgument,
+                        $"No Text with GUID '{missing:D}' exists in the current Baseline."));
+            }
+            var existing = repository.Get(name);
+            try
+            {
+                repository.SetParsimony(name, request.TextIds, [],
+                    existing?.Limits ?? new SelectionParsingLimits(StepCap.Default, SelectionTimeLimitMode.Estimated, null),
+                    existing?.Revision.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                return CommandOutcome<DefaultSelectionResponse>.Success(Both(repository));
+            }
+            catch (SelectionRevisionConflictException exception)
+            {
+                return CommandOutcome<DefaultSelectionResponse>.Refused(new Refusal(
+                    "selection.revision-conflict", FailureReason.Refused, exception.Message));
+            }
+        });
+    }
+
+    private static DefaultSelectionResponse Both(NamedSelectionRepository repository) => new(
+        repository.GetDefault() is { } current ? Project(current) : null, false, Project(repository.GetParsimony()!));
 
     /// <summary>Saves named inputs and makes that Selection the default for Assessments.</summary>
     public static CommandOutcome<DefaultSelectionResponse> SetDefault(SetDefaultSelectionRequest request)
