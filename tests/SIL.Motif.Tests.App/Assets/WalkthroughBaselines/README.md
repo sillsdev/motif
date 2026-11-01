@@ -12,3 +12,13 @@ $env:MOTIF_WALKTHROUGH_STRICT_BASELINES = '1'
 ```
 
 After refreshing references with `MOTIF_WALKTHROUGH_UPDATE_BASELINES=1`, run the strict check separately with the update variable unset.
+
+## What is fixed in a replay, and which sets pass strict
+
+Every replay runs with the en-US culture. Before each capture it waits for the project open, evidence publication, any parse or Refresh, the automatic grammar answer and the retained Parsimony read to finish, moves the pointer off every control, and waits until two frames drawn one after the other are identical. Stored parse times are pinned to the replay's fixed clock, and the AI Handoff names the parse in that clock's time zone, so no time needs masking there. Text that names the run, not the product, is replaced with a fixed stand-in before the frame is drawn: the walkthrough folder path (its separators are written as backslashes) and a Receipt's UTC stamp, which the Apply command takes from the machine's clock because it has no clock seam. These two are masks, not clocks.
+
+Proven where: on the Windows maintainer machine with `MOTIF_WALKTHROUGH_STRICT_BASELINES=1`, all thirteen replay classes pass, twice in a row. Strict has not been run on Linux or macOS, and text layout differs there, so treat strict as holding on Windows only.
+
+Twelve of them are complete passes. proposals-open passes, but with one known gap:
+
+overview-with-proposal (in proposals-open) shows today's numbers only. Open does enter Proposal mode in that script (the replay's wait asserts the lens is set), but the Overview does not yet show the Proposal's numbers beside today's or name the Proposal in a context bar. The reference image will change when the Overview does (T-jy).

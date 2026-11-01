@@ -10,7 +10,7 @@
     { "id": "highlight-proposals", "kind": "highlight", "automationId": "motif-proposal-row-8d2ef64357cba44e" },
     { "id": "proposals", "kind": "capture", "durationMs": 1400, "callouts": [ { "automationId": "motif-proposal-row-8d2ef64357cba44e" } ] },
     { "id": "open-first", "kind": "click", "automationId": "motif-proposals-open-8d2ef64357cba44e" },
-    { "id": "wait-for-overview", "kind": "waitFor", "automationId": "motif-overview-selection-word-count", "condition": "text", "expectedText": "2", "timeoutMs": 30000 },
+    { "id": "wait-for-overview", "kind": "waitFor", "automationId": "motif-overview-selection-word-count", "condition": "visible", "timeoutMs": 30000 },
     { "id": "highlight-overview", "kind": "highlight", "automationId": "motif-page-overview" },
     { "id": "overview-with-proposal", "kind": "capture", "durationMs": 1400, "callouts": [ { "automationId": "motif-page-overview" } ] }
   ]

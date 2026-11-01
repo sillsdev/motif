@@ -661,9 +661,10 @@ internal static class WalkthroughReplay
                 case WalkthroughStepKind.WaitFor:
                     var stepTimeout = TimeSpan.FromMilliseconds(step.TimeoutMs!.Value);
                     var remaining = WalkthroughSteps.Remaining(deadline);
-                    window.WaitUntil(() => Satisfies(window, step),
+                    window.WaitUntil(() => Satisfies(window, step) && EntersProposalMode(window, script, step),
                         remaining < stepTimeout ? remaining : stepTimeout, $"step '{step.Id}' timed out",
-                        () => window.DescribeAutomationId(step.AutomationId!));
+                        () => window.DescribeAutomationId(step.AutomationId!) +
+                            $"; Proposal lens={window.Workspace.Context.Lens?.ProposalId ?? "none"}");
                     break;
                 case WalkthroughStepKind.Highlight:
                     window.ScrollIntoView(step.AutomationId!);
@@ -681,6 +682,16 @@ internal static class WalkthroughReplay
                     elapsedMs += step.DurationMs.Value;
                     break;
                 case WalkthroughStepKind.Capture:
+                    // The Explained Word Card settles its own state and hovers on purpose; every other script settles here.
+                    if (script.Id != "explained-word-card")
+                    {
+                        window.WaitUntilQuiet(TimeSpan.FromSeconds(30),
+                            $"capture '{step.Id}' was reached while the project was still changing");
+                        window.ParkPointer();
+                        window.MaskRunVaryingText();
+                        window.WaitUntilFrameIsStable(TimeSpan.FromSeconds(10),
+                            $"capture '{step.Id}' never drew the same frame twice");
+                    }
                     var isExplainedWordCardCapture = script.Id == "explained-word-card" &&
                         step.Id != "word-list-results";
                     if (isExplainedWordCardCapture)
@@ -865,6 +876,11 @@ internal static class WalkthroughReplay
         Assert.DoesNotContain(controls, ToolTip.GetIsOpen);
     }
 
+    // Open on a Proposal row enters Proposal mode, so the next page has the lens set.
+    private static bool EntersProposalMode(WalkthroughWindow window, WalkthroughScript script, WalkthroughStep step) =>
+        (script.Id, step.Id) != ("proposals-open", "wait-for-overview") ||
+        window.Workspace.Context is { Lens: not null, EvidencePublication.IsCompleted: true };
+
     private static bool Satisfies(WalkthroughWindow window, WalkthroughStep step)
     {
         var control = step.Kind == WalkthroughStepKind.WaitFor
@@ -995,6 +1011,7 @@ internal static class WalkthroughFixtureSeeder
             ["fresh-project"] = (_, _, _) => Task.FromResult(WalkthroughFixturePreparation.Empty),
             ["first-run-ready"] = SeedFirstRunReadyAsync,
             ["overview-ready"] = SeedOverviewReadyAsync,
+            ["overview-parsed-ready"] = SeedOverviewParsedReadyAsync,
             ["explained-word-card"] = SeedOverviewReadyAsync,
             ["right-to-left-text"] = SeedOverviewReadyAsync,
             ["try-word-ready"] = SeedTryWordReadyAsync,
@@ -1007,11 +1024,15 @@ internal static class WalkthroughFixtureSeeder
             ["proposal-ready"] = SeedProposalReadyAsync,
         };
 
-    public static Task<WalkthroughFixturePreparation> SeedAsync(
-        string fixture, WalkthroughProjectContext project, FixedClock clock, string parserPath) =>
-        Seeders.TryGetValue(fixture, out var seed)
-            ? seed(project, clock, parserPath)
-            : throw new InvalidDataException($"Unknown walkthrough fixture '{fixture}'.");
+    public static async Task<WalkthroughFixturePreparation> SeedAsync(
+        string fixture, WalkthroughProjectContext project, FixedClock clock, string parserPath)
+    {
+        if (!Seeders.TryGetValue(fixture, out var seed))
+            throw new InvalidDataException($"Unknown walkthrough fixture '{fixture}'.");
+        var preparation = await seed(project, clock, parserPath);
+        WalkthroughStoredTimes.Pin(project, CaptureTime);
+        return preparation;
+    }
 
     private static Task<WalkthroughFixturePreparation> SeedFirstRunReadyAsync(
         WalkthroughProjectContext project, FixedClock _, string parserPath)
@@ -1275,15 +1296,23 @@ internal static class WalkthroughFixtureSeeder
         });
     }
 
+    private static async Task<WalkthroughFixturePreparation> SeedOverviewParsedReadyAsync(
+        WalkthroughProjectContext project, FixedClock clock, string parserPath) =>
+        await SeedParsedProjectAsync(project, clock, parserPath, "saved-parse");
+
     private static async Task<WalkthroughFixturePreparation> SeedHandoffCancelReadyAsync(
-        WalkthroughProjectContext project, FixedClock clock, string parserPath)
+        WalkthroughProjectContext project, FixedClock clock, string parserPath) =>
+        await SeedParsedProjectAsync(project, clock, parserPath, "handoff-ready");
+
+    private static async Task<WalkthroughFixturePreparation> SeedParsedProjectAsync(
+        WalkthroughProjectContext project, FixedClock clock, string parserPath, string signature)
     {
         var client = RealCommandClient.Create(project.ManagedRoot, parserPath, timeProvider: clock);
         var baseline = await client.CaptureBaselineAsync(
             new BaselineCaptureRequest(project.FwDataPath), CancellationToken.None);
         Assert.True(baseline.Succeeded, baseline.Refusal?.Message);
         await SeedSelectionAndSkipSetupAsync(project, client);
-        FakeParser.BehaveBesideExecutable(parserPath, AssessmentWords("handoff-ready"));
+        FakeParser.BehaveBesideExecutable(parserPath, AssessmentWords(signature));
         await AssessAsync(project, client);
         return WalkthroughFixturePreparation.Empty;
     }

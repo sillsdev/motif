@@ -223,6 +223,30 @@ public sealed class ProjectEvidenceTests
         Assert.Equal(clock.GetLocalNow(), handoff.Handoff.WrittenAt);
     }
 
+    [Fact]
+    public async Task TheHandoffCoverageNamesTheParseInTheContextsTimeZone()
+    {
+        var previousCulture = System.Globalization.CultureInfo.CurrentCulture;
+        try
+        {
+            System.Globalization.CultureInfo.CurrentCulture = System.Globalization.CultureInfo.GetCultureInfo("en-US");
+            var zone = TimeZoneInfo.CreateCustomTimeZone("test-plus-9-30", TimeSpan.FromHours(9.5), "Test", "Test");
+            var clock = new FixedClock(new DateTimeOffset(2026, 3, 4, 10, 30, 0, TimeSpan.Zero), zone);
+            var context = NewContext(new FakeCommandClient(), clock);
+            var handoff = new AiHandoffPageModel(context);
+            await context.OpenProjectAsync(ProjectPath);
+
+            context.PublishEvidence(new WorkspaceEvidence(Run("invocation/one"), clock.GetUtcNow(), false));
+            await context.EvidencePublication;
+
+            Assert.StartsWith("Covers the words parsed on Wed 4 Mar, 8:00 PM: ", handoff.Handoff.CoverageText);
+        }
+        finally
+        {
+            System.Globalization.CultureInfo.CurrentCulture = previousCulture;
+        }
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]

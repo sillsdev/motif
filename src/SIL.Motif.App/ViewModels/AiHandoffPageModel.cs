@@ -60,7 +60,7 @@ public sealed class AiHandoffPageModel : PageModel
         }
         Handoff.InvocationId = shown.Assessment.InvocationId;
         Handoff.LatestAssessmentAt = shown.CompletedAt;
-        Handoff.CoverageText = CoverageOf(shown.CompletedAt, Context.Assess.Words.CountSummary,
+        Handoff.CoverageText = CoverageOf(shown.CompletedAt, Context.Clock, Context.Assess.Words.CountSummary,
             Context.Selection.ChosenTextIds.Count, Context.Selection.PastedWordEntries.Count);
         return Task.CompletedTask;
     }
@@ -78,7 +78,7 @@ public sealed class AiHandoffPageModel : PageModel
     }
 
     // What an AI Handoff written now would cover, so the reader knows which run the chat model will see.
-    private static string CoverageOf(DateTimeOffset? at, string words, int texts, int pasted)
+    private static string CoverageOf(DateTimeOffset? at, TimeProvider clock, string words, int texts, int pasted)
     {
         var sources = new List<string>();
         if (texts > 0) sources.Add(PluralText.Format(MotifAppStrings.HandoffCoverageTextsPattern, texts));
@@ -87,10 +87,12 @@ public sealed class AiHandoffPageModel : PageModel
             ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.HandoffCoverageJoinFormat, sources[0], sources[1])
             : sources.Count == 1 ? sources[0] : null;
         var culture = System.Globalization.CultureInfo.CurrentCulture;
-        return at is { } when
+        // The window's clock names the zone, as the project chip does, so the two times agree.
+        DateTimeOffset? shown = at is { } parsed ? TimeZoneInfo.ConvertTime(parsed, clock.LocalTimeZone) : null;
+        return shown is { } when
             ? from is null
-                ? string.Format(culture, MotifAppStrings.HandoffCoverageOnFormat, when.ToLocalTime(), words)
-                : string.Format(culture, MotifAppStrings.HandoffCoverageOnFromFormat, when.ToLocalTime(), words, from)
+                ? string.Format(culture, MotifAppStrings.HandoffCoverageOnFormat, when, words)
+                : string.Format(culture, MotifAppStrings.HandoffCoverageOnFromFormat, when, words, from)
             : from is null
                 ? string.Format(culture, MotifAppStrings.HandoffCoverageLatestFormat, words)
                 : string.Format(culture, MotifAppStrings.HandoffCoverageLatestFromFormat, words, from);

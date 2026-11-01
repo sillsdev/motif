@@ -1,6 +1,6 @@
 {
   "id": "open-project-overview",
-  "fixture": "overview-ready",
+  "fixture": "overview-parsed-ready",
   "steps": [
     { "id": "open-project-menu", "kind": "click", "automationId": "motif-project-menu" },
     { "id": "select-project", "kind": "click", "automationId": "motif-select-new-project" },
