@@ -13,6 +13,10 @@ public enum ParsimonyEvidenceScopeKind
     /// <summary>Every project wordform with an Approved or Disapproved analysis.</summary>
     [JsonStringEnumMemberName("project-approved")]
     ProjectApproved,
+
+    /// <summary>The project's saved Parsimony Selection, read by the Text group and kept apart from the Default Selection.</summary>
+    [JsonStringEnumMemberName("parsimony-selection")]
+    ParsimonySelection,
 }
 
 /// <summary>The exact saved Default Selection frozen into a Parsimony job.</summary>

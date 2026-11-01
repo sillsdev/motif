@@ -236,7 +236,7 @@ public sealed partial class ParsimonyQuerySession : IDisposable
             return new ParsimonyJoinQuality(scopeId, false, projectWordforms, projectJudgedWordforms,
                 projectApprovedReadings, projectDisapprovedReadings, projectCandidates, projectLexemes,
                 projectOccurrences, null, null, null, null, null);
-        var textOccurrences = scope == ParsimonyEvidenceScopeKind.DefaultSelection
+        var textOccurrences = scope != ParsimonyEvidenceScopeKind.ProjectApproved
             ? scopedReader.GetInt64(5) : (long?)null;
         return new ParsimonyJoinQuality(scopeId, true, projectWordforms, projectJudgedWordforms,
             projectApprovedReadings, projectDisapprovedReadings, projectCandidates, projectLexemes,

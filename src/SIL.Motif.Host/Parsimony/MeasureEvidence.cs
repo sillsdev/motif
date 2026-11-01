@@ -40,7 +40,7 @@ public static class MeasureEvidence
         var scoped = measure.Tier != ParsimonyTier.Static || measure.EvidenceViews.Any(ScopedViews.Contains);
         return Compute(measure, evidence, context.FactsSchemaVersion, context.EvidenceSchemaVersion,
             scoped ? context.Scope.ToString() : null,
-            scoped && context.Scope == ParsimonyEvidenceScopeKind.DefaultSelection ? context.SelectionSha256 : null,
+            scoped && context.Scope != ParsimonyEvidenceScopeKind.ProjectApproved ? context.SelectionSha256 : null,
             measure.RequiredCapabilities.Contains("reviewed-negative-expectations")
                 ? context.ExpectationRevisionSha256 : null);
     }

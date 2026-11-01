@@ -3898,6 +3898,22 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
     }
 
     [Fact]
+    public async Task AParsimonySelectionScopeNamesItselfAndReadsItsOwnSavedWords()
+    {
+        await PublishBaselineAsync(_pristine);
+        var missing = await RunStoredMeasureReportAsync("R-slot-blocking",
+            new ParsimonyScopeBinding(ParsimonyEvidenceScopeKind.ParsimonySelection, null), "parsimony-missing-worker");
+        Assert.Equal("the Parsimony Selection is not saved.", Assert.Single(missing.MeasureRuns).Detail);
+
+        var selection = SIL.Motif.Host.Corpus.Selection.Create("Default", [SeededProject.UnanalysedWordForm]);
+        var empty = await RunStoredMeasureReportAsync("R-slot-blocking",
+            new ParsimonyScopeBinding(ParsimonyEvidenceScopeKind.ParsimonySelection,
+                new ParsimonySelectionSnapshot("Default", [_seededText.TextId], [], selection.Words,
+                    selection.Sha256)), "parsimony-empty-worker");
+        Assert.Equal("the Parsimony Selection has no Approved words.", Assert.Single(empty.MeasureRuns).Detail);
+    }
+
+    [Fact]
     public async Task ADefaultSelectionWithoutApprovedWordsIsNotChecked()
     {
         await PublishBaselineAsync(_pristine);

@@ -243,7 +243,7 @@ public sealed partial class ParsimonyQuerySession
     /// <summary>The evidence-scope id for a requested scope, as the evidence artifact names it.</summary>
     private static string ScopeId(ParsimonyEvidenceScopeKind scope) => scope switch
     {
-        ParsimonyEvidenceScopeKind.DefaultSelection => "default-selection",
+        ParsimonyEvidenceScopeKind.DefaultSelection or ParsimonyEvidenceScopeKind.ParsimonySelection => "default-selection",
         ParsimonyEvidenceScopeKind.ProjectApproved => "project-approved",
         _ => throw new ArgumentOutOfRangeException(nameof(scope)),
     };
@@ -275,11 +275,13 @@ public sealed partial class ParsimonyQuerySession
             reasonCode = reader.IsDBNull(1) ? null : reader.GetString(1);
         }
         if (status == "complete") return;
+        var owner = _inputs.EvidenceScope == ParsimonyEvidenceScopeKind.ParsimonySelection
+            ? "Parsimony Selection" : "Default Selection";
         throw new ParsimonyScopeUnavailableException(reasonCode switch
         {
-            "default_selection_not_configured" => "the Default Selection is not saved.",
-            "no_approved_words" => "the Default Selection has no Approved words.",
-            _ => "the Default Selection is unavailable.",
+            "default_selection_not_configured" => $"the {owner} is not saved.",
+            "no_approved_words" => $"the {owner} has no Approved words.",
+            _ => $"the {owner} is unavailable.",
         });
     }
 
