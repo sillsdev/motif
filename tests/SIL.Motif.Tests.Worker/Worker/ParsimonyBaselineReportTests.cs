@@ -68,8 +68,8 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
     private const string BroadEnvironmentGuid = "90000000-0000-0000-0000-000000000001";
     private const string BroadEnvironmentNaturalClassGuid = "90000000-0000-0000-0000-000000000002";
     private const string BroadEnvironmentTargetAllomorphGuid = "90000000-0000-0000-0000-000000000003";
-    private readonly string _root = Path.Combine(Path.GetTempPath(), nameof(ParsimonyBaselineReportTests),
-        Guid.NewGuid().ToString("N"));
+    // SQLite opens "-journal" beside a facts file; a Windows path past 259 characters cannot open it.
+    private readonly string _root = Path.Combine(Path.GetTempPath(), "pbr", Guid.NewGuid().ToString("N")[..8]);
     private readonly PristineProjectFixture _pristine;
     private readonly ProjectLocator _project;
     private readonly MotifDatabase _database;

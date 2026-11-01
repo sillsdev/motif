@@ -421,18 +421,20 @@ public sealed class LayoutAssertionsTests(AvaloniaHeadlessFixture avalonia)
     {
         avalonia.Invoke(() =>
         {
+            var sign = new MarkGlyph { Mark = Mark.Warning };
             var glyph = new Border
             {
                 Width = 14,
                 Height = 14,
                 Classes = { "severityGlyph", "warning" },
-                Child = new TextBlock { Text = "⚠" },
+                Child = sign,
             };
             var window = new MotifTestWindow { Content = glyph, Width = 120, Height = 80 };
             try
             {
                 window.Show();
                 PageScreenshots.Settle(window);
+                Assert.IsType<PathIcon>(sign.Child);
                 LayoutAssertions.AssertCurrent(window);
             }
             finally
