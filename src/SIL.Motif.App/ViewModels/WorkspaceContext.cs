@@ -152,7 +152,7 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
         TryWordSessions = tryWordSessions ?? NoTryWordSessions.Instance;
         assess.Trace.TryWordSessions = TryWordSessions;
         SelectionReads = new WorkspaceSelection(commands);
-        ProposalSelectionReads = new WorkspaceSelection(commands);
+        ProposalSelectionReads = new WorkspaceSelection(commands) { HoldsListCounts = false };
         TrialRun = new TrialRunViewModel(commands);
         TrialRun.PropertyChanged += (_, e) =>
         {

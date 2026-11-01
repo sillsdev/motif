@@ -137,9 +137,10 @@ public sealed partial class DifferenceViewModel : ObservableObject
             beforeLabel, afterLabel);
 
     internal void LoadSources(IReadOnlyList<AssessmentWordResult>? before, IReadOnlyList<AssessmentWordResult>? after,
-        string beforeLabel, string afterLabel, Func<string, int?>? occurrences = null) =>
+        string beforeLabel, string afterLabel, Func<string, int?>? occurrences = null,
+        bool placesFromWordList = false) =>
         LoadFacts(before?.Select(word => new AssessmentRowFacts(word, word.OccurrenceCount)).ToArray(),
-            after?.Select(word => new AssessmentRowFacts(word, occurrences?.Invoke(word.Word) ?? word.OccurrenceCount))
+            after?.Select(word => AssessmentRowFacts.Counted(word, occurrences?.Invoke(word.Word), placesFromWordList))
                 .ToArray(), beforeLabel, afterLabel);
 
     private void LoadFacts(IReadOnlyList<AssessmentRowFacts>? before, IReadOnlyList<AssessmentRowFacts>? after,

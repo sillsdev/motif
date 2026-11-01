@@ -53,6 +53,13 @@ public sealed record SelectionWordSummary(
     public int ChosenAnalysisCount { get; init; }
     /// <summary>Exact stored analyses selected by the row's scoped occurrences, without display morphology.</summary>
     public IReadOnlyList<Guid> ChosenAnalysisIds { get; init; } = [];
+    /// <summary>
+    /// Whether the Selection has Texts, so <see cref="OccurrenceCount"/> counts real places. Without Texts that
+    /// figure is always zero because nothing was counted; a word list's counts are the only ones there are.
+    /// </summary>
+    public bool HasTextPlaces { get; init; } = true;
+    /// <summary>The places in the Texts, or <see langword="null"/> when the Selection has none to count.</summary>
+    public int? PlaceCount => HasTextPlaces ? OccurrenceCount : null;
 }
 
 /// <summary>Identity-safe actions a caller may offer for one exact word row.</summary>
@@ -98,6 +105,11 @@ public sealed record SelectionSummary(
 {
     /// <summary>Physical occurrences per normalized parser form, deduplicated across writing-system alternatives.</summary>
     public IReadOnlyDictionary<string, int> OccurrencesByForm { get; init; } = new Dictionary<string, int>();
+    /// <summary>
+    /// The SHA-256 of the saved word list the added words came from, or <see langword="null"/> when there is none or
+    /// the Selection has Texts. It names the list without reading it, so a holder can keep its counts by this hash.
+    /// </summary>
+    public string? WordListSha256 { get; init; }
     /// <summary>Complete row totals by captured Project standing, independent of spelling/search filters.</summary>
     public IReadOnlyDictionary<string, int> WordRowsByProjectStanding { get; init; } = new Dictionary<string, int>();
     /// <summary>Rows whose scoped occurrences choose more than one distinct analysis content key.</summary>
@@ -167,6 +179,7 @@ internal sealed class SelectionIndexBuilder
     private readonly Dictionary<Guid, WordformFacts> _wordforms = [];
     private readonly Dictionary<string, HashSet<TextWordKey>> _candidateWords = new(StringComparer.Ordinal);
     private readonly HashSet<Guid> _textWordformIds = [];
+    private string? _wordListSha256;
 
     public int SemanticIdentityCount { get; private set; }
     private readonly Dictionary<string, SelectionAssessmentFacts> _assessmentWords = new(StringComparer.Ordinal);
@@ -283,6 +296,13 @@ internal sealed class SelectionIndexBuilder
         candidates.Add(key);
     }
 
+    /// <summary>Names the saved word list the added words came from, so a caller can hold its counts by that hash.</summary>
+    public void SetWordListSha256(string? sha256)
+    {
+        ThrowIfMutable();
+        _wordListSha256 = sha256;
+    }
+
     public void AddWord(string form)
     {
         ThrowIfMutable();
@@ -353,6 +373,7 @@ internal sealed class SelectionIndexBuilder
                 pair => (IReadOnlyList<int>)pair.Value.ToArray()))
         {
             OccurrencesByForm = occurrencesByForm,
+            WordListSha256 = _wordListSha256,
             WordRowsByProjectStanding = rows.GroupBy(row => row.ProjectStanding, StringComparer.Ordinal)
                 .ToDictionary(group => group.Key, group => group.Count(), StringComparer.Ordinal),
             SeveralAnalysisRowCount = rows.Count(row => row.ChosenAnalysisCount > 1),
@@ -526,6 +547,7 @@ internal sealed class SelectionIndexBuilder
             ChosenAnalysisIds = Array.AsReadOnly(chosenIds.ToArray()),
             ChosenAnalysisCount = targetFacts?.Analyses.Where(analysis => chosenIds.Contains(analysis.AnalysisId))
                 .Select(analysis => analysis.Key).Distinct(StringComparer.Ordinal).Count() ?? 0,
+            HasTextPlaces = _texts.Count > 0,
         };
     }
 

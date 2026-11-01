@@ -4913,6 +4913,10 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <value>{0, plural, one {# place} other {# places}}</value>
     <comment>Plural pattern: how many places a word occurs; # is the count.</comment>
   </data>
+  <data name="MotifApp.WordListCountPattern" xml:space="preserve">
+    <value>{0, plural, one {# in the word list} other {# in the word list}}</value>
+    <comment>Plural pattern: how many times a word occurs according to the word list it came from; # is the count.</comment>
+  </data>
   <data name="MotifApp.CompareCellAccessibleNameFormat" xml:space="preserve">
     <value>{0}: {1}, {2}</value>
     <comment>Accessible name of a matrix cell; {0} is how many words, {1} what FieldWorks holds and {2} what PanGloss finds.</comment>

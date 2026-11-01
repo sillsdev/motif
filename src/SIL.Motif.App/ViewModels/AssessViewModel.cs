@@ -256,15 +256,17 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
         if (Result is not null) CompletedAt = _timeProvider.GetLocalNow();
         // A run clears the result as it starts; the words and the Matrix wait for the new result rather than empty.
         if (Result is null && _keepShownThroughRun) return;
-        Words.Load(Result?.Words, TextWords is { } textWords ? word => LookUpOccurrences(textWords, word) : null);
+        var fromWordList = TextWords?.PlacesAreFromWordList ?? false;
+        Words.Load(Result?.Words, TextWords is { } textWords ? word => LookUpOccurrences(textWords, word) : null,
+            fromWordList);
         Compare.LoadSources(Result?.Words, TextWords is { } selectedWords
-            ? word => LookUpOccurrences(selectedWords, word) : null);
+            ? word => LookUpOccurrences(selectedWords, word) : null, fromWordList);
         if (Result is null) return;
         var before = _previous?.Words;
         Difference.LoadSources(before, before is null ? null : Result.Words,
             _previousAt is { } at ? $"Run of {at.ToLocalTime():t}" : "The run before",
             _rerunDescription is { } rerun ? $"This run: {rerun}" : "This run",
-            TextWords is { } occurrenceWords ? word => LookUpOccurrences(occurrenceWords, word) : null);
+            TextWords is { } occurrenceWords ? word => LookUpOccurrences(occurrenceWords, word) : null, fromWordList);
     }
 
     private static int? LookUpOccurrences(TextWordsViewModel textWords, string word) =>

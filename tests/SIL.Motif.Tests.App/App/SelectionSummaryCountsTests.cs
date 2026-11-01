@@ -59,7 +59,7 @@ public sealed class SelectionSummaryCountsTests
             await reads.ReloadAsync(fixture.ProjectPath, [], ["sole"]);
             Assert.Equal(1, words.WordCount);
             Assert.Equal(0, words.OccurrenceCount);
-            Assert.Equal(0, words.OccurrenceCountOf("sole"));
+            Assert.Null(words.OccurrenceCountOf("sole"));
             Assert.Null(words.OccurrenceCountOf("same"));
             fake.SelectionReaderHandler = (_, _) => Task.FromResult(CommandOutcome<SelectionReader>.Refused(
                 new Refusal("texts.evidence-changed", FailureReason.Refused, "Reopen the Selection.")));

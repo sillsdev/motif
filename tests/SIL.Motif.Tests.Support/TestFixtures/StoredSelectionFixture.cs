@@ -5,8 +5,10 @@ using SIL.Motif.Commands.Store;
 using SIL.Motif.Contract;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Contract.Baselines;
+using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Projects;
+using SIL.Motif.Contract.Requests;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Host.Texts;
 using SIL.Motif.Worker.Baselines;
@@ -107,6 +109,45 @@ public sealed partial class StoredSelectionFixture : IDisposable
     /// <summary>Publishes the current warning evidence before a fixture opens its reader.</summary>
     public void RecordGrammarCheck(GrammarCheckResponse check) => new GrammarCheckRepository(_database).Save(
         JsonSerializer.Serialize(_baseline, MotifJson.CreateOptions()), "sha256:fixture-selection", null, check);
+
+    /// <summary>Saves the project's Default Selection, as Setup does, so a reader opened on it can find its word list.</summary>
+    public void SaveDefaultSelection(IReadOnlyList<Guid> textIds, IReadOnlyList<string> addedWords,
+        SelectionWordList? wordList = null)
+    {
+        var selections = new NamedSelectionRepository(_database);
+        selections.SetDefault("Default", textIds, addedWords,
+            new SelectionParsingLimits(StepCap.Default, SelectionTimeLimitMode.Estimated, null),
+            selections.GetDefault()?.Revision.ToString(System.Globalization.CultureInfo.InvariantCulture), wordList);
+    }
+
+    /// <summary>The Baseline token this fixture recorded, for a request that names the evidence it already shows.</summary>
+    public BaselineToken Baseline => _baseline;
+
+    /// <summary>
+    /// Leaves the saved Default's stored word list unreadable, as a damaged store would: its text stops after the
+    /// hash when <paramref name="keepHash"/> is true, else it is not JSON at all.
+    /// </summary>
+    public void DamageDefaultWordList(bool keepHash = true)
+    {
+        using var connection = _database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = keepHash
+            ? "UPDATE NamedSelections SET WordListJson = substr(WordListJson, 1, instr(WordListJson, '\"Counts\"') - 1) " +
+                "WHERE WordListJson IS NOT NULL;"
+            : "UPDATE NamedSelections SET WordListJson = '{not json' WHERE WordListJson IS NOT NULL;";
+        if (command.ExecuteNonQuery() != 1) throw new InvalidOperationException("No saved word list to damage.");
+    }
+
+    /// <summary>Makes the saved Selections unreadable, or readable again, as a locked or failing store would.</summary>
+    public void HideSavedSelections(bool hidden)
+    {
+        using var connection = _database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = hidden
+            ? "ALTER TABLE NamedSelections RENAME TO HiddenNamedSelections;"
+            : "ALTER TABLE HiddenNamedSelections RENAME TO NamedSelections;";
+        command.ExecuteNonQuery();
+    }
 
     /// <summary>Publishes a named current-format Assessment alongside the fixture's Baseline records.</summary>
     public void RecordAssessment(NewAssessmentRecord assessment) => new AssessmentRepository(_database).Record(assessment);

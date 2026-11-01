@@ -1206,13 +1206,19 @@ public sealed class WorkspaceContextTests
 
     internal static async Task<CapturedSelectionOwner> OpenCapturedSelectionAsync(FakeCommandClient fake,
         WorkspaceContext context, TextWordsResponse records, AssessCommandResponse? assessment = null,
-        IReadOnlyList<string>? addedWords = null)
+        IReadOnlyList<string>? addedWords = null, Action<StoredSelectionFixture>? prepare = null)
     {
         var fixture = StoredSelectionFixture.FromDisplayRecords(records, assessment?.Baseline.Token ?? Token);
+        prepare?.Invoke(fixture);
         if (assessment is not null) fixture.RecordAssessment(assessment);
         fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(assessment?.Baseline.Token ?? Token,
             DateTimeOffset.UtcNow, false));
-        fake.SelectionReaderHandler = fixture.OpenAsync;
+        var opens = new List<OpenSelectionReaderRequest>();
+        fake.SelectionReaderHandler = (request, token) =>
+        {
+            opens.Add(request);
+            return fixture.OpenAsync(request, token);
+        };
         fake.ListTextsCompletesWith(new TextInventoryResponse(records.Texts
             .Select(text => new TextChoiceSummary(text.TextId, text.Title)).ToArray(), true));
         await context.OpenProjectAsync(fixture.ProjectPath);
@@ -1229,11 +1235,17 @@ public sealed class WorkspaceContextTests
         context.OpenPage(WorkspacePage.Texts);
         await context.EvidencePublication;
         Assert.Null(context.SelectionReads.Refusal);
-        return new CapturedSelectionOwner(context, fixture);
+        return new CapturedSelectionOwner(context, fixture, opens);
     }
 
-    internal sealed class CapturedSelectionOwner(WorkspaceContext context, StoredSelectionFixture fixture) : IAsyncDisposable
+    internal sealed class CapturedSelectionOwner(WorkspaceContext context, StoredSelectionFixture fixture,
+        IReadOnlyList<OpenSelectionReaderRequest> opens) : IAsyncDisposable
     {
+        public StoredSelectionFixture Fixture => fixture;
+
+        /// <summary>Every request the window made to open its Selection, in order.</summary>
+        public IReadOnlyList<OpenSelectionReaderRequest> Opens => opens;
+
         public async ValueTask DisposeAsync()
         {
             await context.StopProjectWorkAsync();
@@ -1506,7 +1518,7 @@ public sealed class WorkspaceContextTests
                 .Append(method.ReturnType)));
     }
 
-    private static AssessCommandResponse Assessment() => new(
+    internal static AssessCommandResponse Assessment() => new(
         new BaselineCaptureResponse(Token, ProjectPath, DateTimeOffset.UtcNow, false, false),
         new SelectionProjection([], []), [], "summary")
     {
@@ -1890,7 +1902,7 @@ public sealed class WorkspaceContextTests
             uriLauncher: uriLauncher);
     }
 
-    private static (FakeCommandClient Fake, WorkspaceContext Context) NewContextWithFake()
+    internal static (FakeCommandClient Fake, WorkspaceContext Context) NewContextWithFake()
     {
         var fake = new FakeCommandClient();
         return (fake, NewContext(fake));

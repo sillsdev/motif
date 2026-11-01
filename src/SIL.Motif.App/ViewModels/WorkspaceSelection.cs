@@ -21,12 +21,23 @@ public sealed class WorkspaceSelection : ObservableObject
     private bool _isLoading;
     private object? _cardOwner;
     private Action? _closeCard;
+    private string? _listSha256;
+    private IReadOnlyDictionary<string, int>? _listCounts;
+    private SelectionReader? _listReader;
+    private CancellationTokenSource? _listRead;
+    private Task _listPending = Task.CompletedTask;
 
     public WorkspaceSelection(ICommandClient commands)
     {
         ArgumentNullException.ThrowIfNull(commands);
         _commands = commands;
     }
+
+    /// <summary>
+    /// Whether this holder reads and keeps the saved word list's counts. The Proposal lens leaves it off, because
+    /// nothing there shows them and the project's own holder already keeps the one list.
+    /// </summary>
+    internal bool HoldsListCounts { get; init; } = true;
 
     /// <summary>The current reader; pages borrow it and release their detail leases before replacement.</summary>
     public SelectionReader? Reader => _reader;
@@ -37,6 +48,27 @@ public sealed class WorkspaceSelection : ObservableObject
 
     /// <summary>Shared counts and word identities without display lines, occurrences or morphology.</summary>
     public SelectionSummary? Summary => _summaryRead?.Value;
+
+    /// <summary>
+    /// The counts of the saved word list the current Selection's words came from, each word in NFD, or
+    /// <see langword="null"/> while they are being read, when the list cannot be read, or when the held counts are for
+    /// another list. One list is held for the open project, by the hash the summary names; it is not a parser cache.
+    /// </summary>
+    internal IReadOnlyDictionary<string, int>? ListCounts =>
+        Summary?.WordListSha256 is { } sha && sha == _listSha256 ? _listCounts : null;
+
+    /// <summary>Finishes when the word list now being read has been held or given up.</summary>
+    internal Task ListCountsPending => _listPending;
+
+    /// <summary>How many times a saved word list has been read since the window started, each read once.</summary>
+    internal int ListReadCount { get; private set; }
+
+    /// <summary>How many words' counts are held now, whichever Selection is shown; zero when none are.</summary>
+    internal int HeldListWordCount => _listCounts?.Count ?? 0;
+
+    /// <summary>The count the word list gives a form, or <see langword="null"/> when it gives none or none is held.</summary>
+    internal int? ListCountOf(string form) =>
+        ListCounts is { } counts && counts.TryGetValue(form, out var count) ? count : null;
 
     /// <summary>Why the current Selection could not be read.</summary>
     public Refusal? Refusal => _refusal;
@@ -150,6 +182,7 @@ public sealed class WorkspaceSelection : ObservableObject
             _reader = opened;
             Navigation = navigation;
             _summaryRead = summary;
+            KeepListCounts(_reader, summary?.Value.WordListSha256);
             opened = null;
             summary = null;
             _refusal = null;
@@ -178,9 +211,59 @@ public sealed class WorkspaceSelection : ObservableObject
         }
     }
 
+    // A list held, being read for this reader, or given up for this hash is left alone; any other is read once.
+    private void KeepListCounts(SelectionReader? reader, string? sha256)
+    {
+        if (!HoldsListCounts || reader is null || sha256 is null)
+        {
+            DropListCounts();
+            return;
+        }
+        if (sha256 == _listSha256 && (_listRead is null || ReferenceEquals(_listReader, reader))) return;
+        DropListCounts();
+        _listSha256 = sha256;
+        _listReader = reader;
+        var read = _listRead = new CancellationTokenSource();
+        ListReadCount++;
+        _listPending = ReadListCountsAsync(reader, sha256, read);
+    }
+
+    private async Task ReadListCountsAsync(SelectionReader reader, string sha256, CancellationTokenSource read)
+    {
+        IReadOnlyDictionary<string, int>? counts = null;
+        var failed = false;
+        try { counts = await reader.ReadWordListCountsAsync(sha256, read.Token).ConfigureAwait(true); }
+        catch (OperationCanceledException) { }
+        catch (Exception) { failed = true; }
+        finally { read.Dispose(); }
+        if (!ReferenceEquals(_listRead, read)) return;
+        _listRead = null;
+        _listReader = null;
+        // A read that outlived its reader or failed proves nothing about the list, so the next publish reads it again.
+        if (failed || !ReferenceEquals(_reader, reader))
+        {
+            _listSha256 = null;
+            return;
+        }
+        _listCounts = counts;
+        OnPropertyChanged(nameof(ListCounts));
+    }
+
+    private void DropListCounts()
+    {
+        Cancel(_listRead);
+        _listRead = null;
+        _listReader = null;
+        _listSha256 = null;
+        if (_listCounts is null) return;
+        _listCounts = null;
+        OnPropertyChanged(nameof(ListCounts));
+    }
+
     /// <summary>Immediately removes the old Selection; outstanding disposal remains part of the stop barrier.</summary>
     internal void Clear()
     {
+        DropListCounts();
         ++_generation;
         _isLoading = false;
         Cancel(_cancellation);
@@ -195,6 +278,7 @@ public sealed class WorkspaceSelection : ObservableObject
     /// <summary>Cancels replacement and waits for all superseded opens before releasing the current reader.</summary>
     public async Task StopAsync()
     {
+        DropListCounts();
         ++_generation;
         _isLoading = false;
         Cancel(_cancellation);

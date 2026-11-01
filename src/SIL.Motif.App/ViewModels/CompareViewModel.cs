@@ -462,7 +462,7 @@ public sealed partial class CompareViewModel : ObservableObject
             var words = Words.Count == inCells
                 ? CompareCellViewModel.WordsText(Words.Count) : string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.CompareWordsOfFormat, Words.Count.ToString("N0", System.Globalization.CultureInfo.CurrentCulture), inCells.ToString("N0", System.Globalization.CultureInfo.CurrentCulture));
             return _listed.Any(word => word.Occurrences is not null)
-                ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.CompareWordsAndPlacesFormat, words, CompareCellViewModel.PlacesTextOf(_listed.Sum(word => word.Occurrences ?? 0))) : words;
+                ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.CompareWordsAndPlacesFormat, words, CompareCellViewModel.PlacesTextOf(_listed.Sum(word => word.Occurrences ?? 0), PlacesFromWordList)) : words;
         }
     }
 
@@ -515,12 +515,18 @@ public sealed partial class CompareViewModel : ObservableObject
             return row.Facts;
         }));
 
-    internal void LoadSources(IReadOnlyList<AssessmentWordResult>? words, Func<string, int?>? occurrenceCounts = null) =>
-        LoadFacts(words?.Select(word => new AssessmentRowFacts(word,
-            occurrenceCounts?.Invoke(word.Word) ?? word.OccurrenceCount)));
+    internal void LoadSources(IReadOnlyList<AssessmentWordResult>? words, Func<string, int?>? occurrenceCounts = null,
+        bool placesFromWordList = false) =>
+        LoadFacts(words?.Select(word => AssessmentRowFacts.Counted(word,
+            occurrenceCounts?.Invoke(word.Word), placesFromWordList)));
 
-    internal void UpdateOccurrences(Func<string, int?> occurrenceCounts) => LoadFacts(
-        _all.Select(facts => facts with { OccurrenceCount = occurrenceCounts(facts.Word) }).ToArray(), clearSelection: false);
+    internal void UpdateOccurrences(Func<string, int?> occurrenceCounts, bool placesFromWordList = false) => LoadFacts(
+        _all.Select(facts => facts with
+            { OccurrenceCount = occurrenceCounts(facts.Word), PlacesFromWordList = placesFromWordList }).ToArray(),
+        clearSelection: false);
+
+    // One load counts every row from the same source, so any row says which; found once per load.
+    private bool PlacesFromWordList { get; set; }
 
     internal void LoadFacts(IEnumerable<AssessmentRowFacts>? rows, bool clearSelection = true)
     {
@@ -529,13 +535,14 @@ public sealed partial class CompareViewModel : ObservableObject
         _all.Clear();
         checked { _evidenceRevision++; }
         if (rows is not null) _all.AddRange(rows);
+        PlacesFromWordList = _all.Any(word => word.PlacesFromWordList);
         if (clearSelection) foreach (var facts in _all) facts.IsChecked = false;
         var placesAvailable = _all.Any(word => word.Occurrences is not null);
         foreach (var cell in Cells)
         {
             var words = _all.Where(word => word.Row == cell.Row && word.Column == cell.Column).ToArray();
             cell.SetCounts(words.Length, placesAvailable ? words.Sum(word => word.Occurrences ?? 0) : null,
-                words.Count(word => word.IsRefused));
+                words.Count(word => word.IsRefused), PlacesFromWordList);
             if (clearSelection) cell.IsSelected = false;
         }
         RefreshCounts();
@@ -965,7 +972,10 @@ public sealed partial class CompareCellViewModel : ObservableObject
     private bool _hasPlaces;
 
     /// <summary>The number of text places where the cell's words occur.</summary>
-    public string PlacesText => PlacesTextOf(OccurrenceCount);
+    public string PlacesText => PlacesTextOf(OccurrenceCount, PlacesFromWordList);
+
+    /// <summary>Whether the places are counts a word list gave, not places found in the chosen Texts.</summary>
+    public bool PlacesFromWordList { get; private set; }
 
     /// <summary>Whether to show the places; a cell no word fell in shows only its zero.</summary>
     public bool ShowsPlaces => HasPlaces;
@@ -974,7 +984,8 @@ public sealed partial class CompareCellViewModel : ObservableObject
     public static string WordsText(int count) => PluralText.Format(MotifAppStrings.CompareWordsPattern, count);
 
     /// <summary>A count of places with its noun.</summary>
-    public static string PlacesTextOf(int count) => PluralText.Format(MotifAppStrings.ComparePlacesPattern, count);
+    public static string PlacesTextOf(int count, bool fromWordList = false) => PluralText.Format(
+        fromWordList ? MotifAppStrings.WordListCountPattern : MotifAppStrings.ComparePlacesPattern, count);
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasPendingChanges))]
@@ -1006,14 +1017,15 @@ public sealed partial class CompareCellViewModel : ObservableObject
     private int _count;
 
     /// <summary>Sets the words that fell here and their places, <see langword="null"/> when nobody counted them.</summary>
-    public void SetCounts(int wordCount, int? occurrenceCount, int refusedCount = 0)
+    public void SetCounts(int wordCount, int? occurrenceCount, int refusedCount = 0, bool placesFromWordList = false)
     {
+        PlacesFromWordList = placesFromWordList;
         RefusedCount = refusedCount;
         WordCount = wordCount;
         OccurrenceCount = occurrenceCount ?? 0;
         HasPlaces = occurrenceCount is not null;
         Count = wordCount;
-        foreach (var property in new[] { nameof(Label), nameof(Family), nameof(Tone), nameof(MeaningMark),
+        foreach (var property in new[] { nameof(PlacesText), nameof(Label), nameof(Family), nameof(Tone), nameof(MeaningMark),
             nameof(HasRefusals), nameof(RefusalBadgeText), nameof(Explanation), nameof(ShowsLabel),
             nameof(IsGood), nameof(IsFine), nameof(IsViolation), nameof(IsReview), nameof(IsNew), nameof(IsNobody) })
             OnPropertyChanged(property);

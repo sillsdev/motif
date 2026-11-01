@@ -107,7 +107,7 @@ public sealed partial class WordRowViewModel : ObservableObject
     /// <param name="routes">Where the next steps lead.</param>
     public static WordRowViewModel NotParsed(string word, string? opinion = null,
         IReadOnlyList<ParserReadingMorph>? fieldWorks = null, int? places = null, WordRowRoutes? routes = null,
-        string? wordWritingSystem = null)
+        string? wordWritingSystem = null, bool placesFromWordList = false)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(word);
         var morphs = fieldWorks ?? [];
@@ -121,7 +121,7 @@ public sealed partial class WordRowViewModel : ObservableObject
             Places = places,
             WordWritingSystem = wordWritingSystem,
         };
-        return new WordRowViewModel(row, routes, notParsedYet: true);
+        return new WordRowViewModel(row, routes, notParsedYet: true) { PlacesFromWordList = placesFromWordList };
     }
 
     // The Word Analyses link comes with a parse, so a row built before one cannot say FieldWorks lacks the word.
@@ -159,13 +159,13 @@ public sealed partial class WordRowViewModel : ObservableObject
             OpinionMarkKind.Disapproved => ProjectStanding.Rejected,
             _ => _row.Opinion,
         },
-    }, _routes, _notParsedYet);
+    }, _routes, _notParsedYet) { PlacesFromWordList = PlacesFromWordList };
 
     internal WordRowViewModel WithFieldWorksMorphemes(IReadOnlyList<ParserReadingMorph> morphs) => new(_row with
     {
         Gloss = string.Join(" ", morphs.Select(morph => morph.Gloss.Length == 0 ? MissingValue.Marker : morph.Gloss)),
         FieldWorksMorphemes = morphs,
-    }, _routes, _notParsedYet);
+    }, _routes, _notParsedYet) { PlacesFromWordList = PlacesFromWordList };
 
     public string Word => _row.Word;
 
@@ -313,9 +313,12 @@ public sealed partial class WordRowViewModel : ObservableObject
     public string PlacesText => _row.Places is { } places ? $"×{places}" : string.Empty;
 
     /// <summary>The place count in the window's words, or empty when it is not known.</summary>
-    public string PlacesTooltip => _row.Places is { } places
-        ? PluralText.Format(MotifAppStrings.ComparePlacesPattern, places)
-        : string.Empty;
+    public string PlacesTooltip => _row.Places is not { } places ? string.Empty
+        : PluralText.Format(PlacesFromWordList ? MotifAppStrings.WordListCountPattern
+            : MotifAppStrings.ComparePlacesPattern, places);
+
+    /// <summary>Whether the places are the count a word list gave, not places found in the chosen Texts.</summary>
+    public bool PlacesFromWordList { get; init; }
 
     /// <summary>
     /// The parser work for the word as a count of work steps. A refused, skipped, never-parsed or unassessed word

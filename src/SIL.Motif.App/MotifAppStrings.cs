@@ -2520,6 +2520,8 @@ public static class MotifAppStrings
 
     public static string ComparePlacesPattern => Text("MotifApp.ComparePlacesPattern");
 
+    public static string WordListCountPattern => Text("MotifApp.WordListCountPattern");
+
 
 
     public static string CompareCellAccessibleNameFormat => Text("MotifApp.CompareCellAccessibleNameFormat");

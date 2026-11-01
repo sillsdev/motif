@@ -645,6 +645,32 @@ public sealed class SelectionReader : IDisposable, IAsyncDisposable
         }
     }
 
+    /// <summary>
+    /// Reads the Default's saved word list on its own and gives its counts, each word in NFD, when its hash is still
+    /// <paramref name="sha256"/>. It gives <see langword="null"/>, never a refusal, when the list changed, is
+    /// damaged, because a caller shows no count then. A read that fails for another reason, such as a locked
+    /// database or a disposed reader, throws, because it proves nothing about the list and may be tried again.
+    /// </summary>
+    public Task<IReadOnlyDictionary<string, int>?> ReadWordListCountsAsync(string sha256,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(sha256);
+        return Task.Run(() =>
+        {
+            lock (_gate) ObjectDisposedException.ThrowIf(_disposed, this);
+            try
+            {
+                var list = new NamedSelectionRepository(_database).GetDefaultWordList();
+                cancellationToken.ThrowIfCancellationRequested();
+                return list is not null && list.Sha256 == sha256 ? list.Counts : null;
+            }
+            catch (JsonException)
+            {
+                return null;
+            }
+        }, cancellationToken);
+    }
+
     /// <summary>Invalidates the session after its selected evidence is explicitly replaced.</summary>
     public void Invalidate() => MarkObsolete();
 
@@ -742,6 +768,10 @@ public sealed class SelectionReader : IDisposable, IAsyncDisposable
                     request.PauseAt?.Invoke(SelectionReaderPausePoint.AfterIndexSnapshot);
                     var evidence = ResolveEvidence(database, connection, transaction, request, source,
                         textIds, addedWords);
+                    // Only the Default's own words name its list, and by its hash alone, so none pays for reading it.
+                    if (textIds.Length == 0 && addedWords.Length > 0)
+                        indexBuilder.SetWordListSha256(new NamedSelectionRepository(database).GetDefaultWordListSha256(
+                            connection, transaction, addedWords, MatchedTheDefault(request, evidence)));
                     if (evidence is not null) indexBuilder.AddAssessmentWords(evidence.Words);
                     cancellationToken.ThrowIfCancellationRequested();
                     foreach (var word in addedWords) indexBuilder.AddWord(word);
@@ -822,6 +852,10 @@ public sealed class SelectionReader : IDisposable, IAsyncDisposable
             throw DamagedSelection("The captured word inventory disagrees with the exact Baseline.");
         return count;
     }
+
+    // The plain path has already compared the opened words with the Default's; the shown paths have not.
+    private static bool MatchedTheDefault(SelectionReadRequest request, SelectionReadEvidence? evidence) =>
+        request.DisplayedEvidence is null && request.ShownAssessment is null && evidence?.Origin == "default";
 
     private static SelectionReadEvidence? ResolveEvidence(MotifDatabase database, SqliteConnection connection,
         SqliteTransaction transaction, SelectionReadRequest request, CurrentBaselineSelectionIndexRead source,

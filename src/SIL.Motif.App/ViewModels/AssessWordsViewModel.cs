@@ -159,7 +159,8 @@ public sealed partial class AssessWordsViewModel : ObservableObject
     /// <paramref name="occurrenceCounts"/> looks up how many times a word's form occurs in the chosen Texts,
     /// when data for the selected Texts is available; a word not found there shows no occurrence count.
     /// </summary>
-    public void Load(IReadOnlyList<AssessmentWordResult>? words, Func<string, int?>? occurrenceCounts = null)
+    public void Load(IReadOnlyList<AssessmentWordResult>? words, Func<string, int?>? occurrenceCounts = null,
+        bool placesFromWordList = false)
     {
         ++_generation;
         SelectedRow = null;
@@ -168,8 +169,8 @@ public sealed partial class AssessWordsViewModel : ObservableObject
         _all.Clear();
         _byWord.Clear();
         if (words is not null)
-            _all.AddRange(words.Select(word => new AssessmentRowFacts(word,
-                occurrenceCounts?.Invoke(word.Word) ?? word.OccurrenceCount)));
+            _all.AddRange(words.Select(word => AssessmentRowFacts.Counted(word,
+                occurrenceCounts?.Invoke(word.Word), placesFromWordList)));
         foreach (var facts in _all) _byWord.TryAdd(facts.Word, facts);
         TotalCount = _all.Count;
         Outcomes = CountOutcomes();
@@ -196,13 +197,14 @@ public sealed partial class AssessWordsViewModel : ObservableObject
         foreach (var row in _rows.Models) row.WordRow.IsUnread = isUnread(row.Word);
     }
 
-    internal void UpdateOccurrences(Func<string, int?> occurrenceCounts)
+    internal void UpdateOccurrences(Func<string, int?> occurrenceCounts, bool placesFromWordList = false)
     {
         var selected = SelectedRow?.Word;
         ++_generation;
         _rows.Clear();
         for (var index = 0; index < _all.Count; index++)
-            _all[index] = _all[index] with { OccurrenceCount = occurrenceCounts(_all[index].Word) };
+            _all[index] = _all[index] with
+                { OccurrenceCount = occurrenceCounts(_all[index].Word), PlacesFromWordList = placesFromWordList };
         _byWord.Clear();
         foreach (var facts in _all) _byWord.TryAdd(facts.Word, facts);
         SelectedRow = selected is not null ? Find(selected) : null;
@@ -266,8 +268,10 @@ public sealed class AssessWordRowViewModel
 {
     internal AssessmentRowFacts Facts { get; }
 
-    public AssessWordRowViewModel(AssessmentWordResult word, int? occurrenceCount = null, WordRowRoutes? routes = null)
-        : this(new AssessmentRowFacts(word, occurrenceCount ?? word.OccurrenceCount), routes) { }
+    public AssessWordRowViewModel(AssessmentWordResult word, int? occurrenceCount = null, WordRowRoutes? routes = null,
+        bool placesFromWordList = false)
+        : this(new AssessmentRowFacts(word, occurrenceCount ?? word.OccurrenceCount)
+            { PlacesFromWordList = placesFromWordList && occurrenceCount is not null }, routes) { }
 
     internal AssessWordRowViewModel(AssessmentRowFacts facts, WordRowRoutes? routes = null)
     {
@@ -332,8 +336,8 @@ public sealed class AssessWordRowViewModel
         Unavailable = word.Correctness?.Unavailable ?? word.Morphology?.Unavailable ?? [];
         Detail = $"{word.CompletionStatus}. {word.EvidenceStatus}";
         CompletionStatus = word.CompletionStatus;
-        WordRow = new WordRowViewModel(WordRowProjection.Of(word,
-            new WordRowFacts(Places: OccurrenceCount)), routes);
+        WordRow = new WordRowViewModel(WordRowProjection.Of(word, new WordRowFacts(Places: OccurrenceCount)), routes)
+            { PlacesFromWordList = facts.PlacesFromWordList };
     }
 
     // Readings nobody resolved against the project still show, by count and guessed form, rather than vanish.

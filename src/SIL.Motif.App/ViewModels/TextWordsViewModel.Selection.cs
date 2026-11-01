@@ -57,7 +57,7 @@ public sealed partial class TextWordsViewModel
         if (SeveralOnly) matches = matches.Where(word => word.ChosenAnalysisCount > 1);
         if (!string.IsNullOrWhiteSpace(SearchText))
             matches = matches.Where(word => word.Key.Form.Contains(SearchText.Trim(), StringComparison.CurrentCultureIgnoreCase));
-        var ordered = matches.OrderByDescending(word => word.OccurrenceCount).ToArray();
+        var ordered = matches.OrderByDescending(word => word.PlaceCount ?? ListCountOf(word) ?? -1).ToArray();
         _hiddenByFilter = (_selectionReads.Summary?.Words.Count ?? 0) - ordered.Length;
         OnPropertyChanged(nameof(FilterHidesText));
         var generation = _rowsGeneration;
@@ -82,6 +82,7 @@ public sealed partial class TextWordsViewModel
         MakeSummaryRowRoom();
         var row = new TextWordRowViewModel(summary, _selectionReads!.RegisterRow(), WordRowRoutes,
             Path.GetFileNameWithoutExtension(_projectPath), _selectionReads.Reader!.Context.ExpectedWriteContext()) { IsChecked = _checkedKeys.Contains(summary.Key) };
+        row.ApplyListCount(ListCountOf(summary));
         row.WordCardTokenFactory = result => row.CreateCardToken(result, WordCardActions,
             _selectionReads.RegisterCardToken());
         row.ShowAssessment(ShownAssessmentOf(summary, _assessed?.Invoke(row.Form)));

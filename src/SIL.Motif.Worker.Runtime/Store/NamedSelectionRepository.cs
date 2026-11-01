@@ -76,6 +76,65 @@ public sealed class NamedSelectionRepository(MotifDatabase database)
     internal NamedSelectionRecord? GetDefault(SqliteConnection connection, SqliteTransaction? transaction) =>
         ReadPointer(connection, transaction, "DefaultSelection");
 
+    private const string DefaultWordListSelect = """
+        SELECT {0} FROM DefaultSelection d JOIN NamedSelections s ON s.SelectionName = d.SelectionName
+        WHERE d.Id = 1 AND s.TextIdsJson = '[]' AND s.WordListJson IS NOT NULL{1};
+        """;
+
+    // The words as a save stores them: trimmed, in NFD, distinct and in ordinal order.
+    private static string[] CanonicalWords(IEnumerable<string> words) =>
+        SortedOrdinal(words.Select(word => word.Trim()).Where(word => word.Length > 0)
+            .Select(word => word.Normalize(System.Text.NormalizationForm.FormD))
+            .Distinct(StringComparer.Ordinal).ToArray());
+
+    private static string[] SortedOrdinal(string[] words)
+    {
+        Array.Sort(words, StringComparer.Ordinal);
+        return words;
+    }
+
+    /// <summary>
+    /// The hash of the Default's saved word list, taken from the start of its stored text without parsing the list,
+    /// when the Default has no Texts and its stored words are exactly <paramref name="openedWords"/>. The words are
+    /// compared as stored text, so none is parsed, unless <paramref name="wordsAreTheDefaults"/> says the caller
+    /// has already found them equal. It is <see langword="null"/> otherwise, or when its stored text is unreadable,
+    /// so a Selection of other words is never given the list's counts.
+    /// </summary>
+    internal string? GetDefaultWordListSha256(SqliteConnection connection, SqliteTransaction? transaction,
+        IEnumerable<string> openedWords, bool wordsAreTheDefaults = false)
+    {
+        ArgumentNullException.ThrowIfNull(connection);
+        ArgumentNullException.ThrowIfNull(openedWords);
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = string.Format(CultureInfo.InvariantCulture, DefaultWordListSelect,
+            "substr(s.WordListJson, 1, 2048)", wordsAreTheDefaults ? "" : " AND s.AddedWordsJson = $words");
+        if (!wordsAreTheDefaults)
+            command.Parameters.AddWithValue("$words", JsonSerializer.Serialize(CanonicalWords(openedWords)));
+        RepositoryReadCounters.QueryExecuted();
+        using var reader = command.ExecuteReader();
+        if (!reader.Read() || reader.IsDBNull(0)) return null;
+        var match = WordListShaPattern.Match(reader.GetString(0));
+        return match.Success ? match.Groups[1].Value : null;
+    }
+
+    private static readonly System.Text.RegularExpressions.Regex WordListShaPattern = new(
+        "\"Sha256\"\\s*:\\s*\"(sha256:[0-9a-f]{64})\"", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+
+    /// <summary>
+    /// The Default's saved word list, read alone: neither its added words nor its Texts are parsed. It is
+    /// <see langword="null"/> when the Default has Texts or no list, and throws when the stored list is damaged.
+    /// </summary>
+    public SelectionWordList? GetDefaultWordList()
+    {
+        using var connection = _database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = string.Format(CultureInfo.InvariantCulture, DefaultWordListSelect, "s.WordListJson", "");
+        using var reader = command.ExecuteReader();
+        return reader.Read() && !reader.IsDBNull(0)
+            ? JsonSerializer.Deserialize<SelectionWordList>(reader.GetString(0)) : null;
+    }
+
     private static NamedSelectionRecord? ReadPointer(SqliteConnection connection, SqliteTransaction? transaction,
         string pointerTable)
     {
@@ -129,9 +188,7 @@ public sealed class NamedSelectionRepository(MotifDatabase database)
         ValidateLimits(limits);
         name = name.Trim();
         var canonicalTextIds = textIds.Distinct().OrderBy(id => id.ToString("D"), StringComparer.Ordinal).ToArray();
-        var canonicalWords = addedWords.Select(word => word.Trim()).Where(word => word.Length > 0)
-            .Select(word => word.Normalize(System.Text.NormalizationForm.FormD))
-            .Distinct(StringComparer.Ordinal).OrderBy(word => word, StringComparer.Ordinal).ToArray();
+        var canonicalWords = CanonicalWords(addedWords);
         var wordSet = canonicalWords.ToHashSet(StringComparer.Ordinal);
         var keptList = wordList is null ? null : wordList with
         {

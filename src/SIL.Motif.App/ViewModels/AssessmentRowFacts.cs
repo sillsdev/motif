@@ -5,6 +5,12 @@ namespace SIL.Motif.App.ViewModels;
 
 internal sealed record AssessmentRowFacts(AssessmentWordResult Source, int? OccurrenceCount)
 {
+    /// <summary>Whether <see cref="OccurrenceCount"/> is the count a word list gave, not places in the chosen Texts.</summary>
+    public bool PlacesFromWordList { get; init; }
+    /// <summary>Facts for a word whose count came from <paramref name="counted"/>, else from its own result.</summary>
+    public static AssessmentRowFacts Counted(AssessmentWordResult word, int? counted, bool fromWordList) =>
+        new(word, counted ?? word.OccurrenceCount) { PlacesFromWordList = fromWordList && counted is not null };
+
     public string Word => Source.Word;
     public WordComparison Comparison { get; } = CompareSemantics.Compare(Source);
     public bool StoppedAtALimit => CompareSemantics.StoppedAtLimit(Source.Outcome, Source.IsIncomplete, Source.Morphology);

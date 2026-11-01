@@ -23,6 +23,7 @@ Use `--time-mode explicit --time-limit-ms <positive>` for a chosen time safety n
 - Motif stores the file's name and its SHA-256 with the Selection, so you can tell which list the counts came from.
 - A later save that names no file keeps the stored list when the Texts and added words are the same, and any other change to the Texts or words drops it.
 - A Selection of chosen Texts ranks its words by places in those Texts. A Selection with no Texts ranks them by the file's counts, and the Overview then names its bands By Frequency Band, never Text Coverage.
+- The window shows the same count beside each word in the word list of a Selection with no Texts, most often used first. A word the file gave no count has a blank there, and a count of zero shows as zero. Once the words are edited so they are no longer the saved list, the counts are blank until the Selection is saved with a list.
 
 ```powershell
 motif selection set-default --project "C:\FieldWorks\Projects\Koro\Koro.fwdata" --name "Frequent words" --words-file .\frequencies.tsv

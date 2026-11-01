@@ -78,6 +78,11 @@ public sealed partial class TextsPageModel : PageModel
         Assess.OpenTryWord = context.TryWord;
         Assess.PropertyChanged += OnAssessPropertyChanged;
         context.PropertyChanged += OnContextPropertyChanged;
+        context.SelectionReads.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(WorkspaceSelection.ListCounts) && context.EvidenceLens.Today.Assessment is not null)
+                UpdateListedOccurrences();
+        };
     }
 
     public AssessViewModel Assess => Context.Assess;
@@ -168,8 +173,7 @@ public sealed partial class TextsPageModel : PageModel
     protected override Task OnEvidencePublishedAsync(EvidenceLens lens, CancellationToken cancellationToken)
     {
         if (lens.Today.Assessment is not { } shown) return Task.CompletedTask;
-        Assess.Words.UpdateOccurrences(Words.OccurrenceCountOf);
-        Assess.Compare.UpdateOccurrences(Words.OccurrenceCountOf);
+        UpdateListedOccurrences();
         var expected = Context.SelectionReads.Reader?.Context.ExpectedWriteContext();
         var root = Context.Evidence.ParseTimeAssessmentId;
         var wordforms = (Context.SelectionReads.Summary?.Words ?? []).GroupBy(word => word.Key.Form, StringComparer.Ordinal)
@@ -184,6 +188,12 @@ public sealed partial class TextsPageModel : PageModel
         Words.ShowAssessmentSource(Assess.Words.SourceOf);
         if (shown.WasRerun && Assess.Difference.HasDifference) Tab = TextsTab.WhatChanged;
         return Task.CompletedTask;
+    }
+
+    private void UpdateListedOccurrences()
+    {
+        Assess.Words.UpdateOccurrences(Words.OccurrenceCountOf, Words.PlacesAreFromWordList);
+        Assess.Compare.UpdateOccurrences(Words.OccurrenceCountOf, Words.PlacesAreFromWordList);
     }
 
     protected override void OnRequested(PageRequest request)

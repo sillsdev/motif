@@ -22,7 +22,11 @@ public sealed class OverviewMeasuresToolTests
     {
         var unparsed = new OverviewUnparsedWords(3, 12, true,
             [new("kat", 7, UnparsedKind.Refused, "invalidShape"), new("ja", 5, UnparsedKind.NoAnalysis, null)], 12,
-            [new(UnparsedKind.Refused, "invalidShape", 1, 7), new(UnparsedKind.NoAnalysis, null, 2, 5)], 2, 1);
+            [new(UnparsedKind.Refused, "invalidShape", 1, 7), new(UnparsedKind.NoAnalysis, null, 2, 5)], 2, 1)
+        {
+            ByText = false,
+            NoCountWords = 2,
+        };
         var response = Overview(OverviewLookFirst.Empty with { UnparsedWords = unparsed },
             new OverviewTextCoverage(43, 20, 71, 1, 555, 300) { DigitOnlyOccurrences = 4, OtherWritingSystemOccurrences = 0 });
 
@@ -33,6 +37,7 @@ public sealed class OverviewMeasuresToolTests
         Assert.Equal("kat", words.GetProperty("top")[0].GetProperty("word").GetString());
         Assert.Equal("invalidShape", words.GetProperty("top")[0].GetProperty("code").GetString());
         Assert.Equal(1, words.GetProperty("incorrectSpellingWords").GetInt32());
+        Assert.Equal(2, words.GetProperty("noCountWords").GetInt32());
         Assert.Equal(4, json.RootElement.GetProperty("textCoverage").GetProperty("digitOnlyOccurrences").GetInt32());
     }
 

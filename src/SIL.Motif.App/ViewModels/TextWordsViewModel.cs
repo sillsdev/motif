@@ -139,9 +139,18 @@ public sealed partial class TextWordsViewModel : ObservableObject
         return new RowCreationObservation(this, observer);
     }
 
-    internal int? OccurrenceCountOf(string form) =>
-        _selectionReads.Summary is { } summary && summary.OccurrencesByForm.TryGetValue(Normalize(form), out var count)
-            ? count : null;
+    /// <summary>How many places the Words page shows for a form; a Selection with no Texts shows its list counts.</summary>
+    internal int? OccurrenceCountOf(string form)
+    {
+        if (_selectionReads.Summary is not { } summary) return null;
+        var normalized = Normalize(form);
+        if (summary.Texts.Count == 0) return _selectionReads.ListCountOf(normalized);
+        return summary.OccurrencesByForm.TryGetValue(normalized, out var count) ? count : null;
+    }
+
+    /// <summary>Whether the places on show are counts a word list gave, not places found in chosen Texts.</summary>
+    internal bool PlacesAreFromWordList => _selectionReads.Summary is { Texts.Count: 0 } &&
+        _selectionReads.ListCounts is not null;
 
     internal Guid? WordformIdOf(string form)
     {
@@ -273,6 +282,7 @@ public sealed partial class TextWordsViewModel : ObservableObject
     {
         if (e.PropertyName == nameof(WorkspaceSelection.IsLoading)) IsLoading = _selectionReads.IsLoading;
         if (e.PropertyName == nameof(WorkspaceSelection.Refusal)) Refusal = _selectionReads.Refusal;
+        if (e.PropertyName == nameof(WorkspaceSelection.ListCounts)) ApplyListCounts();
         if (e.PropertyName != nameof(WorkspaceSelection.Summary)) return;
         _readState = null;
         var summary = _selectionReads.Summary;
@@ -285,6 +295,16 @@ public sealed partial class TextWordsViewModel : ObservableObject
         PublishSummaryRows();
         RaiseCounts();
     }
+
+    // The held list arrived or went: rows already made take its counts, and the order follows them.
+    private void ApplyListCounts()
+    {
+        foreach (var entry in _summaryRows.Values) entry.Row.ApplyListCount(ListCountOf(entry.Row.Summary!));
+        ApplySummaryFilter();
+    }
+
+    private int? ListCountOf(SelectionWordSummary word) =>
+        word.HasTextPlaces ? null : _selectionReads.ListCountOf(word.Key.Form);
 
     partial void OnSearchTextChanged(string value) => ApplyFilter();
     partial void OnStatusFilterChanged(WordProjectStatus? value)
@@ -447,7 +467,8 @@ public sealed partial class TextWordsViewModel : ObservableObject
     private Func<string, AssessWordRowViewModel?>? _assessed;
 
     internal void ShowAssessmentSource(Func<string, AssessmentWordResult?> source) => ShowAssessment(word =>
-        source(word) is { } result ? new AssessWordRowViewModel(result, OccurrenceCountOf(word), WordRowRoutes) : null);
+        source(word) is { } result ? new AssessWordRowViewModel(result, OccurrenceCountOf(word), WordRowRoutes,
+            PlacesAreFromWordList) : null);
 
     /// <summary>
     /// Shows, on each word, what the latest Assessment came to for it; <see langword="null"/> clears that column.
@@ -620,9 +641,9 @@ public sealed partial class TextWordRowViewModel : ObservableObject, IDisposable
             StoredAnalysesAvailable = true,
             ExpectedAnalysis = expected,
             ProjectStanding = Summary?.ProjectStanding ?? Summary?.ProjectStanding ?? WordProjectStatuses.StandingOf(_word),
-            OccurrenceCount = OccurrenceCount,
+            OccurrenceCount = Places,
         };
-        var projected = new AssessWordRowViewModel(source, OccurrenceCount, _routes);
+        var projected = new AssessWordRowViewModel(source, Places, _routes, PlacesFromWordList);
         projected.WordRow.IsUnread = result.WordRow.IsUnread;
         return projected;
     }
@@ -640,7 +661,7 @@ public sealed partial class TextWordRowViewModel : ObservableObject, IDisposable
                 : _notParsed ??= new ListedWordViewModel(WordRowViewModel.NotParsed(_word.Form,
                     Summary?.ProjectStanding ?? WordProjectStatuses.StandingOf(_word),
                     (_word.Approved.FirstOrDefault() ?? (_word.Analyses.Count == 1 ? _word.Analyses[0] : null))?.Morphs,
-                    OccurrenceCount, _routes, _word.FormWritingSystem));
+                    Places, _routes, _word.FormWritingSystem, PlacesFromWordList));
             if (_hasReadState) listed.Row.IsUnread = _isUnread;
             if (!ReferenceEquals(_observedListed, listed))
             {
@@ -689,6 +710,7 @@ public sealed partial class TextWordRowViewModel : ObservableObject, IDisposable
         FormWritingSystem = word.FormWritingSystem;
         WordformId = word.WordformGuid is { } id ? Guid.Parse(id) : null;
         OccurrenceCount = word.Occurrences.Count;
+        Places = OccurrenceCount;
         HasApproved = word.Approved.Count > 0;
 
         var chosenKeys = word.Occurrences.Select(occurrence => occurrence.Analysis?.Key)
@@ -729,6 +751,7 @@ public sealed partial class TextWordRowViewModel : ObservableObject, IDisposable
         WordformId = summary.Key.WordformId ?? (summary.Actions.CandidateWordformIds.Count == 1
             ? summary.Actions.CandidateWordformIds[0] : null);
         OccurrenceCount = summary.OccurrenceCount;
+        Places = summary.PlaceCount;
         HasApproved = summary.ApprovedAnalysisCount > 0;
         Status = WordProjectStatuses.FromStanding(summary.ProjectStanding);
         HasSeveralAnalyses = summary.ChosenAnalysisCount > 1;
@@ -850,6 +873,24 @@ public sealed partial class TextWordRowViewModel : ObservableObject, IDisposable
     public string? FormWritingSystem { get; }
     public Guid? WordformId { get; private set; }
     public int OccurrenceCount { get; private set; }
+
+    /// <summary>
+    /// The count the row shows: places in the chosen Texts, or for a word-list Selection the list's count, and
+    /// <see langword="null"/> when none is known, which the row leaves blank rather than showing zero.
+    /// </summary>
+    public int? Places { get; private set; }
+
+    /// <summary>Whether <see cref="Places"/> is the count a word list gave rather than places in chosen Texts.</summary>
+    public bool PlacesFromWordList { get; private set; }
+
+    /// <summary>Takes the word list's count for a word of a Selection with no Texts; null shows no count.</summary>
+    internal void ApplyListCount(int? count)
+    {
+        if (Summary is not { HasTextPlaces: false } || Places == count && PlacesFromWordList == (count is not null)) return;
+        Places = count;
+        PlacesFromWordList = count is not null;
+        if ((_listed ?? _notParsed) is not null) ResetListed();
+    }
     public bool HasApproved { get; private set; }
     public WordProjectStatus Status { get; private set; }
 
