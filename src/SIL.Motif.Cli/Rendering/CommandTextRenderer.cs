@@ -498,6 +498,11 @@ public static class CommandTextRenderer
             text.AppendLine();
             text.AppendLine(RenderParsimonyReport(report).TrimEnd());
         }
+        if (response.Note is { } note)
+        {
+            text.AppendLine();
+            text.AppendLine(note);
+        }
         return text.ToString();
     }
 

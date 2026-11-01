@@ -34,7 +34,12 @@ internal static class ParsimonyTools
                 ("measure_id", Schema.String("Exact registered measure id, or 'all' to run every supported measure " +
                     "in one job and read one Report per measure.", MeasureCatalog.All
                     .Where(measure => MeasureRunner.Supports(measure.Id)).Select(measure => measure.Id)
-                    .Append(ParsimonyAdmission.AllMeasures).ToArray()), true),
+                    .Append(ParsimonyAdmission.AllMeasures).ToArray()), false),
+                ("group", Schema.String("Run a whole group, or the one measure_id inside it: the Grammar group " +
+                    "reads the grammar alone and captures a Baseline when none is current; the Text group reads " +
+                    "the saved Parsimony Selection; 'all' runs both, and the Text group only when a Parsimony " +
+                    "Selection is saved. With a group, evidence_scope is not used.",
+                    ParsimonyGroupRequests.Names.ToArray()), false),
                 ("evidence_scope", Schema.String("Which approved-word evidence to use.",
                     "default-selection", "project-approved"), false),
                 ("job", Schema.String("Job id from a previous running result; omit to start a new measure."), false),
@@ -44,7 +49,7 @@ internal static class ParsimonyTools
             false,
             false,
             RunMeasure) { Requests = [typeof(EnqueueParsimonyReportRequest), typeof(WaitForParsimonyReportRequest),
-            typeof(WaitForParsimonyReportSetRequest)] },
+            typeof(WaitForParsimonyReportSetRequest), typeof(EnqueueParsimonyGroupRequest)] },
 
         new("motif_parsimony_report",
             string.Empty,
@@ -168,7 +173,11 @@ internal static class ParsimonyTools
     private static async Task<ToolOutcome> RunMeasure(ServerContext context, ToolArgs args,
         CancellationToken cancellation)
     {
-        var measureId = args.Required("measure_id");
+        var group = args.Optional("group");
+        var measureId = group is null ? args.Required("measure_id") : args.Optional("measure_id");
+        if (group is not null && args.Optional("evidence_scope") is not null)
+            throw new ToolArgumentException("tool.invalid-argument",
+                "evidence_scope is not used with a group; the group names its own evidence.");
         var evidenceScope = args.Optional("evidence_scope") switch
         {
             null or "default-selection" => ParsimonyEvidenceScopeKind.DefaultSelection,
@@ -179,9 +188,11 @@ internal static class ParsimonyTools
         var jobId = args.Optional("job");
         if (jobId is null)
         {
-            var queued = ParsimonyCommands.Enqueue(new EnqueueParsimonyReportRequest(
-                context.ProjectPath, context.ProductVersion, measureId, evidenceScope),
-                context.JobParserPath);
+            var queued = group is null
+                ? ParsimonyCommands.Enqueue(new EnqueueParsimonyReportRequest(
+                    context.ProjectPath, context.ProductVersion, measureId!, evidenceScope), context.JobParserPath)
+                : ParsimonyCommands.EnqueueGroup(new EnqueueParsimonyGroupRequest(
+                    context.ProjectPath, context.ProductVersion, group, measureId), context.JobParserPath);
             if (!queued.Succeeded) return ToolOutcome.Refused(queued.Refusal!);
             jobId = queued.Value!.JobId;
         }
@@ -189,7 +200,8 @@ internal static class ParsimonyTools
 
         var timeout = TimeSpan.FromSeconds(Math.Clamp(args.Int("wait_seconds", 40), 1, 300));
         // The wait polls without blocking, and a cancelled call cancels the job it started.
-        if (measureId == ParsimonyAdmission.AllMeasures)
+        measureId ??= group!;
+        if (group is not null || measureId == ParsimonyAdmission.AllMeasures)
         {
             var all = await ParsimonyCommands.WaitAllAsync(new WaitForParsimonyReportSetRequest(
                 context.ProjectPath, context.ProductVersion, jobId, timeout), cancellation, context.StartRunner)

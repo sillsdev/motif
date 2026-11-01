@@ -1344,6 +1344,34 @@ try
                     showParsimonyProject, CliProductVersion(), positionals[1])));
                 break;
             }
+            if (flags.TryGetValue("group", out var parsimonyGroup) && !flags.ContainsKey("dry-run"))
+            {
+                const string groupUsage = "Usage: motif parsimony --project <fwdata> --group grammar|text|all " +
+                    "[--measure <measure-id>] [--assessment <ParseTime-id> ...] [--wait-timeout-ms <ms>] [--json]";
+                if (positionals.Count != 0 || !flags.TryGetValue("project", out var groupProject))
+                    return Usage(groupUsage, asJson);
+                if (flags.ContainsKey("evidence-scope"))
+                    return Usage("--evidence-scope is not used with --group; the group names its own evidence. " +
+                        groupUsage, asJson);
+                var groupTimeout = JobCommands.DefaultWaitTimeout;
+                if (flags.ContainsKey("wait-timeout-ms") &&
+                    ParseWaitTimeout(flags, groupUsage, asJson, out groupTimeout) is { } groupWaitUsage)
+                    return groupWaitUsage;
+                var enqueuedGroup = ParsimonyCommands.EnqueueGroup(new EnqueueParsimonyGroupRequest(groupProject,
+                    CliProductVersion(), parsimonyGroup, flags.GetValueOrDefault("measure"),
+                    ReadRepeatedFlagValues(flags, "assessment")), SIL.Motif.Host.Parser.PanGlossExecutable.TryLocate());
+                result = RenderCommand(enqueuedGroup);
+                if (enqueuedGroup.Succeeded)
+                {
+                    startRunner(groupProject, error.WriteLine);
+                    var groupJobId = enqueuedGroup.Value!.JobId;
+                    var groupWarnings = RunnerWarnings.Once(error.WriteLine);
+                    result = RunWithConsoleCancellation(cancellationToken => RenderCommand(ParsimonyCommands.WaitAll(
+                        new WaitForParsimonyReportSetRequest(groupProject, CliProductVersion(), groupJobId,
+                            groupTimeout), cancellationToken, () => startRunner(groupProject, groupWarnings))));
+                }
+                break;
+            }
             if (positionals.Count != 0 || !flags.TryGetValue("project", out var parsimonyProject))
                 return Usage("Usage: motif parsimony --project <fwdata> [--measure <measure-id>] " +
                     "[--evidence-scope default-selection|project-approved] [--assessment <ParseTime-id> ...] [--wait] " +
@@ -2484,6 +2512,7 @@ static string ResolveCommandName(string verb, IReadOnlyDictionary<string, string
         if (positionals.FirstOrDefault() == "view") return "parsimony view";
         if (positionals.FirstOrDefault() == "record-types") return "parsimony record-types";
         if (positionals.FirstOrDefault() == "dispose") return "parsimony dispose";
+        if (flags.ContainsKey("group") && !flags.ContainsKey("dry-run")) return "parsimony --group";
         if (flags.ContainsKey("wait"))
             return flags.GetValueOrDefault("measure") == ParsimonyAdmission.AllMeasures && !flags.ContainsKey("dry-run")
                 ? "parsimony --measure all --wait" : "parsimony --wait";

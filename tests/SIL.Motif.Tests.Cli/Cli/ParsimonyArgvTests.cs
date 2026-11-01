@@ -43,6 +43,50 @@ public sealed class ParsimonyArgvTests : IDisposable
     }
 
     [Fact]
+    public async Task TheGrammarGroupCapturesItsOwnBaselineAndReportsItsFiveMeasures()
+    {
+        new FileAdvancedAiModePreferenceStore(_preferencePath).SetEnabled(true);
+        var project = _pristine.CopyProjectFile();
+        var parserPath = FactsParser();
+
+        var result = await CliProcess.RunAsync(StartWithParser(_preferencePath, parserPath,
+            "parsimony", "--project", project, "--group", "grammar", "--json"));
+
+        Assert.True(result.ExitCode == 0, result.Error + result.Output);
+        var set = JsonSerializer.Deserialize<ParsimonyReportSetResponse>(result.Output,
+            new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        Assert.Equal(SIL.Motif.Host.Parsimony.ParsimonyAdmission.MeasureIdsFor(ParsimonyGroupRequest.Grammar),
+            set!.Reports.Select(report => Assert.Single(report.MeasureRuns).MeasureId));
+        Assert.Equal(5, set.Reports.Count);
+        Assert.Null(set.Note);
+    }
+
+    [Fact]
+    public async Task AllWithoutAParsimonySelectionRunsTheGrammarGroupAndSaysOnceHowToChooseTexts()
+    {
+        new FileAdvancedAiModePreferenceStore(_preferencePath).SetEnabled(true);
+        var project = _pristine.CopyProjectFile();
+        var parserPath = FactsParser();
+
+        var result = await CliProcess.RunAsync(StartWithParser(_preferencePath, parserPath,
+            "parsimony", "--project", project, "--group", "all"));
+
+        Assert.True(result.ExitCode == 0, result.Error + result.Output);
+        Assert.Equal(1, result.Output.Split(ParsimonyCommands.TextGroupSkippedNote).Length - 1);
+        Assert.Contains("selection set-parsimony", result.Output, StringComparison.Ordinal);
+
+        var text = await CliProcess.RunAsync(StartWithParser(_preferencePath, parserPath,
+            "parsimony", "--project", project, "--group", "text", "--json"));
+        Assert.NotEqual(0, text.ExitCode);
+        Assert.Contains("parsimony.parsimony-selection-not-configured", text.Output + text.Error,
+            StringComparison.Ordinal);
+
+        var clash = await CliProcess.RunAsync(StartWithParser(_preferencePath, parserPath,
+            "parsimony", "--project", project, "--group", "grammar", "--evidence-scope", "project-approved"));
+        Assert.NotEqual(0, clash.ExitCode);
+    }
+
+    [Fact]
     public async Task MeasureAllWaitStoresOneReportPerMeasureOnOneBundleAndReturnsThemAsJson()
     {
         new FileAdvancedAiModePreferenceStore(_preferencePath).SetEnabled(true);
