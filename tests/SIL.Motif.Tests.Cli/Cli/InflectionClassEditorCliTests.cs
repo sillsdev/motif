@@ -47,6 +47,7 @@ public sealed class InflectionClassEditorCliTests
     [InlineData("compose-set-no-default-compounding")]
     [InlineData("compose-set-not-on-clitics")]
     [InlineData("compose-author-circumfix")]
+    [InlineData("compose-add-morphosyntax-analysis")]
     [InlineData("compose-set-entry-do-not-parse")]
     [InlineData("compose-rewrite-lexeme-form")]
     public void EditorVerbsThatAreDraftAgentToolsStillReachCliUsage(string verb)

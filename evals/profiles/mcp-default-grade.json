@@ -32,6 +32,7 @@
     { "name": "motif_set_no_default_compounding", "class": "Draft" },
     { "name": "motif_set_not_on_clitics", "class": "Draft" },
     { "name": "motif_add_circumfix", "class": "Draft" },
+    { "name": "motif_add_morphosyntax_analysis", "class": "Draft" },
     { "name": "motif_rewrite_lexeme_form", "class": "Draft" },
     { "name": "motif_add_part_of_speech", "class": "Draft" },
     { "name": "motif_add_affix_template", "class": "Draft" },

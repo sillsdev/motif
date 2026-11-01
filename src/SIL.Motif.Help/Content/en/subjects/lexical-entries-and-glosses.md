@@ -13,18 +13,19 @@ A lexical entry is a stem or affix with its forms, senses, glosses and grammatic
 1. `compose-author-part-of-speech` when the category does not exist.
 2. `compose-author-lexical-entry` creates the entry with one sense and its analysis.
 3. `compose-author-circumfix` creates a circumfix entry: a prefix part and a suffix part that attach together, with one sense and its analysis.
-4. `compose-author-lexeme-form` gives an existing entry another lexeme form.
-5. `compose-author-alternate-form` adds a variant form under the entry.
-6. `compose-author-feature-structure` attaches grammatical features to the entry's analysis.
-7. `compose-set-stem-part-of-speech` gives an existing stem analysis its part of speech.
-8. `compose-make-variant-of` makes an existing entry a variant of another entry or sense by creating its variant reference and type. `compose-link-variant` links a variant reference to its main entry or sense and sets its type.
-9. `compose-delete-empty-sense` deletes an empty sense and the analysis only it uses; an analysis with only a part of speech requires a linked variant.
-10. `compose-move-sense-to-entry` moves a sense into a new entry of its own, for a derived word imported as a sense of its root.
-11. `compose-delete-sense` deletes a sense or sub-sense that carries content, refusing an entry's only sense and any sense something refers to.
-12. `compose-remove-alternate-form` removes an alternate form that nothing refers to.
-13. `compose-move-example` moves an example, with its translations, to another sense, in the same entry or another, refusing an example something refers to.
-14. `compose-add-example` adds a new example, with text in one or more writing systems and optional translations, to a sense.
-15. `compose-rewrite-lexeme-form` rewrites the lexeme forms of existing entries in one batch, for example to drop stress marks the parser cannot match.
+4. `compose-add-morphosyntax-analysis` gives an existing entry a second grammatical analysis, so one form serves two categories, and points senses at it.
+5. `compose-author-lexeme-form` gives an existing entry another lexeme form.
+6. `compose-author-alternate-form` adds a variant form under the entry.
+7. `compose-author-feature-structure` attaches grammatical features to the entry's analysis.
+8. `compose-set-stem-part-of-speech` gives an existing stem analysis its part of speech.
+9. `compose-make-variant-of` makes an existing entry a variant of another entry or sense by creating its variant reference and type. `compose-link-variant` links a variant reference to its main entry or sense and sets its type.
+10. `compose-delete-empty-sense` deletes an empty sense and the analysis only it uses; an analysis with only a part of speech requires a linked variant.
+11. `compose-move-sense-to-entry` moves a sense into a new entry of its own, for a derived word imported as a sense of its root.
+12. `compose-delete-sense` deletes a sense or sub-sense that carries content, refusing an entry's only sense and any sense something refers to.
+13. `compose-remove-alternate-form` removes an alternate form that nothing refers to.
+14. `compose-move-example` moves an example, with its translations, to another sense, in the same entry or another, refusing an example something refers to.
+15. `compose-add-example` adds a new example, with text in one or more writing systems and optional translations, to a sense.
+16. `compose-rewrite-lexeme-form` rewrites the lexeme forms of existing entries in one batch, for example to drop stress marks the parser cannot match.
 
 ## Pitfalls
 

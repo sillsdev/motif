@@ -4899,6 +4899,109 @@
                     "type": "string",
                     "description": "Composing verb for this intent.",
                     "enum": [
+                      "compose-add-morphosyntax-analysis"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for compose-add-morphosyntax-analysis.",
+                    "properties": {
+                      "entry": {
+                        "type": "string",
+                        "description": "Id of the existing or earlier-staged entry that gains the analysis."
+                      },
+                      "msa": {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "stem",
+                              "inflectional",
+                              "derivational",
+                              "unclassified"
+                            ]
+                          },
+                          "category": {
+                            "type": "string"
+                          },
+                          "toCategory": {
+                            "type": "string"
+                          },
+                          "slots": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "inflectionClass": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "category"
+                        ],
+                        "additionalProperties": false,
+                        "description": "The new grammatical info: kind stem, inflectional, derivational or unclassified to suit the entry\u0027s form, its category, for derivational also toCategory, for inflectional also slots, for a stem also inflectionClass."
+                      },
+                      "senses": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Optional ids of senses of this entry that should point at the new analysis instead of the one they have."
+                      },
+                      "gloss": {
+                        "type": "string",
+                        "description": "Optional gloss for a new sense that points at the new analysis; goes with analysisWs."
+                      },
+                      "analysisWs": {
+                        "type": "string",
+                        "description": "Analysis writing system tag of the new sense\u0027s gloss and definition."
+                      },
+                      "definition": {
+                        "type": "string",
+                        "description": "Optional definition of the new sense; needs gloss."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "entry",
+                      "msa"
+                    ]
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
                       "compose-set-entry-do-not-parse"
                     ]
                   },
@@ -6639,6 +6742,91 @@
         "formWs",
         "gloss",
         "analysisWs",
+        "msa",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_add_morphosyntax_analysis",
+    "description": "Add a grammatical analysis. Research first: motif_guide topic suffix-prefix-slots or workflow; check best practice. Use when one form serves two categories. Changing the one analysis an entry has from one affix kind to another: compose-change-affix-kind. A brand-new entry: compose-author-lexical-entry. Stages one more grammatical info on an entry that already has one, as FieldWorks holds it: an entry owns any number of analyses, each sense points at one, and the parser loads every analysis of the entry as its own rule or stem. One suffix entry can then serve two categories. The new analysis can take existing senses of the entry, a new sense with a gloss, or neither. It refuses a stem analysis on an affix, an affix analysis on a stem, and a sense that belongs to another entry. Dry Run and Trial before a person Applies the Proposal.\nCommand: compose-add-morphosyntax-analysis. Agent class: Draft.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "Draft name."
+        },
+        "entry": {
+          "type": "string",
+          "description": "Id of the existing or earlier-staged entry that gains the analysis."
+        },
+        "msa": {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "stem",
+                "inflectional",
+                "derivational",
+                "unclassified"
+              ]
+            },
+            "category": {
+              "type": "string"
+            },
+            "toCategory": {
+              "type": "string"
+            },
+            "slots": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "inflectionClass": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "category"
+          ],
+          "additionalProperties": false,
+          "description": "The new grammatical info: kind stem, inflectional, derivational or unclassified to suit the entry\u0027s form, its category, for derivational also toCategory, for inflectional also slots, for a stem also inflectionClass."
+        },
+        "senses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Optional ids of senses of this entry that should point at the new analysis instead of the one they have."
+        },
+        "gloss": {
+          "type": "string",
+          "description": "Optional gloss for a new sense that points at the new analysis; goes with analysisWs."
+        },
+        "analysisWs": {
+          "type": "string",
+          "description": "Analysis writing system tag of the new sense\u0027s gloss and definition."
+        },
+        "definition": {
+          "type": "string",
+          "description": "Optional definition of the new sense; needs gloss."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "draft",
+        "entry",
         "msa",
         "project"
       ],

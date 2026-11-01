@@ -169,7 +169,7 @@ public static class AuthorLexicalEntryComposer
                 Slots = LexicalFormAuthoring.Normalize(intent.Msa.Slots),
             },
         };
-        RequireMsaShape(intent.Msa);
+        RequireMsaShape(intent.Msa, ConstructName);
         var form = formPayload is null ? LexicalFormAuthoring.RequireText(intent.Form, "form", ConstructName) : "";
         var gloss = withSense ? LexicalFormAuthoring.RequireText(intent.Gloss, "gloss", ConstructName) : "";
         var definition = intent.Definition is null || !withSense
@@ -190,26 +190,8 @@ public static class AuthorLexicalEntryComposer
             throw new InvalidOperationException($"'{ConstructName}': only an affix form takes 'inflectionClasses'.");
         if (intent.InflectionClasses is not null && msa.Kind == LexicalEntryMsaKind.Derivational)
             throw new InvalidOperationException(LexicalFormAuthoring.DerivationalClassesRefusal(ConstructName));
-        var category = Category(cache, msa.Category);
-        if (msa.ToCategory is { } toCategory) Category(cache, toCategory);
+        var category = RequireMsaReferences(cache, msa, ConstructName);
         var slots = msa.Slots ?? [];
-        if (slots.Select(id => id.ToGuid()).Distinct().Count() != slots.Count)
-            throw new InvalidOperationException($"'{ConstructName}': slots must not repeat.");
-        foreach (var slotId in slots)
-        {
-            var slot = LexicalFormAuthoring.Resolve<IMoInflAffixSlot>(cache, slotId, ConstructName);
-            if (!LexicalFormAuthoring.SlotServesCategory(slot.Owner as IPartOfSpeech, category))
-                throw new InvalidOperationException(
-                    $"'{ConstructName}': slot '{slotId.Value}' does not belong to the category or one of its ancestors or subcategories." +
-                    LexicalFormAuthoring.UnrelatedSlotAdvice);
-        }
-        if (msa.InflectionClass is { } classId)
-        {
-            var inflectionClass = LexicalFormAuthoring.Resolve<IMoInflClass>(cache, classId, ConstructName);
-            if (!LexicalFormAuthoring.InCategoryOrAncestor(LexicalFormAuthoring.OwningCategory(inflectionClass), category))
-                throw new InvalidOperationException(
-                    $"'{ConstructName}': inflection class '{classId.Value}' does not belong to the category.");
-        }
         IReadOnlyList<CanonicalId> environments = intent.Environments is null ? []
             : LexicalFormAuthoring.RequireEnvironments(cache, intent.Environments, ConstructName);
         IReadOnlyList<CanonicalId> restrictedClasses = intent.InflectionClasses is null ? []
@@ -233,33 +215,8 @@ public static class AuthorLexicalEntryComposer
         var createMsa = Add(LexEntryMorphoSyntaxAnalysesOperationKinds.Create, entryId,
             new { @class = MsaClass(msa.Kind) }, entityId: msaId, dependsOn: afterEntry);
         var afterMsa = new[] { new OperationDependency(createMsa) };
-        switch (msa.Kind)
-        {
-            case LexicalEntryMsaKind.Stem:
-                Add(MoStemMsaPartOfSpeechOperationKinds.SetPartOfSpeech, msaId, new { @ref = msa.Category.Value },
-                    dependsOn: afterMsa);
-                if (msa.InflectionClass is { } inflectionClass)
-                    Add(MoStemMsaInflectionClassOperationKinds.SetInflectionClass, msaId,
-                        new { @ref = inflectionClass.Value }, dependsOn: afterMsa);
-                break;
-            case LexicalEntryMsaKind.Inflectional:
-                Add(MoInflAffMsaPartOfSpeechOperationKinds.SetPartOfSpeech, msaId, new { @ref = msa.Category.Value },
-                    dependsOn: afterMsa);
-                foreach (var slot in slots.OrderBy(id => id.Value, StringComparer.Ordinal))
-                    Add(MoInflAffMsaSlotsOperationKinds.AddRefSlots, msaId, new { member = slot.Value },
-                        dependsOn: afterMsa);
-                break;
-            case LexicalEntryMsaKind.Derivational:
-                Add(MoDerivAffMsaFromPartOfSpeechOperationKinds.SetFromPartOfSpeech, msaId,
-                    new { @ref = msa.Category.Value }, dependsOn: afterMsa);
-                Add(MoDerivAffMsaToPartOfSpeechOperationKinds.SetToPartOfSpeech, msaId,
-                    new { @ref = msa.ToCategory!.Value.Value }, dependsOn: afterMsa);
-                break;
-            case LexicalEntryMsaKind.Unclassified:
-                Add(MoUnclassifiedAffixMsaPartOfSpeechOperationKinds.SetPartOfSpeech, msaId,
-                    new { @ref = msa.Category.Value }, dependsOn: afterMsa);
-                break;
-        }
+        foreach (var (kind, after) in MsaFieldWrites(msa, slots))
+            Add(kind, msaId, after, dependsOn: afterMsa);
 
         if (!withSense) return operations;
         var senseId = Mint();
@@ -285,29 +242,86 @@ public static class AuthorLexicalEntryComposer
         }
     }
 
-    private static void RequireMsaShape(LexicalEntryMsa msa)
+
+    /// <summary>
+    /// Checks the categories, slots and stem class a grammatical info names exist and fit each other, and returns the
+    /// category it is about.
+    /// </summary>
+    internal static IPartOfSpeech RequireMsaReferences(LcmCache cache, LexicalEntryMsa msa, string construct)
     {
-        if (!Enum.IsDefined(msa.Kind))
-            throw new InvalidOperationException($"'{ConstructName}': unknown msa kind '{msa.Kind}'.");
-        if (msa.ToCategory is not null && msa.Kind != LexicalEntryMsaKind.Derivational)
-            throw new InvalidOperationException($"'{ConstructName}': only a derivational msa takes 'toCategory'.");
-        if (msa.Kind == LexicalEntryMsaKind.Derivational && msa.ToCategory is null)
-            throw new InvalidOperationException($"'{ConstructName}': a derivational msa needs 'toCategory'.");
-        if (msa.Slots is not null && msa.Kind != LexicalEntryMsaKind.Inflectional)
-            throw new InvalidOperationException($"'{ConstructName}': only an inflectional msa takes 'slots'.");
-        if (msa.InflectionClass is not null && msa.Kind != LexicalEntryMsaKind.Stem)
-            throw new InvalidOperationException($"'{ConstructName}': only a stem msa takes 'inflectionClass'.");
+        var category = LexicalFormAuthoring.Resolve<IPartOfSpeech>(cache, msa.Category, construct);
+        if (msa.ToCategory is { } toCategory) LexicalFormAuthoring.Resolve<IPartOfSpeech>(cache, toCategory, construct);
+        var slots = msa.Slots ?? [];
+        if (slots.Select(id => id.ToGuid()).Distinct().Count() != slots.Count)
+            throw new InvalidOperationException($"'{construct}': slots must not repeat.");
+        foreach (var slotId in slots)
+        {
+            var slot = LexicalFormAuthoring.Resolve<IMoInflAffixSlot>(cache, slotId, construct);
+            if (!LexicalFormAuthoring.SlotServesCategory(slot.Owner as IPartOfSpeech, category))
+                throw new InvalidOperationException(
+                    $"'{construct}': slot '{slotId.Value}' does not belong to the category or one of its ancestors or subcategories." +
+                    LexicalFormAuthoring.UnrelatedSlotAdvice);
+        }
+        if (msa.InflectionClass is { } classId)
+        {
+            var inflectionClass = LexicalFormAuthoring.Resolve<IMoInflClass>(cache, classId, construct);
+            if (!LexicalFormAuthoring.InCategoryOrAncestor(LexicalFormAuthoring.OwningCategory(inflectionClass), category))
+                throw new InvalidOperationException(
+                    $"'{construct}': inflection class '{classId.Value}' does not belong to the category.");
+        }
+        return category;
     }
 
-    private static string MsaClass(LexicalEntryMsaKind kind) => kind switch
+    /// <summary>The field writes, in order, that fill a freshly created grammatical info of <paramref name="msa"/>'s kind.</summary>
+    internal static IEnumerable<(string Kind, object After)> MsaFieldWrites(LexicalEntryMsa msa,
+        IReadOnlyList<CanonicalId> slots)
+    {
+        switch (msa.Kind)
+        {
+            case LexicalEntryMsaKind.Stem:
+                yield return (MoStemMsaPartOfSpeechOperationKinds.SetPartOfSpeech, new { @ref = msa.Category.Value });
+                if (msa.InflectionClass is { } inflectionClass)
+                    yield return (MoStemMsaInflectionClassOperationKinds.SetInflectionClass,
+                        new { @ref = inflectionClass.Value });
+                break;
+            case LexicalEntryMsaKind.Inflectional:
+                yield return (MoInflAffMsaPartOfSpeechOperationKinds.SetPartOfSpeech, new { @ref = msa.Category.Value });
+                foreach (var slot in slots.OrderBy(id => id.Value, StringComparer.Ordinal))
+                    yield return (MoInflAffMsaSlotsOperationKinds.AddRefSlots, new { member = slot.Value });
+                break;
+            case LexicalEntryMsaKind.Derivational:
+                yield return (MoDerivAffMsaFromPartOfSpeechOperationKinds.SetFromPartOfSpeech,
+                    new { @ref = msa.Category.Value });
+                yield return (MoDerivAffMsaToPartOfSpeechOperationKinds.SetToPartOfSpeech,
+                    new { @ref = msa.ToCategory!.Value.Value });
+                break;
+            case LexicalEntryMsaKind.Unclassified:
+                yield return (MoUnclassifiedAffixMsaPartOfSpeechOperationKinds.SetPartOfSpeech,
+                    new { @ref = msa.Category.Value });
+                break;
+        }
+    }
+
+    internal static void RequireMsaShape(LexicalEntryMsa msa, string construct)
+    {
+        if (!Enum.IsDefined(msa.Kind))
+            throw new InvalidOperationException($"'{construct}': unknown msa kind '{msa.Kind}'.");
+        if (msa.ToCategory is not null && msa.Kind != LexicalEntryMsaKind.Derivational)
+            throw new InvalidOperationException($"'{construct}': only a derivational msa takes 'toCategory'.");
+        if (msa.Kind == LexicalEntryMsaKind.Derivational && msa.ToCategory is null)
+            throw new InvalidOperationException($"'{construct}': a derivational msa needs 'toCategory'.");
+        if (msa.Slots is not null && msa.Kind != LexicalEntryMsaKind.Inflectional)
+            throw new InvalidOperationException($"'{construct}': only an inflectional msa takes 'slots'.");
+        if (msa.InflectionClass is not null && msa.Kind != LexicalEntryMsaKind.Stem)
+            throw new InvalidOperationException($"'{construct}': only a stem msa takes 'inflectionClass'.");
+    }
+
+    internal static string MsaClass(LexicalEntryMsaKind kind) => kind switch
     {
         LexicalEntryMsaKind.Stem => "MoStemMsa",
         LexicalEntryMsaKind.Inflectional => "MoInflAffMsa",
         LexicalEntryMsaKind.Derivational => "MoDerivAffMsa",
         LexicalEntryMsaKind.Unclassified => "MoUnclassifiedAffixMsa",
-        _ => throw new InvalidOperationException($"'{ConstructName}': unknown msa kind '{kind}'."),
+        _ => throw new InvalidOperationException($"unknown msa kind '{kind}'."),
     };
-
-    private static IPartOfSpeech Category(LcmCache cache, CanonicalId id) =>
-        LexicalFormAuthoring.Resolve<IPartOfSpeech>(cache, id, ConstructName);
 }

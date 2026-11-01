@@ -37,6 +37,7 @@ internal static class ComposerDefinitions
         new SetNoDefaultCompoundingDefinition(),
         new SetNotOnCliticsDefinition(),
         new AuthorCircumfixDefinition(),
+        new AddMorphoSyntaxAnalysisDefinition(),
         new SetEntryDoNotParseDefinition(),
         new RewriteLexemeFormDefinition(),
         new SetStemPartOfSpeechDefinition(),

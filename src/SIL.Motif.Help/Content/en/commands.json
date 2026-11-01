@@ -1172,6 +1172,30 @@
     ],
     "redirect": "Use when one meaning is marked on both sides of the stem at once. Markers that can occur apart are two entries in slots (guide suffix-prefix-slots)."
   },
+  "compose-add-morphosyntax-analysis": {
+    "title": "Add a grammatical analysis",
+    "description": "Stages one more grammatical info on an entry that already has one, as FieldWorks holds it: an entry owns any number of analyses, each sense points at one, and the parser loads every analysis of the entry as its own rule or stem. One suffix entry can then serve two categories. The new analysis can take existing senses of the entry, a new sense with a gloss, or neither. It refuses a stem analysis on an affix, an affix analysis on a stem, and a sense that belongs to another entry. Dry Run and Trial before a person Applies the Proposal.",
+    "source": "Authored from the typed command contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "entry": "Id of the existing or earlier-staged entry that gains the analysis.",
+      "msa": "The new grammatical info: kind stem, inflectional, derivational or unclassified to suit the entry's form, its category, for derivational also toCategory, for inflectional also slots, for a stem also inflectionClass.",
+      "senses": "Optional ids of senses of this entry that should point at the new analysis instead of the one they have.",
+      "gloss": "Optional gloss for a new sense that points at the new analysis; goes with analysisWs.",
+      "analysisWs": "Analysis writing system tag of the new sense's gloss and definition.",
+      "definition": "Optional definition of the new sense; needs gloss."
+    },
+    "goals": [
+      "Let a verb suffix also serve as a copula suffix",
+      "Give an entry a second category and a sense for it",
+      "Point a sense at a different grammatical analysis of its entry"
+    ],
+    "guides": [
+      "suffix-prefix-slots",
+      "workflow"
+    ],
+    "redirect": "Use when one form serves two categories. Changing the one analysis an entry has from one affix kind to another: compose-change-affix-kind. A brand-new entry: compose-author-lexical-entry."
+  },
   "compose-author-feature-value": {
     "title": "Author a feature value",
     "description": "Stages a closed feature specification in an existing or earlier-staged structure, with value omitted when unchosen. Inflectional affix requirements use current morphosyntactic definitions, and any supplied value must belong to the exact feature. Only a person can Apply.",
