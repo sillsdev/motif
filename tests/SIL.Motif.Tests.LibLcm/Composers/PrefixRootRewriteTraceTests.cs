@@ -109,7 +109,8 @@ public sealed class PrefixRootRewriteTraceTests(PristineProjectFixture pristine,
     {
         using var cache = pristine.NewScratch();
         var candidate = BuildSuffixContextCandidate(cache, pristine.Seed);
-        var stray = AddBoundaryMarker(cache, Guid.NewGuid(), "+");
+        // Fixed so the stray sorts after the standard marker; PanGloss keeps the first collider.
+        var stray = AddBoundaryMarker(cache, new Guid("ffffffff-ffff-ffff-ffff-ffffffffffff"), "+");
         var operations = AuthorPhonologicalRuleComposer.Build(cache, new(
             "r becomes t after a at a morpheme boundary",
             PhonologicalRuleDirection.Simultaneous,
