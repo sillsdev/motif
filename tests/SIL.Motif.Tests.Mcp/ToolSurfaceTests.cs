@@ -354,6 +354,8 @@ public sealed class ToolSurfaceTests
             "compose-edit-affix-template",
             "compose-edit-inflectional-affix",
             "compose-edit-derivational-affix-restriction",
+            "compose-author-exception-feature",
+            "compose-edit-exception-features",
             "compose-edit-allomorph-condition",
             "order-allomorphs",
             "compose-author-text",

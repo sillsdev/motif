@@ -899,6 +899,45 @@
     ],
     "redirect": "For a derivational affix only. An inflectional affix is restricted by the inflection classes on its form (compose-edit-affix-inflection-classes)."
   },
+  "compose-author-exception-feature": {
+    "title": "Add an exception feature",
+    "description": "Stages a new exception feature in the project's Exception Features list, the tag that stems carry and affixes or rules can require. It refuses a name the list already has. Only a person can Apply.",
+    "source": "Authored from the typed command contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "name": "Name of the feature, such as the class of stems it marks.",
+      "ws": "Writing system tag of the name and abbreviation.",
+      "abbreviation": "Optional short label."
+    },
+    "goals": [
+      "Add a tag for a class of exceptional stems",
+      "Create the feature a restricted affix will require",
+      "Create the feature a sound rule will exclude"
+    ],
+    "guides": [
+      "suffix-prefix-slots"
+    ],
+    "redirect": "Add a feature only for a lexical class with a reason, since a feature per stem is just a stem list (guides suffix-prefix-slots)."
+  },
+  "compose-edit-exception-features": {
+    "title": "Set exception features",
+    "description": "Sets the exact exception features a stem or clitic carries, or the ones an inflectional affix requires of its stem. An empty list clears the set. Derivational affixes use their own command. Motif stages a Draft for a person to review and Apply.",
+    "source": "Authored from the typed command contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "msa": "Id of the grammatical info of a stem, clitic or inflectional affix entry.",
+      "exceptionFeatures": "Exact set of exception feature ids; an empty list removes them all."
+    },
+    "goals": [
+      "Tag the stems that may take a restricted affix",
+      "Make an inflectional affix attach only to tagged stems",
+      "Mark the stems a sound rule must skip"
+    ],
+    "guides": [
+      "suffix-prefix-slots"
+    ],
+    "redirect": "For a stem, clitic or inflectional affix. A derivational affix uses compose-edit-derivational-affix-restriction (guides suffix-prefix-slots)."
+  },
   "compose-edit-allomorph-condition": {
     "title": "Edit an allomorph condition",
     "description": "Changes the environment references on one existing stem or affix allomorph after checking its current list. Shared environments remain unchanged for every other allomorph that uses them. Only a person can Apply.",

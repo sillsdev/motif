@@ -285,6 +285,8 @@ public sealed class FindComposerTests
         { "Put the marker in the middle of the root", "compose-author-affix-process" },
         { "Add a nasal substitution form to the existing prefix", "compose-author-affix-process-allomorph" },
         { "Make the derivational prefix attach only to stems of one inflection class", "compose-edit-derivational-affix-restriction" },
+        { "Add a new exception feature for the loan stems", "compose-author-exception-feature" },
+        { "Tag this stem with an exception feature", "compose-edit-exception-features" },
         { "Mark the subject agreement slot as optional", "compose-edit-affix-slot" },
         { "Disapprove the wrong analysis of this wordform", "compose-edit-analysis-decision" },
         { "Add a second spelling for the plural prefix that appears before consonants", "compose-author-alternate-form" },

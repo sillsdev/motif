@@ -26,9 +26,20 @@ public static class CmPossibilityListPossibilitiesOperationKinds
             Create, SnapshotFields.CmPossibilityListPossibilities, owner => owner.PossibilitiesOS.Cast<ICmObject>().ToArray(),
             (cache, owner, guid, index, concreteClass) =>
             {
-                if (owner.ItemClsid != PartOfSpeechTags.kClassId)
-                            throw new InvalidOperationException("Only the parts-of-speech list accepts a PartOfSpeech item.");
-                        cache.ServiceLocator.GetInstance<IPartOfSpeechFactory>().Create(guid, owner);
-            }, true, false, new[] { "PartOfSpeech" }, "CmPossibility", false));
+                if (concreteClass == "PartOfSpeech")
+                        {
+                            if (owner.ItemClsid != PartOfSpeechTags.kClassId)
+                                throw new InvalidOperationException("Only the parts-of-speech list accepts a PartOfSpeech item.");
+                            cache.ServiceLocator.GetInstance<IPartOfSpeechFactory>().Create(guid, owner);
+                        }
+                        else if (concreteClass == "CmPossibility")
+                        {
+                            if (cache.LangProject.MorphologicalDataOA?.ProdRestrictOA != owner)
+                                throw new InvalidOperationException("Only the exception features list accepts a CmPossibility item.");
+                            cache.ServiceLocator.GetInstance<ICmPossibilityFactory>().Create(guid, owner);
+                        }
+                        else
+                            throw new InvalidOperationException("A new item needs a part of speech or an exception feature.");
+            }, true, false, new[] { "PartOfSpeech", "CmPossibility" }, "CmPossibility", false));
     }
 }

@@ -27,6 +27,8 @@ internal static class ComposerDefinitions
         new SplitPhonemeDefinition(),
         new EditAffixInflectionClassesDefinition(),
         new EditDerivationalAffixRestrictionDefinition(),
+        new AuthorExceptionFeatureDefinition(),
+        new EditExceptionFeaturesDefinition(),
         new EditCompoundRuleDefinition(),
         new EditPartOfSpeechInflectionClassDefaultDefinition(),
         new EditStemAllomorphStemNameDefinition(),

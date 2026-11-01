@@ -50,6 +50,8 @@
     { "tool": "motif_merge_phoneme" },
     { "tool": "motif_split_phoneme" },
     { "tool": "motif_edit_derivational_affix_restriction" },
+    { "tool": "motif_author_exception_feature" },
+    { "tool": "motif_edit_exception_features" },
     { "tool": "motif_edit_compound_rule" },
     { "tool": "motif_set_no_default_compounding" },
     { "tool": "motif_set_entry_do_not_parse" },

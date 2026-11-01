@@ -75,6 +75,12 @@
       "tool": "motif_edit_derivational_affix_restriction"
     },
     {
+      "tool": "motif_author_exception_feature"
+    },
+    {
+      "tool": "motif_edit_exception_features"
+    },
+    {
       "tool": "motif_add_feature_value"
     },
     {

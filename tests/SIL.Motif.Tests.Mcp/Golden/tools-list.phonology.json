@@ -2007,5 +2007,82 @@
     "readOnlyHint": false,
     "destructiveHint": false,
     "idempotentHint": false
+  },
+  {
+    "name": "motif_author_exception_feature",
+    "description": "Add an exception feature. Research first: motif_guide topic suffix-prefix-slots; check best practice. Add a feature only for a lexical class with a reason, since a feature per stem is just a stem list (guides suffix-prefix-slots). Stages a new exception feature in the project\u0027s Exception Features list, the tag that stems carry and affixes or rules can require. It refuses a name the list already has. Only a person can Apply.\nCommand: compose-author-exception-feature. Agent class: Draft.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "Draft name."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the feature, such as the class of stems it marks."
+        },
+        "ws": {
+          "type": "string",
+          "description": "Writing system tag of the name and abbreviation."
+        },
+        "abbreviation": {
+          "type": "string",
+          "description": "Optional short label."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "draft",
+        "name",
+        "ws",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_edit_exception_features",
+    "description": "Set exception features. Research first: motif_guide topic suffix-prefix-slots; check best practice. For a stem, clitic or inflectional affix. A derivational affix uses compose-edit-derivational-affix-restriction (guides suffix-prefix-slots). Sets the exact exception features a stem or clitic carries, or the ones an inflectional affix requires of its stem. An empty list clears the set. Derivational affixes use their own command. Motif stages a Draft for a person to review and Apply.\nCommand: compose-edit-exception-features. Agent class: Draft.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "Draft name."
+        },
+        "msa": {
+          "type": "string",
+          "description": "Id of the grammatical info of a stem, clitic or inflectional affix entry."
+        },
+        "exceptionFeatures": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Exact set of exception feature ids; an empty list removes them all."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "draft",
+        "msa",
+        "exceptionFeatures",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
   }
 ]

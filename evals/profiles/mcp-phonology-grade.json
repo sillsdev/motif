@@ -87,6 +87,14 @@
       "class": "Draft"
     },
     {
+      "name": "motif_author_exception_feature",
+      "class": "Draft"
+    },
+    {
+      "name": "motif_edit_exception_features",
+      "class": "Draft"
+    },
+    {
       "name": "motif_add_part_of_speech",
       "class": "Draft"
     },

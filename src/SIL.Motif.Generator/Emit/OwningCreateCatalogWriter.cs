@@ -127,9 +127,20 @@ public static class OwningCreateCatalogWriter
             "var child = cache.ServiceLocator.GetInstance<IMoInflAffixTemplateFactory>().Create(guid);\n" +
             "owner.AffixTemplatesOS.Insert(index, child);", SupportsMove: true),
         new("CmPossibilityList", "Possibilities", "CmPossibility", FieldCard.Seq,
-            "if (owner.ItemClsid != PartOfSpeechTags.kClassId)\n" +
-            "    throw new InvalidOperationException(\"Only the parts-of-speech list accepts a PartOfSpeech item.\");\n" +
-            "cache.ServiceLocator.GetInstance<IPartOfSpeechFactory>().Create(guid, owner);", PositionMatters: false),
+            "if (concreteClass == \"PartOfSpeech\")\n" +
+            "{\n" +
+            "    if (owner.ItemClsid != PartOfSpeechTags.kClassId)\n" +
+            "        throw new InvalidOperationException(\"Only the parts-of-speech list accepts a PartOfSpeech item.\");\n" +
+            "    cache.ServiceLocator.GetInstance<IPartOfSpeechFactory>().Create(guid, owner);\n" +
+            "}\n" +
+            "else if (concreteClass == \"CmPossibility\")\n" +
+            "{\n" +
+            "    if (cache.LangProject.MorphologicalDataOA?.ProdRestrictOA != owner)\n" +
+            "        throw new InvalidOperationException(\"Only the exception features list accepts a CmPossibility item.\");\n" +
+            "    cache.ServiceLocator.GetInstance<ICmPossibilityFactory>().Create(guid, owner);\n" +
+            "}\n" +
+            "else\n" +
+            "    throw new InvalidOperationException(\"A new item needs a part of speech or an exception feature.\");", PositionMatters: false),
         new("CmPossibility", "SubPossibilities", "CmPossibility", FieldCard.Seq,
             "if (owner is not IPartOfSpeech parent)\n" +
             "    throw new InvalidOperationException(\"Only a part of speech accepts a PartOfSpeech subcategory.\");\n" +
@@ -233,6 +244,8 @@ public static class OwningCreateCatalogWriter
                     "PhSimpleContext" => "new[] { \"PhSimpleContextSeg\", \"PhSimpleContextNC\", \"PhSimpleContextBdry\" }",
                     "PhPhonContext" => "new[] { \"PhSimpleContextSeg\", \"PhSimpleContextNC\", \"PhSimpleContextBdry\", \"PhSequenceContext\" }",
                     "StPara" => "new[] { \"StTxtPara\" }",
+                    "CmPossibility" when creation.Owner == "CmPossibilityList" =>
+                        "new[] { \"PartOfSpeech\", \"CmPossibility\" }",
                     "CmPossibility" => "new[] { \"PartOfSpeech\" }",
                     "FsFeatDefn" => "new[] { \"FsClosedFeature\" }",
                     "MoMorphSynAnalysis" => "new[] { \"MoStemMsa\", \"MoInflAffMsa\", \"MoDerivAffMsa\", \"MoUnclassifiedAffixMsa\" }",
