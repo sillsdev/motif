@@ -1480,9 +1480,9 @@
       "Flip a reduplicating affix back to its earlier kind"
     ],
     "guides": [
-      "affix-slots-and-templates"
+      "suffix-prefix-slots"
     ],
-    "redirect": "Choose inflectional or derivational on the evidence and change it later if it was wrong; leaving an affix unclassified is a stopgap (guides affix-slots-and-templates)."
+    "redirect": "Choose inflectional or derivational on the evidence and change it later if it was wrong; leaving an affix unclassified is a stopgap (guides suffix-prefix-slots)."
   },
   "compose-edit-clitic-attachment": {
     "title": "Edit a clitic’s Attaches to Categories",
