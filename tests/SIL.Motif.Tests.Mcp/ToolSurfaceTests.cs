@@ -34,7 +34,7 @@ public sealed class ToolSurfaceTests
     [InlineData("motif_change_affix_kind", new[] { "draft", "msa", "kind", "toCategory", "slots", "project" })]
     [InlineData("motif_edit_clitic_attachment", new[] { "draft", "target", "expectedCategories", "categories", "project" })]
     [InlineData("motif_link_variant", new[] { "draft", "target", "component", "variantType", "project" })]
-    [InlineData("motif_author_adhoc_prohibition", new[] { "draft", "kind", "first", "rest", "adjacency", "project" })]
+    [InlineData("motif_author_adhoc_prohibition", new[] { "draft", "kind", "first", "rest", "restAnyOf", "adjacency", "project" })]
     [InlineData("motif_make_variant_of", new[] { "draft", "entry", "component", "variantType", "project" })]
     [InlineData("motif_delete_empty_sense", new[] { "draft", "target", "entry", "project" })]
     public void VariantComposersHaveTypedDraftOnlyTools(string name, string[] arguments)

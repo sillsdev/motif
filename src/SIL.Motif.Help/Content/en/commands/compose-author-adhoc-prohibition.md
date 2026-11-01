@@ -9,6 +9,17 @@ motif compose-author-adhoc-prohibition --project language.fwdata --draft <name> 
 
 A morpheme is a grammatical analysis (MSA) of an entry; an allomorph is a lexeme form or alternate form. Both may be created earlier in the same Draft. `adjacency` defaults to `anywhere`, as in FieldWorks; the other values are `somewhere-to-right`, `somewhere-to-left`, `adjacent-to-right` and `adjacent-to-left`. The prohibition is created enabled.
 
+## One prohibition over a set of alternatives
+
+FieldWorks holds the rest as a sequence that must all be present, so a single prohibition cannot ban "any of these". To ban the first from every member of a set, give `restAnyOf` instead of `rest`:
+
+```sh
+motif compose-author-adhoc-prohibition --project language.fwdata --draft <name> \
+  --intent '{"kind":"morpheme","first":"<msa-id>","restAnyOf":["<msa-id>","<msa-id>"]}'
+```
+
+The command stages one prohibition per member, all in the same Proposal, and the Dry Run states each in full. A member that duplicates an existing prohibition, or equals the first, is refused and nothing is staged. Give `rest` or `restAnyOf`, not both.
+
 ## Which side is the first on
 
 The adjacency says where the **first** sits relative to the **rest**, read as the sentence "the first cannot occur ___ the rest". `somewhere-to-right` and `adjacent-to-right` mean the first is on the right of the rest, that is, later in the word; `somewhere-to-left` and `adjacent-to-left` mean the first is on the left, earlier in the word. It is easy to read this the other way round for a prefix.

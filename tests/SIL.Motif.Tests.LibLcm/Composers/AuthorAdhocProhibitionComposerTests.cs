@@ -196,6 +196,47 @@ public sealed class AuthorAdhocProhibitionComposerTests : IDisposable
         Assert.Equal("anywhere", parsed.Adjacency);
     }
 
+    [Fact]
+    public void ASetOfOneAlternativeStagesTheSameSingleProhibitionAsOneRestMember()
+    {
+        var (a, b, _) = Seed();
+        var viaSet = Assert.Single(AnyOf(a, [b]));
+        var viaRest = Assert.Single(MorphemeRest(a, b));
+        Assert.Equal(viaRest.Kind, viaSet.Kind);
+        Assert.Equal(viaRest.After!.Value.GetRawText(), viaSet.After!.Value.GetRawText());
+    }
+
+    [Fact]
+    public void ARepeatedAlternativeIsRefusedAndStagesNothing()
+    {
+        var (a, b, c) = Seed();
+        var repeat = Assert.Throws<InvalidOperationException>(() => AnyOf(a, [b, c, b]));
+        Assert.Contains("must not repeat an alternative", repeat.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AnAlternativeEqualToTheFirstRefusesTheWholeSetAsSelfProhibition()
+    {
+        var (a, b, _) = Seed();
+        Assert.Equal(RefusalCodes.AdhocProhibitionSelf, Code(() => AnyOf(a, [b, a])));
+    }
+
+    [Fact]
+    public void AnEmptySetOfAlternativesIsRefused()
+    {
+        var (a, _, _) = Seed();
+        var empty = Assert.Throws<InvalidOperationException>(() => AnyOf(a, []));
+        Assert.Contains("must name at least one alternative", empty.Message, StringComparison.Ordinal);
+    }
+
+    private IReadOnlyList<OperationEnvelope> MorphemeRest(ILexEntry first, ILexEntry rest) =>
+        AuthorAdhocProhibitionComposer.Build(_cache, new("morpheme", Id(first.MorphoSyntaxAnalysesOC.Single()),
+            [Id(rest.MorphoSyntaxAnalysesOC.Single())], "anywhere"));
+
+    private IReadOnlyList<OperationEnvelope> AnyOf(ILexEntry first, ILexEntry[] members) =>
+        AuthorAdhocProhibitionComposer.Build(_cache, new("morpheme", Id(first.MorphoSyntaxAnalysesOC.Single()), [], "anywhere",
+            members.Select(e => Id(e.MorphoSyntaxAnalysesOC.Single())).ToArray()));
+
     private IReadOnlyList<OperationEnvelope> Build(string kind, ILexEntry first, ILexEntry[] rest, string adjacency) =>
         AuthorAdhocProhibitionComposer.Build(_cache, new(kind, Id(first.LexemeFormOA), rest.Select(e => Id(e.LexemeFormOA)).ToArray(), adjacency));
 

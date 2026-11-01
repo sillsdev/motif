@@ -15,8 +15,9 @@ internal sealed class AuthorAdhocProhibitionDefinition : ComposerDefinition<Auth
     public override IntentShape Shape { get; } = IntentShape.Of(
         Field.Choice("kind", [AdhocProhibitionPayload.Morpheme, AdhocProhibitionPayload.Allomorph], required: true),
         Field.Id("first", IdRole.Reference, required: true),
-        Field.Ids("rest", IdRole.Reference, required: true),
-        Field.Choice("adjacency", AdhocProhibitionPayload.Adjacencies));
+        Field.Ids("rest", IdRole.Reference),
+        Field.Ids("restAnyOf", IdRole.Reference),
+        Field.Choice("adjacency", AdhocProhibitionPayload.Adjacencies)).AtMostOne("rest", "restAnyOf");
     public override ComposerExposure Exposure { get; } =
         new(CommandSurface.AdvancedAi, AgentClass.Draft, ToolName: "motif_author_adhoc_prohibition");
     public override AuthorAdhocProhibitionIntent Parse(JsonElement authored) => AuthorAdhocProhibitionIntentParser.Parse(authored);

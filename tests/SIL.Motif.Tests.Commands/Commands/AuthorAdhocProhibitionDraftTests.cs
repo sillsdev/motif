@@ -87,6 +87,33 @@ public sealed class AuthorAdhocProhibitionDraftTests(PristineProjectFixture pris
     }
 
     [Fact]
+    public void ASetOfAlternativesStagesOneProhibitionPerMemberEachDependingOnItsEntry()
+    {
+        using var cache = pristine.NewScratch();
+        var path = cache.ProjectId.Path;
+        var (vernacular, analysis) = Writing(cache);
+        new FwDataProjectLoader().Save(cache);
+        Assert.True(ProposalCommands.New(new(path, Version, "any-of", "Forbid a set")).Succeeded);
+        var first = Author(path, "any-of", "pa", vernacular, analysis);
+        var one = Author(path, "any-of", "bago", vernacular, analysis);
+        var two = Author(path, "any-of", "gabo", vernacular, analysis);
+        var staged = ProposalCommands.ComposeIntent(new(path, Version, "any-of", Verb,
+            Json(new { kind = "morpheme", first = first.Msa, restAnyOf = new[] { one.Msa, two.Msa } })));
+        Assert.True(staged.Succeeded, staged.Refusal?.Message);
+        var both = ProposalCommands.ComposeIntent(new(path, Version, "any-of", Verb,
+            Json(new { kind = "morpheme", first = first.Msa, rest = new[] { one.Msa }, restAnyOf = new[] { two.Msa } })));
+        Assert.False(both.Succeeded);
+        Assert.True(DraftRationale.Write(path, Version, "any-of", "Stop pa from joining either stem.").Succeeded);
+        var creates = ReadFinal(path, "any-of").Operations
+            .Where(operation => operation.Kind == AdhocProhibitionCreateOperationKinds.Create).ToArray();
+        Assert.Equal(2, creates.Length);
+        Assert.All(creates, create => Assert.Contains(create.DependsOn,
+            dependency => dependency.OperationId == CanonicalId.Parse(first.MsaOperation)));
+        Assert.Contains(creates, create => create.DependsOn.Any(dependency => dependency.OperationId == CanonicalId.Parse(one.MsaOperation)));
+        Assert.Contains(creates, create => create.DependsOn.Any(dependency => dependency.OperationId == CanonicalId.Parse(two.MsaOperation)));
+    }
+
+    [Fact]
     public void TheVerbIsOfferedToAnAgentAsADraftComposer()
     {
         var descriptor = Assert.Single(ProposalCommands.ComposerDescriptors, composer => composer.Verb == Verb);

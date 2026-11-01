@@ -519,7 +519,8 @@
       "draft": "Draft name.",
       "kind": "morpheme for a prohibition between morphemes (grammatical analyses of entries), or allomorph for one between forms.",
       "first": "Id of the first morpheme or allomorph, the one the prohibition is stated about.",
-      "rest": "Ids of the morphemes or allomorphs it cannot occur with, left to right when the adjacency is not anywhere.",
+      "rest": "Ids of the morphemes or allomorphs it cannot occur with, all together, left to right when the adjacency is not anywhere. Give this or restAnyOf.",
+      "restAnyOf": "Ids of alternatives, any one of which the first cannot occur with. Each becomes its own prohibition in the same Proposal. Give this or rest.",
       "adjacency": "Where the first sits relative to the rest: anywhere (the default), somewhere-to-right or adjacent-to-right (the first is after the rest in the word), somewhere-to-left or adjacent-to-left (the first is before the rest). A prefix as first with a stem as rest needs anywhere, somewhere-to-left or adjacent-to-left; a suffix as first with a stem as rest needs anywhere, somewhere-to-right or adjacent-to-right."
     },
     "goals": [

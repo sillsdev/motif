@@ -3895,7 +3895,14 @@
                         "items": {
                           "type": "string"
                         },
-                        "description": "Ids of the morphemes or allomorphs it cannot occur with, left to right when the adjacency is not anywhere."
+                        "description": "Ids of the morphemes or allomorphs it cannot occur with, all together, left to right when the adjacency is not anywhere. Give this or restAnyOf."
+                      },
+                      "restAnyOf": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Ids of alternatives, any one of which the first cannot occur with. Each becomes its own prohibition in the same Proposal. Give this or rest."
                       },
                       "adjacency": {
                         "type": "string",
@@ -3912,8 +3919,17 @@
                     "additionalProperties": false,
                     "required": [
                       "kind",
-                      "first",
-                      "rest"
+                      "first"
+                    ],
+                    "allOf": [
+                      {
+                        "not": {
+                          "required": [
+                            "rest",
+                            "restAnyOf"
+                          ]
+                        }
+                      }
                     ]
                   },
                   "citation": {
