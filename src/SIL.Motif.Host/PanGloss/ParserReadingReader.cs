@@ -14,19 +14,32 @@ namespace SIL.Motif.Host.PanGloss;
 public static class ParserReadingReader
 {
     /// <summary>
-    /// Every reading in <paramref name="evidence"/>, in order; an identifier the project does not contain
+    /// Every reading in <paramref name="evidence"/>, in the project's reading order (closed class first, then
+    /// lexicon order, then fewest morphemes) rather than the parser's emission order; an identifier the project does not contain
     /// shows as a short marker in place of its text rather than being dropped.
     /// </summary>
+    /// <param name="closedCategories">
+    /// The project's closed categories from <see cref="ClosedCategories"/>; a caller reading many words computes
+    /// them once, and <see langword="null"/> computes them for this call alone.
+    /// </param>
     public static IReadOnlyList<ParserReading> Read(LcmCache cache, string projectName, ParseWordEvidence evidence,
-        Func<FieldWorksLinkTarget?, string?>? liveLink = null)
+        Func<FieldWorksLinkTarget?, string?>? liveLink = null, IReadOnlySet<Guid>? closedCategories = null)
     {
         ArgumentNullException.ThrowIfNull(cache);
         ArgumentNullException.ThrowIfNull(projectName);
         ArgumentNullException.ThrowIfNull(evidence);
         var objects = cache.ServiceLocator.ObjectRepository;
-        return evidence.Analyses
+        var mapped = evidence.Analyses
             .Select(analysis => new ParserReading(ReadMorphs(cache, objects, projectName, analysis.Morphs, liveLink)))
             .ToArray();
+        return ReadingOrder.Order(cache, evidence.Analyses, mapped, closedCategories ?? ReadingOrder.ClosedCategories(cache));
+    }
+
+    /// <summary>The categories nothing in the project builds on, which order closed-class readings first.</summary>
+    public static IReadOnlySet<Guid> ClosedCategories(LcmCache cache)
+    {
+        ArgumentNullException.ThrowIfNull(cache);
+        return ReadingOrder.ClosedCategories(cache);
     }
 
     /// <summary>

@@ -56,6 +56,13 @@ public sealed record ParserReading(IReadOnlyList<ParserReadingMorph> Morphs)
 
     /// <summary>The stored source morphology used by the ADR 0027 analysis matcher.</summary>
     public ApprovedMorphology? Identity { get; init; }
+
+    /// <summary>
+    /// The position of this reading among the parser's emitted analyses, which the Assessment's morphology and
+    /// reading grades are indexed by; <see langword="null"/> when the reading was not reordered.
+    /// </summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public int? SourceIndex { get; init; }
 }
 
 /// <summary>One morph of a <see cref="ParserReading"/>.</summary>

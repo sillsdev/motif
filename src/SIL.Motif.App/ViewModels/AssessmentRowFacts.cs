@@ -48,15 +48,23 @@ internal sealed record AssessmentRowFacts(AssessmentWordResult Source, int? Occu
     public PendingChangeState PendingState { get; set; }
     public string? StagedOpinionText { get; set; }
 
-    public WordChangeAction CaptureMatrixAction(string kind, WordActionTarget target) => new(target, kind,
-        kind == ChangeKinds.AddCandidate ? (Source.Morphology?.Analyses ?? []).Select((analysis, index) =>
-            new WordActionReading(analysis, $"Analysis {index + 1}: {ReadingText(index)}", index)).ToArray() : [], true);
+    public WordChangeAction CaptureMatrixAction(string kind, WordActionTarget target)
+    {
+        var analyses = Source.Morphology?.Analyses ?? [];
+        var readings = kind == ChangeKinds.AddCandidate
+            ? ReadingPositions.ShownOrder(Source.Readings, analyses.Count).Select(index => new WordActionReading(
+                analyses[index],
+                $"Analysis {ReadingPositions.NumberOf(Source.Readings, index, analyses.Count)}: {ReadingText(index)}", index))
+                .ToArray()
+            : [];
+        return new WordChangeAction(target, kind, readings, true);
+    }
 
     private string ReadingText(int index)
     {
         if (Source.Readings is { } readings)
-            return index < readings.Count ? string.Join(" + ", readings[index].Morphs.Select(morph => morph.Form))
-                + " = " + string.Join(" + ", readings[index].Morphs.Select(morph => morph.Gloss.Length == 0 ? MissingValue.Marker : morph.Gloss))
+            return ReadingPositions.For(readings, index) is { } shown ? string.Join(" + ", shown.Morphs.Select(morph => morph.Form))
+                + " = " + string.Join(" + ", shown.Morphs.Select(morph => morph.Gloss.Length == 0 ? MissingValue.Marker : morph.Gloss))
                 : "Unresolved";
         var morphs = Source.Morphology!.Analyses[index].Morphs;
         return string.Join(" + ", morphs.Select(morph => morph.GuessedString ?? "?")) + " = " +

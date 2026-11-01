@@ -185,10 +185,12 @@ public static class CurrentEvidenceQuery
             var navigation = snapshot.Navigation ?? SavedProjectNavigation.Read(projectPath, baseline.Token.ProjectIdentity);
             var context = BaselineWordContext.Read(reader.Cache, navigation,
                 snapshot.EffectiveWords.Select(word => word.Word).ToArray());
+            var closedCategories = includeResolvedReadings ? ParserReadingReader.ClosedCategories(reader.Cache) : null;
             var resolvedReadings = includeResolvedReadings
                 ? snapshot.EffectiveWords.Where(word => word.Morphology is not null).ToDictionary(
                     word => word.Word,
-                    word => (IReadOnlyList<ParserReading>)ParserReadingReader.Read(reader.Cache, string.Empty, word.Morphology!, navigation.LinkFor),
+                    word => (IReadOnlyList<ParserReading>)ParserReadingReader.Read(
+                        reader.Cache, string.Empty, word.Morphology!, navigation.LinkFor, closedCategories),
                     StringComparer.Ordinal)
                 : new Dictionary<string, IReadOnlyList<ParserReading>>(StringComparer.Ordinal);
             return CommandOutcome<CurrentEvidenceSnapshot>.Success(snapshot with

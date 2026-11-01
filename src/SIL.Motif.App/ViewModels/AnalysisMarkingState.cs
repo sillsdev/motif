@@ -126,6 +126,9 @@ public sealed record PanGlossReadingMarking(
     ParseAnalysis Analysis, ParserReading? Display, IReadOnlyList<string> MatchingAnalysisIds,
     string? MatchingOpinions)
 {
+    /// <summary>The number a person sees for this reading, in the order readings are shown; 0 when not set.</summary>
+    public int Number { get; init; }
+
     /// <summary>Whether a FieldWorks analysis has the same morphology.</summary>
     public bool MatchesStored => MatchingAnalysisIds.Count > 0;
 
@@ -303,10 +306,13 @@ public sealed record AnalysisMarkingState(
             result?.IsIncomplete ?? false, result?.Morphology, storedReadings);
         var readings = parses.Select((analysis, index) =>
         {
-            var display = renderings is not null && index < renderings.Count ? renderings[index] : null;
+            var display = ReadingPositions.For(renderings, index);
             var matches = classification.Readings[index];
             return new PanGlossReadingMarking(analysis, display, matches.MatchingAnalysisIds,
-                matches.MatchingOpinions.Count == 0 ? null : string.Join(", ", matches.MatchingOpinions));
+                matches.MatchingOpinions.Count == 0 ? null : string.Join(", ", matches.MatchingOpinions))
+            {
+                Number = ReadingPositions.NumberOf(renderings, index, parses.Count),
+            };
         }).ToArray();
 
         var markingClass = ToMarkingClass(classification.Class);

@@ -1155,10 +1155,12 @@ public sealed partial class CompareWordViewModel : ObservableObject, IDisposable
         NoReadingsText = word.NoReadingsText;
         ReadingCount = word.Morphology?.Analyses.Count ?? 0;
         ReadingChoices = word.Morphology?.Analyses.Select((reading, index) =>
-            new CompareReadingChoice(index, reading,
-                string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.CompareReadingChoiceFormat, index + 1,
-                    index < word.Readings.Count ? word.Readings[index].Text : MotifAppStrings.CompareReadingUnresolved)))
-            .ToArray() ?? [];
+            {
+                var shown = word.Readings.FirstOrDefault(candidate => candidate.SourceIndex == index);
+                return (Position: shown?.Number ?? int.MaxValue, Choice: new CompareReadingChoice(index, reading,
+                    string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.CompareReadingChoiceFormat,
+                        shown?.Number ?? index + 1, shown?.Text ?? MotifAppStrings.CompareReadingUnresolved)));
+            }).OrderBy(item => item.Position).Select(item => item.Choice).ToArray() ?? [];
     }
 
     public string Word { get; }

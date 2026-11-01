@@ -72,12 +72,12 @@ public sealed partial class ResultsTokenViewModel : ObservableObject, IDisposabl
         var analyses = result?.Morphology?.Analyses ?? [];
         var resolved = result?.Readings;
         var grades = result?.ReadingGrades;
-        Readings = analyses.Select((analysis, index) => new ResultsReadingViewModel(
-                ReadingText(resolved is not null && index < resolved.Count ? resolved[index] : null),
+        Readings = ReadingPositions.ShownOrder(resolved, analyses.Count).Select(index => new ResultsReadingViewModel(
+                ReadingText(ReadingPositions.For(resolved, index)),
                 grades is not null && index < grades.Count ? grades[index] : null,
                 storedId is not null && Marking.PanGlossReadings[index].MatchingAnalysisIds.Contains(
-                    storedId, StringComparer.Ordinal), analysis, index,
-                resolved is not null && index < resolved.Count ? resolved[index] : null))
+                    storedId, StringComparer.Ordinal), analyses[index], index,
+                ReadingPositions.For(resolved, index)))
             .ToArray();
 
         Verdict = result is null || Comparison.MeaningCode == "refused" ? OccurrenceVerdict.NotAssessed : Comparison.Outcome switch

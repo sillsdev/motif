@@ -306,9 +306,12 @@ public sealed class AssessWordRowViewModel
 
         var grades = word.ReadingGrades;
         var readings = word.Readings ?? Unresolved(word.Morphology);
-        Readings = readings.Select((reading, index) => new ParserReadingViewModel(
-                index + 1, reading, grades is { Count: var count } && index < count ? grades[index] : null))
-            .ToArray();
+        Readings = readings.Select((reading, position) =>
+            {
+                var index = reading.SourceIndex ?? position;
+                return new ParserReadingViewModel(position + 1, reading, grades is { Count: var count } && index < count ? grades[index] : null)
+                    { SourceIndex = index };
+            }).ToArray();
         ReadingText = string.Join(" | ", Readings.Select(reading => reading.Text));
         MissedApproved = (word.MissedApproved ?? [])
             .Select((reading, index) => new ParserReadingViewModel(index + 1, reading,
@@ -447,6 +450,10 @@ public sealed class ParserReadingViewModel
     }
 
     public int Number { get; }
+
+    /// <summary>The reading's position among the parser's emitted analyses, which grades and changes are indexed by.</summary>
+    public int SourceIndex { get; init; }
+
     public IReadOnlyList<ParserReadingMorphViewModel> Morphs { get; }
 
     /// <summary>The canonical ID of the stored project analysis, or <see langword="null"/> for parser output.</summary>

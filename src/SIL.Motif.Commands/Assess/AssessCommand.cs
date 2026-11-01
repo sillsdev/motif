@@ -633,14 +633,15 @@ public static class AssessCommand
                         pendingRecords.Single(record => record.Kind == AssessmentKind.ParseTime.ToStoredKind()).AssessmentId,
                         invocation.InvocationId,
                         DateTimeOffset.Parse(savedUtc, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind));
+                    var closedCategories = ParserReadingReader.ClosedCategories(namingCache);
                     try
                     {
                         words = words.Select(word =>
                         {
                             cancellationToken.ThrowIfCancellationRequested();
                             finalizing.SecondPassWordDone();
-                            var readings = word.Morphology is null
-                                ? null : ParserReadingReader.Read(namingCache, projectName, word.Morphology, navigation.LinkFor);
+                            var readings = word.Morphology is null ? null
+                                : ParserReadingReader.Read(namingCache, projectName, word.Morphology, navigation.LinkFor, closedCategories);
                             var readingGrades = GradesOf(word.Word, word.Morphology);
                             var projectStanding = wordContext.Standings.GetValueOrDefault(word.Word);
                             var missedApproved = NameMissed(word.Word, word.Correctness);

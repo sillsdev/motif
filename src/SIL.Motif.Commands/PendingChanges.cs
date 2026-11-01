@@ -1197,8 +1197,9 @@ public static class PendingChanges
                 if (matching.Length == 1) selected = matching[0].index;
             }
             var parserKeys = morphology.Analyses.Select(ProjectAnalysisKey.For).ToHashSet(StringComparer.Ordinal);
-            return readings.Select((reading, index) =>
+            return readings.Select((reading, position) =>
             {
+                var index = reading.SourceIndex ?? position;
                 var key = ProjectAnalysisKey.For(morphology.Analyses[index]);
                 var match = stored.FirstOrDefault(item => item.Key == key);
                 return new ReviewAnalysis(reading,

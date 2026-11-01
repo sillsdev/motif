@@ -192,7 +192,9 @@ public sealed class WordDisposition
         var readingIndexes = marking.SetChoices.Where(choice => choice.Kind == AnalysisMarkingActionKind.Add &&
                 choice.ReadingIndex is not null)
             .Select(choice => choice.ReadingIndex!.Value).Distinct().ToArray();
-        foreach (var index in readingIndexes)
+        foreach (var index in readingIndexes.OrderBy(index =>
+                     index < marking.PanGlossReadings.Count && marking.PanGlossReadings[index].Number > 0
+                         ? marking.PanGlossReadings[index].Number : index + 1))
         {
             var reading = index < marking.PanGlossReadings.Count ? marking.PanGlossReadings[index] : null;
             var morphs = reading?.Display?.Morphs ?? [];
@@ -206,7 +208,7 @@ public sealed class WordDisposition
                 tiles.Add(new WordDispositionTile(kind, false,
                     staged.Any(change => change.ReadingIndex == index && change.AfterApply == choice.AfterApply), choice, bind?.Invoke(choice)));
             }
-            readings.Add(new WordDispositionRow(readings.Count + 1, MorphText(morphs), GlossText(morphs),
+            readings.Add(new WordDispositionRow(reading is { Number: > 0 } ? reading.Number : readings.Count + 1, MorphText(morphs), GlossText(morphs),
                 "Different from FieldWorks", tiles));
         }
 
