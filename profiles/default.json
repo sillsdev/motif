@@ -44,6 +44,7 @@
     { "tool": "motif_add_affix_process" },
     { "tool": "motif_add_affix_process_allomorph" },
     { "tool": "motif_add_feature_value" },
+    { "tool": "motif_remove_feature_value" },
     { "tool": "motif_change_affix_kind" },
     { "tool": "motif_edit_phoneme" },
     { "tool": "motif_merge_phoneme" },

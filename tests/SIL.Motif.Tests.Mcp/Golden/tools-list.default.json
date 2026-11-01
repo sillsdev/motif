@@ -3635,6 +3635,59 @@
                     "type": "string",
                     "description": "Composing verb for this intent.",
                     "enum": [
+                      "compose-remove-feature-value"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for compose-remove-feature-value.",
+                    "properties": {
+                      "featStruc": {
+                        "type": "string",
+                        "description": "Id of the feature structure on a stem or inflectional affix."
+                      },
+                      "feature": {
+                        "type": "string",
+                        "description": "Id of the feature whose specification is removed."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "featStruc",
+                      "feature"
+                    ]
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
                       "compose-delete-empty-sense"
                     ]
                   },
@@ -5526,6 +5579,41 @@
         "value": {
           "type": "string",
           "description": "Optional symbolic value id."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "draft",
+        "featStruc",
+        "feature",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_remove_feature_value",
+    "description": "Remove a feature value. Research first: motif_guide topic feature-conditioned-slots; check best practice. Remove a requirement only when the affix really takes every value; to change a value, remove it and author the new one (guide feature-conditioned-slots). Stages the removal of one feature\u0027s specification from a stem\u0027s MsFeatures or an inflectional affix\u0027s InflFeats, so the stem stops carrying the feature or the affix stops requiring it. The feature structure stays. Refuses a feature the structure does not specify. Only a person can Apply.\nCommand: compose-remove-feature-value. Agent class: Draft.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "Draft name."
+        },
+        "featStruc": {
+          "type": "string",
+          "description": "Id of the feature structure on a stem or inflectional affix."
+        },
+        "feature": {
+          "type": "string",
+          "description": "Id of the feature whose specification is removed."
         },
         "project": {
           "type": "string",

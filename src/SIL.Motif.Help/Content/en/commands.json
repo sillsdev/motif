@@ -1070,6 +1070,25 @@
     ],
     "redirect": "Restrict a slot's affix by feature value; do not copy affixes or slots per value. Arbitrary lexical grouping is an inflection class (guide feature-conditioned-slots)."
   },
+  "compose-remove-feature-value": {
+    "title": "Remove a feature value",
+    "description": "Stages the removal of one feature's specification from a stem's MsFeatures or an inflectional affix's InflFeats, so the stem stops carrying the feature or the affix stops requiring it. The feature structure stays. Refuses a feature the structure does not specify. Only a person can Apply.",
+    "source": "Authored from the typed command contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "featStruc": "Id of the feature structure on a stem or inflectional affix.",
+      "feature": "Id of the feature whose specification is removed."
+    },
+    "goals": [
+      "Stop an affix requiring a noun class it should accept with any class",
+      "Take a wrong feature value off a stem",
+      "Undo an agreement requirement between two affixes"
+    ],
+    "guides": [
+      "feature-conditioned-slots"
+    ],
+    "redirect": "Remove a requirement only when the affix really takes every value; to change a value, remove it and author the new one (guide feature-conditioned-slots)."
+  },
   "compose-author-phoneme": {
     "title": "Author a phoneme",
     "description": "Stages a phoneme with explicitly authored name and representations in a Draft. Use its created identity in later natural classes or phonological rules. Only a person can Apply.",

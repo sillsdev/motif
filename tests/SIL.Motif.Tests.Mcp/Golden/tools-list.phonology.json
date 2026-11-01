@@ -1691,6 +1691,41 @@
     "idempotentHint": false
   },
   {
+    "name": "motif_remove_feature_value",
+    "description": "Remove a feature value. Research first: motif_guide topic feature-conditioned-slots; check best practice. Remove a requirement only when the affix really takes every value; to change a value, remove it and author the new one (guide feature-conditioned-slots). Stages the removal of one feature\u0027s specification from a stem\u0027s MsFeatures or an inflectional affix\u0027s InflFeats, so the stem stops carrying the feature or the affix stops requiring it. The feature structure stays. Refuses a feature the structure does not specify. Only a person can Apply.\nCommand: compose-remove-feature-value. Agent class: Draft.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "Draft name."
+        },
+        "featStruc": {
+          "type": "string",
+          "description": "Id of the feature structure on a stem or inflectional affix."
+        },
+        "feature": {
+          "type": "string",
+          "description": "Id of the feature whose specification is removed."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "draft",
+        "featStruc",
+        "feature",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
     "name": "motif_change_affix_kind",
     "description": "Change an affix\u2019s kind. Research first: motif_guide topic affix-slots-and-templates; check best practice. Choose inflectional or derivational on the evidence and change it later if it was wrong; leaving an affix unclassified is a stopgap (guides affix-slots-and-templates). Stages a change of one affix between inflectional, derivational and unclassified in place, keeping its category and the senses that use it. What the new kind cannot hold, such as a template slot or a To category, is reported as a warning, not refused. Dry Run and Trial before a person Applies the Proposal.\nCommand: compose-change-affix-kind. Agent class: Draft.",
     "inputSchema": {
