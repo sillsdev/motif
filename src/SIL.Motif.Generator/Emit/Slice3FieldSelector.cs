@@ -36,7 +36,7 @@ namespace SIL.Motif.Generator.Emit;
 /// for what this generator builds next. Of those 150, 4 already have a generated kind (<c>MoForm.Form</c>,
 /// <c>MoForm.IsAbstract</c>, <c>MoForm.MorphType</c>, <c>LexSense.Gloss</c> — all class-filtered into
 /// slice 1/2 already) and the rest are of shapes this generator does not support yet (owning/atomic
-/// beyond the one hand-written field, owning/col, owning/seq). What is left — 78 rows — is exactly
+/// beyond the one hand-written field, owning/col, owning/seq). What is left — 79 rows — is exactly
 /// what this selector yields. The other ~147 in-scope rows that share these three shapes but are not
 /// <c>HcReachable=yes</c> are deliberately excluded here, not blocked by a missing
 /// shape: see <see cref="Slice3CatalogWriter"/>'s remarks for the accounting.

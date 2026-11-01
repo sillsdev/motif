@@ -121,7 +121,7 @@ public class Slice3FieldSelectorTests
     }
 
     [Fact]
-    public void AllThreeSelectors_RealModel_TogetherYieldSeventyEightRows()
+    public void AllThreeSelectors_RealModel_TogetherYieldSeventyNineRows()
     {
         var model = MotifModelLoader.Load();
 
@@ -130,6 +130,6 @@ public class Slice3FieldSelectorTests
             Slice3FieldSelector.SelectAtomicSetClear(model.Rows).Count +
             Slice3FieldSelector.SelectCollectionAddRemove(model.Rows).Count;
 
-        Assert.Equal(78, total);
+        Assert.Equal(79, total);
     }
 }
