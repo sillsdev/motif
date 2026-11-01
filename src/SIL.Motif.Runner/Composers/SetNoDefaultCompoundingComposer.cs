@@ -60,6 +60,11 @@ public static class SetNoDefaultCompoundingComposer
             throw new InvalidOperationException(
                 $"'{ConstructName}': the project's ParserParameters is not well-formed XML ({error.Message}); fix it in FieldWorks first.");
         }
+        catch (FormatException error)
+        {
+            throw new InvalidOperationException(
+                $"'{ConstructName}': the project's NoDefaultCompounding value is not 0, 1, true or false, which FieldWorks cannot read either ({error.Message}); fix it in FieldWorks first.");
+        }
         if (current != intent.ExpectedNoDefaultCompounding)
             throw new InvalidOperationException(
                 $"'{ConstructName}': the project has NoDefaultCompounding={current}; " +

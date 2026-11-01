@@ -588,6 +588,26 @@
     ],
     "redirect": "Only turns the parser's built-in default compounding off or on; it authors no compound rule. Trial known compounds first and ask the linguist (guide workflow)."
   },
+  "compose-set-not-on-clitics": {
+    "title": "Set rules on clitics",
+    "description": "Stages one explicit change to whether the parser's phonological rules also run on a word with its clitic attached. By default the rules run on the word before a clitic attaches; the expected value guards against stale evidence, and only a person can Apply.",
+    "source": "Hand-written from the closed intent and composer contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "expectedNotOnClitics": "Whether the rules stay off the clitic now: true when they do (also when the project never set it), false when they run on the clitic.",
+      "notOnClitics": "Whether the rules should stay off the clitic: true to run them before a clitic attaches, false to run them on the word with its clitic."
+    },
+    "goals": [
+      "Let a sound rule change a clitic's sounds",
+      "Stop a sound rule from applying to a clitic",
+      "Make a clitic take the sound changes of the word it attaches to"
+    ],
+    "guides": [
+      "workflow",
+      "ask-the-linguist"
+    ],
+    "redirect": "Only chooses where phonological rules run relative to clitics; it authors no rule or clitic. Trial clitic words first and ask the linguist (guide workflow)."
+  },
   "compose-edit-affix-slot": {
     "title": "Edit an affix slot",
     "description": "Changes whether an existing inflectional affix slot is optional. The response lists every affix and template using the shared slot; Motif stages a Draft and never Applies it automatically. Only a person can Apply.",

@@ -75,6 +75,9 @@ public static partial class SnapshotFields
     /// <summary>Whether the parser's built-in default compounding is switched off in ParserParameters; never the rest of that XML.</summary>
     public const string MoMorphDataNoDefaultCompounding = "grammar/moMorphData/noDefaultCompounding";
 
+    /// <summary>Whether the parser's phonological rules stay off the clitic stratum, as ParserParameters holds it; never the rest of that XML.</summary>
+    public const string MoMorphDataNotOnClitics = "grammar/moMorphData/notOnClitics";
+
     /// <summary>The ordered sub-senses owned by a lexical sense.</summary>
     public const string LexSenseSubsenses = "lexical/lexSense/senses";
 

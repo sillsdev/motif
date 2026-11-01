@@ -49,12 +49,10 @@ public static class NoDefaultCompoundingParserParameters
 {
     private const string Flag = "NoDefaultCompounding";
 
-    /// <summary>The flag as FieldWorks's loader reads it: absent or unparsable means default compounding stays on.</summary>
+    /// <summary>The flag as FieldWorks's loader reads it: absent means default compounding stays on, <c>0</c>, <c>1</c>, <c>true</c> and <c>false</c> are read, and any other text throws <see cref="FormatException"/>.</summary>
     public static bool Read(string? parserParameters)
     {
-        if (string.IsNullOrWhiteSpace(parserParameters)) return false;
-        var flag = XElement.Parse(parserParameters).Element("HC")?.Element(Flag);
-        return flag is not null && bool.TryParse(flag.Value.Trim(), out var value) && value;
+        return ParserParametersFlag.Read(parserParameters, Flag, whenAbsent: false);
     }
 
     /// <summary>The XML with the flag set to <paramref name="value"/>, unchanged byte for byte when it already is.</summary>

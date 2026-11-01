@@ -148,6 +148,31 @@ public sealed class SetNoDefaultCompoundingComposerTests(PristineProjectFixture 
         Assert.Contains("<Strata />", _cache.LangProject.MorphologicalDataOA.ParserParameters, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("0", false)]
+    [InlineData("1", true)]
+    [InlineData("true", true)]
+    [InlineData("false", false)]
+    [InlineData(" 1 ", true)]
+    public void ReadsTheValueTheWayTheLoaderCastsIt(string text, bool expected) =>
+        Assert.Equal(expected, NoDefaultCompoundingParserParameters.Read($"<ParserParameters><HC><NoDefaultCompounding>{text}</NoDefaultCompounding></HC></ParserParameters>"));
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("True")]
+    [InlineData("yes")]
+    public void AValueTheLoaderCannotReadIsRefusedAtReadAndCompose(string text)
+    {
+        var xml = $"<ParserParameters><HC><NoDefaultCompounding>{text}</NoDefaultCompounding></HC></ParserParameters>";
+        Assert.Throws<FormatException>(() => NoDefaultCompoundingParserParameters.Read(xml));
+        SetParameters(xml);
+
+        var refusal = Assert.Throws<InvalidOperationException>(() => SetNoDefaultCompoundingComposer.Build(_cache, new(false, true)));
+
+        Assert.Contains("not 0, 1, true or false", refusal.Message, StringComparison.Ordinal);
+        Assert.Equal(xml, _cache.LangProject.MorphologicalDataOA.ParserParameters);
+    }
+
     private void SetParameters(string xml) =>
         NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
             _cache.LangProject.MorphologicalDataOA.ParserParameters = xml);

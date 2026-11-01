@@ -65,6 +65,25 @@ public sealed class CompoundRuleDraftTests(PristineProjectFixture pristine)
         Assert.Contains(MoMorphDataNoDefaultCompoundingOperationKinds.Set, DraftBytes(path), StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void TheNotOnCliticsComposerStagesOneWriteInTheDraftAndRefusesAStaleValue()
+    {
+        var (path, _) = ProjectWithOneEnabledCompoundRule();
+        Assert.True(ProposalCommands.New(new(path, Version, DraftName, "Run rules on clitics")).Succeeded);
+
+        var stale = ProposalCommands.ComposeIntent(new(path, Version, DraftName, "compose-set-not-on-clitics",
+            JsonSerializer.Serialize(new { expectedNotOnClitics = false, notOnClitics = true })));
+        Assert.False(stale.Succeeded);
+        Assert.Contains("expected NotOnClitics=False", stale.Refusal!.Message, StringComparison.Ordinal);
+
+        var staged = ProposalCommands.ComposeIntent(new(path, Version, DraftName, "compose-set-not-on-clitics",
+            JsonSerializer.Serialize(new { expectedNotOnClitics = true, notOnClitics = false })));
+        Assert.True(staged.Succeeded, staged.Refusal?.Message);
+        var operation = Assert.Single(staged.Value!.Operations);
+        Assert.Equal(MoMorphDataNotOnCliticsOperationKinds.Set, operation.Kind);
+        Assert.Contains(MoMorphDataNotOnCliticsOperationKinds.Set, DraftBytes(path), StringComparison.Ordinal);
+    }
+
     private static CommandOutcome<ComposedOperationsResponse> Compose(string path, object intent) =>
         ProposalCommands.ComposeIntent(new(path, Version, DraftName, "compose-edit-compound-rule",
             JsonSerializer.Serialize(intent)));

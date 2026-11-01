@@ -14,6 +14,7 @@ A phonological rule says how a sound changes next to other sounds, and the envir
 2. `compose-author-environment` states the context when the rule or an allomorph needs a reusable one.
 3. `compose-author-phonological-rule` creates the rule itself.
 4. `compose-relink-natural-class` moves rules and environments to a corrected class.
+5. `compose-set-not-on-clitics` chooses whether the project's rules also run on a word with its clitic attached; by default they run before the clitic attaches.
 
 ## Pitfalls
 

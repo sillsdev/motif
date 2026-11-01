@@ -4705,6 +4705,59 @@
                     "type": "string",
                     "description": "Composing verb for this intent.",
                     "enum": [
+                      "compose-set-not-on-clitics"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for compose-set-not-on-clitics.",
+                    "properties": {
+                      "expectedNotOnClitics": {
+                        "type": "boolean",
+                        "description": "Whether the rules stay off the clitic now: true when they do (also when the project never set it), false when they run on the clitic."
+                      },
+                      "notOnClitics": {
+                        "type": "boolean",
+                        "description": "Whether the rules should stay off the clitic: true to run them before a clitic attaches, false to run them on the word with its clitic."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "expectedNotOnClitics",
+                      "notOnClitics"
+                    ]
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
                       "compose-set-entry-do-not-parse"
                     ]
                   },
@@ -6304,6 +6357,41 @@
         "draft",
         "expectedNoDefaultCompounding",
         "noDefaultCompounding",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_set_not_on_clitics",
+    "description": "Set rules on clitics. Research first: motif_guide topic workflow or ask-the-linguist; check best practice. Only chooses where phonological rules run relative to clitics; it authors no rule or clitic. Trial clitic words first and ask the linguist (guide workflow). Stages one explicit change to whether the parser\u0027s phonological rules also run on a word with its clitic attached. By default the rules run on the word before a clitic attaches; the expected value guards against stale evidence, and only a person can Apply.\nCommand: compose-set-not-on-clitics. Agent class: Draft.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "Draft name."
+        },
+        "expectedNotOnClitics": {
+          "type": "boolean",
+          "description": "Whether the rules stay off the clitic now: true when they do (also when the project never set it), false when they run on the clitic."
+        },
+        "notOnClitics": {
+          "type": "boolean",
+          "description": "Whether the rules should stay off the clitic: true to run them before a clitic attaches, false to run them on the word with its clitic."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "draft",
+        "expectedNotOnClitics",
+        "notOnClitics",
         "project"
       ],
       "additionalProperties": false

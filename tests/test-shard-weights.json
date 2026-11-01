@@ -733,6 +733,8 @@
   "SIL.Motif.Tests.Composers.RewriteLexemeFormParserTests": 0.4,
   "SIL.Motif.Tests.Composers.SetNoDefaultCompoundingComposerTests": 0.5,
   "SIL.Motif.Tests.Composers.SetNoDefaultCompoundingParserTests": 0.2,
+  "SIL.Motif.Tests.Composers.SetNotOnCliticsComposerTests": 0.5,
+  "SIL.Motif.Tests.Composers.SetNotOnCliticsParserTests": 0.2,
   "SIL.Motif.Tests.Composers.SoundSystemComposerTests": 0.6,
   "SIL.Motif.Tests.Composers.SoundSystemParserRoundTripTests": 2.5,
   "SIL.Motif.Tests.Composers.StemLinkEditingTests": 2.0,

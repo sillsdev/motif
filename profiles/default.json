@@ -55,6 +55,7 @@
     { "tool": "motif_edit_phonological_rule_features" },
     { "tool": "motif_edit_compound_rule" },
     { "tool": "motif_set_no_default_compounding" },
+    { "tool": "motif_set_not_on_clitics" },
     { "tool": "motif_set_entry_do_not_parse" },
     { "tool": "motif_rewrite_lexeme_form" }
   ]

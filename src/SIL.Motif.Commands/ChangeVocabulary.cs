@@ -139,6 +139,7 @@ public static class ChangeVocabulary
             ["EditAdhocProhibition"] = ("Change restriction", "Change a co-occurrence restriction"),
             ["EditCompoundRule"] = ("Change compound rule", "Turn a compound rule off or on"),
             ["SetNoDefaultCompounding"] = ("Change default compounding", "Turn default compounding off or on"),
+            ["SetNotOnClitics"] = ("Change rules on clitics", "Choose whether sound rules also apply to a word with its clitic"),
             ["RewriteLexemeForm"] = ("Change lexeme form", "Rewrite the lexeme form of existing entries"),
             ["EditDerivationalAffixRestriction"] = ("Restrict derivational affix", "Restrict the stems a derivational affix attaches to"),
             ["EditAffixSlot"] = ("Change affix slot", "Change an affix slot"),
