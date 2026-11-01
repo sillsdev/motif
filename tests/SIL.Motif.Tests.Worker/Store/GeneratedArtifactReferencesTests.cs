@@ -1001,7 +1001,7 @@ public sealed class GeneratedArtifactReferencesTests : IDisposable
             InsertJob(connection, transaction, "parsimony-report-job", ParsimonyJobHandler.JobKind, "completed",
                 JsonSerializer.Serialize(reportInput, MotifJson.CreateOptions()), reportResult, null);
             InsertJob(connection, transaction, "parsimony-multi-report-job", ParsimonyJobHandler.JobKind, "completed",
-                JsonSerializer.Serialize(new ParsimonyJobInput("all", scope, null), MotifJson.CreateOptions()),
+                JsonSerializer.Serialize(new ParsimonyJobInput("all", scope, null, ["P-adhoc-duplicate"], "A note."), MotifJson.CreateOptions()),
                 multiReportResult, null);
             InsertJob(connection, transaction, "parsimony-candidate-job", ParsimonyCandidateEvidenceBuilder.JobKind,
                 "completed", JsonSerializer.Serialize(candidateInput, MotifJson.CreateOptions()),

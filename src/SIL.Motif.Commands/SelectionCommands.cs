@@ -50,13 +50,13 @@ public static class SelectionCommands
             {
                 if (!repository.PointParsimonyAt(name))
                     return CommandOutcome<DefaultSelectionResponse>.Refused(new Refusal(
-                        "selection.not-found", FailureReason.NotFound,
+                        RefusalCodes.SelectionNotFound, FailureReason.NotFound,
                         $"No Selection named '{name}' is saved. Name Texts with --texts to create it."));
                 return CommandOutcome<DefaultSelectionResponse>.Success(Both(repository));
             }
             if (repository.GetDefault() is { } current && string.Equals(current.Name, name, StringComparison.Ordinal))
                 return CommandOutcome<DefaultSelectionResponse>.Refused(new Refusal(
-                    "selection.parsimony-name-is-default", FailureReason.Refused,
+                    RefusalCodes.SelectionParsimonyNameIsDefault, FailureReason.Refused,
                     $"'{name}' is the Default Selection, and changing its Texts would change what the project " +
                     "parses. Give the Parsimony Selection its own name."));
             var baseline = new BaselineRepository(database).GetCurrentPublished(ProjectWorkspaceKey.Compute(project));

@@ -1158,7 +1158,7 @@ internal static class GeneratedArtifactReferences
                 case ParsimonyJobHandler.JobKind:
                 {
                     RequireObjectShape(json, "Parsimony job input",
-                        ["measureId", "scopeBinding", "assessmentIds"], ["measureId", "scopeBinding"]);
+                        ["measureId", "scopeBinding", "assessmentIds", "measureIds", "note"], ["measureId", "scopeBinding"]);
                     var input = JsonSerializer.Deserialize<ParsimonyJobInput>(json, StrictJsonOptions)
                         ?? throw new InvalidDataException("The Parsimony job input is null.");
                     if (string.IsNullOrWhiteSpace(input.MeasureId) ||

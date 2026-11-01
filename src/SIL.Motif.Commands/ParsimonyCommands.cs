@@ -147,7 +147,7 @@ public static class ParsimonyCommands
             var current = new BaselineRepository(database).GetCurrentEvidence(workspaceKey);
             if (current is null)
                 return CommandOutcome<JobEnqueuedResponse>.Refused(new Refusal(
-                    ParsimonyRefusalCodes.BaselineMissing, FailureReason.Refused,
+                    RefusalCodes.BaselineMissing, FailureReason.NotFound,
                     "No Baseline is recorded and one could not be captured."));
             if (assessmentIds.Count > 0)
             {

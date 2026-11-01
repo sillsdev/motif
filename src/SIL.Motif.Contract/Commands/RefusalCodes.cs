@@ -168,6 +168,8 @@ public static class RefusalCodes
     public const string SelectionDefaultMissing = "selection.default-missing";
     public const string SelectionEmpty = "selection.empty";
     public const string SelectionInvalid = "selection.invalid";
+    public const string SelectionNotFound = "selection.not-found";
+    public const string SelectionParsimonyNameIsDefault = "selection.parsimony-name-is-default";
     public const string SelectionTextNotFound = "selection.text-not-found";
 
     public const string SelectionReaderCancelled = "selection-reader.cancelled";
