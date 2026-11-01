@@ -48,6 +48,9 @@ public static partial class SnapshotFields
     /// <summary>A <c>WfiMorphBundle</c>'s authoritative <c>Morph</c> reference.</summary>
     public const string WfiMorphBundleMorph = "analysis/wfiMorphBundle/morph";
 
+    /// <summary>A <c>WfiMorphBundle</c>'s <c>Msa</c> reference to the grammatical info it was analysed with.</summary>
+    public const string WfiMorphBundleMsa = "analysis/wfiMorphBundle/msa";
+
     /// <summary>A <c>WfiMorphBundle</c>'s copied multilingual <c>Form</c> text.</summary>
     public const string WfiMorphBundleForm = "analysis/wfiMorphBundle/form";
 

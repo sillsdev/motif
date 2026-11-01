@@ -45,9 +45,10 @@ public static class ChangeAffixKindIntentParser
 }
 
 /// <summary>
-/// Lowers a change of an affix's kind to a new grammatical info of the other kind, a relink of every sense that used
-/// the old one, and the deletion of the old one. Black's guidance is to pick a kind and change it later, so the choice (ADR 0079)
-/// stays reversible in place; what the new kind cannot hold is reported as a related object, not refused.
+/// Lowers a change of an affix's kind to a new grammatical info of the other kind, a relink of every sense, ad hoc
+/// morpheme prohibition and parser-analysis morph bundle that used the old one, and the deletion of the old one.
+/// Black's guidance is to pick a kind and change it later, so the choice (ADR 0079) stays reversible in place;
+/// what the new kind cannot hold is reported as a related object, not refused.
 /// </summary>
 public static class ChangeAffixKindComposer
 {
@@ -100,11 +101,18 @@ public static class ChangeAffixKindComposer
                 break;
         }
 
-        var relinks = plan.Senses.Select(sense => Add(LexSenseMorphoSyntaxAnalysisOperationKinds.SetMorphoSyntaxAnalysis,
-            CanonicalId.FromGuid(sense.Guid), new { @ref = newId.Value },
-            dependsOn: [new OperationDependency(create)])).ToArray();
-        Add(MorphoSyntaxAnalysisDeleteOperationKinds.Delete, CanonicalId.FromGuid(plan.Old.Guid), new { },
-            dependsOn: relinks.Select(id => new OperationDependency(id)).Concat(afterCreate).ToArray());
+        var oldId = CanonicalId.FromGuid(plan.Old.Guid);
+        var moveUse = new { from = oldId.Value, to = newId.Value };
+        // LibLCM clears bundles naming an info once no sense uses it, so the senses move last.
+        var relinks = plan.Prohibitions.Select(rule => Add(MsaReferenceRetargetOperationKinds.RetargetProhibitionMorphemes,
+                CanonicalId.FromGuid(rule.Guid), moveUse, dependsOn: afterCreate))
+            .Concat(plan.Bundles.Select(bundle => Add(MsaReferenceRetargetOperationKinds.SetBundleMsa,
+                CanonicalId.FromGuid(bundle.Guid), moveUse, dependsOn: afterCreate))).ToArray();
+        var senseDependencies = relinks.Select(id => new OperationDependency(id)).Concat(afterCreate).ToArray();
+        var senseRelinks = plan.Senses.Select(sense => Add(LexSenseMorphoSyntaxAnalysisOperationKinds.SetMorphoSyntaxAnalysis,
+            CanonicalId.FromGuid(sense.Guid), new { @ref = newId.Value }, dependsOn: senseDependencies)).ToArray();
+        Add(MorphoSyntaxAnalysisDeleteOperationKinds.Delete, oldId, new { },
+            dependsOn: relinks.Concat(senseRelinks).Select(id => new OperationDependency(id)).Concat(afterCreate).ToArray());
         return operations;
 
         CanonicalId Add(string kind, CanonicalId target, object after, CanonicalId? entityId = null,
@@ -121,7 +129,8 @@ public static class ChangeAffixKindComposer
     public static IReadOnlyList<ComposedRelatedObject> ReadWarnings(LcmCache cache, ChangeAffixKindIntent intent) =>
         Inspect(cache, intent)?.Warnings ?? [];
 
-    private sealed record Plan(IMoMorphSynAnalysis Old, ILexEntry Entry, ILexSense[] Senses, CanonicalId? Category,
+    private sealed record Plan(IMoMorphSynAnalysis Old, ILexEntry Entry, ILexSense[] Senses,
+        IMoMorphAdhocProhib[] Prohibitions, IWfiMorphBundle[] Bundles, CanonicalId? Category,
         CanonicalId? ToCategory, CanonicalId[] Slots, CanonicalId[] CarriedExceptionFeatures,
         IReadOnlyList<ComposedRelatedObject> Warnings);
 
@@ -172,15 +181,20 @@ public static class ChangeAffixKindComposer
 
         var senses = entry.AllSenses.Where(sense => sense.MorphoSyntaxAnalysisRA?.Guid == old.Guid).ToArray();
         var senseIds = senses.Select(sense => sense.Guid).ToHashSet();
-        var other = old.ReferringObjects.FirstOrDefault(user => !senseIds.Contains(user.Guid) && !ReferenceEquals(user, old));
+        var prohibitions = old.ReferringObjects.OfType<IMoMorphAdhocProhib>()
+            .OrderBy(rule => rule.Guid).ToArray();
+        var bundles = old.ReferringObjects.OfType<IWfiMorphBundle>().OrderBy(bundle => bundle.Guid).ToArray();
+        // Senses, morpheme prohibitions and morph bundles are the users LibLCM holds, and each is moved in place.
+        var other = old.ReferringObjects.FirstOrDefault(user => !senseIds.Contains(user.Guid) && !ReferenceEquals(user, old) &&
+            user is not IMoMorphAdhocProhib && user is not IWfiMorphBundle);
         if (other is not null)
             throw new InvalidOperationException(
-                $"'{ConstructName}': a {other.ClassName} ({other.Guid:D}) still refers to '{msaId.Value}'; changing the kind " +
-                "replaces the grammatical info, so retarget or remove that use first.");
+                $"'{ConstructName}': a {other.ClassName} ({other.Guid:D}) still refers to '{msaId.Value}' and Motif has no way " +
+                "to point that kind of object at another grammatical info; retarget or remove that use first.");
 
         var carried = CarriedExceptionFeatures(old, intent.Kind);
-        var warnings = Warnings(cache, entry, old, intent, category, toCategory, slots, carried);
-        return new Plan(old, entry, senses, categoryId, toCategory, slots, carried, warnings);
+        var warnings = Warnings(cache, entry, old, intent, category, toCategory, slots, carried, prohibitions, bundles);
+        return new Plan(old, entry, senses, prohibitions, bundles, categoryId, toCategory, slots, carried, warnings);
     }
 
     private static CanonicalId[] CarriedExceptionFeatures(IMoMorphSynAnalysis old, LexicalEntryMsaKind kind)
@@ -197,7 +211,7 @@ public static class ChangeAffixKindComposer
 
     private static List<ComposedRelatedObject> Warnings(LcmCache cache, ILexEntry entry, IMoMorphSynAnalysis old,
         ChangeAffixKindIntent intent, IPartOfSpeech? category, CanonicalId? toCategory, CanonicalId[] slots,
-        CanonicalId[] carried)
+        CanonicalId[] carried, IMoMorphAdhocProhib[] prohibitions, IWfiMorphBundle[] bundles)
     {
         var warnings = new List<ComposedRelatedObject>();
         void Lost(string kind, ICmObject item, string what) => warnings.Add(new ComposedRelatedObject(kind,
@@ -235,6 +249,20 @@ public static class ChangeAffixKindComposer
                 Lost("category", outputCategory, "To category dropped by the change; the other kinds keep one category");
         }
 
+        foreach (var rule in prohibitions)
+        {
+            var inertUntilSlot = intent.Kind == LexicalEntryMsaKind.Inflectional && slots.Length == 0
+                ? "; it has no effect until the affix fills a template slot" : "";
+            warnings.Add(new ComposedRelatedObject("ad-hoc-prohibition", CanonicalId.FromGuid(rule.Guid).Value,
+                $"repointed to the new {KindWord(intent.Kind)} grammatical info (it names the {KindWord(KindOf(old))} one now); " +
+                "it still bans the same affix, but a prohibition written for one kind of affix now applies to the " +
+                $"{KindWord(intent.Kind)} one{inertUntilSlot}"));
+        }
+
+        if (bundles.Length > 0)
+            warnings.Add(new ComposedRelatedObject("morph-bundles", CanonicalId.FromGuid(old.Guid).Value,
+                $"{bundles.Length} parser-analysis morph bundle(s) repointed from the {KindWord(KindOf(old))} to the " +
+                $"{KindWord(intent.Kind)} grammatical info; those analyses now state the affix as {KindWord(intent.Kind)}"));
         if (intent.Kind == LexicalEntryMsaKind.Inflectional && slots.Length == 0)
             warnings.Add(new ComposedRelatedObject("affix", CanonicalId.FromGuid(entry.Guid).Value,
                 "the affix fills no template slot yet; an inflectional affix applies only in a slot " +
@@ -244,6 +272,13 @@ public static class ChangeAffixKindComposer
                 "no To category could be set"));
         return warnings.OrderBy(item => item.Kind, StringComparer.Ordinal).ThenBy(item => item.Id, StringComparer.Ordinal).ToList();
     }
+
+    private static string KindWord(LexicalEntryMsaKind? kind) => kind switch
+    {
+        LexicalEntryMsaKind.Inflectional => "inflectional",
+        LexicalEntryMsaKind.Derivational => "derivational",
+        _ => "unclassified",
+    };
 
     private static ICmObject[] FormInflectionClasses(ILexEntry entry) =>
         new IMoForm?[] { entry.LexemeFormOA }.Concat(entry.AlternateFormsOS).OfType<IMoAffixForm>()

@@ -58,6 +58,55 @@ public sealed class RealParserChangeAffixKindTests(PristineProjectFixture pristi
         Assert.Equal(["red+kaun"], await Readings(tracer, path, "kaunkaun", names));
     }
 
+    [RealParserFact]
+    public async Task AnAdhocProhibitionOnTheAffixStillBansTheWordAfterTheFlipAndAfterTheFlipBack()
+    {
+        using var cache = pristine.NewScratch();
+        RealParserProject.PrepareForParsing(cache, [.. Letters, "m"]);
+        var ws = Anal(cache);
+        var verb = Created(ApplyOps(cache, AuthorPartOfSpeechComposer.Build(cache,
+            new AuthorPartOfSpeechIntent("Verb", ws, "V"))), CmPossibilityListPossibilitiesOperationKinds.Create);
+        var slot = Created(ApplyOps(cache, AuthorAffixSlotComposer.Build(cache,
+            new AuthorAffixSlotIntent(verb, "Outer", ws, true))), PartOfSpeechAffixSlotsOperationKinds.Create);
+        ApplyOps(cache, AuthorAffixTemplateComposer.Build(cache,
+            new AuthorAffixTemplateIntent(verb, "Verb template", ws, [slot], [], true)));
+        var names = new Dictionary<CanonicalId, string>(CanonicalId.ByGuid);
+        var banned = AddStem(cache, "kaun", verb);
+        var allowed = AddStem(cache, "pagi", verb);
+        names[banned.Form] = "kaun";
+        names[allowed.Form] = "pagi";
+        var prefix = ApplyOps(cache, AuthorLexicalEntryComposer.Build(cache, new AuthorLexicalEntryIntent("mi", Vern(cache),
+            MorphType(MoMorphTypeTags.kguidMorphPrefix), "mi", ws,
+            new LexicalEntryMsa(LexicalEntryMsaKind.Derivational, verb, verb))));
+        var info = Created(prefix, LexEntryMorphoSyntaxAnalysesOperationKinds.Create);
+        names[Created(prefix, LexEntryLexemeFormOperationKinds.CreateLexemeForm)] = "mi";
+        var path = cache.ProjectId.Path;
+        new FwDataProjectLoader().Save(cache);
+        using var invoker = new PanGlossInvoker();
+        var tracer = new PanGlossTracer(invoker);
+
+        Assert.Equal(["mi+kaun"], await Readings(tracer, path, "mikaun", names));
+        Assert.Equal(["mi+pagi"], await Readings(tracer, path, "mipagi", names));
+
+        var rule = Created(ApplyOps(cache, AuthorAdhocProhibitionComposer.Build(cache,
+            new("morpheme", info, [banned.Msa], "anywhere"))), AdhocProhibitionCreateOperationKinds.Create);
+        new FwDataProjectLoader().Save(cache);
+        Assert.Empty(await Readings(tracer, path, "mikaun", names));
+        Assert.Equal(["mi+pagi"], await Readings(tracer, path, "mipagi", names));
+
+        info = Flip(cache, new ChangeAffixKindIntent(info, LexicalEntryMsaKind.Inflectional, Slots: [slot]));
+        new FwDataProjectLoader().Save(cache);
+        Assert.Equal(info.ToGuid(), Get<IMoMorphAdhocProhib>(cache, rule).FirstMorphemeRA.Guid);
+        Assert.Empty(await Readings(tracer, path, "mikaun", names));
+        Assert.Equal(["mi+pagi"], await Readings(tracer, path, "mipagi", names));
+
+        info = Flip(cache, new ChangeAffixKindIntent(info, LexicalEntryMsaKind.Derivational));
+        new FwDataProjectLoader().Save(cache);
+        Assert.Equal(info.ToGuid(), Get<IMoMorphAdhocProhib>(cache, rule).FirstMorphemeRA.Guid);
+        Assert.Empty(await Readings(tracer, path, "mikaun", names));
+        Assert.Equal(["mi+pagi"], await Readings(tracer, path, "mipagi", names));
+    }
+
     private static CanonicalId Flip(LcmCache cache, ChangeAffixKindIntent intent) =>
         Created(ApplyOps(cache, ChangeAffixKindComposer.Build(cache, intent)), LexEntryMorphoSyntaxAnalysesOperationKinds.Create);
 

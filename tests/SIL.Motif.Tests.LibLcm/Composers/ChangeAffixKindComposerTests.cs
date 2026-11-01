@@ -1,9 +1,11 @@
 using System.Text.Json;
 using SIL.LCModel;
+using SIL.LCModel.Core.Text;
 using SIL.LCModel.Infrastructure;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Model;
 using SIL.Motif.Contract.Parsing;
+using SIL.Motif.Model.Snapshot;
 using SIL.Motif.Runner.Composers;
 using SIL.Motif.Runner.Operations;
 using SIL.Motif.Tests.TestFixtures;
@@ -136,7 +138,7 @@ public sealed class ChangeAffixKindComposerTests : IDisposable
     }
 
     [Fact]
-    public void TheSameKindStagesNothingAndAStemInfoOrAStrayReferenceIsRefused()
+    public void TheSameKindStagesNothingAndAStemInfoIsRefused()
     {
         var (_, msa) = InflectionalPrefix("mi");
         Assert.Empty(ChangeAffixKindComposer.Build(_cache, new ChangeAffixKindIntent(msa, LexicalEntryMsaKind.Inflectional)));
@@ -145,16 +147,85 @@ public sealed class ChangeAffixKindComposerTests : IDisposable
         var notAffix = Assert.Throws<InvalidOperationException>(() =>
             ChangeAffixKindComposer.Build(_cache, new ChangeAffixKindIntent(stem, LexicalEntryMsaKind.Derivational)));
         Assert.Contains("not the grammatical info of an affix", notAffix.Message, StringComparison.Ordinal);
+    }
 
+    [Fact]
+    public void AnAdhocProhibitionAndAMorphBundleThatUseTheInfoAreRepointedInPlaceAndFlipBack()
+    {
+        var (_, msa) = InflectionalPrefix("mi");
+        var (_, other, _) = AddStem(_cache, "kaun", _category);
+        var (_, third, _) = AddStem(_cache, "bago", _category);
+        var asFirst = Created(ApplyOps(_cache, AuthorAdhocProhibitionComposer.Build(_cache,
+            new("morpheme", msa, [other, third], "anywhere"))), AdhocProhibitionCreateOperationKinds.Create);
+        var inRest = Created(ApplyOps(_cache, AuthorAdhocProhibitionComposer.Build(_cache,
+            new("morpheme", other, [third, msa], "anywhere"))), AdhocProhibitionCreateOperationKinds.Create);
+        var bundle = AddBundle(msa);
+        var intent = new ChangeAffixKindIntent(msa, LexicalEntryMsaKind.Derivational);
+
+        var warnings = ChangeAffixKindComposer.ReadWarnings(_cache, intent);
+        Assert.Contains(warnings, item => item.Kind == "ad-hoc-prohibition" && item.Id == asFirst.Value);
+        Assert.Contains(warnings, item => item.Kind == "ad-hoc-prohibition" && item.Id == inRest.Value);
+        Assert.Contains(warnings, item => item.Kind == "morph-bundles" && item.Name.StartsWith("1 ", StringComparison.Ordinal));
+
+        var operations = ChangeAffixKindComposer.Build(_cache, intent);
+        var dry = ScratchDryRun.Of(_cache, Proposal(operations));
+        Assert.Contains(dry.ExpectedEffects, effect => effect.Field == SnapshotFields.WfiMorphBundleMsa);
+        Assert.Contains(dry.ExpectedEffects, effect => effect.Field == SnapshotFields.MoMorphAdhocProhibFirstMorpheme);
+        Assert.Contains(dry.ExpectedEffects, effect => effect.Field == SnapshotFields.MoMorphAdhocProhibRestOfMorphs);
+
+        var derivational = Created(ApplyOps(_cache, operations), LexEntryMorphoSyntaxAnalysesOperationKinds.Create);
+        Assert.False(Exists(_cache, msa));
+        Assert.Equal(derivational.ToGuid(), Get<IMoMorphAdhocProhib>(_cache, asFirst).FirstMorphemeRA.Guid);
+        Assert.Equal([third.ToGuid(), derivational.ToGuid()], Get<IMoMorphAdhocProhib>(_cache, inRest).RestOfMorphsRS.Select(item => item.Guid));
+        Assert.Equal(derivational.ToGuid(), Get<IWfiMorphBundle>(_cache, bundle).MsaRA.Guid);
+
+        var back = Created(ApplyOps(_cache, ChangeAffixKindComposer.Build(_cache,
+            new ChangeAffixKindIntent(derivational, LexicalEntryMsaKind.Inflectional))), LexEntryMorphoSyntaxAnalysesOperationKinds.Create);
+        Assert.Equal(back.ToGuid(), Get<IMoMorphAdhocProhib>(_cache, asFirst).FirstMorphemeRA.Guid);
+        Assert.Equal([third.ToGuid(), back.ToGuid()], Get<IMoMorphAdhocProhib>(_cache, inRest).RestOfMorphsRS.Select(item => item.Guid));
+        Assert.Equal(back.ToGuid(), Get<IWfiMorphBundle>(_cache, bundle).MsaRA.Guid);
+    }
+
+    [Fact]
+    public void ARawRetargetThatNamesAnAbsentInfoOrAnInfoOfAnotherEntryOrAStemIsRefused()
+    {
+        var (_, msa) = InflectionalPrefix("mi");
+        var (_, otherAffix) = InflectionalPrefix("pa");
+        var (_, stem, _) = AddStem(_cache, "kaun", _category);
+        var rule = Created(ApplyOps(_cache, AuthorAdhocProhibitionComposer.Build(_cache,
+            new("morpheme", msa, [stem], "anywhere"))), AdhocProhibitionCreateOperationKinds.Create);
+        var bundle = AddBundle(msa);
+
+        InvalidOperationException Refused(string kind, CanonicalId target, CanonicalId from, CanonicalId to) =>
+            Assert.Throws<InvalidOperationException>(() => ApplyOps(_cache,
+            [new OperationEnvelope(CanonicalId.Mint(), kind, target: target,
+                after: JsonSerializer.SerializeToElement(new { from = from.Value, to = to.Value }))]));
+
+        Assert.Contains("no longer names", Refused(MsaReferenceRetargetOperationKinds.SetBundleMsa, bundle, otherAffix, msa).Message,
+            StringComparison.Ordinal);
+        Assert.Contains("no longer names", Refused(MsaReferenceRetargetOperationKinds.RetargetProhibitionMorphemes, rule,
+            otherAffix, msa).Message, StringComparison.Ordinal);
+        Assert.Contains("must belong", Refused(MsaReferenceRetargetOperationKinds.SetBundleMsa, bundle, msa, otherAffix).Message,
+            StringComparison.Ordinal);
+        Assert.Contains("must belong", Refused(MsaReferenceRetargetOperationKinds.SetBundleMsa, bundle, msa, stem).Message,
+            StringComparison.Ordinal);
+        Assert.Equal(msa.ToGuid(), Get<IWfiMorphBundle>(_cache, bundle).MsaRA.Guid);
+    }
+
+    private CanonicalId AddBundle(CanonicalId msa)
+    {
+        IWfiMorphBundle bundle = null!;
         NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
         {
-            var rule = _cache.ServiceLocator.GetInstance<IMoMorphAdhocProhibFactory>().Create();
-            _cache.LangProject.MorphologicalDataOA.AdhocCoProhibitionsOC.Add(rule);
-            rule.FirstMorphemeRA = Get<IMoMorphSynAnalysis>(_cache, msa);
+            var wordform = _cache.ServiceLocator.GetInstance<IWfiWordformFactory>().Create(
+                TsStringUtils.MakeString("mikaun", _cache.DefaultVernWs));
+            var analysis = _cache.ServiceLocator.GetInstance<IWfiAnalysisFactory>().Create();
+            wordform.AnalysesOC.Add(analysis);
+            bundle = _cache.ServiceLocator.GetInstance<IWfiMorphBundleFactory>().Create();
+            analysis.MorphBundlesOS.Add(bundle);
+            bundle.MsaRA = Get<IMoMorphSynAnalysis>(_cache, msa);
         });
-        var referenced = Assert.Throws<InvalidOperationException>(() =>
-            ChangeAffixKindComposer.Build(_cache, new ChangeAffixKindIntent(msa, LexicalEntryMsaKind.Derivational)));
-        Assert.Contains("still refers", referenced.Message, StringComparison.Ordinal);
+        return Id(bundle);
     }
 
     [Fact]
