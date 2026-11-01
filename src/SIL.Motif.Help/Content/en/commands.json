@@ -1404,7 +1404,7 @@
   },
   "difference show": {
     "title": "Read a saved comparison",
-    "description": "Reads a saved comparison of a Trial with FieldWorks' recorded decisions: totals, a before and after table and a page of changed words. Filter to words that could be bad, to one category, to one approval state or to one limitation, and page through one word's places in the Text.",
+    "description": "Reads a saved comparison of a Trial with FieldWorks' recorded decisions: totals, a before and after table and a page of changed words. Filter to words that could be bad, to one category, to one approval state or to one limitation, and page through one word's places in the Text. Every word is counted, but only changed or categorised words are listed: each count keeps its best 100 words and each word its first 10 places, and the response says how many are counted but not listed (WordsListed, Listed).",
     "source": "Authored from the Proposal Difference contract."
   },
   "motif_activity": {

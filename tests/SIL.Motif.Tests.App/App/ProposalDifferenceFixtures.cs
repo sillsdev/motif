@@ -33,6 +33,9 @@ internal sealed class ProposalDifferenceFixture
 
     public int PlacesPerWord { get; init; } = 3;
 
+    /// <summary>How many places each word has in the Text when only <see cref="PlacesPerWord"/> of them are listed.</summary>
+    public int? PlacesCounted { get; init; }
+
     /// <summary>The decisions the Difference was read against; by default a person's.</summary>
     public string Reference { get; set; } = ProposalDifferenceReferences.Human;
 
@@ -60,18 +63,41 @@ internal sealed class ProposalDifferenceFixture
     /// <summary>How many saved Differences the read could not open and so left out of the list.</summary>
     public int SavedUnreadable { get; set; }
 
+    /// <summary>The Differences the read could not open, named by Text and reference; counted in <see cref="SavedUnreadable"/>.</summary>
+    public List<ProposalDifferenceDamaged> SavedDamaged { get; } = [];
+
     public List<ProposalDifferenceShowRequest> Requests { get; } = [];
 
+    /// <summary>More regression words the Difference counts but does not list, as when a category holds more than the bound.</summary>
+    public int Cut { get; init; }
+
+    /// <summary>Words in the unchanged approved cell, counted and not listed.</summary>
+    public int Unchanged { get; init; }
+
+    /// <summary>Whether the summary reads but the word rows are damaged.</summary>
+    public bool WordRowsDamaged { get; set; }
+
+    /// <summary>Every saved Difference is damaged and named here, so a read without an id is refused.</summary>
+    public List<ProposalDifferenceDamaged>? EveryDifferenceDamaged { get; set; }
+
+    private bool Bounded => Cut > 0 || Unchanged > 0;
+
     public ProposalDifferenceSummary Summary => new("difference/one", "proposal/one", "job/one", "assessment/b",
-        "assessment/a", TextId, TextTitle, "baseline/one", new ProposalDifferencePolicy(), _words.Count,
-        _words.Sum(word => word.Occurrences), 2, 12, CheckWords, ImprovedWords,
+        "assessment/a", TextId, TextTitle, "baseline/one", new ProposalDifferencePolicy(), _words.Count + Cut + Unchanged,
+        _words.Sum(word => word.Occurrences), 2, 12, CheckWords + Cut, ImprovedWords,
         [
-            new(ProposalDifferenceBucket.Regression, 10, 20), new(ProposalDifferenceBucket.AnalysisChanged, 5, 9),
-            new(ProposalDifferenceBucket.ImprovedUnique, 4, 8),
+            new(ProposalDifferenceBucket.Regression, 10 + Cut, 20, Bounded ? 10 : null),
+            new(ProposalDifferenceBucket.AnalysisChanged, 5, 9, Bounded ? 5 : null),
+            new(ProposalDifferenceBucket.ImprovedUnique, 4, 8, Bounded ? 4 : null),
         ],
-        [new("approved-unique", "no-approved-match", 10, 20), new("no-parse", "approved-unique", 4, 8)],
+        [
+            new("approved-unique", "no-approved-match", 10 + Cut, 20, Bounded ? 10 : null),
+            new("no-parse", "approved-unique", 4, 8, Bounded ? 4 : null),
+            .. Unchanged > 0 ? new[] { new ProposalDifferenceMatrixCell("approved-unique", "approved-unique", Unchanged, Unchanged, 0) } : [],
+        ],
         "parsimony", null, Pin(), Pin(), Warnings, 3,
-        [new(HumanAgreementLimitation.Capped, 2, 3)], "2026-10-31T00:00:00Z", Reference);
+        [new(HumanAgreementLimitation.Capped, 2, 3, Bounded ? 2 : null)], "2026-10-31T00:00:00Z", Reference,
+        WordsListed: Bounded ? _words.Count : null);
 
     public int CheckWords => 15;
 
@@ -82,6 +108,14 @@ internal sealed class ProposalDifferenceFixture
     {
         Requests.Add(request);
         if (BeforeRead is { } before) await before(request, cancellationToken);
+        if (EveryDifferenceDamaged is { } damaged && request.DifferenceId is null)
+            return CommandOutcome<ProposalDifferenceResponse>.Refused(new Refusal(RefusalCodes.DifferenceUnreadable,
+                FailureReason.StoreInconsistent, "None of the Proposal's saved Differences can be read.",
+                ProposalDifferenceDamagedFacts.ToFacts("proposal/one", damaged)));
+        if (WordRowsDamaged)
+            return CommandOutcome<ProposalDifferenceResponse>.Success(new ProposalDifferenceResponse(Summary, [], 0, null,
+                false, null, null, [new ProposalDifferenceSaved("difference/one", TextId, TextTitle, Reference,
+                    "2026-10-31T00:00:00Z", false)], 1, 0, null, 0, true));
         var matching = WordDetailKept && !NoWordsMatch ? _words.Where(word => Matches(request, word)).ToList() : [];
         var page = WordDetailKept ? matching.Skip(request.Offset).Take(request.Limit).ToList() : [];
         if (FirstWordEvidence is not null)
@@ -94,14 +128,17 @@ internal sealed class ProposalDifferenceFixture
                 .Select(index => new ProposalDifferenceOccurrencePlace("text/one", $"segment/{index}", index, index + 1))
                 .ToList();
             var placePage = all.Skip(request.OccurrenceOffset ?? 0).Take(request.OccurrenceLimit ?? 25).ToList();
-            places = new ProposalDifferenceOccurrencePage(word, placePage, all.Count,
+            places = new ProposalDifferenceOccurrencePage(word, placePage, PlacesCounted ?? all.Count,
                 (request.OccurrenceOffset ?? 0) + placePage.Count < all.Count
-                    ? (request.OccurrenceOffset ?? 0) + placePage.Count : null);
+                    ? (request.OccurrenceOffset ?? 0) + placePage.Count : null,
+                PlacesCounted is null ? null : all.Count);
         }
         return CommandOutcome<ProposalDifferenceResponse>.Success(new ProposalDifferenceResponse(
             Summary, page, matching.Count, next, WordDetailKept, places, page.Count > 0 ? Unreadable : null,
             SavedOthers.Prepend(new ProposalDifferenceSaved("difference/one", TextId, TextTitle, Reference,
-                "2026-10-31T00:00:00Z", WordDetailKept)).ToList(), SavedOthers.Count + 1 + SavedNotListed + SavedUnreadable, SavedUnreadable));
+                "2026-10-31T00:00:00Z", WordDetailKept)).ToList(), SavedOthers.Count + 1 + SavedNotListed + SavedUnreadable + SavedDamaged.Count,
+                SavedUnreadable + SavedDamaged.Count, SavedDamaged.Count == 0 ? null : SavedDamaged,
+                WordDetailKept ? _words.Count : 0));
     }
 
     private static bool Matches(ProposalDifferenceShowRequest request, ProposalDifferenceWord word) =>

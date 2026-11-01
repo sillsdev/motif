@@ -1,3 +1,4 @@
+using System.Globalization;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
@@ -30,6 +31,14 @@ public sealed partial class ProposalDifferenceViewModel
                 State = ProposalDifferenceState.Absent;
                 return;
             }
+            if (read.Refusal?.Code == RefusalCodes.DifferenceUnreadable)
+            {
+                // Every saved Difference is damaged: name them and offer to make one, as with none saved.
+                SavedDamaged = ProposalDifferenceDamagedFacts.FromFacts(read.Refusal.Facts);
+                SavedUnreadable = SavedDamaged.Count;
+                State = ProposalDifferenceState.Absent;
+                return;
+            }
             ShownRefusal = WindowRefusal.From(read.Refusal!, MotifAppStrings.ProposalDifferenceUnreadable);
             State = ProposalDifferenceState.Refused;
             return;
@@ -44,6 +53,7 @@ public sealed partial class ProposalDifferenceViewModel
         SetSaved(response);
         Summary = response.Summary;
         WordDetailKept = response.WordDetailKept;
+        WordDetailUnreadable = response.WordDetailUnreadable;
         BuildChips(response.Summary, response.WordDetailKept);
         ApplyWords(response, replace: true);
         State = ProposalDifferenceState.Shown;
@@ -79,6 +89,7 @@ public sealed partial class ProposalDifferenceViewModel
         Summary = null;
         UnreadableEvidence = [];
         WordDetailKept = true;
+        WordDetailUnreadable = false;
         MovedChips = CheckChips = ImprovedChips = LimitationChips = Words = [];
         MatchingWords = 0;
         HasFilter = false;
@@ -91,30 +102,44 @@ public sealed partial class ProposalDifferenceViewModel
         new(_projectPath!, _proposalId, _differenceId, _checkOnly, _bucket, _beforeState, _afterState, offset, PageSize,
             _limitation);
 
-    private void BuildChips(ProposalDifferenceSummary summary, bool canChoose)
+    private void BuildChips(ProposalDifferenceSummary summary, bool kept)
     {
-        MovedChips = [.. summary.Matrix.Select(cell => new DifferenceChipViewModel(DifferenceChipKind.Moved,
-            ProposalDifferenceWords.Moved(cell.BeforeState, cell.AfterState), cell.Words,
-            cell.BeforeState + "\n" + cell.AfterState, canChoose, Chosen))];
+        // A count that lists none of its words filters nothing; once the words are gone nothing filters.
+        var listedAny = kept && summary.ListedWordCount > 0;
+        MovedChips = [.. summary.Matrix.Select(cell =>
+        {
+            var filters = kept && cell.WordsListed > 0 && !(summary.WordsListed is not null && cell.BeforeState == cell.AfterState);
+            return new DifferenceChipViewModel(DifferenceChipKind.Moved,
+                ListedLabel(ProposalDifferenceWords.Moved(cell.BeforeState, cell.AfterState), cell.Words, cell.WordsListed, filters),
+                cell.Words, cell.BeforeState + "\n" + cell.AfterState, filters, Chosen);
+        })];
         CheckChips =
         [
             new DifferenceChipViewModel(DifferenceChipKind.CheckOnly, MotifAppStrings.ProposalDifferenceCheckChip,
-                summary.CouldBeBadWords, string.Empty, canChoose, Chosen),
-            .. BucketChips(summary, ProposalDifferenceWords.CouldBeBad, canChoose),
+                summary.CouldBeBadWords, string.Empty, listedAny, Chosen),
+            .. BucketChips(summary, ProposalDifferenceWords.CouldBeBad, kept),
         ];
-        ImprovedChips = [.. BucketChips(summary, ProposalDifferenceWords.Improved, canChoose)];
+        ImprovedChips = [.. BucketChips(summary, ProposalDifferenceWords.Improved, kept)];
         LimitationChips = [.. summary.Limitations.Select(limit => new DifferenceChipViewModel(
-            DifferenceChipKind.Limitation, ProposalDifferenceWords.Limitation(limit.Limitation), limit.Words,
-            ProposalDifferenceWords.Code(limit.Limitation), canChoose, Chosen))];
+            DifferenceChipKind.Limitation,
+            ListedLabel(ProposalDifferenceWords.Limitation(limit.Limitation), limit.Words, limit.WordsListed,
+                kept && limit.WordsListed > 0),
+            limit.Words, ProposalDifferenceWords.Code(limit.Limitation), kept && limit.WordsListed > 0, Chosen))];
     }
 
+    // Says on a chip that opens a list how many of its words are listed when some are only counted.
+    private static string ListedLabel(string label, int words, int listed, bool opens) => opens && listed < words
+        ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.ProposalDifferenceChipListedFormat, label, listed)
+        : label;
+
     private IEnumerable<DifferenceChipViewModel> BucketChips(ProposalDifferenceSummary summary,
-        IReadOnlyList<ProposalDifferenceBucket> buckets, bool canChoose) =>
+        IReadOnlyList<ProposalDifferenceBucket> buckets, bool kept) =>
         buckets.Select(bucket => (bucket, count: summary.Buckets.FirstOrDefault(item => item.Bucket == bucket)))
             .Where(item => item.count is { Words: > 0 })
             .Select(item => new DifferenceChipViewModel(DifferenceChipKind.Bucket,
-                ProposalDifferenceWords.Bucket(item.bucket), item.count!.Words,
-                ProposalDifferenceWords.Code(item.bucket), canChoose, Chosen));
+                ListedLabel(ProposalDifferenceWords.Bucket(item.bucket), item.count!.Words, item.count.WordsListed,
+                    kept && item.count.WordsListed > 0),
+                item.count.Words, ProposalDifferenceWords.Code(item.bucket), kept && item.count.WordsListed > 0, Chosen));
 
     private void ApplyWords(ProposalDifferenceResponse response, bool replace)
     {
@@ -122,6 +147,7 @@ public sealed partial class ProposalDifferenceViewModel
             word.Occurrences, word.Word, true, Chosen) { IsActive = word.Word == SelectedWord?.Word });
         Words = replace ? [.. added] : [.. Words, .. added];
         MatchingWords = response.MatchingWords;
+        RaiseWordsStatus();
         UnreadableEvidence = response.UnreadableEvidence ?? [];
         _nextWordOffset = response.NextOffset;
         CanShowMoreWords = response.NextOffset is not null && Words.Count < MostShown;
@@ -130,7 +156,7 @@ public sealed partial class ProposalDifferenceViewModel
     // True when a read found the word detail gone (Proposal decided meanwhile); the section is then summary only.
     private bool AdoptWordDetail(ProposalDifferenceResponse response)
     {
-        if (response.WordDetailKept == WordDetailKept) return false;
+        if (response.WordDetailKept == WordDetailKept && response.WordDetailUnreadable == WordDetailUnreadable) return false;
         _checkOnly = false;
         _bucket = _limitation = _beforeState = _afterState = null;
         _nextWordOffset = _nextPlaceOffset = null;
@@ -138,6 +164,7 @@ public sealed partial class ProposalDifferenceViewModel
         ClearSelectedWord();
         Summary = response.Summary;
         WordDetailKept = response.WordDetailKept;
+        WordDetailUnreadable = response.WordDetailUnreadable;
         BuildChips(response.Summary, response.WordDetailKept);
         Words = [];
         MatchingWords = 0;
@@ -263,5 +290,14 @@ public sealed partial class ProposalDifferenceViewModel
             chip.IsActive = chip.Kind == DifferenceChipKind.CheckOnly ? _checkOnly : chip.Code == _bucket;
         foreach (var chip in ImprovedChips) chip.IsActive = chip.Code == _bucket;
         foreach (var chip in LimitationChips) chip.IsActive = chip.Code == _limitation;
+        RaiseWordsStatus();
+    }
+
+    private void RaiseWordsStatus()
+    {
+        OnPropertyChanged(nameof(WordsStatusText));
+        OnPropertyChanged(nameof(NoMatchingText));
+        OnPropertyChanged(nameof(ListedNoteText));
+        OnPropertyChanged(nameof(HasListedNote));
     }
 }

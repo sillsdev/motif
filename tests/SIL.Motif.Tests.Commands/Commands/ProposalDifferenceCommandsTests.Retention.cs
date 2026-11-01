@@ -236,7 +236,8 @@ public sealed partial class ProposalDifferenceCommandsTests
     {
         using var fixture = new Fixture(_root, extraWords: 3000);
         var produced = ProposalDifferenceCommands.Produce(fixture.ProduceRequest()).Value!.Summary;
-        Assert.Equal(3002, fixture.Count("ProposalDifferenceCases", produced.DifferenceId));
+        Assert.Equal(produced.ListedWordCount, fixture.Count("ProposalDifferenceCases", produced.DifferenceId));
+        Assert.InRange(produced.ListedWordCount, 1, produced.Words - 1);
 
         new ProposalRepository(fixture.Database).SetStatus(CanonicalId.Parse(fixture.ProposalId), "rejected", null);
 

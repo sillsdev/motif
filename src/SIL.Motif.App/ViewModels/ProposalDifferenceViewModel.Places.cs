@@ -16,6 +16,7 @@ public sealed partial class ProposalDifferenceViewModel
         Stop(ref _placesCancellation);
         _nextPlaceOffset = null;
         _placesTotal = 0;
+        _placesListed = 0;
         SelectedWord = null;
         Places = [];
         CanShowMorePlaces = false;
@@ -65,6 +66,7 @@ public sealed partial class ProposalDifferenceViewModel
             MotifAppStrings.ProposalDifferencePlaceFormat, place.LineNumber, place.OccurrenceIndex + 1));
         Places = replace ? [.. added] : [.. Places, .. added];
         _placesTotal = page?.Total ?? 0;
+        _placesListed = page?.PlacesListed ?? 0;
         OnPropertyChanged(nameof(PlacesStatusText));
         OnPropertyChanged(nameof(ShowsPlacesStatus));
         _nextPlaceOffset = page?.NextOffset;

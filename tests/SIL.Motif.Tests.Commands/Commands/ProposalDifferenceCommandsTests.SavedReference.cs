@@ -143,6 +143,64 @@ public sealed partial class ProposalDifferenceCommandsTests
         Assert.Equal(first.DifferenceId, Assert.Single(shown.Value.Saved!).DifferenceId);
     }
 
+    // The newest saved Difference is damaged: the newest readable one shows and the damaged one is named.
+    [Fact]
+    public void ADamagedNewestDifferenceIsNamedAndTheNewestReadableOneShows()
+    {
+        using var fixture = new Fixture(_root);
+        var first = ProposalDifferenceCommands.Produce(fixture.ProduceRequest()).Value!.Summary;
+        var otherText = Guid.NewGuid().ToString("D");
+        new ProposalDifferenceRepository(fixture.Database).Publish(new NewProposalDifference(first with
+        {
+            DifferenceId = "difference/newest", TextId = otherText, CreatedUtc = "2999-01-01T00:00:00Z",
+        }, []));
+        fixture.Sql("UPDATE ProposalDifferences SET SummaryJson = SummaryJson || ' ' WHERE DifferenceId = 'difference/newest';");
+
+        var shown = ProposalDifferenceCommands.Show(fixture.ShowRequest());
+
+        Assert.True(shown.Succeeded, shown.Refusal?.Message);
+        Assert.Equal(first.DifferenceId, shown.Value!.Summary.DifferenceId);
+        var damaged = Assert.Single(shown.Value.SavedDamaged!);
+        Assert.Equal(new ProposalDifferenceDamaged("difference/newest", otherText, ProposalDifferenceReferences.Human,
+            "2999-01-01T00:00:00Z"), damaged);
+        Assert.Equal(1, shown.Value.SavedUnreadable);
+        Assert.Equal(2, shown.Value.SavedTotal);
+    }
+
+    [Fact]
+    public void ADamagedDifferenceStaysReadableByIdOnlyAsARefusalAndIsNamedWhenNoneCanBeRead()
+    {
+        using var fixture = new Fixture(_root);
+        var first = ProposalDifferenceCommands.Produce(fixture.ProduceRequest()).Value!.Summary;
+        fixture.Sql($"UPDATE ProposalDifferences SET SummaryJson = SummaryJson || ' ' WHERE DifferenceId = '{first.DifferenceId}';");
+
+        var asked = ProposalDifferenceCommands.Show(fixture.ShowRequest() with { DifferenceId = first.DifferenceId });
+        var newest = ProposalDifferenceCommands.Show(fixture.ShowRequest());
+
+        Assert.Equal("store.inconsistent", asked.Refusal?.Code);
+        Assert.Equal(RefusalCodes.DifferenceUnreadable, newest.Refusal?.Code);
+        Assert.Contains(first.DifferenceId, newest.Refusal!.Message, StringComparison.Ordinal);
+        Assert.Contains(first.TextId, newest.Refusal.Message, StringComparison.Ordinal);
+        var named = Assert.Single(ProposalDifferenceDamagedFacts.FromFacts(newest.Refusal.Facts));
+        Assert.Equal(new ProposalDifferenceDamaged(first.DifferenceId, first.TextId, first.Reference, first.CreatedUtc), named);
+    }
+
+    [Fact]
+    public void ProducingAgainReplacesADamagedDifferenceForThatTextAndReference()
+    {
+        using var fixture = new Fixture(_root);
+        var first = ProposalDifferenceCommands.Produce(fixture.ProduceRequest()).Value!.Summary;
+        fixture.Sql($"UPDATE ProposalDifferences SET SummaryJson = SummaryJson || ' ' WHERE DifferenceId = '{first.DifferenceId}';");
+
+        var again = ProduceAsTheWindowDoes(fixture.ProduceRequest());
+
+        Assert.True(again.Succeeded, again.Refusal?.Message);
+        Assert.NotEqual(first.DifferenceId, again.Value!.Summary.DifferenceId);
+        Assert.Equal(1, fixture.DifferenceRows());
+        Assert.Empty(again.Value.SavedDamaged!);
+        Assert.Equal(0, again.Value.SavedUnreadable);
+    }
+
     [Fact]
     public void TheListOfSavedDifferencesIsBoundedAndCountsTheRest()
     {

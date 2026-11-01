@@ -41,6 +41,52 @@ public sealed class ProposalDifferenceRenderingTests
         Assert.DoesNotContain("Showing", rendered.Output);
     }
 
+    private static ProposalDifferenceSummary Cut(int words, int listed) => Summary() with
+    {
+        Words = words,
+        WordsListed = listed,
+        Buckets = [new(ProposalDifferenceBucket.Regression, words, words, listed)],
+        Matrix = [new("no-parse", "approved-unique", words, words, listed)],
+        Limitations = [new(HumanAgreementLimitation.Capped, words, words, listed)],
+    };
+
+    [Fact]
+    public void AKeptListSaysHowManyWordsAreListedAndHowManyAreOnlyCounted()
+    {
+        var response = new ProposalDifferenceResponse(Cut(900, 100), [], 0, null, true);
+
+        var output = CommandTextRenderer.Render(CommandOutcome<ProposalDifferenceResponse>.Success(response), asJson: false).Output;
+
+        Assert.Contains("100 of 900 words are listed and 800 are counted but not listed", output);
+        Assert.Contains("(100 listed, 800 counted but not listed)", output);
+        Assert.Contains("best 100", output);
+    }
+
+    [Fact]
+    public void OneWordThatIsOnlyCountedReadsInTheSingular()
+    {
+        var response = new ProposalDifferenceResponse(Cut(2, 1), [], 0, null, true);
+
+        var output = CommandTextRenderer.Render(CommandOutcome<ProposalDifferenceResponse>.Success(response), asJson: false).Output;
+
+        Assert.Contains("1 of 2 words are listed and 1 is counted but not listed", output);
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, true)]
+    public void NoWordsAreSaidToBeListedWhenTheWordDetailIsGoneOrCannotBeRead(bool unreadable, bool _)
+    {
+        // Decided and deferred Proposals keep no words; a damaged Difference lists none either.
+        var response = new ProposalDifferenceResponse(Cut(900, 100), [], 0, null, false, WordDetailUnreadable: unreadable);
+
+        var output = CommandTextRenderer.Render(CommandOutcome<ProposalDifferenceResponse>.Success(response), asJson: false).Output;
+
+        Assert.DoesNotContain("are listed", output);
+        Assert.DoesNotContain("counted but not listed", output);
+        Assert.DoesNotContain(" listed,", output);
+    }
+
     [Fact]
     public void ASourceValidatedWordSaysWhichTierAndLevelItsDecisionsRestOnAndUnreadableRevisionsAreNamed()
     {

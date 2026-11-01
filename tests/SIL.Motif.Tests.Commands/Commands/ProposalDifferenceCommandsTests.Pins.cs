@@ -79,7 +79,7 @@ public sealed partial class ProposalDifferenceCommandsTests
         var summary = ProposalDifferenceCommands.Produce(fixture.ProduceRequest()).Value!.Summary;
 
         var capped = Assert.Single(summary.Limitations);
-        Assert.Equal(new ProposalDifferenceLimitationCount(HumanAgreementLimitation.Capped, 1, 1), capped);
+        Assert.Equal(new ProposalDifferenceLimitationCount(HumanAgreementLimitation.Capped, 1, 1, Listed: 1), capped);
     }
 
     [Fact]

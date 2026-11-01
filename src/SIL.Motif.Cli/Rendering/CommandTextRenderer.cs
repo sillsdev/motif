@@ -888,6 +888,8 @@ public static class CommandTextRenderer
     {
         var summary = response.Summary;
         var text = new StringBuilder();
+        // Words are listed only while their detail is kept and readable, so the counts say so only then.
+        var listing = response.WordDetailKept && !response.WordDetailUnreadable;
         text.AppendLine($"Difference {summary.DifferenceId} for Proposal {summary.ProposalId}");
         text.AppendLine($"  Text: {summary.TextTitle} ({summary.TextId})");
         text.AppendLine(summary.Reference == ProposalDifferenceReferences.SourceValidated
@@ -897,23 +899,30 @@ public static class CommandTextRenderer
               $"{CountLabel(summary.WordsWithApprovedDecisions, "word has", "words have")} an approved analysis");
         text.AppendLine($"  {CountLabel(summary.Words, "word", "words")}, {CountLabel(summary.Occurrences, "occurrence", "occurrences")} " +
             $"compared; {CountLabel(summary.UnboundOccurrences, "occurrence", "occurrences")} could not be matched to one measured word");
+        if (listing && summary.ListedWordCount < summary.Words)
+            text.AppendLine($"  {summary.ListedWordCount:N0} of {summary.Words:N0} words are listed and " +
+                $"{summary.Words - summary.ListedWordCount:N0} {(summary.Words - summary.ListedWordCount == 1 ? "is" : "are")} counted but not listed: only words that changed or fall " +
+                $"in a category are listed, each cell, category and limitation keeping its best {ProposalDifferenceListing.MostWordsPerGroup:N0}, " +
+                $"and at most {ProposalDifferenceListing.MostPlacesPerWord:N0} places for each word");
         text.AppendLine($"  Could be bad: {summary.CouldBeBadWords}; improved: {summary.ImprovedWords} (advisory only)");
         foreach (var bucket in summary.Buckets)
             text.AppendLine($"  {BucketCode(bucket.Bucket)}: {CountLabel(bucket.Words, "word", "words")}, " +
-                $"{CountLabel(bucket.Occurrences, "occurrence", "occurrences")}");
+                $"{CountLabel(bucket.Occurrences, "occurrence", "occurrences")}{NotListed(listing, bucket.Words, bucket.WordsListed)}");
         foreach (var item in response.UnreadableEvidence ?? [])
             text.AppendLine($"  Not counted: staged decisions of Applied Proposal {item.ProposalId}" +
                 (item.Label is { Length: > 0 } ? $" '{item.Label}'" : "") + $" could not be read: {item.Reason}");
         text.AppendLine("  Before -> after:");
         foreach (var cell in summary.Matrix)
-            text.AppendLine($"    {cell.BeforeState} -> {cell.AfterState}: {CountLabel(cell.Words, "word", "words")}");
+            text.AppendLine($"    {cell.BeforeState} -> {cell.AfterState}: {CountLabel(cell.Words, "word", "words")}" +
+                NotListed(listing, cell.Words, cell.WordsListed));
         foreach (var warning in summary.Warnings) text.AppendLine($"  Warning: {warning}");
         if (summary.MeasuredWordsOutsideText > 0)
             text.AppendLine($"  {CountLabel(summary.MeasuredWordsOutsideText, "measured word is", "measured words are")} " +
                 "not in this Text");
         foreach (var limit in summary.Limitations)
             text.AppendLine($"  Limit {System.Text.Json.JsonSerializer.Serialize(limit.Limitation).Trim('"')}: " +
-                $"{CountLabel(limit.Words, "word", "words")}, {CountLabel(limit.Occurrences, "occurrence", "occurrences")}");
+                $"{CountLabel(limit.Words, "word", "words")}, {CountLabel(limit.Occurrences, "occurrence", "occurrences")}" +
+                NotListed(listing, limit.Words, limit.WordsListed));
         if (response.Saved is { Count: > 0 } saved)
         {
             text.AppendLine($"  Saved Differences of this Proposal: {saved.Count:N0}" +
@@ -926,6 +935,16 @@ public static class CommandTextRenderer
         if (response.SavedUnreadable > 0)
             text.AppendLine($"  {CountLabel(response.SavedUnreadable, "saved Difference", "saved Differences")} of this " +
                 "Proposal could not be read and " + (response.SavedUnreadable == 1 ? "is" : "are") + " not listed");
+        foreach (var damaged in response.SavedDamaged ?? [])
+            text.AppendLine($"    ! Text {damaged.TextId}, " +
+                $"{(damaged.Reference == ProposalDifferenceReferences.SourceValidated ? "source-validated" : "human")} decisions, " +
+                $"made {damaged.CreatedUtc}, {damaged.DifferenceId}: unreadable; produce it again to replace it");
+        if (response.WordDetailUnreadable)
+        {
+            text.AppendLine("  The word detail of this Difference cannot be read, so only this summary is shown");
+            text.AppendLine("  Make the Difference again to replace it: motif difference produce");
+            return text.ToString();
+        }
         if (!response.WordDetailKept)
         {
             text.AppendLine("  Word detail is no longer kept: the Proposal was decided or deferred, only this summary remains");
@@ -943,13 +962,21 @@ public static class CommandTextRenderer
         if (response.NextOffset is { } next) text.AppendLine($"  More: --offset {next}");
         if (response.Occurrences is { } places)
         {
-            text.AppendLine($"  Places of {places.Word}: showing {places.Places.Count} of {places.Total:N0}");
+            text.AppendLine(places.PlacesListed < places.Total
+                ? $"  Places of {places.Word}: showing {places.Places.Count} of {places.PlacesListed:N0} listed; " +
+                  $"{places.Total:N0} in the Text, so {places.Total - places.PlacesListed:N0} are counted but not listed " +
+                  $"(at most {ProposalDifferenceListing.MostPlacesPerWord:N0} places are listed for each word; the rest are in the Text)"
+                : $"  Places of {places.Word}: showing {places.Places.Count} of {places.Total:N0}");
             foreach (var place in places.Places)
                 text.AppendLine($"    line {place.LineNumber}, word {place.OccurrenceIndex + 1} (segment {place.SegmentId})");
             if (places.NextOffset is { } nextPlace) text.AppendLine($"  More places: --occurrence-offset {nextPlace}");
         }
         return text.ToString();
     }
+
+    // Says how many of a count's words the Difference lists, so a count is never read as an empty list.
+    private static string NotListed(bool listing, int words, int listed) => !listing || listed >= words ? ""
+        : $" ({listed:N0} listed, {words - listed:N0} counted but not listed)";
 
     private static string BucketCode(ProposalDifferenceBucket bucket) =>
         SIL.Motif.Worker.Store.ProposalDifferenceRepository.BucketName(bucket);

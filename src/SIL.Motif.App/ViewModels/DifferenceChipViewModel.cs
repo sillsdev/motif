@@ -35,7 +35,7 @@ public sealed partial class DifferenceChipViewModel : ObservableObject
         Count = count;
         Code = code;
         CanChoose = canChoose;
-        ChooseCommand = new RelayCommand(() => chosen(this));
+        ChooseCommand = new RelayCommand(() => chosen(this), () => CanChoose);
     }
 
     /// <summary>What the chip stands for.</summary>

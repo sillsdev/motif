@@ -24,24 +24,15 @@ internal static class ProposalDifferenceSummaries
         string baselineToken, string reference, string? decisionsDigest,
         IReadOnlyList<ProposalDifferenceUnreadableEvidence>? unreadable = null)
     {
-        var buckets = built.Words.SelectMany(word => word.Facts.Buckets.Select(item => item.Bucket).Distinct()
-                .Select(bucket => (bucket, word)))
-            .GroupBy(pair => pair.bucket).OrderBy(group => (int)group.Key)
-            .Select(group => new ProposalDifferenceBucketCount(group.Key, group.Count(),
-                group.Sum(pair => pair.word.Occurrences.Count))).ToArray();
-        var matrix = built.Words.GroupBy(word => (Before: ProposalDifferenceRepository.StateName(word.Facts.Before),
-                After: ProposalDifferenceRepository.StateName(word.Facts.After)))
-            .OrderBy(group => group.Key.Before, StringComparer.Ordinal).ThenBy(group => group.Key.After, StringComparer.Ordinal)
-            .Select(group => new ProposalDifferenceMatrixCell(group.Key.Before, group.Key.After, group.Count(),
-                group.Sum(word => word.Occurrences.Count))).ToArray();
+        var tally = built.Tally;
         return new ProposalDifferenceSummary(CanonicalId.Mint("difference/").Value, proposalId, jobId,
             before.AssessmentId, after.AssessmentId, text.TextId.ToString("D"), text.Title, baselineToken,
-            new ProposalDifferencePolicy(), built.Words.Count, built.Words.Sum(word => word.Occurrences.Count),
-            built.UnboundOccurrences, built.Words.Count(word => word.Facts.After.ApprovedExpectedMorphologyCount > 0),
-            built.Words.Count(word => word.Facts.CouldBeBad), built.Words.Count(word => word.Facts.Improved), buckets,
-            matrix, after.Assessor, after.ProposalIntentDigest, Pin(before), Pin(after), Warnings(before, after, reference, unreadable),
-            built.MeasuredWordsOutsideText, Limitations(built.Words),
-            DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture), reference, decisionsDigest);
+            new ProposalDifferencePolicy(), tally.Words, tally.Occurrences, built.UnboundOccurrences,
+            tally.WithApprovedDecisions, tally.CouldBeBad, tally.Improved, tally.BucketCounts(), tally.MatrixCells(),
+            after.Assessor, after.ProposalIntentDigest, Pin(before), Pin(after), Warnings(before, after, reference, unreadable),
+            built.MeasuredWordsOutsideText, tally.LimitationCounts(),
+            DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture), reference, decisionsDigest,
+            built.Words.Count);
     }
 
     // Names the first three, so the kept summary stays small however many Applied Proposals cannot be read.
@@ -53,14 +44,6 @@ internal static class ProposalDifferenceSummaries
     private static ProposalDifferenceSidePin Pin(AssessmentRecord record) => new(
         record.Invocation?.ExecutableVersion, record.Invocation?.ExecutableBytesSha256, record.GrammarSourceSha256,
         record.Selection.Name, record.Selection.Sha256, record.TokeniserName, record.TokeniserVersion);
-
-    // A word counts once for a limitation that touched either checkpoint.
-    private static ProposalDifferenceLimitationCount[] Limitations(IReadOnlyList<NewProposalDifferenceWord> words) =>
-        words.SelectMany(word => word.Facts.Before.Limitations.Concat(word.Facts.After.Limitations).Distinct()
-                .Select(limitation => (limitation, word)))
-            .GroupBy(pair => pair.limitation).OrderBy(group => (int)group.Key)
-            .Select(group => new ProposalDifferenceLimitationCount(group.Key, group.Count(),
-                group.Sum(pair => pair.word.Occurrences.Count))).ToArray();
 
     // ADR 0042: a differing parser or tokeniser only annotates; a side with no recorded parser is no mismatch.
     private static string[] Warnings(AssessmentRecord before, AssessmentRecord after, string reference,

@@ -28,17 +28,49 @@ public sealed partial class ProposalDifferenceViewModel
     [NotifyPropertyChangedFor(nameof(HasSavedNote), nameof(SavedNoteText))]
     private int _savedUnreadable;
 
+    /// <summary>The unreadable saved Differences, named by Text and reference.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasSavedNote), nameof(SavedNoteText))]
+    private IReadOnlyList<ProposalDifferenceDamaged> _savedDamaged = [];
+
+    // Past this many the note counts the rest, so it stays a few lines however many are damaged.
+    private const int MostDamagedNamed = 3;
+
     /// <summary>Whether the list of saved Differences shows: only when there is more than one to choose from.</summary>
     public bool ShowsSavedChoices => SavedChoices.Count > 1;
 
-    public bool HasSavedNote => SavedNotListed > 0 || SavedUnreadable > 0;
+    public bool HasSavedNote => SavedNotListed > 0 || SavedUnreadable > 0 || SavedDamaged.Count > 0;
 
-    /// <summary>"2 more saved Differences are not listed. 1 saved Difference could not be read."</summary>
+    /// <summary>
+    /// "2 more saved Differences are not listed. The Difference for Hadithi, read against people's decisions and made
+    /// 11/1/2026, could not be read. Make Difference replaces it."
+    /// </summary>
     public string SavedNoteText => string.Join(' ', new[]
     {
         SavedNotListed > 0 ? PluralText.Format(MotifAppStrings.ProposalDifferenceSavedMorePattern, SavedNotListed) : null,
-        SavedUnreadable > 0 ? PluralText.Format(MotifAppStrings.ProposalDifferenceSavedUnreadablePattern, SavedUnreadable) : null,
-    }.OfType<string>());
+    }.Concat(DamagedNotes()).OfType<string>());
+
+    // Names the first few; a count alone is all an older response gives.
+    private IEnumerable<string?> DamagedNotes()
+    {
+        foreach (var damaged in SavedDamaged.Take(MostDamagedNamed))
+            yield return DamagedNote(damaged);
+        var unnamed = SavedUnreadable - Math.Min(SavedDamaged.Count, MostDamagedNamed);
+        if (unnamed > 0)
+            yield return PluralText.Format(MotifAppStrings.ProposalDifferenceSavedUnreadablePattern, unnamed);
+    }
+
+    private string DamagedNote(ProposalDifferenceDamaged damaged)
+    {
+        var sourceValidated = damaged.Reference == ProposalDifferenceReferences.SourceValidated;
+        var title = TextChoices.FirstOrDefault(choice => string.Equals(choice.Id.ToString("D"), damaged.TextId,
+            StringComparison.OrdinalIgnoreCase))?.Title ?? damaged.TextId[..Math.Min(8, damaged.TextId.Length)];
+        var note = string.Format(CultureInfo.CurrentCulture, MotifAppStrings.ProposalDifferenceSavedDamagedFormat, title,
+            sourceValidated ? MotifAppStrings.ProposalDifferenceSavedSourceValidated : MotifAppStrings.ProposalDifferenceSavedHuman,
+            MadeText(damaged.CreatedUtc));
+        // Only a Difference against people's decisions is made from here, and only while the Make button is offered.
+        return sourceValidated || !OffersMake ? note : note + " " + MotifAppStrings.ProposalDifferenceSavedDamagedRemake;
+    }
 
     /// <summary>Says which Text and whose decisions the shown Difference compares, so it is never taken for another.</summary>
     public string BasisText => Summary is { } summary
@@ -60,6 +92,7 @@ public sealed partial class ProposalDifferenceViewModel
         {
             SavedChoices = response?.Saved is { } saved ? Choices(saved) : [];
             SavedUnreadable = response?.SavedUnreadable ?? 0;
+            SavedDamaged = response?.SavedDamaged ?? [];
             SavedNotListed = response?.Saved is { } listed
                 ? Math.Max(0, response.SavedTotal - listed.Count - response.SavedUnreadable) : 0;
             SelectedSaved = response is null ? null : SavedChoices.FirstOrDefault(choice =>
@@ -86,13 +119,15 @@ public sealed partial class ProposalDifferenceViewModel
             ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.ProposalDifferenceSavedTextFormat, saved.TextTitle,
                 saved.TextId[..Math.Min(8, saved.TextId.Length)])
             : saved.TextTitle;
-        var made = DateTimeOffset.TryParse(saved.CreatedUtc, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal,
-            out var when) ? when.ToLocalTime().ToString("g", CultureInfo.CurrentCulture) : saved.CreatedUtc;
         return new DifferenceSavedChoice(saved.DifferenceId, saved.TextId, saved.Reference,
             string.Format(CultureInfo.CurrentCulture, MotifAppStrings.ProposalDifferenceSavedItemFormat, title,
                 saved.Reference == ProposalDifferenceReferences.SourceValidated
-                    ? MotifAppStrings.ProposalDifferenceSavedSourceValidated : MotifAppStrings.ProposalDifferenceSavedHuman, made));
+                    ? MotifAppStrings.ProposalDifferenceSavedSourceValidated : MotifAppStrings.ProposalDifferenceSavedHuman, MadeText(saved.CreatedUtc)));
     }
+
+    private static string MadeText(string createdUtc) =>
+        DateTimeOffset.TryParse(createdUtc, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var when)
+            ? when.ToLocalTime().ToString("g", CultureInfo.CurrentCulture) : createdUtc;
 
     // Reads another of the Proposal's saved Differences by id, leaving what the Make button is doing alone.
     private async Task ShowSavedAsync(DifferenceSavedChoice choice)

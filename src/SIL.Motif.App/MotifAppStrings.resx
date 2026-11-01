@@ -1404,6 +1404,34 @@
     <value>Choose Make Difference Again to see the words.</value>
     <comment>Shown with the summary of a deferred Proposal, whose Difference can be made again to bring its words back; Make Difference Again is the button's own name.</comment>
   </data>
+  <data name="MotifApp.ProposalDifferenceChipListedFormat" xml:space="preserve">
+    <value>{0} ({1} listed)</value>
+    <comment>Label of a chip whose words are not all listed: {0} is the chip's own label, {1} is how many of its words the list holds. The chip's count beside it is how many words it holds in all.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferenceListedNoteFormat" xml:space="preserve">
+    <value>{0} of {1} words are listed; {2}, because only words that changed or fall in a category are listed, and at most {3} for each count shown here. Each listed word keeps at most {4} of its places.</value>
+    <comment>Says some compared words are only counted: {0} is how many words the Difference lists, {1} how many it compared, {2} is the count of words counted but not listed as in '860 words are counted but not listed', {3} is the most words listed for one before and after pair or category, {4} is the most places kept for a word.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferenceNotListedPattern" xml:space="preserve">
+    <value>{0, plural, one {# word is counted but not listed} other {# words are counted but not listed}}</value>
+    <comment>Plural pattern: a count of compared words that are counted and not listed; # is the count. It fills a sentence, so it has no final period.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferenceMoreNotListedPattern" xml:space="preserve">
+    <value>{0, plural, one {# more word is counted but not listed.} other {# more words are counted but not listed.}}</value>
+    <comment>Plural pattern: follows 'Showing 25 of 40.' when the chosen count holds more words than the list does; # is how many more.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferenceNoneListedPattern" xml:space="preserve">
+    <value>{0, plural, one {# word is counted but not listed.} other {# words are counted but not listed.}}</value>
+    <comment>Plural pattern: shown instead of 'No words match.' when the chosen count holds words and the list holds none of them; # is how many words are only counted.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferenceNoListedMatching" xml:space="preserve">
+    <value>No listed words match.</value>
+    <comment>Shown when no listed word matches the chosen filters; words that are only counted are not listed.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferenceDetailUnreadable" xml:space="preserve">
+    <value>The words of this Difference could not be read. The summary is kept.</value>
+    <comment>Shown with the summary of a saved Difference whose stored words are damaged.</comment>
+  </data>
   <data name="MotifApp.ProposalDifferenceBasisFormat" xml:space="preserve">
     <value>Text: {0}. Compared with {1}.</value>
     <comment>Says which Text a saved Difference compares and whose decisions it was read against; {0} is the Text title, {1} the decisions.</comment>
@@ -1435,6 +1463,14 @@
   <data name="MotifApp.ProposalDifferenceSavedUnreadablePattern" xml:space="preserve">
     <value>{0, plural, one {# saved Difference could not be read.} other {# saved Differences could not be read.}}</value>
     <comment>Plural pattern: a count of the Proposal's saved Differences whose summary could not be read and are left out of the list; # is the count.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferenceSavedDamagedFormat" xml:space="preserve">
+    <value>The Difference for {0}, read against {1} and made {2}, could not be read.</value>
+    <comment>Names a saved Difference whose stored summary is damaged: {0} is the Text title, {1} says whose decisions it was read against (people's decisions or a program's decisions), {2} is when it was made.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferenceSavedDamagedRemake" xml:space="preserve">
+    <value>Make Difference replaces it.</value>
+    <comment>Follows the note that a saved Difference could not be read: the Make Difference button, named exactly as it is on the button, makes a new one for that Text.</comment>
   </data>
   <data name="MotifApp.ProposalDifferenceSavedHuman" xml:space="preserve">
     <value>people's decisions</value>
@@ -1511,6 +1547,10 @@
   <data name="MotifApp.ProposalDifferencePlaceFormat" xml:space="preserve">
     <value>Line {0}, word {1}</value>
     <comment>A place in a Text: {0} is the line number and {1} the word's position in the line.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferencePlacesNotListedFormat" xml:space="preserve">
+    <value>Showing {0} of {1} listed places. {2} more are counted but not listed, because at most {3} places are listed for each word; all of them are in the Text.</value>
+    <comment>Under a word's places when it has more places than are listed. {0} shown, {1} listed, {2} counted but not listed, {3} the most listed for a word.</comment>
   </data>
   <data name="MotifApp.ProposalDifferenceNoPlaces" xml:space="preserve">
     <value>No places are listed for this word.</value>
@@ -6036,6 +6076,10 @@ Motif starts a check automatically when this project opens. Use Reload to read a
   <data name="MotifApp.RefusalDifferenceDuplicateParseRows" xml:space="preserve">
     <value>The last try holds several different parses for one word, so they cannot be compared. Try the changes again.</value>
     <comment>Sentence the window shows when the command refuses with code C.DifferenceDuplicateParseRows. Proposal, Baseline, Text and FieldWorks are Motif terms and product names; try means a Trial.</comment>
+  </data>
+  <data name="MotifApp.RefusalDifferenceUnreadable" xml:space="preserve">
+    <value>No saved Difference of these changes could be read.</value>
+    <comment>Sentence the window shows when the command refuses with code C.DifferenceUnreadable. Difference is a Motif term.</comment>
   </data>
   <data name="MotifApp.RefusalDifferenceUnexpectedOpinion" xml:space="preserve">
     <value>A decision saved in FieldWorks could not be read. Refresh the project, then make the Difference.</value>

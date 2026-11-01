@@ -117,6 +117,7 @@ public sealed partial class ProposalDifferenceViewModel
         OnPropertyChanged(nameof(ShowsNotTriedNote));
         OnPropertyChanged(nameof(ShowsDecidedNote));
         OnPropertyChanged(nameof(ShowsRemakeHint));
+        OnPropertyChanged(nameof(SavedNoteText));
         Maker.Refresh();
     }
 

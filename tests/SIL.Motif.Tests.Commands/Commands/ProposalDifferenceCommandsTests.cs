@@ -165,15 +165,39 @@ public sealed partial class ProposalDifferenceCommandsTests : IDisposable
     }
 
     [Fact]
-    public void ASavedWordWhoseBytesChangedIsRefusedOnRead()
+    public void ASavedWordWhoseBytesChangedLeavesTheSummaryReadableAndSaysTheWordsCannotBeRead()
     {
         using var fixture = new Fixture(_root);
-        var id = ProposalDifferenceCommands.Produce(fixture.ProduceRequest()).Value!.Summary.DifferenceId;
+        var produced = ProposalDifferenceCommands.Produce(fixture.ProduceRequest()).Value!.Summary;
         fixture.Sql("UPDATE ProposalDifferenceCases SET FactsJson = REPLACE(FactsJson, 'complete', 'incomplete') WHERE Word = 'sita';");
 
-        var outcome = ProposalDifferenceCommands.Show(new ProposalDifferenceShowRequest(fixture.ProjectPath, DifferenceId: id));
+        var outcome = ProposalDifferenceCommands.Show(new ProposalDifferenceShowRequest(fixture.ProjectPath,
+            DifferenceId: produced.DifferenceId));
 
-        Assert.Equal(FailureReason.StoreInconsistent, outcome.Refusal!.Reason);
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        Assert.Equal(produced.DifferenceId, outcome.Value!.Summary.DifferenceId);
+        Assert.Equal(produced.Words, outcome.Value.Summary.Words);
+        Assert.True(outcome.Value.WordDetailUnreadable);
+        Assert.False(outcome.Value.WordDetailKept);
+        Assert.Empty(outcome.Value.Words);
+        Assert.Equal(0, outcome.Value.MatchingWords);
+    }
+
+    [Fact]
+    public void ProducingAgainReplacesADifferenceWhoseWordRowIsDamaged()
+    {
+        using var fixture = new Fixture(_root);
+        var first = ProposalDifferenceCommands.Produce(fixture.ProduceRequest()).Value!.Summary;
+        fixture.Sql("UPDATE ProposalDifferenceCases SET FactsJson = REPLACE(FactsJson, 'complete', 'incomplete') WHERE Word = 'mutu';");
+
+        var again = ProduceAsTheWindowDoes(fixture.ProduceRequest());
+
+        Assert.True(again.Succeeded, again.Refusal?.Message);
+        Assert.NotEqual(first.DifferenceId, again.Value!.Summary.DifferenceId);
+        Assert.False(again.Value.WordDetailUnreadable);
+        Assert.True(again.Value.WordDetailKept);
+        Assert.Equal(1, fixture.DifferenceRows());
+        Assert.NotEmpty(again.Value.Words);
     }
 
     [Fact]
@@ -494,6 +518,9 @@ public sealed partial class ProposalDifferenceCommandsTests : IDisposable
         private readonly char _beforeTokenSeed;
         private readonly bool _beforeNoWords;
         private readonly int _extraWords;
+        private readonly bool _variedExtraWords;
+        private readonly bool _limitedExtraWords;
+        private readonly Func<int, int> _placesOfExtraWord;
         private readonly bool _cappedAfterMutu;
         private readonly string? _beforeParserSha;
         private readonly string? _afterParserSha;
@@ -510,8 +537,12 @@ public sealed partial class ProposalDifferenceCommandsTests : IDisposable
             char beforeTokenSeed = 'a', bool beforeNoWords = false, int extraWords = 0, bool cappedAfterMutu = false,
             string? beforeParserSha = null, string? afterParserSha = null, string[]? outsideText = null,
             bool humanApprovesSita = true, bool humanMarksMutuIncorrect = true, string sitaTrial = "sita",
-            string sitaText = "sita")
+            string sitaText = "sita", bool variedExtraWords = false, Func<int, int>? placesOfExtraWord = null,
+            bool limitedExtraWords = false)
         {
+            _variedExtraWords = variedExtraWords;
+            _limitedExtraWords = limitedExtraWords;
+            _placesOfExtraWord = placesOfExtraWord ?? (_ => 1);
             _sitaTrial = sitaTrial;
             _sitaText = sitaText;
             _humanApprovesSita = humanApprovesSita;
@@ -574,7 +605,10 @@ public sealed partial class ProposalDifferenceCommandsTests : IDisposable
             { SourceAnalysisId = CanonicalId.FromGuid(analysisId).Value };
             TextWordsProjectedToken Token(string form, Guid wordform, int index) => new(form,
                 [new WritingSystemText(form, "swh")], wordform, "analysed", null, null, null, null, index, null);
-            var extraTokens = Enumerable.Range(0, _extraWords).Select(i => Token(ExtraWord(i), ExtraId(i), 10 + i)).ToArray();
+            var nextIndex = 10;
+            var extraTokens = Enumerable.Range(0, _extraWords)
+                .SelectMany(i => Enumerable.Range(0, _placesOfExtraWord(i)).Select(_ => Token(ExtraWord(i), ExtraId(i), nextIndex++)))
+                .ToArray();
             var extraWordforms = Enumerable.Range(0, _extraWords).Select(i =>
             {
                 var extraAnalysis = ExtraId(i);
@@ -703,17 +737,38 @@ public sealed partial class ProposalDifferenceCommandsTests : IDisposable
 
         private static string ExtraWord(int index) => "w" + index.ToString("D5", System.Globalization.CultureInfo.InvariantCulture);
 
+        // A varied word has no parse, the wrong one, the approved one or both on each side: sixteen cells.
+        private static ParseAnalysis[] Pattern(int pattern) => pattern switch
+        {
+            0 => [],
+            1 => [Reading(FormB)],
+            2 => [Reading(FormA)],
+            _ => [Reading(FormA), Reading(FormB)],
+        };
+
         // A third of the extra words gain a parse, a third change it, and a third stay the same.
         private IEnumerable<AssessedWord> ExtraAssessed(bool before)
         {
             for (var i = 0; i < _extraWords; i++)
             {
+                if (_variedExtraWords)
+                {
+                    var readings = Pattern(before ? i % 4 : i / 4 % 4);
+                    yield return _limitedExtraWords ? Limited(ExtraWord(i), 10 + i, i, before, readings)
+                        : Word(ExtraWord(i), 10 + i, readings);
+                    continue;
+                }
                 var reading = i % 3 == 0 ? (before ? null : Reading(FormA)) : i % 3 == 1 ? Reading(before ? FormB : FormA) : Reading(FormA);
                 yield return Word(ExtraWord(i), 10 + i, reading is null ? [] : [reading]);
             }
             if (!before) yield break;
             foreach (var outside in _outsideText) yield return Word(outside, 90, Reading(FormA));
         }
+
+        // Every few words one side was held back by a different limit, so the Difference fills many limitation groups.
+        private static AssessedWord Limited(string word, int index, int i, bool before, ParseAnalysis[] readings) =>
+            new(word, "analysed", []) { Morphology = new ParseWordEvidence("fieldworks-parse-analysis/v1", index, word, 1,
+                before && i % 5 == 0, !before && i % 7 == 0, before && i % 11 == 0, readings, []) };
 
         private static AssessedWord Capped(string word, int index, params ParseAnalysis[] readings) =>
             new(word, "analysed", []) { Morphology = new ParseWordEvidence("fieldworks-parse-analysis/v1", index, word, 1,
@@ -752,6 +807,46 @@ public sealed partial class ProposalDifferenceCommandsTests : IDisposable
             using var command = connection.CreateCommand();
             command.CommandText = sql;
             command.ExecuteNonQuery();
+        }
+
+        public (int Cases, int Occurrences, int Buckets) Rows(string differenceId) =>
+            (Count("ProposalDifferenceCases", differenceId), Count("ProposalDifferenceOccurrences", differenceId),
+                Count("ProposalDifferenceBuckets", differenceId));
+
+        public long DatabaseBytes()
+        {
+            using var connection = Database.OpenConnection();
+            using var command = connection.CreateCommand();
+            command.CommandText = "SELECT page_count * page_size FROM pragma_page_count, pragma_page_size;";
+            return Convert.ToInt64(command.ExecuteScalar());
+        }
+
+        public long FactsBytes(string differenceId)
+        {
+            using var connection = Database.OpenConnection();
+            using var command = connection.CreateCommand();
+            command.CommandText = "SELECT COALESCE(SUM(LENGTH(CAST(FactsJson AS BLOB))), 0) FROM ProposalDifferenceCases WHERE DifferenceId = $id;";
+            command.Parameters.AddWithValue("$id", differenceId);
+            return Convert.ToInt64(command.ExecuteScalar());
+        }
+
+        public int CountWord(string differenceId, string word, string table = "ProposalDifferenceCases")
+        {
+            using var connection = Database.OpenConnection();
+            using var command = connection.CreateCommand();
+            command.CommandText = $"SELECT COUNT(*) FROM {table} WHERE DifferenceId = $id AND {(table == "ProposalDifferenceCases" ? "Word" : "CaseKey")} = $word;";
+            command.Parameters.AddWithValue("$id", differenceId);
+            command.Parameters.AddWithValue("$word", word);
+            return Convert.ToInt32(command.ExecuteScalar());
+        }
+
+        public string SummaryJson(string differenceId)
+        {
+            using var connection = Database.OpenConnection();
+            using var command = connection.CreateCommand();
+            command.CommandText = "SELECT SummaryJson FROM ProposalDifferences WHERE DifferenceId = $id;";
+            command.Parameters.AddWithValue("$id", differenceId);
+            return (string)command.ExecuteScalar()!;
         }
 
         public int Count(string table, string differenceId)

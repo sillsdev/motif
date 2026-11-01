@@ -851,7 +851,16 @@ public static class MotifAppStrings
     public static string ProposalDifferenceSavedAccessibleName => Text("MotifApp.ProposalDifferenceSavedAccessibleName");
     public static string ProposalDifferenceSavedItemFormat => Text("MotifApp.ProposalDifferenceSavedItemFormat");
     public static string ProposalDifferenceSavedTextFormat => Text("MotifApp.ProposalDifferenceSavedTextFormat");
+    public static string ProposalDifferenceChipListedFormat => Text("MotifApp.ProposalDifferenceChipListedFormat");
+    public static string ProposalDifferenceListedNoteFormat => Text("MotifApp.ProposalDifferenceListedNoteFormat");
+    public static string ProposalDifferenceNotListedPattern => Text("MotifApp.ProposalDifferenceNotListedPattern");
+    public static string ProposalDifferenceMoreNotListedPattern => Text("MotifApp.ProposalDifferenceMoreNotListedPattern");
+    public static string ProposalDifferenceNoneListedPattern => Text("MotifApp.ProposalDifferenceNoneListedPattern");
+    public static string ProposalDifferenceNoListedMatching => Text("MotifApp.ProposalDifferenceNoListedMatching");
+    public static string ProposalDifferenceDetailUnreadable => Text("MotifApp.ProposalDifferenceDetailUnreadable");
     public static string ProposalDifferenceSavedUnreadablePattern => Text("MotifApp.ProposalDifferenceSavedUnreadablePattern");
+    public static string ProposalDifferenceSavedDamagedFormat => Text("MotifApp.ProposalDifferenceSavedDamagedFormat");
+    public static string ProposalDifferenceSavedDamagedRemake => Text("MotifApp.ProposalDifferenceSavedDamagedRemake");
     public static string ProposalDifferenceSavedHuman => Text("MotifApp.ProposalDifferenceSavedHuman");
     public static string ProposalDifferenceSavedSourceValidated => Text("MotifApp.ProposalDifferenceSavedSourceValidated");
     public static string ProposalDifferenceSavedMorePattern => Text("MotifApp.ProposalDifferenceSavedMorePattern");
@@ -871,6 +880,7 @@ public static class MotifAppStrings
     public static string ProposalDifferencePlacesTitleFormat => Text("MotifApp.ProposalDifferencePlacesTitleFormat");
     public static string ProposalDifferenceStatesFormat => Text("MotifApp.ProposalDifferenceStatesFormat");
     public static string ProposalDifferencePlaceFormat => Text("MotifApp.ProposalDifferencePlaceFormat");
+    public static string ProposalDifferencePlacesNotListedFormat => Text("MotifApp.ProposalDifferencePlacesNotListedFormat");
     public static string ProposalDifferenceNoPlaces => Text("MotifApp.ProposalDifferenceNoPlaces");
     public static string ProposalDifferenceOpenWord => Text("MotifApp.ProposalDifferenceOpenWord");
     public static string FilterChipAccessibleNameFormat => Text("MotifApp.FilterChipAccessibleNameFormat");
@@ -3084,6 +3094,8 @@ public static class MotifAppStrings
     public static string RefusalDifferenceProposalDecided => Text("MotifApp.RefusalDifferenceProposalDecided");
 
     public static string RefusalDifferenceDuplicateParseRows => Text("MotifApp.RefusalDifferenceDuplicateParseRows");
+
+    public static string RefusalDifferenceUnreadable => Text("MotifApp.RefusalDifferenceUnreadable");
 
     public static string RefusalDifferenceUnexpectedOpinion => Text("MotifApp.RefusalDifferenceUnexpectedOpinion");
 

@@ -68,6 +68,7 @@ public sealed partial class ProposalDifferenceViewModel : ObservableObject
     private int? _nextWordOffset;
     private int? _nextPlaceOffset;
     private int _placesTotal;
+    private int _placesListed;
     private int _reads;
     private CancellationTokenSource? _loadCancellation;
     private CancellationTokenSource? _wordsCancellation;
@@ -111,6 +112,7 @@ public sealed partial class ProposalDifferenceViewModel : ObservableObject
     /// <summary>The saved Difference's totals.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HeadlineText), nameof(ComparedText), nameof(UnboundText), nameof(HasUnbound),
+        nameof(HasListedNote), nameof(ListedNoteText),
         nameof(OutsideText), nameof(HasOutside), nameof(HasNotes), nameof(Notes), nameof(AdviceText),
         nameof(ReferenceNoteText), nameof(HasReferenceNote), nameof(UnreadableEvidenceText), nameof(HasUnreadableEvidence),
         nameof(BasisText))]
@@ -123,8 +125,14 @@ public sealed partial class ProposalDifferenceViewModel : ObservableObject
 
     /// <summary>Whether the word detail is still kept; false once the Proposal is decided or deferred.</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsSummaryOnly), nameof(ShowsWordList))]
+    [NotifyPropertyChangedFor(nameof(IsSummaryOnly), nameof(ShowsWordList), nameof(ShowsDetailRemoved),
+        nameof(ShowsDetailUnreadable), nameof(ShowsRemakeHint), nameof(HasListedNote), nameof(ListedNoteText))]
     private bool _wordDetailKept = true;
+
+    /// <summary>Whether the summary reads but the word rows are damaged, so the words cannot be shown.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowsDetailRemoved), nameof(ShowsDetailUnreadable), nameof(ShowsRemakeHint))]
+    private bool _wordDetailUnreadable;
 
     partial void OnStateChanged(ProposalDifferenceState value) => RaiseMake();
 
@@ -197,6 +205,23 @@ public sealed partial class ProposalDifferenceViewModel : ObservableObject
 
     public bool ShowsWordList => WordDetailKept;
 
+    /// <summary>Whether the note that the words were removed with the decision is shown.</summary>
+    public bool ShowsDetailRemoved => IsSummaryOnly && !WordDetailUnreadable;
+
+    /// <summary>Whether the note that the words are damaged is shown.</summary>
+    public bool ShowsDetailUnreadable => IsSummaryOnly && WordDetailUnreadable;
+
+    /// <summary>Whether some compared words are counted and not listed.</summary>
+    public bool HasListedNote => WordDetailKept && Summary is { } summary && summary.ListedWordCount < summary.Words;
+
+    /// <summary>"40 of 900 words are listed; 860 words are counted but not listed, because …".</summary>
+    public string ListedNoteText => HasListedNote
+        ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.ProposalDifferenceListedNoteFormat,
+            Summary!.ListedWordCount, Summary.Words,
+            PluralText.Format(MotifAppStrings.ProposalDifferenceNotListedPattern, Summary.Words - Summary.ListedWordCount),
+            ProposalDifferenceListing.MostWordsPerGroup, ProposalDifferenceListing.MostPlacesPerWord)
+        : string.Empty;
+
     public bool HasSelectedWord => SelectedWord is not null;
 
     public bool ShowsNoPlaces => Places.Count == 0;
@@ -209,9 +234,11 @@ public sealed partial class ProposalDifferenceViewModel : ObservableObject
     /// <summary>Whether the selected word has more places than are listed.</summary>
     public bool ShowsPlacesStatus => _placesTotal > Places.Count;
 
-    /// <summary>"Showing 25 of 40." for the selected word's places.</summary>
-    public string PlacesStatusText => string.Format(CultureInfo.CurrentCulture,
-        MotifAppStrings.ProposalDifferenceShowingFormat, Places.Count, _placesTotal);
+    /// <summary>"Showing 25 of 40." for the selected word's places, or what is counted but not listed.</summary>
+    public string PlacesStatusText => _placesListed < _placesTotal
+        ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.ProposalDifferencePlacesNotListedFormat,
+            Places.Count, _placesListed, _placesTotal - _placesListed, ProposalDifferenceListing.MostPlacesPerWord)
+        : string.Format(CultureInfo.CurrentCulture, MotifAppStrings.ProposalDifferenceShowingFormat, Places.Count, _placesTotal);
 
     public bool HasMoved => MovedChips.Count > 0;
 
@@ -279,9 +306,36 @@ public sealed partial class ProposalDifferenceViewModel : ObservableObject
             WordCount(summary.MeasuredWordsOutsideText))
         : string.Empty;
 
-    /// <summary>"Showing 25 of 40."</summary>
-    public string WordsStatusText => string.Format(CultureInfo.CurrentCulture,
-        MotifAppStrings.ProposalDifferenceShowingFormat, Words.Count, MatchingWords);
+    /// <summary>"Showing 25 of 40.", and how many more words are counted and not listed when that is known.</summary>
+    public string WordsStatusText
+    {
+        get
+        {
+            var shown = string.Format(CultureInfo.CurrentCulture, MotifAppStrings.ProposalDifferenceShowingFormat,
+                Words.Count, MatchingWords);
+            return NotListedInScope is > 0 and var more
+                ? shown + " " + PluralText.Format(MotifAppStrings.ProposalDifferenceMoreNotListedPattern, more) : shown;
+        }
+    }
+
+    /// <summary>Says no words match, or that the words of the chosen count are only counted.</summary>
+    public string NoMatchingText => NotListedInScope is > 0 and var counted
+        ? PluralText.Format(MotifAppStrings.ProposalDifferenceNoneListedPattern, counted)
+        : Summary?.WordsListed is null ? MotifAppStrings.ProposalDifferenceNoMatching
+        : MotifAppStrings.ProposalDifferenceNoListedMatching;
+
+    // Counted and not listed in the one chosen count or the whole Difference; with several filters it is unknown.
+    private int? NotListedInScope
+    {
+        get
+        {
+            if (Summary is not { WordsListed: not null } summary || !WordDetailKept) return null;
+            var active = MovedChips.Concat(CheckChips).Concat(ImprovedChips).Concat(LimitationChips)
+                .Where(chip => chip.IsActive).ToArray();
+            var total = active.Length switch { 0 => summary.Words, 1 => active[0].Count, _ => (int?)null };
+            return total is { } known ? Math.Max(0, known - MatchingWords) : null;
+        }
+    }
 
     public string SelectedWordTitle => SelectedWord is { } word
         ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.ProposalDifferencePlacesTitleFormat, word.Word)

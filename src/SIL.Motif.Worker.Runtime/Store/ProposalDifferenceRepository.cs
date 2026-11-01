@@ -9,14 +9,16 @@ using SIL.Motif.Host.Store;
 
 namespace SIL.Motif.Worker.Store;
 
-/// <summary>One word of a Difference ready to store, with the Text positions it stands for.</summary>
+/// <summary>One word of a Difference ready to store, with the Text positions it lists out of all it stands for.</summary>
+/// <param name="PlaceCount">How many places the word has in the Text; null means <paramref name="Occurrences"/> is all of them.</param>
 public sealed record NewProposalDifferenceWord(
-    string Word, ProposalDifferenceCaseFacts Facts, IReadOnlyList<ProposalDifferenceOccurrence> Occurrences);
+    string Word, ProposalDifferenceCaseFacts Facts, IReadOnlyList<ProposalDifferenceOccurrence> Occurrences,
+    int? PlaceCount = null);
 
 /// <summary>One physical place in a Text where a compared word occurs.</summary>
 public sealed record ProposalDifferenceOccurrence(string TextId, string SegmentId, int OccurrenceIndex, int LineNumber);
 
-/// <summary>A complete Difference to store: its summary and every compared word.</summary>
+/// <summary>A complete Difference to store: its summary and the words it lists, which are not every compared word.</summary>
 public sealed record NewProposalDifference(ProposalDifferenceSummary Summary, IReadOnlyList<NewProposalDifferenceWord> Words);
 
 /// <summary>Which stored words a read keeps; every set member must hold.</summary>
@@ -39,8 +41,13 @@ public sealed record SavedProposalDifference(ProposalDifferenceSummary Summary, 
 /// <summary>The Differences a Proposal has saved, newest first, bounded to the most listed.</summary>
 /// <param name="Items">The newest saved Differences, at most <see cref="ProposalDifferenceRepository.MostListed"/>.</param>
 /// <param name="Total">How many the Proposal has saved, before the bound.</param>
-/// <param name="Unreadable">How many of the newest ones could not be read, so they are not in <paramref name="Items"/>.</param>
-public sealed record ProposalDifferenceList(IReadOnlyList<ProposalDifferenceSaved> Items, int Total, int Unreadable = 0);
+/// <param name="Damaged">The newest ones whose summary could not be read, so they are not in <paramref name="Items"/>.</param>
+public sealed record ProposalDifferenceList(IReadOnlyList<ProposalDifferenceSaved> Items, int Total,
+    IReadOnlyList<ProposalDifferenceDamaged> Damaged)
+{
+    /// <summary>How many of the newest ones could not be read.</summary>
+    public int Unreadable => Damaged.Count;
+}
 
 /// <summary>The Proposal was decided before its Difference could be stored, so full word rows would outlive their purpose.</summary>
 public sealed class ProposalDecidedException : InvalidOperationException
@@ -49,9 +56,21 @@ public sealed class ProposalDecidedException : InvalidOperationException
 }
 
 /// <summary>A saved Difference's summary and one page of its words, all read from the same snapshot.</summary>
+/// <param name="Saved">The summary and whether the word detail is kept.</param>
+/// <param name="Matching">How many stored words match the filter.</param>
+/// <param name="Words">The requested page.</param>
+/// <param name="Occurrences">One word's places, when asked for.</param>
+/// <param name="Stored">How many words the Difference stores in all.</param>
+/// <param name="WordsUnreadable">True when a word row was damaged, so no words are returned and the detail is not kept.</param>
 public sealed record ProposalDifferencePage(
     SavedProposalDifference Saved, int Matching, IReadOnlyList<ProposalDifferenceWord> Words,
-    ProposalDifferenceOccurrencePage? Occurrences = null);
+    ProposalDifferenceOccurrencePage? Occurrences = null, int Stored = 0, bool WordsUnreadable = false);
+
+/// <summary>A saved word row no longer matches its digest or cannot be parsed, though the summary is readable.</summary>
+public sealed class ProposalDifferenceWordsUnreadableException : Exception
+{
+    public ProposalDifferenceWordsUnreadableException(string message, Exception? inner = null) : base(message, inner) { }
+}
 
 /// <summary>Stores a Proposal Difference in one transaction and reads it back by summary or page.</summary>
 public sealed class ProposalDifferenceRepository
@@ -111,7 +130,7 @@ public sealed class ProposalDifferenceRepository
                 "AfterState, CouldBeBad, FactsJson, FactsDigest) VALUES ($id, $key, $word, $count, $before, $after, " +
                 "$bad, $json, $digest);",
                 ("$id", summary.DifferenceId), ("$key", word.Word), ("$word", word.Word),
-                ("$count", word.Occurrences.Count), ("$before", StateName(word.Facts.Before)),
+                ("$count", word.PlaceCount ?? word.Occurrences.Count), ("$before", StateName(word.Facts.Before)),
                 ("$after", StateName(word.Facts.After)), ("$bad", word.Facts.CouldBeBad ? 1 : 0),
                 ("$json", factsJson), ("$digest", Sha(factsJson)));
             foreach (var occurrence in word.Occurrences)
@@ -153,20 +172,27 @@ public sealed class ProposalDifferenceRepository
     }
 
     /// <summary>
-    /// The newest Difference id saved for a Proposal, narrowed to a Text and a reference when given, or null when
-    /// it has none.
+    /// The newest Difference id saved for a Proposal that can be read, narrowed to a Text and a reference when given,
+    /// or null when it has none. When none can be read the newest is returned, so reading it names what is wrong.
     /// </summary>
     public string? LatestFor(string proposalId, string? textId = null, string? reference = null)
     {
         using var connection = _database.OpenConnection();
         using var command = connection.CreateCommand();
-        command.CommandText = "SELECT DifferenceId FROM ProposalDifferences WHERE ProposalId = $proposal " +
-            "AND ($text IS NULL OR TextId = $text) AND ($reference IS NULL OR Reference = $reference) " +
-            "ORDER BY CreatedUtc DESC, DifferenceId DESC LIMIT 1;";
+        command.CommandText = "SELECT DifferenceId, SummaryJson, SummaryDigest FROM ProposalDifferences " +
+            "WHERE ProposalId = $proposal AND ($text IS NULL OR TextId = $text) AND ($reference IS NULL OR Reference = $reference) " +
+            "ORDER BY CreatedUtc DESC, DifferenceId DESC;";
         command.Parameters.AddWithValue("$proposal", proposalId);
         command.Parameters.AddWithValue("$text", (object?)textId ?? DBNull.Value);
         command.Parameters.AddWithValue("$reference", (object?)reference ?? DBNull.Value);
-        return command.ExecuteScalar() as string;
+        using var reader = command.ExecuteReader();
+        string? newest = null;
+        while (reader.Read())
+        {
+            newest ??= reader.GetString(0);
+            if (TryReadSummary(reader.GetString(1), reader.GetString(2), out _)) return reader.GetString(0);
+        }
+        return newest;
     }
 
     /// <summary>
@@ -178,34 +204,39 @@ public sealed class ProposalDifferenceRepository
     {
         using var connection = _database.OpenConnection();
         using var command = connection.CreateCommand();
-        command.CommandText = "SELECT SummaryJson, SummaryDigest, WordDetailDroppedUtc, COUNT(*) OVER () " +
+        command.CommandText = "SELECT SummaryJson, SummaryDigest, WordDetailDroppedUtc, COUNT(*) OVER (), " +
+            "DifferenceId, TextId, Reference, CreatedUtc " +
             "FROM ProposalDifferences WHERE ProposalId = $proposal " +
             "ORDER BY CreatedUtc DESC, DifferenceId DESC LIMIT $limit;";
         command.Parameters.AddWithValue("$proposal", proposalId);
         command.Parameters.AddWithValue("$limit", MostListed);
         var items = new List<ProposalDifferenceSaved>();
+        var damaged = new List<ProposalDifferenceDamaged>();
         var total = 0;
-        var unreadable = 0;
         using var reader = command.ExecuteReader();
         while (reader.Read())
         {
             total = reader.GetInt32(3);
-            var json = reader.GetString(0);
-            ProposalDifferenceSummary summary;
-            try
+            if (!TryReadSummary(reader.GetString(0), reader.GetString(1), out var summary))
             {
-                summary = string.Equals(Sha(json), reader.GetString(1), StringComparison.Ordinal)
-                    ? Read<ProposalDifferenceSummary>(json, "summary") : throw new InvalidDataException("Digest mismatch.");
-            }
-            catch (InvalidDataException)
-            {
-                unreadable++;
+                damaged.Add(new ProposalDifferenceDamaged(reader.GetString(4), reader.GetString(5), reader.GetString(6),
+                    reader.GetString(7)));
                 continue;
             }
             items.Add(new ProposalDifferenceSaved(summary.DifferenceId, summary.TextId, summary.TextTitle,
                 summary.Reference, summary.CreatedUtc, reader.IsDBNull(2)));
         }
-        return new ProposalDifferenceList(items, total, unreadable);
+        return new ProposalDifferenceList(items, total, damaged);
+    }
+
+    // A summary is readable when its bytes still match the digest saved with them and they parse.
+    private static bool TryReadSummary(string json, string digest, out ProposalDifferenceSummary summary)
+    {
+        summary = null!;
+        if (!string.Equals(Sha(json), digest, StringComparison.Ordinal)) return false;
+        try { summary = Read<ProposalDifferenceSummary>(json, "summary"); }
+        catch (InvalidDataException) { return false; }
+        return true;
     }
 
     /// <summary>The stored summary, refused when its bytes no longer match the digest saved with it.</summary>
@@ -234,7 +265,10 @@ public sealed class ProposalDifferenceRepository
         return new SavedProposalDifference(Read<ProposalDifferenceSummary>(json, "summary"), reader.IsDBNull(2));
     }
 
-    /// <summary>The saved Difference of a Proposal for one Text and reference, or null when it has none.</summary>
+    /// <summary>
+    /// The saved Difference of a Proposal for one Text and reference, or null when it has none or its summary cannot
+    /// be read, so making it again replaces the damaged one.
+    /// </summary>
     public SavedProposalDifference? FindFor(string proposalId, string textId, string reference)
     {
         using var connection = _database.OpenConnection();
@@ -244,7 +278,30 @@ public sealed class ProposalDifferenceRepository
         command.Parameters.AddWithValue("$proposal", proposalId);
         command.Parameters.AddWithValue("$text", textId);
         command.Parameters.AddWithValue("$reference", reference);
-        return command.ExecuteScalar() is string id ? GetSaved(id) : null;
+        if (command.ExecuteScalar() is not string id) return null;
+        try { return GetSaved(id); }
+        catch (InvalidDataException) { return null; }
+    }
+
+    /// <summary>
+    /// Whether every stored word row still matches its digest and parses, so a Difference whose rows are damaged can be
+    /// made again instead of being shown as it is.
+    /// </summary>
+    public bool WordRowsReadable(string differenceId)
+    {
+        using var connection = _database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT FactsJson, FactsDigest FROM ProposalDifferenceCases WHERE DifferenceId = $id;";
+        command.Parameters.AddWithValue("$id", differenceId);
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            var json = reader.GetString(0);
+            if (!string.Equals(Sha(json), reader.GetString(1), StringComparison.Ordinal)) return false;
+            try { Read<ProposalDifferenceCaseFacts>(json, "word"); }
+            catch (InvalidDataException) { return false; }
+        }
+        return true;
     }
 
     /// <summary>Whether the Proposal has left the undecided states, so its word detail is no longer kept.</summary>
@@ -281,6 +338,13 @@ public sealed class ProposalDifferenceRepository
         try
         {
             return ReadPage(connection, differenceId, filter, offset, limit, occurrences);
+        }
+        catch (ProposalDifferenceWordsUnreadableException)
+        {
+            // The summary read cleanly or the damage would be the summary's, so it still stands for the Difference.
+            var saved = GetSaved(differenceId);
+            return saved is null ? null : new ProposalDifferencePage(saved with { WordDetailKept = false }, 0, [],
+                WordsUnreadable: true);
         }
         catch (SqliteException exception) when (cancellationToken.IsCancellationRequested &&
             exception.SqliteErrorCode == SQLitePCL.raw.SQLITE_INTERRUPT)
@@ -337,14 +401,29 @@ public sealed class ProposalDifferenceRepository
             {
                 var factsJson = reader.GetString(4);
                 if (!string.Equals(Sha(factsJson), reader.GetString(5), StringComparison.Ordinal))
-                    throw new InvalidDataException("A saved Difference word does not match its digest. Delete the Difference and compare again.");
-                var facts = Read<ProposalDifferenceCaseFacts>(factsJson, "word");
+                    throw new ProposalDifferenceWordsUnreadableException(
+                        "A saved Difference word does not match its digest. Delete the Difference and compare again.");
+                ProposalDifferenceCaseFacts facts;
+                try { facts = Read<ProposalDifferenceCaseFacts>(factsJson, "word"); }
+                catch (InvalidDataException exception)
+                {
+                    throw new ProposalDifferenceWordsUnreadableException(exception.Message, exception);
+                }
                 words.Add(new ProposalDifferenceWord(reader.GetString(0), reader.GetInt32(1), reader.GetString(2),
                     reader.GetString(3), facts.Changes, facts.Buckets.Select(item => item.Bucket).Distinct().ToArray(), facts));
             }
         }
+        int stored;
+        using (var all = connection.CreateCommand())
+        {
+            all.Transaction = transaction;
+            all.CommandText = "SELECT COUNT(*) FROM ProposalDifferenceCases WHERE DifferenceId = $id;";
+            all.Parameters.AddWithValue("$id", differenceId);
+            stored = Convert.ToInt32(all.ExecuteScalar(), CultureInfo.InvariantCulture);
+        }
         return new ProposalDifferencePage(saved, matching, words,
-            saved.WordDetailKept ? ReadPlaces(connection, transaction, differenceId, saved.Summary.TextId, occurrences) : null);
+            saved.WordDetailKept ? ReadPlaces(connection, transaction, differenceId, saved.Summary.TextId, occurrences) : null,
+            stored);
     }
 
     // The places are the large part of word detail, so they exist only while the Proposal is undecided.
@@ -352,7 +431,7 @@ public sealed class ProposalDifferenceRepository
         string differenceId, string textId, ProposalDifferenceOccurrenceRequest? request)
     {
         if (request is null) return null;
-        int total;
+        int stored;
         using (var count = connection.CreateCommand())
         {
             count.Transaction = transaction;
@@ -360,7 +439,16 @@ public sealed class ProposalDifferenceRepository
             count.Parameters.AddWithValue("$id", differenceId);
             count.Parameters.AddWithValue("$text", textId);
             count.Parameters.AddWithValue("$word", request.Word);
-            total = Convert.ToInt32(count.ExecuteScalar(), CultureInfo.InvariantCulture);
+            stored = Convert.ToInt32(count.ExecuteScalar(), CultureInfo.InvariantCulture);
+        }
+        var total = stored;
+        using (var counted = connection.CreateCommand())
+        {
+            counted.Transaction = transaction;
+            counted.CommandText = "SELECT OccurrenceCount FROM ProposalDifferenceCases WHERE DifferenceId = $id AND CaseKey = $word;";
+            counted.Parameters.AddWithValue("$id", differenceId);
+            counted.Parameters.AddWithValue("$word", request.Word);
+            if (counted.ExecuteScalar() is { } value) total = Math.Max(stored, Convert.ToInt32(value, CultureInfo.InvariantCulture));
         }
         var places = new List<ProposalDifferenceOccurrencePlace>();
         using (var page = connection.CreateCommand())
@@ -379,8 +467,8 @@ public sealed class ProposalDifferenceRepository
                 places.Add(new ProposalDifferenceOccurrencePlace(reader.GetString(0), reader.GetString(1),
                     reader.GetInt32(2), reader.GetInt32(3)));
         }
-        var next = request.Offset + places.Count < total ? request.Offset + places.Count : (int?)null;
-        return new ProposalDifferenceOccurrencePage(request.Word, places, total, next);
+        var next = request.Offset + places.Count < stored ? request.Offset + places.Count : (int?)null;
+        return new ProposalDifferenceOccurrencePage(request.Word, places, total, next, stored < total ? stored : null);
     }
 
     private static T Read<T>(string json, string what) where T : class

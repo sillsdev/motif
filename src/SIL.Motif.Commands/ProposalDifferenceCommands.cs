@@ -105,7 +105,8 @@ public static class ProposalDifferenceCommands
                 ? SourceValidatedDecisions.Read(database) : null;
             var decided = saved.ProposalIsDecided(request.ProposalId);
             if (existing is not null && IsSameComparison(existing.Summary, trial, reference, sourceValidated?.Digest) &&
-                (existing.WordDetailKept || decided))
+                (existing.WordDetailKept || decided) &&
+                (decided || saved.WordRowsReadable(existing.Summary.DifferenceId)))
                 return Show(database, existing.Summary.DifferenceId, new ProposalDifferenceFilter(), 0, 25);
             if (decided) return Decided();
 
@@ -272,11 +273,35 @@ public static class ProposalDifferenceCommands
             if (id is null)
                 return Refuse("difference.none", FailureReason.NotFound,
                     "No saved Difference was found. Run: motif difference produce --project <fwdata> --proposal <id> --text <guid>");
+            if (request.DifferenceId is null && request.ProposalId is not null && !SummaryReadable(repository, id))
+                return Unreadable(request.ProposalId, repository.ListFor(request.ProposalId).Damaged
+                    .Where(item => (textFilter is null || item.TextId == textFilter) &&
+                        (request.Reference is null || item.Reference == request.Reference)).ToArray());
             return Show(database, id, new ProposalDifferenceFilter(request.CouldBeBad, bucket,
                 request.BeforeState, request.AfterState, limitation, word), request.Offset, request.Limit,
                 word is null ? null : new ProposalDifferenceOccurrenceRequest(word,
                     request.OccurrenceOffset ?? 0, request.OccurrenceLimit ?? 25), cancellationToken);
         });
+    }
+
+    private static bool SummaryReadable(ProposalDifferenceRepository repository, string differenceId)
+    {
+        try { return repository.GetSummary(differenceId) is not null; }
+        catch (InvalidDataException) { return false; }
+    }
+
+    // Names every Difference that cannot be read, so a person can tell which one to make again.
+    private static CommandOutcome<ProposalDifferenceResponse> Unreadable(string proposalId,
+        IReadOnlyList<ProposalDifferenceDamaged> damaged)
+    {
+        var named = string.Join("; ", damaged.Take(5).Select(item =>
+            $"Text {item.TextId}, {item.Reference} decisions, made {item.CreatedUtc}, id {item.DifferenceId}"));
+        var more = damaged.Count > 5 ? $" and {damaged.Count - 5} more" : "";
+        return CommandOutcome<ProposalDifferenceResponse>.Refused(new Refusal(RefusalCodes.DifferenceUnreadable,
+            FailureReason.StoreInconsistent,
+            $"None of the Proposal's saved Differences can be read: {named}{more}. Make the Difference again to " +
+            "replace it: motif difference produce --project <fwdata> --proposal <id> --text <guid>",
+            ProposalDifferenceDamagedFacts.ToFacts(proposalId, damaged)));
     }
 
     private static CommandOutcome<ProposalDifferenceResponse> Show(MotifDatabase database,
@@ -299,7 +324,8 @@ public static class ProposalDifferenceCommands
         var list = new ProposalDifferenceRepository(database).ListFor(page.Saved.Summary.ProposalId);
         return CommandOutcome<ProposalDifferenceResponse>.Success(new ProposalDifferenceResponse(
             page.Saved.Summary, words, page.Matching, next, page.Saved.WordDetailKept, page.Occurrences, unreadable,
-            list.Items, list.Total, list.Unreadable));
+            list.Items, list.Total, list.Unreadable, list.Damaged, page.WordsUnreadable ? null : page.Stored,
+            page.WordsUnreadable));
     }
 
     private static CommandOutcome<ProposalDifferenceResponse> Refuse(string code, FailureReason reason, string message) =>
@@ -332,8 +358,17 @@ public static class ProposalDifferenceCommands
     private static bool IsStateName(string name) => name == NoStateName ||
         Enum.GetValues<HumanAgreementApprovalState>().Any(state => ProposalDifferenceRepository.ApprovalStateName(state) == name);
 
-    internal sealed record Built(IReadOnlyList<NewProposalDifferenceWord> Words, int UnboundOccurrences,
-        int MeasuredWordsOutsideText);
+    /// <summary>A built comparison: the words to store with their places, and the tally that counts every word.</summary>
+    internal sealed record Built(IReadOnlyList<NewProposalDifferenceWord> Words, ProposalDifferenceTally Tally,
+        int UnboundOccurrences, int MeasuredWordsOutsideText);
+
+    // One spelling's places counted without keeping them; a spelling several wordforms claim is unbound.
+    private sealed class FormCount
+    {
+        public Guid Wordform;
+        public int Places;
+        public bool Conflict;
+    }
 
     // Joins on the key AssessmentComparer.JoinKey gives a word, so a Trial and a comparison agree on one spelling.
     private static Dictionary<string, AssessedWord> OnePerForm(IReadOnlyList<AssessedWord> words, string side)
@@ -364,7 +399,7 @@ public static class ProposalDifferenceCommands
         var before = OnePerForm(beforeWords, "before");
         var after = OnePerForm(afterWords, "after");
         var wordforms = text.Wordforms.ToDictionary(wordform => wordform.WordformId);
-        var byForm = new Dictionary<string, List<(Guid Wordform, ProposalDifferenceOccurrence Where)>>(StringComparer.Ordinal);
+        var byForm = new Dictionary<string, FormCount>(StringComparer.Ordinal);
         var unbound = 0;
         var inText = new HashSet<string>(StringComparer.Ordinal);
         foreach (var line in text.Lines)
@@ -374,28 +409,27 @@ public static class ProposalDifferenceCommands
             {
                 foreach (var form in token.Forms) inText.Add(Nfd(form.Text));
                 if (token.Status is null || token.WordformId is not { } wordformId) continue;
-                var measured = token.Forms.Select(form => Nfd(form.Text)).Where(form => form.Length > 0).Distinct(StringComparer.Ordinal)
-                    .Where(form => before.ContainsKey(form) || after.ContainsKey(form)).ToArray();
+                var measured = MeasuredForms(token, before, after);
                 if (measured.Length != 1) { unbound++; continue; }
-                if (!byForm.TryGetValue(measured[0], out var list)) byForm[measured[0]] = list = [];
-                list.Add((wordformId, new ProposalDifferenceOccurrence(text.TextId.ToString("D"),
-                    line.SegmentId.ToString("D"), token.OccurrenceIndex, line.Number)));
+                if (!byForm.TryGetValue(measured[0], out var count))
+                    byForm[measured[0]] = count = new FormCount { Wordform = wordformId };
+                count.Places++;
+                if (count.Wordform != wordformId) count.Conflict = true;
             }
         }
 
-        var words = new List<NewProposalDifferenceWord>();
+        var tally = new ProposalDifferenceTally();
         var done = 0;
         // About a hundred reports however many words: each one is posted to the window.
         var every = Math.Max(1, byForm.Count / 100);
-        foreach (var (form, tokens) in byForm.OrderBy(pair => pair.Key, StringComparer.Ordinal))
+        foreach (var (form, count) in byForm.OrderBy(pair => pair.Key, StringComparer.Ordinal))
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (done++ % every == 0)
                 progress?.Report(new AssessmentProgress(AssessmentStage.Finalizing, done - 1, byForm.Count,
                     "Comparing words."));
-            var ids = tokens.Select(token => token.Wordform).Distinct().ToArray();
-            if (ids.Length != 1) { unbound += tokens.Count; continue; }
-            var wordform = wordforms[ids[0]];
+            if (count.Conflict) { unbound += count.Places; continue; }
+            var wordform = wordforms[count.Wordform];
             var decisions = wordform.Analyses.Select(analysis => new HumanAnalysisDecision(
                 CanonicalId.FromGuid(analysis.AnalysisId).Value,
                 GradeOf(sourceValidated is null ? analysis.Opinion : sourceValidated.OpinionFor(analysis.AnalysisId)),
@@ -411,11 +445,37 @@ public static class ProposalDifferenceCommands
                 {
                     WordformId = CanonicalId.FromGuid(wordform.WordformId).Value,
                 };
-            words.Add(new NewProposalDifferenceWord(form, facts, tokens.Select(token => token.Where).ToArray()));
+            tally.Add(form, facts, count.Places);
         }
+
+        // A second look at the Text finds the first places of only the words that are listed.
+        var listed = tally.Listed();
+        var places = listed.ToDictionary(word => word.Form, _ => new List<ProposalDifferenceOccurrence>(), StringComparer.Ordinal);
+        if (places.Count > 0)
+            foreach (var line in text.Lines)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                foreach (var token in line.Tokens)
+                {
+                    if (token.Status is null || token.WordformId is null) continue;
+                    var measured = MeasuredForms(token, before, after);
+                    if (measured.Length != 1 || !places.TryGetValue(measured[0], out var list)) continue;
+                    if (list.Count < ProposalDifferenceListing.MostPlacesPerWord)
+                        list.Add(new ProposalDifferenceOccurrence(text.TextId.ToString("D"), line.SegmentId.ToString("D"),
+                            token.OccurrenceIndex, line.Number));
+                }
+            }
+        var words = listed.Select(word => new NewProposalDifferenceWord(word.Form, word.Facts, places[word.Form],
+            word.Occurrences)).ToArray();
         var outside = before.Keys.Concat(after.Keys).Distinct(StringComparer.Ordinal).Count(form => !inText.Contains(form));
-        return new Built(words, unbound, outside);
+        return new Built(words, tally, unbound, outside);
     }
+
+    // The measured spellings a token stands for; one that names two is counted for neither.
+    private static string[] MeasuredForms(SIL.Motif.Host.Texts.BaselineTextReadToken token,
+        Dictionary<string, AssessedWord> before, Dictionary<string, AssessedWord> after) =>
+        token.Forms.Select(form => Nfd(form.Text)).Where(form => form.Length > 0).Distinct(StringComparer.Ordinal)
+            .Where(form => before.ContainsKey(form) || after.ContainsKey(form)).ToArray();
 
     internal static string GradeOf(string opinion) => opinion switch
     {

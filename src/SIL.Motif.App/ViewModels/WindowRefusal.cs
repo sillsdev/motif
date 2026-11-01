@@ -154,6 +154,7 @@ public sealed partial record WindowRefusal
         [C.DifferenceProposalDecided] = () => MotifAppStrings.RefusalDifferenceProposalDecided,
         [C.DifferenceDuplicateParseRows] = () => MotifAppStrings.RefusalDifferenceDuplicateParseRows,
         [C.DifferenceUnexpectedOpinion] = () => MotifAppStrings.RefusalDifferenceUnexpectedOpinion,
+        [C.DifferenceUnreadable] = () => MotifAppStrings.RefusalDifferenceUnreadable,
         [C.DraftRevisionConflict] = () => MotifAppStrings.RefusalDraftRevisionConflict,
 
         [C.GrammarCheckCancelled] = () => MotifAppStrings.RefusalGrammarCheckCancelled,

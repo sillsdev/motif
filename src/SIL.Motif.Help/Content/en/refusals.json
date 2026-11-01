@@ -242,5 +242,9 @@
   "difference.proposal-decided": {
     "why": "The Proposal has been decided, so its word detail is gone and a new comparison would not be kept. Read the saved summary with difference show instead.",
     "source": "Hand-written for Proposal Difference retention."
+  },
+  "difference.unreadable": {
+    "why": "Every saved comparison of the Proposal is damaged, so none can be shown. The refusal names each by Text, reference and time; run difference produce for one of them to make it again.",
+    "source": "Hand-written for Proposal Difference retention."
   }
 }

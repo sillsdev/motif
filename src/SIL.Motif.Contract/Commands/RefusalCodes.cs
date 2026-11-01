@@ -286,6 +286,8 @@ public static class RefusalCodes
     public const string DifferenceCancelled = "difference.cancelled";
     /// <summary>One side of a Difference holds several different parses for a word.</summary>
     public const string DifferenceDuplicateParseRows = "difference.duplicate-parse-rows";
+    /// <summary>None of a Proposal's saved Differences can be read, so each is named and can be made again.</summary>
+    public const string DifferenceUnreadable = "difference.unreadable";
     /// <summary>The Proposal is decided, so a new comparison would lose its word detail at once.</summary>
     public const string DifferenceProposalDecided = "difference.proposal-decided";
     /// <summary>A Difference category code is not one the product defines.</summary>

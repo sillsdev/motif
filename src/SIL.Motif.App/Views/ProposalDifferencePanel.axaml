@@ -72,6 +72,8 @@
         <views:RefusalBlock x:Name="DifferenceMakeRefusal" DataContext="{Binding Maker.FailureShown}" />
       </StackPanel>
       <views:RefusalBlock DataContext="{Binding ShownRefusal}" />
+      <views:CopyableTextBlock x:Name="DifferenceSavedNote" Classes="muted" TextWrapping="Wrap"
+                               Text="{Binding SavedNoteText}" IsVisible="{Binding HasSavedNote}" />
       <StackPanel IsVisible="{Binding IsShown}" Spacing="{DynamicResource Intent.Space.Compact}">
         <StackPanel x:Name="DifferenceSavedChoices" IsVisible="{Binding ShowsSavedChoices}"
                     Spacing="{DynamicResource Intent.Space.Compact}">
@@ -86,8 +88,6 @@
             </ComboBox.ItemTemplate>
           </ComboBox>
         </StackPanel>
-        <views:CopyableTextBlock x:Name="DifferenceSavedNote" Classes="muted" TextWrapping="Wrap"
-                                 Text="{Binding SavedNoteText}" IsVisible="{Binding HasSavedNote}" />
         <views:CopyableTextBlock x:Name="DifferenceBasis" TextWrapping="Wrap" Text="{Binding BasisText}" />
         <views:CopyableTextBlock x:Name="DifferenceHeadline" Classes="inspectorSectionTitle" TextWrapping="Wrap"
                                  Text="{Binding HeadlineText}" />
@@ -96,9 +96,14 @@
                                  IsVisible="{Binding HasUnbound}" />
         <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" Text="{Binding OutsideText}"
                                  IsVisible="{Binding HasOutside}" />
+        <views:CopyableTextBlock x:Name="DifferenceListedNote" Classes="muted" TextWrapping="Wrap"
+                                 Text="{Binding ListedNoteText}" IsVisible="{Binding HasListedNote}" />
         <views:CopyableTextBlock x:Name="DifferenceDetailRemoved" Classes="muted" TextWrapping="Wrap"
                                  Text="{x:Static app:MotifAppStrings.ProposalDifferenceDetailRemoved}"
-                                 IsVisible="{Binding IsSummaryOnly}" />
+                                 IsVisible="{Binding ShowsDetailRemoved}" />
+        <views:CopyableTextBlock x:Name="DifferenceDetailUnreadable" Classes="muted" TextWrapping="Wrap"
+                                 Text="{x:Static app:MotifAppStrings.ProposalDifferenceDetailUnreadable}"
+                                 IsVisible="{Binding ShowsDetailUnreadable}" />
         <views:CopyableTextBlock x:Name="DifferenceRemakeHint" Classes="muted" TextWrapping="Wrap"
                                  Text="{x:Static app:MotifAppStrings.ProposalDifferenceRemakeHint}"
                                  IsVisible="{Binding ShowsRemakeHint}" />
@@ -132,8 +137,8 @@
                                    Text="{x:Static app:MotifAppStrings.ProposalDifferenceReading}" />
           <views:CopyableTextBlock x:Name="DifferenceWordsStatus" Classes="muted" TextWrapping="Wrap"
                                    Text="{Binding WordsStatusText}" IsVisible="{Binding !ShowsNoMatchingWords}" />
-          <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap"
-                                   Text="{x:Static app:MotifAppStrings.ProposalDifferenceNoMatching}"
+          <views:CopyableTextBlock x:Name="DifferenceNoMatching" Classes="muted" TextWrapping="Wrap"
+                                   Text="{Binding NoMatchingText}"
                                    IsVisible="{Binding ShowsNoMatchingWords}" />
           <ItemsControl x:Name="DifferenceWordChips" ItemsSource="{Binding Words}"
                         ItemsPanel="{StaticResource DifferenceChipsPanel}"

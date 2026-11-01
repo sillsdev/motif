@@ -554,6 +554,52 @@ public sealed class ProposalDifferenceMakeTests
     }
 
     [Fact]
+    public async Task ADamagedSavedDifferenceIsNamedByTextAndWhoseDecisionsAndTheReadableOneStillShows()
+    {
+        var harness = new Harness(alreadyMade: true);
+        harness.Fixture.SavedDamaged.Add(new("difference/bad", ExodusId.ToString("D"),
+            ProposalDifferenceReferences.Human, "2026-11-01T00:00:00Z"));
+
+        await harness.Model.LoadAsync(Project, "proposal/one");
+
+        Assert.Equal(ProposalDifferenceState.Shown, harness.Model.State);
+        Assert.Contains("Genesis 1", harness.Model.BasisText);
+        Assert.Contains("Exodus 1", harness.Model.SavedNoteText);
+        Assert.Contains("people's decisions", harness.Model.SavedNoteText);
+        Assert.Contains("could not be read", harness.Model.SavedNoteText);
+        Assert.Contains(MotifAppStrings.ProposalDifferenceMake, harness.Model.SavedNoteText);
+        harness.Model.SelectedText = harness.Texts[1];
+        Assert.Equal(MotifAppStrings.ProposalDifferenceMake, harness.Model.MakeLabel);
+    }
+
+    [Fact]
+    public async Task ADamagedDifferenceAgainstAProgramsDecisionsDoesNotPromiseTheButtonReplacesIt()
+    {
+        var harness = new Harness(alreadyMade: true);
+        harness.Fixture.SavedDamaged.Add(new("difference/bad", GenesisId.ToString("D"),
+            ProposalDifferenceReferences.SourceValidated, "2026-11-01T00:00:00Z"));
+
+        await harness.Model.LoadAsync(Project, "proposal/one");
+
+        Assert.Contains("a program's decisions", harness.Model.SavedNoteText);
+        Assert.DoesNotContain(MotifAppStrings.ProposalDifferenceSavedDamagedRemake, harness.Model.SavedNoteText);
+    }
+
+    [Fact]
+    public async Task ManyDamagedDifferencesAreNamedUpToAFewAndTheRestCounted()
+    {
+        var harness = new Harness(alreadyMade: true);
+        for (var index = 0; index < 5; index++)
+            harness.Fixture.SavedDamaged.Add(new("difference/bad" + index, Guid.NewGuid().ToString("D"),
+                ProposalDifferenceReferences.Human, "2026-11-01T00:00:00Z"));
+
+        await harness.Model.LoadAsync(Project, "proposal/one");
+
+        Assert.Equal(3, harness.Model.SavedNoteText.Split("The Difference for").Length - 1);
+        Assert.Contains("2 saved Differences could not be read.", harness.Model.SavedNoteText);
+    }
+
+    [Fact]
     public async Task OneSavedDifferenceShowsNoListButStillNamesItsTextAndReference()
     {
         var harness = new Harness(alreadyMade: true);
