@@ -170,6 +170,7 @@ public static class MotifTrace
         private readonly long _maximumBytes;
         private readonly WorkerMutexOwner _fileLock;
         private readonly ActivityListener _listener;
+        private bool _closed;
 
         public JsonLinesSink(string path, long maximumBytes)
         {
@@ -208,14 +209,19 @@ public static class MotifTrace
             foreach (var tag in activity.TagObjects) line[tag.Key] = tag.Value;
             var bytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(line) + "\n");
             if (bytes.LongLength > _maximumBytes) return;
-            lock (_gate) WithFileLock(() =>
+            lock (_gate)
             {
-                if (File.Exists(_path) && new FileInfo(_path).Length > _maximumBytes - bytes.LongLength)
-                    File.Move(_path, _path + ".1", overwrite: true);
-                using var file = new FileStream(_path, FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite);
-                file.Seek(0, SeekOrigin.End);
-                file.Write(bytes);
-            });
+                // A span stopping on another thread can reach a sink that Dispose has already closed; it is not recorded.
+                if (_closed) return;
+                WithFileLock(() =>
+                {
+                    if (File.Exists(_path) && new FileInfo(_path).Length > _maximumBytes - bytes.LongLength)
+                        File.Move(_path, _path + ".1", overwrite: true);
+                    using var file = new FileStream(_path, FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite);
+                    file.Seek(0, SeekOrigin.End);
+                    file.Write(bytes);
+                });
+            }
         }
 
         private void WithFileLock(Action action)
@@ -230,7 +236,12 @@ public static class MotifTrace
         public void Dispose()
         {
             _listener.Dispose();
-            lock (_gate) _fileLock.Dispose();
+            lock (_gate)
+            {
+                if (_closed) return;
+                _closed = true;
+                _fileLock.Dispose();
+            }
         }
     }
 }
