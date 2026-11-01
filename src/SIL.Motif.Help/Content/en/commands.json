@@ -165,7 +165,7 @@
   },
   "retire-allomorph": {
     "title": "Retire or merge forms",
-    "description": "Stages one connected Proposal to retire ordinary prefix or suffix alternates after their references move; the sound-rule form also stages its natural class and rule. Dry Run shows bundle Morph and copied Form text changes, other references, and deletion together. Missing destinations are refused with counts for distinct unresolved Approved analyses, ad hoc rules, and other references; only a person can Apply.",
+    "description": "Stages one connected Proposal to retire ordinary prefix or suffix alternates after their references move, or a duplicate stem alternate that nothing refers to; the sound-rule form also stages its natural class and rule. Dry Run shows bundle Morph and copied Form text changes, other references, and deletion together. Missing destinations are refused with counts for distinct unresolved Approved analyses, ad hoc rules, and other references; only a person can Apply.",
     "source": "Hand-written from the allomorph retirement and sound-rule replacement contracts.",
     "fields": {
       "draft": "Draft name.",
@@ -183,7 +183,7 @@
       "Retire an allomorph and move its references to another allomorph",
       "Merge redundant allomorphs of an affix into one",
       "Replace a duplicate form with the form a phonological rule derives",
-      "Retire an unused prefix or suffix alternate after moving what refers to it"
+      "Retire an unused prefix, suffix or duplicate stem alternate after moving what refers to it"
     ],
     "guides": [
       "no-inflection"

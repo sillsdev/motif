@@ -979,6 +979,7 @@
   "SIL.Motif.Tests.Retirement.AllomorphReferenceFootprintSampleSurveyTests": 0.0,
   "SIL.Motif.Tests.Retirement.AllomorphReferenceFootprintTests": 0.4,
   "SIL.Motif.Tests.Retirement.AllomorphRetargetOperationsTests": 3.7,
+  "SIL.Motif.Tests.Retirement.StemAlternateRetirementTests": 0.3,
   "SIL.Motif.Tests.Retirement.AllomorphRetargetSampleTests": 0.0,
   "SIL.Motif.Tests.Retirement.AllomorphRuleRetirementAcceptanceTests": 32.6,
   "SIL.Motif.Tests.Retirement.DryRunOperationLinkTests": 0.1,

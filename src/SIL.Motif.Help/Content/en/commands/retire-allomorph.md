@@ -6,6 +6,8 @@ Use this command to stage one ordinary prefix or suffix retirement in a Draft. R
 motif retire-allomorph --project language.fwdata --draft remove-duplicate --intent '{"format":"motif-retire-allomorph","version":1,"retirement":{...}}'
 ```
 
+The same standalone intent retires a stem alternate with `"scope":"stem"`, for a root or stem form that an exact duplicate in the same entry makes redundant. The duplicate must have the same morph type, spelling, stem name and environments, and it may be another alternate or the lexeme form. A stem retirement moves no references: if an analysis or restriction still refers to the retired form, or the form owns anything, the command refuses and names the reason. An entry always keeps the surviving duplicate, so its last stem form is never retired. A sound-rule replacement of stems stays refused.
+
 For a listed allomorph replacement with a sound rule, use the `motif-allomorph-retirement` version 2 intent. It names the natural class, rewrite rule, each retired form, every destination, and the operation bindings in the same Proposal:
 
 ```sh

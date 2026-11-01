@@ -23,22 +23,26 @@ public static class RetireAllomorphComposer
         ArgumentNullException.ThrowIfNull(operationIdFactory);
         var intent = document.Retirement;
         var survivorIdentities = document.DuplicateSurvivors;
-        if (intent.Scope != AllomorphRetirementScope.Affix)
-            throw new InvalidOperationException("Only ordinary affix alternates are supported by this retirement composer.");
+        var stem = intent.Scope == AllomorphRetirementScope.Stem;
+        if (stem && ruleReplacement is not null)
+            throw new InvalidOperationException(AllomorphRetirementCapabilities.StemRefusal);
         var entryId = ParseId(intent.Entry, "entry");
         if (!cache.ServiceLocator.ObjectRepository.TryGetObject(entryId.ToGuid(), out var entryObject) ||
             entryObject is not ILexEntry entry || entry.LexemeFormOA is null)
             throw new InvalidOperationException("Allomorph retirement requires an entry with a primary form.");
 
-        var retired = intent.RetiredForms.Select(item => ResolveForm(cache, item, entry, source: true)).ToArray();
+        var retired = intent.RetiredForms.Select(item => ResolveForm(cache, item, entry, source: true, stem)).ToArray();
         var footprint = AllomorphReferenceFootprintReader.Read(cache, retired.Select(item => item.Guid));
         if (footprint.OwnedDependents.Count > 0)
             throw new InvalidOperationException("A retired form owns objects that deletion would cascade.");
+        if (stem && footprint.References.Any(item => item.Kind != "entry-alternate-form"))
+            throw new InvalidOperationException(
+                "A retired stem form is still referred to by an analysis or restriction; only an unreferenced stem alternate can be retired.");
         var retiredIds = retired.Select(item => CanonicalId.FromGuid(item.Guid)).ToHashSet();
         if (survivorIdentities.Select(item => ParseId(item.Id, "surviving form")).Distinct().Count() != survivorIdentities.Count)
             throw new InvalidOperationException("A duplicate survivor may be declared only once.");
         var survivors = survivorIdentities
-            .Select(item => ResolveForm(cache, item, entry, source: false)).ToArray();
+            .Select(item => ResolveForm(cache, item, entry, source: false, stem)).ToArray();
         if (survivors.Length == 0 || survivors.Any(item => retiredIds.Contains(CanonicalId.FromGuid(item.Guid))))
             throw new InvalidOperationException("Retirement requires a surviving duplicate form for every retired form.");
 
@@ -46,12 +50,13 @@ public static class RetireAllomorphComposer
         foreach (var form in retired)
         {
             var matching = survivors.Where(item => SameDuplicateSignature(cache, form, item) ||
-                ruleReplacement is { } proof && RuleBackedAllomorphFormProof.Matches(cache, form, item,
+                ruleReplacement is { } proof && form is IMoAffixAllomorph affixForm && item is IMoAffixAllomorph affixItem &&
+                RuleBackedAllomorphFormProof.Matches(cache, affixForm, affixItem,
                     proof.InputPhoneme, proof.OutputPhoneme)).ToArray();
             if (matching.Length == 0)
                 throw new InvalidOperationException("Every retired form requires an exact surviving duplicate or a single-rule form match in the same entry.");
             foreach (var destination in matching) matchedSurvivors.Add(destination.Guid);
-            if (IsZeroForm(cache, form) && HasMorphologicalFeatures(entry))
+            if (!stem && IsZeroForm(cache, form) && HasMorphologicalFeatures(entry))
                 throw new InvalidOperationException("Feature-bearing zero morphology cannot be retired as a duplicate form.");
         }
         if (matchedSurvivors.Count != survivors.Length)
@@ -64,7 +69,7 @@ public static class RetireAllomorphComposer
                 !SameIdentity(declaredSurvivors[ParseId(item.Id, "reference destination")], item)))
             throw new InvalidOperationException("Every reference destination must be declared as a duplicate survivor.");
 
-        var retargets = AllomorphRetargetComposer.Build(cache, intent, operationIdFactory);
+        var retargets = stem ? [] : AllomorphRetargetComposer.Build(cache, intent, operationIdFactory);
         var before = entry.AlternateFormsOS.Select(item => CanonicalId.FromGuid(item.Guid)).ToArray();
         if (before.Length == 0 || retired.Any(item => !entry.AlternateFormsOS.Contains(item)))
             throw new InvalidOperationException("Only current alternate forms can be retired.");
@@ -95,26 +100,51 @@ public static class RetireAllomorphComposer
         return retargets.Append(delete).ToArray();
     }
 
-    private static IMoAffixAllomorph ResolveForm(
-        LcmCache cache, AllomorphIdentity identity, ILexEntry entry, bool source)
+    private static IMoForm ResolveForm(
+        LcmCache cache, AllomorphIdentity identity, ILexEntry entry, bool source, bool stem)
     {
         var id = ParseId(identity.Id, source ? "retired form" : "surviving form");
+        var expectedClass = stem ? "MoStemAllomorph" : "MoAffixAllomorph";
         if (!cache.ServiceLocator.ObjectRepository.TryGetObject(id.ToGuid(), out var value) ||
-            value is not IMoAffixAllomorph form || form.ClassName != "MoAffixAllomorph" ||
+            value is not IMoForm form || form.ClassName != expectedClass ||
             form.Owner?.Guid != entry.Guid || form.IsAbstract)
             throw new InvalidOperationException("Retirement identities must resolve to ordinary forms of the owning entry.");
         var location = entry.AlternateFormsOS.Contains(form) ? "alternate" :
             entry.LexemeFormOA?.Guid == form.Guid ? "lexeme" : "other";
-        var position = form.MorphTypeRA?.Guid == MoMorphTypeTags.kguidMorphPrefix ? "prefix" :
-            form.MorphTypeRA?.Guid == MoMorphTypeTags.kguidMorphSuffix ? "suffix" : "unsupported";
+        var morphType = form.MorphTypeRA?.Guid;
+        var position = stem
+            ? morphType == MoMorphTypeTags.kguidMorphRoot ? "root" :
+              morphType == MoMorphTypeTags.kguidMorphStem ? "stem" : "unsupported"
+            : morphType == MoMorphTypeTags.kguidMorphPrefix ? "prefix" :
+              morphType == MoMorphTypeTags.kguidMorphSuffix ? "suffix" : "unsupported";
+        var stemName = (form as IMoStemAllomorph)?.StemNameRA;
         if (identity.Entry != CanonicalId.FromGuid(entry.Guid).Value || identity.Id != id.Value ||
             identity.Class != form.ClassName || identity.Location != location || identity.Position != position ||
+            (stem ? (identity.StemName is null) != (stemName is null) ||
+                    stemName is not null && !SameId(identity.StemName!, stemName.Guid)
+                : identity.StemName is not null) ||
             (source && location != "alternate") || (!source && location is not ("alternate" or "lexeme")))
             throw new InvalidOperationException("An authored allomorph identity no longer matches its LibLCM object.");
-        if (!StringComparer.Ordinal.Equals(identity.SemanticDigest, AllomorphRetirementSemanticDigest.Compute(cache, form)))
+        var digest = form is IMoStemAllomorph stemForm
+            ? AllomorphRetirementSemanticDigest.Compute(cache, stemForm)
+            : AllomorphRetirementSemanticDigest.Compute(cache, (IMoAffixAllomorph)form);
+        if (!StringComparer.Ordinal.Equals(identity.SemanticDigest, digest))
             throw new InvalidOperationException("An allomorph's measured semantic meaning changed before retirement composition.");
         return form;
     }
+
+    private static bool SameDuplicateSignature(LcmCache cache, IMoForm source, IMoForm destination) =>
+        source is IMoAffixAllomorph affixSource && destination is IMoAffixAllomorph affixDestination
+            ? SameDuplicateSignature(cache, affixSource, affixDestination)
+            : source is IMoStemAllomorph stemSource && destination is IMoStemAllomorph stemDestination &&
+              SameDuplicateSignature(cache, stemSource, stemDestination);
+
+    private static bool SameDuplicateSignature(LcmCache cache, IMoStemAllomorph source, IMoStemAllomorph destination) =>
+        source.Guid != destination.Guid && source.MorphTypeRA?.Guid == destination.MorphTypeRA?.Guid &&
+        source.StemNameRA?.Guid == destination.StemNameRA?.Guid &&
+        Alternatives(cache, source.Form).SequenceEqual(Alternatives(cache, destination.Form)) &&
+        source.PhoneEnvRC.Select(item => item.Guid).Order()
+            .SequenceEqual(destination.PhoneEnvRC.Select(item => item.Guid).Order());
 
     private static bool SameDuplicateSignature(LcmCache cache, IMoAffixAllomorph source, IMoAffixAllomorph destination)
     {
@@ -142,7 +172,7 @@ public static class RetireAllomorphComposer
             .Select(item => new KeyValuePair<string, string>(item.Tag, item.Text.Normalize(System.Text.NormalizationForm.FormD)))
             .OrderBy(item => item.Key, StringComparer.Ordinal).ToArray();
 
-    private static bool IsZeroForm(LcmCache cache, IMoAffixAllomorph form)
+    private static bool IsZeroForm(LcmCache cache, IMoForm form)
     {
         var values = Alternatives(cache, form.Form).Select(item => item.Value).ToArray();
         return values.Length == 0 || values.All(value => value.Trim() is "0" or "∅" or "Ø");

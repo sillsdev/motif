@@ -47,6 +47,44 @@ public sealed class RetireAllomorphContractTests
         Assert.Throws<FormatException>(() => RetireAllomorphCodec.Parse(json.ToJsonString()));
     }
 
+    private static JsonObject StemDocument(bool withReferences)
+    {
+        var json = JsonNode.Parse(RetireAllomorphCodec.ToJson(Example()))!.AsObject();
+        var retirement = json["retirement"]!;
+        retirement["scope"] = "stem";
+        foreach (var form in new[] { retirement["retiredForms"]![0]!, json["duplicateSurvivors"]![0]! })
+        {
+            form["class"] = "MoStemAllomorph";
+            form["position"] = "stem";
+            form["stemName"] = null;
+        }
+        if (withReferences) return json;
+        retirement["roleReplacements"] = new JsonArray();
+        retirement["bundles"] = new JsonArray();
+        retirement["adhocReplacements"] = new JsonArray();
+        return json;
+    }
+
+    [Fact]
+    public void StandaloneStemRetirementRoundTripsWhenItMovesNoReferences()
+    {
+        var parsed = RetireAllomorphCodec.Parse(StemDocument(withReferences: false).ToJsonString());
+
+        Assert.Equal(AllomorphRetirementScope.Stem, parsed.Retirement.Scope);
+        Assert.Equal(RetireAllomorphCodec.ToJson(parsed),
+            RetireAllomorphCodec.ToJson(RetireAllomorphCodec.Parse(RetireAllomorphCodec.ToJson(parsed))));
+    }
+
+    [Fact]
+    public void StandaloneStemRetirementRefusesReferencesToMoveAndADifferentStemName()
+    {
+        Assert.Throws<FormatException>(() => RetireAllomorphCodec.Parse(StemDocument(withReferences: true).ToJsonString()));
+
+        var json = StemDocument(withReferences: false);
+        json["duplicateSurvivors"]![0]!["stemName"] = Example().Retirement.RetiredForms[0].Id;
+        Assert.Throws<FormatException>(() => RetireAllomorphCodec.Parse(json.ToJsonString()));
+    }
+
     [Fact]
     public void StandaloneRetirementRequiresEverySourceToHaveAMeasuredDuplicateSurvivor()
     {

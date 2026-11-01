@@ -45,6 +45,37 @@ public static class AllomorphRetirementSemanticDigest
         return "sha256:" + Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(canonical))).ToLowerInvariant();
     }
 
+    /// <summary>The measured meaning of a stem allomorph: its type, text, environments and stem name.</summary>
+    public static string Compute(LcmCache cache, IMoStemAllomorph form)
+    {
+        ArgumentNullException.ThrowIfNull(cache);
+        ArgumentNullException.ThrowIfNull(form);
+        var state = new
+        {
+            className = form.ClassName,
+            morphType = Id(form.MorphTypeRA),
+            form.IsAbstract,
+            alternatives = Alternatives(cache, form.Form),
+            stemName = Id(form.StemNameRA),
+            phoneEnvironments = form.PhoneEnvRC.Select(environment => new
+                {
+                    id = Id(environment),
+                    representation = environment.StringRepresentation?.get_NormalizedForm(FwNormalizationMode.knmNFSC)?.Text
+                        .Normalize(NormalizationForm.FormD),
+                    names = Alternatives(cache, environment.Name)
+                })
+                .OrderBy(item => item.id, StringComparer.Ordinal).ToArray()
+        };
+        var canonical = CanonicalJson.Canonicalize(JsonSerializer.Serialize(state));
+        return "sha256:" + Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(canonical))).ToLowerInvariant();
+    }
+
+    private static object[] Alternatives(LcmCache cache, IMultiAccessorBase text) => text.AvailableWritingSystemIds
+        .Select(ws => (Tag: cache.WritingSystemFactory.GetStrFromWs(ws),
+            Text: text.get_String(ws)?.Text?.Normalize(NormalizationForm.FormD) ?? string.Empty))
+        .OrderBy(item => item.Tag, StringComparer.Ordinal)
+        .Select(item => (object)new { writingSystem = item.Tag, text = item.Text }).ToArray();
+
     private static object? FeatureStructure(IFsFeatStruc? structure, HashSet<Guid>? ancestry = null)
     {
         if (structure is null) return null;

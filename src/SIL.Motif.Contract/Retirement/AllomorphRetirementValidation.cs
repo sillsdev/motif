@@ -193,32 +193,38 @@ internal static class AllomorphRetirementValidation
         Require(value.Format == "motif-retire-allomorph" && value.Version == 1,
             "Unsupported standalone retirement format/version; regenerate the authoring artifact.");
         var retirement = value.Retirement;
-        Require(retirement is not null && retirement.Scope == AllomorphRetirementScope.Affix,
-            "Standalone retirement supports only affix alternate forms.");
-        Id(retirement!.Entry);
+        Require(retirement is not null && retirement.Scope is AllomorphRetirementScope.Affix or AllomorphRetirementScope.Stem,
+            "Standalone retirement supports only affix or stem alternate forms.");
+        var scope = retirement!.Scope;
+        Id(retirement.Entry);
         var entry = Key(retirement.Entry);
         List(retirement.RetiredForms, 1, 4096);
         List(value.DuplicateSurvivors, 1, 4096);
         List(retirement.RoleReplacements, 0);
         List(retirement.Bundles, 0);
         List(retirement.AdhocReplacements, 0);
+        Require(scope == AllomorphRetirementScope.Affix || retirement.RoleReplacements.Count + retirement.Bundles.Count +
+                retirement.AdhocReplacements.Count == 0,
+            "Standalone stem retirement moves no references; a stem form that an analysis or restriction refers to stays refused.");
 
         var sources = new Dictionary<string, AllomorphIdentity>(StringComparer.Ordinal);
         foreach (var source in retirement.RetiredForms)
         {
-            Form(source, entry, true, AllomorphRetirementScope.Affix);
+            Form(source, entry, true, scope);
             Require(sources.TryAdd(Key(source.Id), source), "Duplicate retired identity.");
         }
 
         var survivors = new Dictionary<string, AllomorphIdentity>(StringComparer.Ordinal);
         foreach (var survivor in value.DuplicateSurvivors)
         {
-            Form(survivor, entry, false, AllomorphRetirementScope.Affix);
+            Form(survivor, entry, false, scope);
             Require(!sources.ContainsKey(Key(survivor.Id)), "A retired form cannot survive as its own destination.");
             Require(survivors.TryAdd(Key(survivor.Id), survivor), "Duplicate surviving identity.");
         }
         Require(sources.Values.All(source => survivors.Values.Any(survivor =>
-                survivor.Position == source.Position && survivor.SemanticDigest == source.SemanticDigest)),
+                survivor.Position == source.Position && survivor.SemanticDigest == source.SemanticDigest &&
+                (survivor.StemName is null ? source.StemName is null
+                    : source.StemName is not null && Key(survivor.StemName) == Key(source.StemName)))),
             "Every retired form requires a measured exact duplicate survivor.");
 
         var roles = new HashSet<string>(StringComparer.Ordinal);

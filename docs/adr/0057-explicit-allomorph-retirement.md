@@ -125,3 +125,7 @@ This is an explicitly authored linguistic change, not a pre-1.0 storage migratio
 Reject generic cascade deletion, `SwapReferences` as a complete census/algorithm, `ReplaceMoForm` form merging, surface-copy workarounds, automatic replacement inference, MSA-plus-spelling joins, merging translated analyses, silently remapped negatives/reasons, and unique replacement evidence kept only in disposable files.
 
 The [allomorph retirement contract](../allomorph-retirement-contract.md) defines the closed portable values, capability boundaries, review statistics and remaining operation-family acceptance gates. ADR 0027 is amended only to permit this explicit Proposal-scoped translation adapter; its ordinary comparison is unchanged. ADR 0026 continues to govern dependencies and one writer per slot.
+
+### Amendment — unreferenced duplicate stem alternates
+
+The standalone `motif-retire-allomorph` document may retire an unreferenced stem alternate that has an exact duplicate (same morph type, spelling, StemName and PhoneEnv set) in the same entry, because an identical survivor leaves every selection gate unchanged. It moves no references and refuses while any exist; the sound-rule replacement of stems stays refused. See the [allomorph retirement contract](../allomorph-retirement-contract.md).

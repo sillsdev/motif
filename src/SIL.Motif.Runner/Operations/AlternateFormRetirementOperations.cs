@@ -120,7 +120,7 @@ internal sealed class AlternateFormDeleteHandler : IOperationHandler
         var beforeValue = ReferenceSequenceFieldSnapshotting.ReadAlternatives(entry.AlternateFormsOS);
         ValidateDelete(cache, entry, payload);
         foreach (var formId in payload.Forms)
-            cache.ServiceLocator.GetInstance<IMoAffixAllomorphRepository>().GetObject(formId.ToGuid()).Delete();
+            cache.ServiceLocator.GetInstance<IMoFormRepository>().GetObject(formId.ToGuid()).Delete();
         var actual = ReadAlternates(entry);
         if (!actual.SequenceEqual(payload.After))
             throw new InvalidOperationException("LibLCM did not preserve the authored alternate-form order during retirement.");
@@ -144,14 +144,20 @@ internal sealed class AlternateFormDeleteHandler : IOperationHandler
         var survivors = payload.DuplicateSurvivors.Select(id =>
         {
             if (!cache.ServiceLocator.ObjectRepository.TryGetObject(id.ToGuid(), out var value) ||
-                value is not IMoAffixAllomorph form || form.Owner?.Guid != entry.Guid ||
-                (entry.LexemeFormOA.Guid != form.Guid && !entry.AlternateFormsOS.Contains(form)))
+                value is not (IMoAffixAllomorph or IMoStemAllomorph) || value.Owner?.Guid != entry.Guid ||
+                (entry.LexemeFormOA.Guid != value.Guid && !entry.AlternateFormsOS.Contains((IMoForm)value)))
                 throw new InvalidOperationException("A declared duplicate survivor is absent from the owning entry.");
-            return form;
+            return (IMoForm)value;
         }).ToArray();
 
         foreach (var formId in payload.Forms)
         {
+            if (cache.ServiceLocator.ObjectRepository.TryGetObject(formId.ToGuid(), out var stemValue) &&
+                stemValue is IMoStemAllomorph stemSource)
+            {
+                ValidateStemDelete(cache, entry, payload, stemSource, survivors);
+                continue;
+            }
             if (!cache.ServiceLocator.ObjectRepository.TryGetObject(formId.ToGuid(), out var value) ||
                 value is not IMoAffixAllomorph source || source.Owner?.Guid != entry.Guid ||
                 !entry.AlternateFormsOS.Contains(source) || source.ClassName != "MoAffixAllomorph" || source.IsAbstract)
@@ -162,7 +168,8 @@ internal sealed class AlternateFormDeleteHandler : IOperationHandler
                 throw new InvalidOperationException("Only an ordinary alternate prefix or suffix form can be retired.");
             foreach (var destination in survivors)
                 RequireSemanticWitness(cache, destination, payload);
-            var exactDuplicate = survivors.Any(destination => SameDuplicateSignature(cache, source, destination));
+            var exactDuplicate = survivors.OfType<IMoAffixAllomorph>()
+                .Any(destination => SameDuplicateSignature(cache, source, destination));
             if (!exactDuplicate && (payload.RuleReplacement is not { } replacement ||
                     !CanBeReplacedByRule(cache, source, survivors, replacement)))
                 throw new InvalidOperationException("A retired form must have a surviving exact duplicate or an active exact rule replacement.");
@@ -175,9 +182,37 @@ internal sealed class AlternateFormDeleteHandler : IOperationHandler
         }
     }
 
-    private static bool CanBeReplacedByRule(LcmCache cache, IMoAffixAllomorph source,
-        IReadOnlyList<IMoAffixAllomorph> survivors, RuleReplacementWitness witness)
+    private static void ValidateStemDelete(LcmCache cache, ILexEntry entry, AlternateFormDeletePayload payload,
+        IMoStemAllomorph source, IReadOnlyList<IMoForm> survivors)
     {
+        if (payload.RuleReplacement is not null)
+            throw new InvalidOperationException("A stem alternate form can only be retired as an exact duplicate.");
+        var morphType = source.MorphTypeRA?.Guid;
+        if (source.Owner?.Guid != entry.Guid || !entry.AlternateFormsOS.Contains(source) || source.IsAbstract ||
+            morphType != MoMorphTypeTags.kguidMorphStem && morphType != MoMorphTypeTags.kguidMorphRoot)
+            throw new InvalidOperationException("Only an ordinary alternate unbound stem or root form can be retired.");
+        RequireSemanticWitness(cache, source, payload);
+        foreach (var destination in survivors)
+            RequireSemanticWitness(cache, destination, payload);
+        if (!survivors.OfType<IMoStemAllomorph>().Any(destination => SameDuplicateSignature(cache, source, destination)))
+            throw new InvalidOperationException("A retired stem form must have a surviving exact duplicate in its entry.");
+        if (AllomorphRetargetCensusReader.HasIncomingReferences(cache, [source.Guid]))
+            throw new InvalidOperationException("A retired form still has an incoming reference after retargeting.");
+        if (HasOwnedDescendants(cache, source))
+            throw new InvalidOperationException("A retired form has owned dependents that deletion would cascade.");
+    }
+
+    private static bool SameDuplicateSignature(LcmCache cache, IMoStemAllomorph left, IMoStemAllomorph right) =>
+        left.Guid != right.Guid && left.Owner?.Guid == right.Owner?.Guid && !left.IsAbstract && !right.IsAbstract &&
+        left.MorphTypeRA?.Guid == right.MorphTypeRA?.Guid && left.StemNameRA?.Guid == right.StemNameRA?.Guid &&
+        BundleMorphHandler.SameAlternatives(BundleMorphHandler.ReadFormAlternatives(cache, left.Form),
+            BundleMorphHandler.ReadFormAlternatives(cache, right.Form)) &&
+        left.PhoneEnvRC.Select(item => item.Guid).Order().SequenceEqual(right.PhoneEnvRC.Select(item => item.Guid).Order());
+
+    private static bool CanBeReplacedByRule(LcmCache cache, IMoAffixAllomorph source,
+        IReadOnlyList<IMoForm> survivorForms, RuleReplacementWitness witness)
+    {
+        var survivors = survivorForms.OfType<IMoAffixAllomorph>().ToArray();
         if (!TryReadRule(cache, witness, out var rule)) return false;
         return survivors.Any(survivor => RuleBackedAllomorphFormProof.Matches(cache, source, survivor,
             witness.InputPhoneme, witness.OutputPhoneme));
@@ -201,11 +236,13 @@ internal sealed class AlternateFormDeleteHandler : IOperationHandler
 
 
     private static void RequireSemanticWitness(
-        LcmCache cache, IMoAffixAllomorph form, AlternateFormDeletePayload payload)
+        LcmCache cache, IMoForm form, AlternateFormDeletePayload payload)
     {
         var id = CanonicalId.FromGuid(form.Guid);
         var witness = payload.FormWitnesses.Single(item => item.Form == id);
-        var actual = AllomorphRetirementSemanticDigest.Compute(cache, form);
+        var actual = form is IMoStemAllomorph stemForm
+            ? AllomorphRetirementSemanticDigest.Compute(cache, stemForm)
+            : AllomorphRetirementSemanticDigest.Compute(cache, (IMoAffixAllomorph)form);
         if (!StringComparer.Ordinal.Equals(witness.SemanticDigest, actual))
             throw new InvalidOperationException("An allomorph's measured semantic meaning changed after retirement was composed.");
     }
