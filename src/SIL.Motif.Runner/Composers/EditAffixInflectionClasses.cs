@@ -61,7 +61,7 @@ public static class EditAffixInflectionClassesComposer
         {
             var morphType = form.MorphTypeRA?.Guid;
             var text = form.Form.get_String(cache.DefaultVernWs)?.Text;
-            if (form.IsAbstract || string.IsNullOrWhiteSpace(text) ||
+            if (form.IsAbstract || string.IsNullOrWhiteSpace(text) || text.Contains('[') ||
                 (morphType != MoMorphTypeTags.kguidMorphPrefix && morphType != MoMorphTypeTags.kguidMorphSuffix &&
                  morphType != MoMorphTypeTags.kguidMorphPrefixingInterfix && morphType != MoMorphTypeTags.kguidMorphSuffixingInterfix))
                 throw new InvalidOperationException("The target must be a nonabstract ordinary prefix or suffix with a vernacular form.");

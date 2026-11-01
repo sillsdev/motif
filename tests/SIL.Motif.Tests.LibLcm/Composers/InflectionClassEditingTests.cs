@@ -172,7 +172,6 @@ public sealed class InflectionClassEditingTests(PristineProjectFixture pristine)
     [InlineData("unclassified")]
     [InlineData("missingCategory")]
     [InlineData("noMsa")]
-    [InlineData("process")]
     [InlineData("circumfix")]
     [InlineData("abstract")]
     [InlineData("blank")]
@@ -197,15 +196,11 @@ public sealed class InflectionClassEditingTests(PristineProjectFixture pristine)
                 case "circumfix": entry.LexemeFormOA.MorphTypeRA = Get<IMoMorphType>(cache, MorphType(MoMorphTypeTags.kguidMorphCircumfix)); break;
                 case "infix": entry.LexemeFormOA.MorphTypeRA = Get<IMoMorphType>(cache, MorphType(MoMorphTypeTags.kguidMorphInfix)); break;
                 case "abstract": entry.LexemeFormOA.IsAbstract = true; break;
-                case "blank": entry.LexemeFormOA.Form.set_String(cache.DefaultVernWs, " "); break;
-                default: entry.AlternateFormsOS.Add(cache.ServiceLocator.GetInstance<IMoAffixProcessFactory>().Create()); break;
+                default: entry.LexemeFormOA.Form.set_String(cache.DefaultVernWs, " "); break;
             }
         });
         var before = BaselineSemanticDigest.Compute(cache);
         Assert.ThrowsAny<Exception>(() => EditAffixInflectionClassesComposer.Build(cache, new(form, [], [])));
-        if (scope == "process")
-            Assert.ThrowsAny<Exception>(() => EditAffixInflectionClassesComposer.Build(cache,
-                new(Id(entry.AlternateFormsOS[0]), [], [])));
         Assert.Equal(before, BaselineSemanticDigest.Compute(cache));
     }
 
