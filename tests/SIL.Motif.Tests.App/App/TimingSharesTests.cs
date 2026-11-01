@@ -245,7 +245,7 @@ public sealed class TimingSharesTests
 
         Assert.Equal("100 work steps", timing.HeadlineTotal);
         Assert.Empty(timing.KindShares);
-        Assert.Equal("Work steps by kind and by rule were not kept for these words, so no shares are shown.",
+        Assert.Equal("Work steps by kind and by rule were not kept for these words, so no shares are shown. Parse all words again to keep them.",
             timing.ShareDenominatorText);
         Assert.Equal("Not attributed: Not recorded.", timing.NotAttributedText);
         var rule = Assert.Single(timing.RuleRows).Share;
@@ -582,10 +582,23 @@ public sealed class TimingSharesTests
     private static string[] VisibleText(Window window) => window.GetLogicalDescendants().OfType<TextBlock>()
         .Where(text => text.IsEffectivelyVisible).Select(text => text.Text ?? string.Empty).ToArray();
 
+    [Fact]
+    public async Task AChosenPartOfALargeRunGivesNoAdviceToParseAgain()
+    {
+        using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
+        var timing = await LoadedTiming([("dogs", 10)], [new TimingAggregateRow("morph_rule", "morph_rule", 4, 0.4, 1)],
+            [new TimingAggregateRow("Plural", "Plural", 4, 0.4, 1) { Kind = "morph_rule" }], work: [], aggregatesAvailable: false);
+
+        Assert.Equal("Work steps by kind and by rule were not kept for these words, so no shares are shown.",
+            timing.ShareDenominatorText);
+        Assert.DoesNotContain("Parse all words", timing.ShareDenominatorText);
+    }
+
     private static async Task<TimingPageModel> LoadedTiming((string Word, int? Ms)[] words,
         TimingAggregateRow[] kinds, TimingAggregateRow[] rules, WordRuleTiming[]? costliest = null,
         IReadOnlyList<long?>? elapsedNs = null, TraceTimingKey? requestedRule = null,
-        string? stepLimitedWord = null, IReadOnlyList<TimingWorkAggregate>? work = null, WordWorkSummary? summary = null)
+        string? stepLimitedWord = null, IReadOnlyList<TimingWorkAggregate>? work = null, WordWorkSummary? summary = null,
+        bool aggregatesAvailable = true)
     {
         var fake = new FakeCommandClient();
         var context = WorkspaceContextTests.NewContext(fake);
@@ -612,6 +625,7 @@ public sealed class TimingSharesTests
                 }).ToArray(),
                 Attribution = AttributionFor(words, kinds),
                 WorkStepAggregates = work,
+                ObjectTimingAggregatesAvailable = aggregatesAvailable,
                 Work = summary ?? TimingAggregation.SummarizeWork(wordWork),
             })));
         await context.OpenProjectAsync(ProjectPath);

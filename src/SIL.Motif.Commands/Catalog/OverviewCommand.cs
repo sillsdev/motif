@@ -129,7 +129,12 @@ public static class OverviewCommand
                     assessedWords.Count == components[0].Words?.Count)
                 {
                     var projected = TimingAggregation.AggregateTotals(assessedWords, totals, "kind");
-                    timing = timing with { Kinds = projected.Aggregates, Attribution = projected.Attribution };
+                    timing = timing with
+                    {
+                        Kinds = projected.Aggregates, Attribution = projected.Attribution,
+                        WorkStepAggregates = TimingAggregation.WorkStepsFromTotals(assessedWords, totals,
+                            components[0].Invocation?.InvocationId is { } invocation ? "invocation:" + invocation : null),
+                    };
                 }
                 else
                 {

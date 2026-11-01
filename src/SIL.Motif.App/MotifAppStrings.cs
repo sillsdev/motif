@@ -1941,6 +1941,8 @@ public static class MotifAppStrings
 
     public static string TimingWorkByObjectUnavailable => Text("MotifApp.TimingWorkByObjectUnavailable");
 
+    public static string TimingWorkByObjectNotKept => Text("MotifApp.TimingWorkByObjectNotKept");
+
     public static string TimingShareOfFormat => Text("MotifApp.TimingShareOfFormat");
 
     public static string TimingShareOfOneMissingFormat => Text("MotifApp.TimingShareOfOneMissingFormat");

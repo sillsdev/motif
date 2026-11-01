@@ -111,6 +111,7 @@ public static class PanGlossBatchStatisticsReader
         var attributedByWord = new Dictionary<string, long>(StringComparer.Ordinal);
         var hasTimer = false;
         var aggregates = new Dictionary<(ObjectIdentity Identity, string Direction), PanGlossObjectTimingAggregate>();
+        var workMissing = new HashSet<(ObjectIdentity Identity, string Direction)>();
         var directionWords = new Dictionary<(ObjectIdentity Identity, string Direction), string>();
         var directionWordTotals = new Dictionary<(ObjectIdentity Identity, string Direction), (string Word, long Attempts, long Elapsed)>();
         var objectWords = new Dictionary<ObjectIdentity, (string Word, int Count)>();
@@ -157,11 +158,14 @@ public static class PanGlossBatchStatisticsReader
                 MaxAttempts = row.Attempts is not null ? Math.Max(prior.MaxAttempts ?? 0, wordTotals.Attempts) : prior.MaxAttempts,
                 ElapsedNs = row.ElapsedNs is { } elapsed ? checked((prior.ElapsedNs ?? 0) + elapsed) : prior.ElapsedNs,
                 MaxElapsedNs = row.ElapsedNs is not null ? Math.Max(prior.MaxElapsedNs ?? 0, wordTotals.Elapsed) : prior.MaxElapsedNs,
+                WorkSteps = row.WorkSteps is { } work ? checked((prior.WorkSteps ?? 0) + work) : prior.WorkSteps,
             };
+            if (row.WorkSteps is null) workMissing.Add(key);
         }
         var completed = aggregates.Select(pair => pair.Value with
         {
             Key = pair.Key.Identity.Key,
+            WorkSteps = workMissing.Contains(pair.Key) ? null : pair.Value.WorkSteps,
             WordsTouchedAcrossDirections = objectWords.GetValueOrDefault(pair.Key.Identity).Count,
             WordsTouchedForKind = kindWords.GetValueOrDefault(pair.Value.Kind).Count,
         }).ToArray();
@@ -392,6 +396,11 @@ public sealed record PanGlossObjectTimingAggregate(string Kind, string Key, stri
     public int WordsTouchedAcrossDirections { get; init; }
     /// <summary>Distinct words where any object of this kind did work.</summary>
     public int WordsTouchedForKind { get; init; }
+    /// <summary>
+    /// The work steps attributed to this object and direction across every word, or null when any of its fact rows
+    /// recorded none. It grows with the grammar, never with the number of words.
+    /// </summary>
+    public long? WorkSteps { get; init; }
 }
 
 /// <summary>Exact batch totals and the selected words' object facts.</summary>

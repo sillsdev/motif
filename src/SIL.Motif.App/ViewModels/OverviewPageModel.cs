@@ -320,7 +320,8 @@ public sealed partial class OverviewPageModel : PageModel
                 if (detail.StatisticsUnavailable) notes.Add(MotifAppStrings.TimingNoStoredTimingForWords);
             }
             if (timing.Work.MeasuredWordCount > 0 && timing.WorkStepAggregates.Count == 0)
-                notes.Add(MotifAppStrings.TimingWorkByObjectUnavailable);
+                notes.Add(timing.ObjectTimingAggregatesAvailable
+                    ? MotifAppStrings.TimingWorkByObjectNotKept : MotifAppStrings.TimingWorkByObjectUnavailable);
             if (!timing.ObjectTimingAggregatesAvailable) notes.Add(MotifAppStrings.TimingObjectTotalsUnavailable);
             return string.Join(" ", notes);
         }

@@ -127,6 +127,36 @@ public static class TimingAggregation
     }
 
     /// <summary>
+    /// Work steps by parser object from the stored whole-run totals, for a run whose per-word detail was not all
+    /// kept. It returns nothing unless every counted word has a work total, every stored object total has work,
+    /// the run has its unattributed remainder, and the objects add up to the words' total, so a run stored before
+    /// work was kept by object reads as absent and never as zero.
+    /// </summary>
+    public static IReadOnlyList<TimingWorkAggregate> WorkStepsFromTotals(
+        IReadOnlyList<AssessedWord> words, AssessmentTimingEvidence evidence, string? scope = null)
+    {
+        ArgumentNullException.ThrowIfNull(words);
+        ArgumentNullException.ThrowIfNull(evidence);
+        var counted = words.Where(word => word.Outcome != "skipped").ToArray();
+        var rows = evidence.Aggregates;
+        if (evidence.HasRetriedWords || rows.Count == 0 || counted.Any(word => word.WorkSteps is null) ||
+            rows.Any(row => row.WorkSteps is null || ObjectIdentity.Create(row.Kind, row.Key, row.IdentityQuality, scope) is null) ||
+            !rows.Any(row => row.Kind == "unattributed") ||
+            rows.Sum(row => row.WorkSteps!.Value) != counted.Sum(word => word.WorkSteps!.Value)) return [];
+        return rows.GroupBy(row => ObjectIdentity.Create(row.Kind, row.Key, row.IdentityQuality, scope))
+            .Select(group =>
+            {
+                var first = group.First();
+                var local = first.IdentityQuality is "grammar-local" or "occurrence";
+                return new TimingWorkAggregate(first.Key, first.Object, first.Kind,
+                    group.Sum(row => row.WorkSteps!.Value), first.Kind == "unattributed")
+                    { IdentityQuality = first.IdentityQuality, Scope = local ? scope : null };
+            })
+            .OrderBy(row => row.IsUnattributed).ThenByDescending(row => row.WorkSteps)
+            .ThenBy(row => row.Name, StringComparer.Ordinal).ToArray();
+    }
+
+    /// <summary>
     /// Returns the time-measured words with the most work steps first (words with no work count last), then by
     /// exact parse time, then by spelling.
     /// </summary>

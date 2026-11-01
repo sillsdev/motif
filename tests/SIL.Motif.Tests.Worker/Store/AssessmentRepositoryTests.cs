@@ -306,7 +306,8 @@ public sealed class AssessmentRepositoryTests : IDisposable
         using var ownedDatabase = database;
         var record = NewAssessment("timing-evidence", null, null, "ParseTime");
         var evidence = new AssessmentTimingEvidence(
-            [new PanGlossObjectTimingAggregate("morph_rule", "rule", "authored", "analysis", "Rule", 3, 12, 7, 900, 500)],
+            [new PanGlossObjectTimingAggregate("morph_rule", "rule", "authored", "analysis", "Rule", 3, 12, 7, 900, 500)
+                { WorkSteps = 321 }],
             1, false, 4);
         repository.Record(record with { Material = record.RequireWordMaterial() with { TimingEvidence = evidence } });
 
@@ -315,6 +316,7 @@ public sealed class AssessmentRepositoryTests : IDisposable
         Assert.Equal(1, stored.DetailWordCount);
         Assert.Equal(4, stored.TotalObjectTimingRows);
         Assert.Equal(evidence.Aggregates, stored.Aggregates);
+        Assert.Equal(321, Assert.Single(stored.Aggregates).WorkSteps);
     }
 
     [Fact]

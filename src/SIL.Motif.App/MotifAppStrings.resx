@@ -3567,7 +3567,11 @@ Never included unless you tick it in the preview: local details, which may conta
   </data>
   <data name="MotifApp.TimingWorkByObjectUnavailable" xml:space="preserve">
     <value>Work steps by kind and by rule were not kept for these words, so no shares are shown.</value>
-    <comment>Shown on the Timing page, in place of the sentence saying what every share divides, when the work steps are known but were not kept by kind and rule: a very large run, or one stored before work steps were counted.</comment>
+    <comment>Shown on the Timing page, in place of the sentence saying what every share divides, when the work steps were not kept by kind and rule for a chosen part of a very large run, which parsing the words again would not change.</comment>
+  </data>
+  <data name="MotifApp.TimingWorkByObjectNotKept" xml:space="preserve">
+    <value>Work steps by kind and by rule were not kept for these words, so no shares are shown. Parse all words again to keep them.</value>
+    <comment>Shown on the Timing page, in place of the sentence saying what every share divides, when the whole run is shown but its work steps were not kept by kind and rule: a run stored before they were kept, or a parser that recorded none by object.</comment>
   </data>
   <data name="MotifApp.TimingShareOfFormat" xml:space="preserve">
     <value>Every share is of the {0} {1} needed to parse.</value>

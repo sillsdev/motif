@@ -279,7 +279,9 @@ public sealed partial class TimingPageModel : PageModel
         {
             if (KindTiming is null) return string.Empty;
             if (!HasHeadline) return MotifAppStrings.TimingNoSharesShown;
-            if (WorkByObject(KindTiming) is null) return MotifAppStrings.TimingWorkByObjectUnavailable;
+            if (WorkByObject(KindTiming) is null)
+                return KindTiming.ObjectTimingAggregatesAvailable
+                    ? MotifAppStrings.TimingWorkByObjectNotKept : MotifAppStrings.TimingWorkByObjectUnavailable;
             var missing = ChosenWordCount - MeasuredWords.Count;
             return missing switch
             {

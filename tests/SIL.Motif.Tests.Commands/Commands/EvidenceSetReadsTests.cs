@@ -476,6 +476,98 @@ public sealed class EvidenceSetReadsTests : IDisposable
         Assert.Equal(10, filtered.Value.Attribution.WordTimeMs);
     }
 
+    [Fact]
+    public void APartialRunKeepsWorkSharesByObjectAndARunStoredBeforeSaysTheyWereNotKept()
+    {
+        using var fixture = new TrialsTests.ProjectFixture(_root, includeSecondWord: true);
+        fixture.SetDefaultSelection([], ["cat", "dog"]);
+        var words = new[]
+        {
+            new AssessedWord("cat", "analysed", []) { ElapsedMs = 10, WorkSteps = 70 },
+            new AssessedWord("dog", "analysed", []) { ElapsedMs = 20, WorkSteps = 30 },
+        };
+        var detail = new AssessmentObjectTiming("morph_rule", "rule", "authored", "analysis", "Rule", "dog", 2, null, 2_000_000)
+            { WorkSteps = 30 };
+        PanGlossObjectTimingAggregate Total(string kind, string key, string direction, long? work) =>
+            new(kind, key, kind == "unattributed" ? "synthetic" : "authored", direction, "Rule", 2, 5, 3, 5_000_000, 3_000_000)
+                { WordsTouchedAcrossDirections = 2, WordsTouchedForKind = 2, WorkSteps = work };
+        void Record(string id, long? rule, long? other) => new AssessmentRepository(fixture.Database).Record(
+            new NewAssessmentRecord(id, null, null, "pangloss", AssessmentKinds.ParseTime, "{}", "scope",
+                new AssessmentSubject.Words(Selection.Create("Default", ["cat", "dog"]), "whitespace", "1"),
+                JsonSerializer.Serialize(fixture.Token, MotifJson.CreateOptions()), "outcome", "semantic", "grammar", "model",
+                "pipeline", 0,
+                new AssessmentRecordMaterial.Words(words, null, null, [detail])
+                {
+                    TimingEvidence = new AssessmentTimingEvidence(
+                        [Total("morph_rule", "rule", "analysis", rule), Total("unattributed", "unattributed", "unattributed", other)],
+                        1, false, 2) { AttributedNs = 5_000_000, UnattributedNs = 25_000_000, OverrunNs = 0 },
+                }));
+        Record("kept-work", 80, 20);
+
+        var overview = OverviewCommand.Overview(new OverviewRequest(fixture.Project.FullFwDataPath));
+        Record("old-work", null, null);
+
+        var kept = TimingCommand.Timing(new TimingRequest(fixture.Project.FullFwDataPath, AssessmentId: "kept-work"));
+        var old = TimingCommand.Timing(new TimingRequest(fixture.Project.FullFwDataPath, AssessmentId: "old-work"));
+        var filtered = TimingCommand.Timing(new TimingRequest(fixture.Project.FullFwDataPath,
+            AssessmentId: "kept-work", ExplicitWords: ["cat"]));
+
+        Assert.False(kept.Value!.ObjectTimingDetail!.IsComplete);
+        Assert.Equal(100, kept.Value.WorkStepAggregates.Sum(row => row.WorkSteps));
+        Assert.Equal(80, Assert.Single(kept.Value.WorkStepAggregates, row => !row.IsUnattributed).WorkSteps);
+        Assert.Equal(100, kept.Value.Work.TotalWorkSteps);
+        Assert.True(overview.Succeeded, overview.Refusal?.Message);
+        Assert.Equal(100, overview.Value!.Timing.WorkStepAggregates.Sum(row => row.WorkSteps));
+        Assert.Contains(overview.Value.Timing.WorkStepAggregates, row => row.Kind == "morph_rule" && row.WorkSteps == 80);
+        Assert.Empty(old.Value!.WorkStepAggregates);
+        Assert.Equal(100, old.Value.Work.TotalWorkSteps);
+        Assert.Empty(filtered.Value!.WorkStepAggregates);
+    }
+
+    [Fact]
+    public void OverviewAndTimingAgreeOnWorkSharesOfAGrammarLocalObject()
+    {
+        using var fixture = new TrialsTests.ProjectFixture(_root, includeSecondWord: true);
+        fixture.SetDefaultSelection([], ["cat", "dog"]);
+        var words = new[]
+        {
+            new AssessedWord("cat", "analysed", []) { ElapsedMs = 10, WorkSteps = 70 },
+            new AssessedWord("dog", "analysed", []) { ElapsedMs = 20, WorkSteps = 30 },
+        };
+        var detail = new AssessmentObjectTiming("template", "0", "grammar-local", "analysis", "Template", "dog", 2, null, 2_000_000)
+            { WorkSteps = 30 };
+        PanGlossObjectTimingAggregate Total(string kind, string key, string direction, string quality, long work) =>
+            new(kind, key, quality, direction, "Template", 2, 5, 3, 5_000_000, 3_000_000)
+                { WordsTouchedAcrossDirections = 2, WordsTouchedForKind = 2, WorkSteps = work };
+        var digest = new string('a', 64);
+        var invocation = new BatchInvocationEvidence("local-run", "grammar.xml", digest, digest, "words.txt", digest,
+            "results.tsv", digest, "stderr.txt", digest, 1000, new StepCap(100), 1, false);
+        new AssessmentRepository(fixture.Database).Record(
+            new NewAssessmentRecord("local-work", null, null, "pangloss", AssessmentKinds.ParseTime, "{}", "scope",
+                new AssessmentSubject.Words(Selection.Create("Default", ["cat", "dog"]), "whitespace", "1"),
+                JsonSerializer.Serialize(fixture.Token, MotifJson.CreateOptions()), "outcome", "semantic", "grammar", "model",
+                "pipeline", 0,
+                new AssessmentRecordMaterial.Words(words, null, null, [detail], invocation)
+                {
+                    TimingEvidence = new AssessmentTimingEvidence(
+                        [Total("template", "0", "analysis", "grammar-local", 80),
+                            Total("unattributed", "unattributed", "unattributed", "synthetic", 20)],
+                        1, false, 2) { AttributedNs = 5_000_000, UnattributedNs = 25_000_000, OverrunNs = 0 },
+                }));
+
+        var overview = OverviewCommand.Overview(new OverviewRequest(fixture.Project.FullFwDataPath));
+        var timing = TimingCommand.Timing(new TimingRequest(fixture.Project.FullFwDataPath, AssessmentId: "local-work"));
+
+        Assert.True(overview.Succeeded, overview.Refusal?.Message);
+        Assert.True(timing.Succeeded, timing.Refusal?.Message);
+        var fromOverview = overview.Value!.Timing.WorkStepAggregates;
+        Assert.Equal(100, fromOverview.Sum(row => row.WorkSteps));
+        var local = Assert.Single(fromOverview, row => !row.IsUnattributed);
+        Assert.Equal(80, local.WorkSteps);
+        Assert.Equal("invocation:local-run", local.Scope);
+        Assert.Equal(timing.Value!.WorkStepAggregates, fromOverview);
+    }
+
     private static async Task AssertTrialEvidenceRefused(TrialsTests.ProjectFixture fixture, EvidenceSet set)
     {
         var result = await SelectionReader.OpenAsync(new OpenSelectionReaderRequest(

@@ -64,6 +64,56 @@ public sealed class PanGlossBatchStatisticsReaderTests : IDisposable
     }
 
     [Fact]
+    public void TheBoundedTotalsKeepWorkStepsPerObjectAndDirectionWithNoWordDetail()
+    {
+        var path = Path.Combine(_root, "totals-work.sqlite");
+        WriteCache(path);
+        using (var connection = new SqliteConnection($"Data Source={path};Pooling=False"))
+        {
+            connection.Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = """
+                ALTER TABLE word ADD COLUMN work INTEGER;
+                UPDATE word SET work = 19;
+                UPDATE fact SET work_steps = 0;
+                UPDATE fact SET work_steps = 12 WHERE object_id = 1 AND direction = 'analysis';
+                UPDATE fact SET work_steps = 5 WHERE object_id = 1 AND direction = 'synthesis';
+                INSERT INTO object VALUES (4, 'unattributed', 'unattributed', 'Unattributed', 'synthetic');
+                INSERT INTO fact VALUES (1, 4, 'unattributed', 0, 0, 2);
+                """;
+            command.ExecuteNonQuery();
+        }
+
+        var result = PanGlossBatchStatisticsReader.ReadBounded(path, ["word"], 0);
+
+        Assert.Empty(result.ObjectTimings);
+        Assert.Equal(19, result.Aggregates.Sum(row => row.WorkSteps));
+        Assert.Equal(12, Assert.Single(result.Aggregates, row => row.Key.Contains("entry-a", StringComparison.Ordinal) &&
+            row.Direction == "analysis").WorkSteps);
+        Assert.Equal(2, Assert.Single(result.Aggregates, row => row.Kind == "unattributed").WorkSteps);
+    }
+
+    [Fact]
+    public void AnObjectTotalIsUnknownWhenAnyOfItsFactsRecordedNoWork()
+    {
+        var path = Path.Combine(_root, "partial-work.sqlite");
+        WriteCache(path);
+        using (var connection = new SqliteConnection($"Data Source={path};Pooling=False"))
+        {
+            connection.Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = "UPDATE fact SET work_steps = 4 WHERE object_id = 1 AND direction = 'analysis';";
+            command.ExecuteNonQuery();
+        }
+
+        var result = PanGlossBatchStatisticsReader.ReadBounded(path, ["word"], 0);
+
+        Assert.Equal(4, Assert.Single(result.Aggregates, row => row.Key.Contains("entry-a", StringComparison.Ordinal) &&
+            row.Direction == "analysis").WorkSteps);
+        Assert.Null(Assert.Single(result.Aggregates, row => row.Key.Contains("entry-b", StringComparison.Ordinal)).WorkSteps);
+    }
+
+    [Fact]
     public void ReadsTheSyntheticParserRowsWithWorkAndTimeButNoAttempts()
     {
         var path = Path.Combine(_root, "parser-rows.sqlite");

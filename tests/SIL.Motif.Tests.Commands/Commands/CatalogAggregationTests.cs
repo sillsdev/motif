@@ -182,6 +182,68 @@ public sealed class CatalogAggregationTests
         Assert.Equal(1, TimingAggregation.SummarizeWork(words.Select(TimingAggregation.WorkOf)).MeasuredWordCount);
     }
 
+    private static PanGlossObjectTimingAggregate Totals(string kind, string key, string direction, long? work) =>
+        new(kind, key, kind == "unattributed" ? "synthetic" : "authored", direction, key, 1, null, null, null, null)
+        { WorkSteps = work };
+
+    [Fact]
+    public void StoredWholeRunTotalsGiveWorkByObjectAndKindWithoutAnyWordDetail()
+    {
+        AssessedWord[] words = [new("a", "analysed", [], 5) { WorkSteps = 10 }, new("b", "analysed", [], 5) { WorkSteps = 20 },
+            new("never", "skipped", [], null) { WorkSteps = 500 }];
+        var evidence = new AssessmentTimingEvidence(
+        [
+            Totals("morph_rule", "rule-r", "analysis", 14), Totals("morph_rule", "rule-r", "synthesis", 6),
+            Totals("lex_entry", "entry-e", "analysis", 7), Totals("unattributed", "unattributed", "unattributed", 3),
+        ], 0, false, 4);
+
+        var byObject = TimingAggregation.WorkStepsFromTotals(words, evidence);
+
+        Assert.Equal(30, byObject.Sum(row => row.WorkSteps));
+        Assert.Equal(20, Assert.Single(byObject, row => row.Key == "rule-r").WorkSteps);
+        Assert.Equal(["morph_rule", "lex_entry", "unattributed"], byObject.Select(row => row.Kind));
+        Assert.True(byObject[^1].IsUnattributed);
+    }
+
+    [Fact]
+    public void RunsStoredBeforeWorkWasKeptByObjectShowNoWorkByObjectRatherThanZero()
+    {
+        AssessedWord[] words = [new("a", "analysed", [], 5) { WorkSteps = 10 }];
+        var evidence = new AssessmentTimingEvidence(
+            [Totals("morph_rule", "rule-r", "analysis", null), Totals("unattributed", "unattributed", "unattributed", null)], 0, false, 2);
+
+        Assert.Empty(TimingAggregation.WorkStepsFromTotals(words, evidence));
+    }
+
+    [Fact]
+    public void StoredTotalsThatDoNotAddUpToTheWordsWorkAreNotShown()
+    {
+        AssessedWord[] words = [new("a", "analysed", [], 5) { WorkSteps = 10 }];
+        var unattributed = Totals("unattributed", "unattributed", "unattributed", 3);
+
+        Assert.Empty(TimingAggregation.WorkStepsFromTotals(words,
+            new([Totals("morph_rule", "rule-r", "analysis", 8), unattributed], 0, false, 2)));
+        Assert.Empty(TimingAggregation.WorkStepsFromTotals(words,
+            new([Totals("morph_rule", "rule-r", "analysis", 7)], 0, false, 1)));
+        Assert.Empty(TimingAggregation.WorkStepsFromTotals([words[0], words[0] with { WorkSteps = null }],
+            new([Totals("morph_rule", "rule-r", "analysis", 7), unattributed], 0, false, 2)));
+        Assert.Empty(TimingAggregation.WorkStepsFromTotals(words,
+            new([Totals("morph_rule", "rule-r", "analysis", 7), unattributed], 0, false, 2) { HasRetriedWords = true }));
+    }
+
+    [Fact]
+    public void ARecordStoredBeforeTheChangeReadsBackWithNoWorkOnItsObjectTotals()
+    {
+        const string stored = "{\"Kind\":\"morph_rule\",\"Key\":\"r\",\"IdentityQuality\":\"authored\",\"Direction\":\"analysis\"," +
+            "\"Object\":\"R\",\"WordsTouched\":2,\"Attempts\":3,\"MaxAttempts\":2,\"ElapsedNs\":4,\"MaxElapsedNs\":3," +
+            "\"WordsTouchedAcrossDirections\":2,\"WordsTouchedForKind\":2}";
+
+        var aggregate = JsonSerializer.Deserialize<PanGlossObjectTimingAggregate>(stored)!;
+
+        Assert.Null(aggregate.WorkSteps);
+        Assert.Equal(2, aggregate.WordsTouched);
+    }
+
     [Fact]
     public void WorkStepsByObjectIgnoresASkippedWordThatHasNoObjectRows()
     {

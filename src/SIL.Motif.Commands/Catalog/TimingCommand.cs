@@ -106,6 +106,7 @@ public static class TimingCommand
             var objectRows = evidenceSet.ObjectTimings.Where(row => selectedNames.Contains(row.Word)).ToArray();
             var aggregates = TimingAggregation.Aggregate(selectedWords, objectRows, request.By, request.Rule, request.Top);
             var aggregatesAvailable = true;
+            var totalsWork = (IReadOnlyList<TimingWorkAggregate>)[];
             if (!evidenceSet.TimingDetail.IsComplete)
             {
                 var wholeRun = evidenceSet.Components.Count == 1 && selectedWords.Count == evidenceSet.Words.Count;
@@ -120,6 +121,8 @@ public static class TimingCommand
                     var totals = TimingAggregation.AggregateTotals(selectedWords, timingEvidence, request.By,
                         assessment.Invocation?.InvocationId is { } invocation ? "invocation:" + invocation : null);
                     aggregates = (totals.Aggregates, aggregates.CostliestWords, totals.Attribution);
+                    totalsWork = TimingAggregation.WorkStepsFromTotals(selectedWords, timingEvidence,
+                        assessment.Invocation?.InvocationId is { } workInvocation ? "invocation:" + workInvocation : null);
                 }
             }
             var summary = TimingAggregation.SummarizeWords(selectedWords, request.Top);
@@ -163,7 +166,7 @@ public static class TimingCommand
                 CurrentProjectIsStale = currentEvidence.Freshness == EvidenceFreshness.Stale,
                 Attribution = aggregates.Attribution,
                 WorkStepAggregates = evidenceSet.TimingDetail.IsComplete
-                    ? TimingAggregation.WorkStepsByObject(objectRows, selectedWords) : [],
+                    ? TimingAggregation.WorkStepsByObject(objectRows, selectedWords) : totalsWork,
                 Work = TimingAggregation.SummarizeWork(selectedWords.Select(TimingAggregation.WorkOf)),
                 Words = selectedWords.Select(word => new TimingWordRow(word.Word, word.ElapsedMs,
                     IsStepLimited(word) ? TimingCompletion.StepLimit :
