@@ -182,7 +182,10 @@ public static class JobCommands
             {
                 return CommandOutcome<JobEnqueuedResponse>.Refused(ProposalCommands.ProposalLoadRefusal(exception));
             }
-            var words = request.Words ?? (request.AllWords ? null : DerivedTrialWords(proposal));
+            // One spelling for job input, scope, Selection and the Trial's own word list, as an Assess stores it.
+            var words = (request.Words ?? (request.AllWords ? null : DerivedTrialWords(proposal)))
+                ?.Select(word => word.Normalize(System.Text.NormalizationForm.FormD))
+                .Distinct(StringComparer.Ordinal).ToArray();
             var input = new TrialJobInput(proposalJson, request.Scope, words, request.AllWords, prerequisites,
                 request.Limits ?? ResolveTrialLimits(database, project, request.Scope),
                 request.BaselineAssessmentIds, request.NegativeWords);

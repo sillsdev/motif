@@ -204,8 +204,10 @@ public static class Trials
                 group => group.OrderBy(record => record.SavedUtc, StringComparer.Ordinal)
                     .ThenBy(record => record.AssessmentId, StringComparer.Ordinal).Last().AssessmentId,
                 StringComparer.Ordinal);
-        var words = input.Words ?? rows.SelectMany(record => record.Selection.Words)
-            .Distinct(StringComparer.Ordinal).ToArray();
+        // A Trial queued before its words were normalized may hold them as typed.
+        var words = input.Words?.Select(word => word.Normalize(System.Text.NormalizationForm.FormD))
+                .Distinct(StringComparer.Ordinal).ToArray()
+            ?? rows.SelectMany(record => record.Selection.Words).Distinct(StringComparer.Ordinal).ToArray();
         var dryRunResult = job.DryRunJson is null ? null : JobCommands.ParsePublishedDryRun(job.DryRunJson);
         var dryRun = dryRunResult is null ? null : DryRunProjectionBuilder.Build(proposalId, dryRunResult, proposal)
             with

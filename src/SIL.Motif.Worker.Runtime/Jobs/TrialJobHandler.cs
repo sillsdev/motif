@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using SIL.LCModel;
@@ -389,10 +390,13 @@ internal sealed class TrialJobHandler
                 claim.PublishDryRun(DryRunJobHandler.BuildPublishedDryRunJson(dryRun));
 
                 var cache = scratch?.PeekCache();
-                var words = requestedWords is not null
-                    ? requestedWords.Distinct(StringComparer.Ordinal).ToArray()
+                // The parser is asked about the same NFD spelling an Assess asks about, and a Selection stores.
+                IEnumerable<string> chosen = requestedWords is not null
+                    ? requestedWords
                     : cache is null ? [] : WordQueryResolver.Resolve(
-                        allWords ? WordQueryResolver.AllWordformsQueryText : scopeConfiguration.Query, cache).ToArray();
+                        allWords ? WordQueryResolver.AllWordformsQueryText : scopeConfiguration.Query, cache);
+                var words = chosen.Select(word => word.Normalize(NormalizationForm.FormD))
+                    .Distinct(StringComparer.Ordinal).ToArray();
                 var scope = new AssessmentScope.Words(words, ParseCollect(scopeConfiguration.Collect),
                     limits is { } selectedLimits ? selectedLimits.PerWordLimit : scopeConfiguration.PerWordLimit,
                     limits?.PerWordStepLimit ?? scopeConfiguration.PerWordStepLimit)

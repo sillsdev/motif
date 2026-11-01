@@ -112,4 +112,67 @@ public sealed class TrialWorkProjectionTests
         }
         finally { Directory.Delete(root, true); }
     }
+
+    [Fact]
+    public void ABaselineHoldingBothSpellingsOfAWordRefusesTheDifferenceInsteadOfThrowing()
+    {
+        const string composed = "caf\u00E9";
+        var decomposed = composed.Normalize(System.Text.NormalizationForm.FormD);
+        var root = Path.Combine(Path.GetTempPath(), "motif-mcp-trial-both-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        var project = Path.Combine(root, "project.fwdata");
+        File.WriteAllText(project, "");
+        try
+        {
+            var proposalId = CanonicalId.Mint("proposal/");
+            using var value = JsonDocument.Parse("{\"ws\":\"en\",\"text\":\"example\"}");
+            var draft = new DraftDocument
+            {
+                ProposalId = proposalId.Value,
+                ContractVersions = new Dictionary<string, string> { ["lexical"] = "1.0" },
+                Operations = [new DraftOperation
+                {
+                    OperationId = CanonicalId.Mint("operation/").Value,
+                    Kind = "lexical/lexSense/setGloss", Target = CanonicalId.Mint("lexSense/").Value,
+                    After = value.RootElement.EnumerateObject().ToDictionary(p => p.Name, p => p.Value.Clone()),
+                }],
+            };
+            var proposalJson = ProposalCommands.BuildProposalJson(draft);
+            var digest = IntentDigest.Compute(ProposalJsonParser.Parse(proposalJson));
+            var token = new BaselineToken("project-id", "sha256:" + new string('1', 64), "projection-v1",
+                "2026-09-24T10:00:00Z", "sha256:" + new string('a', 64));
+            var tokenJson = JsonSerializer.Serialize(token, MotifJson.CreateOptions());
+            var recorded = ProjectStoreCommand.Run(project, "1.0", (database, _) =>
+            {
+                new ProposalRepository(database).SaveRevision(new ProposalRevisionRecord(proposalId, digest,
+                    proposalJson, "proposed", null, null, null));
+                NewAssessmentRecord Record(string id, bool before, params string[] words) =>
+                    new(id, before ? null : proposalId, before ? null : digest, "pangloss", "Correctness", "{}", "scope",
+                        new AssessmentSubject.Words(Selection.Create("Default", words), "none", "1"), tokenJson,
+                        "outcome", "semantic", "grammar", "model", "pipeline", 0,
+                        new AssessmentRecordMaterial.Words(
+                            words.Select(word => new AssessedWord(word, "analysed", [])).ToArray(), null, null, []));
+                new AssessmentRepository(database).RecordBatch([Record("before", true, composed, decomposed),
+                    Record("after", false, decomposed)]);
+                var input = new TrialJobInput(proposalJson, null, [decomposed], BaselineAssessmentIds: ["before"]);
+                var jobs = new JobRepository(database);
+                var job = jobs.Create("trial", ProjectWorkspaceKey.Compute(new ProjectLocator(project, "project")),
+                    JobCommands.TrialKind, JsonSerializer.Serialize(input, MotifJson.CreateOptions()),
+                    "2026-09-24T11:00:00Z");
+                job = jobs.Transition(job.JobId, JobStatus.Running);
+                jobs.Transition(job.JobId, JobStatus.Completed, JsonSerializer.Serialize(new
+                    { baselineToken = token, assessmentIds = new[] { "after" } }, MotifJson.CreateOptions()));
+                return CommandOutcome<JsonObject>.Success(new JsonObject());
+            });
+            Assert.True(recorded.Succeeded, recorded.Refusal?.Message);
+            var context = new ServerContext(project, "1.0", new NoRunnerLauncher(new JobRunnerLaunchOptions(root, null)),
+                new ActivityLog(null), ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
+
+            var outcome = TrialResults.Complete(context, "trial", proposalId.Value);
+
+            Assert.Equal("comparison.refused", outcome.Refusal?.Code);
+            Assert.Contains("Run the Trial again", outcome.Refusal!.Message);
+        }
+        finally { Directory.Delete(root, true); }
+    }
 }

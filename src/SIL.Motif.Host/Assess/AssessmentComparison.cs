@@ -1,5 +1,6 @@
 using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.Parser;
+using System.Text;
 using System.Text.Json;
 
 namespace SIL.Motif.Host.Assess;
@@ -63,9 +64,21 @@ public sealed record WordChange(string Word, WordChangeKind Kind, string FromOut
 /// differing tokeniser — ADR 0042's amendment makes both of those context that annotates the comparison
 /// rather than gates it.
 /// </summary>
-public sealed class ComparisonRefusalException : Exception
+public class ComparisonRefusalException : Exception
 {
     public ComparisonRefusalException(string reason) : base(reason) { }
+}
+
+/// <summary>
+/// Raised when one Assessment holds the same word more than once once spelled alike (for instance both its composed
+/// and its decomposed spelling), so a join on the word cannot tell which row is which. Only a Trial queued with
+/// a hand-listed word list can hold both.
+/// </summary>
+public sealed class AmbiguousWordCasesException : ComparisonRefusalException
+{
+    public AmbiguousWordCasesException() : base(
+        "An Assessment holds one word more than once, as both its composed and decomposed spelling, so a " +
+        "comparison by word cannot tell the rows apart. Run the Trial again.") { }
 }
 
 /// <summary>
@@ -128,11 +141,12 @@ public static class AssessmentComparer
               "looks exactly like a smaller corpus, so treat the word counts below with that in mind."
             : null;
 
-        if (from.Words.DistinctBy(word => word.Word).Count() != from.Words.Count ||
-            to.Words.DistinctBy(word => word.Word).Count() != to.Words.Count)
-            throw new ComparisonRefusalException("A comparison by word requires unambiguous, unique word cases.");
-        var fromByWord = from.Words.ToDictionary(word => word.Word, StringComparer.Ordinal);
-        var toByWord = to.Words.ToDictionary(word => word.Word, StringComparer.Ordinal);
+        // Joins on NFD, because an Assessment stored before its words were normalized may hold them composed.
+        if (from.Words.DistinctBy(JoinKey).Count() != from.Words.Count ||
+            to.Words.DistinctBy(JoinKey).Count() != to.Words.Count)
+            throw new AmbiguousWordCasesException();
+        var fromByWord = from.Words.ToDictionary(JoinKey, StringComparer.Ordinal);
+        var toByWord = to.Words.ToDictionary(JoinKey, StringComparer.Ordinal);
         var sharedWords = fromByWord.Keys.Where(toByWord.ContainsKey)
             .OrderBy(word => word, StringComparer.Ordinal).ToArray();
 
@@ -166,6 +180,9 @@ public static class AssessmentComparer
             ParserWarning = parserWarning,
         };
     }
+
+    /// <summary>The key two Assessments join a word on: its NFD form, whichever spelling each side stored.</summary>
+    internal static string JoinKey(AssessedWord word) => word.Word.Normalize(NormalizationForm.FormD);
 
     private static WordChange? Classify(string word, AssessedWord from, AssessedWord to)
     {

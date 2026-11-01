@@ -63,7 +63,7 @@ internal static class CorrectnessCoverage
         IReadOnlyList<AssessedWord> words, StoredScope.Trial scope, Selection selection,
         string grammarSourceSha256, string reportKind)
     {
-        var compared = words.Select((word, index) => new WordAnalysis(index, word.Word, 0,
+        var compared = words.Select((word, index) => new WordAnalysis(index, AssessmentComparer.JoinKey(word), 0,
             Require(word, reportKind).Status switch
             {
                 "covered" => WordOutcome.Analysed,

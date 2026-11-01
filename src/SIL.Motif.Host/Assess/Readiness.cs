@@ -84,11 +84,19 @@ public static class Readiness
         var isRegression = false;
         if (!unavailable && gateOnRegression && current is not null)
         {
-            var finding = RegressionChecker.Check(current, candidate);
-            if (finding is { IsRegression: true })
+            try
             {
-                reasons.Add($"it would be a regression: {finding.Describe()}");
-                isRegression = true;
+                var finding = RegressionChecker.Check(current, candidate);
+                if (finding is { IsRegression: true })
+                {
+                    reasons.Add($"it would be a regression: {finding.Describe()}");
+                    isRegression = true;
+                }
+            }
+            catch (AmbiguousWordCasesException exception)
+            {
+                // A check that could not run is a reason it is not ready, never a silent pass.
+                reasons.Add($"its regression check could not run: {exception.Message}");
             }
         }
 

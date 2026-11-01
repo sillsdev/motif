@@ -70,9 +70,39 @@ public sealed class ReviewNumbersComparabilityTests
         Assert.Equal(1, numbers.TouchedWordCount);
     }
 
-    private static AssessmentRecord Record(string id, IReadOnlyList<AssessedWord> words, string assessor = "pangloss")
+    [Fact]
+    public void AWordStoredComposedInAnOldSelectionIsStillSharedWithItsDecomposedSpelling()
     {
-        var selection = Selection.Create("review", words.Select(word => word.Word));
+        const string composed = "\u0BAA\u0BCA\u0BA9\u0BCD";
+        var before = Record("before", [CorrectnessFixture.Word(composed, false)], keepWordsAsStored: true);
+        var trial = Record("trial", [CorrectnessFixture.Word(composed.Normalize(System.Text.NormalizationForm.FormD), true)]);
+
+        var numbers = ReviewNumbersCommand.Summarize(before, trial, 1);
+
+        Assert.Equal(ReviewComparability.Compared, numbers.Comparability);
+        Assert.Equal(1, numbers.SharedWordCount);
+    }
+
+    [Fact]
+    public void AnAssessmentHoldingBothSpellingsOfOneWordCannotBeSummarisedAgainstAnother()
+    {
+        const string composed = "\u0BAA\u0BCA\u0BA9\u0BCD";
+        var decomposed = composed.Normalize(System.Text.NormalizationForm.FormD);
+        var trial = Record("trial", [CorrectnessFixture.Word(composed, true), CorrectnessFixture.Word(decomposed, true)],
+            keepWordsAsStored: true);
+        var before = Record("before", [CorrectnessFixture.Word(decomposed, false)]);
+
+        var refusal = Assert.Throws<AmbiguousWordCasesException>(() => ReviewNumbersCommand.Summarize(before, trial, 2));
+
+        Assert.Contains("Run the Trial again", refusal.Message);
+    }
+
+    internal static AssessmentRecord Record(string id, IReadOnlyList<AssessedWord> words, string assessor = "pangloss",
+        bool keepWordsAsStored = false)
+    {
+        var selection = keepWordsAsStored
+            ? new Selection("review", words.Select(word => word.Word).Distinct().Order(StringComparer.Ordinal).ToArray(), "stored")
+            : Selection.Create("review", words.Select(word => word.Word));
         var scope = ScopeCodec.Write(new StoredScope.Trial("words", selection.Words,
             [AssessmentKind.Correctness], TimeSpan.FromSeconds(1), StepCap.Default));
         return new AssessmentRecord(

@@ -316,7 +316,10 @@ public static class PendingChangesWorkflow
     {
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(progress);
-        progress.Report(new MeasureProgress(0, request.Words.Count));
+        // The Trial queues each word once, in NFD, so its word count is that of the normalized distinct words.
+        var wordCount = request.Words.Select(word => word.Normalize(System.Text.NormalizationForm.FormD))
+            .Distinct(StringComparer.Ordinal).Count();
+        progress.Report(new MeasureProgress(0, wordCount));
         var version = MotifProductVersion.CurrentText;
         if (cancellationToken.IsCancellationRequested) return CancelledMeasure();
 
@@ -375,7 +378,7 @@ public static class PendingChangesWorkflow
             return RefuseMeasure("trial.measurement-incomplete", "The check did not measure approved analyses.");
         var numbers = await Task.Run(() => ReviewNumbersCommand.Read(new ReviewNumbersCommand.Request(
             request.ProjectPath, request.BeforeCorrectnessAssessmentId, correctness.AssessmentId,
-            request.Words.Count))).ConfigureAwait(false);
+            wordCount))).ConfigureAwait(false);
         if (!numbers.Succeeded) return CommandOutcome<MeasurePendingResult>.Refused(numbers.Refusal!);
         var trial = await Task.Run(() => ProjectStoreCommand.Run(request.ProjectPath, version, (database, project) =>
         {
@@ -388,7 +391,7 @@ public static class PendingChangesWorkflow
         if (!trial.Succeeded) return CommandOutcome<MeasurePendingResult>.Refused(trial.Refusal!);
         if (trial.Value!.JobId != jobId)
             return RefuseMeasure("trial.measurement-incomplete", "The Trial record could not be read. Try it again.");
-        progress.Report(new MeasureProgress(request.Words.Count, request.Words.Count));
+        progress.Report(new MeasureProgress(wordCount, wordCount));
         return CommandOutcome<MeasurePendingResult>.Success(new MeasurePendingResult(
             trial.Value, numbers.Value!) { Revision = current.Revision });
     }

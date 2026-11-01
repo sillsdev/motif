@@ -523,6 +523,35 @@ public sealed class TrialJobHandlerTests : IDisposable
     }
 
     [Fact]
+    public void ATrialOfAComposedWordAsksTheParserAboutAndRecordsTheSameSelectionAnAssessOfItWould()
+    {
+        const string composed = "\u0BAA\u0BCA\u0BA9\u0BCD";
+        const string decomposed = "\u0BAA\u0BC6\u0BBE\u0BA9\u0BCD";
+        using var lanes = new ProjectLaneRegistry(_ => _token);
+        IReadOnlyList<string>? asked = null;
+        var assessor = new FakeAssessor("pangloss", [AssessmentKind.Correctness],
+            rawForScope: (scope, _, _) =>
+            {
+                asked = scope.WordForms;
+                return new AssessmentRaw.WordMeasurements([]);
+            });
+        var handler = BuildHandler(lanes, assessor);
+        var proposalId = CanonicalId.Mint("proposal/");
+        var proposalJson = BuildSetGlossProposalJson(proposalId, _seed.FirstSenseId, "composed word");
+        SaveCommittedProposal(proposalId, proposalJson);
+
+        var completed = RunAndFinish(handler, CreateTrialJob(proposalJson, [composed, decomposed]));
+
+        Assert.Equal(JobStatus.Completed, completed.Status);
+        var assessmentId = JsonDocument.Parse(completed.ResultJson!).RootElement
+            .GetProperty("assessmentIds")[0].GetString()!;
+        var selection = _assessments.Get(assessmentId).Selection;
+        Assert.Equal([decomposed], asked);
+        Assert.Equal([decomposed], selection.Words);
+        Assert.Equal(Selection.Create("assess", [decomposed]).Sha256, selection.Sha256);
+    }
+
+    [Fact]
     public async Task TrialWaitingForParserCapacityPublishesStageBeforeAnyWordStarts()
     {
         var parserPath = FakeParser.CopyRecordingInvocations(Path.Combine(_root, "trial-parser-wait"));

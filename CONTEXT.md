@@ -408,7 +408,8 @@ A named set of word forms to be parsed, listed out in full, with a note of where
 and not a sample — a person may pick fourteen words with nothing in common, and why they matter is theirs.
 A word may be typed rather than found: it need not occur anywhere in the language project, and it is parsed
 and measured like any other. A list can be exported from an Assessment, but what is kept is the words, so
-nothing has to be re-derived.
+nothing has to be re-derived. Its words are stored in NFD, as FieldWorks stores them, so a Trial and an
+Assess of one word agree.
 _Avoid_: query, sample, filter, scope, subset, test set, corpus descriptor
 
 **Phonology Example Set**:

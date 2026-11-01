@@ -68,8 +68,9 @@ public sealed record Selection(
     public bool SupportsAccuracyClaims => Provenance?.SupportsAccuracyClaims ?? false;
 
     /// <summary>
-    /// The only supported way to build a <see cref="Selection"/>: deduplicates and sorts
-    /// <paramref name="words"/>, then hashes the result, so <see cref="Words"/> and <see cref="Sha256"/> can
+    /// The only supported way to build a <see cref="Selection"/>: decomposes <paramref name="words"/> to NFD, as
+    /// LibLCM stores plain Unicode, then deduplicates, sorts and hashes the result, so a word typed composed and
+    /// the same word read from the project are one word, and <see cref="Words"/> and <see cref="Sha256"/> can
     /// never disagree with each other the way they could if a caller were allowed to hand both in
     /// independently.
     /// </summary>
@@ -88,11 +89,22 @@ public sealed record Selection(
         if (words is null) throw new ArgumentNullException(nameof(words));
 
         var ordered = words
+            .Select(w => w.Normalize(NormalizationForm.FormD))
             .Distinct(StringComparer.Ordinal)
             .OrderBy(w => w, StringComparer.Ordinal)
             .ToList();
         return new Selection(name, ordered, ComputeSha256(ordered), provenance);
     }
+
+    /// <summary>
+    /// Whether <see cref="Sha256"/> is the hash of <see cref="Words"/> exactly as stored, without normalizing them.
+    /// A Selection stored before words were decomposed on creation may hold composed words, and its hash is still
+    /// the one over those words, so a stored record is checked here and not by rebuilding it with
+    /// <see cref="Create"/>.
+    /// </summary>
+    public bool HashMatchesStoredWords() => string.Equals(
+        ComputeSha256(Words.Distinct(StringComparer.Ordinal).OrderBy(w => w, StringComparer.Ordinal).ToList()),
+        Sha256, StringComparison.Ordinal);
 
     /// <summary>Newline-joined UTF-8 bytes; see the <see cref="Sha256"/> parameter doc for why not JSON.</summary>
     private static string ComputeSha256(IReadOnlyList<string> orderedWords)

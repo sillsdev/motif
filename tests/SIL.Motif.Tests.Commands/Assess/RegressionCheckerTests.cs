@@ -143,6 +143,52 @@ public sealed class RegressionCheckerTests
         Assert.Null(finding);
     }
 
+    [Fact]
+    public void AWordStoredComposedInOneAssessmentAndDecomposedInTheOtherIsStillCheckedForALostReading()
+    {
+        const string composed = "\u0BAA\u0BCA\u0BA9\u0BCD";
+        const string decomposed = "\u0BAA\u0BC6\u0BBE\u0BA9\u0BCD";
+        var previous = Build("previous", (composed, true), ("beta", true));
+        var candidate = Build("candidate", (decomposed, false), ("beta", true));
+
+        var finding = RegressionChecker.Check(previous, candidate)!;
+
+        Assert.True(finding.CanCompare);
+        Assert.True(finding.IsRegression);
+        Assert.Equal(decomposed.Normalize(System.Text.NormalizationForm.FormD),
+            Assert.Single(finding.LostAnalyses).Word.Normalize(System.Text.NormalizationForm.FormD));
+        Assert.Equal(2, finding.PreviousCoverage.Adjudicated);
+    }
+
+    [Fact]
+    public void AnAssessmentHoldingBothSpellingsOfOneWordCannotBeCheckedAndSaysSo()
+    {
+        const string composed = "\u0BAA\u0BCA\u0BA9\u0BCD";
+        var decomposed = composed.Normalize(System.Text.NormalizationForm.FormD);
+        var previous = Build("previous", (decomposed, true));
+        var candidate = Build("candidate", (composed, true), (decomposed, true));
+
+        var refusal = Assert.Throws<AmbiguousWordCasesException>(() => RegressionChecker.Check(previous, candidate));
+
+        Assert.Contains("Run the Trial again", refusal.Message);
+    }
+
+    [Fact]
+    public void ACheckThatCouldNotRunBecauseOfBothSpellingsMakesAProposalNotReady()
+    {
+        const string composed = "\u0BAA\u0BCA\u0BA9\u0BCD";
+        var decomposed = composed.Normalize(System.Text.NormalizationForm.FormD);
+        var current = Build("current", (decomposed, true));
+        var candidate = Build("candidate", (composed, true), (decomposed, true));
+
+        var decision = Readiness.Evaluate(candidate, current, "token", "token", gateOnRegression: true);
+
+        var reason = Assert.Single(decision.Reasons);
+        Assert.StartsWith("its regression check could not run", reason);
+        Assert.Contains("Run the Trial again", reason);
+        Assert.False(decision.IsRegression);
+    }
+
     private static CorrectnessAssessment Build(
         string assessmentId, params (string Word, bool Analysed)[] words) =>
         Build(assessmentId, "pangloss", words);

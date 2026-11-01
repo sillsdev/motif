@@ -555,6 +555,34 @@ public sealed class PendingChangesWorkflowTests(PristineProjectFixture pristine,
     }
 
     [Fact]
+    public async Task MeasureCountsTwoSpellingsOfOneWordAsOneWord()
+    {
+        using var scratch = pristine.NewScratch();
+        var path = scratch.ProjectId.Path;
+        scratch.Dispose();
+        var root = NewManagedRoot(path);
+        var runner = IsolatedRunner.None(root);
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), root).Succeeded);
+        var created = ProposalCommands.New(new NewDraftRequest(path, ProductVersion, "review/spellings", "Spellings"));
+        Assert.True(ProposalCommands.AddSetGloss(new AddSetGlossRequest(path, ProductVersion, "review/spellings",
+            CanonicalId.Mint().Value, "en", "a gloss")).Succeeded);
+        var totals = new List<int>();
+        var progress = new ImmediateProgress(report => totals.Add(report.Total));
+        const string composed = "caf\u00E9";
+
+        await PendingChangesWorkflow.Measure(new MeasurePendingRequest(path, created.Value!.ProposalId, null,
+            [composed, composed.Normalize(System.Text.NormalizationForm.FormD)]), progress, CancellationToken.None,
+            TimeSpan.FromMilliseconds(1), runnerLauncher: runner).WaitAsync(TimeSpan.FromSeconds(30));
+
+        Assert.Equal(1, totals[0]);
+    }
+
+    private sealed class ImmediateProgress(Action<MeasureProgress> onReport) : IProgress<MeasureProgress>
+    {
+        public void Report(MeasureProgress value) => onReport(value);
+    }
+
+    [Fact]
     public async Task MeasuringANamedDraftQueuesTheSameTrialAsTrialWithItsId()
     {
         using var scratch = pristine.NewScratch();

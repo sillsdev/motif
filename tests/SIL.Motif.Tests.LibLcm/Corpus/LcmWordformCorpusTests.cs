@@ -51,6 +51,21 @@ public sealed class LcmWordformCorpusTests : IDisposable
     }
 
     [Fact]
+    public void ExtractSelection_AWordformStoredComposedComesBackDecomposedAndSharesTheTypedWordsHash()
+    {
+        const string composed = "\u0BAA\u0BCA\u0BA9\u0BCD";
+        const string decomposed = "\u0BAA\u0BC6\u0BBE\u0BA9\u0BCD";
+        SeedWordforms(composed);
+
+        var fromProject = LcmWordformCorpus.ExtractSelection(_cache, "project");
+
+        Assert.Contains(decomposed, fromProject.Words);
+        Assert.DoesNotContain(composed, fromProject.Words);
+        Assert.Equal(decomposed, Selection.Create("project", [composed]).Words.Single());
+        Assert.Equal(Selection.Create("typed", [decomposed]).Sha256, Selection.Create("typed", [composed]).Sha256);
+    }
+
+    [Fact]
     public void ExtractSelection_TheLimitCapsHowManyFormsAreHashed()
     {
         SeedWordforms("motifwf-1", "motifwf-2", "motifwf-3", "motifwf-4",

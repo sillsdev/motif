@@ -57,6 +57,28 @@ public sealed class TrialSummaryTests
         Assert.Equal(new[] { "negatives-now-parsing", "positives-lost", "unfinished", "other-changes" }, TrialResults.Categories);
     }
 
+    [Fact]
+    public void AComposedNegativeWordThatNewlyParsesIsListedAsANegativeNowParsing()
+    {
+        var composed = "caf\u00E9";
+        var decomposed = composed.Normalize(System.Text.NormalizationForm.FormD);
+        var rows = TrialResults.Classify([Word(decomposed, false)], [Word(decomposed, true)], [composed]);
+        var row = Assert.Single(rows);
+        Assert.StartsWith("negatives-now-parsing:", row.Outcome);
+    }
+
+    [Fact]
+    public void AComposedRowInTheOldBaselineStillJoinsItsDecomposedRowAfterTheTrial()
+    {
+        var composed = "caf\u00E9";
+        var decomposed = composed.Normalize(System.Text.NormalizationForm.FormD);
+
+        var row = Assert.Single(TrialResults.Classify([Word(composed, false)], [Word(decomposed, true)], [composed]));
+
+        Assert.Equal(decomposed, row.Word);
+        Assert.StartsWith("negatives-now-parsing:", row.Outcome);
+    }
+
     private static AssessedWord Word(string word, bool parsed) => new(word, parsed ? "analysed" : "no-analysis",
         parsed ? [new ParsedAnalysis(null, ["morph"], 0, "identity")] : []);
 }

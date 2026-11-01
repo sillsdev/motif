@@ -65,8 +65,7 @@ public static class ReviewNumbersCommand
         var finding = RegressionChecker.Check(before.ToCorrectness(), trial.ToCorrectness());
         if (finding is null) return Numbers(ReviewComparability.DifferentAssessor);
         if (!finding.CanCompare) return Numbers(ReviewComparability.NoSharedWords);
-        var shared = before.Selection.Words.Intersect(trial.Selection.Words, StringComparer.Ordinal).Count();
-        return Numbers(ReviewComparability.Compared, shared, finding.PreviousCoverage.Analysed,
+        return Numbers(ReviewComparability.Compared, finding.SharedWordCount, finding.PreviousCoverage.Analysed,
             finding.CandidateCoverage.Analysed) with
         {
             WordsLosingApprovedAnalysis = finding.LostAnalyses.Select(change => change.Word).ToArray(),

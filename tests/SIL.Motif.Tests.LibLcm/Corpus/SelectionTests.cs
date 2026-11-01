@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using SIL.Motif.Host.Corpus;
 using Xunit;
 
@@ -16,6 +18,19 @@ public class SelectionTests
         var selection = Selection.Create("test-corpus", new[] { "nkazi", "anthu", "mbali" });
 
         Assert.Equal(new[] { "anthu", "mbali", "nkazi" }, selection.Words);
+    }
+
+    [Fact]
+    public void Create_StoresEveryWordDecomposedSoATrialAndAnAssessOfOneWordAgree()
+    {
+        // பொன் composed (U+0BCA) and decomposed (U+0BC6 U+0BBE): one word, stored decomposed (NFD) either way.
+        const string composed = "\u0BAA\u0BCA\u0BA9\u0BCD";
+        const string decomposed = "\u0BAA\u0BC6\u0BBE\u0BA9\u0BCD";
+
+        var selection = Selection.Create("test-corpus", new[] { composed, decomposed });
+
+        Assert.Equal(new[] { decomposed }, selection.Words);
+        Assert.Equal(Selection.Create("test-corpus", new[] { decomposed }).Sha256, selection.Sha256);
     }
 
     [Fact]
@@ -106,5 +121,55 @@ public class SelectionTests
         Assert.Equal(once.Sha256, twice.Sha256);
         Assert.Equal(once.Words, twice.Words);
         Assert.Equal(3, twice.Words.Count);
+    }
+    // பொன் composed (U+0BCA) and decomposed (U+0BC6 U+0BBE).
+    private const string TamilComposed = "\u0BAA\u0BCA\u0BA9\u0BCD";
+    private const string TamilDecomposed = "\u0BAA\u0BC6\u0BBE\u0BA9\u0BCD";
+
+    // The hash a Selection carried before its words were decomposed: sha256 of the stored words, newline-joined.
+    private static string HashOfWordsAsTheyAre(params string[] orderedWords) =>
+        "sha256:" + Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(string.Join("\n", orderedWords))))
+            .ToLowerInvariant();
+
+    [Fact]
+    public void ASelectionOfWordsAlreadyInNfdKeepsTheHashItAlwaysHad()
+    {
+        string[] words = ["anthu", TamilDecomposed, "mbali"];
+
+        var selection = Selection.Create("kept", words);
+
+        Assert.Equal(HashOfWordsAsTheyAre(words.OrderBy(w => w, StringComparer.Ordinal).ToArray()), selection.Sha256);
+    }
+
+    [Fact]
+    public void ASelectionStoredWithAComposedWordStillAgreesWithItsOwnHash()
+    {
+        var stored = new Selection("old", [TamilComposed], HashOfWordsAsTheyAre(TamilComposed));
+
+        Assert.True(stored.HashMatchesStoredWords());
+        // Rebuilding it decomposes the word, so the rebuilt hash differs: a stored record is checked, not rebuilt.
+        Assert.NotEqual(stored.Sha256, Selection.Create("old", stored.Words).Sha256);
+    }
+
+    [Fact]
+    public void ASelectionWhoseHashIsNotTheHashOfItsWordsDoesNotAgree()
+    {
+        Assert.False(new Selection("bad", ["anthu"], HashOfWordsAsTheyAre("mbali")).HashMatchesStoredWords());
+        Assert.True(Selection.Create("good", [TamilComposed, "anthu"]).HashMatchesStoredWords());
+    }
+
+    [Fact]
+    public void ARightToLeftWordIsStoredInNfdAndIsCanonicallyEquivalentToWhatWasTyped()
+    {
+        // Arabic alef-with-madda and Hebrew with points: NFD changes the code points, never the text they spell.
+        string[] words = ["\u0622\u0645\u0646", "\u05E9\u05C1\u05DC\u05D5\u05B9\u05DD"];
+
+        var selection = Selection.Create("rtl", words);
+
+        Assert.Equal(words.Select(w => w.Normalize(NormalizationForm.FormD)).OrderBy(w => w, StringComparer.Ordinal),
+            selection.Words);
+        // Both spellings are canonically equivalent to the typed word, so a renderer draws and copies the same text.
+        Assert.Equal(words.Select(w => w.Normalize(NormalizationForm.FormC)).OrderBy(w => w, StringComparer.Ordinal),
+            selection.Words.Select(w => w.Normalize(NormalizationForm.FormC)).OrderBy(w => w, StringComparer.Ordinal));
     }
 }

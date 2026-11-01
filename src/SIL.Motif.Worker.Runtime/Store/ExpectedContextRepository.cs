@@ -85,7 +85,7 @@ internal static class ExpectedContextRepository
                     AssessmentKind.ParseTime.ToStoredKind(), BaselineTokenJson(expected), selectionSha,
                     evidence.DeclarationName ?? string.Empty);
             if (root is not null && !MatchesNamedRoot(root, expected)) return false;
-            if (root is not null && Selection.Create(root.Selection.Name, root.Selection.Words).Sha256 != selectionSha)
+            if (root is not null && (root.Selection.Sha256 != selectionSha || !root.Selection.HashMatchesStoredWords()))
                 return false;
             if (root?.AssessmentId != evidence.RootAssessmentId) return false;
             if (root is not null)
@@ -120,14 +120,13 @@ internal static class ExpectedContextRepository
         root.Kind == AssessmentKind.ParseTime.ToStoredKind() && root.ReplacesAssessmentId is null &&
         root.BaselineToken == BaselineTokenJson(expected) &&
         root.Selection.Name == (evidence.DeclarationName ?? string.Empty) &&
-        root.Selection.Sha256 == evidence.AssessmentSelectionSha256 &&
-        Selection.Create(root.Selection.Name, root.Selection.Words).Sha256 == evidence.AssessmentSelectionSha256;
+        root.Selection.Sha256 == evidence.AssessmentSelectionSha256 && root.Selection.HashMatchesStoredWords();
 
     internal static bool MatchesTrialRoot(AssessmentRecord root, string proposalId, string intentDigest,
         string baselineToken) => root.ProposalId?.Value == proposalId &&
         root.ProposalIntentDigest == intentDigest && root.Kind == AssessmentKind.ParseTime.ToStoredKind() &&
         root.ReplacesAssessmentId is null && root.BaselineToken == baselineToken &&
-        Selection.Create(root.Selection.Name, root.Selection.Words).Sha256 == root.Selection.Sha256;
+        root.Selection.HashMatchesStoredWords();
 
     public static IReadOnlyList<string> ReadMeasurementIds(SqliteConnection connection,
         SqliteTransaction transaction, ExpectedContext expected, string? invocationId)

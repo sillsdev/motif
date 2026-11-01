@@ -285,6 +285,20 @@ public sealed class TrialsTests : IDisposable
     }
 
     [Fact]
+    public void ATrialQueuedWithTypedComposedWordsReadsBackTheirNfdSpelling()
+    {
+        const string composed = "\u0BAA\u0BCA\u0BA9\u0BCD";
+        var decomposed = composed.Normalize(System.Text.NormalizationForm.FormD);
+        using var fixture = new ProjectFixture(_root);
+        var proposal = fixture.SaveProposal();
+        fixture.CreateRunningJob(proposal.Json, "2026-09-24T11:00:00Z", "typed", [composed, decomposed, "cat"]);
+
+        var trial = Trials.LatestFor(fixture.Database, fixture.Project, proposal.Id.Value)!;
+
+        Assert.Equal([decomposed, "cat"], trial.Words);
+    }
+
+    [Fact]
     public void ATrialOfTheDefaultSelectionSaysSo()
     {
         using var fixture = new ProjectFixture(_root);

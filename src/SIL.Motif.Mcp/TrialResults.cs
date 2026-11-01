@@ -60,7 +60,13 @@ internal static class TrialResults
             else
             {
                 differenceId = CanonicalId.Mint("assessment/").Value;
-                var comparison = AssessmentComparer.Compare(pair.Before.ToComparable(), pair.After.ToComparable());
+                AssessmentComparison comparison;
+                try { comparison = AssessmentComparer.Compare(pair.Before.ToComparable(), pair.After.ToComparable()); }
+                catch (ComparisonRefusalException exception)
+                {
+                    return CommandOutcome<JsonObject>.Refused(new Refusal("comparison.refused", FailureReason.Refused,
+                        exception.Message, new Dictionary<string, string> { ["jobId"] = jobId }));
+                }
                 var scope = ScopeCodec.Write(new StoredScope.Difference(pair.Before.AssessmentId, pair.After.AssessmentId,
                     comparison.FromWordCount, comparison.ToWordCount, comparison.SharedWords.Count,
                     pair.Before.GrammarSourceSha256, pair.After.GrammarSourceSha256,
@@ -108,17 +114,19 @@ internal static class TrialResults
     internal static IReadOnlyList<AssessedWord> Classify(IReadOnlyList<AssessedWord> before,
         IReadOnlyList<AssessedWord> after, IReadOnlyList<string> negatives)
     {
-        var old = before.ToDictionary(word => word.Word, StringComparer.Ordinal);
-        var negativeSet = negatives.ToHashSet(StringComparer.Ordinal);
+        var old = before.ToDictionary(Key, StringComparer.Ordinal);
+        // Rows of an older Trial may be composed and new ones are NFD, so rows and negatives join on NFD.
+        var negativeSet = negatives.Select(word => word.Normalize(System.Text.NormalizationForm.FormD))
+            .ToHashSet(StringComparer.Ordinal);
         var rows = new List<AssessedWord>();
         foreach (var word in after.OrderBy(word => word.Word, StringComparer.Ordinal))
         {
-            if (!old.TryGetValue(word.Word, out var prior)) continue;
+            if (!old.TryGetValue(Key(word), out var prior)) continue;
             var newDisapproved = Disapproved(word).Except(Disapproved(prior), StringComparer.Ordinal).Any();
             var newlyMissingApproved = (word.AnalysisComparison?.UnbuiltApproved ?? []).Select(item => item.AnalysisId)
                 .Except((prior.AnalysisComparison?.UnbuiltApproved ?? []).Select(item => item.AnalysisId), StringComparer.Ordinal).Any();
             string? category = Unfinished(word) || Unfinished(prior) ? "unfinished"
-                : (negativeSet.Contains(word.Word) && Count(prior) == 0 && Count(word) > 0) ||
+                : (negativeSet.Contains(Key(word)) && Count(prior) == 0 && Count(word) > 0) ||
                     newDisapproved ? "negatives-now-parsing"
                 : newlyMissingApproved || Count(prior) > 0 && Count(word) == 0 ||
                     word.Correctness is { } correctness && prior.Correctness is { } earlier &&
@@ -128,6 +136,8 @@ internal static class TrialResults
         }
         return rows;
     }
+
+    private static string Key(AssessedWord word) => word.Word.Normalize(System.Text.NormalizationForm.FormD);
 
     private static IEnumerable<string> Disapproved(AssessedWord word) =>
         (word.AnalysisComparison?.Readings ?? []).SelectMany(reading => reading.Matches)
