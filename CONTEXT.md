@@ -362,6 +362,28 @@ negative that still parses. It names the axis it serves, the evidence it needs, 
 `parsimony measures` command lists them. Not the verb "measure" for what an Assessment or a Trial does.
 _Avoid_: rule, lint, check (alone), metric
 
+**Measure group**:
+One of the two sets the registered Measures fall into, chosen by what a Measure reads: the Grammar group or the Text
+group. `parsimony --group grammar|text|all` runs one or both. A group is not a score
+([ADR 0080](docs/adr/0080-parsimony-runs-in-two-groups-grammar-and-text.md)).
+_Avoid_: tier (alone), suite, profile
+
+**Grammar group**:
+The Measures that read only the grammar and need no Texts, no Selection and no Assessment. A Grammar-group run
+captures a Baseline itself when none is current. It may still abstain on incomplete grammar facts.
+_Avoid_: static group, automatic group
+
+**Text group**:
+The Measures that read Approved analyses of chosen Texts or a parser Assessment of them: the text and parser tiers.
+It runs on the Parsimony Selection.
+_Avoid_: manual group, evidence group
+
+**Parsimony Selection**:
+The saved Selection of Texts a person chose by hand for the Text group, reused by every Text-group run until
+changed. It is separate from the Default Selection, though both use the same stored Selections. When it is not
+configured, running both groups runs the Grammar group and says once how to configure it.
+_Avoid_: Parsimony corpus, test set, Default Selection (a different saved choice)
+
 **Recipe**:
 The guidance attached to one Measure: what a finding means, which evidence supports it, what a
 person may reasonably fix, keep, ask or defer, and the update a Draft can stage for it. A recommendation
@@ -370,7 +392,7 @@ _Avoid_: fix, autofix, script, playbook
 
 **Parsimony note**:
 An information line in a Parsimony review that is never a recommendation: either a check that could not look
-(for example, no Approved words in the Default Selection) or an authored statement that has no effect on parsing.
+(for example, no Approved words in the Parsimony Selection) or an authored statement that has no effect on parsing.
 It never reads as clean and never asks for a decision.
 _Avoid_: warning, issue, skipped
 

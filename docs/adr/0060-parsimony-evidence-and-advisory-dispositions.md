@@ -2,7 +2,7 @@
 
 Motif offers specific grammar recommendations with the examples and questions needed to assess them, and remembers why a person kept a particular statement. Stronger evidence comes before elegance, a narrower statement is preferred only when known valid readings survive, and relevant new evidence brings a recommendation back for another look.
 
-**Status:** accepted, 2026-10-05.
+**Status:** accepted, 2026-10-05. Decision 2's Text scope is amended by [ADR 0080](0080-parsimony-runs-in-two-groups-grammar-and-text.md): Parsimony runs in a Grammar group and a Text group, and the Text group uses a Parsimony Selection rather than the Default Selection.
 
 ## Context
 
@@ -30,7 +30,7 @@ A count is useful only when a linguist can see what was eligible to be counted.
 
 Each measure declares its tier, axis, unit, threshold version, scope, finite universe, and denominator. A finding may describe a project rollup, a group, or one item; group and project totals do not erase the item identities underneath them. Token, wordform, reading, lexeme, and grammar-object counts remain distinct.
 
-The saved Default Selection is the default Text scope and is resolved to exact words and Text identities when work is enqueued. An eligible measure may explicitly use `project-approved`; its output names that universe. All captured Approved analyses remain safety witnesses for a recipe even when its detector uses a narrower Selection.
+The saved Parsimony Selection (formerly the Default Selection, see ADR 0080) is the default Text scope and is resolved to exact words and Text identities when work is enqueued. An eligible measure may explicitly use `project-approved`; its output names that universe. All captured Approved analyses remain safety witnesses for a recipe even when its detector uses a narrower Selection.
 
 Absence from a Selection means “not observed.” A Disapproved analysis is a negative for that reading, not for the whole word. A reviewed negative is a human-confirmed forbidden case. Unattested extension is descriptive unless the measure has a declared finite universe and explicit negative or held-out evidence.
 
