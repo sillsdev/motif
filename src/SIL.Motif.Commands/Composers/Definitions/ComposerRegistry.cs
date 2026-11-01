@@ -19,6 +19,7 @@ internal static class ComposerDefinitions
         new MakeVariantOfDefinition(),
         new AuthorAdhocProhibitionDefinition(),
         new EditMorphTypeDefinition(),
+        new ChangeAffixKindDefinition(),
         new EditCliticAttachmentDefinition(),
         new EditPhonemeDefinition(),
         new MergePhonemeDefinition(),

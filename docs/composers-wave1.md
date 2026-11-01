@@ -79,3 +79,19 @@ Decisions, taken as the simplest reversible reading:
 **Reversal.** Applied Proposals are final, so reversal is a Proposal of its own: `compose-split-phoneme` takes `{ source, representation, name }`, deletes that code from the source (never its last one) and creates a new phoneme with the given name and the spelling. The new phoneme has a new identity, no natural classes and no features; a person adds it to its classes with `compose-edit-natural-class`. Splitting does not restore the removed phoneme's features or classes, and the merge discards the source's features and name; this is accepted for now and recorded for the owner. The round trip therefore restores the inventory and the spellings, not the removed phoneme's identity, its features or its class membership.
 
 **Limits.** A phoneme created earlier in the same Draft cannot be merged away in that Draft, because its create and delete address the same slot; Apply the creation first. The command stages operations in a Draft only. MCP exposes both as Draft tools (`motif_merge_phoneme`, `motif_split_phoneme`) and never applies.
+
+## Changing an affix's kind
+
+Black's guidance is to pick inflectional or derivational on the evidence and change it later, so a person's call has to be reversible where the entry stands ([ADR 0079](adr/0079-linguistic-decisions-follow-black-and-judgement-calls-are-the-linguists.md)). `compose-change-affix-kind` takes `{ msa, kind, toCategory?, slots? }` and turns the affix's grammatical info into an inflectional, derivational or unclassified one.
+
+It lowers to: one `createMorphoSyntaxAnalyses` of the new class on the entry with its category (and, for derivational, a To category; for inflectional, the named slots; exception features carry between inflectional and derivational), one `setMorphoSyntaxAnalysis` per sense that used the old info, and one `deleteMorphoSyntaxAnalyses` on the old info that depends on those relinks. The new kind has a new id; the form, the sense and its gloss stay as they were, so a reduplication stays a reduplication. LibLCM removes a grammatical info by itself when the last sense stops using it, so the deletion operation accepts an already-removed target and stays explicit for the Proposal's reader.
+
+Decisions, taken as the simplest reversible reading:
+
+- **Warn, never refuse, for what cannot carry across.** The slots of an inflectional affix, a derivational affix's From and To inflection classes, To exception features, stem name and features, a To category that differs from the attaching one, an inflectional affix's features, and the form's own inflection classes when the affix stops being inflectional are listed as related objects in the Dry Run. LibLCM holds every resulting shape, so none is refused.
+- **To category defaults to the attaching category.** A derivational affix made from an inflectional one needs a destination; keeping the category is the neutral reading and `toCategory` names another.
+- **An inflectional affix without `slots` is allowed.** Black's model says it applies only in a template slot; the Dry Run says so and `compose-edit-inflectional-affix` adds one.
+- **The only refusals rest on an invalid model.** The info is a stem's, the entry's lexeme form is not an affix form, a slot belongs to another category, or another object (a co-occurrence rule or a parser analysis) still refers to the old info and would be left pointing at nothing.
+- **Same kind stages nothing.**
+
+**Reversal.** The same verb changes the kind back; give the slots or `toCategory` the first change dropped, which its Dry Run listed. The round trip restores the grammatical info's kind, category, slots and exception features, with a new id each time. MCP exposes it as the Draft tool `motif_change_affix_kind` and never applies.

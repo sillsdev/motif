@@ -1442,6 +1442,27 @@
       "Correct a stem form's morph type without recreating the entry"
     ]
   },
+  "compose-change-affix-kind": {
+    "title": "Change an affix’s kind",
+    "description": "Stages a change of one affix between inflectional, derivational and unclassified in place, keeping its category and the senses that use it. What the new kind cannot hold, such as a template slot or a To category, is reported as a warning, not refused. Dry Run and Trial before a person Applies the Proposal.",
+    "source": "Authored from the typed command contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "msa": "Id of the affix’s current grammatical info.",
+      "kind": "New kind: inflectional, derivational or unclassified.",
+      "toCategory": "For derivational only: id of the category of the word it makes; the attaching category when absent.",
+      "slots": "For inflectional only: ids of the existing slots it fills."
+    },
+    "goals": [
+      "Turn an inflectional affix into a derivational one when its function was judged wrongly",
+      "Make an unclassified affix inflectional once its slot is known",
+      "Flip a reduplicating affix back to its earlier kind"
+    ],
+    "guides": [
+      "affix-slots-and-templates"
+    ],
+    "redirect": "Choose inflectional or derivational on the evidence and change it later if it was wrong; leaving an affix unclassified is a stopgap (guides affix-slots-and-templates)."
+  },
   "compose-edit-clitic-attachment": {
     "title": "Edit a clitic’s Attaches to Categories",
     "description": "Set the Attaches to Categories of a clitic stem analysis to an exact set of parts of speech. Review the before and after category names in the Dry Run.",

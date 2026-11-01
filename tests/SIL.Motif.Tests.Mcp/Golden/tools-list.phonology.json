@@ -1691,6 +1691,57 @@
     "idempotentHint": false
   },
   {
+    "name": "motif_change_affix_kind",
+    "description": "Change an affix\u2019s kind. Research first: motif_guide topic affix-slots-and-templates; check best practice. Choose inflectional or derivational on the evidence and change it later if it was wrong; leaving an affix unclassified is a stopgap (guides affix-slots-and-templates). Stages a change of one affix between inflectional, derivational and unclassified in place, keeping its category and the senses that use it. What the new kind cannot hold, such as a template slot or a To category, is reported as a warning, not refused. Dry Run and Trial before a person Applies the Proposal.\nCommand: compose-change-affix-kind. Agent class: Draft.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "Draft name."
+        },
+        "msa": {
+          "type": "string",
+          "description": "Id of the affix\u2019s current grammatical info."
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "inflectional",
+            "derivational",
+            "unclassified"
+          ],
+          "description": "New kind: inflectional, derivational or unclassified."
+        },
+        "toCategory": {
+          "type": "string",
+          "description": "For derivational only: id of the category of the word it makes; the attaching category when absent."
+        },
+        "slots": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "For inflectional only: ids of the existing slots it fills."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "draft",
+        "msa",
+        "kind",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
     "name": "motif_edit_phoneme",
     "description": "Edit a phoneme\u0027s representations. Research first: motif_guide topic nasal-assimilation or conditioned-allomorphs; check best practice. Edit a phoneme for a real contrast, not only to record a surface variant, unless a rule needs it as an output segment (guides nasal-assimilation, conditioned-allomorphs). Stages new written representations for an existing phoneme, or respells one it has, so a multigraph such as ng, ts or dy is another way the same segment is written and never a second phoneme. It refuses a spelling another phoneme or boundary already has, and a respelling that an environment writes. Dry Run and Trial before a person Applies the Proposal.\nCommand: compose-edit-phoneme. Agent class: Draft.",
     "inputSchema": {

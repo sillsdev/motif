@@ -280,6 +280,7 @@ public sealed class FindComposerTests
         { "Create a class for the back vowels", "compose-author-natural-class" },
         { "Write the velar nasal with the digraph ng as another spelling of an existing phoneme", "compose-edit-phoneme" },
         { "Merge the spare o phoneme into the u phoneme", "compose-merge-phoneme" },
+        { "The suffix I called inflectional is really derivational, so change its kind", "compose-change-affix-kind" },
         { "Make the second syllable copy the first in the plural", "compose-author-affix-process" },
         { "Put the marker in the middle of the root", "compose-author-affix-process" },
         { "Add a nasal substitution form to the existing prefix", "compose-author-affix-process-allomorph" },

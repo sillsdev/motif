@@ -113,6 +113,8 @@ public sealed class OperationSlotCoverageTests
     [InlineData("grammar/phPhonemeSet/deletePhonemes", "grammar/phTerminalUnit/setName", true)]
     [InlineData("grammar/phTerminalUnit/deleteCodes", "grammar/phCode/setRepresentation", false)]
     [InlineData("grammar/phTerminalUnit/deleteCodes", "grammar/phCode/setRepresentation", true)]
+    [InlineData("lexical/lexEntry/deleteMorphoSyntaxAnalyses", "grammar/moInflAffMsa/setPartOfSpeech", false)]
+    [InlineData("lexical/lexEntry/deleteMorphoSyntaxAnalyses", "grammar/moInflAffMsa/setPartOfSpeech", true)]
     public void PhonemeAndCodeDeletionConflictWithWritesInEitherOrder(string deleteKind, string writeKind, bool deleteFirst)
     {
         var target = CanonicalId.Mint();

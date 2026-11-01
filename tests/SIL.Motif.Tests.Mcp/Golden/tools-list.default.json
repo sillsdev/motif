@@ -3889,17 +3889,86 @@
                     "properties": {
                       "target": {
                         "type": "string",
-                        "description": "Id of the existing stem form."
+                        "description": "Id of the existing stem or affix form."
                       },
                       "morphType": {
                         "type": "string",
-                        "description": "Id of the desired stem-family morph type."
+                        "description": "Id of the desired morph type of the same family."
                       }
                     },
                     "additionalProperties": false,
                     "required": [
                       "target",
                       "morphType"
+                    ]
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
+                      "compose-change-affix-kind"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for compose-change-affix-kind.",
+                    "properties": {
+                      "msa": {
+                        "type": "string",
+                        "description": "Id of the affix\u2019s current grammatical info."
+                      },
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "inflectional",
+                          "derivational",
+                          "unclassified"
+                        ],
+                        "description": "New kind: inflectional, derivational or unclassified."
+                      },
+                      "toCategory": {
+                        "type": "string",
+                        "description": "For derivational only: id of the category of the word it makes; the attaching category when absent."
+                      },
+                      "slots": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "For inflectional only: ids of the existing slots it fills."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "msa",
+                      "kind"
                     ]
                   },
                   "citation": {
@@ -5467,6 +5536,57 @@
         "draft",
         "featStruc",
         "feature",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_change_affix_kind",
+    "description": "Change an affix\u2019s kind. Research first: motif_guide topic affix-slots-and-templates; check best practice. Choose inflectional or derivational on the evidence and change it later if it was wrong; leaving an affix unclassified is a stopgap (guides affix-slots-and-templates). Stages a change of one affix between inflectional, derivational and unclassified in place, keeping its category and the senses that use it. What the new kind cannot hold, such as a template slot or a To category, is reported as a warning, not refused. Dry Run and Trial before a person Applies the Proposal.\nCommand: compose-change-affix-kind. Agent class: Draft.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "Draft name."
+        },
+        "msa": {
+          "type": "string",
+          "description": "Id of the affix\u2019s current grammatical info."
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "inflectional",
+            "derivational",
+            "unclassified"
+          ],
+          "description": "New kind: inflectional, derivational or unclassified."
+        },
+        "toCategory": {
+          "type": "string",
+          "description": "For derivational only: id of the category of the word it makes; the attaching category when absent."
+        },
+        "slots": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "For inflectional only: ids of the existing slots it fills."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "draft",
+        "msa",
+        "kind",
         "project"
       ],
       "additionalProperties": false

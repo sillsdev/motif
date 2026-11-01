@@ -1447,6 +1447,54 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
     }
 
     [Fact]
+    public async Task ChangeAffixKindToolStagesTheNewInfoAndNeverApplies()
+    {
+        using var project = new WalkthroughProject(pristine);
+        string msaId;
+        Guid msaGuid = default;
+        using (var cache = new FwDataProjectLoader().LoadCache(project.FwDataPath))
+        {
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            {
+                var entry = cache.ServiceLocator.GetInstance<ILexEntryFactory>().Create();
+                var form = cache.ServiceLocator.GetInstance<IMoAffixAllomorphFactory>().Create();
+                entry.LexemeFormOA = form;
+                form.Form.set_String(cache.DefaultVernWs, "mi");
+                var category = cache.LangProject.PartsOfSpeechOA.PossibilitiesOS.OfType<IPartOfSpeech>().First();
+                var msa = cache.ServiceLocator.GetInstance<IMoInflAffMsaFactory>().Create();
+                entry.MorphoSyntaxAnalysesOC.Add(msa);
+                msa.PartOfSpeechRA = category;
+                var sense = cache.ServiceLocator.GetInstance<ILexSenseFactory>().Create();
+                entry.SensesOS.Add(sense);
+                sense.MorphoSyntaxAnalysisRA = msa;
+                msaGuid = msa.Guid;
+            });
+            msaId = CanonicalId.FromGuid(msaGuid).Value;
+            new FwDataProjectLoader().Save(cache);
+        }
+
+        await using var session = await Session.StartAsync(project.FwDataPath, new McpLaunchOptions(Profile: "phonology"));
+        await session.CallAsync("motif_start_proposal", ("draft", "kind"),
+            ("label", "Prefix is derivational"), ("rationale", "The prefix makes a new word."));
+        var changed = await session.CallAsync("motif_change_affix_kind", ("draft", "kind"),
+            ("msa", msaId), ("kind", "derivational"));
+
+        Assert.True(changed.GetProperty("ok").GetBoolean(), changed.ToString());
+        using (var database = ProjectMotifDatabase.Open(project.FwDataPath))
+        {
+            var draft = ProposalCommands.DeserializeDraft(new ProposalRepository(database).GetDraft("kind").ProposalJson!);
+            Assert.Contains(draft.ComposerProvenance, item => item.GetProperty("composer").GetString() == "ChangeAffixKind");
+            Assert.Contains(draft.Operations, operation => operation.Kind == "lexical/lexEntry/deleteMorphoSyntaxAnalyses");
+        }
+
+        await Assert.ThrowsAnyAsync<Exception>(() => session.CallAsync("motif_change_affix_kind",
+            ("draft", "kind"), ("msa", msaId), ("kind", "stem")));
+
+        using var unchanged = new FwDataProjectLoader().LoadScratchCache(project.FwDataPath);
+        Assert.IsAssignableFrom<IMoInflAffMsa>(unchanged.ServiceLocator.GetInstance<ICmObjectRepository>().GetObject(msaGuid));
+    }
+
+    [Fact]
     public async Task EditPhonemeToolStagesADigraphOnAnEarlierPhonemeAndNeverApplies()
     {
         using var project = new WalkthroughProject(pristine);

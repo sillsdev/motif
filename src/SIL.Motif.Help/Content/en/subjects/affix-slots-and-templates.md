@@ -16,7 +16,8 @@ Inflectional affixes occupy ordered positions on a word. A slot is one such posi
 3. `compose-author-affix-slot` creates the slot and can place existing inflectional affixes in it.
 4. `compose-author-affix-template` arranges the slots in order.
 5. `compose-edit-affix-slot`, `compose-edit-affix-template` and `compose-edit-inflectional-affix` revise slots, templates and which slots an affix fills.
-6. `retire-redundant-zero-affix` removes an empty affix that nothing uses.
+6. `compose-change-affix-kind` changes an affix between inflectional, derivational and unclassified when the first call was wrong.
+7. `retire-redundant-zero-affix` removes an empty affix that nothing uses.
 
 ## Pitfalls
 
