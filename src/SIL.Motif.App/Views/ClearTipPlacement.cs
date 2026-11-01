@@ -9,8 +9,10 @@ namespace SIL.Motif.App.Views;
 /// <summary>
 /// Opens a control's tooltip on the first side of it where the tip covers no other control a person could press,
 /// focus or type in, and stays inside the window. The sides are tried above, then to the left, then to the right,
-/// then below, so a tip prefers to sit over what has already been read. When no side is clear, the tip opens on the
-/// side inside the window that covers the fewest controls.
+/// then below, so a tip prefers to sit over what has already been read. When no side is clear and the owner sits
+/// inside a control a person could press or focus that is no taller than a few tips, such as a multi-row strip, the
+/// tip may instead hang above or below that whole control, level with the owner, where its neighbours do not reach.
+/// When no side is clear, the tip opens on the side inside the window that covers the fewest controls.
 /// </summary>
 /// <remarks>
 /// Set <c>IsEnabled</c> on a tooltip owner, in its view or from a component style. It replaces the owner's
@@ -44,6 +46,17 @@ public static class ClearTipPlacement
         (PopupAnchor.Right, PopupGravity.Right),
         (PopupAnchor.TopRight, PopupGravity.BottomRight),
         (PopupAnchor.BottomRight, PopupGravity.TopRight),
+        (PopupAnchor.Bottom, PopupGravity.Bottom),
+        (PopupAnchor.BottomRight, PopupGravity.BottomLeft),
+        (PopupAnchor.BottomLeft, PopupGravity.BottomRight),
+    ];
+
+    /// <summary>The sides that hang a tip above or below the whole line its owner sits in, level with the owner.</summary>
+    internal static IReadOnlyList<(PopupAnchor Anchor, PopupGravity Gravity)> LineSides { get; } =
+    [
+        (PopupAnchor.Top, PopupGravity.Top),
+        (PopupAnchor.TopRight, PopupGravity.TopLeft),
+        (PopupAnchor.TopLeft, PopupGravity.TopRight),
         (PopupAnchor.Bottom, PopupGravity.Bottom),
         (PopupAnchor.BottomRight, PopupGravity.BottomLeft),
         (PopupAnchor.BottomLeft, PopupGravity.BottomRight),
@@ -90,11 +103,40 @@ public static class ClearTipPlacement
     /// first side when no side fits inside the window.
     /// </summary>
     internal static (PopupAnchor Anchor, PopupGravity Gravity) Choose(Rect owner, Size tip, Rect window, IReadOnlyList<Rect> obstacles) =>
-        Sides.Select(side => (Side: side, Area: Area(owner, tip, side.Anchor, side.Gravity)))
+        Rank(owner, tip, window, obstacles, Sides) is { } best ? best.Side : Sides[0];
+
+    /// <summary>The tallest line, in tip heights, a tip may hang above or below; a taller one is a container, not a strip.</summary>
+    internal const double MaxLineTips = 4;
+
+    /// <summary>
+    /// Where a tip goes: the <see cref="Choose"/> side of <paramref name="owner"/> when it covers nothing, otherwise the
+    /// <see cref="LineSides"/> side of the column <paramref name="owner"/> makes through <paramref name="line"/>, widened
+    /// vertically by <paramref name="clearance"/>, when that covers fewer controls. A <paramref name="line"/> taller than
+    /// <see cref="MaxLineTips"/> tips is ignored. The anchor is the rectangle the side is measured from.
+    /// </summary>
+    internal static (Rect Anchor, PopupAnchor Side, PopupGravity Gravity) Plan(
+        Rect owner, Rect? line, Size tip, Rect window, IReadOnlyList<Rect> obstacles, double clearance = 0)
+    {
+        var near = Rank(owner, tip, window, obstacles, Sides) ?? (Sides[0], 0);
+        if (near.Covered > 0 && line is { Height: > 0 } band && band.Height <= MaxLineTips * tip.Height)
+        {
+            var column = new Rect(owner.X, band.Top - clearance, owner.Width, band.Height + 2 * clearance);
+            if (Rank(column, tip, window, obstacles, LineSides) is { } beyond && beyond.Covered < near.Covered)
+                return (column, beyond.Side.Anchor, beyond.Side.Gravity);
+        }
+        return (owner, near.Side.Anchor, near.Side.Gravity);
+    }
+
+    // The first of the sides inside the window that covers the fewest obstacles; null when none fits.
+    private static ((PopupAnchor Anchor, PopupGravity Gravity) Side, int Covered)? Rank(Rect owner, Size tip, Rect window,
+        IReadOnlyList<Rect> obstacles, IReadOnlyList<(PopupAnchor Anchor, PopupGravity Gravity)> sides)
+    {
+        var fitting = sides.Select(side => (Side: side, Area: Area(owner, tip, side.Anchor, side.Gravity)))
             .Where(candidate => window.Contains(candidate.Area))
             .Select(candidate => (candidate.Side, Covered: obstacles.Count(obstacle => Overlaps(obstacle, candidate.Area))))
-            .DefaultIfEmpty((Side: Sides[0], Covered: 0))
-            .MinBy(candidate => candidate.Covered).Side;
+            .ToList();
+        return fitting.Count == 0 ? null : fitting.MinBy(candidate => candidate.Covered);
+    }
 
     private static bool Overlaps(Rect first, Rect second) =>
         first.Left < second.Right && first.Right > second.Left &&
@@ -122,13 +164,21 @@ public static class ClearTipPlacement
         var area = AreaOf(target, window);
         var clearance = GetClearance(owner);
         if (clearance > 0) area = area.Inflate(clearance).Intersect(new Rect(window.Bounds.Size));
-        if (target != owner || clearance > 0) placement.AnchorRectangle = area;
-        var (anchor, gravity) = Choose(area, placement.PopupSize, new Rect(window.Bounds.Size), obstacles);
+        var (from, anchor, gravity) = Plan(area, LineOf(owner, window), placement.PopupSize, new Rect(window.Bounds.Size), obstacles, clearance);
+        if (target != owner || clearance > 0 || from != area) placement.AnchorRectangle = from;
         placement.Anchor = anchor;
         placement.Gravity = gravity;
         // The tooltip's own offset would push the tip back onto what the chosen side was clear of.
         placement.Offset = default;
     }
+
+    /// <summary>
+    /// The visible area of the nearest control around <paramref name="owner"/> that a person could press or focus,
+    /// cut by every scrolled or clipped ancestor the way an obstacle is; null when none is visible.
+    /// </summary>
+    internal static Rect? LineOf(Control owner, TopLevel window) =>
+        owner.GetVisualAncestors().OfType<Control>().FirstOrDefault(IsInteractive) is { } line &&
+        Shown(line, window) is { Width: > 0, Height: > 0 } shown ? shown : null;
 
     // What a person could press, focus or type in, other than the owner, what holds it, what it holds, or a tip.
     private static bool IsObstacleTo(Control owner, Control other) =>

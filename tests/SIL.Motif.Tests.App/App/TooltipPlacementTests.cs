@@ -322,9 +322,10 @@ public sealed class TooltipPlacementTests
             .Select(other => Shown(other, window))
             .Where(shown => shown.Width > 0 && shown.Height > 0)
             .ToList();
-        var placement = ClearTipPlacement.Choose(ownerArea, tip.Bounds.Size, new Rect(window.Bounds.Size), obstacles);
-        var planned = ClearTipPlacement.Area(ownerArea, tip.Bounds.Size, placement.Anchor, placement.Gravity);
-        return $"owner at {ownerArea}; planned {placement} at {planned}; popup {tip.Bounds.Size}";
+        var (from, side, gravity) = ClearTipPlacement.Plan(ownerArea, ClearTipPlacement.LineOf(owner, window),
+            tip.Bounds.Size, new Rect(window.Bounds.Size), obstacles);
+        var planned = ClearTipPlacement.Area(from, tip.Bounds.Size, side, gravity);
+        return $"owner at {ownerArea}; planned ({side}, {gravity}) from {from} at {planned}; popup {tip.Bounds.Size}";
     }
 
     private static bool Overlaps(Rect first, Rect second) =>

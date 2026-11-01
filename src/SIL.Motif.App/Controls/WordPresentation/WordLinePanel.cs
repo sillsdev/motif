@@ -6,9 +6,16 @@ namespace SIL.Motif.App.Controls.WordPresentation;
 /// <summary>Aligns word marks with the word even when the drawn control includes morphology rows.</summary>
 public sealed class WordLinePanel : StackPanel
 {
+    /// <summary>
+    /// Where the drawn word's next row (FieldWorks) really starts inside this panel: the drawn word's offset
+    /// below the panel top plus its own word line, in whole device pixels. Zero when no drawn word is present.
+    /// </summary>
+    internal double WordBand { get; private set; }
+
     protected override Size MeasureOverride(Size availableSize)
     {
         var drawn = Children.OfType<InterlinearWord>().FirstOrDefault();
+        WordBand = 0;
         if (drawn is null) return base.MeasureOverride(availableSize);
 
         var note = drawn.FieldWorksNote;
@@ -23,12 +30,15 @@ public sealed class WordLinePanel : StackPanel
             any = true;
             if (!ReferenceEquals(child, drawn)) others = Math.Max(others, child.DesiredSize.Height);
         }
+        WordBand = Offset(drawn, others) + drawn.LineMetrics.Word;
         return new Size(width, Math.Max(others, Offset(drawn, others) + drawn.DesiredSize.Height));
     }
 
+    private double Scale => TopLevel.GetTopLevel(this)?.RenderScaling ?? 1;
+
     // Centres the drawn word's own line on the marks, in whole device pixels so the measure holds the arrangement.
     private double Offset(InterlinearWord drawn, double lineHeight) => InterlinearWord.WholePixels(
-        Math.Max(0, lineHeight - drawn.LineMetrics.Word) / 2, TopLevel.GetTopLevel(this)?.RenderScaling ?? 1);
+        Math.Max(0, lineHeight - drawn.LineMetrics.Word) / 2, Scale);
 
     protected override Size ArrangeOverride(Size finalSize)
     {

@@ -767,6 +767,40 @@ public sealed class AnalyzeTextsLayoutTests
         }, Deadline);
     }
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(6)]
+    [InlineData(17)]
+    public void TheWordMetricIsWhereTheDrawnFieldWorksRowStartsWhateverTheTallestMarkIs(int extraHeight)
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, window) = await OpenAnalyzeTexts();
+            try
+            {
+                workspace.PageModel<TextsPageModel>().ResultsInText.CloseTokenCard();
+                Settle(window);
+                var panel = Panel(window);
+                var sungura = StripOf(panel, "Sungura");
+                var drawn = Assert.IsType<InterlinearWord>(DrawnWord(sungura));
+                var token = Assert.IsType<WordStripToken>(sungura);
+                var wordLine = Assert.Single(sungura.GetVisualDescendants().OfType<WordLinePanel>());
+                if (extraHeight > 0)
+                {
+                    wordLine.Children.Add(new Border { Height = drawn.LineMetrics.Word + extraHeight, Width = 8 });
+                    Settle(window);
+                }
+                var fieldWorksTop = ReaderRowBounds(sungura, "fieldworks", panel).Top - BoundsIn(wordLine, panel).Top;
+                Assert.Equal(fieldWorksTop, token.LineMetrics.Word, 0.01);
+            }
+            finally
+            {
+                window.Close();
+            }
+        }, Deadline);
+    }
+
     [Fact]
     public void AnalyzeTextOutcomeCueMarksDifferencesAndHidesMatchingPanGlossLines() => CheckOutcomeCues(false);
 

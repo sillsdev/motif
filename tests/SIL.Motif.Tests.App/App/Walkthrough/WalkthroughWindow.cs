@@ -431,6 +431,9 @@ public sealed class WalkthroughWindow : IDisposable
             $"action='{token.Marking.PrimaryAction?.Label ?? "none"}'.";
     }
 
+    /// <summary>The shared buttons that focus alone did not show, so the replay hovered their word.</summary>
+    internal List<string> HoverFallbacks { get; } = [];
+
     internal void ScrollIntoView(string automationId)
     {
         if (automationId.StartsWith("motif-word-", StringComparison.Ordinal) &&
@@ -454,6 +457,9 @@ public sealed class WalkthroughWindow : IDisposable
 
     private bool FocusedWordShows(string stripId, string automationId)
     {
+        // Park the pointer off every word so focus alone has to show the buttons.
+        Window.MouseMove(new Point(-1, -1));
+        Pump();
         if (FindOptionalByAutomationId(stripId) is not WordStripToken strip)
         {
             ScrollIntoView(stripId);
@@ -467,9 +473,10 @@ public sealed class WalkthroughWindow : IDisposable
         Pump();
         Window.UpdateLayout();
         if (FindOptionalByAutomationId(automationId) is not null) return true;
-        // A hovered word takes the shared buttons from the focused one, so hover this word.
+        // Focus alone did not show the buttons, so hover the word and record that it was needed.
         if (!strip.IsPointerOver && strip.TranslatePoint(new Point(strip.Bounds.Width / 2, strip.Bounds.Height / 2), Window) is { } center)
         {
+            if (!HoverFallbacks.Contains(automationId)) HoverFallbacks.Add(automationId);
             Window.MouseMove(center);
             Pump();
         }

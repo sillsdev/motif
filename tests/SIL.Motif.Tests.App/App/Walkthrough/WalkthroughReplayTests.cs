@@ -377,6 +377,8 @@ internal static class WalkthroughReplayTestRunner
                     invocationsAtOpen = WalkthroughReplay.Run(walkthrough, script, help, clock, captures, clipSegments,
                         deadline, root, preparation, parserPath);
                     WalkthroughReplay.AssertFixtureOutcome(walkthrough, script, parserPath, deadline);
+                    foreach (var id in walkthrough.HoverFallbacks)
+                        output.WriteLine($"Focus alone did not show '{id}'; the replay hovered its word.");
                     if (script.Id == "explained-word-card")
                     {
                         await AssertExplainedWordCardAsync(walkthrough);
@@ -686,13 +688,6 @@ internal static class WalkthroughReplay
                         var wordId = step.Callouts!.Single(callout =>
                             callout.AutomationId.EndsWith("-word", StringComparison.Ordinal)).AutomationId;
                         window.ScrollIntoView(wordId[..^5] + "-strip");
-                        // A pointer left over a card by an earlier step greys it, so a frame never shows a stray hover.
-                        if (step.Id != "unknown-staged" && window.FindOptionalByAutomationId(wordId[..^5] + "-strip") is
-                            { IsPointerOver: true })
-                        {
-                            window.Window.MouseMove(new Avalonia.Point(-1, -1));
-                            Dispatcher.UIThread.RunJobs();
-                        }
                     }
                     if (isExplainedWordCardCapture)
                     {

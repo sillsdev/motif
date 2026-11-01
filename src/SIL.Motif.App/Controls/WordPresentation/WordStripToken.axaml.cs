@@ -37,7 +37,7 @@ public sealed partial class WordStripToken : Border
     private readonly Border _strip;
     private readonly Control _wordLine;
     private readonly Border _fieldWorksLine;
-    private readonly Panel _wordLinePanel;
+    private readonly WordLinePanel _wordLinePanel;
     private readonly Panel _stripStack;
     private readonly Panel _stripContent;
     private readonly Control _wordText;
@@ -84,7 +84,7 @@ public sealed partial class WordStripToken : Border
         AvaloniaXamlLoader.Load(this);
         _strip = this;
         _wordLine = this.FindControl<Control>("WordLine")!;
-        _wordLinePanel = (Panel)_wordLine;
+        _wordLinePanel = (WordLinePanel)_wordLine;
         _fieldWorksLine = this.FindControl<Border>("FieldWorksLine")!;
         _stripStack = this.FindControl<Panel>("StripStack")!;
         _stripContent = this.FindControl<Panel>("StripContent")!;
@@ -178,7 +178,7 @@ public sealed partial class WordStripToken : Border
         if (_drawnWord is { } drawn)
         {
             var metrics = drawn.LineMetrics;
-            LineMetrics = new RunningTextLineMetrics(metrics.Word,
+            LineMetrics = new RunningTextLineMetrics(Math.Max(metrics.Word, _wordLinePanel.WordBand),
                 metrics.FieldWorks + (ReferenceEquals(_fieldWorksLine.Parent, _stripStack) ? MeasuredLineHeight(_fieldWorksLine) : 0),
                 metrics.PanGloss + MeasuredLineHeight(_panGlossLine));
         }

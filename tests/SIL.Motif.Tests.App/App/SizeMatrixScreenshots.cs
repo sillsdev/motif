@@ -461,15 +461,7 @@ internal sealed record ControlMatch(string Type, string? Name = null, string? An
 
 internal static class ExpectedMatrixFindings
 {
-    private static readonly ExpectedFindingLocation[] AllMatrixPoints =
-        MatrixSizes.Names.SelectMany(size => new[] { 100, 150 }.SelectMany(zoom =>
-            new[] { "light", "dark" }.Select(theme => new ExpectedFindingLocation(size, zoom, theme)))).ToArray();
-
-    internal static IReadOnlyList<ExpectedLayoutFinding> Entries { get; } =
-    [
-        new("open-recent-projects", "popup-outside-window", new("FlyoutPresenter", Name: "motif-project-menu-flyout"), null, [..AllMatrixPoints], "The recent-project menu overlaps the top bar at these sizes.", "matrix/open-recent-projects-thin-100-light.png",
-            "V25", "recent-projects menu overlaps the top bar", "UF"),
-    ];
+    internal static IReadOnlyList<ExpectedLayoutFinding> Entries { get; } = [];
 
     internal static void AssertNoUnexpected(IEnumerable<LayoutFinding> source, bool requireAllExpected,
         MatrixCaptureSelection? selection = null)

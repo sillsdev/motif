@@ -156,10 +156,12 @@ internal sealed class InterlinearWord : Control
         var contentWidth = Math.Max(Math.Max(wordWidth, noteWidth), Math.Max(fieldWidth, panWidth));
         _width = Math.Min(widthLimit, contentWidth);
         if (!double.IsFinite(_width)) _width = contentWidth;
-        var wordHeight = WholePixels(InkHeight(word), scale);
+        var (wordRise, wordDrop) = InkExtent(word);
+        var wordInset = WholePixels(wordRise, scale);
+        var wordHeight = WholePixels(wordInset + wordDrop, scale);
         var y = wordHeight;
         _runs.Add(new Run(_data.Text, word, new Rect(rtl ? _width - wordWidth : 0, 0, wordWidth, wordHeight),
-            rtl ? FlowDirection.RightToLeft : FlowDirection.LeftToRight, ReadingSource.Word));
+            rtl ? FlowDirection.RightToLeft : FlowDirection.LeftToRight, ReadingSource.Word, wordInset));
         var fieldHeight = Place(field, y, _width, rtl, ReadingSource.FieldWorks, scale);
         if (note is not null && field.Count == 0 && pan.Count > 0)
         {
@@ -199,12 +201,17 @@ internal sealed class InterlinearWord : Control
     internal static double WholePixels(double value, double scale) => Math.Ceiling(value * scale - 1e-6) / scale;
 
     // Stacked marks and tall fallback faces paint past the shaped line box, so a band holds the outlines.
-    private static double InkHeight(TextLayout layout)
+    private static (double Rise, double Drop) InkExtent(TextLayout layout)
     {
+        var top = 0d;
         var bottom = layout.Height;
         foreach (var shaped in layout.TextLines[0].TextRuns.OfType<ShapedTextRun>())
-            if (shaped.GlyphRun.BuildGeometry()?.Bounds is { Height: > 0 } ink) bottom = Math.Max(bottom, ink.Bottom);
-        return bottom;
+            if (shaped.GlyphRun.BuildGeometry()?.Bounds is { Height: > 0 } ink)
+            {
+                top = Math.Min(top, ink.Top);
+                bottom = Math.Max(bottom, ink.Bottom);
+            }
+        return (-top, bottom);
     }
 
     private static double ColumnsWidth(List<Column> columns) => columns.Sum(c => c.Width) + Math.Max(0, columns.Count - 1) * Gap;
@@ -228,14 +235,17 @@ internal sealed class InterlinearWord : Control
         var y = top;
         foreach (var group in groups)
         {
-            var formHeight = WholePixels(group.Max(c => InkHeight(c.Form)), scale);
-            var glossHeight = WholePixels(group.Max(c => InkHeight(c.Gloss)), scale);
+            // One inset per row so every column in it keeps the same text line.
+            var formInset = WholePixels(group.Max(c => InkExtent(c.Form).Rise), scale);
+            var glossInset = WholePixels(group.Max(c => InkExtent(c.Gloss).Rise), scale);
+            var formHeight = WholePixels(formInset + group.Max(c => InkExtent(c.Form).Drop), scale);
+            var glossHeight = WholePixels(glossInset + group.Max(c => InkExtent(c.Gloss).Drop), scale);
             var x = rtl ? width : 0;
             foreach (var column in group)
             {
                 if (rtl) x -= column.Width;
-                _runs.Add(new Run(column.FormText, column.Form, new Rect(x, y, column.Form.WidthIncludingTrailingWhitespace, formHeight), column.FormDirection, source));
-                _runs.Add(new Run(column.GlossText, column.Gloss, new Rect(x, y + formHeight, column.Gloss.WidthIncludingTrailingWhitespace, glossHeight), column.GlossDirection, source));
+                _runs.Add(new Run(column.FormText, column.Form, new Rect(x, y, column.Form.WidthIncludingTrailingWhitespace, formHeight), column.FormDirection, source, formInset));
+                _runs.Add(new Run(column.GlossText, column.Gloss, new Rect(x, y + formHeight, column.Gloss.WidthIncludingTrailingWhitespace, glossHeight), column.GlossDirection, source, glossInset));
                 x += rtl ? -Gap : column.Width + Gap;
             }
             y += formHeight + glossHeight;
@@ -272,9 +282,9 @@ internal sealed class InterlinearWord : Control
                 var start = Math.Min(_anchor, _active);
                 var end = Math.Max(_anchor, _active);
                 foreach (var bounds in run.Layout.TextLines[0].GetTextBounds(start, end - start))
-                    context.FillRectangle(selection, bounds.Rectangle.Translate(run.Bounds.Position));
+                    context.FillRectangle(selection, bounds.Rectangle.Translate(run.Bounds.Position + new Point(0, run.Inset)));
             }
-            run.Layout.Draw(context, run.Bounds.Position);
+            run.Layout.Draw(context, run.Bounds.Position + new Point(0, run.Inset));
         }
     }
 
@@ -420,7 +430,12 @@ internal sealed class InterlinearWord : Control
 
     private readonly record struct ModelKey(TextStyles Styles, long StyleRevision, long DataRevision, double Width, IBrush Foreground,
         IBrush PanGlossForeground, double NoteHeight, double NoteWidth, double Scale);
-    internal sealed record Run(string Text, TextLayout Layout, Rect Bounds, FlowDirection Direction, ReadingSource Source);
+    /// <summary>
+    /// One drawn line of text. <paramref name="Bounds"/> is its whole band; the layout is drawn <paramref name="Inset"/> below
+    /// the band's top so ink that rises above the shaped line box stays inside the band.
+    /// </summary>
+    internal sealed record Run(string Text, TextLayout Layout, Rect Bounds, FlowDirection Direction, ReadingSource Source,
+        double Inset = 0);
     private sealed record Column(string FormText, string GlossText, TextLayout Form, TextLayout Gloss,
         FlowDirection FormDirection, FlowDirection GlossDirection)
     {

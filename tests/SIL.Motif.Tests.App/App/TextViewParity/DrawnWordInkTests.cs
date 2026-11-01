@@ -17,11 +17,13 @@ public sealed class DrawnWordInkTests
 {
     private const double Epsilon = 0.01;
     private const string Stacked = "p̣̩̖ q̣̖ j̣̩ ";
+    // Capitals with stacked accents that the bundled DejaVu Sans draws past its line box.
+    private const string Raised = "\u1EA4\u1EA8\u1EAA\u1EAE\u01FA\u01D7\u1E4C\u1E52\u1ED0\u1EC2\u1E08";
 
     public static TheoryData<string, StripState> Cases()
     {
         var data = new TheoryData<string, StripState>();
-        foreach (var name in new[] { "ltr", "rtl", "ltr-stacked", "rtl-stacked" })
+        foreach (var name in new[] { "ltr", "rtl", "ltr-stacked", "rtl-stacked", "ltr-raised", "rtl-raised" })
             foreach (var state in Enum.GetValues<StripState>())
                 data.Add(name, state);
         return data;
@@ -40,6 +42,11 @@ public sealed class DrawnWordInkTests
 
             Assert.True(drawn.Bounds.Bottom <= wordLine.Bounds.Height + Epsilon,
                 $"The drawn word ends at {drawn.Bounds.Bottom}, below its word line's {wordLine.Bounds.Height}.");
+
+            if (name.EndsWith("raised", StringComparison.Ordinal))
+                Assert.True(drawn.Runs.Any(run => run.Inset > 0), "The raised marks do not rise above the line box, so this case checks nothing: " +
+                    string.Join(", ", drawn.Runs.SelectMany(run => run.Layout.TextLines[0].TextRuns.OfType<ShapedTextRun>())
+                        .Select(shaped => shaped.GlyphRun.GlyphTypeface.FamilyName).Distinct()));
 
             foreach (var run in drawn.Runs)
             {
@@ -69,6 +76,8 @@ public sealed class DrawnWordInkTests
     private static TextViewSample Sample(string name)
     {
         var plain = TextViewSample.Named(name.Split('-')[0]);
+        if (name.EndsWith("raised", StringComparison.Ordinal))
+            return plain with { Forms = [.. plain.Forms.Select(form => form[..1] + Raised + form[1..])] };
         return name.EndsWith("stacked", StringComparison.Ordinal)
             ? plain with { Glosses = [.. plain.Glosses.Select(gloss => Stacked + gloss)] }
             : plain;
@@ -80,7 +89,8 @@ public sealed class DrawnWordInkTests
         var boxes = run.Layout.TextLines[0].TextRuns.OfType<ShapedTextRun>()
             .Select(shaped => shaped.GlyphRun.BuildGeometry()?.Bounds).Where(bounds => bounds is { Height: > 0 })
             .Select(bounds => bounds!.Value).ToArray();
-        return (run.Bounds.Y + boxes.Min(box => box.Top), run.Bounds.Y + boxes.Max(box => box.Bottom));
+        var origin = run.Bounds.Y + run.Inset;
+        return (origin + boxes.Min(box => box.Top), origin + boxes.Max(box => box.Bottom));
     }
 
     /// <summary>The lowest window row, in device-independent pixels, that hiding the word changes.</summary>

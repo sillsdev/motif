@@ -68,6 +68,108 @@ public sealed class ClearTipPlacementTests
     }
 
     [Fact]
+    public void ATipWiderThanItsLineHangsAboveTheWholeLineWhenEverySideBesideTheOwnerIsTaken()
+    {
+        var line = new Rect(300, 380, 300, 100);
+        var wide = new Size(400, 40);
+        Rect[] neighbours = [new(0, 380, 300, 100), new(600, 380, 300, 100)];
+
+        var plan = ClearTipPlacement.Plan(Owner, line, wide, Window, neighbours);
+
+        Assert.Equal((PopupAnchor.Top, PopupGravity.Top), (plan.Side, plan.Gravity));
+        Assert.Equal(new Rect(400, 380, 100, 100), plan.Anchor);
+        var area = ClearTipPlacement.Area(plan.Anchor, wide, plan.Side, plan.Gravity);
+        Assert.All(neighbours, neighbour => Assert.False(area.Intersects(neighbour)));
+        Assert.True(Window.Contains(area));
+    }
+
+    [Fact]
+    public void ATipKeepsItsOwnersSideWhenThatSideIsClearEvenInsideALine()
+    {
+        var plan = ClearTipPlacement.Plan(Owner, new Rect(300, 380, 300, 100), Tip, Window, []);
+
+        Assert.Equal(Owner, plan.Anchor);
+        Assert.Equal((PopupAnchor.Top, PopupGravity.Top), (plan.Side, plan.Gravity));
+    }
+
+    [Fact]
+    public void ATipWithoutALineChoosesExactlyAsItDidBefore()
+    {
+        Rect[] crowded = [new(0, 0, 1000, 395), new(0, 0, 1000, 380), new(0, 435, 1000, 365), new(0, 395, 395, 40), new(505, 395, 495, 40)];
+
+        var plan = ClearTipPlacement.Plan(Owner, null, Tip, Window, crowded);
+
+        Assert.Equal((Owner, PopupAnchor.Left, PopupGravity.Left), plan);
+    }
+
+    private static readonly Size WideTip = new(400, 40);
+
+    [Fact]
+    public void ATipNearTheRightEdgeHangsAboveTheLineGrowingLeft()
+    {
+        var owner = new Rect(880, 400, 100, 30);
+        var line = new Rect(800, 320, 200, 150);
+        Rect[] beside = [new(580, 360, 300, 80)];
+
+        var plan = ClearTipPlacement.Plan(owner, line, WideTip, Window, beside);
+
+        Assert.Equal((new Rect(880, 320, 100, 150), PopupAnchor.TopRight, PopupGravity.TopLeft), plan);
+        var area = ClearTipPlacement.Area(plan.Anchor, WideTip, plan.Side, plan.Gravity);
+        Assert.True(Window.Contains(area));
+        Assert.All(beside, obstacle => Assert.False(area.Intersects(obstacle)));
+    }
+
+    [Fact]
+    public void ATipNearTheLeftEdgeHangsAboveTheLineGrowingRight()
+    {
+        var owner = new Rect(20, 400, 100, 30);
+        var line = new Rect(0, 320, 200, 150);
+        Rect[] beside = [new(120, 360, 300, 80)];
+
+        var plan = ClearTipPlacement.Plan(owner, line, WideTip, Window, beside);
+
+        Assert.Equal((new Rect(20, 320, 100, 150), PopupAnchor.TopLeft, PopupGravity.TopRight), plan);
+        Assert.True(Window.Contains(ClearTipPlacement.Area(plan.Anchor, WideTip, plan.Side, plan.Gravity)));
+    }
+
+    [Fact]
+    public void ATipKeepsItsOldChoiceWhenTheLineIsATallContainer()
+    {
+        var owner = new Rect(880, 400, 100, 30);
+        Rect[] beside = [new(580, 360, 300, 80)];
+        var old = ClearTipPlacement.Choose(owner, WideTip, Window, beside);
+
+        var plan = ClearTipPlacement.Plan(owner, new Rect(800, 100, 200, 5 * ClearTipPlacement.MaxLineTips * WideTip.Height), WideTip, Window, beside);
+
+        Assert.Equal((owner, old.Anchor, old.Gravity), plan);
+    }
+
+    [Fact]
+    public void ATipKeepsItsOldChoiceWhenTheLineSideCoversAControlToo()
+    {
+        var owner = new Rect(880, 400, 100, 30);
+        Rect[] crowded = [new(580, 360, 300, 80), new(580, 270, 400, 50), new(580, 480, 400, 50)];
+        var old = ClearTipPlacement.Choose(owner, WideTip, Window, crowded);
+
+        var plan = ClearTipPlacement.Plan(owner, new Rect(800, 320, 200, 150), WideTip, Window, crowded);
+
+        Assert.Equal((owner, old.Anchor, old.Gravity), plan);
+    }
+
+    [Fact]
+    public void ATipHangingAboveTheLineKeepsTheOwnersClearance()
+    {
+        var owner = new Rect(870, 390, 120, 50);
+        var line = new Rect(800, 320, 200, 150);
+        Rect[] beside = [new(580, 350, 300, 100)];
+
+        var plan = ClearTipPlacement.Plan(owner, line, WideTip, Window, beside, clearance: 10);
+
+        Assert.Equal(new Rect(870, 310, 120, 170), plan.Anchor);
+        Assert.Equal(PopupAnchor.TopRight, plan.Side);
+    }
+
+    [Fact]
     public void ObstacleBoundsIncludeTheFullScaleAndTranslation()
     {
         var transformed = ClearTipPlacement.TransformBounds(new Rect(0, 0, 100, 20),
