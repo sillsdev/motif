@@ -312,7 +312,7 @@ public sealed class ToolSurfaceTests
         Assert.DoesNotContain("intentsJson", batch.Tool.ArgumentNames);
         var branches = intents["items"]!["oneOf"]!.AsArray();
         var verbs = branches.Select(branch => branch!["properties"]!["verb"]!["enum"]![0]!.GetValue<string>()).ToArray();
-        Assert.Equal(47, verbs.Length);
+        Assert.Equal(48, verbs.Length);
         Assert.Equal(new[]
         {
             "compose-author-lexeme-form",
@@ -333,6 +333,7 @@ public sealed class ToolSurfaceTests
             "compose-edit-compound-rule",
             "compose-set-no-default-compounding",
             "compose-set-not-on-clitics",
+            "compose-author-circumfix",
             "compose-set-entry-do-not-parse",
             "compose-rewrite-lexeme-form",
             "compose-author-natural-class",

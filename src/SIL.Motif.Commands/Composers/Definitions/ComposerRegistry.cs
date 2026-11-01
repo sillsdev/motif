@@ -36,6 +36,7 @@ internal static class ComposerDefinitions
         new EditStemInflectionClassDefinition(),
         new SetNoDefaultCompoundingDefinition(),
         new SetNotOnCliticsDefinition(),
+        new AuthorCircumfixDefinition(),
         new SetEntryDoNotParseDefinition(),
         new RewriteLexemeFormDefinition(),
         new SetStemPartOfSpeechDefinition(),

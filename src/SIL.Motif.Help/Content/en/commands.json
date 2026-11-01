@@ -1144,6 +1144,34 @@
     ],
     "redirect": "Use for infixes, reduplication and stem-internal changes. Another pattern-based form of an existing entry: compose-author-affix-process-allomorph. Regular nasal assimilation is a phonological rule (guide nasal-assimilation)."
   },
+  "compose-author-circumfix": {
+    "title": "Author a circumfix",
+    "description": "Stages a new circumfix entry as FieldWorks holds it: one entry whose prefix part and suffix part attach to a stem together, with one sense and one grammatical analysis. The parser pairs the two parts, so neither part alone attaches. Dry Run and Trial before a person Applies the Proposal.",
+    "source": "Authored from the typed command contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "prefix": "The prefix part, in the vernacular writing system formWs, without hyphens (for example ke for ke-...-an).",
+      "suffix": "The suffix part, in formWs, without hyphens (for example an).",
+      "formWs": "Vernacular writing system tag for both parts.",
+      "gloss": "The sense's gloss.",
+      "analysisWs": "Analysis writing system tag for the gloss and definition.",
+      "definition": "Optional definition of the sense.",
+      "msa": "Affix grammatical info: kind inflectional, derivational or unclassified, its category, for derivational also toCategory, and for inflectional also slots.",
+      "prefixEnvironments": "Optional ids of environments the prefix part occurs in; absent means any.",
+      "suffixEnvironments": "Optional ids of environments the suffix part occurs in; absent means any.",
+      "inflectionClasses": "Optional ids of inflection classes both parts attach to; inflectional and unclassified affixes only."
+    },
+    "goals": [
+      "Add a circumfix whose prefix and suffix attach to a stem together",
+      "Give a two-part marker one entry and one gloss",
+      "Limit each part of a circumfix to its own sound environments"
+    ],
+    "guides": [
+      "workflow",
+      "suffix-prefix-slots"
+    ],
+    "redirect": "Use when one meaning is marked on both sides of the stem at once. Markers that can occur apart are two entries in slots (guide suffix-prefix-slots)."
+  },
   "compose-author-feature-value": {
     "title": "Author a feature value",
     "description": "Stages a closed feature specification in an existing or earlier-staged structure, with value omitted when unchosen. Inflectional affix requirements use current morphosyntactic definitions, and any supplied value must belong to the exact feature. Only a person can Apply.",

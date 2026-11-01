@@ -56,7 +56,7 @@ public static class MorphTypeEditSafety
         "An in-place morph-type edit keeps an affix form among the affix types; changing families requires a different analysis.";
 
     private const string CircumfixMessage =
-        "A circumfix is two parts in one entry, so a single form cannot be edited into or out of a circumfix; author both parts.";
+        "A circumfix is two parts in one entry, so a single form cannot be edited into or out of a circumfix; author both parts with compose-author-circumfix.";
 
     private static bool IsCircumfix(IMoMorphType type) => type.Guid == MoMorphTypeTags.kguidMorphCircumfix;
 

@@ -4774,6 +4774,131 @@
                     "type": "string",
                     "description": "Composing verb for this intent.",
                     "enum": [
+                      "compose-author-circumfix"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for compose-author-circumfix.",
+                    "properties": {
+                      "prefix": {
+                        "type": "string",
+                        "description": "The prefix part, in the vernacular writing system formWs, without hyphens (for example ke for ke-...-an)."
+                      },
+                      "suffix": {
+                        "type": "string",
+                        "description": "The suffix part, in formWs, without hyphens (for example an)."
+                      },
+                      "formWs": {
+                        "type": "string",
+                        "description": "Vernacular writing system tag for both parts."
+                      },
+                      "gloss": {
+                        "type": "string",
+                        "description": "The sense\u0027s gloss."
+                      },
+                      "analysisWs": {
+                        "type": "string",
+                        "description": "Analysis writing system tag for the gloss and definition."
+                      },
+                      "definition": {
+                        "type": "string",
+                        "description": "Optional definition of the sense."
+                      },
+                      "msa": {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "inflectional",
+                              "derivational",
+                              "unclassified"
+                            ]
+                          },
+                          "category": {
+                            "type": "string"
+                          },
+                          "toCategory": {
+                            "type": "string"
+                          },
+                          "slots": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "category"
+                        ],
+                        "additionalProperties": false,
+                        "description": "Affix grammatical info: kind inflectional, derivational or unclassified, its category, for derivational also toCategory, and for inflectional also slots."
+                      },
+                      "prefixEnvironments": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Optional ids of environments the prefix part occurs in; absent means any."
+                      },
+                      "suffixEnvironments": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Optional ids of environments the suffix part occurs in; absent means any."
+                      },
+                      "inflectionClasses": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Optional ids of inflection classes both parts attach to; inflectional and unclassified affixes only."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "prefix",
+                      "suffix",
+                      "formWs",
+                      "gloss",
+                      "analysisWs",
+                      "msa"
+                    ]
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
                       "compose-set-entry-do-not-parse"
                     ]
                   },
@@ -6408,6 +6533,113 @@
         "draft",
         "expectedNotOnClitics",
         "notOnClitics",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_add_circumfix",
+    "description": "Author a circumfix. Research first: motif_guide topic workflow or suffix-prefix-slots; check best practice. Use when one meaning is marked on both sides of the stem at once. Markers that can occur apart are two entries in slots (guide suffix-prefix-slots). Stages a new circumfix entry as FieldWorks holds it: one entry whose prefix part and suffix part attach to a stem together, with one sense and one grammatical analysis. The parser pairs the two parts, so neither part alone attaches. Dry Run and Trial before a person Applies the Proposal.\nCommand: compose-author-circumfix. Agent class: Draft.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "Draft name."
+        },
+        "prefix": {
+          "type": "string",
+          "description": "The prefix part, in the vernacular writing system formWs, without hyphens (for example ke for ke-...-an)."
+        },
+        "suffix": {
+          "type": "string",
+          "description": "The suffix part, in formWs, without hyphens (for example an)."
+        },
+        "formWs": {
+          "type": "string",
+          "description": "Vernacular writing system tag for both parts."
+        },
+        "gloss": {
+          "type": "string",
+          "description": "The sense\u0027s gloss."
+        },
+        "analysisWs": {
+          "type": "string",
+          "description": "Analysis writing system tag for the gloss and definition."
+        },
+        "definition": {
+          "type": "string",
+          "description": "Optional definition of the sense."
+        },
+        "msa": {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "inflectional",
+                "derivational",
+                "unclassified"
+              ]
+            },
+            "category": {
+              "type": "string"
+            },
+            "toCategory": {
+              "type": "string"
+            },
+            "slots": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "kind",
+            "category"
+          ],
+          "additionalProperties": false,
+          "description": "Affix grammatical info: kind inflectional, derivational or unclassified, its category, for derivational also toCategory, and for inflectional also slots."
+        },
+        "prefixEnvironments": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Optional ids of environments the prefix part occurs in; absent means any."
+        },
+        "suffixEnvironments": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Optional ids of environments the suffix part occurs in; absent means any."
+        },
+        "inflectionClasses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Optional ids of inflection classes both parts attach to; inflectional and unclassified affixes only."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "draft",
+        "prefix",
+        "suffix",
+        "formWs",
+        "gloss",
+        "analysisWs",
+        "msa",
         "project"
       ],
       "additionalProperties": false

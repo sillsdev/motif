@@ -121,6 +121,7 @@ public static class ChangeVocabulary
             ["AuthorAffixSlot"] = ("Add affix slot", "Add an affix slot"),
             ["AuthorPartOfSpeech"] = ("Add category", "Add a part of speech"),
             ["AuthorLexicalEntry"] = ("Add entry", "Add a dictionary entry"),
+            ["AuthorCircumfix"] = ("Add circumfix", "Add a circumfix entry with a prefix part and a suffix part"),
             ["AuthorAlternateForm"] = ("Add alternate form", "Add an alternate form to an entry"),
             ["AuthorAffixProcessAllomorph"] = ("Add process allomorph", "Add an affix process allomorph to an entry"),
             ["AuthorAffixTemplate"] = ("Add affix template", "Add an affix template"),

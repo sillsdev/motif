@@ -165,6 +165,7 @@ public sealed class HelpCatalogTests
                      "compose-author-affix-slot",
                      "compose-author-affix-template",
                      "compose-author-lexical-entry",
+                     "compose-author-circumfix",
                      "compose-author-alternate-form",
                      "compose-edit-allomorph-condition",
                      "compose-edit-part-of-speech-inflection-class-default",
