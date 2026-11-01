@@ -5,6 +5,7 @@ using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using SIL.Motif.Commands.Catalog;
+using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Help;
@@ -108,12 +109,24 @@ internal static class CatalogTools
 
     private static bool IsContext(string name) => name is "ProjectPath" or "FwDataPath" or "ProductVersion";
 
+    // Pages an agent should get smaller by default than the command's own default.
+    private static readonly Dictionary<Type, (int Minimum, int Maximum, int Default)> PageLimits = new()
+    {
+        [typeof(EvidenceExportRequest)] = (1, 500, 50),
+    };
+
     private static AgentTool Create(CommandDescriptor command)
     {
         _ = Handler(command);
         var schema = Schema.Object(command.RequestType.GetProperties().Where(property => !IsContext(property.Name))
             .Select(property => (JsonNamingPolicy.CamelCase.ConvertName(property.Name),
                 FieldSchema(property.PropertyType), Required(command.RequestType, property))).ToArray());
+        if (PageLimits.TryGetValue(command.RequestType, out var page) && schema["properties"]?["limit"] is JsonObject limit)
+        {
+            limit["minimum"] = page.Minimum;
+            limit["maximum"] = page.Maximum;
+            limit["default"] = page.Default;
+        }
         return new AgentTool(Name(command), Describe([command]), command.Agent, schema,
             command.Agent == AgentClass.Read, command.Agent == AgentClass.Read, false, true,
             (context, args, cancellation) => Invoke(command, context, args, cancellation))
@@ -162,6 +175,8 @@ internal static class CatalogTools
     {
         var json = args.Copy();
         json.Remove("project");
+        if (PageLimits.TryGetValue(command.RequestType, out var page) && !json.ContainsKey("limit"))
+            json["limit"] = page.Default;
         foreach (var property in command.RequestType.GetProperties().Where(p => IsContext(p.Name)))
             json[JsonNamingPolicy.CamelCase.ConvertName(property.Name)] = property.Name == "ProductVersion"
                 ? context.ProductVersion : context.ProjectPath;

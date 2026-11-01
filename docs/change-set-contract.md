@@ -115,8 +115,8 @@ of at most 120; `detail` accepts only `intendedForm`, `editType`, `violatedRule`
 `corpusCount`. A tier names the detail it requires: `misspelled-typo` needs `intendedForm` and `editType`,
 `ill-formed` needs `violatedRule`, `nonstandard-variant` needs `standardForm`, and `source-approved` needs a
 dictionary, a grammar and a corpus source. An operation carries at most one, and a malformed or repeated entry makes
-the Proposal unparseable. It is outside the intent digest and outside the FieldWorks project; `motif evidence show`
-and `motif evidence list` read it from Applied Proposals, and every row is labelled source-validated, not human.
+the Proposal unparseable. It is outside the intent digest and outside the FieldWorks project; `motif evidence show`,
+`motif evidence list` and `motif evidence export` read it from Applied Proposals, and every row is labelled source-validated, not human.
 
 ## Operation vocabulary
 

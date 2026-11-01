@@ -490,3 +490,12 @@ public sealed record EvidenceShowRequest(string FwDataPath, string ProductVersio
 /// <param name="Limit">The page size.</param>
 public sealed record EvidenceListRequest(
     string FwDataPath, string ProductVersion, string? Tier = null, int Offset = 0, int Limit = 50);
+
+/// <summary>Reads one bounded page of every decision evidence record, for export.</summary>
+/// <param name="FwDataPath">The FieldWorks project.</param>
+/// <param name="ProductVersion">The running product version.</param>
+/// <param name="Tier">Only records of this tier, when given.</param>
+/// <param name="After">The <c>next</c> cursor of the previous page; omit for the first page.</param>
+/// <param name="Limit">The most records in the page, 1 to 500.</param>
+public sealed record EvidenceExportRequest(
+    string FwDataPath, string ProductVersion, string? Tier = null, string? After = null, int Limit = 500);

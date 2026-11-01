@@ -1021,6 +1021,20 @@ try
                     evidenceLimit)));
                 break;
             }
+            if (positionals.Count == 1 && positionals[0] == "export")
+            {
+                var exportPageSize = EvidenceExportCli.DefaultPageSize;
+                if (!flags.TryGetValue("project", out var evidenceExportProject) ||
+                    flags.TryGetValue("out", out var exportOutText) && (exportOutText == "true" || exportOutText.Length == 0) ||
+                    flags.TryGetValue("page-size", out var exportPageSizeText) &&
+                    (!int.TryParse(exportPageSizeText, NumberStyles.None, CultureInfo.InvariantCulture, out exportPageSize) ||
+                     exportPageSize is < 1 or > 500))
+                    return Usage(UsageLineFor("evidence export"), asJson);
+                alreadyRendered = true;
+                result = EvidenceExportCli.Run(evidenceExportProject, CliProductVersion(), flags.GetValueOrDefault("tier"),
+                    exportPageSize, flags.GetValueOrDefault("out"), output, asJson);
+                break;
+            }
             return Usage(UsageLineFor("evidence show"), asJson);
 
         case "add-corpus":

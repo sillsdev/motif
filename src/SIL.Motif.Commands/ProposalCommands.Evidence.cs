@@ -1,9 +1,11 @@
 using SIL.Motif.Projection;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Ids;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Contract.Model;
 using SIL.Motif.Contract.Responses;
@@ -64,33 +66,127 @@ public static partial class ProposalCommands
         });
     }
 
+    /// <summary>
+    /// Reads one bounded page of every decision evidence record, in Proposal id order, so a caller can
+    /// stream a whole export without holding it; pass each page's <c>Next</c> as the following request's <c>After</c>.
+    /// A page loads only the Proposals it reads rows from, pinned by `APageLoadsOnlyTheProposalsItReadsRowsFrom`,
+    /// and refuses a cursor the store or filter has outgrown, pinned by `ACursorRefusesWhenAProposalWasAppliedAfterItWasIssued`.
+    /// </summary>
+    public static CommandOutcome<DecisionEvidenceExportResponse> EvidenceExport(EvidenceExportRequest request)
+    {
+        if (request.Tier is not null && !DecisionEvidence.Tiers.Contains(request.Tier, StringComparer.Ordinal))
+            return CommandOutcome<DecisionEvidenceExportResponse>.Refused(new Refusal(
+                RefusalCodes.EvidenceUnknownTier, FailureReason.InvalidArgument,
+                $"'{request.Tier}' is not a tier. Use one of: {string.Join(", ", DecisionEvidence.Tiers)}."));
+        if (request.Limit < 1 || request.Limit > 500)
+            return CommandOutcome<DecisionEvidenceExportResponse>.Refused(new Refusal(
+                RefusalCodes.EvidenceInvalidPage, FailureReason.InvalidArgument,
+                "The limit must be between 1 and 500."));
+        ExportCursor? cursor = null;
+        if (request.After is not null && !ExportCursor.TryParse(request.After, out cursor))
+            return CommandOutcome<DecisionEvidenceExportResponse>.Refused(new Refusal(
+                RefusalCodes.EvidenceInvalidCursor, FailureReason.InvalidArgument,
+                "'after' must be the 'next' value an earlier page of this export returned."));
+        if (cursor is not null && cursor.Tier != request.Tier)
+            return CommandOutcome<DecisionEvidenceExportResponse>.Refused(new Refusal(
+                RefusalCodes.EvidenceInvalidCursor, FailureReason.InvalidArgument,
+                "'after' came from an export with a different tier filter. Start the export again with the same tier."));
+        return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, locator) =>
+        {
+            string? reading = null;
+            try
+            {
+                var repository = new ProposalRepository(database);
+                var applied = AppliedListings(repository);
+                if (cursor is not null && cursor.Applied != applied.Length)
+                    return CommandOutcome<DecisionEvidenceExportResponse>.Refused(new Refusal(
+                        RefusalCodes.EvidenceInvalidCursor, FailureReason.InvalidArgument,
+                        "Applied Proposals changed since this export began, so its later pages could miss records. " +
+                        "Start the export again."));
+                var rows = new List<DecisionEvidenceRow>();
+                foreach (var listing in applied)
+                {
+                    var proposal = listing.ProposalId.Value;
+                    if (cursor is not null && string.CompareOrdinal(proposal, cursor.Proposal) < 0) continue;
+                    var taken = cursor is not null && cursor.Proposal == proposal ? cursor.Skip : 0;
+                    reading = proposal;
+                    foreach (var row in RowsOf(repository, listing).Where(row => request.Tier is null || row.Tier == request.Tier)
+                                 .Skip(taken))
+                    {
+                        if (rows.Count == request.Limit)
+                            return CommandOutcome<DecisionEvidenceExportResponse>.Success(new DecisionEvidenceExportResponse(
+                                DecisionEvidenceExport.Format, rows,
+                                new ExportCursor(applied.Length, request.Tier, proposal, taken).ToString()));
+                        rows.Add(row);
+                        taken++;
+                    }
+                }
+                return CommandOutcome<DecisionEvidenceExportResponse>.Success(
+                    new DecisionEvidenceExportResponse(DecisionEvidenceExport.Format, rows, null));
+            }
+            catch (Exception exception) when (exception is not ProjectWritingSystemsUnavailableException)
+            {
+                var refusal = ProposalLoadRefusal(exception);
+                return CommandOutcome<DecisionEvidenceExportResponse>.Refused(reading is null ? refusal
+                    : new Refusal(refusal.Code, refusal.Reason, refusal.Message,
+                        new Dictionary<string, string> { ["proposalId"] = reading }));
+            }
+        });
+    }
+
+    // The cursor carries the Applied count and tier so a changed store or filter is refused.
+    private sealed record ExportCursor(int Applied, string? Tier, string Proposal, int Skip)
+    {
+        public override string ToString() => string.Join(':', Applied.ToString(CultureInfo.InvariantCulture), Tier ?? "",
+            Proposal, Skip.ToString(CultureInfo.InvariantCulture));
+
+        public static bool TryParse(string text, out ExportCursor? cursor)
+        {
+            cursor = null;
+            var first = text.IndexOf(':');
+            var second = first < 0 ? -1 : text.IndexOf(':', first + 1);
+            var last = text.LastIndexOf(':');
+            if (second < 0 || last <= second) return false;
+            var tier = text[(first + 1)..second];
+            if (!int.TryParse(text[..first], NumberStyles.None, CultureInfo.InvariantCulture, out var applied) ||
+                !CanonicalId.TryParse(text[(second + 1)..last], out var proposal) ||
+                !int.TryParse(text[(last + 1)..], NumberStyles.None, CultureInfo.InvariantCulture, out var skip) ||
+                tier.Length > 0 && !DecisionEvidence.Tiers.Contains(tier, StringComparer.Ordinal)) return false;
+            cursor = new ExportCursor(applied, tier.Length == 0 ? null : tier, proposal.Value, skip);
+            return true;
+        }
+    }
+
+    private static ProposalListing[] AppliedListings(ProposalRepository repository) =>
+        repository.ListWithoutContent(new ProposalListFilter(ManifestStatus.Applied, IncludeArchived: true))
+            .OrderBy(listing => listing.ProposalId.Value, StringComparer.Ordinal).ToArray();
+
     internal static DecisionEvidenceRow[] ReadEvidenceRows(MotifDatabase database, out int appliedCount)
     {
         var repository = new ProposalRepository(database);
-        var rows = new List<DecisionEvidenceRow>();
-        var applied = repository.List(new ProposalListFilter(ManifestStatus.Applied, IncludeArchived: true))
-            .OrderBy(record => record.ProposalId.Value, StringComparer.Ordinal).ToArray();
+        var applied = AppliedListings(repository);
         appliedCount = applied.Length;
-        foreach (var record in applied)
+        return applied.SelectMany(listing => RowsOf(repository, listing)).ToArray();
+    }
+
+    private static IEnumerable<DecisionEvidenceRow> RowsOf(ProposalRepository repository, ProposalListing listing)
+    {
+        var (_, envelope) = repository.GetFinalized(listing.ProposalId);
+        foreach (var operation in envelope.Operations)
         {
-            var (_, envelope) = repository.GetFinalized(record.ProposalId);
-            foreach (var operation in envelope.Operations)
+            var evidence = DecisionEvidence.FromProvenance(operation.Provenance);
+            var subject = operation.Target?.Value ?? operation.EntityId?.Value;
+            if (evidence is null || subject is null) continue;
+            DecisionEvidenceAgent? agent = null;
+            if (operation.Kind == SIL.Motif.Runner.Operations.WfiAnalysisAgentEvaluationOperationKinds.Add &&
+                operation.After is { } after)
             {
-                var evidence = DecisionEvidence.FromProvenance(operation.Provenance);
-                var subject = operation.Target?.Value ?? operation.EntityId?.Value;
-                if (evidence is null || subject is null) continue;
-                DecisionEvidenceAgent? agent = null;
-                if (operation.Kind == SIL.Motif.Runner.Operations.WfiAnalysisAgentEvaluationOperationKinds.Add &&
-                    operation.After is { } after)
-                {
-                    var payload = SIL.Motif.Runner.Operations.AgentEvaluationPayload.Parse(after);
-                    agent = new DecisionEvidenceAgent(payload.AgentId.Value, payload.Name, payload.Version,
-                        payload.Approves ? "approves" : "disapproves");
-                }
-                rows.Add(new DecisionEvidenceRow(record.ProposalId.Value, record.Label, operation.OperationId.Value,
-                    operation.Kind, subject, evidence.Tier, evidence.Sources, evidence.Detail, evidence.StagedBy, agent));
+                var payload = SIL.Motif.Runner.Operations.AgentEvaluationPayload.Parse(after);
+                agent = new DecisionEvidenceAgent(payload.AgentId.Value, payload.Name, payload.Version,
+                    payload.Approves ? "approves" : "disapproves");
             }
+            yield return new DecisionEvidenceRow(listing.ProposalId.Value, listing.Label, operation.OperationId.Value,
+                operation.Kind, subject, evidence.Tier, evidence.Sources, evidence.Detail, evidence.StagedBy, agent);
         }
-        return rows.ToArray();
     }
 }

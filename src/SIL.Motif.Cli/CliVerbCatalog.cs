@@ -256,6 +256,8 @@ public static class CliVerbCatalog
             new[] { "evidence show <subject> --project <fwdata> [--json]" }),
         new CliVerbDescriptor("Commands", "evidence list", "evidence list",
             new[] { "evidence list --project <fwdata> [--tier <tier>] [--offset <n>] [--limit <n>] [--json]" }),
+        new CliVerbDescriptor("Commands", "evidence export", "evidence export",
+            new[] { "evidence export --project <fwdata> [--out <path.json>] [--tier <tier>] [--page-size <n>] [--json]" }),
 
         new CliVerbDescriptor(
             "Configuration", "config", "config show",

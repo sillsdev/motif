@@ -49,6 +49,7 @@ public static class ProposalCommandRenderer
             CitationTraceResponse r => RenderCitations(r),
             DecisionEvidenceShowResponse r => RenderEvidenceShow(r),
             DecisionEvidenceListResponse r => RenderEvidenceList(r),
+            DecisionEvidenceExportSummary r => RenderEvidenceExport(r),
             DraftCreatedResponse r => RenderDraftCreated(r),
             SetGlossAddedResponse r => RenderSetGlossAdded(r),
             DeleteLexemeFormAddedResponse r => RenderDeleteLexemeFormAdded(r),
@@ -100,6 +101,14 @@ public static class ProposalCommandRenderer
         foreach (var (tier, count) in response.TierCounts) text.AppendLine($"  {tier}: {count}");
         text.AppendLine($"Showing {response.Rows.Count} from offset {response.Offset}.");
         foreach (var row in response.Rows) AppendEvidenceRow(text, row);
+        return text.ToString();
+    }
+
+    private static string RenderEvidenceExport(DecisionEvidenceExportSummary response)
+    {
+        var text = new StringBuilder();
+        text.AppendLine($"Wrote {response.Total} source-validated record(s) to {response.Path}.");
+        foreach (var (tier, count) in response.TierCounts) text.AppendLine($"  {tier}: {count}");
         return text.ToString();
     }
 

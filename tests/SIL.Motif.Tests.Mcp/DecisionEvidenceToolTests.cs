@@ -115,6 +115,132 @@ public sealed class DecisionEvidenceToolTests
         finally { Directory.Delete(directory, true); }
     }
 
+    [Fact]
+    public async Task TheExportToolPagesThroughACursorAndMatchesTheCommandsJsonAndRefusesABadCursor()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "motif-decision-evidence-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        var project = Path.Combine(directory, "project.fwdata");
+        File.WriteAllText(project, "");
+        try
+        {
+            using (var machine = MachineDatabase.Open(RunnerOptions.ResolveRoot()))
+                new KnownProjectRegistry(machine).Record(ProjectWorkspaceKey.Compute(
+                    new ProjectLocator(project, "project")), project, DateTimeOffset.UtcNow);
+            foreach (var tier in new[] { "undecided", "ill-formed", "ill-formed" }) Stage(project, tier);
+            var context = new ServerContext(project, "1.0", new NoRunnerLauncher(
+                new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), null)), new ActivityLog(null),
+                ToolProfile.Load(ShippedProfile()), TextWriter.Null, advancedAiModeEnabled: true);
+            var tools = MotifMcpServer.Expose(ToolProfile.Load(ShippedProfile()));
+            const string export = "motif_evidence_export";
+
+            async Task<JsonElement> Page(params (string Key, object Value)[] arguments)
+            {
+                var map = new Dictionary<string, JsonElement> { ["project"] = JsonSerializer.SerializeToElement(project) };
+                foreach (var (key, value) in arguments) map[key] = JsonSerializer.SerializeToElement(value);
+                var result = await MotifMcpServer.CallAsync(context, tools, export, map, CancellationToken.None);
+                Assert.NotEqual(true, result.IsError);
+                return result.StructuredContent!.Value.GetProperty("result");
+            }
+
+            var schema = (System.Text.Json.Nodes.JsonObject)tools.Single(t => t.Name == export).Tool.InputSchema["properties"]!["limit"]!;
+            Assert.Equal((1, 500, 50), (schema["minimum"]!.GetValue<int>(), schema["maximum"]!.GetValue<int>(),
+                schema["default"]!.GetValue<int>()));
+            var first = await Page(("limit", 2));
+            var second = await Page(("limit", 2), ("after", first.GetProperty("next").GetString()!));
+
+            AssertSameJson(ProposalCommands.EvidenceExport(new EvidenceExportRequest(project, "1.0", null, null, 2)).Value!, first);
+            Assert.Equal(2, first.GetProperty("rows").GetArrayLength());
+            Assert.Equal(1, second.GetProperty("rows").GetArrayLength());
+            Assert.False(second.TryGetProperty("next", out _));
+            Assert.Equal("motif-decision-evidence/1", first.GetProperty("format").GetString());
+            Assert.Equal("source-validated", first.GetProperty("rows")[0].GetProperty("label").GetString());
+
+            var explicitMaximum = await Page(("limit", 500));
+            Assert.Equal(3, explicitMaximum.GetProperty("rows").GetArrayLength());
+            var tooMany = await MotifMcpServer.CallAsync(context, tools, export, new Dictionary<string, JsonElement>
+            {
+                ["project"] = JsonSerializer.SerializeToElement(project),
+                ["limit"] = JsonSerializer.SerializeToElement(501),
+            }, CancellationToken.None);
+            Assert.True(tooMany.IsError);
+            Assert.Equal("tool.invalid-argument", tooMany.StructuredContent!.Value.GetProperty("code").GetString());
+
+            var refused = await MotifMcpServer.CallAsync(context, tools, export, new Dictionary<string, JsonElement>
+            {
+                ["project"] = JsonSerializer.SerializeToElement(project),
+                ["after"] = JsonSerializer.SerializeToElement("nonsense"),
+            }, CancellationToken.None);
+            Assert.True(refused.IsError);
+            Assert.Equal("evidence.invalid-cursor", refused.StructuredContent!.Value.GetProperty("code").GetString());
+        }
+        finally { Directory.Delete(directory, true); }
+    }
+
+    [Fact]
+    public async Task AnOmittedExportLimitReturnsFiftyRowsAndACursor()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "motif-decision-evidence-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        var project = Path.Combine(directory, "project.fwdata");
+        File.WriteAllText(project, "");
+        try
+        {
+            using (var machine = MachineDatabase.Open(RunnerOptions.ResolveRoot()))
+                new KnownProjectRegistry(machine).Record(ProjectWorkspaceKey.Compute(
+                    new ProjectLocator(project, "project")), project, DateTimeOffset.UtcNow);
+            for (var index = 0; index < 52; index++) Stage(project, "undecided");
+            var context = new ServerContext(project, "1.0", new NoRunnerLauncher(
+                new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), null)), new ActivityLog(null),
+                ToolProfile.Load(ShippedProfile()), TextWriter.Null, advancedAiModeEnabled: true);
+            var tools = MotifMcpServer.Expose(ToolProfile.Load(ShippedProfile()));
+
+            var result = await MotifMcpServer.CallAsync(context, tools, "motif_evidence_export",
+                new Dictionary<string, JsonElement> { ["project"] = JsonSerializer.SerializeToElement(project) },
+                CancellationToken.None);
+
+            Assert.NotEqual(true, result.IsError);
+            var page = result.StructuredContent!.Value.GetProperty("result");
+            Assert.Equal(50, page.GetProperty("rows").GetArrayLength());
+            Assert.True(page.TryGetProperty("next", out _));
+        }
+        finally { Directory.Delete(directory, true); }
+    }
+
+    [Fact]
+    public async Task TheListToolDeclaresAndHonoursItsFullPageRange()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "motif-decision-evidence-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        var project = Path.Combine(directory, "project.fwdata");
+        File.WriteAllText(project, "");
+        try
+        {
+            using (var machine = MachineDatabase.Open(RunnerOptions.ResolveRoot()))
+                new KnownProjectRegistry(machine).Record(ProjectWorkspaceKey.Compute(
+                    new ProjectLocator(project, "project")), project, DateTimeOffset.UtcNow);
+            Stage(project, "undecided");
+            var context = new ServerContext(project, "1.0", new NoRunnerLauncher(
+                new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), null)), new ActivityLog(null),
+                ToolProfile.Load(ShippedProfile()), TextWriter.Null, advancedAiModeEnabled: true);
+            var tools = MotifMcpServer.Expose(ToolProfile.Load(ShippedProfile()));
+            var limit = (System.Text.Json.Nodes.JsonObject)tools.Single(t => t.Name == Tool).Tool.InputSchema["properties"]!["limit"]!;
+
+            var aboveTheDefaultWindow = await Call(context, tools, project, ("limit", 300));
+            var tooMany = await MotifMcpServer.CallAsync(context, tools, Tool, new Dictionary<string, JsonElement>
+            {
+                ["project"] = JsonSerializer.SerializeToElement(project),
+                ["limit"] = JsonSerializer.SerializeToElement(501),
+            }, CancellationToken.None);
+
+            Assert.Equal((1, 500), (limit["minimum"]!.GetValue<int>(), limit["maximum"]!.GetValue<int>()));
+            Assert.Equal(1, aboveTheDefaultWindow.GetProperty("total").GetInt32());
+            Assert.True(tooMany.IsError);
+            Assert.Equal("tool.invalid-argument", tooMany.StructuredContent!.Value.GetProperty("code").GetString());
+        }
+        finally { Directory.Delete(directory, true); }
+    }
+
     private static async Task<JsonElement> Call(ServerContext context, IReadOnlyList<ExposedTool> tools, string project,
         params (string Key, object Value)[] arguments)
     {

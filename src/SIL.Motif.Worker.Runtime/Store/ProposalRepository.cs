@@ -210,6 +210,9 @@ public sealed record ProposalRevisionRecord(
 public sealed class DraftChangedException(string draftName)
     : InvalidOperationException($"Draft '{draftName}' changed. Reload it and try again.");
 
+/// <summary>A Proposal's identity and label, read without its revision content.</summary>
+public sealed record ProposalListing(CanonicalId ProposalId, string? Label);
+
 /// <summary>Selection options for current Proposal rows.</summary>
 public sealed record ProposalListFilter(string? Status = null, bool IncludeArchived = false);
 
@@ -261,6 +264,27 @@ public sealed class ProposalRepository : IProposalRepository
         var records = new List<ProposalRecord>();
         while (reader.Read()) records.Add(ReadRecord(reader));
         return records;
+    }
+
+    /// <summary>
+    /// Lists the Proposals <see cref="List"/> would, with their label and without any revision content, so a
+    /// caller that wants a few of them loads only those through <see cref="GetFinalized"/>.
+    /// </summary>
+    public IReadOnlyList<ProposalListing> ListWithoutContent(ProposalListFilter filter)
+    {
+        ArgumentNullException.ThrowIfNull(filter);
+        using var connection = _database.OpenConnection();
+        using var command = connection.CreateCommand();
+        var archived = filter.IncludeArchived ? "" :
+            " AND (p.Status NOT IN ('applied', 'rejected', 'superseded', 'withdrawn') OR p.DraftName IS NOT NULL)";
+        command.CommandText = "SELECT p.ProposalId, p.Label FROM Proposals p WHERE ($status IS NULL OR p.Status = $status)" +
+            archived + " ORDER BY p.ProposalId;";
+        command.Parameters.AddWithValue("$status", (object?)filter.Status ?? DBNull.Value);
+        using var reader = command.ExecuteReader();
+        var listings = new List<ProposalListing>();
+        while (reader.Read())
+            listings.Add(new ProposalListing(CanonicalId.Parse(reader.GetString(0)), reader.IsDBNull(1) ? null : reader.GetString(1)));
+        return listings;
     }
 
     /// <inheritdoc />

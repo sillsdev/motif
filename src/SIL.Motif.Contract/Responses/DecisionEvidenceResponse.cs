@@ -40,7 +40,7 @@ public sealed record DecisionEvidenceRow(
     public bool Human => false;
 }
 
-/// <summary>The <c>evidence show</c> result: every record about one wordform or analysis, oldest Proposal first.</summary>
+/// <summary>The <c>evidence show</c> result: every record about one wordform or analysis, in Proposal id order.</summary>
 /// <param name="Subject">The identity asked about.</param>
 /// <param name="Records">The records; empty when nothing was staged for it.</param>
 public sealed record DecisionEvidenceShowResponse(string Subject, IReadOnlyList<DecisionEvidenceRow> Records);
@@ -59,3 +59,27 @@ public sealed record DecisionEvidenceListResponse(
     int Offset,
     int Limit,
     IReadOnlyList<DecisionEvidenceRow> Rows);
+
+/// <summary>One page of the <c>evidence export</c> read: rows in a fixed order, and where the next page starts.</summary>
+/// <param name="Format">Always <see cref="DecisionEvidenceExport.Format"/>, so a saved file names its own layout.</param>
+/// <param name="Rows">At most the requested number of rows, in Proposal id order.</param>
+/// <param name="Next">The cursor to pass as <c>after</c> for the following page; <c>null</c> when this page ends the export.</param>
+public sealed record DecisionEvidenceExportResponse(string Format, IReadOnlyList<DecisionEvidenceRow> Rows, string? Next);
+
+/// <summary>What <c>evidence export --out</c> reports after writing the file.</summary>
+/// <param name="Path">The file written.</param>
+/// <param name="Total">How many records it holds.</param>
+/// <param name="TierCounts">Records per tier.</param>
+public sealed record DecisionEvidenceExportSummary(
+    string Path, int Total, IReadOnlyDictionary<string, int> TierCounts);
+
+/// <summary>The layout of an exported evidence file.</summary>
+public static class DecisionEvidenceExport
+{
+    /// <summary>
+    /// The file's <c>format</c> value. The file is one JSON object: <c>format</c>, then <c>rows</c> (each a
+    /// <see cref="DecisionEvidenceRow"/>), then <c>total</c> and <c>tierCounts</c>, which come last because they are
+    /// counted while the rows stream out.
+    /// </summary>
+    public const string Format = "motif-decision-evidence/1";
+}
