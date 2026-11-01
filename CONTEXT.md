@@ -98,6 +98,15 @@ name; it no longer does ([ADR 0023](docs/adr/0023-derived-kind-names-required-de
 segment is derived from the declaring class. Construct is now purely about *what work ships together*.
 _Avoid_: entity, class, feature
 
+**Judgement call**:
+A choice the sources leave to the analyst, such as whether an affix, reduplication included, is derivational or
+inflectional. Linguistic decisions follow Andy Black's paper and guidance; a judgement call belongs to the person
+or agent who makes it, recorded with a rationale. Whatever LibLCM can hold, Motif allows, and it refuses only an
+invalid model; Grammar Health and Parsimony advise and never forbid
+([ADR 0079](docs/adr/0079-linguistic-decisions-follow-black-and-judgement-calls-are-the-linguists.md)). Changes
+to ADRs, `AGENTS.md`, `CLAUDE.md` and this file go straight to `main`, which is how decisions are made visible.
+_Avoid_: override, exception, waiver
+
 ## Evaluating a Proposal
 
 Two different evaluations, deliberately named apart. One asks *does the grammar parse better?*; the

@@ -394,6 +394,14 @@ site step and uploads bin/Release/media.
     two-register rule, not a simplification pass: the opener is for the owner deciding whether to
     read on, the body is for whoever implements or audits it. A status line like "Slice A built;
     the poisoning guard now fires for real" fails the rule — it names machinery only.
+18. **Linguistic decisions follow Andy Black's paper and guidance, and a judgement call belongs to whoever
+    makes it** ([ADR 0079](docs/adr/0079-linguistic-decisions-follow-black-and-judgement-calls-are-the-linguists.md)).
+    Derivational versus inflectional, and the same choice for reduplication, is a judgement a person or an
+    agent may make and record with a rationale. Whatever LibLCM can hold, Motif allows: refuse only an invalid
+    model, never a preferred analysis, and let Grammar Health and Parsimony advise without blocking.
+19. **ADRs, `AGENTS.md`, `CLAUDE.md` and `CONTEXT.md` changes are committed straight to `main`**, fast-forward
+    only, with no pull request or branch review: that is how the project makes decisions visible. This
+    repository has no `CLAUDE.md`; this file is the agent instructions.
 
 18. **Project store upgrades preserve authored data.** Opening an older project store carries Proposals and
     other authored data into a fresh current-schema store, retains the old store as a backup, and discards
