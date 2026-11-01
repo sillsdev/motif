@@ -7999,4 +7999,36 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <value>{0, plural, one {# place in another writing system} other {# places in other writing systems}}</value>
     <comment>Overview Text Coverage tile: places in the chosen Texts written in another writing system. # is the count.</comment>
   </data>
+  <data name="MotifApp.OverviewBandsTitleByText" xml:space="preserve">
+    <value>Text Coverage by Frequency Band</value>
+    <comment>Title of the Overview tile that cuts the Selection's words by how often they occur in the chosen Texts</comment>
+  </data>
+  <data name="MotifApp.OverviewBandsTitle" xml:space="preserve">
+    <value>By Frequency Band</value>
+    <comment>Title of the Overview frequency band tile when the Selection is not made of chosen Texts</comment>
+  </data>
+  <data name="MotifApp.OverviewBandsAccessibleName" xml:space="preserve">
+    <value>Frequency bands</value>
+    <comment>Accessible name of the Overview frequency band tile</comment>
+  </data>
+  <data name="MotifApp.OverviewBandRangeFormat" xml:space="preserve">
+    <value>Words ranked {0} to {1}</value>
+    <comment>Label of a frequency band; {0} and {1} are its first and last rank</comment>
+  </data>
+  <data name="MotifApp.OverviewBandRestFormat" xml:space="preserve">
+    <value>Words ranked {0} and below</value>
+    <comment>Label of the last frequency band; {0} is its first rank</comment>
+  </data>
+  <data name="MotifApp.OverviewBandWordsFormat" xml:space="preserve">
+    <value>Words that parse: {0} of {1}</value>
+    <comment>Parsed words and all words in a frequency band</comment>
+  </data>
+  <data name="MotifApp.OverviewBandPlacesFormat" xml:space="preserve">
+    <value>Places covered: {0} of {1}</value>
+    <comment>Parsed places and all places of the words in a frequency band</comment>
+  </data>
+  <data name="MotifApp.OverviewNotMeasuredPattern" xml:space="preserve">
+    <value>{0, plural, one {# word in the Selection is not in the stored parse, so this leaves it out.} other {# words in the Selection are not in the stored parse, so this leaves them out.}}</value>
+    <comment>Note under a measure built from the stored parse when some Selection words were not parsed; # is that count</comment>
+  </data>
 </root>

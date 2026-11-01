@@ -3905,4 +3905,20 @@ public static class MotifAppStrings
     public static string OverviewCoverageDigitsPattern => Text("MotifApp.OverviewCoverageDigitsPattern");
 
     public static string OverviewCoverageOtherWritingSystemPattern => Text("MotifApp.OverviewCoverageOtherWritingSystemPattern");
+
+    public static string OverviewBandsTitleByText => Text("MotifApp.OverviewBandsTitleByText");
+
+    public static string OverviewBandsTitle => Text("MotifApp.OverviewBandsTitle");
+
+    public static string OverviewBandsAccessibleName => Text("MotifApp.OverviewBandsAccessibleName");
+
+    public static string OverviewBandRangeFormat => Text("MotifApp.OverviewBandRangeFormat");
+
+    public static string OverviewBandRestFormat => Text("MotifApp.OverviewBandRestFormat");
+
+    public static string OverviewBandWordsFormat => Text("MotifApp.OverviewBandWordsFormat");
+
+    public static string OverviewBandPlacesFormat => Text("MotifApp.OverviewBandPlacesFormat");
+
+    public static string OverviewNotMeasuredPattern => Text("MotifApp.OverviewNotMeasuredPattern");
 }

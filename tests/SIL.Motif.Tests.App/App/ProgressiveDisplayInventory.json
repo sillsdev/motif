@@ -1032,6 +1032,14 @@
   },
   {
     "view": "Pages/OverviewPage",
+    "name": "OverviewFrequencyBandRows",
+    "source": "FrequencyBandRows",
+    "mode": "finite",
+    "control": "ItemsControl",
+    "reason": "Four declared frequency bands."
+  },
+  {
+    "view": "Pages/OverviewPage",
     "name": "OverviewTimingRows",
     "source": "TimingKindShares",
     "mode": "paged",

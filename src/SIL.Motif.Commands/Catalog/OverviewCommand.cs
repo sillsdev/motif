@@ -186,6 +186,9 @@ public static class OverviewCommand
                 {
                     UnparsedWords = OverviewUnparsedBuilder.Build(metrics.Words, selection?.OccurrencesByWord),
                 };
+            var notMeasuredWords = assessedWords.Count == 0 ? 0 : metrics.Words.Count(placed => placed.Measured is null);
+            var frequencyBands = assessedWords.Count == 0 ? null : OverviewFrequencyBandBuilder.Build(
+                metrics.Words, selection?.OccurrencesByWord, (selection?.TextCount ?? 0) > 0);
             var summaryIsMeasured = evidence.Set?.Baseline is not { } measuredBaseline ||
                 evidence.Baseline?.Token == measuredBaseline;
             var leftOut = summaryIsMeasured
@@ -206,6 +209,7 @@ public static class OverviewCommand
                 {
                     DigitOnlyOccurrences = leftOut?.DigitOnly,
                     OtherWritingSystemOccurrences = leftOut?.OtherWritingSystem,
+                    NotMeasuredWords = notMeasuredWords,
                 }, metrics.Accuracy,
                 timing,
                 Warnings: storedCheck is null ? null : new OverviewWarningsSummary(
@@ -234,6 +238,7 @@ public static class OverviewCommand
                 IsStale = evidence.Freshness == EvidenceFreshness.Stale,
                 BaselineToken = evidence.Baseline?.Token,
                 LookFirst = lookFirst,
+                FrequencyBands = frequencyBands,
             });
     }
 }

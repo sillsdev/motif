@@ -88,4 +88,55 @@ public sealed class OverviewMeasuresTextTests
         Assert.Equal("no-analysis", words.GetProperty("groups")[0].GetProperty("kind").GetString());
         Assert.Equal(2, root.GetProperty("textCoverage").GetProperty("digitOnlyOccurrences").GetInt32());
     }
+
+    private static OverviewFrequencyBands Bands(bool byText) => new(byText,
+    [
+        new(1, 100, 100, 98, 1500, 1450),
+        new(101, 1000, 900, 700, 800, 600),
+        new(10001, null, 5, 1, 5, 1),
+    ]);
+
+    [Fact]
+    public void FrequencyBandsReadAsParsedOverTotalForEachRankRange()
+    {
+        var text = Text(Overview() with { FrequencyBands = Bands(byText: true) });
+
+        Assert.Contains("Bands      Text Coverage by frequency band", text, StringComparison.Ordinal);
+        Assert.Contains("words ranked 1 to 100: 98/100 words parse, 1,450/1,500 occurrences covered", text,
+            StringComparison.Ordinal);
+        Assert.Contains("words ranked 101 to 1,000: 700/900 words parse", text, StringComparison.Ordinal);
+        Assert.Contains("words ranked 10,001 and beyond: 1/5 words parse", text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void OnlyATextSelectionSaysTextCoverageAndAPartialParseSaysSo()
+    {
+        var partial = new OverviewTextCoverage(43, 20, 71, 1, 555, 300) { NotMeasuredWords = 7 };
+
+        var text = Text(Overview(partial) with { FrequencyBands = Bands(byText: false) });
+
+        Assert.Contains("Bands      By frequency band", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("Text Coverage by frequency band", text, StringComparison.Ordinal);
+        Assert.Contains("Partly measured: 7 words of the Selection are not in the stored parse", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("Bands", Text(Overview()), StringComparison.Ordinal);
+        Assert.DoesNotContain("Partly measured", Text(Overview()), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TheJsonCarriesTheBandsAndTheNotMeasuredCount()
+    {
+        var response = Overview(new OverviewTextCoverage(43, 20, 71, 1, 555, 300) { NotMeasuredWords = 2 }) with
+        {
+            FrequencyBands = Bands(byText: true),
+        };
+
+        using var document = JsonDocument.Parse(
+            CommandTextRenderer.Render(CommandOutcome<OverviewResponse>.Success(response), asJson: true).Output);
+
+        var bands = document.RootElement.GetProperty("frequencyBands");
+        Assert.True(bands.GetProperty("byText").GetBoolean());
+        Assert.Equal(3, bands.GetProperty("bands").GetArrayLength());
+        Assert.Equal(98, bands.GetProperty("bands")[0].GetProperty("parsedWords").GetInt32());
+        Assert.Equal(2, document.RootElement.GetProperty("textCoverage").GetProperty("notMeasuredWords").GetInt32());
+    }
 }

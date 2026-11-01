@@ -7,6 +7,7 @@ The figure strip shows the project's counts: words you chose to measure, places 
 - **Speed**: how many words were measured, their total and median work steps, and the work recorded for each kind of grammar work. A line beneath shows how long the whole run took on this computer.
 - **Slowest Words**: the measured words with the most work steps, each with its work steps. **Stopped** marks a word explicitly recorded as hitting the work limit.
 - **Text Coverage**: how many of your chosen words parse, and how many places in your texts they cover (each time a word occurs in a text). If no chosen words occur in the chosen Texts, it says there are no places to cover. A line beneath says how many places hold only digits or are written in other writing systems; those places are not in the share.
+- **Text Coverage by Frequency Band**: the chosen words ranked by how often they occur, cut into ranks 1 to 100, 101 to 1,000, 1,001 to 10,000, and the rest. Each band says how many of its words parse and how many of its places are covered; the bands add up to the Text Coverage totals. A Selection that is not made of chosen Texts is titled **By Frequency Band**. If some chosen words are not in the saved parse, a note says so.
 - **Approved Analyses Kept**: how many words with an approved analysis the grammar rebuilt exactly. When no analysis is approved yet, it says there is nothing to rebuild.
 - **Grammar Warnings**: what the grammar check found, with errors counted separately.
 

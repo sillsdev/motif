@@ -124,6 +124,9 @@ public sealed class EvidenceSetReadsTests : IDisposable
         Assert.Equal(["cat"], sameBaseline.LookFirst.UnparsedWords!.Top.Select(word => word.Word));
         Assert.Equal((0, 0), (sameBaseline.TextCoverage.DigitOnlyOccurrences, sameBaseline.TextCoverage.OtherWritingSystemOccurrences));
         Assert.Equal(["cat"], otherBaseline.LookFirst.UnparsedWords!.Top.Select(word => word.Word));
+        Assert.Equal(today.TextCoverage.ParsedWords - 1, sameBaseline.TextCoverage.ParsedWords);
+        Assert.Equal(sameBaseline.TextCoverage.ParsedWords,
+            sameBaseline.FrequencyBands!.Bands.Sum(band => band.ParsedWords));
         Assert.Null(otherBaseline.TextCoverage.DigitOnlyOccurrences);
         Assert.Null(otherBaseline.TextCoverage.OtherWritingSystemOccurrences);
     }

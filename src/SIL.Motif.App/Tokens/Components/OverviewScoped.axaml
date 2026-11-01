@@ -126,6 +126,9 @@
   <Style Selector="StackPanel.overviewLookFirstWords">
     <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Minimal}" />
   </Style>
+  <Style Selector="StackPanel.overviewBandRow">
+    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Minimal}" />
+  </Style>
   <Style Selector="WrapPanel.overviewRowWords">
     <Setter Property="ItemSpacing" Value="{DynamicResource Intent.Space.Group}" />
     <Setter Property="LineSpacing" Value="{DynamicResource Intent.Space.Minimal}" />

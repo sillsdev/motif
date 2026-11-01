@@ -32,6 +32,11 @@ public sealed record OverviewResponse(
     /// <summary>The stored results worth opening first; empty when no Parse all words matches.</summary>
     public OverviewLookFirst LookFirst { get; init; } = OverviewLookFirst.Empty;
 
+    /// <summary>
+    /// The Selection's words in frequency bands; null when no parse is stored or the Selection has no place counts.
+    /// </summary>
+    public OverviewFrequencyBands? FrequencyBands { get; init; }
+
     /// <summary>The producing run and measurement time for each word contributing to these composite metrics.</summary>
     public IReadOnlyDictionary<string, WordMeasurementOrigin> WordOrigins { get; init; } =
         new Dictionary<string, WordMeasurementOrigin>(StringComparer.Ordinal);
@@ -87,6 +92,12 @@ public sealed record OverviewTextCoverage(
     /// counts apart; null when <see cref="DigitOnlyOccurrences"/> is.
     /// </summary>
     public int? OtherWritingSystemOccurrences { get; init; }
+
+    /// <summary>
+    /// Selection words the stored parse did not measure, so every figure built from the parse describes part of the
+    /// Selection when this is above zero.
+    /// </summary>
+    public int NotMeasuredWords { get; init; }
 }
 
 /// <summary>Word counts placed by the Compare matrix's shared classification rules.</summary>

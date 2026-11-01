@@ -37,6 +37,26 @@ internal static class OverviewMeasuresTextRenderer
                 "the project marks as an incorrect spelling");
     }
 
+    public static void AppendNotMeasured(StringBuilder text, OverviewTextCoverage coverage)
+    {
+        if (coverage.NotMeasuredWords > 0)
+            text.AppendLine($"{Indent}Partly measured: {Count(coverage.NotMeasuredWords, "word", "words")} " +
+                "of the Selection are not in the stored parse, so figures built from it leave them out");
+    }
+
+    public static void AppendBands(StringBuilder text, OverviewFrequencyBands? bands)
+    {
+        if (bands is null) return;
+        text.AppendLine(bands.ByText ? "Bands      Text Coverage by frequency band" : "Bands      By frequency band");
+        foreach (var band in bands.Bands)
+        {
+            var ranks = band.LastRank is { } last
+                ? $"{band.FirstRank:N0} to {last:N0}" : $"{band.FirstRank:N0} and beyond";
+            text.AppendLine($"{Indent}words ranked {ranks}: {band.ParsedWords:N0}/{band.Words:N0} words parse, " +
+                $"{band.ParsedOccurrences:N0}/{band.Occurrences:N0} occurrences covered");
+        }
+    }
+
     private static string Reason(OverviewUnparsedGroup group) => group.Kind switch
     {
         UnparsedKind.Refused => $"{group.Words:N0} refused ({group.Code ?? "no code"})",

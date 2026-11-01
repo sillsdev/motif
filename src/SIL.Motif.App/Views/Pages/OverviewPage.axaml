@@ -198,6 +198,28 @@
             </ItemsControl>
           </StackPanel>
         </Border>
+          <Border Classes="overviewTile" IsVisible="{Binding HasFrequencyBands}"
+                  AutomationProperties.Name="{Binding FrequencyBandsTitle}">
+            <StackPanel Classes="overviewTileContent">
+              <TextBlock Classes="overviewTileTitle" Text="{Binding FrequencyBandsTitle}" TextWrapping="Wrap" />
+              <ItemsControl x:Name="OverviewFrequencyBandRows" ItemsSource="{Binding FrequencyBandRows}"
+                            AutomationProperties.Name="{x:Static app:MotifAppStrings.OverviewBandsAccessibleName}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:OverviewBandRow">
+                    <Border Classes="overviewTableRow">
+                      <StackPanel Classes="overviewBandRow">
+                        <TextBlock Text="{Binding Label}" TextWrapping="Wrap" FontWeight="{DynamicResource Intent.Weight.Section}" />
+                        <TextBlock Classes="overviewMuted" Text="{Binding WordsText}" TextWrapping="Wrap" />
+                        <TextBlock Classes="overviewMuted" Text="{Binding PlacesText}" TextWrapping="Wrap" />
+                      </StackPanel>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <TextBlock Classes="overviewMuted" Text="{Binding NotMeasuredNote}" TextWrapping="Wrap"
+                         IsVisible="{Binding HasNotMeasuredNote}" />
+            </StackPanel>
+          </Border>
           <Border Classes="overviewTile hoverReveal" IsVisible="{Binding ShowTiles}"
                 AutomationProperties.Name="{x:Static app:MotifAppStrings.ApprovedAnalysesKeptAccessibleName}">
           <StackPanel Classes="overviewTileContent">

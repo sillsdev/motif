@@ -10,3 +10,5 @@ For the full page tour—including freshness, timing, warnings and the links bes
 
 
 The **Look first** row for unparsed words lists the ten chosen words with no completed parse that occur most often, with their counts, and the total. Under it, the words are grouped only by what the parser stored: a refusal code, the work limit or time limit that stopped the search, or no analysis. Motif does not guess a cause. Words that FieldWorks marks as an incorrect spelling are counted apart and not listed. When the Selection has no counts of places in Texts, the first ten words by spelling are listed instead, and the row says so. The link opens those words in the Matrix.
+
+In the frequency bands, a high share in the first band and a low share in the last usually means the common words parse and the long tail does not. Read the bands as parts of one Selection: the words and places in all bands add up to the Text Coverage totals. A band is a count, not a verdict on the grammar.

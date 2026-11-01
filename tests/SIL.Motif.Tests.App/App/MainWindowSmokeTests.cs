@@ -562,7 +562,7 @@ public sealed class MainWindowSmokeTests
                     .Single(item => item.Text == overviewModel.SpeedMedian).FontWeight);
                 var tiles = window.GetLogicalDescendants().OfType<Control>()
                     .Where(item => item.Classes.Contains("overviewTile")).ToArray();
-                Assert.Equal(5, tiles.Length);
+                Assert.Equal(6, tiles.Length);
                 Assert.All(tiles, tile =>
                 {
                     Assert.Equal(Avalonia.Layout.HorizontalAlignment.Stretch, tile.HorizontalAlignment);

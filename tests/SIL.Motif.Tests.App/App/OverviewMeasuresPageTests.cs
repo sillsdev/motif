@@ -114,4 +114,43 @@ public sealed class OverviewMeasuresPageTests
         });
         Assert.False(quiet.HasTextCoverageLeftOut);
     }
+
+    private static OverviewFrequencyBands Bands(bool byText) => new(byText,
+    [
+        new(1, 100, 100, 98, 1500, 1450),
+        new(101, null, 4, 1, 4, 1),
+    ]);
+
+    [Fact]
+    public async Task TheFrequencyBandTileSaysTextCoverageOnlyForChosenTexts()
+    {
+        using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
+        var overview = OverviewPageWordsTests.Populated();
+        var (byText, _) = await Open(overview with { FrequencyBands = Bands(byText: true) });
+        var (byWords, _) = await Open(overview with { FrequencyBands = Bands(byText: false) });
+
+        Assert.Equal("Text Coverage by Frequency Band", byText.FrequencyBandsTitle);
+        Assert.Equal("By Frequency Band", byWords.FrequencyBandsTitle);
+        Assert.Equal(["Words ranked 1 to 100", "Words ranked 101 and below"], byText.FrequencyBandRows.Select(row => row.Label));
+        Assert.Equal("Words that parse: 98 of 100", byText.FrequencyBandRows[0].WordsText);
+        Assert.Equal("Places covered: 1,450 of 1,500", byText.FrequencyBandRows[0].PlacesText);
+    }
+
+    [Fact]
+    public async Task APartialParseSaysSoAndNoBandsMeansNoTile()
+    {
+        using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
+        var overview = OverviewPageWordsTests.Populated();
+        var (partial, _) = await Open(overview with
+        {
+            FrequencyBands = Bands(byText: true),
+            TextCoverage = overview.TextCoverage with { NotMeasuredWords = 1 },
+        });
+        var (whole, _) = await Open(overview with { FrequencyBands = null });
+
+        Assert.True(partial.HasNotMeasuredNote);
+        Assert.Equal("1 word in the Selection is not in the stored parse, so this leaves it out.", partial.NotMeasuredNote);
+        Assert.False(whole.HasFrequencyBands);
+        Assert.False(whole.HasNotMeasuredNote);
+    }
 }

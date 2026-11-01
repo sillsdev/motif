@@ -67,4 +67,7 @@ public static class OverviewMeasureLimits
 {
     /// <summary>How many words any Overview list names.</summary>
     public const int TopWords = 10;
+
+    /// <summary>The last rank of each frequency band but the final one, which holds every word beyond them.</summary>
+    public static readonly IReadOnlyList<int> BandEdges = [100, 1_000, 10_000];
 }

@@ -99,6 +99,11 @@ public sealed partial class OverviewPageModel : PageModel
     [NotifyPropertyChangedFor(nameof(TextCoverageSegments))]
     [NotifyPropertyChangedFor(nameof(TextCoverageLeftOut))]
     [NotifyPropertyChangedFor(nameof(HasTextCoverageLeftOut))]
+    [NotifyPropertyChangedFor(nameof(FrequencyBandRows))]
+    [NotifyPropertyChangedFor(nameof(HasFrequencyBands))]
+    [NotifyPropertyChangedFor(nameof(FrequencyBandsTitle))]
+    [NotifyPropertyChangedFor(nameof(NotMeasuredNote))]
+    [NotifyPropertyChangedFor(nameof(HasNotMeasuredNote))]
     [NotifyPropertyChangedFor(nameof(AccuracyMain))]
     [NotifyPropertyChangedFor(nameof(AccuracyCaption))]
     [NotifyPropertyChangedFor(nameof(AccuracyBreakdown))]
@@ -448,6 +453,30 @@ public sealed partial class OverviewPageModel : PageModel
 
     public bool HasTextCoverageLeftOut => TextCoverageLeftOut.Length > 0;
 
+    /// <summary>The rows of the frequency band tile; empty when the stored parse or the place counts are missing.</summary>
+    public IReadOnlyList<OverviewBandRow> FrequencyBandRows => !HasAssessment || Overview?.FrequencyBands is not { } bands
+        ? [] : [.. bands.Bands.Select(band => new OverviewBandRow(
+            band.LastRank is { } last
+                ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.OverviewBandRangeFormat,
+                    Number(band.FirstRank), Number(last))
+                : string.Format(CultureInfo.CurrentCulture, MotifAppStrings.OverviewBandRestFormat, Number(band.FirstRank)),
+            string.Format(CultureInfo.CurrentCulture, MotifAppStrings.OverviewBandWordsFormat,
+                Number(band.ParsedWords), Number(band.Words)),
+            string.Format(CultureInfo.CurrentCulture, MotifAppStrings.OverviewBandPlacesFormat,
+                Number(band.ParsedOccurrences), Number(band.Occurrences))))];
+
+    public bool HasFrequencyBands => FrequencyBandRows.Count > 0;
+
+    /// <summary>Text Coverage by Frequency Band for a Selection of chosen Texts, otherwise By Frequency Band.</summary>
+    public string FrequencyBandsTitle => Overview?.FrequencyBands is { ByText: true }
+        ? MotifAppStrings.OverviewBandsTitleByText : MotifAppStrings.OverviewBandsTitle;
+
+    /// <summary>Says that a measure built from the stored parse leaves out Selection words the parse did not reach.</summary>
+    public string NotMeasuredNote => !HasAssessment || Overview?.TextCoverage is not { NotMeasuredWords: > 0 } coverage
+        ? string.Empty : PluralText.Format(MotifAppStrings.OverviewNotMeasuredPattern, coverage.NotMeasuredWords);
+
+    public bool HasNotMeasuredNote => NotMeasuredNote.Length > 0;
+
     /// <summary>How many Selection words produced a completed parse.</summary>
     public string TextCoverageMain => !HasAssessment || Overview is not { } overview ? MotifAppStrings.OverviewNotParsedYet :
         string.Format(CultureInfo.CurrentCulture, MotifAppStrings.OverviewCoverageMainFormat,
@@ -754,6 +783,12 @@ public sealed record OverviewLookFirstRow(
     /// <summary>Whether the row names any words.</summary>
     public bool HasWords => Words.Count > 0;
 }
+
+/// <summary>One frequency band of the Overview, already worded.</summary>
+/// <param name="Label">The ranks the band covers.</param>
+/// <param name="WordsText">How many of its words parse.</param>
+/// <param name="PlacesText">How many of its places are covered.</param>
+public sealed record OverviewBandRow(string Label, string WordsText, string PlacesText);
 
 /// <summary>One word on an Overview row with the count of places shown beside it, or nothing.</summary>
 /// <param name="Word">The word as written in the Selection.</param>
