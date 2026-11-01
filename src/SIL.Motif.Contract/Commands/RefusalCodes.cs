@@ -22,6 +22,8 @@ public static class RefusalCodes
     public const string ApplyChangeUncertain = "apply.change-uncertain";
     public const string ApplyChangesChanged = "apply.changes-changed";
     public const string ApplyDrift = "apply.drift";
+    /// <summary>The Proposal introduced grammar the parser dropped with only a warning, so it is not ready to apply.</summary>
+    public const string ApplyDroppedGrammar = "apply.dropped-grammar";
     public const string ApplyDryRunMissing = "apply.dry-run-missing";
     public const string ApplyAutonomousForce = "apply.autonomous-force";
     public const string ApplyMessageInvalid = "apply.message-invalid";

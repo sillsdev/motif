@@ -1,3 +1,5 @@
+using SIL.Motif.Contract.Responses;
+
 namespace SIL.Motif.Host.Assess;
 
 /// <summary>
@@ -14,7 +16,10 @@ public static class Readiness
         IReadOnlyList<string> Reasons,
         bool IsRegression,
         bool CorrectnessAssessmentRequired = true,
-        string? CorrectnessAssessmentExemptionReason = null);
+        string? CorrectnessAssessmentExemptionReason = null,
+        bool HasDroppedGrammar = false,
+        string? DroppedGrammarReason = null,
+        DroppedGrammar? Dropped = null);
 
     /// <summary>
     /// The reasons a Proposal is not ready to apply, in the same wording a refusal message quotes verbatim.
@@ -44,7 +49,8 @@ public static class Readiness
         string candidateBaselineToken,
         bool gateOnRegression,
         IReadOnlyCollection<string>? changedWords = null,
-        string? correctnessAssessmentExemptionReason = null)
+        string? correctnessAssessmentExemptionReason = null,
+        DroppedGrammar? droppedGrammar = null)
     {
         if (!string.IsNullOrWhiteSpace(correctnessAssessmentExemptionReason))
             return new Decision([], false, false, correctnessAssessmentExemptionReason);
@@ -100,6 +106,26 @@ public static class Readiness
             }
         }
 
-        return new Decision(reasons, isRegression);
+        var hasDroppedGrammar = droppedGrammar is { Introduced.Count: > 0 };
+        string? droppedReason = null;
+        if (hasDroppedGrammar) droppedReason = DescribeDroppedGrammar(droppedGrammar!);
+        // Missing evidence, named once the Trial is otherwise ready so it is not buried among other reasons.
+        else if (droppedGrammar is { Checked: false } && reasons.Count == 0)
+            droppedReason = $"dropped grammar was not checked ({droppedGrammar.NotCheckedReason?.TrimEnd('.')}); " +
+                "try the Proposal again";
+        if (droppedReason is not null) reasons.Add(droppedReason);
+        return new Decision(reasons, isRegression, HasDroppedGrammar: hasDroppedGrammar,
+            DroppedGrammarReason: droppedReason, Dropped: hasDroppedGrammar ? droppedGrammar : null);
     }
+
+    // Names each dropped object; the way forward is to fix it, in the Proposal or in FieldWorks, and try again.
+    private static string DescribeDroppedGrammar(DroppedGrammar dropped) =>
+        "its Trial found grammar the parser dropped with only a warning, in what the Proposal adds or edits: " +
+        string.Join("; ", dropped.Introduced.Select(finding => finding.Code + " on " +
+            (finding.Objects.Count == 0
+                ? "an object PanGloss did not identify"
+                : string.Join(", ", finding.Objects.Select(item =>
+                    $"{item.Kind ?? "object"} {(item.Name is null ? "" : item.Name + " ")}({item.MotifId})"))))) +
+        (dropped.OmittedFindings > 0 ? $"; and {dropped.OmittedFindings} more" : "") +
+        "; fix what it names, in the Proposal or in FieldWorks, then try the Proposal again";
 }

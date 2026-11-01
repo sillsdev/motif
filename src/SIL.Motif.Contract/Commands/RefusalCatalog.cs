@@ -23,6 +23,7 @@ public static class RefusalCatalog
         RefusalCodes.ApplyChangeUncertain,
         RefusalCodes.ApplyChangesChanged,
         RefusalCodes.ApplyDrift,
+        RefusalCodes.ApplyDroppedGrammar,
         RefusalCodes.ApplyDryRunMissing,
         RefusalCodes.ApplyNotReady,
         RefusalCodes.ApplyPreconditionFailed,
@@ -192,6 +193,7 @@ public static class RefusalCatalog
         Spec(RefusalCodes.ApplyChangeUncertain, FailureReason.Refused),
         Spec(RefusalCodes.ApplyChangesChanged, FailureReason.Refused),
         Spec(RefusalCodes.ApplyDrift, FailureReason.StoreInconsistent),
+        Spec(RefusalCodes.ApplyDroppedGrammar, FailureReason.Refused),
         Spec(RefusalCodes.ApplyDryRunMissing, FailureReason.Refused),
         Spec(RefusalCodes.ApplyAutonomousForce, FailureReason.InvalidArgument),
         Spec(RefusalCodes.ApplyMessageInvalid, FailureReason.InvalidArgument),
@@ -571,7 +573,6 @@ public static class RefusalCatalog
         Spec(HostRefusalCodes.ToolUnknown, FailureReason.InvalidArgument),
         Spec(HostRefusalCodes.ToolUnknownArgument, FailureReason.InvalidArgument,
             NextStep.Repeat()),
-        Spec(HostRefusalCodes.TrialDifferenceUnavailable, FailureReason.Refused),
 
         // ParsimonyRefusalCodes
         Spec(ParsimonyRefusalCodes.AssessmentBaselineMismatch, FailureReason.Refused),

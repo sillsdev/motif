@@ -399,10 +399,11 @@ public sealed class PendingChangesTests
             fit => Assert.True(fit.StillFits, fit.Reason));
         var dryRun = DryRunJobRunner.Run(_path, "1.0", proposalId);
         Assert.True(dryRun.Succeeded, dryRun.Refusal?.Message);
+        var assessmentId = CanonicalId.Mint("assessment/").Value;
         using (var database = ProjectMotifDatabase.Open(_path))
         {
             new AssessmentRepository(database).Record(new NewAssessmentRecord(
-            AssessmentId: CanonicalId.Mint("assessment/").Value,
+            AssessmentId: assessmentId,
             ProposalId: CanonicalId.Parse(proposalId),
             ProposalIntentDigest: finalized.Value.IntentDigest,
             Assessor: "pangloss",
@@ -420,6 +421,7 @@ public sealed class PendingChangesTests
             Material: new AssessmentRecordMaterial.Words([CorrectnessFixture.Word("review-word", true)], null, null, [])
         ));
         }
+        StoredTrialJob.Record(_path, proposalId, assessmentId);
 
         var applied = ProposalCommands.Apply(new ApplyRequest(_path, "1.0", proposalId));
 
@@ -566,10 +568,11 @@ public sealed class PendingChangesTests
         Assert.True(finalized.Succeeded, finalized.Refusal?.Message);
         var proposalId = finalized.Value!.ProposalId;
         Assert.True(DryRunJobRunner.Run(_path, "1.0", proposalId).Succeeded);
+        var assessmentId = CanonicalId.Mint("assessment/").Value;
         using (var database = ProjectMotifDatabase.Open(_path))
         {
             new AssessmentRepository(database).Record(new NewAssessmentRecord(
-            AssessmentId: CanonicalId.Mint("assessment/").Value,
+            AssessmentId: assessmentId,
             ProposalId: CanonicalId.Parse(proposalId),
             ProposalIntentDigest: finalized.Value.IntentDigest,
             Assessor: "pangloss",

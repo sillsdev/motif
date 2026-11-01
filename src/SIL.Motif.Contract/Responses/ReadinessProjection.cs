@@ -16,4 +16,16 @@ public sealed record ReadinessProjection(
     bool CorrectnessAssessmentExempt,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? CorrectnessAssessmentExemptionReason,
     IReadOnlyList<string> Reasons,
-    bool Forced);
+    bool Forced)
+{
+    /// <summary>
+    /// The entry of <see cref="Reasons"/> that reports dropped grammar, so a reader that words reasons for a
+    /// person can replace it; <see langword="null"/> when none does. Not part of the serialized form.
+    /// </summary>
+    [JsonIgnore]
+    public string? DroppedGrammarReason { get; init; }
+
+    /// <summary>The dropped grammar the Proposal adds or edits, when it made the Proposal not ready.</summary>
+    [JsonIgnore]
+    public DroppedGrammar? DroppedGrammar { get; init; }
+}

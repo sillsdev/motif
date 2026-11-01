@@ -223,7 +223,28 @@ public sealed class TrialsTests : IDisposable
         Assert.Equal("good", all.JobId);
         Assert.Equal(TrialStanding.Current, one.Standing);
         Assert.Equal(one.Standing, all.Standing);
-        Assert.True(one.HasComparableNumbers);
+    }
+
+    [Theory]
+    [InlineData("recorded-none")]
+    [InlineData("timed-out")]
+    public void ACompletedTrialWhoseDroppedGrammarWasNotCheckedNeedsAnotherTry(string how)
+    {
+        using var fixture = new ProjectFixture(_root);
+        var proposal = fixture.SaveProposal();
+        fixture.RecordAssessment(proposal, "parse-time", AssessmentKinds.ParseTime);
+        fixture.CreateJob(proposal.Json, "2026-09-24T11:00:00Z", "trial", ["parse-time"],
+            droppedGrammar: how == "timed-out"
+                ? DroppedGrammar.NotChecked("The grammar check did not finish within 10 minutes.") : null,
+            recordDroppedGrammar: how == "timed-out");
+
+        var one = Trials.LatestFor(fixture.Database, fixture.Project, proposal.Id.Value)!;
+        var all = Trials.LatestForAll(fixture.Database, fixture.Project)[proposal.Id.Value];
+
+        Assert.Equal(TrialFreshness.Current, one.Freshness);
+        Assert.Equal(TrialStanding.NeedsAnotherTry(TrialStaleReason.DroppedGrammarNotChecked), one.Standing);
+        Assert.True(one.Standing.CanTryAgain);
+        Assert.Equal(one.Standing, all.Standing);
     }
 
     [Fact]
@@ -523,7 +544,8 @@ public sealed class TrialsTests : IDisposable
         public string CreateJob(string proposalJson, string createdUtc, string jobId,
             IReadOnlyList<string> assessmentIds, bool allWords = false,
             IReadOnlyList<SIL.Motif.Model.Effects.ExpectedEffect>? effects = null, BaselineToken? baseline = null,
-            IReadOnlyList<string>? baselineAssessmentIds = null)
+            IReadOnlyList<string>? baselineAssessmentIds = null, DroppedGrammar? droppedGrammar = null,
+            bool recordDroppedGrammar = true)
         {
             var job = CreateRunningJob(proposalJson, createdUtc, jobId, ["cat"], allWords, baselineAssessmentIds);
             var dryRun = PublishedDryRun(ProposalJsonParser.Parse(proposalJson), effects);
@@ -533,6 +555,7 @@ public sealed class TrialsTests : IDisposable
                 baselineToken = baseline ?? Token,
                 assessmentIds,
                 allWords,
+                droppedGrammar = recordDroppedGrammar ? droppedGrammar ?? new DroppedGrammar([], 0) : null,
             }, MotifJson.CreateOptions());
             _jobs.Transition(job.JobId, JobStatus.Completed, completion);
             return jobId;
@@ -554,8 +577,13 @@ public sealed class TrialsTests : IDisposable
             var job = CreateRunningJob(proposalJson, createdUtc, jobId, null);
             var dryRun = PublishedDryRun(ProposalJsonParser.Parse(proposalJson));
             job = _jobs.PublishDryRun(job.JobId, dryRun, job.Version);
-            var completion = JsonSerializer.Serialize(new { baselineToken = Token, assessmentIds, allWords = false },
-                MotifJson.CreateOptions());
+            var completion = JsonSerializer.Serialize(new
+            {
+                baselineToken = Token,
+                assessmentIds,
+                allWords = false,
+                droppedGrammar = new DroppedGrammar([], 0),
+            }, MotifJson.CreateOptions());
             _jobs.Transition(job.JobId, JobStatus.Completed, completion);
             return jobId;
         }

@@ -2863,6 +2863,8 @@ public static class MotifAppStrings
 
     public static string TrialProposalChangedOldNumbers => Text("MotifApp.TrialProposalChangedOldNumbers");
 
+    public static string TrialDroppedGrammarNotCheckedSentence => Text("MotifApp.TrialDroppedGrammarNotCheckedSentence");
+
     public static string RefusalParserMissing => Text("MotifApp.RefusalParserMissing");
 
     public static string RefusalParserMissingDetailsFormat => Text("MotifApp.RefusalParserMissingDetailsFormat");
@@ -2886,6 +2888,8 @@ public static class MotifAppStrings
     public static string RefusalApplyChangesChanged => Text("MotifApp.RefusalApplyChangesChanged");
 
     public static string RefusalApplyDrift => Text("MotifApp.RefusalApplyDrift");
+
+    public static string RefusalApplyDroppedGrammar => Text("MotifApp.RefusalApplyDroppedGrammar");
 
     public static string RefusalApplyDryRunMissing => Text("MotifApp.RefusalApplyDryRunMissing");
 
@@ -3784,4 +3788,34 @@ public static class MotifAppStrings
     public static string TraceEffortDescription => Text("MotifApp.TraceEffortDescription");
     public static string TraceSegmentsExaminedLabel => Text("MotifApp.TraceSegmentsExaminedLabel");
     public static string TraceWorkStepsLabel => Text("MotifApp.TraceWorkStepsLabel");
+
+    public static string DroppedGrammarBlockerFormat => Text("MotifApp.DroppedGrammarBlockerFormat");
+
+    public static string DroppedGrammarObjectFormat => Text("MotifApp.DroppedGrammarObjectFormat");
+
+    public static string DroppedGrammarUntitledObjectFormat => Text("MotifApp.DroppedGrammarUntitledObjectFormat");
+
+    public static string DroppedGrammarUnknownObject => Text("MotifApp.DroppedGrammarUnknownObject");
+
+    public static string DroppedGrammarMoreFormat => Text("MotifApp.DroppedGrammarMoreFormat");
+
+    public static string DroppedKindEnvironment => Text("MotifApp.DroppedKindEnvironment");
+
+    public static string DroppedKindAllomorph => Text("MotifApp.DroppedKindAllomorph");
+
+    public static string DroppedKindEntry => Text("MotifApp.DroppedKindEntry");
+
+    public static string DroppedKindRule => Text("MotifApp.DroppedKindRule");
+
+    public static string DroppedKindSoundClass => Text("MotifApp.DroppedKindSoundClass");
+
+    public static string DroppedKindSlot => Text("MotifApp.DroppedKindSlot");
+
+    public static string DroppedKindStemName => Text("MotifApp.DroppedKindStemName");
+
+    public static string DroppedKindProhibition => Text("MotifApp.DroppedKindProhibition");
+
+    public static string DroppedKindStratum => Text("MotifApp.DroppedKindStratum");
+
+    public static string DroppedKindOther => Text("MotifApp.DroppedKindOther");
 }

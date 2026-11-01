@@ -163,6 +163,29 @@ public sealed partial class WindowWordsTests
     }
 
     [Fact]
+    public void ADroppedGrammarBlockerSpeaksInWindowWordsForEveryKindOfObject()
+    {
+        string[] classes = ["PhEnvironment", "MoStemAllomorph", "LexEntry", "PhNCSegments", "MoInflAffixSlot",
+            "MoStemName", "MoAlloAdhocProhib", "MoStratum", "MoAffixProcess", "SomethingNew"];
+        var objects = classes.Select((kind, index) =>
+            new DroppedGrammarObject("id" + index, kind, index % 2 == 0 ? "named" : null, null)).ToArray();
+        var dropped = new DroppedGrammar([new("grammar.environment.invalid", objects, "dropped")], 0)
+        {
+            OmittedFindings = 2,
+        };
+        var shown = new[]
+        {
+            DroppedGrammarWords.Blocker(dropped),
+            DroppedGrammarWords.Blocker(new DroppedGrammar([new("grammar.compile.failed", [], "failed", false)], 0)),
+            DroppedGrammarWords.Blocker(new DroppedGrammar([new("grammar.environment.invalid", objects.Take(1).ToArray(),
+                "dropped")], 0)),
+        };
+
+        Assert.All(shown, text => Assert.DoesNotContain("grammar.", text, StringComparison.Ordinal));
+        AssertWindowWords(shown);
+    }
+
+    [Fact]
     public void AChangeWhoseTrialCopyIsGoneSpeaksInTheRefusalsWords()
     {
         var fit = new ChangeFit("gone", ChangeFitStatus.Uncertain, [ChangeFitReasons.TrialScratchGone])

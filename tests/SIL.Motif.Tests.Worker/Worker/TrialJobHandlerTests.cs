@@ -432,7 +432,8 @@ public sealed class TrialJobHandlerTests : IDisposable
         await loop.RunUntilIdleAsync(CancellationToken.None);
 
         Assert.Equal(JobStatus.Completed, _jobs.Get(job.JobId)!.Status);
-        Assert.Equal(["off"], FakeParser.StoredAnalysesRequested(parserPath));
+        // The Baseline's own grammar check runs too, with the same choice, when none is stored.
+        Assert.Equal(["off", "off"], FakeParser.StoredAnalysesRequested(parserPath));
         Assert.Contains("grammar-health", FakeParser.Invocations(parserPath));
     }
 
@@ -452,6 +453,124 @@ public sealed class TrialJobHandlerTests : IDisposable
         Assert.Equal(JobStatus.Completed, completed.Status);
         Assert.Contains("grammar-health unavailable", completed.ResultJson, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void ATrialWhoseGrammarCheckFindsNothingIsCleanOfDroppedGrammar()
+    {
+        var dropped = RunTrialWithGrammarHealth((_, _) =>
+            Task.FromResult<GrammarCheckResponse?>(new GrammarCheckResponse([], HasBaseline: true)));
+
+        Assert.True(dropped.IsClean);
+    }
+
+    [Fact]
+    public void ATrialNamesGrammarTheCandidateDroppedAndTheBaselineDidNot()
+    {
+        var subject = Guid.NewGuid();
+        var dropped = RunTrialWithGrammarHealth((call, _) => Task.FromResult<GrammarCheckResponse?>(
+            new GrammarCheckResponse(call == 1 ? [DroppedEnvironment(subject)] : [], HasBaseline: true)));
+
+        var finding = Assert.Single(dropped.Introduced);
+        Assert.Equal("grammar.environment.invalid", finding.Code);
+        Assert.Equal(CanonicalId.FromGuid(subject).Value, finding.Objects[0].MotifId);
+        Assert.False(dropped.IsClean);
+    }
+
+    [Fact]
+    public void ATrialWhoseGrammarCheckFailedReportsDroppedGrammarAsNotChecked()
+    {
+        var dropped = RunTrialWithGrammarHealth((_, _) => throw new IOException("grammar-health unavailable"));
+
+        Assert.False(dropped.Checked);
+        Assert.Contains("grammar-health unavailable", dropped.NotCheckedReason);
+    }
+
+    [Fact]
+    public void ATrialWhoseGrammarCheckOutlastsTheStageBoundReportsDroppedGrammarAsNotChecked()
+    {
+        var dropped = RunTrialWithGrammarHealth(async (_, token) =>
+        {
+            await Task.Delay(Timeout.Infinite, token);
+            return null;
+        }, TimeSpan.FromMilliseconds(200));
+
+        Assert.False(dropped.Checked);
+        Assert.Contains("grammar check", dropped.NotCheckedReason);
+    }
+
+    [Theory]
+    [InlineData("throws")]
+    [InlineData("returns-nothing")]
+    [InlineData("outlasts-the-bound")]
+    public void ATrialWhoseBaselineGrammarCheckIsUnavailableReportsDroppedGrammarAsNotChecked(string how)
+    {
+        var dropped = RunTrialWithGrammarHealth(async (call, token) =>
+        {
+            if (call == 1) return new GrammarCheckResponse([DroppedEnvironment(Guid.NewGuid())], HasBaseline: true);
+            if (how == "throws") throw new IOException(new string('x', 3000));
+            if (how == "outlasts-the-bound") await Task.Delay(Timeout.Infinite, token);
+            return null;
+        }, TimeSpan.FromMilliseconds(500));
+
+        Assert.False(dropped.Checked);
+        Assert.False(dropped.IsClean);
+        Assert.Empty(dropped.Introduced);
+        Assert.StartsWith("The Baseline's grammar check was not available", dropped.NotCheckedReason);
+        Assert.True(dropped.NotCheckedReason!.Length < 600);
+    }
+
+    [Fact]
+    public void ATrialWithNoGrammarCheckConfiguredReportsDroppedGrammarAsNotChecked()
+    {
+        using var lanes = new ProjectLaneRegistry(_ => _token);
+        var handler = BuildHandler(lanes, new FakeAssessor("pangloss", [AssessmentKind.Correctness]));
+        var proposalId = CanonicalId.Mint("proposal/");
+        var proposalJson = BuildSetGlossProposalJson(proposalId, _seed.FirstSenseId, "no grammar check");
+        SaveCommittedProposal(proposalId, proposalJson);
+
+        var completed = RunAndFinish(handler, CreateTrialJob(proposalJson));
+
+        Assert.False(ReadDroppedGrammar(completed).Checked);
+    }
+
+    // The first call checks the candidate grammar and the second checks the Baseline's.
+    private DroppedGrammar RunTrialWithGrammarHealth(
+        Func<int, CancellationToken, Task<GrammarCheckResponse?>> check, TimeSpan? bound = null)
+    {
+        using var lanes = new ProjectLaneRegistry(_ => _token);
+        var calls = 0;
+        var handler = BuildHandler(lanes, new FakeAssessor("pangloss", [AssessmentKind.Correctness]),
+            grammarHealth: (_, _, _, token) => check(Interlocked.Increment(ref calls), token));
+        if (bound is { } stageBound) handler.StageTimeout = stageBound;
+        var proposalId = CanonicalId.Mint("proposal/");
+        var proposalJson = BuildSetGlossProposalJson(proposalId, _seed.FirstSenseId, "dropped grammar");
+        SaveCommittedProposal(proposalId, proposalJson);
+
+        var completed = RunAndFinish(handler, CreateTrialJob(proposalJson));
+
+        Assert.Equal(JobStatus.Completed, completed.Status);
+        return ReadDroppedGrammar(completed);
+    }
+
+    private static DroppedGrammar ReadDroppedGrammar(JobRecord completed)
+    {
+        using var result = JsonDocument.Parse(completed.ResultJson!);
+        return result.RootElement.GetProperty("droppedGrammar")
+            .Deserialize<DroppedGrammar>(SIL.Motif.Contract.MotifJson.CreateOptions())!;
+    }
+
+    private static GrammarWarning DroppedEnvironment(Guid subject) =>
+        new(GrammarDiagnosticLevel.Warning, "grammar.environment.invalid",
+            [new GrammarWarningPart("subject", GrammarWarningPartRole.Object, subject.ToString())
+            {
+                SubjectGuid = subject.ToString(),
+                SourceClass = "PhEnvironment",
+                Title = "environment",
+            }], [], "text")
+        {
+            Code = "grammar.environment.invalid",
+            Description = "dropped",
+        };
 
     [Theory]
     [InlineData(false)]

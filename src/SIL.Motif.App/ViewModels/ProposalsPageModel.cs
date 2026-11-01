@@ -242,7 +242,8 @@ public sealed class ProposalCardViewModel : ObservableObject
     public bool ShowsOpenAction => !CanReopen;
 
     /// <summary>Whether the numbers come from an earlier try and should read as old.</summary>
-    public bool NumbersAreOld => HasNumbers && Standing.Kind == TrialStandingKind.NeedsAnotherTry;
+    public bool NumbersAreOld => HasNumbers && Standing is
+        { Kind: TrialStandingKind.NeedsAnotherTry, Reason: not TrialStaleReason.DroppedGrammarNotChecked };
 
     /// <summary>The chip naming approved words the Trial lost, or null.</summary>
     public string? LostChip { get; }
@@ -273,7 +274,7 @@ public sealed class ProposalCardViewModel : ObservableObject
     public string StatusText => Standing.Kind switch
     {
         TrialStandingKind.Trying or TrialStandingKind.Failed => Words.Sentence,
-        TrialStandingKind.NeedsAnotherTry => Words.OldNumbers ?? string.Empty,
+        TrialStandingKind.NeedsAnotherTry => Words.OldNumbers ?? Words.Sentence,
         TrialStandingKind.NotTried when Card.Group != ProposalGroup.NotTried => Words.Status,
         _ => string.Empty,
     };

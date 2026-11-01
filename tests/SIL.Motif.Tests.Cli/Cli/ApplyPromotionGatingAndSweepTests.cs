@@ -483,28 +483,31 @@ public sealed class ApplyPromotionGatingAndSweepTests
             .Select(w => CorrectnessFixture.Word(w.Word, w.Analysed))
             .ToArray();
 
-        using var database = ProjectMotifDatabase.Open(_fwDataPath);
-        var project = new ProjectLocator(_fwDataPath, Path.GetFileNameWithoutExtension(_fwDataPath));
-        baselineToken ??= JsonSerializer.Serialize(new BaselineRepository(database)
-            .GetCurrent(ProjectWorkspaceKey.Compute(project))!.Token, MotifJson.CreateOptions());
-        new AssessmentRepository(database).Record(new NewAssessmentRecord(
-            AssessmentId: assessmentId,
-            ProposalId: proposalId is null ? null : CanonicalId.Parse(proposalId),
-            ProposalIntentDigest: intentDigest,
-            Assessor: "pangloss",
-            Kind: kind,
-            ScopeJson: """{"perWordLimitMs":1000,"perWordStepLimit":{"steps":200000,"isUnbounded":false}}""",
-            ScopeDigest: "sha256:" + new string('a', 64),
-            Subject: new AssessmentSubject.Words(selection, "none", "1"),
-            BaselineToken: baselineToken,
-            OutcomeDigest: "sha256:" + new string('b', 64),
-            SemanticDigest: "sha256:" + new string('c', 64),
-            GrammarSourceSha256: GrammarSha,
-            ModelFingerprint: "model",
-            Pipeline: "pipeline",
-            DiagnosticCount: 0,
-            Material: new AssessmentRecordMaterial.Words(assessedWords, null, null, [])
-        ));
+        using (var database = ProjectMotifDatabase.Open(_fwDataPath))
+        {
+            var project = new ProjectLocator(_fwDataPath, Path.GetFileNameWithoutExtension(_fwDataPath));
+            baselineToken ??= JsonSerializer.Serialize(new BaselineRepository(database)
+                .GetCurrent(ProjectWorkspaceKey.Compute(project))!.Token, MotifJson.CreateOptions());
+            new AssessmentRepository(database).Record(new NewAssessmentRecord(
+                AssessmentId: assessmentId,
+                ProposalId: proposalId is null ? null : CanonicalId.Parse(proposalId),
+                ProposalIntentDigest: intentDigest,
+                Assessor: "pangloss",
+                Kind: kind,
+                ScopeJson: """{"perWordLimitMs":1000,"perWordStepLimit":{"steps":200000,"isUnbounded":false}}""",
+                ScopeDigest: "sha256:" + new string('a', 64),
+                Subject: new AssessmentSubject.Words(selection, "none", "1"),
+                BaselineToken: baselineToken,
+                OutcomeDigest: "sha256:" + new string('b', 64),
+                SemanticDigest: "sha256:" + new string('c', 64),
+                GrammarSourceSha256: GrammarSha,
+                ModelFingerprint: "model",
+                Pipeline: "pipeline",
+                DiagnosticCount: 0,
+                Material: new AssessmentRecordMaterial.Words(assessedWords, null, null, [])
+            ));
+        }
+        if (proposalId is not null) StoredTrialJob.Record(_fwDataPath, proposalId, assessmentId);
         return assessmentId;
     }
 

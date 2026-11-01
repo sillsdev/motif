@@ -59,6 +59,21 @@ public sealed class ProposalStandingsCommandTests : IDisposable
     }
 
     [Fact]
+    public void ATrialThatCouldNotCheckDroppedGrammarIsGroupedAsNeedingAnotherTry()
+    {
+        using var fixture = new TrialsTests.ProjectFixture(_root);
+        var proposal = fixture.SaveProposal();
+        fixture.RecordAssessment(proposal, "trial-root", AssessmentKinds.ParseTime);
+        fixture.CreateJob(proposal.Json, "2026-09-24T11:00:00Z", "trial", ["trial-root"], recordDroppedGrammar: false);
+
+        var card = Assert.Single(Read(fixture).Proposals);
+
+        Assert.Equal(ProposalGroup.NeedsAnotherTry, card.Group);
+        Assert.Equal(TrialStaleReason.DroppedGrammarNotChecked, card.Standing.Reason);
+        Assert.True(card.Standing.CanTryAgain);
+    }
+
+    [Fact]
     public void StoredTrialWorkIsIncludedInTheProposalSummary()
     {
         using var fixture = new TrialsTests.ProjectFixture(_root);

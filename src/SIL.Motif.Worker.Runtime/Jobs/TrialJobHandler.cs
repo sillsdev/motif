@@ -16,6 +16,7 @@ using SIL.Motif.Host.Analysis;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.Config;
 using SIL.Motif.Host.Corpus;
+using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.Parser;
 using SIL.Motif.Runner.DryRun;
 using SIL.Motif.Worker.Baselines;
@@ -142,6 +143,9 @@ internal sealed class TrialJobHandler
         _retainScratch = retainScratch ?? (() => TrialScratchRetention.RetainRequested);
     }
 
+    /// <summary>How long a parser stage of a Trial may run before it is reported as not checked.</summary>
+    internal TimeSpan StageTimeout { get; set; } = PanGlossInvoker.DefaultWallClockCap;
+
     /// <summary>Runs one claimed Trial job through to a terminal outcome, or parks it waiting for a Baseline.</summary>
     internal async Task<JobOutcome?> RunAsync(ClaimedJob claim, ProjectLocator project, CancellationToken cancellationToken)
     {
@@ -250,30 +254,26 @@ internal sealed class TrialJobHandler
         try
         {
             string? grammarCheckWarning = null;
+            DroppedGrammar droppedGrammar;
             if (_grammarHealth is not null)
             {
                 var grammarPhase = new JobStageProgress("grammar-health", 1, 2, "grammar-health");
                 claim.PublishStageProgress(grammarPhase);
                 var grammarWait = claim.ObserveParserWait(grammarPhase);
-                try
-                {
-                    var grammarCheck = await _grammarHealth(candidate.GrammarPath,
-                        project.FieldWorksProjectIdentity, grammarWait.Observe, cancellationToken).ConfigureAwait(false);
-                    if (grammarCheck is null)
-                    {
-                        grammarCheckWarning = "The grammar check did not return a report.";
-                    }
-                    else
-                    {
-                        new TrialGrammarCheckRepository(claim.Database).Save(baseline.Token,
-                            proposal.ProposalId, IntentDigest.Compute(proposal), candidate.Selection.Sha256,
-                            grammarCheck, baseline.SourceLastWriteUtc);
-                    }
-                }
-                catch (Exception exception) when (exception is not OperationCanceledException)
-                {
-                    grammarCheckWarning = exception.Message;
-                }
+                var (grammarCheck, dropped) = await DroppedGrammarCheck.CheckAsync(_grammarHealth, claim.Database,
+                    baseline.Token, baseline.FwDataPath, candidate.GrammarPath, project.FieldWorksProjectIdentity,
+                    proposal, grammarWait.Observe, StageTimeout, cancellationToken).ConfigureAwait(false);
+                droppedGrammar = dropped;
+                if (grammarCheck is not null)
+                    new TrialGrammarCheckRepository(claim.Database).Save(baseline.Token,
+                        proposal.ProposalId, IntentDigest.Compute(proposal), candidate.Selection.Sha256,
+                        grammarCheck, baseline.SourceLastWriteUtc);
+                else
+                    grammarCheckWarning = dropped.NotCheckedReason;
+            }
+            else
+            {
+                droppedGrammar = DroppedGrammar.NotChecked("No grammar check is configured for this Trial.");
             }
             var limitMs = candidate.Scope.PerWordLimit is { } limit ? (int?)limit.TotalMilliseconds : null;
             var initialProgress = new TrialWordProgress(0, candidate.Scope.ParsedWords.Count, null)
@@ -301,7 +301,8 @@ internal sealed class TrialJobHandler
                     candidate.ProjectStandings);
                 var assessmentIds = records.Select(record => record.AssessmentId).ToArray();
                 var completionJson = JsonSerializer.Serialize(
-                    new TrialCompletion(baseline.Token, assessmentIds, input.AllWords, grammarCheckWarning),
+                    new TrialCompletion(baseline.Token, assessmentIds, input.AllWords, grammarCheckWarning,
+                        droppedGrammar),
                     MotifJson.CreateOptions());
                 try
                 {
@@ -549,5 +550,6 @@ internal sealed class TrialJobHandler
         [property: JsonPropertyName("baselineToken")] BaselineToken BaselineToken,
         [property: JsonPropertyName("assessmentIds")] IReadOnlyList<string> AssessmentIds,
         [property: JsonPropertyName("allWords")] bool AllWords,
-        [property: JsonPropertyName("grammarCheckWarning")] string? GrammarCheckWarning = null);
+        [property: JsonPropertyName("grammarCheckWarning")] string? GrammarCheckWarning = null,
+        [property: JsonPropertyName("droppedGrammar")] DroppedGrammar? DroppedGrammar = null);
 }

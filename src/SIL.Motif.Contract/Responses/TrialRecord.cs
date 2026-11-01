@@ -73,6 +73,24 @@ public sealed record TrialRecord(
     /// <summary>A grammar-check failure that did not prevent the Trial from continuing.</summary>
     public string? GrammarCheckWarning { get; init; }
 
+    /// <summary>
+    /// The grammar PanGloss dropped with only a warning while checking the candidate, split into what the
+    /// Proposal adds or edits and what the Baseline already had; <see langword="null"/> when the Trial recorded none.
+    /// </summary>
+    public DroppedGrammar? DroppedGrammar { get; init; }
+
+    /// <summary>
+    /// True only when the Trial checked for dropped grammar and the Proposal introduced none; false when it
+    /// introduced some, and false when the check did not run or the Trial has not finished. It says nothing
+    /// about the correctness numbers, which a Trial reports separately.
+    /// </summary>
+    public bool Clean => DroppedGrammar is { IsClean: true };
+
+    /// <summary>The recorded check, or a not-checked result when the Trial recorded none.</summary>
+    [JsonIgnore]
+    public DroppedGrammar DroppedGrammarOrUnchecked =>
+        DroppedGrammar ?? Responses.DroppedGrammar.NotChecked("The Trial recorded no dropped-grammar check.");
+
     /// <summary>Which words the Trial was asked to measure.</summary>
     /// <remarks>Unset, it follows <see cref="AllWords"/>: all words, or words someone chose.</remarks>
     public TrialWordScope WordScope
@@ -84,7 +102,13 @@ public sealed record TrialRecord(
     private readonly TrialWordScope? _wordScope;
 
     /// <summary>What the person can do next with this Trial's Proposal; see <see cref="TrialStanding"/>.</summary>
-    public TrialStanding Standing => TrialStanding.From(Status, Freshness);
+    public TrialStanding Standing => TrialStanding.From(Status, Freshness, DroppedGrammarNotChecked);
+
+    /// <summary>
+    /// Whether a completed Trial has no completed check for dropped grammar, which only another Trial can settle.
+    /// Set when the Trial is read from the store; a record built any other way leaves it false.
+    /// </summary>
+    public bool DroppedGrammarNotChecked { get; init; }
 
     /// <summary>
     /// Whether this Trial's numbers can stand beside today's: it completed with a parse-time Assessment, whatever

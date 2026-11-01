@@ -5507,6 +5507,10 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <value>This Proposal changed since it was tried. Try again.</value>
     <comment>Sentence shown when the Proposal changed after it was tried.</comment>
   </data>
+  <data name="MotifApp.TrialDroppedGrammarNotCheckedSentence" xml:space="preserve">
+    <value>The check for grammar the parser left out did not finish. Try again.</value>
+    <comment>Sentence shown when the Proposal was tried but the parser could not say whether it left grammar out, such as after a timeout or a try made before that check existed.</comment>
+  </data>
   <data name="MotifApp.TrialProposalChangedOldNumbers" xml:space="preserve">
     <value>From the last try, before this Proposal changed</value>
     <comment>Caption above numbers that came from a Trial run before the Proposal changed.</comment>
@@ -5558,6 +5562,10 @@ Motif starts a check automatically when this project opens. Use Reload to read a
   <data name="MotifApp.RefusalApplyDrift" xml:space="preserve">
     <value>Applying may have completed, but the project could not be verified. Check it before retrying.</value>
     <comment>Sentence the window shows when the command refuses with code C.ApplyDrift. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
+  </data>
+  <data name="MotifApp.RefusalApplyDroppedGrammar" xml:space="preserve">
+    <value>The check found grammar the parser left out. Fix what it names, in the changes or in FieldWorks, then try again.</value>
+    <comment>Sentence the window shows when the command refuses with code C.ApplyDroppedGrammar. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalApplyDryRunMissing" xml:space="preserve">
     <value>The check did not give enough evidence to apply these changes. Check them again.</value>
@@ -7701,4 +7709,64 @@ Motif starts a check automatically when this project opens. Use Reload to read a
   <data name="MotifApp.AssessBudgetCaption" xml:space="preserve"><value>Stop the whole parse after this time. The default is one hour.</value><comment>Explains the whole-parse time limit on the Parsing settings page.</comment></data>
   <data name="MotifApp.AssessBudgetRefusal" xml:space="preserve"><value>Enter a whole number from 60 to 4,294,967 seconds.</value><comment>Message when the whole-parse time limit is empty or outside the allowed range.</comment></data>
   <data name="MotifApp.AssessBudgetStoppedFormat" xml:space="preserve"><value>Parsing stopped at the time limit: {0} words done, {1} not done. No results were saved.</value><comment>Stopped parse message: {0} is the number of words done and {1} is the number not done.</comment></data>
+  <data name="MotifApp.DroppedGrammarBlockerFormat" xml:space="preserve">
+    <value>The check found grammar the parser left out: {0}. Fix what it names, in this Proposal or in FieldWorks, then try again.</value>
+    <comment>Sentence on Review when applying is blocked by grammar the parser left out. {0} lists the grammar objects.</comment>
+  </data>
+  <data name="MotifApp.DroppedGrammarObjectFormat" xml:space="preserve">
+    <value>{0} “{1}”</value>
+    <comment>One grammar object the parser left out: {0} is its kind, such as environment, and {1} is its name.</comment>
+  </data>
+  <data name="MotifApp.DroppedGrammarUntitledObjectFormat" xml:space="preserve">
+    <value>unnamed {0}</value>
+    <comment>One grammar object the parser left out that has no name; {0} is its kind, such as environment.</comment>
+  </data>
+  <data name="MotifApp.DroppedGrammarUnknownObject" xml:space="preserve">
+    <value>something the parser did not identify</value>
+    <comment>Stands for grammar the parser left out without saying which object.</comment>
+  </data>
+  <data name="MotifApp.DroppedGrammarMoreFormat" xml:space="preserve">
+    <value>and {0} more</value>
+    <comment>Ends the list of grammar the parser left out when more was found than is listed; {0} is the count.</comment>
+  </data>
+  <data name="MotifApp.DroppedKindEnvironment" xml:space="preserve">
+    <value>environment</value>
+    <comment>Kind of a grammar object: a phonological environment.</comment>
+  </data>
+  <data name="MotifApp.DroppedKindAllomorph" xml:space="preserve">
+    <value>allomorph</value>
+    <comment>Kind of a grammar object: an allomorph, the form of a stem or affix.</comment>
+  </data>
+  <data name="MotifApp.DroppedKindEntry" xml:space="preserve">
+    <value>entry</value>
+    <comment>Kind of a grammar object: a lexical entry.</comment>
+  </data>
+  <data name="MotifApp.DroppedKindRule" xml:space="preserve">
+    <value>rule</value>
+    <comment>Kind of a grammar object: a phonological or morphological rule.</comment>
+  </data>
+  <data name="MotifApp.DroppedKindSoundClass" xml:space="preserve">
+    <value>sound class</value>
+    <comment>Kind of a grammar object: a natural class of sounds.</comment>
+  </data>
+  <data name="MotifApp.DroppedKindSlot" xml:space="preserve">
+    <value>affix slot</value>
+    <comment>Kind of a grammar object: a slot in an affix template.</comment>
+  </data>
+  <data name="MotifApp.DroppedKindStemName" xml:space="preserve">
+    <value>stem name</value>
+    <comment>Kind of a grammar object: a stem name.</comment>
+  </data>
+  <data name="MotifApp.DroppedKindProhibition" xml:space="preserve">
+    <value>ad hoc prohibition</value>
+    <comment>Kind of a grammar object: an ad hoc prohibition.</comment>
+  </data>
+  <data name="MotifApp.DroppedKindStratum" xml:space="preserve">
+    <value>stratum</value>
+    <comment>Kind of a grammar object: a stratum.</comment>
+  </data>
+  <data name="MotifApp.DroppedKindOther" xml:space="preserve">
+    <value>part of the grammar</value>
+    <comment>Kind of a grammar object the window has no more specific word for.</comment>
+  </data>
 </root>

@@ -712,7 +712,10 @@ public sealed partial class ReviewPageModel : PageModel
                         : new(ApplyBlockerKind.TrialNeeded, words.Sentence));
                 }
                 else if (_review?.Readiness is { IsReady: false } readiness)
-                    blockers.Add(new(ApplyBlockerKind.NotReady, string.Join(" ", readiness.Reasons)));
+                    blockers.Add(new(ApplyBlockerKind.NotReady, string.Join(" ", readiness.Reasons.Select(reason =>
+                        readiness.DroppedGrammar is { } dropped && reason == readiness.DroppedGrammarReason
+                            ? DroppedGrammarWords.Blocker(dropped)
+                            : reason))));
             }
             else if (!EvidenceComplete && !IsMeasuring)
                 blockers.Add(new(ApplyBlockerKind.NotMeasured,

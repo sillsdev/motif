@@ -421,6 +421,36 @@ public sealed class CatalogTextRenderingTests
     }
 
     [Fact]
+    public void TrialTextNamesDroppedGrammarTheProposalIntroducedAndIsNotClean()
+    {
+        var finding = new DroppedGrammarFinding("grammar.environment.invalid",
+            [new DroppedGrammarObject("env-id", "PhEnvironment", "after a vowel", null)], "dropped");
+
+        var output = RenderTrial(new DroppedGrammar([finding], 2) { OmittedFindings = 3 });
+
+        Assert.Contains("NOT clean", output, StringComparison.Ordinal);
+        Assert.Contains("grammar.environment.invalid on PhEnvironment after a vowel (env-id)", output, StringComparison.Ordinal);
+        Assert.Contains("and 3 more.", output, StringComparison.Ordinal);
+        Assert.Contains("2 dropped finding(s) were already in the Baseline's grammar.", output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TrialTextSaysCleanOnlyWhenTheCheckRanAndIntroducedNothing()
+    {
+        Assert.Contains("Clean: the parser dropped no grammar", RenderTrial(new DroppedGrammar([], 0)), StringComparison.Ordinal);
+        var unchecked_ = RenderTrial(DroppedGrammar.NotChecked("no parser"));
+        Assert.Contains("was not checked, so this Trial is not clean: no parser", unchecked_, StringComparison.Ordinal);
+        Assert.DoesNotContain("Clean: the parser dropped no grammar", unchecked_, StringComparison.Ordinal);
+    }
+
+    private static string RenderTrial(DroppedGrammar? dropped) => CommandTextRenderer.Render(
+        CommandOutcome<TrialRecord>.Success(new TrialRecord("job/1", "p/1", "sha256:x",
+            new BaselineToken("project", "sha256:" + new string('a', 64), "1", "2026-10-05T00:00:00Z",
+                "sha256:" + new string('b', 64)),
+            null, new Dictionary<string, string>(), [], false, null, JobStatus.Completed, null, TrialFreshness.Current)
+        { DroppedGrammar = dropped }), asJson: false).Output;
+
+    [Fact]
     public void TimingTextMatchesARulesWorkByItsGuidWhateverItsCaseAndNeverShowsAMissingMatchAsZero()
     {
         using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));

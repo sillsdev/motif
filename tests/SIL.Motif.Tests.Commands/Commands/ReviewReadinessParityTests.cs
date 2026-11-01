@@ -26,7 +26,7 @@ namespace SIL.Motif.Tests.Commands;
 /// <summary>The window's Review and <c>motif apply</c> must reach the same Readiness verdict from the same store.</summary>
 public sealed class ReviewReadinessParityTests : IDisposable
 {
-    private static readonly string[] ReadinessRefusals = ["apply.not-ready", "apply.regression", "apply.dry-run-missing"];
+    private static readonly string[] ReadinessRefusals = ["apply.not-ready", "apply.regression", "apply.dry-run-missing", "apply.dropped-grammar"];
 
     private readonly string _root = Path.Combine(Path.GetTempPath(), "SIL.Motif.ReviewReadinessParityTests",
         Guid.NewGuid().ToString("N"));
@@ -49,8 +49,8 @@ public sealed class ReviewReadinessParityTests : IDisposable
         new AssessmentRepository(fixture.Database).PromoteToCurrent(promoted);
         var moved = fixture.RecordBaseline("sha256:" + new string('c', 64), "2026-09-24T13:00:00Z",
             semanticDigest: "sha256:" + new string('d', 64));
-        fixture.CreateJob(proposal.Json, "2026-09-24T14:00:00Z", "trial-b", [], baseline: moved);
-        Record(fixture, proposal, moved);
+        var measured = Record(fixture, proposal, moved);
+        fixture.CreateJob(proposal.Json, "2026-09-24T14:00:00Z", "trial-b", [measured], baseline: moved);
         Bind(fixture, proposal.Id);
 
         Assert.True(AppliesWithoutForce(fixture, proposal.Id));
@@ -165,6 +165,61 @@ public sealed class ReviewReadinessParityTests : IDisposable
         Assert.Equal("apply.trial-stale", applied.Refusal?.Code);
     }
 
+    [Theory]
+    [InlineData("introduced", false, "apply.dropped-grammar")]
+    [InlineData("unchecked", false, "apply.not-ready")]
+    [InlineData("clean", true, null)]
+    public void ApplyJudgesTheAssessmentByTheDroppedGrammarOfTheTrialThatRecordedIt(string scenario, bool ready,
+        string? refusal)
+    {
+        using var fixture = new TrialsTests.ProjectFixture(_root);
+        var proposal = fixture.SaveProposal();
+        var assessmentId = Record(fixture, proposal, CurrentToken(fixture));
+        DroppedGrammar? dropped = scenario switch
+        {
+            "introduced" => new DroppedGrammar([new("grammar.environment.invalid", [], "dropped")], 0),
+            "clean" => new DroppedGrammar([], 0),
+            _ => DroppedGrammar.NotChecked("no parser"),
+        };
+        fixture.CreateJob(proposal.Json, "2026-09-24T11:00:00Z", "trial", [assessmentId], droppedGrammar: dropped);
+        new ProposalRepository(fixture.Database).SetAnchor(proposal.Id, TrialAnchorJson(fixture, proposal.Id));
+
+        var outcome = ProposalCommands.BuildApplyProjection(fixture.Database, fixture.Project, proposal.Id.Value);
+
+        // A ready Proposal can still be refused later for drift, which this fixture project cannot satisfy.
+        if (refusal is null) Assert.DoesNotContain(outcome.Refusal?.Code, ReadinessRefusals);
+        else Assert.Equal(refusal, outcome.Refusal?.Code);
+        Assert.Equal(ready, ReviewIsReady(fixture, proposal.Id));
+    }
+
+    [Fact]
+    public void AnAssessmentWhoseTrialIsNoLongerStoredIsNotCheckedAndTheProposalCanBeTriedAgain()
+    {
+        using var fixture = new TrialsTests.ProjectFixture(_root);
+        var proposal = fixture.SaveProposal();
+        var measured = Record(fixture, proposal, CurrentToken(fixture));
+        fixture.CreateJob(proposal.Json, "2026-09-24T11:00:00Z", "trial", [measured]);
+        new ProposalRepository(fixture.Database).SetAnchor(proposal.Id, TrialAnchorJson(fixture, proposal.Id));
+        Assert.True(ReviewIsReady(fixture, proposal.Id));
+        using (var connection = fixture.Database.OpenConnection())
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = "DELETE FROM Jobs WHERE JobId = 'trial';";
+            command.ExecuteNonQuery();
+        }
+
+        var outcome = ProposalCommands.BuildApplyProjection(fixture.Database, fixture.Project, proposal.Id.Value);
+        var review = ProposalReview.Read(fixture.Database, fixture.Project, proposal.Id.Value).Value!;
+        var standing = TrialStanding.Of(Trials.LatestFor(fixture.Database, fixture.Project, proposal.Id.Value));
+
+        Assert.Equal("apply.not-ready", outcome.Refusal?.Code);
+        Assert.Contains("The Trial that made this Assessment is no longer stored", outcome.Refusal!.Message,
+            StringComparison.Ordinal);
+        Assert.False(review.Readiness?.IsReady ?? false);
+        Assert.Equal(TrialStandingKind.NotTried, standing.Kind);
+        Assert.True(standing.CanTryAgain);
+    }
+
     private static CanonicalId Arrange(TrialsTests.ProjectFixture fixture, string scenario)
     {
         var proposals = new ProposalRepository(fixture.Database);
@@ -180,9 +235,9 @@ public sealed class ReviewReadinessParityTests : IDisposable
         }
 
         var proposal = fixture.SaveProposal();
-        fixture.CreateJob(proposal.Json, "2026-09-24T11:00:00Z", "trial", []);
         var token = CurrentToken(fixture);
-        Record(fixture, proposal, token);
+        var measured = Record(fixture, proposal, token);
+        fixture.CreateJob(proposal.Json, "2026-09-24T11:00:00Z", "trial", [measured]);
         var anchor = TrialAnchorJson(fixture, proposal.Id);
         switch (scenario)
         {

@@ -578,6 +578,53 @@ public sealed class ReviewListWalkTests
     }
 
     [Fact]
+    public async Task ATrialWhoseDroppedGrammarWasNotCheckedBlocksWithTryAgain()
+    {
+        var fake = new FakeCommandClient();
+        fake.PendingChangesIs(new PendingChangesSnapshot(null, "none", [], []));
+        fake.ReadTrialCompletesWith(Trial(TrialFreshness.Current) with { DroppedGrammarNotChecked = true });
+        fake.Review = Review([Rule("a")]);
+        var context = NewContext(fake);
+        var page = new ReviewPageModel(context);
+        await context.OpenProjectAsync(ProjectPath);
+        await context.OpenProposalAsync(ProposalId, CancellationToken.None);
+        await page.LoadReviewAsync();
+
+        var blocker = page.ApplyBlockers.Single(blocker => blocker.Kind == ApplyBlockerKind.TrialNeeded);
+
+        Assert.Equal(TrialStandingWords.DroppedGrammarNotChecked.Sentence, blocker.Sentence);
+        Assert.Equal(MotifAppStrings.TryAgain, blocker.ActionText);
+        Assert.False(page.CanApply);
+    }
+
+    [Fact]
+    public async Task DroppedGrammarBlocksReviewInWordsThatNameTheObjectAndNothingOfThePanGlossCode()
+    {
+        var (fake, _, page) = await OpenWith(Rule("a"));
+        var dropped = new DroppedGrammar([new("grammar.environment.invalid",
+            [new("AbCdEfGhIjKlMnOpQrStUv", "PhEnvironment", "/ _ a", "StringRep")], "dropped")], 0);
+        const string detailed = "dropped grammar: grammar.environment.invalid on PhEnvironment AbCdEfGhIjKlMnOpQrStUv";
+        fake.Review = fake.Review with
+        {
+            Readiness = new ReadinessProjection(false, true, false, null, [detailed], false)
+            {
+                DroppedGrammarReason = detailed,
+                DroppedGrammar = dropped,
+            },
+        };
+
+        await page.LoadReviewAsync();
+
+        var sentence = page.ApplyBlockers.Single(blocker => blocker.Kind == ApplyBlockerKind.NotReady).Sentence;
+        Assert.Contains("environment", sentence, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("/ _ a", sentence, StringComparison.Ordinal);
+        Assert.DoesNotContain("grammar.environment", sentence, StringComparison.Ordinal);
+        Assert.DoesNotContain("PhEnvironment", sentence, StringComparison.Ordinal);
+        Assert.DoesNotContain("AbCdEf", sentence, StringComparison.Ordinal);
+        WindowWordsTests.AssertWindowWords([sentence]);
+    }
+
+    [Fact]
     public async Task ARefusedUndoOfAFinalizedProposalDoesNotReopenItAgainOnTheNextUndo()
     {
         var (fake, _, page) = await OpenWith(Rule("a"), Rule("b"));

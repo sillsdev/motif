@@ -87,6 +87,32 @@ public static class Trials
             .ToArray();
     }
 
+    /// <summary>
+    /// The dropped-grammar result of each completed Trial of this Proposal, keyed by every Assessment id the Trial
+    /// recorded: a not-checked result when the Trial recorded none. Reads only the Trial jobs' stored results, so
+    /// a Review refresh does not rebuild every Trial.
+    /// </summary>
+    internal static IReadOnlyDictionary<string, DroppedGrammar> DroppedGrammarByAssessment(MotifDatabase database,
+        ProjectLocator project, CanonicalId proposalId)
+    {
+        ArgumentNullException.ThrowIfNull(database);
+        ArgumentNullException.ThrowIfNull(project);
+        var byAssessment = new Dictionary<string, DroppedGrammar>(StringComparer.Ordinal);
+        foreach (var candidate in ReadCandidates(new JobRepository(database)
+            .ListByProjectAndKind(ProjectWorkspaceKey.Compute(project), TrialJobHandler.TrialKind), proposalId))
+        {
+            if (candidate.Job.Status != JobStatus.Completed) continue;
+            TrialCompletion? completion;
+            try { completion = ReadCompletion(candidate.Job.ResultJson); }
+            catch (Exception exception) when (exception is JsonException or InvalidDataException) { continue; }
+            if (completion is null) continue;
+            var dropped = completion.DroppedGrammar
+                ?? DroppedGrammar.NotChecked("The Trial recorded no dropped-grammar check.");
+            foreach (var assessmentId in completion.AssessmentIds) byAssessment.TryAdd(assessmentId, dropped);
+        }
+        return byAssessment;
+    }
+
     /// <summary>Every Trial job that names this Proposal, running or not, so deleting the Proposal removes them.</summary>
     internal static IReadOnlyList<JobRecord> JobsFor(MotifDatabase database, ProjectLocator project,
         CanonicalId proposalId) =>
@@ -253,6 +279,8 @@ public static class Trials
             WordResults = wordResults,
             Work = work,
             GrammarCheckWarning = completion?.GrammarCheckWarning,
+            DroppedGrammar = completion?.DroppedGrammar,
+            DroppedGrammarNotChecked = completed && completion?.DroppedGrammar is not { Checked: true },
         };
     }
 
@@ -288,7 +316,8 @@ public static class Trials
         [property: JsonPropertyName("baselineToken")] BaselineToken BaselineToken,
         [property: JsonPropertyName("assessmentIds")] IReadOnlyList<string> AssessmentIds,
         [property: JsonPropertyName("allWords")] bool AllWords,
-        [property: JsonPropertyName("grammarCheckWarning")] string? GrammarCheckWarning = null);
+        [property: JsonPropertyName("grammarCheckWarning")] string? GrammarCheckWarning = null,
+        [property: JsonPropertyName("droppedGrammar")] DroppedGrammar? DroppedGrammar = null);
 
     private sealed record TrialCandidate(JobRecord Job, TrialJobInput Input, Contract.Model.Proposal Proposal);
 

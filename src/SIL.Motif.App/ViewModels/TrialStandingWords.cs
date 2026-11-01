@@ -47,6 +47,10 @@ public static class TrialStandingWords
         OldNumbers = MotifAppStrings.TrialProposalChangedOldNumbers,
     };
 
+    /// <summary>What the window says when the Trial finished but its check for left-out grammar did not.</summary>
+    public static TrialStandingText DroppedGrammarNotChecked { get; } = new(MotifAppStrings.TrialNeedsAnotherTryStatus,
+        MotifAppStrings.TrialDroppedGrammarNotCheckedSentence, MotifAppStrings.TryAgain);
+
     /// <summary>The window's words for <paramref name="standing"/>.</summary>
     public static TrialStandingText For(TrialStanding standing)
     {
@@ -56,9 +60,12 @@ public static class TrialStandingWords
             TrialStandingKind.Trying => Trying,
             TrialStandingKind.Failed => Failed,
             TrialStandingKind.Current => Current,
-            TrialStandingKind.NeedsAnotherTry => standing.Reason == TrialStaleReason.BaselineMoved
-                ? BaselineMoved
-                : ProposalChanged,
+            TrialStandingKind.NeedsAnotherTry => standing.Reason switch
+            {
+                TrialStaleReason.BaselineMoved => BaselineMoved,
+                TrialStaleReason.DroppedGrammarNotChecked => DroppedGrammarNotChecked,
+                _ => ProposalChanged,
+            },
             _ => NotTried,
         };
     }

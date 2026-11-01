@@ -11,6 +11,7 @@ using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Parsing;
 using SIL.Motif.Contract.Projects;
+using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.Corpus;
 using SIL.Motif.Host.PanGloss;
@@ -114,7 +115,7 @@ public sealed class TrialWorkProjectionTests
     }
 
     [Fact]
-    public void ABaselineHoldingBothSpellingsOfAWordRefusesTheDifferenceInsteadOfThrowing()
+    public void ABaselineHoldingBothSpellingsOfAWordHasNoDifferenceButStillReportsDroppedGrammar()
     {
         const string composed = "caf\u00E9";
         var decomposed = composed.Normalize(System.Text.NormalizationForm.FormD);
@@ -161,7 +162,8 @@ public sealed class TrialWorkProjectionTests
                     "2026-09-24T11:00:00Z");
                 job = jobs.Transition(job.JobId, JobStatus.Running);
                 jobs.Transition(job.JobId, JobStatus.Completed, JsonSerializer.Serialize(new
-                    { baselineToken = token, assessmentIds = new[] { "after" } }, MotifJson.CreateOptions()));
+                    { baselineToken = token, assessmentIds = new[] { "after" }, droppedGrammar = new DroppedGrammar(
+                        [new("grammar.environment.invalid", [], "dropped")], 0) }, MotifJson.CreateOptions()));
                 return CommandOutcome<JsonObject>.Success(new JsonObject());
             });
             Assert.True(recorded.Succeeded, recorded.Refusal?.Message);
@@ -170,8 +172,15 @@ public sealed class TrialWorkProjectionTests
 
             var outcome = TrialResults.Complete(context, "trial", proposalId.Value);
 
-            Assert.Equal("comparison.refused", outcome.Refusal?.Code);
-            Assert.Contains("Run the Trial again", outcome.Refusal!.Message);
+            Assert.Null(outcome.Refusal);
+            var reported = outcome.Value!.AsObject();
+            Assert.Null(reported["difference"]);
+            Assert.Equal("comparison-refused", (string?)reported["differenceUnavailable"]!["code"]);
+            Assert.Contains("Run the Trial again", (string?)reported["differenceUnavailable"]!["reason"]);
+            var dropped = reported["summary"]!["droppedGrammar"]!;
+            Assert.Equal("checked", (string?)dropped["state"]);
+            Assert.False((bool)dropped["clean"]!);
+            Assert.Equal("grammar.environment.invalid", (string?)dropped["introduced"]![0]!["code"]);
         }
         finally { Directory.Delete(root, true); }
     }

@@ -247,6 +247,19 @@ Proposal may have many at different points in its life. What a Trial measured is
 content it ran against, so two Trials either side of an edit are distinguishable and comparable.
 _Avoid_: run, attempt, test, experiment, evaluation
 
+**Dropped grammar**:
+Grammar the parser leaves out with only a warning, so a Trial parses and looks fine while the grammar is weaker
+than the Proposal says: an environment it cannot read, an allomorph it cannot segment, an entry with no usable
+form. Every Trial checks for it. The Trial is *clean* only when that check ran and found none in what the
+Proposal adds or edits; it is not clean when it found some, and also when the check did not run, did not
+finish, or could not compare with the Baseline's own check. "Clean" says nothing about the Correctness numbers,
+which a Trial reports separately. Apply refuses a Proposal that is not clean and the window offers Try again for
+one whose check did not finish; `--force` on the command line applies in spite of it. Findings the parser
+reports for a rule it keeps as partial, or for missing data, leave nothing out and do not count. A finding the
+Baseline already had is counted but does not make a Trial unclean, except one of the listed drops on an object
+the Proposal edits.
+_Avoid_: lost grammar, silent drop, dirty Trial
+
 **Evidence set**:
 One named body of measured evidence a page or command reads: the Baseline it was measured against, its
 root ParseTime Assessment, the later re-runs that replace some of its words, its Correctness and per-rule

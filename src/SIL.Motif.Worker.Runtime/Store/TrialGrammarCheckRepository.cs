@@ -58,6 +58,21 @@ public sealed class TrialGrammarCheckRepository(MotifDatabase database)
         transaction.Commit();
     }
 
+    /// <summary>Reads the Baseline's own grammar check, the one <c>grammar check</c> stored; null when none exists.</summary>
+    public GrammarCheckResponse? ReadBaselineCheck(BaselineToken baseline)
+    {
+        ArgumentNullException.ThrowIfNull(baseline);
+        using var connection = _database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT ResponseGzip FROM GrammarChecks " +
+            "WHERE BaselineToken = $baseline AND ProposalId IS NULL AND IntentDigest IS NULL;";
+        command.Parameters.AddWithValue("$baseline", JsonSerializer.Serialize(baseline, MotifJson.CreateOptions()));
+        return command.ExecuteScalar() is byte[] bytes
+            ? JsonSerializer.Deserialize<GrammarCheckResponse>(GrammarCheckStorage.Decompress(bytes),
+                MotifJson.CreateOptions())
+            : null;
+    }
+
     private static int MaximumRows() =>
         int.TryParse(Environment.GetEnvironmentVariable("MOTIF_GRAMMAR_CHECK_MAX_ROWS"), out var maximum) && maximum > 0
             ? maximum : 5;

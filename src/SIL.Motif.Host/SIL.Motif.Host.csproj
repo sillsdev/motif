@@ -59,4 +59,8 @@
     <PackageReference Include="SIL.Lexicon" Version="$(SilLexiconVersion)" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="PanGloss\DroppedGrammarCodes.txt" LogicalName="DroppedGrammarCodes.txt" />
+  </ItemGroup>
+
 </Project>

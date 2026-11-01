@@ -77,6 +77,7 @@ public sealed partial record WindowRefusal
         [C.ApplyChangeUncertain] = () => MotifAppStrings.RefusalApplyChangeUncertain,
         [C.ApplyChangesChanged] = () => MotifAppStrings.RefusalApplyChangesChanged,
         [C.ApplyDrift] = () => MotifAppStrings.RefusalApplyDrift,
+        [C.ApplyDroppedGrammar] = () => MotifAppStrings.RefusalApplyDroppedGrammar,
         [C.ApplyDryRunMissing] = () => MotifAppStrings.RefusalApplyDryRunMissing,
         [C.ProposalClosed] = () => MotifAppStrings.RefusalProposalClosed,
         [C.ProposalNotFound] = () => MotifAppStrings.RefusalProposalNotFound,

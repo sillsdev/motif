@@ -28,7 +28,7 @@ internal static class TrialResults
             RunnerOptions.ResolveRoot(), context.ParserPath, cancellation);
 
     internal static ToolOutcome Complete(ServerContext context, string jobId, string proposalId) => ToolOutcome.From(
-        ProjectStoreCommand.Run(context.ProjectPath, context.ProductVersion, (database, _) =>
+        ProjectStoreCommand.Run(context.ProjectPath, context.ProductVersion, (database, project) =>
         {
             var job = new JobRepository(database).Get(jobId) ?? throw new InvalidDataException("Trial job not found.");
             if (job.Kind != JobCommands.TrialKind) throw new InvalidDataException("The job is not a Trial.");
@@ -41,6 +41,8 @@ internal static class TrialResults
                     "The Trial did not complete its Assessments. Inspect the job result and revise or retry the Trial.",
                     new Dictionary<string, string> { ["jobId"] = jobId, ["status"] = job.Status.ToString() }));
             var assessments = new AssessmentRepository(database);
+            var dropped = Trials.ListFor(database, project, proposalId).FirstOrDefault(record => record.JobId == jobId)
+                ?.DroppedGrammarOrUnchecked ?? DroppedGrammar.NotChecked("The Trial recorded no dropped-grammar check.");
             using var completion = JsonDocument.Parse(job.ResultJson ?? throw new InvalidDataException("The Trial has no result."));
             var ids = completion.RootElement.GetProperty("assessmentIds").EnumerateArray().Select(id => id.GetString()!).ToArray();
             var before = (input.BaselineAssessmentIds ?? []).Select(assessments.Get).ToArray();
@@ -49,9 +51,10 @@ internal static class TrialResults
                 .Select(record => (After: record, Before: before.FirstOrDefault(other => other.Kind == record.Kind &&
                     other.Assessor == record.Assessor && other.BaselineToken == record.BaselineToken)))
                 .FirstOrDefault(pair => pair.Before is not null && pair.After.Words?.Count > 0);
+            // Dropped grammar is the Trial's own check, so it is reported even when no Difference can be built.
             if (pair.Before is null)
-                return CommandOutcome<JsonObject>.Refused(new Refusal("trial.difference-unavailable", FailureReason.Refused,
-                    "The Trial lacks matching Baseline Assessments. Trial the Draft again to produce its Difference."));
+                return NoDifference(dropped, jobId, "no-matching-baseline-assessments",
+                    "The Trial lacks matching Baseline Assessments. Trial the Draft again to produce its Difference.");
             var existing = assessments.ListByProposal(proposal.ProposalId).Where(record => record.Kind == "Difference" &&
                     record.Pipeline == "trial-difference/v1").FirstOrDefault(record =>
                 ScopeCodec.ReadDifference(record.ScopeJson, "difference").ToAssessmentId == pair.After.AssessmentId);
@@ -64,8 +67,7 @@ internal static class TrialResults
                 try { comparison = AssessmentComparer.Compare(pair.Before.ToComparable(), pair.After.ToComparable()); }
                 catch (ComparisonRefusalException exception)
                 {
-                    return CommandOutcome<JsonObject>.Refused(new Refusal("comparison.refused", FailureReason.Refused,
-                        exception.Message, new Dictionary<string, string> { ["jobId"] = jobId }));
+                    return NoDifference(dropped, jobId, "comparison-refused", exception.Message);
                 }
                 var scope = ScopeCodec.Write(new StoredScope.Difference(pair.Before.AssessmentId, pair.After.AssessmentId,
                     comparison.FromWordCount, comparison.ToWordCount, comparison.SharedWords.Count,
@@ -89,6 +91,8 @@ internal static class TrialResults
                 var words = storedRows.Where(row => row.Outcome.StartsWith(category + ":", StringComparison.Ordinal)).ToArray();
                 summary[category] = new JsonObject { ["count"] = words.Length,
                     ["words"] = new JsonArray(words.Take(5).Select(row => (JsonNode)JsonValue.Create(row.Word)!).ToArray()) };
+                // Wrong parses first, dropped grammar right after them, then the rest.
+                if (category == Categories[0]) summary["droppedGrammar"] = DroppedGrammarNode(dropped);
             }
             summary["counts"] = new JsonObject { ["before"] = pair.Before.Words!.Count, ["after"] = pair.After.Words!.Count,
                 ["changed"] = storedRows.Count,
@@ -109,7 +113,34 @@ internal static class TrialResults
                     measuredBaseline is not null && new BaselineRepository(database).IsCurrentEvidence(job.ProjectKey, measuredBaseline),
                 ["job"] = jobId };
             return CommandOutcome<JsonObject>.Success(result);
-        }), _ => "Read motif_difference by category. Revise and Trial again, then use motif_finalize_proposal.");
+        }), result => result["difference"] is null
+            ? "The Trial completed but has no Difference. Read droppedGrammar, then Trial the Draft again to produce a Difference."
+            : "Read motif_difference by category. Revise and Trial again, then use motif_finalize_proposal.");
+
+    // A completed Trial whose Difference cannot be built still reports its own dropped-grammar check.
+    private static CommandOutcome<JsonObject> NoDifference(DroppedGrammar dropped, string jobId, string code,
+        string reason) => CommandOutcome<JsonObject>.Success(new JsonObject
+    {
+        ["summary"] = new JsonObject { ["droppedGrammar"] = DroppedGrammarNode(dropped) },
+        ["difference"] = null,
+        ["differenceUnavailable"] = new JsonObject { ["code"] = code, ["reason"] = reason },
+        ["job"] = jobId,
+    });
+
+    // Grammar PanGloss dropped with only a warning; unchecked is stated, never read as clean.
+    internal static JsonNode DroppedGrammarNode(DroppedGrammar dropped)
+    {
+        if (!dropped.Checked)
+            return new JsonObject { ["state"] = "not-checked", ["clean"] = false,
+                ["reason"] = dropped.NotCheckedReason ?? "The Trial recorded no dropped-grammar check." };
+        return new JsonObject
+        {
+            ["state"] = "checked", ["clean"] = dropped.IsClean,
+            ["introduced"] = JsonSerializer.SerializeToNode(dropped.Introduced, Json),
+            ["omitted"] = dropped.OmittedFindings,
+            ["preExisting"] = dropped.PreExisting,
+        };
+    }
 
     internal static IReadOnlyList<AssessedWord> Classify(IReadOnlyList<AssessedWord> before,
         IReadOnlyList<AssessedWord> after, IReadOnlyList<string> negatives)

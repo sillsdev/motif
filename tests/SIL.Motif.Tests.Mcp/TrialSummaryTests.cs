@@ -79,6 +79,42 @@ public sealed class TrialSummaryTests
         Assert.StartsWith("negatives-now-parsing:", row.Outcome);
     }
 
+    [Fact]
+    public void ACheckedCleanTrialReportsCleanDroppedGrammar()
+    {
+        var node = TrialResults.DroppedGrammarNode(new DroppedGrammar([], 2)).AsObject();
+
+        Assert.Equal("checked", (string?)node["state"]);
+        Assert.True((bool)node["clean"]!);
+        Assert.Equal(2, (int)node["preExisting"]!);
+        Assert.Empty(node["introduced"]!.AsArray());
+    }
+
+    [Fact]
+    public void IntroducedDroppedGrammarIsReportedWithItsObjectsAndIsNotClean()
+    {
+        var finding = new DroppedGrammarFinding("grammar.environment.invalid",
+            [new DroppedGrammarObject("id/1", "PhEnvironment", "env", null)], "dropped");
+
+        var node = TrialResults.DroppedGrammarNode(new DroppedGrammar([finding], 0) { OmittedFindings = 4 }).AsObject();
+
+        Assert.False((bool)node["clean"]!);
+        Assert.Equal(4, (int)node["omitted"]!);
+        var reported = Assert.Single(node["introduced"]!.AsArray());
+        Assert.Equal("grammar.environment.invalid", (string?)reported!["code"]);
+        Assert.Equal("id/1", (string?)reported["objects"]![0]!["motifId"]);
+    }
+
+    [Fact]
+    public void AnUncheckedTrialIsNeverReportedAsClean()
+    {
+        var node = TrialResults.DroppedGrammarNode(DroppedGrammar.NotChecked("no parser")).AsObject();
+
+        Assert.Equal("not-checked", (string?)node["state"]);
+        Assert.False((bool)node["clean"]!);
+        Assert.Equal("no parser", (string?)node["reason"]);
+    }
+
     private static AssessedWord Word(string word, bool parsed) => new(word, parsed ? "analysed" : "no-analysis",
         parsed ? [new ParsedAnalysis(null, ["morph"], 0, "identity")] : []);
 }

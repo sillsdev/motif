@@ -47,7 +47,4 @@ public static class HostRefusalCodes
     public const string ToolUnknown = "tool.unknown";
     /// <summary>An MCP tool was given an argument it does not have.</summary>
     public const string ToolUnknownArgument = "tool.unknown-argument";
-
-    /// <summary>The Trial lacks matching Baseline Assessments, so it has no Difference.</summary>
-    public const string TrialDifferenceUnavailable = "trial.difference-unavailable";
 }

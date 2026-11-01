@@ -41,7 +41,11 @@ internal sealed record ApplyAuthorizationDecision(
             CorrectnessAssessmentExempt: !Readiness.CorrectnessAssessmentRequired,
             CorrectnessAssessmentExemptionReason: Readiness.CorrectnessAssessmentExemptionReason,
             Reasons: reasons,
-            Forced: forced && reasons.Count > 0);
+            Forced: forced && reasons.Count > 0)
+        {
+            DroppedGrammarReason = Readiness.DroppedGrammarReason,
+            DroppedGrammar = Readiness.Dropped,
+        };
     }
 }
 
@@ -81,6 +85,9 @@ internal static class ApplyAuthorization
         var currentIsStale = baseline is not null &&
             !ProposalCommands.AssessmentUsesCurrentBaseline(baselines, projectKey, currentAssessment);
 
+        var droppedByAssessment = new Lazy<IReadOnlyDictionary<string, DroppedGrammar>>(() =>
+            Trials.DroppedGrammarByAssessment(database, project, record.ProposalId));
+
         Readiness.Decision EvaluateFor(AssessmentRecord? candidate)
         {
             var current = currentAssessment;
@@ -96,9 +103,12 @@ internal static class ApplyAuthorization
                 string.Equals(current.Kind, RegressionChecker.RequiredKind, System.StringComparison.Ordinal)
                     ? current.ToCorrectness()
                     : null;
+            // Judged for the Trial that produced this Assessment; with that Trial gone nothing was checked.
+            var dropped = candidate is null ? null : droppedByAssessment.Value.GetValueOrDefault(candidate.AssessmentId)
+                ?? DroppedGrammar.NotChecked("The Trial that made this Assessment is no longer stored.");
             return Host.Assess.Readiness.Evaluate(
                 candidate?.ToCorrectness(), currentCorrectness, currentBaselineToken,
-                candidateBaselineToken, configuration.GateOnRegression, changedWords, exemptionReason);
+                candidateBaselineToken, configuration.GateOnRegression, changedWords, exemptionReason, dropped);
         }
 
         var choice = ProposalCommands.ChooseCandidate(candidateIds, assessments.Get, EvaluateFor);

@@ -1,4 +1,5 @@
 using System.Linq;
+using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.Corpus;
 using SIL.Motif.Host.Parser;
@@ -99,6 +100,68 @@ public sealed class ReadinessTests
             candidateBaselineToken: "baseline-1", gateOnRegression: true);
 
         Assert.Empty(reasons);
+    }
+
+    [Fact]
+    public void IntroducedDroppedGrammarRefusesAndNamesTheObject()
+    {
+        var candidate = Build("candidate", ("alpha", true));
+        var dropped = new DroppedGrammar([new("grammar.environment.invalid",
+            [new DroppedGrammarObject("id/1", "PhEnvironment", "env", null)], "dropped")], 0);
+
+        var decision = Readiness.Evaluate(candidate, null, null, "same", false, droppedGrammar: dropped);
+
+        Assert.True(decision.HasDroppedGrammar);
+        Assert.False(decision.IsRegression);
+        var reason = Assert.Single(decision.Reasons);
+        Assert.Contains("grammar.environment.invalid on PhEnvironment env (id/1)", reason);
+    }
+
+    [Fact]
+    public void OmittedFindingsAreCountedInTheReason()
+    {
+        var candidate = Build("candidate", ("alpha", true));
+        var dropped = new DroppedGrammar([new("grammar.environment.invalid", [], "dropped")], 0)
+        {
+            OmittedFindings = 7,
+        };
+
+        var decision = Readiness.Evaluate(candidate, null, null, "same", false, droppedGrammar: dropped);
+
+        Assert.Contains("and 7 more", Assert.Single(decision.Reasons));
+    }
+
+    [Fact]
+    public void PreExistingDroppedGrammarDoesNotRefuse()
+    {
+        var candidate = Build("candidate", ("alpha", true));
+
+        var decision = Readiness.Evaluate(candidate, null, null, "same", false, droppedGrammar: new DroppedGrammar([], 3));
+
+        Assert.Empty(decision.Reasons);
+        Assert.False(decision.HasDroppedGrammar);
+    }
+
+    [Fact]
+    public void AnUncheckedDroppedGrammarResultRefusesOnlyWhenNothingElseDoes()
+    {
+        var candidate = Build("candidate", ("alpha", true));
+        var unchecked_ = DroppedGrammar.NotChecked("no parser");
+
+        var alone = Readiness.Evaluate(candidate, null, null, "same", false, droppedGrammar: unchecked_);
+        var withStale = Readiness.Evaluate(candidate, null, "old", "new", false, droppedGrammar: unchecked_);
+
+        Assert.Equal("dropped grammar was not checked (no parser); try the Proposal again", Assert.Single(alone.Reasons));
+        Assert.False(alone.HasDroppedGrammar);
+        Assert.DoesNotContain(withStale.Reasons, reason => reason.Contains("not checked"));
+    }
+
+    [Fact]
+    public void NoDroppedGrammarJudgmentLeavesReadinessAsItWas()
+    {
+        var candidate = Build("candidate", ("alpha", true));
+
+        Assert.Empty(Readiness.Evaluate(candidate, null, null, "same", false).Reasons);
     }
 
     private static CorrectnessAssessment Build(string assessmentId, params (string Word, bool Analysed)[] words)

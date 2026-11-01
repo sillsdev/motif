@@ -192,6 +192,20 @@ public sealed class ProposalsPageModelTests
     }
 
     [Fact]
+    public async Task ACardWhoseDroppedGrammarWasNotCheckedOffersTryAgainWithoutCallingItsNumbersOld()
+    {
+        var (_, _, page) = await OpenAsync(Standings(Card("p/unchecked", "Unchecked",
+            ProposalGroup.NeedsAnotherTry, standing: TrialStanding.NeedsAnotherTry(TrialStaleReason.DroppedGrammarNotChecked))));
+
+        var card = page.Groups[0].Cards[0];
+
+        Assert.True(card.CanTry);
+        Assert.False(card.NumbersAreOld);
+        Assert.Equal(TrialStandingWords.DroppedGrammarNotChecked.Sentence, card.StatusText);
+        WindowWordsTests.AssertWindowWords([card.StatusText]);
+    }
+
+    [Fact]
     public async Task TryAgainGoesThroughTheWindowsOneTryAgainAndFollowsTheTrial()
     {
         var (fake, _, page) = await OpenAsync(Standings(Card("p/stale", "Stale one",

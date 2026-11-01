@@ -888,7 +888,8 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
         Assert.True(trial.GetProperty("ok").GetBoolean(), trial.ToString());
         var evidence = trial.GetProperty("result");
         Assert.True(evidence.GetProperty("evidenceCurrent").GetBoolean());
-        Assert.Equal(TrialResults.Categories.Append("counts"),
+        Assert.Equal(new[] { TrialResults.Categories[0], "droppedGrammar" }.Concat(TrialResults.Categories.Skip(1))
+                .Append("counts"),
             evidence.GetProperty("summary").EnumerateObject().Select(property => property.Name));
         var noted = SIL.Motif.Commands.ProposalTexts.SetNote(new SIL.Motif.Commands.Requests.SetNoteRequest(
             project.FwDataPath, SIL.Motif.Host.MotifProductVersion.CurrentText, proposalId, "Check the other gloss too."));

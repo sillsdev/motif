@@ -25,6 +25,8 @@ public enum TrialStaleReason
     BaselineMoved,
     /// <summary>The Proposal content changed after the Trial.</summary>
     ProposalChanged,
+    /// <summary>The Trial's check for dropped grammar did not run or was not recorded, so only another Trial can settle it.</summary>
+    DroppedGrammarNotChecked,
 }
 
 /// <summary>
@@ -69,13 +71,18 @@ public sealed record TrialStanding(
     /// <summary>Classifies one Trial from its durable job status and its freshness.</summary>
     /// <param name="status">The Trial job's status.</param>
     /// <param name="freshness">How the Trial's evidence relates to the project and the Proposal now.</param>
-    public static TrialStanding From(JobStatus status, TrialFreshness freshness)
+    /// <param name="droppedGrammarNotChecked">
+    /// Whether a Trial that is otherwise current has no completed check for dropped grammar.
+    /// </param>
+    public static TrialStanding From(JobStatus status, TrialFreshness freshness, bool droppedGrammarNotChecked = false)
     {
         if (status is JobStatus.Queued or JobStatus.WaitingForBaseline or JobStatus.WaitingForProjectHost or
             JobStatus.Running)
             return Trying;
         return freshness switch
         {
+            TrialFreshness.Current when status == JobStatus.Completed && droppedGrammarNotChecked =>
+                NeedsAnotherTry(TrialStaleReason.DroppedGrammarNotChecked),
             TrialFreshness.Current when status == JobStatus.Completed => Current,
             TrialFreshness.BaselineMoved when status == JobStatus.Completed =>
                 NeedsAnotherTry(TrialStaleReason.BaselineMoved),

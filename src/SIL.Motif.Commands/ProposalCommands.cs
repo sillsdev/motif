@@ -1816,7 +1816,9 @@ public static partial class ProposalCommands
                       "A Correctness result with zero approved expectations supplies no comparison of approved readings."
                     : "Review the Correctness evidence and resolve the reported readiness reasons before applying.";
                 return CommandOutcome<ApplyProjection>.Refused(new Refusal(
-                    readiness.IsRegression ? "apply.regression" : "apply.not-ready", FailureReason.Refused,
+                    readiness.IsRegression ? "apply.regression"
+                        : readiness.HasDroppedGrammar ? "apply.dropped-grammar" : "apply.not-ready",
+                    FailureReason.Refused,
                     $"Proposal {id} is not ready to apply: {string.Join("; ", readiness.Reasons)}. {guidance}" +
                     DescribeCandidate(candidate, authorization.Considered, authorization.Unread),
                     Fact(("proposalId", id), ("assessmentId", candidate?.AssessmentId))));

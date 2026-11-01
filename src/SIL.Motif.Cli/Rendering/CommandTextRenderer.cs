@@ -117,6 +117,7 @@ public static class CommandTextRenderer
     {
         var text = new StringBuilder();
         text.AppendLine($"Trial {trial.JobId}: {trial.Status} ({trial.Freshness})");
+        AppendDroppedGrammar(text, trial);
         if (trial.Work is not { } work) return text.AppendLine("Parser work is unavailable.").ToString();
         if (work.PercentChange is { } change)
             text.AppendLine((change == 0 ? "These words took the same parser work"
@@ -136,6 +137,33 @@ public static class CommandTextRenderer
             text.AppendLine($"Time on this computer: {baselineMs:N0} ms in the Baseline, {trialMs:N0} ms in the Trial " +
                 "(it changes with machine load).");
         return text.ToString();
+    }
+
+    // Only a finished Trial has a dropped-grammar check to report; an active one has none yet.
+    private static void AppendDroppedGrammar(StringBuilder text, TrialRecord trial)
+    {
+        if (trial.Status != JobStatus.Completed) return;
+        var dropped = trial.DroppedGrammarOrUnchecked;
+        if (!dropped.Checked)
+        {
+            text.AppendLine("  Dropped grammar was not checked, so this Trial is not clean: " + dropped.NotCheckedReason +
+                " Try the Proposal again.");
+            return;
+        }
+        text.AppendLine(dropped.IsClean
+            ? "  Clean: the parser dropped no grammar that the Proposal adds or edits."
+            : "  NOT clean: PanGloss dropped grammar that the Proposal adds or edits, with only a warning.");
+        foreach (var finding in dropped.Introduced)
+        {
+            var named = finding.Objects.Count == 0
+                ? "an object PanGloss did not identify"
+                : string.Join(", ", finding.Objects.Select(item =>
+                    $"{item.Kind ?? "object"} {item.Name} ({item.MotifId})"));
+            text.AppendLine($"    {finding.Code} on {named}: {finding.Message}");
+        }
+        if (dropped.OmittedFindings > 0) text.AppendLine($"    and {dropped.OmittedFindings} more.");
+        if (dropped.PreExisting > 0)
+            text.AppendLine($"  {dropped.PreExisting} dropped finding(s) were already in the Baseline's grammar.");
     }
 
     private static string RenderActivity(ActivitySummary summary)
@@ -200,6 +228,8 @@ public static class CommandTextRenderer
         TrialStandingKind.Current => "Current",
         TrialStandingKind.NeedsAnotherTry when standing.Reason == TrialStaleReason.BaselineMoved =>
             "Needs another try because the project changed",
+        TrialStandingKind.NeedsAnotherTry when standing.Reason == TrialStaleReason.DroppedGrammarNotChecked =>
+            "Needs another try because the check for dropped grammar did not finish",
         TrialStandingKind.NeedsAnotherTry => "Needs another try because the Proposal changed",
         _ => throw new ArgumentOutOfRangeException(nameof(standing), standing.Kind, null),
     };
