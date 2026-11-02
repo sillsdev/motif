@@ -202,7 +202,7 @@ public sealed class FileUserPreferencesStore : IUserPreferencesStore, IDisposabl
 
     /// <summary>The installation's per-user preferences file.</summary>
     public static string DefaultPath => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        SIL.Motif.Host.UserDataHome.Path,
         "Motif", "user-preferences.json");
 
     /// <summary>The snapshot accepted by this process.</summary>

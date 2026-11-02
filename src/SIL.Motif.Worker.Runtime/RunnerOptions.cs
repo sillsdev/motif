@@ -101,17 +101,7 @@ public sealed record RunnerOptions
     /// with <see cref="AmbientEnvironment"/> or else the process's own, and otherwise <c>~/.local/share</c>. A
     /// process whose <c>XDG_DATA_HOME</c> names an existing folder gets the root the platform lookup gave it.
     /// </remarks>
-    public static string DefaultRoot => Path.Combine(LocalDataHome(), "SIL", "Motif");
-
-    private static string LocalDataHome()
-    {
-        if (OperatingSystem.IsWindows())
-            return Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        var xdg = Value("XDG_DATA_HOME");
-        return xdg is not null && Path.IsPathRooted(xdg)
-            ? Path.GetFullPath(xdg)
-            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".local", "share");
-    }
+    public static string DefaultRoot => Path.Combine(UserDataHome.Path, "SIL", "Motif");
 
     private static string? Value(string name)
     {

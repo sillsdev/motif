@@ -1,4 +1,5 @@
 using SIL.Motif.Host;
+using SIL.Motif.Host.Preferences;
 using SIL.Motif.Worker;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
@@ -69,6 +70,19 @@ public sealed class RunnerOptionsTests : IDisposable
 
         using (AmbientEnvironment.Push(new Dictionary<string, string?> { ["XDG_DATA_HOME"] = dataHome }))
             Assert.Equal(Path.Combine(dataHome, "SIL", "Motif"), RunnerOptions.ResolveRoot());
+    }
+
+    [Fact]
+    public void ThePerUserPreferenceFilesLiveUnderTheSameDataHomeAsTheBaselineStore()
+    {
+        if (OperatingSystem.IsWindows()) return;
+        var dataHome = Path.Combine(_directory, "xdg-data-not-created-yet");
+
+        using (AmbientEnvironment.Push(new Dictionary<string, string?> { ["XDG_DATA_HOME"] = dataHome }))
+        {
+            Assert.Equal(dataHome, UserDataHome.Path);
+            Assert.StartsWith(dataHome, FileDefaultProposalChecksStore.DefaultPath, StringComparison.Ordinal);
+        }
     }
 
     [Fact]

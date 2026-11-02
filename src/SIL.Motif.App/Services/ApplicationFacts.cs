@@ -126,7 +126,7 @@ public sealed record ApplicationFacts(
     {
         var configured = Environment.GetEnvironmentVariable("MOTIF_WORKER_ROOT");
         return Path.GetFullPath(string.IsNullOrWhiteSpace(configured)
-            ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SIL", "Motif")
+            ? Path.Combine(UserDataHome.Path, "SIL", "Motif")
             : configured);
     }
 }

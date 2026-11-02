@@ -45,7 +45,7 @@ public static class MotifInstallLifecycle
         MotifAgentPackageStore.ForInstallation().Remove();
         InstallRegistration.UnregisterCurrent();
         var dataDirectory = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SIL", "Motif");
+            UserDataHome.Path, "SIL", "Motif");
         return "Motif's shell command and install record were removed. User data remains at " +
             dataDirectory + ". Remove the installed app or AppImage separately.";
     }

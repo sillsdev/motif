@@ -61,7 +61,7 @@ public sealed class FileDefaultProposalChecksStore : IDefaultProposalChecksStore
     {
         get
         {
-            var localData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            var localData = UserDataHome.Path;
             if (string.IsNullOrWhiteSpace(localData))
                 throw new InvalidOperationException("The per-user data directory is unavailable.");
             return Path.Combine(localData, "Motif", "default-proposal-checks.json");
