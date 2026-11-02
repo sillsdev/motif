@@ -266,18 +266,25 @@ public sealed class TextsProposalMatrixTests
     }
 
     [Fact]
-    public async Task TheListsAndWhatChangedTabsDrawNothingInTheProposalViewAndSayTheyAreNotPairedYet()
+    public async Task TheListsTabDrawsInEveryViewAndWhatChangedDrawsNothingOfItsOwnInTheProposalView()
     {
         var (context, page, _) = await OpenedAsync();
         page.Tab = TextsTab.Lists;
         context.ShowProposalView(MarkupView.Proposal);
 
-        Assert.False(page.ShowListsContent);
-        Assert.Equal(MotifAppStrings.TextsProposalTabNotPairedViewNote, page.ProposalNote);
+        Assert.True(page.ShowListsContent);
+        Assert.Equal(MotifAppStrings.TextsListsViewNote, page.ProposalNote);
         page.Tab = TextsTab.WhatChanged;
         Assert.False(page.ShowWhatChangedContent);
+        Assert.False(page.ShowProposalMovesContent);
+        Assert.Equal(MotifAppStrings.TextsWhatChangedViewNote, page.ProposalNote);
         context.ShowProposalView(MarkupView.TodayToProposal);
+        Assert.False(page.ShowWhatChangedContent);
+        Assert.True(page.ShowProposalMovesContent);
+        context.ShowProposalView(MarkupView.Today);
         Assert.True(page.ShowWhatChangedContent);
+        Assert.False(page.ShowProposalMovesContent);
+        context.ShowProposalView(MarkupView.TodayToProposal);
         page.Tab = TextsTab.AnalyzeTexts;
         Assert.Equal(MotifAppStrings.TextsProposalWordCardsNote, page.ProposalNote);
     }
@@ -383,10 +390,13 @@ public sealed class TextsProposalMatrixTests
     {
         var (context, page, _) = await OpenedAsync();
         page.Tab = TextsTab.Lists;
-        Assert.Equal(MotifAppStrings.TextsProposalTabNotPairedNote, page.ProposalNote);
+        context.ShowProposalView(MarkupView.Today);
+        Assert.Equal(string.Format(MotifAppStrings.ProposalPageTodayViewNoteFormat, MotifAppStrings.TextsListCountsNoun),
+            page.ProposalNote);
+        context.ShowProposalView(MarkupView.TodayToProposal);
+        Assert.Equal(MotifAppStrings.TextsListsPairedNote, page.ProposalNote);
         context.ShowProposalView(MarkupView.Proposal);
-        Assert.Equal(MotifAppStrings.TextsProposalTabNotPairedViewNote, page.ProposalNote);
-        Assert.DoesNotContain("shows today's", page.ProposalNote);
+        Assert.Equal(MotifAppStrings.TextsListsViewNote, page.ProposalNote);
         page.Tab = TextsTab.Matrix;
         context.ShowProposalView(MarkupView.TodayToProposal);
         Assert.Contains("can still hold different words", page.ProposalNote);

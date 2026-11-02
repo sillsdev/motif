@@ -26,10 +26,13 @@ public sealed partial class TextsListDefinitionViewModel : ObservableObject
 
     /// <summary>What the list holds, in one sentence; the rest of the explanation is in Help.</summary>
     private readonly string _sentence;
-    public string Sentence => Compare.RefusalCountInCells(Cells) is var refused && refused > 0
+    public string Sentence => !Shown.Changes && Compare.RefusalCountInCells(Cells) is var refused && refused > 0
         ? refused == WordCount ? ParserRefusals.ListExplanation
             : _sentence.TrimEnd('.') + "; refused words carry their recorded reason."
         : _sentence;
+
+    // The numbers as the bar's view draws them: today's, today's with the Proposal's, or the Proposal's alone.
+    private MatrixShown Shown => Compare.ShownFor(Compare.ProposalWordsIn(Cells));
 
     public IReadOnlyList<TextsListCell> Cells { get; }
 
@@ -37,7 +40,35 @@ public sealed partial class TextsListDefinitionViewModel : ObservableObject
 
     public int OccurrenceCount => Compare.Cells.Where(IsCell).Sum(cell => cell.OccurrenceCount);
 
-    public bool HasWords => WordCount > 0;
+    /// <summary>Whether the list holds words in the number drawn; a view that has none of its own does not list.</summary>
+    public bool HasWords => !Shown.IsZero(WordCount);
+
+    /// <summary>Whether the list's chip shows: it holds words in the view, or it is the list being read.</summary>
+    public bool ShowsChip => HasWords || IsSelected;
+
+    /// <summary>The words on the list's chip, as the bar's view draws them.</summary>
+    public string ChipCount => Shown.Number(WordCount.ToString(System.Globalization.CultureInfo.CurrentCulture));
+
+    /// <summary>What the chip says to a screen reader, naming whose number each is.</summary>
+    public string AccessibleName
+    {
+        get
+        {
+            var name = string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.TextsListChipAccessibleNameFormat, Name);
+            var shown = Shown;
+            if (!shown.Changes) return name;
+            if (shown.View == MarkupView.Proposal && shown.Proposal is null)
+                return string.Format(System.Globalization.CultureInfo.CurrentCulture,
+                    shown.State == MatrixSideState.Reading ? MotifAppStrings.TextsListChipProposalReadingAccessibleNameFormat
+                        : MotifAppStrings.TextsListChipProposalNoneAccessibleNameFormat, Name);
+            var proposal = shown.Proposal is { } held ? WordsOf(held) : shown.Number(string.Empty);
+            return string.Format(System.Globalization.CultureInfo.CurrentCulture, shown.View == MarkupView.Proposal
+                ? MotifAppStrings.TextsListChipProposalAccessibleNameFormat : MotifAppStrings.TextsListChipPairAccessibleNameFormat,
+                Name, WordsOf(WordCount), proposal);
+        }
+    }
+
+    private static string WordsOf(int count) => CompareCellViewModel.WordsText(count);
 
     /// <summary>Whether the list's words carry more than one meaning, so its rows need their meaning column.</summary>
     public bool HasSeveralMeanings => Compare.ShowsMeaningsInCells(Cells);
@@ -59,22 +90,63 @@ public sealed partial class TextsListDefinitionViewModel : ObservableObject
     public string? PendingChangeStatus => PendingChangeStates.Label(PendingState);
 
     /// <summary>The list's words and places together, such as <c>5 words · 8 places</c>.</summary>
-    public string CountText => $"{Counted(WordCount, "word")} · {Counted(OccurrenceCount, "place")}";
+    public string CountText
+    {
+        get
+        {
+            var shown = Shown;
+            var today = (Counted(WordCount, "word"), Counted(OccurrenceCount, "place"));
+            if (!shown.Changes) return $"{today.Item1} · {today.Item2}";
+            var number = System.Globalization.CultureInfo.CurrentCulture;
+            var words = shown.Proposal is { } held
+                ? shown.View == MarkupView.Proposal ? WordsOf(held)
+                    : Pair(WordCount.ToString("N0", number), WordsOf(held))
+                : shown.Number(string.Empty);
+            return $"{words} · {PlacesDrawn(shown)}";
+        }
+    }
+
+    // The places in the number drawn; a Proposal side whose places cannot be counted says so, never zero.
+    private string PlacesDrawn(MatrixShown shown)
+    {
+        var held = Compare.ProposalPlacesIn(Cells);
+        if (shown.View == MarkupView.Proposal)
+            return held is { } alone ? Counted(alone, "place")
+                : shown.State == MatrixSideState.Held ? MotifAppStrings.TextsListPlacesNotCounted
+                : shown.State == MatrixSideState.Reading ? "…" : MissingValue.Marker;
+        var todayPlaces = Counted(OccurrenceCount, "place");
+        return held is { } paired
+            ? Pair(OccurrenceCount.ToString("N0", System.Globalization.CultureInfo.CurrentCulture),
+                CompareCellViewModel.PlacesTextOf(paired))
+            : string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.TextsListPlacesTodayFormat, todayPlaces);
+    }
+
+    private static string Pair(string today, string proposal) => string.Format(
+        System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.OverviewPairFormat, today, proposal);
 
     private static string Counted(int count, string noun) => count == 1 ? $"1 {noun}" : $"{count:N0} {noun}s";
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowsChip))]
     private bool _isSelected;
 
     private bool IsCell(CompareCellViewModel cell) => Cells.Contains(new TextsListCell(cell.Row, cell.Column));
 
+    private void RaiseDrawn()
+    {
+        foreach (var property in new[] { nameof(HasWords), nameof(ShowsChip), nameof(ChipCount), nameof(CountText),
+            nameof(AccessibleName), nameof(Sentence) })
+            OnPropertyChanged(property);
+    }
+
     private void OnCellPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         if (sender is not CompareCellViewModel cell || !IsCell(cell)) return;
+        if (e.PropertyName is nameof(CompareCellViewModel.CountNumberText) or nameof(CompareCellViewModel.PlacesText)) RaiseDrawn();
         if (e.PropertyName is nameof(CompareCellViewModel.WordCount) or nameof(CompareCellViewModel.Count))
         {
             OnPropertyChanged(nameof(WordCount));
-            OnPropertyChanged(nameof(HasWords));
+            RaiseDrawn();
             OnPropertyChanged(nameof(HasSeveralMeanings));
             OnPropertyChanged(nameof(Sentence));
             OnPropertyChanged(nameof(CountText));
@@ -141,6 +213,12 @@ public sealed partial class TextsListsViewModel : ObservableObject
 
     public bool HasSelectedList => SelectedList is not null;
 
+    /// <summary>Whether a line says which words the list shows, because they are not simply today's.</summary>
+    public bool ShowsListedLine => SelectedList is not null && Compare.ListBasis != WordListBasis.Today;
+
+    /// <summary>How many words the list shows and where from, such as 6 words today or with this Proposal.</summary>
+    public string ListedLine => Compare.ListSummary;
+
     /// <summary>
     /// Whether the rows show their meaning column: only when the chosen list mixes meanings, since the header line
     /// already names a list's one meaning.
@@ -152,6 +230,15 @@ public sealed partial class TextsListsViewModel : ObservableObject
         : SelectedList.HasWords ? string.Empty : WindowCopy.NoWordsInListForHandoff;
 
     public string HandOffListLabel => WindowCopy.AiHandoffForThisList;
+
+    /// <summary>Why the list cannot be sent, or whose words it sends when the view is not today's.</summary>
+    public string HandOffListHelpText => HandOffListDisabledReason.Length > 0 ? HandOffListDisabledReason
+        : Compare.ListBasis switch
+        {
+            WordListBasis.Both => MotifAppStrings.TextsListHandOffEitherSideHelp,
+            WordListBasis.Proposal => MotifAppStrings.TextsListHandOffProposalHelp,
+            _ => string.Empty,
+        };
 
     /// <summary>Names the ticked words the second AI Handoff button sends, so it never reads like the first.</summary>
     public string HandOffCheckedWordsLabel => SelectedList is { } list
@@ -197,6 +284,7 @@ public sealed partial class TextsListsViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(HasSelectedList))]
     [NotifyPropertyChangedFor(nameof(ShowsMeaning))]
     [NotifyPropertyChangedFor(nameof(HandOffListDisabledReason))]
+    [NotifyPropertyChangedFor(nameof(HandOffListHelpText))]
     [NotifyPropertyChangedFor(nameof(HandOffListUnavailable))]
     [NotifyPropertyChangedFor(nameof(HandOffCheckedWordsDisabledReason))]
     [NotifyPropertyChangedFor(nameof(HandOffCheckedWordsUnavailable))]
@@ -256,7 +344,7 @@ public sealed partial class TextsListsViewModel : ObservableObject
 
     private void HandOffList()
     {
-        if (SelectedList is { } list) HandOff?.Invoke(Compare.WordsInCells(list.Cells));
+        if (SelectedList is { } list) HandOff?.Invoke(Compare.ListedInCells(list.Cells).Select(word => word.Word).ToArray());
     }
 
     private bool CanHandOffCheckedWords() => HandOff is not null && SelectedList is { } list &&
@@ -269,6 +357,18 @@ public sealed partial class TextsListsViewModel : ObservableObject
 
     private void OnComparePropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
+        if (e.PropertyName == nameof(CompareViewModel.ListSummary))
+        {
+            OnPropertyChanged(nameof(ListedLine));
+            OnPropertyChanged(nameof(ShowsListedLine));
+        }
+        if (e.PropertyName == nameof(CompareViewModel.ShowsProposalColumn))
+        {
+            // A flip of the bar's view changes the words the list shows, so the buttons that send them follow it.
+            HandOffListCommand.NotifyCanExecuteChanged();
+            OnPropertyChanged(nameof(HandOffListHelpText));
+            OnCheckedWordsChanged(sender, EventArgs.Empty);
+        }
         if (e.PropertyName is not (nameof(CompareViewModel.RerunWords) or nameof(CompareViewModel.RerunSeconds)
             or nameof(CompareViewModel.RerunText))) return;
         NotifyParseAgain();
@@ -306,6 +406,7 @@ public sealed partial class TextsListsViewModel : ObservableObject
         {
             HandOffListCommand.NotifyCanExecuteChanged();
             OnPropertyChanged(nameof(HandOffListDisabledReason));
+            OnPropertyChanged(nameof(HandOffListHelpText));
             OnPropertyChanged(nameof(HandOffListUnavailable));
             OnPropertyChanged(nameof(HandOffCheckedWordsDisabledReason));
             OnPropertyChanged(nameof(HandOffCheckedWordsUnavailable));
@@ -315,6 +416,7 @@ public sealed partial class TextsListsViewModel : ObservableObject
 
     partial void OnSelectedListChanged(TextsListDefinitionViewModel? value)
     {
+        OnPropertyChanged(nameof(ShowsListedLine));
         NotifyParseAgain();
         HandOffListCommand.NotifyCanExecuteChanged();
         HandOffCheckedWordsCommand.NotifyCanExecuteChanged();

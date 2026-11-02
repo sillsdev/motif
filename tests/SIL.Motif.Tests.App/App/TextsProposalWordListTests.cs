@@ -242,7 +242,7 @@ public sealed class TextsProposalWordListTests
         var (context, page, _) = await OpenedAsync();
         context.ShowProposalView(MarkupView.TodayToProposal);
         page.Tab = TextsTab.WhatChanged;
-        Assert.Equal(MotifAppStrings.TextsProposalTabNotPairedNote, page.ProposalNote);
+        Assert.Equal(MotifAppStrings.TextsWhatChangedPairedNote, page.ProposalNote);
 
         context.Assess.Restore(new WorkspaceEvidence(TimingProposalViewTests.Assessment() with { Words = [] },
             DateTimeOffset.UtcNow, false));

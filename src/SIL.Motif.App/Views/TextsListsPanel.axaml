@@ -20,12 +20,12 @@
       </ItemsControl.ItemsPanel>
       <ItemsControl.ItemTemplate>
         <DataTemplate x:DataType="vm:TextsListDefinitionViewModel">
-          <Button Classes="filterChip" Classes.active="{Binding IsSelected}" IsVisible="{Binding HasWords}"
+          <Button Classes="filterChip" Classes.active="{Binding IsSelected}" IsVisible="{Binding ShowsChip}"
                   Command="{Binding $parent[views:TextsListsPanel].Lists.SelectListCommand}" CommandParameter="{Binding}"
-                  AutomationProperties.Name="{Binding Name, StringFormat='Open the {0} word list'}">
+                  AutomationProperties.Name="{Binding AccessibleName}">
             <StackPanel Classes="filterChipRow" Orientation="Horizontal">
               <TextBlock Text="{Binding Name}" />
-              <TextBlock Classes="chipCount" Text="{Binding WordCount}" FontWeight="{DynamicResource Intent.Weight.Strong}" />
+              <TextBlock Classes="chipCount" Text="{Binding ChipCount}" FontWeight="{DynamicResource Intent.Weight.Strong}" />
               <Ellipse Classes="freshDot" IsVisible="{Binding HasPendingChanges}" VerticalAlignment="Center"
                        ToolTip.Tip="{Binding PendingChangeStatus}" />
             </StackPanel>
@@ -34,7 +34,9 @@
       </ItemsControl.ItemTemplate>
     </ItemsControl>
 
-    <DockPanel Grid.Row="1" x:Name="ListHeader" IsVisible="{Binding Lists.HasSelectedList}">
+    <StackPanel Grid.Row="1" x:Name="ListHeaderBlock" IsVisible="{Binding Lists.HasSelectedList}"
+                Spacing="{DynamicResource Intent.Space.Minimal}">
+    <DockPanel x:Name="ListHeader">
       <views:CopyableTextBlock DockPanel.Dock="Left" Classes="section-title" Text="{Binding Lists.SelectedList.Name}"
                                VerticalAlignment="Center" Margin="{DynamicResource Intent.Gap.AfterRelated}" />
       <views:CopyableTextBlock DockPanel.Dock="Left" Classes="muted" Text="{Binding Lists.SelectedList.CountText}"
@@ -42,6 +44,9 @@
       <views:CopyableTextBlock Classes="muted" Text="{Binding Lists.SelectedList.Sentence}" VerticalAlignment="Center"
                                TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Lists.SelectedList.Sentence}" />
     </DockPanel>
+    <views:CopyableTextBlock Classes="muted" Text="{Binding Lists.ListedLine}" TextWrapping="Wrap"
+                             IsVisible="{Binding Lists.ShowsListedLine}" />
+    </StackPanel>
 
     <WrapPanel Grid.Row="2" x:Name="ListControls" IsVisible="{Binding Lists.HasSelectedList}"
                ItemSpacing="{DynamicResource Intent.Space.Related}" LineSpacing="{DynamicResource Intent.Space.Related}">
@@ -72,11 +77,11 @@
         <Button Content="{Binding Lists.HandOffListLabel}" Command="{Binding Lists.HandOffListCommand}"
                 AutomationProperties.AutomationId="{x:Static app:AutomationIds.HandOffList}"
                 AutomationProperties.Name="{Binding Lists.HandOffListLabel}"
-                AutomationProperties.HelpText="{Binding Lists.HandOffListDisabledReason}"
-                ToolTip.Tip="{Binding Lists.HandOffListDisabledReason}" views:ClearTipPlacement.IsEnabled="True" ToolTip.ShowOnDisabled="True" />
+                AutomationProperties.HelpText="{Binding Lists.HandOffListHelpText}"
+                ToolTip.Tip="{Binding Lists.HandOffListHelpText}" views:ClearTipPlacement.IsEnabled="True" ToolTip.ShowOnDisabled="True" />
     </WrapPanel>
 
-    <views:WordListSlot Grid.Row="3" Classes="textsListsWords" Schema="{x:Static word:WordListSchemas.All}"
+    <views:WordListSlot Grid.Row="3" Classes="textsListsWords" Schema="{Binding Lists.Compare.WordListSchema}"
                         ShowsMeaning="{Binding Lists.ShowsMeaning}" IsVisible="{Binding Lists.HasSelectedList}"
                         AutomationProperties.AutomationId="{x:Static app:AutomationIds.ListsWordsSlot}">
       <Grid RowDefinitions="Auto,*" AutomationProperties.AutomationId="{x:Static app:AutomationIds.ListsWordsGrid}">

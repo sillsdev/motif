@@ -4265,11 +4265,63 @@ public static class MotifAppStrings
 
     public static string TextsProposalWordCardsNote => Text("MotifApp.TextsProposalWordCardsNote");
 
-    public static string TextsProposalTabNotPairedNote => Text("MotifApp.TextsProposalTabNotPairedNote");
-
     public static string TextsProposalReadingNote => Text("MotifApp.TextsProposalReadingNote");
 
-    public static string TextsProposalTabNotPairedViewNote => Text("MotifApp.TextsProposalTabNotPairedViewNote");
-
     public static string TextsWordNotMeasured => Text("MotifApp.TextsWordNotMeasured");
+
+    public static string TextsListChipAccessibleNameFormat => Text("MotifApp.TextsListChipAccessibleNameFormat");
+
+    public static string TextsListChipPairAccessibleNameFormat => Text("MotifApp.TextsListChipPairAccessibleNameFormat");
+
+    public static string TextsListChipProposalAccessibleNameFormat => Text("MotifApp.TextsListChipProposalAccessibleNameFormat");
+
+    public static string TextsListPlacesNotCounted => Text("MotifApp.TextsListPlacesNotCounted");
+
+    public static string TextsListPlacesTodayFormat => Text("MotifApp.TextsListPlacesTodayFormat");
+
+    public static string DifferenceWithProposalFormat => Text("MotifApp.DifferenceWithProposalFormat");
+
+    public static string DifferenceProposalStillProblemFormat => Text("MotifApp.DifferenceProposalStillProblemFormat");
+
+    public static string DifferenceProposalTransitionFormat => Text("MotifApp.DifferenceProposalTransitionFormat");
+
+    public static string DifferenceProposalCellFormat => Text("MotifApp.DifferenceProposalCellFormat");
+
+    public static string DifferenceProposalEmptyState => Text("MotifApp.DifferenceProposalEmptyState");
+
+    public static string DifferenceProposalOnlyInOneFormat => Text("MotifApp.DifferenceProposalOnlyInOneFormat");
+
+    public static string DifferenceProposalFromLabel => Text("MotifApp.DifferenceProposalFromLabel");
+
+    public static string DifferenceProposalToLabel => Text("MotifApp.DifferenceProposalToLabel");
+
+    public static string TextsListCountsNoun => Text("MotifApp.TextsListCountsNoun");
+
+    public static string TextsChangesNoun => Text("MotifApp.TextsChangesNoun");
+
+    public static string TextsListsPairedNote => Text("MotifApp.TextsListsPairedNote");
+
+    public static string TextsListsDifferentWordsNote => Text("MotifApp.TextsListsDifferentWordsNote");
+
+    public static string TextsListsViewNote => Text("MotifApp.TextsListsViewNote");
+
+    public static string TextsListsReadingNote => Text("MotifApp.TextsListsReadingNote");
+
+    public static string TextsWhatChangedReadingNote => Text("MotifApp.TextsWhatChangedReadingNote");
+
+    public static string TextsWhatChangedPairedNote => Text("MotifApp.TextsWhatChangedPairedNote");
+
+    public static string TextsWhatChangedViewNote => Text("MotifApp.TextsWhatChangedViewNote");
+
+    public static string TextsListChipProposalNoneAccessibleNameFormat => Text("MotifApp.TextsListChipProposalNoneAccessibleNameFormat");
+
+    public static string TextsListChipProposalReadingAccessibleNameFormat => Text("MotifApp.TextsListChipProposalReadingAccessibleNameFormat");
+
+    public static string TextsListHandOffEitherSideHelp => Text("MotifApp.TextsListHandOffEitherSideHelp");
+
+    public static string TextsListHandOffProposalHelp => Text("MotifApp.TextsListHandOffProposalHelp");
+
+    public static string DifferenceMovedNoneWorseUnknownFormat => Text("MotifApp.DifferenceMovedNoneWorseUnknownFormat");
+
+    public static string DifferenceNowUnknownPattern => Text("MotifApp.DifferenceNowUnknownPattern");
 }

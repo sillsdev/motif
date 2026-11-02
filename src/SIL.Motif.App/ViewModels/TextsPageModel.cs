@@ -74,6 +74,7 @@ public sealed partial class TextsPageModel : PageModel
         Assess.Compare.ChosenCellsChanged += OnChosenCellsChanged;
         Assess.Compare.OpenWord = context.OpenWord;
         Assess.Difference.OpenWord = context.OpenWord;
+        ProposalChanges = new DifferenceViewModel(Assess.Words.Routes) { OpenWord = context.OpenWord };
         Assess.Compare.HandOff = context.HandOff;
         Assess.OpenTryWord = context.TryWord;
         Assess.PropertyChanged += OnAssessPropertyChanged;
@@ -101,6 +102,9 @@ public sealed partial class TextsPageModel : PageModel
 
     /// <summary>The fixed word questions, which select their exact cells in the page's Compare matrix.</summary>
     public TextsListsViewModel TextsLists { get; }
+
+    /// <summary>What the open Proposal moves between today's cells and its own, listed as What Changed lists two runs'.</summary>
+    public DifferenceViewModel ProposalChanges { get; }
 
     /// <summary>Whether Texts keeps its Selection list beside the word detail.</summary>
     public bool ShowSelectionPanel => Context.Inspector is null;
@@ -142,11 +146,14 @@ public sealed partial class TextsPageModel : PageModel
 
     public bool ShowWhatChanged => Tab == TextsTab.WhatChanged;
 
-    /// <summary>Whether the Lists tab draws: not in the Proposal view, which does not pair it yet.</summary>
+    /// <summary>Whether the Lists tab draws, in every view of the Proposal bar.</summary>
     public bool ShowListsContent => ShowLists && ShowsTabContent;
 
-    /// <summary>Whether the What Changed tab draws: not in the Proposal view, which does not pair it yet.</summary>
-    public bool ShowWhatChangedContent => ShowWhatChanged && ShowsTabContent;
+    /// <summary>Whether the What Changed tab draws the comparison of the last two runs: not in the Proposal view, nor the pair.</summary>
+    public bool ShowWhatChangedContent => ShowWhatChanged && ShowsTabContent && !ShowsProposalMoves;
+
+    /// <summary>Whether the What Changed tab draws the words the open Proposal moves, in the pair view with its side held.</summary>
+    public bool ShowProposalMovesContent => ShowWhatChanged && ShowsProposalMoves;
 
     public bool ShowTextReader => AnalyzeView == AnalyzeTextsView.TextReader;
 
@@ -234,6 +241,7 @@ public sealed partial class TextsPageModel : PageModel
         if (e.PropertyName is not (nameof(CompareViewModel.ProposalWordsMatch) or nameof(CompareViewModel.HasWords))) return;
         OnPropertyChanged(nameof(ProposalNote));
         OnPropertyChanged(nameof(HasProposalNote));
+        ShowProposalMoves();
     }
 
     private void OnAssessPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -262,7 +270,7 @@ public sealed partial class TextsPageModel : PageModel
         OnPropertyChanged(nameof(HasProposalNote));
         OnPropertyChanged(nameof(ShowsTabContent));
         OnPropertyChanged(nameof(ShowListsContent));
-        OnPropertyChanged(nameof(ShowWhatChangedContent));
+        ShowProposalMoves();
         if (value == TextsTab.Lists) TextsLists.SelectFirstIfNeeded();
     }
 

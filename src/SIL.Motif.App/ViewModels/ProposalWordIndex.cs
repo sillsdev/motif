@@ -90,6 +90,33 @@ internal sealed class ProposalWordIndex
         return new ProposalWordIndex(chars, starts, sortedCells, steps, elapsed, flags);
     }
 
+    /// <summary>How many distinct spellings the index holds that none of <paramref name="words"/> spells.</summary>
+    public int SpellingsNotIn(IEnumerable<string> words)
+    {
+        var found = new bool[_cells.Length];
+        foreach (var word in words)
+        {
+            var low = 0;
+            var high = _cells.Length;
+            while (low < high)
+            {
+                var middle = low + (high - low) / 2;
+                if (SpellingAt(middle).CompareTo(word, StringComparison.Ordinal) < 0) low = middle + 1;
+                else high = middle;
+            }
+            for (; low < _cells.Length && SpellingAt(low).CompareTo(word, StringComparison.Ordinal) == 0; low++) found[low] = true;
+        }
+        var missing = 0;
+        for (var slot = 0; slot < _cells.Length; slot++)
+        {
+            var first = slot == 0 || !SpellingAt(slot).SequenceEqual(SpellingAt(slot - 1));
+            if (first && !found[slot]) missing++;
+        }
+        return missing;
+    }
+
+    private ReadOnlySpan<char> SpellingAt(int slot) => new(_chars, _starts[slot], _starts[slot + 1] - _starts[slot]);
+
     /// <summary>Finds what the Trial recorded for a spelling, or false when it did not measure the word.</summary>
     public bool TryFind(string word, out ProposalWordFacts facts)
     {

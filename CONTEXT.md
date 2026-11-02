@@ -289,7 +289,10 @@ words; the matrix holds the Proposal's side as counts and an index of the values
 work steps and time), never the Trial's rows, and lets go of it when the Proposal is left or another Proposal or Trial is open. The Texts words under the
 matrix are the Proposal's in the Proposal view, where a Trial word today's matrix lacks is counted but not listed, and
 carry a With This Proposal column in the pair; the places under a cell follow the same choice;
-the Lists and What Changed tabs are not paired yet. Choosing a view is
+the Lists tab reads each list's words and places the same way, and What Changed in the pair lists the words that
+moved from one cell today to another with the Proposal, over the words both sides have, counting the rest and
+holding only positions that go when the Proposal does; in the Proposal view it has nothing to show, since a move
+needs both sides. Choosing a view is
 not an evidence change, so no page reloads, re-reads or re-applies for it, and the choice comes back when a
 following page is shown again. In the Proposal view a headline stands alone, with today's breakdown left
 to the Today view. Leave, or Esc when nothing else uses it, returns to today.

@@ -298,6 +298,10 @@ public sealed partial class CompareViewModel : ObservableObject
             .Select(word => word.Word).ToArray();
     }
 
+    // The words these cells list in the bar's view, so a list's hand-off sends the words the list shows.
+    internal IReadOnlyList<AssessmentRowFacts> ListedInCells(IReadOnlyList<TextsListCell> cells) =>
+        ListedByCells(cells.Select(cell => (cell.Row, cell.Column)).ToHashSet()).ToArray();
+
     /// <summary>Whether rows in these cells need meanings beyond the cells' default headings.</summary>
     public bool ShowsMeaningsInCells(IReadOnlyList<TextsListCell> cells)
     {
@@ -318,9 +322,7 @@ public sealed partial class CompareViewModel : ObservableObject
     public IReadOnlyList<string> CheckedWordsInCells(IReadOnlyList<TextsListCell> cells)
     {
         ArgumentNullException.ThrowIfNull(cells);
-        var chosen = cells.ToHashSet();
-        return _all.Where(word => word.IsChecked && chosen.Contains(new TextsListCell(word.Row, word.Column)))
-            .Select(word => word.Word).ToArray();
+        return ListedInCells(cells).Where(word => word.IsChecked).Select(word => word.Word).ToArray();
     }
 
     /// <summary>Every word a shortcut chooses, regardless of the current search or matrix filter.</summary>
@@ -538,6 +540,7 @@ public sealed partial class CompareViewModel : ObservableObject
     {
         ++_generation;
         _wordModels.Clear();
+        _moves = null;
         var incoming = rows?.ToList() ?? [];
         NoteWordsOfLoad(incoming);
         _all.Clear();
@@ -1249,7 +1252,8 @@ public sealed partial class CompareWordViewModel : ObservableObject, IDisposable
     public WordPresentation MatrixPresentation => PresentationFor(WordListOwner.Matrix, PendingChangeStatus) with
         { TimeText = _proposalTime, WithProposal = _withProposal };
 
-    public WordPresentation ListsPresentation => PresentationFor(WordListOwner.Lists, StagedOpinionText);
+    public WordPresentation ListsPresentation => PresentationFor(WordListOwner.Lists, StagedOpinionText) with
+        { TimeText = _proposalTime, WithProposal = _withProposal };
     public WordProjectStatus? Standing { get; }
     public WordProjectStatus Row { get; }
     public CompareColumnKind Column { get; }

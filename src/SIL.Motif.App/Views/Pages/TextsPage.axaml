@@ -105,6 +105,7 @@
       </ScrollViewer>
       <views:LazyContent x:Name="ListsHost" IsVisible="{Binding ShowListsContent}" Classes.waiting="{Binding Assess.IsActive}" />
       <views:LazyContent x:Name="DifferenceHost" IsVisible="{Binding ShowWhatChangedContent}" />
+      <views:LazyContent x:Name="ProposalMovesHost" IsVisible="{Binding ShowProposalMovesContent}" />
       <ContentControl x:Name="CentredParsePromptHost" IsVisible="{Binding ShowCentredParsePrompt}"
                       HorizontalAlignment="Center" VerticalAlignment="Center" />
     </Panel>

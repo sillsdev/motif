@@ -137,8 +137,12 @@ internal static class WordListCardSections
     public static IReadOnlyList<WordCardSection> Listed(ListedWordViewModel listed) =>
         [new WordCardAnalysis(listed.Card, listed.CardToken, listed.HasCard ? null : listed.NotParsedText)];
 
-    public static IReadOnlyList<WordCardSection> Moved(MovedWordViewModel moved) =>
-        [new WordCardText("Before", moved.BeforeText),
+    public static IReadOnlyList<WordCardSection> Moved(MovedWordViewModel moved) => moved.IsProposalMove
+        ? [new WordCardText(MotifAppStrings.DifferenceProposalToLabel, moved.AfterText),
+            new WordCardHeading(MotifAppStrings.DifferenceProposalFromLabel),
+            new WordCardAnalysis(moved.Listed.Card, moved.Listed.CardToken,
+                moved.Listed.HasCard ? null : moved.Listed.NotParsedText)]
+        : [new WordCardText("Before", moved.BeforeText),
             new WordCardAnalysis(moved.Listed.Card, moved.Listed.CardToken,
                 moved.Listed.HasCard ? null : moved.Listed.NotParsedText)];
 

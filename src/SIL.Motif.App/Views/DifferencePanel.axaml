@@ -8,7 +8,7 @@
              x:DataType="views:DifferencePanel">
   <Grid>
   <views:CopyableTextBlock x:Name="DifferenceEmptyState" Classes="muted" TextWrapping="Wrap"
-             Text="{x:Static app:MotifAppStrings.DifferenceEmptyState}"
+             Text="{Binding Difference.EmptyText}"
              Margin="{DynamicResource Component.DifferencePanel.PanelInset}"
              IsVisible="{Binding !Difference.HasDifference}" />
   <ScrollViewer x:Name="DifferenceScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"

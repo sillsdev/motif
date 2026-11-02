@@ -99,6 +99,26 @@ public sealed partial class CompareViewModel
     /// <summary>Whether the fix-first list shows: it lists today's words, so not in the Proposal's own view.</summary>
     public bool ShowsFixFirst => HasFixFirst && ShowsTodayWords;
 
+    /// <summary>How a number reads in the bar's view, given the Proposal's value for it, or null where it has none.</summary>
+    internal MatrixShown ShownFor(int? proposal) => new(_proposalView, ProposalWordsMatch == true, _proposalState, proposal);
+
+    /// <summary>The words the Proposal puts in these cells, or null while its side is not held.</summary>
+    internal int? ProposalWordsIn(IReadOnlyList<TextsListCell> cells) => _proposalSummary is { } summary
+        ? cells.Sum(cell => summary.In(cell.Row, cell.Column)) : null;
+
+    /// <summary>The places of the words the Proposal puts in these cells, or null where any cell's are not known.</summary>
+    internal int? ProposalPlacesIn(IReadOnlyList<TextsListCell> cells)
+    {
+        var chosen = cells.ToHashSet();
+        var total = 0;
+        foreach (var cell in Cells.Where(cell => chosen.Contains(new TextsListCell(cell.Row, cell.Column))))
+        {
+            if (cell.ProposalPlaceCount is not { } places) return null;
+            total += places;
+        }
+        return total;
+    }
+
     /// <summary>
     /// Whether the held Proposal side covers the same words as the matrix, or null when there is nothing to check;
     /// today's words are hashed once per load, by revision, and only when a Proposal side is held.
@@ -153,7 +173,7 @@ public sealed partial class CompareViewModel
     private void ApplyProposalNumbers()
     {
         var paired = ProposalWordsMatch == true;
-        MatrixShown Shown(int? proposal) => new(_proposalView, paired, _proposalState, proposal);
+        MatrixShown Shown(int? proposal) => ShownFor(proposal);
         int? Of(WordProjectStatus? row, CompareColumnKind? column) => _proposalSummary is { } summary
             ? Cells.Where(cell => (row is null || cell.Row == row) && (column is null || cell.Column == column))
                 .Sum(cell => summary.In(cell.Row, cell.Column)) : null;
@@ -172,6 +192,9 @@ public sealed partial class CompareCellViewModel
 {
     private MatrixShown _shown;
     private int? _proposalPlaces;
+
+    /// <summary>The places of the words the Proposal puts here, or null where they are not known or not drawn.</summary>
+    internal int? ProposalPlaceCount => _proposalPlaces;
 
     /// <summary>Whether this cell's count differs from the Proposal's, over the same words.</summary>
     public bool IsMoved => _shown.Moved(WordCount);

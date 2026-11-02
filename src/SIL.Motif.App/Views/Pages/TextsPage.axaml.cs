@@ -71,6 +71,7 @@ public sealed partial class TextsPage : UserControl, IWorkspacePaneProvider
         Lazy("WordListHost", () => new TextWordsPanel(page.Words));
         Lazy("ListsHost", () => new TextsListsPanel(page.TextsLists));
         Lazy("DifferenceHost", () => new DifferencePanel(page.Assess.Difference));
+        Lazy("ProposalMovesHost", () => new DifferencePanel(page.ProposalChanges));
 
         // One prompt, moved between its two places, so the page never holds two buttons of the same name.
         var prompt = new Border { Classes = { "card" }, Child = new ParsePrompt { DataContext = page.Context } };

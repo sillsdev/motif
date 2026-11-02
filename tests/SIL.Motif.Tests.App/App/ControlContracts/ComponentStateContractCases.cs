@@ -891,11 +891,11 @@ internal static class TooltipOwners
         new("word list summary", "Views/TextWordsPanel.axaml", "{Binding Words.SummaryText}", TooltipScene.AnalyzeWordList,
             control => control is CopyableTextBlock && control.Classes.Contains("wordListSummary") &&
                 control.FindAncestorOfType<TextWordsPanel>() is not null),
-        new("whole list to AI Handoff", "Views/TextsListsPanel.axaml", "{Binding Lists.HandOffListDisabledReason}",
+        new("whole list to AI Handoff", "Views/TextsListsPanel.axaml", "{Binding Lists.HandOffListHelpText}",
             TooltipScene.Lists, control => control is Button &&
                 AutomationProperties.GetAutomationId(control) == AutomationIds.HandOffList)
         {
-            Gap = "while the list can go to AI Handoff its reason is empty, and an empty tooltip still opens",
+            Gap = "in the Today view a list that can go to AI Handoff has no help text, and an empty tooltip still opens; in the pair view, when the two sides cover different words, a word only the Proposal measured is counted but not sent",
         },
         new("Apply to FieldWorks project", "Views/ReviewPanel.axaml", "{Binding ApplyDisabledReason}", TooltipScene.ReviewStaged,
             control => control is Button && Name(control) == "Apply to FieldWorks project"),

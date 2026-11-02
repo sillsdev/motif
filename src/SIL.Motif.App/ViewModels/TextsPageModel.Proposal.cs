@@ -29,24 +29,38 @@ public sealed partial class TextsPageModel
 
     private bool OffToday => Context.Lens is not null && ProposalViewScope.ViewOf(Context) != MarkupView.Today;
 
-    /// <summary>Whether the tab's content is today's alone, which the Proposal view does not draw yet.</summary>
+    /// <summary>Whether the tab's content draws: What Changed compares two sides, so the Proposal view has nothing of its own.</summary>
     public bool ShowsTabContent => !(Context.Lens is not null && ProposalViewScope.ViewOf(Context) == MarkupView.Proposal &&
-        Tab is TextsTab.Lists or TextsTab.WhatChanged);
+        Tab == TextsTab.WhatChanged);
 
     /// <summary>The note saying what the tab pairs, what stays today's and why the Proposal may have nothing to show.</summary>
     public string? ProposalNote => Tab switch
     {
         TextsTab.Matrix when !Assess.Compare.HasWords => null,
-        TextsTab.Matrix when MatrixState == MatrixSideState.Reading && Context.Lens is not null &&
-            ProposalViewScope.ViewOf(Context) == MarkupView.TodayToProposal => MotifAppStrings.TextsProposalReadingNote,
+        TextsTab.Matrix when ReadingInPair => MotifAppStrings.TextsProposalReadingNote,
         TextsTab.Matrix => ProposalPageNote.For(Context, new ProposalPageNote.Parts(MotifAppStrings.TextsMatrixCountsNoun,
             MatrixState == MatrixSideState.Reading, MatrixState == MatrixSideState.Unreadable,
             MatrixState == MatrixSideState.Held, MatrixPairedNote(), MotifAppStrings.TextsProposalViewNote)),
         TextsTab.AnalyzeTexts => OffToday ? MotifAppStrings.TextsProposalWordCardsNote : null,
-        _ when !OffToday || !Assess.Compare.HasWords => null,
-        _ => ProposalViewScope.ViewOf(Context) == MarkupView.Proposal
-            ? MotifAppStrings.TextsProposalTabNotPairedViewNote : MotifAppStrings.TextsProposalTabNotPairedNote,
+        TextsTab.Lists when !Assess.Compare.HasWords => null,
+        TextsTab.Lists when ReadingInPair => MotifAppStrings.TextsListsReadingNote,
+        TextsTab.Lists => ProposalPageNote.For(Context, new ProposalPageNote.Parts(MotifAppStrings.TextsListCountsNoun,
+            MatrixState == MatrixSideState.Reading, MatrixState == MatrixSideState.Unreadable,
+            MatrixState == MatrixSideState.Held, Assess.Compare.ProposalWordsMatch == true
+                ? MotifAppStrings.TextsListsPairedNote : MotifAppStrings.TextsListsDifferentWordsNote,
+            MotifAppStrings.TextsListsViewNote)),
+        TextsTab.WhatChanged when !Assess.Compare.HasWords => null,
+        TextsTab.WhatChanged when ReadingInPair => MotifAppStrings.TextsWhatChangedReadingNote,
+        TextsTab.WhatChanged => ProposalPageNote.For(Context, new ProposalPageNote.Parts(MotifAppStrings.TextsChangesNoun,
+            MatrixState == MatrixSideState.Reading, MatrixState == MatrixSideState.Unreadable,
+            MatrixState == MatrixSideState.Held, MotifAppStrings.TextsWhatChangedPairedNote,
+            MotifAppStrings.TextsWhatChangedViewNote)),
+        _ => null,
     };
+
+    // The pair view while the Proposal's counts are still being read, when the tab shows today's alone.
+    private bool ReadingInPair => MatrixState == MatrixSideState.Reading && Context.Lens is not null &&
+        ProposalViewScope.ViewOf(Context) == MarkupView.TodayToProposal;
 
     /// <summary>Whether the page has a note to show.</summary>
     public bool HasProposalNote => ProposalNote is not null;
@@ -66,7 +80,7 @@ public sealed partial class TextsPageModel
         OnPropertyChanged(nameof(HasProposalNote));
         OnPropertyChanged(nameof(ShowsTabContent));
         OnPropertyChanged(nameof(ShowListsContent));
-        OnPropertyChanged(nameof(ShowWhatChangedContent));
+        ShowProposalMoves();
     }
 
     // Counts the open Proposal's Trial only while this page is shown and the held side is for another key.

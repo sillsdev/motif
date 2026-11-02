@@ -53,6 +53,7 @@ public enum MoveKind
 public sealed partial class DifferenceViewModel : ObservableObject
 {
     private readonly DisplayProjectionCache<MovedWordViewModel, ListedWordViewModel> _listed;
+    private ProposalMoveSet? _proposalMoves;
 
     public DifferenceViewModel(WordRowRoutes? routes = null)
     {
@@ -96,7 +97,14 @@ public sealed partial class DifferenceViewModel : ObservableObject
     [ObservableProperty]
     private string _afterLabel = string.Empty;
 
-    public bool HasDifference => Moves.Count > 0;
+    public bool HasDifference => _proposalMoves is { } held ? held.Compared > 0 : Moves.Count > 0;
+
+    /// <summary>The words the open Proposal moves, which this view holds in place of two runs' while they are loaded.</summary>
+    internal ProposalMoveSet? ProposalMoves => _proposalMoves;
+
+    /// <summary>What the view says when there is nothing to list.</summary>
+    public string EmptyText => _proposalMoves is not null ? MotifAppStrings.DifferenceProposalEmptyState
+        : MotifAppStrings.DifferenceEmptyState;
 
     public int ComparedCount { get; private set; }
     public int MovedCount { get; private set; }
@@ -110,11 +118,21 @@ public sealed partial class DifferenceViewModel : ObservableObject
             MotifAppStrings.DifferenceMovedWorseFormat, MovedCount.ToString("N0", System.Globalization.CultureInfo.CurrentCulture),
             ComparedCount.ToString("N0", System.Globalization.CultureInfo.CurrentCulture),
             RegressedCount.ToString("N0", System.Globalization.CultureInfo.CurrentCulture))
+        : NowUnknownCount > 0 ? string.Format(System.Globalization.CultureInfo.CurrentCulture,
+            MotifAppStrings.DifferenceMovedNoneWorseUnknownFormat, MovedCount.ToString("N0", System.Globalization.CultureInfo.CurrentCulture),
+            ComparedCount.ToString("N0", System.Globalization.CultureInfo.CurrentCulture),
+            PluralText.Format(MotifAppStrings.DifferenceNowUnknownPattern, NowUnknownCount))
         : string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.DifferenceMovedNoneWorseFormat,
             MovedCount.ToString("N0", System.Globalization.CultureInfo.CurrentCulture),
             ComparedCount.ToString("N0", System.Globalization.CultureInfo.CurrentCulture));
 
+    // Words now unknown are not worse, but the none-got-worse line must not hide them.
+    private int NowUnknownCount => Moves.Where(move => move.Kind == MoveKind.NowUnknown).Sum(move => move.Count);
+
     public string OnlyInOneText => OnlyInOneCount == 0 ? string.Empty
+        : _proposalMoves is { } held ? string.Format(System.Globalization.CultureInfo.CurrentCulture,
+            MotifAppStrings.DifferenceProposalOnlyInOneFormat, held.TodayOnly.ToString("N0", System.Globalization.CultureInfo.CurrentCulture),
+            held.ProposalOnly.ToString("N0", System.Globalization.CultureInfo.CurrentCulture))
         : PluralText.Format(MotifAppStrings.DifferenceOnlyInOnePattern, OnlyInOneCount);
 
     public string RunComparisonText => string.Format(System.Globalization.CultureInfo.CurrentCulture,
@@ -185,6 +203,7 @@ public sealed partial class DifferenceViewModel : ObservableObject
     // The chosen move's cells are outlined in both small matrices, so the move reads as "from here to there".
     private void MarkMoveInMatrices(MoveViewModel? move)
     {
+        if (_proposalMoves is not null) return;
         Before.ClearSelectionCommand.Execute(null);
         After.ClearSelectionCommand.Execute(null);
         if (move is null) return;
@@ -255,19 +274,43 @@ public sealed class MoveViewModel
 {
     public MoveViewModel((WordProjectStatus Row, CompareColumnKind Column) from, (WordProjectStatus Row, CompareColumnKind Column) to,
         IReadOnlyList<MovedWordViewModel> words)
+        : this(from, to, words.Count, () => words.OrderByDescending(word => word.Occurrences ?? 0)
+            .ThenBy(word => word.Word, StringComparer.CurrentCulture).ToArray(), false) { }
+
+    /// <summary>A move whose words are made when first read, so a move nobody opens costs only its count.</summary>
+    internal MoveViewModel((WordProjectStatus Row, CompareColumnKind Column) from, (WordProjectStatus Row, CompareColumnKind Column) to,
+        int count, Func<IReadOnlyList<MovedWordViewModel>> words, bool toProposal)
     {
         From = from;
         To = to;
-        Words = words.OrderByDescending(word => word.Occurrences ?? 0).ThenBy(word => word.Word, StringComparer.CurrentCulture).ToArray();
+        Count = count;
+        _makeWords = words;
+        ToProposal = toProposal;
         Kind = DifferenceViewModel.KindOf(from, to);
         FromLabel = CompareViewModel.MeaningOf(from.Row, from.Column).Label;
         ToLabel = CompareViewModel.MeaningOf(to.Row, to.Column).Label;
     }
 
+    private Func<IReadOnlyList<MovedWordViewModel>>? _makeWords;
+    private IReadOnlyList<MovedWordViewModel>? _words;
+
+    /// <summary>Whether the move ends in the open Proposal's cell, so the words say whose cell each is.</summary>
+    public bool ToProposal { get; }
+
     public (WordProjectStatus Row, CompareColumnKind Column) From { get; }
     public (WordProjectStatus Row, CompareColumnKind Column) To { get; }
-    public IReadOnlyList<MovedWordViewModel> Words { get; }
-    public int Count => Words.Count;
+    public IReadOnlyList<MovedWordViewModel> Words
+    {
+        get
+        {
+            if (_words is not null) return _words;
+            _words = _makeWords!();
+            _makeWords = null;
+            return _words;
+        }
+    }
+
+    public int Count { get; }
     public string CountText => Count.ToString("N0", System.Globalization.CultureInfo.CurrentCulture);
     public MoveKind Kind { get; }
     public string KindLabel => DifferenceViewModel.LabelOf(Kind);
@@ -285,8 +328,10 @@ public sealed class MoveViewModel
     public string TransitionText =>
         CompareViewModel.MeaningOf(From.Row, From.Column).Family == CompareFamilyKind.Violation &&
         CompareViewModel.MeaningOf(To.Row, To.Column).Family == CompareFamilyKind.Violation
-            ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.DifferenceStillProblemFormat, FromLabel, ToLabel)
-            : string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.DifferenceTransitionFormat,
+            ? string.Format(System.Globalization.CultureInfo.CurrentCulture, ToProposal
+                ? MotifAppStrings.DifferenceProposalStillProblemFormat : MotifAppStrings.DifferenceStillProblemFormat, FromLabel, ToLabel)
+            : string.Format(System.Globalization.CultureInfo.CurrentCulture, ToProposal
+                ? MotifAppStrings.DifferenceProposalTransitionFormat : MotifAppStrings.DifferenceTransitionFormat,
                 FromLabel, FromRow, ToLabel, ToRow);
 
     public string AccessibleName => string.Format(System.Globalization.CultureInfo.CurrentCulture,
@@ -311,18 +356,43 @@ public sealed class MovedWordViewModel
         Occurrences = after.OccurrenceCount ?? before.OccurrenceCount;
         From = before.Place;
         To = after.Place;
-        BeforeText = Describe(before);
-        AfterText = Describe(after);
+        _before = before;
+        _after = after;
         AfterFacts = after;
         _listed = listed;
     }
 
+    /// <summary>A word of today's matrix and where the open Proposal puts it; only today's own result is held.</summary>
+    internal MovedWordViewModel(AssessmentRowFacts today, (WordProjectStatus Row, CompareColumnKind Column) to,
+        string withProposal, Func<MovedWordViewModel, ListedWordViewModel> listed)
+    {
+        ArgumentNullException.ThrowIfNull(today);
+        Word = today.Word;
+        Occurrences = today.OccurrenceCount;
+        From = today.Place;
+        To = to;
+        _before = today;
+        _afterText = withProposal;
+        IsProposalMove = true;
+        AfterFacts = today;
+        _listed = listed;
+    }
+
+    private readonly AssessmentRowFacts _before;
+    private readonly AssessmentRowFacts? _after;
+    private string? _beforeText;
+    private string? _afterText;
+
+    /// <summary>Whether the word moved between today's cell and the open Proposal's, not between two runs.</summary>
+    public bool IsProposalMove { get; }
+
     /// <summary>The word as it is now, as its row and card show it on every page.</summary>
     public ListedWordViewModel Listed => _listed(this);
 
-    /// <summary>What the earlier run came to, under the word's row.</summary>
-    public string BeforeNote => string.Format(System.Globalization.CultureInfo.CurrentCulture,
-        MotifAppStrings.DifferenceBeforeFormat, BeforeText);
+    /// <summary>What the earlier run came to, or where the Proposal puts the word, under the word's row.</summary>
+    public string BeforeNote => string.Format(System.Globalization.CultureInfo.CurrentCulture, IsProposalMove
+        ? MotifAppStrings.DifferenceWithProposalFormat : MotifAppStrings.DifferenceBeforeFormat,
+        IsProposalMove ? AfterText : BeforeText);
 
     /// <summary>The typed word row and earlier result shown in What changed.</summary>
     public WordPresentation Presentation => Listed.PresentationFor(WordListOwner.WhatChanged, BeforeNote);
@@ -340,10 +410,11 @@ public sealed class MovedWordViewModel
     public (WordProjectStatus Row, CompareColumnKind Column) From { get; }
     public (WordProjectStatus Row, CompareColumnKind Column) To { get; }
 
-    /// <summary>What the parser came to in the earlier run: its result, and its readings when it has any.</summary>
-    public string BeforeText { get; }
+    /// <summary>What the parser came to in the earlier run, or today: its result, and its readings when it has any.</summary>
+    public string BeforeText => _beforeText ??= Describe(_before);
 
-    public string AfterText { get; }
+    /// <summary>What the later run came to, or the cell the open Proposal puts the word in.</summary>
+    public string AfterText => _afterText ??= Describe(_after!);
 
     private static string Describe(AssessmentRowFacts row)
     {

@@ -43,8 +43,8 @@ public sealed class TextsListsHandoffAvailabilityTests
                 Assert.Equal(lists.HandOffCheckedWordsHelpText,
                     AutomationProperties.GetHelpText(checkedWordsButton));
                 Assert.Equal(lists.HandOffCheckedWordsHelpText, ToolTip.GetTip(checkedWordsButton));
-                Assert.Equal(lists.HandOffListDisabledReason, ToolTip.GetTip(wholeListButton));
-                Assert.Equal(lists.HandOffListDisabledReason, AutomationProperties.GetHelpText(wholeListButton));
+                Assert.Equal(lists.HandOffListHelpText, ToolTip.GetTip(wholeListButton));
+                Assert.Equal(lists.HandOffListHelpText, AutomationProperties.GetHelpText(wholeListButton));
                 Assert.Empty(VisibleReasons(window, lists.HandOffListDisabledReason,
                     lists.HandOffCheckedWordsHelpText));
 

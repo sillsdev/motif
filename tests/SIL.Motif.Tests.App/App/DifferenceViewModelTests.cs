@@ -155,4 +155,29 @@ public sealed class DifferenceViewModelTests
         Assert.Equal("This run: 1 word again at 30 s each", assess.Difference.AfterLabel);
         Assert.Equal(2, assess.Words.TotalCount);
     }
+
+    [Fact]
+    public void AMoveToUnknownIsNeverHiddenBehindALineSayingNoneGotWorse()
+    {
+        var difference = new DifferenceViewModel();
+        difference.Load(
+            Rows(Word("alikula", "analysed", ProjectStanding.NotPresent, "no-opinion")),
+            Rows(Word("alikula", "timed-out", ProjectStanding.NotPresent, incomplete: true)), "before", "after");
+
+        Assert.Equal(MoveKind.NowUnknown, Assert.Single(difference.Moves, move => move.Kind != MoveKind.Unchanged).Kind);
+        Assert.Equal("1 of 1 words moved to another cell; none got worse, but 1 is now unknown.", difference.Summary);
+    }
+
+    [Fact]
+    public void SeveralWordsMovedToUnknownReadAsAreNowUnknown()
+    {
+        var difference = new DifferenceViewModel();
+        difference.Load(
+            Rows(Word("alikula", "analysed", ProjectStanding.NotPresent, "no-opinion"),
+                Word("alimpiga", "analysed", ProjectStanding.NotPresent, "no-opinion")),
+            Rows(Word("alikula", "timed-out", ProjectStanding.NotPresent, incomplete: true),
+                Word("alimpiga", "timed-out", ProjectStanding.NotPresent, incomplete: true)), "before", "after");
+
+        Assert.Equal("2 of 2 words moved to another cell; none got worse, but 2 are now unknown.", difference.Summary);
+    }
 }

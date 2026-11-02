@@ -112,6 +112,7 @@ public sealed partial class CompareViewModel
         _placesByCell = null;
         _placesFor = null;
         _listedSummary = null;
+        _moves = null;
     }
 
     // Today's words in the chosen cells, or the Proposal's, in Assessment order; no chosen cell lists every word.
@@ -198,5 +199,6 @@ public sealed partial class CompareWordViewModel
         _withProposal = cell;
         _proposalTime = time;
         OnPropertyChanged(nameof(MatrixPresentation));
+        OnPropertyChanged(nameof(ListsPresentation));
     }
 }
