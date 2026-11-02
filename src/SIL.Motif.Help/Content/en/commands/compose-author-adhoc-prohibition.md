@@ -34,6 +34,10 @@ The Dry Run states the rule as a full sentence, for example "morpheme 'pa-' cann
 
 A morpheme prohibition names one entry's grammatical analysis, not a spelling, so it can stop one of two homograph stems taking an affix while the other still does. Give the affix's analysis as `first` and the unwanted stem's analysis as `rest`, with `adjacent-to-left` for a prefix or `adjacent-to-right` for a suffix; use `restAnyOf` for several such stems. Read the analysis ids from the lexicon, because two stems with the same form have different ones. A category cannot tell them apart when both are in the same category. An exception feature on the affix (`compose-edit-derivational-affix-restriction`) admits only the stems that carry it and cannot exclude one stem, so use it when the few stems that take the affix are the ones to mark, and this prohibition when the few to refuse are.
 
+## Stems that share a class with the hosts
+
+The same prohibition keeps a derivational prefix, already restricted to a host inflection class with `compose-edit-derivational-affix-restriction`, off one stem of that class (the real parser stopped it on the named stem and kept it on the other); the From side of a derivational affix cannot exclude a stem, so this is the route.
+
 The real parser has been tested with this prohibition for a plain prefix and for a reduplicating prefix process (copy the first consonant and vowel in front of the stem, as Cebuano `magR` and `umR` do): with two homograph stems, the rule removed the reading through the named stem and kept the other. Other process shapes, such as infixes, have not been tested.
 
 ## When not to use this

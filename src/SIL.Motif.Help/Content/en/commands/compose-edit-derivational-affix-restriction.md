@@ -13,4 +13,8 @@ To remove the current From Inflection Class, pass `"clearFromInflectionClass":tr
 
 `toInflectionClass` sets the To Inflection Class, the class the derived stem receives, so it can then take that class's inflection (for example a passive or causative of a loan verb whose own class takes none). The class must belong to the MSA's To category or one of its ancestors. `"clearToInflectionClass":true` removes it; do not supply both. Omitting both leaves it unchanged.
 
+## Keeping out a few stems of a host class
+
+The From side can only require: the parser reads the From Inflection Class and the From Exception Features as features a stem must carry, and FieldWorks holds no way to exclude one. To let an affix attach to a class but not to some stems of it, such as a lexical agent noun that shares a class with real hosts, create a morpheme prohibition with `compose-author-adhoc-prohibition`: give the affix's derivational analysis as `first`, the unwanted stem's analysis as `rest` (or `restAnyOf` for several stems), and `adjacent-to-left` for a prefix or `adjacent-to-right` for a suffix. The real parser has been tested with a derivational prefix restricted to a class here: it stopped on the named stem and kept attaching to another stem of the same class. The same prohibition naming a derivational suffix that made the other stems has not been tested.
+
 An inflectional affix uses Inflection Classes on its form instead: set them while authoring the form with `compose-author-lexical-entry` or `compose-author-alternate-form`, or edit them with `compose-edit-affix-inflection-classes`. Motif stages the operations in a Draft; Dry Run and Trial the Proposal on stems that should and should not take the affix, then Finalize it for a person to review and Apply.

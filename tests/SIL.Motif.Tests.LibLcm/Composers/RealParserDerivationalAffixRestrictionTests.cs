@@ -121,6 +121,45 @@ public sealed class RealParserDerivationalAffixRestrictionTests(PristineProjectF
         Assert.Empty(await Readings(tracer, path, "kupagkaun", names));
     }
 
+    [RealParserFact]
+    public async Task AProhibitionStopsAClassRestrictedDerivationalPrefixOnOneStemOfTheClassAndNotItsNeighbour()
+    {
+        using var cache = pristine.NewScratch();
+        RealParserProject.PrepareForParsing(cache, Letters);
+        var verb = Created(ApplyOps(cache, AuthorPartOfSpeechComposer.Build(cache,
+            new AuthorPartOfSpeechIntent("Verb", Anal(cache), "V"))), CmPossibilityListPossibilitiesOperationKinds.Create);
+        var noun = AddCategory(cache, "Noun");
+        var host = AddInflectionClass(cache, verb, "Host");
+        var names = new Dictionary<CanonicalId, string>(CanonicalId.ByGuid);
+        var kept = AddStem(cache, "kaun", verb, host);
+        var excluded = AddStem(cache, "palit", verb, host);
+        names[kept.Form] = "kaun";
+        names[excluded.Form] = "palit";
+        var created = ApplyOps(cache, AuthorAffixProcessComposer.Build(cache, new AuthorAffixProcessIntent(
+            MorphType(MoMorphTypeTags.kguidMorphPrefix), "agentive", Anal(cache),
+            new LexicalEntryMsa(LexicalEntryMsaKind.Derivational, verb, noun),
+            [new("rest", Remaining: true)],
+            [new(Insert: [Phoneme(cache, "p"), Phoneme(cache, "a"), Phoneme(cache, "g")]), new(Copy: "rest")])));
+        var msa = Created(created, LexEntryMorphoSyntaxAnalysesOperationKinds.Create);
+        names[Created(created, LexEntryLexemeFormOperationKinds.CreateLexemeForm)] = "pag";
+        ApplyOps(cache, EditDerivationalAffixRestrictionComposer.Build(cache, new(msa, FromInflectionClass: host)));
+        var path = cache.ProjectId.Path;
+        new FwDataProjectLoader().Save(cache);
+        using var invoker = new PanGlossInvoker();
+        var tracer = new PanGlossTracer(invoker);
+
+        Assert.Equal(["pag+kaun"], await Readings(tracer, path, "pagkaun", names));
+        Assert.Equal(["pag+palit"], await Readings(tracer, path, "pagpalit", names));
+
+        ApplyOps(cache, AuthorAdhocProhibitionComposer.Build(cache, new AuthorAdhocProhibitionIntent(
+            AdhocProhibitionPayload.Morpheme, msa, [excluded.Msa], "adjacent-to-left")));
+        new FwDataProjectLoader().Save(cache);
+
+        Assert.Equal(["pag+kaun"], await Readings(tracer, path, "pagkaun", names));
+        Assert.Empty(await Readings(tracer, path, "pagpalit", names));
+        Assert.Equal(["palit"], await Readings(tracer, path, "palit", names));
+    }
+
     private async Task<string[]> Readings(PanGlossTracer tracer, string path, string word,
         IReadOnlyDictionary<CanonicalId, string> names)
     {
