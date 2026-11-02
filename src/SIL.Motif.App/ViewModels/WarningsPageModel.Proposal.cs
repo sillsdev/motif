@@ -112,6 +112,7 @@ public sealed partial class WarningsPageModel
         _proposalFindings = null;
         _failedKey = null;
         Grammar.Warnings.ShowProposal(null, MarkupView.Today);
+        RaiseProposalDelta();
     }
 
     private void ShowHeldProposalCheck()
@@ -123,5 +124,10 @@ public sealed partial class WarningsPageModel
         OnPropertyChanged(nameof(ShowProposalNone));
         OnPropertyChanged(nameof(ProposalNoneText));
         OnPropertyChanged(nameof(IsGrammarNotChecked));
+        RaiseProposalDelta();
     }
+
+    // The grammar holds a Proposal check only once this page has read it, and a change needs today's check too.
+    private void RaiseProposalDelta() =>
+        ProposalDelta = PageDelta.Of(Grammar.Warnings.ProposalFindingsChange, PageDeltaKind.Warnings);
 }

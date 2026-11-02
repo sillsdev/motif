@@ -239,6 +239,7 @@ public sealed partial class TextsPageModel : PageModel
     private void OnCompareChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName is not (nameof(CompareViewModel.ProposalWordsMatch) or nameof(CompareViewModel.HasWords))) return;
+        ProposalDelta = PageDelta.Of(Assess.Compare.ProposalSameChange(), PageDeltaKind.SameWords);
         OnPropertyChanged(nameof(ProposalNote));
         OnPropertyChanged(nameof(HasProposalNote));
         ShowProposalMoves();

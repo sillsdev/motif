@@ -154,6 +154,9 @@
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Micro}" />
     <Setter Property="Foreground" Value="{DynamicResource Intent.TextSecondary}" />
   </Style>
+  <Style Selector="ListBox.sidebar.collapsed Border.proposalDelta">
+    <Setter Property="Padding" Value="{DynamicResource Component.Sidebar.BadgeInset}" />
+  </Style>
   <Style Selector="ListBox.sidebar.shortRail ListBoxItem">
     <Setter Property="Height" Value="{DynamicResource Component.Sidebar.ShortItemHeight}" />
     <Setter Property="MinHeight" Value="{DynamicResource Component.Sidebar.ShortItemHeight}" />

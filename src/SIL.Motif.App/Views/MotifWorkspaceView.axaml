@@ -26,7 +26,7 @@
                 <Setter Property="AutomationProperties.AutomationId" Value="{Binding AutomationId}" />
               </Style>
               <Style Selector="ListBox.collapsed ListBoxItem" x:DataType="vm:PageViewModel">
-                <Setter Property="ToolTip.Tip" Value="{Binding Title}" />
+                <Setter Property="ToolTip.Tip" Value="{Binding RailTip}" />
                 <Setter Property="views:ClearTipPlacement.IsEnabled" Value="True" />
               </Style>
             </ListBox.Styles>
@@ -45,6 +45,10 @@
                                            VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                   <Border Classes="pageBadge" IsVisible="{Binding HasBadge}">
                     <views:CopyableTextBlock Text="{Binding Badge}" />
+                  </Border>
+                  <Border Classes="proposalDelta" IsVisible="{Binding HasDeltaBadge}"
+                          AutomationProperties.Name="{Binding DeltaBadgeName}">
+                    <views:CopyableTextBlock Text="{Binding DeltaBadge}" />
                   </Border>
                 </Grid>
               </DataTemplate>

@@ -248,6 +248,7 @@ public sealed partial class WarningsPageModel : PageModel
         }
         TryOpenRequestedWarning();
         BadgeCount = Grammar.ShowTodayFindings ? Grammar.Warnings.TodayTotalCount : null;
+        RaiseProposalDelta();
         PublishSummary();
         RaiseCheckState();
     }

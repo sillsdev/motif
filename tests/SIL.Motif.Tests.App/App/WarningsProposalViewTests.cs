@@ -17,7 +17,7 @@ namespace SIL.Motif.Tests.App;
 [Collection(AvaloniaHeadlessCollection.Name)]
 public sealed class WarningsProposalViewTests
 {
-    private static GrammarWarning Finding(string code, GrammarDiagnosticLevel level) =>
+    internal static GrammarWarning Finding(string code, GrammarDiagnosticLevel level) =>
         new(level, code, [], [], code) { Code = code };
 
     private static GrammarCheckResponse Today() => new(
@@ -32,7 +32,7 @@ public sealed class WarningsProposalViewTests
         Finding("e", GrammarDiagnosticLevel.Warning),
     ], true);
 
-    private static async Task<(FakeCommandClient Fake, WorkspaceContext Context, WarningsPageModel Page)> OpenedAsync(
+    internal static async Task<(FakeCommandClient Fake, WorkspaceContext Context, WarningsPageModel Page)> OpenedAsync(
         GrammarCheckResponse? proposal, bool unreadable = false)
     {
         var fake = new FakeCommandClient();

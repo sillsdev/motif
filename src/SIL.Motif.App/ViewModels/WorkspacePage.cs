@@ -82,9 +82,11 @@ public sealed partial class PageViewModel : ObservableObject
         Icon = icon;
         Model = model;
         _badgeCount = model.BadgeCount;
+        _delta = model.ProposalDelta;
         model.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(PageModel.BadgeCount)) BadgeCount = model.BadgeCount;
+            if (e.PropertyName == nameof(PageModel.ProposalDelta)) Delta = model.ProposalDelta;
         };
     }
 
@@ -99,7 +101,10 @@ public sealed partial class PageViewModel : ObservableObject
     public string Icon { get; }
 
     /// <summary>The accessible name of the sidebar entry that opens this page.</summary>
-    public string AutomationName => $"{Title} page";
+    public string AutomationName => Delta is { } delta
+        ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.PageDeltaPageNameFormat,
+            $"{Title} page", delta.AccessibleName)
+        : $"{Title} page";
 
     /// <summary>The stable ID used to open this page from the sidebar.</summary>
     public string AutomationId => AutomationIds.ForPage(Page);
@@ -117,6 +122,26 @@ public sealed partial class PageViewModel : ObservableObject
 
     /// <summary>The status bar's warnings sentence, with its count inside the localized pattern.</summary>
     public string WarningsTip => PluralText.Format(MotifAppStrings.StatusWarningsPattern, BadgeCount ?? 0);
+
+    // How far the open Proposal moves the page's number from today's, or null when there is nothing to show.
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(DeltaBadge), nameof(HasDeltaBadge), nameof(DeltaBadgeName), nameof(AutomationName), nameof(RailTip))]
+    private PageDelta? _delta;
+
+    /// <summary>The sidebar tooltip: the title, with what the delta badge counts when there is one.</summary>
+    public string RailTip => Delta is { } delta
+        ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.PageDeltaPageNameFormat, Title,
+            delta.AccessibleName)
+        : Title;
+
+    /// <summary>The delta with its sign, or empty when there is none.</summary>
+    public string DeltaBadge => Delta?.Text ?? string.Empty;
+
+    /// <summary>What the delta counts and whose number it is, for the badge's accessible name.</summary>
+    public string DeltaBadgeName => Delta?.AccessibleName ?? string.Empty;
+
+    /// <summary>Whether <see cref="DeltaBadge"/> has anything to show.</summary>
+    public bool HasDeltaBadge => Delta is not null;
 
     /// <summary>Whether <see cref="Badge"/> has anything to show.</summary>
     public bool HasBadge => BadgeCount is not null;

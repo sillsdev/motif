@@ -227,8 +227,15 @@ public sealed partial class TimingPageModel
         RaiseProposalTiming();
     }
 
+    // The Proposal's work for the words both sides measured, as a whole percent of today's, or null.
+    private int? WorkChangePercent => Held is { Work.MeasuredWordCount: > 0 } held && KindTiming is { } today &&
+        HasHeadline && WordsChecked && WorkComparable && today.Work.TotalWorkSteps > 0
+        ? (int)Math.Round((held.Work.TotalWorkSteps - today.Work.TotalWorkSteps) * 100.0 / today.Work.TotalWorkSteps,
+            MidpointRounding.AwayFromZero) : null;
+
     private void RaiseProposalTiming()
     {
+        ProposalDelta = PageDelta.Of(WorkChangePercent, PageDeltaKind.WorkPercent);
         foreach (var name in new[]
         {
             nameof(HeadlineTotal), nameof(HeadlineTotalCaption), nameof(HeadlineMedian), nameof(HeadlineStopped),

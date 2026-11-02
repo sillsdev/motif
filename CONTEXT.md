@@ -294,7 +294,10 @@ moved from one cell today to another with the Proposal, over the words both side
 holding only positions that go when the Proposal does; in the Proposal view it has nothing to show, since a move
 needs both sides. Choosing a view is
 not an evidence change, so no page reloads, re-reads or re-applies for it, and the choice comes back when a
-following page is shown again. In the Proposal view a headline stands alone, with today's breakdown left
+following page is shown again. Texts, Warnings and Timing each keep a delta badge beside their sidebar entry (its tooltip and accessible name say what it counts) while a
+Proposal is open, from numbers the page has already read: the net change in the Same column's words, the findings gained or lost
+and the percentage change in work steps; a page that has not read its side, holds a side over other words or finds
+no change shows none. In the Proposal view a headline stands alone, with today's breakdown left
 to the Today view. Leave, or Esc when nothing else uses it, returns to today.
 _Avoid_: compare mode, diff view, Proposal page, branch
 

@@ -32,6 +32,14 @@ public abstract partial class PageModel : ObservableObject, IProjectStatePartici
     /// <summary>The count as the sidebar shows it, or empty when <see cref="BadgeCount"/> is null.</summary>
     public string Badge => BadgeCount?.ToString(System.Globalization.CultureInfo.CurrentCulture) ?? string.Empty;
 
+    // Null when no Proposal is open, the page has not read its side, or the change is nothing.
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(DeltaBadge))]
+    private PageDelta? _proposalDelta;
+
+    /// <summary>The delta as the sidebar badge shows it, or empty when there is none.</summary>
+    public string DeltaBadge => ProposalDelta?.Text ?? string.Empty;
+
     /// <summary>Drops whatever the page showed for the previous project.</summary>
     protected virtual void OnProjectCleared()
     {

@@ -8939,4 +8939,32 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <value>{0, plural, one {# is now unknown} other {# are now unknown}}</value>
     <comment>Plural pattern: how many moved words now have no known result; # is the count.</comment>
   </data>
+  <data name="MotifApp.PageDeltaSameMorePattern" xml:space="preserve">
+    <value>{0, plural, one {# more word is Same with this Proposal than today} other {# more words are Same with this Proposal than today}}</value>
+    <comment>Plural pattern for the sidebar delta badge's spoken name on Texts when more words are Same under the open Proposal; # is how many more.</comment>
+  </data>
+  <data name="MotifApp.PageDeltaSameFewerPattern" xml:space="preserve">
+    <value>{0, plural, one {# fewer word is Same with this Proposal than today} other {# fewer words are Same with this Proposal than today}}</value>
+    <comment>Plural pattern for the sidebar delta badge's spoken name on Texts when fewer words are Same under the open Proposal; # is how many fewer.</comment>
+  </data>
+  <data name="MotifApp.PageDeltaWarningsMorePattern" xml:space="preserve">
+    <value>{0, plural, one {# more warning with this Proposal than today} other {# more warnings with this Proposal than today}}</value>
+    <comment>Plural pattern for the sidebar delta badge's spoken name on Warnings when the Proposal's grammar check has more findings; # is how many more.</comment>
+  </data>
+  <data name="MotifApp.PageDeltaWarningsFewerPattern" xml:space="preserve">
+    <value>{0, plural, one {# fewer warning with this Proposal than today} other {# fewer warnings with this Proposal than today}}</value>
+    <comment>Plural pattern for the sidebar delta badge's spoken name on Warnings when the Proposal's grammar check has fewer findings; # is how many fewer.</comment>
+  </data>
+  <data name="MotifApp.PageDeltaWorkMoreFormat" xml:space="preserve">
+    <value>{0}% more work steps with this Proposal than today</value>
+    <comment>Format for the sidebar delta badge's spoken name on Timing when the Proposal costs more parser work steps for the same words; {0} is the whole-number percentage.</comment>
+  </data>
+  <data name="MotifApp.PageDeltaWorkFewerFormat" xml:space="preserve">
+    <value>{0}% fewer work steps with this Proposal than today</value>
+    <comment>Format for the sidebar delta badge's spoken name on Timing when the Proposal costs fewer parser work steps for the same words; {0} is the whole-number percentage.</comment>
+  </data>
+  <data name="MotifApp.PageDeltaPageNameFormat" xml:space="preserve">
+    <value>{0}: {1}</value>
+    <comment>Format for a sidebar entry's spoken name and tooltip when it has a delta badge; {0} is the page's name and {1} is what the badge counts.</comment>
+  </data>
 </root>

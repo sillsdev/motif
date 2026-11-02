@@ -4296,6 +4296,20 @@ public static class MotifAppStrings
 
     public static string TextsMovedListSummaryFormat => Text("MotifApp.TextsMovedListSummaryFormat");
 
+    public static string PageDeltaSameMorePattern => Text("MotifApp.PageDeltaSameMorePattern");
+
+    public static string PageDeltaSameFewerPattern => Text("MotifApp.PageDeltaSameFewerPattern");
+
+    public static string PageDeltaWarningsMorePattern => Text("MotifApp.PageDeltaWarningsMorePattern");
+
+    public static string PageDeltaWarningsFewerPattern => Text("MotifApp.PageDeltaWarningsFewerPattern");
+
+    public static string PageDeltaWorkMoreFormat => Text("MotifApp.PageDeltaWorkMoreFormat");
+
+    public static string PageDeltaWorkFewerFormat => Text("MotifApp.PageDeltaWorkFewerFormat");
+
+    public static string PageDeltaPageNameFormat => Text("MotifApp.PageDeltaPageNameFormat");
+
     public static string DifferenceWithProposalFormat => Text("MotifApp.DifferenceWithProposalFormat");
 
     public static string DifferenceProposalStillProblemFormat => Text("MotifApp.DifferenceProposalStillProblemFormat");

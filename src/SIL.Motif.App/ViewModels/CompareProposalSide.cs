@@ -106,6 +106,14 @@ public sealed partial class CompareViewModel
     internal int? ProposalWordsIn(IReadOnlyList<TextsListCell> cells) => _proposalSummary is { } summary
         ? cells.Sum(cell => summary.In(cell.Row, cell.Column)) : null;
 
+    /// <summary>
+    /// How many more words the Proposal puts in the Same column than today has there, from the counts already held;
+    /// null unless its side is held and covers the same words, since two different word sets have no change to name.
+    /// </summary>
+    internal int? ProposalSameChange() => _proposalSummary is { } summary && ProposalWordsMatch == true
+        ? Cells.Where(cell => cell.Column == CompareColumnKind.Match)
+            .Sum(cell => summary.In(cell.Row, cell.Column) - cell.WordCount) : null;
+
     /// <summary>The places of the words the Proposal puts in these cells, or null where any cell's are not known.</summary>
     internal int? ProposalPlacesIn(IReadOnlyList<TextsListCell> cells)
     {

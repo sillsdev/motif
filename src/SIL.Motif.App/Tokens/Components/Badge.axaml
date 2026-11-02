@@ -1,5 +1,6 @@
 <!--
-  A page's count beside its sidebar entry, solid on the collapsed sidebar so it still catches the eye.
+  A page's count beside its sidebar entry, solid on the collapsed sidebar so it still catches the eye, and the
+  open Proposal's change to that page's number, a purple pill at the opposite corner.
   Colours come from Intent keys only; sizes and gaps from Intent keys or this file's own Component keys.
 -->
 <Styles xmlns="https://github.com/avaloniaui"
@@ -8,6 +9,8 @@
     <StaticResource x:Key="Component.Badge.Padding" ResourceKey="Primitive.Inset.6_0_6_0" />
     <StaticResource x:Key="Component.Badge.PaddingCollapsed" ResourceKey="Primitive.Inset.4_0_4_0" />
     <StaticResource x:Key="Component.Badge.MarginCollapsed" ResourceKey="Primitive.Inset.0_-4_-6_0" />
+    <StaticResource x:Key="Component.Badge.DeltaLineHeight" ResourceKey="Primitive.Size.14" />
+    <StaticResource x:Key="Component.Badge.DeltaMargin" ResourceKey="Primitive.Inset.0_0_2_0" />
   </Styles.Resources>
   <Style Selector="Border.pageBadge">
     <Setter Property="Background" Value="{DynamicResource Intent.Neutral.Fill}" />
@@ -31,5 +34,19 @@
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Micro}" />
     <Setter Property="FontWeight" Value="Bold" />
     <Setter Property="Foreground" Value="{DynamicResource Intent.Emphasis.Text}" />
+  </Style>
+  <Style Selector="Border.proposalDelta">
+    <Setter Property="Background" Value="{DynamicResource Intent.Proposal.Text}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Intent.Radius.Control}" />
+    <Setter Property="Padding" Value="{DynamicResource Component.Badge.PaddingCollapsed}" />
+    <Setter Property="VerticalAlignment" Value="Bottom" />
+    <Setter Property="HorizontalAlignment" Value="Right" />
+    <Setter Property="Margin" Value="{DynamicResource Component.Badge.DeltaMargin}" />
+  </Style>
+  <Style Selector="Border.proposalDelta :is(TextBlock)">
+    <Setter Property="LineHeight" Value="{DynamicResource Component.Badge.DeltaLineHeight}" />
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Micro}" />
+    <Setter Property="FontWeight" Value="Bold" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Proposal.Fill}" />
   </Style>
 </Styles>

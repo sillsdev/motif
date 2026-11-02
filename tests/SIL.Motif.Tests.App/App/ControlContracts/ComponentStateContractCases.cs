@@ -741,7 +741,7 @@ internal static class TooltipOwners
             control => control is Button && AutomationProperties.GetAutomationId(control) == AutomationIds.HelpButton),
         new("Settings", "Views/MotifWorkspaceView.axaml", "Settings (Ctrl+,)", TooltipScene.CollapsedSidebar,
             control => control is Button && AutomationProperties.GetAutomationId(control) == AutomationIds.SettingsButton),
-        new("collapsed sidebar entry", "Views/MotifWorkspaceView.axaml", "{Binding Title}", TooltipScene.CollapsedSidebar,
+        new("collapsed sidebar entry", "Views/MotifWorkspaceView.axaml", "{Binding RailTip}", TooltipScene.CollapsedSidebar,
             control => control is ListBoxItem && control.FindAncestorOfType<ListBox>() is { } list &&
                 list.Classes.Contains("sidebar") && list.Classes.Contains("collapsed")),
         new("recent project", "Views/MainWindow.axaml.cs", "recent.FullFwDataPath", TooltipScene.OpenRecent,

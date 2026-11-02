@@ -34,6 +34,12 @@ public sealed partial class GrammarWarningsViewModel
     /// <summary>How many findings today's check reported, whatever the view shows.</summary>
     public int TodayTotalCount => _proposalView == MarkupView.Today ? TotalCount : _today?.Count ?? 0;
 
+    /// <summary>
+    /// How many more findings the Proposal's check reported than today's, whatever the view shows; null unless both
+    /// checks are held, since a check one side lacks is not a count of nothing.
+    /// </summary>
+    public int? ProposalFindingsChange => _proposal is { } proposal && _today is { } today ? proposal.Count - today.Count : null;
+
     /// <summary>Whether today's check reported anything, whatever the view shows.</summary>
     public bool TodayHasAny => _proposalView == MarkupView.Today ? HasAny : _today is { Count: > 0 };
 
