@@ -221,17 +221,12 @@ public sealed class AssessRoundTripArgvTests : IDisposable
         using var launched = InterruptibleCli.Start(start);
         var process = launched.Process;
 
-        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(30);
         int? parserId = null;
-        while (!process.HasExited && DateTime.UtcNow < deadline)
+        await Wait.ForAsync(() =>
         {
-            if (File.Exists(heartbeat) && TryReadProcessId(parserIdPath) is { } parsedId)
-            {
-                parserId = parsedId;
-                break;
-            }
-            await Task.Delay(25);
-        }
+            if (File.Exists(heartbeat) && TryReadProcessId(parserIdPath) is { } parsedId) parserId = parsedId;
+            return parserId is not null || process.HasExited;
+        }, TimeSpan.FromSeconds(30));
         Assert.True(parserId is not null,
             $"The fake parser did not start its held batch.{Environment.NewLine}" +
             launched.ReadStderr() + launched.ReadStdout());

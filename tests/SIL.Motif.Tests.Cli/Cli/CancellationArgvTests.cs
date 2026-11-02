@@ -124,10 +124,8 @@ public sealed class CancellationArgvTests : IDisposable
     private async Task<int> WaitForParser(InterruptibleCli launched, string heartbeat, string processIdPath)
     {
         var process = launched.Process;
-        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(30);
-        while ((!File.Exists(heartbeat) || !File.Exists(processIdPath)) &&
-            !process.HasExited && DateTime.UtcNow < deadline)
-            await Task.Delay(25);
+        await Wait.ForAsync(() => (File.Exists(heartbeat) && File.Exists(processIdPath)) || process.HasExited,
+            TimeSpan.FromSeconds(30));
 
         Assert.True(File.Exists(heartbeat) && File.Exists(processIdPath),
             $"The fake parser did not start.{Environment.NewLine}" +

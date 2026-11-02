@@ -468,16 +468,12 @@ public sealed class PendingApplyArgvTests(PristineProjectFixture pristine)
     // Any state counts: a runner still alive from an earlier job may already have taken it.
     private static async Task WaitForDryRunJobAsync(string projectPath, Process process, Task<string> errorTask)
     {
-        while (!HasDryRunJob(projectPath))
-        {
-            if (process.HasExited)
-            {
-                if (HasDryRunJob(projectPath)) return;
-                throw new InvalidOperationException(
-                    $"The CLI exited with code {process.ExitCode} before queueing its Dry Run. stderr: {await errorTask}");
-            }
-            await Task.Delay(100);
-        }
+        if (await Wait.ForAsync(() => HasDryRunJob(projectPath) || process.HasExited, TimeSpan.FromSeconds(60)) &&
+            HasDryRunJob(projectPath)) return;
+        if (process.HasExited)
+            throw new InvalidOperationException(
+                $"The CLI exited with code {process.ExitCode} before queueing its Dry Run. stderr: {await errorTask}");
+        throw new TimeoutException("The CLI never queued its Dry Run.");
     }
 
     private static string[] CompletedMeasureJobs(string projectPath)
@@ -504,17 +500,13 @@ public sealed class PendingApplyArgvTests(PristineProjectFixture pristine)
     private static async Task WaitForPendingProposalAnchorAsync(
         string projectPath, string proposalId, Process process, Task<string> errorTask)
     {
-        while (!PendingProposalHasAnchor(projectPath, proposalId))
-        {
-            if (process.HasExited)
-            {
-                if (PendingProposalHasAnchor(projectPath, proposalId)) return;
-                throw new InvalidOperationException(
-                    $"The CLI exited with code {process.ExitCode} before writing the pending Proposal's Dry Run " +
-                    $"anchor. stderr: {await errorTask}");
-            }
-            await Task.Delay(100);
-        }
+        if (await Wait.ForAsync(() => PendingProposalHasAnchor(projectPath, proposalId) || process.HasExited,
+                TimeSpan.FromSeconds(60)) && PendingProposalHasAnchor(projectPath, proposalId)) return;
+        if (process.HasExited)
+            throw new InvalidOperationException(
+                $"The CLI exited with code {process.ExitCode} before writing the pending Proposal's Dry Run " +
+                $"anchor. stderr: {await errorTask}");
+        throw new TimeoutException("The CLI never wrote the pending Proposal's Dry Run anchor.");
     }
 
     private static bool PendingProposalHasAnchor(string projectPath, string proposalId)

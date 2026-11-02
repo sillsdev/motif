@@ -129,22 +129,13 @@ public sealed class PortableWorkerPackageTests(PristineProjectFixture projects)
     private static async Task WaitForWorkerExitAsync(string executable, string ownerNamespace)
     {
         using var owner = JobRunnerHost.ForNamespace(ownerNamespace);
-        var stopwatch = Stopwatch.StartNew();
-        while (!owner.TryAcquireOwnership())
-        {
-            if (stopwatch.Elapsed > CliBound)
-                Assert.Fail("The packaged Worker did not release its runner ownership lock.");
-            await Task.Delay(TimeSpan.FromMilliseconds(50));
-        }
+        if (!await Wait.ForAsync(owner.TryAcquireOwnership, CliBound))
+            Assert.Fail("The packaged Worker did not release its runner ownership lock.");
 
         var expectedPath = Path.GetFullPath(executable);
         var processName = WorkerProcessName(executable);
-        while (WorkerProcessIsRunning(processName, expectedPath))
-        {
-            if (stopwatch.Elapsed > CliBound)
-                Assert.Fail("The packaged Worker released ownership but did not exit.");
-            await Task.Delay(TimeSpan.FromMilliseconds(50));
-        }
+        if (!await Wait.ForAsync(() => !WorkerProcessIsRunning(processName, expectedPath), CliBound))
+            Assert.Fail("The packaged Worker released ownership but did not exit.");
     }
 
     private static bool WorkerProcessIsRunning(string processName, string expectedPath)
