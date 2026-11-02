@@ -92,6 +92,7 @@ internal sealed class BoundaryMarkerDeleteHandler : IOperationHandler
     public ExpectedEffect ReadCurrentFootprint(LcmCache cache, OperationEnvelope operation)
     {
         var id = OperationSlotRegistry.Target(operation);
+        BoundaryMarkerRetirement.Inspect(cache, id);
         var current = ReferenceFieldAlternatives.ToAlternatives(id);
         return new ExpectedEffect(id, SnapshotFields.PhPhonemeSetBoundaryMarkers, current, current);
     }

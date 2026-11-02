@@ -61,6 +61,33 @@ public sealed class RetireBoundaryMarkerComposerTests(PristineProjectFixture pri
     }
 
     [Fact]
+    public void AMarkerDeletedOrNewlyUsedAfterTheDryRunFailsItsFootprintCleanlyNamingTheMarker()
+    {
+        using var cache = pristine.NewScratch();
+        Marker(cache, LangProjectTags.kguidPhRuleMorphBdry, "+");
+        var gone = Marker(cache, Guid.NewGuid(), "+");
+        var used = Marker(cache, Guid.NewGuid(), "+");
+        var goneOperation = Assert.Single(RetireBoundaryMarkerComposer.Build(cache, new(Id(gone))));
+        var usedOperation = Assert.Single(RetireBoundaryMarkerComposer.Build(cache, new(Id(used))));
+        var handler = OperationHandlerRegistry.Resolve(BoundaryMarkerDeleteOperationKinds.DeleteBoundaryMarkers, "retire-marker-tests");
+        var goneId = Id(gone);
+        handler.ReadCurrentFootprint(cache, goneOperation);
+
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () => gone.Delete());
+        Assert.Contains(goneId.Value, Assert.Throws<InvalidOperationException>(
+            () => handler.ReadCurrentFootprint(cache, goneOperation)).Message);
+
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+        {
+            var context = cache.ServiceLocator.GetInstance<IPhSimpleContextBdryFactory>().Create();
+            cache.LangProject.PhonologicalDataOA.ContextsOS.Add(context);
+            context.FeatureStructureRA = used;
+        });
+        Assert.Contains("still used", Assert.Throws<InvalidOperationException>(
+            () => handler.ReadCurrentFootprint(cache, usedOperation)).Message);
+    }
+
+    [Fact]
     public void RefusesTheStandardMarkerAndAMarkerThatIsNotADuplicate()
     {
         using var cache = pristine.NewScratch();
