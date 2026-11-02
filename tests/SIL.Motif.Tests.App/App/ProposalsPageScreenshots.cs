@@ -39,11 +39,12 @@ public sealed class ProposalsPageScreenshots
         }, TimeSpan.FromMinutes(3));
     }
 
-    internal static void Configure(FakeCommandClient fake) => fake.ProposalStandingsCompleteWith(Standings());
+    internal static void Configure(FakeCommandClient fake, string? firstName = null) =>
+        fake.ProposalStandingsCompleteWith(Standings(firstName));
 
-    internal static ProposalStandings Standings() => new ProposalStandings(
+    internal static ProposalStandings Standings(string? firstName = null) => new ProposalStandings(
     [
-        Card("proposal/sound", "Sound change", ProposalGroup.WaitingForYou, Summary(TrialFreshness.Current),
+        Card("proposal/sound", firstName ?? "Sound change", ProposalGroup.WaitingForYou, Summary(TrialFreshness.Current),
             [new("rule", 2, "2 rules"), new("allomorph", 1, "1 allomorph")]),
         Card("proposal/gloss", "Gloss for sense", ProposalGroup.NeedsAnotherTry,
             Summary(TrialFreshness.BaselineMoved), [new("gloss", 1, "1 gloss")]),

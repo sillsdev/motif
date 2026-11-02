@@ -9,4 +9,14 @@ internal static partial class LayoutInvariantWorkList
     internal static IReadOnlyList<LayoutException> QuickEntries { get; } =
     [
     ];
+
+    /// <summary>The quick tier's findings when the words, texts and Review change are Arabic script.</summary>
+    internal static IReadOnlyList<LayoutException> QuickRightToLeftEntries { get; } =
+    [
+    ];
+
+    /// <summary>The quick tier's findings with one long Proposal name and one long Parsimony limitation.</summary>
+    internal static IReadOnlyList<LayoutException> QuickLongEntries { get; } =
+    [
+    ];
 }

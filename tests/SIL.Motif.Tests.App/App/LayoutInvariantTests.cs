@@ -1,4 +1,7 @@
 using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Controls.Documents;
+using Avalonia.VisualTree;
 using Avalonia.Styling;
 using SIL.Motif.App;
 using SIL.Motif.App.Views;
@@ -21,9 +24,24 @@ public sealed class LayoutInvariantTests(ITestOutputHelper output)
     }
 
     [Fact]
-    public void EveryPopulatedPageSatisfiesTheQuickLayoutCells()
+    public void EveryPopulatedPageSatisfiesTheQuickLayoutCells() => RunQuick(LayoutDataSet.Plain());
+
+    [Fact]
+    public void RightToLeftWordsAndTextsSatisfyTheQuickLayoutCells() => RunQuick(LayoutDataSet.RightToLeft());
+
+    [Fact]
+    public void ALongNameAndALongPieceOfAdviceSatisfyTheQuickLayoutCells() => RunQuick(LayoutDataSet.Long());
+
+    // A data set that no page shows would pass vacuously.
+    private static IEnumerable<string> MarkersShown(MainWindow window, LayoutDataSet data) =>
+        (data.Markers ?? []).Where(marker => window.GetVisualDescendants().OfType<TextBlock>().Any(text =>
+            text.IsEffectivelyVisible && (text.Text ?? string.Concat(text.Inlines?.OfType<Run>().Select(run => run.Text) ?? []))
+                .Contains(marker, StringComparison.Ordinal) &&
+            (data.MarkerDirection is null || text.FlowDirection == data.MarkerDirection)));
+
+    private void RunQuick(LayoutDataSet data)
     {
-        using var run = new LayoutInvariantRun("quick", output);
+        using var run = new LayoutInvariantRun(data.Tier, output);
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             var app = Application.Current!;
@@ -33,20 +51,35 @@ public sealed class LayoutInvariantTests(ITestOutputHelper output)
             var setup = System.Diagnostics.Stopwatch.StartNew();
             var (workspace, window) = await PageScreenshots.OpenOverSampleData(advancedAiModeEnabled: true,
                 renderForCapture: false, recordSetup: run.Setup,
-                capturedWords: LayoutInvariantFixtures.QuickWords(),
-                capturedAssessment: LayoutInvariantFixtures.QuickAssessment(),
+                capturedWords: data.Words, capturedAssessment: data.Assessment,
                 assistantConnections: new AssistantConnectionsPageTests.FakeAssistantConnections(),
-                configure: (fake, _) => LayoutInvariantFixtures.ConfigurePopulated(fake));
+                configure: (fake, _) => data.Configure(fake));
             try
             {
                 await LayoutInvariantFixtures.PreparePopulated(workspace);
+                await data.Arrange(workspace);
                 run.Setup("populated", setup.Elapsed.TotalMilliseconds);
+                var shown = new HashSet<string>();
                 foreach (var cell in LayoutInvariantFixtures.QuickCells)
                 foreach (var page in PageRegistry.Entries.Select(entry => entry.Page))
                 {
                     workspace.CurrentPage = page;
                     run.Inspect(window, $"{page}/populated", cell, quick: true, workspace);
+                    shown.UnionWith(MarkersShown(window, data));
                 }
+                if (data.InspectorPage is { } inspected)
+                {
+                    // A narrow window shows the page's details only in the revealed Inspector.
+                    var host = window.FindInWindowOrWorkspace<SIL.Motif.App.Views.Shell.WorkspaceLayoutHost>("WorkspaceLayout")!;
+                    foreach (var cell in LayoutInvariantFixtures.QuickCells)
+                    {
+                        workspace.CurrentPage = inspected;
+                        run.Inspect(window, $"{inspected}/details-shown", cell, quick: true, workspace, host.ShowInspector);
+                        shown.UnionWith(MarkersShown(window, data));
+                        host.ShowWorkingPage();
+                    }
+                }
+                Assert.Equal(data.Markers ?? [], (data.Markers ?? []).Where(shown.Contains));
             }
             finally
             {

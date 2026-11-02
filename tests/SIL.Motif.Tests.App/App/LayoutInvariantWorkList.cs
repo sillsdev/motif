@@ -15,7 +15,13 @@ internal sealed record LayoutException(
 internal static partial class LayoutInvariantWorkList
 {
     // Each tier inspects its own cells, so an entry is checked for staleness only by the tier that names it.
-    internal static IReadOnlyList<LayoutException> For(string tier) => tier == "quick" ? QuickEntries : Entries;
+    internal static IReadOnlyList<LayoutException> For(string tier) => tier switch
+    {
+        "quick" => QuickEntries,
+        "quick-rtl" => QuickRightToLeftEntries,
+        "quick-long" => QuickLongEntries,
+        _ => Entries,
+    };
 
     internal static void AssertNoUnexpected(
         IReadOnlyList<LayoutFinding> findings, IReadOnlyList<LayoutException> exceptions,

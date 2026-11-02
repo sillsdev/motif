@@ -99,7 +99,8 @@ public sealed class ParsimonyStateScreenshots
         }
     }
 
-    internal static void Configure(FakeCommandClient fake, string state)
+    internal static void Configure(FakeCommandClient fake, string state,
+        Func<ParsimonyReportResponse, ParsimonyReportResponse>? shape = null)
     {
         // Switching scenes must clear any previously reusable set.
         fake.ParsimonySetHandler = null;
@@ -114,6 +115,7 @@ public sealed class ParsimonyStateScreenshots
             : ParsimonySampleReports.Listed(
                 state == "earlier-baseline" ? EarlierToken() : current,
                 incomplete: state == "incomplete");
+        if (shape is not null) report = shape(report);
         fake.OnReadLatestParsimony((_, _) => Task.FromResult(CommandOutcome<ParsimonyLatestReportResponse>.Success(
             new ParsimonyLatestReportResponse(report.ReportId, report.Inputs.BundleId))));
         fake.OnReadParsimonyReport((_, _) => Task.FromResult(CommandOutcome<ParsimonyReportResponse>.Success(report)));
