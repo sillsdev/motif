@@ -52,11 +52,7 @@ public sealed class WalkthroughViewportTests(AvaloniaHeadlessFixture avalonia)
             window.Show();
             try
             {
-                for (var pass = 0; pass < 3; pass++)
-                {
-                    Dispatcher.UIThread.RunJobs();
-                    window.UpdateLayout();
-                }
+                PageScreenshots.SettleLayout(window);
                 Assert.Null(WalkthroughWindow.ClippingViewer(inside));
                 Assert.Same(slot, WalkthroughWindow.ClippingViewer(outside));
             }

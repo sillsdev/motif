@@ -17,6 +17,9 @@ internal static partial class WalkthroughCaptureSettle
 {
     private const string ManagedRootStandIn = "[walkthrough folder]";
 
+    // A starved machine can take seconds to draw one frame, so the clock alone must not end the wait after three.
+    private const int FramePassesBeforeGivingUp = 10;
+
     [GeneratedRegex(@"\b\d{8}T\d{6}Z\b")]
     private static partial Regex WallClockStamp();
 
@@ -69,7 +72,7 @@ internal static partial class WalkthroughCaptureSettle
             var same = previous is not null && previous.AsSpan().SequenceEqual(frame);
             previous = frame;
             return same;
-        }, timeout, why, () => $"{passes} frames were drawn and none matched the one before it.");
+        }, timeout, why, () => $"{passes} frames were drawn and none matched the one before it.", FramePassesBeforeGivingUp);
     }
 
     /// <summary>

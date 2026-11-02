@@ -74,14 +74,14 @@ public sealed class AnalyzeReShowFirstPageTests(ITestOutputHelper output)
 
             // Visit Analyze once, fully settled, as a person who has read it would have.
             texts.Tab = TextsTab.AnalyzeTexts;
-            window.WaitUntil(() => { Settle(window); return Strips(window).Count > 0; },
+            window.WaitUntil(() => { PageScreenshots.Settle(window.Window, passes: 9); return Strips(window).Count > 0; },
                 TimeSpan.FromSeconds(60), "the first visit to Analyze showed no word strips");
 
             var rounds = new List<(int Tokens, int Created)>();
             for (var round = 0; round < 2; round++)
             {
                 texts.Tab = TextsTab.Matrix;
-                Settle(window);
+                PageScreenshots.Settle(window.Window, passes: 9);
                 var before = Visuals(window);
 
                 texts.Tab = TextsTab.AnalyzeTexts;
@@ -99,14 +99,18 @@ public sealed class AnalyzeReShowFirstPageTests(ITestOutputHelper output)
                 Assert.True(created <= CreatedVisualBound,
                     $"{created} visuals were created in the showing frame; the bound is {CreatedVisualBound}.");
 
-                Settle(window);
-                var lines = window.Window.GetVisualDescendants().OfType<ProgressiveItemsControl>()
-                    .Where(control => control.Name == "ResultsInTextPanelTokensItems").ToArray();
-                Assert.NotEmpty(lines);
+                ProgressiveItemsControl[] lines = [];
+                window.WaitUntil(() =>
+                {
+                    PageScreenshots.Settle(window.Window, passes: 9);
+                    lines = [.. window.Window.GetVisualDescendants().OfType<ProgressiveItemsControl>()
+                        .Where(control => control.Name == "ResultsInTextPanelTokensItems")];
+                    return lines.Length > 0 && lines.All(line => line.FullItemsSource is not null);
+                }, TimeSpan.FromSeconds(60), "the Analyze lines did not bind their word sources");
                 foreach (var line in lines)
                 {
                     await line.PageRefresh;
-                    Settle(window);
+                    PageScreenshots.Settle(window.Window, passes: 9);
                     var expected = Math.Min(20, ((SIL.Motif.App.Services.IProgressivePageSource)line.FullItemsSource!).Count);
                     Assert.Equal(expected, line.GetVisualDescendants().OfType<WordStripToken>().Count());
                 }
@@ -124,8 +128,4 @@ public sealed class AnalyzeReShowFirstPageTests(ITestOutputHelper output)
     private static HashSet<Visual> Visuals(WalkthroughWindow window) =>
         new(window.Window.GetVisualDescendants().OfType<Visual>(), ReferenceEqualityComparer.Instance as IEqualityComparer<Visual>);
 
-    private static void Settle(WalkthroughWindow window)
-    {
-        for (var pass = 0; pass < 3; pass++) PageScreenshots.Settle(window.Window);
-    }
 }

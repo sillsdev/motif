@@ -74,7 +74,7 @@ public sealed class FieldWorksSimulatorWalkthroughTests(PristineProjectFixture p
             var strip = walkthrough.Window.GetLogicalDescendants().OfType<Border>()
                 .Single(control => control.Name == "WordStrip" && SIL.Motif.App.Views.ResultsInTextPanel.TokenOf(control)?.Occurrence == token.Occurrence);
             Assert.IsType<WordStripToken>(strip).FocusWord();
-            AnalyzeTextsLayoutTests.Settle(walkthrough.Window);
+            PageScreenshots.Settle(walkthrough.Window);
             var setMenu = strip.GetLogicalDescendants().OfType<Button>().Single(button =>
                 Equals(Avalonia.Automation.AutomationProperties.GetName(button), WordDispositionButtons.AddButtonName));
             HeadlessClick.Click(walkthrough.Window, setMenu, WordDispositionButtons.AddButtonName);

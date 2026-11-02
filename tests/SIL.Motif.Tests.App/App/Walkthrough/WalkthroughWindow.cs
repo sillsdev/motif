@@ -823,20 +823,10 @@ public sealed class WalkthroughWindow : IDisposable
         Pump();
     }
 
-    public void WaitUntil(Func<bool> predicate, TimeSpan timeout, string why, Func<string>? failureDetail = null)
-    {
-        ArgumentNullException.ThrowIfNull(predicate);
-        ArgumentException.ThrowIfNullOrWhiteSpace(why);
-        var deadline = Stopwatch.GetTimestamp() + (long)(timeout.TotalSeconds * Stopwatch.Frequency);
-        while (!predicate() && Stopwatch.GetTimestamp() < deadline)
-        {
-            Pump();
-            Thread.Sleep(15);
-        }
-
-        Pump();
-        Assert.True(predicate(),
-            $"{why}; {failureDetail?.Invoke()} baseline='{Workspace.Baseline.CapturedTimeText}', " +
+    public void WaitUntil(
+        Func<bool> predicate, TimeSpan timeout, string why, Func<string>? failureDetail = null, int minimumPasses = 1) =>
+        Wait.Until(predicate, why, timeout, () =>
+            $"{failureDetail?.Invoke()} baseline='{Workspace.Baseline.CapturedTimeText}', " +
             $"baseline refusal='{Workspace.Baseline.ShownRefusal?.Sentence}', " +
             $"selection empty='{Workspace.Selection.TextsEmptyMessage}', " +
             $"selection refusal='{Workspace.Selection.ShownRefusal?.Sentence}', " +
@@ -849,23 +839,14 @@ public sealed class WalkthroughWindow : IDisposable
             $"Handoff.State='{Workspace.PageModel<AiHandoffPageModel>().Handoff.State}', " +
             $"Handoff.Refusal?.Message='{Workspace.PageModel<AiHandoffPageModel>().Handoff.Refusal?.Message}', " +
             $"Handoff.Progress='{Workspace.PageModel<AiHandoffPageModel>().Handoff.Progress}', " +
-            $"project='{Workspace.Project.KnownProjects.Count}' known projects");
-    }
+            $"project='{Workspace.Project.KnownProjects.Count}' known projects", Pump, minimumPasses);
 
     public void Dispose()
     {
         Window.Close();
         var disposal = Workspace.DisposeAsync().AsTask();
         var timeout = TimeSpan.FromSeconds(30);
-        var deadline = Stopwatch.GetTimestamp() + (long)(timeout.TotalSeconds * Stopwatch.Frequency);
-        while (!disposal.IsCompleted && Stopwatch.GetTimestamp() < deadline)
-        {
-            Pump();
-            Thread.Sleep(15);
-        }
-
-        Pump();
-        if (!disposal.IsCompleted)
+        if (!Wait.For(() => disposal.IsCompleted, timeout, Pump))
             throw new TimeoutException(
                 $"The walkthrough workspace did not stop within {timeout}; Assessment state is '{Workspace.Assess.State}'.");
         disposal.GetAwaiter().GetResult();
@@ -874,6 +855,9 @@ public sealed class WalkthroughWindow : IDisposable
     }
 
     private static void Pump() => Dispatcher.UIThread.RunJobs();
+
+    // A starved machine fits few looks in the clock, so the bounds get this many before the deadline counts.
+    private const int ClickSettlePasses = 20;
 
     private void ClickControl(Control control, string accessibleName, TopLevel? topLevel = null)
     {
@@ -923,7 +907,7 @@ public sealed class WalkthroughWindow : IDisposable
 
             return stablePasses >= 2;
         }, TimeSpan.FromSeconds(10), $"'{accessibleName}' did not settle before clicking",
-            () => $"bounds history: {string.Join(" | ", observations)}");
+            () => $"bounds history: {string.Join(" | ", observations)}", ClickSettlePasses);
         HeadlessClick.Click(root, control, accessibleName);
     }
 

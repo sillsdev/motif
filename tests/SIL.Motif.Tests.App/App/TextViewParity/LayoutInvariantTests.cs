@@ -46,11 +46,7 @@ public sealed class LayoutInvariantTests(LineScenes lines, WordScenes words, Car
         var before = scene.Everything().OfType<Visual>().Count();
         var (measures, arranges) = (counter.Measures, counter.Arranges);
         var bounds = Enumerable.Range(0, 4).Select(scene.WordBounds).ToList();
-        for (var pass = 0; pass < 3; pass++)
-        {
-            Dispatcher.UIThread.RunJobs();
-            scene.Window.UpdateLayout();
-        }
+        PageScreenshots.SettleLayout(scene.Window);
         scene.Resize(scene.Window.Width);
         Assert.Equal((measures, arranges), (counter.Measures, counter.Arranges));
         Assert.Equal(bounds, Enumerable.Range(0, 4).Select(scene.WordBounds).ToList());

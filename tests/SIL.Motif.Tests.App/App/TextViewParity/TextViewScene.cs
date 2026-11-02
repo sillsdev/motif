@@ -199,14 +199,7 @@ internal sealed class TextViewScene : IDisposable
     }
 
     /// <summary>Runs layout and posted jobs until nothing more is queued.</summary>
-    public void Settle()
-    {
-        for (var pass = 0; pass < 3; pass++)
-        {
-            Dispatcher.UIThread.RunJobs();
-            Window.UpdateLayout();
-        }
-    }
+    public void Settle() => PageScreenshots.SettleLayout(Window);
 
     // ---- the seam: words -------------------------------------------------------------------------------------
 

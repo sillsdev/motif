@@ -6,6 +6,7 @@ using Avalonia.Headless;
 using Avalonia.Threading;
 using SIL.Motif.App.Services;
 using Xunit;
+using SIL.Motif.Tests.TestFixtures;
 
 namespace SIL.Motif.Tests.App;
 
@@ -110,6 +111,7 @@ internal static class AvaloniaHeadlessPlatform
         {
             ArgumentNullException.ThrowIfNull(work);
             if (timeout <= TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(timeout));
+            timeout = Wait.Scaled(timeout);
 
             Invoke(() =>
             {
