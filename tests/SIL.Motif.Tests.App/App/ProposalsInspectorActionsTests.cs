@@ -5,6 +5,7 @@ using Avalonia.VisualTree;
 using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.App;
 using SIL.Motif.App.ViewModels;
+using SIL.Motif.App.Views.Shell;
 using SIL.Motif.Contract.Responses;
 using Xunit;
 
@@ -14,8 +15,10 @@ namespace SIL.Motif.Tests.App;
 [Collection(AvaloniaHeadlessCollection.Name)]
 public sealed class ProposalsInspectorActionsTests
 {
-    [Fact]
-    public void TryAgainIsInsideTheViewportAt1280By720WithTheLongestRealisticDetails()
+    [Theory]
+    [InlineData(1280, 720, 100)]
+    [InlineData(640, 600, 150)]
+    public void TryAgainIsInsideTheViewportWithTheLongestRealisticDetails(int width, int height, int zoom)
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
@@ -24,7 +27,7 @@ public sealed class ProposalsInspectorActionsTests
             var (workspace, window) = await ReviewScreenshots.OpenAsync(fake);
             try
             {
-                LayoutInvariantFixtures.Apply(window, new LayoutCell(1280, 720, 100));
+                LayoutInvariantFixtures.Apply(window, new LayoutCell(width, height, zoom));
                 workspace.CurrentPage = WorkspacePage.Proposals;
                 PageScreenshots.Settle(window);
                 var model = workspace.PageModel<ProposalsPageModel>();
@@ -34,6 +37,9 @@ public sealed class ProposalsInspectorActionsTests
                 var tryAgain = window.GetVisualDescendants().OfType<Button>().Single(button =>
                     AutomationProperties.GetAutomationId(button) == model.SelectedProposal!.InspectorTryAgainAutomationId);
                 Assert.True(tryAgain.IsEffectivelyVisible, "Try Again is hidden");
+                // Wide, the row is pinned under the Inspector; narrow, the Inspector folds away and it sits under the page.
+                var rowHost = tryAgain.GetVisualAncestors().OfType<PageContentSlot>().First().Name;
+                Assert.Equal(width >= 1000 ? "InspectorRowHost" : "PageActionRowHost", rowHost);
                 var box = Box(tryAgain, window);
                 Assert.True(box.Top >= 0 && box.Bottom <= window.ClientSize.Height,
                     $"Try Again spans {box.Top} to {box.Bottom} in a {window.ClientSize.Height} high window");

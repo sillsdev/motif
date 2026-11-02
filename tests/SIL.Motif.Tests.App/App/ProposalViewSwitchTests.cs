@@ -203,36 +203,56 @@ public sealed class ProposalViewSwitchTests
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             var (_, window) = await OpenedAsync("A Proposal with a rather long name indeed");
+            try { AssertTabFollowsReadingOrder(window, width, wrapped); }
+            finally { window.Close(); }
+        }, TimeSpan.FromMinutes(3));
+    }
+
+    [Fact]
+    public void TabFollowsReadingOrderAgainWhenTheSameWindowIsResizedAcrossTheWrap()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (_, window) = await OpenedAsync("A Proposal with a rather long name indeed");
             try
             {
-                LayoutInvariantFixtures.Apply(window, new LayoutCell(width, 720, 150));
-                PageScreenshots.Settle(window);
-                var bar = Bar(window);
-                var panel = bar.GetVisualDescendants().OfType<ProposalBarPanel>().Single();
-                Assert.Equal(wrapped, panel.IsWrapped);
-                window.Focus();
-
-                // A stop is the panel child that holds the focus, so the view switch counts once however many items it has.
-                var stops = new List<Control>();
-                for (var press = 0; press < 80; press++)
-                {
-                    window.KeyPress(Key.Tab, RawInputModifiers.None, PhysicalKey.Tab, null);
-                    window.KeyRelease(Key.Tab, RawInputModifiers.None, PhysicalKey.Tab, null);
-                    var child = window.FocusManager!.GetFocusedElement() is Visual focused
-                        ? focused.GetSelfAndVisualAncestors().OfType<Control>().FirstOrDefault(c => c.GetVisualParent() == panel)
-                        : null;
-                    if (child is null) continue;
-                    if (stops.Contains(child)) break;
-                    stops.Add(child);
-                }
-
-                Assert.Contains(stops, stop => AutomationProperties.GetAutomationId(stop) == AutomationIds.ProposalBarView);
-                var inReadingOrder = stops.OrderBy(stop => Box(stop, window).Center.Y > Box(bar, window).Center.Y)
-                    .ThenBy(stop => Box(stop, window).Left).ToArray();
-                Assert.Equal(inReadingOrder.Select(Describe), stops.Select(Describe));
+                foreach (var (width, wrapped) in new[] { (1280, false), (640, true), (1280, false), (640, true) })
+                    AssertTabFollowsReadingOrder(window, width, wrapped);
             }
             finally { window.Close(); }
         }, TimeSpan.FromMinutes(3));
+    }
+
+    private static void AssertTabFollowsReadingOrder(MainWindow window, int width, bool wrapped)
+    {
+        LayoutInvariantFixtures.Apply(window, new LayoutCell(width, 720, 150));
+        PageScreenshots.Settle(window);
+        var bar = Bar(window);
+        var panel = bar.GetVisualDescendants().OfType<ProposalBarPanel>().Single();
+        Assert.Equal(wrapped, panel.IsWrapped);
+        window.Focus();
+
+        // A stop is the panel child that holds the focus, so the view switch counts once however many items it has.
+        var stops = new List<Control>();
+        for (var press = 0; press < 80; press++)
+        {
+            window.KeyPress(Key.Tab, RawInputModifiers.None, PhysicalKey.Tab, null);
+            window.KeyRelease(Key.Tab, RawInputModifiers.None, PhysicalKey.Tab, null);
+            var child = window.FocusManager!.GetFocusedElement() is Visual focused
+                ? focused.GetSelfAndVisualAncestors().OfType<Control>().FirstOrDefault(c => c.GetVisualParent() == panel)
+                : null;
+            if (child is null) continue;
+            if (stops.Contains(child)) break;
+            stops.Add(child);
+        }
+
+        Assert.Contains(stops, stop => AutomationProperties.GetAutomationId(stop) == AutomationIds.ProposalBarView);
+        var inReadingOrder = stops.OrderBy(stop => Box(stop, window).Center.Y > Box(bar, window).Center.Y)
+            .ThenBy(stop => Box(stop, window).Left).ToArray();
+        // Focus may begin mid-cycle after a resize, so compare the loop from its first stop.
+        var start = stops.IndexOf(inReadingOrder[0]);
+        var cycle = stops.Skip(start).Concat(stops.Take(start));
+        Assert.Equal(inReadingOrder.Select(Describe), cycle.Select(Describe));
     }
 
     [Fact]
