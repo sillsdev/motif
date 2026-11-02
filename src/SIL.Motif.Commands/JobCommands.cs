@@ -72,6 +72,15 @@ public static class JobCommands
         });
     }
 
+    // A Dry Run or Trial measures the stored Baseline; one older than the saved project would test the old grammar.
+    private static Refusal? StaleBaselineRefusal(ProjectLocator project, BaselineRecord? baseline, string measure) =>
+        baseline is not null && File.Exists(project.FullFwDataPath) &&
+        File.GetLastWriteTimeUtc(project.FullFwDataPath).Ticks != baseline.SourceLastWriteUtc.UtcDateTime.Ticks
+            ? new Refusal(RefusalCodes.ChangeRefreshRequired, FailureReason.Refused,
+                $"The project was saved after its Baseline was captured, so a {measure} would test the grammar as it was. " +
+                "Run `baseline capture` first, then try again.")
+            : null;
+
     /// <summary>
     /// Freezes a Draft or finalized Proposal and its prerequisite closure before queueing a Dry Run.
     /// </summary>
@@ -105,6 +114,8 @@ public static class JobCommands
 
             var workspaceKey = ProjectWorkspaceKey.Compute(project);
             var baseline = new BaselineRepository(database).GetCurrentPublished(workspaceKey);
+            if (StaleBaselineRefusal(project, baseline, "Dry Run") is { } stale)
+                return CommandOutcome<JobEnqueuedResponse>.Refused(stale);
             DryRunSourceBinding? source = null;
             try
             {
@@ -171,6 +182,9 @@ public static class JobCommands
             var jobs = new JobRepository(database);
             var jobId = CanonicalId.Mint("job/").Value;
             var workspaceKey = ProjectWorkspaceKey.Compute(project);
+            if (StaleBaselineRefusal(project, new BaselineRepository(database).GetCurrentPublished(workspaceKey), "Trial")
+                is { } staleBaseline)
+                return CommandOutcome<JobEnqueuedResponse>.Refused(staleBaseline);
             var proposalJson = CanonicalProposalJson(record);
             var proposal = ProposalJsonParser.Parse(proposalJson);
             IReadOnlyList<FrozenProposalRevision> prerequisites;

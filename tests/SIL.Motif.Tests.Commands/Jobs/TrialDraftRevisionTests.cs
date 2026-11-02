@@ -101,6 +101,33 @@ public sealed class TrialDraftRevisionTests : IDisposable
     }
 
     [Fact]
+    public void ADryRunOrTrialQueuedAfterTheProjectWasSavedAgainIsRefusedNamingTheCapture()
+    {
+        var id = NewDraftWithOneGloss("saved-since");
+        var root = Path.Combine(Path.GetTempPath(), "motif-stale-root-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(_fwDataPath), root);
+            Assert.True(captured.Succeeded, captured.Refusal?.Message);
+            File.SetLastWriteTimeUtc(_fwDataPath, captured.Value!.SourceLastWriteUtc.AddMinutes(5).UtcDateTime);
+
+            var dryRun = JobCommands.EnqueueDryRun(new EnqueueDryRunRequest(_fwDataPath, ProductVersion, id));
+            var trial = JobCommands.EnqueueTrial(new EnqueueTrialRequest(_fwDataPath, ProductVersion, id, Words: ["word"]));
+
+            Assert.Equal("change.refresh-required", dryRun.Refusal?.Code);
+            Assert.Contains("baseline capture", dryRun.Refusal!.Message);
+            Assert.Equal("change.refresh-required", trial.Refusal?.Code);
+            Assert.Equal(0L, CountTrialJobs());
+        }
+        finally
+        {
+            try { Directory.Delete(root, recursive: true); }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
+        }
+    }
+
+    [Fact]
     public void ATrialWithNoWordsNamedOfAGrammarChangeMeasuresTheDefaultSelection()
     {
         var id = NewDraftWithOneGloss("grammar-scope");
