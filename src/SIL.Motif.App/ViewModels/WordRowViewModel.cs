@@ -8,6 +8,7 @@ using SIL.Motif.Host.PanGloss;
 using WordInteractionState = SIL.Motif.App.Controls.WordPresentation.WordInteractionState;
 using WordListOwner = SIL.Motif.App.Controls.WordPresentation.WordListOwner;
 using WordPresentation = SIL.Motif.App.Controls.WordPresentation.WordPresentation;
+using WordProposalCell = SIL.Motif.App.Controls.WordPresentation.WordProposalCell;
 using WordPresentationKey = SIL.Motif.App.Controls.WordPresentation.WordPresentationKey;
 
 namespace SIL.Motif.App.ViewModels;
@@ -361,6 +362,23 @@ public sealed partial class WordRowViewModel : ObservableObject
     /// <summary>The one-line summary a hover or focus shows, in window words.</summary>
     public string Summary => string.Join(" · ",
         new[] { Word, OpinionLabel, string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.WordRowSummaryPanGlossFormat, OutcomeWord), Meaning }.Where(part => part.Length > 0));
+
+    /// <summary>
+    /// The summary with the open Proposal's result: today's PanGloss outcome says it is today's beside it, and the
+    /// Proposal's own view leaves today's outcome and meaning out.
+    /// </summary>
+    public string SummaryWith(WordProposalCell? proposal)
+    {
+        if (proposal is null) return Summary;
+        var culture = System.Globalization.CultureInfo.CurrentCulture;
+        var with = string.Format(culture, MotifAppStrings.WordRowWithProposalFormat,
+            MotifAppStrings.WordRowSummaryWithProposalLabel, proposal.Text);
+        var today = proposal.Alone ? [] : new[]
+        {
+            string.Format(culture, MotifAppStrings.WordRowSummaryPanGlossTodayFormat, OutcomeWord), Meaning,
+        };
+        return string.Join(" · ", new[] { Word, OpinionLabel }.Concat(today).Append(with).Where(part => part.Length > 0));
+    }
 
     public string OpenInTextLabel => _routes?.OpenInTextLabel ?? MotifAppStrings.WordRowOpenInText;
 

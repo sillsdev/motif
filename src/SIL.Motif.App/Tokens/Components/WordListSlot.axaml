@@ -21,6 +21,9 @@
     <StaticResource x:Key="Component.WordListSlot.PanGloss.Minimum" ResourceKey="Primitive.Size.130" />
     <StaticResource x:Key="Component.WordListSlot.PanGloss.Preferred" ResourceKey="Primitive.Size.170" />
     <StaticResource x:Key="Component.WordListSlot.PanGloss.Maximum" ResourceKey="Primitive.Size.420" />
+    <StaticResource x:Key="Component.WordListSlot.WithProposal.Minimum" ResourceKey="Primitive.Size.110" />
+    <StaticResource x:Key="Component.WordListSlot.WithProposal.Preferred" ResourceKey="Primitive.Size.140" />
+    <StaticResource x:Key="Component.WordListSlot.WithProposal.Maximum" ResourceKey="Primitive.Size.220" />
     <StaticResource x:Key="Component.WordListSlot.Meaning.Minimum" ResourceKey="Primitive.Size.90" />
     <StaticResource x:Key="Component.WordListSlot.Meaning.Preferred" ResourceKey="Primitive.Size.150" />
     <StaticResource x:Key="Component.WordListSlot.Meaning.Maximum" ResourceKey="Primitive.Size.220" />
@@ -87,6 +90,11 @@
     <Setter Property="(views:WordListSizingHints.Minimum)" Value="{StaticResource Component.WordListSlot.PanGloss.Minimum}" />
     <Setter Property="(views:WordListSizingHints.Preferred)" Value="{StaticResource Component.WordListSlot.PanGloss.Preferred}" />
     <Setter Property="(views:WordListSizingHints.Maximum)" Value="{StaticResource Component.WordListSlot.PanGloss.Maximum}" />
+  </Style>
+  <Style Selector=":is(Control).wordPresentationColumnWithProposal">
+    <Setter Property="(views:WordListSizingHints.Minimum)" Value="{StaticResource Component.WordListSlot.WithProposal.Minimum}" />
+    <Setter Property="(views:WordListSizingHints.Preferred)" Value="{StaticResource Component.WordListSlot.WithProposal.Preferred}" />
+    <Setter Property="(views:WordListSizingHints.Maximum)" Value="{StaticResource Component.WordListSlot.WithProposal.Maximum}" />
   </Style>
   <Style Selector=":is(Control).wordPresentationColumnMeaning">
     <Setter Property="(views:WordListSizingHints.Minimum)" Value="{StaticResource Component.WordListSlot.Meaning.Minimum}" />

@@ -18,21 +18,21 @@ public sealed class TextsProposalMatrixTests
 {
     private const string ProjectPath = TimingProposalViewTests.ProjectPath;
 
-    private static AssessmentWordResult Word(string form, bool parsed = false) =>
+    internal static AssessmentWordResult Word(string form, bool parsed = false) =>
         new(form, parsed ? "unassessed" : "no-analysis", false, "Complete", 1, null);
 
     // Two words fail to parse today; the Proposal skips one, so NoParse is 2 to 1 and Skipped 2 to 3.
-    private static readonly AssessmentWordResult[] TodayWords = [Word("a"), Word("b"), Word("c", true), Word("d", true)];
-    private static readonly AssessmentWordResult[] ProposalWords = [Word("a"), Word("b", true), Word("c", true), Word("d", true)];
+    internal static readonly AssessmentWordResult[] TodayWords = [Word("a"), Word("b"), Word("c", true), Word("d", true)];
+    internal static readonly AssessmentWordResult[] ProposalWords = [Word("a"), Word("b", true), Word("c", true), Word("d", true)];
 
-    private sealed class Reads
+    internal sealed class Reads
     {
         public int Summaries;
         public Func<IReadOnlyList<AssessmentWordResult>, MatrixProposalSummary>? Behave;
         public Func<string, AssessmentWordResult[]> Trials = _ => ProposalWords;
     }
 
-    private static async Task<(WorkspaceContext Context, TextsPageModel Page, Reads Reads)> OpenedAsync(
+    internal static async Task<(WorkspaceContext Context, TextsPageModel Page, Reads Reads)> OpenedAsync(
         bool onTexts = true, string proposal = "proposal/one", AssessmentWordResult[]? today = null, Reads? reads = null,
         bool open = true)
     {
@@ -66,16 +66,16 @@ public sealed class TextsProposalMatrixTests
             page.ProposalNote is null; wait++) await Task.Delay(20);
     }
 
-    private static async Task UntilAsync(Func<bool> condition)
+    internal static async Task UntilAsync(Func<bool> condition)
     {
         for (var wait = 0; wait < 150 && !condition(); wait++) await Task.Delay(20);
         Assert.True(condition());
     }
 
-    private static CompareCellViewModel Cell(TextsPageModel page, CompareColumnKind column) =>
+    internal static CompareCellViewModel Cell(TextsPageModel page, CompareColumnKind column) =>
         page.Assess.Compare.Cells.Single(cell => cell.Column == column && cell.Row == WordProjectStatus.NotPresent);
 
-    private static string Pair(string today, string proposal) =>
+    internal static string Pair(string today, string proposal) =>
         string.Format(MotifAppStrings.OverviewPairFormat, today, proposal);
 
     [Fact]
@@ -291,7 +291,7 @@ public sealed class TextsProposalMatrixTests
         var today = cell.AccessibleName;
         context.ShowProposalView(MarkupView.TodayToProposal);
 
-        Assert.Equal(string.Format(MotifAppStrings.CompareCellProposalAccessibleNameFormat, today, Pair("2", "1")),
+        Assert.Equal(string.Format(MotifAppStrings.CompareCellProposalAccessibleNameFormat, today, Pair("2", "1") + " word"),
             cell.AccessibleName);
         context.ShowProposalView(MarkupView.Today);
         Assert.Equal(today, cell.AccessibleName);

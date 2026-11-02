@@ -46,7 +46,7 @@ public sealed class WordListPolicyTests
             WordListColumnSet.Tick, hasFieldWorksMorphology: true));
         Assert.Throws<ArgumentException>(() => WordListSchema.Create(
             WordListColumnSet.FieldWorks, hasPanGlossMorphology: true));
-        Assert.Throws<ArgumentOutOfRangeException>(() => WordListSchema.Create((WordListColumnSet)512));
+        Assert.Throws<ArgumentOutOfRangeException>(() => WordListSchema.Create((WordListColumnSet)1024));
     }
 
     [Fact]
@@ -141,6 +141,7 @@ public sealed class WordListPolicyTests
             new(WordListColumn.Opinion, 70, 90, 110, 50),
             new(WordListColumn.FieldWorks, 72, 120, 400, 88),
             new(WordListColumn.PanGloss, 72, 120, 400, 80),
+            new(WordListColumn.WithProposal, 100, 130, 220, 110),
             new(WordListColumn.Meaning, 80, 90, 220, 90),
             new(WordListColumn.Warnings, 48, 70, 140, 64),
             new(WordListColumn.Places, 56, 72, 110, 62),

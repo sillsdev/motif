@@ -96,6 +96,7 @@ public sealed partial class CompareViewModel : ObservableObject
                 HasPendingChange = facts.PendingState != PendingChangeState.None,
                 StagedOpinionText = facts.StagedOpinionText };
             word.PropertyChanged += OnWordPropertyChanged;
+            ShowProposalOn(word);
             return word;
         }, word => { word.PropertyChanged -= OnWordPropertyChanged; word.Dispose(); }, word => word.IsExpanded);
         Rows = Enum.GetValues<WordProjectStatus>().OrderBy(RowOrder)
@@ -256,7 +257,7 @@ public sealed partial class CompareViewModel : ObservableObject
         }
     }
 
-    public bool CanRerun => RerunWords.Count > 0;
+    public bool CanRerun => RerunWords.Count > 0 && _proposalView != MarkupView.Proposal;
 
     public string RerunText => RerunWords.Count switch
     {
@@ -458,11 +459,16 @@ public sealed partial class CompareViewModel : ObservableObject
         get
         {
             var chosen = Cells.Where(cell => cell.IsSelected).ToArray();
-            var inCells = chosen.Length == 0 ? TotalCount : chosen.Sum(cell => cell.WordCount);
+            var notListed = WordsCountedNotListed(chosen);
+            var inCells = WordsInChosenCells(chosen) - notListed;
             var words = Words.Count == inCells
                 ? CompareCellViewModel.WordsText(Words.Count) : string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.CompareWordsOfFormat, Words.Count.ToString("N0", System.Globalization.CultureInfo.CurrentCulture), inCells.ToString("N0", System.Globalization.CultureInfo.CurrentCulture));
-            return _listed.Any(word => word.Occurrences is not null)
+            if (ListBasis == WordListBasis.Both && chosen.Length > 0)
+                words = string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.CompareWordsEitherSideFormat, words);
+            var listed = _listed.Any(word => word.Occurrences is not null)
                 ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.CompareWordsAndPlacesFormat, words, CompareCellViewModel.PlacesTextOf(_listed.Sum(word => word.Occurrences ?? 0), PlacesFromWordList)) : words;
+            return notListed == 0 ? listed : string.Format(System.Globalization.CultureInfo.CurrentCulture,
+                MotifAppStrings.CompareWordsAndPlacesFormat, listed, PluralText.Format(MotifAppStrings.CompareWordsNotListedPattern, notListed));
         }
     }
 
@@ -491,8 +497,8 @@ public sealed partial class CompareViewModel : ObservableObject
 
     public int CheckedWordCount => _listed.Count(word => word.IsChecked);
 
-    /// <summary>Whether any listed word is ticked, so the list's controls say how many.</summary>
-    public bool HasCheckedWords => CheckedWordCount > 0;
+    /// <summary>Whether any listed word is ticked, so the list's controls say how many; not in the Proposal's own view.</summary>
+    public bool HasCheckedWords => CheckedWordCount > 0 && _proposalView != MarkupView.Proposal;
 
     public string CheckedWordText => CheckedWordCount switch
     {
@@ -641,7 +647,7 @@ public sealed partial class CompareViewModel : ObservableObject
         // Assessment order, not the list's sort, so re-sorting the list never reorders what the words share.
         var listedKeys = _listed.ToHashSet();
         var listed = _all.Where(listedKeys.Contains).ToArray();
-        var shared = anyCellChosen && listed.Length >= 2
+        var shared = anyCellChosen && listed.Length >= 2 && ListBasis == WordListBasis.Today
             ? ObjectUsesQuery.SharedBy(listed.Select(word => word.Source).ToArray(), listed.Select(word => word.Word).ToArray())
             : [];
         foreach (var (morpheme, index) in shared.Take(SharedShown).Select((morpheme, index) => (morpheme, index)))
@@ -739,14 +745,15 @@ public sealed partial class CompareViewModel : ObservableObject
         foreach (var cell in Cells) cell.PendingState = CellPendingState(cell);
     }
 
-    private void ApplyFilter()
+    // A flip of the bar's view asks for no announcement and leaves the list alone when the same words stay listed.
+    private void ApplyFilter(bool announce = true)
     {
         using var span = MotifTrace.Begin("compare.apply-filter");
         span?.SetTag("words", _all.Count);
         MotifTrace.Count("apply-filter");
+        FilterRuns++;
         var chosen = Cells.Where(cell => cell.IsSelected).Select(cell => (cell.Row, cell.Column)).ToHashSet();
-        var matches = _all.AsEnumerable();
-        if (chosen.Count > 0) matches = matches.Where(word => chosen.Contains((word.Row, word.Column)));
+        var matches = ListedByCells(chosen);
         if (_focusedWordSearch is { } focusedWord)
             matches = matches.Where(word => word.Word == focusedWord);
         else if (!string.IsNullOrWhiteSpace(SearchText))
@@ -754,10 +761,16 @@ public sealed partial class CompareViewModel : ObservableObject
         matches = Sort switch
         {
             CompareSort.Alphabetical => matches.OrderBy(word => word.Word, StringComparer.CurrentCulture),
-            CompareSort.Slowest => matches.OrderByDescending(word => word.WorkSteps ?? -1).ThenByDescending(word => word.ElapsedMs ?? -1),
+            CompareSort.Slowest => matches.OrderByDescending(word => OrderedWork(word).Steps ?? -1)
+                .ThenByDescending(word => OrderedWork(word).Elapsed ?? -1),
             _ => matches.OrderByDescending(word => word.Occurrences ?? 0).ThenBy(word => word.Word, StringComparer.CurrentCulture),
         };
-        _listed = matches.ToArray();
+        _listedBasis = ListedBasis;
+        _listedSummary = ListedBasis == WordListBasis.Today ? null : _proposalSummary;
+        _listedRevision = _wordsRevision;
+        var next = matches.ToArray();
+        if (!announce && next.Length == _listed.Count && !next.Where((facts, index) => !ReferenceEquals(facts, _listed[index])).Any()) return;
+        _listed = next;
         var generation = _generation;
         Words = new LazyProjectionList<AssessmentRowFacts, CompareWordViewModel>(_listed, _wordModels.Get,
             word => word.Facts, () => _displayRows && generation == _generation);
@@ -773,7 +786,7 @@ public sealed partial class CompareViewModel : ObservableObject
         OnPropertyChanged(nameof(HasCheckedWords));
         HandOffCommand.NotifyCanExecuteChanged();
         ProposeCommand.NotifyCanExecuteChanged();
-        ChosenCellsChanged?.Invoke(this, EventArgs.Empty);
+        if (announce) ChosenCellsChanged?.Invoke(this, EventArgs.Empty);
     }
 
     private static string MeaningOf(AssessmentRowFacts word) => word.IsRefused ? ParserRefusals.Title
@@ -975,7 +988,7 @@ public sealed partial class CompareCellViewModel : ObservableObject
     private bool _hasPlaces;
 
     /// <summary>The number of text places where the cell's words occur.</summary>
-    public string PlacesText => PlacesTextOf(OccurrenceCount, PlacesFromWordList);
+    public string PlacesText => ShownPlaces;
 
     /// <summary>Whether the places are counts a word list gave, not places found in the chosen Texts.</summary>
     public bool PlacesFromWordList { get; private set; }
@@ -1006,7 +1019,7 @@ public sealed partial class CompareCellViewModel : ObservableObject
     public bool IsReview => Family == CompareFamilyKind.Review;
     public bool IsNew => Family == CompareFamilyKind.New;
     public bool IsNobody => Family == CompareFamilyKind.Nobody;
-    public bool IsNone => Family == CompareFamilyKind.None;
+    public bool IsNone => Family == CompareFamilyKind.None && IsEmptyImpossible;
 
     /// <summary>The words the cell shows, its big number.</summary>
     [ObservableProperty]
@@ -1015,6 +1028,7 @@ public sealed partial class CompareCellViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(CountUnitText))]
     [NotifyPropertyChangedFor(nameof(IsEmpty))]
     [NotifyPropertyChangedFor(nameof(IsEmptyImpossible))]
+    [NotifyPropertyChangedFor(nameof(IsNone))]
     [NotifyPropertyChangedFor(nameof(ShowsPlaces))]
     [NotifyPropertyChangedFor(nameof(AccessibleName))]
     private int _count;
@@ -1044,10 +1058,13 @@ public sealed partial class CompareCellViewModel : ObservableObject
     public string CountNumberText => ShownNumber;
 
     /// <summary>The unit under the cell's number, shown only while the cell has room for details.</summary>
-    public string CountUnitText => PluralText.Format(MotifAppStrings.CompareWordUnitPattern, WordCount);
+    public string CountUnitText => PluralText.Format(MotifAppStrings.CompareWordUnitPattern, UnitCount);
 
-    /// <summary>A combination the data cannot produce, and did not: drawn as a dash rather than as a zero.</summary>
-    public bool IsEmptyImpossible => Family == CompareFamilyKind.None && Count == 0;
+    /// <summary>
+    /// A combination the data cannot produce, and did not, in the number drawn: a dash rather than a zero. A cell the
+    /// open Proposal fills is not one, so it takes a click and focus like any cell.
+    /// </summary>
+    public bool IsEmptyImpossible => Family == CompareFamilyKind.None && _shown.IsZero(WordCount);
 
     /// <summary>Whether the cell names what happened; a word FieldWorks lacks has nothing PanGloss could match.</summary>
     public bool ShowsLabel => !AllRefused && Family != CompareFamilyKind.None;
@@ -1059,7 +1076,7 @@ public sealed partial class CompareCellViewModel : ObservableObject
             var held = CompareViewModel.HeldInFieldWorks(CompareViewModel.OpinionLabelOf(Row));
             var described = HasPlaces
                 ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.CompareCellAccessibleNamePlacesFormat,
-                    WordsText(WordCount), PlacesText, held, CompareViewModel.ColumnSentenceOf(Column))
+                    WordsText(WordCount), PlacesTextOf(OccurrenceCount, PlacesFromWordList), held, CompareViewModel.ColumnSentenceOf(Column))
                 : string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.CompareCellAccessibleNameFormat,
                     WordsText(WordCount), held, CompareViewModel.ColumnSentenceOf(Column));
             return WithProposal(PendingChangeStatus is { } status
@@ -1229,7 +1246,8 @@ public sealed partial class CompareWordViewModel : ObservableObject, IDisposable
     public WordPresentation PresentationFor(WordListOwner owner, string? stagedText = null, string? note = null) =>
         new(_presentationKey, EvidenceRevision, WordRow, owner, stagedText, note);
 
-    public WordPresentation MatrixPresentation => PresentationFor(WordListOwner.Matrix, PendingChangeStatus);
+    public WordPresentation MatrixPresentation => PresentationFor(WordListOwner.Matrix, PendingChangeStatus) with
+        { TimeText = _proposalTime, WithProposal = _withProposal };
 
     public WordPresentation ListsPresentation => PresentationFor(WordListOwner.Lists, StagedOpinionText);
     public WordProjectStatus? Standing { get; }

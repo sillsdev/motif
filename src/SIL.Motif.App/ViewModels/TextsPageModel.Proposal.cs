@@ -42,7 +42,7 @@ public sealed partial class TextsPageModel
             MatrixState == MatrixSideState.Reading, MatrixState == MatrixSideState.Unreadable,
             MatrixState == MatrixSideState.Held, MatrixPairedNote(), MotifAppStrings.TextsProposalViewNote)),
         TextsTab.AnalyzeTexts => OffToday ? MotifAppStrings.TextsProposalWordCardsNote : null,
-        _ when !OffToday => null,
+        _ when !OffToday || !Assess.Compare.HasWords => null,
         _ => ProposalViewScope.ViewOf(Context) == MarkupView.Proposal
             ? MotifAppStrings.TextsProposalTabNotPairedViewNote : MotifAppStrings.TextsProposalTabNotPairedNote,
     };
@@ -57,6 +57,8 @@ public sealed partial class TextsPageModel
     // Reads nothing: draws the held side, or its absence, for the bar's current view.
     private void ShowMatrixProposal()
     {
+        if (CurrentMatrixKey() is not { } shown) ForgetMatrixSide();
+        else if (shown != _matrixHeld) ForgetHeldSide();
         var view = Context.Lens is null ? MarkupView.Today : ProposalViewScope.ViewOf(Context);
         Assess.Compare.ShowProposal(view, MatrixState, _matrixHeld == CurrentMatrixKey() ? _matrixSummary : null);
         OnPropertyChanged(nameof(ProposalNote));
@@ -112,13 +114,25 @@ public sealed partial class TextsPageModel
         catch (Exception ex) when (ex is not OperationCanceledException) { return (null, true); }
     }
 
+    // A side held for another Proposal or Trial is of no use to this one, so it is dropped at once.
+    private void ForgetHeldSide()
+    {
+        _matrixHeld = null;
+        _matrixSummary = null;
+    }
+
+    // With no Proposal open nothing is held or failed, so no side is kept for one nobody can see.
+    private void ForgetMatrixSide()
+    {
+        ForgetHeldSide();
+        _matrixFailed = null;
+    }
+
     private void ClearMatrixProposal()
     {
         _matrixGeneration++;
-        _matrixHeld = null;
         _matrixReading = null;
-        _matrixFailed = null;
-        _matrixSummary = null;
+        ForgetMatrixSide();
         ShowMatrixProposal();
     }
 }

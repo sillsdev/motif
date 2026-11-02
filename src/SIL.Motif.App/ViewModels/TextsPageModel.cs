@@ -180,7 +180,6 @@ public sealed partial class TextsPageModel : PageModel
 
     protected override async Task OnEvidencePublishedAsync(EvidenceLens lens, CancellationToken cancellationToken)
     {
-        if (CurrentMatrixKey() is null) _matrixFailed = null;
         ShowMatrixProposal();
         ShowTodaysEvidence(lens);
         await EnsureMatrixSideAsync(cancellationToken).ConfigureAwait(true);

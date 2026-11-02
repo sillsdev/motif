@@ -4887,7 +4887,7 @@ Motif starts a check automatically when this project opens. Use Reload to read a
   </data>
   <data name="MotifApp.CompareWordsAndPlacesFormat" xml:space="preserve">
     <value>{0} · {1}</value>
-    <comment>Compare list summary: {0} is how many words and {1} how many places they occur; the dot is a separator.</comment>
+    <comment>Compare list summary: two parts joined by a dot, such as the words and their places, then how many words are counted but not listed.</comment>
   </data>
   <data name="MotifApp.CompareNoWordsTicked" xml:space="preserve">
     <value>No words ticked</value>
@@ -8724,15 +8724,15 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <comment>Lower-case noun in the Texts page's Proposal notes, as in 'These are today's matrix counts only.'</comment>
   </data>
   <data name="MotifApp.TextsProposalPairedNote" xml:space="preserve">
-    <value>Each cell, row and column reads today's words, then the words with this Proposal, for the same words. The cells count words, so a cell that reads the same on both sides can still hold different words. The word list, the With This Proposal column and What Changed still show today's and are not paired yet.</value>
+    <value>Each cell, row and column reads today's words, then the words with this Proposal, for the same words. The cells count words, so a cell that reads the same on both sides can still hold different words. A chosen cell lists its words today and its words with this Proposal, and the With This Proposal column says where the Proposal puts each one; the other columns are today's. Lists and What Changed still show today's and are not paired yet.</value>
     <comment>Note on the Texts page's Matrix tab in the Today to Proposal view when both sides cover the same words.</comment>
   </data>
   <data name="MotifApp.TextsProposalDifferentWordsNote" xml:space="preserve">
-    <value>This Proposal's Trial measured different words from today's matrix, so nothing is paired and the matrix shows today's counts. The word list and What Changed are today's.</value>
+    <value>This Proposal's Trial measured different words from today's matrix, so nothing is paired and the matrix shows today's counts. The listed words are today's; the With This Proposal column says where the Proposal puts each one, or that its try did not measure it. Lists and What Changed show today's.</value>
     <comment>Note on the Texts page's Matrix tab in the Today to Proposal view when the Trial's words are not the words in today's matrix.</comment>
   </data>
   <data name="MotifApp.TextsProposalViewNote" xml:space="preserve">
-    <value>Each cell, row and column reads the words with this Proposal. Its words are not listed here yet: choose Today or Today to Proposal to list today's words.</value>
+    <value>Each cell, row and column reads the words with this Proposal. A chosen cell lists the words the Proposal puts in it that today's matrix also has, with their FieldWorks analyses and what the Proposal's try made of them; a word only the Proposal's try measured is counted but not listed, and the list's heading says how many. The places under a cell are the Proposal's; today's parse is left to the Today view. Lists and What Changed are not paired yet, so they show nothing in this view.</value>
     <comment>Note on the Texts page's Matrix tab in the Proposal view.</comment>
   </data>
   <data name="MotifApp.TextsProposalWordCardsNote" xml:space="preserve">
@@ -8750,5 +8750,37 @@ Motif starts a check automatically when this project opens. Use Reload to read a
   <data name="MotifApp.TextsProposalTabNotPairedViewNote" xml:space="preserve">
     <value>This tab is not paired with the Proposal yet, so it shows nothing in this view. Choose Today or Today to Proposal to see today's.</value>
     <comment>Note on the Texts page's Lists and What Changed tabs in the Proposal view, where they draw nothing.</comment>
+  </data>
+  <data name="MotifApp.TextsWordNotMeasured" xml:space="preserve">
+    <value>Not measured with this Proposal</value>
+    <comment>Cell in the Texts matrix word list's With This Proposal column for a word the Proposal's try did not measure; it is not a result.</comment>
+  </data>
+  <data name="MotifApp.CompareCellProposalPlacesAccessibleNameFormat" xml:space="preserve">
+    <value>{0} With this Proposal, the cell reads {1}, {2}.</value>
+    <comment>Spoken name of a matrix cell that counts places, while the Proposal bar shows the Proposal's numbers: {0} the cell's usual name, {1} the words it now shows, {2} the places it now shows.</comment>
+  </data>
+  <data name="MotifApp.CompareWordsNotListedPattern" xml:space="preserve">
+    <value>{0, plural, one {# more word is counted but not listed} other {# more words are counted but not listed}}</value>
+    <comment>Plural pattern in the Texts word list's heading in the Proposal view: words the Proposal's try measured that today's matrix does not have, so they count in the cell but cannot be listed; # is how many.</comment>
+  </data>
+  <data name="MotifApp.WordRowWithProposalFormat" xml:space="preserve">
+    <value>{0}: {1}</value>
+    <comment>Spoken name of a word's With This Proposal result: {0} is the heading, {1} what the Proposal's try made of the word.</comment>
+  </data>
+  <data name="MotifApp.WordRowSummaryWithProposalLabel" xml:space="preserve">
+    <value>With this Proposal</value>
+    <comment>Label in a word row's one-line summary before what the open Proposal's try made of the word.</comment>
+  </data>
+  <data name="MotifApp.WordRowSummaryPanGlossTodayFormat" xml:space="preserve">
+    <value>PanGloss today: {0}</value>
+    <comment>Part of a word row's one-line summary while a Proposal is open; {0} is what today's PanGloss built.</comment>
+  </data>
+  <data name="MotifApp.WordRowTimeWithProposalFormat" xml:space="preserve">
+    <value>Time with this Proposal: {0}</value>
+    <comment>Spoken name of a word's time in the Proposal's view, where it is the Proposal's work and not today's; {0} is the work steps.</comment>
+  </data>
+  <data name="MotifApp.CompareWordsEitherSideFormat" xml:space="preserve">
+    <value>{0} today or with this Proposal</value>
+    <comment>Compare list summary in the Today to Proposal view with a cell chosen: the cell lists a word if either side puts it there; {0} is the words counted, such as '6 words'.</comment>
   </data>
 </root>

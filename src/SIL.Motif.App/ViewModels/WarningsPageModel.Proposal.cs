@@ -33,7 +33,7 @@ public sealed partial class WarningsPageModel
 
     /// <summary>
     /// What the page says about its findings while a Proposal is open: what is paired, what stays today's, or why the
-    /// Proposal has no check to show. Null outside Proposal mode, and while the Proposal's check is read except in the pair view.
+    /// Proposal has no check to show. Null outside Proposal mode; while the check is read, the Today view and the pair say so and the Proposal view says nothing.
     /// </summary>
     public string? ProposalNote => ProposalReading && Context.Lens is not null &&
         ProposalViewScope.ViewOf(Context) == MarkupView.TodayToProposal ? TodayChecked

@@ -12,6 +12,7 @@ public sealed class WordRowHeader : UserControl
     private readonly Border _frame;
     private readonly Grid _line;
     private readonly Dictionary<WordListColumn, Control> _headings;
+    private readonly Panel _spare = new() { IsVisible = false };
 
     public static readonly StyledProperty<string> MeaningHeaderProperty =
         AvaloniaProperty.Register<WordRowHeader, string>(nameof(MeaningHeader), WordListHeadings.DefaultMeaning);
@@ -49,9 +50,11 @@ public sealed class WordRowHeader : UserControl
         var layout = WordListLayoutScope.GetLayout(this);
         // A stacked row captions its own cells with these same headings, so the header row hides.
         _frame.IsVisible = layout?.Stacked != true;
-        // Hidden headings stay in the tree: the sizing styles reach them there.
         var tracks = layout is null ? DefaultColumns() : layout.Schema.OrderedColumns(layout.ShowsMeaning).ToArray();
         _line.ColumnSpacing = layout?.ColumnGap ?? 0;
+        if (_headings[WordListColumn.Time] is TextBlock time)
+            time.Text = WordListHeadings.TextOf(WordListColumn.Time, MeaningHeader, layout?.Schema);
+        _spare.Children.Clear();
         _line.Children.Clear();
         _line.ColumnDefinitions.Clear();
         foreach (var column in tracks)
@@ -62,6 +65,10 @@ public sealed class WordRowHeader : UserControl
             Grid.SetColumn(heading, _line.ColumnDefinitions.Count - 1);
             _line.Children.Add(heading);
         }
+        // Headings of columns the schema lacks stay in the tree, so the sizing styles reach them when it changes.
+        foreach (var (column, heading) in _headings.Where(pair => !tracks.Contains(pair.Key)))
+            _spare.Children.Add(heading);
+        _line.Children.Add(_spare);
     }
 
     private Control CreateHeading(WordListColumn column)
@@ -94,6 +101,7 @@ public sealed class WordRowHeader : UserControl
         WordListColumn.Opinion => "wordPresentationColumnOpinion",
         WordListColumn.FieldWorks => "wordPresentationColumnFieldWorks",
         WordListColumn.PanGloss => "wordPresentationColumnPanGloss",
+        WordListColumn.WithProposal => "wordPresentationColumnWithProposal",
         WordListColumn.Meaning => "wordPresentationColumnMeaning",
         WordListColumn.Warnings => "wordPresentationColumnWarnings",
         WordListColumn.Places => "wordPresentationColumnPlaces",

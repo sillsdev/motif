@@ -769,7 +769,7 @@ internal static class TooltipOwners
             control => control is FilterChip),
         new("pending change in a Matrix cell", "Views/MatrixCell.axaml", "{Binding PendingChangeStatus}", TooltipScene.MatrixStaged,
             control => control is Ellipse && control.Classes.Contains("matrixPending")),
-        new("word cell", "Controls/WordPresentation/WordRow.cs", "facts.Summary", TooltipScene.Matrix,
+        new("word cell", "Controls/WordPresentation/WordRow.cs", "facts.SummaryWith(data.WithProposal)", TooltipScene.Matrix,
             control => control is CopyableTextBlock && control.Classes.Contains("wordPresentationForm") &&
                 control.FindAncestorOfType<WordRow>() is not null),
         new("word gloss", "Controls/WordPresentation/WordRow.cs", "facts.Gloss", TooltipScene.Matrix,

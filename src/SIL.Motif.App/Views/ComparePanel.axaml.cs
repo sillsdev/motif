@@ -33,7 +33,11 @@ public sealed partial class ComparePanel : UserControl
             SetExpandedMatrixLabel(e.NewSize.Width >= ExpandedMatrixLabelWidth);
             SetShortMatrix(e.NewSize.Height);
         };
-        LayoutUpdated += (_, _) => ApplyShortMatrixToCells();
+        LayoutUpdated += (_, _) =>
+        {
+            ApplyShortMatrixToCells();
+            RestoreKeptScroll();
+        };
         SetExpandedMatrixLabel(Bounds.Width >= ExpandedMatrixLabelWidth);
         SetShortMatrix(Bounds.Height);
         AddHandler(GotFocusEvent, (_, e) => _focusWasInTodayWords = InTodayWords(e.Source as Visual), handledEventsToo: true);
@@ -41,18 +45,50 @@ public sealed partial class ComparePanel : UserControl
         DetachedFromVisualTree += (_, _) => Compare.PropertyChanged -= OnCompareChanged;
     }
 
+    private const int KeptScrollLayouts = 64;
     private bool _focusWasInTodayWords;
+    private ScrollViewer? _watchedScroll;
+    private Vector? _keptOffset;
+    private int _keptLayouts;
 
     private bool InTodayWords(Visual? visual) => visual is not null && new[] { "TodayWordsChips", "FixFirstCard", "ChosenWordsCard" }
         .Any(name => this.FindControl<Control>(name) is { } part && (part == visual || part.IsVisualAncestorOf(visual)));
 
     private void OnCompareChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(CompareViewModel.ShowsTodayWords) && !Compare.ShowsTodayWords && _focusWasInTodayWords)
+        if (e.PropertyName is nameof(CompareViewModel.Words) or nameof(CompareViewModel.ShowsFixFirst) or
+            nameof(CompareViewModel.ShowsTodayWords) or nameof(CompareViewModel.WordListSchema)) KeepScrollThroughNewWords();
+        if (e.PropertyName is nameof(CompareViewModel.ShowsTodayWords) or nameof(CompareViewModel.ShowsWordList) &&
+            _focusWasInTodayWords && (!Compare.ShowsTodayWords || !Compare.ShowsWordList))
             Avalonia.Threading.Dispatcher.UIThread.Post(KeepFocusOnTheMatrix);
     }
 
-    // The words under the matrix hide in the Proposal view; focus that was in them moves to a cell, not to nothing.
+    // A new list or columns empty the card for a layout pass or two, which would pull the page up.
+    private void KeepScrollThroughNewWords()
+    {
+        if (this.FindControl<ScrollViewer>("MatrixScroll") is not { } scroll) return;
+        if (_keptOffset is null)
+        {
+            _keptOffset = scroll.Offset;
+            Avalonia.Threading.Dispatcher.UIThread.Post(() => _keptOffset = null, Avalonia.Threading.DispatcherPriority.Background);
+        }
+        _keptLayouts = 0;
+        if (_watchedScroll == scroll) return;
+        _watchedScroll = scroll;
+        scroll.PropertyChanged += (_, args) =>
+        {
+            if (args.Property == ScrollViewer.ExtentProperty) RestoreKeptScroll();
+        };
+    }
+
+    private void RestoreKeptScroll()
+    {
+        if (_keptOffset is not { } offset || this.FindControl<ScrollViewer>("MatrixScroll") is not { } scroll) return;
+        if (scroll.Offset != offset) scroll.Offset = offset;
+        if (++_keptLayouts >= KeptScrollLayouts) _keptOffset = null;
+    }
+
+    // Words or chips that hide with the Proposal's view take focus with them; it moves to a cell, not to nothing.
     private void KeepFocusOnTheMatrix()
     {
         _focusWasInTodayWords = false;

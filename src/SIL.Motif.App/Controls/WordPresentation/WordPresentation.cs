@@ -26,6 +26,15 @@ public enum WordListOwner
     ReadOnly,
 }
 
+/// <summary>
+/// How one word reads with the open Proposal: its outcome with the outcome's mark, or a plain statement that the
+/// Proposal's try did not measure it, which has no mark and is never a result.
+/// </summary>
+/// <param name="Mark">The outcome's mark, or null for a word the try did not measure.</param>
+/// <param name="Text">The outcome in the window's words, or the statement that the word was not measured.</param>
+/// <param name="Alone">Whether the Proposal's view is shown, where today's outcome is left out of the row.</param>
+public sealed record WordProposalCell(Mark? Mark, string Text, bool Alone = false);
+
 /// <summary>Typed facts and list-owned notes for one row.</summary>
 public sealed record WordPresentation(
     WordPresentationKey Key,
@@ -36,7 +45,8 @@ public sealed record WordPresentation(
     string? Note = null,
     string? TimeText = null,
     string? MeasuredText = null,
-    WordPendingChange? PendingChange = null)
+    WordPendingChange? PendingChange = null,
+    WordProposalCell? WithProposal = null)
 {
     /// <summary>Checks the identity and evidence revision before the row is attached.</summary>
     public WordPresentation Validate()

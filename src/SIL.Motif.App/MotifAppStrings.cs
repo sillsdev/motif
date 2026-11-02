@@ -4241,6 +4241,13 @@ public static class MotifAppStrings
     public static string WarningsProposalReadingTodayNotCheckedNote => Text("MotifApp.WarningsProposalReadingTodayNotCheckedNote");
 
     public static string CompareCellProposalAccessibleNameFormat => Text("MotifApp.CompareCellProposalAccessibleNameFormat");
+    public static string CompareCellProposalPlacesAccessibleNameFormat => Text("MotifApp.CompareCellProposalPlacesAccessibleNameFormat");
+    public static string WordRowWithProposalFormat => Text("MotifApp.WordRowWithProposalFormat");
+    public static string WordRowSummaryWithProposalLabel => Text("MotifApp.WordRowSummaryWithProposalLabel");
+    public static string WordRowSummaryPanGlossTodayFormat => Text("MotifApp.WordRowSummaryPanGlossTodayFormat");
+    public static string WordRowTimeWithProposalFormat => Text("MotifApp.WordRowTimeWithProposalFormat");
+    public static string CompareWordsEitherSideFormat => Text("MotifApp.CompareWordsEitherSideFormat");
+    public static string CompareWordsNotListedPattern => Text("MotifApp.CompareWordsNotListedPattern");
 
     public static string TextsMatrixCountsNoun => Text("MotifApp.TextsMatrixCountsNoun");
 
@@ -4257,4 +4264,6 @@ public static class MotifAppStrings
     public static string TextsProposalReadingNote => Text("MotifApp.TextsProposalReadingNote");
 
     public static string TextsProposalTabNotPairedViewNote => Text("MotifApp.TextsProposalTabNotPairedViewNote");
+
+    public static string TextsWordNotMeasured => Text("MotifApp.TextsWordNotMeasured");
 }

@@ -175,7 +175,7 @@
       </Expander>
     </Border>
 
-      <Border x:Name="ChosenWordsCard" Grid.Row="3" Classes="card matrixChosen" IsVisible="{Binding Compare.ShowsTodayWords}">
+      <Border x:Name="ChosenWordsCard" Grid.Row="3" Classes="card matrixChosen" IsVisible="{Binding Compare.ShowsWordList}">
         <Grid Classes="matrixChosenLayout" RowDefinitions="Auto,Auto,Auto,Auto,*">
           <DockPanel Classes="matrixChosenHeading" AutomationProperties.Name="{Binding Compare.SelectionText}">
             <StackPanel DockPanel.Dock="Left" Classes="matrixChosenMarks" Orientation="Horizontal"
@@ -289,7 +289,7 @@
                                      IsVisible="{Binding Compare.Changes.CollectionNotice, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
           </StackPanel>
 
-          <views:WordListSlot Grid.Row="4" Schema="{x:Static word:WordListSchemas.All}"
+          <views:WordListSlot Grid.Row="4" Schema="{Binding Compare.WordListSchema}"
                               ShowsMeaning="{Binding Compare.ShowsMeaning}">
             <Grid RowDefinitions="Auto,*" AutomationProperties.AutomationId="{x:Static app:AutomationIds.MatrixWordsGrid}">
             <word:WordRowHeader MeaningHeader="Meaning" />

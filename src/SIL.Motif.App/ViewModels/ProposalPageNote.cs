@@ -19,11 +19,17 @@ internal static class ProposalPageNote
     internal sealed record Parts(string Noun, bool Reading, bool Unreadable, bool HasValue, string Paired, string Alone,
         string? Unpaired = null);
 
-    /// <summary>The note, or null outside Proposal mode and while the Proposal's values are still being read.</summary>
+    /// <summary>
+    /// The note, or null outside Proposal mode and, in a view that shows the Proposal, while its values are still being
+    /// read; the Today view says the same while they are read, because it shows today's either way.
+    /// </summary>
     public static string? For(WorkspaceContext context, Parts parts)
     {
-        if (context.Lens is null || parts.Reading) return null;
+        if (context.Lens is null) return null;
         var view = ProposalViewScope.ViewOf(context);
+        if (parts.Reading)
+            return view == MarkupView.Today
+                ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.ProposalPageTodayViewNoteFormat, parts.Noun) : null;
         if (!parts.HasValue)
         {
             var why = parts.Unreadable

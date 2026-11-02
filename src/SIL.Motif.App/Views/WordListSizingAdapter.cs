@@ -57,6 +57,9 @@ internal sealed class WordListSizingAdapter
             var headingControl = HeadingFor(header, column);
             if (headingControl is null)
                 throw new InvalidOperationException($"The word-list heading has no {column} sizing token.");
+            // The heading is measured with the words this schema gives it, not the last schema's.
+            if (column == WordListColumn.Time && headingControl is TextBlock time)
+                time.Text = Controls.WordPresentation.WordListHeadings.TextOf(column, meaningHeader ?? string.Empty, schema);
             var heading = HeadingWidth(headingControl, column, schema, showsMeaning);
             widths.Add(new WordColumnSizing(column,
                 WordListSizingHints.GetMinimum(headingControl),
@@ -126,6 +129,7 @@ internal sealed class WordListSizingAdapter
         WordListColumn.Opinion => WordListColumnSet.Opinion,
         WordListColumn.FieldWorks => WordListColumnSet.FieldWorks,
         WordListColumn.PanGloss => WordListColumnSet.PanGloss,
+        WordListColumn.WithProposal => WordListColumnSet.WithProposal,
         WordListColumn.Meaning => WordListColumnSet.Meaning,
         WordListColumn.Warnings => WordListColumnSet.Warnings,
         WordListColumn.Places => WordListColumnSet.Places,

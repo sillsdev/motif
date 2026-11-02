@@ -320,7 +320,7 @@ public sealed class WordRow : UserControl
             Grid.SetColumnSpan(note, _columnCount);
             _shell.Children.Add(note);
         }
-        AutomationProperties.SetName(this, data.Facts.Summary);
+        AutomationProperties.SetName(this, data.Facts.SummaryWith(data.WithProposal));
         AutomationProperties.SetAutomationId(this, data.Facts.AutomationIdOf(AutomationList(data.Owner), "row"));
         SyncState();
     }
@@ -348,7 +348,7 @@ public sealed class WordRow : UserControl
                     _shell.Children.Add(cell);
                     break;
                 default:
-                    rest.Children.Add(Captioned(column, cell!, MeaningHeaderOf()));
+                    rest.Children.Add(Captioned(column, cell!, MeaningHeaderOf(), _builtLayout?.Schema));
                     break;
             }
         }
@@ -361,9 +361,9 @@ public sealed class WordRow : UserControl
     private string MeaningHeaderOf() => _builtLayout?.MeaningHeader ?? WordListHeadings.DefaultMeaning;
 
     // Stacking hides the column header, so each stacked cell carries that header's text as caption and name.
-    private static Control Captioned(WordListColumn column, Control cell, string meaningHeader)
+    private static Control Captioned(WordListColumn column, Control cell, string meaningHeader, WordListSchema? schema)
     {
-        var heading = WordListHeadings.TextOf(column, meaningHeader);
+        var heading = WordListHeadings.TextOf(column, meaningHeader, schema);
         if (heading.Length == 0) return cell;
         // A caption inline with the cell's own first line costs width, not another line of height.
         if (cell is MorphemePanel strip)
@@ -378,11 +378,13 @@ public sealed class WordRow : UserControl
             AutomationProperties.SetName(cell, heading);
             return cell;
         }
-        var wrapper = new Grid { Classes = { "wordPresentationStackedCell" } };
+        // Top, as in the table, so a cell does not stretch to a taller neighbour and drift off its caption's line.
+        var wrapper = new Grid { Classes = { "wordPresentationStackedCell" }, VerticalAlignment = VerticalAlignment.Top };
         wrapper.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
         wrapper.ColumnDefinitions.Add(new ColumnDefinition(new GridLength(1, GridUnitType.Star)));
         wrapper.Children.Add(new TextBlock { Text = heading, Classes = { "wordPresentationHeading", "wordPresentationCaption" } });
         Grid.SetColumn(cell, 1);
+        cell.VerticalAlignment = VerticalAlignment.Top;
         wrapper.Children.Add(cell);
         AutomationProperties.SetName(wrapper, heading);
         return wrapper;
@@ -398,6 +400,7 @@ public sealed class WordRow : UserControl
             WordListColumn.Opinion => OpinionCell(data),
             WordListColumn.FieldWorks => FieldWorksCell(data, hasOpinionColumn),
             WordListColumn.PanGloss => PanGlossCell(data),
+            WordListColumn.WithProposal => WithProposalCell(data),
             WordListColumn.Meaning => new NamedMark { Mark = facts.MeaningMark, Text = facts.Meaning, Classes = { "wordPresentationMeaning" } },
             WordListColumn.Warnings => facts.HasWarningsNamed
                 ? new NamedMark { Mark = facts.WarningMark, Text = facts.WarningsText, Classes = { "wordPresentationWarnings" } }
@@ -424,7 +427,7 @@ public sealed class WordRow : UserControl
         AutomationProperties.SetAutomationId(cell, facts.AutomationIdOf(AutomationList(data.Owner), "word"));
         var form = LanguageText(facts.Word, facts.WordWritingSystem, "wordPresentationForm");
         form.TextTrimming = TextTrimming.CharacterEllipsis;
-        ToolTip.SetTip(form, facts.Summary);
+        ToolTip.SetTip(form, facts.SummaryWith(data.WithProposal));
         ClearTipPlacement.SetIsEnabled(form, true);
         cell.Children.Add(form);
         if (!string.IsNullOrEmpty(facts.Gloss))
@@ -487,6 +490,16 @@ public sealed class WordRow : UserControl
         return new NamedMark { Mark = facts.OutcomeMark, Text = facts.OutcomeLabel };
     }
 
+    // A word without a Proposal result still gets a cell, so its row reads "not measured" rather than blank.
+    private static Control? WithProposalCell(WordPresentation data)
+    {
+        if (data.WithProposal is not { } cell) return null;
+        var mark = new NamedMark { Mark = cell.Mark, Text = cell.Text };
+        AutomationProperties.SetName(mark, string.Format(System.Globalization.CultureInfo.CurrentCulture,
+            MotifAppStrings.WordRowWithProposalFormat, WordListHeadings.TextOf(WordListColumn.WithProposal, string.Empty), cell.Text));
+        return mark;
+    }
+
     private static Control PlacesCell(WordRowViewModel facts)
     {
         var cell = Text(facts.PlacesText, "wordPresentationNumber");
@@ -501,6 +514,14 @@ public sealed class WordRow : UserControl
         var cell = (CopyableTextBlock)Text(timeText, "wordPresentationNumber");
         cell.Classes.Add("wordPresentationTime");
         cell.TextTrimming = TextTrimming.CharacterEllipsis;
+        if (data.WithProposal is { Alone: true })
+        {
+            // The Proposal's steps are the point of its view, so the text wraps rather than trims.
+            cell.TextWrapping = TextWrapping.Wrap;
+            cell.TextTrimming = TextTrimming.None;
+            AutomationProperties.SetName(cell, string.Format(System.Globalization.CultureInfo.CurrentCulture,
+                MotifAppStrings.WordRowTimeWithProposalFormat, timeText));
+        }
         ToolTip.SetTip(cell, timeText);
         ClearTipPlacement.SetIsEnabled(cell, true);
         return cell;

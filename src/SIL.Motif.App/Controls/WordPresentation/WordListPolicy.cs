@@ -17,6 +17,7 @@ public enum WordListColumnSet
     Time = 64,
     Read = 128,
     Opinion = 256,
+    WithProposal = 512,
     All = Tick | FieldWorks | PanGloss | Meaning | Warnings | Places | Time | Read,
 }
 
@@ -28,6 +29,7 @@ public enum WordListColumn
     Opinion,
     FieldWorks,
     PanGloss,
+    WithProposal,
     Meaning,
     Warnings,
     Places,
@@ -45,7 +47,7 @@ public sealed record WordListSchema
     private const WordListColumnSet OptionalColumns = WordListColumnSet.Tick | WordListColumnSet.Opinion |
         WordListColumnSet.FieldWorks |
         WordListColumnSet.PanGloss | WordListColumnSet.Meaning | WordListColumnSet.Warnings |
-        WordListColumnSet.Places | WordListColumnSet.Time | WordListColumnSet.Read;
+        WordListColumnSet.Places | WordListColumnSet.Time | WordListColumnSet.Read | WordListColumnSet.WithProposal;
 
     private WordListSchema(
         WordListColumnSet columns,
@@ -84,12 +86,13 @@ public sealed record WordListSchema
     /// <summary>Returns enabled columns in display order, including the mandatory word and next-step tracks.</summary>
     public ImmutableArray<WordListColumn> OrderedColumns(bool showsMeaning = true)
     {
-        var columns = ImmutableArray.CreateBuilder<WordListColumn>(10);
+        var columns = ImmutableArray.CreateBuilder<WordListColumn>(11);
         Add(WordListColumn.Tick, WordListColumnSet.Tick);
         columns.Add(WordListColumn.Word);
         Add(WordListColumn.Opinion, WordListColumnSet.Opinion);
         Add(WordListColumn.FieldWorks, WordListColumnSet.FieldWorks);
         Add(WordListColumn.PanGloss, WordListColumnSet.PanGloss);
+        Add(WordListColumn.WithProposal, WordListColumnSet.WithProposal);
         if (showsMeaning) Add(WordListColumn.Meaning, WordListColumnSet.Meaning);
         Add(WordListColumn.Warnings, WordListColumnSet.Warnings);
         Add(WordListColumn.Places, WordListColumnSet.Places);
@@ -111,6 +114,15 @@ public static class WordListSchemas
     /// <summary>The complete word list used by Matrix and Lists.</summary>
     public static readonly WordListSchema All = WordListSchema.Create(
         WordListColumnSet.All, hasFieldWorksMorphology: true, hasPanGlossMorphology: true);
+
+    /// <summary>The complete word list with the open Proposal's outcome beside today's.</summary>
+    public static readonly WordListSchema AllWithProposal = WordListSchema.Create(
+        WordListColumnSet.All | WordListColumnSet.WithProposal, hasFieldWorksMorphology: true, hasPanGlossMorphology: true);
+
+    /// <summary>The words as the open Proposal places them: what does not depend on a parse, and the Proposal's own result.</summary>
+    public static readonly WordListSchema WithProposalOnly = WordListSchema.Create(
+        WordListColumnSet.FieldWorks | WordListColumnSet.WithProposal | WordListColumnSet.Places |
+        WordListColumnSet.Time | WordListColumnSet.Read, hasFieldWorksMorphology: true);
 
     /// <summary>The word list without its bulk-selection column.</summary>
     public static readonly WordListSchema FixFirst = WordListSchema.Create(

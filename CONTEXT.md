@@ -285,8 +285,11 @@ both; every other page shows today's. Each such page runs the same query once fo
 and once for each Proposal, Trial and choice of words, and says in a note what is paired and what stays today's; a
 value one set lacks reads as none, never as zero or as the other set's number, and a read still running reads as
 reading, never as an earlier key's number. Timing and the Texts matrix pair only when both sets cover the same
-words; the matrix holds the Proposal's side as counts, not rows, and the Texts word list, the With This Proposal
-column and What Changed are not paired yet. Choosing a view is
+words; the matrix holds the Proposal's side as counts and an index of the values the word list reads for each word (its cell,
+work steps and time), never the Trial's rows, and lets go of it when the Proposal is left or another Proposal or Trial is open. The Texts words under the
+matrix are the Proposal's in the Proposal view, where a Trial word today's matrix lacks is counted but not listed, and
+carry a With This Proposal column in the pair; the places under a cell follow the same choice;
+the Lists and What Changed tabs are not paired yet. Choosing a view is
 not an evidence change, so no page reloads, re-reads or re-applies for it, and the choice comes back when a
 following page is shown again. In the Proposal view a headline stands alone, with today's breakdown left
 to the Today view. Leave, or Esc when nothing else uses it, returns to today.
