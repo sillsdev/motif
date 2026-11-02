@@ -484,6 +484,15 @@ internal sealed class TooltipScenes
             case TooltipScene.StatisticsObjects:
                 await ReachStatistics("object");
                 break;
+            case TooltipScene.WarningsTable:
+                // At the sample's width the table is compact and hides its named-words column, so this scene widens the window.
+                Window.Width = 1800;
+                Show(WorkspacePage.Warnings);
+                await Until(() => !Grammar.IsLoading && Grammar.HasChecked &&
+                    Visible<GrammarPanel>().Any(panel => panel.GetVisualDescendants().OfType<CopyableTextBlock>().Any(text =>
+                        text.IsEffectivelyVisible && ToolTip.GetTip(text) as string == MotifAppStrings.WarningsReachUnavailable)),
+                    "the Warnings table with a finding whose word count is unavailable");
+                break;
             case TooltipScene.Warnings:
                 Show(WorkspacePage.Warnings);
                 await Until(() => !Grammar.IsLoading && Grammar.HasChecked &&
