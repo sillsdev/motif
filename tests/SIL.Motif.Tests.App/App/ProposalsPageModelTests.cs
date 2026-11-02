@@ -677,6 +677,24 @@ public sealed class ProposalsPageModelTests
     }
 
     [Fact]
+    public async Task ConfirmingDeleteForAProposalThatCannotBeDeletedStillClearsTheQuestion()
+    {
+        var (fake, _, page) = await OpenAsync(new ProposalStandings(
+        [
+            Card("p/declined", "Plural Vowel Harmony", ProposalGroup.SetAside) with { Status = "rejected" },
+            Card("p/ready", "Ready", ProposalGroup.WaitingForYou),
+        ], 1));
+        var cards = page.Groups.SelectMany(group => group.Cards).ToDictionary(card => card.ProposalId);
+        page.AskToDeleteCommand.Execute(cards["p/declined"]);
+        Assert.True(page.IsConfirmingDelete);
+
+        await page.DeleteCommand.ExecuteAsync(cards["p/ready"]);
+
+        Assert.False(page.IsConfirmingDelete);
+        Assert.Empty(fake.DeleteProposalRequests);
+    }
+
+    [Fact]
     public async Task ShowClosedTogglesTheClosedProposals()
     {
         var (fake, _, page) = await OpenAsync(new ProposalStandings([], 2));

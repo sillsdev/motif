@@ -937,8 +937,8 @@ public sealed partial class ProposalsPageModel : PageModel
 
     private async Task DeleteAsync(ProposalCardViewModel? card)
     {
-        if (card is null || !card.CanDelete || Context.ProjectPath is not { } path) return;
         SetDeleteQuestion(null);
+        if (card is null || !card.CanDelete || Context.ProjectPath is not { } path) return;
         var deleted = await Context.Commands.DeleteProposalAsync(new DeleteProposalRequest(path, card.ProposalId),
             CancellationToken.None).ConfigureAwait(true);
         if (path != Context.ProjectPath) return;
