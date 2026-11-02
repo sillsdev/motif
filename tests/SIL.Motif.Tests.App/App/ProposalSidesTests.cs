@@ -29,8 +29,10 @@ public sealed class ProposalSidesTests
         MarkupView.TodayToProposal,
     ];
 
-    // Which side's numbers a text may carry: the view's own, one side whatever the view, or both in a pair.
-    private enum Follows { View, TodayAlways, ProposalAlways, PairedAlways, NamedWithProposal, ListChipName }
+    // Which side's numbers a text may carry: the view's own, one side always, or none and the same everywhere.
+    private enum Follows { View, TodayAlways, ProposalAlways, ProposalInPair, SameEverywhere, PairedAlways, NamedWithProposal, ListChipName }
+
+    private enum Side { Today, Proposal, Neither }
 
     private sealed record Drawn(string Name, string Text, Follows Rule = Follows.View);
 
@@ -43,23 +45,47 @@ public sealed class ProposalSidesTests
         public bool IsNeither(string number) => Neither.Contains(number);
     }
 
-    // Both sides hold the same twelve words; every count, place count and work total differs between them.
-    private static AssessmentWordResult Word(int index, string outcome) => new("w" + index, outcome,
-        outcome == "timed-out", outcome == "timed-out" ? "TimedOut" : "Complete", 1, null);
+    // One letter per word (analysed, no-analysis, timed-out, unassessed); both sides hold the same twenty.
+    private const string TodayLayout = "unuuuauaunuuuunntnun";
 
-    private static readonly string[] TodayOutcomes =
+    private const string ProposalLayout = "aatatnuuntuttuatantt";
+
+    private static string OutcomeOf(char letter) => letter switch
+    {
+        'a' => "analysed", 'n' => "no-analysis", 't' => "timed-out", _ => "unassessed",
+    };
+
+    private static AssessmentWordResult Word(int index, char letter)
+    {
+        var form = "w" + index;
+        var outcome = OutcomeOf(letter);
+        return letter == 'a'
+            ? new(form, outcome, false, "Search completed", 10, null)
+            {
+                ProjectStanding = ProjectStanding.Approved,
+                ReadingGrades = ["approved"],
+                Readings = [new ParserReading([new ParserReadingMorph(form, "gloss", "n", null, false, null)])],
+                Morphology = new ParseWordEvidence("v1", 0, form, 10, false, false, false,
+                    [new ParseAnalysis([new ParseMorph(form + "-0", "n", null, null)])], []),
+            }
+            : new(form, outcome, letter == 't', letter == 't' ? "TimedOut" : "Complete", 1, null);
+    }
+
+    // Each word has its own prime places, so every cell's places differ from the other side's.
+    private static readonly int[] Places = [3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73];
+
+    private static AssessmentWordResult[] Words(string layout) => [.. layout.Select((letter, index) => Word(index, letter))];
+
+    private static int CountOf(string layout, char letter) => layout.Count(item => item == letter);
+
+    private static int PlacesOf(string layout, char letter) => layout.Select((item, index) => item == letter ? Places[index] : 0).Sum();
+
+    // Every number the Texts matrix draws for one side: each outcome's words and places, and a row total.
+    private static string[] TextsSide(string layout) =>
     [
-        .. Enumerable.Repeat("no-analysis", 6), "timed-out", .. Enumerable.Repeat("unassessed", 5),
+        .. "antu".SelectMany(letter => new[] { CountOf(layout, letter), PlacesOf(layout, letter) }).Select(number => number.ToString()),
+        (layout.Length - CountOf(layout, 'a')).ToString(),
     ];
-
-    private static readonly string[] ProposalOutcomes =
-    [
-        .. Enumerable.Repeat("no-analysis", 3), .. Enumerable.Repeat("timed-out", 7), .. Enumerable.Repeat("unassessed", 2),
-    ];
-
-    private static readonly int[] Places = [3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41];
-
-    private static AssessmentWordResult[] Words(string[] outcomes) => [.. outcomes.Select((outcome, index) => Word(index, outcome))];
 
     private static readonly TimingProposalViewTests.Word[] TodayTiming =
         [new("a", 900), new("b", 1_900, true), new("c", 2_500, true), new("d", 4_700)];
@@ -107,7 +133,7 @@ public sealed class ProposalSidesTests
         JobStatus.Completed, DateTimeOffset.UtcNow, TrialFreshness.Current)
     {
         Work = new TrialWork(150, 380_000, 479_000, 26.0, [], 0, 0),
-        WordResults = Words(ProposalOutcomes),
+        WordResults = Words(ProposalLayout),
     };
 
     private static GrammarChangeEntry Rule(string key, int ordinal, string before, string after) =>
@@ -140,12 +166,11 @@ public sealed class ProposalSidesTests
         var warnings = new WarningsPageModel(context);
         var review = new ReviewPageModel(context);
         await context.OpenProjectAsync(TimingProposalViewTests.ProjectPath);
-        var evidence = new WorkspaceEvidence(TimingProposalViewTests.Assessment() with { Words = Words(TodayOutcomes) },
+        var evidence = new WorkspaceEvidence(TimingProposalViewTests.Assessment() with { Words = Words(TodayLayout) },
             DateTimeOffset.UtcNow, false);
         context.Assess.Restore(evidence);
         context.PublishEvidence(evidence);
         await context.EvidencePublication;
-        texts.Assess.Compare.UpdateOccurrences(word => Places[int.Parse(word[1..])]);
         await context.OpenProposalAsync(ProposalId, CancellationToken.None, "Sound change");
         return (fake, context, overview, texts, timing, warnings, review);
     }
@@ -170,10 +195,7 @@ public sealed class ProposalSidesTests
             Today: ["118", "142", "71", "84", "380000", "64", "482", "19", "2", "83", "88", "611", "14", "3", "38", "38.0"],
             Proposal: ["131", "150", "66", "91", "479000", "77", "505", "13", "1", "87", "92", "640", "9", "44", "44.0"],
             Neither: ["0", "95"]);
-        var textsNumbers = new Numbers(
-            Today: ["6", "1", "5", "56", "19", "161"],
-            Proposal: ["3", "7", "2", "15", "143", "78"],
-            Neither: ["0", "12", "256"]);
+        var textsNumbers = new Numbers(Today: TextsSide(TodayLayout), Proposal: TextsSide(ProposalLayout), Neither: ["0", "20"]);
         var timingNumbers = new Numbers(
             Today: ["10000", "2200", "2", "60", "40", "6000", "4000"],
             Proposal: ["13000", "3000", "1", "50", "6500"],
@@ -191,32 +213,55 @@ public sealed class ProposalSidesTests
                          .Concat(numbers.Proposal.Intersect(numbers.Neither)))
                 faults.Add($"{page}: the sample gives both sides the value {shared}");
 
+        var rails = new Dictionary<WorkspacePage, PageViewModel>
+        {
+            [WorkspacePage.Overview] = new(WorkspacePage.Overview, "Overview", "overview", overview),
+            [WorkspacePage.Texts] = new(WorkspacePage.Texts, "Texts", "texts", texts),
+            [WorkspacePage.Timing] = new(WorkspacePage.Timing, "Timing", "timing", timing),
+            [WorkspacePage.Warnings] = new(WorkspacePage.Warnings, "Warnings", "warnings", warnings),
+            [WorkspacePage.Review] = new(WorkspacePage.Review, "Review", "review", review),
+        };
+        Action<MarkupView> RailOf(WorkspacePage page, string badge, string name) =>
+            view => CheckRail(rails[page], page.ToString(), view, badge, name, faults);
+
         context.OpenPage(WorkspacePage.Overview);
         await VisitAsync("Overview", overviewNumbers, () => context.ShowProposalView(MarkupView.TodayToProposal),
             async () => await TextsProposalMatrixTests.UntilAsync(() => overview.TextCoverageMain.Contains(Arrow)),
-            view => DrawOverview(overview, view), context, fake, faults);
+            view => DrawOverview(overview, view), context, fake, faults, RailOf(WorkspacePage.Overview, "", ""));
 
         context.OpenPage(WorkspacePage.Texts);
         texts.Tab = TextsTab.Lists;
         await VisitAsync("Texts", textsNumbers, () => context.ShowProposalView(MarkupView.TodayToProposal),
-            async () => await TextsProposalMatrixTests.UntilAsync(() => texts.Assess.Compare.ProposalWordsMatch is not null),
-            view => DrawTexts(texts, view), context, fake, faults);
+            async () =>
+            {
+                await TextsProposalMatrixTests.UntilAsync(() => texts.Assess.Compare.ProposalWordsMatch is not null);
+                texts.Assess.Compare.UpdateOccurrences(word => Places[int.Parse(word[1..])]);
+                context.ShowProposalView(MarkupView.TodayToProposal);
+            },
+            view => DrawTexts(texts, view), context, fake, faults,
+            RailOf(WorkspacePage.Texts, "+3", "3 more words are Same with this Proposal than today"));
 
         context.OpenPage(WorkspacePage.Timing);
         await VisitAsync("Timing", timingNumbers, () => context.ShowProposalView(MarkupView.TodayToProposal),
             async () => await TextsProposalMatrixTests.UntilAsync(() => timing.HeadlineTotal.Contains(Arrow)),
-            view => DrawTiming(timing, view, faults), context, fake, faults);
-        Expect(faults, "Timing delta", "+30%", timing.DeltaBadge);
+            view => DrawTiming(timing, view, faults), context, fake, faults,
+            RailOf(WorkspacePage.Timing, "+30%", "30% more parser work with this Proposal than today"));
 
         context.OpenPage(WorkspacePage.Warnings);
         await VisitAsync("Warnings", warningsNumbers, () => context.ShowProposalView(MarkupView.TodayToProposal),
             async () => await TextsProposalMatrixTests.UntilAsync(() => warnings.Grammar.Warnings.Pairs),
-            view => DrawWarnings(warnings, view), context, fake, faults);
-        Expect(faults, "Warnings delta", "−9", warnings.DeltaBadge);
+            view => DrawWarnings(warnings, view), context, fake, faults,
+            RailOf(WorkspacePage.Warnings, "−9", "9 fewer warnings with this Proposal than today"));
 
         context.OpenPage(WorkspacePage.Review);
         await VisitAsync("Review", reviewNumbers, () => context.ShowProposalView(MarkupView.TodayToProposal),
-            async () => await review.LoadReviewAsync(), view => DrawReview(review), context, fake, faults);
+            async () => await review.LoadReviewAsync(), view => DrawReview(review), context, fake, faults,
+            RailOf(WorkspacePage.Review, "", ""));
+
+        // A share with no text today beside a Proposal value reads "Proposal x" with the number.
+        var proposalOnly = new TimingShare("Kind", "kind", null, null, 0, null) { ProposalShareText = TimingShare.FormatPercent(0.6) };
+        Expect(faults, "A Proposal-only share", string.Format(MotifAppStrings.PairedProposalOnly, TimingShare.FormatPercent(0.6)),
+            proposalOnly.ShownShareText);
 
         Assert.True(faults.Count == 0, Environment.NewLine + string.Join(Environment.NewLine, faults));
     }
@@ -226,9 +271,10 @@ public sealed class ProposalSidesTests
         if (expected != actual) faults.Add($"{what}: expected '{expected}' but drew '{actual}'");
     }
 
-    // Flips through every view and back, checking what each draws and that no flip reads or reloads anything.
+    // Flips through every view, checking what each draws and that no flip reads or reloads anything.
     private static async Task VisitAsync(string page, Numbers numbers, Action toPair, Func<Task> settled,
-        Func<MarkupView, IReadOnlyList<Drawn>> draw, WorkspaceContext context, FakeCommandClient fake, List<string> faults)
+        Func<MarkupView, IReadOnlyList<Drawn>> draw, WorkspaceContext context, FakeCommandClient fake, List<string> faults,
+        Action<MarkupView>? rail = null)
     {
         toPair();
         await settled();
@@ -236,9 +282,11 @@ public sealed class ProposalSidesTests
         var lens = context.EvidenceLens;
         var version = context.PageRequestVersion;
         var first = new Dictionary<MarkupView, string>();
+        var seen = new Dictionary<(MarkupView, string), Drawn>();
         foreach (var view in Flips)
         {
             context.ShowProposalView(view);
+            rail?.Invoke(view);
             var drawn = draw(view);
             var all = string.Join(" | ", drawn.Select(item => item.Name + "=" + item.Text));
             if (first.TryGetValue(view, out var before))
@@ -247,13 +295,43 @@ public sealed class ProposalSidesTests
             }
             else first[view] = all;
             if (drawn.Count == 0) faults.Add($"{page} {view}: drew nothing, so nothing was checked");
-            foreach (var item in drawn) CheckNumbers(page, view, item, numbers, faults);
+            foreach (var item in drawn)
+            {
+                CheckNumbers(page, view, item, numbers, faults);
+                seen[(view, item.Name)] = item;
+            }
+        }
+
+        // A text with the same numbers on both sides could not show a swap, so it must say it is the same.
+        foreach (var ((view, name), item) in seen.Where(entry => entry.Key.Item1 == MarkupView.Today))
+        {
+            if (!seen.TryGetValue((MarkupView.Proposal, name), out var proposal)) continue;
+            var today = NumbersIn(item.Text).Where(number => number != "0").ToArray();
+            var sameInEveryView = item.Rule == Follows.SameEverywhere;
+            var oneSide = item.Rule is Follows.TodayAlways or Follows.ProposalAlways or Follows.PairedAlways;
+            if (today.Length > 0 && !sameInEveryView && !oneSide && today.SequenceEqual(NumbersIn(proposal.Text).Where(number => number != "0")))
+                faults.Add($"{page} {name}: reads '{item.Text}' in both the Today and Proposal views, so a swap would not show");
+            if (sameInEveryView && seen.Where(entry => entry.Key.Item2 == name).Select(entry => entry.Value.Text).Distinct().Count() > 1)
+                faults.Add($"{page} {name}: is meant to read the same in every view but does not");
         }
 
         foreach (var name in reads.Keys.Where(name => reads[name] != ReadCounts(fake)[name]))
             faults.Add($"{page}: flipping the view changed {name} from {reads[name]} to {ReadCounts(fake)[name]}");
         if (!ReferenceEquals(lens, context.EvidenceLens)) faults.Add($"{page}: flipping the view replaced the evidence lens");
         if (version != context.PageRequestVersion) faults.Add($"{page}: flipping the view reloaded the page");
+    }
+
+    // The sidebar entry of a page shows the delta and says whose number it is, the same in every view.
+    private static void CheckRail(PageViewModel entry, string page, MarkupView view, string badge, string name, List<string> faults)
+    {
+        var where = $"{page} rail {view}";
+        Expect(faults, where + " model badge", badge, entry.Model.DeltaBadge);
+        Expect(faults, where + " badge", badge, entry.DeltaBadge);
+        Expect(faults, where + " badge name", name, entry.DeltaBadgeName);
+        Expect(faults, where + " has badge", (badge.Length > 0).ToString(), entry.HasDeltaBadge.ToString());
+        Expect(faults, where + " tip", name.Length == 0 ? entry.Title : entry.Title + ": " + name, entry.RailTip);
+        Expect(faults, where + " automation name", name.Length == 0 ? entry.Title + " page" : entry.Title + " page: " + name,
+            entry.AutomationName);
     }
 
     // Counts every list the fake keeps of what the window asked, so any read a flip made shows.
@@ -271,11 +349,10 @@ public sealed class ProposalSidesTests
             var parts = item.Text.Split(NamedMarker, 2);
             foreach (var number in NumbersIn(parts[0]).Where(number => !numbers.IsToday(number) && !numbers.IsNeither(number)))
                 faults.Add($"{where}: before the Proposal's label is {number}, which is not today's");
-            var read = parts[1].Contains(Arrow) ? parts[1].Split(Arrow, 2) : ["", parts[1]];
-            foreach (var number in NumbersIn(read[0]).Where(number => !numbers.IsToday(number) && !numbers.IsNeither(number)))
-                faults.Add($"{where}: the left of the label's pair has {number}, which is not today's");
-            foreach (var number in NumbersIn(read[1]).Where(number => !numbers.IsProposal(number) && !numbers.IsNeither(number)))
-                faults.Add($"{where}: after the Proposal's label is {number}, which is not the Proposal's");
+            if (parts[1].Contains(Arrow)) CheckPair(where, parts[1], numbers, faults);
+            else
+                foreach (var number in NumbersIn(parts[1]).Where(number => !numbers.IsProposal(number) && !numbers.IsNeither(number)))
+                    faults.Add($"{where}: after the Proposal's label is {number}, which is not the Proposal's");
             return;
         }
 
@@ -290,28 +367,46 @@ public sealed class ProposalSidesTests
         var paired = item.Rule == Follows.PairedAlways || item.Rule == Follows.View && view == MarkupView.TodayToProposal;
         if (paired && item.Text.Contains(Arrow))
         {
-            var parts = item.Text.Split(Arrow, 2);
-            foreach (var number in NumbersIn(parts[0]).Where(number => !numbers.IsToday(number) && !numbers.IsNeither(number)))
-                faults.Add($"{where}: the left of the pair has {number}, which is not today's");
-            foreach (var number in NumbersIn(parts[1]).Where(number => !numbers.IsProposal(number) && !numbers.IsNeither(number)))
-                faults.Add($"{where}: the right of the pair has {number}, which is not the Proposal's");
+            CheckPair(where, item.Text, numbers, faults);
             return;
         }
 
-        var wantsToday = item.Rule switch
+        // Without an arrow the pair view draws one side's number, so each text says which side.
+        var side = item.Rule switch
         {
-            Follows.TodayAlways => true,
-            Follows.ProposalAlways => false,
-            _ => view != MarkupView.Proposal,
+            Follows.TodayAlways => Side.Today,
+            Follows.ProposalAlways => Side.Proposal,
+            Follows.SameEverywhere => Side.Neither,
+            Follows.ProposalInPair => view == MarkupView.Today ? Side.Today : Side.Proposal,
+            _ => view == MarkupView.Today ? Side.Today : view == MarkupView.Proposal ? Side.Proposal : Side.Neither,
         };
-        var wantsBoth = item.Rule == Follows.View && view == MarkupView.TodayToProposal;
         foreach (var number in NumbersIn(item.Text))
         {
-            if (numbers.IsNeither(number)) continue;
-            if (wantsBoth && (numbers.IsToday(number) || numbers.IsProposal(number))) continue;
-            if (wantsToday && numbers.IsToday(number)) continue;
-            if (!wantsToday && !wantsBoth && numbers.IsProposal(number)) continue;
-            faults.Add($"{where}: {number} is " + (numbers.IsToday(number) ? "today's" : numbers.IsProposal(number) ? "the Proposal's" : "from neither side"));
+            if (numbers.IsNeither(number) || side == Side.Today && numbers.IsToday(number) ||
+                side == Side.Proposal && numbers.IsProposal(number)) continue;
+            faults.Add($"{where}: {number} is " + (numbers.IsToday(number) ? "today's" : numbers.IsProposal(number) ? "the Proposal's" : "from neither side") +
+                $", but this text belongs to {side}");
+        }
+    }
+
+    // Today's number is before an arrow and the Proposal's after it, as in "6 → 3 words · 288 → 113 places".
+    private static void CheckPair(string where, string text, Numbers numbers, List<string> faults)
+    {
+        var chunks = text.Split(Arrow);
+        for (var index = 0; index < chunks.Length; index++)
+        {
+            var found = NumbersIn(chunks[index]).ToArray();
+            for (var at = 0; at < found.Length; at++)
+            {
+                var number = found[at];
+                var middle = index > 0 && index < chunks.Length - 1;
+                var today = index == 0 || middle && at == found.Length - 1;
+                var proposal = index == chunks.Length - 1 || middle && at == 0;
+                if (numbers.IsNeither(number) || today && numbers.IsToday(number) || proposal && numbers.IsProposal(number) ||
+                    middle && at > 0 && at < found.Length - 1 && (numbers.IsToday(number) || numbers.IsProposal(number))) continue;
+                faults.Add($"{where}: {number} is " + (numbers.IsToday(number) ? "today's" : numbers.IsProposal(number) ? "the Proposal's" : "from neither side") +
+                    (today ? ", where today's belongs" : ", where the Proposal's belongs"));
+            }
         }
     }
 
@@ -325,6 +420,7 @@ public sealed class ProposalSidesTests
             new("Warnings", page.WarningsCount),
         };
         // Today's detail sits under each headline and is not drawn in the Proposal view.
+        drawn.Add(new("Note", page.ProposalNote ?? string.Empty));
         if (page.ShowTodayDetail)
         {
             drawn.Add(new("Speed median", page.SpeedMedian, Follows.TodayAlways));
@@ -340,12 +436,13 @@ public sealed class ProposalSidesTests
     {
         var compare = page.Assess.Compare;
         var drawn = new List<Drawn>();
-        foreach (var cell in compare.Cells.Where(cell => cell.Row == WordProjectStatus.NotPresent))
+        foreach (var cell in compare.Cells)
         {
-            drawn.Add(new($"{cell.Column} count", cell.CountNumberText));
-            drawn.Add(new($"{cell.Column} places", cell.PlacesText));
-            drawn.Add(new($"{cell.Column} name", cell.AccessibleName, Follows.NamedWithProposal));
+            drawn.Add(new($"{cell.Row} {cell.Column} count", cell.CountNumberText));
+            drawn.Add(new($"{cell.Row} {cell.Column} places", cell.PlacesText));
+            drawn.Add(new($"{cell.Row} {cell.Column} name", cell.AccessibleName, Follows.NamedWithProposal));
         }
+        drawn.Add(new("Note", page.ProposalNote ?? string.Empty));
         drawn.AddRange(compare.Columns.Select(column => new Drawn($"{column.Column} column", column.CountText)));
         drawn.AddRange(compare.Rows.Select(row => new Drawn($"{row.Row} row", row.CountText)));
         foreach (var list in page.TextsLists.Lists.Where(list => list.ShowsChip))
@@ -364,7 +461,8 @@ public sealed class ProposalSidesTests
             new("Total", page.HeadlineTotal),
             new("Median", page.HeadlineMedian),
             new("Stopped", page.HeadlineStopped),
-            new("Caption", page.HeadlineTotalCaption),
+            new("Caption", page.HeadlineTotalCaption, Follows.SameEverywhere),
+            new("Note", page.ProposalNote ?? string.Empty),
         };
         foreach (var share in page.KindShares)
         {
@@ -388,7 +486,9 @@ public sealed class ProposalSidesTests
             var affix = page.KindShares.Single(share => share.Kind == "affix");
             var synth = page.KindShares.Single(share => share.Kind == "synth_rule");
             Expect(faults, "Timing affix share", Pair(TimingShare.FormatPercent(0.4), MotifAppStrings.ProposalPageNone), affix.ShownShareText);
+            Expect(faults, "Timing affix work", Pair(TimingShare.FormatParserWork(4_000), MotifAppStrings.ProposalPageNone), affix.ShownWorkText);
             Expect(faults, "Timing synth_rule share", Pair(MotifAppStrings.TimingNoneToday, TimingShare.FormatPercent(0.5)), synth.ShownShareText);
+            Expect(faults, "Timing synth_rule work", Pair(MotifAppStrings.TimingNoneToday, TimingShare.FormatParserWork(6_500)), synth.ShownWorkText);
         }
         return drawn;
     }
@@ -403,24 +503,26 @@ public sealed class ProposalSidesTests
             new("Warnings", warnings.WarningCountText),
             new("Information", warnings.InformationCountText),
             new("Summary", warnings.CountSummary),
-            new("Breakdown", warnings.BreakdownText),
+            new("Breakdown", warnings.BreakdownText, Follows.ProposalInPair),
             new("Today's breakdown", warnings.TodayBreakdownText, Follows.TodayAlways),
             new("Today's total", warnings.TodayTotalCount.ToString(), Follows.TodayAlways),
             new("Badge", page.Badge, Follows.TodayAlways),
             new("Gone", warnings.GoneCount.ToString(), Follows.TodayAlways),
             new("New", warnings.NewCount.ToString(), Follows.ProposalAlways),
+            new("Note", page.ProposalNote ?? string.Empty),
+            .. page.AreaFilters.Select(area => new Drawn($"area {area.Label}", area.Count.ToString(), Follows.ProposalInPair)),
         ];
     }
 
-    // Review Changes follows the open Proposal whatever the bar shows, so it must draw the same in all three views.
+    // Review Changes follows the open Proposal whatever the bar shows, so it draws the same in all views.
     private static IReadOnlyList<Drawn> DrawReview(ReviewPageModel page)
     {
         var drawn = new List<Drawn>
         {
-            new("Count", page.CountText),
-            new("Looked at", page.LookedAtText),
-            new("Keep all", page.KeepAllText),
-            new("Undo all", page.UndoAllText),
+            new("Count", page.CountText, Follows.SameEverywhere),
+            new("Looked at", page.LookedAtText, Follows.SameEverywhere),
+            new("Keep all", page.KeepAllText, Follows.SameEverywhere),
+            new("Undo all", page.UndoAllText, Follows.SameEverywhere),
             new("Work notice", page.WorkNotice ?? string.Empty, Follows.ProposalAlways),
         };
         foreach (var entry in page.Entries)
