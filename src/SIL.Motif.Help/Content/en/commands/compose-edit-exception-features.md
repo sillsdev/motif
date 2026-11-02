@@ -1,6 +1,6 @@
 # Set exception features
 
-Use this command to set the exception features on a stem or clitic, or the ones an inflectional affix requires of its stem. It replaces the whole set; an empty list clears it. To add features to many entries without resetting them, use `compose-add-exception-features`.
+Use this command to set the exception features on a stem or clitic, or the ones an inflectional affix requires of its stem. It replaces the whole set; an empty list clears it, and anything left out is removed. To add features without resetting the others, use `compose-add-exception-features`.
 
 ```sh
 motif compose-edit-exception-features --project language.fwdata --draft features \

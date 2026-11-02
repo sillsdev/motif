@@ -1564,6 +1564,12 @@ public static partial class ProposalCommands
         ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
             BuildApplyProjection(database, project, request.ProposalId, request.Force, request.Attribution));
 
+    /// <summary>Lets a test give the calling flow its own loader to control the save; other flows are unaffected.</summary>
+    internal static AsyncLocal<Func<FwDataProjectLoader>?> ApplyLoaderOverride { get; } = new();
+
+    private static FwDataProjectLoader ApplyLoaderFactory() =>
+        ApplyLoaderOverride.Value?.Invoke() ?? new FwDataProjectLoader();
+
     /// <summary>The Correctness Assessments of one Proposal revision, newest first.</summary>
     internal static IReadOnlyList<string> CandidateAssessmentIds(
         AssessmentRepository assessments, CanonicalId proposalId, string intentDigest) =>
@@ -1828,7 +1834,7 @@ public static partial class ProposalCommands
                     Fact(("proposalId", id), ("assessmentId", candidate?.AssessmentId))));
             }
 
-            var loader = new FwDataProjectLoader();
+            var loader = ApplyLoaderFactory();
             if (IsTestTarget("MOTIF_TEST_FAIL_LIVE_APPLY_WRITING_SYSTEM_FOR", project.FullFwDataPath))
                 throw ProjectWritingSystemsUnavailableException.MissingStore(project.FullFwDataPath);
             cache = loader.LoadCache(project.FullFwDataPath);
@@ -1887,6 +1893,8 @@ public static partial class ProposalCommands
                             "project file before doing anything else with it.",
                             ex);
                     }
+                    // The save returned; confirm the file holds the change before anything is recorded.
+                    ApplySaveCheck.RequireOnDisk(project.FullFwDataPath, receipt.AppliedLogEntry.ProposalId);
                 }
 
                 try
@@ -2023,6 +2031,11 @@ public static partial class ProposalCommands
             }
             return CommandOutcome<ApplyProjection>.Refused(new Refusal(
                 "apply.reconciliation-needed", ReasonFor(ex), message, Fact(("proposalId", proposalId))));
+        }
+        catch (ApplySaveNotLandedException ex)
+        {
+            return CommandOutcome<ApplyProjection>.Refused(new Refusal(
+                RefusalCodes.ApplyNotSaved, FailureReason.Refused, ex.Message, Fact(("proposalId", proposalId))));
         }
         catch (AppliedContentMismatchException ex)
         {

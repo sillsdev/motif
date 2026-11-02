@@ -5861,6 +5861,10 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <value>Applying may have completed, but its result could not be confirmed. Check the project before retrying.</value>
     <comment>Sentence the window shows when the command refuses with code C.ApplyReconciliationNeeded. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
+  <data name="MotifApp.RefusalApplyNotSaved" xml:space="preserve">
+    <value>The project file does not show the change yet, so nothing was recorded. It may still be saving; applying again is safe.</value>
+    <comment>Sentence the window shows when the command refuses with code C.ApplyNotSaved. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
+  </data>
   <data name="MotifApp.RefusalOperationCascadingDelete" xml:space="preserve">
     <value>This change deletes something that owns other things, so it cannot be undone from here.</value>
     <comment>Sentence the window shows when the command refuses with code C.OperationCascadingDelete. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>

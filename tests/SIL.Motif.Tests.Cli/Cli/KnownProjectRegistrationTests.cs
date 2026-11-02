@@ -47,6 +47,30 @@ public sealed class KnownProjectRegistrationTests : IDisposable
         Assert.Contains("will not run until it is", result.Error, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("dry-run")]
+    [InlineData("trial")]
+    public void AJobVerbForAProjectWhoseTagCollidesIsRefusedNamingTheTagTheHolderAndTheFix(string verb)
+    {
+        var holder = Path.Combine(_root, "holder", "Holder.fwdata");
+        Directory.CreateDirectory(Path.GetDirectoryName(holder)!);
+        File.WriteAllText(holder, string.Empty);
+        using (var machine = MachineDatabase.Open(_workerRoot))
+            new KnownProjectRegistry(machine).RecordWithTag("holder", holder, DateTimeOffset.UtcNow, "ceb");
+        var contested = Path.Combine(_root, "ceb", "Project.fwdata");
+        Directory.CreateDirectory(Path.GetDirectoryName(contested)!);
+        File.WriteAllText(contested, "<languageproject version=\"7000072\"><rt class=\"LangProject\" guid=\"" +
+            Guid.NewGuid().ToString("D") + "\" ownerguid=\"\"><CurVernWss><Uni>ceb</Uni></CurVernWss></rt></languageproject>");
+
+        var result = Run($"{verb} --project \"{contested}\" some-proposal --wait");
+
+        Assert.Equal(2, result.ExitCode);
+        Assert.Contains("'ceb'", result.Error, StringComparison.Ordinal);
+        Assert.Contains(holder, result.Error, StringComparison.Ordinal);
+        Assert.Contains("motif project tag --set", result.Error, StringComparison.Ordinal);
+        Assert.Contains("Nothing was queued", result.Error, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void RunningAProjectVerbRecordsTheProjectInKnownProjects()
     {

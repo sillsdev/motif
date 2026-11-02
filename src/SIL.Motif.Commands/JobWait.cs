@@ -16,6 +16,9 @@ public static class JobWait
     /// <summary>How long a job may sit Queued before a wait wakes the runner again.</summary>
     public static readonly TimeSpan DefaultRewakeAfter = TimeSpan.FromSeconds(5);
 
+    /// <summary>How long a job may sit Queued, unclaimed, before a wait says so rather than waiting on in silence.</summary>
+    public static readonly TimeSpan DefaultStallNoticeAfter = TimeSpan.FromSeconds(60);
+
     /// <summary>Polls a job until it finishes, the timeout elapses, or the caller cancels.</summary>
     /// <param name="projectPath">The FieldWorks project that owns the job.</param>
     /// <param name="jobId">The durable job identity to wait for.</param>
@@ -29,6 +32,8 @@ public static class JobWait
     /// its ownership leaves unclaimed. Called at most once per <paramref name="rewakeAfter"/>.
     /// </param>
     /// <param name="rewakeAfter">The queued time before the first wake and between wakes; five seconds when unset.</param>
+    /// <param name="reportStall">Told once when the job stays Queued, unclaimed, past <paramref name="stallNoticeAfter"/>.</param>
+    /// <param name="stallNoticeAfter">The unclaimed time before the notice; sixty seconds when unset.</param>
     public static async Task<CommandOutcome<JobStatusResponse>> WaitAsync(
         string projectPath,
         string jobId,
@@ -38,11 +43,16 @@ public static class JobWait
         string? productVersion = null,
         bool cancelOnTimeout = false,
         Action? wakeRunner = null,
-        TimeSpan? rewakeAfter = null)
+        TimeSpan? rewakeAfter = null,
+        Action<string>? reportStall = null,
+        TimeSpan? stallNoticeAfter = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(projectPath);
         var rewake = rewakeAfter ?? DefaultRewakeAfter;
         var lastWake = DateTimeOffset.UtcNow;
+        var stallAfter = stallNoticeAfter ?? DefaultStallNoticeAfter;
+        var waitStarted = DateTimeOffset.UtcNow;
+        var stallReported = false;
         ArgumentException.ThrowIfNullOrWhiteSpace(jobId);
 
         var version = productVersion ?? MotifProductVersion.CurrentText;
@@ -66,6 +76,15 @@ public static class JobWait
             {
                 lastWake = DateTimeOffset.UtcNow;
                 wakeRunner();
+            }
+            if (!stallReported && reportStall is not null && value.Status == JobStatus.Queued && !value.ClaimLost &&
+                DateTimeOffset.UtcNow - waitStarted >= stallAfter)
+            {
+                stallReported = true;
+                reportStall("warning: job '" + jobId + "' has been queued for " + (int)stallAfter.TotalSeconds +
+                    " seconds and no runner has claimed it. The background runner may not have started, or may not " +
+                    "know this project (a project tag collision stops it being recorded; see 'motif project tag'). " +
+                    "Still waiting" + (timeout is { } shown ? " for up to " + shown : "") + ".");
             }
             if (deadline is { } due && DateTimeOffset.UtcNow >= due)
             {

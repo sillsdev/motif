@@ -21,12 +21,17 @@ public enum ProjectTagProblem
 public sealed class ProjectTagException : Exception
 {
     /// <summary>Builds a refusal that gives the person the project-tag command to resolve it.</summary>
-    public ProjectTagException(ProjectTagProblem problem, string tag, string projectPath)
-        : base(MessageFor(problem, tag, projectPath))
+    public ProjectTagException(
+        ProjectTagProblem problem, string tag, string projectPath, string? collidingProjectPath = null)
+        : base(MessageFor(problem, tag, projectPath, collidingProjectPath))
     {
         Problem = problem;
         Tag = tag;
+        CollidingProjectPath = collidingProjectPath;
     }
+
+    /// <summary>The Known project that already holds the tag, when the refusal is a collision and it is known.</summary>
+    public string? CollidingProjectPath { get; }
 
     /// <summary>The tag-selection problem that caused the refusal.</summary>
     public ProjectTagProblem Problem { get; }
@@ -34,13 +39,17 @@ public sealed class ProjectTagException : Exception
     /// <summary>The candidate tag, or the empty string when no candidate could be read.</summary>
     public string Tag { get; }
 
-    private static string MessageFor(ProjectTagProblem problem, string tag, string projectPath)
+    private static string MessageFor(
+        ProjectTagProblem problem, string tag, string projectPath, string? collidingProjectPath)
     {
         var guidance = $"Set a tag for this project with: motif project tag --set <new-tag> --project \"{projectPath}\".";
         return problem switch
         {
             ProjectTagProblem.Invalid => $"The project tag '{tag}' is invalid. {ProjectTags.RulesText} {guidance}",
-            ProjectTagProblem.Taken => $"The project tag '{tag}' is already used by another Known project. {guidance}",
+            ProjectTagProblem.Taken => collidingProjectPath is null
+                ? $"The project tag '{tag}' is already used by another Known project. {guidance}"
+                : $"The project tag '{tag}' is already used by the Known project \"{collidingProjectPath}\", so Motif " +
+                  $"cannot record \"{projectPath}\" for background work. {guidance}",
             ProjectTagProblem.Unavailable => $"Motif could not determine this project's vernacular language code. {guidance}",
             _ => throw new ArgumentOutOfRangeException(nameof(problem), problem, null),
         };

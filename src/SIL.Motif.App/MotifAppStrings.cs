@@ -2988,6 +2988,8 @@ public static class MotifAppStrings
 
     public static string RefusalApplyReconciliationNeeded => Text("MotifApp.RefusalApplyReconciliationNeeded");
 
+    public static string RefusalApplyNotSaved => Text("MotifApp.RefusalApplyNotSaved");
+
     public static string RefusalOperationCascadingDelete => Text("MotifApp.RefusalOperationCascadingDelete");
 
     public static string RefusalOperationInvalidDependency => Text("MotifApp.RefusalOperationInvalidDependency");

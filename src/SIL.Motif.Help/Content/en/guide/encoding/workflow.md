@@ -61,6 +61,14 @@ The guides name MCP tools. From the CLI, use the matching `motif` command; run `
 | `motif_difference` | `motif difference produce` |
 | `motif_guide` | `motif help guide:encoding/<topic> --full` |
 
+## Composer notes
+
+- **Exception features are set as a whole list.** `compose-edit-exception-features` replaces the exact list on a stem or an inflectional affix. To add a feature to an entry that already has some, read its current features first and send the merged list: the old ones plus the new one. Sending only the new one removes the rest. `compose-add-exception-features` adds without replacing.
+- **Reaching an object made earlier in the same batch.** Give the step an `as` label, then write `@label` as a whole value in a later step in place of the id the first step created. If the step created several objects, name the one you mean: `@label:msa`, `@label:senses`, `@label:codes`. A phonological rule step resolves `@label` only in `placement.after` and `placement.before` of its own intent; a later step that needs the rule it created names it with `@label:phonrules`.
+- **There is no `@FEAT:` form.** A placeholder written `@FEAT:name` is not recognised: it stays as literal text and is then refused because it is not an id. A feature made in the same batch is reached by an `as` label on its `compose-author-exception-feature` step and `@label`. An existing feature has no placeholder at all: read its id from the project (`motif grammar read`) and write the id.
+- **An allomorph shares its entry's analysis.** `compose-author-affix-process-allomorph` adds a form to the entry and does not create a second analysis, so one allomorph cannot carry a different tense or other label than the entry. To label two forms differently, make two entries, or add a second analysis with `compose-add-morphosyntax-analysis`.
+- **Do not parse is honoured by PanGloss only.** Motif can mark an entry do-not-parse, and PanGloss then skips it. FieldWorks' HermitCrab does not read the flag, so a grammar that depends on it behaves differently in FieldWorks (see `compose-set-entry-do-not-parse`).
+
 ## Common wrong choices
 
 - Reaching for an affix process, ad hoc prohibition or batch when a typed composer fits the claim.

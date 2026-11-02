@@ -57,6 +57,28 @@ public sealed class ProjectTagRegistryTests : IDisposable
         var taken = Assert.Throws<ProjectTagException>(() => registry.Record("taken-folder", takenFolder, seen));
         Assert.Equal(ProjectTagProblem.Taken, taken.Problem);
         Assert.Null(registry.Find("taken-folder"));
+        Assert.Equal(folderOwner, taken.CollidingProjectPath);
+        Assert.Contains("'wolff'", taken.Message, StringComparison.Ordinal);
+        Assert.Contains(folderOwner, taken.Message, StringComparison.Ordinal);
+        Assert.Contains("motif project tag --set", taken.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AMovedProjectKeepsItsLanguageTagBecauseTheStaleRowReleasesIt()
+    {
+        using var machine = MachineDatabase.Open(_root);
+        var registry = new KnownProjectRegistry(machine);
+        var seen = new DateTimeOffset(2026, 10, 24, 0, 0, 0, TimeSpan.Zero);
+        var oldPath = Project("old-place", "ceb");
+        registry.Record("old", oldPath, seen);
+        Assert.Equal("ceb", ReadTag(machine, "old"));
+
+        File.Delete(oldPath);
+        var newPath = Project("new-place", "ceb");
+        registry.Record("new", newPath, seen);
+
+        Assert.Equal("ceb", ReadTag(machine, "new"));
+        Assert.Null(registry.Find("old")!.ProjectTag);
     }
 
     [Fact]

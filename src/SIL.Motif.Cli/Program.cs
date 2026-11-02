@@ -151,7 +151,12 @@ try
     // Every invocation naming a project upserts it into the machine store (ADR 0041 decision 4).
     if (flags.TryGetValue("project", out var projectForRegistry) &&
         commandName is not ("project initialize" or "project tag" or "project tag --set"))
-        RecordKnownProject(projectForRegistry, ResolveRoot(), error);
+    {
+        var recordFailure = RecordKnownProject(projectForRegistry, ResolveRoot(), error);
+        // An unrecorded project's jobs never run: refuse now.
+        if (recordFailure is ProjectTagException tagFailure && QueuesJobs(verb, positionals))
+            return RefuseProjectTag(tagFailure, flags.ContainsKey("json"), error);
+    }
 
     // Every migrated read surface renders both ways from one projection (ADR 0021 decision 2).
     asJson = flags.ContainsKey("json");
@@ -850,7 +855,8 @@ try
                 var dryRunWakeWarnings = RunnerWarnings.Once(error.WriteLine);
                 result = RenderCommand(JobCommands.WaitForDryRun(new WaitForDryRunRequest(
                     dryRunProject, CliProductVersion(), positionals[0], dryRunJobId, dryRunWaitTimeout),
-                    wakeRunner: () => startRunner(dryRunProject, dryRunWakeWarnings)));
+                    wakeRunner: () => startRunner(dryRunProject, dryRunWakeWarnings),
+                    reportStall: error.WriteLine));
             }
             break;
 
@@ -932,7 +938,7 @@ try
                 var trialWakeWarnings = RunnerWarnings.Once(error.WriteLine);
                 result = RenderCommand(JobCommands.WaitForJob(
                     new WaitForJobRequest(trialProject, trialJobId, CliProductVersion(), trialWaitTimeout),
-                    () => startRunner(trialProject, trialWakeWarnings)));
+                    () => startRunner(trialProject, trialWakeWarnings), error.WriteLine));
             }
             break;
 
@@ -1636,7 +1642,8 @@ try
                         startRunner(phonologyProject, error.WriteLine);
                         if (flags.ContainsKey("wait"))
                             result = RenderCommand(JobCommands.WaitForJob(new WaitForJobRequest(phonologyProject,
-                                queuedCheck.Value!.JobId, CliProductVersion(), checkWaitTimeout)));
+                                queuedCheck.Value!.JobId, CliProductVersion(), checkWaitTimeout),
+                                reportStall: error.WriteLine));
                     }
                     break;
                 case "results":
@@ -2929,25 +2936,51 @@ static IReadOnlyList<string> ReadRepeatedFlagValues(Dictionary<string, string> f
         : [];
 
 /// <summary>Upserts a named project into the machine store's <c>KnownProjects</c>.</summary>
-static void RecordKnownProject(string fwDataPath, string root, TextWriter error)
+static Exception? RecordKnownProject(string fwDataPath, string root, TextWriter error)
 {
     try
     {
         var fullPath = Path.GetFullPath(fwDataPath);
-        if (!File.Exists(fullPath)) return;
+        if (!File.Exists(fullPath)) return null;
 
         var project = new ProjectLocator(fullPath, Path.GetFileNameWithoutExtension(fullPath));
         var failure = KnownProjectRecorder.TryRecord(root, project);
         if (failure is not null)
             error.WriteLine("warning: this project could not be recorded for background work (" +
                 failure.Message + "). Queued jobs will not run until it is.");
+        return failure;
     }
     catch (Exception exception) when (exception is ArgumentException or IOException or UnauthorizedAccessException)
     {
         // Reported, not thrown: an unregistered project is never swept, so silence would hide lost work.
         error.WriteLine("warning: this project could not be recorded for background work (" +
             exception.Message + "). Queued jobs will not run until it is.");
+        return exception;
     }
+}
+
+static bool QueuesJobs(string verb, IReadOnlyList<string> positionals) => verb switch
+{
+    "dry-run" or "trial" or "baseline-refresh" or "parsimony" => true,
+    "phonology-examples" => positionals.Count > 0 && positionals[0] == "check",
+    "jobs" => positionals.Count > 0 && positionals[0] == "requeue",
+    _ => false,
+};
+
+static int RefuseProjectTag(ProjectTagException failure, bool asJson, TextWriter error)
+{
+    var code = failure.Problem == ProjectTagProblem.Taken ? RefusalCodes.ProjectTagTaken
+        : failure.Problem == ProjectTagProblem.Invalid ? RefusalCodes.ProjectTagInvalid
+        : RefusalCodes.ProjectTagUnavailable;
+    var facts = new Dictionary<string, string>(StringComparer.Ordinal);
+    if (failure.Tag.Length > 0) facts["tag"] = failure.Tag;
+    if (failure.CollidingProjectPath is not null) facts["collidingProject"] = failure.CollidingProjectPath;
+    var message = failure.Message + " Nothing was queued.";
+    if (asJson)
+        error.WriteLine(ProjectionJson.Serialize(new FailureEnvelope(FailureReason.Refused, message, facts, code)));
+    else
+        error.WriteLine("error: " + message);
+    return FailureEnvelope.ExitCodeFor(FailureReason.Refused);
 }
 }
 }

@@ -313,10 +313,11 @@ public static class JobCommands
     /// </summary>
     public static CommandOutcome<DryRunProjection> WaitForDryRun(
         WaitForDryRunRequest request, CancellationToken cancellationToken = default,
-        bool cancelOnTimeout = false, Action? wakeRunner = null)
+        bool cancelOnTimeout = false, Action? wakeRunner = null, Action<string>? reportStall = null)
     {
         var waited = JobWait.WaitAsync(request.FwDataPath, request.JobId, null, cancellationToken,
-            request.Timeout, request.ProductVersion, cancelOnTimeout, wakeRunner).GetAwaiter().GetResult();
+            request.Timeout, request.ProductVersion, cancelOnTimeout, wakeRunner, reportStall: reportStall)
+            .GetAwaiter().GetResult();
         if (!waited.Succeeded) return CommandOutcome<DryRunProjection>.Refused(waited.Refusal!);
 
         return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, _) =>
@@ -372,10 +373,12 @@ public static class JobCommands
     /// Polls one job until it reaches a terminal state and returns its status. A budget stop is a refusal
     /// so a waiting command reports the same failure as a direct Assessment.
     /// </summary>
-    public static CommandOutcome<JobStatusResponse> WaitForJob(WaitForJobRequest request, Action? wakeRunner = null)
+    public static CommandOutcome<JobStatusResponse> WaitForJob(
+        WaitForJobRequest request, Action? wakeRunner = null, Action<string>? reportStall = null)
     {
         var result = JobWait.WaitAsync(request.FwDataPath, request.JobId, null, CancellationToken.None,
-            request.Timeout, request.ProductVersion, wakeRunner: wakeRunner).GetAwaiter().GetResult();
+            request.Timeout, request.ProductVersion, wakeRunner: wakeRunner, reportStall: reportStall)
+            .GetAwaiter().GetResult();
         if (result.Value is not { Status: JobStatus.StoppedByBudget } stopped) return result;
         return CommandOutcome<JobStatusResponse>.Refused(new Refusal(RefusalCodes.AssessmentStoppedByBudget,
             FailureReason.StoppedByBudget, stopped.FailureDetail ?? "Parsing stopped at the time limit.",

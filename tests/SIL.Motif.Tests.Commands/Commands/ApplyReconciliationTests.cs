@@ -122,6 +122,76 @@ public sealed class ApplyReconciliationTests(PristineProjectFixture pristine)
         Assert.Equal(0L, (long)command.ExecuteScalar()!);
     }
 
+    // A save that returns without reaching the file is not logged as applied.
+    [Fact]
+    public void ASaveThatDoesNotLandIsRefusedAndNothingIsRecordedAsApplied()
+    {
+        var seed = pristine.Seed;
+        var gloss = SeededProject.FirstGloss + " unsaved";
+        string projectPath;
+        using (var scratch = pristine.NewScratch())
+            projectPath = scratch.ProjectId.Path;
+
+        var proposalId = CreateMeasuredProposal(projectPath, "unsaved-demo",
+            CanonicalId.FromGuid(seed.FirstSenseId).Value, gloss);
+        var savedPause = ApplySaveCheck.Pause;
+        try
+        {
+            ApplySaveCheck.Pause = TimeSpan.FromMilliseconds(10);
+            ProposalCommands.ApplyLoaderOverride.Value = static () => new SaveThatDoesNotLand();
+            var outcome = ProposalCommands.Apply(new ApplyRequest(projectPath, "1.0", proposalId, Force: true));
+
+            Assert.False(outcome.Succeeded);
+            Assert.Equal("apply.not-saved", outcome.Refusal!.Code);
+            Assert.Contains("Nothing was recorded as applied", outcome.Refusal.Message, StringComparison.Ordinal);
+            Assert.Contains("applying again is safe", outcome.Refusal.Message, StringComparison.Ordinal);
+        }
+        finally
+        {
+            ProposalCommands.ApplyLoaderOverride.Value = null;
+            ApplySaveCheck.Pause = savedPause;
+        }
+
+        AssertGlossOnDisk(projectPath, seed.FirstSenseId, NewLangProjFixture.AnalysisTag, SeededProject.FirstGloss);
+        using var store = ProjectMotifDatabase.Open(projectPath);
+        using var connection = store.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT COUNT(*) FROM Receipts WHERE ProposalId = $proposal;";
+        command.Parameters.AddWithValue("$proposal", proposalId);
+        Assert.Equal(0L, (long)command.ExecuteScalar()!);
+    }
+
+    // A save that lands a moment late is found by the bounded re-read, not refused.
+    [Fact]
+    public async System.Threading.Tasks.Task ASaveThatLandsLateIsFoundByTheBoundedReRead()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "apply-late-" + Guid.NewGuid().ToString("N") + ".fwdata");
+        var id = Guid.NewGuid();
+        var savedPause = ApplySaveCheck.Pause;
+        try
+        {
+            ApplySaveCheck.Pause = TimeSpan.FromMilliseconds(100);
+            File.WriteAllText(path, "<x/>");
+            var writer = System.Threading.Tasks.Task.Run(() =>
+            {
+                System.Threading.Thread.Sleep(250);
+                File.WriteAllText(path, "<x><Version val=\"" + id.ToString("D") + "\"/></x>");
+            });
+            ApplySaveCheck.RequireOnDisk(path, id);
+            await writer;
+        }
+        finally
+        {
+            ApplySaveCheck.Pause = savedPause;
+            File.Delete(path);
+        }
+    }
+
+    private sealed class SaveThatDoesNotLand : FwDataProjectLoader
+    {
+        public override void Save(LcmCache cache) { }
+    }
+
     // After the project is saved, a busy store is an unknown outcome to reconcile, never a Busy to retry.
     [Fact]
     public void ABusyStoreAfterApplySavedTheProjectNeedsReconciliationNotARetry()

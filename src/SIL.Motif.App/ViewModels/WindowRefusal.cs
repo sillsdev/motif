@@ -94,6 +94,7 @@ public sealed partial record WindowRefusal
         [C.ApplyPreconditionFailed] = () => MotifAppStrings.RefusalApplyPreconditionFailed,
         [C.ApplyNotReady] = () => MotifAppStrings.RefusalApplyNotReady,
         [C.ApplyProjectInUse] = () => MotifAppStrings.RefusalApplyProjectInUse,
+        [C.ApplyNotSaved] = () => MotifAppStrings.RefusalApplyNotSaved,
         [C.ApplyReconciliationNeeded] = () => MotifAppStrings.RefusalApplyReconciliationNeeded,
         [C.OperationCascadingDelete] = () => MotifAppStrings.RefusalOperationCascadingDelete,
         [C.OperationInvalidDependency] = () => MotifAppStrings.RefusalOperationInvalidDependency,

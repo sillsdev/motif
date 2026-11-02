@@ -255,6 +255,20 @@ public sealed class BaselineReadCacheSweepTests(PristineProjectFixture pristine)
     }
 
     [Fact]
+    public void ACopyWhoseOwnerHoldsItsLockIsKeptEvenWhenThePidProbeCallsItDead()
+    {
+        // A sandboxed owner's PID is invisible to a PID probe; its lock proves it lives.
+        var root = AddOwnedCopy(_now - TimeSpan.FromDays(1), BaselineReadOwnerStatus.Dead);
+        using (new FileStream(root + ".owner.lock", FileMode.Create, FileAccess.ReadWrite, FileShare.None))
+            Assert.Equal(0, BaselineReadCache.SweepStale(Environment()));
+        Assert.True(Directory.Exists(root));
+
+        Assert.Equal(1, BaselineReadCache.SweepStale(Environment()));
+        Assert.False(Directory.Exists(root));
+        Assert.False(File.Exists(root + ".owner.lock"));
+    }
+
+    [Fact]
     public void AnUnknownProcessStatusKeepsTheCopy()
     {
         var root = AddOwnedCopy(_now - TimeSpan.FromDays(1), BaselineReadOwnerStatus.Unknown);

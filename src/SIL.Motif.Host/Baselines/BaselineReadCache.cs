@@ -13,12 +13,14 @@ public sealed class BaselineReadCache : IDisposable
     private const int OwnerRecordVersion = 1;
     private readonly string _root;
     private readonly string _ownerPath;
+    private readonly FileStream? _lifeLock;
     private int _disposed;
 
-    private BaselineReadCache(string root, string ownerPath, LcmCache cache)
+    private BaselineReadCache(string root, string ownerPath, LcmCache cache, FileStream? lifeLock)
     {
         _root = root;
         _ownerPath = ownerPath;
+        _lifeLock = lifeLock;
         Cache = cache;
     }
 
@@ -51,15 +53,22 @@ public sealed class BaselineReadCache : IDisposable
 
         var (root, ownerPath) = CreateOwnedDirectory(copiesRoot, environment);
         LcmCache? cache = null;
+        FileStream? lifeLock = null;
         try
         {
+            lifeLock = TryHoldLifeLock(LockPathFor(ownerPath));
             cache = new ScratchCacheFactory().CreateFromFileCopy(fwDataPath, root);
-            return new BaselineReadCache(root, ownerPath, cache);
+            return new BaselineReadCache(root, ownerPath, cache, lifeLock);
         }
         catch
         {
             try { cache?.Dispose(); }
-            finally { DeleteOwnedCopy(root, ownerPath); }
+            finally
+            {
+                lifeLock?.Dispose();
+                DeleteOwnedCopy(root, ownerPath);
+                TryDeleteRegularFile(LockPathFor(ownerPath));
+            }
             throw;
         }
     }
@@ -95,6 +104,10 @@ public sealed class BaselineReadCache : IDisposable
                 (ownerAttributes & FileAttributes.ReparsePoint) != 0)
                 continue;
 
+            // A held lock proves a live owner in any PID namespace.
+            var lockPath = LockPathFor(ownerPath);
+            if (IsHeldByLiveOwner(lockPath)) continue;
+
             var owner = TryReadOwner(ownerPath, copyId, environment);
             if (owner is null || GetOwnerStatus(owner, environment) != BaselineReadOwnerStatus.Dead ||
                 !PastGrace(owner.CreatedUtcTicks, environment))
@@ -106,6 +119,7 @@ public sealed class BaselineReadCache : IDisposable
             {
                 Directory.Delete(path, recursive: true);
                 TryDeleteRegularFile(ownerPath);
+                TryDeleteRegularFile(lockPath);
                 deleted++;
             }
             catch (Exception exception) when (IsFilesystemFailure(exception)) { }
@@ -119,7 +133,37 @@ public sealed class BaselineReadCache : IDisposable
     {
         if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
         try { Cache.Dispose(); }
-        finally { DeleteOwnedCopy(_root, _ownerPath); }
+        finally
+        {
+            DeleteOwnedCopy(_root, _ownerPath);
+            _lifeLock?.Dispose();
+            TryDeleteRegularFile(LockPathFor(_ownerPath));
+        }
+    }
+
+    private static string LockPathFor(string ownerPath) => ownerPath + ".lock";
+
+    private static FileStream? TryHoldLifeLock(string lockPath)
+    {
+        try
+        {
+            return new FileStream(lockPath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+        }
+        catch (Exception exception) when (IsFilesystemFailure(exception)) { return null; }
+    }
+
+    /// <summary>True when a live owner holds the lock; no lock file means a legacy record.</summary>
+    private static bool IsHeldByLiveOwner(string lockPath)
+    {
+        if (!TryGetAttributes(lockPath, out _)) return false;
+        try
+        {
+            using var probe = new FileStream(lockPath, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+            return false;
+        }
+        catch (FileNotFoundException) { return false; }
+        catch (DirectoryNotFoundException) { return false; }
+        catch (Exception exception) when (IsFilesystemFailure(exception)) { return true; }
     }
 
     private static (string Root, string OwnerPath) CreateOwnedDirectory(

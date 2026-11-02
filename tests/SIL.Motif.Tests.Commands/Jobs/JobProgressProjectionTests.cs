@@ -200,6 +200,20 @@ public sealed class JobProgressProjectionTests(PristineProjectFixture pristine)
     }
 
     [Fact]
+    public async Task AWaitOnAJobNoRunnerClaimsSaysSoOnceBeforeItsTimeoutEnds()
+    {
+        var jobId = CreateRunningTrial(out var fwDataPath, leaveQueued: true);
+        var notices = new List<string>();
+
+        await JobWait.WaitAsync(fwDataPath, jobId, null, CancellationToken.None, TimeSpan.FromMilliseconds(900),
+            MotifProductVersion.CurrentText, reportStall: notices.Add, stallNoticeAfter: TimeSpan.FromMilliseconds(300));
+
+        var notice = Assert.Single(notices);
+        Assert.Contains(jobId, notice, StringComparison.Ordinal);
+        Assert.Contains("no runner has claimed it", notice, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task AWaitOnAClaimedJobDoesNotWakeAnotherRunner()
     {
         var jobId = CreateRunningTrial(out var fwDataPath);
