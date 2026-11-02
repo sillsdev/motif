@@ -1,6 +1,9 @@
 using System.Linq;
+using Avalonia.Input;
 using SIL.Motif.App;
+using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
+using SIL.Motif.Commands.Handoff;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Worker.Store;
@@ -87,6 +90,24 @@ public sealed class WarningAttributionCompletenessTests
         Assert.Equal(string.Empty, positiveRow.TableNamedWordsText);
     }
 
+    [Fact]
+    public void TheInspectorWordCountRowGivesTheSameReasonWhenItsCountIsBlank()
+    {
+        var fake = new FakeCommandClient();
+        var selection = new SelectionViewModel(fake);
+        var context = new WorkspaceContext(selection, new AssessViewModel(fake, selection),
+            new ChangesViewModel(fake), fake, new NoFolderPicker(), new NoDragSource(), new BaselineViewModel(fake));
+        var page = new WarningsPageModel(context);
+        var finding = MixedFinding("no-selected-analysis");
+        finding = finding with { YourWords = WarningWordsQuery.YourWordsOf(finding, [Word("other", "other-allomorph")], []) };
+        page.Grammar.Warnings.Load([finding]);
+
+        page.Grammar.Warnings.SelectedTableEntry = Assert.Single(page.Grammar.Warnings.Rows);
+
+        Assert.Equal(string.Empty, page.SelectedWarningWordCount);
+        Assert.Equal(MotifAppStrings.WarningsReachUnavailable, page.SelectedWarningWordCountNote);
+    }
+
     [Theory]
     [InlineData(0, "none")]
     [InlineData(1, "1 word")]
@@ -120,4 +141,16 @@ public sealed class WarningAttributionCompletenessTests
         Assert.Equal(string.Empty, row.TableNamedWordsText);
     }
 
+
+    private sealed class NoFolderPicker : IHandoffFolderPicker
+    {
+        public Task<string?> PickFolderAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<string?>(null);
+    }
+
+    private sealed class NoDragSource : IFileDragSource
+    {
+        public Task<DragDropEffects> StartDragAsync(PointerPressedEventArgs trigger, IReadOnlyList<string> filePaths,
+            DragDropEffects allowedEffects) => Task.FromResult(allowedEffects);
+    }
 }

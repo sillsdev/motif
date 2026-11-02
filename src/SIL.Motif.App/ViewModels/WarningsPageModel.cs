@@ -84,9 +84,13 @@ public sealed partial class WarningsPageModel : PageModel
     public string SelectedWarningSeverity => (Grammar.Warnings.SelectedTableEntry as GrammarWarningRowViewModel)?.SeverityLabel
         ?? string.Empty;
 
-    /// <summary>The selected finding's exact word count, or its evidence label when no count is available.</summary>
+    /// <summary>The selected finding's exact word count, or blank when no exact count is available.</summary>
     public string SelectedWarningWordCount => (Grammar.Warnings.SelectedTableEntry as GrammarWarningRowViewModel)?.TableNamedWordsText
         ?? string.Empty;
+
+    /// <summary>Why the selected finding's word count is blank, for its tooltip and accessible name; null when it has one.</summary>
+    public string? SelectedWarningWordCountNote =>
+        (Grammar.Warnings.SelectedTableEntry as GrammarWarningRowViewModel)?.TableNamedWordsNote;
 
     /// <summary>Whether the open project's grammar has no check to show, so the page offers one.</summary>
     public bool IsGrammarNotChecked => Context.HasProject && !Grammar.HasChecked && !Grammar.IsLoading &&
@@ -246,6 +250,7 @@ public sealed partial class WarningsPageModel : PageModel
                 OnPropertyChanged(nameof(SelectedWarningArea));
                 OnPropertyChanged(nameof(SelectedWarningSeverity));
                 OnPropertyChanged(nameof(SelectedWarningWordCount));
+                OnPropertyChanged(nameof(SelectedWarningWordCountNote));
             }
             OnPropertyChanged(nameof(HasSelectedWarningArea));
         }
@@ -321,6 +326,7 @@ public sealed partial class WarningsPageModel : PageModel
         OnPropertyChanged(nameof(SelectedWarningArea));
         OnPropertyChanged(nameof(SelectedWarningSeverity));
         OnPropertyChanged(nameof(SelectedWarningWordCount));
+        OnPropertyChanged(nameof(SelectedWarningWordCountNote));
         OnPropertyChanged(nameof(HasSelectedWarningArea));
     }
 
@@ -352,6 +358,7 @@ public sealed partial class WarningsPageModel : PageModel
         OnPropertyChanged(nameof(SelectedWarningArea));
         OnPropertyChanged(nameof(SelectedWarningSeverity));
         OnPropertyChanged(nameof(SelectedWarningWordCount));
+        OnPropertyChanged(nameof(SelectedWarningWordCountNote));
         OnPropertyChanged(nameof(HasSelectedWarningArea));
     }
 

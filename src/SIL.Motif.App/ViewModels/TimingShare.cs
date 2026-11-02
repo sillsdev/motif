@@ -37,8 +37,14 @@ public sealed record TimingShare(string Label, string Kind, long? ParserWork, do
     public string ShownWorkText => ProposalWorkText is null ? WorkText : Pair(
         IsProposalOnly ? MotifAppStrings.TimingNoneToday : WorkText, ProposalWorkText);
 
-    private static string Pair(string today, string proposal) =>
-        string.Format(CultureInfo.CurrentCulture, MotifAppStrings.OverviewPairFormat, today, proposal);
+    /// <summary>Why one side of a paired share is missing, for a tooltip and accessible name; null when both show.</summary>
+    public string? ShownShareNote => ProposalShareText is not null && (ShareText.Length == 0 && !IsProposalOnly ||
+        ProposalShareText.Length == 0)
+        ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.PairedOneSideNotMeasured, ShownShareText) : null;
+
+    private static string Pair(string today, string proposal) => today.Length == 0 || proposal.Length == 0
+        ? today + proposal
+        : string.Format(CultureInfo.CurrentCulture, MotifAppStrings.OverviewPairFormat, today, proposal);
 
     /// <summary>The window's name for this part's stored kind.</summary>
     public string KindLabel => Kind.Length == 0 ? string.Empty : KindName(Kind);

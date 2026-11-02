@@ -428,6 +428,30 @@ public sealed class ProposalsPageModelTests
         Assert.Null(card.ApprovedKept!.Note);
     }
 
+    [Fact]
+    public async Task AFigureMeasuredOnOneSideOnlyHasNoArrowAndSaysSoInItsTooltip()
+    {
+        using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
+        var halfMeasured = Summary(TrialFreshness.Current) with
+        {
+            TextCoveragePercent = new Paired<double?>(60, null, true, true, false, null),
+            WarningCount = new Paired<int?>(null, 3, false, true, false, null),
+        };
+        var (_, _, page) = await OpenAsync(Standings(
+            Card("p/a", "A", ProposalGroup.WaitingForYou, trial: halfMeasured, standing: TrialStanding.Current)));
+
+        var card = page.Groups[0].Cards[0];
+
+        Assert.Equal("60%", card.TableCoverageText);
+        Assert.Equal("3", card.TableWarningsText);
+        Assert.Equal(string.Format(CultureInfo.CurrentCulture, MotifAppStrings.PairedOneSideNotMeasured, "60%"),
+            card.Coverage!.Note);
+        Assert.Equal(string.Format(CultureInfo.CurrentCulture, MotifAppStrings.PairedOneSideNotMeasured, "3"),
+            card.Warnings!.Note);
+        Assert.DoesNotContain(card.Numbers, number => number.Value.Contains('→') && number.Note is not null);
+        Assert.Null(card.ApprovedKept!.Note);
+    }
+
     [Theory]
     [InlineData(1040, false)]
     [InlineData(1100, true)]

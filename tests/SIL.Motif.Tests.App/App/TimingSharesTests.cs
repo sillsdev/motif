@@ -6,6 +6,7 @@ using Avalonia.LogicalTree;
 using Avalonia.Layout;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using SIL.Motif.App;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.App.Views;
@@ -47,6 +48,21 @@ public sealed class TimingSharesTests
         new("Subject agreement", "Subject agreement", 288, 288d / 800, 6) { Kind = "morph_rule", IdentityQuality = "authored" },
         new("Vowel harmony", "Vowel harmony", 120, 120d / 800, 7) { Kind = "phon_rule", IdentityQuality = "authored" },
     ];
+
+    [Fact]
+    public void APairedShareWithOneSideMissingHasNoArrowAndNamesWhyInItsNote()
+    {
+        var both = new TimingShare("Rule", "morph_rule", 480, 0.6, 9, null) { ProposalShareText = "12%" };
+        var noProposalShare = both with { ProposalShareText = string.Empty };
+        var noTodayShare = both with { Share = null };
+
+        Assert.Contains("→", both.ShownShareText);
+        Assert.Null(both.ShownShareNote);
+        Assert.Equal(both.ShareText, noProposalShare.ShownShareText);
+        Assert.Equal(string.Format(MotifAppStrings.PairedOneSideNotMeasured, both.ShareText), noProposalShare.ShownShareNote);
+        Assert.Equal("12%", noTodayShare.ShownShareText);
+        Assert.Equal(string.Format(MotifAppStrings.PairedOneSideNotMeasured, "12%"), noTodayShare.ShownShareNote);
+    }
 
     [Theory]
     [InlineData(795, "795 ms")]

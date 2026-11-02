@@ -27,7 +27,9 @@
             <views:CopyableTextBlock Grid.Row="1" Text="{x:Static app:MotifAppStrings.WarningsAreaLabel}" Classes="muted" />
             <views:CopyableTextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Page.SelectedWarningArea}" />
             <views:CopyableTextBlock Grid.Row="2" Text="{x:Static app:MotifAppStrings.NamedWords}" Classes="muted" />
-            <views:CopyableTextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Page.SelectedWarningWordCount}" />
+            <views:CopyableTextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Page.SelectedWarningWordCount}"
+                                     ToolTip.Tip="{Binding Page.SelectedWarningWordCountNote}"
+                                     AutomationProperties.Name="{Binding Page.SelectedWarningWordCountNote}" />
           </Grid>
         </StackPanel>
         <ItemsControl x:Name="WarningsInspectorSelectedDetails" ItemsSource="{Binding Grammar.Warnings.SelectedDetails}">

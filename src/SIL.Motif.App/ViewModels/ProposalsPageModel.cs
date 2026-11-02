@@ -23,17 +23,23 @@ internal static class ProposalNumberText
 {
     public static IReadOnlyList<ProposalNumber> From(TrialSummary trial) =>
     [
-        Number("Coverage", Show(trial.TextCoveragePercent, Percent), trial.TextCoveragePercent.Moved),
+        Number("Coverage", Show(trial.TextCoveragePercent, Percent), trial.TextCoveragePercent.Moved,
+            oneSideBlank: OneSideBlank(trial.TextCoveragePercent, Percent)),
         new("Approved kept", ShowKept(trial), trial.ApprovedKept.Moved || trial.ApprovedTotal.Moved),
         Number("Work", ShowWork(trial.Work), trial.Work is { } work && PairedMoves.Work(work.BaselineWork, work.TrialParserWork),
             MotifAppStrings.ProposalWorkNotComparable),
-        Number("Warnings", Show(trial.WarningCount, Count), trial.WarningCount.Moved),
-        Number("Time on this computer", Show(trial.WordTimeMs, Time), trial.WordTimeMs.Moved),
+        Number("Warnings", Show(trial.WarningCount, Count), trial.WarningCount.Moved,
+            oneSideBlank: OneSideBlank(trial.WarningCount, Count)),
+        Number("Time on this computer", Show(trial.WordTimeMs, Time), trial.WordTimeMs.Moved,
+            oneSideBlank: OneSideBlank(trial.WordTimeMs, Time)),
     ];
 
     // A blank number keeps its meaning in a tooltip and an accessible name, never in visible text.
-    private static ProposalNumber Number(string label, string value, bool moved, string? blankNote = null) =>
-        new(label, value, moved, value.Length == 0 ? blankNote ?? MotifAppStrings.TextsWordNotMeasured : null);
+    private static ProposalNumber Number(string label, string value, bool moved, string? blankNote = null,
+        bool oneSideBlank = false) =>
+        new(label, value, moved, value.Length == 0 ? blankNote ?? MotifAppStrings.TextsWordNotMeasured
+            : oneSideBlank ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.PairedOneSideNotMeasured, value)
+            : null);
 
     // Parser work is the cost; with no comparison the cell is blank, never a time in their place.
     private static string ShowWork(TrialWork? work) => HasWorkComparison(work)
@@ -65,8 +71,13 @@ internal static class ProposalNumberText
     private static string Show<T>(Paired<T> pair, Func<T?, string> format)
     {
         var before = format(pair.Before);
-        return pair.HasAfter ? $"{before} → {format(pair.After)}" : before;
+        if (!pair.HasAfter) return before;
+        var after = format(pair.After);
+        return before.Length == 0 || after.Length == 0 ? before + after : $"{before} → {after}";
     }
+
+    private static bool OneSideBlank<T>(Paired<T> pair, Func<T?, string> format) =>
+        pair.HasAfter && (format(pair.Before).Length == 0) != (format(pair.After).Length == 0);
 
     private static string Percent(double? value) =>
         value is { } percent ? percent.ToString("0.#", CultureInfo.CurrentCulture) + "%" : string.Empty;

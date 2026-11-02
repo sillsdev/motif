@@ -196,7 +196,9 @@
                                       Spacing="{DynamicResource Intent.Space.Compact}">
                             <Border Classes="outcomeSegment swatch" Background="{Binding Brush}" />
                             <views:CopyableTextBlock Text="{Binding Row.Label}" />
-                            <views:CopyableTextBlock Text="{Binding Row.ShownShareText}" FontWeight="{DynamicResource Intent.Weight.Strong}" />
+                            <views:CopyableTextBlock Text="{Binding Row.ShownShareText}" FontWeight="{DynamicResource Intent.Weight.Strong}"
+                                                     ToolTip.Tip="{Binding Row.ShownShareNote}"
+                                                     AutomationProperties.Name="{Binding Row.ShownShareNote}" />
                             <views:CopyableTextBlock Classes="muted" Text="{Binding Row.ShownWorkText, StringFormat='{}· {0}'}" />
                           </StackPanel>
                         </DataTemplate>
