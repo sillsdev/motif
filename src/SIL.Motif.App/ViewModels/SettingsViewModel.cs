@@ -547,7 +547,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
         try
         {
             _workspace.Selection.PerWordParserWorkLimitUnbounded = _lastGoodNoParserWorkLimit;
-            _workspace.Selection.PerWordParserWorkLimit = _lastGoodNoParserWorkLimit ? null : _lastGoodParserWorkLimit;
+            _workspace.Selection.PerWordParserWorkLimit = _lastGoodParserWorkLimit;
             _workspace.Selection.PerWordTimeLimitSeconds = _lastGoodTimeLimitSeconds;
         }
         finally
@@ -564,6 +564,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
     {
         var stepMessage = _parserWorkLimitRefusal;
         var timeMessage = TimeLimitRefusal;
+        var timeIsTyped = !IsUsingEstimate || _keepsTimeLimit;
         RestoreSavedLimits();
         _parserWorkLimitRefusal = stepMessage;
         TimeLimitRefusal = timeMessage;
@@ -576,7 +577,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
         _keptNoParserWorkLimit = noStep;
         _keepsParserWorkLimit = !noStep && (step != _lastGoodParserWorkLimit || step is not null && !ParserWorkLimitIsAcceptable(step));
         _keptParserWorkLimit = step;
-        _keepsTimeLimit = !noStep && (time != _lastGoodTimeLimitSeconds || time is not null && !TimeLimitIsAcceptable(time));
+        _keepsTimeLimit = !noStep && timeIsTyped && (time != _lastGoodTimeLimitSeconds || time is not null && !TimeLimitIsAcceptable(time));
         _keptTimeLimit = time;
         if (_keepsTimeLimit) IsUsingEstimate = false;
         NotifyKeptLimitsChanged();
