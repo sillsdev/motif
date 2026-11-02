@@ -118,7 +118,8 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 # pwsh -File hands -Project A,B over as one string, so a comma-separated list is split here.
-$Project = @($Project | ForEach-Object { $_ -split '[,;\s]+' } | Where-Object { $_ })
+$Project = @($Project | ForEach-Object { $_ -split '[,\s]+' } | Where-Object { $_ })
+if ($PSBoundParameters.ContainsKey('Project') -and $Project.Count -eq 0) { throw '-Project names no test project.' }
 $gateClock = [Diagnostics.Stopwatch]::StartNew()
 $phaseClocks = @{}
 $phaseClocks['whole gate'] = $gateClock
@@ -669,6 +670,7 @@ Write-Host ''
 if ($changedClasses -and $changedPlan.ClassCount -eq 0) { Write-Host 'No tests ran: the changes touch only files no test executes (-Changed); the full suite is -All.' -ForegroundColor Yellow }
 elseif ($changedClasses) { Write-Host "Tests OK: $($changedPlan.ClassCount) selected classes (-Changed); the full suite is -All." -ForegroundColor Green }
 elseif ($BuildMap) { Write-Host 'Coverage map built from a full-suite run.' -ForegroundColor Green }
+elseif ($Project -and $All) { Write-Host "Tests OK: $($Project -join ', '), all levels; not the whole suite (no tooling regressions)." -ForegroundColor Green }
 elseif ($All) { Write-Host 'Tests OK: full suite.' -ForegroundColor Green }
 elseif ($System) { Write-Host 'Tests OK: System subset.' -ForegroundColor Green }
 else { Write-Host 'Tests OK: Unit+Integration subset; default run is not a merge gate.' -ForegroundColor Green }

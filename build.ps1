@@ -61,7 +61,8 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = $PSScriptRoot
 $solution = Join-Path $repoRoot 'Motif.sln'
 # pwsh -File hands -Project A,B over as one string, so a comma-separated list is split here.
-$Project = @($Project | ForEach-Object { $_ -split '[,;\s]+' } | Where-Object { $_ })
+$Project = @($Project | ForEach-Object { $_ -split '[,\s]+' } | Where-Object { $_ })
+if ($PSBoundParameters.ContainsKey('Project') -and $Project.Count -eq 0) { throw '-Project names no test project.' }
 $buildTargets = @($solution)
 if ($Project) {
     $buildTargets = foreach ($name in $Project) {
