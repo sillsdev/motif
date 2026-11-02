@@ -149,7 +149,7 @@ public sealed class ProposalParsimonyPanelTests
     }
 
     [Fact]
-    public void TheSectionSitsAfterTheActionsAndIsReachedByScrollingWhereTheWindowIsShort()
+    public void TheSectionScrollsWithTheDetailsWhileTheActionsStayPinnedBelowIt()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
@@ -157,9 +157,10 @@ public sealed class ProposalParsimonyPanelTests
             try
             {
                 var page = workspace.PageModel<ProposalsPageModel>();
-                var panel = Box(Panel(window), window);
-                Assert.True(panel.Top > Box(Find(window, page.SelectedTryAgainAutomationId), window).Bottom);
-                var body = Find(window, page.SelectedTryAgainAutomationId).FindAncestorOfType<ScrollViewer>()!;
+                var tryAgain = Find(window, page.SelectedTryAgainAutomationId);
+                var body = Panel(window).FindAncestorOfType<ScrollViewer>()!;
+                Assert.DoesNotContain(body, tryAgain.GetVisualAncestors());
+                Assert.True(Box(tryAgain, window).Top >= Box(body, window).Bottom - 1);
                 Assert.True(body.Extent.Height > body.Viewport.Height);
             }
             finally { Close(workspace, window); }

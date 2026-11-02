@@ -22,6 +22,7 @@ public sealed partial class ProposalsPage : UserControl, IWorkspacePaneProvider
         DenseTable.Attach(this.FindControl<ListBox>("ProposalsRowsItems")!);
         _sidePanel = BuildPane("ProposalGroupFilterTemplate");
         _inspectorContent = BuildPane("ProposalInspectorTemplate");
+        _inspectorActions = BuildPane("ProposalInspectorActionsTemplate");
     }
 
     /// <summary>The model that supplies this page's groups, filters and selected details.</summary>
@@ -36,6 +37,9 @@ public sealed partial class ProposalsPage : UserControl, IWorkspacePaneProvider
     /// <summary>The selected Proposal's details and available actions.</summary>
     public Control InspectorContent => _inspectorContent;
 
+    /// <summary>The selected Proposal's actions, pinned below the details so none is scrolled out of view.</summary>
+    public Control InspectorActions => _inspectorActions;
+
     private Control BuildPane(string key)
     {
         var pane = ((IDataTemplate)Resources[key]!).Build(Page)!;
@@ -48,4 +52,5 @@ public sealed partial class ProposalsPage : UserControl, IWorkspacePaneProvider
 
     private readonly Control _sidePanel;
     private readonly Control _inspectorContent;
+    private readonly Control _inspectorActions;
 }

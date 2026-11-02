@@ -107,30 +107,37 @@
               <views:RefusalBlock DataContext="{Binding SelectedProposal.ShownRefusal}" />
               <views:TrialBaselineNoticeBlock DataContext="{Binding SelectedProposal.BaselineNotice}" />
               <views:TrialWorkNoticeBlock DataContext="{Binding SelectedProposal.WorkNotice}" />
-              <StackPanel Classes="proposalInspectorActions" Spacing="{DynamicResource Intent.Space.Compact}">
-                <Button Content="{x:Static app:MotifAppStrings.OpenInReviewChanges}" Classes="Primary" Theme="{DynamicResource SolidButton}"
-                        Command="{Binding OpenInReviewCommand}" CommandParameter="{Binding SelectedProposal}"
-                        Click="OnRequestPageInspector"
-                        AutomationProperties.AutomationId="{Binding SelectedOpenAutomationId}" />
-                <WrapPanel Classes="proposalInspectorActions">
-                  <Button Content="{Binding SelectedProposal.TryText}"
-                          IsVisible="{Binding SelectedProposal.CanTry}"
-                          Command="{Binding TryAgainCommand}" CommandParameter="{Binding SelectedProposal}"
-                          AutomationProperties.AutomationId="{Binding SelectedTryAgainAutomationId}" />
-                  <Button Content="{x:Static app:MotifAppStrings.Reopen}" IsVisible="{Binding SelectedProposal.CanReopen}"
-                          Command="{Binding ReopenCommand}" CommandParameter="{Binding SelectedProposal}"
-                          AutomationProperties.AutomationId="{Binding SelectedReopenAutomationId}" />
-                  <Button Content="{x:Static app:MotifAppStrings.Delete}" IsVisible="{Binding SelectedProposal.CanDelete}"
-                          Command="{Binding DeleteCommand}" CommandParameter="{Binding SelectedProposal}"
-                          AutomationProperties.AutomationId="{Binding SelectedDeleteAutomationId}" />
-                </WrapPanel>
-              </StackPanel>
-              <!-- After the actions, so advice that grows never pushes Try again or Open in Review changes down. -->
+              <!-- The actions are pinned below the details, so advice that grows never pushes them out of view. -->
               <views:ProposalParsimonyPanel DataContext="{Binding Parsimony}" />
             </StackPanel>
           </StackPanel>
           </Border>
         </ScrollViewer>
+      </Border>
+    </DataTemplate>
+    <DataTemplate x:Key="ProposalInspectorActionsTemplate" x:DataType="vm:ProposalsPageModel">
+      <Border Classes="proposalInspectorActionsFrame" IsVisible="{Binding HasSelectedProposal}">
+        <Border.Styles>
+          <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/ProposalsScoped.axaml" />
+        </Border.Styles>
+        <StackPanel Classes="proposalInspectorActions" Spacing="{DynamicResource Intent.Space.Compact}">
+          <Button Content="{x:Static app:MotifAppStrings.OpenInReviewChanges}" Classes="Primary" Theme="{DynamicResource SolidButton}"
+                  Command="{Binding OpenInReviewCommand}" CommandParameter="{Binding SelectedProposal}"
+                  Click="OnRequestPageInspector"
+                  AutomationProperties.AutomationId="{Binding SelectedOpenAutomationId}" />
+          <WrapPanel Classes="proposalInspectorActions">
+            <Button Content="{Binding SelectedProposal.TryText}"
+                    IsVisible="{Binding SelectedProposal.CanTry}"
+                    Command="{Binding TryAgainCommand}" CommandParameter="{Binding SelectedProposal}"
+                    AutomationProperties.AutomationId="{Binding SelectedTryAgainAutomationId}" />
+            <Button Content="{x:Static app:MotifAppStrings.Reopen}" IsVisible="{Binding SelectedProposal.CanReopen}"
+                    Command="{Binding ReopenCommand}" CommandParameter="{Binding SelectedProposal}"
+                    AutomationProperties.AutomationId="{Binding SelectedReopenAutomationId}" />
+            <Button Content="{x:Static app:MotifAppStrings.Delete}" IsVisible="{Binding SelectedProposal.CanDelete}"
+                    Command="{Binding DeleteCommand}" CommandParameter="{Binding SelectedProposal}"
+                    AutomationProperties.AutomationId="{Binding SelectedDeleteAutomationId}" />
+          </WrapPanel>
+        </StackPanel>
       </Border>
     </DataTemplate>
   </UserControl.Resources>

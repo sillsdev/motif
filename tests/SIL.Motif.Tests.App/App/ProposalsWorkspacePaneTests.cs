@@ -381,7 +381,7 @@ public sealed class ProposalsWorkspacePaneTests
                 Assert.Same(staleCard, model.SelectedProposal);
                 staleFlyout.Hide();
 
-                var openInReview = Assert.Single(inspector.GetVisualDescendants().OfType<Button>(), button =>
+                var openInReview = Assert.Single(provider.InspectorActions!.GetVisualDescendants().OfType<Button>(), button =>
                     AutomationProperties.GetAutomationId(button) == staleCard.InspectorOpenAutomationId);
                 standaloneHost.FindControl<Button>("InspectorHideButton")!
                     .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));

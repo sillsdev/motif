@@ -15,6 +15,9 @@
   <Style Selector="StackPanel.proposalInspectorActions">
     <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Compact}" />
   </Style>
+  <Style Selector="Border.proposalInspectorActionsFrame">
+    <Setter Property="Padding" Value="{DynamicResource Component.Inspector.BodyPadding}" />
+  </Style>
   <Style Selector="WrapPanel.proposalInspectorActions">
     <Setter Property="ItemSpacing" Value="{DynamicResource Intent.Space.Compact}" />
   </Style>
