@@ -410,14 +410,14 @@ public sealed class SettingsPageTests
     }
 
     private static Task<(WorkspaceShellViewModel Workspace, MainWindow Frame)> OpenWithOneTextChosen(
-        Action<FakeCommandClient> capture) =>
+        Action<FakeCommandClient> capture, SelectionParsingLimits? limits = null) =>
         PageScreenshots.OpenOverSampleData(parse: false,
             configure: (client, _) =>
             {
                 capture(client);
                 client.DefaultSelectionIs(new NamedSelectionProjection("Default",
                     [Guid.Parse("11111111-0000-0000-0000-000000000001")], [], string.Empty, string.Empty,
-                    new SelectionParsingLimits(ParserWorkLimit.Default, SelectionTimeLimitMode.Estimated, null, 600), "1"));
+                    limits ?? new SelectionParsingLimits(ParserWorkLimit.Default, SelectionTimeLimitMode.Estimated, null, 600), "1"));
             });
 
     [Fact]
@@ -599,6 +599,76 @@ public sealed class SettingsPageTests
                 workspace.CurrentPage = WorkspacePage.Overview;
                 Assert.False(settings.IsNoParserWorkLimit);
                 Assert.False(workspace.Selection.PerWordParserWorkLimitUnbounded);
+            }
+            finally
+            {
+                frame.Close();
+                await workspace.DisposeAsync();
+            }
+        }, TimeSpan.FromMinutes(2));
+    }
+
+    [Fact]
+    public void UntickingAHeldNoStepLimitKeepsASavedExplicitTimeLimit()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            FakeCommandClient? fake = null;
+            var (workspace, frame) = await OpenWithOneTextChosen(client => fake = client,
+                new SelectionParsingLimits(ParserWorkLimit.Default, SelectionTimeLimitMode.Explicit, 5000, 600));
+            try
+            {
+                var settings = SettingsTestAccess.Model(frame);
+                workspace.CurrentPage = WorkspacePage.Settings;
+                settings.OpenGroup(Group.Parsing);
+                Assert.False(settings.IsUsingEstimate);
+                Assert.Equal(5m, settings.TimeLimitSeconds);
+
+                settings.AssessBudgetSeconds = 5m;
+                settings.IsNoParserWorkLimit = true;
+                Assert.NotNull(await settings.CommitParsingLimitsAsync());
+                settings.IsNoParserWorkLimit = false;
+                Assert.False(settings.IsUsingEstimate);
+                Assert.Equal(5m, settings.TimeLimitSeconds);
+
+                settings.AssessBudgetSeconds = 120m;
+                Assert.Null(await settings.CommitParsingLimitsAsync());
+
+                var saved = fake!.SetSelectionLimitsRequests.Last().Limits;
+                Assert.Equal(SelectionTimeLimitMode.Explicit, saved.TimeMode);
+                Assert.Equal(5000, saved.ExplicitPerWordLimitMs);
+                Assert.Equal(120, saved.AssessBudgetSeconds);
+            }
+            finally
+            {
+                frame.Close();
+                await workspace.DisposeAsync();
+            }
+        }, TimeSpan.FromMinutes(2));
+    }
+
+    [Fact]
+    public void DroppingAHeldStepWhenNoStepLimitIsHeldAlsoDropsItsMessage()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, frame) = await OpenWithOneTextChosen(_ => { });
+            try
+            {
+                var settings = SettingsTestAccess.Model(frame);
+                workspace.CurrentPage = WorkspacePage.Settings;
+                settings.OpenGroup(Group.Parsing);
+                var savedStep = settings.ParserWorkLimitValue;
+
+                settings.ParserWorkLimitValue = 100000.5m;
+                settings.AssessBudgetSeconds = 5m;
+                settings.IsNoParserWorkLimit = true;
+                Assert.NotNull(await settings.CommitParsingLimitsAsync());
+                settings.IsNoParserWorkLimit = false;
+
+                Assert.Equal(savedStep, settings.ParserWorkLimitValue);
+                Assert.False(settings.HasParserWorkLimitRefusal);
+                Assert.False(settings.HasTimeLimitRefusal);
             }
             finally
             {

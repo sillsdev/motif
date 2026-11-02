@@ -361,7 +361,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
             _keepsNoParserWorkLimit = false;
             if (_workspace.Selection.PerWordParserWorkLimitUnbounded == value)
             {
-                if (hadKeptValue) NotifyKeptLimitsChanged();
+                if (hadKeptValue) ReleaseHeldToggle();
                 return;
             }
             if (value)
@@ -466,6 +466,18 @@ internal sealed partial class SettingsViewModel : ObservableObject
     private static bool TimeLimitIsAcceptable(decimal? seconds) =>
         seconds is > 0 && seconds <= int.MaxValue / 1000m && decimal.Round(seconds.Value * 1000m) >= 1m;
 
+    // The Selection never held the tick, so its side effects are undone from the saved state.
+    private void ReleaseHeldToggle()
+    {
+        _parserWorkLimitBeforeNoStep = null;
+        _timeLimitBeforeNoStep = null;
+        IsUsingEstimate = !_keepsTimeLimit &&
+            _workspace.Context.Setup?.CurrentSelectionLimits.TimeMode != SelectionTimeLimitMode.Explicit;
+        if (!_keepsParserWorkLimit) _parserWorkLimitRefusal = string.Empty;
+        if (!_keepsTimeLimit) TimeLimitRefusal = string.Empty;
+        NotifyKeptLimitsChanged();
+    }
+
     // A refused value stays in its field; the Selection keeps the last accepted one.
     private void NotifyKeptLimitsChanged()
     {
@@ -486,6 +498,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
         var noStep = IsNoParserWorkLimit;
         var step = ParserWorkLimitValue;
         var time = TimeLimitSeconds;
+        if (noStep) IsUsingEstimate = _workspace.Context.Setup?.CurrentSelectionLimits.TimeMode != SelectionTimeLimitMode.Explicit;
         _updatingEstimate = true;
         try
         {
@@ -498,6 +511,11 @@ internal sealed partial class SettingsViewModel : ObservableObject
             _updatingEstimate = false;
         }
         _workspace.Context.Setup?.SyncParsingLimitsFromSelection();
+        if (noStep)
+        {
+            _parserWorkLimitRefusal = string.Empty;
+            TimeLimitRefusal = string.Empty;
+        }
         _keepsNoParserWorkLimit = noStep != _lastGoodNoParserWorkLimit;
         _keptNoParserWorkLimit = noStep;
         _keepsParserWorkLimit = !noStep && step != _lastGoodParserWorkLimit;
