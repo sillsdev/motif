@@ -148,8 +148,27 @@ public static class AuthorAlternateFormComposer
         var left = placement.After is { } after ? Array.IndexOf(forms, after.ToGuid()) : -1;
         var right = placement.Before is { } before ? Array.IndexOf(forms, before.ToGuid()) : forms.Length;
         if ((placement.After is not null && left < 0) || (placement.Before is not null && right < 0) || right != left + 1)
-            throw new InvalidOperationException(
-                $"'{constructName}': placement neighbours are missing or not adjacent in the current order." + named);
+            throw new InvalidOperationException(PlacementRefusal(entry, placement, constructName, left, right) + named);
+    }
+
+    private static string PlacementRefusal(ILexEntry entry, Placement placement, string constructName, int left, int right)
+    {
+        var order = string.Join(", ", entry.AlternateFormsOS.Select(form =>
+            $"'{FormText(form)}' ({CanonicalId.FromGuid(form.Guid).Value})"));
+        var lexeme = entry.LexemeFormOA;
+        foreach (var (word, anchor) in new[] { ("after", placement.After), ("before", placement.Before) })
+        {
+            if (anchor is not { } id) continue;
+            if (lexeme is not null && lexeme.Guid == id.ToGuid())
+                return $"'{constructName}': '{word}' names the lexeme form '{FormText(lexeme)}', which is not an alternate form " +
+                    "and cannot be a neighbour; the alternate forms always come before it. To place the new form last, put it " +
+                    $"after the last alternate form. Alternate forms in order: {order}.";
+            if (!entry.AlternateFormsOS.Any(form => form.Guid == id.ToGuid()))
+                return $"'{constructName}': '{word}' names {id.Value}, which is not an alternate form of this entry. " +
+                    $"Alternate forms in order: {order}.";
+        }
+        return $"'{constructName}': the 'after' and 'before' forms are not adjacent in the current order, so the new " +
+            $"form has no place between them. Name one, or two adjacent forms. Alternate forms in order: {order}.";
     }
 
     // Selection order is pinned by AnOrderThatLetsAnUnrestrictedFormShadowARestrictedOneIsRefusedWithTheNextStep.

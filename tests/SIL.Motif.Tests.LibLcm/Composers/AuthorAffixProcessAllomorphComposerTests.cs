@@ -139,7 +139,7 @@ public sealed class AuthorAffixProcessAllomorphComposerTests : IDisposable
         var first = AddAlternate(entry, Intent(entry));
         var second = Intent(entry, 2);
         Refused(second, entry, "requires placement");
-        Refused(second with { Placement = new Placement(CanonicalId.Mint(), null) }, entry, "placement neighbours");
+        Refused(second with { Placement = new Placement(CanonicalId.Mint(), null) }, entry, "is not an alternate form of this entry");
         Refused(Intent(entry) with { Placement = new Placement(first, null) }, entry, "already has");
         var noMsa = ProcessEntry();
         Setup(() => Get<ILexEntry>(_cache, noMsa).MorphoSyntaxAnalysesOC.Clear());

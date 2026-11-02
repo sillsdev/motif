@@ -374,6 +374,25 @@ public sealed class AuthorAlternateFormComposerTests : IDisposable
         return Id(entry);
     }
     [Fact]
+    public void ALexemeFormOrAForeignFormAsANeighbourIsRefusedByNamingWhatItIs()
+    {
+        var (entry, _, _) = AddInflectionalPrefix(_cache, "m", _category);
+        ApplyOps(_cache, AuthorAlternateFormComposer.Build(_cache, Prefix(entry, "mw")));
+        var lexeme = Id(Get<ILexEntry>(_cache, entry).LexemeFormOA!);
+        var alternate = Id(Get<ILexEntry>(_cache, entry).AlternateFormsOS[0]);
+
+        var beforeLexeme = Assert.Throws<InvalidOperationException>(() => AuthorAlternateFormComposer.Build(_cache,
+            Prefix(entry, "mi", placement: new Placement(null, lexeme))));
+        var stranger = Assert.Throws<InvalidOperationException>(() => AuthorAlternateFormComposer.Build(_cache,
+            Prefix(entry, "mi", placement: new Placement(CanonicalId.Mint(), null))));
+
+        Assert.Contains("names the lexeme form", beforeLexeme.Message, StringComparison.Ordinal);
+        Assert.Contains("after the last alternate form", beforeLexeme.Message, StringComparison.Ordinal);
+        Assert.Contains(alternate.Value, beforeLexeme.Message, StringComparison.Ordinal);
+        Assert.Contains("is not an alternate form of this entry", stranger.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void PlacementNormalizesDecodedIdentityAndPersistsTheGap()
     {
         var (entry, _, _) = AddInflectionalPrefix(_cache, "m", _category);
