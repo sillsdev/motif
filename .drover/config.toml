@@ -24,4 +24,4 @@ policy = "batch"
 push = false
 
 [cleanup]
-disposable = ["**/bin", "**/obj"]
+disposable = ["**/bin", "**/obj", "**/node_modules", "**/__pycache__", "site/dist", "site/.astro"]
