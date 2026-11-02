@@ -255,7 +255,7 @@ public static partial class ProposalCommands
                 {
                     return CommandOutcome<DraftCreatedResponse>.Refused(
                         EmptyDraftOf(repository, request.DraftName)
-                            ? EmptyDraftCollision(request.DraftName)
+                            ? EmptyDraftCollision(request.DraftName, "creating a new draft with this name")
                             : NameCollision(request.DraftName, "creating a new draft with this name"));
                 }
 
@@ -2186,11 +2186,11 @@ public static partial class ProposalCommands
         catch (Exception exception) when (exception is not ProjectWritingSystemsUnavailableException) { return false; }
     }
 
-    private static Refusal EmptyDraftCollision(string draftName) =>
+    private static Refusal EmptyDraftCollision(string draftName, string trailingClause) =>
         new("draft.name-collision", FailureReason.Refused,
-            $"Draft '{draftName}' already exists and holds no changes, as when an earlier compose into it failed. " +
-            $"Compose into it again with --draft {draftName}, remove it with `discard-draft --draft {draftName}`, " +
-            "or use another name.",
+            DraftNameCollisionMessage(draftName, trailingClause) +
+            $" It holds no changes, as when an earlier compose into it failed: compose into it again with --draft {draftName}, " +
+            $"or remove it with `discard-draft --draft {draftName}`.",
             Fact(("draftName", draftName)));
 
     private static Refusal NameCollision(string draftName, string trailingClause) =>

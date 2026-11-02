@@ -75,7 +75,7 @@ public static class JobCommands
     // A Dry Run or Trial measures the stored Baseline; one older than the saved project would test the old grammar.
     private static Refusal? StaleBaselineRefusal(ProjectLocator project, BaselineRecord? baseline, string measure) =>
         baseline is not null && File.Exists(project.FullFwDataPath) &&
-        File.GetLastWriteTimeUtc(project.FullFwDataPath).Ticks != baseline.SourceLastWriteUtc.UtcDateTime.Ticks
+        File.GetLastWriteTimeUtc(project.FullFwDataPath).Ticks > baseline.SourceLastWriteUtc.UtcDateTime.Ticks
             ? new Refusal(RefusalCodes.ChangeRefreshRequired, FailureReason.Refused,
                 $"The project was saved after its Baseline was captured, so a {measure} would test the grammar as it was. " +
                 "Run `baseline capture` first, then try again.")
