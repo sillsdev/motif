@@ -44,11 +44,14 @@ and 8 GB. Either holds 2.0 GB with room to spare, so the three run on the hosted
 
 `ProposalDifferenceCommandsTests.ProducingADifferenceOverALargeWordListReportsMemoryAndRows` also skips without
 `MOTIF_SLOW_SCALE=1` and builds a 688,000-word project store. It asserts only that producing the Difference
-succeeds and prints its memory. The one local attempt did not finish: the test host went silent for the 10-minute
-hang timeout while the largest process in the run reached 5.4 GB resident, on a machine at load 90. That is too close to the 8 GB of a
-private-repository runner and its run time is unknown, so the workflow does not run it and nothing proves it.
-Run it by hand with the last command below; add it to `slow.yml` and to `tools/Assert-SlowScaleRan.ps1` once a
-run on a quiet machine finishes with a known peak.
+succeeds and prints its memory. It is hand-only: the workflow does not run it and nothing proves it.
+
+The one local attempt did not finish. The test host went silent for the 10-minute hang timeout, on a machine at
+load 90, and the largest process in that unfinished run reached 5.4 GB resident. That figure is not settled: it
+comes from one run under heavy load that never completed, and the hang dump may have inflated it. It does show the
+test could come close to the 8 GB of a private-repository runner, and its run time is unknown. Run it by hand with
+the last command below. Add it to `slow.yml` and to `tools/Assert-SlowScaleRan.ps1` once a run on a quiet machine
+finishes with a known peak.
 
 ## Running it on demand
 
@@ -65,8 +68,11 @@ success. Add a new slow test to that list as well as marking it with `[SlowScale
 
 ## Landing
 
+The workflow has not yet run on GitHub: it was validated by parsing only, and the same filtered commands were run
+locally. The first dispatch comes after this lands; check that run before relying on the schedule.
+
 Landing runs whole projects, with no filter. The slow run is the one deliberate exception: the nine tests above that
 skip without `MOTIF_SLOW_SCALE=1`, which include the three 688,000-word App tests, are not proven when a batch
-lands, and neither are the two layout cells the gate leaves out. They are proven by the next scheduled run. Do not run the slow set to land a batch, and do not treat its
-skips in `-All` as a gap to fill by hand. A slow-run failure is a defect to file against the commit range since the
-last green run.
+lands, and neither are the two layout cells the gate leaves out. They are proven by the next scheduled run. Do not
+run the slow set to land a batch, and do not treat its skips in `-All` as a gap to fill by hand. A slow-run failure
+is a defect to file against the commit range since the last green run.

@@ -19,16 +19,19 @@ on Windows, Ubuntu 22.04, and macOS.
 
 **`./test.ps1 -Changed` is the quick landing check; `-All` stays the gate.** It runs only the test classes the
 diff against the merge-base with `origin/main` can affect, chosen from a coverage map that `./test.ps1 -BuildMap`
-measures (one instrumented full run, on request; no scheduled job builds it), prints why each class was selected, and runs the full
-suite instead when anything is unknown (no map, an old map, a build, project or tooling file, new shared test code,
-a data file no source names). `-Changed -Explain` shows the selection without building. See
+measures (one instrumented full run, on request; no scheduled job builds it), prints why each class was selected,
+and runs the full suite instead when anything is unknown (no map, an old map, a build, project or tooling file, new
+shared test code, a data file no source names). `-Changed -Explain` shows the selection without building. See
 [docs/testing-changed-files.md](docs/testing-changed-files.md).
 
-**Nine tests and two layout cells run only in the scheduled slow run, and landing does not prove them.** `.github/workflows/slow.yml`
-(daily and by manual dispatch) sets `MOTIF_SLOW_SCALE=1` and runs the six slow-scale App tests, the three
-688,000-word memory tests and the full layout grid; `-All` skips the nine and inspects one layout cell of three. This is the one deliberate exception to landing whole projects: do
-not filter in or out to cover it, and a green `-All` does not mean those tests passed. The list, what each proves
-and how to run it by hand are in [docs/testing-slow-run.md](docs/testing-slow-run.md).
+**Nine tests and two layout cells run only in the scheduled slow run, and landing does not prove them.**
+`.github/workflows/slow.yml` (daily and by manual dispatch) sets `MOTIF_SLOW_SCALE=1` and runs the six slow-scale
+App tests, the three 688,000-word memory tests and the full layout grid; `-All` skips the nine and inspects one
+layout cell of three. This is the one deliberate exception to landing whole projects: do not filter in or out to
+cover it, and a green `-All` does not mean those tests passed. A tenth test, the Commands project's 688,000-word
+`ProposalDifferenceCommandsTests.ProducingADifferenceOverALargeWordListReportsMemoryAndRows`, also skips without the
+variable and is in no run: it is hand-only until a quiet-machine run shows it fits a hosted runner. The list, what
+each proves and how to run it by hand are in [docs/testing-slow-run.md](docs/testing-slow-run.md).
 
 **One machine, many worktrees: the scripts size themselves.** `build.ps1` passes `-m:N` to restore and build, with
 `N = MOTIF_BUILD_NODES` or, on a developer machine, a quarter of the processors (minimum two). CI is uncapped: no `-m`, no slot, and xUnit keeps its own thread default.
