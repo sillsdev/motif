@@ -372,6 +372,9 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     private CurrentEvidenceSnapshot? _readerEvidence;
     private bool _selectionReaderRequested;
     private long _pageRequestVersion;
+
+    /// <summary>Counts page shows and requests, so work started by one show can tell a later show from the same one.</summary>
+    internal long PageRequestVersion => _pageRequestVersion;
     private Task _requestDelivery = Task.CompletedTask;
 
     /// <summary>The publication to the pages under way, or a completed task when none is.</summary>

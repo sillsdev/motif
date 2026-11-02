@@ -11,6 +11,7 @@ public sealed partial class TextsPageModel
     private MatrixKey? _matrixHeld;
     private MatrixKey? _matrixReading;
     private MatrixKey? _matrixFailed;
+    private (long Page, EvidenceLens Lens)? _matrixFailedAt;
     private Task _matrixRead = Task.CompletedTask;
     private int _matrixGeneration;
 
@@ -73,6 +74,9 @@ public sealed partial class TextsPageModel
     {
         if (Context.CurrentPage != WorkspacePage.Texts || CurrentMatrixKey() is not { } key || key == _matrixHeld)
             return Task.CompletedTask;
+        // A failure is retried by a later show or newer evidence, not by the same show's other trigger.
+        if (key == _matrixFailed && _matrixFailedAt == (Context.PageRequestVersion, Context.EvidenceLens))
+            return Task.CompletedTask;
         return key == _matrixReading ? _matrixRead : _matrixRead = ReadMatrixSideAsync(key, cancellationToken);
     }
 
@@ -85,6 +89,7 @@ public sealed partial class TextsPageModel
     private async Task ReadMatrixSideAsync(MatrixKey key, CancellationToken cancellationToken)
     {
         var generation = ++_matrixGeneration;
+        var startedAt = (Context.PageRequestVersion, Context.EvidenceLens);
         _matrixReading = key;
         _matrixFailed = null;
         ShowMatrixProposal();
@@ -95,6 +100,7 @@ public sealed partial class TextsPageModel
             if (generation != _matrixGeneration || key != CurrentMatrixKey()) return;
             _matrixSummary = read.Summary;
             _matrixFailed = read.Failed ? key : null;
+            _matrixFailedAt = read.Failed ? startedAt : null;
             _matrixHeld = read.Failed ? null : key;
             ShowMatrixProposal();
         }
@@ -126,6 +132,7 @@ public sealed partial class TextsPageModel
     {
         ForgetHeldSide();
         _matrixFailed = null;
+        _matrixFailedAt = null;
     }
 
     private void ClearMatrixProposal()
