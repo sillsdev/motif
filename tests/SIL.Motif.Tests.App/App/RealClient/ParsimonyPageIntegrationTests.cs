@@ -34,8 +34,13 @@ namespace SIL.Motif.Tests.App.RealClient;
 
 [Collection(LcmCacheTestCollection.Name)]
 [Trait("MotifTestLevel", "Integration")]
-public sealed class ParsimonyPageIntegrationTests(PristineProjectFixture pristine)
+public sealed class ParsimonyPageIntegrationTests(PristineProjectFixture pristine) : IDisposable
 {
+    /// <summary>Keeps this test's Known project out of the registry other tests in the process scan.</summary>
+    private readonly IDisposable _privateRoot = PrivateManagedRoot.UseTemporary(nameof(ParsimonyPageIntegrationTests));
+
+    public void Dispose() => _privateRoot.Dispose();
+
     private const string MeasureId = "P-adhoc-duplicate";
 
     [Fact]

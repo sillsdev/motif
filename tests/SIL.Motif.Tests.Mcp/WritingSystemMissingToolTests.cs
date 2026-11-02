@@ -24,6 +24,7 @@ public sealed class WritingSystemMissingToolTests(PristineProjectFixture pristin
         var copy = pristine.CopyProjectFile();
         var path = Path.Combine(Path.GetDirectoryName(copy)!, "Wsfail" + Guid.NewGuid().ToString("N") + ".fwdata");
         File.Move(copy, path);
+        using var privateRoot = PrivateManagedRoot.Use(Path.GetDirectoryName(path)!);
         KnownProjectTestSetup.AssignUniqueTag(RunnerOptions.ResolveRoot(), path, "wsfail");
         var context = new ServerContext(path, "1.0", new NoRunnerLauncher(
             new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), null)), new ActivityLog(null), ToolProfile.Builtin,
@@ -54,6 +55,7 @@ public sealed class WritingSystemMissingToolTests(PristineProjectFixture pristin
         var copy = pristine.CopyProjectFile();
         var path = Path.Combine(Path.GetDirectoryName(copy)!, "Wsfail" + Guid.NewGuid().ToString("N") + ".fwdata");
         File.Move(copy, path);
+        using var privateRoot = PrivateManagedRoot.Use(Path.GetDirectoryName(path)!);
         KnownProjectTestSetup.AssignUniqueTag(RunnerOptions.ResolveRoot(), path, "wsfail");
         var context = new ServerContext(path, "1.0", new NoRunnerLauncher(
             new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), null)), new ActivityLog(null), ToolProfile.Builtin,
@@ -86,6 +88,7 @@ public sealed class WritingSystemMissingToolTests(PristineProjectFixture pristin
         var copy = pristine.CopyProjectFile();
         var path = Path.Combine(Path.GetDirectoryName(copy)!, "Wsfail" + Guid.NewGuid().ToString("N") + ".fwdata");
         File.Move(copy, path);
+        using var privateRoot = PrivateManagedRoot.Use(Path.GetDirectoryName(path)!);
         KnownProjectTestSetup.AssignUniqueTag(RunnerOptions.ResolveRoot(), path, "wsfail");
         var context = new ServerContext(path, "1.0", new NoRunnerLauncher(
             new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), FakeParser.ExecutablePath)), new ActivityLog(null), ToolProfile.Builtin,

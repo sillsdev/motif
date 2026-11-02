@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Security.Cryptography;
 using System.Text.Json.Nodes;
+using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Commands;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Baselines;
@@ -20,6 +21,11 @@ public sealed class ParsimonyCommandsTests : IDisposable
 {
     private readonly string _root = Path.Combine(Path.GetTempPath(), nameof(ParsimonyCommandsTests),
         Guid.NewGuid().ToString("N"));
+
+    /// <summary>Keeps this test's Known projects and evidence out of the registry other tests in the process scan.</summary>
+    private readonly IDisposable _privateRoot;
+
+    public ParsimonyCommandsTests() => _privateRoot = PrivateManagedRoot.Use(_root);
 
     [Fact]
     public void ShowReadsTheStoredParsimonyReportWithoutOpeningItsEvidenceFiles()
@@ -483,6 +489,7 @@ public sealed class ParsimonyCommandsTests : IDisposable
         var fwDataPath = CreateProject();
         var project = new SIL.Motif.Contract.Projects.ProjectLocator(fwDataPath, "project");
         var workerRoot = RunnerOptions.ResolveRoot();
+        Assert.StartsWith(_root, workerRoot, StringComparison.Ordinal);
         var projectKey = ProjectWorkspaceKey.Compute(project);
         var token = new BaselineToken("project-identity", "sha256:" + new string('1', 64), "projection-v1",
             "2026-10-05T00:00:00Z", "sha256:" + new string('2', 64));
@@ -528,6 +535,7 @@ public sealed class ParsimonyCommandsTests : IDisposable
 
     public void Dispose()
     {
+        _privateRoot.Dispose();
         try { Directory.Delete(_root, recursive: true); }
         catch (IOException) { }
         catch (UnauthorizedAccessException) { }

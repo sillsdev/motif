@@ -583,6 +583,7 @@ public sealed class DetailedNaturalClassMemberToolTests(PristineProjectFixture p
                 duplicateEnvironmentGuid = duplicateEnvironment.Guid;
             });
         });
+        using var privateRoot = PrivateManagedRoot.Use(Path.GetDirectoryName(project.FwDataPath)!);
         var managedRoot = RunnerOptions.ResolveRoot();
         KnownProjectTestSetup.AssignUniqueTag(managedRoot, project.FwDataPath,
             Path.GetFileNameWithoutExtension(project.FwDataPath));

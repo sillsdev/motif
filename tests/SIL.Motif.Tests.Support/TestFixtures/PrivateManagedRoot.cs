@@ -26,4 +26,24 @@ public static class PrivateManagedRoot
         environment[RunnerOptions.RootVariable] = Path.Combine(directory, "managed-root");
         return AmbientEnvironment.Push(environment);
     }
+
+    /// <summary>
+    /// As <see cref="Use"/> in a new folder under the temporary directory, which disposing the result deletes
+    /// after restoring the environment.
+    /// </summary>
+    public static IDisposable UseTemporary(string name)
+    {
+        var directory = Path.Combine(Path.GetTempPath(), name, Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        return new Scope(Use(directory), directory);
+    }
+
+    private sealed class Scope(IDisposable environment, string directory) : IDisposable
+    {
+        public void Dispose()
+        {
+            environment.Dispose();
+            Directory.Delete(directory, recursive: true);
+        }
+    }
 }
