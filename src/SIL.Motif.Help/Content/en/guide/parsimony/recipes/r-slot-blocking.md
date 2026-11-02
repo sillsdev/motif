@@ -22,7 +22,7 @@ For a one-slot comparison, make a change whose only edit is `EditAffixSlot` sett
 
 ## Verify
 
-Use Review changes to inspect what the edit would write. Compare parser results from the current and edited scratch copies for the same words. Check before and after production of the exact Approved target reading, every previously produced Approved reading, and each reviewed negative. Recommend making the slot optional only when the target is newly produced, no Approved reading is lost, and no reviewed negative becomes accepted. If parser results are incomplete, the target remains missing, an Approved reading is lost, or a reviewed negative becomes accepted, name that reason and leave the change unrecommended.
+Use Review Changes to inspect what the edit would write. Compare parser results from the current and edited scratch copies for the same words. Check before and after production of the exact Approved target reading, every previously produced Approved reading, and each reviewed negative. Recommend making the slot optional only when the target is newly produced, no Approved reading is lost, and no reviewed negative becomes accepted. If parser results are incomplete, the target remains missing, an Approved reading is lost, or a reviewed negative becomes accepted, name that reason and leave the change unrecommended.
 
 ## Grounding
 

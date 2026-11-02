@@ -1,6 +1,6 @@
 # Review a Proposal
 
-When a Proposal is open, **Review changes** names it in the heading, such as “Sound change · 4 changes”, and lists every change in it in one order: the **Grammar changes** first, a change that others depend on before the ones that depend on it, then changes to words, grouped as they are for your own changes. You can read that list without applying anything.
+When a Proposal is open, **Review Changes** names it in the heading, such as “Sound change · 4 changes”, and lists every change in it in one order: the **Grammar changes** first, a change that others depend on before the ones that depend on it, then changes to words, grouped as they are for your own changes. You can read that list without applying anything.
 
 1. Choose **Next** to move down the list. Choosing **Next** marks the change you leave as looked at; **Previous** moves back and marks nothing. **Keep** marks the current change and moves on, and **Keep all** in the toolbar's **⋯** menu, which shows how many it marks, marks every change. Every change, grammar or word, has its own **Keep** and **Undo** at the end of its row, and shows a **✓** mark once it has been looked at.
 2. Read the count in the navigator, such as “2 of 4 looked at”. Looking at a change is attention, not approval. Apply never waits for it, and it never changes the Proposal.
@@ -12,4 +12,4 @@ Choose **Decline** if you do not want the Proposal at all. It is kept with its t
 
 A change stops counting as looked at when the change itself changes, or when the Proposal is tried again. An undone change leaves the count. Keyboard shortcuts for this list are in [Keyboard shortcuts](guide:keyboard-shortcuts).
 
-![Review changes listing the changes of a Proposal](shot:proposal-review-keep-undo/review-list)
+![Review Changes listing the changes of a Proposal](shot:proposal-review-keep-undo/review-list)

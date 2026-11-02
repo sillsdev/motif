@@ -4,7 +4,7 @@
 
 ## When to use it
 
-Use it after reading a Proposal you will not apply. A Proposal that is still a Draft is finalized first, so what you declined stays readable. Your own pending changes are not declined; take them out on **Review changes** instead.
+Use it after reading a Proposal you will not apply. A Proposal that is still a Draft is finalized first, so what you declined stays readable. Your own pending changes are not declined; take them out on **Review Changes** instead.
 
 ## Example
 
@@ -14,7 +14,7 @@ motif reject --proposal <id> --project <project> --json
 
 ## What it prints
 
-The Proposal's id and its new status, `rejected`. In the window, **Decline** on **Review changes** does the same while the Proposal is open, and the card moves to **Closed** on **Proposals**.
+The Proposal's id and its new status, `rejected`. In the window, **Decline** on **Review Changes** does the same while the Proposal is open, and the card moves to **Closed** on **Proposals**.
 
 ## Related commands
 

@@ -22,7 +22,7 @@ Stage a change with `EditAllomorphCondition` for a confirmed restriction or `Ord
 
 ## Verify
 
-Use Review changes to inspect what the edit would write, then compare parser results from the current and edited scratch copies for the same words. Check the exact Approved readings, the attributed unwanted reading and reviewed negatives, held-out positives, and any elsewhere fallback cases. If `effective-allomorph-order` is unavailable, name it and defer.
+Use Review Changes to inspect what the edit would write, then compare parser results from the current and edited scratch copies for the same words. Check the exact Approved readings, the attributed unwanted reading and reviewed negatives, held-out positives, and any elsewhere fallback cases. If `effective-allomorph-order` is unavailable, name it and defer.
 
 ## Grounding
 

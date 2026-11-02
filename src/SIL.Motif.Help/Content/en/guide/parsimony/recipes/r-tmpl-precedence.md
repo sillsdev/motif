@@ -22,7 +22,7 @@ Use `EditAffixTemplate` to reorder an existing template when the linguist confir
 
 ## Verify
 
-Use Review changes to inspect what the edit would write. Compare parser results from the current and edited project for the same words. Check the exact Approved readings in both directions: the intended reading must be produced and every previously produced Approved reading must remain. Look for reviewed mixed-branch combinations, slot swaps, and double fills that become accepted. If one is newly accepted or an Approved reading is lost, do not apply the change. If none of those combinations has a reviewed label, report structural improvement only. Incomplete parser results or unavailable `template-embeddings` leave the order claim unverified; name the gap and defer it.
+Use Review Changes to inspect what the edit would write. Compare parser results from the current and edited project for the same words. Check the exact Approved readings in both directions: the intended reading must be produced and every previously produced Approved reading must remain. Look for reviewed mixed-branch combinations, slot swaps, and double fills that become accepted. If one is newly accepted or an Approved reading is lost, do not apply the change. If none of those combinations has a reviewed label, report structural improvement only. Incomplete parser results or unavailable `template-embeddings` leave the order claim unverified; name the gap and defer it.
 
 ## Grounding
 

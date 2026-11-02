@@ -519,7 +519,7 @@ public sealed class ReviewWorkspacePaneTests
                 var inspector = provider.InspectorContent!;
                 var footer = provider.InspectorFooter!;
                 var parents = new[] { side.Parent, inspector.Parent, footer.Parent };
-                Assert.Equal("Review changes", provider.SidePanelTitle);
+                Assert.Equal("Review Changes", provider.SidePanelTitle);
                 Assert.All(new[] { side, inspector, footer }, pane => Assert.Same(page, pane.DataContext));
                 Assert.Same(side, provider.SidePanel);
                 Assert.Same(inspector, provider.InspectorContent);

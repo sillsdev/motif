@@ -22,7 +22,7 @@ Only after a linguist confirms a wrong-context example, stage changes with `Auth
 
 ## Verify
 
-Use Review changes to inspect what the edit would write, then compare parser results from the current and edited scratch copies for the same words. Check every exact Approved reading, held-out positive forms, and reviewed wrong-context negatives; confirm the shared users remain unchanged. The view reports extra and missed trigger sets; a missed trigger prevents an excess score. Show context counts, not a correctness rate. If the context universe, compiler order, or unique alignment is unavailable, name it and defer.
+Use Review Changes to inspect what the edit would write, then compare parser results from the current and edited scratch copies for the same words. Check every exact Approved reading, held-out positive forms, and reviewed wrong-context negatives; confirm the shared users remain unchanged. The view reports extra and missed trigger sets; a missed trigger prevents an excess score. Show context counts, not a correctness rate. If the context universe, compiler order, or unique alignment is unavailable, name it and defer.
 
 ## Grounding
 

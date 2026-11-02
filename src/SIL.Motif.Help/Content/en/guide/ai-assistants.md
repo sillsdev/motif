@@ -2,7 +2,7 @@
 
 Advanced AI mode lets selected assistants use Motif's project tools. The assistant still cannot Apply a Proposal; a person reviews and Applies it in Motif.
 
-Open **AI assistants** in the window and turn on Advanced AI mode. Motif lists the supported assistants it finds (Claude Desktop, Claude Code and Codex); if it finds none, the page says so. Check the ones to connect, then choose **Connect Selected Assistants**.
+Open **AI Assistants** in the window and turn on Advanced AI mode. Motif lists the supported assistants it finds (Claude Desktop, Claude Code and Codex); if it finds none, the page says so. Check the ones to connect, then choose **Connect Selected Assistants**.
 
 Changing Advanced AI mode affects new Motif sessions. Restart an assistant session to apply the setting to a session that is already open.
 

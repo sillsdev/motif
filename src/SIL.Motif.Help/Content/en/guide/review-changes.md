@@ -1,6 +1,6 @@
-# Review changes
+# Review Changes
 
-**Review changes** gathers changes to words, grammar and the lexicon, grouped by what they do. For each word, it shows its analysis, the staged change, and whether the change still fits the current FieldWorks project. Select a change to read its full details in the Inspector. If the Inspector is closed, choose **Details** from the change's **⋯** menu. Keep marks a change looked at; Apply writes every eligible remaining change. Reading this page does not apply anything. In the Inspector, choose **Inspect** beside a pending morpheme when that action is available to open its object. The form and gloss remain copyable.
+**Review Changes** gathers changes to words, grammar and the lexicon, grouped by what they do. For each word, it shows its analysis, the staged change, and whether the change still fits the current FieldWorks project. Select a change to read its full details in the Inspector. If the Inspector is closed, choose **Details** from the change's **⋯** menu. Keep marks a change looked at; Apply writes every eligible remaining change. Reading this page does not apply anything. In the Inspector, choose **Inspect** beside a pending morpheme when that action is available to open its object. The form and gloss remain copyable.
 
 1. Check each listed word and change. Choose **Undo** beside a change you no longer want, or **Undo all** to take back a whole group. **Undo all** in the toolbar's **⋯** menu takes out every change at once; the window's Undo puts them back.
 2. Choose **Check these changes** to measure the words you touched. The Apply area shows how many changed words keep their approved analyses. If the check is still running, you can choose **Cancel**.
@@ -15,4 +15,4 @@ If a change is in the **Needs another look** group, its sentence changed in Fiel
 
 If Motif could not confirm an Apply, the page says that FieldWorks may already have these changes. Choose **Refresh** to check what the project holds now. Apply stays blocked until you do.
 
-![Review changes after measuring a pending analysis change](shot:review-apply-refresh-parse/measured)
+![Review Changes after measuring a pending analysis change](shot:review-apply-refresh-parse/measured)

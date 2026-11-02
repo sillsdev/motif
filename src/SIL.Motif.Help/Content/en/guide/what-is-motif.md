@@ -2,7 +2,7 @@
 
 Motif tells you how well the FieldWorks parser handles your words: which ones parse, which of your approved analyses the grammar still builds, how much parser work each word takes, and what the grammar check found. You can also look at one word closely and collect corrections to its analyses.
 
-Motif reads your saved FieldWorks project. It writes nothing to it until you open **Review changes** and choose **Apply to FieldWorks project**. FieldWorks is where you edit the project.
+Motif reads your saved FieldWorks project. It writes nothing to it until you open **Review Changes** and choose **Apply to FieldWorks project**. FieldWorks is where you edit the project.
 
 The window uses Andika for its interface text; linguistic text uses the fonts selected in the FieldWorks project's writing systems. Motif includes Andika, Charis SIL, Doulos SIL and Gentium Plus, so a project using one of them does not need a separate font installation.
 
@@ -15,10 +15,10 @@ Motif uses PanGloss to parse words. [Parse all words](term:parse-all-words) keep
 3. Read the [Overview](guide:overview).
 4. After your first run, open **Texts**, choose a word that did not parse, and use [Try a Word](guide:try-a-word) to inspect it.
 5. In **Texts**, look at words and choose analysis changes.
-6. On **Review changes**, check them, then choose **Apply to FieldWorks project**. See [Applying changes](guide:apply-to-fieldworks) first.
+6. On **Review Changes**, check them, then choose **Apply to FieldWorks project**. See [Applying changes](guide:apply-to-fieldworks) first.
 7. After you edit the grammar in FieldWorks, save, press **Refresh**, then **Parse all words**.
 
-For details about individual steps, see the [Refresh](guide:refresh-numbers), [Texts](guide:texts) and [Review changes](guide:review-changes) guides.
+For details about individual steps, see the [Refresh](guide:refresh-numbers), [Texts](guide:texts) and [Review Changes](guide:review-changes) guides.
 
 For keyboard navigation and shortcuts, see [Keyboard shortcuts](guide:keyboard-shortcuts).
 For window zoom, theme, project parsing limits and Help, see [Settings](guide:settings).

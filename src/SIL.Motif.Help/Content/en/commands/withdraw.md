@@ -4,9 +4,9 @@
 
 ## When to use it
 
-Use it when an author no longer wants an open Proposal to go forward. Motif finalizes a Draft before withdrawing it, so its content remains available if someone reopens it. This command does not withdraw your own pending changes; undo those on **Review changes** instead.
+Use it when an author no longer wants an open Proposal to go forward. Motif finalizes a Draft before withdrawing it, so its content remains available if someone reopens it. This command does not withdraw your own pending changes; undo those on **Review Changes** instead.
 
-This command requires Advanced AI mode. Turn it on in **AI assistants** or run `motif settings advanced-ai on`. In a sandbox, set `MOTIF_ADVANCED_AI_MODE_PATH` to a writable preference file.
+This command requires Advanced AI mode. Turn it on in **AI Assistants** or run `motif settings advanced-ai on`. In a sandbox, set `MOTIF_ADVANCED_AI_MODE_PATH` to a writable preference file.
 
 ## Example
 

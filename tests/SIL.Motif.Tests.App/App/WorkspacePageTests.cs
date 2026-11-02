@@ -1,4 +1,5 @@
 using Avalonia.Input;
+using SIL.Motif.App;
 using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.Commands.Queries;
@@ -77,9 +78,11 @@ public sealed class WorkspacePageTests
                 WorkspacePage.AiHandoff, WorkspacePage.AiAssistants, WorkspacePage.Settings],
             workspace.Pages.Select(page => page.Page));
         Assert.Equal(
-            ["Overview", "Proposals", "Texts", "Try a Word", "Timing", "Warnings", "Parsimony", "Review changes",
-                "AI Handoff", "AI assistants", "Settings"],
+            ["Overview", "Proposals", "Texts", "Try a Word", "Timing", "Warnings", "Parsimony", "Review Changes",
+                "AI Handoff", "AI Assistants", "Settings"],
             workspace.Pages.Select(page => page.Title));
+        Assert.Equal(workspace.Pages.Single(page => page.Page == WorkspacePage.AiAssistants).Title,
+            MotifAppStrings.AiAssistantsTitle);
         Assert.DoesNotContain(workspace.VisiblePages, page => page.Page == WorkspacePage.Settings);
         Assert.Equal(workspace.Pages.Where(page => page.IsAvailable && page.Page != WorkspacePage.Settings),
             workspace.VisiblePages);

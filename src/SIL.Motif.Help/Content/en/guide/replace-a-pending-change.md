@@ -4,7 +4,7 @@ You can change your mind before Apply. To replace a pending opinion, return to *
 
 To remove a change without replacing it:
 
-1. Open **Review changes**.
+1. Open **Review Changes**.
 2. Find the word and action you want to withdraw.
 3. Choose **Undo** beside it.
 

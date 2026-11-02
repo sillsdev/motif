@@ -22,7 +22,7 @@ For an existing, compatible position, use `EditInflectionalAffix` to assign the 
 
 ## Verify
 
-Use Review changes to inspect what the edit would write. Compare parser results from the current and edited project for the same words. Confirm the target reading's before and after presence and that the affected unslotted count is zero. Check exact Approved readings, including held-out readings, and look for reviewed swaps or double fills that become accepted. If a reading is lost, a new negative is accepted, parser results are incomplete, or `rooted-morph` is unavailable, name that gap and leave the repair unverified.
+Use Review Changes to inspect what the edit would write. Compare parser results from the current and edited project for the same words. Confirm the target reading's before and after presence and that the affected unslotted count is zero. Check exact Approved readings, including held-out readings, and look for reviewed swaps or double fills that become accepted. If a reading is lost, a new negative is accepted, parser results are incomplete, or `rooted-morph` is unavailable, name that gap and leave the repair unverified.
 
 ## Grounding
 

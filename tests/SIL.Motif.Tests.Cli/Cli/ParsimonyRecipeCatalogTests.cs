@@ -162,7 +162,7 @@ public sealed class ParsimonyRecipeCatalogTests
         Assert.Contains("AuthorNaturalClass", recipe.Page, StringComparison.Ordinal);
         Assert.Contains("RelinkNaturalClass", recipe.Page, StringComparison.Ordinal);
         Assert.Contains("not a probability", recipe.Page, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("Use Review changes to inspect what the edit would write, then compare parser results from the current and edited scratch copies for the same words.",
+        Assert.Contains("Use Review Changes to inspect what the edit would write, then compare parser results from the current and edited scratch copies for the same words.",
             recipe.Page, StringComparison.Ordinal);
         Assert.False(Regex.IsMatch(recipe.Page, @"\b(assess\w*|candidate\w*|reject\w*|violation\w*)\b",
             RegexOptions.IgnoreCase));

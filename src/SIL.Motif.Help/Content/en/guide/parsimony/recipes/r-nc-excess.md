@@ -22,7 +22,7 @@ Use `EditNaturalClass` to change the segment members of one explicitly scoped cl
 
 ## Verify
 
-Use Review changes to inspect what the edit would write, then compare parser results from the current and edited scratch copies for the same words. A confirmed correction must make the reviewed wrong form complete with no accepted reading, preserve every Approved reading, and retain valid held-out positives such as b and m. For a relink, verify the intended user changes and the other users still parse through the original class. A Keep records its reason against the finding evidence and makes no grammar edit. The view reports the definite feature-intersection extension and unknown members; when membership is unknown, do not claim an exact excess rate or a tightest class. If class extension or unique context attribution is unavailable, name it and defer.
+Use Review Changes to inspect what the edit would write, then compare parser results from the current and edited scratch copies for the same words. A confirmed correction must make the reviewed wrong form complete with no accepted reading, preserve every Approved reading, and retain valid held-out positives such as b and m. For a relink, verify the intended user changes and the other users still parse through the original class. A Keep records its reason against the finding evidence and makes no grammar edit. The view reports the definite feature-intersection extension and unknown members; when membership is unknown, do not claim an exact excess rate or a tightest class. If class extension or unique context attribution is unavailable, name it and defer.
 
 ## Grounding
 

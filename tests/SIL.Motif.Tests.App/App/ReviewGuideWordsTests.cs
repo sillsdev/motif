@@ -65,7 +65,7 @@ public sealed class ReviewGuideWordsTests
             StringComparison.Ordinal);
         Assert.Contains("When the Inspector is collapsed, choose **Details** from the row's **⋯** menu", text,
             StringComparison.Ordinal);
-        Assert.Contains("**Open in Review changes** there to review the Proposal", text, StringComparison.Ordinal);
+        Assert.Contains("**Open in Review Changes** there to review the Proposal", text, StringComparison.Ordinal);
         Assert.Contains("The **⋯** menu repeats each row's available actions", text, StringComparison.Ordinal);
         Assert.DoesNotContain("**Not tried yet** has no Trial", text, StringComparison.Ordinal);
     }

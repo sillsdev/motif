@@ -4,7 +4,7 @@
 
 ## When to use it
 
-Use it to see what a Proposal would do before you try or apply it. The window's Review changes page shows the same list. Without `--proposal` it reads the pending changes.
+Use it to see what a Proposal would do before you try or apply it. The window's Review Changes page shows the same list. Without `--proposal` it reads the pending changes.
 
 ## Example
 

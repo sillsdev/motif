@@ -46,7 +46,7 @@ public sealed partial class ReviewPanel : UserControl, IWorkspacePaneProvider
 
     public ReviewPageModel Page { get; }
 
-    public string SidePanelTitle => "Review changes";
+    public string SidePanelTitle => "Review Changes";
 
     public Control SidePanel => _sidePanel;
 

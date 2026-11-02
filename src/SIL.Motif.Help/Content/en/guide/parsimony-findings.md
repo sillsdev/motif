@@ -21,7 +21,7 @@ Select an active finding. Its detail column has **Keep**, **Defer** and **Ask** 
 
 When there are several Notebook record types, choose the one the decision goes under. The page never picks one by its English name.
 
-Each action is staged in pending changes. The Parsimony page links to [Review changes](guide:review-changes), where you can inspect the staged decision and use Apply. Nothing is written to FieldWorks until Apply. A staged decision shows as staged, not as suppressed. Refresh after Apply to see the decision in Suppressed.
+Each action is staged in pending changes. The Parsimony page links to [Review Changes](guide:review-changes), where you can inspect the staged decision and use Apply. Nothing is written to FieldWorks until Apply. A staged decision shows as staged, not as suppressed. Refresh after Apply to see the decision in Suppressed.
 
 ## Suppressed decisions
 

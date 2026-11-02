@@ -22,7 +22,7 @@ In **What changed**, a move between two problem outcomes begins **Still a proble
 
 Use the keyboard to move through a Text, the Word list and Lists, and stage an opinion on one stored analysis at a time. [Keyboard shortcuts](guide:keyboard-shortcuts) lists the keys for Analyze texts, the Word list, Lists and Matrix.
 
-Changes you collect remain pending until you review and apply them. The page’s **Review changes** link opens that list; it does not write anything to FieldWorks. [Text Coverage](term:text-coverage) appears on the Overview after a measurement.
+Changes you collect remain pending until you review and apply them. The page’s **Review Changes** link opens that list; it does not write anything to FieldWorks. [Text Coverage](term:text-coverage) appears on the Overview after a measurement.
 
 ![Texts after Parse all words records the current comparison](shot:open-project-overview/texts)
 

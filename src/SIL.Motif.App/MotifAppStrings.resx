@@ -521,7 +521,7 @@
     <comment>Accessible name announced by screen readers.</comment>
   </data>
   <data name="MotifApp.ReviewChanges" xml:space="preserve">
-    <value>· Review changes</value>
+    <value>· Review Changes</value>
     <comment>Window text.</comment>
   </data>
   <data name="MotifApp.ParseAllWordsInTheSelectionAccessibleName" xml:space="preserve">
@@ -9008,8 +9008,8 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <comment>Accessible name announced by screen readers.</comment>
   </data>
   <data name="MotifApp.AiAssistantsTitle" xml:space="preserve">
-    <value>AI assistants</value>
-    <comment>Heading of the AI assistants page; matches the page's name in the sidebar.</comment>
+    <value>AI Assistants</value>
+    <comment>Heading of the AI Assistants page; matches the page's name in the sidebar.</comment>
   </data>
   <data name="MotifApp.AdvancedAiModeTitle" xml:space="preserve">
     <value>Advanced AI Mode</value>
