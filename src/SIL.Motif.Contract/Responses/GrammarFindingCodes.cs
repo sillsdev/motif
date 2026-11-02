@@ -11,4 +11,7 @@ public static class GrammarFindingCodes
 
     /// <summary>A stored negated feature value, which FieldWorks' own parser loader cannot read.</summary>
     public const string NegatedFeatureValue = "grammar.negated-feature-value";
+
+    /// <summary>A derivational affix with a From Inflection Class and no To Inflection Class, so derived stems keep the From class.</summary>
+    public const string DerivedStemKeepsFromClass = "grammar.derived-stem-keeps-from-class";
 }

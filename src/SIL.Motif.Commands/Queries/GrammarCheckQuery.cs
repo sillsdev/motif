@@ -161,6 +161,7 @@ public static class GrammarCheckQuery
                 };
                 projected = RequiredSlotWarnings.AddTo(projected, Cache());
                 projected = NegatedFeatureValueWarnings.AddTo(projected, Cache());
+                projected = DerivedStemClassWarnings.AddTo(projected, Cache());
                 response = projected with
                 {
                     Findings = projected.Findings.Select(finding => WithReach(finding, Cache)).ToArray(),

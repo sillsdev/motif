@@ -217,6 +217,51 @@ public sealed class GrammarCheckQueryTests : IDisposable
         Assert.DoesNotContain("FsFeatStruc", warning.Description, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void ADerivationalAffixWithAFromClassAndNoToClassIsAWarningNamingTheClassItKeeps()
+    {
+        var fwDataPath = _pristine.CopyProjectFile();
+        var loader = new FwDataProjectLoader();
+        Guid msaGuid;
+        using (var cache = loader.LoadCache(fwDataPath))
+        {
+            var services = cache.ServiceLocator;
+            IMoDerivAffMsa msa = null!;
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            {
+                var category = services.GetInstance<IPartOfSpeechFactory>().Create();
+                cache.LangProject.PartsOfSpeechOA ??= services.GetInstance<ICmPossibilityListFactory>().Create();
+                cache.LangProject.PartsOfSpeechOA.PossibilitiesOS.Add(category);
+                category.Name.set_String(cache.DefaultAnalWs, "Verb");
+                var inflectionClass = services.GetInstance<IMoInflClassFactory>().Create();
+                category.InflectionClassesOC.Add(inflectionClass);
+                inflectionClass.Name.set_String(cache.DefaultAnalWs, "VC-A");
+                var entry = services.GetInstance<ILexEntryFactory>().Create();
+                var form = services.GetInstance<IMoAffixAllomorphFactory>().Create();
+                entry.LexemeFormOA = form;
+                form.Form.set_String(cache.DefaultVernWs, "ish");
+                msa = services.GetInstance<IMoDerivAffMsaFactory>().Create();
+                entry.MorphoSyntaxAnalysesOC.Add(msa);
+                msa.FromPartOfSpeechRA = category;
+                msa.ToPartOfSpeechRA = category;
+                msa.FromInflectionClassRA = inflectionClass;
+            });
+            msaGuid = msa.Guid;
+            loader.Save(cache);
+        }
+
+        Capture(fwDataPath);
+        var check = Check(fwDataPath);
+
+        var warning = Assert.Single(check.Findings, item => item.Code == GrammarFindingCodes.DerivedStemKeepsFromClass);
+        Assert.Equal(GrammarDiagnosticLevel.Warning, warning.Severity);
+        Assert.Contains("'ish'", warning.Description, StringComparison.Ordinal);
+        Assert.Contains("'VC-A'", warning.Description, StringComparison.Ordinal);
+        Assert.Contains("toInflectionClass", warning.Guidance, StringComparison.Ordinal);
+        Assert.Equal(CanonicalId.FromGuid(msaGuid).Value, Assert.Single(warning.Subject).ObjectId);
+        Assert.Equal(1, Assert.Single(check.Summary, item => item.Code == GrammarFindingCodes.DerivedStemKeepsFromClass).Count);
+    }
+
     private static GrammarCheckResponse Check(string fwDataPath) =>
         AssertOutcome(GrammarCheckQuery.Query(new GrammarCheckRequest(fwDataPath), new FakeInvoker
         {

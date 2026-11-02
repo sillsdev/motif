@@ -30,6 +30,8 @@ Motif also warns when a required inflectional slot in a template has no affixes.
 
 Motif also warns, with code `grammar.negated-feature-value`, about each stored negated feature value (a feature set to "not" a value). FieldWorks' parser loader throws when it reads one, so FieldWorks cannot parse with the project, while PanGloss parses on and leaves the value out of the stem's features, so what carries it is not held back by it. The finding names the feature, the value and the entry or object that holds it. On a stem or an inflectional affix, [remove the feature value](cmd:compose-remove-feature-value) (it removes a negated one like a closed one), then author a closed value if one is wanted. Motif has no command for a negated value in a phoneme, natural class or part of speech, and whether FieldWorks can clear one was not checked.
 
+Motif also warns, with code `grammar.derived-stem-keeps-from-class`, about each derivational affix that takes a From Inflection Class and names no To Inflection Class: the stems it derives keep the From class, so an inflectional affix that attaches only to other classes finds no stem. The finding names the affix and the class. Set the class the derived stem should take with [Restrict a derivational affix](cmd:compose-edit-derivational-affix-restriction) (`toInflectionClass`), or leave it when the derived stem does keep its class.
+
 ## Related commands
 
 - [Read grammar warnings](cmd:warnings) filters and displays stored findings.
