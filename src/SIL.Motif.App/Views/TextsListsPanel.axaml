@@ -50,6 +50,12 @@
 
     <WrapPanel Grid.Row="2" x:Name="ListControls" IsVisible="{Binding Lists.HasSelectedList}"
                ItemSpacing="{DynamicResource Intent.Space.Related}" LineSpacing="{DynamicResource Intent.Space.Related}">
+      <views:FilterChip x:Name="TextsListsMovedChip" VerticalAlignment="Top"
+                        Label="{x:Static app:MotifAppStrings.TextsMovedChipLabel}"
+                        Count="{Binding Lists.Compare.MovedChipCount}" IsActive="{Binding Lists.Compare.IsMovedFilterOn}"
+                        ChipName="{Binding Lists.Compare.MovedChipAccessibleName}"
+                        IsVisible="{Binding Lists.Compare.ShowsMovedChip}"
+                        Command="{Binding Lists.Compare.ToggleMovedFilterCommand}" />
       <ComboBox x:Name="TextsListsPanelSortChoicesItems" ItemsSource="{Binding Lists.Compare.SortChoices}"
                 SelectedItem="{Binding Lists.Compare.Sort}"
                 MinWidth="{DynamicResource Component.TextsPage.CompareSortMinWidth}"

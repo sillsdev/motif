@@ -4288,6 +4288,14 @@ public static class MotifAppStrings
 
     public static string TextsListPlacesTodayFormat => Text("MotifApp.TextsListPlacesTodayFormat");
 
+    public static string TextsMovedChipLabel => Text("MotifApp.TextsMovedChipLabel");
+
+    public static string TextsMovedChipAccessibleNameFormat => Text("MotifApp.TextsMovedChipAccessibleNameFormat");
+
+    public static string TextsMovedChipWordsPattern => Text("MotifApp.TextsMovedChipWordsPattern");
+
+    public static string TextsMovedListSummaryFormat => Text("MotifApp.TextsMovedListSummaryFormat");
+
     public static string DifferenceWithProposalFormat => Text("MotifApp.DifferenceWithProposalFormat");
 
     public static string DifferenceProposalStillProblemFormat => Text("MotifApp.DifferenceProposalStillProblemFormat");
@@ -4325,6 +4333,8 @@ public static class MotifAppStrings
     public static string TextsListChipProposalNoneAccessibleNameFormat => Text("MotifApp.TextsListChipProposalNoneAccessibleNameFormat");
 
     public static string TextsListChipProposalReadingAccessibleNameFormat => Text("MotifApp.TextsListChipProposalReadingAccessibleNameFormat");
+
+    public static string TextsListHandOffMovedHelp => Text("MotifApp.TextsListHandOffMovedHelp");
 
     public static string TextsListHandOffEitherSideHelp => Text("MotifApp.TextsListHandOffEitherSideHelp");
 

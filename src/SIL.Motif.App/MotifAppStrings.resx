@@ -8827,6 +8827,22 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <value>{0} today</value>
     <comment>Texts list header in the Today to Proposal view when only today's places can be counted; {0} is today's places, such as '8 places'.</comment>
   </data>
+  <data name="MotifApp.TextsMovedChipLabel" xml:space="preserve">
+    <value>Moved By This Proposal</value>
+    <comment>Label of the Texts chip that narrows the word list to the words the open Proposal puts in a different cell than today does.</comment>
+  </data>
+  <data name="MotifApp.TextsMovedChipAccessibleNameFormat" xml:space="preserve">
+    <value>{0}: {1}</value>
+    <comment>Spoken name of the Moved By This Proposal chip: {0} is the chip's label, {1} says how many words it would leave.</comment>
+  </data>
+  <data name="MotifApp.TextsMovedChipWordsPattern" xml:space="preserve">
+    <value>{0, plural, one {# word that this Proposal puts in a different cell than today} other {# words that this Proposal puts in a different cell than today}}</value>
+    <comment>Plural pattern for the Moved By This Proposal chip's spoken name: how many words in the chosen cells the Proposal moves to another cell; # is how many.</comment>
+  </data>
+  <data name="MotifApp.TextsMovedListSummaryFormat" xml:space="preserve">
+    <value>{0} that this Proposal moves</value>
+    <comment>Texts word list summary while the Moved By This Proposal chip is chosen: {0} is the words counted, such as '3 of 5 words'.</comment>
+  </data>
   <data name="MotifApp.DifferenceWithProposalFormat" xml:space="preserve">
     <value>With this Proposal: {0}</value>
     <comment>Note under a word in What Changed in the Today to Proposal view: {0} is the cell the open Proposal puts the word in; the row shows the word as it is today.</comment>
@@ -8902,6 +8918,10 @@ Motif starts a check automatically when this project opens. Use Reload to read a
   <data name="MotifApp.TextsListChipProposalReadingAccessibleNameFormat" xml:space="preserve">
     <value>Open the {0} word list: this Proposal's count is still being read</value>
     <comment>Spoken name of a Texts list chip in the Proposal view while the Proposal's counts are being read: {0} the list name.</comment>
+  </data>
+  <data name="MotifApp.TextsListHandOffMovedHelp" xml:space="preserve">
+    <value>Sends the listed words that this Proposal puts in a different cell than today.</value>
+    <comment>Help for the list's AI Handoff button while the Moved By This Proposal chip is chosen.</comment>
   </data>
   <data name="MotifApp.TextsListHandOffEitherSideHelp" xml:space="preserve">
     <value>Sends today's words that today or this Proposal puts in this list.</value>

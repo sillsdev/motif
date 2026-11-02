@@ -237,6 +237,11 @@
           </Border>
 
           <WrapPanel Grid.Row="2">
+            <views:FilterChip x:Name="ComparePanelMovedChip" VerticalAlignment="Top" Label="{x:Static app:MotifAppStrings.TextsMovedChipLabel}"
+                              Count="{Binding Compare.MovedChipCount}" IsActive="{Binding Compare.IsMovedFilterOn}"
+                              ChipName="{Binding Compare.MovedChipAccessibleName}" IsVisible="{Binding Compare.ShowsMovedChip}"
+                              Command="{Binding Compare.ToggleMovedFilterCommand}"
+                              Margin="{DynamicResource Component.TextsPage.CompareControlMargin}" />
             <ComboBox x:Name="ComparePanelSortChoicesItems" VerticalAlignment="Top" ItemsSource="{Binding Compare.SortChoices}"
                       SelectedItem="{Binding Compare.Sort}"
                       MinWidth="{DynamicResource Component.TextsPage.CompareSortMinWidth}"

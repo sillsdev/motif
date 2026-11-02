@@ -113,6 +113,8 @@ internal static class CommandContractCases
             "FirstRunSetupWalkthroughTests.SelectingAndClearingTextsUsesTheFinalSelectionForTheFirstParse"),
         new(typeof(CompareViewModel), nameof(CompareViewModel.ClearSelectionCommand), null, null, true,
             "CompareViewModelTests.AClickChoosesOneCellCtrlClickAddsAndClickingTheOnlyChoiceClearsIt"),
+        new(typeof(CompareViewModel), nameof(CompareViewModel.ToggleMovedFilterCommand), null, null, true,
+            "TextsProposalMovedChipTests.ChoosingTheChipListsOnlyTheWordsTheProposalMovesAndChoosingItAgainListsAllOfThemAgain"),
         new(typeof(CompareViewModel), nameof(CompareViewModel.FocusFixFirstCommand),
             typeof(CompareFixFirstViewModel), null, true,
             "CompareViewModelTests.FocusingAFixFirstWordMatchesTheExactForm"),

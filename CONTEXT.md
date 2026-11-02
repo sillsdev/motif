@@ -288,7 +288,7 @@ reading, never as an earlier key's number. Timing and the Texts matrix pair only
 words; the matrix holds the Proposal's side as counts and an index of the values the word list reads for each word (its cell,
 work steps and time), never the Trial's rows, and lets go of it when the Proposal is left or another Proposal or Trial is open. The Texts words under the
 matrix are the Proposal's in the Proposal view, where a Trial word today's matrix lacks is counted but not listed, and
-carry a With This Proposal column in the pair; the places under a cell follow the same choice;
+carry a With This Proposal column in the pair; the places under a cell follow the same choice; a Moved By This Proposal chip narrows the words to those the Proposal puts in a different cell than today, over the words both sides have, and is dropped with the Proposal;
 the Lists tab reads each list's words and places the same way, and What Changed in the pair lists the words that
 moved from one cell today to another with the Proposal, over the words both sides have, counting the rest and
 holding only positions that go when the Proposal does; in the Proposal view it has nothing to show, since a move

@@ -154,6 +154,7 @@ public sealed partial class CompareViewModel
     internal void ShowProposal(MarkupView view, MatrixSideState state, MatrixProposalSummary? summary)
     {
         var basis = ListBasis;
+        _movedCount = null;
         _proposalView = view;
         _proposalState = state;
         _proposalSummary = state == MatrixSideState.Held ? summary : null;
@@ -165,7 +166,8 @@ public sealed partial class CompareViewModel
         if (ListBasis != basis) RefreshShared(Cells.Any(cell => cell.IsSelected));
         foreach (var property in new[] { nameof(ShowsTodayWords), nameof(ShowsFixFirst), nameof(ShowsWordList),
             nameof(ShowsProposalColumn), nameof(WordListSchema), nameof(HasCheckedWords),
-            nameof(CanRerun), nameof(ListSummary) })
+            nameof(CanRerun), nameof(ListSummary), nameof(ShowsMovedChip), nameof(IsMovedFilterOn), nameof(MovedChipCount),
+            nameof(MovedChipAccessibleName), nameof(ListHeading) })
             OnPropertyChanged(property);
     }
 

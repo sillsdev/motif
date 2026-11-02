@@ -214,7 +214,7 @@ public sealed partial class TextsListsViewModel : ObservableObject
     public bool HasSelectedList => SelectedList is not null;
 
     /// <summary>Whether a line says which words the list shows, because they are not simply today's.</summary>
-    public bool ShowsListedLine => SelectedList is not null && Compare.ListBasis != WordListBasis.Today;
+    public bool ShowsListedLine => SelectedList is not null && (Compare.ListBasis != WordListBasis.Today || Compare.MovedFilterOn);
 
     /// <summary>How many words the list shows and where from, such as 6 words today or with this Proposal.</summary>
     public string ListedLine => Compare.ListSummary;
@@ -227,12 +227,16 @@ public sealed partial class TextsListsViewModel : ObservableObject
 
     public string HandOffListDisabledReason => SelectedList is null
         ? WindowCopy.ChooseAWordListFirst
-        : SelectedList.HasWords ? string.Empty : WindowCopy.NoWordsInListForHandoff;
+        : SelectedList.HasWords && !MovedLeavesNothing() ? string.Empty : WindowCopy.NoWordsInListForHandoff;
+
+    // The moved filter can leave a list with words but none to send; the chosen cells are the list's.
+    private bool MovedLeavesNothing() => Compare.MovedFilterOn && Compare.MovedChipCount == 0;
 
     public string HandOffListLabel => WindowCopy.AiHandoffForThisList;
 
     /// <summary>Why the list cannot be sent, or whose words it sends when the view is not today's.</summary>
     public string HandOffListHelpText => HandOffListDisabledReason.Length > 0 ? HandOffListDisabledReason
+        : Compare.MovedFilterOn ? MotifAppStrings.TextsListHandOffMovedHelp
         : Compare.ListBasis switch
         {
             WordListBasis.Both => MotifAppStrings.TextsListHandOffEitherSideHelp,
@@ -340,7 +344,7 @@ public sealed partial class TextsListsViewModel : ObservableObject
         RefreshSelection();
     }
 
-    private bool CanHandOffList() => HandOff is not null && SelectedList?.HasWords == true;
+    private bool CanHandOffList() => HandOff is not null && SelectedList is { HasWords: true } list && !MovedLeavesNothing();
 
     private void HandOffList()
     {
@@ -362,11 +366,13 @@ public sealed partial class TextsListsViewModel : ObservableObject
             OnPropertyChanged(nameof(ListedLine));
             OnPropertyChanged(nameof(ShowsListedLine));
         }
-        if (e.PropertyName == nameof(CompareViewModel.ShowsProposalColumn))
+        if (e.PropertyName is nameof(CompareViewModel.ShowsProposalColumn) or nameof(CompareViewModel.IsMovedFilterOn))
         {
             // A flip of the bar's view changes the words the list shows, so the buttons that send them follow it.
             HandOffListCommand.NotifyCanExecuteChanged();
             OnPropertyChanged(nameof(HandOffListHelpText));
+            OnPropertyChanged(nameof(HandOffListDisabledReason));
+            OnPropertyChanged(nameof(HandOffListUnavailable));
             OnCheckedWordsChanged(sender, EventArgs.Empty);
         }
         if (e.PropertyName is not (nameof(CompareViewModel.RerunWords) or nameof(CompareViewModel.RerunSeconds)

@@ -28,6 +28,9 @@ public sealed class FilterChip : Button
     public static readonly StyledProperty<Mark?> MarkProperty =
         AvaloniaProperty.Register<FilterChip, Mark?>(nameof(Mark));
 
+    public static readonly StyledProperty<string?> ChipNameProperty =
+        AvaloniaProperty.Register<FilterChip, string?>(nameof(ChipName));
+
     public static readonly StyledProperty<bool> IsActiveProperty =
         AvaloniaProperty.Register<FilterChip, bool>(nameof(IsActive));
 
@@ -38,6 +41,7 @@ public sealed class FilterChip : Button
         CountTextProperty.Changed.AddClassHandler<FilterChip>((chip, _) => chip.Rebuild());
         MarkProperty.Changed.AddClassHandler<FilterChip>((chip, _) => chip.Rebuild());
         IsActiveProperty.Changed.AddClassHandler<FilterChip>((chip, _) => chip.Rebuild());
+        ChipNameProperty.Changed.AddClassHandler<FilterChip>((chip, _) => chip.Rebuild());
     }
 
     public FilterChip()
@@ -77,6 +81,13 @@ public sealed class FilterChip : Button
         set => SetValue(MarkProperty, value);
     }
 
+    /// <summary>What a screen reader says for the chip when the standard "Filter by" sentence would leave out whose number it is.</summary>
+    public string? ChipName
+    {
+        get => GetValue(ChipNameProperty);
+        set => SetValue(ChipNameProperty, value);
+    }
+
     /// <summary>Whether this chip is the one in force.</summary>
     public bool IsActive
     {
@@ -114,7 +125,7 @@ public sealed class FilterChip : Button
         row.Children.Add(count);
         Grid.SetColumn(count, 2);
         Content = row;
-        AutomationProperties.SetName(this, string.Format(CultureInfo.CurrentCulture,
+        AutomationProperties.SetName(this, ChipName ?? string.Format(CultureInfo.CurrentCulture,
             MotifAppStrings.FilterChipAccessibleNameFormat, Label));
         // A long label is trimmed to fit its chip, so the whole label is also the tooltip.
         ToolTip.SetTip(this, string.IsNullOrEmpty(Label) ? null : Label);

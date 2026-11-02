@@ -24,12 +24,14 @@ public sealed partial class CompareViewModel
     private long _alignedRevision = -1;
 
     private WordListBasis _listedBasis;
+    private bool _listedMoved;
     private MatrixProposalSummary? _listedSummary;
     private long _listedRevision = -1;
 
-    // The words already listed came from this basis, Proposal side and load, so a flip need not sort them again.
-    private bool ListingStands => _listedBasis == ListedBasis && _listedRevision == _wordsRevision &&
-        (ListedBasis == WordListBasis.Today || ReferenceEquals(_listedSummary, _proposalSummary));
+    // The words listed came from this basis, filter, side and load, so a flip need not sort them again.
+    private bool ListingStands => _listedBasis == ListedBasis && _listedMoved == MovedFilterOn &&
+        _listedRevision == _wordsRevision &&
+        (ListedBasis == WordListBasis.Today && !MovedFilterOn || ReferenceEquals(_listedSummary, _proposalSummary));
 
     // A pair with no cell chosen lists every word in today's order, as Today does: the same listing.
     private WordListBasis ListedBasis => ListBasis == WordListBasis.Both && !Cells.Any(cell => cell.IsSelected)
@@ -113,20 +115,29 @@ public sealed partial class CompareViewModel
         _placesFor = null;
         _listedSummary = null;
         _moves = null;
+        _movedChosen = false;
+        _movedCount = null;
     }
 
     // Today's words in the chosen cells, or the Proposal's, in Assessment order; no chosen cell lists every word.
-    private IEnumerable<AssessmentRowFacts> ListedByCells(HashSet<(WordProjectStatus Row, CompareColumnKind Column)> chosen)
+    private IEnumerable<AssessmentRowFacts> ListedByCells(HashSet<(WordProjectStatus Row, CompareColumnKind Column)> chosen) =>
+        ListedByCells(chosen, MovedFilterOn);
+
+    // With onlyMoved, only words both sides have whose Proposal cell is not today's, from the aligned cells.
+    private IEnumerable<AssessmentRowFacts> ListedByCells(
+        HashSet<(WordProjectStatus Row, CompareColumnKind Column)> chosen, bool onlyMoved)
     {
         var basis = ListBasis;
-        if (basis == WordListBasis.Today || basis == WordListBasis.Both && chosen.Count == 0)
+        if (!onlyMoved && (basis == WordListBasis.Today || basis == WordListBasis.Both && chosen.Count == 0))
             return chosen.Count == 0 ? _all : _all.Where(word => chosen.Contains((word.Row, word.Column)));
         var aligned = AlignedProposalCells();
         return _all.Where((word, index) =>
         {
             var inProposal = aligned[index] != ProposalWordIndex.NoCell;
+            if (onlyMoved && (!inProposal || aligned[index] == ProposalWordIndex.Pack(word.Row, word.Column))) return false;
             var proposalChosen = inProposal && chosen.Contains(ProposalWordIndex.Unpack(aligned[index]));
             if (basis == WordListBasis.Proposal) return inProposal && (chosen.Count == 0 || proposalChosen);
+            if (basis == WordListBasis.Today) return chosen.Count == 0 || chosen.Contains((word.Row, word.Column));
             return chosen.Count == 0 || proposalChosen || chosen.Contains((word.Row, word.Column));
         });
     }
@@ -140,7 +151,7 @@ public sealed partial class CompareViewModel
     private int WordsCountedNotListed(CompareCellViewModel[] chosen)
     {
         if (ListBasis != WordListBasis.Proposal || ProposalWordsMatch == true) return 0;
-        var listable = ListedByCells(chosen.Select(cell => (cell.Row, cell.Column)).ToHashSet()).Count();
+        var listable = ListedByCells(chosen.Select(cell => (cell.Row, cell.Column)).ToHashSet(), onlyMoved: false).Count();
         return Math.Max(0, WordsInChosenCells(chosen) - listable);
     }
 
@@ -148,7 +159,7 @@ public sealed partial class CompareViewModel
     {
         WordListBasis.Proposal => chosen.Length == 0 ? _proposalSummary!.Cells.Values.Sum()
             : chosen.Sum(cell => _proposalSummary!.In(cell.Row, cell.Column)),
-        WordListBasis.Both => ListedByCells(chosen.Select(cell => (cell.Row, cell.Column)).ToHashSet()).Count(),
+        WordListBasis.Both => ListedByCells(chosen.Select(cell => (cell.Row, cell.Column)).ToHashSet(), onlyMoved: false).Count(),
         _ => chosen.Length == 0 ? TotalCount : chosen.Sum(cell => cell.WordCount),
     };
 

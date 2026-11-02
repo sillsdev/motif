@@ -411,7 +411,7 @@ public sealed partial class CompareViewModel : ObservableObject
             var chosen = Cells.Count(cell => cell.IsSelected);
             return chosen switch
             {
-                0 => MotifAppStrings.CompareAllWords,
+                0 => MovedFilterOn ? MotifAppStrings.TextsMovedChipLabel : MotifAppStrings.CompareAllWords,
                 1 => string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.CompareCellHeadingFormat, ChosenCell!.RowLabel, ChosenCell.ColumnLabel),
                 _ => PluralText.Format(MotifAppStrings.CompareCellsChosenPattern, chosen),
             };
@@ -465,7 +465,9 @@ public sealed partial class CompareViewModel : ObservableObject
             var inCells = WordsInChosenCells(chosen) - notListed;
             var words = Words.Count == inCells
                 ? CompareCellViewModel.WordsText(Words.Count) : string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.CompareWordsOfFormat, Words.Count.ToString("N0", System.Globalization.CultureInfo.CurrentCulture), inCells.ToString("N0", System.Globalization.CultureInfo.CurrentCulture));
-            if (ListBasis == WordListBasis.Both && chosen.Length > 0)
+            if (MovedFilterOn)
+                words = string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.TextsMovedListSummaryFormat, words);
+            else if (ListBasis == WordListBasis.Both && chosen.Length > 0)
                 words = string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.CompareWordsEitherSideFormat, words);
             var listed = _listed.Any(word => word.Occurrences is not null)
                 ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.CompareWordsAndPlacesFormat, words, CompareCellViewModel.PlacesTextOf(_listed.Sum(word => word.Occurrences ?? 0), PlacesFromWordList)) : words;
@@ -541,6 +543,7 @@ public sealed partial class CompareViewModel : ObservableObject
         ++_generation;
         _wordModels.Clear();
         _moves = null;
+        _movedCount = null;
         var incoming = rows?.ToList() ?? [];
         NoteWordsOfLoad(incoming);
         _all.Clear();
@@ -769,7 +772,8 @@ public sealed partial class CompareViewModel : ObservableObject
             _ => matches.OrderByDescending(word => word.Occurrences ?? 0).ThenBy(word => word.Word, StringComparer.CurrentCulture),
         };
         _listedBasis = ListedBasis;
-        _listedSummary = ListedBasis == WordListBasis.Today ? null : _proposalSummary;
+        _listedMoved = MovedFilterOn;
+        _listedSummary = ListedBasis == WordListBasis.Today && !MovedFilterOn ? null : _proposalSummary;
         _listedRevision = _wordsRevision;
         var next = matches.ToArray();
         if (!announce && next.Length == _listed.Count && !next.Where((facts, index) => !ReferenceEquals(facts, _listed[index])).Any()) return;
@@ -783,6 +787,7 @@ public sealed partial class CompareViewModel : ObservableObject
         OnPropertyChanged(nameof(ListMeaning));
         OnPropertyChanged(nameof(ListMeaningMark));
         OnPropertyChanged(nameof(ListSummary));
+        RaiseMovedChip();
         OnPropertyChanged(nameof(HandOffLabel));
         OnPropertyChanged(nameof(CheckedWordCount));
         OnPropertyChanged(nameof(CheckedWordText));

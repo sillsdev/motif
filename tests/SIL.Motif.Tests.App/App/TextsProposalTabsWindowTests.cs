@@ -32,7 +32,7 @@ public sealed class TextsProposalTabsWindowTests
             ? word with { Outcome = "unassessed", Morphology = null, ReadingGrades = [] } : word)],
     };
 
-    private static async Task<(WorkspaceShellViewModel Workspace, MainWindow Window)> OpenedAsync(TextsTab tab)
+    internal static async Task<(WorkspaceShellViewModel Workspace, MainWindow Window)> OpenedAsync(TextsTab tab)
     {
         var today = PageScreenshots.Assessment();
         var (workspace, window) = await PageScreenshots.OpenOverSampleData(
@@ -51,10 +51,10 @@ public sealed class TextsProposalTabsWindowTests
         return (workspace, window);
     }
 
-    private static Control Part(MainWindow window, string name) =>
+    internal static Control Part(MainWindow window, string name) =>
         window.GetVisualDescendants().OfType<Control>().First(control => control.Name == name);
 
-    private static IEnumerable<string> Texts(Control root) => root.GetVisualDescendants().OfType<TextBlock>()
+    internal static IEnumerable<string> Texts(Control root) => root.GetVisualDescendants().OfType<TextBlock>()
         .Where(text => text.IsEffectivelyVisible && !string.IsNullOrEmpty(text.Text)).Select(text => text.Text!);
 
     [Fact]
