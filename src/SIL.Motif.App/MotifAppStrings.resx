@@ -3831,9 +3831,21 @@ Never included unless you tick it in the preview: local details, which may conta
     <value>No stored warning names this word.</value>
     <comment>Sentence shown on the word card. It is read as a complete message; keep it a complete sentence.</comment>
   </data>
-  <data name="MotifApp.TimeByRule" xml:space="preserve">
-    <value>Time by Rule</value>
-    <comment>Heading on a word card above how long each grammar rule took for the word.</comment>
+  <data name="MotifApp.WorkByRule" xml:space="preserve">
+    <value>Work by Rule</value>
+    <comment>Heading on a word card above how many parser work steps each grammar rule took for the word.</comment>
+  </data>
+  <data name="MotifApp.WordCardOtherRules" xml:space="preserve">
+    <value>Other rules</value>
+    <comment>Row on a word card's work-by-rule list that adds up the rules too small to be listed one by one.</comment>
+  </data>
+  <data name="MotifApp.WordCardWorkStepsNotRecorded" xml:space="preserve">
+    <value>Work steps not recorded for this word</value>
+    <comment>Line on a word card, in place of the shares of work by rule, when the parser recorded no work steps for the word.</comment>
+  </data>
+  <data name="MotifApp.WordCardWorkByRuleNotRecorded" xml:space="preserve">
+    <value>Work steps by rule not recorded for this word</value>
+    <comment>Line on a word card, in place of the shares of work by rule, when the word has a work step total but the parser did not keep it by rule.</comment>
   </data>
   <data name="MotifApp.WhatToDo" xml:space="preserve">
     <value>What to Do</value>

@@ -360,6 +360,8 @@ public sealed partial class ResultsTokenViewModel : ObservableObject, IDisposabl
     public IReadOnlyList<TimingShareViewModel> TimingShares { get; private set; } = [];
     /// <summary>The stored share of this word's time that no object timer recorded.</summary>
     public string NotAttributedShareLabel { get; private set; } = "Timing unavailable for this word";
+    /// <summary>What the rule shares are of: the work steps and how many words they cover; empty when none are shown.</summary>
+    public string TimingShareBasisLabel { get; private set; } = string.Empty;
     /// <summary>The stored share of this word's time that no object timer recorded, when known.</summary>
     public double? NotAttributedShare { get; private set; }
     /// <summary>Whether a Timing response was read for this word.</summary>
@@ -459,30 +461,36 @@ public sealed partial class ResultsTokenViewModel : ObservableObject, IDisposabl
         OnPropertyChanged(nameof(WarningMarkedFieldWorksMorphIndices));
     }
 
+    // The Timing request's default row count, so the card lists as many rules as the command once did.
+    private const int ListedRuleShares = 10;
+
     internal void SetTimingEvidence(TimingResponse? timing, bool responseAvailable)
     {
         HasTimingEvidence = responseAvailable;
-        var timingShares = timing?.Aggregates
-            .Where(row => row.ShareOfWordTime is > 0)
-            .Select(row => new TimingShareViewModel(row.Name, row.ShareOfWordTime!.Value, row.SelfMs))
-            .ToList() ?? [];
-        if (timing is not null && timing.Attribution.WordTimeMs > 0)
-        {
-            var allRulesShare = timing.Attribution.AttributedMs / timing.Attribution.WordTimeMs;
-            var otherRulesShare = allRulesShare - timingShares.Sum(row => row.Share);
-            if (double.IsFinite(otherRulesShare) && otherRulesShare >= 0.0005)
-                timingShares.Add(new TimingShareViewModel("Other rules", otherRulesShare,
-                    Math.Max(0, timing.Attribution.AttributedMs - timingShares.Sum(row => row.Milliseconds))));
-        }
+        var total = timing?.Work.TotalWorkSteps ?? 0;
+        var steps = timing is { WorkStepAggregates.Count: > 0 } && total > 0 ? timing.WorkStepAggregates : null;
+        var rules = steps?.Where(row => !row.IsUnattributed && row.WorkSteps > 0)
+            .OrderByDescending(row => row.WorkSteps).ToArray() ?? [];
+        var timingShares = rules.Take(ListedRuleShares)
+            .Select(row => new TimingShareViewModel(row.Name, TimingShare.ShareOf(row.WorkSteps, total)!.Value, row.WorkSteps))
+            .ToList();
+        if (rules.Skip(ListedRuleShares).Sum(row => row.WorkSteps) is > 0 and var rest)
+            timingShares.Add(new TimingShareViewModel(MotifAppStrings.WordCardOtherRules,
+                TimingShare.ShareOf(rest, total)!.Value, rest));
         TimingShares = timingShares;
-        NotAttributedShare = timing?.Attribution.NotAttributedShare;
+        NotAttributedShare = steps is null ? null
+            : TimingShare.ShareOf(steps.Where(row => row.IsUnattributed).Sum(row => row.WorkSteps), total);
         NotAttributedShareLabel = NotAttributedShare is { } share
-            ? $"Not attributed · {share:P0}"
-            : responseAvailable ? "Not attributed · no object time recorded" : "Timing unavailable for this word";
+            ? $"{MotifAppStrings.TimingNotAttributedLabel} · {TimingShare.FormatPercent(share)}"
+            : !responseAvailable ? "Timing unavailable for this word"
+            : total > 0 ? MotifAppStrings.WordCardWorkByRuleNotRecorded : MotifAppStrings.WordCardWorkStepsNotRecorded;
+        TimingShareBasisLabel = steps is null || timing is null ? string.Empty : TimingShare.ShareOverText(
+            TimingShare.FormatWorkSteps(total), timing.Work.MeasuredWordCount, timing.WordCount, allSelected: false);
         OnPropertyChanged(nameof(HasTimingEvidence));
         OnPropertyChanged(nameof(TimingShares));
         OnPropertyChanged(nameof(NotAttributedShareLabel));
         OnPropertyChanged(nameof(NotAttributedShare));
+        OnPropertyChanged(nameof(TimingShareBasisLabel));
         OnPropertyChanged(nameof(HasTimingShares));
     }
 
@@ -930,14 +938,14 @@ public sealed record WarningCandidateViewModel(IReadOnlyList<string> Words)
     public string SpellingLabel => "Matched by spelling only";
 }
 
-/// <summary>One stored rule's share of the selected word time.</summary>
+/// <summary>One rule's share of the selected word's parser work.</summary>
 /// <param name="Name">The rule name returned by Timing.</param>
-/// <param name="Share">The rule's stored share of word time.</param>
-/// <param name="Milliseconds">The rule's stored time in this word.</param>
-public sealed record TimingShareViewModel(string Name, double Share, double Milliseconds)
+/// <param name="Share">The rule's share of the word's work steps, from 0 to 1.</param>
+/// <param name="WorkSteps">The work steps the rule did in this word.</param>
+public sealed record TimingShareViewModel(string Name, double Share, long WorkSteps)
 {
-    /// <summary>The stored share formatted as a percentage.</summary>
-    public string ShareLabel => $"{Share.ToString("P0", System.Globalization.CultureInfo.CurrentCulture)} · {TimingShare.FormatDuration(Milliseconds)}";
+    /// <summary>The share as a whole percentage, then the work steps it is of.</summary>
+    public string ShareLabel => $"{TimingShare.FormatPercent(Share)} · {TimingShare.FormatWorkSteps(WorkSteps)}";
 }
 
 internal sealed record ResultsWarningEvidence(

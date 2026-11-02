@@ -1967,7 +1967,13 @@ public static class MotifAppStrings
 
     public static string WordCardNoStoredWarning => Text("MotifApp.WordCardNoStoredWarning");
 
-    public static string TimeByRule => Text("MotifApp.TimeByRule");
+    public static string WorkByRule => Text("MotifApp.WorkByRule");
+
+    public static string WordCardOtherRules => Text("MotifApp.WordCardOtherRules");
+
+    public static string WordCardWorkStepsNotRecorded => Text("MotifApp.WordCardWorkStepsNotRecorded");
+
+    public static string WordCardWorkByRuleNotRecorded => Text("MotifApp.WordCardWorkByRuleNotRecorded");
 
     public static string WhatToDo => Text("MotifApp.WhatToDo");
 

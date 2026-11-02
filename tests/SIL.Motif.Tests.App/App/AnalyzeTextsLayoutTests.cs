@@ -349,15 +349,18 @@ public sealed class AnalyzeTextsLayoutTests
                 Assert.DoesNotContain(cardLines, line => line.Text?.EndsWith(" · spelling") == true);
                 var cardText = string.Join(" ", cardLines.Select(line => line.Text)
                     .Where(text => !string.IsNullOrWhiteSpace(text)));
-                Assert.Contains(MotifAppStrings.TimeByRule, cardText);
+                Assert.Contains(MotifAppStrings.WorkByRule, cardText);
                 Assert.Contains("Subject agreement", cardText);
                 Assert.Contains("Not attributed", cardText);
+                Assert.Contains("work steps", cardText);
+                Assert.Contains(inText.SelectedToken!.TimingShares[0].ShareLabel, cardText);
+                Assert.DoesNotContain(" ms", cardText);
                 var whySection = Assert.Single(card.GetVisualDescendants().OfType<Border>(), border =>
                     border.Classes.Contains("wordPresentationCardSection") &&
                     border.GetVisualDescendants().OfType<CopyableTextBlock>()
                         .Any(line => line.Text == "What a warning names in this word"));
                 var whyText = whySection.GetVisualDescendants().OfType<CopyableTextBlock>().Select(line => line.Text);
-                Assert.DoesNotContain(MotifAppStrings.TimeByRule, whyText);
+                Assert.DoesNotContain(MotifAppStrings.WorkByRule, whyText);
                 Assert.DoesNotContain("Subject agreement", whyText);
                 Assert.Contains("anapenda", cardText);
                 Assert.Contains("anapenda", token.OtherWordsUsingMorpheme);
@@ -449,34 +452,35 @@ public sealed class AnalyzeTextsLayoutTests
             StoredTiming(request.ExplicitWords?.SingleOrDefault() ?? timedWord))));
     }
 
-    private static TimingResponse StoredTiming(string word) => word == "hawajafika"
-        ? new TimingResponse("assessment/one", "all", "rule", 1, 1, 1, [],
+    // Work steps by rule, with the time rows left deliberately unlike them: the card reads only the steps.
+    private static TimingResponse StoredTiming(string word)
+    {
+        var hawajafika = word == "hawajafika";
+        var rules = new List<TimingWorkAggregate>
+        {
+            Steps("rule/subject", "Subject agreement", "morph_rule", hawajafika ? 3600 : 4000),
+            Steps("rule/past", "Past tense", "morph_rule", hawajafika ? 1900 : 2000),
+            Steps("rule/harmony", "Vowel harmony", "phon_rule", hawajafika ? 1500 : 1000),
+        };
+        if (hawajafika)
+            rules.AddRange(Enumerable.Range(1, 9).Select(index => Steps($"rule/minor{index}", $"Minor rule {index}", "morph_rule", 100)));
+        var unattributed = hawajafika ? 2100 : 2000;
+        var total = rules.Sum(rule => rule.WorkSteps) + unattributed;
+        return new TimingResponse("assessment/one", "all", "rule", 1, 1, 1, [],
             [
-                new TimingAggregateRow("rule/subject", "Subject agreement", 0.36, 0.36, 1)
+                new TimingAggregateRow("rule/subject", "Subject agreement", 0.9, 0.9, 1)
                     { Kind = "morph_rule", IdentityQuality = "authored" },
-                new TimingAggregateRow("rule/past", "Past tense", 0.19, 0.19, 1)
-                    { Kind = "morph_rule", IdentityQuality = "authored" },
-                new TimingAggregateRow("rule/harmony", "Vowel harmony", 0.15, 0.15, 1)
-                    { Kind = "phon_rule", IdentityQuality = "authored" },
             ], [])
         {
-            Words = [new TimingWordRow(word, 1, TimingCompletion.Finished) { ElapsedNs = 1_000_000 }],
-            Attribution = new WordTimeAttribution(1, 1, 0.85, 0.15, 0.15, 0, false),
-        }
-        : new TimingResponse("assessment/one", "all", "rule", 1, 0.9, 0.9,
-        [],
-        [
-            new TimingAggregateRow("rule/subject", "Subject agreement", 0.4, 0.4 / 0.9, 1)
-                { Kind = "morph_rule", IdentityQuality = "authored" },
-            new TimingAggregateRow("rule/past", "Past tense", 0.2, 0.2 / 0.9, 1)
-                { Kind = "morph_rule", IdentityQuality = "authored" },
-            new TimingAggregateRow("rule/harmony", "Vowel harmony", 0.1, 0.1 / 0.9, 1)
-                { Kind = "phon_rule", IdentityQuality = "authored" },
-        ], [])
-    {
-        Words = [new TimingWordRow(word, 1, TimingCompletion.Finished) { ElapsedNs = 900_000 }],
-        Attribution = new WordTimeAttribution(1, 0.9, 0.7, 0.2, 0.2 / 0.9, 0, false),
+            Words = [new TimingWordRow(word, 1, TimingCompletion.Finished) { ElapsedNs = 1_000_000, WorkSteps = total }],
+            Work = new WordWorkSummary(1, total, total, total),
+            WorkStepAggregates = [.. rules, new TimingWorkAggregate("unattributed", "Not attributed", "unattributed", unattributed, true)],
+            Attribution = new WordTimeAttribution(1, 1, 0.9, 0.1, 0.1, 0, false),
         };
+    }
+
+    private static TimingWorkAggregate Steps(string key, string name, string kind, long steps) =>
+        new(key, name, kind, steps, false) { IdentityQuality = "authored" };
 
     private static ObjectUseWord WarningWord(string word) => new(new ContractWordRow(
         word, WordRowOutcome.Different, "Different", WordRowTone.Look));

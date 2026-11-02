@@ -241,15 +241,8 @@ public sealed partial class TimingPageModel : PageModel
 
     private int ChosenWordCount => KindTiming?.Words.Count ?? 0;
 
-    private string MeasuredWordsPhrase => MeasuredWords.Count < ChosenWordCount
-        ? string.Format(CultureInfo.CurrentCulture, IsAllSelected
-            ? MotifAppStrings.TimingPhraseSomeOfAllFormat : MotifAppStrings.TimingPhraseSomeOfTheseFormat,
-            MeasuredWords.Count.ToString("N0", CultureInfo.CurrentCulture),
-            ChosenWordCount.ToString("N0", CultureInfo.CurrentCulture))
-        : MeasuredWords.Count == 1 ? MotifAppStrings.TimingPhraseThisWord
-        : string.Format(CultureInfo.CurrentCulture, IsAllSelected
-            ? MotifAppStrings.TimingPhraseAllWordsFormat : MotifAppStrings.TimingPhraseTheseWordsFormat,
-            MeasuredWords.Count.ToString("N0", CultureInfo.CurrentCulture));
+    private string MeasuredWordsPhrase =>
+        TimingShare.MeasuredWordsPhrase(MeasuredWords.Count, ChosenWordCount, IsAllSelected);
 
     /// <summary>Today's work by kind; empty when work by object was not kept.</summary>
     private IReadOnlyList<TimingShare> TodayKindShares => !HasHeadline || WorkByObject(KindTiming) is not { } work ? []
@@ -294,16 +287,7 @@ public sealed partial class TimingPageModel : PageModel
             if (WorkByObject(KindTiming) is null)
                 return KindTiming.ObjectTimingAggregatesAvailable
                     ? MotifAppStrings.TimingWorkByObjectNotKept : MotifAppStrings.TimingWorkByObjectUnavailable;
-            var missing = ChosenWordCount - MeasuredWords.Count;
-            return missing switch
-            {
-                <= 0 => string.Format(CultureInfo.CurrentCulture, MotifAppStrings.TimingShareOfFormat,
-                    TodayHeadlineTotal, MeasuredWordsPhrase),
-                1 => string.Format(CultureInfo.CurrentCulture, MotifAppStrings.TimingShareOfOneMissingFormat,
-                    TodayHeadlineTotal, MeasuredWordsPhrase),
-                _ => string.Format(CultureInfo.CurrentCulture, MotifAppStrings.TimingShareOfManyMissingFormat,
-                    TodayHeadlineTotal, MeasuredWordsPhrase, missing.ToString("N0", CultureInfo.CurrentCulture)),
-            };
+            return TimingShare.ShareOverText(TodayHeadlineTotal, MeasuredWords.Count, ChosenWordCount, IsAllSelected);
         }
     }
 

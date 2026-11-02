@@ -232,7 +232,7 @@
                 </Border>
                 <Border Classes="wordPresentationCardSection hoverReveal" IsVisible="{Binding HasTimingEvidence}">
                   <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-                    <views:CopyableTextBlock Classes="wordPresentationCardHeading" Text="{x:Static app:MotifAppStrings.TimeByRule}" />
+                    <views:CopyableTextBlock Classes="wordPresentationCardHeading" Text="{x:Static app:MotifAppStrings.WorkByRule}" />
                     <ItemsControl x:Name="WordCardTimingSharesItems" ItemsSource="{Binding TimingShares}"
                                   IsVisible="{Binding HasTimingShares}">
                       <ItemsControl.ItemTemplate>
@@ -245,6 +245,8 @@
                       </ItemsControl.ItemTemplate>
                     </ItemsControl>
                     <views:CopyableTextBlock Classes="muted" Text="{Binding NotAttributedShareLabel}" />
+                    <views:CopyableTextBlock Classes="muted" Text="{Binding TimingShareBasisLabel}" TextWrapping="Wrap"
+                                             IsVisible="{Binding TimingShareBasisLabel, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                   </StackPanel>
                 </Border>
                 <Border Classes="wordPresentationCardSection last">

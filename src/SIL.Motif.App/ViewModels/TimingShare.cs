@@ -94,6 +94,37 @@ public sealed record TimingShare(string Label, string Kind, long? WorkSteps, dou
     /// <summary>The fraction of <paramref name="total"/> that <paramref name="steps"/> is, or null when there is no work.</summary>
     public static double? ShareOf(long steps, long total) => total > 0 ? (double)steps / total : null;
 
+    /// <summary>Names the words a share is over: one word, all of them, or the ones that recorded work steps.</summary>
+    /// <param name="measured">How many of the words recorded work steps.</param>
+    /// <param name="chosen">How many words were chosen.</param>
+    /// <param name="allSelected">Whether the chosen words are every word of the run.</param>
+    public static string MeasuredWordsPhrase(int measured, int chosen, bool allSelected) => measured < chosen
+        ? string.Format(CultureInfo.CurrentCulture, allSelected
+            ? MotifAppStrings.TimingPhraseSomeOfAllFormat : MotifAppStrings.TimingPhraseSomeOfTheseFormat,
+            measured.ToString("N0", CultureInfo.CurrentCulture), chosen.ToString("N0", CultureInfo.CurrentCulture))
+        : measured == 1 ? MotifAppStrings.TimingPhraseThisWord
+        : string.Format(CultureInfo.CurrentCulture, allSelected
+            ? MotifAppStrings.TimingPhraseAllWordsFormat : MotifAppStrings.TimingPhraseTheseWordsFormat,
+            measured.ToString("N0", CultureInfo.CurrentCulture));
+
+    /// <summary>The sentence saying what every share divides, and how many chosen words have no work steps.</summary>
+    /// <param name="totalText">The total work steps with their unit.</param>
+    /// <param name="measured">How many of the words recorded work steps.</param>
+    /// <param name="chosen">How many words were chosen.</param>
+    /// <param name="allSelected">Whether the chosen words are every word of the run.</param>
+    public static string ShareOverText(string totalText, int measured, int chosen, bool allSelected)
+    {
+        var phrase = MeasuredWordsPhrase(measured, chosen, allSelected);
+        var missing = chosen - measured;
+        return missing switch
+        {
+            <= 0 => string.Format(CultureInfo.CurrentCulture, MotifAppStrings.TimingShareOfFormat, totalText, phrase),
+            1 => string.Format(CultureInfo.CurrentCulture, MotifAppStrings.TimingShareOfOneMissingFormat, totalText, phrase),
+            _ => string.Format(CultureInfo.CurrentCulture, MotifAppStrings.TimingShareOfManyMissingFormat,
+                totalText, phrase, missing.ToString("N0", CultureInfo.CurrentCulture)),
+        };
+    }
+
     /// <summary>Formats a work count with its unit; a median between two whole counts is rounded to a whole count.</summary>
     /// <param name="workSteps">The parser's work steps.</param>
     public static string FormatWorkSteps(double workSteps) =>

@@ -161,12 +161,108 @@ public sealed class TimingSharesTests
     }
 
     [Fact]
-    public void WordCardTimingSharesUseWholePercentages()
+    public void WordCardTimingSharesUseWholePercentagesOfWorkSteps()
     {
         using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
 
-        Assert.Equal("36% · 288 ms", new TimingShareViewModel("Subject agreement", 0.36, 288).ShareLabel);
-        Assert.Equal("15% · 120 ms", new TimingShareViewModel("Other time", 0.15, 120).ShareLabel);
+        Assert.Equal("36% · 2,880 work steps", new TimingShareViewModel("Subject agreement", 0.36, 2880).ShareLabel);
+        Assert.Equal("15% · 1 work step", new TimingShareViewModel("Vowel harmony", 0.15, 1).ShareLabel);
+        Assert.Equal("<1% · 3 work steps", new TimingShareViewModel("Rare rule", 0.0003, 3).ShareLabel);
+    }
+
+    // The milliseconds rows deliberately disagree with the steps, so a share read from time fails these.
+    private static TimingResponse WordTiming(int wordCount, WordWorkSummary work,
+        IReadOnlyList<TimingWorkAggregate> steps) => new("assessment/one", "all", "rule", wordCount, 10, 10, [],
+        [
+            new TimingAggregateRow("rule/a", "Subject agreement", 1, 0.1, 1) { Kind = "morph_rule" },
+            new TimingAggregateRow("rule/b", "Vowel harmony", 9, 0.9, 1) { Kind = "phon_rule" },
+        ], [])
+    {
+        Work = work,
+        WorkStepAggregates = steps,
+        Attribution = new WordTimeAttribution(1, 10, 10, 0, 0, 0, false),
+    };
+
+    private static TimingWorkAggregate RuleSteps(string name, long steps, string kind = "morph_rule") =>
+        new("rule/" + name, name, kind, steps, false) { IdentityQuality = "authored" };
+
+    private static readonly TimingWorkAggregate Unattributed =
+        new("unattributed", "Not attributed", "unattributed", 100, true);
+
+    private static ResultsTokenViewModel Card(TimingResponse? timing, bool responseAvailable = true)
+    {
+        var card = new ResultsTokenViewModel("Text", 1, new TextToken("hawajafika", "hawajafika", null, null), null);
+        card.SetTimingEvidence(timing, responseAvailable);
+        return card;
+    }
+
+    [Fact]
+    public void WordCardSharesAreRuleStepsOverTheWordsTotalSteps()
+    {
+        using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
+        var card = Card(WordTiming(1, new WordWorkSummary(1, 1000, 1000, 1000),
+            [RuleSteps("Subject agreement", 600), RuleSteps("Vowel harmony", 300, "phon_rule"), Unattributed]));
+
+        Assert.Equal([("Subject agreement", "60% · 600 work steps"), ("Vowel harmony", "30% · 300 work steps")],
+            card.TimingShares.Select(share => (share.Name, share.ShareLabel)));
+        Assert.Equal(0.1, card.NotAttributedShare!.Value, 6);
+        Assert.Equal("Not attributed · 10%", card.NotAttributedShareLabel);
+        Assert.Equal("Every share is of the 1,000 work steps this word needed to parse.", card.TimingShareBasisLabel);
+    }
+
+    [Fact]
+    public void WordCardSaysWorkStepsAreNotRecordedInsteadOfShowingTimeShares()
+    {
+        using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
+        var card = Card(WordTiming(1, WordWorkSummary.None, []));
+
+        Assert.True(card.HasTimingEvidence);
+        Assert.False(card.HasTimingShares);
+        Assert.Null(card.NotAttributedShare);
+        Assert.Equal("Work steps not recorded for this word", card.NotAttributedShareLabel);
+        Assert.Equal(string.Empty, card.TimingShareBasisLabel);
+    }
+
+    [Fact]
+    public void WordCardSaysWhenOnlyTheStepsByRuleWereNotKept()
+    {
+        using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
+        var card = Card(WordTiming(1, new WordWorkSummary(1, 500, 500, 500), []));
+
+        Assert.False(card.HasTimingShares);
+        Assert.Equal("Work steps by rule not recorded for this word", card.NotAttributedShareLabel);
+    }
+
+    [Fact]
+    public void WordCardWithoutAResponseStillSaysTimingIsUnavailable()
+    {
+        Assert.Equal("Timing unavailable for this word", Card(null, responseAvailable: false).NotAttributedShareLabel);
+    }
+
+    [Fact]
+    public void WordCardWithStepsForOnlySomeWordsSaysWhatTheSharesAreOver()
+    {
+        using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
+        var card = Card(WordTiming(3, new WordWorkSummary(2, 2000, 1000, 1000),
+            [RuleSteps("Subject agreement", 1500), Unattributed with { WorkSteps = 500 }]));
+
+        Assert.Equal("75% · 1,500 work steps", Assert.Single(card.TimingShares).ShareLabel);
+        Assert.Equal("Not attributed · 25%", card.NotAttributedShareLabel);
+        Assert.Equal("Every share is of the 2,000 work steps 2 of these 3 words needed to parse; 1 has no work steps recorded.",
+            card.TimingShareBasisLabel);
+    }
+
+    [Fact]
+    public void WordCardAddsUpRulesBeyondTheTenLargestAsOtherRules()
+    {
+        using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
+        TimingWorkAggregate[] rules = [.. Enumerable.Range(1, 12).Select(index => RuleSteps("Rule " + index, 100 - index))];
+        var card = Card(WordTiming(1, new WordWorkSummary(1, 1200, 1200, 1200), [.. rules, Unattributed with { WorkSteps = 1200 - rules.Sum(r => r.WorkSteps) }]));
+
+        Assert.Equal(11, card.TimingShares.Count);
+        Assert.Equal("Other rules", card.TimingShares[^1].Name);
+        Assert.Equal((89 + 88) / 1200d, card.TimingShares[^1].Share, 6);
+        Assert.InRange(card.TimingShares.Sum(share => share.Share) + card.NotAttributedShare!.Value, 0.999999, 1.000001);
     }
 
     [Fact]

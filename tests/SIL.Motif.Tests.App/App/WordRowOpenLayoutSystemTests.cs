@@ -118,7 +118,7 @@ public sealed class WordRowOpenLayoutSystemTests(ITestOutputHelper output)
                     Assert.Contains(card.GetVisualDescendants().OfType<CopyableTextBlock>(),
                         block => block.IsEffectivelyVisible && block.Text == MotifAppStrings.InFieldWorksNow);
                     Assert.Contains(card.GetVisualDescendants().OfType<CopyableTextBlock>(),
-                        block => block.IsEffectivelyVisible && block.Text == MotifAppStrings.TimeByRule);
+                        block => block.IsEffectivelyVisible && block.Text == MotifAppStrings.WorkByRule);
                     Assert.Contains(card.GetVisualDescendants().OfType<CopyableTextBlock>(),
                         block => block.IsEffectivelyVisible && block.Text == "WHERE IT APPEARS");
                 }
