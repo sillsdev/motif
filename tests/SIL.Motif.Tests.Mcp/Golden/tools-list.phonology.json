@@ -343,7 +343,7 @@
         },
         "side": {
           "type": "string",
-          "description": "Derivational affix only: \u0022from\u0022 (required of the stem) or \u0022to\u0022 (carried by the derived stem, replacing the stem\u0027s value of that feature)."
+          "description": "Derivational affix only: \u0022from\u0022 (a requirement unified with the stem\u0027s features: a stem with another value is refused, one with none passes) or \u0022to\u0022 (carried by the derived stem, replacing the stem\u0027s value of that feature)."
         },
         "project": {
           "type": "string",
@@ -1712,7 +1712,7 @@
   },
   {
     "name": "motif_remove_feature_value",
-    "description": "Remove a feature value. Research first: motif_guide topic feature-conditioned-slots; check best practice. Remove a requirement only when the affix really takes every value; to change a value, remove it and author the new one (guide feature-conditioned-slots). Stages the removal of one feature\u0027s specification from a stem\u0027s MsFeatures or an inflectional affix\u0027s InflFeats, so the stem stops carrying the feature or the affix stops requiring it. The feature structure stays. Refuses a feature the structure does not specify. Only a person can Apply.\nCommand: compose-remove-feature-value. Agent class: Draft.",
+    "description": "Remove a feature value. Research first: motif_guide topic feature-conditioned-slots; check best practice. Remove a requirement only when the affix really takes every value; to change a value, remove it and author the new one (guide feature-conditioned-slots). Stages the removal of one feature\u0027s specification from a stem\u0027s MsFeatures, an inflectional affix\u0027s InflFeats, or a derivational affix\u0027s FromMsFeatures or ToMsFeatures, so the stem stops carrying the feature or the affix stops requiring or giving it. The feature structure stays. Refuses a feature the structure does not specify. Only a person can Apply.\nCommand: compose-remove-feature-value. Agent class: Draft.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -1722,7 +1722,7 @@
         },
         "featStruc": {
           "type": "string",
-          "description": "Id of the feature structure on a stem or inflectional affix."
+          "description": "Id of the feature structure on a stem, inflectional affix or derivational affix."
         },
         "feature": {
           "type": "string",
