@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Globalization;
+using System.Runtime.CompilerServices;
 using Xunit;
 
 namespace SIL.Motif.Tests.TestFixtures;
@@ -87,25 +88,28 @@ public static class Wait
     /// <paramref name="detail"/> when it does not hold in time.
     /// </summary>
     /// <param name="condition">What must become true.</param>
+    /// <param name="why">What the test was waiting for, in words a reader of the failure understands; the
+    /// condition's own source text when omitted.</param>
     /// <param name="timeout">The deadline before scaling; <see cref="Default"/> when omitted.</param>
-    /// <param name="why">What the test was waiting for, in words a reader of the failure understands.</param>
     /// <param name="detail">The state of the awaited work, read only on failure.</param>
     /// <param name="between">Work that lets the awaited code progress, run before each sleep.</param>
     /// <param name="minimumPasses">The fewest times the condition is tried, whatever the clock says.</param>
-    public static void Until(Func<bool> condition, string why, TimeSpan? timeout = null, Func<string>? detail = null,
-        Action? between = null, int minimumPasses = 1)
+    /// <param name="conditionText">Filled in by the compiler from the argument passed as <paramref name="condition"/>.</param>
+    public static void Until(Func<bool> condition, string? why = null, TimeSpan? timeout = null,
+        Func<string>? detail = null, Action? between = null, int minimumPasses = 1,
+        [CallerArgumentExpression(nameof(condition))] string conditionText = "")
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(why);
-        if (!For(condition, timeout ?? Default, between, minimumPasses)) Assert.Fail(Describe(why, detail));
+        if (!For(condition, timeout ?? Default, between, minimumPasses))
+            Assert.Fail(Describe(why ?? "Timed out waiting for " + conditionText, detail));
     }
 
     /// <summary>The asynchronous <see cref="Until"/>.</summary>
-    public static async Task UntilAsync(Func<bool> condition, string why, TimeSpan? timeout = null,
-        Func<string>? detail = null, Action? between = null, int minimumPasses = 1)
+    public static async Task UntilAsync(Func<bool> condition, string? why = null, TimeSpan? timeout = null,
+        Func<string>? detail = null, Action? between = null, int minimumPasses = 1,
+        [CallerArgumentExpression(nameof(condition))] string conditionText = "")
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(why);
         if (!await ForAsync(condition, timeout ?? Default, between, minimumPasses).ConfigureAwait(true))
-            Assert.Fail(Describe(why, detail));
+            Assert.Fail(Describe(why ?? "Timed out waiting for " + conditionText, detail));
     }
 
     /// <summary>The failure text: what was awaited, then the state <paramref name="detail"/> reads.</summary>

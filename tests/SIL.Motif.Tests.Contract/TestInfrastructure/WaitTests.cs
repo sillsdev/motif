@@ -76,6 +76,16 @@ public sealed class WaitTests
         Assert.Equal("a file that never appears", failure.Message);
     }
 
+    [Fact]
+    public void AWaitWithoutAReasonNamesTheConditionItWaitedFor()
+    {
+        var ready = false;
+
+        var failure = Assert.Throws<FailException>(() => Wait.Until(() => ready, timeout: TimeSpan.FromMilliseconds(30)));
+
+        Assert.Equal("Timed out waiting for ready", failure.Message);
+    }
+
     [Theory]
     [InlineData(null, 1.0)]
     [InlineData("", 1.0)]
