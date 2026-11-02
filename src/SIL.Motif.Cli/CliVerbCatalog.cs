@@ -410,7 +410,7 @@ public static class CliVerbCatalog
             "Project", "overview", "overview",
             new[] { "overview --project <fwdata> [--proposal <id>] [--json]" }),
         new CliVerbDescriptor("Commands", "proposal trial", "proposal trial",
-            new[] { "proposal trial --project <fwdata> <proposalId> [--json]" }),
+            new[] { "proposal trial --project <fwdata> <proposalId> [--json] [--word-results]" }),
         new CliVerbDescriptor(
             "Project", "warnings", "warnings",
             new[] { "warnings --project <fwdata> [--proposal <id>] [--kind <code>] [--left-out] [--json]" }),

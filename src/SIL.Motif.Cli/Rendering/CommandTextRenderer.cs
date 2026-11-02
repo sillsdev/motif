@@ -119,7 +119,12 @@ public static class CommandTextRenderer
         var text = new StringBuilder();
         text.AppendLine($"Trial {trial.JobId}: {trial.Status} ({trial.Freshness})");
         AppendDroppedGrammar(text, trial);
-        if (trial.Work is not { } work) return text.AppendLine("Parser work is unavailable.").ToString();
+        if (trial.Work is not { } work)
+        {
+            text.AppendLine("Parser work is unavailable.");
+            AppendWordResults(text, trial);
+            return text.ToString();
+        }
         if (work.PercentChange is { } change)
             text.AppendLine((change == 0 ? "These words took the same parser work"
                 : $"These words took {Math.Abs(change):0.#}% {(change > 0 ? "more" : "less")} work to parse") +
@@ -137,7 +142,22 @@ public static class CommandTextRenderer
         if (work.BaselineTimeMs is { } baselineMs && work.TrialTimeMs is { } trialMs)
             text.AppendLine($"Time on this computer: {baselineMs:N0} ms in the Baseline, {trialMs:N0} ms in the Trial " +
                 "(it changes with machine load).");
+        AppendWordResults(text, trial);
         return text.ToString();
+    }
+
+    private static void AppendWordResults(StringBuilder text, TrialRecord trial)
+    {
+        if (trial.WordResults.Count == 0) return;
+        text.AppendLine($"Words ({trial.WordResults.Count:N0}):");
+        foreach (var word in trial.WordResults)
+        {
+            text.AppendLine($"  {word.Word}: {word.Outcome}" + (word.IsIncomplete ? $" ({word.CompletionStatus})" : string.Empty));
+            if (word.Comparison is { } comparison) text.AppendLine("    " + comparison.Headline);
+            foreach (var reading in word.Readings ?? [])
+                text.AppendLine("    " + string.Join(" + ", reading.Morphs.Select(morph =>
+                    morph.Gloss.Length == 0 ? morph.Form : $"{morph.Form} ({morph.Gloss})")));
+        }
     }
 
     // Only a finished Trial has a dropped-grammar check to report; an active one has none yet.

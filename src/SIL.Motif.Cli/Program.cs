@@ -1523,8 +1523,9 @@ try
             }
             if (positionals.Count != 2 || positionals[0] != "trial" ||
                 !flags.TryGetValue("project", out var trialReadProject))
-                return Usage("Usage: motif proposal trial --project <fwdata> <proposalId> [--json]", asJson);
-            result = RenderCommand(Trials.Read(new ReadTrialRequest(trialReadProject, positionals[1])));
+                return Usage("Usage: motif proposal trial --project <fwdata> <proposalId> [--json] [--word-results]", asJson);
+            result = RenderCommand(Trials.Read(new ReadTrialRequest(trialReadProject, positionals[1],
+                flags.ContainsKey("word-results"))));
             break;
 
         case "writing-systems":

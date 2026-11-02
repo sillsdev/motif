@@ -443,6 +443,28 @@ public sealed class CatalogTextRenderingTests
         Assert.DoesNotContain("Clean: the parser dropped no grammar", unchecked_, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void ATrialReadWithWordResultsListsEachWordAndItsReadings()
+    {
+        var reading = new ParserReading([new ParserReadingMorph("a", "3SG", "Pro", null, false, null),
+            new ParserReadingMorph("penda", "love", "V", null, false, null)]);
+        var trial = new TrialRecord("job/1", "p/1", "sha256:x",
+            new BaselineToken("project", "sha256:" + new string('a', 64), "1", "2026-10-05T00:00:00Z",
+                "sha256:" + new string('b', 64)),
+            null, new Dictionary<string, string>(), [], false, null, JobStatus.Completed, null, TrialFreshness.Current)
+        {
+            WordResults = [new AssessmentWordResult("apenda", "Parsed", false, "complete", 3, null) { Readings = [reading] },
+                new AssessmentWordResult("zzz", "NoParse", false, "complete", 1, null)],
+        };
+
+        var output = CommandTextRenderer.Render(CommandOutcome<TrialRecord>.Success(trial), asJson: false).Output;
+
+        Assert.Contains("Words (2):", output, StringComparison.Ordinal);
+        Assert.Contains("  apenda: Parsed", output, StringComparison.Ordinal);
+        Assert.Contains("    a (3SG) + penda (love)", output, StringComparison.Ordinal);
+        Assert.Contains("  zzz: NoParse", output, StringComparison.Ordinal);
+    }
+
     private static string RenderTrial(DroppedGrammar? dropped) => CommandTextRenderer.Render(
         CommandOutcome<TrialRecord>.Success(new TrialRecord("job/1", "p/1", "sha256:x",
             new BaselineToken("project", "sha256:" + new string('a', 64), "1", "2026-10-05T00:00:00Z",
