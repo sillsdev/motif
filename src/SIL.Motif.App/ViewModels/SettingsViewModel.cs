@@ -464,6 +464,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
             {
                 _keptTimeLimit = value;
                 _keepsTimeLimit = true;
+                IsUsingEstimate = false;
                 TimeLimitRefusal = value is null or <= 0
                     ? MotifAppStrings.TimeLimitPositiveRefusal : MotifAppStrings.TimeLimitRangeRefusal;
                 KeepLimits(IsNoParserWorkLimit, ParserWorkLimitValue, value);
@@ -472,7 +473,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
             if (!_updatingEstimate && _keepsParserWorkLimit && !ParserWorkLimitIsAcceptable(_keptParserWorkLimit))
             {
                 _keptTimeLimit = value;
-                _keepsTimeLimit = _workspace.Selection.PerWordTimeLimitSeconds != value;
+                _keepsTimeLimit = _workspace.Selection.PerWordTimeLimitSeconds != value || EstimateChosenOverExplicit;
                 TimeLimitRefusal = string.Empty;
                 if (_keepsTimeLimit) IsUsingEstimate = false;
                 NotifyKeptLimitsChanged();
@@ -509,6 +510,10 @@ internal sealed partial class SettingsViewModel : ObservableObject
 
     private static bool TimeLimitIsAcceptable(decimal? seconds) =>
         seconds is > 0 && seconds <= int.MaxValue / 1000m && decimal.Round(seconds.Value * 1000m) >= 1m;
+
+    // The estimate is an unsaved choice only where the save holds an Explicit time.
+    private bool EstimateChosenOverExplicit =>
+        IsUsingEstimate && _workspace.Context.Setup?.CurrentSelectionLimits.TimeMode == SelectionTimeLimitMode.Explicit;
 
     private bool ShowsRefusedLimit =>
         _keepsParserWorkLimit && !ParserWorkLimitIsAcceptable(_keptParserWorkLimit) ||
@@ -564,8 +569,10 @@ internal sealed partial class SettingsViewModel : ObservableObject
     {
         var stepMessage = _parserWorkLimitRefusal;
         var timeMessage = TimeLimitRefusal;
-        var timeIsTyped = !IsUsingEstimate || _keepsTimeLimit;
+        var timeIsTyped = !IsUsingEstimate;
+        var estimateChosen = EstimateChosenOverExplicit;
         RestoreSavedLimits();
+        if (estimateChosen && _workspace.Context.Setup?.EstimatedPerWordLimitMs is > 0 and var milliseconds) time = milliseconds / 1000m;
         _parserWorkLimitRefusal = stepMessage;
         TimeLimitRefusal = timeMessage;
         if (noStep)
@@ -577,9 +584,9 @@ internal sealed partial class SettingsViewModel : ObservableObject
         _keptNoParserWorkLimit = noStep;
         _keepsParserWorkLimit = !noStep && (step != _lastGoodParserWorkLimit || step is not null && !ParserWorkLimitIsAcceptable(step));
         _keptParserWorkLimit = step;
-        _keepsTimeLimit = !noStep && timeIsTyped && (time != _lastGoodTimeLimitSeconds || time is not null && !TimeLimitIsAcceptable(time));
+        _keepsTimeLimit = !noStep && (timeIsTyped || estimateChosen) && (time != _lastGoodTimeLimitSeconds || time is not null && !TimeLimitIsAcceptable(time));
         _keptTimeLimit = time;
-        if (_keepsTimeLimit) IsUsingEstimate = false;
+        if (_keepsTimeLimit) IsUsingEstimate = estimateChosen;
         NotifyKeptLimitsChanged();
     }
 
@@ -863,6 +870,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
     {
         IsUsingEstimate = true;
         ApplyEstimate();
+        if (ShowsRefusedLimit) KeepUnsavedLimits();
         OnPropertyChanged(nameof(ShowUseEstimate));
     }
 
@@ -883,6 +891,22 @@ internal sealed partial class SettingsViewModel : ObservableObject
         if (_workspace.Selection.PerWordTimeLimitSeconds is > 0)
             _lastGoodTimeLimitSeconds = _workspace.Selection.PerWordTimeLimitSeconds;
         else _lastGoodTimeLimitSeconds = null;
+        ClearHeldLimits();
+    }
+
+    // Saved limits belong to the project that was open, so a change of project drops them and anything held.
+    private void ForgetSavedLimits()
+    {
+        _lastGoodNoParserWorkLimit = false;
+        _lastGoodParserWorkLimit = null;
+        _lastGoodTimeLimitSeconds = null;
+        _parserWorkLimitBeforeNoStep = null;
+        _timeLimitBeforeNoStep = null;
+        ClearHeldLimits();
+    }
+
+    private void ClearHeldLimits()
+    {
         _keepsParserWorkLimit = false;
         _keepsTimeLimit = false;
         _keepsNoParserWorkLimit = false;
@@ -1158,12 +1182,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
 
     private void OnSetupChanged(object? sender, PropertyChangedEventArgs args)
     {
-        if (args.PropertyName == nameof(SetupViewModel.ProjectPath))
-        {
-            _lastGoodParserWorkLimit = null;
-            _parserWorkLimitBeforeNoStep = null;
-            _timeLimitBeforeNoStep = null;
-        }
+        if (args.PropertyName == nameof(SetupViewModel.ProjectPath)) ForgetSavedLimits();
         if (args.PropertyName is nameof(SetupViewModel.CanRunDefaultSelection) or nameof(SetupViewModel.ProjectPath))
         {
             OnPropertyChanged(nameof(HasSavedSelection));
@@ -1178,7 +1197,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
             IsUsingEstimate = _workspace.Context.Setup?.CurrentSelectionLimits.TimeMode !=
                 SelectionTimeLimitMode.Explicit;
             if (IsUsingEstimate) ApplyEstimate();
-            RememberGoodValues();
+            if (_observedSetup?.ProjectPath is not null) RememberGoodValues();
         }
         if (args.PropertyName is nameof(SetupViewModel.ParserWorkLimitEstimateText) or
             nameof(SetupViewModel.EstimatedPerWordLimitMs) or nameof(SetupViewModel.RunningParserWorkLimitText))

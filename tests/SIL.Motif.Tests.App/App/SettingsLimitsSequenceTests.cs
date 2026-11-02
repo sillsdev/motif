@@ -1,4 +1,6 @@
+using SIL.Motif.Commands;
 using SIL.Motif.Contract.Assess;
+using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Commands.Queries;
@@ -11,12 +13,12 @@ using Group = SIL.Motif.App.ViewModels.SettingsGroup;
 namespace SIL.Motif.Tests.App;
 
 /// <summary>
-/// Random but replayable sequences over the Settings step and time limits. After every step the next parse must send
+/// Random but replayable sequences over the Settings parser work and time limits. After every act the next parse must send
 /// the last saved value whenever a field shows a refused value or after Escape, a commit or leaving with one held;
 /// otherwise it sends the saved value or the good value showing in its field. No message may describe a value the
-/// field no longer holds. A project switch lands on a project saved with explicit, estimated or no step limits and must
+/// field no longer holds. A project switch lands on a project saved with explicit, estimated or no parser work limits and must
 /// leave nothing of the last project in the fields or the Selection, and the bound properties must agree with the
-/// fields after every step. A failure names the seed and the steps so it can be replayed.
+/// fields after every act. A failure names the seed and the acts so it can be replayed.
 /// </summary>
 [Collection(AvaloniaHeadlessCollection.Name)]
 public sealed class SettingsLimitsSequenceTests
@@ -33,7 +35,7 @@ public sealed class SettingsLimitsSequenceTests
         Environment.GetEnvironmentVariable("MOTIF_SEQUENCE_SEEDS")?.Split('-') is [var from, var to]
             ? [.. Enumerable.Range(int.Parse(from), int.Parse(to) - int.Parse(from) + 1)] : null;
 
-    private enum Act { TypeStep, TypeTime, Tick, Untick, Commit, Escape, LeaveAndReturn, Switch }
+    private enum Act { TypeStep, TypeTime, Tick, Untick, Commit, Escape, LeaveAndReturn, Switch, UseEstimate }
 
     private static bool GoodStep(decimal? value) => value is > 0 && decimal.Truncate(value.Value) == value && value <= long.MaxValue;
 
@@ -81,7 +83,7 @@ public sealed class SettingsLimitsSequenceTests
     }
 
     [Fact]
-    public void EscapeAfterTickingNoStepLimitPutsTheSavedTimeBackInTheSelectionAndTheField()
+    public void EscapeAfterTickingNoParserWorkLimitPutsTheSavedTimeBackInTheSelectionAndTheField()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
@@ -105,7 +107,7 @@ public sealed class SettingsLimitsSequenceTests
     }
 
     [Fact]
-    public void UntickingAfterSwitchingToANoStepLimitProjectShowsTheDefaultNotTheLastProjectsNumber()
+    public void UntickingAfterSwitchingToANoParserWorkLimitProjectShowsTheDefaultNotTheLastProjectsNumber()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
@@ -131,7 +133,7 @@ public sealed class SettingsLimitsSequenceTests
     }
 
     [Fact]
-    public void EscapeAfterSwitchingToANoStepLimitProjectKeepsItUnboundedWithNoOtherProjectsNumber()
+    public void EscapeAfterSwitchingToANoParserWorkLimitProjectKeepsItUnboundedWithNoOtherProjectsNumber()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
@@ -155,31 +157,143 @@ public sealed class SettingsLimitsSequenceTests
     }
 
     [Fact]
-    public void ASwitchDropsTheLastProjectsTypedAndSavedLimitsFromEveryRoute()
+    public void AFreshProjectsEstimateAndParserWorkLimitReplaceTheLastProjectsSavedOnesOnEveryRoute()
     {
+        WithProject(null, async (workspace, settings, fake) =>
+        {
+            settings.ParserWorkLimitValue = 250000m;
+            settings.TimeLimitSeconds = 12m;
+            await SaveAsync(settings);
+            await SwitchProjectAsync(workspace, settings, fake, SelectionLimitPolicy.Estimated(new ParserWorkLimit(150000)));
+            Assert.Equal(150000m, settings.ParserWorkLimitValue);
+            Assert.True(settings.IsUsingEstimate);
+            settings.IsNoParserWorkLimit = true;
+            settings.CancelParsingLimitEdit();
+            Assert.False(workspace.Selection.PerWordParserWorkLimitUnbounded);
+            Assert.Equal(150000m, workspace.Selection.PerWordParserWorkLimit);
+            Assert.True(settings.IsUsingEstimate);
+            Assert.NotEqual(12m, workspace.Selection.PerWordTimeLimitSeconds);
+        });
+    }
+
+    [Fact]
+    public void EscapeInTheMiddleOfAProjectSwitchPutsNothingOfTheLastProjectIntoTheSelection()
+    {
+        WithProject(null, async (workspace, settings, fake) =>
+        {
+            settings.ParserWorkLimitValue = 250000m;
+            settings.IsNoParserWorkLimit = true;
+            await SaveAsync(settings);
+            var hold = new HoldOpen(workspace.Context);
+            var opening = StartSwitch(workspace, fake, EstimatedLimits);
+            await hold.Started.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            settings.CancelParsingLimitEdit();
+            AssertNothingSelected(workspace, 250000m);
+            hold.Release.SetResult();
+            await opening;
+            Assert.Equal(ParserWorkLimit.DefaultWork, workspace.Selection.PerWordParserWorkLimit);
+            Assert.False(workspace.Selection.PerWordParserWorkLimitUnbounded);
+        });
+    }
+
+    [Fact]
+    public void AFailedSaveFinishingInTheMiddleOfAProjectSwitchPutsNothingOfTheLastProjectIntoTheSelection()
+    {
+        WithProject(null, async (workspace, settings, fake) =>
+        {
+            var save = new TaskCompletionSource<CommandOutcome<NamedSelectionProjection>>();
+            fake.OnSetSelectionLimits((_, _) => save.Task);
+            settings.ParserWorkLimitValue = 150000m;
+            var committing = settings.CommitParsingLimitsAsync();
+            var hold = new HoldOpen(workspace.Context);
+            var opening = StartSwitch(workspace, fake, EstimatedLimits);
+            await hold.Started.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            save.SetResult(CommandOutcome<NamedSelectionProjection>.Refused(
+                new Refusal("selection.not-saved", FailureReason.Refused, "The Selection could not be saved.")));
+            await committing;
+            AssertNothingSelected(workspace, 150000m);
+            hold.Release.SetResult();
+            await opening;
+            Assert.Equal(ParserWorkLimit.DefaultWork, workspace.Selection.PerWordParserWorkLimit);
+        });
+    }
+
+    [Fact]
+    public void ASwitchWithARefusedValueAndATickHeldShowsOnlyTheNewProjectsLimits()
+    {
+        WithProject(null, async (workspace, settings, fake) =>
+        {
+            settings.ParserWorkLimitValue = 0.5m;
+            settings.IsNoParserWorkLimit = true;
+            Assert.True(settings.HasParserWorkLimitRefusal);
+            await SwitchProjectAsync(workspace, settings, fake,
+                new SelectionParsingLimits(new ParserWorkLimit(150000), SelectionTimeLimitMode.Explicit, 2000, 600));
+            Assert.False(settings.IsNoParserWorkLimit);
+            Assert.False(settings.HasParserWorkLimitRefusal);
+            Assert.Equal(150000m, settings.ParserWorkLimitValue);
+            Assert.Equal(2m, settings.TimeLimitSeconds);
+            settings.CancelParsingLimitEdit();
+            Assert.Equal(150000m, workspace.Selection.PerWordParserWorkLimit);
+            Assert.Equal(2m, workspace.Selection.PerWordTimeLimitSeconds);
+        });
+    }
+
+    [Fact]
+    public void AnEstimateChosenBesideARefusedParserWorkLimitSurvivesAnotherRefusedEdit()
+    {
+        WithProject(null, async (workspace, settings, fake) =>
+        {
+            settings.ParserWorkLimitValue = 0.5m;
+            settings.UseMotifEstimate();
+            var estimate = settings.TimeLimitSeconds;
+            settings.ParserWorkLimitValue = -3m;
+            Assert.True(settings.IsUsingEstimate);
+            Assert.False(settings.ShowUseEstimate);
+            Assert.Equal(estimate, settings.TimeLimitSeconds);
+            Assert.Equal(5m, workspace.Selection.PerWordTimeLimitSeconds);
+            Assert.Equal(ParserWorkLimit.DefaultWork, workspace.Selection.PerWordParserWorkLimit);
+            settings.ParserWorkLimitValue = 150000m;
+            await SaveAsync(settings);
+            Assert.Equal(SelectionTimeLimitMode.Estimated, fake.SetSelectionLimitsRequests[^1].Limits.TimeMode);
+        });
+    }
+
+    private static void AssertNothingSelected(WorkspaceShellViewModel workspace, decimal lastProjectsParserWork)
+    {
+        Assert.False(workspace.Selection.PerWordParserWorkLimitUnbounded);
+        Assert.NotEqual(lastProjectsParserWork, workspace.Selection.PerWordParserWorkLimit);
+    }
+
+    private static void WithProject(SelectionParsingLimits? limits,
+        Func<WorkspaceShellViewModel, SettingsViewModel, FakeCommandClient, Task> body) =>
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (workspace, frame, settings, fake) = await OpenAsync();
-            try
-            {
-                settings.ParserWorkLimitValue = 250000m;
-                settings.TimeLimitSeconds = 12m;
-                await SwitchProjectAsync(workspace, settings, fake, EstimatedLimits);
-                Assert.Equal(ParserWorkLimit.DefaultWork, settings.ParserWorkLimitValue);
-                Assert.True(settings.IsUsingEstimate);
-                settings.IsNoParserWorkLimit = true;
-                settings.CancelParsingLimitEdit();
-                Assert.False(workspace.Selection.PerWordParserWorkLimitUnbounded);
-                Assert.Equal(ParserWorkLimit.DefaultWork, workspace.Selection.PerWordParserWorkLimit);
-                Assert.True(settings.IsUsingEstimate);
-                Assert.NotEqual(12m, workspace.Selection.PerWordTimeLimitSeconds);
-            }
+            var (workspace, frame, settings, fake) = await OpenAsync(limits);
+            try { await body(workspace, settings, fake); }
             finally
             {
                 frame.Close();
                 await workspace.DisposeAsync();
             }
         }, TimeSpan.FromMinutes(2));
+
+    // Holds the open of the next project before Setup loads it, so a test can act while the old project is cleared.
+    private sealed class HoldOpen(WorkspaceContext context) : PageModel(context)
+    {
+        public TaskCompletionSource Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        protected override async Task OnProjectOpenedAsync(string projectPath, CancellationToken cancellationToken)
+        {
+            Started.TrySetResult();
+            await Release.Task;
+        }
+    }
+
+    private static Task StartSwitch(WorkspaceShellViewModel workspace, FakeCommandClient fake, SelectionParsingLimits limits)
+    {
+        fake.DefaultSelectionIs(Saved(limits));
+        return workspace.Context.OpenProjectAsync(workspace.Context.ProjectPath + ".other");
     }
 
     [Fact]
@@ -240,12 +354,11 @@ public sealed class SettingsLimitsSequenceTests
     private static NamedSelectionProjection Saved(SelectionParsingLimits limits) => new("Default",
         [Guid.Parse("11111111-0000-0000-0000-000000000001")], [], string.Empty, string.Empty, limits, "1");
 
-    // Opens the other project the way the shell does: every participant is cleared, then loads that project's save.
+    // Opens another project, then returns to the Parsing group as a person would.
     private static async Task SwitchProjectAsync(WorkspaceShellViewModel workspace, SettingsViewModel settings,
         FakeCommandClient fake, SelectionParsingLimits limits)
     {
-        fake.DefaultSelectionIs(Saved(limits));
-        await workspace.Context.OpenProjectAsync(workspace.Context.ProjectPath + ".other");
+        await StartSwitch(workspace, fake, limits);
         workspace.CurrentPage = WorkspacePage.Settings;
         settings.OpenGroup(Group.Parsing);
     }
@@ -314,7 +427,7 @@ public sealed class SettingsLimitsSequenceTests
         private bool _tickHeld;
         private bool _estimate;
         private bool _savedEstimate;
-        private bool _estimateAtTick = true;
+        private bool _estimateBeforeTick;
         private bool _heldUntick;
         private int _projects;
         private readonly Dictionary<string, bool> _announced = [];
@@ -345,6 +458,7 @@ public sealed class SettingsLimitsSequenceTests
         {
             var allowed = new List<Act> { Act.Escape, Act.LeaveAndReturn, Act.Commit, Act.Switch };
             if (!_ticked) allowed.AddRange([Act.TypeStep, Act.TypeStep, Act.TypeTime, Act.TypeTime, Act.Tick]);
+            if (!_ticked && !_estimate) allowed.Add(Act.UseEstimate);
             if (_ticked) allowed.Add(Act.Untick);
             return allowed[random.Next(allowed.Count)];
         }
@@ -368,8 +482,8 @@ public sealed class SettingsLimitsSequenceTests
                 case Act.Tick:
                     log.Add("tick");
                     _tickHeld = RefusedShown;
-                    // Ticking back onto a saved no step limit returns to the save, so a time typed since is not brought back.
-                    _estimateAtTick = _heldUntick || _estimate;
+                    // Ticking onto a held saved no limit returns to the save, so nothing typed is brought back.
+                    _estimateBeforeTick = _heldUntick || _estimate;
                     _heldUntick = false;
                     _estimate = true;
                     _ticked = true;
@@ -379,10 +493,17 @@ public sealed class SettingsLimitsSequenceTests
                     log.Add("untick");
                     _ticked = false;
                     _tickHeld = false;
-                    _estimate = _estimateAtTick;
                     _heldUntick = false;
                     settings.IsNoParserWorkLimit = false;
+                    // Unticking brings back the time mode the person left; on a saved no limit project it may land on the estimate.
+                    _estimate = _savedNoStep && settings.IsUsingEstimate || _estimateBeforeTick;
                     Resync("untick");
+                    break;
+                case Act.UseEstimate:
+                    log.Add("use estimate");
+                    Assert.True(settings.ShowUseEstimate, "Use estimate is offered whenever the time is typed");
+                    _estimate = true;
+                    settings.UseMotifEstimate();
                     break;
                 case Act.Commit:
                     await CommitAsync();
@@ -400,7 +521,7 @@ public sealed class SettingsLimitsSequenceTests
                     break;
                 case Act.LeaveAndReturn:
                     log.Add("leave+return");
-                    exact = RefusedShown || _tickHeld;
+                    exact = RefusedShown || _tickHeld || _heldUntick;
                     workspace.CurrentPage = WorkspacePage.Overview;
                     workspace.CurrentPage = WorkspacePage.Settings;
                     settings.OpenGroup(Group.Parsing);
@@ -413,12 +534,14 @@ public sealed class SettingsLimitsSequenceTests
             Check(log[^1], exact);
         }
 
-        // In estimate mode the time field follows the step, so it is read back rather than predicted.
+        // In estimate mode the time field shows the figure Setup estimates for the parser work limit it holds.
+        private decimal? EstimateTime() => workspace.Context.Setup!.EstimatedPerWordLimitMs is > 0 and var ms ? ms / 1000m : null;
+
         private void Adopt()
         {
             if (_ticked || !_estimate) return;
-            _time = settings.TimeLimitSeconds;
-            if (!(RefusedShown && _savedNoStep)) Assert.True(GoodTime(_time), $"after '{log[^1]}': estimate mode shows time {_time}");
+            _time = EstimateTime();
+            if (!_savedNoStep) Assert.True(GoodTime(_time), $"after '{log[^1]}': Setup has no estimate");
         }
 
         private async Task SwitchAsync(Random random)
@@ -440,15 +563,13 @@ public sealed class SettingsLimitsSequenceTests
             _savedNoStep = kind == 1;
             _savedEstimate = kind != 0;
             _estimate = _savedEstimate;
-            _estimateAtTick = true;
-            _heldUntick = false;
             _ticked = _savedNoStep;
             _tickHeld = false;
+            _heldUntick = false;
             _savedStep = kind == 0 ? step : ParserWorkLimit.DefaultWork;
             _step = _savedStep;
-            _time = settings.TimeLimitSeconds;
-            if (kind == 0) Assert.Equal(time, _time);
-            else if (kind == 2) Assert.True(GoodTime(_time), $"an estimated project shows time {_time}");
+            _time = kind == 0 ? time : kind == 2 ? EstimateTime() : null;
+            if (kind == 2) Assert.True(GoodTime(_time), "an estimated project has an estimate");
             _savedTime = _time ?? _savedTime;
         }
 
@@ -472,10 +593,11 @@ public sealed class SettingsLimitsSequenceTests
             var saved = fake.SetSelectionLimitsRequests[^1].Limits;
             if (wasTicked)
             {
-                Assert.True(saved.PerWordParserWorkLimit.IsUnbounded, "a ticked commit saves no step limit");
+                Assert.True(saved.PerWordParserWorkLimit.IsUnbounded, "a ticked commit saves no parser work limit");
                 Assert.Equal(SelectionTimeLimitMode.Estimated, saved.TimeMode);
                 _savedNoStep = true;
                 _savedEstimate = true;
+                _tickHeld = false;
                 return;
             }
             _savedNoStep = false;
@@ -494,7 +616,6 @@ public sealed class SettingsLimitsSequenceTests
             _ticked = _savedNoStep;
             _tickHeld = false;
             _estimate = _savedEstimate;
-            _estimateAtTick = true;
             _heldUntick = false;
             _step = _savedStep;
             _time = _savedNoStep ? null : _savedTime;
@@ -508,8 +629,8 @@ public sealed class SettingsLimitsSequenceTests
             var time = settings.TimeLimitSeconds;
             Assert.True(step == _step || step == _savedStep, $"{when}: the step field shows {step}, neither the typed {_step} nor the saved {_savedStep}");
             Assert.Equal(_estimate, settings.IsUsingEstimate);
-            Assert.True(_estimate ? GoodTime(time) || _savedNoStep : time == _time || time == _savedTime,
-                $"{when}: the time field shows {time}, neither the typed {_time} nor the saved {_savedTime}");
+            if (_estimate) Assert.Equal(EstimateTime(), time);
+            else Assert.True(time == _time || time == _savedTime, $"{when}: the time field shows {time}, neither the typed {_time} nor the saved {_savedTime}");
             _step = step;
             _time = time;
         }
@@ -530,7 +651,7 @@ public sealed class SettingsLimitsSequenceTests
             }
             else
             {
-                Assert.False(_savedNoStep && mustBeSaved, Why("the saved no step limit is not what the Selection holds"));
+                Assert.False(_savedNoStep && mustBeSaved, Why("the saved no parser work limit is not what the Selection holds"));
                 var shown = !mustBeSaved && !_ticked && GoodStep(_step) ? _step : _savedStep;
                 Assert.True(selection.PerWordParserWorkLimit == _savedStep || selection.PerWordParserWorkLimit == shown,
                     Why($"the Selection holds step {selection.PerWordParserWorkLimit}; the saved is {_savedStep} and the field shows {_step}"));
@@ -551,7 +672,15 @@ public sealed class SettingsLimitsSequenceTests
             foreach (var (name, announced) in _announced)
                 Assert.True(Bound(name) == announced, Why($"{name} is {Bound(name)} but its last change notice said {announced}"));
             if (!_tickHeld) Assert.True(_estimate == settings.IsUsingEstimate, Why($"the time mode is estimate={settings.IsUsingEstimate}; expected {_estimate}"));
-            if (_ticked) return;
+            if (_ticked)
+            {
+                Assert.True(settings.IsNoParserWorkLimit, Why("the tick is not showing"));
+                if (!_tickHeld) Assert.Null(settings.TimeLimitSeconds);
+                var shown = settings.ParserWorkLimitValue;
+                Assert.True(shown == _step || shown == _savedStep || shown == ParserWorkLimit.DefaultWork,
+                    Why($"the ticked limit field shows {shown}, not this project's {_savedStep}, the typed {_step} or the default"));
+                return;
+            }
             Assert.Equal(_step, settings.ParserWorkLimitValue);
             Assert.Equal(_time, settings.TimeLimitSeconds);
             Assert.True(settings.HasParserWorkLimitRefusal == !GoodStep(_step),
