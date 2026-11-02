@@ -57,7 +57,7 @@
         <views:CopyableTextBlock TextWrapping="Wrap"
                                  Text="{x:Static app:MotifAppStrings.CompareRowsNotSortedNotice}" />
       </Border>
-      <DockPanel>
+      <DockPanel x:Name="TodayWordsChips" IsVisible="{Binding Compare.ShowsTodayWords}">
         <views:FilterChip DockPanel.Dock="Left" VerticalAlignment="Top" Label="All words" Count="{Binding Compare.TotalCount}"
                           IsActive="{Binding !Compare.AnySelected}" Command="{Binding Compare.ClearSelectionCommand}" />
         <ItemsControl x:Name="ComparePanelPresetsItems" ItemsSource="{Binding Compare.Presets}">
@@ -145,7 +145,7 @@
       </ItemsControl>
     </StackPanel>
 
-    <Border Grid.Row="2" Classes="card" IsVisible="{Binding Compare.HasFixFirst}">
+    <Border x:Name="FixFirstCard" Grid.Row="2" Classes="card" IsVisible="{Binding Compare.ShowsFixFirst}">
       <Expander IsExpanded="True">
         <Expander.Header>
           <DockPanel LastChildFill="True">
@@ -175,7 +175,7 @@
       </Expander>
     </Border>
 
-      <Border Grid.Row="3" Classes="card matrixChosen">
+      <Border x:Name="ChosenWordsCard" Grid.Row="3" Classes="card matrixChosen" IsVisible="{Binding Compare.ShowsTodayWords}">
         <Grid Classes="matrixChosenLayout" RowDefinitions="Auto,Auto,Auto,Auto,*">
           <DockPanel Classes="matrixChosenHeading" AutomationProperties.Name="{Binding Compare.SelectionText}">
             <StackPanel DockPanel.Dock="Left" Classes="matrixChosenMarks" Orientation="Horizontal"

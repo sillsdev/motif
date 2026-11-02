@@ -1549,8 +1549,8 @@
     <comment>A place in a Text: {0} is the line number and {1} the word's position in the line.</comment>
   </data>
   <data name="MotifApp.ProposalDifferencePlacesNotListedFormat" xml:space="preserve">
-    <value>Showing {0} of {1} listed places. {2} more are counted but not listed, because at most {3} places are listed for each word; all of them are in the Text.</value>
-    <comment>Under a word's places when it has more places than are listed. {0} shown, {1} listed, {2} counted but not listed, {3} the most listed for a word.</comment>
+    <value>Showing {0} of {1} listed places. {2}, because at most {3} places are listed for each word; all of them are in the Text.</value>
+    <comment>Under a word's places when it has more places than are listed. {0} shown, {1} listed, {2} the phrase saying how many more are counted but not listed, {3} the most listed for a word.</comment>
   </data>
   <data name="MotifApp.ProposalDifferenceNoPlaces" xml:space="preserve">
     <value>No places are listed for this word.</value>
@@ -8706,5 +8706,49 @@ Motif starts a check automatically when this project opens. Use Reload to read a
   <data name="MotifApp.WarningsProposalReadingNote" xml:space="preserve">
     <value>Reading this Proposal's check. Today's findings show until it arrives.</value>
     <comment>Note on the Warnings page in the pair view while the open Proposal's saved check is being read.</comment>
+  </data>
+  <data name="MotifApp.ProposalDifferencePlacesMorePattern" xml:space="preserve">
+    <value>{0, plural, one {# more is counted but not listed} other {# more are counted but not listed}}</value>
+    <comment>Plural pattern: the places of a word that are counted but not listed; # is how many more.</comment>
+  </data>
+  <data name="MotifApp.WarningsProposalReadingTodayNotCheckedNote" xml:space="preserve">
+    <value>Reading this Proposal's check. Today's grammar has not been checked yet, so only the Proposal's findings will show.</value>
+    <comment>Note on the Warnings page in the pair view while the open Proposal's saved check is being read and today's grammar has not been checked or its check was refused.</comment>
+  </data>
+  <data name="MotifApp.CompareCellProposalAccessibleNameFormat" xml:space="preserve">
+    <value>{0} With this Proposal, the cell reads {1}.</value>
+    <comment>Spoken name of a matrix cell while the Proposal bar shows the Proposal's numbers: {0} the cell's usual name, {1} the number the cell now shows.</comment>
+  </data>
+  <data name="MotifApp.TextsMatrixCountsNoun" xml:space="preserve">
+    <value>matrix counts</value>
+    <comment>Lower-case noun in the Texts page's Proposal notes, as in 'These are today's matrix counts only.'</comment>
+  </data>
+  <data name="MotifApp.TextsProposalPairedNote" xml:space="preserve">
+    <value>Each cell, row and column reads today's words, then the words with this Proposal, for the same words. The cells count words, so a cell that reads the same on both sides can still hold different words. The word list, the With This Proposal column and What Changed still show today's and are not paired yet.</value>
+    <comment>Note on the Texts page's Matrix tab in the Today to Proposal view when both sides cover the same words.</comment>
+  </data>
+  <data name="MotifApp.TextsProposalDifferentWordsNote" xml:space="preserve">
+    <value>This Proposal's Trial measured different words from today's matrix, so nothing is paired and the matrix shows today's counts. The word list and What Changed are today's.</value>
+    <comment>Note on the Texts page's Matrix tab in the Today to Proposal view when the Trial's words are not the words in today's matrix.</comment>
+  </data>
+  <data name="MotifApp.TextsProposalViewNote" xml:space="preserve">
+    <value>Each cell, row and column reads the words with this Proposal. Its words are not listed here yet: choose Today or Today to Proposal to list today's words.</value>
+    <comment>Note on the Texts page's Matrix tab in the Proposal view.</comment>
+  </data>
+  <data name="MotifApp.TextsProposalWordCardsNote" xml:space="preserve">
+    <value>Each word card shows what this Proposal builds for the word. The words listed here are today's.</value>
+    <comment>Note on the Texts page's Analyze Texts tab while a Proposal view other than Today is chosen.</comment>
+  </data>
+  <data name="MotifApp.TextsProposalTabNotPairedNote" xml:space="preserve">
+    <value>This tab is not paired with the Proposal yet and shows today's. Choose Today or Today to Proposal to see it.</value>
+    <comment>Note on the Texts page's Lists and What Changed tabs while a Proposal view other than Today is chosen.</comment>
+  </data>
+  <data name="MotifApp.TextsProposalReadingNote" xml:space="preserve">
+    <value>Reading this Proposal's counts. Until they arrive the matrix shows today's counts.</value>
+    <comment>Note on the Texts page's Matrix tab in the Today to Proposal view while the Proposal's counts are being read.</comment>
+  </data>
+  <data name="MotifApp.TextsProposalTabNotPairedViewNote" xml:space="preserve">
+    <value>This tab is not paired with the Proposal yet, so it shows nothing in this view. Choose Today or Today to Proposal to see today's.</value>
+    <comment>Note on the Texts page's Lists and What Changed tabs in the Proposal view, where they draw nothing.</comment>
   </data>
 </root>

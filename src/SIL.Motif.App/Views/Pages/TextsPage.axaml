@@ -64,6 +64,10 @@
             <views:RefusalBlock DataContext="{Binding Assess.ShownRefusal}" />
           </StackPanel>
         </ScrollViewer>
+        <Border Classes="proposalPageNote" IsVisible="{Binding HasProposalNote}"
+                AutomationProperties.AutomationId="{x:Static app:AutomationIds.TextsProposalNote}">
+          <views:CopyableTextBlock Text="{Binding ProposalNote}" TextWrapping="Wrap" />
+        </Border>
       </StackPanel>
     </Border>
 
@@ -99,8 +103,8 @@
         </Grid>
       </Grid>
       </ScrollViewer>
-      <views:LazyContent x:Name="ListsHost" IsVisible="{Binding ShowLists}" Classes.waiting="{Binding Assess.IsActive}" />
-      <views:LazyContent x:Name="DifferenceHost" IsVisible="{Binding ShowWhatChanged}" />
+      <views:LazyContent x:Name="ListsHost" IsVisible="{Binding ShowListsContent}" Classes.waiting="{Binding Assess.IsActive}" />
+      <views:LazyContent x:Name="DifferenceHost" IsVisible="{Binding ShowWhatChangedContent}" />
       <ContentControl x:Name="CentredParsePromptHost" IsVisible="{Binding ShowCentredParsePrompt}"
                       HorizontalAlignment="Center" VerticalAlignment="Center" />
     </Panel>

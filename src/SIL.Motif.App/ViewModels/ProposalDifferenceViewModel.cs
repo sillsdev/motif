@@ -237,7 +237,8 @@ public sealed partial class ProposalDifferenceViewModel : ObservableObject
     /// <summary>"Showing 25 of 40." for the selected word's places, or what is counted but not listed.</summary>
     public string PlacesStatusText => _placesListed < _placesTotal
         ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.ProposalDifferencePlacesNotListedFormat,
-            Places.Count, _placesListed, _placesTotal - _placesListed, ProposalDifferenceListing.MostPlacesPerWord)
+            Places.Count, _placesListed, PluralText.Format(MotifAppStrings.ProposalDifferencePlacesMorePattern,
+                _placesTotal - _placesListed), ProposalDifferenceListing.MostPlacesPerWord)
         : string.Format(CultureInfo.CurrentCulture, MotifAppStrings.ProposalDifferenceShowingFormat, Places.Count, _placesTotal);
 
     public bool HasMoved => MovedChips.Count > 0;

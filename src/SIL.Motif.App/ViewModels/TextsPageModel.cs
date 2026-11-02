@@ -77,6 +77,7 @@ public sealed partial class TextsPageModel : PageModel
         Assess.Compare.HandOff = context.HandOff;
         Assess.OpenTryWord = context.TryWord;
         Assess.PropertyChanged += OnAssessPropertyChanged;
+        Assess.Compare.PropertyChanged += OnCompareChanged;
         context.PropertyChanged += OnContextPropertyChanged;
         context.SelectionReads.PropertyChanged += (_, args) =>
         {
@@ -141,6 +142,12 @@ public sealed partial class TextsPageModel : PageModel
 
     public bool ShowWhatChanged => Tab == TextsTab.WhatChanged;
 
+    /// <summary>Whether the Lists tab draws: not in the Proposal view, which does not pair it yet.</summary>
+    public bool ShowListsContent => ShowLists && ShowsTabContent;
+
+    /// <summary>Whether the What Changed tab draws: not in the Proposal view, which does not pair it yet.</summary>
+    public bool ShowWhatChangedContent => ShowWhatChanged && ShowsTabContent;
+
     public bool ShowTextReader => AnalyzeView == AnalyzeTextsView.TextReader;
 
     public bool ShowWordList => AnalyzeView == AnalyzeTextsView.WordList;
@@ -160,6 +167,7 @@ public sealed partial class TextsPageModel : PageModel
 
     protected override void OnProjectCleared()
     {
+        ClearMatrixProposal();
         ResultsInText.ClearProject();
         Words.ClearProject();
         Words.ShowAssessment(null);
@@ -170,9 +178,17 @@ public sealed partial class TextsPageModel : PageModel
 
     protected override Task OnStopWorkAsync() => Task.WhenAll(Words.StopAsync(), ResultsInText.StopAsync());
 
-    protected override Task OnEvidencePublishedAsync(EvidenceLens lens, CancellationToken cancellationToken)
+    protected override async Task OnEvidencePublishedAsync(EvidenceLens lens, CancellationToken cancellationToken)
     {
-        if (lens.Today.Assessment is not { } shown) return Task.CompletedTask;
+        if (CurrentMatrixKey() is null) _matrixFailed = null;
+        ShowMatrixProposal();
+        ShowTodaysEvidence(lens);
+        await EnsureMatrixSideAsync(cancellationToken).ConfigureAwait(true);
+    }
+
+    private void ShowTodaysEvidence(EvidenceLens lens)
+    {
+        if (lens.Today.Assessment is not { } shown) return;
         UpdateListedOccurrences();
         var expected = Context.SelectionReads.Reader?.Context.ExpectedWriteContext();
         var root = Context.Evidence.ParseTimeAssessmentId;
@@ -187,7 +203,6 @@ public sealed partial class TextsPageModel : PageModel
         };
         Words.ShowAssessmentSource(Assess.Words.SourceOf);
         if (shown.WasRerun && Assess.Difference.HasDifference) Tab = TextsTab.WhatChanged;
-        return Task.CompletedTask;
     }
 
     private void UpdateListedOccurrences()
@@ -214,6 +229,14 @@ public sealed partial class TextsPageModel : PageModel
         }
     }
 
+    // The note follows the result of the words check, which a new load of today's words can change.
+    private void OnCompareChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is not (nameof(CompareViewModel.ProposalWordsMatch) or nameof(CompareViewModel.HasWords))) return;
+        OnPropertyChanged(nameof(ProposalNote));
+        OnPropertyChanged(nameof(HasProposalNote));
+    }
+
     private void OnAssessPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         OnPropertyChanged(nameof(ShowEmptyResults));
@@ -236,6 +259,11 @@ public sealed partial class TextsPageModel : PageModel
         OnPropertyChanged(nameof(ShowParsePrompt));
         OnPropertyChanged(nameof(ShowCentredParsePrompt));
         OnPropertyChanged(nameof(ShowAnalyzeParsePrompt));
+        OnPropertyChanged(nameof(ProposalNote));
+        OnPropertyChanged(nameof(HasProposalNote));
+        OnPropertyChanged(nameof(ShowsTabContent));
+        OnPropertyChanged(nameof(ShowListsContent));
+        OnPropertyChanged(nameof(ShowWhatChangedContent));
         if (value == TextsTab.Lists) TextsLists.SelectFirstIfNeeded();
     }
 
@@ -250,6 +278,10 @@ public sealed partial class TextsPageModel : PageModel
     {
         if (e.PropertyName == nameof(WorkspaceContext.Inspector))
             OnPropertyChanged(nameof(ShowSelectionPanel));
+        if (e.PropertyName is nameof(WorkspaceContext.ProposalView) or nameof(WorkspaceContext.Lens)
+            or nameof(WorkspaceContext.EvidenceLens)) ShowMatrixProposal();
+        if (e.PropertyName == nameof(WorkspaceContext.CurrentPage) && Context.CurrentPage == WorkspacePage.Texts)
+            _ = ReadShownMatrixSideAsync();
         if (e.PropertyName == nameof(WorkspaceContext.NeedsAssessment))
         {
             OnPropertyChanged(nameof(ShowMatrixContent));

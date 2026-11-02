@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Data.Converters;
 using Avalonia.Input;
@@ -35,6 +36,31 @@ public sealed partial class ComparePanel : UserControl
         LayoutUpdated += (_, _) => ApplyShortMatrixToCells();
         SetExpandedMatrixLabel(Bounds.Width >= ExpandedMatrixLabelWidth);
         SetShortMatrix(Bounds.Height);
+        AddHandler(GotFocusEvent, (_, e) => _focusWasInTodayWords = InTodayWords(e.Source as Visual), handledEventsToo: true);
+        AttachedToVisualTree += (_, _) => Compare.PropertyChanged += OnCompareChanged;
+        DetachedFromVisualTree += (_, _) => Compare.PropertyChanged -= OnCompareChanged;
+    }
+
+    private bool _focusWasInTodayWords;
+
+    private bool InTodayWords(Visual? visual) => visual is not null && new[] { "TodayWordsChips", "FixFirstCard", "ChosenWordsCard" }
+        .Any(name => this.FindControl<Control>(name) is { } part && (part == visual || part.IsVisualAncestorOf(visual)));
+
+    private void OnCompareChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(CompareViewModel.ShowsTodayWords) && !Compare.ShowsTodayWords && _focusWasInTodayWords)
+            Avalonia.Threading.Dispatcher.UIThread.Post(KeepFocusOnTheMatrix);
+    }
+
+    // The words under the matrix hide in the Proposal view; focus that was in them moves to a cell, not to nothing.
+    private void KeepFocusOnTheMatrix()
+    {
+        _focusWasInTodayWords = false;
+        var focused = TopLevel.GetTopLevel(this)?.FocusManager?.GetFocusedElement() as Visual;
+        if (focused is not null && focused.IsEffectivelyVisible) return;
+        var cells = this.GetVisualDescendants().OfType<MatrixCell>().Where(cell =>
+            cell.IsEffectivelyVisible && cell.Tag is CompareCellViewModel { IsEmptyImpossible: false }).ToList();
+        (cells.FirstOrDefault(cell => cell.Tag == Compare.ChosenCell) ?? cells.FirstOrDefault())?.Focus();
     }
 
     public CompareViewModel Compare { get; }

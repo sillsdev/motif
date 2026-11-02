@@ -140,6 +140,9 @@ public static class AutomationIds
 
     /// <summary>The note on the Timing page saying what is paired with the open Proposal.</summary>
     public const string TimingProposalNote = "motif-timing-proposal-note";
+
+    /// <summary>The Texts page's note about what the open Proposal pairs there.</summary>
+    public const string TextsProposalNote = "motif-texts-proposal-note";
     /// <summary>The Proposals page's grouped table.</summary>
     public const string ProposalsTable = "motif-proposals-table";
 

@@ -134,6 +134,11 @@
   <Style Selector="Border.matrixCell.empty :is(TextBlock)">
     <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
   </Style>
+  <!-- A cell whose count moved with the open Proposal is outlined in the Proposal colour. -->
+  <Style Selector="Border.matrixCell.moved">
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Proposal.Text}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Component.MatrixCell.HoverThickness}" />
+  </Style>
   <Style Selector="Border.matrixCell:pointerover">
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Primary}" />
     <Setter Property="BorderThickness" Value="{DynamicResource Component.MatrixCell.HoverThickness}" />

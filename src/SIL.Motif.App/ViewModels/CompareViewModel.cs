@@ -532,9 +532,11 @@ public sealed partial class CompareViewModel : ObservableObject
     {
         ++_generation;
         _wordModels.Clear();
+        var incoming = rows?.ToList() ?? [];
+        NoteWordsOfLoad(incoming);
         _all.Clear();
         checked { _evidenceRevision++; }
-        if (rows is not null) _all.AddRange(rows);
+        _all.AddRange(incoming);
         PlacesFromWordList = _all.Any(word => word.PlacesFromWordList);
         if (clearSelection) foreach (var facts in _all) facts.IsChecked = false;
         var placesAvailable = _all.Any(word => word.Occurrences is not null);
@@ -546,6 +548,7 @@ public sealed partial class CompareViewModel : ObservableObject
             if (clearSelection) cell.IsSelected = false;
         }
         RefreshCounts();
+        ApplyProposalNumbers();
         UpdatePendingMarkers();
         if (!HasPlaceCounts && Sort == CompareSort.MostFrequent) Sort = CompareSort.Alphabetical;
         OnPropertyChanged(nameof(SortChoices));
@@ -878,7 +881,7 @@ public sealed partial class CompareRowViewModel(WordProjectStatus row, IReadOnly
     [NotifyPropertyChangedFor(nameof(CountText))]
     private int _count;
 
-    public string CountText => PluralText.Format(MotifAppStrings.CompareWordsPattern, Count);
+    public string CountText => ShownCount;
 }
 
 /// <summary>One column header of the matrix, with how many words the parser handled that way.</summary>
@@ -903,7 +906,7 @@ public sealed partial class CompareColumnViewModel(CompareColumnKind column) : O
     [NotifyPropertyChangedFor(nameof(CountText))]
     private int _count;
 
-    public string CountText => Count.ToString("N0", System.Globalization.CultureInfo.CurrentCulture);
+    public string CountText => ShownCount;
 }
 
 /// <summary>One combination of what the project held and what the parser did, and how many words fell there.</summary>
@@ -1031,8 +1034,6 @@ public sealed partial class CompareCellViewModel : ObservableObject
             OnPropertyChanged(property);
     }
 
-    /// <summary>No word fell here, so the cell is drawn faintly: still there to read, but not asking for attention.</summary>
-    public bool IsEmpty => Count == 0;
 
     [ObservableProperty]
     private bool _isSelected;
@@ -1040,7 +1041,7 @@ public sealed partial class CompareCellViewModel : ObservableObject
     public string CountText => WordsText(WordCount);
 
     /// <summary>The number alone, so a narrow cell never breaks a unit word; the unit lives in headers and the name.</summary>
-    public string CountNumberText => WordCount.ToString("N0", System.Globalization.CultureInfo.CurrentCulture);
+    public string CountNumberText => ShownNumber;
 
     /// <summary>The unit under the cell's number, shown only while the cell has room for details.</summary>
     public string CountUnitText => PluralText.Format(MotifAppStrings.CompareWordUnitPattern, WordCount);
@@ -1061,9 +1062,9 @@ public sealed partial class CompareCellViewModel : ObservableObject
                     WordsText(WordCount), PlacesText, held, CompareViewModel.ColumnSentenceOf(Column))
                 : string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.CompareCellAccessibleNameFormat,
                     WordsText(WordCount), held, CompareViewModel.ColumnSentenceOf(Column));
-            return PendingChangeStatus is { } status
+            return WithProposal(PendingChangeStatus is { } status
                 ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.CompareCellAccessibleNameStatusFormat, described, status)
-                : described;
+                : described);
         }
     }
 }

@@ -73,6 +73,19 @@ public sealed class ProposalDifferenceRenderingTests
     }
 
     [Theory]
+    [InlineData(11, "1 is counted but not listed")]
+    [InlineData(12, "2 are counted but not listed")]
+    public void PlacesBeyondTheListAreCountedInTheSingularOrThePlural(int total, string expected)
+    {
+        var page = new ProposalDifferenceOccurrencePage("kaon", [new("text/1", "seg/1", 0, 4)], total, null, 10);
+        var response = new ProposalDifferenceResponse(Cut(2, 2), [], 0, null, true, Occurrences: page);
+
+        var output = CommandTextRenderer.Render(CommandOutcome<ProposalDifferenceResponse>.Success(response), asJson: false).Output;
+
+        Assert.Contains(expected, output);
+    }
+
+    [Theory]
     [InlineData(false, false)]
     [InlineData(true, true)]
     public void NoWordsAreSaidToBeListedWhenTheWordDetailIsGoneOrCannotBeRead(bool unreadable, bool _)

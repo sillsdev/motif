@@ -12,7 +12,7 @@
           Classes.good="{Binding IsGood}" Classes.fine="{Binding IsFine}"
           Classes.violation="{Binding IsViolation}" Classes.review="{Binding IsReview}"
           Classes.new="{Binding IsNew}" Classes.nobody="{Binding IsNobody}" Classes.none="{Binding IsNone}"
-          Classes.empty="{Binding IsEmpty}" Classes.selected="{Binding IsSelected}"
+          Classes.moved="{Binding IsMoved}" Classes.empty="{Binding IsEmpty}" Classes.selected="{Binding IsSelected}"
           AutomationProperties.Name="{Binding AccessibleName}">
     <DockPanel LastChildFill="True">
       <Ellipse DockPanel.Dock="Right" Classes="matrixPending" IsVisible="{Binding HasPendingChanges}"

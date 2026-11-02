@@ -173,7 +173,7 @@ public sealed class OverviewProposalViewTests
         context.ShowProposalView(MarkupView.Proposal);
 
         Assert.Equal(MarkupView.Proposal, ProposalViewScope.ViewOf(context));
-        Assert.Equal([WorkspacePage.Overview, WorkspacePage.Warnings, WorkspacePage.Timing], ProposalViewScope.Pages);
+        Assert.Equal([WorkspacePage.Overview, WorkspacePage.Texts, WorkspacePage.Warnings, WorkspacePage.Timing], ProposalViewScope.Pages);
     }
 
     internal static async Task<(FakeCommandClient Fake, WorkspaceContext Context, OverviewPageModel Page)> OpenedAsync(

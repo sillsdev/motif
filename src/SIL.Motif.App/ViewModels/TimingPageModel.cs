@@ -129,7 +129,7 @@ public sealed partial class TimingPageModel : PageModel
         private set
         {
             _kindTiming = value;
-            _todayWords = value is null ? default : WordSetDigest.Of(value.Words);
+            _kindVersion++;
         }
     }
 

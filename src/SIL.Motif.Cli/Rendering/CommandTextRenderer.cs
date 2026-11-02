@@ -964,7 +964,7 @@ public static class CommandTextRenderer
         {
             text.AppendLine(places.PlacesListed < places.Total
                 ? $"  Places of {places.Word}: showing {places.Places.Count} of {places.PlacesListed:N0} listed; " +
-                  $"{places.Total:N0} in the Text, so {places.Total - places.PlacesListed:N0} are counted but not listed " +
+                  $"{places.Total:N0} in the Text, so {CountedPlaces(places.Total - places.PlacesListed)} counted but not listed " +
                   $"(at most {ProposalDifferenceListing.MostPlacesPerWord:N0} places are listed for each word; the rest are in the Text)"
                 : $"  Places of {places.Word}: showing {places.Places.Count} of {places.Total:N0}");
             foreach (var place in places.Places)
@@ -1247,6 +1247,8 @@ public static class CommandTextRenderer
         if (words.NotCountingDisapproved > 0)
             text.AppendLine($"    Not counting {words.NotCountingDisapproved:N0} disapproved");
     }
+
+    private static string CountedPlaces(int count) => count == 1 ? "1 is" : $"{count:N0} are";
 
     private static string CountLabel(int? count, string singular, string plural) => count is { } value
         ? $"{value:N0} {(value == 1 ? singular : plural)}"

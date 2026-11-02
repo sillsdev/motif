@@ -4235,4 +4235,26 @@ public static class MotifAppStrings
     public static string PageTiming => Text("MotifApp.PageTiming");
 
     public static string WarningsProposalReadingNote => Text("MotifApp.WarningsProposalReadingNote");
+
+    public static string ProposalDifferencePlacesMorePattern => Text("MotifApp.ProposalDifferencePlacesMorePattern");
+
+    public static string WarningsProposalReadingTodayNotCheckedNote => Text("MotifApp.WarningsProposalReadingTodayNotCheckedNote");
+
+    public static string CompareCellProposalAccessibleNameFormat => Text("MotifApp.CompareCellProposalAccessibleNameFormat");
+
+    public static string TextsMatrixCountsNoun => Text("MotifApp.TextsMatrixCountsNoun");
+
+    public static string TextsProposalPairedNote => Text("MotifApp.TextsProposalPairedNote");
+
+    public static string TextsProposalDifferentWordsNote => Text("MotifApp.TextsProposalDifferentWordsNote");
+
+    public static string TextsProposalViewNote => Text("MotifApp.TextsProposalViewNote");
+
+    public static string TextsProposalWordCardsNote => Text("MotifApp.TextsProposalWordCardsNote");
+
+    public static string TextsProposalTabNotPairedNote => Text("MotifApp.TextsProposalTabNotPairedNote");
+
+    public static string TextsProposalReadingNote => Text("MotifApp.TextsProposalReadingNote");
+
+    public static string TextsProposalTabNotPairedViewNote => Text("MotifApp.TextsProposalTabNotPairedViewNote");
 }

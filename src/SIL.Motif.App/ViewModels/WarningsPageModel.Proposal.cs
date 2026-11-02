@@ -27,6 +27,8 @@ public sealed partial class WarningsPageModel
     // A failed read is not held: the page says so and reads again when next shown or published to.
     private bool ProposalReading => CurrentKey() is { } key && key != _heldKey && key != _failedKey;
 
+    private bool TodayChecked => Grammar.HasChecked && Grammar.Refusal is null;
+
     private bool ProposalUnreadable => _failedKey is { } failed && failed == CurrentKey();
 
     /// <summary>
@@ -34,12 +36,13 @@ public sealed partial class WarningsPageModel
     /// Proposal has no check to show. Null outside Proposal mode, and while the Proposal's check is read except in the pair view.
     /// </summary>
     public string? ProposalNote => ProposalReading && Context.Lens is not null &&
-        ProposalViewScope.ViewOf(Context) == MarkupView.TodayToProposal ? MotifAppStrings.WarningsProposalReadingNote
+        ProposalViewScope.ViewOf(Context) == MarkupView.TodayToProposal ? TodayChecked
+            ? MotifAppStrings.WarningsProposalReadingNote : MotifAppStrings.WarningsProposalReadingTodayNotCheckedNote
         : ProposalPageNote.For(Context, new ProposalPageNote.Parts(
         MotifAppStrings.WarningsFindingsNoun, ProposalReading, ProposalUnreadable, HeldFindings is not null,
         MotifAppStrings.WarningsProposalPairedNote, MotifAppStrings.WarningsProposalViewNote,
         Context.Lens is not null && ProposalViewScope.ViewOf(Context) == MarkupView.TodayToProposal &&
-        !Grammar.HasChecked ? MotifAppStrings.WarningsProposalTodayNotCheckedNote : null));
+        !TodayChecked ? MotifAppStrings.WarningsProposalTodayNotCheckedNote : null));
 
     /// <summary>Whether the page has a note to show.</summary>
     public bool HasProposalNote => ProposalNote is not null;
@@ -92,7 +95,7 @@ public sealed partial class WarningsPageModel
             return read.Succeeded ? (read.Value?.Check?.Findings, false) : (null, true);
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) { return null; }
-        catch (Exception) { return (null, true); }
+        catch (Exception ex) when (ex is not OperationCanceledException) { return (null, true); }
     }
 
     private async Task ReadShownProposalCheckAsync()

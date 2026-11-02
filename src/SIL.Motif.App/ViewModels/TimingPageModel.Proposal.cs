@@ -7,24 +7,6 @@ namespace SIL.Motif.App.ViewModels;
 
 public sealed partial class TimingPageModel
 {
-    // How many words a read covered and an order-free sum of one hash per word; the rows themselves are not kept.
-    private readonly record struct WordSetDigest(int Count, ulong Sum)
-    {
-        public static WordSetDigest Of(IEnumerable<TimingWordRow> words)
-        {
-            var count = 0;
-            var sum = 0UL;
-            foreach (var word in words)
-            {
-                count++;
-                var hash = 14695981039346656037UL;
-                foreach (var character in word.Word) hash = (hash ^ character) * 1099511628211UL;
-                sum += hash;
-            }
-            return new WordSetDigest(count, sum);
-        }
-    }
-
     // Only what the page shows is kept from the Proposal's read; its per-word rows are dropped with the response.
     private sealed record ProposalTiming(WordWorkSummary Work, IReadOnlyList<TimingWorkAggregate> WorkStepAggregates,
         IReadOnlyList<TimingAggregateRow> Aggregates, int StoppedWords, WordSetDigest Words);
@@ -40,6 +22,8 @@ public sealed partial class TimingPageModel
     private Task _proposalRead = Task.CompletedTask;
     private int _proposalGeneration;
     private WordSetDigest _todayWords;
+    private int _kindVersion;
+    private int _todayWordsVersion = -1;
 
     private int RequestTop => _wordSet is TimingWordSet.Slowest ? Math.Max(1, SlowestCount) : 10;
 
@@ -67,9 +51,21 @@ public sealed partial class TimingPageModel
 
     private bool ProposalMeasured => Held is { Work.MeasuredWordCount: > 0 };
 
+    // Hashed on first use after today's words change, by version so no response is kept and none is stale.
+    private WordSetDigest TodayWords
+    {
+        get
+        {
+            if (_todayWordsVersion == _kindVersion) return _todayWords;
+            _todayWords = KindTiming is null ? default : WordSetDigest.Of(KindTiming.Words.Select(word => word.Word));
+            _todayWordsVersion = _kindVersion;
+            return _todayWords;
+        }
+    }
+
     // True only when both sides were read and cover the same words; no read today makes no claim either way.
     private bool WordsChecked => KindTiming is not null && Held is { } held &&
-        held.Words == _todayWords && held.Work.MeasuredWordCount == KindTiming.Work.MeasuredWordCount;
+        held.Words == TodayWords && held.Work.MeasuredWordCount == KindTiming.Work.MeasuredWordCount;
 
     private bool SameWords => ShowsPairs && ProposalMeasured && (KindTiming is null || WordsChecked);
 
@@ -215,10 +211,10 @@ public sealed partial class TimingPageModel
             if (read.Value is not { } response) return (null, false);
             return (new ProposalTiming(response.Work, response.WorkStepAggregates, response.Aggregates,
                 response.Words.Count(word => word.Completion == TimingCompletion.WorkLimit),
-                WordSetDigest.Of(response.Words)), false);
+                WordSetDigest.Of(response.Words.Select(word => word.Word))), false);
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) { return null; }
-        catch (Exception) { return (null, true); }
+        catch (Exception ex) when (ex is not OperationCanceledException) { return (null, true); }
     }
 
     private void ClearProposalSide()

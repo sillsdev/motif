@@ -71,6 +71,21 @@ public sealed class ProposalDifferenceListedTests
         Assert.Contains("all of them are in the Text", model.PlacesStatusText);
     }
 
+    [Theory]
+    [InlineData(11, "1 more is counted but not listed")]
+    [InlineData(12, "2 more are counted but not listed")]
+    public async Task PlacesBeyondTheListAreCountedInTheSingularOrThePlural(int counted, string expected)
+    {
+        var fixture = new ProposalDifferenceFixture { PlacesPerWord = 10, PlacesCounted = counted };
+        var model = Make(fixture);
+        await model.LoadAsync(Project, "proposal/one");
+
+        model.Words[0].ChooseCommand.Execute(null);
+        await Task.Yield();
+
+        Assert.Contains(expected, model.PlacesStatusText);
+    }
+
     [Fact]
     public async Task AnUnchangedCellIsCountedBeyondTheListAndItsChipDoesNotFilter()
     {
