@@ -128,6 +128,33 @@ public sealed class TrialDraftRevisionTests : IDisposable
     }
 
     [Fact]
+    public void AfterASaveSuchAsMotifsOwnApplyTheNextDryRunNeedsANewCaptureAndThenRuns()
+    {
+        var id = NewDraftWithOneGloss("save-then-capture");
+        var root = Path.Combine(Path.GetTempPath(), "motif-stale-root-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var first = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(_fwDataPath), root);
+            Assert.True(first.Succeeded, first.Refusal?.Message);
+            File.SetLastWriteTimeUtc(_fwDataPath, first.Value!.SourceLastWriteUtc.AddMinutes(5).UtcDateTime);
+
+            var refused = JobCommands.EnqueueDryRun(new EnqueueDryRunRequest(_fwDataPath, ProductVersion, id));
+            Assert.Equal("change.refresh-required", refused.Refusal?.Code);
+
+            var second = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(_fwDataPath), root);
+            Assert.True(second.Succeeded, second.Refusal?.Message);
+            var accepted = JobCommands.EnqueueDryRun(new EnqueueDryRunRequest(_fwDataPath, ProductVersion, id));
+            Assert.True(accepted.Succeeded, accepted.Refusal?.Message);
+        }
+        finally
+        {
+            try { Directory.Delete(root, recursive: true); }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
+        }
+    }
+
+    [Fact]
     public void ATrialWithNoWordsNamedOfAGrammarChangeMeasuresTheDefaultSelection()
     {
         var id = NewDraftWithOneGloss("grammar-scope");
