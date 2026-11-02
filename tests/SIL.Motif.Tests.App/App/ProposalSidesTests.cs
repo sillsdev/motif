@@ -141,7 +141,8 @@ public sealed class ProposalSidesTests
             [new EffectView("id-" + key, "Allomorphs", [new EffectChange("swh", before, after)])], [], []);
 
     private static async Task<(FakeCommandClient Fake, WorkspaceContext Context, OverviewPageModel Overview,
-        TextsPageModel Texts, TimingPageModel Timing, WarningsPageModel Warnings, ReviewPageModel Review)> OpenedAsync()
+        TextsPageModel Texts, TimingPageModel Timing, WarningsPageModel Warnings, ReviewPageModel Review)> OpenedAsync(
+        TimingProposalViewTests.Word[]? proposalTiming = null)
     {
         var fake = new FakeCommandClient();
         fake.OnOverview((request, _) => Task.FromResult(CommandOutcome<OverviewResponse>.Success(
@@ -149,7 +150,7 @@ public sealed class ProposalSidesTests
         fake.OnTiming((request, _) => Task.FromResult(CommandOutcome<TimingResponse>.Success(
             request.ProposalId is null
                 ? TimingProposalViewTests.Respond(request, TodayTiming, ("morph_rule", 3), ("affix", 2))
-                : TimingProposalViewTests.Respond(request, ProposalTiming, ("morph_rule", 1), ("synth_rule", 1)))));
+                : TimingProposalViewTests.Respond(request, proposalTiming ?? ProposalTiming, ("morph_rule", 1), ("synth_rule", 1)))));
         fake.StoredGrammarCheckHandler = (request, _) => Task.FromResult(CommandOutcome<StoredGrammarCheckResponse>.Success(
             new StoredGrammarCheckResponse(request.ProposalId is null ? Check("t", 2, 19, 6) : Check("p", 1, 13, 4))));
         fake.OnReadTrial((_, _) => Task.FromResult(CommandOutcome<TrialRecord?>.Success(Trial())));
@@ -263,6 +264,25 @@ public sealed class ProposalSidesTests
         Expect(faults, "A Proposal-only share", string.Format(MotifAppStrings.PairedProposalOnly, TimingShare.FormatPercent(0.6)),
             proposalOnly.ShownShareText);
 
+        Assert.True(faults.Count == 0, Environment.NewLine + string.Join(Environment.NewLine, faults));
+    }
+
+    // The pair needs both sides to cover the same words, so only the Proposal view can draw a count of its own.
+    [Fact]
+    public async Task TheTimingCaptionInTheProposalViewCountsTheProposalsWordsNotToday()
+    {
+        TimingProposalViewTests.Word[] fiveWords = [.. ProposalTiming, new("e", 700)];
+        var (_, context, _, _, timing, _, _) = await OpenedAsync(fiveWords);
+        context.OpenPage(WorkspacePage.Timing);
+        context.ShowProposalView(MarkupView.Proposal);
+        await TextsProposalMatrixTests.UntilAsync(() => timing.HeadlineTotal == TimingShare.FormatParserWork(13_700));
+
+        var faults = new List<string>();
+        Expect(faults, "Proposal caption", string.Format(MotifAppStrings.TimingCaptionAllWordsFormat, "5"), timing.HeadlineTotalCaption);
+        context.ShowProposalView(MarkupView.Today);
+        Expect(faults, "Today caption", string.Format(MotifAppStrings.TimingCaptionAllWordsFormat, "4"), timing.HeadlineTotalCaption);
+        context.ShowProposalView(MarkupView.TodayToProposal);
+        Expect(faults, "Pair caption", string.Format(MotifAppStrings.TimingCaptionAllWordsFormat, "4"), timing.HeadlineTotalCaption);
         Assert.True(faults.Count == 0, Environment.NewLine + string.Join(Environment.NewLine, faults));
     }
 
