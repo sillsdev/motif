@@ -1524,8 +1524,11 @@ try
             if (positionals.Count != 2 || positionals[0] != "trial" ||
                 !flags.TryGetValue("project", out var trialReadProject))
                 return Usage("Usage: motif proposal trial --project <fwdata> <proposalId> [--json] [--word-results]", asJson);
-            result = RenderCommand(Trials.Read(new ReadTrialRequest(trialReadProject, positionals[1],
-                flags.ContainsKey("word-results"))));
+            var trialRead = Trials.Read(new ReadTrialRequest(trialReadProject, positionals[1],
+                flags.ContainsKey("word-results")));
+            result = RenderCommand(trialRead);
+            if (!asJson && flags.ContainsKey("word-results") && trialRead is { Succeeded: true, Value.WordResults.Count: 0 })
+                result = result with { Output = result.Output.TrimEnd('\n') + "\nNo word results are available for this Trial.\n" };
             break;
 
         case "writing-systems":
@@ -2819,6 +2822,11 @@ static (Dictionary<string, string> Flags, List<string> Positionals, IReadOnlyLis
         if (token.StartsWith("--", StringComparison.Ordinal))
         {
             var name = token[2..];
+            if (name == "word-results")
+            {
+                flags[name] = "true";
+                continue;
+            }
             // Canonical ids can start with "--", so recognize those before treating a token as another switch.
             if (i + 1 >= tokens.Length ||
                 (tokens[i + 1].StartsWith("--", StringComparison.Ordinal) &&
