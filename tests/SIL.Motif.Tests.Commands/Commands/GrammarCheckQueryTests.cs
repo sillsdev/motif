@@ -350,6 +350,44 @@ public sealed class GrammarCheckQueryTests : IDisposable
         Assert.Equal(CanonicalId.FromGuid(unreadableForm).Value, Assert.Single(warning.Subject).ObjectId);
     }
 
+    [Fact]
+    public void AnEnvironmentOnAnEntryNotUsedForParsingIsNotWarnedAbout()
+    {
+        var fwDataPath = _pristine.CopyProjectFile();
+        var loader = new FwDataProjectLoader();
+        using (var cache = loader.LoadCache(fwDataPath))
+        {
+            AddPhonemes(cache, "t", "a");
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+                ((ILexEntry)Stem(cache, "tata", "/ _ +a").Owner).DoNotUseForParsing = true);
+            loader.Save(cache);
+        }
+
+        Capture(fwDataPath);
+
+        Assert.DoesNotContain(Check(fwDataPath).Findings, item => item.Code == GrammarFindingCodes.AllomorphEnvironmentIgnoredByParser);
+    }
+
+    [Fact]
+    public void ASpellingMadeOfOtherPhonemesIsFoundInAnyPhonemeSetIgnoringDottedCirclesAndSaysItMayBeIntended()
+    {
+        var fwDataPath = _pristine.CopyProjectFile();
+        var loader = new FwDataProjectLoader();
+        using (var cache = loader.LoadCache(fwDataPath))
+        {
+            AddPhonemes(cache, "t");
+            AddPhonemes(cache, "a", "aa", "\u25CCn", "g", "\u25CCng");
+            loader.Save(cache);
+        }
+
+        Capture(fwDataPath);
+        var warnings = Check(fwDataPath).Findings.Where(item => item.Code == GrammarFindingCodes.PhonemeSpellingAmbiguous).ToArray();
+
+        Assert.Contains(warnings, item => item.Description.Contains("'aa'", StringComparison.Ordinal) &&
+            item.Description.Contains("If that is intended", StringComparison.Ordinal));
+        Assert.Contains(warnings, item => item.Description.Contains("'ng'", StringComparison.Ordinal));
+    }
+
     private static IMoStemAllomorph Stem(LcmCache cache, string form, string environmentText)
     {
         var services = cache.ServiceLocator;

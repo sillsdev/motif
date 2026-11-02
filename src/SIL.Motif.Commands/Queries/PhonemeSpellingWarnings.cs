@@ -19,7 +19,7 @@ internal static class PhonemeSpellingWarnings
 {
     internal static GrammarCheckResponse AddTo(GrammarCheckResponse check, LcmCache cache)
     {
-        var phonemes = cache.LangProject.PhonologicalDataOA?.PhonemeSetsOS.FirstOrDefault()?.PhonemesOC
+        var phonemes = cache.LangProject.PhonologicalDataOA?.PhonemeSetsOS.SelectMany(set => set.PhonemesOC)
             .Select(phoneme => (Phoneme: phoneme, Spellings: Spellings(phoneme))).ToArray() ?? [];
         var warnings = new List<GrammarWarning>();
         foreach (var (phoneme, spellings) in phonemes)
@@ -41,9 +41,12 @@ internal static class PhonemeSpellingWarnings
         return check with { Findings = check.Findings.Concat(ordered).ToArray(), Summary = summary };
     }
 
+    private const string DottedCircle = "\u25CC";
+
     private static string[] Spellings(IPhPhoneme phoneme) => phoneme.CodesOS
         .SelectMany(code => code.Representation.AvailableWritingSystemIds
             .Select(ws => code.Representation.get_String(ws)?.Text).OfType<string>())
+        .Select(text => text.Replace(DottedCircle, string.Empty))
         .Where(text => text.Length > 0).Distinct(StringComparer.Ordinal).ToArray();
 
     // The pieces of a spelling that is wholly a run of two or more other spellings, or null when it is not.
@@ -74,7 +77,8 @@ internal static class PhonemeSpellingWarnings
             SubjectGuid = phoneme.Guid.ToString("D"),
             Status = GrammarSubjectStatus.Object,
         };
-        var description = $"Phoneme '{name}' is spelled '{spelling}', which is also {joined}, each the spelling of another phoneme.";
+        var description = $"Phoneme '{name}' is spelled '{spelling}', which is also {joined}, each the spelling of another phoneme. " +
+            "If that is intended, as with 'aa' beside 'a', nothing needs changing.";
         return new GrammarWarning(GrammarDiagnosticLevel.Warning, "Phoneme spelling made of other phonemes",
             [subject], [], description)
         {

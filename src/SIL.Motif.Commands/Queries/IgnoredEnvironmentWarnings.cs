@@ -15,6 +15,7 @@ namespace SIL.Motif.Commands.Queries;
 /// Warns about each form that names an environment the parser cannot read, as one written with a morpheme boundary
 /// '+'. FieldWorks' parser loader drops such an environment, so the form is not restricted by it, and PanGloss does
 /// the same. The check uses the same recognizer as that loader, over the same phonemes and natural classes.
+/// Entries marked do-not-use-for-parsing are skipped: the parser never loads their forms.
 /// </summary>
 internal static class IgnoredEnvironmentWarnings
 {
@@ -29,7 +30,8 @@ internal static class IgnoredEnvironmentWarnings
             phonology.AllNaturalClassAbbrs().ToArray());
         var verdicts = new Dictionary<Guid, bool>();
         var warnings = new List<GrammarWarning>();
-        foreach (var entry in cache.ServiceLocator.GetInstance<ILexEntryRepository>().AllInstances())
+        foreach (var entry in cache.ServiceLocator.GetInstance<ILexEntryRepository>().AllInstances()
+                     .Where(entry => !entry.DoNotUseForParsing))
         foreach (var form in Forms(entry))
         foreach (var environment in Environments(form).Distinct())
         {
@@ -83,10 +85,9 @@ internal static class IgnoredEnvironmentWarnings
                 "natural class of the project; a boundary marker such as '+' is not one. It drops an environment it cannot " +
                 "read, so the form it was written to restrict can appear anywhere, and the parser gives more readings " +
                 "than the environment was meant to allow.",
-            Guidance = "Rewrite the environment with phonemes and natural classes only. Where the restriction needs a " +
-                "morpheme boundary, state it as a phonological rule with a boundary context " +
-                "(compose-author-phonological-rule) and limit it with compose-edit-phonological-rule-features, " +
-                "and check the result in a Trial. Or correct the environment in FieldWorks: Grammar > Environments.",
+            Guidance = "Rewrite the environment with phonemes and natural classes only, or correct it in FieldWorks: " +
+                "Grammar > Environments. A restriction that needs a morpheme boundary can be stated as a phonological " +
+                "rule with a boundary context; Motif has not checked that route gives the same readings, so try it in a Trial.",
             Origin = GrammarFindingOrigin.Check,
             Scope = GrammarSubjectStatus.Object,
         };
