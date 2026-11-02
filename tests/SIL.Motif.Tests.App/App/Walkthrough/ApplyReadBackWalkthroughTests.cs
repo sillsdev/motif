@@ -79,7 +79,7 @@ public sealed class ApplyReadBackWalkthroughTests(PristineProjectFixture pristin
                 InteractiveControlFamily.Collection);
             var review = walkthrough.Workspace.PageModel<ReviewPageModel>();
             var reviewEntry = walkthrough.Window.GetLogicalDescendants().OfType<ListBoxItem>()
-                .Single(item => Avalonia.Automation.AutomationProperties.GetName(item) == "Review changes page");
+                .Single(item => Avalonia.Automation.AutomationProperties.GetName(item) == "Review Changes page");
             var reviewBadge = reviewEntry.GetLogicalDescendants().OfType<Border>()
                 .Single(border => border.Classes.Contains("pageBadge"));
             Assert.True(reviewBadge.IsEffectivelyVisible);
