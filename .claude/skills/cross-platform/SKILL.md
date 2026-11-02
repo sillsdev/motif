@@ -104,8 +104,9 @@ the rule was broken.
   (`WalkthroughWindow.ClickControl`).
 - Stable bounds do not mean asynchronous page data is ready. The walkthrough waits for Review entries
   before measuring and for Analyze texts to finish loading and publishing evidence before selecting results.
-- Walkthrough pixel baselines match only the machine that captured them. CI reports pixel differences;
-  `MOTIF_WALKTHROUGH_STRICT_BASELINES=1` turns them into failures on the reference machine.
+- Walkthrough reference images match only the machine that captured them. A test run draws no walkthrough picture
+  and compares nothing; `MOTIF_WALKTHROUGH_STRICT_BASELINES=1` draws and compares, and fails on a difference, on the
+  reference machine.
 
 ### Packaging
 
