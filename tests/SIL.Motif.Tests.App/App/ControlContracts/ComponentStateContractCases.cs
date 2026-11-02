@@ -1021,6 +1021,26 @@ internal static class TooltipOwners
         {
             Pending = "the sample window has no scene on the Proposals page",
         },
+        new("Proposal Inspector number note", "Views/Pages/ProposalsPage.axaml", "{Binding Note}", TooltipScene.Overview,
+            control => control is CopyableTextBlock { DataContext: ProposalNumber } && control.Classes.Contains("proposalNumber"))
+        {
+            Pending = "the sample window has no scene on the Proposals page",
+        },
+        new("Proposal Coverage cell note", "Views/Pages/ProposalsPage.axaml", "{Binding Coverage.Note}", TooltipScene.Overview,
+            control => ProposalNumberCell(control, column: 4))
+        {
+            Pending = "the sample window has no scene on the Proposals page",
+        },
+        new("Proposal Warnings cell note", "Views/Pages/ProposalsPage.axaml", "{Binding Warnings.Note}", TooltipScene.Overview,
+            control => ProposalNumberCell(control, column: 5))
+        {
+            Pending = "the sample window has no scene on the Proposals page",
+        },
+        new("Proposal Work cell note", "Views/Pages/ProposalsPage.axaml", "{Binding Work.Note}", TooltipScene.Overview,
+            control => ProposalNumberCell(control, column: 6))
+        {
+            Pending = "the sample window has no scene on the Proposals page",
+        },
         new("cancel parsing", "Views/MotifWorkspaceView.axaml", "Cancel keeps the previous results.", TooltipScene.ParseProgress,
             control => control is Button && Name(control) == "Cancel parsing all words"),
         new("expert tree scope", "Views/ExpertTracePanel.axaml", "Turn off to show only the chosen attempt's recorded ancestors and terminal event.", TooltipScene.ExpertTrace,
@@ -1088,6 +1108,12 @@ internal static class TooltipOwners
         new("selected Timing rule name", "Views/Pages/TimingPage.axaml", "{Binding SelectedRuleName}", TooltipScene.Timing,
             control => control is CopyableTextBlock { Text: "Subject agreement" } &&
                 control.FindAncestorOfType<TimingPage>() is not null),
+        new("Timing share with one side missing", "Views/Pages/TimingPage.axaml", "{Binding Row.ShownShareNote}", TooltipScene.Timing,
+            control => control is CopyableTextBlock { DataContext: TimingKindLegendEntry entry } &&
+                control.FindAncestorOfType<TimingPage>() is not null && ToolTip.GetTip(control) as string == entry.Row.ShownShareNote)
+        {
+            Pending = "a share has a missing side only while a Proposal is open, which no tooltip scene opens",
+        },
         new("completion in detailed statistics", "Views/StatisticsPanel.axaml", "{Binding CompletionStatus}", TooltipScene.Statistics,
             control => control is MarkChip && control.FindAncestorOfType<StatisticsPanel>() is not null),
         new("statistics object name", "Views/StatisticsPanel.axaml", "{Binding Object}", TooltipScene.StatisticsObjects,
@@ -1102,11 +1128,22 @@ internal static class TooltipOwners
         new("FieldWorks link in a finding", "Views/GrammarWarningPartsBlock.cs",
             "$\"Open this item in {tool}\"", TooltipScene.Warnings,
             control => control is HyperlinkButton && control.Classes.Contains("warningObjectLink")),
+        new("Warnings table named words unavailable", "Views/GrammarPanel.axaml", "{Binding TableNamedWordsNote}", TooltipScene.Warnings,
+            control => control is CopyableTextBlock && control.FindAncestorOfType<GrammarPanel>() is not null &&
+                ToolTip.GetTip(control) as string == MotifAppStrings.WarningsReachUnavailable),
+        new("Warnings Inspector named words unavailable", "Views/WarningsInspectorPanel.axaml", "{Binding Page.SelectedWarningWordCountNote}",
+            TooltipScene.Warnings, control => control is CopyableTextBlock && control.FindAncestorOfType<WarningsInspectorPanel>() is not null &&
+                ToolTip.GetTip(control) as string == MotifAppStrings.WarningsReachUnavailable),
         new("drag all files", "Views/HandoffPanel.axaml", "Drag into a chat. From the keyboard, press Enter to copy the folder path.",
             TooltipScene.Handoff, control => control is Button { Name: "AllFilesButton" }),
         new("question to copy", "Views/HandoffPanel.axaml", "Copy this question", TooltipScene.Handoff,
             control => control is Button && control.Classes.Contains("handoffQuestion")),
     ];
+
+    // A Proposals table number cell: the text block in the numbered column of a Proposal's row.
+    private static bool ProposalNumberCell(Control control, int column) =>
+        control is TextBlock { DataContext: ProposalCardViewModel } && control.Classes.Contains("proposalNumber") &&
+        control.Parent is Control cell && Grid.GetColumn(cell) == column;
 
     private static bool MatrixCellOrTipText(Control control, bool compact)
     {
