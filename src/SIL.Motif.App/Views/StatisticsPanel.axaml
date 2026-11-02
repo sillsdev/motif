@@ -71,14 +71,14 @@
       <DataGrid.Columns>
         <!-- A DataGridColumn's Binding has no compiled-binding item scope of its own (unlike a
              DataTemplate); ReflectionBinding is the documented per-binding opt-out. -->
-        <DataGridTemplateColumn Header="{x:Static app:MotifAppStrings.StatisticsColumnKind}" Tag="kind" ClipboardContentBinding="{ReflectionBinding Kind}">
+        <DataGridTemplateColumn Header="{x:Static app:MotifAppStrings.StatisticsColumnKind}" Tag="kind" MinWidth="{StaticResource Component.Statistics.KindMinWidth}" ClipboardContentBinding="{ReflectionBinding Kind}">
           <DataGridTemplateColumn.CellTemplate>
             <DataTemplate x:DataType="vm:StatsRowViewModel">
               <views:CopyableTextBlock Text="{Binding Kind}" Margin="{DynamicResource Component.Statistics.CellMargin}" />
             </DataTemplate>
           </DataGridTemplateColumn.CellTemplate>
         </DataGridTemplateColumn>
-        <DataGridTemplateColumn Header="{x:Static app:MotifAppStrings.StatisticsColumnObject}" Tag="object" ClipboardContentBinding="{ReflectionBinding Object}">
+        <DataGridTemplateColumn Header="{x:Static app:MotifAppStrings.StatisticsColumnObject}" Tag="object" MinWidth="{StaticResource Component.Statistics.ObjectMinWidth}" ClipboardContentBinding="{ReflectionBinding Object}">
           <DataGridTemplateColumn.CellTemplate>
             <DataTemplate x:DataType="vm:StatsRowViewModel">
               <views:CopyableTextBlock Text="{Binding Object}" TextTrimming="CharacterEllipsis"
