@@ -161,12 +161,12 @@ internal sealed partial class SettingsViewModel : ObservableObject
     private bool _updatingEstimate;
     private decimal? _lastGoodAssessBudgetSeconds = 3600;
     private decimal? _assessBudgetSeconds = 3600;
-    private decimal? _lastGoodStepLimit;
+    private decimal? _lastGoodParserWorkLimit;
     private decimal? _lastGoodTimeLimitSeconds;
-    private decimal? _stepLimitBeforeNoStep;
+    private decimal? _parserWorkLimitBeforeNoStep;
     private decimal? _timeLimitBeforeNoStep;
-    private bool _lastGoodNoStepLimit;
-    private string _stepLimitRefusal = string.Empty;
+    private bool _lastGoodNoParserWorkLimit;
+    private string _parserWorkLimitRefusal = string.Empty;
     private bool _suppressPreferenceWrites;
 
     public SettingsViewModel(WorkspaceShellViewModel workspace, IUserPreferencesStore? preferences = null,
@@ -198,7 +198,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
         ResetThemeCommand = new RelayCommand(() => ThemeChoice = WindowThemeChoice.System, () => CanResetTheme);
         ResetStoredAnalysesCommand = new RelayCommand(() => ChooseStoredAnalyses(StoredAnalysisComparison.Budget),
             () => CanResetStoredAnalyses);
-        ResetStepLimitCommand = new AsyncRelayCommand(ResetStepLimitAsync, () => CanResetStepLimit);
+        ResetParserWorkLimitCommand = new AsyncRelayCommand(ResetParserWorkLimitAsync, () => CanResetParserWorkLimit);
         ResetPreferencesCommand = new RelayCommand(ResetPreferences, () => _preferences.State == PreferenceState.Refused);
         UseAllTextsCommand = new AsyncRelayCommand(UseAllTextsCommandAsync,
             () => CanUseAllTexts);
@@ -239,10 +239,10 @@ internal sealed partial class SettingsViewModel : ObservableObject
     public IRelayCommand ResetZoomCommand { get; }
     public IRelayCommand ResetThemeCommand { get; }
     public IRelayCommand ResetStoredAnalysesCommand { get; }
-    public IAsyncRelayCommand ResetStepLimitCommand { get; }
+    public IAsyncRelayCommand ResetParserWorkLimitCommand { get; }
     public bool CanResetTheme => ThemeChoice != WindowThemeChoice.System;
     public bool CanResetStoredAnalyses => !IsStoredAnalysesBudget;
-    public bool CanResetStepLimit => HasSavedSelection && (IsNoStepLimit || StepLimit != StepCap.DefaultSteps);
+    public bool CanResetParserWorkLimit => HasSavedSelection && (IsNoParserWorkLimit || ParserWorkLimitValue != ParserWorkLimit.DefaultWork);
 
     public IRelayCommand ResetPreferencesCommand { get; }
     public IAsyncRelayCommand UseAllTextsCommand { get; }
@@ -321,11 +321,11 @@ internal sealed partial class SettingsViewModel : ObservableObject
     public bool HasMissingWritingSystemFont => VernacularWritingSystems.Concat(AnalysisWritingSystems)
         .Any(row => row.IsFontMissing);
     public bool ShowSettingsFooter => IsParsingSelected || IsWritingSystemsSelected && HasProject;
-    public string StepLimitRefusal => _stepLimitRefusal.Length > 0
-        ? _stepLimitRefusal : _workspace.Selection.StepLimitValidationMessage ?? string.Empty;
+    public string ParserWorkLimitRefusal => _parserWorkLimitRefusal.Length > 0
+        ? _parserWorkLimitRefusal : _workspace.Selection.ParserWorkLimitValidationMessage ?? string.Empty;
     public string TimeLimitRefusal { get => _timeLimitRefusal; private set => SetProperty(ref _timeLimitRefusal, value); }
     private string _timeLimitRefusal = string.Empty;
-    public bool HasStepLimitRefusal => !string.IsNullOrEmpty(StepLimitRefusal);
+    public bool HasParserWorkLimitRefusal => !string.IsNullOrEmpty(ParserWorkLimitRefusal);
     public bool HasTimeLimitRefusal => !string.IsNullOrEmpty(TimeLimitRefusal);
     public string AssessBudgetRefusal { get => _assessBudgetRefusal; private set => SetProperty(ref _assessBudgetRefusal, value); }
     private string _assessBudgetRefusal = string.Empty;
@@ -341,24 +341,24 @@ internal sealed partial class SettingsViewModel : ObservableObject
     }
     public bool HasUncommittedParsingLimitChanges =>
         AssessBudgetSeconds != _lastGoodAssessBudgetSeconds ||
-        IsNoStepLimit != _lastGoodNoStepLimit || StepLimit != _lastGoodStepLimit ||
+        IsNoParserWorkLimit != _lastGoodNoParserWorkLimit || ParserWorkLimitValue != _lastGoodParserWorkLimit ||
         TimeLimitSeconds != _lastGoodTimeLimitSeconds;
-    public string StepLimitEstimateText => _workspace.Context.Setup?.StepLimitEstimateText ??
+    public string ParserWorkLimitEstimateText => _workspace.Context.Setup?.ParserWorkLimitEstimateText ??
         string.Empty;
-    public bool IsTimeLimitEnabled => HasProject && HasSavedSelection && !IsNoStepLimit;
-    public bool IsNoStepLimit
+    public bool IsTimeLimitEnabled => HasProject && HasSavedSelection && !IsNoParserWorkLimit;
+    public bool IsNoParserWorkLimit
     {
-        get => _workspace.Selection.PerWordStepLimitUnbounded;
+        get => _workspace.Selection.PerWordParserWorkLimitUnbounded;
         set
         {
-            if (_workspace.Selection.PerWordStepLimitUnbounded == value) return;
+            if (_workspace.Selection.PerWordParserWorkLimitUnbounded == value) return;
             if (value)
             {
-                _stepLimitBeforeNoStep = StepLimit ?? _lastGoodStepLimit ??
-                    _workspace.Context.Setup?.StepLimitSteps ?? StepCap.DefaultSteps;
+                _parserWorkLimitBeforeNoStep = ParserWorkLimitValue ?? _lastGoodParserWorkLimit ??
+                    _workspace.Context.Setup?.ParserWorkLimitValue ?? ParserWorkLimit.DefaultWork;
                 _timeLimitBeforeNoStep = _workspace.Selection.PerWordTimeLimitSeconds;
             }
-            _workspace.Selection.PerWordStepLimitUnbounded = value;
+            _workspace.Selection.PerWordParserWorkLimitUnbounded = value;
             if (value)
             {
                 _workspace.Selection.PerWordTimeLimitSeconds = null;
@@ -367,10 +367,10 @@ internal sealed partial class SettingsViewModel : ObservableObject
             else
             {
                 var timeLimitToRestore = _timeLimitBeforeNoStep;
-                _workspace.Selection.PerWordStepLimit = _stepLimitBeforeNoStep ?? _lastGoodStepLimit ??
-                    _workspace.Context.Setup?.StepLimitSteps ?? StepCap.DefaultSteps;
+                _workspace.Selection.PerWordParserWorkLimit = _parserWorkLimitBeforeNoStep ?? _lastGoodParserWorkLimit ??
+                    _workspace.Context.Setup?.ParserWorkLimitValue ?? ParserWorkLimit.DefaultWork;
                 _timeLimitBeforeNoStep = null;
-                _stepLimitBeforeNoStep = null;
+                _parserWorkLimitBeforeNoStep = null;
                 if (timeLimitToRestore is > 0)
                 {
                     TimeLimitSeconds = timeLimitToRestore;
@@ -386,15 +386,15 @@ internal sealed partial class SettingsViewModel : ObservableObject
             OnPropertyChanged(nameof(ShowUseEstimate));
         }
     }
-    public decimal? StepLimit
+    public decimal? ParserWorkLimitValue
     {
-        get => IsNoStepLimit
-            ? _stepLimitBeforeNoStep ?? _lastGoodStepLimit ?? _workspace.Context.Setup?.StepLimitSteps
-            : _workspace.Selection.PerWordStepLimit;
+        get => IsNoParserWorkLimit
+            ? _parserWorkLimitBeforeNoStep ?? _lastGoodParserWorkLimit ?? _workspace.Context.Setup?.ParserWorkLimitValue
+            : _workspace.Selection.PerWordParserWorkLimit;
         set
         {
-            if (_workspace.Selection.PerWordStepLimit == value) return;
-            _workspace.Selection.PerWordStepLimit = value;
+            if (_workspace.Selection.PerWordParserWorkLimit == value) return;
+            _workspace.Selection.PerWordParserWorkLimit = value;
             if (IsUsingEstimate) ApplyEstimate();
         }
     }
@@ -405,8 +405,8 @@ internal sealed partial class SettingsViewModel : ObservableObject
         {
             if (_workspace.Selection.PerWordTimeLimitSeconds == value) return;
             _workspace.Selection.PerWordTimeLimitSeconds = value;
-            if (!IsNoStepLimit) IsUsingEstimate = false;
-            TimeLimitRefusal = !IsNoStepLimit && (value is null or <= 0)
+            if (!IsNoParserWorkLimit) IsUsingEstimate = false;
+            TimeLimitRefusal = !IsNoParserWorkLimit && (value is null or <= 0)
                 ? MotifAppStrings.TimeLimitPositiveRefusal : string.Empty;
             OnPropertyChanged(nameof(HasTimeLimitRefusal));
         }
@@ -458,10 +458,10 @@ internal sealed partial class SettingsViewModel : ObservableObject
     public int DarkThemeTabIndex => IsDarkThemeSelected ? 0 : -1;
     public int SystemThemeTabIndex => IsSystemThemeSelected ? 0 : -1;
     public bool CanResetZoom => ZoomPercent != 100;
-    public bool ShowUseEstimate => !IsUsingEstimate && !IsNoStepLimit;
+    public bool ShowUseEstimate => !IsUsingEstimate && !IsNoParserWorkLimit;
     public string ReportVersionsText => _windowReport.ToVersionText();
     public string ParsingFooter => _workspace.Context.Assess.IsActive
-        ? _workspace.Context.Setup?.RunningStepLimitText is { Length: > 0 } text
+        ? _workspace.Context.Setup?.RunningParserWorkLimitText is { Length: > 0 } text
             ? text : MotifAppStrings.ParsingFooterRunning
         : MotifAppStrings.ParsingFooterIdle;
 
@@ -602,16 +602,16 @@ internal sealed partial class SettingsViewModel : ObservableObject
         }
         AssessBudgetRefusal = string.Empty;
         OnPropertyChanged(nameof(HasAssessBudgetRefusal));
-        if (_workspace.Selection.StepLimitValidationMessage is not null || !IsNoStepLimit &&
-            (StepLimit is null or <= 0 || decimal.Truncate(StepLimit.Value) != StepLimit.Value))
+        if (_workspace.Selection.ParserWorkLimitValidationMessage is not null || !IsNoParserWorkLimit &&
+            (ParserWorkLimitValue is null or <= 0 || decimal.Truncate(ParserWorkLimitValue.Value) != ParserWorkLimitValue.Value))
         {
             CancelParsingLimitEdit();
-            _stepLimitRefusal = MotifAppStrings.StepLimitWholeNumberRefusal;
-            OnPropertyChanged(nameof(StepLimitRefusal));
-            OnPropertyChanged(nameof(HasStepLimitRefusal));
-            return WindowRefusal.Plain(_stepLimitRefusal);
+            _parserWorkLimitRefusal = MotifAppStrings.ParserWorkLimitWholeNumberRefusal;
+            OnPropertyChanged(nameof(ParserWorkLimitRefusal));
+            OnPropertyChanged(nameof(HasParserWorkLimitRefusal));
+            return WindowRefusal.Plain(_parserWorkLimitRefusal);
         }
-        if (!IsNoStepLimit && !IsUsingEstimate && (TimeLimitSeconds is null or <= 0))
+        if (!IsNoParserWorkLimit && !IsUsingEstimate && (TimeLimitSeconds is null or <= 0))
         {
             CancelParsingLimitEdit();
             TimeLimitRefusal = MotifAppStrings.TimeLimitPositiveRefusal;
@@ -619,18 +619,18 @@ internal sealed partial class SettingsViewModel : ObservableObject
             return WindowRefusal.Plain(TimeLimitRefusal);
         }
 
-        var stepLimit = IsNoStepLimit ? StepCap.Unbounded
-            : StepLimit is > 0 and var steps && decimal.Truncate(steps) == steps && steps <= long.MaxValue
-                ? new StepCap(decimal.ToInt64(steps)) : StepCap.Default;
+        var parserWorkLimit = IsNoParserWorkLimit ? ParserWorkLimit.Unbounded
+            : ParserWorkLimitValue is > 0 and var steps && decimal.Truncate(steps) == steps && steps <= long.MaxValue
+                ? new ParserWorkLimit(decimal.ToInt64(steps)) : ParserWorkLimit.Default;
         SelectionParsingLimits limits;
-        if (IsNoStepLimit || IsUsingEstimate)
+        if (IsNoParserWorkLimit || IsUsingEstimate)
         {
-            limits = SelectionLimitPolicy.Estimated(stepLimit);
+            limits = SelectionLimitPolicy.Estimated(parserWorkLimit);
         }
         else if (TimeLimitSeconds is { } seconds && seconds > 0 &&
                  seconds * 1000m <= int.MaxValue && decimal.Round(seconds * 1000m) >= 1m)
         {
-            limits = SelectionLimitPolicy.Explicit(stepLimit,
+            limits = SelectionLimitPolicy.Explicit(parserWorkLimit,
                 decimal.ToInt32(decimal.Round(seconds * 1000m, 0, MidpointRounding.AwayFromZero)));
         }
         else
@@ -645,7 +645,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
         if (refusal is null)
         {
             TimeLimitRefusal = string.Empty;
-            _stepLimitRefusal = string.Empty;
+            _parserWorkLimitRefusal = string.Empty;
             RememberGoodValues();
         }
         else
@@ -654,10 +654,10 @@ internal sealed partial class SettingsViewModel : ObservableObject
             TimeLimitRefusal = refusal.Sentence;
         }
         OnPropertyChanged(nameof(HasTimeLimitRefusal));
-        OnPropertyChanged(nameof(StepLimitRefusal));
-        OnPropertyChanged(nameof(HasStepLimitRefusal));
+        OnPropertyChanged(nameof(ParserWorkLimitRefusal));
+        OnPropertyChanged(nameof(HasParserWorkLimitRefusal));
         OnPropertyChanged(nameof(ParsingFooter));
-        OnPropertyChanged(nameof(StepLimitEstimateText));
+        OnPropertyChanged(nameof(ParserWorkLimitEstimateText));
         OnPropertyChanged(nameof(ProjectName));
         return refusal;
     }
@@ -693,8 +693,8 @@ internal sealed partial class SettingsViewModel : ObservableObject
     {
         _timeLimitBeforeNoStep = null;
         AssessBudgetSeconds = _lastGoodAssessBudgetSeconds;
-        _workspace.Selection.PerWordStepLimitUnbounded = _lastGoodNoStepLimit;
-        _workspace.Selection.PerWordStepLimit = _lastGoodStepLimit;
+        _workspace.Selection.PerWordParserWorkLimitUnbounded = _lastGoodNoParserWorkLimit;
+        _workspace.Selection.PerWordParserWorkLimit = _lastGoodParserWorkLimit;
         _workspace.Selection.PerWordTimeLimitSeconds = _lastGoodTimeLimitSeconds;
         _workspace.Context.Setup?.SyncParsingLimitsFromSelection();
         IsUsingEstimate = _workspace.Context.Setup?.CurrentSelectionLimits.TimeMode !=
@@ -706,18 +706,18 @@ internal sealed partial class SettingsViewModel : ObservableObject
     {
         _lastGoodAssessBudgetSeconds = _workspace.Context.Setup?.CurrentSelectionLimits.AssessBudgetSeconds ?? 3600;
         AssessBudgetSeconds = _lastGoodAssessBudgetSeconds;
-        _lastGoodNoStepLimit = _workspace.Selection.PerWordStepLimitUnbounded;
-        if (_workspace.Selection.StepLimitValidationMessage is null && _workspace.Selection.PerWordStepLimit is > 0)
-            _lastGoodStepLimit = _workspace.Selection.PerWordStepLimit;
+        _lastGoodNoParserWorkLimit = _workspace.Selection.PerWordParserWorkLimitUnbounded;
+        if (_workspace.Selection.ParserWorkLimitValidationMessage is null && _workspace.Selection.PerWordParserWorkLimit is > 0)
+            _lastGoodParserWorkLimit = _workspace.Selection.PerWordParserWorkLimit;
         if (_workspace.Selection.PerWordTimeLimitSeconds is > 0)
             _lastGoodTimeLimitSeconds = _workspace.Selection.PerWordTimeLimitSeconds;
         else _lastGoodTimeLimitSeconds = null;
-        _stepLimitRefusal = string.Empty;
+        _parserWorkLimitRefusal = string.Empty;
         TimeLimitRefusal = string.Empty;
         AssessBudgetRefusal = string.Empty;
         OnPropertyChanged(nameof(HasAssessBudgetRefusal));
-        OnPropertyChanged(nameof(StepLimitRefusal));
-        OnPropertyChanged(nameof(HasStepLimitRefusal));
+        OnPropertyChanged(nameof(ParserWorkLimitRefusal));
+        OnPropertyChanged(nameof(HasParserWorkLimitRefusal));
         OnPropertyChanged(nameof(HasTimeLimitRefusal));
         OnPropertyChanged(nameof(HasUncommittedParsingLimitChanges));
     }
@@ -948,24 +948,24 @@ internal sealed partial class SettingsViewModel : ObservableObject
             UseAllTextsCommand.NotifyCanExecuteChanged();
             NotifyResetChoices();
         }
-        if (args.PropertyName is nameof(SelectionViewModel.PerWordStepLimit) or
-            nameof(SelectionViewModel.PerWordStepLimitUnbounded))
+        if (args.PropertyName is nameof(SelectionViewModel.PerWordParserWorkLimit) or
+            nameof(SelectionViewModel.PerWordParserWorkLimitUnbounded))
         {
             _workspace.Context.Setup?.SyncParsingLimitsFromSelection();
-            var accepted = _workspace.Context.Setup?.CurrentSelectionLimits.PerWordStepLimit;
-            var current = _workspace.Selection.PerWordStepLimitUnbounded ? StepCap.Unbounded
-                : _workspace.Selection.PerWordStepLimit is { } steps && steps is > 0 and <= long.MaxValue &&
-                  decimal.Truncate(steps) == steps ? new StepCap(decimal.ToInt64(steps)) : null;
+            var accepted = _workspace.Context.Setup?.CurrentSelectionLimits.PerWordParserWorkLimit;
+            var current = _workspace.Selection.PerWordParserWorkLimitUnbounded ? ParserWorkLimit.Unbounded
+                : _workspace.Selection.PerWordParserWorkLimit is { } steps && steps is > 0 and <= long.MaxValue &&
+                  decimal.Truncate(steps) == steps ? new ParserWorkLimit(decimal.ToInt64(steps)) : null;
             if ((accepted is null || accepted != current) && IsUsingEstimate)
             {
                 ApplyEstimate();
             }
-            OnPropertyChanged(nameof(StepLimit));
-            OnPropertyChanged(nameof(IsNoStepLimit));
-            OnPropertyChanged(nameof(StepLimitRefusal));
-            OnPropertyChanged(nameof(HasStepLimitRefusal));
+            OnPropertyChanged(nameof(ParserWorkLimitValue));
+            OnPropertyChanged(nameof(IsNoParserWorkLimit));
+            OnPropertyChanged(nameof(ParserWorkLimitRefusal));
+            OnPropertyChanged(nameof(HasParserWorkLimitRefusal));
             OnPropertyChanged(nameof(IsTimeLimitEnabled));
-            OnPropertyChanged(nameof(StepLimitEstimateText));
+            OnPropertyChanged(nameof(ParserWorkLimitEstimateText));
         }
         if (args.PropertyName == nameof(SelectionViewModel.PerWordTimeLimitSeconds))
         {
@@ -995,10 +995,10 @@ internal sealed partial class SettingsViewModel : ObservableObject
             if (IsUsingEstimate) ApplyEstimate();
             else RememberGoodValues();
         }
-        if (args.PropertyName is nameof(SetupViewModel.StepLimitEstimateText) or
-            nameof(SetupViewModel.EstimatedPerWordLimitMs) or nameof(SetupViewModel.RunningStepLimitText))
+        if (args.PropertyName is nameof(SetupViewModel.ParserWorkLimitEstimateText) or
+            nameof(SetupViewModel.EstimatedPerWordLimitMs) or nameof(SetupViewModel.RunningParserWorkLimitText))
         {
-            OnPropertyChanged(nameof(StepLimitEstimateText));
+            OnPropertyChanged(nameof(ParserWorkLimitEstimateText));
             OnPropertyChanged(nameof(ParsingFooter));
             if (IsUsingEstimate) ApplyEstimate();
         }
@@ -1055,16 +1055,16 @@ internal sealed partial class SettingsViewModel : ObservableObject
     {
         OnPropertyChanged(nameof(CanResetTheme));
         OnPropertyChanged(nameof(CanResetStoredAnalyses));
-        OnPropertyChanged(nameof(CanResetStepLimit));
+        OnPropertyChanged(nameof(CanResetParserWorkLimit));
         ResetThemeCommand.NotifyCanExecuteChanged();
         ResetStoredAnalysesCommand.NotifyCanExecuteChanged();
-        ResetStepLimitCommand.NotifyCanExecuteChanged();
+        ResetParserWorkLimitCommand.NotifyCanExecuteChanged();
     }
 
-    private async Task ResetStepLimitAsync()
+    private async Task ResetParserWorkLimitAsync()
     {
-        IsNoStepLimit = false;
-        StepLimit = StepCap.DefaultSteps;
+        IsNoParserWorkLimit = false;
+        ParserWorkLimitValue = ParserWorkLimit.DefaultWork;
         await CommitParsingLimitsAsync().ConfigureAwait(true);
     }
 

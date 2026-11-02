@@ -49,7 +49,7 @@ public sealed class CoverageReportProducer : IReportProducer
             index, word.Word, 0, StoredWordOutcome.Parse(word.Outcome, KindName), string.Empty)).ToList();
         var batch = new BatchAnalysis(words,
             scope.PerWordLimit is { } limit ? (int?)limit.TotalMilliseconds : null,
-            string.Empty, Array.Empty<string>()) { PerWordStepLimit = scope.PerWordStepLimit };
+            string.Empty, Array.Empty<string>()) { PerWordParserWorkLimit = scope.PerWordParserWorkLimit };
         var selection = new Selection(assessment.SelectionName, assessment.SelectionWords, assessment.SelectionSha256);
         var figure = GrammarCoverageFigure.Compute(batch, selection, assessment.GrammarSourceSha256);
         return new RenderedReport(KindName, figure.Describe(assessment.SelectionSha256, assessment.GrammarSourceSha256));
@@ -73,7 +73,7 @@ internal static class CorrectnessCoverage
             }, string.Empty)).ToArray();
         return GrammarCoverageFigure.Compute(new BatchAnalysis(compared,
             scope.PerWordLimit is { } limit ? (int?)limit.TotalMilliseconds : null, string.Empty, [])
-            { PerWordStepLimit = scope.PerWordStepLimit }, selection, grammarSourceSha256);
+            { PerWordParserWorkLimit = scope.PerWordParserWorkLimit }, selection, grammarSourceSha256);
     }
 
     internal static SIL.Motif.Contract.Responses.WordCorrectness Require(AssessedWord word, string reportKind)

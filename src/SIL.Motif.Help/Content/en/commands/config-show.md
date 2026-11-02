@@ -35,4 +35,4 @@ standalone-assessments-per-kind = 20
 
 - [Measure a Selection](cmd:assess) uses the configured scope when one is named.
 - [Show the Default Selection](cmd:selection%20show) reads the project's usual word list.
-- [Set Selection limits](cmd:selection%20set-limits) changes its step cap or time policy.
+- [Set Selection limits](cmd:selection%20set-limits) changes its parser work limit or time policy.

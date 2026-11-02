@@ -393,7 +393,7 @@
     <comment>Window text.</comment>
   </data>
   <data name="MotifApp.OverviewTimeByKindAccessibleName" xml:space="preserve">
-    <value>Overview work steps by kind</value>
+    <value>Overview parser work by kind</value>
     <comment>Accessible name announced by screen readers.</comment>
   </data>
   <data name="MotifApp.SlowestWordsAccessibleName" xml:space="preserve">
@@ -405,7 +405,7 @@
     <comment>Window text.</comment>
   </data>
   <data name="MotifApp.SlowestWordsAndRecordedTimesAccessibleName" xml:space="preserve">
-    <value>Slowest words and their work steps</value>
+    <value>Slowest words and their parser work</value>
     <comment>Accessible name announced by screen readers.</comment>
   </data>
   <data name="MotifApp.GrammarWarningsAccessibleName" xml:space="preserve">
@@ -864,20 +864,20 @@
     <value>Default Selection parsing limits</value>
     <comment>Window text.</comment>
   </data>
-  <data name="MotifApp.StepLimitPerWord" xml:space="preserve">
-    <value>Step limit per word</value>
+  <data name="MotifApp.ParserWorkLimitPerWord" xml:space="preserve">
+    <value>Parser work limit per word</value>
     <comment>Window text.</comment>
   </data>
-  <data name="MotifApp.SelectionStepLimitPerWordAccessibleName" xml:space="preserve">
-    <value>Selection step limit per word</value>
+  <data name="MotifApp.SelectionParserWorkLimitPerWordAccessibleName" xml:space="preserve">
+    <value>Selection parser work limit per word</value>
     <comment>Accessible name announced by screen readers.</comment>
   </data>
-  <data name="MotifApp.NoStepLimit" xml:space="preserve">
-    <value>No Step Limit</value>
-    <comment>Checkbox in Settings: lets every word run to the end with no step limit.</comment>
+  <data name="MotifApp.NoParserWorkLimit" xml:space="preserve">
+    <value>No Parser Work Limit</value>
+    <comment>Checkbox in Settings: lets every word run to the end with no parser work limit.</comment>
   </data>
-  <data name="MotifApp.SelectionHasNoStepLimitAccessibleName" xml:space="preserve">
-    <value>Selection has no step limit</value>
+  <data name="MotifApp.SelectionHasNoParserWorkLimitAccessibleName" xml:space="preserve">
+    <value>Selection has no parser work limit</value>
     <comment>Accessible name announced by screen readers.</comment>
   </data>
   <data name="MotifApp.TimeLimitPerWordSeconds" xml:space="preserve">
@@ -901,11 +901,11 @@
     <comment>Window text.</comment>
   </data>
   <data name="MotifApp.RetryWorkOverLabel" xml:space="preserve">
-    <value>Retry words over (work steps)</value>
+    <value>Retry words over (parser work)</value>
     <comment>Window text.</comment>
   </data>
   <data name="MotifApp.RetryWorkOverAccessibleName" xml:space="preserve">
-    <value>Retry words over, in work steps</value>
+    <value>Retry words over, in parser work</value>
     <comment>Accessible name announced by screen readers.</comment>
   </data>
   <data name="MotifApp.WhyApplyIsUnavailableAccessibleName" xml:space="preserve">
@@ -1206,7 +1206,7 @@
   </data>
   <data name="MotifApp.ProposalWork" xml:space="preserve">
     <value>Work</value>
-    <comment>Column heading on the Proposals page for the parser work, in work steps, a Trial took beside the Baseline's.</comment>
+    <comment>Column heading on the Proposals page for the parser work, in parser work, a Trial took beside the Baseline's.</comment>
   </data>
   <data name="MotifApp.ProposalsAccessibleName" xml:space="preserve">
     <value>Proposals</value>
@@ -1946,33 +1946,33 @@
     <value>Choose what to parse before setting its parsing limits.</value>
     <comment>Explanatory sentence in the Settings page: choose what to parse for limits.</comment>
   </data>
-  <data name="MotifApp.StepLimitPerWordLabel" xml:space="preserve">
-    <value>Step Limit per Word</value>
-    <comment>Label or heading in the Settings page: step limit per word.</comment>
+  <data name="MotifApp.ParserWorkLimitPerWordLabel" xml:space="preserve">
+    <value>Parser Work Limit per Word</value>
+    <comment>Label or heading in the Settings page: parser work limit per word.</comment>
   </data>
-  <data name="MotifApp.StepLimitDefaultCaption" xml:space="preserve">
-    <value>200,000 steps is the default. A word that reaches it is marked ◐ Stopped.</value>
-    <comment>Explanatory sentence in the Settings page: step limit default.</comment>
+  <data name="MotifApp.ParserWorkLimitDefaultCaption" xml:space="preserve">
+    <value>20,000,000 parser work is the default. A word that reaches it is marked ◐ Stopped.</value>
+    <comment>Explanatory sentence in the Settings page: parser work limit default.</comment>
   </data>
-  <data name="MotifApp.ResetStepLimit" xml:space="preserve">
-    <value>Reset Step Limit</value>
-    <comment>Button in the Settings page: reset step limit.</comment>
+  <data name="MotifApp.ResetParserWorkLimit" xml:space="preserve">
+    <value>Reset Parser Work Limit</value>
+    <comment>Button in the Settings page: reset parser work limit.</comment>
   </data>
-  <data name="MotifApp.ResetStepLimitTo200000AccessibleName" xml:space="preserve">
-    <value>Reset step limit to 200000</value>
-    <comment>Accessible name read by screen readers for the reset step limit to200000 control in the Settings page.</comment>
+  <data name="MotifApp.ResetParserWorkLimitTo20000000AccessibleName" xml:space="preserve">
+    <value>Reset parser work limit to 20000000</value>
+    <comment>Accessible name read by screen readers for the reset parser work limit to 20000000 control in the Settings page.</comment>
   </data>
-  <data name="MotifApp.NoStepLimitAccessibleName" xml:space="preserve">
-    <value>No step limit</value>
-    <comment>Accessible name read by screen readers for the no step limit control in the Settings page.</comment>
+  <data name="MotifApp.NoParserWorkLimitAccessibleName" xml:space="preserve">
+    <value>No parser work limit</value>
+    <comment>Accessible name read by screen readers for the no parser work limit control in the Settings page.</comment>
   </data>
   <data name="MotifApp.TimeLimitPerWord" xml:space="preserve">
     <value>Time Limit per Word</value>
     <comment>Label or heading in the Settings page: time limit per word.</comment>
   </data>
-  <data name="MotifApp.TimeLimitFollowsStepLimitCaption" xml:space="preserve">
-    <value>Follows the step limit until you type your own value.</value>
-    <comment>Explanatory sentence in the Settings page: time limit follows step limit.</comment>
+  <data name="MotifApp.TimeLimitFollowsParserWorkLimitCaption" xml:space="preserve">
+    <value>Follows the parser work limit until you type your own value.</value>
+    <comment>Explanatory sentence in the Settings page: time limit follows parser work limit.</comment>
   </data>
   <data name="MotifApp.TimeLimitPerWordInAccessibleName" xml:space="preserve">
     <value>Time limit per word in seconds</value>
@@ -2204,7 +2204,7 @@ Never included unless you tick it in the preview: local details, which may conta
     <comment>Explanatory sentence in the Setup dialog: setup selection description.</comment>
   </data>
   <data name="MotifApp.SetupLimitsDescription" xml:space="preserve">
-    <value>Choose the maximum number of analysis attempts per word. PanGloss derives an inner search-work limit at 100 times that value.</value>
+    <value>Choose the most parser work each word may use. A word that reaches it is stopped.</value>
     <comment>Explanatory sentence in the Setup dialog: setup limits description.</comment>
   </data>
   <data name="MotifApp.SetupChoicesKeptCaption" xml:space="preserve">
@@ -2227,17 +2227,17 @@ Never included unless you tick it in the preview: local details, which may conta
     <value>Words to add</value>
     <comment>Accessible name read by screen readers for the words to add control in the Setup dialog.</comment>
   </data>
-  <data name="MotifApp.SetupAttemptLimitPerWord" xml:space="preserve">
-    <value>Analysis Attempt Limit per Word</value>
-    <comment>Label or heading in the Setup dialog: setup attempt limit per word.</comment>
+  <data name="MotifApp.SetupParserWorkLimitPerWord" xml:space="preserve">
+    <value>Parser Work Limit per Word</value>
+    <comment>Label or heading in the Setup dialog: setup parser work limit per word.</comment>
   </data>
-  <data name="MotifApp.SetupAttemptLimitDefaultCaption" xml:space="preserve">
-    <value>200,000 attempts is the default. Choose no attempt limit to let parsing continue until it finishes.</value>
-    <comment>Explanatory sentence in the Setup dialog: setup attempt limit default.</comment>
+  <data name="MotifApp.SetupParserWorkLimitDefaultCaption" xml:space="preserve">
+    <value>20,000,000 parser work is the default. Choose no parser work limit to let parsing continue until it finishes.</value>
+    <comment>Explanatory sentence in the Setup dialog: setup parser work limit default.</comment>
   </data>
-  <data name="MotifApp.NoAttemptLimit" xml:space="preserve">
-    <value>No Attempt Limit</value>
-    <comment>Checkbox in Setup: lets every word run to the end with no analysis attempt limit.</comment>
+  <data name="MotifApp.SetupNoParserWorkLimitOption" xml:space="preserve">
+    <value>No Parser Work Limit</value>
+    <comment>Checkbox in Setup: lets every word run to the end with no parser work limit.</comment>
   </data>
   <data name="MotifApp.SkipForNow" xml:space="preserve">
     <value>Skip for Now</value>
@@ -2459,9 +2459,9 @@ Never included unless you tick it in the preview: local details, which may conta
     <value>Motif couldn't save this choice, so the grammar check keeps its earlier one. {0}</value>
     <comment>Message when saving the stored analyses choice failed: {0} is the system reason.</comment>
   </data>
-  <data name="MotifApp.StepLimitWholeNumberRefusal" xml:space="preserve">
-    <value>The per-word step limit must be a positive whole number.</value>
-    <comment>Message beside the step limit when it is not a positive whole number.</comment>
+  <data name="MotifApp.ParserWorkLimitWholeNumberRefusal" xml:space="preserve">
+    <value>The per-word parser work limit must be a positive whole number.</value>
+    <comment>Message beside the parser work limit when it is not a positive whole number.</comment>
   </data>
   <data name="MotifApp.TimeLimitRangeRefusal" xml:space="preserve">
     <value>Enter a per-word time limit from 0.001 seconds to 2,147,483.647 seconds.</value>
@@ -2475,16 +2475,16 @@ Never included unless you tick it in the preview: local details, which may conta
     <value>Copy Versions</value>
     <comment>Button in About Motif that copies the Motif, PanGloss and operating system versions to the clipboard.</comment>
   </data>
-  <data name="MotifApp.EnterPositiveWholeNumberOfAttempts" xml:space="preserve">
-    <value>Enter a positive whole number of analysis attempts, or choose no attempt limit.</value>
-    <comment>Message in Setup and Settings when the analysis attempt limit is not a positive whole number.</comment>
+  <data name="MotifApp.EnterPositiveWholeNumberOfParserWork" xml:space="preserve">
+    <value>Enter a positive whole number of parser work, or choose no parser work limit.</value>
+    <comment>Message in Setup and Settings when the parser work limit is not a positive whole number.</comment>
   </data>
-  <data name="MotifApp.RunningNoStepLimit" xml:space="preserve">
-    <value>The parse running now has no step limit.</value>
-    <comment>Status line while a parse runs without a step limit.</comment>
+  <data name="MotifApp.RunningNoParserWorkLimit" xml:space="preserve">
+    <value>The parse running now has no parser work limit.</value>
+    <comment>Status line while a parse runs without a parser work limit.</comment>
   </data>
-  <data name="MotifApp.RunningStepLimitFormat" xml:space="preserve">
-    <value>The parse running now keeps {0:N0} steps.</value>
+  <data name="MotifApp.RunningParserWorkLimitFormat" xml:space="preserve">
+    <value>The parse running now stops a word at {0:N0} parser work.</value>
     <comment>Status line while a parse runs: {0} is the number of analysis steps it keeps.</comment>
   </data>
   <data name="MotifApp.SetupNextLimits" xml:space="preserve">
@@ -2503,17 +2503,17 @@ Never included unless you tick it in the preview: local details, which may conta
     <value>Setting up {0} · step {1} of 4</value>
     <comment>Caption of the Setup dialog: {0} is the project name and {1} the current step number out of four.</comment>
   </data>
-  <data name="MotifApp.SetupNoAttemptLimit" xml:space="preserve">
-    <value>No analysis attempt limit.</value>
-    <comment>Caption when no analysis attempt limit is chosen.</comment>
+  <data name="MotifApp.SetupNoParserWorkLimitCaption" xml:space="preserve">
+    <value>No parser work limit.</value>
+    <comment>Caption when no parser work limit is chosen.</comment>
   </data>
-  <data name="MotifApp.SetupAttemptLimitFormat" xml:space="preserve">
+  <data name="MotifApp.SetupParserWorkLimitFormat" xml:space="preserve">
     <value>Motif stops a word after {0}.</value>
     <comment>Caption for the per-word limit: {0} is a count such as "200,000 analysis attempts".</comment>
   </data>
-  <data name="MotifApp.AnalysisAttemptsPattern" xml:space="preserve">
-    <value>{0, plural, one {# analysis attempt} other {# analysis attempts}}</value>
-    <comment>Count of analysis attempts in the per-word limit. # is the count.</comment>
+  <data name="MotifApp.ParserWorkLimitPattern" xml:space="preserve">
+    <value>{0, plural, one {# parser work} other {# parser work}}</value>
+    <comment>Count of parser work in the per-word limit. # is the count.</comment>
   </data>
   <data name="MotifApp.NoAddedWords" xml:space="preserve">
     <value>No added words</value>
@@ -2587,9 +2587,9 @@ Never included unless you tick it in the preview: local details, which may conta
     <value>ANALYSIS</value>
     <comment>Small section label above the analysis writing systems, shown in capitals; the capitals are part of the text.</comment>
   </data>
-  <data name="MotifApp.SetupAttemptLimitPerWordAccessibleName" xml:space="preserve">
-    <value>Analysis attempt limit per word</value>
-    <comment>Accessible name of the analysis attempt limit field in Setup.</comment>
+  <data name="MotifApp.SetupParserWorkLimitPerWordAccessibleName" xml:space="preserve">
+    <value>Parser work limit for each word</value>
+    <comment>Accessible name of the parser work limit field in Setup.</comment>
   </data>
   <data name="MotifApp.SetupCancel" xml:space="preserve">
     <value>Cancel</value>
@@ -2744,12 +2744,12 @@ Never included unless you tick it in the preview: local details, which may conta
     <comment>Accessible name (read aloud by screen readers) of a control on the Parsimony page: "Suppressed decisions". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.TotalWordTime" xml:space="preserve">
-    <value>Total work steps</value>
-    <comment>Label on the Timing page: the sum of the parser work steps of all measured words. A work step is one unit of parser work and does not depend on the speed of the computer.</comment>
+    <value>Total parser work</value>
+    <comment>Label on the Timing page: the sum of the parser work of all measured words. A parser work is one unit of parser work and does not depend on the speed of the computer.</comment>
   </data>
   <data name="MotifApp.MedianWordTime" xml:space="preserve">
-    <value>median work steps per word</value>
-    <comment>Lowercase fragment inside a Timing sentence: the middle value of the per-word parser work steps.</comment>
+    <value>median parser work per word</value>
+    <comment>Lowercase fragment inside a Timing sentence: the middle value of the per-word parser work.</comment>
   </data>
   <data name="MotifApp.ObjectTimingDetailIncomplete" xml:space="preserve">
     <value>Object timing detail is incomplete.</value>
@@ -2767,12 +2767,12 @@ Never included unless you tick it in the preview: local details, which may conta
     <value>Seconds per Word</value>
     <comment>Label of the box where a person enters how many seconds each word gets when run again.</comment>
   </data>
-  <data name="MotifApp.AnalysisAttemptLimit" xml:space="preserve">
-    <value>Analysis Attempt Limit</value>
+  <data name="MotifApp.ParserWorkLimitField" xml:space="preserve">
+    <value>Parser Work Limit</value>
     <comment>Label of the box where a person limits how many analysis attempts each word may use.</comment>
   </data>
   <data name="MotifApp.ReadingTheParseTimes" xml:space="preserve">
-    <value>Reading the work steps…</value>
+    <value>Reading the parser work…</value>
     <comment>Sentence shown on the Timing page. It is read as a complete message; keep it a complete sentence.</comment>
   </data>
   <data name="MotifApp.TimingBaselineStaleNotice" xml:space="preserve">
@@ -2788,8 +2788,8 @@ Never included unless you tick it in the preview: local details, which may conta
     <comment>Uppercase column heading in the timing by rule table: the kind of rule.</comment>
   </data>
   <data name="MotifApp.TimingTimeColumnHeading" xml:space="preserve">
-    <value>WORK STEPS</value>
-    <comment>Uppercase column heading in the timing by rule table: the parser work steps spent.</comment>
+    <value>PARSER WORK</value>
+    <comment>Uppercase column heading in the timing by rule table: the parser work spent.</comment>
   </data>
   <data name="MotifApp.TimingWordsColumnHeading" xml:space="preserve">
     <value>WORDS</value>
@@ -2801,7 +2801,7 @@ Never included unless you tick it in the preview: local details, which may conta
   </data>
   <data name="MotifApp.HowLongTheWordsTook" xml:space="preserve">
     <value>How Much Work the Words Needed</value>
-    <comment>Heading on the Timing page above the summary of how much parser work the measured words needed, counted in work steps.</comment>
+    <comment>Heading on the Timing page above the summary of how much parser work the measured words needed, counted in parser work.</comment>
   </data>
   <data name="MotifApp.Slowest" xml:space="preserve">
     <value>Slowest</value>
@@ -2864,7 +2864,7 @@ Never included unless you tick it in the preview: local details, which may conta
     <comment>Tooltip on the Timing page.</comment>
   </data>
   <data name="MotifApp.TotalWordTimeAccessibleName" xml:space="preserve">
-    <value>Total work steps</value>
+    <value>Total parser work</value>
     <comment>Accessible name (read aloud by screen readers) of a region on the Timing page: "Total word time". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.TimingControlsAccessibleName" xml:space="preserve">
@@ -2931,9 +2931,9 @@ Never included unless you tick it in the preview: local details, which may conta
     <value>Seconds per word</value>
     <comment>Accessible name (read aloud by screen readers) of a control on the Timing page: "Seconds per word". Not visible on screen.</comment>
   </data>
-  <data name="MotifApp.PerWordAnalysisAttemptLimitAccessibleName" xml:space="preserve">
-    <value>Per-word analysis attempt limit</value>
-    <comment>Accessible name (read aloud by screen readers) of a control on the Timing page: "Per-word analysis attempt limit". Not visible on screen.</comment>
+  <data name="MotifApp.PerWordParserWorkLimitAccessibleName" xml:space="preserve">
+    <value>Per-word parser work limit</value>
+    <comment>Accessible name (read aloud by screen readers) of a control on the Timing page: "Per-word parser work limit". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.ReRunChosenWordsAccessibleName" xml:space="preserve">
     <value>Re-run chosen words</value>
@@ -2952,7 +2952,7 @@ Never included unless you tick it in the preview: local details, which may conta
     <comment>Accessible name (read aloud by screen readers) of a control on the Timing page: "What every share is of". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.ShareOfTotalWordTimeByKindAccessibleName" xml:space="preserve">
-    <value>Share of total work steps by kind</value>
+    <value>Share of total parser work by kind</value>
     <comment>Accessible name (read aloud by screen readers) of a control on the Timing page: "Share of total word time by kind". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.TimingByKindAccessibleName" xml:space="preserve">
@@ -3833,19 +3833,19 @@ Never included unless you tick it in the preview: local details, which may conta
   </data>
   <data name="MotifApp.WorkByRule" xml:space="preserve">
     <value>Work by Rule</value>
-    <comment>Heading on a word card above how many parser work steps each grammar rule took for the word.</comment>
+    <comment>Heading on a word card above how many parser work each grammar rule took for the word.</comment>
   </data>
   <data name="MotifApp.WordCardOtherRules" xml:space="preserve">
     <value>Other rules</value>
     <comment>Row on a word card's work-by-rule list that adds up the rules too small to be listed one by one.</comment>
   </data>
-  <data name="MotifApp.WordCardWorkStepsNotRecorded" xml:space="preserve">
-    <value>Work steps not recorded for this word</value>
-    <comment>Line on a word card, in place of the shares of work by rule, when the parser recorded no work steps for the word.</comment>
+  <data name="MotifApp.WordCardParserWorkNotRecorded" xml:space="preserve">
+    <value>Parser work not recorded for this word</value>
+    <comment>Line on a word card, in place of the shares of work by rule, when the parser recorded no parser work for the word.</comment>
   </data>
   <data name="MotifApp.WordCardWorkByRuleNotRecorded" xml:space="preserve">
-    <value>Work steps by rule not recorded for this word</value>
-    <comment>Line on a word card, in place of the shares of work by rule, when the word has a work step total but the parser did not keep it by rule.</comment>
+    <value>Parser work by rule not recorded for this word</value>
+    <comment>Line on a word card, in place of the shares of work by rule, when the word has a parser work total but the parser did not keep it by rule.</comment>
   </data>
   <data name="MotifApp.WhatToDo" xml:space="preserve">
     <value>What to Do</value>
@@ -3904,7 +3904,7 @@ Never included unless you tick it in the preview: local details, which may conta
     <comment>Status chip on a word strip token: the change for this word is staged (queued) but not yet applied to FieldWorks.</comment>
   </data>
   <data name="MotifApp.TimingNoTimesRecorded" xml:space="preserve">
-    <value>No work steps were recorded for these words.</value>
+    <value>No parser work was recorded for these words.</value>
     <comment>Shown on the Timing page where the numbers would be when no parser work was recorded.</comment>
   </data>
   <data name="MotifApp.TimingFocusAllWords" xml:space="preserve">
@@ -3933,43 +3933,43 @@ Never included unless you tick it in the preview: local details, which may conta
   </data>
   <data name="MotifApp.TimingStoredSummaryFormat" xml:space="preserve">
     <value>{0} words · median {1} · 95th percentile {2}</value>
-    <comment>One line over the stored timing: {0} is the word count, {1} the median work steps per word and {2} the 95th percentile; the dots are separators.</comment>
+    <comment>One line over the stored timing: {0} is the word count, {1} the median parser work per word and {2} the 95th percentile; the dots are separators.</comment>
   </data>
   <data name="MotifApp.TimingNoTimesRecordedSelected" xml:space="preserve">
-    <value>No work steps were recorded for these selected words.</value>
-    <comment>Shown on the Timing page when words were chosen by hand or from another page and none has recorded work steps.</comment>
+    <value>No parser work was recorded for these selected words.</value>
+    <comment>Shown on the Timing page when words were chosen by hand or from another page and none has recorded parser work.</comment>
   </data>
   <data name="MotifApp.TimingNoWordsStopped" xml:space="preserve">
     <value>No words stopped at the work limit.</value>
     <comment>Shown on the Timing page when the group of words stopped at the work limit is empty.</comment>
   </data>
   <data name="MotifApp.TimingNoWordsInGroup" xml:space="preserve">
-    <value>No words in this group have recorded work steps.</value>
-    <comment>Shown on the Timing page when the slowest-words group has no recorded work steps.</comment>
+    <value>No words in this group have recorded parser work.</value>
+    <comment>Shown on the Timing page when the slowest-words group has no recorded parser work.</comment>
   </data>
   <data name="MotifApp.TimingNoWordsInSelection" xml:space="preserve">
-    <value>No words in this selection have recorded work steps.</value>
-    <comment>Shown on the Timing page when the chosen words have no recorded work steps.</comment>
+    <value>No words in this selection have recorded parser work.</value>
+    <comment>Shown on the Timing page when the chosen words have no recorded parser work.</comment>
   </data>
   <data name="MotifApp.TimingCaptionSomeOfAllFormat" xml:space="preserve">
     <value>for {0} of the {1} words</value>
-    <comment>Caption under the total work steps when only some of all the words recorded work steps; {0} is how many recorded work steps and {1} how many words there are. Plural of the second number cannot be expressed in a plural pattern.</comment>
+    <comment>Caption under the total parser work when only some of all the words recorded parser work; {0} is how many recorded parser work and {1} how many words there are. Plural of the second number cannot be expressed in a plural pattern.</comment>
   </data>
   <data name="MotifApp.TimingCaptionSomeOfTheseFormat" xml:space="preserve">
     <value>for {0} of these {1} words</value>
-    <comment>Caption under the total work steps when only some of a chosen group of words recorded work steps; {0} is how many recorded work steps and {1} the size of the group.</comment>
+    <comment>Caption under the total parser work when only some of a chosen group of words recorded parser work; {0} is how many recorded parser work and {1} the size of the group.</comment>
   </data>
   <data name="MotifApp.TimingCaptionOneWord" xml:space="preserve">
     <value>for 1 word</value>
-    <comment>Caption under the total work steps when exactly one word recorded work steps.</comment>
+    <comment>Caption under the total parser work when exactly one word recorded parser work.</comment>
   </data>
   <data name="MotifApp.TimingCaptionAllWordsFormat" xml:space="preserve">
     <value>for all {0} words</value>
-    <comment>Caption under the total work steps when every word recorded work steps; {0} is how many.</comment>
+    <comment>Caption under the total parser work when every word recorded parser work; {0} is how many.</comment>
   </data>
   <data name="MotifApp.TimingCaptionTheseWordsFormat" xml:space="preserve">
     <value>for these {0} words</value>
-    <comment>Caption under the total work steps when every word of a chosen group recorded work steps; {0} is how many.</comment>
+    <comment>Caption under the total parser work when every word of a chosen group recorded parser work; {0} is how many.</comment>
   </data>
   <data name="MotifApp.TimingStoppedCaption" xml:space="preserve">
     <value>stopped at the work limit</value>
@@ -3992,11 +3992,11 @@ Never included unless you tick it in the preview: local details, which may conta
     <comment>Label of the All filter button on the Timing page; {0} is the number of words.</comment>
   </data>
   <data name="MotifApp.TimingAdviceBothLimits" xml:space="preserve">
-    <value>Stopped at the work limit and at the time safety net · Raise the analysis attempt limit under More or increase Seconds per word.</value>
+    <value>Stopped at the work limit and at the time safety net · Raise the parser work limit under More or increase Seconds per word.</value>
     <comment>Advice on the Timing page when some words stopped at the work limit and others at the time safety net. More and Seconds per Word name controls on the page.</comment>
   </data>
   <data name="MotifApp.TimingAdviceSearchLimit" xml:space="preserve">
-    <value>Stopped at the work limit · Raise the analysis attempt limit under More.</value>
+    <value>Stopped at the work limit · Raise the parser work limit under More.</value>
     <comment>Advice on the Timing page when words stopped at the work limit. More names a control on the page.</comment>
   </data>
   <data name="MotifApp.TimingAdviceTimeLimit" xml:space="preserve">
@@ -4013,11 +4013,11 @@ Never included unless you tick it in the preview: local details, which may conta
   </data>
   <data name="MotifApp.TimingPhraseSomeOfAllFormat" xml:space="preserve">
     <value>{0} of the {1} words</value>
-    <comment>Noun phrase naming the measured words, used in a sentence about shares; {0} is how many recorded work steps and {1} how many words there are.</comment>
+    <comment>Noun phrase naming the measured words, used in a sentence about shares; {0} is how many recorded parser work and {1} how many words there are.</comment>
   </data>
   <data name="MotifApp.TimingPhraseSomeOfTheseFormat" xml:space="preserve">
     <value>{0} of these {1} words</value>
-    <comment>Noun phrase naming the measured words of a chosen group, used in a sentence about shares; {0} is how many recorded work steps and {1} the size of the group.</comment>
+    <comment>Noun phrase naming the measured words of a chosen group, used in a sentence about shares; {0} is how many recorded parser work and {1} the size of the group.</comment>
   </data>
   <data name="MotifApp.TimingPhraseThisWord" xml:space="preserve">
     <value>this word</value>
@@ -4037,47 +4037,47 @@ Never included unless you tick it in the preview: local details, which may conta
   </data>
   <data name="MotifApp.TimingShareHeaderFormat" xml:space="preserve">
     <value>SHARE OF {0}</value>
-    <comment>Uppercase column heading of the by-rule table; {0} is the total work steps, with their unit, that the shares divide.</comment>
+    <comment>Uppercase column heading of the by-rule table; {0} is the total parser work, with their unit, that the shares divide.</comment>
   </data>
   <data name="MotifApp.TimingShareHeader" xml:space="preserve">
     <value>SHARE</value>
     <comment>Uppercase column heading of the by-rule table when there is no total.</comment>
   </data>
   <data name="MotifApp.TimingNoSharesShown" xml:space="preserve">
-    <value>No work steps were recorded for these words, so no shares are shown.</value>
-    <comment>Shown on the Timing page when no word has recorded work steps.</comment>
+    <value>No parser work was recorded for these words, so no shares are shown.</value>
+    <comment>Shown on the Timing page when no word has recorded parser work.</comment>
   </data>
   <data name="MotifApp.TimingWorkByObjectUnavailable" xml:space="preserve">
-    <value>Work steps by kind and by rule were not kept for these words, so no shares are shown.</value>
-    <comment>Shown on the Timing page, in place of the sentence saying what every share divides, when the work steps were not kept by kind and rule for a chosen part of a very large run, which parsing the words again would not change.</comment>
+    <value>Parser work by kind and by rule was not kept for these words, so no shares are shown.</value>
+    <comment>Shown on the Timing page, in place of the sentence saying what every share divides, when the parser work were not kept by kind and rule for a chosen part of a very large run, which parsing the words again would not change.</comment>
   </data>
   <data name="MotifApp.TimingWorkByObjectNotKept" xml:space="preserve">
-    <value>Work steps by kind and by rule were not kept for these words, so no shares are shown. Parse all words again to keep them.</value>
-    <comment>Shown on the Timing page, in place of the sentence saying what every share divides, when the whole run is shown but its work steps were not kept by kind and rule: a run stored before they were kept, or a parser that recorded none by object.</comment>
+    <value>Parser work by kind and by rule was not kept for these words, so no shares are shown. Parse all words again to keep them.</value>
+    <comment>Shown on the Timing page, in place of the sentence saying what every share divides, when the whole run is shown but its parser work were not kept by kind and rule: a run stored before they were kept, or a parser that recorded none by object.</comment>
   </data>
   <data name="MotifApp.TimingShareOfFormat" xml:space="preserve">
     <value>Every share is of the {0} {1} needed to parse.</value>
-    <comment>Explains what every share on the Timing page divides; {0} is the total work steps with their unit and {1} a noun phrase naming the measured words.</comment>
+    <comment>Explains what every share on the Timing page divides; {0} is the total parser work with their unit and {1} a noun phrase naming the measured words.</comment>
   </data>
   <data name="MotifApp.TimingShareOfOneMissingFormat" xml:space="preserve">
-    <value>Every share is of the {0} {1} needed to parse; 1 has no work steps recorded.</value>
-    <comment>Like the sentence saying what every share divides, for when one word has no work steps recorded; {0} is the total work steps with their unit and {1} a noun phrase naming the measured words.</comment>
+    <value>Every share is of the {0} {1} needed to parse; 1 has no parser work recorded.</value>
+    <comment>Like the sentence saying what every share divides, for when one word has no parser work recorded; {0} is the total parser work with their unit and {1} a noun phrase naming the measured words.</comment>
   </data>
   <data name="MotifApp.TimingShareOfManyMissingFormat" xml:space="preserve">
-    <value>Every share is of the {0} {1} needed to parse; {2} have no work steps recorded.</value>
-    <comment>Like the sentence saying what every share divides, for when several words have no work steps recorded; {0} is the total work steps with their unit, {1} a noun phrase naming the measured words and {2} how many words have no work steps recorded.</comment>
+    <value>Every share is of the {0} {1} needed to parse; {2} have no parser work recorded.</value>
+    <comment>Like the sentence saying what every share divides, for when several words have no parser work recorded; {0} is the total parser work with their unit, {1} a noun phrase naming the measured words and {2} how many words have no parser work recorded.</comment>
   </data>
   <data name="MotifApp.TimingNotAttributedNotRecorded" xml:space="preserve">
     <value>Not attributed: Not recorded.</value>
-    <comment>Line under the timing shares when the parser did not record the work steps it did not attribute to an object.</comment>
+    <comment>Line under the timing shares when the parser did not record the parser work it did not attribute to an object.</comment>
   </data>
   <data name="MotifApp.TimingNotAttributedWithShareFormat" xml:space="preserve">
     <value>Not attributed: {0} ({1}).</value>
-    <comment>Line under the timing shares giving the work steps the parser recorded without a named object; {0} is the work with its unit and {1} its percentage of the total.</comment>
+    <comment>Line under the timing shares giving the parser work the parser recorded without a named object; {0} is the work with its unit and {1} its percentage of the total.</comment>
   </data>
   <data name="MotifApp.TimingNotAttributedFormat" xml:space="preserve">
     <value>Not attributed: {0}.</value>
-    <comment>Line under the timing shares giving the work steps the parser recorded without a named object; {0} is the work with its unit.</comment>
+    <comment>Line under the timing shares giving the parser work the parser recorded without a named object; {0} is the work with its unit.</comment>
   </data>
   <data name="MotifApp.TimingNoStoredTimingForWords" xml:space="preserve">
     <value>No stored timing for these words</value>
@@ -4085,11 +4085,11 @@ Never included unless you tick it in the preview: local details, which may conta
   </data>
   <data name="MotifApp.TimingScopeFormat" xml:space="preserve">
     <value>Where the Work Went, for These {0} Words: by Kind of Rule</value>
-    <comment>Heading of the Timing by-kind section; {0} is how many words. The work is counted in parser work steps.</comment>
+    <comment>Heading of the Timing by-kind section; {0} is how many words. The work is counted in parser work.</comment>
   </data>
   <data name="MotifApp.TimingPercentileSummaryFormat" xml:space="preserve">
     <value>Median {0} · 95th percentile {1}</value>
-    <comment>Summary line of the spread of work steps per word; {0} is the median and {1} the 95th percentile; the dot is a separator.</comment>
+    <comment>Summary line of the spread of parser work per word; {0} is the median and {1} the 95th percentile; the dot is a separator.</comment>
   </data>
   <data name="MotifApp.TimingNotRecordedLower" xml:space="preserve">
     <value>not recorded</value>
@@ -4097,7 +4097,7 @@ Never included unless you tick it in the preview: local details, which may conta
   </data>
   <data name="MotifApp.TimingRuleTimeOfFormat" xml:space="preserve">
     <value>{0} of its {1}</value>
-    <comment>Under a word on the Timing page: the work steps one rule did and the word's whole work steps; {0} is the rule's work with its unit and {1} the word's whole work with its unit.</comment>
+    <comment>Under a word on the Timing page: the parser work one rule did and the word's whole parser work; {0} is the rule's work with its unit and {1} the word's whole work with its unit.</comment>
   </data>
   <data name="MotifApp.TimingRuleWordsTitleFormat" xml:space="preserve">
     <value>Words Where {0} Did the Most Work</value>
@@ -4117,11 +4117,11 @@ Never included unless you tick it in the preview: local details, which may conta
   </data>
   <data name="MotifApp.TimingRuleSummaryShareFormat" xml:space="preserve">
     <value>{0} · {1} of {2}' {3} · recorded in {4}</value>
-    <comment>Rule card line: {0} is the rule's work steps, {1} its percentage, {2} a noun phrase naming the measured words (which this text makes possessive), {3} the total work steps and {4} how many words the rule was recorded in; the dots are separators.</comment>
+    <comment>Rule card line: {0} is the rule's parser work, {1} its percentage, {2} a noun phrase naming the measured words (which this text makes possessive), {3} the total parser work and {4} how many words the rule was recorded in; the dots are separators.</comment>
   </data>
   <data name="MotifApp.TimingRuleSummaryFormat" xml:space="preserve">
     <value>{0} · recorded in {1}</value>
-    <comment>Rule card line when the rule has no share; {0} is the rule's work steps and {1} how many words the rule was recorded in; the dot is a separator.</comment>
+    <comment>Rule card line when the rule has no share; {0} is the rule's parser work and {1} how many words the rule was recorded in; the dot is a separator.</comment>
   </data>
   <data name="MotifApp.TimingRecordedInWordsPattern" xml:space="preserve">
     <value>{0, plural, one {# word} other {# words}}</value>
@@ -4176,7 +4176,7 @@ Never included unless you tick it in the preview: local details, which may conta
     <comment>Progress of re-running words on the Timing page; {0} is how many are done, {1} how many there are and {2} the word being parsed; the dot is a separator.</comment>
   </data>
   <data name="MotifApp.TimingRerunInvalidLimits" xml:space="preserve">
-    <value>Enter a positive per-word time and a positive whole-number analysis attempt limit.</value>
+    <value>Enter a positive per-word time and a positive whole-number parser work limit.</value>
     <comment>Message when the re-run limits are not valid numbers.</comment>
   </data>
   <data name="MotifApp.TimingRerunComplete" xml:space="preserve">
@@ -4713,16 +4713,16 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <value>Attempts</value>
     <comment>Column heading of the statistics table for a grammar object: how many times it was tried.</comment>
   </data>
-  <data name="MotifApp.StatsHeaderWorkSteps" xml:space="preserve">
-    <value>Work Steps</value>
-    <comment>Column heading of the statistics table for a word: the parser work steps spent on the word. A work step is one unit of parser work; the count does not depend on how fast the computer is.</comment>
+  <data name="MotifApp.StatsHeaderParserWork" xml:space="preserve">
+    <value>Parser Work</value>
+    <comment>Column heading of the statistics table for a word: the parser work spent on the word. A parser work is one unit of parser work; the count does not depend on how fast the computer is.</comment>
   </data>
   <data name="MotifApp.StatsShadingWord" xml:space="preserve">
-    <value>Shading: darker is larger, against the largest in its column. Analysis attempts and work steps are the parser's own record of the parse; whether a word finished comes from the last parse.</value>
+    <value>Shading: darker is larger, against the largest in its column. Analysis attempts and parser work are the parser's own record of the parse; whether a word finished comes from the last parse.</value>
     <comment>Note under the statistics table for words, explaining the shading.</comment>
   </data>
   <data name="MotifApp.StatsShadingObject" xml:space="preserve">
-    <value>Shading: darker is larger. An attempt is a different event for each kind (a rule tried, an entry matched, a root looked up), so attempts are shaded only against rows of their own kind. Work steps for each kind of rule and for each rule are in the tables above.</value>
+    <value>Shading: darker is larger. An attempt is a different event for each kind (a rule tried, an entry matched, a root looked up), so attempts are shaded only against rows of their own kind. Parser work for each kind of rule and for each rule are in the tables above.</value>
     <comment>Note under the statistics table for grammar objects, explaining the shading and where the parser work for each rule is shown.</comment>
   </data>
   <data name="MotifApp.StatsScopeObjectFormat" xml:space="preserve">
@@ -5111,7 +5111,7 @@ Motif starts a check automatically when this project opens. Use Reload to read a
   </data>
   <data name="MotifApp.TryWordEarlierSourceWithWordFormat" xml:space="preserve">
     <value>Not from this traced search. In that parse {0} took {1}; each rule's work covers that parse's whole search for the word, including attempts that stopped.</value>
-    <comment>Note over earlier rule work on Try a Word; {0} is the word and {1} is the work-step count.</comment>
+    <comment>Note over earlier rule work on Try a Word; {0} is the word and {1} is the parser work count.</comment>
   </data>
   <data name="MotifApp.TryWordEarlierSourceFormat" xml:space="preserve">
     <value>Not from this traced search. Each rule's work covers that parse's whole search for {0}, including attempts that stopped.</value>
@@ -5119,7 +5119,7 @@ Motif starts a check automatically when this project opens. Use Reload to read a
   </data>
   <data name="MotifApp.TryWordShareOfFormat" xml:space="preserve">
     <value>Share of {0}</value>
-    <comment>Column heading of the earlier rule times: the share of the word work; {0} is the total work steps.</comment>
+    <comment>Column heading of the earlier rule times: the share of the word work; {0} is the total parser work.</comment>
   </data>
   <data name="MotifApp.TryWordOpinionCountFormat" xml:space="preserve">
     <value>{0} {1}</value>
@@ -5411,7 +5411,7 @@ Motif starts a check automatically when this project opens. Use Reload to read a
   </data>
   <data name="MotifApp.ProgressSlowestFormat" xml:space="preserve">
     <value>Slowest so far: {0} · {1}</value>
-    <comment>Parse progress: the slowest word so far; {0} is the word and {1} its parser work steps with their unit; the dot is a separator.</comment>
+    <comment>Parse progress: the slowest word so far; {0} is the word and {1} its parser work with their unit; the dot is a separator.</comment>
   </data>
   <data name="MotifApp.ProgressFinishing" xml:space="preserve">
     <value>All words have been parsed; finishing the Assessment...</value>
@@ -5519,7 +5519,7 @@ Motif starts a check automatically when this project opens. Use Reload to read a
   </data>
   <data name="MotifApp.ProgressStoppedWordFormat" xml:space="preserve">
     <value>{0} · {1} · {2}</value>
-    <comment>One stopped word in the parse progress; {0} is the word, {1} why it stopped and {2} its parser work steps with their unit; the dots are separators.</comment>
+    <comment>One stopped word in the parse progress; {0} is the word, {1} why it stopped and {2} its parser work with their unit; the dots are separators.</comment>
   </data>
   <data name="MotifApp.ProgressTimedOut" xml:space="preserve">
     <value>Stopped at the time safety net</value>
@@ -6929,19 +6929,19 @@ Motif starts a check automatically when this project opens. Use Reload to read a
   </data>
   <data name="MotifApp.OverviewSpeedWordsPattern" xml:space="preserve">
     <value>{0, plural, one {# word} other {# words}}</value>
-    <comment>Count sentence on the Overview Speed tile: how many words PanGloss counted work steps for. # is the count.</comment>
+    <comment>Count sentence on the Overview Speed tile: how many words PanGloss counted parser work for. # is the count.</comment>
   </data>
   <data name="MotifApp.OverviewSpeedMainFormat" xml:space="preserve">
     <value>{0} · {1} in total</value>
-    <comment>Headline of the Overview Speed tile. {0} is the count of words the parser counted work for, such as "142 words"; {1} is the total of each word's parser work steps with their unit, such as "38,000 work steps".</comment>
+    <comment>Headline of the Overview Speed tile. {0} is the count of words the parser counted work for, such as "142 words"; {1} is the total of each word's parser work with their unit, such as "38,000 parser work".</comment>
   </data>
   <data name="MotifApp.OverviewSpeedNoTimes" xml:space="preserve">
-    <value>No work steps recorded</value>
-    <comment>Overview Speed tile headline when no parser work steps are stored.</comment>
+    <value>No parser work recorded</value>
+    <comment>Overview Speed tile headline when no parser work are stored.</comment>
   </data>
   <data name="MotifApp.OverviewSpeedMedianFormat" xml:space="preserve">
     <value>median {0} a word</value>
-    <comment>Overview Speed tile: the median parser work steps per word. {0} is a count with its unit, such as "64 work steps".</comment>
+    <comment>Overview Speed tile: the median parser work per word. {0} is a count with its unit, such as "64 parser work".</comment>
   </data>
   <data name="MotifApp.OverviewSpeedElapsedFormat" xml:space="preserve">
     <value>Took {0} on this computer</value>
@@ -6949,7 +6949,7 @@ Motif starts a check automatically when this project opens. Use Reload to read a
   </data>
   <data name="MotifApp.OverviewSpeedMedianWithPercentileFormat" xml:space="preserve">
     <value>median {0} a word · 95th percentile {1}</value>
-    <comment>Overview Speed tile: the median and 95th percentile parser work steps per word. {0} and {1} are counts with their unit, such as "64 work steps".</comment>
+    <comment>Overview Speed tile: the median and 95th percentile parser work per word. {0} and {1} are counts with their unit, such as "64 parser work".</comment>
   </data>
   <data name="MotifApp.OverviewSpeedStoppedPattern" xml:space="preserve">
     <value>{0, plural, one {# stopped at the work limit} other {# stopped at the work limit}}</value>
@@ -6957,15 +6957,15 @@ Motif starts a check automatically when this project opens. Use Reload to read a
   </data>
   <data name="MotifApp.OverviewSlowestSummaryFormat" xml:space="preserve">
     <value>Slowest: {0}</value>
-    <comment>Overview summary of the slowest words. {0} is the list of words with their parser work steps.</comment>
+    <comment>Overview summary of the slowest words. {0} is the list of words with their parser work.</comment>
   </data>
   <data name="MotifApp.OverviewSlowestWordFormat" xml:space="preserve">
     <value>{0} · {1}</value>
-    <comment>One slowest word in the Overview summary. {0} is the word; {1} is its parser work steps with their unit.</comment>
+    <comment>One slowest word in the Overview summary. {0} is the word; {1} is its parser work with their unit.</comment>
   </data>
   <data name="MotifApp.OverviewSlowestStoppedWordFormat" xml:space="preserve">
     <value>{0} Stopped · {1}</value>
-    <comment>One slowest word that stopped at the work limit. {0} is the word; {1} is its parser work steps with their unit. Stopped is the name of an outcome.</comment>
+    <comment>One slowest word that stopped at the work limit. {0} is the word; {1} is its parser work with their unit. Stopped is the name of an outcome.</comment>
   </data>
   <data name="MotifApp.TraceParsed" xml:space="preserve">
     <value>Parsed</value>
@@ -7009,22 +7009,22 @@ Motif starts a check automatically when this project opens. Use Reload to read a
   </data>
   <data name="MotifApp.TraceInParserFormat" xml:space="preserve">
     <value>{0} in the parser, {1}</value>
-    <comment>Try a Word trace summary part. {0} is the parser work as a count of work steps; {1} is the overall time sentence.</comment>
+    <comment>Try a Word trace summary part. {0} is the parser work as a count of parser work; {1} is the overall time sentence.</comment>
   </data>
   <data name="MotifApp.ParserWorkFormat" xml:space="preserve">
     <value>Parser: {0}</value>
-    <comment>Try a Word line giving the parser work. {0} is a count of work steps, such as 1,234 work steps.</comment>
+    <comment>Try a Word line giving the parser work. {0} is a count of parser work, such as 1,234 parser work.</comment>
   </data>
-  <data name="MotifApp.ParserWorkNotRecorded" xml:space="preserve">
+  <data name="MotifApp.TraceParserWorkNotRecorded" xml:space="preserve">
     <value>Parser work not recorded</value>
     <comment>Try a Word line shown when the trace did not record its parser work.</comment>
   </data>
-  <data name="MotifApp.WorkStepsPattern" xml:space="preserve">
-    <value>{0, plural, one {# work step} other {# work steps}}</value>
-    <comment>Count of parser work steps. # is the count.</comment>
+  <data name="MotifApp.ParserWorkPattern" xml:space="preserve">
+    <value>{0, plural, one {# parser work} other {# parser work}}</value>
+    <comment>Count of parser work. # is the count.</comment>
   </data>
-  <data name="MotifApp.WorkStepsNotRecorded" xml:space="preserve">
-    <value>work steps not recorded</value>
+  <data name="MotifApp.ParserWorkNotRecorded" xml:space="preserve">
+    <value>parser work not recorded</value>
     <comment>Summary fragment shown in place of a parser work count that the trace did not record.</comment>
   </data>
   <data name="MotifApp.DurationSecondsFormat" xml:space="preserve">
@@ -7137,7 +7137,7 @@ Motif starts a check automatically when this project opens. Use Reload to read a
   </data>
   <data name="MotifApp.OverviewStoppedWordsDetailFormat" xml:space="preserve">
     <value>{0} of {1} in total</value>
-    <comment>Detail line of the Overview Look First stopped-words row. {0} is the count of work steps those words used, without a unit; {1} is the total work steps of all the words, with their unit, such as "12,000 of 50,000 work steps in total".</comment>
+    <comment>Detail line of the Overview Look First stopped-words row. {0} is the count of parser work those words used, without a unit; {1} is the total parser work of all the words, with their unit, such as "12,000 of 50,000 parser work in total".</comment>
   </data>
   <data name="MotifApp.OverviewApprovedDifferentEntryPattern" xml:space="preserve">
     <value>{0, plural, one {# approved word is built from a different entry with the same form and gloss.} other {# approved words are built from a different entry with the same form and gloss.}}</value>
@@ -8019,9 +8019,9 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <value>Segments examined</value>
     <comment>Try a Word: heading for the count of shape segments examined by a parser category.</comment>
   </data>
-  <data name="MotifApp.TraceWorkStepsLabel" xml:space="preserve">
-    <value>Work steps</value>
-    <comment>Heading for parser work-budget reservations, measured in work steps.</comment>
+  <data name="MotifApp.TraceParserWorkLabel" xml:space="preserve">
+    <value>Parser work</value>
+    <comment>Heading for parser work-budget reservations, measured in parser work.</comment>
   </data>
   <data name="MotifApp.AssessBudgetLabel" xml:space="preserve"><value>Time Limit for the Whole Parse (seconds)</value><comment>Label in Parsing settings for the time allowed for the entire parse.</comment></data>
   <data name="MotifApp.AssessBudgetCaption" xml:space="preserve"><value>Stop the whole parse after this time. The default is one hour.</value><comment>Explains the whole-parse time limit on the Parsing settings page.</comment></data>
@@ -8524,8 +8524,8 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <comment>End of the Overview note sentence when the Proposal has no value for the named headlines.</comment>
   </data>
   <data name="MotifApp.OverviewProposalUnpairedNotComparable" xml:space="preserve">
-    <value>The work steps of the two tries cannot be compared.</value>
-    <comment>End of the Overview note sentence when both sides have work steps but they were measured in ways that cannot be compared.</comment>
+    <value>The parser work of the two tries cannot be compared.</value>
+    <comment>End of the Overview note sentence when both sides have parser work but they were measured in ways that cannot be compared.</comment>
   </data>
   <data name="MotifApp.OverviewProposalTodayOnlyNote" xml:space="preserve">
     <value>These are today's numbers only.</value>
@@ -8688,16 +8688,16 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <comment>The word for what the Warnings page shows, put into a note such as 'This page shows today's findings.' Lower case.</comment>
   </data>
   <data name="MotifApp.TimingProposalPairedNote" xml:space="preserve">
-    <value>The total word time, the median, the words stopped at the work limit and the work by kind read today's work steps, then the work steps with this Proposal, for the same words. The bar, the rule table, its times and everything else on this page are today's.</value>
-    <comment>Note on the Timing page while a Proposal is open and its work steps are shown beside today's.</comment>
+    <value>The total word time, the median, the words stopped at the work limit and the work by kind read today's parser work, then the parser work with this Proposal, for the same words. The bar, the rule table, its times and everything else on this page are today's.</value>
+    <comment>Note on the Timing page while a Proposal is open and its parser work are shown beside today's.</comment>
   </data>
   <data name="MotifApp.TimingProposalViewNote" xml:space="preserve">
-    <value>The total word time, the median, the words stopped at the work limit and the work by kind read the work steps with this Proposal. The rule table, its times and everything else on this page are today's.</value>
-    <comment>Note on the Timing page when the bar's view is Proposal and the Proposal has work steps.</comment>
+    <value>The total word time, the median, the words stopped at the work limit and the work by kind read the parser work with this Proposal. The rule table, its times and everything else on this page are today's.</value>
+    <comment>Note on the Timing page when the bar's view is Proposal and the Proposal has parser work.</comment>
   </data>
   <data name="MotifApp.TimingProposalStoppedOnlyNote" xml:space="preserve">
-    <value>Only the words stopped at the work limit are paired, over the same words. The work steps of the two tries cannot be compared, so the total word time, the median and the work by kind are today's. The bar, the rule table, its times and everything else on this page are today's.</value>
-    <comment>Note on the Timing page when the two sides cover the same words but their work steps cannot be compared.</comment>
+    <value>Only the words stopped at the work limit are paired, over the same words. The parser work of the two tries cannot be compared, so the total word time, the median and the work by kind are today's. The bar, the rule table, its times and everything else on this page are today's.</value>
+    <comment>Note on the Timing page when the two sides cover the same words but their parser work cannot be compared.</comment>
   </data>
   <data name="MotifApp.TimingNoneToday" xml:space="preserve">
     <value>None today</value>
@@ -8712,8 +8712,8 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <comment>Note on the Timing page when today's words and the open Proposal's differ for the chosen words, so no pair is shown.</comment>
   </data>
   <data name="MotifApp.TimingProposalViewNotComparableNote" xml:space="preserve">
-    <value>The work steps of the two tries cannot be compared, so the Proposal's total word time, median and work by kind are not shown; the words stopped at the work limit are the Proposal's. The rule table, its times and everything else on this page are today's.</value>
-    <comment>Note on the Timing page when the Proposal view cannot show work steps because the two tries cannot be compared.</comment>
+    <value>The parser work of the two tries cannot be compared, so the Proposal's total word time, median and work by kind are not shown; the words stopped at the work limit are the Proposal's. The rule table, its times and everything else on this page are today's.</value>
+    <comment>Note on the Timing page when the Proposal view cannot show parser work because the two tries cannot be compared.</comment>
   </data>
   <data name="MotifApp.WarningsGoneWithProposalStatus" xml:space="preserve">
     <value>Today's check has this finding and this Proposal's does not.</value>
@@ -8813,7 +8813,7 @@ Motif starts a check automatically when this project opens. Use Reload to read a
   </data>
   <data name="MotifApp.WordRowTimeWithProposalFormat" xml:space="preserve">
     <value>Time with this Proposal: {0}</value>
-    <comment>Spoken name of a word's time in the Proposal's view, where it is the Proposal's work and not today's; {0} is the work steps.</comment>
+    <comment>Spoken name of a word's time in the Proposal's view, where it is the Proposal's work and not today's; {0} is the parser work.</comment>
   </data>
   <data name="MotifApp.CompareWordsEitherSideFormat" xml:space="preserve">
     <value>{0} today or with this Proposal</value>
@@ -8968,12 +8968,12 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <comment>Plural pattern for the sidebar delta badge's spoken name on Warnings when the Proposal's grammar check has fewer findings; # is how many fewer.</comment>
   </data>
   <data name="MotifApp.PageDeltaWorkMoreFormat" xml:space="preserve">
-    <value>{0}% more work steps with this Proposal than today</value>
-    <comment>Format for the sidebar delta badge's spoken name on Timing when the Proposal costs more parser work steps for the same words; {0} is the whole-number percentage.</comment>
+    <value>{0}% more parser work with this Proposal than today</value>
+    <comment>Format for the sidebar delta badge's spoken name on Timing when the Proposal costs more parser work for the same words; {0} is the whole-number percentage.</comment>
   </data>
   <data name="MotifApp.PageDeltaWorkFewerFormat" xml:space="preserve">
-    <value>{0}% fewer work steps with this Proposal than today</value>
-    <comment>Format for the sidebar delta badge's spoken name on Timing when the Proposal costs fewer parser work steps for the same words; {0} is the whole-number percentage.</comment>
+    <value>{0}% fewer parser work with this Proposal than today</value>
+    <comment>Format for the sidebar delta badge's spoken name on Timing when the Proposal costs fewer parser work for the same words; {0} is the whole-number percentage.</comment>
   </data>
   <data name="MotifApp.PageDeltaPageNameFormat" xml:space="preserve">
     <value>{0}: {1}</value>

@@ -127,28 +127,28 @@
                 <Border Classes="settingsRow">
                 <Grid Classes="settingsRow" ColumnDefinitions="*,Auto">
                   <StackPanel Classes="settingsLabel">
-                    <views:CopyableTextBlock Classes="settingsLabelText" Text="{x:Static app:MotifAppStrings.StepLimitPerWordLabel}" />
-                    <views:CopyableTextBlock Classes="settingsCaption" Text="{x:Static app:MotifAppStrings.StepLimitDefaultCaption}"
+                    <views:CopyableTextBlock Classes="settingsLabelText" Text="{x:Static app:MotifAppStrings.ParserWorkLimitPerWordLabel}" />
+                    <views:CopyableTextBlock Classes="settingsCaption" Text="{x:Static app:MotifAppStrings.ParserWorkLimitDefaultCaption}"
                                TextWrapping="Wrap" />
                   </StackPanel>
-                  <NumericUpDown Grid.Column="1" Classes="settingsNumber" Classes.refused="{Binding HasStepLimitRefusal}"
-                                 Value="{Binding StepLimit}"
+                  <NumericUpDown Grid.Column="1" Classes="settingsNumber" Classes.refused="{Binding HasParserWorkLimitRefusal}"
+                                 Value="{Binding ParserWorkLimitValue}"
                                  Minimum="1" Increment="100000" FormatString="N0"
-                                 IsEnabled="{Binding !IsNoStepLimit}" LostFocus="OnParsingLimitLostFocus"
-                                 KeyDown="OnParsingLimitKeyDown" AutomationProperties.Name="{x:Static app:MotifAppStrings.StepLimitPerWord}" />
+                                 IsEnabled="{Binding !IsNoParserWorkLimit}" LostFocus="OnParsingLimitLostFocus"
+                                 KeyDown="OnParsingLimitKeyDown" AutomationProperties.Name="{x:Static app:MotifAppStrings.ParserWorkLimitPerWord}" />
                 </Grid>
                 </Border>
-                <views:CopyableTextBlock Classes="settingsRefusal" Text="{Binding StepLimitRefusal}"
-                           IsVisible="{Binding HasStepLimitRefusal}" TextWrapping="Wrap" />
-                <Button Classes="settingsLink" Content="{x:Static app:MotifAppStrings.ResetStepLimit}" Command="{Binding ResetStepLimitCommand}" IsEnabled="{Binding CanResetStepLimit}" AutomationProperties.Name="{x:Static app:MotifAppStrings.ResetStepLimitTo200000AccessibleName}" />
-                <CheckBox Classes="settingsCheck" Content="{x:Static app:MotifAppStrings.NoStepLimit}" IsChecked="{Binding IsNoStepLimit}"
-                          Click="OnNoStepLimitClick"
-                          AutomationProperties.Name="{x:Static app:MotifAppStrings.NoStepLimitAccessibleName}" />
+                <views:CopyableTextBlock Classes="settingsRefusal" Text="{Binding ParserWorkLimitRefusal}"
+                           IsVisible="{Binding HasParserWorkLimitRefusal}" TextWrapping="Wrap" />
+                <Button Classes="settingsLink" Content="{x:Static app:MotifAppStrings.ResetParserWorkLimit}" Command="{Binding ResetParserWorkLimitCommand}" IsEnabled="{Binding CanResetParserWorkLimit}" AutomationProperties.Name="{x:Static app:MotifAppStrings.ResetParserWorkLimitTo20000000AccessibleName}" />
+                <CheckBox Classes="settingsCheck" Content="{x:Static app:MotifAppStrings.NoParserWorkLimit}" IsChecked="{Binding IsNoParserWorkLimit}"
+                          Click="OnNoParserWorkLimitClick"
+                          AutomationProperties.Name="{x:Static app:MotifAppStrings.NoParserWorkLimitAccessibleName}" />
                 <Border Classes="settingsRow">
                 <Grid Classes="settingsRow" ColumnDefinitions="*,Auto">
                   <StackPanel Classes="settingsLabel">
                     <views:CopyableTextBlock Classes="settingsLabelText" Text="{x:Static app:MotifAppStrings.TimeLimitPerWord}" TextWrapping="Wrap" />
-                    <views:CopyableTextBlock Classes="settingsCaption" Text="{x:Static app:MotifAppStrings.TimeLimitFollowsStepLimitCaption}"
+                    <views:CopyableTextBlock Classes="settingsCaption" Text="{x:Static app:MotifAppStrings.TimeLimitFollowsParserWorkLimitCaption}"
                                TextWrapping="Wrap" />
                   </StackPanel>
                   <Grid Grid.Column="1" ColumnDefinitions="Auto,Auto"
@@ -164,7 +164,7 @@
                   </Grid>
                 </Grid>
                 </Border>
-                <views:CopyableTextBlock Classes="settingsCaption" Text="{Binding StepLimitEstimateText}" TextWrapping="Wrap" />
+                <views:CopyableTextBlock Classes="settingsCaption" Text="{Binding ParserWorkLimitEstimateText}" TextWrapping="Wrap" />
                 <views:CopyableTextBlock Classes="settingsRefusal" Text="{Binding TimeLimitRefusal}"
                            IsVisible="{Binding HasTimeLimitRefusal}" TextWrapping="Wrap" />
               </StackPanel>

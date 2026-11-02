@@ -66,7 +66,7 @@ public static class AutomationIds
     public const string OverviewSpeed = "motif-overview-speed";
     public const string OverviewTextCoverage = "motif-overview-text-coverage";
     public const string SetupAddWords = "motif-setup-add-words";
-    public const string SetupStepLimit = "motif-setup-step-limit";
+    public const string SetupParserWorkLimit = "motif-setup-parser-work-limit";
     public const string SetupSelectAllTexts = "motif-setup-select-all-texts";
     public const string SetupClearTexts = "motif-setup-clear-texts";
     public const string SelectAllTexts = "motif-select-all-texts";

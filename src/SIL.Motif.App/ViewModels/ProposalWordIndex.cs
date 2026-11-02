@@ -5,10 +5,10 @@ namespace SIL.Motif.App.ViewModels;
 
 /// <summary>What the Proposal's side keeps of one Trial word: its matrix cell, its work and whether it reads steps.</summary>
 /// <param name="Cell">The packed matrix cell, see <see cref="ProposalWordIndex.Pack"/>.</param>
-/// <param name="WorkSteps">The parser work steps the Trial recorded, or null when it recorded none.</param>
+/// <param name="ParserWork">The parser work the Trial recorded, or null when it recorded none.</param>
 /// <param name="ElapsedMs">The time the Trial recorded, or null; only a tie-break for the slowest sort.</param>
 /// <param name="HidesSteps">Whether the word was refused or not parsed, so there are no steps to read.</param>
-internal readonly record struct ProposalWordFacts(byte Cell, long? WorkSteps, int? ElapsedMs, bool HidesSteps);
+internal readonly record struct ProposalWordFacts(byte Cell, long? ParserWork, int? ElapsedMs, bool HidesSteps);
 
 /// <summary>
 /// The Trial's words in spelling order with, for each, the values the word list reads from the Proposal's side; no
@@ -82,7 +82,7 @@ internal sealed class ProposalWordIndex
             word.Word.CopyTo(0, chars, at, word.Word.Length);
             at += word.Word.Length;
             sortedCells[index] = cells[order[index]];
-            steps[index] = word.WorkSteps ?? -1;
+            steps[index] = word.ParserWork ?? -1;
             elapsed[index] = word.ElapsedMs ?? -1;
             flags[index] = hidesSteps is not null && hidesSteps[order[index]] ? HidesStepsFlag : (byte)0;
         }

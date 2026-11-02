@@ -17,7 +17,7 @@ public static class TrialWorkComparison
             baseline.BaselineToken == trial.BaselineToken && before is not null && after is not null &&
             !string.IsNullOrWhiteSpace(before.ExecutableBytesSha256) &&
             before.ExecutableBytesSha256 == after.ExecutableBytesSha256 &&
-            before.PerWordStepLimit == after.PerWordStepLimit;
+            before.PerWordParserWorkLimit == after.PerWordParserWorkLimit;
         return Compare(compatible ? baseline!.Words ?? [] : [], trial.Words ?? []);
     }
 
@@ -47,18 +47,18 @@ public static class TrialWorkComparison
                 StopLimit.From(pair.Before.Outcome, pair.Before.Morphology) is not null ||
                 StopLimit.From(pair.After.Outcome, pair.After.Morphology) is not null ||
                 pair.Before.Outcome is "skipped" || pair.After.Outcome is "skipped" ||
-                pair.Before.WorkSteps is null or < 0 || pair.After.WorkSteps is null or < 0))
+                pair.Before.ParserWork is null or < 0 || pair.After.ParserWork is null or < 0))
             return WithStops(new TrialWork(trial.Count, null, null, null, [], workStops, timeStops));
 
-        decimal oldTotal = pairs.Sum(pair => (decimal)pair.Before!.WorkSteps!.Value);
-        decimal newTotal = pairs.Sum(pair => (decimal)pair.After.WorkSteps!.Value);
+        decimal oldTotal = pairs.Sum(pair => (decimal)pair.Before!.ParserWork!.Value);
+        decimal newTotal = pairs.Sum(pair => (decimal)pair.After.ParserWork!.Value);
         if (oldTotal > long.MaxValue || newTotal > long.MaxValue)
             return WithStops(new TrialWork(trial.Count, null, null, null, [], workStops, timeStops));
-        var increased = pairs.Where(pair => pair.Before!.WorkSteps > 0 &&
-                (decimal)pair.After.WorkSteps!.Value > (decimal)pair.Before.WorkSteps.Value * 1.05m)
-            .Select(pair => new TrialWorkIncrease(pair.After.Word, pair.Before!.WorkSteps!.Value,
-                pair.After.WorkSteps!.Value, (double)(100m * (pair.After.WorkSteps.Value - (decimal)pair.Before.WorkSteps.Value) /
-                    pair.Before.WorkSteps.Value)))
+        var increased = pairs.Where(pair => pair.Before!.ParserWork > 0 &&
+                (decimal)pair.After.ParserWork!.Value > (decimal)pair.Before.ParserWork.Value * 1.05m)
+            .Select(pair => new TrialWorkIncrease(pair.After.Word, pair.Before!.ParserWork!.Value,
+                pair.After.ParserWork!.Value, (double)(100m * (pair.After.ParserWork.Value - (decimal)pair.Before.ParserWork.Value) /
+                    pair.Before.ParserWork.Value)))
             .OrderByDescending(word => word.PercentMore).ThenBy(word => word.Word, StringComparer.Ordinal).Take(5).ToArray();
         return WithStops(new TrialWork(trial.Count, (long)oldTotal, (long)newTotal,
             oldTotal == 0 ? null : (double)(100m * (newTotal - oldTotal) / oldTotal), increased, workStops, timeStops));

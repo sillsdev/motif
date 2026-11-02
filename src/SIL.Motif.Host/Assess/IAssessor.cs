@@ -75,7 +75,7 @@ public abstract record AssessmentScope
     {
         public Words(
             IReadOnlyList<string> words, IReadOnlyList<AssessmentKind> collect, TimeSpan? perWordLimit,
-            StepCap? perWordStepLimit = null)
+            ParserWorkLimit? perWordParserWorkLimit = null)
         {
             ArgumentNullException.ThrowIfNull(words);
             ArgumentNullException.ThrowIfNull(collect);
@@ -85,7 +85,7 @@ public abstract record AssessmentScope
             WordForms = words;
             Collect = collect;
             PerWordLimit = perWordLimit;
-            PerWordStepLimit = perWordStepLimit ?? StepCap.Default;
+            PerWordParserWorkLimit = perWordParserWorkLimit ?? ParserWorkLimit.Default;
         }
 
         /// <summary>
@@ -109,11 +109,11 @@ public abstract record AssessmentScope
         /// </summary>
         public IReadOnlyList<AssessmentKind> Collect { get; }
 
-        /// <summary>The per-word time cap, or null for no time cap; the analysis-attempt cap remains independently applicable.</summary>
+        /// <summary>The per-word time cap, or null for no time cap; the parser work limit remains independently applicable.</summary>
         public TimeSpan? PerWordLimit { get; }
 
-        /// <summary>The per-word analysis-attempt cap, or an explicit request for no attempt cap.</summary>
-        public StepCap PerWordStepLimit { get; }
+        /// <summary>The per-word parser work limit, or an explicit request for none.</summary>
+        public ParserWorkLimit PerWordParserWorkLimit { get; }
     }
 
     public sealed record PhonologyExamples(PhonologyRevisionReference Revision,

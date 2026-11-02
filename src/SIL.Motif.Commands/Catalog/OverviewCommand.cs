@@ -119,8 +119,8 @@ public static class OverviewCommand
             var timing = TimingAggregation.SummarizeWords(assessedWords, evidence.EffectiveObjectTimings) with
             {
                 ObjectTimingDetail = evidence.TimingDetail,
-                WorkStepAggregates = evidence.TimingDetail.IsComplete
-                    ? TimingAggregation.WorkStepsByObject(evidence.EffectiveObjectTimings, assessedWords) : [],
+                ParserWorkAggregates = evidence.TimingDetail.IsComplete
+                    ? TimingAggregation.ParserWorkByObject(evidence.EffectiveObjectTimings, assessedWords) : [],
             };
             if (!evidence.TimingDetail.IsComplete)
             {
@@ -132,7 +132,7 @@ public static class OverviewCommand
                     timing = timing with
                     {
                         Kinds = projected.Aggregates, Attribution = projected.Attribution,
-                        WorkStepAggregates = TimingAggregation.WorkStepsFromTotals(assessedWords, totals,
+                        ParserWorkAggregates = TimingAggregation.ParserWorkFromTotals(assessedWords, totals,
                             components[0].Invocation?.InvocationId is { } invocation ? "invocation:" + invocation : null),
                     };
                 }
@@ -389,7 +389,7 @@ internal static class OverviewLookFirstBuilder
         var stoppedTimes = measuredWords.Where(word => stoppedNames.Contains(word.Word))
             .Select(TimingAggregation.WordTimeMs).Where(time => time is not null).Select(time => time!.Value).ToArray();
         var stoppedWork = measuredWords.Where(word => stoppedNames.Contains(word.Word))
-            .Select(word => word.WorkSteps).OfType<long>().ToArray();
+            .Select(word => word.ParserWork).OfType<long>().ToArray();
         var namedIds = (grammarCheck?.Findings ?? []).SelectMany(finding => finding.Subject)
             .Where(part => part.Reach is not null).SelectMany(part => part.Reach!.AllomorphIds
                 .Concat(part.Reach.GrammaticalInfoIds)).Select(IdKey).ToHashSet(StringComparer.Ordinal);
@@ -413,7 +413,7 @@ internal static class OverviewLookFirstBuilder
                 ? stoppedTimes.Sum() : null,
             candidateDifferent)
         {
-            StepLimitedWordWorkSteps = stoppedWork.Length == stopped.Length && stopped.Length > 0 ? stoppedWork.Sum() : null,
+            ParserWorkLimitedWordParserWork = stoppedWork.Length == stopped.Length && stopped.Length > 0 ? stoppedWork.Sum() : null,
             SharedLostMorphemesAvailable = associationsAvailable,
             ApprovedSameTextDifferentEntryWords = sameTextDifferentEntry,
             ApprovedSameTextDifferentEntryAvailable = identityComparisonAvailable,

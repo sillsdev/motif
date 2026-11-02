@@ -24,6 +24,6 @@ public partial interface ICommandClient
     Task<CommandOutcome<ProjectConfigurationProjection>> ShowConfigAsync(
         ShowConfigRequest request, CancellationToken cancellationToken);
 
-    Task<CommandOutcome<ParserStepRate>> ReadParserStepRateAsync(
+    Task<CommandOutcome<ParserAttemptRate>> ReadParserAttemptRateAsync(
         string projectPath, CancellationToken cancellationToken);
 }

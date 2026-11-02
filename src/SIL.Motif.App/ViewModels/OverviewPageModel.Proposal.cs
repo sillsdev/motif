@@ -140,7 +140,7 @@ public sealed partial class OverviewPageModel
     private static bool Measured(OverviewResponse? overview) =>
         overview is { AssessmentId: not null, Timing.Work.MeasuredWordCount: > 0 };
 
-    // Work steps pair when the Proposal has them and today has none, or the Proposals page would compare the two.
+    // Parser work pair when the Proposal has them and today has none, or the Proposals page would compare the two.
     private bool SpeedIsPaired(out OverviewResponse proposal)
     {
         proposal = ProposalOverview!;

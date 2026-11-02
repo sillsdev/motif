@@ -45,7 +45,7 @@ internal static class TrialWordStatistics
         {
             Attempts = found.Attempts,
             Passes = found.Passes,
-            WorkSteps = found.WorkSteps ?? word.WorkSteps,
+            ParserWork = found.ParserWork ?? word.ParserWork,
             Morphology = word.Morphology is { } morphology ? morphology with { Attempts = found.Attempts } : null,
         };
     }

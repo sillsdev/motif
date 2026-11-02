@@ -246,7 +246,7 @@ public static class SelectionComposer
 
         foreach (var word in run.Words)
         {
-            if (word.WorkSteps is { } work && work > threshold) yield return word.Word;
+            if (word.ParserWork is { } work && work > threshold) yield return word.Word;
         }
     }
 }

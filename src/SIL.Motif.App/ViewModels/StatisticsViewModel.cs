@@ -29,7 +29,7 @@ public sealed partial class StatisticsViewModel : ObservableObject
     private readonly ICommandClient _commandClient;
     private readonly List<StatsRowViewModel> _allRows = [];
     private const string ViewName = "Statistics";
-    private static readonly string[] KnownColumns = ["attempts", "passes", "workSteps", "kind", "object", "word", "completion"];
+    private static readonly string[] KnownColumns = ["attempts", "passes", "parserWork", "kind", "object", "word", "completion"];
     private ProjectViewMemory? _memory;
     private string? _viewKey;
     private bool _restoring;
@@ -75,7 +75,7 @@ public sealed partial class StatisticsViewModel : ObservableObject
         OnPropertyChanged(nameof(SelectedGroupChoice));
         OnPropertyChanged(nameof(CountHeader));
         OnPropertyChanged(nameof(WorkHeader));
-        OnPropertyChanged(nameof(ShowsWorkSteps));
+        OnPropertyChanged(nameof(ShowsParserWork));
         OnPropertyChanged(nameof(ShadingNote));
         OnPropertyChanged(nameof(ScopeNote));
         RefreshShading();
@@ -90,11 +90,11 @@ public sealed partial class StatisticsViewModel : ObservableObject
     /// <summary>What the count column counts: a word's analysis attempts, or each grammar object's own attempts.</summary>
     public string CountHeader => IsWordGroup ? MotifAppStrings.StatsHeaderAnalysisAttempts : MotifAppStrings.StatsHeaderAttempts;
 
-    /// <summary>What the work column counts: a word's parser work steps.</summary>
-    public string WorkHeader => MotifAppStrings.StatsHeaderWorkSteps;
+    /// <summary>What the work column counts: a word's parser work.</summary>
+    public string WorkHeader => MotifAppStrings.StatsHeaderParserWork;
 
-    /// <summary>Whether the work column applies; the parser gives work steps for words, not for each grammar object.</summary>
-    public bool ShowsWorkSteps => IsWordGroup;
+    /// <summary>Whether the work column applies; the parser gives parser work for words, not for each grammar object.</summary>
+    public bool ShowsParserWork => IsWordGroup;
 
     /// <summary>What the shading compares, and where each number comes from.</summary>
     public string ShadingNote => IsWordGroup
@@ -427,7 +427,7 @@ public sealed partial class StatisticsViewModel : ObservableObject
         var largestAttempts = rows.GroupBy(row => row.Kind ?? string.Empty, StringComparer.Ordinal)
             .ToDictionary(kind => kind.Key, kind => kind.Max(row => row.Attempts) ?? 0, StringComparer.Ordinal);
         var largestPasses = rows.Select(row => row.Passes).DefaultIfEmpty().Max() ?? 0;
-        var largestWork = rows.Select(row => row.WorkSteps).DefaultIfEmpty().Max() ?? 0;
+        var largestWork = rows.Select(row => row.ParserWork).DefaultIfEmpty().Max() ?? 0;
         foreach (var row in _allRows)
             row.ShadeAgainst(largestAttempts.GetValueOrDefault(row.Kind ?? string.Empty), largestPasses, largestWork);
     }
@@ -456,7 +456,7 @@ public sealed partial class StatisticsViewModel : ObservableObject
         IEnumerable<StatsRowViewModel> view, Func<StatsRowViewModel, TKey> selector, IComparer<TKey> comparer) =>
         SortDescending ? view.OrderByDescending(selector, comparer) : view.OrderBy(selector, comparer);
 
-    private static bool IsNumericColumn(string column) => column is "attempts" or "passes" or "workSteps";
+    private static bool IsNumericColumn(string column) => column is "attempts" or "passes" or "parserWork";
 }
 
 /// <summary>One statistics grouping: PanGloss's own name for it, and how the picker shows it.</summary>

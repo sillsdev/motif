@@ -119,7 +119,7 @@ public sealed class PanGlossAssessor : IAssessor
         try
         {
             var batch = new PanGlossRequest.Batch(
-                sources[0], requestedWords, wordsScope.PerWordLimit, cachePath, wordsScope.PerWordStepLimit, directory)
+                sources[0], requestedWords, wordsScope.PerWordLimit, cachePath, wordsScope.PerWordParserWorkLimit, directory)
                 { CollectAnalyses = true, OnProgress = onProgress, OnAdmissionWait = onAdmissionWait };
             var outcome = await _invoker.RunAsync(batch,
                 "assess:batch", cancellationToken).ConfigureAwait(false);
@@ -136,7 +136,7 @@ public sealed class PanGlossAssessor : IAssessor
                 };
             var matchingArtifacts = evidence.InvocationId == invocationId &&
                 Path.GetFullPath(evidence.SourcePath) == Path.Combine(Path.GetFullPath(directory), "source.fwdata");
-            if (!matchingArtifacts || evidence.PerWordStepLimit != wordsScope.PerWordStepLimit ||
+            if (!matchingArtifacts || evidence.PerWordParserWorkLimit != wordsScope.PerWordParserWorkLimit ||
                 evidence.PerWordTimeoutMs != (wordsScope.PerWordLimit is { } timeLimit
                     ? (int)timeLimit.TotalMilliseconds : null) ||
                 evidence.Threads != batch.ThreadCount || evidence.CollectStatistics != (cachePath is not null))
@@ -215,7 +215,7 @@ public sealed class PanGlossAssessor : IAssessor
                         WasRetried = true,
                         Steps = statistics?.Attempts ?? row.Steps ?? item.Attempts,
                         Passes = statistics?.Passes,
-                        WorkSteps = statistics?.WorkSteps ?? row.WorkSteps,
+                        ParserWork = statistics?.ParserWork ?? row.ParserWork,
                         RetryStatistics = statistics,
                     };
                 }).ToArray();
@@ -252,7 +252,7 @@ public sealed class PanGlossAssessor : IAssessor
             }
             var analysis = new BatchAnalysis(rows, evidence.PerWordTimeoutMs, evidence.SourcePath, warnings)
             {
-                PerWordStepLimit = evidence.PerWordStepLimit,
+                PerWordParserWorkLimit = evidence.PerWordParserWorkLimit,
             };
             var recorded = evidence with
             {

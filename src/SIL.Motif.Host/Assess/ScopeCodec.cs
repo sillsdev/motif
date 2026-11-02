@@ -21,14 +21,14 @@ public abstract record StoredScope
     /// <summary>
     /// What a Trial told an Assessor to do, for any of the kinds a Trial run collects (<c>ParseTime</c>,
     /// <c>Correctness</c>, <c>ObjectTiming</c>, <c>EngineSize</c>): the declared query, the words it resolved
-    /// to, which kinds were collected, and the per-word time and analysis-attempt caps.
+    /// to, which kinds were collected, and the per-word time and parser work limits.
     /// </summary>
     public sealed record Trial(
         string Query,
         IReadOnlyList<string> Words,
         IReadOnlyList<AssessmentKind> Collect,
         TimeSpan? PerWordLimit,
-        StepCap PerWordStepLimit) : StoredScope;
+        ParserWorkLimit PerWordParserWorkLimit) : StoredScope;
 
     /// <summary>
     /// What <c>compare</c> joined for a <c>Difference</c> Assessment: the two input Assessments' ids, word
@@ -65,7 +65,7 @@ public static class ScopeCodec
             trial.Query, trial.Words,
             trial.Collect.Select(kind => kind.ToString()).ToArray(),
             trial.PerWordLimit is { } timeLimit ? (long)timeLimit.TotalMilliseconds : null,
-            trial.PerWordStepLimit), WireOptions),
+            trial.PerWordParserWorkLimit), WireOptions),
         StoredScope.Difference difference => JsonSerializer.Serialize(new DifferenceWire(
             difference.FromAssessmentId, difference.ToAssessmentId, difference.FromWordCount,
             difference.ToWordCount, difference.SharedWordCount, difference.FromGrammarSourceSha256,
@@ -123,18 +123,20 @@ public static class ScopeCodec
     private static StoredScope.Trial ParseTrial(JsonElement root, string reportKind)
     {
         if (root.EnumerateObject().Any(property => property.Name is not
-                ("query" or "words" or "collect" or "perWordLimitMs" or "perWordStepLimit")))
+                ("query" or "words" or "collect" or "perWordLimitMs" or "perWordParserWorkLimit" or "perWordStepLimit")))
             throw Unreadable(reportKind);
         var wire = root.Deserialize<TrialWire>(WireOptions);
         if (wire is null || wire.PerWordLimitMs is <= 0
             || wire.PerWordLimitMs > TimeSpan.MaxValue.Ticks / TimeSpan.TicksPerMillisecond)
             throw Unreadable(reportKind);
-        if (wire.PerWordStepLimit is null) throw Unreadable(reportKind);
+        // "perWordStepLimit": the key from before the limit counted parser work.
+        var limit = wire.PerWordParserWorkLimit ?? wire.LegacyPerWordStepLimit;
+        if (limit is null) throw Unreadable(reportKind);
         return new StoredScope.Trial(
             wire.Query ?? string.Empty, wire.Words ?? Array.Empty<string>(),
             ParseCollect(wire.Collect, reportKind), wire.PerWordLimitMs is { } timeLimitMs
                 ? TimeSpan.FromTicks(timeLimitMs * TimeSpan.TicksPerMillisecond) : null,
-            wire.PerWordStepLimit);
+            limit);
     }
 
     private static StoredScope.Difference ParseDifference(JsonElement root, string reportKind)
@@ -168,7 +170,8 @@ public static class ScopeCodec
         [property: JsonPropertyName("words")] IReadOnlyList<string>? Words,
         [property: JsonPropertyName("collect")] IReadOnlyList<string>? Collect,
         [property: JsonPropertyName("perWordLimitMs")] long? PerWordLimitMs,
-        [property: JsonPropertyName("perWordStepLimit")] StepCap? PerWordStepLimit);
+        [property: JsonPropertyName("perWordParserWorkLimit")] ParserWorkLimit? PerWordParserWorkLimit,
+        [property: JsonPropertyName("perWordStepLimit")] ParserWorkLimit? LegacyPerWordStepLimit = null);
 
     private sealed record DifferenceWire(
         [property: JsonPropertyName("fromAssessmentId")] string FromAssessmentId,

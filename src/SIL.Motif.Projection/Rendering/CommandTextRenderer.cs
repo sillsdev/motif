@@ -423,7 +423,7 @@ public static class CommandTextRenderer
             sb.AppendLine(
                 $"    collect:        {(scope.Collect.Count == 0 ? "(assessor default)" : string.Join(", ", scope.Collect))}");
             sb.AppendLine($"    per-word limit: {scope.PerWordLimitMs} ms");
-            sb.AppendLine($"    per-word analysis attempts: {scope.PerWordStepLimit}");
+            sb.AppendLine($"    per-word parser work limit: {scope.PerWordParserWorkLimit.ToArgument()}");
             sb.AppendLine($"    timing detail words: {scope.TimingDetailWords}");
         }
         return sb.ToString();

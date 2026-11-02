@@ -47,20 +47,20 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
 
     private IReadOnlyList<string>? _rerunWords;
     private int? _rerunLimitMs;
-    private StepCap? _rerunStepLimit;
+    private ParserWorkLimit? _rerunParserWorkLimit;
     private AssessCommandResponse? _mergeInto;
     private bool _runDefaultSelection;
     private int? _defaultPerWordLimitMs;
-    private StepCap? _defaultStepLimit;
+    private ParserWorkLimit? _defaultParserWorkLimit;
 
     /// <summary>Runs the project's stored default Selection with the limits chosen during setup.</summary>
-    public Task RunDefaultSelectionAsync(int? perWordLimitMs, StepCap? perWordStepLimit)
+    public Task RunDefaultSelectionAsync(int? perWordLimitMs, ParserWorkLimit? perWordParserWorkLimit)
     {
         if (perWordLimitMs is <= 0) throw new ArgumentOutOfRangeException(nameof(perWordLimitMs));
         if (IsActive || RunCommand.IsRunning) return Task.CompletedTask;
         _runDefaultSelection = true;
         _defaultPerWordLimitMs = perWordLimitMs;
-        _defaultStepLimit = perWordStepLimit;
+        _defaultParserWorkLimit = perWordParserWorkLimit;
         return RunCommand.ExecuteAsync(null);
     }
 
@@ -70,15 +70,15 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
     /// </summary>
     public Task RerunAsync(IReadOnlyList<string> words, int limitMs) => RerunAsync(words, limitMs, null);
 
-    /// <summary>Runs chosen words again with an optional analysis-attempt limit for this Selection.</summary>
-    public Task RerunAsync(IReadOnlyList<string> words, int limitMs, StepCap? stepLimit)
+    /// <summary>Runs chosen words again with an optional analysis-parser work limit for this Selection.</summary>
+    public Task RerunAsync(IReadOnlyList<string> words, int limitMs, ParserWorkLimit? parserWorkLimit)
     {
         ArgumentNullException.ThrowIfNull(words);
         if (IsActive || RunCommand.IsRunning) return Task.CompletedTask;
         if (words.Count == 0) return Task.CompletedTask;
         _rerunWords = words;
         _rerunLimitMs = limitMs;
-        _rerunStepLimit = stepLimit;
+        _rerunParserWorkLimit = parserWorkLimit;
         _rerunDescription = $"{words.Count:N0} word{(words.Count == 1 ? string.Empty : "s")} again at {limitMs / 1000.0:0.#} s each";
         return RunCommand.ExecuteAsync(null);
     }
@@ -204,13 +204,13 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
         {
             shapes.Add(UsageArgumentShape.List("words", words.Count));
             shapes.Add(UsageArgumentShape.Number("perWordLimitMs"));
-            if (_rerunStepLimit is not null) shapes.Add(UsageArgumentShape.Number("perWordStepLimit"));
+            if (_rerunParserWorkLimit is not null) shapes.Add(UsageArgumentShape.Number("perWordParserWorkLimit"));
         }
         else if (_runDefaultSelection)
         {
             shapes.Add(UsageArgumentShape.Flag("defaultSelection"));
             if (_defaultPerWordLimitMs is not null) shapes.Add(UsageArgumentShape.Number("perWordLimitMs"));
-            if (_defaultStepLimit is not null) shapes.Add(UsageArgumentShape.Number("perWordStepLimit"));
+            if (_defaultParserWorkLimit is not null) shapes.Add(UsageArgumentShape.Number("perWordParserWorkLimit"));
         }
         else
         {
@@ -218,8 +218,8 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
             _loggedTimeLimit = (SavedExplicitTimeLimitMs(), true);
             if (_loggedTimeLimit.Value is not null)
                 shapes.Add(UsageArgumentShape.Number("perWordLimitMs"));
-            if (_selection.PerWordStepLimit is not null)
-                shapes.Add(UsageArgumentShape.Number("perWordStepLimit"));
+            if (_selection.PerWordParserWorkLimit is not null)
+                shapes.Add(UsageArgumentShape.Number("perWordParserWorkLimit"));
         }
 
         return _commandClient.BeginUsageAction("assess", [.. shapes]);
@@ -287,8 +287,8 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
     protected override async Task<CommandOutcome<AssessCommandResponse>> ExecuteCoreAsync(
         CancellationToken cancellationToken)
     {
-        var (words, limitMs, stepLimit, into) = (_rerunWords, _rerunLimitMs, _rerunStepLimit, _mergeInto);
-        (_rerunWords, _rerunLimitMs, _rerunStepLimit, _mergeInto) = (null, null, null, null);
+        var (words, limitMs, parserWorkLimit, into) = (_rerunWords, _rerunLimitMs, _rerunParserWorkLimit, _mergeInto);
+        (_rerunWords, _rerunLimitMs, _rerunParserWorkLimit, _mergeInto) = (null, null, null, null);
         if (words is null)
         {
             var runDefault = _runDefaultSelection;
@@ -296,21 +296,21 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
             var timeLimitMs = runDefault ? _defaultPerWordLimitMs
                 : _loggedTimeLimit.Read ? _loggedTimeLimit.Value : SavedExplicitTimeLimitMs();
             _loggedTimeLimit = (null, false);
-            var requestedStepLimit = runDefault ? _defaultStepLimit : null;
+            var requestedParserWorkLimit = runDefault ? _defaultParserWorkLimit : null;
             _runDefaultSelection = false;
             _defaultPerWordLimitMs = null;
-            _defaultStepLimit = null;
+            _defaultParserWorkLimit = null;
             var selection = runDefault ? null : _selection.BuildRequest();
             if (selection is { } retry && (retry.RetryFailed || retry.RetryWorkOver is not null))
                 selection = retry with { RetrySourceAssessmentId = _previous?.Measurements
                     .FirstOrDefault(measurement => measurement.Kind == AssessmentKinds.ParseTime)?.AssessmentId };
-            var request = new AssessRequest(ProjectPath!, selection, timeLimitMs, requestedStepLimit);
+            var request = new AssessRequest(ProjectPath!, selection, timeLimitMs, requestedParserWorkLimit);
             return await ParseProgress.TrackAsync(() => _commandClient.AssessAsync(request, this, cancellationToken)).ConfigureAwait(true);
         }
 
         var rerun = new AssessRequest(ProjectPath!,
             new SelectionRequest(false, [], words, false, null,
-                PerWordStepLimit: stepLimit ?? _selection.BuildRequest().PerWordStepLimit), limitMs,
+                PerWordParserWorkLimit: parserWorkLimit ?? _selection.BuildRequest().PerWordParserWorkLimit), limitMs,
             ReplaceAssessmentId: into?.Measurements.FirstOrDefault(measurement =>
                 measurement.Kind == AssessmentKinds.ParseTime)?.AssessmentId);
         var outcome = await ParseProgress.TrackAsync(() => _commandClient.AssessAsync(rerun, this, cancellationToken)).ConfigureAwait(true);

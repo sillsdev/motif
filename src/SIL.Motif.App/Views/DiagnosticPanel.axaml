@@ -265,7 +265,7 @@
                 <views:CopyableTextBlock Grid.Column="3" Classes="muted number" Text="Tried" Margin="{DynamicResource Intent.Gap.AfterRelated}" />
                 <views:CopyableTextBlock Grid.Column="4" Classes="muted number" Text="Produced" Margin="{DynamicResource Intent.Gap.AfterRelated}" />
                 <views:CopyableTextBlock Grid.Column="5" Classes="muted" Text="Did not succeed" Margin="{DynamicResource Component.TryWord.SmallInset}" />
-                <views:CopyableTextBlock Grid.Column="6" Classes="muted number" Text="{x:Static app:MotifAppStrings.TraceWorkStepsLabel}" Margin="{DynamicResource Intent.Gap.AfterRelated}" />
+                <views:CopyableTextBlock Grid.Column="6" Classes="muted number" Text="{x:Static app:MotifAppStrings.TraceParserWorkLabel}" Margin="{DynamicResource Intent.Gap.AfterRelated}" />
               </Grid>
               <ItemsControl x:Name="DiagnosticPanelEffortItems" Grid.Row="1" ItemsSource="{Binding Effort}" AutomationProperties.Name="Parser effort rows">
                 <ItemsControl.ItemsPanel>

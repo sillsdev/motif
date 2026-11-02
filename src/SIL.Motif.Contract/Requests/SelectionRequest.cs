@@ -16,14 +16,14 @@ namespace SIL.Motif.Contract.Requests;
 /// </param>
 /// <param name="RetryFailed">The words the previous Baseline run found no analysis for.</param>
 /// <param name="RetryWorkOver">
-/// Non-null to include words whose recorded parser work strictly exceeds this number of work steps.
+/// Non-null to include words whose recorded parser work strictly exceeds this number of parser work.
 /// Words without a recorded work count are not selected.
 /// </param>
 /// <param name="RetrySourceAssessmentId">
 /// The exact Baseline ParseTime Assessment to use for retry. It is required when either retry option is set
 /// and must be omitted otherwise.
 /// </param>
-/// <param name="PerWordStepLimit">A per-run analysis-attempt cap; null keeps the project's configured cap.</param>
+/// <param name="PerWordParserWorkLimit">A per-run parser work limit; null keeps the project's configured cap.</param>
 public sealed record SelectionRequest(
     bool AllWordforms,
     IReadOnlyList<Guid> TextIds,
@@ -31,4 +31,4 @@ public sealed record SelectionRequest(
     bool RetryFailed,
     long? RetryWorkOver,
     string? RetrySourceAssessmentId = null,
-    StepCap? PerWordStepLimit = null);
+    ParserWorkLimit? PerWordParserWorkLimit = null);

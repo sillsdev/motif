@@ -4,7 +4,7 @@ namespace SIL.Motif.Commands.Queries;
 
 internal static class AssessmentSearchCaps
 {
-    internal static bool Match(StepCap before, StepCap after) =>
+    internal static bool Match(ParserWorkLimit before, ParserWorkLimit after) =>
         StringComparer.Ordinal.Equals(before.ToArgument(), after.ToArgument()) &&
         StringComparer.Ordinal.Equals(before.ToWorkCapArgument(), after.ToWorkCapArgument());
 }

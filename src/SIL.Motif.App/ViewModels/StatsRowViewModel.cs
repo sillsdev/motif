@@ -22,8 +22,8 @@ public sealed class StatsRowViewModel
         Object = ReadText(row, "label");
         Attempts = ReadNumber(row, "attempts");
         Passes = ReadNumber(row, "passes");
-        // Only a word row's work is parser work steps; a grammar object's own work counts a different thing.
-        WorkSteps = Word is null ? null : ReadNumber(row, "work");
+        // Only a word row's work is parser work; a grammar object's own work counts a different thing.
+        ParserWork = Word is null ? null : ReadNumber(row, "work");
         var capped = ReadBoolean(row, "capped");
         var timedOut = ReadBoolean(row, "timed_out");
         _capped = capped == true;
@@ -47,8 +47,8 @@ public sealed class StatsRowViewModel
     public string? Word { get; }
     public double? Attempts { get; }
     public double? Passes { get; }
-    /// <summary>The parser work steps PanGloss recorded for a word, or null for a grammar object or an uncounted word.</summary>
-    public double? WorkSteps { get; }
+    /// <summary>The parser work PanGloss recorded for a word, or null for a grammar object or an uncounted word.</summary>
+    public double? ParserWork { get; }
     public bool IsIncomplete { get; }
     /// <summary>Whether the parser's work limit stopped this word's search.</summary>
     public bool StoppedAtWorkLimit => _capped;
@@ -73,8 +73,8 @@ public sealed class StatsRowViewModel
     /// <summary>The numbers as the table shows them, grouped for reading; empty where the parser gave none.</summary>
     public string AttemptsText => Format(Attempts, "N0");
     public string PassesText => Format(Passes, "N0");
-    /// <summary>The work steps as the table shows them, or a note that none were recorded.</summary>
-    public string WorkText => WorkSteps is { } work ? work.ToString("N0", CultureInfo.CurrentCulture) : MotifAppStrings.WorkStepsNotRecorded;
+    /// <summary>The parser work as the table shows them, or a note that none were recorded.</summary>
+    public string WorkText => ParserWork is { } work ? work.ToString("N0", CultureInfo.CurrentCulture) : MotifAppStrings.ParserWorkNotRecorded;
 
     /// <summary>How strongly each number is shaded against the largest in its current scope.</summary>
     public double AttemptsHeat { get; private set; }
@@ -85,7 +85,7 @@ public sealed class StatsRowViewModel
     {
         AttemptsHeat = HeatOf(Attempts, largestAttempts);
         PassesHeat = HeatOf(Passes, largestPasses);
-        WorkHeat = HeatOf(WorkSteps, largestWork);
+        WorkHeat = HeatOf(ParserWork, largestWork);
     }
 
     // The same scale Try a Word's effort table uses, so a shade means the same thing in both.
@@ -106,7 +106,7 @@ public sealed class StatsRowViewModel
     {
         "attempts" => Attempts,
         "passes" => Passes,
-        "workSteps" => WorkSteps,
+        "parserWork" => ParserWork,
         _ => null,
     };
 

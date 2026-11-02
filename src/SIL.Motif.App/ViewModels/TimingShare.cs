@@ -10,11 +10,11 @@ namespace SIL.Motif.App.ViewModels;
 /// </summary>
 /// <param name="Label">The kind's or rule's name as the window shows it.</param>
 /// <param name="Kind">The stored kind, for a rule; empty for unattributed work.</param>
-/// <param name="WorkSteps">The work steps the parser recorded, or null when not recorded.</param>
+/// <param name="ParserWork">The parser work the parser recorded, or null when not recorded.</param>
 /// <param name="Share">The share of the words' whole work, or <see langword="null"/> when none was kept.</param>
 /// <param name="Words">How many words the parser recorded this part's work in.</param>
 /// <param name="Source">The command's row behind it, or <see langword="null"/> for unattributed work.</param>
-public sealed record TimingShare(string Label, string Kind, long? WorkSteps, double? Share, int Words,
+public sealed record TimingShare(string Label, string Kind, long? ParserWork, double? Share, int Words,
     TimingAggregateRow? Source)
 {
     /// <summary>Whether this row carries the response's unattributed work.</summary>
@@ -23,7 +23,7 @@ public sealed record TimingShare(string Label, string Kind, long? WorkSteps, dou
     /// <summary>The open Proposal's share for this part, when the page pairs it; null when it does not.</summary>
     public string? ProposalShareText { get; init; }
 
-    /// <summary>The open Proposal's work steps for this part, when the page pairs it.</summary>
+    /// <summary>The open Proposal's parser work for this part, when the page pairs it.</summary>
     public string? ProposalWorkText { get; init; }
 
     /// <summary>Whether only the open Proposal has this part, so today's side reads as none.</summary>
@@ -33,7 +33,7 @@ public sealed record TimingShare(string Label, string Kind, long? WorkSteps, dou
     public string ShownShareText => ProposalShareText is null ? ShareText : Pair(
         IsProposalOnly ? MotifAppStrings.TimingNoneToday : ShareText, ProposalShareText);
 
-    /// <summary>The work steps, then the Proposal's when paired.</summary>
+    /// <summary>The parser work, then the Proposal's when paired.</summary>
     public string ShownWorkText => ProposalWorkText is null ? WorkText : Pair(
         IsProposalOnly ? MotifAppStrings.TimingNoneToday : WorkText, ProposalWorkText);
 
@@ -43,11 +43,11 @@ public sealed record TimingShare(string Label, string Kind, long? WorkSteps, dou
     /// <summary>The window's name for this part's stored kind.</summary>
     public string KindLabel => Kind.Length == 0 ? string.Empty : KindName(Kind);
 
-    /// <summary>The work steps with their unit, for a sentence or a legend.</summary>
-    public string WorkText => WorkSteps is { } work ? FormatWorkSteps(work) : MotifAppStrings.TimingNotRecorded;
+    /// <summary>The parser work with their unit, for a sentence or a legend.</summary>
+    public string WorkText => ParserWork is { } work ? FormatParserWork(work) : MotifAppStrings.TimingNotRecorded;
 
-    /// <summary>The work steps as a bare count, for a table column that names the unit.</summary>
-    public string WorkCountText => WorkSteps is { } work ? work.ToString("N0", CultureInfo.CurrentCulture) : MotifAppStrings.TimingNotRecorded;
+    /// <summary>The parser work as a bare count, for a table column that names the unit.</summary>
+    public string WorkCountText => ParserWork is { } work ? work.ToString("N0", CultureInfo.CurrentCulture) : MotifAppStrings.TimingNotRecorded;
 
     public string ShareText => Share is { } share ? FormatPercent(share) :
         IsNotAttributed ? MotifAppStrings.TimingNotRecorded : "—";
@@ -65,8 +65,8 @@ public sealed record TimingShare(string Label, string Kind, long? WorkSteps, dou
     /// The work by kind of rule, largest first, each a share of <paramref name="total"/>, followed by the work the
     /// parser did not attribute to an object.
     /// </summary>
-    /// <param name="work">The work steps by object, as the command made them add up to the whole.</param>
-    /// <param name="total">The words' whole work steps, which the shares divide.</param>
+    /// <param name="work">The parser work by object, as the command made them add up to the whole.</param>
+    /// <param name="total">The words' whole parser work, which the shares divide.</param>
     /// <param name="kindRows">The command's time rows by kind, for how many words each kind touched.</param>
     /// <param name="unattributedLabel">What the window calls the remainder.</param>
     /// <param name="unattributedWords">How many words the remainder covers.</param>
@@ -76,7 +76,7 @@ public sealed record TimingShare(string Label, string Kind, long? WorkSteps, dou
         bool alwaysShowUnattributed)
     {
         var kinds = work.Where(row => !row.IsUnattributed).GroupBy(row => row.Kind)
-            .Select(group => (Kind: group.Key, Steps: group.Sum(row => row.WorkSteps)))
+            .Select(group => (Kind: group.Key, Steps: group.Sum(row => row.ParserWork)))
             .OrderByDescending(kind => kind.Steps).ThenBy(kind => kind.Kind, StringComparer.Ordinal)
             .Select(kind =>
             {
@@ -84,7 +84,7 @@ public sealed record TimingShare(string Label, string Kind, long? WorkSteps, dou
                 return new TimingShare(KindName(kind.Kind), kind.Kind, kind.Steps, ShareOf(kind.Steps, total),
                     source?.WordsTouched ?? 0, source);
             }).ToList();
-        var other = work.Where(row => row.IsUnattributed).Sum(row => row.WorkSteps);
+        var other = work.Where(row => row.IsUnattributed).Sum(row => row.ParserWork);
         if (other > 0 || alwaysShowUnattributed)
             kinds.Add(new TimingShare(unattributedLabel, string.Empty, other, ShareOf(other, total),
                 unattributedWords, null) { IsNotAttributed = true });
@@ -94,8 +94,8 @@ public sealed record TimingShare(string Label, string Kind, long? WorkSteps, dou
     /// <summary>The fraction of <paramref name="total"/> that <paramref name="steps"/> is, or null when there is no work.</summary>
     public static double? ShareOf(long steps, long total) => total > 0 ? (double)steps / total : null;
 
-    /// <summary>Names the words a share is over: one word, all of them, or the ones that recorded work steps.</summary>
-    /// <param name="measured">How many of the words recorded work steps.</param>
+    /// <summary>Names the words a share is over: one word, all of them, or the ones that recorded parser work.</summary>
+    /// <param name="measured">How many of the words recorded parser work.</param>
     /// <param name="chosen">How many words were chosen.</param>
     /// <param name="allSelected">Whether the chosen words are every word of the run.</param>
     public static string MeasuredWordsPhrase(int measured, int chosen, bool allSelected) => measured < chosen
@@ -107,9 +107,9 @@ public sealed record TimingShare(string Label, string Kind, long? WorkSteps, dou
             ? MotifAppStrings.TimingPhraseAllWordsFormat : MotifAppStrings.TimingPhraseTheseWordsFormat,
             measured.ToString("N0", CultureInfo.CurrentCulture));
 
-    /// <summary>The sentence saying what every share divides, and how many chosen words have no work steps.</summary>
-    /// <param name="totalText">The total work steps with their unit.</param>
-    /// <param name="measured">How many of the words recorded work steps.</param>
+    /// <summary>The sentence saying what every share divides, and how many chosen words have no parser work.</summary>
+    /// <param name="totalText">The total parser work with their unit.</param>
+    /// <param name="measured">How many of the words recorded parser work.</param>
     /// <param name="chosen">How many words were chosen.</param>
     /// <param name="allSelected">Whether the chosen words are every word of the run.</param>
     public static string ShareOverText(string totalText, int measured, int chosen, bool allSelected)
@@ -126,9 +126,9 @@ public sealed record TimingShare(string Label, string Kind, long? WorkSteps, dou
     }
 
     /// <summary>Formats a work count with its unit; a median between two whole counts is rounded to a whole count.</summary>
-    /// <param name="workSteps">The parser's work steps.</param>
-    public static string FormatWorkSteps(double workSteps) =>
-        PluralText.Format(MotifAppStrings.WorkStepsPattern, (long)Math.Round(workSteps, MidpointRounding.AwayFromZero));
+    /// <param name="parserWork">The parser's parser work.</param>
+    public static string FormatParserWork(double parserWork) =>
+        PluralText.Format(MotifAppStrings.ParserWorkPattern, (long)Math.Round(parserWork, MidpointRounding.AwayFromZero));
 
     /// <summary>Formats recorded times as whole milliseconds, tenths below ten, and seconds from ten seconds.</summary>
     /// <param name="milliseconds">The measured time.</param>

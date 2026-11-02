@@ -15,7 +15,7 @@ public static class MotifSchema
     public const int ApplicationId = 0x4D4F5446;
 
     /// <summary>The schema generation this assembly creates and requires.</summary>
-    public const int CurrentSchema = 59;
+    public const int CurrentSchema = 60;
 
     /// <summary>The worker version an open at the given schema ceiling requires.</summary>
     internal static Version MinimumWorkerVersion(int schema) => schema is >= 1 and <= CurrentSchema
@@ -466,7 +466,7 @@ public static class MotifSchema
         [C("SelectionName", "TEXT", false, 1), C("TextIdsJson", "TEXT", true), C("AddedWordsJson", "TEXT", true),
             C("CreatedUtc", "TEXT", true), C("UpdatedUtc", "TEXT", true),
             C("TimeLimitMode", "TEXT", true), C("ExplicitPerWordLimitMs", "INTEGER"),
-            C("PerWordStepLimit", "INTEGER"), C("Revision", "INTEGER", true), C("AssessBudgetSeconds", "INTEGER", true, defaultValue: "3600"),
+            C("PerWordParserWorkLimit", "INTEGER"), C("Revision", "INTEGER", true), C("AssessBudgetSeconds", "INTEGER", true, defaultValue: "3600"),
             C("WordListJson", "TEXT")],
         "DefaultSelection" or "ParsimonySelection" => [C("Id", "INTEGER", false, 1), C("SelectionName", "TEXT", true)],
         "ParserRefusals" => [C("BaselineToken", "TEXT", false, 1), C("RefusalJson", "TEXT", true)],
@@ -518,7 +518,7 @@ public static class MotifSchema
             C("MorphologyJson", "BLOB"), C("CorrectnessJson", "BLOB"), C("ProjectStanding", "TEXT"),
             C("OccurrenceCount", "INTEGER"), C("ReadingGradesJson", "BLOB"), C("AnalysisComparisonJson", "BLOB"), C("MissedApprovedCount", "INTEGER"),
             C("MissedApprovedJson", "BLOB"), C("IsIncomplete", "INTEGER", true, defaultValue: "0"),
-            C("Attempts", "INTEGER"), C("Passes", "INTEGER"), C("WorkSteps", "INTEGER")],
+            C("Attempts", "INTEGER"), C("Passes", "INTEGER"), C("ParserWork", "INTEGER")],
         "AssessmentObjectTimings" => [C("AssessmentId", "TEXT", true, 1), C("Detail", "BLOB", true),
             C("Evidence", "BLOB")],
         "BaselineSummaries" => [C("ProjectKey", "TEXT", false, 1), C("SummaryJson", "TEXT", true)],
@@ -761,7 +761,7 @@ public static class MotifSchema
             UpdatedUtc TEXT NOT NULL,
             TimeLimitMode TEXT NOT NULL CHECK (TimeLimitMode IN ('Estimated', 'Explicit')),
             ExplicitPerWordLimitMs INTEGER NULL CHECK (ExplicitPerWordLimitMs IS NULL OR ExplicitPerWordLimitMs > 0),
-            PerWordStepLimit INTEGER NULL CHECK (PerWordStepLimit IS NULL OR PerWordStepLimit > 0),
+            PerWordParserWorkLimit INTEGER NULL CHECK (PerWordParserWorkLimit IS NULL OR PerWordParserWorkLimit > 0),
             Revision INTEGER NOT NULL CHECK (Revision > 0),
             AssessBudgetSeconds INTEGER NOT NULL DEFAULT 3600 CHECK (AssessBudgetSeconds >= 60),
             WordListJson TEXT NULL
@@ -850,7 +850,7 @@ public static class MotifSchema
             IsIncomplete INTEGER NOT NULL DEFAULT 0 CHECK (IsIncomplete IN (0, 1)),
             Attempts INTEGER NULL,
             Passes INTEGER NULL,
-            WorkSteps INTEGER NULL
+            ParserWork INTEGER NULL
         );
         CREATE INDEX IX_AssessedWords_Assessment ON AssessedWords(AssessmentId);
         CREATE INDEX IX_AssessedWords_Word ON AssessedWords(AssessmentId, Word);

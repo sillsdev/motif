@@ -23,7 +23,7 @@ public sealed record NamedSelectionProjection(
         ? Limits.ExplicitPerWordLimitMs : null;
 
     [JsonIgnore]
-    public StepCap PerWordStepLimit => Limits.PerWordStepLimit;
+    public ParserWorkLimit PerWordParserWorkLimit => Limits.PerWordParserWorkLimit;
 
     public NamedSelectionProjection(
         string name,
@@ -32,9 +32,9 @@ public sealed record NamedSelectionProjection(
         string createdUtc,
         string updatedUtc,
         int? perWordLimitMs = 1000,
-        StepCap? perWordStepLimit = null)
+        ParserWorkLimit? perWordParserWorkLimit = null)
         : this(name, textIds, addedWords, createdUtc, updatedUtc,
-            new SelectionParsingLimits(perWordStepLimit ?? StepCap.Default,
+            new SelectionParsingLimits(perWordParserWorkLimit ?? ParserWorkLimit.Default,
                 perWordLimitMs is null ? SelectionTimeLimitMode.Estimated : SelectionTimeLimitMode.Explicit,
                 perWordLimitMs), "0")
     {

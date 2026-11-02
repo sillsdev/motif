@@ -15,8 +15,8 @@ public sealed record TimingResponse(
     IReadOnlyList<TimingAggregateRow> Aggregates,
     IReadOnlyList<WordRuleTiming> CostliestWords)
 {
-    /// <summary>Work steps attributed to objects and to the unattributed remainder.</summary>
-    public IReadOnlyList<TimingWorkAggregate> WorkStepAggregates { get; init; } = [];
+    /// <summary>Parser work attributed to objects and to the unattributed remainder.</summary>
+    public IReadOnlyList<TimingWorkAggregate> ParserWorkAggregates { get; init; } = [];
 
     /// <summary>The selected words' parser work: how many carried a count, their total, and the per-word median and 95th percentile.</summary>
     public WordWorkSummary Work { get; init; } = WordWorkSummary.None;
@@ -91,7 +91,7 @@ public sealed record TimingWordRow(string Word, int? ElapsedMs, string Completio
     /// <summary>The exact parse duration in nanoseconds, when recorded; it takes precedence over <see cref="ElapsedMs"/>.</summary>
     public long? ElapsedNs { get; init; }
     /// <summary>Total work-budget reservations for this word, when recorded.</summary>
-    public long? WorkSteps { get; init; }
+    public long? ParserWork { get; init; }
     /// <summary>The producing measurement, including its recorded time.</summary>
     public WordMeasurementOrigin? Origin { get; init; }
 }
@@ -144,22 +144,22 @@ public sealed record TimingAggregateRow(
 }
 
 /// <summary>
-/// Parser work steps over some words: how many of them carried a count, the counts added up, and their per-word
-/// median and nearest-rank 95th percentile. Work steps do not depend on the speed of the computer.
+/// Parser work over some words: how many of them carried a count, the counts added up, and their per-word
+/// median and nearest-rank 95th percentile. Parser work do not depend on the speed of the computer.
 /// </summary>
 /// <param name="MeasuredWordCount">How many of the words recorded a work count.</param>
-/// <param name="TotalWorkSteps">The recorded counts added up.</param>
-/// <param name="MedianWorkSteps">The per-word median, or null when no word recorded a count.</param>
-/// <param name="Percentile95WorkSteps">The per-word nearest-rank 95th percentile, or null when no word recorded a count.</param>
-public sealed record WordWorkSummary(int MeasuredWordCount, long TotalWorkSteps, double? MedianWorkSteps,
-    double? Percentile95WorkSteps)
+/// <param name="TotalParserWork">The recorded counts added up.</param>
+/// <param name="MedianParserWork">The per-word median, or null when no word recorded a count.</param>
+/// <param name="Percentile95ParserWork">The per-word nearest-rank 95th percentile, or null when no word recorded a count.</param>
+public sealed record WordWorkSummary(int MeasuredWordCount, long TotalParserWork, double? MedianParserWork,
+    double? Percentile95ParserWork)
 {
     /// <summary>No word recorded a work count.</summary>
     public static WordWorkSummary None { get; } = new(0, 0, null, null);
 }
 
-/// <summary>Work steps for one object or for the unattributed remainder.</summary>
-public sealed record TimingWorkAggregate(string Key, string Name, string Kind, long WorkSteps, bool IsUnattributed)
+/// <summary>Parser work for one object or for the unattributed remainder.</summary>
+public sealed record TimingWorkAggregate(string Key, string Name, string Kind, long ParserWork, bool IsUnattributed)
 {
     /// <summary>How stable <see cref="Key"/> is: <c>authored</c>, <c>structural</c> or <c>synthetic</c>.</summary>
     public string IdentityQuality { get; init; } = string.Empty;
@@ -182,11 +182,11 @@ public sealed record WordRuleTiming(string Word, double SelfMs, long? Calls)
     /// <summary>The word's whole parse time in milliseconds, or null when none was recorded.</summary>
     public double? WordTimeMs { get; init; }
 
-    /// <summary>The work steps this object did in the word, or null when not recorded.</summary>
-    public long? WorkSteps { get; init; }
+    /// <summary>The parser work this object did in the word, or null when not recorded.</summary>
+    public long? ParserWork { get; init; }
 
-    /// <summary>The word's total work steps, or null when not recorded.</summary>
-    public long? WordWorkSteps { get; init; }
+    /// <summary>The word's total parser work, or null when not recorded.</summary>
+    public long? WordParserWork { get; init; }
 
     /// <summary><see cref="SelfMs"/> as a share of <see cref="WordTimeMs"/>, from 0 to 1, when it has one.</summary>
     public double? ShareOfWordTime { get; init; }

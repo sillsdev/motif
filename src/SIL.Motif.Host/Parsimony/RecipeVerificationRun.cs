@@ -8,7 +8,7 @@ namespace SIL.Motif.Host.Parsimony;
 public sealed record RecipeVerificationOptions(
     string ParserSha256,
     int? PerWordTimeoutMs,
-    StepCap PerWordStepLimit,
+    ParserWorkLimit PerWordParserWorkLimit,
     int Threads,
     bool CollectStatistics);
 

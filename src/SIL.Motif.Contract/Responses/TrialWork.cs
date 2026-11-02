@@ -2,8 +2,8 @@ namespace SIL.Motif.Contract.Responses;
 
 /// <summary>A word whose completed Trial required more parser work than its Baseline.</summary>
 /// <param name="Word">The word.</param>
-/// <param name="BaselineWork">The work steps the Baseline spent on the word.</param>
-/// <param name="TrialWork">The work steps the Trial spent on the same word.</param>
+/// <param name="BaselineWork">The parser work the Baseline spent on the word.</param>
+/// <param name="TrialWork">The parser work the Trial spent on the same word.</param>
 /// <param name="PercentMore">How much more work the Trial needed, as a percentage of the Baseline's.</param>
 public sealed record TrialWorkIncrease(string Word, long BaselineWork, long TrialWork, double PercentMore)
 {
@@ -13,14 +13,14 @@ public sealed record TrialWorkIncrease(string Word, long BaselineWork, long Tria
 
 /// <summary>Parser work for the Trial's word list and the limits that stopped its searches.</summary>
 public sealed record TrialWork(
-    int WordCount, long? BaselineWork, long? TrialWorkSteps, double? PercentChange,
+    int WordCount, long? BaselineWork, long? TrialParserWork, double? PercentChange,
     IReadOnlyList<TrialWorkIncrease> IncreasedWords, int WorkLimitStops, int TimeSafetyNetStops)
 {
     /// <summary>Whether completed words required more than 5% additional parser work.</summary>
     public bool WorkIncreaseWarning => PercentChange is > 5;
 
     /// <summary>
-    /// Trial words stopped by the work or attempt limit, which stops the same words on every computer. A word where
+    /// Trial words stopped by the work or parser work limit, which stops the same words on every computer. A word where
     /// the time safety net also fired is listed here, because the limit alone would have stopped it.
     /// </summary>
     public IReadOnlyList<string> WorkLimitWords { get; init; } = [];

@@ -115,6 +115,14 @@ public static class MotifStoreUpgrade
                 if (matching.Length == 0) throw new InvalidDataException(StoreUpgradeMessages.Format("NoColumns", table));
                 var names = matching.Select(Quote).ToList();
                 var values = matching.Select(name => table == "Proposals" && name == "AnchorJson" ? "NULL" : Quote(name)).ToList();
+                // Before schema 60 a Named Selection's limit counted analysis attempts; it now counts parser work.
+                if (table == "NamedSelections" && oldColumns.Contains("PerWordStepLimit") &&
+                    newColumns.Contains("PerWordParserWorkLimit") && !oldColumns.Contains("PerWordParserWorkLimit"))
+                {
+                    names.Add(Quote("PerWordParserWorkLimit"));
+                    values.Add("CASE WHEN PerWordStepLimit IS NULL THEN NULL WHEN PerWordStepLimit <= 92233720368547758 THEN PerWordStepLimit * 100 " +
+                        "ELSE 9223372036854775807 END");
+                }
                 AddRequiredDefaults(destination, transaction, table, oldColumns, names, values);
                 var where = table == "ProposalDifferences" ? " WHERE " + DecidedDifferences : "";
                 Execute(destination, $"INSERT INTO main.{Quote(table)} ({string.Join(",", names)}) SELECT {string.Join(",", values)} FROM old.{Quote(table)}{where};", transaction);

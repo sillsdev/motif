@@ -16,7 +16,7 @@ namespace SIL.Motif.Commands.Assess;
 /// </summary>
 internal static class AssessmentWordRows
 {
-    private const string StepLimited = "INCOMPLETE — parsing did not finish (work limit)";
+    private const string ParserWorkLimited = "INCOMPLETE — parsing did not finish (work limit)";
     private const string TimeLimited = "INCOMPLETE — parsing did not finish (time safety net)";
 
     /// <summary>Whether a word's search stopped at a limit, including when it returned readings first.</summary>
@@ -32,9 +32,9 @@ internal static class AssessmentWordRows
     {
         _ when StopLimit.From(outcome, morphology) == StopLimit.Both =>
             "INCOMPLETE — parsing did not finish (work limit and time safety net)",
-        "capped" => StepLimited,
+        "capped" => ParserWorkLimited,
         "timed-out" => TimeLimited,
-        _ when morphology is { Capped: true } => StepLimited,
+        _ when morphology is { Capped: true } => ParserWorkLimited,
         _ when morphology is { TimedOut: true } => TimeLimited,
         _ when ParserRefusals.Of(morphology, outcome) is { } refusal => refusal.Reason,
         _ => "Search completed",
@@ -91,7 +91,7 @@ internal static class AssessmentWordRows
             MissedApproved = word.MissedApproved,
             Attempts = word.Attempts,
             Passes = word.Passes,
-            WorkSteps = word.WorkSteps,
+            ParserWork = word.ParserWork,
             Origin = word.Origin,
         };
         return row with { FixFirst = FixFirst(row) };

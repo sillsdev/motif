@@ -11,8 +11,8 @@ public sealed partial class SetupDialog : UserControl
 {
     public SetupDialog() => AvaloniaXamlLoader.Load(this);
 
-    private void OnStepLimitLostFocus(object? sender, RoutedEventArgs e) =>
-        (DataContext as SetupViewModel)?.ValidateStepLimit();
+    private void OnParserWorkLimitLostFocus(object? sender, RoutedEventArgs e) =>
+        (DataContext as SetupViewModel)?.ValidateParserWorkLimit();
 
     /// <summary>Fits the setup surface inside the window's unscaled client area.</summary>
     /// <param name="maxLogicalWidth">The available width before display zoom is applied.</param>

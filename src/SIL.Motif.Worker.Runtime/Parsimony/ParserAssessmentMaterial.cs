@@ -96,7 +96,7 @@ internal static class ParserAssessmentMaterial
                 assessment.ProposalId?.Value, assessment.ProposalIntentDigest, invocation.SourceBytesSha256,
                 invocation.ExecutableBytesSha256, assessment.ModelFingerprint, invocation.InvocationId,
                 invocation.SourcePath, invocation.AnalysesPath, invocation.AnalysesSha256,
-                invocation.PerWordTimeoutMs, invocation.PerWordStepLimit.ToArgument(), invocation.Threads,
+                invocation.PerWordTimeoutMs, invocation.PerWordParserWorkLimit.ToArgument(), invocation.Threads,
                 assessment.Words?.Select(item => item.Morphology).ToArray() ?? []));
             reportable.Add(assessment.ToReportable());
         }

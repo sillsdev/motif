@@ -64,15 +64,15 @@
                       Spacing="{DynamicResource Intent.Space.Related}">
             <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.DefaultSelectionParsingLimits}" />
             <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-              <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.StepLimitPerWord}" />
-              <NumericUpDown Classes="settingsNumber" Value="{Binding Settings.StepLimit}" Minimum="1"
-                             Increment="100000" FormatString="N0" IsEnabled="{Binding !Settings.IsNoStepLimit}"
+              <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.ParserWorkLimitPerWord}" />
+              <NumericUpDown Classes="settingsNumber" Value="{Binding Settings.ParserWorkLimitValue}" Minimum="1"
+                             Increment="100000" FormatString="N0" IsEnabled="{Binding !Settings.IsNoParserWorkLimit}"
                              LostFocus="OnLimitLostFocus" KeyDown="OnLimitKeyDown"
-                             AutomationProperties.Name="{x:Static app:MotifAppStrings.SelectionStepLimitPerWordAccessibleName}" />
-              <CheckBox Content="{x:Static app:MotifAppStrings.NoStepLimit}" IsChecked="{Binding Settings.IsNoStepLimit}"
-                        Click="OnNoStepLimitClick" AutomationProperties.Name="{x:Static app:MotifAppStrings.SelectionHasNoStepLimitAccessibleName}" />
-              <TextBlock Classes="settingsRefusal" Text="{Binding Settings.StepLimitRefusal}"
-                         IsVisible="{Binding Settings.HasStepLimitRefusal}" TextWrapping="Wrap" />
+                             AutomationProperties.Name="{x:Static app:MotifAppStrings.SelectionParserWorkLimitPerWordAccessibleName}" />
+              <CheckBox Content="{x:Static app:MotifAppStrings.NoParserWorkLimit}" IsChecked="{Binding Settings.IsNoParserWorkLimit}"
+                        Click="OnNoParserWorkLimitClick" AutomationProperties.Name="{x:Static app:MotifAppStrings.SelectionHasNoParserWorkLimitAccessibleName}" />
+              <TextBlock Classes="settingsRefusal" Text="{Binding Settings.ParserWorkLimitRefusal}"
+                         IsVisible="{Binding Settings.HasParserWorkLimitRefusal}" TextWrapping="Wrap" />
             </StackPanel>
             <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
               <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.TimeLimitPerWordSeconds}" />
@@ -87,7 +87,7 @@
                         IsVisible="{Binding Settings.ShowUseEstimate}" Click="OnUseEstimateClick"
                         AutomationProperties.Name="{x:Static app:MotifAppStrings.UseMotifSEstimatedTimeLimitAccessibleName}" />
               </Grid>
-              <TextBlock Classes="settingsCaption" Text="{Binding Settings.StepLimitEstimateText}" TextWrapping="Wrap" />
+              <TextBlock Classes="settingsCaption" Text="{Binding Settings.ParserWorkLimitEstimateText}" TextWrapping="Wrap" />
               <TextBlock Classes="settingsRefusal" Text="{Binding Settings.TimeLimitRefusal}"
                          IsVisible="{Binding Settings.HasTimeLimitRefusal}" TextWrapping="Wrap" />
             </StackPanel>
@@ -99,8 +99,8 @@
             <NumericUpDown Value="{Binding Selection.RetryWorkOver}" Minimum="0" Increment="1" FormatString="N0"
                            AutomationProperties.Name="{x:Static app:MotifAppStrings.RetryWorkOverAccessibleName}" />
           </StackPanel>
-          <views:CopyableTextBlock Classes="error" Text="{Binding Selection.StepLimitValidationMessage}"
-                     IsVisible="{Binding Selection.StepLimitValidationMessage, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
+          <views:CopyableTextBlock Classes="error" Text="{Binding Selection.ParserWorkLimitValidationMessage}"
+                     IsVisible="{Binding Selection.ParserWorkLimitValidationMessage, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
           <views:CopyableTextBlock Classes="error" Text="{Binding Selection.ThresholdValidationMessage}"
                      IsVisible="{Binding Selection.ThresholdValidationMessage, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
         </StackPanel>

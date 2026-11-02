@@ -8,14 +8,14 @@ public sealed class PanGlossTracer : IPanGlossTracer
     public static readonly TimeSpan DefaultTimeout = Timeout.InfiniteTimeSpan;
 
     private readonly IPanGlossInvoker _invoker;
-    private readonly StepCap? _stepLimit;
+    private readonly ParserWorkLimit? _parserWorkLimit;
 
-    /// <summary>Traces through <paramref name="invoker"/>; <paramref name="stepLimit"/> is passed to the parser
+    /// <summary>Traces through <paramref name="invoker"/>; <paramref name="parserWorkLimit"/> is passed to the parser
     /// when given, and otherwise PanGloss's own runaway guard applies.</summary>
-    public PanGlossTracer(IPanGlossInvoker invoker, StepCap? stepLimit = null)
+    public PanGlossTracer(IPanGlossInvoker invoker, ParserWorkLimit? parserWorkLimit = null)
     {
         _invoker = invoker ?? throw new ArgumentNullException(nameof(invoker));
-        _stepLimit = stepLimit;
+        _parserWorkLimit = parserWorkLimit;
     }
 
     public async Task<PanGlossTraceOutcome> TraceAsync(
@@ -28,7 +28,7 @@ public sealed class PanGlossTracer : IPanGlossTracer
             throw new ArgumentOutOfRangeException(nameof(timeout), "A trace timeout must be positive or infinite.");
 
         var outcome = await _invoker.RunAsync(
-            new PanGlossRequest.Trace(grammarPath, word) { StepLimit = _stepLimit }, "trace:" + word, cancellationToken, cap).ConfigureAwait(false);
+            new PanGlossRequest.Trace(grammarPath, word) { ParserWorkLimit = _parserWorkLimit }, "trace:" + word, cancellationToken, cap).ConfigureAwait(false);
 
         return outcome switch
         {

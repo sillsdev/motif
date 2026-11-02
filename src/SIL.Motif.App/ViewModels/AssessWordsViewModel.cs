@@ -306,7 +306,7 @@ public sealed class AssessWordRowViewModel
         ElapsedMs = word.ElapsedMs;
         Attempts = word.Attempts;
         Passes = word.Passes;
-        WorkSteps = word.WorkSteps;
+        ParserWork = word.ParserWork;
 
         var grades = word.ReadingGrades;
         var readings = word.Readings ?? Unresolved(word.Morphology);
@@ -389,7 +389,7 @@ public sealed class AssessWordRowViewModel
     public int? ElapsedMs { get; }
     public int? Attempts { get; }
     public int? Passes { get; }
-    public long? WorkSteps { get; }
+    public long? ParserWork { get; }
 
     /// <summary>Whether the parser needed more than its first pass; zero passes is the ordinary case and says nothing.</summary>
     public bool HasPasses => Passes is > 0;
@@ -403,8 +403,8 @@ public sealed class AssessWordRowViewModel
     /// <summary>What PanGloss built for this word against what FieldWorks holds: its Matrix column.</summary>
     public ParserOutcome ParserOutcome => WindowWords.OutcomeOf(CompareViewModel.Place(this).Column);
 
-    /// <summary>The parser work for this word as a count of work steps, as its word row shows it.</summary>
-    public string WorkStepsText => WordRow.WorkStepsText;
+    /// <summary>The parser work for this word as a count of parser work, as its word row shows it.</summary>
+    public string ParserWorkText => WordRow.ParserWorkText;
 
     public IReadOnlyList<ParserReadingViewModel> Readings { get; }
     public bool HasReadings => Readings.Count > 0;

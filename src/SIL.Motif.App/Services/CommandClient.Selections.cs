@@ -30,7 +30,7 @@ public sealed partial class CommandClient
         ShowConfigRequest request, CancellationToken cancellationToken) =>
         Task.Run(() => ConfigCommands.Show(request));
 
-    public Task<CommandOutcome<ParserStepRate>> ReadParserStepRateAsync(
+    public Task<CommandOutcome<ParserAttemptRate>> ReadParserAttemptRateAsync(
         string projectPath, CancellationToken cancellationToken) =>
-        Task.Run(() => SelectionLimitEstimateQuery.ReadParserStepRate(projectPath), cancellationToken);
+        Task.Run(() => SelectionLimitEstimateQuery.ReadParserAttemptRate(projectPath), cancellationToken);
 }

@@ -8,7 +8,7 @@ namespace SIL.Motif.App.ViewModels;
 public sealed partial class TimingPageModel
 {
     // Only what the page shows is kept from the Proposal's read; its per-word rows are dropped with the response.
-    private sealed record ProposalTiming(WordWorkSummary Work, IReadOnlyList<TimingWorkAggregate> WorkStepAggregates,
+    private sealed record ProposalTiming(WordWorkSummary Work, IReadOnlyList<TimingWorkAggregate> ParserWorkAggregates,
         IReadOnlyList<TimingAggregateRow> Aggregates, int StoppedWords, WordSetDigest Words);
 
     // What a held read belongs to; the chosen words count by reference, as changing them replaces the list.
@@ -74,10 +74,10 @@ public sealed partial class TimingPageModel
 
     private bool WorkIsPaired => SameWords && WorkComparable;
 
-    private string? ProposalTotal => ProposalMeasured ? TimingShare.FormatWorkSteps(Held!.Work.TotalWorkSteps) : null;
+    private string? ProposalTotal => ProposalMeasured ? TimingShare.FormatParserWork(Held!.Work.TotalParserWork) : null;
 
-    private string? ProposalMedian => ProposalMeasured && Held!.Work.MedianWorkSteps is { } median
-        ? TimingShare.FormatWorkSteps(median) : null;
+    private string? ProposalMedian => ProposalMeasured && Held!.Work.MedianParserWork is { } median
+        ? TimingShare.FormatParserWork(median) : null;
 
     private string? ProposalStopped => ProposalMeasured ? Held!.StoppedWords.ToString("N0", CultureInfo.CurrentCulture) : null;
 
@@ -138,8 +138,8 @@ public sealed partial class TimingPageModel
                 count.ToString("N0", CultureInfo.CurrentCulture));
     }
 
-    private IReadOnlyList<TimingShare> ProposalKindShares() => ProposalMeasured && Held!.WorkStepAggregates.Count > 0
-        ? TimingShare.ByKind(Held.WorkStepAggregates, Held.Work.TotalWorkSteps,
+    private IReadOnlyList<TimingShare> ProposalKindShares() => ProposalMeasured && Held!.ParserWorkAggregates.Count > 0
+        ? TimingShare.ByKind(Held.ParserWorkAggregates, Held.Work.TotalParserWork,
             Held.Aggregates, MotifAppStrings.TimingNotAttributedLabel, 0, alwaysShowUnattributed: true)
         : [];
 
@@ -157,7 +157,7 @@ public sealed partial class TimingPageModel
             row.Kind == other.Kind)).Select(other => other with
             {
                 ProposalShareText = other.ShareText, ProposalWorkText = other.WorkText, IsProposalOnly = true,
-                Share = null, WorkSteps = null,
+                Share = null, ParserWork = null,
             }));
         return paired;
     }
@@ -209,7 +209,7 @@ public sealed partial class TimingPageModel
                 .ConfigureAwait(true);
             if (!read.Succeeded) return (null, true);
             if (read.Value is not { } response) return (null, false);
-            return (new ProposalTiming(response.Work, response.WorkStepAggregates, response.Aggregates,
+            return (new ProposalTiming(response.Work, response.ParserWorkAggregates, response.Aggregates,
                 response.Words.Count(word => word.Completion == TimingCompletion.WorkLimit),
                 WordSetDigest.Of(response.Words.Select(word => word.Word))), false);
         }
@@ -229,8 +229,8 @@ public sealed partial class TimingPageModel
 
     // The Proposal's work for the words both sides measured, as a whole percent of today's, or null.
     private int? WorkChangePercent => Held is { Work.MeasuredWordCount: > 0 } held && KindTiming is { } today &&
-        HasHeadline && WordsChecked && WorkComparable && today.Work.TotalWorkSteps > 0
-        ? (int)Math.Round((held.Work.TotalWorkSteps - today.Work.TotalWorkSteps) * 100.0 / today.Work.TotalWorkSteps,
+        HasHeadline && WordsChecked && WorkComparable && today.Work.TotalParserWork > 0
+        ? (int)Math.Round((held.Work.TotalParserWork - today.Work.TotalParserWork) * 100.0 / today.Work.TotalParserWork,
             MidpointRounding.AwayFromZero) : null;
 
     private void RaiseProposalTiming()

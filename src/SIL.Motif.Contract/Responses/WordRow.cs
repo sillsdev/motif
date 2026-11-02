@@ -122,7 +122,7 @@ public sealed record WordRow(string Word, WordRowOutcome Outcome, string Meaning
     /// The total parser work reserved for the word across all phases, when PanGloss reported it; deterministic for a
     /// grammar, word and PanGloss version, unlike elapsed time.
     /// </summary>
-    public long? WorkSteps { get; init; }
+    public long? ParserWork { get; init; }
 
     /// <summary>The producing measurement, independent of the other words shown beside this one.</summary>
     public WordMeasurementOrigin? Origin { get; init; }

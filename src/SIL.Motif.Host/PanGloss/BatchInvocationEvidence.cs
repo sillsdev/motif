@@ -18,7 +18,7 @@ public sealed record BatchInvocationEvidence(
     string StandardErrorPath,
     string StandardErrorSha256,
     int? PerWordTimeoutMs,
-    StepCap PerWordStepLimit,
+    ParserWorkLimit PerWordParserWorkLimit,
     int Threads,
     bool CollectStatistics)
 {

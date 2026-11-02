@@ -157,17 +157,17 @@ public static class WordTraceQuery
                         Lowercase = lowerResult.Value! with
                         {
                             ParserSteps = lowerOutcome.Steps ?? lowerResult.Value.ParserSteps,
-                            ParserWorkSteps = lowerOutcome.WorkSteps ?? lowerResult.Value.ParserWorkSteps,
+                            ParserWork = lowerOutcome.ParserWork ?? lowerResult.Value.ParserWork,
                         },
                     });
             }
 
             var refusals = new ParserRefusalRepository(database);
-            if (result.Succeeded && (outcome.Steps is not null || outcome.WorkSteps is not null))
+            if (result.Succeeded && (outcome.Steps is not null || outcome.ParserWork is not null))
                 result = CommandOutcome<WordTraceResponse>.Success(result.Value! with
                 {
                     ParserSteps = outcome.Steps ?? result.Value.ParserSteps,
-                    ParserWorkSteps = outcome.WorkSteps ?? result.Value.ParserWorkSteps,
+                    ParserWork = outcome.ParserWork ?? result.Value.ParserWork,
                 });
             if (result.Succeeded) refusals.Clear(baseline.Token);
             else if (result.Refusal?.ParserDiagnostic is not null) refusals.Save(baseline.Token, result.Refusal);
@@ -242,7 +242,7 @@ public static class WordTraceQuery
                 root is null ? new TraceStep("NoTrace", null, null, null, null, []) : ConvertTree(root), [], []))
         {
             ParserSteps = details?.Steps,
-            ParserWorkSteps = details?.WorkSteps,
+            ParserWork = details?.ParserWork,
             ParserElapsedMs = details is null ? null : details.ElapsedNs / 1_000_000.0,
             Guessed = details?.Guessed ?? false,
             SearchStatus = complete ? "complete" : "incomplete",

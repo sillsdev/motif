@@ -588,13 +588,13 @@ public static class MotifAppStrings
 
     public static string DefaultSelectionParsingLimits => Text("MotifApp.DefaultSelectionParsingLimits");
 
-    public static string StepLimitPerWord => Text("MotifApp.StepLimitPerWord");
+    public static string ParserWorkLimitPerWord => Text("MotifApp.ParserWorkLimitPerWord");
 
-    public static string SelectionStepLimitPerWordAccessibleName => Text("MotifApp.SelectionStepLimitPerWordAccessibleName");
+    public static string SelectionParserWorkLimitPerWordAccessibleName => Text("MotifApp.SelectionParserWorkLimitPerWordAccessibleName");
 
-    public static string NoStepLimit => Text("MotifApp.NoStepLimit");
+    public static string NoParserWorkLimit => Text("MotifApp.NoParserWorkLimit");
 
-    public static string SelectionHasNoStepLimitAccessibleName => Text("MotifApp.SelectionHasNoStepLimitAccessibleName");
+    public static string SelectionHasNoParserWorkLimitAccessibleName => Text("MotifApp.SelectionHasNoParserWorkLimitAccessibleName");
 
     public static string TimeLimitPerWordSeconds => Text("MotifApp.TimeLimitPerWordSeconds");
 
@@ -1019,19 +1019,19 @@ public static class MotifAppStrings
 
     public static string ChooseWhatToParseForLimitsPlaceholder => Text("MotifApp.ChooseWhatToParseForLimitsPlaceholder");
 
-    public static string StepLimitPerWordLabel => Text("MotifApp.StepLimitPerWordLabel");
+    public static string ParserWorkLimitPerWordLabel => Text("MotifApp.ParserWorkLimitPerWordLabel");
 
-    public static string StepLimitDefaultCaption => Text("MotifApp.StepLimitDefaultCaption");
+    public static string ParserWorkLimitDefaultCaption => Text("MotifApp.ParserWorkLimitDefaultCaption");
 
-    public static string ResetStepLimit => Text("MotifApp.ResetStepLimit");
+    public static string ResetParserWorkLimit => Text("MotifApp.ResetParserWorkLimit");
 
-    public static string ResetStepLimitTo200000AccessibleName => Text("MotifApp.ResetStepLimitTo200000AccessibleName");
+    public static string ResetParserWorkLimitTo20000000AccessibleName => Text("MotifApp.ResetParserWorkLimitTo20000000AccessibleName");
 
-    public static string NoStepLimitAccessibleName => Text("MotifApp.NoStepLimitAccessibleName");
+    public static string NoParserWorkLimitAccessibleName => Text("MotifApp.NoParserWorkLimitAccessibleName");
 
     public static string TimeLimitPerWord => Text("MotifApp.TimeLimitPerWord");
 
-    public static string TimeLimitFollowsStepLimitCaption => Text("MotifApp.TimeLimitFollowsStepLimitCaption");
+    public static string TimeLimitFollowsParserWorkLimitCaption => Text("MotifApp.TimeLimitFollowsParserWorkLimitCaption");
 
     public static string TimeLimitPerWordInAccessibleName => Text("MotifApp.TimeLimitPerWordInAccessibleName");
 
@@ -1159,11 +1159,11 @@ public static class MotifAppStrings
 
     public static string WordsToAddAccessibleName => Text("MotifApp.WordsToAddAccessibleName");
 
-    public static string SetupAttemptLimitPerWord => Text("MotifApp.SetupAttemptLimitPerWord");
+    public static string SetupParserWorkLimitPerWord => Text("MotifApp.SetupParserWorkLimitPerWord");
 
-    public static string SetupAttemptLimitDefaultCaption => Text("MotifApp.SetupAttemptLimitDefaultCaption");
+    public static string SetupParserWorkLimitDefaultCaption => Text("MotifApp.SetupParserWorkLimitDefaultCaption");
 
-    public static string NoAttemptLimit => Text("MotifApp.NoAttemptLimit");
+    public static string SetupNoParserWorkLimitOption => Text("MotifApp.SetupNoParserWorkLimitOption");
 
     public static string SkipForNow => Text("MotifApp.SkipForNow");
 
@@ -1275,7 +1275,7 @@ public static class MotifAppStrings
 
     public static string StoredAnalysesSaveRefusalFormat => Text("MotifApp.StoredAnalysesSaveRefusalFormat");
 
-    public static string StepLimitWholeNumberRefusal => Text("MotifApp.StepLimitWholeNumberRefusal");
+    public static string ParserWorkLimitWholeNumberRefusal => Text("MotifApp.ParserWorkLimitWholeNumberRefusal");
 
     public static string TimeLimitRangeRefusal => Text("MotifApp.TimeLimitRangeRefusal");
 
@@ -1283,11 +1283,11 @@ public static class MotifAppStrings
 
     public static string CopyVersions => Text("MotifApp.CopyVersions");
 
-    public static string EnterPositiveWholeNumberOfAttempts => Text("MotifApp.EnterPositiveWholeNumberOfAttempts");
+    public static string EnterPositiveWholeNumberOfParserWork => Text("MotifApp.EnterPositiveWholeNumberOfParserWork");
 
-    public static string RunningNoStepLimit => Text("MotifApp.RunningNoStepLimit");
+    public static string RunningNoParserWorkLimit => Text("MotifApp.RunningNoParserWorkLimit");
 
-    public static string RunningStepLimitFormat => Text("MotifApp.RunningStepLimitFormat");
+    public static string RunningParserWorkLimitFormat => Text("MotifApp.RunningParserWorkLimitFormat");
 
     public static string SetupNextLimits => Text("MotifApp.SetupNextLimits");
 
@@ -1297,11 +1297,11 @@ public static class MotifAppStrings
 
     public static string SetupStepCaptionFormat => Text("MotifApp.SetupStepCaptionFormat");
 
-    public static string SetupNoAttemptLimit => Text("MotifApp.SetupNoAttemptLimit");
+    public static string SetupNoParserWorkLimitCaption => Text("MotifApp.SetupNoParserWorkLimitCaption");
 
-    public static string SetupAttemptLimitFormat => Text("MotifApp.SetupAttemptLimitFormat");
+    public static string SetupParserWorkLimitFormat => Text("MotifApp.SetupParserWorkLimitFormat");
 
-    public static string AnalysisAttemptsPattern => Text("MotifApp.AnalysisAttemptsPattern");
+    public static string ParserWorkLimitPattern => Text("MotifApp.ParserWorkLimitPattern");
 
     public static string NoAddedWords => Text("MotifApp.NoAddedWords");
 
@@ -1339,7 +1339,7 @@ public static class MotifAppStrings
 
     public static string AnalysisSectionLabel => Text("MotifApp.AnalysisSectionLabel");
 
-    public static string SetupAttemptLimitPerWordAccessibleName => Text("MotifApp.SetupAttemptLimitPerWordAccessibleName");
+    public static string SetupParserWorkLimitPerWordAccessibleName => Text("MotifApp.SetupParserWorkLimitPerWordAccessibleName");
 
     public static string SetupCancel => Text("MotifApp.SetupCancel");
 
@@ -1433,7 +1433,7 @@ public static class MotifAppStrings
     public static string AssessBudgetLabel => Text("MotifApp.AssessBudgetLabel");
     public static string AssessBudgetCaption => Text("MotifApp.AssessBudgetCaption");
     public static string AssessBudgetRefusal => Text("MotifApp.AssessBudgetRefusal");
-    public static string AnalysisAttemptLimit => Text("MotifApp.AnalysisAttemptLimit");
+    public static string ParserWorkLimitField => Text("MotifApp.ParserWorkLimitField");
 
     public static string ReadingTheParseTimes => Text("MotifApp.ReadingTheParseTimes");
 
@@ -1515,7 +1515,7 @@ public static class MotifAppStrings
 
     public static string SecondsPerWordAccessibleName => Text("MotifApp.SecondsPerWordAccessibleName");
 
-    public static string PerWordAnalysisAttemptLimitAccessibleName => Text("MotifApp.PerWordAnalysisAttemptLimitAccessibleName");
+    public static string PerWordParserWorkLimitAccessibleName => Text("MotifApp.PerWordParserWorkLimitAccessibleName");
 
     public static string ReRunChosenWordsAccessibleName => Text("MotifApp.ReRunChosenWordsAccessibleName");
 
@@ -1971,7 +1971,7 @@ public static class MotifAppStrings
 
     public static string WordCardOtherRules => Text("MotifApp.WordCardOtherRules");
 
-    public static string WordCardWorkStepsNotRecorded => Text("MotifApp.WordCardWorkStepsNotRecorded");
+    public static string WordCardParserWorkNotRecorded => Text("MotifApp.WordCardParserWorkNotRecorded");
 
     public static string WordCardWorkByRuleNotRecorded => Text("MotifApp.WordCardWorkByRuleNotRecorded");
 
@@ -2410,7 +2410,7 @@ public static class MotifAppStrings
 
     public static string StatsHeaderAttempts => Text("MotifApp.StatsHeaderAttempts");
 
-    public static string StatsHeaderWorkSteps => Text("MotifApp.StatsHeaderWorkSteps");
+    public static string StatsHeaderParserWork => Text("MotifApp.StatsHeaderParserWork");
 
     public static string StatsShadingWord => Text("MotifApp.StatsShadingWord");
 
@@ -3410,11 +3410,11 @@ public static class MotifAppStrings
 
     public static string ParserWorkFormat => Text("MotifApp.ParserWorkFormat");
 
+    public static string TraceParserWorkNotRecorded => Text("MotifApp.TraceParserWorkNotRecorded");
+
+    public static string ParserWorkPattern => Text("MotifApp.ParserWorkPattern");
+
     public static string ParserWorkNotRecorded => Text("MotifApp.ParserWorkNotRecorded");
-
-    public static string WorkStepsPattern => Text("MotifApp.WorkStepsPattern");
-
-    public static string WorkStepsNotRecorded => Text("MotifApp.WorkStepsNotRecorded");
 
     public static string DurationSecondsFormat => Text("MotifApp.DurationSecondsFormat");
 
@@ -3895,7 +3895,7 @@ public static class MotifAppStrings
     public static string ReviewApply => Text("MotifApp.ReviewApply");
     public static string TraceEffortDescription => Text("MotifApp.TraceEffortDescription");
     public static string TraceSegmentsExaminedLabel => Text("MotifApp.TraceSegmentsExaminedLabel");
-    public static string TraceWorkStepsLabel => Text("MotifApp.TraceWorkStepsLabel");
+    public static string TraceParserWorkLabel => Text("MotifApp.TraceParserWorkLabel");
 
     public static string DroppedGrammarBlockerFormat => Text("MotifApp.DroppedGrammarBlockerFormat");
 

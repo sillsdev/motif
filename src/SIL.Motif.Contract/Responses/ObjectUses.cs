@@ -376,10 +376,10 @@ public sealed record ObjectUseWord(WordRow Row)
     public long? ElapsedNs { get; init; }
 
     /// <summary>
-    /// The parser work steps attributed to the object in this word, over every direction PanGloss recorded;
+    /// The parser work attributed to the object in this word, over every direction PanGloss recorded;
     /// <see langword="null"/> for a use, or when some direction has no recorded count.
     /// </summary>
-    public long? WorkSteps { get; init; }
+    public long? ParserWork { get; init; }
 }
 
 /// <summary>How many of some words hold one meaning.</summary>

@@ -919,7 +919,7 @@ session that reproduced it on their main (3442e0ca), single-threaded, inside a 2
   `--step-cap` to unbounded, with no apply budget tracking bytes, so a deep-truncation word grows until the
   clock or the OS stops it. `--step-cap 200000 --threads 1` yields a typed, deterministic CAP outcome in 2 s.
 - *Blocking defect on their side*: today a step-capped word is written to the TSV with status **`ok`** and a
-  partial signature (the `CAP` marker and the "hit the step cap" count go to stderr only), so Motif would count
+  partial signature (the `CAP` marker and the "hit the parser work limit" count go to stderr only), so Motif would count
   a capped word as analysed and its coverage figure would rise for a word that did not finish. PanGloss agrees
   this contradicts their own contract and will change the row status to a distinct `CAP` token, columns
   otherwise unchanged; `batch --stats --cache` honours the same cap and writes the same rows.

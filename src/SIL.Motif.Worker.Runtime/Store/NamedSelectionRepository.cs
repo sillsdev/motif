@@ -143,7 +143,7 @@ public sealed class NamedSelectionRepository(MotifDatabase database)
         command.Transaction = transaction;
         command.CommandText = $"""
             SELECT s.SelectionName, s.TextIdsJson, s.AddedWordsJson, s.CreatedUtc, s.UpdatedUtc,
-                s.TimeLimitMode, s.ExplicitPerWordLimitMs, s.PerWordStepLimit, s.Revision, s.AssessBudgetSeconds,
+                s.TimeLimitMode, s.ExplicitPerWordLimitMs, s.PerWordParserWorkLimit, s.Revision, s.AssessBudgetSeconds,
                 s.WordListJson
             FROM {pointerTable} d JOIN NamedSelections s ON s.SelectionName = d.SelectionName
             WHERE d.Id = 1;
@@ -163,7 +163,7 @@ public sealed class NamedSelectionRepository(MotifDatabase database)
         using var command = connection.CreateCommand();
         command.CommandText = """
             SELECT SelectionName, TextIdsJson, AddedWordsJson, CreatedUtc, UpdatedUtc,
-                TimeLimitMode, ExplicitPerWordLimitMs, PerWordStepLimit, Revision, AssessBudgetSeconds,
+                TimeLimitMode, ExplicitPerWordLimitMs, PerWordParserWorkLimit, Revision, AssessBudgetSeconds,
                 WordListJson
             FROM NamedSelections WHERE SelectionName = $name;
             """;
@@ -215,8 +215,8 @@ public sealed class NamedSelectionRepository(MotifDatabase database)
             insert.CommandText = """
                 INSERT INTO NamedSelections
                     (SelectionName, TextIdsJson, AddedWordsJson, CreatedUtc, UpdatedUtc,
-                     TimeLimitMode, ExplicitPerWordLimitMs, PerWordStepLimit, Revision, AssessBudgetSeconds, WordListJson)
-                VALUES ($name, $texts, $words, $created, $updated, $timeMode, $timeLimit, $stepLimit, $revision, $budget,
+                     TimeLimitMode, ExplicitPerWordLimitMs, PerWordParserWorkLimit, Revision, AssessBudgetSeconds, WordListJson)
+                VALUES ($name, $texts, $words, $created, $updated, $timeMode, $timeLimit, $parserWorkLimit, $revision, $budget,
                     $wordList);
                 """;
             AddInputParameters(insert, name, canonicalTextIds, canonicalWords, limits, now, revision);
@@ -231,7 +231,7 @@ public sealed class NamedSelectionRepository(MotifDatabase database)
             update.CommandText = """
                 UPDATE NamedSelections SET TextIdsJson = $texts, AddedWordsJson = $words,
                     UpdatedUtc = $updated, TimeLimitMode = $timeMode,
-                    ExplicitPerWordLimitMs = $timeLimit, PerWordStepLimit = $stepLimit, Revision = $revision, AssessBudgetSeconds = $budget,
+                    ExplicitPerWordLimitMs = $timeLimit, PerWordParserWorkLimit = $parserWorkLimit, Revision = $revision, AssessBudgetSeconds = $budget,
                     WordListJson = $wordList
                 WHERE SelectionName = $name AND Revision = $expected;
                 """;
@@ -269,7 +269,7 @@ public sealed class NamedSelectionRepository(MotifDatabase database)
         update.Transaction = transaction;
         update.CommandText = """
             UPDATE NamedSelections SET UpdatedUtc = $updated, TimeLimitMode = $timeMode,
-                ExplicitPerWordLimitMs = $timeLimit, PerWordStepLimit = $stepLimit, Revision = $revision, AssessBudgetSeconds = $budget
+                ExplicitPerWordLimitMs = $timeLimit, PerWordParserWorkLimit = $parserWorkLimit, Revision = $revision, AssessBudgetSeconds = $budget
             WHERE SelectionName = $name AND Revision = $expected;
             """;
         update.Parameters.AddWithValue("$updated", now);
@@ -357,8 +357,8 @@ public sealed class NamedSelectionRepository(MotifDatabase database)
         command.Parameters.AddWithValue("$timeMode", limits.TimeMode.ToString());
         command.Parameters.AddWithValue("$timeLimit",
             limits.ExplicitPerWordLimitMs is { } timeLimit ? timeLimit : DBNull.Value);
-        command.Parameters.AddWithValue("$stepLimit",
-            limits.PerWordStepLimit.Steps is { } steps ? steps : DBNull.Value);
+        command.Parameters.AddWithValue("$parserWorkLimit",
+            limits.PerWordParserWorkLimit.Work is { } steps ? steps : DBNull.Value);
     }
 
     private static NamedSelectionRecord Read(SqliteDataReader reader)
@@ -367,7 +367,7 @@ public sealed class NamedSelectionRepository(MotifDatabase database)
         {
             var mode = Enum.Parse<SelectionTimeLimitMode>(reader.GetString(5), ignoreCase: false);
             var limits = new SelectionParsingLimits(
-                reader.IsDBNull(7) ? StepCap.Unbounded : new StepCap(reader.GetInt64(7)),
+                reader.IsDBNull(7) ? ParserWorkLimit.Unbounded : new ParserWorkLimit(reader.GetInt64(7)),
                 mode,
                 reader.IsDBNull(6) ? null : reader.GetInt32(6), reader.GetInt32(9));
             var invalid = limits.ValidationError();

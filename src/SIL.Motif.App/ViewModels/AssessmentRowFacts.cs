@@ -47,7 +47,7 @@ internal sealed record AssessmentRowFacts(AssessmentWordResult Source, int? Occu
         ? WordProjectStatuses.FromStanding(standing) : null;
     public int? Occurrences => OccurrenceCount;
     public int? ElapsedMs => Source.ElapsedMs;
-    public long? WorkSteps => Source.WorkSteps;
+    public long? ParserWork => Source.ParserWork;
     public FixFirstPriority? FixFirst => Source.FixFirst;
     public int ReadingCount => Source.Morphology?.Analyses.Count ?? 0;
     public bool IsChecked { get; set; }

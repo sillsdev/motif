@@ -484,7 +484,7 @@ public static class EvaluationSetVerifier
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(timeout.Token, cancellationToken);
         var outcome = await invoker.RunAsync(
             new PanGlossRequest.Batch(build.ProjectPath, words, TimeSpan.FromSeconds(1),
-                PerWordStepLimit: StepCap.Default) { CollectAnalyses = true },
+                PerWordParserWorkLimit: ParserWorkLimit.Default) { CollectAnalyses = true },
             "eval-set-verify:" + language.Id, linked.Token, TimeSpan.FromMinutes(10));
         if (outcome is not PanGlossOutcome.Completed completed)
             throw new InvalidOperationException($"PanGloss verification did not complete: {outcome.Message}");

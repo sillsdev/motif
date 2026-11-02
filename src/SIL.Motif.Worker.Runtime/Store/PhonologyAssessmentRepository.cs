@@ -205,11 +205,11 @@ public sealed class PhonologyAssessmentRepository(MotifDatabase database)
         row.RequestedContext, row.ResolvedContext, row.Underlying, row.Expected, row.EffectiveLimits,
         Enum.Parse<PhonologyRowDisposition>(row.Disposition.ToString()), Enum.Parse<PhonologyRowCompletion>(row.Completion.ToString()),
         row.ExpectedObserved, row.Observed, row.Reason is { } reason ? Enum.Parse<PhonologyRowReason>(reason.ToString()) : null,
-        row.Steps, row.WorkSteps, row.Capped, row.TimedOut, row.OrderedRuleIds, row.VisitedRuleIds, row.AppliedRuleIds);
+        row.Steps, row.ParserWork, row.Capped, row.TimedOut, row.OrderedRuleIds, row.VisitedRuleIds, row.AppliedRuleIds);
 
     internal static PhonologyRowSummary.Produced Summarize(PhonologyRowEvidence.Produced row) => new(
         row.RequestedContext, row.ResolvedContext, row.Underlying, row.Expected, row.EffectiveLimits, row.Disposition,
-        row.Completion, row.ExpectedObserved, row.Observed, row.Reason, row.Steps, row.WorkSteps, row.Capped, row.TimedOut,
+        row.Completion, row.ExpectedObserved, row.Observed, row.Reason, row.Steps, row.ParserWork, row.Capped, row.TimedOut,
         row.OrderedRuleIds.Count, row.VisitedRuleIds.Count, row.AppliedRuleIds.Count, row.AppliedRuleIds.Take(32).ToArray(),
         Math.Max(0, row.AppliedRuleIds.Count - 32));
 

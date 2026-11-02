@@ -259,7 +259,7 @@ public static class JobCommands
                 var scopes = new ProjectConfigurationReader().Read(project).Scopes;
                 var scope = scopes.FirstOrDefault(declared => declared.Name == (scopeName ?? AssessmentScopeConfiguration.DefaultName))
                     ?? scopes[0];
-                limits = SelectionLimitPolicy.Estimated(scope.PerWordStepLimit);
+                limits = SelectionLimitPolicy.Estimated(scope.PerWordParserWorkLimit);
             }
             catch (ProjectConfigurationException)
             {
@@ -564,12 +564,12 @@ public static class JobCommands
                     throw InvalidProgress("a stopped word must be an object");
                 var fields = stopped.EnumerateObject().ToDictionary(item => item.Name, item => item.Value,
                     StringComparer.Ordinal);
-                if (fields.Keys.Any(name => name is not ("Word" or "Reason" or "ElapsedMs" or "WorkSteps")))
+                if (fields.Keys.Any(name => name is not ("Word" or "Reason" or "ElapsedMs" or "ParserWork")))
                     throw InvalidProgress("a stopped word contains an unsupported field");
                 _ = ReadRequiredString(fields, "Word");
                 _ = ReadRequiredString(fields, "Reason");
                 _ = ReadRequiredDouble(fields, "ElapsedMs");
-                ValidateWorkSteps(fields);
+                ValidateParserWork(fields);
             }
         }
 
@@ -580,11 +580,11 @@ public static class JobCommands
                 throw InvalidProgress("SlowestWord must be an object or null");
             var fields = slowest.EnumerateObject().ToDictionary(item => item.Name, item => item.Value,
                 StringComparer.Ordinal);
-            if (fields.Keys.Any(name => name is not ("Word" or "ElapsedMs" or "WorkSteps")))
+            if (fields.Keys.Any(name => name is not ("Word" or "ElapsedMs" or "ParserWork")))
                 throw InvalidProgress("SlowestWord contains an unsupported field");
             _ = ReadRequiredString(fields, "Word");
             _ = ReadRequiredDouble(fields, "ElapsedMs");
-            ValidateWorkSteps(fields);
+            ValidateParserWork(fields);
         }
 
         if (properties.TryGetValue("PerWordLimitMs", out var limit) && limit.ValueKind != JsonValueKind.Null &&
@@ -592,11 +592,11 @@ public static class JobCommands
             throw InvalidProgress("PerWordLimitMs must be a positive integer or null");
     }
 
-    private static void ValidateWorkSteps(IReadOnlyDictionary<string, JsonElement> fields)
+    private static void ValidateParserWork(IReadOnlyDictionary<string, JsonElement> fields)
     {
-        if (fields.TryGetValue("WorkSteps", out var steps) && steps.ValueKind != JsonValueKind.Null &&
+        if (fields.TryGetValue("ParserWork", out var steps) && steps.ValueKind != JsonValueKind.Null &&
             (steps.ValueKind != JsonValueKind.Number || !steps.TryGetInt64(out var count) || count < 0))
-            throw InvalidProgress("WorkSteps must be a nonnegative integer or null");
+            throw InvalidProgress("ParserWork must be a nonnegative integer or null");
     }
 
     private static string ReadRequiredString(IReadOnlyDictionary<string, JsonElement> properties, string name)

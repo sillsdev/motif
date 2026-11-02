@@ -258,7 +258,7 @@ public sealed partial class SettingsPage : UserControl, IWorkspacePaneProvider
         await Settings.CommitParsingLimitsAsync().ConfigureAwait(true);
     }
 
-    private async void OnNoStepLimitClick(object? sender, RoutedEventArgs e)
+    private async void OnNoParserWorkLimitClick(object? sender, RoutedEventArgs e)
     {
         if (Settings is not null) await Settings.CommitParsingLimitsAsync().ConfigureAwait(true);
     }

@@ -212,12 +212,12 @@ public sealed partial class TraceWordViewModel : ObservableObject
 
     public string SummaryText => Result is not { } result ? string.Empty : Summarize(result);
 
-    /// <summary>The parser work for this trace as a count of work steps, or a note that none was recorded; blank for a refused trace, which did no parser work.</summary>
+    /// <summary>The parser work for this trace as a count of parser work, or a note that none was recorded; blank for a refused trace, which did no parser work.</summary>
     public string ParserWorkText => Result is not { InvalidShape: false } result ? string.Empty
-        : result.ParserWorkSteps is { } steps
+        : result.ParserWork is { } steps
             ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.ParserWorkFormat,
-                PluralText.Format(MotifAppStrings.WorkStepsPattern, steps))
-            : MotifAppStrings.ParserWorkNotRecorded;
+                PluralText.Format(MotifAppStrings.ParserWorkPattern, steps))
+            : MotifAppStrings.TraceParserWorkNotRecorded;
 
     public string? StopReason => Result is { Complete: false } result ? result.StopReason : null;
 
@@ -239,14 +239,14 @@ public sealed partial class TraceWordViewModel : ObservableObject
             : MotifAppStrings.TraceOverallNotRecorded;
         if (result.InvalidShape)
             parts.Add(overall);
-        else if (result.ParserWorkSteps is { } work)
+        else if (result.ParserWork is { } work)
         {
             parts.Add(string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.TraceInParserFormat,
-                PluralText.Format(MotifAppStrings.WorkStepsPattern, work), overall));
+                PluralText.Format(MotifAppStrings.ParserWorkPattern, work), overall));
         }
         else
         {
-            parts.Add(MotifAppStrings.WorkStepsNotRecorded);
+            parts.Add(MotifAppStrings.ParserWorkNotRecorded);
             parts.Add(overall);
         }
         return string.Join("  ·  ", parts);
@@ -1272,7 +1272,7 @@ public sealed class TraceEffortViewModel
         if (effort.NoRoot > 0) misses.Add(TraceText.Format(MotifAppStrings.TraceEffortNoRootFormat, effort.NoRoot.ToString("N0")));
         if (effort.SurfaceMismatch > 0) misses.Add(TraceText.Format(MotifAppStrings.TraceEffortSurfaceMismatchFormat, effort.SurfaceMismatch.ToString("N0")));
         Missed = misses.Count == 0 ? "—" : string.Join(", ", misses);
-        Time = effort.WorkSteps is { } steps ? PluralText.Format(MotifAppStrings.WorkStepsPattern, steps) : MotifAppStrings.WorkStepsNotRecorded;
+        Time = effort.ParserWork is { } steps ? PluralText.Format(MotifAppStrings.ParserWorkPattern, steps) : MotifAppStrings.ParserWorkNotRecorded;
 
         WorkHeat = Shade(effort.Work, largest.Work);
         UsesHeat = Shade(effort.Uses, largest.Uses);
@@ -1280,7 +1280,7 @@ public sealed class TraceEffortViewModel
         ProducedHeat = Shade(effort.Outputs, largest.Outputs);
         MissedHeat = Shade(effort.NotApplied + effort.NoRoot + effort.SurfaceMismatch,
             largest.NotApplied + largest.NoRoot + largest.SurfaceMismatch);
-        TimeHeat = Shade(effort.WorkSteps ?? 0, largest.WorkSteps ?? 0);
+        TimeHeat = Shade(effort.ParserWork ?? 0, largest.ParserWork ?? 0);
     }
 
     /// <summary>The rows of the effort table, each cell shaded against the largest value in its own column.</summary>
@@ -1299,7 +1299,7 @@ public sealed class TraceEffortViewModel
             SelfMs: rows.Max(row => row.SelfMs ?? 0))
         {
             Work = rows.Max(row => row.Work),
-            WorkSteps = rows.Max(row => row.WorkSteps ?? 0),
+            ParserWork = rows.Max(row => row.ParserWork ?? 0),
         };
         return rows.Select(row => new TraceEffortViewModel(row, largest)).ToArray();
     }

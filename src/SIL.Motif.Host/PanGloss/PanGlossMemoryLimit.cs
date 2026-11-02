@@ -96,6 +96,6 @@ public sealed record PanGlossMemoryKill(ulong LimitBytes, ulong? PeakBytes, bool
               $"limit. The limit was {PanGlossMemoryLimit.Format(LimitBytes)}"
             : $"The parser used more memory than Motif allows and was stopped. The limit was {PanGlossMemoryLimit.Format(LimitBytes)}") +
         (PeakBytes is { } peak ? $" and the parser had reached {PanGlossMemoryLimit.Format(peak)}. " : ". ") +
-        "Run the parser with fewer threads or a per-word step limit. The limit protects the rest of this computer; " +
+        "Run the parser with fewer threads or a per-word parser work limit. The limit protects the rest of this computer; " +
         $"to raise it or remove it, set {PanGlossMemoryLimit.Variable} to a number of bytes or to none.";
 }

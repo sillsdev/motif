@@ -41,14 +41,14 @@ public sealed class PanGlossParser
     /// single hard word can take the process down.
     /// </param>
     /// <param name="label">Names this run in the machine queue's diagnostics.</param>
-    /// <param name="perWordStepLimit">The per-word analysis-attempt limit; PanGloss derives a search-work limit from it.</param>
+    /// <param name="perWordParserWorkLimit">The per-word analysis-parser work limit; PanGloss derives a search-work limit from it.</param>
     public async Task<ParserRunResult> AnalyseBatchAsync(
         string projectFilePath, IReadOnlyList<string> words, TimeSpan perWordLimit,
         string label, CancellationToken cancellationToken,
-        StepCap? perWordStepLimit = null)
+        ParserWorkLimit? perWordParserWorkLimit = null)
     {
         var outcome = await _invoker.RunAsync(
-            new PanGlossRequest.Batch(projectFilePath, words, perWordLimit, PerWordStepLimit: perWordStepLimit),
+            new PanGlossRequest.Batch(projectFilePath, words, perWordLimit, PerWordParserWorkLimit: perWordParserWorkLimit),
             label, cancellationToken)
             .ConfigureAwait(false);
 
@@ -61,7 +61,7 @@ public sealed class PanGlossParser
                     ProjectPath: projectFilePath,
                     Warnings: ExtractWarnings(completed.StandardError))
                 {
-                    PerWordStepLimit = perWordStepLimit ?? StepCap.Default,
+                    PerWordParserWorkLimit = perWordParserWorkLimit ?? ParserWorkLimit.Default,
                 };
                 return new ParserRunResult(analysis, null, outcome);
             case PanGlossOutcome.Refused refused when ParserRefusalRecognizer.Recognize(refused.StandardError) is { } refusal:

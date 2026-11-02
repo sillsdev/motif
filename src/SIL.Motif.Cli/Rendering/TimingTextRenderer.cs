@@ -5,7 +5,7 @@ using SIL.Motif.Contract.Responses;
 namespace SIL.Motif.Cli.Rendering;
 
 /// <summary>
-/// The text of the timing command and the Overview's speed lines. Parser work, in PanGloss work steps, leads and is
+/// The text of the timing command and the Overview's speed lines. Parser work, in PanGloss parser work, leads and is
 /// what every comparison and share reads, because it does not change with how busy this computer is. A time
 /// appears only after it, labelled "time on this computer".
 /// </summary>
@@ -30,8 +30,8 @@ internal static class TimingTextRenderer
         if (response.CurrentProjectIsStale)
             text.AppendLine("  Warning: FieldWorks has changed since the current Baseline.");
         text.AppendLine("  " + WorkLine(response.Work));
-        var work = response.WorkStepAggregates;
-        var workTotal = response.Work.TotalWorkSteps;
+        var work = response.ParserWorkAggregates;
+        var workTotal = response.Work.TotalParserWork;
         text.AppendLine(response.ObjectTimingAggregatesAvailable
             ? $"  By {response.By}:" : "  Object timing totals unavailable for these words.");
         if (work.Count == 0 && response.Aggregates.Count > 0)
@@ -40,11 +40,11 @@ internal static class TimingTextRenderer
             text.AppendLine($"    {row.Name}{(response.By == "rule" ? $" [{row.Kind}:{row.Key}]" : string.Empty)}: " +
                 $"{RowWork(row, response.By, work, workTotal)}, {FormatCalls(row.Calls, row.Kind)}, " +
                 $"{row.WordsTouched:N0} words, {row.SelfMs:N2} ms on this computer");
-        var notAttributedWork = work.Where(row => row.IsUnattributed).Sum(row => row.WorkSteps);
+        var notAttributedWork = work.Where(row => row.IsUnattributed).Sum(row => row.ParserWork);
         var attribution = response.Attribution;
         if (work.Count > 0 || attribution.NotAttributedMs is not null)
             text.AppendLine("    Not attributed: " + (work.Count > 0
-                    ? $"{Steps(notAttributedWork)} ({FormatShare(workTotal, notAttributedWork)})" : "work steps not recorded") +
+                    ? $"{Steps(notAttributedWork)} ({FormatShare(workTotal, notAttributedWork)})" : "parser work not recorded") +
                 (attribution.NotAttributedMs is { } notAttributed ? $", {notAttributed:N2} ms on this computer" : string.Empty));
         if (attribution.Overrun)
             text.AppendLine($"  Warning: objects recorded {attribution.OverrunMs:N2} ms more than their words' own time on this computer.");
@@ -65,15 +65,15 @@ internal static class TimingTextRenderer
     {
         var slowest = timing.SlowestWords.FirstOrDefault();
         var slowestText = slowest is null ? "costliest (none)"
-            : $"costliest {slowest.Word} {(slowest.WorkSteps is { } slowestWork ? Steps(slowestWork) : "work steps not recorded")}";
+            : $"costliest {slowest.Word} {(slowest.ParserWork is { } slowestWork ? Steps(slowestWork) : "parser work not recorded")}";
         text.AppendLine(timing.Work.MeasuredWordCount == 0
-            ? "Work       work steps not recorded for these words"
-            : $"Work       {Steps(timing.Work.TotalWorkSteps)} in all for {timing.Work.MeasuredWordCount:N0} words  " +
-              $"median {Steps(timing.Work.MedianWorkSteps)}  p95 {Steps(timing.Work.Percentile95WorkSteps)}  {slowestText}");
+            ? "Work       parser work not recorded for these words"
+            : $"Work       {Steps(timing.Work.TotalParserWork)} in all for {timing.Work.MeasuredWordCount:N0} words  " +
+              $"median {Steps(timing.Work.MedianParserWork)}  p95 {Steps(timing.Work.Percentile95ParserWork)}  {slowestText}");
         if (timing.Work.MeasuredWordCount > 0)
-            text.AppendLine("           " + (timing.WorkStepAggregates.Count == 0
+            text.AppendLine("           " + (timing.ParserWorkAggregates.Count == 0
                 ? "work by kind not recorded for every word"
-                : "work by kind: " + string.Join(", ", WorkSplit(timing.WorkStepAggregates, timing.Work.TotalWorkSteps))));
+                : "work by kind: " + string.Join(", ", WorkSplit(timing.ParserWorkAggregates, timing.Work.TotalParserWork))));
         text.AppendLine($"Time on this computer     median {FormatMs(timing.MedianMs)}  p95 {FormatMs(timing.Percentile95Ms)}");
         if (timing.Attribution.MeasuredWordCount > 0)
             text.AppendLine($"           {timing.Attribution.MeasuredWordCount:N0} words, {timing.Attribution.WordTimeMs / 1000:N1} s in all");
@@ -86,35 +86,35 @@ internal static class TimingTextRenderer
     /// </summary>
     internal static string FormatWordWork(WordRuleTiming word)
     {
-        if (word.WorkSteps is not { } part) return "work steps not recorded";
-        if (word.WordWorkSteps is not { } whole) return $"{Steps(part)} (the word's total is not recorded)";
+        if (word.ParserWork is not { } part) return "parser work not recorded";
+        if (word.WordParserWork is not { } whole) return $"{Steps(part)} (the word's total is not recorded)";
         return part == whole && whole > 0 ? $"all of the word's {Steps(whole)}" : $"{part:N0} of its {Steps(whole)}";
     }
 
     private static string WorkLine(WordWorkSummary work) => work.MeasuredWordCount == 0
-        ? "Work steps are not recorded for these words."
-        : $"Work: {Steps(work.TotalWorkSteps)} in all for {work.MeasuredWordCount:N0} word(s); " +
-          $"median {Steps(work.MedianWorkSteps)}, p95 {Steps(work.Percentile95WorkSteps)} a word";
+        ? "Parser work are not recorded for these words."
+        : $"Work: {Steps(work.TotalParserWork)} in all for {work.MeasuredWordCount:N0} word(s); " +
+          $"median {Steps(work.MedianParserWork)}, p95 {Steps(work.Percentile95ParserWork)} a word";
 
     // The work shares by kind, largest first, then the work no kind accounts for.
     private static IEnumerable<string> WorkSplit(IReadOnlyList<TimingWorkAggregate> work, long total)
     {
         var kinds = work.Where(row => !row.IsUnattributed).GroupBy(row => row.Kind)
-            .Select(group => (Kind: group.Key, Steps: group.Sum(row => row.WorkSteps)))
+            .Select(group => (Kind: group.Key, Steps: group.Sum(row => row.ParserWork)))
             .OrderByDescending(kind => kind.Steps).ThenBy(kind => kind.Kind, StringComparer.Ordinal);
         foreach (var kind in kinds) yield return $"{kind.Kind} {FormatShare(total, kind.Steps)}";
-        var other = work.Where(row => row.IsUnattributed).Sum(row => row.WorkSteps);
+        var other = work.Where(row => row.IsUnattributed).Sum(row => row.ParserWork);
         if (other > 0) yield return $"not attributed {FormatShare(total, other)}";
     }
 
     private static string RowWork(TimingAggregateRow row, string by, IReadOnlyList<TimingWorkAggregate> work, long total)
     {
-        if (work.Count == 0) return "work steps not recorded";
+        if (work.Count == 0) return "parser work not recorded";
         var matches = by == "rule"
             ? work.Where(item => !item.IsUnattributed && ObjectIdentity.Same(item.TimingKey.Identity, row.TimingKey.Identity)).ToArray()
             : work.Where(item => !item.IsUnattributed && item.Kind == row.Key).ToArray();
-        if (matches.Length == 0) return "work steps not recorded";
-        var steps = matches.Sum(item => item.WorkSteps);
+        if (matches.Length == 0) return "parser work not recorded";
+        var steps = matches.Sum(item => item.ParserWork);
         return $"{Steps(steps)} ({FormatShare(total, steps)})";
     }
 
@@ -122,7 +122,7 @@ internal static class TimingTextRenderer
     {
         if (count is null) return "not recorded";
         var whole = (long)Math.Round(count.Value, MidpointRounding.AwayFromZero);
-        return whole == 1 ? "1 work step" : whole.ToString("N0", CultureInfo.CurrentCulture) + " work steps";
+        return whole == 1 ? "1 parser work" : whole.ToString("N0", CultureInfo.CurrentCulture) + " parser work";
     }
 
     private static string FormatShare(long total, long part) => total > 0

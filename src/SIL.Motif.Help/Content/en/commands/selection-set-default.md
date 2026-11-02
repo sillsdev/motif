@@ -1,6 +1,6 @@
 # Choose a Default Selection
 
-`selection set-default` saves which project Texts and added words Motif measures when a command does not name another Selection. It also saves the Selection's step cap and estimated or explicit time policy.
+`selection set-default` saves which project Texts and added words Motif measures when a command does not name another Selection. It also saves the Selection's parser work limit and estimated or explicit time policy.
 
 ## When to use it
 
@@ -9,10 +9,10 @@ Use this to focus repeatable Assessments on a linguist-chosen set of material. T
 ## Example
 
 ```powershell
-motif selection set-default --project "C:\FieldWorks\Projects\Koro\Koro.fwdata" --name "Verb examples" --texts <textGuid> --add-words "mala,ma" --step-cap 200000 --time-mode estimated
+motif selection set-default --project "C:\FieldWorks\Projects\Koro\Koro.fwdata" --name "Verb examples" --texts <textGuid> --add-words "mala,ma" --parser-work-limit 20000000 --time-mode estimated
 ```
 
-Use `--time-mode explicit --time-limit-ms <positive>` for a chosen time safety net, in milliseconds on this computer. `--time-mode estimated` rejects `--time-limit-ms`; `--step-cap none` stores no step or time cap. To replace an existing Selection, first read its revision with [selection show](cmd:selection%20show) and pass it as `--expected-revision`.
+Use `--time-mode explicit --time-limit-ms <positive>` for a chosen time safety net, in milliseconds on this computer. `--time-mode estimated` rejects `--time-limit-ms`; `--parser-work-limit none` stores no step or time cap. To replace an existing Selection, first read its revision with [selection show](cmd:selection%20show) and pass it as `--expected-revision`.
 
 ## A word list with counts
 

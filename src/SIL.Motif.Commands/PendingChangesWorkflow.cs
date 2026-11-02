@@ -448,7 +448,7 @@ public static class PendingChangesWorkflow
             {
                 var scope = ScopeCodec.ReadTrial(assessment.ScopeJson, RegressionChecker.RequiredKind);
                 return CommandOutcome<TrialLimits>.Success(new TrialLimits(
-                    scope.PerWordLimit, scope.PerWordStepLimit));
+                    scope.PerWordLimit, scope.PerWordParserWorkLimit));
             }
             catch (ReportRefusalException exception)
             {

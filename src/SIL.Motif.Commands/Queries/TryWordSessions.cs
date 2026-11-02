@@ -77,8 +77,8 @@ public static class TryWordSessions
         });
     }
 
-    internal static WarmFirstTracer TracerFor(string? parserPath, PanGlossInvoker invoker, StepCap? stepLimit = null) =>
-        new(PoolFor(parserPath), new PanGlossTracer(invoker, stepLimit), invoker, stepLimit);
+    internal static WarmFirstTracer TracerFor(string? parserPath, PanGlossInvoker invoker, ParserWorkLimit? parserWorkLimit = null) =>
+        new(PoolFor(parserPath), new PanGlossTracer(invoker, parserWorkLimit), invoker, parserWorkLimit);
 
     /// <summary>The session key part that changes whenever the Baseline does.</summary>
     internal static string TokenText(SIL.Motif.Contract.Baselines.BaselineToken token) =>

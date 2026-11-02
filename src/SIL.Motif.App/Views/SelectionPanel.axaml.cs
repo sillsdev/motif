@@ -32,7 +32,7 @@ public sealed partial class SelectionPanel : UserControl
 
     internal SettingsViewModel? Settings { get; }
 
-    private async void OnNoStepLimitClick(object? sender, RoutedEventArgs e)
+    private async void OnNoParserWorkLimitClick(object? sender, RoutedEventArgs e)
     {
         if (Settings is not null) await Settings.CommitParsingLimitsAsync().ConfigureAwait(true);
     }

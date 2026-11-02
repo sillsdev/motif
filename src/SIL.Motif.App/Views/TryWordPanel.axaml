@@ -328,9 +328,9 @@
           <TextBlock Text="{Binding EarlierTimingTitle}" FontSize="{DynamicResource Intent.Type.Section}"
                      FontWeight="{DynamicResource Intent.Weight.Section}" />
           <views:CopyableTextBlock Classes="muted" Text="{Binding EarlierTimingSource}" TextWrapping="Wrap" />
-          <Grid ColumnDefinitions="2*,*,*" ColumnSpacing="{DynamicResource Intent.Space.Related}">
+          <Grid ColumnDefinitions="1.6*,1.2*,*" ColumnSpacing="{DynamicResource Intent.Space.Related}">
             <TextBlock Classes="muted" Text="{x:Static app:MotifAppStrings.MeasuredObject}" FontWeight="{DynamicResource Intent.Weight.Section}" />
-            <TextBlock Grid.Column="1" Classes="muted" Text="{x:Static app:MotifAppStrings.TraceWorkStepsLabel}" FontWeight="{DynamicResource Intent.Weight.Section}" TextAlignment="Right" />
+            <TextBlock Grid.Column="1" Classes="muted" Text="{x:Static app:MotifAppStrings.TraceParserWorkLabel}" FontWeight="{DynamicResource Intent.Weight.Section}" TextAlignment="Right" />
             <TextBlock Grid.Column="2" Classes="muted" Text="{Binding EarlierShareHeader}" FontWeight="{DynamicResource Intent.Weight.Strong}" TextAlignment="Right" TextWrapping="Wrap" IsVisible="{Binding HasEarlierShares}" />
           </Grid>
           <ItemsControl x:Name="TryWordPanelEarlierRuleTimesItems" ItemsSource="{Binding EarlierRuleTimes}" AutomationProperties.Name="{x:Static app:MotifAppStrings.EarlierRuleTimesAccessibleName}">
@@ -340,7 +340,7 @@
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="vm:TryWordEarlierRuleTime">
                 <Border BorderBrush="{DynamicResource Intent.Border}" BorderThickness="{DynamicResource Intent.Stroke.DividerBottom}" Padding="{DynamicResource Component.TryWord.SmallInset}">
-                  <Grid ColumnDefinitions="2*,*,*" ColumnSpacing="{DynamicResource Intent.Space.Related}">
+                  <Grid ColumnDefinitions="1.6*,1.2*,*" ColumnSpacing="{DynamicResource Intent.Space.Related}">
                     <TextBlock Text="{Binding Rule}" FontWeight="{DynamicResource Intent.Weight.Strong}" TextTrimming="CharacterEllipsis" Classes.muted="{Binding IsOtherTime}" ToolTip.Tip="{Binding KindTip}" />
                     <TextBlock Grid.Column="1" Text="{Binding TimeText}" TextAlignment="Right" />
                     <TextBlock Grid.Column="2" Classes="share" Text="{Binding ShareText}" TextAlignment="Right" />

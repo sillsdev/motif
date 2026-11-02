@@ -9,12 +9,12 @@ namespace SIL.Motif.Commands.Queries;
 public static class SelectionLimitEstimateQuery
 {
     /// <summary>Returns the latest ParseTime rate, or the typical-machine fallback without usable statistics.</summary>
-    public static CommandOutcome<ParserStepRate> ReadParserStepRate(string projectPath) =>
+    public static CommandOutcome<ParserAttemptRate> ReadParserAttemptRate(string projectPath) =>
         ProjectStoreCommand.Run(projectPath, MotifProductVersion.CurrentText, (database, _) =>
         {
             var repository = new AssessmentRepository(database);
             var latest = repository.ListByKind(AssessmentKind.ParseTime.ToStoredKind()).LastOrDefault();
-            return CommandOutcome<ParserStepRate>.Success(StepLimitEstimator.FromAssessment(
+            return CommandOutcome<ParserAttemptRate>.Success(ParserWorkLimitEstimator.FromAssessment(
                 latest is null ? null : repository.Get(latest.AssessmentId)));
         });
 }

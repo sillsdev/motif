@@ -20,7 +20,7 @@ public static class TrialWorkNotice
     /// </param>
     public static string? For(TrialWork? work)
     {
-        if (work is not { BaselineWork: not null, TrialWorkSteps: not null, PercentChange: { } change })
+        if (work is not { BaselineWork: not null, TrialParserWork: not null, PercentChange: { } change })
             return null;
         if (!work.WorkIncreaseWarning) return null;
         return string.Format(CultureInfo.CurrentCulture, MotifAppStrings.TrialWorkNotice,

@@ -406,7 +406,7 @@ internal sealed class TrialJobHandler
                     .Distinct(StringComparer.Ordinal).ToArray();
                 var scope = new AssessmentScope.Words(words, ParseCollect(scopeConfiguration.Collect),
                     limits is { } selectedLimits ? selectedLimits.PerWordLimit : scopeConfiguration.PerWordLimit,
-                    limits?.PerWordStepLimit ?? scopeConfiguration.PerWordStepLimit)
+                    limits?.PerWordParserWorkLimit ?? scopeConfiguration.PerWordParserWorkLimit)
                     { Casing = cache is null ? null : LowercasePass.ForCache(cache) };
                 var projectStandings = ReadProjectStandings(cache, scope.ParsedWords);
                 var exportedDirectory = await _prepareForAssessment(cache, laneToken).ConfigureAwait(false);
@@ -433,7 +433,7 @@ internal sealed class TrialJobHandler
     {
         // The query is what the scope was told to do; the words are only what it resolved to on this run.
         var scopeJson = ScopeCodec.Write(new StoredScope.Trial(
-            scopeConfiguration.Query, scope.WordForms, scope.Collect, scope.PerWordLimit, scope.PerWordStepLimit));
+            scopeConfiguration.Query, scope.WordForms, scope.Collect, scope.PerWordLimit, scope.PerWordParserWorkLimit));
         var scopeDigest = AssessmentMaterial.Digest(scopeJson);
         var baselineTokenJson = JsonSerializer.Serialize(baselineToken, MotifJson.CreateOptions());
 

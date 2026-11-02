@@ -320,7 +320,7 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
                     stderrPath, BatchInvocationEvidence.DigestFile(stderrPath),
                     capturedBatch.PerWordLimit is { } timeLimit
                         ? (int)timeLimit.TotalMilliseconds : null,
-                    capturedBatch.PerWordStepLimit ?? StepCap.Default,
+                    capturedBatch.PerWordParserWorkLimit ?? ParserWorkLimit.Default,
                     capturedBatch.ThreadCount, capturedBatch.StatsCachePath is not null)
                 {
                     AnalysesPath = analysesPath,

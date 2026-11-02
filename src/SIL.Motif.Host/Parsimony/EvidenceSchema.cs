@@ -173,7 +173,7 @@ public static class EvidenceSchema
             model_fingerprint TEXT COLLATE BINARY,
             status TEXT NOT NULL CHECK (status IN ('complete', 'unavailable')),
             timeout_ms INTEGER CHECK (timeout_ms > 0),
-            step_limit TEXT NOT NULL COLLATE BINARY,
+            parser_work_limit TEXT NOT NULL COLLATE BINARY,
             threads INTEGER NOT NULL CHECK (threads > 0),
             requested_case_count INTEGER NOT NULL CHECK (requested_case_count >= 0),
             completed_case_count INTEGER NOT NULL CHECK (completed_case_count >= 0),

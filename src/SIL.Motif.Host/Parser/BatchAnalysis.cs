@@ -86,7 +86,7 @@ public sealed record WordAnalysis(int Index, string Word, int ElapsedMs, WordOut
     public long? Steps { get; init; }
 
     /// <summary>The total parser work in the final per-word evidence, or null when that evidence supplied none.</summary>
-    public long? WorkSteps { get; init; }
+    public long? ParserWork { get; init; }
 }
 
 /// <summary>
@@ -100,8 +100,8 @@ public sealed record BatchAnalysis(
     string ProjectPath,
     IReadOnlyList<string> Warnings)
 {
-    /// <summary>The recorded per-word analysis-attempt limit, or null when the evidence does not name one.</summary>
-    public StepCap? PerWordStepLimit { get; init; }
+    /// <summary>The recorded per-word analysis-parser work limit, or null when the evidence does not name one.</summary>
+    public ParserWorkLimit? PerWordParserWorkLimit { get; init; }
 
     /// <summary>
     /// Selects final per-word statistics, removing first-pass counts for replaced rows even when the retry
@@ -154,7 +154,7 @@ public static class BatchTsvParser
     public static IReadOnlyList<WordAnalysis> Parse(string tsv)
     {
         var results = new List<WordAnalysis>();
-        int? stepsColumn = null, workStepsColumn = null;
+        int? stepsColumn = null, parserWorkColumn = null;
         var hasHeader = false;
 
         foreach (var raw in tsv.Split('\n'))
@@ -168,7 +168,7 @@ public static class BatchTsvParser
                 // A header names its columns; the optional headerless layout appends both counters.
                 hasHeader = true;
                 stepsColumn = Array.IndexOf(columns, "steps") is var steps and >= 0 ? steps : null;
-                workStepsColumn = Array.IndexOf(columns, "work_steps") is var work and >= 0 ? work : null;
+                parserWorkColumn = Array.IndexOf(columns, "work_steps") is var work and >= 0 ? work : null;
                 continue;
             }
             if (columns.Length < 5) continue; // the STARTED progress marker
@@ -188,7 +188,7 @@ public static class BatchTsvParser
                 Signature: columns[4])
             {
                 Steps = ReadCounter(columns, stepsColumn ?? (!hasHeader && columns.Length is 7 or 8 ? columns.Length - 2 : null)),
-                WorkSteps = ReadCounter(columns, workStepsColumn ?? (!hasHeader && columns.Length is 7 or 8 ? columns.Length - 1 : null)),
+                ParserWork = ReadCounter(columns, parserWorkColumn ?? (!hasHeader && columns.Length is 7 or 8 ? columns.Length - 1 : null)),
             });
         }
 

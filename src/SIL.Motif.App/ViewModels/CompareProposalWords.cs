@@ -145,7 +145,7 @@ public sealed partial class CompareViewModel
     // The work the order and the Time column read: the Proposal's own in its view, else today's.
     private (long? Steps, int? Elapsed) OrderedWork(AssessmentRowFacts word) =>
         ListBasis == WordListBasis.Proposal && _proposalSummary!.Index.TryFind(word.Word, out var facts)
-            ? (facts.WorkSteps, facts.ElapsedMs) : (word.Source.WorkSteps, word.Source.ElapsedMs);
+            ? (facts.ParserWork, facts.ElapsedMs) : (word.Source.ParserWork, word.Source.ElapsedMs);
 
     // How many words the Proposal counts in the chosen cells that today's matrix lacks, which cannot be listed.
     private int WordsCountedNotListed(CompareCellViewModel[] chosen)
@@ -176,8 +176,8 @@ public sealed partial class CompareViewModel
 
     private static string StepsText(ProposalWordFacts proposed) =>
         proposed.HidesSteps ? string.Empty
-        : proposed.WorkSteps is { } steps ? PluralText.Format(MotifAppStrings.WorkStepsPattern, steps)
-        : MotifAppStrings.WorkStepsNotRecorded;
+        : proposed.ParserWork is { } steps ? PluralText.Format(MotifAppStrings.ParserWorkPattern, steps)
+        : MotifAppStrings.ParserWorkNotRecorded;
 
     private void ShowProposalOn(CompareWordViewModel word)
     {

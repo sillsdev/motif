@@ -575,7 +575,7 @@ public static class EvidenceWriter
         using var runs = connection.CreateCommand();
         runs.Transaction = transaction;
         runs.CommandText = "INSERT INTO parser_runs (assessment_id, invocation_id, source_sha256, parser_sha256, " +
-            "model_fingerprint, status, timeout_ms, step_limit, threads, requested_case_count, completed_case_count, reason) " +
+            "model_fingerprint, status, timeout_ms, parser_work_limit, threads, requested_case_count, completed_case_count, reason) " +
             "VALUES ($assessment, $invocation, $source, $parser, $model, $status, $timeout, $step, $threads, $requested, $completed, $reason);";
         foreach (var item in overlay.Runs)
         {
@@ -587,7 +587,7 @@ public static class EvidenceWriter
             runs.Parameters.AddWithValue("$model", (object?)item.ModelFingerprint ?? DBNull.Value);
             runs.Parameters.AddWithValue("$status", item.Status);
             runs.Parameters.AddWithValue("$timeout", (object?)item.TimeoutMs ?? DBNull.Value);
-            runs.Parameters.AddWithValue("$step", item.StepLimit);
+            runs.Parameters.AddWithValue("$step", item.ParserWorkLimit);
             runs.Parameters.AddWithValue("$threads", item.Threads);
             runs.Parameters.AddWithValue("$requested", item.RequestedCaseCount);
             runs.Parameters.AddWithValue("$completed", item.CompletedCaseCount);

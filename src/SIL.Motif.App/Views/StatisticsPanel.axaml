@@ -124,7 +124,7 @@
             </DataTemplate>
           </DataGridTemplateColumn.CellTemplate>
         </DataGridTemplateColumn>
-        <DataGridTemplateColumn Header="{x:Static app:MotifAppStrings.StatsHeaderWorkSteps}" Tag="workSteps" Width="Auto" ClipboardContentBinding="{ReflectionBinding WorkSteps}">
+        <DataGridTemplateColumn Header="{x:Static app:MotifAppStrings.StatsHeaderParserWork}" Tag="parserWork" Width="Auto" ClipboardContentBinding="{ReflectionBinding ParserWork}">
           <DataGridTemplateColumn.CellTemplate>
             <DataTemplate x:DataType="vm:StatsRowViewModel">
               <views:HeatCell Text="{Binding WorkText}" TextToolTip="{Binding WorkText}"

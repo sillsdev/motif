@@ -24,19 +24,19 @@ internal static class ProposalNumberText
     [
         new("Coverage", Show(trial.TextCoveragePercent, Percent), trial.TextCoveragePercent.Moved),
         new("Approved kept", ShowKept(trial), trial.ApprovedKept.Moved || trial.ApprovedTotal.Moved),
-        new("Work", ShowWork(trial.Work), trial.Work is { } work && PairedMoves.Work(work.BaselineWork, work.TrialWorkSteps)),
+        new("Work", ShowWork(trial.Work), trial.Work is { } work && PairedMoves.Work(work.BaselineWork, work.TrialParserWork)),
         new("Warnings", Show(trial.WarningCount, Count), trial.WarningCount.Moved),
         new("Time on this computer", Show(trial.WordTimeMs, Time), trial.WordTimeMs.Moved),
     ];
 
-    // Work steps are the cost; with no comparison the cell says so, never a time in their place.
+    // Parser work are the cost; with no comparison the cell says so, never a time in their place.
     private static string ShowWork(TrialWork? work) => HasWorkComparison(work)
         ? $"{work!.BaselineWork!.Value.ToString("N0", CultureInfo.CurrentCulture)} → " +
-            work.TrialWorkSteps!.Value.ToString("N0", CultureInfo.CurrentCulture)
+            work.TrialParserWork!.Value.ToString("N0", CultureInfo.CurrentCulture)
         : "—";
 
     // TrialWorkComparison leaves both totals empty when two tries cannot be compared; the Overview asks the same.
-    public static bool HasWorkComparison(TrialWork? work) => work is { BaselineWork: not null, TrialWorkSteps: not null };
+    public static bool HasWorkComparison(TrialWork? work) => work is { BaselineWork: not null, TrialParserWork: not null };
 
     private static string ShowKept(TrialSummary trial)
     {
@@ -222,7 +222,7 @@ public sealed class ProposalCardViewModel : ObservableObject
     /// <summary>Approved words kept before and after.</summary>
     public ProposalNumber? ApprovedKept => Numbers.Count > 1 ? Numbers[1] : null;
 
-    /// <summary>Parser work, in work steps, in the Baseline and in the Trial.</summary>
+    /// <summary>Parser work, in parser work, in the Baseline and in the Trial.</summary>
     public ProposalNumber? Work => Numbers.Count > 2 ? Numbers[2] : null;
 
     /// <summary>Warning count before and after.</summary>

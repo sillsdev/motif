@@ -67,7 +67,7 @@ Linguists and language teams who keep their grammar in FieldWorks (FLEx) and wan
 
 Download the Windows x64 **Setup.exe** from the [Releases page](https://github.com/sillsdev/motif/releases), choosing the beta named in your invitation, then follow the [install guide](src/SIL.Motif.Help/Content/en/guide/install.md). The Windows release includes the matching PanGloss parser. The same release offers a Linux x64 AppImage and a macOS Apple silicon ZIP as previews.
 
-Then [open your project](src/SIL.Motif.Help/Content/en/guide/open-a-project.md), press **Refresh**, and follow [What Motif does](src/SIL.Motif.Help/Content/en/guide/what-is-motif.md). The first setup for a project starts with an analysis-attempt limit of 200,000 per word; a project's saved limit stays in effect.
+Then [open your project](src/SIL.Motif.Help/Content/en/guide/open-a-project.md), press **Refresh**, and follow [What Motif does](src/SIL.Motif.Help/Content/en/guide/what-is-motif.md). The first setup for a project starts with a parser work limit of 20,000,000 per word; a project's saved limit stays in effect.
 
 ## Build from source
 

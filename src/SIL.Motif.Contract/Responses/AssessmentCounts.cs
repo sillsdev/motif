@@ -13,7 +13,7 @@ namespace SIL.Motif.Contract.Responses;
 /// <param name="Analysed">Words the parser returned at least one reading for.</param>
 /// <param name="NoAnalysis">Words whose search finished with no reading.</param>
 /// <param name="TimedOut">Words whose search stopped at the time safety net.</param>
-/// <param name="Capped">Words whose search stopped at the step cap.</param>
+/// <param name="Capped">Words whose search stopped at the parser work limit.</param>
 /// <param name="Skipped">Words the parser refused to search.</param>
 /// <param name="Accepted">Analysed words with a reading whose every morph the parser identified.</param>
 /// <param name="GuessOnly">Analysed words whose every reading contains a guessed morph, or has no morph detail.</param>

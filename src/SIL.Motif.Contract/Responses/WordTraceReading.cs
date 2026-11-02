@@ -192,7 +192,7 @@ public sealed record WordTraceResponse(
 {
     public long? ParserSteps { get; init; }
     /// <summary>Total parser work for this word, when the trace reported it.</summary>
-    public long? ParserWorkSteps { get; init; }
+    public long? ParserWork { get; init; }
     public double? ParserElapsedMs { get; init; }
 
     /// <summary>
@@ -206,8 +206,8 @@ public sealed record WordTraceResponse(
 
     /// <summary>Parser work for the word as written plus its lowercase pass, when the trace reported both.</summary>
     [System.Text.Json.Serialization.JsonIgnore]
-    public long? TotalParserWorkSteps => ParserWorkSteps is null && Lowercase?.ParserWorkSteps is null
-        ? null : (ParserWorkSteps ?? 0) + (Lowercase?.ParserWorkSteps ?? 0);
+    public long? TotalParserWork => ParserWork is null && Lowercase?.ParserWork is null
+        ? null : (ParserWork ?? 0) + (Lowercase?.ParserWork ?? 0);
 
     public bool Guessed { get; init; }
     public IReadOnlyList<TraceEffort> Effort { get; init; } = [];
@@ -251,7 +251,7 @@ public sealed record TraceEffort(
     string Kind, long Attempts, long Outputs, long NotApplied, long NoRoot, long SurfaceMismatch, long Uses, double? SelfMs)
 {
     public long Work { get; init; }
-    public long? WorkSteps { get; init; }
+    public long? ParserWork { get; init; }
     public bool TimingAvailable => SelfMs is not null;
 }
 

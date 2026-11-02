@@ -360,7 +360,7 @@ public sealed partial class ResultsTokenViewModel : ObservableObject, IDisposabl
     public IReadOnlyList<TimingShareViewModel> TimingShares { get; private set; } = [];
     /// <summary>The stored share of this word's time that no object timer recorded.</summary>
     public string NotAttributedShareLabel { get; private set; } = "Timing unavailable for this word";
-    /// <summary>What the rule shares are of: the work steps and how many words they cover; empty when none are shown.</summary>
+    /// <summary>What the rule shares are of: the parser work and how many words they cover; empty when none are shown.</summary>
     public string TimingShareBasisLabel { get; private set; } = string.Empty;
     /// <summary>The stored share of this word's time that no object timer recorded, when known.</summary>
     public double? NotAttributedShare { get; private set; }
@@ -467,25 +467,25 @@ public sealed partial class ResultsTokenViewModel : ObservableObject, IDisposabl
     internal void SetTimingEvidence(TimingResponse? timing, bool responseAvailable)
     {
         HasTimingEvidence = responseAvailable;
-        var total = timing?.Work.TotalWorkSteps ?? 0;
-        var steps = timing is { WorkStepAggregates.Count: > 0 } && total > 0 ? timing.WorkStepAggregates : null;
-        var rules = steps?.Where(row => !row.IsUnattributed && row.WorkSteps > 0)
-            .OrderByDescending(row => row.WorkSteps).ToArray() ?? [];
+        var total = timing?.Work.TotalParserWork ?? 0;
+        var steps = timing is { ParserWorkAggregates.Count: > 0 } && total > 0 ? timing.ParserWorkAggregates : null;
+        var rules = steps?.Where(row => !row.IsUnattributed && row.ParserWork > 0)
+            .OrderByDescending(row => row.ParserWork).ToArray() ?? [];
         var timingShares = rules.Take(ListedRuleShares)
-            .Select(row => new TimingShareViewModel(row.Name, TimingShare.ShareOf(row.WorkSteps, total)!.Value, row.WorkSteps))
+            .Select(row => new TimingShareViewModel(row.Name, TimingShare.ShareOf(row.ParserWork, total)!.Value, row.ParserWork))
             .ToList();
-        if (rules.Skip(ListedRuleShares).Sum(row => row.WorkSteps) is > 0 and var rest)
+        if (rules.Skip(ListedRuleShares).Sum(row => row.ParserWork) is > 0 and var rest)
             timingShares.Add(new TimingShareViewModel(MotifAppStrings.WordCardOtherRules,
                 TimingShare.ShareOf(rest, total)!.Value, rest));
         TimingShares = timingShares;
         NotAttributedShare = steps is null ? null
-            : TimingShare.ShareOf(steps.Where(row => row.IsUnattributed).Sum(row => row.WorkSteps), total);
+            : TimingShare.ShareOf(steps.Where(row => row.IsUnattributed).Sum(row => row.ParserWork), total);
         NotAttributedShareLabel = NotAttributedShare is { } share
             ? $"{MotifAppStrings.TimingNotAttributedLabel} · {TimingShare.FormatPercent(share)}"
             : !responseAvailable ? "Timing unavailable for this word"
-            : total > 0 ? MotifAppStrings.WordCardWorkByRuleNotRecorded : MotifAppStrings.WordCardWorkStepsNotRecorded;
+            : total > 0 ? MotifAppStrings.WordCardWorkByRuleNotRecorded : MotifAppStrings.WordCardParserWorkNotRecorded;
         TimingShareBasisLabel = steps is null || timing is null ? string.Empty : TimingShare.ShareOverText(
-            TimingShare.FormatWorkSteps(total), timing.Work.MeasuredWordCount, timing.WordCount, allSelected: false);
+            TimingShare.FormatParserWork(total), timing.Work.MeasuredWordCount, timing.WordCount, allSelected: false);
         OnPropertyChanged(nameof(HasTimingEvidence));
         OnPropertyChanged(nameof(TimingShares));
         OnPropertyChanged(nameof(NotAttributedShareLabel));
@@ -940,12 +940,12 @@ public sealed record WarningCandidateViewModel(IReadOnlyList<string> Words)
 
 /// <summary>One rule's share of the selected word's parser work.</summary>
 /// <param name="Name">The rule name returned by Timing.</param>
-/// <param name="Share">The rule's share of the word's work steps, from 0 to 1.</param>
-/// <param name="WorkSteps">The work steps the rule did in this word.</param>
-public sealed record TimingShareViewModel(string Name, double Share, long WorkSteps)
+/// <param name="Share">The rule's share of the word's parser work, from 0 to 1.</param>
+/// <param name="ParserWork">The parser work the rule did in this word.</param>
+public sealed record TimingShareViewModel(string Name, double Share, long ParserWork)
 {
-    /// <summary>The share as a whole percentage, then the work steps it is of.</summary>
-    public string ShareLabel => $"{TimingShare.FormatPercent(Share)} · {TimingShare.FormatWorkSteps(WorkSteps)}";
+    /// <summary>The share as a whole percentage, then the parser work it is of.</summary>
+    public string ShareLabel => $"{TimingShare.FormatPercent(Share)} · {TimingShare.FormatParserWork(ParserWork)}";
 }
 
 internal sealed record ResultsWarningEvidence(

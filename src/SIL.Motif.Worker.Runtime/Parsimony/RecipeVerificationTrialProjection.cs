@@ -36,7 +36,7 @@ public static class RecipeVerificationTrialProjection
         else
         {
             options = new RecipeVerificationOptions(invocation.ExecutableBytesSha256,
-                invocation.PerWordTimeoutMs, invocation.PerWordStepLimit, invocation.Threads,
+                invocation.PerWordTimeoutMs, invocation.PerWordParserWorkLimit, invocation.Threads,
                 invocation.CollectStatistics);
         }
 

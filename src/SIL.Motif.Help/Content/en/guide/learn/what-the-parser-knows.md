@@ -6,6 +6,6 @@ A **parse** is an analysis the grammar can build for a word. As an illustrative 
 
 “It doesn’t parse” describes the result for this word and saved grammar. To judge whether that grammar matches the language, compare the result with the forms and patterns speakers use.
 
-First check whether the search completed. A completed search with **No parse** tells you the grammar did not produce a reading. **Search incomplete** means the parser stopped before finishing, so it cannot show that the grammar has no possible analysis. A search may stop at the work limit (its analysis-attempt limit or the derived work limit), at the time safety net or for another cause. If the record does not identify which it reached, Motif keeps that reason general. A word with a character missing from the grammar’s character table is a different case again.
+First check whether the search completed. A completed search with **No parse** tells you the grammar did not produce a reading. **Search incomplete** means the parser stopped before finishing, so it cannot show that the grammar has no possible analysis. A search may stop at the work limit (its analysis-parser work limit or the derived work limit), at the time safety net or for another cause. If the record does not identify which it reached, Motif keeps that reason general. A word with a character missing from the grammar’s character table is a different case again.
 
 The parser reports what its grammar allowed. You decide whether that grammar matches the language.

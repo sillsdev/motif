@@ -419,33 +419,33 @@ public sealed class TryWordPageModel : PageModel
         OnPropertyChanged(nameof(TraceBaselineWarning));
         EarlierRuleTimes.Clear();
         EarlierTimingTitle = EarlierTimingSource = EarlierShareHeader = string.Empty;
-        if (timing is { WorkStepAggregates.Count: > 0 } && Trace.Result is { } result &&
+        if (timing is { ParserWorkAggregates.Count: > 0 } && Trace.Result is { } result &&
             timing.Words.FirstOrDefault(word => word.Word == result.Word) is { Origin: { } origin } word)
         {
-            var total = word.WorkSteps;
+            var total = word.ParserWork;
             string ShareOf(long steps) => total is > 0
                 ? ((double)steps / total.Value).ToString("P0", CultureInfo.CurrentCulture) : string.Empty;
-            var rules = timing.WorkStepAggregates.Where(row => !row.IsUnattributed).ToArray();
+            var rules = timing.ParserWorkAggregates.Where(row => !row.IsUnattributed).ToArray();
             foreach (var rule in rules.Take(EarlierRuleLimit))
                 EarlierRuleTimes.Add(new TryWordEarlierRuleTime(rule.Name, TimingShare.KindName(rule.Kind),
-                    PluralText.Format(MotifAppStrings.WorkStepsPattern, rule.WorkSteps), ShareOf(rule.WorkSteps), false));
+                    PluralText.Format(MotifAppStrings.ParserWorkPattern, rule.ParserWork), ShareOf(rule.ParserWork), false));
             if (rules.Skip(EarlierRuleLimit).ToArray() is { Length: > 0 } rest)
             {
-                var steps = rest.Sum(rule => rule.WorkSteps);
+                var steps = rest.Sum(rule => rule.ParserWork);
                 EarlierRuleTimes.Add(new TryWordEarlierRuleTime(PluralText.Format(MotifAppStrings.TryWordOtherRulesPattern, rest.Length),
-                    string.Empty, PluralText.Format(MotifAppStrings.WorkStepsPattern, steps), ShareOf(steps), false));
+                    string.Empty, PluralText.Format(MotifAppStrings.ParserWorkPattern, steps), ShareOf(steps), false));
             }
-            foreach (var other in timing.WorkStepAggregates.Where(row => row.IsUnattributed))
+            foreach (var other in timing.ParserWorkAggregates.Where(row => row.IsUnattributed))
                 EarlierRuleTimes.Add(new TryWordEarlierRuleTime(MotifAppStrings.TimingNotAttributedLabel, string.Empty,
-                    PluralText.Format(MotifAppStrings.WorkStepsPattern, other.WorkSteps), ShareOf(other.WorkSteps), true));
+                    PluralText.Format(MotifAppStrings.ParserWorkPattern, other.ParserWork), ShareOf(other.ParserWork), true));
             EarlierTimingTitle = string.Format(CultureInfo.CurrentCulture, MotifAppStrings.TryWordEarlierTimingTitleFormat, origin.MeasuredUtc.ToLocalTime());
             EarlierTimingSource = total is { } count
                 ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.TryWordEarlierSourceWithWordFormat,
-                    result.Word, PluralText.Format(MotifAppStrings.WorkStepsPattern, count))
+                    result.Word, PluralText.Format(MotifAppStrings.ParserWorkPattern, count))
                 : string.Format(CultureInfo.CurrentCulture, MotifAppStrings.TryWordEarlierSourceFormat, result.Word);
             EarlierShareHeader = total is > 0
                 ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.TryWordShareOfFormat,
-                    PluralText.Format(MotifAppStrings.WorkStepsPattern, total.Value)) : string.Empty;
+                    PluralText.Format(MotifAppStrings.ParserWorkPattern, total.Value)) : string.Empty;
         }
         OnPropertyChanged(nameof(HasEarlierTiming));
         OnPropertyChanged(nameof(EarlierTimingTitle));
@@ -458,7 +458,7 @@ public sealed class TryWordPageModel : PageModel
 /// <summary>One rule's work for the traced word in an earlier parse, or work attributed to no object.</summary>
 /// <param name="Rule">The rule's name, or what the row gathers.</param>
 /// <param name="KindLabel">The rule's kind as the window names it; empty for a gathered row.</param>
-/// <param name="TimeText">The work steps the earlier parse recorded.</param>
+/// <param name="TimeText">The parser work the earlier parse recorded.</param>
 /// <param name="ShareText">Its share of the word's total work; empty when that total was not kept.</param>
 /// <param name="IsOtherTime">Whether the work was not attributed to an object.</param>
 public sealed record TryWordEarlierRuleTime(string Rule, string KindLabel, string TimeText, string ShareText,

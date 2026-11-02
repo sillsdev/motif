@@ -74,7 +74,7 @@ public static class SelectionCommands
             try
             {
                 repository.SetParsimony(name, request.TextIds, [],
-                    existing?.Limits ?? new SelectionParsingLimits(StepCap.Default, SelectionTimeLimitMode.Estimated, null),
+                    existing?.Limits ?? new SelectionParsingLimits(ParserWorkLimit.Default, SelectionTimeLimitMode.Estimated, null),
                     existing?.Revision.ToString(System.Globalization.CultureInfo.InvariantCulture));
                 return CommandOutcome<DefaultSelectionResponse>.Success(Both(repository));
             }

@@ -128,13 +128,13 @@ public static class CommandTextRenderer
         if (work.PercentChange is { } change)
             text.AppendLine((change == 0 ? "These words took the same parser work"
                 : $"These words took {Math.Abs(change):0.#}% {(change > 0 ? "more" : "less")} work to parse") +
-                $" ({work.BaselineWork:N0} work steps in the Baseline, {work.TrialWorkSteps:N0} in the Trial).");
+                $" ({work.BaselineWork:N0} parser work in the Baseline, {work.TrialParserWork:N0} in the Trial).");
         else text.AppendLine("Parser work cannot be compared for every Trial word.");
         if (work.WorkIncreaseWarning)
             text.AppendLine("Warning: parser work increased by more than 5% over the Baseline.");
         if (work.IncreasedWords.Count > 0) text.AppendLine("Words with more than 5% extra work:");
         foreach (var word in work.IncreasedWords)
-            text.AppendLine($"  {word.Word}: {word.BaselineWork:N0} to {word.TrialWork:N0} work steps " +
+            text.AppendLine($"  {word.Word}: {word.BaselineWork:N0} to {word.TrialWork:N0} parser work " +
                 $"({word.Ratio:0.00}x, {word.PercentMore:0.#}% more work)");
         text.AppendLine($"Stopped: {work.WorkLimitStops} at the work limit; {work.TimeSafetyNetStops} at the time safety net.");
         if (work.WorkLimitWords.Count > 0) text.AppendLine("  Work limit: " + string.Join(", ", work.WorkLimitWords));
@@ -720,7 +720,7 @@ public static class CommandTextRenderer
             text.AppendLine($"  {word!["word"]}: {word["outcome"]}" +
                 (word["reading"] is { } reading ? " (" + reading + ")" : string.Empty) +
                 (word["stoppedBy"] is { } stoppedBy ? ", stopped by " + stoppedBy : string.Empty) +
-                (word["workSteps"] is { } work ? ", " + work + " work steps" : string.Empty));
+                (word["parserWork"] is { } work ? ", " + work + " parser work" : string.Empty));
         if (page["nextOffset"] is { } next)
             text.AppendLine($"More: motif assess <project> --summary --offset {next}");
         return new CommandResult(0, text.ToString());
@@ -774,7 +774,7 @@ public static class CommandTextRenderer
         var timeLimit = selection.Limits.TimeMode switch
         {
             SelectionTimeLimitMode.Explicit => $"{selection.Limits.ExplicitPerWordLimitMs!.Value:N0} ms on this computer",
-            SelectionTimeLimitMode.Estimated when !selection.Limits.PerWordStepLimit.IsUnbounded => "estimated",
+            SelectionTimeLimitMode.Estimated when !selection.Limits.PerWordParserWorkLimit.IsUnbounded => "estimated",
             _ => "none",
         };
         return $"Default Selection: {selection.Name}{Environment.NewLine}" +
@@ -784,7 +784,7 @@ public static class CommandTextRenderer
                 ? $"  Word list:       {list.Source} {list.Sha256}, {list.Counts.Count:N0} words with a count, " +
                   $"{selection.AddedWords.Count - list.Counts.Count:N0} with none known{Environment.NewLine}"
                 : string.Empty) +
-            $"  Work limit:      {(selection.Limits.PerWordStepLimit.Steps is { } steps ? steps.ToString("N0", CultureInfo.CurrentCulture) + " analysis attempts" : "none")}{Environment.NewLine}" +
+            $"  Work limit:      {(selection.Limits.PerWordParserWorkLimit.Work is { } work ? work.ToString("N0", CultureInfo.CurrentCulture) + " parser work" : "none")}{Environment.NewLine}" +
             $"  Time safety net: {timeLimit}{Environment.NewLine}" +
             $"  Updated:         {selection.UpdatedUtc}{Environment.NewLine}";
     }
@@ -1257,9 +1257,9 @@ public static class CommandTextRenderer
             " (" + string.Join(", ", words.ByMeaning.Select(meaning => $"{meaning.Meaning} {meaning.Words:N0}")) + ")"));
         foreach (var word in words.Words)
         {
-            var timing = word.Calls is null && word.ElapsedNs is null && word.WorkSteps is null ? "" :
+            var timing = word.Calls is null && word.ElapsedNs is null && word.ParserWork is null ? "" :
                 $", {CountLabel(word.Calls, "call", "calls")}, " +
-                (word.WorkSteps is { } work ? $"{work:N0} work steps, " : "work steps not recorded, ") +
+                (word.ParserWork is { } work ? $"{work:N0} parser work, " : "parser work not recorded, ") +
                 (word.ElapsedNs is { } ns ? "time on this computer: " + (ns / 1_000_000d).ToString("N3", CultureInfo.CurrentCulture) + " ms" : "time on this computer not recorded");
             text.AppendLine($"    {word.Row.Word}: {word.Row.Meaning}{timing}");
             if (word.Row.MeaningDetail.Length > 0) text.AppendLine("      " + word.Row.MeaningDetail);
@@ -1298,14 +1298,14 @@ public static class CommandTextRenderer
         text.AppendLine(response.Complete
             ? $"  Search: complete, {response.ParserSteps?.ToString("N0") ?? "unknown"} analysis attempts"
             : "  Search: stopped early. " + (response.StopReason ?? "The parser did not finish."));
-        if (response.TotalParserWorkSteps is { } workSteps)
-            text.AppendLine($"  Parser work: {workSteps:N0} work steps" + (response.Lowercase is null ? string.Empty : " (with the lowercase form)"));
+        if (response.TotalParserWork is { } parserWork)
+            text.AppendLine($"  Parser work: {parserWork:N0} parser work" + (response.Lowercase is null ? string.Empty : " (with the lowercase form)"));
         if (response.LowercaseFailure is { } lowercaseFailure)
             text.AppendLine("  " + lowercaseFailure);
         if (response.Lowercase is { } lowercase)
             text.AppendLine($"  Lowercase form {lowercase.Word}: " + (lowercase.Parsed
                 ? $"parsed, {lowercase.Reading.Analyses.Count:N0} {(lowercase.Reading.Analyses.Count == 1 ? "analysis" : "analyses")}"
-                : "no parse") + (lowercase.ParserWorkSteps is { } lowerWork ? $", parser work {lowerWork:N0} work steps" : string.Empty));
+                : "no parse") + (lowercase.ParserWork is { } lowerWork ? $", parser work {lowerWork:N0} parser work" : string.Empty));
         if (response.Provenance is { Warning.Length: > 0 } provenance)
             text.AppendLine("  Warning: " + provenance.Warning);
         if (response.HostCapture?.Baseline is { } baseline)

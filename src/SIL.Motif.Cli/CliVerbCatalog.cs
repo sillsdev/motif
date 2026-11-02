@@ -343,11 +343,11 @@ public static class CliVerbCatalog
             new[]
             {
                 "assess <project> [--texts <guid,guid>] [--all-wordforms] [--words <file>] " +
-                "[--retry-failed] [--retry-work-over <steps>] [--retry-source-assessment <id>] " +
+                "[--retry-failed] [--retry-work-over <parser-work>] [--retry-source-assessment <id>] " +
                 "[--replaces <assessment-id>] [--full-object-timing] " +
-                "[--time-limit-ms <ms>] [--step-cap <attempts|unbounded>] [--max-seconds <seconds>] [--summary [--offset <n>] [--limit <n>]] [--json]",
-                "The default per-word limit is 200,000 analysis attempts. PanGloss derives an inner search-work limit at 100 times that value.",
-                "Reaching either is a stop at the work limit, the same on every computer. --time-limit-ms is only a safety net, in milliseconds on this computer; --max-seconds is the whole run's time budget.",
+                "[--time-limit-ms <ms>] [--parser-work-limit <work|unbounded>] [--max-seconds <seconds>] [--summary [--offset <n>] [--limit <n>]] [--json]",
+                "The default per-word limit is 20,000,000 parser work.",
+                "Reaching the parser work limit is a stop at the work limit, the same on every computer. --time-limit-ms is only a safety net, in milliseconds on this computer; --max-seconds is the whole run's time budget.",
             }),
 
         new CliVerbDescriptor(
@@ -363,7 +363,7 @@ public static class CliVerbCatalog
             {
                 "selection set-default --project <fwdata> --name <name> [--texts <guid,guid>] " +
                 "[--add-words <word,word> | --words-file <path>] [--time-mode estimated|explicit] [--time-limit-ms <ms>] " +
-                "[--step-cap <steps|none>] [--expected-revision <revision>] [--json]",
+                "[--parser-work-limit <work|none>] [--expected-revision <revision>] [--json]",
             }),
         new CliVerbDescriptor(
             "Project", "selection", "selection set-parsimony",
@@ -377,7 +377,7 @@ public static class CliVerbCatalog
             new[]
             {
                 "selection set-limits --project <fwdata> --name <name> --expected-revision <revision> " +
-                "[--time-mode estimated|explicit] [--time-limit-ms <ms>] [--step-cap <steps|none>] [--json]",
+                "[--time-mode estimated|explicit] [--time-limit-ms <ms>] [--parser-work-limit <work|none>] [--json]",
             }),
         new CliVerbDescriptor(
             "Project", "texts", "texts list",

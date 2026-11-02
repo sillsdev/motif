@@ -121,7 +121,7 @@ public static class TimingCommand
                     var totals = TimingAggregation.AggregateTotals(selectedWords, timingEvidence, request.By,
                         assessment.Invocation?.InvocationId is { } invocation ? "invocation:" + invocation : null);
                     aggregates = (totals.Aggregates, aggregates.CostliestWords, totals.Attribution);
-                    totalsWork = TimingAggregation.WorkStepsFromTotals(selectedWords, timingEvidence,
+                    totalsWork = TimingAggregation.ParserWorkFromTotals(selectedWords, timingEvidence,
                         assessment.Invocation?.InvocationId is { } workInvocation ? "invocation:" + workInvocation : null);
                 }
             }
@@ -165,14 +165,14 @@ public static class TimingCommand
                 SourceLastWriteUtc = measuredSave,
                 CurrentProjectIsStale = currentEvidence.Freshness == EvidenceFreshness.Stale,
                 Attribution = aggregates.Attribution,
-                WorkStepAggregates = evidenceSet.TimingDetail.IsComplete
-                    ? TimingAggregation.WorkStepsByObject(objectRows, selectedWords) : totalsWork,
+                ParserWorkAggregates = evidenceSet.TimingDetail.IsComplete
+                    ? TimingAggregation.ParserWorkByObject(objectRows, selectedWords) : totalsWork,
                 Work = TimingAggregation.SummarizeWork(selectedWords.Select(TimingAggregation.WorkOf)),
                 Words = selectedWords.Select(word => new TimingWordRow(word.Word, word.ElapsedMs,
-                    IsStepLimited(word) ? TimingCompletion.WorkLimit :
+                    IsParserWorkLimited(word) ? TimingCompletion.WorkLimit :
                     word.Outcome == WordOutcome.TimedOut.ToStoredOutcome() || word.Morphology?.TimedOut == true ? TimingCompletion.TimeSafetyNet :
                     ParserRefusals.Of(word.Morphology, word.Outcome) is not null ? TimingCompletion.Refused : TimingCompletion.Finished)
-                    { ElapsedNs = word.ElapsedNs, WorkSteps = TimingAggregation.WorkOf(word), Origin = word.Origin }).ToArray(),
+                    { ElapsedNs = word.ElapsedNs, ParserWork = TimingAggregation.WorkOf(word), Origin = word.Origin }).ToArray(),
             });
         });
     }
@@ -212,8 +212,8 @@ public static class TimingCommand
         if (selection is null)
             return RefusedInvalidWordSet("A matrix cell must use cell:<standing>:<column>.");
         if (selection is TimingWordSet.All) return Success(allWords);
-        if (selection is TimingWordSet.StepLimited)
-            return Success(allWords.Where(IsStepLimited).ToArray());
+        if (selection is TimingWordSet.ParserWorkLimited)
+            return Success(allWords.Where(IsParserWorkLimited).ToArray());
         if (selection is TimingWordSet.Slowest)
             return Success(TimingAggregation.SelectSlowestWords(allWords, request.Top));
         if (selection is TimingWordSet.MatrixCell cell)
@@ -244,7 +244,7 @@ public static class TimingCommand
         word.ProjectStanding, word.Outcome, word.IsIncomplete, word.Morphology,
         word.ReadingGrades, word.MissedApprovedCount ?? 0) { AnalysisComparison = word.AnalysisComparison });
 
-    private static bool IsStepLimited(AssessedWord word) =>
+    private static bool IsParserWorkLimited(AssessedWord word) =>
         word.Outcome == WordOutcome.Capped.ToStoredOutcome() || word.Morphology?.Capped == true;
 
     private static HashSet<string> NormalizeWords(IEnumerable<string> words) => words

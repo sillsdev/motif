@@ -152,7 +152,7 @@ public static class RecipeVerification
         if (before.Options is null || after.Options is null)
             unavailable.Add("A parser Assessment did not retain its effective executable and limits.");
         else if (before.Options.Threads < 1 ||
-                 before.Options.PerWordStepLimit.Steps is null or <= 0 or > 200_000)
+                 before.Options.PerWordParserWorkLimit.Work is null or <= 0 or > 20_000_000)
             unavailable.Add("The parser limits do not satisfy the bounded verification contract.");
         if (beforeFrozen.Cases.Count == 0 && beforeFrozen.ReviewedNegatives.Count == 0)
             unavailable.Add("The frozen set contains no mandatory positive or negative verification cases.");
@@ -260,7 +260,7 @@ public static class RecipeVerification
 
     private static bool SameParserRunSettings(RecipeVerificationOptions before, RecipeVerificationOptions after) =>
         before.ParserSha256 == after.ParserSha256 &&
-        AssessmentSearchCaps.Match(before.PerWordStepLimit, after.PerWordStepLimit) &&
+        AssessmentSearchCaps.Match(before.PerWordParserWorkLimit, after.PerWordParserWorkLimit) &&
         before.Threads == after.Threads &&
         before.CollectStatistics == after.CollectStatistics;
 

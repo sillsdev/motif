@@ -11,7 +11,7 @@ public enum PageDeltaKind
     /// <summary>Findings in the Proposal's grammar check.</summary>
     Warnings,
 
-    /// <summary>Parser work steps for the same words, as a percentage of today's.</summary>
+    /// <summary>Parser work for the same words, as a percentage of today's.</summary>
     WorkPercent,
 }
 

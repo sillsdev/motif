@@ -16,7 +16,7 @@ namespace SIL.Motif.Host.Assess;
 /// <remarks>
 /// The time limit is wall-clock inside PanGloss, so a loaded machine stops slow words that complete when run
 /// unloaded, and each stopped word makes the correctness evidence incomplete. Only time-limit stops are
-/// retried: a word that hit the analysis-attempt cap stopped for a reason the machine's load does not change.
+/// retried: a word that hit the parser work limit stopped for a reason the machine's load does not change.
 /// A word that stops again under the longer limit keeps a stopped row, so a runaway search still blocks Apply.
 /// </remarks>
 internal static class StoppedWordRetryRunner
@@ -46,7 +46,7 @@ internal static class StoppedWordRetryRunner
         try
         {
             var request = new PanGlossRequest.Batch(evidence.SourcePath, retryWords, retryLimit, retryStatsPath,
-                first.PerWordStepLimit, retryDirectory)
+                first.PerWordParserWorkLimit, retryDirectory)
             {
                 CollectAnalyses = true,
                 AllowMissingStatsCache = true,

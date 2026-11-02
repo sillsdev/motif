@@ -200,8 +200,8 @@ internal static class RetirementReviewProjectionAssembler
                 candidate.TokeniserName == after.TokeniserName && candidate.TokeniserVersion == after.TokeniserVersion &&
                 candidate.Invocation is { } beforeInvocation &&
                 beforeInvocation.ExecutableBytesSha256 == after.Invocation.ExecutableBytesSha256 &&
-                AssessmentSearchCaps.Match(beforeInvocation.PerWordStepLimit,
-                    after.Invocation.PerWordStepLimit) &&
+                AssessmentSearchCaps.Match(beforeInvocation.PerWordParserWorkLimit,
+                    after.Invocation.PerWordParserWorkLimit) &&
                 beforeInvocation.Threads == after.Invocation.Threads &&
                 beforeInvocation.CollectStatistics == after.Invocation.CollectStatistics &&
                 beforeInvocation.SourceBytesSha256 == evidence.Candidate.BaselineSourceSha256 &&

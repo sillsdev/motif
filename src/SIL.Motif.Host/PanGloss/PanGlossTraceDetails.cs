@@ -24,7 +24,7 @@ public sealed record PanGlossTraceDetails(
     /// The parser's total work reservations for this word across all phases, or <see langword="null"/> when the
     /// document does not carry <c>search.workSteps</c>.
     /// </summary>
-    public long? WorkSteps { get; init; }
+    public long? ParserWork { get; init; }
 
     /// <summary>Whether the search explored everything it meant to.</summary>
     public bool ReportedCompleted { get; init; } = true;
@@ -32,20 +32,20 @@ public sealed record PanGlossTraceDetails(
 
     /// <summary>
     /// Which limit ended the search, in words: the work limit counts analysis attempts (<see cref="Steps"/>) and,
-    /// when recorded, work steps (<see cref="WorkSteps"/>), which are different counts; the time safety net depends
+    /// when recorded, parser work (<see cref="ParserWork"/>), which are different counts; the time safety net depends
     /// on how fast this computer is. <see langword="null"/> when neither limit stopped it.
     /// </summary>
     public string? LimitStopReason => (Capped, TimedOut) switch
     {
-        (true, false) => $"The parser stopped at the work limit after {Steps:N0} analysis attempts{WorkStepsClause}.",
-        (true, true) => $"The parser stopped at the work limit after {Steps:N0} analysis attempts{WorkStepsClause}, " +
+        (true, false) => $"The parser stopped at the work limit after {Steps:N0} analysis attempts{ParserWorkClause}.",
+        (true, true) => $"The parser stopped at the work limit after {Steps:N0} analysis attempts{ParserWorkClause}, " +
             "and the time safety net, which depends on how fast this computer is, also fired.",
         (false, true) => "The parser stopped at the time safety net, which depends on how fast this computer is.",
         _ => null,
     };
 
     // A zero is not a measured count of work, so it is left out rather than printed.
-    private string WorkStepsClause => WorkSteps is > 0 and var work ? $" and {work:N0} work steps" : string.Empty;
+    private string ParserWorkClause => ParserWork is > 0 and var work ? $" and {work:N0} parser work" : string.Empty;
 }
 
 /// <summary>
@@ -75,5 +75,5 @@ public sealed record PanGlossTraceCategory(
     long? SelfElapsedNs)
 {
     /// <summary>Work-budget reservations attributed to this kind, when recorded.</summary>
-    public long? WorkSteps { get; init; }
+    public long? ParserWork { get; init; }
 }

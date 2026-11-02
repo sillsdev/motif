@@ -36,7 +36,7 @@ public static class ProjectConfigurationFile
     private static readonly HashSet<string> RetentionKeys = new(StringComparer.Ordinal) { "standalone-assessments-per-kind" };
 
     private static readonly HashSet<string> ScopeKeys = new(StringComparer.Ordinal)
-        { "name", "query", "assessor", "collect", "per-word-limit-ms", "per-word-step-limit", "timing-detail-words" };
+        { "name", "query", "assessor", "collect", "per-word-limit-ms", "per-word-parser-work-limit", "per-word-step-limit", "timing-detail-words" };
 
     /// <summary>
     /// Resolves TOML text into a fully-defaulted configuration. Malformed input, an unrecognised table, or
@@ -153,7 +153,7 @@ public static class ProjectConfigurationFile
             sb.AppendLine($"assessor = {Quote(scope.Assessor)}");
             sb.AppendLine($"collect = [{string.Join(", ", scope.Collect.Select(Quote))}]");
             sb.AppendLine($"per-word-limit-ms = {(long)scope.PerWordLimit.TotalMilliseconds}");
-            sb.AppendLine($"per-word-step-limit = {scope.PerWordStepLimit.ToArgument()}");
+            sb.AppendLine($"per-word-parser-work-limit = {scope.PerWordParserWorkLimit.ToArgument()}");
             sb.AppendLine($"timing-detail-words = {scope.TimingDetailWords}");
         }
         return sb.ToString();
@@ -251,9 +251,9 @@ public static class ProjectConfigurationFile
 
     private static string Bool(bool value) => value ? "true" : "false";
 
-    private static StepCap ParseStepLimit(string path, int lineNumber, string key, string rawValue)
+    private static ParserWorkLimit ParseParserWorkLimit(string path, int lineNumber, string key, string rawValue)
     {
-        try { return StepCap.Parse(rawValue); }
+        try { return ParserWorkLimit.Parse(rawValue); }
         catch (FormatException)
         {
             throw Malformed(path, lineNumber, $"'{key}' must be a positive whole number or 'unbounded', found '{rawValue}'");
@@ -276,7 +276,7 @@ public static class ProjectConfigurationFile
         private string? _assessor;
         private List<string>? _collect;
         private int? _perWordLimitMs;
-        private StepCap? _perWordStepLimit;
+        private ParserWorkLimit? _perWordParserWorkLimit;
         private int? _timingDetailWords;
 
         public void Set(string key, string rawValue, string path, int lineNumber)
@@ -293,8 +293,15 @@ public static class ProjectConfigurationFile
                         throw Malformed(path, lineNumber, $"'{key}' must be between 0 and {AssessmentScopeConfiguration.MaximumTimingDetailWords}");
                     _timingDetailWords = detail;
                     break;
+                case "per-word-parser-work-limit":
+                    _perWordParserWorkLimit = ParseParserWorkLimit(path, lineNumber, key, rawValue);
+                    break;
+                // The key written before the limit counted parser work; its value counts analysis attempts.
                 case "per-word-step-limit":
-                    _perWordStepLimit = ParseStepLimit(path, lineNumber, key, rawValue);
+                    _perWordParserWorkLimit = ParseParserWorkLimit(path, lineNumber, key, rawValue) is { Work: { } attempts }
+                        ? ParserWorkLimit.FromAttempts(attempts)
+                          ?? throw Malformed(path, lineNumber, $"'{key}' is too large, found '{rawValue}'")
+                        : ParserWorkLimit.Unbounded;
                     break;
             }
         }
@@ -311,7 +318,7 @@ public static class ProjectConfigurationFile
                 _perWordLimitMs is { } ms
                     ? TimeSpan.FromMilliseconds(ms)
                     : AssessmentScopeConfiguration.DefaultPerWordLimit,
-                _perWordStepLimit, _timingDetailWords ?? AssessmentScopeConfiguration.DefaultTimingDetailWords);
+                _perWordParserWorkLimit, _timingDetailWords ?? AssessmentScopeConfiguration.DefaultTimingDetailWords);
         }
     }
 }

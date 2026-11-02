@@ -111,20 +111,20 @@
           <StackPanel IsVisible="{Binding IsLimitsStep}" Spacing="{DynamicResource Intent.Space.Group}" VerticalAlignment="Center">
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Group}">
               <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
-                <TextBlock Text="{x:Static app:MotifAppStrings.SetupAttemptLimitPerWord}" FontWeight="{DynamicResource Intent.Weight.Section}" />
-                <TextBlock Classes="setupMuted" Text="{x:Static app:MotifAppStrings.SetupAttemptLimitDefaultCaption}" TextWrapping="Wrap" />
+                <TextBlock Text="{x:Static app:MotifAppStrings.SetupParserWorkLimitPerWord}" FontWeight="{DynamicResource Intent.Weight.Section}" />
+                <TextBlock Classes="setupMuted" Text="{x:Static app:MotifAppStrings.SetupParserWorkLimitDefaultCaption}" TextWrapping="Wrap" />
               </StackPanel>
-              <NumericUpDown Grid.Column="1" Classes="setupNumber" Value="{Binding StepLimitSteps}"
+              <NumericUpDown Grid.Column="1" Classes="setupNumber" Value="{Binding ParserWorkLimitValue}"
                              Minimum="1" Increment="200000" FormatString="N0"
-                             IsEnabled="{Binding !IsStepLimitUnbounded}"
-                             AutomationProperties.Name="{x:Static app:MotifAppStrings.SetupAttemptLimitPerWordAccessibleName}"
-                             x:Name="StepLimitField" LostFocus="OnStepLimitLostFocus"
-                             AutomationProperties.AutomationId="{x:Static app:AutomationIds.SetupStepLimit}" />
+                             IsEnabled="{Binding !IsParserWorkLimitUnbounded}"
+                             AutomationProperties.Name="{x:Static app:MotifAppStrings.SetupParserWorkLimitPerWordAccessibleName}"
+                             x:Name="ParserWorkLimitField" LostFocus="OnParserWorkLimitLostFocus"
+                             AutomationProperties.AutomationId="{x:Static app:AutomationIds.SetupParserWorkLimit}" />
             </Grid>
-            <CheckBox Content="{x:Static app:MotifAppStrings.NoAttemptLimit}" IsChecked="{Binding IsStepLimitUnbounded}" />
-            <TextBlock Classes="setupError" Text="{Binding StepLimitValidationMessage}"
-                       IsVisible="{Binding StepLimitValidationMessage, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
-            <TextBlock Classes="setupMuted" Text="{Binding StepLimitEstimateText}" TextWrapping="Wrap" />
+            <CheckBox Content="{x:Static app:MotifAppStrings.SetupNoParserWorkLimitOption}" IsChecked="{Binding IsParserWorkLimitUnbounded}" />
+            <TextBlock Classes="setupError" Text="{Binding ParserWorkLimitValidationMessage}"
+                       IsVisible="{Binding ParserWorkLimitValidationMessage, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
+            <TextBlock Classes="setupMuted" Text="{Binding ParserWorkLimitEstimateText}" TextWrapping="Wrap" />
           </StackPanel>
 
           <StackPanel IsVisible="{Binding IsFirstRunStep}" Spacing="{DynamicResource Intent.Space.Related}" VerticalAlignment="Center">
@@ -154,7 +154,7 @@
               <!-- Enter in the limit field commits the number; it is not Next. -->
               <MultiBinding Converter="{x:Static conv:BoolConverters.And}">
                 <Binding Path="IsOpen" />
-                <Binding Path="!IsKeyboardFocusWithin" ElementName="StepLimitField" />
+                <Binding Path="!IsKeyboardFocusWithin" ElementName="ParserWorkLimitField" />
               </MultiBinding>
             </Button.IsDefault>
           </Button>

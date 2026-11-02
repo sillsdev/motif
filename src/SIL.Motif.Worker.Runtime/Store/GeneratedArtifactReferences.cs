@@ -411,11 +411,11 @@ internal static class GeneratedArtifactReferences
     {
         string[] allowed = ["InvocationId", "SourcePath", "SourceBytesSha256", "ExecutableBytesSha256", "WordsPath",
             "WordsSha256", "TsvPath", "TsvSha256", "StandardErrorPath", "StandardErrorSha256", "PerWordTimeoutMs",
-            "PerWordStepLimit", "Threads", "CollectStatistics", "ExecutableVersion", "ExecutablePath", "AnalysesPath",
+            "PerWordParserWorkLimit", "Threads", "CollectStatistics", "ExecutableVersion", "ExecutablePath", "AnalysesPath",
             "AnalysesSha256", "StoppedWordRetry", "GrammarWarnings"];
         string[] required = ["InvocationId", "SourcePath", "SourceBytesSha256", "ExecutableBytesSha256", "WordsPath",
             "WordsSha256", "TsvPath", "TsvSha256", "StandardErrorPath", "StandardErrorSha256", "PerWordTimeoutMs",
-            "PerWordStepLimit", "Threads", "CollectStatistics"];
+            "PerWordParserWorkLimit", "Threads", "CollectStatistics"];
         if (root.ValueKind != JsonValueKind.Object) return false;
         var valid = IsObjectShape(root, "invocation evidence", allowed, required);
         foreach (var (property, reason) in new[]

@@ -362,7 +362,7 @@
   },
   "selection set-limits": {
     "title": "Set Selection limits",
-    "description": "Changes only the saved Default Selection's parsing limits when its expected revision still matches. Use it to update the step cap or estimated-versus-explicit time policy without replacing the chosen Texts and added words.",
+    "description": "Changes only the saved Default Selection's parsing limits when its expected revision still matches. Use it to update the parser work limit or estimated-versus-explicit time policy without replacing the chosen Texts and added words.",
     "source": "Hand-written from docs/cli-api.md and command behavior."
   },
   "setup skip": {

@@ -550,7 +550,7 @@ public sealed class AssessmentRepository : IAssessmentRepository
         "AssessedWordId", "AssessmentId", "OrdinalIndex", "Word", "Outcome", "ElapsedMs", "ElapsedNs", "RawSignature",
         "MorphologyJson", "CorrectnessJson", "ProjectStanding", "OccurrenceCount", "ReadingGradesJson",
         "MissedApprovedCount", "MissedApprovedJson", "IsIncomplete", "Attempts", "Passes", "AnalysisComparisonJson",
-        "WorkSteps",
+        "ParserWork",
     ];
 
     private static readonly string[] AnalysisColumns =
@@ -582,7 +582,7 @@ public sealed class AssessmentRepository : IAssessmentRepository
                 word.IsIncomplete ? 1 : 0, word.Attempts, word.Passes,
                 word.AnalysisComparison is null ? null
                     : Compress(JsonSerializer.Serialize(word.AnalysisComparison, ParseMorphEvidence.JsonOptions)),
-                word.WorkSteps,
+                word.ParserWork,
             ]);
             for (var analysisIndex = 0; analysisIndex < word.Analyses.Count; analysisIndex++)
             {
@@ -1269,7 +1269,7 @@ public sealed class AssessmentRepository : IAssessmentRepository
                    pa.CategoryGuid, pa.MorphemeGuidsJson, pa.RootIndex, pa.IdentityDigest, aw.RawSignature,
                    (SELECT Payload FROM AssessmentWordPayloads WHERE Hash = aw.MorphologyJson), (SELECT Payload FROM AssessmentWordPayloads WHERE Hash = aw.CorrectnessJson), aw.OrdinalIndex, aw.ProjectStanding, aw.OccurrenceCount,
                    (SELECT Payload FROM AssessmentWordPayloads WHERE Hash = aw.ReadingGradesJson), aw.MissedApprovedCount, aw.IsIncomplete, (SELECT Payload FROM AssessmentWordPayloads WHERE Hash = aw.MissedApprovedJson), aw.Attempts, aw.Passes, (SELECT Payload FROM AssessmentWordPayloads WHERE Hash = aw.AnalysisComparisonJson),
-                   aw.WorkSteps,
+                   aw.ParserWork,
                    (aw.MorphologyJson IS NOT NULL AND NOT EXISTS (SELECT 1 FROM AssessmentWordPayloads WHERE Hash = aw.MorphologyJson)) OR
                    (aw.CorrectnessJson IS NOT NULL AND NOT EXISTS (SELECT 1 FROM AssessmentWordPayloads WHERE Hash = aw.CorrectnessJson)) OR
                    (aw.ReadingGradesJson IS NOT NULL AND NOT EXISTS (SELECT 1 FROM AssessmentWordPayloads WHERE Hash = aw.ReadingGradesJson)) OR
@@ -1303,7 +1303,7 @@ public sealed class AssessmentRepository : IAssessmentRepository
         bool currentIncomplete = false;
         int? currentAttempts = null;
         int? currentPasses = null;
-        long? currentWorkSteps = null;
+        long? currentParserWork = null;
         List<ParsedAnalysis> currentAnalyses = [];
 
         RepositoryReadCounters.QueryExecuted();
@@ -1322,7 +1322,7 @@ public sealed class AssessmentRepository : IAssessmentRepository
                         ProjectStanding = currentStanding, OccurrenceCount = currentOccurrenceCount,
                         ReadingGrades = currentReadingGrades, AnalysisComparison = currentComparison, MissedApprovedCount = currentMissedApprovedCount,
                         MissedApproved = currentMissedApproved, IsIncomplete = currentIncomplete,
-                        Attempts = currentAttempts, Passes = currentPasses, WorkSteps = currentWorkSteps });
+                        Attempts = currentAttempts, Passes = currentPasses, ParserWork = currentParserWork });
                 }
                 if (wordForms is null && reader.GetInt32(12) != words.Count)
                     throw new InvalidDataException("Assessment case ordinals must be contiguous and begin at zero.");
@@ -1347,7 +1347,7 @@ public sealed class AssessmentRepository : IAssessmentRepository
                 currentPasses = reader.IsDBNull(20) ? null : reader.GetInt32(20);
                 currentComparison = reader.IsDBNull(21) ? null
                     : JsonSerializer.Deserialize<WordAnalysisComparison>(Decompress(reader, 21), ParseMorphEvidence.JsonOptions);
-                currentWorkSteps = reader.IsDBNull(22) ? null : reader.GetInt64(22);
+                currentParserWork = reader.IsDBNull(22) ? null : reader.GetInt64(22);
                 currentAnalyses = [];
             }
 
@@ -1370,7 +1370,7 @@ public sealed class AssessmentRepository : IAssessmentRepository
                 ProjectStanding = currentStanding, OccurrenceCount = currentOccurrenceCount,
                 ReadingGrades = currentReadingGrades, AnalysisComparison = currentComparison, MissedApprovedCount = currentMissedApprovedCount,
                 MissedApproved = currentMissedApproved, IsIncomplete = currentIncomplete,
-                        Attempts = currentAttempts, Passes = currentPasses, WorkSteps = currentWorkSteps });
+                        Attempts = currentAttempts, Passes = currentPasses, ParserWork = currentParserWork });
         }
         return words;
     }

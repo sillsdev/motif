@@ -2052,7 +2052,7 @@ try
         case "assess":
             if (positionals.Count != 1) return Usage(AssessUsage(), asJson);
             if (flags.Keys.Any(flag => flag is not ("texts" or "all-wordforms" or "words" or "retry-failed" or
-                    "retry-work-over" or "retry-source-assessment" or "replaces" or "time-limit-ms" or "step-cap" or
+                    "retry-work-over" or "retry-source-assessment" or "replaces" or "time-limit-ms" or "parser-work-limit" or
                     "summary" or "offset" or "limit" or "full-object-timing" or "max-seconds" or "json"))) return Usage(AssessUsage(), asJson);
             flags.TryGetValue("replaces", out var assessReplaces);
             if (assessReplaces is not null && !CanonicalId.TryParse(assessReplaces, out _))
@@ -2108,10 +2108,10 @@ try
                     return Usage(AssessUsage(), asJson);
                 assessBudgetSeconds = parsedBudget;
             }
-            StepCap? assessStepCap = null;
-            if (flags.TryGetValue("step-cap", out var assessStepCapRaw))
+            ParserWorkLimit? assessParserWorkLimit = null;
+            if (flags.TryGetValue("parser-work-limit", out var assessParserWorkLimitRaw))
             {
-                try { assessStepCap = StepCap.Parse(assessStepCapRaw); }
+                try { assessParserWorkLimit = ParserWorkLimit.Parse(assessParserWorkLimitRaw); }
                 catch (FormatException) { return Usage(AssessUsage(), asJson); }
             }
             var selectionWasRequested = flags.ContainsKey("all-wordforms") || flags.ContainsKey("texts") ||
@@ -2127,7 +2127,7 @@ try
                 result = RunWithConsoleCancellation(cancellationToken =>
                 {
                     var assessed = AssessCommand.Assess(
-                        new AssessRequest(positionals[0], assessSelection, assessTimeLimitMs, assessStepCap, assessReplaces,
+                        new AssessRequest(positionals[0], assessSelection, assessTimeLimitMs, assessParserWorkLimit, assessReplaces,
                             flags.ContainsKey("full-object-timing"), assessBudgetSeconds),
                         asJson ? null : progress => error.WriteLine(progress.Message), cancellationToken);
                     if (!assessSummary || !assessed.Succeeded) return RenderCommand(assessed);
@@ -2417,7 +2417,7 @@ static bool TryParseGuidList(string? raw, out List<Guid> guids)
 
 static bool TryReadSelectionLimits(IReadOnlyDictionary<string, string> flags, out SelectionParsingLimits limits)
 {
-    limits = new SelectionParsingLimits(StepCap.Default, SelectionTimeLimitMode.Estimated, null);
+    limits = new SelectionParsingLimits(ParserWorkLimit.Default, SelectionTimeLimitMode.Estimated, null);
     var timeMode = SelectionTimeLimitMode.Estimated;
     if (flags.TryGetValue("time-mode", out var mode))
     {
@@ -2435,19 +2435,19 @@ static bool TryReadSelectionLimits(IReadOnlyDictionary<string, string> flags, ou
     }
     if ((timeMode == SelectionTimeLimitMode.Explicit) != (explicitTime is not null)) return false;
 
-    var stepLimit = StepCap.Default;
-    if (flags.TryGetValue("step-cap", out var stepText))
+    var parserWorkLimit = ParserWorkLimit.Default;
+    if (flags.TryGetValue("parser-work-limit", out var workText))
     {
-        if (StringComparer.OrdinalIgnoreCase.Equals(stepText, "none")) stepLimit = StepCap.Unbounded;
+        if (StringComparer.OrdinalIgnoreCase.Equals(workText, "none")) parserWorkLimit = ParserWorkLimit.Unbounded;
         else
         {
-            try { stepLimit = StepCap.Parse(stepText); }
+            try { parserWorkLimit = ParserWorkLimit.Parse(workText); }
             catch (FormatException) { return false; }
         }
     }
 
-    if (stepLimit.IsUnbounded && timeMode != SelectionTimeLimitMode.Estimated) return false;
-    limits = new SelectionParsingLimits(stepLimit, timeMode, explicitTime);
+    if (parserWorkLimit.IsUnbounded && timeMode != SelectionTimeLimitMode.Estimated) return false;
+    limits = new SelectionParsingLimits(parserWorkLimit, timeMode, explicitTime);
     return limits.ValidationError() is null;
 }
 

@@ -119,8 +119,8 @@ public sealed partial class TimingPageModel : PageModel
     /// <summary>The stored timing response's word count and percentiles in one line.</summary>
     public string StoredTimingSummary => StoredTiming is not { } timing ? string.Empty :
         string.Format(CultureInfo.CurrentCulture, MotifAppStrings.TimingStoredSummaryFormat,
-            timing.WordCount.ToString("N0", CultureInfo.CurrentCulture), FormatWork(timing.Work.MedianWorkSteps),
-            FormatWork(timing.Work.Percentile95WorkSteps));
+            timing.WordCount.ToString("N0", CultureInfo.CurrentCulture), FormatWork(timing.Work.MedianParserWork),
+            FormatWork(timing.Work.Percentile95ParserWork));
 
     /// <summary>The selected words' stored totals grouped by kind.</summary>
     public TimingResponse? KindTiming
@@ -161,7 +161,7 @@ public sealed partial class TimingPageModel : PageModel
         ? MotifAppStrings.TimingNoTimesRecordedSelected
         : _wordSet switch
         {
-            TimingWordSet.StepLimited => MotifAppStrings.TimingNoWordsStopped,
+            TimingWordSet.ParserWorkLimited => MotifAppStrings.TimingNoWordsStopped,
             TimingWordSet.Slowest => MotifAppStrings.TimingNoWordsInGroup,
             _ => MotifAppStrings.TimingNoWordsInSelection,
         };
@@ -176,7 +176,7 @@ public sealed partial class TimingPageModel : PageModel
     public string HeadlineTotal => ProposalHeadline(TodayHeadlineTotal, ProposalTotal, work: true);
 
     private string TodayHeadlineTotal => HasHeadline && KindTiming is { } timing
-        ? TimingShare.FormatWorkSteps(timing.Work.TotalWorkSteps) : string.Empty;
+        ? TimingShare.FormatParserWork(timing.Work.TotalParserWork) : string.Empty;
 
     /// <summary>Which words the total covers: all of them, or the group chosen above, and how many were timed.</summary>
     public string HeadlineTotalCaption => ShowsProposalAlone ? ProposalCaption() : !HasHeadline ? string.Empty
@@ -191,8 +191,8 @@ public sealed partial class TimingPageModel : PageModel
             MeasuredWords.Count.ToString("N0", CultureInfo.CurrentCulture));
 
     /// <summary>The chosen words' median parser work.</summary>
-    public string HeadlineMedian => ProposalHeadline(HasHeadline && KindTiming?.Work.MedianWorkSteps is { } median
-        ? TimingShare.FormatWorkSteps(median) : string.Empty, ProposalMedian, work: true);
+    public string HeadlineMedian => ProposalHeadline(HasHeadline && KindTiming?.Work.MedianParserWork is { } median
+        ? TimingShare.FormatParserWork(median) : string.Empty, ProposalMedian, work: true);
 
     /// <summary>How many of the chosen words stopped at the work limit.</summary>
     public string HeadlineStopped => ProposalHeadline(KindTiming?.Words
@@ -207,10 +207,10 @@ public sealed partial class TimingPageModel : PageModel
         MotifAppStrings.TimingAllWordsButtonFormat, (KindTiming?.WordCount ?? 0).ToString("N0", CultureInfo.CurrentCulture));
 
     /// <summary>Whether the selected group has a word stopped at either recorded limit.</summary>
-    public bool HasStoppedWords => HasStepLimitedWords || HasTimeLimitedWords;
+    public bool HasStoppedWords => HasParserWorkLimitedWords || HasTimeLimitedWords;
 
     /// <summary>What the selected words' recorded stop reason means for the controls on this page.</summary>
-    public string StoppedWordsAdviceText => (HasStepLimitedWords, HasTimeLimitedWords) switch
+    public string StoppedWordsAdviceText => (HasParserWorkLimitedWords, HasTimeLimitedWords) switch
     {
         (true, true) => MotifAppStrings.TimingAdviceBothLimits,
         (true, false) => MotifAppStrings.TimingAdviceSearchLimit,
@@ -218,7 +218,7 @@ public sealed partial class TimingPageModel : PageModel
         _ => string.Empty,
     };
 
-    private bool HasStepLimitedWords => KindTiming?.Words.Any(word =>
+    private bool HasParserWorkLimitedWords => KindTiming?.Words.Any(word =>
         word.Completion == TimingCompletion.WorkLimit) == true;
 
     private bool HasTimeLimitedWords => KindTiming?.Words.Any(word =>
@@ -237,7 +237,7 @@ public sealed partial class TimingPageModel : PageModel
     public bool HasRerunMeasurements => RerunMeasurementsText.Length > 0;
 
     private IReadOnlyList<TimingWordRow> MeasuredWords =>
-        KindTiming?.Words.Where(word => word.WorkSteps is not null).ToArray() ?? [];
+        KindTiming?.Words.Where(word => word.ParserWork is not null).ToArray() ?? [];
 
     private int ChosenWordCount => KindTiming?.Words.Count ?? 0;
 
@@ -246,7 +246,7 @@ public sealed partial class TimingPageModel : PageModel
 
     /// <summary>Today's work by kind; empty when work by object was not kept.</summary>
     private IReadOnlyList<TimingShare> TodayKindShares => !HasHeadline || WorkByObject(KindTiming) is not { } work ? []
-        : TimingShare.ByKind(work, KindTiming!.Work.TotalWorkSteps, KindTiming.Aggregates,
+        : TimingShare.ByKind(work, KindTiming!.Work.TotalParserWork, KindTiming.Aggregates,
             MotifAppStrings.TimingNotAttributedLabel, 0, alwaysShowUnattributed: true);
 
     /// <summary>The per-kind call counts, kept behind the page's call-count disclosure.</summary>
@@ -259,14 +259,14 @@ public sealed partial class TimingPageModel : PageModel
         {
             if (RuleTiming is not { } timing) return [];
             if (WorkByObject(timing) is not { } work) return CallSharesOf(timing.Aggregates);
-            var total = timing.Work.TotalWorkSteps;
+            var total = timing.Work.TotalParserWork;
             return [.. work.Where(row => !row.IsUnattributed).Select(row =>
             {
                 var source = timing.Aggregates.FirstOrDefault(time =>
                     ObjectIdentity.Same(time.TimingKey.Identity, row.TimingKey.Identity)) ??
                     new TimingAggregateRow(row.Key, row.Name, 0, null, 0)
                         { Kind = row.Kind, IdentityQuality = row.IdentityQuality, Scope = row.Scope };
-                return new TimingShare(row.Name, row.Kind, row.WorkSteps, TimingShare.ShareOf(row.WorkSteps, total),
+                return new TimingShare(row.Name, row.Kind, row.ParserWork, TimingShare.ShareOf(row.ParserWork, total),
                     source.WordsTouched, source);
             })];
         }
@@ -299,17 +299,17 @@ public sealed partial class TimingPageModel : PageModel
             if (!HasHeadline || KindTiming is not { } timing) return string.Empty;
             if (WorkByObject(timing)?.FirstOrDefault(row => row.IsUnattributed) is not { } other)
                 return MotifAppStrings.TimingNotAttributedNotRecorded;
-            return TimingShare.ShareOf(other.WorkSteps, timing.Work.TotalWorkSteps) is { } share
+            return TimingShare.ShareOf(other.ParserWork, timing.Work.TotalParserWork) is { } share
                 ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.TimingNotAttributedWithShareFormat,
-                    TimingShare.FormatWorkSteps(other.WorkSteps), TimingShare.FormatPercent(share))
+                    TimingShare.FormatParserWork(other.ParserWork), TimingShare.FormatPercent(share))
                 : string.Format(CultureInfo.CurrentCulture, MotifAppStrings.TimingNotAttributedFormat,
-                    TimingShare.FormatWorkSteps(other.WorkSteps));
+                    TimingShare.FormatParserWork(other.ParserWork));
         }
     }
 
     // The per-object work, only when the command could make it add up to the words' totals.
     private static IReadOnlyList<TimingWorkAggregate>? WorkByObject(TimingResponse? timing) =>
-        timing is { WorkStepAggregates.Count: > 0 } ? timing.WorkStepAggregates : null;
+        timing is { ParserWorkAggregates.Count: > 0 } ? timing.ParserWorkAggregates : null;
 
     private static IReadOnlyList<TimingShare> CallSharesOf(IReadOnlyList<TimingAggregateRow>? rows) => rows is null ? [] :
         [.. rows.Select(row => new TimingShare(TimingShare.KindName(row.Name), row.Kind, null, null, row.WordsTouched, row))];
@@ -322,7 +322,7 @@ public sealed partial class TimingPageModel : PageModel
     public bool HasTimingRefusal => TimingRefusal is not null;
     public WindowRefusal? TimingRefusal { get; private set; }
     public string WordSet => _wordSet.ToWireValue();
-    public bool IsStepLimitSelected => _wordSet is TimingWordSet.StepLimited && _explicitWords is null;
+    public bool IsParserWorkLimitSelected => _wordSet is TimingWordSet.ParserWorkLimited && _explicitWords is null;
     public bool IsSlowestSelected => _wordSet is TimingWordSet.Slowest && _explicitWords is null;
     public bool IsAllSelected => _wordSet is TimingWordSet.All && _explicitWords is null;
     public string ScopeLabel
@@ -346,10 +346,10 @@ public sealed partial class TimingPageModel : PageModel
     public string PercentileSummary => KindTiming is null ? string.Empty :
         KindTiming.WordCount == 0 ? MotifAppStrings.TimingNoWordsInSelection :
         string.Format(CultureInfo.CurrentCulture, MotifAppStrings.TimingPercentileSummaryFormat,
-            FormatWork(KindTiming.Work.MedianWorkSteps), FormatWork(KindTiming.Work.Percentile95WorkSteps));
+            FormatWork(KindTiming.Work.MedianParserWork), FormatWork(KindTiming.Work.Percentile95ParserWork));
 
-    private static string FormatWork(double? workSteps) => workSteps is { } value
-        ? TimingShare.FormatWorkSteps(value) : MotifAppStrings.TimingNotRecordedLower;
+    private static string FormatWork(double? parserWork) => parserWork is { } value
+        ? TimingShare.FormatParserWork(value) : MotifAppStrings.TimingNotRecordedLower;
     /// <summary>The complete address selected here or requested by another page.</summary>
     public TraceTimingKey? SelectedRule { get; private set; }
     public TimingAggregateRow? SelectedRuleRow => RuleTiming?.Aggregates.FirstOrDefault(row => ObjectIdentity.Same(row.TimingKey.Identity, SelectedRule?.Identity));
@@ -373,11 +373,11 @@ public sealed partial class TimingPageModel : PageModel
     /// work.
     /// </summary>
     public IReadOnlyList<ListedWordViewModel> CostliestRuleWordRows => [.. CostliestRuleWords.Select(word =>
-        Listed(word.Word, word.WorkSteps is not { } part ? MotifAppStrings.WorkStepsNotRecorded
-            : word.WordWorkSteps is { } whole
+        Listed(word.Word, word.ParserWork is not { } part ? MotifAppStrings.ParserWorkNotRecorded
+            : word.WordParserWork is { } whole
                 ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.TimingRuleTimeOfFormat,
-                    TimingShare.FormatWorkSteps(part), TimingShare.FormatWorkSteps(whole))
-                : TimingShare.FormatWorkSteps(part)))];
+                    TimingShare.FormatParserWork(part), TimingShare.FormatParserWork(whole))
+                : TimingShare.FormatParserWork(part)))];
 
     /// <summary>The heading over the chosen rule's costliest words, naming the rule.</summary>
     public string RuleWordsTitle => string.Format(CultureInfo.CurrentCulture,
@@ -457,7 +457,7 @@ public sealed partial class TimingPageModel : PageModel
     private decimal _rerunSeconds = 30;
 
     [ObservableProperty]
-    private decimal? _rerunSteps = StepCap.DefaultSteps;
+    private decimal? _rerunSteps = ParserWorkLimit.DefaultWork;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(RerunProgressText))]
@@ -843,7 +843,7 @@ public sealed partial class TimingPageModel : PageModel
             UsageArgumentShape.Number("perWordLimitMs"),
         };
         if (RerunSteps is not null)
-            shapes.Add(UsageArgumentShape.Number("perWordStepLimit"));
+            shapes.Add(UsageArgumentShape.Number("perWordParserWorkLimit"));
         using var usageAction = Context.Commands.BeginUsageAction("assess", [.. shapes]);
         if (words.Count == 0) return;
         if (RerunSeconds <= 0 || RerunSeconds > int.MaxValue / 1000m ||
@@ -869,7 +869,7 @@ public sealed partial class TimingPageModel : PageModel
                 cancellation.Token.ThrowIfCancellationRequested();
                 RerunWord = word;
                 await Context.Assess.RerunAsync([word], (int)(RerunSeconds * 1000),
-                    RerunSteps is { } cap ? new StepCap((long)cap) : null);
+                    RerunSteps is { } cap ? new ParserWorkLimit((long)cap) : null);
                 if (Context.Assess.State == RunState.Cancelled || cancellation.IsCancellationRequested) break;
                 if (Context.Assess.State == RunState.Refused)
                 {
@@ -913,7 +913,7 @@ public sealed partial class TimingPageModel : PageModel
         foreach (var property in new[]
         {
             nameof(KindTiming), nameof(RuleTiming), nameof(RuleDetail), nameof(TimingRefusal),
-            nameof(WordSet), nameof(IsStepLimitSelected), nameof(IsSlowestSelected),
+            nameof(WordSet), nameof(IsParserWorkLimitSelected), nameof(IsSlowestSelected),
             nameof(IsAllSelected), nameof(SelectedRule), nameof(SelectedRuleName), nameof(SelectedRuleRow), nameof(RuleRows), nameof(CostliestRuleWords),
             nameof(AllWordsButtonText), nameof(StoppedWordsButtonText),
             nameof(SelectedWords),

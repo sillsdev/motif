@@ -12,7 +12,7 @@ public enum SelectionTimeLimitMode
 
 /// <summary>The complete saved per-word limit policy for a Selection.</summary>
 public sealed record SelectionParsingLimits(
-    StepCap PerWordStepLimit,
+    ParserWorkLimit PerWordParserWorkLimit,
     SelectionTimeLimitMode TimeMode,
     int? ExplicitPerWordLimitMs,
     int? AssessBudgetSeconds = null)
@@ -21,12 +21,12 @@ public sealed record SelectionParsingLimits(
     public string? ValidationError()
     {
         if (AssessBudgetSeconds is < 60 or > 4294967) return "The Assessment time limit must be between 60 and 4294967 seconds.";
-        if (PerWordStepLimit is null) return "A per-word step cap is required.";
+        if (PerWordParserWorkLimit is null) return "A per-word parser work limit is required.";
         if (!Enum.IsDefined(TimeMode)) return "The Selection time-limit mode is unknown.";
-        if (PerWordStepLimit.IsUnbounded)
+        if (PerWordParserWorkLimit.IsUnbounded)
             return TimeMode == SelectionTimeLimitMode.Estimated && ExplicitPerWordLimitMs is null
                 ? null
-                : "An unbounded step cap has no per-word time limit or explicit override.";
+                : "An unbounded parser work limit has no per-word time limit or explicit override.";
         return TimeMode switch
         {
             SelectionTimeLimitMode.Estimated when ExplicitPerWordLimitMs is null => null,
@@ -54,14 +54,14 @@ public sealed record SetDefaultSelectionRequest(
     public int? PerWordLimitMs
     {
         get => Limits.TimeMode == SelectionTimeLimitMode.Explicit ? Limits.ExplicitPerWordLimitMs : null;
-        init => Limits = new SelectionParsingLimits(Limits.PerWordStepLimit,
+        init => Limits = new SelectionParsingLimits(Limits.PerWordParserWorkLimit,
             value is null ? SelectionTimeLimitMode.Estimated : SelectionTimeLimitMode.Explicit, value, Limits.AssessBudgetSeconds);
     }
 
     [JsonIgnore]
-    public StepCap PerWordStepLimit
+    public ParserWorkLimit PerWordParserWorkLimit
     {
-        get => Limits.PerWordStepLimit;
+        get => Limits.PerWordParserWorkLimit;
         init => Limits = new SelectionParsingLimits(value, Limits.TimeMode, Limits.ExplicitPerWordLimitMs, Limits.AssessBudgetSeconds);
     }
 
@@ -72,9 +72,9 @@ public sealed record SetDefaultSelectionRequest(
         IReadOnlyList<Guid> textIds,
         IReadOnlyList<string> addedWords,
         int? perWordLimitMs = 1000,
-        StepCap? perWordStepLimit = null)
+        ParserWorkLimit? perWordParserWorkLimit = null)
         : this(projectPath, name, textIds, addedWords,
-            new SelectionParsingLimits(perWordStepLimit ?? StepCap.Default,
+            new SelectionParsingLimits(perWordParserWorkLimit ?? ParserWorkLimit.Default,
                 perWordLimitMs is null ? SelectionTimeLimitMode.Estimated : SelectionTimeLimitMode.Explicit,
                 perWordLimitMs), null)
     {

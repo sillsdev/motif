@@ -160,7 +160,7 @@ public static class HandoffWriter
     }
 
     /// <summary>One Selection word's batch-pass statistics, the shape <c>parse-results.json</c> writes per line.</summary>
-    internal readonly record struct AssessedWordStatistics(string Word, string Outcome, int? ElapsedMs, string? RawSignature, ParseWordEvidence? Morphology = null, long? WorkSteps = null);
+    internal readonly record struct AssessedWordStatistics(string Word, string Outcome, int? ElapsedMs, string? RawSignature, ParseWordEvidence? Morphology = null, long? ParserWork = null);
 
     /// <summary>
     /// Writes <c>parse-results.json</c>: every Assessment word, each record carrying its own <c>word</c> field.
@@ -205,7 +205,7 @@ public static class HandoffWriter
         if (refusal is not null)
             value["refusal"] = new JsonObject { ["code"] = refusal.Code, ["reason"] = refusal.Reason };
         if (word.Morphology is { } morphology) value["analysisCount"] = morphology.Analyses.Count;
-        if (word.WorkSteps is { } workSteps && word.Outcome != "skipped") value["workSteps"] = workSteps;
+        if (word.ParserWork is { } parserWork && word.Outcome != "skipped") value["parserWork"] = parserWork;
         if (word.ElapsedMs is { } elapsed) value["elapsedMs"] = elapsed;
         if (!string.IsNullOrEmpty(word.RawSignature)) value["signature"] = word.RawSignature;
         if (trace is not null)

@@ -45,9 +45,9 @@
             <Button Classes="filterChip" Classes.active="{Binding IsAllSelected}"
                     Content="{Binding AllWordsButtonText}" Command="{Binding SelectWordSetCommand}"
                     CommandParameter="all" AutomationProperties.Name="{x:Static app:MotifAppStrings.AllTimedWordsAccessibleName}" />
-            <Button Classes="filterChip" Classes.active="{Binding IsStepLimitSelected}"
+            <Button Classes="filterChip" Classes.active="{Binding IsParserWorkLimitSelected}"
                     Content="{Binding StoppedWordsButtonText}" Command="{Binding SelectWordSetCommand}"
-                    CommandParameter="step-limit"
+                    CommandParameter="parser-work-limit"
                     AutomationProperties.HelpText="Words stopped at the work limit." />
             <Button Classes="filterChip" Classes.active="{Binding IsSlowestSelected}"
                     Content="{x:Static app:MotifAppStrings.Slowest}" Command="{Binding SelectWordSetCommand}"
@@ -128,9 +128,9 @@
                                      AutomationProperties.Name="{x:Static app:MotifAppStrings.SecondsPerWordAccessibleName}" />
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Snug}">
-                      <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.AnalysisAttemptLimit}" VerticalAlignment="Center" />
+                      <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.ParserWorkLimitField}" VerticalAlignment="Center" />
                       <NumericUpDown Value="{Binding RerunSteps}" Minimum="1" Increment="100000"
-                                     AutomationProperties.Name="{x:Static app:MotifAppStrings.PerWordAnalysisAttemptLimitAccessibleName}" />
+                                     AutomationProperties.Name="{x:Static app:MotifAppStrings.PerWordParserWorkLimitAccessibleName}" />
                     </StackPanel>
                     <Button Content="{x:Static app:MotifAppStrings.ReRunChosenWords}" Command="{Binding RerunWordsCommand}"
                             AutomationProperties.Name="{x:Static app:MotifAppStrings.ReRunChosenWordsAccessibleName}" />

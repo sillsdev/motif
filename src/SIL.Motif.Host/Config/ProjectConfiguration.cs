@@ -5,7 +5,7 @@ namespace SIL.Motif.Host.Config;
 
 /// <summary>
 /// One declared Assessment scope: which words, which Assessor, what to collect, and the
-/// per-word time and analysis-attempt limits (ADR 0042 decision 3).
+/// per-word time and analysis-parser work limits (ADR 0042 decision 3).
 /// </summary>
 /// <remarks>
 /// <c>Query</c> names which words a scope wants, in words a future query language will interpret; it is
@@ -20,7 +20,7 @@ public sealed record AssessmentScopeConfiguration
     public const string DefaultAssessorName = "pangloss";
     public const int DefaultTimingDetailWords = 2000;
     public const int MaximumTimingDetailWords = 10000;
-    public static readonly StepCap DefaultPerWordStepLimit = StepCap.Default;
+    public static readonly ParserWorkLimit DefaultPerWordParserWorkLimit = ParserWorkLimit.Default;
 
     public static readonly TimeSpan DefaultPerWordLimit = TimeSpan.FromSeconds(1);
 
@@ -30,7 +30,7 @@ public sealed record AssessmentScopeConfiguration
         string assessor,
         IReadOnlyList<string> collect,
         TimeSpan perWordLimit,
-        StepCap? perWordStepLimit = null,
+        ParserWorkLimit? perWordParserWorkLimit = null,
         int timingDetailWords = DefaultTimingDetailWords)
     {
         Name = RequireNonBlank(name, nameof(name));
@@ -41,7 +41,7 @@ public sealed record AssessmentScopeConfiguration
         if (perWordLimit <= TimeSpan.Zero)
             throw new ArgumentOutOfRangeException(nameof(perWordLimit), "A per-word limit must be positive.");
         PerWordLimit = perWordLimit;
-        PerWordStepLimit = perWordStepLimit ?? DefaultPerWordStepLimit;
+        PerWordParserWorkLimit = perWordParserWorkLimit ?? DefaultPerWordParserWorkLimit;
         if (timingDetailWords is < 0 or > MaximumTimingDetailWords)
             throw new ArgumentOutOfRangeException(nameof(timingDetailWords));
         TimingDetailWords = timingDetailWords;
@@ -62,8 +62,8 @@ public sealed record AssessmentScopeConfiguration
     /// <summary>The per-word time cap; differences annotate comparisons without blocking them.</summary>
     public TimeSpan PerWordLimit { get; }
 
-    /// <summary>The per-word analysis-attempt cap, or an explicit request for no attempt cap.</summary>
-    public StepCap PerWordStepLimit { get; }
+    /// <summary>The per-word parser work limit, or an explicit request for none.</summary>
+    public ParserWorkLimit PerWordParserWorkLimit { get; }
 
     /// <summary>Maximum slowest words with per-object timing detail in an ordinary Assessment.</summary>
     public int TimingDetailWords { get; }

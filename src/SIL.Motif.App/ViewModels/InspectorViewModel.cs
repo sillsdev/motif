@@ -429,7 +429,7 @@ public sealed partial class InspectorWordsViewModel : ObservableObject
             [.. uses.Words.Select(word => new InspectorWordViewModel(word.Row, string.Empty, tryWord))], string.Empty);
     }
 
-    /// <summary>The words an object ran in, each with its work steps, or a line saying PanGloss recorded none.</summary>
+    /// <summary>The words an object ran in, each with its parser work, or a line saying PanGloss recorded none.</summary>
     public static InspectorWordsViewModel ForRanIn(ObjectUseWords? ranIn, Action<string> tryWord)
     {
         var words = ranIn?.Words ?? [];
@@ -442,7 +442,7 @@ public sealed partial class InspectorWordsViewModel : ObservableObject
             : (words.Count == 1 ? "Ran in 1 word" : $"Ran in {words.Count:N0} words") +
               callText;
         return new InspectorWordsViewModel(heading, CountByMeaning(ranIn?.ByMeaning ?? []), string.Empty,
-            [.. words.OrderByDescending(word => word.WorkSteps ?? -1).ThenByDescending(word => word.ElapsedNs ?? 0)
+            [.. words.OrderByDescending(word => word.ParserWork ?? -1).ThenByDescending(word => word.ElapsedNs ?? 0)
                 .Select(word => new InspectorWordViewModel(word.Row, TimeText(word), tryWord))],
             "PanGloss recorded no work against it in the last Parse all words.");
     }
@@ -485,8 +485,8 @@ public sealed partial class InspectorWordsViewModel : ObservableObject
     private static string CountByMeaning(IReadOnlyList<ObjectUseMeaning> meanings) =>
         string.Join(" · ", meanings.Select(meaning => $"{meaning.Meaning} {meaning.Words:N0}"));
 
-    private static string TimeText(ObjectUseWord word) => word.WorkSteps is { } work ? TimingShare.FormatWorkSteps(work)
-        : word.Calls is { } calls ? $"{calls:N0} calls" : MotifAppStrings.WorkStepsNotRecorded;
+    private static string TimeText(ObjectUseWord word) => word.ParserWork is { } work ? TimingShare.FormatParserWork(work)
+        : word.Calls is { } calls ? $"{calls:N0} calls" : MotifAppStrings.ParserWorkNotRecorded;
 }
 
 /// <summary>One word in an inspector section: the word, what it means for the grammar, and a way to try it.</summary>

@@ -4,15 +4,15 @@
 
 ## When to use it
 
-Use this from Settings or **Analysis options** when you want later Default Selection parses to use a different step cap or time policy. Running and saved results keep their own resolved limits.
+Use this from Settings or **Analysis options** when you want later Default Selection parses to use a different parser work limit or time policy. Running and saved results keep their own resolved limits.
 
 ## Example
 
 ```powershell
-motif selection set-limits --project "C:\FieldWorks\Projects\Koro\Koro.fwdata" --name "Default" --expected-revision 3 --step-cap 200000 --time-mode estimated
+motif selection set-limits --project "C:\FieldWorks\Projects\Koro\Koro.fwdata" --name "Default" --expected-revision 3 --parser-work-limit 20000000 --time-mode estimated
 ```
 
-Use `--time-mode explicit --time-limit-ms <positive>` to choose a time safety net, in milliseconds on this computer. Estimated mode rejects an explicit millisecond value. Use `--step-cap none` for no step or time limit; an explicit time cap is not allowed with an unbounded step cap. Read the current revision with [selection show](cmd:selection%20show); if another write has changed it, read again and retry with the new revision.
+Use `--time-mode explicit --time-limit-ms <positive>` to choose a time safety net, in milliseconds on this computer. Estimated mode rejects an explicit millisecond value. Use `--parser-work-limit none` for no step or time limit; an explicit time cap is not allowed with an unbounded parser work limit. Read the current revision with [selection show](cmd:selection%20show); if another write has changed it, read again and retry with the new revision.
 
 ## What it prints
 

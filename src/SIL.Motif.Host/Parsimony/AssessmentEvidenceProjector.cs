@@ -54,7 +54,7 @@ public static class AssessmentEvidenceProjector
                         "unavailable", false, "[]", unavailableReason)));
                 runs.Add(new ParserRunProjection(assessment.AssessmentId, assessment.InvocationId,
             assessment.SourceSha256, assessment.ParserSha256, assessment.ModelFingerprint,
-                    "unavailable", assessment.TimeoutMs, assessment.StepLimit, assessment.Threads,
+                    "unavailable", assessment.TimeoutMs, assessment.ParserWorkLimit, assessment.Threads,
                     assessment.StoredCases.Count, 0, unavailableReason));
                 continue;
             }
@@ -130,7 +130,7 @@ public static class AssessmentEvidenceProjector
             var completedCount = cases.Skip(runStart).Count(item => item.Completion == "complete");
             runs.Add(new ParserRunProjection(assessment.AssessmentId, assessment.InvocationId,
                 assessment.SourceSha256, assessment.ParserSha256, assessment.ModelFingerprint,
-                "complete", assessment.TimeoutMs, assessment.StepLimit, assessment.Threads,
+                "complete", assessment.TimeoutMs, assessment.ParserWorkLimit, assessment.Threads,
                 parserCases.Count, completedCount, null));
         }
 
@@ -337,7 +337,7 @@ public static class AssessmentEvidenceProjector
 public sealed record ParserAssessmentSource(string AssessmentId, string Assessor, string Kind,
     string? ProposalId, string? ProposalIntentDigest, string SourceSha256, string ParserSha256,
     string? ModelFingerprint, string InvocationId,
-    string? SourcePath, string? SidecarPath, string? SidecarSha256, int? TimeoutMs, string StepLimit,
+    string? SourcePath, string? SidecarPath, string? SidecarSha256, int? TimeoutMs, string ParserWorkLimit,
     int Threads, IReadOnlyList<ParseWordEvidence?> StoredCases);
 
 /// <summary>One parser overlay and its immutable source material.</summary>
@@ -354,7 +354,7 @@ public sealed record ParserOverlayProjection(bool Requested,
 
 /// <summary>One parser invocation's exact input binding and aggregate case completion.</summary>
 public sealed record ParserRunProjection(string AssessmentId, string InvocationId, string SourceSha256,
-    string ParserSha256, string? ModelFingerprint, string Status, int? TimeoutMs, string StepLimit,
+    string ParserSha256, string? ModelFingerprint, string Status, int? TimeoutMs, string ParserWorkLimit,
     int Threads, int RequestedCaseCount, int CompletedCaseCount, string? Reason);
 
 /// <summary>One exact surface case from a retained parser invocation.</summary>

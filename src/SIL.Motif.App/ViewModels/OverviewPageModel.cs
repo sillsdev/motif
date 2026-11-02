@@ -262,7 +262,7 @@ public sealed partial class OverviewPageModel : PageModel
         count?.ToString("N0", CultureInfo.CurrentCulture) ?? MotifAppStrings.OverviewNotMeasured;
 
     /// <summary>
-    /// The speed headline: how many words PanGloss counted work for and their total work steps, each word's count
+    /// The speed headline: how many words PanGloss counted work for and their total parser work, each word's count
     /// added up. There is no comparison with another parser, because Motif does not measure one.
     /// </summary>
     public string SpeedMain => ShowsProposalAlone
@@ -274,7 +274,7 @@ public sealed partial class OverviewPageModel : PageModel
         overview is { AssessmentId: not null, Timing.Work: { MeasuredWordCount: > 0 } work }
         ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.OverviewSpeedMainFormat,
             PluralText.Format(MotifAppStrings.OverviewSpeedWordsPattern, work.MeasuredWordCount),
-            TimingShare.FormatWorkSteps(work.TotalWorkSteps))
+            TimingShare.FormatParserWork(work.TotalParserWork))
         : MotifAppStrings.OverviewSpeedNoTimes;
 
     /// <summary>How long the whole run took on this computer, which is a time and not a measure of work.</summary>
@@ -284,20 +284,20 @@ public sealed partial class OverviewPageModel : PageModel
             TimingShare.FormatDuration(seconds * 1000))
         : string.Empty;
 
-    /// <summary>The stored median and 95th percentile work steps per word.</summary>
-    public string SpeedMedian => Overview?.Timing.Work is { MedianWorkSteps: { } median } work
-        ? work.Percentile95WorkSteps is { } p95
+    /// <summary>The stored median and 95th percentile parser work per word.</summary>
+    public string SpeedMedian => Overview?.Timing.Work is { MedianParserWork: { } median } work
+        ? work.Percentile95ParserWork is { } p95
             ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.OverviewSpeedMedianWithPercentileFormat,
-                TimingShare.FormatWorkSteps(median), TimingShare.FormatWorkSteps(p95))
-            : string.Format(CultureInfo.CurrentCulture, MotifAppStrings.OverviewSpeedMedianFormat, TimingShare.FormatWorkSteps(median))
+                TimingShare.FormatParserWork(median), TimingShare.FormatParserWork(p95))
+            : string.Format(CultureInfo.CurrentCulture, MotifAppStrings.OverviewSpeedMedianFormat, TimingShare.FormatParserWork(median))
         : string.Empty;
 
     /// <summary>How many words stopped at the work limit, or empty when none did.</summary>
-    public string SpeedDetails => Overview?.Timing is { MeasuredWordCount: > 0, StepLimitedWordCount: > 0 and var stopped }
+    public string SpeedDetails => Overview?.Timing is { MeasuredWordCount: > 0, ParserWorkLimitedWordCount: > 0 and var stopped }
         ? PluralText.Format(MotifAppStrings.OverviewSpeedStoppedPattern, stopped)
         : string.Empty;
 
-    /// <summary>The slowest words as word rows, each with the work steps the Overview read for it.</summary>
+    /// <summary>The slowest words as word rows, each with the parser work the Overview read for it.</summary>
     public IReadOnlyList<ListedWordViewModel> SlowestWordRows =>
         Overview?.Timing is { MeasuredWordCount: > 0 } timing
             ? [.. timing.SlowestWords.Select(slow =>
@@ -312,7 +312,7 @@ public sealed partial class OverviewPageModel : PageModel
     public IReadOnlyList<OverviewSlowWord> SlowestTableRows => Overview is { Timing.MeasuredWordCount: > 0 } overview
         ? overview.Timing.SlowestWords.Select(word => new OverviewSlowWord(word.Word,
             WorkTextOf(word),
-            overview.LookFirst.StepLimitedWords.Contains(word.Word, StringComparer.Ordinal)
+            overview.LookFirst.ParserWorkLimitedWords.Contains(word.Word, StringComparer.Ordinal)
                 ? Mark.Stopped : Context.Assess.Words.Find(word.Word)?.WordRow.OutcomeMark)).ToArray()
         : [];
 
@@ -322,20 +322,20 @@ public sealed partial class OverviewPageModel : PageModel
         overview.Timing.SlowestWords.Count > 0
         ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.OverviewSlowestSummaryFormat,
             string.Join(" · ", overview.Timing.SlowestWords.Select(word => string.Format(CultureInfo.CurrentCulture,
-                overview.LookFirst.StepLimitedWords.Contains(word.Word, StringComparer.Ordinal)
+                overview.LookFirst.ParserWorkLimitedWords.Contains(word.Word, StringComparer.Ordinal)
                     ? MotifAppStrings.OverviewSlowestStoppedWordFormat : MotifAppStrings.OverviewSlowestWordFormat,
                 word.Word, WorkTextOf(word)))))
         : string.Empty;
 
     public bool HasSlowestWordSummary => SlowestWordSummary.Length > 0;
 
-    private static string WorkTextOf(SlowWordTiming word) => word.WorkSteps is { } work
-        ? TimingShare.FormatWorkSteps(work) : MotifAppStrings.WorkStepsNotRecorded;
+    private static string WorkTextOf(SlowWordTiming word) => word.ParserWork is { } work
+        ? TimingShare.FormatParserWork(work) : MotifAppStrings.ParserWorkNotRecorded;
 
     /// <summary>The work shares by kind, including any part no kind accounts for; empty when work by kind was not kept.</summary>
     public IReadOnlyList<TimingShare> TimingKindShares => Overview?.Timing is
-        { WorkStepAggregates.Count: > 0, Work.MeasuredWordCount: > 0 } timing
-        ? TimingShare.ByKind(timing.WorkStepAggregates, timing.Work.TotalWorkSteps, timing.Kinds,
+        { ParserWorkAggregates.Count: > 0, Work.MeasuredWordCount: > 0 } timing
+        ? TimingShare.ByKind(timing.ParserWorkAggregates, timing.Work.TotalParserWork, timing.Kinds,
             MotifAppStrings.OverviewNotAttributed, timing.Work.MeasuredWordCount, alwaysShowUnattributed: false)
         : [];
 
@@ -355,7 +355,7 @@ public sealed partial class OverviewPageModel : PageModel
                 if (detail.HasRetriedWords) notes.Add(MotifAppStrings.TimingDetailRetried);
                 if (detail.StatisticsUnavailable) notes.Add(MotifAppStrings.TimingNoStoredTimingForWords);
             }
-            if (timing.Work.MeasuredWordCount > 0 && timing.WorkStepAggregates.Count == 0)
+            if (timing.Work.MeasuredWordCount > 0 && timing.ParserWorkAggregates.Count == 0)
                 notes.Add(timing.ObjectTimingAggregatesAvailable
                     ? MotifAppStrings.TimingWorkByObjectNotKept : MotifAppStrings.TimingWorkByObjectUnavailable);
             if (!timing.ObjectTimingAggregatesAvailable) notes.Add(MotifAppStrings.TimingObjectTotalsUnavailable);
@@ -393,16 +393,16 @@ public sealed partial class OverviewPageModel : PageModel
                     approvedLostSummary, detail, approvedLostLink,
                     new RelayCommand(() => OpenCell(WordProjectStatus.Approved, CompareColumnKind.NoParse))));
             }
-            if (data.StepLimitedWords.Count > 0)
+            if (data.ParserWorkLimitedWords.Count > 0)
             {
-                var detail = data.StepLimitedWordWorkSteps is { } stopped && overview.Timing.Work.TotalWorkSteps is > 0 and var total
+                var detail = data.ParserWorkLimitedWordParserWork is { } stopped && overview.Timing.Work.TotalParserWork is > 0 and var total
                     ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.OverviewStoppedWordsDetailFormat,
-                        stopped.ToString("N0", CultureInfo.CurrentCulture), TimingShare.FormatWorkSteps(total))
+                        stopped.ToString("N0", CultureInfo.CurrentCulture), TimingShare.FormatParserWork(total))
                     : string.Empty;
                 rows.Add(new OverviewLookFirstRow((rows.Count + 1).ToString(CultureInfo.CurrentCulture),
-                    PluralText.Format(MotifAppStrings.OverviewStoppedWordsRowPattern, data.StepLimitedWords.Count),
-                    detail, PluralText.Format(MotifAppStrings.OverviewSeeWordsPattern, data.StepLimitedWords.Count),
-                    new RelayCommand(() => Context.OpenTiming(data.StepLimitedWords, null))));
+                    PluralText.Format(MotifAppStrings.OverviewStoppedWordsRowPattern, data.ParserWorkLimitedWords.Count),
+                    detail, PluralText.Format(MotifAppStrings.OverviewSeeWordsPattern, data.ParserWorkLimitedWords.Count),
+                    new RelayCommand(() => Context.OpenTiming(data.ParserWorkLimitedWords, null))));
             }
             if (data.UnknownDifferentWordCount > 0)
                 rows.Add(new OverviewLookFirstRow((rows.Count + 1).ToString(CultureInfo.CurrentCulture),

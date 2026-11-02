@@ -28,7 +28,7 @@ public sealed record AssessedWord(
     /// <summary>The word's passing attempt count from the statistics of its producing run.</summary>
     public int? Passes { get; init; }
     /// <summary>The total parser work for the word, when PanGloss reported it; null otherwise.</summary>
-    public long? WorkSteps { get; init; }
+    public long? ParserWork { get; init; }
     /// <summary>The producing run, attached when its stored words are selected as evidence.</summary>
     public SIL.Motif.Contract.Responses.WordMeasurementOrigin? Origin { get; init; }
     public SIL.Motif.Contract.Responses.WordCorrectness? Correctness { get; init; }

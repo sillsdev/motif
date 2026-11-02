@@ -49,7 +49,7 @@ public abstract record WarmParseResult
         /// <summary>The analysis attempts reported by the result envelope, if present.</summary>
         public long? Steps { get; init; }
         /// <summary>The total parser work reported by the result envelope, if present.</summary>
-        public long? WorkSteps { get; init; }
+        public long? ParserWork { get; init; }
     }
 
     /// <summary>The caller cancelled; the resident process was killed and the next call restarts it.</summary>
@@ -79,7 +79,7 @@ public sealed record WarmPanGlossOptions
 /// long-lived parser session). Each request takes machine-queue admission; the process lives in its own containment
 /// job with the memory ceiling for its whole life. Requests to one session run one at a time, in order.
 /// A cancel kills the process; any failure falls back to the cold path for that word. A session is keyed by project and
-/// by the step cap it was started with, because <c>serve</c> applies its caps to every request.
+/// by the parser work limit it was started with, because <c>serve</c> applies its caps to every request.
 /// </summary>
 public sealed class WarmPanGlossPool : IDisposable
 {
@@ -117,10 +117,10 @@ public sealed class WarmPanGlossPool : IDisposable
     public event EventHandler<WarmSessionStateChangedEventArgs>? StateChanged;
 
     /// <summary>The state of a project's session; <see cref="WarmSessionState.Idle"/> when it has none.</summary>
-    public WarmSessionState GetState(string projectKey, StepCap? stepCap = null)
+    public WarmSessionState GetState(string projectKey, ParserWorkLimit? parserWorkLimit = null)
     {
         lock (_gate)
-            return _sessions.TryGetValue(SessionKey(projectKey, stepCap), out var session) ? session.State : WarmSessionState.Idle;
+            return _sessions.TryGetValue(SessionKey(projectKey, parserWorkLimit), out var session) ? session.State : WarmSessionState.Idle;
     }
 
     /// <summary>
@@ -129,10 +129,10 @@ public sealed class WarmPanGlossPool : IDisposable
     /// or <see cref="WarmSessionPhase.Failed"/> (with code and message) and never faults. A Failed session is retried.
     /// A different <paramref name="stateToken"/> or grammar replaces the session.
     /// </summary>
-    public Task<WarmSessionState> Prewarm(string projectKey, string stateToken, string grammarPath, StepCap? stepCap = null)
+    public Task<WarmSessionState> Prewarm(string projectKey, string stateToken, string grammarPath, ParserWorkLimit? parserWorkLimit = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(projectKey);
-        return Acquire(projectKey, stateToken, grammarPath, stepCap, retryFailed: true).Loaded;
+        return Acquire(projectKey, stateToken, grammarPath, parserWorkLimit, retryFailed: true).Loaded;
     }
 
     /// <summary>
@@ -140,15 +140,15 @@ public sealed class WarmPanGlossPool : IDisposable
     /// <paramref name="cancellationToken"/>, which then abandons only the wait), starts one if there is none, and
     /// returns <see cref="WarmParseResult.Fallback"/> when the session failed, the parser answered the word with an error,
     /// or a reply line was malformed or unterminated, so the caller runs the cold path.
-    /// <paramref name="stepCap"/> is passed to <c>serve</c> as <c>--step-cap</c> and is part of the session key.
+    /// <paramref name="parserWorkLimit"/> is passed to <c>serve</c> as <c>--step-cap</c> and is part of the session key.
     /// Cancelling during a parse kills the process.
     /// </summary>
     public async Task<WarmParseResult> TryWordAsync(string projectKey, string stateToken, string grammarPath,
-        string word, bool traceDetails, CancellationToken cancellationToken, StepCap? stepCap = null)
+        string word, bool traceDetails, CancellationToken cancellationToken, ParserWorkLimit? parserWorkLimit = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(projectKey);
         ArgumentException.ThrowIfNullOrEmpty(word);
-        var session = Acquire(projectKey, stateToken, grammarPath, stepCap, retryFailed: false);
+        var session = Acquire(projectKey, stateToken, grammarPath, parserWorkLimit, retryFailed: false);
         if (session.CoolingDown(_options.RetryCooldown) is { } cooling) return cooling;
         try
         {
@@ -199,17 +199,17 @@ public sealed class WarmPanGlossPool : IDisposable
 
     private static string Normalize(string projectKey) => Path.GetFullPath(projectKey);
 
-    /// <summary>PanGloss's own per-word runaway guard, which a parse without <c>--step-cap</c> applies.</summary>
-    private const long ParserDefaultSteps = 50_000_000;
+    /// <summary>PanGloss's own per-word guard for a parse without a cap: 50,000,000 attempts times 100.</summary>
+    private const long ParserDefaultWork = 5_000_000_000;
 
     /// <summary>No cap and the parser's default cap share a session; any other cap has its own.</summary>
-    private static string SessionKey(string projectKey, StepCap? stepCap) =>
-        Normalize(projectKey) + "\n" + (stepCap is null || stepCap.Steps == ParserDefaultSteps
-            ? string.Empty : stepCap.ToArgument());
+    private static string SessionKey(string projectKey, ParserWorkLimit? parserWorkLimit) =>
+        Normalize(projectKey) + "\n" + (parserWorkLimit is null || parserWorkLimit.Work == ParserDefaultWork
+            ? string.Empty : parserWorkLimit.ToArgument());
 
-    private Session Acquire(string projectKey, string token, string grammarPath, StepCap? stepCap, bool retryFailed)
+    private Session Acquire(string projectKey, string token, string grammarPath, ParserWorkLimit? parserWorkLimit, bool retryFailed)
     {
-        var key = SessionKey(projectKey, stepCap);
+        var key = SessionKey(projectKey, parserWorkLimit);
         Session? stale = null;
         Session session;
         lock (_gate)
@@ -236,7 +236,7 @@ public sealed class WarmPanGlossPool : IDisposable
             }
             if (existing is null)
             {
-                existing = new Session(this, key, Normalize(projectKey), token, grammarPath, stepCap?.ToArgument());
+                existing = new Session(this, key, Normalize(projectKey), token, grammarPath, parserWorkLimit?.ToArgument());
                 _sessions[key] = existing;
             }
             session = existing;
@@ -281,7 +281,7 @@ public sealed class WarmPanGlossPool : IDisposable
     }
 
     private sealed class Session(WarmPanGlossPool pool, string key, string projectKey, string token, string grammarPath,
-        string? stepCapArgument)
+        string? parserWorkLimitArgument)
     {
         private readonly object _lock = new();
         private readonly TaskCompletionSource<WarmSessionState> _loaded =
@@ -389,12 +389,13 @@ public sealed class WarmPanGlossPool : IDisposable
             start.ArgumentList.Add("serve");
             start.ArgumentList.Add("--project");
             start.ArgumentList.Add(GrammarPath);
-            if (stepCapArgument is not null)
+            if (parserWorkLimitArgument is not null)
             {
-                start.ArgumentList.Add("--step-cap");
-                start.ArgumentList.Add(stepCapArgument);
+                var limit = ParserWorkLimit.Parse(parserWorkLimitArgument);
+                start.ArgumentList.Add("--step-cap"); // PanGloss's name for its analysis-attempt bound; derived from the work limit
+                start.ArgumentList.Add(limit.ToStepCapArgument());
                 start.ArgumentList.Add("--work-cap");
-                start.ArgumentList.Add(StepCap.Parse(stepCapArgument).ToWorkCapArgument());
+                start.ArgumentList.Add(limit.ToWorkCapArgument());
             }
             PanGlossChildProcess process;
             try { process = job.Start(start); }
@@ -516,7 +517,7 @@ public sealed class WarmPanGlossPool : IDisposable
                         return new WarmParseResult.Completed(result.GetRawText(), exitCode, clock.Elapsed)
                         {
                             Steps = ReadOptionalCount(root, "steps"),
-                            WorkSteps = ReadOptionalCount(root, "workSteps"),
+                            ParserWork = ReadOptionalCount(root, "workSteps"),
                         };
                     }
                     var code = root.TryGetProperty("code", out var c) ? c.GetString() ?? "error" : "error";

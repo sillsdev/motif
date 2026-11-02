@@ -16,7 +16,7 @@ namespace SIL.Motif.Host.PanGloss;
 /// </summary>
 public abstract record PanGlossRequest
 {
-    public const long DefaultPerWordStepLimit = StepCap.DefaultSteps;
+    public const long DefaultPerWordParserWorkLimit = ParserWorkLimit.DefaultWork;
 
     private PanGlossRequest() { }
 
@@ -84,7 +84,7 @@ public abstract record PanGlossRequest
     /// </summary>
     public sealed record Batch(
         string ProjectFilePath, IReadOnlyList<string> Words, TimeSpan? PerWordLimit, string? StatsCachePath = null,
-        StepCap? PerWordStepLimit = null, string? ArtifactDirectory = null)
+        ParserWorkLimit? PerWordParserWorkLimit = null, string? ArtifactDirectory = null)
         : PanGlossRequest
     {
         public bool CollectAnalyses { get; init; }
@@ -127,10 +127,10 @@ public abstract record PanGlossRequest
                 startInfo.ArgumentList.Add("--word-timeout-ms");
                 startInfo.ArgumentList.Add(((int)timeLimit.TotalMilliseconds).ToString(CultureInfo.InvariantCulture));
             }
-            startInfo.ArgumentList.Add("--step-cap");
-            startInfo.ArgumentList.Add((PerWordStepLimit ?? StepCap.Default).ToArgument());
+            startInfo.ArgumentList.Add("--step-cap"); // PanGloss's name for its analysis-attempt bound; derived from the work limit
+            startInfo.ArgumentList.Add((PerWordParserWorkLimit ?? ParserWorkLimit.Default).ToStepCapArgument());
             startInfo.ArgumentList.Add("--work-cap");
-            startInfo.ArgumentList.Add((PerWordStepLimit ?? StepCap.Default).ToWorkCapArgument());
+            startInfo.ArgumentList.Add((PerWordParserWorkLimit ?? ParserWorkLimit.Default).ToWorkCapArgument());
             if (WorkColumns) startInfo.ArgumentList.Add("--work-columns");
             startInfo.ArgumentList.Add("--threads");
             startInfo.ArgumentList.Add(ThreadCount.ToString(CultureInfo.InvariantCulture));
@@ -230,15 +230,15 @@ public abstract record PanGlossRequest
     /// <c>--trace</c> flag, and tracing runs unmerged deliberately, so this must stay a single-word request
     /// rather than growing a word list. Needs PanGloss 0.3.3 or later.
     /// </summary>
-    /// <remarks>PanGloss signals a search stopped at its analysis-attempt cap, derived search-work cap, or time limit with a nonzero exit after writing its
+    /// <remarks>PanGloss signals a search stopped at its parser work limit, derived search-work cap, or time limit with a nonzero exit after writing its
     /// output, as an ordinary trace does from 0.5.2. A nonzero exit is accepted only when standard output holds a
     /// well-formed document reporting that stop, so the word shows as stopped; any other nonzero exit is refused.
     /// </remarks>
     public sealed record Trace(string GrammarPath, string Word) : PanGlossRequest
     {
-        /// <summary>The parser's analysis-attempt cap for this word; <see langword="null"/> passes none and keeps PanGloss's own
+        /// <summary>The parser's parser work limit for this word; <see langword="null"/> passes none and keeps PanGloss's own
         /// runaway guard.</summary>
-        public StepCap? StepLimit { get; init; }
+        public ParserWorkLimit? ParserWorkLimit { get; init; }
 
         public override string Subcommand => "parse";
 
@@ -264,11 +264,11 @@ public abstract record PanGlossRequest
             startInfo.ArgumentList.Add("--trace-format");
             startInfo.ArgumentList.Add("json");
             startInfo.ArgumentList.Add("--trace-details");
-            if (StepLimit is null) return;
-            startInfo.ArgumentList.Add("--step-cap");
-            startInfo.ArgumentList.Add(StepLimit.ToArgument());
+            if (ParserWorkLimit is null) return;
+            startInfo.ArgumentList.Add("--step-cap"); // PanGloss's name for its analysis-attempt bound; derived from the work limit
+            startInfo.ArgumentList.Add(ParserWorkLimit.ToStepCapArgument());
             startInfo.ArgumentList.Add("--work-cap");
-            startInfo.ArgumentList.Add(StepLimit.ToWorkCapArgument());
+            startInfo.ArgumentList.Add(ParserWorkLimit.ToWorkCapArgument());
         }
 
         internal override PanGlossOutcome Finish(string scratch, string standardOutput, string standardError,

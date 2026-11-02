@@ -322,12 +322,12 @@ public sealed partial class WordRowViewModel : ObservableObject
     public bool PlacesFromWordList { get; init; }
 
     /// <summary>
-    /// The parser work for the word as a count of work steps. A refused, skipped, never-parsed or unassessed word
+    /// The parser work for the word as a count of parser work. A refused, skipped, never-parsed or unassessed word
     /// shows nothing; a word the parser tried without a count says the count is not recorded.
     /// </summary>
-    public string WorkStepsText => _row.MeaningCode is "refused" or "not-parsed" ? string.Empty
-        : _row.WorkSteps is { } steps ? PluralText.Format(MotifAppStrings.WorkStepsPattern, steps)
-        : MotifAppStrings.WorkStepsNotRecorded;
+    public string ParserWorkText => _row.MeaningCode is "refused" or "not-parsed" ? string.Empty
+        : _row.ParserWork is { } steps ? PluralText.Format(MotifAppStrings.ParserWorkPattern, steps)
+        : MotifAppStrings.ParserWorkNotRecorded;
 
     /// <summary>When this word's producing measurement was recorded, independent of its neighbours.</summary>
     public string MeasuredText => _row.Origin is { } origin

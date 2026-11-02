@@ -9,7 +9,7 @@ public enum TimingStanding { Approved, Candidate, Rejected, IncorrectSpelling, N
 public abstract record TimingWordSet
 {
     public sealed record All : TimingWordSet;
-    public sealed record StepLimited : TimingWordSet;
+    public sealed record ParserWorkLimited : TimingWordSet;
     public sealed record Slowest : TimingWordSet;
     public sealed record MatrixCell(TimingStanding Standing, CompareColumnKind Column) : TimingWordSet;
     public sealed record Named(string Name) : TimingWordSet;
@@ -17,7 +17,7 @@ public abstract record TimingWordSet
     public string ToWireValue() => this switch
     {
         All => "all",
-        StepLimited => "step-limit",
+        ParserWorkLimited => "parser-work-limit",
         Slowest => "slowest",
         MatrixCell cell => $"cell:{StandingName(cell.Standing)}:{ColumnName(cell.Column)}",
         Named named => named.Name,
@@ -29,7 +29,7 @@ public abstract record TimingWordSet
         if (string.IsNullOrWhiteSpace(value)) return null;
         var name = value.Trim();
         if (name == "all") return new All();
-        if (name == "step-limit") return new StepLimited();
+        if (name == "parser-work-limit") return new ParserWorkLimited();
         if (name == "slowest") return new Slowest();
         if (!name.StartsWith("cell:", StringComparison.Ordinal)) return new Named(name);
         var parts = name[5..].Split(':');

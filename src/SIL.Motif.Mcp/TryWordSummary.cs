@@ -32,7 +32,7 @@ internal static class TryWordSummary
             ["parsed"] = response.Parsed,
             ["complete"] = response.Complete,
             ["searchStatus"] = response.SearchStatus,
-            ["workSteps"] = response.TotalParserWorkSteps,
+            ["parserWork"] = response.TotalParserWork,
             ["attempts"] = response.ParserSteps,
             ["elapsedMs"] = response.ElapsedMs,
         };

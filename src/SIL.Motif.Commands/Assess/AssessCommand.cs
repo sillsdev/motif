@@ -241,7 +241,7 @@ public static class AssessCommand
                 namedSelection = saved.Name;
                 defaultLimits = saved.Limits;
                 selectionRequest = new SelectionRequest(false, saved.TextIds, saved.AddedWords, false, null,
-                    PerWordStepLimit: saved.Limits.PerWordStepLimit);
+                    PerWordParserWorkLimit: saved.Limits.PerWordParserWorkLimit);
             }
             else
             {
@@ -319,16 +319,16 @@ public static class AssessCommand
                         "assess.unsupported-kind", FailureReason.Refused,
                         $"The Assessor does not declare required Assessment kind '{unsupported[0]}'.",
                         new Dictionary<string, string> { ["kind"] = unsupported[0].ToString() }));
-                var stepLimit = request.PerWordStepLimit ?? selectionRequest.PerWordStepLimit ??
-                    defaultLimits?.PerWordStepLimit ?? configured.PerWordStepLimit;
+                var parserWorkLimit = request.PerWordParserWorkLimit ?? selectionRequest.PerWordParserWorkLimit ??
+                    defaultLimits?.PerWordParserWorkLimit ?? configured.PerWordParserWorkLimit;
                 var policy = defaultLimits is null
-                    ? SelectionLimitPolicy.Estimated(stepLimit)
-                    : defaultLimits with { PerWordStepLimit = stepLimit };
+                    ? SelectionLimitPolicy.Estimated(parserWorkLimit)
+                    : defaultLimits with { PerWordParserWorkLimit = parserWorkLimit };
                 var limits = frozenLimits ?? (request.PerWordLimitMs is { } ms
-                    ? new TrialLimits(TimeSpan.FromMilliseconds(ms), stepLimit)
+                    ? new TrialLimits(TimeSpan.FromMilliseconds(ms), parserWorkLimit)
                     : ParseRunLimits.Resolve(policy, ParseRunLimits.ReadRate(assessments)));
                 scope = new AssessmentScope.Words(composition.Selection.Words, collected,
-                    limits.PerWordLimit, limits.PerWordStepLimit)
+                    limits.PerWordLimit, limits.PerWordParserWorkLimit)
                 { Casing = LowercasePass.ForCache(baselineReader.Cache) };
                 // The lowercase wordforms are rows of their own, so every per-word context and total covers them.
                 parsedWords = scope.ParsedWords;
@@ -409,7 +409,7 @@ public static class AssessCommand
                 if (cancellationToken.IsCancellationRequested)
                     return CommandOutcome<AssessCommandResponse>.Refused(Stop());
                 var scopeJson = ScopeCodec.Write(
-                    new StoredScope.Trial(ScopeQuery, scope.WordForms, scope.Collect, scope.PerWordLimit, scope.PerWordStepLimit));
+                    new StoredScope.Trial(ScopeQuery, scope.WordForms, scope.Collect, scope.PerWordLimit, scope.PerWordParserWorkLimit));
                 var scopeDigest = AssessmentMaterial.Digest(scopeJson);
                 var baselineTokenJson = JsonSerializer.Serialize(baseline.Token, MotifJson.CreateOptions());
                 var savedUtc = DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture);
@@ -494,7 +494,7 @@ public static class AssessCommand
                         StringComparer.Ordinal);
                     objectTimings = batchStatistics.ObjectTimings.Select(row => new AssessmentObjectTiming(
                         row.Kind, row.Key, row.IdentityQuality, row.Direction, row.Object, row.Word,
-                        row.Attempts, row.Passes, row.ElapsedNs) { WorkSteps = row.WorkSteps }).ToArray();
+                        row.Attempts, row.Passes, row.ElapsedNs) { ParserWork = row.ParserWork }).ToArray();
                     timingEvidence = new AssessmentTimingEvidence(batchStatistics.Aggregates,
                         batchStatistics.DetailWordCount, batchStatistics.DetailComplete, batchStatistics.TotalObjectTimingRows)
                     {
@@ -582,7 +582,7 @@ public static class AssessCommand
                                 ElapsedNs = stats?.ElapsedNs,
                                 Attempts = stats?.Attempts ?? word.Attempts,
                                 Passes = stats?.Passes ?? word.Passes,
-                                WorkSteps = stats?.WorkSteps ?? word.WorkSteps,
+                                ParserWork = stats?.ParserWork ?? word.ParserWork,
                                 Morphology = word.Morphology is { } morphology && stats is not null
                                     ? morphology with { Attempts = stats.Attempts }
                                     : word.Morphology,
@@ -664,7 +664,7 @@ public static class AssessCommand
                                 AnalysisComparison = comparisonByWord?.GetValueOrDefault(word.Word),
                                 Attempts = stats?.Attempts ?? word.Attempts,
                                 Passes = stats?.Passes ?? word.Passes,
-                                WorkSteps = stats?.WorkSteps ?? word.WorkSteps,
+                                ParserWork = stats?.ParserWork ?? word.ParserWork,
                             };
                             return row with { FixFirst = AssessmentWordRows.FixFirst(row), Comparison = CompareSemantics.Compare(row) };
                         }).ToArray();

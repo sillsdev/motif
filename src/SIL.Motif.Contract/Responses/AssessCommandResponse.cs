@@ -80,7 +80,7 @@ public sealed record AssessmentWordResult(
     /// The total parser work reserved for this word across all phases, when PanGloss reported it; deterministic
     /// for a grammar, word and PanGloss version, unlike elapsed time.
     /// </summary>
-    public long? WorkSteps { get; init; }
+    public long? ParserWork { get; init; }
     /// <summary>
     /// Which limit ended a stopped word's search, from its outcome and the parser's evidence together:
     /// <see cref="StopLimit.Work"/> for the deterministic step or work cap, <see cref="StopLimit.Time"/> for the

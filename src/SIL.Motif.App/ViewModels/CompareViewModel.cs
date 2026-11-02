@@ -882,7 +882,7 @@ public enum CompareSort
 
     Alphabetical,
 
-    /// <summary>Most parser work steps first.</summary>
+    /// <summary>Most parser work first.</summary>
     Slowest,
 }
 
@@ -1177,7 +1177,7 @@ public sealed partial class CompareWordViewModel : ObservableObject, IDisposable
         AccessibleName = string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.CompareWordAccessibleNameFormat, Word, CompareViewModel.HeldInFieldWorks(OpinionLabel), CompareViewModel.ColumnSentenceOf(Column));
         Occurrences = word.OccurrenceCount;
         ElapsedMs = word.ElapsedMs;
-        WorkSteps = word.WorkSteps;
+        ParserWork = word.ParserWork;
         Meaning = WordRow.Meaning;
         Family = WordRow.HasRefusalReason ? CompareFamilyKind.Unknown : CompareViewModel.MeaningOf(Row, Column).Family;
         RowLabel = CompareViewModel.RowLabelOf(Row);
@@ -1280,7 +1280,7 @@ public sealed partial class CompareWordViewModel : ObservableObject, IDisposable
     public IReadOnlyList<ParserReadingViewModel> MissedApproved { get; }
     public FixFirstPriority? FixFirst { get; }
     public int? ElapsedMs { get; }
-    public long? WorkSteps { get; }
+    public long? ParserWork { get; }
     public string Meaning { get; }
     public CompareFamilyKind Family { get; }
 

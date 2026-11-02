@@ -102,9 +102,9 @@ public static class PanGlossBatchStatisticsReader
         var missing = expected.FirstOrDefault(word => !words.ContainsKey(word));
         if (missing is not null)
             throw new InvalidDataException($"The batch statistics cache has no per-word row for selected word '{missing}'.");
-        var selected = words.OrderByDescending(pair => pair.Value.WorkSteps.HasValue)
-            .ThenByDescending(pair => pair.Value.WorkSteps)
-            .ThenByDescending(pair => pair.Value.WorkSteps is null ? pair.Value.ElapsedNs : 0)
+        var selected = words.OrderByDescending(pair => pair.Value.ParserWork.HasValue)
+            .ThenByDescending(pair => pair.Value.ParserWork)
+            .ThenByDescending(pair => pair.Value.ParserWork is null ? pair.Value.ElapsedNs : 0)
             .ThenBy(pair => pair.Key, StringComparer.Ordinal).Take(detailWordLimit)
             .Select(pair => pair.Key).ToHashSet(StringComparer.Ordinal);
         var detail = new List<PanGlossObjectTiming>();
@@ -158,14 +158,14 @@ public static class PanGlossBatchStatisticsReader
                 MaxAttempts = row.Attempts is not null ? Math.Max(prior.MaxAttempts ?? 0, wordTotals.Attempts) : prior.MaxAttempts,
                 ElapsedNs = row.ElapsedNs is { } elapsed ? checked((prior.ElapsedNs ?? 0) + elapsed) : prior.ElapsedNs,
                 MaxElapsedNs = row.ElapsedNs is not null ? Math.Max(prior.MaxElapsedNs ?? 0, wordTotals.Elapsed) : prior.MaxElapsedNs,
-                WorkSteps = row.WorkSteps is { } work ? checked((prior.WorkSteps ?? 0) + work) : prior.WorkSteps,
+                ParserWork = row.ParserWork is { } work ? checked((prior.ParserWork ?? 0) + work) : prior.ParserWork,
             };
-            if (row.WorkSteps is null) workMissing.Add(key);
+            if (row.ParserWork is null) workMissing.Add(key);
         }
         var completed = aggregates.Select(pair => pair.Value with
         {
             Key = pair.Key.Identity.Key,
-            WorkSteps = workMissing.Contains(pair.Key) ? null : pair.Value.WorkSteps,
+            ParserWork = workMissing.Contains(pair.Key) ? null : pair.Value.ParserWork,
             WordsTouchedAcrossDirections = objectWords.GetValueOrDefault(pair.Key.Identity).Count,
             WordsTouchedForKind = kindWords.GetValueOrDefault(pair.Value.Kind).Count,
         }).ToArray();
@@ -249,7 +249,7 @@ public static class PanGlossBatchStatisticsReader
                     ReadCounter(reader, 2, "attempts", word), ReadCounter(reader, 3, "passes", word),
                     ReadElapsedNs(reader, 1, "word", word))
                 {
-                    WorkSteps = hasWork && !reader.IsDBNull(4) ? ReadWork(reader, 4, word) : null,
+                    ParserWork = hasWork && !reader.IsDBNull(4) ? ReadWork(reader, 4, word) : null,
                 }))
                 throw new InvalidDataException("The batch statistics cache contains an empty or duplicate word row.");
         }
@@ -310,7 +310,7 @@ public static class PanGlossBatchStatisticsReader
         int? attempts = SupportsCounter(kind, "attempts") ? ReadCounter(reader, 6, "object attempts", word) : null;
         long? nanoseconds = SupportsTimer(kind, direction) ? ReadElapsedNs(reader, 7, "object", word) : null;
         return new PanGlossObjectTiming(kind, key, identityQuality, direction, label, word, attempts, null, nanoseconds)
-        { WorkSteps = reader.IsDBNull(8) ? null : ReadWork(reader, 8, word) };
+        { ParserWork = reader.IsDBNull(8) ? null : ReadWork(reader, 8, word) };
     }
 
     private static long CountObjectTimings(SqliteConnection connection)
@@ -385,7 +385,7 @@ public sealed record PanGlossBatchStatistics<T>(
 public sealed record PanGlossWordStatistics(int Attempts, int Passes, long ElapsedNs)
 {
     /// <summary>The total work PanGloss recorded for the word, or null when the cache has no such column.</summary>
-    public long? WorkSteps { get; init; }
+    public long? ParserWork { get; init; }
 }
 
 /// <summary>Exact totals for an object and direction across one complete batch.</summary>
@@ -397,10 +397,10 @@ public sealed record PanGlossObjectTimingAggregate(string Kind, string Key, stri
     /// <summary>Distinct words where any object of this kind did work.</summary>
     public int WordsTouchedForKind { get; init; }
     /// <summary>
-    /// The work steps attributed to this object and direction across every word, or null when any of its fact rows
+    /// The parser work attributed to this object and direction across every word, or null when any of its fact rows
     /// recorded none. It grows with the grammar, never with the number of words.
     /// </summary>
-    public long? WorkSteps { get; init; }
+    public long? ParserWork { get; init; }
 }
 
 /// <summary>Exact batch totals and the selected words' object facts.</summary>

@@ -781,11 +781,11 @@ public static class ArtifactRetentionCommands
                 RequireAllowedProperties(evidenceDocument.RootElement,
                     ["InvocationId", "SourcePath", "SourceBytesSha256", "ExecutableBytesSha256", "WordsPath",
                         "WordsSha256", "TsvPath", "TsvSha256", "StandardErrorPath", "StandardErrorSha256",
-                        "PerWordTimeoutMs", "PerWordStepLimit", "Threads", "CollectStatistics", "ExecutableVersion",
+                        "PerWordTimeoutMs", "PerWordParserWorkLimit", "Threads", "CollectStatistics", "ExecutableVersion",
                         "ExecutablePath", "AnalysesPath", "AnalysesSha256", "StoppedWordRetry", "GrammarWarnings"],
                     ["InvocationId", "SourcePath", "SourceBytesSha256", "ExecutableBytesSha256", "WordsPath",
                         "WordsSha256", "TsvPath", "TsvSha256", "StandardErrorPath", "StandardErrorSha256",
-                        "PerWordTimeoutMs", "PerWordStepLimit", "Threads", "CollectStatistics"],
+                        "PerWordTimeoutMs", "PerWordParserWorkLimit", "Threads", "CollectStatistics"],
                     "invocation evidence");
                 if (evidenceDocument.RootElement.TryGetProperty("StoppedWordRetry", out var retry) &&
                     retry.ValueKind != JsonValueKind.Null)

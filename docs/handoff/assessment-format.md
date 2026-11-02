@@ -12,7 +12,7 @@ Each word in the Assessment Selection has one record from the batch pass:
 |---|---|
 | `word` | The parsed surface form in NFC (composed Unicode). |
 | `outcome` | The outcome recorded by PanGloss, such as `analysed`, `no-analysis`, `capped`, `timed-out`, or `refused`. |
-| `workSteps` | The parser's work for the batch word, in PanGloss work steps, when recorded. It does not depend on how busy the computer was, so compare this figure between runs. It is not the analysis-attempt count. |
+| `parserWork` | The parser's work for the batch word, in PanGloss parser work, when recorded. It does not depend on how busy the computer was, so compare this figure between runs. It is not the analysis-attempt count. |
 | `elapsedMs` | Time on this computer for the batch word, when measured; machine load affects it, so use it only as a secondary figure. |
 | `signature` | PanGloss's opaque analysis signature, unchanged when it recorded one. |
 | `refusal` | For a refused word, the parser refusal `code` and its `reason`. |

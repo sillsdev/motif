@@ -16,7 +16,7 @@ internal sealed class BatchProgressReader(IReadOnlyList<string> words)
     private ParseWordTiming? _slowest;
     private int? _slowestIndex;
     private bool _sawRow;
-    private int? _workStepsColumn;
+    private int? _parserWorkColumn;
 
     internal TrialWordProgress? Read(string path)
     {
@@ -73,18 +73,18 @@ internal sealed class BatchProgressReader(IReadOnlyList<string> words)
         }
     }
 
-    // Work steps rank the slowest word when both words carry them, because time depends on this computer.
+    // Parser work rank the slowest word when both words carry them, because time depends on this computer.
     private bool IsSlower(double elapsed, long? work, int index)
     {
-        var (first, second) = _slowest!.WorkSteps is { } held && work is { } now
+        var (first, second) = _slowest!.ParserWork is { } held && work is { } now
             ? ((double)now, (double)held) : (elapsed, _slowest.ElapsedMs);
         return first > second || first == second && index < (_slowestIndex ?? int.MaxValue);
     }
 
-    // The headerless layout appends steps then work steps, so a 7 or 8 column row ends with the work steps.
-    private long? WorkStepsOf(string[] cells)
+    // The headerless layout appends steps then parser work, so a 7 or 8 column row ends with the parser work.
+    private long? ParserWorkOf(string[] cells)
     {
-        var column = _workStepsColumn ?? (cells.Length is 7 or 8 ? cells.Length - 1 : (int?)null);
+        var column = _parserWorkColumn ?? (cells.Length is 7 or 8 ? cells.Length - 1 : (int?)null);
         return column is { } at && at < cells.Length &&
             long.TryParse(cells[at], NumberStyles.None, CultureInfo.InvariantCulture, out var value) ? value : null;
     }
@@ -94,7 +94,7 @@ internal sealed class BatchProgressReader(IReadOnlyList<string> words)
         var cells = Encoding.UTF8.GetString(bytes).TrimEnd('\r').Split('\t');
         if (cells is ["index" or "idx", "word", ..])
         {
-            _workStepsColumn = Array.IndexOf(cells, "work_steps") is var named and >= 0 ? named : null;
+            _parserWorkColumn = Array.IndexOf(cells, "work_steps") is var named and >= 0 ? named : null;
             return;
         }
         if (cells.Length < 3 ||
@@ -120,15 +120,15 @@ internal sealed class BatchProgressReader(IReadOnlyList<string> words)
                 _completedIndexes.Add(index);
                 _activeIndexes.Remove(index);
                 _completed++;
-                var work = WorkStepsOf(cells);
+                var work = ParserWorkOf(cells);
                 if (_slowest is null || IsSlower(elapsed, work, index))
                 {
-                    _slowest = new ParseWordTiming(words[index], elapsed) { WorkSteps = work };
+                    _slowest = new ParseWordTiming(words[index], elapsed) { ParserWork = work };
                     _slowestIndex = index;
                 }
                 var status = cells[PanGlossInterfaceVersions.BatchTsvStatusColumn];
                 if (status is "TIMEOUT" or "CAP")
-                    _stoppedWords[index] = new StoppedParseWord(words[index], status, elapsed) { WorkSteps = work };
+                    _stoppedWords[index] = new StoppedParseWord(words[index], status, elapsed) { ParserWork = work };
                 _sawRow = true;
             }
         }

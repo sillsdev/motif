@@ -21,7 +21,7 @@ public sealed partial class SelectionViewModel : ObservableObject, IProjectState
 {
     private const string NothingSelectedYet = "Nothing selected yet.";
     private const string NegativeThresholdMessage = "The parser work threshold must be a whole nonnegative number.";
-    private const string InvalidStepLimitMessage = "The per-word analysis attempt limit must be a positive whole number.";
+    private const string InvalidParserWorkLimitMessage = "The per-word parser work limit must be a positive whole number.";
 
     private readonly ICommandClient _commandClient;
     private readonly List<TextChoiceViewModel> _allTexts = [];
@@ -90,10 +90,10 @@ public sealed partial class SelectionViewModel : ObservableObject, IProjectState
     private decimal? _perWordTimeLimitSeconds;
 
     [ObservableProperty]
-    private decimal? _perWordStepLimit;
+    private decimal? _perWordParserWorkLimit;
 
     [ObservableProperty]
-    private bool _perWordStepLimitUnbounded;
+    private bool _perWordParserWorkLimitUnbounded;
 
     [ObservableProperty]
     private decimal? _retryWorkOver;
@@ -106,7 +106,7 @@ public sealed partial class SelectionViewModel : ObservableObject, IProjectState
     private string? _thresholdValidationMessage;
 
     [ObservableProperty]
-    private string? _stepLimitValidationMessage;
+    private string? _parserWorkLimitValidationMessage;
 
     [ObservableProperty]
     private bool _canAssess;
@@ -124,9 +124,9 @@ public sealed partial class SelectionViewModel : ObservableObject, IProjectState
 
     partial void OnRetryWorkOverChanged(decimal? value) => Recompute();
 
-    partial void OnPerWordStepLimitChanged(decimal? value) => Recompute();
+    partial void OnPerWordParserWorkLimitChanged(decimal? value) => Recompute();
 
-    partial void OnPerWordStepLimitUnboundedChanged(bool value) => Recompute();
+    partial void OnPerWordParserWorkLimitUnboundedChanged(bool value) => Recompute();
 
     /// <summary>Composes the current state into the one request every source agrees to combine into.</summary>
     public SelectionRequest BuildRequest()
@@ -134,12 +134,12 @@ public sealed partial class SelectionViewModel : ObservableObject, IProjectState
         var threshold = ThresholdValidationMessage is null && RetryWorkOver is { } stepsThreshold
             ? decimal.ToInt64(stepsThreshold)
             : (long?)null;
-        var stepLimit = PerWordStepLimitUnbounded ? StepCap.Unbounded
-            : StepLimitValidationMessage is null && PerWordStepLimit is { } steps
-                ? new StepCap(decimal.ToInt64(steps))
+        var parserWorkLimit = PerWordParserWorkLimitUnbounded ? ParserWorkLimit.Unbounded
+            : ParserWorkLimitValidationMessage is null && PerWordParserWorkLimit is { } steps
+                ? new ParserWorkLimit(decimal.ToInt64(steps))
                 : null;
         return new SelectionRequest(AllWordforms, ChosenTextIds, PastedWordEntries, RetryFailed, threshold,
-            PerWordStepLimit: stepLimit);
+            PerWordParserWorkLimit: parserWorkLimit);
     }
 
     /// <summary>Loads the Texts of a newly chosen project's current Baseline, discarding whatever was shown before.</summary>
@@ -166,8 +166,8 @@ public sealed partial class SelectionViewModel : ObservableObject, IProjectState
         RetryFailed = false;
         RetryWorkOver = null;
         PerWordTimeLimitSeconds = null;
-        PerWordStepLimit = null;
-        PerWordStepLimitUnbounded = false;
+        PerWordParserWorkLimit = null;
+        PerWordParserWorkLimitUnbounded = false;
         ShownRefusal = null;
         TextsEmptyMessage = null;
         Recompute();
@@ -307,14 +307,14 @@ public sealed partial class SelectionViewModel : ObservableObject, IProjectState
         var thresholdValid = !hasThreshold || RetryWorkOver is >= 0 and <= long.MaxValue &&
             decimal.Truncate(RetryWorkOver.Value) == RetryWorkOver;
         ThresholdValidationMessage = thresholdValid ? null : NegativeThresholdMessage;
-        var stepLimitValid = PerWordStepLimitUnbounded || PerWordStepLimit is null ||
-            PerWordStepLimit is > 0 and <= long.MaxValue && decimal.Truncate(PerWordStepLimit.Value) == PerWordStepLimit;
-        StepLimitValidationMessage = stepLimitValid ? null : InvalidStepLimitMessage;
+        var parserWorkLimitValid = PerWordParserWorkLimitUnbounded || PerWordParserWorkLimit is null ||
+            PerWordParserWorkLimit is > 0 and <= long.MaxValue && decimal.Truncate(PerWordParserWorkLimit.Value) == PerWordParserWorkLimit;
+        ParserWorkLimitValidationMessage = parserWorkLimitValid ? null : InvalidParserWorkLimitMessage;
 
         var hasAnySource = AllWordforms || ChosenTextIds.Count > 0 || PastedWordEntries.Count > 0
             || RetryFailed || (hasThreshold && thresholdValid);
 
-        CanAssess = hasAnySource && thresholdValid && stepLimitValid;
+        CanAssess = hasAnySource && thresholdValid && parserWorkLimitValid;
         SummaryText = BuildSummary(hasAnySource, hasThreshold && thresholdValid);
         SelectAllTextsCommand.NotifyCanExecuteChanged();
         ClearTextsCommand.NotifyCanExecuteChanged();
@@ -329,11 +329,11 @@ public sealed partial class SelectionViewModel : ObservableObject, IProjectState
         if (ChosenTextIds.Count > 0) parts.Add(Pluralize(ChosenTextIds.Count, "text"));
         if (PastedWordEntries.Count > 0) parts.Add(Pluralize(PastedWordEntries.Count, "pasted word"));
         if (RetryFailed) parts.Add("retry failed");
-        if (includeThreshold) parts.Add($"retry words over {RetryWorkOver} work steps");
-        if (PerWordStepLimitUnbounded)
-            parts.Add("no analysis attempt limit");
-        else if (StepLimitValidationMessage is null && PerWordStepLimit is { } steps)
-            parts.Add($"analysis attempt limit {steps:N0}");
+        if (includeThreshold) parts.Add($"retry words over {RetryWorkOver} parser work");
+        if (PerWordParserWorkLimitUnbounded)
+            parts.Add("no parser work limit");
+        else if (ParserWorkLimitValidationMessage is null && PerWordParserWorkLimit is { } steps)
+            parts.Add($"parser work limit {steps:N0}");
         return string.Join(", ", parts);
     }
 

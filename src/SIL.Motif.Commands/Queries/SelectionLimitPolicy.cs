@@ -5,7 +5,7 @@ namespace SIL.Motif.Commands.Queries;
 
 /// <summary>The limits stored on a Selection and the resolved time cap for a future run.</summary>
 public sealed record ResolvedSelectionLimits(
-    StepCap PerWordStepLimit,
+    ParserWorkLimit PerWordParserWorkLimit,
     int? PerWordTimeLimitMs,
     decimal? EstimatedMilliseconds,
     bool IsTypicalMachine);
@@ -14,30 +14,30 @@ public sealed record ResolvedSelectionLimits(
 public static class SelectionLimitPolicy
 {
     /// <summary>Resolves an estimate from the current parser rate without changing the saved policy.</summary>
-    public static ResolvedSelectionLimits Resolve(SelectionParsingLimits limits, ParserStepRate rate)
+    public static ResolvedSelectionLimits Resolve(SelectionParsingLimits limits, ParserAttemptRate rate)
     {
         ArgumentNullException.ThrowIfNull(limits);
         ArgumentNullException.ThrowIfNull(rate);
         if (limits.ValidationError() is { } error) throw new ArgumentException(error, nameof(limits));
 
-        var estimate = StepLimitEstimator.Calculate(limits.PerWordStepLimit, rate);
+        var estimate = ParserWorkLimitEstimator.Calculate(limits.PerWordParserWorkLimit, rate);
         var timeLimit = limits.TimeMode == SelectionTimeLimitMode.Explicit
             ? limits.ExplicitPerWordLimitMs
             : estimate?.PerWordTimeLimitMs is { } milliseconds && milliseconds <= int.MaxValue
                 ? (int)milliseconds
                 : null;
-        return new ResolvedSelectionLimits(limits.PerWordStepLimit, timeLimit,
+        return new ResolvedSelectionLimits(limits.PerWordParserWorkLimit, timeLimit,
             estimate?.EstimatedMilliseconds, rate.IsTypicalMachine);
     }
 
     /// <summary>Returns estimated policy, clearing any explicit cap for an unbounded Selection.</summary>
-    public static SelectionParsingLimits Estimated(StepCap stepLimit) =>
-        new(stepLimit, SelectionTimeLimitMode.Estimated, null);
+    public static SelectionParsingLimits Estimated(ParserWorkLimit parserWorkLimit) =>
+        new(parserWorkLimit, SelectionTimeLimitMode.Estimated, null);
 
     /// <summary>Returns an explicit policy with a validated positive millisecond cap.</summary>
-    public static SelectionParsingLimits Explicit(StepCap stepLimit, int milliseconds)
+    public static SelectionParsingLimits Explicit(ParserWorkLimit parserWorkLimit, int milliseconds)
     {
-        var limits = new SelectionParsingLimits(stepLimit, SelectionTimeLimitMode.Explicit, milliseconds);
+        var limits = new SelectionParsingLimits(parserWorkLimit, SelectionTimeLimitMode.Explicit, milliseconds);
         if (limits.ValidationError() is { } error) throw new ArgumentOutOfRangeException(nameof(milliseconds), error);
         return limits;
     }

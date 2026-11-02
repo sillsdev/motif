@@ -42,13 +42,13 @@ public sealed partial class StatisticsPanel : UserControl
         foreach (var column in this.FindControl<DataGrid>("Grid")!.Columns)
         {
             if (column.Tag is "attempts") column.Header = Statistics.CountHeader;
-            if (column.Tag is "workSteps") column.Header = Statistics.WorkHeader;
+            if (column.Tag is "parserWork") column.Header = Statistics.WorkHeader;
             column.IsVisible = column.Tag switch
             {
                 "kind" or "object" => !words,
                 "word" or "completion" => words,
                 "passes" => Statistics.AnyPasses,
-                "workSteps" => Statistics.ShowsWorkSteps,
+                "parserWork" => Statistics.ShowsParserWork,
                 _ => true,
             };
         }
