@@ -24,7 +24,7 @@ public sealed record OperationCitation
     public const int MaxSourceLength = 300;
 
     /// <summary>The longest <see cref="Locator"/> accepted, in UTF-16 code units after trimming.</summary>
-    public const int MaxLocatorLength = 120;
+    public const int MaxLocatorLength = 300;
 
     private OperationCitation(string source, string? locator)
     {

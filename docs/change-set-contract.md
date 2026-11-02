@@ -100,7 +100,7 @@ An operation may cite the source it was taken from as one entry of its `provenan
 ```
 
 `source` is required, non-blank, and at most 300 characters; `locator` (a page, section or verse) is optional
-and at most 120. An entry whose `type` is `citation` admits no other property, and an operation carries at most
+and at most 300. An entry whose `type` is `citation` admits no other property, and an operation carries at most
 one; a malformed or repeated citation makes the Proposal unparseable. Other `provenance` entries stay open.
 Like all of `provenance`, a citation is excluded from the intent digest. A citation names a source, never a
 person or an agent ([ADR 0064](adr/0064-every-operation-can-cite-its-source.md)).
