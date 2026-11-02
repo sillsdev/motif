@@ -68,7 +68,7 @@ public sealed class IgnoredEnvironmentRealParserTests(ITestOutputHelper output) 
         var warning = Assert.Single(check.Value.Findings,
             item => item.Code == GrammarFindingCodes.AllomorphEnvironmentIgnoredByParser);
         Assert.Contains("'tata'", warning.Description, StringComparison.Ordinal);
-        // PanGloss 0.12.3's own report is silent about the same environment, which is why Motif checks it itself.
+        // PanGloss 0.13.0's own report is silent about the same environment, which is why Motif checks it itself.
         Assert.DoesNotContain(check.Value.Findings,
             item => item != warning && item.Description.Contains("nvironment", StringComparison.Ordinal));
     }
