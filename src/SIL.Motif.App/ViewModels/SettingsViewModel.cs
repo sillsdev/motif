@@ -367,7 +367,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
             if (value && ShowsRefusedLimit)
             {
                 _parserWorkLimitBeforeNoStep = ParserWorkLimitValue;
-                _timeLimitBeforeNoStep = _workspace.Selection.PerWordTimeLimitSeconds;
+                _timeLimitBeforeNoStep = ExplicitTimeLimitToRestore();
                 _keptNoParserWorkLimit = true;
                 _keepsNoParserWorkLimit = true;
                 NotifyKeptLimitsChanged();
@@ -377,7 +377,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
             {
                 _parserWorkLimitBeforeNoStep = ParserWorkLimitValue ?? _lastGoodParserWorkLimit ??
                     _workspace.Context.Setup?.ParserWorkLimitValue ?? ParserWorkLimit.DefaultWork;
-                _timeLimitBeforeNoStep = _workspace.Selection.PerWordTimeLimitSeconds;
+                _timeLimitBeforeNoStep = ExplicitTimeLimitToRestore();
             }
             _workspace.Selection.PerWordParserWorkLimitUnbounded = value;
             if (value)
@@ -501,6 +501,9 @@ internal sealed partial class SettingsViewModel : ObservableObject
     }
     public bool IsUsingMotifEstimate => IsUsingEstimate;
 
+    // Estimate mode has no typed time to bring back; restoring the estimate as typed would save it as Explicit.
+    private decimal? ExplicitTimeLimitToRestore() => IsUsingEstimate ? null : _workspace.Selection.PerWordTimeLimitSeconds;
+
     private static bool ParserWorkLimitIsAcceptable(decimal? steps) =>
         steps is > 0 && steps <= long.MaxValue && decimal.Truncate(steps.Value) == steps;
 
@@ -544,7 +547,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
         try
         {
             _workspace.Selection.PerWordParserWorkLimitUnbounded = _lastGoodNoParserWorkLimit;
-            _workspace.Selection.PerWordParserWorkLimit = _lastGoodParserWorkLimit;
+            _workspace.Selection.PerWordParserWorkLimit = _lastGoodNoParserWorkLimit ? null : _lastGoodParserWorkLimit;
             _workspace.Selection.PerWordTimeLimitSeconds = _lastGoodTimeLimitSeconds;
         }
         finally
@@ -887,6 +890,9 @@ internal sealed partial class SettingsViewModel : ObservableObject
         AssessBudgetRefusal = string.Empty;
         OnPropertyChanged(nameof(ParserWorkLimitValue));
         OnPropertyChanged(nameof(TimeLimitSeconds));
+        OnPropertyChanged(nameof(IsNoParserWorkLimit));
+        OnPropertyChanged(nameof(IsTimeLimitEnabled));
+        OnPropertyChanged(nameof(ShowUseEstimate));
         OnPropertyChanged(nameof(HasAssessBudgetRefusal));
         OnPropertyChanged(nameof(ParserWorkLimitRefusal));
         OnPropertyChanged(nameof(HasParserWorkLimitRefusal));
@@ -1151,6 +1157,12 @@ internal sealed partial class SettingsViewModel : ObservableObject
 
     private void OnSetupChanged(object? sender, PropertyChangedEventArgs args)
     {
+        if (args.PropertyName == nameof(SetupViewModel.ProjectPath))
+        {
+            _lastGoodParserWorkLimit = null;
+            _parserWorkLimitBeforeNoStep = null;
+            _timeLimitBeforeNoStep = null;
+        }
         if (args.PropertyName is nameof(SetupViewModel.CanRunDefaultSelection) or nameof(SetupViewModel.ProjectPath))
         {
             OnPropertyChanged(nameof(HasSavedSelection));
@@ -1165,7 +1177,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
             IsUsingEstimate = _workspace.Context.Setup?.CurrentSelectionLimits.TimeMode !=
                 SelectionTimeLimitMode.Explicit;
             if (IsUsingEstimate) ApplyEstimate();
-            else RememberGoodValues();
+            RememberGoodValues();
         }
         if (args.PropertyName is nameof(SetupViewModel.ParserWorkLimitEstimateText) or
             nameof(SetupViewModel.EstimatedPerWordLimitMs) or nameof(SetupViewModel.RunningParserWorkLimitText))
@@ -1190,7 +1202,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
             ObserveSetup(_workspace.Context.Setup);
             IsUsingEstimate = _observedSetup?.CurrentSelectionLimits.TimeMode != SelectionTimeLimitMode.Explicit;
             if (IsUsingEstimate) ApplyEstimate();
-            else RememberGoodValues();
+            RememberGoodValues();
         }
         if (args.PropertyName is nameof(WorkspaceContext.ProjectPath) or nameof(WorkspaceContext.HasProject) or
             nameof(WorkspaceContext.ProjectName) or nameof(WorkspaceContext.Setup))

@@ -103,16 +103,163 @@ public sealed class SettingsLimitsSequenceTests
         }, TimeSpan.FromMinutes(2));
     }
 
-    private static async Task<(WorkspaceShellViewModel Workspace, MainWindow Frame, SettingsViewModel Settings, FakeCommandClient Fake)> OpenAsync()
+    [Fact]
+    public void UntickingAfterSwitchingToANoStepLimitProjectShowsTheDefaultNotTheLastProjectsNumber()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, frame, settings, fake) = await OpenAsync();
+            try
+            {
+                settings.ParserWorkLimitValue = 250000m;
+                await SaveAsync(settings);
+                await SwitchProjectAsync(workspace, fake, UnboundedLimits);
+                Assert.True(settings.IsNoParserWorkLimit);
+                settings.IsNoParserWorkLimit = false;
+                Assert.Equal(ParserWorkLimit.DefaultWork, settings.ParserWorkLimitValue);
+                Assert.Equal(ParserWorkLimit.DefaultWork, workspace.Selection.PerWordParserWorkLimit);
+                await SaveAsync(settings);
+                Assert.Equal(ParserWorkLimit.Default, fake.SetSelectionLimitsRequests[^1].Limits.PerWordParserWorkLimit);
+            }
+            finally
+            {
+                frame.Close();
+                await workspace.DisposeAsync();
+            }
+        }, TimeSpan.FromMinutes(2));
+    }
+
+    [Fact]
+    public void EscapeAfterSwitchingToANoStepLimitProjectKeepsItUnboundedWithNoOtherProjectsNumber()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, frame, settings, fake) = await OpenAsync();
+            try
+            {
+                settings.ParserWorkLimitValue = 250000m;
+                await SaveAsync(settings);
+                await SwitchProjectAsync(workspace, fake, UnboundedLimits);
+                settings.CancelParsingLimitEdit();
+                Assert.True(workspace.Selection.PerWordParserWorkLimitUnbounded);
+                Assert.Null(workspace.Selection.PerWordParserWorkLimit);
+                Assert.True(workspace.Selection.BuildRequest().PerWordParserWorkLimit!.IsUnbounded);
+            }
+            finally
+            {
+                frame.Close();
+                await workspace.DisposeAsync();
+            }
+        }, TimeSpan.FromMinutes(2));
+    }
+
+    [Fact]
+    public void ASwitchDropsTheLastProjectsTypedAndSavedLimitsFromEveryRoute()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, frame, settings, fake) = await OpenAsync();
+            try
+            {
+                settings.ParserWorkLimitValue = 250000m;
+                settings.TimeLimitSeconds = 12m;
+                await SwitchProjectAsync(workspace, fake, EstimatedLimits);
+                Assert.Equal(ParserWorkLimit.DefaultWork, settings.ParserWorkLimitValue);
+                Assert.True(settings.IsUsingEstimate);
+                settings.IsNoParserWorkLimit = true;
+                settings.CancelParsingLimitEdit();
+                Assert.False(workspace.Selection.PerWordParserWorkLimitUnbounded);
+                Assert.Equal(ParserWorkLimit.DefaultWork, workspace.Selection.PerWordParserWorkLimit);
+                Assert.True(settings.IsUsingEstimate);
+                Assert.NotEqual(12m, workspace.Selection.PerWordTimeLimitSeconds);
+            }
+            finally
+            {
+                frame.Close();
+                await workspace.DisposeAsync();
+            }
+        }, TimeSpan.FromMinutes(2));
+    }
+
+    [Fact]
+    public void TickingAndUntickingInEstimateModeSavesEstimatedNotExplicit()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, frame, settings, fake) = await OpenAsync(EstimatedLimits);
+            try
+            {
+                Assert.True(settings.IsUsingEstimate);
+                settings.IsNoParserWorkLimit = true;
+                settings.IsNoParserWorkLimit = false;
+                Assert.True(settings.IsUsingEstimate);
+                await SaveAsync(settings);
+                Assert.Equal(SelectionTimeLimitMode.Estimated, fake.SetSelectionLimitsRequests[^1].Limits.TimeMode);
+            }
+            finally
+            {
+                frame.Close();
+                await workspace.DisposeAsync();
+            }
+        }, TimeSpan.FromMinutes(2));
+    }
+
+    [Fact]
+    public void LeavingAHeldTickRaisesTheTickTheTimeFieldAndUseEstimate()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, frame, settings, _) = await OpenAsync();
+            try
+            {
+                settings.ParserWorkLimitValue = 0.5m;
+                settings.IsNoParserWorkLimit = true;
+                Assert.True(settings.IsNoParserWorkLimit);
+                var raised = new List<string?>();
+                settings.PropertyChanged += (_, args) => raised.Add(args.PropertyName);
+                settings.CancelParsingLimitEdit();
+                Assert.False(settings.IsNoParserWorkLimit);
+                Assert.Contains(nameof(SettingsViewModel.IsNoParserWorkLimit), raised);
+                Assert.Contains(nameof(SettingsViewModel.IsTimeLimitEnabled), raised);
+                Assert.Contains(nameof(SettingsViewModel.ShowUseEstimate), raised);
+            }
+            finally
+            {
+                frame.Close();
+                await workspace.DisposeAsync();
+            }
+        }, TimeSpan.FromMinutes(2));
+    }
+
+    private static readonly SelectionParsingLimits ExplicitLimits =
+        new(ParserWorkLimit.Default, SelectionTimeLimitMode.Explicit, 5000, 600);
+    private static readonly SelectionParsingLimits UnboundedLimits = SelectionLimitPolicy.Estimated(ParserWorkLimit.Unbounded);
+    private static readonly SelectionParsingLimits EstimatedLimits = SelectionLimitPolicy.Estimated(ParserWorkLimit.Default);
+
+    private static NamedSelectionProjection Saved(SelectionParsingLimits limits) => new("Default",
+        [Guid.Parse("11111111-0000-0000-0000-000000000001")], [], string.Empty, string.Empty, limits, "1");
+
+    // Opens the other project the way the shell does: every participant is cleared, then loads that project's save.
+    private static async Task SwitchProjectAsync(WorkspaceShellViewModel workspace, FakeCommandClient fake, SelectionParsingLimits limits)
+    {
+        fake.DefaultSelectionIs(Saved(limits));
+        await workspace.Context.OpenProjectAsync(workspace.Context.ProjectPath + ".other");
+    }
+
+    private static async Task SaveAsync(SettingsViewModel settings)
+    {
+        Assert.Null(await settings.CommitParsingLimitsAsync());
+    }
+
+    private static async Task<(WorkspaceShellViewModel Workspace, MainWindow Frame, SettingsViewModel Settings, FakeCommandClient Fake)> OpenAsync(
+        SelectionParsingLimits? limits = null)
     {
         FakeCommandClient? fake = null;
         var (workspace, frame) = await PageScreenshots.OpenOverSampleData(parse: false,
             configure: (client, _) =>
             {
                 fake = client;
-                client.DefaultSelectionIs(new NamedSelectionProjection("Default",
-                    [Guid.Parse("11111111-0000-0000-0000-000000000001")], [], string.Empty, string.Empty,
-                    new SelectionParsingLimits(ParserWorkLimit.Default, SelectionTimeLimitMode.Explicit, 5000, 600), "1"));
+                client.DefaultSelectionIs(Saved(limits ?? ExplicitLimits));
             });
         var settings = SettingsTestAccess.Model(frame);
         workspace.CurrentPage = WorkspacePage.Settings;
