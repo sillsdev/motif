@@ -61,7 +61,7 @@ public sealed record AddDeleteLexemeFormRequest(
 public sealed record ComposeAuthorLexemeFormRequest(
     string FwDataPath, string ProductVersion, string DraftName, string IntentJson);
 
-/// <summary>Requests an empty feature structure on an existing or earlier-staged stem or inflectional affix MSA.</summary>
+/// <summary>Requests an empty feature structure on an existing or earlier-staged stem, inflectional affix or derivational affix MSA.</summary>
 /// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
 /// <param name="ProductVersion">The Motif product version used to open its paired store.</param>
 /// <param name="DraftName">The name of the Draft being authored.</param>

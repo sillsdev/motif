@@ -12,6 +12,6 @@ The intent has exactly `featStruc` and `feature`. The structure stays even when 
 Refusal messages contain a stable name:
 
 - `feature-value-not-found`: the structure has no specification for that feature.
-- `feature-structure-not-grammatical-info`: the structure belongs to neither a stem nor an inflectional affix.
+- `feature-structure-not-grammatical-info`: the structure belongs to none of a stem, an inflectional affix or a derivational affix.
 
 The command stages operations in a Draft and does not change the saved FieldWorks project. Dry Run and Trial the Proposal, then Finalize it for a person to review and Apply.

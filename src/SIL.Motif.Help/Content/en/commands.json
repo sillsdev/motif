@@ -1242,11 +1242,11 @@
   },
   "compose-remove-feature-value": {
     "title": "Remove a feature value",
-    "description": "Stages the removal of one feature's specification from a stem's MsFeatures or an inflectional affix's InflFeats, so the stem stops carrying the feature or the affix stops requiring it. The feature structure stays. Refuses a feature the structure does not specify. Only a person can Apply.",
+    "description": "Stages the removal of one feature's specification from a stem's MsFeatures, an inflectional affix's InflFeats, or a derivational affix's FromMsFeatures or ToMsFeatures, so the stem stops carrying the feature or the affix stops requiring or giving it. The feature structure stays. Refuses a feature the structure does not specify. Only a person can Apply.",
     "source": "Authored from the typed command contract.",
     "fields": {
       "draft": "Draft name.",
-      "featStruc": "Id of the feature structure on a stem or inflectional affix.",
+      "featStruc": "Id of the feature structure on a stem, inflectional affix or derivational affix.",
       "feature": "Id of the feature whose specification is removed."
     },
     "goals": [

@@ -441,8 +441,8 @@ public static partial class ProposalCommands
     }
 
     /// <summary>
-    /// Appends an empty feature-structure create for an existing or earlier-staged stem or inflectional affix
-    /// MSA to a Draft. An occupied owning slot is refused; the existing structure is preserved.
+    /// Appends an empty feature-structure create for an existing or earlier-staged stem, inflectional affix or
+    /// derivational affix MSA to a Draft. An occupied owning slot is refused; the existing structure is preserved.
     /// </summary>
     /// <remarks>
     /// Closed input is <c>{ "msa": "&lt;canonical ID&gt;" }</c>. The exact MSA identity selects

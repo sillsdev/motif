@@ -251,7 +251,7 @@ internal static class AgentTools
             AgentClass.Draft,
             Schema.Object([("draft", Schema.String("The draft name from motif_start_proposal."), true),
                 ("msa", Schema.String("Id of a stem, inflectional affix or derivational affix MSA with no existing feature structure in the slot."), true),
-                ("side", Schema.String("Derivational affix only: \"from\" (required of the stem) or \"to\" (carried by the derived stem, replacing the stem's value of that feature)."), false)]),
+                ("side", Schema.String("Derivational affix only: \"from\" (a requirement unified with the stem's features: a stem with another value is refused, one with none passes) or \"to\" (carried by the derived stem, replacing the stem's value of that feature)."), false)]),
             false,
             false,
             false,
