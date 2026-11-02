@@ -8999,9 +8999,9 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <value>3</value>
     <comment>Step number shown beside the third step of the AI Handoff instructions.</comment>
   </data>
-  <data name="MotifApp.RemoveChosenWordMark" xml:space="preserve">
+  <data name="MotifApp.ChosenCellSeparatorMark" xml:space="preserve">
     <value>×</value>
-    <comment>Glyph on the button that removes a chosen word from the Compare list; × means remove.</comment>
+    <comment>Separator glyph between a matrix cell's row label and its column label in the Compare panel; it is not a button and removes nothing.</comment>
   </data>
   <data name="MotifApp.ClearChosenMatrixCellsAccessibleName" xml:space="preserve">
     <value>Clear the chosen matrix cells</value>

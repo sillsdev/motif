@@ -4374,7 +4374,7 @@ public static class MotifAppStrings
 
     public static string HandoffStepThreeMark => Text("MotifApp.HandoffStepThreeMark");
 
-    public static string RemoveChosenWordMark => Text("MotifApp.RemoveChosenWordMark");
+    public static string ChosenCellSeparatorMark => Text("MotifApp.ChosenCellSeparatorMark");
 
     public static string ClearChosenMatrixCellsAccessibleName => Text("MotifApp.ClearChosenMatrixCellsAccessibleName");
 
