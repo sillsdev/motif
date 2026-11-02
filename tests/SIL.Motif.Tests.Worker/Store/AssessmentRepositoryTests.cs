@@ -66,20 +66,20 @@ public sealed class AssessmentRepositoryTests : IDisposable
     }
 
     [Fact]
-    public void AttemptsAndWorkStepsSurviveReadBackAndAMissingWorkStaysNull()
+    public void AttemptsAndParserWorkSurviveReadBackAndAMissingWorkStaysNull()
     {
-        var repository = NewRepository("work-steps.fwdata", out var database);
+        var repository = NewRepository("parser work.fwdata", out var database);
         using var ownedDatabase = database;
-        repository.Record(NewAssessment("work-steps", null, null, "ParseTime",
+        repository.Record(NewAssessment("parser work", null, null, "ParseTime",
         [
-            new AssessedWord("bo", "capped", []) { Attempts = 200_000, WorkSteps = 20_000_000_000L, IsIncomplete = true },
+            new AssessedWord("bo", "capped", []) { Attempts = 200_000, ParserWork = 20_000_000_000L, IsIncomplete = true },
             new AssessedWord("za", "analysed", []) { Attempts = 12 },
         ]));
 
-        var rows = repository.Get("work-steps").Words!;
+        var rows = repository.Get("parser work").Words!;
 
-        Assert.Equal((200_000, 20_000_000_000L), (rows[0].Attempts, rows[0].WorkSteps));
-        Assert.Equal((12, (long?)null), (rows[1].Attempts, rows[1].WorkSteps));
+        Assert.Equal((200_000, 20_000_000_000L), (rows[0].Attempts, rows[0].ParserWork));
+        Assert.Equal((12, (long?)null), (rows[1].Attempts, rows[1].ParserWork));
     }
 
     [Fact]
@@ -307,7 +307,7 @@ public sealed class AssessmentRepositoryTests : IDisposable
         var record = NewAssessment("timing-evidence", null, null, "ParseTime");
         var evidence = new AssessmentTimingEvidence(
             [new PanGlossObjectTimingAggregate("morph_rule", "rule", "authored", "analysis", "Rule", 3, 12, 7, 900, 500)
-                { WorkSteps = 321 }],
+                { ParserWork = 321 }],
             1, false, 4);
         repository.Record(record with { Material = record.RequireWordMaterial() with { TimingEvidence = evidence } });
 
@@ -316,7 +316,7 @@ public sealed class AssessmentRepositoryTests : IDisposable
         Assert.Equal(1, stored.DetailWordCount);
         Assert.Equal(4, stored.TotalObjectTimingRows);
         Assert.Equal(evidence.Aggregates, stored.Aggregates);
-        Assert.Equal(321, Assert.Single(stored.Aggregates).WorkSteps);
+        Assert.Equal(321, Assert.Single(stored.Aggregates).ParserWork);
     }
 
     [Fact]
@@ -550,10 +550,10 @@ public sealed class AssessmentRepositoryTests : IDisposable
         command.CommandText = $"""
             INSERT INTO {wordsTable} (AssessmentId, OrdinalIndex, Word, Outcome, ElapsedMs, ElapsedNs,
                 RawSignature, MorphologyJson, CorrectnessJson, ProjectStanding, OccurrenceCount, ReadingGradesJson,
-                AnalysisComparisonJson, MissedApprovedCount, MissedApprovedJson, IsIncomplete, Attempts, Passes, WorkSteps)
+                AnalysisComparisonJson, MissedApprovedCount, MissedApprovedJson, IsIncomplete, Attempts, Passes, ParserWork)
             SELECT $id, OrdinalIndex, Word, Outcome, ElapsedMs, ElapsedNs, RawSignature, MorphologyJson,
                 CorrectnessJson, ProjectStanding, OccurrenceCount, ReadingGradesJson, AnalysisComparisonJson,
-                MissedApprovedCount, MissedApprovedJson, IsIncomplete, Attempts, Passes, WorkSteps
+                MissedApprovedCount, MissedApprovedJson, IsIncomplete, Attempts, Passes, ParserWork
                 FROM {wordsTable} WHERE AssessmentId = $previous ORDER BY OrdinalIndex;
             """;
         Assert.Equal(7206, command.ExecuteNonQuery());
@@ -695,7 +695,7 @@ public sealed class AssessmentRepositoryTests : IDisposable
         repository.Record(first);
         var conflicting = first with
         { AssessmentId = "conflicting",
-                Material = first.RequireWordMaterial() with { Invocation = first.Invocation! with { PerWordStepLimit = 7 } } };
+                Material = first.RequireWordMaterial() with { Invocation = first.Invocation! with { PerWordParserWorkLimit = 7 } } };
         Assert.Throws<InvalidOperationException>(() => repository.RecordBatch([conflicting]));
         Assert.Throws<KeyNotFoundException>(() => repository.Get("conflicting"));
         Assert.Equal(first.Invocation, repository.Get("original").Invocation);

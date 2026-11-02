@@ -8,7 +8,7 @@ public sealed class AssessBudgetCopyTests
 {
     private static SetDefaultSelectionRequest Request(int budgetSeconds) =>
         new("project.fwdata", "Default", [], ["word"],
-            new SelectionParsingLimits(StepCap.Default, SelectionTimeLimitMode.Estimated, null, budgetSeconds));
+            new SelectionParsingLimits(ParserWorkLimit.Default, SelectionTimeLimitMode.Estimated, null, budgetSeconds));
 
     [Fact]
     public void ANonDefaultBudgetSurvivesTheRequestLimitCopies()
@@ -17,13 +17,13 @@ public sealed class AssessBudgetCopyTests
         Assert.Equal(90, copied.Limits.AssessBudgetSeconds);
 
         var withMs = new SetDefaultSelectionRequest("project.fwdata", "Default", [], ["word"],
-            new SelectionParsingLimits(StepCap.Default, SelectionTimeLimitMode.Estimated, null, 90)) { PerWordLimitMs = 750 };
+            new SelectionParsingLimits(ParserWorkLimit.Default, SelectionTimeLimitMode.Estimated, null, 90)) { PerWordLimitMs = 750 };
         Assert.Equal(90, withMs.Limits.AssessBudgetSeconds);
         Assert.Equal(SelectionTimeLimitMode.Explicit, withMs.Limits.TimeMode);
 
         var withCap = Request(90) with { };
         withCap = new SetDefaultSelectionRequest(withCap.ProjectPath, withCap.Name, [], ["word"], withCap.Limits)
-            { PerWordStepLimit = StepCap.Unbounded };
+            { PerWordParserWorkLimit = ParserWorkLimit.Unbounded };
         Assert.Equal(90, withCap.Limits.AssessBudgetSeconds);
     }
 }

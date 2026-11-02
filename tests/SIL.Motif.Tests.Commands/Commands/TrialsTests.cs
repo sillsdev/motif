@@ -41,7 +41,7 @@ public sealed class TrialsTests : IDisposable
     [InlineData("token", false)]
     [InlineData("executable", false)]
     [InlineData("missing-executable", false)]
-    [InlineData("step-limit", false)]
+    [InlineData("parser-work-limit", false)]
     public void TrialProjectionComparesOnlyCompatibleAssessments(string mismatch, bool comparable)
     {
         using var fixture = new ProjectFixture(_root);
@@ -54,7 +54,7 @@ public sealed class TrialsTests : IDisposable
         var trial = Trials.LatestFor(fixture.Database, fixture.Project, proposal.Id.Value)!;
         Assert.NotNull(trial.Work);
         Assert.Equal(comparable ? 100L : null, trial.Work.BaselineWork);
-        Assert.Equal(comparable ? 110L : null, trial.Work.TrialWorkSteps);
+        Assert.Equal(comparable ? 110L : null, trial.Work.TrialParserWork);
         Assert.Equal(comparable, trial.Work.WorkIncreaseWarning);
         Assert.Equal(JobStatus.Completed, trial.Status);
     }
@@ -506,7 +506,7 @@ public sealed class TrialsTests : IDisposable
 
         public void SetDefaultSelection(IReadOnlyList<Guid> textIds, IReadOnlyList<string> addedWords) =>
             new NamedSelectionRepository(Database).SetDefault("Default", textIds, addedWords,
-                new SelectionParsingLimits(StepCap.Default, SelectionTimeLimitMode.Estimated, null),
+                new SelectionParsingLimits(ParserWorkLimit.Default, SelectionTimeLimitMode.Estimated, null),
                 expectedRevision: null);
 
         public SavedProposal SaveProposal()
@@ -644,15 +644,15 @@ public sealed class TrialsTests : IDisposable
             var token = before && mismatch == "token" ? _tokenJson + " " : _tokenJson;
             var assessor = before && mismatch == "assessor" ? "other" : "pangloss";
             var executable = mismatch == "missing-executable" ? "" : before && mismatch == "executable" ? "other" : "parser";
-            var stepLimit = before && mismatch == "step-limit" ? new StepCap(100) : new StepCap(200);
+            var parserWorkLimit = before && mismatch == "parser-work-limit" ? new ParserWorkLimit(100) : new ParserWorkLimit(200);
             var invocation = new BatchInvocationEvidence("invocation-" + id, "source", "source-hash", executable,
-                "words", "words-hash", "tsv", "tsv-hash", "stderr", "stderr-hash", null, stepLimit, 1, false);
+                "words", "words-hash", "tsv", "tsv-hash", "stderr", "stderr-hash", null, parserWorkLimit, 1, false);
             _assessments.Record(new NewAssessmentRecord(id, before ? null : proposal.Id,
                 before ? null : proposal.Digest, assessor, AssessmentKinds.ParseTime, "{}", "scope",
                 new AssessmentSubject.Words(Selection.Create("Default", ["cat"]), "whitespace", "1"),
                 token, "outcome", "semantic", "grammar", "model", "pipeline", 0,
                 new AssessmentRecordMaterial.Words([new AssessedWord("cat", "analysed", [])
-                    { WorkSteps = before ? 100 : 110 }], null, null, []) { Invocation = invocation }));
+                    { ParserWork = before ? 100 : 110 }], null, null, []) { Invocation = invocation }));
         }
 
         public void RecordProjectAssessment(string assessmentId, string kind, string outcome)

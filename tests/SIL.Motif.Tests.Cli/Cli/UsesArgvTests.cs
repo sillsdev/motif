@@ -68,7 +68,7 @@ public sealed class UsesArgvTests(PristineProjectFixture pristine) : IDisposable
             StoredAnalyses = [new ParserReading([Morph("a-", "3SG"), kat]) { StoredAnalysisOpinion = ReadingGrade.Disapproved }],
         };
         var response = SIL.Motif.Commands.Queries.ObjectUsesQuery.Read([Lost("walikata"), Lost("wamekata"), disapproved],
-            [new("morph_rule", "msa-kat", "authored", "analysis", "kat", "walikata", 3, null, 1_500_000) { WorkSteps = 2_400 }],
+            [new("morph_rule", "msa-kat", "authored", "analysis", "kat", "walikata", 3, null, 1_500_000) { ParserWork = 2_400 }],
             ObjectUseRef.ForMorpheme(kat) with { TimingKind = "morph_rule", TimingKey = "msa-kat" },
             ["walikata", "wamekata", "mtoto"]) with { AssessmentId = "assessment-1" };
 
@@ -82,7 +82,7 @@ public sealed class UsesArgvTests(PristineProjectFixture pristine) : IDisposable
             "    wamekata: Lost",
             "    Not counting 1 disapproved",
             "  Words it ran in: 1 word (Lost 1)",
-            $"    walikata: Lost, 3 calls, 2,400 work steps, time on this computer: {1.5.ToString("N3", System.Globalization.CultureInfo.CurrentCulture)} ms",
+            $"    walikata: Lost, 3 calls, 2,400 parser work, time on this computer: {1.5.ToString("N3", System.Globalization.CultureInfo.CurrentCulture)} ms",
             "  What these words share:",
             "    wa- 3PL: 2 words (walikata, wamekata)",
             "    kat cut: 2 words (walikata, wamekata)",

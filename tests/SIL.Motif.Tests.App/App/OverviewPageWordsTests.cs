@@ -120,7 +120,7 @@ public sealed class OverviewPageWordsTests
         ["violation", "rejected", "Parser finding", "Assessment", "Unknown (timed out)", "Baseline"];
 
     private const int TimedOutWordCount = 2;
-    private static readonly string[] StepLimitedWords = ["mwalimu", "stopped-2", "stopped-3"];
+    private static readonly string[] ParserWorkLimitedWords = ["mwalimu", "stopped-2", "stopped-3"];
 
     [Theory]
     [InlineData(0)]
@@ -144,7 +144,7 @@ public sealed class OverviewPageWordsTests
     }
 
     [Fact]
-    public async Task TheSpeedTileLeadsWithTheStoredWordCountAndTotalWorkSteps()
+    public async Task TheSpeedTileLeadsWithTheStoredWordCountAndTotalParserWork()
     {
         using var culture = new CultureScope(System.Globalization.CultureInfo.GetCultureInfo("en-US"));
         var (fake, context) = NewContext();
@@ -153,11 +153,11 @@ public sealed class OverviewPageWordsTests
 
         await context.OpenProjectAsync(ProjectPath);
 
-        Assert.Equal("142 words · 380,000 work steps in total", page.SpeedMain);
+        Assert.Equal("142 words · 380,000 parser work in total", page.SpeedMain);
         Assert.Equal("Took 38.0 s on this computer", page.SpeedElapsed);
-        Assert.Equal("median 64 work steps a word · 95th percentile 482 work steps", page.SpeedMedian);
+        Assert.Equal("median 64 parser work a word · 95th percentile 482 parser work", page.SpeedMedian);
         Assert.Equal("3 stopped at the work limit", page.SpeedDetails);
-        Assert.Equal([("mwalimu", "7,000 work steps"), ("hawajafika", "480 work steps")],
+        Assert.Equal([("mwalimu", "7,000 parser work"), ("hawajafika", "480 parser work")],
             page.SlowestWordRows.Select(row => (row.Word, row.TimeText)));
         Assert.Equal([("Morphological rules", "56%"), ("Phonological rules", "21%"),
                       ("Lexical entries", "7%"), ("Root lookup", "4%"), ("Not attributed", "12%")],
@@ -182,7 +182,7 @@ public sealed class OverviewPageWordsTests
                     .Select(text => text.Text ?? string.Empty).ToArray();
                 Assert.Contains("mwalimu", words);
                 Assert.Contains("Stopped", words);
-                Assert.Contains("7,000 work steps", words);
+                Assert.Contains("7,000 parser work", words);
                 Assert.Empty(slowest.GetLogicalDescendants().OfType<SIL.Motif.App.Controls.WordPresentation.WordRow>());
             }
             finally
@@ -203,7 +203,7 @@ public sealed class OverviewPageWordsTests
             Timing = Populated().Timing with
             {
                 Work = new WordWorkSummary(2, 9, 1.5, 7.2),
-                SlowestWords = [new SlowWordTiming("z-slowest", 0.800001) { WorkSteps = 8 },
+                SlowestWords = [new SlowWordTiming("z-slowest", 0.800001) { ParserWork = 8 },
                     new SlowWordTiming("a-next", 0.8)],
                 MeasuredWordCount = 2,
             },
@@ -211,8 +211,8 @@ public sealed class OverviewPageWordsTests
 
         await context.OpenProjectAsync(ProjectPath);
 
-        Assert.Equal("median 2 work steps a word · 95th percentile 7 work steps", page.SpeedMedian);
-        Assert.Equal([("z-slowest", "8 work steps"), ("a-next", "work steps not recorded")],
+        Assert.Equal("median 2 parser work a word · 95th percentile 7 parser work", page.SpeedMedian);
+        Assert.Equal([("z-slowest", "8 parser work"), ("a-next", "parser work not recorded")],
             page.SlowestWordRows.Select(row => (row.Word, row.TimeText)));
         Assert.DoesNotContain(page.SlowestTableRows, row => row.WorkText.Contains("ms", StringComparison.Ordinal));
     }
@@ -223,7 +223,7 @@ public sealed class OverviewPageWordsTests
         var overview = Populated();
 
         AssertCaptureStopCounts(overview, "populated");
-        Assert.Equal(TimedOutWordCount, overview.TextCoverage.UnknownWords - overview.Timing.StepLimitedWordCount);
+        Assert.Equal(TimedOutWordCount, overview.TextCoverage.UnknownWords - overview.Timing.ParserWorkLimitedWordCount);
     }
 
     [Fact]
@@ -241,16 +241,16 @@ public sealed class OverviewPageWordsTests
         var mwalimu = page.SlowestWordRows[0];
         Assert.True(mwalimu.HasCard);
         Assert.Same(context.Assess.Words.Find("mwalimu")!.WordRow, mwalimu.Row);
-        Assert.Equal("7,000 work steps", mwalimu.TimeText);
+        Assert.Equal("7,000 parser work", mwalimu.TimeText);
         Assert.Equal(Mark.Stopped, page.SlowestTableRows[0].Outcome);
         Assert.Null(page.SlowestTableRows[1].Outcome);
     }
 
     [Theory]
-    [InlineData(1, 45, 0.045, "1 word · 45 work steps in total", "Took 45 ms on this computer")]
-    [InlineData(9, 8_000, 0.8, "9 words · 8,000 work steps in total", "Took 800 ms on this computer")]
-    [InlineData(1318, 6_124_000, 612.4, "1,318 words · 6,124,000 work steps in total", "Took 612.4 s on this computer")]
-    public async Task TheSpeedHeadlineCountsWorkStepsAndKeepsTheRunsElapsedTimeApart(int words, long work,
+    [InlineData(1, 45, 0.045, "1 word · 45 parser work in total", "Took 45 ms on this computer")]
+    [InlineData(9, 8_000, 0.8, "9 words · 8,000 parser work in total", "Took 800 ms on this computer")]
+    [InlineData(1318, 6_124_000, 612.4, "1,318 words · 6,124,000 parser work in total", "Took 612.4 s on this computer")]
+    public async Task TheSpeedHeadlineCountsParserWorkAndKeepsTheRunsElapsedTimeApart(int words, long work,
         double seconds, string expectedMain, string expectedElapsed)
     {
         using var culture = new CultureScope(System.Globalization.CultureInfo.GetCultureInfo("en-US"));
@@ -278,7 +278,7 @@ public sealed class OverviewPageWordsTests
             MeasuredWordCount = 1,
             Work = new WordWorkSummary(1, 10, 10, 10),
             Kinds = [new TimingAggregateRow("morph_rule", "morph_rule", 0.1, 1, 1) { Kind = "morph_rule" }],
-            WorkStepAggregates =
+            ParserWorkAggregates =
             [
                 new TimingWorkAggregate("morph_rule", "morph_rule", "morph_rule", 10 - residual, false),
                 new TimingWorkAggregate("unattributed", "Not attributed", "unattributed", residual, true),
@@ -292,7 +292,7 @@ public sealed class OverviewPageWordsTests
         await context.OpenProjectAsync(ProjectPath);
 
         var other = Assert.Single(page.TimingKindShares, row => row.IsNotAttributed);
-        Assert.Equal(residual, other.WorkSteps);
+        Assert.Equal(residual, other.ParserWork);
         Assert.Equal(TimingShare.FormatPercent(share), other.ShareText);
     }
 
@@ -306,7 +306,7 @@ public sealed class OverviewPageWordsTests
             Timing = Populated().Timing with
             {
                 Work = new WordWorkSummary(1, 10, 10, 10),
-                WorkStepAggregates =
+                ParserWorkAggregates =
                 [
                     new TimingWorkAggregate("morph_rule", "morph_rule", "morph_rule", 10, false),
                     new TimingWorkAggregate("unattributed", "Not attributed", "unattributed", 0, true),
@@ -319,15 +319,15 @@ public sealed class OverviewPageWordsTests
 
         fake.OverviewCompletesWith(Populated() with
         {
-            Timing = Populated().Timing with { WorkStepAggregates = [] },
+            Timing = Populated().Timing with { ParserWorkAggregates = [] },
         });
         await page.RetryOverviewCommand.ExecuteAsync(null);
         Assert.Empty(page.TimingKindShares);
-        Assert.Contains("Work steps by kind and by rule were not kept", page.TimingAttributionNote);
+        Assert.Contains("Parser work by kind and by rule was not kept", page.TimingAttributionNote);
     }
 
     [Fact]
-    public async Task AnOlderStoreWithTimesButNoWorkStepsStillShowsHowLongTheRunTook()
+    public async Task AnOlderStoreWithTimesButNoParserWorkStillShowsHowLongTheRunTook()
     {
         using var culture = new CultureScope(System.Globalization.CultureInfo.GetCultureInfo("en-US"));
         var (fake, context) = NewContext();
@@ -340,7 +340,7 @@ public sealed class OverviewPageWordsTests
 
         await context.OpenProjectAsync(ProjectPath);
 
-        Assert.Equal("No work steps recorded", page.SpeedMain);
+        Assert.Equal("No parser work recorded", page.SpeedMain);
         Assert.Equal("Took 38.0 s on this computer", page.SpeedElapsed);
     }
 
@@ -357,7 +357,7 @@ public sealed class OverviewPageWordsTests
 
         await context.OpenProjectAsync(ProjectPath);
 
-        Assert.Equal("No work steps recorded", page.SpeedMain);
+        Assert.Equal("No parser work recorded", page.SpeedMain);
         Assert.Equal(string.Empty, page.SpeedElapsed);
         Assert.Equal(string.Empty, page.SpeedMedian);
         Assert.Equal(string.Empty, page.SpeedDetails);
@@ -726,7 +726,7 @@ public sealed class OverviewPageWordsTests
         Assert.Contains("3 words use kat (named by a grammar warning)", rows[0].Detail);
         Assert.Equal("2", rows[1].Number);
         Assert.Contains("3 words stopped at the work limit", rows[1].Summary);
-        Assert.Equal("336,000 of 380,000 work steps in total", rows[1].Detail);
+        Assert.Equal("336,000 of 380,000 parser work in total", rows[1].Detail);
         Assert.Equal("3", rows[2].Number);
         Assert.Contains("3 Unknown words differ", rows[2].Summary);
         Assert.Equal(string.Empty, rows[2].Detail);
@@ -736,7 +736,7 @@ public sealed class OverviewPageWordsTests
             texts.Assess.Compare.Cells.Where(cell => cell.IsSelected)
                 .Select(cell => new TextsListCell(cell.Row, cell.Column)));
         rows[1].OpenCommand.Execute(null);
-        Assert.Equal(StepLimitedWords, timing.Focus!.Words);
+        Assert.Equal(ParserWorkLimitedWords, timing.Focus!.Words);
         rows[2].OpenCommand.Execute(null);
         Assert.Equal([new TextsListCell(WordProjectStatus.Candidate, CompareColumnKind.NoMatch)],
             texts.Assess.Compare.Cells.Where(cell => cell.IsSelected)
@@ -861,7 +861,7 @@ public sealed class OverviewPageWordsTests
 
             var shown = VisibleText(page);
 
-            Assert.Contains("142 words · 380,000 work steps in total", shown);
+            Assert.Contains("142 words · 380,000 parser work in total", shown);
             Assert.DoesNotContain(shown, text => text.Contains("cccccccc", StringComparison.Ordinal));
             Assert.DoesNotContain(shown, text => text.Contains("dddddddd", StringComparison.Ordinal));
             Assert.DoesNotContain(shown, text => text.Contains("grammar ", StringComparison.Ordinal) &&
@@ -944,7 +944,7 @@ public sealed class OverviewPageWordsTests
         "Sample", DateTimeOffset.Parse("2026-09-30T08:00:00Z"), DateTimeOffset.Parse("2026-09-30T06:11:00Z"),
         142, 2, 0, 611, 1318, 47, 862, "assessment/one", DateTimeOffset.Parse("2026-09-30T08:51:00Z"), 38,
         "sha256:" + new string('c', 64), "sha256:" + new string('d', 64),
-        new OverviewTextCoverage(118, 17, StepLimitedWords.Length + TimedOutWordCount, 2, 611, 540)
+        new OverviewTextCoverage(118, 17, ParserWorkLimitedWords.Length + TimedOutWordCount, 2, 611, 540)
         {
             SameWords = 81,
             DifferentWords = 37,
@@ -956,13 +956,13 @@ public sealed class OverviewPageWordsTests
             ApprovedWordsNoParse = 8,
             ApprovedWordsUnknown = 2,
         },
-        new OverviewTiming(6.4, 48.2, [new SlowWordTiming("mwalimu", 700) { WorkSteps = 7_000 },
-                new SlowWordTiming("hawajafika", 48) { WorkSteps = 480 }],
-            StepLimitedWords.Length)
+        new OverviewTiming(6.4, 48.2, [new SlowWordTiming("mwalimu", 700) { ParserWork = 7_000 },
+                new SlowWordTiming("hawajafika", 48) { ParserWork = 480 }],
+            ParserWorkLimitedWords.Length)
         {
             MeasuredWordCount = 142,
             Work = new WordWorkSummary(142, 380_000, 64, 482),
-            WorkStepAggregates =
+            ParserWorkAggregates =
             [
                 new TimingWorkAggregate("morph_rule", "morph_rule", "morph_rule", 212_800, false),
                 new TimingWorkAggregate("phon_rule", "phon_rule", "phon_rule", 79_800, false),
@@ -998,8 +998,8 @@ public sealed class OverviewPageWordsTests
         LookFirst = new OverviewLookFirst(
             ["lost-1", "lost-2", "lost-3", "lost-4", "lost-5", "lost-6"],
             [new OverviewSharedMorpheme("kat", 3, true), new OverviewSharedMorpheme("ja-", 3, false)],
-            StepLimitedWords, 33600, 3)
-        { SharedLostMorphemesAvailable = true, StepLimitedWordWorkSteps = 336_000 },
+            ParserWorkLimitedWords, 33600, 3)
+        { SharedLostMorphemesAvailable = true, ParserWorkLimitedWordParserWork = 336_000 },
         SelectionResolved = true,
         WordCoveragePercent = 83.1,
         ProjectFileName = "Sample.fwdata",
@@ -1009,10 +1009,10 @@ public sealed class OverviewPageWordsTests
 
     internal static void AssertCaptureStopCounts(OverviewResponse overview, string scene)
     {
-        Assert.True(overview.TextCoverage.UnknownWords >= overview.Timing.StepLimitedWordCount,
-            $"Overview scene '{scene}' has more step-limited words than generally stopped words.");
-        Assert.True(overview.LookFirst.StepLimitedWords.Count == overview.Timing.StepLimitedWordCount,
-            $"Overview scene '{scene}' reports {overview.Timing.StepLimitedWordCount} step-limited words but " +
-            $"lists {overview.LookFirst.StepLimitedWords.Count}.");
+        Assert.True(overview.TextCoverage.UnknownWords >= overview.Timing.ParserWorkLimitedWordCount,
+            $"Overview scene '{scene}' has more parser-work-limited words than generally stopped words.");
+        Assert.True(overview.LookFirst.ParserWorkLimitedWords.Count == overview.Timing.ParserWorkLimitedWordCount,
+            $"Overview scene '{scene}' reports {overview.Timing.ParserWorkLimitedWordCount} parser-work-limited words but " +
+            $"lists {overview.LookFirst.ParserWorkLimitedWords.Count}.");
     }
 }

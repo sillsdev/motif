@@ -89,7 +89,7 @@ public sealed class ProposalStandingsCommandTests : IDisposable
         var work = trial.GetProperty("work");
 
         Assert.Equal(100, work.GetProperty("baselineWork").GetInt64());
-        Assert.Equal(110, work.GetProperty("trialWorkSteps").GetInt64());
+        Assert.Equal(110, work.GetProperty("trialParserWork").GetInt64());
         Assert.Equal(10, work.GetProperty("percentChange").GetDouble());
         Assert.True(work.GetProperty("workIncreaseWarning").GetBoolean());
         var card = Assert.Single(standings.Proposals);

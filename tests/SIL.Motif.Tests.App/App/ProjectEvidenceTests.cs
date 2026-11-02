@@ -332,7 +332,7 @@ public sealed class ProjectEvidenceTests
             SavedUtc: "2026-09-05T11:10:00.0000000+00:00",
             Details: new AssessmentRecordDetails.Words([new AssessedWord("dogs", "analysed", [], 10) { ProjectStanding = ProjectStanding.Approved }], null, null, []) with { Invocation = new BatchInvocationEvidence("invocation/stored", "source", "digest", "digest",
                 "words", "digest", "tsv", "digest", "stderr", "digest", 1000,
-                SIL.Motif.Contract.Assess.StepCap.Default, 1, false),  }
+                SIL.Motif.Contract.Assess.ParserWorkLimit.Default, 1, false),  }
         ));
 
     private static AssessCommandResponse Run(string invocationId) => new(

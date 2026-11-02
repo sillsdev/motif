@@ -590,7 +590,7 @@ public sealed partial class MorphotacticRecipeAcceptanceTests(
         var store = new StatsCacheStore(WorkspaceOwnership.Bootstrap(artifactRoot));
         var assessor = new PanGlossAssessor(store, invoker);
         var produced = await assessor.ProduceAsync(new AssessmentScope.Words(words, [AssessmentKind.ParseTime],
-                TimeSpan.FromMilliseconds(1000), new StepCap(200_000)), Path.GetDirectoryName(projectPath)!,
+                TimeSpan.FromMilliseconds(1000), new ParserWorkLimit(20_000_000)), Path.GetDirectoryName(projectPath)!,
             CancellationToken.None);
         var assessment = Assert.Single(produced);
         try
@@ -598,7 +598,7 @@ public sealed partial class MorphotacticRecipeAcceptanceTests(
             var invocation = Assert.IsType<BatchInvocationEvidence>(assessment.Invocation);
             var batch = Assert.IsType<AssessmentRaw.Batch>(assessment.Raw).Analysis;
             var options = new RecipeVerificationOptions(invocation.ExecutableBytesSha256,
-                invocation.PerWordTimeoutMs, invocation.PerWordStepLimit, invocation.Threads,
+                invocation.PerWordTimeoutMs, invocation.PerWordParserWorkLimit, invocation.Threads,
                 invocation.CollectStatistics);
             var comparable = new ComparableAssessment(CanonicalId.Mint().Value, PanGlossAssessor.AssessorName,
                 AssessmentKind.ParseTime.ToStoredKind(), "pangloss", "0.7.0", ToAssessedWords(batch.Words));

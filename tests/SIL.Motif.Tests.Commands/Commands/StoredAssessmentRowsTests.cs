@@ -116,7 +116,7 @@ public sealed class StoredAssessmentRowsTests : IDisposable
                 new(5, "motifd", 30, WordOutcome.Analysed, "sig")
                     { Morphology = resolvable },
                 .. (secondaryForm ? new[] { new WordAnalysis(6, "beta", 5, WordOutcome.NoAnalysis, "-") } : []),
-            ], 1000, fwDataPath, []) { PerWordStepLimit = 200000 })
+            ], 1000, fwDataPath, []) { PerWordParserWorkLimit = 200000 })
             : new AssessmentRaw.WordMeasurements([]))
         {
             CaptureEvidence = (scope, candidate) => FakeAssessmentEvidence.Capture(_managedRootsParent, scope, candidate),
@@ -183,7 +183,7 @@ public sealed class StoredAssessmentRowsTests : IDisposable
             [
                 new(0, SeededProject.AnalysedWordForm, 5, WordOutcome.NoAnalysis, "-"),
                 new(1, SeededProject.UnanalysedWordForm, 4, WordOutcome.NoAnalysis, "-"),
-            ], 1000, fwDataPath, []) { PerWordStepLimit = 200000 })
+            ], 1000, fwDataPath, []) { PerWordParserWorkLimit = 200000 })
             : new AssessmentRaw.WordMeasurements([]))
         {
             CaptureEvidence = (scope, candidate) => FakeAssessmentEvidence.Capture(_managedRootsParent, scope, candidate),

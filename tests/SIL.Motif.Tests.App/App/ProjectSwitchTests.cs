@@ -122,7 +122,7 @@ public sealed class ProjectSwitchTests
             CommandOutcome<DefaultSelectionResponse>.Success(new DefaultSelectionResponse(
                 new NamedSelectionProjection("Default", [], [], "created", "updated",
                     request.ProjectPath == ProjectC ? 2300 : 1100,
-                    request.ProjectPath == ProjectC ? new StepCap(2300) : new StepCap(1100)))));
+                    request.ProjectPath == ProjectC ? new ParserWorkLimit(2300) : new ParserWorkLimit(1100)))));
 
         await OpenProjectAsync(parts.Workspace, ProjectA);
         var openingB = OpenProjectAsync(parts.Workspace, ProjectB);
@@ -135,7 +135,7 @@ public sealed class ProjectSwitchTests
         Assert.Equal(ProjectC, parts.Workspace.Context.Setup!.ProjectPath);
         Assert.Equal("Charlie", Assert.Single(parts.Workspace.Selection.Texts).Title);
         Assert.Equal(2.3m, parts.Workspace.Selection.PerWordTimeLimitSeconds);
-        Assert.Equal(2300m, parts.Workspace.Selection.PerWordStepLimit);
+        Assert.Equal(2300m, parts.Workspace.Selection.PerWordParserWorkLimit);
         Assert.Equal("from-c", Assert.Single(parts.Workspace.Context.Changes.Items).ChangeId);
 
         Task<CommandOutcome<TextInventoryResponse>> HoldB()
@@ -222,7 +222,7 @@ public sealed class ProjectSwitchTests
         var parts = NewWorkspace();
         parts.Fake.DefaultSelectionResponseIs(new DefaultSelectionResponse(
             new NamedSelectionProjection("Default", [TextGuid], [], "created", "updated",
-                new SelectionParsingLimits(new StepCap(50_000_000), SelectionTimeLimitMode.Explicit, 1000), "revision")));
+                new SelectionParsingLimits(new ParserWorkLimit(50_000_000), SelectionTimeLimitMode.Explicit, 1000), "revision")));
         var tokenA = NewToken("2026-09-05T00:00:00Z");
         var tokenB = NewToken("2026-09-06T00:00:00Z");
         parts.Fake.OnGetCurrentBaseline((request, _) => Task.FromResult(

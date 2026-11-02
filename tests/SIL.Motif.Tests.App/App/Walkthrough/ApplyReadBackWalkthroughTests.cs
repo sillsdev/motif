@@ -41,7 +41,7 @@ public sealed class ApplyReadBackWalkthroughTests(PristineProjectFixture pristin
                 WalkthroughSteps.Remaining(deadline), "the prepared project did not open with its pending change");
 
             SetupWalkthroughActions.FinishFirstRun(
-                walkthrough, SeededProject.TextTitle, StepCap.DefaultSteps.ToString(),
+                walkthrough, SeededProject.TextTitle, ParserWorkLimit.DefaultWork.ToString(),
                 WalkthroughSteps.Remaining(deadline));
             walkthrough.SetFakeParserBehavior(new
             {

@@ -90,7 +90,7 @@ public sealed class CatalogAggregationTests
     public void TimingWordSetParsesNamedChoicesAndMatrixCellsAsDistinctCases()
     {
         Assert.IsType<TimingWordSet.All>(TimingWordSet.Parse("all"));
-        Assert.IsType<TimingWordSet.StepLimited>(TimingWordSet.Parse("step-limit"));
+        Assert.IsType<TimingWordSet.ParserWorkLimited>(TimingWordSet.Parse("parser-work-limit"));
         Assert.IsType<TimingWordSet.Slowest>(TimingWordSet.Parse("slowest"));
         var cell = Assert.IsType<TimingWordSet.MatrixCell>(TimingWordSet.Parse("cell:approved:no-parse"));
         Assert.Equal(TimingStanding.Approved, cell.Standing);
@@ -114,28 +114,28 @@ public sealed class CatalogAggregationTests
 
         Assert.Equal(25, result.MedianMs);
         Assert.Equal(40, result.Percentile95Ms);
-        Assert.Equal(1, result.StepLimitedWordCount);
+        Assert.Equal(1, result.ParserWorkLimitedWordCount);
         Assert.Equal(["d", "c"], result.SlowestWords.Select(word => word.Word));
     }
 
     [Fact]
-    public void OverviewTimingSummarizesParserWorkStepsAndCarriesThemOnTheSlowestWords()
+    public void OverviewTimingSummarizesParserWorkAndCarriesThemOnTheSlowestWords()
     {
         var result = TimingAggregation.SummarizeWords(
         [
-            new AssessedWord("a", "analysed", [], 90) { WorkSteps = 10 },
-            new AssessedWord("b", "analysed", [], 20) { WorkSteps = 20 },
-            new AssessedWord("c", "analysed", [], 30) { WorkSteps = 30 },
-            new AssessedWord("d", "capped", [], 40) { IsIncomplete = true, WorkSteps = 40 },
+            new AssessedWord("a", "analysed", [], 90) { ParserWork = 10 },
+            new AssessedWord("b", "analysed", [], 20) { ParserWork = 20 },
+            new AssessedWord("c", "analysed", [], 30) { ParserWork = 30 },
+            new AssessedWord("d", "capped", [], 40) { IsIncomplete = true, ParserWork = 40 },
             new AssessedWord("e", "analysed", [], 50),
         ], top: 2);
 
         Assert.Equal(4, result.Work.MeasuredWordCount);
-        Assert.Equal(100, result.Work.TotalWorkSteps);
-        Assert.Equal(25, result.Work.MedianWorkSteps);
-        Assert.Equal(40, result.Work.Percentile95WorkSteps);
+        Assert.Equal(100, result.Work.TotalParserWork);
+        Assert.Equal(25, result.Work.MedianParserWork);
+        Assert.Equal(40, result.Work.Percentile95ParserWork);
         Assert.Equal([(string?)"d", "c"], result.SlowestWords.Select(word => (string?)word.Word));
-        Assert.Equal([(long?)40, 30], result.SlowestWords.Select(word => word.WorkSteps));
+        Assert.Equal([(long?)40, 30], result.SlowestWords.Select(word => word.ParserWork));
     }
 
     [Fact]
@@ -143,10 +143,10 @@ public sealed class CatalogAggregationTests
     {
         AssessedWord[] words =
         [
-            new("a", "analysed", [], 10) { WorkSteps = 10 },
-            new("b", "analysed", [], 20) { WorkSteps = 20 },
-            new("c", "analysed", [], 30) { WorkSteps = 30 },
-            new("never", "skipped", [], 5) { WorkSteps = 1_000_000 },
+            new("a", "analysed", [], 10) { ParserWork = 10 },
+            new("b", "analysed", [], 20) { ParserWork = 20 },
+            new("c", "analysed", [], 30) { ParserWork = 30 },
+            new("never", "skipped", [], 5) { ParserWork = 1_000_000 },
         ];
 
         var overview = TimingAggregation.SummarizeWords(words, top: 4);
@@ -155,11 +155,11 @@ public sealed class CatalogAggregationTests
         foreach (var work in new[] { overview.Work, timingCommandWork })
         {
             Assert.Equal(3, work.MeasuredWordCount);
-            Assert.Equal(60, work.TotalWorkSteps);
-            Assert.Equal(20, work.MedianWorkSteps);
-            Assert.Equal(30, work.Percentile95WorkSteps);
+            Assert.Equal(60, work.TotalParserWork);
+            Assert.Equal(20, work.MedianParserWork);
+            Assert.Equal(30, work.Percentile95ParserWork);
         }
-        Assert.Null(overview.SlowestWords.Single(word => word.Word == "never").WorkSteps);
+        Assert.Null(overview.SlowestWords.Single(word => word.Word == "never").ParserWork);
         Assert.Equal("c", overview.SlowestWords[0].Word);
     }
 
@@ -167,40 +167,40 @@ public sealed class CatalogAggregationTests
     public void ParserWorkIsAKindOfItsOwnThatAddsUpWithTheRulesAndSkippedWordsStayOut()
     {
         AssessedWord[] words =
-            [new("a", "analysed", [], 5) { WorkSteps = 10 }, new("never", "skipped", [], null) { WorkSteps = 500 }];
+            [new("a", "analysed", [], 5) { ParserWork = 10 }, new("never", "skipped", [], null) { ParserWork = 500 }];
         AssessmentObjectTiming[] rows =
         [
             WorkRow("morph_rule", "rule-r", "R", "a", 6),
-            new("parser", "parser:strata", "synthetic", "analysis", "parser", "a", null, null, 1_000_000L) { WorkSteps = 3 },
+            new("parser", "parser:strata", "synthetic", "analysis", "parser", "a", null, null, 1_000_000L) { ParserWork = 3 },
             WorkRow("unattributed", "unattributed", "Other", "a", 1),
         ];
 
-        var byObject = TimingAggregation.WorkStepsByObject(rows, words);
+        var byObject = TimingAggregation.ParserWorkByObject(rows, words);
 
-        Assert.Equal(10, byObject.Sum(row => row.WorkSteps));
-        Assert.Equal(3, Assert.Single(byObject, row => row.Kind == "parser").WorkSteps);
+        Assert.Equal(10, byObject.Sum(row => row.ParserWork));
+        Assert.Equal(3, Assert.Single(byObject, row => row.Kind == "parser").ParserWork);
         Assert.Equal(1, TimingAggregation.SummarizeWork(words.Select(TimingAggregation.WorkOf)).MeasuredWordCount);
     }
 
     private static PanGlossObjectTimingAggregate Totals(string kind, string key, string direction, long? work) =>
         new(kind, key, kind == "unattributed" ? "synthetic" : "authored", direction, key, 1, null, null, null, null)
-        { WorkSteps = work };
+        { ParserWork = work };
 
     [Fact]
     public void StoredWholeRunTotalsGiveWorkByObjectAndKindWithoutAnyWordDetail()
     {
-        AssessedWord[] words = [new("a", "analysed", [], 5) { WorkSteps = 10 }, new("b", "analysed", [], 5) { WorkSteps = 20 },
-            new("never", "skipped", [], null) { WorkSteps = 500 }];
+        AssessedWord[] words = [new("a", "analysed", [], 5) { ParserWork = 10 }, new("b", "analysed", [], 5) { ParserWork = 20 },
+            new("never", "skipped", [], null) { ParserWork = 500 }];
         var evidence = new AssessmentTimingEvidence(
         [
             Totals("morph_rule", "rule-r", "analysis", 14), Totals("morph_rule", "rule-r", "synthesis", 6),
             Totals("lex_entry", "entry-e", "analysis", 7), Totals("unattributed", "unattributed", "unattributed", 3),
         ], 0, false, 4);
 
-        var byObject = TimingAggregation.WorkStepsFromTotals(words, evidence);
+        var byObject = TimingAggregation.ParserWorkFromTotals(words, evidence);
 
-        Assert.Equal(30, byObject.Sum(row => row.WorkSteps));
-        Assert.Equal(20, Assert.Single(byObject, row => row.Key == "rule-r").WorkSteps);
+        Assert.Equal(30, byObject.Sum(row => row.ParserWork));
+        Assert.Equal(20, Assert.Single(byObject, row => row.Key == "rule-r").ParserWork);
         Assert.Equal(["morph_rule", "lex_entry", "unattributed"], byObject.Select(row => row.Kind));
         Assert.True(byObject[^1].IsUnattributed);
     }
@@ -208,26 +208,26 @@ public sealed class CatalogAggregationTests
     [Fact]
     public void RunsStoredBeforeWorkWasKeptByObjectShowNoWorkByObjectRatherThanZero()
     {
-        AssessedWord[] words = [new("a", "analysed", [], 5) { WorkSteps = 10 }];
+        AssessedWord[] words = [new("a", "analysed", [], 5) { ParserWork = 10 }];
         var evidence = new AssessmentTimingEvidence(
             [Totals("morph_rule", "rule-r", "analysis", null), Totals("unattributed", "unattributed", "unattributed", null)], 0, false, 2);
 
-        Assert.Empty(TimingAggregation.WorkStepsFromTotals(words, evidence));
+        Assert.Empty(TimingAggregation.ParserWorkFromTotals(words, evidence));
     }
 
     [Fact]
     public void StoredTotalsThatDoNotAddUpToTheWordsWorkAreNotShown()
     {
-        AssessedWord[] words = [new("a", "analysed", [], 5) { WorkSteps = 10 }];
+        AssessedWord[] words = [new("a", "analysed", [], 5) { ParserWork = 10 }];
         var unattributed = Totals("unattributed", "unattributed", "unattributed", 3);
 
-        Assert.Empty(TimingAggregation.WorkStepsFromTotals(words,
+        Assert.Empty(TimingAggregation.ParserWorkFromTotals(words,
             new([Totals("morph_rule", "rule-r", "analysis", 8), unattributed], 0, false, 2)));
-        Assert.Empty(TimingAggregation.WorkStepsFromTotals(words,
+        Assert.Empty(TimingAggregation.ParserWorkFromTotals(words,
             new([Totals("morph_rule", "rule-r", "analysis", 7)], 0, false, 1)));
-        Assert.Empty(TimingAggregation.WorkStepsFromTotals([words[0], words[0] with { WorkSteps = null }],
+        Assert.Empty(TimingAggregation.ParserWorkFromTotals([words[0], words[0] with { ParserWork = null }],
             new([Totals("morph_rule", "rule-r", "analysis", 7), unattributed], 0, false, 2)));
-        Assert.Empty(TimingAggregation.WorkStepsFromTotals(words,
+        Assert.Empty(TimingAggregation.ParserWorkFromTotals(words,
             new([Totals("morph_rule", "rule-r", "analysis", 7), unattributed], 0, false, 2) { HasRetriedWords = true }));
     }
 
@@ -240,30 +240,30 @@ public sealed class CatalogAggregationTests
 
         var aggregate = JsonSerializer.Deserialize<PanGlossObjectTimingAggregate>(stored)!;
 
-        Assert.Null(aggregate.WorkSteps);
+        Assert.Null(aggregate.ParserWork);
         Assert.Equal(2, aggregate.WordsTouched);
     }
 
     [Fact]
-    public void WorkStepsByObjectIgnoresASkippedWordThatHasNoObjectRows()
+    public void ParserWorkByObjectIgnoresASkippedWordThatHasNoObjectRows()
     {
-        AssessedWord[] words = [new("a", "analysed", [], 5) { WorkSteps = 10 }, new("never", "skipped", [], null) { WorkSteps = 0 }];
+        AssessedWord[] words = [new("a", "analysed", [], 5) { ParserWork = 10 }, new("never", "skipped", [], null) { ParserWork = 0 }];
         AssessmentObjectTiming[] rows =
             [WorkRow("morph_rule", "rule-r", "R", "a", 7), WorkRow("unattributed", "unattributed", "Other", "a", 3)];
 
-        Assert.Equal(7, Assert.Single(TimingAggregation.WorkStepsByObject(rows, words), row => !row.IsUnattributed).WorkSteps);
+        Assert.Equal(7, Assert.Single(TimingAggregation.ParserWorkByObject(rows, words), row => !row.IsUnattributed).ParserWork);
     }
 
     [Fact]
-    public void TheSlowestWordsHaveTheMostWorkStepsThenTheMostTimeThenTheSpellingAndUncountedWordsComeLast()
+    public void TheSlowestWordsHaveTheMostParserWorkThenTheMostTimeThenTheSpellingAndUncountedWordsComeLast()
     {
         var words = new[]
         {
             new AssessedWord("e", "analysed", [], 900),
-            new AssessedWord("d", "analysed", [], 5) { WorkSteps = 50 },
-            new AssessedWord("c", "analysed", [], 7) { WorkSteps = 50 },
-            new AssessedWord("b", "analysed", [], 7) { WorkSteps = 50 },
-            new AssessedWord("f", "analysed", [], null) { WorkSteps = 999 },
+            new AssessedWord("d", "analysed", [], 5) { ParserWork = 50 },
+            new AssessedWord("c", "analysed", [], 7) { ParserWork = 50 },
+            new AssessedWord("b", "analysed", [], 7) { ParserWork = 50 },
+            new AssessedWord("f", "analysed", [], null) { ParserWork = 999 },
         };
 
         var slowest = TimingAggregation.SelectSlowestWords(words, 5);
@@ -277,44 +277,44 @@ public sealed class CatalogAggregationTests
         var result = TimingAggregation.SummarizeWork([null, null]);
 
         Assert.Equal(0, result.MeasuredWordCount);
-        Assert.Equal(0, result.TotalWorkSteps);
-        Assert.Null(result.MedianWorkSteps);
-        Assert.Null(result.Percentile95WorkSteps);
+        Assert.Equal(0, result.TotalParserWork);
+        Assert.Null(result.MedianParserWork);
+        Assert.Null(result.Percentile95ParserWork);
     }
 
     [Fact]
-    public void WorkStepsByObjectNeedsEveryWordsObjectWorkToAddUpToItsTotal()
+    public void ParserWorkByObjectNeedsEveryWordsObjectWorkToAddUpToItsTotal()
     {
-        AssessedWord[] words = [new("a", "analysed", [], 5) { WorkSteps = 10 }, new("b", "analysed", [], 5) { WorkSteps = 6 }];
+        AssessedWord[] words = [new("a", "analysed", [], 5) { ParserWork = 10 }, new("b", "analysed", [], 5) { ParserWork = 6 }];
         AssessmentObjectTiming[] rows =
         [
             WorkRow("morph_rule", "rule-r", "R", "a", 7), WorkRow("unattributed", "unattributed", "Other", "a", 3),
             WorkRow("morph_rule", "rule-r", "R", "b", 2), WorkRow("unattributed", "unattributed", "Other", "b", 4),
         ];
 
-        var byObject = TimingAggregation.WorkStepsByObject(rows, words);
+        var byObject = TimingAggregation.ParserWorkByObject(rows, words);
 
         var rule = Assert.Single(byObject, row => !row.IsUnattributed);
-        Assert.Equal(("rule-r", 9L, "authored"), (rule.Key, rule.WorkSteps, rule.IdentityQuality));
-        Assert.Equal(7, Assert.Single(byObject, row => row.IsUnattributed).WorkSteps);
-        Assert.Empty(TimingAggregation.WorkStepsByObject(rows, [words[0], words[1] with { WorkSteps = 7 }]));
+        Assert.Equal(("rule-r", 9L, "authored"), (rule.Key, rule.ParserWork, rule.IdentityQuality));
+        Assert.Equal(7, Assert.Single(byObject, row => row.IsUnattributed).ParserWork);
+        Assert.Empty(TimingAggregation.ParserWorkByObject(rows, [words[0], words[1] with { ParserWork = 7 }]));
     }
 
     [Fact]
-    public void CostliestWordsForARuleCarryWorkStepsAndRankByThem()
+    public void CostliestWordsForARuleCarryParserWorkAndRankByThem()
     {
         AssessedWord[] words = [Timed("slow", 90), Timed("busy", 10)];
         AssessmentObjectTiming[] rows =
         [
             WorkRow("morph_rule", "rule-r", "R", "slow", 5, ms: 40), WorkRow("morph_rule", "rule-r", "R", "busy", 80, ms: 5),
         ];
-        words = [words[0] with { WorkSteps = 60 }, words[1] with { WorkSteps = 100 }];
+        words = [words[0] with { ParserWork = 60 }, words[1] with { ParserWork = 100 }];
 
         var result = TimingAggregation.Aggregate(words, rows, "rule", new TraceTimingKey("morph_rule", "rule-r"), top: 2);
 
         Assert.Equal(["busy", "slow"], result.CostliestWords.Select(word => word.Word));
-        Assert.Equal([80L, 5], result.CostliestWords.Select(word => word.WorkSteps.GetValueOrDefault()));
-        Assert.Equal([100L, 60], result.CostliestWords.Select(word => word.WordWorkSteps.GetValueOrDefault()));
+        Assert.Equal([80L, 5], result.CostliestWords.Select(word => word.ParserWork.GetValueOrDefault()));
+        Assert.Equal([100L, 60], result.CostliestWords.Select(word => word.WordParserWork.GetValueOrDefault()));
     }
 
     [Fact]
@@ -653,7 +653,7 @@ public sealed class CatalogAggregationTests
 
     private static AssessmentObjectTiming WorkRow(string kind, string key, string label, string word, long work, int ms = 1) =>
         new(kind, key, kind == "unattributed" ? "synthetic" : "authored", "analysis", label, word, 1, null, ms * 1_000_000L)
-        { WorkSteps = work };
+        { ParserWork = work };
 
     private static AssessmentObjectTiming Row(string kind, string key, string label, string word, int ms) =>
         new(kind, key, "authored", "analysis", label, word, 1, null, ms * 1_000_000L);
@@ -699,7 +699,7 @@ public sealed class CatalogAggregationTests
     }
 
     [Fact]
-    public void OverviewLookFirstUsesStoredLostWordsWarningsAndStepLimitTimes()
+    public void OverviewLookFirstUsesStoredLostWordsWarningsAndParserWorkLimitTimes()
     {
         static ParserReadingMorph Morph(string form, string key) => new(form, form, "v", null, false, null)
         {
@@ -758,15 +758,15 @@ public sealed class CatalogAggregationTests
             Lost("hawajafika", ja), Lost("hatujaona", ja), Lost("hamjafika", ja),
         };
         var result = OverviewLookFirstBuilder.Build([.. lost, limited, different, differentEntry],
-            [new AssessedWord("limited", "capped", [], 400) { WorkSteps = 2_500 }], new GrammarCheckResponse([warning], true));
+            [new AssessedWord("limited", "capped", [], 400) { ParserWork = 2_500 }], new GrammarCheckResponse([warning], true));
 
         Assert.Equal(["walikata", "anakata", "wamekata", "hawajafika", "hatujaona", "hamjafika"],
             result.ApprovedLostWords);
         Assert.Equal([("kat", 3, true), ("ja-", 3, false)],
             result.SharedLostMorphemes.Select(item => (item.Form, item.WordCount, item.NamedByWarning)));
-        Assert.Equal(["limited"], result.StepLimitedWords);
-        Assert.Equal(400d, result.StepLimitedWordTimeMs);
-        Assert.Equal(2_500, result.StepLimitedWordWorkSteps);
+        Assert.Equal(["limited"], result.ParserWorkLimitedWords);
+        Assert.Equal(400d, result.ParserWorkLimitedWordTimeMs);
+        Assert.Equal(2_500, result.ParserWorkLimitedWordParserWork);
         Assert.Equal(1, result.UnknownDifferentWordCount);
         Assert.Equal(["same-text"], result.ApprovedSameTextDifferentEntryWords);
         Assert.True(result.ApprovedSameTextDifferentEntryAvailable);

@@ -31,18 +31,18 @@ public sealed class TrialBaselineLimitsTests : IDisposable
     public void AutomaticBaselineAndTrialUseTheSavedSelectionLimitsForNamedWords(bool explicitTime, int expectedMs)
     {
         SaveDefault(explicitTime
-            ? SelectionLimitPolicy.Explicit(new StepCap(5000), 2500)
-            : SelectionLimitPolicy.Estimated(new StepCap(5000)));
+            ? SelectionLimitPolicy.Explicit(new ParserWorkLimit(5000), 2500)
+            : SelectionLimitPolicy.Estimated(new ParserWorkLimit(5000)));
 
         var (before, trial) = RunPair(NewRequest());
 
-        AssertLimits(before, trial, new StepCap(5000), expectedMs);
+        AssertLimits(before, trial, new ParserWorkLimit(5000), expectedMs);
     }
 
     [Fact]
     public void AssessingNamedWordsUsesTheSameSavedLimitsAsATrial()
     {
-        SaveDefault(SelectionLimitPolicy.Explicit(new StepCap(5000), 2500));
+        SaveDefault(SelectionLimitPolicy.Explicit(new ParserWorkLimit(5000), 2500));
         var assess = TrialBaselines.Assess(_project.FwDataPath, [SeededProject.FirstForm],
             _project.ManagedRoot, _parser, CancellationToken.None);
         Assert.True(assess.Succeeded, assess.Refusal?.Message);
@@ -50,50 +50,50 @@ public sealed class TrialBaselineLimitsTests : IDisposable
         using var database = ProjectMotifDatabase.Open(_project.FwDataPath);
         var before = new AssessmentRepository(database).Get(assess.Value!.Measurements
             .First(item => item.Kind == "ParseTime").AssessmentId);
-        AssertLimits(before, trial, new StepCap(5000), 2500);
+        AssertLimits(before, trial, new ParserWorkLimit(5000), 2500);
     }
 
     [Fact]
     public void AutomaticBaselineAndTrialPreserveExplicitRequestLimitsOverTheSavedSelection()
     {
-        SaveDefault(SelectionLimitPolicy.Explicit(new StepCap(5000), 2500));
-        var supplied = new TrialLimits(TimeSpan.FromMilliseconds(700), new StepCap(123));
+        SaveDefault(SelectionLimitPolicy.Explicit(new ParserWorkLimit(5000), 2500));
+        var supplied = new TrialLimits(TimeSpan.FromMilliseconds(700), new ParserWorkLimit(123));
 
         var (before, trial) = RunPair(NewRequest() with { Limits = supplied });
 
-        AssertLimits(before, trial, new StepCap(123), 700);
+        AssertLimits(before, trial, new ParserWorkLimit(123), 700);
         Assert.Equal(supplied, trial.Limits);
     }
 
     [Fact]
     public void AnExplicitFiniteCapWithoutATimeOverrideKeepsTheTrialTimeUnbounded()
     {
-        SaveDefault(SelectionLimitPolicy.Explicit(new StepCap(5000), 2500));
-        var supplied = new TrialLimits(null, new StepCap(123));
+        SaveDefault(SelectionLimitPolicy.Explicit(new ParserWorkLimit(5000), 2500));
+        var supplied = new TrialLimits(null, new ParserWorkLimit(123));
 
         var (before, trial) = RunPair(NewRequest() with { Limits = supplied });
 
-        AssertLimits(before, trial, new StepCap(123), null);
+        AssertLimits(before, trial, new ParserWorkLimit(123), null);
     }
 
     [Fact]
     public void AnUnboundedSavedSelectionLeavesBothSearchesUnbounded()
     {
-        SaveDefault(SelectionLimitPolicy.Estimated(StepCap.Unbounded));
+        SaveDefault(SelectionLimitPolicy.Estimated(ParserWorkLimit.Unbounded));
 
         var (before, trial) = RunPair(NewRequest());
 
-        AssertLimits(before, trial, StepCap.Unbounded, null);
+        AssertLimits(before, trial, ParserWorkLimit.Unbounded, null);
     }
 
     [Fact]
     public void AnExplicitUnboundedRequestOverridesTheFiniteSavedSelectionForBothSearches()
     {
-        SaveDefault(SelectionLimitPolicy.Explicit(new StepCap(5000), 2500));
+        SaveDefault(SelectionLimitPolicy.Explicit(new ParserWorkLimit(5000), 2500));
 
-        var (before, trial) = RunPair(NewRequest() with { Limits = new TrialLimits(null, StepCap.Unbounded) });
+        var (before, trial) = RunPair(NewRequest() with { Limits = new TrialLimits(null, ParserWorkLimit.Unbounded) });
 
-        AssertLimits(before, trial, StepCap.Unbounded, null);
+        AssertLimits(before, trial, ParserWorkLimit.Unbounded, null);
     }
 
     [Fact]
@@ -101,17 +101,17 @@ public sealed class TrialBaselineLimitsTests : IDisposable
     {
         var (before, trial) = RunPair(NewRequest());
 
-        AssertLimits(before, trial, StepCap.Default, 80_000);
+        AssertLimits(before, trial, ParserWorkLimit.Default, 80_000);
     }
 
     [Fact]
     public void DefaultSelectionWordsKeepThePolicyChosenBeforeTheirBaselineWasMeasured()
     {
-        SaveDefault(SelectionLimitPolicy.Estimated(new StepCap(5000)));
+        SaveDefault(SelectionLimitPolicy.Estimated(new ParserWorkLimit(5000)));
 
         var (before, trial) = RunPair(NewRequest() with { Words = null });
 
-        AssertLimits(before, trial, new StepCap(5000), 10_000);
+        AssertLimits(before, trial, new ParserWorkLimit(5000), 10_000);
         Assert.Contains(SeededProject.FirstForm, before.Selection.Words);
     }
 
@@ -165,12 +165,12 @@ public sealed class TrialBaselineLimitsTests : IDisposable
         return (before, trial);
     }
 
-    private static void AssertLimits(AssessmentRecord before, TrialJobInput trial, StepCap cap, int? milliseconds)
+    private static void AssertLimits(AssessmentRecord before, TrialJobInput trial, ParserWorkLimit cap, int? milliseconds)
     {
-        Assert.Equal(cap, before.Invocation!.PerWordStepLimit);
+        Assert.Equal(cap, before.Invocation!.PerWordParserWorkLimit);
         Assert.Equal(milliseconds, before.Invocation.PerWordTimeoutMs);
         Assert.NotNull(trial.Limits);
-        Assert.Equal(cap, trial.Limits.PerWordStepLimit);
+        Assert.Equal(cap, trial.Limits.PerWordParserWorkLimit);
         Assert.Equal(milliseconds is { } value ? TimeSpan.FromMilliseconds(value) : (TimeSpan?)null,
             trial.Limits.PerWordLimit);
     }

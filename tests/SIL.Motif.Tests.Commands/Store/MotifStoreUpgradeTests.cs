@@ -74,6 +74,32 @@ public sealed class MotifStoreUpgradeTests : IDisposable
         Assert.Equal(0, Count(copy, "DefaultSelection"));
     }
 
+    [Theory]
+    [InlineData("200000", 20_000_000L)]
+    [InlineData("1", 100L)]
+    [InlineData("NULL", null)]
+    public void UpgradeReadsAnOldNamedSelectionAttemptLimitAsOneHundredTimesItsValue(string oldValue, long? expected)
+    {
+        CreateCurrentSchemaAsOld();
+        using (var old = Connect(Source))
+        {
+            Execute(old, "ALTER TABLE NamedSelections RENAME COLUMN PerWordParserWorkLimit TO PerWordStepLimit;" +
+                "INSERT INTO NamedSelections (SelectionName, TextIdsJson, AddedWordsJson, CreatedUtc, UpdatedUtc, TimeLimitMode, " +
+                $"Revision, AssessBudgetSeconds, PerWordStepLimit) VALUES ('old', '[]', '[\"kitabu\"]', '2020', '2020', 'Estimated', 1, 3600, {oldValue});");
+        }
+
+        var output = Path.Combine(_root, "copy.db");
+        var report = MotifStoreUpgrade.Copy(Source, output);
+
+        Assert.Equal(1, report.Carried["NamedSelections"]);
+        using var copy = Connect(output);
+        using var check = copy.CreateCommand();
+        check.CommandText = "SELECT PerWordParserWorkLimit FROM NamedSelections WHERE SelectionName = 'old';";
+        var stored = check.ExecuteScalar();
+        if (expected is null) Assert.True(stored is null or DBNull);
+        else Assert.Equal(expected.Value, Convert.ToInt64(stored));
+    }
+
     [Fact]
     public void Schema49CarriesRevisionsAndReportsUnreadableAndDroppedData()
     {

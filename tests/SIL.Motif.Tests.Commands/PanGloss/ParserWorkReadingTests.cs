@@ -8,33 +8,33 @@ using Xunit;
 namespace SIL.Motif.Tests.PanGloss;
 
 /// <summary>Per-word work is read wherever PanGloss provides it, and its absence is never an error.</summary>
-public sealed class WorkStepsReadingTests : IDisposable
+public sealed class ParserWorkReadingTests : IDisposable
 {
-    private readonly string _root = Path.Combine(Path.GetTempPath(), "motif-work-steps-" + Guid.NewGuid().ToString("N"));
+    private readonly string _root = Path.Combine(Path.GetTempPath(), "motif-parser work-" + Guid.NewGuid().ToString("N"));
 
-    public WorkStepsReadingTests() => Directory.CreateDirectory(_root);
+    public ParserWorkReadingTests() => Directory.CreateDirectory(_root);
 
     public void Dispose() => Directory.Delete(_root, recursive: true);
 
     [Fact]
-    public void TheTraceFixtureReportsItsWorkStepsAlongsideItsSteps()
+    public void TheTraceFixtureReportsItsParserWorkAlongsideItsSteps()
     {
         var raw = SIL.Motif.Tests.TestFixtures.TestTraceFixture.Read(Path.Combine(AppContext.BaseDirectory, "TestFixtures", "trace-details-v3-kapita.json"));
 
         var details = PanGlossTraceDiagnosticReader.Read(raw).Details;
 
-        Assert.Equal(237L, details.WorkSteps);
+        Assert.Equal(237L, details.ParserWork);
         Assert.Equal(3L, details.Steps);
     }
 
     [Fact]
-    public void ATraceWithoutWorkStepsLeavesItNull()
+    public void ATraceWithoutParserWorkLeavesItNull()
     {
         var raw = SIL.Motif.Tests.TestFixtures.TestTraceFixture.Read(Path.Combine(AppContext.BaseDirectory, "TestFixtures", "trace-details-v3-kapita.json"))
             .Replace(",\"workSteps\":237", string.Empty, StringComparison.Ordinal);
         Assert.DoesNotContain("workSteps\":237", raw, StringComparison.Ordinal);
 
-        Assert.Null(PanGlossTraceDiagnosticReader.Read(raw).Details.WorkSteps);
+        Assert.Null(PanGlossTraceDiagnosticReader.Read(raw).Details.ParserWork);
     }
 
     [Fact]
@@ -48,15 +48,15 @@ public sealed class WorkStepsReadingTests : IDisposable
                 [row.Index.ToString(CultureInfo.InvariantCulture), row.Word,
                     row.ElapsedMs.ToString(CultureInfo.InvariantCulture), row.Status, row.Signature,
                     row.Steps!.Value.ToString(CultureInfo.InvariantCulture),
-                    row.WorkSteps!.Value.ToString(CultureInfo.InvariantCulture)]);
+                    row.ParserWork!.Value.ToString(CultureInfo.InvariantCulture)]);
 
         var rows = BatchTsvParser.Parse(tsv);
 
         Assert.Equal(2, rows.Count);
-        Assert.Equal((12L, 345L), (rows[0].Steps, rows[0].WorkSteps));
+        Assert.Equal((12L, 345L), (rows[0].Steps, rows[0].ParserWork));
         Assert.Equal(first.Word, rows[0].Word);
         Assert.Equal(WordOutcome.Capped, rows[1].Outcome);
-        Assert.Equal((200_000L, 20_000_000L), (rows[1].Steps, rows[1].WorkSteps));
+        Assert.Equal((200_000L, 20_000_000L), (rows[1].Steps, rows[1].ParserWork));
         Assert.Equal(capped.Word, rows[1].Word);
     }
 
@@ -64,10 +64,10 @@ public sealed class WorkStepsReadingTests : IDisposable
     public void HeaderlessWorkColumnsAndWatchdogRowsAreRead()
     {
         var rows = BatchTsvParser.Parse("0\tword\t3\tok\tsig\t12\t345\n1\tother\t8\tTIMEOUT\t-\n");
-        Assert.Equal((12L, 345L), (rows[0].Steps, rows[0].WorkSteps));
-        Assert.Null(rows[1].WorkSteps);
+        Assert.Equal((12L, 345L), (rows[0].Steps, rows[0].ParserWork));
+        Assert.Null(rows[1].ParserWork);
         var guessed = Assert.Single(BatchTsvParser.Parse("0\tword\t3\tok\tsig\ttrue\t12\t345\n"));
-        Assert.Equal((12L, 345L), (guessed.Steps, guessed.WorkSteps));
+        Assert.Equal((12L, 345L), (guessed.Steps, guessed.ParserWork));
     }
 
     [Fact]
@@ -78,13 +78,13 @@ public sealed class WorkStepsReadingTests : IDisposable
             "2\tstopped\t3\tCAP\t-\tfalse\t200\t20000\n" +
             "3\tunknown\t4\tok\t-\t-\t-\n");
         Assert.Equal(("quick", WordOutcome.Analysed, 4L, 501L),
-            (rows[0].Word, rows[0].Outcome, rows[0].Steps, rows[0].WorkSteps));
+            (rows[0].Word, rows[0].Outcome, rows[0].Steps, rows[0].ParserWork));
         Assert.Equal(("guessed", WordOutcome.Analysed, 7L, 900L),
-            (rows[1].Word, rows[1].Outcome, rows[1].Steps, rows[1].WorkSteps));
-        Assert.Equal((WordOutcome.Capped, 200L, 20000L), (rows[2].Outcome, rows[2].Steps, rows[2].WorkSteps));
+            (rows[1].Word, rows[1].Outcome, rows[1].Steps, rows[1].ParserWork));
+        Assert.Equal((WordOutcome.Capped, 200L, 20000L), (rows[2].Outcome, rows[2].Steps, rows[2].ParserWork));
         Assert.Equal(WordOutcome.NoAnalysis, rows[3].Outcome);
         Assert.Null(rows[3].Steps);
-        Assert.Null(rows[3].WorkSteps);
+        Assert.Null(rows[3].ParserWork);
     }
 
     [Fact]
@@ -100,30 +100,30 @@ public sealed class WorkStepsReadingTests : IDisposable
         Assert.Equal([WordOutcome.Analysed, WordOutcome.TimedOut], rows.Select(row => row.Outcome));
         Assert.Equal([analysed.Word, timedOut.Word], rows.Select(row => row.Word));
         Assert.All(rows, row => Assert.Null(row.Steps));
-        Assert.All(rows, row => Assert.Null(row.WorkSteps));
+        Assert.All(rows, row => Assert.Null(row.ParserWork));
     }
 
     [Fact]
-    public void AStatsCacheWithAWorkColumnYieldsWorkStepsPerWord()
+    public void AStatsCacheWithAWorkColumnYieldsParserWorkPerWord()
     {
         var path = Path.Combine(_root, "with-work.sqlite");
         WriteCache(path, withWork: true);
 
         var words = PanGlossBatchStatisticsReader.Read(path, ["word"]).Words;
 
-        Assert.Equal(777L, words["word"].WorkSteps);
+        Assert.Equal(777L, words["word"].ParserWork);
         Assert.Equal(11, words["word"].Attempts);
     }
 
     [Fact]
-    public void AStatsCacheWithoutAWorkColumnStillReadsAndLeavesWorkStepsNull()
+    public void AStatsCacheWithoutAWorkColumnStillReadsAndLeavesParserWorkNull()
     {
         var path = Path.Combine(_root, "without-work.sqlite");
         WriteCache(path, withWork: false);
 
         var words = PanGlossBatchStatisticsReader.Read(path, ["word"]).Words;
 
-        Assert.Null(words["word"].WorkSteps);
+        Assert.Null(words["word"].ParserWork);
         Assert.Equal(11, words["word"].Attempts);
     }
 
@@ -136,7 +136,7 @@ public sealed class WorkStepsReadingTests : IDisposable
     public void AStoppedWordNamesTheLimitThatStoppedItInItsJson(string outcome, string? expected)
     {
         var row = new AssessmentWordResult(outcome, outcome, outcome is "capped" or "timed-out", "x", 5, "sig")
-            { WorkSteps = 42 };
+            { ParserWork = 42 };
 
         using var json = System.Text.Json.JsonDocument.Parse(
             System.Text.Json.JsonSerializer.Serialize(row, SIL.Motif.Contract.MotifJson.CreateOptions()));
@@ -144,7 +144,7 @@ public sealed class WorkStepsReadingTests : IDisposable
         var stoppedBy = json.RootElement.TryGetProperty("StoppedBy", out var value) && value.ValueKind != System.Text.Json.JsonValueKind.Null
             ? value.GetString() : null;
         Assert.Equal(expected, stoppedBy);
-        Assert.Equal(42L, json.RootElement.GetProperty("WorkSteps").GetInt64());
+        Assert.Equal(42L, json.RootElement.GetProperty("ParserWork").GetInt64());
     }
 
     private static void WriteCache(string path, bool withWork)
@@ -197,5 +197,5 @@ public sealed class WorkStepsReadingTests : IDisposable
     private static string NewWord() => "word-" + Guid.NewGuid().ToString("N");
 
     private sealed record BatchRow(int Index, string Word, int ElapsedMs, string Status, string Signature,
-        long? Steps = null, long? WorkSteps = null);
+        long? Steps = null, long? ParserWork = null);
 }

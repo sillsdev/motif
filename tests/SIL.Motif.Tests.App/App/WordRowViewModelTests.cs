@@ -149,42 +149,42 @@ public sealed class WordRowViewModelTests
             row.PanGlossMorphemes.Select(morph => (morph.Morph.Form, morph.IsDifferent)));
         Assert.True(row.HasPanGlossMorphemes);
         Assert.Equal("×3", row.PlacesText);
-        Assert.Equal("work steps not recorded", row.WorkStepsText);
+        Assert.Equal("parser work not recorded", row.ParserWorkText);
         Assert.False(row.HasWarningsNamed);
         Assert.Equal("alikula · Approved · PanGloss: Different · Built something else", row.Summary);
     }
 
     [Theory]
-    [InlineData(0L, "0 work steps")]
-    [InlineData(1L, "1 work step")]
-    [InlineData(1234L, "1,234 work steps")]
-    [InlineData(20_000_000_000L, "20,000,000,000 work steps")]
-    public void TheRowCountsItsWorkInWorkStepsAndNeverInMilliseconds(long steps, string expected)
+    [InlineData(0L, "0 parser work")]
+    [InlineData(1L, "1 parser work")]
+    [InlineData(1234L, "1,234 parser work")]
+    [InlineData(20_000_000_000L, "20,000,000,000 parser work")]
+    public void TheRowCountsItsWorkInParserWorkAndNeverInMilliseconds(long steps, string expected)
     {
         using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
-        var row = new WordRowViewModel(Alikula() with { WorkSteps = steps, ElapsedMs = 1234 });
+        var row = new WordRowViewModel(Alikula() with { ParserWork = steps, ElapsedMs = 1234 });
 
-        Assert.Equal(expected, row.WorkStepsText);
-        Assert.DoesNotMatch(@"\bms\b|<\s*1\b", row.WorkStepsText);
+        Assert.Equal(expected, row.ParserWorkText);
+        Assert.DoesNotMatch(@"\bms\b|<\s*1\b", row.ParserWorkText);
     }
 
     [Fact]
     public void AWordWhoseWorkCountIsMissingSaysSoInsteadOfShowingMilliseconds()
     {
         using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
-        var row = new WordRowViewModel(Alikula() with { WorkSteps = null, ElapsedMs = 1234 });
+        var row = new WordRowViewModel(Alikula() with { ParserWork = null, ElapsedMs = 1234 });
 
-        Assert.Equal("work steps not recorded", row.WorkStepsText);
-        Assert.DoesNotMatch(@"\bms\b|<\s*1\b", row.WorkStepsText);
+        Assert.Equal("parser work not recorded", row.ParserWorkText);
+        Assert.DoesNotMatch(@"\bms\b|<\s*1\b", row.ParserWorkText);
     }
 
     [Fact]
     public void ATriedWordWithNoCountSaysSoEvenWhenNoTimeWasRecorded()
     {
         using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
-        var row = new WordRowViewModel(Alikula() with { WorkSteps = null, ElapsedMs = null });
+        var row = new WordRowViewModel(Alikula() with { ParserWork = null, ElapsedMs = null });
 
-        Assert.Equal("work steps not recorded", row.WorkStepsText);
+        Assert.Equal("parser work not recorded", row.ParserWorkText);
     }
 
     [Fact]
@@ -193,20 +193,20 @@ public sealed class WordRowViewModelTests
         using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
         var row = new WordRowViewModel(Alikula() with
         {
-            Outcome = WordRowOutcome.Stopped, MeaningCode = "unknown", WorkSteps = null, ElapsedMs = null,
+            Outcome = WordRowOutcome.Stopped, MeaningCode = "unknown", ParserWork = null, ElapsedMs = null,
         });
 
-        Assert.Equal("work steps not recorded", row.WorkStepsText);
-        Assert.DoesNotMatch(@"\bms\b", row.WorkStepsText);
+        Assert.Equal("parser work not recorded", row.ParserWorkText);
+        Assert.DoesNotMatch(@"\bms\b", row.ParserWorkText);
     }
 
     [Fact]
     public void ARefusedWordShowsNoWorkTextEvenWhenItHasACount()
     {
         using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
-        var row = new WordRowViewModel(Alikula() with { MeaningCode = "refused", WorkSteps = 5, ElapsedMs = 12 });
+        var row = new WordRowViewModel(Alikula() with { MeaningCode = "refused", ParserWork = 5, ElapsedMs = 12 });
 
-        Assert.Equal(string.Empty, row.WorkStepsText);
+        Assert.Equal(string.Empty, row.ParserWorkText);
     }
 
     [Fact]
@@ -215,7 +215,7 @@ public sealed class WordRowViewModelTests
         using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
         var row = WordRowViewModel.NotParsed("kitabu");
 
-        Assert.Equal(string.Empty, row.WorkStepsText);
+        Assert.Equal(string.Empty, row.ParserWorkText);
     }
 
     [Fact]

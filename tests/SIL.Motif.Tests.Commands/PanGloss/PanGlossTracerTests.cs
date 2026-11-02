@@ -93,7 +93,7 @@ public sealed class PanGlossTracerTests
     }
 
     [Fact]
-    public async Task ATraceStoppedAtTheParsersStepCapIsIncomplete_WithItsTreeKept()
+    public async Task ATraceStoppedAtTheParsersParserWorkLimitIsIncomplete_WithItsTreeKept()
     {
         var stub = new StubInvoker { Respond = _ => new PanGlossOutcome.Completed(TraceEnvelope.Of("-", GoldenTree, capped: true), string.Empty, TimeSpan.Zero) };
         var tracer = new PanGlossTracer(stub);

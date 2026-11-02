@@ -89,7 +89,7 @@ public sealed class AssessProgressIntegrationTests(PristineProjectFixture pristi
         var run = Task.Run(() => AssessCommand.Assess(
             new AssessRequest(project.FwDataPath,
                 new SelectionRequest(false, [], ["a-fast", "b-capped", "c-timed-out", "d-held"], false, null),
-                PerWordLimitMs: 700, PerWordStepLimit: new SIL.Motif.Contract.Assess.StepCap(123)),
+                PerWordLimitMs: 700, PerWordParserWorkLimit: new SIL.Motif.Contract.Assess.ParserWorkLimit(123)),
             project.ManagedRoot, parser, progress =>
             {
                 if (progress is { Stage: AssessmentStage.Parsing, Completed: 0, CurrentWord: "a-fast" })

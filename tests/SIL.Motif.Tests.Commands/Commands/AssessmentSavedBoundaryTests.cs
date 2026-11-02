@@ -81,7 +81,7 @@ public sealed class AssessmentSavedBoundaryTests(PristineProjectFixture pristine
             return Task.FromResult<IReadOnlyList<ProducedAssessment>>([
                 new(AssessmentKind.ParseTime, evidence.SourceBytesSha256, null, null, null, null, null,
                     new AssessmentRaw.Batch(new BatchAnalysis(words, 1000, projectPath, [])
-                    { PerWordStepLimit = wordsScope.PerWordStepLimit })) { Invocation = evidence, ArtifactLease = lease },
+                    { PerWordParserWorkLimit = wordsScope.PerWordParserWorkLimit })) { Invocation = evidence, ArtifactLease = lease },
                 new(AssessmentKind.ObjectTiming, evidence.SourceBytesSha256, null, null, null, null, null,
                     new AssessmentRaw.FileCache(statistics, BatchInvocationEvidence.DigestFile(statistics)))
                     { Invocation = evidence, ArtifactLease = lease }

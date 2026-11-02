@@ -33,18 +33,18 @@ internal static class SampleEvidence
     private static AssessmentObjectTiming Timer(string kind, string key, string name, string word, double ms, int calls) =>
         new(kind, key, Guid.TryParse(key, out _) ? "authored" : "structural", "synthesis", name, word,
             calls, null, (long)(ms * 1_000_000))
-        { Scope = Guid.TryParse(key, out _) ? null : "sample-grammar", WorkSteps = calls * 2L + 1 };
+        { Scope = Guid.TryParse(key, out _) ? null : "sample-grammar", ParserWork = calls * 2L + 1 };
 
     private static IReadOnlyList<AssessedWord> Measured(AssessCommandResponse assessment) =>
         assessment.Words.Select(word => new AssessedWord(word.Word, word.Outcome, [], word.ElapsedMs)
         {
             Morphology = word.Morphology, IsIncomplete = word.IsIncomplete, ProjectStanding = word.ProjectStanding,
             ReadingGrades = word.ReadingGrades,
-            WorkSteps = WorkStepsOf(word.Word),
+            ParserWork = ParserWorkOf(word.Word),
         }).ToArray();
 
     // The word's object work plus a fixed unattributed remainder, so objects and remainder add up to the total.
-    private static long WorkStepsOf(string word) => ObjectTimings.Where(row => row.Word == word).Sum(row => row.WorkSteps!.Value) + 5;
+    private static long ParserWorkOf(string word) => ObjectTimings.Where(row => row.Word == word).Sum(row => row.ParserWork!.Value) + 5;
 
     public static TimingResponse Timing(AssessCommandResponse assessment, string by, TraceTimingKey? rule = null,
         IReadOnlyList<string>? selected = null)
@@ -56,7 +56,7 @@ internal static class SampleEvidence
         var work = ObjectTimings.Where(row => selectedNames.Contains(row.Word)).ToArray();
         var workByObject = work.GroupBy(row => (row.Kind, row.Key, row.Object))
             .Select(group => new TimingWorkAggregate(group.Key.Key, group.Key.Object, group.Key.Kind,
-                group.Sum(row => row.WorkSteps!.Value), false)
+                group.Sum(row => row.ParserWork!.Value), false)
                 { IdentityQuality = group.First().IdentityQuality, Scope = group.First().Scope }).ToList();
         if (words.Length > 0) workByObject.Add(new("unattributed", "Unattributed", "unattributed", 5L * words.Length, true));
         return new TimingResponse("assessment/one", "all", by, words.Length, summary.MedianMs, summary.Percentile95Ms,
@@ -66,13 +66,13 @@ internal static class SampleEvidence
                 word.IsIncomplete ? TimingCompletion.WorkLimit : TimingCompletion.Finished)
             {
                 ElapsedNs = word.ElapsedMs * 1_000_000L,
-                WorkSteps = WorkStepsOf(word.Word),
+                ParserWork = ParserWorkOf(word.Word),
                 Origin = new WordMeasurementOrigin("assessment/one", "invocation/one",
                     DateTimeOffset.Parse("2026-09-22T10:18:00Z")),
             }).ToArray(),
             Attribution = aggregation.Attribution,
-            WorkStepAggregates = workByObject,
-            Work = TimingAggregation.SummarizeWork(words.Select(word => (long?)word.WorkSteps)),
+            ParserWorkAggregates = workByObject,
+            Work = TimingAggregation.SummarizeWork(words.Select(word => (long?)word.ParserWork)),
         };
     }
 
@@ -85,7 +85,7 @@ internal static class SampleEvidence
         int Standing(string standing) => comparisons.Count(row => row.Standing == standing);
         var timing = TimingAggregation.SummarizeWords(Measured(assessment), ObjectTimings) with
         {
-            WorkStepAggregates = Timing(assessment, "rule").WorkStepAggregates,
+            ParserWorkAggregates = Timing(assessment, "rule").ParserWorkAggregates,
         };
         var warnings = SeededGrammarFindings.All();
         var saved = DateTimeOffset.Parse("2026-09-22T09:18:00Z");
@@ -124,7 +124,7 @@ internal static class SampleEvidence
                 Cell(ProjectStanding.Candidate, WordRowOutcome.Different))
             {
                 SharedLostMorphemesAvailable = true,
-                StepLimitedWordWorkSteps = words.Where(word => word.IsIncomplete).Sum(word => WorkStepsOf(word.Word)),
+                ParserWorkLimitedWordParserWork = words.Where(word => word.IsIncomplete).Sum(word => ParserWorkOf(word.Word)),
             },
         };
     }

@@ -49,7 +49,7 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                         fake = client;
                         client.DefaultSelectionIs(new NamedSelectionProjection("Default", [SampleTextId], [],
                             string.Empty, string.Empty,
-                            new SelectionParsingLimits(StepCap.Default, SelectionTimeLimitMode.Estimated, null), "1"));
+                            new SelectionParsingLimits(ParserWorkLimit.Default, SelectionTimeLimitMode.Estimated, null), "1"));
                     }, settingsFilePath: settingsPath);
                 try
                 {
@@ -120,7 +120,7 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                             [new TextChoiceSummary(SampleTextId, "One story")], HasBaseline: true));
                         client.DefaultSelectionIs(new NamedSelectionProjection("Default", [SampleTextId], [],
                             string.Empty, string.Empty,
-                            new SelectionParsingLimits(StepCap.Default, SelectionTimeLimitMode.Estimated, null), "1"));
+                            new SelectionParsingLimits(ParserWorkLimit.Default, SelectionTimeLimitMode.Estimated, null), "1"));
                     },
                     settingsFilePath: settingsPath);
                 try
@@ -648,7 +648,7 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                         fake = client;
                         client.DefaultSelectionIs(new NamedSelectionProjection("Default", [SampleTextId], [],
                             string.Empty, string.Empty,
-                            new SelectionParsingLimits(StepCap.Default, SelectionTimeLimitMode.Estimated, null), "1"));
+                            new SelectionParsingLimits(ParserWorkLimit.Default, SelectionTimeLimitMode.Estimated, null), "1"));
                     }, settingsFilePath: settingsPath);
                 try
                 {
@@ -658,14 +658,14 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                     SettingsTestAccess.Select(page, SettingsGroup.Parsing);
                     PageScreenshots.Settle(window);
 
-                    var stepLimit = page.GetVisualDescendants().OfType<NumericUpDown>()
-                        .Single(control => AutomationProperties.GetName(control) == "Step limit per word");
+                    var parserWorkLimit = page.GetVisualDescendants().OfType<NumericUpDown>()
+                        .Single(control => AutomationProperties.GetName(control) == "Parser work limit per word");
                     var timeLimit = page.GetVisualDescendants().OfType<NumericUpDown>()
                         .Single(control => AutomationProperties.GetName(control) == "Time limit per word in seconds");
                     var useEstimate = Button(page, "Use Motif's estimate");
-                    var noStepLimit = Assert.Single(page.GetVisualDescendants().OfType<CheckBox>());
-                    Assert.Equal(workspace.Selection.PerWordStepLimit, stepLimit.Value);
-                    Assert.Equal(workspace.Selection.PerWordStepLimitUnbounded, noStepLimit.IsChecked);
+                    var noParserWorkLimit = Assert.Single(page.GetVisualDescendants().OfType<CheckBox>());
+                    Assert.Equal(workspace.Selection.PerWordParserWorkLimit, parserWorkLimit.Value);
+                    Assert.Equal(workspace.Selection.PerWordParserWorkLimitUnbounded, noParserWorkLimit.IsChecked);
 
                     Assert.False(useEstimate.IsEffectivelyVisible);
                     timeLimit.Value = 10m;
@@ -692,23 +692,23 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                     Assert.True(useEstimate.IsEffectivelyVisible);
 
                     var settings = Assert.IsType<SettingsViewModel>(page.DataContext);
-                    settings.StepLimit = 300000m;
+                    settings.ParserWorkLimitValue = 30_000_000m;
                     Assert.False(settings.IsUsingMotifEstimate);
                     Assert.Equal(1m, settings.TimeLimitSeconds);
                     Assert.Null(await settings.CommitParsingLimitsAsync());
                     Assert.Equal(SelectionTimeLimitMode.Explicit,
                         fake!.SetSelectionLimitsRequests.Last().Limits.TimeMode);
-                    settings.StepLimit = 200000m;
+                    settings.ParserWorkLimitValue = 20_000_000m;
                     Assert.Null(await settings.CommitParsingLimitsAsync());
 
-                    ClickControl(window, noStepLimit, "No step limit");
+                    ClickControl(window, noParserWorkLimit, "No parser work limit");
                     for (var pass = 0; pass < 4; pass++)
                     {
                         await Task.Yield();
                         PageScreenshots.Settle(window);
                     }
-                    Assert.True(noStepLimit.IsChecked);
-                    Assert.True(workspace.Selection.PerWordStepLimitUnbounded);
+                    Assert.True(noParserWorkLimit.IsChecked);
+                    Assert.True(workspace.Selection.PerWordParserWorkLimitUnbounded);
                     Assert.Null(workspace.Selection.PerWordTimeLimitSeconds);
                     Assert.False(timeLimit.IsEnabled);
                     Assert.False(useEstimate.IsEffectivelyVisible);
@@ -717,7 +717,7 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                     SettingsTestAccess.Select(page, SettingsGroup.Display);
                     SettingsTestAccess.Select(page, SettingsGroup.Parsing);
                     PageScreenshots.Settle(window);
-                    ClickControl(window, noStepLimit, "No step limit");
+                    ClickControl(window, noParserWorkLimit, "No parser work limit");
                     for (var pass = 0; pass < 4; pass++)
                     {
                         await Task.Yield();
@@ -727,13 +727,13 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                     var visibleRefusals = string.Join(" | ", page.GetVisualDescendants().OfType<TextBlock>()
                         .Where(text => text.IsEffectivelyVisible && text.Classes.Contains("settingsRefusal"))
                         .Select(text => text.Text));
-                    Assert.False(noStepLimit.IsChecked,
-                        $"The checkbox was restored after its save. Selection={workspace.Selection.PerWordStepLimitUnbounded}; " +
+                    Assert.False(noParserWorkLimit.IsChecked,
+                        $"The checkbox was restored after its save. Selection={workspace.Selection.PerWordParserWorkLimitUnbounded}; " +
                         $"time={workspace.Selection.PerWordTimeLimitSeconds}; saves={fake.SetSelectionLimitsRequests.Count}; " +
-                        $"last={lastLimitSave?.Limits.PerWordStepLimit}/{lastLimitSave?.Limits.ExplicitPerWordLimitMs}; " +
+                        $"last={lastLimitSave?.Limits.PerWordParserWorkLimit}/{lastLimitSave?.Limits.ExplicitPerWordLimitMs}; " +
                         $"refusals={visibleRefusals}");
-                    Assert.False(workspace.Selection.PerWordStepLimitUnbounded);
-                    Assert.Equal(200000m, workspace.Selection.PerWordStepLimit);
+                    Assert.False(workspace.Selection.PerWordParserWorkLimitUnbounded);
+                    Assert.Equal(20_000_000m, workspace.Selection.PerWordParserWorkLimit);
                     Assert.True(timeLimit.IsEnabled);
                     Assert.Equal(1m, workspace.Selection.PerWordTimeLimitSeconds);
                     timeLimit.Value = null;
@@ -748,9 +748,9 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                         text.IsEffectivelyVisible && text.Text == "Enter a per-word time limit greater than zero.");
                     Assert.Equal(1m, workspace.Selection.PerWordTimeLimitSeconds);
 
-                    ClickControl(window, stepLimit, "Step limit per word");
-                    stepLimit.Value = 100000.5m;
-                    PressEnter(window, stepLimit);
+                    ClickControl(window, parserWorkLimit, "Parser work limit per word");
+                    parserWorkLimit.Value = 100000.5m;
+                    PressEnter(window, parserWorkLimit);
                     for (var pass = 0; pass < 4; pass++)
                     {
                         await Task.Yield();
@@ -759,18 +759,18 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
 
                     var refusal = page.GetVisualDescendants().OfType<TextBlock>().SingleOrDefault(text =>
                         text.IsEffectivelyVisible && text.Text ==
-                        "The per-word step limit must be a positive whole number.");
+                        "The per-word parser work limit must be a positive whole number.");
                     Assert.True(refusal?.IsEffectivelyVisible == true,
-                        $"The fractional step limit should be refused. Input={stepLimit.Value}; " +
-                        $"selection={workspace.Selection.PerWordStepLimit}; " +
-                        $"selection refusal={workspace.Selection.StepLimitValidationMessage}; " +
+                        $"The fractional parser work limit should be refused. Input={parserWorkLimit.Value}; " +
+                        $"selection={workspace.Selection.PerWordParserWorkLimit}; " +
+                        $"selection refusal={workspace.Selection.ParserWorkLimitValidationMessage}; " +
                         $"save count={fake.SetSelectionLimitsRequests.Count}; " +
-                        $"last={fake.SetSelectionLimitsRequests.LastOrDefault()?.Limits.PerWordStepLimit}/" +
+                        $"last={fake.SetSelectionLimitsRequests.LastOrDefault()?.Limits.PerWordParserWorkLimit}/" +
                         $"{fake.SetSelectionLimitsRequests.LastOrDefault()?.Limits.ExplicitPerWordLimitMs}; " +
                         $"visible refusals={string.Join(" | ", page.GetVisualDescendants().OfType<TextBlock>()
                             .Where(text => text.IsEffectivelyVisible && text.Classes.Contains("settingsRefusal"))
                             .Select(text => text.Text))}");
-                    Assert.Equal(200000m, workspace.Selection.PerWordStepLimit);
+                    Assert.Equal(20_000_000m, workspace.Selection.PerWordParserWorkLimit);
                     LayoutAssertions.AssertCurrent(window);
                 }
                 finally
@@ -802,7 +802,7 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                         fake = client;
                         client.DefaultSelectionIs(new NamedSelectionProjection("Default", [SampleTextId], [],
                             string.Empty, string.Empty,
-                            new SelectionParsingLimits(StepCap.Default, SelectionTimeLimitMode.Estimated, null), "1"));
+                            new SelectionParsingLimits(ParserWorkLimit.Default, SelectionTimeLimitMode.Estimated, null), "1"));
                     }, settingsFilePath: settingsPath);
                 try
                 {
@@ -819,18 +819,18 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                     options.IsExpanded = true;
                     PageScreenshots.Settle(window);
 
-                    var stepLimit = panel.GetVisualDescendants().OfType<NumericUpDown>()
-                        .Single(control => AutomationProperties.GetName(control) == "Selection step limit per word");
-                    stepLimit.Value = 300000m;
-                    ClickControl(window, stepLimit, "Selection step limit per word");
-                    PressEnter(window, stepLimit);
+                    var parserWorkLimit = panel.GetVisualDescendants().OfType<NumericUpDown>()
+                        .Single(control => AutomationProperties.GetName(control) == "Selection parser work limit per word");
+                    parserWorkLimit.Value = 30_000_000m;
+                    ClickControl(window, parserWorkLimit, "Selection parser work limit per word");
+                    PressEnter(window, parserWorkLimit);
                     for (var pass = 0; pass < 4; pass++)
                     {
                         await Task.Yield();
                         PageScreenshots.Settle(window);
                     }
 
-                    Assert.Equal(300000L, Assert.Single(fake!.SetSelectionLimitsRequests).Limits.PerWordStepLimit.Steps);
+                    Assert.Equal(30_000_000L, Assert.Single(fake!.SetSelectionLimitsRequests).Limits.PerWordParserWorkLimit.Work);
                     var useEstimate = Button(panel, "Use Motif's estimated time limit");
                     Assert.False(useEstimate.IsEffectivelyVisible);
                     var timeLimit = panel.GetVisualDescendants().OfType<NumericUpDown>()
@@ -852,22 +852,22 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                     }
                     Assert.Equal(SelectionTimeLimitMode.Estimated,
                         fake.SetSelectionLimitsRequests.Last().Limits.TimeMode);
-                    var noStepLimit = panel.GetVisualDescendants().OfType<CheckBox>()
-                        .Single(control => AutomationProperties.GetName(control) == "Selection has no step limit");
-                    ClickControl(window, noStepLimit, "Selection has no step limit");
+                    var noParserWorkLimit = panel.GetVisualDescendants().OfType<CheckBox>()
+                        .Single(control => AutomationProperties.GetName(control) == "Selection has no parser work limit");
+                    ClickControl(window, noParserWorkLimit, "Selection has no parser work limit");
                     for (var pass = 0; pass < 4; pass++)
                     {
                         await Task.Yield();
                         PageScreenshots.Settle(window);
                     }
-                    Assert.True(fake.SetSelectionLimitsRequests.Last().Limits.PerWordStepLimit.IsUnbounded);
+                    Assert.True(fake.SetSelectionLimitsRequests.Last().Limits.PerWordParserWorkLimit.IsUnbounded);
 
                     var page = OpenSettings(window);
                     SettingsTestAccess.Select(page, SettingsGroup.Parsing);
                     PageScreenshots.Settle(window);
                     var settingsStep = page.GetVisualDescendants().OfType<NumericUpDown>()
-                        .Single(control => AutomationProperties.GetName(control) == "Step limit per word");
-                    Assert.Equal(300000m, settingsStep.Value);
+                        .Single(control => AutomationProperties.GetName(control) == "Parser work limit per word");
+                    Assert.Equal(30_000_000m, settingsStep.Value);
                 }
                 finally
                 {
@@ -1265,7 +1265,7 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
             {
                 var (workspace, window) = await PageScreenshots.OpenOverSampleData(parse: false,
                     configure: (fake, _) => fake.DefaultSelectionIs(new NamedSelectionProjection("Default",
-                        [SampleTextId], [], string.Empty, string.Empty, 1000, StepCap.Default)),
+                        [SampleTextId], [], string.Empty, string.Empty, 1000, ParserWorkLimit.Default)),
                     settingsFilePath: settingsPath);
                 try
                 {
@@ -1324,7 +1324,7 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
 
                             SettingsTestAccess.Select(page, SettingsGroup.Parsing);
                             PageScreenshots.Settle(window);
-                            settings.StepLimit = 100000.5m;
+                            settings.ParserWorkLimitValue = 100000.5m;
                             await settings.CommitParsingLimitsAsync();
                             for (var pass = 0; pass < 4; pass++)
                             {
@@ -1333,7 +1333,7 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                             }
                             Assert.Contains(page.GetVisualDescendants().OfType<TextBlock>(), text =>
                                 text.IsEffectivelyVisible && text.Text ==
-                                "The per-word step limit must be a positive whole number.");
+                                "The per-word parser work limit must be a positive whole number.");
                             SavePageState(window, page, folder,
                                 $"settings-parsing-refused-{width}-{themeName}.png");
                             settings.CancelParsingLimitEdit();
@@ -1355,11 +1355,11 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                             PageScreenshots.Settle(window);
                             SavePageState(window, page, folder, "settings-time-estimate-reset.png");
 
-                            settings.IsNoStepLimit = true;
+                            settings.IsNoParserWorkLimit = true;
                             await settings.CommitParsingLimitsAsync();
                             PageScreenshots.Settle(window);
                             SavePageState(window, page, folder, "settings-unbounded-limits.png");
-                            settings.IsNoStepLimit = false;
+                            settings.IsNoParserWorkLimit = false;
                             await settings.CommitParsingLimitsAsync();
 
                             SettingsTestAccess.Select(page, SettingsGroup.About);

@@ -43,15 +43,15 @@ public sealed class TimingHeadlineTests
         context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.Now, WasRerun: false));
 
         Assert.True(timing.HasHeadline);
-        Assert.Equal("8,000 work steps", timing.HeadlineTotal);
+        Assert.Equal("8,000 parser work", timing.HeadlineTotal);
         Assert.Equal("for all 9 words", timing.HeadlineTotalCaption);
-        Assert.Equal("90 work steps", timing.HeadlineMedian);
+        Assert.Equal("90 parser work", timing.HeadlineMedian);
         Assert.Equal("1", timing.HeadlineStopped);
         Assert.Equal("stopped at the work limit", timing.HeadlineStoppedCaption);
         Assert.True(timing.IsAllSelected);
-        Assert.Equal((decimal)StepCap.DefaultSteps, timing.RerunSteps);
+        Assert.Equal((decimal)ParserWorkLimit.DefaultWork, timing.RerunSteps);
         Assert.True(timing.HasStoppedWords);
-        Assert.Equal("Stopped at the work limit · Raise the analysis attempt limit under More.",
+        Assert.Equal("Stopped at the work limit · Raise the parser work limit under More.",
             timing.StoppedWordsAdviceText);
     }
 
@@ -64,7 +64,7 @@ public sealed class TimingHeadlineTests
             Response(request) with
             {
                 Words = NineWords.Select(word => new TimingWordRow(word.Word, word.Ms,
-                    word.Word == "mwalimu" ? TimingCompletion.TimeSafetyNet : word.Completion) { WorkSteps = word.Ms * 10L }).ToArray(),
+                    word.Word == "mwalimu" ? TimingCompletion.TimeSafetyNet : word.Completion) { ParserWork = word.Ms * 10L }).ToArray(),
             })));
         await context.OpenProjectAsync(ProjectPath);
 
@@ -90,7 +90,7 @@ public sealed class TimingHeadlineTests
     }
 
     [Fact]
-    public async Task WordsWithWorkStepsButNoMillisecondsCountAsMeasuredForTheHeadline()
+    public async Task WordsWithParserWorkButNoMillisecondsCountAsMeasuredForTheHeadline()
     {
         var (fake, context) = NewContext();
         var timing = new TimingPageModel(context);
@@ -99,8 +99,8 @@ public sealed class TimingHeadlineTests
             {
                 Words =
                 [
-                    new TimingWordRow("quick", null, TimingCompletion.Finished) { ElapsedNs = 800_000, WorkSteps = 80 },
-                    new TimingWordRow("quicker", null, TimingCompletion.Finished) { ElapsedNs = 200_000, WorkSteps = 20 },
+                    new TimingWordRow("quick", null, TimingCompletion.Finished) { ElapsedNs = 800_000, ParserWork = 80 },
+                    new TimingWordRow("quicker", null, TimingCompletion.Finished) { ElapsedNs = 200_000, ParserWork = 20 },
                     new TimingWordRow("missing", null, TimingCompletion.Finished),
                 ],
                 Work = new WordWorkSummary(2, 100, 50, 80),
@@ -111,7 +111,7 @@ public sealed class TimingHeadlineTests
         context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.Now, WasRerun: false));
 
         Assert.True(timing.HasHeadline);
-        Assert.Equal("100 work steps", timing.HeadlineTotal);
+        Assert.Equal("100 parser work", timing.HeadlineTotal);
         Assert.Equal("for 2 of the 3 words", timing.HeadlineTotalCaption);
     }
 
@@ -141,7 +141,7 @@ public sealed class TimingHeadlineTests
 
         Assert.False(timing.HasHeadline);
         Assert.True(timing.ShowNoTimingRecorded);
-        Assert.Equal("No work steps were recorded for these words.", TimingPageModel.NoTimingRecordedText);
+        Assert.Equal("No parser work was recorded for these words.", TimingPageModel.NoTimingRecordedText);
         Assert.Empty(fake.TimingRequests);
     }
 
@@ -218,20 +218,20 @@ public sealed class TimingHeadlineTests
     }
 
     [Fact]
-    public void EmptyStepLimitFilterNamesTheFilterAndOffersAllWords()
+    public void EmptyParserWorkLimitFilterNamesTheFilterAndOffersAllWords()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             var (fake, context) = NewContext();
             var timing = new TimingPageModel(context);
             fake.OnTiming((request, _) => Task.FromResult(CommandOutcome<TimingResponse>.Success(
-                request.WordSet == "step-limit"
+                request.WordSet == "parser-work-limit"
                     ? Response(request) with { WordCount = 0, Words = [], SlowestWords = [] }
                     : Response(request))));
             await context.OpenProjectAsync(ProjectPath);
             context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.Now, WasRerun: false));
             await context.EvidencePublication;
-            await timing.SelectWordSetCommand.ExecuteAsync("step-limit");
+            await timing.SelectWordSetCommand.ExecuteAsync("parser-work-limit");
 
             var window = new MotifTestWindow { Width = 900, Height = 700, Content = new TimingPage(timing) };
             try
@@ -277,7 +277,7 @@ public sealed class TimingHeadlineTests
                 Dispatcher.UIThread.RunJobs();
                 var texts = window.GetLogicalDescendants().OfType<TextBlock>()
                     .Where(text => text.IsEffectivelyVisible).ToArray();
-                var headline = texts.First(text => text.Text == "8,000 work steps");
+                var headline = texts.First(text => text.Text == "8,000 parser work");
                 var lookAt = texts.First(text => text.Text == "Words");
                 Assert.True(headline.TranslatePoint(default, window)!.Value.Y <
                     lookAt.TranslatePoint(default, window)!.Value.Y);
@@ -335,10 +335,10 @@ public sealed class TimingHeadlineTests
             [new SlowWordTiming("mwalimu", 700), new SlowWordTiming("hawajafika", 48)],
             request.By == "kind" ? [new TimingAggregateRow("Morphological rules", "Morphological rules", 800, 1, 9)] : [], [])
         {
-            Words = NineWords.Select(word => new TimingWordRow(word.Word, word.Ms, word.Completion) { WorkSteps = word.Ms * 10L }).ToArray(),
+            Words = NineWords.Select(word => new TimingWordRow(word.Word, word.Ms, word.Completion) { ParserWork = word.Ms * 10L }).ToArray(),
             Attribution = new WordTimeAttribution(9, 800, 800, 0, 0, 0, false),
             Work = new WordWorkSummary(9, 8_000, 90, 7_000),
-            WorkStepAggregates = request.By == "kind" ? [new TimingWorkAggregate("morph_rule", "morph_rule", "morph_rule", 8_000, false)] : [],
+            ParserWorkAggregates = request.By == "kind" ? [new TimingWorkAggregate("morph_rule", "morph_rule", "morph_rule", 8_000, false)] : [],
         };
 
     private static AssessCommandResponse Assessment() => new(

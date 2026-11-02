@@ -99,17 +99,17 @@ public sealed class AssessViewModelTests
     }
 
     [Fact]
-    public async Task RerunningPreservesTheSelectionStepCap()
+    public async Task RerunningPreservesTheSelectionParserWorkLimit()
     {
         var (fake, selection, assess) = NewViewModel();
-        selection.PerWordStepLimit = 250000;
+        selection.PerWordParserWorkLimit = 250000;
         fake.AssessCompletesWith(NewResponse() with
         { Measurements = [new ProducedAssessmentReference("assessment/one", AssessmentKinds.ParseTime, "invocation/one")] });
 
         await assess.RunCommand.ExecuteAsync(null);
         await assess.RerunAsync(["kitabu"], 45000);
 
-        Assert.Equal(new StepCap(250000), fake.AssessRequests[1].Selection!.PerWordStepLimit);
+        Assert.Equal(new ParserWorkLimit(250000), fake.AssessRequests[1].Selection!.PerWordParserWorkLimit);
         Assert.Equal("assessment/one", fake.AssessRequests[1].ReplaceAssessmentId);
     }
 
@@ -128,16 +128,16 @@ public sealed class AssessViewModelTests
     }
 
     [Fact]
-    public async Task RerunningCanUseALargerStepCapForTheChosenWords()
+    public async Task RerunningCanUseALargerParserWorkLimitForTheChosenWords()
     {
         var (fake, _, assess) = NewViewModel();
         fake.AssessCompletesWith(NewResponse());
 
-        await assess.RerunAsync(["kitabu"], 45000, new StepCap(1000000));
+        await assess.RerunAsync(["kitabu"], 45000, new ParserWorkLimit(1000000));
 
         var request = Assert.Single(fake.AssessRequests);
         Assert.Equal(["kitabu"], request.Selection!.Words);
-        Assert.Equal(new StepCap(1000000), request.Selection.PerWordStepLimit);
+        Assert.Equal(new ParserWorkLimit(1000000), request.Selection.PerWordParserWorkLimit);
         Assert.Equal(45000, request.PerWordLimitMs);
     }
 

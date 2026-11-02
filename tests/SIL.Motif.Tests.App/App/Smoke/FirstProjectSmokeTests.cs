@@ -357,7 +357,7 @@ public sealed class FirstProjectSmokeTests(PristineProjectFixture pristine)
     private static TimeSpan StepTimeout(long deadline)
     {
         var remaining = WalkthroughSteps.Remaining(deadline);
-        var stepLimit = TimeSpan.FromSeconds(30);
-        return remaining < stepLimit ? remaining : stepLimit;
+        var parserWorkLimit = TimeSpan.FromSeconds(30);
+        return remaining < parserWorkLimit ? remaining : parserWorkLimit;
     }
 }

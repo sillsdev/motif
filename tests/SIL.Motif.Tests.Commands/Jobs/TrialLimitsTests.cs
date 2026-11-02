@@ -27,7 +27,7 @@ public sealed class TrialLimitsTests
     [Fact]
     public void WholeRunBudgetIsValidatedAndPersistsWithSelectionLimits()
     {
-        var limits = new SelectionParsingLimits(StepCap.Default, SelectionTimeLimitMode.Estimated, null, 90);
+        var limits = new SelectionParsingLimits(ParserWorkLimit.Default, SelectionTimeLimitMode.Estimated, null, 90);
         SaveDefault(limits);
         using var database = ProjectMotifDatabase.Open(_fwDataPath);
         var repository = new NamedSelectionRepository(database);
@@ -43,9 +43,9 @@ public sealed class TrialLimitsTests
     [Fact]
     public void OmittedBudgetKeepsSavedValueThroughBothSelectionCommands()
     {
-        SaveDefault(new SelectionParsingLimits(StepCap.Default, SelectionTimeLimitMode.Estimated, null, 120));
+        SaveDefault(new SelectionParsingLimits(ParserWorkLimit.Default, SelectionTimeLimitMode.Estimated, null, 120));
         var current = SelectionCommands.ReadDefault(new ReadDefaultSelectionRequest(_fwDataPath)).Value!.Selection!;
-        var omitted = new SelectionParsingLimits(StepCap.Default, SelectionTimeLimitMode.Estimated, null);
+        var omitted = new SelectionParsingLimits(ParserWorkLimit.Default, SelectionTimeLimitMode.Estimated, null);
         var changed = SelectionCommands.SetLimits(new SetSelectionLimitsRequest(_fwDataPath,
             current.Name, current.Revision, omitted));
         Assert.True(changed.Succeeded, changed.Refusal?.Message);
@@ -57,13 +57,13 @@ public sealed class TrialLimitsTests
     }
 
     [Fact]
-    public void ATrialHonoursTheDefaultSelectionsStepCapAndSizesTheTimeLimitAsASafetyNet()
+    public void ATrialHonoursTheDefaultSelectionsParserWorkLimitAndSizesTheTimeLimitAsASafetyNet()
     {
-        SaveDefault(new SelectionParsingLimits(new StepCap(5000), SelectionTimeLimitMode.Estimated, null));
+        SaveDefault(new SelectionParsingLimits(new ParserWorkLimit(5000), SelectionTimeLimitMode.Estimated, null));
 
         var limits = QueuedLimits("selection-cap");
 
-        Assert.Equal(5000, limits.PerWordStepLimit.Steps);
+        Assert.Equal(5000, limits.PerWordParserWorkLimit.Work);
         // 20 ms estimated, a 1 s allowance, a 10 s safety net: never the fixed second a Trial once carried.
         Assert.Equal(TimeSpan.FromSeconds(10), limits.PerWordLimit);
         Assert.NotEqual(TimeSpan.FromSeconds(1), limits.PerWordLimit);
@@ -72,22 +72,22 @@ public sealed class TrialLimitsTests
     [Fact]
     public void AnExplicitSelectionTimeIsKeptAsTheUserChoseIt()
     {
-        SaveDefault(new SelectionParsingLimits(new StepCap(5000), SelectionTimeLimitMode.Explicit, 2500));
+        SaveDefault(new SelectionParsingLimits(new ParserWorkLimit(5000), SelectionTimeLimitMode.Explicit, 2500));
 
         var limits = QueuedLimits("selection-explicit");
 
-        Assert.Equal(5000, limits.PerWordStepLimit.Steps);
+        Assert.Equal(5000, limits.PerWordParserWorkLimit.Work);
         Assert.Equal(TimeSpan.FromMilliseconds(2500), limits.PerWordLimit);
     }
 
     [Fact]
     public void AnUnboundedSelectionGivesATrialNoTimeLimitEither()
     {
-        SaveDefault(new SelectionParsingLimits(StepCap.Unbounded, SelectionTimeLimitMode.Estimated, null));
+        SaveDefault(new SelectionParsingLimits(ParserWorkLimit.Unbounded, SelectionTimeLimitMode.Estimated, null));
 
         var limits = QueuedLimits("selection-unbounded");
 
-        Assert.True(limits.PerWordStepLimit.IsUnbounded);
+        Assert.True(limits.PerWordParserWorkLimit.IsUnbounded);
         Assert.Null(limits.PerWordLimit);
     }
 
@@ -96,15 +96,15 @@ public sealed class TrialLimitsTests
     {
         var limits = QueuedLimits("no-selection");
 
-        Assert.Equal(StepCap.DefaultSteps, limits.PerWordStepLimit.Steps);
+        Assert.Equal(ParserWorkLimit.DefaultWork, limits.PerWordParserWorkLimit.Work);
         Assert.Equal(TimeSpan.FromSeconds(80), limits.PerWordLimit);
     }
 
     [Fact]
     public void LimitsCopiedFromAnEarlierAssessmentAreNotReplaced()
     {
-        SaveDefault(new SelectionParsingLimits(new StepCap(5000), SelectionTimeLimitMode.Estimated, null));
-        var earlier = new TrialLimits(TimeSpan.FromMilliseconds(700), new StepCap(123));
+        SaveDefault(new SelectionParsingLimits(new ParserWorkLimit(5000), SelectionTimeLimitMode.Estimated, null));
+        var earlier = new TrialLimits(TimeSpan.FromMilliseconds(700), new ParserWorkLimit(123));
 
         var limits = QueuedLimits("copied", earlier);
 
@@ -132,50 +132,58 @@ public sealed class TrialLimitsTests
     }
 }
 
-/// <summary>The one rule that turns a Selection's limits into a run's step cap and time safety net.</summary>
+/// <summary>The one rule that turns a Selection's limits into a run's parser work limit and time safety net.</summary>
 public sealed class ParseRunLimitsTests
 {
-    private static readonly ParserStepRate Typical = StepLimitEstimator.TypicalMachineRate;
+    private static readonly ParserAttemptRate Typical = ParserWorkLimitEstimator.TypicalMachineRate;
 
     [Fact]
-    public void TheSafetyNetIsTenTimesTheEstimatedAllowanceAndTheStepCapStaysPrimary()
+    public void TheSafetyNetIsTenTimesTheEstimatedAllowanceAndTheParserWorkLimitStaysPrimary()
     {
         var limits = ParseRunLimits.Resolve(
-            new SelectionParsingLimits(StepCap.Default, SelectionTimeLimitMode.Estimated, null), Typical);
+            new SelectionParsingLimits(ParserWorkLimit.Default, SelectionTimeLimitMode.Estimated, null), Typical);
 
-        Assert.Equal(StepCap.DefaultSteps, limits.PerWordStepLimit.Steps);
+        Assert.Equal(ParserWorkLimit.DefaultWork, limits.PerWordParserWorkLimit.Work);
         // 200,000 steps estimate 800 ms, the allowance is 8 s, and the safety net is ten times that.
         Assert.Equal(TimeSpan.FromSeconds(80), limits.PerWordLimit);
     }
 
     [Fact]
-    public void ASlowerComputerLengthensTheSafetyNetButNeverTheStepCap()
+    public void ASlowerComputerLengthensTheSafetyNetButNeverTheParserWorkLimit()
     {
-        var slow = new ParserStepRate(Typical.MillisecondsPerStep * 4, IsTypicalMachine: false);
+        var slow = new ParserAttemptRate(Typical.MillisecondsPerAttempt * 4, IsTypicalMachine: false);
 
         var limits = ParseRunLimits.Resolve(
-            new SelectionParsingLimits(StepCap.Default, SelectionTimeLimitMode.Estimated, null), slow);
+            new SelectionParsingLimits(ParserWorkLimit.Default, SelectionTimeLimitMode.Estimated, null), slow);
 
-        Assert.Equal(StepCap.DefaultSteps, limits.PerWordStepLimit.Steps);
+        Assert.Equal(ParserWorkLimit.DefaultWork, limits.PerWordParserWorkLimit.Work);
         Assert.Equal(TimeSpan.FromSeconds(320), limits.PerWordLimit);
     }
 
     [Fact]
-    public void AnUnboundedStepCapHasNoSafetyNet()
+    public void AnUnboundedParserWorkLimitHasNoSafetyNet()
     {
         var limits = ParseRunLimits.Resolve(
-            new SelectionParsingLimits(StepCap.Unbounded, SelectionTimeLimitMode.Estimated, null), Typical);
+            new SelectionParsingLimits(ParserWorkLimit.Unbounded, SelectionTimeLimitMode.Estimated, null), Typical);
 
         Assert.Null(limits.PerWordLimit);
     }
 
-    [Theory]
-    [InlineData(200_000L, "20000000")]
-    [InlineData(7L, "700")]
-    public void TheWorkCapIsOneHundredTimesTheStepCap(long steps, string expected) =>
-        Assert.Equal(expected, new StepCap(steps).ToWorkCapArgument());
+    [Fact]
+    public void TheWorkCapIsTheParserWorkLimitAndTheStepCapIsOneHundredthRoundedUp()
+    {
+        var limit = new ParserWorkLimit(20_000_000);
+        Assert.Equal("20000000", limit.ToWorkCapArgument());
+        Assert.Equal("200000", limit.ToStepCapArgument());
+        Assert.Equal("1", new ParserWorkLimit(7).ToStepCapArgument());
+        Assert.Equal("2", new ParserWorkLimit(101).ToStepCapArgument());
+    }
 
     [Fact]
-    public void AnUnboundedStepCapSendsAnUnboundedWorkCap() =>
-        Assert.Equal("unbounded", StepCap.Unbounded.ToWorkCapArgument());
+    public void AnOldAttemptCountReadsAsOneHundredTimesItsValue() =>
+        Assert.Equal(new ParserWorkLimit(20_000_000), ParserWorkLimit.FromAttempts(200_000));
+
+    [Fact]
+    public void AnUnboundedParserWorkLimitSendsAnUnboundedWorkCap() =>
+        Assert.Equal("unbounded", ParserWorkLimit.Unbounded.ToWorkCapArgument());
 }

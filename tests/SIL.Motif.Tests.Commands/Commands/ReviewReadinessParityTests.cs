@@ -297,7 +297,7 @@ public sealed class ReviewReadinessParityTests : IDisposable
             ProposalIntentDigest: proposal?.Digest,
             Assessor: "pangloss",
             Kind: RegressionChecker.RequiredKind,
-            ScopeJson: """{"perWordLimitMs":1000,"perWordStepLimit":{"steps":200000,"isUnbounded":false}}""",
+            ScopeJson: """{"perWordLimitMs":1000,"perWordParserWorkLimit":{"steps":200000,"isUnbounded":false}}""",
             ScopeDigest: "sha256:" + new string('a', 64),
             Subject: new AssessmentSubject.Words(Selection.Create("test", [word]), "none", "1"),
             BaselineToken: JsonSerializer.Serialize(token, MotifJson.CreateOptions()),

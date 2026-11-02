@@ -58,16 +58,16 @@ public sealed class ProposalReadFailureTests
             Today = [new("a", 1_000), new("b", 2_000, true), new("c", 3_000)],
             Proposals = _ => [new("a", 900), new("b", 1_800, true), new("c", 2_700, true)],
         };
-        WeakReference? stepLimit = null;
+        WeakReference? parserWorkLimit = null;
         side.Hold = request =>
         {
             var answer = Answer(request, side);
-            if (request.ProposalId is null && request.By == "kind" && request.WordSet == "step-limit")
-                stepLimit ??= new WeakReference(answer.Result.Value);
+            if (request.ProposalId is null && request.By == "kind" && request.WordSet == "parser-work-limit")
+                parserWorkLimit ??= new WeakReference(answer.Result.Value);
             return answer;
         };
         var (_, context, page) = await TimingProposalViewTests.OpenedAsync(side);
-        await page.SelectWordSetCommand.ExecuteAsync("step-limit");
+        await page.SelectWordSetCommand.ExecuteAsync("parser-work-limit");
         context.ShowProposalView(MarkupView.TodayToProposal);
         Assert.NotNull(page.HeadlineTotal);
         await context.LeaveProposalAsync(CancellationToken.None);
@@ -78,8 +78,8 @@ public sealed class ProposalReadFailureTests
         GC.WaitForPendingFinalizers();
         GC.Collect();
 
-        Assert.NotNull(stepLimit);
-        Assert.False(stepLimit!.IsAlive);
+        Assert.NotNull(parserWorkLimit);
+        Assert.False(parserWorkLimit!.IsAlive);
         GC.KeepAlive(page);
     }
 
@@ -114,7 +114,7 @@ public sealed class ProposalReadFailureTests
             side.Proposals("proposal/two"), ("morph_rule", 1))));
         await opening;
         context.ShowProposalView(MarkupView.Proposal);
-        Assert.Equal("1,000 work steps", page.HeadlineTotal);
+        Assert.Equal("1,000 parser work", page.HeadlineTotal);
     }
 
     [Fact]
@@ -135,7 +135,7 @@ public sealed class ProposalReadFailureTests
 
         Assert.Equal(2, TimingProposalViewTests.ProposalReads(fake));
         context.ShowProposalView(MarkupView.Proposal);
-        Assert.Equal("9,000 work steps", page.HeadlineTotal);
+        Assert.Equal("9,000 parser work", page.HeadlineTotal);
     }
 
     [Fact]
@@ -150,7 +150,7 @@ public sealed class ProposalReadFailureTests
         await context.EvidencePublication;
 
         Assert.Equal(2, TimingProposalViewTests.ProposalReads(fake));
-        Assert.Equal("9,000 work steps", page.HeadlineTotal);
+        Assert.Equal("9,000 parser work", page.HeadlineTotal);
     }
 
     [Fact]
@@ -164,7 +164,7 @@ public sealed class ProposalReadFailureTests
         context.ShowProposalView(MarkupView.Proposal);
 
         Assert.Equal(2, TimingProposalViewTests.ProposalReads(fake));
-        Assert.Equal("9,000 work steps", page.HeadlineTotal);
+        Assert.Equal("9,000 parser work", page.HeadlineTotal);
     }
 
     [Fact]
@@ -204,7 +204,7 @@ public sealed class ProposalReadFailureTests
         context.Open(new OpenTimingRequest(["c"], null));
         await Task.Delay(100);
 
-        Assert.Equal("2,700 work steps", page.HeadlineTotal);
+        Assert.Equal("2,700 parser work", page.HeadlineTotal);
         todayGate.SetResult(CommandOutcome<TimingResponse>.Refused(new Refusal("none", FailureReason.Refused, "none")));
     }
 

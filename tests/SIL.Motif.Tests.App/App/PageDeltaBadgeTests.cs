@@ -7,7 +7,7 @@ namespace SIL.Motif.Tests.App;
 
 /// <summary>
 /// Pins the delta badge each page keeps for the sidebar while a Proposal is open: Texts counts the words that moved
-/// to Same, Warnings the findings gained or lost and Timing the percentage of work steps. A page that has not read its
+/// to Same, Warnings the findings gained or lost and Timing the percentage of parser work. A page that has not read its
 /// side, cannot read it, or holds a side that covers other words shows none, and reading it never reads again.
 /// </summary>
 [Collection(AvaloniaHeadlessCollection.Name)]
@@ -173,14 +173,14 @@ public sealed class PageDeltaBadgeTests
     }
 
     [Fact]
-    public async Task TimingGivesTheChangeInWorkStepsAsAWholePercentOverTheSameWords()
+    public async Task TimingGivesTheChangeInParserWorkAsAWholePercentOverTheSameWords()
     {
         var (fake, context, page) = await TimingProposalViewTests.OpenedAsync();
         context.ShowProposalView(MarkupView.TodayToProposal);
         await TextsProposalMatrixTests.UntilAsync(() => page.ProposalDelta is not null);
 
         Assert.Equal("−10%", page.DeltaBadge);
-        Assert.Contains("10% fewer work steps with this Proposal than today", page.ProposalDelta!.AccessibleName,
+        Assert.Contains("10% fewer parser work with this Proposal than today", page.ProposalDelta!.AccessibleName,
             StringComparison.Ordinal);
         var reads = TimingProposalViewTests.ProposalReads(fake);
         context.ShowProposalView(MarkupView.Proposal);

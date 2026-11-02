@@ -381,7 +381,7 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
         const string word = "startup-word";
         var parser = FakeParser.CopyRecordingInvocations(Path.Combine(NewRoot(), "parser"));
         var saved = SelectionCommands.SetDefault(new SetDefaultSelectionRequest(
-            project.FwDataPath, "Default", [], [word], 1000, StepCap.Default));
+            project.FwDataPath, "Default", [], [word], 1000, ParserWorkLimit.Default));
         Assert.True(saved.Succeeded, saved.Refusal?.Message);
         var skipped = ProjectSetupCommands.Skip(new SkipSetupRequest(project.FwDataPath));
         Assert.True(skipped.Succeeded, skipped.Refusal?.Message);

@@ -56,7 +56,7 @@ public sealed class TimingStatisticsRefreshTests
                 Settle(window);
                 var statistics = workspace.PageModel<TimingPageModel>().Statistics;
                 Assert.Equal(30, workspace.PageModel<TimingPageModel>().RerunSeconds);
-                Assert.Equal(StepCap.DefaultSteps, workspace.PageModel<TimingPageModel>().RerunSteps);
+                Assert.Equal(ParserWorkLimit.DefaultWork, workspace.PageModel<TimingPageModel>().RerunSteps);
                 Assert.DoesNotContain(window.GetLogicalDescendants().OfType<Button>(), button =>
                     AutomationProperties.GetName(button) == "Refresh statistics");
                 Assert.False(workspace.Context.EvidencePublication.IsCompleted);

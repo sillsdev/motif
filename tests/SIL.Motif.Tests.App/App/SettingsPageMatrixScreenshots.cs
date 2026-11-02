@@ -26,7 +26,7 @@ public sealed class SettingsPageMatrixScreenshots
             var (workspace, window) = await PageScreenshots.OpenOverSampleData(parse: false,
                 configure: (client, _) => client.DefaultSelectionIs(new NamedSelectionProjection("Default",
                     [Guid.Parse("11111111-0000-0000-0000-000000000001")], [], string.Empty, string.Empty,
-                    new SelectionParsingLimits(StepCap.Default, SelectionTimeLimitMode.Estimated, null), "1")),
+                    new SelectionParsingLimits(ParserWorkLimit.Default, SelectionTimeLimitMode.Estimated, null), "1")),
                 settingsFilePath: settingsPath);
             try
             {

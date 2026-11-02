@@ -60,7 +60,7 @@ public sealed class CurrentEvidenceQueryTests : IDisposable
         new BaselineRepository(database).Record(workspaceKey, publication,
             DateTimeOffset.Parse("2026-08-23T12:00:00Z"), sourceLastWriteUtc, TestTextWords.Empty, summary);
         new NamedSelectionRepository(database).SetDefault("Default", [textId], ["pasted"],
-            SelectionLimitPolicy.Estimated(StepCap.Default), null);
+            SelectionLimitPolicy.Estimated(ParserWorkLimit.Default), null);
 
         var result = CurrentEvidenceQuery.ReadCurrentEvidence(database, project);
 
@@ -96,7 +96,7 @@ public sealed class CurrentEvidenceQueryTests : IDisposable
                 DateTimeOffset.Parse("2026-09-24T10:30:00Z"), DateTimeOffset.Parse("2026-09-24T10:00:00Z"),
                 projection, summary);
             new NamedSelectionRepository(database).SetDefault("Default", [textId], [],
-                SelectionLimitPolicy.Estimated(StepCap.Default), null);
+                SelectionLimitPolicy.Estimated(ParserWorkLimit.Default), null);
             var tokenJson = JsonSerializer.Serialize(token, MotifJson.CreateOptions());
             new AssessmentRepository(database).Record(Record("assessment", ["cat"],
                 [new AssessedWord("cat", "no-analysis", []) { ProjectStanding = "approved" }],
@@ -195,11 +195,11 @@ public sealed class CurrentEvidenceQueryTests : IDisposable
             DateTimeOffset.Parse("2026-09-24T10:30:00Z"), DateTimeOffset.Parse("2026-09-24T10:00:00Z"), TestTextWords.Empty,
             new ProjectSummarySnapshot(0, 0, 0, 0, 0, [], []));
         new NamedSelectionRepository(database).SetDefault("Default", [], ["cat", "dog"],
-            SelectionLimitPolicy.Estimated(StepCap.Default), null);
+            SelectionLimitPolicy.Estimated(ParserWorkLimit.Default), null);
         var tokenJson = JsonSerializer.Serialize(token, MotifJson.CreateOptions());
         var repository = new AssessmentRepository(database);
         var invocation = new BatchInvocationEvidence("invocation/one", "source", "digest", "digest",
-            "words", "digest", "tsv", "digest", "stderr", "digest", 1000, StepCap.Default, 1, false);
+            "words", "digest", "tsv", "digest", "stderr", "digest", 1000, ParserWorkLimit.Default, 1, false);
         repository.Record(Record("base", ["cat", "dog"], [
             new AssessedWord("cat", "timed-out", []), new AssessedWord("dog", "analysed", [])],
             "2026-09-24T11:00:00Z", tokenJson) with { Material = Record("base", ["cat", "dog"], [
@@ -263,7 +263,7 @@ public sealed class CurrentEvidenceQueryTests : IDisposable
             new BaselinePublication(root, Path.Combine(root, "timing.fwdata"), token),
             savedUtc, savedUtc, TestTextWords.Empty, new ProjectSummarySnapshot(0, 0, 0, 0, 0, [], []));
         new NamedSelectionRepository(database).SetDefault("Default", [], ["cat", "dog"],
-            SelectionLimitPolicy.Estimated(StepCap.Default), null);
+            SelectionLimitPolicy.Estimated(ParserWorkLimit.Default), null);
         var tokenJson = JsonSerializer.Serialize(token, MotifJson.CreateOptions());
         var repository = new AssessmentRepository(database);
         static AssessmentObjectTiming Row(string word, long ns) =>
@@ -368,7 +368,7 @@ public sealed class CurrentEvidenceQueryTests : IDisposable
             new BaselinePublication(root, Path.Combine(root, "override.fwdata"), token),
             savedUtc, savedUtc, TestTextWords.Empty, new ProjectSummarySnapshot(0, 0, 0, 0, 0, [], []));
         new NamedSelectionRepository(database).SetDefault("Default", [], ["cat", "dog"],
-            SelectionLimitPolicy.Estimated(StepCap.Default), null);
+            SelectionLimitPolicy.Estimated(ParserWorkLimit.Default), null);
         var tokenJson = JsonSerializer.Serialize(token, MotifJson.CreateOptions());
         var repository = new AssessmentRepository(database);
         static AssessmentObjectTiming Row(string word, long ns) =>

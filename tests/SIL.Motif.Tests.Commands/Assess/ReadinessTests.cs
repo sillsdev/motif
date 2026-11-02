@@ -201,7 +201,7 @@ public sealed class ReadinessTests
         return new CorrectnessAssessment(
             assessmentId, "pangloss", "none", "1",
             new StoredScope.Trial("all", Array.Empty<string>(), Array.Empty<AssessmentKind>(),
-                TimeSpan.FromSeconds(1), SIL.Motif.Contract.Assess.StepCap.Default),
+                TimeSpan.FromSeconds(1), SIL.Motif.Contract.Assess.ParserWorkLimit.Default),
             selection, GrammarSha, assessedWords);
     }
 }

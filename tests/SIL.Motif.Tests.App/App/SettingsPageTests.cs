@@ -229,7 +229,7 @@ public sealed class SettingsPageTests
             var (workspace, frame) = await PageScreenshots.OpenOverSampleData(parse: false, preferencesStore: preferences,
                 configure: (client, _) => client.DefaultSelectionIs(new NamedSelectionProjection("Default",
                     [Guid.Parse("11111111-0000-0000-0000-000000000001")], [], string.Empty, string.Empty,
-                    new SelectionParsingLimits(StepCap.Default, SelectionTimeLimitMode.Estimated, null), "1")));
+                    new SelectionParsingLimits(ParserWorkLimit.Default, SelectionTimeLimitMode.Estimated, null), "1")));
             var settings = SettingsTestAccess.Model(frame);
             var page = SettingsTestAccess.Open(frame);
             var window = frame;
@@ -309,7 +309,7 @@ public sealed class SettingsPageTests
             var (workspace, frame) = await PageScreenshots.OpenOverSampleData(parse: false, preferencesStore: preferences,
                 configure: (client, _) => client.DefaultSelectionIs(new NamedSelectionProjection("Default",
                     [Guid.Parse("11111111-0000-0000-0000-000000000001")], [], string.Empty, string.Empty,
-                    new SelectionParsingLimits(StepCap.Default, SelectionTimeLimitMode.Estimated, null), "1")));
+                    new SelectionParsingLimits(ParserWorkLimit.Default, SelectionTimeLimitMode.Estimated, null), "1")));
             try
             {
                 var settings = SettingsTestAccess.Model(frame);
@@ -343,7 +343,7 @@ public sealed class SettingsPageTests
                     fake = client;
                     client.DefaultSelectionIs(new NamedSelectionProjection("Default", [], ["word"],
                         string.Empty, string.Empty,
-                        new SelectionParsingLimits(StepCap.Default, SelectionTimeLimitMode.Estimated, null, 600), "1"));
+                        new SelectionParsingLimits(ParserWorkLimit.Default, SelectionTimeLimitMode.Estimated, null, 600), "1"));
                 });
             try
             {
@@ -380,7 +380,7 @@ public sealed class SettingsPageTests
                     fake = client;
                     client.DefaultSelectionIs(new NamedSelectionProjection("Default", [Guid.Parse("11111111-0000-0000-0000-000000000001")], [],
                         string.Empty, string.Empty,
-                        new SelectionParsingLimits(new StepCap(400000), SelectionTimeLimitMode.Explicit, 2000), "1"));
+                        new SelectionParsingLimits(new ParserWorkLimit(400000), SelectionTimeLimitMode.Explicit, 2000), "1"));
                 });
             var checks = workspace.Context.DefaultProposalChecks;
             var previousTheme = Application.Current!.RequestedThemeVariant;
@@ -391,17 +391,17 @@ public sealed class SettingsPageTests
                 settings.ThemeChoice = WindowThemeChoice.Dark;
                 settings.ChooseStoredAnalysesCommand.Execute(StoredAnalysisComparison.All);
                 settings.OpenGroup(Group.Parsing);
-                Assert.True(settings.ResetStepLimitCommand.CanExecute(null));
-                await settings.ResetStepLimitCommand.ExecuteAsync(null);
-                Assert.Equal(StepCap.DefaultSteps, settings.StepLimit);
+                Assert.True(settings.ResetParserWorkLimitCommand.CanExecute(null));
+                await settings.ResetParserWorkLimitCommand.ExecuteAsync(null);
+                Assert.Equal(ParserWorkLimit.DefaultWork, settings.ParserWorkLimitValue);
                 Assert.Equal(2m, settings.TimeLimitSeconds);
                 Assert.False(settings.IsUsingEstimate);
                 Assert.True(settings.IsStoredAnalysesAll);
                 var saved = await fake!.ReadDefaultSelectionAsync(
                     new ReadDefaultSelectionRequest(workspace.Context.ProjectPath!), CancellationToken.None);
-                Assert.Equal(StepCap.Default, saved.Value!.Selection!.Limits.PerWordStepLimit);
+                Assert.Equal(ParserWorkLimit.Default, saved.Value!.Selection!.Limits.PerWordParserWorkLimit);
                 Assert.Equal(SelectionTimeLimitMode.Explicit, saved.Value.Selection.Limits.TimeMode);
-                Assert.False(settings.ResetStepLimitCommand.CanExecute(null));
+                Assert.False(settings.ResetParserWorkLimitCommand.CanExecute(null));
                 settings.ResetStoredAnalysesCommand.Execute(null);
                 Assert.Equal(StoredAnalysisComparison.Budget, checks.StoredAnalyses);
                 Assert.False(settings.ResetStoredAnalysesCommand.CanExecute(null));
@@ -432,7 +432,7 @@ public sealed class SettingsPageTests
             var (workspace, frame) = await PageScreenshots.OpenOverSampleData(parse: false,
                 configure: (client, _) => client.DefaultSelectionIs(new NamedSelectionProjection("Default",
                     [Guid.Parse("11111111-0000-0000-0000-000000000001")], [], string.Empty, string.Empty,
-                    new SelectionParsingLimits(StepCap.Default, SelectionTimeLimitMode.Estimated, null), "1")));
+                    new SelectionParsingLimits(ParserWorkLimit.Default, SelectionTimeLimitMode.Estimated, null), "1")));
             var settings = SettingsTestAccess.Model(frame);
             var page = SettingsTestAccess.Open(frame);
             var window = frame;
@@ -489,7 +489,7 @@ public sealed class SettingsPageTests
                     var scroll = page.FindControl<ScrollViewer>("SettingsListScroll")!;
                     Assert.True(scroll.Extent.Width <= scroll.Viewport.Width + 1);
                 }
-                foreach (var name in new[] { "Reset zoom to 100%", "Match the operating system theme", "Step limit per word",
+                foreach (var name in new[] { "Reset zoom to 100%", "Match the operating system theme", "Parser work limit per word",
                              "Time limit per word in seconds", "Use all texts", "Open Help", "Report a problem", "Copy versions" })
                 {
                     var target = page.GetVisualDescendants().OfType<Control>().Single(control =>
@@ -524,7 +524,7 @@ public sealed class SettingsPageTests
             var (workspace, frame) = await PageScreenshots.OpenOverSampleData(parse: false,
                 configure: (client, _) => client.DefaultSelectionIs(new NamedSelectionProjection("Default",
                     [Guid.Parse("11111111-0000-0000-0000-000000000001")], [], string.Empty, string.Empty,
-                    new SelectionParsingLimits(StepCap.Default, SelectionTimeLimitMode.Estimated, null), "1")));
+                    new SelectionParsingLimits(ParserWorkLimit.Default, SelectionTimeLimitMode.Estimated, null), "1")));
             var overview = workspace.PageModel<OverviewPageModel>();
             overview.Overview = overview.Overview! with
             {
@@ -583,7 +583,7 @@ public sealed class SettingsPageTests
                     fake = client;
                     client.DefaultSelectionIs(new NamedSelectionProjection("Default", [Guid.Parse("11111111-0000-0000-0000-000000000001")], [],
                         string.Empty, string.Empty,
-                        new SelectionParsingLimits(StepCap.Default, SelectionTimeLimitMode.Estimated, null), "1"));
+                        new SelectionParsingLimits(ParserWorkLimit.Default, SelectionTimeLimitMode.Estimated, null), "1"));
                 });
             var settings = SettingsTestAccess.Model(frame);
             var page = SettingsTestAccess.Open(frame);
@@ -605,7 +605,7 @@ public sealed class SettingsPageTests
                 var saved = await fake!.ReadDefaultSelectionAsync(
                     new ReadDefaultSelectionRequest(workspace.Context.ProjectPath!), CancellationToken.None);
                 Assert.Equal(workspace.Selection.Texts.Select(text => text.Id).Order(), saved.Value!.Selection!.TextIds.Order());
-                Assert.Equal(StepCap.Default, saved.Value.Selection.Limits.PerWordStepLimit);
+                Assert.Equal(ParserWorkLimit.Default, saved.Value.Selection.Limits.PerWordParserWorkLimit);
                 await workspace.Context.Setup!.ProjectOpenedAsync(workspace.Context.ProjectPath!);
                 Assert.True(workspace.Selection.AreAllTextsSelected);
             }

@@ -68,7 +68,7 @@ public sealed class SelectionSetupArgvTests : IDisposable
     public void SetDefaultAndSetLimitsPersistTheCompleteSelectionPolicy()
     {
         var set = Run($"selection set-default --project \"{Project}\" --name Default --add-words motifa " +
-                      "--time-mode explicit --time-limit-ms 750 --step-cap 321 --json");
+                      "--time-mode explicit --time-limit-ms 750 --parser-work-limit 321 --json");
 
         Assert.Equal(0, set.ExitCode);
         var firstRead = Run($"selection show --project \"{Project}\" --json");
@@ -79,11 +79,11 @@ public sealed class SelectionSetupArgvTests : IDisposable
         var firstRevision = firstSelection.GetProperty("revision").GetString()!;
         Assert.Equal("Explicit", firstSelection.GetProperty("limits").GetProperty("timeMode").GetString());
         Assert.Equal(750, firstSelection.GetProperty("limits").GetProperty("explicitPerWordLimitMs").GetInt32());
-        Assert.Equal(321, firstSelection.GetProperty("limits").GetProperty("perWordStepLimit")
-            .GetProperty("steps").GetInt64());
+        Assert.Equal(321, firstSelection.GetProperty("limits").GetProperty("perWordParserWorkLimit")
+            .GetProperty("work").GetInt64());
 
         var changed = Run($"selection set-limits --project \"{Project}\" --name Default " +
-            $"--expected-revision {firstRevision} --step-cap 654 --time-mode estimated --json");
+            $"--expected-revision {firstRevision} --parser-work-limit 654 --time-mode estimated --json");
 
         Assert.Equal(0, changed.ExitCode);
         using var changedDocument = JsonDocument.Parse(changed.Output);
@@ -91,12 +91,12 @@ public sealed class SelectionSetupArgvTests : IDisposable
         Assert.Equal("Default", updated.GetProperty("name").GetString());
         Assert.Equal("Estimated", updated.GetProperty("limits").GetProperty("timeMode").GetString());
         Assert.False(updated.GetProperty("limits").TryGetProperty("explicitPerWordLimitMs", out _));
-        Assert.Equal(654, updated.GetProperty("limits").GetProperty("perWordStepLimit")
-            .GetProperty("steps").GetInt64());
+        Assert.Equal(654, updated.GetProperty("limits").GetProperty("perWordParserWorkLimit")
+            .GetProperty("work").GetInt64());
         Assert.Equal(1, updated.GetProperty("addedWords").GetArrayLength());
 
         var stale = Run($"selection set-limits --project \"{Project}\" --name Default " +
-            $"--expected-revision {firstRevision} --step-cap 777 --time-mode estimated --json");
+            $"--expected-revision {firstRevision} --parser-work-limit 777 --time-mode estimated --json");
         Assert.NotEqual(0, stale.ExitCode);
         Assert.Contains("selection.revision-conflict", stale.Output + stale.Error, StringComparison.Ordinal);
 
@@ -104,8 +104,8 @@ public sealed class SelectionSetupArgvTests : IDisposable
         Assert.Equal(0, finalRead.ExitCode);
         using var finalDocument = JsonDocument.Parse(finalRead.Output);
         var finalSelection = finalDocument.RootElement.GetProperty("selection");
-        Assert.Equal(654, finalSelection.GetProperty("limits").GetProperty("perWordStepLimit")
-            .GetProperty("steps").GetInt64());
+        Assert.Equal(654, finalSelection.GetProperty("limits").GetProperty("perWordParserWorkLimit")
+            .GetProperty("work").GetInt64());
     }
 
     [Fact]

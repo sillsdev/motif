@@ -494,7 +494,7 @@ public sealed class ApplyPromotionGatingAndSweepTests
                 ProposalIntentDigest: intentDigest,
                 Assessor: "pangloss",
                 Kind: kind,
-                ScopeJson: """{"perWordLimitMs":1000,"perWordStepLimit":{"steps":200000,"isUnbounded":false}}""",
+                ScopeJson: """{"perWordLimitMs":1000,"perWordParserWorkLimit":{"steps":200000,"isUnbounded":false}}""",
                 ScopeDigest: "sha256:" + new string('a', 64),
                 Subject: new AssessmentSubject.Words(selection, "none", "1"),
                 BaselineToken: baselineToken,

@@ -54,7 +54,7 @@ public sealed class PhonologyAssessmentRepositoryTests : IDisposable
         Assert.Equal(new[] { true }, evidence.ExpectedObserved);
         Assert.Equal("surface", evidence.Observed);
         Assert.Equal(7UL, evidence.Steps);
-        Assert.Equal(11UL, evidence.WorkSteps);
+        Assert.Equal(11UL, evidence.ParserWork);
         var binding = Assert.IsType<PhonologyInvocationBinding.Produced>(detail.Assessment.Invocation);
         Assert.Equal("sha256:" + new string('f', 64), binding.ProducerRequestSha256);
         Assert.Equal("sha256:" + new string('d', 64), binding.ExecutableSha256);
@@ -67,7 +67,7 @@ public sealed class PhonologyAssessmentRepositoryTests : IDisposable
         Assert.IsType<PhonologyRowEvidence.Unavailable>(unavailable.Result.Evidence);
         using var json = JsonDocument.Parse(JsonSerializer.Serialize(unavailable, JsonOptions));
         var absent = json.RootElement.GetProperty("result").GetProperty("evidence");
-        foreach (var field in new[] { "completion", "steps", "workSteps", "effectiveLimits", "expectedObserved", "orderedRuleIds" })
+        foreach (var field in new[] { "completion", "steps", "parserWork", "effectiveLimits", "expectedObserved", "orderedRuleIds" })
             Assert.False(absent.TryGetProperty(field, out _));
         var invocation = json.RootElement.GetProperty("assessment").GetProperty("invocation");
         Assert.False(invocation.TryGetProperty("measuredEntryCount", out _));
@@ -83,7 +83,7 @@ public sealed class PhonologyAssessmentRepositoryTests : IDisposable
         var revision = new PhonologyExampleSetRepository(database).Save("Set", [first, example], null, null);
         var row = Row(example) with { ResolvedContext = null, Observed = null,
             Completion = PhonologyCompletion.NotStarted, Reason = PhonologyReason.UnknownEntry,
-            Steps = 0, WorkSteps = 0, Capped = false, TimedOut = false, ExpectedObserved = [false],
+            Steps = 0, ParserWork = 0, Capped = false, TimedOut = false, ExpectedObserved = [false],
             OrderedRuleIds = [], VisitedRuleIds = [], AppliedRuleIds = [] };
         new AssessmentRepository(database).Record(Record("not-started", revision, [Row(first), row], new PhonologyLimits(1, 1, 100)));
         var evidence = Assert.IsType<PhonologyRowEvidence.Produced>(
@@ -262,7 +262,7 @@ public sealed class PhonologyAssessmentRepositoryTests : IDisposable
             var steps = limits.StepCap / (ulong)rows.Count + ((ulong)index < limits.StepCap % (ulong)rows.Count ? 1UL : 0UL);
             var work = limits.WorkCap / (ulong)rows.Count + ((ulong)index < limits.WorkCap % (ulong)rows.Count ? 1UL : 0UL);
             return row with { EffectiveLimits = new PhonologyLimits(steps, work, limits.TimeoutMs),
-                Steps = Math.Min(row.Steps, steps), WorkSteps = Math.Min(row.WorkSteps, work) };
+                Steps = Math.Min(row.Steps, steps), ParserWork = Math.Min(row.ParserWork, work) };
         }).ToArray();
         var measurement = new PhonologyMeasurement(BareHash, [new("WritingSystemStore/ws.ldml", BareHash)],
             new string('e', 64), new string('f', 64), "producer-build", new string('d', 64), BareHash, 1024, limits, 9, rows);

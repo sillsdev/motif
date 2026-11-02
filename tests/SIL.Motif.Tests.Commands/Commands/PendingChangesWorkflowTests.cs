@@ -622,7 +622,7 @@ public sealed class PendingChangesWorkflowTests(PristineProjectFixture pristine,
         Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), root).Succeeded);
         PutChange(path, LoadPending(path).Revision, wordformId, "limits-measure");
         var earlierLimit = TimeSpan.FromSeconds(5);
-        var earlierSteps = new StepCap(2_000_000);
+        var earlierSteps = new ParserWorkLimit(2_000_000);
         using (var database = ProjectMotifDatabase.Open(path))
             new AssessmentRepository(database).Record(new NewAssessmentRecord(
             AssessmentId: "assessment-earlier",

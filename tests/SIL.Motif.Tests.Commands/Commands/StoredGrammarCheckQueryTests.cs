@@ -330,7 +330,7 @@ public sealed class StoredGrammarCheckQueryTests : IDisposable
                 AssessmentKind.ParseTime => new AssessmentRaw.Batch(new SIL.Motif.Host.Parser.BatchAnalysis(
                     [new(0, SeededProject.AnalysedWordForm, 9, SIL.Motif.Host.Parser.WordOutcome.NoAnalysis, "none"),
                      new(1, SeededProject.UnanalysedWordForm, 15, SIL.Motif.Host.Parser.WordOutcome.NoAnalysis, "none")],
-                    1000, grammar.FwDataPath, []) { PerWordStepLimit = StepCap.Default }),
+                    1000, grammar.FwDataPath, []) { PerWordParserWorkLimit = ParserWorkLimit.Default }),
                 AssessmentKind.ObjectTiming => new AssessmentRaw.FileCache(cachePath, digest),
                 _ => new AssessmentRaw.WordMeasurements([]),
             })

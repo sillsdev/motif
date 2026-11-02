@@ -28,7 +28,7 @@ public sealed class RecipeVerificationTrialProjectionTests
 
         Assert.Equal(Baseline, projected.Baseline);
         Assert.Equal(1000, projected.Options!.PerWordTimeoutMs);
-        Assert.Equal(200_000, projected.Options.PerWordStepLimit.Steps);
+        Assert.Equal(200_000, projected.Options.PerWordParserWorkLimit.Work);
         Assert.Equal(1, projected.Options.Threads);
         Assert.Equal("sha256:" + new string('b', 64), projected.Options.ParserSha256);
         Assert.Equal(new[] { "ara" }, projected.SelectionWords);
@@ -72,7 +72,7 @@ public sealed class RecipeVerificationTrialProjectionTests
     private static BatchInvocationEvidence Invocation() => new(
         "invocation-id", "/source.fwdata", Digest, "sha256:" + new string('b', 64),
         "/words.txt", Digest, "/analyses.jsonl", Digest, "/stderr.txt", Digest,
-        1000, new StepCap(200_000), 1, true)
+        1000, new ParserWorkLimit(200_000), 1, true)
     {
         AnalysesPath = "/analyses.jsonl",
         AnalysesSha256 = Digest,

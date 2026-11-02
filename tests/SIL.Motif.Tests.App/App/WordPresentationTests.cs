@@ -274,7 +274,7 @@ public sealed class WordPresentationTests
     }
 
     [Fact]
-    public void TheTimeCellShowsWorkStepsAndNeverMilliseconds()
+    public void TheTimeCellShowsParserWorkAndNeverMilliseconds()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(() =>
         {
@@ -286,7 +286,7 @@ public sealed class WordPresentationTests
                     new WordRowViewModel(new ContractWordRow("kitabu", WordRowOutcome.Same, "Kept", WordRowTone.Fine)
                     {
                         MeaningCode = "kept",
-                        WorkSteps = 1234,
+                        ParserWork = 1234,
                         ElapsedMs = 12,
                     }),
                     WordListOwner.ReadOnly),
@@ -302,7 +302,7 @@ public sealed class WordPresentationTests
 
                 var time = Assert.Single(window.GetVisualDescendants().OfType<CopyableTextBlock>(),
                     text => text.Classes.Contains("wordPresentationTime"));
-                Assert.Equal("1,234 work steps", time.Text);
+                Assert.Equal("1,234 parser work", time.Text);
             }
             finally
             {

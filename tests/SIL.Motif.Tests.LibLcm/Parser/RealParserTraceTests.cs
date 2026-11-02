@@ -89,12 +89,12 @@ public sealed class RealParserTraceTests
     }
 
     [RealParserFact]
-    public async Task AWordThatHitsTheStepCapIsStoppedWithItsPartialTreeNotDeclined()
+    public async Task AWordThatHitsTheParserWorkLimitIsStoppedWithItsPartialTreeNotDeclined()
     {
         var grammarPath = Path.Combine(Path.GetTempPath(), "motif-real-trace-cap-" + Guid.NewGuid().ToString("N") + ".xml");
         File.WriteAllText(grammarPath, GoldenGrammar);
         using var invoker = new PanGlossInvoker();
-        var tracer = new PanGlossTracer(invoker, stepLimit: 1);
+        var tracer = new PanGlossTracer(invoker, parserWorkLimit: 100);
         try
         {
             var outcome = await tracer.TraceAsync(grammarPath, "sagd", CancellationToken.None, TimeSpan.FromSeconds(30));

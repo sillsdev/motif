@@ -948,7 +948,7 @@
   "SIL.Motif.Tests.PanGloss.UnixPanGlossCaptureTests": 0.1,
   "SIL.Motif.Tests.PanGloss.UnsegmentableAllomorphRealParserTests": 0.1,
   "SIL.Motif.Tests.PanGloss.WarmPanGlossPoolTests": 22.7,
-  "SIL.Motif.Tests.PanGloss.WorkStepsReadingTests": 0.6,
+  "SIL.Motif.Tests.PanGloss.ParserWorkReadingTests": 0.6,
   "SIL.Motif.Tests.Parser.FakePanGlossBatchTests": 1.1,
   "SIL.Motif.Tests.Parser.FakeParserSeamIntegrationTests": 0.1,
   "SIL.Motif.Tests.Parser.GrammarCoverageFigureTests": 0.0,

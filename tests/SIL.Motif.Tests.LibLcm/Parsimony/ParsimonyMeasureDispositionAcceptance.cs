@@ -197,10 +197,10 @@ internal static class ParsimonyMeasureDispositionAcceptance
         {
             var parserPath = PanGlossExecutable.TryLocate();
             Assert.False(string.IsNullOrWhiteSpace(parserPath));
-            var stepLimit = new StepCap(StepCap.DefaultSteps);
+            var parserWorkLimit = new ParserWorkLimit(ParserWorkLimit.DefaultWork);
             var assessment = AssessCommand.Assess(new AssessRequest(projectPath,
                     new SelectionRequest(false, [], assessmentWords, false, null,
-                        PerWordStepLimit: stepLimit), PerWordLimitMs: 1000, PerWordStepLimit: stepLimit),
+                        PerWordParserWorkLimit: parserWorkLimit), PerWordLimitMs: 1000, PerWordParserWorkLimit: parserWorkLimit),
                 workerRoot, parserPath, onProgress: null, cancellationToken: CancellationToken.None);
             Assert.True(assessment.Succeeded, assessment.Refusal?.Message);
             assessmentIds = assessment.Value!.Measurements

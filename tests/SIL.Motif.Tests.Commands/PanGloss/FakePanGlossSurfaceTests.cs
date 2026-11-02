@@ -177,7 +177,7 @@ public sealed class FakePanGlossSurfaceTests
             new PanGlossRequest.Import("project.fwdata", "grammar.json"),
             new PanGlossRequest.GrammarHealth("project.fwdata", "project"),
             new PanGlossRequest.Trace("project.fwdata", "motifa")
-                { StepLimit = SIL.Motif.Contract.Assess.StepCap.Default },
+                { ParserWorkLimit = SIL.Motif.Contract.Assess.ParserWorkLimit.Default },
         ];
         if (!includeFacts) requests = requests.Where(request => request is not PanGlossRequest.Facts).ToArray();
         // Trace is checked by AssertTraceCommandIsDeclared; this walker cannot express an "=file" flag.

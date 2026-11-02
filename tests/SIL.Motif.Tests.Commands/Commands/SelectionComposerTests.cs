@@ -185,9 +185,9 @@ public sealed class SelectionComposerTests : IDisposable
         var repository = NewRepository();
         var words = new[]
         {
-            new AssessedWord("quick", "analysed", [], 1) { WorkSteps = 501 },
-            new AssessedWord("slow", "analysed", [], 9000) { WorkSteps = 2 },
-            new AssessedWord("equal", "analysed", [], 8000) { WorkSteps = 500 },
+            new AssessedWord("quick", "analysed", [], 1) { ParserWork = 501 },
+            new AssessedWord("slow", "analysed", [], 9000) { ParserWork = 2 },
+            new AssessedWord("equal", "analysed", [], 8000) { ParserWork = 500 },
             new AssessedWord("unknown", "analysed", [], 9000),
         };
         repository.Record(new NewAssessmentRecord("work", null, null, "test", "ParseTime", "{}", "scope",
@@ -392,7 +392,7 @@ public sealed class SelectionComposerTests : IDisposable
         string kind, CanonicalId? proposalId, params (string Word, WordOutcome Outcome, int ElapsedMs)[] words)
     {
         var assessedWords = words
-            .Select(w => new AssessedWord(w.Word, w.Outcome.ToStoredOutcome(), Array.Empty<ParsedAnalysis>(), w.ElapsedMs) { WorkSteps = w.ElapsedMs })
+            .Select(w => new AssessedWord(w.Word, w.Outcome.ToStoredOutcome(), Array.Empty<ParsedAnalysis>(), w.ElapsedMs) { ParserWork = w.ElapsedMs })
             .ToList();
 
         repository.Record(new NewAssessmentRecord(

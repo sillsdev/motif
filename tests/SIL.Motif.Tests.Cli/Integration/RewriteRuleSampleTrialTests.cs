@@ -92,8 +92,8 @@ public sealed class RewriteRuleSampleTrialTests(ITestOutputHelper output)
             var baselineAssessment = AssessCommand.Assess(
                 new AssessRequest(projectPath,
                     new SelectionRequest(false, [], words, false, null,
-                        PerWordStepLimit: new StepCap(2_000_000)),
-                    PerWordLimitMs: 5000, PerWordStepLimit: new StepCap(2_000_000)),
+                        PerWordParserWorkLimit: new ParserWorkLimit(200_000_000)),
+                    PerWordLimitMs: 5000, PerWordParserWorkLimit: new ParserWorkLimit(200_000_000)),
                 workerRoot, PanGlossExecutable.TryLocate(), null, CancellationToken.None);
             Assert.True(baselineAssessment.Succeeded, baselineAssessment.Refusal?.Message);
             var beforeCorrectnessId = baselineAssessment.Value!.Measurements
@@ -213,7 +213,7 @@ public sealed class RewriteRuleSampleTrialTests(ITestOutputHelper output)
         using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(60));
         var outcome = await invoker.RunAsync(
             new PanGlossRequest.Batch(projectPath, words, TimeSpan.FromSeconds(5),
-                PerWordStepLimit: new StepCap(2_000_000)) { CollectAnalyses = true },
+                PerWordParserWorkLimit: new ParserWorkLimit(200_000_000)) { CollectAnalyses = true },
             "test:" + namespaceName, cancellation.Token, wallClockCap: TimeSpan.FromSeconds(30));
         Assert.True(outcome is PanGlossOutcome.Completed, $"Expected a completed batch, received {outcome}.");
         var completed = Assert.IsType<PanGlossOutcome.Completed>(outcome);

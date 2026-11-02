@@ -102,7 +102,7 @@ public sealed class StoredEvidenceOnReturnTests
                 SavedUtc: savedUtc.ToString("O"),
                 Details: new AssessmentRecordDetails.Words([new AssessedWord(word, "analysed", [], 10) { ProjectStanding = ProjectStanding.Approved }], null, null, []) with { Invocation = new BatchInvocationEvidence("invocation/" + assessmentId, "source", "digest", "digest",
                     "words", "digest", "tsv", "digest", "stderr", "digest", 1000,
-                    SIL.Motif.Contract.Assess.StepCap.Default, 1, false) }
+                    SIL.Motif.Contract.Assess.ParserWorkLimit.Default, 1, false) }
             ));
 
     private static AssessCommandResponse Run(string assessmentId, string word) => new(

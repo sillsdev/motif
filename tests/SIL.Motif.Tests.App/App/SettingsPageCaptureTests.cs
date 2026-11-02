@@ -30,7 +30,7 @@ public sealed class SettingsPageCaptureTests
             var (workspace, frame) = await PageScreenshots.OpenOverSampleData(parse: false,
                 configure: (client, _) => client.DefaultSelectionIs(new NamedSelectionProjection("Default",
                     [Guid.Parse("11111111-0000-0000-0000-000000000001")], [], string.Empty, string.Empty,
-                    new SelectionParsingLimits(StepCap.Default, SelectionTimeLimitMode.Estimated, null), "1")));
+                    new SelectionParsingLimits(ParserWorkLimit.Default, SelectionTimeLimitMode.Estimated, null), "1")));
             var overview = workspace.PageModel<OverviewPageModel>();
             overview.Overview = overview.Overview! with
             {

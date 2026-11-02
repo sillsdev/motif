@@ -352,7 +352,7 @@ public sealed class WorkspaceContextTests
                 }],
                 Invocation = new BatchInvocationEvidence("invocation/one", "source", "digest", "digest",
                     "words", "digest", "tsv", "digest", "stderr", "digest", 1000,
-                    StepCap.Default, 1, false),
+                    ParserWorkLimit.Default, 1, false),
             },
         };
         fake.ReadCurrentEvidenceCompletesWith(new CurrentEvidenceSnapshot("one", DateTimeOffset.UtcNow,
@@ -394,7 +394,7 @@ public sealed class WorkspaceContextTests
     }
 
     [Theory]
-    [InlineData("step-limit", 10)]
+    [InlineData("parser-work-limit", 10)]
     [InlineData("slowest", 20)]
     [InlineData("all", 10)]
     [InlineData("cell:approved:no-parse", 10)]
@@ -413,7 +413,7 @@ public sealed class WorkspaceContextTests
             request.Top == top);
         Assert.Contains(fake.TimingRequests, request => request.WordSet == wordSet && request.By == "rule" &&
             request.Top == top);
-        Assert.Equal(wordSet == "step-limit", timing.IsStepLimitSelected);
+        Assert.Equal(wordSet == "parser-work-limit", timing.IsParserWorkLimitSelected);
         Assert.Equal(wordSet == "slowest", timing.IsSlowestSelected);
         Assert.Equal(wordSet == "all", timing.IsAllSelected);
         Assert.Empty(fake.AssessRequests);
@@ -429,7 +429,7 @@ public sealed class WorkspaceContextTests
         var timing = new TimingPageModel(context);
         fake.OnTiming((request, _) =>
         {
-            if (refuses && request.WordSet == "step-limit" && request.By == "kind")
+            if (refuses && request.WordSet == "parser-work-limit" && request.By == "kind")
                 return Task.FromResult(CommandOutcome<TimingResponse>.Refused(new Refusal(
                     "timing.refused", FailureReason.Refused, "Timing is unavailable.")));
             IReadOnlyList<TimingAggregateRow> aggregates = request.By == "rule"
@@ -441,7 +441,7 @@ public sealed class WorkspaceContextTests
         context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.Now, WasRerun: false));
 
         Assert.Empty(fake.UsageEntries);
-        await timing.SelectWordSetCommand.ExecuteAsync("step-limit");
+        await timing.SelectWordSetCommand.ExecuteAsync("parser-work-limit");
 
         var entry = Assert.Single(fake.UsageEntries);
         Assert.Equal("timing", entry.Command);
@@ -565,11 +565,11 @@ public sealed class WorkspaceContextTests
             new TimingResponse("assessment-1", request.WordSet, request.By, 2, 6, 6, [],
                 request.By == "kind" ? kindRows : ruleRows, [])
             {
-                Words = [new TimingWordRow("word-1", 6, TimingCompletion.WorkLimit) { WorkSteps = 60 },
-                    new TimingWordRow("word-2", 6, TimingCompletion.WorkLimit) { WorkSteps = 60 }],
+                Words = [new TimingWordRow("word-1", 6, TimingCompletion.WorkLimit) { ParserWork = 60 },
+                    new TimingWordRow("word-2", 6, TimingCompletion.WorkLimit) { ParserWork = 60 }],
                 Attribution = new WordTimeAttribution(2, 12, 12, 0, 0, 0, false),
                 Work = new WordWorkSummary(2, 120, 60, 60),
-                WorkStepAggregates =
+                ParserWorkAggregates =
                 [
                     new TimingWorkAggregate("Verb template", "Verb template", "morph_rule", 100, false),
                     new TimingWorkAggregate("Other rule", "Other rule", "morph_rule", 20, false),
@@ -578,12 +578,12 @@ public sealed class WorkspaceContextTests
         await context.OpenProjectAsync(ProjectPath);
         context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.Now, WasRerun: false));
 
-        await timing.SelectWordSetCommand.ExecuteAsync("step-limit");
+        await timing.SelectWordSetCommand.ExecuteAsync("parser-work-limit");
 
         Assert.Equal(kindRows, timing.KindTiming!.Aggregates);
         Assert.Equal(ruleRows, timing.RuleTiming!.Aggregates);
         Assert.Equal("morph_rule", timing.SelectedRuleRow!.Kind);
-        Assert.Equal("100 work steps · 83% of these 2 words' 120 work steps · recorded in 2 words", timing.RuleSummary);
+        Assert.Equal("100 parser work · 83% of these 2 words' 120 parser work · recorded in 2 words", timing.RuleSummary);
     }
 
     // The chosen row needs its own look; hover's grey alone could not tell it from the row under the pointer.
@@ -726,20 +726,20 @@ public sealed class WorkspaceContextTests
     {
         var (fake, context) = NewContextWithFake();
         var timing = new TimingPageModel(context);
-        fake.TimingCompletesWith(new TimingResponse("assessment-1", "step-limit", "kind", 0, null, null,
+        fake.TimingCompletesWith(new TimingResponse("assessment-1", "parser-work-limit", "kind", 0, null, null,
             [], [], []));
         await context.OpenProjectAsync(ProjectPath);
 
-        await timing.SelectWordSetCommand.ExecuteAsync("step-limit");
+        await timing.SelectWordSetCommand.ExecuteAsync("parser-work-limit");
 
         Assert.True(timing.ShowEmptySelection);
-        Assert.Equal("No words in this selection have recorded work steps.", timing.PercentileSummary);
+        Assert.Equal("No words in this selection have recorded parser work.", timing.PercentileSummary);
         Assert.False(timing.HandOffWordsCommand.CanExecute(null));
         Assert.False(timing.RerunWordsCommand.CanExecute(null));
     }
 
     [Fact]
-    public async Task TimingRerunReportsEachWordAndPassesTimeAndStepLimitsThroughSelection()
+    public async Task TimingRerunReportsEachWordAndPassesTimeAndParserWorkLimitsThroughSelection()
     {
         var (fake, context) = NewContextWithFake();
         var timing = new TimingPageModel(context);
@@ -772,11 +772,11 @@ public sealed class WorkspaceContextTests
         Assert.Equal(["dogs", "cats"], fake.AssessRequests.Select(request => Assert.Single(request.Selection!.Words)));
         var rerunEntry = Assert.Single(fake.UsageEntries.Skip(usageCountBeforeRerun));
         Assert.Equal("assess", rerunEntry.Command);
-        Assert.Equal(["fwDataPath:text", "words:list(2)", "perWordLimitMs:number", "perWordStepLimit:number"], rerunEntry.ArgumentShape);
+        Assert.Equal(["fwDataPath:text", "words:list(2)", "perWordLimitMs:number", "perWordParserWorkLimit:number"], rerunEntry.ArgumentShape);
         Assert.All(fake.AssessRequests, request =>
         {
             Assert.Equal(45000, request.PerWordLimitMs);
-            Assert.Equal(new SIL.Motif.Contract.Assess.StepCap(1000000), request.Selection!.PerWordStepLimit);
+            Assert.Equal(new SIL.Motif.Contract.Assess.ParserWorkLimit(1000000), request.Selection!.PerWordParserWorkLimit);
         });
     }
 
@@ -799,7 +799,7 @@ public sealed class WorkspaceContextTests
 
         await timing.RerunWordsCommand.ExecuteAsync(null);
 
-        Assert.Equal("Enter a positive per-word time and a positive whole-number analysis attempt limit.", timing.RerunMessage);
+        Assert.Equal("Enter a positive per-word time and a positive whole-number parser work limit.", timing.RerunMessage);
         Assert.Empty(fake.AssessRequests);
         var rerunEntry = Assert.Single(fake.UsageEntries.Skip(usageCountBeforeRerun));
         Assert.Equal("assess", rerunEntry.Command);

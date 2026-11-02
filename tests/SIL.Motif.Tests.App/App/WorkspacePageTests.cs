@@ -490,7 +490,7 @@ public sealed class WorkspacePageTests
     {
         var (fake, projectPicker, workspace) = NewWorkspace();
         fake.DefaultSelectionCompletesWith(new NamedSelectionProjection(
-            "Default", [], ["kitabu"], string.Empty, string.Empty, 1000, StepCap.Default));
+            "Default", [], ["kitabu"], string.Empty, string.Empty, 1000, ParserWorkLimit.Default));
         await ChooseProjectAsync(fake, projectPicker, workspace, Saved.AddHours(3));
         workspace.Selection.AllWordforms = true;
         fake.AssessCompletesWith(NewAssessResponse() with { Words = [Word("kitabu", "timed-out", ProjectStanding.Approved)] });

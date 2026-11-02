@@ -116,7 +116,7 @@ public sealed class EvidenceSetsTests : IDisposable
     }
 
     private static BatchInvocationEvidence Invocation(string id) => new(id, "source", "digest", "digest",
-        "words", "digest", "tsv", "digest", "stderr", "digest", 1000, StepCap.Default, 1, false);
+        "words", "digest", "tsv", "digest", "stderr", "digest", 1000, ParserWorkLimit.Default, 1, false);
 
     private sealed class ProjectFixture : IDisposable
     {
@@ -143,7 +143,7 @@ public sealed class EvidenceSetsTests : IDisposable
                     [new ProjectTextSummary(_textId, "Text", 2, 2,
                         new Dictionary<string, int>(StringComparer.Ordinal) { ["cat"] = 1, ["dog"] = 1 })]));
             new NamedSelectionRepository(Database).SetDefault("Default", [_textId], [],
-                SelectionLimitPolicy.Estimated(StepCap.Default), null);
+                SelectionLimitPolicy.Estimated(ParserWorkLimit.Default), null);
         }
 
         public ProjectLocator Project { get; }

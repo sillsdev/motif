@@ -141,7 +141,7 @@ public sealed class ReportCommandsTests : IDisposable
                 ProposalIntentDigest: null,
                 Assessor: "pangloss",
                 Kind: kind,
-                ScopeJson: """{"words":[],"collect":[],"perWordLimitMs":1000,"perWordStepLimit":{"steps":200000,"isUnbounded":false}}""",
+                ScopeJson: """{"words":[],"collect":[],"perWordLimitMs":1000,"perWordParserWorkLimit":{"steps":200000,"isUnbounded":false}}""",
                 ScopeDigest: "sha256:" + new string('a', 64),
                 Subject: new AssessmentSubject.Words(selection, "none", "1"),
                 BaselineToken: "{}",

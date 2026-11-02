@@ -27,7 +27,7 @@ public sealed class SetupRealClientTests(PristineProjectFixture pristine)
             using (var first = NewWindow(project))
             {
                 await SelectProjectAndFinishFirstRun(
-                    first, project.FwDataPath, SeededProject.TextTitle, 3100, deadline);
+                    first, project.FwDataPath, SeededProject.TextTitle, 310000, deadline);
                 selectedTextId = Assert.Single(first.Workspace.Selection.ChosenTextIds);
                 Assert.True(first.Find<Avalonia.Controls.Button>("Parse all words in the Selection").IsEffectivelyEnabled);
             }
@@ -43,9 +43,9 @@ public sealed class SetupRealClientTests(PristineProjectFixture pristine)
             Assert.True(stored.Succeeded, stored.Refusal?.Message);
             var selection = stored.Value!.Selection!;
             Assert.Equal(selectedTextId, Assert.Single(selection.TextIds));
-            AssertEstimatedLimit(selection, 3100);
-            Assert.Equal(3100, selection.PerWordStepLimit!.Steps);
-            var rate = SelectionLimitEstimateQuery.ReadParserStepRate(project.FwDataPath);
+            AssertEstimatedLimit(selection, 310000);
+            Assert.Equal(310000, selection.PerWordParserWorkLimit!.Work);
+            var rate = SelectionLimitEstimateQuery.ReadParserAttemptRate(project.FwDataPath);
             Assert.True(rate.Succeeded, rate.Refusal?.Message);
             var savedTimeLimit = SelectionLimitPolicy.Resolve(selection.Limits, rate.Value!).PerWordTimeLimitMs;
             Assert.Equal(savedTimeLimit is { } milliseconds ? milliseconds / 1000m : null,
@@ -113,14 +113,14 @@ public sealed class SetupRealClientTests(PristineProjectFixture pristine)
             SetupWalkthroughActions.CaptureBaselineAndWaitForSetup(
                 walkthrough, 1, WalkthroughSteps.Remaining(deadline));
             SetupWalkthroughActions.FinishFirstRun(
-                walkthrough, SeededProject.TextTitle, "3100",
+                walkthrough, SeededProject.TextTitle, "310000",
                 WalkthroughSteps.Remaining(deadline));
 
             var commands = Assert.IsType<CommandClient>(walkthrough.Workspace.Context.Commands);
             var original = await commands.ReadDefaultSelectionAsync(
                 new ReadDefaultSelectionRequest(project.FwDataPath), CancellationToken.None);
             Assert.True(original.Succeeded, original.Refusal?.Message);
-            AssertEstimatedLimit(original.Value!.Selection!, 3100);
+            AssertEstimatedLimit(original.Value!.Selection!, 310000);
 
             SetupWalkthroughActions.OpenConfigure(walkthrough);
             SetupWalkthroughActions.ClickSetupButton(walkthrough, SIL.Motif.App.MotifAppStrings.SetupNextTexts);
@@ -128,16 +128,16 @@ public sealed class SetupRealClientTests(PristineProjectFixture pristine)
             Assert.Equal(SeededProject.TextTitle,
                 Assert.Single(walkthrough.Workspace.Context.Setup.Selection.Texts).Title);
             SetupWalkthroughActions.ClickSetupButton(walkthrough, SIL.Motif.App.MotifAppStrings.SetupNextLimits);
-            Assert.Equal(3100m, walkthrough.Find<Avalonia.Controls.NumericUpDown>(
-                "Analysis attempt limit per word").Value);
-            Assert.Equal($"Motif stops a word after {3100:N0} analysis attempts.",
-                walkthrough.Workspace.Context.Setup!.StepLimitEstimateText);
+            Assert.Equal(310000m, walkthrough.Find<Avalonia.Controls.NumericUpDown>(
+                "Parser work limit for each word").Value);
+            Assert.Equal($"Motif stops a word after {310000:N0} parser work.",
+                walkthrough.Workspace.Context.Setup!.ParserWorkLimitEstimateText);
 
             SetupWalkthroughActions.ClickSetupButton(walkthrough, "Back");
             SetupWalkthroughActions.SetSetupTextChecked(walkthrough, SeededProject.TextTitle, false);
             walkthrough.Type("Words to add", "motifb");
             SetupWalkthroughActions.ClickSetupButton(walkthrough, SIL.Motif.App.MotifAppStrings.SetupNextLimits);
-            SetupWalkthroughActions.TypeSetupLimit(walkthrough, "Analysis attempt limit per word", "6600");
+            SetupWalkthroughActions.TypeSetupLimit(walkthrough, "Parser work limit for each word", "660000");
             SetupWalkthroughActions.ClickSetupButton(walkthrough, SIL.Motif.App.MotifAppStrings.SetupNextFirstRun);
             walkthrough.Click(SIL.Motif.App.MotifAppStrings.UseThisSelection);
             walkthrough.WaitUntil(
@@ -149,10 +149,10 @@ public sealed class SetupRealClientTests(PristineProjectFixture pristine)
             Assert.True(changed.Succeeded, changed.Refusal?.Message);
             Assert.Empty(changed.Value!.Selection!.TextIds);
             Assert.Equal("motifb", Assert.Single(changed.Value.Selection.AddedWords));
-            Assert.Equal(6600, changed.Value.Selection.PerWordStepLimit!.Steps);
-            var rate = SelectionLimitEstimateQuery.ReadParserStepRate(project.FwDataPath);
+            Assert.Equal(660000, changed.Value.Selection.PerWordParserWorkLimit!.Work);
+            var rate = SelectionLimitEstimateQuery.ReadParserAttemptRate(project.FwDataPath);
             Assert.True(rate.Succeeded, rate.Refusal?.Message);
-            var safetyNetMs = (int)ParseRunLimits.SafetyNetTime(new StepCap(6600), rate.Value!)!.Value.TotalMilliseconds;
+            var safetyNetMs = (int)ParseRunLimits.SafetyNetTime(new ParserWorkLimit(660_000), rate.Value!)!.Value.TotalMilliseconds;
             Assert.Equal(SelectionTimeLimitMode.Estimated, changed.Value.Selection.Limits.TimeMode);
             Assert.Null(changed.Value.Selection.Limits.ExplicitPerWordLimitMs);
             Assert.Null(changed.Value.Selection.PerWordLimitMs);
@@ -174,7 +174,7 @@ public sealed class SetupRealClientTests(PristineProjectFixture pristine)
             Assert.Equal("motifb", Assert.Single(current.Value.DefaultSelection.AddedWords));
             Assert.Equal("motifb", Assert.Single(current.Value.Selection!.Selection.Words));
             Assert.Equal(safetyNetMs, matchingAssessment!.Invocation!.PerWordTimeoutMs);
-            Assert.Equal(6600, matchingAssessment.Invocation.PerWordStepLimit.Steps);
+            Assert.Equal(660000, matchingAssessment.Invocation.PerWordParserWorkLimit.Work);
         }, WalkthroughSteps.Remaining(deadline));
     }
 
@@ -191,21 +191,21 @@ public sealed class SetupRealClientTests(PristineProjectFixture pristine)
 
     private static async Task SelectProjectAndFinishFirstRun(
         WalkthroughWindow walkthrough, string projectPath, string selectedText,
-        long stepLimit, long deadline)
+        long parserWorkLimit, long deadline)
     {
         SetupWalkthroughActions.SelectProject(walkthrough, projectPath);
         SetupWalkthroughActions.CaptureBaselineAndWaitForSetup(
             walkthrough, 1, WalkthroughSteps.Remaining(deadline));
         SetupWalkthroughActions.FinishFirstRun(
-            walkthrough, selectedText, stepLimit.ToString(System.Globalization.CultureInfo.CurrentCulture),
+            walkthrough, selectedText, parserWorkLimit.ToString(System.Globalization.CultureInfo.CurrentCulture),
             WalkthroughSteps.Remaining(deadline));
         var commands = Assert.IsType<CommandClient>(walkthrough.Workspace.Context.Commands);
         var stored = await commands.ReadDefaultSelectionAsync(
             new ReadDefaultSelectionRequest(projectPath), CancellationToken.None);
         Assert.True(stored.Succeeded, stored.Refusal?.Message);
         Assert.Single(stored.Value!.Selection!.TextIds);
-        AssertEstimatedLimit(stored.Value.Selection, stepLimit);
-        Assert.Equal(stepLimit, stored.Value.Selection.PerWordStepLimit!.Steps);
+        AssertEstimatedLimit(stored.Value.Selection, parserWorkLimit);
+        Assert.Equal(parserWorkLimit, stored.Value.Selection.PerWordParserWorkLimit!.Work);
     }
 
     private static void AssertEstimatedLimit(NamedSelectionProjection selection, long steps)
@@ -213,8 +213,8 @@ public sealed class SetupRealClientTests(PristineProjectFixture pristine)
         Assert.Equal(SelectionTimeLimitMode.Estimated, selection.Limits.TimeMode);
         Assert.Null(selection.Limits.ExplicitPerWordLimitMs);
         Assert.Null(selection.PerWordLimitMs);
-        Assert.Equal(steps, selection.PerWordStepLimit.Steps);
-        Assert.Equal(1000L, StepLimitEstimator.Calculate(selection.PerWordStepLimit,
-            StepLimitEstimator.TypicalMachineRate)!.PerWordTimeLimitMs);
+        Assert.Equal(steps, selection.PerWordParserWorkLimit.Work);
+        Assert.Equal(1000L, ParserWorkLimitEstimator.Calculate(selection.PerWordParserWorkLimit,
+            ParserWorkLimitEstimator.TypicalMachineRate)!.PerWordTimeLimitMs);
     }
 }

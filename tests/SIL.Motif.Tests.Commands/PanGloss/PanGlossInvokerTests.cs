@@ -58,11 +58,11 @@ public sealed class PanGlossInvokerTests : IDisposable
     }
 
     [Fact]
-    public void ProgressReadsWorkStepsFromTheLastColumnAndRanksTheSlowestWordByThem()
+    public void ProgressReadsParserWorkFromTheLastColumnAndRanksTheSlowestWordByThem()
     {
         var path = Path.Combine(_root, "work-progress.tsv");
         var reader = new BatchProgressReader(["quick", "heavy", "stopped"]);
-        // Headerless work-column rows end with steps then work steps; the slow wall clock belongs to the light word.
+        // Headerless work-column rows end with steps then parser work; the slow wall clock belongs to the light word.
         File.WriteAllText(path,
             "0\tquick\t90000\tok\t-\t5\t40\n" +
             "1\theavy\t10\tok\tsig\t900\t9000\n" +
@@ -70,12 +70,12 @@ public sealed class PanGlossInvokerTests : IDisposable
 
         var progress = reader.Read(path);
 
-        Assert.Equal(new ParseWordTiming("heavy", 10) { WorkSteps = 9000 }, progress?.SlowestWord);
-        Assert.Equal([new StoppedParseWord("stopped", "CAP", 20) { WorkSteps = 7000 }], progress?.StoppedWords);
+        Assert.Equal(new ParseWordTiming("heavy", 10) { ParserWork = 9000 }, progress?.SlowestWord);
+        Assert.Equal([new StoppedParseWord("stopped", "CAP", 20) { ParserWork = 7000 }], progress?.StoppedWords);
     }
 
     [Fact]
-    public void ProgressReadsWorkStepsByNameWhenTheBatchHasAHeader()
+    public void ProgressReadsParserWorkByNameWhenTheBatchHasAHeader()
     {
         var path = Path.Combine(_root, "headed-progress.tsv");
         var reader = new BatchProgressReader(["one"]);
@@ -83,7 +83,7 @@ public sealed class PanGlossInvokerTests : IDisposable
 
         var progress = reader.Read(path);
 
-        Assert.Equal([new StoppedParseWord("one", "TIMEOUT", 12) { WorkSteps = 321 }], progress?.StoppedWords);
+        Assert.Equal([new StoppedParseWord("one", "TIMEOUT", 12) { ParserWork = 321 }], progress?.StoppedWords);
     }
 
     [Fact]
@@ -433,13 +433,13 @@ public sealed class PanGlossInvokerTests : IDisposable
     }
 
     [Fact]
-    public async Task ATraceWithAStepLimitPassesItAfterTheTraceFlags()
+    public async Task ATraceWithAParserWorkLimitPassesItAfterTheTraceFlags()
     {
-        var grammar = Project("trace-step-limit");
+        var grammar = Project("trace-parser-work-limit");
         using var invoker = Invoker();
 
-        var outcome = await invoker.RunAsync(new PanGlossRequest.Trace(grammar, "motifa") { StepLimit = 7 },
-            "test:trace-step-limit", CancellationToken.None);
+        var outcome = await invoker.RunAsync(new PanGlossRequest.Trace(grammar, "motifa") { ParserWorkLimit = 700 },
+            "test:trace-parser-work-limit", CancellationToken.None);
 
         Assert.IsType<PanGlossOutcome.Completed>(outcome);
         Assert.Equal(["parse", grammar, "motifa", "--trace", "--trace-format", "json", "--trace-details",
@@ -1057,8 +1057,8 @@ public sealed class PanGlossInvokerTests : IDisposable
         Assert.EndsWith("words.txt", argv[2], StringComparison.Ordinal);
         Assert.EndsWith("out.tsv", argv[3], StringComparison.Ordinal);
         Assert.Equal(["--word-timeout-ms", "1500", "--step-cap",
-            StepCap.DefaultSteps.ToString(CultureInfo.InvariantCulture), "--work-cap",
-            (StepCap.DefaultSteps * StepCap.WorkCapMultiplier).ToString(CultureInfo.InvariantCulture), "--work-columns", "--threads",
+            (ParserWorkLimit.DefaultWork / ParserWorkLimit.WorkPerAttempt).ToString(CultureInfo.InvariantCulture), "--work-cap",
+            ParserWorkLimit.DefaultWork.ToString(CultureInfo.InvariantCulture), "--work-columns", "--threads",
             PanGlossCpuBudget.DefaultBatchThreadCount.ToString(CultureInfo.InvariantCulture), "--stats", "--cache", cache], argv[4..]);
         Assert.True(File.Exists(cache));
     }
@@ -1073,8 +1073,8 @@ public sealed class PanGlossInvokerTests : IDisposable
             new PanGlossRequest.Batch(project, ["motifa"], TimeSpan.FromSeconds(1)), "test:batch", CancellationToken.None);
 
         Assert.Equal(["--word-timeout-ms", "1000", "--step-cap",
-            StepCap.DefaultSteps.ToString(CultureInfo.InvariantCulture), "--work-cap",
-            (StepCap.DefaultSteps * StepCap.WorkCapMultiplier).ToString(CultureInfo.InvariantCulture), "--work-columns", "--threads",
+            (ParserWorkLimit.DefaultWork / ParserWorkLimit.WorkPerAttempt).ToString(CultureInfo.InvariantCulture), "--work-cap",
+            ParserWorkLimit.DefaultWork.ToString(CultureInfo.InvariantCulture), "--work-columns", "--threads",
             PanGlossCpuBudget.DefaultBatchThreadCount.ToString(CultureInfo.InvariantCulture)], Argv(project)[4..]);
     }
 
@@ -1089,8 +1089,8 @@ public sealed class PanGlossInvokerTests : IDisposable
             "test:batch-threads", CancellationToken.None);
 
         Assert.Equal(["--word-timeout-ms", "1000", "--step-cap",
-            StepCap.DefaultSteps.ToString(CultureInfo.InvariantCulture), "--work-cap",
-            (StepCap.DefaultSteps * StepCap.WorkCapMultiplier).ToString(CultureInfo.InvariantCulture), "--work-columns", "--threads", "3"], Argv(project)[4..]);
+            (ParserWorkLimit.DefaultWork / ParserWorkLimit.WorkPerAttempt).ToString(CultureInfo.InvariantCulture), "--work-cap",
+            ParserWorkLimit.DefaultWork.ToString(CultureInfo.InvariantCulture), "--work-columns", "--threads", "3"], Argv(project)[4..]);
     }
 
     [Fact]
@@ -1137,13 +1137,13 @@ public sealed class PanGlossInvokerTests : IDisposable
     }
 
     [Fact]
-    public async Task Batch_ExplicitStepBudgetIsIndependentOfTheTimeLimit()
+    public async Task Batch_ExplicitParserWorkLimitIsIndependentOfTheTimeLimit()
     {
         var project = Project("batch-budget");
         using var invoker = Invoker();
 
         await invoker.RunAsync(
-            new PanGlossRequest.Batch(project, ["motifa"], TimeSpan.FromMilliseconds(700), PerWordStepLimit: 123),
+            new PanGlossRequest.Batch(project, ["motifa"], TimeSpan.FromMilliseconds(700), PerWordParserWorkLimit: 12_300),
             "test:batch-budget", CancellationToken.None);
 
         Assert.Equal(["--word-timeout-ms", "700", "--step-cap", "123", "--work-cap", "12300", "--work-columns", "--threads",
@@ -1168,16 +1168,16 @@ public sealed class PanGlossInvokerTests : IDisposable
     [Theory]
     [InlineData(-1)]
     [InlineData(int.MinValue)]
-    public async Task Batch_RejectsNegativeStepBudgetsBeforeInvocation(int stepLimit)
+    public async Task Batch_RejectsNegativeStepBudgetsBeforeInvocation(int parserWorkLimit)
     {
         var project = Project("batch-invalid-budget");
         using var invoker = Invoker();
 
         var exception = await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => invoker.RunAsync(
-            new PanGlossRequest.Batch(project, ["motifa"], TimeSpan.FromSeconds(1), PerWordStepLimit: stepLimit),
+            new PanGlossRequest.Batch(project, ["motifa"], TimeSpan.FromSeconds(1), PerWordParserWorkLimit: parserWorkLimit),
             "test:batch-invalid-budget", CancellationToken.None));
 
-        Assert.Equal("steps", exception.ParamName);
+        Assert.Equal("work", exception.ParamName);
         Assert.False(File.Exists(Path.Combine(_root, "_pangloss-argv.json")));
     }
 
@@ -1409,7 +1409,7 @@ public sealed class PanGlossInvokerTests : IDisposable
         using var invoker = Invoker();
 
         var outcome = await invoker.RunAsync(new PanGlossRequest.Batch(
-            source, ["motifa"], TimeSpan.FromMilliseconds(700), PerWordStepLimit: 123,
+            source, ["motifa"], TimeSpan.FromMilliseconds(700), PerWordParserWorkLimit: 123,
             ArtifactDirectory: artifacts) { ThreadCount = 3 }, "test:capture", CancellationToken.None);
 
         var completed = Assert.IsType<PanGlossOutcome.Completed>(outcome);
@@ -1423,7 +1423,7 @@ public sealed class PanGlossInvokerTests : IDisposable
         Assert.Equal(completed.Output, File.ReadAllText(evidence.TsvPath));
         Assert.Equal(completed.StandardError, File.ReadAllText(evidence.StandardErrorPath));
         Assert.Equal(700, evidence.PerWordTimeoutMs);
-        Assert.Equal(new SIL.Motif.Contract.Assess.StepCap(123), evidence.PerWordStepLimit);
+        Assert.Equal(new SIL.Motif.Contract.Assess.ParserWorkLimit(123), evidence.PerWordParserWorkLimit);
         Assert.Equal(3, evidence.Threads);
         Assert.False(evidence.CollectStatistics);
         File.WriteAllText(source, "changed after invocation");

@@ -189,41 +189,41 @@ public sealed class WordRowProjectionTests
     }
 
     [Fact]
-    public void TheRowCarriesTheWordsWorkStepsBesideItsTime()
+    public void TheRowCarriesTheWordsParserWorkBesideItsTime()
     {
-        var row = WordRowProjection.Of(Alikula(new ParserReading([A, Li, Ku, L, Fv])) with { WorkSteps = 1234 });
+        var row = WordRowProjection.Of(Alikula(new ParserReading([A, Li, Ku, L, Fv])) with { ParserWork = 1234 });
 
-        Assert.Equal((1234L, 12), (row.WorkSteps, row.ElapsedMs));
+        Assert.Equal((1234L, 12), (row.ParserWork, row.ElapsedMs));
     }
 
     [Fact]
-    public void AWordWithNoRecordedWorkCountCarriesNoWorkSteps()
+    public void AWordWithNoRecordedWorkCountCarriesNoParserWork()
     {
         var row = WordRowProjection.Of(Alikula(new ParserReading([A, Li, Ku, L, Fv])));
 
-        Assert.Null(row.WorkSteps);
+        Assert.Null(row.ParserWork);
     }
 
     [Fact]
-    public void ARefusedWordCarriesNoWorkStepsEvenWhenItsResultHasThem()
+    public void ARefusedWordCarriesNoParserWorkEvenWhenItsResultHasThem()
     {
-        var row = WordRowProjection.Of(new AssessmentWordResult("zz", "skipped", false, "Skipped", 0, null) { WorkSteps = 5 });
+        var row = WordRowProjection.Of(new AssessmentWordResult("zz", "skipped", false, "Skipped", 0, null) { ParserWork = 5 });
 
         Assert.Null(row.ElapsedMs);
-        Assert.Null(row.WorkSteps);
+        Assert.Null(row.ParserWork);
     }
 
     [Fact]
-    public void TheRowJsonCarriesWorkStepsAsACamelCaseCountThatIsNullWhenUnrecorded()
+    public void TheRowJsonCarriesParserWorkAsACamelCaseCountThatIsNullWhenUnrecorded()
     {
         var options = new JsonSerializerOptions(JsonSerializerDefaults.Web);
         var recorded = JsonSerializer.Serialize(
-            WordRowProjection.Of(Alikula(new ParserReading([A, Li, Ku, L, Fv])) with { WorkSteps = 1234 }), options);
+            WordRowProjection.Of(Alikula(new ParserReading([A, Li, Ku, L, Fv])) with { ParserWork = 1234 }), options);
         var unrecorded = JsonSerializer.Serialize(
             WordRowProjection.Of(Alikula(new ParserReading([A, Li, Ku, L, Fv]))), options);
 
-        Assert.Contains("\"workSteps\":1234", recorded);
-        Assert.Contains("\"workSteps\":null", unrecorded);
+        Assert.Contains("\"parserWork\":1234", recorded);
+        Assert.Contains("\"parserWork\":null", unrecorded);
     }
 
     [Fact]

@@ -16,7 +16,7 @@ namespace SIL.Motif.Tests.App.RealClient;
 public sealed class RealParserLimitTests
 {
     [RealParserFact]
-    public async Task AStepCappedWordFinishesUnderAHigherStepLimit()
+    public async Task AParserWorkLimitpedWordFinishesUnderAHigherParserWorkLimit()
     {
         var temporaryRoot = Path.Combine(
             Path.GetTempPath(), "Motif.RealParserLimit", Guid.NewGuid().ToString("N"));
@@ -52,7 +52,7 @@ public sealed class RealParserLimitTests
             var selection = new SelectionRequest(false, [], ["kia"], false, null);
 
             var capped = await client.AssessAsync(new AssessRequest(projectPath, selection,
-                    PerWordLimitMs: 120_000, PerWordStepLimit: new StepCap(1)),
+                    PerWordLimitMs: 120_000, PerWordParserWorkLimit: new ParserWorkLimit(1)),
                 new Progress<AssessmentProgress>(), timeout.Token);
 
             Assert.True(capped.Succeeded, capped.Refusal?.Message);
@@ -63,7 +63,7 @@ public sealed class RealParserLimitTests
             Assert.Contains("limit", cappedWord.CompletionStatus, StringComparison.OrdinalIgnoreCase);
 
             var finished = await client.AssessAsync(new AssessRequest(projectPath, selection,
-                    PerWordLimitMs: 120_000, PerWordStepLimit: new StepCap(100_000_000)),
+                    PerWordLimitMs: 120_000, PerWordParserWorkLimit: new ParserWorkLimit(10_000_000_000)),
                 new Progress<AssessmentProgress>(), timeout.Token);
 
             Assert.True(finished.Succeeded, finished.Refusal?.Message);

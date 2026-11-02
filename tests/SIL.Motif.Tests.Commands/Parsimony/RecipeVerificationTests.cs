@@ -189,7 +189,7 @@ public sealed class RecipeVerificationTests
         Assert.Contains("unreadable project judgment", result.Unavailable);
         Assert.Equal(1, result.ExcludedAssessmentCases);
         Assert.Equal(1000, result.EffectiveOptions!.PerWordTimeoutMs);
-        Assert.Equal(250_000, result.EffectiveOptions.PerWordStepLimit.Steps);
+        Assert.Equal(250_000, result.EffectiveOptions.PerWordParserWorkLimit.Work);
         Assert.Equal(1, result.EffectiveOptions.Threads);
         Assert.Equal(1, result.DistinctSurfaceCount);
         Assert.Equal(128, result.MaximumDistinctSurfaces);
@@ -274,7 +274,7 @@ public sealed class RecipeVerificationTests
             options ?? Options(), [], Selection.Create("verification", words.Select(word => word.Word)).Words);
 
     private static RecipeVerificationOptions Options(int timeoutMs = 1000, long steps = 200_000, int threads = 1) =>
-        new("sha256:" + new string('b', 64), timeoutMs, new StepCap(steps), threads, true);
+        new("sha256:" + new string('b', 64), timeoutMs, new ParserWorkLimit(steps), threads, true);
 
     private static FrozenExpectationSet BindManifest(FrozenExpectationSet frozen)
     {

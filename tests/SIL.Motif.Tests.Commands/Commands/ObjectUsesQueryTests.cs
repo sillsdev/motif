@@ -240,21 +240,21 @@ public sealed class ObjectUsesQueryTests
     }
 
     [Fact]
-    public void RanInSumsWorkStepsOverDirectionsAndLeavesThemUnknownWhenAnyDirectionHasNone()
+    public void RanInSumsParserWorkOverDirectionsAndLeavesThemUnknownWhenAnyDirectionHasNone()
     {
         var words = new[] { LostCell[0] with { Word = "both" }, LostCell[1] with { Word = "one-missing" } };
         var timings = new[]
         {
-            Timing("phon_rule", "rule", "Rule", "both", 2, 100) with { WorkSteps = 700 },
-            Timing("phon_rule", "rule", "Rule", "both", 1, 50, "synthesis") with { WorkSteps = 300 },
-            Timing("phon_rule", "rule", "Rule", "one-missing", 2, 100) with { WorkSteps = 700 },
+            Timing("phon_rule", "rule", "Rule", "both", 2, 100) with { ParserWork = 700 },
+            Timing("phon_rule", "rule", "Rule", "both", 1, 50, "synthesis") with { ParserWork = 300 },
+            Timing("phon_rule", "rule", "Rule", "one-missing", 2, 100) with { ParserWork = 700 },
             Timing("phon_rule", "rule", "Rule", "one-missing", 1, 50, "synthesis"),
         };
 
         var ran = ObjectUsesQuery.RanIn(words, timings, new ObjectUseRef { TimingKind = "phon_rule", TimingKey = "rule" });
 
         Assert.Equal([("both", (long?)1000), ("one-missing", null)],
-            ran.Words.Select(word => (word.Row.Word, word.WorkSteps)));
+            ran.Words.Select(word => (word.Row.Word, word.ParserWork)));
     }
 
     [Fact]

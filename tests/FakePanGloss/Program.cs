@@ -300,7 +300,7 @@ internal static class Program
                     Outcome = "complete",
                     Attempts = word.RecoveredAttempts ?? word.Attempts,
                     Passes = word.RecoveredPasses ?? word.Passes,
-                    WorkSteps = word.RecoveredWorkSteps ?? word.WorkSteps,
+                    ParserWork = word.RecoveredParserWork ?? word.ParserWork,
                 } : word).ToArray(),
         };
         var words = File.Exists(wordsPath) ? File.ReadAllLines(wordsPath) : Array.Empty<string>();
@@ -366,7 +366,7 @@ internal static class Program
                         StatsCache.Write(cachePath, words.Where(word => !string.IsNullOrWhiteSpace(word)).Select(word =>
                         {
                             var known = behaviour.Words.FirstOrDefault(item => item.Word == word);
-                            return new StatsCache.WordRow(word, known?.Attempts ?? 1, known?.Passes ?? 1, known?.WorkSteps);
+                            return new StatsCache.WordRow(word, known?.Attempts ?? 1, known?.Passes ?? 1, known?.ParserWork);
                         }).ToArray());
                 }
                 return behaviour.ExitCode;
@@ -390,7 +390,7 @@ internal static class Program
             builder.Append(i).Append('\t').Append(words[i]).Append('\t')
                 .Append((known?.ElapsedMs ?? 3).ToString(CultureInfo.InvariantCulture)).Append('\t')
                 .Append(status).Append('\t').Append(signature);
-            if (workColumns) builder.Append('\t').Append(known?.Attempts ?? 1).Append('\t').Append(known?.WorkSteps);
+            if (workColumns) builder.Append('\t').Append(known?.Attempts ?? 1).Append('\t').Append(known?.ParserWork);
             builder.Append('\n');
         }
         return builder.ToString();
@@ -679,7 +679,7 @@ internal static class Program
             var envelope = TraceEnvelope(word, behaviour.TraceSignature ?? word + "-sig", behaviour.TraceJson,
                 behaviour.TraceCapped, behaviour.TraceTimedOut, behaviour.TraceAnalyses);
             var counts = (behaviour.ServeSteps is { } steps ? ",\"steps\":" + steps.ToString(CultureInfo.InvariantCulture) : "") +
-                (behaviour.ServeWorkSteps is { } work ? ",\"workSteps\":" + work.ToString(CultureInfo.InvariantCulture) : "");
+                (behaviour.ServeParserWork is { } work ? ",\"workSteps\":" + work.ToString(CultureInfo.InvariantCulture) : "");
             output.WriteLine("{\"id\":" + JsonSerializer.Serialize(id) + ",\"type\":\"result\",\"exitCode\":" +
                 behaviour.ServeExitCode.ToString(CultureInfo.InvariantCulture) + counts + ",\"status\":\"future-status\",\"result\":" + envelope + "}");
         }
@@ -959,8 +959,8 @@ internal static class Program
 
     private sealed record FakeWord(string Word, string Outcome, string? Signature = null,
         IReadOnlyList<JsonElement>? Analyses = null, int? Attempts = null, int? Passes = null, double ElapsedMs = 3,
-        int? RecoversAtTimeoutMs = null, long? WorkSteps = null,
-        int? RecoveredAttempts = null, int? RecoveredPasses = null, long? RecoveredWorkSteps = null);
+        int? RecoversAtTimeoutMs = null, long? ParserWork = null,
+        int? RecoveredAttempts = null, int? RecoveredPasses = null, long? RecoveredParserWork = null);
 
     private sealed record Behaviour
     {
@@ -1000,7 +1000,7 @@ internal static class Program
         public string? ServeArgvLog { get; init; }
         public int ServeExitCode { get; init; }
         public long? ServeSteps { get; init; }
-        public long? ServeWorkSteps { get; init; }
+        public long? ServeParserWork { get; init; }
         public int ServeAllocateBytes { get; init; }
 
         internal static Behaviour Read(string? directory, string? subcommand = null)

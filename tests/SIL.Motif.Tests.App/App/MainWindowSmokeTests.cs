@@ -162,7 +162,7 @@ public sealed class MainWindowSmokeTests
                 var helpDescription = helpView.FindControl<TextBlock>("HelpDescription");
                 Assert.False(helpDescription?.IsVisible);
                 var markdownRenderer = Assert.Single(helpView.GetVisualDescendants().OfType<MarkdownRenderer>());
-                const string expectedSentence = "to inspect timing for the words with the most work steps";
+                const string expectedSentence = "to inspect timing for the words with the most parser work";
                 const string expectedAltText = "Saved parse timings on the Timing page";
                 const string expectedSection = "does not repeat those words in a separate list beside a rule's costliest words";
                 const string expectedOpening = "opens on All";
@@ -648,7 +648,7 @@ public sealed class MainWindowSmokeTests
                 ProjectCardAccess.Close(window);
                 Assert.Contains("Not checked yet", text);
                 Assert.DoesNotContain("0 of 0", text);
-                Assert.DoesNotContain("words hit the step limit", text);
+                Assert.DoesNotContain("words hit the parser work limit", text);
             }
             finally
             {
@@ -668,7 +668,7 @@ public sealed class MainWindowSmokeTests
                 var fake = Assert.IsType<FakeCommandClient>(workspace.Context.Commands);
                 fake.DefaultSelectionCompletesWith(new NamedSelectionProjection("Default",
                     [Guid.Parse("11111111-1111-1111-1111-111111111111")], [], string.Empty, string.Empty,
-                    1000, SIL.Motif.Contract.Assess.StepCap.Default));
+                    1000, SIL.Motif.Contract.Assess.ParserWorkLimit.Default));
                 workspace.Context.ProjectPath = @"C:\projects\one.fwdata";
                 workspace.Context.Baseline = new WorkspaceBaseline(true, string.Empty, string.Empty,
                     string.Empty, string.Empty, null);
@@ -1922,7 +1922,7 @@ public sealed class MainWindowSmokeTests
             ApprovedWordsUnknown = 14,
             ApprovedWordsSkipped = 2,
         },
-        new OverviewTiming(8.4, 123.5, [new SlowWordTiming("miboko", 1000) { WorkSteps = 10_000 }], 55)
+        new OverviewTiming(8.4, 123.5, [new SlowWordTiming("miboko", 1000) { ParserWork = 10_000 }], 55)
         {
             Work = new WordWorkSummary(120, 24_000, 84, 1_235),
         },

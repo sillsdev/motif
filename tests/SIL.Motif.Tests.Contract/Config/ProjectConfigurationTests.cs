@@ -36,7 +36,7 @@ public sealed class ProjectConfigurationTests : IDisposable
         Assert.Equal(AssessmentScopeConfiguration.DefaultName, scope.Name);
         Assert.Equal(AssessmentScopeConfiguration.DefaultQueryText, scope.Query);
         Assert.Equal(AssessmentScopeConfiguration.DefaultAssessorName, scope.Assessor);
-        Assert.Equal(StepCap.Default, scope.PerWordStepLimit);
+        Assert.Equal(ParserWorkLimit.Default, scope.PerWordParserWorkLimit);
         Assert.Equal(2000, scope.TimingDetailWords);
         Assert.Empty(scope.Collect);
         Assert.Equal(TimeSpan.FromSeconds(1), scope.PerWordLimit);
@@ -140,7 +140,7 @@ public sealed class ProjectConfigurationTests : IDisposable
                     query: "all words in text #7",
                     assessor: "pangloss",
                     collect: new[] { "coverage", "timing" },
-                    perWordLimit: TimeSpan.FromMilliseconds(2500), perWordStepLimit: 12345),
+                    perWordLimit: TimeSpan.FromMilliseconds(2500), perWordParserWorkLimit: 12345),
             },
             gateOnRegression: true,
             purgeOnApply: false);
@@ -155,7 +155,7 @@ public sealed class ProjectConfigurationTests : IDisposable
         Assert.Equal(originalScope.Name, reparsedScope.Name);
         Assert.Equal(originalScope.Query, reparsedScope.Query);
         Assert.Equal(originalScope.Assessor, reparsedScope.Assessor);
-        Assert.Equal(originalScope.PerWordStepLimit, reparsedScope.PerWordStepLimit);
+        Assert.Equal(originalScope.PerWordParserWorkLimit, reparsedScope.PerWordParserWorkLimit);
         Assert.Equal(originalScope.Collect, reparsedScope.Collect);
         Assert.Equal(originalScope.PerWordLimit, reparsedScope.PerWordLimit);
     }
@@ -185,15 +185,28 @@ public sealed class ProjectConfigurationTests : IDisposable
     }
 
     [Theory]
-    [InlineData(1)]
-    [InlineData(12345)]
-    public void DeclaredStepLimitsRoundTripIndependentlyOfTime(int steps)
+    [InlineData("200000", 20_000_000L)]
+    [InlineData("3", 300L)]
+    public void AnOldPerWordStepLimitKeyReadsAsOneHundredTimesItsValueAndIsWrittenUnderTheNewKey(string old, long work)
     {
         var parsed = ProjectConfigurationFile.Parse(
-            $"[[scope]]\nname = \"limited\"\nper-word-step-limit = {steps}\nper-word-limit-ms = 750\n", "Project.motif.toml");
+            $"[[scope]]\nname = \"limited\"\nper-word-step-limit = {old}\n", "Project.motif.toml");
+        Assert.Equal(new ParserWorkLimit(work), Assert.Single(parsed.Scopes).PerWordParserWorkLimit);
+        var rendered = ProjectConfigurationFile.Render(parsed);
+        Assert.Contains($"per-word-parser-work-limit = {work}", rendered, StringComparison.Ordinal);
+        Assert.DoesNotContain("per-word-step-limit", rendered, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(12345)]
+    public void DeclaredParserWorkLimitsRoundTripIndependentlyOfTime(int steps)
+    {
+        var parsed = ProjectConfigurationFile.Parse(
+            $"[[scope]]\nname = \"limited\"\nper-word-parser-work-limit = {steps}\nper-word-limit-ms = 750\n", "Project.motif.toml");
         var scope = Assert.Single(ProjectConfigurationFile.Parse(
             ProjectConfigurationFile.Render(parsed), "Project.motif.toml").Scopes);
-        Assert.Equal(new StepCap(steps), scope.PerWordStepLimit);
+        Assert.Equal(new ParserWorkLimit(steps), scope.PerWordParserWorkLimit);
         Assert.Equal(TimeSpan.FromMilliseconds(750), scope.PerWordLimit);
         Assert.DoesNotContain("engine", ProjectConfigurationFile.Render(parsed), StringComparison.Ordinal);
     }
@@ -203,21 +216,21 @@ public sealed class ProjectConfigurationTests : IDisposable
     [InlineData("0")]
     [InlineData("1.5")]
     [InlineData("many")]
-    public void InvalidStepLimitsRefuse(string steps)
+    public void InvalidParserWorkLimitsRefuse(string steps)
     {
         var exception = Assert.Throws<ProjectConfigurationException>(() => ProjectConfigurationFile.Parse(
-            $"[[scope]]\nname = \"limited\"\nper-word-step-limit = {steps}\n", "Project.motif.toml"));
+            $"[[scope]]\nname = \"limited\"\nper-word-parser-work-limit = {steps}\n", "Project.motif.toml"));
         Assert.Contains("positive whole number", exception.Message, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void UnboundedStepLimitRoundTrips()
+    public void UnboundedParserWorkLimitRoundTrips()
     {
         var parsed = ProjectConfigurationFile.Parse(
-            "[[scope]]\nname = \"limited\"\nper-word-step-limit = unbounded\n", "Project.motif.toml");
+            "[[scope]]\nname = \"limited\"\nper-word-parser-work-limit = unbounded\n", "Project.motif.toml");
 
-        Assert.Equal(StepCap.Unbounded, Assert.Single(parsed.Scopes).PerWordStepLimit);
-        Assert.Contains("per-word-step-limit = unbounded", ProjectConfigurationFile.Render(parsed), StringComparison.Ordinal);
+        Assert.Equal(ParserWorkLimit.Unbounded, Assert.Single(parsed.Scopes).PerWordParserWorkLimit);
+        Assert.Contains("per-word-parser-work-limit = unbounded", ProjectConfigurationFile.Render(parsed), StringComparison.Ordinal);
     }
 
     public void Dispose()

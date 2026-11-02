@@ -34,7 +34,7 @@ public sealed class OverviewProposalViewTests
 
         Assert.Equal("118 of 142 words parse", page.TextCoverageMain);
         Assert.Equal("71 of 84 rebuilt exactly", page.AccuracyMain);
-        Assert.Equal("142 words · 380,000 work steps in total", page.SpeedMain);
+        Assert.Equal("142 words · 380,000 parser work in total", page.SpeedMain);
         Assert.Equal("20 warnings", page.WarningsCount);
         Assert.Equal(MotifAppStrings.OverviewTodayViewNote, page.ProposalNote);
         Assert.Equal(reads, fake.OverviewRequests.Count);
@@ -51,7 +51,7 @@ public sealed class OverviewProposalViewTests
 
         Assert.Equal("130 of 142 words parse", page.TextCoverageMain);
         Assert.Equal("75 of 84 rebuilt exactly", page.AccuracyMain);
-        Assert.Equal("142 words · 372,000 work steps in total", page.SpeedMain);
+        Assert.Equal("142 words · 372,000 parser work in total", page.SpeedMain);
         Assert.Equal("18 warnings", page.WarningsCount);
         Assert.Equal(MotifAppStrings.OverviewProposalViewNote, page.ProposalNote);
         Assert.Equal(reads, fake.OverviewRequests.Count);

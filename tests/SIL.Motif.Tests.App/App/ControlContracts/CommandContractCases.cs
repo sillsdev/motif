@@ -155,7 +155,7 @@ internal static class CommandContractCases
         new(typeof(SetupViewModel), nameof(SetupViewModel.NextCommand), null, null, true,
             "WorkspaceShellViewModelTests.FirstRunCannotStartBeforeTheLastSetupStep"),
         new(typeof(SetupViewModel), nameof(SetupViewModel.FinishCommand), null, null, false,
-            "WorkspaceShellViewModelTests.FirstRunSavesTheSelectionAndUsesItWithTheChosenStepLimit"),
+            "WorkspaceShellViewModelTests.FirstRunSavesTheSelectionAndUsesItWithTheChosenParserWorkLimit"),
         new(typeof(TraceWordViewModel), nameof(TraceWordViewModel.SetExpertCommand), typeof(bool), false, true,
             "ExpertTracePanelTests.TheModeSwitchKeepsTheSelectedOccurrenceAndOpenInspector"),
         new(typeof(TraceWordViewModel), nameof(TraceWordViewModel.SelectExpertStepCommand), typeof(TraceStepViewModel), null, true,

@@ -123,7 +123,7 @@ public sealed class DeterministicAssessCommandTests : IDisposable
                         SIL.Motif.Host.Parser.ParseMorphEvidence.Schema, 0, "motifa", 2000,
                         false, false, false, [], []),
                 }],
-                1000, seeded.FwDataPath, []) { PerWordStepLimit = StepCap.Default }),
+                1000, seeded.FwDataPath, []) { PerWordParserWorkLimit = ParserWorkLimit.Default }),
             AssessmentKind.ObjectTiming => new AssessmentRaw.FileCache(cachePath, cacheDigest),
             _ => new AssessmentRaw.WordMeasurements([]),
         })
@@ -136,17 +136,17 @@ public sealed class DeterministicAssessCommandTests : IDisposable
             NewInvoker(), null, CancellationToken.None);
         Assert.True(measured.Succeeded, measured.Refusal?.Message);
 
-        var rate = SelectionLimitEstimateQuery.ReadParserStepRate(seeded.FwDataPath);
+        var rate = SelectionLimitEstimateQuery.ReadParserAttemptRate(seeded.FwDataPath);
         Assert.True(rate.Succeeded, rate.Refusal?.Message);
         Assert.False(rate.Value!.IsTypicalMachine);
-        Assert.Equal(200m, rate.Value.MillisecondsPerStep);
+        Assert.Equal(200m, rate.Value.MillisecondsPerAttempt);
         var parseRecord = measured.Value!.AssessmentIds.Select(OpenRepository(seeded.FwDataPath).Get)
             .Single(record => record.Kind == AssessmentKind.ParseTime.ToStoredKind());
         var parseWord = Assert.Single(OpenRepository(seeded.FwDataPath).Get(parseRecord.AssessmentId).Words!);
         Assert.Equal(10, parseWord.Morphology!.Attempts);
         Assert.Equal(725_001L, parseWord.ElapsedNs);
 
-        var estimate = StepLimitEstimator.Calculate(new StepCap(4), rate.Value);
+        var estimate = ParserWorkLimitEstimator.Calculate(new ParserWorkLimit(400), rate.Value);
         Assert.NotNull(estimate);
         Assert.Equal(800m, estimate.EstimatedMilliseconds);
         Assert.Equal(8_000, estimate.PerWordTimeLimitMs);
@@ -164,7 +164,7 @@ public sealed class DeterministicAssessCommandTests : IDisposable
         WriteStatsCacheWithWork(cachePath, ("motifa", 11, 2, 777, 725_001L));
         var cacheDigest = BatchInvocationEvidence.DigestFile(cachePath);
         var retryStatistics = retryStatisticsAvailable
-            ? new PanGlossWordStatistics(29, 8, 1_200_000L) { WorkSteps = 2900 }
+            ? new PanGlossWordStatistics(29, 8, 1_200_000L) { ParserWork = 2900 }
             : null;
         var recoveredWord = new WordAnalysis(0, "motifa", 1200, WordOutcome.Analysed, "recovered")
         {
@@ -172,13 +172,13 @@ public sealed class DeterministicAssessCommandTests : IDisposable
                 false, false, false, [], []) { Attempts = finalFields == "none" ? null : 29 },
             WasRetried = true,
             Steps = finalFields == "tsv" ? 29 : null,
-            WorkSteps = finalFields == "tsv" ? 2900 : null,
+            ParserWork = finalFields == "tsv" ? 2900 : null,
             RetryStatistics = retryStatistics,
         };
         var assessor = new FakeAssessor("fake-assessor", CollectedKinds, kind => kind switch
         {
             AssessmentKind.ParseTime => new AssessmentRaw.Batch(new BatchAnalysis(
-                [recoveredWord], 700, seeded.FwDataPath, []) { PerWordStepLimit = StepCap.Default }),
+                [recoveredWord], 700, seeded.FwDataPath, []) { PerWordParserWorkLimit = ParserWorkLimit.Default }),
             AssessmentKind.ObjectTiming => new AssessmentRaw.FileCache(cachePath, cacheDigest),
             _ => new AssessmentRaw.WordMeasurements([]),
         })
@@ -198,12 +198,12 @@ public sealed class DeterministicAssessCommandTests : IDisposable
         Assert.Equal(expectedAttempts, responseWord.Attempts);
         Assert.Equal(expectedAttempts, responseWord.Morphology!.Attempts);
         Assert.Equal(retryStatisticsAvailable ? 8 : null, responseWord.Passes);
-        Assert.Equal(expectedWork, responseWord.WorkSteps);
+        Assert.Equal(expectedWork, responseWord.ParserWork);
         var parseMeasurement = Assert.Single(outcome.Value.Measurements, item => item.Kind == "ParseTime");
         var storedWord = Assert.Single(OpenRepository(seeded.FwDataPath).Get(parseMeasurement.AssessmentId).Words!);
         Assert.Equal(expectedAttempts, storedWord.Attempts);
         Assert.Equal(retryStatisticsAvailable ? 8 : null, storedWord.Passes);
-        Assert.Equal(expectedWork, storedWord.WorkSteps);
+        Assert.Equal(expectedWork, storedWord.ParserWork);
         Assert.Equal(expectedAttempts, storedWord.Morphology!.Attempts);
     }
 
@@ -212,24 +212,24 @@ public sealed class DeterministicAssessCommandTests : IDisposable
     {
         using var seeded = NewSeededScratch();
 
-        var rate = SelectionLimitEstimateQuery.ReadParserStepRate(seeded.FwDataPath);
+        var rate = SelectionLimitEstimateQuery.ReadParserAttemptRate(seeded.FwDataPath);
 
         Assert.True(rate.Succeeded, rate.Refusal?.Message);
         Assert.True(rate.Value!.IsTypicalMachine);
-        Assert.Equal(StepLimitEstimator.TypicalMachineMillisecondsPerStep,
-            rate.Value.MillisecondsPerStep);
-        var estimate = StepLimitEstimator.Calculate(StepCap.Default, rate.Value);
+        Assert.Equal(ParserWorkLimitEstimator.TypicalMachineMillisecondsPerAttempt,
+            rate.Value.MillisecondsPerAttempt);
+        var estimate = ParserWorkLimitEstimator.Calculate(ParserWorkLimit.Default, rate.Value);
         Assert.NotNull(estimate);
         Assert.Equal(800, estimate.EstimatedMilliseconds);
         Assert.Equal(8_000, estimate.PerWordTimeLimitMs);
     }
 
     [Fact]
-    public void SavingNoStepLimitStoresNoTimeLimitAndTheDefaultRunUsesNoTimeLimit()
+    public void SavingNoParserWorkLimitStoresNoTimeLimitAndTheDefaultRunUsesNoTimeLimit()
     {
         using var seeded = NewSeededScratch();
         var saved = SelectionCommands.SetDefault(new SetDefaultSelectionRequest(
-            seeded.FwDataPath, "Default", [], ["motifa"], null, StepCap.Unbounded));
+            seeded.FwDataPath, "Default", [], ["motifa"], null, ParserWorkLimit.Unbounded));
         Assert.True(saved.Succeeded, saved.Refusal?.Message);
         Assert.Null(saved.Value!.Selection!.PerWordLimitMs);
 
@@ -238,7 +238,7 @@ public sealed class DeterministicAssessCommandTests : IDisposable
         {
             AssessmentKind.ParseTime => new AssessmentRaw.Batch(new SIL.Motif.Host.Parser.BatchAnalysis(
                 [new(0, "motifa", 12, SIL.Motif.Host.Parser.WordOutcome.Analysed, "complete")],
-                null, seeded.FwDataPath, []) { PerWordStepLimit = StepCap.Unbounded }),
+                null, seeded.FwDataPath, []) { PerWordParserWorkLimit = ParserWorkLimit.Unbounded }),
             _ => new AssessmentRaw.WordMeasurements([]),
         })
         {
@@ -254,7 +254,7 @@ public sealed class DeterministicAssessCommandTests : IDisposable
 
         Assert.True(assessed.Succeeded, assessed.Refusal?.Message);
         Assert.Null(observedScope!.PerWordLimit);
-        Assert.Equal(StepCap.Unbounded, observedScope.PerWordStepLimit);
+        Assert.Equal(ParserWorkLimit.Unbounded, observedScope.PerWordParserWorkLimit);
     }
 
     [Fact]
@@ -266,7 +266,7 @@ public sealed class DeterministicAssessCommandTests : IDisposable
             kind == AssessmentKind.ParseTime
                 ? new AssessmentRaw.Batch(new SIL.Motif.Host.Parser.BatchAnalysis(
                     [new(0, "motifa", 12, SIL.Motif.Host.Parser.WordOutcome.Analysed, "complete")],
-                    null, seeded.FwDataPath, []) { PerWordStepLimit = StepCap.Unbounded })
+                    null, seeded.FwDataPath, []) { PerWordParserWorkLimit = ParserWorkLimit.Unbounded })
                 : new AssessmentRaw.WordMeasurements([]))
         {
             CaptureEvidence = (scope, candidate) =>
@@ -290,13 +290,13 @@ public sealed class DeterministicAssessCommandTests : IDisposable
         using var seeded = NewSeededScratch();
         var created = SelectionCommands.SetDefault(new SetDefaultSelectionRequest(
             seeded.FwDataPath, "Default", [seeded.Seeded.TextId], ["motifa"],
-            SelectionLimitPolicy.Explicit(new StepCap(321), 750)));
+            SelectionLimitPolicy.Explicit(new ParserWorkLimit(321), 750)));
         Assert.True(created.Succeeded, created.Refusal?.Message);
         var original = created.Value!.Selection!;
 
         var changed = SelectionCommands.SetLimits(new SetSelectionLimitsRequest(
             seeded.FwDataPath, original.Name, original.Revision,
-            SelectionLimitPolicy.Estimated(new StepCap(654))));
+            SelectionLimitPolicy.Estimated(new ParserWorkLimit(654))));
 
         Assert.True(changed.Succeeded, changed.Refusal?.Message);
         Assert.Equal(original.TextIds, changed.Value!.TextIds);
@@ -304,18 +304,18 @@ public sealed class DeterministicAssessCommandTests : IDisposable
         Assert.Equal(original.Name, changed.Value.Name);
         Assert.Equal(SelectionTimeLimitMode.Estimated, changed.Value.Limits.TimeMode);
         Assert.Null(changed.Value.Limits.ExplicitPerWordLimitMs);
-        Assert.Equal(new StepCap(654), changed.Value.Limits.PerWordStepLimit);
+        Assert.Equal(new ParserWorkLimit(654), changed.Value.Limits.PerWordParserWorkLimit);
         Assert.Equal("2", changed.Value.Revision);
 
         var stale = SelectionCommands.SetLimits(new SetSelectionLimitsRequest(
             seeded.FwDataPath, original.Name, original.Revision,
-            SelectionLimitPolicy.Explicit(new StepCap(777), 900)));
+            SelectionLimitPolicy.Explicit(new ParserWorkLimit(777), 900)));
 
         Assert.False(stale.Succeeded);
         Assert.Equal("selection.revision-conflict", stale.Refusal!.Code);
         var read = SelectionCommands.ReadDefault(new ReadDefaultSelectionRequest(seeded.FwDataPath));
         Assert.Equal("2", read.Value!.Selection!.Revision);
-        Assert.Equal(new StepCap(654), read.Value.Selection.Limits.PerWordStepLimit);
+        Assert.Equal(new ParserWorkLimit(654), read.Value.Selection.Limits.PerWordParserWorkLimit);
     }
 
     [Fact]
@@ -337,7 +337,7 @@ public sealed class DeterministicAssessCommandTests : IDisposable
     }
 
     [Fact]
-    public void StoredTimingPreservesRuleAndUnattributedWorkSteps()
+    public void StoredTimingPreservesRuleAndUnattributedParserWork()
     {
         using var seeded = NewSeededScratch();
         var form = SeededProject.AnalysedWordForm;
@@ -361,7 +361,7 @@ public sealed class DeterministicAssessCommandTests : IDisposable
         {
             AssessmentKind.ParseTime => new AssessmentRaw.Batch(new SIL.Motif.Host.Parser.BatchAnalysis(
                 [new(0, form, 99, SIL.Motif.Host.Parser.WordOutcome.Analysed, "complete")],
-                1000, seeded.FwDataPath, []) { PerWordStepLimit = StepCap.Default }),
+                1000, seeded.FwDataPath, []) { PerWordParserWorkLimit = ParserWorkLimit.Default }),
             AssessmentKind.ObjectTiming => new AssessmentRaw.FileCache(cachePath, digest),
             _ => new AssessmentRaw.WordMeasurements([]),
         })
@@ -374,14 +374,14 @@ public sealed class DeterministicAssessCommandTests : IDisposable
         Assert.True(assessed.Succeeded, assessed.Refusal?.Message);
         var stored = assessed.Value!.AssessmentIds.Select(OpenRepository(seeded.FwDataPath).Get)
             .Single(record => record.Kind == AssessmentKind.ParseTime.ToStoredKind());
-        Assert.Equal(19, stored.ObjectTimings.Sum(row => row.WorkSteps));
+        Assert.Equal(19, stored.ObjectTimings.Sum(row => row.ParserWork));
 
         var timing = TimingCommand.Timing(new TimingRequest(seeded.FwDataPath,
             stored.AssessmentId, By: "rule", ExplicitWords: [form]));
         Assert.True(timing.Succeeded, timing.Refusal?.Message);
-        Assert.Equal(19, Assert.Single(timing.Value!.Words).WorkSteps);
-        Assert.Equal(12, Assert.Single(timing.Value.WorkStepAggregates, row => !row.IsUnattributed).WorkSteps);
-        Assert.Equal(7, Assert.Single(timing.Value.WorkStepAggregates, row => row.IsUnattributed).WorkSteps);
+        Assert.Equal(19, Assert.Single(timing.Value!.Words).ParserWork);
+        Assert.Equal(12, Assert.Single(timing.Value.ParserWorkAggregates, row => !row.IsUnattributed).ParserWork);
+        Assert.Equal(7, Assert.Single(timing.Value.ParserWorkAggregates, row => row.IsUnattributed).ParserWork);
     }
 
     [Fact]
@@ -389,7 +389,7 @@ public sealed class DeterministicAssessCommandTests : IDisposable
     {
         using var seeded = NewSeededScratch();
         var set = SelectionCommands.SetDefault(new SetDefaultSelectionRequest(
-            seeded.FwDataPath, "Default", [seeded.Seeded.TextId], [], 1200, new StepCap(4321)));
+            seeded.FwDataPath, "Default", [seeded.Seeded.TextId], [], 1200, new ParserWorkLimit(4321)));
 
         Assert.True(set.Succeeded, set.Refusal?.Message);
         var read = SelectionCommands.ReadDefault(new ReadDefaultSelectionRequest(seeded.FwDataPath));
@@ -407,7 +407,7 @@ public sealed class DeterministicAssessCommandTests : IDisposable
             AssessmentKind.ParseTime => new AssessmentRaw.Batch(new SIL.Motif.Host.Parser.BatchAnalysis(
                 [new(0, SeededProject.AnalysedWordForm, 99, SIL.Motif.Host.Parser.WordOutcome.Capped, "partial"),
                  new(1, SeededProject.UnanalysedWordForm, 15, SIL.Motif.Host.Parser.WordOutcome.NoAnalysis, "none")],
-                1000, seeded.FwDataPath, []) { PerWordStepLimit = StepCap.Default }),
+                1000, seeded.FwDataPath, []) { PerWordParserWorkLimit = ParserWorkLimit.Default }),
             AssessmentKind.ObjectTiming => new AssessmentRaw.FileCache(cachePath, cacheDigest),
             _ => new AssessmentRaw.WordMeasurements([]),
         })
@@ -429,7 +429,7 @@ public sealed class DeterministicAssessCommandTests : IDisposable
 
         Assert.True(assessed.Succeeded, assessed.Refusal?.Message);
         Assert.Equal(TimeSpan.FromMilliseconds(1200), observedScope!.PerWordLimit);
-        Assert.Equal(4321, observedScope.PerWordStepLimit);
+        Assert.Equal(4321, observedScope.PerWordParserWorkLimit);
         Assert.Equal([SeededProject.AnalysedWordForm, SeededProject.UnanalysedWordForm], assessed.Value!.Selection.Words);
         var parseAssessment = assessed.Value.AssessmentIds
             .Select(OpenRepository(seeded.FwDataPath).Get)
@@ -482,12 +482,12 @@ public sealed class DeterministicAssessCommandTests : IDisposable
         Assert.Contains(timing.Value.Words, word => word.Word == SeededProject.AnalysedWordForm &&
             word.Completion == TimingCompletion.WorkLimit);
 
-        var stepLimited = TimingCommand.Timing(new TimingRequest(seeded.FwDataPath,
-            parseAssessment.AssessmentId, "step-limit", "rule", new TraceTimingKey("morph_rule", "mrule#0:Verb template") { IdentityQuality = "structural" }, 5));
-        Assert.True(stepLimited.Succeeded, stepLimited.Refusal?.Message);
-        Assert.Equal(1, stepLimited.Value!.WordCount);
-        Assert.Equal(SeededProject.AnalysedWordForm, Assert.Single(stepLimited.Value.SlowestWords).Word);
-        Assert.Equal(TimingCompletion.WorkLimit, Assert.Single(stepLimited.Value.Words).Completion);
+        var parserWorkLimited = TimingCommand.Timing(new TimingRequest(seeded.FwDataPath,
+            parseAssessment.AssessmentId, "parser-work-limit", "rule", new TraceTimingKey("morph_rule", "mrule#0:Verb template") { IdentityQuality = "structural" }, 5));
+        Assert.True(parserWorkLimited.Succeeded, parserWorkLimited.Refusal?.Message);
+        Assert.Equal(1, parserWorkLimited.Value!.WordCount);
+        Assert.Equal(SeededProject.AnalysedWordForm, Assert.Single(parserWorkLimited.Value.SlowestWords).Word);
+        Assert.Equal(TimingCompletion.WorkLimit, Assert.Single(parserWorkLimited.Value.Words).Completion);
 
         var slowest = TimingCommand.Timing(new TimingRequest(seeded.FwDataPath,
             parseAssessment.AssessmentId, "slowest", "rule", new TraceTimingKey("morph_rule", "mrule#0:Verb template") { IdentityQuality = "structural" }, 1));
@@ -519,7 +519,7 @@ public sealed class DeterministicAssessCommandTests : IDisposable
 
         using (var database = OpenDatabase(seeded.FwDataPath))
             new NamedSelectionRepository(database).SetDefault("Deleted Text", [Guid.NewGuid()], [],
-                SelectionLimitPolicy.Estimated(StepCap.Default), null);
+                SelectionLimitPolicy.Estimated(ParserWorkLimit.Default), null);
         var missingText = TimingCommand.Timing(new TimingRequest(seeded.FwDataPath,
             By: "rule", Rule: new TraceTimingKey("morph_rule", "mrule#0:Verb template") { IdentityQuality = "structural" }, Top: 5));
         Assert.False(missingText.Succeeded);
@@ -833,7 +833,7 @@ public sealed class DeterministicAssessCommandTests : IDisposable
                 : new AssessmentRaw.Batch(new SIL.Motif.Host.Parser.BatchAnalysis(
                     [new(0, SeededProject.AnalysedWordForm, 5, SIL.Motif.Host.Parser.WordOutcome.Analysed, "sig"),
                      new(1, SeededProject.UnanalysedWordForm, 5, SIL.Motif.Host.Parser.WordOutcome.NoAnalysis, "-")],
-                    1000, seeded.FwDataPath, []) { PerWordStepLimit = 200000 }))
+                    1000, seeded.FwDataPath, []) { PerWordParserWorkLimit = 200000 }))
         {
             CaptureEvidence = (scope, candidate) => FakeAssessmentEvidence.Capture(
                 _managedRootsParent, scope, candidate),
@@ -948,7 +948,7 @@ public sealed class DeterministicAssessCommandTests : IDisposable
                 ? new AssessmentRaw.Batch(new SIL.Motif.Host.Parser.BatchAnalysis(
                     [new(0, "motifa", 700, SIL.Motif.Host.Parser.WordOutcome.Capped, "partial-match"),
                      new(1, "motifb", 12, SIL.Motif.Host.Parser.WordOutcome.Analysed, "complete-match")],
-                    1000, seeded.FwDataPath, []) { PerWordStepLimit = 200000 })
+                    1000, seeded.FwDataPath, []) { PerWordParserWorkLimit = 200000 })
                  : new AssessmentRaw.WordMeasurements([]))
         {
             CaptureEvidence = (scope, candidate) => FakeAssessmentEvidence.Capture(
@@ -984,7 +984,7 @@ public sealed class DeterministicAssessCommandTests : IDisposable
         var configured = new SIL.Motif.Host.Config.ProjectConfiguration(
             [new SIL.Motif.Host.Config.AssessmentScopeConfiguration(
                 SIL.Motif.Host.Config.AssessmentScopeConfiguration.DefaultName, "all", "pangloss", collect.Split(','),
-                TimeSpan.FromMilliseconds(2500), perWordStepLimit: 500000)],
+                TimeSpan.FromMilliseconds(2500), perWordParserWorkLimit: 500000)],
             gateOnRegression: false, purgeOnApply: true);
         File.WriteAllText(Path.ChangeExtension(seeded.FwDataPath, ".motif.toml"),
             SIL.Motif.Host.Config.ProjectConfigurationFile.Render(configured));
@@ -993,7 +993,7 @@ public sealed class DeterministicAssessCommandTests : IDisposable
             kind == AssessmentKind.ParseTime
                 ? new AssessmentRaw.Batch(new SIL.Motif.Host.Parser.BatchAnalysis(
                     [new(0, "motifa", 12, SIL.Motif.Host.Parser.WordOutcome.Analysed, "complete-match")],
-                    2500, seeded.FwDataPath, []) { PerWordStepLimit = 500000 })
+                    2500, seeded.FwDataPath, []) { PerWordParserWorkLimit = 500000 })
                 : new AssessmentRaw.WordMeasurements([]))
         {
             CaptureEvidence = (scope, candidate) =>
@@ -1019,17 +1019,17 @@ public sealed class DeterministicAssessCommandTests : IDisposable
     }
 
     [Theory]
-    [InlineData(null, null, null, 500000, 200_000)]
-    [InlineData(4000, 150000, null, 150000, 4000)]
-    [InlineData(4000, 150000, 750000, 750000, 4000)]
+    [InlineData(null, null, null, 50_000_000, 200_000)]
+    [InlineData(4000, 15_000_000, null, 15_000_000, 4000)]
+    [InlineData(4000, 15_000_000, 75_000_000, 75_000_000, 4000)]
     public void TheRunUsesRequestLimitsBeforeProjectConfiguredLimits(
-        int? requestedMs, int? selectionStepLimit, int? requestStepLimit, int expectedStepLimit, int expectedMs)
+        int? requestedMs, int? selectionParserWorkLimit, int? requestParserWorkLimit, int expectedParserWorkLimit, int expectedMs)
     {
         using var seeded = NewSeededScratch();
         var configured = new SIL.Motif.Host.Config.ProjectConfiguration(
             [new SIL.Motif.Host.Config.AssessmentScopeConfiguration(
                 SIL.Motif.Host.Config.AssessmentScopeConfiguration.DefaultName, "all", "pangloss", [],
-                TimeSpan.FromMilliseconds(2500), perWordStepLimit: 500000)],
+                TimeSpan.FromMilliseconds(2500), perWordParserWorkLimit: 50_000_000)],
             gateOnRegression: false, purgeOnApply: true);
         File.WriteAllText(Path.ChangeExtension(seeded.FwDataPath, ".motif.toml"),
             SIL.Motif.Host.Config.ProjectConfigurationFile.Render(configured));
@@ -1038,7 +1038,7 @@ public sealed class DeterministicAssessCommandTests : IDisposable
             kind == AssessmentKind.ParseTime
                 ? new AssessmentRaw.Batch(new SIL.Motif.Host.Parser.BatchAnalysis(
                     [new(0, "motifa", 12, SIL.Motif.Host.Parser.WordOutcome.Analysed, "complete-match")],
-                    requestedMs ?? 2500, seeded.FwDataPath, []) { PerWordStepLimit = expectedStepLimit })
+                    requestedMs ?? 2500, seeded.FwDataPath, []) { PerWordParserWorkLimit = expectedParserWorkLimit })
                 : new AssessmentRaw.WordMeasurements([]))
         {
             CaptureEvidence = (scope, candidate) =>
@@ -1050,14 +1050,14 @@ public sealed class DeterministicAssessCommandTests : IDisposable
 
         var outcome = AssessCommand.Run(new AssessRequest(seeded.FwDataPath,
             new SelectionRequest(false, [], ["motifa"], false, null,
-                PerWordStepLimit: selectionStepLimit is { } selectionSteps ? new StepCap(selectionSteps) : null),
+                PerWordParserWorkLimit: selectionParserWorkLimit is { } selectionSteps ? new ParserWorkLimit(selectionSteps) : null),
             requestedMs,
-            requestStepLimit is { } requestSteps ? new StepCap(requestSteps) : null), NewManagedRoot(),
+            requestParserWorkLimit is { } requestSteps ? new ParserWorkLimit(requestSteps) : null), NewManagedRoot(),
             assessor, NewInvoker(), null, CancellationToken.None);
 
         Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
         Assert.Equal(TimeSpan.FromMilliseconds(expectedMs), seen!.PerWordLimit);
-        Assert.Equal(expectedStepLimit, seen.PerWordStepLimit);
+        Assert.Equal(expectedParserWorkLimit, seen.PerWordParserWorkLimit);
     }
 
     [Fact]
@@ -1076,7 +1076,7 @@ public sealed class DeterministicAssessCommandTests : IDisposable
                                     "22222222-2222-2222-2222-222222222222", null, null)])], [])
                     },
                      new(1, "motifb", 12, SIL.Motif.Host.Parser.WordOutcome.Analysed, "complete-match")],
-                    1000, seeded.FwDataPath, []) { PerWordStepLimit = 200000 })
+                    1000, seeded.FwDataPath, []) { PerWordParserWorkLimit = 200000 })
                 : new AssessmentRaw.WordMeasurements([]))
         {
             CaptureEvidence = (scope, candidate) => FakeAssessmentEvidence.Capture(
@@ -1141,7 +1141,7 @@ public sealed class DeterministicAssessCommandTests : IDisposable
                             SIL.Motif.Host.Parser.ParseMorphEvidence.Schema, 4, "motife", 0,
                             false, false, true, [], [])
                     }], 1000, seeded.FwDataPath, [])
-                    { PerWordStepLimit = 200000 })
+                    { PerWordParserWorkLimit = 200000 })
                 : new AssessmentRaw.WordMeasurements([]))
         {
             CaptureEvidence = (scope, candidate) => FakeAssessmentEvidence.Capture(
@@ -1213,7 +1213,7 @@ public sealed class DeterministicAssessCommandTests : IDisposable
         var assessor = new FakeAssessor("fake-assessor", CollectedKinds, kind => kind == AssessmentKind.ParseTime
             ? new AssessmentRaw.Batch(new SIL.Motif.Host.Parser.BatchAnalysis(
                 [new(0, SeededProject.AnalysedWordForm, 5, SIL.Motif.Host.Parser.WordOutcome.Analysed, "sig")
-                    { Morphology = morphology }], 1000, seeded.FwDataPath, []) { PerWordStepLimit = 200000 })
+                    { Morphology = morphology }], 1000, seeded.FwDataPath, []) { PerWordParserWorkLimit = 200000 })
             : new AssessmentRaw.WordMeasurements([]))
         {
             CaptureEvidence = (scope, candidate) => FakeAssessmentEvidence.Capture(_managedRootsParent, scope, candidate),
@@ -1286,7 +1286,7 @@ public sealed class DeterministicAssessCommandTests : IDisposable
                 ? new AssessmentRaw.Batch(new SIL.Motif.Host.Parser.BatchAnalysis(
                     [new(0, SeededProject.AnalysedWordForm, 5, SIL.Motif.Host.Parser.WordOutcome.Analysed, "sig")
                         { Morphology = morphology, Correctness = correctness }],
-                    1000, seeded.FwDataPath, []) { PerWordStepLimit = 200000 })
+                    1000, seeded.FwDataPath, []) { PerWordParserWorkLimit = 200000 })
                 : new AssessmentRaw.WordMeasurements([]))
         {
             CaptureEvidence = (scope, candidate) => FakeAssessmentEvidence.Capture(_managedRootsParent, scope, candidate),
@@ -1349,7 +1349,7 @@ public sealed class DeterministicAssessCommandTests : IDisposable
                 ? new AssessmentRaw.Batch(new SIL.Motif.Host.Parser.BatchAnalysis(
                     [new(0, SeededProject.AnalysedWordForm, 5, SIL.Motif.Host.Parser.WordOutcome.Analysed, "sig")
                         { Morphology = morphology, Correctness = correctness }],
-                    1000, seeded.FwDataPath, []) { PerWordStepLimit = 200000 })
+                    1000, seeded.FwDataPath, []) { PerWordParserWorkLimit = 200000 })
                 : new AssessmentRaw.WordMeasurements([]))
         {
             CaptureEvidence = (scope, candidate) => FakeAssessmentEvidence.Capture(_managedRootsParent, scope, candidate),
@@ -1409,7 +1409,7 @@ public sealed class DeterministicAssessCommandTests : IDisposable
                 ? new AssessmentRaw.Batch(new SIL.Motif.Host.Parser.BatchAnalysis(
                     [new(0, SeededProject.UnanalysedWordForm, 5, SIL.Motif.Host.Parser.WordOutcome.NoAnalysis, "sig")
                         { Morphology = morphology }],
-                    1000, seeded.FwDataPath, []) { PerWordStepLimit = 200000 })
+                    1000, seeded.FwDataPath, []) { PerWordParserWorkLimit = 200000 })
                 : new AssessmentRaw.WordMeasurements([]))
         {
             CaptureEvidence = (scope, candidate) => FakeAssessmentEvidence.Capture(_managedRootsParent, scope, candidate),
@@ -1440,7 +1440,7 @@ public sealed class DeterministicAssessCommandTests : IDisposable
                 ? new AssessmentRaw.Batch(new SIL.Motif.Host.Parser.BatchAnalysis(
                     [new(0, SeededProject.AnalysedWordForm, 5, SIL.Motif.Host.Parser.WordOutcome.Analysed, "sig"),
                      new(1, SeededProject.UnanalysedWordForm, 5, SIL.Motif.Host.Parser.WordOutcome.NoAnalysis, "-")],
-                    1000, seeded.FwDataPath, []) { PerWordStepLimit = 200000 })
+                    1000, seeded.FwDataPath, []) { PerWordParserWorkLimit = 200000 })
                 : new AssessmentRaw.FileCache(cachePath, BatchInvocationEvidence.DigestFile(cachePath)))
         {
             CaptureEvidence = (scope, candidate) => FakeAssessmentEvidence.Capture(_managedRootsParent, scope, candidate),
@@ -1659,7 +1659,7 @@ public sealed class DeterministicAssessCommandTests : IDisposable
     {
         using var seeded = NewSeededScratch();
         var saved = SelectionCommands.SetDefault(new SetDefaultSelectionRequest(
-            seeded.FwDataPath, "Default", [], [SeededProject.AnalysedWordForm], 1000, StepCap.Default));
+            seeded.FwDataPath, "Default", [], [SeededProject.AnalysedWordForm], 1000, ParserWorkLimit.Default));
         Assert.True(saved.Succeeded, saved.Refusal?.Message);
         using var cancellation = new CancellationTokenSource();
         var outcome = AssessCommand.Run(
@@ -2005,7 +2005,7 @@ public sealed class DeterministicAssessCommandTests : IDisposable
             AssessmentKind.ParseTime => new AssessmentRaw.Batch(new SIL.Motif.Host.Parser.BatchAnalysis(
                 [new(0, SeededProject.AnalysedWordForm, 9, SIL.Motif.Host.Parser.WordOutcome.NoAnalysis, "none"),
                  new(1, SeededProject.UnanalysedWordForm, 15, SIL.Motif.Host.Parser.WordOutcome.NoAnalysis, "none")],
-                1000, seeded.FwDataPath, []) { PerWordStepLimit = StepCap.Default }),
+                1000, seeded.FwDataPath, []) { PerWordParserWorkLimit = ParserWorkLimit.Default }),
             AssessmentKind.ObjectTiming => new AssessmentRaw.FileCache(cachePath, cacheDigest),
             _ => new AssessmentRaw.WordMeasurements([]),
         })
@@ -2032,7 +2032,7 @@ public sealed class DeterministicAssessCommandTests : IDisposable
             AssessmentKind.ParseTime => new AssessmentRaw.Batch(new SIL.Motif.Host.Parser.BatchAnalysis(
                 [new(0, SeededProject.AnalysedWordForm, 9, SIL.Motif.Host.Parser.WordOutcome.NoAnalysis, "none"),
                  new(1, SeededProject.UnanalysedWordForm, 15, SIL.Motif.Host.Parser.WordOutcome.NoAnalysis, "none")],
-                1000, seeded.FwDataPath, []) { PerWordStepLimit = StepCap.Default }),
+                1000, seeded.FwDataPath, []) { PerWordParserWorkLimit = ParserWorkLimit.Default }),
             AssessmentKind.ObjectTiming => new AssessmentRaw.FileCache(cachePath, cacheDigest),
             _ => new AssessmentRaw.WordMeasurements([]),
         })
@@ -2048,7 +2048,7 @@ public sealed class DeterministicAssessCommandTests : IDisposable
         WriteStatsCache(path, 0L, words);
 
     private static void WriteStatsCacheWithWork(string path,
-        params (string Word, int Attempts, int Passes, long WorkSteps, long ElapsedNs)[] words)
+        params (string Word, int Attempts, int Passes, long ParserWork, long ElapsedNs)[] words)
     {
         using var connection = new SqliteConnection(new SqliteConnectionStringBuilder
         {
@@ -2073,18 +2073,18 @@ public sealed class DeterministicAssessCommandTests : IDisposable
                 """;
             command.ExecuteNonQuery();
         }
-        foreach (var (word, attempts, passes, workSteps, elapsedNs) in words)
+        foreach (var (word, attempts, passes, parserWork, elapsedNs) in words)
         {
             using var insert = connection.CreateCommand();
             insert.CommandText = """
                 INSERT INTO word (form, elapsed_ns, attempts, passes, work)
-                VALUES ($form, $elapsedNs, $attempts, $passes, $workSteps);
+                VALUES ($form, $elapsedNs, $attempts, $passes, $parserWork);
                 """;
             insert.Parameters.AddWithValue("$form", word);
             insert.Parameters.AddWithValue("$elapsedNs", elapsedNs);
             insert.Parameters.AddWithValue("$attempts", attempts);
             insert.Parameters.AddWithValue("$passes", passes);
-            insert.Parameters.AddWithValue("$workSteps", workSteps);
+            insert.Parameters.AddWithValue("$parserWork", parserWork);
             insert.ExecuteNonQuery();
         }
     }

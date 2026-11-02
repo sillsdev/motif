@@ -309,7 +309,7 @@ public sealed class TrialJobHandlerTests : IDisposable
         var invocation = new BatchInvocationEvidence("historical-invocation", sharedSource, sourceDigest,
             "sha256:" + new string('1', 64), "words.txt", "sha256:" + new string('2', 64),
             "out.tsv", "sha256:" + new string('3', 64), "stderr.txt", "sha256:" + new string('4', 64),
-            null, StepCap.Default, 1, true);
+            null, ParserWorkLimit.Default, 1, true);
         var assessmentId = CanonicalId.Mint("assessment/").Value;
         var selection = Selection.Create("historical", []);
         _assessments.Record(new NewAssessmentRecord(assessmentId, null, null, "pangloss",
@@ -1920,7 +1920,7 @@ public sealed class TrialJobHandlerTests : IDisposable
                     ? new AssessmentRaw.FileCache(_cachePath!, _cacheDigest!)
                     : new AssessmentRaw.Batch(new BatchAnalysis(scope.WordForms.Select((word, index) =>
                         new WordAnalysis(index, word, 1, WordOutcome.NoAnalysis, "none")).ToArray(),
-                        1000, _projectPath!, []) { PerWordStepLimit = scope.PerWordStepLimit }))
+                        1000, _projectPath!, []) { PerWordParserWorkLimit = scope.PerWordParserWorkLimit }))
             {
                 CaptureEvidence = Capture,
             };

@@ -24,12 +24,12 @@ public sealed class W1ChooseProjectAndCaptureBaselineTests(PristineProjectFixtur
 
             walkthrough.ConfigureFromProjectMenu();
             SetupWalkthroughActions.FinishFirstRun(
-                walkthrough, SeededProject.TextTitle, StepCap.DefaultSteps.ToString(),
+                walkthrough, SeededProject.TextTitle, ParserWorkLimit.DefaultWork.ToString(),
                 WalkthroughSteps.Remaining(deadline));
             Assert.False(walkthrough.Workspace.Context.NeedsAssessment);
             Assert.True(walkthrough.Find<Button>("Parse all words in the Selection").IsEffectivelyEnabled);
             Assert.True(walkthrough.Find<Button>("Write the AI Handoff folder").IsEffectivelyEnabled);
-            Assert.Equal($"1 text, analysis attempt limit {StepCap.DefaultSteps:N0}", walkthrough.Workspace.Selection.SummaryText);
+            Assert.Equal($"1 text, parser work limit {ParserWorkLimit.DefaultWork:N0}", walkthrough.Workspace.Selection.SummaryText);
 
             Assert.Equal(project.SourceSha256, WalkthroughStoreAssertions.Sha256(project.FwDataPath));
             var databasePath = Path.Combine(

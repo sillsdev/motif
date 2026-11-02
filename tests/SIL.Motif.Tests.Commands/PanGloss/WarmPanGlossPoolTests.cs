@@ -79,17 +79,17 @@ public sealed class WarmPanGlossPoolTests : IDisposable
     [Fact]
     public async Task OptionalServeCountsSurviveTheEnvelopeAndTracePath()
     {
-        var (grammar, _, _) = Project("counts", new { ServeSteps = 13L, ServeWorkSteps = 401L });
+        var (grammar, _, _) = Project("counts", new { ServeSteps = 13L, ServeParserWork = 401L });
         using var pool = Pool();
         var answer = Assert.IsType<WarmParseResult.Completed>(
             await pool.TryWordAsync(grammar, "t1", grammar, "motifa", true, CancellationToken.None));
         Assert.Equal(13, answer.Steps);
-        Assert.Equal(401, answer.WorkSteps);
+        Assert.Equal(401, answer.ParserWork);
         using var cold = new PanGlossInvoker(FakeParser.ExecutablePath);
         using var tracer = new WarmFirstTracer(pool, new PanGlossTracer(cold));
         var trace = await tracer.TraceAsync(grammar, "t1", grammar, "motifa", CancellationToken.None);
         Assert.Equal(13, trace.Steps);
-        Assert.Equal(401, trace.WorkSteps);
+        Assert.Equal(401, trace.ParserWork);
     }
 
     [Fact]
@@ -107,7 +107,7 @@ public sealed class WarmPanGlossPoolTests : IDisposable
 
         Assert.Equal(cold.Output.Trim(), warm.Json);
         Assert.Null(warm.Steps);
-        Assert.Null(warm.WorkSteps);
+        Assert.Null(warm.ParserWork);
     }
 
     [Fact]
@@ -365,32 +365,32 @@ public sealed class WarmPanGlossPoolTests : IDisposable
     }
 
     [Fact]
-    public async Task AWordWithADifferentStepCapGetsItsOwnSessionStartedWithThatCap()
+    public async Task AWordWithADifferentParserWorkLimitGetsItsOwnSessionStartedWithThatCap()
     {
         var (grammar, startLog, _) = Project("caps", new { ServeArgvLog = Path.Combine(_root, "caps", "argv.log") });
         var argvLog = Path.Combine(_root, "caps", "argv.log");
         using var pool = Pool();
 
         await pool.TryWordAsync(grammar, "t1", grammar, "motifa", true, CancellationToken.None);
-        await pool.TryWordAsync(grammar, "t1", grammar, "motifa", true, CancellationToken.None, new StepCap(1000));
-        await pool.TryWordAsync(grammar, "t1", grammar, "motifb", true, CancellationToken.None, new StepCap(1000));
-        await pool.TryWordAsync(grammar, "t1", grammar, "motifc", true, CancellationToken.None, StepCap.Unbounded);
+        await pool.TryWordAsync(grammar, "t1", grammar, "motifa", true, CancellationToken.None, new ParserWorkLimit(100_000));
+        await pool.TryWordAsync(grammar, "t1", grammar, "motifb", true, CancellationToken.None, new ParserWorkLimit(100_000));
+        await pool.TryWordAsync(grammar, "t1", grammar, "motifc", true, CancellationToken.None, ParserWorkLimit.Unbounded);
 
-        await pool.TryWordAsync(grammar, "t1", grammar, "motifd", true, CancellationToken.None, new StepCap(50_000_000));
+        await pool.TryWordAsync(grammar, "t1", grammar, "motifd", true, CancellationToken.None, new ParserWorkLimit(5_000_000_000));
         var argv = Lines(argvLog);
         Assert.Equal(3, Lines(startLog).Length);
         Assert.DoesNotContain("--step-cap", argv[0]);
         Assert.Contains("\"--step-cap\",\"1000\"", argv[1]);
         Assert.Contains("\"--step-cap\",\"unbounded\"", argv[2]);
         Assert.Equal(WarmSessionPhase.Ready, pool.GetState(grammar).Phase);
-        Assert.Equal(WarmSessionPhase.Ready, pool.GetState(grammar, new StepCap(1000)).Phase);
-        Assert.Equal(WarmSessionPhase.Idle, pool.GetState(grammar, new StepCap(7)).Phase);
+        Assert.Equal(WarmSessionPhase.Ready, pool.GetState(grammar, new ParserWorkLimit(100_000)).Phase);
+        Assert.Equal(WarmSessionPhase.Idle, pool.GetState(grammar, new ParserWorkLimit(7)).Phase);
 
-        await pool.TryWordAsync(grammar, "t1", grammar, "motife", true, CancellationToken.None, StepCap.Default);
+        await pool.TryWordAsync(grammar, "t1", grammar, "motife", true, CancellationToken.None, ParserWorkLimit.Default);
         Assert.Equal(4, Lines(startLog).Length);
 
         pool.Evict(grammar);
-        Assert.Equal(WarmSessionPhase.Idle, pool.GetState(grammar, new StepCap(1000)).Phase);
+        Assert.Equal(WarmSessionPhase.Idle, pool.GetState(grammar, new ParserWorkLimit(100_000)).Phase);
     }
 
     [Fact]

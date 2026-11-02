@@ -72,7 +72,7 @@ public sealed class TimingRealClientTests(PristineProjectFixture pristine)
     {
         var assessed = await project.Client.AssessAsync(new AssessRequest(project.FwDataPath,
             new SelectionRequest(false, [], words, false, null),
-            PerWordLimitMs: perWordLimitMs, PerWordStepLimit: new StepCap(3_100)),
+            PerWordLimitMs: perWordLimitMs, PerWordParserWorkLimit: new ParserWorkLimit(310_000)),
             new Progress<AssessmentProgress>(), CancellationToken.None);
         Assert.True(assessed.Succeeded, assessed.Refusal?.Message);
         return assessed.Value!;

@@ -810,7 +810,7 @@ public sealed class SelectionReaderTests(PristineProjectFixture pristine) : IDis
             .OpenOwned(project);
         var projectKey = ProjectWorkspaceKey.Compute(project);
         new NamedSelectionRepository(database).SetDefault("Default", [text.TextId], [],
-            new SelectionParsingLimits(StepCap.Default, SelectionTimeLimitMode.Estimated, null), null);
+            new SelectionParsingLimits(ParserWorkLimit.Default, SelectionTimeLimitMode.Estimated, null), null);
         var before = CurrentEvidenceQuery.ReadCurrentEvidence(database, project,
             includeResolvedReadings: false, includeWordContext: false);
         Assert.True(before.Succeeded, before.Refusal?.Message);
@@ -881,7 +881,7 @@ public sealed class SelectionReaderTests(PristineProjectFixture pristine) : IDis
         using var database = new ProjectDatabaseCatalog(MotifSchema.CurrentSchema, new Version(1, 0))
             .OpenOwned(project);
         new NamedSelectionRepository(database).SetDefault("Default", [text.TextId], [],
-            new SelectionParsingLimits(StepCap.Default, SelectionTimeLimitMode.Estimated, null), null);
+            new SelectionParsingLimits(ParserWorkLimit.Default, SelectionTimeLimitMode.Estimated, null), null);
         var root = RecordSelectionAssessment(database, project, capture.Value!.Token, "presentation-root", null,
             DateTimeOffset.UtcNow);
         var warning = new GrammarWarning(GrammarDiagnosticLevel.Warning, "spelling", [
@@ -976,7 +976,7 @@ public sealed class SelectionReaderTests(PristineProjectFixture pristine) : IDis
         using var database = new ProjectDatabaseCatalog(MotifSchema.CurrentSchema, new Version(1, 0))
             .OpenOwned(project);
         new NamedSelectionRepository(database).SetDefault("Default", [text.TextId], [],
-            new SelectionParsingLimits(StepCap.Default, SelectionTimeLimitMode.Estimated, null), null);
+            new SelectionParsingLimits(ParserWorkLimit.Default, SelectionTimeLimitMode.Estimated, null), null);
         RecordSelectionAssessment(database, project, capture.Value!.Token, "readonly-fit-root", null,
             DateTimeOffset.UtcNow);
         var fits = new PendingChangeFitRepository(database);
@@ -1042,7 +1042,7 @@ public sealed class SelectionReaderTests(PristineProjectFixture pristine) : IDis
         using var database = new ProjectDatabaseCatalog(MotifSchema.CurrentSchema, new Version(1, 0))
             .OpenOwned(project);
         new NamedSelectionRepository(database).SetDefault("Default", [text.TextId], [],
-            new SelectionParsingLimits(StepCap.Default, SelectionTimeLimitMode.Estimated, null), null);
+            new SelectionParsingLimits(ParserWorkLimit.Default, SelectionTimeLimitMode.Estimated, null), null);
         RecordSelectionAssessment(database, project, capture.Value!.Token, "presentation-count-root", null,
             DateTimeOffset.UtcNow);
         var context = new ExpectedContext(capture.Value.Token);
@@ -1115,7 +1115,7 @@ public sealed class SelectionReaderTests(PristineProjectFixture pristine) : IDis
         using var database = new ProjectDatabaseCatalog(MotifSchema.CurrentSchema, new Version(1, 0))
             .OpenOwned(project);
         new NamedSelectionRepository(database).SetDefault("Default", [text.TextId], [],
-            new SelectionParsingLimits(StepCap.Default, SelectionTimeLimitMode.Estimated, null), null);
+            new SelectionParsingLimits(ParserWorkLimit.Default, SelectionTimeLimitMode.Estimated, null), null);
         RecordSelectionAssessment(database, project, capture.Value!.Token, "presentation-fault-root", null,
             DateTimeOffset.UtcNow);
         var opened = await SelectionReader.OpenAsync(database, new SelectionReadRequest(
@@ -1172,7 +1172,7 @@ public sealed class SelectionReaderTests(PristineProjectFixture pristine) : IDis
         using var database = new ProjectDatabaseCatalog(MotifSchema.CurrentSchema, new Version(1, 0))
             .OpenOwned(project);
         new NamedSelectionRepository(database).SetDefault("Default", [text.TextId], [],
-            new SelectionParsingLimits(StepCap.Default, SelectionTimeLimitMode.Estimated, null), null);
+            new SelectionParsingLimits(ParserWorkLimit.Default, SelectionTimeLimitMode.Estimated, null), null);
         var current = CurrentEvidenceQuery.ReadCurrentEvidence(database, project,
             includeResolvedReadings: false, includeWordContext: false);
         Assert.True(current.Succeeded, current.Refusal?.Message);
@@ -1244,7 +1244,7 @@ public sealed class SelectionReaderTests(PristineProjectFixture pristine) : IDis
 
     private static BatchInvocationEvidence Invocation(string id, string warning) =>
         new(id, "source", "digest", "digest", "words", "digest", "tsv", "digest", "stderr", "digest",
-            1000, SIL.Motif.Contract.Assess.StepCap.Default, 1, false)
+            1000, SIL.Motif.Contract.Assess.ParserWorkLimit.Default, 1, false)
         {
             GrammarWarnings = warning,
         };
@@ -1295,7 +1295,7 @@ public sealed class SelectionReaderTests(PristineProjectFixture pristine) : IDis
         using var database = new ProjectDatabaseCatalog(MotifSchema.CurrentSchema, new Version(1, 0))
             .OpenOwned(project);
         new NamedSelectionRepository(database).SetDefault("Default", [text.TextId], [],
-            new SelectionParsingLimits(StepCap.Default, SelectionTimeLimitMode.Estimated, null), null);
+            new SelectionParsingLimits(ParserWorkLimit.Default, SelectionTimeLimitMode.Estimated, null), null);
         RecordSelectionAssessment(database, project, capture.Value!.Token, "stamp-race-root", null,
             DateTimeOffset.UtcNow);
 
@@ -1362,7 +1362,7 @@ public sealed class SelectionReaderTests(PristineProjectFixture pristine) : IDis
         using var database = new ProjectDatabaseCatalog(MotifSchema.CurrentSchema, new Version(1, 0))
             .OpenOwned(project);
         new NamedSelectionRepository(database).SetDefault("Default", [text.TextId], [],
-            new SelectionParsingLimits(StepCap.Default, SelectionTimeLimitMode.Estimated, null), null);
+            new SelectionParsingLimits(ParserWorkLimit.Default, SelectionTimeLimitMode.Estimated, null), null);
         RecordSelectionAssessment(database, project, capture.Value!.Token, "snapshot-order-root", null,
             DateTimeOffset.UtcNow);
 
@@ -1506,7 +1506,7 @@ public sealed class SelectionReaderTests(PristineProjectFixture pristine) : IDis
         using var database = new ProjectDatabaseCatalog(MotifSchema.CurrentSchema, new Version(1, 0))
             .OpenOwned(project);
         new NamedSelectionRepository(database).SetDefault("Default", [text.TextId], [],
-            new SelectionParsingLimits(StepCap.Default, SelectionTimeLimitMode.Estimated, null), null);
+            new SelectionParsingLimits(ParserWorkLimit.Default, SelectionTimeLimitMode.Estimated, null), null);
         AssessmentRecord? root = null;
         if (change == "subset-replacement")
             root = RecordSelectionAssessment(database, project, capture.Value!.Token, "detail-race-root", null,
@@ -1557,7 +1557,7 @@ public sealed class SelectionReaderTests(PristineProjectFixture pristine) : IDis
                     break;
                 case "default-declaration":
                     new NamedSelectionRepository(database).SetDefault("Changed", [text.TextId], [],
-                        new SelectionParsingLimits(StepCap.Default, SelectionTimeLimitMode.Estimated, null), null);
+                        new SelectionParsingLimits(ParserWorkLimit.Default, SelectionTimeLimitMode.Estimated, null), null);
                     break;
                 case "subset-replacement":
                     var selected = root!.Selection.Words.Take(1).ToArray();
@@ -1677,7 +1677,7 @@ public sealed class SelectionReaderTests(PristineProjectFixture pristine) : IDis
         if (change != "refresh")
         {
             new NamedSelectionRepository(database).SetDefault("Default", [text.TextId], [],
-                new SelectionParsingLimits(StepCap.Default, SelectionTimeLimitMode.Estimated, null), null);
+                new SelectionParsingLimits(ParserWorkLimit.Default, SelectionTimeLimitMode.Estimated, null), null);
             if (change == "subset-replacement")
                 root = RecordSelectionAssessment(database, project, capture.Value!.Token, "root", null,
                     DateTimeOffset.UtcNow.AddMinutes(-1));
@@ -1712,7 +1712,7 @@ public sealed class SelectionReaderTests(PristineProjectFixture pristine) : IDis
                     break;
                 case "default-declaration":
                     new NamedSelectionRepository(database).SetDefault("Changed", [text.TextId], [],
-                        new SelectionParsingLimits(StepCap.Default, SelectionTimeLimitMode.Estimated, null), null);
+                        new SelectionParsingLimits(ParserWorkLimit.Default, SelectionTimeLimitMode.Estimated, null), null);
                     break;
                 case "subset-replacement":
                     var selected = root!.Selection.Words.Take(1).ToArray();
@@ -1778,12 +1778,12 @@ public sealed class SelectionReaderTests(PristineProjectFixture pristine) : IDis
             .OpenOwned(project);
         var projectKey = ProjectWorkspaceKey.Compute(project);
         new NamedSelectionRepository(database).SetDefault("Default", [text.TextId], [],
-            new SelectionParsingLimits(StepCap.Default, SelectionTimeLimitMode.Estimated, null), null);
+            new SelectionParsingLimits(ParserWorkLimit.Default, SelectionTimeLimitMode.Estimated, null), null);
         var snapshot = CurrentEvidenceQuery.ReadCurrentEvidence(database, project,
             includeResolvedReadings: false, includeWordContext: false);
         Assert.True(snapshot.Succeeded, snapshot.Refusal?.Message);
         new NamedSelectionRepository(database).SetDefault("Changed", [text.TextId], [],
-            new SelectionParsingLimits(StepCap.Default, SelectionTimeLimitMode.Estimated, null), null);
+            new SelectionParsingLimits(ParserWorkLimit.Default, SelectionTimeLimitMode.Estimated, null), null);
 
         var opened = await SelectionReader.OpenAsync(database,
             new SelectionReadRequest(projectKey, [text.TextId], [])
@@ -1812,7 +1812,7 @@ public sealed class SelectionReaderTests(PristineProjectFixture pristine) : IDis
         using var database = new ProjectDatabaseCatalog(MotifSchema.CurrentSchema, new Version(1, 0))
             .OpenOwned(project);
         new NamedSelectionRepository(database).SetDefault("Default", [text.TextId], [],
-            new SelectionParsingLimits(StepCap.Default, SelectionTimeLimitMode.Estimated, null), null);
+            new SelectionParsingLimits(ParserWorkLimit.Default, SelectionTimeLimitMode.Estimated, null), null);
         var root = RecordSelectionAssessment(database, project, capture.Value!.Token, "selected-root", null,
             DateTimeOffset.UtcNow.AddMinutes(-2));
         var assessmentRepository = new AssessmentRepository(database);
@@ -2017,7 +2017,7 @@ public sealed class SelectionReaderTests(PristineProjectFixture pristine) : IDis
             .OpenOwned(project);
         var form = SeededProject.AnalysedWordForm.Normalize(NormalizationForm.FormD);
         new NamedSelectionRepository(database).SetDefault("Default", [text.TextId], [form],
-            new SelectionParsingLimits(StepCap.Default, SelectionTimeLimitMode.Estimated, null), null);
+            new SelectionParsingLimits(ParserWorkLimit.Default, SelectionTimeLimitMode.Estimated, null), null);
         var current = CurrentEvidenceQuery.ReadCurrentEvidence(database, project,
             includeResolvedReadings: false, includeWordContext: false);
         Assert.True(current.Succeeded, current.Refusal?.Message);
@@ -2095,7 +2095,7 @@ public sealed class SelectionReaderTests(PristineProjectFixture pristine) : IDis
         using var database = new ProjectDatabaseCatalog(MotifSchema.CurrentSchema, new Version(1, 0)).OpenOwned(project);
         var form = SeededProject.AnalysedWordForm.Normalize(NormalizationForm.FormD);
         new NamedSelectionRepository(database).SetDefault("Default", [], [form],
-            new SelectionParsingLimits(StepCap.Default, SelectionTimeLimitMode.Estimated, null), null);
+            new SelectionParsingLimits(ParserWorkLimit.Default, SelectionTimeLimitMode.Estimated, null), null);
         var current = CurrentEvidenceQuery.ReadCurrentEvidence(database, project,
             includeResolvedReadings: false, includeWordContext: false);
         Assert.True(current.Succeeded, current.Refusal?.Message);
@@ -2249,7 +2249,7 @@ public sealed class SelectionReaderTests(PristineProjectFixture pristine) : IDis
         using var database = new ProjectDatabaseCatalog(MotifSchema.CurrentSchema, new Version(1, 0)).OpenOwned(project);
         var key = ProjectWorkspaceKey.Compute(project);
         new NamedSelectionRepository(database).SetDefault("Default", [first.TextId], [],
-            new SelectionParsingLimits(StepCap.Default, SelectionTimeLimitMode.Estimated, null), null);
+            new SelectionParsingLimits(ParserWorkLimit.Default, SelectionTimeLimitMode.Estimated, null), null);
         var root = RecordSelectionAssessment(database, project, capture.Value!.Token, "displayed-root", null,
             DateTimeOffset.UtcNow.AddMinutes(-1));
         var original = await SelectionReader.OpenAsync(database, new SelectionReadRequest(key, [first.TextId], [])
@@ -2281,7 +2281,7 @@ public sealed class SelectionReaderTests(PristineProjectFixture pristine) : IDis
 
         if (change == "default-declaration")
             new NamedSelectionRepository(database).SetDefault("Changed", [other.TextId], [],
-                new SelectionParsingLimits(StepCap.Default, SelectionTimeLimitMode.Estimated, null), null);
+                new SelectionParsingLimits(ParserWorkLimit.Default, SelectionTimeLimitMode.Estimated, null), null);
         if (change is "exploratory" or "replacement")
             new AssessmentRepository(database).Record(NewAssessment("displayed-later", capture.Value.Token,
                 root.Selection, root.Words!, change == "replacement" ? root.AssessmentId : null,
@@ -2333,7 +2333,7 @@ public sealed class SelectionReaderTests(PristineProjectFixture pristine) : IDis
         using var database = new ProjectDatabaseCatalog(MotifSchema.CurrentSchema, new Version(1, 0)).OpenOwned(project);
         var key = ProjectWorkspaceKey.Compute(project);
         new NamedSelectionRepository(database).SetDefault("Default", [text.TextId], [],
-            new SelectionParsingLimits(StepCap.Default, SelectionTimeLimitMode.Estimated, null), null);
+            new SelectionParsingLimits(ParserWorkLimit.Default, SelectionTimeLimitMode.Estimated, null), null);
         RecordSelectionAssessment(database, project, capture.Value!.Token, "displayed-valid", null,
             DateTimeOffset.UtcNow);
         var opened = await SelectionReader.OpenAsync(database, new SelectionReadRequest(key, [text.TextId], []));

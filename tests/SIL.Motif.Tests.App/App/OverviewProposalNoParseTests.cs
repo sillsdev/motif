@@ -46,7 +46,7 @@ public sealed class OverviewProposalNoParseTests
         Assert.True(page.ShowTiles);
         Assert.Equal("Not parsed yet → 130 of 142 words parse", page.TextCoverageMain);
         Assert.Equal("Not parsed yet → 75 of 84 rebuilt exactly", page.AccuracyMain);
-        Assert.Equal(MotifAppStrings.OverviewSpeedNoTimes + " → 142 words · 372,000 work steps in total", page.SpeedMain);
+        Assert.Equal(MotifAppStrings.OverviewSpeedNoTimes + " → 142 words · 372,000 parser work in total", page.SpeedMain);
         Assert.Equal("20 warnings → 18 warnings", page.WarningsCount);
         Assert.Equal("The four headline numbers read today's value, then the value with this Proposal. " +
             "Everything else on this page is today's. 3 headlines have no result today: Text Coverage, " +

@@ -32,7 +32,7 @@ public sealed class TrialWordStatisticsTests : IDisposable
 
         Assert.Equal(11, word.Attempts);
         Assert.Equal(2, word.Passes);
-        Assert.Equal(777L, word.WorkSteps);
+        Assert.Equal(777L, word.ParserWork);
         Assert.Equal(11, word.Morphology!.Attempts);
     }
 
@@ -45,13 +45,13 @@ public sealed class TrialWordStatisticsTests : IDisposable
             TrialWordStatistics.Read([Produced(cache)], ["word"]));
 
         Assert.Equal(11, word.Attempts);
-        Assert.Null(word.WorkSteps);
+        Assert.Null(word.ParserWork);
     }
 
     [Fact]
     public void AWordKeepsTheCountsItsTsvCarriedWhenNoStatisticsNameIt()
     {
-        var word = new AssessedWord("word", "analysed", []) { Attempts = 5, WorkSteps = 50 };
+        var word = new AssessedWord("word", "analysed", []) { Attempts = 5, ParserWork = 50 };
 
         Assert.Equal(word, TrialWordStatistics.Apply(word, null));
     }
@@ -63,7 +63,7 @@ public sealed class TrialWordStatisticsTests : IDisposable
         var retried = new WordAnalysis(0, "word", 1200, WordOutcome.Analysed, "sig")
         {
             Steps = 29,
-            WorkSteps = 2900,
+            ParserWork = 2900,
             WasRetried = true,
         };
         var produced = new[] { Produced(cache), ProducedBatch(retried) };
@@ -75,7 +75,7 @@ public sealed class TrialWordStatisticsTests : IDisposable
 
         Assert.Equal(29, recorded.Attempts);
         Assert.Null(recorded.Passes);
-        Assert.Equal(2900L, recorded.WorkSteps);
+        Assert.Equal(2900L, recorded.ParserWork);
     }
 
     [Fact]
@@ -85,9 +85,9 @@ public sealed class TrialWordStatisticsTests : IDisposable
         var retried = new WordAnalysis(0, "word", 1200, WordOutcome.Analysed, "sig")
         {
             Steps = 29,
-            WorkSteps = 2900,
+            ParserWork = 2900,
             WasRetried = true,
-            RetryStatistics = new PanGlossWordStatistics(29, 8, 1_200_000) { WorkSteps = 2900 },
+            RetryStatistics = new PanGlossWordStatistics(29, 8, 1_200_000) { ParserWork = 2900 },
         };
         var statistics = TrialWordStatistics.Read([Produced(cache), ProducedBatch(retried)], ["word"]);
         var word = new AssessedWord("word", "analysed", []);
@@ -96,7 +96,7 @@ public sealed class TrialWordStatisticsTests : IDisposable
 
         Assert.Equal(29, recorded.Attempts);
         Assert.Equal(8, recorded.Passes);
-        Assert.Equal(2900L, recorded.WorkSteps);
+        Assert.Equal(2900L, recorded.ParserWork);
     }
 
     [Theory]
@@ -119,7 +119,7 @@ public sealed class TrialWordStatisticsTests : IDisposable
         Assert.Equal(hasAttempts ? 29 : (int?)null, recorded.Attempts);
         Assert.Equal(hasAttempts ? 29 : (int?)null, recorded.Morphology!.Attempts);
         Assert.Null(recorded.Passes);
-        Assert.Null(recorded.WorkSteps);
+        Assert.Null(recorded.ParserWork);
     }
 
     [Theory]
@@ -132,7 +132,7 @@ public sealed class TrialWordStatisticsTests : IDisposable
         var retried = new WordAnalysis(0, "word", 1200, WordOutcome.Analysed, "sig")
         {
             WasRetried = true,
-            RetryStatistics = new PanGlossWordStatistics(29, 8, 1_200_000) { WorkSteps = 2900 },
+            RetryStatistics = new PanGlossWordStatistics(29, 8, 1_200_000) { ParserWork = 2900 },
         };
         var produced = malformed ? new[] { Produced(path), ProducedBatch(retried) } : [ProducedBatch(retried)];
         var recorded = TrialWordStatistics.Apply(new AssessedWord("word", "analysed", []),
@@ -140,7 +140,7 @@ public sealed class TrialWordStatisticsTests : IDisposable
 
         Assert.Equal(29, recorded.Attempts);
         Assert.Equal(8, recorded.Passes);
-        Assert.Equal(2900L, recorded.WorkSteps);
+        Assert.Equal(2900L, recorded.ParserWork);
     }
 
     [Theory]
@@ -155,7 +155,7 @@ public sealed class TrialWordStatisticsTests : IDisposable
             Morphology = new ParseWordEvidence(ParseMorphEvidence.Schema, 0, "word", 1200,
                 false, false, false, [], []) { Attempts = 29 },
             RetryStatistics = retryStatisticsAvailable
-                ? new PanGlossWordStatistics(29, 8, 1_200_000) { WorkSteps = 2900 } : null,
+                ? new PanGlossWordStatistics(29, 8, 1_200_000) { ParserWork = 2900 } : null,
         };
         var produced = ProducedBatch(retried);
         var statistics = TrialWordStatistics.Read([Produced(cache), produced], ["word"]);
@@ -179,7 +179,7 @@ public sealed class TrialWordStatisticsTests : IDisposable
         Assert.Equal(29, stored.Attempts);
         Assert.Equal(29, stored.Morphology!.Attempts);
         Assert.Equal(retryStatisticsAvailable ? 8 : (int?)null, stored.Passes);
-        Assert.Equal(retryStatisticsAvailable ? 2900L : (long?)null, stored.WorkSteps);
+        Assert.Equal(retryStatisticsAvailable ? 2900L : (long?)null, stored.ParserWork);
     }
 
     [Fact]
@@ -189,7 +189,7 @@ public sealed class TrialWordStatisticsTests : IDisposable
         var retried = new WordAnalysis(0, "word", 1200, WordOutcome.Analysed, "sig")
         {
             WasRetried = true,
-            RetryStatistics = new PanGlossWordStatistics(29, 8, 1_200_000) { WorkSteps = 2900 },
+            RetryStatistics = new PanGlossWordStatistics(29, 8, 1_200_000) { ParserWork = 2900 },
         };
         var statistics = TrialWordStatistics.Read([Produced(cache), ProducedBatch(retried)], ["word", "quick"]);
 
@@ -197,7 +197,7 @@ public sealed class TrialWordStatisticsTests : IDisposable
 
         Assert.Equal(5, recorded.Attempts);
         Assert.Equal(3, recorded.Passes);
-        Assert.Equal(42L, recorded.WorkSteps);
+        Assert.Equal(42L, recorded.ParserWork);
     }
 
     [Fact]

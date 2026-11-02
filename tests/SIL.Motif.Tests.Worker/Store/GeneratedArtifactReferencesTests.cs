@@ -39,7 +39,7 @@ public sealed class GeneratedArtifactReferencesTests : IDisposable
         var token = NewBaseline('a');
         var invocation = new BatchInvocationEvidence("invocation-one", "/private/run/source.fwdata",
             Digest('1'), Digest('2'), "/private/run/words.txt", Digest('3'), "/private/run/result.tsv",
-            Digest('4'), "/private/run/stderr.txt", Digest('5'), null, StepCap.Default, 2, false)
+            Digest('4'), "/private/run/stderr.txt", Digest('5'), null, ParserWorkLimit.Default, 2, false)
         {
             AnalysesPath = "/private/run/analyses.jsonl",
             AnalysesSha256 = Digest('6'),
@@ -1398,12 +1398,12 @@ public sealed class GeneratedArtifactReferencesTests : IDisposable
                 ("$source", Digest('5')), ("$complete", metadataCase == "incomplete" ? "0" : "1"));
         Execute(evidenceConnection, evidenceTransaction,
             "INSERT INTO parser_runs (assessment_id, invocation_id, source_sha256, parser_sha256, model_fingerprint, " +
-            "status, timeout_ms, step_limit, threads, requested_case_count, completed_case_count, reason) " +
+            "status, timeout_ms, parser_work_limit, threads, requested_case_count, completed_case_count, reason) " +
             "VALUES ('assessment-parser-run', 'invocation-parser-run', $source, $parser, 'model', 'complete', NULL, " +
             "'default', 1, 0, 0, NULL);", ("$source", Digest('5')), ("$parser", Digest('6')));
         Execute(evidenceConnection, evidenceTransaction,
             "INSERT INTO parser_runs (assessment_id, invocation_id, source_sha256, parser_sha256, model_fingerprint, " +
-            "status, timeout_ms, step_limit, threads, requested_case_count, completed_case_count, reason) " +
+            "status, timeout_ms, parser_work_limit, threads, requested_case_count, completed_case_count, reason) " +
             "VALUES ('assessment-parser-unavailable', 'invocation-parser-unavailable', $source, $parser, 'model', " +
             "'unavailable', NULL, 'default', 1, 0, 0, 'parser-unavailable');",
             ("$source", Digest('7')), ("$parser", Digest('8')));
@@ -1541,7 +1541,7 @@ public sealed class GeneratedArtifactReferencesTests : IDisposable
     private static BatchInvocationEvidence NewInvocation(string id, string sourcePath) =>
         new(id, sourcePath, Digest('1'), Digest('2'), "/private/run/words.txt", Digest('3'),
             "/private/run/result.tsv", Digest('4'), "/private/run/stderr.txt", Digest('5'), null,
-            StepCap.Default, 2, false);
+            ParserWorkLimit.Default, 2, false);
 
     private static AssessmentFixture NewAssessment(string id, BaselineToken token, string? invocationId,
         AssessmentFixture? replacement) => new(id, token, invocationId, replacement?.Id);

@@ -32,7 +32,7 @@ public sealed class NamedSelectionWordListTests : IDisposable
     }
 
     private static readonly SelectionParsingLimits Limits =
-        new(StepCap.Default, SelectionTimeLimitMode.Estimated, null);
+        new(ParserWorkLimit.Default, SelectionTimeLimitMode.Estimated, null);
 
     private static SelectionWordList List(params (string Word, int Count)[] counts) => new("freq.tsv",
         "sha256:" + new string('c', 64), counts.ToDictionary(entry => entry.Word, entry => entry.Count, StringComparer.Ordinal));

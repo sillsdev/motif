@@ -86,12 +86,12 @@ public sealed class TraceWordViewModelTests
     }
 
     [Fact]
-    public void TheParserWorkLineNamesWorkStepsAndNeverMilliseconds()
+    public void TheParserWorkLineNamesParserWorkAndNeverMilliseconds()
     {
         using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
-        var trace = new TraceWordViewModel { Result = MatinluTrace() with { ParserWorkSteps = 1234 } };
+        var trace = new TraceWordViewModel { Result = MatinluTrace() with { ParserWork = 1234 } };
 
-        Assert.Equal("Parser: 1,234 work steps", trace.ParserWorkText);
+        Assert.Equal("Parser: 1,234 parser work", trace.ParserWorkText);
         AssertNoMilliseconds(trace.ParserWorkText);
     }
 
@@ -100,10 +100,10 @@ public sealed class TraceWordViewModelTests
     {
         using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
         // The trace has a parser time and no work count.
-        var trace = new TraceWordViewModel { Result = MatinluTrace() with { ParserWorkSteps = null } };
+        var trace = new TraceWordViewModel { Result = MatinluTrace() with { ParserWork = null } };
 
         Assert.Equal("Parser work not recorded", trace.ParserWorkText);
-        Assert.Contains("work steps not recorded", trace.SummaryText, StringComparison.Ordinal);
+        Assert.Contains("parser work not recorded", trace.SummaryText, StringComparison.Ordinal);
         Assert.DoesNotContain("0.19 ms", trace.SummaryText, StringComparison.Ordinal);
         AssertNoMilliseconds(trace.ParserWorkText);
     }
@@ -114,11 +114,11 @@ public sealed class TraceWordViewModelTests
         using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
         var trace = new TraceWordViewModel
         {
-            Result = MatinluTrace() with { Parsed = false, InvalidShape = true, ParserSteps = null, ParserWorkSteps = null },
+            Result = MatinluTrace() with { Parsed = false, InvalidShape = true, ParserSteps = null, ParserWork = null },
         };
 
         Assert.Equal(string.Empty, trace.ParserWorkText);
-        Assert.DoesNotContain("work steps", trace.SummaryText, StringComparison.Ordinal);
+        Assert.DoesNotContain("parser work", trace.SummaryText, StringComparison.Ordinal);
     }
 
     [Theory]
@@ -223,7 +223,7 @@ public sealed class TraceWordViewModelTests
         };
         Assert.NotEmpty(trace.Candidates);
         Assert.StartsWith("No parse", trace.SummaryText, StringComparison.Ordinal);
-        Assert.Contains("work steps not recorded", trace.SummaryText, StringComparison.Ordinal);
+        Assert.Contains("parser work not recorded", trace.SummaryText, StringComparison.Ordinal);
     }
 
     private static TraceStep Leaf(string type, string? source = null, string? failure = null) =>
@@ -275,7 +275,7 @@ public sealed class TraceWordViewModelTests
             TraceReadingBuilder.Build("kitabu", Leaf("WordAnalysis"), [], []))
         {
             ParserSteps = 12345,
-            ParserWorkSteps = 2345,
+            ParserWork = 2345,
             ParserElapsedMs = 0.2876,
             Effort = [new TraceEffort("Root lookups", 2, 0, 0, 1, 0, 0, null)],
         });
@@ -288,12 +288,12 @@ public sealed class TraceWordViewModelTests
         Assert.True(trace.HasResult);
         Assert.Contains("No parse", trace.SummaryText, StringComparison.Ordinal);
         Assert.Contains("12,345 analysis attempts", trace.SummaryText, StringComparison.Ordinal);
-        Assert.Contains("2,345 work steps in the parser, 1.5 s overall", trace.SummaryText, StringComparison.Ordinal);
+        Assert.Contains("2,345 parser work in the parser, 1.5 s overall", trace.SummaryText, StringComparison.Ordinal);
         AssertNoMilliseconds(trace.SummaryText);
         Assert.Equal("The parser stopped at a search limit.", trace.StopReason);
         var root = Assert.Single(trace.Effort);
         Assert.Equal("1 found no root", root.Missed);
-        Assert.Equal("work steps not recorded", root.Time);
+        Assert.Equal("parser work not recorded", root.Time);
 
         trace.Reset();
         Assert.False(trace.HasResult);
@@ -361,7 +361,7 @@ public sealed class TraceWordViewModelTests
     }
 
     [Fact]
-    public void EffortShowsWorkStepsAndTheUnattributedRemainder()
+    public void EffortShowsParserWorkAndTheUnattributedRemainder()
     {
         const string json = """
         {"schemaVersion":"pangloss.trace-details.v4","word":"word",
@@ -376,8 +376,8 @@ public sealed class TraceWordViewModelTests
         Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
         var model = new TraceWordViewModel(new FakeCommandClient()) { Result = outcome.Value! };
         Assert.Equal(2, model.Effort.Count);
-        Assert.Equal("12 work steps", model.Effort.Single(row => row.Kind == "Affix and derivation rules").Time);
-        Assert.Equal("7 work steps", model.Effort.Single(row => row.Kind == "Not attributed").Time);
+        Assert.Equal("12 parser work", model.Effort.Single(row => row.Kind == "Affix and derivation rules").Time);
+        Assert.Equal("7 parser work", model.Effort.Single(row => row.Kind == "Not attributed").Time);
         Assert.All(model.Effort, row => Assert.DoesNotMatch(@"\bms\b|millisecond", row.Time));
     }
 

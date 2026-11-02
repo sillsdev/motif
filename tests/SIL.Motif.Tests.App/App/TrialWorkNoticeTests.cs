@@ -30,7 +30,7 @@ public sealed class TrialWorkNoticeTests
     public void TheNoteIsHiddenWhenEitherTotalIsMissing()
     {
         Assert.Null(TrialWorkNotice.For(TrialWorkAt(6.0, baselineWork: null)));
-        Assert.Null(TrialWorkNotice.For(TrialWorkAt(6.0, trialWorkSteps: null)));
+        Assert.Null(TrialWorkNotice.For(TrialWorkAt(6.0, trialParserWork: null)));
     }
 
     [Fact]
@@ -118,8 +118,8 @@ public sealed class TrialWorkNoticeTests
     }
 
     private static TrialWork TrialWorkAt(
-        double? percentChange, long? baselineWork = 1000, long? trialWorkSteps = 1060) =>
-        new(3, baselineWork, trialWorkSteps, percentChange, [], 0, 0);
+        double? percentChange, long? baselineWork = 1000, long? trialParserWork = 1060) =>
+        new(3, baselineWork, trialParserWork, percentChange, [], 0, 0);
 
     private static TrialRecord TrialRecordWith(TrialWork? work) =>
         new("job/trial", "proposal/one", "sha256:intent", PageScreenshots.Token(), null,

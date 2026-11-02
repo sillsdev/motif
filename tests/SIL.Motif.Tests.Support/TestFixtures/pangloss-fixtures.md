@@ -4,7 +4,7 @@ These fixtures preserve what the parser reported, so Motif can display recorded 
 
 ## Trace details v3
 
-The seven parser-produced `trace-details-v3-*.json` captures use the published PanGloss 0.6.2 Linux x64 executable, SHA-256 `ee955edee049e8710dce4748c0609a011002d5abeec20eb23d37edc033f75c2b`. PanGloss 0.6.2 keeps `--step-cap` as an analysis-attempt limit and derives an inner search-work limit at 100 times that value. The fixture inputs are from PanGloss tag `v0.6.1`, commit `8d7055b2ba95c90a9b0e05f527caa53abad92da8`; 0.6.2 adds the work cap without changing these fixture grammars or their advice and reason catalogs. XML grammar hashes use source bytes, so the commands below archive the tagged files to preserve their committed line endings.
+The seven parser-produced `trace-details-v3-*.json` captures use the published PanGloss 0.6.2 Linux x64 executable, SHA-256 `ee955edee049e8710dce4748c0609a011002d5abeec20eb23d37edc033f75c2b`. PanGloss 0.6.2 keeps `--step-cap` as an analysis-parser work limit and derives an inner search-work limit at 100 times that value. The fixture inputs are from PanGloss tag `v0.6.1`, commit `8d7055b2ba95c90a9b0e05f527caa53abad92da8`; 0.6.2 adds the work cap without changing these fixture grammars or their advice and reason catalogs. XML grammar hashes use source bytes, so the commands below archive the tagged files to preserve their committed line endings.
 
 `trace-details-v3-hawajafika.json` is a synthetic UI fixture with scaffolding, not parser output. The other seven files are raw parser captures. Their analyses, grammar hashes, and trace events are unchanged from the prior pin; 0.6.2 adds `search.workSteps` alongside the parser version and refreshed timing counters.
 

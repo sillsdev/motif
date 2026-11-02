@@ -16,7 +16,7 @@ public sealed class TrialWorkComparisonTests
         var result = TrialWorkComparison.Compare(before, after);
 
         Assert.Equal(300, result.BaselineWork);
-        Assert.Equal(318, result.TrialWorkSteps);
+        Assert.Equal(318, result.TrialParserWork);
         Assert.Equal(6, result.PercentChange);
         var increase = Assert.Single(result.IncreasedWords);
         Assert.Equal("a", increase.Word);
@@ -46,7 +46,7 @@ public sealed class TrialWorkComparisonTests
         var result = TrialWorkComparison.Compare(before, after);
 
         Assert.Equal(350, result.BaselineWork);
-        Assert.Equal(392, result.TrialWorkSteps);
+        Assert.Equal(392, result.TrialParserWork);
         Assert.Equal(12, result.PercentChange);
         var increase = Assert.Single(result.IncreasedWords);
         Assert.Equal(("a", 100L, 150L), (increase.Word, increase.BaselineWork, increase.TrialWork));
@@ -107,7 +107,7 @@ public sealed class TrialWorkComparisonTests
         var json = System.Text.Json.JsonSerializer.SerializeToNode(TrialWorkComparison.Compare(before, after),
             SIL.Motif.Contract.MotifJson.CreateOptions())!.AsObject();
 
-        Assert.Equal(160, json["TrialWorkSteps"]!.GetValue<long>());
+        Assert.Equal(160, json["TrialParserWork"]!.GetValue<long>());
         Assert.Equal(1.5, json["IncreasedWords"]![0]!["Ratio"]!.GetValue<double>());
         Assert.Equal(10, json["BaselineTimeMs"]!.GetValue<double>());
         Assert.Equal(12, json["TrialTimeMs"]!.GetValue<double>());
@@ -116,7 +116,7 @@ public sealed class TrialWorkComparisonTests
         Assert.DoesNotContain("Elapsed", json.ToJsonString(), StringComparison.Ordinal);
     }
 
-    private static AssessedWord Word(string word, long work) => new(word, "analysed", []) { WorkSteps = work };
+    private static AssessedWord Word(string word, long work) => new(word, "analysed", []) { ParserWork = work };
 
     [Theory]
     [InlineData(104L, false)]

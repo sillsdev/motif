@@ -65,7 +65,7 @@ public sealed class ReviewNumbersCommandTests
     {
         var selection = Selection.Create("review", words.Select(word => word.Word));
         var scope = ScopeCodec.Write(new StoredScope.Trial("words", selection.Words,
-            [AssessmentKind.Correctness], TimeSpan.FromSeconds(1), StepCap.Default));
+            [AssessmentKind.Correctness], TimeSpan.FromSeconds(1), ParserWorkLimit.Default));
         return new AssessmentRecord(
             AssessmentId: id,
             ProposalId: null,

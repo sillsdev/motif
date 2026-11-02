@@ -9,7 +9,7 @@ namespace SIL.Motif.FakePanGloss;
 /// </summary>
 internal static class StatsCache
 {
-    internal sealed record WordRow(string Form, int Attempts, int Passes, long? WorkSteps);
+    internal sealed record WordRow(string Form, int Attempts, int Passes, long? ParserWork);
 
     internal static void Write(string path, IReadOnlyList<WordRow> words)
     {
@@ -51,7 +51,7 @@ internal static class StatsCache
             form.Value = word.Form;
             attempts.Value = word.Attempts;
             passes.Value = word.Passes;
-            work.Value = word.WorkSteps is { } value ? value : DBNull.Value;
+            work.Value = word.ParserWork is { } value ? value : DBNull.Value;
             insert.ExecuteNonQuery();
         }
         transaction.Commit();

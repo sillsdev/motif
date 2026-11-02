@@ -132,7 +132,7 @@ public sealed class ParsimonyGroupEnqueueTests
         using var database = MotifDatabase.OpenOwned(ProjectDatabaseCatalog.DatabasePathFor(project), project,
             MotifSchema.CurrentSchema, new Version(1, 0));
         new NamedSelectionRepository(database).SetParsimony("Texts", [TextId], [],
-            new SelectionParsingLimits(StepCap.Default, SelectionTimeLimitMode.Estimated, null), null);
+            new SelectionParsingLimits(ParserWorkLimit.Default, SelectionTimeLimitMode.Estimated, null), null);
     }
 
     private static JsonElement ReadInput(string fwDataPath, string jobId)

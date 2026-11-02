@@ -31,7 +31,7 @@ public sealed class OverviewSpeedRealClientTests(PristineProjectFixture pristine
         Path.Combine(Path.GetTempPath(), "Motif.OverviewSpeed", Guid.NewGuid().ToString("N"));
 
     [Fact]
-    public async Task TheSpeedHeadlineIsTheStoredWordCountAndTheirSummedWorkSteps()
+    public async Task TheSpeedHeadlineIsTheStoredWordCountAndTheirSummedParserWork()
     {
         Directory.CreateDirectory(_managedRoot);
         using var cache = pristine.NewScratch();
@@ -61,7 +61,7 @@ public sealed class OverviewSpeedRealClientTests(PristineProjectFixture pristine
             words = selection.Words.Select((word, index) => new AssessedWord(word, "no-analysis", [],
                 index == selection.Words.Count - 1 ? null : (index + 1) * 100)
             {
-                WorkSteps = index == selection.Words.Count - 1 ? null : (index + 1) * 1_000L,
+                ParserWork = index == selection.Words.Count - 1 ? null : (index + 1) * 1_000L,
                 ProjectStanding = ProjectStanding.NotPresent,
                 IsIncomplete = false,
             }).ToArray();
@@ -88,7 +88,7 @@ public sealed class OverviewSpeedRealClientTests(PristineProjectFixture pristine
 
         var measured = words.Where(word => word.ElapsedMs is not null).ToArray();
         var totalMs = measured.Sum(word => word.ElapsedMs!.Value);
-        var totalWork = measured.Sum(word => word.WorkSteps!.Value);
+        var totalWork = measured.Sum(word => word.ParserWork!.Value);
         var client = RealCommandClient.Create(_managedRoot);
         var read = await client.OverviewAsync(new OverviewRequest(projectPath), CancellationToken.None);
 
@@ -96,15 +96,15 @@ public sealed class OverviewSpeedRealClientTests(PristineProjectFixture pristine
         Assert.Equal(measured.Length, read.Value!.Timing.MeasuredWordCount);
         Assert.Equal(totalMs / 1000d, read.Value.AssessmentElapsedSeconds);
         Assert.Equal(measured.Length, read.Value.Timing.Work.MeasuredWordCount);
-        Assert.Equal(totalWork, read.Value.Timing.Work.TotalWorkSteps);
+        Assert.Equal(totalWork, read.Value.Timing.Work.TotalParserWork);
 
         var context = WorkspaceContextTests.NewContext(client);
         var overview = new OverviewPageModel(context);
         var timing = new TimingPageModel(context);
         await context.OpenProjectAsync(projectPath);
 
-        var expectedTotal = TimingShare.FormatWorkSteps(totalWork);
-        // The total is the words' work steps added up; how long the run took on this computer is a separate line.
+        var expectedTotal = TimingShare.FormatParserWork(totalWork);
+        // The total is the words' parser work added up; how long the run took on this computer is a separate line.
         Assert.Equal($"{measured.Length:N0} {(measured.Length == 1 ? "word" : "words")} · {expectedTotal} in total",
             overview.SpeedMain);
         Assert.Equal($"Took {TimingShare.FormatDuration(totalMs)} on this computer", overview.SpeedElapsed);

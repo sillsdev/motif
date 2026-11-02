@@ -19,7 +19,7 @@ public sealed class OverviewRealClientTests(PristineProjectFixture pristine)
         Assert.True(selected.Succeeded, selected.Refusal?.Message);
         var assessed = await project.Client.AssessAsync(new AssessRequest(project.FwDataPath,
             new SelectionRequest(false, [], [SeededProject.FirstForm], false, null),
-            PerWordLimitMs: 1_000, PerWordStepLimit: new StepCap(3_100)),
+            PerWordLimitMs: 1_000, PerWordParserWorkLimit: new ParserWorkLimit(310_000)),
             new Progress<AssessmentProgress>(), CancellationToken.None);
         Assert.True(assessed.Succeeded, assessed.Refusal?.Message);
         var callsBeforeRead = project.Invocations().ToArray();

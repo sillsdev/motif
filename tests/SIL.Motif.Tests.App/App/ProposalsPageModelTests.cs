@@ -384,7 +384,7 @@ public sealed class ProposalsPageModelTests
     }
 
     [Fact]
-    public async Task TheWorkNumberComparesWorkStepsAndTheTimeComesLastLabelledAsTimeOnThisComputer()
+    public async Task TheWorkNumberComparesParserWorkAndTheTimeComesLastLabelledAsTimeOnThisComputer()
     {
         using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
         var trial = Summary(TrialFreshness.Current) with { Work = new TrialWork(3, 1000, 1200, 20, [], 0, 0) };

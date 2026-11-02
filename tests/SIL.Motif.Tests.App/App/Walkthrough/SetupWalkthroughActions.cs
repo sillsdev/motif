@@ -101,7 +101,7 @@ internal static class SetupWalkthroughActions
     }
 
     internal static void FinishFirstRun(
-        WalkthroughWindow walkthrough, string selectedText, string stepLimit,
+        WalkthroughWindow walkthrough, string selectedText, string parserWorkLimit,
         TimeSpan timeout, string? addedWords = null)
     {
         var setup = walkthrough.Workspace.Context.Setup!;
@@ -110,7 +110,7 @@ internal static class SetupWalkthroughActions
         SetSetupTextChecked(walkthrough, selectedText, true);
         if (addedWords is not null) walkthrough.Type("Words to add", addedWords);
         ClickSetupButton(walkthrough, SIL.Motif.App.MotifAppStrings.SetupNextLimits);
-        TypeSetupLimit(walkthrough, "Analysis attempt limit per word", stepLimit);
+        TypeSetupLimit(walkthrough, "Parser work limit for each word", parserWorkLimit);
         ClickSetupButton(walkthrough, SIL.Motif.App.MotifAppStrings.SetupNextFirstRun);
         Assert.Equal(3, setup.Step);
         var heartbeat = Path.Combine(walkthrough.ManagedRoot, "first-run-held-heartbeat");

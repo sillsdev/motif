@@ -21,7 +21,7 @@ public sealed class OverviewTraceSentenceResourceTests
         { "OverviewSpeedWordsPattern", "{0, plural, one {# word} other {# words}}" },
         { "OverviewSpeedMainFormat", "{0} · {1} in total" },
         { "OverviewSpeedElapsedFormat", "Took {0} on this computer" },
-        { "OverviewSpeedNoTimes", "No work steps recorded" },
+        { "OverviewSpeedNoTimes", "No parser work recorded" },
         { "OverviewSpeedMedianFormat", "median {0} a word" },
         { "OverviewSpeedMedianWithPercentileFormat", "median {0} a word · 95th percentile {1}" },
         { "OverviewSpeedStoppedPattern", "{0, plural, one {# stopped at the work limit} other {# stopped at the work limit}}" },
@@ -43,9 +43,9 @@ public sealed class OverviewTraceSentenceResourceTests
         { "TraceOverallNotRecorded", "overall time not recorded" },
         { "TraceInParserFormat", "{0} in the parser, {1}" },
         { "ParserWorkFormat", "Parser: {0}" },
-        { "ParserWorkNotRecorded", "Parser work not recorded" },
-        { "WorkStepsPattern", "{0, plural, one {# work step} other {# work steps}}" },
-        { "WorkStepsNotRecorded", "work steps not recorded" },
+        { "TraceParserWorkNotRecorded", "Parser work not recorded" },
+        { "ParserWorkPattern", "{0, plural, one {# parser work} other {# parser work}}" },
+        { "ParserWorkNotRecorded", "parser work not recorded" },
         { "DurationSecondsFormat", "{0:0.0} s" },
         { "DurationMillisecondsFormat", "{0:0} ms" },
         { "DurationSubMillisecondsFormat", "{0:0.0#} ms" },
@@ -314,8 +314,8 @@ public sealed class OverviewTraceSentenceResourceTests
     [InlineData("OverviewWarningWarningsPattern", 2, "2 warnings")]
     [InlineData("OverviewWarningInformationPattern", 1, "1 information finding")]
     [InlineData("OverviewWarningInformationPattern", 5, "5 information findings")]
-    [InlineData("WorkStepsPattern", 1, "1 work step")]
-    [InlineData("WorkStepsPattern", 1234, "1,234 work steps")]
+    [InlineData("ParserWorkPattern", 1, "1 parser work")]
+    [InlineData("ParserWorkPattern", 1234, "1,234 parser work")]
     public void CountSentencesGoThroughThePluralHelper(string accessor, int count, string expected)
     {
         using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
@@ -343,7 +343,7 @@ public sealed class OverviewTraceSentenceResourceTests
         string[] fragments =
         [
             "total word time", "stopped at the work limit", "Slowest: ", "Object timers exceed", "\"median ",
-            "No parse times recorded", "No work steps recorded", "on this computer", "analysis attempt", "tried and dropped", "choose a group to see",
+            "No parse times recorded", "No parser work recorded", "on this computer", "analysis attempt", "tried and dropped", "choose a group to see",
             "Show the other", "Search incomplete", "Search complete", "hidden by filters", "Recorded twice",
             "Parser time", "} overall", "overall time not recorded", "got furthest", "source records",
             "\"Parsed", "\"guessed\"", "\"1 attempt\"", "? \"failed\" : \"succeeded\"", "all recorded steps",
@@ -355,7 +355,7 @@ public sealed class OverviewTraceSentenceResourceTests
     public void TheAssessRowBuildsNoMillisecondsOrEnglishWorkTextOfItsOwn()
     {
         var code = CodeOf("AssessWordsViewModel.cs");
-        string[] fragments = ["work step", " ms\"", "<1 ms"];
+        string[] fragments = ["parser work", " ms\"", "<1 ms"];
         Assert.DoesNotContain(fragments, fragment => code.Contains(fragment, StringComparison.Ordinal));
     }
 
@@ -363,7 +363,7 @@ public sealed class OverviewTraceSentenceResourceTests
     public void TheTraceLineBuildsNoEnglishWorkTextOfItsOwn()
     {
         var code = CodeOf("TraceWordViewModel.cs");
-        string[] fragments = ["work step", "Parser work"];
+        string[] fragments = ["parser work", "Parser work"];
         Assert.DoesNotContain(fragments, fragment => code.Contains(fragment, StringComparison.Ordinal));
     }
 

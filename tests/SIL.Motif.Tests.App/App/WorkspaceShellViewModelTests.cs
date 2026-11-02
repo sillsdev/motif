@@ -247,7 +247,7 @@ public sealed class WorkspaceShellViewModelTests
             [new TextChoiceSummary(TextId, "Alpha", 10, 6)], HasBaseline: true));
         fake.OnShowConfig((_, _) => Task.FromResult(CommandOutcome<ProjectConfigurationProjection>.Success(
             new ProjectConfigurationProjection(true, true,
-                [new AssessmentScopeProjection("default", "all words", "pangloss", [], 750, new StepCap(321))]))));
+                [new AssessmentScopeProjection("default", "all words", "pangloss", [], 750, new ParserWorkLimit(321))]))));
         await ChooseProjectAsync(fake, projectPicker, workspace, ProjectPath, NewToken());
         Assert.False(workspace.Context.Setup!.IsOpen);
         workspace.CurrentPage = WorkspacePage.Overview;
@@ -260,8 +260,8 @@ public sealed class WorkspaceShellViewModelTests
         Assert.True(Assert.Single(workspace.Selection.Texts).IsChecked);
         Assert.Equal(string.Join(Environment.NewLine, "one", "two"), workspace.Selection.PastedWords);
         Assert.Equal(1.25m, workspace.Selection.PerWordTimeLimitSeconds);
-        Assert.Equal(987m, workspace.Selection.PerWordStepLimit);
-        Assert.Equal(new StepCap(987), workspace.Selection.BuildRequest().PerWordStepLimit);
+        Assert.Equal(987m, workspace.Selection.PerWordParserWorkLimit);
+        Assert.Equal(new ParserWorkLimit(987), workspace.Selection.BuildRequest().PerWordParserWorkLimit);
         Assert.Equal(SIL.Motif.App.MotifAppStrings.UseThisSelection, workspace.Context.Setup.FinishButtonText);
         Assert.Equal("Use this Selection as the project default", workspace.Context.Setup.FinishTitle);
         Assert.DoesNotContain("Save", workspace.Context.Setup.FinishDescription);
@@ -303,7 +303,7 @@ public sealed class WorkspaceShellViewModelTests
 
         configGate.SetResult(CommandOutcome<ProjectConfigurationProjection>.Success(
             new ProjectConfigurationProjection(true, true,
-                [new AssessmentScopeProjection("default", "all words", "pangloss", [], 1000, StepCap.Default)])));
+                [new AssessmentScopeProjection("default", "all words", "pangloss", [], 1000, ParserWorkLimit.Default)])));
         await projectLoading;
 
         Assert.True(setup.IsOpen);
@@ -329,14 +329,14 @@ public sealed class WorkspaceShellViewModelTests
     }
 
     [Fact]
-    public async Task FirstRunSavesTheSelectionAndUsesItWithTheChosenStepLimit()
+    public async Task FirstRunSavesTheSelectionAndUsesItWithTheChosenParserWorkLimit()
     {
         var (fake, projectPicker, _, _, workspace) = NewWorkspace();
         fake.ListTextsCompletesWith(new TextInventoryResponse([new TextChoiceSummary(TextId, "Alpha")], true));
         await ChooseProjectAsync(fake, projectPicker, workspace, ProjectPath, NewToken());
         workspace.Selection.Texts[0].IsChecked = true;
         workspace.Selection.PastedWords = "added word";
-        workspace.Context.Setup!.StepLimitSteps = SIL.Motif.Contract.Assess.StepCap.DefaultSteps;
+        workspace.Context.Setup!.ParserWorkLimitValue = SIL.Motif.Contract.Assess.ParserWorkLimit.DefaultWork;
         workspace.Context.Setup.Step = 3;
         fake.AssessCompletesWith(NewAssessResponse("first run"));
 
@@ -351,13 +351,13 @@ public sealed class WorkspaceShellViewModelTests
         Assert.Equal((int)SelectionTimeLimitMode.Estimated, savedLimits.GetProperty("TimeMode").GetInt32());
         Assert.True(savedLimits.TryGetProperty("ExplicitPerWordLimitMs", out var explicitLimit));
         Assert.Equal(JsonValueKind.Null, explicitLimit.ValueKind);
-        Assert.Equal(SIL.Motif.Contract.Assess.StepCap.DefaultSteps,
-            savedLimits.GetProperty("PerWordStepLimit").GetProperty("steps").GetInt64());
+        Assert.Equal(SIL.Motif.Contract.Assess.ParserWorkLimit.DefaultWork,
+            savedLimits.GetProperty("PerWordParserWorkLimit").GetProperty("work").GetInt64());
         var assess = Assert.Single(fake.AssessRequests);
         Assert.Null(assess.Selection);
         // The estimated time is not sent as a limit, so the command sizes the safety net the way the CLI does.
         Assert.Null(assess.PerWordLimitMs);
-        Assert.Equal(StepCap.Default, assess.PerWordStepLimit);
+        Assert.Equal(ParserWorkLimit.Default, assess.PerWordParserWorkLimit);
         Assert.Collection(fake.UsageEntries,
             entry => Assert.Equal("project browse", entry.Command),
             entry => Assert.Equal("selection set-default", entry.Command));
@@ -499,7 +499,7 @@ public sealed class WorkspaceShellViewModelTests
     }
 
     [Fact]
-    public async Task AStepLimitWhoseTimeEstimateDoesNotFitTheStoredLimitCanFinishWithoutATimeLimit()
+    public async Task AParserWorkLimitWhoseTimeEstimateDoesNotFitTheStoredLimitCanFinishWithoutATimeLimit()
     {
         var (fake, projectPicker, _, _, workspace) = NewWorkspace();
         fake.ListTextsCompletesWith(new TextInventoryResponse([new TextChoiceSummary(TextId, "Alpha")], true));
@@ -507,7 +507,7 @@ public sealed class WorkspaceShellViewModelTests
         workspace.Selection.Texts[0].IsChecked = true;
         var setup = workspace.Context.Setup!;
         setup.Step = 3;
-        setup.StepLimitSteps = 1_000_000_000_000m;
+        setup.ParserWorkLimitValue = 1_000_000_000_000m;
         fake.AssessCompletesWith(NewAssessResponse("first run"));
 
         Assert.True(setup.FinishCommand.CanExecute(null));
@@ -518,17 +518,17 @@ public sealed class WorkspaceShellViewModelTests
     }
 
     [Theory]
-    [InlineData(1, "Motif stops a word after 1 analysis attempt.")]
-    [InlineData(200000, "Motif stops a word after 200,000 analysis attempts.")]
-    public void SetupLimitTextStatesAnalysisAttemptsWithoutTime(int limit, string expected)
+    [InlineData(1, "Motif stops a word after 1 parser work.")]
+    [InlineData(20_000_000, "Motif stops a word after 20,000,000 parser work.")]
+    public void SetupLimitTextStatesParserWorkWithoutTime(int limit, string expected)
     {
         var (_, _, _, _, workspace) = NewWorkspace();
         var setup = workspace.Context.Setup!;
-        setup.StepLimitSteps = limit;
+        setup.ParserWorkLimitValue = limit;
 
-        Assert.Equal(expected, setup.StepLimitEstimateText);
-        Assert.DoesNotContain("ms", setup.StepLimitEstimateText, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("millisecond", setup.StepLimitEstimateText, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(expected, setup.ParserWorkLimitEstimateText);
+        Assert.DoesNotContain("ms", setup.ParserWorkLimitEstimateText, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("millisecond", setup.ParserWorkLimitEstimateText, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -536,30 +536,30 @@ public sealed class WorkspaceShellViewModelTests
     {
         var (_, _, _, _, workspace) = NewWorkspace();
         var setup = workspace.Context.Setup!;
-        setup.IsStepLimitUnbounded = true;
+        setup.IsParserWorkLimitUnbounded = true;
 
-        Assert.Equal("No analysis attempt limit.", setup.StepLimitEstimateText);
-        Assert.DoesNotContain("time", setup.StepLimitEstimateText, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal("No parser work limit.", setup.ParserWorkLimitEstimateText);
+        Assert.DoesNotContain("time", setup.ParserWorkLimitEstimateText, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
-    public async Task FirstRunCanUseNoStepLimit()
+    public async Task FirstRunCanUseNoParserWorkLimit()
     {
         var (fake, projectPicker, _, _, workspace) = NewWorkspace();
         fake.ListTextsCompletesWith(new TextInventoryResponse([new TextChoiceSummary(TextId, "Alpha")], true));
         await ChooseProjectAsync(fake, projectPicker, workspace, ProjectPath, NewToken());
         workspace.Selection.Texts[0].IsChecked = true;
-        workspace.Context.Setup!.IsStepLimitUnbounded = true;
+        workspace.Context.Setup!.IsParserWorkLimitUnbounded = true;
         workspace.Context.Setup.Step = 3;
         fake.AssessCompletesWith(NewAssessResponse("first run"));
 
         await workspace.Context.Setup.FinishCommand.ExecuteAsync(null);
 
         var request = Assert.Single(fake.AssessRequests);
-        Assert.Equal(StepCap.Unbounded, request.PerWordStepLimit);
+        Assert.Equal(ParserWorkLimit.Unbounded, request.PerWordParserWorkLimit);
         Assert.Null(request.PerWordLimitMs);
         Assert.Null(Assert.Single(fake.SetDefaultSelectionRequests).PerWordLimitMs);
-        Assert.Contains("No analysis attempt limit", workspace.Context.Setup!.StepLimitEstimateText, StringComparison.Ordinal);
+        Assert.Contains("No parser work limit", workspace.Context.Setup!.ParserWorkLimitEstimateText, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -791,7 +791,7 @@ public sealed class WorkspaceShellViewModelTests
         var setup = workspace.Context.Setup!;
         workspace.Selection.Texts[0].IsChecked = true;
         workspace.Selection.PastedWords = "added";
-        setup.StepLimitSteps = 4321;
+        setup.ParserWorkLimitValue = 4321;
         setup.Step = 3;
         fake.AssessCompletesWith(NewAssessResponse("first run"));
         await setup.FinishCommand.ExecuteAsync(null);
@@ -857,12 +857,12 @@ public sealed class WorkspaceShellViewModelTests
     }
 
     private static DefaultSelectionResponse SavedSelection(
-        IReadOnlyList<string> addedWords, int timeLimitMs, long stepLimit) => new(
+        IReadOnlyList<string> addedWords, int timeLimitMs, long parserWorkLimit) => new(
         new NamedSelectionProjection("Default", [TextId], addedWords, "created", "updated",
-            new SelectionParsingLimits(new StepCap(stepLimit), SelectionTimeLimitMode.Explicit, timeLimitMs), "revision"));
+            new SelectionParsingLimits(new ParserWorkLimit(parserWorkLimit), SelectionTimeLimitMode.Explicit, timeLimitMs), "revision"));
 
     private static void AssertConfigureShows(
-        WorkspaceShellViewModel workspace, string addedWords, decimal timeLimitSeconds, decimal stepLimit)
+        WorkspaceShellViewModel workspace, string addedWords, decimal timeLimitSeconds, decimal parserWorkLimit)
     {
         var setup = workspace.Context.Setup!;
         Assert.True(setup.IsOpen);
@@ -870,7 +870,7 @@ public sealed class WorkspaceShellViewModelTests
         Assert.True(Assert.Single(workspace.Selection.Texts).IsChecked);
         Assert.Equal(addedWords, workspace.Selection.PastedWords);
         Assert.Equal(timeLimitSeconds, workspace.Selection.PerWordTimeLimitSeconds);
-        Assert.Equal(stepLimit, setup.StepLimitSteps);
+        Assert.Equal(parserWorkLimit, setup.ParserWorkLimitValue);
         Assert.Equal(SIL.Motif.App.MotifAppStrings.UseThisSelection, setup.FinishButtonText);
     }
 
@@ -882,7 +882,7 @@ public sealed class WorkspaceShellViewModelTests
     {
         var (fake, projectPicker, _, _, workspace) = NewWorkspace();
         fake.DefaultSelectionResponseIs(new DefaultSelectionResponse(new NamedSelectionProjection("Default", [TextId], [],
-            "created", "updated", new SelectionParsingLimits(new StepCap(1234), mode, mode == SelectionTimeLimitMode.Explicit ? 450 : null),
+            "created", "updated", new SelectionParsingLimits(new ParserWorkLimit(1234), mode, mode == SelectionTimeLimitMode.Explicit ? 450 : null),
             "revision")));
         fake.ListTextsCompletesWith(new TextInventoryResponse([new TextChoiceSummary(TextId, "Alpha")], true));
         await ChooseProjectAsync(fake, projectPicker, workspace, ProjectPath, NewToken());
@@ -892,7 +892,7 @@ public sealed class WorkspaceShellViewModelTests
 
         var request = Assert.Single(fake.AssessRequests);
         Assert.Equal(expectedLimitMs, request.PerWordLimitMs);
-        Assert.Equal(new StepCap(1234), request.PerWordStepLimit);
+        Assert.Equal(new ParserWorkLimit(1234), request.PerWordParserWorkLimit);
     }
 
     [Fact]
@@ -900,7 +900,7 @@ public sealed class WorkspaceShellViewModelTests
     {
         var (fake, projectPicker, _, _, workspace) = NewWorkspace();
         fake.DefaultSelectionResponseIs(new DefaultSelectionResponse(new NamedSelectionProjection("Default", [TextId], [],
-            "created", "updated", new SelectionParsingLimits(new StepCap(1234), SelectionTimeLimitMode.Estimated, null),
+            "created", "updated", new SelectionParsingLimits(new ParserWorkLimit(1234), SelectionTimeLimitMode.Estimated, null),
             "revision")));
         fake.ListTextsCompletesWith(new TextInventoryResponse([new TextChoiceSummary(TextId, "Alpha")], true));
         await ChooseProjectAsync(fake, projectPicker, workspace, ProjectPath, NewToken());
@@ -924,7 +924,7 @@ public sealed class WorkspaceShellViewModelTests
         fake.ListTextsCompletesWith(new TextInventoryResponse([new TextChoiceSummary(TextId, "Alpha")], true));
         fake.OnShowConfig((_, _) => Task.FromResult(CommandOutcome<ProjectConfigurationProjection>.Success(
             new ProjectConfigurationProjection(true, true,
-                [new AssessmentScopeProjection("default", "all words", "pangloss", [], 2000, new StepCap(9876))]))));
+                [new AssessmentScopeProjection("default", "all words", "pangloss", [], 2000, new ParserWorkLimit(9876))]))));
         await ChooseProjectAsync(fake, projectPicker, workspace, ProjectPath, NewToken());
         fake.AssessCompletesWith(NewAssessResponse("saved limits"));
 
@@ -932,7 +932,7 @@ public sealed class WorkspaceShellViewModelTests
 
         var request = Assert.Single(fake.AssessRequests);
         Assert.Equal(450, request.PerWordLimitMs);
-        Assert.Equal(new StepCap(1234), request.Selection!.PerWordStepLimit);
+        Assert.Equal(new ParserWorkLimit(1234), request.Selection!.PerWordParserWorkLimit);
         var shapes = string.Join(" ", Assert.Single(fake.UsageEntries, entry => entry.Command == "assess").ArgumentShape);
         Assert.Contains("perWordLimitMs", shapes);
         Assert.DoesNotContain("perWordTimeLimitSeconds", shapes);
@@ -959,7 +959,7 @@ public sealed class WorkspaceShellViewModelTests
 
         Assert.Equal([TextId], workspace.Selection.ChosenTextIds);
         Assert.Equal("kept", workspace.Selection.PastedWords);
-        Assert.Equal($"1 text, 1 pasted word, analysis attempt limit {StepCap.DefaultSteps:N0}", workspace.Selection.SummaryText);
+        Assert.Equal($"1 text, 1 pasted word, parser work limit {ParserWorkLimit.DefaultWork:N0}", workspace.Selection.SummaryText);
     }
 
     [Fact]
@@ -985,7 +985,7 @@ public sealed class WorkspaceShellViewModelTests
     {
         var (fake, projectPicker, _, _, workspace) = NewWorkspace();
         fake.DefaultSelectionCompletesWith(new NamedSelectionProjection(
-            "Default", [], ["word"], string.Empty, string.Empty, 1500, new StepCap(6600)));
+            "Default", [], ["word"], string.Empty, string.Empty, 1500, new ParserWorkLimit(6600)));
         await ChooseProjectAsync(fake, projectPicker, workspace, ProjectPath, NewToken());
         fake.AssessCompletesWith(NewAssessResponse("(first)"));
         await workspace.Assess.RunCommand.ExecuteAsync(null);
@@ -1010,7 +1010,7 @@ public sealed class WorkspaceShellViewModelTests
         Assert.Equal(2, fake.AssessRequests.Count);
         Assert.Null(fake.AssessRequests[1].Selection);
         Assert.Equal(1500, fake.AssessRequests[1].PerWordLimitMs);
-        Assert.Equal(new StepCap(6600), fake.AssessRequests[1].PerWordStepLimit);
+        Assert.Equal(new ParserWorkLimit(6600), fake.AssessRequests[1].PerWordParserWorkLimit);
         Assert.Equal("(second)", workspace.PageModel<TimingPageModel>().Statistics.SummaryMarkdown);
     }
 
@@ -1019,7 +1019,7 @@ public sealed class WorkspaceShellViewModelTests
     {
         var (fake, projectPicker, _, _, workspace) = NewWorkspace();
         fake.DefaultSelectionCompletesWith(new NamedSelectionProjection(
-            "Default", [], ["word"], string.Empty, string.Empty, 1000, StepCap.Default));
+            "Default", [], ["word"], string.Empty, string.Empty, 1000, ParserWorkLimit.Default));
         await ChooseProjectAsync(fake, projectPicker, workspace, ProjectPath, NewToken());
         fake.CaptureBaselineCompletesWith(new BaselineCaptureResponse(
             NewToken("2026-09-06T00:00:00Z"), ProjectPath, DateTimeOffset.UtcNow, false, false));
@@ -1029,7 +1029,7 @@ public sealed class WorkspaceShellViewModelTests
             {
                 CurrentWord = "word-312",
                 PerWordLimitMs = 700,
-                SlowestWord = new ParseWordTiming("word-200", 54000) { WorkSteps = 90_000 },
+                SlowestWord = new ParseWordTiming("word-200", 54000) { ParserWork = 90_000 },
                 StoppedWords = [new StoppedParseWord("word-201", "TIMEOUT", 700)],
             });
 
@@ -1038,7 +1038,7 @@ public sealed class WorkspaceShellViewModelTests
         Assert.Equal("Parsing 312 of 1,040 words", workspace.ParseAllWordsProgressText);
         Assert.Same(workspace.Assess.ParseProgress, workspace.ActiveParseProgress);
         Assert.Equal("312 of 1,040 words done · Parsing word-312", workspace.ActiveParseProgress.ProgressText);
-        Assert.Equal("Slowest so far: word-200 · 90,000 work steps", workspace.ActiveParseProgress.SlowestText);
+        Assert.Equal("Slowest so far: word-200 · 90,000 parser work", workspace.ActiveParseProgress.SlowestText);
         Assert.Equal("1 word stopped at the time safety net after 0.7 s (word-201)", workspace.ActiveParseProgress.StoppedText);
         Assert.True(workspace.PageModel<TextsPageModel>().ShowParsePrompt);
         workspace.Assess.CancelCommand.Execute(null);
@@ -1058,7 +1058,7 @@ public sealed class WorkspaceShellViewModelTests
     {
         var (fake, projectPicker, _, _, workspace) = NewWorkspace();
         fake.DefaultSelectionCompletesWith(new NamedSelectionProjection(
-            "Default", [], ["word"], string.Empty, string.Empty, 1000, StepCap.Default));
+            "Default", [], ["word"], string.Empty, string.Empty, 1000, ParserWorkLimit.Default));
         await ChooseProjectAsync(fake, projectPicker, workspace, ProjectPath, NewToken());
         fake.CaptureBaselineCompletesWith(new BaselineCaptureResponse(
             NewToken("2026-09-06T00:00:00Z"), ProjectPath, DateTimeOffset.UtcNow, false, false));
@@ -1120,7 +1120,7 @@ public sealed class WorkspaceShellViewModelTests
     {
         var (fake, projectPicker, _, _, workspace) = NewWorkspace();
         fake.DefaultSelectionCompletesWith(new NamedSelectionProjection(
-            "Default", [TextId], [], string.Empty, string.Empty, 1000, StepCap.Default));
+            "Default", [TextId], [], string.Empty, string.Empty, 1000, ParserWorkLimit.Default));
         fake.ListTextsCompletesWith(new TextInventoryResponse([new TextChoiceSummary(TextId, "Alpha")], HasBaseline: true));
         await ChooseProjectAsync(fake, projectPicker, workspace, ProjectPath, NewToken());
 
@@ -1192,7 +1192,7 @@ public sealed class WorkspaceShellViewModelTests
     {
         var (fake, projectPicker, folderPicker, dragSource, workspace) = NewWorkspace();
         fake.DefaultSelectionCompletesWith(new NamedSelectionProjection(
-            "Default", [TextId], [], string.Empty, string.Empty, 1000, StepCap.Default));
+            "Default", [TextId], [], string.Empty, string.Empty, 1000, ParserWorkLimit.Default));
         fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(NewToken(), DateTimeOffset.UtcNow, false));
         fake.ListTextsCompletesWith(new TextInventoryResponse([new TextChoiceSummary(TextId, "Alpha")], HasBaseline: true));
         projectPicker.PathToReturn = ProjectPath;

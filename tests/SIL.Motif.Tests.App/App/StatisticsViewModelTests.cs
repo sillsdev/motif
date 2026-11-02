@@ -64,7 +64,7 @@ public sealed class StatisticsViewModelTests
         Assert.Equal("abc", row.Word);
         Assert.Equal(3, row.Attempts);
         Assert.Equal(1, row.Passes);
-        Assert.Equal(1234, row.WorkSteps);
+        Assert.Equal(1234, row.ParserWork);
         Assert.Equal("1,234", row.WorkText);
         Assert.False(statistics.IsStale);
         Assert.Null(statistics.Refusal);
@@ -259,7 +259,7 @@ public sealed class StatisticsViewModelTests
         Assert.Equal("word", Assert.Single(statistics.Metadata).GetProperty("orientation").GetString());
         var word = Assert.Single(statistics.Rows);
         Assert.Equal("motifa", word.Word);
-        Assert.Equal(4321, word.WorkSteps);
+        Assert.Equal(4321, word.ParserWork);
         Assert.Equal(1, word.Passes);
         Assert.Equal("Search completed", word.CompletionStatus);
 
@@ -271,8 +271,8 @@ public sealed class StatisticsViewModelTests
         var item = Assert.Single(statistics.Rows);
         Assert.Equal("lex_entry: first seeded gloss", item.Object);
         Assert.Equal("lex_entry", item.Kind);
-        // An object row's work is the grammar object's own count in a different unit, not parser work steps.
-        Assert.Null(item.WorkSteps);
+        // An object row's work is the grammar object's own count in a different unit, not parser work.
+        Assert.Null(item.ParserWork);
         Assert.Equal(99, item.Details["work"].GetInt32());
         Assert.Null(item.Passes);
         Assert.Null(item.CompletionStatus);
@@ -297,9 +297,9 @@ public sealed class StatisticsViewModelTests
         Assert.Equal("Search completed", statistics.Rows[1].CompletionStatus);
         Assert.Equal(reason switch
         {
-            "work limit" => "Stopped at the work limit · Raise the analysis attempt limit under More.",
+            "work limit" => "Stopped at the work limit · Raise the parser work limit under More.",
             "time safety net" => "Stopped at the time safety net · Increase Seconds per word.",
-            _ => "Stopped at the work limit and at the time safety net · Raise the analysis attempt limit under More " +
+            _ => "Stopped at the work limit and at the time safety net · Raise the parser work limit under More " +
                 "or increase Seconds per word.",
         }, statistics.IncompleteDetail);
     }
@@ -404,12 +404,12 @@ public sealed class StatisticsViewModelTests
         await statistics.LoadCommand.ExecuteAsync(null);
 
         Assert.Equal(MotifAppStrings.StatsHeaderAnalysisAttempts, statistics.CountHeader);
-        Assert.Equal(MotifAppStrings.StatsHeaderWorkSteps, statistics.WorkHeader);
+        Assert.Equal(MotifAppStrings.StatsHeaderParserWork, statistics.WorkHeader);
         Assert.DoesNotContain("statistics pass", statistics.ShadingNote, StringComparison.Ordinal);
     }
 
     [Fact]
-    public async Task AWordWithNoWorkCountSaysWorkStepsNotRecordedAndNeverShowsMilliseconds()
+    public async Task AWordWithNoWorkCountSaysParserWorkNotRecordedAndNeverShowsMilliseconds()
     {
         using var culture = new CultureScope(System.Globalization.CultureInfo.GetCultureInfo("en-US"));
         var (fake, statistics) = NewViewModel();
@@ -421,15 +421,15 @@ public sealed class StatisticsViewModelTests
 
         Assert.Equal("1,234", statistics.Rows.Single(row => row.Word == "counted").WorkText);
         var uncounted = statistics.Rows.Single(row => row.Word == "uncounted");
-        Assert.Null(uncounted.WorkSteps);
-        Assert.Equal(MotifAppStrings.WorkStepsNotRecorded, uncounted.WorkText);
+        Assert.Null(uncounted.ParserWork);
+        Assert.Equal(MotifAppStrings.ParserWorkNotRecorded, uncounted.WorkText);
         Assert.Equal(0, uncounted.WorkHeat);
-        Assert.DoesNotContain("ms", MotifAppStrings.StatsHeaderWorkSteps, StringComparison.Ordinal);
+        Assert.DoesNotContain("ms", MotifAppStrings.StatsHeaderParserWork, StringComparison.Ordinal);
         Assert.DoesNotContain("ms)", statistics.WorkHeader, StringComparison.Ordinal);
     }
 
     [Fact]
-    public async Task SortingByWorkStepsOrdersWordsByTheirWork()
+    public async Task SortingByParserWorkOrdersWordsByTheirWork()
     {
         var (fake, statistics) = NewViewModel();
         fake.StatsCompletesWith(RowsResponse(
@@ -438,7 +438,7 @@ public sealed class StatisticsViewModelTests
             """{"kind":"word","form":"middle","attempts":5,"work":70}"""));
 
         await statistics.LoadCommand.ExecuteAsync(null);
-        statistics.SortBy("workSteps");
+        statistics.SortBy("parserWork");
 
         Assert.Equal(["small", "middle", "big"], statistics.Rows.Select(row => row.Word));
     }
@@ -456,7 +456,7 @@ public sealed class StatisticsViewModelTests
         await statistics.LoadCommand.ExecuteAsync(null);
 
         Assert.Equal(MotifAppStrings.StatsHeaderAttempts, statistics.CountHeader);
-        Assert.False(statistics.ShowsWorkSteps);
+        Assert.False(statistics.ShowsParserWork);
         var entry = statistics.Rows.Single(row => row.Object == "entry");
         var roots = statistics.Rows.Single(row => row.Object == "roots");
         var moreRoots = statistics.Rows.Single(row => row.Object == "more roots");

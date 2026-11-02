@@ -516,14 +516,14 @@ public sealed class EvidenceSetReadsTests : IDisposable
         fixture.SetDefaultSelection([], ["cat", "dog"]);
         var words = new[]
         {
-            new AssessedWord("cat", "analysed", []) { ElapsedMs = 10, WorkSteps = 70 },
-            new AssessedWord("dog", "analysed", []) { ElapsedMs = 20, WorkSteps = 30 },
+            new AssessedWord("cat", "analysed", []) { ElapsedMs = 10, ParserWork = 70 },
+            new AssessedWord("dog", "analysed", []) { ElapsedMs = 20, ParserWork = 30 },
         };
         var detail = new AssessmentObjectTiming("morph_rule", "rule", "authored", "analysis", "Rule", "dog", 2, null, 2_000_000)
-            { WorkSteps = 30 };
+            { ParserWork = 30 };
         PanGlossObjectTimingAggregate Total(string kind, string key, string direction, long? work) =>
             new(kind, key, kind == "unattributed" ? "synthetic" : "authored", direction, "Rule", 2, 5, 3, 5_000_000, 3_000_000)
-                { WordsTouchedAcrossDirections = 2, WordsTouchedForKind = 2, WorkSteps = work };
+                { WordsTouchedAcrossDirections = 2, WordsTouchedForKind = 2, ParserWork = work };
         void Record(string id, long? rule, long? other) => new AssessmentRepository(fixture.Database).Record(
             new NewAssessmentRecord(id, null, null, "pangloss", AssessmentKinds.ParseTime, "{}", "scope",
                 new AssessmentSubject.Words(Selection.Create("Default", ["cat", "dog"]), "whitespace", "1"),
@@ -546,15 +546,15 @@ public sealed class EvidenceSetReadsTests : IDisposable
             AssessmentId: "kept-work", ExplicitWords: ["cat"]));
 
         Assert.False(kept.Value!.ObjectTimingDetail!.IsComplete);
-        Assert.Equal(100, kept.Value.WorkStepAggregates.Sum(row => row.WorkSteps));
-        Assert.Equal(80, Assert.Single(kept.Value.WorkStepAggregates, row => !row.IsUnattributed).WorkSteps);
-        Assert.Equal(100, kept.Value.Work.TotalWorkSteps);
+        Assert.Equal(100, kept.Value.ParserWorkAggregates.Sum(row => row.ParserWork));
+        Assert.Equal(80, Assert.Single(kept.Value.ParserWorkAggregates, row => !row.IsUnattributed).ParserWork);
+        Assert.Equal(100, kept.Value.Work.TotalParserWork);
         Assert.True(overview.Succeeded, overview.Refusal?.Message);
-        Assert.Equal(100, overview.Value!.Timing.WorkStepAggregates.Sum(row => row.WorkSteps));
-        Assert.Contains(overview.Value.Timing.WorkStepAggregates, row => row.Kind == "morph_rule" && row.WorkSteps == 80);
-        Assert.Empty(old.Value!.WorkStepAggregates);
-        Assert.Equal(100, old.Value.Work.TotalWorkSteps);
-        Assert.Empty(filtered.Value!.WorkStepAggregates);
+        Assert.Equal(100, overview.Value!.Timing.ParserWorkAggregates.Sum(row => row.ParserWork));
+        Assert.Contains(overview.Value.Timing.ParserWorkAggregates, row => row.Kind == "morph_rule" && row.ParserWork == 80);
+        Assert.Empty(old.Value!.ParserWorkAggregates);
+        Assert.Equal(100, old.Value.Work.TotalParserWork);
+        Assert.Empty(filtered.Value!.ParserWorkAggregates);
     }
 
     [Fact]
@@ -564,17 +564,17 @@ public sealed class EvidenceSetReadsTests : IDisposable
         fixture.SetDefaultSelection([], ["cat", "dog"]);
         var words = new[]
         {
-            new AssessedWord("cat", "analysed", []) { ElapsedMs = 10, WorkSteps = 70 },
-            new AssessedWord("dog", "analysed", []) { ElapsedMs = 20, WorkSteps = 30 },
+            new AssessedWord("cat", "analysed", []) { ElapsedMs = 10, ParserWork = 70 },
+            new AssessedWord("dog", "analysed", []) { ElapsedMs = 20, ParserWork = 30 },
         };
         var detail = new AssessmentObjectTiming("template", "0", "grammar-local", "analysis", "Template", "dog", 2, null, 2_000_000)
-            { WorkSteps = 30 };
+            { ParserWork = 30 };
         PanGlossObjectTimingAggregate Total(string kind, string key, string direction, string quality, long work) =>
             new(kind, key, quality, direction, "Template", 2, 5, 3, 5_000_000, 3_000_000)
-                { WordsTouchedAcrossDirections = 2, WordsTouchedForKind = 2, WorkSteps = work };
+                { WordsTouchedAcrossDirections = 2, WordsTouchedForKind = 2, ParserWork = work };
         var digest = new string('a', 64);
         var invocation = new BatchInvocationEvidence("local-run", "grammar.xml", digest, digest, "words.txt", digest,
-            "results.tsv", digest, "stderr.txt", digest, 1000, new StepCap(100), 1, false);
+            "results.tsv", digest, "stderr.txt", digest, 1000, new ParserWorkLimit(100), 1, false);
         new AssessmentRepository(fixture.Database).Record(
             new NewAssessmentRecord("local-work", null, null, "pangloss", AssessmentKinds.ParseTime, "{}", "scope",
                 new AssessmentSubject.Words(Selection.Create("Default", ["cat", "dog"]), "whitespace", "1"),
@@ -593,12 +593,12 @@ public sealed class EvidenceSetReadsTests : IDisposable
 
         Assert.True(overview.Succeeded, overview.Refusal?.Message);
         Assert.True(timing.Succeeded, timing.Refusal?.Message);
-        var fromOverview = overview.Value!.Timing.WorkStepAggregates;
-        Assert.Equal(100, fromOverview.Sum(row => row.WorkSteps));
+        var fromOverview = overview.Value!.Timing.ParserWorkAggregates;
+        Assert.Equal(100, fromOverview.Sum(row => row.ParserWork));
         var local = Assert.Single(fromOverview, row => !row.IsUnattributed);
-        Assert.Equal(80, local.WorkSteps);
+        Assert.Equal(80, local.ParserWork);
         Assert.Equal("invocation:local-run", local.Scope);
-        Assert.Equal(timing.Value!.WorkStepAggregates, fromOverview);
+        Assert.Equal(timing.Value!.ParserWorkAggregates, fromOverview);
     }
 
     private static async Task AssertTrialEvidenceRefused(TrialsTests.ProjectFixture fixture, EvidenceSet set)

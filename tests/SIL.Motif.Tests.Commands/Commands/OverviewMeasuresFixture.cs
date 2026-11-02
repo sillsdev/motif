@@ -58,7 +58,7 @@ internal sealed class OverviewMeasuresFixture : IDisposable
             DateTimeOffset.Parse("2026-09-24T10:30:00Z"), DateTimeOffset.Parse(Token.CapturedUtc),
             TestTextWords.Empty, summary);
         new NamedSelectionRepository(Database).SetDefault("Default", chooseText ? [_textId] : [], addedWords ?? [],
-            new SelectionParsingLimits(StepCap.Default, SelectionTimeLimitMode.Estimated, null),
+            new SelectionParsingLimits(ParserWorkLimit.Default, SelectionTimeLimitMode.Estimated, null),
             expectedRevision: null, wordList);
         SelectionWords = Selection.Create("Default", [.. (chooseText ? textPlaces.Keys : []), .. addedWords ?? []]).Words;
     }

@@ -144,7 +144,7 @@ public sealed partial class StoredSelectionFixture
             }).ToArray(), null, null, []) with { Invocation = new BatchInvocationEvidence(string.IsNullOrEmpty(response.InvocationId) ? root : response.InvocationId,
                 "fixture", "sha256:fixture-source", "sha256:fixture-parser", "fixture-words", "sha256:fixture-words",
                 "fixture-tsv", "sha256:fixture-tsv", "fixture-stderr", "sha256:fixture-stderr", null,
-                StepCap.Default, 1, false) },
+                ParserWorkLimit.Default, 1, false) },
             SavedUtc: (response.Words.Where(word => word.Origin?.AssessmentId == root)
                 .Select(word => (DateTimeOffset?)word.Origin!.MeasuredUtc).FirstOrDefault() ?? DateTimeOffset.UtcNow)
                 .ToString("O")

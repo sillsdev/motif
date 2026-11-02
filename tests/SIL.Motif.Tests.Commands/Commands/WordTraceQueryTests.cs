@@ -94,7 +94,7 @@ public sealed class WordTraceQueryTests : IDisposable
         {
             WarmCalls.Add((projectKey, stateToken, grammarPath));
             return (await inner.TraceAsync(grammarPath, word, cancellationToken, timeout)) with
-                { Steps = 13, WorkSteps = 401 };
+                { Steps = 13, ParserWork = 401 };
         }
     }
 
@@ -112,7 +112,7 @@ public sealed class WordTraceQueryTests : IDisposable
 
         Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
         Assert.Equal(13, outcome.Value!.ParserSteps);
-        Assert.Equal(401, outcome.Value.ParserWorkSteps);
+        Assert.Equal(401, outcome.Value.ParserWork);
         var call = Assert.Single(warm.WarmCalls);
         Assert.Equal(path, call.Project);
         Assert.Matches("^sha256:[0-9a-f]{64}\\|sha256:[0-9a-f]{64}$", call.Token);
@@ -132,7 +132,7 @@ public sealed class WordTraceQueryTests : IDisposable
                 Respond = _ => new PanGlossOutcome.Completed(
                     GoldenStandardOutput.Replace("\"word\":\"sagd\"", $"\"word\":\"{word}\""), string.Empty, TimeSpan.Zero),
             }).TraceAsync(grammarPath, word, cancellationToken, timeout)
-                .ContinueWith(task => task.Result with { WorkSteps = 100 + Words.Count }, cancellationToken);
+                .ContinueWith(task => task.Result with { ParserWork = 100 + Words.Count }, cancellationToken);
         }
     }
 
@@ -149,9 +149,9 @@ public sealed class WordTraceQueryTests : IDisposable
         Assert.Equal(["Sagd", "sagd"], tracer.Words);
         Assert.Equal("sagd", outcome.Value!.Lowercase!.Word);
         Assert.Null(outcome.Value.Lowercase.Lowercase);
-        Assert.Equal(101, outcome.Value.ParserWorkSteps);
-        Assert.Equal(102, outcome.Value.Lowercase.ParserWorkSteps);
-        Assert.Equal(203, outcome.Value.TotalParserWorkSteps);
+        Assert.Equal(101, outcome.Value.ParserWork);
+        Assert.Equal(102, outcome.Value.Lowercase.ParserWork);
+        Assert.Equal(203, outcome.Value.TotalParserWork);
     }
 
     private sealed class RefusingLowercaseTracer : IPanGlossTracer
@@ -194,7 +194,7 @@ public sealed class WordTraceQueryTests : IDisposable
         Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
         Assert.Equal(["sagd"], tracer.Words);
         Assert.Null(outcome.Value!.Lowercase);
-        Assert.Equal(101, outcome.Value.TotalParserWorkSteps);
+        Assert.Equal(101, outcome.Value.TotalParserWork);
     }
 
     [Fact]

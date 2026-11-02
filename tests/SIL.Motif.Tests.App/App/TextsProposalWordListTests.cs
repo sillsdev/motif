@@ -17,7 +17,7 @@ namespace SIL.Motif.Tests.App;
 public sealed class TextsProposalWordListTests
 {
     private static AssessmentWordResult Approved(string form, bool parsed = false, long? steps = null) =>
-        Word(form, parsed) with { ProjectStanding = ProjectStanding.Approved, WorkSteps = steps };
+        Word(form, parsed) with { ProjectStanding = ProjectStanding.Approved, ParserWork = steps };
 
     private static string[] Listed(TextsPageModel page) => [.. page.Assess.Compare.Words.Select(word => word.Word).Order()];
 
@@ -171,7 +171,7 @@ public sealed class TextsProposalWordListTests
     }
 
     [Fact]
-    public async Task TheProposalViewTimesAndOrdersTheWordsByTheProposalsOwnWorkSteps()
+    public async Task TheProposalViewTimesAndOrdersTheWordsByTheProposalsOwnParserWork()
     {
         var reads = new Reads { Trials = _ => [Approved("a", false, 90), Approved("b", false, 20)] };
         var (context, page, _) = await OpenedAsync(today: [Approved("a", false, 1), Approved("b", false, 50)], reads: reads);

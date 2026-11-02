@@ -403,7 +403,7 @@ public sealed class ProposalParsimonyStatusTests : IDisposable
     {
         using (var database = OpenDatabase())
             new NamedSelectionRepository(database).SetParsimony("evidence", [], ["kitabu"],
-                new SelectionParsingLimits(StepCap.Default, SelectionTimeLimitMode.Estimated, null), null);
+                new SelectionParsingLimits(ParserWorkLimit.Default, SelectionTimeLimitMode.Estimated, null), null);
 
         var status = Read(_parser);
 

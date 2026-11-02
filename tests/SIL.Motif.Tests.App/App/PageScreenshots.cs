@@ -549,7 +549,7 @@ public sealed class PageScreenshots
     }
 
     [Fact]
-    public void DefaultTimingSceneShowsTheSamplesRecordedWorkSteps()
+    public void DefaultTimingSceneShowsTheSamplesRecordedParserWork()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
@@ -572,7 +572,7 @@ public sealed class PageScreenshots
                 Assert.Equal(9, timing.KindTiming.WordCount);
                 Assert.Equal(Assessment().Words.Select(word => word.Word).Order(),
                     timing.KindTiming.Words.Select(word => word.Word).Order());
-                Assert.Equal("3,581 work steps", timing.HeadlineTotal);
+                Assert.Equal("3,581 parser work", timing.HeadlineTotal);
             }
             finally { window.Close(); }
         }, TimeSpan.FromMinutes(1));
@@ -589,12 +589,12 @@ public sealed class PageScreenshots
         Assert.Equal(assessment.Words.Count, overview.SelectionWordCount);
         Assert.Equal(assessment.Words.Sum(word => word.ElapsedMs), overview.AssessmentElapsedSeconds * 1000);
         Assert.Equal(assessment.Words.Select(word => word.Word).Order(), timing.Words.Select(word => word.Word).Order());
-        Assert.Equal(overview.Timing.StepLimitedWordCount, overview.LookFirst.StepLimitedWords.Count);
+        Assert.Equal(overview.Timing.ParserWorkLimitedWordCount, overview.LookFirst.ParserWorkLimitedWords.Count);
         Assert.Equal(overview.Accuracy.ApprovedWordsNoParse, overview.LookFirst.ApprovedLostWords.Count);
         Assert.Equal(overview.Timing.Kinds.Select(row => row.SelfMs), timing.Aggregates.Select(row => row.SelfMs));
         Assert.Equal(overview.Timing.Work, timing.Work);
-        Assert.Equal(overview.Timing.WorkStepAggregates.Select(row => (row.Key, row.WorkSteps)),
-            timing.WorkStepAggregates.Select(row => (row.Key, row.WorkSteps)));
+        Assert.Equal(overview.Timing.ParserWorkAggregates.Select(row => (row.Key, row.ParserWork)),
+            timing.ParserWorkAggregates.Select(row => (row.Key, row.ParserWork)));
     }
 
     [Fact]
@@ -608,8 +608,8 @@ public sealed class PageScreenshots
                 await TryTheSampleWord(workspace);
                 var page = workspace.PageModel<TryWordPageModel>();
                 Assert.True(page.HasEarlierTiming);
-                Assert.Contains("hawajafika took 447 work steps", page.EarlierTimingSource);
-                Assert.Equal("Share of 447 work steps", page.EarlierShareHeader);
+                Assert.Contains("hawajafika took 447 parser work", page.EarlierTimingSource);
+                Assert.Equal("Share of 447 parser work", page.EarlierShareHeader);
             }
             finally { window.Close(); }
         }, TimeSpan.FromSeconds(30));
@@ -894,7 +894,7 @@ public sealed class PageScreenshots
         if (!activateTextsPage)
             fake.DefaultSelectionCompletesWith(new NamedSelectionProjection(
                 "Default", [], [], string.Empty, string.Empty, 1000,
-                SIL.Motif.Contract.Assess.StepCap.Default));
+                SIL.Motif.Contract.Assess.ParserWorkLimit.Default));
         fake.KnownProjectsListIs([new KnownProjectSummary(ProjectPath, CaptureStartAt)]);
         fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(Token(), BaselineSaveAt, false)
         {

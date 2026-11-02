@@ -779,7 +779,7 @@ public sealed partial class ProposalDifferenceCommandsTests : IDisposable
             var sha = before ? _beforeParserSha : _afterParserSha;
             if (sha is null) return null;
             return new BatchInvocationEvidence("invocation-" + id, "src", "sha256:src", sha, "words", "sha256:words",
-                "tsv", "sha256:tsv", "err", "sha256:err", null, StepCap.Default, 1, false)
+                "tsv", "sha256:tsv", "err", "sha256:err", null, ParserWorkLimit.Default, 1, false)
             { ExecutableVersion = before ? "0.1.0" : "0.2.0" };
         }
 

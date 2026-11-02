@@ -35,7 +35,7 @@ public sealed class PanGlossBatchStatisticsReaderTests : IDisposable
     }
 
     [Fact]
-    public void ObjectAndUnattributedWorkStepsReconcileToTheWordTotal()
+    public void ObjectAndUnattributedParserWorkReconcileToTheWordTotal()
     {
         var path = Path.Combine(_root, "work.sqlite");
         WriteCache(path);
@@ -56,15 +56,15 @@ public sealed class PanGlossBatchStatisticsReaderTests : IDisposable
 
         var result = PanGlossBatchStatisticsReader.ReadBounded(path, ["word"], 1);
 
-        Assert.Equal(19, result.Words["word"].WorkSteps);
-        Assert.Equal(19, result.ObjectTimings.Sum(row => row.WorkSteps));
-        Assert.Equal(7, Assert.Single(result.ObjectTimings, row => row.Kind == "unattributed").WorkSteps);
+        Assert.Equal(19, result.Words["word"].ParserWork);
+        Assert.Equal(19, result.ObjectTimings.Sum(row => row.ParserWork));
+        Assert.Equal(7, Assert.Single(result.ObjectTimings, row => row.Kind == "unattributed").ParserWork);
         Assert.Equal(12, Assert.Single(result.ObjectTimings,
-            row => row.Key.Contains("entry-a", StringComparison.Ordinal) && row.Direction == "analysis").WorkSteps);
+            row => row.Key.Contains("entry-a", StringComparison.Ordinal) && row.Direction == "analysis").ParserWork);
     }
 
     [Fact]
-    public void TheBoundedTotalsKeepWorkStepsPerObjectAndDirectionWithNoWordDetail()
+    public void TheBoundedTotalsKeepParserWorkPerObjectAndDirectionWithNoWordDetail()
     {
         var path = Path.Combine(_root, "totals-work.sqlite");
         WriteCache(path);
@@ -87,10 +87,10 @@ public sealed class PanGlossBatchStatisticsReaderTests : IDisposable
         var result = PanGlossBatchStatisticsReader.ReadBounded(path, ["word"], 0);
 
         Assert.Empty(result.ObjectTimings);
-        Assert.Equal(19, result.Aggregates.Sum(row => row.WorkSteps));
+        Assert.Equal(19, result.Aggregates.Sum(row => row.ParserWork));
         Assert.Equal(12, Assert.Single(result.Aggregates, row => row.Key.Contains("entry-a", StringComparison.Ordinal) &&
-            row.Direction == "analysis").WorkSteps);
-        Assert.Equal(2, Assert.Single(result.Aggregates, row => row.Kind == "unattributed").WorkSteps);
+            row.Direction == "analysis").ParserWork);
+        Assert.Equal(2, Assert.Single(result.Aggregates, row => row.Kind == "unattributed").ParserWork);
     }
 
     [Fact]
@@ -109,8 +109,8 @@ public sealed class PanGlossBatchStatisticsReaderTests : IDisposable
         var result = PanGlossBatchStatisticsReader.ReadBounded(path, ["word"], 0);
 
         Assert.Equal(4, Assert.Single(result.Aggregates, row => row.Key.Contains("entry-a", StringComparison.Ordinal) &&
-            row.Direction == "analysis").WorkSteps);
-        Assert.Null(Assert.Single(result.Aggregates, row => row.Key.Contains("entry-b", StringComparison.Ordinal)).WorkSteps);
+            row.Direction == "analysis").ParserWork);
+        Assert.Null(Assert.Single(result.Aggregates, row => row.Key.Contains("entry-b", StringComparison.Ordinal)).ParserWork);
     }
 
     [Fact]
@@ -134,7 +134,7 @@ public sealed class PanGlossBatchStatisticsReaderTests : IDisposable
         var parser = Assert.Single(result.ObjectTimings, row => row.Kind == "parser");
         Assert.Null(parser.Attempts);
         Assert.Equal(4146, parser.ElapsedNs);
-        Assert.Equal(15, parser.WorkSteps);
+        Assert.Equal(15, parser.ParserWork);
         var bounded = PanGlossBatchStatisticsReader.ReadBounded(path, ["word"], 1);
         Assert.Single(bounded.ObjectTimings, row => row.Kind == "parser");
         // Object time is 180000 + 220000 + 130000 + 1000 from the base cache, plus the parser row's 4146.

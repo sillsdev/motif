@@ -212,7 +212,7 @@ public sealed class CompareCommandsTests : IDisposable
         "invocation/" + version + digit, "source", "sha256:" + new string('1', 64),
         "sha256:" + new string(digit, 64), "words", "sha256:" + new string('2', 64), "tsv",
         "sha256:" + new string('3', 64), "stderr", "sha256:" + new string('4', 64), 1000,
-        SIL.Motif.Contract.Assess.StepCap.Default, 1, false)
+        SIL.Motif.Contract.Assess.ParserWorkLimit.Default, 1, false)
     {
         ExecutableVersion = version,
         ExecutablePath = "/parsers/" + version + "/pangloss",
@@ -243,7 +243,7 @@ public sealed class CompareCommandsTests : IDisposable
                 ProposalIntentDigest: null,
                 Assessor: assessor,
                 Kind: kind,
-                ScopeJson: """{"words":[],"collect":[],"perWordLimitMs":1000,"perWordStepLimit":{"steps":200000,"isUnbounded":false}}""",
+                ScopeJson: """{"words":[],"collect":[],"perWordLimitMs":1000,"perWordParserWorkLimit":{"steps":200000,"isUnbounded":false}}""",
                 ScopeDigest: "sha256:" + new string('a', 64),
                 Subject: new AssessmentSubject.Words(selection, tokeniserName, tokeniserVersion),
                 BaselineToken: "{}",

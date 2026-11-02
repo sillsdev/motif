@@ -22,7 +22,7 @@ public sealed class SeededProjectRealTransferTests(PristineProjectFixture pristi
         var selection = new SelectionRequest(false, [], expectedWords, false, null);
 
         var assessed = await client.AssessAsync(new AssessRequest(project.FwDataPath, selection,
-                PerWordLimitMs: 120_000, PerWordStepLimit: new StepCap(100_000_000)),
+                PerWordLimitMs: 120_000, PerWordParserWorkLimit: new ParserWorkLimit(10_000_000_000)),
             new Progress<AssessmentProgress>(), timeout.Token);
 
         Assert.True(assessed.Succeeded, assessed.Refusal?.Message);

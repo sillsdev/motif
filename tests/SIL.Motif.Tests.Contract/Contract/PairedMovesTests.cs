@@ -24,7 +24,7 @@ public sealed class PairedMovesTests
     [InlineData(1000L, 1040L, false)]
     [InlineData(1000L, 1100L, true)]
     [InlineData(1100L, 1000L, true)]
-    public void WorkStepsMoveByMoreThanAShareOfTheLargerCount(long before, long after, bool moved) =>
+    public void ParserWorkMoveByMoreThanAShareOfTheLargerCount(long before, long after, bool moved) =>
         Assert.Equal(moved, PairedMoves.Work(before, after));
 
     [Fact]

@@ -130,7 +130,7 @@ public sealed class ProposalReadLeftoverTests
 
         gateB.SetResult(Total(side.Proposals("proposal/two")));
         await opening;
-        Assert.Equal("1,000 work steps", page.HeadlineTotal);
+        Assert.Equal("1,000 parser work", page.HeadlineTotal);
         context.ShowProposalView(MarkupView.TodayToProposal);
         Assert.DoesNotContain("9,000", page.HeadlineTotal);
     }

@@ -185,7 +185,7 @@ public sealed class RealParserBatchTests(PristineProjectFixture pristine)
         try
         {
             var outcome = await invoker.RunAsync(
-                new PanGlossRequest.Batch(projectPath, words, TimeSpan.FromSeconds(1), PerWordStepLimit: 2)
+                new PanGlossRequest.Batch(projectPath, words, TimeSpan.FromSeconds(1), PerWordParserWorkLimit: 200)
                     { CollectAnalyses = true },
                 "test:per-word-cap", cancellation.Token, wallClockCap: TimeSpan.FromSeconds(30));
             Assert.True(outcome is PanGlossOutcome.Completed, outcome.Message);
@@ -271,10 +271,10 @@ public sealed class RealParserBatchTests(PristineProjectFixture pristine)
 
             var statistics = PanGlossBatchStatisticsReader.Read(cachePath, [word]);
             var counters = statistics.Words[word];
-            Assert.NotNull(counters.WorkSteps);
-            Assert.Equal(ReadInt64(cachePath, "SELECT work FROM word LIMIT 1;"), counters.WorkSteps);
-            Assert.True(counters.WorkSteps >= counters.Attempts);
-            Assert.Equal(counters.WorkSteps, statistics.ObjectTimings.Sum(row => row.WorkSteps));
+            Assert.NotNull(counters.ParserWork);
+            Assert.Equal(ReadInt64(cachePath, "SELECT work FROM word LIMIT 1;"), counters.ParserWork);
+            Assert.True(counters.ParserWork >= counters.Attempts);
+            Assert.Equal(counters.ParserWork, statistics.ObjectTimings.Sum(row => row.ParserWork));
             Assert.Single(statistics.ObjectTimings, row => row.Kind == "unattributed");
             Assert.Contains(statistics.ObjectTimings,
                 row => row.Key.StartsWith("lex_entry:", StringComparison.Ordinal));

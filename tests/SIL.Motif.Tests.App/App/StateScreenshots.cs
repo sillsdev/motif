@@ -659,7 +659,7 @@ public sealed class StateScreenshots(ITestOutputHelper output)
                 Assert.Contains(row.GetVisualDescendants().OfType<TextBlock>(), text =>
                     text.IsEffectivelyVisible && text.Text == time);
             }
-            return "The slowest words and their work steps are shown on Overview.";
+            return "The slowest words and their parser work are shown on Overview.";
         })
         { Height = 1000 };
         yield return new("review", "word-rows", async stage =>
@@ -766,7 +766,7 @@ public sealed class StateScreenshots(ITestOutputHelper output)
                 await stage.Workspace.Assess.Trace.TryCommand.ExecutionTask!;
             },
         };
-        yield return new("timing", "empty-step-limit", async stage =>
+        yield return new("timing", "empty-parser-work-limit", async stage =>
         {
             stage.Client.OnTiming((request, _) => Task.FromResult(CommandOutcome<TimingResponse>.Success(
                 new TimingResponse(request.AssessmentId ?? "assessment/one", request.WordSet, request.By,
@@ -777,7 +777,7 @@ public sealed class StateScreenshots(ITestOutputHelper output)
                 })));
             stage.Open(WorkspacePage.Timing);
             var timing = stage.Workspace.PageModel<TimingPageModel>();
-            await timing.SelectWordSetCommand.ExecuteAsync("step-limit");
+            await timing.SelectWordSetCommand.ExecuteAsync("parser-work-limit");
             await stage.Until(() => timing.ShowEmptySelection, "Timing's empty selection");
             return "Timing when no words stopped at the work limit.";
         });

@@ -210,20 +210,20 @@ public sealed class AssessWordsViewModelTests
     }
 
     [Theory]
-    [InlineData(0L, "0 work steps")]
-    [InlineData(1L, "1 work step")]
-    [InlineData(1234L, "1,234 work steps")]
-    [InlineData(20_000_000_000L, "20,000,000,000 work steps")]
-    public void AWordsWorkIsCountedInWorkStepsAndNeverInMilliseconds(long steps, string expected)
+    [InlineData(0L, "0 parser work")]
+    [InlineData(1L, "1 parser work")]
+    [InlineData(1234L, "1,234 parser work")]
+    [InlineData(20_000_000_000L, "20,000,000,000 parser work")]
+    public void AWordsWorkIsCountedInParserWorkAndNeverInMilliseconds(long steps, string expected)
     {
         using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
         var table = new AssessWordsViewModel();
-        table.Load([Word("kitabu", "analysed", [Reading("book")], ["approved"]) with { WorkSteps = steps, ElapsedMs = 1234 }]);
+        table.Load([Word("kitabu", "analysed", [Reading("book")], ["approved"]) with { ParserWork = steps, ElapsedMs = 1234 }]);
 
         var row = Assert.Single(table.Rows);
-        Assert.Equal(steps, row.WorkSteps);
-        Assert.Equal(expected, row.WorkStepsText);
-        AssertNoMilliseconds(row.WorkStepsText);
+        Assert.Equal(steps, row.ParserWork);
+        Assert.Equal(expected, row.ParserWorkText);
+        AssertNoMilliseconds(row.ParserWorkText);
     }
 
     [Fact]
@@ -235,18 +235,18 @@ public sealed class AssessWordsViewModelTests
         table.Load([Word("kitabu", "analysed", [Reading("book")], ["approved"]) with { ElapsedMs = 1234 }]);
 
         var row = Assert.Single(table.Rows);
-        Assert.Null(row.WorkSteps);
-        Assert.Equal("work steps not recorded", row.WorkStepsText);
-        AssertNoMilliseconds(row.WorkStepsText);
+        Assert.Null(row.ParserWork);
+        Assert.Equal("parser work not recorded", row.ParserWorkText);
+        AssertNoMilliseconds(row.ParserWorkText);
     }
 
     [Fact]
     public void ARefusedWordShowsNoWorkText()
     {
         var table = new AssessWordsViewModel();
-        table.Load([Word("x y", "skipped") with { WorkSteps = 5 }]);
+        table.Load([Word("x y", "skipped") with { ParserWork = 5 }]);
 
-        Assert.Equal(string.Empty, Assert.Single(table.Rows).WorkStepsText);
+        Assert.Equal(string.Empty, Assert.Single(table.Rows).ParserWorkText);
     }
 
     [Theory]
@@ -257,29 +257,29 @@ public sealed class AssessWordsViewModelTests
     {
         using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
         var table = new AssessWordsViewModel();
-        table.Load([Word("x y", outcome) with { ElapsedMs = null, WorkSteps = null }]);
+        table.Load([Word("x y", outcome) with { ElapsedMs = null, ParserWork = null }]);
 
         var row = Assert.Single(table.Rows);
-        Assert.Equal("work steps not recorded", row.WorkStepsText);
-        AssertNoMilliseconds(row.WorkStepsText);
+        Assert.Equal("parser work not recorded", row.ParserWorkText);
+        AssertNoMilliseconds(row.ParserWorkText);
     }
 
     [Fact]
     public void ASkippedWordWithNoRecordedWorkShowsNoWorkText()
     {
         var table = new AssessWordsViewModel();
-        table.Load([Word("x y", "skipped") with { ElapsedMs = null, WorkSteps = null }]);
+        table.Load([Word("x y", "skipped") with { ElapsedMs = null, ParserWork = null }]);
 
-        Assert.Equal(string.Empty, Assert.Single(table.Rows).WorkStepsText);
+        Assert.Equal(string.Empty, Assert.Single(table.Rows).ParserWorkText);
     }
 
     [Fact]
     public void AnUnassessedWordShowsNoWorkText()
     {
         var table = new AssessWordsViewModel();
-        table.Load([Word("x y", "unassessed") with { ElapsedMs = null, WorkSteps = null }]);
+        table.Load([Word("x y", "unassessed") with { ElapsedMs = null, ParserWork = null }]);
 
-        Assert.Equal(string.Empty, Assert.Single(table.Rows).WorkStepsText);
+        Assert.Equal(string.Empty, Assert.Single(table.Rows).ParserWorkText);
     }
 
     private static void AssertNoMilliseconds(string text) => Assert.DoesNotMatch(@"\bms\b|<\s*1\b", text);

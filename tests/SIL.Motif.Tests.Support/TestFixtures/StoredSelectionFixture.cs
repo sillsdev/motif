@@ -116,7 +116,7 @@ public sealed partial class StoredSelectionFixture : IDisposable
     {
         var selections = new NamedSelectionRepository(_database);
         selections.SetDefault("Default", textIds, addedWords,
-            new SelectionParsingLimits(StepCap.Default, SelectionTimeLimitMode.Estimated, null),
+            new SelectionParsingLimits(ParserWorkLimit.Default, SelectionTimeLimitMode.Estimated, null),
             selections.GetDefault()?.Revision.ToString(System.Globalization.CultureInfo.InvariantCulture), wordList);
     }
 

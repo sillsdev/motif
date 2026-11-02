@@ -691,7 +691,7 @@ public sealed class ArtifactInventoryArgvTests : IDisposable
         File.WriteAllText(tsvPath, "results");
         File.WriteAllText(stderrPath, string.Empty);
         var invocation = new BatchInvocationEvidence(invocationId, sourcePath, digest, digest,
-            wordsPath, digest, tsvPath, digest, stderrPath, digest, 1000, new StepCap(100), 1, false)
+            wordsPath, digest, tsvPath, digest, stderrPath, digest, 1000, new ParserWorkLimit(100), 1, false)
         {
             StoppedWordRetry = withRetry
                 ? new StoppedWordRetry(10_000, 1, 1, 1, 0, "retry-" + invocationId,
@@ -823,7 +823,7 @@ public sealed class ArtifactInventoryArgvTests : IDisposable
             "assessment-runs", invocationId);
         return new BatchInvocationEvidence(invocationId, sourcePath, BatchInvocationEvidence.DigestFile(sourcePath),
             digest, Path.Combine(runDirectory, "words.txt"), digest, Path.Combine(runDirectory, "results.tsv"), digest,
-            Path.Combine(runDirectory, "stderr.txt"), digest, 100, new StepCap(1), 1, false);
+            Path.Combine(runDirectory, "stderr.txt"), digest, 100, new ParserWorkLimit(1), 1, false);
     }
 
     private void AddCitations(string invocationId)

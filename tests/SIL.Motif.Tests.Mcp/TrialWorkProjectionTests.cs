@@ -34,7 +34,7 @@ public sealed class TrialWorkProjectionTests
     [InlineData("token", false)]
     [InlineData("executable", false)]
     [InlineData("missing-executable", false)]
-    [InlineData("step-limit", false)]
+    [InlineData("parser-work-limit", false)]
     public void CompletedTrialReportsWorkOnlyForCompatibleEvidence(string mismatch, bool comparable)
     {
         var root = Path.Combine(Path.GetTempPath(), "motif-mcp-trial-work-" + Guid.NewGuid().ToString("N"));
@@ -73,14 +73,14 @@ public sealed class TrialWorkProjectionTests
                     var invocation = new BatchInvocationEvidence("inv-" + id, "source", "source-hash",
                         mismatch == "missing-executable" ? "" : different && mismatch == "executable" ? "other" : "parser", "words", "words-hash",
                         "tsv", "tsv-hash", "stderr", "stderr-hash", null,
-                        new StepCap(different && mismatch == "step-limit" ? 100 : 200), 1, false);
+                        new ParserWorkLimit(different && mismatch == "parser-work-limit" ? 100 : 200), 1, false);
                     return new NewAssessmentRecord(id, before ? null : proposalId, before ? null : digest,
                         different && mismatch == "assessor" ? "other" : "pangloss", kind, "{}", "scope",
                         new AssessmentSubject.Words(Selection.Create("Default", ["cat"]), "none", "1"),
                         different && mismatch == "token" ? tokenJson + " " : tokenJson,
                         "outcome", "semantic", "grammar", "model", "pipeline", 0,
                         new AssessmentRecordMaterial.Words([new AssessedWord("cat", "analysed", [])
-                            { WorkSteps = before ? 100 : 110 }], null, null, []) { Invocation = invocation });
+                            { ParserWork = before ? 100 : 110 }], null, null, []) { Invocation = invocation });
                 }
                 assessments.RecordBatch([Record("before-correctness", true, "Correctness"),
                     Record("after-correctness", false, "Correctness"), Record("before-time", true, "ParseTime"),

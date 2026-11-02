@@ -120,7 +120,7 @@ public sealed class MiniRowReadingTests : IDisposable
                         Correctness = correctness,
                     },
                     new(1, SeededProject.UnanalysedWordForm, 4, WordOutcome.NoAnalysis, "none"),
-                ], 1000, seeded.FwDataPath, []) { PerWordStepLimit = 200000 })
+                ], 1000, seeded.FwDataPath, []) { PerWordParserWorkLimit = 200000 })
                 : new AssessmentRaw.WordMeasurements([]))
         {
             CaptureEvidence = (scope, candidate) => FakeAssessmentEvidence.Capture(

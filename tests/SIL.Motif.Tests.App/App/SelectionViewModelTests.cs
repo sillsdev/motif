@@ -200,10 +200,10 @@ public sealed class SelectionViewModelTests
     {
         var selection = new SelectionViewModel(new FakeCommandClient())
         {
-            PerWordStepLimitUnbounded = true,
+            PerWordParserWorkLimitUnbounded = true,
         };
 
-        Assert.Equal(StepCap.Unbounded, selection.BuildRequest().PerWordStepLimit);
+        Assert.Equal(ParserWorkLimit.Unbounded, selection.BuildRequest().PerWordParserWorkLimit);
     }
 
     [Fact]
@@ -332,7 +332,7 @@ public sealed class SelectionViewModelTests
         Assert.True(viewModel.CanAssess);
         Assert.Null(viewModel.ThresholdValidationMessage);
         Assert.Equal(500, viewModel.BuildRequest().RetryWorkOver);
-        Assert.Equal("retry words over 500 work steps", viewModel.SummaryText);
+        Assert.Equal("retry words over 500 parser work", viewModel.SummaryText);
     }
 
     [Fact]

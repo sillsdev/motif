@@ -54,19 +54,19 @@ public sealed class SetupValidationTriggerTests
             var (workspace, frame, setup, dialog, window) = await OpenAsync(2);
             try
             {
-                var field = Named<NumericUpDown>(dialog, AutomationIds.SetupStepLimit);
+                var field = Named<NumericUpDown>(dialog, AutomationIds.SetupParserWorkLimit);
                 field.Focus();
                 Dispatcher.UIThread.RunJobs();
                 field.Value = null;
                 PageScreenshots.Settle(window);
 
-                Assert.Null(setup.StepLimitValidationMessage);
+                Assert.Null(setup.ParserWorkLimitValidationMessage);
                 Assert.Null(ShownError(dialog));
 
                 Named<Button>(dialog, AutomationIds.SetupBack).Focus();
                 PageScreenshots.Settle(window);
 
-                Assert.NotNull(setup.StepLimitValidationMessage);
+                Assert.NotNull(setup.ParserWorkLimitValidationMessage);
                 Assert.NotNull(ShownError(dialog));
 
                 field.Focus();
@@ -74,7 +74,7 @@ public sealed class SetupValidationTriggerTests
                 Named<Button>(dialog, AutomationIds.SetupBack).Focus();
                 PageScreenshots.Settle(window);
 
-                Assert.Null(setup.StepLimitValidationMessage);
+                Assert.Null(setup.ParserWorkLimitValidationMessage);
                 Assert.Null(ShownError(dialog));
             }
             finally
@@ -92,19 +92,19 @@ public sealed class SetupValidationTriggerTests
             var (workspace, frame, setup, dialog, window) = await OpenAsync(2);
             try
             {
-                setup.StepLimitSteps = null;
-                Assert.Null(setup.StepLimitValidationMessage);
+                setup.ParserWorkLimitValue = null;
+                Assert.Null(setup.ParserWorkLimitValidationMessage);
 
                 setup.NextCommand.Execute(null);
                 PageScreenshots.Settle(window);
 
                 Assert.Equal(2, setup.Step);
-                Assert.NotNull(setup.StepLimitValidationMessage);
+                Assert.NotNull(setup.ParserWorkLimitValidationMessage);
                 Assert.NotNull(ShownError(dialog));
 
-                setup.StepLimitSteps = 5000;
-                Assert.True(setup.ValidateStepLimit());
-                Assert.Null(setup.StepLimitValidationMessage);
+                setup.ParserWorkLimitValue = 5000;
+                Assert.True(setup.ValidateParserWorkLimit());
+                Assert.Null(setup.ParserWorkLimitValidationMessage);
                 setup.NextCommand.Execute(null);
                 Assert.Equal(3, setup.Step);
             }
@@ -123,7 +123,7 @@ public sealed class SetupValidationTriggerTests
             var (workspace, frame, setup, dialog, window) = await OpenAsync(2);
             try
             {
-                var field = Named<NumericUpDown>(dialog, AutomationIds.SetupStepLimit);
+                var field = Named<NumericUpDown>(dialog, AutomationIds.SetupParserWorkLimit);
                 field.Focus();
                 field.Value = null;
                 Named<Button>(dialog, AutomationIds.SetupBack).Focus();
@@ -135,9 +135,9 @@ public sealed class SetupValidationTriggerTests
                 PageScreenshots.Settle(window);
 
                 Assert.True(field.IsKeyboardFocusWithin);
-                Assert.Null(setup.StepLimitValidationMessage);
+                Assert.Null(setup.ParserWorkLimitValidationMessage);
                 Assert.Null(ShownError(dialog));
-                Assert.DoesNotContain("Enter a positive", setup.StepLimitEstimateText, StringComparison.Ordinal);
+                Assert.DoesNotContain("Enter a positive", setup.ParserWorkLimitEstimateText, StringComparison.Ordinal);
             }
             finally
             {
@@ -147,22 +147,22 @@ public sealed class SetupValidationTriggerTests
     }
 
     [Fact]
-    public void TickingNoAttemptLimitClearsTheError()
+    public void TickingNoParserWorkLimitClearsTheError()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             var (workspace, frame, setup, dialog, window) = await OpenAsync(2);
             try
             {
-                setup.StepLimitSteps = null;
-                Assert.False(setup.ValidateStepLimit());
+                setup.ParserWorkLimitValue = null;
+                Assert.False(setup.ValidateParserWorkLimit());
                 PageScreenshots.Settle(window);
                 Assert.NotNull(ShownError(dialog));
 
-                setup.IsStepLimitUnbounded = true;
+                setup.IsParserWorkLimitUnbounded = true;
                 PageScreenshots.Settle(window);
 
-                Assert.Null(setup.StepLimitValidationMessage);
+                Assert.Null(setup.ParserWorkLimitValidationMessage);
                 Assert.Null(ShownError(dialog));
             }
             finally
@@ -180,14 +180,14 @@ public sealed class SetupValidationTriggerTests
             var (workspace, frame, setup, dialog, window) = await OpenAsync(2);
             try
             {
-                setup.IsStepLimitUnbounded = true;
-                setup.StepLimitSteps = null;
+                setup.IsParserWorkLimitUnbounded = true;
+                setup.ParserWorkLimitValue = null;
                 PageScreenshots.Settle(window);
 
-                setup.IsStepLimitUnbounded = false;
+                setup.IsParserWorkLimitUnbounded = false;
                 PageScreenshots.Settle(window);
 
-                Assert.Null(setup.StepLimitValidationMessage);
+                Assert.Null(setup.ParserWorkLimitValidationMessage);
                 Assert.Null(ShownError(dialog));
 
                 setup.NextCommand.Execute(null);
@@ -211,7 +211,7 @@ public sealed class SetupValidationTriggerTests
             var (workspace, frame, setup, dialog, window) = await OpenAsync(2);
             try
             {
-                var field = Named<NumericUpDown>(dialog, AutomationIds.SetupStepLimit);
+                var field = Named<NumericUpDown>(dialog, AutomationIds.SetupParserWorkLimit);
                 field.Focus();
                 field.Value = null;
                 Assert.Null(ShownError(dialog));
@@ -240,12 +240,12 @@ public sealed class SetupValidationTriggerTests
             var (workspace, frame, setup, _, window) = await OpenAsync(3);
             try
             {
-                setup.StepLimitSteps = null;
-                Assert.Null(setup.StepLimitValidationMessage);
+                setup.ParserWorkLimitValue = null;
+                Assert.Null(setup.ParserWorkLimitValidationMessage);
 
                 await setup.FinishCommand.ExecuteAsync(null);
 
-                Assert.NotNull(setup.StepLimitValidationMessage);
+                Assert.NotNull(setup.ParserWorkLimitValidationMessage);
                 Assert.True(setup.IsOpen);
                 Assert.Equal(3, setup.Step);
             }

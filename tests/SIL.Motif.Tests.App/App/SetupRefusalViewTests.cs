@@ -128,8 +128,8 @@ public sealed class SetupRefusalViewTests
                 var texts = dialog.GetLogicalDescendants().OfType<TextBlock>()
                     .Select(block => block.Text ?? string.Empty).ToArray();
                 var numbers = dialog.GetLogicalDescendants().OfType<NumericUpDown>().ToArray();
-                Assert.Contains(setup.StepLimitEstimateText, texts);
-                Assert.Contains(texts, text => text.Contains($"{StepCap.DefaultSteps:N0} attempts is the default", StringComparison.Ordinal));
+                Assert.Contains(setup.ParserWorkLimitEstimateText, texts);
+                Assert.Contains(texts, text => text.Contains($"{ParserWorkLimit.DefaultWork:N0} parser work is the default", StringComparison.Ordinal));
                 Assert.DoesNotContain(numbers, number =>
                     Avalonia.Automation.AutomationProperties.GetName(number) == "Time limit per word, in seconds");
                 Assert.Single(numbers);

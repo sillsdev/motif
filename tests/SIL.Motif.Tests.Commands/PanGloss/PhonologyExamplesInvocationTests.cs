@@ -178,7 +178,7 @@ public sealed class PhonologyExamplesInvocationTests : IDisposable
         Assert.Equal(["first"], row.VisitedRuleIds);
         Assert.Equal(["first"], row.AppliedRuleIds);
         Assert.Equal(1UL, row.Steps);
-        Assert.Equal(3UL, row.WorkSteps);
+        Assert.Equal(3UL, row.ParserWork);
         Assert.Equal(Context, row.ResolvedContext);
     }
 

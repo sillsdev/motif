@@ -161,7 +161,7 @@ public sealed class HandoffWriterTests : IDisposable
     }
 
     [Fact]
-    public void ASkippedWordHasNoWorkStepsInItsRecordButASearchedWordKeepsThem()
+    public void ASkippedWordHasNoParserWorkInItsRecordButASearchedWordKeepsThem()
     {
         var root = Path.Combine(_root, "handoff-skipped-work");
         Directory.CreateDirectory(root);
@@ -174,8 +174,8 @@ public sealed class HandoffWriterTests : IDisposable
 
         using var assessment = JsonDocument.Parse(File.ReadAllText(Path.Combine(root, "parse-results.json")));
         var records = assessment.RootElement.EnumerateArray().ToArray();
-        Assert.False(records[0].TryGetProperty("workSteps", out _));
-        Assert.Equal(120, records[1].GetProperty("workSteps").GetInt64());
+        Assert.False(records[0].TryGetProperty("parserWork", out _));
+        Assert.Equal(120, records[1].GetProperty("parserWork").GetInt64());
     }
 
     [Fact]
@@ -509,7 +509,7 @@ public sealed class HandoffWriterTests : IDisposable
                         index, word, 1, WordOutcome.NoAnalysis, "none")).ToArray();
                     return new AssessmentRaw.Batch(new BatchAnalysis(words,
                         (int)((AssessmentScope.Words)scope).PerWordLimit!.Value.TotalMilliseconds, projectPath, [])
-                    { PerWordStepLimit = ((AssessmentScope.Words)scope).PerWordStepLimit });
+                    { PerWordParserWorkLimit = ((AssessmentScope.Words)scope).PerWordParserWorkLimit });
                 }
                 return new AssessmentRaw.WordMeasurements([]);
             })
@@ -962,7 +962,7 @@ public sealed class HandoffWriterTests : IDisposable
                 }).ToArray();
                 return new AssessmentRaw.Batch(new BatchAnalysis(words,
                     (int)((AssessmentScope.Words)scope).PerWordLimit!.Value.TotalMilliseconds, projectPath, [])
-                { PerWordStepLimit = ((AssessmentScope.Words)scope).PerWordStepLimit });
+                { PerWordParserWorkLimit = ((AssessmentScope.Words)scope).PerWordParserWorkLimit });
             }
             return new AssessmentRaw.WordMeasurements([]);
         })

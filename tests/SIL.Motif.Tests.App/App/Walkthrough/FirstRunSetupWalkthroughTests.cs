@@ -75,7 +75,7 @@ public sealed class FirstRunSetupWalkthroughTests(PristineProjectFixture pristin
             Assert.Equal(selectedTextIds, setup.Selection.ChosenTextIds.Order());
 
             SetupWalkthroughActions.ClickSetupButton(walkthrough, SIL.Motif.App.MotifAppStrings.SetupNextLimits);
-            SetupWalkthroughActions.TypeSetupLimit(walkthrough, "Analysis attempt limit per word", "3100");
+            SetupWalkthroughActions.TypeSetupLimit(walkthrough, "Parser work limit for each word", "3100");
             SetupWalkthroughActions.ClickSetupButton(walkthrough, SIL.Motif.App.MotifAppStrings.SetupNextFirstRun);
             walkthrough.SetFakeParserBehavior(new
             {
@@ -163,7 +163,7 @@ public sealed class FirstRunSetupWalkthroughTests(PristineProjectFixture pristin
             SetupWalkthroughActions.SetSetupTextChecked(walkthrough, TwoTextWalkthroughProject.SecondTextTitle, true);
             SetupWalkthroughActions.SetSetupTextChecked(walkthrough, TwoTextWalkthroughProject.SecondTextTitle, false);
             SetupWalkthroughActions.ClickSetupButton(walkthrough, SIL.Motif.App.MotifAppStrings.SetupNextLimits);
-            SetupWalkthroughActions.TypeSetupLimit(walkthrough, "Analysis attempt limit per word", "3100");
+            SetupWalkthroughActions.TypeSetupLimit(walkthrough, "Parser work limit for each word", "3100");
             SetupWalkthroughActions.ClickSetupButton(walkthrough, SIL.Motif.App.MotifAppStrings.SetupNextFirstRun);
             var grammar = walkthrough.Workspace.PageModel<WarningsPageModel>().Grammar;
             var grammarCheck = walkthrough.Workspace.PageModel<WarningsPageModel>()
@@ -229,7 +229,7 @@ public sealed class FirstRunSetupWalkthroughTests(PristineProjectFixture pristin
                 WalkthroughSteps.Remaining(deadline), "Finish did not close setup and complete its first run");
 
             var selectedId = Assert.Single(walkthrough.Workspace.Selection.ChosenTextIds);
-            Assert.Equal($"1 text, analysis attempt limit {3100:N0}", walkthrough.Workspace.Selection.SummaryText);
+            Assert.Equal($"1 text, parser work limit {3100:N0}", walkthrough.Workspace.Selection.SummaryText);
             walkthrough.ShowPage(WorkspacePage.Texts);
             walkthrough.ShowTextsTab(TextsTab.AnalyzeTexts);
             Assert.Contains(walkthrough.Window.GetLogicalDescendants().OfType<TextBlock>(), text =>
@@ -243,20 +243,20 @@ public sealed class FirstRunSetupWalkthroughTests(PristineProjectFixture pristin
             Assert.True(stored.Succeeded, stored.Refusal?.Message);
             Assert.Equal(selectedId, Assert.Single(stored.Value!.Selection!.TextIds));
             AssertEstimatedLimit(stored.Value.Selection, 3100);
-            Assert.Equal(3100, stored.Value.Selection.PerWordStepLimit!.Steps);
+            Assert.Equal(3100, stored.Value.Selection.PerWordParserWorkLimit!.Work);
 
             SetupWalkthroughActions.OpenConfigure(walkthrough);
             walkthrough.WaitUntil(
-                () => setup.StepLimitSteps == 3100,
-                WalkthroughSteps.Remaining(deadline), "Configure did not load the saved attempt limit");
+                () => setup.ParserWorkLimitValue == 3100,
+                WalkthroughSteps.Remaining(deadline), "Configure did not load the saved parser work limit");
             SetupWalkthroughActions.ClickSetupButton(walkthrough, SIL.Motif.App.MotifAppStrings.SetupNextTexts);
             Assert.True(walkthrough.Workspace.Context.Setup!.Selection.Texts
                 .Single(text => text.Title == SeededProject.TextTitle).IsChecked);
             Assert.False(walkthrough.Workspace.Context.Setup.Selection.Texts
                 .Single(text => text.Title == TwoTextWalkthroughProject.SecondTextTitle).IsChecked);
             SetupWalkthroughActions.ClickSetupButton(walkthrough, SIL.Motif.App.MotifAppStrings.SetupNextLimits);
-            Assert.Equal($"Motif stops a word after {3100:N0} analysis attempts.", setup.StepLimitEstimateText);
-            Assert.Equal(3100m, walkthrough.Find<NumericUpDown>("Analysis attempt limit per word").Value);
+            Assert.Equal($"Motif stops a word after {3100:N0} parser work.", setup.ParserWorkLimitEstimateText);
+            Assert.Equal(3100m, walkthrough.Find<NumericUpDown>("Parser work limit for each word").Value);
             SetupWalkthroughActions.ClickSetupButton(walkthrough, SIL.Motif.App.MotifAppStrings.SetupNextFirstRun);
             walkthrough.Click(SIL.Motif.App.MotifAppStrings.UseThisSelection);
             walkthrough.WaitUntil(
@@ -280,9 +280,9 @@ public sealed class FirstRunSetupWalkthroughTests(PristineProjectFixture pristin
         Assert.Equal(SelectionTimeLimitMode.Estimated, selection.Limits.TimeMode);
         Assert.Null(selection.Limits.ExplicitPerWordLimitMs);
         Assert.Null(selection.PerWordLimitMs);
-        Assert.Equal(steps, selection.PerWordStepLimit.Steps);
-        Assert.Equal(1000L, StepLimitEstimator.Calculate(selection.PerWordStepLimit,
-            StepLimitEstimator.TypicalMachineRate)!.PerWordTimeLimitMs);
+        Assert.Equal(steps, selection.PerWordParserWorkLimit.Work);
+        Assert.Equal(1000L, ParserWorkLimitEstimator.Calculate(selection.PerWordParserWorkLimit,
+            ParserWorkLimitEstimator.TypicalMachineRate)!.PerWordTimeLimitMs);
     }
 
     [Fact]

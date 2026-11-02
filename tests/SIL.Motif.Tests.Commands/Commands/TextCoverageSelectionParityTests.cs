@@ -53,7 +53,7 @@ public sealed class TextCoverageSelectionParityTests(PristineProjectFixture pris
             new AssessmentRepository(database));
         var resolved = CurrentEvidenceQuery.ResolveSelection(ProjectSummaryReader.Read(cache),
             new NamedSelectionRecord("Default", [text.Guid], [], "2026-10-31T00:00:00Z", "2026-10-31T00:00:00Z",
-                SelectionLimitPolicy.Estimated(StepCap.Default), 1));
+                SelectionLimitPolicy.Estimated(ParserWorkLimit.Default), 1));
 
         Assert.True(composed.Succeeded, composed.Refusal?.Message);
         Assert.True(resolved.Succeeded, resolved.Refusal?.Message);

@@ -11,7 +11,7 @@ namespace SIL.Motif.Tests.Store;
 public sealed class ParsimonySelectionRepositoryTests : IDisposable
 {
     private static readonly SelectionParsingLimits Limits =
-        new(StepCap.Default, SelectionTimeLimitMode.Estimated, null);
+        new(ParserWorkLimit.Default, SelectionTimeLimitMode.Estimated, null);
 
     private readonly string _root = Path.Combine(Path.GetTempPath(), "motif-parsimony-selection-" + Guid.NewGuid().ToString("N"));
     private readonly MotifDatabase _database;

@@ -352,7 +352,7 @@ public sealed class AnalyzeTextsLayoutTests
                 Assert.Contains(MotifAppStrings.WorkByRule, cardText);
                 Assert.Contains("Subject agreement", cardText);
                 Assert.Contains("Not attributed", cardText);
-                Assert.Contains("work steps", cardText);
+                Assert.Contains("parser work", cardText);
                 Assert.Contains(inText.SelectedToken!.TimingShares[0].ShareLabel, cardText);
                 Assert.DoesNotContain(" ms", cardText);
                 var whySection = Assert.Single(card.GetVisualDescendants().OfType<Border>(), border =>
@@ -452,7 +452,7 @@ public sealed class AnalyzeTextsLayoutTests
             StoredTiming(request.ExplicitWords?.SingleOrDefault() ?? timedWord))));
     }
 
-    // Work steps by rule, with the time rows left deliberately unlike them: the card reads only the steps.
+    // Parser work by rule, with the time rows left deliberately unlike them: the card reads only the steps.
     private static TimingResponse StoredTiming(string word)
     {
         var hawajafika = word == "hawajafika";
@@ -465,16 +465,16 @@ public sealed class AnalyzeTextsLayoutTests
         if (hawajafika)
             rules.AddRange(Enumerable.Range(1, 9).Select(index => Steps($"rule/minor{index}", $"Minor rule {index}", "morph_rule", 100)));
         var unattributed = hawajafika ? 2100 : 2000;
-        var total = rules.Sum(rule => rule.WorkSteps) + unattributed;
+        var total = rules.Sum(rule => rule.ParserWork) + unattributed;
         return new TimingResponse("assessment/one", "all", "rule", 1, 1, 1, [],
             [
                 new TimingAggregateRow("rule/subject", "Subject agreement", 0.9, 0.9, 1)
                     { Kind = "morph_rule", IdentityQuality = "authored" },
             ], [])
         {
-            Words = [new TimingWordRow(word, 1, TimingCompletion.Finished) { ElapsedNs = 1_000_000, WorkSteps = total }],
+            Words = [new TimingWordRow(word, 1, TimingCompletion.Finished) { ElapsedNs = 1_000_000, ParserWork = total }],
             Work = new WordWorkSummary(1, total, total, total),
-            WorkStepAggregates = [.. rules, new TimingWorkAggregate("unattributed", "Not attributed", "unattributed", unattributed, true)],
+            ParserWorkAggregates = [.. rules, new TimingWorkAggregate("unattributed", "Not attributed", "unattributed", unattributed, true)],
             Attribution = new WordTimeAttribution(1, 1, 0.9, 0.1, 0.1, 0, false),
         };
     }

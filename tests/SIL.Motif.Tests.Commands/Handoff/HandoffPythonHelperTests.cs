@@ -74,13 +74,13 @@ public sealed class HandoffPythonHelperTests : IDisposable
     }
 
     [RequiresPythonFact]
-    public void SlowestRanksWordsByTheirWorkStepsBeforeTheirTimeOnThisComputer()
+    public void SlowestRanksWordsByTheirParserWorkBeforeTheirTimeOnThisComputer()
     {
         var scriptPath = WriteScriptToDisk();
         var results = Path.Combine(_root, "parse-results.json");
         File.WriteAllText(results, """
-            [{"word":"quick-but-costly","workSteps":900,"elapsedMs":1},
-             {"word":"slow-but-cheap","workSteps":5,"elapsedMs":800},
+            [{"word":"quick-but-costly","parserWork":900,"elapsedMs":1},
+             {"word":"slow-but-cheap","parserWork":5,"elapsedMs":800},
              {"word":"no-work-count","elapsedMs":9000},
              {"word":"unmeasured"}]
             """);

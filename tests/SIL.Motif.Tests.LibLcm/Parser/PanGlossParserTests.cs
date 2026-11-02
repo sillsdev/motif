@@ -14,7 +14,7 @@ public sealed class PanGlossParserTests
     [Theory]
     [InlineData(200000)]
     [InlineData(123)]
-    public async Task ACompletedBatchBecomesAnAnalysis_WithWarningsAndEffectiveBudgets(int stepLimit)
+    public async Task ACompletedBatchBecomesAnAnalysis_WithWarningsAndEffectiveBudgets(int parserWorkLimit)
     {
         var invoker = new FakeInvoker
         {
@@ -23,16 +23,16 @@ public sealed class PanGlossParserTests
         };
         var parser = new PanGlossParser(invoker);
 
-        var result = await parser.AnalyseBatchAsync(Project, ["motifa", "zzz"], TimeSpan.FromMilliseconds(1500), "test", CancellationToken.None, perWordStepLimit: stepLimit);
+        var result = await parser.AnalyseBatchAsync(Project, ["motifa", "zzz"], TimeSpan.FromMilliseconds(1500), "test", CancellationToken.None, perWordParserWorkLimit: parserWorkLimit);
 
         Assert.True(result.Succeeded);
         Assert.Equal(2, result.Analysis!.Words.Count);
         Assert.Equal(1500, result.Analysis.PerWordTimeoutMs);
-        Assert.Equal(stepLimit, result.Analysis.PerWordStepLimit);
+        Assert.Equal(parserWorkLimit, result.Analysis.PerWordParserWorkLimit);
         Assert.Equal(["warning: one thing"], result.Analysis.Warnings);
         var request = Assert.IsType<PanGlossRequest.Batch>(Assert.Single(invoker.Requests).Request);
         Assert.Null(request.StatsCachePath);
-        Assert.Equal(stepLimit, request.PerWordStepLimit);
+        Assert.Equal(parserWorkLimit, request.PerWordParserWorkLimit);
     }
 
     [Fact]

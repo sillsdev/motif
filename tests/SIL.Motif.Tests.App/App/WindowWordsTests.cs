@@ -337,7 +337,7 @@ public sealed partial class WindowWordsTests
         {
             PageScreenshots.Settle(window);
             shown.AddRange(Rendered(window).Select(text => $"setup {mode} step {step + 1}: {text}"));
-            shown.Add($"setup {mode}: {setup.StepLimitEstimateText}");
+            shown.Add($"setup {mode}: {setup.ParserWorkLimitEstimateText}");
             if (setup.NextCommand.CanExecute(null)) setup.NextCommand.Execute(null);
         }
         return shown;

@@ -99,7 +99,7 @@ public sealed class PhonologyResultsCommandTests(PristineProjectFixture pristine
                 limits.StepCap / (ulong)ids.Length + ((ulong)index < limits.StepCap % (ulong)ids.Length ? 1UL : 0UL),
                 limits.WorkCap / (ulong)ids.Length + ((ulong)index < limits.WorkCap % (ulong)ids.Length ? 1UL : 0UL),
                 limits.TimeoutMs),
-            Steps = 1, WorkSteps = 1,
+            Steps = 1, ParserWork = 1,
         })];
         var measurement = new PhonologyMeasurement(BareHash, [new("WritingSystemStore/ws.ldml", BareHash)],
             new string('e', 64), new string('f', 64), "producer-build", new string('d', 64), BareHash, 1024, limits, 9, rows);

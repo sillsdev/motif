@@ -43,7 +43,7 @@ public sealed class TimingProposalViewTests
         IEnumerable<Word> chosen = side;
         if (request.ExplicitWords is { Count: > 0 } explicitWords)
             chosen = side.Where(word => explicitWords.Contains(word.Name));
-        else if (request.WordSet == "step-limit") chosen = side.Where(word => word.Stopped);
+        else if (request.WordSet == "parser-work-limit") chosen = side.Where(word => word.Stopped);
         else if (request.WordSet == "slowest")
             chosen = side.OrderByDescending(word => word.Steps).ThenBy(word => word.Name, StringComparer.Ordinal).Take(request.Top);
         var words = chosen.ToArray();
@@ -65,9 +65,9 @@ public sealed class TimingProposalViewTests
             request.By == "kind" ? [.. parts.Select(part => new TimingAggregateRow(part.Kind, part.Kind, 0, 1, words.Length))] : [], [])
         {
             Words = [.. words.Select(word => new TimingWordRow(word.Name, (int)(word.Steps / 10),
-                word.Stopped ? TimingCompletion.WorkLimit : "Finished") { WorkSteps = word.Steps })],
+                word.Stopped ? TimingCompletion.WorkLimit : "Finished") { ParserWork = word.Steps })],
             Work = new WordWorkSummary(words.Length, total, median, null),
-            WorkStepAggregates = request.By == "kind" ? kinds : [],
+            ParserWorkAggregates = request.By == "kind" ? kinds : [],
         };
     }
 
@@ -150,8 +150,8 @@ public sealed class TimingProposalViewTests
 
         context.ShowProposalView(MarkupView.TodayToProposal);
 
-        Assert.Equal(Pair("10,000 work steps", "9,000 work steps"), page.HeadlineTotal);
-        Assert.Equal(Pair("2,500 work steps", "2,250 work steps"), page.HeadlineMedian);
+        Assert.Equal(Pair("10,000 parser work", "9,000 parser work"), page.HeadlineTotal);
+        Assert.Equal(Pair("2,500 parser work", "2,250 parser work"), page.HeadlineMedian);
         Assert.Equal(Pair("0", "0"), page.HeadlineStopped);
         Assert.Equal(MotifAppStrings.TimingProposalPairedNote, page.ProposalNote);
         Assert.Equal(1, ProposalReads(fake));
@@ -171,7 +171,7 @@ public sealed class TimingProposalViewTests
         Assert.EndsWith(MotifAppStrings.ProposalPageNone, affix.ShownWorkText);
         Assert.StartsWith(MotifAppStrings.TimingNoneToday, synthesis.ShownWorkText);
         Assert.True(synthesis.IsProposalOnly);
-        Assert.Equal(Pair("6,000 work steps", "4,500 work steps"), morph.ShownWorkText);
+        Assert.Equal(Pair("6,000 parser work", "4,500 parser work"), morph.ShownWorkText);
     }
 
     [Fact]
@@ -186,7 +186,7 @@ public sealed class TimingProposalViewTests
         await context.EvidencePublication;
 
         Assert.Equal(reads, ProposalReads(fake));
-        Assert.Equal("10,000 work steps", page.HeadlineTotal);
+        Assert.Equal("10,000 parser work", page.HeadlineTotal);
         Assert.DoesNotContain(page.KindShares, row => row.ProposalShareText is not null);
         Assert.Equal(string.Format(MotifAppStrings.ProposalPageTodayViewNoteFormat, MotifAppStrings.TimingNoun),
             page.ProposalNote);
@@ -204,7 +204,7 @@ public sealed class TimingProposalViewTests
         context.ShowProposalView(MarkupView.TodayToProposal);
 
         Assert.Equal(1, ProposalReads(fake));
-        Assert.Equal(Pair("10,000 work steps", "9,000 work steps"), page.HeadlineTotal);
+        Assert.Equal(Pair("10,000 parser work", "9,000 parser work"), page.HeadlineTotal);
     }
 
     [Fact]
@@ -214,8 +214,8 @@ public sealed class TimingProposalViewTests
 
         context.ShowProposalView(MarkupView.Proposal);
 
-        Assert.Equal("9,000 work steps", page.HeadlineTotal);
-        Assert.Equal("2,250 work steps", page.HeadlineMedian);
+        Assert.Equal("9,000 parser work", page.HeadlineTotal);
+        Assert.Equal("2,250 parser work", page.HeadlineMedian);
         Assert.Equal("0", page.HeadlineStopped);
         Assert.Equal(["morph_rule", "synth_rule"],
             page.KindShares.Where(row => !row.IsNotAttributed).Select(row => row.Kind));
@@ -230,8 +230,8 @@ public sealed class TimingProposalViewTests
 
         context.ShowProposalView(MarkupView.TodayToProposal);
 
-        Assert.Equal("10,000 work steps", page.HeadlineTotal);
-        Assert.Equal("2,500 work steps", page.HeadlineMedian);
+        Assert.Equal("10,000 parser work", page.HeadlineTotal);
+        Assert.Equal("2,500 parser work", page.HeadlineMedian);
         Assert.Equal(Pair("1", "2"), page.HeadlineStopped);
         Assert.DoesNotContain(page.KindShares, row => row.ProposalShareText is not null);
         Assert.Equal(MotifAppStrings.TimingProposalStoppedOnlyNote, page.ProposalNote);
@@ -260,7 +260,7 @@ public sealed class TimingProposalViewTests
 
         context.ShowProposalView(MarkupView.TodayToProposal);
 
-        Assert.Equal("10,000 work steps", page.HeadlineTotal);
+        Assert.Equal("10,000 parser work", page.HeadlineTotal);
         Assert.Equal("0", page.HeadlineStopped);
         Assert.DoesNotContain(page.KindShares, row => row.ProposalShareText is not null);
         Assert.Equal(MotifAppStrings.TimingProposalDifferentWordsNote, page.ProposalNote);
@@ -275,7 +275,7 @@ public sealed class TimingProposalViewTests
 
         context.ShowProposalView(MarkupView.TodayToProposal);
 
-        Assert.Equal("10,000 work steps", page.HeadlineTotal);
+        Assert.Equal("10,000 parser work", page.HeadlineTotal);
         Assert.Equal(MotifAppStrings.TimingProposalDifferentWordsNote, page.ProposalNote);
     }
 
@@ -286,7 +286,7 @@ public sealed class TimingProposalViewTests
         context.ShowProposalView(MarkupView.TodayToProposal);
         page.SlowestCount = 2;
         await page.SelectWordSetCommand.ExecuteAsync("slowest");
-        Assert.Equal(Pair("7,000 work steps", "6,300 work steps"), page.HeadlineTotal);
+        Assert.Equal(Pair("7,000 parser work", "6,300 parser work"), page.HeadlineTotal);
 
         var (_, otherContext, otherPage) = await OpenedAsync(new Side
         {
@@ -295,7 +295,7 @@ public sealed class TimingProposalViewTests
         otherContext.ShowProposalView(MarkupView.TodayToProposal);
         otherPage.SlowestCount = 2;
         await otherPage.SelectWordSetCommand.ExecuteAsync("slowest");
-        Assert.Equal("7,000 work steps", otherPage.HeadlineTotal);
+        Assert.Equal("7,000 parser work", otherPage.HeadlineTotal);
         Assert.Equal(MotifAppStrings.TimingProposalDifferentWordsNote, otherPage.ProposalNote);
     }
 
@@ -305,28 +305,28 @@ public sealed class TimingProposalViewTests
         var side = new Side();
         var (_, context, page) = await OpenedAsync(side);
         context.ShowProposalView(MarkupView.Proposal);
-        Assert.Equal("9,000 work steps", page.HeadlineTotal);
+        Assert.Equal("9,000 parser work", page.HeadlineTotal);
         var todayGate = new TaskCompletionSource<CommandOutcome<TimingResponse>>();
         var proposalGate = new TaskCompletionSource<CommandOutcome<TimingResponse>>();
-        side.Hold = request => request.WordSet != "step-limit"
+        side.Hold = request => request.WordSet != "parser-work-limit"
             ? Task.FromResult(CommandOutcome<TimingResponse>.Success(request.ProposalId is null
                 ? Respond(request, side.Today, ("morph_rule", 1)) : Respond(request, ProposalCalm, ("morph_rule", 1))))
             : request.ProposalId is null ? todayGate.Task : proposalGate.Task;
 
-        var selecting = page.SelectWordSetCommand.ExecuteAsync("step-limit");
+        var selecting = page.SelectWordSetCommand.ExecuteAsync("parser-work-limit");
         await Task.Delay(50);
         Assert.Equal(MotifAppStrings.OverviewProposalReading, page.HeadlineTotal);
         Assert.Empty(page.KindShares);
 
         todayGate.SetResult(CommandOutcome<TimingResponse>.Success(
-            Respond(new TimingRequest(ProjectPath, null, "step-limit"), [new Word("z", 700, true)], ("morph_rule", 1))));
+            Respond(new TimingRequest(ProjectPath, null, "parser-work-limit"), [new Word("z", 700, true)], ("morph_rule", 1))));
         await Task.Delay(50);
         Assert.Equal(MotifAppStrings.OverviewProposalReading, page.HeadlineTotal);
 
         proposalGate.SetResult(CommandOutcome<TimingResponse>.Success(
-            Respond(new TimingRequest(ProjectPath, null, "step-limit"), [new Word("z", 500, true)], ("morph_rule", 1))));
+            Respond(new TimingRequest(ProjectPath, null, "parser-work-limit"), [new Word("z", 500, true)], ("morph_rule", 1))));
         await selecting;
-        Assert.Equal("500 work steps", page.HeadlineTotal);
+        Assert.Equal("500 parser work", page.HeadlineTotal);
     }
 
     [Fact]
@@ -337,7 +337,7 @@ public sealed class TimingProposalViewTests
         context.ShowProposalView(MarkupView.Proposal);
         await Task.Delay(50);
 
-        Assert.Equal("9,000 work steps", page.HeadlineTotal);
+        Assert.Equal("9,000 parser work", page.HeadlineTotal);
         Assert.Equal(1, ProposalReads(fake));
     }
 
@@ -349,7 +349,7 @@ public sealed class TimingProposalViewTests
         var twoGate = new TaskCompletionSource<CommandOutcome<TimingResponse>>();
         var (_, context, page) = await OpenedAsync(side);
         context.ShowProposalView(MarkupView.Proposal);
-        Assert.Equal("9,000 work steps", page.HeadlineTotal);
+        Assert.Equal("9,000 parser work", page.HeadlineTotal);
         side.Hold = request => request.ProposalId == "proposal/two" ? twoGate.Task
             : Task.FromResult(CommandOutcome<TimingResponse>.Success(request.ProposalId is null
                 ? Respond(request, side.Today, ("morph_rule", 1)) : Respond(request, ProposalCalm, ("morph_rule", 1))));
@@ -366,7 +366,7 @@ public sealed class TimingProposalViewTests
             Respond(new TimingRequest(ProjectPath), side.Proposals("proposal/two"), ("morph_rule", 1))));
         await opening;
         context.ShowProposalView(MarkupView.Proposal);
-        Assert.Equal("1,000 work steps", page.HeadlineTotal);
+        Assert.Equal("1,000 parser work", page.HeadlineTotal);
     }
 
     [Fact]
@@ -384,12 +384,12 @@ public sealed class TimingProposalViewTests
 
         await context.OpenProposalAsync("proposal/two", CancellationToken.None);
         context.ShowProposalView(MarkupView.Proposal);
-        Assert.Equal("1,000 work steps", page.HeadlineTotal);
+        Assert.Equal("1,000 parser work", page.HeadlineTotal);
         oneGate.SetResult(CommandOutcome<TimingResponse>.Success(
             Respond(new TimingRequest(ProjectPath), ProposalCalm, ("morph_rule", 1))));
         await Task.Delay(50);
 
-        Assert.Equal("1,000 work steps", page.HeadlineTotal);
+        Assert.Equal("1,000 parser work", page.HeadlineTotal);
     }
 
     [Fact]
@@ -411,13 +411,13 @@ public sealed class TimingProposalViewTests
         await Task.Delay(100);
         await context.OpenProposalAsync("proposal/one", CancellationToken.None);
         context.ShowProposalView(MarkupView.Proposal);
-        Assert.Equal("2,700 work steps", page.HeadlineTotal);
+        Assert.Equal("2,700 parser work", page.HeadlineTotal);
 
         await context.OpenProposalAsync("proposal/two", CancellationToken.None);
         context.ShowProposalView(MarkupView.Proposal);
 
         Assert.True(context.Evidence.Assessment!.IsStored);
-        Assert.Equal("300 work steps", page.HeadlineTotal);
+        Assert.Equal("300 parser work", page.HeadlineTotal);
     }
 
     internal static CurrentEvidenceSnapshot StoredSnapshot()
@@ -437,7 +437,7 @@ public sealed class TimingProposalViewTests
                     with
                     {
                         Invocation = new BatchInvocationEvidence("invocation/assessment-parse", "source", "digest", "digest",
-                            "words", "digest", "tsv", "digest", "stderr", "digest", 1000, StepCap.Default, 1, false),
+                            "words", "digest", "tsv", "digest", "stderr", "digest", 1000, ParserWorkLimit.Default, 1, false),
                     }));
     }
 
@@ -456,7 +456,7 @@ public sealed class TimingProposalViewTests
         Assert.Equal(MotifAppStrings.ProposalPageNone, page.HeadlineTotal);
         Assert.Empty(page.KindShares);
         context.ShowProposalView(MarkupView.TodayToProposal);
-        Assert.Equal("10,000 work steps", page.HeadlineTotal);
+        Assert.Equal("10,000 parser work", page.HeadlineTotal);
         Assert.Contains(string.Format(MotifAppStrings.ProposalPageUnreadableFormat, MotifAppStrings.TimingNoun), page.ProposalNote);
     }
 
@@ -469,12 +469,12 @@ public sealed class TimingProposalViewTests
         await Task.Delay(50);
         Assert.True(page.ShowPageBody);
         Assert.False(page.ShowParsePromptCard);
-        Assert.Equal("9,000 work steps", page.HeadlineTotal);
+        Assert.Equal("9,000 parser work", page.HeadlineTotal);
         Assert.True(page.ShowHeadlineCard);
         Assert.True(page.ShowKindCard);
 
         context.ShowProposalView(MarkupView.TodayToProposal);
-        Assert.Equal(Pair(MotifAppStrings.TimingNoneToday, "9,000 work steps"), page.HeadlineTotal);
+        Assert.Equal(Pair(MotifAppStrings.TimingNoneToday, "9,000 parser work"), page.HeadlineTotal);
         Assert.All(page.KindShares.Where(row => !row.IsNotAttributed), row => Assert.True(row.IsProposalOnly));
 
         context.ShowProposalView(MarkupView.Today);
@@ -491,7 +491,7 @@ public sealed class TimingProposalViewTests
 
         await context.LeaveProposalAsync(CancellationToken.None);
 
-        Assert.Equal("10,000 work steps", page.HeadlineTotal);
+        Assert.Equal("10,000 parser work", page.HeadlineTotal);
         Assert.Null(page.ProposalNote);
         Assert.DoesNotContain(page.KindShares, row => row.ProposalShareText is not null);
         Assert.Equal(reads, ProposalReads(fake));
@@ -508,7 +508,7 @@ public sealed class TimingProposalViewTests
             if (request.ProposalId is null) return Task.FromResult(CommandOutcome<TimingResponse>.Success(Respond(request, side.Today, ("morph_rule", 1))));
             var big = Respond(request, ProposalCalm, ("morph_rule", 1)) with
             {
-                Words = [.. Enumerable.Range(0, 5_000).Select(index => new TimingWordRow("w" + index, 1, "Finished") { WorkSteps = 1 })],
+                Words = [.. Enumerable.Range(0, 5_000).Select(index => new TimingWordRow("w" + index, 1, "Finished") { ParserWork = 1 })],
             };
             read = new WeakReference(big.Words);
             return Task.FromResult(CommandOutcome<TimingResponse>.Success(big));
@@ -554,14 +554,14 @@ public sealed class TimingProposalViewTests
                     note.GetVisualDescendants().OfType<TextBlock>().First().Text);
                 var texts = window.GetVisualDescendants().OfType<TimingPage>().Single().GetVisualDescendants()
                     .OfType<TextBlock>().Where(block => block.IsEffectivelyVisible).Select(block => block.Text).ToArray();
-                Assert.Contains(Pair("10,000 work steps", "9,000 work steps"), texts);
+                Assert.Contains(Pair("10,000 parser work", "9,000 parser work"), texts);
 
                 workspace.Context.ShowProposalView(MarkupView.Today);
                 PageScreenshots.Settle(window);
                 var today = window.GetVisualDescendants().OfType<TimingPage>().Single().GetVisualDescendants()
                     .OfType<TextBlock>().Where(block => block.IsEffectivelyVisible).Select(block => block.Text).ToArray();
-                Assert.DoesNotContain(Pair("10,000 work steps", "9,000 work steps"), today);
-                Assert.Contains("10,000 work steps", today);
+                Assert.DoesNotContain(Pair("10,000 parser work", "9,000 parser work"), today);
+                Assert.Contains("10,000 parser work", today);
             }
             finally { window.Close(); }
         }, TimeSpan.FromMinutes(3));

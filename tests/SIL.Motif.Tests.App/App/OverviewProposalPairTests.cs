@@ -31,7 +31,7 @@ public sealed class OverviewProposalPairTests
 
         Assert.Equal("118 → 130 of 142 words parse", page.TextCoverageMain);
         Assert.Equal("71 → 75 of 84 rebuilt exactly", page.AccuracyMain);
-        Assert.Equal("142 words · 380,000 work steps in total → 142 words · 372,000 work steps in total", page.SpeedMain);
+        Assert.Equal("142 words · 380,000 parser work in total → 142 words · 372,000 parser work in total", page.SpeedMain);
         Assert.Equal("20 warnings → 18 warnings", page.WarningsCount);
         Assert.True(page.HasProposalNote);
         Assert.Equal(MotifAppStrings.OverviewProposalPairedNote, page.ProposalNote);
@@ -193,10 +193,10 @@ public sealed class OverviewProposalPairTests
 
         await context.OpenProposalAsync("proposal/one", CancellationToken.None);
 
-        Assert.Equal("142 words · 380,000 work steps in total", page.SpeedMain);
+        Assert.Equal("142 words · 380,000 parser work in total", page.SpeedMain);
         Assert.Equal("118 → 130 of 142 words parse", page.TextCoverageMain);
         Assert.Equal(FourHeadlines + " One headline shows today's value only: Speed. " +
-            "The work steps of the two tries cannot be compared.", page.ProposalNote);
+            "The parser work of the two tries cannot be compared.", page.ProposalNote);
     }
 
     [Fact]

@@ -64,7 +64,7 @@ public sealed class TimingSharesTests
         Assert.Equal(expected, TimingShare.FormatDuration(milliseconds));
     }
 
-    // The words' work steps are ten for each recorded millisecond, so a fixture reads the same in either unit.
+    // The words' parser work are ten for each recorded millisecond, so a fixture reads the same in either unit.
     private static long? WorkOf(int? milliseconds) => milliseconds * 10L;
 
     private static readonly TimingWorkAggregate[] KindWork =
@@ -96,18 +96,18 @@ public sealed class TimingSharesTests
         var timing = await LoadedTiming(NineWords, Kinds, Rules, work: KindWork);
 
         Assert.Equal(
-            [("Morphological rules", "60%", "4,800 work steps"), ("Phonological rules", "20%", "1,600 work steps"),
-                ("Root lookup", "5%", "400 work steps"), ("Not attributed", "15%", "1,200 work steps")],
+            [("Morphological rules", "60%", "4,800 parser work"), ("Phonological rules", "20%", "1,600 parser work"),
+                ("Root lookup", "5%", "400 parser work"), ("Not attributed", "15%", "1,200 parser work")],
             timing.KindShares.Select(share => (share.Label, share.ShareText, share.WorkText)));
         Assert.Null(timing.KindShares[^1].Source);
         Assert.Equal(1d, timing.KindShares.Sum(share => share.Share!.Value), precision: 6);
-        Assert.Equal("Every share is of the 8,000 work steps these 9 words needed to parse.", timing.ShareDenominatorText);
-        Assert.Equal("Not attributed: 1,200 work steps (15%).", timing.NotAttributedText);
+        Assert.Equal("Every share is of the 8,000 parser work these 9 words needed to parse.", timing.ShareDenominatorText);
+        Assert.Equal("Not attributed: 1,200 parser work (15%).", timing.NotAttributedText);
         Assert.Equal(["420 calls", "70 calls", "Not counted"], timing.KindCallShares.Select(share => share.CallsText));
     }
 
     [Fact]
-    public void TheHeadlineCountsWorkStepsAndNothingOnThePageIsInMilliseconds()
+    public void TheHeadlineCountsParserWorkAndNothingOnThePageIsInMilliseconds()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
@@ -119,9 +119,9 @@ public sealed class TimingSharesTests
                 window.Show();
                 window.UpdateLayout();
                 Dispatcher.UIThread.RunJobs();
-                Assert.Equal("8,000 work steps", timing.HeadlineTotal);
-                Assert.Equal("90 work steps", timing.HeadlineMedian);
-                Assert.Equal("Median 90 work steps · 95th percentile 7,000 work steps", timing.PercentileSummary);
+                Assert.Equal("8,000 parser work", timing.HeadlineTotal);
+                Assert.Equal("90 parser work", timing.HeadlineMedian);
+                Assert.Equal("Median 90 parser work · 95th percentile 7,000 parser work", timing.PercentileSummary);
                 Assert.DoesNotContain(VisibleText(window), text => System.Text.RegularExpressions.Regex.IsMatch(
                     text, @"\d\s?(ms|s)\b|millisecond", System.Text.RegularExpressions.RegexOptions.IgnoreCase));
             }
@@ -151,23 +151,23 @@ public sealed class TimingSharesTests
         using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
         var timing = await LoadedTiming(NineWords, Kinds, Rules);
 
-        Assert.Equal("SHARE OF 8,000 work steps", timing.RuleShareHeader);
+        Assert.Equal("SHARE OF 8,000 parser work", timing.RuleShareHeader);
         Assert.Equal([("Subject agreement", "Morphological rules", "2,880", "36%", "6"),
                 ("Vowel harmony", "Phonological rules", "1,200", "15%", "7")],
             timing.RuleShares.Select(share => (share.Label, share.KindLabel, share.WorkCountText, share.ShareText,
                 share.WordsText)));
-        Assert.Equal("2,880 work steps · 36% of these 9 words' 8,000 work steps · recorded in 6 words", timing.RuleSummary);
+        Assert.Equal("2,880 parser work · 36% of these 9 words' 8,000 parser work · recorded in 6 words", timing.RuleSummary);
         Assert.DoesNotContain("attempt", timing.RuleSummary, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
-    public void WordCardTimingSharesUseWholePercentagesOfWorkSteps()
+    public void WordCardTimingSharesUseWholePercentagesOfParserWork()
     {
         using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
 
-        Assert.Equal("36% · 2,880 work steps", new TimingShareViewModel("Subject agreement", 0.36, 2880).ShareLabel);
-        Assert.Equal("15% · 1 work step", new TimingShareViewModel("Vowel harmony", 0.15, 1).ShareLabel);
-        Assert.Equal("<1% · 3 work steps", new TimingShareViewModel("Rare rule", 0.0003, 3).ShareLabel);
+        Assert.Equal("36% · 2,880 parser work", new TimingShareViewModel("Subject agreement", 0.36, 2880).ShareLabel);
+        Assert.Equal("15% · 1 parser work", new TimingShareViewModel("Vowel harmony", 0.15, 1).ShareLabel);
+        Assert.Equal("<1% · 3 parser work", new TimingShareViewModel("Rare rule", 0.0003, 3).ShareLabel);
     }
 
     // The milliseconds rows deliberately disagree with the steps, so a share read from time fails these.
@@ -179,7 +179,7 @@ public sealed class TimingSharesTests
         ], [])
     {
         Work = work,
-        WorkStepAggregates = steps,
+        ParserWorkAggregates = steps,
         Attribution = new WordTimeAttribution(1, 10, 10, 0, 0, 0, false),
     };
 
@@ -203,15 +203,15 @@ public sealed class TimingSharesTests
         var card = Card(WordTiming(1, new WordWorkSummary(1, 1000, 1000, 1000),
             [RuleSteps("Subject agreement", 600), RuleSteps("Vowel harmony", 300, "phon_rule"), Unattributed]));
 
-        Assert.Equal([("Subject agreement", "60% · 600 work steps"), ("Vowel harmony", "30% · 300 work steps")],
+        Assert.Equal([("Subject agreement", "60% · 600 parser work"), ("Vowel harmony", "30% · 300 parser work")],
             card.TimingShares.Select(share => (share.Name, share.ShareLabel)));
         Assert.Equal(0.1, card.NotAttributedShare!.Value, 6);
         Assert.Equal("Not attributed · 10%", card.NotAttributedShareLabel);
-        Assert.Equal("Every share is of the 1,000 work steps this word needed to parse.", card.TimingShareBasisLabel);
+        Assert.Equal("Every share is of the 1,000 parser work this word needed to parse.", card.TimingShareBasisLabel);
     }
 
     [Fact]
-    public void WordCardSaysWorkStepsAreNotRecordedInsteadOfShowingTimeShares()
+    public void WordCardSaysParserWorkAreNotRecordedInsteadOfShowingTimeShares()
     {
         using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
         var card = Card(WordTiming(1, WordWorkSummary.None, []));
@@ -219,7 +219,7 @@ public sealed class TimingSharesTests
         Assert.True(card.HasTimingEvidence);
         Assert.False(card.HasTimingShares);
         Assert.Null(card.NotAttributedShare);
-        Assert.Equal("Work steps not recorded for this word", card.NotAttributedShareLabel);
+        Assert.Equal("Parser work not recorded for this word", card.NotAttributedShareLabel);
         Assert.Equal(string.Empty, card.TimingShareBasisLabel);
     }
 
@@ -230,7 +230,7 @@ public sealed class TimingSharesTests
         var card = Card(WordTiming(1, new WordWorkSummary(1, 500, 500, 500), []));
 
         Assert.False(card.HasTimingShares);
-        Assert.Equal("Work steps by rule not recorded for this word", card.NotAttributedShareLabel);
+        Assert.Equal("Parser work by rule not recorded for this word", card.NotAttributedShareLabel);
     }
 
     [Fact]
@@ -244,11 +244,11 @@ public sealed class TimingSharesTests
     {
         using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
         var card = Card(WordTiming(3, new WordWorkSummary(2, 2000, 1000, 1000),
-            [RuleSteps("Subject agreement", 1500), Unattributed with { WorkSteps = 500 }]));
+            [RuleSteps("Subject agreement", 1500), Unattributed with { ParserWork = 500 }]));
 
-        Assert.Equal("75% · 1,500 work steps", Assert.Single(card.TimingShares).ShareLabel);
+        Assert.Equal("75% · 1,500 parser work", Assert.Single(card.TimingShares).ShareLabel);
         Assert.Equal("Not attributed · 25%", card.NotAttributedShareLabel);
-        Assert.Equal("Every share is of the 2,000 work steps 2 of these 3 words needed to parse; 1 has no work steps recorded.",
+        Assert.Equal("Every share is of the 2,000 parser work 2 of these 3 words needed to parse; 1 has no parser work recorded.",
             card.TimingShareBasisLabel);
     }
 
@@ -257,7 +257,7 @@ public sealed class TimingSharesTests
     {
         using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
         TimingWorkAggregate[] rules = [.. Enumerable.Range(1, 12).Select(index => RuleSteps("Rule " + index, 100 - index))];
-        var card = Card(WordTiming(1, new WordWorkSummary(1, 1200, 1200, 1200), [.. rules, Unattributed with { WorkSteps = 1200 - rules.Sum(r => r.WorkSteps) }]));
+        var card = Card(WordTiming(1, new WordWorkSummary(1, 1200, 1200, 1200), [.. rules, Unattributed with { ParserWork = 1200 - rules.Sum(r => r.ParserWork) }]));
 
         Assert.Equal(11, card.TimingShares.Count);
         Assert.Equal("Other rules", card.TimingShares[^1].Name);
@@ -292,7 +292,7 @@ public sealed class TimingSharesTests
         Assert.Equal("guid-2", timing.SelectedRule?.Key);
         Assert.Equal("Plural", timing.SelectedRuleName);
         Assert.Equal([false, true], timing.RuleRows.Select(row => row.IsChosen));
-        Assert.StartsWith("1,000 work steps", timing.RuleSummary, StringComparison.Ordinal);
+        Assert.StartsWith("1,000 parser work", timing.RuleSummary, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -300,21 +300,21 @@ public sealed class TimingSharesTests
     {
         using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
         var timing = await LoadedTiming(NineWords, Kinds, Rules,
-            [new WordRuleTiming("mwalimu", 180, 900) { WordTimeMs = 700, WorkSteps = 1_800, WordWorkSteps = 7_000 },
-                new WordRuleTiming("hawajafika", 34, 200) { WordTimeMs = 48, WorkSteps = 340, WordWorkSteps = 480 }]);
+            [new WordRuleTiming("mwalimu", 180, 900) { WordTimeMs = 700, ParserWork = 1_800, WordParserWork = 7_000 },
+                new WordRuleTiming("hawajafika", 34, 200) { WordTimeMs = 48, ParserWork = 340, WordParserWork = 480 }]);
 
-        Assert.Equal(["1,800 work steps of its 7,000 work steps", "340 work steps of its 480 work steps"],
+        Assert.Equal(["1,800 parser work of its 7,000 parser work", "340 parser work of its 480 parser work"],
             timing.CostliestRuleWordRows.Select(word => word.TimeText));
     }
 
     [Fact]
-    public async Task ACostliestWordWithNoRuleWorkCountSaysWorkStepsNotRecordedAndNeverMilliseconds()
+    public async Task ACostliestWordWithNoRuleWorkCountSaysParserWorkNotRecordedAndNeverMilliseconds()
     {
         using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
         var timing = await LoadedTiming(NineWords, Kinds, Rules,
             [new WordRuleTiming("mwalimu", 180, 900) { WordTimeMs = 700 }]);
 
-        Assert.Equal(["work steps not recorded"], timing.CostliestRuleWordRows.Select(word => word.TimeText));
+        Assert.Equal(["parser work not recorded"], timing.CostliestRuleWordRows.Select(word => word.TimeText));
     }
 
     [Fact]
@@ -327,9 +327,9 @@ public sealed class TimingSharesTests
                 new("unattributed", "Not attributed", "unattributed", 150, true)]);
 
         var notAttributed = timing.KindShares.Single(share => share.IsNotAttributed);
-        Assert.Equal("150 work steps", notAttributed.WorkText);
+        Assert.Equal("150 parser work", notAttributed.WorkText);
         Assert.Equal("50%", notAttributed.ShareText);
-        Assert.Equal("Not attributed: 150 work steps (50%).", timing.NotAttributedText);
+        Assert.Equal("Not attributed: 150 parser work (50%).", timing.NotAttributedText);
     }
 
     [Fact]
@@ -339,9 +339,9 @@ public sealed class TimingSharesTests
         var timing = await LoadedTiming([("dogs", 10)], [new TimingAggregateRow("morph_rule", "morph_rule", 4, 0.4, 1)],
             [new TimingAggregateRow("Plural", "Plural", 4, 0.4, 1) { Kind = "morph_rule" }], work: []);
 
-        Assert.Equal("100 work steps", timing.HeadlineTotal);
+        Assert.Equal("100 parser work", timing.HeadlineTotal);
         Assert.Empty(timing.KindShares);
-        Assert.Equal("Work steps by kind and by rule were not kept for these words, so no shares are shown. Parse all words again to keep them.",
+        Assert.Equal("Parser work by kind and by rule was not kept for these words, so no shares are shown. Parse all words again to keep them.",
             timing.ShareDenominatorText);
         Assert.Equal("Not attributed: Not recorded.", timing.NotAttributedText);
         var rule = Assert.Single(timing.RuleRows).Share;
@@ -368,9 +368,9 @@ public sealed class TimingSharesTests
             work: [new("morph_rule", "morph_rule", "morph_rule", 300, false),
                 new("unattributed", "Not attributed", "unattributed", 500, true)]);
 
-        Assert.Equal("800 work steps", timing.HeadlineTotal);
+        Assert.Equal("800 parser work", timing.HeadlineTotal);
         Assert.Equal("38%", timing.KindShares.Single(share => share.Source is not null).ShareText);
-        Assert.Equal("Not attributed: 500 work steps (62%).", timing.NotAttributedText);
+        Assert.Equal("Not attributed: 500 parser work (62%).", timing.NotAttributedText);
     }
 
     [Fact]
@@ -413,7 +413,7 @@ public sealed class TimingSharesTests
         var timing = await LoadedTiming([("dogs", 10), ("cats", null), ("birds", 6)], [], []);
 
         Assert.Equal("for 2 of these 3 words", timing.HeadlineTotalCaption);
-        Assert.Equal("Every share is of the 160 work steps 2 of these 3 words needed to parse; 1 has no work steps recorded.",
+        Assert.Equal("Every share is of the 160 parser work 2 of these 3 words needed to parse; 1 has no parser work recorded.",
             timing.ShareDenominatorText);
     }
 
@@ -458,10 +458,10 @@ public sealed class TimingSharesTests
                 Dispatcher.UIThread.RunJobs();
                 var shown = window.GetLogicalDescendants().OfType<TextBlock>()
                     .Where(text => text.IsEffectivelyVisible).Select(text => text.Text).ToArray();
-                Assert.Contains("SHARE OF 8,000 work steps", shown);
-                Assert.Contains("WORK STEPS", shown);
+                Assert.Contains("SHARE OF 8,000 parser work", shown);
+                Assert.Contains("PARSER WORK", shown);
                 Assert.Contains("Not attributed", shown);
-                Assert.Contains("Every share is of the 8,000 work steps these 9 words needed to parse.", shown);
+                Assert.Contains("Every share is of the 8,000 parser work these 9 words needed to parse.", shown);
                 Assert.DoesNotContain("ATTEMPTS", shown);
                 Assert.DoesNotContain("SHARE OF TIME", shown);
                 Assert.DoesNotContain("TIME", shown);
@@ -524,7 +524,7 @@ public sealed class TimingSharesTests
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
-            var timing = await LoadedTiming(NineWords, Kinds, Rules, stepLimitedWord: "mwalimu");
+            var timing = await LoadedTiming(NineWords, Kinds, Rules, parserWorkLimitedWord: "mwalimu");
             var window = new MotifTestWindow { Width = 1040, Height = 1400, Content = new TimingPage(timing) };
             try
             {
@@ -685,7 +685,7 @@ public sealed class TimingSharesTests
         var timing = await LoadedTiming([("dogs", 10)], [new TimingAggregateRow("morph_rule", "morph_rule", 4, 0.4, 1)],
             [new TimingAggregateRow("Plural", "Plural", 4, 0.4, 1) { Kind = "morph_rule" }], work: [], aggregatesAvailable: false);
 
-        Assert.Equal("Work steps by kind and by rule were not kept for these words, so no shares are shown.",
+        Assert.Equal("Parser work by kind and by rule was not kept for these words, so no shares are shown.",
             timing.ShareDenominatorText);
         Assert.DoesNotContain("Parse all words", timing.ShareDenominatorText);
     }
@@ -693,7 +693,7 @@ public sealed class TimingSharesTests
     private static async Task<TimingPageModel> LoadedTiming((string Word, int? Ms)[] words,
         TimingAggregateRow[] kinds, TimingAggregateRow[] rules, WordRuleTiming[]? costliest = null,
         IReadOnlyList<long?>? elapsedNs = null, TraceTimingKey? requestedRule = null,
-        string? stepLimitedWord = null, IReadOnlyList<TimingWorkAggregate>? work = null, WordWorkSummary? summary = null,
+        string? parserWorkLimitedWord = null, IReadOnlyList<TimingWorkAggregate>? work = null, WordWorkSummary? summary = null,
         bool aggregatesAvailable = true)
     {
         var fake = new FakeCommandClient();
@@ -701,7 +701,7 @@ public sealed class TimingSharesTests
         var timing = new TimingPageModel(context);
         var wordWork = words.Select(word => WorkOf(word.Ms)).ToArray();
         var wholeWork = wordWork.Sum() ?? 0;
-        // By default the work steps by object are the rules given, with the rest of the words' work unattributed.
+        // By default the parser work by object are the rules given, with the rest of the words' work unattributed.
         work ??= wholeWork == 0 ? [] :
         [
             .. rules.Select(rule => new TimingWorkAggregate(rule.Key, rule.Name, rule.Kind, (long)(rule.SelfMs * 10), false)
@@ -714,13 +714,13 @@ public sealed class TimingSharesTests
                 request.By == "kind" ? kinds : rules, request.Rule is null ? [] : costliest ?? [])
             {
                 Words = words.Select((word, index) => new TimingWordRow(word.Word, word.Ms,
-                    word.Word == stepLimitedWord ? TimingCompletion.WorkLimit : TimingCompletion.Finished)
+                    word.Word == parserWorkLimitedWord ? TimingCompletion.WorkLimit : TimingCompletion.Finished)
                 {
                     ElapsedNs = elapsedNs is not null && index < elapsedNs.Count ? elapsedNs[index] : null,
-                    WorkSteps = wordWork[index],
+                    ParserWork = wordWork[index],
                 }).ToArray(),
                 Attribution = AttributionFor(words, kinds),
-                WorkStepAggregates = work,
+                ParserWorkAggregates = work,
                 ObjectTimingAggregatesAvailable = aggregatesAvailable,
                 Work = summary ?? TimingAggregation.SummarizeWork(wordWork),
             })));

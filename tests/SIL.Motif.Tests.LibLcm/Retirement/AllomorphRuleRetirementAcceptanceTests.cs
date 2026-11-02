@@ -395,9 +395,9 @@ public sealed partial class AllomorphRuleRetirementAcceptanceTests(
             .Single(item => item.Name == AssessmentScopeConfiguration.DefaultName);
         var baselineAssessment = AssessCommand.Assess(new AssessRequest(projectPath,
                 new SelectionRequest(false, [], words, false, null,
-                    PerWordStepLimit: scope.PerWordStepLimit),
+                    PerWordParserWorkLimit: scope.PerWordParserWorkLimit),
                 PerWordLimitMs: (int)scope.PerWordLimit.TotalMilliseconds,
-                PerWordStepLimit: scope.PerWordStepLimit),
+                PerWordParserWorkLimit: scope.PerWordParserWorkLimit),
             workerRoot, parserPath, onProgress: null, cancellationToken: CancellationToken.None);
         Assert.True(baselineAssessment.Succeeded, baselineAssessment.Refusal?.Message);
         var beforeAssessment = Assert.Single(baselineAssessment.Value!.Measurements,
@@ -643,7 +643,7 @@ public sealed partial class AllomorphRuleRetirementAcceptanceTests(
         var paths = new StatsCacheStore(WorkspaceOwnership.Bootstrap(artifactRoot));
         var assessor = new PanGlossAssessor(paths, invoker);
         var produced = await assessor.ProduceAsync(new AssessmentScope.Words(words, [AssessmentKind.ParseTime],
-            TimeSpan.FromMilliseconds(1000), new StepCap(200_000)), Path.GetDirectoryName(projectPath)!,
+            TimeSpan.FromMilliseconds(1000), new ParserWorkLimit(20_000_000)), Path.GetDirectoryName(projectPath)!,
             CancellationToken.None);
         var assessment = Assert.Single(produced);
         try
@@ -651,7 +651,7 @@ public sealed partial class AllomorphRuleRetirementAcceptanceTests(
             var invocation = Assert.IsType<BatchInvocationEvidence>(assessment.Invocation);
             var batch = Assert.IsType<AssessmentRaw.Batch>(assessment.Raw).Analysis;
             var options = new RecipeVerificationOptions(invocation.ExecutableBytesSha256,
-                invocation.PerWordTimeoutMs, invocation.PerWordStepLimit, invocation.Threads,
+                invocation.PerWordTimeoutMs, invocation.PerWordParserWorkLimit, invocation.Threads,
                 invocation.CollectStatistics);
             var comparable = new ComparableAssessment(CanonicalId.Mint().Value, PanGlossAssessor.AssessorName,
                 AssessmentKind.ParseTime.ToStoredKind(), "pangloss", "0.7.0", ToAssessedWords(batch.Words));

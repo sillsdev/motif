@@ -7,7 +7,7 @@ namespace SIL.Motif.Tests.Parser;
 
 /// <summary>
 /// A resident <c>pangloss serve</c> against the cold <c>parse</c> on the golden grammar: the same document, exit code
-/// and trace outcome, with and without a step cap. It runs only when <c>MOTIF_PANGLOSS_SERVE_EXE</c> names a built parser.
+/// and trace outcome, with and without a parser work limit. It runs only when <c>MOTIF_PANGLOSS_SERVE_EXE</c> names a built parser.
 /// </summary>
 [Trait("MotifTestLevel", "System")]
 public sealed class RealServeParityTests
@@ -22,20 +22,20 @@ public sealed class RealServeParityTests
     [InlineData("sag", null)]
     [InlineData("zzz", null)]
     [InlineData("sagd", 1L)]
-    public async Task AResidentServeAnswersLikeTheColdParseIncludingExitCodeAndStepCap(string word, long? cap)
+    public async Task AResidentServeAnswersLikeTheColdParseIncludingExitCodeAndParserWorkLimit(string word, long? cap)
     {
         var executable = Environment.GetEnvironmentVariable(ServeExecutableVariable)!;
         var grammarPath = Path.Combine(Path.GetTempPath(), "motif-real-serve-" + Guid.NewGuid().ToString("N") + ".xml");
         File.WriteAllText(grammarPath, RealParserTraceTests.GoldenGrammar);
-        StepCap? stepCap = cap is { } steps ? new StepCap(steps) : null;
+        ParserWorkLimit? parserWorkLimit = cap is { } steps ? new ParserWorkLimit(steps) : null;
         using var pool = new WarmPanGlossPool(executable);
         using var invoker = new PanGlossInvoker(executable);
         try
         {
             var warm = Assert.IsType<WarmParseResult.Completed>(await pool.TryWordAsync(grammarPath, "t1", grammarPath, word,
-                traceDetails: true, CancellationToken.None, stepCap));
+                traceDetails: true, CancellationToken.None, parserWorkLimit));
             var cold = Assert.IsType<PanGlossOutcome.Completed>(await invoker.RunAsync(
-                new PanGlossRequest.Trace(grammarPath, word) { StepLimit = stepCap }, "cold", CancellationToken.None,
+                new PanGlossRequest.Trace(grammarPath, word) { ParserWorkLimit = parserWorkLimit }, "cold", CancellationToken.None,
                 TimeSpan.FromSeconds(60)));
 
             Assert.Equal(0, warm.ExitCode);
@@ -44,8 +44,8 @@ public sealed class RealServeParityTests
             Assert.True(JsonNode.DeepEquals(expected, actual),
                 "warm and cold documents differ.\ncold: " + expected.ToJsonString() + "\nwarm: " + actual.ToJsonString());
 
-            var viaCold = await new PanGlossTracer(invoker, stepCap).TraceAsync(grammarPath, word, CancellationToken.None);
-            var viaWarm = await new WarmFirstTracer(pool, new PanGlossTracer(invoker, stepCap), stepLimit: stepCap)
+            var viaCold = await new PanGlossTracer(invoker, parserWorkLimit).TraceAsync(grammarPath, word, CancellationToken.None);
+            var viaWarm = await new WarmFirstTracer(pool, new PanGlossTracer(invoker, parserWorkLimit), parserWorkLimit: parserWorkLimit)
                 .TraceAsync(grammarPath, "t1", grammarPath, word, CancellationToken.None);
             Assert.Equal(viaCold.GetType(), viaWarm.GetType());
             if (cap is not null) Assert.IsType<PanGlossTraceOutcome.Incomplete>(viaWarm);

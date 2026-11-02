@@ -20,10 +20,10 @@ public sealed class CompareViewModelTests
     }
 
     [Fact]
-    public void SlowestSortsByWorkStepsDescendingWithMissingCountsLastAndTiesInInputOrder()
+    public void SlowestSortsByParserWorkDescendingWithMissingCountsLastAndTiesInInputOrder()
     {
         AssessWordRowViewModel Row(string word, long? steps, int elapsed) =>
-            new(Word(word, "analysed", ProjectStanding.NotPresent) with { WorkSteps = steps, ElapsedMs = elapsed });
+            new(Word(word, "analysed", ProjectStanding.NotPresent) with { ParserWork = steps, ElapsedMs = elapsed });
         var compare = new CompareViewModel();
         compare.Load([
             Row("none-slow", null, 9000), Row("tie-a", 500, 1), Row("big", 9000, 1),

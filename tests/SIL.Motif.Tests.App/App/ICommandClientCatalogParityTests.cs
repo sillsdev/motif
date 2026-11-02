@@ -70,7 +70,7 @@ public sealed class ICommandClientCatalogParityTests
         nameof(ICommandClient.GetProjectHistoryAsync),
         nameof(ICommandClient.ReadStoredGrammarCheckAsync),
         nameof(ICommandClient.OpenSelectionReaderAsync),
-        nameof(ICommandClient.ReadParserStepRateAsync),
+        nameof(ICommandClient.ReadParserAttemptRateAsync),
         nameof(ICommandClient.RestoreBackupAsync),
         nameof(ICommandClient.ReadLatestParsimonyReportAsync),
         nameof(ICommandClient.ReadLatestParsimonyReportSetAsync),

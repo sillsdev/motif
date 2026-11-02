@@ -102,7 +102,7 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
                 walkthrough.Show();
                 await Drive(walkthrough, original, folder);
                 SaveEveryPage(walkthrough, folder);
-                SaveTimingStepLimit(walkthrough, folder);
+                SaveTimingParserWorkLimit(walkthrough, folder);
                 SaveGrammarWithAKindChosen(walkthrough, folder);
                 SaveCompareWithCellsChosen(walkthrough, folder);
                 SaveWhatChangedAfterARerun(walkthrough, folder);
@@ -277,19 +277,19 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
         }
     }
 
-    private static void SaveTimingStepLimit(WalkthroughWindow walkthrough, string folder)
+    private static void SaveTimingParserWorkLimit(WalkthroughWindow walkthrough, string folder)
     {
         var workspace = walkthrough.Workspace;
         var timing = workspace.PageModel<TimingPageModel>();
         var word = workspace.Assess.Result!.Words.FirstOrDefault(row => row.Outcome is "analysed" or "no-analysis")
             ?? workspace.Assess.Result.Words.First();
-        _ = workspace.Assess.RerunAsync([word.Word], 60_000, new StepCap(1));
+        _ = workspace.Assess.RerunAsync([word.Word], 60_000, new ParserWorkLimit(1));
         walkthrough.WaitUntil(() => workspace.Assess.State is RunState.Completed or RunState.Refused &&
-            !workspace.Assess.IsActive, TimeSpan.FromMinutes(2), "The step-limited re-run did not finish");
+            !workspace.Assess.IsActive, TimeSpan.FromMinutes(2), "The parser-work-limited re-run did not finish");
         Assert.Equal(RunState.Completed, workspace.Assess.State);
-        timing.SelectWordSetCommand.Execute("step-limit");
+        timing.SelectWordSetCommand.Execute("parser-work-limit");
         walkthrough.WaitUntil(() => !timing.SelectWordSetCommand.IsRunning && timing.HasTiming,
-            TimeSpan.FromMinutes(2), "Step-limit timing did not load");
+            TimeSpan.FromMinutes(2), "Parser-work-limit timing did not load");
         Assert.True(timing.HasSelectedWords && timing.KindTiming!.Words.Any(word => word.Completion == SIL.Motif.Contract.Responses.TimingCompletion.WorkLimit),
             "The search-limit capture must show a recorded capped word.");
         walkthrough.Window.Height = 1650;
@@ -297,7 +297,7 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
         {
             Application.Current!.RequestedThemeVariant = variant;
             walkthrough.Workspace.CurrentPage = WorkspacePage.Timing;
-            Save(walkthrough.Window, Path.Combine(folder, $"4b-timing-step-limit-{theme}.png"));
+            Save(walkthrough.Window, Path.Combine(folder, $"4b-timing-parser-work-limit-{theme}.png"));
         }
         walkthrough.Window.Height = 780;
         Application.Current!.RequestedThemeVariant = ThemeVariant.Light;

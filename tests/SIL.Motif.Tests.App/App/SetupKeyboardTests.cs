@@ -83,7 +83,7 @@ public sealed class SetupKeyboardTests
 
                 setup.Step = 2;
                 PageScreenshots.Settle(window);
-                var limit = Named<NumericUpDown>(dialog, AutomationIds.SetupStepLimit);
+                var limit = Named<NumericUpDown>(dialog, AutomationIds.SetupParserWorkLimit);
                 limit.Focus();
                 Dispatcher.UIThread.RunJobs();
                 Assert.True(limit.IsKeyboardFocusWithin, "limit field has focus");
