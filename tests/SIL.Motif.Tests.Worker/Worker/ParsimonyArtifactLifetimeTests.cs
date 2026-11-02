@@ -345,6 +345,64 @@ public sealed class ParsimonyArtifactLifetimeTests : IDisposable
     }
 
     [Fact]
+    public void DecidingAProposalReleasesItsCandidateBundleAndTheCleanerRemovesItAtOnce()
+    {
+        var open = CandidateFor("open-one", "proposed");
+        var closed = CandidateFor("closed-one", "applied");
+        Assert.Equal(["report:report-open-one"], _artifacts.GetPinReasons(open.Bundle.BundleId));
+
+        var result = new EvidenceRetentionCleaner(_artifacts, WorkspaceOwnership.Bootstrap(_workerRoot), _clock)
+            .Clean(_projectKey);
+
+        Assert.Equal([closed.Bundle.BundleId], result.DeletedBundleIds);
+        Assert.False(Directory.Exists(closed.Bundle.EvidenceDirectory));
+        Assert.True(Directory.Exists(open.Bundle.EvidenceDirectory));
+        Assert.Equal("1", ScalarText("SELECT COUNT(*) FROM Reports WHERE ReportId = 'report-closed-one';"));
+    }
+
+    private (ParsimonyBundleRecord Bundle, ReportRecord Report) CandidateFor(string identity, string status)
+    {
+        var proposal = SIL.Motif.Contract.Ids.CanonicalId.Mint("proposal/");
+        using (var connection = _database.OpenConnection())
+        using (var insert = connection.CreateCommand())
+        {
+            insert.CommandText = "INSERT INTO Proposals (ProposalId, Status) VALUES ($id, $status);";
+            insert.Parameters.AddWithValue("$id", proposal.Value);
+            insert.Parameters.AddWithValue("$status", "proposed");
+            insert.ExecuteNonQuery();
+        }
+        var bundleId = "bundle-" + identity;
+        var modelFingerprint = "sha256:" + Hash("model-fingerprint");
+        var materialKey = Hash("material-" + identity);
+        var staging = _publisher.CreateStagingDirectory(bundleId, _token, modelFingerprint, materialKey, "candidate",
+            "candidate-" + identity);
+        File.WriteAllText(Path.Combine(staging, "grammar-facts.sqlite"), "facts:" + identity);
+        File.WriteAllText(Path.Combine(staging, "evidence.sqlite"), "evidence:" + identity);
+        _publisher.FlushAndClose(staging);
+        var final = _publisher.Publish(staging, bundleId);
+        var facts = Path.Combine(final, "grammar-facts.sqlite");
+        var evidence = Path.Combine(final, "evidence.sqlite");
+        var bundle = new ParsimonyBundleRecord(bundleId, TokenJson(), final, facts, evidence, modelFingerprint,
+            1, HashFile(facts), 1, HashFile(evidence), JobTimestamp.FormatUtc(_clock.UtcNow), _projectKey,
+            _token.BundleDigest[7..], materialKey, "available", null, _baselineRoot, "candidate", "candidate-" + identity);
+        var report = new ReportRecord("report-" + identity, proposal, null,
+            JsonSerializer.Serialize(new { inputs = new { bundleId } }), "{}", "parsimony", "stored report",
+            JobTimestamp.FormatUtc(_clock.UtcNow));
+        _artifacts.Publish(bundle, report);
+        _clock.Advance(TimeSpan.FromSeconds(1));
+        if (status != "proposed") new ProposalRepository(_database).SetStatus(proposal, status, null);
+        return (bundle, report);
+    }
+
+    private string ScalarText(string sql)
+    {
+        using var connection = _database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = sql;
+        return Convert.ToString(command.ExecuteScalar(), System.Globalization.CultureInfo.InvariantCulture)!;
+    }
+
+    [Fact]
     public void RetentionKeepsCurrentMaterialAndNewestTwentyUnpinnedBundles()
     {
         var builds = new List<(ParsimonyBundleRecord Bundle, ReportRecord Report)>();

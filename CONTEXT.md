@@ -249,6 +249,13 @@ the result is identified by the content it ran against, so editing the Draft aft
 the earlier content.
 _Avoid_: assessment, preview, plan, simulation
 
+**Store budget**:
+The bytes a project's Motif store may use, 100 MB ([ADR 0082](docs/adr/0082-stores-and-user-data-stay-inside-a-byte-budget.md)).
+When prune finds the store over it, the oldest evidence nothing still needs goes first, never the evidence of a
+Proposal that is still open; a decided Proposal keeps only its summary. The per-user folders of runs, sources and
+Baselines have a larger budget and lose what no live store references.
+_Avoid_: quota, disk limit, cache size
+
 **Baseline**:
 A saved, minimal, file-backed copy of the project state from which Motif can make many independent
 Dry Run scratches. It contains the LibLCM and writing-system data needed to reproduce engine behaviour,

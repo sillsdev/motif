@@ -29,6 +29,27 @@ internal static class ProposalDifferenceRetention
             "WHERE ProposalId = $proposal AND WordDetailDroppedUtc IS NULL;", proposalId, nowUtc);
     }
 
+    /// <summary>
+    /// Drops the word detail still held for any Proposal that is applied, rejected, withdrawn or superseded, which
+    /// only a store written before the drop was made on decision, or a failed drop, can leave behind.
+    /// </summary>
+    internal static void DropForClosedProposals(SqliteConnection connection, SqliteTransaction transaction)
+    {
+        var closed = new List<string>();
+        using (var find = connection.CreateCommand())
+        {
+            find.Transaction = transaction;
+            find.CommandText = """
+                SELECT DISTINCT d.ProposalId FROM ProposalDifferences d JOIN Proposals p ON p.ProposalId = d.ProposalId
+                WHERE d.WordDetailDroppedUtc IS NULL AND p.Status IN ('applied', 'rejected', 'withdrawn', 'superseded');
+                """;
+            using var reader = find.ExecuteReader();
+            while (reader.Read()) closed.Add(reader.GetString(0));
+        }
+        var now = DateTimeOffset.UtcNow.ToString("O", System.Globalization.CultureInfo.InvariantCulture);
+        foreach (var proposalId in closed) DropWordDetail(connection, transaction, proposalId, now);
+    }
+
     private static void Run(SqliteConnection connection, SqliteTransaction transaction, string sql, string proposalId,
         string nowUtc)
     {

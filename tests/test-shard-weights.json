@@ -1210,7 +1210,6 @@
   "SIL.Motif.Tests.Store.AssessmentRepositoryTests": 105.4,
   "SIL.Motif.Tests.Store.AssessmentSweepIndexTests": 3.8,
   "SIL.Motif.Tests.Store.BaselineRepositoryTests": 1.9,
-  "SIL.Motif.Tests.Store.BaselineRetentionCleanerTests": 0.0,
   "SIL.Motif.Tests.Store.ExpectedContextLegacySelectionTests": 1.6,
   "SIL.Motif.Tests.Store.GeneratedArtifactReferencesTests": 9.1,
   "SIL.Motif.Tests.Store.GrammarCheckStorageTests": 0.7,

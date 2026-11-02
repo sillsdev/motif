@@ -12,17 +12,28 @@ using SIL.Motif.Worker;
 
 namespace SIL.Motif.Commands;
 
-/// <summary>The project whose older unreferenced Assessment evidence should be removed.</summary>
-public sealed record StorePruneRequest(string ProjectPath);
+/// <summary>
+/// The project whose older unreferenced Assessment evidence should be removed, and optionally a store size other than
+/// <see cref="StorePruneCommand.StoreBudgetBytes"/> to prune down to.
+/// </summary>
+public sealed record StorePruneRequest(string ProjectPath, long? ByteBudget = null);
 
-/// <summary>The number of removed Assessments and project-store file sizes around reclamation.</summary>
+/// <summary>
+/// The number of removed Assessments and project-store file sizes around reclamation. <c>FullyVacuumed</c> says the
+/// file was rewritten to give back free pages; <c>OverBudget</c> says the store still holds more than its byte budget
+/// because everything left is open, cited or authored.
+/// </summary>
 public sealed record StorePruneResponse(int AssessmentsRemoved, long BytesBefore, long BytesAfter, bool CheckpointComplete,
     int InvocationDirectoriesRemoved = 0, int UnownedDirectoriesKept = 0, long UnownedBytesKept = 0,
-    bool UnownedSizeComplete = true, string? InvocationParentPath = null);
+    bool UnownedSizeComplete = true, string? InvocationParentPath = null, bool FullyVacuumed = false,
+    bool OverBudget = false);
 
 /// <summary>Removes older unreferenced standalone Assessments and reclaims their database pages.</summary>
 public static class StorePruneCommand
 {
+    /// <summary>The bytes a project store may use before its oldest unneeded evidence is removed: 100 MB.</summary>
+    public const long StoreBudgetBytes = 100L * 1024 * 1024;
+
     /// <summary>Applies the project's retention setting while no parse is running.</summary>
     public static CommandOutcome<StorePruneResponse> Run(StorePruneRequest request) =>
         ProjectStoreCommand.Run(request.ProjectPath, MotifProductVersion.CurrentText, (database, project) =>
@@ -32,7 +43,8 @@ public static class StorePruneCommand
             try
             {
                 var count = new ProjectConfigurationReader().Read(project).StandaloneAssessmentCount;
-                return RunHeld(database, project, lease, count);
+                return RunHeld(database, project, lease, count,
+                    byteBudget: request.ByteBudget ?? StoreBudgetBytes, compact: true);
             }
             catch (ProjectConfigurationException exception)
             {
@@ -43,7 +55,8 @@ public static class StorePruneCommand
 
     internal static CommandOutcome<StorePruneResponse> RunHeld(MotifDatabase database, ProjectLocator project,
         ProjectParseLease lease, int keepPerKind, string? managedRoot = null,
-        CancellationToken cancellationToken = default, Action<string>? progress = null)
+        CancellationToken cancellationToken = default, Action<string>? progress = null,
+        long byteBudget = StoreBudgetBytes, bool compact = false)
     {
         progress ??= line => ProjectDiagnosticLog.AppendLine(project.FullFwDataPath, line);
         using var connection = database.OpenConnection();
@@ -69,7 +82,8 @@ public static class StorePruneCommand
                 var roots = set is null ? [] : new[] { set.RootAssessmentId }.OfType<string>()
                     .Concat(set.ReplacementAssessmentIds).Concat(set.MeasurementIds.Values).ToArray();
                 removed = AssessmentRetention.SweepStandalone(connection, transaction, lease, keepPerKind, roots, out removedInvocations,
-                    cancellationToken, progress);
+                    cancellationToken, progress, byteBudget);
+                ProposalDifferenceRetention.DropForClosedProposals(connection, transaction);
                 transaction.Commit();
             }
             // A stopped sweep committed whole removals; the rest wait for the next prune, so skip the slow compaction.
@@ -95,11 +109,13 @@ public static class StorePruneCommand
             {
                 vacuumed = false;
             }
+            var rewritten = compact && vacuumed && StoreCompaction.CompactWhenWorthwhile(connection, database.FullPath);
             var last = Checkpoint(connection);
             var after = new FileInfo(database.FullPath).Length;
             return CommandOutcome<StorePruneResponse>.Success(new StorePruneResponse(removed, before, after,
                 beforeCheckpoint && first && last && vacuumed, reclaimed.Pruned, reclaimed.UnownedCount,
-                reclaimed.UnownedBytes, reclaimed.SizeComplete, reclaimed.Parent));
+                reclaimed.UnownedBytes, reclaimed.SizeComplete, reclaimed.Parent, rewritten,
+                AssessmentRetention.BytesInUse(connection, null) > byteBudget));
         }
         finally
         {

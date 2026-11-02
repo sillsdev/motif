@@ -429,6 +429,27 @@ public class EvidenceArtifactRepository : IBaselinePinQuery
         transaction.Commit();
     }
 
+    /// <summary>
+    /// Releases the bundle pins that Parsimony Reports hold for a Proposal once it is applied, rejected, withdrawn or
+    /// superseded, keeping each Report with its numbers. With no <paramref name="proposalId"/> it releases them for
+    /// every such Proposal, which repairs a store whose Proposals were decided before the pins were released.
+    /// </summary>
+    /// <returns>The number of pins released.</returns>
+    internal static int ReleaseClosedProposalPins(SqliteConnection connection, SqliteTransaction? transaction,
+        string? proposalId = null)
+    {
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = """
+            DELETE FROM ParsimonyBundleReferences WHERE ReferenceKind='report' AND ReferenceId IN (
+                SELECT r.ReportId FROM Reports AS r JOIN Proposals AS p ON p.ProposalId=r.ProposalId
+                WHERE r.Kind='parsimony' AND ($proposal IS NULL OR r.ProposalId=$proposal)
+                    AND p.Status IN ('applied','rejected','withdrawn','superseded'));
+            """;
+        command.Parameters.AddWithValue("$proposal", (object?)proposalId ?? DBNull.Value);
+        return command.ExecuteNonQuery();
+    }
+
     /// <summary>Releases a durable bundle pin without changing the pinned record.</summary>
     public void RemoveReference(string bundleId, string referenceKind, string referenceId)
     {
@@ -479,6 +500,20 @@ public class EvidenceArtifactRepository : IBaselinePinQuery
         command.ExecuteNonQuery();
     }
 
+    /// <summary>
+    /// Repairs a store whose Proposals were decided before their bundle pins were released; a busy store is left
+    /// for the next pass.
+    /// </summary>
+    public void ReleasePinsOfClosedProposals()
+    {
+        try
+        {
+            using var connection = _database.OpenConnection();
+            ReleaseClosedProposalPins(connection, null);
+        }
+        catch (SqliteException exception) when (exception.SqliteErrorCode is 5 or 6) { }
+    }
+
     /// <summary>Lists bundle descriptors newest first with exact pin reasons and current-material state.</summary>
     public IReadOnlyList<ParsimonyBundleRetentionItem> ListForRetention(string projectKey)
     {
@@ -493,20 +528,27 @@ public class EvidenceArtifactRepository : IBaselinePinQuery
                    CASE WHEN c.BundleId IS NOT NULL AND EXISTS (
                        SELECT 1 FROM Baselines AS live WHERE live.ProjectKey=b.ProjectKey
                            AND REPLACE(live.BundleDigest, 'sha256:', '')=b.BaselineDigest
-                   ) THEN 1 ELSE 0 END
+                   ) THEN 1 ELSE 0 END,
+                   CASE WHEN b.InputKind='candidate'
+                       AND EXISTS (SELECT 1 FROM Reports AS r WHERE r.Kind='parsimony' AND r.ProposalId IS NOT NULL
+                           AND json_extract(r.ReportJson, '$.inputs.bundleId')=b.BundleId)
+                       AND NOT EXISTS (SELECT 1 FROM Reports AS r JOIN Proposals AS p ON p.ProposalId=r.ProposalId
+                           WHERE r.Kind='parsimony' AND json_extract(r.ReportJson, '$.inputs.bundleId')=b.BundleId
+                           AND p.Status NOT IN ('applied','rejected','withdrawn','superseded'))
+                   THEN 1 ELSE 0 END
             FROM ParsimonyBundles AS b
             LEFT JOIN CurrentParsimonyBundles AS c ON c.ProjectKey=b.ProjectKey
                 AND c.InputKind='baseline' AND c.BundleId=b.BundleId
             WHERE b.ProjectKey=$project ORDER BY b.CreatedUtc DESC, b.BundleId DESC;
         """;
         command.Parameters.AddWithValue("$project", projectKey);
-        var records = new List<(ParsimonyBundleRecord Bundle, bool IsCurrent)>();
+        var records = new List<(ParsimonyBundleRecord Bundle, bool IsCurrent, bool Closed)>();
         using (var reader = command.ExecuteReader())
         {
-            while (reader.Read()) records.Add((ReadBundle(reader), reader.GetInt32(19) == 1));
+            while (reader.Read()) records.Add((ReadBundle(reader), reader.GetInt32(19) == 1, reader.GetInt32(20) == 1));
         }
         return records.Select(item => new ParsimonyBundleRetentionItem(item.Bundle, item.IsCurrent,
-            ReadBundlePinReasons(connection, item.Bundle.BundleId, _clock.UtcNow))).ToArray();
+            ReadBundlePinReasons(connection, item.Bundle.BundleId, _clock.UtcNow), item.Closed)).ToArray();
     }
 
     /// <summary>Returns human-readable reasons that keep one published bundle alive.</summary>
@@ -774,8 +816,12 @@ public sealed record ParsimonyBuildClaim(string BundleId, string ProjectKey, str
     string? FinalDirectory = null, string CreatedUtc = "");
 
 /// <summary>A bundle and its computed retention status.</summary>
+/// <remarks>
+/// <paramref name="OfClosedProposal"/> is true for a candidate bundle whose Parsimony Reports all belong to Proposals
+/// that were applied, rejected, withdrawn or superseded: the Report keeps its numbers and the bundle is no longer needed.
+/// </remarks>
 public sealed record ParsimonyBundleRetentionItem(ParsimonyBundleRecord Bundle, bool IsCurrent,
-    IReadOnlyList<string> PinReasons);
+    IReadOnlyList<string> PinReasons, bool OfClosedProposal = false);
 
 /// <summary>One short-lived lease held while a reader has either artifact open.</summary>
 public sealed class ParsimonyReaderLease : IDisposable

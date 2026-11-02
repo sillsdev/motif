@@ -101,6 +101,7 @@ internal static class WorkerRuntime
         using var invoker = new PanGlossInvoker(options.ParserPath);
         var knownProjects = new KnownProjectRegistry(machine);
         var activity = new SweepActivity();
+        var userData = Task.Run(() => MaintainStoresDailyAsync(options.Root, knownProjects, runtimes, shutdown.Token));
         var sweeping = SweepUntilCancelledAsync(knownProjects, runtimes, host.ProjectLanes, options, invoker,
             ownerId, activity, shutdown.Token);
 
@@ -111,10 +112,101 @@ internal static class WorkerRuntime
         shutdown.Cancel();
         await lifetime.ConfigureAwait(false);
         await sweeping.ConfigureAwait(false);
+        // A sweep or rewrite that is part way through is not waited for beyond a few seconds.
+        await Task.WhenAny(userData, Task.Delay(TimeSpan.FromSeconds(5))).ConfigureAwait(false);
         // Retiring to yield: start the runner for the parser the leftover work is pinned to, then exit.
         if (activity.YieldRequested && activity.Handover is { } handover)
             ParserHandoverLauncher.Start(options, handover, Console.Error.WriteLine);
         return 0;
+    }
+
+    /// <summary>The least time between two sweeps of the per-user data folder.</summary>
+    internal static readonly TimeSpan UserDataSweepInterval = TimeSpan.FromHours(24);
+
+    private static readonly TimeSpan MaintenancePoll = TimeSpan.FromHours(1);
+
+    // Housekeeping off the job path: a sweep when one is due, checked hourly so a long-lived runner sweeps daily.
+    private static async Task MaintainStoresDailyAsync(string root, KnownProjectRegistry knownProjects,
+        Projects.ProjectRuntimeRegistry runtimes, CancellationToken cancellationToken)
+    {
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            SweepUserDataWhenDue(root, knownProjects, cancellationToken, Console.Error.WriteLine);
+            CompactOpenStoresWhenDue(root, knownProjects,
+                key => runtimes.TryGet(key, out var runtime) ? runtime.Database : null, cancellationToken,
+                Console.Error.WriteLine);
+            try { await Task.Delay(MaintenancePoll, cancellationToken).ConfigureAwait(false); }
+            catch (OperationCanceledException) { return; }
+        }
+    }
+
+    // Compaction has its own daily stamp, so a failed or slow sweep does not hold it back.
+    internal static void CompactOpenStoresWhenDue(string root, KnownProjectRegistry knownProjects,
+        Func<string, MotifDatabase?> openStore, CancellationToken cancellationToken, Action<string>? report = null)
+    {
+        try
+        {
+            var stamp = Path.Combine(root, "store-compaction-stamp");
+            if (File.Exists(stamp) && DateTime.UtcNow - File.GetLastWriteTimeUtc(stamp) < UserDataSweepInterval) return;
+            var visited = CompactOpenStores(knownProjects, openStore, cancellationToken, report);
+            if (visited == 0 || cancellationToken.IsCancellationRequested) return;
+            File.WriteAllText(stamp, DateTime.UtcNow.ToString("O", System.Globalization.CultureInfo.InvariantCulture));
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            report?.Invoke("store compaction failed: " + exception.Message);
+        }
+    }
+
+    // Rewrites open stores no parse holds; counts the open stores it visited, and a failing store is skipped alone.
+    internal static int CompactOpenStores(KnownProjectRegistry knownProjects, Func<string, MotifDatabase?> openStore,
+        CancellationToken cancellationToken, Action<string>? report = null)
+    {
+        var visited = 0;
+        foreach (var project in knownProjects.List())
+        {
+            if (cancellationToken.IsCancellationRequested) break;
+            try
+            {
+                var database = openStore(project.WorkspaceKey);
+                if (database is null) continue;
+                visited++;
+                using var lease = ProjectParseLease.TryAcquire(database);
+                if (lease is null) continue;
+                if (StoreCompaction.CompactWhenWorthwhile(database, lease))
+                    report?.Invoke("store compaction: rewrote " + database.FullPath);
+            }
+            catch (Exception exception) when (exception is not OperationCanceledException)
+            {
+                report?.Invoke("store compaction failed for " + project.FullFwDataPath + ": " + exception.Message);
+            }
+        }
+        return visited;
+    }
+
+    /// <summary>
+    /// Sweeps the per-user data folder when the last sweep is a day old or missing; true when a sweep ran. The stamp
+    /// file is touched after a sweep that finished, so a runner stopped part way tries again at the next start.
+    /// </summary>
+    internal static bool SweepUserDataWhenDue(string root, KnownProjectRegistry knownProjects,
+        CancellationToken cancellationToken, Action<string>? report = null)
+    {
+        try
+        {
+            var stamp = Path.Combine(root, "user-data-sweep-stamp");
+            if (File.Exists(stamp) && DateTime.UtcNow - File.GetLastWriteTimeUtc(stamp) < UserDataSweepInterval) return false;
+            var result = new UserDataSweep(root, knownProjects).Sweep(cancellationToken);
+            File.WriteAllText(stamp, DateTime.UtcNow.ToString("O", System.Globalization.CultureInfo.InvariantCulture));
+            report?.Invoke($"user data sweep: removed {result.RunsRemoved} runs, {result.SourcesRemoved} sources, " +
+                $"{result.BaselinesRemoved} baselines ({result.BytesRemoved} bytes); kept {result.BytesKept} bytes.");
+            return true;
+        }
+        catch (OperationCanceledException) { return false; }
+        catch (Exception exception)
+        {
+            report?.Invoke("user data sweep failed: " + exception.Message);
+            return false;
+        }
     }
 
     /// <summary>

@@ -940,6 +940,8 @@ public sealed class ProposalRepository : IProposalRepository
     {
         if (!ProposalDifferenceRetention.KeepsWordDetail(status))
             ProposalDifferenceRetention.DropWordDetail(connection, transaction, proposalId, Now());
+        if (ProposalLifecycle.IsTerminal(status))
+            EvidenceArtifactRepository.ReleaseClosedProposalPins(connection, transaction, proposalId);
     }
 
     /// <inheritdoc />

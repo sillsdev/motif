@@ -80,15 +80,26 @@ internal static class AssessmentRetention
         SweepStandalone(connection, transaction, lease, keepPerKind, currentEvidence, out _);
 
     /// <summary>
+    /// The newest Object Timing Assessments kept as standalone evidence: each stores a per-object timing table of
+    /// about a megabyte and is read only while it is the latest, so it is capped below the general count.
+    /// </summary>
+    internal const int ObjectTimingsKept = 5;
+
+    /// <summary>The Proposal statuses whose Assessments nothing still needs once they are not cited.</summary>
+    private const string ClosedStatuses = "('applied', 'rejected', 'withdrawn', 'superseded')";
+
+    /// <summary>
     /// Removes the removable standalone Assessments one at a time, checking <paramref name="cancellationToken"/> between
     /// Assessments and reporting each removal to <paramref name="progress"/>. A stopped sweep has removed whole
     /// Assessments only, so the caller may commit what it did; <paramref name="removedInvocations"/> names only the
-    /// artifacts of Assessments that were removed.
+    /// artifacts of Assessments that were removed. When <paramref name="byteBudget"/> is given and the store still
+    /// holds more than that many bytes of pages in use afterwards, the oldest Assessments nothing needs are removed
+    /// next, standalone or recorded against a closed Proposal, until the store fits or none is left.
     /// </summary>
     public static int SweepStandalone(SqliteConnection connection, SqliteTransaction transaction,
         ProjectParseLease lease, int keepPerKind, IReadOnlyCollection<string> currentEvidence,
         out IReadOnlyList<string> removedInvocations, CancellationToken cancellationToken = default,
-        Action<string>? progress = null)
+        Action<string>? progress = null, long? byteBudget = null)
     {
         removedInvocations = [];
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(keepPerKind);
@@ -97,11 +108,52 @@ internal static class AssessmentRetention
         var all = ReadIds(connection, transaction, "SELECT AssessmentId FROM Assessments;");
         var removable = ReadIds(connection, transaction, """
             SELECT AssessmentId FROM (
-                SELECT AssessmentId, ROW_NUMBER() OVER (PARTITION BY Kind ORDER BY SavedUtc DESC, AssessmentId DESC) AS rank
+                SELECT AssessmentId, ROW_NUMBER() OVER (PARTITION BY Kind ORDER BY SavedUtc DESC, AssessmentId DESC) AS rank,
+                       Kind
                 FROM Assessments WHERE ProposalId IS NULL
-            ) WHERE rank > CAST($keep AS INTEGER);
-            """, ("$keep", keepPerKind.ToString(System.Globalization.CultureInfo.InvariantCulture)));
-        if (removable.Count == 0) return 0;
+            ) WHERE rank > CASE WHEN Kind = 'ObjectTiming' THEN MIN(CAST($keep AS INTEGER), CAST($timings AS INTEGER))
+                                ELSE CAST($keep AS INTEGER) END;
+            """, ("$keep", keepPerKind.ToString(System.Globalization.CultureInfo.InvariantCulture)),
+            ("$timings", ObjectTimingsKept.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+        var artifacts = new List<(string Artifact, string[] Requires)>();
+        var deleted = RemoveUnneeded(connection, transaction, removable, null, currentEvidence, all, artifacts,
+            cancellationToken, progress, null);
+        var count = deleted.Count;
+        if (byteBudget is { } budget && !cancellationToken.IsCancellationRequested && BytesInUse(connection, transaction) > budget)
+        {
+            var oldest = ReadOrderedIds(connection, transaction, $"""
+                SELECT a.AssessmentId FROM Assessments a LEFT JOIN Proposals p ON p.ProposalId = a.ProposalId
+                WHERE a.ProposalId IS NULL OR p.Status IN {ClosedStatuses}
+                ORDER BY a.SavedUtc, a.AssessmentId;
+                """).Where(id => !deleted.Contains(id)).ToList();
+            var survivors = ReadIds(connection, transaction, "SELECT AssessmentId FROM Assessments;");
+            var more = RemoveUnneeded(connection, transaction, oldest.ToHashSet(StringComparer.Ordinal), oldest,
+                currentEvidence, survivors, artifacts, cancellationToken, progress,
+                () => BytesInUse(connection, transaction) <= budget);
+            deleted.UnionWith(more);
+            count += more.Count;
+        }
+        removedInvocations = artifacts.Where(entry => entry.Requires.All(deleted.Contains))
+            .Select(entry => entry.Artifact).Distinct(StringComparer.Ordinal).ToArray();
+        return count;
+    }
+
+    /// <summary>The bytes of pages the store uses, free pages inside the file not counted.</summary>
+    internal static long BytesInUse(SqliteConnection connection, SqliteTransaction? transaction)
+    {
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = "SELECT (page_count - freelist_count) * page_size FROM pragma_page_count, pragma_freelist_count, pragma_page_size;";
+        return Convert.ToInt64(command.ExecuteScalar(), System.Globalization.CultureInfo.InvariantCulture);
+    }
+
+    // Deletes the candidates nothing needs, oldest first when ordered, and stops once satisfied.
+    private static HashSet<string> RemoveUnneeded(SqliteConnection connection, SqliteTransaction transaction,
+        HashSet<string> removable, IReadOnlyList<string>? order, IReadOnlyCollection<string> currentEvidence,
+        HashSet<string> all, List<(string Artifact, string[] Requires)> artifacts, CancellationToken cancellationToken,
+        Action<string>? progress, Func<bool>? satisfied)
+    {
+        if (removable.Count == 0) return [];
         removable.ExceptWith(currentEvidence);
         removable.ExceptWith(ReadIds(connection, transaction, """
             SELECT AssessmentId FROM Reports WHERE AssessmentId IS NOT NULL
@@ -155,30 +207,39 @@ internal static class AssessmentRetention
                 foreach (var reference in references) if (removable.Remove(reference)) changed = true;
             }
         } while (changed);
-        if (removable.Count == 0) return 0;
+        if (removable.Count == 0) return [];
         // An artifact goes only when every Assessment needing it was removed.
-        var artifacts = new List<(string Artifact, string[] Requires)>();
+        var found = new List<(string Artifact, string[] Requires)>();
         foreach (var (assessment, invocation) in ReadPairs(connection, transaction,
                      "SELECT AssessmentId, InvocationId FROM Assessments WHERE InvocationId IS NOT NULL;"))
-            if (removable.Contains(assessment)) artifacts.Add((invocation, [assessment]));
+            if (removable.Contains(assessment)) found.Add((invocation, [assessment]));
         foreach (var (assessment, path) in ReadPairs(connection, transaction,
                      "SELECT AssessmentId, CachePath FROM Assessments WHERE CachePath IS NOT NULL;"))
             if (removable.Contains(assessment) && Path.IsPathFullyQualified(path) && Path.GetDirectoryName(path) is { } directory)
-                artifacts.Add((Path.GetFullPath(directory), [assessment]));
+                found.Add((Path.GetFullPath(directory), [assessment]));
         foreach (var (invocation, artifact) in ReadPairs(connection, transaction,
                      "SELECT InvocationId, ArtifactInvocationId FROM RetainedInvocations;"))
             if (invocationMembers.TryGetValue(invocation, out var members) && members.All(removable.Contains))
-                artifacts.Add((artifact, members));
+                found.Add((artifact, members));
         foreach (var (assessment, retry) in ReadPairs(connection, transaction, """
                      SELECT a.AssessmentId, json_extract(i.EvidenceJson, '$.StoppedWordRetry.RetryInvocationId')
                      FROM Assessments a JOIN AssessmentInvocations i ON a.InvocationId = i.InvocationId
                      WHERE json_extract(i.EvidenceJson, '$.StoppedWordRetry.RetryInvocationId') IS NOT NULL;
                      """))
-            if (removable.Contains(assessment)) artifacts.Add((retry, [assessment]));
-        var deleted = DeleteAssessments(connection, transaction, removable, removeInvocations: true, cancellationToken, progress);
-        removedInvocations = artifacts.Where(entry => entry.Requires.All(deleted.Contains))
-            .Select(entry => entry.Artifact).Distinct(StringComparer.Ordinal).ToArray();
-        return deleted.Count;
+            if (removable.Contains(assessment)) found.Add((retry, [assessment]));
+        var deleted = DeleteAssessments(connection, transaction, removable, removeInvocations: true, cancellationToken,
+            progress, order, satisfied);
+        artifacts.AddRange(found);
+        return deleted;
+    }
+
+    private static List<string> ReadOrderedIds(SqliteConnection connection, SqliteTransaction transaction, string sql)
+    {
+        using var command = Command(connection, transaction, sql);
+        using var reader = command.ExecuteReader();
+        var ids = new List<string>();
+        while (reader.Read()) ids.Add(reader.GetString(0));
+        return ids;
     }
 
     private static HashSet<string> ReadJsonReferences(SqliteConnection connection, SqliteTransaction transaction,
@@ -236,7 +297,7 @@ internal static class AssessmentRetention
     /// <summary>Removes whole Assessments one by one, stopping between them on cancellation.</summary>
     private static HashSet<string> DeleteAssessments(SqliteConnection connection, SqliteTransaction transaction,
         HashSet<string> removable, bool removeInvocations, CancellationToken cancellationToken = default,
-        Action<string>? progress = null)
+        Action<string>? progress = null, IReadOnlyList<string>? order = null, Func<bool>? satisfied = null)
     {
         var deleted = new HashSet<string>(StringComparer.Ordinal);
         Execute(connection, transaction, "CREATE TEMP TABLE IF NOT EXISTS RemovedAssessments (AssessmentId TEXT PRIMARY KEY);");
@@ -247,9 +308,20 @@ internal static class AssessmentRetention
             Execute(connection, transaction, "DELETE FROM temp.RemovedInvocations;");
         }
         var number = 0;
-        foreach (var id in removable.Order(StringComparer.Ordinal))
+        var batch = 1;
+        var inBatch = 0;
+        foreach (var id in order?.Where(removable.Contains) ?? removable.Order(StringComparer.Ordinal))
         {
             if (cancellationToken.IsCancellationRequested) break;
+            // A budgeted sweep measures in doubling batches, each followed by one set-based payload cleanup.
+            if (satisfied is not null && inBatch == batch)
+            {
+                RemoveUnusedPayloads(connection, transaction);
+                inBatch = 0;
+                batch *= 2;
+            }
+            if (satisfied is not null && inBatch == 0 && satisfied()) break;
+            inBatch++;
             Execute(connection, transaction, "INSERT INTO temp.RemovedAssessments (AssessmentId) VALUES ($id);", ("$id", id));
             if (removeInvocations)
             {
@@ -276,7 +348,13 @@ internal static class AssessmentRetention
             progress?.Invoke($"Removed Assessment {id} ({++number} of {removable.Count}).");
         }
         // Payloads are shared by hash; a stopped sweep leaves orphans for the next one.
-        if (!cancellationToken.IsCancellationRequested)
+        if (!cancellationToken.IsCancellationRequested) RemoveUnusedPayloads(connection, transaction);
+        if (removeInvocations)
+            Execute(connection, transaction, "DELETE FROM AssessmentInvocations WHERE NOT EXISTS (SELECT 1 FROM Assessments a WHERE a.InvocationId = AssessmentInvocations.InvocationId) AND NOT EXISTS (SELECT 1 FROM RetainedInvocations r WHERE r.ArtifactInvocationId = AssessmentInvocations.InvocationId);");
+        return deleted;
+    }
+
+    private static void RemoveUnusedPayloads(SqliteConnection connection, SqliteTransaction transaction) =>
             Execute(connection, transaction, """
                 DELETE FROM AssessmentWordPayloads WHERE Hash NOT IN (
                     SELECT MorphologyJson FROM AssessedWords WHERE MorphologyJson IS NOT NULL
@@ -285,10 +363,6 @@ internal static class AssessmentRetention
                     UNION SELECT AnalysisComparisonJson FROM AssessedWords WHERE AnalysisComparisonJson IS NOT NULL
                     UNION SELECT MissedApprovedJson FROM AssessedWords WHERE MissedApprovedJson IS NOT NULL);
                 """);
-        if (removeInvocations)
-            Execute(connection, transaction, "DELETE FROM AssessmentInvocations WHERE NOT EXISTS (SELECT 1 FROM Assessments a WHERE a.InvocationId = AssessmentInvocations.InvocationId) AND NOT EXISTS (SELECT 1 FROM RetainedInvocations r WHERE r.ArtifactInvocationId = AssessmentInvocations.InvocationId);");
-        return deleted;
-    }
 
     private static HashSet<string> ReadFrozenReportAssessmentIds(SqliteConnection connection,
         SqliteTransaction transaction)
