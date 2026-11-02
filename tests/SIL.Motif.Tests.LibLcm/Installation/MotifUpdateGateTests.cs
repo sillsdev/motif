@@ -86,7 +86,7 @@ public sealed class MotifUpdateGateTests
             var releasePath = Environment.GetEnvironmentVariable(ChildReleasePathVariable)
                 ?? throw new InvalidOperationException("The child release path is required.");
             await File.WriteAllTextAsync(readyPath, string.Empty);
-            await WaitUntilAsync(() => File.Exists(releasePath), TimeSpan.FromSeconds(15));
+            await Wait.UntilAsync(() => File.Exists(releasePath), "The release file never appeared.", TimeSpan.FromSeconds(15));
             return;
         }
 
@@ -162,37 +162,20 @@ public sealed class MotifUpdateGateTests
         throw new DirectoryNotFoundException("Could not find Motif.sln above the test output directory.");
     }
 
-    private static async Task WaitUntilAsync(Func<bool> condition, TimeSpan timeout)
-    {
-        var deadline = DateTime.UtcNow + timeout;
-        while (!condition())
-        {
-            if (DateTime.UtcNow > deadline) throw new TimeoutException("Condition was not met in time.");
-            await Task.Delay(10);
-        }
-    }
-
     private static async Task WaitForChildReadyAsync(
         Process child, string readyPath, Task<string> output, Task<string> error, TimeSpan timeout)
     {
-        var stopwatch = Stopwatch.StartNew();
-        while (!File.Exists(readyPath))
+        if (await Wait.ForAsync(() => File.Exists(readyPath) || child.HasExited, timeout) && File.Exists(readyPath)) return;
+        if (child.HasExited)
         {
-            if (child.HasExited)
-            {
-                await child.WaitForExitAsync();
-                throw new InvalidOperationException(
-                    $"Child test exited with code {child.ExitCode} before signaling readiness. " +
-                    await ReadChildOutputAsync(output, error));
-            }
-            if (stopwatch.Elapsed >= timeout)
-            {
-                throw new TimeoutException(
-                    $"Child test did not signal readiness within {timeout}. " +
-                    await ReadChildOutputAsync(output, error));
-            }
-            await Task.Delay(10);
+            await child.WaitForExitAsync();
+            throw new InvalidOperationException(
+                $"Child test exited with code {child.ExitCode} before signaling readiness. " +
+                await ReadChildOutputAsync(output, error));
         }
+        throw new TimeoutException(
+            $"Child test did not signal readiness within {Wait.Scaled(timeout)}. " +
+            await ReadChildOutputAsync(output, error));
     }
 
     private static async Task<string> ReadChildOutputAsync(Task<string> output, Task<string> error)
@@ -214,7 +197,7 @@ public sealed class MotifUpdateGateTests
     {
         try
         {
-            await child.WaitForExitAsync().WaitAsync(timeout);
+            await child.WaitForExitAsync().WaitAsync(Wait.Scaled(timeout));
             return true;
         }
         catch (TimeoutException)
@@ -236,6 +219,6 @@ public sealed class MotifUpdateGateTests
             try { child.Kill(entireProcessTree: true); }
             catch (InvalidOperationException) when (child.HasExited) { }
         }
-        await child.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(15));
+        await child.WaitForExitAsync().WaitAsync(Wait.Scaled(TimeSpan.FromSeconds(15)));
     }
 }

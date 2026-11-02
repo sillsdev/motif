@@ -69,9 +69,11 @@ public sealed class InstalledWorkerLocatorTests : IDisposable
         Assert.DoesNotContain(InstalledWorkerLocator.Find(_scratch), info => info.ProcessId == worker.Id);
         Assert.DoesNotContain(InstalledWorkerLocator.Find(install[..^1]), info => info.ProcessId == worker.Id);
 
-        MotifUpdateGate.RetireIdleWorkers(gate, install, TimeSpan.FromSeconds(30), InstalledWorkerLocator.Find);
+        // Only this test's Worker answers its gate; other suites' Workers from this install never exit.
+        MotifUpdateGate.RetireIdleWorkers(gate, install, Wait.Scaled(TimeSpan.FromSeconds(30)),
+            directory => [.. InstalledWorkerLocator.Find(directory).Where(info => info.ProcessId == worker.Id)]);
 
-        Assert.True(worker.WaitForExit(TimeSpan.FromSeconds(10)), "The Worker did not exit after retirement.");
+        Assert.True(worker.WaitForExit(Wait.Scaled(TimeSpan.FromSeconds(10))), "The Worker did not exit after retirement.");
         Assert.DoesNotContain(InstalledWorkerLocator.Find(install), info => info.ProcessId == worker.Id);
     }
 
@@ -124,7 +126,7 @@ public sealed class InstalledWorkerLocatorTests : IDisposable
         var error = process.StandardError.ReadToEndAsync();
         // The owner name is the first line a Worker writes once it holds ownership and is idling.
         var line = process.StandardOutput.ReadLineAsync();
-        if (await Task.WhenAny(line, Task.Delay(TimeSpan.FromSeconds(60))) != line ||
+        if (await Task.WhenAny(line, Task.Delay(Wait.Scaled(TimeSpan.FromSeconds(60)))) != line ||
             string.IsNullOrEmpty(await line))
             throw new InvalidOperationException("The Worker never reported ready. " +
                 (process.HasExited ? await error : "It is still starting."));

@@ -114,14 +114,7 @@ public sealed class ProcessWritingSystemRepositoryTests
 
         using var writerGate = new WorkerMutexOwner(
             SerializedGlobalWritingSystemRepository.GetRepositoryLockName(decoy.PathToWritingSystems));
-        var gateWait = Stopwatch.StartNew();
-        var gateAcquired = false;
-        while (!gateAcquired && gateWait.Elapsed < ChildHangGuard)
-        {
-            gateAcquired = writerGate.TryAcquire();
-            if (!gateAcquired) Thread.Sleep(10);
-        }
-        Assert.True(gateAcquired);
+        Assert.True(Wait.For(writerGate.TryAcquire, ChildHangGuard));
 
         var readStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var read = Task.Run(() =>
@@ -409,7 +402,7 @@ public sealed class ProcessWritingSystemRepositoryTests
     {
         try
         {
-            await process.WaitForExitAsync().WaitAsync(timeout);
+            await process.WaitForExitAsync().WaitAsync(Wait.Scaled(timeout));
             return true;
         }
         catch (TimeoutException)
