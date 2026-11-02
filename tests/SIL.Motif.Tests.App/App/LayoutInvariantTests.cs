@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
+using SIL.Motif.App.Views.Shell;
 using Avalonia.VisualTree;
 using Avalonia.Styling;
 using SIL.Motif.App;
@@ -32,13 +33,6 @@ public sealed class LayoutInvariantTests(ITestOutputHelper output)
     [Fact]
     public void ALongNameAndALongPieceOfAdviceSatisfyTheQuickLayoutCells() => RunQuick(LayoutDataSet.Long());
 
-    // A data set that no page shows would pass vacuously.
-    private static IEnumerable<string> MarkersShown(MainWindow window, LayoutDataSet data) =>
-        (data.Markers ?? []).Where(marker => window.GetVisualDescendants().OfType<TextBlock>().Any(text =>
-            text.IsEffectivelyVisible && (text.Text ?? string.Concat(text.Inlines?.OfType<Run>().Select(run => run.Text) ?? []))
-                .Contains(marker, StringComparison.Ordinal) &&
-            (data.MarkerDirection is null || text.FlowDirection == data.MarkerDirection)));
-
     private void RunQuick(LayoutDataSet data)
     {
         using var run = new LayoutInvariantRun(data.Tier, output);
@@ -59,27 +53,25 @@ public sealed class LayoutInvariantTests(ITestOutputHelper output)
                 await LayoutInvariantFixtures.PreparePopulated(workspace);
                 await data.Arrange(workspace);
                 run.Setup("populated", setup.Elapsed.TotalMilliseconds);
-                var shown = new HashSet<string>();
+                var host = window.FindInWindowOrWorkspace<WorkspaceLayoutHost>("WorkspaceLayout")!;
                 foreach (var cell in LayoutInvariantFixtures.QuickCells)
-                foreach (var page in PageRegistry.Entries.Select(entry => entry.Page))
-                {
-                    workspace.CurrentPage = page;
-                    run.Inspect(window, $"{page}/populated", cell, quick: true, workspace);
-                    shown.UnionWith(MarkersShown(window, data));
-                }
-                if (data.InspectorPage is { } inspected)
-                {
-                    // A narrow window shows the page's details only in the revealed Inspector.
-                    var host = window.FindInWindowOrWorkspace<SIL.Motif.App.Views.Shell.WorkspaceLayoutHost>("WorkspaceLayout")!;
-                    foreach (var cell in LayoutInvariantFixtures.QuickCells)
-                    {
-                        workspace.CurrentPage = inspected;
-                        run.Inspect(window, $"{inspected}/details-shown", cell, quick: true, workspace, host.ShowInspector);
-                        shown.UnionWith(MarkersShown(window, data));
-                        host.ShowWorkingPage();
-                    }
-                }
-                Assert.Equal(data.Markers ?? [], (data.Markers ?? []).Where(shown.Contains));
+                    if (data.Visits is null)
+                        foreach (var page in PageRegistry.Entries.Select(entry => entry.Page))
+                        {
+                            workspace.CurrentPage = page;
+                            run.Inspect(window, $"{page}/populated", cell, quick: true, workspace);
+                        }
+                    else
+                        foreach (var visit in data.Visits)
+                        {
+                            workspace.CurrentPage = visit.Page;
+                            visit.Select?.Invoke(workspace);
+                            // These cells also run the detailed text checks, which catch text wider than its own box.
+                            run.Inspect(window, visit.Scene, cell, quick: false, workspace,
+                                visit.RevealDetails ? host.ShowInspector : null);
+                            foreach (var expected in visit.Expect) AssertShown(window, visit, expected);
+                            if (visit.RevealDetails) host.ShowWorkingPage();
+                        }
             }
             finally
             {
@@ -90,5 +82,21 @@ public sealed class LayoutInvariantTests(ITestOutputHelper output)
             }
         }, TimeSpan.FromMinutes(3));
         run.AssertFindings();
+    }
+
+    // A set no page shows would pass vacuously; cut-off or wrong-way text is the fault.
+    private static void AssertShown(MainWindow window, LayoutVisit visit, LayoutExpectation expected)
+    {
+        var blocks = window.GetVisualDescendants().OfType<TextBlock>().Where(text => text.IsEffectivelyVisible &&
+            string.Equals(text.Text ?? string.Concat(text.Inlines?.OfType<Run>().Select(run => run.Text) ?? []),
+                expected.Text, StringComparison.Ordinal)).ToArray();
+        Assert.True(blocks.Length > 0, $"{visit.Scene} does not show '{expected.Text}'.");
+        foreach (var block in blocks)
+        {
+            if (expected.Direction is { } direction)
+                Assert.True(block.FlowDirection == direction,
+                    $"{visit.Scene}: '{expected.Text}' flows {block.FlowDirection}, not {direction}.");
+            LayoutAssertions.AssertTextFits(block);
+        }
     }
 }

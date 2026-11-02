@@ -8,6 +8,14 @@ using Xunit;
 
 namespace SIL.Motif.Tests.App;
 
+/// <summary>The exact text a visit must show; every block showing it must fit its box without losing text, and with a direction must flow that way.</summary>
+internal sealed record LayoutExpectation(string Text, FlowDirection? Direction = null);
+
+/// <summary>A page inspected on its own, optionally with the Inspector revealed, and the text it must show.</summary>
+internal sealed record LayoutVisit(
+    WorkspacePage Page, string Scene, bool RevealDetails, IReadOnlyList<LayoutExpectation> Expect,
+    Action<WorkspaceShellViewModel>? Select = null);
+
 /// <summary>
 /// What one quick-tier sweep shows: the same two words, texts, Review changes, Proposals and Parsimony findings
 /// as the plain sweep, with the strings that stress a layout swapped in. <paramref name="Tier"/> names the sweep's
@@ -15,8 +23,7 @@ namespace SIL.Motif.Tests.App;
 /// </summary>
 internal sealed record LayoutDataSet(
     string Tier, TextWordsResponse Words, AssessCommandResponse Assessment, Action<FakeCommandClient> Configure,
-    Func<WorkspaceShellViewModel, Task> Arrange, IReadOnlyList<string>? Markers = null, FlowDirection? MarkerDirection = null,
-    WorkspacePage? InspectorPage = null)
+    Func<WorkspaceShellViewModel, Task> Arrange, IReadOnlyList<LayoutVisit>? Visits = null)
 {
     private const string FirstForm = "hawajafika";
     private const string SecondForm = "kitabu";
@@ -97,7 +104,16 @@ internal sealed record LayoutDataSet(
             var overview = workspace.PageModel<OverviewPageModel>();
             overview.Overview = overview.Overview! with { WritingSystems = [WritingSystemTestData.English with { IsDefault = false }, arabic] };
             return Task.CompletedTask;
-        }, [ArabicFirst], FlowDirection.RightToLeft);
+        }, [
+            new(WorkspacePage.Overview, "Overview/populated", false,
+                [new(ArabicFirst, FlowDirection.RightToLeft), new(ArabicSecond, FlowDirection.RightToLeft)]),
+            new(WorkspacePage.Review, "Review/populated", false, [new(ArabicSecond, FlowDirection.RightToLeft)]),
+            new(WorkspacePage.Review, "Review/details-shown", true, [new("تَاب", FlowDirection.RightToLeft)], workspace =>
+            {
+                var review = workspace.PageModel<ReviewPageModel>();
+                review.SelectEntry(Assert.Single(review.Entries, entry => entry.Change?.Word == ArabicSecond));
+            }),
+        ]);
     }
 
     /// <summary>One Proposal name of about a hundred and twenty characters and one Parsimony limitation of about three hundred.</summary>
@@ -109,7 +125,12 @@ internal sealed record LayoutDataSet(
             "show whether the named forms are still blocked has not been run for this project, which makes the share a floor.";
         return Plain() with
         {
-            Tier = "quick-long", InspectorPage = WorkspacePage.Parsimony, Markers = [name[..40], advice[..40]],
+            Tier = "quick-long",
+            Visits =
+            [
+                new(WorkspacePage.Proposals, "Proposals/populated", false, [new(name)]),
+                new(WorkspacePage.Parsimony, "Parsimony/details-shown", true, [new(advice)]),
+            ],
             Configure = fake =>
             {
                 ParsimonyStateScreenshots.Configure(fake, "listed-evidence", report => report with
