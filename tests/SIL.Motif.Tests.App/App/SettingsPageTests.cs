@@ -368,6 +368,46 @@ public sealed class SettingsPageTests
     }
 
     [Fact]
+    public void ARefusedStepOrTimeLimitStaysInItsFieldNextToItsMessage()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, frame) = await PageScreenshots.OpenOverSampleData(parse: false,
+                configure: (client, _) => client.DefaultSelectionIs(new NamedSelectionProjection("Default", [], ["word"],
+                    string.Empty, string.Empty,
+                    new SelectionParsingLimits(ParserWorkLimit.Default, SelectionTimeLimitMode.Estimated, null, 600), "1")));
+            try
+            {
+                var settings = SettingsTestAccess.Model(frame);
+                settings.OpenGroup(Group.Parsing);
+
+                settings.ParserWorkLimitValue = 100000.5m;
+                Assert.NotNull(await settings.CommitParsingLimitsAsync());
+                Assert.Equal(100000.5m, settings.ParserWorkLimitValue);
+                Assert.True(settings.HasParserWorkLimitRefusal);
+
+                settings.ParserWorkLimitValue = 300000m;
+                Assert.Null(await settings.CommitParsingLimitsAsync());
+                Assert.False(settings.HasParserWorkLimitRefusal);
+
+                settings.TimeLimitSeconds = -1m;
+                Assert.NotNull(await settings.CommitParsingLimitsAsync());
+                Assert.Equal(-1m, settings.TimeLimitSeconds);
+                Assert.True(settings.HasTimeLimitRefusal);
+
+                settings.TimeLimitSeconds = 2m;
+                Assert.Null(await settings.CommitParsingLimitsAsync());
+                Assert.False(settings.HasTimeLimitRefusal);
+            }
+            finally
+            {
+                frame.Close();
+                await workspace.DisposeAsync();
+            }
+        }, TimeSpan.FromMinutes(2));
+    }
+
+    [Fact]
     public void IndividualParsingAndCheckResetsKeepOtherChoicesAndPersist()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>

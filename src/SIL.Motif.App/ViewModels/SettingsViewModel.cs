@@ -605,7 +605,6 @@ internal sealed partial class SettingsViewModel : ObservableObject
         if (_workspace.Selection.ParserWorkLimitValidationMessage is not null || !IsNoParserWorkLimit &&
             (ParserWorkLimitValue is null or <= 0 || decimal.Truncate(ParserWorkLimitValue.Value) != ParserWorkLimitValue.Value))
         {
-            CancelParsingLimitEdit();
             _parserWorkLimitRefusal = MotifAppStrings.ParserWorkLimitWholeNumberRefusal;
             OnPropertyChanged(nameof(ParserWorkLimitRefusal));
             OnPropertyChanged(nameof(HasParserWorkLimitRefusal));
@@ -613,7 +612,6 @@ internal sealed partial class SettingsViewModel : ObservableObject
         }
         if (!IsNoParserWorkLimit && !IsUsingEstimate && (TimeLimitSeconds is null or <= 0))
         {
-            CancelParsingLimitEdit();
             TimeLimitRefusal = MotifAppStrings.TimeLimitPositiveRefusal;
             OnPropertyChanged(nameof(HasTimeLimitRefusal));
             return WindowRefusal.Plain(TimeLimitRefusal);
@@ -635,7 +633,6 @@ internal sealed partial class SettingsViewModel : ObservableObject
         }
         else
         {
-            CancelParsingLimitEdit();
             TimeLimitRefusal = MotifAppStrings.TimeLimitRangeRefusal;
             OnPropertyChanged(nameof(HasTimeLimitRefusal));
             return WindowRefusal.Plain(TimeLimitRefusal);
