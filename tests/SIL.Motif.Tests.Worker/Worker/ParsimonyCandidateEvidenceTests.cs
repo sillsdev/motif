@@ -193,6 +193,8 @@ public sealed class ParsimonyCandidateEvidenceTests : IDisposable
             SIL.Motif.Contract.MotifJson.CreateOptions())!;
         Assert.Equal("baseline", response.Before.Inputs.InputKind);
         Assert.Equal("candidate", response.After.Inputs.InputKind);
+        Assert.Contains(response.StageTimings!, t => t is { Stage: "facts", Side: "candidate" });
+        Assert.Equal("total", response.StageTimings![^1].Stage);
         Assert.NotEqual(response.Before.Inputs.ModelFingerprint, response.After.Inputs.ModelFingerprint);
         Assert.NotEqual(response.Before.Inputs.Evidence.Sha256, response.After.Inputs.Evidence.Sha256);
         Assert.Contains(response.FindingChanges, item => item.Change is "evidence-changed" or "removed");

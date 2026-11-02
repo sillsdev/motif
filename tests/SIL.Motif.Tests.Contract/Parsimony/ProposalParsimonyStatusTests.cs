@@ -22,7 +22,8 @@ public sealed class ProposalParsimonyStatusTests
         ProposalParsimonyStatus.CurrentSchemaVersion, "proposal/aaaaaaaaaaaaaaaaaaaaaa", "sha256:abc", "job/t1",
         ProposalParsimonyState.Stale, new ProposalParsimonyReason("stale", "Out of date."),
         new ProposalParsimonyJob("job/p1", "completed", new JobStageProgress("facts", 2, 5, "candidate"),
-            "2026-11-01T00:00:00.0000000Z", "2026-11-01T00:00:09.0000000Z", "trial"),
+            "2026-11-01T00:00:00.0000000Z", "2026-11-01T00:00:09.0000000Z", "trial",
+            [new ParsimonyStageTiming("facts", "candidate", 1200), new ParsimonyStageTiming("total", null, 9000)]),
         new ProposalParsimonyStale(
             [ProposalParsimonyStaleReason.BaselineChanged, ProposalParsimonyStaleReason.ParserChanged], "k1", "k2"),
         new ProposalParsimonyFailure(ProposalParsimonyFailureCategory.TimedOut, "Too large.", false,

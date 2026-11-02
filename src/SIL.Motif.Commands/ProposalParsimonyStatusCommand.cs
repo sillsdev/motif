@@ -183,7 +183,19 @@ public static class ProposalParsimonyStatusCommand
         var terminal = job.Status is not (JobStatus.Queued or JobStatus.WaitingForBaseline or JobStatus.Running);
         return new ProposalParsimonyJob(job.JobId, JobStatusJson.ToWire(job.Status), stage, job.CreatedUtc,
             terminal ? job.UpdatedUtc : null,
-            job.Status is JobStatus.Queued or JobStatus.WaitingForBaseline ? QueuedBehind(database, job) : null);
+            job.Status is JobStatus.Queued or JobStatus.WaitingForBaseline ? QueuedBehind(database, job) : null,
+            job.Status == JobStatus.Completed ? StageTimingsOf(job) : null);
+    }
+
+    private static IReadOnlyList<ParsimonyStageTiming>? StageTimingsOf(JobRecord job)
+    {
+        if (string.IsNullOrWhiteSpace(job.ResultJson)) return null;
+        try
+        {
+            return JsonSerializer.Deserialize<ParsimonyCandidateEvidenceResponse>(job.ResultJson,
+                MotifJson.CreateOptions())?.StageTimings;
+        }
+        catch (JsonException) { return null; }
     }
 
     private static string? QueuedBehind(MotifDatabase database, JobRecord job)

@@ -142,8 +142,11 @@ public sealed record ProposalParsimonyReason(string Code, string Text);
 /// <param name="QueuedUtc">When the job was queued.</param>
 /// <param name="FinishedUtc">When it reached a terminal status, or null.</param>
 /// <param name="QueuedBehind"><c>trial</c> or <c>parse</c> when other work holds the queue, otherwise null.</param>
+/// <param name="StageTimings">Wall time per stage of a finished candidate job, ending with <c>total</c>, or null.</param>
 public sealed record ProposalParsimonyJob(string JobId, string Status, JobStageProgress? Stage,
-    string QueuedUtc, string? FinishedUtc, string? QueuedBehind);
+    string QueuedUtc, string? FinishedUtc, string? QueuedBehind,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    IReadOnlyList<ParsimonyStageTiming>? StageTimings = null);
 
 /// <summary>What changed since a finished run.</summary>
 /// <param name="Reasons">Every input that differs, in a fixed order.</param>

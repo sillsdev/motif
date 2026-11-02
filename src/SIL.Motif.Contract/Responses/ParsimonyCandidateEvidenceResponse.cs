@@ -44,7 +44,9 @@ public sealed record ParsimonyCandidateEvidenceResponse(
     IReadOnlyList<ParsimonyCandidateFindingChange> FindingChanges,
     ParsimonyApprovedAnalysisPreservation ApprovedAnalysisPreservation,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    IReadOnlyList<ParsimonyCandidateMeasureResult>? MoreMeasures = null);
+    IReadOnlyList<ParsimonyCandidateMeasureResult>? MoreMeasures = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    IReadOnlyList<ParsimonyStageTiming>? StageTimings = null);
 
 /// <summary>One further measure of a group run: its paired Reports and finding changes.</summary>
 public sealed record ParsimonyCandidateMeasureResult(string MeasureId, ParsimonyReportResponse Before,

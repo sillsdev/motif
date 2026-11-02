@@ -137,22 +137,22 @@ public sealed class ParsimonyCandidateEvidenceBuilder
             var parserIdentity = EvidenceBundlePipeline.RemoveDigestPrefix(parserBefore);
             _publisher.CreateWorkingDirectory(beforeBundleId);
             _publisher.CreateWorkingDirectory(afterBundleId);
-            var prepared = await PrepareProjectStatesAsync(dryRunInput, candidateSource.PublishedDryRunJson, source,
-                Path.Combine(afterWorking, "project-copies"), input.ScopeBinding!, assessmentSource,
-                cancellationToken)
-                .ConfigureAwait(false);
+            var timer = new ParsimonyStageTimer();
+            var prepared = await timer.TimeAsync("states", null, () => PrepareProjectStatesAsync(dryRunInput,
+                candidateSource.PublishedDryRunJson, source, Path.Combine(afterWorking, "project-copies"),
+                input.ScopeBinding!, assessmentSource, cancellationToken)).ConfigureAwait(false);
             var stages = new ParsimonyStages(claim.PublishStageProgress, 4);
             var reused = input.RetirementExpectationTranslation is null
-                ? TryReuseBaselineSide(claim, claimToken, source.Token, input.ScopeBinding!, measureIds, stages,
-                    cancellationToken)
+                ? timer.Time("baseline-reuse", "baseline", () => TryReuseBaselineSide(claim, claimToken, source.Token,
+                    input.ScopeBinding!, measureIds, stages, cancellationToken))
                 : null;
             var baselineFacts = reused is not null ? null
                 : await BuildFactsAsync(prepared.BaselineProjectPath, source.Token, false, null,
-                    Path.Combine(beforeWorking, "facts"), claim, stages, "baseline", cancellationToken)
+                    Path.Combine(beforeWorking, "facts"), claim, stages, "baseline", timer, cancellationToken)
                     .ConfigureAwait(false);
             var candidateFacts = await BuildFactsAsync(prepared.CandidateProjectPath, source.Token, true,
                 prepared.DryRun.EffectDigest, Path.Combine(afterWorking, "facts"), claim, stages, "candidate",
-                cancellationToken)
+                timer, cancellationToken)
                 .ConfigureAwait(false);
             var beforeSchema = baselineFacts?.SchemaVersion ?? reused!.Bundle.GrammarFactsSchemaVersion;
             if (_pipeline.ParserIdentity(fresh: true) != parserBefore || beforeSchema != candidateFacts.SchemaVersion)
@@ -170,8 +170,9 @@ public sealed class ParsimonyCandidateEvidenceBuilder
             ParsimonyArtifactDigest? beforeEvidence = null;
             var beforeEvidencePath = Path.Combine(beforeWorking, "evidence.sqlite");
             if (baselineFacts is not null)
-                beforeEvidence = EvidenceWriter.Write(beforeEvidencePath, prepared.BaselineEvidence,
-                    baselineTokenJson, source.Token.BundleDigest, baselineFacts.ModelFingerprint);
+                beforeEvidence = timer.Time("evidence", "baseline", () => EvidenceWriter.Write(beforeEvidencePath,
+                    prepared.BaselineEvidence, baselineTokenJson, source.Token.BundleDigest,
+                    baselineFacts!.ModelFingerprint));
             ParserOverlayProjection parserOverlay;
             IReadOnlyList<ReportableAssessment> reportableAssessments;
             try
@@ -190,9 +191,9 @@ public sealed class ParsimonyCandidateEvidenceBuilder
             }
             var candidateEvidenceProjection = EvidenceBundlePipeline.WithParserOverlay(prepared.CandidateEvidence, parserOverlay);
             var afterEvidencePath = Path.Combine(afterWorking, "evidence.sqlite");
-            var afterEvidence = EvidenceWriter.Write(afterEvidencePath, candidateEvidenceProjection,
-                baselineTokenJson, source.Token.BundleDigest, candidateFacts.ModelFingerprint,
-                "candidate", candidateIdentity);
+            var afterEvidence = timer.Time("evidence", "candidate", () => EvidenceWriter.Write(afterEvidencePath,
+                candidateEvidenceProjection, baselineTokenJson, source.Token.BundleDigest,
+                candidateFacts.ModelFingerprint, "candidate", candidateIdentity));
 
             var afterMaterial = EvidenceBundlePipeline.MaterialKey(EvidenceBundlePipeline.ComparisonOrigin,
                 "candidate", source.Token, candidateFacts.ModelFingerprint, parserIdentity,
@@ -204,35 +205,38 @@ public sealed class ParsimonyCandidateEvidenceBuilder
                 var beforeMaterial = EvidenceBundlePipeline.MaterialKey(EvidenceBundlePipeline.ComparisonOrigin,
                     "baseline", source.Token, baselineFacts.ModelFingerprint, parserIdentity,
                     baselineFacts.SchemaVersion, beforeEvidence!.SchemaVersion, input.ScopeBinding!, [], null);
-                before = PrepareReport(beforeBundleId, beforeMaterial, source, baselineFacts, beforeEvidence,
-                    beforeEvidencePath, input.ScopeBinding!, measureIds, "baseline", null, [], [],
-                    input.RetirementExpectationTranslation,
-                    (staging, final) => (beforeStaging, beforeFinal) = (staging, final), cancellationToken);
+                before = timer.Time("report", "baseline", () => PrepareReport(beforeBundleId, beforeMaterial, source,
+                    baselineFacts!, beforeEvidence!, beforeEvidencePath, input.ScopeBinding!, measureIds, "baseline",
+                    null, [], [], input.RetirementExpectationTranslation,
+                    (staging, final) => (beforeStaging, beforeFinal) = (staging, final), cancellationToken));
             }
-            var after = PrepareReport(afterBundleId, afterMaterial, source, candidateFacts, afterEvidence,
-                afterEvidencePath, input.ScopeBinding!, measureIds, "candidate", candidateIdentity,
-                assessmentIds, reportableAssessments, input.RetirementExpectationTranslation,
-                (staging, final) => (afterStaging, afterFinal) = (staging, final), cancellationToken);
-            if (before is not null)
+            var after = timer.Time("report", "candidate", () => PrepareReport(afterBundleId, afterMaterial, source,
+                candidateFacts, afterEvidence, afterEvidencePath, input.ScopeBinding!, measureIds, "candidate",
+                candidateIdentity, assessmentIds, reportableAssessments, input.RetirementExpectationTranslation,
+                (staging, final) => (afterStaging, afterFinal) = (staging, final), cancellationToken));
+            timer.Time("publish", null, () =>
             {
-                beforeFinal = _publisher.Publish(before.StagingDirectory, before.Bundle.BundleId);
-                beforeStaging = null;
-            }
-            afterFinal = _publisher.Publish(after.StagingDirectory, after.Bundle.BundleId);
-            afterStaging = null;
+                if (before is not null)
+                {
+                    beforeFinal = _publisher.Publish(before.StagingDirectory, before.Bundle.BundleId);
+                    beforeStaging = null;
+                }
+                afterFinal = _publisher.Publish(after.StagingDirectory, after.Bundle.BundleId);
+                afterStaging = null;
 
-            if (before is not null)
-            {
-                _artifacts.Publish(before.Bundle, before.Report, cancellationToken,
-                    () => _publisher.BeforeStoreCommit(before.FinalDirectory),
-                    () => _publisher.AfterStoreCommit(before.FinalDirectory),
-                    requireCurrentBaseline: false, setCurrentBaseline: false, moreReports: before.MoreReports);
-                beforeFinal = null;
-            }
-            _artifacts.Publish(after.Bundle, after.Report, cancellationToken,
-                () => _publisher.BeforeStoreCommit(after.FinalDirectory),
-                () => _publisher.AfterStoreCommit(after.FinalDirectory), moreReports: after.MoreReports);
-            afterFinal = null;
+                if (before is not null)
+                {
+                    _artifacts.Publish(before.Bundle, before.Report, cancellationToken,
+                        () => _publisher.BeforeStoreCommit(before.FinalDirectory),
+                        () => _publisher.AfterStoreCommit(before.FinalDirectory),
+                        requireCurrentBaseline: false, setCurrentBaseline: false, moreReports: before.MoreReports);
+                    beforeFinal = null;
+                }
+                _artifacts.Publish(after.Bundle, after.Report, cancellationToken,
+                    () => _publisher.BeforeStoreCommit(after.FinalDirectory),
+                    () => _publisher.AfterStoreCommit(after.FinalDirectory), moreReports: after.MoreReports);
+                afterFinal = null;
+            });
             _ = _retention.Clean(_projectKey);
 
             var beforeResponse = before?.Response ?? reused!.Responses[0];
@@ -246,7 +250,7 @@ public sealed class ParsimonyCandidateEvidenceBuilder
                 beforeResponse, after.Response, CompareFindings(beforeResponse, after.Response),
                 CompareApprovedAnalyses(ApprovedTuples(prepared.BaselineEvidence),
                     ApprovedTuples(prepared.CandidateEvidence)),
-                MoreMeasureResults(measureIds, before, reused, after));
+                MoreMeasureResults(measureIds, before, reused, after), timer.Snapshot());
             return new JobOutcome(JobStatus.Completed, ResultJson: JsonSerializer.Serialize(response,
                 MotifJson.CreateOptions()));
         }
@@ -462,17 +466,15 @@ public sealed class ParsimonyCandidateEvidenceBuilder
 
     private async Task<FactsResult> BuildFactsAsync(string projectPath, BaselineToken token, bool candidate,
         string? dryRunEffectDigest, string outputDirectory, ClaimedJob claim, ParsimonyStages stages,
-        string inputName, CancellationToken cancellationToken)
+        string inputName, ParsimonyStageTimer timer, CancellationToken cancellationToken)
     {
         var snapshotPath = Path.Combine(outputDirectory, "grammar-snapshot.json");
         Directory.CreateDirectory(outputDirectory);
         var importPhase = stages.Enter("import", inputName);
         var importWait = claim.ObserveParserWait(importPhase);
-        var imported = await _invoker.RunAsync(new PanGlossRequest.Import(projectPath, snapshotPath)
-            {
-                OnAdmissionWait = importWait.Observe,
-            },
-            "parsimony-candidate-import", cancellationToken).ConfigureAwait(false);
+        var imported = await timer.TimeAsync("import", inputName, () => _invoker.RunAsync(
+            new PanGlossRequest.Import(projectPath, snapshotPath) { OnAdmissionWait = importWait.Observe },
+            "parsimony-candidate-import", cancellationToken)).ConfigureAwait(false);
         if (imported is not PanGlossOutcome.Completed)
             throw new PanGlossInvocationException(CategoryOf(imported), imported.Message);
         var contextJson = JsonSerializer.Serialize(new
@@ -486,17 +488,15 @@ public sealed class ParsimonyCandidateEvidenceBuilder
         var factsDirectory = Path.Combine(outputDirectory, "facts-output");
         var factsPhase = stages.Enter("facts", inputName);
         var factsWait = claim.ObserveParserWait(factsPhase);
-        var outcome = await _invoker.RunAsync(new PanGlossRequest.Facts(snapshotPath, contextJson, factsDirectory)
-            {
-                OnAdmissionWait = factsWait.Observe,
-            },
-            "parsimony-candidate-facts", cancellationToken).ConfigureAwait(false);
+        var outcome = await timer.TimeAsync("facts", inputName, () => _invoker.RunAsync(
+            new PanGlossRequest.Facts(snapshotPath, contextJson, factsDirectory) { OnAdmissionWait = factsWait.Observe },
+            "parsimony-candidate-facts", cancellationToken)).ConfigureAwait(false);
         if (outcome is not PanGlossOutcome.Completed completed || completed.Facts is null)
             throw new PanGlossInvocationException(CategoryOf(outcome), outcome.Message);
         using var lease = completed.FactsArtifactLease;
         var destination = Path.Combine(outputDirectory, "grammar-facts.sqlite");
         // The lease deletes the PanGloss output when it is released, so the file moves out; staging proves its digest.
-        File.Move(completed.Facts.Path, destination);
+        timer.Time("adopt", inputName, () => File.Move(completed.Facts.Path, destination));
         return new FactsResult(destination, completed.Facts.ModelFingerprint, completed.Facts.SchemaVersion,
             StripDigest(completed.Facts.OutputSha256));
     }

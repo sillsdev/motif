@@ -127,7 +127,9 @@ public sealed class ProposalParsimonyStatusTests : IDisposable
             "sha256:c", [], "sha256:e", "sha256:a", "sha256:s", "sha256:t", "sha256:j");
         return JsonSerializer.Serialize(new ParsimonyCandidateEvidenceResponse(1, first, binding,
             Report("baseline", first), Report("candidate", first), changes,
-            new ParsimonyApprovedAnalysisPreservation("preserved", 0, 0, []), more), Options);
+            new ParsimonyApprovedAnalysisPreservation("preserved", 0, 0, []), more,
+            StageTimings: [new ParsimonyStageTiming("facts", "candidate", 1200), new ParsimonyStageTiming("total", null, 9000)]),
+            Options);
     }
 
     [Fact]
@@ -232,6 +234,8 @@ public sealed class ProposalParsimonyStatusTests : IDisposable
         Assert.Equal(grammar.Changes.Select(change => change.MeasureId).Distinct().Count(), grammar.Changes.Count);
         Assert.Equal("bundle/candidate", grammar.Candidate!.AfterBundleId);
         Assert.Null(status.Stale);
+        Assert.Equal(["facts/candidate=1200", "total/=9000"],
+            status.Job!.StageTimings!.Select(t => $"{t.Stage}/{t.Side}={t.Milliseconds}"));
     }
 
     [Fact]
