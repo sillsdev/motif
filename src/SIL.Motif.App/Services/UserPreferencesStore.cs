@@ -161,6 +161,8 @@ public sealed class FileUserPreferencesStore : IUserPreferencesStore, IDisposabl
     private readonly TimeSpan? _saveDelay;
     private readonly Action? _beforeWriteProcessLock;
     private readonly List<Func<UserPreferences, UserPreferences>> _pending = [];
+    // Edits the session holds that no write has stored yet; the next good write replays them so they are not lost.
+    private readonly List<Func<UserPreferences, UserPreferences>> _unsaved = [];
     private readonly Timer? _timer;
     private UserPreferences _current = UserPreferences.Defaults;
     private PreferenceState _state;
@@ -264,25 +266,41 @@ public sealed class FileUserPreferencesStore : IUserPreferencesStore, IDisposabl
         // One writer at a time: a flush that arrives while a write is in flight waits, then drains what is left.
         lock (_writeGate)
         {
+            List<Func<UserPreferences, UserPreferences>> kept;
             List<Func<UserPreferences, UserPreferences>> edits;
             PreferenceState before;
             lock (_gate)
             {
                 if (_pending.Count == 0) return;
+                kept = [.. _unsaved];
                 edits = [.. _pending];
+                _unsaved.Clear();
                 _pending.Clear();
                 before = _state;
             }
 
-            var changed = WriteEdits(edits, before);
+            var changed = WriteEdits(kept, edits, before);
             if (changed) Changed?.Invoke(this, EventArgs.Empty);
         }
     }
 
-    private bool WriteEdits(List<Func<UserPreferences, UserPreferences>> edits, PreferenceState before)
+    // A kept edit that now fails validation is dropped, so it cannot block every later save.
+    private static UserPreferences Replay(UserPreferences start, List<Func<UserPreferences, UserPreferences>> kept)
+    {
+        foreach (var edit in kept)
+        {
+            try { start = Validate(edit(start)); }
+            catch (InvalidDataException) { }
+        }
+
+        return start;
+    }
+
+    private bool WriteEdits(List<Func<UserPreferences, UserPreferences>> kept,
+        List<Func<UserPreferences, UserPreferences>> edits, PreferenceState before)
     {
         UserPreferences Apply(UserPreferences start) =>
-            edits.Aggregate(start, (value, edit) => Validate(edit(value)));
+            edits.Aggregate(Replay(start, kept), (value, edit) => Validate(edit(value)));
         try
         {
             _beforeWriteProcessLock?.Invoke();
@@ -318,6 +336,9 @@ public sealed class FileUserPreferencesStore : IUserPreferencesStore, IDisposabl
             System.Diagnostics.Trace.TraceError("Motif could not save preferences to {0}: {1}", _path, exception);
             lock (_gate)
             {
+                // Only a file or lock failure says the edits are still good; a rejected value is not kept.
+                _unsaved.InsertRange(0, exception is TimeoutException || IsStorageException(exception)
+                    ? [.. kept, .. edits] : kept);
                 _state = PreferenceState.Unavailable;
                 _problem = UnavailableProblem;
             }
@@ -356,6 +377,7 @@ public sealed class FileUserPreferencesStore : IUserPreferencesStore, IDisposabl
         lock (_gate)
         {
             _pending.Clear();
+            _unsaved.Clear();
             try
             {
                 result = WithProcessLock(() =>
@@ -404,8 +426,9 @@ public sealed class FileUserPreferencesStore : IUserPreferencesStore, IDisposabl
                     return new PreferenceWriteResult(PreferenceWriteState.Refused, _problem);
                 }
 
-                var next = Validate(edit(latest.Preferences));
+                var next = Validate(edit(Replay(latest.Preferences, _unsaved)));
                 WriteFile(next);
+                _unsaved.Clear();
                 _current = next;
                 _state = PreferenceState.Ready;
                 _problem = null;
@@ -414,6 +437,7 @@ public sealed class FileUserPreferencesStore : IUserPreferencesStore, IDisposabl
         }
         catch (TimeoutException)
         {
+            _unsaved.Add(edit);
             _current = Validate(edit(prior));
             _state = PreferenceState.Unavailable;
             _problem = UnavailableProblem;
@@ -421,6 +445,7 @@ public sealed class FileUserPreferencesStore : IUserPreferencesStore, IDisposabl
         }
         catch (Exception exception) when (IsStorageException(exception))
         {
+            _unsaved.Add(edit);
             _current = Validate(edit(prior));
             _state = PreferenceState.Unavailable;
             _problem = UnavailableProblem;
