@@ -64,7 +64,7 @@ try {
     Assert-Equal $merged['Other.Project.Kept'] 8.0 'the second run refreshes its class'
     Assert-Equal $merged['This.Project.Old'] 2.5 'the first run survives the second'
 
-    # -Replace is the whole-suite rewrite: with T.B missing from the results it refuses and leaves the file alone.
+    # With T.B missing from the results, -Replace is refused and the file stays as it was.
     $before = Get-Content -LiteralPath $target -Raw
     $refused = $false
     try { & $tool -RepoRoot $root -ResultsDirectory (Join-Path $root 'results') -Target $target -Replace | Out-Null }
