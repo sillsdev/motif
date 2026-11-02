@@ -14,6 +14,9 @@ public static class RefusalFactNames
     /// <summary>The full path of a refused Motif store file, on a <see cref="RefusalCodes.StoreOtherVersion"/> refusal.</summary>
     public const string StorePath = "storePath";
 
+    /// <summary>The project file a refused store is registered to, on a <see cref="RefusalCodes.StoreOtherProject"/> refusal.</summary>
+    public const string RegisteredProjectPath = "registeredProjectPath";
+
     /// <summary>Fact key for the parser refusal code on a grammarcheck.not-run refusal.</summary>
     public const string LastParserRefusalCode = "lastParserRefusalCode";
 

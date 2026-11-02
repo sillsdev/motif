@@ -198,7 +198,7 @@ public sealed class CommandCatalogParityTests
         "trial.changes-changed", "trial.measurement-incomplete", "trial.nothing-pending",
         "inspect.invalid-request",
         "uses.invalid-request", "uses.no-assessment",
-        "store.inconsistent", "store.other-version", "store.unsupported",
+        "store.inconsistent", "store.other-project", "store.other-version", "store.unsupported",
         "texts.words-cancelled",
         "texts.evidence-changed", "texts.occurrence-not-found",
         "grammarcheck.cancelled", "grammarcheck.malformed-findings", "grammarcheck.unsupported-schema", "grammarcheck.parser-refused",

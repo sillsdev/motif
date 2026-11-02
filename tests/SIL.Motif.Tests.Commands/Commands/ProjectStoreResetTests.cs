@@ -202,6 +202,35 @@ public sealed class ProjectStoreResetTests : IDisposable
     }
 
     [Fact]
+    public void AProjectCopiedWithItsStoreIsToldWhichFileToDeleteAndTheStoreIsKept()
+    {
+        var original = Project("original");
+        Open(original);
+        var copyDirectory = Path.Combine(_root, "copy");
+        Directory.CreateDirectory(copyDirectory);
+        var copy = Path.Combine(copyDirectory, "original.fwdata");
+        File.Copy(original, copy);
+        var copiedStore = Path.Combine(copyDirectory, "original.motif.db");
+        File.Copy(StorePathOf(original), copiedStore);
+        var before = File.ReadAllBytes(copiedStore);
+
+        var outcome = ProjectStoreCommand.Run<string>(
+            copy, "1.0", (_, _) => CommandOutcome<string>.Success(string.Empty));
+
+        Assert.Equal(RefusalCodes.StoreOtherProject, outcome.Refusal!.Code);
+        Assert.Equal(FailureReason.Refused, outcome.Refusal.Reason);
+        Assert.Equal(copiedStore, outcome.Refusal.Facts[RefusalFactNames.StorePath]);
+        Assert.Equal(Path.GetFullPath(original), outcome.Refusal.Facts[RefusalFactNames.RegisteredProjectPath]);
+        Assert.Contains("original.motif.db", outcome.Refusal.Message);
+        Assert.Contains("delete", outcome.Refusal.Message);
+        Assert.Equal(before, File.ReadAllBytes(copiedStore));
+
+        File.Delete(copiedStore);
+        Assert.True(ProjectStoreCommand.Run<string>(
+            copy, "1.0", (_, _) => CommandOutcome<string>.Success(string.Empty)).Succeeded);
+    }
+
+    [Fact]
     public void AMissingProjectIsRefusedAndNothingIsCreatedOrDeleted()
     {
         var project = Path.Combine(_root, "absent.fwdata");

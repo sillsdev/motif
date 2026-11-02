@@ -72,7 +72,7 @@ public static class MotifStoreUpgrade
         if (expected is not null &&
             (!StringComparer.OrdinalIgnoreCase.Equals(expected.FullFwDataPath, metadata.Project.FullFwDataPath) ||
              !StringComparer.Ordinal.Equals(expected.FieldWorksProjectIdentity, metadata.Project.FieldWorksProjectIdentity)))
-            throw new InvalidDataException(StoreUpgradeMessages.Get("ProjectMismatch"));
+            throw StoreProjectMismatch.Create(source, metadata.Project.FullFwDataPath);
         Directory.CreateDirectory(Path.GetDirectoryName(output)!);
         var created = false;
         var temporaryReport = output + ".upgrade.json.tmp-" + Guid.NewGuid().ToString("N");

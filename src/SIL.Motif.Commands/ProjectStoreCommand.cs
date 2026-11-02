@@ -204,11 +204,27 @@ public static class ProjectStoreCommand
             ioCode, FailureReason.Refused, StorageFailureMessage, OperationFacts(fwDataPath, exception)),
         NotSupportedException => new Refusal(
             "store.unsupported", FailureReason.Refused, "Motif cannot use this project store.", OperationFacts(fwDataPath, exception)),
-        InvalidDataException => new Refusal(
-            "store.inconsistent", FailureReason.StoreInconsistent, "Motif could not read the project store.", OperationFacts(fwDataPath, exception)),
+        InvalidDataException => StoreProjectMismatch.TryRead(exception, out var storePath, out var registered)
+            ? OtherProjectRefusal(exception, storePath, registered, fwDataPath)
+            : new Refusal("store.inconsistent", FailureReason.StoreInconsistent, "Motif could not read the project store.",
+                OperationFacts(fwDataPath, exception)),
         _ => throw new ArgumentOutOfRangeException(nameof(exception), exception.GetType(),
             "The exception is not a recognized project-store failure."),
     };
+
+    // The store is not adopted: it names the original's Baseline files.
+    private static Refusal OtherProjectRefusal(
+        Exception exception, string storePath, string registeredProjectPath, string fwDataPath)
+    {
+        var facts = OperationFacts(fwDataPath, exception);
+        facts[RefusalFactNames.StorePath] = storePath;
+        facts[RefusalFactNames.RegisteredProjectPath] = registeredProjectPath;
+        return new Refusal("store.other-project", FailureReason.Refused,
+            $"The Motif file '{Path.GetFileName(storePath)}' beside this project belongs to the project " +
+            $"'{registeredProjectPath}', so it was copied or renamed with this one. Motif does not share it. " +
+            "To give this project its own, delete that file while Motif is closed (changes not yet applied in the copy are lost, " +
+            "the project itself is untouched), or copy the project again without its '.motif.db' file.", facts);
+    }
 
     internal static Dictionary<string, string> OperationFacts(string fwDataPath, Exception exception)
     {

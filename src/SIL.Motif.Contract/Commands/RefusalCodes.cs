@@ -204,6 +204,12 @@ public static class RefusalCodes
     /// </summary>
     public const string StoreOtherVersion = "store.other-version";
 
+    /// <summary>
+    /// The Motif store beside the project is registered to a different project, as when a project is copied
+    /// or renamed together with its store. Its facts carry <c>storePath</c> and <c>registeredProjectPath</c>.
+    /// </summary>
+    public const string StoreOtherProject = "store.other-project";
+
     public const string StoreUnsupported = "store.unsupported";
 
     public const string TextsWordsCancelled = "texts.words-cancelled";

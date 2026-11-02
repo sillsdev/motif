@@ -59,6 +59,10 @@
     "why": "The Dry Run did not complete, so the Draft has not been checked. Revise the Draft and run a new Dry Run.",
     "source": "Hand-written from the Motif MCP refusal advice."
   },
+  "store.other-project": {
+    "why": "The project was copied or renamed together with its Motif file, which belongs to the original. Tell the linguist; do not retry. The fix is to delete the '.motif.db' beside the copy while Motif is closed, or copy the project without it.",
+    "source": "Hand-written from the Motif store binding rules."
+  },
   "store.other-version": {
     "why": "Motif's data for this project was made by another version of Motif, so this version cannot read it. Tell the linguist; do not retry.",
     "source": "Hand-written from the Motif MCP refusal advice."

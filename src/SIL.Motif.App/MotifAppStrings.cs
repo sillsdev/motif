@@ -3199,6 +3199,7 @@ public static class MotifAppStrings
 
     public static string RefusalStatsTimedOut => Text("MotifApp.RefusalStatsTimedOut");
 
+    public static string RefusalStoreOtherProject => Text("MotifApp.RefusalStoreOtherProject");
     public static string RefusalStoreInconsistent => Text("MotifApp.RefusalStoreInconsistent");
 
     public static string RefusalStoreUnsupported => Text("MotifApp.RefusalStoreUnsupported");

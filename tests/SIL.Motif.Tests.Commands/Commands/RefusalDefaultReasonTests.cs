@@ -41,7 +41,6 @@ public sealed class RefusalDefaultReasonTests
         ["report.assessment-not-found"] = ("InvalidArgument+NotFound", PerSite),
         ["selection.empty"] = ("InvalidArgument+Refused", PerSite),
         ["stats.no-assessment"] = ("InvalidArgument+NotFound", PerSite),
-        ["store.unsupported"] = ("Refused+StoreInconsistent", PerSite),
     };
 
     // Codes the scan cannot resolve: the reason is computed, passed through a variable, or chosen in another layer.

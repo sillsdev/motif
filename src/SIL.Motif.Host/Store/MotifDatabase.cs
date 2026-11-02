@@ -119,7 +119,7 @@ public sealed class MotifDatabase : IDisposable
             BeforeOpen = connection =>
             {
                 var metadata = MotifSchema.ReadMetadata(connection);
-                EnsureLocatorMatches(metadata.Project, project);
+                EnsureLocatorMatches(metadata.Project, project, path);
                 if (workerVersion < metadata.MinimumWorkerVersion)
                     throw new MotifStoreVersionException(Path.GetFullPath(path),
                         $"Worker {workerVersion} is older than database minimum {metadata.MinimumWorkerVersion}.");
@@ -163,7 +163,7 @@ public sealed class MotifDatabase : IDisposable
         }
         descriptor.ValidateSchema(connection, transaction);
         var metadata = MotifSchema.ReadMetadata(connection, transaction);
-        EnsureLocatorMatches(metadata.Project, project);
+        EnsureLocatorMatches(metadata.Project, project, path);
         if (MotifProductVersion.Current < metadata.MinimumWorkerVersion)
             throw new NotSupportedException("The project database requires a newer worker.");
         return read(connection, transaction);
@@ -181,10 +181,10 @@ public sealed class MotifDatabase : IDisposable
         string path,
         Action<SqliteConnection> configure) => MotifSqliteStore.OpenConnectionForTesting(path, configure);
 
-    private static void EnsureLocatorMatches(ProjectLocator stored, ProjectLocator requested)
+    private static void EnsureLocatorMatches(ProjectLocator stored, ProjectLocator requested, string path)
     {
         if (!StringComparer.OrdinalIgnoreCase.Equals(stored.FullFwDataPath, requested.FullFwDataPath) ||
             !StringComparer.Ordinal.Equals(stored.FieldWorksProjectIdentity, requested.FieldWorksProjectIdentity))
-            throw new InvalidDataException("The database is registered to a different project locator.");
+            throw StoreProjectMismatch.Create(Path.GetFullPath(path), stored.FullFwDataPath);
     }
 }

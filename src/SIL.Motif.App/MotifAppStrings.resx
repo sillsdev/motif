@@ -6289,6 +6289,10 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <value>Motif's file for this project is damaged and cannot be used.</value>
     <comment>Sentence the window shows when the command refuses with code C.StoreInconsistent. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
+  <data name="MotifApp.RefusalStoreOtherProject" xml:space="preserve">
+    <value>Motif's file beside this project belongs to another project, so this project was probably copied or renamed. Delete the project's .motif.db file while Motif is closed to give it its own.</value>
+    <comment>Sentence the window shows when the command refuses with code C.StoreOtherProject. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
+  </data>
   <data name="MotifApp.RefusalStoreUnsupported" xml:space="preserve">
     <value>Motif's file for this project cannot be used by this version of Motif.</value>
     <comment>Sentence the window shows when the command refuses with code C.StoreUnsupported. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
