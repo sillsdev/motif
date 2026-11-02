@@ -1,6 +1,7 @@
 using SIL.Motif.Projection;
 using SIL.Motif.Host.Store;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Globalization;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Commands;
@@ -182,9 +183,6 @@ public static partial class ProposalCommands
         string? label = null;
         if (labelValue is { } supplied)
         {
-            if (verb != PhonologicalRuleComposerVerb)
-                throw new BatchEntryException(index, verb,
-                    $"Intent {index} ({verb}): 'as' labels are supported only for {PhonologicalRuleComposerVerb}.");
             if (supplied.ValueKind != JsonValueKind.String || !IsRulePlacementLabel(supplied.GetString()))
                 throw new BatchEntryException(index, verb,
                     $"Intent {index} ({verb}): 'as' must be a label matching [A-Za-z][A-Za-z0-9_-]{{0,20}}.");
@@ -279,4 +277,100 @@ public static partial class ProposalCommands
         using var document = JsonDocument.Parse(buffer.ToArray());
         return document.RootElement.Clone();
     }
+
+    /// <summary>Replaces each declared <c>@label</c> string with an earlier intent's created id.</summary>
+    private static JsonElement ResolveBatchLabelReferences(JsonElement authored,
+        IReadOnlyDictionary<string, IReadOnlyList<CreatedObject>> created,
+        IReadOnlyDictionary<string, CanonicalId> principals, IReadOnlyDictionary<string, int> declared, int intentIndex)
+    {
+        var node = JsonNode.Parse(authored.GetRawText());
+        var changed = false;
+        node = Walk(node);
+        if (!changed) return authored;
+        using var document = JsonDocument.Parse(node!.ToJsonString());
+        return document.RootElement.Clone();
+
+        JsonNode? Walk(JsonNode? current)
+        {
+            switch (current)
+            {
+                case JsonObject obj:
+                    foreach (var key in obj.Select(pair => pair.Key).ToArray())
+                        if (Walk(obj[key]) is { } replaced && !ReferenceEquals(replaced, obj[key])) obj[key] = replaced;
+                    return obj;
+                case JsonArray array:
+                    for (var i = 0; i < array.Count; i++)
+                        if (Walk(array[i]) is { } replaced && !ReferenceEquals(replaced, array[i])) array[i] = replaced;
+                    return array;
+                case JsonValue value when value.TryGetValue<string>(out var text) &&
+                    text.StartsWith('@') && ParseBatchReference(text) is { } reference &&
+                    declared.ContainsKey(reference.Label):
+                    changed = true;
+                    return JsonValue.Create(ResolveBatchReference(text, reference, created, principals, declared, intentIndex));
+                default:
+                    return current;
+            }
+        }
+    }
+
+    private static (string Label, string? Kind, int? Ordinal)? ParseBatchReference(string text)
+    {
+        var match = BatchReference.Match(text);
+        if (!match.Success) return null;
+        return (match.Groups["label"].Value, match.Groups["kind"].Success ? match.Groups["kind"].Value : null,
+            match.Groups["ordinal"].Success ? int.Parse(match.Groups["ordinal"].Value, CultureInfo.InvariantCulture) : null);
+    }
+
+    private static readonly System.Text.RegularExpressions.Regex BatchReference = new(
+        "^@(?<label>[A-Za-z][A-Za-z0-9_-]{0,20})(?::(?<kind>[A-Za-z]+)(?:#(?<ordinal>[1-9][0-9]{0,2}))?)?$",
+        System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+
+    private static string ResolveBatchReference(string text, (string Label, string? Kind, int? Ordinal) reference,
+        IReadOnlyDictionary<string, IReadOnlyList<CreatedObject>> created,
+        IReadOnlyDictionary<string, CanonicalId> principals, IReadOnlyDictionary<string, int> declared, int intentIndex)
+    {
+        var label = reference.Label;
+        if (declared[label] >= intentIndex)
+            throw new InvalidOperationException(
+                $"'{text}' is a forward reference: label '{label}' is declared by intent {declared[label]}, not an earlier one.");
+        if (!created.TryGetValue(label, out var objects) || objects.Count == 0)
+            throw new InvalidOperationException($"'{text}' names label '{label}', whose intent created no object.");
+        if (reference.Kind is null)
+        {
+            if (principals.TryGetValue(label, out var principal)) return principal.Value;
+            var distinct = objects.DistinctBy(item => item.Id).ToArray();
+            if (distinct.Length == 1) return distinct[0].Id;
+            throw new InvalidOperationException(
+                $"'{text}' is ambiguous: intent {declared[label]} created {distinct.Length} objects ({DescribeCreated(distinct)}). " +
+                $"Name one with '@{label}:<kind>', and '#<n>' for the nth of a kind.");
+        }
+        var matches = objects.DistinctBy(item => item.Id)
+            .Where(item => CreatedKindMatches(item.Kind, reference.Kind)).ToArray();
+        if (reference.Ordinal is { } ordinal)
+        {
+            if (ordinal > matches.Length)
+                throw new InvalidOperationException(
+                    $"'{text}' asks for object {ordinal} of kind '{reference.Kind}', but intent {declared[label]} created " +
+                    $"{matches.Length}. It created: {DescribeCreated(objects)}.");
+            return matches[ordinal - 1].Id;
+        }
+        if (matches.Length == 1) return matches[0].Id;
+        throw new InvalidOperationException(matches.Length == 0
+            ? $"'{text}' matches nothing: intent {declared[label]} created {DescribeCreated(objects)}."
+            : $"'{text}' matches {matches.Length} objects ({DescribeCreated(matches)}); use '@{label}:{reference.Kind}#<n>' to choose one.");
+    }
+
+    private static string CreatedKindName(string kind)
+    {
+        var name = kind[(kind.LastIndexOf('/') + 1)..];
+        return name.StartsWith("create", StringComparison.Ordinal) ? name["create".Length..] : name;
+    }
+
+    private static bool CreatedKindMatches(string kind, string wanted) =>
+        string.Equals(CreatedKindName(kind), wanted, StringComparison.OrdinalIgnoreCase) ||
+        (string.Equals(wanted, "msa", StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(CreatedKindName(kind), "MorphoSyntaxAnalyses", StringComparison.OrdinalIgnoreCase));
+
+    private static string DescribeCreated(IEnumerable<CreatedObject> objects) => string.Join(", ",
+        objects.Select(item => $"{CreatedKindName(item.Kind).ToLowerInvariant()} {item.Id}"));
 }

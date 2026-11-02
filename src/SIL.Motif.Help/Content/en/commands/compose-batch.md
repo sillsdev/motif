@@ -29,8 +29,10 @@ Phonological-rule entries may add an `as` label and a later rule may use `@label
 ]}
 ```
 
-Labels must match `[A-Za-z][A-Za-z0-9_-]{0,20}` (1–21 ASCII characters). They are case-sensitive, unique within the file, and supported only for phonological rules. Motif resolves them to the earlier rule's canonical ID before composing and declaring dependencies. They are not saved as intent data; names, citations, and IDs in other fields keep their normal meaning.
+Any entry may add an `as` label, and a later entry may write `@label` as a whole value anywhere in its intent in place of an ID that the labelled entry created. A phoneme entry labelled `ph`, for instance, lets a later natural class list `"members": ["@ph"]`. Without a kind `@label` means the one object the entry created that nothing else it created sits under (the new entry of an entry composer, the new phoneme); if the entry created several unrelated objects, or you want a dependent one, name the kind: `@label:msa` (or `@label:morphosyntaxanalyses`), `@label:senses`, `@label:codes`, the last word of the operation kind without `create`. `@label:msa#2` takes the second of that kind in creation order. A reference that matches nothing, more than one object, a label declared later, or an entry that created nothing is refused, and the refusal names the objects the entry did create.
 
-Intents run in file order, and each one sees the changes of the intents before it, so the Draft ends as it would after the same commands run one at a time. Other composers cannot refer to entities created earlier in the same file; put those intents in a second file and use the identities the first one reports. A refusal names the failing intent's position and command.
+Labels must match `[A-Za-z][A-Za-z0-9_-]{0,20}` (1–21 ASCII characters). They are case-sensitive and unique within the file. Motif resolves them to canonical IDs before composing and declaring dependencies. They are not saved as intent data. A string that is not a declared label, such as the text `@home`, is left as written; names, citations, and IDs in other fields keep their normal meaning.
+
+Intents run in file order, and each one sees the changes of the intents before it, so the Draft ends as it would after the same commands run one at a time. A refusal names the failing intent's position and command.
 
 There is no limit by intent or operation count.

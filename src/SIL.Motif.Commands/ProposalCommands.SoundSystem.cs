@@ -502,6 +502,8 @@ public static partial class ProposalCommands
                 var batchIdentities = new HashSet<(string Composer, string Identity)>();
                 var editedNaturalClasses = new HashSet<Guid>();
                 var availableLabels = new Dictionary<string, CanonicalId>(StringComparer.Ordinal);
+                var labelObjects = new Dictionary<string, IReadOnlyList<CreatedObject>>(StringComparer.Ordinal);
+                var labelRoots = new Dictionary<string, CanonicalId>(StringComparer.Ordinal);
                 var results = new List<(JsonElement Input, OperationEnvelope[] Added,
                     IReadOnlyList<ComposedRelatedObject>? Related)>();
                 for (var index = 0; index < steps.Count; index++)
@@ -509,9 +511,13 @@ public static partial class ProposalCommands
                     var step = steps[index];
                     try
                     {
-                        var normalized = step.Authored is { } raw && step.Verb is { } verb
-                            ? ResolveSoundObjectNames(cache, verb, raw)
+                        var labeled = step.Authored is { } unlabeled && declaredLabels.Count > 0 &&
+                            step.Verb != PhonologicalRuleComposerVerb
+                            ? ResolveBatchLabelReferences(unlabeled, labelObjects, labelRoots, declaredLabels, index)
                             : step.Authored;
+                        var normalized = labeled is { } raw && step.Verb is { } verb
+                            ? ResolveSoundObjectNames(cache, verb, raw)
+                            : labeled;
                         if (step.Verb == "compose-edit-natural-class" && normalized is { } naturalClassInput &&
                             naturalClassInput.ValueKind == JsonValueKind.Object &&
                             naturalClassInput.TryGetProperty("target", out var naturalClassTarget) &&
@@ -541,7 +547,7 @@ public static partial class ProposalCommands
                             (input, operations) = step.Build(cache, proposalId);
                         }
                         CanonicalId? labeledEntity = null;
-                        if (step.Label is { } labelForPrincipal)
+                        if (step.Label is { } labelForPrincipal && step.Verb == PhonologicalRuleComposerVerb)
                         {
                             var principals = operations.Where(operation =>
                                 operation.Kind == CreatePhonologicalRuleKind).ToArray();
@@ -605,8 +611,19 @@ public static partial class ProposalCommands
                         validated.AddRange(added);
                         batchAdded.AddRange(added);
                         results.Add((input, added, related));
-                        if (step.Label is { } label && labeledEntity is { } entityId)
-                            availableLabels.Add(label, entityId);
+                        if (step.Label is { } label)
+                        {
+                            // Without a kind, a label means the one object nothing else in the step was created under.
+                            var createdHere = added.Where(operation => operation.EntityId is not null).ToArray();
+                            var roots = createdHere.Where(operation => operation.Target is not { } under ||
+                                createdHere.All(other => other.EntityId!.Value != under)).Select(operation => operation.EntityId!.Value)
+                                .Distinct().ToArray();
+                            if (labeledEntity is { } entityId) availableLabels.Add(label, entityId);
+                            if (roots.Length == 1) labelRoots.Add(label, roots[0]);
+                            labelObjects.Add(label, CreatedObjectsForOperations(added.Select(operation =>
+                                new OperationSummary(operation.OperationId.Value, operation.Kind, operation.EntityId?.Value))
+                                .ToArray()));
+                        }
                     }
                     catch (Exception exception) when (exception is not ProjectWritingSystemsUnavailableException)
                     {

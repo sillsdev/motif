@@ -267,6 +267,76 @@ public sealed class ComposeBatchTests(PristineProjectFixture pristine)
         Assert.Equal(before, ReadDraft(path, "bad-citation").Operations.Count);
     }
 
+    private const string LabelledPhoneme =
+        "{'verb': 'compose-author-phoneme', 'as': 'ph', 'intent': {'name': 'o', 'representations': ['o']}}";
+
+    private static string Members(string reference, string name = "x") =>
+        "{'verb': 'compose-author-natural-class', 'intent': {'name': '" + name + "', 'abbreviation': '" + name +
+        "', 'members': ['" + reference + "']}}";
+
+    [Fact]
+    public void ALaterIntentNamesWhatAnEarlierOneCreatedByItsLabel()
+    {
+        using var cache = pristine.NewScratch();
+        var path = cache.ProjectId.Path;
+        cache.Dispose();
+        StartDraft(path, "labelled");
+
+        var batch = ProposalCommands.ComposeBatch(new(path, Version, "labelled", (
+            "{'intents': [" + LabelledPhoneme + "," + Members("@ph", "back") + "," + Members("@ph:phonemes#1", "back2") + "]}")
+            .Replace('\'', '"')));
+
+        Assert.True(batch.Succeeded, batch.Refusal?.Message);
+        var phoneme = batch.Value!.Intents[0].CreatedObjects.Single(created => created.Kind.EndsWith("/createPhonemes")).Id;
+        var draft = ReadDraft(path, "labelled");
+        Assert.Equal(2, draft.Operations.Count(operation => operation.Kind.EndsWith("/createNaturalClasses")));
+        var provenance = JsonSerializer.Serialize(draft.ComposerProvenance);
+        Assert.DoesNotContain("@ph", provenance);
+        Assert.Equal(2, System.Text.RegularExpressions.Regex.Matches(provenance, phoneme).Count);
+    }
+
+    [Theory]
+    [InlineData("later", "Intent 0", "forward reference")]
+    [InlineData("msa", "Intent 1", "matches nothing")]
+    [InlineData("phonemes#2", "Intent 1", "asks for object 2")]
+    [InlineData("duplicate", "Intent 1", "already declared")]
+    public void ALabelThatCannotBeResolvedIsRefusedByNameAndNothingIsAdded(string case_, string intent, string reason)
+    {
+        using var cache = pristine.NewScratch();
+        var path = cache.ProjectId.Path;
+        cache.Dispose();
+        StartDraft(path, "unresolved");
+        var before = ReadDraft(path, "unresolved").Operations.Count;
+        var entries = case_ switch
+        {
+            "later" => Members("@ph") + "," + LabelledPhoneme,
+            "duplicate" => LabelledPhoneme + "," + LabelledPhoneme.Replace("'o'", "'u'"),
+            _ => LabelledPhoneme + "," + Members("@ph:" + case_),
+        };
+
+        var refused = ProposalCommands.ComposeBatch(new(path, Version, "unresolved",
+            ("{'intents': [" + entries + "]}").Replace('\'', '"')));
+
+        Assert.Equal("draft.invalid", refused.Refusal?.Code);
+        Assert.Contains(intent, refused.Refusal!.Message);
+        Assert.Contains(reason, refused.Refusal.Message);
+        Assert.Equal(before, ReadDraft(path, "unresolved").Operations.Count);
+    }
+
+    [Fact]
+    public void ATextThatNamesNoDeclaredLabelIsLeftAsAuthored()
+    {
+        using var cache = pristine.NewScratch();
+        var path = cache.ProjectId.Path;
+        cache.Dispose();
+        StartDraft(path, "literal");
+
+        var batch = ProposalCommands.ComposeBatch(new(path, Version, "literal", BatchJson(
+            [("compose-author-phoneme", new { name = "@home", representations = new[] { "o" } })])));
+
+        Assert.True(batch.Succeeded, batch.Refusal?.Message);
+    }
+
     [Fact]
     public void EveryComposingVerbOutsideParsimonyCanRunInABatch()
     {

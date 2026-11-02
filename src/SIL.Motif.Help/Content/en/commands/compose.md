@@ -23,7 +23,7 @@ motif compose --project grammar.fwdata --proposal sounds --steps '[
 ]'
 ```
 
-Steps run in order and each one sees the changes of the steps before it. A phonological-rule step may add an `as` label, and a later rule may use `@label` in `placement.after` or `placement.before`. Labels match `[A-Za-z][A-Za-z0-9_-]{0,20}`, are unique within the call, and are supported only for `compose-author-phonological-rule`. Other composers cannot refer to an entity created earlier in the same call; use the identities an earlier call reported.
+Steps run in order and each one sees the changes of the steps before it. A step may add an `as` label, and a later step may write `@label` as a whole value in its intent in place of an ID the labelled step created (a rule may use it in `placement.after` or `placement.before`). `@label:kind` and `@label:kind#n` choose among several created objects, and a reference that matches none or more than one is refused with the objects the step did create; `compose-batch` describes the forms. Labels match `[A-Za-z][A-Za-z0-9_-]{0,20}` and are unique within the call.
 
 `--remove` takes operation ids, separated by commas, to take out of the Draft before the steps run, which is how a step replaces something it staged earlier:
 

@@ -427,6 +427,14 @@ one batch, and must match `[A-Za-z][A-Za-z0-9_-]{0,20}` (1–21 ASCII characters
 is recognized before `@label` syntax and is preserved as authored, including its prefix. Dependency
 matching uses the ID's GUID, so different valid prefixes still refer to the same entity. The ordinary
 placement adjacency and operation-slot rules still apply.
+
+Every other `compose-batch` and `compose` entry may carry an `as` label too, and a later entry may write
+`@label`, `@label:kind` or `@label:kind#n` as a whole string value anywhere in its intent. Motif resolves it
+to the canonical ID of an object the labelled entry created before composing: `@label` is the one object
+the entry created that nothing else it created sits under, `kind` is the last word of a creating operation
+kind without `create` (`msa` also names `MorphoSyntaxAnalyses`), and `#n` picks the nth of a kind in creation
+order. A label that matches nothing, several objects, a later entry, or an entry that created nothing is
+refused, naming the objects created. A string naming no declared label stays as authored.
 - **`ensure`** — tri-state idempotent creation for constructs whose durable identity is not a
   canonical GUID: absent → create; present and structurally compatible → reuse; present and
   incompatible → conflict. See [`ensure`](#ensure) below.

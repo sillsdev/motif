@@ -165,7 +165,6 @@ public sealed class PhonologicalRuleOrderConformanceTests(PristineProjectFixture
     [InlineData("unknown", 1, "Placement after label '@missing' is not declared in this batch")]
     [InlineData("forward", 0, "Placement after label '@r2' is a forward reference")]
     [InlineData("duplicate", 1, "label 'r1' is already declared")]
-    [InlineData("unsupported", 0, "labels are supported only")]
     [InlineData("empty", 0, "'as' must be a label")]
     [InlineData("malformed", 0, "'as' must be a label")]
     [InlineData("long-label", 0, "'as' must be a label")]
@@ -201,22 +200,6 @@ public sealed class PhonologicalRuleOrderConformanceTests(PristineProjectFixture
                 break;
             case "duplicate":
                 json = BatchJson(first, RuleBatchEntry(intents[1], ids, "r1"));
-                break;
-            case "unsupported":
-                failingVerb = "compose-author-phoneme";
-                json = new JsonObject
-                {
-                    ["intents"] = new JsonArray(new JsonObject
-                    {
-                        ["verb"] = failingVerb,
-                        ["as"] = "r1",
-                        ["intent"] = new JsonObject
-                        {
-                            ["name"] = "extra",
-                            ["representations"] = new JsonArray("x"),
-                        },
-                    }),
-                }.ToJsonString();
                 break;
             case "empty":
                 json = BatchJson(RuleBatchEntry(intents[0], ids, ""));
