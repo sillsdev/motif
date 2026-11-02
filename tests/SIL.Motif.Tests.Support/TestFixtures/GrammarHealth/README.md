@@ -30,6 +30,6 @@ The schema-v4 producer and error fixtures cover structured subject status and na
 
 The input is the synthetic `rust/crates/pg-fwdata/tests/data/fixture.fwdata` from PanGloss tag `v0.10.0`, prepared exactly as `pg-cli/src/tests.rs::fwdata_fixture_with_pattern_root` with no extra HC settings: repair the dangling environment reference, replace the ranna form with `t[V]*d`, and change that entry's MSA category to Noun. Prepared input SHA-256: `7076b021c908d0a9d8cc9b0945bb678b180c4e5744dc54da303e661887819ce0`. Capture command: `pangloss grammar-health fixture.fwdata --fw-project "release compatibility probe"`. Output SHA-256: `7acccd09b6dd4927b66bb222d8bcdf034d9487632ca2ca74d383e80e18f17fc0`. The recorded project name is synthetic.
 
-`import-warning-codes-v0.13.0.json` lists the 89 `ImportWarningCode` values of PanGloss tag `v0.13.0`, commit
-`d1b53f8bbdf426e7367f53fd154defad7a2aaf1d`, `rust/crates/pg-snapshot/src/warning.rs`. It holds codes only and no
+`import-warning-codes-v0.13.1.json` lists the 89 `ImportWarningCode` values of PanGloss tag `v0.13.1`, commit
+`240e73833a60896b01710828b211f33b10161738`, `rust/crates/pg-snapshot/src/warning.rs`. It holds codes only and no
 grammar data. `DroppedGrammarClassifierTests` checks that every code on Motif's dropped-grammar list is in it.
