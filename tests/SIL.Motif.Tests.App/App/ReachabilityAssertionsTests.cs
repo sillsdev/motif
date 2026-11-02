@@ -65,6 +65,37 @@ public sealed class ReachabilityAssertionsTests(AvaloniaHeadlessFixture avalonia
     }
 
     [Fact]
+    public void AScrollBarPageButtonSqueezedToASliverByAOnePixelOffsetIsNotAnUnreachableControl()
+    {
+        avalonia.Invoke(() =>
+        {
+            var scroll = new ScrollViewer
+            {
+                Width = 200, Height = 100, VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+                Content = new Border { Height = 163, Width = 150 },
+            };
+            var window = new MotifTestWindow { Content = scroll, Width = 300, Height = 200 };
+            try
+            {
+                window.Show();
+                PageScreenshots.Settle(window);
+                scroll.Offset = new Vector(0, 1);
+                PageScreenshots.Settle(window);
+                var pageUp = scroll.GetVisualDescendants().OfType<RepeatButton>()
+                    .Single(button => button.Name == "PART_PageUpButton");
+                Assert.InRange(pageUp.Bounds.Height, 0.01, ReachabilityAssertions.Tolerance);
+
+                var findings = ReachabilityAssertions.Inspect(window,
+                    new LayoutFindingContext("synthetic", "sliver", 100, "light"));
+
+                Assert.DoesNotContain(findings, item => item.Check == LayoutCheckNames.UnreachableControl);
+            }
+            finally { window.Close(); }
+        });
+    }
+
+    [Fact]
     public void AControlInsideAReachableHoverRevealRowIsReachable()
     {
         avalonia.Invoke(() =>

@@ -155,6 +155,9 @@ internal static class ReachabilityAssertions
         if (!control.IsEffectivelyVisible || !control.IsEffectivelyEnabled) return true;
         // Empty layout slots have no rendered hit target, as with inactive scrollbar buttons.
         if (control.Bounds.Width <= 0 || control.Bounds.Height <= 0) return true;
+        // A thumb a pixel from either end leaves its page button a sliver, the same empty slot.
+        if (control is RepeatButton { Name: "PART_PageUpButton" or "PART_PageDownButton" } &&
+            (control.Bounds.Width <= Tolerance || control.Bounds.Height <= Tolerance)) return true;
         var revealHost = control.GetVisualAncestors().OfType<Control>()
             .FirstOrDefault(ancestor => ancestor.Classes.Contains("hoverReveal"));
         if (revealHost is not null && !ReferenceEquals(revealHost, control))
