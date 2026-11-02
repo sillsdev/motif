@@ -135,7 +135,7 @@ public sealed class TextsProposalChangesTests
     }
 
     [Fact]
-    public async Task TheTodayViewKeepsTheTwoRunsComparisonAndTheProposalViewDrawsNothingOfItsOwn()
+    public async Task TheTodayViewKeepsTheTwoRunsComparisonAndTheProposalViewListsTheSameMovesAsThePair()
     {
         var (context, page) = await OnWhatChangedAsync(view: MarkupView.Today);
 
@@ -144,9 +144,44 @@ public sealed class TextsProposalChangesTests
         Assert.Null(page.Assess.Compare.HeldProposalMoves);
         context.ShowProposalView(MarkupView.Proposal);
         Assert.False(page.ShowWhatChangedContent);
-        Assert.False(page.ShowProposalMovesContent);
+        Assert.True(page.ShowProposalMovesContent);
         Assert.Equal(MotifAppStrings.TextsWhatChangedViewNote, page.ProposalNote);
+        var inProposal = page.ProposalChanges.ProposalMoves;
+        var move = Assert.Single(page.ProposalChanges.Moves);
+        Assert.Equal(["b"], move.Words.Select(word => word.Word));
+        Assert.Equal(1, page.Assess.Compare.MoveSets);
+
+        context.ShowProposalView(MarkupView.TodayToProposal);
+        Assert.True(page.ShowProposalMovesContent);
+        Assert.Same(inProposal, page.ProposalChanges.ProposalMoves);
+        Assert.Equal(1, page.Assess.Compare.MoveSets);
+        await context.LeaveProposalAsync(CancellationToken.None);
+        Assert.Null(page.Assess.Compare.HeldProposalMoves);
+    }
+
+    [Fact]
+    public async Task TheMatrixNoteInTheProposalViewSaysWhatChangedListsTheMoves()
+    {
+        var (_, page, _) = await TextsProposalMatrixTests.OpenedAsync();
+        page.Tab = TextsTab.Matrix;
+        page.Context.ShowProposalView(MarkupView.Proposal);
+
+        Assert.Equal(MotifAppStrings.TextsProposalViewNote, page.ProposalNote);
+        Assert.Contains("What Changed lists the words the Proposal moves", page.ProposalNote, StringComparison.Ordinal);
+        Assert.DoesNotContain("nothing to show", page.ProposalNote, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task TheProposalViewWithoutItsSideListsNoMovesAndMakesNone()
+    {
+        var reads = new TextsProposalMatrixTests.Reads { Behave = _ => throw new InvalidOperationException("cannot read") };
+        var (_, page) = await OnWhatChangedAsync(reads, MarkupView.Proposal);
+
+        Assert.Null(page.Assess.Compare.ProposalWordsMatch);
+        Assert.False(page.ShowProposalMovesContent);
+        Assert.False(page.ShowWhatChangedContent);
         Assert.Equal(0, page.Assess.Compare.MoveSets);
+        Assert.Null(page.ProposalChanges.ProposalMoves);
     }
 
     [Fact]

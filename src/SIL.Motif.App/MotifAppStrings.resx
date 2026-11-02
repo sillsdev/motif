@@ -8764,7 +8764,7 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <comment>Note on the Texts page's Matrix tab in the Today to Proposal view when the Trial's words are not the words in today's matrix.</comment>
   </data>
   <data name="MotifApp.TextsProposalViewNote" xml:space="preserve">
-    <value>Each cell, row and column reads the words with this Proposal. A chosen cell lists the words the Proposal puts in it that today's matrix also has, with their FieldWorks analyses and what the Proposal's try made of them; a word only the Proposal's try measured is counted but not listed, and the list's heading says how many. The places under a cell are the Proposal's; today's parse is left to the Today view. Lists read the Proposal's counts too; What Changed compares today with the Proposal, so it has nothing to show in this view.</value>
+    <value>Each cell, row and column reads the words with this Proposal. A chosen cell lists the words the Proposal puts in it that today's matrix also has, with their FieldWorks analyses and what the Proposal's try made of them; a word only the Proposal's try measured is counted but not listed, and the list's heading says how many. The places under a cell are the Proposal's; today's parse is left to the Today view. Lists read the Proposal's counts too, and What Changed lists the words the Proposal moves from the cells they are in today.</value>
     <comment>Note on the Texts page's Matrix tab in the Proposal view.</comment>
   </data>
   <data name="MotifApp.TextsProposalWordCardsNote" xml:space="preserve">
@@ -8908,8 +8908,8 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <comment>Note on the Texts page's What Changed tab in the Today to Proposal view.</comment>
   </data>
   <data name="MotifApp.TextsWhatChangedViewNote" xml:space="preserve">
-    <value>What Changed compares today with this Proposal, so it has nothing to show for the Proposal alone. Choose Today → Proposal to see the words it moves; the Proposal's own cells are on the Matrix and Lists tabs.</value>
-    <comment>Note on the Texts page's What Changed tab in the Proposal view, where it draws nothing.</comment>
+    <value>These are the same moves as in Today → Proposal: each is the cell a word is in today and the cell the Proposal puts it in. Only words that today's matrix and the Proposal's try both have are compared; the words only one side has are counted under the summary and are never listed as moved. The Proposal's own cells are on the Matrix and Lists tabs.</value>
+    <comment>Note on the Texts page's What Changed tab in the Proposal view, which lists the words the Proposal moves as the pair does.</comment>
   </data>
   <data name="MotifApp.TextsListChipProposalNoneAccessibleNameFormat" xml:space="preserve">
     <value>Open the {0} word list: this Proposal has no count for it</value>

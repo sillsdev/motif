@@ -291,8 +291,8 @@ matrix are the Proposal's in the Proposal view, where a Trial word today's matri
 carry a With This Proposal column in the pair; the places under a cell follow the same choice; a Moved By This Proposal chip narrows the words to those the Proposal puts in a different cell than today, over the words both sides have, and is dropped with the Proposal;
 the Lists tab reads each list's words and places the same way, and What Changed in the pair lists the words that
 moved from one cell today to another with the Proposal, over the words both sides have, counting the rest and
-holding only positions that go when the Proposal does; in the Proposal view it has nothing to show, since a move
-needs both sides. Choosing a view is
+holding only positions that go when the Proposal does; the Proposal view lists the same moves, since a move is a
+word's cell today and its cell with the Proposal. Choosing a view is
 not an evidence change, so no page reloads, re-reads or re-applies for it, and the choice comes back when a
 following page is shown again. Texts, Warnings and Timing each keep a delta badge beside their sidebar entry (its tooltip and accessible name say what it counts) while a
 Proposal is open, from numbers the page has already read: the net change in the Same column's words, the findings gained or lost

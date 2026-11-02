@@ -149,10 +149,10 @@ public sealed partial class TextsPageModel : PageModel
     /// <summary>Whether the Lists tab draws, in every view of the Proposal bar.</summary>
     public bool ShowListsContent => ShowLists && ShowsTabContent;
 
-    /// <summary>Whether the What Changed tab draws the comparison of the last two runs: not in the Proposal view, nor the pair.</summary>
+    /// <summary>Whether the What Changed tab draws the comparison of the last two runs: not where it lists the Proposal's moves.</summary>
     public bool ShowWhatChangedContent => ShowWhatChanged && ShowsTabContent && !ShowsProposalMoves;
 
-    /// <summary>Whether the What Changed tab draws the words the open Proposal moves, in the pair view with its side held.</summary>
+    /// <summary>Whether the What Changed tab draws the words the open Proposal moves, in the pair and Proposal views with its side held.</summary>
     public bool ShowProposalMovesContent => ShowWhatChanged && ShowsProposalMoves;
 
     public bool ShowTextReader => AnalyzeView == AnalyzeTextsView.TextReader;

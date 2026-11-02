@@ -266,7 +266,7 @@ public sealed class TextsProposalMatrixTests
     }
 
     [Fact]
-    public async Task TheListsTabDrawsInEveryViewAndWhatChangedDrawsNothingOfItsOwnInTheProposalView()
+    public async Task TheListsTabDrawsInEveryViewAndWhatChangedListsTheMovesInThePairAndTheProposalView()
     {
         var (context, page, _) = await OpenedAsync();
         page.Tab = TextsTab.Lists;
@@ -276,7 +276,7 @@ public sealed class TextsProposalMatrixTests
         Assert.Equal(MotifAppStrings.TextsListsViewNote, page.ProposalNote);
         page.Tab = TextsTab.WhatChanged;
         Assert.False(page.ShowWhatChangedContent);
-        Assert.False(page.ShowProposalMovesContent);
+        Assert.True(page.ShowProposalMovesContent);
         Assert.Equal(MotifAppStrings.TextsWhatChangedViewNote, page.ProposalNote);
         context.ShowProposalView(MarkupView.TodayToProposal);
         Assert.False(page.ShowWhatChangedContent);

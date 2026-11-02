@@ -29,9 +29,9 @@ public sealed partial class TextsPageModel
 
     private bool OffToday => Context.Lens is not null && ProposalViewScope.ViewOf(Context) != MarkupView.Today;
 
-    /// <summary>Whether the tab's content draws: What Changed compares two sides, so the Proposal view has nothing of its own.</summary>
+    /// <summary>Whether the tab's content draws: What Changed compares two sides, so the Proposal view has nothing without its side.</summary>
     public bool ShowsTabContent => !(Context.Lens is not null && ProposalViewScope.ViewOf(Context) == MarkupView.Proposal &&
-        Tab == TextsTab.WhatChanged);
+        Tab == TextsTab.WhatChanged && !ShowsProposalMoves);
 
     /// <summary>The note saying what the tab pairs, what stays today's and why the Proposal may have nothing to show.</summary>
     public string? ProposalNote => Tab switch

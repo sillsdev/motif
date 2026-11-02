@@ -90,7 +90,7 @@ public sealed class TextsProposalTabsWindowTests
     }
 
     [Fact]
-    public void WhatChangedListsTheMovesInThePairAndOnlyANoteInTheProposalView()
+    public void WhatChangedListsTheSameMovesInThePairAndTheProposalViewAndTheTwoRunsInToday()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
@@ -103,12 +103,16 @@ public sealed class TextsProposalTabsWindowTests
                 Assert.True(Part(window, "ProposalMovesHost").IsEffectivelyVisible);
                 Assert.False(Part(window, "DifferenceHost").IsEffectivelyVisible);
                 Assert.True(page.ProposalChanges.MovedCount > 0);
-                Assert.NotEmpty(Texts(Part(window, "ProposalMovesHost")));
+                var pairMoves = Texts(Part(window, "ProposalMovesHost")).ToArray();
+                Assert.NotEmpty(pairMoves);
+                var sets = workspace.Assess.Compare.MoveSets;
 
                 workspace.Context.ShowProposalView(MarkupView.Proposal);
                 PageScreenshots.Settle(window);
-                Assert.False(Part(window, "ProposalMovesHost").IsEffectivelyVisible);
+                Assert.True(Part(window, "ProposalMovesHost").IsEffectivelyVisible);
                 Assert.False(Part(window, "DifferenceHost").IsEffectivelyVisible);
+                Assert.Equal(pairMoves, Texts(Part(window, "ProposalMovesHost")).ToArray());
+                Assert.Equal(sets, workspace.Assess.Compare.MoveSets);
                 Assert.Equal(MotifAppStrings.TextsWhatChangedViewNote, page.ProposalNote);
                 Assert.Contains(Texts(window), text => text == MotifAppStrings.TextsWhatChangedViewNote);
 
