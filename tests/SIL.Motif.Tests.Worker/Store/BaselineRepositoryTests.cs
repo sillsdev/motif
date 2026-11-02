@@ -172,6 +172,23 @@ public sealed class BaselineRepositoryTests : IDisposable
     }
 
     [Fact]
+    public void ARecaptureOfIdenticalBytesWithAnOlderSaveTimeKeepsTheNewerStamp()
+    {
+        using var database = MotifDatabase.OpenOwned(Path.Combine(_root, "older.motif.db"), Project("older"),
+            MotifSchema.CurrentSchema, new Version(1, 0));
+        var repository = new BaselineRepository(database);
+        var publication = Publication("older", "sha256:" + new string('a', 64));
+        repository.Record("workspace", publication, DateTimeOffset.Parse("2026-08-23T12:00:00Z"),
+            DateTimeOffset.Parse("2026-08-23T11:00:00Z"), TestTextWords.Empty);
+
+        repository.Record("workspace", publication, DateTimeOffset.Parse("2026-08-23T13:00:00Z"),
+            DateTimeOffset.Parse("2026-08-23T10:00:00Z"), TestTextWords.Empty);
+
+        Assert.Equal(DateTimeOffset.Parse("2026-08-23T11:00:00Z"),
+            repository.GetCurrent("workspace")!.SourceLastWriteUtc);
+    }
+
+    [Fact]
     public void GetCurrentEvidenceReturnsTheCurrentBaselineAndStoredSummary()
     {
         using var database = OpenDatabase("evidence");

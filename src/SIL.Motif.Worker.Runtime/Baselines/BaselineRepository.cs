@@ -594,12 +594,12 @@ public sealed class BaselineRepository
             """;
         AddParameters(command, projectKey, publication, publishedUtc, sourceLastWriteUtc);
         command.ExecuteNonQuery();
-        // The same bytes saved again keep the row, but not the old stamp: that would refuse every Dry Run for good.
+        // Identical bytes saved again take the newer save time, or Dry Run stays refused; an older time never wins.
         using (var restamp = connection.CreateCommand())
         {
             restamp.Transaction = transaction;
             restamp.CommandText = "UPDATE Baselines SET SourceLastWriteUtc = $sourceLastWrite " +
-                "WHERE ProjectKey = $project AND BundleDigest = $bundle AND SourceLastWriteUtc <> $sourceLastWrite;";
+                "WHERE ProjectKey = $project AND BundleDigest = $bundle AND SourceLastWriteUtc < $sourceLastWrite;";
             restamp.Parameters.AddWithValue("$project", projectKey);
             restamp.Parameters.AddWithValue("$bundle", publication.Token.BundleDigest);
             restamp.Parameters.AddWithValue("$sourceLastWrite", sourceLastWriteUtc.ToString("O", CultureInfo.InvariantCulture));
