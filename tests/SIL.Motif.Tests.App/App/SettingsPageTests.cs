@@ -530,6 +530,84 @@ public sealed class SettingsPageTests
         }, TimeSpan.FromMinutes(2));
     }
 
+    [Theory]
+    [InlineData("100000.5")]
+    [InlineData("100000000000000000000")]
+    public void TickingAndUntickingNoStepLimitNeverPutsARefusedStepInTheSharedSelection(string typed)
+    {
+        var refused = decimal.Parse(typed, System.Globalization.CultureInfo.InvariantCulture);
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, frame) = await OpenWithOneTextChosen(_ => { });
+            try
+            {
+                var settings = SettingsTestAccess.Model(frame);
+                workspace.CurrentPage = WorkspacePage.Settings;
+                settings.OpenGroup(Group.Parsing);
+                var savedStep = workspace.Selection.PerWordParserWorkLimit;
+                var canAssess = workspace.Selection.CanAssess;
+
+                settings.ParserWorkLimitValue = refused;
+                Assert.NotNull(await settings.CommitParsingLimitsAsync());
+                settings.IsNoParserWorkLimit = true;
+                await settings.CommitParsingLimitsAsync();
+                settings.IsNoParserWorkLimit = false;
+                await settings.CommitParsingLimitsAsync();
+
+                Assert.Equal(savedStep, workspace.Selection.PerWordParserWorkLimit);
+                Assert.Null(workspace.Selection.ParserWorkLimitValidationMessage);
+                Assert.Equal(canAssess, workspace.Selection.CanAssess);
+                Assert.Equal(refused, settings.ParserWorkLimitValue);
+                Assert.True(settings.HasParserWorkLimitRefusal);
+
+                workspace.CurrentPage = WorkspacePage.Overview;
+                Assert.Equal(savedStep, settings.ParserWorkLimitValue);
+                Assert.Equal(canAssess, workspace.Selection.CanAssess);
+                Assert.Null(await settings.UseAllTextsAsync());
+            }
+            finally
+            {
+                frame.Close();
+                await workspace.DisposeAsync();
+            }
+        }, TimeSpan.FromMinutes(2));
+    }
+
+    [Fact]
+    public void ARefusedAssessBudgetLeavesANoStepLimitToggleOutOfTheSharedSelection()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            FakeCommandClient? fake = null;
+            var (workspace, frame) = await OpenWithOneTextChosen(client => fake = client);
+            try
+            {
+                var settings = SettingsTestAccess.Model(frame);
+                workspace.CurrentPage = WorkspacePage.Settings;
+                settings.OpenGroup(Group.Parsing);
+                var saves = fake!.SetSelectionLimitsRequests.Count;
+
+                settings.IsNoParserWorkLimit = true;
+                settings.AssessBudgetSeconds = 5m;
+                Assert.NotNull(await settings.CommitParsingLimitsAsync());
+
+                Assert.True(settings.IsNoParserWorkLimit);
+                Assert.False(workspace.Selection.PerWordParserWorkLimitUnbounded);
+                Assert.Equal(ParserWorkLimit.Default, workspace.Selection.BuildRequest().PerWordParserWorkLimit);
+                Assert.Equal(saves, fake.SetSelectionLimitsRequests.Count);
+
+                workspace.CurrentPage = WorkspacePage.Overview;
+                Assert.False(settings.IsNoParserWorkLimit);
+                Assert.False(workspace.Selection.PerWordParserWorkLimitUnbounded);
+            }
+            finally
+            {
+                frame.Close();
+                await workspace.DisposeAsync();
+            }
+        }, TimeSpan.FromMinutes(2));
+    }
+
     [Fact]
     public void EscapeRestoresTheLastSavedLimitAndTheTypedTextIsGone()
     {

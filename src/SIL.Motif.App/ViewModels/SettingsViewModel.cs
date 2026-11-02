@@ -170,6 +170,8 @@ internal sealed partial class SettingsViewModel : ObservableObject
     private bool _keepsParserWorkLimit;
     private decimal? _keptParserWorkLimit;
     private bool _keepsTimeLimit;
+    private bool _keepsNoParserWorkLimit;
+    private bool _keptNoParserWorkLimit;
     private decimal? _keptTimeLimit;
     private bool _suppressPreferenceWrites;
 
@@ -352,10 +354,16 @@ internal sealed partial class SettingsViewModel : ObservableObject
     public bool IsTimeLimitEnabled => HasProject && HasSavedSelection && !IsNoParserWorkLimit;
     public bool IsNoParserWorkLimit
     {
-        get => _workspace.Selection.PerWordParserWorkLimitUnbounded;
+        get => _keepsNoParserWorkLimit ? _keptNoParserWorkLimit : _workspace.Selection.PerWordParserWorkLimitUnbounded;
         set
         {
-            if (_workspace.Selection.PerWordParserWorkLimitUnbounded == value) return;
+            var hadKeptValue = _keepsNoParserWorkLimit;
+            _keepsNoParserWorkLimit = false;
+            if (_workspace.Selection.PerWordParserWorkLimitUnbounded == value)
+            {
+                if (hadKeptValue) NotifyKeptLimitsChanged();
+                return;
+            }
             if (value)
             {
                 _parserWorkLimitBeforeNoStep = ParserWorkLimitValue ?? _lastGoodParserWorkLimit ??
@@ -371,8 +379,10 @@ internal sealed partial class SettingsViewModel : ObservableObject
             else
             {
                 var timeLimitToRestore = _timeLimitBeforeNoStep;
-                _workspace.Selection.PerWordParserWorkLimit = _parserWorkLimitBeforeNoStep ?? _lastGoodParserWorkLimit ??
-                    _workspace.Context.Setup?.ParserWorkLimitValue ?? ParserWorkLimit.DefaultWork;
+                var stepToRestore = _parserWorkLimitBeforeNoStep;
+                _workspace.Selection.PerWordParserWorkLimit = (ParserWorkLimitIsAcceptable(stepToRestore) ? stepToRestore : null) ??
+                    _lastGoodParserWorkLimit ?? _workspace.Context.Setup?.ParserWorkLimitValue ?? ParserWorkLimit.DefaultWork;
+                if (stepToRestore is not null && !ParserWorkLimitIsAcceptable(stepToRestore)) ParserWorkLimitValue = stepToRestore;
                 _timeLimitBeforeNoStep = null;
                 _parserWorkLimitBeforeNoStep = null;
                 if (timeLimitToRestore is > 0)
@@ -461,6 +471,8 @@ internal sealed partial class SettingsViewModel : ObservableObject
     {
         OnPropertyChanged(nameof(ParserWorkLimitValue));
         OnPropertyChanged(nameof(TimeLimitSeconds));
+        OnPropertyChanged(nameof(IsNoParserWorkLimit));
+        OnPropertyChanged(nameof(IsTimeLimitEnabled));
         OnPropertyChanged(nameof(ParserWorkLimitRefusal));
         OnPropertyChanged(nameof(HasParserWorkLimitRefusal));
         OnPropertyChanged(nameof(HasTimeLimitRefusal));
@@ -471,12 +483,13 @@ internal sealed partial class SettingsViewModel : ObservableObject
     // A refused commit moves typed limits back to their fields, so the Selection holds only saved ones.
     private void KeepUnsavedLimits()
     {
-        if (IsNoParserWorkLimit != _lastGoodNoParserWorkLimit) return;
+        var noStep = IsNoParserWorkLimit;
         var step = ParserWorkLimitValue;
         var time = TimeLimitSeconds;
         _updatingEstimate = true;
         try
         {
+            _workspace.Selection.PerWordParserWorkLimitUnbounded = _lastGoodNoParserWorkLimit;
             _workspace.Selection.PerWordParserWorkLimit = _lastGoodParserWorkLimit;
             _workspace.Selection.PerWordTimeLimitSeconds = _lastGoodTimeLimitSeconds;
         }
@@ -485,16 +498,18 @@ internal sealed partial class SettingsViewModel : ObservableObject
             _updatingEstimate = false;
         }
         _workspace.Context.Setup?.SyncParsingLimitsFromSelection();
-        _keepsParserWorkLimit = step != _lastGoodParserWorkLimit;
+        _keepsNoParserWorkLimit = noStep != _lastGoodNoParserWorkLimit;
+        _keptNoParserWorkLimit = noStep;
+        _keepsParserWorkLimit = !noStep && step != _lastGoodParserWorkLimit;
         _keptParserWorkLimit = step;
-        _keepsTimeLimit = time != _lastGoodTimeLimitSeconds;
+        _keepsTimeLimit = !noStep && time != _lastGoodTimeLimitSeconds;
         _keptTimeLimit = time;
         NotifyKeptLimitsChanged();
     }
 
     private void DiscardRefusedLimits()
     {
-        if (_keepsParserWorkLimit || _keepsTimeLimit || HasAssessBudgetRefusal) CancelParsingLimitEdit();
+        if (_keepsParserWorkLimit || _keepsTimeLimit || _keepsNoParserWorkLimit || HasAssessBudgetRefusal) CancelParsingLimitEdit();
     }
 
     /// <summary>Whether the full shortcut list is open; the rows are built only when it is.</summary>
@@ -778,6 +793,8 @@ internal sealed partial class SettingsViewModel : ObservableObject
     public void CancelParsingLimitEdit()
     {
         _timeLimitBeforeNoStep = null;
+        _parserWorkLimitBeforeNoStep = null;
+        _keepsNoParserWorkLimit = false;
         AssessBudgetSeconds = _lastGoodAssessBudgetSeconds;
         _workspace.Selection.PerWordParserWorkLimitUnbounded = _lastGoodNoParserWorkLimit;
         _workspace.Selection.PerWordParserWorkLimit = _lastGoodParserWorkLimit;
@@ -800,6 +817,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
         else _lastGoodTimeLimitSeconds = null;
         _keepsParserWorkLimit = false;
         _keepsTimeLimit = false;
+        _keepsNoParserWorkLimit = false;
         _parserWorkLimitRefusal = string.Empty;
         TimeLimitRefusal = string.Empty;
         AssessBudgetRefusal = string.Empty;
