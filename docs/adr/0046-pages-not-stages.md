@@ -105,3 +105,5 @@ The later decision adds that mode and review marks without making a mark permiss
 
 [ADR 0061](0061-proposal-mode-is-a-lens-over-one-set-of-pages.md) amends decision 2 by defining stored Looked at
 marks without a Decisions table, and decision 3 by defining Proposal mode and the CLI names for its Trial evidence.
+ADR 0061 also makes Proposal a window word (the Proposals page, Open a Proposal, Proposal mode), so decision 3's
+note that the word Proposal never appears on screen no longer holds.

@@ -310,13 +310,14 @@ they already hold, so selection, scroll position and realized containers survive
 large lists stay on a virtualizing `ListBox` *(research-2)*.
 
 Sidebar badges in Proposal mode carry a small purple delta beside the page label, set by each page from its pair:
-Texts "+1" (words that moved to Same), Timing "+2%", Warnings "−2", Review changes "4". `PageViewModel` gains
+Texts "+1" (net more words Same), Timing "+2%", Warnings "−2", Review changes "4". `PageViewModel` gains
 `DeltaBadge` next to `Badge`; the sidebar template shows it with `Classes="proposalDelta"`.
 
 The Proposal view's word list on Texts has no ticks, bulk buttons (Parse Again, Add as Unknown, Incorrect spelling),
-PanGloss, Meaning or Warnings columns, or shared-morphemes block. Those are facts about today's words, which a Trial
+Opinion, PanGloss, Meaning or Warnings columns, or shared-morphemes block. Those are facts about today's words, which a Trial
 does not hold, so the Proposal view would show today's values under a Proposal heading; ticks and bulk actions stay in
-Today. The Today and pair views keep them. The Texts delta badge is the net change in the Same column's words
+Today. The Today view keeps all of them; the pair keeps the ticks, bulk buttons and columns, and shows the
+shared-morphemes block only when the Trial covers other words. The Texts delta badge is the net change in the Same column's words
 (the Proposal's Same words less today's), not a count of the words that moved.
 
 ### 5.5 The seam test
