@@ -252,7 +252,7 @@
                               AutomationProperties.Name="{Binding Items, StringFormat='Ask about {0}'}"
                               AutomationProperties.AutomationId="{Binding AskAutomationId}" />
                     </StackPanel>
-                    <Button Grid.Column="5" Classes="denseTableMenu" Content="⋯" IsTabStop="True"
+                    <Button Grid.Column="5" Classes="denseTableMenu" Content="{x:Static app:MotifAppStrings.MoreActionsGlyph}" IsTabStop="True"
                             AutomationProperties.Name="{Binding Items, StringFormat='Actions for {0}'}"
                             AutomationProperties.AutomationId="{Binding ActionsAutomationId}">
                       <Button.Flyout>
@@ -353,7 +353,7 @@
                               AutomationProperties.Name="{Binding Title, StringFormat='Return {0} to Active'}"
                               AutomationProperties.AutomationId="{Binding ReturnAutomationId}" />
                     </StackPanel>
-                    <Button Grid.Column="5" Classes="denseTableMenu" Content="⋯" IsTabStop="True"
+                    <Button Grid.Column="5" Classes="denseTableMenu" Content="{x:Static app:MotifAppStrings.MoreActionsGlyph}" IsTabStop="True"
                             AutomationProperties.Name="{Binding Title, StringFormat='Actions for {0}'}"
                             AutomationProperties.AutomationId="{Binding ActionsAutomationId}">
                       <Button.Flyout>

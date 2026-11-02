@@ -4363,4 +4363,34 @@ public static class MotifAppStrings
     public static string DifferenceMovedNoneWorseUnknownFormat => Text("MotifApp.DifferenceMovedNoneWorseUnknownFormat");
 
     public static string DifferenceNowUnknownPattern => Text("MotifApp.DifferenceNowUnknownPattern");
+
+    public static string MoreActionsGlyph => Text("MotifApp.MoreActionsGlyph");
+
+    public static string HandoffStepOneMark => Text("MotifApp.HandoffStepOneMark");
+
+    public static string HandoffStepTwoMark => Text("MotifApp.HandoffStepTwoMark");
+
+    public static string HandoffStepThreeMark => Text("MotifApp.HandoffStepThreeMark");
+
+    public static string RemoveChosenWordMark => Text("MotifApp.RemoveChosenWordMark");
+
+    public static string ClearChosenMatrixCellsAccessibleName => Text("MotifApp.ClearChosenMatrixCellsAccessibleName");
+
+    public static string AiAssistantsTitle => Text("MotifApp.AiAssistantsTitle");
+
+    public static string AdvancedAiModeTitle => Text("MotifApp.AdvancedAiModeTitle");
+
+    public static string AdvancedAiModeExplanation => Text("MotifApp.AdvancedAiModeExplanation");
+
+    public static string TurnOnAdvancedAiMode => Text("MotifApp.TurnOnAdvancedAiMode");
+
+    public static string ChooseAssistantsTitle => Text("MotifApp.ChooseAssistantsTitle");
+
+    public static string ChooseAssistantsExplanation => Text("MotifApp.ChooseAssistantsExplanation");
+
+    public static string ConnectSelectedAssistants => Text("MotifApp.ConnectSelectedAssistants");
+
+    public static string OpenPluginFolder => Text("MotifApp.OpenPluginFolder");
+
+    public static string OpenClaudePlugins => Text("MotifApp.OpenClaudePlugins");
 }

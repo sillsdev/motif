@@ -146,7 +146,7 @@ public sealed class SizeMatrixScreenshots
                         advancedWorkspace.CurrentPage = WorkspacePage.AiAssistants;
                         PageScreenshots.Settle(advancedWindow);
                         var advancedMode = Assert.Single(advancedWindow.GetVisualDescendants().OfType<CheckBox>(),
-                            checkBox => Equals(checkBox.Content, "Turn on Advanced AI mode"));
+                            checkBox => Equals(checkBox.Content, "Turn On Advanced AI Mode"));
                         advancedMode.IsChecked = true;
                         PageScreenshots.Settle(advancedWindow);
                         Assert.True(advancedWorkspace.PageModel<AssistantConnectionsPageModel>().IsEnabled);

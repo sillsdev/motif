@@ -186,7 +186,7 @@
                 <controls:OpinionMark Kind="{Binding OpinionMark}" IsVisible="{Binding IsOpinionMarkVisible}"
                                       VerticalAlignment="Center" />
                 <TextBlock Classes="matrixChosenWord" Text="{Binding RowLabel}" FontWeight="{DynamicResource Intent.Weight.Section}" />
-                <TextBlock Classes="matrixChosenWord muted" Text="×" />
+                <TextBlock Classes="matrixChosenWord muted" Text="{x:Static app:MotifAppStrings.RemoveChosenWordMark}" />
                 <views:MarkGlyph Classes="inline bodyText matrixChosenWord" Mark="{Binding OutcomeMark}" />
                 <TextBlock Classes="matrixChosenWord outcomeMark" views:MarkClasses.Mark="{Binding OutcomeMark}"
                            Text="{Binding ColumnLabel}" />

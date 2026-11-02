@@ -7,16 +7,16 @@
              x:DataType="vm:AssistantConnectionsPageModel">
   <Grid RowDefinitions="Auto,*">
     <Border Classes="handoffHeader">
-      <views:CopyableTextBlock TextWrapping="Wrap" Classes="section-title" Text="AI assistants" />
+      <views:CopyableTextBlock TextWrapping="Wrap" Classes="section-title" Text="{x:Static app:MotifAppStrings.AiAssistantsTitle}" />
     </Border>
     <ScrollViewer Grid.Row="1">
       <StackPanel>
         <Border Classes="card">
           <StackPanel>
-            <views:CopyableTextBlock TextWrapping="Wrap" Classes="section-title" Text="Advanced AI mode" />
-            <views:CopyableTextBlock Text="When this is on, connected assistants can read Known projects and draft Proposals through Motif. They cannot Apply a Proposal. Restart open assistant sessions after changing this setting."
+            <views:CopyableTextBlock TextWrapping="Wrap" Classes="section-title" Text="{x:Static app:MotifAppStrings.AdvancedAiModeTitle}" />
+            <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.AdvancedAiModeExplanation}"
                                       TextWrapping="Wrap" />
-            <CheckBox Content="Turn on Advanced AI mode" IsChecked="{Binding IsEnabled}" />
+            <CheckBox Content="{x:Static app:MotifAppStrings.TurnOnAdvancedAiMode}" IsChecked="{Binding IsEnabled}" />
             <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.ParsimonyRequiresAdvancedAi}"
                                      TextWrapping="Wrap" IsVisible="{Binding !IsEnabled}" />
           </StackPanel>
@@ -28,8 +28,8 @@
 
         <Border Classes="card" IsVisible="{Binding ShowsAssistantList}">
           <StackPanel>
-            <views:CopyableTextBlock TextWrapping="Wrap" Classes="section-title" Text="Choose assistants" />
-            <views:CopyableTextBlock TextWrapping="Wrap" Text="Motif found these supported assistants. Check each one you want to connect." />
+            <views:CopyableTextBlock TextWrapping="Wrap" Classes="section-title" Text="{x:Static app:MotifAppStrings.ChooseAssistantsTitle}" />
+            <views:CopyableTextBlock TextWrapping="Wrap" Text="{x:Static app:MotifAppStrings.ChooseAssistantsExplanation}" />
             <views:CopyableTextBlock TextWrapping="Wrap" Text="{Binding EmptyAssistantText}" IsVisible="{Binding HasNoAssistants}" AutomationProperties.AutomationId="{x:Static app:AutomationIds.AssistantsEmptyText}" />
             <ItemsControl x:Name="AssistantConnectionsItems" ItemsSource="{Binding Assistants}" IsVisible="{Binding HasAssistants}">
               <ItemsControl.ItemTemplate>
@@ -38,15 +38,15 @@
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
-            <Button Content="Connect selected assistants"
+            <Button Content="{x:Static app:MotifAppStrings.ConnectSelectedAssistants}"
                     Classes="Primary" Theme="{DynamicResource SolidButton}"
                     Command="{Binding ConnectSelectedCommand}"
                     IsEnabled="{Binding CanConnectSelected}" />
             <views:CopyableTextBlock Text="{Binding StatusMessage}" IsVisible="{Binding HasStatusMessage}" TextWrapping="Wrap" />
             <StackPanel Orientation="Horizontal" IsVisible="{Binding ShowsDesktopUpload}">
-              <Button Content="Open plugin folder" Command="{Binding OpenPluginZipCommand}"
+              <Button Content="{x:Static app:MotifAppStrings.OpenPluginFolder}" Command="{Binding OpenPluginZipCommand}"
                       Theme="{DynamicResource OutlineButton}" Classes="Tertiary" />
-              <Button Content="Open Claude Plugins" Command="{Binding OpenClaudePluginsCommand}"
+              <Button Content="{x:Static app:MotifAppStrings.OpenClaudePlugins}" Command="{Binding OpenClaudePluginsCommand}"
                       Theme="{DynamicResource OutlineButton}" Classes="Tertiary" />
             </StackPanel>
           </StackPanel>

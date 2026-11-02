@@ -138,7 +138,7 @@
         <views:CopyableTextBlock TextWrapping="Wrap" Classes="section-title" Text="{x:Static app:MotifAppStrings.GetAChatModelsHelp}" FontSize="{DynamicResource Component.Handoff.TitleSize}" />
 
         <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Intent.Space.Group}" Margin="{DynamicResource Component.Handoff.FirstStepMargin}">
-          <Border Classes="stepMark"><views:CopyableTextBlock Text="1" /></Border>
+          <Border Classes="stepMark"><views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.HandoffStepOneMark}" /></Border>
           <StackPanel Grid.Column="1" Spacing="{DynamicResource Intent.Space.Snug}">
             <views:CopyableTextBlock TextWrapping="Wrap" Text="{x:Static app:MotifAppStrings.CopyTheStarterPrompt}" FontWeight="{DynamicResource Intent.Weight.Section}" />
             <views:CopyableTextBlock Classes="muted" FontSize="{DynamicResource Intent.Type.Small}" TextWrapping="Wrap"
@@ -156,7 +156,7 @@
         </Grid>
 
         <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Intent.Space.Group}" Margin="{DynamicResource Component.Handoff.StepMargin}">
-          <Border Classes="stepMark"><views:CopyableTextBlock Text="2" /></Border>
+          <Border Classes="stepMark"><views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.HandoffStepTwoMark}" /></Border>
           <StackPanel Grid.Column="1" Spacing="{DynamicResource Intent.Space.Minimal}">
             <views:CopyableTextBlock TextWrapping="Wrap" Text="{x:Static app:MotifAppStrings.OpenAChat}" FontWeight="{DynamicResource Intent.Weight.Section}" />
             <views:CopyableTextBlock Classes="muted" FontSize="{DynamicResource Intent.Type.Small}" Text="{x:Static app:MotifAppStrings.ClaudeChatGPTOrGemini}" TextWrapping="Wrap" />
@@ -164,7 +164,7 @@
         </Grid>
 
         <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Intent.Space.Group}" Margin="{DynamicResource Component.Handoff.StepMargin}">
-          <Border Classes="stepMark"><views:CopyableTextBlock Text="3" /></Border>
+          <Border Classes="stepMark"><views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.HandoffStepThreeMark}" /></Border>
           <StackPanel Grid.Column="1" Spacing="{DynamicResource Intent.Space.Minimal}">
             <views:CopyableTextBlock TextWrapping="Wrap" Text="{x:Static app:MotifAppStrings.AddTheFilesThenPaste}" FontWeight="{DynamicResource Intent.Weight.Section}" />
             <views:CopyableTextBlock Classes="muted" FontSize="{DynamicResource Intent.Type.Small}" TextWrapping="Wrap"

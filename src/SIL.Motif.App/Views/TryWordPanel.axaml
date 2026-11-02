@@ -15,7 +15,7 @@
   <Grid RowDefinitions="Auto,*">
       <Border Classes="tryWordInput" Background="{DynamicResource Intent.Clear}">
         <Grid x:Name="TryWordInputGrid" ColumnDefinitions="*,Auto,Auto,Auto" RowSpacing="{DynamicResource Intent.Space.Compact}" ColumnSpacing="{DynamicResource Intent.Space.Compact}">
-          <Button x:Name="TryWordToolsButton" Grid.Column="3" Content="&#x22ef;" Theme="{DynamicResource BorderlessButton}" Padding="{DynamicResource Component.TryWord.ToolButtonInset}" Margin="{DynamicResource Intent.Gap.AfterRelated}"
+          <Button x:Name="TryWordToolsButton" Grid.Column="3" Content="{x:Static app:MotifAppStrings.MoreActionsGlyph}" Theme="{DynamicResource BorderlessButton}" Padding="{DynamicResource Component.TryWord.ToolButtonInset}" Margin="{DynamicResource Intent.Gap.AfterRelated}"
                   AutomationProperties.Name="{x:Static app:MotifAppStrings.TryAWordToolsAccessibleName}">
             <Button.Flyout>
               <Flyout Placement="BottomEdgeAlignedRight">

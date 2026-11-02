@@ -8979,4 +8979,64 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <value>{0}: {1}</value>
     <comment>Format for a sidebar entry's spoken name and tooltip when it has a delta badge; {0} is the page's name and {1} is what the badge counts.</comment>
   </data>
+  <data name="MotifApp.MoreActionsGlyph" xml:space="preserve">
+    <value>⋯</value>
+    <comment>Glyph on a button that opens a menu of more actions; the button's accessible name says what the menu holds.</comment>
+  </data>
+  <data name="MotifApp.HandoffStepOneMark" xml:space="preserve">
+    <value>1</value>
+    <comment>Step number shown beside the first step of the AI Handoff instructions.</comment>
+  </data>
+  <data name="MotifApp.HandoffStepTwoMark" xml:space="preserve">
+    <value>2</value>
+    <comment>Step number shown beside the second step of the AI Handoff instructions.</comment>
+  </data>
+  <data name="MotifApp.HandoffStepThreeMark" xml:space="preserve">
+    <value>3</value>
+    <comment>Step number shown beside the third step of the AI Handoff instructions.</comment>
+  </data>
+  <data name="MotifApp.RemoveChosenWordMark" xml:space="preserve">
+    <value>×</value>
+    <comment>Glyph on the button that removes a chosen word from the Compare list; × means remove.</comment>
+  </data>
+  <data name="MotifApp.ClearChosenMatrixCellsAccessibleName" xml:space="preserve">
+    <value>Clear the chosen matrix cells</value>
+    <comment>Accessible name announced by screen readers.</comment>
+  </data>
+  <data name="MotifApp.AiAssistantsTitle" xml:space="preserve">
+    <value>AI assistants</value>
+    <comment>Heading of the AI assistants page; matches the page's name in the sidebar.</comment>
+  </data>
+  <data name="MotifApp.AdvancedAiModeTitle" xml:space="preserve">
+    <value>Advanced AI Mode</value>
+    <comment>Heading of the card holding the Advanced AI mode setting.</comment>
+  </data>
+  <data name="MotifApp.AdvancedAiModeExplanation" xml:space="preserve">
+    <value>When this is on, connected assistants can read Known projects and draft Proposals through Motif. They cannot Apply a Proposal. Restart open assistant sessions after changing this setting.</value>
+    <comment>Explanatory sentence under the Advanced AI mode heading.</comment>
+  </data>
+  <data name="MotifApp.TurnOnAdvancedAiMode" xml:space="preserve">
+    <value>Turn On Advanced AI Mode</value>
+    <comment>Checkbox that turns Advanced AI mode on or off.</comment>
+  </data>
+  <data name="MotifApp.ChooseAssistantsTitle" xml:space="preserve">
+    <value>Choose Assistants</value>
+    <comment>Heading of the card listing the supported assistants Motif found.</comment>
+  </data>
+  <data name="MotifApp.ChooseAssistantsExplanation" xml:space="preserve">
+    <value>Motif found these supported assistants. Check each one you want to connect.</value>
+    <comment>Explanatory sentence under the Choose Assistants heading.</comment>
+  </data>
+  <data name="MotifApp.ConnectSelectedAssistants" xml:space="preserve">
+    <value>Connect Selected Assistants</value>
+    <comment>Button that connects the checked assistants to Motif.</comment>
+  </data>
+  <data name="MotifApp.OpenPluginFolder" xml:space="preserve">
+    <value>Open Plugin Folder</value>
+    <comment>Button that opens the folder holding the Motif plugin ZIP.</comment>
+  </data>
+  <data name="MotifApp.OpenClaudePlugins" xml:space="preserve">
+    <value>Open Claude Plugins</value>
+    <comment>Button that opens Claude Desktop's plugin page.</comment>
+  </data>
 </root>

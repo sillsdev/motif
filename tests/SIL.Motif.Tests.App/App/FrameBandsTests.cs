@@ -77,7 +77,7 @@ public sealed class FrameBandsTests
         (WorkspacePage.TryAWord, "Try the word"),
         (WorkspacePage.Review, MotifAppStrings.GoToAnalyzeTexts),
         (WorkspacePage.AiHandoff, "Write the AI Handoff folder"),
-        (WorkspacePage.AiAssistants, "Turn on Advanced AI mode"),
+        (WorkspacePage.AiAssistants, "Turn On Advanced AI Mode"),
     ];
 
     [Theory]

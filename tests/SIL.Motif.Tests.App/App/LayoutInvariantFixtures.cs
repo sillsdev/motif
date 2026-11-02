@@ -127,7 +127,7 @@ internal static class LayoutInvariantFixtures
                 WorkspacePage.Parsimony => $"id:{AutomationIds.ParsimonyActiveTab}|Show side bar",
                 WorkspacePage.Review => "Apply to FieldWorks project",
                 WorkspacePage.AiHandoff => "Write the AI Handoff folder",
-                WorkspacePage.AiAssistants => "Turn on Advanced AI mode",
+                WorkspacePage.AiAssistants => "Turn On Advanced AI Mode",
                 WorkspacePage.Settings => "Leave Settings",
                 _ => throw new InvalidOperationException($"No required-action fixture for {workspace.CurrentPage}."),
             });

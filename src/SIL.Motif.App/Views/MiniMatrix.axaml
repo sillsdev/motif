@@ -1,15 +1,16 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="clr-namespace:SIL.Motif.App"
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              x:Class="SIL.Motif.App.Views.MiniMatrix"
              x:DataType="vm:CompareViewModel">
   <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
     <DockPanel LastChildFill="False">
-      <HyperlinkButton DockPanel.Dock="Right" Content="Clear" FontSize="{DynamicResource Intent.Type.Label}"
+      <HyperlinkButton DockPanel.Dock="Right" Content="{x:Static app:MotifAppStrings.Clear}" FontSize="{DynamicResource Intent.Type.Label}"
                        Command="{Binding ClearSelectionCommand}"
                        IsVisible="{Binding $parent[views:MiniMatrix].IsInteractive}"
-                       IsEnabled="{Binding AnySelected}" AutomationProperties.Name="Clear the chosen matrix cells" />
+                       IsEnabled="{Binding AnySelected}" AutomationProperties.Name="{x:Static app:MotifAppStrings.ClearChosenMatrixCellsAccessibleName}" />
       <TextBlock Classes="muted" FontSize="{DynamicResource Intent.Type.Label}"
                  Text="{Binding $parent[views:MiniMatrix].Hint}" VerticalAlignment="Center" />
     </DockPanel>

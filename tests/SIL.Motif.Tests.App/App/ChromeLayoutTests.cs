@@ -168,7 +168,7 @@ public sealed class ChromeLayoutTests
                     .Where(control => control is Button or CheckBox)
                     .Where(control => control.IsEffectivelyVisible)
                     .ToArray();
-                Assert.Contains(targets, control => control is CheckBox { Content: "Turn on Advanced AI mode" });
+                Assert.Contains(targets, control => control is CheckBox { Content: "Turn On Advanced AI Mode" });
 
                 foreach (var target in targets)
                 {
