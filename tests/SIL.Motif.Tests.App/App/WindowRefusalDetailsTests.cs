@@ -99,25 +99,9 @@ public sealed class WindowRefusalDetailsTests
         Assert.Contains(advice, report);
     }
 
+    // Path shapes are covered by WindowPathLeakTests; these pin text that must stay because it is not a path.
     [Theory]
-    [InlineData("See 'relative/private/project.fwdata'.", "See 'project.fwdata'.")]
-    [InlineData("See '/home/alice/Secret Folder/private/project.fwdata'.", "See 'project.fwdata'.")]
-    [InlineData(@"See 'C:\Users\alice\Secret Folder\private\project.fwdata'.", "See 'project.fwdata'.")]
-    [InlineData(@"See [\\server\Secret Folder\private\project.fwdata].", "See [Secret project.fwdata].")]
-    [InlineData(@"See '\\server\Secret Folder\private\project.fwdata'.", "See 'project.fwdata'.")]
-    [InlineData("See '/home/alice/language's.fwdata'.", "See 'language's.fwdata'.")]
-    [InlineData("See \"/home/alice/a\"b.fwdata\".", "See \"a\"b.fwdata\".")]
-    [InlineData("See (C:/Users/alice/project.fwdata).", "See (project.fwdata).")]
-    [InlineData("File path='/home/alice/private/project.fwdata'.", "File path='project.fwdata'.")]
-    [InlineData(@"Path:'C:\Users\Alice Secret\project.fwdata'.", "Path:'project.fwdata'.")]
-    [InlineData("Path:\"/home/Alice Secret/project.fwdata\".", "Path:\"project.fwdata\".")]
-    [InlineData(@"Don't change Alice's word. Path:'C:\Users\Alice Secret\project.fwdata'.",
-        "Don't change Alice's word. Path:'project.fwdata'.")]
-    [InlineData(@"Read private\alice\project.fwdata now.", "Read project.fwdata now.")]
-    [InlineData(@"Read C:private\alice\project.fwdata now.", "Read project.fwdata now.")]
     [InlineData("Read ./private/file, ../private/file, and ~/private/file.", "Read file, file, and file.")]
-    [InlineData("Read relative/private/folder and relative/123/file.fwdata.", "Read relative/private/folder and relative/123/file.fwdata.")]
-    [InlineData("Could not read private/project.fwdata.", "Could not read project.fwdata.")]
     [InlineData("Nasal assimilation before /p/ is unexpected.", "Nasal assimilation before /p/ is unexpected.")]
     [InlineData("The rule /p/ -> [b] is unexpected.", "The rule /p/ -> [b] is unexpected.")]
     [InlineData(@"Keep /private.fwdata and \private.fwdata.", @"Keep /private.fwdata and \private.fwdata.")]
@@ -127,7 +111,7 @@ public sealed class WindowRefusalDetailsTests
         "See ftp://example.org/files/example and http://example.org/a/b.")]
     [InlineData("Expected 1/2 forms on 10/30/2026; see https://example.org/grammar/guide.",
         "Expected 1/2 forms on 10/30/2026; see https://example.org/grammar/guide.")]
-    public void StructuredCompileTextKeepsProseAndShortensPathTokens(string text, string expected)
+    public void StructuredCompileTextKeepsProseAndShortensCertainPaths(string text, string expected)
     {
         var diagnostic = new ParserCompileDiagnostic("Cannot compile.",
             [new ParserCompileIssue("Invalid", "Grammar", null, null, text, text)], text);

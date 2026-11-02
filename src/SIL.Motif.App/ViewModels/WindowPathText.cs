@@ -15,22 +15,53 @@ internal static class WindowPathText
             fact.Key.EndsWith("Directory", StringComparison.OrdinalIgnoreCase) ||
             IsRootedPath(fact.Value);
 
+    /// <summary>
+    /// The text with every folder cut out of every path in it, so only file names remain. A folder name may hold
+    /// spaces, so a path can span several words: a rooted path that has not named its file yet takes the words
+    /// after it up to the token that does, and a relative fragment takes the fragments that follow it likewise.
+    /// </summary>
     internal static string Scrub(string text, IReadOnlyDictionary<string, string> facts)
     {
         text = ReplaceKnownPaths(text, facts);
         if (!HasPathSeparator(text)) return text;
+        var tokens = Tokenize(text);
         var result = new StringBuilder(text.Length);
+        var emitted = 0;
+        var noRunBefore = 0;
+        for (var index = 0; index < tokens.Count; index++)
+        {
+            var head = tokens[index];
+            index = RunEnd(tokens, index, ref noRunBefore);
+            var tail = tokens[index];
+            result.Append(text.AsSpan(emitted, head.Start - emitted));
+            if (!tail.Shape.IsPath) result.Append(text.AsSpan(head.Start, tail.End - head.Start));
+            else
+            {
+                result.Append(text.AsSpan(head.Start, head.First - head.Start));
+                result.Append(text.AsSpan(tail.First + tail.Shape.NameStart, tail.Shape.NameLength));
+                result.Append(text.AsSpan(tail.Last, tail.End - tail.Last));
+            }
+            emitted = tail.End;
+        }
+        return result.Append(text.AsSpan(emitted)).ToString();
+    }
+
+    // A token is a non-space run or a quoted span; First and Last trim its brackets and punctuation.
+    private static List<Token> Tokenize(string text)
+    {
+        var tokens = new List<Token>();
         for (var start = 0; start < text.Length;)
         {
-            if (char.IsWhiteSpace(text[start])) { result.Append(text[start++]); continue; }
+            if (char.IsWhiteSpace(text[start])) { start++; continue; }
             var end = start;
             char quote = '\0';
+            var wrapper = '\0';
             while (end < text.Length)
             {
                 var character = text[end];
                 if (quote == '\0' && char.IsWhiteSpace(character)) break;
                 if (quote == '\0' && character is '\'' or '"' &&
-                    (end == start || "=:([{<".Contains(text[end - 1]))) quote = character;
+                    (end == start || "=:([{<".Contains(text[end - 1]))) quote = wrapper = character;
                 else if (quote != '\0' && character == quote &&
                     (end + 1 == text.Length || char.IsWhiteSpace(text[end + 1]) || ".,;:)]}>!?".Contains(text[end + 1]))) quote = '\0';
                 end++;
@@ -46,19 +77,61 @@ internal static class WindowPathText
                 while (first < end && "\"'([{<".Contains(text[first])) first++;
             }
             var last = end;
-            while (last > first && "\"')]}>,.;:!?".Contains(text[last - 1])) last--;
-            var (nameStart, nameLength) = PathTokenFileName(text.AsSpan(first, last - first));
-            if (nameStart < 0) result.Append(text.AsSpan(start, end - start));
-            else
-            {
-                result.Append(text.AsSpan(start, first - start));
-                result.Append(text.AsSpan(first + nameStart, nameLength));
-                result.Append(text.AsSpan(last, end - last));
-            }
+            while (last > first && TrailsPath(text.AsSpan(first, last - first), wrapper)) last--;
+            var body = text.AsSpan(first, last - first);
+            tokens.Add(new Token(start, end, first, last, ShapeOf(body), body.IndexOfAny('/', '\\') >= 0));
             start = end;
         }
-        return result.ToString();
+        return tokens;
     }
+
+    // Sentence punctuation trails a path; a closing bracket or quote does too unless the name itself opened it.
+    private static bool TrailsPath(ReadOnlySpan<char> body, char wrapper)
+    {
+        var character = body[^1];
+        if (",.;:!?".Contains(character)) return true;
+        if (character is '\'' or '"') return character == wrapper;
+        var opener = character switch { ')' => '(', ']' => '[', '}' => '{', '>' => '<', _ => '\0' };
+        if (opener == '\0') return false;
+        var open = 0;
+        foreach (var inner in body[..^1])
+            if (inner == opener) open++;
+            else if (inner == character && open > 0) open--;
+        return open == 0;
+    }
+
+    // The last token of the path starting at tokens[first], which is first itself unless the path has spaces.
+    private static int RunEnd(List<Token> tokens, int first, ref int noRunBefore)
+    {
+        var head = tokens[first];
+        var openRooted = head.Shape is { IsPath: true, Rooted: true, HasExtension: false } && !head.Terminal;
+        var fragment = head.IsFragment;
+        if (first < noRunBefore || !(openRooted || fragment)) return first;
+        for (var next = first + 1; next < tokens.Count; next++)
+        {
+            var token = tokens[next];
+            if (token.Names) return next;
+            if (!token.Terminal && (openRooted || token.IsFragment)) continue;
+            noRunBefore = next;
+            return first;
+        }
+        noRunBefore = tokens.Count;
+        return first;
+    }
+
+    private readonly record struct Token(int Start, int End, int First, int Last, Shape Shape, bool HasSeparator)
+    {
+        public bool Terminal => Last != End;
+
+        // A token with a separator that is not yet a path, like "private/Alice" in "private/Alice Secret/x.fwdata".
+        public bool IsFragment => HasSeparator && Shape is { IsPath: false, Excluded: false } && !Terminal;
+
+        public bool Names => HasSeparator && Shape is { IsPath: true, HasExtension: true };
+    }
+
+    // Excluded marks a URL or a bare root, which are never cut.
+    private readonly record struct Shape(
+        int NameStart, int NameLength, bool IsPath, bool Rooted, bool HasExtension, bool Excluded);
 
     internal static string ReplaceKnownPaths(string text, IReadOnlyDictionary<string, string> facts)
     {
@@ -79,9 +152,9 @@ internal static class WindowPathText
     }
 
     // Preserve fractions, dates and phonological /x/ notation when they are not known paths.
-    private static (int Start, int Length) PathTokenFileName(ReadOnlySpan<char> token)
+    private static Shape ShapeOf(ReadOnlySpan<char> token)
     {
-        if (IsUrl(token) || IsRootOnly(token)) return (-1, 0);
+        if (IsUrl(token) || IsRootOnly(token)) return new Shape(0, 0, false, false, false, true);
         var explicitPath = token.StartsWith("\\\\", StringComparison.Ordinal) ||
             token.StartsWith("~/", StringComparison.Ordinal) || token.StartsWith("./", StringComparison.Ordinal) ||
             token.StartsWith("../", StringComparison.Ordinal) ||
@@ -92,35 +165,27 @@ internal static class WindowPathText
         var segmentStart = 0;
         var nameStart = -1;
         var nameLength = 0;
-        var segmentIsDigits = true;
-        var hasNumericSegment = false;
         for (var index = 0; index <= token.Length; index++)
         {
-            if (index == token.Length || token[index] is '/' or '\\')
+            if (index < token.Length && token[index] is not ('/' or '\\')) continue;
+            if (index > segmentStart)
             {
-                var length = index - segmentStart;
-                if (length > 0)
-                {
-                    nonEmptySegments++;
-                    hasNumericSegment |= segmentIsDigits;
-                    nameStart = segmentStart;
-                    nameLength = length;
-                }
-                segmentIsDigits = true;
-                if (index < token.Length) separators++;
-                segmentStart = index + 1;
+                nonEmptySegments++;
+                nameStart = segmentStart;
+                nameLength = index - segmentStart;
             }
-            else segmentIsDigits &= char.IsAsciiDigit(token[index]);
+            if (index < token.Length) separators++;
+            segmentStart = index + 1;
         }
-        if (nameStart < 0) return (-1, 0);
+        if (nameStart < 0) return default;
         var name = token.Slice(nameStart, nameLength);
         var dot = name.LastIndexOf('.');
         var hasExtension = dot > 0 && dot < name.Length - 1;
         for (var index = dot + 1; hasExtension && index < name.Length; index++)
             hasExtension = char.IsLetter(name[index]);
-        var isPath = explicitPath || (leadingSeparator && nonEmptySegments >= 2) ||
-            (!leadingSeparator && separators > 0 && hasExtension && !hasNumericSegment);
-        return isPath ? (nameStart, nameLength) : (-1, 0);
+        var rooted = explicitPath || (leadingSeparator && nonEmptySegments >= 2);
+        var isPath = rooted || (!leadingSeparator && separators > 0 && hasExtension);
+        return new Shape(nameStart, nameLength, isPath, rooted, hasExtension, false);
     }
 
     private static bool IsUrl(ReadOnlySpan<char> token)
