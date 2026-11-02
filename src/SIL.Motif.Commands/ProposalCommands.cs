@@ -253,8 +253,10 @@ public static partial class ProposalCommands
                 var repository = new ProposalRepository(database);
                 if (repository.DraftNameExists(request.DraftName))
                 {
-                    return CommandOutcome<DraftCreatedResponse>.Refused(NameCollision(
-                        request.DraftName, "creating a new draft with this name"));
+                    return CommandOutcome<DraftCreatedResponse>.Refused(
+                        EmptyDraftOf(repository, request.DraftName)
+                            ? EmptyDraftCollision(request.DraftName)
+                            : NameCollision(request.DraftName, "creating a new draft with this name"));
                 }
 
                 var proposalId = CanonicalId.Mint();
@@ -2176,6 +2178,20 @@ public static partial class ProposalCommands
     private static Refusal ProposalNotFound(string proposalId) =>
         new("proposal.not-found", FailureReason.NotFound, ProposalNotFoundMessage(proposalId),
             Fact(("proposalId", proposalId)));
+
+    // A Draft that holds no operation can only be what an earlier compose left behind after it failed.
+    private static bool EmptyDraftOf(ProposalRepository repository, string draftName)
+    {
+        try { return repository.GetDraft(draftName).ProposalJson is { } json && DeserializeDraft(json).Operations.Count == 0; }
+        catch (Exception exception) when (exception is not ProjectWritingSystemsUnavailableException) { return false; }
+    }
+
+    private static Refusal EmptyDraftCollision(string draftName) =>
+        new("draft.name-collision", FailureReason.Refused,
+            $"Draft '{draftName}' already exists and holds no changes, as when an earlier compose into it failed. " +
+            $"Compose into it again with --draft {draftName}, remove it with `discard-draft --draft {draftName}`, " +
+            "or use another name.",
+            Fact(("draftName", draftName)));
 
     private static Refusal NameCollision(string draftName, string trailingClause) =>
         new("draft.name-collision", FailureReason.Refused, DraftNameCollisionMessage(draftName, trailingClause),
