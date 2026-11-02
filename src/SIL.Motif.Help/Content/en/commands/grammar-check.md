@@ -28,6 +28,8 @@ The response includes the Baseline's lexical entry and rule counts when that inv
 
 Motif also warns when a required inflectional slot in a template has no affixes. The finding names the template, part of speech and slot, and includes the slot's canonical ID. The slot is marked required, but FieldWorks and PanGloss currently treat an empty required slot as optional. Add affixes to express the intended requirement, or mark the slot optional when empty is allowed.
 
+Motif also warns, with code `grammar.negated-feature-value`, about each stored negated feature value (a feature set to "not" a value). FieldWorks' parser loader throws when it reads one, so FieldWorks cannot parse with the project, while PanGloss parses on and leaves the value out of the stem's features, so what carries it is not held back by it. The finding names the feature, the value and the entry or object that holds it. Remove the value in FieldWorks, or replace it with a closed value for each feature value that is allowed.
+
 ## Related commands
 
 - [Read grammar warnings](cmd:warnings) filters and displays stored findings.

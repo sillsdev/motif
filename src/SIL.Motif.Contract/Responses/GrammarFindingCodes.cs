@@ -8,4 +8,7 @@ public static class GrammarFindingCodes
 
     /// <summary>A required inflectional slot has no assigned inflectional affixes.</summary>
     public const string RequiredSlotEmpty = "grammar.required-slot-empty";
+
+    /// <summary>A stored negated feature value, which FieldWorks' own parser loader cannot read.</summary>
+    public const string NegatedFeatureValue = "grammar.negated-feature-value";
 }

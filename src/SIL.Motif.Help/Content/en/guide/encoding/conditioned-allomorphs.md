@@ -20,7 +20,7 @@ Sometimes one form of an affix is wrong only after one particular form of an ear
 
 ## Every sound except some, and a zero form chosen by class
 
-A natural class is a fixed list of sounds (or of feature values), and FieldWorks has no complement or negated class. A project file can hold a negated feature value (LibLCM stores one), but FieldWorks' parser loader cannot read it and FieldWorks offers no way to make one, so do not rely on it. For "every consonant except `<sound>`", list the sounds wanted (author the class with `motif_add_natural_class`) and add a sound to it when the inventory grows. A zero affix that should depend on the stem's class, not on the sounds around it, takes `inflectionClasses` (`motif_add_lexical_entry`, or `motif_add_alternate_form` for a form of an existing entry) and no environment; a stem of any other class gets no reading from it.
+A natural class is a fixed list of sounds (or of feature values), and FieldWorks has no complement or negated class. A project file can hold a negated feature value (LibLCM stores one), but FieldWorks' parser loader cannot read it and FieldWorks offers no way to make one, so do not rely on it; the grammar check warns (`grammar.negated-feature-value`) when a project holds one. For "every consonant except `<sound>`", list the sounds wanted (author the class with `motif_add_natural_class`) and add a sound to it when the inventory grows. A zero affix that should depend on the stem's class, not on the sounds around it, takes `inflectionClasses` (`motif_add_lexical_entry`, or `motif_add_alternate_form` for a form of an existing entry) and no environment; a stem of any other class gets no reading from it.
 
 ## Check with a Trial
 

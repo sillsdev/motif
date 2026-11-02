@@ -131,6 +131,53 @@ public sealed class GrammarCheckQueryTests : IDisposable
             item => item.Code == GrammarFindingCodes.RequiredSlotEmpty);
     }
 
+    [Fact]
+    public void AStoredNegatedFeatureValueIsAWarningThatNamesItAndWhatToDo()
+    {
+        var fwDataPath = _pristine.CopyProjectFile();
+        var loader = new FwDataProjectLoader();
+        Guid negatedGuid;
+        using (var cache = loader.LoadCache(fwDataPath))
+        {
+            var services = cache.ServiceLocator;
+            var msa = (IMoStemMsa)services.GetInstance<ILexEntryRepository>()
+                .GetObject(_pristine.Seed.FirstEntryId).MorphoSyntaxAnalysesOC.First();
+            IFsNegatedValue negated = null!;
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            {
+                cache.LangProject.MsFeatureSystemOA ??= services.GetInstance<IFsFeatureSystemFactory>().Create();
+                var feature = services.GetInstance<IFsClosedFeatureFactory>().Create();
+                cache.LangProject.MsFeatureSystemOA.FeaturesOC.Add(feature);
+                feature.Name.set_String(cache.DefaultAnalWs, "gender");
+                var value = services.GetInstance<IFsSymFeatValFactory>().Create();
+                feature.ValuesOC.Add(value);
+                value.Name.set_String(cache.DefaultAnalWs, "masculine");
+                msa.MsFeaturesOA = services.GetInstance<IFsFeatStrucFactory>().Create();
+                negated = services.GetInstance<IFsNegatedValueFactory>().Create();
+                msa.MsFeaturesOA.FeatureSpecsOC.Add(negated);
+                negated.FeatureRA = feature;
+                negated.ValueRA = value;
+            });
+            negatedGuid = negated.Guid;
+            loader.Save(cache);
+        }
+
+        Capture(fwDataPath);
+        var check = Check(fwDataPath);
+
+        var warning = Assert.Single(check.Findings, item => item.Code == GrammarFindingCodes.NegatedFeatureValue);
+        Assert.Equal(GrammarDiagnosticLevel.Warning, warning.Severity);
+        Assert.Contains("'gender'", warning.Description, StringComparison.Ordinal);
+        Assert.Contains("not masculine", warning.Description, StringComparison.Ordinal);
+        Assert.Contains("FieldWorks' parser loader throws", warning.Explanation, StringComparison.Ordinal);
+        Assert.Contains("Remove this value in FieldWorks", warning.Guidance, StringComparison.Ordinal);
+        Assert.Equal(CanonicalId.FromGuid(negatedGuid).Value, Assert.Single(warning.Subject).ObjectId);
+        Assert.Equal(1, Assert.Single(check.Summary, item => item.Code == GrammarFindingCodes.NegatedFeatureValue).Count);
+        var warnings = WarningsCommand.Warnings(new WarningsRequest(fwDataPath));
+        Assert.True(warnings.Succeeded, warnings.Refusal?.Message);
+        Assert.Contains(warnings.Value!.Findings, item => item.Code == GrammarFindingCodes.NegatedFeatureValue);
+    }
+
     private static GrammarCheckResponse Check(string fwDataPath) =>
         AssertOutcome(GrammarCheckQuery.Query(new GrammarCheckRequest(fwDataPath), new FakeInvoker
         {

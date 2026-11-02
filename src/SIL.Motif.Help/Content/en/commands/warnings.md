@@ -22,6 +22,8 @@ The response includes the Baseline's lexical entry and rule counts when that inv
 
 Motif findings include `grammar.required-slot-empty` when a required inflectional slot in a template has no affixes. Each finding names the template, part of speech, slot and canonical slot ID. The slot is marked required, but FieldWorks and PanGloss currently treat an empty required slot as optional.
 
+Motif findings also include `grammar.negated-feature-value` for a stored negated feature value, which FieldWorks' parser loader cannot read. Each finding names the feature, the value and the object that holds it, and says to remove the value in FieldWorks or replace it with closed values.
+
 When a stored Assessment matches the Baseline and Selection, all recorded allomorph segmentation refusals are included under `parse.allomorph.unsegmentable`, labelled **Parse all words**. Their descriptions preserve the parser's reason, without truncating the allomorph list or inventing guidance. These findings can differ from the whole-grammar check's findings.
 
 ## Your words
