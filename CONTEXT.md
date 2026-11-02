@@ -533,7 +533,7 @@ saved, so the window can say how far behind it is. Coming back to the window onl
 stored.
 _Avoid_: reload, sync, auto-refresh, update
 
-**Review changes**:
+**Review Changes**:
 The window's page where a person reads, together, what applying their pending changes would write (the Dry
 Run), what it would do to the numbers (an Assessment of the touched words) and whether each change still fits
 (Preflight). A page, not a lifecycle step: reading it is not recorded, grants nothing and gates nothing, and

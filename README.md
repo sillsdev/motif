@@ -18,7 +18,7 @@ When you build a FieldWorks grammar, three questions come back again and again.
 - **Why did this word fail?** Try a Word shows the parser's reasoning for one word, step by step, including where it gave up.
 - **If I change the grammar, will it help or hurt?** A Proposal is a set of changes. A Trial applies it to a throwaway copy of your project and parses again, so the new numbers sit beside today's. Your FieldWorks project is not touched.
 
-Motif reads your saved FieldWorks project and writes nothing to it until you open **Review changes**, look over each change, and choose **Apply to FieldWorks project**.
+Motif reads your saved FieldWorks project and writes nothing to it until you open **Review Changes**, look over each change, and choose **Apply to FieldWorks project**.
 
 ## How it works
 
@@ -47,11 +47,11 @@ Motif reads your saved FieldWorks project and writes nothing to it until you ope
 
 *Warnings: the problems the grammar check found, to fix in FieldWorks.*
 
-![Review changes listing one added analysis with Keep and Undo, and Apply to FieldWorks project disabled](docs/media/readme/review-changes.png)
+![Review Changes listing one added analysis with Keep and Undo, and Apply to FieldWorks project disabled](docs/media/readme/review-changes.png)
 
-*Review changes: each change has Keep and Undo, and Apply to FieldWorks project stays off until you have looked at them.*
+*Review Changes: each change has Keep and Undo, and Apply to FieldWorks project stays off until you have looked at them.*
 
-These images come from a real Swahili grammar project, parsed by PanGloss with no analyses approved by a person. The window shows a frame with a page rail on the left, a side panel, the Inspector on the right and a status bar. The one change in Review changes was staged in a scratch copy for the picture.
+These images come from a real Swahili grammar project, parsed by PanGloss with no analyses approved by a person. The window shows a frame with a page rail on the left, a side panel, the Inspector on the right and a status bar. The one change in Review Changes was staged in a scratch copy for the picture.
 
 ## Who it is for
 
