@@ -452,7 +452,7 @@ public sealed class ParsimonyCandidateEvidenceBuilder
         var current = new BaselineRepository(_database).GetCurrentEvidence(_projectKey);
         if (current is null || current.Baseline.Token != token) return null;
         var reused = _pipeline.TryReuseBaseline(_database, claim, claimToken, current, scope, measureIds, [], stages,
-            cancellationToken);
+            cancellationToken, reuseComparisonBefore: true);
         if (reused is null) return null;
         var bundle = _artifacts.Get(reused.BundleId);
         if (bundle is null) return null;

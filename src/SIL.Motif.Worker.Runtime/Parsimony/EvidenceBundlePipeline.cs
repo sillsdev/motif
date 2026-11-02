@@ -236,26 +236,34 @@ internal sealed class EvidenceBundlePipeline
 
     /// <summary>
     /// Writes a new Report onto an available Baseline bundle whose identity inputs are unchanged, or returns null
-    /// so the caller builds fresh. Only Baseline bundles are reused: a candidate bundle's identity needs the
-    /// facts model fingerprint, which exists only after PanGloss has run, and its key does not cover the
-    /// Assessment contents, so the same key would not prove the same evidence (ADR 0060).
+    /// so the caller builds fresh. A Baseline job reuses only Baseline-origin bundles; a candidate-origin
+    /// bundle is never reused, because its identity needs the facts model fingerprint, which exists only after
+    /// PanGloss has run, and its key does not cover the Assessment contents, so the same key would not prove the
+    /// same evidence (ADR 0060). A Baseline-origin reuse renders the disposition projection a Baseline job stores.
+    /// A candidate job also passes <paramref name="reuseComparisonBefore"/>: the before side an earlier candidate job
+    /// built from this Baseline is the same facts and evidence the Baseline job would write, because both come from
+    /// the same Baseline project file, parser, facts schema, evidence schema and scope, all of which the key pins, and
+    /// the report session below proves the stored bytes against their recorded digests. That reuse renders without
+    /// the disposition projection, as a fresh candidate before side does.
     /// </summary>
     public ReusedEvidenceBundle? TryReuseBaseline(MotifDatabase database, ClaimedJob claimed, string claimToken,
         CurrentBaselineEvidence current, ParsimonyScopeBinding scope, IReadOnlyList<string> measureIds,
-        IReadOnlyList<string> assessmentIds, ParsimonyStages? stages, CancellationToken cancellationToken)
+        IReadOnlyList<string> assessmentIds, ParsimonyStages? stages, CancellationToken cancellationToken,
+        bool reuseComparisonBefore = false)
     {
         var parserIdentity = ParserIdentity();
         if (parserIdentity is null) return null;
         var parserDigest = RemoveDigestPrefix(parserIdentity);
         var baseline = current.Baseline;
+        bool KeyMatches(ParsimonyBundleRecord bundle, string origin) => StringComparer.Ordinal.Equals(
+            bundle.MaterialKey, MaterialKey(origin, "baseline", baseline.Token, bundle.ModelFingerprint, parserDigest,
+                bundle.GrammarFactsSchemaVersion, bundle.EvidenceSchemaVersion, scope, assessmentIds, null));
         foreach (var bundle in _artifacts.ListAvailableBaselineBundles(_projectKey,
                      RemoveDigestPrefix(baseline.Token.BundleDigest)))
         {
             if (bundle.GrammarFactsSchemaVersion != SIL.Motif.Host.PanGloss.PanGlossInterfaceVersions.FactsSchemaVersion ||
                 bundle.EvidenceSchemaVersion != EvidenceSchema.Version ||
-                !StringComparer.Ordinal.Equals(bundle.MaterialKey, MaterialKey(BaselineJobOrigin, "baseline",
-                    baseline.Token, bundle.ModelFingerprint, parserDigest, bundle.GrammarFactsSchemaVersion,
-                    bundle.EvidenceSchemaVersion, scope, assessmentIds, null)) ||
+                !(KeyMatches(bundle, BaselineJobOrigin) || (reuseComparisonBefore && KeyMatches(bundle, ComparisonOrigin))) ||
                 !File.Exists(bundle.GrammarFactsPath) || !File.Exists(bundle.EvidencePath))
                 continue;
             try
@@ -273,7 +281,7 @@ internal sealed class EvidenceBundlePipeline
                 stages?.Enter("validate");
                 // The session below proves these bytes equal the digest recorded when they passed the check.
                 var measures = Render(inputs, bundle.GrammarFactsPath, bundle.EvidencePath, reportableAssessments,
-                    measureIds, assessmentIds, true, stages, cancellationToken);
+                    measureIds, assessmentIds, !reuseComparisonBefore, stages, cancellationToken);
                 stages?.Enter("publish");
                 _artifacts.PublishReportOnExistingBundle(bundle.BundleId, measures[0].Record, claimed.JobId,
                     claimToken, cancellationToken, [.. measures.Skip(1).Select(item => item.Record)]);

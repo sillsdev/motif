@@ -10,6 +10,7 @@ using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Parsimony;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Contract.Retirement;
 using SIL.Motif.Host.Baselines;
 using SIL.Motif.Host.Config;
 using SIL.Motif.Host.LcmUtils;
@@ -308,7 +309,8 @@ public sealed class ParsimonyCandidateEvidenceTests : IDisposable
     private async Task<(JobOutcome? Outcome, ClaimedJob Claim, string ParserPath)> RunCandidateAsync(
         Func<PanGlossInvoker, string, IPanGlossInvoker> wrapInvoker, string? proposalText = null,
         Func<JobRecord, string, JobRecord>? sourceOf = null, bool baselineReportFirst = false,
-        IReadOnlyList<string>? groupMeasureIds = null)
+        IReadOnlyList<string>? groupMeasureIds = null, string? existingParserPath = null,
+        ParsimonyScopeBinding? candidateScope = null, SIL.Motif.Contract.Retirement.RetirementExpectationTranslation? translation = null)
     {
         var proposalJson = proposalText ?? DisableProhibitionProposal(_prohibitionGuid);
         var source = new DryRunSourceBinding(_token, _publishedRoot, _publishedFwDataPath,
@@ -336,16 +338,22 @@ public sealed class ParsimonyCandidateEvidenceTests : IDisposable
             dryRunClaim, _project);
         Assert.Equal(JobStatus.CompletedDryRunOnly, completedDryRun.Status);
 
-        var parserPath = FakeParser.CopyRecordingInvocations(Path.Combine(_root, "parser-" + Guid.NewGuid().ToString("N")));
-        FakeParser.WriteFactsFixture(parserPath, FactsFixture(disableChangedRule: false));
-        FakeParser.WriteCandidateFactsFixture(parserPath, FactsFixture(disableChangedRule: true));
+        var parserPath = existingParserPath;
+        if (parserPath is null)
+        {
+            parserPath = FakeParser.CopyRecordingInvocations(Path.Combine(_root, "parser-" + Guid.NewGuid().ToString("N")));
+            FakeParser.WriteFactsFixture(parserPath, FactsFixture(disableChangedRule: false));
+            FakeParser.WriteCandidateFactsFixture(parserPath, FactsFixture(disableChangedRule: true));
+        }
         using var invoker = new PanGlossInvoker(parserPath);
         var scope = new ParsimonyScopeBinding(ParsimonyEvidenceScopeKind.ProjectApproved, null);
         if (baselineReportFirst) await RunBaselineReportAsync(invoker, parserPath, scope, groupMeasureIds);
+        scope = candidateScope ?? scope;
         _invocationsBeforeCandidate = FakeParser.Invocations(parserPath).Count;
         var sourceJob = sourceOf is null ? dryRunJob : sourceOf(_jobs.Get(dryRunJob.JobId)!, proposalJson);
         var candidateInput = new ParsimonyCandidateJobInput(ParsimonyCandidateJobInput.CurrentSchemaVersion,
-            sourceJob.JobId, groupMeasureIds?[0] ?? "P-adhoc-duplicate", scope, MeasureIds: groupMeasureIds);
+            sourceJob.JobId, groupMeasureIds?[0] ?? "P-adhoc-duplicate", scope,
+            RetirementExpectationTranslation: translation, MeasureIds: groupMeasureIds);
         var candidateJob = _jobs.Create(CanonicalId.Mint("job/").Value, _projectKey,
             ParsimonyCandidateEvidenceBuilder.JobKind,
             JsonSerializer.Serialize(candidateInput, SIL.Motif.Contract.MotifJson.CreateOptions()),
@@ -451,6 +459,177 @@ public sealed class ParsimonyCandidateEvidenceTests : IDisposable
         Assert.Equal(JobStatus.Completed, Assert.IsType<JobOutcome>(outcome).Status);
         Assert.Equal(["import", "facts", "import", "facts"], FakeParser.Invocations(parserPath)
             .Skip(_invocationsBeforeCandidate).Where(command => command != "describe"));
+    }
+
+    [Fact]
+    public async Task ASecondRunOnTheSameBaselineReusesTheFirstRunsBeforeSideAndAnswersByteForByteTheSame()
+    {
+        var group = ParsimonyAdmission.MeasureIdsFor(ParsimonyGroupRequest.Grammar);
+        var proposal = DisableProhibitionProposal(_prohibitionGuid);
+        var (firstOutcome, firstClaim, parserPath) = await RunCandidateAsync((invoker, _) => invoker,
+            proposalText: proposal, groupMeasureIds: group);
+        var first = Assert.IsType<JobOutcome>(firstOutcome);
+        Assert.True(first.Status == JobStatus.Completed, first.ResultJson);
+        firstClaim.Transition(first.Status, first.Category, first.ResultJson);
+        Assert.Equal(["import", "facts", "import", "facts"], FakeParser.Invocations(parserPath)
+            .Skip(_invocationsBeforeCandidate).Where(command => command != "describe"));
+
+        var (secondOutcome, secondClaim, _) = await RunCandidateAsync((invoker, _) => invoker,
+            proposalText: proposal, groupMeasureIds: group, existingParserPath: parserPath);
+        var second = Assert.IsType<JobOutcome>(secondOutcome);
+        Assert.True(second.Status == JobStatus.Completed, second.ResultJson);
+        secondClaim.Transition(second.Status, second.Category, second.ResultJson);
+
+        Assert.Equal(["import", "facts"], FakeParser.Invocations(parserPath).Skip(_invocationsBeforeCandidate)
+            .Where(command => command != "describe"));
+        Assert.Equal(Answer(first.ResultJson!), Answer(second.ResultJson!));
+    }
+
+    [Fact]
+    public async Task ASecondRunBuildsBothSidesAgainWhenThePanGlossExecutableHasChanged()
+    {
+        var proposal = DisableProhibitionProposal(_prohibitionGuid);
+        var (firstOutcome, firstClaim, parserPath) = await RunCandidateAsync((invoker, _) => invoker,
+            proposalText: proposal);
+        var first = Assert.IsType<JobOutcome>(firstOutcome);
+        firstClaim.Transition(first.Status, first.Category, first.ResultJson);
+        using (var stream = new FileStream(parserPath, FileMode.Append, FileAccess.Write)) stream.WriteByte(0);
+
+        var (secondOutcome, _, _) = await RunCandidateAsync((invoker, _) => invoker, proposalText: proposal,
+            existingParserPath: parserPath);
+
+        Assert.Equal(JobStatus.Completed, Assert.IsType<JobOutcome>(secondOutcome).Status);
+        Assert.Equal(["import", "facts", "import", "facts"], FakeParser.Invocations(parserPath)
+            .Skip(_invocationsBeforeCandidate).Where(command => command != "describe"));
+    }
+
+    private static readonly string[] BothSidesBuilt = ["import", "facts", "import", "facts"];
+
+    private string[] CandidateCommands(string parserPath) => [.. FakeParser.Invocations(parserPath)
+        .Skip(_invocationsBeforeCandidate).Where(command => command != "describe")];
+
+    [Fact]
+    public async Task ASecondRunOnADifferentSelectionDoesNotReuseTheFirstRunsBeforeSide()
+    {
+        var proposal = DisableProhibitionProposal(_prohibitionGuid);
+        var (firstOutcome, firstClaim, parserPath) = await RunCandidateAsync((invoker, _) => invoker,
+            proposalText: proposal);
+        var first = Assert.IsType<JobOutcome>(firstOutcome);
+        firstClaim.Transition(first.Status, first.Category, first.ResultJson);
+        var selection = new ParsimonySelectionSnapshot("other", [], [], [], "sha256:" + new string('7', 64));
+
+        var (secondOutcome, _, _) = await RunCandidateAsync((invoker, _) => invoker, proposalText: proposal,
+            existingParserPath: parserPath,
+            candidateScope: new ParsimonyScopeBinding(ParsimonyEvidenceScopeKind.DefaultSelection, selection));
+
+        Assert.True(Assert.IsType<JobOutcome>(secondOutcome).Status == JobStatus.Completed);
+        Assert.Equal(BothSidesBuilt, CandidateCommands(parserPath));
+    }
+
+    [Fact]
+    public async Task ABaselineJobDoesNotReuseTheBeforeSideACandidateJobBuilt()
+    {
+        var proposal = DisableProhibitionProposal(_prohibitionGuid);
+        var (firstOutcome, firstClaim, parserPath) = await RunCandidateAsync((invoker, _) => invoker,
+            proposalText: proposal);
+        var first = Assert.IsType<JobOutcome>(firstOutcome);
+        firstClaim.Transition(first.Status, first.Category, first.ResultJson);
+        var before = FakeParser.Invocations(parserPath).Count;
+
+        using var invoker = new PanGlossInvoker(parserPath);
+        await RunBaselineReportAsync(invoker, parserPath,
+            new ParsimonyScopeBinding(ParsimonyEvidenceScopeKind.ProjectApproved, null), null);
+
+        Assert.Equal(["import", "facts"], FakeParser.Invocations(parserPath).Skip(before)
+            .Where(command => command != "describe"));
+    }
+
+    [Fact]
+    public async Task ASecondRunRebuildsWhenTheStoredBeforeSideIsCorrupt()
+    {
+        var proposal = DisableProhibitionProposal(_prohibitionGuid);
+        var (firstOutcome, firstClaim, parserPath) = await RunCandidateAsync((invoker, _) => invoker,
+            proposalText: proposal);
+        var first = Assert.IsType<JobOutcome>(firstOutcome);
+        firstClaim.Transition(first.Status, first.Category, first.ResultJson);
+        var stored = new EvidenceArtifactRepository(_database).ListAvailableBaselineBundles(_projectKey,
+            EvidenceBundlePipeline.RemoveDigestPrefix(_token.BundleDigest)).Single();
+        using (var stream = new FileStream(stored.EvidencePath, FileMode.Append, FileAccess.Write))
+            stream.WriteByte(0);
+
+        var (secondOutcome, _, _) = await RunCandidateAsync((invoker, _) => invoker, proposalText: proposal,
+            existingParserPath: parserPath);
+
+        Assert.True(Assert.IsType<JobOutcome>(secondOutcome).Status == JobStatus.Completed);
+        Assert.Equal(BothSidesBuilt, CandidateCommands(parserPath));
+    }
+
+    [Fact]
+    public async Task ARetirementTranslationJobBuildsBothSidesAndDoesNotReuseTheStoredBeforeSide()
+    {
+        var proposal = DisableProhibitionProposal(_prohibitionGuid);
+        var (firstOutcome, firstClaim, parserPath) = await RunCandidateAsync((invoker, _) => invoker,
+            proposalText: proposal);
+        var first = Assert.IsType<JobOutcome>(firstOutcome);
+        firstClaim.Transition(first.Status, first.Category, first.ResultJson);
+        var digest = "sha256:" + new string('3', 64);
+        FrozenExpectationSet Frozen() => new(_token, digest, digest, "revision-1", [], [], []);
+        var mappings = new[]
+        {
+            new RetirementExpectationMapping(CanonicalId.Mint("form/").Value, CanonicalId.Mint("msa/").Value, null,
+                "stem", CanonicalId.Mint("form/").Value),
+        };
+        var translation = new RetirementExpectationTranslation(Frozen(), Frozen(), mappings,
+            [new RetirementBundleTextEffect(CanonicalId.Mint("bundle/").Value, new Dictionary<string, string>(),
+                new Dictionary<string, string>())],
+            RetirementExpectationTranslationCodec.ComputeMappingDigest(mappings), digest, digest, digest);
+
+        var (secondOutcome, _, _) = await RunCandidateAsync((invoker, _) => invoker, proposalText: proposal,
+            existingParserPath: parserPath, translation: translation);
+
+        var second = Assert.IsType<JobOutcome>(secondOutcome);
+        Assert.True(second.Status == JobStatus.Completed, second.ResultJson);
+        Assert.Equal(BothSidesBuilt, CandidateCommands(parserPath));
+    }
+
+    private static readonly HashSet<string> PerRun = new(
+        ["reportId", "bundleId", "stageTimings", "dryRunJobId", "identitySha256", "candidate"],
+        StringComparer.OrdinalIgnoreCase);
+
+    // The before side, the changes and the after findings; the after digests carry a per-run identity.
+    private static string Answer(string resultJson)
+    {
+        var node = System.Text.Json.Nodes.JsonNode.Parse(resultJson)!.AsObject();
+        var picked = new System.Text.Json.Nodes.JsonObject();
+        foreach (var (name, value) in node)
+        {
+            if (name.Equals("before", StringComparison.OrdinalIgnoreCase) ||
+                name.Equals("findingChanges", StringComparison.OrdinalIgnoreCase) ||
+                name.Equals("approvedAnalysisPreservation", StringComparison.OrdinalIgnoreCase))
+                picked[name] = value?.DeepClone();
+            else if (name.Equals("after", StringComparison.OrdinalIgnoreCase))
+                picked[name] = value!.AsObject().First(pair => pair.Key.Equals("findings",
+                    StringComparison.OrdinalIgnoreCase)).Value?.DeepClone();
+            else if (name.Equals("moreMeasures", StringComparison.OrdinalIgnoreCase) && value is not null)
+                picked[name] = new System.Text.Json.Nodes.JsonArray([.. value.AsArray().Select(item =>
+                    (System.Text.Json.Nodes.JsonNode?)new System.Text.Json.Nodes.JsonObject(item!.AsObject()
+                        .Where(pair => !pair.Key.Equals("after", StringComparison.OrdinalIgnoreCase))
+                        .Select(pair => KeyValuePair.Create(pair.Key, pair.Value?.DeepClone()))))]);
+        }
+        Strip(picked);
+        return picked.ToJsonString();
+
+        static void Strip(System.Text.Json.Nodes.JsonNode? item)
+        {
+            if (item is System.Text.Json.Nodes.JsonObject map)
+            {
+                foreach (var name in map.Select(pair => pair.Key).Where(key => PerRun.Contains(key)).ToArray())
+                    map.Remove(name);
+                foreach (var child in map.Select(pair => pair.Value).ToArray()) Strip(child);
+            }
+            else if (item is System.Text.Json.Nodes.JsonArray list)
+                foreach (var child in list) Strip(child);
+        }
     }
 
     /// <summary>Appends a byte to the parser before the candidate facts run, as a replacement would.</summary>
