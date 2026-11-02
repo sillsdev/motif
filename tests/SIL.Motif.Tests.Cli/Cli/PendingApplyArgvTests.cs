@@ -8,6 +8,7 @@ using SIL.Motif.Commands;
 using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Commands.Requests;
+using SIL.Motif.Contract;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
@@ -76,6 +77,66 @@ public sealed class PendingApplyArgvTests(PristineProjectFixture pristine)
 
         using (var cache = new FwDataProjectLoader().LoadScratchCache(path))
             Assert.Contains("review-word", ApprovedMorphologyReader.ReadIncorrectSpellings(cache));
+    }
+
+    [Fact]
+    public async Task AfterMotifsOwnApplyTheCliDryRunAndTrialRecaptureByThemselvesButAnOutsideSaveIsRefused()
+    {
+        var (path, wordformId) = ReleasedProjectWithWord("review-word", out var senseId);
+        var root = Path.Combine(Path.GetDirectoryName(path)!, "recapture-worker");
+        var runner = IsolatedRunner.Process(root, FakeParser.Copy(root));
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), root).Succeeded);
+        var added = PendingChanges.Put(new PutPendingChangeRequest(path, "1.0",
+            PendingChanges.Load(new PendingChangesRequest(path, "1.0")).Value!.Revision,
+            new ChangeIntent(CanonicalId.Mint().Value, "incorrect-spelling",
+                CanonicalId.FromGuid(wordformId).Value, "review-word", OriginPage: "Texts")));
+        Assert.True(added.Succeeded, added.Refusal?.Message);
+        var measured = await PendingChangesWorkflow.Measure(new MeasurePendingRequest(
+            path, added.Value!.DraftId!, added.Value.Revision, ["review-word"]),
+            new Progress<MeasureProgress>(), CancellationToken.None, runnerLauncher: runner);
+        Assert.True(measured.Succeeded, measured.Refusal?.Message);
+        var later = ProposalCommands.New(new NewDraftRequest(path, "1.0", "later", "A later gloss"));
+        Assert.True(later.Succeeded, later.Refusal?.Message);
+        Assert.True(ProposalCommands.AddSetGloss(new AddSetGlossRequest(path, "1.0", "later",
+            CanonicalId.FromGuid(senseId).Value, "en", "a later gloss")).Succeeded);
+        var laterId = later.Value!.ProposalId;
+        var wordsPath = Path.Combine(root, "words.txt");
+        File.WriteAllText(wordsPath, "review-word" + Environment.NewLine);
+
+        async Task<(int ExitCode, string Output, string Error)> Cli(params string[] arguments)
+        {
+            var start = CliProcess.Start(runner.Options, arguments);
+            CliProcess.EnableAdvancedAiMode(start, root);
+            return await CliProcess.RunAsync(start);
+        }
+
+        var apply = await Cli("apply", "--all-pending", "--project", path, "--json");
+        Assert.True(apply.ExitCode == 0, apply.Error + apply.Output);
+
+        var dryRun = await Cli("dry-run", "--project", path, laterId, "--wait", "--json");
+        Assert.True(dryRun.ExitCode == 0, dryRun.Error + dryRun.Output);
+        var trial = await Cli("trial", "--project", path, laterId, "--words", wordsPath, "--wait", "--json");
+        Assert.True(trial.ExitCode == 0, trial.Error + trial.Output);
+        Assert.Equal(SIL.Motif.Contract.Jobs.JobStatus.Completed,
+            ProjectionJson.Deserialize<SIL.Motif.Contract.Jobs.JobStatusResponse>(trial.Output)!.Status);
+        // Two jobs from the first Trial, then the Dry Run and Trial queued after Motif's own Apply.
+        Assert.Equal(4, CompletedMeasureJobs(path).Length);
+        Assert.All(CompletedMeasureJobs(path), status => Assert.StartsWith("completed", status));
+
+        // A save made outside Motif: `dry-run` is refused until a capture.
+        new FieldWorksSimulator(path).AddWordform("outside-word");
+        var refusedDryRun = await Cli("dry-run", "--project", path, laterId, "--json");
+        Assert.NotEqual(0, refusedDryRun.ExitCode);
+        Assert.Contains("change.refresh-required", refusedDryRun.Error);
+        var capture = await Cli("baseline", "capture", "--project", path, "--json");
+        Assert.True(capture.ExitCode == 0, capture.Error + capture.Output);
+        var accepted = await Cli("dry-run", "--project", path, laterId, "--wait", "--json");
+        Assert.True(accepted.ExitCode == 0, accepted.Error + accepted.Output);
+
+        // `trial` measures the Baseline before it queues, so it recaptures a saved project by itself.
+        new FieldWorksSimulator(path).AddWordform("another-outside-word");
+        var recaptured = await Cli("trial", "--project", path, laterId, "--words", wordsPath, "--wait", "--json");
+        Assert.True(recaptured.ExitCode == 0, recaptured.Error + recaptured.Output);
     }
 
     [Fact]
@@ -389,6 +450,18 @@ public sealed class PendingApplyArgvTests(PristineProjectFixture pristine)
         }
     }
 
+    private static string[] CompletedMeasureJobs(string projectPath)
+    {
+        using var database = ProjectMotifDatabase.Open(projectPath);
+        using var connection = database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT Status FROM Jobs WHERE Kind IN ('dry-run', 'trial') ORDER BY CreatedUtc;";
+        using var reader = command.ExecuteReader();
+        var statuses = new List<string>();
+        while (reader.Read()) statuses.Add(reader.GetString(0));
+        return [.. statuses];
+    }
+
     private static bool HasDryRunJob(string projectPath)
     {
         using var database = ProjectMotifDatabase.Open(projectPath);
@@ -425,13 +498,23 @@ public sealed class PendingApplyArgvTests(PristineProjectFixture pristine)
     }
 
     // The save-boundary contract has FieldWorks release the project before it calls the verb.
-    private (string Path, Guid WordformId) ReleasedProjectWithWord(string word)
+    private (string Path, Guid WordformId) ReleasedProjectWithWord(string word) =>
+        ReleasedProjectWithWord(word, out _);
+
+    private (string Path, Guid WordformId) ReleasedProjectWithWord(string word, out Guid senseId)
     {
         using var cache = pristine.NewScratch();
-        Guid wordformId = Guid.Empty;
+        Guid wordformId = Guid.Empty, sense = Guid.Empty;
         NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+        {
             wordformId = cache.ServiceLocator.GetInstance<IWfiWordformFactory>()
-                .Create(TsStringUtils.MakeString(word, cache.DefaultVernWs)).Guid);
+                .Create(TsStringUtils.MakeString(word, cache.DefaultVernWs)).Guid;
+            var entry = cache.ServiceLocator.GetInstance<ILexEntryFactory>().Create();
+            var lexSense = cache.ServiceLocator.GetInstance<ILexSenseFactory>().Create();
+            entry.SensesOS.Add(lexSense);
+            sense = lexSense.Guid;
+        });
+        senseId = sense;
         new FwDataProjectLoader().Save(cache);
         return (cache.ProjectId.Path, wordformId);
     }

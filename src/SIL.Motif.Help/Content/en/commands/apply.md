@@ -8,7 +8,7 @@ This CLI command applies a Proposal using its already bound Dry Run. The optiona
 motif apply <proposalId> --project <fwdata> [--force] [--autonomous] [--message <text>] [--note] [--json]
 ```
 
-After Apply has saved the project, the next Dry Run or Trial of another Proposal is refused with `change.refresh-required` until you capture a new Baseline with `motif baseline capture` (in the window, Refresh).
+After Apply has saved the project, the next Dry Run or Trial of another Proposal captures a new Baseline by itself. A save made outside Motif is different: a Dry Run is refused with `change.refresh-required` until you capture a new Baseline with `motif baseline capture` (in the window, Refresh).
 
 ## Readiness and `--force`
 

@@ -2,7 +2,7 @@
 
 Measures a Draft or finalized Proposal on a throwaway copy, producing a Dry Run and Assessments. Read negatives now parsing, positives lost, unfinished cases, other changes and counts before revising.
 
-After any save of the project, including Motif's own Apply, the next Dry Run or Trial is refused with `change.refresh-required` until you capture a new Baseline with `motif baseline capture` (in the window, Refresh). The evidence it would give is otherwise about a project that no longer exists.
+After Motif's own Apply, the next Trial captures a new Baseline by itself, so no step is needed. After a save made outside Motif, such as one from FieldWorks, a Trial queued from the window is refused with `change.refresh-required` until you capture a new Baseline with Refresh or `motif baseline capture`. The command `motif trial` measures the Baseline before it queues, so it captures a new one by itself after any save. The evidence is otherwise about a project that no longer exists.
 
 While a Motif update is installing, the Trial is refused with `trial.update-in-progress` and exit code 3; try it again in a moment.
 
