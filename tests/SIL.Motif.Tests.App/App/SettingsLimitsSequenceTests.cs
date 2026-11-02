@@ -252,7 +252,7 @@ public sealed class SettingsLimitsSequenceTests
             _savedNoStep = false;
             _savedStep = _step!.Value;
             _savedTime = _time!.Value;
-            Assert.Equal((long)_savedStep, saved.PerWordParserWorkLimit.Steps);
+            Assert.Equal((long)_savedStep, saved.PerWordParserWorkLimit.Work);
             Assert.Equal(SelectionTimeLimitMode.Explicit, saved.TimeMode);
             Assert.Equal((int)decimal.Round(_savedTime * 1000m), saved.ExplicitPerWordLimitMs);
             Assert.False(settings.HasParserWorkLimitRefusal || settings.HasTimeLimitRefusal, "a saved commit leaves no message");
@@ -298,7 +298,7 @@ public sealed class SettingsLimitsSequenceTests
                 var shown = !mustBeSaved && !_ticked && GoodStep(_step) ? _step : _savedStep;
                 Assert.True(selection.PerWordParserWorkLimit == _savedStep || selection.PerWordParserWorkLimit == shown,
                     Why($"the Selection holds step {selection.PerWordParserWorkLimit}; the saved is {_savedStep} and the field shows {_step}"));
-                Assert.Equal((long)selection.PerWordParserWorkLimit!.Value, request?.Steps);
+                Assert.Equal((long)selection.PerWordParserWorkLimit!.Value, request?.Work);
                 if (mustBeSaved && !_savedNoStep) Assert.Equal(_savedStep, selection.PerWordParserWorkLimit);
             }
             var time = selection.PerWordTimeLimitSeconds;

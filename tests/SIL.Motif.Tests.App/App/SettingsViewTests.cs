@@ -770,7 +770,7 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                         $"visible refusals={string.Join(" | ", page.GetVisualDescendants().OfType<TextBlock>()
                             .Where(text => text.IsEffectivelyVisible && text.Classes.Contains("settingsRefusal"))
                             .Select(text => text.Text))}");
-                    Assert.Equal(100000.5m, stepLimit.Value);
+                    Assert.Equal(100000.5m, parserWorkLimit.Value);
                     Assert.Equal(ParserWorkLimit.DefaultWork, workspace.Selection.PerWordParserWorkLimit);
                     LayoutAssertions.AssertCurrent(window);
                 }
