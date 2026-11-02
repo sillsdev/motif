@@ -22,7 +22,9 @@
   MSBuild configuration. Defaults to Debug, matching a bare `dotnet build`.
 
   .PARAMETER Project
-  Restore and build tests/<Project>/<Project>.csproj and its references, not Motif.sln. For one test project,
+  Restore and build tests/<Project>/<Project>.csproj and its references, not Motif.sln. Several projects may be
+  named as a comma-separated list; they build one after another and share the references they have in common.
+  For the named test projects,
   hygiene gates, ICU/PanGloss staging and the runtime interface gate still run. That gate separately builds
   tools/SampleProjects outside the test project's reference graph to generate disposable probe projects.
   The test project (through SIL.Motif.Tests.Support) builds the CLI and worker apphosts its tests start.
@@ -48,7 +50,7 @@ Keep the worktree lock and process policy but skip stale-process cleanup.
 [CmdletBinding()]
 param(
     [string] $Configuration = 'Debug',
-    [string] $Project,
+    [string[]] $Project,
     [switch] $SkipHygiene,
     [switch] $NoProcessSweep
 )
@@ -58,13 +60,18 @@ $ErrorActionPreference = 'Stop'
 
 $repoRoot = $PSScriptRoot
 $solution = Join-Path $repoRoot 'Motif.sln'
-$buildTarget = $solution
+# pwsh -File hands -Project A,B over as one string, so a comma-separated list is split here.
+$Project = @($Project | ForEach-Object { $_ -split '[,;\s]+' } | Where-Object { $_ })
+$buildTargets = @($solution)
 if ($Project) {
-    if ($Project -notmatch '^[A-Za-z0-9_.]+$') { throw "-Project must be a test project name, not '$Project'." }
-    $buildTarget = Join-Path $repoRoot "tests/$Project/$Project.csproj"
-    if (-not (Test-Path -LiteralPath $buildTarget -PathType Leaf)) { throw "No test project file at $buildTarget." }
+    $buildTargets = foreach ($name in $Project) {
+        if ($name -notmatch '^[A-Za-z0-9_.]+$') { throw "-Project must be a test project name, not '$name'." }
+        $target = Join-Path $repoRoot "tests/$name/$name.csproj"
+        if (-not (Test-Path -LiteralPath $target -PathType Leaf)) { throw "No test project file at $target." }
+        $target
+    }
 }
-$targetText = if ($Project) { $Project } else { 'Motif.sln' }
+$targetText = if ($Project) { $Project -join ', ' } else { 'Motif.sln' }
 
 $profileRoot = $env:USERPROFILE
 if ([string]::IsNullOrWhiteSpace($profileRoot)) { $profileRoot = $env:HOME }
@@ -150,21 +157,24 @@ $buildNodes = Get-MotifBuildNodeLimit
 $nodeText = if ($buildNodes -gt 0) { "-m:$buildNodes" } else { 'no node cap' }
 $nodeArguments = @(if ($buildNodes -gt 0) { "-m:$buildNodes" })
 
-Write-Step "dotnet restore $targetText ($nodeText)"
-$restore = Invoke-MotifRestore -Target $buildTarget -MaxNodes $buildNodes
-$restore.Output | ForEach-Object { Write-Host $_ }
-if ($restore.ExitCode -ne 0) {
-    Write-Host ''
-    Write-Host 'Restore failed.' -ForegroundColor Red
-    exit 1
-}
+foreach ($buildTarget in $buildTargets) {
+    $targetName = if ($Project) { [IO.Path]::GetFileNameWithoutExtension($buildTarget) } else { 'Motif.sln' }
+    Write-Step "dotnet restore $targetName ($nodeText)"
+    $restore = Invoke-MotifRestore -Target $buildTarget -MaxNodes $buildNodes
+    $restore.Output | ForEach-Object { Write-Host $_ }
+    if ($restore.ExitCode -ne 0) {
+        Write-Host ''
+        Write-Host 'Restore failed.' -ForegroundColor Red
+        exit 1
+    }
 
-Write-Step "dotnet build $targetText ($Configuration, $nodeText)"
-& dotnet build $buildTarget --configuration $Configuration --nologo --no-restore @nodeArguments
-if ($LASTEXITCODE -ne 0) {
-    Write-Host ''
-    Write-Host 'Build failed.' -ForegroundColor Red
-    exit 1
+    Write-Step "dotnet build $targetName ($Configuration, $nodeText)"
+    & dotnet build $buildTarget --configuration $Configuration --nologo --no-restore @nodeArguments
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host ''
+        Write-Host 'Build failed.' -ForegroundColor Red
+        exit 1
+    }
 }
 
 if ($Project) {

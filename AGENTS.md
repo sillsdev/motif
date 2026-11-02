@@ -33,10 +33,18 @@ cover it, and a green `-All` does not mean those tests passed. A tenth test, the
 variable and is in no run: it is hand-only until a quiet-machine run shows it fits a hosted runner. The list, what
 each proves and how to run it by hand are in [docs/testing-slow-run.md](docs/testing-slow-run.md).
 
+**Landers run the required whole projects in one call.** Rebase onto the current `origin/main`, then run
+`pwsh -NoProfile -File ./test.ps1 -Project SIL.Motif.Tests.Mcp,SIL.Motif.Tests.Commands,SIL.Motif.Tests.LibLcm,SIL.Motif.Tests.Contract,SIL.Motif.Tests.Cli -All`
+(comma, no spaces; add `SIL.Motif.Tests.App` when a window sentence, resx or refusal changes) with no `-SkipBuild`, so
+the build is fresh and the counts come from the final SHA. One call shares the process cap and the machine-wide slot
+instead of adding the projects' times together, and it builds every listed project, as a run of each alone would. A
+whole-repository `./test.ps1 -All` is the simplest correct form. A lander's report lists the projects run and the
+passed, failed and skipped counts for each.
+
 **One machine, many worktrees: the scripts size themselves.** `build.ps1` passes `-m:N` to restore and build, with
 `N = MOTIF_BUILD_NODES` or, on a developer machine, a quarter of the processors (minimum two). CI is uncapped: no `-m`, no slot, and xUnit keeps its own thread default.
 `test.ps1` gives each xUnit host `MaxParallelThreads = MOTIF_TEST_THREADS` or its share of the processors (minimum
-two). `./test.ps1 -Project <name>` (with or without `-Filter`) builds the named test project and its
+two). `./test.ps1 -Project <name>` (with or without `-Filter`; a comma-separated list runs several in one call, `-Filter` takes one) builds the named test project and its
 references through `./build.ps1 -Project <name>`; the runtime interface gate separately builds
 `tools/SampleProjects` outside that reference graph to generate disposable probe projects. It skips the
 tooling regression scripts, which a run without `-Project` still runs.

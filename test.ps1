@@ -41,10 +41,12 @@
   Run only System tests, without selecting the full suite.
 
   .PARAMETER Project
-  Run only the named test project, and build only it (build.ps1 -Project) rather than Motif.sln. A -Project
-  run also skips the tooling regression scripts (offline restore, tool environment, resource sizing, test
-  artifact plan, process hygiene, release version, publication policy, capture screens); a run without
-  -Project is the full run that CI and landing batches use, and runs them.
+  Run only the named test project, and build only it (build.ps1 -Project) rather than Motif.sln. Name several as a
+  comma-separated list (-Project A,B) to run them in one call, so they share the process cap and the machine-wide
+  slot instead of adding their times together; each listed project is built, as a run of that project alone would.
+  -Filter takes one project. A -Project run also skips the tooling regression scripts (offline
+  restore, tool environment, resource sizing, test artifact plan, process hygiene, release version, publication
+  policy, capture screens); a run without -Project is the full run that CI and landing batches use, and runs them.
 
   A filtered run waits for a machine-wide test slot too. MOTIF_TEST_SLOTS=0 skips the wait when an outside
   scheduler already admits runs.
@@ -101,7 +103,7 @@ param(
     [switch] $SkipBuild,
     [switch] $All,
     [switch] $System,
-    [string] $Project,
+    [string[]] $Project,
     [string] $Filter,
     [switch] $Coverage,
     [switch] $Changed,
@@ -115,6 +117,8 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+# pwsh -File hands -Project A,B over as one string, so a comma-separated list is split here.
+$Project = @($Project | ForEach-Object { $_ -split '[,;\s]+' } | Where-Object { $_ })
 $gateClock = [Diagnostics.Stopwatch]::StartNew()
 $phaseClocks = @{}
 $phaseClocks['whole gate'] = $gateClock
@@ -183,6 +187,7 @@ if ($BuildMap) {
 $levelSelection = if ($All -or $Changed) { 'All' } elseif ($System) { 'System' } else { 'Unit,Integration' }
 
 if ($Filter -and -not $Project) { throw '-Filter requires -Project.' }
+if ($Filter -and $Project.Count -gt 1) { throw '-Filter belongs to one -Project; a filter that matches nothing in the others fails them.' }
 
 # -Changed picks classes from the diff and the coverage map; unknown means everything.
 $changedSelection = $null
@@ -224,7 +229,7 @@ if ($SkipBuild) {
 }
 else {
     $buildArguments = @{ Configuration = $Configuration }
-    if ($Project) { $buildArguments.Project = $Project }
+    if ($Project) { $buildArguments.Project = $Project -join ',' }
     if ($NoProcessSweep) { $buildArguments.NoProcessSweep = $true }
     & pwsh -NoProfile -File (Join-Path $repoRoot 'build.ps1') @buildArguments
     $buildExitCode = $LASTEXITCODE
@@ -249,6 +254,7 @@ if (-not $Project -and -not $changedClasses) {
         @{ Name = 'publication policy regression'; Title = 'publication policy regression'; Script = 'MotifReleasePublication.Tests.ps1' }
         @{ Name = 'help golden regression'; Title = 'help golden gate regression'; Script = 'MotifHelpGolden.Tests.ps1' }
         @{ Name = 'changed-files selection regression'; Title = 'changed-files selection regression'; Script = 'MotifChangedTests.Tests.ps1' }
+        @{ Name = 'shard weights regression'; Title = 'shard weight merge regression'; Script = 'Update-TestShardWeights.Tests.ps1' }
     )
     if ($All) {
         $regressions += @{ Name = 'capture screen regression'; Title = 'capture screenshot tooling regression'; Script = 'Capture-Screens.Tests.ps1' }
@@ -286,7 +292,7 @@ foreach ($projectFile in Get-ChildItem -LiteralPath $testsRoot -Filter '*.csproj
     }
     if (-not $All -and -not $System -and -not $changedClasses -and $defaultLevel -eq 'System') { continue }
     if ($changedClasses -and -not $changedPlan.Projects.Contains($projectFile.BaseName)) { continue }
-    if ($Project -and $projectFile.BaseName -ne $Project) { continue }
+    if ($Project -and $Project -notcontains $projectFile.BaseName) { continue }
     $testProjects += [pscustomobject]@{
         Name = $projectFile.BaseName; Path = $projectPath; Shards = $shards; DefaultLevel = $defaultLevel
         Assembly = Join-Path (Join-Path $repoRoot "bin/$Configuration/tests") "$($projectFile.BaseName).dll"
@@ -294,9 +300,11 @@ foreach ($projectFile in Get-ChildItem -LiteralPath $testsRoot -Filter '*.csproj
 }
 
 if ($testProjects.Count -eq 0) {
-    if ($Project) { throw "No selected test project named '$Project' was found under tests/ and listed in Motif.sln." }
+    if ($Project) { throw "No selected test project named '$($Project -join ', ')' was found under tests/ and listed in Motif.sln." }
     throw 'No test projects were found under tests/ and listed in Motif.sln.'
 }
+$missingNames = @($Project | Where-Object { $_ -notin $testProjects.Name })
+if ($missingNames.Count -gt 0) { throw "No selected test project named '$($missingNames -join ', ')' was found under tests/ and listed in Motif.sln." }
 $duplicateNames = @($testProjects | Group-Object Name | Where-Object Count -gt 1)
 if ($duplicateNames.Count -gt 0) { throw "Test project names must be unique: $($duplicateNames.Name -join ', ')" }
 Import-Module (Join-Path $repoRoot 'tools/MotifTestRunPlan.psm1') -Force
