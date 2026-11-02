@@ -37,12 +37,12 @@ public sealed class TdcLayoutFixTests
                 window.Width = width;
                 window.Height = 1300;
                 workspace.CurrentPage = WorkspacePage.Timing;
-                LayoutInvariantEngineTests.Settle(window);
+                PageScreenshots.SettleLayout(window);
                 var statistics = window.GetVisualDescendants().OfType<Expander>()
                     .First(expander => expander.Header as string == MotifAppStrings.TimingDetailedStatisticsHeading
                         && expander.IsEffectivelyVisible);
                 statistics.IsExpanded = true;
-                LayoutInvariantEngineTests.Settle(window);
+                PageScreenshots.SettleLayout(window);
 
                 var heading = statistics.GetVisualDescendants().OfType<DataGridColumnHeader>()
                     .Single(header => header.IsEffectivelyVisible && header.Content as string == MotifAppStrings.StatisticsColumnCompletion);
@@ -79,12 +79,12 @@ public sealed class TdcLayoutFixTests
                 workspace.Context.OpenInspector(InspectorSubject.Morpheme(
                     morph.AllomorphId, morph.GrammaticalInfoId, morph.Form, "3PL")!);
                 await workspace.Inspector.Loading;
-                LayoutInvariantEngineTests.Settle(window);
+                PageScreenshots.SettleLayout(window);
                 var statistics = window.GetVisualDescendants().OfType<Expander>()
                     .First(expander => expander.Header as string == MotifAppStrings.TimingDetailedStatisticsHeading
                         && expander.IsEffectivelyVisible);
                 statistics.IsExpanded = true;
-                LayoutInvariantEngineTests.Settle(window);
+                PageScreenshots.SettleLayout(window);
                 var headers = statistics.GetVisualDescendants().OfType<DataGridColumnHeader>()
                     .Where(header => header.IsEffectivelyVisible).ToArray();
                 var word = Assert.Single(headers, header => header.Content as string == MotifAppStrings.Word);
@@ -111,7 +111,7 @@ public sealed class TdcLayoutFixTests
                     bar.IsVisible = true;
                     var column = Assert.Single(grid.Columns, candidate => Equals(candidate.Header, MotifAppStrings.StatsHeaderParserWork));
                     grid.ScrollIntoView(grid.ItemsSource!.Cast<object>().First(), column);
-                    LayoutInvariantEngineTests.Settle(window);
+                    PageScreenshots.SettleLayout(window);
                     var after = LayoutAssertions.BoundsIn(lastHeading, grid);
                     Assert.True(after.Left >= -0.5 && after.Right <= grid.Bounds.Width + 0.5,
                         $"The heading stayed at {after} in a {grid.Bounds.Width:0.#} px grid after scrolling to {bar.Value:0.#}/{bar.Maximum:0.#}.");

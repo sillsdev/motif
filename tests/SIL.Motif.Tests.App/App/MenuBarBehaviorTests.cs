@@ -15,6 +15,7 @@ using SIL.Motif.Contract.Responses;
 using SIL.Motif.App.Services;
 using SIL.Motif.Commands.Queries;
 using Xunit;
+using SIL.Motif.Tests.TestFixtures;
 using ContractWordRow = SIL.Motif.Contract.Responses.WordRow;
 
 namespace SIL.Motif.Tests.App;
@@ -101,8 +102,7 @@ public sealed class MenuBarBehaviorTests
                 window.Show();
                 Click(Item(window, item));
                 var line = window.FindInWindowOrWorkspace<TextBlock>("KeyboardShortcutStatusLine")!;
-                for (var wait = 0; wait < 100 && line.Text != message; wait++) await Task.Delay(20);
-                Assert.Equal(message, line.Text);
+                await Wait.UntilAsync(() => line.Text == message, $"The status line never said '{message}'.");
             }
             finally
             {
@@ -132,11 +132,11 @@ public sealed class MenuBarBehaviorTests
                 Assert.True(Item(window, "EditMenu").Focus());
                 Click(Item(window, "CopyMenuItem"));
                 string? copied = null;
-                for (var wait = 0; wait < 100 && copied is null; wait++)
+                await Wait.UntilAsync(() =>
                 {
-                    await Task.Delay(20);
-                    copied = await window.Clipboard!.TryGetTextAsync();
-                }
+                    var read = window.Clipboard!.TryGetTextAsync();
+                    return read.IsCompletedSuccessfully && (copied = read.Result) is not null;
+                }, "Copy never reached the clipboard.");
                 Assert.Equal("morpheme", copied);
             }
             finally

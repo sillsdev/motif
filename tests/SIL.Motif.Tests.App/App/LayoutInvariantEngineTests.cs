@@ -39,7 +39,7 @@ public sealed class LayoutInvariantEngineTests(AvaloniaHeadlessFixture avalonia)
                     text.Text = value;
                     text.FontSize = size;
                     text.FontWeight = weight;
-                    LayoutInvariantEngineTests.Settle(window);
+                    PageScreenshots.SettleLayout(window);
                     var fresh = ReachabilityAssertions.TextBoxOverflowFindings(text, context, window);
                     var cached = ReachabilityAssertions.TextBoxOverflowFindings(text, context, window, measurements);
                     Assert.Equal(fresh, cached);
@@ -145,7 +145,7 @@ public sealed class LayoutInvariantEngineTests(AvaloniaHeadlessFixture avalonia)
                 Assert.True(ReachabilityAssertions.IsReachable(action, window));
                 Assert.Equal(default, scroll.Offset);
                 content.Children.Add(new Border { Width = 100, Height = 500, Background = Brushes.Transparent });
-                Settle(window);
+                PageScreenshots.SettleLayout(window);
                 Avalonia.Headless.AvaloniaHeadlessPlatform.ForceRenderTimerTick();
                 Assert.False(ReachabilityAssertions.IsReachable(action, window));
                 Assert.Equal(default, scroll.Offset);
@@ -212,7 +212,7 @@ public sealed class LayoutInvariantEngineTests(AvaloniaHeadlessFixture avalonia)
             WithWindow(list, window =>
             {
                 list.ScrollIntoView(99);
-                Settle(window);
+                PageScreenshots.SettleLayout(window);
                 var scroll = Assert.Single(list.GetVisualDescendants().OfType<ScrollViewer>());
                 var offset = scroll.Offset;
                 Assert.True(ReachabilityAssertions.CanReachItem(list, 0, window));
@@ -302,22 +302,13 @@ public sealed class LayoutInvariantEngineTests(AvaloniaHeadlessFixture avalonia)
         });
     }
 
-    internal static void Settle(Window window)
-    {
-        for (var pass = 0; pass < 3; pass++)
-        {
-            Dispatcher.UIThread.RunJobs();
-            window.UpdateLayout();
-        }
-    }
-
     private static void WithWindow(Control content, Action<Window> assertion)
     {
         var window = new MotifTestWindow { Content = content, Width = 320, Height = 160 };
         try
         {
             window.Show();
-            Settle(window);
+            PageScreenshots.SettleLayout(window);
             Avalonia.Headless.AvaloniaHeadlessPlatform.ForceRenderTimerTick();
             assertion(window);
         }

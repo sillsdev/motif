@@ -88,7 +88,7 @@ internal static class AiPageTextLayoutChecks
                 settings.ZoomPercent = zoom;
                 window.Width = width;
                 window.Height = height;
-                SettleLayout(window);
+                PageScreenshots.SettleLayout(window);
                 Assert.InRange(window.ClientSize.Width, width - 1, width + 1);
                 Assert.InRange(window.ClientSize.Height, height - 1, height + 1);
                 var page = destination == WorkspacePage.AiAssistants
@@ -118,19 +118,11 @@ internal static class AiPageTextLayoutChecks
                 Application.Current!.RequestedThemeVariant = oldTheme;
                 assistants.IsEnabled = oldEnabled;
                 workspace.CurrentPage = WorkspacePage.Overview;
-                SettleLayout(window);
+                PageScreenshots.SettleLayout(window);
             }
         }, TimeSpan.FromMinutes(2));
     }
 
-    private static void SettleLayout(Window window)
-    {
-        for (var pass = 0; pass < 3; pass++)
-        {
-            Dispatcher.UIThread.RunJobs();
-            window.UpdateLayout();
-        }
-    }
 }
 
 /// <summary>Shares one pre-parse sample window between AI layout cases in a test class.</summary>

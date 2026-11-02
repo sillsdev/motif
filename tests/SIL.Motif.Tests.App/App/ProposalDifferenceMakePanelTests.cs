@@ -11,6 +11,7 @@ using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using Xunit;
+using SIL.Motif.Tests.TestFixtures;
 
 namespace SIL.Motif.Tests.App;
 
@@ -131,8 +132,7 @@ public sealed class ProposalDifferenceMakePanelTests
             {
                 var model = Assert.IsType<ProposalDifferenceViewModel>(panel.DataContext);
                 model.Words[0].ChooseCommand.Execute(null);
-                for (var i = 0; i < 50 && !model.HasSelectedWordEvidence; i++) await Task.Delay(20);
-                Assert.True(model.HasSelectedWordEvidence);
+                await Wait.UntilAsync(() => model.HasSelectedWordEvidence, "The chosen word showed no evidence.");
                 PageScreenshots.Settle(window);
 
                 void AssertNotesShow(bool wordChosen = true)
@@ -162,14 +162,14 @@ public sealed class ProposalDifferenceMakePanelTests
                 Assert.True(Named(panel, "DifferenceEvidenceUnreadable").IsEffectivelyVisible);
                 Assert.True(Named(panel, "DifferenceWordEvidence").IsEffectivelyVisible);
                 release.SetResult();
-                for (var i = 0; i < 50 && model.Maker.IsActive; i++) await Task.Delay(20);
+                await Wait.UntilAsync(() => !model.Maker.IsActive, "The Difference run never ended.");
                 PageScreenshots.Settle(window);
 
                 Assert.False(Named(panel, "DifferenceMaking").IsEffectivelyVisible);
                 AssertNotesShow(wordChosen: false);
 
                 model.Words[0].ChooseCommand.Execute(null);
-                for (var i = 0; i < 50 && !model.HasSelectedWordEvidence; i++) await Task.Delay(20);
+                await Wait.UntilAsync(() => model.HasSelectedWordEvidence, "The chosen word showed no evidence.");
                 PageScreenshots.Settle(window);
                 AssertNotesShow();
             }

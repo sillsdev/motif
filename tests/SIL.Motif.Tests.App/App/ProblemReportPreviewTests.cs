@@ -10,6 +10,7 @@ using SIL.Motif.App.Views;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
 using Xunit;
+using SIL.Motif.Tests.TestFixtures;
 
 namespace SIL.Motif.Tests.App;
 
@@ -131,13 +132,8 @@ public sealed class ProblemReportPreviewTests
         window.GetLogicalDescendants().OfType<Button>().Single(button => Equals(button.Content, content))
             .RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
 
-    private static async Task Until(Func<bool> condition)
-    {
-        var deadline = DateTime.UtcNow + Limit;
-        while (!condition() && DateTime.UtcNow < deadline) await Task.Yield();
-        Dispatcher.UIThread.RunJobs();
-        Assert.True(condition(), "The report preview did not finish the action.");
-    }
+    private static Task Until(Func<bool> condition) => Wait.UntilAsync(condition,
+        "The report preview did not finish the action.", Limit, between: () => Dispatcher.UIThread.RunJobs());
 
     private sealed class RecordingClipboard : IClipboard
     {

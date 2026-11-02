@@ -9,6 +9,7 @@ using SIL.Motif.App.Views;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Tests.App.Walkthrough;
 using Xunit;
+using SIL.Motif.Tests.TestFixtures;
 using ModuleWordRow = SIL.Motif.App.Controls.WordPresentation.WordRow;
 
 namespace SIL.Motif.Tests.App;
@@ -245,13 +246,6 @@ public sealed class WordRowEverywhereTests
     private static ResultsTokenViewModel? Token(TextsPageModel texts, string form) =>
         AnalyzeTextsLayoutTests.RealizedLines(texts.ResultsInText).SelectMany(line => line.Tokens).FirstOrDefault(token => token.Form == form);
 
-    private static async Task Until(MainWindow window, Func<bool> done, string what)
-    {
-        for (var pass = 0; pass < 50 && !done(); pass++)
-        {
-            await Task.Delay(10);
-            PageScreenshots.Settle(window);
-        }
-        Assert.True(done(), $"The window never showed {what}.");
-    }
+    private static Task Until(MainWindow window, Func<bool> done, string what) => Wait.UntilAsync(done,
+        $"The window never showed {what}.", between: () => PageScreenshots.Settle(window));
 }

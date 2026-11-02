@@ -34,7 +34,7 @@ public sealed class FrameBandsTests
                 {
                     workspace.Context.TextStyles.MissingFontNotices.Add(
                         new WritingSystemFontNotice("x-test", "The font for this writing system is not installed."));
-                    LayoutInvariantEngineTests.Settle(window);
+                    PageScreenshots.SettleLayout(window);
                     Assert.True(window.FindInWindowOrWorkspace<Border>("NoticeBand")!.IsEffectivelyVisible, "A project notice shows.");
                 }
                 var minimum = (double)window.FindResource("Component.Shell.WorkingPageMinHeight")!;

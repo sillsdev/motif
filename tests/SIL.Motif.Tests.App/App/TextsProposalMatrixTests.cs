@@ -6,6 +6,7 @@ using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using Xunit;
+using SIL.Motif.Tests.TestFixtures;
 
 namespace SIL.Motif.Tests.App;
 
@@ -56,20 +57,9 @@ public sealed class TextsProposalMatrixTests
         await context.EvidencePublication;
         context.OpenPage(onTexts ? WorkspacePage.Texts : WorkspacePage.Overview);
         if (open) await context.OpenProposalAsync(proposal, CancellationToken.None);
-        await SettledAsync(page);
+        if (open) await Wait.ForAsync(() => page.Assess.Compare.ProposalWordsMatch is not null || page.ProposalNote is not null,
+            Wait.Default);
         return (context, page, reads);
-    }
-
-    private static async Task SettledAsync(TextsPageModel page)
-    {
-        for (var wait = 0; wait < 100 && page.Assess.Compare.ProposalWordsMatch is null &&
-            page.ProposalNote is null; wait++) await Task.Delay(20);
-    }
-
-    internal static async Task UntilAsync(Func<bool> condition)
-    {
-        for (var wait = 0; wait < 150 && !condition(); wait++) await Task.Delay(20);
-        Assert.True(condition());
     }
 
     internal static CompareCellViewModel Cell(TextsPageModel page, CompareColumnKind column) =>
@@ -182,7 +172,7 @@ public sealed class TextsProposalMatrixTests
         Assert.Equal(0, reads.Summaries);
 
         context.OpenPage(WorkspacePage.Texts);
-        await UntilAsync(() => page.Assess.Compare.ProposalWordsMatch is not null);
+        await Wait.UntilAsync(() => page.Assess.Compare.ProposalWordsMatch is not null);
         Assert.Equal(1, reads.Summaries);
 
         context.OpenPage(WorkspacePage.Overview);
@@ -195,7 +185,7 @@ public sealed class TextsProposalMatrixTests
         Assert.Equal(1, reads.Summaries);
 
         await context.OpenProposalAsync("proposal/two", CancellationToken.None);
-        await UntilAsync(() => reads.Summaries == 2);
+        await Wait.UntilAsync(() => reads.Summaries == 2);
         Assert.Equal(2, reads.Summaries);
     }
 
@@ -217,7 +207,7 @@ public sealed class TextsProposalMatrixTests
 
         await context.OpenProposalAsync("proposal/two", CancellationToken.None);
         context.ShowProposalView(MarkupView.Proposal);
-        await UntilAsync(() => Cell(page, CompareColumnKind.Skipped).CountNumberText == "3");
+        await Wait.UntilAsync(() => Cell(page, CompareColumnKind.Skipped).CountNumberText == "3");
         gate.Set();
         await Task.Delay(200);
 
@@ -233,7 +223,7 @@ public sealed class TextsProposalMatrixTests
         page.Assess.Compare.UpdateOccurrences(_ => 1);
         context.ShowProposalView(MarkupView.Proposal);
         var cell = Cell(page, CompareColumnKind.NoParse);
-        await UntilAsync(() => cell.CountNumberText != "…");
+        await Wait.UntilAsync(() => cell.CountNumberText != "…");
 
         Assert.True(cell.ShowsPlaces);
         Assert.Equal(string.Empty, cell.PlacesText);
@@ -253,7 +243,7 @@ public sealed class TextsProposalMatrixTests
         reads.Behave = words => failures-- > 0 ? throw new InvalidOperationException("broke") : MatrixProposalSummary.Of(words);
         var (context, page, _) = await OpenedAsync(reads: reads);
         context.ShowProposalView(MarkupView.Proposal);
-        await UntilAsync(() => page.ProposalNote?.Contains("could not be read") == true);
+        await Wait.UntilAsync(() => page.ProposalNote?.Contains("could not be read") == true);
 
         Assert.Equal(MissingValue.Marker, Cell(page, CompareColumnKind.NoParse).CountNumberText);
         context.ShowProposalView(MarkupView.TodayToProposal);
@@ -261,13 +251,13 @@ public sealed class TextsProposalMatrixTests
 
         context.OpenPage(WorkspacePage.Overview);
         context.OpenPage(WorkspacePage.Texts);
-        await UntilAsync(() => reads.Summaries == 2);
-        await UntilAsync(() => page.ProposalNote?.Contains("could not be read") == true);
+        await Wait.UntilAsync(() => reads.Summaries == 2);
+        await Wait.UntilAsync(() => page.ProposalNote?.Contains("could not be read") == true);
 
         context.PublishEvidence(new WorkspaceEvidence(TimingProposalViewTests.Assessment() with { Words = TodayWords },
             DateTimeOffset.UtcNow, false));
         await context.EvidencePublication;
-        await UntilAsync(() => Cell(page, CompareColumnKind.NoParse).CountNumberText == Pair("2", "1"));
+        await Wait.UntilAsync(() => Cell(page, CompareColumnKind.NoParse).CountNumberText == Pair("2", "1"));
         Assert.Equal(3, reads.Summaries);
     }
 
@@ -401,7 +391,7 @@ public sealed class TextsProposalMatrixTests
         Assert.Equal("2", Cell(page, CompareColumnKind.NoParse).CountNumberText);
 
         gate.Set();
-        await UntilAsync(() => page.ProposalNote == MotifAppStrings.TextsProposalPairedNote);
+        await Wait.UntilAsync(() => page.ProposalNote == MotifAppStrings.TextsProposalPairedNote);
         Assert.Equal(Pair("2", "1"), Cell(page, CompareColumnKind.NoParse).CountNumberText);
     }
 

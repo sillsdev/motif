@@ -334,7 +334,7 @@ public sealed class FirstProjectSmokeTests(PristineProjectFixture pristine)
                 .FirstOrDefault(token => token.HasReadings);
             Assert.NotNull(occurrence);
             await inText.OpenTokenCardAsync(occurrence);
-            AnalyzeTextsLayoutTests.Settle(walkthrough.Window);
+            PageScreenshots.Settle(walkthrough.Window);
             InteractiveControlSweep.AssertScene(walkthrough, "word card with a reading",
                 InteractiveControlFamily.Action,
                 InteractiveControlFamily.Link,

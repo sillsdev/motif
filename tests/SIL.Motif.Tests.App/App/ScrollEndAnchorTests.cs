@@ -16,10 +16,10 @@ public sealed class ScrollEndAnchorTests
         {
             var (window, viewer, content) = Open();
             viewer.ScrollToEnd();
-            Settle(window);
+            PageScreenshots.SettleLayout(window);
 
             content.Height = 1300;
-            Settle(window);
+            PageScreenshots.SettleLayout(window);
 
             Assert.Equal(viewer.Extent.Height - viewer.Viewport.Height, viewer.Offset.Y, 3);
             Assert.True(viewer.Offset.Y > 1000);
@@ -37,7 +37,7 @@ public sealed class ScrollEndAnchorTests
 
             viewer.ScrollToEnd();
             content.Height = 1300;
-            Settle(window);
+            PageScreenshots.SettleLayout(window);
 
             Assert.Equal(viewer.Extent.Height - viewer.Viewport.Height, viewer.Offset.Y, 3);
             Assert.True(viewer.Offset.Y > 1000);
@@ -53,11 +53,11 @@ public sealed class ScrollEndAnchorTests
         {
             var (window, viewer, content) = Open();
             viewer.ScrollToEnd();
-            Settle(window);
+            PageScreenshots.SettleLayout(window);
 
             content.Height = 1115;
             viewer.Offset = viewer.Offset.WithY(viewer.Offset.Y - 115);
-            Settle(window);
+            PageScreenshots.SettleLayout(window);
 
             Assert.Equal(viewer.Extent.Height - viewer.Viewport.Height, viewer.Offset.Y, 3);
             window.Close();
@@ -72,11 +72,11 @@ public sealed class ScrollEndAnchorTests
         {
             var (window, viewer, content) = Open();
             viewer.ScrollToEnd();
-            Settle(window);
+            PageScreenshots.SettleLayout(window);
 
             content.Height = 1100;
             viewer.Offset = viewer.Offset.WithY(0);
-            Settle(window);
+            PageScreenshots.SettleLayout(window);
 
             Assert.Equal(0, viewer.Offset.Y, 3);
             window.Close();
@@ -91,13 +91,13 @@ public sealed class ScrollEndAnchorTests
         {
             var (window, viewer, content) = Open();
             viewer.ScrollToEnd();
-            Settle(window);
+            PageScreenshots.SettleLayout(window);
             viewer.Offset = viewer.Offset.WithY(viewer.Offset.Y - 300);
-            Settle(window);
+            PageScreenshots.SettleLayout(window);
             var place = viewer.Offset.Y;
 
             content.Height = 1300;
-            Settle(window);
+            PageScreenshots.SettleLayout(window);
 
             Assert.Equal(place, viewer.Offset.Y, 3);
             window.Close();
@@ -112,16 +112,8 @@ public sealed class ScrollEndAnchorTests
         ScrollEndAnchor.Attach(viewer);
         var window = new MotifTestWindow { Width = 300, Height = 200, Content = viewer };
         window.Show();
-        Settle(window);
+        PageScreenshots.SettleLayout(window);
         return (window, viewer, content);
     }
 
-    private static void Settle(Window window)
-    {
-        for (var pass = 0; pass < 3; pass++)
-        {
-            Dispatcher.UIThread.RunJobs();
-            window.UpdateLayout();
-        }
-    }
 }

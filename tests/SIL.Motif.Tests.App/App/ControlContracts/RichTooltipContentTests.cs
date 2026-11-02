@@ -718,13 +718,6 @@ internal sealed class TooltipScenes
         await Until(() => Token("chakula").HasStagedChanges, "the staged change on chakula");
     }
 
-    private async Task Until(Func<bool> done, string what)
-    {
-        for (var pass = 0; pass < 50 && !done(); pass++)
-        {
-            await Task.Yield();
-            PageScreenshots.Settle(Window);
-        }
-        if (!done()) throw new InvalidOperationException($"The window never showed {what}.");
-    }
+    private Task Until(Func<bool> done, string what) => Wait.UntilAsync(done,
+        $"The window never showed {what}.", between: () => PageScreenshots.Settle(Window));
 }

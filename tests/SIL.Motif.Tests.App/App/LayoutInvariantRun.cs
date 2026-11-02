@@ -27,7 +27,7 @@ internal sealed class LayoutInvariantRun(string tier, ITestOutputHelper output) 
         var clock = Stopwatch.StartNew();
         LayoutInvariantFixtures.Apply(window, cell);
         prepare?.Invoke();
-        if (prepare is not null) LayoutInvariantEngineTests.Settle(window);
+        if (prepare is not null) PageScreenshots.SettleLayout(window);
         LayoutInvariantFixtures.RequirePage(window, workspace, workspace.CurrentPage);
         SettleComposition(window);
         var context = new LayoutFindingContext(scene, cell.Name, cell.Zoom, "light");

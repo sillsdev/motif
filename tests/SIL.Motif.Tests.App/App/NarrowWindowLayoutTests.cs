@@ -28,7 +28,7 @@ public sealed class NarrowWindowLayoutTests
                     Check($"Project chip and Refresh at {width}", () =>
                     {
                         window.Width = width;
-                        Settle(window);
+                        PageScreenshots.Settle(window);
                         var topBar = window.FindInWindowOrWorkspace<Border>("TopBar")!;
                         var chip = window.FindInWindowOrWorkspace<Button>("ProjectChip")!;
                         var refresh = window.FindInWindowOrWorkspace<Button>("RefreshIconButton")!;
@@ -45,11 +45,11 @@ public sealed class NarrowWindowLayoutTests
                     window.Width = 1040;
                     window.Height = 1300;
                     workspace.CurrentPage = SIL.Motif.App.ViewModels.WorkspacePage.Timing;
-                    Settle(window);
+                    PageScreenshots.Settle(window);
                     var statistics = window.GetVisualDescendants().OfType<Expander>()
                         .First(expander => expander.Header as string == MotifAppStrings.TimingDetailedStatisticsHeading && expander.IsEffectivelyVisible);
                     statistics.IsExpanded = true;
-                    Settle(window);
+                    PageScreenshots.Settle(window);
                     var panel = statistics.GetVisualDescendants().OfType<SIL.Motif.App.Views.StatisticsPanel>().Single();
                     var cards = panel.GetVisualDescendants().OfType<Border>()
                         .Where(border => border.Classes.Contains("card") && border.IsEffectivelyVisible).ToArray();

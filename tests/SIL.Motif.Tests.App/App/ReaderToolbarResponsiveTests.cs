@@ -151,7 +151,7 @@ public sealed class ReaderToolbarResponsiveTests
                     HeadlessClick.Click(window, search, "Search words in Analyze texts");
                     Assert.True(search.IsFocused, $"Search did not receive focus at 640x{height}/{zoom}%/{themeName}.");
                     window.KeyTextInput("mw");
-                    AnalyzeTextsLayoutTests.Settle(window);
+                    PageScreenshots.Settle(window);
                     Assert.Equal("mw", reader.SearchText);
                     Assert.Equal("mw", search.Text);
                     reader.SearchText = string.Empty;

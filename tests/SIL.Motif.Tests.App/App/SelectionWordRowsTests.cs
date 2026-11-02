@@ -226,9 +226,9 @@ public sealed class SelectionWordRowsTests
                 async Task ShowOffsetAsync(double offset)
                 {
                     scroll.Offset = scroll.Offset.WithY(offset);
-                    SettleRowLayout(window);
+                    PageScreenshots.SettleLayout(window);
                     await list.SettleVisibleDetailsAsync();
-                    SettleRowLayout(window);
+                    PageScreenshots.SettleLayout(window);
                     foreach (var row in window.GetVisualDescendants().OfType<WordRow>().Where(row => row.Data is not null))
                     {
                         shown.Add($"{row.Data!.Key.Value}@{row.Data.EvidenceRevision}");
@@ -348,17 +348,9 @@ public sealed class SelectionWordRowsTests
         }, TimeSpan.FromSeconds(45));
     }
 
-    private static void SpinUntilRefreshed(ProgressiveItemsControl pages)
-    {
-        var watch = System.Diagnostics.Stopwatch.StartNew();
-        while (!pages.PageRefresh.IsCompleted)
-        {
-            if (watch.Elapsed > TimeSpan.FromSeconds(10))
-                throw new TimeoutException("PageRefresh did not complete within 10 s of reattaching the pages.");
-            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
-            Thread.Sleep(1);
-        }
-    }
+    private static void SpinUntilRefreshed(ProgressiveItemsControl pages) => Wait.Until(
+        () => pages.PageRefresh.IsCompleted, "PageRefresh did not complete after reattaching the pages.",
+        TimeSpan.FromSeconds(10), between: () => Avalonia.Threading.Dispatcher.UIThread.RunJobs());
 
     // Own frame: keeps the reattached page off the lambda frame.
     [MethodImpl(MethodImplOptions.NoInlining)]
@@ -576,15 +568,6 @@ public sealed class SelectionWordRowsTests
     }
 
     // These checks need realized controls and bindings, not rasterized screenshot frames.
-    private static void SettleRowLayout(Window window)
-    {
-        for (var pass = 0; pass < 3; pass++)
-        {
-            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
-            window.UpdateLayout();
-        }
-    }
-
     private static async Task<IReadOnlyList<WeakReference<object>>> ScrollAsync(TextWordsViewModel list,
         SelectionReader reader)
     {
@@ -603,7 +586,7 @@ public sealed class SelectionWordRowsTests
             for (var offset = 0; offset < list.Rows.Count; offset += 10)
             {
                 rows.ScrollIntoView(offset);
-                SettleRowLayout(window);
+                PageScreenshots.SettleLayout(window);
                 Avalonia.Threading.Dispatcher.UIThread.RunJobs();
                 await list.SettleVisibleDetailsAsync();
                 Assert.InRange(reader.Diagnostics.LiveRowModels, 1, 128);
@@ -613,16 +596,16 @@ public sealed class SelectionWordRowsTests
                 Assert.InRange(rows.GetVisualDescendants().OfType<SIL.Motif.App.Controls.WordPresentation.WordRow>().Count(), 1, 64);
             }
             rows.ScrollIntoView(list.Rows.Count - 1);
-            SettleRowLayout(window);
+            PageScreenshots.SettleLayout(window);
             await list.SettleVisibleDetailsAsync();
             Assert.InRange(reader.Diagnostics.WordformRowsDeserialized, list.Rows.Count, weak.Count);
             Assert.Equal(1, list.CheckedWordCount);
             rows.ScrollIntoView(0);
-            SettleRowLayout(window);
+            PageScreenshots.SettleLayout(window);
             await list.SettleVisibleDetailsAsync();
             Assert.True(list.Rows[0].IsChecked);
             window.Content = null;
-            SettleRowLayout(window);
+            PageScreenshots.SettleLayout(window);
             Assert.Equal(0, reader.Diagnostics.LiveRowModels);
             Assert.Equal(0, reader.Diagnostics.LeasedWordKeys);
         }

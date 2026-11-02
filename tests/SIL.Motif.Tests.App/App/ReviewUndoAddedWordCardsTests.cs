@@ -118,7 +118,7 @@ public sealed partial class ReviewUndoRealClientTests
                 window.Show();
                 owner.SelectWord(form);
                 await owner.SelectionRefresh;
-                AnalyzeTextsLayoutTests.Settle(window);
+                PageScreenshots.Settle(window);
                 AssertStandaloneCardTarget(owner, card.WordformId);
                 Assert.Single(panel.GetVisualDescendants().OfType<WordCard>().Where(control =>
                     control.IsEffectivelyVisible && control.Document is not null).Select(control => control.Key));
@@ -126,7 +126,7 @@ public sealed partial class ReviewUndoRealClientTests
                 Assert.Equal(1, reads.Reader.Diagnostics.LivePinnedModels);
                 Assert.Equal(1, reads.Reader.Diagnostics.LiveLineModels);
                 owner.CloseTokenCard();
-                AnalyzeTextsLayoutTests.Settle(window);
+                PageScreenshots.Settle(window);
                 await Task.Yield();
                 Assert.Equal(0, reads.Reader.Diagnostics.LiveCardModels);
                 Assert.Equal(0, reads.Reader.Diagnostics.LivePinnedModels);
@@ -136,7 +136,7 @@ public sealed partial class ReviewUndoRealClientTests
                 owner.SelectWord(form);
                 await owner.SelectionRefresh;
                 host.IsVisible = false;
-                AnalyzeTextsLayoutTests.Settle(window);
+                PageScreenshots.Settle(window);
                 await Task.Yield();
                 Assert.Null(owner.SelectedToken);
                 Assert.Equal(0, reads.Reader.Diagnostics.LiveCardModels);

@@ -35,7 +35,7 @@ public sealed class ProposalParsimonyPanelTests
             page.SelectProposalCommand.Execute(page.Groups.SelectMany(group => group.Cards)
                 .Single(card => card.ProposalId == choose));
             // A queued or running job keeps its watch open, so wait for the first status, not for the watch to end.
-            for (var waits = 0; page.Parsimony.Status is null && waits < 500; waits++) await Task.Delay(10);
+            await Wait.UntilAsync(() => page.Parsimony.Status is not null, "The Parsimony section never showed a status.");
             PageScreenshots.Settle(window);
         }
         return (workspace, window, fake);

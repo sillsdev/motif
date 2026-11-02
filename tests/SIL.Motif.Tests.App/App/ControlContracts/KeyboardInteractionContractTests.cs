@@ -636,9 +636,9 @@ public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture ava
                     page.Tab = tab;
                     page.AnalyzeView = view;
                     workspace.CurrentPage = WorkspacePage.Texts;
-                    AnalyzeTextsLayoutTests.Settle(window);
+                    PageScreenshots.Settle(window);
                     window.KeyPress(Key.F, primaryModifier, PhysicalKey.None, null);
-                    AnalyzeTextsLayoutTests.Settle(window);
+                    PageScreenshots.Settle(window);
                     var search = Assert.Single(window.GetVisualDescendants().OfType<TextBox>(), box => box.Name == name);
                     Assert.True(search.IsFocused, $"{PrimarySearchGesture} focuses {name} on {tab}.");
                     window.KeyRelease(Key.F, primaryModifier, PhysicalKey.None, null);
@@ -663,21 +663,21 @@ public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture ava
                 var search = Assert.Single(window.GetVisualDescendants().OfType<TextBox>(), box => box.Name == "ReaderWordSearch");
                 Assert.True(search.Focus());
                 window.KeyPress(Key.A, RawInputModifiers.None, PhysicalKey.None, null);
-                AnalyzeTextsLayoutTests.Settle(window);
+                PageScreenshots.Settle(window);
                 Assert.Empty(workspace.Context.Changes.Items);
 
                 var inText = workspace.PageModel<TextsPageModel>().ResultsInText;
                 inText.SearchText = string.Empty;
                 Assert.True(AnalyzeTextsLayoutTests.StripOf(panel, "Sungura").Focus());
                 window.KeyPress(Key.A, RawInputModifiers.None, PhysicalKey.None, null);
-                AnalyzeTextsLayoutTests.Settle(window);
+                PageScreenshots.Settle(window);
                 var status = Assert.IsType<TextBlock>(window.FindInWindowOrWorkspace<TextBlock>("KeyboardShortcutStatusLine"));
                 Assert.True(status.IsVisible);
                 Assert.Equal("Sungura is already Approved.", status.Text);
                 Assert.Empty(workspace.Context.Changes.Items);
 
                 window.KeyPress(Key.OemQuestion, RawInputModifiers.Shift, PhysicalKey.None, null);
-                AnalyzeTextsLayoutTests.Settle(window);
+                PageScreenshots.Settle(window);
                 Assert.Equal(WorkspacePage.Settings, workspace.CurrentPage);
                 var settingsPage = SettingsTestAccess.Page(window);
                 var settings = SettingsTestAccess.Model(window);
@@ -911,28 +911,28 @@ public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture ava
                 Assert.NotEmpty(occurrences);
 
                 await inText.OpenTokenCardAsync(occurrences[0]);
-                AnalyzeTextsLayoutTests.Settle(window);
+                PageScreenshots.Settle(window);
                 window.KeyPress(Key.Left, RawInputModifiers.None, PhysicalKey.None, null);
-                AnalyzeTextsLayoutTests.Settle(window);
+                PageScreenshots.Settle(window);
                 Assert.Equal(occurrences[0].Occurrence, inText.SelectedToken?.Occurrence);
 
                 await inText.OpenTokenCardAsync(occurrences[^1]);
-                AnalyzeTextsLayoutTests.Settle(window);
+                PageScreenshots.Settle(window);
                 window.KeyPress(Key.Right, RawInputModifiers.None, PhysicalKey.None, null);
-                AnalyzeTextsLayoutTests.Settle(window);
+                PageScreenshots.Settle(window);
                 Assert.Equal(occurrences[^1].Occurrence, inText.SelectedToken?.Occurrence);
 
                 var readingOccurrence = occurrences.FirstOrDefault(occurrence => occurrence.HasReadings);
                 Assert.NotNull(readingOccurrence);
                 await inText.OpenTokenCardAsync(readingOccurrence);
-                AnalyzeTextsLayoutTests.Settle(window);
+                PageScreenshots.Settle(window);
                 var setActions = Assert.Single(AnalyzeTextsLayoutTests.OpenCard(window)
                     .GetVisualDescendants().OfType<Button>(), button =>
                     AutomationProperties.GetName(button) == WordDispositionButtons.MarkButtonName);
                 Assert.True(setActions.Focus(), "The card's opinion mark button can receive keyboard focus.");
 
                 window.KeyPress(Key.Right, RawInputModifiers.None, PhysicalKey.None, null);
-                AnalyzeTextsLayoutTests.Settle(window);
+                PageScreenshots.Settle(window);
                 Assert.True(readingOccurrence.Occurrence == inText.SelectedToken?.Occurrence,
                     "The card's arrow navigation must leave the selected occurrence alone while its reading picker has focus.");
             }
@@ -956,12 +956,12 @@ public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture ava
                 var occurrence = Assert.IsType<ResultsTokenViewModel>(
                     ResultsInTextPanel.TokenOf(AnalyzeTextsLayoutTests.Strips(panel).Last()));
                 await inText.OpenTokenCardAsync(occurrence);
-                AnalyzeTextsLayoutTests.Settle(window);
+                PageScreenshots.Settle(window);
 
                 var close = AnalyzeTextsLayoutTests.Named<Button>(
                     AnalyzeTextsLayoutTests.OpenCard(window), "Close the word card");
                 Click(window, close);
-                AnalyzeTextsLayoutTests.Settle(window);
+                PageScreenshots.Settle(window);
 
                 Assert.Null(inText.SelectedToken);
                 var strip = Assert.Single(AnalyzeTextsLayoutTests.Strips(panel), candidate =>

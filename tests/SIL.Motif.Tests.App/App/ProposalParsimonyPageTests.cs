@@ -137,45 +137,49 @@ public sealed class ProposalParsimonyPageTests
     [Fact]
     public async Task ATrialThatFinishesHandsOverToTheSectionThroughQueuedAndRunningToReadyWithNoClick()
     {
-        var fake = new FakeCommandClient();
-        fake.ProposalStandingsCompleteWith(new ProposalStandings([Card("p/one")], 0));
-        var afterTrial = new Queue<ProposalParsimonyStatus>(
-        [
-            ProposalParsimonyStatusFixtures.Waiting("p/one", "trial"),
-            ProposalParsimonyStatusFixtures.Running("p/one"),
-            ProposalParsimonyStatusFixtures.Ready("p/one"),
-        ]);
-        var trialDone = false;
-        fake.OnProposalParsimonyStatus((request, _) => Task.FromResult(Contract.Commands.CommandOutcome<ProposalParsimonyStatus>.Success(
-            !trialDone ? ProposalParsimonyStatusFixtures.NotYetRun(request.ProposalId)
-                : afterTrial.Count > 1 ? afterTrial.Dequeue() : afterTrial.Peek())));
-        var finishing = new TaskCompletionSource<Contract.Commands.CommandOutcome<JobStatusResponse>>(
-            TaskCreationOptions.RunContinuationsAsynchronously);
-        fake.OnWaitForJob((_, _, _) => finishing.Task);
-        var context = WorkspaceContextTests.NewContext(fake);
-        var page = new ProposalsPageModel(context, (_, _) => Task.CompletedTask);
-        var seen = new List<string>();
-        page.Parsimony.PropertyChanged += (_, e) =>
+        // The section is single-thread by design; on pool threads two watch continuations can interleave.
+        await SingleThreadPump.RunAsync(async () =>
         {
-            if (e.PropertyName == nameof(ProposalParsimonyViewModel.StateLabel) && page.Parsimony.StateLabel.Length > 0 &&
-                (seen.Count == 0 || seen[^1] != page.Parsimony.StateLabel)) seen.Add(page.Parsimony.StateLabel);
-        };
-        await context.OpenProjectAsync(ProjectPath);
-        await page.ParsimonyWatching;
-        Assert.Equal("Not Yet Run", page.Parsimony.StateLabel);
-        Assert.Contains("no Trial", page.Parsimony.Sentence, StringComparison.OrdinalIgnoreCase);
+            var fake = new FakeCommandClient();
+            fake.ProposalStandingsCompleteWith(new ProposalStandings([Card("p/one")], 0));
+            var afterTrial = new Queue<ProposalParsimonyStatus>(
+            [
+                ProposalParsimonyStatusFixtures.Waiting("p/one", "trial"),
+                ProposalParsimonyStatusFixtures.Running("p/one"),
+                ProposalParsimonyStatusFixtures.Ready("p/one"),
+            ]);
+            var trialDone = false;
+            fake.OnProposalParsimonyStatus((request, _) => Task.FromResult(Contract.Commands.CommandOutcome<ProposalParsimonyStatus>.Success(
+                !trialDone ? ProposalParsimonyStatusFixtures.NotYetRun(request.ProposalId)
+                    : afterTrial.Count > 1 ? afterTrial.Dequeue() : afterTrial.Peek())));
+            var finishing = new TaskCompletionSource<Contract.Commands.CommandOutcome<JobStatusResponse>>(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+            fake.OnWaitForJob((_, _, _) => finishing.Task);
+            var context = WorkspaceContextTests.NewContext(fake);
+            var page = new ProposalsPageModel(context, (_, _) => Task.CompletedTask);
+            var seen = new List<string>();
+            page.Parsimony.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(ProposalParsimonyViewModel.StateLabel) && page.Parsimony.StateLabel.Length > 0 &&
+                    (seen.Count == 0 || seen[^1] != page.Parsimony.StateLabel)) seen.Add(page.Parsimony.StateLabel);
+            };
+            await context.OpenProjectAsync(ProjectPath);
+            await page.ParsimonyWatching;
+            Assert.Equal("Not Yet Run", page.Parsimony.StateLabel);
+            Assert.Contains("no Trial", page.Parsimony.Sentence, StringComparison.OrdinalIgnoreCase);
 
-        var trying = page.TryAgainCommand.ExecuteAsync(page.SelectedProposal);
-        trialDone = true;
-        finishing.SetResult(Contract.Commands.CommandOutcome<JobStatusResponse>.Success(
-            new JobStatusResponse("job/test", "project/test", true, "trial", JobStatus.Completed, 1, null, false, null, 1)));
-        await trying;
-        await page.ParsimonyWatching;
+            var trying = page.TryAgainCommand.ExecuteAsync(page.SelectedProposal);
+            trialDone = true;
+            finishing.SetResult(Contract.Commands.CommandOutcome<JobStatusResponse>.Success(
+                new JobStatusResponse("job/test", "project/test", true, "trial", JobStatus.Completed, 1, null, false, null, 1)));
+            await trying;
+            await page.ParsimonyWatching;
 
-        Assert.Equal(["Not Yet Run", "Queued", "Running", "Ready"], seen);
-        Assert.Equal("Ready", page.Parsimony.StateLabel);
-        Assert.Empty(fake.EnqueueParsimonyRequests);
-        Assert.Single(fake.EnqueueTrialRequests);
+            Assert.Equal(["Not Yet Run", "Queued", "Running", "Ready"], seen);
+            Assert.Equal("Ready", page.Parsimony.StateLabel);
+            Assert.Empty(fake.EnqueueParsimonyRequests);
+            Assert.Single(fake.EnqueueTrialRequests);
+        });
     }
 
     [Fact]

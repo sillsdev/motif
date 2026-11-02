@@ -28,10 +28,10 @@ public sealed class AnalyzeTextsMenuTests
             try
             {
                 workspace.PageModel<TextsPageModel>().ResultsInText.CloseTokenCard();
-                Settle(window);
+                PageScreenshots.Settle(window);
                 var strip = StripOf(Panel(window), "chakula");
                 ((WordStripToken)strip).FocusWord();
-                Settle(window);
+                PageScreenshots.Settle(window);
                 var mark = Named<Button>(strip, WordDispositionButtons.MarkButtonName);
                 AssertDispositionMenu(Open(mark, window), "the strip's disposition menu");
             }
@@ -88,7 +88,7 @@ public sealed class AnalyzeTextsMenuTests
     {
         var flyout = Assert.IsAssignableFrom<Flyout>(button.Flyout);
         flyout.ShowAt(button);
-        Settle(window);
+        PageScreenshots.Settle(window);
         Assert.True(flyout.IsOpen);
         return FlyoutContent.Of(flyout);
     }

@@ -152,7 +152,7 @@ internal static class LayoutInvariantFixtures
         WindowZoomPolicy.Apply(Application.Current!, cell.Zoom);
         window.Width = cell.Width;
         window.Height = cell.Height;
-        LayoutInvariantEngineTests.Settle(window);
+        PageScreenshots.SettleLayout(window);
         Assert.InRange(Math.Abs(window.ClientSize.Width - cell.Width), 0, 0.5);
         Assert.InRange(Math.Abs(window.ClientSize.Height - cell.Height), 0, 0.5);
     }

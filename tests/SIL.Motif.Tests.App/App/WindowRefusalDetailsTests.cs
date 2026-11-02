@@ -8,6 +8,7 @@ using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
 using Xunit;
+using SIL.Motif.Tests.TestFixtures;
 
 namespace SIL.Motif.Tests.App;
 
@@ -179,22 +180,21 @@ public sealed class WindowRefusalDetailsTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void LongStructuredCompileTextIsProcessedWithin100Milliseconds(bool hasPath)
+    public async Task LongStructuredCompileTextIsProcessedWithoutWorkThatGrowsWithTheSquareOfItsLength(bool hasPath)
     {
-        var text = new string('(', 100_000) + (hasPath ? "/private/file" : "x");
+        // Linear work on a million characters takes milliseconds; quadratic work on it does not finish.
+        var text = new string('(', 1_000_000) + (hasPath ? "/private/file" : "x");
         var diagnostic = new ParserCompileDiagnostic("Cannot compile.",
             [new ParserCompileIssue("Invalid", "Grammar", null, null, text, text)], text);
         var refusal = new Refusal(RefusalCodes.AssessParserUnavailable, FailureReason.Refused, text,
             parserDiagnostic: diagnostic);
         _ = WindowRefusal.From(new Refusal(RefusalCodes.AssessParserUnavailable, FailureReason.Refused, "warmup"));
 
-        var clock = System.Diagnostics.Stopwatch.StartNew();
-        var shown = WindowRefusal.From(refusal);
-        var issue = Assert.Single(shown.CompileIssues);
-        clock.Stop();
+        var shown = Task.Run(() => WindowRefusal.From(refusal));
+        await Wait.UntilAsync(() => shown.IsCompleted, "The long compile text was still being processed.", TimeSpan.FromSeconds(30));
 
-        Assert.Equal(hasPath ? new string('(', 100_000) + "file" : text, issue.Text);
-        Assert.True(clock.Elapsed < TimeSpan.FromMilliseconds(100), $"Took {clock.Elapsed.TotalMilliseconds:F1} ms.");
+        var issue = Assert.Single((await shown).CompileIssues);
+        Assert.Equal(hasPath ? new string('(', 1_000_000) + "file" : text, issue.Text);
     }
 
     [Theory]

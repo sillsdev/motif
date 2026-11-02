@@ -4,6 +4,7 @@ using SIL.Motif.App.ViewModels;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Responses;
 using Xunit;
+using SIL.Motif.Tests.TestFixtures;
 using static SIL.Motif.Tests.App.TextsProposalMatrixTests;
 
 namespace SIL.Motif.Tests.App;
@@ -164,7 +165,7 @@ public sealed class TextsProposalWordListTests
         Assert.Same(WordListSchemas.All, compare.WordListSchema);
 
         gate.Set();
-        await UntilAsync(() => page.ProposalNote == MotifAppStrings.TextsProposalPairedNote);
+        await Wait.UntilAsync(() => page.ProposalNote == MotifAppStrings.TextsProposalPairedNote);
         context.ShowProposalView(MarkupView.Proposal);
         Assert.True(compare.ShowsWordList);
         Assert.True(compare.ShowsProposalColumn);
@@ -230,7 +231,7 @@ public sealed class TextsProposalWordListTests
 
         compare.LoadSources([Word("a"), Word("b"), Word("c", true), Word("d", true)]);
         await context.OpenProposalAsync("proposal/one", CancellationToken.None);
-        await UntilAsync(() => compare.ProposalWordsMatch is not null);
+        await Wait.UntilAsync(() => compare.ProposalWordsMatch is not null);
         context.ShowProposalView(MarkupView.TodayToProposal);
         Assert.True(compare.ProposalWork > 0);
         Assert.Equal(1, reads.Summaries);
@@ -272,7 +273,7 @@ public sealed class TextsProposalWordListTests
         context.ShowProposalView(MarkupView.Proposal);
         var proposal = page.ProposalNote;
         gate.Set();
-        await UntilAsync(() => page.Assess.Compare.ProposalWordsMatch is not null);
+        await Wait.UntilAsync(() => page.Assess.Compare.ProposalWordsMatch is not null);
 
         Assert.NotNull(reading);
         Assert.Contains(MotifAppStrings.TextsMatrixCountsNoun, reading);
@@ -466,7 +467,7 @@ public sealed class TextsProposalWordListTests
         await context.OpenProposalAsync("proposal/two", CancellationToken.None);
 
         context.OpenPage(WorkspacePage.Texts);
-        await UntilAsync(() => reads.Summaries == 2);
+        await Wait.UntilAsync(() => reads.Summaries == 2);
         var alive = await LivesAsync(weak);
         gate.Set();
 

@@ -211,12 +211,7 @@ public sealed class CrashWindowTests(AvaloniaHeadlessFixture avalonia)
                 {
                     window.Show();
                     Named<Expander>(window, "Crash details").IsExpanded = expanded;
-                    for (var pass = 0; pass < 3; pass++)
-                    {
-                        Dispatcher.UIThread.RunJobs();
-                        window.UpdateLayout();
-                        Avalonia.Headless.AvaloniaHeadlessPlatform.ForceRenderTimerTick();
-                    }
+                    PageScreenshots.Settle(window);
                     LayoutAssertions.BeforeCapture(window);
                     using var frame = window.CaptureRenderedFrame()!;
                     frame.Save(Path.Combine(folder, $"error-window-{(expanded ? "details" : "summary")}-{theme}.png"),

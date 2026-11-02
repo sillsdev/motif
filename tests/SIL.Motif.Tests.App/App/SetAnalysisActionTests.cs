@@ -50,7 +50,7 @@ public sealed class SetAnalysisActionTests
                     ?? throw new InvalidOperationException("The current Opinion is not attached to its popup.");
                 popup.MouseDown(point, MouseButton.Left);
                 popup.MouseUp(point, MouseButton.Left);
-                Settle(window);
+                PageScreenshots.Settle(window);
                 Assert.Equal(host == "review" ? 1 : 0, fake.PendingPutRequests.Count);
                 Assert.Empty(fake.ApplyPendingRequests);
                 Assert.Empty(fake.ApplyProposalRequests);
@@ -130,7 +130,7 @@ public sealed class SetAnalysisActionTests
                 HeadlessClick.Click(TopLevel.GetTopLevel(remove)!, remove, "Set analysis: Remove");
                 Assert.NotNull(command.ExecutionTask);
                 await command.ExecutionTask!;
-                Settle(window);
+                PageScreenshots.Settle(window);
                 var put = Assert.Single(fake.PendingPutRequests);
                 Assert.Equal(ChangeKinds.RemoveAnalysis, put.Change.Kind);
                 Assert.Equal(captured.Choice.StoredAnalysisId, put.Change.StoredAnalysisId);
@@ -162,7 +162,7 @@ public sealed class SetAnalysisActionTests
                     workspace.Context.Changes.Items.CollectionChanged -= changed;
                     window.Closed -= closed;
                 }
-                Settle(window);
+                PageScreenshots.Settle(window);
                 Assert.Empty(workspace.Context.Changes.Items);
                 Assert.EndsWith("-fix", wireId, StringComparison.Ordinal);
                 Assert.Empty(fake.ApplyPendingRequests);
@@ -201,19 +201,19 @@ public sealed class SetAnalysisActionTests
     {
         var reader = workspace.PageModel<TextsPageModel>().ResultsInText;
         reader.CloseTokenCard();
-        Settle(window);
+        PageScreenshots.Settle(window);
         var strip = StripOf(Panel(window), form);
         if (host == "strip")
         {
             Assert.IsType<WordStripToken>(strip).FocusWord();
-            Settle(window);
+            PageScreenshots.Settle(window);
             return strip;
         }
         var token = Assert.IsType<ResultsTokenViewModel>(ResultsInTextPanel.TokenOf(strip));
         if (host == "card")
         {
             await reader.OpenTokenCardAsync(token);
-            Settle(window);
+            PageScreenshots.Settle(window);
             return OpenCard(window);
         }
         Assert.Equal("review", host);
@@ -239,7 +239,7 @@ public sealed class SetAnalysisActionTests
         var entry = Assert.Single(review.Entries, entry => entry.Change?.Word == form);
         Assert.Equal(staged.ChangeId, entry.Change!.ChangeId);
         review.SelectEntry(entry);
-        Settle(window);
+        PageScreenshots.Settle(window);
         var panel = Assert.Single(window.GetVisualDescendants().OfType<ReviewPanel>());
         var list = panel.FindControl<ListBox>("ReviewItems")!;
         Assert.NotNull(review.SelectedTableEntry);
@@ -253,14 +253,14 @@ public sealed class SetAnalysisActionTests
         var body = FlyoutContent.Of(rowFlyout);
         var details = Assert.Single(body.GetVisualDescendants().OfType<Button>(), button => button.Content is "Details");
         HeadlessClick.Click(TopLevel.GetTopLevel(details)!, details, "Details for the captured change");
-        Settle(window);
+        PageScreenshots.Settle(window);
         if (review.ShowContextCommand.ExecutionTask is { } contextRead) await contextRead;
-        Settle(window);
+        PageScreenshots.Settle(window);
         Assert.False(rowFlyout.IsOpen);
         Assert.Same(entry, review.Current);
         var card = Assert.Single(panel.InspectorContent.GetVisualDescendants().OfType<WordCard>());
         await CardReadFinishedAsync(window, card);
-        Settle(window);
+        PageScreenshots.Settle(window);
         Assert.NotNull(card.Document);
         Assert.Null(card.Failure);
         Assert.False(card.CanRetry);
@@ -315,11 +315,11 @@ public sealed class SetAnalysisActionTests
     private static Control OpenByPointer(Window window, Button button)
     {
         button.BringIntoView();
-        Settle(window);
+        PageScreenshots.Settle(window);
         HeadlessClick.Click(window, button, AutomationProperties.GetName(button)!);
         var flyout = Assert.IsType<Flyout>(button.Flyout);
         Assert.True(flyout.IsOpen);
-        Settle(window);
+        PageScreenshots.Settle(window);
         return FlyoutContent.Of(flyout);
     }
 }

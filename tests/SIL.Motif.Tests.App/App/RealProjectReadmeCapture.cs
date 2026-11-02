@@ -181,12 +181,7 @@ public sealed class RealProjectReadmeCapture(ITestOutputHelper output)
 
     private static void Save(MainWindow window, string path)
     {
-        for (var pass = 0; pass < 3; pass++)
-        {
-            Dispatcher.UIThread.RunJobs();
-            window.UpdateLayout();
-            Avalonia.Headless.AvaloniaHeadlessPlatform.ForceRenderTimerTick();
-        }
+        PageScreenshots.Settle(window);
         // A layout defect on a real project is worth seeing, so it is written beside the picture, not thrown.
         try { LayoutAssertions.BeforeCapture(window); }
         catch (Exception exception)

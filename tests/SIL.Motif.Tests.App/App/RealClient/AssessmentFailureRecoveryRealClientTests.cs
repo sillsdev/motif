@@ -91,14 +91,6 @@ public sealed class AssessmentFailureRecoveryRealClientTests(PristineProjectFixt
         }
     }
 
-    private static async Task WaitForFile(string path, TimeSpan timeout)
-    {
-        var deadline = Stopwatch.GetTimestamp() + (long)(timeout.TotalSeconds * Stopwatch.Frequency);
-        while (!File.Exists(path))
-        {
-            if (Stopwatch.GetTimestamp() >= deadline)
-                throw new TimeoutException($"The parser child did not create '{path}' within {timeout}.");
-            await Task.Delay(25);
-        }
-    }
+    private static Task WaitForFile(string path, TimeSpan timeout) =>
+        Wait.UntilAsync(() => File.Exists(path), $"The parser child did not create '{path}'", timeout);
 }

@@ -1216,15 +1216,8 @@ public sealed class StateScreenshots(ITestOutputHelper output)
         }
 
         /// <summary>Lets the dispatcher run until <paramref name="done"/> holds, failing by name if it never does.</summary>
-        public async Task Until(Func<bool> done, string what)
-        {
-            for (var pass = 0; pass < 50 && !done(); pass++)
-            {
-                await Task.Yield();
-                PageScreenshots.Settle(Window);
-            }
-            if (!done()) throw new InvalidOperationException($"The window never showed {what}.");
-        }
+        public Task Until(Func<bool> done, string what) => Wait.UntilAsync(done,
+            $"The window never showed {what}.", between: () => PageScreenshots.Settle(Window));
 
         /// <summary>Closes what a state opened and moves the pointer and focus away, so the next state starts clean.</summary>
         public void Reset()

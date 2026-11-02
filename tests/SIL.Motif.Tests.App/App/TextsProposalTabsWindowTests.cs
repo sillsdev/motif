@@ -8,6 +8,7 @@ using SIL.Motif.App.Views;
 using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Responses;
 using Xunit;
+using SIL.Motif.Tests.TestFixtures;
 
 namespace SIL.Motif.Tests.App;
 
@@ -40,11 +41,8 @@ public sealed class TextsProposalTabsWindowTests
         workspace.CurrentPage = WorkspacePage.Texts;
         workspace.PageModel<TextsPageModel>().Tab = TextsTab.Matrix;
         await workspace.Context.OpenProposalAsync(ProposalId, CancellationToken.None);
-        for (var wait = 0; wait < 100 && workspace.Assess.Compare.ProposalWordsMatch is null; wait++)
-        {
-            await Task.Delay(20);
-            PageScreenshots.Settle(window);
-        }
+        await Wait.UntilAsync(() => workspace.Assess.Compare.ProposalWordsMatch is not null,
+            "The Matrix never compared the Proposal's words.", between: () => PageScreenshots.Settle(window));
         Assert.True(workspace.Assess.Compare.ProposalWordsMatch);
         workspace.PageModel<TextsPageModel>().Tab = tab;
         PageScreenshots.Settle(window);

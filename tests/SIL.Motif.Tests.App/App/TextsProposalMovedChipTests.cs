@@ -7,6 +7,7 @@ using SIL.Motif.Contract.Responses;
 using SIL.Motif.Tests.App.Walkthrough;
 using Xunit;
 using Xunit.Abstractions;
+using SIL.Motif.Tests.TestFixtures;
 
 namespace SIL.Motif.Tests.App;
 
@@ -213,7 +214,7 @@ public sealed class TextsProposalMovedChipTests
         Assert.Equal(["a", "b", "c", "d"], Listed(compare));
 
         await context.OpenProposalAsync("proposal/two", CancellationToken.None);
-        await TextsProposalMatrixTests.UntilAsync(() => compare.ProposalWordsMatch is not null);
+        await Wait.UntilAsync(() => compare.ProposalWordsMatch is not null);
         context.ShowProposalView(MarkupView.TodayToProposal);
         Assert.False(compare.IsMovedFilterOn);
         Assert.Equal(["a", "b", "c", "d"], Listed(compare));

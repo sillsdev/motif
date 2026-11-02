@@ -290,16 +290,8 @@ public sealed class ParseLeaseAdmissionRealClientTests(PristineProjectFixture pr
         operation.IsCanceled ? "it was cancelled" :
         $"its outcome: {Why(operation.Result.Refusal)}";
 
-    private static async Task WaitForFile(string path, TimeSpan cap, string description = "the held parser never started")
-    {
-        var deadline = Stopwatch.GetTimestamp() + (long)(cap.TotalSeconds * Stopwatch.Frequency);
-        while (!File.Exists(path))
-        {
-            Assert.True(Stopwatch.GetTimestamp() < deadline,
-                $"{description} at '{path}' within {cap.TotalMinutes:0.#} minutes.");
-            await Task.Delay(25);
-        }
-    }
+    private static Task WaitForFile(string path, TimeSpan cap, string description = "the held parser never started") =>
+        Wait.UntilAsync(() => File.Exists(path), $"{description} at '{path}'", cap);
 
     private sealed class RunningWorker(Process process) : IAsyncDisposable
     {

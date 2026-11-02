@@ -264,9 +264,7 @@ public sealed class ReviewCommandClientTests(PristineProjectFixture pristine)
     private static async Task WaitForHeartbeatAsync(string heartbeat,
         Task<CommandOutcome<AssessCommandResponse>>? assessment = null)
     {
-        var deadline = DateTimeOffset.UtcNow + TimeSpan.FromSeconds(20);
-        while (!File.Exists(heartbeat) && assessment?.IsCompleted != true && DateTimeOffset.UtcNow < deadline)
-            await Task.Delay(20);
+        await Wait.ForAsync(() => File.Exists(heartbeat) || assessment?.IsCompleted == true, TimeSpan.FromSeconds(20));
         var detail = assessment?.IsCompleted == true
             ? $" Assessment ended (succeeded: {assessment.Result.Succeeded}) with " +
               $"{assessment.Result.Refusal?.Code}: {assessment.Result.Refusal?.Message}; " +

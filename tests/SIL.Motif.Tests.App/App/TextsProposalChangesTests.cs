@@ -4,6 +4,7 @@ using SIL.Motif.App.ViewModels;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Responses;
 using Xunit;
+using SIL.Motif.Tests.TestFixtures;
 
 namespace SIL.Motif.Tests.App;
 
@@ -117,7 +118,7 @@ public sealed class TextsProposalChangesTests
         var (context, page) = await OnWhatChangedAsync();
         var first = page.ProposalChanges.ProposalMoves;
         await context.OpenProposalAsync("proposal/two", CancellationToken.None);
-        await TextsProposalMatrixTests.UntilAsync(() => page.Assess.Compare.ProposalWordsMatch is not null &&
+        await Wait.UntilAsync(() => page.Assess.Compare.ProposalWordsMatch is not null &&
             page.ProposalChanges.ProposalMoves is not null && !ReferenceEquals(page.ProposalChanges.ProposalMoves, first));
 
         Assert.NotSame(first, page.ProposalChanges.ProposalMoves);

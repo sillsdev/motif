@@ -26,12 +26,7 @@ public sealed class ParseAdmissionRealClientTests(PristineProjectFixture pristin
         var first = project.Client.AssessAsync(request, new Progress<AssessmentProgress>(), cancellation.Token);
         try
         {
-            var deadline = Stopwatch.GetTimestamp() + 30 * Stopwatch.Frequency;
-            while (!File.Exists(started))
-            {
-                Assert.True(Stopwatch.GetTimestamp() < deadline, "The held batch never started.");
-                await Task.Delay(25);
-            }
+            await Wait.UntilAsync(() => File.Exists(started), "The held batch never started.", TimeSpan.FromSeconds(30));
             var duplicate = await other.AssessAsync(request, new Progress<AssessmentProgress>(), CancellationToken.None)
                 .WaitAsync(TimeSpan.FromSeconds(5));
             Assert.False(duplicate.Succeeded);

@@ -13,6 +13,7 @@ using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using Xunit;
+using SIL.Motif.Tests.TestFixtures;
 
 namespace SIL.Motif.Tests.App;
 
@@ -49,7 +50,7 @@ public sealed class InspectorTests
                 var morph = Assert.IsType<ParserReadingMorphViewModel>(chip.Tag);
                 Click(window, chip);
                 await workspace.Inspector.Loading;
-                Settle(window);
+                PageScreenshots.Settle(window);
 
                 var inspector = InspectorPanel(window);
                 Assert.True(inspector.IsEffectivelyVisible);
@@ -79,12 +80,12 @@ public sealed class InspectorTests
                 var chip = CardChip(window, "kul");
                 Click(window, chip);
                 await workspace.Inspector.Loading;
-                Settle(window);
+                PageScreenshots.Settle(window);
 
                 var origin = Crumbs(window)[0];
                 Assert.Equal("alikula", ((InspectorCrumbViewModel)origin.DataContext!).Label);
                 Click(window, origin);
-                Settle(window);
+                PageScreenshots.Settle(window);
 
                 Assert.False(workspace.Inspector.IsOpen);
                 Assert.Null(workspace.Context.Inspector);
@@ -112,23 +113,23 @@ public sealed class InspectorTests
             {
                 Click(window, CardChip(window, "a-"));
                 await workspace.Inspector.Loading;
-                Settle(window);
+                PageScreenshots.Settle(window);
                 var other = Assert.Single(InspectorPanel(window).GetVisualDescendants().OfType<Button>(),
                     button => button.Classes.Contains("inspectLink") && AutomationProperties.GetName(button) == "Inspect yu-");
                 Click(window, other);
                 await workspace.Inspector.Loading;
-                Settle(window);
+                PageScreenshots.Settle(window);
                 Assert.Equal(["alikula", "a-", "yu-"], workspace.Inspector.Crumbs.Select(crumb => crumb.Label));
                 Assert.Equal("yu-", workspace.Inspector.Title);
 
                 window.KeyPress(Key.Escape, RawInputModifiers.None, PhysicalKey.Escape, null);
                 await workspace.Inspector.Loading;
-                Settle(window);
+                PageScreenshots.Settle(window);
                 Assert.Equal(["alikula", "a-"], workspace.Inspector.Crumbs.Select(crumb => crumb.Label));
                 Assert.Equal("a-", workspace.Inspector.Title);
 
                 window.KeyPress(Key.Escape, RawInputModifiers.None, PhysicalKey.Escape, null);
-                Settle(window);
+                PageScreenshots.Settle(window);
                 Assert.False(workspace.Inspector.IsOpen);
                 Assert.True(CardChip(window, "a-").IsFocused);
             }
@@ -170,14 +171,14 @@ public sealed class InspectorTests
                 window.Height = 1500;
                 workspace.Context.TryWord("matinlu");
                 await workspace.Assess.Trace.TryCommand.ExecutionTask!;
-                Settle(window);
+                PageScreenshots.Settle(window);
                 var inspector = InspectorPanel(window);
 
                 var chip = TraceChip(window);
                 var morph = Assert.IsType<TraceMorphViewModel>(chip.DataContext);
                 Click(window, chip);
                 await workspace.Inspector.Loading;
-                Settle(window);
+                PageScreenshots.Settle(window);
                 Assert.NotNull(morph.InspectSubject!.AllomorphId);
                 Assert.Equal(morph.InspectSubject.AllomorphId, fake.InspectRequests[^1].Subject.AllomorphId);
                 Assert.Equal(WorkspacePage.TryAWord, workspace.CurrentPage);
@@ -189,7 +190,7 @@ public sealed class InspectorTests
                 var rule = Assert.IsType<TraceStepViewModel>(link.DataContext);
                 Click(window, link);
                 await workspace.Inspector.Loading;
-                Settle(window);
+                PageScreenshots.Settle(window);
                 Assert.Equal(rule.Reference!.TimingKey, fake.InspectRequests[^1].Subject.TimingKey);
                 Assert.Equal(InspectorSubjectKind.Rule, fake.InspectRequests[^1].Subject.Kind);
                 Assert.Equal(WorkspacePage.TryAWord, workspace.CurrentPage);
@@ -199,7 +200,7 @@ public sealed class InspectorTests
                 await Until(window, () => HasRuleLink(window, "Timing by rule"));
                 Click(window, RuleLinkIn(window, "Timing by rule", timingKey));
                 await workspace.Inspector.Loading;
-                Settle(window);
+                PageScreenshots.Settle(window);
                 var asked = fake.InspectRequests[^1].Subject;
                 Assert.Equal(InspectorSubjectKind.Rule, asked.Kind);
                 Assert.Equal(rule.InspectSubject!.TimingKey, asked.TimingKey);
@@ -227,7 +228,7 @@ public sealed class InspectorTests
             {
                 Click(window, CardChip(window, "a-"));
                 await workspace.Inspector.Loading;
-                Settle(window);
+                PageScreenshots.Settle(window);
 
                 var sections = InspectorPanel(window).GetVisualDescendants().OfType<Border>()
                     .Where(border => border.Classes.Contains("inspectorSection") && border.IsEffectivelyVisible)
@@ -256,7 +257,7 @@ public sealed class InspectorTests
                     Assert.Contains("revealOnHover", link.Classes);
                 });
                 tryLinks[0].Focus(NavigationMethod.Tab);
-                Settle(window);
+                PageScreenshots.Settle(window);
                 Assert.True(tryLinks[0].Opacity > 0);
 
                 uses.ShowAllCommand.Execute(null);
@@ -265,7 +266,7 @@ public sealed class InspectorTests
                 Assert.Equal("Allomorph can't be split into phonemes", Assert.Single(workspace.Inspector.Warnings).Title);
                 var factItems = InspectorPanel(window).FindControl<ItemsControl>("InspectorFactsItems")!;
                 factItems.ScrollIntoView(factItems.ItemCount - 1);
-                Settle(window);
+                PageScreenshots.Settle(window);
                 var facts = sections[^1].GetVisualDescendants().OfType<HyperlinkButton>()
                     .Where(link => link is not InspectLink && link.IsEffectivelyVisible).ToArray();
                 Assert.NotEmpty(facts);
@@ -277,7 +278,7 @@ public sealed class InspectorTests
                 Assert.All(facts, link => Assert.Contains("revealOnHover", link.Classes));
                 Assert.All(facts, link => Assert.Equal(1, link.Opacity));
                 facts[0].Focus(NavigationMethod.Tab);
-                Settle(window);
+                PageScreenshots.Settle(window);
                 Assert.True(facts[0].Opacity > 0);
                 Assert.All(sections, section => Assert.Contains("hoverReveal", section.Classes));
 
@@ -304,7 +305,7 @@ public sealed class InspectorTests
             {
                 Click(window, CardChip(window, "a-"));
                 await workspace.Inspector.Loading;
-                Settle(window);
+                PageScreenshots.Settle(window);
 
                 var marks = InspectorPanel(window).GetVisualDescendants().OfType<Avalonia.Controls.Shapes.Ellipse>()
                     .Where(dot => dot.Classes.Contains("freshDot") && dot.IsEffectivelyVisible).ToArray();
@@ -331,7 +332,7 @@ public sealed class InspectorTests
         window.Height = 780;
         workspace.PageModel<TextsPageModel>().Tab = TextsTab.AnalyzeTexts;
         workspace.CurrentPage = WorkspacePage.Texts;
-        Settle(window);
+        PageScreenshots.Settle(window);
         return (workspace, window);
     }
 
@@ -379,27 +380,18 @@ public sealed class InspectorTests
             .Any(items => AutomationProperties.GetName(items) == list && items.IsEffectivelyVisible &&
                 items.GetVisualDescendants().OfType<Button>().Any(button => button.Classes.Contains("inspectLink")));
 
-    private static async Task Until(Window window, Func<bool> condition)
-    {
-        for (var attempt = 0; attempt < 200 && !condition(); attempt++)
-        {
-            await Task.Delay(10);
-            Settle(window);
-        }
-        Assert.True(condition(), "The window never reached the state the test waits for.");
-    }
+    private static Task Until(Window window, Func<bool> condition) => Wait.UntilAsync(condition,
+        "The window never reached the state the test waits for.", between: () => PageScreenshots.Settle(window));
 
     private static void Click(Window window, Control target)
     {
         target.BringIntoView();
-        Settle(window);
+        PageScreenshots.Settle(window);
         var centre = target.TranslatePoint(new Point(target.Bounds.Width / 2, target.Bounds.Height / 2), window)!.Value;
         window.MouseDown(centre, MouseButton.Left);
         window.MouseUp(centre, MouseButton.Left);
-        Settle(window);
+        PageScreenshots.Settle(window);
     }
-
-    private static void Settle(Window window) => AnalyzeTextsLayoutTests.Settle(window);
 
     private static TraceFieldWorksTarget Tool(string tool, string name, string id) =>
         new(tool, name, id, $"silfw://localhost/link?tool={tool}&guid={id}");
@@ -492,7 +484,7 @@ public sealed class InspectorTests
             {
                 Click(window, CardChip(window, "a-"));
                 await workspace.Inspector.Loading;
-                Settle(window);
+                PageScreenshots.Settle(window);
 
                 var inspector = workspace.Inspector;
                 Assert.Null(inspector.Uses);
@@ -547,10 +539,10 @@ public sealed class InspectorTests
                 window.Height = 1500;
                 workspace.Context.TryWord("matinlu");
                 await workspace.Assess.Trace.TryCommand.ExecutionTask!;
-                Settle(window);
+                PageScreenshots.Settle(window);
                 Click(window, RecordedRuleLink(window));
                 await workspace.Inspector.Loading;
-                Settle(window);
+                PageScreenshots.Settle(window);
 
                 var inspector = workspace.Inspector;
                 Assert.Equal("In this trace of matinlu", inspector.TraceTitle);
@@ -621,7 +613,7 @@ public sealed class InspectorTests
             {
                 Click(window, CardChip(window, "a-"));
                 await workspace.Inspector.Loading;
-                Settle(window);
+                PageScreenshots.Settle(window);
 
                 Assert.Empty(workspace.Inspector.Facts);
                 Assert.Equal("The names given belong to different FieldWorks objects, so Motif shows neither.",
@@ -668,7 +660,7 @@ public sealed class InspectorTests
             {
                 Click(window, CardChip(window, "a-"));
                 await workspace.Inspector.Loading;
-                Settle(window);
+                PageScreenshots.Settle(window);
 
                 Assert.DoesNotContain(InspectorPanel(window).GetVisualDescendants().OfType<Avalonia.Controls.Shapes.Ellipse>(),
                     dot => dot.Classes.Contains("freshDot") && dot.IsEffectivelyVisible);

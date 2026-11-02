@@ -807,13 +807,23 @@ public sealed class PageScreenshots
     }
 
     /// <summary>Lets bindings, layout and a render pass catch up with the last change to the window.</summary>
-    internal static void Settle(Avalonia.Controls.Window window)
+    internal static void Settle(Avalonia.Controls.Window window, int passes = 3)
     {
-        for (var pass = 0; pass < 3; pass++)
+        for (var pass = 0; pass < passes; pass++)
         {
             Dispatcher.UIThread.RunJobs();
             window.UpdateLayout();
             Avalonia.Headless.AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+        }
+    }
+
+    /// <summary>The same without the render pass, for a check that reads controls and bindings, not drawn frames.</summary>
+    internal static void SettleLayout(Avalonia.Controls.Window window, int passes = 3)
+    {
+        for (var pass = 0; pass < passes; pass++)
+        {
+            Dispatcher.UIThread.RunJobs();
+            window.UpdateLayout();
         }
     }
 
@@ -850,7 +860,7 @@ public sealed class PageScreenshots
             late.Compose(populated.Workspace);
             late.Closed += async (_, _) => await populated.DisposeAsync();
             late.Show();
-            if (renderForCapture) Settle(late); else LayoutInvariantEngineTests.Settle(late);
+            if (renderForCapture) Settle(late); else SettleLayout(late);
             return (populated.Workspace, late);
         }
         sample = await OpenSampleCore(parse, configure, leaveSetupOpen, capturedWords, capturedAssessment,
@@ -870,7 +880,7 @@ public sealed class PageScreenshots
             settle: () =>
             {
                 if (renderForCapture) Settle(window!);
-                else LayoutInvariantEngineTests.Settle(window!);
+                else SettleLayout(window!);
             });
         return (sample.Workspace, window!);
     }

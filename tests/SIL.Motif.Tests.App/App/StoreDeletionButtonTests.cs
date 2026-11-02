@@ -52,7 +52,7 @@ public sealed class StoreDeletionButtonTests
             {
                 window.Show();
                 await workspace.OpenRecentProjectCommand.ExecuteAsync(new RecentProjectViewModel(Project));
-                Settle(window);
+                PageScreenshots.SettleLayout(window);
 
                 Assert.NotNull(workspace.Baseline.ShownRefusal);
                 var opener = window.FindInWindowOrWorkspace<Button>("NoticeDetailsButton")!;
@@ -77,7 +77,7 @@ public sealed class StoreDeletionButtonTests
                 Assert.True(button.IsEffectivelyEnabled);
 
                 HeadlessClick.Click(TopLevel.GetTopLevel(button) ?? window, button, DeleteButtonText);
-                Settle(window);
+                PageScreenshots.SettleLayout(window);
 
                 Assert.True(question.IsEffectivelyVisible);
                 var shown = question.GetLogicalDescendants().OfType<TextBlock>().Select(text => text.Text).ToList();
@@ -104,7 +104,7 @@ public sealed class StoreDeletionButtonTests
             try
             {
                 window.Show();
-                Settle(window);
+                PageScreenshots.SettleLayout(window);
 
                 Assert.True(block.IsEffectivelyVisible);
                 Assert.False(DeleteButton(block).IsEffectivelyVisible);
@@ -118,12 +118,6 @@ public sealed class StoreDeletionButtonTests
 
     private static Button DeleteButton(RefusalBlock block) =>
         block.GetLogicalDescendants().OfType<Button>().Single(button => Equals(button.Content, DeleteButtonText));
-
-    private static void Settle(Window window)
-    {
-        Dispatcher.UIThread.RunJobs();
-        window.UpdateLayout();
-    }
 
     private sealed class NoProjectPicker : IProjectPicker
     {

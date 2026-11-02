@@ -23,12 +23,12 @@ public sealed class WordStripOverlayTests
                 Assert.True(strips.Length >= 2);
                 var focused = strips[0];
                 focused.FocusWord();
-                Settle(window);
+                PageScreenshots.Settle(window);
                 Assert.True(focused.IsKeyboardFocusWithin);
                 Assert.Single(focused.GetVisualDescendants().OfType<WordDispositionButtons>());
 
                 focused.SetCurrentValue(WordStripToken.DataProperty, strips[1].Data);
-                Settle(window);
+                PageScreenshots.Settle(window);
 
                 Assert.True(focused.IsKeyboardFocusWithin);
                 Assert.Single(focused.GetVisualDescendants().OfType<WordDispositionButtons>());
@@ -56,12 +56,12 @@ public sealed class WordStripOverlayTests
                 Assert.All(strips, strip => Assert.NotEmpty(strip.GetVisualDescendants().OfType<DispositionFace>()));
 
                 strips[0].FocusWord();
-                Settle(window);
+                PageScreenshots.Settle(window);
                 Assert.Single(strips[0].GetVisualDescendants().OfType<WordDispositionButtons>());
                 Assert.Empty(strips[0].GetVisualDescendants().OfType<DispositionFace>());
 
                 strips[1].FocusWord();
-                Settle(window);
+                PageScreenshots.Settle(window);
                 Assert.Empty(strips[0].GetVisualDescendants().OfType<WordDispositionButtons>());
                 Assert.NotEmpty(strips[0].GetVisualDescendants().OfType<DispositionFace>());
                 Assert.Single(strips[1].GetVisualDescendants().OfType<WordDispositionButtons>());
@@ -95,13 +95,13 @@ public sealed class WordStripOverlayTests
 
                 var add = Assert.Single(chakula.Marking.SetChoices, choice => choice.Label == "Add as Approved");
                 await chakula.StageMarkingChoiceForTokenCommand!.ExecuteAsync(chakula.BindMarkingChoice(add));
-                Settle(window);
+                PageScreenshots.Settle(window);
 
                 Assert.False(chakula.ShowsActions);
                 Assert.Null(actions.Child);
 
                 chakula.SetStagedMarkings([]);
-                Settle(window);
+                PageScreenshots.Settle(window);
 
                 Assert.True(chakula.ShowsActions && chakula.HasPrimaryAction);
                 strip = (WordStripToken)StripOf(panel, "chakula");

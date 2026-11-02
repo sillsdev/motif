@@ -198,8 +198,7 @@ public sealed class ProjectEvidenceTests
         var checking = warnings.CheckGrammarCommand.ExecuteAsync(null);
         // Further ahead than the wall clock can get before the wait gives up, so only the composed clock passes.
         clock.Advance(TimeSpan.FromSeconds(90));
-        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(10);
-        while (warnings.Grammar.ElapsedSeconds != 90 && DateTime.UtcNow < deadline) await Task.Delay(50);
+        await Wait.UntilAsync(() => warnings.Grammar.ElapsedSeconds == 90, "The grammar check never took the composed clock.");
         Assert.Equal("90 s", warnings.Grammar.ElapsedText);
         answer.SetResult(CommandOutcome<GrammarCheckResponse>.Success(new GrammarCheckResponse([], HasBaseline: true)));
         await checking;

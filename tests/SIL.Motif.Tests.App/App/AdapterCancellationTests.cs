@@ -275,10 +275,8 @@ public sealed class AdapterCancellationTests(PristineProjectFixture pristine)
     {
         var cancellation = new CancellationTokenSource();
         var checking = client.CheckGrammarAsync(new GrammarCheckRequest(project.FwDataPath), cancellation.Token);
-        var deadline = DateTimeOffset.UtcNow + TimeSpan.FromSeconds(20);
-        while (!File.Exists(heartbeat) && DateTimeOffset.UtcNow < deadline)
-            await Task.Delay(20);
-        Assert.True(File.Exists(heartbeat), "The grammar check did not reach the fake parser.");
+        await Wait.UntilAsync(() => File.Exists(heartbeat), "The grammar check did not reach the fake parser.",
+            TimeSpan.FromSeconds(20));
         return new ProjectHold(cancellation, checking);
     }
 

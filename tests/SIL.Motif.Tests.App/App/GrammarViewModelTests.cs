@@ -80,8 +80,7 @@ public sealed class GrammarViewModelTests
 
         var setting = grammar.SetProjectAsync(ProjectPath);
         clock.Advance(TimeSpan.FromSeconds(7));
-        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(10);
-        while (grammar.ElapsedSeconds != 7 && DateTime.UtcNow < deadline) await Task.Delay(50);
+        await Wait.UntilAsync(() => grammar.ElapsedSeconds == 7, "The grammar check never took the composed clock.");
 
         Assert.Equal("7 s", grammar.ElapsedText);
         answer.SetResult(CommandOutcome<GrammarCheckResponse>.Success(new GrammarCheckResponse([], HasBaseline: true)));

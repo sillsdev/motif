@@ -647,7 +647,7 @@ public sealed class ProgressiveDisplayTests
                 {
                     window.KeyPress(Key.Down, RawInputModifiers.None, PhysicalKey.None, null);
                     window.KeyRelease(Key.Down, RawInputModifiers.None, PhysicalKey.None, null);
-                    LayoutInvariantEngineTests.Settle(window);
+                    PageScreenshots.SettleLayout(window);
                 }
                 Assert.Same(children[navigationSteps], tree.SelectedItem);
                 Assert.True(scroll.Offset.Y > initialOffset);
@@ -655,7 +655,7 @@ public sealed class ProgressiveDisplayTests
                 {
                     window.KeyPress(Key.Up, RawInputModifiers.None, PhysicalKey.None, null);
                     window.KeyRelease(Key.Up, RawInputModifiers.None, PhysicalKey.None, null);
-                    LayoutInvariantEngineTests.Settle(window);
+                    PageScreenshots.SettleLayout(window);
                 }
                 Assert.Same(children[0], tree.SelectedItem);
                 Assert.InRange(root.GetRealizedContainers().Count(), 1, 64);
@@ -679,7 +679,7 @@ public sealed class ProgressiveDisplayTests
                 {
                     window.KeyPress(Key.Down, RawInputModifiers.None, PhysicalKey.None, null);
                     window.KeyRelease(Key.Down, RawInputModifiers.None, PhysicalKey.None, null);
-                    LayoutInvariantEngineTests.Settle(window);
+                    PageScreenshots.SettleLayout(window);
                 }
                 Assert.Same(roots[navigationSteps], tree.SelectedItem);
                 tree.ScrollIntoView(1999);
@@ -913,7 +913,7 @@ public sealed class ProgressiveDisplayTests
                     Assert.True(next.StaysOpenOnClick);
                     Assert.True(next.Focus());
                     next.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(MenuItem.ClickEvent));
-                    LayoutInvariantEngineTests.Settle(window);
+                    PageScreenshots.SettleLayout(window);
                     Assert.True(menu.IsSubMenuOpen);
                     Assert.Contains(menu.Items.OfType<MenuItem>(), item => item.IsFocused);
                 }

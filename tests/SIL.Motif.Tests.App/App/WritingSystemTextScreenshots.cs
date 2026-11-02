@@ -75,7 +75,7 @@ public sealed class WritingSystemTextScreenshots
                 workspace.Context.TryWord("Sungura");
                 await workspace.Assess.Trace.TryCommand.ExecutionTask!;
                 workspace.CurrentPage = WorkspacePage.TryAWord;
-                AnalyzeTextsLayoutTests.Settle(window);
+                PageScreenshots.Settle(window);
                 Capture(window, folder, style.RequestedFontInstalled ? "charis-sil-try-a-word-after" :
                     "charis-sil-try-a-word-before", "light");
             }

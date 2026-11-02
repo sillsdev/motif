@@ -281,11 +281,7 @@ public sealed class WordListSlotTests(AvaloniaHeadlessFixture avalonia)
         var host = new Grid { Width = width, Height = 300, Children = { slot } };
         var window = new MotifTestWindow { Content = host, Width = width + 80, Height = 360 };
         window.Show();
-        for (var pass = 0; pass < 3; pass++)
-        {
-            Dispatcher.UIThread.RunJobs();
-            window.UpdateLayout();
-        }
+        PageScreenshots.SettleLayout(window);
         return (slot, header, rows, window);
     }
 }

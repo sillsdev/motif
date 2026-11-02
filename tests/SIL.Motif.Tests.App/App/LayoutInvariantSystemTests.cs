@@ -41,7 +41,7 @@ public sealed class LayoutInvariantSystemTests(ITestOutputHelper output)
                 try
                 {
                     workspace.CurrentPage = WorkspacePage.Timing;
-                    LayoutInvariantEngineTests.Settle(window);
+                    PageScreenshots.SettleLayout(window);
                     LayoutInvariantFixtures.RequirePage(window, workspace, WorkspacePage.Timing);
                     foreach (var cell in new LayoutCell[]
                     {
@@ -94,7 +94,7 @@ public sealed class LayoutInvariantSystemTests(ITestOutputHelper output)
                         foreach (var page in PageRegistry.Entries.Select(entry => entry.Page))
                         {
                             workspace.CurrentPage = page;
-                            LayoutInvariantEngineTests.Settle(window);
+                            PageScreenshots.SettleLayout(window);
                             LayoutInvariantFixtures.RequirePage(window, workspace, page);
                             InspectGrid($"{page}/{(populated ? "populated" : "empty")}");
                         }
@@ -157,13 +157,13 @@ public sealed class LayoutInvariantSystemTests(ITestOutputHelper output)
                     // A narrow frame leaves an opened object behind the Inspector strip until a person reveals it.
                     void ShowObjectInspector()
                     {
-                        LayoutInvariantEngineTests.Settle(window);
+                        PageScreenshots.SettleLayout(window);
                         Avalonia.Headless.AvaloniaHeadlessPlatform.ForceRenderTimerTick();
-                        LayoutInvariantEngineTests.Settle(window);
+                        PageScreenshots.SettleLayout(window);
                         window.FindInWindowOrWorkspace<SIL.Motif.App.Views.Shell.WorkspaceLayoutHost>("WorkspaceLayout")!.ShowInspector();
-                        LayoutInvariantEngineTests.Settle(window);
+                        PageScreenshots.SettleLayout(window);
                         Avalonia.Headless.AvaloniaHeadlessPlatform.ForceRenderTimerTick();
-                        LayoutInvariantEngineTests.Settle(window);
+                        PageScreenshots.SettleLayout(window);
                     }
 
                     void InspectGrid(string scene, Action? prepare = null)

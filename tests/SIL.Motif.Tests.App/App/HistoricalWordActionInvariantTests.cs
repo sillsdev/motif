@@ -45,7 +45,7 @@ public sealed class HistoricalWordActionInvariantTests(AvaloniaHeadlessFixture a
                 WindowZoomPolicy.Apply(application, zoom);
                 window.Show();
                 window.MouseMove(new Point(-10, -10));
-                LayoutInvariantEngineTests.Settle(window);
+                PageScreenshots.SettleLayout(window);
                 Assert.False(row.IsPointerOver);
                 Assert.False(row.IsKeyboardFocusWithin);
                 Assert.False(row.State.IsOpen);

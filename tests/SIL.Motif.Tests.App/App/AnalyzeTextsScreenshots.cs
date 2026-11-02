@@ -32,7 +32,7 @@ public sealed class AnalyzeTextsScreenshots
                 workspace.PageModel<TextsPageModel>().Tab = TextsTab.AnalyzeTexts;
                 workspace.CurrentPage = WorkspacePage.Texts;
                 window.Height = 1500;
-                AnalyzeTextsLayoutTests.Settle(window);
+                PageScreenshots.Settle(window);
                 var inText = workspace.PageModel<TextsPageModel>().ResultsInText;
                 await inText.WarningEvidenceRefresh;
                 var warned = await FindTokenAsync(workspace, window, "alikula");
@@ -142,7 +142,7 @@ public sealed class AnalyzeTextsScreenshots
     private static void Save(MainWindow window, int width, string path)
     {
         window.Width = width;
-        AnalyzeTextsLayoutTests.Settle(window);
+        PageScreenshots.Settle(window);
         LayoutAssertions.BeforeCapture(window);
         using var frame = window.CaptureRenderedFrame() ?? throw new InvalidOperationException($"No frame rendered for {path}.");
         frame.Save(path, PngBitmapEncoderOptions.Default);

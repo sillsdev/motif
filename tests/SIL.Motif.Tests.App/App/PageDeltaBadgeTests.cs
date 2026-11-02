@@ -2,6 +2,7 @@ using SIL.Motif.App;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.Contract.Responses;
 using Xunit;
+using SIL.Motif.Tests.TestFixtures;
 
 namespace SIL.Motif.Tests.App;
 
@@ -80,7 +81,7 @@ public sealed class PageDeltaBadgeTests
         Assert.False(entry.HasDeltaBadge);
 
         context.OpenPage(WorkspacePage.Texts);
-        await TextsProposalMatrixTests.UntilAsync(() => page.ProposalDelta is not null);
+        await Wait.UntilAsync(() => page.ProposalDelta is not null);
         var read = reads.Summaries;
         foreach (var view in new[] { MarkupView.Today, MarkupView.TodayToProposal, MarkupView.Proposal })
         {
@@ -129,7 +130,7 @@ public sealed class PageDeltaBadgeTests
     {
         var (_, context, page) = await WarningsProposalViewTests.OpenedAsync(new GrammarCheckResponse(
             [WarningsProposalViewTests.Finding("b", GrammarDiagnosticLevel.Error)], true));
-        await TextsProposalMatrixTests.UntilAsync(() => page.ProposalDelta is not null);
+        await Wait.UntilAsync(() => page.ProposalDelta is not null);
         context.ShowProposalView(MarkupView.TodayToProposal);
 
         Assert.Equal("−2", page.DeltaBadge);
@@ -165,7 +166,7 @@ public sealed class PageDeltaBadgeTests
     public async Task WarningsLosesItWhenTheProposalIsLeft()
     {
         var (_, context, page) = await WarningsProposalViewTests.OpenedAsync(new GrammarCheckResponse([], true));
-        await TextsProposalMatrixTests.UntilAsync(() => page.ProposalDelta is not null);
+        await Wait.UntilAsync(() => page.ProposalDelta is not null);
 
         await context.LeaveProposalAsync();
 
@@ -177,7 +178,7 @@ public sealed class PageDeltaBadgeTests
     {
         var (fake, context, page) = await TimingProposalViewTests.OpenedAsync();
         context.ShowProposalView(MarkupView.TodayToProposal);
-        await TextsProposalMatrixTests.UntilAsync(() => page.ProposalDelta is not null);
+        await Wait.UntilAsync(() => page.ProposalDelta is not null);
 
         Assert.Equal("−10%", page.DeltaBadge);
         Assert.Contains("10% fewer parser work with this Proposal than today", page.ProposalDelta!.AccessibleName,
@@ -198,7 +199,7 @@ public sealed class PageDeltaBadgeTests
         };
         var (_, context, page) = await TimingProposalViewTests.OpenedAsync(side);
         context.ShowProposalView(MarkupView.TodayToProposal);
-        await TextsProposalMatrixTests.UntilAsync(() => page.ProposalDelta is not null);
+        await Wait.UntilAsync(() => page.ProposalDelta is not null);
 
         Assert.Equal("+10%", page.DeltaBadge);
     }
@@ -232,7 +233,7 @@ public sealed class PageDeltaBadgeTests
         Assert.Equal(0, TimingProposalViewTests.ProposalReads(fake));
 
         context.OpenPage(WorkspacePage.Timing);
-        await TextsProposalMatrixTests.UntilAsync(() => page.ProposalDelta is not null);
+        await Wait.UntilAsync(() => page.ProposalDelta is not null);
         await context.LeaveProposalAsync();
 
         Assert.Null(page.ProposalDelta);

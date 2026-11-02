@@ -14,6 +14,7 @@ using SIL.Motif.App.Views;
 using SIL.Motif.Tests.App.Walkthrough;
 using Xunit;
 using Xunit.Abstractions;
+using SIL.Motif.Tests.TestFixtures;
 using WordRow = SIL.Motif.App.Controls.WordPresentation.WordRow;
 
 namespace SIL.Motif.Tests.App;
@@ -93,12 +94,9 @@ public sealed class WordRowOpenLayoutSystemTests(ITestOutputHelper output)
                     var row = window.GetVisualDescendants().OfType<WordRow>().Single(item =>
                         item.IsEffectivelyVisible && item.Data?.Facts.Word == "hawajafika");
                     row.SetCurrentValue(WordRow.StateProperty, row.State! with { IsOpen = true });
-                    for (var pass = 0; pass < 50 && !row.GetVisualDescendants().OfType<WordCard>()
-                        .Any(card => card.Document?.Sections.OfType<WordCardAnalysis>().Any(section => section.Token is not null) == true); pass++)
-                    {
-                        await Task.Delay(10);
-                        PageScreenshots.Settle(window);
-                    }
+                    await Wait.UntilAsync(() => row.GetVisualDescendants().OfType<WordCard>()
+                        .Any(card => card.Document?.Sections.OfType<WordCardAnalysis>().Any(section => section.Token is not null) == true),
+                        "The opened row never showed an analysis in its word card.", between: () => PageScreenshots.Settle(window));
                     PageScreenshots.Settle(window);
                     LayoutAssertions.AssertCurrent(row);
 

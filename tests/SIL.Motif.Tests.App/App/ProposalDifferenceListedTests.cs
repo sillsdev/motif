@@ -4,6 +4,7 @@ using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using Xunit;
+using SIL.Motif.Tests.TestFixtures;
 
 namespace SIL.Motif.Tests.App;
 
@@ -207,9 +208,6 @@ public sealed class ProposalDifferenceListedTests
         Assert.Equal(MotifAppStrings.ProposalDifferenceMake, model.MakeLabel);
     }
 
-    private static async Task WaitFor(ProposalDifferenceViewModel model, Func<bool> done)
-    {
-        for (var attempt = 0; attempt < 200 && (!done() || model.IsReadingMore); attempt++) await Task.Delay(10);
-        Assert.True(done());
-    }
+    private static Task WaitFor(ProposalDifferenceViewModel model, Func<bool> done) => Wait.UntilAsync(
+        () => done() && !model.IsReadingMore, "The Proposal difference did not finish reading.");
 }

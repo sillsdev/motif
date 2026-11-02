@@ -15,6 +15,7 @@ using SIL.Motif.Contract.Responses;
 using SIL.Motif.Contract.HumanJudgments;
 using SIL.Motif.Help;
 using Xunit;
+using SIL.Motif.Tests.TestFixtures;
 
 namespace SIL.Motif.Tests.App;
 
@@ -1043,11 +1044,7 @@ public sealed class ParsimonyPageModelTests
     private static BaselineToken Token(string digit) => new("project-identity", "sha256:" + new string(digit[0], 64),
         "projection-v1", "2026-10-05T00:00:00Z", "sha256:" + new string('2', 64));
 
-    private static async Task WaitUntil(Func<bool> condition)
-    {
-        for (var attempt = 0; attempt < 500 && !condition(); attempt++) await Task.Delay(5);
-        Assert.True(condition(), "The condition was never reached.");
-    }
+    private static Task WaitUntil(Func<bool> condition) => Wait.UntilAsync(condition, "The condition was never reached.");
 
     private sealed class FolderPicker : IHandoffFolderPicker
     {

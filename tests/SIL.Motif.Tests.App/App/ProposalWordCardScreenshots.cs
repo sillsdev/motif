@@ -47,7 +47,7 @@ public sealed class ProposalWordCardScreenshots
                 var token = AnalyzeTextsLayoutTests.RealizedLines(inText).SelectMany(line => line.Tokens)
                     .Single(item => item.Form == Word);
                 await inText.OpenTokenCardAsync(token);
-                AnalyzeTextsLayoutTests.Settle(window);
+                PageScreenshots.Settle(window);
                 Assert.True(token.ShowsProposalBlock);
                 Assert.True(token.ApproveInProposal is not null || token.AddExpectedParse is not null);
                 var card = AnalyzeTextsLayoutTests.OpenCard(window);
@@ -56,7 +56,7 @@ public sealed class ProposalWordCardScreenshots
                 var flyout = (Flyout)fix.Flyout!;
                 SaveAll(window, folder, "proposal-word-card");
                 flyout.ShowAt(fix);
-                AnalyzeTextsLayoutTests.Settle(window);
+                PageScreenshots.Settle(window);
                 Assert.True(flyout.IsOpen);
                 SaveAll(window, folder, "proposal-word-card-fix-menu");
             }
@@ -100,7 +100,7 @@ public sealed class ProposalWordCardScreenshots
     private static void Save(MainWindow window, int width, string path)
     {
         window.Width = width;
-        AnalyzeTextsLayoutTests.Settle(window);
+        PageScreenshots.Settle(window);
         LayoutAssertions.BeforeCapture(window);
         using var frame = window.CaptureRenderedFrame() ?? throw new InvalidOperationException($"No frame rendered for {path}.");
         frame.Save(path, PngBitmapEncoderOptions.Default);

@@ -194,11 +194,4 @@ public sealed class DelayedPreferenceSaveTests
             Directory.Delete(_path, recursive: true);
         }
     }
-
-    private static async Task WaitFor(Func<bool> condition)
-    {
-        var until = DateTime.UtcNow.AddSeconds(10);
-        while (!condition() && DateTime.UtcNow < until) await Task.Delay(10);
-        Assert.True(condition());
-    }
 }

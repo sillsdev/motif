@@ -6,6 +6,7 @@ using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using SIL.Motif.Tests.App.Walkthrough;
 using Xunit;
+using SIL.Motif.Tests.TestFixtures;
 
 namespace SIL.Motif.Tests.App;
 
@@ -54,12 +55,8 @@ public sealed class FlyoutLayoutTests
                             button = window.FindInWindowOrWorkspace<Button>("HelpButton")!;
                         }
                         HeadlessClick.Click(window, button, which);
-                        for (var pass = 0; pass < 50 && button.Flyout?.IsOpen != true; pass++)
-                        {
-                            await Task.Yield();
-                            PageScreenshots.Settle(window);
-                        }
-                        Assert.True(button.Flyout!.IsOpen, $"the {which} pop-up did not open");
+                        await Wait.UntilAsync(() => button.Flyout?.IsOpen == true, $"the {which} pop-up did not open",
+                            between: () => PageScreenshots.Settle(window));
                         PageScreenshots.Settle(window);
 
                         var presenter = Assert.Single(Visible<FlyoutPresenter>(window));

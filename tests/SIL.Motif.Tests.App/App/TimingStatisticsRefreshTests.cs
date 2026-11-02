@@ -53,7 +53,7 @@ public sealed class TimingStatisticsRefreshTests
             {
                 workspace.CurrentPage = WorkspacePage.Timing;
                 workspace.Context.PublishEvidence(new WorkspaceEvidence(Run(), Saved, WasRerun: false));
-                Settle(window);
+                PageScreenshots.SettleLayout(window);
                 var statistics = workspace.PageModel<TimingPageModel>().Statistics;
                 Assert.Equal(30, workspace.PageModel<TimingPageModel>().RerunSeconds);
                 Assert.Equal(ParserWorkLimit.DefaultWork, workspace.PageModel<TimingPageModel>().RerunSteps);
@@ -64,7 +64,7 @@ public sealed class TimingStatisticsRefreshTests
                 var details = window.GetLogicalDescendants().OfType<Expander>()
                     .Single(expander => Equals(expander.Header, MotifAppStrings.TimingDetailedStatisticsHeading));
                 details.IsExpanded = true;
-                Settle(window);
+                PageScreenshots.SettleLayout(window);
                 Assert.NotNull(statistics.LoadCommand.ExecutionTask);
                 await statistics.LoadCommand.ExecutionTask!;
                 Assert.Single(fake.StatsRequests);
@@ -73,7 +73,7 @@ public sealed class TimingStatisticsRefreshTests
                 await workspace.Context.EvidencePublication;
                 details.IsExpanded = false;
                 details.IsExpanded = true;
-                Settle(window);
+                PageScreenshots.SettleLayout(window);
                 Assert.Single(fake.StatsRequests);
             }
             finally
@@ -114,13 +114,6 @@ public sealed class TimingStatisticsRefreshTests
             Assert.Contains("original Parse all words run", timing.Statistics.ScopeNote, StringComparison.Ordinal);
             Assert.Contains("later word reruns appear above in Timing", timing.Statistics.ScopeNote, StringComparison.Ordinal);
         }, TimeSpan.FromSeconds(30));
-    }
-
-    private static void Settle(Window window)
-    {
-        Dispatcher.UIThread.RunJobs();
-        window.UpdateLayout();
-        Dispatcher.UIThread.RunJobs();
     }
 
     private static TimingResponse Timing(string by) => new("assessment-parse", "all", by, 3, 5, 8,

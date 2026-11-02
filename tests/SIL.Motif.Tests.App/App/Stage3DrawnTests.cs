@@ -145,7 +145,7 @@ public sealed class Stage3DrawnTests
         var window = new MotifTestWindow { Content = word, Width = 900, Height = 400 };
         WritingSystemText.SetResolver(window, styles);
         window.Show();
-        for (var pass = 0; pass < 3; pass++) { Dispatcher.UIThread.RunJobs(); window.UpdateLayout(); }
+        PageScreenshots.SettleLayout(window);
         return (window, word, sample);
     }
 }

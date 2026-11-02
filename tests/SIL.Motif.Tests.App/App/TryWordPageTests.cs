@@ -116,7 +116,7 @@ public sealed class TryWordPageTests
             try
             {
                 window.Show();
-                Settle(window);
+                PageScreenshots.SettleLayout(window);
                 var texts = VisibleTexts(window).ToArray();
                 Assert.Contains("Why It Did Not Parse", texts);
                 Assert.Contains(TraceFailureSentences.Explain("RequiredSyntacticFeatureStruct"), texts);
@@ -184,7 +184,7 @@ public sealed class TryWordPageTests
             try
             {
                 window.Show();
-                Settle(window);
+                PageScreenshots.SettleLayout(window);
                 var visible = VisibleTexts(window).ToArray();
                 Assert.Contains("Approved in FieldWorks", visible);
                 Assert.Contains("Lost", visible);
@@ -221,7 +221,7 @@ public sealed class TryWordPageTests
             try
             {
                 window.Show();
-                Settle(window);
+                PageScreenshots.SettleLayout(window);
                 Assert.Contains("Traced with the grammar of the Baseline from " + WorkspaceDateLabel(
                     DateTimeOffset.Parse(baseline.CapturedUtc), context.Clock), VisibleTexts(window));
                 Assert.DoesNotContain("Grammar source: snapshot", VisibleTexts(window));
@@ -260,10 +260,10 @@ public sealed class TryWordPageTests
             try
             {
                 window.Show();
-                Settle(window);
+                PageScreenshots.SettleLayout(window);
                 Assert.Equal(different, VisibleTexts(window).Contains(warning));
                 page.Trace.Result = DogsTrace();
-                Settle(window);
+                PageScreenshots.SettleLayout(window);
                 Assert.DoesNotContain(warning, VisibleTexts(window));
                 fake.TimingCompletesWith(DogsTiming() with { Baseline = measured, Words = [] });
                 page.Trace.Result = DogsTrace() with
@@ -274,7 +274,7 @@ public sealed class TryWordPageTests
                             DateTimeOffset.Parse(traced.CapturedUtc), "capture"),
                     },
                 };
-                Settle(window);
+                PageScreenshots.SettleLayout(window);
                 Assert.DoesNotContain(warning, VisibleTexts(window));
             }
             finally { window.Close(); }
@@ -292,7 +292,7 @@ public sealed class TryWordPageTests
             try
             {
                 window.Show();
-                Settle(window);
+                PageScreenshots.SettleLayout(window);
                 Assert.Equal("No analysis found", TraceStepKinds.Describe("Failed"));
                 var list = Assert.Single(window.GetVisualDescendants().OfType<ListBox>(), control =>
                     AutomationProperties.GetName(control) == "Plain trace steps");
@@ -300,14 +300,14 @@ public sealed class TryWordPageTests
                     step.KindText is "Rule level" or "Lexical lookup");
                 var failure = page.Trace.ExpertEvents.First(step => step.IsFailure && step.Type.Contains("Rule"));
                 page.Trace.SelectedStep = failure;
-                Settle(window);
+                PageScreenshots.SettleLayout(window);
                 list.SelectedItem = failure;
-                Settle(window);
+                PageScreenshots.SettleLayout(window);
                 var row = Assert.IsType<ListBoxItem>(list.ContainerFromItem(failure));
                 Assert.Contains(failure.PlainRefusalText, VisibleTexts(row));
                 Assert.DoesNotContain(window.GetVisualDescendants().OfType<TreeView>(), tree => tree.IsEffectivelyVisible);
                 page.Trace.IsExpert = true;
-                Settle(window);
+                PageScreenshots.SettleLayout(window);
                 Assert.Same(failure.RecordedStep, page.Trace.SelectedStep!.RecordedStep);
                 var eventRow = window.GetVisualDescendants().OfType<Border>().Single(border =>
                     border.IsEffectivelyVisible && border.DataContext is TraceStepViewModel step &&
@@ -317,7 +317,7 @@ public sealed class TryWordPageTests
                 page.Trace.ExpertWholeTree = false;
                 var terminal = page.Trace.SelectedCandidate.Steps.Last();
                 page.Trace.SelectExpertStepCommand.Execute(terminal);
-                Settle(window);
+                PageScreenshots.SettleLayout(window);
                 var attemptRow = window.GetVisualDescendants().OfType<Border>().Single(border =>
                     border.IsEffectivelyVisible && ReferenceEquals(border.DataContext, terminal) &&
                     border.Classes.Contains("hoverReveal"));
@@ -340,12 +340,12 @@ public sealed class TryWordPageTests
             try
             {
                 window.Show();
-                Settle(window);
+                PageScreenshots.SettleLayout(window);
                 var details = window.GetVisualDescendants().OfType<Expander>().Single(expander =>
                     AutomationProperties.GetName(expander) == "Full parser analysis details");
                 Assert.False(details.IsExpanded);
                 details.IsExpanded = true;
-                Settle(window);
+                PageScreenshots.SettleLayout(window);
                 var parser = window.GetVisualDescendants().OfType<Expander>().Single(expander =>
                     AutomationProperties.GetName(expander) == "Recorded source analyses");
                 Assert.Equal(MotifAppStrings.ParserRecord, parser.Header);
@@ -353,10 +353,10 @@ public sealed class TryWordPageTests
                 Assert.DoesNotContain(VisibleTexts(window), text => text.Contains("MissingMsa") ||
                     text.StartsWith("Producer id:") || text.StartsWith("Projection status:"));
                 parser.IsExpanded = true;
-                Settle(window);
+                PageScreenshots.SettleLayout(window);
                 Assert.Contains(VisibleTexts(parser), text => text.StartsWith("Producer id:"));
                 page.Trace.Result = DogsTrace();
-                Settle(window);
+                PageScreenshots.SettleLayout(window);
                 Assert.False(parser.IsExpanded);
             }
             finally { window.Close(); }
@@ -453,7 +453,7 @@ public sealed class TryWordPageTests
             try
             {
                 window.Show();
-                Settle(window);
+                PageScreenshots.SettleLayout(window);
                 Assert.Contains("Vowel harmony", VisibleTexts(window));
                 Assert.DoesNotContain("Producer: Producer name", VisibleTexts(window));
                 var link = Assert.Single(window.GetVisualDescendants().OfType<InspectLink>(), control =>
@@ -471,7 +471,7 @@ public sealed class TryWordPageTests
                     AutomationProperties.GetName(expander) == "Full derivation tree");
                 full.IsExpanded = true;
                 page.Trace.RuleFilter = "Vowel harmony";
-                Settle(window);
+                PageScreenshots.SettleLayout(window);
                 Assert.Contains("Producer: Producer name", VisibleTexts(window));
                 Assert.Contains("Captured FieldWorks: Vowel harmony", VisibleTexts(window));
                 var fullCard = window.GetVisualDescendants().OfType<DiagnosticPanel>().Single()
@@ -505,7 +505,7 @@ public sealed class TryWordPageTests
             try
             {
                 window.Show();
-                Settle(window);
+                PageScreenshots.SettleLayout(window);
                 Assert.Contains("Vowel harmony", VisibleTexts(window));
                 Assert.DoesNotContain(window.GetVisualDescendants().OfType<InspectLink>(), link =>
                     link.IsEffectivelyVisible && link.DataContext is TraceStepViewModel);
@@ -615,7 +615,7 @@ public sealed class TryWordPageTests
             try
             {
                 window.Show();
-                Settle(window);
+                PageScreenshots.SettleLayout(window);
                 var texts = VisibleTexts(window).ToArray();
                 Assert.Contains(page.TracedGrammarText, texts);
                 Assert.DoesNotContain(texts, text => text.StartsWith("Grammar source:"));
@@ -652,7 +652,7 @@ public sealed class TryWordPageTests
             try
             {
                 window.Show();
-                Settle(window);
+                PageScreenshots.SettleLayout(window);
                 var texts = VisibleTexts(window).ToArray();
                 Assert.Contains(expected, texts);
                 if (explanation is not null) Assert.DoesNotContain(texts, text => text.Contains("FutureReason", StringComparison.Ordinal));
@@ -684,7 +684,7 @@ public sealed class TryWordPageTests
             try
             {
                 window.Show();
-                Settle(window);
+                PageScreenshots.SettleLayout(window);
                 var texts = VisibleTexts(view).ToArray();
                 Assert.Contains(TraceFailureSentences.Explain("NonPartialRuleProhibitedAfterFinalTemplate", "lu"), texts);
                 Assert.DoesNotContain(texts, text => text.Contains("MorphologicalRuleSynthesis", StringComparison.Ordinal));
@@ -713,7 +713,7 @@ public sealed class TryWordPageTests
             try
             {
                 window.Show();
-                Settle(window);
+                PageScreenshots.SettleLayout(window);
                 var texts = VisibleTexts(view).ToArray();
                 Assert.Contains("Showing every step", texts);
                 Assert.DoesNotContain("Input not recorded", texts);
@@ -744,7 +744,7 @@ public sealed class TryWordPageTests
             try
             {
                 window.Show();
-                Settle(window);
+                PageScreenshots.SettleLayout(window);
                 var texts = VisibleTexts(window).ToArray();
                 Assert.DoesNotContain("Grammar source not recorded", texts);
                 Assert.Contains("FieldWorks word context unavailable", texts);
@@ -754,7 +754,7 @@ public sealed class TryWordPageTests
                 Assert.True(analyze.Focusable);
                 Assert.Equal(1, analyze.Opacity);
                 analyze.Focus();
-                Settle(window);
+                PageScreenshots.SettleLayout(window);
                 Assert.Equal(1, analyze.Opacity);
                 Assert.True(analyze.IsHitTestVisible);
                 Assert.DoesNotContain(window.GetLogicalDescendants().OfType<Button>(), button =>
@@ -778,41 +778,41 @@ public sealed class TryWordPageTests
             try
             {
                 window.Show();
-                Settle(window);
+                PageScreenshots.SettleLayout(window);
                 var plain = window.GetVisualDescendants().OfType<ListBox>().Single(list =>
                     AutomationProperties.GetName(list) == "Plain trace steps");
                 page.Trace.SelectedStep = page.Trace.ExpertEvents.Single(step => step.Source == "Vowel harmony");
-                Settle(window);
+                PageScreenshots.SettleLayout(window);
                 plain.SelectedItem = page.Trace.PlainSteps.Single(step => step.Source == "Vowel harmony");
-                Settle(window);
+                PageScreenshots.SettleLayout(window);
                 var occurrence = page.Trace.SelectedStep!.RecordedStep;
                 Assert.Same(page.Trace.Reading!.Root.Children[0], occurrence);
                 page.Trace.IsExpert = true;
-                Settle(window);
+                PageScreenshots.SettleLayout(window);
                 var full = window.GetVisualDescendants().OfType<Expander>().Single(expander =>
                     AutomationProperties.GetName(expander) == "Full derivation tree");
                 full.IsExpanded = true;
                 page.Trace.RuleFilter = "Vowel harmony";
-                Settle(window);
+                PageScreenshots.SettleLayout(window);
                 var expert = window.GetVisualDescendants().OfType<TreeView>().Single(tree =>
                     AutomationProperties.GetName(tree) == "Filtered full derivation tree");
                 SelectRule(expert);
                 Assert.Same(occurrence, page.Trace.SelectedStep!.RecordedStep);
                 page.Trace.RuleFilter = "a rule absent from this trace";
-                Settle(window);
+                PageScreenshots.SettleLayout(window);
                 Assert.Same(occurrence, page.Trace.SelectedStep!.RecordedStep);
                 Assert.Contains("Producer: Producer name", VisibleTexts(window));
                 page.Trace.RuleFilter = "Vowel harmony";
-                Settle(window);
+                PageScreenshots.SettleLayout(window);
                 Assert.Same(occurrence, page.Trace.SelectedStep!.RecordedStep);
                 full.IsExpanded = false;
-                Settle(window);
+                PageScreenshots.SettleLayout(window);
                 Assert.Same(occurrence, page.Trace.SelectedStep!.RecordedStep);
                 page.Trace.IsExpert = false;
-                Settle(window);
+                PageScreenshots.SettleLayout(window);
                 Assert.Same(occurrence, page.Trace.SelectedStep!.RecordedStep);
                 page.Trace.Result = WordTraceQuery.LoadDiagnostic(TraceEnvelope.CapturedRuleLabel).Value!;
-                Settle(window);
+                PageScreenshots.SettleLayout(window);
                 Assert.Null(page.Trace.SelectedStep);
             }
             finally { window.Close(); }
@@ -821,10 +821,10 @@ public sealed class TryWordPageTests
             {
                 var root = Assert.IsType<TreeViewItem>(tree.ContainerFromIndex(0));
                 root.IsExpanded = true;
-                Settle(window);
+                PageScreenshots.SettleLayout(window);
                 var rule = Assert.IsType<TreeViewItem>(root.ContainerFromIndex(0));
                 rule.IsSelected = true;
-                Settle(window);
+                PageScreenshots.SettleLayout(window);
             }
         });
     }
@@ -850,7 +850,7 @@ public sealed class TryWordPageTests
                 window.Show();
                 window.GetVisualDescendants().OfType<Expander>().Single(expander =>
                     AutomationProperties.GetName(expander) == "Full derivation tree").IsExpanded = true;
-                Settle(window);
+                PageScreenshots.SettleLayout(window);
                 var tree = window.GetVisualDescendants().OfType<TreeView>().Single(control =>
                     AutomationProperties.GetName(control) == "Filtered full derivation tree");
                 var scroll = tree.GetVisualAncestors().OfType<ScrollViewer>().First();
@@ -865,7 +865,7 @@ public sealed class TryWordPageTests
                     for (var index = 0; index < owner.ItemCount; index++)
                     {
                         owner.ScrollIntoView(index);
-                        Settle(window);
+                        PageScreenshots.SettleLayout(window);
                         var item = Assert.IsType<TreeViewItem>(owner.ContainerFromIndex(index));
                         var notation = item.GetVisualDescendants().OfType<CopyableTextBlock>()
                             .Where(block => block.IsEffectivelyVisible && block.Classes.Contains("traceNotation") &&
@@ -874,7 +874,7 @@ public sealed class TryWordPageTests
                         foreach (var block in notation)
                         {
                             block.BringIntoView();
-                            Settle(window);
+                            PageScreenshots.SettleLayout(window);
                             var origin = block.TranslatePoint(default, tree)!.Value;
                             Assert.True(origin.X >= 0 && origin.X + block.Bounds.Width <= tree.Bounds.Width + 1,
                                 $"Notation extends past the {width}px tree viewport: {block.Text}");
@@ -907,7 +907,7 @@ public sealed class TryWordPageTests
             try
             {
                 window.Show();
-                Settle(window);
+                PageScreenshots.SettleLayout(window);
                 Assert.Contains("Search incomplete: limit", VisibleTexts(window));
                 var list = window.GetLogicalDescendants().OfType<ListBox>().Single(control =>
                     AutomationProperties.GetName(control) == "Plain trace steps");
@@ -915,7 +915,7 @@ public sealed class TryWordPageTests
                 Assert.Same(page.Trace.Reading!.Root.Children[0], step.RecordedStep);
 
                 page.Trace.Result = DogsTrace();
-                Settle(window);
+                PageScreenshots.SettleLayout(window);
                 Assert.DoesNotContain("Search incomplete: limit", VisibleTexts(window));
             }
             finally { window.Close(); }
@@ -932,18 +932,18 @@ public sealed class TryWordPageTests
             try
             {
                 window.Show();
-                Settle(window);
+                PageScreenshots.SettleLayout(window);
                 var tools = window.GetLogicalDescendants().OfType<Button>().Single(button =>
                     AutomationProperties.GetName(button) == "Try a Word tools");
                 var input = window.GetLogicalDescendants().OfType<TextBox>().Single(box =>
                     AutomationProperties.GetName(box) == "Word to try");
                 Assert.Equal(1, tools.Opacity);
                 Assert.True(tools.Focus());
-                Settle(window);
+                PageScreenshots.SettleLayout(window);
                 Assert.Equal(1, tools.Opacity);
 
                 window.MouseMove(input.TranslatePoint(new Point(input.Bounds.Width / 2, input.Bounds.Height / 2), window)!.Value);
-                Settle(window);
+                PageScreenshots.SettleLayout(window);
 
                 Assert.Equal(1, tools.Opacity);
                 Assert.True(tools.IsHitTestVisible);
@@ -966,7 +966,7 @@ public sealed class TryWordPageTests
                 var tools = window.GetLogicalDescendants().OfType<Button>().Single(button =>
                     AutomationProperties.GetName(button) == "Try a Word tools");
                 tools.Flyout!.ShowAt(tools);
-                Settle(window);
+                PageScreenshots.SettleLayout(window);
 
                 var menu = Assert.IsAssignableFrom<Control>(Assert.IsType<Flyout>(tools.Flyout).Content);
                 var word = menu.GetVisualDescendants().OfType<Button>().Single(button =>
@@ -1076,7 +1076,7 @@ public sealed class TryWordPageTests
             try
             {
                 window.Show();
-                Settle(window);
+                PageScreenshots.SettleLayout(window);
                 Assert.Contains(expected, ContextTexts(window));
             }
             finally { window.Close(); }
@@ -1104,7 +1104,7 @@ public sealed class TryWordPageTests
             try
             {
                 window.Show();
-                Settle(window);
+                PageScreenshots.SettleLayout(window);
 
                 Assert.Equal(2, Assert.Single(page.FieldWorksAnalyses).Pieces.Count);
                 Assert.Equal(1, ContextTexts(window).Count(text => text == "No step recorded"));
@@ -1140,7 +1140,7 @@ public sealed class TryWordPageTests
             try
             {
                 window.Show();
-                Settle(window);
+                PageScreenshots.SettleLayout(window);
                 var analyses = window.GetVisualDescendants().OfType<ProgressiveItemsControl>()
                     .Single(list => list.Name == "TryWordPanelFieldWorksAnalysesItems");
                 Assert.Same(page.FieldWorksAnalyses, analyses.FullItemsSource);
@@ -1149,7 +1149,7 @@ public sealed class TryWordPageTests
                 for (var index = 0; index < analyses.ItemCount; index++)
                 {
                     analyses.ScrollIntoView(index);
-                    Settle(window);
+                    PageScreenshots.SettleLayout(window);
                     var row = Assert.IsAssignableFrom<Control>(analyses.ContainerFromIndex(index));
                     texts.AddRange(VisibleTexts(row));
                     texts.AddRange(ContextTexts(window).OfType<string>());
@@ -1187,7 +1187,7 @@ public sealed class TryWordPageTests
             try
             {
                 window.Show();
-                Settle(window);
+                PageScreenshots.SettleLayout(window);
                 var texts = ContextTexts(window);
                 Assert.DoesNotContain(texts, text => text?.Contains("saved", StringComparison.OrdinalIgnoreCase) == true);
                 Assert.DoesNotContain(texts, text => text is not null && text.Contains(saved.ToString("O")));
@@ -1230,7 +1230,7 @@ public sealed class TryWordPageTests
             try
             {
                 window.Show();
-                Settle(window);
+                PageScreenshots.SettleLayout(window);
                 Assert.DoesNotContain(ContextTexts(window), text =>
                     text?.Contains("saved", StringComparison.OrdinalIgnoreCase) == true);
             }
@@ -1261,7 +1261,7 @@ public sealed class TryWordPageTests
             try
             {
                 window.Show();
-                Settle(window);
+                PageScreenshots.SettleLayout(window);
                 var texts = ContextTexts(window);
                 Assert.DoesNotContain(texts, text => text?.Contains("saved", StringComparison.OrdinalIgnoreCase) == true);
                 Assert.DoesNotContain(texts, text => text is not null && text.Contains(saved.ToString("O")));
@@ -1328,7 +1328,7 @@ public sealed class TryWordPageTests
                     AutomationProperties.GetName(button) == "Try a Word tools");
                 tools.Focus();
                 tools.Flyout!.ShowAt(tools);
-                Settle(window);
+                PageScreenshots.SettleLayout(window);
 
                 var menu = Assert.IsAssignableFrom<Control>(Assert.IsType<Flyout>(tools.Flyout).Content);
                 var list = menu.GetLogicalDescendants().OfType<ItemsControl>()
@@ -1851,7 +1851,7 @@ public sealed class TryWordPageTests
             try
             {
                 window.Show();
-                Settle(window);
+                PageScreenshots.SettleLayout(window);
                 var visible = VisibleTexts(view).ToArray();
                 Assert.Single(visible, text => text == "Parsed · 2 analyses");
                 Assert.Contains("Morphemes: MA + TIN + LU", visible);
@@ -1870,15 +1870,6 @@ public sealed class TryWordPageTests
             }
             finally { window.Close(); }
         });
-    }
-
-    private static void Settle(Window window)
-    {
-        for (var pass = 0; pass < 3; pass++)
-        {
-            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
-            window.UpdateLayout();
-        }
     }
 
     private static IEnumerable<string> VisibleTexts(Control view) => view.GetVisualDescendants().OfType<TextBlock>()
