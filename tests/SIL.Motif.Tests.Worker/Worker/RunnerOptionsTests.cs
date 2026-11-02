@@ -1,3 +1,4 @@
+using SIL.Motif.Host;
 using SIL.Motif.Worker;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
@@ -59,6 +60,26 @@ public sealed class RunnerOptionsTests : IDisposable
     public void AParserArgumentNamingAMissingFileSelectsNoParser() =>
         Assert.Null(RunnerOptions.Read(
             [RunnerOptions.ParserArgument, Path.Combine(_directory, "absent", FakeParser.ExecutableFileName)]).ParserPath);
+
+    [Fact]
+    public void TheDefaultRootFollowsAnAbsoluteXdgDataHomeFromTheAmbientEnvironment()
+    {
+        if (OperatingSystem.IsWindows()) return;
+        var dataHome = Path.Combine(_directory, "xdg-data-not-created-yet");
+
+        using (AmbientEnvironment.Push(new Dictionary<string, string?> { ["XDG_DATA_HOME"] = dataHome }))
+            Assert.Equal(Path.Combine(dataHome, "SIL", "Motif"), RunnerOptions.ResolveRoot());
+    }
+
+    [Fact]
+    public void TheDefaultRootIgnoresARelativeXdgDataHome()
+    {
+        if (OperatingSystem.IsWindows()) return;
+        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+
+        using (AmbientEnvironment.Push(new Dictionary<string, string?> { ["XDG_DATA_HOME"] = "relative/data" }))
+            Assert.Equal(Path.Combine(home, ".local", "share", "SIL", "Motif"), RunnerOptions.ResolveRoot());
+    }
 
     [Fact]
     public void ResolveRootAndReadTakeTheRootVariable()
