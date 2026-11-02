@@ -164,6 +164,8 @@ $env:DOTNET_TC_CallCounting = '0'
 # Shards take classes by recorded seconds, not by hash; tools/Update-TestShardWeights.ps1 renews the file.
 $shardWeights = Join-Path $PSScriptRoot 'tests/test-shard-weights.json'
 if (Test-Path $shardWeights) { $env:MOTIF_TEST_SHARD_WEIGHTS = $shardWeights }
+# Failed test names are kept in a machine-wide file across runs; see TestFailureLog.
+if (-not $env:MOTIF_TEST_FAILURE_LOG) { $env:MOTIF_TEST_FAILURE_LOG = Join-Path $testSlotDirectory 'test-failures.tsv' }
 # Test processes copy the seeded LibLCM masters from here; names carry an input hash, old folders go.
 $fixtureCache = Join-Path $repoRoot "bin/.cache/test-fixtures/$Configuration"
 if (Test-Path -LiteralPath $fixtureCache) {

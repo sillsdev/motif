@@ -106,6 +106,8 @@ LibLCM tests run N at a time. Classes go to shards by the seconds `tests/test-sh
 (`MOTIF_TEST_SHARD_WEIGHTS`), heaviest first; after a full run that leaves one shard far behind the others,
 renew it with `tools/Update-TestShardWeights.ps1` and commit it. The tool merges: the classes in the last run take their new seconds and every other entry stays, so a run of one project keeps the others' timings (`-Replace` rewrites the file from a whole-suite run; never run it after a `-Filter` run). A bare `dotnet test` leaves the variables unset and
 runs every test.
+`test.ps1` appends every failed test's name and first message line to `test-failures.tsv` in the machine-wide slot folder
+(`MOTIF_TEST_FAILURE_LOG` names another file), which no run wipes, so a flake rate is a count of lines.
 Each process writes its console log to `bin/<Configuration>/test-results/<run>.log` and its TRX to
 `bin/<Configuration>/test-results/<run>/<run>.trx`, where `<run>` is the project name, or
 `<project>.shard<i>` for a sharded project. When a run fails, open that process's log first.

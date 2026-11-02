@@ -137,6 +137,7 @@ public sealed class ShardedTestFramework(IMessageSink messageSink) : XunitTestFr
                 cases = cases.Where(testCase => selection.Includes(ClassOf(testCase))).ToArray();
             var recorder = CoverageMapRecorder.FromEnvironment(executionOptions);
             if (recorder is not null) executionMessageSink = recorder.Wrap(executionMessageSink);
+            if (TestFailureLog.FromEnvironment() is { } failures) executionMessageSink = failures.Wrap(executionMessageSink);
 
             var shard = CurrentShard();
             if (shard is not { } s)

@@ -84,6 +84,10 @@ the rule was broken.
 
 - Wait on a condition or on progress, bounded by the lifetime of the thing that makes progress. A fixed
   wall-clock deadline is a flake on a slower runner.
+- A test waits through `Wait.Until` or `Wait.UntilAsync` (`tests/SIL.Motif.Tests.Support/TestFixtures/Wait.cs`) and
+  never with its own polling loop, pass count or fixed sleep. The deadline is generous because only a failure pays it,
+  and `MOTIF_TEST_DEADLINE_SCALE` multiplies every one on a machine that runs many suites at once. App tests settle a
+  window with `PageScreenshots.Settle`.
 - `test.ps1` runs at most 0.6 as many test processes at once as there are processors, and one per 2 GB of memory (at most twelve;
   `MOTIF_TEST_PROCESSES`), rounded down with a minimum of two. On a developer machine `MOTIF_TEST_SLOTS` (default a fifth of the processors, 0 for none)
   caps concurrent runs across worktrees; CI takes no slot.
