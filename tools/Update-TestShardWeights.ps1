@@ -8,9 +8,10 @@
   unbalanced, and commit the result. A class missing from the file still runs; the file only affects balance.
 
   The seconds of the classes in the run replace those classes' entries and every other entry stays, so a run of one
-  project keeps the timings of the others. A class that no longer exists stays too until -Replace drops it; use
-  -Replace after a whole-suite run only. Do not run this after a -Filter run: a class that ran in part would be
-  recorded at that part's seconds.
+  project keeps the timings of the others. A class that no longer exists stays too until -Replace drops it.
+  -Replace refuses unless the results hold a TRX file for every test project, so a run of one project cannot wipe the
+  other projects' timings. Do not run this after a -Filter run: a class that ran in part would be recorded at that
+  part's seconds.
 
   A test's wall time grows with the machine's load, and a gate run on a busy host records that load as if it were
   the test's cost (one class measured 190 s at load 68 and 48 s at load 6). -RunLoad scales every duration by
@@ -25,7 +26,8 @@
   processor count changes nothing. Zero, the default, means do not normalise.
 
   .PARAMETER Replace
-  Write only the classes in the run, dropping every other entry. For the run of the whole suite.
+  Write only the classes in the run, dropping every other entry. Refused unless the results cover every test project
+  (a folder or file named for each project, shard folders included), as the run of the whole suite does.
 
   .PARAMETER ResultsDirectory
   The folder holding the TRX files. Defaults to bin/<Configuration>/test-results.
@@ -44,17 +46,32 @@ param(
     [switch] $NormalizeLoad,
     [switch] $Replace,
     [string] $ResultsDirectory,
-    [string] $Target
+    [string] $Target,
+    [string] $RepoRoot
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$repoRoot = Split-Path -Parent $PSScriptRoot
+$repoRoot = if ($RepoRoot) { $RepoRoot } else { Split-Path -Parent $PSScriptRoot }
 $results = if ($ResultsDirectory) { $ResultsDirectory } else { Join-Path $repoRoot (Join-Path 'bin' (Join-Path $Configuration 'test-results')) }
 $target = if ($Target) { $Target } else { Join-Path $repoRoot 'tests/test-shard-weights.json' }
 $files = @(Get-ChildItem $results -Filter '*.trx' -Recurse -ErrorAction SilentlyContinue)
 if ($files.Count -eq 0) { throw "No TRX files under $results. Run ./test.ps1 first." }
+
+if ($Replace) {
+    $testProjects = foreach ($file in Get-ChildItem -LiteralPath (Join-Path $repoRoot 'tests') -Filter '*.csproj' -File -Recurse) {
+        if ((Get-Content -LiteralPath $file.FullName -Raw) -match '<IsTestProject>\s*true\s*</IsTestProject>') { $file.BaseName }
+    }
+    $covered = @($files | ForEach-Object {
+        $first = [IO.Path]::GetRelativePath($results, $_.FullName).Split([char[]] '/\\')[0] -replace '\.trx$', ''
+        $first -replace '\.shard\d+$', ''
+    })
+    $missing = @($testProjects | Where-Object { $_ -notin $covered } | Sort-Object)
+    if ($missing.Count -gt 0) {
+        throw "-Replace would drop the timings of projects this run did not cover: $($missing -join ', '). Run the whole suite (./test.ps1 -All) first, or leave -Replace off to merge."
+    }
+}
 
 if ($NormalizeLoad -and $RunLoad -le 0) {
     $loadFile = '/proc/loadavg'
