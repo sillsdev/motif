@@ -12,19 +12,25 @@ namespace SIL.Motif.Tests.App;
 
 /// <summary>
 /// Random but replayable sequences over the Settings step and time limits. After every step the next parse must send
-/// the last saved value, no refused value may reach the shared Selection, and no message may describe a value the
+/// the last saved value whenever a field shows a refused value or after Escape, a commit or leaving with one held;
+/// otherwise it sends the saved value or the good value showing in its field. No message may describe a value the
 /// field no longer holds. A failure names the seed and the steps so it can be replayed. Projects here are saved with
 /// explicit limits and never switch, so the sequences leave out the estimate-mode and project-switch cases.
 /// </summary>
 [Collection(AvaloniaHeadlessCollection.Name)]
 public sealed class SettingsLimitsSequenceTests
 {
-    private static readonly int[] Seeds = [1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233];
+    private static readonly int[] Seeds = ExtraSeeds() ?? [1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233];
     private const int StepsPerSequence = 24;
     private static readonly decimal[] GoodSteps = [20000m, 150000m, 250000m];
     private static readonly decimal[] RefusedSteps = [100000.5m, 0.5m, -3m, 100000000000000000000m];
     private static readonly decimal[] GoodTimes = [2m, 7.5m, 12m];
     private static readonly decimal[] RefusedTimes = [-1m, 0m];
+
+    // MOTIF_SEQUENCE_SEEDS=1-112 replays a wider range of seeds.
+    private static int[]? ExtraSeeds() =>
+        Environment.GetEnvironmentVariable("MOTIF_SEQUENCE_SEEDS")?.Split('-') is [var from, var to]
+            ? [.. Enumerable.Range(int.Parse(from), int.Parse(to) - int.Parse(from) + 1)] : null;
 
     private enum Act { TypeStep, TypeTime, Tick, Untick, Commit, Escape, LeaveAndReturn }
 
@@ -37,14 +43,68 @@ public sealed class SettingsLimitsSequenceTests
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            foreach (var seed in Seeds) await RunAsync(seed);
-        }, TimeSpan.FromMinutes(4));
+            var failures = new List<string>();
+            foreach (var seed in Seeds)
+            {
+                try { await RunAsync(seed); }
+                catch (Xunit.Sdk.XunitException failure) { failures.Add(failure.Message); }
+            }
+            Assert.True(failures.Count == 0, $"{failures.Count} of {Seeds.Length} seeds failed:\n{string.Join("\n", failures)}");
+        }, TimeSpan.FromMinutes(Seeds.Length > 20 ? 20 : 4));
     }
 
-    private static async Task RunAsync(int seed)
+    [Fact]
+    public void AGoodValueStaysOutOfTheSelectionWhileAnotherFieldShowsARefusedOne()
     {
-        var random = new Random(seed);
-        var log = new List<string>();
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, frame, settings, _) = await OpenAsync();
+            try
+            {
+                settings.TimeLimitSeconds = 7.5m;
+                Assert.Equal(7.5m, workspace.Selection.PerWordTimeLimitSeconds);
+                settings.TimeLimitSeconds = 0m;
+                Assert.Equal(5m, workspace.Selection.PerWordTimeLimitSeconds);
+                settings.ParserWorkLimitValue = 250000m;
+                Assert.Equal(ParserWorkLimit.DefaultWork, workspace.Selection.PerWordParserWorkLimit);
+                settings.TimeLimitSeconds = 12m;
+                Assert.Equal(250000m, workspace.Selection.PerWordParserWorkLimit);
+                Assert.Equal(12m, workspace.Selection.PerWordTimeLimitSeconds);
+            }
+            finally
+            {
+                frame.Close();
+                await workspace.DisposeAsync();
+            }
+        }, TimeSpan.FromMinutes(2));
+    }
+
+    [Fact]
+    public void EscapeAfterTickingNoStepLimitPutsTheSavedTimeBackInTheSelectionAndTheField()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, frame, settings, _) = await OpenAsync();
+            try
+            {
+                settings.IsNoParserWorkLimit = true;
+                settings.CancelParsingLimitEdit();
+                Assert.False(workspace.Selection.PerWordParserWorkLimitUnbounded);
+                Assert.Equal(ParserWorkLimit.DefaultWork, workspace.Selection.PerWordParserWorkLimit);
+                Assert.Equal(5m, workspace.Selection.PerWordTimeLimitSeconds);
+                Assert.Equal(5m, settings.TimeLimitSeconds);
+                Assert.False(settings.IsUsingEstimate);
+            }
+            finally
+            {
+                frame.Close();
+                await workspace.DisposeAsync();
+            }
+        }, TimeSpan.FromMinutes(2));
+    }
+
+    private static async Task<(WorkspaceShellViewModel Workspace, MainWindow Frame, SettingsViewModel Settings, FakeCommandClient Fake)> OpenAsync()
+    {
         FakeCommandClient? fake = null;
         var (workspace, frame) = await PageScreenshots.OpenOverSampleData(parse: false,
             configure: (client, _) =>
@@ -52,14 +112,22 @@ public sealed class SettingsLimitsSequenceTests
                 fake = client;
                 client.DefaultSelectionIs(new NamedSelectionProjection("Default",
                     [Guid.Parse("11111111-0000-0000-0000-000000000001")], [], string.Empty, string.Empty,
-                    new SelectionParsingLimits(StepCap.Default, SelectionTimeLimitMode.Explicit, 5000, 600), "1"));
+                    new SelectionParsingLimits(ParserWorkLimit.Default, SelectionTimeLimitMode.Explicit, 5000, 600), "1"));
             });
+        var settings = SettingsTestAccess.Model(frame);
+        workspace.CurrentPage = WorkspacePage.Settings;
+        settings.OpenGroup(Group.Parsing);
+        return (workspace, frame, settings, fake!);
+    }
+
+    private static async Task RunAsync(int seed)
+    {
+        var random = new Random(seed);
+        var log = new List<string>();
+        var (workspace, frame, settings, fake) = await OpenAsync();
         try
         {
-            var settings = SettingsTestAccess.Model(frame);
-            workspace.CurrentPage = WorkspacePage.Settings;
-            settings.OpenGroup(Group.Parsing);
-            var model = new Model(workspace, settings, fake!, log);
+            var model = new Model(workspace, settings, fake, log);
             model.Check("opened", exact: true);
             for (var index = 0; index < StepsPerSequence && !model.Over; index++)
             {
@@ -85,13 +153,15 @@ public sealed class SettingsLimitsSequenceTests
     private sealed class Model(WorkspaceShellViewModel workspace, SettingsViewModel settings, FakeCommandClient fake, List<string> log)
     {
         private bool _savedNoStep;
-        private decimal _savedStep = StepCap.DefaultSteps;
+        private decimal _savedStep = ParserWorkLimit.DefaultWork;
         private decimal _savedTime = 5m;
         private bool _ticked;
-        private decimal? _step = StepCap.DefaultSteps;
+        private decimal? _step = ParserWorkLimit.DefaultWork;
         private decimal? _time = 5m;
         private int _saves;
-        private readonly HashSet<decimal> _seenSteps = [], _seenTimes = [];
+        private bool _tickHeld;
+
+        private bool RefusedShown => !_ticked && (!GoodStep(_step) || !GoodTime(_time));
 
         public bool Over { get; private set; }
 
@@ -111,24 +181,24 @@ public sealed class SettingsLimitsSequenceTests
                 case Act.TypeStep:
                     _step = random.Next(2) == 0 ? GoodSteps[random.Next(GoodSteps.Length)] : RefusedSteps[random.Next(RefusedSteps.Length)];
                     log.Add($"step={_step}");
-                    if (GoodStep(_step)) _seenSteps.Add(_step!.Value);
-                    settings.StepLimit = _step;
+                    settings.ParserWorkLimitValue = _step;
                     break;
                 case Act.TypeTime:
                     _time = random.Next(2) == 0 ? GoodTimes[random.Next(GoodTimes.Length)] : RefusedTimes[random.Next(RefusedTimes.Length)];
                     log.Add($"time={_time}");
-                    if (GoodTime(_time)) _seenTimes.Add(_time!.Value);
                     settings.TimeLimitSeconds = _time;
                     break;
                 case Act.Tick:
                     log.Add("tick");
+                    _tickHeld = RefusedShown;
                     _ticked = true;
-                    settings.IsNoStepLimit = true;
+                    settings.IsNoParserWorkLimit = true;
                     break;
                 case Act.Untick:
                     log.Add("untick");
                     _ticked = false;
-                    settings.IsNoStepLimit = false;
+                    _tickHeld = false;
+                    settings.IsNoParserWorkLimit = false;
                     Resync("untick");
                     break;
                 case Act.Commit:
@@ -143,11 +213,12 @@ public sealed class SettingsLimitsSequenceTests
                     break;
                 case Act.LeaveAndReturn:
                     log.Add("leave+return");
+                    exact = RefusedShown || _tickHeld;
                     workspace.CurrentPage = WorkspacePage.Overview;
                     workspace.CurrentPage = WorkspacePage.Settings;
                     settings.OpenGroup(Group.Parsing);
-                    exact = !_ticked && (!GoodStep(_step) || !GoodTime(_time)) || _ticked && !_savedNoStep && false;
-                    Resync("leave");
+                    if (exact) Reset();
+                    else Resync("leave");
                     break;
             }
             Check(log[^1], exact);
@@ -173,7 +244,7 @@ public sealed class SettingsLimitsSequenceTests
             var saved = fake.SetSelectionLimitsRequests[^1].Limits;
             if (wasTicked)
             {
-                Assert.True(saved.PerWordStepLimit.IsUnbounded, "a ticked commit saves no step limit");
+                Assert.True(saved.PerWordParserWorkLimit.IsUnbounded, "a ticked commit saves no step limit");
                 _savedNoStep = true;
                 Over = true;
                 return;
@@ -181,15 +252,16 @@ public sealed class SettingsLimitsSequenceTests
             _savedNoStep = false;
             _savedStep = _step!.Value;
             _savedTime = _time!.Value;
-            Assert.Equal((long)_savedStep, saved.PerWordStepLimit.Steps);
+            Assert.Equal((long)_savedStep, saved.PerWordParserWorkLimit.Steps);
             Assert.Equal(SelectionTimeLimitMode.Explicit, saved.TimeMode);
             Assert.Equal((int)decimal.Round(_savedTime * 1000m), saved.ExplicitPerWordLimitMs);
-            Assert.False(settings.HasStepLimitRefusal || settings.HasTimeLimitRefusal, "a saved commit leaves no message");
+            Assert.False(settings.HasParserWorkLimitRefusal || settings.HasTimeLimitRefusal, "a saved commit leaves no message");
         }
 
         private void Reset()
         {
             _ticked = _savedNoStep;
+            _tickHeld = false;
             _step = _savedStep;
             _time = _savedTime;
         }
@@ -198,7 +270,7 @@ public sealed class SettingsLimitsSequenceTests
         private void Resync(string when)
         {
             if (_ticked) return;
-            var step = settings.StepLimit;
+            var step = settings.ParserWorkLimitValue;
             var time = settings.TimeLimitSeconds;
             Assert.True(step == _step || step == _savedStep, $"{when}: the step field shows {step}, neither the typed {_step} nor the saved {_savedStep}");
             Assert.True(time == _time || time == _savedTime, $"{when}: the time field shows {time}, neither the typed {_time} nor the saved {_savedTime}");
@@ -209,43 +281,42 @@ public sealed class SettingsLimitsSequenceTests
         public void Check(string after, bool exact)
         {
             var selection = workspace.Selection;
-            var request = selection.BuildRequest().PerWordStepLimit;
+            var request = selection.BuildRequest().PerWordParserWorkLimit;
             string Why(string what) => $"after '{after}': {what}";
 
-            Assert.Null(selection.StepLimitValidationMessage);
-            // The saved value, or a good value typed since and not yet saved or cancelled.
-            var unboundedAllowed = _savedNoStep || _ticked;
-            if (selection.PerWordStepLimitUnbounded)
+            Assert.Null(selection.ParserWorkLimitValidationMessage);
+            var mustBeSaved = exact || RefusedShown || _tickHeld;
+            var unboundedAllowed = _savedNoStep || _ticked && !_tickHeld;
+            if (selection.PerWordParserWorkLimitUnbounded)
             {
-                Assert.True(unboundedAllowed, Why("the Selection is unbounded though neither the save nor a held tick says so"));
+                Assert.True(unboundedAllowed, Why("the Selection is unbounded though neither the save nor a live tick says so"));
                 Assert.True(request!.IsUnbounded, Why("an unbounded Selection must send an unbounded cap"));
             }
             else
             {
-                Assert.False(_savedNoStep && exact, Why("the saved no step limit is not what the Selection holds"));
-                var allowed = new List<decimal> { _savedStep };
-                if (!exact) allowed.AddRange(_seenSteps);
-                Assert.True(selection.PerWordStepLimit is { } held && allowed.Contains(held),
-                    Why($"the Selection holds step {selection.PerWordStepLimit}; the saved is {_savedStep} and the typed {_step}"));
-                Assert.Equal((long)selection.PerWordStepLimit!.Value, request?.Steps);
-                if (exact && !_savedNoStep) Assert.Equal(_savedStep, selection.PerWordStepLimit);
+                Assert.False(_savedNoStep && mustBeSaved, Why("the saved no step limit is not what the Selection holds"));
+                var shown = !mustBeSaved && !_ticked && GoodStep(_step) ? _step : _savedStep;
+                Assert.True(selection.PerWordParserWorkLimit == _savedStep || selection.PerWordParserWorkLimit == shown,
+                    Why($"the Selection holds step {selection.PerWordParserWorkLimit}; the saved is {_savedStep} and the field shows {_step}"));
+                Assert.Equal((long)selection.PerWordParserWorkLimit!.Value, request?.Steps);
+                if (mustBeSaved && !_savedNoStep) Assert.Equal(_savedStep, selection.PerWordParserWorkLimit);
             }
             var time = selection.PerWordTimeLimitSeconds;
             var timeAllowed = new List<decimal?> { _savedTime };
-            if (!exact) timeAllowed.AddRange(_seenTimes.Select(t => (decimal?)t));
-            if (_ticked || _savedNoStep) timeAllowed.Add(null);
-            Assert.True(timeAllowed.Contains(time), Why($"the Selection holds time {time}; the saved is {_savedTime} and the typed {_time}"));
-            if (exact && !_savedNoStep) Assert.Equal(_savedTime, time);
+            if (!mustBeSaved && !_ticked && GoodTime(_time)) timeAllowed.Add(_time);
+            if (_ticked && !_tickHeld || _savedNoStep) timeAllowed.Add(null);
+            Assert.True(timeAllowed.Contains(time), Why($"the Selection holds time {time}; the saved is {_savedTime} and the field shows {_time}"));
+            if (mustBeSaved && !_savedNoStep) Assert.Equal(_savedTime, time);
 
             // What was saved survives whatever was typed since.
             if (_saves > 0) Assert.Equal(_saves, fake.SetSelectionLimitsRequests.Count);
             else Assert.Empty(fake.SetSelectionLimitsRequests);
 
             if (_ticked) return;
-            Assert.Equal(_step, settings.StepLimit);
+            Assert.Equal(_step, settings.ParserWorkLimitValue);
             Assert.Equal(_time, settings.TimeLimitSeconds);
-            Assert.True(settings.HasStepLimitRefusal == !GoodStep(_step),
-                Why($"the step message is {settings.HasStepLimitRefusal} while the field holds {_step}"));
+            Assert.True(settings.HasParserWorkLimitRefusal == !GoodStep(_step),
+                Why($"the step message is {settings.HasParserWorkLimitRefusal} while the field holds {_step}"));
             Assert.True(settings.HasTimeLimitRefusal == !GoodTime(_time),
                 Why($"the time message is {settings.HasTimeLimitRefusal} while the field holds {_time}"));
         }
