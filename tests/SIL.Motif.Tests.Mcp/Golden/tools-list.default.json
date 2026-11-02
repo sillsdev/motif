@@ -6153,6 +6153,80 @@
     "idempotentHint": false
   },
   {
+    "name": "motif_author_adhoc_prohibition",
+    "description": "Create an ad hoc prohibition. Research first: motif_guide topic ask-the-linguist or suffix-prefix-slots or feature-conditioned-slots; check best practice. Last resort. Prefer a slot, template, feature or environment that removes the need before forbidding a combination (guides suffix-prefix-slots, feature-conditioned-slots). Creates a morpheme or allomorph co-occurrence prohibition, FieldWorks\u0027 ad hoc rule, naming a first morpheme or allomorph and the ones it cannot occur with. The Dry Run says plainly what is prohibited next to what; duplicates and unknown morphemes or allomorphs are refused, and only a person can Apply the Draft.\nCommand: compose-author-adhoc-prohibition. Agent class: Draft.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "Draft name."
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "morpheme",
+            "allomorph"
+          ],
+          "description": "morpheme for a prohibition between morphemes (grammatical analyses of entries), or allomorph for one between forms."
+        },
+        "first": {
+          "type": "string",
+          "description": "Id of the first morpheme or allomorph, the one the prohibition is stated about."
+        },
+        "rest": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Ids of the morphemes or allomorphs it cannot occur with, all together, left to right when the adjacency is not anywhere. Give this or restAnyOf."
+        },
+        "restAnyOf": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Ids of alternatives, any one of which the first cannot occur with. Each becomes its own prohibition in the same Proposal. Give this or rest."
+        },
+        "adjacency": {
+          "type": "string",
+          "enum": [
+            "anywhere",
+            "somewhere-to-right",
+            "somewhere-to-left",
+            "adjacent-to-right",
+            "adjacent-to-left"
+          ],
+          "description": "Where the first sits relative to the rest: anywhere (the default), somewhere-to-right or adjacent-to-right (the first is after the rest in the word), somewhere-to-left or adjacent-to-left (the first is before the rest). A prefix as first with a stem as rest needs anywhere, somewhere-to-left or adjacent-to-left; a suffix as first with a stem as rest needs anywhere, somewhere-to-right or adjacent-to-right."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "draft",
+        "kind",
+        "first",
+        "project"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "not": {
+            "required": [
+              "rest",
+              "restAnyOf"
+            ]
+          }
+        }
+      ]
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
     "name": "motif_change_affix_kind",
     "description": "Change an affix\u2019s kind. Research first: motif_guide topic suffix-prefix-slots; check best practice. Choose inflectional or derivational on the evidence and change it later if it was wrong; leaving an affix unclassified is a stopgap (guides suffix-prefix-slots). Stages a change of one affix between inflectional, derivational and unclassified in place, keeping its category and the senses that use it. What the new kind cannot hold, such as a template slot or a To category, is reported as a warning, not refused. Dry Run and Trial before a person Applies the Proposal.\nCommand: compose-change-affix-kind. Agent class: Draft.",
     "inputSchema": {

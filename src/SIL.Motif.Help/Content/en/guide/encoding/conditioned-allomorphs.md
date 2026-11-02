@@ -16,7 +16,7 @@ A linguist sees one morpheme with different spoken or written forms in different
 
 ## One form blocked after one form of another affix
 
-Sometimes one form of an affix is wrong only after one particular form of an earlier affix: a stative `-lik` fits after an applicative `-o` but not after `-e`, while `-k` fits after both. Create an allomorph prohibition with the CLI verb `compose-author-adhoc-prohibition`, which MCP offers only in Advanced AI mode (kind `allomorph`; the later form as `first`, the earlier form as `rest`, adjacency `adjacent-to-right`). The parser drops only that pair of forms. Use it between forms of different entries: in an inflectional template an entry fills one slot, so a rule between two forms of the same entry would never fire there. To choose between forms of one entry, give each its own environment, or put the narrowest first and the general form last.
+Sometimes one form of an affix is wrong only after one particular form of an earlier affix: a stative `-lik` fits after an applicative `-o` but not after `-e`, while `-k` fits after both. Create an allomorph prohibition with the CLI verb `compose-author-adhoc-prohibition`, which MCP offers as `motif_author_adhoc_prohibition` (kind `allomorph`; the later form as `first`, the earlier form as `rest`, adjacency `adjacent-to-right`). The parser drops only that pair of forms. Use it between forms of different entries: in an inflectional template an entry fills one slot, so a rule between two forms of the same entry would never fire there. To choose between forms of one entry, give each its own environment, or put the narrowest first and the general form last.
 
 ## Every sound except some, and a zero form chosen by class
 
