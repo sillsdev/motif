@@ -152,6 +152,7 @@ public static class ChangeVocabulary
             ["EditAnalysisDecision"] = ("Decide analysis", "Record a decision about an analysis"),
             ["OrderAllomorphs"] = ("Reorder allomorphs of", "Reorder allomorphs"),
             ["RetireAllomorph"] = ("Retire allomorph", "Retire an allomorph"),
+            ["RetireBoundaryMarker"] = ("Retire boundary marker", "Retire a duplicate boundary marker"),
             ["RetireRedundantZeroAffix"] = ("Retire zero affix", "Retire a zero affix"),
             ["RecordParsimonyDisposition"] = ("Record a decision on", "Record a Parsimony decision"),
         };

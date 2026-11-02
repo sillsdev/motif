@@ -43,6 +43,7 @@ internal static class ComposerDefinitions
         new SetStemPartOfSpeechDefinition(),
         new RetireAllomorphDefinition(),
         new RetireRedundantZeroAffixDefinition(),
+        new RetireBoundaryMarkerDefinition(),
         new RecordParsimonyDispositionDefinition(),
         new RecordSourceValidatedDecisionDefinition(),
     ];

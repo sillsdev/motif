@@ -48,7 +48,7 @@ internal static class DryRunJobRunner
                     "1", DateTimeOffset.UtcNow.UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ssZ"),
                     "sha256:" + new string('b', 64));
                 baselines.Record(workspaceKey, new BaselinePublication(Path.GetDirectoryName(full)!, full, token),
-                    DateTimeOffset.UtcNow, DateTimeOffset.UtcNow, TestTextWords.Empty);
+                    DateTimeOffset.UtcNow, new DateTimeOffset(File.GetLastWriteTimeUtc(full), TimeSpan.Zero), TestTextWords.Empty);
             }
 
             using var lanes = new ProjectLaneRegistry(_ => baselines.GetCurrent(workspaceKey)!.Token);

@@ -145,6 +145,7 @@ public sealed class ToolSurfaceTests
             "compose-move-sense-to-entry",
             "compose-record-source-validated-decision",
             "compose-remove-alternate-form",
+            "compose-retire-boundary-marker",
             "compose-set-stem-part-of-speech",
             "project tag",
             "store artifacts",
@@ -166,8 +167,9 @@ public sealed class ToolSurfaceTests
                 "compose-edit-stem-inflection-class" or "compose-move-sense-to-entry" or
                 "compose-delete-sense" or "compose-remove-alternate-form" or
                 "compose-move-example" or "compose-add-example" or
-                "compose-set-stem-part-of-speech" or "compose-record-source-validated-decision").ToArray();
-        Assert.Equal(11, numeralEditors.Length);
+                "compose-set-stem-part-of-speech" or "compose-record-source-validated-decision" or
+                "compose-retire-boundary-marker").ToArray();
+        Assert.Equal(12, numeralEditors.Length);
         Assert.All(numeralEditors, command =>
         {
             Assert.Equal(CommandSurface.AdvancedAi, command.Surface);

@@ -250,8 +250,9 @@ public static class AuthorPhonologicalRuleComposer
             .ToArray();
         if (conflicts.Length > 0)
             throw new InvalidOperationException("The first phoneme set has conflicting boundary markers: " +
-                string.Join(" ", conflicts) + " Repair in FieldWorks: re-point references to the standard boundary " +
-                "marker, remove the stray marker, save, and reload the project.");
+                string.Join(" ", conflicts) + " When nothing uses the stray marker, retire it with compose-retire-boundary-marker; otherwise " +
+                "repair in FieldWorks: re-point references to the standard boundary marker, remove the stray marker, " +
+                "save, and reload the project.");
     }
 
     private static Guid ReservedBoundaryId(string representation) => representation switch
