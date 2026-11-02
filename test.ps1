@@ -309,6 +309,8 @@ $testRuns = @(foreach ($testProject in @($testProjects | Sort-Object -Property S
     if ($changedClasses) { $runShards = [Math]::Min($runShards, $changedPlan.Projects[$testProject.Name].Shards) }
     elseif ($Filter) { $runShards = 1 }
     elseif (-not $All) { $runShards = [Math]::Max(1, [int][Math]::Ceiling($runShards / 2.0)) }
+    # With one project selected, shards past the process cap would only run as a short second wave.
+    if ($testProjects.Count -eq 1) { $runShards = [Math]::Min($runShards, $projectConcurrency) }
     for ($index = 0; $index -lt $runShards; $index++) {
         $label = if ($runShards -eq 1) { $testProject.Name } else { "$($testProject.Name).shard$index" }
         [pscustomobject]@{

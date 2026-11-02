@@ -76,9 +76,9 @@ has been found; apply the ban to every change and never commit serialized inputs
 **`./test.ps1` gives each test class exactly one level from its project's `MotifTestDefaultLevel`, with
 System overrides for walkthroughs and real-parser tests. With no switch it selects Unit and Integration;
 `-All` selects all three levels. A bare `dotnet test` leaves `MOTIF_TEST_LEVELS` unset and runs every test.
-It runs each selected test project as one or more processes, with concurrency capped at a third of the
-available processor count (rounded down, minimum two, maximum eight; on CI one fewer than the processors and one per 2 GiB of memory; `MOTIF_TEST_PROCESSES=N` sets it). App tests run
-one at a time per process, so the App project is split into 12 shards that run side by side.** It discovers test projects listed in `Motif.sln` under `tests/`, so
+It runs each selected test project as one or more processes, with concurrency capped at 0.6 of the
+available processor count (rounded down, one per 2 GiB of memory, minimum two, maximum twelve; on CI one fewer than the processors, at most eight; `MOTIF_TEST_PROCESSES=N` sets it). App tests run
+one at a time per process, so the App project is split into 20 shards (`MotifTestShards`) that run side by side; a run of one project never uses more shards than that cap, because a shard past it only waits and runs as a short second wave.** It discovers test projects listed in `Motif.sln` under `tests/`, so
 adding a project includes it automatically. The cap leaves processor capacity for each test host's CLI,
 worker, and parser child processes. More than four worktrees testing at once oversubscribe the machine,
 so on a developer machine each run waits for one of a fifth of the processors' worth of machine-wide
@@ -92,7 +92,7 @@ so a project that declares `<MotifTestShards>N</MotifTestShards>` in its `.cspro
 split by test class into N processes (`ShardedTestFramework`, driven by `MOTIF_TEST_SHARD=index/count`), and its
 LibLCM tests run N at a time. Classes go to shards by the seconds `tests/test-shard-weights.json` records
 (`MOTIF_TEST_SHARD_WEIGHTS`), heaviest first; after a full run that leaves one shard far behind the others,
-renew it with `tools/Update-TestShardWeights.ps1` and commit it. A bare `dotnet test` leaves the variables unset and
+renew it with `tools/Update-TestShardWeights.ps1` and commit it. The tool merges: the classes in the last run take their new seconds and every other entry stays, so a run of one project keeps the others' timings (`-Replace` rewrites the file from a whole-suite run; never run it after a `-Filter` run). A bare `dotnet test` leaves the variables unset and
 runs every test.
 Each process writes its console log to `bin/<Configuration>/test-results/<run>.log` and its TRX to
 `bin/<Configuration>/test-results/<run>/<run>.trx`, where `<run>` is the project name, or
