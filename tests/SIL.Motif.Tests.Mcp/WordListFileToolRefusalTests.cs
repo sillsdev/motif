@@ -42,6 +42,7 @@ public sealed class WordListFileToolRefusalTests : IDisposable
         File.WriteAllBytes(words, bytes);
         var parser = FakeParser.CopyRecordingInvocations(Path.Combine(_root, "parser"));
         var runner = new RefuseRunner(Path.Combine(_root, "worker"), parser);
+        using var privateRoot = PrivateManagedRoot.Use(_root);
         using (var machine = MachineDatabase.Open(RunnerOptions.ResolveRoot()))
             new KnownProjectRegistry(machine).Record(ProjectWorkspaceKey.Compute(
                 new ProjectLocator(project, "project")), project, DateTimeOffset.UtcNow);

@@ -30,6 +30,8 @@ public sealed class UnreadableProposalProject : IDisposable
         DraftName = draftName;
     }
 
+    public string DirectoryPath => _directory;
+
     public string ProjectPath { get; }
 
     public string ProposalId { get; }

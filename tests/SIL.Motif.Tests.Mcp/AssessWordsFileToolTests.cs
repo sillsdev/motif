@@ -72,6 +72,7 @@ public sealed class AssessWordsFileToolTests
     {
         var directory = Path.Combine(Path.GetTempPath(), "motif-words-file-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
+        using var privateRoot = PrivateManagedRoot.Use(directory);
         var project = Path.Combine(directory, "project.fwdata");
         File.WriteAllText(project, "");
         var wordsFile = inline is null ? Path.Combine(directory, "missing.txt") : Path.Combine(directory, "words.txt");

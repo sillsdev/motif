@@ -8,6 +8,7 @@ using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.Corpus;
 using SIL.Motif.Host.Parser;
 using SIL.Motif.Mcp;
+using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker;
 using SIL.Motif.Worker.Projects;
 using SIL.Motif.Worker.Store;
@@ -23,6 +24,7 @@ public sealed class DifferencePagingTests
     {
         var directory = Path.Combine(Path.GetTempPath(), "motif-difference-not-found-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
+        using var privateRoot = PrivateManagedRoot.Use(directory);
         var project = Path.Combine(directory, "project.fwdata");
         File.WriteAllText(project, "");
         try

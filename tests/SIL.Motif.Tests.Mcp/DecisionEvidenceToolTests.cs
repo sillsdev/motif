@@ -11,6 +11,7 @@ using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Mcp;
 using SIL.Motif.Runner.Operations;
+using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker;
 using SIL.Motif.Worker.Projects;
 using SIL.Motif.Worker.Store;
@@ -54,6 +55,7 @@ public sealed class DecisionEvidenceToolTests
     {
         var directory = Path.Combine(Path.GetTempPath(), "motif-decision-evidence-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
+        using var privateRoot = PrivateManagedRoot.Use(directory);
         var project = Path.Combine(directory, "project.fwdata");
         File.WriteAllText(project, "");
         try
@@ -91,6 +93,7 @@ public sealed class DecisionEvidenceToolTests
     {
         var directory = Path.Combine(Path.GetTempPath(), "motif-decision-evidence-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
+        using var privateRoot = PrivateManagedRoot.Use(directory);
         var project = Path.Combine(directory, "project.fwdata");
         File.WriteAllText(project, "");
         try
@@ -120,6 +123,7 @@ public sealed class DecisionEvidenceToolTests
     {
         var directory = Path.Combine(Path.GetTempPath(), "motif-decision-evidence-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
+        using var privateRoot = PrivateManagedRoot.Use(directory);
         var project = Path.Combine(directory, "project.fwdata");
         File.WriteAllText(project, "");
         try
@@ -182,6 +186,7 @@ public sealed class DecisionEvidenceToolTests
     {
         var directory = Path.Combine(Path.GetTempPath(), "motif-decision-evidence-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
+        using var privateRoot = PrivateManagedRoot.Use(directory);
         var project = Path.Combine(directory, "project.fwdata");
         File.WriteAllText(project, "");
         try
@@ -212,6 +217,7 @@ public sealed class DecisionEvidenceToolTests
     {
         var directory = Path.Combine(Path.GetTempPath(), "motif-decision-evidence-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
+        using var privateRoot = PrivateManagedRoot.Use(directory);
         var project = Path.Combine(directory, "project.fwdata");
         File.WriteAllText(project, "");
         try

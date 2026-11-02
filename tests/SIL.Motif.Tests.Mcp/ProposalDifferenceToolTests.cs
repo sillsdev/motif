@@ -3,6 +3,7 @@ using SIL.Motif.Commands;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Mcp;
+using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker;
 using SIL.Motif.Worker.Projects;
 using Xunit;
@@ -64,6 +65,7 @@ public sealed class ProposalDifferenceToolTests
     {
         var directory = Path.Combine(Path.GetTempPath(), "motif-proposal-difference-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
+        using var privateRoot = PrivateManagedRoot.Use(directory);
         var project = Path.Combine(directory, "project.fwdata");
         File.WriteAllText(project, "");
         try
@@ -98,6 +100,7 @@ public sealed class ProposalDifferenceToolTests
     {
         var directory = Path.Combine(Path.GetTempPath(), "motif-proposal-difference-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
+        using var privateRoot = PrivateManagedRoot.Use(directory);
         var project = Path.Combine(directory, "project.fwdata");
         File.WriteAllText(project, "");
         try
@@ -130,6 +133,7 @@ public sealed class ProposalDifferenceToolTests
     {
         var directory = Path.Combine(Path.GetTempPath(), "motif-proposal-difference-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
+        using var privateRoot = PrivateManagedRoot.Use(directory);
         var project = Path.Combine(directory, "project.fwdata");
         File.WriteAllText(project, "");
         try
@@ -179,6 +183,7 @@ public sealed class ProposalDifferenceToolTests
     {
         var directory = Path.Combine(Path.GetTempPath(), "motif-proposal-difference-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
+        using var privateRoot = PrivateManagedRoot.Use(directory);
         var project = Path.Combine(directory, "project.fwdata");
         File.WriteAllText(project, "");
         var seen = new System.Collections.Concurrent.ConcurrentDictionary<string, string>();

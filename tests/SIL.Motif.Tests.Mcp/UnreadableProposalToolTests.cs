@@ -61,6 +61,7 @@ public sealed class UnreadableProposalToolTests
     private static async Task<ModelContextProtocol.Protocol.CallToolResult> CallAsync(
         UnreadableProposalProject project, string tool, params (string Name, object Value)[] values)
     {
+        using var privateRoot = PrivateManagedRoot.Use(project.DirectoryPath);
         using (var machine = MachineDatabase.Open(RunnerOptions.ResolveRoot()))
             new KnownProjectRegistry(machine).Record(ProjectWorkspaceKey.Compute(
                 new ProjectLocator(project.ProjectPath, "project")), project.ProjectPath, DateTimeOffset.UtcNow);

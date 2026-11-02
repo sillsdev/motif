@@ -119,12 +119,15 @@ public sealed class ToolArgumentValidationTests
 
     private sealed class RegisteredProject : IDisposable
     {
+        private readonly IDisposable _privateRoot;
+
         public RegisteredProject()
         {
             Directory = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "motif-mcp-arguments-" + Guid.NewGuid().ToString("N"));
             System.IO.Directory.CreateDirectory(Directory);
             Path = System.IO.Path.Combine(Directory, "project.fwdata");
             File.WriteAllText(Path, "");
+            _privateRoot = SIL.Motif.Tests.TestFixtures.PrivateManagedRoot.Use(Directory);
             using var machine = MachineDatabase.Open(RunnerOptions.ResolveRoot());
             new KnownProjectRegistry(machine).Record(ProjectWorkspaceKey.Compute(
                 new ProjectLocator(Path, "project")), Path, DateTimeOffset.UtcNow);
@@ -140,6 +143,7 @@ public sealed class ToolArgumentValidationTests
 
         public void Dispose()
         {
+            _privateRoot.Dispose();
             if (System.IO.Directory.Exists(Directory)) System.IO.Directory.Delete(Directory, true);
         }
     }
