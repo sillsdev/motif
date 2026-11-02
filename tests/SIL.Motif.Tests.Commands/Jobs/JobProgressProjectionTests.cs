@@ -167,6 +167,8 @@ public sealed class JobProgressProjectionTests(PristineProjectFixture pristine)
         Assert.Equal("facts: baseline", waited.Refusal.Facts["stageDetail"]);
         Assert.Contains("waiting-for-parser-slot", waited.Refusal.Message, StringComparison.Ordinal);
         Assert.Contains("facts: baseline", waited.Refusal.Message, StringComparison.Ordinal);
+        Assert.Contains("queued behind other parses", waited.Refusal.Message, StringComparison.Ordinal);
+        Assert.Contains("jobs wait " + jobId, waited.Refusal.Message, StringComparison.Ordinal);
     }
 
     [Fact]

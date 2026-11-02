@@ -185,6 +185,9 @@ public static class JobWait
         if (status.StageProgress is { } stage)
             message += " The last observed stage was '" + stage.Stage + "'" +
                 (string.IsNullOrWhiteSpace(stage.Detail) ? "." : " (" + stage.Detail + ").");
+        if (!cancelOnTimeout && status.StageProgress?.Stage == "waiting-for-parser-slot")
+            message += " It is queued behind other parses on this computer and keeps its place; wait again with " +
+                "'jobs wait " + jobId + " --project <fwdata>', or give a longer --wait-timeout-ms.";
         return CommandOutcome<JobStatusResponse>.Refused(new Refusal(
             "job.wait-timeout", FailureReason.Busy, message, facts));
     }
