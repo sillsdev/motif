@@ -313,19 +313,18 @@ public static partial class ProposalCommands
         }
     }
 
-    private static (string Label, string? Kind, int? Ordinal)? ParseBatchReference(string text)
+    private static (string Label, string? Kind)? ParseBatchReference(string text)
     {
         var match = BatchReference.Match(text);
         if (!match.Success) return null;
-        return (match.Groups["label"].Value, match.Groups["kind"].Success ? match.Groups["kind"].Value : null,
-            match.Groups["ordinal"].Success ? int.Parse(match.Groups["ordinal"].Value, CultureInfo.InvariantCulture) : null);
+        return (match.Groups["label"].Value, match.Groups["kind"].Success ? match.Groups["kind"].Value : null);
     }
 
     private static readonly System.Text.RegularExpressions.Regex BatchReference = new(
-        "^@(?<label>[A-Za-z][A-Za-z0-9_-]{0,20})(?::(?<kind>[A-Za-z]+)(?:#(?<ordinal>[1-9][0-9]{0,2}))?)?$",
+        "^@(?<label>[A-Za-z][A-Za-z0-9_-]{0,20})(?::(?<kind>[A-Za-z]+))?$",
         System.Text.RegularExpressions.RegexOptions.CultureInvariant);
 
-    private static string ResolveBatchReference(string text, (string Label, string? Kind, int? Ordinal) reference,
+    private static string ResolveBatchReference(string text, (string Label, string? Kind) reference,
         IReadOnlyDictionary<string, IReadOnlyList<CreatedObject>> created,
         IReadOnlyDictionary<string, CanonicalId> principals, IReadOnlyDictionary<string, int> declared, int intentIndex)
     {
@@ -342,22 +341,15 @@ public static partial class ProposalCommands
             if (distinct.Length == 1) return distinct[0].Id;
             throw new InvalidOperationException(
                 $"'{text}' is ambiguous: intent {declared[label]} created {distinct.Length} objects ({DescribeCreated(distinct)}). " +
-                $"Name one with '@{label}:<kind>', and '#<n>' for the nth of a kind.");
+                $"Name one with '@{label}:<kind>'.");
         }
         var matches = objects.DistinctBy(item => item.Id)
             .Where(item => CreatedKindMatches(item.Kind, reference.Kind)).ToArray();
-        if (reference.Ordinal is { } ordinal)
-        {
-            if (ordinal > matches.Length)
-                throw new InvalidOperationException(
-                    $"'{text}' asks for object {ordinal} of kind '{reference.Kind}', but intent {declared[label]} created " +
-                    $"{matches.Length}. It created: {DescribeCreated(objects)}.");
-            return matches[ordinal - 1].Id;
-        }
         if (matches.Length == 1) return matches[0].Id;
         throw new InvalidOperationException(matches.Length == 0
             ? $"'{text}' matches nothing: intent {declared[label]} created {DescribeCreated(objects)}."
-            : $"'{text}' matches {matches.Length} objects ({DescribeCreated(matches)}); use '@{label}:{reference.Kind}#<n>' to choose one.");
+            : $"'{text}' matches {matches.Length} objects ({DescribeCreated(matches)}), so it is ambiguous; " +
+              "use a separate entry with its own label for the one you mean.");
     }
 
     private static string CreatedKindName(string kind)

@@ -23,7 +23,7 @@ motif compose --project grammar.fwdata --proposal sounds --steps '[
 ]'
 ```
 
-Steps run in order and each one sees the changes of the steps before it. A step may add an `as` label, and a later step may write `@label` as a whole value in its intent in place of an ID the labelled step created (a rule may use it in `placement.after` or `placement.before`). `@label:kind` and `@label:kind#n` choose among several created objects, and a reference that matches none or more than one is refused with the objects the step did create; `compose-batch` describes the forms. Labels match `[A-Za-z][A-Za-z0-9_-]{0,20}` and are unique within the call.
+Steps run in order and each one sees the changes of the steps before it. A step may add an `as` label, and a later step may write `@label` as a whole value in its intent in place of an ID the labelled step created (a rule may use it in `placement.after` or `placement.before`). A rule step resolves `@label` only there. `@label:kind` chooses among several created objects of different kinds, and a reference that matches none or more than one is refused with the objects the step did create; `compose-batch` describes the forms. Labels match `[A-Za-z][A-Za-z0-9_-]{0,20}` and are unique within the call.
 
 `--remove` takes operation ids, separated by commas, to take out of the Draft before the steps run, which is how a step replaces something it staged earlier:
 

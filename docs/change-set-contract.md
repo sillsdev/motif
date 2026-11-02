@@ -429,12 +429,11 @@ matching uses the ID's GUID, so different valid prefixes still refer to the same
 placement adjacency and operation-slot rules still apply.
 
 Every other `compose-batch` and `compose` entry may carry an `as` label too, and a later entry may write
-`@label`, `@label:kind` or `@label:kind#n` as a whole string value anywhere in its intent. Motif resolves it
+`@label` or `@label:kind` as a whole string value anywhere in its intent, except that a `compose-author-phonological-rule` entry resolves `@label` only in `placement.after` and `placement.before`. Motif resolves it
 to the canonical ID of an object the labelled entry created before composing: `@label` is the one object
 the entry created that nothing else it created sits under, `kind` is the last word of a creating operation
-kind without `create` (`msa` also names `MorphoSyntaxAnalyses`), and `#n` picks the nth of a kind in creation
-order. A label that matches nothing, several objects, a later entry, or an entry that created nothing is
-refused, naming the objects created. A string naming no declared label stays as authored.
+kind without `create` (`msa` also names `MorphoSyntaxAnalyses`). A label that matches nothing, several objects, a later entry, or an entry that created nothing is
+refused, naming the objects created. Only a whole value starting with `@` is considered, so plain text equal to a label is never replaced; a string naming no declared label stays as authored.
 - **`ensure`** — tri-state idempotent creation for constructs whose durable identity is not a
   canonical GUID: absent → create; present and structurally compatible → reuse; present and
   incompatible → conflict. See [`ensure`](#ensure) below.

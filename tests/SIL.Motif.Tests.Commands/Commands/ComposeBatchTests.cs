@@ -283,7 +283,7 @@ public sealed class ComposeBatchTests(PristineProjectFixture pristine)
         StartDraft(path, "labelled");
 
         var batch = ProposalCommands.ComposeBatch(new(path, Version, "labelled", (
-            "{'intents': [" + LabelledPhoneme + "," + Members("@ph", "back") + "," + Members("@ph:phonemes#1", "back2") + "]}")
+            "{'intents': [" + LabelledPhoneme + "," + Members("@ph", "back") + "," + Members("@ph:phonemes", "back2") + "]}")
             .Replace('\'', '"')));
 
         Assert.True(batch.Succeeded, batch.Refusal?.Message);
@@ -298,7 +298,6 @@ public sealed class ComposeBatchTests(PristineProjectFixture pristine)
     [Theory]
     [InlineData("later", "Intent 0", "forward reference")]
     [InlineData("msa", "Intent 1", "matches nothing")]
-    [InlineData("phonemes#2", "Intent 1", "asks for object 2")]
     [InlineData("duplicate", "Intent 1", "already declared")]
     public void ALabelThatCannotBeResolvedIsRefusedByNameAndNothingIsAdded(string case_, string intent, string reason)
     {
@@ -335,6 +334,25 @@ public sealed class ComposeBatchTests(PristineProjectFixture pristine)
             [("compose-author-phoneme", new { name = "@home", representations = new[] { "o" } })])));
 
         Assert.True(batch.Succeeded, batch.Refusal?.Message);
+    }
+
+    [Fact]
+    public void PlainTextEqualToADeclaredLabelIsNeverReplacedButTheAtFormIs()
+    {
+        using var cache = pristine.NewScratch();
+        var path = cache.ProjectId.Path;
+        cache.Dispose();
+        StartDraft(path, "plain");
+
+        var batch = ProposalCommands.ComposeBatch(new(path, Version, "plain", (
+            "{'intents': [" + LabelledPhoneme + "," +
+            "{'verb': 'compose-author-phoneme', 'intent': {'name': 'ph', 'representations': ['p']}}," +
+            Members("@ph", "ph") + "]}").Replace('\'', '"')));
+
+        Assert.True(batch.Succeeded, batch.Refusal?.Message);
+        var provenance = JsonSerializer.Serialize(ReadDraft(path, "plain").ComposerProvenance);
+        Assert.Contains("\"name\":\"ph\"", provenance);
+        Assert.DoesNotContain("@ph", provenance);
     }
 
     [Fact]
