@@ -4,6 +4,7 @@ using SIL.Motif.App;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Tests.App.Walkthrough;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -269,7 +270,8 @@ public sealed class TextsProposalMovedChipMemoryTests(ITestOutputHelper output)
         return (compare, baseline);
     }
 
-    [Fact]
+    [SlowScaleFact]
+    [Trait("Category", "SlowScale")]
     public void ASixHundredEightyEightThousandWordProposalCountsAndFiltersItsMovedWordsWithoutRowsAndLetsAllOfThemGo()
     {
         var (compare, baseline) = Chosen();

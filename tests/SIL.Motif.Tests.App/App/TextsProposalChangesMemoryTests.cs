@@ -3,6 +3,7 @@ using System.Runtime.CompilerServices;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Tests.App.Walkthrough;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -62,7 +63,8 @@ public sealed class TextsProposalChangesMemoryTests(ITestOutputHelper output)
         return (compare, changes, baseline, foundHeld, changes.MovedCount);
     }
 
-    [Fact]
+    [SlowScaleFact]
+    [Trait("Category", "SlowScale")]
     public void ASixHundredEightyEightThousandWordProposalFindsItsMovesAsPositionsAndLetsAllOfThemGo()
     {
         var (compare, changes, baseline, held, moved) = FindAndShowTheMoves();

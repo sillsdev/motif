@@ -611,6 +611,7 @@ public sealed class ProgressiveDisplayTests
     public void ExpandedDerivationTreeRealizesOnlyNearbyChildren() => CheckExpandedDerivationTree(20);
 
     [SlowScaleFact]
+    [Trait("Category", "SlowScale")]
     public void ExpandedDerivationTreeNavigatesSixtyChildrenInEachDirection() => CheckExpandedDerivationTree(60);
 
     private static void CheckExpandedDerivationTree(int navigationSteps)
@@ -880,6 +881,7 @@ public sealed class ProgressiveDisplayTests
     public void RecentProjectMenuKeepsOnePageAndCanReachTheLastProject() => CheckRecentProjectPages(200);
 
     [SlowScaleFact]
+    [Trait("Category", "SlowScale")]
     public void RecentProjectMenuReachesTheLastOfTwoThousandProjects() => CheckRecentProjectPages(2000);
 
     private static void CheckRecentProjectPages(int projectCount)

@@ -3,6 +3,7 @@ using System.Diagnostics;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Tests.App.Walkthrough;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -64,7 +65,8 @@ public sealed class TextsProposalMemoryTests(ITestOutputHelper output)
         GC.KeepAlive(summary);
     }
 
-    [Fact]
+    [SlowScaleFact]
+    [Trait("Category", "SlowScale")]
     public async Task AFlipOverASixHundredEightyEightThousandWordSelectionAlignsTheProposalOnceAndParsesNothing()
     {
         var trial = Trial();
