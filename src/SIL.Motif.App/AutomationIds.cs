@@ -109,6 +109,10 @@ public static class AutomationIds
     public const string Pages = "motif-pages";
     public const string ProposalsSetAside = "motif-proposals-set-aside";
     public const string ProposalsClearFilter = "motif-proposals-clear-filter";
+    /// <summary>The button that confirms deleting the selected Proposal.</summary>
+    public const string ProposalsConfirmDelete = "motif-proposals-confirm-delete";
+    /// <summary>The button that keeps the selected Proposal instead of deleting it.</summary>
+    public const string ProposalsKeep = "motif-proposals-keep";
     /// <summary>The saved Difference section of the Proposal inspector.</summary>
     public const string ProposalDifferencePanel = "motif-proposal-difference";
     /// <summary>The automatic Parsimony advice section of the Proposal inspector.</summary>

@@ -737,6 +737,14 @@ public static class MotifAppStrings
 
     public static string Delete => Text("MotifApp.Delete");
 
+    public static string DeleteProposalQuestionFormat => Text("MotifApp.DeleteProposalQuestionFormat");
+
+    public static string DeleteProposalWarning => Text("MotifApp.DeleteProposalWarning");
+
+    public static string DeleteProposal => Text("MotifApp.DeleteProposal");
+
+    public static string KeepProposal => Text("MotifApp.KeepProposal");
+
     public static string Proposals => Text("MotifApp.Proposals");
 
     public static string EachOneIsTriedOnA => Text("MotifApp.EachOneIsTriedOnA");

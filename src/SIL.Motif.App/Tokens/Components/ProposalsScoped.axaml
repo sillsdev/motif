@@ -18,6 +18,11 @@
   <Style Selector="Border.proposalInspectorActionsFrame">
     <Setter Property="Padding" Value="{DynamicResource Component.Inspector.BodyPadding}" />
   </Style>
+  <Style Selector="Button.proposalDelete">
+    <Setter Property="Theme" Value="{DynamicResource OutlineButton}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Danger.Text}" />
+    <Setter Property="Margin" Value="{DynamicResource Component.Proposals.DeleteSetApart}" />
+  </Style>
   <Style Selector="WrapPanel.proposalInspectorActions">
     <Setter Property="ItemSpacing" Value="{DynamicResource Intent.Space.Compact}" />
   </Style>

@@ -404,6 +404,8 @@ public sealed partial class ProposalsPageModel : PageModel
         ShowSetAsideCommand = new AsyncRelayCommand(ShowSetAsideAsync);
         ClearGroupFilterCommand = new RelayCommand(ClearGroupFilter);
         DeleteCommand = new AsyncRelayCommand<ProposalCardViewModel>(DeleteAsync);
+        AskToDeleteCommand = new RelayCommand<ProposalCardViewModel>(AskToDelete);
+        KeepProposalCommand = new RelayCommand(() => SetDeleteQuestion(null));
         ReopenCommand = new AsyncRelayCommand<ProposalCardViewModel>(ReopenAsync);
         SelectGroupFilterCommand = new AsyncRelayCommand<ProposalListFilter>(SelectGroupFilterAsync);
         SelectProposalCommand = new RelayCommand<ProposalCardViewModel>(SelectProposal);
@@ -561,6 +563,20 @@ public sealed partial class ProposalsPageModel : PageModel
 
     /// <summary>Deletes a closed Proposal that never applied, with its Trials, and reads the list again.</summary>
     public IAsyncRelayCommand<ProposalCardViewModel> DeleteCommand { get; }
+
+    /// <summary>Asks whether to delete a Proposal; nothing is deleted until <see cref="DeleteCommand"/> runs.</summary>
+    public IRelayCommand<ProposalCardViewModel> AskToDeleteCommand { get; }
+
+    /// <summary>Withdraws the question about deleting the selected Proposal and keeps it.</summary>
+    public IRelayCommand KeepProposalCommand { get; }
+
+    /// <summary>Whether the selected Proposal's deletion is waiting for an answer.</summary>
+    public bool IsConfirmingDelete => SelectedProposal is { } selected && selected.ProposalId == _deleteQuestionId;
+
+    /// <summary>The question about deleting the selected Proposal, which names it.</summary>
+    public string DeleteQuestion => SelectedProposal is { } selected
+        ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.DeleteProposalQuestionFormat, selected.Label)
+        : "";
 
     /// <summary>Opens a declined or withdrawn Proposal again as a Draft and reads the list again.</summary>
     public IAsyncRelayCommand<ProposalCardViewModel> ReopenCommand { get; }
@@ -794,6 +810,9 @@ public sealed partial class ProposalsPageModel : PageModel
     partial void OnSelectedProposalChanged(ProposalCardViewModel? value)
     {
         value?.SetSelected(true);
+        if (value?.ProposalId != _deleteQuestionId) SetDeleteQuestion(null);
+        else OnPropertyChanged(nameof(IsConfirmingDelete));
+        OnPropertyChanged(nameof(DeleteQuestion));
         if (value is null || value.Card.IsPendingDraft || Context.ProjectPath is not { } path)
         {
             // A re-read of the list deselects for a moment; it settles the Difference when it finishes.
@@ -900,9 +919,26 @@ public sealed partial class ProposalsPageModel : PageModel
         await LoadAsync(path, CancellationToken.None).ConfigureAwait(true);
     }
 
+    private string? _deleteQuestionId;
+
+    private void AskToDelete(ProposalCardViewModel? card)
+    {
+        if (card is null || !card.CanDelete) return;
+        SetSelectedProposal(card);
+        SetDeleteQuestion(card.ProposalId);
+    }
+
+    private void SetDeleteQuestion(string? proposalId)
+    {
+        _deleteQuestionId = proposalId;
+        OnPropertyChanged(nameof(IsConfirmingDelete));
+        OnPropertyChanged(nameof(DeleteQuestion));
+    }
+
     private async Task DeleteAsync(ProposalCardViewModel? card)
     {
         if (card is null || !card.CanDelete || Context.ProjectPath is not { } path) return;
+        SetDeleteQuestion(null);
         var deleted = await Context.Commands.DeleteProposalAsync(new DeleteProposalRequest(path, card.ProposalId),
             CancellationToken.None).ConfigureAwait(true);
         if (path != Context.ProjectPath) return;

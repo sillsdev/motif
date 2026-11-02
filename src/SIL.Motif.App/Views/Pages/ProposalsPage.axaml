@@ -120,23 +120,42 @@
         <Border.Styles>
           <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/ProposalsScoped.axaml" />
         </Border.Styles>
-        <StackPanel Classes="proposalInspectorActions" Spacing="{DynamicResource Intent.Space.Compact}">
-          <Button Content="{x:Static app:MotifAppStrings.OpenInReviewChanges}" Classes="Primary" Theme="{DynamicResource SolidButton}"
-                  Command="{Binding OpenInReviewCommand}" CommandParameter="{Binding SelectedProposal}"
-                  Click="OnRequestPageInspector"
-                  AutomationProperties.AutomationId="{Binding SelectedOpenAutomationId}" />
-          <WrapPanel Classes="proposalInspectorActions">
-            <Button Content="{Binding SelectedProposal.TryText}"
-                    IsVisible="{Binding SelectedProposal.CanTry}"
-                    Command="{Binding TryAgainCommand}" CommandParameter="{Binding SelectedProposal}"
-                    AutomationProperties.AutomationId="{Binding SelectedTryAgainAutomationId}" />
-            <Button Content="{x:Static app:MotifAppStrings.Reopen}" IsVisible="{Binding SelectedProposal.CanReopen}"
-                    Command="{Binding ReopenCommand}" CommandParameter="{Binding SelectedProposal}"
-                    AutomationProperties.AutomationId="{Binding SelectedReopenAutomationId}" />
-            <Button Content="{x:Static app:MotifAppStrings.Delete}" IsVisible="{Binding SelectedProposal.CanDelete}"
-                    Command="{Binding DeleteCommand}" CommandParameter="{Binding SelectedProposal}"
-                    AutomationProperties.AutomationId="{Binding SelectedDeleteAutomationId}" />
-          </WrapPanel>
+        <StackPanel>
+          <StackPanel Classes="proposalInspectorActions" Spacing="{DynamicResource Intent.Space.Compact}"
+                      IsVisible="{Binding !IsConfirmingDelete}">
+            <Button Content="{x:Static app:MotifAppStrings.OpenInReviewChanges}" Classes="Primary" Theme="{DynamicResource SolidButton}"
+                    Command="{Binding OpenInReviewCommand}" CommandParameter="{Binding SelectedProposal}"
+                    Click="OnRequestPageInspector"
+                    AutomationProperties.AutomationId="{Binding SelectedOpenAutomationId}" />
+            <WrapPanel Classes="proposalInspectorActions">
+              <Button Content="{Binding SelectedProposal.TryText}"
+                      IsVisible="{Binding SelectedProposal.CanTry}"
+                      Command="{Binding TryAgainCommand}" CommandParameter="{Binding SelectedProposal}"
+                      AutomationProperties.AutomationId="{Binding SelectedTryAgainAutomationId}" />
+              <Button Content="{x:Static app:MotifAppStrings.Reopen}" IsVisible="{Binding SelectedProposal.CanReopen}"
+                      Command="{Binding ReopenCommand}" CommandParameter="{Binding SelectedProposal}"
+                      AutomationProperties.AutomationId="{Binding SelectedReopenAutomationId}" />
+              <Button Classes="proposalDelete" Content="{x:Static app:MotifAppStrings.Delete}"
+                      IsVisible="{Binding SelectedProposal.CanDelete}"
+                      Command="{Binding AskToDeleteCommand}" CommandParameter="{Binding SelectedProposal}"
+                      AutomationProperties.AutomationId="{Binding SelectedDeleteAutomationId}" />
+            </WrapPanel>
+          </StackPanel>
+          <Border x:Name="ProposalDeleteQuestion" Classes="refusalConfirmation" IsVisible="{Binding IsConfirmingDelete}">
+            <StackPanel Classes="refusal">
+              <TextBlock Classes="refusalTitle" Text="{Binding DeleteQuestion}" TextWrapping="Wrap" />
+              <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.DeleteProposalWarning}" TextWrapping="Wrap" />
+              <WrapPanel Classes="proposalInspectorActions">
+                <Button Classes="Primary" Theme="{DynamicResource SolidButton}"
+                        Content="{x:Static app:MotifAppStrings.DeleteProposal}"
+                        Command="{Binding DeleteCommand}" CommandParameter="{Binding SelectedProposal}"
+                        AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalsConfirmDelete}" />
+                <Button Classes="refusalSecondary" Content="{x:Static app:MotifAppStrings.KeepProposal}"
+                        Command="{Binding KeepProposalCommand}"
+                        AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalsKeep}" />
+              </WrapPanel>
+            </StackPanel>
+          </Border>
         </StackPanel>
       </Border>
     </DataTemplate>
@@ -299,7 +318,7 @@
                                   CommandParameter="{Binding}" />
                           <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}"
                                   Content="{x:Static app:MotifAppStrings.Delete}" IsVisible="{Binding CanDelete}"
-                                  Command="{Binding $parent[UserControl].((vm:ProposalsPageModel)DataContext).DeleteCommand}"
+                                  Command="{Binding $parent[UserControl].((vm:ProposalsPageModel)DataContext).AskToDeleteCommand}"
                                   CommandParameter="{Binding}" />
                         </StackPanel>
                       </Flyout>

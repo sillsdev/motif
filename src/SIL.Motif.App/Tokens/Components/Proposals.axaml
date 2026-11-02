@@ -6,6 +6,7 @@
   <Styles.Resources>
     <StaticResource x:Key="Component.Proposals.ActionsWidth" ResourceKey="Primitive.Size.176" />
     <StaticResource x:Key="Component.Proposals.PageMargin" ResourceKey="Intent.Inset.Page" />
+    <StaticResource x:Key="Component.Proposals.DeleteSetApart" ResourceKey="Primitive.Inset.8_0_0_0" />
   </Styles.Resources>
 
 </Styles>

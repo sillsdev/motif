@@ -1160,6 +1160,22 @@
     <value>Delete</value>
     <comment>Window text.</comment>
   </data>
+  <data name="MotifApp.DeleteProposalQuestionFormat" xml:space="preserve">
+    <value>Delete “{0}”?</value>
+    <comment>Question heading of the confirmation shown before a closed Proposal is deleted. {0} is the Proposal's name.</comment>
+  </data>
+  <data name="MotifApp.DeleteProposalWarning" xml:space="preserve">
+    <value>Motif deletes the Proposal with its Trials and cannot bring them back. Your FieldWorks project is not changed.</value>
+    <comment>Explanation under the question about deleting a Proposal: what is lost and what is untouched.</comment>
+  </data>
+  <data name="MotifApp.DeleteProposal" xml:space="preserve">
+    <value>Delete Proposal</value>
+    <comment>Button that confirms deleting the Proposal named in the question above it.</comment>
+  </data>
+  <data name="MotifApp.KeepProposal" xml:space="preserve">
+    <value>Keep Proposal</value>
+    <comment>Button that closes the question about deleting a Proposal and keeps it.</comment>
+  </data>
   <data name="MotifApp.Proposals" xml:space="preserve">
     <value>Proposals</value>
     <comment>Window text.</comment>

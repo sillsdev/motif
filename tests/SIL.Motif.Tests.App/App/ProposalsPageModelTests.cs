@@ -626,6 +626,57 @@ public sealed class ProposalsPageModelTests
     }
 
     [Fact]
+    public async Task AskingToDeleteSelectsAndNamesTheProposalAndDeletesNothingUntilConfirmed()
+    {
+        var (fake, _, page) = await OpenAsync(new ProposalStandings(
+            [Card("p/declined", "Plural Vowel Harmony", ProposalGroup.SetAside) with { Status = "rejected" }], 1));
+        var card = page.Groups[0].Cards[0];
+
+        page.AskToDeleteCommand.Execute(card);
+
+        Assert.Empty(fake.DeleteProposalRequests);
+        Assert.Same(card, page.SelectedProposal);
+        Assert.True(page.IsConfirmingDelete);
+        Assert.Contains("Plural Vowel Harmony", page.DeleteQuestion, StringComparison.Ordinal);
+
+        await page.DeleteCommand.ExecuteAsync(card);
+
+        Assert.Equal("p/declined", Assert.Single(fake.DeleteProposalRequests).ProposalId);
+        Assert.False(page.IsConfirmingDelete);
+    }
+
+    [Fact]
+    public async Task KeepingTheProposalAfterAskingToDeleteItDeletesNothing()
+    {
+        var (fake, _, page) = await OpenAsync(new ProposalStandings(
+            [Card("p/declined", "Plural Vowel Harmony", ProposalGroup.SetAside) with { Status = "rejected" }], 1));
+        page.AskToDeleteCommand.Execute(page.Groups[0].Cards[0]);
+
+        page.KeepProposalCommand.Execute(null);
+
+        Assert.False(page.IsConfirmingDelete);
+        Assert.Empty(fake.DeleteProposalRequests);
+        Assert.NotNull(page.SelectedProposal);
+    }
+
+    [Fact]
+    public async Task ChoosingAnotherProposalWithdrawsTheQuestionAboutDeleting()
+    {
+        var (fake, _, page) = await OpenAsync(new ProposalStandings(
+        [
+            Card("p/declined", "Plural Vowel Harmony", ProposalGroup.SetAside) with { Status = "rejected" },
+            Card("p/other", "Other", ProposalGroup.SetAside) with { Status = "rejected" },
+        ], 2));
+        var cards = page.Groups.SelectMany(group => group.Cards).ToArray();
+        page.AskToDeleteCommand.Execute(cards[0]);
+
+        page.SelectProposalCommand.Execute(cards[1]);
+
+        Assert.False(page.IsConfirmingDelete);
+        Assert.Empty(fake.DeleteProposalRequests);
+    }
+
+    [Fact]
     public async Task ShowClosedTogglesTheClosedProposals()
     {
         var (fake, _, page) = await OpenAsync(new ProposalStandings([], 2));
