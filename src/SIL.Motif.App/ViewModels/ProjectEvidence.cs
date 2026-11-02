@@ -203,7 +203,6 @@ public sealed class ProjectEvidence : ObservableObject
     {
         Assessment = run;
         Set = EvidenceSet.FromProjectAssessment(run.Assessment);
-        AppliedSinceRefresh = false;
     }
 
     internal void Clear()

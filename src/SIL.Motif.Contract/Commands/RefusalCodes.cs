@@ -619,6 +619,12 @@ public static class RefusalCodes
     public const string WindowNoProject = "window.no-project";
     /// <summary>The window could not read a Proposal's saved Difference.</summary>
     public const string WindowDifferenceReadFailed = "window.difference-read-failed";
+    /// <summary>A check stopped because the Refresh run before it was cancelled while it waited.</summary>
+    public const string WindowRefreshCancelled = "window.refresh-cancelled";
+    /// <summary>A check stopped because the Refresh run before it failed or captured no Baseline.</summary>
+    public const string WindowRefreshFailed = "window.refresh-failed";
+    /// <summary>A check stopped because the Refresh before it could not start while other work held the project.</summary>
+    public const string WindowRefreshUnavailable = "window.refresh-unavailable";
 
     /// <summary>The window could not make a Proposal's Difference.</summary>
     public const string WindowDifferenceMakeFailed = "window.difference-make-failed";

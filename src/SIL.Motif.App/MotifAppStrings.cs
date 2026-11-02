@@ -3215,6 +3215,12 @@ public static class MotifAppStrings
 
     public static string RefusalNoProjectCode => Text("MotifApp.RefusalNoProjectCode");
 
+    public static string RefusalRefreshFailedCode => Text("MotifApp.RefusalRefreshFailedCode");
+
+    public static string RefusalRefreshCancelledCode => Text("MotifApp.RefusalRefreshCancelledCode");
+
+    public static string RefusalRefreshUnavailableCode => Text("MotifApp.RefusalRefreshUnavailableCode");
+
     public static string RefusalTrialNothingPending => Text("MotifApp.RefusalTrialNothingPending");
 
     public static string RefusalTrialProposalGone => Text("MotifApp.RefusalTrialProposalGone");

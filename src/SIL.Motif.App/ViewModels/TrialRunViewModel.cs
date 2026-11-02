@@ -60,6 +60,7 @@ public sealed record TrialRunState(string ProposalId, bool IsRunning, string? Jo
 public sealed partial class TrialRunViewModel : ObservableObject
 {
     private readonly ICommandClient _commands;
+    private readonly Func<CancellationToken, Task<Refusal?>>? _beforeQueue;
     private readonly SynchronizationContext? _ownerContext;
     private readonly object _gate = new();
     private readonly Dictionary<string, Run> _running = new(StringComparer.Ordinal);
@@ -68,10 +69,16 @@ public sealed partial class TrialRunViewModel : ObservableObject
         ImmutableDictionary.Create<string, TrialRunState>(StringComparer.Ordinal);
 
     /// <summary>Creates the run over the window's command seam.</summary>
-    public TrialRunViewModel(ICommandClient commands)
+    /// <param name="commands">The command seam that queues and follows the Trial.</param>
+    /// <param name="beforeQueue">
+    /// Run after the state says Trying and before the Trial is queued; a refusal it returns stops the Try again
+    /// with no Trial queued.
+    /// </param>
+    public TrialRunViewModel(ICommandClient commands, Func<CancellationToken, Task<Refusal?>>? beforeQueue = null)
     {
         ArgumentNullException.ThrowIfNull(commands);
         _commands = commands;
+        _beforeQueue = beforeQueue;
         _ownerContext = SynchronizationContext.Current;
     }
 
@@ -159,6 +166,8 @@ public sealed partial class TrialRunViewModel : ObservableObject
     private async Task<CommandOutcome<TrialRecord?>> TryAsync(Run run, string projectPath)
     {
         var token = run.Cancellation.Token;
+        if (_beforeQueue is not null && await _beforeQueue(token).ConfigureAwait(true) is { } stopped)
+            return CommandOutcome<TrialRecord?>.Refused(stopped);
         var queued = await _commands.EnqueueTrialAsync(new EnqueueTrialRequest(projectPath,
             MotifProductVersion.CurrentText, run.ProposalId), token).ConfigureAwait(true);
         if (!queued.Succeeded) return CommandOutcome<TrialRecord?>.Refused(queued.Refusal!);

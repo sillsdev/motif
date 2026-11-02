@@ -45,6 +45,34 @@ public sealed class TryWordPageTests
         });
     }
 
+    [Fact]
+    public void TryAgainOnTheTraceRefusalAfterAnApplyRefreshesBeforeTrying()
+    {
+        RunOnAvalonia(async () =>
+        {
+            var (context, fake) = NewContext();
+            context.ProjectPath = context.Assess.ProjectPath = ProjectPath;
+            fake.ReadTrialCompletesWith(new TrialRecord("job/trial", "proposal/one", "sha256:intent", PageScreenshots.Token(), null,
+                new Dictionary<string, string>(), [], false, null, SIL.Motif.Contract.Jobs.JobStatus.Completed,
+                DateTimeOffset.UtcNow, TrialFreshness.Current));
+            await context.OpenProposalAsync("proposal/one", CancellationToken.None);
+            var refreshes = 0;
+            context.RefreshProjectCommand = new CommunityToolkit.Mvvm.Input.AsyncRelayCommand(() =>
+            {
+                refreshes++;
+                context.Evidence.ClearForNewBaseline();
+                return Task.CompletedTask;
+            });
+            context.RecordApplied();
+            var page = new TryWordPageModel(context);
+
+            await page.TryProposalAgainCommand.ExecuteAsync(null);
+
+            Assert.Equal(1, refreshes);
+            Assert.Equal("proposal/one", Assert.Single(fake.EnqueueTrialRequests).ProposalId);
+        });
+    }
+
     [Theory]
     [InlineData(true)]
     [InlineData(false)]

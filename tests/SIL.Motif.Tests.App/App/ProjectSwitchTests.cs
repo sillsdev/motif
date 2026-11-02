@@ -77,6 +77,31 @@ public sealed class ProjectSwitchTests
     }
 
     [Fact]
+    public async Task ATrialAfterAnApplyCapturesANewBaselineThroughTheShellsRefreshFirst()
+    {
+        var parts = NewWorkspace();
+        parts.Fake.PendingChangesIs(PendingWithChange("apply-then-try"));
+        await OpenProjectAsync(parts.Workspace, ProjectA);
+        var review = parts.Workspace.PageModel<ReviewPageModel>();
+        parts.Fake.MeasurePendingCompletesWith(SIL.Motif.Tests.Support.TestFixtures.PendingMeasureResponseFactory.Create(
+            "job/one", "revision/one", FakeCommandClient.CompleteNumbers));
+        parts.Fake.ApplyPendingCompletesWith(new ApplyProjection("draft/one", false, "Applied", [], "sha256:effect",
+            new AppliedLogEntrySummary("draft/one", "2026-01-01", "Motif", "sha256:intent")),
+            "Applied pending changes.");
+        await review.MeasureCommand.ExecuteAsync(null);
+        await review.ApplyCommand.ExecuteAsync(null);
+        Assert.True(parts.Workspace.Context.Evidence.AppliedSinceRefresh);
+        parts.Fake.CaptureBaselineCompletesWith(new BaselineCaptureResponse(
+            NewToken("2026-09-06T00:00:00Z"), ProjectA, DateTimeOffset.UtcNow, false, false));
+
+        await parts.Workspace.Context.TryAgainAsync("proposal/two", CancellationToken.None);
+
+        Assert.Single(parts.Fake.CaptureBaselineRequests);
+        Assert.False(parts.Workspace.Context.Evidence.AppliedSinceRefresh);
+        Assert.Equal("proposal/two", Assert.Single(parts.Fake.EnqueueTrialRequests).ProposalId);
+    }
+
+    [Fact]
     public async Task ASecondSwitchBeforeTheFirstFinishesShowsOnlyTheSecondProject()
     {
         var parts = NewWorkspace();

@@ -153,7 +153,7 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
         assess.Trace.TryWordSessions = TryWordSessions;
         SelectionReads = new WorkspaceSelection(commands);
         ProposalSelectionReads = new WorkspaceSelection(commands) { HoldsListCounts = false };
-        TrialRun = new TrialRunViewModel(commands);
+        TrialRun = new TrialRunViewModel(commands, RefreshBeforeCheckAsync);
         TrialRun.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(TrialRunViewModel.States)) OnPropertyChanged(nameof(ProposalStanding));
@@ -563,6 +563,49 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
         _ = PublishToPagesAsync(CancellationToken.None);
     }
 
+    /// <summary>
+    /// Runs the window's Refresh first when changes were applied since the last one, so a Trial or Dry Run is not
+    /// refused for a Baseline the person's own Apply made stale. Does nothing when nothing was applied since.
+    /// Joins a Refresh already running instead of starting a second.
+    /// </summary>
+    /// <returns><see langword="null"/> when the Baseline is current, else why the Refresh did not finish.</returns>
+    internal async Task<Refusal?> RefreshBeforeCheckAsync(CancellationToken cancellationToken)
+    {
+        if (!Evidence.AppliedSinceRefresh) return null;
+        if (RefreshProjectCommand is not { } refresh)
+            return RefreshStopped(WindowRefusal.RefreshUnavailableCode, FailureReason.Refused,
+                "There is no Refresh to run.");
+        try
+        {
+            var running = refresh.ExecutionTask;
+            if (running is null)
+            {
+                if (!refresh.CanExecute(null))
+                    return RefreshStopped(WindowRefusal.RefreshUnavailableCode, FailureReason.Refused,
+                        "Refresh cannot start now.");
+                running = refresh.ExecuteAsync(null);
+            }
+            await running.WaitAsync(cancellationToken).ConfigureAwait(true);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            return RefreshStopped(WindowRefusal.RefreshCancelledCode, FailureReason.Cancelled,
+                "The wait for the Refresh was cancelled.");
+        }
+        catch (Exception exception) when (exception is not OutOfMemoryException)
+        {
+            return RefreshStopped(WindowRefusal.RefreshFailedCode, FailureReason.Refused, exception.Message);
+        }
+        // The command ends the same way whether or not a Baseline was captured; the applied mark tells which.
+        return Evidence.AppliedSinceRefresh
+            ? RefreshStopped(WindowRefusal.RefreshFailedCode, FailureReason.Refused,
+                "The Refresh did not capture a new Baseline.")
+            : null;
+    }
+
+    private static Refusal RefreshStopped(string code, FailureReason reason, string message) =>
+        new(code, reason, message);
+
     /// <summary>Records that changes were applied to the FieldWorks project, so the numbers are stale.</summary>
     public void RecordApplied() => Evidence.AppliedSinceRefresh = true;
 
@@ -702,9 +745,8 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     }
 
     /// <summary>
-    /// The window's one Try again, for the open Proposal or any other: queues the Proposal's Trial with the words
-    /// its content calls for, follows it to the end, then refreshes the open Proposal's Trial and publishes, so
-    /// every page shows the result the person asked for.
+    /// The window's one Try again, for the open Proposal or any other. It refreshes the project first when changes were
+    /// applied since the last Refresh, queues the Trial, follows it to the end, and publishes the result to every page.
     /// </summary>
     /// <returns>The Trial it produced, or a refusal to show through <see cref="WindowRefusal"/>.</returns>
     public async Task<CommandOutcome<TrialRecord?>> TryAgainAsync(string proposalId, CancellationToken cancellationToken)

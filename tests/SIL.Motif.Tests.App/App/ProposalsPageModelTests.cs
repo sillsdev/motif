@@ -224,6 +224,43 @@ public sealed class ProposalsPageModelTests
     }
 
     [Fact]
+    public async Task TryAgainAfterAnApplyRefreshesFirstAndQueuesNothingWhenTheRefreshFails()
+    {
+        var (fake, context, page) = await OpenAsync(Standings(Card("p/stale", "Stale one",
+            ProposalGroup.NeedsAnotherTry, standing: Stale)));
+        var refreshes = 0;
+        context.RefreshProjectCommand = new CommunityToolkit.Mvvm.Input.AsyncRelayCommand(() =>
+        {
+            refreshes++;
+            return Task.CompletedTask;
+        });
+        context.RecordApplied();
+
+        await page.TryAgainCommand.ExecuteAsync(page.Groups[0].Cards[0]);
+
+        Assert.Equal(1, refreshes);
+        Assert.Empty(fake.EnqueueTrialRequests);
+        Assert.Equal(WindowRefusal.RefreshFailedCode, context.TrialRun.StateFor("p/stale").Refusal?.Code);
+    }
+
+    [Fact]
+    public async Task TryAgainAfterAnApplyQueuesTheTrialOnceTheRefreshCapturedABaseline()
+    {
+        var (fake, context, page) = await OpenAsync(Standings(Card("p/stale", "Stale one",
+            ProposalGroup.NeedsAnotherTry, standing: Stale)));
+        context.RefreshProjectCommand = new CommunityToolkit.Mvvm.Input.AsyncRelayCommand(() =>
+        {
+            context.Evidence.ClearForNewBaseline();
+            return Task.CompletedTask;
+        });
+        context.RecordApplied();
+
+        await page.TryAgainCommand.ExecuteAsync(page.Groups[0].Cards[0]);
+
+        Assert.Equal("p/stale", Assert.Single(fake.EnqueueTrialRequests).ProposalId);
+    }
+
+    [Fact]
     public async Task InspectorNoticeDoesNotFollowAnOlderTrialAfterTheListRefreshes()
     {
         var first = Card("p/one", "One", ProposalGroup.WaitingForYou,

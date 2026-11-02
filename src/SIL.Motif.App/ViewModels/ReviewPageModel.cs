@@ -1018,16 +1018,22 @@ public sealed partial class ReviewPageModel : PageModel
         CancelMeasureCommand.NotifyCanExecuteChanged();
         ApplyCommand.NotifyCanExecuteChanged();
         var revision = Changes.Snapshot.Revision;
-        var words = Changes.Snapshot.Changes.Select(change => change.Word)
-            .Distinct(StringComparer.Ordinal).ToArray();
         CommandOutcome<MeasurePendingResult> result;
         try
         {
-            result = await ParseProgress.TrackAsync(() => Context.Commands.MeasurePendingAsync(
-                new MeasurePendingRequest(project, draft, revision, words,
-                    Context.Evidence.CorrectnessAssessmentId),
-                new Progress<MeasureProgress>(OnMeasurementProgress),
-                _measurementCancellation.Token)).ConfigureAwait(true);
+            // A Refresh reloads the changes, so the revision and words are read after it, not before.
+            var refreshStopped = await Context.RefreshBeforeCheckAsync(_measurementCancellation.Token)
+                .ConfigureAwait(true);
+            revision = Changes.Snapshot.Revision;
+            var words = Changes.Snapshot.Changes.Select(change => change.Word)
+                .Distinct(StringComparer.Ordinal).ToArray();
+            result = refreshStopped is not null
+                ? CommandOutcome<MeasurePendingResult>.Refused(refreshStopped)
+                : await ParseProgress.TrackAsync(() => Context.Commands.MeasurePendingAsync(
+                    new MeasurePendingRequest(project, draft, revision, words,
+                        Context.Evidence.CorrectnessAssessmentId),
+                    new Progress<MeasureProgress>(OnMeasurementProgress),
+                    _measurementCancellation.Token)).ConfigureAwait(true);
         }
         finally
         {

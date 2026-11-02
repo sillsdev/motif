@@ -6317,6 +6317,18 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <value>Open a project first.</value>
     <comment>Sentence the window shows when the command refuses with code NoProjectCode. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
+  <data name="MotifApp.RefusalRefreshFailedCode" xml:space="preserve">
+    <value>The project could not be refreshed, so nothing was checked. Refresh the project, then try again.</value>
+    <comment>Sentence the window shows when the Refresh that runs before a Trial or Review check cannot finish. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
+  </data>
+  <data name="MotifApp.RefusalRefreshCancelledCode" xml:space="preserve">
+    <value>Cancelled, so nothing was checked. The Refresh already started carries on until it finishes.</value>
+    <comment>Sentence the window shows when the person cancels a check while the Refresh before it is running. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
+  </data>
+  <data name="MotifApp.RefusalRefreshUnavailableCode" xml:space="preserve">
+    <value>The project cannot be refreshed while other work is running, so nothing was checked. Try again when it has finished.</value>
+    <comment>Sentence the window shows when the Refresh before a check cannot start because parsing or another Refresh holds the project. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
+  </data>
   <data name="MotifApp.RefusalTrialNothingPending" xml:space="preserve">
     <value>There are no changes to check.</value>
     <comment>Sentence the window shows when the command refuses with code C.TrialNothingPending. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>

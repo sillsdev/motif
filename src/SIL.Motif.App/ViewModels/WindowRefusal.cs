@@ -47,6 +47,15 @@ public sealed partial record WindowRefusal
     /// <summary>The code of an action that needs an open project when none is open.</summary>
     public const string NoProjectCode = "window.no-project";
 
+    /// <summary>The code of a Trial or check that stopped because the Refresh run before it could not finish.</summary>
+    public const string RefreshFailedCode = "window.refresh-failed";
+
+    /// <summary>The code of a check whose wait for the Refresh before it was cancelled; the Refresh carries on.</summary>
+    public const string RefreshCancelledCode = "window.refresh-cancelled";
+
+    /// <summary>The code of a check that could not start the Refresh before it because other work holds the project.</summary>
+    public const string RefreshUnavailableCode = "window.refresh-unavailable";
+
     private const string WindowCheckCode = "window.check";
 
     private static string ParserMissing => MotifAppStrings.RefusalParserMissing;
@@ -234,6 +243,9 @@ public sealed partial record WindowRefusal
         [C.TrialChangesChanged] = () => MotifAppStrings.RefusalTrialChangesChanged,
         [C.TrialMeasurementIncomplete] = () => MotifAppStrings.RefusalTrialMeasurementIncomplete,
         [NoProjectCode] = () => MotifAppStrings.RefusalNoProjectCode,
+        [RefreshFailedCode] = () => MotifAppStrings.RefusalRefreshFailedCode,
+        [RefreshCancelledCode] = () => MotifAppStrings.RefusalRefreshCancelledCode,
+        [RefreshUnavailableCode] = () => MotifAppStrings.RefusalRefreshUnavailableCode,
         [C.TrialNothingPending] = () => MotifAppStrings.RefusalTrialNothingPending,
         [C.TrialProposalGone] = () => MotifAppStrings.RefusalTrialProposalGone,
         [C.TrialUpdateInProgress] = () => MotifAppStrings.RefusalTrialUpdateInProgress,
