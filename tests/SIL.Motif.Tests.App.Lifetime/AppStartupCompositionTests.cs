@@ -120,10 +120,10 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
             {
                 await session.KnownProjectsLoaded;
                 await SelectNewProjectAsync(session, () => picker.Calls == 1);
-                await Until(() => session.Workspace.Baseline.HasBaseline, "the Baseline did not load");
+                await Wait.UntilAsync(() => session.Workspace.Baseline.HasBaseline, "the Baseline did not load");
                 await ShowPageAsync(session, WorkspacePage.TryAWord);
                 var path = session.Workspace.Context.ProjectPath!;
-                await Until(() => session.Workspace.Context.TryWordSessions.GetPhase(path) == WarmSessionPhase.Ready,
+                await Wait.UntilAsync(() => session.Workspace.Context.TryWordSessions.GetPhase(path) == WarmSessionPhase.Ready,
                     "opening Try a Word did not warm the parser");
 
                 var trace = session.Workspace.Assess.Trace;
@@ -181,11 +181,11 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
             {
                 await first.KnownProjectsLoaded;
                 await SelectNewProjectAsync(first, () => picker.Calls == 1);
-                await Until(() => first.Workspace.Baseline.HasBaseline, "the Baseline did not load");
+                await Wait.UntilAsync(() => first.Workspace.Baseline.HasBaseline, "the Baseline did not load");
                 var trace = first.Workspace.Assess.Trace;
                 trace.SetWord("motifa");
                 tracing = trace.TryCommand.ExecuteAsync(null);
-                await Until(() => File.Exists(started), "the held trace did not start");
+                await Wait.UntilAsync(() => File.Exists(started), "the held trace did not start");
                 Assert.True(trace.ParseProgress.IsActive);
                 using var invocation = Process.GetProcessById(int.Parse(File.ReadAllText(processId),
                     CultureInfo.InvariantCulture));
@@ -204,7 +204,7 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
                 var second = host.Start(options);
                 await second.KnownProjectsLoaded;
                 await SelectNewProjectAsync(second, () => picker.Calls == 2);
-                await Until(() => second.Workspace.Baseline.HasBaseline, "the restarted Baseline did not load");
+                await Wait.UntilAsync(() => second.Workspace.Baseline.HasBaseline, "the restarted Baseline did not load");
                 second.Workspace.Assess.Trace.SetWord("motifa");
                 await second.Workspace.Assess.Trace.TryCommand.ExecuteAsync(null);
                 Assert.NotNull(second.Workspace.Assess.Trace.Result);
@@ -327,8 +327,8 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
                 var workspace = session.Workspace;
                 await session.KnownProjectsLoaded;
                 await SelectNewProjectAsync(session, () => picker.Calls == 1);
-                await Until(() => workspace.Baseline.HasBaseline,
-                    () => "the chosen project did not open with its Baseline: project " +
+                await Wait.UntilAsync(() => workspace.Baseline.HasBaseline,
+                    detail: () => "the chosen project did not open with its Baseline: project " +
                         workspace.Context.ProjectPath + ", Baseline " + workspace.Baseline.HasBaseline + " (" +
                         workspace.Baseline.ShownRefusal?.Sentence + ")");
                 Assert.NotEqual(true, workspace.Context.Setup?.IsOpen);
@@ -357,7 +357,7 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
                 stage = "Review with Measure/Trial";
                 await ShowPageAsync(session, WorkspacePage.Review);
                 var review = workspace.PageModel<ReviewPageModel>();
-                await Until(() => review.MeasureCommand.CanExecute(null), "the pending change did not reach Review");
+                await Wait.UntilAsync(() => review.MeasureCommand.CanExecute(null), "the pending change did not reach Review");
                 Assert.Equal(draft, workspace.Context.Changes.Snapshot.DraftId);
                 await review.MeasureCommand.ExecuteAsync(null);
                 Assert.Null(review.MeasurementRefusal);
@@ -419,7 +419,7 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
                 var workspace = session.Workspace;
                 await session.KnownProjectsLoaded;
                 await SelectNewProjectAsync(session, () => picker.Calls == 1);
-                await Until(() => workspace.Context.Evidence.HasAssessment,
+                await Wait.UntilAsync(() => workspace.Context.Evidence.HasAssessment,
                     "the stored Assessment did not load at startup");
                 Assert.False(workspace.Context.NeedsAssessment);
 
@@ -427,7 +427,7 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
                 var refresh = session.Window.GetLogicalDescendants().OfType<Button>().Single(button =>
                     AutomationProperties.GetName(button) == "Refresh the project" && button.IsEffectivelyVisible);
                 Click(session.Window, refresh);
-                await Until(() => !workspace.RefreshCommand.IsRunning,
+                await Wait.UntilAsync(() => !workspace.RefreshCommand.IsRunning,
                     "the no-op Refresh did not finish");
                 Assert.False(workspace.Context.NeedsAssessment,
                     "a Refresh that reused the Baseline should keep its stored Assessment");
@@ -439,8 +439,8 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
                 refresh = session.Window.GetLogicalDescendants().OfType<Button>().Single(button =>
                     AutomationProperties.GetName(button) == "Refresh the project" && button.IsEffectivelyVisible);
                 Click(session.Window, refresh);
-                await Until(() => !workspace.RefreshCommand.IsRunning && workspace.Context.NeedsAssessment,
-                    () => "Refresh after a FieldWorks save did not leave the new Baseline unparsed; " +
+                await Wait.UntilAsync(() => !workspace.RefreshCommand.IsRunning && workspace.Context.NeedsAssessment,
+                    detail: () => "Refresh after a FieldWorks save did not leave the new Baseline unparsed; " +
                         $"refresh running={workspace.RefreshCommand.IsRunning}, " +
                         $"needs parse={workspace.Context.NeedsAssessment}, " +
                         $"baseline='{workspace.Baseline.CapturedTimeText}', " +
@@ -466,7 +466,7 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
                     text.IsEffectivelyVisible);
                 var chip = session.Window.FindControl<Button>("ProjectChip")!;
                 Click(session.Window, chip);
-                await Until(() => chip.Flyout is Flyout { IsOpen: true }, "the project card did not open");
+                await Wait.UntilAsync(() => chip.Flyout is Flyout { IsOpen: true }, "the project card did not open");
                 var cardFlyout = Assert.IsType<Flyout>(chip.Flyout);
                 var card = Assert.IsType<ProjectCardView>(cardFlyout.Content);
                 var cardParse = card.FindControl<Button>("CardParseAllWordsButton")!;
@@ -482,7 +482,7 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
                 var texts = workspace.PageModel<TextsPageModel>();
                 Assert.True(texts.ShowParsePrompt);
                 Assert.False(texts.ShowMatrixContent);
-                await Until(() => session.Window.GetVisualDescendants().OfType<CopyableTextBlock>().Any(text =>
+                await Wait.UntilAsync(() => session.Window.GetVisualDescendants().OfType<CopyableTextBlock>().Any(text =>
                         AutomationProperties.GetAutomationId(text) == SIL.Motif.App.AutomationIds.ParsePromptText &&
                         text.Text == workspace.Context.ParsePromptText && text.IsEffectivelyVisible),
                     "the Texts prompt did not appear");
@@ -493,15 +493,15 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
 
                 stage = "held Parse all words";
                 Click(session.Window, parseButton);
-                await Until(() => File.Exists(startedPath), "the parse did not reach the held fake parser");
+                await Wait.UntilAsync(() => File.Exists(startedPath), "the parse did not reach the held fake parser");
                 Assert.True(texts.ShowParsePrompt);
                 Assert.Contains(session.Window.GetVisualDescendants().OfType<CopyableTextBlock>(), text =>
                     AutomationProperties.GetAutomationId(text) == SIL.Motif.App.AutomationIds.ParsePromptText &&
                     text.Text == workspace.Context.ParsePromptText && text.IsEffectivelyVisible);
-                await Until(() => ParseProgressControls(session.Window).OfType<CopyableTextBlock>().Any(text =>
+                await Wait.UntilAsync(() => ParseProgressControls(session.Window).OfType<CopyableTextBlock>().Any(text =>
                     AutomationProperties.GetAutomationId(text) == SIL.Motif.App.AutomationIds.ParseProgressDetails &&
                     text.Text == "Parsing · 0 of 1 words · estimating time" && text.IsEffectivelyVisible),
-                    () => $"top-row parse progress did not appear; active={workspace.ShowsParseAllWordsProgress}, " +
+                    detail: () => $"top-row parse progress did not appear; active={workspace.ShowsParseAllWordsProgress}, " +
                         $"presenter='{workspace.ActiveParseProgress.ProgressText}', rendered='" +
                         string.Join(" | ", ParseProgressControls(session.Window).OfType<CopyableTextBlock>()
                             .Where(text => AutomationProperties.GetAutomationId(text) ==
@@ -515,7 +515,7 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
 
                 stage = "released Parse all words";
                 File.WriteAllText(releasePath, string.Empty);
-                await Until(() => !workspace.ParseAllWordsCommand.IsRunning && !workspace.Context.NeedsAssessment,
+                await Wait.UntilAsync(() => !workspace.ParseAllWordsCommand.IsRunning && !workspace.Context.NeedsAssessment,
                     "the released parse did not complete");
                 Assert.False(workspace.ShowsParseAllWordsAction);
                 Assert.False(workspace.ShowsParseAllWordsProgress);
@@ -572,20 +572,20 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
         var entry = session.Window.GetLogicalDescendants().OfType<ListBoxItem>()
             .Single(item => AutomationProperties.GetName(item) == name);
         Click(session.Window, entry);
-        await Until(() => session.Workspace.CurrentPage == page, "the " + name + " page did not open");
+        await Wait.UntilAsync(() => session.Workspace.CurrentPage == page, "the " + name + " page did not open");
     }
 
     private static async Task<string> UntilFound(Window window, Func<string> state, Func<string, bool> matches)
     {
         string? found = null;
-        await Until(() =>
+        await Wait.UntilAsync(() =>
         {
             window.UpdateLayout();
             found = window.GetVisualDescendants().OfType<TextBlock>()
                 .Where(block => block.IsEffectivelyVisible)
                 .Select(block => block.Text).FirstOrDefault(text => text is not null && matches(text));
             return found is not null;
-        }, () => "the window never showed the expected text; " + state());
+        }, "the window never showed the expected text", detail: state);
         return found!;
     }
 
@@ -598,22 +598,10 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
         var entry = session.Window.FindControl<MenuItem>("SelectNewMenuItem")
             ?? throw new InvalidOperationException("The File menu has no Select New item.");
         Assert.Same(session.Workspace.SelectNewProjectCommand, entry.Command);
-        await Until(() => entry.IsEffectivelyEnabled, "'Select New' never became enabled");
+        await Wait.UntilAsync(() => entry.IsEffectivelyEnabled, "'Select New' never became enabled");
         entry.Command!.Execute(entry.CommandParameter);
-        await Until(pickerCalled, "choosing a new project did not ask the substituted picker");
+        await Wait.UntilAsync(pickerCalled, "choosing a new project did not ask the substituted picker");
         file.IsSubMenuOpen = false;
-    }
-
-    private static Task Until(Func<bool> condition, string failure) => Until(condition, () => failure);
-
-    private static async Task Until(Func<bool> condition, Func<string> failure)
-    {
-        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(30);
-        while (!condition())
-        {
-            Assert.True(DateTime.UtcNow < deadline, failure());
-            await Task.Delay(20);
-        }
     }
 
     private static void Click(Window window, Control control)

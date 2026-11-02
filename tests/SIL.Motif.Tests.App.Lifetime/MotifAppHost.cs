@@ -247,7 +247,7 @@ internal sealed class MotifAppHost
 
     private static void Pump(string step, TimeSpan timeout, Task task, Func<string>? pending = null)
     {
-        var deadline = Stopwatch.GetTimestamp() + (long)(timeout.TotalSeconds * Stopwatch.Frequency);
+        var deadline = Stopwatch.GetTimestamp() + (long)(Wait.Scaled(timeout).TotalSeconds * Stopwatch.Frequency);
         while (!task.IsCompleted && !_dispatcherShutDown && Remaining(deadline) is { } remaining)
             RunDispatcherUntil(task, remaining);
         // A shut-down dispatcher runs no frame, so only the thread pool can still finish the work.
