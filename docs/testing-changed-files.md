@@ -8,7 +8,7 @@ everything.
 ## Use
 
 ```
-./test.ps1 -BuildMap                  # nightly or on request: one instrumented full run, writes the map
+./test.ps1 -BuildMap                  # on request, no scheduled job runs it: one instrumented full run, writes the map
 ./test.ps1 -Changed                   # diff against the merge-base with origin/main, run the selected classes
 ./test.ps1 -Changed -Explain          # print the selection and the reasons; build and run nothing
 ./test.ps1 -Changed -Base <ref>       # diff against another base
@@ -80,5 +80,5 @@ and Windows with developer mode.
   running when it exits.
 - Coverage is by file. A class that runs one method of a file depends on the whole file.
 - A file changed between the map's commit and the base is treated as unmapped, but a file a class newly reaches
-  through such a change is not detected; the age limit and the nightly rebuild bound that.
+  through such a change is not detected; the age limit and rebuilding the map on request bound that.
 - Reflection or a source generator that reaches code no test calls directly is covered only if a test executes it.

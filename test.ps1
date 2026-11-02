@@ -80,7 +80,7 @@
   Build the coverage map -Changed reads: one full-suite run under coverlet (restored on demand; no project references
   it) in which every test process runs one class at a time in a private copy of its test folder, and
   SIL.Motif.Tests.Support records which source files each class executed. It takes about as long as the full gate
-  plus instrumentation, so run it nightly or on request, not per landing. The map goes to
+  plus instrumentation, so run it on request, not per landing; no scheduled job builds it. The map goes to
   bin/.cache/test-map/coverage-map.json, keyed by HEAD, or to -MapPath.
 
   .PARAMETER MapPath
