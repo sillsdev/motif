@@ -119,6 +119,15 @@ internal static class WalkthroughArtifacts
 {
     /// <summary>Enables failures for pixel mismatches when set to <c>1</c>.</summary>
     internal const string StrictComparisonVariable = "MOTIF_WALKTHROUGH_STRICT_BASELINES";
+
+    /// <summary>
+    /// Whether a replay draws pictures: only when a reference image is being updated, an output folder is set, or the
+    /// strict comparison is on. Otherwise a replay runs every step and layout check and draws nothing.
+    /// </summary>
+    internal static bool DrawsPictures =>
+        Environment.GetEnvironmentVariable("MOTIF_WALKTHROUGH_UPDATE_BASELINES") == "1" ||
+        !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("MOTIF_WALKTHROUGH_OUTPUT")) ||
+        Environment.GetEnvironmentVariable(StrictComparisonVariable) == "1";
     public const int Width = 1280;
     public const int Height = 720;
     public const int Fps = 30;
@@ -140,9 +149,9 @@ internal static class WalkthroughArtifacts
             Bounds = new Rect(callout.Bounds.X * scale, callout.Bounds.Y * scale,
                 callout.Bounds.Width * scale, callout.Bounds.Height * scale),
         }).ToArray();
-        var capture = new WalkthroughCapture(id, startMs, durationMs, scaledCallouts,
-            CaptureFrame(window, scale), scale);
-        return cropPadding is { } padding ? Crop(capture, (int)Math.Ceiling(padding * scale)) : capture;
+        var png = CaptureFrame(window, scale);
+        var capture = new WalkthroughCapture(id, startMs, durationMs, scaledCallouts, png, scale);
+        return cropPadding is { } padding && png.Length > 0 ? Crop(capture, (int)Math.Ceiling(padding * scale)) : capture;
     }
 
     internal static Rect PadUnreadHighlightTarget(Rect target) =>
@@ -155,6 +164,8 @@ internal static class WalkthroughArtifacts
     {
         if (scale is < 1 or > 4) throw new ArgumentOutOfRangeException(nameof(scale));
         LayoutAssertions.BeforeCapture(window);
+        // A scaled capture feeds the caption-column checks, which read its pixels; every other frame is only a picture.
+        if (!DrawsPictures && scale == 1) return [];
         var size = window.Bounds.Size;
         using var bitmap = new RenderTargetBitmap(
             new PixelSize((int)Math.Round(size.Width * scale), (int)Math.Round(size.Height * scale)),
@@ -168,23 +179,36 @@ internal static class WalkthroughArtifacts
     public static void Write(
         string repositoryRoot, WalkthroughScript script, WalkthroughHelpContent help,
         IReadOnlyList<WalkthroughCapture> captures, IReadOnlyList<WalkthroughClipSegment>? clipSegments = null,
-        Action<string>? reportBaselineMismatch = null, bool strictBaselineComparison = false)
+        Action<string>? reportBaselineMismatch = null)
     {
         var updateBaselines = Environment.GetEnvironmentVariable("MOTIF_WALKTHROUGH_UPDATE_BASELINES") == "1";
+        var baselineRoot = Path.Combine(repositoryRoot, "tests", "SIL.Motif.Tests.App", "Assets",
+            "WalkthroughBaselines", script.Id);
+        foreach (var capture in captures)
+            if (!help.StepCaptions.ContainsKey(capture.Id))
+                throw new InvalidDataException($"Help file for '{script.Id}' has no caption for capture '{capture.Id}'.");
+        if (!DrawsPictures)
+        {
+            foreach (var path in captures.SelectMany(capture => new[]
+                     {
+                         Path.Combine(baselineRoot, $"{capture.Id}.png"),
+                         Path.Combine(baselineRoot, $"{capture.Id}-annotated.png"),
+                     }))
+                if (!File.Exists(path)) throw new Xunit.Sdk.XunitException(MissingReferenceImage(path));
+            return;
+        }
+
         // A strict replay checks every capture before it fails, so one run writes every stale actual PNG.
         var mismatches = new List<Xunit.Sdk.XunitException>();
         var prepared = captures.Select(capture =>
         {
-            if (!help.StepCaptions.TryGetValue(capture.Id, out var caption))
-                throw new InvalidDataException($"Help file for '{script.Id}' has no caption for capture '{capture.Id}'.");
+            var caption = help.StepCaptions[capture.Id];
             var annotated = Annotate(repositoryRoot, capture.Png, capture.Callouts, capture.Scale);
-            var baselineRoot = Path.Combine(repositoryRoot, "tests", "SIL.Motif.Tests.App", "Assets",
-                "WalkthroughBaselines", script.Id);
             // A plain mismatch must not hide the annotated actual: both land in walkthrough-diffs before it fails.
             try
             {
                 CheckBaseline(Path.Combine(baselineRoot, $"{capture.Id}.png"), capture.Png, updateBaselines,
-                    capture.Callouts, reportBaselineMismatch, strictBaselineComparison);
+                    capture.Callouts, reportBaselineMismatch);
             }
             catch (Xunit.Sdk.XunitException mismatch)
             {
@@ -193,7 +217,7 @@ internal static class WalkthroughArtifacts
             try
             {
                 CheckBaseline(Path.Combine(baselineRoot, $"{capture.Id}-annotated.png"), annotated, updateBaselines,
-                    capture.Callouts, reportBaselineMismatch, strictBaselineComparison);
+                    capture.Callouts, reportBaselineMismatch);
             }
             catch (Xunit.Sdk.XunitException mismatch)
             {
@@ -779,9 +803,12 @@ internal static class WalkthroughArtifacts
     private static double Distance(Rect label, Rect target) =>
         Math.Abs(label.Center.X - target.Center.X) + Math.Abs(label.Center.Y - target.Center.Y);
 
+    private static string MissingReferenceImage(string path) =>
+        $"Walkthrough reference image is missing: {path}. Set MOTIF_WALKTHROUGH_UPDATE_BASELINES=1 to create it.";
+
     internal static void CheckBaseline(
         string path, byte[] actual, bool update, IReadOnlyList<WalkthroughCaptureCallout>? callouts = null,
-        Action<string>? report = null, bool strictBaselineComparison = false)
+        Action<string>? report = null)
     {
         if (update)
         {
@@ -791,8 +818,7 @@ internal static class WalkthroughArtifacts
         }
 
         if (!File.Exists(path))
-            throw new Xunit.Sdk.XunitException(
-                $"Walkthrough baseline is missing: {path}. Set MOTIF_WALKTHROUGH_UPDATE_BASELINES=1 to create it.");
+            throw new Xunit.Sdk.XunitException(MissingReferenceImage(path));
         using var expectedBitmap = SKBitmap.Decode(path);
         using var actualBitmap = SKBitmap.Decode(actual);
         Assert.NotNull(expectedBitmap);
@@ -805,7 +831,7 @@ internal static class WalkthroughArtifacts
             var message = $"Walkthrough baseline '{path}' is {expectedBitmap.Width}x{expectedBitmap.Height} but the capture is " +
                 $"{actualBitmap.Width}x{actualBitmap.Height}. Actual PNG: {actualPath}; Diff PNG: {diffPath}; callouts: " +
                 string.Join("; ", (callouts ?? []).Select(callout => $"{callout.AutomationId} {callout.Bounds}"));
-            if (strictBaselineComparison || Environment.GetEnvironmentVariable(StrictComparisonVariable) == "1")
+            if (Environment.GetEnvironmentVariable(StrictComparisonVariable) == "1")
                 throw new Xunit.Sdk.XunitException(message);
             if (report is null) Console.WriteLine(message);
             else report(message);
@@ -862,7 +888,7 @@ internal static class WalkthroughArtifacts
             var message =
                 $"Walkthrough baseline '{path}' differs in {changed:N0} pixels ({calloutChanged:N0} in callouts); " +
                 $"tolerance is {allowed:N0} pixels. Actual PNG: {actualPath}; Diff PNG: {diffPath}";
-            if (strictBaselineComparison || Environment.GetEnvironmentVariable(StrictComparisonVariable) == "1")
+            if (Environment.GetEnvironmentVariable(StrictComparisonVariable) == "1")
                 throw new Xunit.Sdk.XunitException(message);
             if (report is null) Console.WriteLine(message);
             else report(message);

@@ -91,6 +91,51 @@ public sealed class WalkthroughReplayTests(PristineProjectFixture pristine)
     }
 
     [Fact]
+    public void StableFrameWaitIsSkippedWhenNoPicturesAreDrawn()
+    {
+        var managedRoot = Path.Combine(Path.GetTempPath(), "SIL.Motif.Walkthrough", "stable-frame",
+            Guid.NewGuid().ToString("N"));
+        using var project = new WalkthroughProject(pristine, managedRoot);
+        var previous = Environment.GetEnvironmentVariable(WalkthroughArtifacts.StrictComparisonVariable);
+
+        AvaloniaHeadlessFixture.RunUntilComplete(() =>
+        {
+            WalkthroughFonts.Register();
+            using var walkthrough = new WalkthroughWindow(project.ManagedRoot, project.FwDataPath);
+            walkthrough.Show();
+            OverlayLayer.GetOverlayLayer(walkthrough.Window)!.Children.Add(
+                new RedrawsDifferentlyEveryTime { Width = 1000, Height = 8 });
+            try
+            {
+                Environment.SetEnvironmentVariable(WalkthroughArtifacts.StrictComparisonVariable, null);
+                walkthrough.WaitUntilFrameIsStable(TimeSpan.FromSeconds(1), "a gate waits for no frame");
+
+                Environment.SetEnvironmentVariable(WalkthroughArtifacts.StrictComparisonVariable, "1");
+                var failure = Assert.ThrowsAny<Xunit.Sdk.XunitException>(() =>
+                    walkthrough.WaitUntilFrameIsStable(TimeSpan.FromSeconds(1), "a strict run waits for a frame"));
+                Assert.Contains("frames were drawn and none matched", failure.Message, StringComparison.Ordinal);
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable(WalkthroughArtifacts.StrictComparisonVariable, previous);
+            }
+
+            return Task.CompletedTask;
+        }, TimeSpan.FromSeconds(30));
+    }
+
+    private sealed class RedrawsDifferentlyEveryTime : Control
+    {
+        private int _draws;
+
+        public override void Render(DrawingContext context)
+        {
+            context.FillRectangle(Brushes.Red, new Rect(0, 0, _draws++, Bounds.Height));
+            Dispatcher.UIThread.Post(InvalidateVisual);
+        }
+    }
+
+    [Fact]
     public async Task ReplayTypesAWordAndShowsTheRecordedTraceResult()
     {
         var managedRoot = WalkthroughTestFiles.EngineRoot("try-word-replay");
@@ -416,8 +461,7 @@ internal static class WalkthroughReplayTestRunner
             Assert.Equal(script.Steps.Count(step => step.Kind == WalkthroughStepKind.Capture), captures.Count);
             Assert.Equal(captures.Count,
                 clipSegments.Count(segment => segment.Kind == WalkthroughClipSegmentKind.Capture));
-            WalkthroughArtifacts.Write(root, script, help, captures, clipSegments, output.WriteLine,
-                strictBaselineComparison: script.Id == "explained-word-card" && OperatingSystem.IsWindows());
+            WalkthroughArtifacts.Write(root, script, help, captures, clipSegments, output.WriteLine);
         }
     }
 

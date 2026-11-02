@@ -25,6 +25,43 @@ public sealed class WalkthroughArtifactTests(AvaloniaHeadlessFixture avalonia)
     }
 
     [Fact]
+    public void WriteDrawsNothingUnlessAskedAndStillRequiresEachReferenceImage()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"walkthrough-reference-{Guid.NewGuid():N}");
+        string[] variables =
+            ["MOTIF_WALKTHROUGH_OUTPUT", "MOTIF_WALKTHROUGH_UPDATE_BASELINES", WalkthroughArtifacts.StrictComparisonVariable];
+        var previous = variables.Select(Environment.GetEnvironmentVariable).ToArray();
+        try
+        {
+            foreach (var variable in variables) Environment.SetEnvironmentVariable(variable, null);
+            var helpPath = Path.Combine(root, "src", "SIL.Motif.Help", "Content", "en", "walkthroughs", "example.json");
+            Directory.CreateDirectory(Path.GetDirectoryName(helpPath)!);
+            File.WriteAllText(helpPath,
+                """{"id":"example","title":"Example","description":"A walkthrough.","steps":{"overview":"Overview caption."},"callouts":{"overview":{"motif-pages":"Project pages"}}}""");
+            var help = WalkthroughHelpContent.Load(root, "example", "en");
+            var script = new WalkthroughScript("example", []);
+            var drawnNothing = new WalkthroughCapture("overview", 0, 1600, [], []);
+            var referenceImages = Path.Combine(root, "tests", "SIL.Motif.Tests.App", "Assets", "WalkthroughBaselines", "example");
+
+            Assert.False(WalkthroughArtifacts.DrawsPictures);
+            var missing = Assert.ThrowsAny<Xunit.Sdk.XunitException>(
+                () => WalkthroughArtifacts.Write(root, script, help, [drawnNothing]));
+            Assert.Contains("reference image is missing", missing.Message, StringComparison.Ordinal);
+
+            Directory.CreateDirectory(referenceImages);
+            File.WriteAllText(Path.Combine(referenceImages, "overview.png"), "not a picture");
+            File.WriteAllText(Path.Combine(referenceImages, "overview-annotated.png"), "not a picture");
+            WalkthroughArtifacts.Write(root, script, help, [drawnNothing]);
+        }
+        finally
+        {
+            for (var index = 0; index < variables.Length; index++)
+                Environment.SetEnvironmentVariable(variables[index], previous[index]);
+            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
     public void WriteProducesSiteShapedAssetsAndParsableCaptions()
     {
         var root = Path.Combine(Path.GetTempPath(), $"walkthrough-output-{Guid.NewGuid():N}");

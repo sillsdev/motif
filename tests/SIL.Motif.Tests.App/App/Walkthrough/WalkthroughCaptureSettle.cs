@@ -53,9 +53,13 @@ internal static partial class WalkthroughCaptureSettle
                 $"EvidencePublication={workspace.Context.EvidencePublication.Status}");
     }
 
-    /// <summary>Waits until two frames drawn one after the other are the same picture, so no state is still settling.</summary>
+    /// <summary>
+    /// Waits until two frames drawn one after the other are the same picture, so no state is still settling. A replay
+    /// that draws no pictures has nothing to wait for.
+    /// </summary>
     internal static void WaitUntilFrameIsStable(this WalkthroughWindow walkthrough, TimeSpan timeout, string why)
     {
+        if (!WalkthroughArtifacts.DrawsPictures) return;
         byte[]? previous = null;
         var passes = 0;
         walkthrough.WaitUntil(() =>
