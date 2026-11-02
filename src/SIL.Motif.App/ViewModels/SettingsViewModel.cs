@@ -167,6 +167,10 @@ internal sealed partial class SettingsViewModel : ObservableObject
     private decimal? _timeLimitBeforeNoStep;
     private bool _lastGoodNoParserWorkLimit;
     private string _parserWorkLimitRefusal = string.Empty;
+    private bool _keepsParserWorkLimit;
+    private decimal? _keptParserWorkLimit;
+    private bool _keepsTimeLimit;
+    private decimal? _keptTimeLimit;
     private bool _suppressPreferenceWrites;
 
     public SettingsViewModel(WorkspaceShellViewModel workspace, IUserPreferencesStore? preferences = null,
@@ -388,11 +392,27 @@ internal sealed partial class SettingsViewModel : ObservableObject
     }
     public decimal? ParserWorkLimitValue
     {
-        get => IsNoParserWorkLimit
+        get => _keepsParserWorkLimit ? _keptParserWorkLimit
+            : IsNoParserWorkLimit
             ? _parserWorkLimitBeforeNoStep ?? _lastGoodParserWorkLimit ?? _workspace.Context.Setup?.ParserWorkLimitValue
             : _workspace.Selection.PerWordParserWorkLimit;
         set
         {
+            var hadKeptValue = _keepsParserWorkLimit;
+            _keepsParserWorkLimit = false;
+            if (!ParserWorkLimitIsAcceptable(value))
+            {
+                _keptParserWorkLimit = value;
+                _keepsParserWorkLimit = true;
+                _parserWorkLimitRefusal = MotifAppStrings.ParserWorkLimitWholeNumberRefusal;
+                NotifyKeptLimitsChanged();
+                return;
+            }
+            if (hadKeptValue)
+            {
+                _parserWorkLimitRefusal = string.Empty;
+                NotifyKeptLimitsChanged();
+            }
             if (_workspace.Selection.PerWordParserWorkLimit == value) return;
             _workspace.Selection.PerWordParserWorkLimit = value;
             if (IsUsingEstimate) ApplyEstimate();
@@ -400,9 +420,26 @@ internal sealed partial class SettingsViewModel : ObservableObject
     }
     public decimal? TimeLimitSeconds
     {
-        get => _workspace.Selection.PerWordTimeLimitSeconds;
+        get => _keepsTimeLimit ? _keptTimeLimit : _workspace.Selection.PerWordTimeLimitSeconds;
         set
         {
+            var hadKeptValue = _keepsTimeLimit;
+            _keepsTimeLimit = false;
+            if (!_updatingEstimate && !IsNoParserWorkLimit && !TimeLimitIsAcceptable(value))
+            {
+                _keptTimeLimit = value;
+                _keepsTimeLimit = true;
+                IsUsingEstimate = false;
+                TimeLimitRefusal = value is null or <= 0
+                    ? MotifAppStrings.TimeLimitPositiveRefusal : MotifAppStrings.TimeLimitRangeRefusal;
+                NotifyKeptLimitsChanged();
+                return;
+            }
+            if (hadKeptValue)
+            {
+                TimeLimitRefusal = string.Empty;
+                NotifyKeptLimitsChanged();
+            }
             if (_workspace.Selection.PerWordTimeLimitSeconds == value) return;
             _workspace.Selection.PerWordTimeLimitSeconds = value;
             if (!IsNoParserWorkLimit) IsUsingEstimate = false;
@@ -412,6 +449,53 @@ internal sealed partial class SettingsViewModel : ObservableObject
         }
     }
     public bool IsUsingMotifEstimate => IsUsingEstimate;
+
+    private static bool ParserWorkLimitIsAcceptable(decimal? steps) =>
+        steps is > 0 && steps <= long.MaxValue && decimal.Truncate(steps.Value) == steps;
+
+    private static bool TimeLimitIsAcceptable(decimal? seconds) =>
+        seconds is > 0 && seconds <= int.MaxValue / 1000m && decimal.Round(seconds.Value * 1000m) >= 1m;
+
+    // A refused value stays in its field; the Selection keeps the last accepted one.
+    private void NotifyKeptLimitsChanged()
+    {
+        OnPropertyChanged(nameof(ParserWorkLimitValue));
+        OnPropertyChanged(nameof(TimeLimitSeconds));
+        OnPropertyChanged(nameof(ParserWorkLimitRefusal));
+        OnPropertyChanged(nameof(HasParserWorkLimitRefusal));
+        OnPropertyChanged(nameof(HasTimeLimitRefusal));
+        OnPropertyChanged(nameof(ShowUseEstimate));
+        OnPropertyChanged(nameof(HasUncommittedParsingLimitChanges));
+    }
+
+    // A refused commit moves typed limits back to their fields, so the Selection holds only saved ones.
+    private void KeepUnsavedLimits()
+    {
+        if (IsNoParserWorkLimit != _lastGoodNoParserWorkLimit) return;
+        var step = ParserWorkLimitValue;
+        var time = TimeLimitSeconds;
+        _updatingEstimate = true;
+        try
+        {
+            _workspace.Selection.PerWordParserWorkLimit = _lastGoodParserWorkLimit;
+            _workspace.Selection.PerWordTimeLimitSeconds = _lastGoodTimeLimitSeconds;
+        }
+        finally
+        {
+            _updatingEstimate = false;
+        }
+        _workspace.Context.Setup?.SyncParsingLimitsFromSelection();
+        _keepsParserWorkLimit = step != _lastGoodParserWorkLimit;
+        _keptParserWorkLimit = step;
+        _keepsTimeLimit = time != _lastGoodTimeLimitSeconds;
+        _keptTimeLimit = time;
+        NotifyKeptLimitsChanged();
+    }
+
+    private void DiscardRefusedLimits()
+    {
+        if (_keepsParserWorkLimit || _keepsTimeLimit || HasAssessBudgetRefusal) CancelParsingLimitEdit();
+    }
 
     /// <summary>Whether the full shortcut list is open; the rows are built only when it is.</summary>
     [ObservableProperty]
@@ -494,6 +578,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
 
     partial void OnSelectedGroupChanged(SettingsGroup value)
     {
+        if (value != SettingsGroup.Parsing) DiscardRefusedLimits();
         if (value == SettingsGroup.KeyboardShortcuts) ShowShortcutList();
         OnPropertyChanged(nameof(IsDisplaySelected));
         OnPropertyChanged(nameof(IsKeyboardShortcutsSelected));
@@ -598,14 +683,16 @@ internal sealed partial class SettingsViewModel : ObservableObject
         {
             AssessBudgetRefusal = MotifAppStrings.AssessBudgetRefusal;
             OnPropertyChanged(nameof(HasAssessBudgetRefusal));
+            KeepUnsavedLimits();
             return WindowRefusal.Plain(AssessBudgetRefusal);
         }
         AssessBudgetRefusal = string.Empty;
         OnPropertyChanged(nameof(HasAssessBudgetRefusal));
         if (_workspace.Selection.ParserWorkLimitValidationMessage is not null || !IsNoParserWorkLimit &&
-            (ParserWorkLimitValue is null or <= 0 || decimal.Truncate(ParserWorkLimitValue.Value) != ParserWorkLimitValue.Value))
+            !ParserWorkLimitIsAcceptable(ParserWorkLimitValue))
         {
             _parserWorkLimitRefusal = MotifAppStrings.ParserWorkLimitWholeNumberRefusal;
+            KeepUnsavedLimits();
             OnPropertyChanged(nameof(ParserWorkLimitRefusal));
             OnPropertyChanged(nameof(HasParserWorkLimitRefusal));
             return WindowRefusal.Plain(_parserWorkLimitRefusal);
@@ -613,6 +700,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
         if (!IsNoParserWorkLimit && !IsUsingEstimate && (TimeLimitSeconds is null or <= 0))
         {
             TimeLimitRefusal = MotifAppStrings.TimeLimitPositiveRefusal;
+            KeepUnsavedLimits();
             OnPropertyChanged(nameof(HasTimeLimitRefusal));
             return WindowRefusal.Plain(TimeLimitRefusal);
         }
@@ -634,6 +722,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
         else
         {
             TimeLimitRefusal = MotifAppStrings.TimeLimitRangeRefusal;
+            KeepUnsavedLimits();
             OnPropertyChanged(nameof(HasTimeLimitRefusal));
             return WindowRefusal.Plain(TimeLimitRefusal);
         }
@@ -709,9 +798,13 @@ internal sealed partial class SettingsViewModel : ObservableObject
         if (_workspace.Selection.PerWordTimeLimitSeconds is > 0)
             _lastGoodTimeLimitSeconds = _workspace.Selection.PerWordTimeLimitSeconds;
         else _lastGoodTimeLimitSeconds = null;
+        _keepsParserWorkLimit = false;
+        _keepsTimeLimit = false;
         _parserWorkLimitRefusal = string.Empty;
         TimeLimitRefusal = string.Empty;
         AssessBudgetRefusal = string.Empty;
+        OnPropertyChanged(nameof(ParserWorkLimitValue));
+        OnPropertyChanged(nameof(TimeLimitSeconds));
         OnPropertyChanged(nameof(HasAssessBudgetRefusal));
         OnPropertyChanged(nameof(ParserWorkLimitRefusal));
         OnPropertyChanged(nameof(HasParserWorkLimitRefusal));
@@ -1008,6 +1101,8 @@ internal sealed partial class SettingsViewModel : ObservableObject
 
     private void OnContextChanged(object? sender, PropertyChangedEventArgs args)
     {
+        if (args.PropertyName == nameof(WorkspaceContext.CurrentPage) &&
+            _workspace.Context.CurrentPage != WorkspacePage.Settings) DiscardRefusedLimits();
         if (args.PropertyName == nameof(WorkspaceContext.Setup))
         {
             ObserveSetup(_workspace.Context.Setup);

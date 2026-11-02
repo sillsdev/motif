@@ -746,7 +746,7 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                     }
                     Assert.Contains(page.GetVisualDescendants().OfType<TextBlock>(), text =>
                         text.IsEffectivelyVisible && text.Text == "Enter a per-word time limit greater than zero.");
-                    Assert.Null(workspace.Selection.PerWordTimeLimitSeconds);
+                    Assert.Equal(1m, workspace.Selection.PerWordTimeLimitSeconds);
 
                     ClickControl(window, parserWorkLimit, "Parser work limit per word");
                     parserWorkLimit.Value = 100000.5m;
@@ -770,7 +770,8 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                         $"visible refusals={string.Join(" | ", page.GetVisualDescendants().OfType<TextBlock>()
                             .Where(text => text.IsEffectivelyVisible && text.Classes.Contains("settingsRefusal"))
                             .Select(text => text.Text))}");
-                    Assert.Equal(100000.5m, workspace.Selection.PerWordParserWorkLimit);
+                    Assert.Equal(100000.5m, stepLimit.Value);
+                    Assert.Equal(ParserWorkLimit.DefaultWork, workspace.Selection.PerWordParserWorkLimit);
                     LayoutAssertions.AssertCurrent(window);
                 }
                 finally

@@ -384,6 +384,7 @@ public sealed class SettingsPageTests
                 settings.ParserWorkLimitValue = 100000.5m;
                 Assert.NotNull(await settings.CommitParsingLimitsAsync());
                 Assert.Equal(100000.5m, settings.ParserWorkLimitValue);
+                Assert.Equal(ParserWorkLimit.DefaultWork, workspace.Selection.PerWordParserWorkLimit);
                 Assert.True(settings.HasParserWorkLimitRefusal);
 
                 settings.ParserWorkLimitValue = 300000m;
@@ -393,11 +394,168 @@ public sealed class SettingsPageTests
                 settings.TimeLimitSeconds = -1m;
                 Assert.NotNull(await settings.CommitParsingLimitsAsync());
                 Assert.Equal(-1m, settings.TimeLimitSeconds);
+                Assert.NotEqual(-1m, workspace.Selection.PerWordTimeLimitSeconds);
                 Assert.True(settings.HasTimeLimitRefusal);
 
                 settings.TimeLimitSeconds = 2m;
                 Assert.Null(await settings.CommitParsingLimitsAsync());
                 Assert.False(settings.HasTimeLimitRefusal);
+            }
+            finally
+            {
+                frame.Close();
+                await workspace.DisposeAsync();
+            }
+        }, TimeSpan.FromMinutes(2));
+    }
+
+    private static Task<(WorkspaceShellViewModel Workspace, MainWindow Frame)> OpenWithOneTextChosen(
+        Action<FakeCommandClient> capture) =>
+        PageScreenshots.OpenOverSampleData(parse: false,
+            configure: (client, _) =>
+            {
+                capture(client);
+                client.DefaultSelectionIs(new NamedSelectionProjection("Default",
+                    [Guid.Parse("11111111-0000-0000-0000-000000000001")], [], string.Empty, string.Empty,
+                    new SelectionParsingLimits(ParserWorkLimit.Default, SelectionTimeLimitMode.Estimated, null, 600), "1"));
+            });
+
+    [Fact]
+    public void ARefusedLimitStaysOutOfTheSharedSelectionSoNothingUnsavedIsAssessed()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            FakeCommandClient? fake = null;
+            var (workspace, frame) = await OpenWithOneTextChosen(client => fake = client);
+            try
+            {
+                var settings = SettingsTestAccess.Model(frame);
+                settings.OpenGroup(Group.Parsing);
+                var savedStep = workspace.Selection.PerWordParserWorkLimit;
+                var savedTime = workspace.Selection.PerWordTimeLimitSeconds;
+                var canAssess = workspace.Selection.CanAssess;
+                var saves = fake!.SetSelectionLimitsRequests.Count;
+
+                settings.TimeLimitSeconds = -1m;
+                Assert.NotNull(await settings.CommitParsingLimitsAsync());
+                Assert.Equal(-1m, settings.TimeLimitSeconds);
+                Assert.Equal(savedTime, workspace.Selection.PerWordTimeLimitSeconds);
+
+                settings.ParserWorkLimitValue = 300000m;
+                Assert.NotNull(await settings.CommitParsingLimitsAsync());
+                Assert.Equal(300000m, settings.ParserWorkLimitValue);
+                Assert.Equal(savedStep, workspace.Selection.PerWordParserWorkLimit);
+                Assert.Equal(ParserWorkLimit.Default, workspace.Selection.BuildRequest().PerWordParserWorkLimit);
+                Assert.Equal(canAssess, workspace.Selection.CanAssess);
+                Assert.Equal(saves, fake.SetSelectionLimitsRequests.Count);
+            }
+            finally
+            {
+                frame.Close();
+                await workspace.DisposeAsync();
+            }
+        }, TimeSpan.FromMinutes(2));
+    }
+
+    [Fact]
+    public void AStepNumberTooBigForTheParserIsRefusedAndUseAllTextsStillWorks()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, frame) = await OpenWithOneTextChosen(_ => { });
+            try
+            {
+                var settings = SettingsTestAccess.Model(frame);
+                settings.OpenGroup(Group.Parsing);
+                var canAssess = workspace.Selection.CanAssess;
+
+                settings.ParserWorkLimitValue = 100000000000000000000m;
+                Assert.NotNull(await settings.CommitParsingLimitsAsync());
+                Assert.True(settings.HasParserWorkLimitRefusal);
+                Assert.Equal(100000000000000000000m, settings.ParserWorkLimitValue);
+                Assert.Equal(canAssess, workspace.Selection.CanAssess);
+
+                Assert.Null(await settings.UseAllTextsAsync());
+                Assert.True(workspace.Selection.AreAllTextsSelected);
+            }
+            finally
+            {
+                frame.Close();
+                await workspace.DisposeAsync();
+            }
+        }, TimeSpan.FromMinutes(2));
+    }
+
+    [Fact]
+    public void LeavingSettingsOrTheParsingGroupRestoresTheLastSavedLimitsInTheFields()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            FakeCommandClient? fake = null;
+            var (workspace, frame) = await OpenWithOneTextChosen(client => fake = client);
+            try
+            {
+                var settings = SettingsTestAccess.Model(frame);
+                workspace.CurrentPage = WorkspacePage.Settings;
+                settings.OpenGroup(Group.Parsing);
+                var savedStep = settings.ParserWorkLimitValue;
+                var savedTime = settings.TimeLimitSeconds;
+                var canAssess = workspace.Selection.CanAssess;
+                var saves = fake!.SetSelectionLimitsRequests.Count;
+
+                settings.ParserWorkLimitValue = 100000000000000000000m;
+                settings.TimeLimitSeconds = -1m;
+                Assert.NotNull(await settings.CommitParsingLimitsAsync());
+                workspace.CurrentPage = WorkspacePage.Overview;
+                Assert.Equal(savedStep, settings.ParserWorkLimitValue);
+                Assert.Equal(savedTime, settings.TimeLimitSeconds);
+                Assert.False(settings.HasParserWorkLimitRefusal);
+                Assert.False(settings.HasTimeLimitRefusal);
+                Assert.False(settings.HasUncommittedParsingLimitChanges);
+                Assert.Equal(canAssess, workspace.Selection.CanAssess);
+
+                workspace.CurrentPage = WorkspacePage.Settings;
+                settings.TimeLimitSeconds = 0m;
+                Assert.NotNull(await settings.CommitParsingLimitsAsync());
+                settings.OpenGroup(Group.Display);
+                Assert.Equal(savedTime, settings.TimeLimitSeconds);
+                Assert.False(settings.HasTimeLimitRefusal);
+                Assert.Equal(saves, fake.SetSelectionLimitsRequests.Count);
+            }
+            finally
+            {
+                frame.Close();
+                await workspace.DisposeAsync();
+            }
+        }, TimeSpan.FromMinutes(2));
+    }
+
+    [Fact]
+    public void EscapeRestoresTheLastSavedLimitAndTheTypedTextIsGone()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            FakeCommandClient? fake = null;
+            var (workspace, frame) = await OpenWithOneTextChosen(client => fake = client);
+            try
+            {
+                var settings = SettingsTestAccess.Model(frame);
+                settings.OpenGroup(Group.Parsing);
+                var savedStep = settings.ParserWorkLimitValue;
+                var savedTime = settings.TimeLimitSeconds;
+
+                settings.ParserWorkLimitValue = 100000.5m;
+                settings.TimeLimitSeconds = -1m;
+                Assert.NotNull(await settings.CommitParsingLimitsAsync());
+                Assert.True(settings.HasUncommittedParsingLimitChanges);
+                settings.CancelParsingLimitEdit();
+
+                Assert.Equal(savedStep, settings.ParserWorkLimitValue);
+                Assert.Equal(savedTime, settings.TimeLimitSeconds);
+                Assert.False(settings.HasParserWorkLimitRefusal);
+                Assert.False(settings.HasTimeLimitRefusal);
+                Assert.False(settings.HasUncommittedParsingLimitChanges);
+                Assert.Empty(fake!.SetSelectionLimitsRequests);
             }
             finally
             {
