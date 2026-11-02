@@ -1,0 +1,92 @@
+name: Slow scale run
+
+# The tests that only run with MOTIF_SLOW_SCALE=1 run here and nowhere else: ci.yml's -All gate skips them.
+# docs/testing-slow-run.md lists them and what only this run proves.
+on:
+  schedule:
+    - cron: '47 4 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  slow-scale:
+    # Public-repository ubuntu-22.04 has 4 vCPUs and 16 GB; the run starts one test process per project.
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    env:
+      MSBUILDDISABLENODEREUSE: '1'
+      UseSharedCompilation: 'false'
+      AVALONIA_TELEMETRY_OPTOUT: '1'
+      ICU_RID: linux-x64
+      MOTIF_SLOW_SCALE: '1'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-slow-${{ hashFiles('**/*.csproj', '**/Directory.Build.props', 'SilVersions.props', 'nuget.config') }}
+          restore-keys: |
+            nuget-${{ runner.os }}-slow-
+
+      - name: Provision approved synthetic sample inputs
+        shell: pwsh
+        run: |
+          $path = ./evals/Get-SyntheticSamples.ps1 -Download
+          "MOTIF_SYNTHETIC_SAMPLES=$path" >> $env:GITHUB_ENV
+
+      - name: Fetch SIL ICU runtime (Ubuntu)
+        shell: bash
+        run: |
+          root=$(bash tools/stage-sil-icu.sh "$RUNNER_TEMP/sil-icu/linux-x64" | tail -1)
+          printf 'MOTIF_SIL_ICU_STAGE=%s\n' "$root" >> "$GITHUB_ENV"
+
+      - name: Build (comment hygiene, then compile)
+        shell: pwsh
+        run: ./build.ps1 -Configuration Release
+
+      # Each entry is a test project and a dotnet test filter; -All lets the System-level tests in. A skipped
+      # test fails the run below, so a filter that matches nothing cannot pass.
+      - name: Test (slow-scale tests)
+        shell: pwsh
+        run: |
+          $selections = @(
+            # The six slow-scale App tests, the three 688,000-word memory tests, and the full layout grid.
+            @{ Project = 'SIL.Motif.Tests.App'; Filter = 'Category=SlowScale|FullyQualifiedName~LayoutInvariantSystemTests.EveryPageAndApplicableStateSatisfiesTheFullLightGrid' }
+          )
+          $kept = 'bin/slow-results'
+          $failed = $false
+          foreach ($selection in $selections) {
+            Write-Host "==> $($selection.Project) $($selection.Filter)"
+            ./test.ps1 -Configuration Release -SkipBuild -All -Project $selection.Project -Filter $selection.Filter
+            if ($LASTEXITCODE -ne 0) { $failed = $true }
+            $destination = Join-Path $kept $selection.Project
+            New-Item -ItemType Directory -Force $destination | Out-Null
+            Copy-Item -Path 'bin/Release/test-results/*' -Destination $destination -Recurse -Force
+          }
+          if ($failed) { exit 1 }
+
+      - name: Require that every selected test ran
+        shell: pwsh
+        run: ./tools/Assert-SlowScaleRan.ps1 -ResultsDirectory 'bin/slow-results'
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: slow-scale-results
+          path: bin/slow-results/
+          if-no-files-found: ignore
+          retention-days: 14
