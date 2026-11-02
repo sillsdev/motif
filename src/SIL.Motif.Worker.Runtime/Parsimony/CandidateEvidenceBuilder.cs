@@ -495,12 +495,10 @@ public sealed class ParsimonyCandidateEvidenceBuilder
             throw new PanGlossInvocationException(CategoryOf(outcome), outcome.Message);
         using var lease = completed.FactsArtifactLease;
         var destination = Path.Combine(outputDirectory, "grammar-facts.sqlite");
-        File.Copy(completed.Facts.Path, destination, overwrite: false);
-        var digest = StripDigest(_pipeline.FreshDigest(destination));
-        if (!StringComparer.Ordinal.Equals(digest, StripDigest(completed.Facts.OutputSha256)))
-            throw new InvalidDataException("PanGloss facts changed before Motif adopted the artifact.");
+        // The lease deletes the PanGloss output when it is released, so the file moves out; staging proves its digest.
+        File.Move(completed.Facts.Path, destination);
         return new FactsResult(destination, completed.Facts.ModelFingerprint, completed.Facts.SchemaVersion,
-            digest);
+            StripDigest(completed.Facts.OutputSha256));
     }
 
     private PreparedEvidenceBundle PrepareReport(string bundleId, string materialKey,

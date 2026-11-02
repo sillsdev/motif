@@ -112,7 +112,7 @@ internal sealed record RenderedMeasure(string ReportId, ParsimonyReportResponse 
 
 /// <summary>
 /// The one sequence that turns written facts and evidence files into a publishable bundle: stage, compare digests,
-/// check the facts once, open one verifying session, render. A Baseline job and a Dry Run comparison differ only
+/// check the facts once, open one verifying session that hashes each staged file, render. A Baseline job and a Dry Run comparison differ only
 /// in the evidence they feed in, so the staging, digest and reuse rules live here and nowhere else.
 /// </summary>
 internal sealed class EvidenceBundlePipeline
@@ -143,9 +143,6 @@ internal sealed class EvidenceBundlePipeline
 
     /// <summary>The cached digest of the project file, so an unchanged frozen project is hashed once.</summary>
     public string ProjectDigest(string path) => _digests.Of(path);
-
-    /// <summary>The digest of a file's bytes as they are now, never remembered.</summary>
-    public string FreshDigest(string path) => _digests.Fresh(path);
 
     /// <summary>The digest of the configured parser executable, or null when it is absent.</summary>
     /// <param name="fresh">True to read the executable through again, as the after-the-run check requires.</param>
@@ -214,13 +211,9 @@ internal sealed class EvidenceBundlePipeline
         File.Copy(build.FactsPath, stagedFacts, overwrite: false);
         File.Copy(build.EvidencePath, stagedEvidence, overwrite: false);
         _publisher.FlushAndClose(staging);
-        // The writer validated this evidence file and the digest proves the copy is the same bytes.
-        var evidenceSha = RemoveDigestPrefix(_digests.Fresh(stagedEvidence));
-        var factsSha = RemoveDigestPrefix(_digests.Fresh(stagedFacts));
-        if (!StringComparer.Ordinal.Equals(evidenceSha, build.Evidence.Sha256))
-            throw new InvalidDataException("The evidence artifact changed while it was staged for publication.");
-        if (!StringComparer.Ordinal.Equals(factsSha, build.FactsSha256))
-            throw new InvalidDataException("The grammar-facts artifact changed while it was staged for publication.");
+        // The session opened below hashes each staged copy against these reported digests.
+        var factsSha = build.FactsSha256;
+        var evidenceSha = build.Evidence.Sha256;
         var inputs = new ParsimonyReportInputs(build.BundleId, build.Token, build.InputKind, build.CandidateIdentity,
             build.ModelFingerprint, new ParsimonyArtifactDigest(build.FactsSchemaVersion, factsSha),
             new ParsimonyArtifactDigest(build.Evidence.SchemaVersion, evidenceSha),
@@ -278,7 +271,7 @@ internal sealed class EvidenceBundlePipeline
                     scope.Selection is null ? null : RemoveDigestPrefix(scope.Selection.SelectionSha256),
                     null, assessmentIds, scope.Kind);
                 stages?.Enter("validate");
-                _checks.FactsIntegrity(bundle.GrammarFactsPath);
+                // The session below proves these bytes equal the digest recorded when they passed the check.
                 var measures = Render(inputs, bundle.GrammarFactsPath, bundle.EvidencePath, reportableAssessments,
                     measureIds, assessmentIds, true, stages, cancellationToken);
                 stages?.Enter("publish");

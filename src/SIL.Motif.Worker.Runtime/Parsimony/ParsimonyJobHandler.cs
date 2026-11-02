@@ -159,8 +159,8 @@ public sealed class ParsimonyJobHandler
                 return Failure(JobFailureCategory.Infrastructure,
                     "The parser executable changed during the invocation.");
 
-            var factsPath = Path.Combine(working, "grammar-facts.sqlite");
-            File.Copy(facts.Path, factsPath, overwrite: false);
+            // The lease keeps the PanGloss output in place until the bundle is staged, so it is staged from there.
+            var factsPath = facts.Path;
             Enter("evidence");
             using var cache = new FwDataProjectLoader().LoadScratchCache(privateProjectPath);
             var projection = EvidenceProjectionBuilder.Build(cache, textWords.Projection, scope,

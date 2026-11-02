@@ -47,14 +47,13 @@ internal static class GrammarFactsReader
 
         try
         {
-            var bytes = File.ReadAllBytes(path);
             using var response = JsonDocument.Parse(output);
             var artifact = ParseResponse(path, response.RootElement);
-            if (artifact.OutputBytes != bytes.LongLength)
+            if (artifact.OutputBytes != new FileInfo(path).Length)
                 throw new InvalidDataException("The facts response reports a different output byte count.");
-            if (artifact.OutputSha256 != Digest(bytes))
+            if (artifact.OutputSha256 != DigestFile(path))
                 throw new InvalidDataException("The facts response digest does not match the output database.");
-            if (artifact.SourceSha256 != Digest(File.ReadAllBytes(snapshotPath)))
+            if (artifact.SourceSha256 != DigestFile(snapshotPath))
                 throw new InvalidDataException("The facts database was built from a different grammar input than the one PanGloss was given.");
 
             using var connection = new SqliteConnection(new SqliteConnectionStringBuilder
@@ -231,7 +230,12 @@ internal static class GrammarFactsReader
     private static bool IsDigest(string value) => value.StartsWith("sha256:", StringComparison.Ordinal) &&
         value.Length == 71 && value.AsSpan(7).IndexOfAnyExcept("0123456789abcdef") < 0;
 
-    private static string Digest(byte[] bytes) => "sha256:" + Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
+    // Streamed, so neither the facts database nor the Snapshot is held in memory whole.
+    private static string DigestFile(string path)
+    {
+        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+        return "sha256:" + Convert.ToHexString(SHA256.HashData(stream)).ToLowerInvariant();
+    }
 }
 
 internal sealed record GrammarFactsArtifact(

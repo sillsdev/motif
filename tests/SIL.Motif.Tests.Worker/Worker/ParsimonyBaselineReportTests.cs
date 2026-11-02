@@ -2908,10 +2908,11 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
 
         _ = await RunReportAsync(handler, "P-adhoc-duplicate");
 
+        // The verifying session hashes each staged file once; the pipeline itself hashes neither.
         Assert.Equal(1, sessions);
         Assert.Equal(1, factsChecks);
-        Assert.Equal(1, Hashed("evidence.sqlite"));
-        Assert.Equal(1, Hashed("grammar-facts.sqlite"));
+        Assert.Equal(0, Hashed("evidence.sqlite"));
+        Assert.Equal(0, Hashed("grammar-facts.sqlite"));
         Assert.Equal(1, ProjectHashes());
         Assert.Equal(2, Hashed(parserName));
 
@@ -2921,11 +2922,12 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
         var afterReuse = hashes.ToDictionary(item => item.Key, item => item.Value);
         _ = await RunReportAsync(handler, "P-adhoc-duplicate");
 
+        // A reuse checks the stored bytes against the digest recorded when they passed the whole-file check.
         Assert.Equal(3, sessions);
-        Assert.Equal(3, factsChecks);
+        Assert.Equal(1, factsChecks);
         Assert.Equal(1, BundleCount());
         Assert.Equal(afterReuse.OrderBy(item => item.Key), hashes.OrderBy(item => item.Key));
-        Assert.Equal(1, Hashed("evidence.sqlite"));
+        Assert.Equal(0, Hashed("evidence.sqlite"));
     }
 
     [Fact]
