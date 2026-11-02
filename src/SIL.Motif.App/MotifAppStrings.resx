@@ -236,9 +236,17 @@
     <value>This Trial makes parsing about {0}% more work than the Baseline.</value>
     <comment>Notice beside a Trial that makes parsing more work; {0} is the whole-number percent.</comment>
   </data>
-  <data name="MotifApp.PairedOneSideNotMeasured" xml:space="preserve">
-    <value>{0}; the other number was not measured</value>
-    <comment>Tooltip and accessible name of a before-and-after number where only one side has a value; {0} is the number shown, which has no arrow.</comment>
+  <data name="MotifApp.PairedProposalOnly" xml:space="preserve">
+    <value>Proposal {0}</value>
+    <comment>Visible text of a before-and-after number where only the Proposal's side has a value; {0} is that value. A bare number means today's value.</comment>
+  </data>
+  <data name="MotifApp.PairedProposalNotMeasuredNote" xml:space="preserve">
+    <value>{0}; not measured with this Proposal</value>
+    <comment>Tooltip and accessible name of a before-and-after number where only today's side has a value; {0} is the number shown.</comment>
+  </data>
+  <data name="MotifApp.PairedTodayNotMeasuredNote" xml:space="preserve">
+    <value>{0}; today's number was not measured</value>
+    <comment>Tooltip and accessible name of a before-and-after number where only the Proposal's side has a value; {0} is the text shown, which starts with Proposal.</comment>
   </data>
   <data name="MotifApp.ProposalWorkNotComparable" xml:space="preserve">
     <value>Parser work cannot be compared for this Trial</value>

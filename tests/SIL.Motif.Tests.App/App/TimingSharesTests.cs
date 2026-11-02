@@ -50,7 +50,7 @@ public sealed class TimingSharesTests
     ];
 
     [Fact]
-    public void APairedShareWithOneSideMissingHasNoArrowAndNamesWhyInItsNote()
+    public void APairedShareWithOneSideMissingNamesWhichSideInItsTextAndNote()
     {
         var both = new TimingShare("Rule", "morph_rule", 480, 0.6, 9, null) { ProposalShareText = "12%" };
         var noProposalShare = both with { ProposalShareText = string.Empty };
@@ -59,9 +59,11 @@ public sealed class TimingSharesTests
         Assert.Contains("→", both.ShownShareText);
         Assert.Null(both.ShownShareNote);
         Assert.Equal(both.ShareText, noProposalShare.ShownShareText);
-        Assert.Equal(string.Format(MotifAppStrings.PairedOneSideNotMeasured, both.ShareText), noProposalShare.ShownShareNote);
-        Assert.Equal("12%", noTodayShare.ShownShareText);
-        Assert.Equal(string.Format(MotifAppStrings.PairedOneSideNotMeasured, "12%"), noTodayShare.ShownShareNote);
+        Assert.Equal(string.Format(MotifAppStrings.PairedProposalNotMeasuredNote, both.ShareText),
+            noProposalShare.ShownShareNote);
+        Assert.Equal("Proposal 12%", noTodayShare.ShownShareText);
+        Assert.Equal(string.Format(MotifAppStrings.PairedTodayNotMeasuredNote, "Proposal 12%"),
+            noTodayShare.ShownShareNote);
     }
 
     [Theory]

@@ -38,12 +38,21 @@ public sealed record TimingShare(string Label, string Kind, long? ParserWork, do
         IsProposalOnly ? MotifAppStrings.TimingNoneToday : WorkText, ProposalWorkText);
 
     /// <summary>Why one side of a paired share is missing, for a tooltip and accessible name; null when both show.</summary>
-    public string? ShownShareNote => ProposalShareText is not null && (ShareText.Length == 0 && !IsProposalOnly ||
-        ProposalShareText.Length == 0)
-        ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.PairedOneSideNotMeasured, ShownShareText) : null;
+    public string? ShownShareNote
+    {
+        get
+        {
+            if (ProposalShareText is null || IsProposalOnly) return null;
+            var today = ShareText.Length > 0;
+            var proposal = ProposalShareText.Length > 0;
+            return PairedSideNote.For(today == proposal ? PairedSide.Both
+                : today ? PairedSide.TodayOnly : PairedSide.ProposalOnly, ShownShareText);
+        }
+    }
 
-    private static string Pair(string today, string proposal) => today.Length == 0 || proposal.Length == 0
-        ? today + proposal
+    private static string Pair(string today, string proposal) => today.Length == 0 && proposal.Length > 0
+        ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.PairedProposalOnly, proposal)
+        : proposal.Length == 0 ? today
         : string.Format(CultureInfo.CurrentCulture, MotifAppStrings.OverviewPairFormat, today, proposal);
 
     /// <summary>The window's name for this part's stored kind.</summary>

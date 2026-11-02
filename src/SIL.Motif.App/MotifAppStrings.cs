@@ -274,7 +274,11 @@ public static class MotifAppStrings
 
     public static string TrialWorkNotice => Text("MotifApp.TrialWorkNotice");
 
-    public static string PairedOneSideNotMeasured => Text("MotifApp.PairedOneSideNotMeasured");
+    public static string PairedProposalOnly => Text("MotifApp.PairedProposalOnly");
+
+    public static string PairedProposalNotMeasuredNote => Text("MotifApp.PairedProposalNotMeasuredNote");
+
+    public static string PairedTodayNotMeasuredNote => Text("MotifApp.PairedTodayNotMeasuredNote");
 
     public static string ProposalWorkNotComparable => Text("MotifApp.ProposalWorkNotComparable");
 

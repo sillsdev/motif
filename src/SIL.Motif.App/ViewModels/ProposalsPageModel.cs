@@ -24,22 +24,21 @@ internal static class ProposalNumberText
     public static IReadOnlyList<ProposalNumber> From(TrialSummary trial) =>
     [
         Number("Coverage", Show(trial.TextCoveragePercent, Percent), trial.TextCoveragePercent.Moved,
-            oneSideBlank: OneSideBlank(trial.TextCoveragePercent, Percent)),
+            side: Side(trial.TextCoveragePercent, Percent)),
         new("Approved kept", ShowKept(trial), trial.ApprovedKept.Moved || trial.ApprovedTotal.Moved),
         Number("Work", ShowWork(trial.Work), trial.Work is { } work && PairedMoves.Work(work.BaselineWork, work.TrialParserWork),
             MotifAppStrings.ProposalWorkNotComparable),
         Number("Warnings", Show(trial.WarningCount, Count), trial.WarningCount.Moved,
-            oneSideBlank: OneSideBlank(trial.WarningCount, Count)),
+            side: Side(trial.WarningCount, Count)),
         Number("Time on this computer", Show(trial.WordTimeMs, Time), trial.WordTimeMs.Moved,
-            oneSideBlank: OneSideBlank(trial.WordTimeMs, Time)),
+            side: Side(trial.WordTimeMs, Time)),
     ];
 
     // A blank number keeps its meaning in a tooltip and an accessible name, never in visible text.
     private static ProposalNumber Number(string label, string value, bool moved, string? blankNote = null,
-        bool oneSideBlank = false) =>
+        PairedSide side = PairedSide.Both) =>
         new(label, value, moved, value.Length == 0 ? blankNote ?? MotifAppStrings.TextsWordNotMeasured
-            : oneSideBlank ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.PairedOneSideNotMeasured, value)
-            : null);
+            : PairedSideNote.For(side, value));
 
     // Parser work is the cost; with no comparison the cell is blank, never a time in their place.
     private static string ShowWork(TrialWork? work) => HasWorkComparison(work)
@@ -73,11 +72,18 @@ internal static class ProposalNumberText
         var before = format(pair.Before);
         if (!pair.HasAfter) return before;
         var after = format(pair.After);
-        return before.Length == 0 || after.Length == 0 ? before + after : $"{before} → {after}";
+        if (before.Length == 0 && after.Length > 0)
+            return string.Format(CultureInfo.CurrentCulture, MotifAppStrings.PairedProposalOnly, after);
+        return after.Length == 0 ? before : $"{before} → {after}";
     }
 
-    private static bool OneSideBlank<T>(Paired<T> pair, Func<T?, string> format) =>
-        pair.HasAfter && (format(pair.Before).Length == 0) != (format(pair.After).Length == 0);
+    private static PairedSide Side<T>(Paired<T> pair, Func<T?, string> format)
+    {
+        if (!pair.HasAfter) return PairedSide.Both;
+        var today = format(pair.Before).Length > 0;
+        var proposal = format(pair.After).Length > 0;
+        return today == proposal ? PairedSide.Both : today ? PairedSide.TodayOnly : PairedSide.ProposalOnly;
+    }
 
     private static string Percent(double? value) =>
         value is { } percent ? percent.ToString("0.#", CultureInfo.CurrentCulture) + "%" : string.Empty;
