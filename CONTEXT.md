@@ -152,6 +152,13 @@ needs if there is a fixed list of things it could have been given. Two Assessmen
 they share a kind, alongside sharing an Assessor.
 _Avoid_: type, category, measure, metric
 
+**Parser work**:
+The measure of how much the parser did for a word, a rule or a whole run: every unit of work PanGloss reserved while
+parsing, shown as "1,234 parser work". "This grammar takes less work to parse the words" means fewer parser work. The
+**parser work limit** is the per-word bound on it, 20,000,000 by default. It counts the same quantity, not analysis attempts.
+PanGloss's own names (`work_steps`, `--step-cap`) stay where Motif reads or passes them.
+_Avoid_: work steps, steps, step cap, step limit, attempts
+
 **Parse completion**:
 Whether the parser finished its declared search for a word, independently of how many analyses or
 approved matches it found. An interrupted search remains incomplete even when it found every approved
@@ -286,7 +293,7 @@ and once for each Proposal, Trial and choice of words, and says in a note what i
 value one set lacks reads as none, never as zero or as the other set's number, and a read still running reads as
 reading, never as an earlier key's number. Timing and the Texts matrix pair only when both sets cover the same
 words; the matrix holds the Proposal's side as counts and an index of the values the word list reads for each word (its cell,
-work steps and time), never the Trial's rows, and lets go of it when the Proposal is left or another Proposal or Trial is open. The Texts words under the
+parser work and time), never the Trial's rows, and lets go of it when the Proposal is left or another Proposal or Trial is open. The Texts words under the
 matrix are the Proposal's in the Proposal view, where a Trial word today's matrix lacks is counted but not listed, and
 carry a With This Proposal column in the pair; the places under a cell follow the same choice; a Moved By This Proposal chip narrows the words to those the Proposal puts in a different cell than today, over the words both sides have, and is dropped with the Proposal;
 the Lists tab reads each list's words and places the same way, and What Changed in the pair lists the words that
@@ -296,7 +303,7 @@ word's cell today and its cell with the Proposal. Choosing a view is
 not an evidence change, so no page reloads, re-reads or re-applies for it, and the choice comes back when a
 following page is shown again. Texts, Warnings and Timing each keep a delta badge beside their sidebar entry (its tooltip and accessible name say what it counts) while a
 Proposal is open, from numbers the page has already read: the net change in the Same column's words, the findings gained or lost
-and the percentage change in work steps; a page that has not read its side, holds a side over other words or finds
+and the percentage change in parser work; a page that has not read its side, holds a side over other words or finds
 no change shows none. In the Proposal view a headline stands alone, with today's breakdown left
 to the Today view. Leave, or Esc when nothing else uses it, returns to today.
 _Avoid_: compare mode, diff view, Proposal page, branch
@@ -500,14 +507,14 @@ _Avoid_: Correctness, verdict, approved analysis, Apply gate
 **Default Selection**:
 The Selection a project measures when nobody names another: chosen Texts plus any added words, stored in
 the Motif store with the project and resolved to an exact word list and digest on every run. It also records
-the per-word step cap and its time-limit policy. Chosen in the setup dialog once the project's first Baseline
+the per-word parser work limit and its time-limit policy. Chosen in the setup dialog once the project's first Baseline
 exists, and changed from Configure. Each Assessment keeps the list and resolved limits it used, so changing
 the Default Selection never rewrites what an earlier run measured.
 _Avoid_: default corpus, word set, profile, preset
 
 **Selection time-limit policy**:
-Whether a Selection's per-word time limit follows Motif's estimate for its step cap or uses an explicit value
-chosen by the person. An unbounded step cap has no time limit and no explicit override.
+Whether a Selection's per-word time limit follows Motif's estimate for its parser work limit or uses an explicit value
+chosen by the person. An unbounded parser work limit has no time limit and no explicit override.
 _Avoid_: inferred preference, hidden override
 
 **Overview**:
