@@ -173,6 +173,37 @@ public sealed class SetupValidationTriggerTests
     }
 
     [Fact]
+    public void UntickingNoAttemptLimitOverAnEmptyFieldShowsNoErrorUntilTheFieldIsLeftOrNextIsPressed()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, frame, setup, dialog, window) = await OpenAsync(2);
+            try
+            {
+                setup.IsStepLimitUnbounded = true;
+                setup.StepLimitSteps = null;
+                PageScreenshots.Settle(window);
+
+                setup.IsStepLimitUnbounded = false;
+                PageScreenshots.Settle(window);
+
+                Assert.Null(setup.StepLimitValidationMessage);
+                Assert.Null(ShownError(dialog));
+
+                setup.NextCommand.Execute(null);
+                PageScreenshots.Settle(window);
+
+                Assert.Equal(2, setup.Step);
+                Assert.NotNull(ShownError(dialog));
+            }
+            finally
+            {
+                await CloseAsync(workspace, frame, setup, window);
+            }
+        }, TimeSpan.FromSeconds(30));
+    }
+
+    [Fact]
     public void ThePressedNextButtonWithAnEmptyFieldShowsTheErrorAndStaysOnTheStep()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>

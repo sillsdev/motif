@@ -640,7 +640,10 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
     {
         if (_syncingSelectionLimits) return;
         UpdateStepLimit();
-        ValidateStepLimit();
+        // A changed tick is not a leave or a confirm, so a stale error goes and a new one waits.
+        _stepLimitErrorShown = false;
+        OnPropertyChanged(nameof(StepLimitValidationMessage));
+        OnPropertyChanged(nameof(StepLimitEstimateText));
     }
 
     private void UpdateStepLimit()
