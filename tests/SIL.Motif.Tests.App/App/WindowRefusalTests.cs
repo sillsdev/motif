@@ -31,7 +31,8 @@ public sealed class WindowRefusalTests
     private static readonly string IncludeLocalDetailsLabel =
         MotifAppStrings.IncludeLocalDetails.Split(" (")[0];
 
-    private static readonly string[] BannedOnScreen = ["Proposal", "Draft", "Preflight", "motif "];
+    // Proposal is a window word (the Proposals page, Open a Proposal); the others stay CLI-only in a refusal.
+    private static readonly string[] BannedOnScreen = ["Draft", "Preflight", "motif "];
 
     public static TheoryData<string> CatalogueCodes()
     {
