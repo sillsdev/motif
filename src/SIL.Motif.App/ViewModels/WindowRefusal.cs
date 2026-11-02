@@ -1,5 +1,4 @@
 using System.Collections.Immutable;
-using System.Text;
 using System.Text.RegularExpressions;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
@@ -336,7 +335,7 @@ public sealed partial record WindowRefusal
         ArgumentNullException.ThrowIfNull(refusal);
         ArgumentException.ThrowIfNullOrWhiteSpace(sentenceWhenUnmapped);
         var diagnostic = refusal.ParserDiagnostic ?? ParserCompileDiagnosticReader.Read(refusal.Message);
-        return new WindowRefusal(refusal.Code, diagnostic is null ? SentenceFor(refusal, sentenceWhenUnmapped) : WindowPathText(diagnostic.Summary, refusal.Facts),
+        return new WindowRefusal(refusal.Code, diagnostic is null ? SentenceFor(refusal, sentenceWhenUnmapped) : WindowPathText.Scrub(diagnostic.Summary, refusal.Facts),
             DetailsFor(refusal, diagnostic, forReport: false), DetailsFor(refusal, diagnostic, forReport: true),
             refusal.Facts, refusal.Reason, parserDiagnostic: diagnostic);
     }
@@ -394,7 +393,7 @@ public sealed partial record WindowRefusal
 
     private static string CompileDetails(Refusal refusal, ParserCompileDiagnostic diagnostic, bool forReport)
     {
-        var lines = new List<string> { forReport ? diagnostic.Summary : WindowPathText(diagnostic.Summary, refusal.Facts) };
+        var lines = new List<string> { forReport ? diagnostic.Summary : WindowPathText.Scrub(diagnostic.Summary, refusal.Facts) };
         foreach (var original in diagnostic.Issues)
         {
             var issue = forReport ? original : WindowIssue(original, refusal.Facts);
@@ -407,7 +406,7 @@ public sealed partial record WindowRefusal
         lines.AddRange(refusal.Facts.Where(fact =>
                 fact.Key is not "standardError" and not "standardOutput" and not "parserMessage")
             .Where(fact => forReport || (fact.Key != "exceptionDetail" &&
-                (!HasPathSeparator(fact.Value) || IsPathFact(fact) || IsAssessmentId(fact))))
+                (!WindowPathText.HasPathSeparator(fact.Value) || WindowPathText.IsPathFact(fact) || IsAssessmentId(fact))))
             .OrderBy(fact => fact.Key, StringComparer.Ordinal).Select(fact => FactLine(fact, forReport)));
         return string.Join(Environment.NewLine, lines);
     }
@@ -421,13 +420,13 @@ public sealed partial record WindowRefusal
         var message = forReport ? refusal.Message
             : missingParser ? string.Format(System.Globalization.CultureInfo.CurrentCulture,
                 MotifAppStrings.RefusalParserMissingDetailsFormat, PanGlossExecutable.ExecutableFileName)
-            : WindowSafe(ReplaceKnownPaths(refusal.Message, refusal.Facts));
-        if (!forReport && !missingParser && HasPathSeparator(message)) message = string.Empty;
+            : WindowSafe(WindowPathText.ReplaceKnownPaths(refusal.Message, refusal.Facts));
+        if (!forReport && !missingParser && WindowPathText.HasPathSeparator(message)) message = string.Empty;
         if (message.Length > 0) lines.Add(message);
         lines.AddRange(refusal.Facts
             .Where(fact => fact.Key != RefusalFactNames.ParserNotFound)
             .Where(fact => forReport || fact.Key != "exceptionDetail")
-            .Where(fact => forReport || !HasPathSeparator(fact.Value) || IsPathFact(fact) || IsAssessmentId(fact))
+            .Where(fact => forReport || !WindowPathText.HasPathSeparator(fact.Value) || WindowPathText.IsPathFact(fact) || IsAssessmentId(fact))
             .Where(fact => forReport || (!CliTerm().IsMatch(fact.Key) && !CliTerm().IsMatch(fact.Value)))
             .OrderBy(fact => fact.Key, StringComparer.Ordinal)
             .Select(fact => FactLine(fact, forReport)));
@@ -440,167 +439,22 @@ public sealed partial record WindowRefusal
     // Path-valued facts show only their file name here; ReportDetails keeps the whole path.
     private static string FactLine(KeyValuePair<string, string> fact, bool forReport)
     {
-        if (forReport || !IsPathFact(fact)) return $"{fact.Key}: {fact.Value}";
-        return $"{fact.Key}: {FileName(fact.Value)}";
+        if (forReport || !WindowPathText.IsPathFact(fact)) return $"{fact.Key}: {fact.Value}";
+        return $"{fact.Key}: {WindowPathText.FileName(fact.Value)}";
     }
-
-    private static bool IsPathFact(KeyValuePair<string, string> fact) =>
-        fact.Key.EndsWith("Path", StringComparison.OrdinalIgnoreCase) ||
-            fact.Key.EndsWith("File", StringComparison.OrdinalIgnoreCase) ||
-            fact.Key.EndsWith("Folder", StringComparison.OrdinalIgnoreCase) ||
-            fact.Key.EndsWith("Directory", StringComparison.OrdinalIgnoreCase) ||
-            IsRootedPath(fact.Value);
 
     private static ParserCompileIssue WindowIssue(ParserCompileIssue issue, IReadOnlyDictionary<string, string> facts) => issue with
     {
-        Code = WindowPathText(issue.Code, facts), Kind = WindowPathText(issue.Kind, facts),
-        ObjectGuid = issue.ObjectGuid is null ? null : WindowPathText(issue.ObjectGuid, facts),
-        Field = issue.Field is null ? null : WindowPathText(issue.Field, facts),
-        ObjectKind = issue.ObjectKind is null ? null : WindowPathText(issue.ObjectKind, facts),
-        Text = WindowPathText(issue.Text, facts), Advice = WindowPathText(issue.Advice, facts),
+        Code = WindowPathText.Scrub(issue.Code, facts), Kind = WindowPathText.Scrub(issue.Kind, facts),
+        ObjectGuid = issue.ObjectGuid is null ? null : WindowPathText.Scrub(issue.ObjectGuid, facts),
+        Field = issue.Field is null ? null : WindowPathText.Scrub(issue.Field, facts),
+        ObjectKind = issue.ObjectKind is null ? null : WindowPathText.Scrub(issue.ObjectKind, facts),
+        Text = WindowPathText.Scrub(issue.Text, facts), Advice = WindowPathText.Scrub(issue.Advice, facts),
     };
-
-    private static string WindowPathText(string text, IReadOnlyDictionary<string, string> facts)
-    {
-        text = ReplaceKnownPaths(text, facts);
-        if (!HasPathSeparator(text)) return text;
-        var result = new StringBuilder(text.Length);
-        for (var start = 0; start < text.Length;)
-        {
-            if (char.IsWhiteSpace(text[start])) { result.Append(text[start++]); continue; }
-            var end = start;
-            char quote = '\0';
-            while (end < text.Length)
-            {
-                var character = text[end];
-                if (quote == '\0' && char.IsWhiteSpace(character)) break;
-                if (quote == '\0' && character is '\'' or '"' &&
-                    (end == start || "=:([{<".Contains(text[end - 1]))) quote = character;
-                else if (quote != '\0' && character == quote &&
-                    (end + 1 == text.Length || char.IsWhiteSpace(text[end + 1]) || ".,;:)]}>!?".Contains(text[end + 1]))) quote = '\0';
-                end++;
-            }
-            var first = start;
-            while (first < end && "\"'([{<".Contains(text[first])) first++;
-            var prefix = text.AsSpan(first, end - first).IndexOfAny('=', ':');
-            if (prefix >= 0 && text[first + prefix] == ':' &&
-                (first + prefix + 1 >= end || text[first + prefix + 1] is not ('\'' or '"'))) prefix = -1;
-            if (prefix >= 0 && text.AsSpan(first, prefix).IndexOfAny('/', '\\') < 0)
-            {
-                first += prefix + 1;
-                while (first < end && "\"'([{<".Contains(text[first])) first++;
-            }
-            var last = end;
-            while (last > first && "\"')]}>,.;:!?".Contains(text[last - 1])) last--;
-            var (nameStart, nameLength) = PathTokenFileName(text.AsSpan(first, last - first));
-            if (nameStart < 0) result.Append(text.AsSpan(start, end - start));
-            else
-            {
-                result.Append(text.AsSpan(start, first - start));
-                result.Append(text.AsSpan(first + nameStart, nameLength));
-                result.Append(text.AsSpan(last, end - last));
-            }
-            start = end;
-        }
-        return result.ToString();
-    }
-
-    private static string ReplaceKnownPaths(string text, IReadOnlyDictionary<string, string> facts)
-    {
-        var paths = facts.Where(fact => IsPathFact(fact) && fact.Value.Length > 0)
-            .Select(fact => fact.Value).OrderByDescending(path => path.Length).ToArray();
-        foreach (var path in paths)
-            text = text.Replace(path, FileName(path), StringComparison.Ordinal);
-        foreach (var path in paths)
-        {
-            var trimmed = path.TrimEnd('/', '\\');
-            var separator = trimmed.LastIndexOfAny(['/', '\\']);
-            if (separator < 0) continue;
-            var parent = trimmed[..separator];
-            if (!IsRootOnly(parent))
-                text = text.Replace(parent, FileName(path), StringComparison.Ordinal);
-        }
-        return text;
-    }
-
-    // Preserve fractions, dates and phonological /x/ notation when they are not known paths.
-    private static (int Start, int Length) PathTokenFileName(ReadOnlySpan<char> token)
-    {
-        if (IsUrl(token) || IsRootOnly(token)) return (-1, 0);
-        var explicitPath = token.StartsWith("\\\\", StringComparison.Ordinal) ||
-            token.StartsWith("~/", StringComparison.Ordinal) || token.StartsWith("./", StringComparison.Ordinal) ||
-            token.StartsWith("../", StringComparison.Ordinal) ||
-            (token.Length >= 2 && char.IsAsciiLetter(token[0]) && token[1] == ':');
-        var leadingSeparator = token.Length > 0 && token[0] is '/' or '\\';
-        var separators = 0;
-        var nonEmptySegments = 0;
-        var segmentStart = 0;
-        var nameStart = -1;
-        var nameLength = 0;
-        var segmentIsDigits = true;
-        var hasNumericSegment = false;
-        for (var index = 0; index <= token.Length; index++)
-        {
-            if (index == token.Length || token[index] is '/' or '\\')
-            {
-                var length = index - segmentStart;
-                if (length > 0)
-                {
-                    nonEmptySegments++;
-                    hasNumericSegment |= segmentIsDigits;
-                    nameStart = segmentStart;
-                    nameLength = length;
-                }
-                segmentIsDigits = true;
-                if (index < token.Length) separators++;
-                segmentStart = index + 1;
-            }
-            else segmentIsDigits &= char.IsAsciiDigit(token[index]);
-        }
-        if (nameStart < 0) return (-1, 0);
-        var name = token.Slice(nameStart, nameLength);
-        var dot = name.LastIndexOf('.');
-        var hasExtension = dot > 0 && dot < name.Length - 1;
-        for (var index = dot + 1; hasExtension && index < name.Length; index++)
-            hasExtension = char.IsLetter(name[index]);
-        var isPath = explicitPath || (leadingSeparator && nonEmptySegments >= 2) ||
-            (!leadingSeparator && separators > 0 && hasExtension && !hasNumericSegment);
-        return isPath ? (nameStart, nameLength) : (-1, 0);
-    }
-
-    private static bool IsUrl(ReadOnlySpan<char> token)
-    {
-        var colon = token.IndexOf("://", StringComparison.Ordinal);
-        if (colon < 2 || !char.IsAsciiLetter(token[0])) return false;
-        for (var index = 1; index < colon; index++)
-            if (!char.IsAsciiLetterOrDigit(token[index]) && token[index] is not '+' and not '-' and not '.') return false;
-        return true;
-    }
-
-    private static bool IsRootOnly(ReadOnlySpan<char> path)
-    {
-        while (!path.IsEmpty && path[^1] is '/' or '\\') path = path[..^1];
-        return path.IsEmpty || (path.Length == 2 && char.IsAsciiLetter(path[0]) && path[1] == ':');
-    }
-
-    private static bool IsRootedPath(string path) => Path.IsPathRooted(path) || IsWindowsPath(path);
-
-    private static bool IsWindowsPath(string path) => path.StartsWith(@"\\", StringComparison.Ordinal) ||
-        (path.Length >= 3 && char.IsAsciiLetter(path[0]) && path[1] == ':' && path[2] is '\\' or '/');
-
-    private static bool HasPathSeparator(string text) => text.IndexOfAny(['/', '\\']) >= 0;
 
     private static bool IsAssessmentId(KeyValuePair<string, string> fact) =>
         fact.Key == "assessmentId" && fact.Value.StartsWith("assessment/", StringComparison.Ordinal) &&
-        !HasPathSeparator(fact.Value["assessment/".Length..]);
-
-    private static string FileName(string path)
-    {
-        var trimmed = path.TrimEnd('\\', '/');
-        if (trimmed.Length == 0) return path;
-        var separator = trimmed.LastIndexOfAny(['\\', '/']);
-        return separator < 0 ? trimmed : trimmed[(separator + 1)..];
-    }
+        !WindowPathText.HasPathSeparator(fact.Value["assessment/".Length..]);
 
     private static string WindowSafe(string text) => string.Join(" ", SentenceBreak().Split(text.Trim())
         .Where(sentence => sentence.Length > 0 && !CommandLine().IsMatch(sentence) && !CliTerm().IsMatch(sentence) &&
