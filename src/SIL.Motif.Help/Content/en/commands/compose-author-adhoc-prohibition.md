@@ -38,7 +38,7 @@ A morpheme prohibition names one entry's grammatical analysis, not a spelling, s
 
 The same prohibition keeps a derivational prefix, already restricted to a host inflection class with `compose-edit-derivational-affix-restriction`, off one stem of that class (the real parser stopped it on the named stem and kept it on the other); the From side of a derivational affix cannot exclude a stem, so this is the route.
 
-The real parser has been tested with this prohibition for a plain prefix and for a reduplicating prefix process (copy the first consonant and vowel in front of the stem, as Cebuano `magR` and `umR` do): with two homograph stems, the rule removed the reading through the named stem and kept the other. Other process shapes, such as infixes, have not been tested.
+The real parser has been tested with this prohibition for a plain prefix and for a reduplicating prefix process (copy the first consonant and vowel in front of the stem, as Cebuano `magR` and `umR` do): with two homograph stems, the rule removed the reading through the named stem and kept the other. A derivational suffix can be named too. When a word is both a stored stem and a stem plus a derivational suffix, the prohibition on the stored stem leaves the derived reading; add a second prohibition with the same `first` and `rest` = [the verb stem's analysis, the suffix's derivational analysis]. The real parser stopped both readings this way. Other process shapes, such as infixes, have not been tested.
 
 ## When not to use this
 
