@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 
 namespace SIL.Motif.App.Views;
 
@@ -84,8 +85,17 @@ public sealed class ProposalBarPanel : Panel
     {
         var (slots, _) = Place(finalSize.Width);
         foreach (var (child, slot) in slots) child.Arrange(slot);
+        var tab = 0;
+        foreach (var child in ReadingOrder()) KeyboardNavigation.SetTabIndex(child, tab++);
         return finalSize;
     }
+
+    // Tab follows what is drawn: the wrapped bar reads its buttons on the first row before its sentence and switch.
+    private IEnumerable<Control> ReadingOrder() => IsWrapped
+        ? Shown(ProposalBarPart.Name).Concat(Shown(ProposalBarPart.Action)).Concat(Shown(ProposalBarPart.Sentence))
+            .Concat(Shown(ProposalBarPart.View))
+        : Shown(ProposalBarPart.Name).Concat(Shown(ProposalBarPart.Sentence)).Concat(Shown(ProposalBarPart.View))
+            .Concat(Shown(ProposalBarPart.Action));
 
     private Size Natural(Control child) => _natural.GetValueOrDefault(child);
 

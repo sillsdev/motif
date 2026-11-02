@@ -195,6 +195,46 @@ public sealed class ProposalViewSwitchTests
         }, TimeSpan.FromMinutes(3));
     }
 
+    [Theory]
+    [InlineData(640, true)]
+    [InlineData(1280, false)]
+    public void TabVisitsTheBarInReadingOrderWhetherOrNotItWraps(int width, bool wrapped)
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (_, window) = await OpenedAsync("A Proposal with a rather long name indeed");
+            try
+            {
+                LayoutInvariantFixtures.Apply(window, new LayoutCell(width, 720, 150));
+                PageScreenshots.Settle(window);
+                var bar = Bar(window);
+                var panel = bar.GetVisualDescendants().OfType<ProposalBarPanel>().Single();
+                Assert.Equal(wrapped, panel.IsWrapped);
+                window.Focus();
+
+                // A stop is the panel child that holds the focus, so the view switch counts once however many items it has.
+                var stops = new List<Control>();
+                for (var press = 0; press < 80; press++)
+                {
+                    window.KeyPress(Key.Tab, RawInputModifiers.None, PhysicalKey.Tab, null);
+                    window.KeyRelease(Key.Tab, RawInputModifiers.None, PhysicalKey.Tab, null);
+                    var child = window.FocusManager!.GetFocusedElement() is Visual focused
+                        ? focused.GetSelfAndVisualAncestors().OfType<Control>().FirstOrDefault(c => c.GetVisualParent() == panel)
+                        : null;
+                    if (child is null) continue;
+                    if (stops.Contains(child)) break;
+                    stops.Add(child);
+                }
+
+                Assert.Contains(stops, stop => AutomationProperties.GetAutomationId(stop) == AutomationIds.ProposalBarView);
+                var inReadingOrder = stops.OrderBy(stop => Box(stop, window).Center.Y > Box(bar, window).Center.Y)
+                    .ThenBy(stop => Box(stop, window).Left).ToArray();
+                Assert.Equal(inReadingOrder.Select(Describe), stops.Select(Describe));
+            }
+            finally { window.Close(); }
+        }, TimeSpan.FromMinutes(3));
+    }
+
     [Fact]
     public void TheNameTrimsBeforeTheButtonsAndKeepsAToolTipOfItsFullText()
     {
@@ -269,6 +309,9 @@ public sealed class ProposalViewSwitchTests
         PageScreenshots.Settle(window);
         return (workspace, window);
     }
+
+    private static string Describe(Control stop) =>
+        AutomationProperties.GetAutomationId(stop) is { Length: > 0 } id ? id : ProposalBarPanel.GetPart(stop).ToString();
 
     private static ListBox Switch(MainWindow window) => Assert.IsType<ProposalViewSwitch>(Part(window, AutomationIds.ProposalBarView));
 
