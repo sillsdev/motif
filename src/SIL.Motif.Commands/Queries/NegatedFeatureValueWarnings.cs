@@ -53,12 +53,20 @@ internal static class NegatedFeatureValueWarnings
             Description = description,
             Explanation = "FieldWorks' parser loader throws when it reads a negated feature value, so FieldWorks " +
                 "cannot parse with this project. PanGloss skips the value, so what carries it is not held back by it.",
-            Guidance = "Remove this value in FieldWorks, or replace it with a closed value for each feature value " +
-                "that is allowed, then run the grammar check again.",
+            Guidance = Guidance(value, owner),
             Origin = GrammarFindingOrigin.Check,
             Scope = GrammarSubjectStatus.Object,
         };
     }
+
+    /// <summary>Only a stem or inflectional affix has a Motif route, pinned by its composer test.</summary>
+    private static string Guidance(IFsNegatedValue value, string owner) =>
+        value.Owner?.Owner is IMoStemMsa or IMoInflAffMsa
+            ? "Remove it with compose-remove-feature-value (motif_remove_feature_value), giving this feature " +
+                "structure and the feature, then author a closed value if the stem or affix should carry one. " +
+                "A person reviews and applies the Proposal."
+            : $"Motif has no command that removes a negated value from {owner}, and whether FieldWorks can clear " +
+                "it was not checked. Until it is gone FieldWorks cannot parse with this project; PanGloss ignores it.";
 
     private static string Owner(LcmCache cache, ICmObject value)
     {
@@ -70,8 +78,15 @@ internal static class NegatedFeatureValueWarnings
                 return $"part of speech '{Name(cache, category.Name, "unnamed part of speech")}'";
             if (owner is IPhPhoneme phoneme)
                 return $"phoneme '{Name(cache, phoneme.Name, "unnamed phoneme")}'";
+            if (owner is IPhNCFeatures naturalClass)
+                return $"natural class '{Name(cache, naturalClass.Name, "unnamed natural class")}'";
+            if (owner is IMoInflClass inflectionClass)
+                return $"inflection class '{Name(cache, inflectionClass.Name, "unnamed inflection class")}'";
         }
-        return $"a {value.Owner?.ClassName ?? "grammar object"}";
+        for (var owner = value.Owner; owner is not null; owner = owner.Owner)
+            if (owner.ClassName is not ("FsFeatStruc" or "FsComplexValue"))
+                return $"a {owner.ClassName}";
+        return "a grammar object";
     }
 
     private static string Name(LcmCache cache, IMultiAccessorBase? name, string fallback)

@@ -170,12 +170,51 @@ public sealed class GrammarCheckQueryTests : IDisposable
         Assert.Contains("'gender'", warning.Description, StringComparison.Ordinal);
         Assert.Contains("not masculine", warning.Description, StringComparison.Ordinal);
         Assert.Contains("FieldWorks' parser loader throws", warning.Explanation, StringComparison.Ordinal);
-        Assert.Contains("Remove this value in FieldWorks", warning.Guidance, StringComparison.Ordinal);
+        Assert.Contains("compose-remove-feature-value", warning.Guidance, StringComparison.Ordinal);
         Assert.Equal(CanonicalId.FromGuid(negatedGuid).Value, Assert.Single(warning.Subject).ObjectId);
         Assert.Equal(1, Assert.Single(check.Summary, item => item.Code == GrammarFindingCodes.NegatedFeatureValue).Count);
         var warnings = WarningsCommand.Warnings(new WarningsRequest(fwDataPath));
         Assert.True(warnings.Succeeded, warnings.Refusal?.Message);
         Assert.Contains(warnings.Value!.Findings, item => item.Code == GrammarFindingCodes.NegatedFeatureValue);
+    }
+
+    [Fact]
+    public void ANegatedValueInANaturalClassNamesTheClassAndSaysMotifHasNoCommandForIt()
+    {
+        var fwDataPath = _pristine.CopyProjectFile();
+        var loader = new FwDataProjectLoader();
+        using (var cache = loader.LoadCache(fwDataPath))
+        {
+            var services = cache.ServiceLocator;
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            {
+                cache.LangProject.PhFeatureSystemOA ??= services.GetInstance<IFsFeatureSystemFactory>().Create();
+                var feature = services.GetInstance<IFsClosedFeatureFactory>().Create();
+                cache.LangProject.PhFeatureSystemOA.FeaturesOC.Add(feature);
+                feature.Name.set_String(cache.DefaultAnalWs, "voice");
+                var value = services.GetInstance<IFsSymFeatValFactory>().Create();
+                feature.ValuesOC.Add(value);
+                value.Name.set_String(cache.DefaultAnalWs, "voiced");
+                var naturalClass = services.GetInstance<IPhNCFeaturesFactory>().Create();
+                cache.LangProject.PhonologicalDataOA.NaturalClassesOS.Add(naturalClass);
+                naturalClass.Name.set_String(cache.DefaultAnalWs, "Obstruents");
+                naturalClass.FeaturesOA = services.GetInstance<IFsFeatStrucFactory>().Create();
+                var negated = services.GetInstance<IFsNegatedValueFactory>().Create();
+                naturalClass.FeaturesOA.FeatureSpecsOC.Add(negated);
+                negated.FeatureRA = feature;
+                negated.ValueRA = value;
+            });
+            loader.Save(cache);
+        }
+
+        Capture(fwDataPath);
+        var warning = Assert.Single(Check(fwDataPath).Findings,
+            item => item.Code == GrammarFindingCodes.NegatedFeatureValue);
+
+        Assert.Contains("natural class 'Obstruents'", warning.Description, StringComparison.Ordinal);
+        Assert.Contains("Motif has no command that removes a negated value", warning.Guidance,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("FsFeatStruc", warning.Description, StringComparison.Ordinal);
     }
 
     private static GrammarCheckResponse Check(string fwDataPath) =>
