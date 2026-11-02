@@ -124,7 +124,10 @@ public sealed class AssessWordsViewModelTests
         var table = new AssessWordsViewModel();
         table.Load([Word("alimpiga", "timed-out")]);
 
-        Assert.Equal("—", Assert.Single(table.Rows).VsProject);
+        var row = Assert.Single(table.Rows);
+        Assert.Equal(string.Empty, row.VsProject);
+        Assert.False(row.HasVsProject);
+        Assert.Equal(string.Empty, AssessmentRowFacts.Counted(Word("alimpiga", "timed-out"), null, false).VsProject);
     }
 
     [Fact]

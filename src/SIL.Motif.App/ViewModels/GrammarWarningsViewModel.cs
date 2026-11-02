@@ -572,11 +572,13 @@ public sealed partial class GrammarWarningRowViewModel : ObservableObject
     /// subject or problem part that carries it, or as an unnamed item when no part does.
     /// </summary>
     public string TableProblemText { get; }
-    /// <summary>The Named words cell: an exact count, none, or a dash when no exact count is available.</summary>
+    /// <summary>The Named words cell: an exact count, none, or blank when no exact count is available.</summary>
     public string TableNamedWordsText => WarningWordsQuery.Touched(Findings.Where(item => item.NamesItem).ToArray())
-        is not { IsComplete: true } ? "—" : YourWordsCount is { } count
+        is not { IsComplete: true } ? string.Empty : YourWordsCount is { } count
         ? count == 0 ? MotifAppStrings.WarningsNone : PluralText.Format(MotifAppStrings.WordCountPattern, count)
-        : AttributionState == WarningDisplayState.NoneInSelection ? MotifAppStrings.WarningsNone : "—";
+        : AttributionState == WarningDisplayState.NoneInSelection ? MotifAppStrings.WarningsNone : string.Empty;
+    /// <summary>Why the Named words cell is blank, for its tooltip and accessible name; null when it has a count.</summary>
+    public string? TableNamedWordsNote => TableNamedWordsText.Length == 0 ? MotifAppStrings.WarningsReachUnavailable : null;
     /// <summary>Whether the separate title says more than the row heading.</summary>
     public bool HasDistinctPanGlossTitle => PanGlossTitle.Length > 0 &&
         !RowTitleText.StartsWith(PanGlossTitle, StringComparison.Ordinal);

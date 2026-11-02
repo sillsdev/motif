@@ -12,7 +12,8 @@ namespace SIL.Motif.App.ViewModels;
 /// <param name="Label">What the number is.</param>
 /// <param name="Value">The number, or today's number alone when the Proposal has no Trial values yet.</param>
 /// <param name="Moved">Whether the Trial moved the number enough to highlight it.</param>
-public sealed record ProposalNumber(string Label, string Value, bool Moved);
+/// <param name="Note">Why the value is blank, for a tooltip and accessible name; null when it has a value.</param>
+public sealed record ProposalNumber(string Label, string Value, bool Moved, string? Note = null);
 
 /// <summary>
 /// The one place a card's typed <see cref="Paired{T}"/> values become text, so the swap to the shared paired-number
@@ -22,18 +23,23 @@ internal static class ProposalNumberText
 {
     public static IReadOnlyList<ProposalNumber> From(TrialSummary trial) =>
     [
-        new("Coverage", Show(trial.TextCoveragePercent, Percent), trial.TextCoveragePercent.Moved),
+        Number("Coverage", Show(trial.TextCoveragePercent, Percent), trial.TextCoveragePercent.Moved),
         new("Approved kept", ShowKept(trial), trial.ApprovedKept.Moved || trial.ApprovedTotal.Moved),
-        new("Work", ShowWork(trial.Work), trial.Work is { } work && PairedMoves.Work(work.BaselineWork, work.TrialParserWork)),
-        new("Warnings", Show(trial.WarningCount, Count), trial.WarningCount.Moved),
-        new("Time on this computer", Show(trial.WordTimeMs, Time), trial.WordTimeMs.Moved),
+        Number("Work", ShowWork(trial.Work), trial.Work is { } work && PairedMoves.Work(work.BaselineWork, work.TrialParserWork),
+            MotifAppStrings.ProposalWorkNotComparable),
+        Number("Warnings", Show(trial.WarningCount, Count), trial.WarningCount.Moved),
+        Number("Time on this computer", Show(trial.WordTimeMs, Time), trial.WordTimeMs.Moved),
     ];
 
-    // Parser work are the cost; with no comparison the cell says so, never a time in their place.
+    // A blank number keeps its meaning in a tooltip and an accessible name, never in visible text.
+    private static ProposalNumber Number(string label, string value, bool moved, string? blankNote = null) =>
+        new(label, value, moved, value.Length == 0 ? blankNote ?? MotifAppStrings.TextsWordNotMeasured : null);
+
+    // Parser work is the cost; with no comparison the cell is blank, never a time in their place.
     private static string ShowWork(TrialWork? work) => HasWorkComparison(work)
         ? $"{work!.BaselineWork!.Value.ToString("N0", CultureInfo.CurrentCulture)} → " +
             work.TrialParserWork!.Value.ToString("N0", CultureInfo.CurrentCulture)
-        : "—";
+        : string.Empty;
 
     // TrialWorkComparison leaves both totals empty when two tries cannot be compared; the Overview asks the same.
     public static bool HasWorkComparison(TrialWork? work) => work is { BaselineWork: not null, TrialParserWork: not null };
@@ -63,14 +69,14 @@ internal static class ProposalNumberText
     }
 
     private static string Percent(double? value) =>
-        value is { } percent ? percent.ToString("0.#", CultureInfo.CurrentCulture) + "%" : "—";
+        value is { } percent ? percent.ToString("0.#", CultureInfo.CurrentCulture) + "%" : string.Empty;
 
     private static string Time(double? milliseconds) => milliseconds is { } ms
         ? ms >= 1000 ? (ms / 1000).ToString("0.#", CultureInfo.CurrentCulture) + " s"
             : ms.ToString("0", CultureInfo.CurrentCulture) + " ms"
-        : "—";
+        : string.Empty;
 
-    private static string Count(int? value) => value is { } count ? count.ToString(CultureInfo.CurrentCulture) : "—";
+    private static string Count(int? value) => value is { } count ? count.ToString(CultureInfo.CurrentCulture) : string.Empty;
 }
 
 /// <summary>One Proposal row: its label, what it changes, its numbers and what a person can do with it.</summary>

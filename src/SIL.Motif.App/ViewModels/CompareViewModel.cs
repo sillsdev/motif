@@ -1276,7 +1276,6 @@ public sealed partial class CompareWordViewModel : ObservableObject, IDisposable
     public bool IsCapped => Marking.PanGlossClass == AnalysisMarkingClass.Capped;
     public bool IsNotAssessed => Marking.PanGlossClass == AnalysisMarkingClass.NotAssessed;
     public int? Occurrences { get; }
-    public string OccurrenceText => Occurrences is { } count ? $"×{count}" : "—";
     public IReadOnlyList<ParserReadingViewModel> MissedApproved { get; }
     public FixFirstPriority? FixFirst { get; }
     public int? ElapsedMs { get; }
@@ -1411,7 +1410,6 @@ public sealed record CompareFixFirstViewModel(CompareWordViewModel Word, FixFirs
         _ => MotifAppStrings.CompareFixUnknownNoBuildExplanation,
     };
 
-    public string OccurrenceText => Word.Occurrences is { } count ? $"×{count}" : "—";
 
     public IReadOnlyList<ParserReadingViewModel> MissedApproved => Word.MissedApproved;
 

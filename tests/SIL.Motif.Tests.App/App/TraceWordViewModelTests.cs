@@ -293,6 +293,7 @@ public sealed class TraceWordViewModelTests
         Assert.Equal("The parser stopped at a search limit.", trace.StopReason);
         var root = Assert.Single(trace.Effort);
         Assert.Equal("1 found no root", root.Missed);
+        Assert.Equal(string.Empty, new TraceEffortViewModel(new TraceEffort("Rules", 2, 2, 0, 0, 0, 1, null)).Missed);
         Assert.Equal("parser work not recorded", root.Time);
 
         trace.Reset();

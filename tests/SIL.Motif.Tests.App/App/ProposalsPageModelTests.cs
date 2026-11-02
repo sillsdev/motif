@@ -158,7 +158,7 @@ public sealed class ProposalsPageModelTests
         Assert.Equal("10 of 12", noAfterRow.ApprovedKept!.Value);
         Assert.Equal("60% → 64.5%", triedRow.TableCoverageText);
         Assert.Equal("3 → 3", triedRow.TableWarningsText);
-        Assert.Equal("—", triedRow.TableWorkText);
+        Assert.Equal(string.Empty, triedRow.TableWorkText);
         Assert.Equal("Not tried yet", untriedRow.TableApprovedKeptText);
         Assert.Equal("Not tried yet", untriedRow.TableCoverageText);
         Assert.Equal("Draft", pendingRow.TableStatusText);
@@ -401,8 +401,31 @@ public sealed class ProposalsPageModelTests
         Assert.Equal("1,000 → 1,200", compared.TableWorkText);
         Assert.Equal("Time on this computer", compared.Numbers[^1].Label);
         Assert.Equal("2.5 s → 2.6 s", compared.Numbers[^1].Value);
-        Assert.Equal("—", unavailable.Work!.Value);
+        Assert.Equal(string.Empty, unavailable.Work!.Value);
+        Assert.Equal(MotifAppStrings.ProposalWorkNotComparable, unavailable.Work.Note);
         Assert.False(unavailable.Work.Moved);
+    }
+
+    [Fact]
+    public async Task ANumberTheTrialDidNotMeasureIsBlankAndTheCellNamesWhy()
+    {
+        var unmeasured = Summary(TrialFreshness.Current) with
+        {
+            TextCoveragePercent = new Paired<double?>(null, null, false, false, false, null),
+            WordTimeMs = new Paired<double?>(null, null, false, false, false, null),
+            WarningCount = new Paired<int?>(null, null, false, false, false, null),
+        };
+        var (_, _, page) = await OpenAsync(Standings(
+            Card("p/a", "A", ProposalGroup.WaitingForYou, trial: unmeasured, standing: TrialStanding.Current)));
+
+        var card = page.Groups[0].Cards[0];
+
+        Assert.Equal(string.Empty, card.TableCoverageText);
+        Assert.Equal(string.Empty, card.TableWarningsText);
+        Assert.Equal(string.Empty, card.Numbers[^1].Value);
+        Assert.All(new[] { card.Coverage!, card.Warnings!, card.Numbers[^1] },
+            number => Assert.Equal(MotifAppStrings.TextsWordNotMeasured, number.Note));
+        Assert.Null(card.ApprovedKept!.Note);
     }
 
     [Theory]

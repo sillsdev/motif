@@ -1271,7 +1271,7 @@ public sealed class TraceEffortViewModel
         if (effort.NotApplied > 0) misses.Add(TraceText.Format(MotifAppStrings.TraceEffortDidNotApplyFormat, effort.NotApplied.ToString("N0")));
         if (effort.NoRoot > 0) misses.Add(TraceText.Format(MotifAppStrings.TraceEffortNoRootFormat, effort.NoRoot.ToString("N0")));
         if (effort.SurfaceMismatch > 0) misses.Add(TraceText.Format(MotifAppStrings.TraceEffortSurfaceMismatchFormat, effort.SurfaceMismatch.ToString("N0")));
-        Missed = misses.Count == 0 ? "—" : string.Join(", ", misses);
+        Missed = string.Join(", ", misses);
         Time = effort.ParserWork is { } steps ? PluralText.Format(MotifAppStrings.ParserWorkPattern, steps) : MotifAppStrings.ParserWorkNotRecorded;
 
         WorkHeat = Shade(effort.Work, largest.Work);

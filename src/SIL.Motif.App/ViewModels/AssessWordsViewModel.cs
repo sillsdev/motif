@@ -330,7 +330,7 @@ public sealed class AssessWordRowViewModel
             : Readings.Any(reading => reading.Grade == ReadingGrade.Approved) ? "Approved"
             : Readings.Any(reading => reading.Grade == ReadingGrade.Candidate) ? "Unknown"
             : Readings.Count > 0 && grades is not null ? ReadingGradeLabels.NotPresent
-            : "—";
+            : string.Empty;
 
         TryWordLink = word.TryWordLink is { } link ? new Uri(link) : null;
         Unavailable = word.Correctness?.Unavailable ?? word.Morphology?.Unavailable ?? [];
@@ -398,7 +398,7 @@ public sealed class AssessWordRowViewModel
     public string VsProject { get; }
 
     /// <summary>Whether there is a comparison to show; a word with no readings and nothing missed has none.</summary>
-    public bool HasVsProject => VsProject != "—";
+    public bool HasVsProject => VsProject.Length > 0;
 
     /// <summary>What PanGloss built for this word against what FieldWorks holds: its Matrix column.</summary>
     public ParserOutcome ParserOutcome => WindowWords.OutcomeOf(CompareViewModel.Place(this).Column);

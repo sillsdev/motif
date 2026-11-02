@@ -32,7 +32,7 @@ internal sealed record AssessmentRowFacts(AssessmentWordResult Source, int? Occu
         : Source.ReadingGrades?.Contains(ReadingGrade.Approved) == true ? "Approved"
         : Source.ReadingGrades?.Contains(ReadingGrade.Candidate) == true ? "Unknown"
         : (Source.Readings?.Count ?? Source.Morphology?.Analyses.Count ?? 0) > 0 && Source.ReadingGrades is not null
-            ? ReadingGradeLabels.NotPresent : "—";
+            ? ReadingGradeLabels.NotPresent : string.Empty;
     public (WordProjectStatus Row, CompareColumnKind Column) Place
     {
         get

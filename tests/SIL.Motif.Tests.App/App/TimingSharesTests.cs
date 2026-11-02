@@ -347,7 +347,7 @@ public sealed class TimingSharesTests
         var rule = Assert.Single(timing.RuleRows).Share;
         Assert.Equal("Plural", rule.Label);
         Assert.Equal("Not recorded", rule.WorkCountText);
-        Assert.Equal("—", rule.ShareText);
+        Assert.Equal(string.Empty, rule.ShareText);
     }
 
     [Fact]

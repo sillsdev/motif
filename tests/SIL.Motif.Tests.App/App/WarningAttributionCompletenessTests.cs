@@ -1,4 +1,5 @@
 using System.Linq;
+using SIL.Motif.App;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Responses;
@@ -72,7 +73,8 @@ public sealed class WarningAttributionCompletenessTests
 
         Assert.Equal(WarningDisplayState.NoFollowedRouteMatch, zeroRow.AttributionState);
         Assert.Equal(string.Empty, zeroRow.ReachSummaryText);
-        Assert.Equal("—", zeroRow.TableNamedWordsText);
+        Assert.Equal(string.Empty, zeroRow.TableNamedWordsText);
+        Assert.Equal(MotifAppStrings.WarningsReachUnavailable, zeroRow.TableNamedWordsNote);
         Assert.Contains("Motif could not follow every named connection", zeroRow.ReachStateText,
             StringComparison.Ordinal);
 
@@ -82,7 +84,7 @@ public sealed class WarningAttributionCompletenessTests
         Assert.True(positiveRow.IsPartialReach);
         Assert.True(positiveRow.HasPartialCount);
         Assert.Equal(string.Empty, positiveRow.ReachSummaryText);
-        Assert.Equal("—", positiveRow.TableNamedWordsText);
+        Assert.Equal(string.Empty, positiveRow.TableNamedWordsText);
     }
 
     [Theory]
@@ -115,7 +117,7 @@ public sealed class WarningAttributionCompletenessTests
         var unavailable = finding with { YourWords = null };
         var row = new GrammarWarningRowViewModel([finding, unavailable]);
         Assert.False(row.IsPartialReach);
-        Assert.Equal("—", row.TableNamedWordsText);
+        Assert.Equal(string.Empty, row.TableNamedWordsText);
     }
 
 }

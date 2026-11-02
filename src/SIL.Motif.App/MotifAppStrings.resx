@@ -236,6 +236,10 @@
     <value>This Trial makes parsing about {0}% more work than the Baseline.</value>
     <comment>Notice beside a Trial that makes parsing more work; {0} is the whole-number percent.</comment>
   </data>
+  <data name="MotifApp.ProposalWorkNotComparable" xml:space="preserve">
+    <value>Parser work cannot be compared for this Trial</value>
+    <comment>Tooltip and accessible name of a blank Work number in the Proposals table and Inspector, where the Trial's parser work and today's cannot be compared.</comment>
+  </data>
   <data name="MotifApp.TrialWorkNoticeAccessibleName" xml:space="preserve">
     <value>Trial parsing work increased</value>
     <comment>Accessible name of the notice beside a Trial that makes parsing more work.</comment>

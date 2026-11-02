@@ -274,6 +274,8 @@ public static class MotifAppStrings
 
     public static string TrialWorkNotice => Text("MotifApp.TrialWorkNotice");
 
+    public static string ProposalWorkNotComparable => Text("MotifApp.ProposalWorkNotComparable");
+
     public static string TrialWorkNoticeAccessibleName => Text("MotifApp.TrialWorkNoticeAccessibleName");
 
     public static string ProjectSummaryAccessibleName => Text("MotifApp.ProjectSummaryAccessibleName");

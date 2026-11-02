@@ -50,7 +50,7 @@ public sealed record TimingShare(string Label, string Kind, long? ParserWork, do
     public string WorkCountText => ParserWork is { } work ? work.ToString("N0", CultureInfo.CurrentCulture) : MotifAppStrings.TimingNotRecorded;
 
     public string ShareText => Share is { } share ? FormatPercent(share) :
-        IsNotAttributed ? MotifAppStrings.TimingNotRecorded : "—";
+        IsNotAttributed ? MotifAppStrings.TimingNotRecorded : string.Empty;
 
     public string WordsText => Words.ToString("N0", CultureInfo.CurrentCulture);
 

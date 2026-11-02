@@ -406,7 +406,6 @@ public sealed class MovedWordViewModel
 
     public string Word { get; }
     public int? Occurrences { get; }
-    public string OccurrenceText => Occurrences is { } count ? $"×{count}" : "—";
     public (WordProjectStatus Row, CompareColumnKind Column) From { get; }
     public (WordProjectStatus Row, CompareColumnKind Column) To { get; }
 
