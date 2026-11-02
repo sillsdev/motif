@@ -9,6 +9,6 @@ motif compose-author-exception-feature --project language.fwdata --draft feature
 
 The intent has `name` and `ws`, and may have `abbreviation`. The name must be new in that writing system. Name the class by the fact it records, such as a stratum or a kin term, because the list is shared by every rule and affix.
 
-The new feature does nothing until it is used. Apply the Proposal, then tag stems with `compose-edit-exception-features`, require it on a derivational affix with `compose-edit-derivational-affix-restriction`, or require or exclude it in a rule with `compose-edit-phonological-rule-features`. A feature created in a Draft cannot be named in the same Draft.
+The new feature does nothing until it is used. Tag stems with `compose-edit-exception-features`, require it on a derivational affix with `compose-edit-derivational-affix-restriction`, or require or exclude it in a rule with `compose-edit-phonological-rule-features`. Each of these can name the feature by the id this command returns, in the same Draft: the Draft composer declares the dependency from the reference, so one Proposal can create the feature and use it.
 
 The command stages operations in a Draft and does not change the saved FieldWorks project. Dry Run and Trial the Proposal, then Finalize it for a person to review and Apply.
