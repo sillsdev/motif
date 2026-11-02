@@ -258,6 +258,23 @@ public sealed class SettingsLimitsSequenceTests
         });
     }
 
+    [Fact]
+    public void ASwitchWhoseConfigurationFailsToLoadSavesTheDefaultAssessBudgetNotTheLastProjectsOne()
+    {
+        WithProject(null, async (workspace, settings, fake) =>
+        {
+            settings.AssessBudgetSeconds = 7200;
+            await SaveAsync(settings);
+            fake.OnShowConfig((_, _) => Task.FromResult(CommandOutcome<ProjectConfigurationProjection>.Refused(
+                new Refusal("config.unreadable", FailureReason.Refused, "The configuration could not be read."))));
+            await SwitchProjectAsync(workspace, settings, fake, EstimatedLimits);
+            Assert.Equal(3600m, settings.AssessBudgetSeconds);
+            settings.ParserWorkLimitValue = 150000m;
+            await SaveAsync(settings);
+            Assert.Equal(3600, fake.SetSelectionLimitsRequests[^1].Limits.AssessBudgetSeconds);
+        });
+    }
+
     private static void AssertNothingSelected(WorkspaceShellViewModel workspace, decimal lastProjectsParserWork)
     {
         Assert.False(workspace.Selection.PerWordParserWorkLimitUnbounded);

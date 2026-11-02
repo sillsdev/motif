@@ -902,6 +902,8 @@ internal sealed partial class SettingsViewModel : ObservableObject
         _lastGoodTimeLimitSeconds = null;
         _parserWorkLimitBeforeNoStep = null;
         _timeLimitBeforeNoStep = null;
+        _lastGoodAssessBudgetSeconds = 3600;
+        AssessBudgetSeconds = 3600;
         ClearHeldLimits();
     }
 
