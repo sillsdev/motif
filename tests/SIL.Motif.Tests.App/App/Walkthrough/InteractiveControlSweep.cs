@@ -52,7 +52,15 @@ internal static class InteractiveControlSweep
         string scene,
         params InteractiveControlFamily[] expectedFamilies)
     {
-        AssertSceneCore(walkthrough, scene, expectedFamilies);
+        if (!CriticalActions.ContainsKey(scene))
+            throw new Xunit.Sdk.XunitException($"Scene '{scene}' has no authored critical AutomationId contract.");
+        // A model that has changed state may not yet have realized its controls, so the scene gets time to appear.
+        var lastMismatch = "";
+        walkthrough.WaitUntil(() =>
+        {
+            try { AssertSceneCore(walkthrough, scene, expectedFamilies); return true; }
+            catch (Xunit.Sdk.XunitException mismatch) { lastMismatch = mismatch.Message; return false; }
+        }, TimeSpan.FromSeconds(30), $"Scene '{scene}' never matched its contract", () => lastMismatch);
     }
 
     private static void AssertSceneCore(

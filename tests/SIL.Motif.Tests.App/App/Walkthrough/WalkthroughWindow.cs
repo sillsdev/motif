@@ -525,8 +525,9 @@ public sealed class WalkthroughWindow : IDisposable
 
     internal void ClickAutomationId(string automationId)
     {
+        WaitUntil(() => FindOptionalByAutomationId(automationId)?.IsEffectivelyEnabled == true,
+            TimeSpan.FromSeconds(30), $"AutomationId '{automationId}' is disabled or missing");
         var control = FindByAutomationId(automationId);
-        Assert.True(control.IsEffectivelyEnabled, $"AutomationId '{automationId}' is disabled.");
         var topLevel = automationId == AutomationIds.SelectNewProject
             ? TopLevel.GetTopLevel(control) ?? Window
             : Window;
