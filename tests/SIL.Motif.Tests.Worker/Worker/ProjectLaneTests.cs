@@ -1,6 +1,7 @@
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Worker.Scheduling;
 using Xunit;
+using SIL.Motif.Tests.TestFixtures;
 
 namespace SIL.Motif.Tests.Worker;
 
@@ -211,8 +212,7 @@ public sealed class ProjectLaneTests
             refreshStarted = true;
             return Task.FromResult(Token('b'));
         }), CancellationToken.None);
-        await WaitUntilAsync(() => lane.PendingWorkCount == 0 || refreshStarted,
-            TimeSpan.FromSeconds(2));
+        await Wait.UntilAsync(() => lane.PendingWorkCount == 0 || refreshStarted, timeout: TimeSpan.FromSeconds(2));
         Assert.False(refreshStarted);
 
         await Task.Run(lane.Dispose).WaitAsync(TimeSpan.FromSeconds(2));
@@ -333,15 +333,4 @@ public sealed class ProjectLaneTests
 
     private static TaskCompletionSource Signal() =>
         new(TaskCreationOptions.RunContinuationsAsynchronously);
-
-    private static async Task WaitUntilAsync(Func<bool> condition, TimeSpan timeout)
-    {
-        var deadline = DateTime.UtcNow + timeout;
-        while (!condition())
-        {
-            if (DateTime.UtcNow >= deadline)
-                throw new TimeoutException("The project lane did not reach the expected queue state.");
-            await Task.Delay(TimeSpan.FromMilliseconds(10));
-        }
-    }
 }

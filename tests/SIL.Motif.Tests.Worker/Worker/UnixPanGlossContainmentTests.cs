@@ -67,14 +67,14 @@ public sealed class UnixPanGlossContainmentTests
         using var process = job.Start(startInfo);
         try
         {
-            await WaitUntilAsync(() => File.Exists(childPidPath), BoundedWait);
+            await Wait.UntilAsync(() => File.Exists(childPidPath), timeout: BoundedWait);
             var childId = int.Parse(await File.ReadAllTextAsync(childPidPath), CultureInfo.InvariantCulture);
             Assert.Equal(process.Id, GetProcessGroupId(childId));
 
             job.Dispose();
 
             await process.WaitForExitAsync().WaitAsync(BoundedWait);
-            await WaitUntilAsync(() => !ProcessExists(childId), BoundedWait);
+            await Wait.UntilAsync(() => !ProcessExists(childId), timeout: BoundedWait);
         }
         finally
         {
@@ -154,14 +154,4 @@ public sealed class UnixPanGlossContainmentTests
     private static int GetProcessGroupId(int processId) => UnixProcessIdentity.GetProcessGroupId(processId);
 
     private static bool ProcessExists(int processId) => UnixProcessIdentity.ProcessExists(processId);
-
-    private static async Task WaitUntilAsync(Func<bool> predicate, TimeSpan timeout)
-    {
-        var deadline = DateTime.UtcNow + timeout;
-        while (!predicate())
-        {
-            if (DateTime.UtcNow >= deadline) throw new TimeoutException("The process condition was not met.");
-            await Task.Delay(20);
-        }
-    }
 }

@@ -2975,23 +2975,21 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
 
     private async Task<JobStageProgress?> WaitForStageProgressAsync(string jobId, string expectedStage)
     {
-        var started = Stopwatch.StartNew();
-        while (started.Elapsed < TimeSpan.FromSeconds(10))
+        JobStageProgress? found = null;
+        await Wait.ForAsync(() =>
         {
             var progressJson = _jobs.Get(jobId)?.ProgressJson;
-            if (!string.IsNullOrWhiteSpace(progressJson))
+            if (string.IsNullOrWhiteSpace(progressJson)) return false;
+            try
             {
-                try
-                {
-                    var progress = JsonSerializer.Deserialize<JobStageProgress>(progressJson,
-                        SIL.Motif.Contract.MotifJson.CreateOptions());
-                    if (progress?.Stage == expectedStage) return progress;
-                }
-                catch (JsonException) { }
+                var progress = JsonSerializer.Deserialize<JobStageProgress>(progressJson,
+                    SIL.Motif.Contract.MotifJson.CreateOptions());
+                if (progress?.Stage == expectedStage) found = progress;
             }
-            await Task.Delay(TimeSpan.FromMilliseconds(10));
-        }
-        return null;
+            catch (JsonException) { }
+            return found is not null;
+        }, TimeSpan.FromSeconds(10));
+        return found;
     }
 
     private static string[] UniqueParserSlotNames(string purpose)

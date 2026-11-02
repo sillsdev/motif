@@ -217,7 +217,7 @@ public sealed class UnixWorkerMutexTests
     {
         using var owner = new WorkerMutexOwner(lockName, machineWide: true);
         await File.WriteAllTextAsync(readyPath, string.Empty);
-        await WaitUntilAsync(() => File.Exists(startPath), TimeSpan.FromSeconds(20));
+        await Wait.UntilAsync(() => File.Exists(startPath), timeout: TimeSpan.FromSeconds(20));
 
         for (var index = 0; index < 40; index++)
         {
@@ -249,7 +249,7 @@ public sealed class UnixWorkerMutexTests
     {
         using var owner = new WorkerMutexOwner(lockName, machineWide: true);
         await File.WriteAllTextAsync(readyPath, string.Empty);
-        await WaitUntilAsync(() => File.Exists(startPath), TimeSpan.FromSeconds(30));
+        await Wait.UntilAsync(() => File.Exists(startPath), timeout: TimeSpan.FromSeconds(30));
 
         var iterations = int.Parse(Environment.GetEnvironmentVariable(IterationsVariable) ?? "2000");
         for (var index = 0; index < iterations; index++)
@@ -261,19 +261,10 @@ public sealed class UnixWorkerMutexTests
 
     private static async Task WaitForFileAsync(string path, Process child)
     {
-        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(20));
-        while (!File.Exists(path))
-        {
-            if (child.HasExited)
-                throw new InvalidOperationException($"Child test exited before signaling readiness with code {child.ExitCode}.");
-            await Task.Delay(10, timeout.Token);
-        }
-    }
-
-    private static async Task WaitUntilAsync(Func<bool> condition, TimeSpan timeout)
-    {
-        using var cancellation = new CancellationTokenSource(timeout);
-        while (!condition()) await Task.Delay(10, cancellation.Token);
+        if (await Wait.ForAsync(() => File.Exists(path) || child.HasExited, TimeSpan.FromSeconds(20)) && File.Exists(path)) return;
+        if (child.HasExited)
+            throw new InvalidOperationException($"Child test exited before signaling readiness with code {child.ExitCode}.");
+        throw new TimeoutException($"Child test did not signal readiness through {path}.");
     }
 
     private static string FindRepositoryRoot()

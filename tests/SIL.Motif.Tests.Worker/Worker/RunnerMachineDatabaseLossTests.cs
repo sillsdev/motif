@@ -36,9 +36,8 @@ public sealed class RunnerMachineDatabaseLossTests : IDisposable
         Assert.False(string.IsNullOrWhiteSpace(_runner.StandardOutput.ReadLine()), "The runner never started.");
         // The name is printed before the database opens; deleting any earlier would let the runner recreate it.
         var database = Path.Combine(_root, "motif.db");
-        var opened = DateTime.UtcNow + TimeSpan.FromSeconds(20);
-        while (!File.Exists(database) && DateTime.UtcNow < opened) Thread.Sleep(50);
-        Assert.True(File.Exists(database), "The runner never opened its machine database.");
+        Assert.True(Wait.For(() => File.Exists(database), TimeSpan.FromSeconds(20)),
+            "The runner never opened its machine database.");
 
         DeleteWithRetry(_root);
 
@@ -50,17 +49,17 @@ public sealed class RunnerMachineDatabaseLossTests : IDisposable
     // The runner holds its files only while a sweep touches them, so a deletion succeeds between sweeps.
     private static void DeleteWithRetry(string path)
     {
-        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(20);
-        while (true)
+        Exception? last = null;
+        var deleted = Wait.For(() =>
         {
-            try
+            try { Directory.Delete(path, recursive: true); return true; }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
             {
-                Directory.Delete(path, recursive: true);
-                return;
+                last = exception;
+                return false;
             }
-            catch (IOException) when (DateTime.UtcNow < deadline) { Thread.Sleep(50); }
-            catch (UnauthorizedAccessException) when (DateTime.UtcNow < deadline) { Thread.Sleep(50); }
-        }
+        }, TimeSpan.FromSeconds(20));
+        if (!deleted) throw new IOException("The runner kept its files open.", last);
     }
 
     public void Dispose()

@@ -212,9 +212,8 @@ public sealed class TrialJobHandlerTests : IDisposable
         try
         {
             var pending = handler.RunAsync(new ClaimedJob(_jobs, claimed), _project, CancellationToken.None);
-            var until = Stopwatch.StartNew();
-            while ((!File.Exists(heartbeat) || !File.Exists(processIdPath)) && !pending.IsCompleted && until.Elapsed < TimeSpan.FromSeconds(20))
-                await Task.Delay(25);
+            await Wait.ForAsync(() => (File.Exists(heartbeat) && File.Exists(processIdPath)) || pending.IsCompleted,
+                TimeSpan.FromSeconds(20));
             Assert.True(File.Exists(heartbeat) && File.Exists(processIdPath), "The held fake parser did not start.");
             var processId = int.Parse(File.ReadAllText(processIdPath), System.Globalization.CultureInfo.InvariantCulture);
             var outcome = await pending.WaitAsync(TimeSpan.FromSeconds(25));
@@ -1722,23 +1721,21 @@ public sealed class TrialJobHandlerTests : IDisposable
 
     private async Task<JobStageProgress?> WaitForStageProgressAsync(string jobId, string expectedStage)
     {
-        var started = Stopwatch.StartNew();
-        while (started.Elapsed < TimeSpan.FromSeconds(10))
+        JobStageProgress? found = null;
+        await Wait.ForAsync(() =>
         {
             var progressJson = _jobs.Get(jobId)?.ProgressJson;
-            if (!string.IsNullOrWhiteSpace(progressJson))
+            if (string.IsNullOrWhiteSpace(progressJson)) return false;
+            try
             {
-                try
-                {
-                    var progress = JsonSerializer.Deserialize<JobStageProgress>(progressJson,
-                        SIL.Motif.Contract.MotifJson.CreateOptions());
-                    if (progress?.Stage == expectedStage) return progress;
-                }
-                catch (JsonException) { }
+                var progress = JsonSerializer.Deserialize<JobStageProgress>(progressJson,
+                    SIL.Motif.Contract.MotifJson.CreateOptions());
+                if (progress?.Stage == expectedStage) found = progress;
             }
-            await Task.Delay(TimeSpan.FromMilliseconds(10));
-        }
-        return null;
+            catch (JsonException) { }
+            return found is not null;
+        }, TimeSpan.FromSeconds(10));
+        return found;
     }
 
     private static string[] UniqueParserSlotNames(string purpose)

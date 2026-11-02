@@ -104,7 +104,7 @@ public sealed class MachinePanGlossQueueTests
             Enqueue(userA, "a-1"), Enqueue(userA, "a-2"),
             Enqueue(userB, "b-1"), Enqueue(userB, "b-2"),
         };
-        await WaitUntilAsync(() => Volatile.Read(ref peak) == 1, TimeSpan.FromSeconds(10));
+        await Wait.UntilAsync(() => Volatile.Read(ref peak) == 1, timeout: TimeSpan.FromSeconds(10));
         releaseAll.SetResult();
         await Task.WhenAll(tasks).WaitAsync(TimeSpan.FromSeconds(20));
 
@@ -404,7 +404,7 @@ public sealed class MachinePanGlossQueueTests
             var releasePath = Environment.GetEnvironmentVariable(ChildReleasePathVariable)
                 ?? throw new InvalidOperationException("The child release path is required.");
             await File.WriteAllTextAsync(readyPath, string.Empty);
-            await WaitUntilAsync(() => File.Exists(releasePath), TimeSpan.FromSeconds(15));
+            await Wait.UntilAsync(() => File.Exists(releasePath), timeout: TimeSpan.FromSeconds(15));
             return;
         }
 
@@ -428,7 +428,7 @@ public sealed class MachinePanGlossQueueTests
         var releaseJobs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         try
         {
-            await WaitUntilAsync(() => File.Exists(readyFile), TimeSpan.FromSeconds(15));
+            await Wait.UntilAsync(() => File.Exists(readyFile), timeout: TimeSpan.FromSeconds(15));
 
             using var queue = new MachinePanGlossQueue(slotNames);
             var firstStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -648,15 +648,5 @@ public sealed class MachinePanGlossQueueTests
         if (!acquired.Wait(TimeSpan.FromSeconds(5)))
             throw new TimeoutException("The victim thread did not acquire the mutex in time.");
         thread.Join(TimeSpan.FromSeconds(5));
-    }
-
-    private static async Task WaitUntilAsync(Func<bool> condition, TimeSpan timeout)
-    {
-        var deadline = DateTime.UtcNow + timeout;
-        while (!condition())
-        {
-            if (DateTime.UtcNow > deadline) throw new TimeoutException("Condition was not met in time.");
-            await Task.Delay(10);
-        }
     }
 }

@@ -7,6 +7,7 @@ using SIL.Motif.Worker.Jobs;
 using SIL.Motif.Worker.Projects;
 using SIL.Motif.Worker.Store;
 using Xunit;
+using SIL.Motif.Tests.TestFixtures;
 
 namespace SIL.Motif.Tests.Worker;
 
@@ -238,9 +239,7 @@ public sealed class ProjectRuntimeTests : IDisposable
         Assert.True(entered.Wait(Patience));
         var disposing = Task.Run(registry.Dispose);
 
-        var deadline = DateTime.UtcNow + Patience;
-        while (DateTime.UtcNow < deadline && registry.TryGet(probe.WorkspaceKey, out _))
-            await Task.Delay(1);
+        await Wait.ForAsync(() => !registry.TryGet(probe.WorkspaceKey, out _), Patience);
         Assert.False(registry.TryGet(probe.WorkspaceKey, out _));
 
         var escaping = Task.Run(() => registry.GetOrOpen(project));
