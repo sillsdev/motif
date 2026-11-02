@@ -12,11 +12,16 @@ public static class EffectProjectionBuilder
     public static IReadOnlyList<EffectView> Build(IReadOnlyList<ExpectedEffect> effects) =>
         effects.Select(BuildOne).ToList();
 
-    public static IReadOnlyList<EffectView> Build(IReadOnlyList<ExpectedEffect> effects, Proposal proposal) =>
-        effects.Select(effect => BuildOne(effect) with
+    public static IReadOnlyList<EffectView> Build(IReadOnlyList<ExpectedEffect> effects, Proposal proposal)
+    {
+        // Effects sharing one object and field link to the operation that made their value, not all aimed at it.
+        var shared = effects.GroupBy(effect => (effect.CanonicalId, effect.Field)).Where(group => group.Count() > 1)
+            .Select(group => group.Key).ToHashSet();
+        return effects.Select(effect => BuildOne(effect) with
         {
-            OperationIds = LinkOperations(effect, proposal),
+            OperationIds = LinkOperations(effect, proposal, shared.Contains((effect.CanonicalId, effect.Field))),
         }).ToList();
+    }
 
     private static EffectView BuildOne(ExpectedEffect effect)
     {
@@ -36,7 +41,7 @@ public static class EffectProjectionBuilder
         return new EffectView(effect.CanonicalId.Value, effect.Field, changes, effect.Preview);
     }
 
-    private static IReadOnlyList<string> LinkOperations(ExpectedEffect effect, Proposal proposal)
+    private static IReadOnlyList<string> LinkOperations(ExpectedEffect effect, Proposal proposal, bool shared)
     {
         var candidates = proposal.Operations.Where(operation => operation.Target == effect.CanonicalId ||
             operation.EntityId == effect.CanonicalId);
@@ -46,7 +51,16 @@ public static class EffectProjectionBuilder
             candidates = candidates.Where(operation => operation.Kind is
                 "lexical/lexEntry/deleteAlternateForm" or "lexical/lexEntry/moveAlternateForms" or
                 "lexical/lexEntry/createAlternateForms");
-        return candidates.Select(operation => operation.OperationId.Value)
+        var linked = candidates.ToArray();
+        if (shared)
+        {
+            var values = effect.Before.Values.Concat(effect.After.Values).ToHashSet(System.StringComparer.Ordinal);
+            // Drop only creators of other values; the object's creator and edits, moves and deletes stay.
+            var own = linked.Where(operation => operation.EntityId is not { } created ||
+                created == effect.CanonicalId || values.Contains(created.Value)).ToArray();
+            if (own.Length > 0) linked = own;
+        }
+        return linked.Select(operation => operation.OperationId.Value)
             .OrderBy(id => id, System.StringComparer.Ordinal).ToArray();
     }
 }

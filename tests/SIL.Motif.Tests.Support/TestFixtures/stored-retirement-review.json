@@ -1,113 +1,34 @@
 {
   "Applicable": true,
-  "DraftId": "AaEpyparMoBemn7db9LC7A",
+  "DraftId": "AaGew4o_qTyaFeVDs6gMlQ",
   "State": "review-ready",
-  "DryRunJobId": "job/AaEpypjmX4OJw9ineU_SpQ",
+  "DryRunJobId": "job/AaGew5FcWZFbWxEPsChcUA",
   "DryRun": {
-    "ProposalId": "AaEpyparMoBemn7db9LC7A",
-    "IntentDigest": "sha256:e97302e344fa587c5b161b69c29a2e13af23c096e0e36b4f322c54d7559b8d0f",
+    "ProposalId": "AaGew4o_qTyaFeVDs6gMlQ",
+    "IntentDigest": "sha256:dc289651675655dccc6e9dc9d9e3b5abefb33d49ff7c1a387d073fb3471635d9",
     "BaselineNote": "Footprint-scoped baseline read back from LibLCM on a single-use scratch copy (published Baseline directory \u003Cdir\u003E; 30 target object(s): \u003Cids\u003E).",
     "Effects": [
       {
-        "CanonicalId": "8cOfrESGQoyJldeHWDBYNQ",
-        "Field": "analysis/wfiMorphBundle/form",
-        "Changes": [
-          {
-            "Ws": "fr",
-            "Before": "ta",
-            "After": "ra"
-          }
-        ],
-        "OperationIds": [
-          "AaEpypfgytZjLPj5Wb6D4Q"
-        ]
-      },
-      {
-        "CanonicalId": "8cOfrESGQoyJldeHWDBYNQ",
-        "Field": "analysis/wfiMorphBundle/morph",
-        "Changes": [
-          {
-            "Ws": "ref",
-            "Before": "WeEP-t_tR-aQhjNCHzP-qg",
-            "After": "Jev4yFPZSnyf1qRCxA25ig"
-          }
-        ],
-        "OperationIds": [
-          "AaEpypfgytZjLPj5Wb6D4Q"
-        ]
-      },
-      {
-        "CanonicalId": "AaEpypVJJjNq24KMJSAsKA",
-        "Field": "grammar/phNCSegments/segments",
-        "Changes": [
-          {
-            "Ws": "AaEpypRSvzHUAORujHrQMA",
-            "Before": null,
-            "After": "AaEpypRSvzHUAORujHrQMA"
-          }
-        ],
-        "OperationIds": [
-          "AaEpypdKh7sKYBDPJ_7Vcw",
-          "AaEpypdL87EfkECrI8k78Q",
-          "AaEpypdLP4E-11HX1vI3Qg",
-          "AaEpypdLm9lZSNOXdq9Bpw"
-        ]
-      },
-      {
-        "CanonicalId": "AaEpypVJJjNq24KMJSAsKA",
-        "Field": "grammar/phNaturalClass/abbreviation",
-        "Changes": [
-          {
-            "Ws": "en",
-            "Before": null,
-            "After": "V"
-          }
-        ],
-        "OperationIds": [
-          "AaEpypdKh7sKYBDPJ_7Vcw",
-          "AaEpypdL87EfkECrI8k78Q",
-          "AaEpypdLP4E-11HX1vI3Qg",
-          "AaEpypdLm9lZSNOXdq9Bpw"
-        ]
-      },
-      {
-        "CanonicalId": "AaEpypVJJjNq24KMJSAsKA",
-        "Field": "grammar/phNaturalClass/name",
-        "Changes": [
-          {
-            "Ws": "en",
-            "Before": null,
-            "After": "vowels"
-          }
-        ],
-        "OperationIds": [
-          "AaEpypdKh7sKYBDPJ_7Vcw",
-          "AaEpypdL87EfkECrI8k78Q",
-          "AaEpypdLP4E-11HX1vI3Qg",
-          "AaEpypdLm9lZSNOXdq9Bpw"
-        ]
-      },
-      {
-        "CanonicalId": "AaEpypVJzEC0TaO5Wt3t1w",
+        "CanonicalId": "AaGew4B9RwMFcDo992qbkQ",
         "Field": "grammar/phRegularRule/rightHandSides",
         "Changes": [
           {
             "Ws": "0",
             "Before": null,
-            "After": "AaEpypdUBifhmHLs-Jrr1w"
+            "After": "AaGew4x2vEIott55i9OwSw"
           }
         ],
         "OperationIds": [
-          "AaEpypdQetCViaynvWVYYw",
-          "AaEpypdTAvio0FjCDyRn-A",
-          "AaEpypdTpwEXNfvf_FZBCQ",
-          "AaEpypdVAtyMFo49u4tTlQ",
-          "AaEpypdVGR9H21pR8RTipg",
-          "AaEpypdWzs7xUmC0T7yV2g"
+          "AaGew4x1TiyjWekkEI8PNQ",
+          "AaGew4x1udfRf6QmZuISeg",
+          "AaGew4x26LMLM4vAn-ORLQ",
+          "AaGew4x3YzfNtNtnPakQ4Q",
+          "AaGew4x4Axb5m3e05DqXeQ",
+          "AaGew4xyPFFZ-bOBXRFd1w"
         ]
       },
       {
-        "CanonicalId": "AaEpypVJzEC0TaO5Wt3t1w",
+        "CanonicalId": "AaGew4B9RwMFcDo992qbkQ",
         "Field": "grammar/phSegmentRule/direction",
         "Changes": [
           {
@@ -117,16 +38,16 @@
           }
         ],
         "OperationIds": [
-          "AaEpypdQetCViaynvWVYYw",
-          "AaEpypdTAvio0FjCDyRn-A",
-          "AaEpypdTpwEXNfvf_FZBCQ",
-          "AaEpypdVAtyMFo49u4tTlQ",
-          "AaEpypdVGR9H21pR8RTipg",
-          "AaEpypdWzs7xUmC0T7yV2g"
+          "AaGew4x1TiyjWekkEI8PNQ",
+          "AaGew4x1udfRf6QmZuISeg",
+          "AaGew4x26LMLM4vAn-ORLQ",
+          "AaGew4x3YzfNtNtnPakQ4Q",
+          "AaGew4x4Axb5m3e05DqXeQ",
+          "AaGew4xyPFFZ-bOBXRFd1w"
         ]
       },
       {
-        "CanonicalId": "AaEpypVJzEC0TaO5Wt3t1w",
+        "CanonicalId": "AaGew4B9RwMFcDo992qbkQ",
         "Field": "grammar/phSegmentRule/disabled",
         "Changes": [
           {
@@ -136,16 +57,16 @@
           }
         ],
         "OperationIds": [
-          "AaEpypdQetCViaynvWVYYw",
-          "AaEpypdTAvio0FjCDyRn-A",
-          "AaEpypdTpwEXNfvf_FZBCQ",
-          "AaEpypdVAtyMFo49u4tTlQ",
-          "AaEpypdVGR9H21pR8RTipg",
-          "AaEpypdWzs7xUmC0T7yV2g"
+          "AaGew4x1TiyjWekkEI8PNQ",
+          "AaGew4x1udfRf6QmZuISeg",
+          "AaGew4x26LMLM4vAn-ORLQ",
+          "AaGew4x3YzfNtNtnPakQ4Q",
+          "AaGew4x4Axb5m3e05DqXeQ",
+          "AaGew4xyPFFZ-bOBXRFd1w"
         ]
       },
       {
-        "CanonicalId": "AaEpypVJzEC0TaO5Wt3t1w",
+        "CanonicalId": "AaGew4B9RwMFcDo992qbkQ",
         "Field": "grammar/phSegmentRule/name",
         "Changes": [
           {
@@ -155,77 +76,128 @@
           }
         ],
         "OperationIds": [
-          "AaEpypdQetCViaynvWVYYw",
-          "AaEpypdTAvio0FjCDyRn-A",
-          "AaEpypdTpwEXNfvf_FZBCQ",
-          "AaEpypdVAtyMFo49u4tTlQ",
-          "AaEpypdVGR9H21pR8RTipg",
-          "AaEpypdWzs7xUmC0T7yV2g"
+          "AaGew4x1TiyjWekkEI8PNQ",
+          "AaGew4x1udfRf6QmZuISeg",
+          "AaGew4x26LMLM4vAn-ORLQ",
+          "AaGew4x3YzfNtNtnPakQ4Q",
+          "AaGew4x4Axb5m3e05DqXeQ",
+          "AaGew4xyPFFZ-bOBXRFd1w"
         ]
       },
       {
-        "CanonicalId": "AaEpypVJzEC0TaO5Wt3t1w",
+        "CanonicalId": "AaGew4B9RwMFcDo992qbkQ",
         "Field": "grammar/phSegmentRule/strucDesc",
         "Changes": [
           {
             "Ws": "0",
             "Before": null,
-            "After": "AaEpypdVUA-0rPlabouhIA"
+            "After": "AaGew4x3R6FG9zB2xAcr3A"
           }
         ],
         "OperationIds": [
-          "AaEpypdQetCViaynvWVYYw",
-          "AaEpypdTAvio0FjCDyRn-A",
-          "AaEpypdTpwEXNfvf_FZBCQ",
-          "AaEpypdVAtyMFo49u4tTlQ",
-          "AaEpypdVGR9H21pR8RTipg",
-          "AaEpypdWzs7xUmC0T7yV2g"
+          "AaGew4x1TiyjWekkEI8PNQ",
+          "AaGew4x1udfRf6QmZuISeg",
+          "AaGew4x26LMLM4vAn-ORLQ",
+          "AaGew4x3YzfNtNtnPakQ4Q",
+          "AaGew4x4Axb5m3e05DqXeQ",
+          "AaGew4xyPFFZ-bOBXRFd1w"
         ]
       },
       {
-        "CanonicalId": "AaEpypbnKEiDKXFlljKtbQ",
+        "CanonicalId": "AaGew4B9i0Nd7eVpEzYlKg",
+        "Field": "grammar/phNCSegments/segments",
+        "Changes": [
+          {
+            "Ws": "AaGew34Oye16f1eQROyVmA",
+            "Before": null,
+            "After": "AaGew34Oye16f1eQROyVmA"
+          }
+        ],
+        "OperationIds": [
+          "AaGew4xTD67YgKwkgCRxag",
+          "AaGew4xU9n2Y7NeLOj4Qjg",
+          "AaGew4xUFiM7wLkAVgfZFQ",
+          "AaGew4xUwaVzjtsK8D_nPQ"
+        ]
+      },
+      {
+        "CanonicalId": "AaGew4B9i0Nd7eVpEzYlKg",
+        "Field": "grammar/phNaturalClass/abbreviation",
+        "Changes": [
+          {
+            "Ws": "en",
+            "Before": null,
+            "After": "V"
+          }
+        ],
+        "OperationIds": [
+          "AaGew4xTD67YgKwkgCRxag",
+          "AaGew4xU9n2Y7NeLOj4Qjg",
+          "AaGew4xUFiM7wLkAVgfZFQ",
+          "AaGew4xUwaVzjtsK8D_nPQ"
+        ]
+      },
+      {
+        "CanonicalId": "AaGew4B9i0Nd7eVpEzYlKg",
+        "Field": "grammar/phNaturalClass/name",
+        "Changes": [
+          {
+            "Ws": "en",
+            "Before": null,
+            "After": "vowels"
+          }
+        ],
+        "OperationIds": [
+          "AaGew4xTD67YgKwkgCRxag",
+          "AaGew4xU9n2Y7NeLOj4Qjg",
+          "AaGew4xUFiM7wLkAVgfZFQ",
+          "AaGew4xUwaVzjtsK8D_nPQ"
+        ]
+      },
+      {
+        "CanonicalId": "AaGew4t-Xi9GQJOz9BLSIQ",
         "Field": "system/rnGenericRec/description",
         "Changes": [
           {
             "Ws": "0",
             "Before": null,
-            "After": "AaEpypbo3WwRdCX9MG2iRg"
+            "After": "AaGew4uErOvUPbYJpjx5GQ"
           }
         ],
         "OperationIds": [
-          "AaEpypbo2xTeP5NbId3tZg",
-          "AaEpypboHHiGWg8SCGrqDg",
-          "AaEpypboRdGrAhmsO21nUA",
-          "AaEpypbo_E_uQ54CK76crg",
-          "AaEpypboyFW-bfy6XKf8AA"
+          "AaGew4uEVRDhCOf-_NonCQ",
+          "AaGew4uEWHbSiXVsUZz1Fg",
+          "AaGew4uEoDFU0yQhADI4IQ",
+          "AaGew4uFI794nbh1JvunoA",
+          "AaGew4uG602MbwI9-93Gog"
         ]
       },
       {
-        "CanonicalId": "AaEpypbnKEiDKXFlljKtbQ",
+        "CanonicalId": "AaGew4t-Xi9GQJOz9BLSIQ",
         "Field": "system/rnGenericRec/motifJudgmentData",
         "Changes": [
           {
             "Ws": "text",
             "Before": null,
-            "After": "{\u0022actor\u0022:{\u0022id\u0022:null,\u0022kind\u0022:\u0022agent\u0022,\u0022name\u0022:null},\u0022body\u0022:{\u0022disposition\u0022:\u0022fix\u0022,\u0022evidenceContract\u0022:\u0022allo-alternation-family/v1\u0022,\u0022evidenceDigest\u0022:\u0022sha256:9e124a11639f8644cd932ea5a1be9b02f22384a49fda63997e6a8d934abe0799\u0022,\u0022kind\u0022:\u0022parsimony-disposition\u0022,\u0022measureCaption\u0022:\u0022Listed shapes share a rule\u0022,\u0022measureId\u0022:\u0022P-allo-alternation-family\u0022,\u0022question\u0022:null,\u0022subject\u0022:{\u0022kind\u0022:\u0022computed-group\u0022,\u0022measureId\u0022:\u0022P-allo-alternation-family\u0022,\u0022members\u0022:[{\u0022class\u0022:\u0022MoAffixAllomorph\u0022,\u0022id\u0022:\u0022Jev4yFPZSnyf1qRCxA25ig\u0022,\u0022owningEntryId\u0022:null},{\u0022class\u0022:\u0022MoAffixAllomorph\u0022,\u0022id\u0022:\u0022WeEP-t_tR-aQhjNCHzP-qg\u0022,\u0022owningEntryId\u0022:null},{\u0022class\u0022:\u0022MoAffixAllomorph\u0022,\u0022id\u0022:\u0022w91KIi5fSW-mj-jLGoYMJg\u0022,\u0022owningEntryId\u0022:null},{\u0022class\u0022:\u0022MoAffixAllomorph\u0022,\u0022id\u0022:\u0022wFOMSiYERuqS4lA_kJ3rAg\u0022,\u0022owningEntryId\u0022:null}],\u0022role\u0022:\u0022alternation-family\u0022},\u0022subjectCaption\u0022:\u0022allomorphs in the alternation family: ra, ta, ta, ra\u0022},\u0022contentHash\u0022:\u0022sha256:c3c266fb32f318ec4489b7ed7e55efcdcd695a3c0b4dae6a460eef87575547fe\u0022,\u0022extensions\u0022:null,\u0022format\u0022:\u0022motif-human-judgment\u0022,\u0022judgedAtUtc\u0022:null,\u0022judgmentId\u0022:\u0022AaEpypbomuuEfFGeP-LfUw\u0022,\u0022projectId\u0022:\u0022ccmOxBJlRP-2jYeUjsFzfw\u0022,\u0022readableFormat\u0022:\u0022en-v1\u0022,\u0022replaces\u0022:[],\u0022resolvesConflict\u0022:false,\u0022revisionId\u0022:\u0022AaEpypbnKEiDKXFlljKtbQ\u0022,\u0022source\u0022:{\u0022proposalId\u0022:\u0022AaEpyparMoBemn7db9LC7A\u0022,\u0022reportId\u0022:\u0022report/AaEpypaGeMA6ThyPxYa_GQ\u0022},\u0022version\u0022:1}"
+            "After": "{\u0022actor\u0022:{\u0022id\u0022:null,\u0022kind\u0022:\u0022agent\u0022,\u0022name\u0022:null},\u0022body\u0022:{\u0022disposition\u0022:\u0022fix\u0022,\u0022evidenceContract\u0022:\u0022allo-alternation-family/v1\u0022,\u0022evidenceDigest\u0022:\u0022sha256:140086a88d0ad901daf993a83516703c91c0169e59872cea8f2e8f025c067406\u0022,\u0022kind\u0022:\u0022parsimony-disposition\u0022,\u0022measureCaption\u0022:\u0022Listed shapes share a rule\u0022,\u0022measureId\u0022:\u0022P-allo-alternation-family\u0022,\u0022question\u0022:null,\u0022subject\u0022:{\u0022kind\u0022:\u0022computed-group\u0022,\u0022measureId\u0022:\u0022P-allo-alternation-family\u0022,\u0022members\u0022:[{\u0022class\u0022:\u0022MoAffixAllomorph\u0022,\u0022id\u0022:\u00223hB_hMIhT3qMKz2srZyPxw\u0022,\u0022owningEntryId\u0022:null},{\u0022class\u0022:\u0022MoAffixAllomorph\u0022,\u0022id\u0022:\u0022HPsLg8DcSdaFmhrt06WK9g\u0022,\u0022owningEntryId\u0022:null},{\u0022class\u0022:\u0022MoAffixAllomorph\u0022,\u0022id\u0022:\u0022dCLIkmxvR7-z5sxty9t3RA\u0022,\u0022owningEntryId\u0022:null},{\u0022class\u0022:\u0022MoAffixAllomorph\u0022,\u0022id\u0022:\u0022uTpcUXLFRlSDx3u_orN01Q\u0022,\u0022owningEntryId\u0022:null}],\u0022role\u0022:\u0022alternation-family\u0022},\u0022subjectCaption\u0022:\u0022allomorphs in the alternation family: ra, ta, ta, ra\u0022},\u0022contentHash\u0022:\u0022sha256:ab5600c5b3163f075daecdbc7fb16771b9c53b552eb5c3588be1913bfdfd0152\u0022,\u0022extensions\u0022:null,\u0022format\u0022:\u0022motif-human-judgment\u0022,\u0022judgedAtUtc\u0022:null,\u0022judgmentId\u0022:\u0022AaGew4uAxNEQsaoFCrWDXg\u0022,\u0022projectId\u0022:\u0022xmuJ6O_6TPGO0wMeftJ3uw\u0022,\u0022readableFormat\u0022:\u0022en-v1\u0022,\u0022replaces\u0022:[],\u0022resolvesConflict\u0022:false,\u0022revisionId\u0022:\u0022AaGew4t-Xi9GQJOz9BLSIQ\u0022,\u0022source\u0022:{\u0022proposalId\u0022:\u0022AaGew4o_qTyaFeVDs6gMlQ\u0022,\u0022reportId\u0022:\u0022report/AaGew4het9TdzVMdytZ9ZQ\u0022},\u0022version\u0022:1}"
           }
         ],
         "OperationIds": [
-          "AaEpypbo2xTeP5NbId3tZg",
-          "AaEpypboHHiGWg8SCGrqDg",
-          "AaEpypboRdGrAhmsO21nUA",
-          "AaEpypbo_E_uQ54CK76crg",
-          "AaEpypboyFW-bfy6XKf8AA"
+          "AaGew4uEVRDhCOf-_NonCQ",
+          "AaGew4uEWHbSiXVsUZz1Fg",
+          "AaGew4uEoDFU0yQhADI4IQ",
+          "AaGew4uFI794nbh1JvunoA",
+          "AaGew4uG602MbwI9-93Gog"
         ]
       },
       {
-        "CanonicalId": "AaEpypbnKEiDKXFlljKtbQ",
+        "CanonicalId": "AaGew4t-Xi9GQJOz9BLSIQ",
         "Field": "system/rnGenericRec/title",
         "Changes": [
           {
             "Ws": "text",
             "Before": null,
-            "After": "Fix: allomorphs in the alternation family: ra, ta, ta, ra (MJ-HWWV-87P6)"
+            "After": "Fix: allomorphs in the alternation family: ra, ta, ta, ra (MJ-8190-SJEP)"
           },
           {
             "Ws": "ws",
@@ -234,85 +206,64 @@
           }
         ],
         "OperationIds": [
-          "AaEpypbo2xTeP5NbId3tZg",
-          "AaEpypboHHiGWg8SCGrqDg",
-          "AaEpypboRdGrAhmsO21nUA",
-          "AaEpypbo_E_uQ54CK76crg",
-          "AaEpypboyFW-bfy6XKf8AA"
+          "AaGew4uEVRDhCOf-_NonCQ",
+          "AaGew4uEWHbSiXVsUZz1Fg",
+          "AaGew4uEoDFU0yQhADI4IQ",
+          "AaGew4uFI794nbh1JvunoA",
+          "AaGew4uG602MbwI9-93Gog"
         ]
       },
       {
-        "CanonicalId": "AaEpypbnKEiDKXFlljKtbQ",
+        "CanonicalId": "AaGew4t-Xi9GQJOz9BLSIQ",
         "Field": "system/rnGenericRec/type",
         "Changes": [
           {
             "Ws": "ref",
             "Before": null,
-            "After": "aOsm2UQ5Q6SMxpg17UEj9Q"
+            "After": "9OSaN0blTPe2OzPs7kQPAg"
           }
         ],
         "OperationIds": [
-          "AaEpypbo2xTeP5NbId3tZg",
-          "AaEpypboHHiGWg8SCGrqDg",
-          "AaEpypboRdGrAhmsO21nUA",
-          "AaEpypbo_E_uQ54CK76crg",
-          "AaEpypboyFW-bfy6XKf8AA"
+          "AaGew4uEVRDhCOf-_NonCQ",
+          "AaGew4uEWHbSiXVsUZz1Fg",
+          "AaGew4uEoDFU0yQhADI4IQ",
+          "AaGew4uFI794nbh1JvunoA",
+          "AaGew4uG602MbwI9-93Gog"
         ]
       },
       {
-        "CanonicalId": "AaEpypbo33zLsygOwvRRNA",
-        "Field": "analysis/stTxtPara/contents",
-        "Changes": [
-          {
-            "Ws": "text",
-            "Before": null,
-            "After": "Stage the rule that replaces this alternation."
-          },
-          {
-            "Ws": "ws",
-            "Before": null,
-            "After": "en"
-          }
-        ],
-        "OperationIds": [
-          "AaEpypbo1eBOXuz4v3cUoA",
-          "AaEpypbo4fwfLO4Tha9tEg"
-        ]
-      },
-      {
-        "CanonicalId": "AaEpypbo3WwRdCX9MG2iRg",
-        "Field": "system/stText/paragraphs",
-        "Changes": [
-          {
-            "Ws": "0",
-            "Before": null,
-            "After": "AaEpypbouOMxvEMgEtJ9Eg"
-          }
-        ],
-        "OperationIds": [
-          "AaEpypbo1eBOXuz4v3cUoA",
-          "AaEpypbo2xTeP5NbId3tZg",
-          "AaEpypbogCHncZbk3edsVw"
-        ]
-      },
-      {
-        "CanonicalId": "AaEpypbo3WwRdCX9MG2iRg",
+        "CanonicalId": "AaGew4uErOvUPbYJpjx5GQ",
         "Field": "system/stText/paragraphs",
         "Changes": [
           {
             "Ws": "1",
             "Before": null,
-            "After": "AaEpypbo33zLsygOwvRRNA"
+            "After": "AaGew4uGH4Arj1IkD2m6Hw"
           }
         ],
         "OperationIds": [
-          "AaEpypbo1eBOXuz4v3cUoA",
-          "AaEpypbo2xTeP5NbId3tZg",
-          "AaEpypbogCHncZbk3edsVw"
+          "AaGew4uEWHbSiXVsUZz1Fg",
+          "AaGew4uF1BDouNU_5-WshA",
+          "AaGew4uGiX7prFmx5ns3ag"
         ]
       },
       {
-        "CanonicalId": "AaEpypbouOMxvEMgEtJ9Eg",
+        "CanonicalId": "AaGew4uErOvUPbYJpjx5GQ",
+        "Field": "system/stText/paragraphs",
+        "Changes": [
+          {
+            "Ws": "0",
+            "Before": null,
+            "After": "AaGew4uFu5SWPP53vJ0p4w"
+          }
+        ],
+        "OperationIds": [
+          "AaGew4uEWHbSiXVsUZz1Fg",
+          "AaGew4uF1BDouNU_5-WshA"
+        ]
+      },
+      {
+        "CanonicalId": "AaGew4uFu5SWPP53vJ0p4w",
         "Field": "analysis/stTxtPara/contents",
         "Changes": [
           {
@@ -327,151 +278,171 @@
           }
         ],
         "OperationIds": [
-          "AaEpypboNnDksthjsHPo7w",
-          "AaEpypbogCHncZbk3edsVw"
+          "AaGew4uF1BDouNU_5-WshA",
+          "AaGew4uGYhrFjNWXw4VRwg"
         ]
       },
       {
-        "CanonicalId": "AaEpypdUBifhmHLs-Jrr1w",
+        "CanonicalId": "AaGew4uGH4Arj1IkD2m6Hw",
+        "Field": "analysis/stTxtPara/contents",
+        "Changes": [
+          {
+            "Ws": "text",
+            "Before": null,
+            "After": "Stage the rule that replaces this alternation."
+          },
+          {
+            "Ws": "ws",
+            "Before": null,
+            "After": "en"
+          }
+        ],
+        "OperationIds": [
+          "AaGew4uGJAQEoLVmvg1hNA",
+          "AaGew4uGiX7prFmx5ns3ag"
+        ]
+      },
+      {
+        "CanonicalId": "AaGew4x2vEIott55i9OwSw",
         "Field": "grammar/phSegRuleRHS/leftContext",
         "Changes": [
           {
             "Ws": "0",
             "Before": null,
-            "After": "AaEpypdWv8dPXSzZjJ48qg"
+            "After": "AaGew4x4YRy8XnbnPZ952A"
           }
         ],
         "OperationIds": [
-          "AaEpypdV1F6soQVwuWDvVw",
-          "AaEpypdVGR9H21pR8RTipg",
-          "AaEpypdW_N880wLK8AADkw",
-          "AaEpypdWcsJgf38bu58QjQ"
+          "AaGew4x26LMLM4vAn-ORLQ",
+          "AaGew4x3-xhPL9LouHczKA",
+          "AaGew4x4FdZUkEcTt3vEpw",
+          "AaGew4x4eIio1LgAEoNA3w"
         ]
       },
       {
-        "CanonicalId": "AaEpypdUBifhmHLs-Jrr1w",
+        "CanonicalId": "AaGew4x2vEIott55i9OwSw",
         "Field": "grammar/phSegRuleRHS/rightContext",
         "Changes": [
           {
             "Ws": "0",
             "Before": null,
-            "After": "AaEpypdWCorekiTBmlQNNg"
+            "After": "AaGew4x46_wWtrZeXcri3g"
           }
         ],
         "OperationIds": [
-          "AaEpypdV1F6soQVwuWDvVw",
-          "AaEpypdVGR9H21pR8RTipg",
-          "AaEpypdW_N880wLK8AADkw",
-          "AaEpypdWcsJgf38bu58QjQ"
+          "AaGew4x26LMLM4vAn-ORLQ",
+          "AaGew4x3-xhPL9LouHczKA",
+          "AaGew4x4FdZUkEcTt3vEpw",
+          "AaGew4x4eIio1LgAEoNA3w"
         ]
       },
       {
-        "CanonicalId": "AaEpypdUBifhmHLs-Jrr1w",
+        "CanonicalId": "AaGew4x2vEIott55i9OwSw",
         "Field": "grammar/phSegRuleRHS/strucChange",
         "Changes": [
           {
             "Ws": "0",
             "Before": null,
-            "After": "AaEpypdVx02sK7mpa2_9rQ"
+            "After": "AaGew4x3DstKIkv88PzKBw"
           }
         ],
         "OperationIds": [
-          "AaEpypdV1F6soQVwuWDvVw",
-          "AaEpypdVGR9H21pR8RTipg",
-          "AaEpypdW_N880wLK8AADkw",
-          "AaEpypdWcsJgf38bu58QjQ"
+          "AaGew4x26LMLM4vAn-ORLQ",
+          "AaGew4x3-xhPL9LouHczKA",
+          "AaGew4x4FdZUkEcTt3vEpw",
+          "AaGew4x4eIio1LgAEoNA3w"
         ]
       },
       {
-        "CanonicalId": "AaEpypdVUA-0rPlabouhIA",
+        "CanonicalId": "AaGew4x3DstKIkv88PzKBw",
         "Field": "grammar/phSimpleContextSeg/featureStructure",
         "Changes": [
           {
             "Ws": "ref",
             "Before": null,
-            "After": "AaEpypQjflPDk6DZ72g0Zg"
+            "After": "AaGew33chEMD0QAOF3jLJA"
           }
         ],
         "OperationIds": [
-          "AaEpypdVAtyMFo49u4tTlQ",
-          "AaEpypdVbnmgcYd5ODRh_w"
+          "AaGew4x3-xhPL9LouHczKA",
+          "AaGew4x3TSCQJTfLBhuM_Q"
         ]
       },
       {
-        "CanonicalId": "AaEpypdVx02sK7mpa2_9rQ",
+        "CanonicalId": "AaGew4x3R6FG9zB2xAcr3A",
         "Field": "grammar/phSimpleContextSeg/featureStructure",
         "Changes": [
           {
             "Ws": "ref",
             "Before": null,
-            "After": "AaEpypQ1ZwkdXDmlZY92eg"
+            "After": "AaGew3x4yHaM0tc3q4Nupw"
           }
         ],
         "OperationIds": [
-          "AaEpypdV1F6soQVwuWDvVw",
-          "AaEpypdVk5E8bkt5v-66fw"
+          "AaGew4x3WAQfI8StpMHrKg",
+          "AaGew4x3YzfNtNtnPakQ4Q"
         ]
       },
       {
-        "CanonicalId": "AaEpypdWCorekiTBmlQNNg",
+        "CanonicalId": "AaGew4x46_wWtrZeXcri3g",
         "Field": "grammar/phSimpleContextNC/featureStructure",
         "Changes": [
           {
             "Ws": "ref",
             "Before": null,
-            "After": "AaEpypVJJjNq24KMJSAsKA"
+            "After": "AaGew4B9i0Nd7eVpEzYlKg"
           }
         ],
         "OperationIds": [
-          "AaEpypdWS6WICaaC_KD9Qg",
-          "AaEpypdWcsJgf38bu58QjQ"
+          "AaGew4x4FdZUkEcTt3vEpw",
+          "AaGew4x4xA04p183F97PCg"
         ]
       },
       {
-        "CanonicalId": "AaEpypdWv8dPXSzZjJ48qg",
+        "CanonicalId": "AaGew4x4YRy8XnbnPZ952A",
         "Field": "grammar/phSimpleContextSeg/featureStructure",
         "Changes": [
           {
             "Ws": "ref",
             "Before": null,
-            "After": "AaEpypRSvzHUAORujHrQMA"
+            "After": "AaGew34Oye16f1eQROyVmA"
           }
         ],
         "OperationIds": [
-          "AaEpypdW_N880wLK8AADkw",
-          "AaEpypdWuxa8993v_UwMSw"
+          "AaGew4x4eIio1LgAEoNA3w",
+          "AaGew4x4w_siZp07lLHXjA"
         ]
       },
       {
-        "CanonicalId": "FEcYuglESq6XJ1gzPSejHA",
-        "Field": "lexical/lexEntry/alternateForms",
-        "Changes": [
-          {
-            "Ws": "0000000000",
-            "Before": "wFOMSiYERuqS4lA_kJ3rAg",
-            "After": null
-          }
-        ],
-        "OperationIds": [
-          "AaEpypfDv0abut1IAkM8aA"
-        ]
-      },
-      {
-        "CanonicalId": "NfanxcWRSeisilusQ-ZCcA",
+        "CanonicalId": "Fps96Vv1R0CferpZUgLYQA",
         "Field": "system/rnResearchNbk/records",
         "Changes": [
           {
             "Ws": "ref",
             "Before": null,
-            "After": "AaEpypbnKEiDKXFlljKtbQ"
+            "After": "AaGew4t-Xi9GQJOz9BLSIQ"
           }
         ],
         "OperationIds": [
-          "AaEpypboyFW-bfy6XKf8AA"
+          "AaGew4uEVRDhCOf-_NonCQ"
         ]
       },
       {
-        "CanonicalId": "TsyXkXJxQia0qGzlBvjSeA",
+        "CanonicalId": "LEmDq-F0TJS22j3B3MHo_Q",
+        "Field": "lexical/lexEntry/alternateForms",
+        "Changes": [
+          {
+            "Ws": "0000000000",
+            "Before": "uTpcUXLFRlSDx3u_orN01Q",
+            "After": null
+          }
+        ],
+        "OperationIds": [
+          "AaGew40oRN6oyncGjlbaJg"
+        ]
+      },
+      {
+        "CanonicalId": "Nv4mEoHVQvSpyI7g310hQQ",
         "Field": "analysis/wfiMorphBundle/form",
         "Changes": [
           {
@@ -481,572 +452,521 @@
           }
         ],
         "OperationIds": [
-          "AaEpype_JXKhdWYkOX9hSA"
+          "AaGew41SZ467EIF5_yRb9g"
         ]
       },
       {
-        "CanonicalId": "TsyXkXJxQia0qGzlBvjSeA",
+        "CanonicalId": "Nv4mEoHVQvSpyI7g310hQQ",
         "Field": "analysis/wfiMorphBundle/morph",
         "Changes": [
           {
             "Ws": "ref",
-            "Before": "wFOMSiYERuqS4lA_kJ3rAg",
-            "After": "w91KIi5fSW-mj-jLGoYMJg"
+            "Before": "dCLIkmxvR7-z5sxty9t3RA",
+            "After": "3hB_hMIhT3qMKz2srZyPxw"
           }
         ],
         "OperationIds": [
-          "AaEpype_JXKhdWYkOX9hSA"
+          "AaGew41SZ467EIF5_yRb9g"
         ]
       },
       {
-        "CanonicalId": "XO_jauQUQ1Ko5L0vauLk8g",
+        "CanonicalId": "YyHbcYgHREeqsFn1fx98fg",
         "Field": "lexical/lexEntry/alternateForms",
         "Changes": [
           {
             "Ws": "0000000000",
-            "Before": "WeEP-t_tR-aQhjNCHzP-qg",
+            "Before": "dCLIkmxvR7-z5sxty9t3RA",
             "After": null
           }
         ],
         "OperationIds": [
-          "AaEpypfgKspxzEb77fHLCA"
+          "AaGew41T7QK1yvMuWyjA5w"
         ]
       },
       {
-        "CanonicalId": "zaTcwq9iTTmOGHBKpVcQvQ",
+        "CanonicalId": "_nlFVEEpSpSd-bo6Fulxxg",
         "Field": "grammar/phPhonData/naturalClasses",
         "Changes": [
           {
             "Ws": "0",
             "Before": null,
-            "After": "AaEpypVJJjNq24KMJSAsKA"
+            "After": "AaGew4B9i0Nd7eVpEzYlKg"
           }
         ],
         "OperationIds": [
-          "AaEpypdKh7sKYBDPJ_7Vcw",
-          "AaEpypdQetCViaynvWVYYw"
+          "AaGew4xTD67YgKwkgCRxag",
+          "AaGew4xyPFFZ-bOBXRFd1w"
         ]
       },
       {
-        "CanonicalId": "zaTcwq9iTTmOGHBKpVcQvQ",
+        "CanonicalId": "_nlFVEEpSpSd-bo6Fulxxg",
         "Field": "grammar/phPhonData/phonRules",
         "Changes": [
           {
             "Ws": "0",
             "Before": null,
-            "After": "AaEpypVJzEC0TaO5Wt3t1w"
+            "After": "AaGew4B9RwMFcDo992qbkQ"
           }
         ],
         "OperationIds": [
-          "AaEpypdKh7sKYBDPJ_7Vcw",
-          "AaEpypdQetCViaynvWVYYw"
+          "AaGew4xTD67YgKwkgCRxag",
+          "AaGew4xyPFFZ-bOBXRFd1w"
+        ]
+      },
+      {
+        "CanonicalId": "gb9TDcFDSQ6kIlaVo_5Ucg",
+        "Field": "analysis/wfiMorphBundle/form",
+        "Changes": [
+          {
+            "Ws": "fr",
+            "Before": "ta",
+            "After": "ra"
+          }
+        ],
+        "OperationIds": [
+          "AaGew40fh_Xup7Mv8Rk7rQ"
+        ]
+      },
+      {
+        "CanonicalId": "gb9TDcFDSQ6kIlaVo_5Ucg",
+        "Field": "analysis/wfiMorphBundle/morph",
+        "Changes": [
+          {
+            "Ws": "ref",
+            "Before": "uTpcUXLFRlSDx3u_orN01Q",
+            "After": "HPsLg8DcSdaFmhrt06WK9g"
+          }
+        ],
+        "OperationIds": [
+          "AaGew40fh_Xup7Mv8Rk7rQ"
         ]
       }
     ],
-    "EffectDigest": "sha256:04dabcc0482fc4cd40de7a7d5d4c71390a3b6425c3befbdebc0bfa9de2cb3fda",
-    "FootprintDigest": "sha256:526a20fb241db0b11306fd603adf89737a68b67c024d07be01a92f500b121164",
+    "EffectDigest": "sha256:da2aeb2e9bd22cb7d7bcf4f1f31cef2be30e6d3b3280a0280de1b662bedd829e",
+    "FootprintDigest": "sha256:26925558016f9aea1c9d956a847e200332fe6790a7f335d7270e342b663af617",
     "Baseline": null,
     "EvidenceCurrent": false,
     "Operations": [
       {
-        "OperationId": "AaEpypboyFW-bfy6XKf8AA",
+        "OperationId": "AaGew4uEVRDhCOf-_NonCQ",
         "Kind": "system/rnResearchNbk/createRecords",
-        "Target": "NfanxcWRSeisilusQ-ZCcA",
-        "EntityId": "AaEpypbnKEiDKXFlljKtbQ",
+        "Target": "Fps96Vv1R0CferpZUgLYQA",
+        "EntityId": "AaGew4t-Xi9GQJOz9BLSIQ",
         "DependsOn": [],
         "AfterJson": "{}",
         "Citation": null
       },
       {
-        "OperationId": "AaEpypdKh7sKYBDPJ_7Vcw",
+        "OperationId": "AaGew4xTD67YgKwkgCRxag",
         "Kind": "grammar/phPhonData/createNaturalClasses",
-        "Target": "zaTcwq9iTTmOGHBKpVcQvQ",
-        "EntityId": "AaEpypVJJjNq24KMJSAsKA",
+        "Target": "_nlFVEEpSpSd-bo6Fulxxg",
+        "EntityId": "AaGew4B9i0Nd7eVpEzYlKg",
         "DependsOn": [],
         "AfterJson": "{\n        \u0022class\u0022: \u0022PhNCSegments\u0022\n      }",
         "Citation": null
       },
       {
-        "OperationId": "AaEpypbo2xTeP5NbId3tZg",
+        "OperationId": "AaGew4uEWHbSiXVsUZz1Fg",
         "Kind": "system/rnGenericRec/createDescription",
-        "Target": "AaEpypbnKEiDKXFlljKtbQ",
-        "EntityId": "AaEpypbo3WwRdCX9MG2iRg",
+        "Target": "AaGew4t-Xi9GQJOz9BLSIQ",
+        "EntityId": "AaGew4uErOvUPbYJpjx5GQ",
         "DependsOn": [
-          "AaEpypboyFW-bfy6XKf8AA"
+          "AaGew4uEVRDhCOf-_NonCQ"
         ],
         "AfterJson": "{}",
         "Citation": null
       },
       {
-        "OperationId": "AaEpypboHHiGWg8SCGrqDg",
+        "OperationId": "AaGew4uEoDFU0yQhADI4IQ",
         "Kind": "system/rnGenericRec/setType",
-        "Target": "AaEpypbnKEiDKXFlljKtbQ",
+        "Target": "AaGew4t-Xi9GQJOz9BLSIQ",
         "EntityId": null,
         "DependsOn": [
-          "AaEpypboyFW-bfy6XKf8AA"
+          "AaGew4uEVRDhCOf-_NonCQ"
         ],
-        "AfterJson": "{\n        \u0022ref\u0022: \u0022aOsm2UQ5Q6SMxpg17UEj9Q\u0022\n      }",
+        "AfterJson": "{\n        \u0022ref\u0022: \u00229OSaN0blTPe2OzPs7kQPAg\u0022\n      }",
         "Citation": null
       },
       {
-        "OperationId": "AaEpypboRdGrAhmsO21nUA",
-        "Kind": "system/rnGenericRec/setMotifHumanJudgment",
-        "Target": "AaEpypbnKEiDKXFlljKtbQ",
-        "EntityId": null,
-        "DependsOn": [
-          "AaEpypboyFW-bfy6XKf8AA"
-        ],
-        "AfterJson": "{\n        \u0022text\u0022: \u0022{\\u0022actor\\u0022:{\\u0022id\\u0022:null,\\u0022kind\\u0022:\\u0022agent\\u0022,\\u0022name\\u0022:null},\\u0022body\\u0022:{\\u0022disposition\\u0022:\\u0022fix\\u0022,\\u0022evidenceContract\\u0022:\\u0022allo-alternation-family/v1\\u0022,\\u0022evidenceDigest\\u0022:\\u0022sha256:9e124a11639f8644cd932ea5a1be9b02f22384a49fda63997e6a8d934abe0799\\u0022,\\u0022kind\\u0022:\\u0022parsimony-disposition\\u0022,\\u0022measureCaption\\u0022:\\u0022Listed shapes share a rule\\u0022,\\u0022measureId\\u0022:\\u0022P-allo-alternation-family\\u0022,\\u0022question\\u0022:null,\\u0022subject\\u0022:{\\u0022kind\\u0022:\\u0022computed-group\\u0022,\\u0022measureId\\u0022:\\u0022P-allo-alternation-family\\u0022,\\u0022members\\u0022:[{\\u0022class\\u0022:\\u0022MoAffixAllomorph\\u0022,\\u0022id\\u0022:\\u0022Jev4yFPZSnyf1qRCxA25ig\\u0022,\\u0022owningEntryId\\u0022:null},{\\u0022class\\u0022:\\u0022MoAffixAllomorph\\u0022,\\u0022id\\u0022:\\u0022WeEP-t_tR-aQhjNCHzP-qg\\u0022,\\u0022owningEntryId\\u0022:null},{\\u0022class\\u0022:\\u0022MoAffixAllomorph\\u0022,\\u0022id\\u0022:\\u0022w91KIi5fSW-mj-jLGoYMJg\\u0022,\\u0022owningEntryId\\u0022:null},{\\u0022class\\u0022:\\u0022MoAffixAllomorph\\u0022,\\u0022id\\u0022:\\u0022wFOMSiYERuqS4lA_kJ3rAg\\u0022,\\u0022owningEntryId\\u0022:null}],\\u0022role\\u0022:\\u0022alternation-family\\u0022},\\u0022subjectCaption\\u0022:\\u0022allomorphs in the alternation family: ra, ta, ta, ra\\u0022},\\u0022contentHash\\u0022:\\u0022sha256:c3c266fb32f318ec4489b7ed7e55efcdcd695a3c0b4dae6a460eef87575547fe\\u0022,\\u0022extensions\\u0022:null,\\u0022format\\u0022:\\u0022motif-human-judgment\\u0022,\\u0022judgedAtUtc\\u0022:null,\\u0022judgmentId\\u0022:\\u0022AaEpypbomuuEfFGeP-LfUw\\u0022,\\u0022projectId\\u0022:\\u0022ccmOxBJlRP-2jYeUjsFzfw\\u0022,\\u0022readableFormat\\u0022:\\u0022en-v1\\u0022,\\u0022replaces\\u0022:[],\\u0022resolvesConflict\\u0022:false,\\u0022revisionId\\u0022:\\u0022AaEpypbnKEiDKXFlljKtbQ\\u0022,\\u0022source\\u0022:{\\u0022proposalId\\u0022:\\u0022AaEpyparMoBemn7db9LC7A\\u0022,\\u0022reportId\\u0022:\\u0022report/AaEpypaGeMA6ThyPxYa_GQ\\u0022},\\u0022version\\u0022:1}\u0022\n      }",
-        "Citation": null
-      },
-      {
-        "OperationId": "AaEpypbo_E_uQ54CK76crg",
+        "OperationId": "AaGew4uFI794nbh1JvunoA",
         "Kind": "system/rnGenericRec/setTitle",
-        "Target": "AaEpypbnKEiDKXFlljKtbQ",
+        "Target": "AaGew4t-Xi9GQJOz9BLSIQ",
         "EntityId": null,
         "DependsOn": [
-          "AaEpypboyFW-bfy6XKf8AA"
+          "AaGew4uEVRDhCOf-_NonCQ"
         ],
-        "AfterJson": "{\n        \u0022ws\u0022: \u0022en\u0022,\n        \u0022text\u0022: \u0022Fix: allomorphs in the alternation family: ra, ta, ta, ra (MJ-HWWV-87P6)\u0022\n      }",
+        "AfterJson": "{\n        \u0022ws\u0022: \u0022en\u0022,\n        \u0022text\u0022: \u0022Fix: allomorphs in the alternation family: ra, ta, ta, ra (MJ-8190-SJEP)\u0022\n      }",
         "Citation": null
       },
       {
-        "OperationId": "AaEpypdL87EfkECrI8k78Q",
-        "Kind": "grammar/phNCSegments/addRefSegments",
-        "Target": "AaEpypVJJjNq24KMJSAsKA",
+        "OperationId": "AaGew4uG602MbwI9-93Gog",
+        "Kind": "system/rnGenericRec/setMotifHumanJudgment",
+        "Target": "AaGew4t-Xi9GQJOz9BLSIQ",
         "EntityId": null,
         "DependsOn": [
-          "AaEpypdKh7sKYBDPJ_7Vcw"
+          "AaGew4uEVRDhCOf-_NonCQ"
         ],
-        "AfterJson": "{\n        \u0022member\u0022: \u0022AaEpypRSvzHUAORujHrQMA\u0022\n      }",
+        "AfterJson": "{\n        \u0022text\u0022: \u0022{\\u0022actor\\u0022:{\\u0022id\\u0022:null,\\u0022kind\\u0022:\\u0022agent\\u0022,\\u0022name\\u0022:null},\\u0022body\\u0022:{\\u0022disposition\\u0022:\\u0022fix\\u0022,\\u0022evidenceContract\\u0022:\\u0022allo-alternation-family/v1\\u0022,\\u0022evidenceDigest\\u0022:\\u0022sha256:140086a88d0ad901daf993a83516703c91c0169e59872cea8f2e8f025c067406\\u0022,\\u0022kind\\u0022:\\u0022parsimony-disposition\\u0022,\\u0022measureCaption\\u0022:\\u0022Listed shapes share a rule\\u0022,\\u0022measureId\\u0022:\\u0022P-allo-alternation-family\\u0022,\\u0022question\\u0022:null,\\u0022subject\\u0022:{\\u0022kind\\u0022:\\u0022computed-group\\u0022,\\u0022measureId\\u0022:\\u0022P-allo-alternation-family\\u0022,\\u0022members\\u0022:[{\\u0022class\\u0022:\\u0022MoAffixAllomorph\\u0022,\\u0022id\\u0022:\\u00223hB_hMIhT3qMKz2srZyPxw\\u0022,\\u0022owningEntryId\\u0022:null},{\\u0022class\\u0022:\\u0022MoAffixAllomorph\\u0022,\\u0022id\\u0022:\\u0022HPsLg8DcSdaFmhrt06WK9g\\u0022,\\u0022owningEntryId\\u0022:null},{\\u0022class\\u0022:\\u0022MoAffixAllomorph\\u0022,\\u0022id\\u0022:\\u0022dCLIkmxvR7-z5sxty9t3RA\\u0022,\\u0022owningEntryId\\u0022:null},{\\u0022class\\u0022:\\u0022MoAffixAllomorph\\u0022,\\u0022id\\u0022:\\u0022uTpcUXLFRlSDx3u_orN01Q\\u0022,\\u0022owningEntryId\\u0022:null}],\\u0022role\\u0022:\\u0022alternation-family\\u0022},\\u0022subjectCaption\\u0022:\\u0022allomorphs in the alternation family: ra, ta, ta, ra\\u0022},\\u0022contentHash\\u0022:\\u0022sha256:ab5600c5b3163f075daecdbc7fb16771b9c53b552eb5c3588be1913bfdfd0152\\u0022,\\u0022extensions\\u0022:null,\\u0022format\\u0022:\\u0022motif-human-judgment\\u0022,\\u0022judgedAtUtc\\u0022:null,\\u0022judgmentId\\u0022:\\u0022AaGew4uAxNEQsaoFCrWDXg\\u0022,\\u0022projectId\\u0022:\\u0022xmuJ6O_6TPGO0wMeftJ3uw\\u0022,\\u0022readableFormat\\u0022:\\u0022en-v1\\u0022,\\u0022replaces\\u0022:[],\\u0022resolvesConflict\\u0022:false,\\u0022revisionId\\u0022:\\u0022AaGew4t-Xi9GQJOz9BLSIQ\\u0022,\\u0022source\\u0022:{\\u0022proposalId\\u0022:\\u0022AaGew4o_qTyaFeVDs6gMlQ\\u0022,\\u0022reportId\\u0022:\\u0022report/AaGew4het9TdzVMdytZ9ZQ\\u0022},\\u0022version\\u0022:1}\u0022\n      }",
         "Citation": null
       },
       {
-        "OperationId": "AaEpypdLP4E-11HX1vI3Qg",
-        "Kind": "grammar/phNaturalClass/setAbbreviation",
-        "Target": "AaEpypVJJjNq24KMJSAsKA",
-        "EntityId": null,
-        "DependsOn": [
-          "AaEpypdKh7sKYBDPJ_7Vcw"
-        ],
-        "AfterJson": "{\n        \u0022ws\u0022: \u0022en\u0022,\n        \u0022text\u0022: \u0022V\u0022\n      }",
-        "Citation": null
-      },
-      {
-        "OperationId": "AaEpypdLm9lZSNOXdq9Bpw",
+        "OperationId": "AaGew4xU9n2Y7NeLOj4Qjg",
         "Kind": "grammar/phNaturalClass/setName",
-        "Target": "AaEpypVJJjNq24KMJSAsKA",
+        "Target": "AaGew4B9i0Nd7eVpEzYlKg",
         "EntityId": null,
         "DependsOn": [
-          "AaEpypdKh7sKYBDPJ_7Vcw"
+          "AaGew4xTD67YgKwkgCRxag"
         ],
         "AfterJson": "{\n        \u0022ws\u0022: \u0022en\u0022,\n        \u0022text\u0022: \u0022vowels\u0022\n      }",
         "Citation": null
       },
       {
-        "OperationId": "AaEpypbogCHncZbk3edsVw",
-        "Kind": "system/stText/createParagraphs",
-        "Target": "AaEpypbo3WwRdCX9MG2iRg",
-        "EntityId": "AaEpypbouOMxvEMgEtJ9Eg",
+        "OperationId": "AaGew4xUFiM7wLkAVgfZFQ",
+        "Kind": "grammar/phNaturalClass/setAbbreviation",
+        "Target": "AaGew4B9i0Nd7eVpEzYlKg",
+        "EntityId": null,
         "DependsOn": [
-          "AaEpypbo2xTeP5NbId3tZg"
+          "AaGew4xTD67YgKwkgCRxag"
+        ],
+        "AfterJson": "{\n        \u0022ws\u0022: \u0022en\u0022,\n        \u0022text\u0022: \u0022V\u0022\n      }",
+        "Citation": null
+      },
+      {
+        "OperationId": "AaGew4xUwaVzjtsK8D_nPQ",
+        "Kind": "grammar/phNCSegments/addRefSegments",
+        "Target": "AaGew4B9i0Nd7eVpEzYlKg",
+        "EntityId": null,
+        "DependsOn": [
+          "AaGew4xTD67YgKwkgCRxag"
+        ],
+        "AfterJson": "{\n        \u0022member\u0022: \u0022AaGew34Oye16f1eQROyVmA\u0022\n      }",
+        "Citation": null
+      },
+      {
+        "OperationId": "AaGew4uF1BDouNU_5-WshA",
+        "Kind": "system/stText/createParagraphs",
+        "Target": "AaGew4uErOvUPbYJpjx5GQ",
+        "EntityId": "AaGew4uFu5SWPP53vJ0p4w",
+        "DependsOn": [
+          "AaGew4uEWHbSiXVsUZz1Fg"
         ],
         "AfterJson": "{\n        \u0022class\u0022: \u0022StTxtPara\u0022\n      }",
         "Citation": null
       },
       {
-        "OperationId": "AaEpypdQetCViaynvWVYYw",
+        "OperationId": "AaGew4xyPFFZ-bOBXRFd1w",
         "Kind": "grammar/phPhonData/createPhonRules",
-        "Target": "zaTcwq9iTTmOGHBKpVcQvQ",
-        "EntityId": "AaEpypVJzEC0TaO5Wt3t1w",
+        "Target": "_nlFVEEpSpSd-bo6Fulxxg",
+        "EntityId": "AaGew4B9RwMFcDo992qbkQ",
         "DependsOn": [
-          "AaEpypdKh7sKYBDPJ_7Vcw",
-          "AaEpypdL87EfkECrI8k78Q",
-          "AaEpypdLP4E-11HX1vI3Qg",
-          "AaEpypdLm9lZSNOXdq9Bpw"
+          "AaGew4xTD67YgKwkgCRxag",
+          "AaGew4xU9n2Y7NeLOj4Qjg",
+          "AaGew4xUFiM7wLkAVgfZFQ",
+          "AaGew4xUwaVzjtsK8D_nPQ"
         ],
         "AfterJson": "{\n        \u0022class\u0022: \u0022PhRegularRule\u0022\n      }",
         "Citation": null
       },
       {
-        "OperationId": "AaEpypbo1eBOXuz4v3cUoA",
-        "Kind": "system/stText/createParagraphs",
-        "Target": "AaEpypbo3WwRdCX9MG2iRg",
-        "EntityId": "AaEpypbo33zLsygOwvRRNA",
-        "DependsOn": [
-          "AaEpypbo2xTeP5NbId3tZg",
-          "AaEpypbogCHncZbk3edsVw"
-        ],
-        "AfterJson": "{\n        \u0022class\u0022: \u0022StTxtPara\u0022\n      }",
-        "Citation": null
-      },
-      {
-        "OperationId": "AaEpypboNnDksthjsHPo7w",
+        "OperationId": "AaGew4uGYhrFjNWXw4VRwg",
         "Kind": "analysis/stTxtPara/setContents",
-        "Target": "AaEpypbouOMxvEMgEtJ9Eg",
+        "Target": "AaGew4uFu5SWPP53vJ0p4w",
         "EntityId": null,
         "DependsOn": [
-          "AaEpypbogCHncZbk3edsVw"
+          "AaGew4uF1BDouNU_5-WshA"
         ],
         "AfterJson": "{\n        \u0022ws\u0022: \u0022en\u0022,\n        \u0022text\u0022: \u0022Fix \\u201Callomorphs in the alternation family: ra, ta, ta, ra\\u201D for \\u201CListed shapes share a rule\\u201D.\u0022\n      }",
         "Citation": null
       },
       {
-        "OperationId": "AaEpypdTAvio0FjCDyRn-A",
+        "OperationId": "AaGew4uGiX7prFmx5ns3ag",
+        "Kind": "system/stText/createParagraphs",
+        "Target": "AaGew4uErOvUPbYJpjx5GQ",
+        "EntityId": "AaGew4uGH4Arj1IkD2m6Hw",
+        "DependsOn": [
+          "AaGew4uEWHbSiXVsUZz1Fg",
+          "AaGew4uF1BDouNU_5-WshA"
+        ],
+        "AfterJson": "{\n        \u0022class\u0022: \u0022StTxtPara\u0022\n      }",
+        "Citation": null
+      },
+      {
+        "OperationId": "AaGew4x1TiyjWekkEI8PNQ",
         "Kind": "grammar/phSegmentRule/setName",
-        "Target": "AaEpypVJzEC0TaO5Wt3t1w",
+        "Target": "AaGew4B9RwMFcDo992qbkQ",
         "EntityId": null,
         "DependsOn": [
-          "AaEpypdKh7sKYBDPJ_7Vcw",
-          "AaEpypdL87EfkECrI8k78Q",
-          "AaEpypdLP4E-11HX1vI3Qg",
-          "AaEpypdLm9lZSNOXdq9Bpw",
-          "AaEpypdQetCViaynvWVYYw"
+          "AaGew4xTD67YgKwkgCRxag",
+          "AaGew4xU9n2Y7NeLOj4Qjg",
+          "AaGew4xUFiM7wLkAVgfZFQ",
+          "AaGew4xUwaVzjtsK8D_nPQ",
+          "AaGew4xyPFFZ-bOBXRFd1w"
         ],
         "AfterJson": "{\n        \u0022ws\u0022: \u0022en\u0022,\n        \u0022text\u0022: \u0022r becomes t between a segments\u0022\n      }",
         "Citation": null
       },
       {
-        "OperationId": "AaEpypdTpwEXNfvf_FZBCQ",
+        "OperationId": "AaGew4x1udfRf6QmZuISeg",
         "Kind": "grammar/phSegmentRule/setDirection",
-        "Target": "AaEpypVJzEC0TaO5Wt3t1w",
+        "Target": "AaGew4B9RwMFcDo992qbkQ",
         "EntityId": null,
         "DependsOn": [
-          "AaEpypdKh7sKYBDPJ_7Vcw",
-          "AaEpypdL87EfkECrI8k78Q",
-          "AaEpypdLP4E-11HX1vI3Qg",
-          "AaEpypdLm9lZSNOXdq9Bpw",
-          "AaEpypdQetCViaynvWVYYw"
+          "AaGew4xTD67YgKwkgCRxag",
+          "AaGew4xU9n2Y7NeLOj4Qjg",
+          "AaGew4xUFiM7wLkAVgfZFQ",
+          "AaGew4xUwaVzjtsK8D_nPQ",
+          "AaGew4xyPFFZ-bOBXRFd1w"
         ],
         "AfterJson": "{\n        \u0022value\u0022: 2\n      }",
         "Citation": null
       },
       {
-        "OperationId": "AaEpypdVAtyMFo49u4tTlQ",
-        "Kind": "grammar/phSegmentRule/createStrucDesc",
-        "Target": "AaEpypVJzEC0TaO5Wt3t1w",
-        "EntityId": "AaEpypdVUA-0rPlabouhIA",
-        "DependsOn": [
-          "AaEpypdKh7sKYBDPJ_7Vcw",
-          "AaEpypdL87EfkECrI8k78Q",
-          "AaEpypdLP4E-11HX1vI3Qg",
-          "AaEpypdLm9lZSNOXdq9Bpw",
-          "AaEpypdQetCViaynvWVYYw"
-        ],
-        "AfterJson": "{\n        \u0022class\u0022: \u0022PhSimpleContextSeg\u0022\n      }",
-        "Citation": null
-      },
-      {
-        "OperationId": "AaEpypdVGR9H21pR8RTipg",
+        "OperationId": "AaGew4x26LMLM4vAn-ORLQ",
         "Kind": "grammar/phRegularRule/createRightHandSides",
-        "Target": "AaEpypVJzEC0TaO5Wt3t1w",
-        "EntityId": "AaEpypdUBifhmHLs-Jrr1w",
+        "Target": "AaGew4B9RwMFcDo992qbkQ",
+        "EntityId": "AaGew4x2vEIott55i9OwSw",
         "DependsOn": [
-          "AaEpypdKh7sKYBDPJ_7Vcw",
-          "AaEpypdL87EfkECrI8k78Q",
-          "AaEpypdLP4E-11HX1vI3Qg",
-          "AaEpypdLm9lZSNOXdq9Bpw",
-          "AaEpypdQetCViaynvWVYYw"
+          "AaGew4xTD67YgKwkgCRxag",
+          "AaGew4xU9n2Y7NeLOj4Qjg",
+          "AaGew4xUFiM7wLkAVgfZFQ",
+          "AaGew4xUwaVzjtsK8D_nPQ",
+          "AaGew4xyPFFZ-bOBXRFd1w"
         ],
         "AfterJson": "{}",
         "Citation": null
       },
       {
-        "OperationId": "AaEpypbo4fwfLO4Tha9tEg",
+        "OperationId": "AaGew4x3YzfNtNtnPakQ4Q",
+        "Kind": "grammar/phSegmentRule/createStrucDesc",
+        "Target": "AaGew4B9RwMFcDo992qbkQ",
+        "EntityId": "AaGew4x3R6FG9zB2xAcr3A",
+        "DependsOn": [
+          "AaGew4xTD67YgKwkgCRxag",
+          "AaGew4xU9n2Y7NeLOj4Qjg",
+          "AaGew4xUFiM7wLkAVgfZFQ",
+          "AaGew4xUwaVzjtsK8D_nPQ",
+          "AaGew4xyPFFZ-bOBXRFd1w"
+        ],
+        "AfterJson": "{\n        \u0022class\u0022: \u0022PhSimpleContextSeg\u0022\n      }",
+        "Citation": null
+      },
+      {
+        "OperationId": "AaGew4uGJAQEoLVmvg1hNA",
         "Kind": "analysis/stTxtPara/setContents",
-        "Target": "AaEpypbo33zLsygOwvRRNA",
+        "Target": "AaGew4uGH4Arj1IkD2m6Hw",
         "EntityId": null,
         "DependsOn": [
-          "AaEpypbo1eBOXuz4v3cUoA"
+          "AaGew4uGiX7prFmx5ns3ag"
         ],
         "AfterJson": "{\n        \u0022ws\u0022: \u0022en\u0022,\n        \u0022text\u0022: \u0022Stage the rule that replaces this alternation.\u0022\n      }",
         "Citation": null
       },
       {
-        "OperationId": "AaEpypdV1F6soQVwuWDvVw",
+        "OperationId": "AaGew4x3-xhPL9LouHczKA",
         "Kind": "grammar/phSegRuleRHS/createStrucChange",
-        "Target": "AaEpypdUBifhmHLs-Jrr1w",
-        "EntityId": "AaEpypdVx02sK7mpa2_9rQ",
+        "Target": "AaGew4x2vEIott55i9OwSw",
+        "EntityId": "AaGew4x3DstKIkv88PzKBw",
         "DependsOn": [
-          "AaEpypdKh7sKYBDPJ_7Vcw",
-          "AaEpypdL87EfkECrI8k78Q",
-          "AaEpypdLP4E-11HX1vI3Qg",
-          "AaEpypdLm9lZSNOXdq9Bpw",
-          "AaEpypdVGR9H21pR8RTipg"
+          "AaGew4x26LMLM4vAn-ORLQ",
+          "AaGew4xTD67YgKwkgCRxag",
+          "AaGew4xU9n2Y7NeLOj4Qjg",
+          "AaGew4xUFiM7wLkAVgfZFQ",
+          "AaGew4xUwaVzjtsK8D_nPQ"
         ],
         "AfterJson": "{\n        \u0022class\u0022: \u0022PhSimpleContextSeg\u0022\n      }",
         "Citation": null
       },
       {
-        "OperationId": "AaEpypdVbnmgcYd5ODRh_w",
+        "OperationId": "AaGew4x3WAQfI8StpMHrKg",
         "Kind": "grammar/phSimpleContextSeg/setFeatureStructure",
-        "Target": "AaEpypdVUA-0rPlabouhIA",
+        "Target": "AaGew4x3R6FG9zB2xAcr3A",
         "EntityId": null,
         "DependsOn": [
-          "AaEpypdKh7sKYBDPJ_7Vcw",
-          "AaEpypdL87EfkECrI8k78Q",
-          "AaEpypdLP4E-11HX1vI3Qg",
-          "AaEpypdLm9lZSNOXdq9Bpw",
-          "AaEpypdVAtyMFo49u4tTlQ"
+          "AaGew4x3YzfNtNtnPakQ4Q",
+          "AaGew4xTD67YgKwkgCRxag",
+          "AaGew4xU9n2Y7NeLOj4Qjg",
+          "AaGew4xUFiM7wLkAVgfZFQ",
+          "AaGew4xUwaVzjtsK8D_nPQ"
         ],
-        "AfterJson": "{\n        \u0022ref\u0022: \u0022AaEpypQjflPDk6DZ72g0Zg\u0022\n      }",
+        "AfterJson": "{\n        \u0022ref\u0022: \u0022AaGew3x4yHaM0tc3q4Nupw\u0022\n      }",
         "Citation": null
       },
       {
-        "OperationId": "AaEpypdW_N880wLK8AADkw",
-        "Kind": "grammar/phSegRuleRHS/createLeftContext",
-        "Target": "AaEpypdUBifhmHLs-Jrr1w",
-        "EntityId": "AaEpypdWv8dPXSzZjJ48qg",
-        "DependsOn": [
-          "AaEpypdKh7sKYBDPJ_7Vcw",
-          "AaEpypdL87EfkECrI8k78Q",
-          "AaEpypdLP4E-11HX1vI3Qg",
-          "AaEpypdLm9lZSNOXdq9Bpw",
-          "AaEpypdVGR9H21pR8RTipg"
-        ],
-        "AfterJson": "{\n        \u0022class\u0022: \u0022PhSimpleContextSeg\u0022\n      }",
-        "Citation": null
-      },
-      {
-        "OperationId": "AaEpypdWcsJgf38bu58QjQ",
+        "OperationId": "AaGew4x4FdZUkEcTt3vEpw",
         "Kind": "grammar/phSegRuleRHS/createRightContext",
-        "Target": "AaEpypdUBifhmHLs-Jrr1w",
-        "EntityId": "AaEpypdWCorekiTBmlQNNg",
+        "Target": "AaGew4x2vEIott55i9OwSw",
+        "EntityId": "AaGew4x46_wWtrZeXcri3g",
         "DependsOn": [
-          "AaEpypdKh7sKYBDPJ_7Vcw",
-          "AaEpypdL87EfkECrI8k78Q",
-          "AaEpypdLP4E-11HX1vI3Qg",
-          "AaEpypdLm9lZSNOXdq9Bpw",
-          "AaEpypdVGR9H21pR8RTipg"
+          "AaGew4x26LMLM4vAn-ORLQ",
+          "AaGew4xTD67YgKwkgCRxag",
+          "AaGew4xU9n2Y7NeLOj4Qjg",
+          "AaGew4xUFiM7wLkAVgfZFQ",
+          "AaGew4xUwaVzjtsK8D_nPQ"
         ],
         "AfterJson": "{\n        \u0022class\u0022: \u0022PhSimpleContextNC\u0022\n      }",
         "Citation": null
       },
       {
-        "OperationId": "AaEpypdVk5E8bkt5v-66fw",
-        "Kind": "grammar/phSimpleContextSeg/setFeatureStructure",
-        "Target": "AaEpypdVx02sK7mpa2_9rQ",
-        "EntityId": null,
+        "OperationId": "AaGew4x4eIio1LgAEoNA3w",
+        "Kind": "grammar/phSegRuleRHS/createLeftContext",
+        "Target": "AaGew4x2vEIott55i9OwSw",
+        "EntityId": "AaGew4x4YRy8XnbnPZ952A",
         "DependsOn": [
-          "AaEpypdKh7sKYBDPJ_7Vcw",
-          "AaEpypdL87EfkECrI8k78Q",
-          "AaEpypdLP4E-11HX1vI3Qg",
-          "AaEpypdLm9lZSNOXdq9Bpw",
-          "AaEpypdV1F6soQVwuWDvVw"
+          "AaGew4x26LMLM4vAn-ORLQ",
+          "AaGew4xTD67YgKwkgCRxag",
+          "AaGew4xU9n2Y7NeLOj4Qjg",
+          "AaGew4xUFiM7wLkAVgfZFQ",
+          "AaGew4xUwaVzjtsK8D_nPQ"
         ],
-        "AfterJson": "{\n        \u0022ref\u0022: \u0022AaEpypQ1ZwkdXDmlZY92eg\u0022\n      }",
+        "AfterJson": "{\n        \u0022class\u0022: \u0022PhSimpleContextSeg\u0022\n      }",
         "Citation": null
       },
       {
-        "OperationId": "AaEpypdWS6WICaaC_KD9Qg",
+        "OperationId": "AaGew4x3TSCQJTfLBhuM_Q",
+        "Kind": "grammar/phSimpleContextSeg/setFeatureStructure",
+        "Target": "AaGew4x3DstKIkv88PzKBw",
+        "EntityId": null,
+        "DependsOn": [
+          "AaGew4x3-xhPL9LouHczKA",
+          "AaGew4xTD67YgKwkgCRxag",
+          "AaGew4xU9n2Y7NeLOj4Qjg",
+          "AaGew4xUFiM7wLkAVgfZFQ",
+          "AaGew4xUwaVzjtsK8D_nPQ"
+        ],
+        "AfterJson": "{\n        \u0022ref\u0022: \u0022AaGew33chEMD0QAOF3jLJA\u0022\n      }",
+        "Citation": null
+      },
+      {
+        "OperationId": "AaGew4x4w_siZp07lLHXjA",
+        "Kind": "grammar/phSimpleContextSeg/setFeatureStructure",
+        "Target": "AaGew4x4YRy8XnbnPZ952A",
+        "EntityId": null,
+        "DependsOn": [
+          "AaGew4x4eIio1LgAEoNA3w",
+          "AaGew4xTD67YgKwkgCRxag",
+          "AaGew4xU9n2Y7NeLOj4Qjg",
+          "AaGew4xUFiM7wLkAVgfZFQ",
+          "AaGew4xUwaVzjtsK8D_nPQ"
+        ],
+        "AfterJson": "{\n        \u0022ref\u0022: \u0022AaGew34Oye16f1eQROyVmA\u0022\n      }",
+        "Citation": null
+      },
+      {
+        "OperationId": "AaGew4x4xA04p183F97PCg",
         "Kind": "grammar/phSimpleContextNC/setFeatureStructure",
-        "Target": "AaEpypdWCorekiTBmlQNNg",
+        "Target": "AaGew4x46_wWtrZeXcri3g",
         "EntityId": null,
         "DependsOn": [
-          "AaEpypdKh7sKYBDPJ_7Vcw",
-          "AaEpypdL87EfkECrI8k78Q",
-          "AaEpypdLP4E-11HX1vI3Qg",
-          "AaEpypdLm9lZSNOXdq9Bpw",
-          "AaEpypdWcsJgf38bu58QjQ"
+          "AaGew4x4FdZUkEcTt3vEpw",
+          "AaGew4xTD67YgKwkgCRxag",
+          "AaGew4xU9n2Y7NeLOj4Qjg",
+          "AaGew4xUFiM7wLkAVgfZFQ",
+          "AaGew4xUwaVzjtsK8D_nPQ"
         ],
-        "AfterJson": "{\n        \u0022ref\u0022: \u0022AaEpypVJJjNq24KMJSAsKA\u0022\n      }",
+        "AfterJson": "{\n        \u0022ref\u0022: \u0022AaGew4B9i0Nd7eVpEzYlKg\u0022\n      }",
         "Citation": null
       },
       {
-        "OperationId": "AaEpypdWuxa8993v_UwMSw",
-        "Kind": "grammar/phSimpleContextSeg/setFeatureStructure",
-        "Target": "AaEpypdWv8dPXSzZjJ48qg",
-        "EntityId": null,
-        "DependsOn": [
-          "AaEpypdKh7sKYBDPJ_7Vcw",
-          "AaEpypdL87EfkECrI8k78Q",
-          "AaEpypdLP4E-11HX1vI3Qg",
-          "AaEpypdLm9lZSNOXdq9Bpw",
-          "AaEpypdW_N880wLK8AADkw"
-        ],
-        "AfterJson": "{\n        \u0022ref\u0022: \u0022AaEpypRSvzHUAORujHrQMA\u0022\n      }",
-        "Citation": null
-      },
-      {
-        "OperationId": "AaEpypdWzs7xUmC0T7yV2g",
+        "OperationId": "AaGew4x4Axb5m3e05DqXeQ",
         "Kind": "grammar/phSegmentRule/setDisabled",
-        "Target": "AaEpypVJzEC0TaO5Wt3t1w",
+        "Target": "AaGew4B9RwMFcDo992qbkQ",
         "EntityId": null,
         "DependsOn": [
-          "AaEpypdKh7sKYBDPJ_7Vcw",
-          "AaEpypdL87EfkECrI8k78Q",
-          "AaEpypdLP4E-11HX1vI3Qg",
-          "AaEpypdLm9lZSNOXdq9Bpw",
-          "AaEpypdQetCViaynvWVYYw",
-          "AaEpypdTAvio0FjCDyRn-A",
-          "AaEpypdTpwEXNfvf_FZBCQ",
-          "AaEpypdV1F6soQVwuWDvVw",
-          "AaEpypdVAtyMFo49u4tTlQ",
-          "AaEpypdVGR9H21pR8RTipg",
-          "AaEpypdVbnmgcYd5ODRh_w",
-          "AaEpypdVk5E8bkt5v-66fw",
-          "AaEpypdWS6WICaaC_KD9Qg",
-          "AaEpypdW_N880wLK8AADkw",
-          "AaEpypdWcsJgf38bu58QjQ",
-          "AaEpypdWuxa8993v_UwMSw"
+          "AaGew4x1TiyjWekkEI8PNQ",
+          "AaGew4x1udfRf6QmZuISeg",
+          "AaGew4x26LMLM4vAn-ORLQ",
+          "AaGew4x3-xhPL9LouHczKA",
+          "AaGew4x3TSCQJTfLBhuM_Q",
+          "AaGew4x3WAQfI8StpMHrKg",
+          "AaGew4x3YzfNtNtnPakQ4Q",
+          "AaGew4x4FdZUkEcTt3vEpw",
+          "AaGew4x4eIio1LgAEoNA3w",
+          "AaGew4x4w_siZp07lLHXjA",
+          "AaGew4x4xA04p183F97PCg",
+          "AaGew4xTD67YgKwkgCRxag",
+          "AaGew4xU9n2Y7NeLOj4Qjg",
+          "AaGew4xUFiM7wLkAVgfZFQ",
+          "AaGew4xUwaVzjtsK8D_nPQ",
+          "AaGew4xyPFFZ-bOBXRFd1w"
         ],
         "AfterJson": "{\n        \u0022value\u0022: false\n      }",
         "Citation": null
       },
       {
-        "OperationId": "AaEpype_JXKhdWYkOX9hSA",
+        "OperationId": "AaGew40fh_Xup7Mv8Rk7rQ",
         "Kind": "analysis/wfiMorphBundle/setMorph",
-        "Target": "TsyXkXJxQia0qGzlBvjSeA",
+        "Target": "gb9TDcFDSQ6kIlaVo_5Ucg",
         "EntityId": null,
         "DependsOn": [
-          "AaEpypdWzs7xUmC0T7yV2g"
+          "AaGew4x4Axb5m3e05DqXeQ"
         ],
-        "AfterJson": "{\n        \u0022retiredForms\u0022: [\n          \u0022wFOMSiYERuqS4lA_kJ3rAg\u0022\n        ],\n        \u0022censusDigest\u0022: \u0022sha256:82f053deb1cf82fbf1194c47a28886d6a4e8de27939fff177638b7ba4889762c\u0022,\n        \u0022retiredForm\u0022: \u0022wFOMSiYERuqS4lA_kJ3rAg\u0022,\n        \u0022replacement\u0022: \u0022w91KIi5fSW-mj-jLGoYMJg\u0022\n      }",
+        "AfterJson": "{\n        \u0022retiredForms\u0022: [\n          \u0022uTpcUXLFRlSDx3u_orN01Q\u0022\n        ],\n        \u0022censusDigest\u0022: \u0022sha256:c2056b036595bd0180288bc5d56b9311eeb0e90514dd67f4a890d173badf9f18\u0022,\n        \u0022retiredForm\u0022: \u0022uTpcUXLFRlSDx3u_orN01Q\u0022,\n        \u0022replacement\u0022: \u0022HPsLg8DcSdaFmhrt06WK9g\u0022\n      }",
         "Citation": null
       },
       {
-        "OperationId": "AaEpypfgytZjLPj5Wb6D4Q",
+        "OperationId": "AaGew41SZ467EIF5_yRb9g",
         "Kind": "analysis/wfiMorphBundle/setMorph",
-        "Target": "8cOfrESGQoyJldeHWDBYNQ",
+        "Target": "Nv4mEoHVQvSpyI7g310hQQ",
         "EntityId": null,
         "DependsOn": [
-          "AaEpypdWzs7xUmC0T7yV2g"
+          "AaGew4x4Axb5m3e05DqXeQ"
         ],
-        "AfterJson": "{\n        \u0022retiredForms\u0022: [\n          \u0022WeEP-t_tR-aQhjNCHzP-qg\u0022\n        ],\n        \u0022censusDigest\u0022: \u0022sha256:4c543d99dd3a73b91585ddd0d5d6c8f40cb5d121bde2cd5bf8a05934b1ef4c60\u0022,\n        \u0022retiredForm\u0022: \u0022WeEP-t_tR-aQhjNCHzP-qg\u0022,\n        \u0022replacement\u0022: \u0022Jev4yFPZSnyf1qRCxA25ig\u0022\n      }",
+        "AfterJson": "{\n        \u0022retiredForms\u0022: [\n          \u0022dCLIkmxvR7-z5sxty9t3RA\u0022\n        ],\n        \u0022censusDigest\u0022: \u0022sha256:8af6b19258afb11c15c2c7596a74fa44b6224b142458c1801de666dcee9bae22\u0022,\n        \u0022retiredForm\u0022: \u0022dCLIkmxvR7-z5sxty9t3RA\u0022,\n        \u0022replacement\u0022: \u00223hB_hMIhT3qMKz2srZyPxw\u0022\n      }",
         "Citation": null
       },
       {
-        "OperationId": "AaEpypfDv0abut1IAkM8aA",
+        "OperationId": "AaGew40oRN6oyncGjlbaJg",
         "Kind": "lexical/lexEntry/deleteAlternateForm",
-        "Target": "FEcYuglESq6XJ1gzPSejHA",
+        "Target": "LEmDq-F0TJS22j3B3MHo_Q",
         "EntityId": null,
         "DependsOn": [
-          "AaEpype_JXKhdWYkOX9hSA"
+          "AaGew40fh_Xup7Mv8Rk7rQ"
         ],
-        "AfterJson": "{\n        \u0022forms\u0022: [\n          \u0022wFOMSiYERuqS4lA_kJ3rAg\u0022\n        ],\n        \u0022duplicateSurvivors\u0022: [\n          \u0022w91KIi5fSW-mj-jLGoYMJg\u0022\n        ],\n        \u0022formWitnesses\u0022: [\n          {\n            \u0022form\u0022: \u0022w91KIi5fSW-mj-jLGoYMJg\u0022,\n            \u0022semanticDigest\u0022: \u0022sha256:812b6e0ad8ecc74d928f88cfc7be572a48f50b32a2d992e48d34a044896b34ee\u0022\n          },\n          {\n            \u0022form\u0022: \u0022wFOMSiYERuqS4lA_kJ3rAg\u0022,\n            \u0022semanticDigest\u0022: \u0022sha256:241f01e7d6ded5d830ebb76365910ae19655941dfce9cfd5a8a599f3fd2c8cad\u0022\n          }\n        ],\n        \u0022before\u0022: [\n          \u0022wFOMSiYERuqS4lA_kJ3rAg\u0022\n        ],\n        \u0022after\u0022: [],\n        \u0022ruleReplacement\u0022: {\n          \u0022rule\u0022: \u0022AaEpypVJzEC0TaO5Wt3t1w\u0022,\n          \u0022inputPhoneme\u0022: \u0022AaEpypQjflPDk6DZ72g0Zg\u0022,\n          \u0022outputPhoneme\u0022: \u0022AaEpypQ1ZwkdXDmlZY92eg\u0022\n        }\n      }",
+        "AfterJson": "{\n        \u0022forms\u0022: [\n          \u0022uTpcUXLFRlSDx3u_orN01Q\u0022\n        ],\n        \u0022duplicateSurvivors\u0022: [\n          \u0022HPsLg8DcSdaFmhrt06WK9g\u0022\n        ],\n        \u0022formWitnesses\u0022: [\n          {\n            \u0022form\u0022: \u0022HPsLg8DcSdaFmhrt06WK9g\u0022,\n            \u0022semanticDigest\u0022: \u0022sha256:812b6e0ad8ecc74d928f88cfc7be572a48f50b32a2d992e48d34a044896b34ee\u0022\n          },\n          {\n            \u0022form\u0022: \u0022uTpcUXLFRlSDx3u_orN01Q\u0022,\n            \u0022semanticDigest\u0022: \u0022sha256:241f01e7d6ded5d830ebb76365910ae19655941dfce9cfd5a8a599f3fd2c8cad\u0022\n          }\n        ],\n        \u0022before\u0022: [\n          \u0022uTpcUXLFRlSDx3u_orN01Q\u0022\n        ],\n        \u0022after\u0022: [],\n        \u0022ruleReplacement\u0022: {\n          \u0022rule\u0022: \u0022AaGew4B9RwMFcDo992qbkQ\u0022,\n          \u0022inputPhoneme\u0022: \u0022AaGew3x4yHaM0tc3q4Nupw\u0022,\n          \u0022outputPhoneme\u0022: \u0022AaGew33chEMD0QAOF3jLJA\u0022\n        }\n      }",
         "Citation": null
       },
       {
-        "OperationId": "AaEpypfgKspxzEb77fHLCA",
+        "OperationId": "AaGew41T7QK1yvMuWyjA5w",
         "Kind": "lexical/lexEntry/deleteAlternateForm",
-        "Target": "XO_jauQUQ1Ko5L0vauLk8g",
+        "Target": "YyHbcYgHREeqsFn1fx98fg",
         "EntityId": null,
         "DependsOn": [
-          "AaEpypfgytZjLPj5Wb6D4Q"
+          "AaGew41SZ467EIF5_yRb9g"
         ],
-        "AfterJson": "{\n        \u0022forms\u0022: [\n          \u0022WeEP-t_tR-aQhjNCHzP-qg\u0022\n        ],\n        \u0022duplicateSurvivors\u0022: [\n          \u0022Jev4yFPZSnyf1qRCxA25ig\u0022\n        ],\n        \u0022formWitnesses\u0022: [\n          {\n            \u0022form\u0022: \u0022Jev4yFPZSnyf1qRCxA25ig\u0022,\n            \u0022semanticDigest\u0022: \u0022sha256:812b6e0ad8ecc74d928f88cfc7be572a48f50b32a2d992e48d34a044896b34ee\u0022\n          },\n          {\n            \u0022form\u0022: \u0022WeEP-t_tR-aQhjNCHzP-qg\u0022,\n            \u0022semanticDigest\u0022: \u0022sha256:241f01e7d6ded5d830ebb76365910ae19655941dfce9cfd5a8a599f3fd2c8cad\u0022\n          }\n        ],\n        \u0022before\u0022: [\n          \u0022WeEP-t_tR-aQhjNCHzP-qg\u0022\n        ],\n        \u0022after\u0022: [],\n        \u0022ruleReplacement\u0022: {\n          \u0022rule\u0022: \u0022AaEpypVJzEC0TaO5Wt3t1w\u0022,\n          \u0022inputPhoneme\u0022: \u0022AaEpypQjflPDk6DZ72g0Zg\u0022,\n          \u0022outputPhoneme\u0022: \u0022AaEpypQ1ZwkdXDmlZY92eg\u0022\n        }\n      }",
+        "AfterJson": "{\n        \u0022forms\u0022: [\n          \u0022dCLIkmxvR7-z5sxty9t3RA\u0022\n        ],\n        \u0022duplicateSurvivors\u0022: [\n          \u00223hB_hMIhT3qMKz2srZyPxw\u0022\n        ],\n        \u0022formWitnesses\u0022: [\n          {\n            \u0022form\u0022: \u00223hB_hMIhT3qMKz2srZyPxw\u0022,\n            \u0022semanticDigest\u0022: \u0022sha256:812b6e0ad8ecc74d928f88cfc7be572a48f50b32a2d992e48d34a044896b34ee\u0022\n          },\n          {\n            \u0022form\u0022: \u0022dCLIkmxvR7-z5sxty9t3RA\u0022,\n            \u0022semanticDigest\u0022: \u0022sha256:241f01e7d6ded5d830ebb76365910ae19655941dfce9cfd5a8a599f3fd2c8cad\u0022\n          }\n        ],\n        \u0022before\u0022: [\n          \u0022dCLIkmxvR7-z5sxty9t3RA\u0022\n        ],\n        \u0022after\u0022: [],\n        \u0022ruleReplacement\u0022: {\n          \u0022rule\u0022: \u0022AaGew4B9RwMFcDo992qbkQ\u0022,\n          \u0022inputPhoneme\u0022: \u0022AaGew3x4yHaM0tc3q4Nupw\u0022,\n          \u0022outputPhoneme\u0022: \u0022AaGew33chEMD0QAOF3jLJA\u0022\n        }\n      }",
         "Citation": null
       }
     ]
   },
   "Review": {
-    "ProposalId": "AaEpyparMoBemn7db9LC7A",
-    "IntentDigest": "sha256:e97302e344fa587c5b161b69c29a2e13af23c096e0e36b4f322c54d7559b8d0f",
+    "ProposalId": "AaGew4o_qTyaFeVDs6gMlQ",
+    "IntentDigest": "sha256:dc289651675655dccc6e9dc9d9e3b5abefb33d49ff7c1a387d073fb3471635d9",
     "DryRun": {
-      "ProposalId": "AaEpyparMoBemn7db9LC7A",
-      "IntentDigest": "sha256:e97302e344fa587c5b161b69c29a2e13af23c096e0e36b4f322c54d7559b8d0f",
+      "ProposalId": "AaGew4o_qTyaFeVDs6gMlQ",
+      "IntentDigest": "sha256:dc289651675655dccc6e9dc9d9e3b5abefb33d49ff7c1a387d073fb3471635d9",
       "BaselineNote": "Footprint-scoped baseline read back from LibLCM on a single-use scratch copy (published Baseline directory \u003Cdir\u003E; 30 target object(s): \u003Cids\u003E).",
       "Effects": [
         {
-          "CanonicalId": "8cOfrESGQoyJldeHWDBYNQ",
-          "Field": "analysis/wfiMorphBundle/form",
-          "Changes": [
-            {
-              "Ws": "fr",
-              "Before": "ta",
-              "After": "ra"
-            }
-          ],
-          "OperationIds": [
-            "AaEpypfgytZjLPj5Wb6D4Q"
-          ]
-        },
-        {
-          "CanonicalId": "8cOfrESGQoyJldeHWDBYNQ",
-          "Field": "analysis/wfiMorphBundle/morph",
-          "Changes": [
-            {
-              "Ws": "ref",
-              "Before": "WeEP-t_tR-aQhjNCHzP-qg",
-              "After": "Jev4yFPZSnyf1qRCxA25ig"
-            }
-          ],
-          "OperationIds": [
-            "AaEpypfgytZjLPj5Wb6D4Q"
-          ]
-        },
-        {
-          "CanonicalId": "AaEpypVJJjNq24KMJSAsKA",
-          "Field": "grammar/phNCSegments/segments",
-          "Changes": [
-            {
-              "Ws": "AaEpypRSvzHUAORujHrQMA",
-              "Before": null,
-              "After": "AaEpypRSvzHUAORujHrQMA"
-            }
-          ],
-          "OperationIds": [
-            "AaEpypdKh7sKYBDPJ_7Vcw",
-            "AaEpypdL87EfkECrI8k78Q",
-            "AaEpypdLP4E-11HX1vI3Qg",
-            "AaEpypdLm9lZSNOXdq9Bpw"
-          ]
-        },
-        {
-          "CanonicalId": "AaEpypVJJjNq24KMJSAsKA",
-          "Field": "grammar/phNaturalClass/abbreviation",
-          "Changes": [
-            {
-              "Ws": "en",
-              "Before": null,
-              "After": "V"
-            }
-          ],
-          "OperationIds": [
-            "AaEpypdKh7sKYBDPJ_7Vcw",
-            "AaEpypdL87EfkECrI8k78Q",
-            "AaEpypdLP4E-11HX1vI3Qg",
-            "AaEpypdLm9lZSNOXdq9Bpw"
-          ]
-        },
-        {
-          "CanonicalId": "AaEpypVJJjNq24KMJSAsKA",
-          "Field": "grammar/phNaturalClass/name",
-          "Changes": [
-            {
-              "Ws": "en",
-              "Before": null,
-              "After": "vowels"
-            }
-          ],
-          "OperationIds": [
-            "AaEpypdKh7sKYBDPJ_7Vcw",
-            "AaEpypdL87EfkECrI8k78Q",
-            "AaEpypdLP4E-11HX1vI3Qg",
-            "AaEpypdLm9lZSNOXdq9Bpw"
-          ]
-        },
-        {
-          "CanonicalId": "AaEpypVJzEC0TaO5Wt3t1w",
+          "CanonicalId": "AaGew4B9RwMFcDo992qbkQ",
           "Field": "grammar/phRegularRule/rightHandSides",
           "Changes": [
             {
               "Ws": "0",
               "Before": null,
-              "After": "AaEpypdUBifhmHLs-Jrr1w"
+              "After": "AaGew4x2vEIott55i9OwSw"
             }
           ],
           "OperationIds": [
-            "AaEpypdQetCViaynvWVYYw",
-            "AaEpypdTAvio0FjCDyRn-A",
-            "AaEpypdTpwEXNfvf_FZBCQ",
-            "AaEpypdVAtyMFo49u4tTlQ",
-            "AaEpypdVGR9H21pR8RTipg",
-            "AaEpypdWzs7xUmC0T7yV2g"
+            "AaGew4x1TiyjWekkEI8PNQ",
+            "AaGew4x1udfRf6QmZuISeg",
+            "AaGew4x26LMLM4vAn-ORLQ",
+            "AaGew4x3YzfNtNtnPakQ4Q",
+            "AaGew4x4Axb5m3e05DqXeQ",
+            "AaGew4xyPFFZ-bOBXRFd1w"
           ]
         },
         {
-          "CanonicalId": "AaEpypVJzEC0TaO5Wt3t1w",
+          "CanonicalId": "AaGew4B9RwMFcDo992qbkQ",
           "Field": "grammar/phSegmentRule/direction",
           "Changes": [
             {
@@ -1056,16 +976,16 @@
             }
           ],
           "OperationIds": [
-            "AaEpypdQetCViaynvWVYYw",
-            "AaEpypdTAvio0FjCDyRn-A",
-            "AaEpypdTpwEXNfvf_FZBCQ",
-            "AaEpypdVAtyMFo49u4tTlQ",
-            "AaEpypdVGR9H21pR8RTipg",
-            "AaEpypdWzs7xUmC0T7yV2g"
+            "AaGew4x1TiyjWekkEI8PNQ",
+            "AaGew4x1udfRf6QmZuISeg",
+            "AaGew4x26LMLM4vAn-ORLQ",
+            "AaGew4x3YzfNtNtnPakQ4Q",
+            "AaGew4x4Axb5m3e05DqXeQ",
+            "AaGew4xyPFFZ-bOBXRFd1w"
           ]
         },
         {
-          "CanonicalId": "AaEpypVJzEC0TaO5Wt3t1w",
+          "CanonicalId": "AaGew4B9RwMFcDo992qbkQ",
           "Field": "grammar/phSegmentRule/disabled",
           "Changes": [
             {
@@ -1075,16 +995,16 @@
             }
           ],
           "OperationIds": [
-            "AaEpypdQetCViaynvWVYYw",
-            "AaEpypdTAvio0FjCDyRn-A",
-            "AaEpypdTpwEXNfvf_FZBCQ",
-            "AaEpypdVAtyMFo49u4tTlQ",
-            "AaEpypdVGR9H21pR8RTipg",
-            "AaEpypdWzs7xUmC0T7yV2g"
+            "AaGew4x1TiyjWekkEI8PNQ",
+            "AaGew4x1udfRf6QmZuISeg",
+            "AaGew4x26LMLM4vAn-ORLQ",
+            "AaGew4x3YzfNtNtnPakQ4Q",
+            "AaGew4x4Axb5m3e05DqXeQ",
+            "AaGew4xyPFFZ-bOBXRFd1w"
           ]
         },
         {
-          "CanonicalId": "AaEpypVJzEC0TaO5Wt3t1w",
+          "CanonicalId": "AaGew4B9RwMFcDo992qbkQ",
           "Field": "grammar/phSegmentRule/name",
           "Changes": [
             {
@@ -1094,77 +1014,128 @@
             }
           ],
           "OperationIds": [
-            "AaEpypdQetCViaynvWVYYw",
-            "AaEpypdTAvio0FjCDyRn-A",
-            "AaEpypdTpwEXNfvf_FZBCQ",
-            "AaEpypdVAtyMFo49u4tTlQ",
-            "AaEpypdVGR9H21pR8RTipg",
-            "AaEpypdWzs7xUmC0T7yV2g"
+            "AaGew4x1TiyjWekkEI8PNQ",
+            "AaGew4x1udfRf6QmZuISeg",
+            "AaGew4x26LMLM4vAn-ORLQ",
+            "AaGew4x3YzfNtNtnPakQ4Q",
+            "AaGew4x4Axb5m3e05DqXeQ",
+            "AaGew4xyPFFZ-bOBXRFd1w"
           ]
         },
         {
-          "CanonicalId": "AaEpypVJzEC0TaO5Wt3t1w",
+          "CanonicalId": "AaGew4B9RwMFcDo992qbkQ",
           "Field": "grammar/phSegmentRule/strucDesc",
           "Changes": [
             {
               "Ws": "0",
               "Before": null,
-              "After": "AaEpypdVUA-0rPlabouhIA"
+              "After": "AaGew4x3R6FG9zB2xAcr3A"
             }
           ],
           "OperationIds": [
-            "AaEpypdQetCViaynvWVYYw",
-            "AaEpypdTAvio0FjCDyRn-A",
-            "AaEpypdTpwEXNfvf_FZBCQ",
-            "AaEpypdVAtyMFo49u4tTlQ",
-            "AaEpypdVGR9H21pR8RTipg",
-            "AaEpypdWzs7xUmC0T7yV2g"
+            "AaGew4x1TiyjWekkEI8PNQ",
+            "AaGew4x1udfRf6QmZuISeg",
+            "AaGew4x26LMLM4vAn-ORLQ",
+            "AaGew4x3YzfNtNtnPakQ4Q",
+            "AaGew4x4Axb5m3e05DqXeQ",
+            "AaGew4xyPFFZ-bOBXRFd1w"
           ]
         },
         {
-          "CanonicalId": "AaEpypbnKEiDKXFlljKtbQ",
+          "CanonicalId": "AaGew4B9i0Nd7eVpEzYlKg",
+          "Field": "grammar/phNCSegments/segments",
+          "Changes": [
+            {
+              "Ws": "AaGew34Oye16f1eQROyVmA",
+              "Before": null,
+              "After": "AaGew34Oye16f1eQROyVmA"
+            }
+          ],
+          "OperationIds": [
+            "AaGew4xTD67YgKwkgCRxag",
+            "AaGew4xU9n2Y7NeLOj4Qjg",
+            "AaGew4xUFiM7wLkAVgfZFQ",
+            "AaGew4xUwaVzjtsK8D_nPQ"
+          ]
+        },
+        {
+          "CanonicalId": "AaGew4B9i0Nd7eVpEzYlKg",
+          "Field": "grammar/phNaturalClass/abbreviation",
+          "Changes": [
+            {
+              "Ws": "en",
+              "Before": null,
+              "After": "V"
+            }
+          ],
+          "OperationIds": [
+            "AaGew4xTD67YgKwkgCRxag",
+            "AaGew4xU9n2Y7NeLOj4Qjg",
+            "AaGew4xUFiM7wLkAVgfZFQ",
+            "AaGew4xUwaVzjtsK8D_nPQ"
+          ]
+        },
+        {
+          "CanonicalId": "AaGew4B9i0Nd7eVpEzYlKg",
+          "Field": "grammar/phNaturalClass/name",
+          "Changes": [
+            {
+              "Ws": "en",
+              "Before": null,
+              "After": "vowels"
+            }
+          ],
+          "OperationIds": [
+            "AaGew4xTD67YgKwkgCRxag",
+            "AaGew4xU9n2Y7NeLOj4Qjg",
+            "AaGew4xUFiM7wLkAVgfZFQ",
+            "AaGew4xUwaVzjtsK8D_nPQ"
+          ]
+        },
+        {
+          "CanonicalId": "AaGew4t-Xi9GQJOz9BLSIQ",
           "Field": "system/rnGenericRec/description",
           "Changes": [
             {
               "Ws": "0",
               "Before": null,
-              "After": "AaEpypbo3WwRdCX9MG2iRg"
+              "After": "AaGew4uErOvUPbYJpjx5GQ"
             }
           ],
           "OperationIds": [
-            "AaEpypbo2xTeP5NbId3tZg",
-            "AaEpypboHHiGWg8SCGrqDg",
-            "AaEpypboRdGrAhmsO21nUA",
-            "AaEpypbo_E_uQ54CK76crg",
-            "AaEpypboyFW-bfy6XKf8AA"
+            "AaGew4uEVRDhCOf-_NonCQ",
+            "AaGew4uEWHbSiXVsUZz1Fg",
+            "AaGew4uEoDFU0yQhADI4IQ",
+            "AaGew4uFI794nbh1JvunoA",
+            "AaGew4uG602MbwI9-93Gog"
           ]
         },
         {
-          "CanonicalId": "AaEpypbnKEiDKXFlljKtbQ",
+          "CanonicalId": "AaGew4t-Xi9GQJOz9BLSIQ",
           "Field": "system/rnGenericRec/motifJudgmentData",
           "Changes": [
             {
               "Ws": "text",
               "Before": null,
-              "After": "{\u0022actor\u0022:{\u0022id\u0022:null,\u0022kind\u0022:\u0022agent\u0022,\u0022name\u0022:null},\u0022body\u0022:{\u0022disposition\u0022:\u0022fix\u0022,\u0022evidenceContract\u0022:\u0022allo-alternation-family/v1\u0022,\u0022evidenceDigest\u0022:\u0022sha256:9e124a11639f8644cd932ea5a1be9b02f22384a49fda63997e6a8d934abe0799\u0022,\u0022kind\u0022:\u0022parsimony-disposition\u0022,\u0022measureCaption\u0022:\u0022Listed shapes share a rule\u0022,\u0022measureId\u0022:\u0022P-allo-alternation-family\u0022,\u0022question\u0022:null,\u0022subject\u0022:{\u0022kind\u0022:\u0022computed-group\u0022,\u0022measureId\u0022:\u0022P-allo-alternation-family\u0022,\u0022members\u0022:[{\u0022class\u0022:\u0022MoAffixAllomorph\u0022,\u0022id\u0022:\u0022Jev4yFPZSnyf1qRCxA25ig\u0022,\u0022owningEntryId\u0022:null},{\u0022class\u0022:\u0022MoAffixAllomorph\u0022,\u0022id\u0022:\u0022WeEP-t_tR-aQhjNCHzP-qg\u0022,\u0022owningEntryId\u0022:null},{\u0022class\u0022:\u0022MoAffixAllomorph\u0022,\u0022id\u0022:\u0022w91KIi5fSW-mj-jLGoYMJg\u0022,\u0022owningEntryId\u0022:null},{\u0022class\u0022:\u0022MoAffixAllomorph\u0022,\u0022id\u0022:\u0022wFOMSiYERuqS4lA_kJ3rAg\u0022,\u0022owningEntryId\u0022:null}],\u0022role\u0022:\u0022alternation-family\u0022},\u0022subjectCaption\u0022:\u0022allomorphs in the alternation family: ra, ta, ta, ra\u0022},\u0022contentHash\u0022:\u0022sha256:c3c266fb32f318ec4489b7ed7e55efcdcd695a3c0b4dae6a460eef87575547fe\u0022,\u0022extensions\u0022:null,\u0022format\u0022:\u0022motif-human-judgment\u0022,\u0022judgedAtUtc\u0022:null,\u0022judgmentId\u0022:\u0022AaEpypbomuuEfFGeP-LfUw\u0022,\u0022projectId\u0022:\u0022ccmOxBJlRP-2jYeUjsFzfw\u0022,\u0022readableFormat\u0022:\u0022en-v1\u0022,\u0022replaces\u0022:[],\u0022resolvesConflict\u0022:false,\u0022revisionId\u0022:\u0022AaEpypbnKEiDKXFlljKtbQ\u0022,\u0022source\u0022:{\u0022proposalId\u0022:\u0022AaEpyparMoBemn7db9LC7A\u0022,\u0022reportId\u0022:\u0022report/AaEpypaGeMA6ThyPxYa_GQ\u0022},\u0022version\u0022:1}"
+              "After": "{\u0022actor\u0022:{\u0022id\u0022:null,\u0022kind\u0022:\u0022agent\u0022,\u0022name\u0022:null},\u0022body\u0022:{\u0022disposition\u0022:\u0022fix\u0022,\u0022evidenceContract\u0022:\u0022allo-alternation-family/v1\u0022,\u0022evidenceDigest\u0022:\u0022sha256:140086a88d0ad901daf993a83516703c91c0169e59872cea8f2e8f025c067406\u0022,\u0022kind\u0022:\u0022parsimony-disposition\u0022,\u0022measureCaption\u0022:\u0022Listed shapes share a rule\u0022,\u0022measureId\u0022:\u0022P-allo-alternation-family\u0022,\u0022question\u0022:null,\u0022subject\u0022:{\u0022kind\u0022:\u0022computed-group\u0022,\u0022measureId\u0022:\u0022P-allo-alternation-family\u0022,\u0022members\u0022:[{\u0022class\u0022:\u0022MoAffixAllomorph\u0022,\u0022id\u0022:\u00223hB_hMIhT3qMKz2srZyPxw\u0022,\u0022owningEntryId\u0022:null},{\u0022class\u0022:\u0022MoAffixAllomorph\u0022,\u0022id\u0022:\u0022HPsLg8DcSdaFmhrt06WK9g\u0022,\u0022owningEntryId\u0022:null},{\u0022class\u0022:\u0022MoAffixAllomorph\u0022,\u0022id\u0022:\u0022dCLIkmxvR7-z5sxty9t3RA\u0022,\u0022owningEntryId\u0022:null},{\u0022class\u0022:\u0022MoAffixAllomorph\u0022,\u0022id\u0022:\u0022uTpcUXLFRlSDx3u_orN01Q\u0022,\u0022owningEntryId\u0022:null}],\u0022role\u0022:\u0022alternation-family\u0022},\u0022subjectCaption\u0022:\u0022allomorphs in the alternation family: ra, ta, ta, ra\u0022},\u0022contentHash\u0022:\u0022sha256:ab5600c5b3163f075daecdbc7fb16771b9c53b552eb5c3588be1913bfdfd0152\u0022,\u0022extensions\u0022:null,\u0022format\u0022:\u0022motif-human-judgment\u0022,\u0022judgedAtUtc\u0022:null,\u0022judgmentId\u0022:\u0022AaGew4uAxNEQsaoFCrWDXg\u0022,\u0022projectId\u0022:\u0022xmuJ6O_6TPGO0wMeftJ3uw\u0022,\u0022readableFormat\u0022:\u0022en-v1\u0022,\u0022replaces\u0022:[],\u0022resolvesConflict\u0022:false,\u0022revisionId\u0022:\u0022AaGew4t-Xi9GQJOz9BLSIQ\u0022,\u0022source\u0022:{\u0022proposalId\u0022:\u0022AaGew4o_qTyaFeVDs6gMlQ\u0022,\u0022reportId\u0022:\u0022report/AaGew4het9TdzVMdytZ9ZQ\u0022},\u0022version\u0022:1}"
             }
           ],
           "OperationIds": [
-            "AaEpypbo2xTeP5NbId3tZg",
-            "AaEpypboHHiGWg8SCGrqDg",
-            "AaEpypboRdGrAhmsO21nUA",
-            "AaEpypbo_E_uQ54CK76crg",
-            "AaEpypboyFW-bfy6XKf8AA"
+            "AaGew4uEVRDhCOf-_NonCQ",
+            "AaGew4uEWHbSiXVsUZz1Fg",
+            "AaGew4uEoDFU0yQhADI4IQ",
+            "AaGew4uFI794nbh1JvunoA",
+            "AaGew4uG602MbwI9-93Gog"
           ]
         },
         {
-          "CanonicalId": "AaEpypbnKEiDKXFlljKtbQ",
+          "CanonicalId": "AaGew4t-Xi9GQJOz9BLSIQ",
           "Field": "system/rnGenericRec/title",
           "Changes": [
             {
               "Ws": "text",
               "Before": null,
-              "After": "Fix: allomorphs in the alternation family: ra, ta, ta, ra (MJ-HWWV-87P6)"
+              "After": "Fix: allomorphs in the alternation family: ra, ta, ta, ra (MJ-8190-SJEP)"
             },
             {
               "Ws": "ws",
@@ -1173,85 +1144,64 @@
             }
           ],
           "OperationIds": [
-            "AaEpypbo2xTeP5NbId3tZg",
-            "AaEpypboHHiGWg8SCGrqDg",
-            "AaEpypboRdGrAhmsO21nUA",
-            "AaEpypbo_E_uQ54CK76crg",
-            "AaEpypboyFW-bfy6XKf8AA"
+            "AaGew4uEVRDhCOf-_NonCQ",
+            "AaGew4uEWHbSiXVsUZz1Fg",
+            "AaGew4uEoDFU0yQhADI4IQ",
+            "AaGew4uFI794nbh1JvunoA",
+            "AaGew4uG602MbwI9-93Gog"
           ]
         },
         {
-          "CanonicalId": "AaEpypbnKEiDKXFlljKtbQ",
+          "CanonicalId": "AaGew4t-Xi9GQJOz9BLSIQ",
           "Field": "system/rnGenericRec/type",
           "Changes": [
             {
               "Ws": "ref",
               "Before": null,
-              "After": "aOsm2UQ5Q6SMxpg17UEj9Q"
+              "After": "9OSaN0blTPe2OzPs7kQPAg"
             }
           ],
           "OperationIds": [
-            "AaEpypbo2xTeP5NbId3tZg",
-            "AaEpypboHHiGWg8SCGrqDg",
-            "AaEpypboRdGrAhmsO21nUA",
-            "AaEpypbo_E_uQ54CK76crg",
-            "AaEpypboyFW-bfy6XKf8AA"
+            "AaGew4uEVRDhCOf-_NonCQ",
+            "AaGew4uEWHbSiXVsUZz1Fg",
+            "AaGew4uEoDFU0yQhADI4IQ",
+            "AaGew4uFI794nbh1JvunoA",
+            "AaGew4uG602MbwI9-93Gog"
           ]
         },
         {
-          "CanonicalId": "AaEpypbo33zLsygOwvRRNA",
-          "Field": "analysis/stTxtPara/contents",
-          "Changes": [
-            {
-              "Ws": "text",
-              "Before": null,
-              "After": "Stage the rule that replaces this alternation."
-            },
-            {
-              "Ws": "ws",
-              "Before": null,
-              "After": "en"
-            }
-          ],
-          "OperationIds": [
-            "AaEpypbo1eBOXuz4v3cUoA",
-            "AaEpypbo4fwfLO4Tha9tEg"
-          ]
-        },
-        {
-          "CanonicalId": "AaEpypbo3WwRdCX9MG2iRg",
-          "Field": "system/stText/paragraphs",
-          "Changes": [
-            {
-              "Ws": "0",
-              "Before": null,
-              "After": "AaEpypbouOMxvEMgEtJ9Eg"
-            }
-          ],
-          "OperationIds": [
-            "AaEpypbo1eBOXuz4v3cUoA",
-            "AaEpypbo2xTeP5NbId3tZg",
-            "AaEpypbogCHncZbk3edsVw"
-          ]
-        },
-        {
-          "CanonicalId": "AaEpypbo3WwRdCX9MG2iRg",
+          "CanonicalId": "AaGew4uErOvUPbYJpjx5GQ",
           "Field": "system/stText/paragraphs",
           "Changes": [
             {
               "Ws": "1",
               "Before": null,
-              "After": "AaEpypbo33zLsygOwvRRNA"
+              "After": "AaGew4uGH4Arj1IkD2m6Hw"
             }
           ],
           "OperationIds": [
-            "AaEpypbo1eBOXuz4v3cUoA",
-            "AaEpypbo2xTeP5NbId3tZg",
-            "AaEpypbogCHncZbk3edsVw"
+            "AaGew4uEWHbSiXVsUZz1Fg",
+            "AaGew4uF1BDouNU_5-WshA",
+            "AaGew4uGiX7prFmx5ns3ag"
           ]
         },
         {
-          "CanonicalId": "AaEpypbouOMxvEMgEtJ9Eg",
+          "CanonicalId": "AaGew4uErOvUPbYJpjx5GQ",
+          "Field": "system/stText/paragraphs",
+          "Changes": [
+            {
+              "Ws": "0",
+              "Before": null,
+              "After": "AaGew4uFu5SWPP53vJ0p4w"
+            }
+          ],
+          "OperationIds": [
+            "AaGew4uEWHbSiXVsUZz1Fg",
+            "AaGew4uF1BDouNU_5-WshA"
+          ]
+        },
+        {
+          "CanonicalId": "AaGew4uFu5SWPP53vJ0p4w",
           "Field": "analysis/stTxtPara/contents",
           "Changes": [
             {
@@ -1266,151 +1216,171 @@
             }
           ],
           "OperationIds": [
-            "AaEpypboNnDksthjsHPo7w",
-            "AaEpypbogCHncZbk3edsVw"
+            "AaGew4uF1BDouNU_5-WshA",
+            "AaGew4uGYhrFjNWXw4VRwg"
           ]
         },
         {
-          "CanonicalId": "AaEpypdUBifhmHLs-Jrr1w",
+          "CanonicalId": "AaGew4uGH4Arj1IkD2m6Hw",
+          "Field": "analysis/stTxtPara/contents",
+          "Changes": [
+            {
+              "Ws": "text",
+              "Before": null,
+              "After": "Stage the rule that replaces this alternation."
+            },
+            {
+              "Ws": "ws",
+              "Before": null,
+              "After": "en"
+            }
+          ],
+          "OperationIds": [
+            "AaGew4uGJAQEoLVmvg1hNA",
+            "AaGew4uGiX7prFmx5ns3ag"
+          ]
+        },
+        {
+          "CanonicalId": "AaGew4x2vEIott55i9OwSw",
           "Field": "grammar/phSegRuleRHS/leftContext",
           "Changes": [
             {
               "Ws": "0",
               "Before": null,
-              "After": "AaEpypdWv8dPXSzZjJ48qg"
+              "After": "AaGew4x4YRy8XnbnPZ952A"
             }
           ],
           "OperationIds": [
-            "AaEpypdV1F6soQVwuWDvVw",
-            "AaEpypdVGR9H21pR8RTipg",
-            "AaEpypdW_N880wLK8AADkw",
-            "AaEpypdWcsJgf38bu58QjQ"
+            "AaGew4x26LMLM4vAn-ORLQ",
+            "AaGew4x3-xhPL9LouHczKA",
+            "AaGew4x4FdZUkEcTt3vEpw",
+            "AaGew4x4eIio1LgAEoNA3w"
           ]
         },
         {
-          "CanonicalId": "AaEpypdUBifhmHLs-Jrr1w",
+          "CanonicalId": "AaGew4x2vEIott55i9OwSw",
           "Field": "grammar/phSegRuleRHS/rightContext",
           "Changes": [
             {
               "Ws": "0",
               "Before": null,
-              "After": "AaEpypdWCorekiTBmlQNNg"
+              "After": "AaGew4x46_wWtrZeXcri3g"
             }
           ],
           "OperationIds": [
-            "AaEpypdV1F6soQVwuWDvVw",
-            "AaEpypdVGR9H21pR8RTipg",
-            "AaEpypdW_N880wLK8AADkw",
-            "AaEpypdWcsJgf38bu58QjQ"
+            "AaGew4x26LMLM4vAn-ORLQ",
+            "AaGew4x3-xhPL9LouHczKA",
+            "AaGew4x4FdZUkEcTt3vEpw",
+            "AaGew4x4eIio1LgAEoNA3w"
           ]
         },
         {
-          "CanonicalId": "AaEpypdUBifhmHLs-Jrr1w",
+          "CanonicalId": "AaGew4x2vEIott55i9OwSw",
           "Field": "grammar/phSegRuleRHS/strucChange",
           "Changes": [
             {
               "Ws": "0",
               "Before": null,
-              "After": "AaEpypdVx02sK7mpa2_9rQ"
+              "After": "AaGew4x3DstKIkv88PzKBw"
             }
           ],
           "OperationIds": [
-            "AaEpypdV1F6soQVwuWDvVw",
-            "AaEpypdVGR9H21pR8RTipg",
-            "AaEpypdW_N880wLK8AADkw",
-            "AaEpypdWcsJgf38bu58QjQ"
+            "AaGew4x26LMLM4vAn-ORLQ",
+            "AaGew4x3-xhPL9LouHczKA",
+            "AaGew4x4FdZUkEcTt3vEpw",
+            "AaGew4x4eIio1LgAEoNA3w"
           ]
         },
         {
-          "CanonicalId": "AaEpypdVUA-0rPlabouhIA",
+          "CanonicalId": "AaGew4x3DstKIkv88PzKBw",
           "Field": "grammar/phSimpleContextSeg/featureStructure",
           "Changes": [
             {
               "Ws": "ref",
               "Before": null,
-              "After": "AaEpypQjflPDk6DZ72g0Zg"
+              "After": "AaGew33chEMD0QAOF3jLJA"
             }
           ],
           "OperationIds": [
-            "AaEpypdVAtyMFo49u4tTlQ",
-            "AaEpypdVbnmgcYd5ODRh_w"
+            "AaGew4x3-xhPL9LouHczKA",
+            "AaGew4x3TSCQJTfLBhuM_Q"
           ]
         },
         {
-          "CanonicalId": "AaEpypdVx02sK7mpa2_9rQ",
+          "CanonicalId": "AaGew4x3R6FG9zB2xAcr3A",
           "Field": "grammar/phSimpleContextSeg/featureStructure",
           "Changes": [
             {
               "Ws": "ref",
               "Before": null,
-              "After": "AaEpypQ1ZwkdXDmlZY92eg"
+              "After": "AaGew3x4yHaM0tc3q4Nupw"
             }
           ],
           "OperationIds": [
-            "AaEpypdV1F6soQVwuWDvVw",
-            "AaEpypdVk5E8bkt5v-66fw"
+            "AaGew4x3WAQfI8StpMHrKg",
+            "AaGew4x3YzfNtNtnPakQ4Q"
           ]
         },
         {
-          "CanonicalId": "AaEpypdWCorekiTBmlQNNg",
+          "CanonicalId": "AaGew4x46_wWtrZeXcri3g",
           "Field": "grammar/phSimpleContextNC/featureStructure",
           "Changes": [
             {
               "Ws": "ref",
               "Before": null,
-              "After": "AaEpypVJJjNq24KMJSAsKA"
+              "After": "AaGew4B9i0Nd7eVpEzYlKg"
             }
           ],
           "OperationIds": [
-            "AaEpypdWS6WICaaC_KD9Qg",
-            "AaEpypdWcsJgf38bu58QjQ"
+            "AaGew4x4FdZUkEcTt3vEpw",
+            "AaGew4x4xA04p183F97PCg"
           ]
         },
         {
-          "CanonicalId": "AaEpypdWv8dPXSzZjJ48qg",
+          "CanonicalId": "AaGew4x4YRy8XnbnPZ952A",
           "Field": "grammar/phSimpleContextSeg/featureStructure",
           "Changes": [
             {
               "Ws": "ref",
               "Before": null,
-              "After": "AaEpypRSvzHUAORujHrQMA"
+              "After": "AaGew34Oye16f1eQROyVmA"
             }
           ],
           "OperationIds": [
-            "AaEpypdW_N880wLK8AADkw",
-            "AaEpypdWuxa8993v_UwMSw"
+            "AaGew4x4eIio1LgAEoNA3w",
+            "AaGew4x4w_siZp07lLHXjA"
           ]
         },
         {
-          "CanonicalId": "FEcYuglESq6XJ1gzPSejHA",
-          "Field": "lexical/lexEntry/alternateForms",
-          "Changes": [
-            {
-              "Ws": "0000000000",
-              "Before": "wFOMSiYERuqS4lA_kJ3rAg",
-              "After": null
-            }
-          ],
-          "OperationIds": [
-            "AaEpypfDv0abut1IAkM8aA"
-          ]
-        },
-        {
-          "CanonicalId": "NfanxcWRSeisilusQ-ZCcA",
+          "CanonicalId": "Fps96Vv1R0CferpZUgLYQA",
           "Field": "system/rnResearchNbk/records",
           "Changes": [
             {
               "Ws": "ref",
               "Before": null,
-              "After": "AaEpypbnKEiDKXFlljKtbQ"
+              "After": "AaGew4t-Xi9GQJOz9BLSIQ"
             }
           ],
           "OperationIds": [
-            "AaEpypboyFW-bfy6XKf8AA"
+            "AaGew4uEVRDhCOf-_NonCQ"
           ]
         },
         {
-          "CanonicalId": "TsyXkXJxQia0qGzlBvjSeA",
+          "CanonicalId": "LEmDq-F0TJS22j3B3MHo_Q",
+          "Field": "lexical/lexEntry/alternateForms",
+          "Changes": [
+            {
+              "Ws": "0000000000",
+              "Before": "uTpcUXLFRlSDx3u_orN01Q",
+              "After": null
+            }
+          ],
+          "OperationIds": [
+            "AaGew40oRN6oyncGjlbaJg"
+          ]
+        },
+        {
+          "CanonicalId": "Nv4mEoHVQvSpyI7g310hQQ",
           "Field": "analysis/wfiMorphBundle/form",
           "Changes": [
             {
@@ -1420,460 +1390,488 @@
             }
           ],
           "OperationIds": [
-            "AaEpype_JXKhdWYkOX9hSA"
+            "AaGew41SZ467EIF5_yRb9g"
           ]
         },
         {
-          "CanonicalId": "TsyXkXJxQia0qGzlBvjSeA",
+          "CanonicalId": "Nv4mEoHVQvSpyI7g310hQQ",
           "Field": "analysis/wfiMorphBundle/morph",
           "Changes": [
             {
               "Ws": "ref",
-              "Before": "wFOMSiYERuqS4lA_kJ3rAg",
-              "After": "w91KIi5fSW-mj-jLGoYMJg"
+              "Before": "dCLIkmxvR7-z5sxty9t3RA",
+              "After": "3hB_hMIhT3qMKz2srZyPxw"
             }
           ],
           "OperationIds": [
-            "AaEpype_JXKhdWYkOX9hSA"
+            "AaGew41SZ467EIF5_yRb9g"
           ]
         },
         {
-          "CanonicalId": "XO_jauQUQ1Ko5L0vauLk8g",
+          "CanonicalId": "YyHbcYgHREeqsFn1fx98fg",
           "Field": "lexical/lexEntry/alternateForms",
           "Changes": [
             {
               "Ws": "0000000000",
-              "Before": "WeEP-t_tR-aQhjNCHzP-qg",
+              "Before": "dCLIkmxvR7-z5sxty9t3RA",
               "After": null
             }
           ],
           "OperationIds": [
-            "AaEpypfgKspxzEb77fHLCA"
+            "AaGew41T7QK1yvMuWyjA5w"
           ]
         },
         {
-          "CanonicalId": "zaTcwq9iTTmOGHBKpVcQvQ",
+          "CanonicalId": "_nlFVEEpSpSd-bo6Fulxxg",
           "Field": "grammar/phPhonData/naturalClasses",
           "Changes": [
             {
               "Ws": "0",
               "Before": null,
-              "After": "AaEpypVJJjNq24KMJSAsKA"
+              "After": "AaGew4B9i0Nd7eVpEzYlKg"
             }
           ],
           "OperationIds": [
-            "AaEpypdKh7sKYBDPJ_7Vcw",
-            "AaEpypdQetCViaynvWVYYw"
+            "AaGew4xTD67YgKwkgCRxag",
+            "AaGew4xyPFFZ-bOBXRFd1w"
           ]
         },
         {
-          "CanonicalId": "zaTcwq9iTTmOGHBKpVcQvQ",
+          "CanonicalId": "_nlFVEEpSpSd-bo6Fulxxg",
           "Field": "grammar/phPhonData/phonRules",
           "Changes": [
             {
               "Ws": "0",
               "Before": null,
-              "After": "AaEpypVJzEC0TaO5Wt3t1w"
+              "After": "AaGew4B9RwMFcDo992qbkQ"
             }
           ],
           "OperationIds": [
-            "AaEpypdKh7sKYBDPJ_7Vcw",
-            "AaEpypdQetCViaynvWVYYw"
+            "AaGew4xTD67YgKwkgCRxag",
+            "AaGew4xyPFFZ-bOBXRFd1w"
+          ]
+        },
+        {
+          "CanonicalId": "gb9TDcFDSQ6kIlaVo_5Ucg",
+          "Field": "analysis/wfiMorphBundle/form",
+          "Changes": [
+            {
+              "Ws": "fr",
+              "Before": "ta",
+              "After": "ra"
+            }
+          ],
+          "OperationIds": [
+            "AaGew40fh_Xup7Mv8Rk7rQ"
+          ]
+        },
+        {
+          "CanonicalId": "gb9TDcFDSQ6kIlaVo_5Ucg",
+          "Field": "analysis/wfiMorphBundle/morph",
+          "Changes": [
+            {
+              "Ws": "ref",
+              "Before": "uTpcUXLFRlSDx3u_orN01Q",
+              "After": "HPsLg8DcSdaFmhrt06WK9g"
+            }
+          ],
+          "OperationIds": [
+            "AaGew40fh_Xup7Mv8Rk7rQ"
           ]
         }
       ],
-      "EffectDigest": "sha256:04dabcc0482fc4cd40de7a7d5d4c71390a3b6425c3befbdebc0bfa9de2cb3fda",
-      "FootprintDigest": "sha256:526a20fb241db0b11306fd603adf89737a68b67c024d07be01a92f500b121164",
+      "EffectDigest": "sha256:da2aeb2e9bd22cb7d7bcf4f1f31cef2be30e6d3b3280a0280de1b662bedd829e",
+      "FootprintDigest": "sha256:26925558016f9aea1c9d956a847e200332fe6790a7f335d7270e342b663af617",
       "Baseline": null,
       "EvidenceCurrent": false,
       "Operations": [
         {
-          "OperationId": "AaEpypboyFW-bfy6XKf8AA",
+          "OperationId": "AaGew4uEVRDhCOf-_NonCQ",
           "Kind": "system/rnResearchNbk/createRecords",
-          "Target": "NfanxcWRSeisilusQ-ZCcA",
-          "EntityId": "AaEpypbnKEiDKXFlljKtbQ",
+          "Target": "Fps96Vv1R0CferpZUgLYQA",
+          "EntityId": "AaGew4t-Xi9GQJOz9BLSIQ",
           "DependsOn": [],
           "AfterJson": "{}",
           "Citation": null
         },
         {
-          "OperationId": "AaEpypdKh7sKYBDPJ_7Vcw",
+          "OperationId": "AaGew4xTD67YgKwkgCRxag",
           "Kind": "grammar/phPhonData/createNaturalClasses",
-          "Target": "zaTcwq9iTTmOGHBKpVcQvQ",
-          "EntityId": "AaEpypVJJjNq24KMJSAsKA",
+          "Target": "_nlFVEEpSpSd-bo6Fulxxg",
+          "EntityId": "AaGew4B9i0Nd7eVpEzYlKg",
           "DependsOn": [],
           "AfterJson": "{\n        \u0022class\u0022: \u0022PhNCSegments\u0022\n      }",
           "Citation": null
         },
         {
-          "OperationId": "AaEpypbo2xTeP5NbId3tZg",
+          "OperationId": "AaGew4uEWHbSiXVsUZz1Fg",
           "Kind": "system/rnGenericRec/createDescription",
-          "Target": "AaEpypbnKEiDKXFlljKtbQ",
-          "EntityId": "AaEpypbo3WwRdCX9MG2iRg",
+          "Target": "AaGew4t-Xi9GQJOz9BLSIQ",
+          "EntityId": "AaGew4uErOvUPbYJpjx5GQ",
           "DependsOn": [
-            "AaEpypboyFW-bfy6XKf8AA"
+            "AaGew4uEVRDhCOf-_NonCQ"
           ],
           "AfterJson": "{}",
           "Citation": null
         },
         {
-          "OperationId": "AaEpypboHHiGWg8SCGrqDg",
+          "OperationId": "AaGew4uEoDFU0yQhADI4IQ",
           "Kind": "system/rnGenericRec/setType",
-          "Target": "AaEpypbnKEiDKXFlljKtbQ",
+          "Target": "AaGew4t-Xi9GQJOz9BLSIQ",
           "EntityId": null,
           "DependsOn": [
-            "AaEpypboyFW-bfy6XKf8AA"
+            "AaGew4uEVRDhCOf-_NonCQ"
           ],
-          "AfterJson": "{\n        \u0022ref\u0022: \u0022aOsm2UQ5Q6SMxpg17UEj9Q\u0022\n      }",
+          "AfterJson": "{\n        \u0022ref\u0022: \u00229OSaN0blTPe2OzPs7kQPAg\u0022\n      }",
           "Citation": null
         },
         {
-          "OperationId": "AaEpypboRdGrAhmsO21nUA",
-          "Kind": "system/rnGenericRec/setMotifHumanJudgment",
-          "Target": "AaEpypbnKEiDKXFlljKtbQ",
-          "EntityId": null,
-          "DependsOn": [
-            "AaEpypboyFW-bfy6XKf8AA"
-          ],
-          "AfterJson": "{\n        \u0022text\u0022: \u0022{\\u0022actor\\u0022:{\\u0022id\\u0022:null,\\u0022kind\\u0022:\\u0022agent\\u0022,\\u0022name\\u0022:null},\\u0022body\\u0022:{\\u0022disposition\\u0022:\\u0022fix\\u0022,\\u0022evidenceContract\\u0022:\\u0022allo-alternation-family/v1\\u0022,\\u0022evidenceDigest\\u0022:\\u0022sha256:9e124a11639f8644cd932ea5a1be9b02f22384a49fda63997e6a8d934abe0799\\u0022,\\u0022kind\\u0022:\\u0022parsimony-disposition\\u0022,\\u0022measureCaption\\u0022:\\u0022Listed shapes share a rule\\u0022,\\u0022measureId\\u0022:\\u0022P-allo-alternation-family\\u0022,\\u0022question\\u0022:null,\\u0022subject\\u0022:{\\u0022kind\\u0022:\\u0022computed-group\\u0022,\\u0022measureId\\u0022:\\u0022P-allo-alternation-family\\u0022,\\u0022members\\u0022:[{\\u0022class\\u0022:\\u0022MoAffixAllomorph\\u0022,\\u0022id\\u0022:\\u0022Jev4yFPZSnyf1qRCxA25ig\\u0022,\\u0022owningEntryId\\u0022:null},{\\u0022class\\u0022:\\u0022MoAffixAllomorph\\u0022,\\u0022id\\u0022:\\u0022WeEP-t_tR-aQhjNCHzP-qg\\u0022,\\u0022owningEntryId\\u0022:null},{\\u0022class\\u0022:\\u0022MoAffixAllomorph\\u0022,\\u0022id\\u0022:\\u0022w91KIi5fSW-mj-jLGoYMJg\\u0022,\\u0022owningEntryId\\u0022:null},{\\u0022class\\u0022:\\u0022MoAffixAllomorph\\u0022,\\u0022id\\u0022:\\u0022wFOMSiYERuqS4lA_kJ3rAg\\u0022,\\u0022owningEntryId\\u0022:null}],\\u0022role\\u0022:\\u0022alternation-family\\u0022},\\u0022subjectCaption\\u0022:\\u0022allomorphs in the alternation family: ra, ta, ta, ra\\u0022},\\u0022contentHash\\u0022:\\u0022sha256:c3c266fb32f318ec4489b7ed7e55efcdcd695a3c0b4dae6a460eef87575547fe\\u0022,\\u0022extensions\\u0022:null,\\u0022format\\u0022:\\u0022motif-human-judgment\\u0022,\\u0022judgedAtUtc\\u0022:null,\\u0022judgmentId\\u0022:\\u0022AaEpypbomuuEfFGeP-LfUw\\u0022,\\u0022projectId\\u0022:\\u0022ccmOxBJlRP-2jYeUjsFzfw\\u0022,\\u0022readableFormat\\u0022:\\u0022en-v1\\u0022,\\u0022replaces\\u0022:[],\\u0022resolvesConflict\\u0022:false,\\u0022revisionId\\u0022:\\u0022AaEpypbnKEiDKXFlljKtbQ\\u0022,\\u0022source\\u0022:{\\u0022proposalId\\u0022:\\u0022AaEpyparMoBemn7db9LC7A\\u0022,\\u0022reportId\\u0022:\\u0022report/AaEpypaGeMA6ThyPxYa_GQ\\u0022},\\u0022version\\u0022:1}\u0022\n      }",
-          "Citation": null
-        },
-        {
-          "OperationId": "AaEpypbo_E_uQ54CK76crg",
+          "OperationId": "AaGew4uFI794nbh1JvunoA",
           "Kind": "system/rnGenericRec/setTitle",
-          "Target": "AaEpypbnKEiDKXFlljKtbQ",
+          "Target": "AaGew4t-Xi9GQJOz9BLSIQ",
           "EntityId": null,
           "DependsOn": [
-            "AaEpypboyFW-bfy6XKf8AA"
+            "AaGew4uEVRDhCOf-_NonCQ"
           ],
-          "AfterJson": "{\n        \u0022ws\u0022: \u0022en\u0022,\n        \u0022text\u0022: \u0022Fix: allomorphs in the alternation family: ra, ta, ta, ra (MJ-HWWV-87P6)\u0022\n      }",
+          "AfterJson": "{\n        \u0022ws\u0022: \u0022en\u0022,\n        \u0022text\u0022: \u0022Fix: allomorphs in the alternation family: ra, ta, ta, ra (MJ-8190-SJEP)\u0022\n      }",
           "Citation": null
         },
         {
-          "OperationId": "AaEpypdL87EfkECrI8k78Q",
-          "Kind": "grammar/phNCSegments/addRefSegments",
-          "Target": "AaEpypVJJjNq24KMJSAsKA",
+          "OperationId": "AaGew4uG602MbwI9-93Gog",
+          "Kind": "system/rnGenericRec/setMotifHumanJudgment",
+          "Target": "AaGew4t-Xi9GQJOz9BLSIQ",
           "EntityId": null,
           "DependsOn": [
-            "AaEpypdKh7sKYBDPJ_7Vcw"
+            "AaGew4uEVRDhCOf-_NonCQ"
           ],
-          "AfterJson": "{\n        \u0022member\u0022: \u0022AaEpypRSvzHUAORujHrQMA\u0022\n      }",
+          "AfterJson": "{\n        \u0022text\u0022: \u0022{\\u0022actor\\u0022:{\\u0022id\\u0022:null,\\u0022kind\\u0022:\\u0022agent\\u0022,\\u0022name\\u0022:null},\\u0022body\\u0022:{\\u0022disposition\\u0022:\\u0022fix\\u0022,\\u0022evidenceContract\\u0022:\\u0022allo-alternation-family/v1\\u0022,\\u0022evidenceDigest\\u0022:\\u0022sha256:140086a88d0ad901daf993a83516703c91c0169e59872cea8f2e8f025c067406\\u0022,\\u0022kind\\u0022:\\u0022parsimony-disposition\\u0022,\\u0022measureCaption\\u0022:\\u0022Listed shapes share a rule\\u0022,\\u0022measureId\\u0022:\\u0022P-allo-alternation-family\\u0022,\\u0022question\\u0022:null,\\u0022subject\\u0022:{\\u0022kind\\u0022:\\u0022computed-group\\u0022,\\u0022measureId\\u0022:\\u0022P-allo-alternation-family\\u0022,\\u0022members\\u0022:[{\\u0022class\\u0022:\\u0022MoAffixAllomorph\\u0022,\\u0022id\\u0022:\\u00223hB_hMIhT3qMKz2srZyPxw\\u0022,\\u0022owningEntryId\\u0022:null},{\\u0022class\\u0022:\\u0022MoAffixAllomorph\\u0022,\\u0022id\\u0022:\\u0022HPsLg8DcSdaFmhrt06WK9g\\u0022,\\u0022owningEntryId\\u0022:null},{\\u0022class\\u0022:\\u0022MoAffixAllomorph\\u0022,\\u0022id\\u0022:\\u0022dCLIkmxvR7-z5sxty9t3RA\\u0022,\\u0022owningEntryId\\u0022:null},{\\u0022class\\u0022:\\u0022MoAffixAllomorph\\u0022,\\u0022id\\u0022:\\u0022uTpcUXLFRlSDx3u_orN01Q\\u0022,\\u0022owningEntryId\\u0022:null}],\\u0022role\\u0022:\\u0022alternation-family\\u0022},\\u0022subjectCaption\\u0022:\\u0022allomorphs in the alternation family: ra, ta, ta, ra\\u0022},\\u0022contentHash\\u0022:\\u0022sha256:ab5600c5b3163f075daecdbc7fb16771b9c53b552eb5c3588be1913bfdfd0152\\u0022,\\u0022extensions\\u0022:null,\\u0022format\\u0022:\\u0022motif-human-judgment\\u0022,\\u0022judgedAtUtc\\u0022:null,\\u0022judgmentId\\u0022:\\u0022AaGew4uAxNEQsaoFCrWDXg\\u0022,\\u0022projectId\\u0022:\\u0022xmuJ6O_6TPGO0wMeftJ3uw\\u0022,\\u0022readableFormat\\u0022:\\u0022en-v1\\u0022,\\u0022replaces\\u0022:[],\\u0022resolvesConflict\\u0022:false,\\u0022revisionId\\u0022:\\u0022AaGew4t-Xi9GQJOz9BLSIQ\\u0022,\\u0022source\\u0022:{\\u0022proposalId\\u0022:\\u0022AaGew4o_qTyaFeVDs6gMlQ\\u0022,\\u0022reportId\\u0022:\\u0022report/AaGew4het9TdzVMdytZ9ZQ\\u0022},\\u0022version\\u0022:1}\u0022\n      }",
           "Citation": null
         },
         {
-          "OperationId": "AaEpypdLP4E-11HX1vI3Qg",
-          "Kind": "grammar/phNaturalClass/setAbbreviation",
-          "Target": "AaEpypVJJjNq24KMJSAsKA",
-          "EntityId": null,
-          "DependsOn": [
-            "AaEpypdKh7sKYBDPJ_7Vcw"
-          ],
-          "AfterJson": "{\n        \u0022ws\u0022: \u0022en\u0022,\n        \u0022text\u0022: \u0022V\u0022\n      }",
-          "Citation": null
-        },
-        {
-          "OperationId": "AaEpypdLm9lZSNOXdq9Bpw",
+          "OperationId": "AaGew4xU9n2Y7NeLOj4Qjg",
           "Kind": "grammar/phNaturalClass/setName",
-          "Target": "AaEpypVJJjNq24KMJSAsKA",
+          "Target": "AaGew4B9i0Nd7eVpEzYlKg",
           "EntityId": null,
           "DependsOn": [
-            "AaEpypdKh7sKYBDPJ_7Vcw"
+            "AaGew4xTD67YgKwkgCRxag"
           ],
           "AfterJson": "{\n        \u0022ws\u0022: \u0022en\u0022,\n        \u0022text\u0022: \u0022vowels\u0022\n      }",
           "Citation": null
         },
         {
-          "OperationId": "AaEpypbogCHncZbk3edsVw",
-          "Kind": "system/stText/createParagraphs",
-          "Target": "AaEpypbo3WwRdCX9MG2iRg",
-          "EntityId": "AaEpypbouOMxvEMgEtJ9Eg",
+          "OperationId": "AaGew4xUFiM7wLkAVgfZFQ",
+          "Kind": "grammar/phNaturalClass/setAbbreviation",
+          "Target": "AaGew4B9i0Nd7eVpEzYlKg",
+          "EntityId": null,
           "DependsOn": [
-            "AaEpypbo2xTeP5NbId3tZg"
+            "AaGew4xTD67YgKwkgCRxag"
+          ],
+          "AfterJson": "{\n        \u0022ws\u0022: \u0022en\u0022,\n        \u0022text\u0022: \u0022V\u0022\n      }",
+          "Citation": null
+        },
+        {
+          "OperationId": "AaGew4xUwaVzjtsK8D_nPQ",
+          "Kind": "grammar/phNCSegments/addRefSegments",
+          "Target": "AaGew4B9i0Nd7eVpEzYlKg",
+          "EntityId": null,
+          "DependsOn": [
+            "AaGew4xTD67YgKwkgCRxag"
+          ],
+          "AfterJson": "{\n        \u0022member\u0022: \u0022AaGew34Oye16f1eQROyVmA\u0022\n      }",
+          "Citation": null
+        },
+        {
+          "OperationId": "AaGew4uF1BDouNU_5-WshA",
+          "Kind": "system/stText/createParagraphs",
+          "Target": "AaGew4uErOvUPbYJpjx5GQ",
+          "EntityId": "AaGew4uFu5SWPP53vJ0p4w",
+          "DependsOn": [
+            "AaGew4uEWHbSiXVsUZz1Fg"
           ],
           "AfterJson": "{\n        \u0022class\u0022: \u0022StTxtPara\u0022\n      }",
           "Citation": null
         },
         {
-          "OperationId": "AaEpypdQetCViaynvWVYYw",
+          "OperationId": "AaGew4xyPFFZ-bOBXRFd1w",
           "Kind": "grammar/phPhonData/createPhonRules",
-          "Target": "zaTcwq9iTTmOGHBKpVcQvQ",
-          "EntityId": "AaEpypVJzEC0TaO5Wt3t1w",
+          "Target": "_nlFVEEpSpSd-bo6Fulxxg",
+          "EntityId": "AaGew4B9RwMFcDo992qbkQ",
           "DependsOn": [
-            "AaEpypdKh7sKYBDPJ_7Vcw",
-            "AaEpypdL87EfkECrI8k78Q",
-            "AaEpypdLP4E-11HX1vI3Qg",
-            "AaEpypdLm9lZSNOXdq9Bpw"
+            "AaGew4xTD67YgKwkgCRxag",
+            "AaGew4xU9n2Y7NeLOj4Qjg",
+            "AaGew4xUFiM7wLkAVgfZFQ",
+            "AaGew4xUwaVzjtsK8D_nPQ"
           ],
           "AfterJson": "{\n        \u0022class\u0022: \u0022PhRegularRule\u0022\n      }",
           "Citation": null
         },
         {
-          "OperationId": "AaEpypbo1eBOXuz4v3cUoA",
-          "Kind": "system/stText/createParagraphs",
-          "Target": "AaEpypbo3WwRdCX9MG2iRg",
-          "EntityId": "AaEpypbo33zLsygOwvRRNA",
-          "DependsOn": [
-            "AaEpypbo2xTeP5NbId3tZg",
-            "AaEpypbogCHncZbk3edsVw"
-          ],
-          "AfterJson": "{\n        \u0022class\u0022: \u0022StTxtPara\u0022\n      }",
-          "Citation": null
-        },
-        {
-          "OperationId": "AaEpypboNnDksthjsHPo7w",
+          "OperationId": "AaGew4uGYhrFjNWXw4VRwg",
           "Kind": "analysis/stTxtPara/setContents",
-          "Target": "AaEpypbouOMxvEMgEtJ9Eg",
+          "Target": "AaGew4uFu5SWPP53vJ0p4w",
           "EntityId": null,
           "DependsOn": [
-            "AaEpypbogCHncZbk3edsVw"
+            "AaGew4uF1BDouNU_5-WshA"
           ],
           "AfterJson": "{\n        \u0022ws\u0022: \u0022en\u0022,\n        \u0022text\u0022: \u0022Fix \\u201Callomorphs in the alternation family: ra, ta, ta, ra\\u201D for \\u201CListed shapes share a rule\\u201D.\u0022\n      }",
           "Citation": null
         },
         {
-          "OperationId": "AaEpypdTAvio0FjCDyRn-A",
+          "OperationId": "AaGew4uGiX7prFmx5ns3ag",
+          "Kind": "system/stText/createParagraphs",
+          "Target": "AaGew4uErOvUPbYJpjx5GQ",
+          "EntityId": "AaGew4uGH4Arj1IkD2m6Hw",
+          "DependsOn": [
+            "AaGew4uEWHbSiXVsUZz1Fg",
+            "AaGew4uF1BDouNU_5-WshA"
+          ],
+          "AfterJson": "{\n        \u0022class\u0022: \u0022StTxtPara\u0022\n      }",
+          "Citation": null
+        },
+        {
+          "OperationId": "AaGew4x1TiyjWekkEI8PNQ",
           "Kind": "grammar/phSegmentRule/setName",
-          "Target": "AaEpypVJzEC0TaO5Wt3t1w",
+          "Target": "AaGew4B9RwMFcDo992qbkQ",
           "EntityId": null,
           "DependsOn": [
-            "AaEpypdKh7sKYBDPJ_7Vcw",
-            "AaEpypdL87EfkECrI8k78Q",
-            "AaEpypdLP4E-11HX1vI3Qg",
-            "AaEpypdLm9lZSNOXdq9Bpw",
-            "AaEpypdQetCViaynvWVYYw"
+            "AaGew4xTD67YgKwkgCRxag",
+            "AaGew4xU9n2Y7NeLOj4Qjg",
+            "AaGew4xUFiM7wLkAVgfZFQ",
+            "AaGew4xUwaVzjtsK8D_nPQ",
+            "AaGew4xyPFFZ-bOBXRFd1w"
           ],
           "AfterJson": "{\n        \u0022ws\u0022: \u0022en\u0022,\n        \u0022text\u0022: \u0022r becomes t between a segments\u0022\n      }",
           "Citation": null
         },
         {
-          "OperationId": "AaEpypdTpwEXNfvf_FZBCQ",
+          "OperationId": "AaGew4x1udfRf6QmZuISeg",
           "Kind": "grammar/phSegmentRule/setDirection",
-          "Target": "AaEpypVJzEC0TaO5Wt3t1w",
+          "Target": "AaGew4B9RwMFcDo992qbkQ",
           "EntityId": null,
           "DependsOn": [
-            "AaEpypdKh7sKYBDPJ_7Vcw",
-            "AaEpypdL87EfkECrI8k78Q",
-            "AaEpypdLP4E-11HX1vI3Qg",
-            "AaEpypdLm9lZSNOXdq9Bpw",
-            "AaEpypdQetCViaynvWVYYw"
+            "AaGew4xTD67YgKwkgCRxag",
+            "AaGew4xU9n2Y7NeLOj4Qjg",
+            "AaGew4xUFiM7wLkAVgfZFQ",
+            "AaGew4xUwaVzjtsK8D_nPQ",
+            "AaGew4xyPFFZ-bOBXRFd1w"
           ],
           "AfterJson": "{\n        \u0022value\u0022: 2\n      }",
           "Citation": null
         },
         {
-          "OperationId": "AaEpypdVAtyMFo49u4tTlQ",
-          "Kind": "grammar/phSegmentRule/createStrucDesc",
-          "Target": "AaEpypVJzEC0TaO5Wt3t1w",
-          "EntityId": "AaEpypdVUA-0rPlabouhIA",
-          "DependsOn": [
-            "AaEpypdKh7sKYBDPJ_7Vcw",
-            "AaEpypdL87EfkECrI8k78Q",
-            "AaEpypdLP4E-11HX1vI3Qg",
-            "AaEpypdLm9lZSNOXdq9Bpw",
-            "AaEpypdQetCViaynvWVYYw"
-          ],
-          "AfterJson": "{\n        \u0022class\u0022: \u0022PhSimpleContextSeg\u0022\n      }",
-          "Citation": null
-        },
-        {
-          "OperationId": "AaEpypdVGR9H21pR8RTipg",
+          "OperationId": "AaGew4x26LMLM4vAn-ORLQ",
           "Kind": "grammar/phRegularRule/createRightHandSides",
-          "Target": "AaEpypVJzEC0TaO5Wt3t1w",
-          "EntityId": "AaEpypdUBifhmHLs-Jrr1w",
+          "Target": "AaGew4B9RwMFcDo992qbkQ",
+          "EntityId": "AaGew4x2vEIott55i9OwSw",
           "DependsOn": [
-            "AaEpypdKh7sKYBDPJ_7Vcw",
-            "AaEpypdL87EfkECrI8k78Q",
-            "AaEpypdLP4E-11HX1vI3Qg",
-            "AaEpypdLm9lZSNOXdq9Bpw",
-            "AaEpypdQetCViaynvWVYYw"
+            "AaGew4xTD67YgKwkgCRxag",
+            "AaGew4xU9n2Y7NeLOj4Qjg",
+            "AaGew4xUFiM7wLkAVgfZFQ",
+            "AaGew4xUwaVzjtsK8D_nPQ",
+            "AaGew4xyPFFZ-bOBXRFd1w"
           ],
           "AfterJson": "{}",
           "Citation": null
         },
         {
-          "OperationId": "AaEpypbo4fwfLO4Tha9tEg",
+          "OperationId": "AaGew4x3YzfNtNtnPakQ4Q",
+          "Kind": "grammar/phSegmentRule/createStrucDesc",
+          "Target": "AaGew4B9RwMFcDo992qbkQ",
+          "EntityId": "AaGew4x3R6FG9zB2xAcr3A",
+          "DependsOn": [
+            "AaGew4xTD67YgKwkgCRxag",
+            "AaGew4xU9n2Y7NeLOj4Qjg",
+            "AaGew4xUFiM7wLkAVgfZFQ",
+            "AaGew4xUwaVzjtsK8D_nPQ",
+            "AaGew4xyPFFZ-bOBXRFd1w"
+          ],
+          "AfterJson": "{\n        \u0022class\u0022: \u0022PhSimpleContextSeg\u0022\n      }",
+          "Citation": null
+        },
+        {
+          "OperationId": "AaGew4uGJAQEoLVmvg1hNA",
           "Kind": "analysis/stTxtPara/setContents",
-          "Target": "AaEpypbo33zLsygOwvRRNA",
+          "Target": "AaGew4uGH4Arj1IkD2m6Hw",
           "EntityId": null,
           "DependsOn": [
-            "AaEpypbo1eBOXuz4v3cUoA"
+            "AaGew4uGiX7prFmx5ns3ag"
           ],
           "AfterJson": "{\n        \u0022ws\u0022: \u0022en\u0022,\n        \u0022text\u0022: \u0022Stage the rule that replaces this alternation.\u0022\n      }",
           "Citation": null
         },
         {
-          "OperationId": "AaEpypdV1F6soQVwuWDvVw",
+          "OperationId": "AaGew4x3-xhPL9LouHczKA",
           "Kind": "grammar/phSegRuleRHS/createStrucChange",
-          "Target": "AaEpypdUBifhmHLs-Jrr1w",
-          "EntityId": "AaEpypdVx02sK7mpa2_9rQ",
+          "Target": "AaGew4x2vEIott55i9OwSw",
+          "EntityId": "AaGew4x3DstKIkv88PzKBw",
           "DependsOn": [
-            "AaEpypdKh7sKYBDPJ_7Vcw",
-            "AaEpypdL87EfkECrI8k78Q",
-            "AaEpypdLP4E-11HX1vI3Qg",
-            "AaEpypdLm9lZSNOXdq9Bpw",
-            "AaEpypdVGR9H21pR8RTipg"
+            "AaGew4x26LMLM4vAn-ORLQ",
+            "AaGew4xTD67YgKwkgCRxag",
+            "AaGew4xU9n2Y7NeLOj4Qjg",
+            "AaGew4xUFiM7wLkAVgfZFQ",
+            "AaGew4xUwaVzjtsK8D_nPQ"
           ],
           "AfterJson": "{\n        \u0022class\u0022: \u0022PhSimpleContextSeg\u0022\n      }",
           "Citation": null
         },
         {
-          "OperationId": "AaEpypdVbnmgcYd5ODRh_w",
+          "OperationId": "AaGew4x3WAQfI8StpMHrKg",
           "Kind": "grammar/phSimpleContextSeg/setFeatureStructure",
-          "Target": "AaEpypdVUA-0rPlabouhIA",
+          "Target": "AaGew4x3R6FG9zB2xAcr3A",
           "EntityId": null,
           "DependsOn": [
-            "AaEpypdKh7sKYBDPJ_7Vcw",
-            "AaEpypdL87EfkECrI8k78Q",
-            "AaEpypdLP4E-11HX1vI3Qg",
-            "AaEpypdLm9lZSNOXdq9Bpw",
-            "AaEpypdVAtyMFo49u4tTlQ"
+            "AaGew4x3YzfNtNtnPakQ4Q",
+            "AaGew4xTD67YgKwkgCRxag",
+            "AaGew4xU9n2Y7NeLOj4Qjg",
+            "AaGew4xUFiM7wLkAVgfZFQ",
+            "AaGew4xUwaVzjtsK8D_nPQ"
           ],
-          "AfterJson": "{\n        \u0022ref\u0022: \u0022AaEpypQjflPDk6DZ72g0Zg\u0022\n      }",
+          "AfterJson": "{\n        \u0022ref\u0022: \u0022AaGew3x4yHaM0tc3q4Nupw\u0022\n      }",
           "Citation": null
         },
         {
-          "OperationId": "AaEpypdW_N880wLK8AADkw",
-          "Kind": "grammar/phSegRuleRHS/createLeftContext",
-          "Target": "AaEpypdUBifhmHLs-Jrr1w",
-          "EntityId": "AaEpypdWv8dPXSzZjJ48qg",
-          "DependsOn": [
-            "AaEpypdKh7sKYBDPJ_7Vcw",
-            "AaEpypdL87EfkECrI8k78Q",
-            "AaEpypdLP4E-11HX1vI3Qg",
-            "AaEpypdLm9lZSNOXdq9Bpw",
-            "AaEpypdVGR9H21pR8RTipg"
-          ],
-          "AfterJson": "{\n        \u0022class\u0022: \u0022PhSimpleContextSeg\u0022\n      }",
-          "Citation": null
-        },
-        {
-          "OperationId": "AaEpypdWcsJgf38bu58QjQ",
+          "OperationId": "AaGew4x4FdZUkEcTt3vEpw",
           "Kind": "grammar/phSegRuleRHS/createRightContext",
-          "Target": "AaEpypdUBifhmHLs-Jrr1w",
-          "EntityId": "AaEpypdWCorekiTBmlQNNg",
+          "Target": "AaGew4x2vEIott55i9OwSw",
+          "EntityId": "AaGew4x46_wWtrZeXcri3g",
           "DependsOn": [
-            "AaEpypdKh7sKYBDPJ_7Vcw",
-            "AaEpypdL87EfkECrI8k78Q",
-            "AaEpypdLP4E-11HX1vI3Qg",
-            "AaEpypdLm9lZSNOXdq9Bpw",
-            "AaEpypdVGR9H21pR8RTipg"
+            "AaGew4x26LMLM4vAn-ORLQ",
+            "AaGew4xTD67YgKwkgCRxag",
+            "AaGew4xU9n2Y7NeLOj4Qjg",
+            "AaGew4xUFiM7wLkAVgfZFQ",
+            "AaGew4xUwaVzjtsK8D_nPQ"
           ],
           "AfterJson": "{\n        \u0022class\u0022: \u0022PhSimpleContextNC\u0022\n      }",
           "Citation": null
         },
         {
-          "OperationId": "AaEpypdVk5E8bkt5v-66fw",
-          "Kind": "grammar/phSimpleContextSeg/setFeatureStructure",
-          "Target": "AaEpypdVx02sK7mpa2_9rQ",
-          "EntityId": null,
+          "OperationId": "AaGew4x4eIio1LgAEoNA3w",
+          "Kind": "grammar/phSegRuleRHS/createLeftContext",
+          "Target": "AaGew4x2vEIott55i9OwSw",
+          "EntityId": "AaGew4x4YRy8XnbnPZ952A",
           "DependsOn": [
-            "AaEpypdKh7sKYBDPJ_7Vcw",
-            "AaEpypdL87EfkECrI8k78Q",
-            "AaEpypdLP4E-11HX1vI3Qg",
-            "AaEpypdLm9lZSNOXdq9Bpw",
-            "AaEpypdV1F6soQVwuWDvVw"
+            "AaGew4x26LMLM4vAn-ORLQ",
+            "AaGew4xTD67YgKwkgCRxag",
+            "AaGew4xU9n2Y7NeLOj4Qjg",
+            "AaGew4xUFiM7wLkAVgfZFQ",
+            "AaGew4xUwaVzjtsK8D_nPQ"
           ],
-          "AfterJson": "{\n        \u0022ref\u0022: \u0022AaEpypQ1ZwkdXDmlZY92eg\u0022\n      }",
+          "AfterJson": "{\n        \u0022class\u0022: \u0022PhSimpleContextSeg\u0022\n      }",
           "Citation": null
         },
         {
-          "OperationId": "AaEpypdWS6WICaaC_KD9Qg",
+          "OperationId": "AaGew4x3TSCQJTfLBhuM_Q",
+          "Kind": "grammar/phSimpleContextSeg/setFeatureStructure",
+          "Target": "AaGew4x3DstKIkv88PzKBw",
+          "EntityId": null,
+          "DependsOn": [
+            "AaGew4x3-xhPL9LouHczKA",
+            "AaGew4xTD67YgKwkgCRxag",
+            "AaGew4xU9n2Y7NeLOj4Qjg",
+            "AaGew4xUFiM7wLkAVgfZFQ",
+            "AaGew4xUwaVzjtsK8D_nPQ"
+          ],
+          "AfterJson": "{\n        \u0022ref\u0022: \u0022AaGew33chEMD0QAOF3jLJA\u0022\n      }",
+          "Citation": null
+        },
+        {
+          "OperationId": "AaGew4x4w_siZp07lLHXjA",
+          "Kind": "grammar/phSimpleContextSeg/setFeatureStructure",
+          "Target": "AaGew4x4YRy8XnbnPZ952A",
+          "EntityId": null,
+          "DependsOn": [
+            "AaGew4x4eIio1LgAEoNA3w",
+            "AaGew4xTD67YgKwkgCRxag",
+            "AaGew4xU9n2Y7NeLOj4Qjg",
+            "AaGew4xUFiM7wLkAVgfZFQ",
+            "AaGew4xUwaVzjtsK8D_nPQ"
+          ],
+          "AfterJson": "{\n        \u0022ref\u0022: \u0022AaGew34Oye16f1eQROyVmA\u0022\n      }",
+          "Citation": null
+        },
+        {
+          "OperationId": "AaGew4x4xA04p183F97PCg",
           "Kind": "grammar/phSimpleContextNC/setFeatureStructure",
-          "Target": "AaEpypdWCorekiTBmlQNNg",
+          "Target": "AaGew4x46_wWtrZeXcri3g",
           "EntityId": null,
           "DependsOn": [
-            "AaEpypdKh7sKYBDPJ_7Vcw",
-            "AaEpypdL87EfkECrI8k78Q",
-            "AaEpypdLP4E-11HX1vI3Qg",
-            "AaEpypdLm9lZSNOXdq9Bpw",
-            "AaEpypdWcsJgf38bu58QjQ"
+            "AaGew4x4FdZUkEcTt3vEpw",
+            "AaGew4xTD67YgKwkgCRxag",
+            "AaGew4xU9n2Y7NeLOj4Qjg",
+            "AaGew4xUFiM7wLkAVgfZFQ",
+            "AaGew4xUwaVzjtsK8D_nPQ"
           ],
-          "AfterJson": "{\n        \u0022ref\u0022: \u0022AaEpypVJJjNq24KMJSAsKA\u0022\n      }",
+          "AfterJson": "{\n        \u0022ref\u0022: \u0022AaGew4B9i0Nd7eVpEzYlKg\u0022\n      }",
           "Citation": null
         },
         {
-          "OperationId": "AaEpypdWuxa8993v_UwMSw",
-          "Kind": "grammar/phSimpleContextSeg/setFeatureStructure",
-          "Target": "AaEpypdWv8dPXSzZjJ48qg",
-          "EntityId": null,
-          "DependsOn": [
-            "AaEpypdKh7sKYBDPJ_7Vcw",
-            "AaEpypdL87EfkECrI8k78Q",
-            "AaEpypdLP4E-11HX1vI3Qg",
-            "AaEpypdLm9lZSNOXdq9Bpw",
-            "AaEpypdW_N880wLK8AADkw"
-          ],
-          "AfterJson": "{\n        \u0022ref\u0022: \u0022AaEpypRSvzHUAORujHrQMA\u0022\n      }",
-          "Citation": null
-        },
-        {
-          "OperationId": "AaEpypdWzs7xUmC0T7yV2g",
+          "OperationId": "AaGew4x4Axb5m3e05DqXeQ",
           "Kind": "grammar/phSegmentRule/setDisabled",
-          "Target": "AaEpypVJzEC0TaO5Wt3t1w",
+          "Target": "AaGew4B9RwMFcDo992qbkQ",
           "EntityId": null,
           "DependsOn": [
-            "AaEpypdKh7sKYBDPJ_7Vcw",
-            "AaEpypdL87EfkECrI8k78Q",
-            "AaEpypdLP4E-11HX1vI3Qg",
-            "AaEpypdLm9lZSNOXdq9Bpw",
-            "AaEpypdQetCViaynvWVYYw",
-            "AaEpypdTAvio0FjCDyRn-A",
-            "AaEpypdTpwEXNfvf_FZBCQ",
-            "AaEpypdV1F6soQVwuWDvVw",
-            "AaEpypdVAtyMFo49u4tTlQ",
-            "AaEpypdVGR9H21pR8RTipg",
-            "AaEpypdVbnmgcYd5ODRh_w",
-            "AaEpypdVk5E8bkt5v-66fw",
-            "AaEpypdWS6WICaaC_KD9Qg",
-            "AaEpypdW_N880wLK8AADkw",
-            "AaEpypdWcsJgf38bu58QjQ",
-            "AaEpypdWuxa8993v_UwMSw"
+            "AaGew4x1TiyjWekkEI8PNQ",
+            "AaGew4x1udfRf6QmZuISeg",
+            "AaGew4x26LMLM4vAn-ORLQ",
+            "AaGew4x3-xhPL9LouHczKA",
+            "AaGew4x3TSCQJTfLBhuM_Q",
+            "AaGew4x3WAQfI8StpMHrKg",
+            "AaGew4x3YzfNtNtnPakQ4Q",
+            "AaGew4x4FdZUkEcTt3vEpw",
+            "AaGew4x4eIio1LgAEoNA3w",
+            "AaGew4x4w_siZp07lLHXjA",
+            "AaGew4x4xA04p183F97PCg",
+            "AaGew4xTD67YgKwkgCRxag",
+            "AaGew4xU9n2Y7NeLOj4Qjg",
+            "AaGew4xUFiM7wLkAVgfZFQ",
+            "AaGew4xUwaVzjtsK8D_nPQ",
+            "AaGew4xyPFFZ-bOBXRFd1w"
           ],
           "AfterJson": "{\n        \u0022value\u0022: false\n      }",
           "Citation": null
         },
         {
-          "OperationId": "AaEpype_JXKhdWYkOX9hSA",
+          "OperationId": "AaGew40fh_Xup7Mv8Rk7rQ",
           "Kind": "analysis/wfiMorphBundle/setMorph",
-          "Target": "TsyXkXJxQia0qGzlBvjSeA",
+          "Target": "gb9TDcFDSQ6kIlaVo_5Ucg",
           "EntityId": null,
           "DependsOn": [
-            "AaEpypdWzs7xUmC0T7yV2g"
+            "AaGew4x4Axb5m3e05DqXeQ"
           ],
-          "AfterJson": "{\n        \u0022retiredForms\u0022: [\n          \u0022wFOMSiYERuqS4lA_kJ3rAg\u0022\n        ],\n        \u0022censusDigest\u0022: \u0022sha256:82f053deb1cf82fbf1194c47a28886d6a4e8de27939fff177638b7ba4889762c\u0022,\n        \u0022retiredForm\u0022: \u0022wFOMSiYERuqS4lA_kJ3rAg\u0022,\n        \u0022replacement\u0022: \u0022w91KIi5fSW-mj-jLGoYMJg\u0022\n      }",
+          "AfterJson": "{\n        \u0022retiredForms\u0022: [\n          \u0022uTpcUXLFRlSDx3u_orN01Q\u0022\n        ],\n        \u0022censusDigest\u0022: \u0022sha256:c2056b036595bd0180288bc5d56b9311eeb0e90514dd67f4a890d173badf9f18\u0022,\n        \u0022retiredForm\u0022: \u0022uTpcUXLFRlSDx3u_orN01Q\u0022,\n        \u0022replacement\u0022: \u0022HPsLg8DcSdaFmhrt06WK9g\u0022\n      }",
           "Citation": null
         },
         {
-          "OperationId": "AaEpypfgytZjLPj5Wb6D4Q",
+          "OperationId": "AaGew41SZ467EIF5_yRb9g",
           "Kind": "analysis/wfiMorphBundle/setMorph",
-          "Target": "8cOfrESGQoyJldeHWDBYNQ",
+          "Target": "Nv4mEoHVQvSpyI7g310hQQ",
           "EntityId": null,
           "DependsOn": [
-            "AaEpypdWzs7xUmC0T7yV2g"
+            "AaGew4x4Axb5m3e05DqXeQ"
           ],
-          "AfterJson": "{\n        \u0022retiredForms\u0022: [\n          \u0022WeEP-t_tR-aQhjNCHzP-qg\u0022\n        ],\n        \u0022censusDigest\u0022: \u0022sha256:4c543d99dd3a73b91585ddd0d5d6c8f40cb5d121bde2cd5bf8a05934b1ef4c60\u0022,\n        \u0022retiredForm\u0022: \u0022WeEP-t_tR-aQhjNCHzP-qg\u0022,\n        \u0022replacement\u0022: \u0022Jev4yFPZSnyf1qRCxA25ig\u0022\n      }",
+          "AfterJson": "{\n        \u0022retiredForms\u0022: [\n          \u0022dCLIkmxvR7-z5sxty9t3RA\u0022\n        ],\n        \u0022censusDigest\u0022: \u0022sha256:8af6b19258afb11c15c2c7596a74fa44b6224b142458c1801de666dcee9bae22\u0022,\n        \u0022retiredForm\u0022: \u0022dCLIkmxvR7-z5sxty9t3RA\u0022,\n        \u0022replacement\u0022: \u00223hB_hMIhT3qMKz2srZyPxw\u0022\n      }",
           "Citation": null
         },
         {
-          "OperationId": "AaEpypfDv0abut1IAkM8aA",
+          "OperationId": "AaGew40oRN6oyncGjlbaJg",
           "Kind": "lexical/lexEntry/deleteAlternateForm",
-          "Target": "FEcYuglESq6XJ1gzPSejHA",
+          "Target": "LEmDq-F0TJS22j3B3MHo_Q",
           "EntityId": null,
           "DependsOn": [
-            "AaEpype_JXKhdWYkOX9hSA"
+            "AaGew40fh_Xup7Mv8Rk7rQ"
           ],
-          "AfterJson": "{\n        \u0022forms\u0022: [\n          \u0022wFOMSiYERuqS4lA_kJ3rAg\u0022\n        ],\n        \u0022duplicateSurvivors\u0022: [\n          \u0022w91KIi5fSW-mj-jLGoYMJg\u0022\n        ],\n        \u0022formWitnesses\u0022: [\n          {\n            \u0022form\u0022: \u0022w91KIi5fSW-mj-jLGoYMJg\u0022,\n            \u0022semanticDigest\u0022: \u0022sha256:812b6e0ad8ecc74d928f88cfc7be572a48f50b32a2d992e48d34a044896b34ee\u0022\n          },\n          {\n            \u0022form\u0022: \u0022wFOMSiYERuqS4lA_kJ3rAg\u0022,\n            \u0022semanticDigest\u0022: \u0022sha256:241f01e7d6ded5d830ebb76365910ae19655941dfce9cfd5a8a599f3fd2c8cad\u0022\n          }\n        ],\n        \u0022before\u0022: [\n          \u0022wFOMSiYERuqS4lA_kJ3rAg\u0022\n        ],\n        \u0022after\u0022: [],\n        \u0022ruleReplacement\u0022: {\n          \u0022rule\u0022: \u0022AaEpypVJzEC0TaO5Wt3t1w\u0022,\n          \u0022inputPhoneme\u0022: \u0022AaEpypQjflPDk6DZ72g0Zg\u0022,\n          \u0022outputPhoneme\u0022: \u0022AaEpypQ1ZwkdXDmlZY92eg\u0022\n        }\n      }",
+          "AfterJson": "{\n        \u0022forms\u0022: [\n          \u0022uTpcUXLFRlSDx3u_orN01Q\u0022\n        ],\n        \u0022duplicateSurvivors\u0022: [\n          \u0022HPsLg8DcSdaFmhrt06WK9g\u0022\n        ],\n        \u0022formWitnesses\u0022: [\n          {\n            \u0022form\u0022: \u0022HPsLg8DcSdaFmhrt06WK9g\u0022,\n            \u0022semanticDigest\u0022: \u0022sha256:812b6e0ad8ecc74d928f88cfc7be572a48f50b32a2d992e48d34a044896b34ee\u0022\n          },\n          {\n            \u0022form\u0022: \u0022uTpcUXLFRlSDx3u_orN01Q\u0022,\n            \u0022semanticDigest\u0022: \u0022sha256:241f01e7d6ded5d830ebb76365910ae19655941dfce9cfd5a8a599f3fd2c8cad\u0022\n          }\n        ],\n        \u0022before\u0022: [\n          \u0022uTpcUXLFRlSDx3u_orN01Q\u0022\n        ],\n        \u0022after\u0022: [],\n        \u0022ruleReplacement\u0022: {\n          \u0022rule\u0022: \u0022AaGew4B9RwMFcDo992qbkQ\u0022,\n          \u0022inputPhoneme\u0022: \u0022AaGew3x4yHaM0tc3q4Nupw\u0022,\n          \u0022outputPhoneme\u0022: \u0022AaGew33chEMD0QAOF3jLJA\u0022\n        }\n      }",
           "Citation": null
         },
         {
-          "OperationId": "AaEpypfgKspxzEb77fHLCA",
+          "OperationId": "AaGew41T7QK1yvMuWyjA5w",
           "Kind": "lexical/lexEntry/deleteAlternateForm",
-          "Target": "XO_jauQUQ1Ko5L0vauLk8g",
+          "Target": "YyHbcYgHREeqsFn1fx98fg",
           "EntityId": null,
           "DependsOn": [
-            "AaEpypfgytZjLPj5Wb6D4Q"
+            "AaGew41SZ467EIF5_yRb9g"
           ],
-          "AfterJson": "{\n        \u0022forms\u0022: [\n          \u0022WeEP-t_tR-aQhjNCHzP-qg\u0022\n        ],\n        \u0022duplicateSurvivors\u0022: [\n          \u0022Jev4yFPZSnyf1qRCxA25ig\u0022\n        ],\n        \u0022formWitnesses\u0022: [\n          {\n            \u0022form\u0022: \u0022Jev4yFPZSnyf1qRCxA25ig\u0022,\n            \u0022semanticDigest\u0022: \u0022sha256:812b6e0ad8ecc74d928f88cfc7be572a48f50b32a2d992e48d34a044896b34ee\u0022\n          },\n          {\n            \u0022form\u0022: \u0022WeEP-t_tR-aQhjNCHzP-qg\u0022,\n            \u0022semanticDigest\u0022: \u0022sha256:241f01e7d6ded5d830ebb76365910ae19655941dfce9cfd5a8a599f3fd2c8cad\u0022\n          }\n        ],\n        \u0022before\u0022: [\n          \u0022WeEP-t_tR-aQhjNCHzP-qg\u0022\n        ],\n        \u0022after\u0022: [],\n        \u0022ruleReplacement\u0022: {\n          \u0022rule\u0022: \u0022AaEpypVJzEC0TaO5Wt3t1w\u0022,\n          \u0022inputPhoneme\u0022: \u0022AaEpypQjflPDk6DZ72g0Zg\u0022,\n          \u0022outputPhoneme\u0022: \u0022AaEpypQ1ZwkdXDmlZY92eg\u0022\n        }\n      }",
+          "AfterJson": "{\n        \u0022forms\u0022: [\n          \u0022dCLIkmxvR7-z5sxty9t3RA\u0022\n        ],\n        \u0022duplicateSurvivors\u0022: [\n          \u00223hB_hMIhT3qMKz2srZyPxw\u0022\n        ],\n        \u0022formWitnesses\u0022: [\n          {\n            \u0022form\u0022: \u00223hB_hMIhT3qMKz2srZyPxw\u0022,\n            \u0022semanticDigest\u0022: \u0022sha256:812b6e0ad8ecc74d928f88cfc7be572a48f50b32a2d992e48d34a044896b34ee\u0022\n          },\n          {\n            \u0022form\u0022: \u0022dCLIkmxvR7-z5sxty9t3RA\u0022,\n            \u0022semanticDigest\u0022: \u0022sha256:241f01e7d6ded5d830ebb76365910ae19655941dfce9cfd5a8a599f3fd2c8cad\u0022\n          }\n        ],\n        \u0022before\u0022: [\n          \u0022dCLIkmxvR7-z5sxty9t3RA\u0022\n        ],\n        \u0022after\u0022: [],\n        \u0022ruleReplacement\u0022: {\n          \u0022rule\u0022: \u0022AaGew4B9RwMFcDo992qbkQ\u0022,\n          \u0022inputPhoneme\u0022: \u0022AaGew3x4yHaM0tc3q4Nupw\u0022,\n          \u0022outputPhoneme\u0022: \u0022AaGew33chEMD0QAOF3jLJA\u0022\n        }\n      }",
           "Citation": null
         }
       ]
@@ -1929,113 +1927,62 @@
       "BundleTextAlternativesChanged": 2,
       "BundleTextAlternativesCleared": 0,
       "Detector": {
-        "FindingId": "P-allo-alternation-family:f75ec65e98dc2751a31bc3d97ad3175f0ebe4543ad218cd67409cd190afc5ecb",
+        "FindingId": "P-allo-alternation-family:77cfaae818c5378e7e4c681647d1dc3ac70006276d42999f0650c2af99e690ed",
         "BeforeNumerator": 2,
         "BeforeDenominator": 2,
         "AfterNumerator": 0,
         "AfterDenominator": 0,
-        "BeforeEvidenceDigest": "sha256:9e124a11639f8644cd932ea5a1be9b02f22384a49fda63997e6a8d934abe0799",
-        "AfterEvidenceDigest": "sha256:ab38d07bb387652f8334ca33df02f93ea9f89ac7430b4d1b11c70cc5793337f0",
+        "BeforeEvidenceDigest": "sha256:140086a88d0ad901daf993a83516703c91c0169e59872cea8f2e8f025c067406",
+        "AfterEvidenceDigest": "sha256:2835ae0b04d1475b2651613268cae0da616d6ee61ab56b2ee6f67f9e2549027c",
         "Resolved": true
       },
-      "DetailManifestDigest": "sha256:18363c65c31cd128e89167b88ff4c8561888776b0df195946f2db19981a48223"
+      "DetailManifestDigest": "sha256:2b4b23e0f73e134da790025d96aa1e6fe01f2418cd99467951e34132c66566b9"
     },
     "Parts": [
       {
         "Id": "rule",
         "Title": "New rule and sound class",
         "OperationIds": [
-          "AaEpypdKh7sKYBDPJ_7Vcw",
-          "AaEpypdL87EfkECrI8k78Q",
-          "AaEpypdLP4E-11HX1vI3Qg",
-          "AaEpypdLm9lZSNOXdq9Bpw",
-          "AaEpypdQetCViaynvWVYYw",
-          "AaEpypdTAvio0FjCDyRn-A",
-          "AaEpypdTpwEXNfvf_FZBCQ",
-          "AaEpypdVAtyMFo49u4tTlQ",
-          "AaEpypdVGR9H21pR8RTipg",
-          "AaEpypdV1F6soQVwuWDvVw",
-          "AaEpypdVbnmgcYd5ODRh_w",
-          "AaEpypdW_N880wLK8AADkw",
-          "AaEpypdWcsJgf38bu58QjQ",
-          "AaEpypdVk5E8bkt5v-66fw",
-          "AaEpypdWS6WICaaC_KD9Qg",
-          "AaEpypdWuxa8993v_UwMSw",
-          "AaEpypdWzs7xUmC0T7yV2g"
+          "AaGew4xTD67YgKwkgCRxag",
+          "AaGew4xU9n2Y7NeLOj4Qjg",
+          "AaGew4xUFiM7wLkAVgfZFQ",
+          "AaGew4xUwaVzjtsK8D_nPQ",
+          "AaGew4xyPFFZ-bOBXRFd1w",
+          "AaGew4x1TiyjWekkEI8PNQ",
+          "AaGew4x1udfRf6QmZuISeg",
+          "AaGew4x26LMLM4vAn-ORLQ",
+          "AaGew4x3YzfNtNtnPakQ4Q",
+          "AaGew4x3-xhPL9LouHczKA",
+          "AaGew4x3WAQfI8StpMHrKg",
+          "AaGew4x4FdZUkEcTt3vEpw",
+          "AaGew4x4eIio1LgAEoNA3w",
+          "AaGew4x3TSCQJTfLBhuM_Q",
+          "AaGew4x4w_siZp07lLHXjA",
+          "AaGew4x4xA04p183F97PCg",
+          "AaGew4x4Axb5m3e05DqXeQ"
         ],
         "Effects": [
           {
-            "CanonicalId": "AaEpypVJJjNq24KMJSAsKA",
-            "Field": "grammar/phNCSegments/segments",
-            "Changes": [
-              {
-                "Ws": "AaEpypRSvzHUAORujHrQMA",
-                "Before": null,
-                "After": "AaEpypRSvzHUAORujHrQMA"
-              }
-            ],
-            "OperationIds": [
-              "AaEpypdKh7sKYBDPJ_7Vcw",
-              "AaEpypdL87EfkECrI8k78Q",
-              "AaEpypdLP4E-11HX1vI3Qg",
-              "AaEpypdLm9lZSNOXdq9Bpw"
-            ]
-          },
-          {
-            "CanonicalId": "AaEpypVJJjNq24KMJSAsKA",
-            "Field": "grammar/phNaturalClass/abbreviation",
-            "Changes": [
-              {
-                "Ws": "en",
-                "Before": null,
-                "After": "V"
-              }
-            ],
-            "OperationIds": [
-              "AaEpypdKh7sKYBDPJ_7Vcw",
-              "AaEpypdL87EfkECrI8k78Q",
-              "AaEpypdLP4E-11HX1vI3Qg",
-              "AaEpypdLm9lZSNOXdq9Bpw"
-            ]
-          },
-          {
-            "CanonicalId": "AaEpypVJJjNq24KMJSAsKA",
-            "Field": "grammar/phNaturalClass/name",
-            "Changes": [
-              {
-                "Ws": "en",
-                "Before": null,
-                "After": "vowels"
-              }
-            ],
-            "OperationIds": [
-              "AaEpypdKh7sKYBDPJ_7Vcw",
-              "AaEpypdL87EfkECrI8k78Q",
-              "AaEpypdLP4E-11HX1vI3Qg",
-              "AaEpypdLm9lZSNOXdq9Bpw"
-            ]
-          },
-          {
-            "CanonicalId": "AaEpypVJzEC0TaO5Wt3t1w",
+            "CanonicalId": "AaGew4B9RwMFcDo992qbkQ",
             "Field": "grammar/phRegularRule/rightHandSides",
             "Changes": [
               {
                 "Ws": "0",
                 "Before": null,
-                "After": "AaEpypdUBifhmHLs-Jrr1w"
+                "After": "AaGew4x2vEIott55i9OwSw"
               }
             ],
             "OperationIds": [
-              "AaEpypdQetCViaynvWVYYw",
-              "AaEpypdTAvio0FjCDyRn-A",
-              "AaEpypdTpwEXNfvf_FZBCQ",
-              "AaEpypdVAtyMFo49u4tTlQ",
-              "AaEpypdVGR9H21pR8RTipg",
-              "AaEpypdWzs7xUmC0T7yV2g"
+              "AaGew4x1TiyjWekkEI8PNQ",
+              "AaGew4x1udfRf6QmZuISeg",
+              "AaGew4x26LMLM4vAn-ORLQ",
+              "AaGew4x3YzfNtNtnPakQ4Q",
+              "AaGew4x4Axb5m3e05DqXeQ",
+              "AaGew4xyPFFZ-bOBXRFd1w"
             ]
           },
           {
-            "CanonicalId": "AaEpypVJzEC0TaO5Wt3t1w",
+            "CanonicalId": "AaGew4B9RwMFcDo992qbkQ",
             "Field": "grammar/phSegmentRule/direction",
             "Changes": [
               {
@@ -2045,16 +1992,16 @@
               }
             ],
             "OperationIds": [
-              "AaEpypdQetCViaynvWVYYw",
-              "AaEpypdTAvio0FjCDyRn-A",
-              "AaEpypdTpwEXNfvf_FZBCQ",
-              "AaEpypdVAtyMFo49u4tTlQ",
-              "AaEpypdVGR9H21pR8RTipg",
-              "AaEpypdWzs7xUmC0T7yV2g"
+              "AaGew4x1TiyjWekkEI8PNQ",
+              "AaGew4x1udfRf6QmZuISeg",
+              "AaGew4x26LMLM4vAn-ORLQ",
+              "AaGew4x3YzfNtNtnPakQ4Q",
+              "AaGew4x4Axb5m3e05DqXeQ",
+              "AaGew4xyPFFZ-bOBXRFd1w"
             ]
           },
           {
-            "CanonicalId": "AaEpypVJzEC0TaO5Wt3t1w",
+            "CanonicalId": "AaGew4B9RwMFcDo992qbkQ",
             "Field": "grammar/phSegmentRule/disabled",
             "Changes": [
               {
@@ -2064,16 +2011,16 @@
               }
             ],
             "OperationIds": [
-              "AaEpypdQetCViaynvWVYYw",
-              "AaEpypdTAvio0FjCDyRn-A",
-              "AaEpypdTpwEXNfvf_FZBCQ",
-              "AaEpypdVAtyMFo49u4tTlQ",
-              "AaEpypdVGR9H21pR8RTipg",
-              "AaEpypdWzs7xUmC0T7yV2g"
+              "AaGew4x1TiyjWekkEI8PNQ",
+              "AaGew4x1udfRf6QmZuISeg",
+              "AaGew4x26LMLM4vAn-ORLQ",
+              "AaGew4x3YzfNtNtnPakQ4Q",
+              "AaGew4x4Axb5m3e05DqXeQ",
+              "AaGew4xyPFFZ-bOBXRFd1w"
             ]
           },
           {
-            "CanonicalId": "AaEpypVJzEC0TaO5Wt3t1w",
+            "CanonicalId": "AaGew4B9RwMFcDo992qbkQ",
             "Field": "grammar/phSegmentRule/name",
             "Changes": [
               {
@@ -2083,184 +2030,235 @@
               }
             ],
             "OperationIds": [
-              "AaEpypdQetCViaynvWVYYw",
-              "AaEpypdTAvio0FjCDyRn-A",
-              "AaEpypdTpwEXNfvf_FZBCQ",
-              "AaEpypdVAtyMFo49u4tTlQ",
-              "AaEpypdVGR9H21pR8RTipg",
-              "AaEpypdWzs7xUmC0T7yV2g"
+              "AaGew4x1TiyjWekkEI8PNQ",
+              "AaGew4x1udfRf6QmZuISeg",
+              "AaGew4x26LMLM4vAn-ORLQ",
+              "AaGew4x3YzfNtNtnPakQ4Q",
+              "AaGew4x4Axb5m3e05DqXeQ",
+              "AaGew4xyPFFZ-bOBXRFd1w"
             ]
           },
           {
-            "CanonicalId": "AaEpypVJzEC0TaO5Wt3t1w",
+            "CanonicalId": "AaGew4B9RwMFcDo992qbkQ",
             "Field": "grammar/phSegmentRule/strucDesc",
             "Changes": [
               {
                 "Ws": "0",
                 "Before": null,
-                "After": "AaEpypdVUA-0rPlabouhIA"
+                "After": "AaGew4x3R6FG9zB2xAcr3A"
               }
             ],
             "OperationIds": [
-              "AaEpypdQetCViaynvWVYYw",
-              "AaEpypdTAvio0FjCDyRn-A",
-              "AaEpypdTpwEXNfvf_FZBCQ",
-              "AaEpypdVAtyMFo49u4tTlQ",
-              "AaEpypdVGR9H21pR8RTipg",
-              "AaEpypdWzs7xUmC0T7yV2g"
+              "AaGew4x1TiyjWekkEI8PNQ",
+              "AaGew4x1udfRf6QmZuISeg",
+              "AaGew4x26LMLM4vAn-ORLQ",
+              "AaGew4x3YzfNtNtnPakQ4Q",
+              "AaGew4x4Axb5m3e05DqXeQ",
+              "AaGew4xyPFFZ-bOBXRFd1w"
             ]
           },
           {
-            "CanonicalId": "AaEpypdUBifhmHLs-Jrr1w",
+            "CanonicalId": "AaGew4B9i0Nd7eVpEzYlKg",
+            "Field": "grammar/phNCSegments/segments",
+            "Changes": [
+              {
+                "Ws": "AaGew34Oye16f1eQROyVmA",
+                "Before": null,
+                "After": "AaGew34Oye16f1eQROyVmA"
+              }
+            ],
+            "OperationIds": [
+              "AaGew4xTD67YgKwkgCRxag",
+              "AaGew4xU9n2Y7NeLOj4Qjg",
+              "AaGew4xUFiM7wLkAVgfZFQ",
+              "AaGew4xUwaVzjtsK8D_nPQ"
+            ]
+          },
+          {
+            "CanonicalId": "AaGew4B9i0Nd7eVpEzYlKg",
+            "Field": "grammar/phNaturalClass/abbreviation",
+            "Changes": [
+              {
+                "Ws": "en",
+                "Before": null,
+                "After": "V"
+              }
+            ],
+            "OperationIds": [
+              "AaGew4xTD67YgKwkgCRxag",
+              "AaGew4xU9n2Y7NeLOj4Qjg",
+              "AaGew4xUFiM7wLkAVgfZFQ",
+              "AaGew4xUwaVzjtsK8D_nPQ"
+            ]
+          },
+          {
+            "CanonicalId": "AaGew4B9i0Nd7eVpEzYlKg",
+            "Field": "grammar/phNaturalClass/name",
+            "Changes": [
+              {
+                "Ws": "en",
+                "Before": null,
+                "After": "vowels"
+              }
+            ],
+            "OperationIds": [
+              "AaGew4xTD67YgKwkgCRxag",
+              "AaGew4xU9n2Y7NeLOj4Qjg",
+              "AaGew4xUFiM7wLkAVgfZFQ",
+              "AaGew4xUwaVzjtsK8D_nPQ"
+            ]
+          },
+          {
+            "CanonicalId": "AaGew4x2vEIott55i9OwSw",
             "Field": "grammar/phSegRuleRHS/leftContext",
             "Changes": [
               {
                 "Ws": "0",
                 "Before": null,
-                "After": "AaEpypdWv8dPXSzZjJ48qg"
+                "After": "AaGew4x4YRy8XnbnPZ952A"
               }
             ],
             "OperationIds": [
-              "AaEpypdV1F6soQVwuWDvVw",
-              "AaEpypdVGR9H21pR8RTipg",
-              "AaEpypdW_N880wLK8AADkw",
-              "AaEpypdWcsJgf38bu58QjQ"
+              "AaGew4x26LMLM4vAn-ORLQ",
+              "AaGew4x3-xhPL9LouHczKA",
+              "AaGew4x4FdZUkEcTt3vEpw",
+              "AaGew4x4eIio1LgAEoNA3w"
             ]
           },
           {
-            "CanonicalId": "AaEpypdUBifhmHLs-Jrr1w",
+            "CanonicalId": "AaGew4x2vEIott55i9OwSw",
             "Field": "grammar/phSegRuleRHS/rightContext",
             "Changes": [
               {
                 "Ws": "0",
                 "Before": null,
-                "After": "AaEpypdWCorekiTBmlQNNg"
+                "After": "AaGew4x46_wWtrZeXcri3g"
               }
             ],
             "OperationIds": [
-              "AaEpypdV1F6soQVwuWDvVw",
-              "AaEpypdVGR9H21pR8RTipg",
-              "AaEpypdW_N880wLK8AADkw",
-              "AaEpypdWcsJgf38bu58QjQ"
+              "AaGew4x26LMLM4vAn-ORLQ",
+              "AaGew4x3-xhPL9LouHczKA",
+              "AaGew4x4FdZUkEcTt3vEpw",
+              "AaGew4x4eIio1LgAEoNA3w"
             ]
           },
           {
-            "CanonicalId": "AaEpypdUBifhmHLs-Jrr1w",
+            "CanonicalId": "AaGew4x2vEIott55i9OwSw",
             "Field": "grammar/phSegRuleRHS/strucChange",
             "Changes": [
               {
                 "Ws": "0",
                 "Before": null,
-                "After": "AaEpypdVx02sK7mpa2_9rQ"
+                "After": "AaGew4x3DstKIkv88PzKBw"
               }
             ],
             "OperationIds": [
-              "AaEpypdV1F6soQVwuWDvVw",
-              "AaEpypdVGR9H21pR8RTipg",
-              "AaEpypdW_N880wLK8AADkw",
-              "AaEpypdWcsJgf38bu58QjQ"
+              "AaGew4x26LMLM4vAn-ORLQ",
+              "AaGew4x3-xhPL9LouHczKA",
+              "AaGew4x4FdZUkEcTt3vEpw",
+              "AaGew4x4eIio1LgAEoNA3w"
             ]
           },
           {
-            "CanonicalId": "AaEpypdVUA-0rPlabouhIA",
+            "CanonicalId": "AaGew4x3DstKIkv88PzKBw",
             "Field": "grammar/phSimpleContextSeg/featureStructure",
             "Changes": [
               {
                 "Ws": "ref",
                 "Before": null,
-                "After": "AaEpypQjflPDk6DZ72g0Zg"
+                "After": "AaGew33chEMD0QAOF3jLJA"
               }
             ],
             "OperationIds": [
-              "AaEpypdVAtyMFo49u4tTlQ",
-              "AaEpypdVbnmgcYd5ODRh_w"
+              "AaGew4x3-xhPL9LouHczKA",
+              "AaGew4x3TSCQJTfLBhuM_Q"
             ]
           },
           {
-            "CanonicalId": "AaEpypdVx02sK7mpa2_9rQ",
+            "CanonicalId": "AaGew4x3R6FG9zB2xAcr3A",
             "Field": "grammar/phSimpleContextSeg/featureStructure",
             "Changes": [
               {
                 "Ws": "ref",
                 "Before": null,
-                "After": "AaEpypQ1ZwkdXDmlZY92eg"
+                "After": "AaGew3x4yHaM0tc3q4Nupw"
               }
             ],
             "OperationIds": [
-              "AaEpypdV1F6soQVwuWDvVw",
-              "AaEpypdVk5E8bkt5v-66fw"
+              "AaGew4x3WAQfI8StpMHrKg",
+              "AaGew4x3YzfNtNtnPakQ4Q"
             ]
           },
           {
-            "CanonicalId": "AaEpypdWCorekiTBmlQNNg",
+            "CanonicalId": "AaGew4x46_wWtrZeXcri3g",
             "Field": "grammar/phSimpleContextNC/featureStructure",
             "Changes": [
               {
                 "Ws": "ref",
                 "Before": null,
-                "After": "AaEpypVJJjNq24KMJSAsKA"
+                "After": "AaGew4B9i0Nd7eVpEzYlKg"
               }
             ],
             "OperationIds": [
-              "AaEpypdWS6WICaaC_KD9Qg",
-              "AaEpypdWcsJgf38bu58QjQ"
+              "AaGew4x4FdZUkEcTt3vEpw",
+              "AaGew4x4xA04p183F97PCg"
             ]
           },
           {
-            "CanonicalId": "AaEpypdWv8dPXSzZjJ48qg",
+            "CanonicalId": "AaGew4x4YRy8XnbnPZ952A",
             "Field": "grammar/phSimpleContextSeg/featureStructure",
             "Changes": [
               {
                 "Ws": "ref",
                 "Before": null,
-                "After": "AaEpypRSvzHUAORujHrQMA"
+                "After": "AaGew34Oye16f1eQROyVmA"
               }
             ],
             "OperationIds": [
-              "AaEpypdW_N880wLK8AADkw",
-              "AaEpypdWuxa8993v_UwMSw"
+              "AaGew4x4eIio1LgAEoNA3w",
+              "AaGew4x4w_siZp07lLHXjA"
             ]
           },
           {
-            "CanonicalId": "zaTcwq9iTTmOGHBKpVcQvQ",
+            "CanonicalId": "_nlFVEEpSpSd-bo6Fulxxg",
             "Field": "grammar/phPhonData/naturalClasses",
             "Changes": [
               {
                 "Ws": "0",
                 "Before": null,
-                "After": "AaEpypVJJjNq24KMJSAsKA"
+                "After": "AaGew4B9i0Nd7eVpEzYlKg"
               }
             ],
             "OperationIds": [
-              "AaEpypdKh7sKYBDPJ_7Vcw",
-              "AaEpypdQetCViaynvWVYYw"
+              "AaGew4xTD67YgKwkgCRxag",
+              "AaGew4xyPFFZ-bOBXRFd1w"
             ]
           },
           {
-            "CanonicalId": "zaTcwq9iTTmOGHBKpVcQvQ",
+            "CanonicalId": "_nlFVEEpSpSd-bo6Fulxxg",
             "Field": "grammar/phPhonData/phonRules",
             "Changes": [
               {
                 "Ws": "0",
                 "Before": null,
-                "After": "AaEpypVJzEC0TaO5Wt3t1w"
+                "After": "AaGew4B9RwMFcDo992qbkQ"
               }
             ],
             "OperationIds": [
-              "AaEpypdKh7sKYBDPJ_7Vcw",
-              "AaEpypdQetCViaynvWVYYw"
+              "AaGew4xTD67YgKwkgCRxag",
+              "AaGew4xyPFFZ-bOBXRFd1w"
             ]
           }
         ],
         "Details": [
           {
-            "Id": "AaEpypVJJjNq24KMJSAsKA",
+            "Id": "AaGew4B9i0Nd7eVpEzYlKg",
             "Kind": "rule-component",
             "Label": "grammar/phPhonData/createNaturalClasses",
             "WordformId": null,
             "AnalysisId": null,
             "BundleId": null,
-            "RuleId": "AaEpypVJJjNq24KMJSAsKA",
+            "RuleId": "AaGew4B9i0Nd7eVpEzYlKg",
             "Opinion": null,
             "Field": null,
             "Occurrence": null,
@@ -2268,13 +2266,13 @@
             "AfterText": null
           },
           {
-            "Id": "AaEpypVJzEC0TaO5Wt3t1w",
+            "Id": "AaGew4B9RwMFcDo992qbkQ",
             "Kind": "rule-component",
             "Label": "grammar/phPhonData/createPhonRules",
             "WordformId": null,
             "AnalysisId": null,
             "BundleId": null,
-            "RuleId": "AaEpypVJzEC0TaO5Wt3t1w",
+            "RuleId": "AaGew4B9RwMFcDo992qbkQ",
             "Opinion": null,
             "Field": null,
             "Occurrence": null,
@@ -2282,27 +2280,13 @@
             "AfterText": null
           },
           {
-            "Id": "AaEpypdVUA-0rPlabouhIA",
-            "Kind": "rule-component",
-            "Label": "grammar/phSegmentRule/createStrucDesc",
-            "WordformId": null,
-            "AnalysisId": null,
-            "BundleId": null,
-            "RuleId": "AaEpypdVUA-0rPlabouhIA",
-            "Opinion": null,
-            "Field": null,
-            "Occurrence": null,
-            "BeforeText": null,
-            "AfterText": null
-          },
-          {
-            "Id": "AaEpypdUBifhmHLs-Jrr1w",
+            "Id": "AaGew4x2vEIott55i9OwSw",
             "Kind": "rule-component",
             "Label": "grammar/phRegularRule/createRightHandSides",
             "WordformId": null,
             "AnalysisId": null,
             "BundleId": null,
-            "RuleId": "AaEpypdUBifhmHLs-Jrr1w",
+            "RuleId": "AaGew4x2vEIott55i9OwSw",
             "Opinion": null,
             "Field": null,
             "Occurrence": null,
@@ -2310,13 +2294,27 @@
             "AfterText": null
           },
           {
-            "Id": "AaEpypdVx02sK7mpa2_9rQ",
+            "Id": "AaGew4x3R6FG9zB2xAcr3A",
+            "Kind": "rule-component",
+            "Label": "grammar/phSegmentRule/createStrucDesc",
+            "WordformId": null,
+            "AnalysisId": null,
+            "BundleId": null,
+            "RuleId": "AaGew4x3R6FG9zB2xAcr3A",
+            "Opinion": null,
+            "Field": null,
+            "Occurrence": null,
+            "BeforeText": null,
+            "AfterText": null
+          },
+          {
+            "Id": "AaGew4x3DstKIkv88PzKBw",
             "Kind": "rule-component",
             "Label": "grammar/phSegRuleRHS/createStrucChange",
             "WordformId": null,
             "AnalysisId": null,
             "BundleId": null,
-            "RuleId": "AaEpypdVx02sK7mpa2_9rQ",
+            "RuleId": "AaGew4x3DstKIkv88PzKBw",
             "Opinion": null,
             "Field": null,
             "Occurrence": null,
@@ -2324,27 +2322,27 @@
             "AfterText": null
           },
           {
-            "Id": "AaEpypdWv8dPXSzZjJ48qg",
-            "Kind": "rule-component",
-            "Label": "grammar/phSegRuleRHS/createLeftContext",
-            "WordformId": null,
-            "AnalysisId": null,
-            "BundleId": null,
-            "RuleId": "AaEpypdWv8dPXSzZjJ48qg",
-            "Opinion": null,
-            "Field": null,
-            "Occurrence": null,
-            "BeforeText": null,
-            "AfterText": null
-          },
-          {
-            "Id": "AaEpypdWCorekiTBmlQNNg",
+            "Id": "AaGew4x46_wWtrZeXcri3g",
             "Kind": "rule-component",
             "Label": "grammar/phSegRuleRHS/createRightContext",
             "WordformId": null,
             "AnalysisId": null,
             "BundleId": null,
-            "RuleId": "AaEpypdWCorekiTBmlQNNg",
+            "RuleId": "AaGew4x46_wWtrZeXcri3g",
+            "Opinion": null,
+            "Field": null,
+            "Occurrence": null,
+            "BeforeText": null,
+            "AfterText": null
+          },
+          {
+            "Id": "AaGew4x4YRy8XnbnPZ952A",
+            "Kind": "rule-component",
+            "Label": "grammar/phSegRuleRHS/createLeftContext",
+            "WordformId": null,
+            "AnalysisId": null,
+            "BundleId": null,
+            "RuleId": "AaGew4x4YRy8XnbnPZ952A",
             "Opinion": null,
             "Field": null,
             "Occurrence": null,
@@ -2357,12 +2355,12 @@
         "Id": "bundle",
         "Title": "Analyses and bundle text",
         "OperationIds": [
-          "AaEpype_JXKhdWYkOX9hSA",
-          "AaEpypfgytZjLPj5Wb6D4Q"
+          "AaGew40fh_Xup7Mv8Rk7rQ",
+          "AaGew41SZ467EIF5_yRb9g"
         ],
         "Effects": [
           {
-            "CanonicalId": "8cOfrESGQoyJldeHWDBYNQ",
+            "CanonicalId": "Nv4mEoHVQvSpyI7g310hQQ",
             "Field": "analysis/wfiMorphBundle/form",
             "Changes": [
               {
@@ -2372,25 +2370,25 @@
               }
             ],
             "OperationIds": [
-              "AaEpypfgytZjLPj5Wb6D4Q"
+              "AaGew41SZ467EIF5_yRb9g"
             ]
           },
           {
-            "CanonicalId": "8cOfrESGQoyJldeHWDBYNQ",
+            "CanonicalId": "Nv4mEoHVQvSpyI7g310hQQ",
             "Field": "analysis/wfiMorphBundle/morph",
             "Changes": [
               {
                 "Ws": "ref",
-                "Before": "WeEP-t_tR-aQhjNCHzP-qg",
-                "After": "Jev4yFPZSnyf1qRCxA25ig"
+                "Before": "dCLIkmxvR7-z5sxty9t3RA",
+                "After": "3hB_hMIhT3qMKz2srZyPxw"
               }
             ],
             "OperationIds": [
-              "AaEpypfgytZjLPj5Wb6D4Q"
+              "AaGew41SZ467EIF5_yRb9g"
             ]
           },
           {
-            "CanonicalId": "TsyXkXJxQia0qGzlBvjSeA",
+            "CanonicalId": "gb9TDcFDSQ6kIlaVo_5Ucg",
             "Field": "analysis/wfiMorphBundle/form",
             "Changes": [
               {
@@ -2400,32 +2398,32 @@
               }
             ],
             "OperationIds": [
-              "AaEpype_JXKhdWYkOX9hSA"
+              "AaGew40fh_Xup7Mv8Rk7rQ"
             ]
           },
           {
-            "CanonicalId": "TsyXkXJxQia0qGzlBvjSeA",
+            "CanonicalId": "gb9TDcFDSQ6kIlaVo_5Ucg",
             "Field": "analysis/wfiMorphBundle/morph",
             "Changes": [
               {
                 "Ws": "ref",
-                "Before": "wFOMSiYERuqS4lA_kJ3rAg",
-                "After": "w91KIi5fSW-mj-jLGoYMJg"
+                "Before": "uTpcUXLFRlSDx3u_orN01Q",
+                "After": "HPsLg8DcSdaFmhrt06WK9g"
               }
             ],
             "OperationIds": [
-              "AaEpype_JXKhdWYkOX9hSA"
+              "AaGew40fh_Xup7Mv8Rk7rQ"
             ]
           }
         ],
         "Details": [
           {
-            "Id": "8cOfrESGQoyJldeHWDBYNQ",
+            "Id": "Nv4mEoHVQvSpyI7g310hQQ",
             "Kind": "bundle-morph",
             "Label": "WfiMorphBundle.Morph",
-            "WordformId": "2WL9vyVOQxO8LRNJXodtLA",
-            "AnalysisId": "ttOOXDN1TSO9WaKjWIaiwg",
-            "BundleId": "8cOfrESGQoyJldeHWDBYNQ",
+            "WordformId": "45qpuDuNS4St0439mdRCCw",
+            "AnalysisId": "pVUxjOJaRTu0AMDdipj7Tw",
+            "BundleId": "Nv4mEoHVQvSpyI7g310hQQ",
             "RuleId": null,
             "Opinion": "approved",
             "Field": "WfiMorphBundle.Morph",
@@ -2434,12 +2432,12 @@
             "AfterText": "fr: ra"
           },
           {
-            "Id": "TsyXkXJxQia0qGzlBvjSeA",
+            "Id": "gb9TDcFDSQ6kIlaVo_5Ucg",
             "Kind": "bundle-morph",
             "Label": "WfiMorphBundle.Morph",
-            "WordformId": "2WL9vyVOQxO8LRNJXodtLA",
-            "AnalysisId": "7yi0282vTpmj4dKjF_0tRA",
-            "BundleId": "TsyXkXJxQia0qGzlBvjSeA",
+            "WordformId": "45qpuDuNS4St0439mdRCCw",
+            "AnalysisId": "B7SbsLA2QqOYjRp1DzgsOA",
+            "BundleId": "gb9TDcFDSQ6kIlaVo_5Ucg",
             "RuleId": null,
             "Opinion": "approved",
             "Field": "WfiMorphBundle.Morph",
@@ -2460,44 +2458,44 @@
         "Id": "retired-form",
         "Title": "Deleted forms",
         "OperationIds": [
-          "AaEpypfDv0abut1IAkM8aA",
-          "AaEpypfgKspxzEb77fHLCA"
+          "AaGew40oRN6oyncGjlbaJg",
+          "AaGew41T7QK1yvMuWyjA5w"
         ],
         "Effects": [
           {
-            "CanonicalId": "FEcYuglESq6XJ1gzPSejHA",
+            "CanonicalId": "LEmDq-F0TJS22j3B3MHo_Q",
             "Field": "lexical/lexEntry/alternateForms",
             "Changes": [
               {
                 "Ws": "0000000000",
-                "Before": "wFOMSiYERuqS4lA_kJ3rAg",
+                "Before": "uTpcUXLFRlSDx3u_orN01Q",
                 "After": null
               }
             ],
             "OperationIds": [
-              "AaEpypfDv0abut1IAkM8aA"
+              "AaGew40oRN6oyncGjlbaJg"
             ]
           },
           {
-            "CanonicalId": "XO_jauQUQ1Ko5L0vauLk8g",
+            "CanonicalId": "YyHbcYgHREeqsFn1fx98fg",
             "Field": "lexical/lexEntry/alternateForms",
             "Changes": [
               {
                 "Ws": "0000000000",
-                "Before": "WeEP-t_tR-aQhjNCHzP-qg",
+                "Before": "dCLIkmxvR7-z5sxty9t3RA",
                 "After": null
               }
             ],
             "OperationIds": [
-              "AaEpypfgKspxzEb77fHLCA"
+              "AaGew41T7QK1yvMuWyjA5w"
             ]
           }
         ],
         "Details": [
           {
-            "Id": "wFOMSiYERuqS4lA_kJ3rAg",
+            "Id": "uTpcUXLFRlSDx3u_orN01Q",
             "Kind": "retired-form",
-            "Label": "Delete alternate form wFOMSiYERuqS4lA_kJ3rAg",
+            "Label": "Delete alternate form uTpcUXLFRlSDx3u_orN01Q",
             "WordformId": null,
             "AnalysisId": null,
             "BundleId": null,
@@ -2509,9 +2507,9 @@
             "AfterText": null
           },
           {
-            "Id": "WeEP-t_tR-aQhjNCHzP-qg",
+            "Id": "dCLIkmxvR7-z5sxty9t3RA",
             "Kind": "retired-form",
-            "Label": "Delete alternate form WeEP-t_tR-aQhjNCHzP-qg",
+            "Label": "Delete alternate form dCLIkmxvR7-z5sxty9t3RA",
             "WordformId": null,
             "AnalysisId": null,
             "BundleId": null,
@@ -2527,9 +2525,9 @@
     ],
     "AffectedReadings": [
       {
-        "CaseId": "vN6umpuRXz24uhlen14Q9g",
-        "ReadingId": "7yi0282vTpmj4dKjF_0tRA",
-        "WordformId": "2WL9vyVOQxO8LRNJXodtLA",
+        "CaseId": "VpJzGX1kXYyzwbAzThSzZQ",
+        "ReadingId": "B7SbsLA2QqOYjRp1DzgsOA",
+        "WordformId": "45qpuDuNS4St0439mdRCCw",
         "Word": "ata",
         "WritingSystem": "fr",
         "SurfaceBefore": "ata",
@@ -2546,9 +2544,9 @@
         "AttributionDetail": "PanGloss did not retain a rule trace for this reading."
       },
       {
-        "CaseId": "vN6umpuRXz24uhlen14Q9g",
-        "ReadingId": "ttOOXDN1TSO9WaKjWIaiwg",
-        "WordformId": "2WL9vyVOQxO8LRNJXodtLA",
+        "CaseId": "VpJzGX1kXYyzwbAzThSzZQ",
+        "ReadingId": "pVUxjOJaRTu0AMDdipj7Tw",
+        "WordformId": "45qpuDuNS4St0439mdRCCw",
         "Word": "ata",
         "WritingSystem": "fr",
         "SurfaceBefore": "ata",
@@ -2566,71 +2564,71 @@
       }
     ],
     "Finding": {
-      "FindingId": "P-allo-alternation-family:f75ec65e98dc2751a31bc3d97ad3175f0ebe4543ad218cd67409cd190afc5ecb",
+      "FindingId": "P-allo-alternation-family:77cfaae818c5378e7e4c681647d1dc3ac70006276d42999f0650c2af99e690ed",
       "BeforeNumerator": 2,
       "BeforeDenominator": 2,
       "AfterNumerator": 0,
       "AfterDenominator": 0,
-      "BeforeEvidenceDigest": "sha256:9e124a11639f8644cd932ea5a1be9b02f22384a49fda63997e6a8d934abe0799",
-      "AfterEvidenceDigest": "sha256:ab38d07bb387652f8334ca33df02f93ea9f89ac7430b4d1b11c70cc5793337f0",
+      "BeforeEvidenceDigest": "sha256:140086a88d0ad901daf993a83516703c91c0169e59872cea8f2e8f025c067406",
+      "AfterEvidenceDigest": "sha256:2835ae0b04d1475b2651613268cae0da616d6ee61ab56b2ee6f67f9e2549027c",
       "Resolved": true,
       "Suppressed": null,
       "BindingOperationIds": [
-        "AaEpypbo1eBOXuz4v3cUoA",
-        "AaEpypbo2xTeP5NbId3tZg",
-        "AaEpypbo4fwfLO4Tha9tEg",
-        "AaEpypboHHiGWg8SCGrqDg",
-        "AaEpypboNnDksthjsHPo7w",
-        "AaEpypboRdGrAhmsO21nUA",
-        "AaEpypbo_E_uQ54CK76crg",
-        "AaEpypbogCHncZbk3edsVw",
-        "AaEpypboyFW-bfy6XKf8AA"
+        "AaGew4uEVRDhCOf-_NonCQ",
+        "AaGew4uEWHbSiXVsUZz1Fg",
+        "AaGew4uEoDFU0yQhADI4IQ",
+        "AaGew4uF1BDouNU_5-WshA",
+        "AaGew4uFI794nbh1JvunoA",
+        "AaGew4uG602MbwI9-93Gog",
+        "AaGew4uGJAQEoLVmvg1hNA",
+        "AaGew4uGYhrFjNWXw4VRwg",
+        "AaGew4uGiX7prFmx5ns3ag"
       ],
       "BindingEffects": [
         {
-          "CanonicalId": "AaEpypbnKEiDKXFlljKtbQ",
+          "CanonicalId": "AaGew4t-Xi9GQJOz9BLSIQ",
           "Field": "system/rnGenericRec/description",
           "Changes": [
             {
               "Ws": "0",
               "Before": null,
-              "After": "AaEpypbo3WwRdCX9MG2iRg"
+              "After": "AaGew4uErOvUPbYJpjx5GQ"
             }
           ],
           "OperationIds": [
-            "AaEpypbo2xTeP5NbId3tZg",
-            "AaEpypboHHiGWg8SCGrqDg",
-            "AaEpypboRdGrAhmsO21nUA",
-            "AaEpypbo_E_uQ54CK76crg",
-            "AaEpypboyFW-bfy6XKf8AA"
+            "AaGew4uEVRDhCOf-_NonCQ",
+            "AaGew4uEWHbSiXVsUZz1Fg",
+            "AaGew4uEoDFU0yQhADI4IQ",
+            "AaGew4uFI794nbh1JvunoA",
+            "AaGew4uG602MbwI9-93Gog"
           ]
         },
         {
-          "CanonicalId": "AaEpypbnKEiDKXFlljKtbQ",
+          "CanonicalId": "AaGew4t-Xi9GQJOz9BLSIQ",
           "Field": "system/rnGenericRec/motifJudgmentData",
           "Changes": [
             {
               "Ws": "text",
               "Before": null,
-              "After": "{\u0022actor\u0022:{\u0022id\u0022:null,\u0022kind\u0022:\u0022agent\u0022,\u0022name\u0022:null},\u0022body\u0022:{\u0022disposition\u0022:\u0022fix\u0022,\u0022evidenceContract\u0022:\u0022allo-alternation-family/v1\u0022,\u0022evidenceDigest\u0022:\u0022sha256:9e124a11639f8644cd932ea5a1be9b02f22384a49fda63997e6a8d934abe0799\u0022,\u0022kind\u0022:\u0022parsimony-disposition\u0022,\u0022measureCaption\u0022:\u0022Listed shapes share a rule\u0022,\u0022measureId\u0022:\u0022P-allo-alternation-family\u0022,\u0022question\u0022:null,\u0022subject\u0022:{\u0022kind\u0022:\u0022computed-group\u0022,\u0022measureId\u0022:\u0022P-allo-alternation-family\u0022,\u0022members\u0022:[{\u0022class\u0022:\u0022MoAffixAllomorph\u0022,\u0022id\u0022:\u0022Jev4yFPZSnyf1qRCxA25ig\u0022,\u0022owningEntryId\u0022:null},{\u0022class\u0022:\u0022MoAffixAllomorph\u0022,\u0022id\u0022:\u0022WeEP-t_tR-aQhjNCHzP-qg\u0022,\u0022owningEntryId\u0022:null},{\u0022class\u0022:\u0022MoAffixAllomorph\u0022,\u0022id\u0022:\u0022w91KIi5fSW-mj-jLGoYMJg\u0022,\u0022owningEntryId\u0022:null},{\u0022class\u0022:\u0022MoAffixAllomorph\u0022,\u0022id\u0022:\u0022wFOMSiYERuqS4lA_kJ3rAg\u0022,\u0022owningEntryId\u0022:null}],\u0022role\u0022:\u0022alternation-family\u0022},\u0022subjectCaption\u0022:\u0022allomorphs in the alternation family: ra, ta, ta, ra\u0022},\u0022contentHash\u0022:\u0022sha256:c3c266fb32f318ec4489b7ed7e55efcdcd695a3c0b4dae6a460eef87575547fe\u0022,\u0022extensions\u0022:null,\u0022format\u0022:\u0022motif-human-judgment\u0022,\u0022judgedAtUtc\u0022:null,\u0022judgmentId\u0022:\u0022AaEpypbomuuEfFGeP-LfUw\u0022,\u0022projectId\u0022:\u0022ccmOxBJlRP-2jYeUjsFzfw\u0022,\u0022readableFormat\u0022:\u0022en-v1\u0022,\u0022replaces\u0022:[],\u0022resolvesConflict\u0022:false,\u0022revisionId\u0022:\u0022AaEpypbnKEiDKXFlljKtbQ\u0022,\u0022source\u0022:{\u0022proposalId\u0022:\u0022AaEpyparMoBemn7db9LC7A\u0022,\u0022reportId\u0022:\u0022report/AaEpypaGeMA6ThyPxYa_GQ\u0022},\u0022version\u0022:1}"
+              "After": "{\u0022actor\u0022:{\u0022id\u0022:null,\u0022kind\u0022:\u0022agent\u0022,\u0022name\u0022:null},\u0022body\u0022:{\u0022disposition\u0022:\u0022fix\u0022,\u0022evidenceContract\u0022:\u0022allo-alternation-family/v1\u0022,\u0022evidenceDigest\u0022:\u0022sha256:140086a88d0ad901daf993a83516703c91c0169e59872cea8f2e8f025c067406\u0022,\u0022kind\u0022:\u0022parsimony-disposition\u0022,\u0022measureCaption\u0022:\u0022Listed shapes share a rule\u0022,\u0022measureId\u0022:\u0022P-allo-alternation-family\u0022,\u0022question\u0022:null,\u0022subject\u0022:{\u0022kind\u0022:\u0022computed-group\u0022,\u0022measureId\u0022:\u0022P-allo-alternation-family\u0022,\u0022members\u0022:[{\u0022class\u0022:\u0022MoAffixAllomorph\u0022,\u0022id\u0022:\u00223hB_hMIhT3qMKz2srZyPxw\u0022,\u0022owningEntryId\u0022:null},{\u0022class\u0022:\u0022MoAffixAllomorph\u0022,\u0022id\u0022:\u0022HPsLg8DcSdaFmhrt06WK9g\u0022,\u0022owningEntryId\u0022:null},{\u0022class\u0022:\u0022MoAffixAllomorph\u0022,\u0022id\u0022:\u0022dCLIkmxvR7-z5sxty9t3RA\u0022,\u0022owningEntryId\u0022:null},{\u0022class\u0022:\u0022MoAffixAllomorph\u0022,\u0022id\u0022:\u0022uTpcUXLFRlSDx3u_orN01Q\u0022,\u0022owningEntryId\u0022:null}],\u0022role\u0022:\u0022alternation-family\u0022},\u0022subjectCaption\u0022:\u0022allomorphs in the alternation family: ra, ta, ta, ra\u0022},\u0022contentHash\u0022:\u0022sha256:ab5600c5b3163f075daecdbc7fb16771b9c53b552eb5c3588be1913bfdfd0152\u0022,\u0022extensions\u0022:null,\u0022format\u0022:\u0022motif-human-judgment\u0022,\u0022judgedAtUtc\u0022:null,\u0022judgmentId\u0022:\u0022AaGew4uAxNEQsaoFCrWDXg\u0022,\u0022projectId\u0022:\u0022xmuJ6O_6TPGO0wMeftJ3uw\u0022,\u0022readableFormat\u0022:\u0022en-v1\u0022,\u0022replaces\u0022:[],\u0022resolvesConflict\u0022:false,\u0022revisionId\u0022:\u0022AaGew4t-Xi9GQJOz9BLSIQ\u0022,\u0022source\u0022:{\u0022proposalId\u0022:\u0022AaGew4o_qTyaFeVDs6gMlQ\u0022,\u0022reportId\u0022:\u0022report/AaGew4het9TdzVMdytZ9ZQ\u0022},\u0022version\u0022:1}"
             }
           ],
           "OperationIds": [
-            "AaEpypbo2xTeP5NbId3tZg",
-            "AaEpypboHHiGWg8SCGrqDg",
-            "AaEpypboRdGrAhmsO21nUA",
-            "AaEpypbo_E_uQ54CK76crg",
-            "AaEpypboyFW-bfy6XKf8AA"
+            "AaGew4uEVRDhCOf-_NonCQ",
+            "AaGew4uEWHbSiXVsUZz1Fg",
+            "AaGew4uEoDFU0yQhADI4IQ",
+            "AaGew4uFI794nbh1JvunoA",
+            "AaGew4uG602MbwI9-93Gog"
           ]
         },
         {
-          "CanonicalId": "AaEpypbnKEiDKXFlljKtbQ",
+          "CanonicalId": "AaGew4t-Xi9GQJOz9BLSIQ",
           "Field": "system/rnGenericRec/title",
           "Changes": [
             {
               "Ws": "text",
               "Before": null,
-              "After": "Fix: allomorphs in the alternation family: ra, ta, ta, ra (MJ-HWWV-87P6)"
+              "After": "Fix: allomorphs in the alternation family: ra, ta, ta, ra (MJ-8190-SJEP)"
             },
             {
               "Ws": "ws",
@@ -2639,85 +2637,64 @@
             }
           ],
           "OperationIds": [
-            "AaEpypbo2xTeP5NbId3tZg",
-            "AaEpypboHHiGWg8SCGrqDg",
-            "AaEpypboRdGrAhmsO21nUA",
-            "AaEpypbo_E_uQ54CK76crg",
-            "AaEpypboyFW-bfy6XKf8AA"
+            "AaGew4uEVRDhCOf-_NonCQ",
+            "AaGew4uEWHbSiXVsUZz1Fg",
+            "AaGew4uEoDFU0yQhADI4IQ",
+            "AaGew4uFI794nbh1JvunoA",
+            "AaGew4uG602MbwI9-93Gog"
           ]
         },
         {
-          "CanonicalId": "AaEpypbnKEiDKXFlljKtbQ",
+          "CanonicalId": "AaGew4t-Xi9GQJOz9BLSIQ",
           "Field": "system/rnGenericRec/type",
           "Changes": [
             {
               "Ws": "ref",
               "Before": null,
-              "After": "aOsm2UQ5Q6SMxpg17UEj9Q"
+              "After": "9OSaN0blTPe2OzPs7kQPAg"
             }
           ],
           "OperationIds": [
-            "AaEpypbo2xTeP5NbId3tZg",
-            "AaEpypboHHiGWg8SCGrqDg",
-            "AaEpypboRdGrAhmsO21nUA",
-            "AaEpypbo_E_uQ54CK76crg",
-            "AaEpypboyFW-bfy6XKf8AA"
+            "AaGew4uEVRDhCOf-_NonCQ",
+            "AaGew4uEWHbSiXVsUZz1Fg",
+            "AaGew4uEoDFU0yQhADI4IQ",
+            "AaGew4uFI794nbh1JvunoA",
+            "AaGew4uG602MbwI9-93Gog"
           ]
         },
         {
-          "CanonicalId": "AaEpypbo33zLsygOwvRRNA",
-          "Field": "analysis/stTxtPara/contents",
-          "Changes": [
-            {
-              "Ws": "text",
-              "Before": null,
-              "After": "Stage the rule that replaces this alternation."
-            },
-            {
-              "Ws": "ws",
-              "Before": null,
-              "After": "en"
-            }
-          ],
-          "OperationIds": [
-            "AaEpypbo1eBOXuz4v3cUoA",
-            "AaEpypbo4fwfLO4Tha9tEg"
-          ]
-        },
-        {
-          "CanonicalId": "AaEpypbo3WwRdCX9MG2iRg",
-          "Field": "system/stText/paragraphs",
-          "Changes": [
-            {
-              "Ws": "0",
-              "Before": null,
-              "After": "AaEpypbouOMxvEMgEtJ9Eg"
-            }
-          ],
-          "OperationIds": [
-            "AaEpypbo1eBOXuz4v3cUoA",
-            "AaEpypbo2xTeP5NbId3tZg",
-            "AaEpypbogCHncZbk3edsVw"
-          ]
-        },
-        {
-          "CanonicalId": "AaEpypbo3WwRdCX9MG2iRg",
+          "CanonicalId": "AaGew4uErOvUPbYJpjx5GQ",
           "Field": "system/stText/paragraphs",
           "Changes": [
             {
               "Ws": "1",
               "Before": null,
-              "After": "AaEpypbo33zLsygOwvRRNA"
+              "After": "AaGew4uGH4Arj1IkD2m6Hw"
             }
           ],
           "OperationIds": [
-            "AaEpypbo1eBOXuz4v3cUoA",
-            "AaEpypbo2xTeP5NbId3tZg",
-            "AaEpypbogCHncZbk3edsVw"
+            "AaGew4uEWHbSiXVsUZz1Fg",
+            "AaGew4uF1BDouNU_5-WshA",
+            "AaGew4uGiX7prFmx5ns3ag"
           ]
         },
         {
-          "CanonicalId": "AaEpypbouOMxvEMgEtJ9Eg",
+          "CanonicalId": "AaGew4uErOvUPbYJpjx5GQ",
+          "Field": "system/stText/paragraphs",
+          "Changes": [
+            {
+              "Ws": "0",
+              "Before": null,
+              "After": "AaGew4uFu5SWPP53vJ0p4w"
+            }
+          ],
+          "OperationIds": [
+            "AaGew4uEWHbSiXVsUZz1Fg",
+            "AaGew4uF1BDouNU_5-WshA"
+          ]
+        },
+        {
+          "CanonicalId": "AaGew4uFu5SWPP53vJ0p4w",
           "Field": "analysis/stTxtPara/contents",
           "Changes": [
             {
@@ -2732,22 +2709,42 @@
             }
           ],
           "OperationIds": [
-            "AaEpypboNnDksthjsHPo7w",
-            "AaEpypbogCHncZbk3edsVw"
+            "AaGew4uF1BDouNU_5-WshA",
+            "AaGew4uGYhrFjNWXw4VRwg"
           ]
         },
         {
-          "CanonicalId": "NfanxcWRSeisilusQ-ZCcA",
+          "CanonicalId": "AaGew4uGH4Arj1IkD2m6Hw",
+          "Field": "analysis/stTxtPara/contents",
+          "Changes": [
+            {
+              "Ws": "text",
+              "Before": null,
+              "After": "Stage the rule that replaces this alternation."
+            },
+            {
+              "Ws": "ws",
+              "Before": null,
+              "After": "en"
+            }
+          ],
+          "OperationIds": [
+            "AaGew4uGJAQEoLVmvg1hNA",
+            "AaGew4uGiX7prFmx5ns3ag"
+          ]
+        },
+        {
+          "CanonicalId": "Fps96Vv1R0CferpZUgLYQA",
           "Field": "system/rnResearchNbk/records",
           "Changes": [
             {
               "Ws": "ref",
               "Before": null,
-              "After": "AaEpypbnKEiDKXFlljKtbQ"
+              "After": "AaGew4t-Xi9GQJOz9BLSIQ"
             }
           ],
           "OperationIds": [
-            "AaEpypboyFW-bfy6XKf8AA"
+            "AaGew4uEVRDhCOf-_NonCQ"
           ]
         }
       ]

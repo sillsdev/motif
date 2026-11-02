@@ -43,6 +43,27 @@ public sealed class ReadinessTests
     }
 
     [Fact]
+    public void ADerivedLowercaseTwinOfInvalidShapeDoesNotBlockButATypedOneStillCounts()
+    {
+        System.Func<string, string?> lowercase = word => word.ToLowerInvariant() == word ? null : word.ToLowerInvariant();
+        var asked = Build("candidate", ("Cristo", true));
+        var twin = SIL.Motif.Tests.TestFixtures.CorrectnessFixture.Word("cristo", false);
+        twin = twin with { Morphology = twin.Morphology! with { InvalidShape = true, Analyses = [] } };
+        var derived = asked with { Words = [asked.Words[0], twin] };
+        Assert.Empty(Readiness.Assess(derived, null, null, "same", false, null, lowercase));
+
+        // The same twin, typed by the person: it is in the Selection and counts.
+        var typed = derived with { Selection = Selection.Create("test", ["Cristo", "cristo"]) };
+        var reasons = Readiness.Assess(typed, null, null, "same", false, null, lowercase);
+        Assert.Contains(reasons, reason => reason.Contains("\"cristo\""));
+
+        // A typed word of invalid shape with no typed original still counts.
+        var alone = Build("candidate", ("cristo", true));
+        alone = alone with { Words = [twin] };
+        Assert.Contains(Readiness.Assess(alone, null, null, "same", false, null, lowercase), reason => reason.Contains("\"cristo\""));
+    }
+
+    [Fact]
     public void AWordWithAnInvalidShapeIsToldToUseOneWordPerLine()
     {
         var candidate = Build("candidate", ("alpha beta", true));

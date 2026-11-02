@@ -78,6 +78,15 @@ public static class Readiness
         // A capitalised word the parser cannot read as written is covered by its complete lowercase row (ADR 0078).
         lacking = lacking.Where(word => !(word.Morphology is { InvalidShape: true } && lowercaseOf?.Invoke(word.Word) is { } lower &&
             candidate.Words.Any(other => string.Equals(other.Word, lower, StringComparison.Ordinal) && !Lacks(other)))).ToArray();
+        // A derived twin of invalid shape is left out; a twin the person typed is in the Selection and counts.
+        if (lowercaseOf is not null && lacking.Any(word => word.Morphology is { InvalidShape: true }))
+        {
+            var typed = TypedWords(candidate.Selection.Words);
+            var derived = typed.Select(word => lowercaseOf(word)).OfType<string>()
+                .Where(lower => !typed.Contains(lower)).ToHashSet(StringComparer.Ordinal);
+            lacking = lacking.Where(word => !(word.Morphology is { InvalidShape: true } &&
+                derived.Contains(Nfd(word.Word)))).ToArray();
+        }
         var unavailable = lacking.Length > 0;
         foreach (var cause in lacking.GroupBy(LackCause))
         {
@@ -126,6 +135,16 @@ public static class Readiness
         return new Decision(reasons, isRegression, HasDroppedGrammar: hasDroppedGrammar,
             DroppedGrammarReason: droppedReason, Dropped: hasDroppedGrammar ? droppedGrammar : null);
     }
+
+    internal static string Nfd(string word) => word.Normalize(System.Text.NormalizationForm.FormD);
+
+    /// <summary>The words the person asked about, spelled as the Assessment stores them.</summary>
+    internal static HashSet<string> TypedWords(IEnumerable<string> selection) =>
+        selection.Select(Nfd).ToHashSet(StringComparer.Ordinal);
+
+    /// <summary>Whether an invalid-shape row is one the person never asked about, which no Readiness rule counts.</summary>
+    internal static bool IsUnaskedInvalidShape(AssessedWord word, HashSet<string> typed) =>
+        word.Morphology is { InvalidShape: true } && !typed.Contains(Nfd(word.Word));
 
     // Names why one word lacks complete evidence, so the fix matches the cause.
     private static bool Lacks(AssessedWord word) => word.Correctness is null || word.Morphology is null ||

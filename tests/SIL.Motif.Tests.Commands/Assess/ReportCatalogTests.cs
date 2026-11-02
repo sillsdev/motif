@@ -140,6 +140,26 @@ public sealed class ReportProducerTests
     }
 
     [Fact]
+    public void Correctness_LeavesOutAnUnaskedTwinOfInvalidShapeAndSaysSo()
+    {
+        var asked = Build("Correctness", ("Cristo", true));
+        var twin = SIL.Motif.Tests.TestFixtures.CorrectnessFixture.Word("cristo", false);
+        twin = twin with { Morphology = twin.Morphology! with { InvalidShape = true, Analyses = [] } };
+        var assessment = asked with { Words = [asked.Words[0], twin] };
+
+        var text = new CorrectnessReportProducer().Produce(assessment, new ReportQuery(), NoAssessorRegistered).Text;
+
+        Assert.Contains("Left out: cristo", text, StringComparison.Ordinal);
+        Assert.Contains("0 unavailable", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("cristo: ", text, StringComparison.Ordinal);
+
+        var typed = assessment with { SelectionWords = ["Cristo", "cristo"] };
+        var counted = new CorrectnessReportProducer().Produce(typed, new ReportQuery(), NoAssessorRegistered).Text;
+        Assert.DoesNotContain("Left out", counted, StringComparison.Ordinal);
+        Assert.Contains("cristo: Not attempted", counted, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Correctness_RefusesMissingAssessmentNamingTheMissingCapability()
     {
         var failure = Assert.Throws<ReportRefusalException>(() =>

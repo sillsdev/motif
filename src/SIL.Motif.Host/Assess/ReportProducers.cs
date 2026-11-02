@@ -101,6 +101,11 @@ public sealed class CorrectnessReportProducer : IReportProducer
             throw new ReportRefusalException(KindName,
                 $"This Assessment is '{assessment.Kind}'; a correctness report requires 'Correctness'.");
         var rows = assessment.Words.Select(word => (word, result: CorrectnessCoverage.Require(word, KindName))).ToArray();
+        // A row the person never asked about (the Trial adds lowercase forms) in an unreadable shape is not counted.
+        var typed = Readiness.TypedWords(assessment.SelectionWords);
+        var skipped = rows.Where(row => Readiness.IsUnaskedInvalidShape(row.word, typed))
+            .Select(row => row.word.Word).ToHashSet();
+        if (skipped.Count > 0) rows = rows.Where(row => !skipped.Contains(row.word.Word)).ToArray();
         var complete = rows.Count(row => !row.word.Morphology!.Capped && !row.word.Morphology.TimedOut && !row.word.Morphology.InvalidShape);
         var incomplete = rows.Count(row => row.word.Morphology!.Capped || row.word.Morphology.TimedOut);
         var text = new System.Text.StringBuilder();
@@ -110,6 +115,9 @@ public sealed class CorrectnessReportProducer : IReportProducer
             $"{rows.Count(row => row.result.Status == "unmatched")} unmatched; " +
             $"{rows.Count(row => row.result.Unavailable.Count > 0 || row.word.Morphology!.InvalidShape)} unavailable; " +
             $"{rows.Count(row => row.result.Expected == 0)} without approved expectations.");
+        if (skipped.Count > 0)
+            text.AppendLine($"Left out: {string.Join(", ", skipped.OrderBy(word => word, StringComparer.Ordinal))} " +
+                "(not in your word list, in a shape the parser cannot read; the Trial adds lowercase forms of your words; not counted).");
         foreach (var (word, result) in rows)
         {
             var limits = string.Join(" and ", new[]

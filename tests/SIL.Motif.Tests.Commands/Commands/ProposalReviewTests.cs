@@ -230,6 +230,62 @@ public sealed class ProposalReviewTests : IDisposable
     }
 
     [Fact]
+    public void AProposalOfTwoThousandFiveHundredOperationsReadsAsOneEntryPerComposerCall()
+    {
+        using var fixture = new TrialsTests.ProjectFixture(_root);
+        var operations = new List<DraftOperation>();
+        var provenance = new List<JsonElement>();
+        for (var call = 0; call < 312; call++)
+        {
+            var group = new List<DraftOperation> { Op("lexical/lexSense/setGloss") };
+            for (var index = 1; index < 8; index++) group.Add(Op("lexical/lexSense/setGloss", dependsOn: group[0].OperationId));
+            operations.AddRange(group);
+            provenance.Add(Provenance("AuthorLexicalEntry", group.ToArray()));
+        }
+        var id = Save(fixture, Draft(operations, provenance.ToArray()));
+
+        var review = Read(fixture, id);
+
+        Assert.Equal(312, review.Entries.Count);
+        Assert.All(review.Entries, entry => Assert.Equal(8, entry.OperationIds.Count));
+    }
+
+    [Fact]
+    public void EachEffectOnASharedFieldIsLinkedToItsOwnCreatorAndToEveryNonCreatingOperation()
+    {
+        var lexicon = CanonicalId.Mint("lexDb/");
+        var operations = new List<DraftOperation>();
+        var effects = new List<SIL.Motif.Model.Effects.ExpectedEffect>();
+        for (var index = 0; index < 312; index++)
+        {
+            var entry = CanonicalId.Mint("lexEntry/");
+            var operation = Op("lexical/lexSense/setGloss");
+            operation.Target = lexicon.Value;
+            operation.EntityId = entry.Value;
+            operations.Add(operation);
+            effects.Add(new SIL.Motif.Model.Effects.ExpectedEffect(lexicon, "lexical/lexDb/entries",
+                new Dictionary<string, string>(), new Dictionary<string, string> { ["ref"] = entry.Value }));
+        }
+        // An edit, a delete and an Undo-like reorder carry no created entity: they stay linked to every such effect.
+        var loose = new[] { Op("lexical/lexSense/setGloss"), Op("lexical/lexSense/setGloss") };
+        foreach (var operation in loose) { operation.Target = lexicon.Value; operations.Add(operation); }
+        // The creator of the lexicon itself affects every one of its fields.
+        var creator = Op("lexical/lexSense/setGloss");
+        creator.EntityId = lexicon.Value;
+        operations.Add(creator);
+        var proposal = SIL.Motif.Contract.Parsing.ProposalJsonParser.Parse(
+            ProposalCommands.BuildProposalJson(Draft(operations)));
+
+        var views = SIL.Motif.Projection.EffectProjectionBuilder.Build(effects, proposal);
+
+        for (var index = 0; index < 312; index++)
+            Assert.Equal(new[] { operations[index].OperationId, loose[0].OperationId, loose[1].OperationId,
+                creator.OperationId }.Order(StringComparer.Ordinal).ToArray(), views[index].OperationIds);
+        // Not 312 x 312: each create is linked once.
+        Assert.Equal(312 * 4, views.Sum(view => view.OperationIds.Count));
+    }
+
+    [Fact]
     public void AnUnknownProposalIsRefused()
     {
         using var fixture = new TrialsTests.ProjectFixture(_root);
