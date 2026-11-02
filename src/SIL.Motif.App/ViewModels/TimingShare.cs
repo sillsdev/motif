@@ -20,6 +20,26 @@ public sealed record TimingShare(string Label, string Kind, long? WorkSteps, dou
     /// <summary>Whether this row carries the response's unattributed work.</summary>
     public bool IsNotAttributed { get; init; }
 
+    /// <summary>The open Proposal's share for this part, when the page pairs it; null when it does not.</summary>
+    public string? ProposalShareText { get; init; }
+
+    /// <summary>The open Proposal's work steps for this part, when the page pairs it.</summary>
+    public string? ProposalWorkText { get; init; }
+
+    /// <summary>Whether only the open Proposal has this part, so today's side reads as none.</summary>
+    public bool IsProposalOnly { get; init; }
+
+    /// <summary>The share, then the Proposal's share when paired.</summary>
+    public string ShownShareText => ProposalShareText is null ? ShareText : Pair(
+        IsProposalOnly ? MotifAppStrings.TimingNoneToday : ShareText, ProposalShareText);
+
+    /// <summary>The work steps, then the Proposal's when paired.</summary>
+    public string ShownWorkText => ProposalWorkText is null ? WorkText : Pair(
+        IsProposalOnly ? MotifAppStrings.TimingNoneToday : WorkText, ProposalWorkText);
+
+    private static string Pair(string today, string proposal) =>
+        string.Format(CultureInfo.CurrentCulture, MotifAppStrings.OverviewPairFormat, today, proposal);
+
     /// <summary>The window's name for this part's stored kind.</summary>
     public string KindLabel => Kind.Length == 0 ? string.Empty : KindName(Kind);
 

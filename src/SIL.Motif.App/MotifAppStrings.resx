@@ -8595,4 +8595,116 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <value>{0, plural, one {One headline has no result today:} other {# headlines have no result today:}}</value>
     <comment>Start of the Overview note sentence naming headlines that have no result today while the open Proposal does. # is the count; the tile names follow.</comment>
   </data>
+  <data name="MotifApp.ProposalPageTodayViewNoteFormat" xml:space="preserve">
+    <value>This page shows today's {0}. Choose Today → Proposal or Proposal on the bar to see the Proposal's.</value>
+    <comment>Note on a page that follows the bar's view, when a Proposal is open and the view is Today. {0} names what the page shows, such as findings or timing.</comment>
+  </data>
+  <data name="MotifApp.ProposalPageUnreadableFormat" xml:space="preserve">
+    <value>This Proposal's {0} could not be read.</value>
+    <comment>First sentence of a page's note when the open Proposal's values could not be read. {0} names what the page shows, such as findings or timing.</comment>
+  </data>
+  <data name="MotifApp.ProposalPageTodayOnlyFormat" xml:space="preserve">
+    <value>These are today's {0} only.</value>
+    <comment>Second sentence of a page's note while a Proposal is open but has no value to show beside today's. {0} names what the page shows.</comment>
+  </data>
+  <data name="MotifApp.ProposalPageNothingFormat" xml:space="preserve">
+    <value>There are no {0} with this Proposal to show.</value>
+    <comment>Second sentence of a page's note when the bar's view is Proposal and the Proposal has no value. {0} names what the page shows.</comment>
+  </data>
+  <data name="MotifApp.ProposalPageOldNoteFormat" xml:space="preserve">
+    <value>{0}. {1}</value>
+    <comment>A page's note when the Proposal's values came from an earlier try. {0} says why they are old and ends without a full stop; {1} is the rest of the note.</comment>
+  </data>
+  <data name="MotifApp.ProposalPageNone" xml:space="preserve">
+    <value>None with this Proposal</value>
+    <comment>What a page shows in place of a value or list the open Proposal lacks when the bar's view is Proposal.</comment>
+  </data>
+  <data name="MotifApp.WarningsProposalPairedNote" xml:space="preserve">
+    <value>Each count reads today's, then with this Proposal. Rows are the Proposal's findings, with findings only today has struck through. The sidebar count stays today's.</value>
+    <comment>Note on the Warnings page while a Proposal is open and its findings are shown beside today's.</comment>
+  </data>
+  <data name="MotifApp.WarningsProposalViewNote" xml:space="preserve">
+    <value>These are the findings of this Proposal's own grammar check. The sidebar count stays today's.</value>
+    <comment>Note on the Warnings page when the bar's view is Proposal and the Proposal has a grammar check.</comment>
+  </data>
+  <data name="MotifApp.WarningsProposalTodayNotCheckedNote" xml:space="preserve">
+    <value>Today's grammar has not been checked yet, so only the Proposal's findings are shown.</value>
+    <comment>Sentence added to the Warnings note when only the Proposal has a grammar check to show.</comment>
+  </data>
+  <data name="MotifApp.WarningsGoneWithProposal" xml:space="preserve">
+    <value>Gone with This Proposal</value>
+    <comment>Name of the filter that lists the findings today's grammar has and the open Proposal's grammar does not. Title Case, as a filter name.</comment>
+  </data>
+  <data name="MotifApp.WarningsNewWithProposal" xml:space="preserve">
+    <value>New with This Proposal</value>
+    <comment>Name of the filter that lists the findings only the open Proposal's grammar has. Title Case, as a filter name.</comment>
+  </data>
+  <data name="MotifApp.WarningsFindingsNoun" xml:space="preserve">
+    <value>findings</value>
+    <comment>The word for what the Warnings page shows, put into a note such as 'This page shows today's findings.' Lower case.</comment>
+  </data>
+  <data name="MotifApp.TimingProposalPairedNote" xml:space="preserve">
+    <value>The total word time, the median, the words stopped at the work limit and the work by kind read today's work steps, then the work steps with this Proposal, for the same words. The bar, the rule table, its times and everything else on this page are today's.</value>
+    <comment>Note on the Timing page while a Proposal is open and its work steps are shown beside today's.</comment>
+  </data>
+  <data name="MotifApp.TimingProposalViewNote" xml:space="preserve">
+    <value>The total word time, the median, the words stopped at the work limit and the work by kind read the work steps with this Proposal. The rule table, its times and everything else on this page are today's.</value>
+    <comment>Note on the Timing page when the bar's view is Proposal and the Proposal has work steps.</comment>
+  </data>
+  <data name="MotifApp.TimingProposalStoppedOnlyNote" xml:space="preserve">
+    <value>Only the words stopped at the work limit are paired, over the same words. The work steps of the two tries cannot be compared, so the total word time, the median and the work by kind are today's. The bar, the rule table, its times and everything else on this page are today's.</value>
+    <comment>Note on the Timing page when the two sides cover the same words but their work steps cannot be compared.</comment>
+  </data>
+  <data name="MotifApp.TimingNoneToday" xml:space="preserve">
+    <value>None today</value>
+    <comment>What the Timing page shows for today's side of a pair when only the open Proposal has a value, such as a kind of work only the Proposal's try recorded.</comment>
+  </data>
+  <data name="MotifApp.TimingNoun" xml:space="preserve">
+    <value>timing</value>
+    <comment>The word for what the Timing page shows, put into a note such as 'This page shows today's timing.' Lower case.</comment>
+  </data>
+  <data name="MotifApp.TimingProposalDifferentWordsNote" xml:space="preserve">
+    <value>The Proposal's words are not the same as today's for this choice of words, so nothing is paired and the page shows today's numbers.</value>
+    <comment>Note on the Timing page when today's words and the open Proposal's differ for the chosen words, so no pair is shown.</comment>
+  </data>
+  <data name="MotifApp.TimingProposalViewNotComparableNote" xml:space="preserve">
+    <value>The work steps of the two tries cannot be compared, so the Proposal's total word time, median and work by kind are not shown; the words stopped at the work limit are the Proposal's. The rule table, its times and everything else on this page are today's.</value>
+    <comment>Note on the Timing page when the Proposal view cannot show work steps because the two tries cannot be compared.</comment>
+  </data>
+  <data name="MotifApp.WarningsGoneWithProposalStatus" xml:space="preserve">
+    <value>Today's check has this finding and this Proposal's does not.</value>
+    <comment>Status sentence for a finding that today's grammar has and the open Proposal's grammar does not.</comment>
+  </data>
+  <data name="MotifApp.WarningsNewWithProposalStatus" xml:space="preserve">
+    <value>This Proposal's check has this finding and today's does not.</value>
+    <comment>Status sentence for a finding that only the open Proposal's grammar has.</comment>
+  </data>
+  <data name="MotifApp.WarningsGoneMark" xml:space="preserve">
+    <value>Gone</value>
+    <comment>Short mark on a finding row that today's grammar has and the open Proposal's does not. Title Case.</comment>
+  </data>
+  <data name="MotifApp.WarningsNewMark" xml:space="preserve">
+    <value>New</value>
+    <comment>Short mark on a finding row that only the open Proposal's grammar has. Title Case.</comment>
+  </data>
+  <data name="MotifApp.WarningsDetailsForFormat" xml:space="preserve">
+    <value>Details for {0}</value>
+    <comment>Accessible name of a finding row's Details button; {0} is the finding's title.</comment>
+  </data>
+  <data name="MotifApp.WarningsActionsForFormat" xml:space="preserve">
+    <value>Actions for {0}</value>
+    <comment>Accessible name of a finding row's actions menu button; {0} is the finding's title.</comment>
+  </data>
+  <data name="MotifApp.WarningsMarkedRowFormat" xml:space="preserve">
+    <value>{0}, {1}</value>
+    <comment>A finding's accessible name followed by how it stands against the open Proposal; {0} is the name, {1} the standing.</comment>
+  </data>
+  <data name="MotifApp.PageTiming" xml:space="preserve">
+    <value>Timing</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.WarningsProposalReadingNote" xml:space="preserve">
+    <value>Reading this Proposal's check. Today's findings show until it arrives.</value>
+    <comment>Note on the Warnings page in the pair view while the open Proposal's saved check is being read.</comment>
+  </data>
 </root>

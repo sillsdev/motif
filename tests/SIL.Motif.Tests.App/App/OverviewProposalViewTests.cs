@@ -20,7 +20,7 @@ public sealed class OverviewProposalViewTests
 {
     private static readonly string ProjectPath = Path.Combine(Path.GetTempPath(), "sample.fwdata");
 
-    private static readonly BaselineToken Token = new(
+    internal static readonly BaselineToken Token = new(
         "project-1", "sha256:" + new string('a', 64), "1", "2026-09-05T11:02:00Z", "sha256:" + new string('b', 64));
 
     [Fact]
@@ -165,7 +165,7 @@ public sealed class OverviewProposalViewTests
     }
 
     [Fact]
-    public async Task OnlyTheOverviewIsInScopeAndOtherPagesAreToldTheViewIsToday()
+    public async Task OnlyTheNamedPagesAreInScopeAndTheViewIsTheBarsChoiceForThem()
     {
         var (_, context, _) = await OpenedAsync(Trial());
         Assert.Equal(MarkupView.Today, ProposalViewScope.ViewOf(context));
@@ -173,7 +173,7 @@ public sealed class OverviewProposalViewTests
         context.ShowProposalView(MarkupView.Proposal);
 
         Assert.Equal(MarkupView.Proposal, ProposalViewScope.ViewOf(context));
-        Assert.Equal([WorkspacePage.Overview], ProposalViewScope.Pages);
+        Assert.Equal([WorkspacePage.Overview, WorkspacePage.Warnings, WorkspacePage.Timing], ProposalViewScope.Pages);
     }
 
     internal static async Task<(FakeCommandClient Fake, WorkspaceContext Context, OverviewPageModel Page)> OpenedAsync(

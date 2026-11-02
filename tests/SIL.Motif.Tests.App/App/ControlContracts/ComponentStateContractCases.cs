@@ -689,18 +689,18 @@ internal static class TooltipOwners
         new("proposal bar view switch", "Views/MainWindow.axaml", "{Binding ProposalBar.ViewTooltip}", TooltipScene.Overview,
             control => control is ListBox && AutomationProperties.GetAutomationId(control) == AutomationIds.ProposalBarView)
         {
-            Pending = "the bar shows only while a Proposal is open, which no tooltip scene opens; ProposalBarViewTests reads the tip",
+            Pending = "the bar shows only while a Proposal is open, which no tooltip scene opens; ProposalViewSwitchTests reads the tip",
         },
         new("proposal bar name", "Views/MainWindow.axaml", "{Binding ProposalBar.Name}", TooltipScene.Overview,
             control => control is TextBlock && control.Classes.Contains("proposalBarName"))
         {
-            Pending = "the bar shows only while a Proposal is open, which no tooltip scene opens; ProposalBarViewTests reads the tip",
+            Pending = "the bar shows only while a Proposal is open, which no tooltip scene opens; ProposalViewSwitchTests reads the tip",
         },
         new("proposal bar sentence", "Views/MainWindow.axaml", "{Binding ProposalBar.Sentence}", TooltipScene.Overview,
             control => control is TextBlock && !control.Classes.Contains("proposalBarName") &&
                 control.GetVisualAncestors().OfType<Border>().Any(bar => bar.Classes.Contains("proposalBar")))
         {
-            Pending = "the bar shows only while a Proposal is open, which no tooltip scene opens; ProposalBarViewTests reads the tip",
+            Pending = "the bar shows only while a Proposal is open, which no tooltip scene opens; ProposalViewSwitchTests reads the tip",
         },
         new("refresh", "Views/MainWindow.axaml", "Refresh", TooltipScene.Overview,
             control => control is Button && AutomationProperties.GetAutomationId(control) == AutomationIds.RefreshProject),

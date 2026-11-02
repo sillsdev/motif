@@ -17,6 +17,8 @@ public sealed partial class OverviewPageModel
     [NotifyPropertyChangedFor(nameof(SpeedMain))]
     [NotifyPropertyChangedFor(nameof(WarningsCount))]
     [NotifyPropertyChangedFor(nameof(ShowTiles))]
+    [NotifyPropertyChangedFor(nameof(ShowParsePromptCard))]
+    [NotifyPropertyChangedFor(nameof(HidesTodayDetail))]
     private OverviewResponse? _proposalOverview;
 
     /// <summary>
@@ -93,6 +95,7 @@ public sealed partial class OverviewPageModel
         OnPropertyChanged(nameof(SpeedMain));
         OnPropertyChanged(nameof(WarningsCount));
         OnPropertyChanged(nameof(ShowTiles));
+        OnPropertyChanged(nameof(ShowParsePromptCard));
         OnPropertyChanged(nameof(ShowTodayDetail));
         OnPropertyChanged(nameof(HidesTodayDetail));
     }

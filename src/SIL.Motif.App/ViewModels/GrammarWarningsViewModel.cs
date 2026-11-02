@@ -98,6 +98,12 @@ public enum GrammarFindingBucket
     Errors,
     Warnings,
     Information,
+
+    /// <summary>Findings only today's grammar has, shown while the Proposal is paired with today.</summary>
+    GoneWithProposal,
+
+    /// <summary>Findings only the open Proposal's grammar has, shown while it is paired with today.</summary>
+    NewWithProposal,
 }
 
 /// <summary>
@@ -123,12 +129,16 @@ public static class GrammarLevelMarks
 public sealed partial class GrammarWarningsViewModel : ObservableObject
 {
     private readonly List<GrammarWarningRowViewModel> _all = [];
+    private List<GrammarWarningRowViewModel> _todayRows = [];
+    private List<GrammarWarningRowViewModel> _todayResolved = [];
     private GrammarWarningRowViewModel? _selectedWarning;
     private Func<GrammarWarningRowViewModel, Task>? _reparseWords;
     private Action<GrammarWarningRowViewModel>? _handOffWords;
     private WordRowRoutes? _wordRoutes;
+    private (string? Identity, bool Open)? _reselect;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShownObjectTimingDetailText))]
     private string _objectTimingDetailText = string.Empty;
 
     public GrammarWarningsViewModel()
@@ -154,9 +164,9 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
             row => row is not null && row.CanParseAgain && _reparseWords is not null);
     }
 
-    public bool HasReportedErrors => VisibleFindings().Any(row => row.Level == GrammarDiagnosticLevel.Error);
-    public bool HasReportedWarnings => VisibleFindings().Any(row => row.Level == GrammarDiagnosticLevel.Warning);
-    public bool HasReportedInformation => VisibleFindings().Any(row => row.Level == GrammarDiagnosticLevel.Information);
+    public bool HasReportedErrors => Reported(GrammarDiagnosticLevel.Error);
+    public bool HasReportedWarnings => Reported(GrammarDiagnosticLevel.Warning);
+    public bool HasReportedInformation => Reported(GrammarDiagnosticLevel.Information);
 
     public int ErrorCount => VisibleFindings()
         .Where(row => row.Level == GrammarDiagnosticLevel.Error).Sum(row => row.RepeatCount);
@@ -196,11 +206,13 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
 
     partial void OnBucketChanged(GrammarFindingBucket value) => Refresh();
 
-    private bool InBucket(GrammarDiagnosticLevel level) => Bucket switch
+    private bool InBucket(GrammarWarningRowViewModel row) => Bucket switch
     {
-        GrammarFindingBucket.Errors => level == GrammarDiagnosticLevel.Error,
-        GrammarFindingBucket.Warnings => level == GrammarDiagnosticLevel.Warning,
-        GrammarFindingBucket.Information => level == GrammarDiagnosticLevel.Information,
+        GrammarFindingBucket.Errors => row.Level == GrammarDiagnosticLevel.Error,
+        GrammarFindingBucket.Warnings => row.Level == GrammarDiagnosticLevel.Warning,
+        GrammarFindingBucket.Information => row.Level == GrammarDiagnosticLevel.Information,
+        GrammarFindingBucket.GoneWithProposal => row.ProposalTag == ProposalFindingTag.Gone,
+        GrammarFindingBucket.NewWithProposal => row.ProposalTag == ProposalFindingTag.New,
         _ => true,
     };
 
@@ -249,12 +261,12 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
 
     public bool HasAny => _all.Count > 0;
 
-    public string CountSummary => ShownCount == TotalCount
+    public string CountSummary => PairedCount(ShownCount == TotalCount
         ? PluralText.Format(MotifAppStrings.WarningsFindingsPattern, TotalCount)
-        : string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.WarningsCountMatchFormat, ShownCount, TotalCount);
+        : string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.WarningsCountMatchFormat, ShownCount, TotalCount));
 
-    /// <summary>The distinct Selection words reached by exact identity from the findings, when available.</summary>
-    public string TouchYourWordsText => WarningWordsQuery.Touched(Findings) is { } touched
+    /// <summary>The distinct Selection words reached by exact identity from the findings the rows in view report.</summary>
+    public string TouchYourWordsText => WarningWordsQuery.Touched(ShownFindings()) is { } touched
         ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.WarningsTouchYourWordsFormat, PluralText.Format(MotifAppStrings.WordCountPattern, touched.Words)) : MotifAppStrings.WarningsTouchYourWords;
 
     /// <summary>The current ordering shown on the sort control.</summary>
@@ -263,27 +275,13 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
     /// <summary>The complete projected findings, including the effective words each finding touches.</summary>
     public IReadOnlyList<GrammarWarning> Findings { get; private set; } = [];
 
-    /// <summary>Replaces the displayed report, or clears the page when the check has no report.</summary>
+    /// <summary>Replaces today's report, or clears the page when the check has no report.</summary>
     public void Load(IReadOnlyList<GrammarWarning>? warnings, bool preserveResolved = false)
     {
+        _today = warnings;
         Findings = warnings ?? [];
-        OnPropertyChanged(nameof(Findings));
-        OnPropertyChanged(nameof(TouchYourWordsText));
-        var previous = _all.ToArray();
-        var next = new List<GrammarWarningRowViewModel>();
-        if (warnings is not null)
-        {
-            var identified = warnings.Select((warning, index) =>
-                (Warning: warning, Index: index, Identity: WarningFindingIdentity.ForGrouping(warning)));
-            foreach (var group in identified.GroupBy(item =>
-                         (item.Identity, UnidentifiedIndex: item.Identity is null ? item.Index : -1)))
-            {
-                next.Add(new GrammarWarningRowViewModel(group.Select(item => item.Warning).ToArray(), _wordRoutes)
-                {
-                    SourceOrder = next.Count,
-                });
-            }
-        }
+        var previous = _todayRows.Concat(_todayResolved).ToArray();
+        var next = RowsOf(warnings);
         var resolved = new List<GrammarWarningRowViewModel>();
         if (preserveResolved)
         {
@@ -297,11 +295,42 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
             }
         }
 
+        _todayRows = next;
+        _todayResolved = resolved;
+        BuildProposalRows();
+        OnPropertyChanged(nameof(Findings));
+        Present();
+    }
+
+    private List<GrammarWarningRowViewModel> RowsOf(IReadOnlyList<GrammarWarning>? warnings)
+    {
+        var rows = new List<GrammarWarningRowViewModel>();
+        if (warnings is null) return rows;
+        var identified = warnings.Select((warning, index) =>
+            (Warning: warning, Index: index, Identity: WarningFindingIdentity.ForGrouping(warning)));
+        foreach (var group in identified.GroupBy(item =>
+                     (item.Identity, UnidentifiedIndex: item.Identity is null ? item.Index : -1)))
+        {
+            rows.Add(new GrammarWarningRowViewModel(group.Select(item => item.Warning).ToArray(), _wordRoutes)
+            {
+                SourceOrder = rows.Count,
+            });
+        }
+        return rows;
+    }
+
+    // Draws the rows of the view the bar chose from the row sets already built; a flip builds none.
+    private void Present()
+    {
+        var previous = _selectedWarning;
+        var reopen = previous?.IsOpen == true;
+        var (live, extra) = RowsInView();
         _all.Clear();
-        _all.AddRange(next);
-        _all.AddRange(resolved);
+        _all.AddRange(live);
+        _all.AddRange(extra);
         ApplySort();
-        TotalCount = next.Sum(row => row.RepeatCount);
+        TotalCount = live.Sum(row => row.RepeatCount);
+        _reselect = previous is not null && !_all.Contains(previous) ? (previous.FindingIdentity, reopen) : null;
         OnPropertyChanged(nameof(HasReportedErrors));
         OnPropertyChanged(nameof(HasReportedWarnings));
         OnPropertyChanged(nameof(HasReportedInformation));
@@ -310,6 +339,9 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
         OnPropertyChanged(nameof(InformationCount));
         OnPropertyChanged(nameof(BreakdownText));
         OnPropertyChanged(nameof(HasAny));
+        OnPropertyChanged(nameof(TouchYourWordsText));
+        OnPropertyChanged(nameof(ShownObjectTimingDetailText));
+        RaiseProposalCounts();
         Refresh();
     }
 
@@ -334,7 +366,7 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
     {
         Rows.Refresh();
         RefreshTableEntries();
-        ShownCount = VisibleFindings().Where(Matches).Sum(row => row.RepeatCount);
+        ShownCount = Countable().Where(Matches).Sum(row => row.RepeatCount);
     }
 
     private void RefreshTableEntries()
@@ -343,17 +375,52 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
             .GroupBy(WarningArea)
             .OrderBy(group => (int)group.Key)
             .ToArray();
-        TableEntries.Clear();
+        var wanted = new List<object>();
         foreach (var group in groups)
         {
-            var count = group.Sum(row => row.RepeatCount);
-            TableEntries.Add(new DenseTableGroup(AreaText(group.Key), PluralText.Format(MotifAppStrings.WarningsFindingsPattern, count)));
-            foreach (var row in group) TableEntries.Add(row);
+            var count = group.Where(row => row.ProposalTag != ProposalFindingTag.Gone).Sum(row => row.RepeatCount);
+            wanted.Add(new DenseTableGroup(AreaText(group.Key), PluralText.Format(MotifAppStrings.WarningsFindingsPattern, count)));
+            wanted.AddRange(group);
         }
 
-        if (SelectedTableEntry is not null && !TableEntries.Contains(SelectedTableEntry))
+        SyncEntries(wanted);
+        if (_reselect is { } reselect)
+        {
+            _reselect = null;
+            var match = reselect.Identity is null ? null : TableEntries.OfType<GrammarWarningRowViewModel>()
+                .FirstOrDefault(row => row.FindingIdentity == reselect.Identity && !row.IsGone);
+            SelectedTableEntry = match;
+            if (match is not null) match.IsOpen = reselect.Open;
+        }
+        else if (SelectedTableEntry is not null && !TableEntries.Contains(SelectedTableEntry))
             SelectedTableEntry = null;
     }
+
+    // Edits the shown entries in place, so a row both views share keeps its place, its selection and its scroll.
+    private void SyncEntries(List<object> wanted)
+    {
+        var index = 0;
+        foreach (var entry in wanted)
+        {
+            if (index < TableEntries.Count && SameEntry(TableEntries[index], entry))
+            {
+                index++;
+                continue;
+            }
+
+            var found = -1;
+            for (var at = index + 1; at < TableEntries.Count && found < 0; at++)
+                if (SameEntry(TableEntries[at], entry)) found = at;
+            if (found < 0) TableEntries.Insert(index, entry);
+            else for (var remove = found - 1; remove >= index; remove--) TableEntries.RemoveAt(remove);
+            index++;
+        }
+
+        while (TableEntries.Count > index) TableEntries.RemoveAt(TableEntries.Count - 1);
+    }
+
+    private static bool SameEntry(object shown, object wanted) =>
+        ReferenceEquals(shown, wanted) || shown is DenseTableGroup group && group.Equals(wanted);
 
     private enum WarningAreaKind { Environments, PhonologicalRules, Affixes, Other }
 
@@ -385,7 +452,7 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
 
     private bool Matches(object item) =>
         item is GrammarWarningRowViewModel row
-        && InBucket(row.Level)
+        && InBucket(row)
         && (!TouchYourWords || row.AttributionState == WarningDisplayState.ExactUses);
 
     private IEnumerable<GrammarWarningRowViewModel> VisibleFindings() => _all.Where(row => !row.IsGone);
@@ -656,11 +723,15 @@ public sealed partial class GrammarWarningRowViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(HasRefreshStatus))]
     private bool _isNotMatchedAfterRefresh;
 
-    public bool HasRefreshStatus => IsGone || IsNotMatchedAfterRefresh;
+    public bool HasRefreshStatus => IsGone || IsNotMatchedAfterRefresh || ProposalTag == ProposalFindingTag.New;
 
-    public string StatusText => IsGone
-        ? MotifAppStrings.WarningsGoneAfterRefresh
-        : IsNotMatchedAfterRefresh ? MotifAppStrings.WarningsNotMatchedAfterRefresh : string.Empty;
+    public string StatusText => ProposalTag switch
+    {
+        ProposalFindingTag.Gone => MotifAppStrings.WarningsGoneWithProposalStatus,
+        ProposalFindingTag.New => MotifAppStrings.WarningsNewWithProposalStatus,
+        _ => IsGone ? MotifAppStrings.WarningsGoneAfterRefresh
+            : IsNotMatchedAfterRefresh ? MotifAppStrings.WarningsNotMatchedAfterRefresh : string.Empty,
+    };
 
     public void MarkGone() => IsGone = true;
 

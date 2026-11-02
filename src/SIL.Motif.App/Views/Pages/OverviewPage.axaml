@@ -114,7 +114,7 @@
         <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.TheDefaultSelectionCouldNotBe}"
                                  TextWrapping="Wrap" />
       </Border>
-      <Border Classes="card" IsVisible="{Binding Context.NeedsAssessment}">
+      <Border Classes="card" IsVisible="{Binding ShowParsePromptCard}">
         <views:ParsePrompt DataContext="{Binding Context}" />
       </Border>
 

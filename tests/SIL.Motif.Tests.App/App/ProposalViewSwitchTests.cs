@@ -96,17 +96,17 @@ public sealed class ProposalViewSwitchTests
             var (workspace, window) = await OpenedAsync();
             try
             {
-                Assert.Equal([WorkspacePage.Overview], ProposalViewScope.Pages);
                 workspace.Context.ShowProposalView(MarkupView.Proposal);
                 PageScreenshots.Settle(window);
                 Assert.True(Switch(window).IsEffectivelyVisible);
 
-                foreach (var page in new[] { WorkspacePage.Texts, WorkspacePage.Timing, WorkspacePage.Review })
+                foreach (var page in new[] { WorkspacePage.Texts, WorkspacePage.Timing, WorkspacePage.Warnings, WorkspacePage.Review })
                 {
                     workspace.Context.OpenPage(page);
                     PageScreenshots.Settle(window);
-                    Assert.False(Switch(window).IsVisible, $"{page} shows a switch it ignores");
-                    Assert.False(workspace.ProposalBar.ShowsViewSwitch);
+                    var follows = ProposalViewScope.Pages.Contains(page);
+                    Assert.True(follows == Switch(window).IsEffectivelyVisible, $"{page}: the switch shows iff the page follows it");
+                    Assert.Equal(follows, workspace.ProposalBar.ShowsViewSwitch);
                     Assert.Equal(MarkupView.Proposal, workspace.Context.Lens!.View);
                 }
 

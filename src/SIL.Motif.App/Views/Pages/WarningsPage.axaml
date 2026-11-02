@@ -5,7 +5,7 @@
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              x:Class="SIL.Motif.App.Views.WarningsPage"
              x:DataType="vm:WarningsPageModel">
-  <Grid RowDefinitions="Auto,*">
+  <Grid RowDefinitions="Auto,Auto,Auto,*">
     <!-- Opening a project never checks the grammar; until someone asks, the page says so and offers the check. -->
     <Border Classes="card warningEmpty" IsVisible="{Binding IsGrammarNotChecked}"
             AutomationProperties.Name="{x:Static app:MotifAppStrings.GrammarNotCheckedYetAccessibleName}">
@@ -20,6 +20,13 @@
         </StackPanel>
       </DockPanel>
     </Border>
-    <ContentControl Grid.Row="1" x:Name="GrammarHost" />
+    <Border Grid.Row="1" Classes="proposalPageNote" IsVisible="{Binding HasProposalNote}"
+            AutomationProperties.AutomationId="{x:Static app:AutomationIds.WarningsProposalNote}">
+      <views:CopyableTextBlock Text="{Binding ProposalNote}" TextWrapping="Wrap" />
+    </Border>
+    <Border Grid.Row="2" Classes="card" IsVisible="{Binding ShowProposalNone}">
+      <views:CopyableTextBlock Text="{Binding ProposalNoneText}" FontWeight="{DynamicResource Intent.Weight.Section}" />
+    </Border>
+    <ContentControl Grid.Row="3" x:Name="GrammarHost" IsVisible="{Binding !ShowProposalNone}" />
   </Grid>
 </UserControl>

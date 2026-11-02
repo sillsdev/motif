@@ -8,7 +8,7 @@ namespace SIL.Motif.App.ViewModels;
 public static class ProposalViewScope
 {
     /// <summary>The pages that draw the bar's view.</summary>
-    public static IReadOnlyList<WorkspacePage> Pages { get; } = [WorkspacePage.Overview];
+    public static IReadOnlyList<WorkspacePage> Pages { get; } = [WorkspacePage.Overview, WorkspacePage.Warnings, WorkspacePage.Timing];
 
     /// <summary>The view a page should draw: the bar's choice while a Proposal is open, else today's.</summary>
     public static MarkupView ViewOf(WorkspaceContext context)

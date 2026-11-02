@@ -22,7 +22,7 @@ public sealed record OpenGrammarWarningRequest(string Code) : PageRequest(Worksp
 /// available. Counts findings beside the sidebar label and publishes their <see cref="GrammarSummary"/> to the
 /// context for the pages that summarise them.
 /// </summary>
-public sealed class WarningsPageModel : PageModel
+public sealed partial class WarningsPageModel : PageModel
 {
     private readonly Dictionary<GrammarWarningRowViewModel, string> _rowAreas =
         new(ReferenceEqualityComparer.Instance);
@@ -32,7 +32,6 @@ public sealed class WarningsPageModel : PageModel
     private Task _checking = Task.CompletedTask;
     private BaselineToken? _checkingBaseline;
     private string? _requestedWarningCode;
-    private string? _currentArea;
     private string? _selectedArea;
 
     public WarningsPageModel(WorkspaceContext context) : base(context)
@@ -89,13 +88,15 @@ public sealed class WarningsPageModel : PageModel
         ?? string.Empty;
 
     /// <summary>Whether the open project's grammar has no check to show, so the page offers one.</summary>
-    public bool IsGrammarNotChecked => Context.HasProject && !Grammar.HasChecked && !Grammar.IsLoading;
+    public bool IsGrammarNotChecked => Context.HasProject && !Grammar.HasChecked && !Grammar.IsLoading &&
+        !Grammar.Warnings.ShowsProposalCheck && !ShowProposalNone;
 
     /// <summary>Rechecks the open project's grammar, joining any check already in progress.</summary>
     public IAsyncRelayCommand CheckGrammarCommand { get; }
 
     protected override void OnProjectCleared()
     {
+        ClearProposalCheck();
         _readGeneration++;
         _checkCancellation?.Cancel();
         _checkAfterOpen = false;
@@ -133,6 +134,14 @@ public sealed class WarningsPageModel : PageModel
     }
 
     protected override async Task OnEvidencePublishedAsync(EvidenceLens lens, CancellationToken cancellationToken)
+    {
+        if (CurrentKey() is null) _failedKey = null;
+        ShowHeldProposalCheck();
+        await Task.WhenAll(ReadTodaysCheckAsync(cancellationToken), EnsureProposalCheckAsync(cancellationToken))
+            .ConfigureAwait(true);
+    }
+
+    private async Task ReadTodaysCheckAsync(CancellationToken cancellationToken)
     {
         if (Grammar.IsLoading || Context.ProjectPath is not { } path) return;
         var generation = ++_readGeneration;
@@ -238,7 +247,7 @@ public sealed class WarningsPageModel : PageModel
             OnPropertyChanged(nameof(HasSelectedWarningArea));
         }
         TryOpenRequestedWarning();
-        BadgeCount = Grammar.ShowFindings ? Grammar.Warnings.TotalCount : null;
+        BadgeCount = Grammar.ShowTodayFindings ? Grammar.Warnings.TodayTotalCount : null;
         PublishSummary();
         RaiseCheckState();
     }
@@ -256,7 +265,7 @@ public sealed class WarningsPageModel : PageModel
     }
 
     private void PublishSummary() => Context.GrammarSummary =
-        new GrammarSummary(Grammar.SummaryText, Grammar.ShowFindings, Grammar.Warnings.BreakdownText)
+        new GrammarSummary(Grammar.SummaryText, Grammar.ShowTodayFindings, Grammar.Warnings.TodayBreakdownText)
         {
             Findings = Grammar.Warnings.Findings,
         };
@@ -271,6 +280,10 @@ public sealed class WarningsPageModel : PageModel
             Grammar.Clear();
         }
         if (e.PropertyName == nameof(WorkspaceContext.HasProject)) RaiseCheckState();
+        if (e.PropertyName is nameof(WorkspaceContext.ProposalView) or nameof(WorkspaceContext.EvidenceLens))
+            ShowHeldProposalCheck();
+        if (e.PropertyName == nameof(WorkspaceContext.CurrentPage) && Context.CurrentPage == WorkspacePage.Warnings)
+            _ = ReadShownProposalCheckAsync();
     }
 
     private void RaiseCheckState()
@@ -307,44 +320,30 @@ public sealed class WarningsPageModel : PageModel
         OnPropertyChanged(nameof(HasSelectedWarningArea));
     }
 
+    // The entries change by edits, so the areas and their counts are read again from the entries in order.
     private void OnWarningTableEntriesChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
-        if (e.Action == NotifyCollectionChangedAction.Reset)
+        _rowAreas.Clear();
+        var counts = new Dictionary<string, int>(StringComparer.Ordinal);
+        string? area = null;
+        foreach (var entry in Grammar.Warnings.TableEntries)
         {
-            _rowAreas.Clear();
-            _currentArea = null;
-            foreach (var option in AreaFilters.Where(item => item.Area is not null))
-                option.Update(0, option.Area == _selectedArea);
-        }
-
-        if (e.NewItems is not null)
-        {
-            foreach (var item in e.NewItems)
+            if (entry is DenseTableGroup group)
             {
-                if (item is DenseTableGroup group)
-                {
-                    _currentArea = group.Label;
-                    var option = AreaFilters.FirstOrDefault(candidate => candidate.Area == group.Label);
-                    if (option is null)
-                    {
-                        option = new WarningsAreaFilterOption(group.Label, group.Label, 0,
-                            group.Label == _selectedArea);
-                        AreaFilters.Add(option);
-                    }
-                    else
-                    {
-                        option.Update(0, group.Label == _selectedArea);
-                    }
-                }
-                else if (item is GrammarWarningRowViewModel row && _currentArea is { } area)
-                {
-                    _rowAreas[row] = area;
-                    var option = AreaFilters.FirstOrDefault(candidate => candidate.Area == area);
-                    if (option is not null) option.Update(option.Count + row.RepeatCount, area == _selectedArea);
-                }
+                area = group.Label;
+                counts.TryAdd(area, 0);
+                if (AreaFilters.All(candidate => candidate.Area != area))
+                    AreaFilters.Add(new WarningsAreaFilterOption(area, area, 0, area == _selectedArea));
+            }
+            else if (entry is GrammarWarningRowViewModel row && area is not null)
+            {
+                _rowAreas[row] = area;
+                counts[area] += row.ProposalTag == ProposalFindingTag.Gone ? 0 : row.RepeatCount;
             }
         }
 
+        foreach (var option in AreaFilters.Where(item => item.Area is not null))
+            option.Update(counts.GetValueOrDefault(option.Area!), option.Area == _selectedArea);
         UpdateAllAreasCount();
         OnPropertyChanged(nameof(SelectedWarningArea));
         OnPropertyChanged(nameof(SelectedWarningSeverity));
@@ -355,7 +354,6 @@ public sealed class WarningsPageModel : PageModel
     private void ResetAreaFilters()
     {
         _selectedArea = null;
-        _currentArea = null;
         _rowAreas.Clear();
         AreaFilters.Clear();
         AreaFilters.Add(new WarningsAreaFilterOption(null, MotifAppStrings.WarningsAllAreas, Grammar.Warnings.ShownCount, true));

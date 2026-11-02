@@ -92,6 +92,8 @@ public sealed partial class ProposalBarViewModel : ObservableObject
     private static string PageName(WorkspacePage page) => page switch
     {
         WorkspacePage.Overview => MotifAppStrings.Overview,
+        WorkspacePage.Warnings => MotifAppStrings.Warnings,
+        WorkspacePage.Timing => MotifAppStrings.PageTiming,
         _ => page.ToString(),
     };
 

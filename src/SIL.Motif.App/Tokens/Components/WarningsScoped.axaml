@@ -5,6 +5,17 @@
     <Setter Property="Margin" Value="{DynamicResource Component.Warnings.PageMargin}" />
   </Style>
 
+  <!-- A finding only today's grammar has reads struck through beside the Proposal's; its mark and buttons are not. -->
+  <Style Selector="Border.denseTableRow.goneWithProposal :is(TextBlock).denseTableCell">
+    <Setter Property="TextDecorations" Value="Strikethrough" />
+  </Style>
+
+  <Style Selector="TextBlock.proposalMark">
+    <Setter Property="Margin" Value="{DynamicResource Component.Warnings.MarkMargin}" />
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
+    <Setter Property="FontWeight" Value="{DynamicResource Intent.Weight.Section}" />
+  </Style>
+
   <Style Selector="Border.warningRow">
     <Setter Property="Background" Value="{DynamicResource Intent.Surface}" />
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />

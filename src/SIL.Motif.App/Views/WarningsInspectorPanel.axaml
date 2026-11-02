@@ -40,8 +40,8 @@
                 <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
                   <views:CopyableTextBlock Text="{Binding TableItemName}" FontWeight="{DynamicResource Intent.Weight.Section}" />
                   <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap"
-                                            Text="{Binding $parent[views:WarningsInspectorPanel].Grammar.Warnings.ObjectTimingDetailText}"
-                                            IsVisible="{Binding $parent[views:WarningsInspectorPanel].Grammar.Warnings.ObjectTimingDetailText, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
+                                            Text="{Binding $parent[views:WarningsInspectorPanel].Grammar.Warnings.ShownObjectTimingDetailText}"
+                                            IsVisible="{Binding $parent[views:WarningsInspectorPanel].Grammar.Warnings.ShownObjectTimingDetailText, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
                   <views:CopyableTextBlock Classes="muted" Text="{x:Static app:MotifAppStrings.WhatIsWrong}" FontWeight="{DynamicResource Intent.Weight.Section}" />
                   <views:CopyableTextBlock Text="{Binding TableProblemText}" TextWrapping="Wrap" />
                   <views:CopyableTextBlock Classes="muted" Text="{Binding ReachStateText}"

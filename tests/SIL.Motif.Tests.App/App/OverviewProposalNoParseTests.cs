@@ -97,4 +97,39 @@ public sealed class OverviewProposalNoParseTests
         Assert.Contains(nameof(OverviewPageModel.ShowTodayDetail), raised);
         Assert.Contains(nameof(OverviewPageModel.HidesTodayDetail), raised);
     }
+
+    [Fact]
+    public async Task TheProposalViewDoesNotPointToTodaysBreakdownWhenTodayHasNoParse()
+    {
+        var (context, page) = await OpenedAsync(TodayWithNoParse(), OverviewProposalViewTests.Proposal());
+
+        context.ShowProposalView(MarkupView.Proposal);
+
+        Assert.False(page.ShowTodayDetail);
+        Assert.False(page.HidesTodayDetail);
+    }
+
+    [Theory]
+    [InlineData(MarkupView.Today, true)]
+    [InlineData(MarkupView.TodayToProposal, false)]
+    [InlineData(MarkupView.Proposal, false)]
+    public async Task TheFirstParseCardGivesWayToTheProposalsTilesWhenTheProposalHasAParse(MarkupView view, bool card)
+    {
+        var (context, page) = await OpenedAsync(TodayWithNoParse(), OverviewProposalViewTests.Proposal());
+
+        context.ShowProposalView(view);
+
+        Assert.Equal(card, page.ShowParsePromptCard);
+    }
+
+    [Fact]
+    public async Task TheFirstParseCardStaysWhenTheProposalHasNoParseEither()
+    {
+        var (context, page) = await OpenedAsync(TodayWithNoParse(),
+            OverviewProposalViewTests.Proposal() with { AssessmentId = null });
+
+        context.ShowProposalView(MarkupView.Proposal);
+
+        Assert.True(page.ShowParsePromptCard);
+    }
 }

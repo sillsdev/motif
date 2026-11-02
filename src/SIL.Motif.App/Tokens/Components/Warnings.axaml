@@ -6,6 +6,7 @@
     <StaticResource x:Key="Component.Warnings.PageMargin" ResourceKey="Intent.Inset.Page" />
     <StaticResource x:Key="Component.Warnings.EmptyMargin" ResourceKey="Intent.Inset.Page" />
     <StaticResource x:Key="Component.Warnings.RowMargin" ResourceKey="Primitive.Inset.0_0_0_4" />
+    <StaticResource x:Key="Component.Warnings.MarkMargin" ResourceKey="Primitive.Inset.0_0_6_0" />
     <StaticResource x:Key="Component.Warnings.RowPadding" ResourceKey="Primitive.Inset.4_2_4_2" />
     <StaticResource x:Key="Component.Warnings.SummaryPadding" ResourceKey="Intent.Inset.Row" />
     <StaticResource x:Key="Component.Warnings.DetailPadding" ResourceKey="Intent.Inset.Panel" />

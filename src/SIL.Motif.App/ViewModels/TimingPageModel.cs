@@ -123,7 +123,17 @@ public sealed partial class TimingPageModel : PageModel
             FormatWork(timing.Work.Percentile95WorkSteps));
 
     /// <summary>The selected words' stored totals grouped by kind.</summary>
-    public TimingResponse? KindTiming { get; private set; }
+    public TimingResponse? KindTiming
+    {
+        get => _kindTiming;
+        private set
+        {
+            _kindTiming = value;
+            _todayWords = value is null ? default : WordSetDigest.Of(value.Words);
+        }
+    }
+
+    private TimingResponse? _kindTiming;
 
     /// <summary>The same selected words' totals grouped by rule.</summary>
     public TimingResponse? RuleTiming { get; private set; }
@@ -163,11 +173,13 @@ public sealed partial class TimingPageModel : PageModel
     public bool HasHeadline => MeasuredWords.Count > 0;
 
     /// <summary>The chosen words' summed parser work, as PanGloss counted it.</summary>
-    public string HeadlineTotal => HasHeadline && KindTiming is { } timing
+    public string HeadlineTotal => ProposalHeadline(TodayHeadlineTotal, ProposalTotal, work: true);
+
+    private string TodayHeadlineTotal => HasHeadline && KindTiming is { } timing
         ? TimingShare.FormatWorkSteps(timing.Work.TotalWorkSteps) : string.Empty;
 
     /// <summary>Which words the total covers: all of them, or the group chosen above, and how many were timed.</summary>
-    public string HeadlineTotalCaption => !HasHeadline ? string.Empty
+    public string HeadlineTotalCaption => ShowsProposalAlone ? ProposalCaption() : !HasHeadline ? string.Empty
         : MeasuredWords.Count < ChosenWordCount
             ? string.Format(CultureInfo.CurrentCulture, IsAllSelected
                 ? MotifAppStrings.TimingCaptionSomeOfAllFormat : MotifAppStrings.TimingCaptionSomeOfTheseFormat,
@@ -179,13 +191,13 @@ public sealed partial class TimingPageModel : PageModel
             MeasuredWords.Count.ToString("N0", CultureInfo.CurrentCulture));
 
     /// <summary>The chosen words' median parser work.</summary>
-    public string HeadlineMedian => HasHeadline && KindTiming?.Work.MedianWorkSteps is { } median
-        ? TimingShare.FormatWorkSteps(median) : string.Empty;
+    public string HeadlineMedian => ProposalHeadline(HasHeadline && KindTiming?.Work.MedianWorkSteps is { } median
+        ? TimingShare.FormatWorkSteps(median) : string.Empty, ProposalMedian, work: true);
 
     /// <summary>How many of the chosen words stopped at the work limit.</summary>
-    public string HeadlineStopped => KindTiming?.Words
+    public string HeadlineStopped => ProposalHeadline(KindTiming?.Words
         .Count(word => word.Completion == TimingCompletion.WorkLimit).ToString("N0", System.Globalization.CultureInfo.CurrentCulture)
-        ?? string.Empty;
+        ?? string.Empty, ProposalStopped, work: false);
 
     /// <summary>The caption under the stopped-word count.</summary>
     public string HeadlineStoppedCaption => MotifAppStrings.TimingStoppedCaption;
@@ -239,8 +251,8 @@ public sealed partial class TimingPageModel : PageModel
             ? MotifAppStrings.TimingPhraseAllWordsFormat : MotifAppStrings.TimingPhraseTheseWordsFormat,
             MeasuredWords.Count.ToString("N0", CultureInfo.CurrentCulture));
 
-    /// <summary>The chosen words' work by kind, with the recorded unattributed work; empty when work by object was not kept.</summary>
-    public IReadOnlyList<TimingShare> KindShares => !HasHeadline || WorkByObject(KindTiming) is not { } work ? []
+    /// <summary>Today's work by kind; empty when work by object was not kept.</summary>
+    private IReadOnlyList<TimingShare> TodayKindShares => !HasHeadline || WorkByObject(KindTiming) is not { } work ? []
         : TimingShare.ByKind(work, KindTiming!.Work.TotalWorkSteps, KindTiming.Aggregates,
             MotifAppStrings.TimingNotAttributedLabel, 0, alwaysShowUnattributed: true);
 
@@ -269,7 +281,7 @@ public sealed partial class TimingPageModel : PageModel
 
     /// <summary>The rule table's share column, named by what it divides by.</summary>
     public string RuleShareHeader => HasHeadline
-        ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.TimingShareHeaderFormat, HeadlineTotal)
+        ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.TimingShareHeaderFormat, TodayHeadlineTotal)
         : MotifAppStrings.TimingShareHeader;
 
     /// <summary>What every share on the page is a share of.</summary>
@@ -277,7 +289,7 @@ public sealed partial class TimingPageModel : PageModel
     {
         get
         {
-            if (KindTiming is null) return string.Empty;
+            if (KindTiming is null || ShowsProposalAlone) return string.Empty;
             if (!HasHeadline) return MotifAppStrings.TimingNoSharesShown;
             if (WorkByObject(KindTiming) is null)
                 return KindTiming.ObjectTimingAggregatesAvailable
@@ -286,11 +298,11 @@ public sealed partial class TimingPageModel : PageModel
             return missing switch
             {
                 <= 0 => string.Format(CultureInfo.CurrentCulture, MotifAppStrings.TimingShareOfFormat,
-                    HeadlineTotal, MeasuredWordsPhrase),
+                    TodayHeadlineTotal, MeasuredWordsPhrase),
                 1 => string.Format(CultureInfo.CurrentCulture, MotifAppStrings.TimingShareOfOneMissingFormat,
-                    HeadlineTotal, MeasuredWordsPhrase),
+                    TodayHeadlineTotal, MeasuredWordsPhrase),
                 _ => string.Format(CultureInfo.CurrentCulture, MotifAppStrings.TimingShareOfManyMissingFormat,
-                    HeadlineTotal, MeasuredWordsPhrase, missing.ToString("N0", CultureInfo.CurrentCulture)),
+                    TodayHeadlineTotal, MeasuredWordsPhrase, missing.ToString("N0", CultureInfo.CurrentCulture)),
             };
         }
     }
@@ -333,6 +345,8 @@ public sealed partial class TimingPageModel : PageModel
     {
         get
         {
+            if (ShowsProposalAlone && ProposalMeasured) return string.Format(CultureInfo.CurrentCulture,
+                MotifAppStrings.TimingScopeFormat, Held!.Work.MeasuredWordCount.ToString("N0", CultureInfo.CurrentCulture));
             if (KindTiming is null) return MotifAppStrings.TimingNoStoredTimingForWords;
             var label = string.Format(CultureInfo.CurrentCulture, MotifAppStrings.TimingScopeFormat,
                 KindTiming.WordCount.ToString("N0", CultureInfo.CurrentCulture));
@@ -409,7 +423,7 @@ public sealed partial class TimingPageModel : PageModel
             return rule.Share is null
                 ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.TimingRuleSummaryFormat, rule.WorkText, recorded)
                 : string.Format(CultureInfo.CurrentCulture, MotifAppStrings.TimingRuleSummaryShareFormat,
-                    rule.WorkText, rule.ShareText, MeasuredWordsPhrase, HeadlineTotal, recorded);
+                    rule.WorkText, rule.ShareText, MeasuredWordsPhrase, TodayHeadlineTotal, recorded);
         }
     }
     public IReadOnlyList<CompareCellViewModel> MatrixCells =>
@@ -514,6 +528,7 @@ public sealed partial class TimingPageModel : PageModel
     protected override void OnProjectCleared()
     {
         CancelRerun();
+        ClearProposalSide();
         _loadGeneration++;
         _grammarWarnings = [];
         _isLoadingTiming = false;
@@ -550,6 +565,7 @@ public sealed partial class TimingPageModel : PageModel
     protected override async Task OnEvidencePublishedAsync(EvidenceLens lens, CancellationToken cancellationToken)
     {
         var evidence = lens.Today;
+        if (CurrentKey() is null) _failedKey = null;
         if (evidence.Assessment is { } shown)
         {
             Statistics.Reset();
@@ -564,6 +580,7 @@ public sealed partial class TimingPageModel : PageModel
         OnPropertyChanged(nameof(ShowStatistics));
         if (evidence.ParseTimeAssessmentId is not { } assessmentId || Context.ProjectPath is not { } projectPath)
         {
+            await EnsureProposalSideAsync(cancellationToken).ConfigureAwait(true);
             StoredTiming = null;
             StoredTimingRefusal = null;
             RaiseStoredTimingState();
@@ -576,6 +593,7 @@ public sealed partial class TimingPageModel : PageModel
         // A run answers whatever the page is focused on; a stored read never replaces a focused view.
         if (evidence.Assessment is { IsStored: false } || Focus is null)
             await LoadScopeAsync(projectPath, assessmentId, cancellationToken).ConfigureAwait(true);
+        else await EnsureProposalSideAsync(cancellationToken).ConfigureAwait(true);
     }
 
     internal static string? MatchingWarningCode(TimingAggregateRow? row, IReadOnlyList<GrammarWarning> findings)
@@ -618,6 +636,7 @@ public sealed partial class TimingPageModel : PageModel
         FocusedTimingRefusal = null;
         RaiseFocusState();
         if (LoadFocusedTimingCommand.CanExecute(null)) _ = LoadFocusedTimingCommand.ExecuteAsync(null);
+        else _ = ReadShownProposalSideAsync();
     }
 
     private async Task LoadFocusedTimingAsync()
@@ -746,7 +765,14 @@ public sealed partial class TimingPageModel : PageModel
         await LoadScopeAsync(projectPath, CurrentAssessmentId, CancellationToken.None);
     }
 
+    // Whatever way today's read ends, the Proposal's side is brought to the page's current key if it is shown.
     private async Task LoadScopeAsync(string projectPath, string? assessmentId, CancellationToken cancellationToken)
+    {
+        await LoadTodayScopeAsync(projectPath, assessmentId, cancellationToken).ConfigureAwait(true);
+        await EnsureProposalSideAsync(cancellationToken).ConfigureAwait(true);
+    }
+
+    private async Task LoadTodayScopeAsync(string projectPath, string? assessmentId, CancellationToken cancellationToken)
     {
         var generation = ++_loadGeneration;
         KindTiming = null;
@@ -757,7 +783,7 @@ public sealed partial class TimingPageModel : PageModel
         ShowKindCalls = false;
         _isLoadingTiming = true;
         RaiseTimingState();
-        var top = _wordSet is TimingWordSet.Slowest ? Math.Max(1, SlowestCount) : 10;
+        var top = _appliedTop = RequestTop;
         CommandOutcome<TimingResponse> kind;
         try
         {
@@ -921,6 +947,7 @@ public sealed partial class TimingPageModel : PageModel
         }) OnPropertyChanged(property);
         RaiseFocusState();
         RaiseStoredTimingState();
+        RaiseProposalTiming();
         RerunWordsCommand.NotifyCanExecuteChanged();
         HandOffWordsCommand.NotifyCanExecuteChanged();
         HandOffRuleCommand.NotifyCanExecuteChanged();
@@ -934,8 +961,14 @@ public sealed partial class TimingPageModel : PageModel
             OnPropertyChanged(nameof(RuleRows));
         }
         if (e.PropertyName == nameof(WorkspaceContext.ProjectPath)) OnPropertyChanged(nameof(ShowNoTimingRecorded));
+        if (e.PropertyName is nameof(WorkspaceContext.ProposalView) or nameof(WorkspaceContext.Lens)
+            or nameof(WorkspaceContext.EvidenceLens)) RaiseProposalTiming();
+        if (e.PropertyName == nameof(WorkspaceContext.CurrentPage) && Context.CurrentPage == WorkspacePage.Timing)
+            _ = ReadShownProposalSideAsync();
         if (e.PropertyName != nameof(WorkspaceContext.NeedsAssessment)) return;
         OnPropertyChanged(nameof(ShowNoTimingRecorded));
+        OnPropertyChanged(nameof(ShowPageBody));
+        OnPropertyChanged(nameof(ShowParsePromptCard));
         OnPropertyChanged(nameof(ShowNoEvidence));
         OnPropertyChanged(nameof(ShowStatistics));
         OnPropertyChanged(nameof(ShowStoredTiming));

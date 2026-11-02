@@ -279,11 +279,15 @@ _Avoid_: context, source, data context, snapshot
 
 **Proposal mode**:
 The window's state while a Proposal is open: a context bar names it and says when its Trial was run. The
-bar's view switch (Today, Today → Proposal, Proposal) shows only on a page that follows it, now the Overview, and
-chooses whether that page shows today's evidence set, the Proposal's Trial evidence set or both; every other page
-shows today's. Choosing a view is not an evidence change, so no page reloads, re-reads or re-applies for it, and
-the choice comes back when the Overview is shown again. In the Proposal view a headline stands alone, with today's
-breakdown left to the Today view. Leave, or Esc when nothing else uses it, returns to today.
+bar's view switch (Today, Today → Proposal, Proposal) shows only on a page that follows it, now the Overview,
+Warnings and Timing, and chooses whether that page shows today's evidence set, the Proposal's Trial evidence set or
+both; every other page shows today's. Each such page runs the same query once for each set, only while it is shown
+and once for each Proposal, Trial and choice of words, and says in a note what is paired and what stays today's; a
+value one set lacks reads as none, never as zero or as the other set's number, and a read still running reads as
+reading, never as an earlier key's number. Timing pairs only when both sets cover the same words. Choosing a view is
+not an evidence change, so no page reloads, re-reads or re-applies for it, and the choice comes back when a
+following page is shown again. In the Proposal view a headline stands alone, with today's breakdown left
+to the Today view. Leave, or Esc when nothing else uses it, returns to today.
 _Avoid_: compare mode, diff view, Proposal page, branch
 
 **Looked at**:

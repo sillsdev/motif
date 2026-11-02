@@ -71,6 +71,7 @@ public sealed partial class OverviewPageModel : PageModel
     [NotifyPropertyChangedFor(nameof(ShowNoAssessment))]
     [NotifyPropertyChangedFor(nameof(ShowNumbers))]
     [NotifyPropertyChangedFor(nameof(ShowTiles))]
+    [NotifyPropertyChangedFor(nameof(HidesTodayDetail))]
     [NotifyPropertyChangedFor(nameof(ShowWarningsTile))]
     [NotifyPropertyChangedFor(nameof(SelectionIsUnresolved))]
     [NotifyPropertyChangedFor(nameof(ProjectTitle))]
@@ -181,8 +182,11 @@ public sealed partial class OverviewPageModel : PageModel
     /// <summary>Whether each tile shows today's own breakdown under its headline; the Proposal view does not.</summary>
     public bool ShowTodayDetail => !ShowsProposalAlone;
 
-    /// <summary>Whether each tile says today's breakdown is in the Today view instead of showing it.</summary>
-    public bool HidesTodayDetail => ShowsProposalAlone;
+    /// <summary>Whether each tile says today's breakdown is in the Today view; not when today has no parse.</summary>
+    public bool HidesTodayDetail => ShowsProposalAlone && Overview?.AssessmentId is not null;
+
+    /// <summary>Whether the card offering a first parse shows: not once the Proposal's tiles show its own parse.</summary>
+    public bool ShowParsePromptCard => Context.NeedsAssessment && !ProposalHasParse;
 
     /// <summary>Whether the grammar warnings tile has a read Overview; it needs no parse.</summary>
     public bool ShowWarningsTile => Overview is not null;
@@ -835,6 +839,7 @@ public sealed partial class OverviewPageModel : PageModel
         if (e.PropertyName == nameof(WorkspaceContext.NeedsAssessment))
         {
             OnPropertyChanged(nameof(ShowNoAssessment));
+            OnPropertyChanged(nameof(ShowParsePromptCard));
             OnPropertyChanged(nameof(ShowTiles));
         }
         if (e.PropertyName is nameof(WorkspaceContext.ProjectPath))

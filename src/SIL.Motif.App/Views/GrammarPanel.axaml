@@ -149,7 +149,7 @@
               </DataTemplate>
               <DataTemplate DataType="vm:GrammarWarningRowViewModel" x:DataType="vm:GrammarWarningRowViewModel">
                 <Grid>
-                <Border Classes="denseTableRow">
+                <Border Classes="denseTableRow" Classes.goneWithProposal="{Binding IsGoneWithProposal}">
                   <Grid ColumnSpacing="{DynamicResource Intent.Space.Group}" controls:DenseTable.Columns="Narrow 2* 2* Narrow Actions"
                         controls:DenseTable.CompactColumns="0 * 0 0 Actions">
                     <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Compact}"
@@ -157,9 +157,13 @@
                       <views:MarkChip Mark="{Binding SeverityMark}" Compact="True" />
                       <TextBlock Classes="denseTableCell" Text="{Binding SeverityLabel}" />
                     </StackPanel>
-                    <views:CopyableTextBlock Grid.Column="1" Classes="denseTableCell denseTableItem"
-                                              Text="{Binding TableItemText}" TextWrapping="NoWrap"
-                                              TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                    <DockPanel Grid.Column="1" VerticalAlignment="Center">
+                      <TextBlock DockPanel.Dock="Left" Classes="proposalMark" Text="{Binding ProposalMarkText}"
+                                 IsVisible="{Binding HasProposalMark}" VerticalAlignment="Center" />
+                      <views:CopyableTextBlock Classes="denseTableCell denseTableItem"
+                                                Text="{Binding TableItemText}" TextWrapping="NoWrap"
+                                                TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                    </DockPanel>
                     <Border Grid.Column="2" controls:DenseTable.Secondary="True">
                       <views:CopyableTextBlock Classes="denseTableCell" Text="{Binding TableProblemText}"
                                               TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
@@ -174,9 +178,9 @@
                       <Button Classes="denseTableAction" Content="{x:Static app:MotifAppStrings.Details}"
                               Command="{Binding $parent[views:GrammarPanel].OpenFindingDetailsCommand}"
                               CommandParameter="{Binding}"
-                              AutomationProperties.Name="{Binding RowTitleText, StringFormat='Details for {0}'}" />
+                              AutomationProperties.Name="{Binding DetailsAccessibleName}" />
                       <Button Classes="denseTableMenu" Content="⋯" IsTabStop="True"
-                              AutomationProperties.Name="{Binding RowTitleText, StringFormat='Actions for {0}'}">
+                              AutomationProperties.Name="{Binding ActionsAccessibleName}">
                         <Button.Flyout>
                           <Flyout Placement="BottomEdgeAlignedLeft">
                             <StackPanel Classes="menu">

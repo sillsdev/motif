@@ -22,6 +22,9 @@ public sealed class FilterChip : Button
     public static readonly StyledProperty<int> CountProperty =
         AvaloniaProperty.Register<FilterChip, int>(nameof(Count));
 
+    public static readonly StyledProperty<string?> CountTextProperty =
+        AvaloniaProperty.Register<FilterChip, string?>(nameof(CountText));
+
     public static readonly StyledProperty<Mark?> MarkProperty =
         AvaloniaProperty.Register<FilterChip, Mark?>(nameof(Mark));
 
@@ -32,6 +35,7 @@ public sealed class FilterChip : Button
     {
         LabelProperty.Changed.AddClassHandler<FilterChip>((chip, _) => chip.Rebuild());
         CountProperty.Changed.AddClassHandler<FilterChip>((chip, _) => chip.Rebuild());
+        CountTextProperty.Changed.AddClassHandler<FilterChip>((chip, _) => chip.Rebuild());
         MarkProperty.Changed.AddClassHandler<FilterChip>((chip, _) => chip.Rebuild());
         IsActiveProperty.Changed.AddClassHandler<FilterChip>((chip, _) => chip.Rebuild());
     }
@@ -57,6 +61,13 @@ public sealed class FilterChip : Button
     {
         get => GetValue(CountProperty);
         set => SetValue(CountProperty, value);
+    }
+
+    /// <summary>The count in words when it is not one number, such as a pair; when set, it replaces <see cref="Count"/>.</summary>
+    public string? CountText
+    {
+        get => GetValue(CountTextProperty);
+        set => SetValue(CountTextProperty, value);
     }
 
     /// <summary>The mark this chip filters to, or <see langword="null"/> for a chip like All.</summary>
@@ -99,7 +110,7 @@ public sealed class FilterChip : Button
         var label = new TextBlock { Text = Label, TextTrimming = TextTrimming.CharacterEllipsis };
         row.Children.Add(label);
         Grid.SetColumn(label, 1);
-        var count = new TextBlock { Text = Count.ToString("N0"), Classes = { "chipCount" } };
+        var count = new TextBlock { Text = CountText ?? Count.ToString("N0"), Classes = { "chipCount" } };
         row.Children.Add(count);
         Grid.SetColumn(count, 2);
         Content = row;

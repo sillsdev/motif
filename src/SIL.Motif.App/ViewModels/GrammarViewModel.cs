@@ -35,9 +35,13 @@ public sealed partial class GrammarViewModel : ObservableObject
     // Which state shows depends on whether the table has rows, so it is re-read whenever that changes.
     private void OnWarningsChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        if (e.PropertyName != nameof(GrammarWarningsViewModel.HasAny)) return;
+        if (e.PropertyName is not (nameof(GrammarWarningsViewModel.HasAny) or
+            nameof(GrammarWarningsViewModel.ShowsProposalCheck))) return;
+        OnPropertyChanged(nameof(ShowRefused));
+        OnPropertyChanged(nameof(ShowNoBaseline));
         OnPropertyChanged(nameof(ShowNoFindings));
         OnPropertyChanged(nameof(ShowFindings));
+        OnPropertyChanged(nameof(ShowTodayFindings));
         OnPropertyChanged(nameof(SummaryText));
     }
 
@@ -91,10 +95,16 @@ public sealed partial class GrammarViewModel : ObservableObject
     public string ElapsedText => ElapsedSeconds < 2 ? string.Empty : $"{ElapsedSeconds} s";
 
     public bool ShowLoading => IsLoading;
-    public bool ShowRefused => !IsLoading && HasChecked && Refusal is not null;
-    public bool ShowNoBaseline => !IsLoading && HasChecked && Refusal is null && !HasBaseline;
-    public bool ShowNoFindings => !IsLoading && HasChecked && Refusal is null && HasBaseline && !Warnings.HasAny;
-    public bool ShowFindings => !IsLoading && HasChecked && Refusal is null && HasBaseline && Warnings.HasAny;
+    public bool ShowRefused => !IsLoading && !Warnings.ShowsProposalCheck && HasChecked && Refusal is not null;
+    public bool ShowNoBaseline => !IsLoading && !Warnings.ShowsProposalCheck && HasChecked && Refusal is null && !HasBaseline;
+    public bool ShowNoFindings => !IsLoading && HasFindingsToShow && !Warnings.HasAny;
+    public bool ShowFindings => !IsLoading && HasFindingsToShow && Warnings.HasAny;
+
+    // The Proposal's own check needs neither today's check nor today's Baseline to be shown.
+    private bool HasFindingsToShow => Warnings.ShowsProposalCheck || HasChecked && Refusal is null && HasBaseline;
+
+    /// <summary>Whether today's own check has findings, whatever the Proposal view shows.</summary>
+    public bool ShowTodayFindings => !IsLoading && HasChecked && Refusal is null && HasBaseline && Warnings.TodayHasAny;
 
     /// <summary>The current refusal in the window's words, with the command's own account under Details.</summary>
     public WindowRefusal? ShownRefusal => Refusal is null ? null : WindowRefusal.From(Refusal);
@@ -104,7 +114,7 @@ public sealed partial class GrammarViewModel : ObservableObject
         : ShownRefusal is { } refusal ? refusal.Sentence
         : !HasChecked ? "Not checked yet"
         : !HasBaseline ? "Capture a Baseline first"
-        : Warnings.HasAny ? (Warnings.TotalCount == 1 ? "1 finding" : $"{Warnings.TotalCount} findings")
+        : Warnings.TodayHasAny ? (Warnings.TodayTotalCount == 1 ? "1 finding" : $"{Warnings.TodayTotalCount} findings")
         : "No grammar findings were reported.";
 
     /// <summary>Sets the project to check and immediately checks it, discarding whatever was shown before.</summary>

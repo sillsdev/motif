@@ -19,6 +19,15 @@
   <Style Selector="Border.notice Button:not(.Primary)">
     <Setter Property="Foreground" Value="{DynamicResource Intent.Link.Text}" />
   </Style>
+  <!-- A page's note while a Proposal is open: what is paired and what stays today's. -->
+  <Style Selector="Border.proposalPageNote">
+    <Setter Property="Background" Value="{DynamicResource Intent.Proposal.Fill}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Component.Notice.Radius}" />
+    <Setter Property="Padding" Value="{DynamicResource Component.Notice.Padding}" />
+  </Style>
+  <Style Selector="Border.proposalPageNote :is(TextBlock)">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Proposal.Text}" />
+  </Style>
   <Style Selector="Border.quietWritingSystemNotice">
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
     <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.DividerBottom}" />

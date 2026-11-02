@@ -9,12 +9,16 @@
   <UserControl.Styles>
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/TimingScoped.axaml" />
   </UserControl.Styles>
-  <Grid>
-    <ScrollViewer IsVisible="{Binding !Context.NeedsAssessment}">
+  <Grid RowDefinitions="Auto,*">
+    <Border Grid.Row="0" Classes="proposalPageNote" IsVisible="{Binding HasProposalNote}"
+            AutomationProperties.AutomationId="{x:Static app:AutomationIds.TimingProposalNote}">
+      <views:CopyableTextBlock Text="{Binding ProposalNote}" TextWrapping="Wrap" />
+    </Border>
+    <ScrollViewer Grid.Row="1" IsVisible="{Binding ShowPageBody}">
       <StackPanel Spacing="{DynamicResource Intent.Space.Group}">
       <Border Classes="timingPage">
         <StackPanel Spacing="{DynamicResource Intent.Space.Group}">
-          <Border Classes="card" IsVisible="{Binding HasHeadline}" AutomationProperties.Name="{x:Static app:MotifAppStrings.TotalWordTimeAccessibleName}">
+          <Border Classes="card" IsVisible="{Binding ShowHeadlineCard}" AutomationProperties.Name="{x:Static app:MotifAppStrings.TotalWordTimeAccessibleName}">
             <StackPanel Classes="timingHeadline" Orientation="Horizontal">
               <StackPanel>
                 <views:CopyableTextBlock Classes="timingHeadlineCaption" Text="{x:Static app:MotifAppStrings.TotalWordTime}" />
@@ -168,7 +172,7 @@
 
           <Grid x:Name="TimingShareLayout" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto"
                 ColumnSpacing="{DynamicResource Intent.Space.Group}"
-                IsVisible="{Binding HasSelectedWords}">
+                IsVisible="{Binding ShowKindCard}">
             <StackPanel Grid.Column="0" Spacing="{DynamicResource Intent.Space.Group}">
               <Border Classes="card">
                 <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
@@ -192,8 +196,8 @@
                                       Spacing="{DynamicResource Intent.Space.Compact}">
                             <Border Classes="outcomeSegment swatch" Background="{Binding Brush}" />
                             <views:CopyableTextBlock Text="{Binding Row.Label}" />
-                            <views:CopyableTextBlock Text="{Binding Row.ShareText}" FontWeight="{DynamicResource Intent.Weight.Strong}" />
-                            <views:CopyableTextBlock Classes="muted" Text="{Binding Row.WorkText, StringFormat='{}· {0}'}" />
+                            <views:CopyableTextBlock Text="{Binding Row.ShownShareText}" FontWeight="{DynamicResource Intent.Weight.Strong}" />
+                            <views:CopyableTextBlock Classes="muted" Text="{Binding Row.ShownWorkText, StringFormat='{}· {0}'}" />
                           </StackPanel>
                         </DataTemplate>
                       </ItemsControl.ItemTemplate>
@@ -363,7 +367,7 @@
       </StackPanel>
     </ScrollViewer>
 
-    <Border Classes="card" IsVisible="{Binding Context.NeedsAssessment}"
+    <Border Grid.Row="1" Classes="card" IsVisible="{Binding ShowParsePromptCard}"
             HorizontalAlignment="Center" VerticalAlignment="Center">
       <views:ParsePrompt DataContext="{Binding Context}" />
     </Border>

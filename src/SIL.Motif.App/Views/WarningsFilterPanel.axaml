@@ -25,25 +25,35 @@
 
       <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
         <views:CopyableTextBlock Classes="denseTableHeading" Text="{x:Static app:MotifAppStrings.Severity}" />
-        <views:FilterChip Label="All" Count="{Binding Grammar.Warnings.TotalCount}"
+        <views:FilterChip Label="All" Count="{Binding Grammar.Warnings.TotalCount}" CountText="{Binding Grammar.Warnings.AllCountText}"
                           IsActive="{Binding Grammar.Warnings.Bucket, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:GrammarFindingBucket.All}}"
                           Command="{Binding Grammar.Warnings.SetBucketCommand}"
                           CommandParameter="{x:Static vm:GrammarFindingBucket.All}" />
-        <views:FilterChip Label="Errors" Count="{Binding Grammar.Warnings.ErrorCount}" Mark="{x:Static vm:Mark.Error}"
+        <views:FilterChip Label="Errors" Count="{Binding Grammar.Warnings.ErrorCount}" CountText="{Binding Grammar.Warnings.ErrorCountText}" Mark="{x:Static vm:Mark.Error}"
                           IsVisible="{Binding Grammar.Warnings.HasReportedErrors}"
                           IsActive="{Binding Grammar.Warnings.Bucket, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:GrammarFindingBucket.Errors}}"
                           Command="{Binding Grammar.Warnings.SetBucketCommand}"
                           CommandParameter="{x:Static vm:GrammarFindingBucket.Errors}" />
-        <views:FilterChip Label="Warnings" Count="{Binding Grammar.Warnings.WarningCount}" Mark="{x:Static vm:Mark.Warning}"
+        <views:FilterChip Label="Warnings" Count="{Binding Grammar.Warnings.WarningCount}" CountText="{Binding Grammar.Warnings.WarningCountText}" Mark="{x:Static vm:Mark.Warning}"
                           IsVisible="{Binding Grammar.Warnings.HasReportedWarnings}"
                           IsActive="{Binding Grammar.Warnings.Bucket, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:GrammarFindingBucket.Warnings}}"
                           Command="{Binding Grammar.Warnings.SetBucketCommand}"
                           CommandParameter="{x:Static vm:GrammarFindingBucket.Warnings}" />
-        <views:FilterChip Label="Information" Count="{Binding Grammar.Warnings.InformationCount}" Mark="{x:Static vm:Mark.Information}"
+        <views:FilterChip Label="Information" Count="{Binding Grammar.Warnings.InformationCount}" CountText="{Binding Grammar.Warnings.InformationCountText}" Mark="{x:Static vm:Mark.Information}"
                           IsVisible="{Binding Grammar.Warnings.HasReportedInformation}"
                           IsActive="{Binding Grammar.Warnings.Bucket, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:GrammarFindingBucket.Information}}"
                           Command="{Binding Grammar.Warnings.SetBucketCommand}"
                           CommandParameter="{x:Static vm:GrammarFindingBucket.Information}" />
+        <views:FilterChip Label="{x:Static app:MotifAppStrings.WarningsGoneWithProposal}" Count="{Binding Grammar.Warnings.GoneCount}"
+                          IsVisible="{Binding Grammar.Warnings.ShowsGone}"
+                          IsActive="{Binding Grammar.Warnings.Bucket, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:GrammarFindingBucket.GoneWithProposal}}"
+                          Command="{Binding Grammar.Warnings.SetBucketCommand}"
+                          CommandParameter="{x:Static vm:GrammarFindingBucket.GoneWithProposal}" />
+        <views:FilterChip Label="{x:Static app:MotifAppStrings.WarningsNewWithProposal}" Count="{Binding Grammar.Warnings.NewCount}"
+                          IsVisible="{Binding Grammar.Warnings.ShowsNew}"
+                          IsActive="{Binding Grammar.Warnings.Bucket, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:GrammarFindingBucket.NewWithProposal}}"
+                          Command="{Binding Grammar.Warnings.SetBucketCommand}"
+                          CommandParameter="{x:Static vm:GrammarFindingBucket.NewWithProposal}" />
       </StackPanel>
 
       <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
@@ -51,8 +61,8 @@
         <ToggleButton Content="{Binding Grammar.Warnings.TouchYourWordsText}"
                       IsChecked="{Binding Grammar.Warnings.TouchYourWords, Mode=TwoWay}"
                       AutomationProperties.Name="{x:Static app:MotifAppStrings.ShowFindingsWithExactUsesInYourWordsAccessibleName}" />
-        <views:CopyableTextBlock Classes="muted" Text="{Binding Grammar.Warnings.ObjectTimingDetailText}"
-                                 IsVisible="{Binding Grammar.Warnings.ObjectTimingDetailText, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}"
+        <views:CopyableTextBlock Classes="muted" Text="{Binding Grammar.Warnings.ShownObjectTimingDetailText}"
+                                 IsVisible="{Binding Grammar.Warnings.ShownObjectTimingDetailText, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}"
                                  TextWrapping="Wrap" />
       </StackPanel>
     </StackPanel>

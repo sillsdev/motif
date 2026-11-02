@@ -134,6 +134,12 @@ public static class AutomationIds
     public const string ProposalBarTryAgain = "motif-proposal-bar-try-again";
     /// <summary>The Overview's note on how its numbers read while a Proposal is open.</summary>
     public const string OverviewProposalNote = "motif-overview-proposal-note";
+
+    /// <summary>The note on the Warnings page that says what is paired with the open Proposal.</summary>
+    public const string WarningsProposalNote = "motif-warnings-proposal-note";
+
+    /// <summary>The note on the Timing page saying what is paired with the open Proposal.</summary>
+    public const string TimingProposalNote = "motif-timing-proposal-note";
     /// <summary>The Proposals page's grouped table.</summary>
     public const string ProposalsTable = "motif-proposals-table";
 

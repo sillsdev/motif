@@ -4179,4 +4179,60 @@ public static class MotifAppStrings
     public static string OverviewNeitherParseNote => Text("MotifApp.OverviewNeitherParseNote");
 
     public static string OverviewProposalTodayNoneLeadPattern => Text("MotifApp.OverviewProposalTodayNoneLeadPattern");
+
+    public static string ProposalPageTodayViewNoteFormat => Text("MotifApp.ProposalPageTodayViewNoteFormat");
+
+    public static string ProposalPageUnreadableFormat => Text("MotifApp.ProposalPageUnreadableFormat");
+
+    public static string ProposalPageTodayOnlyFormat => Text("MotifApp.ProposalPageTodayOnlyFormat");
+
+    public static string ProposalPageNothingFormat => Text("MotifApp.ProposalPageNothingFormat");
+
+    public static string ProposalPageOldNoteFormat => Text("MotifApp.ProposalPageOldNoteFormat");
+
+    public static string ProposalPageNone => Text("MotifApp.ProposalPageNone");
+
+    public static string WarningsProposalPairedNote => Text("MotifApp.WarningsProposalPairedNote");
+
+    public static string WarningsProposalViewNote => Text("MotifApp.WarningsProposalViewNote");
+
+    public static string WarningsProposalTodayNotCheckedNote => Text("MotifApp.WarningsProposalTodayNotCheckedNote");
+
+    public static string WarningsGoneWithProposal => Text("MotifApp.WarningsGoneWithProposal");
+
+    public static string WarningsNewWithProposal => Text("MotifApp.WarningsNewWithProposal");
+
+    public static string WarningsFindingsNoun => Text("MotifApp.WarningsFindingsNoun");
+
+    public static string TimingProposalPairedNote => Text("MotifApp.TimingProposalPairedNote");
+
+    public static string TimingProposalViewNote => Text("MotifApp.TimingProposalViewNote");
+
+    public static string TimingProposalStoppedOnlyNote => Text("MotifApp.TimingProposalStoppedOnlyNote");
+
+    public static string TimingNoneToday => Text("MotifApp.TimingNoneToday");
+
+    public static string TimingNoun => Text("MotifApp.TimingNoun");
+
+    public static string TimingProposalDifferentWordsNote => Text("MotifApp.TimingProposalDifferentWordsNote");
+
+    public static string TimingProposalViewNotComparableNote => Text("MotifApp.TimingProposalViewNotComparableNote");
+
+    public static string WarningsGoneWithProposalStatus => Text("MotifApp.WarningsGoneWithProposalStatus");
+
+    public static string WarningsNewWithProposalStatus => Text("MotifApp.WarningsNewWithProposalStatus");
+
+    public static string WarningsGoneMark => Text("MotifApp.WarningsGoneMark");
+
+    public static string WarningsNewMark => Text("MotifApp.WarningsNewMark");
+
+    public static string WarningsDetailsForFormat => Text("MotifApp.WarningsDetailsForFormat");
+
+    public static string WarningsActionsForFormat => Text("MotifApp.WarningsActionsForFormat");
+
+    public static string WarningsMarkedRowFormat => Text("MotifApp.WarningsMarkedRowFormat");
+
+    public static string PageTiming => Text("MotifApp.PageTiming");
+
+    public static string WarningsProposalReadingNote => Text("MotifApp.WarningsProposalReadingNote");
 }
