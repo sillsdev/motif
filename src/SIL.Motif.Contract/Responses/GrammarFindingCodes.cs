@@ -14,4 +14,13 @@ public static class GrammarFindingCodes
 
     /// <summary>A derivational affix with a From Inflection Class and no To Inflection Class, so derived stems keep the From class.</summary>
     public const string DerivedStemKeepsFromClass = "grammar.derived-stem-keeps-from-class";
+
+    /// <summary>An affix template with no slot, which the parser cannot use.</summary>
+    public const string TemplateHasNoSlots = "grammar.template-has-no-slots";
+
+    /// <summary>A phoneme spelling that other phonemes' spellings add up to, which the parser reads as the longest one.</summary>
+    public const string PhonemeSpellingAmbiguous = "grammar.phoneme-spelling-ambiguous";
+
+    /// <summary>A form's environment the parser cannot read, which it drops, leaving the form unrestricted by it.</summary>
+    public const string AllomorphEnvironmentIgnoredByParser = "grammar.allomorph-environment-ignored-by-parser";
 }

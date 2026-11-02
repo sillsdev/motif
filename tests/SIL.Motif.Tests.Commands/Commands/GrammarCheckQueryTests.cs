@@ -14,6 +14,7 @@ using SIL.Motif.Contract.Responses;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Generator;
 using SIL.LCModel;
+using SIL.LCModel.DomainServices;
 using SIL.LCModel.Infrastructure;
 using SIL.Motif.Host;
 using SIL.Motif.Host.LcmUtils;
@@ -260,6 +261,130 @@ public sealed class GrammarCheckQueryTests : IDisposable
         Assert.Contains("toInflectionClass", warning.Guidance, StringComparison.Ordinal);
         Assert.Equal(CanonicalId.FromGuid(msaGuid).Value, Assert.Single(warning.Subject).ObjectId);
         Assert.Equal(1, Assert.Single(check.Summary, item => item.Code == GrammarFindingCodes.DerivedStemKeepsFromClass).Count);
+    }
+
+    [Fact]
+    public void AnAffixTemplateWithNoSlotIsAWarningNamingItAndTheComposerThatAddsASlot()
+    {
+        var fwDataPath = _pristine.CopyProjectFile();
+        var loader = new FwDataProjectLoader();
+        Guid templateGuid;
+        using (var cache = loader.LoadCache(fwDataPath))
+        {
+            var services = cache.ServiceLocator;
+            IMoInflAffixTemplate template = null!;
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            {
+                var category = services.GetInstance<IPartOfSpeechFactory>().Create();
+                cache.LangProject.PartsOfSpeechOA ??= services.GetInstance<ICmPossibilityListFactory>().Create();
+                cache.LangProject.PartsOfSpeechOA.PossibilitiesOS.Add(category);
+                category.Name.set_String(cache.DefaultAnalWs, "Adjective");
+                template = services.GetInstance<IMoInflAffixTemplateFactory>().Create();
+                category.AffixTemplatesOS.Add(template);
+                template.Name.set_String(cache.DefaultAnalWs, "Bare");
+            });
+            templateGuid = template.Guid;
+            loader.Save(cache);
+        }
+
+        Capture(fwDataPath);
+        var check = Check(fwDataPath);
+
+        var warning = Assert.Single(check.Findings, item => item.Code == GrammarFindingCodes.TemplateHasNoSlots);
+        Assert.Equal(GrammarDiagnosticLevel.Warning, warning.Severity);
+        Assert.Contains("'Bare'", warning.Description, StringComparison.Ordinal);
+        Assert.Contains("compose-author-affix-slot", warning.Guidance, StringComparison.Ordinal);
+        Assert.Equal(CanonicalId.FromGuid(templateGuid).Value, Assert.Single(warning.Subject).ObjectId);
+    }
+
+    [Fact]
+    public void APhonemeSpelledAsTwoOtherPhonemesIsAWarningButAnUnambiguousDigraphIsNot()
+    {
+        var fwDataPath = _pristine.CopyProjectFile();
+        var loader = new FwDataProjectLoader();
+        Guid ngGuid;
+        using (var cache = loader.LoadCache(fwDataPath))
+        {
+            var ng = AddPhonemes(cache, "n", "g", "ng", "s", "sh", "a");
+            ngGuid = ng["ng"].Guid;
+            loader.Save(cache);
+        }
+
+        Capture(fwDataPath);
+        var check = Check(fwDataPath);
+
+        var warning = Assert.Single(check.Findings, item => item.Code == GrammarFindingCodes.PhonemeSpellingAmbiguous);
+        Assert.Contains("'ng'", warning.Description, StringComparison.Ordinal);
+        Assert.Contains("'n' + 'g'", warning.Description, StringComparison.Ordinal);
+        Assert.Contains("6.3.3", warning.Guidance, StringComparison.Ordinal);
+        Assert.Equal(CanonicalId.FromGuid(ngGuid).Value, Assert.Single(warning.Subject).ObjectId);
+    }
+
+    [Fact]
+    public void AnEnvironmentTheParserCannotReadIsAWarningNamingTheFormButAReadableOneIsNot()
+    {
+        var fwDataPath = _pristine.CopyProjectFile();
+        var loader = new FwDataProjectLoader();
+        Guid unreadableForm;
+        using (var cache = loader.LoadCache(fwDataPath))
+        {
+            AddPhonemes(cache, "t", "a");
+            var services = cache.ServiceLocator;
+            IMoStemAllomorph unreadable = null!;
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            {
+                unreadable = Stem(cache, "tata", "/ _ +a");
+                Stem(cache, "tat", "/ _ a");
+            });
+            unreadableForm = unreadable.Guid;
+            loader.Save(cache);
+        }
+
+        Capture(fwDataPath);
+        var check = Check(fwDataPath);
+
+        var warning = Assert.Single(check.Findings, item => item.Code == GrammarFindingCodes.AllomorphEnvironmentIgnoredByParser);
+        Assert.Equal(GrammarDiagnosticLevel.Warning, warning.Severity);
+        Assert.Contains("'/ _ +a'", warning.Description, StringComparison.Ordinal);
+        Assert.Contains("'tata'", warning.Description, StringComparison.Ordinal);
+        Assert.Equal(CanonicalId.FromGuid(unreadableForm).Value, Assert.Single(warning.Subject).ObjectId);
+    }
+
+    private static IMoStemAllomorph Stem(LcmCache cache, string form, string environmentText)
+    {
+        var services = cache.ServiceLocator;
+        var entry = services.GetInstance<ILexEntryFactory>().Create(
+            services.GetInstance<IMoMorphTypeRepository>().GetObject(MoMorphTypeTags.kguidMorphStem),
+            SIL.LCModel.Core.Text.TsStringUtils.MakeString(form, cache.DefaultVernWs), "gloss",
+            new SandboxGenericMSA { MsaType = MsaType.kStem });
+        var environment = services.GetInstance<IPhEnvironmentFactory>().Create();
+        cache.LangProject.PhonologicalDataOA.EnvironmentsOS.Add(environment);
+        environment.StringRepresentation = SIL.LCModel.Core.Text.TsStringUtils.MakeString(environmentText, cache.DefaultVernWs);
+        var stem = (IMoStemAllomorph)entry.LexemeFormOA;
+        stem.PhoneEnvRC.Add(environment);
+        return stem;
+    }
+
+    private static System.Collections.Generic.Dictionary<string, IPhPhoneme> AddPhonemes(LcmCache cache, params string[] spellings)
+    {
+        var made = new System.Collections.Generic.Dictionary<string, IPhPhoneme>();
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+        {
+            var services = cache.ServiceLocator;
+            var set = services.GetInstance<IPhPhonemeSetFactory>().Create();
+            cache.LangProject.PhonologicalDataOA.PhonemeSetsOS.Add(set);
+            foreach (var spelling in spellings)
+            {
+                var phoneme = services.GetInstance<IPhPhonemeFactory>().Create();
+                set.PhonemesOC.Add(phoneme);
+                phoneme.Name.set_String(cache.DefaultAnalWs, spelling);
+                var code = services.GetInstance<IPhCodeFactory>().Create();
+                phoneme.CodesOS.Add(code);
+                code.Representation.set_String(cache.DefaultVernWs, spelling);
+                made[spelling] = phoneme;
+            }
+        });
+        return made;
     }
 
     private static GrammarCheckResponse Check(string fwDataPath) =>

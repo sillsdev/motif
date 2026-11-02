@@ -26,6 +26,10 @@ Motif findings also include `grammar.negated-feature-value` for a stored negated
 
 Motif findings also include `grammar.derived-stem-keeps-from-class` for a derivational affix with a From Inflection Class and no To Inflection Class. Each finding names the affix and the class its derived stems keep, and says to set a To Inflection Class when they belong to another class.
 
+Motif findings also include `grammar.template-has-no-slots` for an affix template with no slot, which the parser cannot use. Each finding names the template and its part of speech and says to add a slot.
+
+Motif findings also include `grammar.phoneme-spelling-ambiguous` for a phoneme whose spelling is other phonemes' spellings joined (`ng` beside `n` and `g`), which the parser always reads as the longest spelling, and `grammar.allomorph-environment-ignored-by-parser` for a form whose environment the parser cannot read and so drops, leaving the form unrestricted by it. Each finding names the phoneme or form and says what to change.
+
 When a stored Assessment matches the Baseline and Selection, all recorded allomorph segmentation refusals are included under `parse.allomorph.unsegmentable`, labelled **Parse all words**. Their descriptions preserve the parser's reason, without truncating the allomorph list or inventing guidance. These findings can differ from the whole-grammar check's findings.
 
 ## Your words
