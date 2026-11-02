@@ -22,7 +22,7 @@ public sealed class ParsimonyCommandsTests : IDisposable
     private readonly string _root = Path.Combine(Path.GetTempPath(), nameof(ParsimonyCommandsTests),
         Guid.NewGuid().ToString("N"));
 
-    /// <summary>Keeps this test's Known projects and evidence out of the registry other tests in the process scan.</summary>
+    /// <summary>Keeps this test's Known projects out of the registry other tests scan.</summary>
     private readonly IDisposable _privateRoot;
 
     public ParsimonyCommandsTests() => _privateRoot = PrivateManagedRoot.Use(_root);
