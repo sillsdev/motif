@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using Avalonia.Collections;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using SIL.Motif.App.Services;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.PanGloss;
@@ -269,6 +270,16 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
     public string TouchYourWordsText => WarningWordsQuery.Touched(ShownFindings()) is { } touched
         ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.WarningsTouchYourWordsFormat, PluralText.Format(MotifAppStrings.WordCountPattern, touched.Words)) : MotifAppStrings.WarningsTouchYourWords;
 
+    private ProjectFilterMemory? _sortMemory;
+
+    internal void UseViewMemory(ProjectViewMemory memory) => _sortMemory = new(memory, "Warnings",
+        () => MostYourWordsFirst ? null : ReportOrderName,
+        saved => MostYourWordsFirst = !string.Equals(saved, ReportOrderName, StringComparison.Ordinal), isSort: true);
+
+    private const string ReportOrderName = "ReportOrder";
+
+    internal void SetProjectPath(string? path) => _sortMemory?.Open(path);
+
     /// <summary>The current ordering shown on the sort control.</summary>
     public string SortLabel => MostYourWordsFirst ? MotifAppStrings.WarningsSortMostWords : MotifAppStrings.WarningsSortReportOrder;
 
@@ -350,6 +361,7 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
     {
         ApplySort();
         Refresh();
+        _sortMemory?.Changed();
     }
 
     private void ApplySort()

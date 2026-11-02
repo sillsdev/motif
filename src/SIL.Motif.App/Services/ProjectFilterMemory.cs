@@ -1,7 +1,9 @@
 namespace SIL.Motif.App.Services;
 
+/// <summary>Remembers one view's filter, or its sort when <c>isSort</c> is set, per project in <see cref="ProjectViewMemory"/>.</summary>
 internal sealed class ProjectFilterMemory
 {
+    private readonly bool _isSort;
     private readonly ProjectViewMemory _memory;
     private readonly string _view;
     private readonly Func<string?> _current;
@@ -11,8 +13,10 @@ internal sealed class ProjectFilterMemory
     private bool _restoring;
     private bool _changed;
 
-    public ProjectFilterMemory(ProjectViewMemory memory, string view, Func<string?> current, Action<string?> restore)
+    public ProjectFilterMemory(ProjectViewMemory memory, string view, Func<string?> current, Action<string?> restore,
+        bool isSort = false)
     {
+        _isSort = isSort;
         _memory = memory;
         _view = view;
         _current = current;
@@ -32,7 +36,11 @@ internal sealed class ProjectFilterMemory
     {
         _key = _memory.IsOpenPath(_path) ? _memory.ProjectKey : null;
         _restoring = true;
-        try { _restore(_memory.Load(_key, _view)?.Filter); }
+        try
+        {
+            var saved = _memory.Load(_key, _view);
+            _restore(_isSort ? saved?.SortColumn : saved?.Filter);
+        }
         finally { _restoring = false; }
     }
 
@@ -44,8 +52,9 @@ internal sealed class ProjectFilterMemory
             _changed = _memory.IsPending && _memory.IsOpenPath(_path);
             return;
         }
-        var filter = _current();
-        _memory.Save(_key, _view, string.IsNullOrEmpty(filter) ? null : new ViewState(null, false, filter));
+        var choice = _current();
+        _memory.Save(_key, _view, string.IsNullOrEmpty(choice) ? null
+            : _isSort ? new ViewState(choice, false, null) : new ViewState(null, false, choice));
     }
 
     private void OnKeyResolved()

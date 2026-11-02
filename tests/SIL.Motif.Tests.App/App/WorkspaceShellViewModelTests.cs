@@ -1417,6 +1417,91 @@ public sealed class WorkspaceShellViewModelTests
         Assert.Equal(writes, store.Updates);
     }
 
+    private static string SortOf(WorkspaceShellViewModel workspace, string view) => view switch
+    {
+        "Compare" => workspace.Assess.Compare.Sort.ToString(),
+        "Warnings" => workspace.PageModel<WarningsPageModel>().Grammar.Warnings.MostYourWordsFirst ? "MostWords" : "ReportOrder",
+        _ => throw new ArgumentException(view),
+    };
+
+    private static void ChooseViewSort(WorkspaceShellViewModel workspace, string view)
+    {
+        switch (view)
+        {
+            case "Compare": workspace.Assess.Compare.Sort = CompareSort.Slowest; break;
+            case "Warnings": workspace.PageModel<WarningsPageModel>().Grammar.Warnings.MostYourWordsFirst = false; break;
+        }
+    }
+
+    [Theory]
+    [InlineData("Compare", "Slowest", "MostFrequent")]
+    [InlineData("Warnings", "ReportOrder", "MostWords")]
+    public async Task ViewSortsFollowProjectsSurviveLeavingAndRestoreInFreshWorkspace(string view, string chosen, string fallback)
+    {
+        var (fake, picker, _, _, workspace) = NewWorkspace();
+        var store = new CountingPreferencesStore(new MemoryUserPreferencesStore());
+        workspace.Context.ViewMemory.UseStore(store);
+        workspace.Context.ViewIdentityReader = _ => Task.FromResult<string?>(null);
+        await ChooseProjectAsync(fake, picker, workspace, PathOne);
+        Assert.Null(store.GetViewState(KeyOf(null, PathOne), view));
+        ChooseViewSort(workspace, view);
+        Assert.Equal(chosen, SortOf(workspace, view));
+        Assert.Equal(new ViewState(chosen, false, null), store.GetViewState(KeyOf(null, PathOne), view));
+        var writes = store.Updates;
+
+        workspace.CurrentPage = WorkspacePage.Settings;
+        workspace.CurrentPage = WorkspacePage.Overview;
+        Assert.Equal(chosen, SortOf(workspace, view));
+
+        await ChooseProjectAsync(fake, picker, workspace, PathTwo);
+        Assert.Equal(fallback, SortOf(workspace, view));
+        await ChooseProjectAsync(fake, picker, workspace, PathOne);
+        Assert.Equal(chosen, SortOf(workspace, view));
+
+        var (fake2, picker2, _, _, fresh) = NewWorkspace();
+        fresh.Context.ViewMemory.UseStore(store);
+        fresh.Context.ViewIdentityReader = _ => Task.FromResult<string?>(null);
+        await ChooseProjectAsync(fake2, picker2, fresh, PathOne);
+        Assert.Equal(chosen, SortOf(fresh, view));
+        Assert.Equal(writes, store.Updates);
+    }
+
+    [Fact]
+    public async Task ACompareSortChosenForYouWhenThereAreNoPlaceCountsIsNotRemembered()
+    {
+        var (fake, picker, _, _, workspace) = NewWorkspace();
+        var store = new CountingPreferencesStore(new MemoryUserPreferencesStore());
+        workspace.Context.ViewMemory.UseStore(store);
+        workspace.Context.ViewIdentityReader = _ => Task.FromResult<string?>(null);
+        await ChooseProjectAsync(fake, picker, workspace, PathOne);
+        var writes = store.Updates;
+
+        workspace.Assess.Compare.Load([new AssessWordRowViewModel(
+            new AssessmentWordResult("motifa", "analysed", false, "Search completed", 10, null))]);
+
+        Assert.Equal(CompareSort.Alphabetical, workspace.Assess.Compare.Sort);
+        Assert.Equal(writes, store.Updates);
+        Assert.Null(store.GetViewState(KeyOf(null, PathOne), "Compare"));
+    }
+
+    [Fact]
+    public async Task AnUnknownSavedSortFallsBackToTheDefault()
+    {
+        var (fake, picker, _, _, workspace) = NewWorkspace();
+        var store = new CountingPreferencesStore(new MemoryUserPreferencesStore());
+        store.SetViewState(KeyOf(null, PathOne), "Compare", new ViewState("Fastest", false, null));
+        store.SetViewState(KeyOf(null, PathOne), "Warnings", new ViewState("Newest", false, null));
+        workspace.Context.ViewMemory.UseStore(store);
+        workspace.Context.ViewIdentityReader = _ => Task.FromResult<string?>(null);
+        var writes = store.Updates;
+
+        await ChooseProjectAsync(fake, picker, workspace, PathOne);
+
+        Assert.Equal("MostFrequent", SortOf(workspace, "Compare"));
+        Assert.Equal("MostWords", SortOf(workspace, "Warnings"));
+        Assert.Equal(writes, store.Updates);
+    }
+
     [Theory]
     [InlineData("AssessWords", "All")]
     [InlineData("Review", "0")]

@@ -515,7 +515,21 @@ public sealed partial class CompareViewModel : ObservableObject
         if (!string.Equals(value, _focusedWordSearch, StringComparison.Ordinal)) _focusedWordSearch = null;
         ApplyFilter();
     }
-    partial void OnSortChanged(CompareSort value) => ApplyFilter();
+    partial void OnSortChanged(CompareSort value)
+    {
+        ApplyFilter();
+        if (!_choosingSortForYou) _sortMemory?.Changed();
+    }
+
+    private ProjectFilterMemory? _sortMemory;
+    private bool _choosingSortForYou;
+
+    internal void UseViewMemory(ProjectViewMemory memory) => _sortMemory = new(memory, "Compare",
+        () => Sort == CompareSort.MostFrequent ? null : Sort.ToString(),
+        saved => Sort = saved is not null && Enum.TryParse<CompareSort>(saved, out var sort) && Enum.IsDefined(sort)
+            ? sort : CompareSort.MostFrequent, isSort: true);
+
+    internal void SetProjectPath(string? path) => _sortMemory?.Open(path);
 
     /// <summary>Places every word in its cell and clears the selection; <see langword="null"/> empties the matrix.</summary>
     public void Load(IEnumerable<AssessWordRowViewModel>? rows) =>
@@ -562,7 +576,13 @@ public sealed partial class CompareViewModel : ObservableObject
         RefreshCounts();
         ApplyProposalNumbers();
         UpdatePendingMarkers();
-        if (!HasPlaceCounts && Sort == CompareSort.MostFrequent) Sort = CompareSort.Alphabetical;
+        if (!HasPlaceCounts && Sort == CompareSort.MostFrequent)
+        {
+            // Without place counts the order is picked here, so it is not the person's choice to remember.
+            _choosingSortForYou = true;
+            try { Sort = CompareSort.Alphabetical; }
+            finally { _choosingSortForYou = false; }
+        }
         OnPropertyChanged(nameof(SortChoices));
         OnPropertyChanged(nameof(HasPlaceCounts));
         OnPropertyChanged(nameof(TotalCount));

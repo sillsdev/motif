@@ -147,6 +147,7 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
         Assess = assess;
         assess.Words.UseViewMemory(ViewMemory);
         assess.Trace.UseViewMemory(ViewMemory);
+        assess.Compare.UseViewMemory(ViewMemory);
         Changes = changes;
         Commands = commands;
         TryWordSessions = tryWordSessions ?? NoTryWordSessions.Instance;

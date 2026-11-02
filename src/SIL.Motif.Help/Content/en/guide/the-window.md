@@ -22,4 +22,8 @@ Opening one panel can fold the other when both would not fit. Whatever you open 
 
 [Settings](guide:settings) opens as a page in the frame, with **Back** to return to the page you were using. Its section list is the page's side panel, so it folds away and returns the same way.
 
+## Sort orders
+
+The word lists and tables that can sort remember their order for each project: the **Timing** statistics table, the word list under the **Texts** matrix and on **Lists**, and the **Warnings** table. Sort, go to another page and come back, or close the project and open it later, and the order is as you left it. Which row is selected is not remembered.
+
 For keyboard routes into these parts, see [Keyboard shortcuts](guide:keyboard-shortcuts).

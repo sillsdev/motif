@@ -37,6 +37,7 @@ public sealed partial class WarningsPageModel : PageModel
     public WarningsPageModel(WorkspaceContext context) : base(context)
     {
         Grammar = new GrammarViewModel(context.Commands, context.Clock, CheckGrammarAsync);
+        Grammar.Warnings.UseViewMemory(context.ViewMemory);
         Grammar.Warnings.TableEntries.CollectionChanged += OnWarningTableEntriesChanged;
         FilteredTableEntries = new DataGridCollectionView(Grammar.Warnings.TableEntries)
         {
@@ -101,6 +102,7 @@ public sealed partial class WarningsPageModel : PageModel
         _checkCancellation?.Cancel();
         _checkAfterOpen = false;
         _requestedWarningCode = null;
+        Grammar.Warnings.SetProjectPath(null);
         Grammar.Clear();
     }
 
@@ -113,6 +115,7 @@ public sealed partial class WarningsPageModel : PageModel
 
     protected override async Task OnProjectOpenedAsync(string projectPath, CancellationToken cancellationToken)
     {
+        Grammar.Warnings.SetProjectPath(projectPath);
         Grammar.Clear();
         var generation = ++_readGeneration;
         var baseline = Context.Baseline?.Token;
