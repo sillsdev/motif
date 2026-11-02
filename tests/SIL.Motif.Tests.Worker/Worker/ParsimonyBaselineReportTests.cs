@@ -5413,6 +5413,23 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
     }
 
     [Fact]
+    public async Task TheAlternationMeasureCarriesTheFamilyDescriptionsTheReportCaptionsWith()
+    {
+        await PublishBaselineAsync(_pristine);
+        var (bundleId, bundle) = await RunScopedMeasureJobAsync("P-allo-alternation-family",
+            new ParsimonyScopeBinding(ParsimonyEvidenceScopeKind.ProjectApproved, null), "family-descriptions-worker");
+        AddNamedMeasureFacts(bundle.GrammarFactsPath);
+        AddAlternationFamilyGrammarFacts(bundle.GrammarFactsPath);
+
+        using var session = OpenAlternationSession(bundleId, bundle);
+        var expected = session.ReadAlternationFamilies().Families.ToDictionary(item => item.Key, item => item.Description);
+        var result = MeasureRunner.ExecuteCore("P-allo-alternation-family", session, bundleId, CancellationToken.None);
+
+        Assert.NotEmpty(expected);
+        Assert.Equal(expected, result.FamilyDescriptions);
+    }
+
+    [Fact]
     public async Task GateSignatureCarriesReferencedGuids()
     {
         await PublishBaselineAsync(_pristine);

@@ -76,10 +76,7 @@ public sealed class ParsimonyReportProducer : IReportProducer
         var result = MeasureRunner.ExecuteCore(parsimony.MeasureId, session, parsimony.Inputs.BundleId, cancellation);
         var findings = result.Findings;
         var dispositions = ParsimonyDispositionQuery.Project(session, findings, reportId: null);
-        var familyDescriptions = parsimony.MeasureId == "P-allo-alternation-family" && findings.Count > 0
-            ? session.ReadAlternationFamilies().Families.ToDictionary(item => item.Key, item => item.Description,
-                StringComparer.Ordinal)
-            : new Dictionary<string, string>(StringComparer.Ordinal);
+        var familyDescriptions = result.FamilyDescriptions ?? new Dictionary<string, string>(StringComparer.Ordinal);
         var text = new System.Text.StringBuilder();
         text.AppendLine("Parsimony advisory report");
         text.AppendLine($"{(parsimony.Inputs.InputKind == "candidate" ? "Candidate" : "Baseline")} bundle: " +

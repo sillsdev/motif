@@ -656,7 +656,11 @@ public static partial class MeasureRunner
         return Result(measure, status, denominator, participatingMorphemes, findings, detail,
             discovery.Inconclusive
                 ? "some allomorph conditions, forms, or loaded rules could not be fully determined from the available evidence, so they were not compared."
-                : null);
+                : null) with
+        {
+            FamilyDescriptions = discovery.Families.ToDictionary(item => item.Key, item => item.Description,
+                StringComparer.Ordinal),
+        };
     }
 
     internal static ParsimonyMeasureResult DecideTemplatePrecedence(MeasureDefinition measure,
@@ -1373,4 +1377,7 @@ public sealed record ParsimonyMeasureResult
 
     /// <summary>The one short clause a Parsimony note shows, or null when no note applies.</summary>
     public string? NoteReason { get; }
+
+    /// <summary>Each alternation family's description by key, so the report need not read the same input again.</summary>
+    internal IReadOnlyDictionary<string, string>? FamilyDescriptions { get; init; }
 }
