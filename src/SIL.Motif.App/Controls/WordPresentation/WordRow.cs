@@ -679,7 +679,7 @@ public sealed class WordRow : UserControl
         catch (Exception failure)
         {
             if (cancellation.IsCancellationRequested) return;
-            _card.Failure = failure.Message;
+            _card.Failure = WindowPathText.Scrub(failure.Message);
             _card.CanRetry = true;
         }
     }

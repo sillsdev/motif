@@ -352,7 +352,7 @@ public sealed partial class WordCard : UserControl
         catch (Exception failure)
         {
             if (cancellation.IsCancellationRequested) return;
-            Failure = failure.Message;
+            Failure = WindowPathText.Scrub(failure.Message);
             CanRetry = true;
         }
     }

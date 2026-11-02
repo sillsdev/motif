@@ -274,6 +274,45 @@ public sealed class WordPresentationTests
     }
 
     [Fact]
+    public void ACardReadThatThrowsShowsNoFolderNameInTheCardOrItsRow()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var key = new WordPresentationKey("entry:leak-id");
+            var host = new ThrowingHost();
+            var card = new WordCard { Host = host, Key = key };
+            var row = new WordRow
+            {
+                Data = new WordPresentation(key, 3,
+                    new WordRowViewModel(new ContractWordRow("leak", WordRowOutcome.Same, "Kept", WordRowTone.Fine)),
+                    WordListOwner.ReadOnly),
+                State = new WordInteractionState(key),
+                Host = host,
+            };
+            var panel = new StackPanel { Children = { card, row } };
+            var window = new MotifTestWindow { Content = panel, Width = 700, Height = 400 };
+            try
+            {
+                window.Show();
+                Dispatcher.UIThread.RunJobs();
+                row.State = row.State! with { IsOpen = true };
+                await Task.Yield();
+                Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
+
+                Assert.Equal("Cannot read project.fwdata.", card.Failure);
+                var shown = window.GetVisualDescendants().OfType<CopyableTextBlock>().Select(text => text.Text).ToList();
+                Assert.Equal(2, shown.Count(text => text == "Cannot read project.fwdata."));
+                Assert.DoesNotContain(shown, text => text?.Contains("Secret", StringComparison.Ordinal) == true);
+            }
+            finally
+            {
+                window.Close();
+            }
+        }, TimeSpan.FromSeconds(15));
+    }
+
+    [Fact]
     public void TheTimeCellShowsParserWorkAndNeverMilliseconds()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(() =>
@@ -365,6 +404,18 @@ public sealed class WordPresentationTests
                 : WordCardReadResult.Read(new WordCardDocument(key, evidenceRevision,
                     [new WordCardText("Recovered", "Recovered evidence")])));
         }
+
+        public ValueTask<WordActionResult> HandleAsync(WordRequest request, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(new WordActionResult(true));
+    }
+
+    private sealed class ThrowingHost : IWordPresentationHost
+    {
+        public Task<WordCardReadResult> ReadCardAsync(
+            WordPresentationKey key,
+            long evidenceRevision,
+            CancellationToken cancellationToken) =>
+            Task.FromException<WordCardReadResult>(new IOException("Cannot read /home/alice/Secret Folder/project.fwdata."));
 
         public ValueTask<WordActionResult> HandleAsync(WordRequest request, CancellationToken cancellationToken) =>
             ValueTask.FromResult(new WordActionResult(true));
