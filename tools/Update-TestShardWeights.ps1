@@ -4,14 +4,14 @@
 
   .DESCRIPTION
   test.ps1 splits a project into shards by test class, and deals the classes out by the seconds this file
-  records, so that the slow classes do not land in one shard. Run it after a full ./test.ps1 when shards look
+  records, so that the slow classes do not land in one shard. Run it after a full ./test.ps1 -All when shards look
   unbalanced, and commit the result. A class missing from the file still runs; the file only affects balance.
 
   The seconds of the classes in the run replace those classes' entries and every other entry stays, so a run of one
   project keeps the timings of the others. A class that no longer exists stays too until -Replace drops it.
   -Replace refuses unless the results hold a TRX file for every test project, so a run of one project cannot wipe the
-  other projects' timings. Do not run this after a -Filter run: a class that ran in part would be recorded at that
-  part's seconds.
+  other projects' timings. Do not run this after a -Filter, -Changed or default-level run (no -All): a class that
+  ran in part would be recorded at that part's seconds.
 
   A test's wall time grows with the machine's load, and a gate run on a busy host records that load as if it were
   the test's cost (one class measured 190 s at load 68 and 48 s at load 6). -RunLoad scales every duration by
@@ -31,6 +31,9 @@
 
   .PARAMETER ResultsDirectory
   The folder holding the TRX files. Defaults to bin/<Configuration>/test-results.
+
+  .PARAMETER RepoRoot
+  The repository whose tests/ folder lists the test projects -Replace checks. Defaults to this checkout.
 
   .PARAMETER Target
   The weights file. Defaults to tests/test-shard-weights.json.
