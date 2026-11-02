@@ -140,6 +140,36 @@ public sealed class PendingApplyArgvTests(PristineProjectFixture pristine)
     }
 
     [Fact]
+    public async Task MeasuringPendingChangesAfterAnOutsideSaveIsRefusedUntilANewCapture()
+    {
+        var (path, wordformId) = ReleasedProjectWithWord("review-word");
+        var root = Path.Combine(Path.GetDirectoryName(path)!, "pending-refused-worker");
+        var runner = IsolatedRunner.Process(root, FakeParser.Copy(root));
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), root).Succeeded);
+        var added = PendingChanges.Put(new PutPendingChangeRequest(path, "1.0",
+            PendingChanges.Load(new PendingChangesRequest(path, "1.0")).Value!.Revision,
+            new ChangeIntent(CanonicalId.Mint().Value, "incorrect-spelling",
+                CanonicalId.FromGuid(wordformId).Value, "review-word", OriginPage: "Texts")));
+        Assert.True(added.Succeeded, added.Refusal?.Message);
+        new FieldWorksSimulator(path).AddWordform("outside-word");
+
+        async Task<(int ExitCode, string Output, string Error)> Cli(params string[] arguments)
+        {
+            var start = CliProcess.Start(runner.Options, arguments);
+            CliProcess.EnableAdvancedAiMode(start, root);
+            start.Environment[SIL.Motif.Commands.Catalog.CommandSurfacePolicy.DeveloperCommandsEnvironmentVariable] = "1";
+            return await CliProcess.RunAsync(start);
+        }
+
+        var refused = await Cli("trial", "--pending", "--project", path, "--words", "review-word", "--wait", "--json");
+        Assert.NotEqual(0, refused.ExitCode);
+        Assert.Contains("change.refresh-required", refused.Error + refused.Output);
+        Assert.True((await Cli("baseline", "capture", "--project", path, "--json")).ExitCode == 0);
+        var accepted = await Cli("trial", "--pending", "--project", path, "--words", "review-word", "--wait", "--json");
+        Assert.True(accepted.ExitCode == 0, accepted.Error + accepted.Output);
+    }
+
+    [Fact]
     public async Task ApplyAllPendingRefusesWhileTheProjectCarriesAReconciliationWarning()
     {
         var (path, _) = ReleasedProjectWithWord("marked-word");
