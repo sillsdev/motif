@@ -226,6 +226,26 @@ public sealed class TextsProposalMatrixTests
     }
 
     [Fact]
+    public async Task AProposalCellWhosePlacesCannotBeCountedIsBlankNotAMissingMarker()
+    {
+        var reads = new Reads { Trials = _ => [.. ProposalWords, Word("e")] };
+        var (context, page, _) = await OpenedAsync(reads: reads);
+        page.Assess.Compare.UpdateOccurrences(_ => 1);
+        context.ShowProposalView(MarkupView.Proposal);
+        var cell = Cell(page, CompareColumnKind.NoParse);
+        await UntilAsync(() => cell.CountNumberText != "…");
+
+        Assert.True(cell.ShowsPlaces);
+        Assert.Equal(string.Empty, cell.PlacesText);
+        Assert.Equal(MotifAppStrings.TextsListPlacesNotCounted, cell.PlacesNote);
+        Assert.Contains(MotifAppStrings.TextsListPlacesNotCounted, cell.AccessibleName);
+        Assert.DoesNotContain(MissingValue.Marker, cell.AccessibleName);
+
+        context.ShowProposalView(MarkupView.TodayToProposal);
+        Assert.Null(cell.PlacesNote);
+    }
+
+    [Fact]
     public async Task AFailedReadSaysItCouldNotBeReadShowsNothingAsAProposalNumberAndIsReadAgainWhenShownOrPublished()
     {
         var failures = 2;

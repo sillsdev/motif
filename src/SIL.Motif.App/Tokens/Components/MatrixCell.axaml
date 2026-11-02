@@ -18,6 +18,7 @@
     <StaticResource x:Key="Component.MatrixCell.HiddenPlacesSize" ResourceKey="Primitive.Space.0" />
     <StaticResource x:Key="Component.MatrixCell.MarkerSize" ResourceKey="Primitive.Size.8" />
     <StaticResource x:Key="Component.MatrixCell.UnitMinWidth" ResourceKey="Primitive.Size.48" />
+    <StaticResource x:Key="Component.MatrixCell.PlacesMinWidth" ResourceKey="Primitive.Size.16" />
     <StaticResource x:Key="Component.MatrixCell.LabelBesideMinWidth" ResourceKey="Primitive.Size.110" />
     <StaticResource x:Key="Component.MatrixCell.CompactWidth" ResourceKey="Primitive.Size.40" />
     <StaticResource x:Key="Component.MatrixCell.CompactHeight" ResourceKey="Primitive.Size.22" />
@@ -52,6 +53,7 @@
   <Style Selector="Border.matrixCell :is(TextBlock).matrixCellPlaces">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
     <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
+    <Setter Property="MinWidth" Value="{DynamicResource Component.MatrixCell.PlacesMinWidth}" />
   </Style>
   <Style Selector=":is(UserControl).shortMatrix Border.matrixCell :is(TextBlock).matrixCellPlaces">
     <Setter Property="Width" Value="{DynamicResource Component.MatrixCell.HiddenPlacesSize}" />

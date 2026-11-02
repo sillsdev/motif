@@ -330,7 +330,8 @@ public sealed class TextsProposalWordListTests
         var skipped = CellOf(compare, CompareColumnKind.Skipped);
 
         Assert.Equal(PlacesOf(2), noParse.PlacesText);
-        Assert.Equal(MissingValue.Marker, skipped.PlacesText);
+        Assert.Equal(string.Empty, skipped.PlacesText);
+        Assert.Equal(MotifAppStrings.TextsListPlacesNotCounted, skipped.PlacesNote);
         Assert.True(skipped.ShowsPlaces);
         Assert.Equal("4", skipped.CountNumberText);
 

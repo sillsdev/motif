@@ -219,6 +219,7 @@ public sealed partial class CompareCellViewModel
         OnPropertyChanged(nameof(CountNumberText));
         OnPropertyChanged(nameof(CountUnitText));
         OnPropertyChanged(nameof(PlacesText));
+        OnPropertyChanged(nameof(PlacesNote));
         OnPropertyChanged(nameof(IsMoved));
         OnPropertyChanged(nameof(IsEmpty));
         OnPropertyChanged(nameof(IsEmptyImpossible));
@@ -229,11 +230,17 @@ public sealed partial class CompareCellViewModel
     private string WithProposal(string name) => !_shown.Changes ? name : !HasPlaces ? string.Format(
         CultureInfo.CurrentCulture, MotifAppStrings.CompareCellProposalAccessibleNameFormat, name, ShownWords)
         : string.Format(CultureInfo.CurrentCulture, MotifAppStrings.CompareCellProposalPlacesAccessibleNameFormat,
-            name, ShownWords, ShownPlaces);
+            name, ShownWords, PlacesNote ?? ShownPlaces);
 
     // The number drawn with its unit, so the name says words; a side still being read has no unit to say.
     private string ShownWords => _shown.Proposal is null ? ShownNumber : ShownNumber + " " +
         PluralText.Format(MotifAppStrings.CompareWordUnitPattern, UnitCount);
+
+    /// <summary>Why the Proposal's places are blank, for a tooltip and the accessible name; null when they show.</summary>
+    public string? PlacesNote => HasPlaces && _shown.View == MarkupView.Proposal && _proposalPlaces is null &&
+        _shown.State != MatrixSideState.Reading
+        ? _shown.State == MatrixSideState.Held ? MotifAppStrings.TextsListPlacesNotCounted : MotifAppStrings.TextsWordNotMeasured
+        : null;
 
     // Today's places, today's then the Proposal's in the pair, or the Proposal's alone in its view.
     private string ShownPlaces
@@ -243,7 +250,7 @@ public sealed partial class CompareCellViewModel
             var today = PlacesTextOf(OccurrenceCount, PlacesFromWordList);
             if (!_shown.Changes) return today;
             if (_proposalPlaces is not { } held)
-                return _shown.View != MarkupView.Proposal ? today : _shown.State == MatrixSideState.Reading ? "…" : MissingValue.Marker;
+                return _shown.View != MarkupView.Proposal ? today : _shown.State == MatrixSideState.Reading ? "…" : string.Empty;
             var proposal = PlacesTextOf(held, PlacesFromWordList);
             return _shown.View == MarkupView.Proposal ? proposal : string.Format(CultureInfo.CurrentCulture,
                 MotifAppStrings.OverviewPairFormat, OccurrenceCount.ToString("N0", CultureInfo.CurrentCulture), proposal);

@@ -750,6 +750,11 @@ internal static class TooltipOwners
                 AutomationProperties.GetAutomationId(control) != AutomationIds.MenuButton),
         new("Matrix cell", "Views/ComparePanel.axaml", "{Binding Explanation}", TooltipScene.Matrix,
             control => MatrixCellOrTipText(control, compact: false)),
+        new("Matrix cell blank places", "Views/MatrixCell.axaml", "{Binding PlacesNote}", TooltipScene.Matrix,
+            control => control is TextBlock { DataContext: CompareCellViewModel } && control.Classes.Contains("matrixCellPlaces"))
+        {
+            Pending = "the places are blank only in the open Proposal's own view, which no tooltip scene opens; TextsProposalMatrixTests reads the note",
+        },
         new("Matrix column heading", "Views/ComparePanel.axaml", "{Binding Label}", TooltipScene.Matrix,
             control => control is TextBlock { DataContext: CompareColumnViewModel } &&
                 control.FindAncestorOfType<ComparePanel>() is not null),
@@ -1149,6 +1154,7 @@ internal static class TooltipOwners
     private static bool MatrixCellOrTipText(Control control, bool compact)
     {
         if (control is not MatrixCell && control is not TextBlock) return false;
+        if (control.Classes.Contains("matrixCellPlaces")) return false;
         var cell = control as MatrixCell ?? control.FindAncestorOfType<MatrixCell>();
         if (cell is null || (cell.FindAncestorOfType<MiniMatrix>() is not null) != compact) return false;
         return control is MatrixCell || ToolTip.GetTip(control) is not null;
