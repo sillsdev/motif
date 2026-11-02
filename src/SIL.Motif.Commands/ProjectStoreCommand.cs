@@ -221,9 +221,10 @@ public static class ProjectStoreCommand
         facts[RefusalFactNames.RegisteredProjectPath] = registeredProjectPath;
         return new Refusal("store.other-project", FailureReason.Refused,
             $"The Motif file '{Path.GetFileName(storePath)}' beside this project belongs to the project " +
-            $"'{registeredProjectPath}', so it was copied or renamed with this one. Motif does not share it. " +
-            "To give this project its own, delete that file while Motif is closed (changes not yet applied in the copy are lost, " +
-            "the project itself is untouched), or copy the project again without its '.motif.db' file.", facts);
+            $"'{registeredProjectPath}', so this project was copied or moved. Motif does not share it. " +
+            "Do not delete it: it may hold the only copy of that project's Proposals. While Motif is closed, move it " +
+            "aside to give this project its own. The Proposals stay in that file and are not available in this project " +
+            "until it is put back beside the project it belongs to. Or copy the project again without its '.motif.db' file.", facts);
     }
 
     internal static Dictionary<string, string> OperationFacts(string fwDataPath, Exception exception)

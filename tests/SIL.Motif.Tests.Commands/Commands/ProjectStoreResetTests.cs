@@ -202,7 +202,7 @@ public sealed class ProjectStoreResetTests : IDisposable
     }
 
     [Fact]
-    public void AProjectCopiedWithItsStoreIsToldWhichFileToDeleteAndTheStoreIsKept()
+    public void AProjectCopiedWithItsStoreIsToldToMoveTheFileAsideAndThatRouteWorks()
     {
         var original = Project("original");
         Open(original);
@@ -222,12 +222,17 @@ public sealed class ProjectStoreResetTests : IDisposable
         Assert.Equal(copiedStore, outcome.Refusal.Facts[RefusalFactNames.StorePath]);
         Assert.Equal(Path.GetFullPath(original), outcome.Refusal.Facts[RefusalFactNames.RegisteredProjectPath]);
         Assert.Contains("original.motif.db", outcome.Refusal.Message);
-        Assert.Contains("delete", outcome.Refusal.Message);
+        Assert.Contains("move it aside", outcome.Refusal.Message);
+        Assert.DoesNotContain("delete that", outcome.Refusal.Message);
         Assert.Equal(before, File.ReadAllBytes(copiedStore));
 
-        File.Delete(copiedStore);
+        var aside = copiedStore + ".aside";
+        File.Move(copiedStore, aside);
         Assert.True(ProjectStoreCommand.Run<string>(
             copy, "1.0", (_, _) => CommandOutcome<string>.Success(string.Empty)).Succeeded);
+        Assert.Equal(before, File.ReadAllBytes(aside));
+        Assert.True(ProjectStoreCommand.Run<string>(
+            original, "1.0", (_, _) => CommandOutcome<string>.Success(string.Empty)).Succeeded);
     }
 
     [Fact]

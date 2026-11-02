@@ -60,7 +60,7 @@
     "source": "Hand-written from the Motif MCP refusal advice."
   },
   "store.other-project": {
-    "why": "The project was copied or renamed together with its Motif file, which belongs to the original. Tell the linguist; do not retry. The fix is to delete the '.motif.db' beside the copy while Motif is closed, or copy the project without it.",
+    "why": "The Motif file beside this project belongs to another project path: the project was copied, or the original was moved or renamed. Tell the linguist; do not retry and do not delete the file, because it may hold the only copy of that project's Proposals. While Motif is closed, move the '.motif.db' aside to give this project its own; its Proposals stay in that file and are not available here until it is put back beside the project it belongs to. Or copy the project without it.",
     "source": "Hand-written from the Motif store binding rules."
   },
   "store.other-version": {

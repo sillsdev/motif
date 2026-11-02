@@ -6290,7 +6290,7 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <comment>Sentence the window shows when the command refuses with code C.StoreInconsistent. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalStoreOtherProject" xml:space="preserve">
-    <value>Motif's file beside this project belongs to another project, so this project was probably copied or renamed. Delete the project's .motif.db file while Motif is closed to give it its own.</value>
+    <value>Motif's file beside this project belongs to another project, so this project was copied or moved. Do not delete it, because it may hold the only copy of that project's Proposals. While Motif is closed, move the project's .motif.db file aside to give this project its own. Those Proposals stay in that file and are not available here until it is put back beside the project it belongs to.</value>
     <comment>Sentence the window shows when the command refuses with code C.StoreOtherProject. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalStoreUnsupported" xml:space="preserve">
