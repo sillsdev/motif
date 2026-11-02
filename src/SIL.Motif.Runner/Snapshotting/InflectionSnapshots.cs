@@ -93,6 +93,22 @@ public static class InflectionSnapshots
                 else Add(spec, FsFeatureSpecificationRelationsSnapshotter.Snapshot(cache, spec));
             }
         }
+        foreach (var msa in cache.ServiceLocator.GetInstance<IMoDerivAffMsaRepository>().AllInstances())
+        {
+            Add(msa, MoDerivAffMsaMsFeaturesSnapshotter.Snapshot(cache, msa));
+            foreach (var structure in new[] { msa.FromMsFeaturesOA, msa.ToMsFeaturesOA })
+            {
+                if (structure is null) continue;
+                Add(structure, Snapshot(cache, structure));
+                foreach (var spec in structure.FeatureSpecsOC)
+                {
+                    if (spec is IFsClosedValue closed)
+                        Add(spec, FsFeatureSpecificationRelationsSnapshotter.Snapshot(cache, spec),
+                            FsClosedValueRelationsSnapshotter.Snapshot(cache, closed));
+                    else Add(spec, FsFeatureSpecificationRelationsSnapshotter.Snapshot(cache, spec));
+                }
+            }
+        }
         return result;
 
         void Class(IMoInflClass item)

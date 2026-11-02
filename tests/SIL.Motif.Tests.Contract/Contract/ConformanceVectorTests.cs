@@ -21,6 +21,8 @@ public class ConformanceVectorTests
         // Frozen vectors include owning-create kinds registered explicitly for contract-only readers.
         OperationKindRegistry.Register("lexical/lexEntry/createAlternateForms");
         OperationKindRegistry.Register("grammar/moInflAffMsa/createInflFeats");
+        OperationKindRegistry.Register("grammar/moDerivAffMsa/createFromMsFeatures");
+        OperationKindRegistry.Register("grammar/moDerivAffMsa/createToMsFeatures");
         OperationKindRegistry.Register("grammar/fsFeatStruc/createFeatureSpecs");
         OperationKindRegistry.Register("grammar/fsFeatureSpecification/setFeature");
         OperationKindRegistry.Register("grammar/fsClosedValue/setValue");

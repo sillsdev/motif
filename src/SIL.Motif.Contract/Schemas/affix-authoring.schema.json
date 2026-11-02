@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://motif.sil.org/contracts/affix-authoring/v1",
   "title": "Ordinary forms and affix feature authoring",
-  "description": "Closed ordinary stem/affix form intents. Live ownership, decoded identity uniqueness and placement are checked against LibLCM. Restrictions are explicit per form. Feature structures use exact stem or inflectional MSA identity; feature values are optional. Duplicate JSON keys are refused by the runtime parsers.",
+  "description": "Closed ordinary stem/affix form intents. Live ownership, decoded identity uniqueness and placement are checked against LibLCM. Restrictions are explicit per form. Feature structures use exact stem, inflectional or derivational affix MSA identity; feature values are optional. Duplicate JSON keys are refused by the runtime parsers.",
   "oneOf": [
     {
       "$ref": "#/$defs/AuthorLexicalEntry"
@@ -21,6 +21,9 @@
     },
     {
       "$ref": "#/$defs/InflFeatsPayload"
+    },
+    {
+      "$ref": "#/$defs/DerivMsFeaturesPayload"
     }
   ],
   "$defs": {
@@ -270,7 +273,7 @@
     "AuthorFeatureStructure": {
       "type": "object",
       "additionalProperties": false,
-      "description": "Creates an empty MsFeatures, InflFeats, FromMsFeatures or ToMsFeatures structure on an exact stem, inflectional or derivational MSA with an empty owning slot. side is required for a derivational MSA and refused for any other.",
+      "description": "Creates an empty MsFeatures, InflFeats, FromMsFeatures or ToMsFeatures structure on an exact stem, inflectional or derivational affix MSA with an empty owning slot. side is required for a derivational MSA and refused for any other.",
       "properties": {
         "msa": {
           "$ref": "#/$defs/CanonicalId"
@@ -305,6 +308,13 @@
         "featStruc",
         "feature"
       ]
+    },
+    "DerivMsFeaturesPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Empty payload for grammar/moDerivAffMsa/createFromMsFeatures and createToMsFeatures; target and nonzero entityId are required in the envelope. Placement and storage overrides are refused.",
+      "properties": {},
+      "required": []
     },
     "InflFeatsPayload": {
       "type": "object",

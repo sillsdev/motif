@@ -192,7 +192,7 @@ internal static class AffixAuthoringPrerequisites
                         .AlternativesFields.GetValueOrDefault(SnapshotFields.FsFeatStrucFeatureSpecs, new Dictionary<string, string>());
                     fields["featureStructureType"] = ReferenceFieldSnapshotting.ReadAlternatives(structure.TypeRA);
                     if (structure.TypeRA is { } structureType) Include(structureType.Guid);
-                    if (structure.Owner is IMoInflAffMsa structureMsa) IncludeMsa(structureMsa);
+                    if (structure.Owner is IMoInflAffMsa or IMoDerivAffMsa) IncludeMsa((IMoMorphSynAnalysis)structure.Owner);
                     else if (structure.Owner is { } structureOwner) Include(structureOwner.Guid);
                     foreach (var spec in structure.FeatureSpecsOC) Include(spec.Guid);
                     break;
@@ -214,6 +214,14 @@ internal static class AffixAuthoringPrerequisites
                     if (inflectional.PartOfSpeechRA is { } msaCategory) Include(msaCategory.Guid);
                     if (inflectional.Owner is { } msaOwner) Include(msaOwner.Guid);
                     if (inflectional.InflFeatsOA is { } inflStructure) Include(inflStructure.Guid);
+                    break;
+                case IMoDerivAffMsa derivational:
+                    AddProjectField("morphosyntacticFeatureSystem", ReferenceFieldSnapshotting.ReadAlternatives(cache.LangProject.MsFeatureSystemOA));
+                    fields[SnapshotFields.MoDerivAffMsaFromMsFeatures] = ReferenceFieldSnapshotting.ReadAlternatives(derivational.FromMsFeaturesOA);
+                    fields[SnapshotFields.MoDerivAffMsaToMsFeatures] = ReferenceFieldSnapshotting.ReadAlternatives(derivational.ToMsFeaturesOA);
+                    if (derivational.Owner is { } derivationOwner) Include(derivationOwner.Guid);
+                    if (derivational.FromMsFeaturesOA is { } fromStructure) Include(fromStructure.Guid);
+                    if (derivational.ToMsFeaturesOA is { } toStructure) Include(toStructure.Guid);
                     break;
                 case IPhEnvironment environment:
                     sound ??= SoundSystemSnapshots.Read(cache);

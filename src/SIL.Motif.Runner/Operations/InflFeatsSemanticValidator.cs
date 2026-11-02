@@ -12,6 +12,8 @@ internal static class InflFeatsSemanticValidator
     private static readonly HashSet<string> RequirementKinds = new(StringComparer.Ordinal)
     {
         MoInflAffMsaInflFeatsOperationKinds.CreateInflFeats,
+        MoDerivAffMsaMsFeaturesOperationKinds.CreateFromMsFeatures,
+        MoDerivAffMsaMsFeaturesOperationKinds.CreateToMsFeatures,
         MoInflAffMsaPartOfSpeechOperationKinds.SetPartOfSpeech,
         MoInflAffMsaPartOfSpeechOperationKinds.ClearPartOfSpeech,
         FsFeatStrucFeatureSpecsOperationKinds.CreateFeatureSpecs,
@@ -27,8 +29,12 @@ internal static class InflFeatsSemanticValidator
 
     internal static void RequireSelection(LcmCache cache, IFsFeatStruc structure, IFsClosedFeature feature)
     {
-        if (structure.Owner is not IMoInflAffMsa msa) return;
-        RequireOwner(cache, msa, structure);
+        if (structure.Owner is IMoDerivAffMsa derivational)
+        {
+            RequireDerivationalOwner(derivational, structure);
+        }
+        else if (structure.Owner is IMoInflAffMsa msa) RequireOwner(cache, msa, structure);
+        else return;
         var system = cache.LangProject.MsFeatureSystemOA ??
             throw new InvalidOperationException("InflFeats requires the current morphosyntactic feature system.");
         if (feature.Guid == Guid.Empty || feature.Owner?.Guid != system.Guid || !system.FeaturesOC.Contains(feature))
@@ -44,6 +50,7 @@ internal static class InflFeatsSemanticValidator
             .SelectMany(operation => new[] { operation.Target, operation.EntityId })
             .OfType<SIL.Motif.Contract.Ids.CanonicalId>().Select(id => id.ToGuid()).ToHashSet();
         if (addressed.Count == 0) return;
+        ValidateDerivational(cache, addressed);
         foreach (var msa in cache.ServiceLocator.GetInstance<IMoInflAffMsaRepository>().AllInstances())
         {
             if (msa.InflFeatsOA is not { } structure) continue;
@@ -85,6 +92,60 @@ internal static class InflFeatsSemanticValidator
                 if (closed.ValueRA is { } value && (value.Guid == Guid.Empty ||
                     value.Owner?.Guid != feature.Guid || !feature.ValuesOC.Contains(value)))
                     throw new InvalidOperationException("InflFeats value must belong to its exact closed feature.");
+            }
+        }
+    }
+
+    private static void RequireDerivationalOwner(IMoDerivAffMsa msa, IFsFeatStruc structure)
+    {
+        if (msa.Guid == Guid.Empty || structure.Guid == Guid.Empty ||
+            (msa.FromMsFeaturesOA?.Guid != structure.Guid && msa.ToMsFeaturesOA?.Guid != structure.Guid) ||
+            msa.Owner is not ILexEntry entry || !entry.MorphoSyntaxAnalysesOC.Contains(msa))
+            throw new InvalidOperationException(
+                "FromMsFeatures and ToMsFeatures must occupy their derivational MSA's owning slots in a lexical entry.");
+    }
+
+    private static void ValidateDerivational(LcmCache cache, HashSet<Guid> addressed)
+    {
+        foreach (var msa in cache.ServiceLocator.GetInstance<IMoDerivAffMsaRepository>().AllInstances())
+        foreach (var structure in new[] { msa.FromMsFeaturesOA, msa.ToMsFeaturesOA })
+        {
+            if (structure is null) continue;
+            var graph = new List<ICmObject> { msa, structure };
+            if (structure.TypeRA is { } type) graph.Add(type);
+            foreach (var spec in structure.FeatureSpecsOC)
+            {
+                graph.Add(spec);
+                if (spec.FeatureRA is { } feature) graph.Add(feature);
+                if (spec is IFsClosedValue closed && closed.ValueRA is { } value) graph.Add(value);
+            }
+            if (!graph.Any(item => addressed.Contains(item.Guid))) continue;
+            RequireDerivationalOwner(msa, structure);
+            if (structure.TypeRA is { } declaredType &&
+                !cache.LangProject.MsFeatureSystemOA.TypesOC.Contains(declaredType))
+                throw new InvalidOperationException("Derivational feature structure type must belong to the current morphosyntactic feature system.");
+            var features = new HashSet<Guid>();
+            foreach (var spec in structure.FeatureSpecsOC)
+            {
+                if (spec.Guid == Guid.Empty)
+                    throw new InvalidOperationException("Derivational feature specifications must have nonzero identities.");
+                if (spec is IFsComplexValue) continue;
+                if (spec is not IFsClosedValue closed)
+                    throw new InvalidOperationException("Derivational feature specifications must be closed values with nonzero identities.");
+                if (closed.FeatureRA is null)
+                {
+                    if (closed.ValueRA is not null)
+                        throw new InvalidOperationException("A derivational feature value requires its feature reference.");
+                    continue;
+                }
+                if (closed.FeatureRA is not IFsClosedFeature feature)
+                    throw new InvalidOperationException("Derivational features require a closed feature.");
+                RequireSelection(cache, structure, feature);
+                if (!features.Add(feature.Guid))
+                    throw new InvalidOperationException("A feature may occur only once in a derivational feature structure.");
+                if (closed.ValueRA is { } value && (value.Guid == Guid.Empty ||
+                    value.Owner?.Guid != feature.Guid || !feature.ValuesOC.Contains(value)))
+                    throw new InvalidOperationException("A derivational feature value must belong to its exact closed feature.");
             }
         }
     }

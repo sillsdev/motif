@@ -40,6 +40,7 @@ public sealed class AffixAuthoringContractTests
                     case "AuthorAlternateForm": _ = AuthorAlternateFormIntentParser.Parse(input); break;
                     case "AuthorFeatureStructure": _ = AuthorFeatureStructureIntentParser.Parse(input); break;
                     case "AuthorFeatureValue": _ = AuthorFeatureValueIntentParser.Parse(input); break;
+                    case "DerivMsFeaturesPayload": MoDerivAffMsaMsFeaturesPayload.Parse(input, MoDerivAffMsaMsFeaturesOperationKinds.CreateToMsFeatures); break;
                     case "InflFeatsPayload": MoInflAffMsaInflFeatsPayload.Parse(input, MoInflAffMsaInflFeatsOperationKinds.CreateInflFeats); break;
                     case "AlternateFormsPayload": _ = LexEntryAlternateFormsCreatePayload.Parse(input); break;
                     default: throw new InvalidOperationException("Unknown vector shape.");
@@ -189,6 +190,8 @@ public sealed class AffixAuthoringContractTests
     [Theory]
     [InlineData("LexEntry", "AlternateForms", "MoForm", "Seq", "feeding", "lexical/lexEntry/createAlternateForms")]
     [InlineData("MoInflAffMsa", "InflFeats", "FsFeatStruc", "Atomic", "unordered", "grammar/moInflAffMsa/createInflFeats")]
+    [InlineData("MoDerivAffMsa", "FromMsFeatures", "FsFeatStruc", "Atomic", "unordered", "grammar/moDerivAffMsa/createFromMsFeatures")]
+    [InlineData("MoDerivAffMsa", "ToMsFeatures", "FsFeatStruc", "Atomic", "unordered", "grammar/moDerivAffMsa/createToMsFeatures")]
     public void OwningFamiliesMatchTheGeneratedModelClassification(string owner, string field, string signature,
         string cardinality, string comparison, string kind)
     {

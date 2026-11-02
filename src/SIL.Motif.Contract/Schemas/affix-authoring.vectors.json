@@ -363,6 +363,23 @@
       "valid": false
     },
     {
+      "shape": "DerivMsFeaturesPayload",
+      "input": {},
+      "valid": true
+    },
+    {
+      "shape": "DerivMsFeaturesPayload",
+      "input": {
+        "type": "AAAAAAAAAAAAAAAAAAAAAQ"
+      },
+      "valid": false
+    },
+    {
+      "shape": "DerivMsFeaturesPayload",
+      "input": [],
+      "valid": false
+    },
+    {
       "shape": "InflFeatsPayload",
       "input": {},
       "valid": true

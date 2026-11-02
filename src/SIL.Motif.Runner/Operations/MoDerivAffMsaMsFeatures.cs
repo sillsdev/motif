@@ -38,10 +38,19 @@ public static class MoDerivAffMsaMsFeaturesOperationKinds
 #pragma warning restore CA2255
 }
 
+/// <summary>The <c>after</c> payload for both derivational create kinds: <c>{}</c>. Closed: any property is rejected.</summary>
+public static class MoDerivAffMsaMsFeaturesPayload
+{
+    public static void Parse(JsonElement after, string kind)
+    {
+        ClosedPayloadParsing.RequireObject(after, kind);
+        ClosedPayloadParsing.RejectUnknownProperties(after, Array.Empty<string>(), kind);
+    }
+}
+
 /// <summary>Resolves, snapshots, lowers and re-snapshots one create of a derivational affix's From or To feature structure.</summary>
 internal sealed class MoDerivAffMsaMsFeaturesCreateHandler(string kind, bool toSide) : IOperationHandler
 {
-    private static readonly string[] NoProperties = Array.Empty<string>();
     private string Field => toSide ? SnapshotFields.MoDerivAffMsaToMsFeatures : SnapshotFields.MoDerivAffMsaFromMsFeatures;
     private IFsFeatStruc? Slot(IMoDerivAffMsa msa) => toSide ? msa.ToMsFeaturesOA : msa.FromMsFeaturesOA;
 
@@ -54,8 +63,7 @@ internal sealed class MoDerivAffMsaMsFeaturesCreateHandler(string kind, bool toS
         var entityId = RequireEntityId(operation);
         if (operation.After is not { } after)
             throw new InvalidOperationException($"Operation '{operation.OperationId.Value}' of kind '{kind}' requires 'after'.");
-        ClosedPayloadParsing.RequireObject(after, kind);
-        ClosedPayloadParsing.RejectUnknownProperties(after, NoProperties, kind);
+        MoDerivAffMsaMsFeaturesPayload.Parse(after, kind);
 
         var (id, msa) = TargetResolution.Resolve<IMoDerivAffMsa>(cache, operation, kind);
         touchedTargets.Add(id);

@@ -180,6 +180,43 @@ public sealed class GrammarCheckQueryTests : IDisposable
     }
 
     [Fact]
+    public void ANegatedValueOnADerivationalAffixPointsToTheRemoveCommand()
+    {
+        var fwDataPath = _pristine.CopyProjectFile();
+        var loader = new FwDataProjectLoader();
+        using (var cache = loader.LoadCache(fwDataPath))
+        {
+            var services = cache.ServiceLocator;
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            {
+                cache.LangProject.MsFeatureSystemOA ??= services.GetInstance<IFsFeatureSystemFactory>().Create();
+                var feature = services.GetInstance<IFsClosedFeatureFactory>().Create();
+                cache.LangProject.MsFeatureSystemOA.FeaturesOC.Add(feature);
+                feature.Name.set_String(cache.DefaultAnalWs, "gender");
+                var value = services.GetInstance<IFsSymFeatValFactory>().Create();
+                feature.ValuesOC.Add(value);
+                value.Name.set_String(cache.DefaultAnalWs, "masculine");
+                var msa = services.GetInstance<IMoDerivAffMsaFactory>().Create();
+                services.GetInstance<ILexEntryRepository>().GetObject(_pristine.Seed.FirstEntryId)
+                    .MorphoSyntaxAnalysesOC.Add(msa);
+                msa.ToMsFeaturesOA = services.GetInstance<IFsFeatStrucFactory>().Create();
+                var negated = services.GetInstance<IFsNegatedValueFactory>().Create();
+                msa.ToMsFeaturesOA.FeatureSpecsOC.Add(negated);
+                negated.FeatureRA = feature;
+                negated.ValueRA = value;
+            });
+            loader.Save(cache);
+        }
+
+        Capture(fwDataPath);
+        var warning = Assert.Single(Check(fwDataPath).Findings,
+            item => item.Code == GrammarFindingCodes.NegatedFeatureValue);
+
+        Assert.Contains("compose-remove-feature-value", warning.Guidance, StringComparison.Ordinal);
+        Assert.DoesNotContain("has no command", warning.Guidance, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ANegatedValueInANaturalClassNamesTheClassAndSaysMotifHasNoCommandForIt()
     {
         var fwDataPath = _pristine.CopyProjectFile();

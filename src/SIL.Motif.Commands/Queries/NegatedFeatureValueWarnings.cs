@@ -59,9 +59,9 @@ internal static class NegatedFeatureValueWarnings
         };
     }
 
-    /// <summary>Only a stem or inflectional affix has a Motif route, pinned by its composer test.</summary>
+    /// <summary>Stems, inflectional and derivational affixes have a Motif route, pinned by composer tests.</summary>
     private static string Guidance(IFsNegatedValue value, string owner) =>
-        value.Owner?.Owner is IMoStemMsa or IMoInflAffMsa
+        value.Owner?.Owner is IMoStemMsa or IMoInflAffMsa or IMoDerivAffMsa
             ? "Remove it with compose-remove-feature-value (motif_remove_feature_value), giving this feature " +
                 "structure and the feature, then author a closed value if the stem or affix should carry one. " +
                 "A person reviews and applies the Proposal."

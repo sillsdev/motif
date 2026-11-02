@@ -1,3 +1,5 @@
+using SIL.Motif.Contract.Ids;
+using SIL.Motif.Contract.Model;
 using SIL.LCModel;
 using SIL.LCModel.Infrastructure;
 using System.Text.Json;
@@ -58,6 +60,41 @@ public sealed class RemoveFeatureValueComposerTests(PristineProjectFixture prist
         ApplyOps(cache, RemoveFeatureValueComposer.Build(cache, new(structure, feature)));
 
         Assert.Empty(services.GetInstance<IFsNegatedValueRepository>().AllInstances());
+    }
+
+    [Theory]
+    [InlineData("from")]
+    [InlineData("to")]
+    public void ASpecificationOnADerivationalAffixStructureIsRemovedAndTheStructureStays(string side)
+    {
+        using var cache = pristine.NewScratch();
+        var ws = Anal(cache);
+        var verb = Created(ApplyOps(cache, AuthorPartOfSpeechComposer.Build(cache,
+            new AuthorPartOfSpeechIntent("Verb", ws, "V"))), CmPossibilityListPossibilitiesOperationKinds.Create);
+        var msa = DerivationalMsa(cache, verb);
+        var featureProposal = ApplyOps(cache, AuthorInflectionFeatureComposer.Build(cache,
+            new("transitivity", ws, [new("Transitive", "tr")], "tv")));
+        var feature = Created(featureProposal, FsFeatureSystemFeaturesOperationKinds.Create);
+        var value = featureProposal.Operations.Single(op => op.Kind == FsClosedFeatureValuesOperationKinds.Create).EntityId!.Value;
+        var create = ApplyOps(cache, AuthorFeatureStructureComposer.Build(cache, new(msa, side)));
+        var structure = create.Operations.Single().EntityId!.Value;
+        ApplyOps(cache, AuthorFeatureValueComposer.Build(cache, new(structure, feature, value)));
+        Assert.Single(Get<IFsFeatStruc>(cache, structure).FeatureSpecsOC);
+
+        var removal = ApplyOps(cache, RemoveFeatureValueComposer.Build(cache, new(structure, feature)));
+
+        Assert.Single(removal.Operations, op => op.Kind == FsFeatStrucFeatureSpecsOperationKinds.DeleteFeatureSpecs);
+        Assert.Empty(Get<IFsFeatStruc>(cache, structure).FeatureSpecsOC);
+        var owner = Get<IMoDerivAffMsa>(cache, msa);
+        Assert.Equal(structure.ToGuid(), (side == "to" ? owner.ToMsFeaturesOA : owner.FromMsFeaturesOA)!.Guid);
+    }
+
+    internal static CanonicalId DerivationalMsa(LcmCache cache, CanonicalId category)
+    {
+        var created = ApplyOps(cache, AuthorLexicalEntryComposer.Build(cache, new AuthorLexicalEntryIntent("pa",
+            Vern(cache), MorphType(MoMorphTypeTags.kguidMorphPrefix), "pa", Anal(cache),
+            new LexicalEntryMsa(LexicalEntryMsaKind.Derivational, category, category))));
+        return Created(created, LexEntryMorphoSyntaxAnalysesOperationKinds.Create);
     }
 
     [Fact]

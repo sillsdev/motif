@@ -43,21 +43,36 @@ public sealed class RealParserDerivedStemFeatureTests(PristineProjectFixture pri
             ((IFsSymFeatVal)cache.ServiceLocator.ObjectRepository.GetObject(id.ToGuid()))
                 .Name.get_String(cache.DefaultAnalWs).Text == text);
 
+        // A second feature the derivation never names: the stem is first person and the derived stem must stay so.
+        var personProposal = ApplyOps(cache, AuthorInflectionFeatureComposer.Build(cache,
+            new("person", ws, [new("First", "1"), new("Second", "2")], "ps")));
+        var person = Created(personProposal, FsFeatureSystemFeaturesOperationKinds.Create);
+        var personValues = personProposal.Operations.Where(op => op.Kind == FsClosedFeatureValuesOperationKinds.Create)
+            .Select(op => op.EntityId!.Value).ToArray();
+        CanonicalId Person(string text) => personValues.Single(id =>
+            ((IFsSymFeatVal)cache.ServiceLocator.ObjectRepository.GetObject(id.ToGuid()))
+                .Name.get_String(cache.DefaultAnalWs).Text == text);
+
         var names = new Dictionary<CanonicalId, string>(CanonicalId.ByGuid);
         var stem = AddStem(cache, "kaun", verb);
         names[stem.Form] = "kaun";
         var stemFeatures = Created(ApplyOps(cache, AuthorFeatureStructureComposer.Build(cache, new(stem.Msa))),
             MoStemMsaMsFeaturesOperationKinds.CreateMsFeatures);
         ApplyOps(cache, AuthorFeatureValueComposer.Build(cache, new(stemFeatures, feature, Value("Intransitive"))));
+        ApplyOps(cache, AuthorFeatureValueComposer.Build(cache, new(stemFeatures, person, Person("First"))));
 
-        var requirer = ApplyOps(cache, AuthorLexicalEntryComposer.Build(cache, new AuthorLexicalEntryIntent("ku",
-            Vern(cache), MorphType(MoMorphTypeTags.kguidMorphPrefix), "ku", ws,
-            new LexicalEntryMsa(LexicalEntryMsaKind.Inflectional, verb, Slots: [slot]))));
-        names[Created(requirer, LexEntryLexemeFormOperationKinds.CreateLexemeForm)] = "ku";
-        var requirement = Created(ApplyOps(cache, AuthorFeatureStructureComposer.Build(cache,
-            new(Created(requirer, LexEntryMorphoSyntaxAnalysesOperationKinds.Create)))),
-            MoInflAffMsaInflFeatsOperationKinds.CreateInflFeats);
-        ApplyOps(cache, AuthorFeatureValueComposer.Build(cache, new(requirement, feature, Value("Transitive"))));
+        foreach (var (form, personValue) in new[] { ("ku", "First"), ("li", "Second") })
+        {
+            var requirer = ApplyOps(cache, AuthorLexicalEntryComposer.Build(cache, new AuthorLexicalEntryIntent(form,
+                Vern(cache), MorphType(MoMorphTypeTags.kguidMorphPrefix), form, ws,
+                new LexicalEntryMsa(LexicalEntryMsaKind.Inflectional, verb, Slots: [slot]))));
+            names[Created(requirer, LexEntryLexemeFormOperationKinds.CreateLexemeForm)] = form;
+            var requirement = Created(ApplyOps(cache, AuthorFeatureStructureComposer.Build(cache,
+                new(Created(requirer, LexEntryMorphoSyntaxAnalysesOperationKinds.Create)))),
+                MoInflAffMsaInflFeatsOperationKinds.CreateInflFeats);
+            ApplyOps(cache, AuthorFeatureValueComposer.Build(cache, new(requirement, feature, Value("Transitive"))));
+            ApplyOps(cache, AuthorFeatureValueComposer.Build(cache, new(requirement, person, Person(personValue))));
+        }
 
         var derived = ApplyOps(cache, AuthorAffixProcessComposer.Build(cache, new AuthorAffixProcessIntent(
             MorphType(MoMorphTypeTags.kguidMorphPrefix), "causative", ws,
@@ -86,6 +101,8 @@ public sealed class RealParserDerivedStemFeatureTests(PristineProjectFixture pri
         Assert.Equal(["ku+pag+kaun"], await Readings(tracer, path, "kupagkaun", names));
         Assert.Empty(await Readings(tracer, path, "kukaun", names));
         Assert.Equal(["pag+kaun"], await Readings(tracer, path, "pagkaun", names));
+        // The derivation names transitivity only, so the stem's person is kept: li (needs second person) still fails.
+        Assert.Empty(await Readings(tracer, path, "lipagkaun", names));
     }
 
     [RealParserFact]
@@ -96,6 +113,10 @@ public sealed class RealParserDerivedStemFeatureTests(PristineProjectFixture pri
         var ws = Anal(cache);
         var verb = Created(ApplyOps(cache, AuthorPartOfSpeechComposer.Build(cache,
             new AuthorPartOfSpeechIntent("Verb", ws, "V"))), CmPossibilityListPossibilitiesOperationKinds.Create);
+        var slot = Created(ApplyOps(cache, AuthorAffixSlotComposer.Build(cache,
+            new AuthorAffixSlotIntent(verb, "Outer", ws, true))), PartOfSpeechAffixSlotsOperationKinds.Create);
+        ApplyOps(cache, AuthorAffixTemplateComposer.Build(cache,
+            new AuthorAffixTemplateIntent(verb, "Verb template", ws, [slot], [], true)));
         var featureProposal = ApplyOps(cache, AuthorInflectionFeatureComposer.Build(cache,
             new("transitivity", ws, [new("Intransitive", "intr"), new("Transitive", "tr")], "tv")));
         var feature = Created(featureProposal, FsFeatureSystemFeaturesOperationKinds.Create);
@@ -105,6 +126,7 @@ public sealed class RealParserDerivedStemFeatureTests(PristineProjectFixture pri
             ((IFsSymFeatVal)cache.ServiceLocator.ObjectRepository.GetObject(id.ToGuid()))
                 .Name.get_String(cache.DefaultAnalWs).Text == text);
         var names = new Dictionary<CanonicalId, string>(CanonicalId.ByGuid);
+        names[AddStem(cache, "lilit", verb).Form] = "lilit";
         foreach (var (form, value) in new[] { ("kaun", "Intransitive"), ("palit", "Transitive") })
         {
             var stem = AddStem(cache, form, verb);
@@ -113,6 +135,14 @@ public sealed class RealParserDerivedStemFeatureTests(PristineProjectFixture pri
                 MoStemMsaMsFeaturesOperationKinds.CreateMsFeatures);
             ApplyOps(cache, AuthorFeatureValueComposer.Build(cache, new(features, feature, Value(value))));
         }
+        var wantsTransitive = ApplyOps(cache, AuthorLexicalEntryComposer.Build(cache, new AuthorLexicalEntryIntent("ku",
+            Vern(cache), MorphType(MoMorphTypeTags.kguidMorphPrefix), "ku", ws,
+            new LexicalEntryMsa(LexicalEntryMsaKind.Inflectional, verb, Slots: [slot]))));
+        names[Created(wantsTransitive, LexEntryLexemeFormOperationKinds.CreateLexemeForm)] = "ku";
+        var wanted = Created(ApplyOps(cache, AuthorFeatureStructureComposer.Build(cache,
+            new(Created(wantsTransitive, LexEntryMorphoSyntaxAnalysesOperationKinds.Create)))),
+            MoInflAffMsaInflFeatsOperationKinds.CreateInflFeats);
+        ApplyOps(cache, AuthorFeatureValueComposer.Build(cache, new(wanted, feature, Value("Transitive"))));
         var derived = ApplyOps(cache, AuthorAffixProcessComposer.Build(cache, new AuthorAffixProcessIntent(
             MorphType(MoMorphTypeTags.kguidMorphPrefix), "causative", ws,
             new LexicalEntryMsa(LexicalEntryMsaKind.Derivational, verb, verb),
@@ -125,6 +155,8 @@ public sealed class RealParserDerivedStemFeatureTests(PristineProjectFixture pri
         var tracer = new PanGlossTracer(invoker);
         Assert.Equal(["pag+kaun"], await Readings(tracer, path, "pagkaun", names));
         Assert.Equal(["pag+palit"], await Readings(tracer, path, "pagpalit", names));
+        Assert.Equal(["pag+lilit"], await Readings(tracer, path, "paglilit", names));
+        Assert.Equal(["ku+pag+lilit"], await Readings(tracer, path, "kupaglilit", names));
 
         var requirement = Created(ApplyOps(cache, AuthorFeatureStructureComposer.Build(cache,
             new(Created(derived, LexEntryMorphoSyntaxAnalysesOperationKinds.Create), "from"))),
@@ -134,6 +166,10 @@ public sealed class RealParserDerivedStemFeatureTests(PristineProjectFixture pri
 
         Assert.Equal(["pag+kaun"], await Readings(tracer, path, "pagkaun", names));
         Assert.Empty(await Readings(tracer, path, "pagpalit", names));
+        // Unification: a stem with no value passes and the value is imposed on the derived word.
+        Assert.Equal(["pag+lilit"], await Readings(tracer, path, "paglilit", names));
+        // ... and the required intransitive is now on the derived word, so a later transitive requirement fails.
+        Assert.Empty(await Readings(tracer, path, "kupaglilit", names));
     }
 
     private static CanonicalId Phoneme(LcmCache cache, string text) =>

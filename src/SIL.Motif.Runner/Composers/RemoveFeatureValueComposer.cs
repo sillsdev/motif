@@ -23,7 +23,7 @@ public static class RemoveFeatureValueComposer
     /// <param name="mintId">Overrides id minting; tests supply a deterministic source.</param>
     /// <exception cref="InvalidOperationException">
     /// <c>feature-value-not-found</c> when the structure has no specification for the feature, and
-    /// <c>feature-structure-not-grammatical-info</c> when the structure belongs to neither a stem nor an inflectional affix.
+    /// <c>feature-structure-not-grammatical-info</c> when the structure belongs to none of a stem, an inflectional affix or a derivational affix.
     /// </exception>
     public static IReadOnlyList<OperationEnvelope> Build(
         LcmCache cache, RemoveFeatureValueIntent intent, Func<CanonicalId>? mintId = null)
