@@ -55,11 +55,10 @@ internal static partial class WalkthroughCaptureSettle
 
     /// <summary>
     /// Waits until two frames drawn one after the other are the same picture, so no state is still settling. A replay
-    /// that draws no pictures has nothing to wait for.
+    /// that draws no pictures compares two empty frames, so this is then two layout passes and layout checks.
     /// </summary>
     internal static void WaitUntilFrameIsStable(this WalkthroughWindow walkthrough, TimeSpan timeout, string why)
     {
-        if (!WalkthroughArtifacts.DrawsPictures) return;
         byte[]? previous = null;
         var passes = 0;
         walkthrough.WaitUntil(() =>

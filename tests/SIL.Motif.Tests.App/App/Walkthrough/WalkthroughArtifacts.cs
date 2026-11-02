@@ -128,6 +128,7 @@ internal static class WalkthroughArtifacts
         Environment.GetEnvironmentVariable("MOTIF_WALKTHROUGH_UPDATE_BASELINES") == "1" ||
         !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("MOTIF_WALKTHROUGH_OUTPUT")) ||
         Environment.GetEnvironmentVariable(StrictComparisonVariable) == "1";
+
     public const int Width = 1280;
     public const int Height = 720;
     public const int Fps = 30;
@@ -151,7 +152,13 @@ internal static class WalkthroughArtifacts
         }).ToArray();
         var png = CaptureFrame(window, scale);
         var capture = new WalkthroughCapture(id, startMs, durationMs, scaledCallouts, png, scale);
-        return cropPadding is { } padding && png.Length > 0 ? Crop(capture, (int)Math.Ceiling(padding * scale)) : capture;
+        if (png.Length == 0)
+        {
+            CheckUndrawnCapture(capture, window.Bounds.Size, cropPadding);
+            return capture;
+        }
+
+        return cropPadding is { } padding ? Crop(capture, (int)Math.Ceiling(padding * scale)) : capture;
     }
 
     internal static Rect PadUnreadHighlightTarget(Rect target) =>
@@ -1020,40 +1027,58 @@ internal static class WalkthroughArtifacts
 
     internal static WalkthroughCapture Crop(WalkthroughCapture capture, int padding)
     {
-        if (padding is < 0 or > 256) throw new ArgumentOutOfRangeException(nameof(padding));
-        if (capture.Callouts.Count == 0) throw new InvalidDataException("A cropped capture needs at least one callout.");
         using var source = SKBitmap.Decode(capture.Png)
             ?? throw new InvalidDataException("Could not read rendered walkthrough PNG for cropping.");
-        var left = Math.Max(0, (int)Math.Floor(capture.Callouts.Min(callout => callout.Bounds.X) - padding));
-        var top = Math.Max(0, (int)Math.Floor(capture.Callouts.Min(callout => callout.Bounds.Y) - padding));
-        var right = Math.Min(source.Width, (int)Math.Ceiling(capture.Callouts.Max(callout => callout.Bounds.Right) + padding));
-        var bottom = Math.Min(source.Height, (int)Math.Ceiling(capture.Callouts.Max(callout => callout.Bounds.Bottom) + padding));
-        // A close-up of a narrow control, such as the page rail, still leaves room for its caption beside it.
-        (left, right) = Widen(left, right, source.Width, MinimumCropSide);
-        (top, bottom) = Widen(top, bottom, source.Height, MinimumCropSide);
-        if (left >= source.Width || top >= source.Height || right <= left || bottom <= top)
-            throw new InvalidDataException($"Walkthrough crop '{capture.Id}' lies outside its {source.Width}x{source.Height} frame: " +
-                $"left={left}, top={top}, right={right}, bottom={bottom}.");
-        var cropWidth = Math.Max(1, right - left);
-        var cropHeight = Math.Max(1, bottom - top);
+        var (bounds, transformed) = CropGeometry(capture.Id, capture.Callouts, source.Width, source.Height, padding);
+        var cropWidth = (int)bounds.Width;
+        var cropHeight = (int)bounds.Height;
         using var cropped = new SKBitmap(cropWidth, cropHeight);
         using (var cropCanvas = new SKCanvas(cropped))
-            cropCanvas.DrawBitmap(source, new SKRect(left, top, right, bottom), new SKRect(0, 0, cropWidth, cropHeight));
-        var transformed = capture.Callouts.Select(callout => new WalkthroughCaptureCallout(
-            callout.AutomationId, callout.Caption,
-            new Avalonia.Rect(
-                callout.Bounds.X - left,
-                callout.Bounds.Y - top,
-                callout.Bounds.Width,
-                callout.Bounds.Height))).ToArray();
+            cropCanvas.DrawBitmap(source, new SKRect((float)bounds.Left, (float)bounds.Top, (float)bounds.Right,
+                (float)bounds.Bottom), new SKRect(0, 0, cropWidth, cropHeight));
         using var image = SKImage.FromBitmap(cropped);
         using var data = image.Encode(SKEncodedImageFormat.Png, 100);
-        return capture with
+        return capture with { Callouts = transformed, Png = data.ToArray(), SourceFrameCropBounds = bounds };
+    }
+
+    /// <summary>The crop around the callouts and the callouts moved into it, from sizes alone.</summary>
+    private static (Rect Bounds, WalkthroughCaptureCallout[] Callouts) CropGeometry(
+        string id, IReadOnlyList<WalkthroughCaptureCallout> callouts, int frameWidth, int frameHeight, int padding)
+    {
+        if (padding is < 0 or > 256) throw new ArgumentOutOfRangeException(nameof(padding));
+        if (callouts.Count == 0) throw new InvalidDataException("A cropped capture needs at least one callout.");
+        var left = Math.Max(0, (int)Math.Floor(callouts.Min(callout => callout.Bounds.X) - padding));
+        var top = Math.Max(0, (int)Math.Floor(callouts.Min(callout => callout.Bounds.Y) - padding));
+        var right = Math.Min(frameWidth, (int)Math.Ceiling(callouts.Max(callout => callout.Bounds.Right) + padding));
+        var bottom = Math.Min(frameHeight, (int)Math.Ceiling(callouts.Max(callout => callout.Bounds.Bottom) + padding));
+        // A close-up of a narrow control, such as the page rail, still leaves room for its caption beside it.
+        (left, right) = Widen(left, right, frameWidth, MinimumCropSide);
+        (top, bottom) = Widen(top, bottom, frameHeight, MinimumCropSide);
+        if (left >= frameWidth || top >= frameHeight || right <= left || bottom <= top)
+            throw new InvalidDataException($"Walkthrough crop '{id}' lies outside its {frameWidth}x{frameHeight} frame: " +
+                $"left={left}, top={top}, right={right}, bottom={bottom}.");
+        var bounds = new Rect(left, top, Math.Max(1, right - left), Math.Max(1, bottom - top));
+        var transformed = callouts.Select(callout => new WalkthroughCaptureCallout(
+            callout.AutomationId, callout.Caption,
+            new Rect(callout.Bounds.X - left, callout.Bounds.Y - top, callout.Bounds.Width, callout.Bounds.Height))).ToArray();
+        return (bounds, transformed);
+    }
+
+    /// <summary>The crop and caption checks that drawing would make, from sizes alone.</summary>
+    private static void CheckUndrawnCapture(WalkthroughCapture capture, Size frame, int? cropPadding)
+    {
+        var width = (int)Math.Round(frame.Width);
+        var height = (int)Math.Round(frame.Height);
+        var callouts = capture.Callouts;
+        if (cropPadding is { } padding)
         {
-            Callouts = transformed,
-            Png = data.ToArray(),
-            SourceFrameCropBounds = new Rect(left, top, cropWidth, cropHeight),
-        };
+            var (bounds, transformed) = CropGeometry(capture.Id, callouts, width, height, padding);
+            (width, height, callouts) = ((int)bounds.Width, (int)bounds.Height, transformed);
+        }
+
+        using var typeface = LoadBundledFont("Andika-Bold.ttf");
+        using var captionFont = new SKFont(typeface, 16);
+        ArrangeCaptionLabels(callouts, width, height, captionFont);
     }
 
     private static SKTypeface LoadBundledFont(string fileName)

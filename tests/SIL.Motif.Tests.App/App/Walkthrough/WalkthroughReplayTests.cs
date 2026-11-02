@@ -91,12 +91,14 @@ public sealed class WalkthroughReplayTests(PristineProjectFixture pristine)
     }
 
     [Fact]
-    public void StableFrameWaitIsSkippedWhenNoPicturesAreDrawn()
+    public void NoFrameIsDrawnForTheStableWaitUnlessAPictureIsAskedFor()
     {
         var managedRoot = Path.Combine(Path.GetTempPath(), "SIL.Motif.Walkthrough", "stable-frame",
             Guid.NewGuid().ToString("N"));
         using var project = new WalkthroughProject(pristine, managedRoot);
-        var previous = Environment.GetEnvironmentVariable(WalkthroughArtifacts.StrictComparisonVariable);
+        string[] variables =
+            ["MOTIF_WALKTHROUGH_OUTPUT", "MOTIF_WALKTHROUGH_UPDATE_BASELINES", WalkthroughArtifacts.StrictComparisonVariable];
+        var previous = variables.Select(Environment.GetEnvironmentVariable).ToArray();
 
         AvaloniaHeadlessFixture.RunUntilComplete(() =>
         {
@@ -107,17 +109,18 @@ public sealed class WalkthroughReplayTests(PristineProjectFixture pristine)
                 new RedrawsDifferentlyEveryTime { Width = 1000, Height = 8 });
             try
             {
-                Environment.SetEnvironmentVariable(WalkthroughArtifacts.StrictComparisonVariable, null);
-                walkthrough.WaitUntilFrameIsStable(TimeSpan.FromSeconds(1), "a gate waits for no frame");
+                foreach (var variable in variables) Environment.SetEnvironmentVariable(variable, null);
+                walkthrough.WaitUntilFrameIsStable(TimeSpan.FromSeconds(1), "a gate draws no frame");
 
                 Environment.SetEnvironmentVariable(WalkthroughArtifacts.StrictComparisonVariable, "1");
                 var failure = Assert.ThrowsAny<Xunit.Sdk.XunitException>(() =>
-                    walkthrough.WaitUntilFrameIsStable(TimeSpan.FromSeconds(1), "a strict run waits for a frame"));
+                    walkthrough.WaitUntilFrameIsStable(TimeSpan.FromSeconds(1), "a strict run draws every frame"));
                 Assert.Contains("frames were drawn and none matched", failure.Message, StringComparison.Ordinal);
             }
             finally
             {
-                Environment.SetEnvironmentVariable(WalkthroughArtifacts.StrictComparisonVariable, previous);
+                for (var index = 0; index < variables.Length; index++)
+                    Environment.SetEnvironmentVariable(variables[index], previous[index]);
             }
 
             return Task.CompletedTask;

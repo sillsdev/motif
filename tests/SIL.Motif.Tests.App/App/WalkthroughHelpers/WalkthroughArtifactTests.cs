@@ -62,6 +62,36 @@ public sealed class WalkthroughArtifactTests(AvaloniaHeadlessFixture avalonia)
     }
 
     [Fact]
+    public void ACaptureThatDrawsNothingStillMakesItsCropChecks()
+    {
+        string[] variables =
+            ["MOTIF_WALKTHROUGH_OUTPUT", "MOTIF_WALKTHROUGH_UPDATE_BASELINES", WalkthroughArtifacts.StrictComparisonVariable];
+        var previous = variables.Select(Environment.GetEnvironmentVariable).ToArray();
+        try
+        {
+            foreach (var variable in variables) Environment.SetEnvironmentVariable(variable, null);
+            avalonia.Invoke(() =>
+            {
+                var window = new Avalonia.Controls.Window { Width = 600, Height = 400 };
+                window.Show();
+                var inside = new WalkthroughCaptureCallout("inside", "Inside", new Rect(100, 100, 120, 40));
+
+                var drawn = WalkthroughArtifacts.Capture("inside", 0, 1000, window, [inside], cropPadding: 20);
+                Assert.Empty(drawn.Png);
+                var failure = Assert.Throws<InvalidDataException>(() =>
+                    WalkthroughArtifacts.Capture("none", 0, 1000, window, [], cropPadding: 20));
+                Assert.Contains("needs at least one callout", failure.Message, StringComparison.Ordinal);
+                window.Close();
+            });
+        }
+        finally
+        {
+            for (var index = 0; index < variables.Length; index++)
+                Environment.SetEnvironmentVariable(variables[index], previous[index]);
+        }
+    }
+
+    [Fact]
     public void WriteProducesSiteShapedAssetsAndParsableCaptions()
     {
         var root = Path.Combine(Path.GetTempPath(), $"walkthrough-output-{Guid.NewGuid():N}");
