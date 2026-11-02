@@ -178,7 +178,8 @@ public static class AddMorphoSyntaxAnalysisComposer
     private static void RequireNotDuplicate(ILexEntry entry, LexicalEntryMsa msa, CanonicalId? fromClass)
     {
         var slots = (msa.Slots ?? []).Select(id => id.ToGuid()).Order().ToArray();
-        var found = entry.MorphoSyntaxAnalysesOC.Any(existing => existing switch
+        // A new analysis has no feature requirements; only an existing one with none is identical.
+        var found = entry.MorphoSyntaxAnalysesOC.Where(existing => !HasFeatureRequirements(existing)).Any(existing => existing switch
         {
             IMoStemMsa stem => msa.Kind == LexicalEntryMsaKind.Stem && stem.PartOfSpeechRA?.Guid == msa.Category.ToGuid()
                 && stem.InflectionClassRA?.Guid == msa.InflectionClass?.ToGuid(),
@@ -194,8 +195,19 @@ public static class AddMorphoSyntaxAnalysisComposer
         });
         if (found)
             throw new InvalidOperationException(
-                $"'{ConstructName}': entry '{CanonicalId.FromGuid(entry.Guid).Value}' already has an identical analysis (same category, classes and slots); point its senses at that one instead.");
+                $"'{ConstructName}': entry '{CanonicalId.FromGuid(entry.Guid).Value}' already has an identical analysis (same category, classes, slots and no feature requirements); point its senses at that one instead, " +
+                "or give that analysis its feature requirements first so the new one can differ by them.");
     }
+
+    private static bool HasFeatureRequirements(IMoMorphSynAnalysis msa) => msa switch
+    {
+        IMoStemMsa stem => Any(stem.MsFeaturesOA),
+        IMoInflAffMsa infl => Any(infl.InflFeatsOA),
+        IMoDerivAffMsa deriv => Any(deriv.FromMsFeaturesOA) || Any(deriv.ToMsFeaturesOA),
+        _ => false,
+    };
+
+    private static bool Any(IFsFeatStruc? structure) => structure is { FeatureSpecsOC.Count: > 0 };
 
     private static Dictionary<Guid, string> RequireNoRemainingReferences(ILexEntry entry, CanonicalId[] senseIds)
     {

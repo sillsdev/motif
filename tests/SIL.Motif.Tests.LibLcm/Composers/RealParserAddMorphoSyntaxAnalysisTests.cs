@@ -106,6 +106,85 @@ public sealed class RealParserAddMorphoSyntaxAnalysisTests(PristineProjectFixtur
         Assert.Empty(await Readings(tracer, path, "paglilit", names));
     }
 
+    [RealParserFact]
+    public async Task OneRelativeEntryWithTwoAnalysesThatDifferOnlyByFeatureRequirementsFiresEachOnItsOwnFeatureOnly()
+    {
+        using var cache = pristine.NewScratch();
+        RealParserProject.PrepareForParsing(cache, ["m", "a", "p", "i", "k", "e", "t", "u", "n"]);
+        var ws = Anal(cache);
+        var verb = Created(ApplyOps(cache, AuthorPartOfSpeechComposer.Build(cache,
+            new AuthorPartOfSpeechIntent("Verb", ws, "V"))), CmPossibilityListPossibilitiesOperationKinds.Create);
+        var subjectSlot = Created(ApplyOps(cache, AuthorAffixSlotComposer.Build(cache,
+            new AuthorAffixSlotIntent(verb, "Subject", ws, false))), PartOfSpeechAffixSlotsOperationKinds.Create);
+        var relativeSlot = Created(ApplyOps(cache, AuthorAffixSlotComposer.Build(cache,
+            new AuthorAffixSlotIntent(verb, "Relative", ws, false))), PartOfSpeechAffixSlotsOperationKinds.Create);
+        ApplyOps(cache, AuthorAffixTemplateComposer.Build(cache,
+            new AuthorAffixTemplateIntent(verb, "Verb template", ws, [subjectSlot, relativeSlot], [], true)));
+        var names = new Dictionary<CanonicalId, string>(CanonicalId.ByGuid);
+        names[AddStem(cache, "tun", verb).Form] = "tun";
+        var msas = new Dictionary<string, CanonicalId>();
+        CanonicalId Affix(string form, CanonicalId slot)
+        {
+            var entry = ApplyOps(cache, AuthorLexicalEntryComposer.Build(cache, new AuthorLexicalEntryIntent(form,
+                Vern(cache), MorphType(MoMorphTypeTags.kguidMorphPrefix), form, ws,
+                new LexicalEntryMsa(LexicalEntryMsaKind.Inflectional, verb, Slots: [slot]))));
+            names[Created(entry, LexEntryLexemeFormOperationKinds.CreateLexemeForm)] = form;
+            msas[form] = Created(entry, LexEntryMorphoSyntaxAnalysesOperationKinds.Create);
+            return Created(entry, LexDbEntriesOperationKinds.Create);
+        }
+        Affix("ma", subjectSlot);
+        Affix("pi", subjectSlot);
+        var relative = Affix("ke", relativeSlot);
+
+        var featureProposal = ApplyOps(cache, AuthorInflectionFeatureComposer.Build(cache,
+            new("relative concord", ws, [new("Group one", "g1"), new("Group two", "g2")], "rc")));
+        var feature = Created(featureProposal, FsFeatureSystemFeaturesOperationKinds.Create);
+        var values = featureProposal.Operations.Where(op => op.Kind == FsClosedFeatureValuesOperationKinds.Create)
+            .Select(op => op.EntityId!.Value).ToArray();
+        CanonicalId Value(string text) => values.Single(id =>
+            ((IFsSymFeatVal)cache.ServiceLocator.ObjectRepository.GetObject(id.ToGuid()))
+                .Name.get_String(cache.DefaultAnalWs).Text == text);
+        void Require(CanonicalId msa, string group)
+        {
+            var structure = Created(ApplyOps(cache, AuthorFeatureStructureComposer.Build(cache, new(msa))),
+                MoInflAffMsaInflFeatsOperationKinds.CreateInflFeats);
+            ApplyOps(cache, AuthorFeatureValueComposer.Build(cache, new(structure, feature, Value(group))));
+        }
+        Require(msas["ma"], "Group one");
+        Require(msas["pi"], "Group two");
+
+        // The entry's only analysis is identical to a new one until it carries a requirement; then the two differ.
+        var plain = Assert.Throws<InvalidOperationException>(() => AddMorphoSyntaxAnalysisComposer.Build(cache, new(relative,
+            new LexicalEntryMsa(LexicalEntryMsaKind.Inflectional, verb, Slots: [relativeSlot]),
+            Gloss: "again", AnalysisWritingSystem: ws)));
+        Assert.Contains("identical analysis", plain.Message, StringComparison.Ordinal);
+        Require(msas["ke"], "Group one");
+        var second = Created(ApplyOps(cache, AddMorphoSyntaxAnalysisComposer.Build(cache, new(relative,
+            new LexicalEntryMsa(LexicalEntryMsaKind.Inflectional, verb, Slots: [relativeSlot]),
+            Gloss: "ke two", AnalysisWritingSystem: ws))), LexEntryMorphoSyntaxAnalysesOperationKinds.Create);
+        Require(second, "Group two");
+        Assert.Equal(2, Get<ILexEntry>(cache, relative).MorphoSyntaxAnalysesOC.Count);
+        var path = cache.ProjectId.Path;
+        new FwDataProjectLoader().Save(cache);
+        using var invoker = new PanGlossInvoker();
+        var tracer = new PanGlossTracer(invoker);
+
+        Assert.Equal([msas["ke"].Value], await MsasOf(tracer, path, "maketun"));
+        Assert.Equal([second.Value], await MsasOf(tracer, path, "piketun"));
+    }
+
+    private async Task<string[]> MsasOf(PanGlossTracer tracer, string path, string word)
+    {
+        var outcome = Assert.IsType<PanGlossTraceOutcome.Completed>(
+            await tracer.TraceAsync(path, word, CancellationToken.None));
+        Assert.True(outcome.Details!.SearchCompleted, word);
+        var found = outcome.Document!.Analyses.SelectMany(analysis => analysis.Morphs)
+            .Where(morph => morph.Form == "ke").Select(morph => CanonicalId.FromGuid(Guid.Parse(morph.MsaId!)).Value)
+            .Distinct().Order(StringComparer.Ordinal).ToArray();
+        output.WriteLine($"{word}: {string.Join(" | ", found)}");
+        return found;
+    }
+
     private async Task<string[]> Readings(PanGlossTracer tracer, string path, string word,
         IReadOnlyDictionary<CanonicalId, string> names)
     {
