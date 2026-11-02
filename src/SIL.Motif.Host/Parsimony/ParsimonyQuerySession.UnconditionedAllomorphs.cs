@@ -98,25 +98,32 @@ public sealed partial class ParsimonyQuerySession
             families.Sum(item => (long)item.Siblings.Count), unknownFamilies, invalidConditions);
     }
 
-    private IReadOnlyList<UnconditionedAllomorphCompilerOrder> ReadUnconditionedAllomorphCompilerOrder()
-    {
-        var rows = new List<UnconditionedAllomorphCompilerOrder>();
-        using var command = NewCommand();
-        command.CommandText = """
+    /// <summary>The compiler-order query; the owner's highest allomorph order is grouped once, not rescanned per row.</summary>
+    internal const string UnconditionedAllomorphCompilerOrderSql = """
+            WITH owner_max AS (
+                SELECT owner_output_id, MAX(compiled_order) AS max_order
+                FROM facts.compiled_output
+                WHERE kind='allomorph'
+                GROUP BY owner_output_id)
             SELECT owner.key, o.source_entry_guid, o.source_msa_guid, out.bucket, o.source_allomorph_guid,
                    out.key, o.compiled_order,
-                   CASE WHEN out.has_phone_condition=0 AND out.compiled_order=(
-                       SELECT MAX(u.compiled_order) FROM facts.compiled_output AS u
-                       WHERE u.owner_output_id=out.owner_output_id AND u.kind='allomorph')
+                   CASE WHEN out.has_phone_condition=0 AND out.compiled_order=om.max_order
                    THEN 1 ELSE 0 END AS is_final_elsewhere_case,
                    a.is_abstract
             FROM facts.compiled_allomorph_order AS o
             JOIN facts.compiled_output AS out ON out.output_id=o.output_id
             JOIN facts.compiled_output AS owner ON owner.output_id=o.owner_output_id
+            LEFT JOIN owner_max AS om ON om.owner_output_id=out.owner_output_id
             LEFT JOIN facts.allomorph AS a ON a.guid=o.source_allomorph_guid
             WHERE o.source_allomorph_guid IS NOT NULL AND o.compiled_order IS NOT NULL
             ORDER BY owner.key, out.bucket, o.compiled_order, out.key, o.source_allomorph_guid;
             """;
+
+    private IReadOnlyList<UnconditionedAllomorphCompilerOrder> ReadUnconditionedAllomorphCompilerOrder()
+    {
+        var rows = new List<UnconditionedAllomorphCompilerOrder>();
+        using var command = NewCommand();
+        command.CommandText = UnconditionedAllomorphCompilerOrderSql;
         using var reader = command.ExecuteReader();
         while (reader.Read())
         {
