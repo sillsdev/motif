@@ -38,9 +38,10 @@ public static class Readiness
         string? currentBaselineToken,
         string candidateBaselineToken,
         bool gateOnRegression,
-        IReadOnlyCollection<string>? changedWords = null) =>
+        IReadOnlyCollection<string>? changedWords = null,
+        Func<string, string?>? lowercaseOf = null) =>
         Evaluate(candidate, current, currentBaselineToken, candidateBaselineToken, gateOnRegression,
-            changedWords).Reasons;
+            changedWords, lowercaseOf: lowercaseOf).Reasons;
 
     /// <summary>Evaluates Readiness while retaining whether a regression caused the refusal.</summary>
     public static Decision Evaluate(
@@ -51,7 +52,8 @@ public static class Readiness
         bool gateOnRegression,
         IReadOnlyCollection<string>? changedWords = null,
         string? correctnessAssessmentExemptionReason = null,
-        DroppedGrammar? droppedGrammar = null)
+        DroppedGrammar? droppedGrammar = null,
+        Func<string, string?>? lowercaseOf = null)
     {
         if (!string.IsNullOrWhiteSpace(correctnessAssessmentExemptionReason))
             return new Decision([], false, false, correctnessAssessmentExemptionReason);
@@ -72,8 +74,10 @@ public static class Readiness
             if (missing.Length > 0)
                 reasons.Add($"its Assessment did not measure changed word(s): {string.Join(", ", missing)}");
         }
-        var lacking = candidate.Words.Where(word => word.Correctness is null || word.Morphology is null ||
-                CorrectnessCoverage.Require(word, "readiness").Status is "incomplete" or "unavailable").ToArray();
+        var lacking = candidate.Words.Where(Lacks).ToArray();
+        // A capitalised word the parser cannot read as written is covered by its complete lowercase row (ADR 0078).
+        lacking = lacking.Where(word => !(word.Morphology is { InvalidShape: true } && lowercaseOf?.Invoke(word.Word) is { } lower &&
+            candidate.Words.Any(other => string.Equals(other.Word, lower, StringComparison.Ordinal) && !Lacks(other)))).ToArray();
         var unavailable = lacking.Length > 0;
         foreach (var cause in lacking.GroupBy(LackCause))
         {
@@ -124,6 +128,9 @@ public static class Readiness
     }
 
     // Names why one word lacks complete evidence, so the fix matches the cause.
+    private static bool Lacks(AssessedWord word) => word.Correctness is null || word.Morphology is null ||
+        CorrectnessCoverage.Require(word, "readiness").Status is "incomplete" or "unavailable";
+
     private static string LackCause(AssessedWord word) =>
         word.Correctness is null || word.Morphology is null
             ? "the Assessment holds no approved-morphology evidence for them; measure them again"

@@ -108,7 +108,8 @@ internal static class ApplyAuthorization
                 ?? DroppedGrammar.NotChecked("The Trial that made this Assessment is no longer stored.");
             return Host.Assess.Readiness.Evaluate(
                 candidate?.ToCorrectness(), currentCorrectness, currentBaselineToken,
-                candidateBaselineToken, configuration.GateOnRegression, changedWords, exemptionReason, dropped);
+                candidateBaselineToken, configuration.GateOnRegression, changedWords, exemptionReason, dropped,
+                word => SIL.Motif.Host.Parser.LowercasePass.ForProjectIfNeeded(project.FullFwDataPath, [word]).LowercaseOf(word));
         }
 
         var choice = ProposalCommands.ChooseCandidate(candidateIds, assessments.Get, EvaluateFor);

@@ -29,6 +29,20 @@ public sealed class ReadinessTests
     }
 
     [Fact]
+    public void ACapitalisedWordThatCouldNotBeReadAsWrittenIsCoveredByItsCompleteLowercaseRow()
+    {
+        var candidate = Build("candidate", ("Alpha", true), ("alpha", true));
+        var capital = candidate.Words[0] with { Morphology = candidate.Words[0].Morphology! with { InvalidShape = true, Analyses = [] } };
+        var lower = candidate.Words[1];
+        System.Func<string, string?> lowercase = word => word.ToLowerInvariant() == word ? null : word.ToLowerInvariant();
+        Assert.Empty(Readiness.Assess(candidate with { Words = [capital, lower] }, null, null, "same", false, null, lowercase));
+
+        var brokenLower = lower with { Morphology = lower.Morphology! with { Capped = true } };
+        var reasons = Readiness.Assess(candidate with { Words = [capital, brokenLower] }, null, null, "same", false, null, lowercase);
+        Assert.Contains(reasons, reason => reason.Contains("\"Alpha\""));
+    }
+
+    [Fact]
     public void AWordWithAnInvalidShapeIsToldToUseOneWordPerLine()
     {
         var candidate = Build("candidate", ("alpha beta", true));
