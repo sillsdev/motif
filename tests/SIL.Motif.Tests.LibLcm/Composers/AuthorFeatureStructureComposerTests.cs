@@ -72,6 +72,23 @@ public sealed class AuthorFeatureStructureComposerTests : IDisposable
     }
 
     [Fact]
+    public void Build_SideOnAStemIsRefused_BecauseOnlyADerivationalAffixHasTwoSides()
+    {
+        var ex = Assert.Throws<InvalidOperationException>(
+            () => AuthorFeatureStructureComposer.Build(_cache, new AuthorFeatureStructureIntent(FirstMsa(), "to")));
+        Assert.Contains("only to a derivational affix", ex.Message);
+    }
+
+    [Theory]
+    [InlineData("""{"msa":"AAAAAAAAAAAAAAAAAAAAAQ","side":"both"}""")]
+    [InlineData("""{"msa":"AAAAAAAAAAAAAAAAAAAAAQ","side":3}""")]
+    public void Parse_ASideThatIsNotFromOrToIsRefused(string json)
+    {
+        using var document = System.Text.Json.JsonDocument.Parse(json);
+        Assert.ThrowsAny<Exception>(() => AuthorFeatureStructureIntentParser.Parse(document.RootElement));
+    }
+
+    [Fact]
     public void Build_MsaDoesNotExist_ThrowsFailingClosed()
     {
         var intent = new AuthorFeatureStructureIntent(CanonicalId.FromGuid(Guid.NewGuid()));
@@ -109,25 +126,45 @@ public sealed class AuthorFeatureStructureComposerTests : IDisposable
     }
 
 
-    [Theory]
-    [InlineData("derivational")]
-    [InlineData("unclassified")]
-    public void BuildRefusesOtherMsaKindsBeforeMinting(string kind)
+    private IMoMorphSynAnalysis AddMsa(bool derivational)
     {
         IMoMorphSynAnalysis msa = null!;
         SIL.LCModel.Infrastructure.NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
         {
-            msa = kind == "derivational"
+            msa = derivational
                 ? _cache.ServiceLocator.GetInstance<IMoDerivAffMsaFactory>().Create()
                 : _cache.ServiceLocator.GetInstance<IMoUnclassifiedAffixMsaFactory>().Create();
             _cache.ServiceLocator.GetInstance<ILexEntryRepository>().GetObject(_seed.FirstEntryId)
                 .MorphoSyntaxAnalysesOC.Add(msa);
         });
+        return msa;
+    }
+
+    [Fact]
+    public void BuildRefusesAnUnclassifiedAffixBeforeMinting()
+    {
+        var msa = AddMsa(derivational: false);
         var minted = 0;
         var error = Assert.Throws<InvalidOperationException>(() => AuthorFeatureStructureComposer.Build(_cache,
             new(CanonicalId.FromGuid(msa.Guid)), () => { minted++; return CanonicalId.Mint(); }));
-        Assert.Contains("not a MoStemMsa or MoInflAffMsa", error.Message);
+        Assert.Contains("not a MoStemMsa, MoInflAffMsa or MoDerivAffMsa", error.Message);
         Assert.Equal(0, minted);
+    }
+
+    [Fact]
+    public void BuildNeedsASideForADerivationalAffixAndNamesTheMatchingCreateKind()
+    {
+        var id = CanonicalId.FromGuid(AddMsa(derivational: true).Guid);
+        var minted = 0;
+        var error = Assert.Throws<InvalidOperationException>(() => AuthorFeatureStructureComposer.Build(_cache,
+            new(id), () => { minted++; return CanonicalId.Mint(); }));
+        Assert.Contains("needs 'side'", error.Message);
+        Assert.Equal(0, minted);
+
+        Assert.Equal(MoDerivAffMsaMsFeaturesOperationKinds.CreateFromMsFeatures,
+            Assert.Single(AuthorFeatureStructureComposer.Build(_cache, new(id, "from"))).Kind);
+        Assert.Equal(MoDerivAffMsaMsFeaturesOperationKinds.CreateToMsFeatures,
+            Assert.Single(AuthorFeatureStructureComposer.Build(_cache, new(id, "to"))).Kind);
     }
 
     [Fact]

@@ -270,10 +270,16 @@
     "AuthorFeatureStructure": {
       "type": "object",
       "additionalProperties": false,
-      "description": "Creates an empty MsFeatures or InflFeats structure on an exact stem or inflectional MSA with an empty owning slot.",
+      "description": "Creates an empty MsFeatures, InflFeats, FromMsFeatures or ToMsFeatures structure on an exact stem, inflectional or derivational MSA with an empty owning slot. side is required for a derivational MSA and refused for any other.",
       "properties": {
         "msa": {
           "$ref": "#/$defs/CanonicalId"
+        },
+        "side": {
+          "enum": [
+            "from",
+            "to"
+          ]
         }
       },
       "required": [

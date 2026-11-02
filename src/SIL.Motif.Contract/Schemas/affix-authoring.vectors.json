@@ -287,6 +287,22 @@
       "shape": "AuthorFeatureStructure",
       "input": {
         "msa": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "side": "to"
+      },
+      "valid": true
+    },
+    {
+      "shape": "AuthorFeatureStructure",
+      "input": {
+        "msa": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "side": "both"
+      },
+      "valid": false
+    },
+    {
+      "shape": "AuthorFeatureStructure",
+      "input": {
+        "msa": "AAAAAAAAAAAAAAAAAAAAAQ",
         "type": "AAAAAAAAAAAAAAAAAAAAAg"
       },
       "valid": false

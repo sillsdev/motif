@@ -43,6 +43,8 @@ internal static class AffixAuthoringPrerequisites
         FsClosedFeatureValuesOperationKinds.Create,
         MoInflAffMsaInflFeatsOperationKinds.CreateInflFeats,
         MoStemMsaMsFeaturesOperationKinds.CreateMsFeatures,
+        MoDerivAffMsaMsFeaturesOperationKinds.CreateFromMsFeatures,
+        MoDerivAffMsaMsFeaturesOperationKinds.CreateToMsFeatures,
         FsFeatStrucFeatureSpecsOperationKinds.CreateFeatureSpecs,
         FsFeatStrucFeatureSpecsOperationKinds.DeleteFeatureSpecs,
         FsFeatureSpecificationFeatureOperationKinds.SetFeature,

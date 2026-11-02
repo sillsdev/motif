@@ -329,7 +329,7 @@
   },
   {
     "name": "motif_add_feature_structure",
-    "description": "Author grammatical features. Research first: motif_guide topic feature-conditioned-slots; check best practice. Restrict a slot\u0027s affix by feature value; do not copy affixes or slots per value. Arbitrary lexical grouping is an inflection class (guide feature-conditioned-slots). Stages an empty feature structure on an existing or earlier-staged stem or inflectional affix MSA in a Draft, refusing an occupied slot even when its structure has no selections. Inflectional affix features are word requirements; use the returned exact structure identity to author selections. Only a person can Apply.\nCommand: compose-author-feature-structure. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: Closed {msa} input naming the exact canonical MSA identity. Its MsFeatures or InflFeats owning slot must be unoccupied; a present structure is refused even with no selections. Inflectional affix features are word requirements. Use the returned structure identity for selections.",
+    "description": "Author grammatical features. Research first: motif_guide topic feature-conditioned-slots; check best practice. Restrict a slot\u0027s affix by feature value; do not copy affixes or slots per value. Arbitrary lexical grouping is an inflection class (guide feature-conditioned-slots). Stages an empty feature structure on an existing or earlier-staged stem, inflectional affix or derivational affix MSA (side from or to) in a Draft, refusing an occupied slot even when its structure has no selections. Inflectional affix features are word requirements; use the returned exact structure identity to author selections. Only a person can Apply.\nCommand: compose-author-feature-structure. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: Closed {msa, side?} input naming the exact canonical MSA identity; side (from or to) is required for a derivational affix and refused otherwise. Its MsFeatures, InflFeats, FromMsFeatures or ToMsFeatures owning slot must be unoccupied; a present structure is refused even with no selections. Inflectional affix features are word requirements. Use the returned structure identity for selections.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -339,7 +339,11 @@
         },
         "msa": {
           "type": "string",
-          "description": "Id of a stem or inflectional affix MSA with no existing feature structure."
+          "description": "Id of a stem, inflectional affix or derivational affix MSA with no existing feature structure in the slot."
+        },
+        "side": {
+          "type": "string",
+          "description": "Derivational affix only: \u0022from\u0022 (required of the stem) or \u0022to\u0022 (carried by the derived stem, replacing the stem\u0027s value of that feature)."
         },
         "project": {
           "type": "string",

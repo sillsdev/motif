@@ -1129,7 +1129,7 @@
   },
   "compose-author-feature-structure": {
     "title": "Author grammatical features",
-    "description": "Stages an empty feature structure on an existing or earlier-staged stem or inflectional affix MSA in a Draft, refusing an occupied slot even when its structure has no selections. Inflectional affix features are word requirements; use the returned exact structure identity to author selections. Only a person can Apply.",
+    "description": "Stages an empty feature structure on an existing or earlier-staged stem, inflectional affix or derivational affix MSA (side from or to) in a Draft, refusing an occupied slot even when its structure has no selections. Inflectional affix features are word requirements; use the returned exact structure identity to author selections. Only a person can Apply.",
     "source": "Authored from the typed command contract.",
     "goals": [
       "Attach grammatical features to a stem",

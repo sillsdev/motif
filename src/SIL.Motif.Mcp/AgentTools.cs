@@ -250,7 +250,8 @@ internal static class AgentTools
             string.Empty,
             AgentClass.Draft,
             Schema.Object([("draft", Schema.String("The draft name from motif_start_proposal."), true),
-                ("msa", Schema.String("Id of a stem or inflectional affix MSA with no existing feature structure."), true)]),
+                ("msa", Schema.String("Id of a stem, inflectional affix or derivational affix MSA with no existing feature structure in the slot."), true),
+                ("side", Schema.String("Derivational affix only: \"from\" (required of the stem) or \"to\" (carried by the derived stem, replacing the stem's value of that feature)."), false)]),
             false,
             false,
             false,
@@ -258,7 +259,7 @@ internal static class AgentTools
             (c, a, ct) => Task.FromResult(ToolOutcome.From(
                 ProposalCommands.ComposeAuthorFeatureStructure(new ComposeAuthorFeatureStructureRequest(
                     c.ProjectPath, c.ProductVersion, a.Required("draft"),
-                    new JsonObject { ["msa"] = a.Required("msa") }.ToJsonString())),
+                    FeatureStructureIntent(a))),
                 r => $"Draft now has {r.OperationCount} changes. Read motif_guide(topic=feature-conditioned-slots) before adding any feature values."))) { Requests = [typeof(ComposeAuthorFeatureStructureRequest)] },
 
         new("motif_add_phoneme",
@@ -993,6 +994,13 @@ internal static class AgentTools
             { Requests = [typeof(EvidenceShowRequest), typeof(EvidenceListRequest)] },
         ..ParsimonyTools.All,
     ];
+
+    private static string FeatureStructureIntent(ToolArgs a)
+    {
+        var intent = new JsonObject { ["msa"] = a.Required("msa") };
+        if (a.Optional("side") is { } side) intent["side"] = side;
+        return intent.ToJsonString();
+    }
 
     private static string[] ApprovalStates =>
     [

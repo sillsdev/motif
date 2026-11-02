@@ -66,8 +66,9 @@ public sealed record ComposeAuthorLexemeFormRequest(
 /// <param name="ProductVersion">The Motif product version used to open its paired store.</param>
 /// <param name="DraftName">The name of the Draft being authored.</param>
 /// <param name="IntentJson">
-/// Closed <c>{msa}</c> input naming the exact canonical MSA identity. Its MsFeatures or InflFeats owning slot
-/// must be unoccupied; a present structure is refused even with no selections. Inflectional affix features
+/// Closed <c>{msa, side?}</c> input naming the exact canonical MSA identity; <c>side</c> (<c>from</c> or <c>to</c>)
+/// is required for a derivational affix and refused otherwise. Its MsFeatures, InflFeats, FromMsFeatures or
+/// ToMsFeatures owning slot must be unoccupied; a present structure is refused even with no selections. Inflectional affix features
 /// are word requirements. Use the returned structure identity for selections.
 /// </param>
 public sealed record ComposeAuthorFeatureStructureRequest(

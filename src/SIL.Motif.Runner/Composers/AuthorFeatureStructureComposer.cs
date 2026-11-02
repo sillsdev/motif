@@ -9,8 +9,10 @@ using SIL.LCModel;
 namespace SIL.Motif.Runner.Composers;
 
 /// <summary>
-/// Authors one empty feature structure on an existing stem or inflectional affix MSA. Stems use
-/// MsFeatures; inflectional affixes use InflFeats for the inflection features required on the word.
+/// Authors one empty feature structure on an existing stem or affix MSA. Stems use
+/// MsFeatures; inflectional affixes use InflFeats for the inflection features required on the word; derivational
+/// affixes use FromMsFeatures (required of the stem) or ToMsFeatures (carried by the derived stem, replacing the
+/// stem's value of any feature it names).
 /// An occupied structure is preserved: this intent creates one and never replaces one.
 /// </summary>
 public static class AuthorFeatureStructureComposer
@@ -32,12 +34,23 @@ public static class AuthorFeatureStructureComposer
         var mint = mintId ?? (() => CanonicalId.Mint());
 
         var msa = ReferenceFieldLowering.Resolve<IMoMorphSynAnalysis>(cache, intent.Msa, ConstructName);
+        if (intent.Side is not null && msa is not IMoDerivAffMsa)
+            throw new InvalidOperationException(
+                $"'{ConstructName}': 'side' applies only to a derivational affix MSA; '{intent.Msa.Value}' is not one.");
+        if (msa is IMoDerivAffMsa && intent.Side is null)
+            throw new InvalidOperationException(
+                $"'{ConstructName}': a derivational affix MSA needs 'side': \"from\" for the requirement on the stem, " +
+                "\"to\" for the features the derived stem carries.");
         var (kind, structure) = msa switch
         {
             IMoStemMsa stem => (MoStemMsaMsFeaturesOperationKinds.CreateMsFeatures, stem.MsFeaturesOA),
             IMoInflAffMsa inflectional => (MoInflAffMsaInflFeatsOperationKinds.CreateInflFeats, inflectional.InflFeatsOA),
+            IMoDerivAffMsa derivational when intent.Side == "to" =>
+                (MoDerivAffMsaMsFeaturesOperationKinds.CreateToMsFeatures, derivational.ToMsFeaturesOA),
+            IMoDerivAffMsa derivational =>
+                (MoDerivAffMsaMsFeaturesOperationKinds.CreateFromMsFeatures, derivational.FromMsFeaturesOA),
             _ => throw new InvalidOperationException(
-                $"'{ConstructName}': MSA '{intent.Msa.Value}' is not a MoStemMsa or MoInflAffMsa."),
+                $"'{ConstructName}': MSA '{intent.Msa.Value}' is not a MoStemMsa, MoInflAffMsa or MoDerivAffMsa."),
         };
         if (structure is not null)
             throw new InvalidOperationException(

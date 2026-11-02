@@ -34,10 +34,10 @@ public static class RemoveFeatureValueComposer
         var mint = mintId ?? (() => CanonicalId.Mint());
         var structure = ReferenceFieldLowering.Resolve<IFsFeatStruc>(cache, intent.FeatStruc, ConstructName);
         ReferenceFieldLowering.Resolve<IFsFeatDefn>(cache, intent.Feature, ConstructName);
-        if (structure.Owner is not (IMoStemMsa or IMoInflAffMsa))
+        if (structure.Owner is not (IMoStemMsa or IMoInflAffMsa or IMoDerivAffMsa))
             throw new InvalidOperationException(
                 $"{ConstructName}: feature-structure-not-grammatical-info: '{intent.FeatStruc.Value}' is not the " +
-                "MsFeatures of a stem or the InflFeats of an inflectional affix.");
+                "MsFeatures of a stem, the InflFeats of an inflectional affix, or the FromMsFeatures or ToMsFeatures of a derivational affix.");
 
         var specification = structure.FeatureSpecsOC.SingleOrDefault(spec => spec.FeatureRA?.Guid == intent.Feature.ToGuid());
         if (specification is null)

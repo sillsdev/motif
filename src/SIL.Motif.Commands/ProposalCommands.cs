@@ -446,7 +446,8 @@ public static partial class ProposalCommands
     /// </summary>
     /// <remarks>
     /// Closed input is <c>{ "msa": "&lt;canonical ID&gt;" }</c>. The exact MSA identity selects
-    /// <c>grammar/moStemMsa/createMsFeatures</c> or <c>grammar/moInflAffMsa/createInflFeats</c>.
+    /// <c>grammar/moStemMsa/createMsFeatures</c> or <c>grammar/moInflAffMsa/createInflFeats</c>, or for a derivational affix with <c>side</c> the
+    /// <c>grammar/moDerivAffMsa/createFromMsFeatures</c> or <c>createToMsFeatures</c> kind.
     /// Inflectional affix features are word requirements. The returned
     /// <see cref="ComposedOperationsResponse.CreatedObjects"/> entry carries the actual dispatched create
     /// kind and structure identity to use in <see cref="ComposeIntent"/> with the <c>compose-author-feature-value</c> verb.

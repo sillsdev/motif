@@ -267,13 +267,17 @@ Authors can give an existing inflectional affix grammatical feature requirements
 entry, forms and analysis identities. An empty structure is valid, and assigning a feature does not
 require choosing a value in the same Proposal.
 
-`AuthorFeatureStructure` accepts closed `{msa}` and resolves exactly `MoStemMsa.MsFeatures` or
-`MoInflAffMsa.InflFeats`. Unknown or duplicate properties, other MSA types and occupied owning slots
+`AuthorFeatureStructure` accepts closed `{msa, side?}` and resolves exactly `MoStemMsa.MsFeatures`,
+`MoInflAffMsa.InflFeats`, or for a derivational MSA the `FromMsFeatures` (`side: "from"`) or `ToMsFeatures`
+(`side: "to"`); `side` is required there and refused elsewhere. Unknown or duplicate properties, other MSA types and occupied owning slots
 are refused before minting. Earlier-staged analyses are resolved against the declared Proposal graph.
 `grammar/moInflAffMsa/createInflFeats` requires the exact target, a fresh nonzero `entityId` and closed
 `after: {}`. It creates a native `FsFeatStruc` into an empty atomic owning slot, never replacing an
 incumbent; placement, storage overrides and identity reuse/conflicts are refused. No owning delete
-is supplied by this family.
+is supplied by this family. `grammar/moDerivAffMsa/createFromMsFeatures` and `createToMsFeatures` follow
+the same rules. HCLoader loads FromMsFeatures into the rule's required features and ToMsFeatures into its
+output features, which PanGloss overlays on the stem's features with priority (`PriorityUnion`): a value named
+there replaces the stem's value of that feature.
 
 `AuthorFeatureValue` retains closed `{featStruc, feature, value?}`. It creates an exact native
 `FsClosedValue` under the structure and separately declares its feature and optional value references.

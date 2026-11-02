@@ -29,6 +29,12 @@ public static partial class SnapshotFields
     /// </summary>
     public const string MoStemMsaMsFeatures = "grammar/moStemMsa/msFeatures";
 
+    /// <summary>The owning link to a derivational affix's required input feature structure (FromMsFeatures).</summary>
+    public const string MoDerivAffMsaFromMsFeatures = "grammar/moDerivAffMsa/fromMsFeatures";
+
+    /// <summary>The owning link to a derivational affix's output feature structure (ToMsFeatures).</summary>
+    public const string MoDerivAffMsaToMsFeatures = "grammar/moDerivAffMsa/toMsFeatures";
+
     /// <summary>
     /// An <c>FsFeatStruc</c>'s <c>FeatureSpecs</c> owning/col <c>FsFeatureSpecification</c> field --
     /// hand-written for the same reason as <see cref="MoStemMsaMsFeatures"/>: an owning/col creation
