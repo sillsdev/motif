@@ -207,6 +207,38 @@ public sealed class RecentProjectRefreshTests
     }
 
     [Fact]
+    public void RefreshingAnUnchangedKnownProjectsListLeavesTheOpenRecentRowsAlone()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            using var files = new ProjectFiles();
+            var fake = NewClient();
+            var first = files.CopyOf(files.FirstIdentity, "first-copy.fwdata");
+            fake.KnownProjectsListIs([first]);
+            var workspace = NewWorkspace(fake, _ => null);
+            try
+            {
+                await workspace.RefreshKnownProjectsAsync();
+                var rows = workspace.RecentProjects.ToArray();
+                var resets = 0;
+                workspace.RecentProjects.CollectionChanged += (_, _) => resets++;
+
+                await workspace.RefreshKnownProjectsAsync();
+
+                Assert.Equal(0, resets);
+                Assert.Equal(rows, workspace.RecentProjects);
+
+                fake.KnownProjectsListIs([first, files.CopyOf(files.SecondIdentity, "second-copy.fwdata")]);
+                await workspace.RefreshKnownProjectsAsync();
+
+                Assert.Equal(1, resets);
+                Assert.Equal(2, workspace.RecentProjects.Count);
+            }
+            finally { await workspace.DisposeAsync(); }
+        }, TimeSpan.FromMinutes(2));
+    }
+
+    [Fact]
     public void DisposalWaitsForABlockedIdentityReadAndRejectsItsPublication()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>

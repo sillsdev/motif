@@ -845,6 +845,8 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
                          (openIdentity is null ||
                           !string.Equals(recent.ProjectIdentity, openIdentity, StringComparison.OrdinalIgnoreCase)))
             .ToArray();
+        // Opening the File menu refreshes this; a reset of an unchanged list would rebuild the menu under the pointer.
+        if (_recentProjects.SequenceEqual(recentProjects)) return;
         _recentProjects.ReplaceWith(recentProjects);
         OnPropertyChanged(nameof(RecentProjectsText));
         OnPropertyChanged(nameof(HasRecentProjects));
