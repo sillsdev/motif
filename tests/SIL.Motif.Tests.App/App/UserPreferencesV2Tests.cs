@@ -113,10 +113,64 @@ public sealed class UserPreferencesV2Tests
             ProjectPreferenceKey.For(guid.ToString("B").ToUpperInvariant(), @"C:\a\p.fwdata"));
         Assert.Equal(ProjectPreferenceKey.For(guid.ToString(), @"C:\a\p.fwdata"),
             ProjectPreferenceKey.For(guid.ToString(), @"D:\elsewhere\p.fwdata"));
-        Assert.Equal("path:c:/data/p/p.fwdata", ProjectPreferenceKey.For(null, @"C:\Data\P\p.fwdata"));
-        Assert.Equal(ProjectPreferenceKey.For(null, @"C:\Data\P\p.fwdata"),
-            ProjectPreferenceKey.For("  ", "c:/DATA/p/P.fwdata/"));
+        if (OperatingSystem.IsWindows())
+        {
+            Assert.Equal("path:c:/data/p/p.fwdata", ProjectPreferenceKey.For(null, @"C:\Data\P\p.fwdata"));
+            Assert.Equal(ProjectPreferenceKey.For(null, @"C:\Data\P\p.fwdata"),
+                ProjectPreferenceKey.For("  ", "c:/DATA/p/P.fwdata/"));
+        }
+
+        var full = Path.Combine(Path.GetTempPath(), "Data", "P", "p.fwdata");
+        var normalised = ProjectPreferenceKey.For(null, full);
+        Assert.Equal(normalised, ProjectPreferenceKey.For(null, full + Path.DirectorySeparatorChar));
+        Assert.Equal(normalised, ProjectPreferenceKey.For(null, Path.Combine(Path.GetDirectoryName(full)!, "x", "..", "p.fwdata")));
         Assert.NotEqual(ProjectPreferenceKey.For(null, "/x/a.fwdata"), ProjectPreferenceKey.For(null, "/x/b.fwdata"));
+    }
+
+    [Fact]
+    public void PathsDifferingOnlyByCaseAreOneProjectExceptWhereTheFileSystemSeparatesThem()
+    {
+        var upper = Path.Combine(Path.GetTempPath(), "Data", "P.fwdata");
+        var lower = Path.Combine(Path.GetTempPath(), "data", "p.fwdata");
+
+        if (OperatingSystem.IsLinux())
+            Assert.NotEqual(ProjectPreferenceKey.For(null, upper), ProjectPreferenceKey.For(null, lower));
+        else
+            Assert.Equal(ProjectPreferenceKey.For(null, upper), ProjectPreferenceKey.For(null, lower));
+    }
+
+    [Fact]
+    public void StateSavedUnderTheOldLowerCasedPathKeyIsStillReadAndMovesToTheFullKeyOnSave()
+    {
+        var project = Path.Combine(Path.GetTempPath(), "Mixed", "Case", "p.fwdata");
+        var oldKey = "path:" + Path.GetFullPath(project).Replace('\\', '/').ToLowerInvariant();
+        var store = new MemoryUserPreferencesStore();
+        store.SetViewState(oldKey, "Statistics", new ViewState("Count", true, "rare"));
+        var memory = new ProjectViewMemory(store);
+        memory.OpenProject(project);
+
+        Assert.Equal(new ViewState("Count", true, "rare"), memory.Load(memory.ProjectKey, "Statistics"));
+
+        memory.Save(memory.ProjectKey, "Statistics", new ViewState("Form", false, null));
+
+        Assert.Equal(new ViewState("Form", false, null), memory.Load(memory.ProjectKey, "Statistics"));
+        if (memory.ProjectKey != oldKey) Assert.Null(store.GetViewState(oldKey, "Statistics"));
+    }
+
+    [Fact]
+    public void AStoredPathTheFileSystemRejectsStillGivesAKeyAndDoesNotThrow()
+    {
+        var bad = "/x/a\0b.fwdata ";
+        var key = ProjectPreferenceKey.For(null, bad);
+        Assert.StartsWith("path:", key);
+        Assert.Equal(key, ProjectPreferenceKey.For(null, bad));
+        Assert.NotEqual(key, ProjectPreferenceKey.For(null, "/x/a\0c.fwdata"));
+
+        var memory = new ProjectViewMemory(new MemoryUserPreferencesStore());
+        Assert.Null(Record.Exception(() => memory.OpenProject(bad)));
+        Assert.Equal(key, memory.ProjectKey);
+        Assert.True(memory.IsOpenPath(bad));
+        Assert.False(memory.IsOpenPath("/x/other.fwdata"));
     }
 
     private sealed class TemporaryFolder : IDisposable

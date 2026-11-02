@@ -69,14 +69,24 @@ public sealed class ProjectViewMemory
     /// <summary>The path-only key of a project, used when it has no stable id.</summary>
     public static string KeyFor(string fullFwDataPath) => ProjectPreferenceKey.For(null, fullFwDataPath);
 
-    /// <summary>The saved state of <paramref name="view"/> for <paramref name="projectKey"/>, if it is the open project.</summary>
-    public ViewState? Load(string? projectKey, string view) =>
-        projectKey is not null && projectKey == ProjectKey ? _store.GetViewState(projectKey, view) : null;
+    /// <summary>
+    /// The saved state of <paramref name="view"/> for <paramref name="projectKey"/>, if it is the open project; state
+    /// an earlier version saved under the lower-cased form of a path key is read when the full key has none.
+    /// </summary>
+    public ViewState? Load(string? projectKey, string view)
+    {
+        if (projectKey is null || projectKey != ProjectKey) return null;
+        return _store.GetViewState(projectKey, view) ??
+            (ProjectPreferenceKey.EarlierFormOf(projectKey) is { } earlier ? _store.GetViewState(earlier, view) : null);
+    }
 
     /// <summary>Saves <paramref name="state"/> when <paramref name="projectKey"/> is still the open project; null clears it.</summary>
     public void Save(string? projectKey, string view, ViewState? state)
     {
         if (projectKey is null || projectKey != ProjectKey) return;
+        // Whatever the earlier form held is superseded, so it must not resurface after a clear.
+        if (ProjectPreferenceKey.EarlierFormOf(projectKey) is { } earlier && _store.GetViewState(earlier, view) is not null)
+            _store.SetViewState(earlier, view, null);
         if (Equals(_store.GetViewState(projectKey, view), state)) return;
         _store.SetViewState(projectKey, view, state);
     }
