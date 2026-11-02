@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Avalonia.Input;
 using CommunityToolkit.Mvvm.Input;
+using SIL.Motif.App;
 using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.Commands.Queries;
@@ -640,7 +641,7 @@ public sealed class WorkspaceShellViewModelTests
         await readStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
 
         Assert.True(workspace.Context.IsOpeningProject);
-        Assert.Equal("Loading project...", workspace.SelectionSummaryText);
+        Assert.Equal(MotifAppStrings.LoadingProject, workspace.SelectionSummaryText);
 
         currentBaseline.SetResult(CommandOutcome<CurrentBaselineResponse>.Success(
             new CurrentBaselineResponse(NewToken(), DateTimeOffset.UtcNow, false)));

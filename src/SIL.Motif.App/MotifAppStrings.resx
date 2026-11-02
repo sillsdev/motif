@@ -9039,4 +9039,8 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <value>Open Claude Plugins</value>
     <comment>Button that opens Claude Desktop's plugin page.</comment>
   </data>
+  <data name="MotifApp.LoadingProject" xml:space="preserve">
+    <value>Loading project...</value>
+    <comment>Message in the sidebar's Selection summary while the chosen project is still opening.</comment>
+  </data>
 </root>

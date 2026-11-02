@@ -4393,4 +4393,6 @@ public static class MotifAppStrings
     public static string OpenPluginFolder => Text("MotifApp.OpenPluginFolder");
 
     public static string OpenClaudePlugins => Text("MotifApp.OpenClaudePlugins");
+
+    public static string LoadingProject => Text("MotifApp.LoadingProject");
 }

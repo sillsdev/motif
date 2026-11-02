@@ -314,7 +314,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
     public string FilterHidesText => CurrentPage == WorkspacePage.Texts ? PageModel<TextsPageModel>().Words.FilterHidesText : string.Empty;
 
     /// <summary>The sidebar's Selection summary, with a brief message while its project is still loading.</summary>
-    public string SelectionSummaryText => Context.IsOpeningProject ? "Loading project..." : Selection.SummaryText;
+    public string SelectionSummaryText => Context.IsOpeningProject ? MotifAppStrings.LoadingProject : Selection.SummaryText;
 
     /// <summary>Whether the project menu can switch projects while an Assessment is running.</summary>
     public bool ProjectSwitchEnabled => Context.ProjectAndSelectionEnabled;
