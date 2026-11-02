@@ -397,9 +397,7 @@ public sealed class PhonologyExamplesInvocationTests : IDisposable
         using var invoker = new PanGlossInvoker(_executable);
         using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(30));
         var pending = invoker.RunAsync(Request(), "cancel", cancellation.Token);
-        var clock = Stopwatch.StartNew();
-        while (!File.Exists(started) && !pending.IsCompleted && clock.Elapsed < TimeSpan.FromSeconds(20))
-            await Task.Delay(20);
+        await Wait.ForAsync(() => File.Exists(started) || pending.IsCompleted, TimeSpan.FromSeconds(20));
         Assert.True(File.Exists(started), "The contained producer did not start.");
         cancellation.Cancel();
         var cancelled = await pending.WaitAsync(TimeSpan.FromSeconds(20));

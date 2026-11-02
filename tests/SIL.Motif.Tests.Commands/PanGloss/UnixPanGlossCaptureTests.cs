@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using SIL.Motif.Host.PanGloss;
 using Xunit;
+using SIL.Motif.Tests.TestFixtures;
 
 namespace SIL.Motif.Tests.PanGloss;
 
@@ -38,7 +39,7 @@ public sealed class UnixPanGlossCaptureTests
             var process = containment.Start(startInfo);
             try
             {
-                await WaitUntilAsync(() => File.Exists(ready), TimeSpan.FromSeconds(15));
+                await Wait.UntilAsync(() => File.Exists(ready), timeout: TimeSpan.FromSeconds(15));
                 captures = Directory.GetFiles(captureDirectory, "motif-pangloss-*.out");
 
                 Assert.Equal(2, captures.Length);
@@ -76,14 +77,4 @@ public sealed class UnixPanGlossCaptureTests
     }
 
     private static string ShellQuote(string value) => "'" + value.Replace("'", "'\\''", StringComparison.Ordinal) + "'";
-
-    private static async Task WaitUntilAsync(Func<bool> predicate, TimeSpan timeout)
-    {
-        var deadline = DateTime.UtcNow + timeout;
-        while (!predicate())
-        {
-            if (DateTime.UtcNow >= deadline) throw new TimeoutException("The parser condition was not met.");
-            await Task.Delay(20);
-        }
-    }
 }

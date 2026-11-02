@@ -592,26 +592,18 @@ public sealed class ProjectInitializationRecoveryTests : IDisposable
 
     private static async Task WaitForChildFileAsync(Process child, string path, Task<string> output, Task<string> error)
     {
-        while (!File.Exists(path))
-        {
-            if (child.HasExited)
-            {
-                await child.WaitForExitAsync();
-                throw new InvalidOperationException($"The lock-holding child exited early with code {child.ExitCode}. " +
-                    $"Standard error: {await error}{Environment.NewLine}Standard output: {await output}");
-            }
-            await Task.Delay(20);
-        }
+        if (await Wait.ForAsync(() => File.Exists(path) || child.HasExited, TimeSpan.FromSeconds(60)) && File.Exists(path)) return;
+        if (!child.HasExited) throw new TimeoutException($"The lock-holding child never created '{path}'.");
+        await child.WaitForExitAsync();
+        throw new InvalidOperationException($"The lock-holding child exited early with code {child.ExitCode}. " +
+            $"Standard error: {await error}{Environment.NewLine}Standard output: {await output}");
     }
 
     private static async Task WaitForFileAsync(string path, int parentId)
     {
         using var parent = Process.GetProcessById(parentId);
-        while (!File.Exists(path))
-        {
-            if (parent.HasExited) throw new InvalidOperationException("The parent exited without releasing the project lock.");
-            await Task.Delay(20);
-        }
+        if (!await Wait.ForAsync(() => File.Exists(path) || parent.HasExited, TimeSpan.FromSeconds(120)) || !File.Exists(path))
+            throw new InvalidOperationException("The parent exited without releasing the project lock.");
     }
 
     private static int[] ReservedFields(LcmCache cache) =>

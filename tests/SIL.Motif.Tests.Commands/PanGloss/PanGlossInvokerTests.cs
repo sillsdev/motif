@@ -852,7 +852,7 @@ public sealed class PanGlossInvokerTests : IDisposable
         using var invoker = Invoker();
         using var cancellation = new CancellationTokenSource();
         var run = invoker.RunAsync(FactsRequest(snapshot, outputDirectory), "test:facts-cancel", cancellation.Token);
-        await WaitForFile(heartbeat);
+        await Wait.UntilAsync(() => File.Exists(heartbeat), $"The fake parser did not create '{heartbeat}'.", TimeSpan.FromSeconds(10));
 
         await cancellation.CancelAsync();
 
@@ -887,7 +887,7 @@ public sealed class PanGlossInvokerTests : IDisposable
         var started = System.Diagnostics.Stopwatch.StartNew();
         var run = invoker.RunAsync(FactsRequest(snapshot, Path.Combine(_root, "facts-timeout-probe")),
             "test:facts-timeout-probe", probe.Token);
-        while (!File.Exists(heartbeat) && !run.IsCompleted) await Task.Delay(10);
+        await Wait.ForAsync(() => File.Exists(heartbeat) || run.IsCompleted, TimeSpan.FromSeconds(60));
         var readiness = started.Elapsed;
         Assert.True(File.Exists(heartbeat), "the fake parser never reached its heartbeat");
         probe.Cancel();
@@ -926,8 +926,7 @@ public sealed class PanGlossInvokerTests : IDisposable
 
         var run = invoker.RunAsync(new PanGlossRequest.Import(project, Path.Combine(_root, "import-cancel.json")),
             "test:import-cancel-description", cancellation.Token);
-        await WaitUntilAsync(() => File.Exists(Path.Combine(parserDirectory, "_fake-pangloss-describe-started")),
-            TimeSpan.FromSeconds(10));
+        await Wait.UntilAsync(() => File.Exists(Path.Combine(parserDirectory, "_fake-pangloss-describe-started")), timeout: TimeSpan.FromSeconds(10));
         await cancellation.CancelAsync();
 
         Assert.IsType<PanGlossOutcome.Cancelled>(await run.WaitAsync(TimeSpan.FromSeconds(15)));
@@ -1234,9 +1233,7 @@ public sealed class PanGlossInvokerTests : IDisposable
 
         var run = invoker.RunAsync(
             new PanGlossRequest.Import(project, Path.Combine(_root, "g.json")), "test:cancel", cts.Token);
-        var deadline = DateTime.UtcNow.AddSeconds(10);
-        while (!File.Exists(heartbeat) && !run.IsCompleted && DateTime.UtcNow < deadline)
-            await Task.Delay(20);
+        await Wait.ForAsync(() => File.Exists(heartbeat) || run.IsCompleted, TimeSpan.FromSeconds(10));
         await cts.CancelAsync();
         var outcome = await run;
 
@@ -1254,9 +1251,7 @@ public sealed class PanGlossInvokerTests : IDisposable
         using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(15));
         var run = invoker.RunAsync(new PanGlossRequest.Batch(project, ["motifa"], TimeSpan.FromSeconds(1)),
             "test:cancel-batch", cancellation.Token);
-        var deadline = DateTime.UtcNow.AddSeconds(10);
-        while (!File.Exists(heartbeat) && !run.IsCompleted && DateTime.UtcNow < deadline)
-            await Task.Delay(20);
+        await Wait.ForAsync(() => File.Exists(heartbeat) || run.IsCompleted, TimeSpan.FromSeconds(10));
         Assert.True(File.Exists(heartbeat));
         var wordsPath = Argv(project)[2];
         Assert.Throws<IOException>(() => File.Open(wordsPath, FileMode.Open, FileAccess.ReadWrite, FileShare.None));
@@ -1294,9 +1289,7 @@ public sealed class PanGlossInvokerTests : IDisposable
         Assert.Equal(PanGlossInvoker.DefaultWallClockCap + TimeSpan.FromSeconds(1),
             PanGlossInvoker.ResolveWallClockCap(new PanGlossRequest.Batch(project, ["motifa"], TimeSpan.FromSeconds(1)), null));
         var run = invoker.RunAsync(request, "test:unlimited-batch", cancellation.Token);
-        var deadline = DateTime.UtcNow.AddSeconds(10);
-        while (!File.Exists(heartbeat) && !run.IsCompleted && DateTime.UtcNow < deadline)
-            await Task.Delay(20);
+        await Wait.ForAsync(() => File.Exists(heartbeat) || run.IsCompleted, TimeSpan.FromSeconds(10));
         Assert.True(File.Exists(heartbeat));
 
         await cancellation.CancelAsync();
@@ -1319,9 +1312,7 @@ public sealed class PanGlossInvokerTests : IDisposable
 
         var run = invoker.RunAsync(
             new PanGlossRequest.Import(project, Path.Combine(_root, "g.json")), "test:contained", cts.Token);
-        var deadline = DateTime.UtcNow.AddSeconds(10);
-        while (DateTime.UtcNow < deadline && (admitted is null || !File.Exists(heartbeat)))
-            await Task.Delay(20);
+        await Wait.ForAsync(() => admitted is not null && File.Exists(heartbeat), TimeSpan.FromSeconds(10));
 
         Assert.NotNull(admitted);
         Assert.True(File.Exists(heartbeat), "The parser did not start under its admitted containment job.");
@@ -1495,14 +1486,6 @@ public sealed class PanGlossInvokerTests : IDisposable
         "{\"format\":\"pangloss-facts-context\",\"version\":1,\"baselineToken\":{\"token\":\"test\"}," +
         "\"inputKind\":\"baseline\",\"dryRunDigest\":null}";
 
-    private static async Task WaitForFile(string path)
-    {
-        var deadline = DateTime.UtcNow.AddSeconds(10);
-        while (!File.Exists(path) && DateTime.UtcNow < deadline)
-            await Task.Delay(20);
-        Assert.True(File.Exists(path), $"The fake parser did not create '{path}'.");
-    }
-
     private static string[] Argv(string besidePath) =>
         JsonSerializer.Deserialize<string[]>(
             File.ReadAllText(Path.Combine(Path.GetDirectoryName(besidePath)!, "_pangloss-argv.json")))!;
@@ -1518,15 +1501,5 @@ public sealed class PanGlossInvokerTests : IDisposable
         var before = File.ReadAllText(heartbeat);
         await Task.Delay(250);
         Assert.Equal(before, File.ReadAllText(heartbeat));
-    }
-
-    private static async Task WaitUntilAsync(Func<bool> predicate, TimeSpan timeout)
-    {
-        var deadline = DateTime.UtcNow + timeout;
-        while (!predicate())
-        {
-            if (DateTime.UtcNow >= deadline) throw new TimeoutException("The parser condition was not met.");
-            await Task.Delay(20);
-        }
     }
 }

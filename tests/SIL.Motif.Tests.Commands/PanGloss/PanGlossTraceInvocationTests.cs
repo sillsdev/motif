@@ -122,9 +122,7 @@ public sealed class PanGlossTraceInvocationTests : IDisposable
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
 
         var run = tracer.TraceAsync(grammar, "sagd", cts.Token);
-        var deadline = DateTime.UtcNow.AddSeconds(10);
-        while (!File.Exists(heartbeat) && !run.IsCompleted && DateTime.UtcNow < deadline)
-            await Task.Delay(20);
+        await Wait.ForAsync(() => File.Exists(heartbeat) || run.IsCompleted, TimeSpan.FromSeconds(10));
         await cts.CancelAsync();
         var outcome = await run;
 

@@ -950,18 +950,18 @@ public sealed class PendingChangesWorkflowTests(PristineProjectFixture pristine,
 
     private static async Task<string> WaitForLatestJobAsync(string path, string kind, TimeSpan? timeout = null)
     {
-        var deadline = DateTimeOffset.UtcNow + (timeout ?? TimeSpan.FromSeconds(10));
-        while (DateTimeOffset.UtcNow < deadline)
+        string? found = null;
+        await Wait.UntilAsync(() =>
         {
             using var database = ProjectMotifDatabase.Open(path);
             using var connection = database.OpenConnection();
             using var command = connection.CreateCommand();
             command.CommandText = "SELECT JobId FROM Jobs WHERE Kind = $kind ORDER BY rowid DESC LIMIT 1;";
             command.Parameters.AddWithValue("$kind", kind);
-            if (command.ExecuteScalar()?.ToString() is { Length: > 0 } jobId) return jobId;
-            await Task.Delay(20);
-        }
-        throw new TimeoutException("The workflow did not enqueue its job.");
+            found = command.ExecuteScalar()?.ToString();
+            return found is { Length: > 0 };
+        }, "The workflow did not enqueue its job.", timeout ?? TimeSpan.FromSeconds(10));
+        return found!;
     }
 
     // Completes the job inside the first progress report, after the poll read it as queued.

@@ -46,8 +46,7 @@ public sealed class InProcessRunnerLauncherTests(PristineProjectFixture pristine
         var measuring = PendingChangesWorkflow.Measure(new MeasurePendingRequest(path, pending.DraftId!,
             pending.Revision, ["held-trial"]), new Progress<MeasureProgress>(), cancellation.Token,
             runnerLauncher: runner);
-        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(30);
-        while (!File.Exists(heartbeat) && DateTime.UtcNow < deadline) await Task.Delay(20);
+        await Wait.ForAsync(() => File.Exists(heartbeat), TimeSpan.FromSeconds(30));
         Assert.True(File.Exists(heartbeat), "The Trial never reached the held parser.");
         Assert.False(measuring.IsCompleted, "Measuring finished while the parser was still held.");
         cancellation.Cancel();

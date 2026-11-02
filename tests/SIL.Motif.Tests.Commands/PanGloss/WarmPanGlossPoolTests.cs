@@ -66,16 +66,6 @@ public sealed class WarmPanGlossPoolTests : IDisposable
         catch (ArgumentException) { return false; }
     }
 
-    private static async Task Eventually(Func<bool> condition, string because)
-    {
-        var deadline = DateTime.UtcNow.AddSeconds(30);
-        while (!condition())
-        {
-            if (DateTime.UtcNow > deadline) Assert.Fail("Timed out waiting for " + because);
-            await Task.Delay(20);
-        }
-    }
-
     [Fact]
     public async Task OptionalServeCountsSurviveTheEnvelopeAndTracePath()
     {
@@ -131,7 +121,7 @@ public sealed class WarmPanGlossPoolTests : IDisposable
         await pool.TryWordAsync(grammar, "t1", grammar, "motifa", true, CancellationToken.None);
 
         Assert.Single(Lines(startLog));
-        await Eventually(() => { lock (changes) return changes.Contains(WarmSessionPhase.Ready); }, "the Ready event");
+        await Wait.UntilAsync(() => { lock (changes) return changes.Contains(WarmSessionPhase.Ready); }, "Timed out waiting for the Ready event");
         lock (changes) Assert.Equal([WarmSessionPhase.Loading, WarmSessionPhase.Ready], changes.Distinct());
     }
 
@@ -176,8 +166,8 @@ public sealed class WarmPanGlossPoolTests : IDisposable
         var pid = int.Parse(Lines(startLog)[0]);
         Assert.True(Alive(pid));
 
-        await Eventually(() => pool.GetState(grammar).Phase == WarmSessionPhase.Idle, "idle eviction");
-        await Eventually(() => !Alive(pid), "the evicted process to exit");
+        await Wait.UntilAsync(() => pool.GetState(grammar).Phase == WarmSessionPhase.Idle, "Timed out waiting for idle eviction");
+        await Wait.UntilAsync(() => !Alive(pid), "Timed out waiting for the evicted process to exit");
 
         Assert.IsType<WarmParseResult.Completed>(
             await pool.TryWordAsync(grammar, "t1", grammar, "motifa", true, CancellationToken.None));
@@ -197,7 +187,7 @@ public sealed class WarmPanGlossPoolTests : IDisposable
         await Task.Delay(500);
         cancel.Cancel();
         Assert.IsType<WarmParseResult.Cancelled>(await hung);
-        await Eventually(() => !Alive(pid), "the cancelled process to be killed");
+        await Wait.UntilAsync(() => !Alive(pid), "Timed out waiting for the cancelled process to be killed");
         Assert.Equal(WarmSessionPhase.Idle, pool.GetState(grammar).Phase);
 
         Assert.IsType<WarmParseResult.Completed>(
@@ -219,7 +209,7 @@ public sealed class WarmPanGlossPoolTests : IDisposable
 
         Assert.Equal("parse-timeout", stuck.Code);
         Assert.True(clock.Elapsed < TimeSpan.FromSeconds(20), "The stuck word must not hold the caller.");
-        await Eventually(() => !Alive(pid), "the unresponsive process to be killed");
+        await Wait.UntilAsync(() => !Alive(pid), "Timed out waiting for the unresponsive process to be killed");
         Assert.Equal(WarmSessionPhase.Failed, pool.GetState(grammar).Phase);
     }
 
@@ -230,7 +220,7 @@ public sealed class WarmPanGlossPoolTests : IDisposable
         using var pool = Pool(new WarmPanGlossOptions { MemoryCeilingBytes = 300UL * 1024 * 1024 });
 
         await pool.Prewarm(grammar, "t1", grammar);
-        await Eventually(() => pool.GetState(grammar).Phase == WarmSessionPhase.Failed, "the ceiling kill");
+        await Wait.UntilAsync(() => pool.GetState(grammar).Phase == WarmSessionPhase.Failed, "Timed out waiting for the ceiling kill");
 
         var state = pool.GetState(grammar);
         Assert.NotNull(state.FailureCode);
@@ -239,7 +229,7 @@ public sealed class WarmPanGlossPoolTests : IDisposable
         var fallback = Assert.IsType<WarmParseResult.Fallback>(
             await pool.TryWordAsync(grammar, "t1", grammar, "motifa", true, CancellationToken.None));
         Assert.Equal(state.FailureCode, fallback.Code);
-        await Eventually(() => !Alive(int.Parse(Lines(startLog)[0])), "the killed process to be gone");
+        await Wait.UntilAsync(() => !Alive(int.Parse(Lines(startLog)[0])), "Timed out waiting for the killed process to be gone");
     }
 
     [Fact]
@@ -272,7 +262,7 @@ public sealed class WarmPanGlossPoolTests : IDisposable
             await pool.TryWordAsync(grammar, "baseline-2", grammar, "motifa", true, CancellationToken.None));
 
         Assert.Equal(2, Lines(startLog).Length);
-        await Eventually(() => !Alive(first), "the invalidated session's process to exit");
+        await Wait.UntilAsync(() => !Alive(first), "Timed out waiting for the invalidated session's process to exit");
     }
 
     [Fact]
@@ -321,7 +311,7 @@ public sealed class WarmPanGlossPoolTests : IDisposable
         foreach (var line in Lines(slowLog))
         {
             var pid = int.Parse(line);
-            await Eventually(() => !Alive(pid), "the slow loader to be killed");
+            await Wait.UntilAsync(() => !Alive(pid), "Timed out waiting for the slow loader to be killed");
         }
     }
 
