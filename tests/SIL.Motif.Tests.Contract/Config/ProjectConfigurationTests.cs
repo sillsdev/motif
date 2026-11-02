@@ -187,6 +187,8 @@ public sealed class ProjectConfigurationTests : IDisposable
     [Theory]
     [InlineData("200000", 20_000_000L)]
     [InlineData("3", 300L)]
+    [InlineData("92233720368547759", long.MaxValue)]
+    [InlineData("9223372036854775807", long.MaxValue)]
     public void AnOldPerWordStepLimitKeyReadsAsOneHundredTimesItsValueAndIsWrittenUnderTheNewKey(string old, long work)
     {
         var parsed = ProjectConfigurationFile.Parse(

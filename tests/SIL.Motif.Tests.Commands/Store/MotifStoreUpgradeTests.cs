@@ -77,6 +77,7 @@ public sealed class MotifStoreUpgradeTests : IDisposable
     [Theory]
     [InlineData("200000", 20_000_000L)]
     [InlineData("1", 100L)]
+    [InlineData("92233720368547759", long.MaxValue)]
     [InlineData("NULL", null)]
     public void UpgradeReadsAnOldNamedSelectionAttemptLimitAsOneHundredTimesItsValue(string oldValue, long? expected)
     {

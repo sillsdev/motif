@@ -115,7 +115,7 @@
                 <TextBlock Classes="setupMuted" Text="{x:Static app:MotifAppStrings.SetupParserWorkLimitDefaultCaption}" TextWrapping="Wrap" />
               </StackPanel>
               <NumericUpDown Grid.Column="1" Classes="setupNumber" Value="{Binding ParserWorkLimitValue}"
-                             Minimum="1" Increment="200000" FormatString="N0"
+                             Minimum="1" Increment="20000000" FormatString="N0"
                              IsEnabled="{Binding !IsParserWorkLimitUnbounded}"
                              AutomationProperties.Name="{x:Static app:MotifAppStrings.SetupParserWorkLimitPerWordAccessibleName}"
                              x:Name="ParserWorkLimitField" LostFocus="OnParserWorkLimitLostFocus"

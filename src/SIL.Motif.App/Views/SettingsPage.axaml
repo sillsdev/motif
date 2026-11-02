@@ -133,7 +133,7 @@
                   </StackPanel>
                   <NumericUpDown Grid.Column="1" Classes="settingsNumber" Classes.refused="{Binding HasParserWorkLimitRefusal}"
                                  Value="{Binding ParserWorkLimitValue}"
-                                 Minimum="1" Increment="100000" FormatString="N0"
+                                 Minimum="1" Increment="10000000" FormatString="N0"
                                  IsEnabled="{Binding !IsNoParserWorkLimit}" LostFocus="OnParsingLimitLostFocus"
                                  KeyDown="OnParsingLimitKeyDown" AutomationProperties.Name="{x:Static app:MotifAppStrings.ParserWorkLimitPerWord}" />
                 </Grid>

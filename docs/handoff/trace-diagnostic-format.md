@@ -28,7 +28,7 @@ Then inspect the trace as diagnostic evidence. Do not invent an association betw
 | `provenance.grammar` | Captured grammar name/source kind/hash/hash semantics. |
 | `provenance.writingSystems` | Ordered vernacular and analysis writing-system tags. |
 | `hostCapture` | Optional Motif capture evidence; normally null in producer-only output. |
-| `search` | Completion flags, `steps` (analysis attempts), `parserWork` (the parser's total work, when recorded), and parser elapsed nanoseconds. |
+| `search` | Completion flags, `steps` (analysis attempts), `workSteps` (the parser's total work, when recorded), and parser elapsed nanoseconds. |
 | `result` | Existing signature, guessed flag, and ordered analyses. |
 | `categories` | Counters and parser work by category, including unattributed work. |
 | `trace` | The full event tree, or null when no tree was recorded. |

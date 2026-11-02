@@ -180,6 +180,21 @@ public sealed class ParseRunLimitsTests
     }
 
     [Fact]
+    public void AHugeParserWorkLimitSendsAPositiveStepCap()
+    {
+        Assert.Equal("92233720368547759", new ParserWorkLimit(long.MaxValue).ToStepCapArgument());
+        Assert.Equal("92233720368547758", new ParserWorkLimit(long.MaxValue - 7).ToStepCapArgument());
+    }
+
+    [Fact]
+    public void AnOldAttemptCountTooLargeToConvertClampsToTheLargestLimit()
+    {
+        Assert.Equal(new ParserWorkLimit(long.MaxValue), ParserWorkLimit.FromAttempts(long.MaxValue));
+        Assert.Equal(new ParserWorkLimit(long.MaxValue), ParserWorkLimit.FromAttempts(92233720368547759));
+        Assert.Null(ParserWorkLimit.FromAttempts(0));
+    }
+
+    [Fact]
     public void AnOldAttemptCountReadsAsOneHundredTimesItsValue() =>
         Assert.Equal(new ParserWorkLimit(20_000_000), ParserWorkLimit.FromAttempts(200_000));
 

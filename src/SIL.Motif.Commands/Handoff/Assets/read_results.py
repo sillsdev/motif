@@ -188,14 +188,21 @@ def slowest_words(records: list, count: int) -> list:
     """The ``count`` word records that cost the parser the most, descending.
 
     Cost is ``parserWork``, the parser's work for the word, which does not depend on how busy the
-    computer was. A record with no ``parserWork`` is ranked by ``elapsedMs`` (time on this computer)
+    computer was. A record with neither ``parserWork`` nor the older ``workSteps`` is ranked by ``elapsedMs`` (time on this computer)
     after every record that has work, and a record with neither is excluded rather than sorted
     arbitrarily against the ones that were measured.
     """
-    worked = [record for record in records if isinstance(record.get("parserWork"), (int, float))]
+    def work_of(record):
+        # An older results file keeps the work under "workSteps".
+        for key in ("parserWork", "workSteps"):
+            if isinstance(record.get(key), (int, float)):
+                return record[key]
+        return None
+
+    worked = [record for record in records if work_of(record) is not None]
     timed = [record for record in records
-             if not isinstance(record.get("parserWork"), (int, float)) and isinstance(record.get("elapsedMs"), (int, float))]
-    return (sorted(worked, key=lambda record: record["parserWork"], reverse=True)
+             if work_of(record) is None and isinstance(record.get("elapsedMs"), (int, float))]
+    return (sorted(worked, key=work_of, reverse=True)
             + sorted(timed, key=lambda record: record["elapsedMs"], reverse=True))[:count]
 
 

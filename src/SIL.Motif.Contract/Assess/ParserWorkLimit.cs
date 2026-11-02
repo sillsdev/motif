@@ -36,9 +36,13 @@ public sealed record ParserWorkLimit
     /// </summary>
     public const long WorkPerAttempt = 100;
 
-    /// <summary>The limit that an older attempt count stands for, or null if it is too large to hold.</summary>
+    /// <summary>
+    /// The limit that an older attempt count stands for, or null if the count is not positive. A count too large to
+    /// hold clamps to the largest limit, as the store upgrade does.
+    /// </summary>
     public static ParserWorkLimit? FromAttempts(long attempts) =>
-        attempts > 0 && attempts <= long.MaxValue / WorkPerAttempt ? new ParserWorkLimit(attempts * WorkPerAttempt) : null;
+        attempts <= 0 ? null
+        : new ParserWorkLimit(attempts > long.MaxValue / WorkPerAttempt ? long.MaxValue : attempts * WorkPerAttempt);
 
     /// <summary>The <c>--work-cap</c> value, or <c>unbounded</c> without a limit.</summary>
     public string ToWorkCapArgument() => Work?.ToString(CultureInfo.InvariantCulture) ?? "unbounded";
@@ -49,7 +53,7 @@ public sealed record ParserWorkLimit
     /// When PanGloss drops that flag, this is the only member to delete.
     /// </summary>
     public string ToStepCapArgument() => Work is { } work
-        ? ((work + WorkPerAttempt - 1) / WorkPerAttempt).ToString(CultureInfo.InvariantCulture)
+        ? (work / WorkPerAttempt + (work % WorkPerAttempt == 0 ? 0 : 1)).ToString(CultureInfo.InvariantCulture)
         : "unbounded";
 
     /// <summary>The limit in the form a person types and a project file keeps.</summary>
