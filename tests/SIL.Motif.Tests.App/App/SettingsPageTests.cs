@@ -1080,13 +1080,14 @@ public sealed class SettingsPageTests
         }, TimeSpan.FromMinutes(2));
     }
 
-    private sealed class CheckChoicesStore(bool refuse) : IDefaultProposalChecksStore
+    private sealed class CheckChoicesStore(bool refuse, string message = "The test store refused this choice.")
+        : IDefaultProposalChecksStore
     {
         public StoredAnalysisComparison StoredAnalyses { get; private set; } = StoredAnalysisComparison.Budget;
 
         public void SetStoredAnalyses(StoredAnalysisComparison mode)
         {
-            if (refuse) throw new IOException("The test store refused this choice.");
+            if (refuse) throw new IOException(message);
             StoredAnalyses = mode;
         }
     }
@@ -1124,6 +1125,30 @@ public sealed class SettingsPageTests
             {
                 window.Close();
                 if (!ReferenceEquals(window, frame)) frame.Close();
+                await workspace.DisposeAsync();
+            }
+        }, TimeSpan.FromMinutes(2));
+    }
+
+    [Fact]
+    public void ARefusedStoredAnalysisChoiceKeepsFoldersOutOfTheWindow()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var store = new CheckChoicesStore(refuse: true, "Cannot write /home/alice/Secret Place/settings.json now.");
+            var (workspace, frame) = FakeComposedWindow.Create(defaultProposalChecks: store);
+            try
+            {
+                var settings = SettingsTestAccess.Model(frame);
+                settings.ChooseStoredAnalysesCommand.Execute(StoredAnalysisComparison.All);
+
+                Assert.Contains("settings.json", settings.StoredAnalysesRefusal);
+                Assert.DoesNotContain("alice", settings.StoredAnalysesRefusal);
+                Assert.DoesNotContain("Secret", settings.StoredAnalysesRefusal);
+            }
+            finally
+            {
+                frame.Close();
                 await workspace.DisposeAsync();
             }
         }, TimeSpan.FromMinutes(2));

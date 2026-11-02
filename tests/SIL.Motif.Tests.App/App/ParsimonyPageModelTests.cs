@@ -122,6 +122,72 @@ public sealed class ParsimonyPageModelTests
         Assert.Empty(page.Groups);
     }
 
+    private const string PathMessage = "Cannot use /home/alice/Secret Place/store.db now.";
+
+    private static void AssertFoldersHidden(string text)
+    {
+        Assert.Equal("Cannot use store.db now.", text.Replace("Not every finding could be loaded: ", string.Empty));
+        Assert.DoesNotContain("alice", text);
+        Assert.DoesNotContain("Secret", text);
+    }
+
+    [Fact]
+    public async Task ARefusedReadKeepsFoldersOutOfTheMessage()
+    {
+        var fake = new FakeCommandClient();
+        fake.OnReadLatestParsimony((_, _) => Task.FromResult(CommandOutcome<ParsimonyLatestReportResponse>.Refused(
+            new Refusal("parsimony.report-damaged", FailureReason.StoreInconsistent, PathMessage))));
+        var (context, page) = Build(fake, advancedAi: true);
+
+        await context.OpenProjectAsync(ProjectA);
+
+        AssertFoldersHidden(page.Message);
+    }
+
+    [Fact]
+    public async Task ARefusedDecisionAndReturnToActiveKeepFoldersOutOfTheActionMessage()
+    {
+        var fake = new FakeCommandClient();
+        var kept = Finding("kept", ParsimonyMeasure, ParsimonyAxis.Parsimony, 1, 3);
+        ExpectReport(fake, Report([kept, Finding("f1", ParsimonyMeasure, ParsimonyAxis.Parsimony, 2, 3)]),
+            [History(kept, "keep", "suppressed", "Checked.")]);
+        fake.RecordDispositionHandler = (_, _) => Task.FromResult(CommandOutcome<ComposedOperationsResponse>.Refused(
+            new Refusal("parsimony.report-baseline-mismatch", FailureReason.Refused, PathMessage)));
+        fake.RetractDispositionHandler = (_, _) => Task.FromResult(CommandOutcome<ComposedOperationsResponse>.Refused(
+            new Refusal("parsimony.report-baseline-mismatch", FailureReason.Refused, PathMessage)));
+        var (context, page) = Build(fake, advancedAi: true);
+        await context.OpenProjectAsync(ProjectA);
+
+        Assert.True(page.SelectFinding(Assert.Single(page.Rows, row => !row.IsHeader).Link!));
+        await page.DeferCommand.ExecuteAsync(null);
+        AssertFoldersHidden(page.ActionMessage);
+
+        Assert.True(page.SelectSuppressed("revision-kept"));
+        await page.ReturnToActiveCommand.ExecuteAsync(null);
+        AssertFoldersHidden(page.ActionMessage);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AFailedPageReadKeepsFoldersOutOfTheLoadingNote(bool throws)
+    {
+        var fake = new FakeCommandClient();
+        ExpectPagedReport(fake, Report(Many(450)), Task.CompletedTask);
+        var served = fake.ParsimonyViewHandler!;
+        fake.ParsimonyViewHandler = (request, token) => request.Query.Cursor is null
+            ? served(request, token)
+            : throws ? Task.FromException<CommandOutcome<ParsimonyNamedViewResponse>>(new IOException(PathMessage))
+            : Task.FromResult(CommandOutcome<ParsimonyNamedViewResponse>.Refused(
+                new Refusal("parsimony.view-failed", FailureReason.Refused, PathMessage)));
+        var (context, page) = Build(fake, advancedAi: true);
+
+        await context.OpenProjectAsync(ProjectA);
+        await page.RemainingLoad;
+
+        AssertFoldersHidden(page.LoadingNote);
+    }
+
     [Fact]
     public async Task AnIncompleteReportSaysWhichInputsAreMissing()
     {

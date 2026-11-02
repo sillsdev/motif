@@ -30,6 +30,27 @@ public sealed class AssistantConnectionsPageTests
         Assert.Contains("Connected Codex", page.StatusMessage, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AConnectionMessageKeepsFoldersOutOfTheStatus(bool throws)
+    {
+        const string text = "Cannot write /home/alice/Secret Place/config.json now.";
+        var connections = new FakeAssistantConnections();
+        if (throws) connections.Failure = new IOException(text);
+        else connections.ResultMessage = text;
+        var page = new AssistantConnectionsPageModel(
+            WorkspaceContextTests.NewContext(new FakeCommandClient(), new FakeAdvancedAiPreferences(), connections));
+        page.IsEnabled = true;
+        page.Assistants[1].IsSelected = true;
+
+        await page.ConnectSelectedCommand.ExecuteAsync(null);
+
+        Assert.Contains("Cannot write config.json now.", page.StatusMessage, StringComparison.Ordinal);
+        Assert.DoesNotContain("alice", page.StatusMessage, StringComparison.Ordinal);
+        Assert.DoesNotContain("Secret", page.StatusMessage, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void AssistantDiscoveryIncludesClaudeDesktopWhenInstalled()
     {
@@ -85,6 +106,8 @@ public sealed class AssistantConnectionsPageTests
     internal sealed class FakeAssistantConnections : IAssistantConnectionService
     {
         public List<AssistantClient> Connected { get; } = [];
+        public string? ResultMessage { get; set; }
+        public Exception? Failure { get; set; }
         public IReadOnlyList<AssistantInstallation> FindAssistants() =>
             [new(AssistantClient.ClaudeCode, "Claude Code"), new(AssistantClient.Codex, "Codex")];
         public string PluginZipPath => string.Empty;
@@ -92,7 +115,8 @@ public sealed class AssistantConnectionsPageTests
         public Task<AssistantConnectionResult> ConnectAsync(AssistantClient client, CancellationToken cancellationToken = default)
         {
             Connected.Add(client);
-            return Task.FromResult(new AssistantConnectionResult($"Connected {client}"));
+            if (Failure is not null) throw Failure;
+            return Task.FromResult(new AssistantConnectionResult(ResultMessage ?? $"Connected {client}"));
         }
     }
 

@@ -37,6 +37,8 @@ public sealed class WindowPathLeakTests
         "Open {0}! Then retry.", "Is {0}? Try again.", "File path='{0}'.", "Path:'{0}'.", "Path:\"{0}\".", "path={0} failed.",
         "Don't change Alice's word. Path:'{0}'.", "Both {0} and {0} failed.", "Could not read\t{0}\nbefore the end.",
         "Rule /p/ -> [b] is odd; 1/2 forms, see {0}.", "<{0}> was refused.", "{{{0}}} was refused.",
+        "The form 'ana is used, see {0} here.", "Glottal 'a and 'u forms cannot read {0}.", "Read {0} for 'ana.",
+        "Say 'ana, then read {0}.", "He wrote 'ana' and {0} failed.",
     ];
 
     public static TheoryData<int> Seeds() => new(Enumerable.Range(1, 12));

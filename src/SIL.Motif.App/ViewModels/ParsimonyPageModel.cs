@@ -874,7 +874,7 @@ public sealed partial class ParsimonyPageModel : PageModel
                         if (!page.Succeeded)
                         {
                             LoadingNote = string.Format(System.Globalization.CultureInfo.CurrentCulture,
-                                MotifAppStrings.ParsimonyLoadFailedFormat, page.Refusal!.Message);
+                                MotifAppStrings.ParsimonyLoadFailedFormat, WindowPathText.Scrub(page.Refusal!.Message));
                             return;
                         }
                         if (view == ParsimonyViews.ParsimonyActiveFindings)
@@ -899,7 +899,7 @@ public sealed partial class ParsimonyPageModel : PageModel
         {
             if (IsCurrent(generation, path) && !cancellationToken.IsCancellationRequested)
                 LoadingNote = string.Format(System.Globalization.CultureInfo.CurrentCulture,
-                    MotifAppStrings.ParsimonyLoadFailedFormat, exception.Message);
+                    MotifAppStrings.ParsimonyLoadFailedFormat, WindowPathText.Scrub(exception.Message));
         }
     }
 
@@ -984,7 +984,7 @@ public sealed partial class ParsimonyPageModel : PageModel
         else
         {
             State = ParsimonyPageState.Refused;
-            Message = refusal.Message;
+            Message = WindowPathText.Scrub(refusal.Message);
         }
         NextStep = NoReportNextStep;
         BadgeCount = null;
@@ -1264,7 +1264,7 @@ public sealed partial class ParsimonyPageModel : PageModel
             if (!outcome.Succeeded)
             {
                 HasStagedAction = false;
-                ActionMessage = outcome.Refusal!.Message;
+                ActionMessage = WindowPathText.Scrub(outcome.Refusal!.Message);
                 return;
             }
             _stagedByFinding[row.Finding.FindingId] = new StagedDecision(row.Finding.MeasureId,
@@ -1314,7 +1314,7 @@ public sealed partial class ParsimonyPageModel : PageModel
             if (!outcome.Succeeded)
             {
                 HasStagedAction = false;
-                ActionMessage = outcome.Refusal!.Message;
+                ActionMessage = WindowPathText.Scrub(outcome.Refusal!.Message);
                 return;
             }
             _stagedReturns[row.RecordId] = row.RevisionId;

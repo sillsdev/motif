@@ -4,7 +4,8 @@ namespace SIL.Motif.App.ViewModels;
 
 /// <summary>
 /// Cuts every folder out of text the window shows, leaving the file names a person recognises; the problem report
-/// keeps the full text.
+/// keeps the full text. A folder the person chose as an output location, such as the handoff destination, is shown
+/// on purpose.
 /// </summary>
 internal static class WindowPathText
 {
@@ -20,6 +21,11 @@ internal static class WindowPathText
     /// spaces, so a path can span several words: a rooted path that has not named its file yet takes the words
     /// after it up to the token that does, and a relative fragment takes the fragments that follow it likewise.
     /// </summary>
+    internal static string Scrub(string text) => Scrub(text, System.Collections.Immutable.ImmutableDictionary<string, string>.Empty);
+
+    /// <inheritdoc cref="Scrub(string)"/>
+    /// <param name="text">The text to show.</param>
+    /// <param name="facts">The refusal's facts; a path fact is replaced by its file name wherever the text repeats it.</param>
     internal static string Scrub(string text, IReadOnlyDictionary<string, string> facts)
     {
         text = ReplaceKnownPaths(text, facts);
@@ -50,6 +56,7 @@ internal static class WindowPathText
     private static List<Token> Tokenize(string text)
     {
         var tokens = new List<Token>();
+        var noCloseFrom = new int[2] { int.MaxValue, int.MaxValue };
         for (var start = 0; start < text.Length;)
         {
             if (char.IsWhiteSpace(text[start])) { start++; continue; }
@@ -61,7 +68,8 @@ internal static class WindowPathText
                 var character = text[end];
                 if (quote == '\0' && char.IsWhiteSpace(character)) break;
                 if (quote == '\0' && character is '\'' or '"' &&
-                    (end == start || "=:([{<".Contains(text[end - 1]))) quote = wrapper = character;
+                    (end == start || "=:([{<".Contains(text[end - 1])) &&
+                    ClosesLater(text, end + 1, character, ref noCloseFrom[character == '"' ? 1 : 0])) quote = wrapper = character;
                 else if (quote != '\0' && character == quote &&
                     (end + 1 == text.Length || char.IsWhiteSpace(text[end + 1]) || ".,;:)]}>!?".Contains(text[end + 1]))) quote = '\0';
                 end++;
@@ -83,6 +91,17 @@ internal static class WindowPathText
             start = end;
         }
         return tokens;
+    }
+
+    // A word that starts with an apostrophe, like 'ana, opens a quote only when something later closes it.
+    private static bool ClosesLater(string text, int from, char quote, ref int noCloseFrom)
+    {
+        if (from >= noCloseFrom) return false;
+        for (var index = from; index < text.Length; index++)
+            if (text[index] == quote && (index + 1 == text.Length || char.IsWhiteSpace(text[index + 1]) ||
+                ".,;:)]}>!?".Contains(text[index + 1]))) return true;
+        noCloseFrom = from;
+        return false;
     }
 
     // Sentence punctuation trails a path; a closing bracket or quote does too unless the name itself opened it.

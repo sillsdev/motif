@@ -274,7 +274,7 @@ public sealed partial class InspectorViewModel : ObservableObject
             var inspected = await _context.Commands.InspectAsync(new InspectRequest(projectPath, subject),
                 token).ConfigureAwait(true);
             if (generation != _generation || token.IsCancellationRequested) return;
-            Show(subject, inspected.Value, inspected.Value is null ? inspected.Refusal?.Message ?? "Motif couldn't read this." : string.Empty,
+            Show(subject, inspected.Value, inspected.Value is null ? WindowPathText.Scrub(inspected.Refusal?.Message ?? "Motif couldn't read this.") : string.Empty,
                 loading: false);
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested) { }

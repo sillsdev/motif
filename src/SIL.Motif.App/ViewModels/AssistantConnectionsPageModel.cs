@@ -99,13 +99,13 @@ public sealed partial class AssistantConnectionsPageModel : PageModel
             try
             {
                 var result = await _connections.ConnectAsync(assistant.Client).ConfigureAwait(true);
-                messages.Add(result.Message);
+                messages.Add(WindowPathText.Scrub(result.Message));
                 ShowsDesktopUpload |= assistant.Client == AssistantClient.ClaudeDesktop;
             }
             catch (Exception exception) when (exception is IOException or InvalidOperationException or
                 System.ComponentModel.Win32Exception or UnauthorizedAccessException or System.Text.Json.JsonException)
             {
-                messages.Add($"{assistant.Name}: {exception.Message}");
+                messages.Add($"{assistant.Name}: {WindowPathText.Scrub(exception.Message)}");
             }
         }
         StatusMessage = string.Join(Environment.NewLine, messages);

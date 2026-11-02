@@ -700,7 +700,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
             _storedAnalyses = previous;
-            StoredAnalysesRefusal = string.Format(MotifAppStrings.StoredAnalysesSaveRefusalFormat, exception.Message);
+            StoredAnalysesRefusal = string.Format(MotifAppStrings.StoredAnalysesSaveRefusalFormat, WindowPathText.Scrub(exception.Message));
         }
         OnPropertyChanged(nameof(IsStoredAnalysesBudget));
         OnPropertyChanged(nameof(IsStoredAnalysesAll));
