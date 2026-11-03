@@ -92,14 +92,13 @@ public sealed class PhonologyResultsCommandTests(PristineProjectFixture pristine
         Assert.True(saved.Succeeded, saved.Refusal?.Message);
         var revision = saved.Value!.ExampleSet;
         var rows = ids.Select(id => Row(id)).ToArray();
-        var limits = new PhonologyLimits(100, 200, 100);
+        var limits = new PhonologyLimits(200, 100);
         rows = [.. rows.Select((row, index) => row with
         {
             EffectiveLimits = new PhonologyLimits(
-                limits.StepCap / (ulong)ids.Length + ((ulong)index < limits.StepCap % (ulong)ids.Length ? 1UL : 0UL),
                 limits.WorkCap / (ulong)ids.Length + ((ulong)index < limits.WorkCap % (ulong)ids.Length ? 1UL : 0UL),
                 limits.TimeoutMs),
-            Steps = 1, ParserWork = 1,
+            ParserWork = 1,
         })];
         var measurement = new PhonologyMeasurement(BareHash, [new("WritingSystemStore/ws.ldml", BareHash)],
             new string('e', 64), new string('f', 64), "producer-build", new string('d', 64), BareHash, 1024, limits, 9, rows);
@@ -120,6 +119,6 @@ public sealed class PhonologyResultsCommandTests(PristineProjectFixture pristine
 
     private static PhonologyMeasuredRow Row(string id) => new(id,
         new PhonologyGenerationContext.HcXmlEntry("entry-17"), new PhonologyGenerationContext.HcXmlEntry("entry-17"),
-        "a-ku", ["e-ki"], new PhonologyLimits(0, 0, 100), PhonologyDisposition.Agree, PhonologyCompletion.Complete,
-        [true], "e-ki", null, 1, 1, false, false, ["r1"], ["r1"], ["r1"]);
+        "a-ku", ["e-ki"], new PhonologyLimits(0, 100), PhonologyDisposition.Agree, PhonologyCompletion.Complete,
+        [true], "e-ki", null, 1, false, false, ["r1"], ["r1"], ["r1"]);
 }

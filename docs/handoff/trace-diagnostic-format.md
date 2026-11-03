@@ -1,6 +1,6 @@
 # Try a Word diagnostic JSON: guide for people and AI
 
-Motif reads only `pangloss.trace-details.v4`. Older and unknown future schemas are refused; update Motif and PanGloss together. PanGloss produces this document only for an explicitly requested, single-word JSON trace:
+Motif reads only `pangloss.trace-details.v5`. Older and unknown future schemas are refused; update Motif and PanGloss together. PanGloss produces this document only for an explicitly requested, single-word JSON trace:
 
 ```text
 pangloss parse grammar.json word --trace=word.trace.json --trace-format=json --trace-details
@@ -8,7 +8,7 @@ pangloss parse grammar.json word --trace=word.trace.json --trace-format=json --t
 
 Use the trace file when running through a build or process wrapper: the wrapper's console messages are not JSON. Ordinary parsing and ordinary trace output remain separate interfaces.
 
-The producer contract is documented in [PanGloss trace details v4](https://github.com/sillsdev/PanGloss/blob/v0.13.1/docs/formats/trace-details-v2.md). The schema version, rather than the installed app version, selects the reader. Unknown major schemas are refused. Unknown fields within supported schemas must survive load and export.
+The producer contract is documented in [PanGloss trace details v5](https://github.com/sillsdev/PanGloss/blob/v0.14.0/docs/formats/trace-details-v2.md). The schema version, rather than the installed app version, selects the reader. Unknown major schemas are refused. Unknown fields within supported schemas must survive load and export.
 
 ## How to interpret a diagnostic
 
@@ -28,7 +28,7 @@ Then inspect the trace as diagnostic evidence. Do not invent an association betw
 | `provenance.grammar` | Captured grammar name/source kind/hash/hash semantics. |
 | `provenance.writingSystems` | Ordered vernacular and analysis writing-system tags. |
 | `hostCapture` | Optional Motif capture evidence; normally null in producer-only output. |
-| `search` | Completion flags, `steps` (analysis attempts), `workSteps` (the parser's total work, when recorded), and parser elapsed nanoseconds. |
+| `search` | Completion flags, `workSteps` (the parser's total work, when recorded), and parser elapsed nanoseconds. |
 | `result` | Existing signature, guessed flag, and ordered analyses. |
 | `categories` | Counters and parser work by category, including unattributed work. |
 | `trace` | The full event tree, or null when no tree was recorded. |

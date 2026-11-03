@@ -168,8 +168,7 @@ public static class PhonologyExampleCommands
             return Invalid<JobEnqueuedResponse>(exception.Message);
         }
         if (!PhonologyExampleValidation.AreLimitsInRange(limits))
-            return Invalid<JobEnqueuedResponse>("The step, work and time ceilings must be positive and at most " +
-                $"{PhonologyExampleValidation.MaxStepCap.ToString(CultureInfo.InvariantCulture)}, " +
+            return Invalid<JobEnqueuedResponse>("The work and time ceilings must be positive and at most " +
                 $"{PhonologyExampleValidation.MaxWorkCap.ToString(CultureInfo.InvariantCulture)} and " +
                 $"{PhonologyExampleValidation.MaxTimeoutMs.ToString(CultureInfo.InvariantCulture)} milliseconds.");
 

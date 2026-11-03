@@ -44,7 +44,6 @@ public sealed class PanGlossBatchStatisticsReaderTests : IDisposable
             connection.Open();
             using var command = connection.CreateCommand();
             command.CommandText = """
-                ALTER TABLE word ADD COLUMN work INTEGER;
                 UPDATE word SET work = 19;
                 UPDATE fact SET work_steps = 0;
                 UPDATE fact SET work_steps = 12 WHERE object_id = 1 AND direction = 'analysis';
@@ -73,7 +72,6 @@ public sealed class PanGlossBatchStatisticsReaderTests : IDisposable
             connection.Open();
             using var command = connection.CreateCommand();
             command.CommandText = """
-                ALTER TABLE word ADD COLUMN work INTEGER;
                 UPDATE word SET work = 19;
                 UPDATE fact SET work_steps = 0;
                 UPDATE fact SET work_steps = 12 WHERE object_id = 1 AND direction = 'analysis';
@@ -193,7 +191,7 @@ public sealed class PanGlossBatchStatisticsReaderTests : IDisposable
         {
             connection.Open();
             using var command = connection.CreateCommand();
-            command.CommandText = "INSERT INTO word VALUES (2, 'slow', 900000, 3, 0); " +
+            command.CommandText = "INSERT INTO word VALUES (2, 'slow', 900000, 3, 0, NULL); " +
                 "INSERT INTO fact (word_id, object_id, direction, attempts, self_time_ns) VALUES (2, 1, 'analysis', 7, 400000);";
             command.ExecuteNonQuery();
         }
@@ -220,8 +218,7 @@ public sealed class PanGlossBatchStatisticsReaderTests : IDisposable
         {
             connection.Open();
             using var command = connection.CreateCommand();
-            command.CommandText = "ALTER TABLE word ADD COLUMN work INTEGER; " +
-                "UPDATE word SET work = 100 WHERE word_id = 1; " +
+            command.CommandText = "UPDATE word SET work = 100 WHERE word_id = 1; " +
                 "INSERT INTO word VALUES (2, 'slow', 900000, 3, 0, 1); " +
                 "INSERT INTO fact (word_id, object_id, direction, attempts, self_time_ns) VALUES (2, 1, 'analysis', 7, 400000);";
             command.ExecuteNonQuery();
@@ -355,7 +352,8 @@ public sealed class PanGlossBatchStatisticsReaderTests : IDisposable
                 form TEXT NOT NULL,
                 elapsed_ns INTEGER NOT NULL,
                 attempts INTEGER NOT NULL,
-                passes INTEGER NOT NULL);
+                passes INTEGER NOT NULL,
+                work INTEGER);
             CREATE TABLE object (
                 object_id INTEGER PRIMARY KEY,
                 key TEXT NOT NULL,
@@ -369,7 +367,7 @@ public sealed class PanGlossBatchStatisticsReaderTests : IDisposable
                 attempts INTEGER NOT NULL,
                 self_time_ns INTEGER, work_steps INTEGER);
             INSERT INTO cache_identity VALUES (1, $version);
-            INSERT INTO word VALUES (1, 'word', 725001, 11, 2);
+            INSERT INTO word VALUES (1, 'word', 725001, 11, 2, NULL);
             INSERT INTO object VALUES
                 (1, 'lex_entry:entry-a#00000000-0000-4000-8000-000000000001@Main', 'lex_entry', 'Shared label', 'authored'),
                 (2, 'lex_entry:entry-b#00000000-0000-4000-8000-000000000002@Main', 'lex_entry', 'Shared label', 'authored'),

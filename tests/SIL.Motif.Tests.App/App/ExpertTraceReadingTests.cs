@@ -9,8 +9,8 @@ namespace SIL.Motif.Tests.App;
 public sealed class ExpertTraceReadingTests
 {
     internal static string EnvironmentOperandDiagnostic(string operandJson) => $$"""
-        {"schemaVersion":"pangloss.trace-details.v4","word":"ab",
-         "search":{"completed":true,"capped":false,"timedOut":false,"invalidShape":false,"steps":1,"elapsedNs":9},
+        {"schemaVersion":"pangloss.trace-details.v5","word":"ab",
+         "search":{"completed":true,"capped":false,"timedOut":false,"invalidShape":false,"elapsedNs":9},
          "result":{"signature":"-","guessed":false,"analyses":[]},"categories":{},
          "trace":{"type":"Failed","children":[],"failureReason":"EnvironmentMismatch",
           "failureContext":{"status":"recorded","environment":{{operandJson}}

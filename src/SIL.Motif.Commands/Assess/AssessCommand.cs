@@ -580,12 +580,8 @@ public static class AssessCommand
                             return word with
                             {
                                 ElapsedNs = stats?.ElapsedNs,
-                                Attempts = stats?.Attempts ?? word.Attempts,
                                 Passes = stats?.Passes ?? word.Passes,
                                 ParserWork = stats?.ParserWork ?? word.ParserWork,
-                                Morphology = word.Morphology is { } morphology && stats is not null
-                                    ? morphology with { Attempts = stats.Attempts }
-                                    : word.Morphology,
                                 ProjectStanding = wordContext.Standings.GetValueOrDefault(word.Word),
                                 OccurrenceCount = wordContext.HasTextSelection
                                     ? wordContext.OccurrencesByWord.GetValueOrDefault(word.Word) : null,
@@ -662,7 +658,6 @@ public static class AssessCommand
                                 StoredAnalyses = storedAnalyses,
                                 StoredAnalysesAvailable = true,
                                 AnalysisComparison = comparisonByWord?.GetValueOrDefault(word.Word),
-                                Attempts = stats?.Attempts ?? word.Attempts,
                                 Passes = stats?.Passes ?? word.Passes,
                                 ParserWork = stats?.ParserWork ?? word.ParserWork,
                             };

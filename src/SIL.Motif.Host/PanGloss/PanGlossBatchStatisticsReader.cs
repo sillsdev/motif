@@ -225,31 +225,19 @@ public static class PanGlossBatchStatisticsReader
         }
     }
 
-    // The word table's work column is read only where the cache declares it, so a cache without one still reads.
-    private static bool WordTableHasWork(SqliteConnection connection)
-    {
-        using var command = connection.CreateCommand();
-        command.CommandText = "SELECT COUNT(*) FROM pragma_table_info('word') WHERE name = 'work'";
-        return (long)(command.ExecuteScalar() ?? 0L) > 0;
-    }
-
     private static Dictionary<string, PanGlossWordStatistics> ReadWords(SqliteConnection connection)
     {
-        var hasWork = WordTableHasWork(connection);
         using var command = connection.CreateCommand();
-        command.CommandText = hasWork
-            ? "SELECT form, elapsed_ns, attempts, passes, work FROM word ORDER BY word_id"
-            : "SELECT form, elapsed_ns, attempts, passes FROM word ORDER BY word_id";
+        command.CommandText = "SELECT form, elapsed_ns, passes, work FROM word ORDER BY word_id";
         using var reader = command.ExecuteReader();
         var words = new Dictionary<string, PanGlossWordStatistics>(StringComparer.Ordinal);
         while (reader.Read())
         {
             var word = reader.GetString(0);
             if (string.IsNullOrWhiteSpace(word) || !words.TryAdd(word, new PanGlossWordStatistics(
-                    ReadCounter(reader, 2, "attempts", word), ReadCounter(reader, 3, "passes", word),
-                    ReadElapsedNs(reader, 1, "word", word))
+                    ReadCounter(reader, 2, "passes", word), ReadElapsedNs(reader, 1, "word", word))
                 {
-                    ParserWork = hasWork && !reader.IsDBNull(4) ? ReadWork(reader, 4, word) : null,
+                    ParserWork = reader.IsDBNull(3) ? null : ReadWork(reader, 3, word),
                 }))
                 throw new InvalidDataException("The batch statistics cache contains an empty or duplicate word row.");
         }
@@ -379,12 +367,11 @@ public sealed record PanGlossBatchStatistics<T>(
 }
 
 /// <summary>PanGloss's whole-word counters and elapsed time for a batch result.</summary>
-/// <param name="Attempts">The analysis attempts recorded for the word.</param>
 /// <param name="Passes">The analyses returned for the word.</param>
 /// <param name="ElapsedNs">The exact whole-word elapsed time recorded by PanGloss.</param>
-public sealed record PanGlossWordStatistics(int Attempts, int Passes, long ElapsedNs)
+public sealed record PanGlossWordStatistics(int Passes, long ElapsedNs)
 {
-    /// <summary>The total work PanGloss recorded for the word, or null when the cache has no such column.</summary>
+    /// <summary>The total work PanGloss recorded for the word, or null when the cache holds none.</summary>
     public long? ParserWork { get; init; }
 }
 

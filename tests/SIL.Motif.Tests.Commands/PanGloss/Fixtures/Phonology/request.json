@@ -1,7 +1,6 @@
 {
-  "version": 1,
+  "version": 2,
   "limits": {
-    "stepCap": 50000000,
     "workCap": 10000000,
     "timeoutMs": 30000
   },

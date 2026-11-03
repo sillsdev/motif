@@ -144,6 +144,7 @@ Assert-Interface '--describe facts.schemaVersion' $interfaces.facts.schemaVersio
 Assert-Interface '--describe facts.contextVersion' $interfaces.facts.contextVersion $description.facts.contextVersion
 Assert-Interface '--describe facts.statsManifestVersion' $interfaces.facts.statsManifestVersion $description.facts.statsManifestVersion
 Assert-Interface '--describe interfaces.serveProtocol' $interfaces.serveProtocol $description.interfaces.serveProtocol
+Assert-Interface '--describe interfaces.batchTsv' $interfaces.batchTsv $description.interfaces.batchTsv
 
 $commands = @{}
 foreach ($command in @($description.commands)) {
@@ -221,7 +222,7 @@ try {
     [System.IO.File]::WriteAllText($words, "$word`n", [System.Text.UTF8Encoding]::new($false))
     $batch = Invoke-PanGloss @(
         'batch', $grammar, $words, $tsv,
-        '--step-cap', '100', '--threads', '1', '--stats', '--cache', $statsCache)
+        '--work-cap', '10000', '--threads', '1', '--stats', '--cache', $statsCache)
     if ($batch.ExitCode -ne 0) {
         throw "PanGloss interface mismatch: batch --stats expected exit 0, actual $($batch.ExitCode). $($batch.StandardError.Trim())"
     }

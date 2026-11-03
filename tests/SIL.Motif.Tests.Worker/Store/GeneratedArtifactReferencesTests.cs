@@ -793,7 +793,7 @@ public sealed class GeneratedArtifactReferencesTests : IDisposable
             anchor,
         }, MotifJson.CreateOptions());
         var phonologyInput = JsonSerializer.Serialize(
-            new PhonologyCheckJobInput("revision-one", token, new PhonologyLimits(1, 1, 1)), MotifJson.CreateOptions());
+            new PhonologyCheckJobInput("revision-one", token, new PhonologyLimits(1, 1)), MotifJson.CreateOptions());
         var assessmentResult = JsonSerializer.Serialize(new
         {
             assessmentIds = new[] { "assessment-after-unknown-status" },
@@ -987,7 +987,7 @@ public sealed class GeneratedArtifactReferencesTests : IDisposable
         var phonologyAssessment = "assessment-phonology-result";
         var phonologyRevision = "phonology-revision-one";
         var phonologyInput = JsonSerializer.Serialize(new PhonologyCheckJobInput(phonologyRevision, baseline,
-            new PhonologyLimits(1, 1, 1)), MotifJson.CreateOptions());
+            new PhonologyLimits(1, 1)), MotifJson.CreateOptions());
         var phonologyResult = JsonSerializer.Serialize(new
         {
             assessmentIds = new[] { phonologyAssessment },
@@ -1191,7 +1191,7 @@ public sealed class GeneratedArtifactReferencesTests : IDisposable
             .AsObject();
         malformedCandidate["schemaVersion"] = ParsimonyCandidateJobInput.CurrentSchemaVersion - 1;
         var phonologyInput = JsonSerializer.Serialize(new PhonologyCheckJobInput("revision-one", baseline,
-            new PhonologyLimits(1, 1, 1)), MotifJson.CreateOptions());
+            new PhonologyLimits(1, 1)), MotifJson.CreateOptions());
         var malformedPhonologyResult = JsonSerializer.Serialize(new
         {
             assessmentIds = (string[]?)null,

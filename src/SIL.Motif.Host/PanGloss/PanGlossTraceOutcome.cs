@@ -21,9 +21,6 @@ public abstract record PanGlossTraceOutcome
     /// </summary>
     public PanGlossTraceDetails? Details { get; init; }
 
-    /// <summary>Analysis attempts in the resident parser's result envelope, if supplied.</summary>
-    public long? Steps { get; init; }
-
     /// <summary>Total parser work in the resident parser's result envelope, if supplied.</summary>
     public long? ParserWork { get; init; }
 

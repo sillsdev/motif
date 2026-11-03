@@ -139,10 +139,10 @@ public sealed class AssessmentArtifactLifetimeTests(PristineProjectFixture prist
                 CREATE TABLE cache_identity (cache_id INTEGER PRIMARY KEY, schema_version INTEGER NOT NULL);
                 CREATE TABLE run (counter_semantics INTEGER NOT NULL);
                 INSERT INTO run VALUES (8);
-                INSERT INTO cache_identity VALUES (1, 10);
+                INSERT INTO cache_identity VALUES (1, 11);
                 CREATE TABLE word (
                     word_id INTEGER PRIMARY KEY, form TEXT NOT NULL, elapsed_ns INTEGER NOT NULL,
-                    attempts INTEGER NOT NULL, passes INTEGER NOT NULL, capped INTEGER NOT NULL,
+                    attempts INTEGER NOT NULL, passes INTEGER NOT NULL, work INTEGER, capped INTEGER NOT NULL,
                     timed_out INTEGER NOT NULL, invalid_shape INTEGER NOT NULL);
                 CREATE TABLE object (object_id INTEGER PRIMARY KEY, key TEXT NOT NULL, kind TEXT NOT NULL,
                     label TEXT NOT NULL, identity_quality TEXT NOT NULL);

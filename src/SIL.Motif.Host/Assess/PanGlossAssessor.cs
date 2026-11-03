@@ -206,14 +206,11 @@ public sealed class PanGlossAssessor : IAssessor
                     if (retried is null || !retried.RetriedIndices.Contains(row.Index))
                         return row with { Morphology = item, LowercaseOf = origin };
                     var statistics = retried.RetryStatistics?.GetValueOrDefault(row.Word);
-                    var attempts = statistics?.Attempts ??
-                        (row.Steps is <= int.MaxValue and { } steps ? (int)steps : item.Attempts);
                     return row with
                     {
-                        Morphology = item with { Attempts = attempts },
+                        Morphology = item,
                         LowercaseOf = origin,
                         WasRetried = true,
-                        Steps = statistics?.Attempts ?? row.Steps ?? item.Attempts,
                         Passes = statistics?.Passes,
                         ParserWork = statistics?.ParserWork ?? row.ParserWork,
                         RetryStatistics = statistics,

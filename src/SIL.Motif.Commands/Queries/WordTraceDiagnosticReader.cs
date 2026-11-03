@@ -29,7 +29,6 @@ internal static class TraceDiagnosticProjection
             elapsedMs,
             reading)
         {
-            ParserSteps = document.Details.Steps,
             ParserWork = document.Details.ParserWork,
             ParserElapsedMs = document.Details.ElapsedNs / 1_000_000.0,
             Guessed = document.Details.Guessed,

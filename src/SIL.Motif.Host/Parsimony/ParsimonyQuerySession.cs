@@ -440,6 +440,22 @@ public sealed partial class ParsimonyQuerySession : IDisposable
         return command.ExecuteScalar() as string;
     }
 
+    /// <summary>Complete, or partial only for reason light; any other partial reason is unreadable.</summary>
+    private bool IsSectionReadable(string name)
+    {
+        using var command = NewCommand();
+        command.CommandText = "SELECT status, reason_code FROM facts.artifact_section WHERE section=$section;";
+        command.Parameters.AddWithValue("$section", name);
+        using var reader = command.ExecuteReader();
+        if (!reader.Read()) return false;
+        var status = reader.GetString(0);
+        return status == "complete" ||
+            (status == "partial" && !reader.IsDBNull(1) && reader.GetString(1) == LightReason);
+    }
+
+    /// <summary>The reason code of a section that a light facts file narrows.</summary>
+    internal const string LightReason = "light";
+
     private long ReadPragma(string pragma)
     {
         using var command = NewCommand();

@@ -47,15 +47,6 @@ public sealed record ParserWorkLimit
     /// <summary>The <c>--work-cap</c> value, or <c>unbounded</c> without a limit.</summary>
     public string ToWorkCapArgument() => Work?.ToString(CultureInfo.InvariantCulture) ?? "unbounded";
 
-    /// <summary>
-    /// The one place the PanGloss attempt flag is derived: <c>--step-cap</c> is PanGloss's own name for a bound on
-    /// analysis attempts, set to one hundredth of the work limit, rounded up, so the work limit is what stops a word.
-    /// When PanGloss drops that flag, this is the only member to delete.
-    /// </summary>
-    public string ToStepCapArgument() => Work is { } work
-        ? (work / WorkPerAttempt + (work % WorkPerAttempt == 0 ? 0 : 1)).ToString(CultureInfo.InvariantCulture)
-        : "unbounded";
-
     /// <summary>The limit in the form a person types and a project file keeps.</summary>
     public string ToArgument() => Work?.ToString(CultureInfo.InvariantCulture) ?? "unbounded";
 

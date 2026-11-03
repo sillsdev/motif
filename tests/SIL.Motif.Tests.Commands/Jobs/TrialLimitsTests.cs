@@ -170,20 +170,10 @@ public sealed class ParseRunLimitsTests
     }
 
     [Fact]
-    public void TheWorkCapIsTheParserWorkLimitAndTheStepCapIsOneHundredthRoundedUp()
+    public void TheWorkCapIsTheParserWorkLimit()
     {
         var limit = new ParserWorkLimit(20_000_000);
         Assert.Equal("20000000", limit.ToWorkCapArgument());
-        Assert.Equal("200000", limit.ToStepCapArgument());
-        Assert.Equal("1", new ParserWorkLimit(7).ToStepCapArgument());
-        Assert.Equal("2", new ParserWorkLimit(101).ToStepCapArgument());
-    }
-
-    [Fact]
-    public void AHugeParserWorkLimitSendsAPositiveStepCap()
-    {
-        Assert.Equal("92233720368547759", new ParserWorkLimit(long.MaxValue).ToStepCapArgument());
-        Assert.Equal("92233720368547758", new ParserWorkLimit(long.MaxValue - 7).ToStepCapArgument());
     }
 
     [Fact]

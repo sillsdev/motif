@@ -15,7 +15,7 @@ motif jobs assessments --project "C:\FieldWorks\Projects\Koro\Koro.fwdata" <jobI
 
 ## What it prints
 
-The id of the queued job. With `--wait` it waits for the job to finish and prints the job's status. The job records one Assessment of kind `PhonologyExamples`; `jobs assessments` gives its id, and [phonology-examples results](cmd:phonology-examples%20results) reads it. `--step-cap`, `--work-cap` and `--timeout-ms` bound the whole check. If no Baseline has been captured the command is refused; if the Baseline changes before the job runs, the job fails and the check must be requested again.
+The id of the queued job. With `--wait` it waits for the job to finish and prints the job's status. The job records one Assessment of kind `PhonologyExamples`; `jobs assessments` gives its id, and [phonology-examples results](cmd:phonology-examples%20results) reads it. `--work-cap` and `--timeout-ms` bound the whole check. If no Baseline has been captured the command is refused; if the Baseline changes before the job runs, the job fails and the check must be requested again.
 
 ## Related commands
 

@@ -226,7 +226,6 @@ public static class HandoffWriter
         return new JsonObject
         {
             ["outcome"] = trace.InvalidShape ? "invalid-shape" : trace.Parsed ? "parsed" : "no-analysis-recorded",
-            ["parserSteps"] = trace.ParserSteps is { } steps ? JsonValue.Create(steps) : null,
             ["completion"] = trace.SearchCompletion switch
             {
                 TraceSearchCompletion.Complete => "complete",

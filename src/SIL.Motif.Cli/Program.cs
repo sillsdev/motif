@@ -1623,18 +1623,19 @@ try
                 case "check":
                     if (positionals.Count != 2)
                         return Usage(UsageLineFor("phonology-examples check"), asJson);
+                    if (flags.ContainsKey("step-cap"))
+                        return Usage("--step-cap was removed with PanGloss 0.14.0; use --work-cap and --timeout-ms.", asJson);
                     var checkLimits = PhonologyExampleValidation.DefaultLimits;
-                    if (!TryReadCheckCeiling(flags, "step-cap", checkLimits.StepCap, out var checkStepCap) ||
-                        !TryReadCheckCeiling(flags, "work-cap", checkLimits.WorkCap, out var checkWorkCap) ||
+                    if (!TryReadCheckCeiling(flags, "work-cap", checkLimits.WorkCap, out var checkWorkCap) ||
                         !TryReadCheckCeiling(flags, "timeout-ms", checkLimits.TimeoutMs, out var checkTimeout) ||
                         checkTimeout > uint.MaxValue)
-                        return Usage("--step-cap, --work-cap and --timeout-ms must be whole numbers.", asJson);
+                        return Usage("--work-cap and --timeout-ms must be whole numbers.", asJson);
                     var checkWaitTimeout = JobCommands.DefaultWaitTimeout;
                     if (flags.ContainsKey("wait") && ParseWaitTimeout(flags,
                         UsageLineFor("phonology-examples check"), asJson, out checkWaitTimeout) is { } checkUsage)
                         return checkUsage;
                     var queuedCheck = PhonologyExampleCommands.Check(new PhonologyCheckRequest(phonologyProject,
-                        positionals[1], null, new PhonologyLimits(checkStepCap, checkWorkCap, (uint)checkTimeout)),
+                        positionals[1], null, new PhonologyLimits(checkWorkCap, (uint)checkTimeout)),
                         SIL.Motif.Host.Parser.PanGlossExecutable.TryLocate());
                     result = RenderCommand(queuedCheck);
                     if (queuedCheck.Succeeded)

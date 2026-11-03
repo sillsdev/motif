@@ -43,10 +43,8 @@ internal static class TrialWordStatistics
         if (statistics is null || !statistics.TryGetValue(word.Word, out var found)) return word;
         return word with
         {
-            Attempts = found.Attempts,
             Passes = found.Passes,
             ParserWork = found.ParserWork ?? word.ParserWork,
-            Morphology = word.Morphology is { } morphology ? morphology with { Attempts = found.Attempts } : null,
         };
     }
 }

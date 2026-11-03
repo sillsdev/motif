@@ -24,14 +24,19 @@ public sealed class PhonologyCheckJobHandler(MotifDatabase database, BaselineRep
 
     private static readonly JsonSerializerOptions JsonOptions = MotifJson.CreateOptions();
 
+    /// <summary>Reads a queued job's input, tolerating the step members of jobs queued before 0.14.0.</summary>
+    public static PhonologyCheckJobInput ReadInput(string inputJson) =>
+        JsonSerializer.Deserialize<PhonologyCheckJobInput>(
+            PhonologyStoredJson.DropRemovedStepMembers(inputJson), JsonOptions)
+        ?? throw new InvalidDataException("The phonology check job has no input.");
+
     /// <summary>Runs the check and records its Assessment, or fails the job with a categorized reason.</summary>
     /// <param name="claimed">The claimed job whose input names the revision, Baseline and limits.</param>
     /// <param name="cancellationToken">Cancels the invocation.</param>
     public async Task<JobOutcome?> RunAsync(ClaimedJob claimed, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(claimed);
-        var input = JsonSerializer.Deserialize<PhonologyCheckJobInput>(claimed.Job.InputJson, JsonOptions)
-            ?? throw new InvalidDataException("The phonology check job has no input.");
+        var input = ReadInput(claimed.Job.InputJson);
 
         PhonologyExampleSetHeader header;
         IReadOnlyList<PhonologyExample> examples;
@@ -107,7 +112,7 @@ public sealed class PhonologyCheckJobHandler(MotifDatabase database, BaselineRep
 /// <summary>The stored input of a phonology check job.</summary>
 /// <param name="RevisionId">The exact saved Example Set revision to check.</param>
 /// <param name="BaselineToken">The Baseline the requester named, or null for the current one when the job runs.</param>
-/// <param name="Limits">The request-wide step, work and time ceilings.</param>
+/// <param name="Limits">The request-wide work and time ceilings.</param>
 public sealed record PhonologyCheckJobInput(
     [property: JsonPropertyName("revisionId")] string RevisionId,
     [property: JsonPropertyName("baselineToken")] BaselineToken? BaselineToken,

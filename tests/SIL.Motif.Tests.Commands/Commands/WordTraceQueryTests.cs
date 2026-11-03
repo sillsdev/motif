@@ -94,7 +94,7 @@ public sealed class WordTraceQueryTests : IDisposable
         {
             WarmCalls.Add((projectKey, stateToken, grammarPath));
             return (await inner.TraceAsync(grammarPath, word, cancellationToken, timeout)) with
-                { Steps = 13, ParserWork = 401 };
+                { ParserWork = 401 };
         }
     }
 
@@ -111,8 +111,7 @@ public sealed class WordTraceQueryTests : IDisposable
         var outcome = WordTraceQuery.Query(new WordTraceRequest(path, "sagd"), warm, CancellationToken.None);
 
         Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
-        Assert.Equal(13, outcome.Value!.ParserSteps);
-        Assert.Equal(401, outcome.Value.ParserWork);
+        Assert.Equal(401, outcome.Value!.ParserWork);
         var call = Assert.Single(warm.WarmCalls);
         Assert.Equal(path, call.Project);
         Assert.Matches("^sha256:[0-9a-f]{64}\\|sha256:[0-9a-f]{64}$", call.Token);
@@ -369,7 +368,6 @@ public sealed class WordTraceQueryTests : IDisposable
         Assert.True(response.Complete);
         Assert.Null(response.StopReason);
         Assert.Equal(13, response.StepCount);
-        Assert.Equal(17, response.ParserSteps);
         Assert.Equal(0.2876, response.ParserElapsedMs!.Value, precision: 4);
         Assert.False(response.Guessed);
         // A kind the parser never touched says nothing, so it is left out rather than shown as a row of zeros.

@@ -478,11 +478,10 @@ public sealed class OverviewTraceSentenceResourceTests
         Assert.DoesNotContain(fragments, fragment => code.Contains(fragment, StringComparison.Ordinal));
     }
 
-    private static WordTraceResponse TraceWith(long? parserSteps, params TraceStep[] children) => new(
+    private static WordTraceResponse TraceWith(params TraceStep[] children) => new(
         "word", Parsed: false, Complete: true, StopReason: null, StepCount: 2, DeepestRule: null, ElapsedMs: 1,
         TraceReadingBuilder.Build("word", new TraceStep("WordSynthesis", "root", "in", "out", null, children), [], []))
     {
-        ParserSteps = parserSteps,
     };
 
     [Fact]
@@ -491,7 +490,7 @@ public sealed class OverviewTraceSentenceResourceTests
         using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
         var failed = new TraceStep("Failed", "rule-x", "in", "out", "blocked", []) { OutcomeStatus = "failed" };
         var succeeded = new TraceStep("Done", "rule-y", "in", "out", null, []) { OutcomeStatus = "succeeded" };
-        var trace = new TraceWordViewModel { Result = TraceWith(null, failed, succeeded) };
+        var trace = new TraceWordViewModel { Result = TraceWith(failed, succeeded) };
 
         trace.OutcomeFilter = TraceOutcomeFilter.Failed;
 
@@ -503,17 +502,5 @@ public sealed class OverviewTraceSentenceResourceTests
         trace.RuleFilter = "no-such-rule";
         Assert.True(trace.HiddenStepCount > 0);
         Assert.StartsWith("rule: no-such-rule", trace.SelectedFilterDescription, StringComparison.Ordinal);
-    }
-
-    [Theory]
-    [InlineData(1L, "1 analysis attempt")]
-    [InlineData(int.MaxValue + 1L, "2,147,483,648 analysis attempts")]
-    [InlineData(long.MaxValue, "9,223,372,036,854,775,807 analysis attempts")]
-    public void ParserStepsAboveTheIntRangeAreCountedInFull(long steps, string expected)
-    {
-        using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
-        var trace = new TraceWordViewModel { Result = TraceWith(steps) };
-
-        Assert.Contains(expected, trace.SummaryText, StringComparison.Ordinal);
     }
 }

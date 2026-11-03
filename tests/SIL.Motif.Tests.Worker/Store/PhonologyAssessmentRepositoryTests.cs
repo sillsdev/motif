@@ -24,6 +24,17 @@ public sealed class PhonologyAssessmentRepositoryTests : IDisposable
     public PhonologyAssessmentRepositoryTests() => Directory.CreateDirectory(_root);
 
     [Fact]
+    public void LimitsStoredWithAStepCapStillRead()
+    {
+        const string stored = "{\"stepCap\":100,\"workCap\":200,\"timeoutMs\":5000}";
+
+        var limits = JsonSerializer.Deserialize<PhonologyLimits>(
+            PhonologyStoredJson.DropRemovedStepMembers(stored), PhonologyJson.CreateOptions());
+
+        Assert.Equal(new PhonologyLimits(200, 5000), limits);
+    }
+
+    [Fact]
     public void ProducedAndUnavailableReopenWithOriginalCitationsAndIndependentBindings()
     {
         PhonologyExampleSetHeader revision;
@@ -47,13 +58,12 @@ public sealed class PhonologyAssessmentRepositoryTests : IDisposable
         Assert.Equal(new[] { "ordered-1", "ordered-2" }, evidence.OrderedRuleIds);
         Assert.Equal(new[] { "visited" }, evidence.VisitedRuleIds);
         Assert.Equal(new[] { "applied" }, evidence.AppliedRuleIds);
-        Assert.Equal(100UL, evidence.EffectiveLimits.StepCap);
+        Assert.Equal(200UL, evidence.EffectiveLimits.WorkCap);
         Assert.True(evidence.Capped);
         Assert.True(evidence.TimedOut);
         Assert.Equal(PhonologyRowCompletion.Incomplete, evidence.Completion);
         Assert.Equal(new[] { true }, evidence.ExpectedObserved);
         Assert.Equal("surface", evidence.Observed);
-        Assert.Equal(7UL, evidence.Steps);
         Assert.Equal(11UL, evidence.ParserWork);
         var binding = Assert.IsType<PhonologyInvocationBinding.Produced>(detail.Assessment.Invocation);
         Assert.Equal("sha256:" + new string('f', 64), binding.ProducerRequestSha256);
@@ -83,14 +93,14 @@ public sealed class PhonologyAssessmentRepositoryTests : IDisposable
         var revision = new PhonologyExampleSetRepository(database).Save("Set", [first, example], null, null);
         var row = Row(example) with { ResolvedContext = null, Observed = null,
             Completion = PhonologyCompletion.NotStarted, Reason = PhonologyReason.UnknownEntry,
-            Steps = 0, ParserWork = 0, Capped = false, TimedOut = false, ExpectedObserved = [false],
+            ParserWork = 0, Capped = false, TimedOut = false, ExpectedObserved = [false],
             OrderedRuleIds = [], VisitedRuleIds = [], AppliedRuleIds = [] };
-        new AssessmentRepository(database).Record(Record("not-started", revision, [Row(first), row], new PhonologyLimits(1, 1, 100)));
+        new AssessmentRepository(database).Record(Record("not-started", revision, [Row(first), row], new PhonologyLimits(1, 100)));
         var evidence = Assert.IsType<PhonologyRowEvidence.Produced>(
             new PhonologyAssessmentRepository(database).ReadExample("not-started", "e").Result.Evidence);
         Assert.Equal(PhonologyRowCompletion.NotStarted, evidence.Completion);
         Assert.Equal(PhonologyRowReason.UnknownEntry, evidence.Reason);
-        Assert.Equal(new PhonologyLimits(0, 0, 100), evidence.EffectiveLimits);
+        Assert.Equal(new PhonologyLimits(0, 100), evidence.EffectiveLimits);
         Assert.False(evidence.Capped);
         Assert.False(evidence.TimedOut);
     }
@@ -130,7 +140,7 @@ public sealed class PhonologyAssessmentRepositoryTests : IDisposable
         Assert.Throws<ArgumentException>(() => repository.Record(record with
             { Material = new AssessmentRecordMaterial.Words([], null, null, []) }));
         Assert.Throws<ArgumentException>(() => repository.Record(record with
-            { ScopeJson = ScopeCodec.Write(new StoredScope.PhonologyExamples(revision.Revision, new PhonologyLimits(1, 1, 1))) }));
+            { ScopeJson = ScopeCodec.Write(new StoredScope.PhonologyExamples(revision.Revision, new PhonologyLimits(1, 1))) }));
         Assert.Throws<ArgumentException>(() => repository.Record(Record("invalid", revision, [Row(second), Row(first)])));
         Assert.Throws<ArgumentException>(() => repository.Record(record with { ReplacesAssessmentId = "header" }));
         Assert.Empty(repository.ListByKind("PhonologyExamples"));
@@ -256,13 +266,12 @@ public sealed class PhonologyAssessmentRepositoryTests : IDisposable
 
     private NewAssessmentRecord Record(string id, PhonologyExampleSetHeader revision, IReadOnlyList<PhonologyMeasuredRow> rows, PhonologyLimits? requested = null)
     {
-        var limits = requested ?? new PhonologyLimits(100, 200, 100);
+        var limits = requested ?? new PhonologyLimits(200, 100);
         rows = rows.Select((row, index) =>
         {
-            var steps = limits.StepCap / (ulong)rows.Count + ((ulong)index < limits.StepCap % (ulong)rows.Count ? 1UL : 0UL);
             var work = limits.WorkCap / (ulong)rows.Count + ((ulong)index < limits.WorkCap % (ulong)rows.Count ? 1UL : 0UL);
-            return row with { EffectiveLimits = new PhonologyLimits(steps, work, limits.TimeoutMs),
-                Steps = Math.Min(row.Steps, steps), ParserWork = Math.Min(row.ParserWork, work) };
+            return row with { EffectiveLimits = new PhonologyLimits(work, limits.TimeoutMs),
+                ParserWork = Math.Min(row.ParserWork, work) };
         }).ToArray();
         var measurement = new PhonologyMeasurement(BareHash, [new("WritingSystemStore/ws.ldml", BareHash)],
             new string('e', 64), new string('f', 64), "producer-build", new string('d', 64), BareHash, 1024, limits, 9, rows);
@@ -282,8 +291,8 @@ public sealed class PhonologyAssessmentRepositoryTests : IDisposable
     }
 
     private static PhonologyMeasuredRow Row(PhonologyExample example) => new(example.Id, example.Context, example.Context,
-        example.Underlying, example.Expected, new PhonologyLimits(0, 0, 100), PhonologyDisposition.Unavailable,
-        PhonologyCompletion.Incomplete, [true], "surface", PhonologyReason.Timeout, 7, 11, true, true,
+        example.Underlying, example.Expected, new PhonologyLimits(0, 100), PhonologyDisposition.Unavailable,
+        PhonologyCompletion.Incomplete, [true], "surface", PhonologyReason.Timeout, 11, true, true,
         ["ordered-1", "ordered-2"], ["visited"], ["applied"]);
     private static PhonologyExample Example(string id, CitationView? citation = null) =>
         new(id, "underlying", ["surface"], new PhonologyGenerationContext.HcXmlEntry("entry"), citation);

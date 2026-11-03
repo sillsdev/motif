@@ -1296,7 +1296,7 @@ public static class CommandTextRenderer
             ? $"Trace of {response.Word}: parsed, {analyses:N0} {(analyses == 1 ? "analysis" : "analyses")}"
             : $"Trace of {response.Word}: no parse");
         text.AppendLine(response.Complete
-            ? $"  Search: complete, {response.ParserSteps?.ToString("N0") ?? "unknown"} analysis attempts"
+            ? "  Search: complete"
             : "  Search: stopped early. " + (response.StopReason ?? "The parser did not finish."));
         if (response.TotalParserWork is { } parserWork)
             text.AppendLine($"  Parser work: {parserWork:N0} parser work" + (response.Lowercase is null ? string.Empty : " (with the lowercase form)"));

@@ -128,7 +128,7 @@ public sealed class SyntheticBantuSampleTests(ITestOutputHelper output)
                     Assert.True(result.Work.HasValue && fixedResult.Work.HasValue,
                         "Both slow-variant measurements must trace their declared words.");
                     output.WriteLine(
-                        $"slow variant work={brokenWork}; fixed work={fixedWork}; ratio={(double)brokenWork / fixedWork:F2}x; steps={result.Steps}/{fixedResult.Steps}");
+                        $"slow variant work={brokenWork}; fixed work={fixedWork}; ratio={(double)brokenWork / fixedWork:F2}x");
                     Assert.True(brokenWork >= fixedWork * 10,
                         $"Slow bug '{bugId}' needs 10x parser work; fixed={fixedResult}, broken={result}.");
                 }
@@ -215,7 +215,6 @@ public sealed class SyntheticBantuSampleTests(ITestOutputHelper output)
         var words = 0;
         var parsed = 0;
         var work = 0L;
-        var steps = 0L;
         var assessmentId = Guid.NewGuid().ToString("N")[..8];
         var assess = new ProcessStartInfo(BuildOutput.Cli)
         {
@@ -269,7 +268,6 @@ public sealed class SyntheticBantuSampleTests(ITestOutputHelper output)
                 CancellationToken.None, TimeSpan.FromSeconds(30));
             var completed = Assert.IsType<PanGlossTraceOutcome.Completed>(trace);
             var details = Assert.IsType<PanGlossTraceDetails>(completed.Details);
-            steps += details.Steps;
             var wordUnits = details.Categories.Sum(category => category.Work);
             work += wordUnits;
             wordWork[normalized] = wordUnits;
@@ -279,7 +277,7 @@ public sealed class SyntheticBantuSampleTests(ITestOutputHelper output)
             Assert.Equal(traceWords.Order(StringComparer.Ordinal), tracedWords!.Order(StringComparer.Ordinal));
 
         return new AssessmentSnapshot(outcomes, words, parsed,
-            traceWords is null ? null : work, traceWords is null ? null : steps, stopwatch.ElapsedMilliseconds,
+            traceWords is null ? null : work, stopwatch.ElapsedMilliseconds,
             tracedWords?.Order(StringComparer.Ordinal).ToArray(), assessmentWords?.Order(StringComparer.Ordinal).ToArray(),
             wordWork);
     }
@@ -345,7 +343,7 @@ public sealed class SyntheticBantuSampleTests(ITestOutputHelper output)
     private static SampleVariantExpected ToExpected(
         AssessmentSnapshot result, Dictionary<string, string>? failing = null) =>
         new(result.Words, result.Parsed, result.Words == 0 ? 0 : (double)result.Parsed / result.Words,
-            result.Work, result.Steps, result.WallClockMs, result.SelectedWords,
+            result.Work, result.WallClockMs, result.SelectedWords,
             result.TracedWords is null ? null : SlowestWords(result), result.TracedWords,
             failing ?? new Dictionary<string, string>(StringComparer.Ordinal));
 
@@ -398,13 +396,13 @@ public sealed class SyntheticBantuSampleTests(ITestOutputHelper output)
 
     private sealed record ProcessResult(int ExitCode, string StandardOutput, string StandardError);
     private sealed record AssessmentSnapshot(
-        Dictionary<string, string> Outcomes, int Words, int Parsed, long? Work, long? Steps, long WallClockMs,
+        Dictionary<string, string> Outcomes, int Words, int Parsed, long? Work, long WallClockMs,
         string[]? TracedWords, string[]? SelectedWords, Dictionary<string, long> WordWork);
     private sealed record SampleExpected(
         string Disclaimer, SampleVariantExpected Fixed, SampleVariantExpected Broken,
         Dictionary<string, SampleVariantExpected> Variants);
     private sealed record SampleVariantExpected(
-        int Words, int Parsed, double TextCoverage, long? Work, long? Steps, long WallClockMs, string[]? SelectedWords,
+        int Words, int Parsed, double TextCoverage, long? Work, long WallClockMs, string[]? SelectedWords,
         string[]? SlowestWords, string[]? TracedWords, Dictionary<string, string> Failing);
     private sealed record GrammarFindingExpected(
         string Level, string Code, string Group, string Description, string? Guidance,

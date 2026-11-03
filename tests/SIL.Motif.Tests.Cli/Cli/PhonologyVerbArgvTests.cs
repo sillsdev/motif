@@ -88,13 +88,25 @@ public sealed class PhonologyVerbArgvTests(PristineProjectFixture pristine)
             .GetProperty("revisionId").GetString()!;
 
         var noBaseline = Run("phonology-examples", "check", "--project", project, revisionId, "--json");
-        var badCeiling = Run("phonology-examples", "check", "--project", project, revisionId, "--step-cap", "many", "--json");
+        var badCeiling = Run("phonology-examples", "check", "--project", project, revisionId, "--work-cap", "many", "--json");
 
         Assert.NotEqual(0, noBaseline.ExitCode);
         using var envelope = JsonDocument.Parse(noBaseline.Error);
         Assert.Equal("phonology-examples.no-baseline", envelope.RootElement.GetProperty("code").GetString());
         Assert.NotEqual(0, badCeiling.ExitCode);
-        Assert.Contains("--step-cap", badCeiling.Error, StringComparison.Ordinal);
+        Assert.Contains("--work-cap", badCeiling.Error, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void CheckRefusesTheRemovedStepCap()
+    {
+        var project = pristine.CopyProjectFile();
+
+        var refused = Run("phonology-examples", "check", "--project", project, "any-revision", "--step-cap", "5", "--json");
+
+        Assert.NotEqual(0, refused.ExitCode);
+        Assert.Contains("--step-cap", refused.Error, StringComparison.Ordinal);
+        Assert.Contains("--work-cap", refused.Error, StringComparison.Ordinal);
     }
 
     private static (int ExitCode, string Output, string Error) Run(params string[] arguments)

@@ -51,7 +51,7 @@ public enum PhonologyCompletion { Complete, Incomplete, NotStarted }
 public enum PhonologyReason
 {
     EmptyLexicon, UnknownEntry, AmbiguousContext, MsaNotOwnedByEntry, InvalidShape, InvalidStratum,
-    ResultLimit, WorkCap, StepCap, Timeout
+    ResultLimit, WorkCap, Timeout
 }
 
 /// <summary>One validated row preserving authored strings, producer comparison facts and separate rule traces.</summary>
@@ -59,5 +59,5 @@ public sealed record PhonologyMeasuredRow(
     string Id, PhonologyGenerationContext RequestedContext, PhonologyGenerationContext? ResolvedContext,
     string Underlying, IReadOnlyList<string> Expected, PhonologyLimits EffectiveLimits,
     PhonologyDisposition Disposition, PhonologyCompletion Completion, IReadOnlyList<bool> ExpectedObserved,
-    string? Observed, PhonologyReason? Reason, ulong Steps, ulong ParserWork, bool Capped, bool TimedOut,
+    string? Observed, PhonologyReason? Reason, ulong ParserWork, bool Capped, bool TimedOut,
     IReadOnlyList<string> OrderedRuleIds, IReadOnlyList<string> VisitedRuleIds, IReadOnlyList<string> AppliedRuleIds);

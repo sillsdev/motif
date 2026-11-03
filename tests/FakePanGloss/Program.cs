@@ -60,21 +60,21 @@ internal static class Program
     [
         new("phonology-examples", ["grammar", "request.json", "out.json?"], [], RunPhonologyExamples),
         new("batch", ["grammar", "words.txt", "out.tsv"],
-            [new("--word-timeout-ms", true), new("--step-cap", true), new("--work-cap", true), new("--threads", true),
+            [new("--word-timeout-ms", true), new("--work-cap", true), new("--threads", true),
                 new("--stats", false), new("--work-columns", false),
                 new("--cache", true), new("--analyses", true)], RunBatch),
         new("facts", ["snapshot.json"],
             [new("--out", true), new("--context", true), new("--stats", true),
-                new("--stats-manifest", true), new("--json", false)], RunFacts),
+                new("--stats-manifest", true), new("--light", false), new("--json", false)], RunFacts),
         new("import", ["project.fwdata", "out.json"], [], RunImport),
         new("describe", [], [], RunDescription),
         new("stats", ["project-or-grammar"],
             [new("--cache", true), new("--group", true), new("--format", true)], RunStats),
         new("parse", ["grammar", "word"],
             [new("--trace", true), new("--trace-format", true), new("--trace-details", false),
-                new("--step-cap", true), new("--work-cap", true)], RunParse),
+                new("--work-cap", true)], RunParse),
         new("serve", [],
-            [new("--project", true), new("--step-cap", true), new("--work-cap", true), new("--word-timeout-ms", true),
+            [new("--project", true), new("--work-cap", true), new("--word-timeout-ms", true),
                 new("--guess", false)], RunServe),
         new("grammar-health", ["grammar", "out.json?"],
             [new("--fw-project", true), new("--stored-analyses", true)], RunGrammarHealth),
@@ -220,7 +220,7 @@ internal static class Program
         {
             schema_version = 1,
             binary = "pangloss",
-            interfaces = new { serveProtocol = 1, batchTsv = 2 },
+            interfaces = new { serveProtocol = 2, batchTsv = 5 },
             facts = new
             {
                 format = FactsArtifact.Format,
@@ -228,7 +228,7 @@ internal static class Program
                 applicationId = FactsArtifact.ApplicationId,
                 contextFormat = FactsArtifact.ContextFormat,
                 contextVersion = FactsArtifact.ContextVersion,
-                statsManifestVersion = 1,
+                statsManifestVersion = 2,
             },
             commands = Dispatch.Where(command => !omissions.Contains(command.Name))
                 .Where(command => command.Name != "phonology-examples" ||
@@ -390,7 +390,7 @@ internal static class Program
             builder.Append(i).Append('\t').Append(words[i]).Append('\t')
                 .Append((known?.ElapsedMs ?? 3).ToString(CultureInfo.InvariantCulture)).Append('\t')
                 .Append(status).Append('\t').Append(signature);
-            if (workColumns) builder.Append('\t').Append(known?.Attempts ?? 1).Append('\t').Append(known?.ParserWork);
+            if (workColumns) builder.Append('\t').Append(known?.ParserWork);
             builder.Append('\n');
         }
         return builder.ToString();
@@ -485,10 +485,14 @@ internal static class Program
         var statsPath = default(string);
         var statsManifestPath = default(string);
         var json = false;
+        var light = false;
         for (var index = 2; index < args.Length; index++)
         {
             switch (args[index])
             {
+                case "--light":
+                    light = true;
+                    break;
                 case "--out":
                     if (++index == args.Length) return FailFacts("invalid_context", "--out requires a path");
                     outputPath = args[index];
@@ -533,7 +537,7 @@ internal static class Program
         try
         {
             var result = FactsArtifact.Write(snapshotPath, contextPath, outputPath, behaviour.Mode,
-                Path.Combine(AppContext.BaseDirectory, "_fake-pangloss-facts.json"));
+                Path.Combine(AppContext.BaseDirectory, "_fake-pangloss-facts.json"), light);
             if (json && behaviour.Mode == "missingApplicationId")
             {
                 var document = JsonSerializer.SerializeToNode(result)!.AsObject();
@@ -678,8 +682,7 @@ internal static class Program
             }
             var envelope = TraceEnvelope(word, behaviour.TraceSignature ?? word + "-sig", behaviour.TraceJson,
                 behaviour.TraceCapped, behaviour.TraceTimedOut, behaviour.TraceAnalyses);
-            var counts = (behaviour.ServeSteps is { } steps ? ",\"steps\":" + steps.ToString(CultureInfo.InvariantCulture) : "") +
-                (behaviour.ServeParserWork is { } work ? ",\"workSteps\":" + work.ToString(CultureInfo.InvariantCulture) : "");
+            var counts = (behaviour.ServeParserWork is { } work ? ",\"workSteps\":" + work.ToString(CultureInfo.InvariantCulture) : "");
             output.WriteLine("{\"id\":" + JsonSerializer.Serialize(id) + ",\"type\":\"result\",\"exitCode\":" +
                 behaviour.ServeExitCode.ToString(CultureInfo.InvariantCulture) + counts + ",\"status\":\"future-status\",\"result\":" + envelope + "}");
         }
@@ -702,11 +705,11 @@ internal static class Program
     // The embedded tree stays verbatim so malformed-tree tests exercise the consumer boundary.
     private static string TraceEnvelope(string word, string signature, string? treeJson, bool capped, bool timedOut,
         IReadOnlyList<JsonElement>? analyses) =>
-        "{\"schemaVersion\":\"pangloss.trace-details.v4\",\"word\":" + JsonSerializer.Serialize(word, Unescaped) +
+        "{\"schemaVersion\":\"pangloss.trace-details.v5\",\"word\":" + JsonSerializer.Serialize(word, Unescaped) +
         ",\"search\":{\"completed\":" + (capped || timedOut ? "false" : "true") +
         ",\"capped\":" + (capped ? "true" : "false") +
         ",\"timedOut\":" + (timedOut ? "true" : "false") +
-        ",\"invalidShape\":false,\"steps\":42,\"elapsedNs\":1500000}" +
+        ",\"invalidShape\":false,\"elapsedNs\":1500000}" +
         ",\"result\":{\"signature\":" + JsonSerializer.Serialize(signature) + ",\"guessed\":false,\"analyses\":" +
         JsonSerializer.Serialize(analyses ?? Array.Empty<JsonElement>(), Unescaped) + "}" +
         ",\"categories\":{\"morphRule\":{\"attempts\":3,\"work\":12,\"outputs\":2,\"notApplied\":1,\"noRoot\":0," +
@@ -996,10 +999,9 @@ internal static class Program
         public bool ServeCrashOnLoad { get; init; }
         public int ServeLoadDelayMs { get; init; }
         public int ServeRequestDelayMs { get; init; }
-        public int ServeProtocol { get; init; } = 1;
+        public int ServeProtocol { get; init; } = 2;
         public string? ServeArgvLog { get; init; }
         public int ServeExitCode { get; init; }
-        public long? ServeSteps { get; init; }
         public long? ServeParserWork { get; init; }
         public int ServeAllocateBytes { get; init; }
 

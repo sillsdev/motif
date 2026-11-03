@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "grammarSha256": "0b4384ebe3d1e472d455c1be25359b2d2b12cdf4d0e28442b91a975af8069279",
   "grammarDependencies": [
     {
@@ -24,15 +24,14 @@
     }
   ],
   "requestSha256": "319882f18805ce494a3c879952b6ab6f26628a65e838592dc87458bc4a49a792",
-  "requestFileSha256": "8d4e2fd0721694271f33e66ea50cb64a210d3a2b2d99cda5d58898d5b6d43a40",
+  "requestFileSha256": "98ee09d9d1916bfda82c333f0e19bc0e504aad3d767676936ebfbfb6754ac96a",
   "build": "pangloss/0.8.4+403f3c43620a5d9880e3316ec8354a75edd93867",
   "limits": {
     "scope": "orderedPhonologyFolds",
-    "stepCap": 50000000,
     "workCap": 10000000,
     "timeoutMs": 30000,
-    "stepAllocation": "balancedByRequestOrder",
-    "timeAllocation": "sharedMonotonicDeadline"
+    "timeAllocation": "sharedMonotonicDeadline",
+    "workAllocation": "balancedByRequestOrder"
   },
   "measuredEntryCount": 10,
   "rows": [
@@ -55,7 +54,6 @@
         "mbili"
       ],
       "effectiveLimits": {
-        "stepCap": 10000000,
         "workCap": 2000000,
         "timeoutMs": 29999
       },
@@ -66,7 +64,6 @@
       ],
       "observed": "mwili",
       "reason": null,
-      "steps": 6,
       "workSteps": 136,
       "capped": false,
       "timedOut": false,
@@ -107,7 +104,6 @@
         "mbaya"
       ],
       "effectiveLimits": {
-        "stepCap": 10000000,
         "workCap": 2000000,
         "timeoutMs": 29999
       },
@@ -118,7 +114,6 @@
       ],
       "observed": "mbaya",
       "reason": null,
-      "steps": 6,
       "workSteps": 192,
       "capped": false,
       "timedOut": false,
@@ -161,7 +156,6 @@
         "mbili"
       ],
       "effectiveLimits": {
-        "stepCap": 10000000,
         "workCap": 2000000,
         "timeoutMs": 29998
       },
@@ -172,7 +166,6 @@
       ],
       "observed": "mwili",
       "reason": null,
-      "steps": 6,
       "workSteps": 219,
       "capped": false,
       "timedOut": false,
@@ -215,7 +208,6 @@
         "pya"
       ],
       "effectiveLimits": {
-        "stepCap": 10000000,
         "workCap": 2000000,
         "timeoutMs": 29998
       },
@@ -226,7 +218,6 @@
       ],
       "observed": "pya",
       "reason": null,
-      "steps": 6,
       "workSteps": 72,
       "capped": false,
       "timedOut": false,
@@ -267,7 +258,6 @@
         "mbaya"
       ],
       "effectiveLimits": {
-        "stepCap": 10000000,
         "workCap": 2000000,
         "timeoutMs": 29998
       },
@@ -278,7 +268,6 @@
       ],
       "observed": "mbaya",
       "reason": null,
-      "steps": 6,
       "workSteps": 126,
       "capped": false,
       "timedOut": false,

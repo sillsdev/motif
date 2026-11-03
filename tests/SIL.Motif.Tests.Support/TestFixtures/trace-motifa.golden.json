@@ -259,7 +259,6 @@
     ],
     "noParseReasons": []
   },
-  "parserSteps": 42,
   "parserElapsedMs": 1.5,
   "guessed": false,
   "effort": [
@@ -277,7 +276,7 @@
     }
   ],
   "diagnosticJson": "<varies>",
-  "diagnosticFormat": "pangloss.trace-details.v4",
+  "diagnosticFormat": "pangloss.trace-details.v5",
   "searchStatus": "complete",
   "invalidShape": false,
   "hostCapture": {

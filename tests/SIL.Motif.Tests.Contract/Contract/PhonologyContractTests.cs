@@ -122,7 +122,7 @@ public sealed class PhonologyContractTests
         var digest = "sha256:" + new string('a', 64);
         var request = new PhonologyCheckRequest("project.fwdata", "example-revision/abc",
             new BaselineToken("project-identity", digest, "projection-v1", "2026-10-13T00:00:00Z", digest),
-            new PhonologyLimits(100, 1000, 5000));
+            new PhonologyLimits(1000, 5000));
         using var json = JsonDocument.Parse(JsonSerializer.Serialize(request, PhonologyJson.CreateOptions()));
 
         Assert.Equal(["baseline", "limits", "projectPath", "revisionId"],

@@ -28,7 +28,6 @@ internal static class PhonologyExamples
         var request = JsonNode.Parse(requestBytes)!.AsObject();
         var examples = request["examples"]!.AsArray();
         var limits = request["limits"]!;
-        var step = limits["stepCap"]!.GetValue<ulong>();
         var work = limits["workCap"]!.GetValue<ulong>();
         var time = limits["timeoutMs"]!.GetValue<uint>();
         var grammar = JsonNode.Parse(File.ReadAllText(args[1]))!;
@@ -48,12 +47,12 @@ internal static class PhonologyExamples
                 ["resolvedContext"] = example["context"]!.DeepClone(), ["underlying"] = example["underlying"]!.DeepClone(),
                 ["expected"] = expected.DeepClone(), ["effectiveLimits"] = new JsonObject
                 {
-                    ["stepCap"] = Allocation(step, examples.Count, i), ["workCap"] = Allocation(work, examples.Count, i),
+                    ["workCap"] = Allocation(work, examples.Count, i),
                     ["timeoutMs"] = time - (uint)Math.Min(i, time)
                 },
                 ["disposition"] = flags.All(b => b) ? "agree" : "disagree", ["completion"] = "complete",
                 ["expectedObserved"] = JsonSerializer.SerializeToNode(flags), ["observed"] = surface, ["reason"] = null,
-                ["steps"] = 1, ["workSteps"] = 3, ["capped"] = false, ["timedOut"] = false,
+                ["workSteps"] = 3, ["capped"] = false, ["timedOut"] = false,
                 ["orderedRuleIds"] = new JsonArray("first", "unused"), ["visitedRuleIds"] = new JsonArray("first"),
                 ["appliedRuleIds"] = new JsonArray("first")
             });
@@ -65,12 +64,12 @@ internal static class PhonologyExamples
                 dependencies.Add(new JsonObject { ["path"] = "WritingSystemStore/" + Path.GetFileName(path), ["sha256"] = Hash(File.ReadAllBytes(path)) });
         var response = new JsonObject
         {
-            ["version"] = 1, ["grammarSha256"] = Hash(File.ReadAllBytes(args[1])), ["grammarDependencies"] = dependencies,
+            ["version"] = 2, ["grammarSha256"] = Hash(File.ReadAllBytes(args[1])), ["grammarDependencies"] = dependencies,
             ["requestSha256"] = new string('a', 64), ["requestFileSha256"] = Hash(requestBytes),
             ["build"] = "fake-phonology/v1", ["limits"] = new JsonObject
             {
-                ["scope"] = "orderedPhonologyFolds", ["stepCap"] = step, ["workCap"] = work, ["timeoutMs"] = time,
-                ["stepAllocation"] = "balancedByRequestOrder", ["timeAllocation"] = "sharedMonotonicDeadline"
+                ["scope"] = "orderedPhonologyFolds", ["workCap"] = work, ["timeoutMs"] = time,
+                ["workAllocation"] = "balancedByRequestOrder", ["timeAllocation"] = "sharedMonotonicDeadline"
             },
             ["measuredEntryCount"] = 7, ["rows"] = rows,
             ["counts"] = new JsonObject { ["agree"] = agree, ["disagree"] = examples.Count - agree, ["unavailable"] = 0, ["total"] = examples.Count },
@@ -80,7 +79,7 @@ internal static class PhonologyExamples
         if (mode == "incompleteTrueFlags")
         {
             first["completion"] = "incomplete"; first["disposition"] = "unavailable";
-            first["reason"] = "stepCap"; first["capped"] = true;
+            first["reason"] = "workCap"; first["capped"] = true;
             response["counts"]!["agree"] = agree - 1; response["counts"]!["unavailable"] = 1;
             response["completionCounts"]!["complete"] = examples.Count - 1; response["completionCounts"]!["incomplete"] = 1;
         }
@@ -117,7 +116,7 @@ internal static class PhonologyExamples
         if (settings["remove"] is JsonArray remove)
             foreach (var field in remove) first.AsObject().Remove(field!.GetValue<string>());
         var json = response.ToJsonString();
-        if (mode == "duplicate") json = json.Replace("\"steps\":1", "\"steps\":1,\"steps\":1", StringComparison.Ordinal);
+        if (mode == "duplicate") json = json.Replace("\"workSteps\":3", "\"workSteps\":3,\"workSteps\":3", StringComparison.Ordinal);
         if (mode == "malformed") json = "{";
         File.WriteAllText(args[3], json);
         File.Copy(args[3], Path.Combine(AppContext.BaseDirectory, "_phonology-result.json"), true);

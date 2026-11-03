@@ -16,7 +16,7 @@ public sealed class PhonologyExamplesInvocationTests : IDisposable
     private readonly string _root = Path.Combine(Path.GetTempPath(), "motif-phonology-" + Guid.NewGuid().ToString("N"));
     private readonly string _executable;
     private readonly string _grammar;
-    private static readonly PhonologyLimits Limits = new(101, 1001, 5000);
+    private static readonly PhonologyLimits Limits = new(1001, 5000);
     private static readonly PhonologyGenerationContext Context = new PhonologyGenerationContext.FwdataEntry(
         "11111111-1111-1111-1111-111111111111", "22222222-2222-2222-2222-222222222222", PhonologyMsaClass.MoStemMsa);
 
@@ -164,7 +164,7 @@ public sealed class PhonologyExamplesInvocationTests : IDisposable
         Assert.Equal("mbaya", row.Observed);
         Assert.Equal(PhonologyDisposition.Unavailable, row.Disposition);
         Assert.Equal(PhonologyCompletion.Incomplete, row.Completion);
-        Assert.Equal(PhonologyReason.StepCap, row.Reason);
+        Assert.Equal(PhonologyReason.WorkCap, row.Reason);
         Assert.True(row.Capped);
     }
 
@@ -177,7 +177,6 @@ public sealed class PhonologyExamplesInvocationTests : IDisposable
         Assert.Equal(["first", "unused"], row.OrderedRuleIds);
         Assert.Equal(["first"], row.VisitedRuleIds);
         Assert.Equal(["first"], row.AppliedRuleIds);
-        Assert.Equal(1UL, row.Steps);
         Assert.Equal(3UL, row.ParserWork);
         Assert.Equal(Context, row.ResolvedContext);
     }
@@ -227,7 +226,6 @@ public sealed class PhonologyExamplesInvocationTests : IDisposable
     {
         var examples = Enumerable.Range(0, 3).Select(i => new PhonologyExample("row" + i, "m+baya", ["mbaya"], Context)).ToArray();
         var rows = Measurement(await Run(Request(examples))).Rows;
-        Assert.Equal([34UL, 34UL, 33UL], rows.Select(r => r.EffectiveLimits.StepCap));
         Assert.Equal([334UL, 334UL, 333UL], rows.Select(r => r.EffectiveLimits.WorkCap));
         Assert.Equal([5000U, 4999U, 4998U], rows.Select(r => r.EffectiveLimits.TimeoutMs));
         Assert.Equal(PanGlossInvoker.DefaultWallClockCap + TimeSpan.FromMilliseconds(Limits.TimeoutMs),
@@ -271,14 +269,11 @@ public sealed class PhonologyExamplesInvocationTests : IDisposable
     }
 
     [Theory]
-    [InlineData("version", 2)]
-    [InlineData("limits/stepCap", 102)]
+    [InlineData("version", 1)]
     [InlineData("limits/workCap", 1002)]
     [InlineData("limits/timeoutMs", 5001)]
-    [InlineData("rows/0/effectiveLimits/stepCap", 102)]
     [InlineData("rows/0/effectiveLimits/workCap", 1002)]
     [InlineData("rows/0/effectiveLimits/timeoutMs", 5001)]
-    [InlineData("rows/0/steps", 102)]
     [InlineData("rows/0/workSteps", 1002)]
     [InlineData("counts/agree", 2)]
     [InlineData("counts/total", 2)]
@@ -449,7 +444,6 @@ public sealed class PhonologyExamplesInvocationTests : IDisposable
             Assert.Equal(binding["completionCounts"]!["complete"]!.GetValue<int>(), measurement.Rows.Count(r => r.Completion == PhonologyCompletion.Complete));
             Assert.Equal(binding["completionCounts"]!["incomplete"]!.GetValue<int>(), measurement.Rows.Count(r => r.Completion == PhonologyCompletion.Incomplete));
             Assert.Equal(binding["completionCounts"]!["notStarted"]!.GetValue<int>(), measurement.Rows.Count(r => r.Completion == PhonologyCompletion.NotStarted));
-            if (name == "capped-result") Assert.Equal([1UL, 0UL, 0UL, 0UL, 0UL], measurement.Rows.Select(r => r.EffectiveLimits.StepCap));
             if (name == "empty-lexicon-result") Assert.Equal(0UL, measurement.MeasuredEntryCount);
             else Assert.Equal(10UL, measurement.MeasuredEntryCount);
         }
@@ -463,7 +457,7 @@ public sealed class PhonologyExamplesInvocationTests : IDisposable
         var frozen = PhonologyInvocationInputs.Freeze(Request(examples));
         expected[0] = "changed"; examples.Clear();
         Assert.Equal(["café"], Assert.Single(frozen.Examples).Expected);
-        foreach (var limits in new[] { new PhonologyLimits(0, 1, 1), new(50_000_001, 1, 1), new(1, 5_000_000_001, 1), new(1, 1, 600_001) })
+        foreach (var limits in new[] { new PhonologyLimits(0, 1), new(5_000_000_001, 1), new(1, 600_001) })
             Assert.Throws<ArgumentOutOfRangeException>(() => PhonologyInvocationInputs.Freeze(Request() with { Limits = limits }));
         foreach (var example in new[] { new PhonologyExample(new string('i', 129), "m+baya", ["mbaya"], Context),
             new("row", new string('x', 257), ["mbaya"], Context), new("row", "x", Enumerable.Repeat("x", 17).ToArray(), Context),

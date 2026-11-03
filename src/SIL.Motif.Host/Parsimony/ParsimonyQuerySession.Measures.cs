@@ -527,7 +527,7 @@ public sealed partial class ParsimonyQuerySession
 
     private void RequireSections(params string[] required)
     {
-        var missing = required.Where(section => ReadSectionStatus(section) != "complete").ToArray();
+        var missing = required.Where(section => !IsSectionReadable(section)).ToArray();
         if (missing.Length != 0)
             throw new ParsimonyQueryUnavailableException(missing);
     }

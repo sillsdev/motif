@@ -88,7 +88,7 @@ public sealed record PanGlossTraceDiagnosticDocument(
     IReadOnlyList<PanGlossTraceAttempt> Attempts,
     string RawJson)
 {
-    public bool IsV4 => string.Equals(SchemaVersion, PanGlossTraceDiagnosticReader.SchemaV4, StringComparison.Ordinal);
+    public bool IsV5 => string.Equals(SchemaVersion, PanGlossTraceDiagnosticReader.SchemaV5, StringComparison.Ordinal);
 }
 
 public sealed class PanGlossTraceDiagnosticFormatException : FormatException
@@ -99,7 +99,7 @@ public sealed class PanGlossTraceDiagnosticFormatException : FormatException
 
 public static class PanGlossTraceDiagnosticReader
 {
-    public const string SchemaV4 = PanGlossInterfaceVersions.TraceDetailsSchemaId;
+    public const string SchemaV5 = PanGlossInterfaceVersions.TraceDetailsSchemaId;
 
     public static PanGlossTraceDiagnosticDocument Read(string json)
     {
@@ -134,9 +134,9 @@ public static class PanGlossTraceDiagnosticReader
             throw new PanGlossTraceDiagnosticFormatException("The diagnostic document must be a JSON object.");
 
         var schema = RequiredString(envelope, "schemaVersion");
-        if (schema != SchemaV4)
+        if (schema != SchemaV5)
             throw new PanGlossTraceDiagnosticFormatException(
-                $"Unsupported diagnostic schema '{schema}'. Motif requires {SchemaV4}. Update PanGloss and Motif together.");
+                $"Unsupported diagnostic schema '{schema}'. Motif requires {SchemaV5}. Update PanGloss and Motif together.");
 
         var search = RequiredObject(envelope, "search");
         var result = RequiredObject(envelope, "result");
@@ -149,7 +149,6 @@ public static class PanGlossTraceDiagnosticReader
             RequiredBool(search, "capped"),
             RequiredBool(search, "timedOut"),
             RequiredBool(search, "invalidShape"),
-            RequiredLong(search, "steps"),
             RequiredLong(search, "elapsedNs"),
             RequiredBool(result, "guessed"),
             categories.EnumerateObject().Select(ReadCategory).ToArray())

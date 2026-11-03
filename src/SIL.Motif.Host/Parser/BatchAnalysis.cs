@@ -82,9 +82,6 @@ public sealed record WordAnalysis(int Index, string Word, int ElapsedMs, WordOut
     /// <summary>The retry's per-word statistics, when its cache supplied them.</summary>
     public SIL.Motif.Host.PanGloss.PanGlossWordStatistics? RetryStatistics { get; init; }
 
-    /// <summary>The analysis attempts in the final per-word evidence, or null when that evidence supplied none.</summary>
-    public long? Steps { get; init; }
-
     /// <summary>The total parser work in the final per-word evidence, or null when that evidence supplied none.</summary>
     public long? ParserWork { get; init; }
 }
@@ -154,7 +151,7 @@ public static class BatchTsvParser
     public static IReadOnlyList<WordAnalysis> Parse(string tsv)
     {
         var results = new List<WordAnalysis>();
-        int? stepsColumn = null, parserWorkColumn = null;
+        int? parserWorkColumn = null;
         var hasHeader = false;
 
         foreach (var raw in tsv.Split('\n'))
@@ -165,9 +162,8 @@ public static class BatchTsvParser
             var columns = line.Split('\t');
             if (IsHeader(columns))
             {
-                // A header names its columns; the optional headerless layout appends both counters.
+                // A header names its columns; the optional headerless layout appends the parser work last.
                 hasHeader = true;
-                stepsColumn = Array.IndexOf(columns, "steps") is var steps and >= 0 ? steps : null;
                 parserWorkColumn = Array.IndexOf(columns, "work_steps") is var work and >= 0 ? work : null;
                 continue;
             }
@@ -187,8 +183,7 @@ public static class BatchTsvParser
                 Outcome: ToOutcome(columns[3], columns[4]),
                 Signature: columns[4])
             {
-                Steps = ReadCounter(columns, stepsColumn ?? (!hasHeader && columns.Length is 7 or 8 ? columns.Length - 2 : null)),
-                ParserWork = ReadCounter(columns, parserWorkColumn ?? (!hasHeader && columns.Length is 7 or 8 ? columns.Length - 1 : null)),
+                ParserWork = ReadCounter(columns, parserWorkColumn ?? (!hasHeader && columns.Length is 6 ? 5 : null)),
             });
         }
 

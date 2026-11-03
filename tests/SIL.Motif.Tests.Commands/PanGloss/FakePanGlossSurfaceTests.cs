@@ -207,11 +207,11 @@ public sealed class FakePanGlossSurfaceTests
             Assert.Equal(flags.Keys.Where(name => request.Subcommand == "stats"
                         ? name is "--cache" or "--group" or "--format"
                         : request.Subcommand == "batch"
-                            ? name is "--word-timeout-ms" or "--step-cap" or "--threads" or "--analyses" or "--stats" or "--cache"
+                            ? name is "--word-timeout-ms" or "--work-cap" or "--threads" or "--analyses" or "--stats" or "--cache"
                             : request.Subcommand == "parse"
-                                ? name is "--trace" or "--trace-format" or "--trace-details" or "--step-cap"
+                                ? name is "--trace" or "--trace-format" or "--trace-details" or "--work-cap"
                                 : request.Subcommand == "facts"
-                                    ? name is "--out" or "--context" or "--stats" or "--stats-manifest" or "--json"
+                                    ? name is "--out" or "--context" or "--stats" or "--stats-manifest" or "--json" or "--light"
                                     : request.Subcommand == "grammar-health" && name is "--fw-project" or "--stored-analyses")
                     .OrderBy(name => name, StringComparer.Ordinal),
                 pinnedFlags.EnumerateObject().Select(flag => flag.Name).OrderBy(name => name, StringComparer.Ordinal));
@@ -258,7 +258,7 @@ public sealed class FakePanGlossSurfaceTests
     private static void AssertFactsIdentity(JsonElement facts)
     {
         Assert.Equal("pangloss-grammar-facts", facts.GetProperty("format").GetString());
-        Assert.Equal(8, facts.GetProperty("schemaVersion").GetInt32());
+        Assert.Equal(9, facts.GetProperty("schemaVersion").GetInt32());
         Assert.Equal(1346848321, facts.GetProperty("applicationId").GetInt64());
         Assert.Equal("pangloss-facts-context", facts.GetProperty("contextFormat").GetString());
         Assert.Equal(1, facts.GetProperty("contextVersion").GetInt32());

@@ -82,7 +82,6 @@ public sealed class PanGlossTracerTests
 
         var details = Assert.IsType<PanGlossTraceOutcome.Completed>(outcome).Details!;
         Assert.True(details.SearchCompleted);
-        Assert.Equal(17, details.Steps);
         Assert.Equal(287600, details.ElapsedNs);
         Assert.True(details.Guessed);
         var lexEntry = Assert.Single(details.Categories, category => category.Kind == "lexEntry");
@@ -168,8 +167,8 @@ public sealed class PanGlossTracerTests
     }
 
     [Theory]
-    [InlineData("{\"schemaVersion\":\"pangloss.trace-details.v4\",\"search\":{")]
-    [InlineData("{\"schemaVersion\":\"pangloss.trace-details.v4\",\"search\":{},\"result\":{},\"categories\":{},\"trace\":null}")]
+    [InlineData("{\"schemaVersion\":\"pangloss.trace-details.v5\",\"search\":{")]
+    [InlineData("{\"schemaVersion\":\"pangloss.trace-details.v5\",\"search\":{},\"result\":{},\"categories\":{},\"trace\":null}")]
     [InlineData("sagd\t32+PAST|sag+?d\n{\"type\":\"WordAnalysis\",\"inputShape\":\"sagd\",\"children\":[]}")]
     [InlineData("no JSON anywhere in this output")]
     public async Task MalformedOrTruncatedOutputIsATypedRefusal_NotAnException(string standardOutput)

@@ -38,9 +38,9 @@ public sealed class PhonologyEvidenceTests
             PhonologyInvocationReason.ProducerUnavailable, "No executable.");
         var context = new PhonologyGenerationContext.HcXmlEntry("entry");
         var row = new PhonologyRowEvidence.Produced(context, null, "root", [],
-            new PhonologyLimits(1, 1, 10), PhonologyRowDisposition.Unavailable,
+            new PhonologyLimits(1, 10), PhonologyRowDisposition.Unavailable,
             PhonologyRowCompletion.NotStarted, [false], null, PhonologyRowReason.UnknownEntry,
-            0, 0, false, false, [], [], []);
+            0, false, false, [], [], []);
         foreach (var options in new[] { Options, MotifJson.CreateOptions() })
         {
             var bindingJson = JsonSerializer.Serialize<PhonologyInvocationBinding>(binding, options);
@@ -112,10 +112,10 @@ public sealed class PhonologyEvidenceTests
         var context = new PhonologyGenerationContext.HcXmlEntry(astral);
         var example = new PhonologyExample(new string('"', 128), astral, expected, context,
             new CitationView(new string('"', 300), new string('\\', 120)));
-        var limits = new PhonologyLimits(ulong.MaxValue, ulong.MaxValue, uint.MaxValue);
+        var limits = new PhonologyLimits(ulong.MaxValue, uint.MaxValue);
         var row = new PhonologyRowEvidence.Produced(context, context, astral, expected, limits,
             PhonologyRowDisposition.Unavailable, PhonologyRowCompletion.Incomplete,
-            Enumerable.Repeat(true, 16).ToArray(), astral, PhonologyRowReason.Timeout, ulong.MaxValue,
+            Enumerable.Repeat(true, 16).ToArray(), astral, PhonologyRowReason.Timeout,
             ulong.MaxValue, true, true, rules, rules, rules);
         var revision = new PhonologyRevisionReference("set/" + new string('a', 22), "revision/" + new string('a', 22),
             "sha256:" + new string('a', 64), "sha256:" + new string('b', 64), 500);

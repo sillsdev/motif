@@ -58,12 +58,13 @@ public sealed class PanGlossTraceDiagnosticReaderTests
     [InlineData("pangloss.trace-details.v1")]
     [InlineData("pangloss.trace-details.v2")]
     [InlineData("pangloss.trace-details.v3")]
-    [InlineData("pangloss.trace-details.v5")]
+    [InlineData("pangloss.trace-details.v4")]
+    [InlineData("pangloss.trace-details.v6")]
     public void OlderAndFutureDiagnosticSchemasAreRefused(string schema)
     {
-        var raw = ReadFixture("trace-details-v3-kumata.json").Replace("pangloss.trace-details.v4", schema, StringComparison.Ordinal);
+        var raw = ReadFixture("trace-details-v3-kumata.json").Replace("pangloss.trace-details.v5", schema, StringComparison.Ordinal);
         var exception = Assert.Throws<PanGlossTraceDiagnosticFormatException>(() => PanGlossTraceDiagnosticReader.Read(raw));
-        Assert.Contains("pangloss.trace-details.v4", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("pangloss.trace-details.v5", exception.Message, StringComparison.Ordinal);
     }
 
     private static System.Collections.Generic.IEnumerable<SIL.Motif.Contract.Responses.TraceStep> Walk(
@@ -73,8 +74,8 @@ public sealed class PanGlossTraceDiagnosticReaderTests
     public void V3ReaderRetainsRawEnvelopeAnalysesCountersOrderAndUnknownFields()
     {
         const string json = "{" +
-            "\"schemaVersion\":\"pangloss.trace-details.v4\",\"word\":\"sagd\",\"extension\":{\"keep\":true}," +
-            "\"search\":{\"completed\":true,\"capped\":false,\"timedOut\":false,\"invalidShape\":false,\"steps\":3,\"elapsedNs\":7}," +
+            "\"schemaVersion\":\"pangloss.trace-details.v5\",\"word\":\"sagd\",\"extension\":{\"keep\":true}," +
+            "\"search\":{\"completed\":true,\"capped\":false,\"timedOut\":false,\"invalidShape\":false,\"elapsedNs\":7}," +
             "\"result\":{\"signature\":\"a|b\",\"guessed\":false," +
             "\"analyses\":[{\"morphemes\":\"root+suffix\",\"surface\":\"sagd\"},{\"morphemes\":\"other\",\"surface\":\"sagd\"}]}," +
             "\"categories\":{\"custom\":{\"attempts\":1,\"work\":9,\"outputs\":2,\"notApplied\":3,\"noRoot\":4,\"surfaceMismatch\":5,\"uses\":6,\"timingAvailable\":false,\"selfElapsedNs\":null}}," +
@@ -82,7 +83,7 @@ public sealed class PanGlossTraceDiagnosticReaderTests
 
         var result = PanGlossTraceDiagnosticReader.Read(json);
 
-        Assert.Equal("pangloss.trace-details.v4", result.SchemaVersion);
+        Assert.Equal("pangloss.trace-details.v5", result.SchemaVersion);
         Assert.Equal("sagd", result.Word);
         Assert.Equal(2, result.Analyses.Count);
         Assert.Equal("root+suffix", result.Analyses[0].LegacyMorphemes);
@@ -96,8 +97,8 @@ public sealed class PanGlossTraceDiagnosticReaderTests
     public void InvalidShapeIsACompletedDocumentWithAnExplicitInvalidState()
     {
         const string json = "{" +
-            "\"schemaVersion\":\"pangloss.trace-details.v4\",\"word\":\"bad\"," +
-            "\"search\":{\"completed\":true,\"capped\":false,\"timedOut\":false,\"invalidShape\":true,\"steps\":0,\"elapsedNs\":0}," +
+            "\"schemaVersion\":\"pangloss.trace-details.v5\",\"word\":\"bad\"," +
+            "\"search\":{\"completed\":true,\"capped\":false,\"timedOut\":false,\"invalidShape\":true,\"elapsedNs\":0}," +
             "\"result\":{\"signature\":\"-\",\"guessed\":false,\"analyses\":[]},\"categories\":{},\"trace\":null}";
 
         var result = PanGlossTraceDiagnosticReader.Read(json);
@@ -110,7 +111,7 @@ public sealed class PanGlossTraceDiagnosticReaderTests
     public void V3ReaderKeepsAnalysesSeparateFromTraceAttemptsAndReadsSiblingContext()
     {
         const string json = """
-{"schemaVersion":"pangloss.trace-details.v4","word":"sagd","search":{"completed":true,"capped":false,"timedOut":false,"invalidShape":false,"steps":1,"elapsedNs":9},"result":{"signature":"a","guessed":false,"analyses":[{"analysisId":"analysis-0","index":0,"surface":"sagd","projection":{"profile":"fieldworks-parse-analysis/v1","status":"available"},"morphs":[{"identity":{"formId":"f1","entryId":"e1","msaId":"m1","quality":"exact"},"form":{"text":"sag","writingSystem":"en","sourceId":"f1"},"headword":{"text":"say"},"gloss":{"text":"say"},"msa":{"category":{"name":"verb","abbreviation":"v"}},"slot":{"name":"past","optional":false},"features":{"status":"recorded"}}]}]},"categories":{},"trace":{"type":"Failed","children":[],"outcome":{"status":"failed","eventType":"surface-mismatch"},"attemptedMorphs":[{"identity":{"formId":"f1"},"form":{"text":"sag"}}],"failureContext":{"status":"recorded","reason":"required feature missing","required":{"tense":"past"},"actual":{"tense":"present"},"environment":"final"},"sourceIdentity":{"kind":"morphologicalRule","id":"rule-1","quality":"exact"}}}
+{"schemaVersion":"pangloss.trace-details.v5","word":"sagd","search":{"completed":true,"capped":false,"timedOut":false,"invalidShape":false,"elapsedNs":9},"result":{"signature":"a","guessed":false,"analyses":[{"analysisId":"analysis-0","index":0,"surface":"sagd","projection":{"profile":"fieldworks-parse-analysis/v1","status":"available"},"morphs":[{"identity":{"formId":"f1","entryId":"e1","msaId":"m1","quality":"exact"},"form":{"text":"sag","writingSystem":"en","sourceId":"f1"},"headword":{"text":"say"},"gloss":{"text":"say"},"msa":{"category":{"name":"verb","abbreviation":"v"}},"slot":{"name":"past","optional":false},"features":{"status":"recorded"}}]}]},"categories":{},"trace":{"type":"Failed","children":[],"outcome":{"status":"failed","eventType":"surface-mismatch"},"attemptedMorphs":[{"identity":{"formId":"f1"},"form":{"text":"sag"}}],"failureContext":{"status":"recorded","reason":"required feature missing","required":{"tense":"past"},"actual":{"tense":"present"},"environment":"final"},"sourceIdentity":{"kind":"morphologicalRule","id":"rule-1","quality":"exact"}}}
 """;
 
         var document = PanGlossTraceDiagnosticReader.Read(json);
@@ -152,7 +153,7 @@ public sealed class PanGlossTraceDiagnosticReaderTests
 
         var document = PanGlossTraceDiagnosticReader.Read(raw);
 
-        Assert.True(document.IsV4);
+        Assert.True(document.IsV5);
         Assert.Equal(raw, document.RawJson);
         Assert.Equal("matinlu", document.Word);
         Assert.Equal(new[] { "analysis-0", "analysis-1" }, document.Analyses.Select(analysis => analysis.AnalysisId));
@@ -195,8 +196,8 @@ public sealed class PanGlossTraceDiagnosticReaderTests
         for (var index = 0; index < depth; index++)
             trace.Append("]}");
 
-        var json = "{\"schemaVersion\":\"pangloss.trace-details.v4\",\"word\":\"deep\",\"search\":{" +
-            "\"completed\":true,\"capped\":false,\"timedOut\":false,\"invalidShape\":false,\"steps\":1,\"elapsedNs\":0}," +
+        var json = "{\"schemaVersion\":\"pangloss.trace-details.v5\",\"word\":\"deep\",\"search\":{" +
+            "\"completed\":true,\"capped\":false,\"timedOut\":false,\"invalidShape\":false,\"elapsedNs\":0}," +
             "\"result\":{\"signature\":\"deep\",\"guessed\":false,\"analyses\":[]},\"categories\":{},\"trace\":" +
             trace + "}";
 
@@ -214,9 +215,9 @@ public sealed class PanGlossTraceDiagnosticReaderTests
     public void MalformedNumericFieldProducesUsefulFormatError()
     {
         const string json = "{" +
-            "\"schemaVersion\":\"pangloss.trace-details.v4\",\"word\":\"bad\"," +
+            "\"schemaVersion\":\"pangloss.trace-details.v5\",\"word\":\"bad\"," +
             "\"search\":{\"completed\":true,\"capped\":false,\"timedOut\":false,\"invalidShape\":false," +
-            "\"steps\":9223372036854775808,\"elapsedNs\":0}," +
+            "\"elapsedNs\":9223372036854775808}," +
             "\"result\":{\"signature\":\"-\",\"guessed\":false,\"analyses\":[]},\"categories\":{},\"trace\":null}";
 
         var exception = Assert.Throws<PanGlossTraceDiagnosticFormatException>(() =>
@@ -233,7 +234,7 @@ public sealed class PanGlossTraceDiagnosticReaderTests
         Assert.Contains("unsupported", unknown.Message, StringComparison.OrdinalIgnoreCase);
 
         var malformed = Assert.Throws<PanGlossTraceDiagnosticFormatException>(() =>
-            PanGlossTraceDiagnosticReader.Read("{\"schemaVersion\":\"pangloss.trace-details.v4\","));
+            PanGlossTraceDiagnosticReader.Read("{\"schemaVersion\":\"pangloss.trace-details.v5\","));
         Assert.Contains("JSON", malformed.Message, StringComparison.OrdinalIgnoreCase);
     }
 

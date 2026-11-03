@@ -110,6 +110,7 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
 
         Assert.NotNull(invoker.FactsRequest);
         Assert.Null(invoker.FactsRequest!.ArtifactDirectory);
+        Assert.True(invoker.FactsRequest.Light);
     }
 
     [Fact]
@@ -951,6 +952,55 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
     }
 
     [Fact]
+    public async Task ALightPartialSectionIsReadable()
+    {
+        await RunStatementUsageAsync(factsPath => AddStatementUsageFacts(factsPath,
+            "UPDATE artifact_section SET status='partial', reason_code='light' WHERE section='entries';"),
+            result => Assert.NotEqual(ParsimonyMeasureStatus.NotAvailable, result.Run.Status));
+    }
+
+    [Fact]
+    public async Task ANonLightPartialSectionIsRefused()
+    {
+        await RunStatementUsageAsync(factsPath => AddStatementUsageFacts(factsPath,
+            "UPDATE artifact_section SET status='partial', reason_code='truncated' WHERE section='entries';"),
+            result =>
+            {
+                Assert.Equal(ParsimonyMeasureStatus.NotAvailable, result.Run.Status);
+                Assert.Contains("entries", Assert.IsType<string>(result.NoteReason), StringComparison.Ordinal);
+            });
+    }
+
+    [Theory]
+    [InlineData("load_accounting", "light", true)]
+    [InlineData("load_accounting", "truncated", false)]
+    [InlineData("phonology", "light", false)]
+    [InlineData("patterns", "light", false)]
+    public async Task AlternationRuleInventoryNeedsPhonologyAndPatternsCompleteAndAccountingReadable(
+        string section, string reason, bool ruleInventoryKnown)
+    {
+        await RunSessionAsync(factsPath =>
+            {
+                AddStatementUsageFacts(factsPath);
+                using var connection = new SqliteConnection(new SqliteConnectionStringBuilder
+                {
+                    DataSource = Path.GetFullPath(factsPath),
+                    Pooling = false,
+                }.ToString());
+                connection.Open();
+                using var command = connection.CreateCommand();
+                command.CommandText = "UPDATE artifact_section SET status='complete', reason_code=NULL WHERE section IN " +
+                    "('allomorphs','entries','msas','features','phonology','environments','patterns','compiled_mappings'," +
+                    "'load_accounting'); UPDATE artifact_section SET status='partial', reason_code=$reason " +
+                    "WHERE section=$section;";
+                command.Parameters.AddWithValue("$reason", reason);
+                command.Parameters.AddWithValue("$section", section);
+                command.ExecuteNonQuery();
+            },
+            (session, _) => Assert.Equal(ruleInventoryKnown, session.ReadAlternationInput().RuleInventoryKnown));
+    }
+
+    [Fact]
     public async Task AClassWithNoReferenceIsUnused()
     {
         const string naturalClass = "10000000-0000-0000-0000-000000000081";
@@ -999,7 +1049,11 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
         transaction.Commit();
     }
 
-    private async Task RunStatementUsageAsync(Action<string> addFacts, Action<ParsimonyMeasureResult> assert)
+    private Task RunStatementUsageAsync(Action<string> addFacts, Action<ParsimonyMeasureResult> assert) =>
+        RunSessionAsync(addFacts, (session, bundleId) =>
+            assert(MeasureRunner.Execute("P-statement-unused", session, bundleId)));
+
+    private async Task RunSessionAsync(Action<string> addFacts, Action<ParsimonyQuerySession, string> assert)
     {
         await PublishBaselineAsync(_pristine);
         var parserPath = FactsParser(_pristine.Seed);
@@ -1022,7 +1076,7 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
             new ParsimonyArtifactDigest(bundle.EvidenceSchemaVersion, bundle.EvidenceSha256),
             null, null, [], ParsimonyEvidenceScopeKind.ProjectApproved);
         using var session = new ParsimonyQuerySession(bundle.GrammarFactsPath, bundle.EvidencePath, inputs);
-        assert(MeasureRunner.Execute("P-statement-unused", session, bundleId));
+        assert(session, bundleId);
     }
 
     private async Task<(ParsimonyBundleRecord Bundle, ParsimonyReportInputs Inputs)> PublishNamedMeasureBundleAsync()

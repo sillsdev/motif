@@ -24,24 +24,25 @@ public static class ParserWorkLimitEstimator
     public static ParserAttemptRate TypicalMachineRate { get; } =
         new(TypicalMachineMillisecondsPerAttempt, IsTypicalMachine: true);
 
-    /// <summary>Uses a stored Assessment's per-word elapsed times and analysis-attempt counts when available.</summary>
+    /// <summary>Uses a stored Assessment's per-word elapsed times and parser work when available.</summary>
     public static ParserAttemptRate FromAssessment(AssessmentRecord? assessment)
     {
         if (assessment?.Words is null)
             return TypicalMachineRate;
 
-        decimal totalSteps = 0;
+        decimal totalWork = 0;
         decimal totalMilliseconds = 0;
         foreach (var word in assessment.Words)
         {
-            if (word.ElapsedMs is not > 0 || word.Morphology?.Attempts is not { } attempts || attempts <= 0)
+            if (word.ElapsedMs is not > 0 || word.ParserWork is not { } work || work <= 0)
                 continue;
-            totalSteps += attempts;
+            totalWork += work;
             totalMilliseconds += word.ElapsedMs.Value;
         }
 
-        return totalSteps > 0 && totalMilliseconds > 0
-            ? new ParserAttemptRate(totalMilliseconds / totalSteps, IsTypicalMachine: false)
+        // An attempt is a fixed number of parser work units, so the rate per attempt follows from the rate per work.
+        return totalWork > 0 && totalMilliseconds > 0
+            ? new ParserAttemptRate(totalMilliseconds * ParserWorkLimit.WorkPerAttempt / totalWork, IsTypicalMachine: false)
             : TypicalMachineRate;
     }
 

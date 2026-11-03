@@ -111,8 +111,8 @@ public sealed class DeterministicAssessCommandTests : IDisposable
     {
         using var seeded = NewSeededScratch();
         var cachePath = Path.Combine(_managedRootsParent, "estimate.sqlite");
-        // PanGloss derives word attempts from StepBudget ticks (pg-cli/src/stats_cmd.rs:330).
-        WriteStatsCache(cachePath, 725_001L, ("motifa", 10, 1, 90, 2_000_000L));
+        // 2,000 ms over 1,000 parser work is 200 ms for each 100-work attempt.
+        WriteStatsCacheWithWork(cachePath, ("motifa", 10, 1, 1000L, 725_001L));
         var cacheDigest = BatchInvocationEvidence.DigestFile(cachePath);
         var assessor = new FakeAssessor("fake-assessor", CollectedKinds, kind => kind switch
         {
@@ -143,7 +143,7 @@ public sealed class DeterministicAssessCommandTests : IDisposable
         var parseRecord = measured.Value!.AssessmentIds.Select(OpenRepository(seeded.FwDataPath).Get)
             .Single(record => record.Kind == AssessmentKind.ParseTime.ToStoredKind());
         var parseWord = Assert.Single(OpenRepository(seeded.FwDataPath).Get(parseRecord.AssessmentId).Words!);
-        Assert.Equal(10, parseWord.Morphology!.Attempts);
+        Assert.Equal(1000L, parseWord.ParserWork);
         Assert.Equal(725_001L, parseWord.ElapsedNs);
 
         var estimate = ParserWorkLimitEstimator.Calculate(new ParserWorkLimit(400), rate.Value);
@@ -164,14 +164,13 @@ public sealed class DeterministicAssessCommandTests : IDisposable
         WriteStatsCacheWithWork(cachePath, ("motifa", 11, 2, 777, 725_001L));
         var cacheDigest = BatchInvocationEvidence.DigestFile(cachePath);
         var retryStatistics = retryStatisticsAvailable
-            ? new PanGlossWordStatistics(29, 8, 1_200_000L) { ParserWork = 2900 }
+            ? new PanGlossWordStatistics(8, 1_200_000L) { ParserWork = 2900 }
             : null;
         var recoveredWord = new WordAnalysis(0, "motifa", 1200, WordOutcome.Analysed, "recovered")
         {
             Morphology = new ParseWordEvidence(ParseMorphEvidence.Schema, 0, "motifa", 1200,
                 false, false, false, [], []) { Attempts = finalFields == "none" ? null : 29 },
             WasRetried = true,
-            Steps = finalFields == "tsv" ? 29 : null,
             ParserWork = finalFields == "tsv" ? 2900 : null,
             RetryStatistics = retryStatistics,
         };
@@ -192,7 +191,7 @@ public sealed class DeterministicAssessCommandTests : IDisposable
             NewInvoker(), null, CancellationToken.None);
 
         Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
-        int? expectedAttempts = retryStatisticsAvailable || finalFields != "none" ? 29 : null;
+        int? expectedAttempts = finalFields != "none" ? 29 : null;
         long? expectedWork = retryStatisticsAvailable || finalFields == "tsv" ? 2900 : null;
         var responseWord = Assert.Single(outcome.Value!.Words);
         Assert.Equal(expectedAttempts, responseWord.Attempts);
@@ -348,7 +347,6 @@ public sealed class DeterministicAssessCommandTests : IDisposable
             connection.Open();
             using var command = connection.CreateCommand();
             command.CommandText = """
-                ALTER TABLE word ADD COLUMN work INTEGER;
                 UPDATE word SET work = 19;
                 UPDATE fact SET work_steps = 12;
                 INSERT INTO object VALUES (2, 'unattributed', 'unattributed', 'Unattributed', 'synthetic');
@@ -1426,7 +1424,7 @@ public sealed class DeterministicAssessCommandTests : IDisposable
     }
 
     [Fact]
-    public void AttemptsAndPassesComeFromBatchStatisticsForEverySelectedWord()
+    public void PassesComeFromBatchStatisticsForEverySelectedWord()
     {
         using var seeded = NewSeededScratch();
         Assert.True(SelectionCommands.SetDefault(new SetDefaultSelectionRequest(seeded.FwDataPath,
@@ -1453,10 +1451,8 @@ public sealed class DeterministicAssessCommandTests : IDisposable
 
         Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
         var analysed = outcome.Value!.Words.Single(word => word.Word == SeededProject.AnalysedWordForm);
-        Assert.Equal(42, analysed.Attempts);
         Assert.Equal(7, analysed.Passes);
         var unanalysed = outcome.Value.Words.Single(word => word.Word == SeededProject.UnanalysedWordForm);
-        Assert.Equal(3, unanalysed.Attempts);
         Assert.Equal(0, unanalysed.Passes);
         var reopened = CurrentEvidenceQuery.ReadCurrentEvidence(seeded.FwDataPath);
         Assert.True(reopened.Succeeded, reopened.Refusal?.Message);
@@ -2063,7 +2059,7 @@ public sealed class DeterministicAssessCommandTests : IDisposable
                 CREATE TABLE cache_identity (cache_id INTEGER PRIMARY KEY, schema_version INTEGER NOT NULL);
                 CREATE TABLE run (counter_semantics INTEGER NOT NULL);
                 INSERT INTO run VALUES (8);
-                INSERT INTO cache_identity VALUES (1, 10);
+                INSERT INTO cache_identity VALUES (1, 11);
                 CREATE TABLE word (word_id INTEGER PRIMARY KEY, form TEXT NOT NULL, elapsed_ns INTEGER NOT NULL,
                     attempts INTEGER NOT NULL, passes INTEGER NOT NULL, work INTEGER);
                 CREATE TABLE object (object_id INTEGER PRIMARY KEY, key TEXT NOT NULL, kind TEXT NOT NULL,
@@ -2104,10 +2100,10 @@ public sealed class DeterministicAssessCommandTests : IDisposable
             CREATE TABLE cache_identity (cache_id INTEGER PRIMARY KEY, schema_version INTEGER NOT NULL);
             CREATE TABLE run (counter_semantics INTEGER NOT NULL);
             INSERT INTO run VALUES (8);
-            INSERT INTO cache_identity VALUES (1, 10);
+            INSERT INTO cache_identity VALUES (1, 11);
             CREATE TABLE word (
                 word_id INTEGER PRIMARY KEY, form TEXT NOT NULL, elapsed_ns INTEGER NOT NULL,
-                attempts INTEGER NOT NULL, passes INTEGER NOT NULL, capped INTEGER NOT NULL,
+                attempts INTEGER NOT NULL, passes INTEGER NOT NULL, work INTEGER, capped INTEGER NOT NULL,
                 timed_out INTEGER NOT NULL, invalid_shape INTEGER NOT NULL);
             CREATE TABLE object (object_id INTEGER PRIMARY KEY, key TEXT NOT NULL, kind TEXT NOT NULL,
                 label TEXT NOT NULL, identity_quality TEXT NOT NULL);

@@ -16,7 +16,7 @@ public interface IWarmPanGlossTracer : IPanGlossTracer
 /// <summary>
 /// Asks the resident parser first and runs the cold tracer for any word it cannot answer. The reply is the same
 /// document and exit code the cold <c>parse</c> produces, so both are read by <see cref="PanGlossTracer"/>'s own
-/// interpretation. <paramref name="parserWorkLimit"/> is the cap the cold tracer passes as <c>--step-cap</c>; the resident
+/// interpretation. <paramref name="parserWorkLimit"/> is the cap the cold tracer passes as <c>--work-cap</c>; the resident
 /// parser starts with the same cap and is a different session from one started with another.
 /// </summary>
 public sealed class WarmFirstTracer(WarmPanGlossPool pool, IPanGlossTracer cold, PanGlossInvoker? ownedInvoker = null,
@@ -39,7 +39,7 @@ public sealed class WarmFirstTracer(WarmPanGlossPool pool, IPanGlossTracer cold,
                 var interpreted = PanGlossTracer.Interpret(word, completed.ExitCode, completed.Json, completed.Elapsed);
                 // A reply Motif cannot read is the resident parser's fault, not the word's: the cold path decides.
                 if (interpreted is not PanGlossTraceOutcome.Malformed)
-                    return interpreted with { Steps = completed.Steps, ParserWork = completed.ParserWork };
+                    return interpreted with { ParserWork = completed.ParserWork };
                 break;
         }
         return await cold.TraceAsync(grammarPath, word, cancellationToken, timeout).ConfigureAwait(false);

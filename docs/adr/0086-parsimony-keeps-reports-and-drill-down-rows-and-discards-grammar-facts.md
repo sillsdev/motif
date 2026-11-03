@@ -45,9 +45,14 @@ every later reuse cheap.
 
 ## Not decided here
 
-The Text group and the ADR 0080 amendment. `pangloss facts --light` is not adopted; nothing here makes adopting it
-harder, since the facts file is still produced, read once and discarded. Accepting `partial` sections that a light
-file marks `light` comes with that adoption.
+The Text group and the ADR 0080 amendment.
+
+## Light facts (PanGloss 0.14.0)
+
+Every Parsimony run now asks for `pangloss facts --light`, which marks `entries`, `conversion_inventory` and
+`source_census` as `partial` with reason `light`. No Parsimony query reads the rows a light file leaves out, so a fixed
+query accepts a section that is `complete`, or `partial` with exactly the reason `light`. Any other partial reason, or a
+missing section, still makes the measure `Unavailable`.
 
 The schema upgrade drops the bundle rows but not the bundle directories on disk. The expired-build recovery that
 the worker already runs now also deletes a published bundle directory that no `ParsimonyBundles` row and no build

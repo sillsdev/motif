@@ -9,7 +9,7 @@ namespace SIL.Motif.FakePanGloss;
 internal static class FactsArtifact
 {
     internal const string Format = "pangloss-grammar-facts";
-    internal const int SchemaVersion = 8;
+    internal const int SchemaVersion = 9;
     internal const int ApplicationId = 1_346_848_321;
     internal const string ContextFormat = "pangloss-facts-context";
     internal const int ContextVersion = 1;
@@ -28,7 +28,7 @@ internal static class FactsArtifact
     private static readonly string[] PipelineStages = ["import", "snapshot", "compile", "compact"];
 
     internal static FactsResult Write(string snapshotPath, string contextPath, string outputPath, string mode,
-        string fixturePath)
+        string fixturePath, bool light = false)
     {
         var snapshotBytes = File.ReadAllBytes(snapshotPath);
         var snapshot = ParseSnapshot(snapshotBytes);
@@ -54,7 +54,7 @@ internal static class FactsArtifact
         };
         var compileStatus = mode == "compileRefused" ? "refused" : "completed";
         var sections = BuildSections(snapshot.SourceInventoryStatus, compileStatus == "completed",
-            fixture.Groups is not null);
+            fixture.Groups is not null, mode == "lightOtherReason" ? "other" : light ? "light" : null);
         var outputDirectory = Path.GetDirectoryName(Path.GetFullPath(outputPath))!;
         Directory.CreateDirectory(outputDirectory);
         var reserved = false;
@@ -209,7 +209,7 @@ internal static class FactsArtifact
     }
 
     private static List<FactSection> BuildSections(string sourceStatus, bool compileCompleted,
-        bool groupedFactsAvailable)
+        bool groupedFactsAvailable, string? narrowedBy = null)
     {
         var unavailable = (string name) => new FactSection(name, "unavailable",
             "not emitted by the fake facts command", "not_supported_by_fake");
@@ -220,9 +220,13 @@ internal static class FactsArtifact
                 "source graph class counts from Snapshot provenance; per-object census is not exported",
                 sourceStatus is "importedComplete" or "synthetic"
                     ? "source_object_details_not_available" : "source_inventory_unknown"),
-            new("conversion_inventory", "complete", "Snapshot importer inventory and compiler final inventory", null),
+            narrowedBy is null
+                ? new("conversion_inventory", "complete", "Snapshot importer inventory and compiler final inventory", null)
+                : new("conversion_inventory", "partial", "Snapshot importer inventory and compiler final inventory", narrowedBy),
             new("categories", "complete", "part-of-speech hierarchy in the supplied Snapshot", null),
-            new("entries", "complete", "entry identities and senses in the supplied Snapshot", null),
+            narrowedBy is null
+                ? new("entries", "complete", "entry identities and senses in the supplied Snapshot", null)
+                : new("entries", "partial", "entry identities and senses in the supplied Snapshot", narrowedBy),
             new("msas", "complete", "all MSA identities and category, slot, class, and exception references in the supplied Snapshot", null),
             new("adhoc_prohibitions", "complete", "flat allomorph and morpheme prohibitions in the supplied Snapshot", null),
             new("load_accounting", "partial", "typed compiler decisions; importer and uninstrumented decisions remain unknown", "reason_coverage_partial"),

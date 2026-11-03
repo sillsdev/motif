@@ -212,17 +212,14 @@ public sealed class PanGlossAssessorTests : IDisposable
         Assert.All(analysis.Words, word => Assert.False(word.Morphology!.TimedOut));
         var recovered = Assert.Single(analysis.Words, word => word.Word == "slow");
         Assert.True(recovered.WasRetried);
-        Assert.Equal(29, recovered.Steps);
-        Assert.Equal(29, recovered.Morphology!.Attempts);
         Assert.Equal(8, recovered.Passes);
         Assert.Equal(2900L, recovered.ParserWork);
-        Assert.Equal(29, recovered.RetryStatistics!.Attempts);
-        Assert.Equal(8, recovered.RetryStatistics.Passes);
+        Assert.Equal(8, recovered.RetryStatistics!.Passes);
         Assert.Equal(2900L, recovered.RetryStatistics.ParserWork);
         var firstPassCache = Assert.IsType<AssessmentRaw.FileCache>(statistics.Raw);
         var firstPassStatistics = PanGlossBatchStatisticsReader.Read(firstPassCache.Path, ["slow", "quick"], _ => 0,
             maxObjectTimingRows: 0).Words["slow"];
-        Assert.Equal((11, 2, 777L), (firstPassStatistics.Attempts, firstPassStatistics.Passes,
+        Assert.Equal((2, 777L), (firstPassStatistics.Passes,
             firstPassStatistics.ParserWork));
         Assert.Equal(700, evidence.PerWordTimeoutMs);
         var retry = Assert.IsType<StoppedWordRetry>(evidence.StoppedWordRetry);
@@ -269,8 +266,6 @@ public sealed class PanGlossAssessorTests : IDisposable
         Assert.Equal(WordOutcome.Analysed, recovered.Outcome);
         Assert.True(recovered.WasRetried);
         Assert.Null(recovered.RetryStatistics);
-        Assert.Equal(29, recovered.Steps);
-        Assert.Equal(29, recovered.Morphology!.Attempts);
         Assert.Null(recovered.Passes);
         Assert.Equal(2900, recovered.ParserWork);
         var invocation = Assert.IsType<BatchInvocationEvidence>(timing.Invocation);

@@ -20,7 +20,7 @@ public enum PhonologyRowCompletion { Complete, Incomplete, NotStarted }
 public sealed class PhonologyRowCompletionJsonConverter() : StrictPhonologyEnumConverter<PhonologyRowCompletion>;
 
 [JsonConverter(typeof(PhonologyRowReasonJsonConverter))]
-public enum PhonologyRowReason { EmptyLexicon, UnknownEntry, AmbiguousContext, MsaNotOwnedByEntry, InvalidShape, InvalidStratum, ResultLimit, WorkCap, StepCap, Timeout }
+public enum PhonologyRowReason { EmptyLexicon, UnknownEntry, AmbiguousContext, MsaNotOwnedByEntry, InvalidShape, InvalidStratum, ResultLimit, WorkCap, Timeout }
 
 public sealed class PhonologyRowReasonJsonConverter() : StrictPhonologyEnumConverter<PhonologyRowReason>;
 
@@ -98,7 +98,6 @@ public abstract record PhonologyRowEvidence
         [property: JsonPropertyName("expectedObserved"), JsonRequired] IReadOnlyList<bool> ExpectedObserved,
         [property: JsonPropertyName("observed"), JsonRequired] string? Observed,
         [property: JsonPropertyName("reason"), JsonRequired, JsonConverter(typeof(NullablePhonologyRowReasonJsonConverter))] PhonologyRowReason? Reason,
-        [property: JsonPropertyName("steps"), JsonRequired] ulong Steps,
         [property: JsonPropertyName("parserWork"), JsonRequired] ulong ParserWork,
         [property: JsonPropertyName("capped"), JsonRequired] bool Capped,
         [property: JsonPropertyName("timedOut"), JsonRequired] bool TimedOut,
@@ -133,7 +132,6 @@ public abstract record PhonologyRowSummary
         [property: JsonPropertyName("expectedObserved"), JsonRequired] IReadOnlyList<bool> ExpectedObserved,
         [property: JsonPropertyName("observed"), JsonRequired] string? Observed,
         [property: JsonPropertyName("reason"), JsonRequired, JsonConverter(typeof(NullablePhonologyRowReasonJsonConverter))] PhonologyRowReason? Reason,
-        [property: JsonPropertyName("steps"), JsonRequired] ulong Steps,
         [property: JsonPropertyName("parserWork"), JsonRequired] ulong ParserWork,
         [property: JsonPropertyName("capped"), JsonRequired] bool Capped,
         [property: JsonPropertyName("timedOut"), JsonRequired] bool TimedOut,

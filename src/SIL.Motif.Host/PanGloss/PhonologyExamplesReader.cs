@@ -15,7 +15,7 @@ internal static class PhonologyExamplesReader
         Unique(document.RootElement);
         var result = document.RootElement.Deserialize<Response>(PhonologyWire.Options)
             ?? throw new JsonException("Response is null.");
-        Require(result.Version == 1, "Unsupported response version.");
+        Require(result.Version == 2, "Unsupported response version.");
         Hash(result.GrammarSha256); Hash(result.RequestSha256); Hash(result.RequestFileSha256);
         Require(result.GrammarSha256 == inputs.GrammarSha256 && result.RequestFileSha256 == inputs.RequestFileSha256,
             "Grammar or request-file binding differs from staged bytes.");
@@ -32,8 +32,8 @@ internal static class PhonologyExamplesReader
         }
         var effective = result.Limits;
         Require(effective is not null && effective.Scope == "orderedPhonologyFolds" &&
-            effective.StepAllocation == "balancedByRequestOrder" && effective.TimeAllocation == "sharedMonotonicDeadline" &&
-            effective.StepCap == limits.StepCap && effective.WorkCap == limits.WorkCap && effective.TimeoutMs == limits.TimeoutMs,
+            effective.WorkAllocation == "balancedByRequestOrder" && effective.TimeAllocation == "sharedMonotonicDeadline" &&
+            effective.WorkCap == limits.WorkCap && effective.TimeoutMs == limits.TimeoutMs,
             "Requested limits or allocation policy differ.");
         Require(result.Rows is not null && result.Rows.Length == requested.Count, "Rows differ from requested count.");
         var rows = new List<PhonologyMeasuredRow>();
@@ -54,11 +54,11 @@ internal static class PhonologyExamplesReader
             Require(row.ExpectedObserved is not null && row.ExpectedObserved.Length == example.Expected.Count,
                 "Expectation facts differ from authored count.");
             var rowLimits = row.EffectiveLimits;
-            Require(rowLimits is not null && rowLimits.StepCap == Allocation(limits.StepCap, requested.Count, i) &&
+            Require(rowLimits is not null &&
                 rowLimits.WorkCap == Allocation(limits.WorkCap, requested.Count, i) && rowLimits.TimeoutMs <= remainingTime,
                 "Row allocation differs from request-wide ceilings.");
             remainingTime = rowLimits!.TimeoutMs;
-            Require(row.Steps <= rowLimits.StepCap && row.WorkSteps <= rowLimits.WorkCap, "Counters exceed allocated ceilings.");
+            Require(row.WorkSteps <= rowLimits.WorkCap, "Counters exceed allocated ceilings.");
             if (row.Observed is not null) PhonologyInvocationInputs.Text(row.Observed, 512, allowEmpty: true);
             var disposition = Parse<PhonologyDisposition>(row.Disposition);
             var completion = Parse<PhonologyCompletion>(row.Completion);
@@ -73,13 +73,13 @@ internal static class PhonologyExamplesReader
                     break;
                 case PhonologyCompletion.Incomplete:
                     Require(resolved is not null && result.MeasuredEntryCount > 0 && disposition == PhonologyDisposition.Unavailable &&
-                        ((reason is PhonologyReason.StepCap or PhonologyReason.WorkCap && row.Capped && !row.TimedOut) ||
+                        ((reason == PhonologyReason.WorkCap && row.Capped && !row.TimedOut) ||
                          (reason == PhonologyReason.Timeout && row.TimedOut)),
                         "Incomplete row reason or flags are inconsistent.");
                     break;
                 case PhonologyCompletion.NotStarted:
                     Require(disposition == PhonologyDisposition.Unavailable && !row.Capped && !row.TimedOut &&
-                        row.Steps == 0 && row.WorkSteps == 0 && row.Observed is null && !row.ExpectedObserved!.Any(b => b) &&
+                        row.WorkSteps == 0 && row.Observed is null && !row.ExpectedObserved!.Any(b => b) &&
                         reason is PhonologyReason.EmptyLexicon or PhonologyReason.UnknownEntry or PhonologyReason.AmbiguousContext or
                             PhonologyReason.MsaNotOwnedByEntry or PhonologyReason.InvalidShape or PhonologyReason.InvalidStratum or
                             PhonologyReason.ResultLimit, "Not-started row reason or facts are inconsistent.");
@@ -100,7 +100,7 @@ internal static class PhonologyExamplesReader
                 "Not-started row has rule activity.");
             rows.Add(new PhonologyMeasuredRow(row.Id, context, resolved, row.Underlying,
                 Array.AsReadOnly(row.Expected!), rowLimits, disposition, completion, Array.AsReadOnly(row.ExpectedObserved!),
-                row.Observed, reason, row.Steps, row.WorkSteps, row.Capped, row.TimedOut, ordered, visited, applied));
+                row.Observed, reason, row.WorkSteps, row.Capped, row.TimedOut, ordered, visited, applied));
         }
         var counts = result.Counts;
         var completions = result.CompletionCounts;
@@ -164,12 +164,12 @@ internal static class PhonologyExamplesReader
         string RequestSha256, string RequestFileSha256, string Build, Limits Limits, ulong MeasuredEntryCount,
         Row[] Rows, Counts Counts, CompletionCounts CompletionCounts);
     private sealed record Dependency(string Path, string Sha256);
-    private sealed record Limits(string Scope, ulong StepCap, ulong WorkCap, uint TimeoutMs,
-        string StepAllocation, string TimeAllocation);
+    private sealed record Limits(string Scope, ulong WorkCap, uint TimeoutMs,
+        string WorkAllocation, string TimeAllocation);
     private sealed record Counts(ulong Agree, ulong Disagree, ulong Unavailable, ulong Total);
     private sealed record CompletionCounts(ulong Complete, ulong Incomplete, ulong NotStarted);
     private sealed record Row(string Id, JsonElement RequestedContext, JsonElement ResolvedContext, string Underlying,
         string[] Expected, PhonologyLimits EffectiveLimits, string Disposition, string Completion,
-        bool[] ExpectedObserved, string? Observed, string? Reason, ulong Steps, ulong WorkSteps, bool Capped,
+        bool[] ExpectedObserved, string? Observed, string? Reason, ulong WorkSteps, bool Capped,
         bool TimedOut, string[] OrderedRuleIds, string[] VisitedRuleIds, string[] AppliedRuleIds);
 }

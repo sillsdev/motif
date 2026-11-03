@@ -22,7 +22,7 @@ public sealed class TrialWordStatisticsTests : IDisposable
     public void Dispose() => Directory.Delete(_root, recursive: true);
 
     [Fact]
-    public void ATrialWordGetsItsAttemptsPassesAndWorkFromTheBatchStatistics()
+    public void ATrialWordGetsItsPassesAndWorkFromTheBatchStatistics()
     {
         var cache = WriteCache("stats.sqlite", withWork: true);
         var statistics = TrialWordStatistics.Read([Produced(cache)], ["word"]);
@@ -30,21 +30,18 @@ public sealed class TrialWordStatisticsTests : IDisposable
         var word = TrialWordStatistics.Apply(
             new AssessedWord("word", "analysed", []) { Morphology = Evidence() }, statistics);
 
-        Assert.Equal(11, word.Attempts);
         Assert.Equal(2, word.Passes);
         Assert.Equal(777L, word.ParserWork);
-        Assert.Equal(11, word.Morphology!.Attempts);
     }
 
     [Fact]
-    public void ACacheWithoutWorkStillGivesAttemptsAndLeavesWorkNull()
+    public void ACacheWithoutWorkLeavesWorkNull()
     {
         var cache = WriteCache("no-work.sqlite", withWork: false);
 
         var word = TrialWordStatistics.Apply(new AssessedWord("word", "analysed", []),
             TrialWordStatistics.Read([Produced(cache)], ["word"]));
 
-        Assert.Equal(11, word.Attempts);
         Assert.Null(word.ParserWork);
     }
 
@@ -62,7 +59,6 @@ public sealed class TrialWordStatisticsTests : IDisposable
         var cache = WriteCache("first-pass.sqlite", withWork: true);
         var retried = new WordAnalysis(0, "word", 1200, WordOutcome.Analysed, "sig")
         {
-            Steps = 29,
             ParserWork = 2900,
             WasRetried = true,
         };
@@ -73,7 +69,6 @@ public sealed class TrialWordStatisticsTests : IDisposable
         var statistics = TrialWordStatistics.Read(produced, ["word"]);
         var recorded = TrialWordStatistics.Apply(word, statistics);
 
-        Assert.Equal(29, recorded.Attempts);
         Assert.Null(recorded.Passes);
         Assert.Equal(2900L, recorded.ParserWork);
     }
@@ -84,17 +79,15 @@ public sealed class TrialWordStatisticsTests : IDisposable
         var cache = WriteCache("first-pass-with-retry-stats.sqlite", withWork: true);
         var retried = new WordAnalysis(0, "word", 1200, WordOutcome.Analysed, "sig")
         {
-            Steps = 29,
             ParserWork = 2900,
             WasRetried = true,
-            RetryStatistics = new PanGlossWordStatistics(29, 8, 1_200_000) { ParserWork = 2900 },
+            RetryStatistics = new PanGlossWordStatistics(8, 1_200_000) { ParserWork = 2900 },
         };
         var statistics = TrialWordStatistics.Read([Produced(cache), ProducedBatch(retried)], ["word"]);
         var word = new AssessedWord("word", "analysed", []);
 
         var recorded = TrialWordStatistics.Apply(word, statistics);
 
-        Assert.Equal(29, recorded.Attempts);
         Assert.Equal(8, recorded.Passes);
         Assert.Equal(2900L, recorded.ParserWork);
     }
@@ -132,13 +125,12 @@ public sealed class TrialWordStatisticsTests : IDisposable
         var retried = new WordAnalysis(0, "word", 1200, WordOutcome.Analysed, "sig")
         {
             WasRetried = true,
-            RetryStatistics = new PanGlossWordStatistics(29, 8, 1_200_000) { ParserWork = 2900 },
+            RetryStatistics = new PanGlossWordStatistics(8, 1_200_000) { ParserWork = 2900 },
         };
         var produced = malformed ? new[] { Produced(path), ProducedBatch(retried) } : [ProducedBatch(retried)];
         var recorded = TrialWordStatistics.Apply(new AssessedWord("word", "analysed", []),
             TrialWordStatistics.Read(produced, ["word"]));
 
-        Assert.Equal(29, recorded.Attempts);
         Assert.Equal(8, recorded.Passes);
         Assert.Equal(2900L, recorded.ParserWork);
     }
@@ -155,7 +147,7 @@ public sealed class TrialWordStatisticsTests : IDisposable
             Morphology = new ParseWordEvidence(ParseMorphEvidence.Schema, 0, "word", 1200,
                 false, false, false, [], []) { Attempts = 29 },
             RetryStatistics = retryStatisticsAvailable
-                ? new PanGlossWordStatistics(29, 8, 1_200_000) { ParserWork = 2900 } : null,
+                ? new PanGlossWordStatistics(8, 1_200_000) { ParserWork = 2900 } : null,
         };
         var produced = ProducedBatch(retried);
         var statistics = TrialWordStatistics.Read([Produced(cache), produced], ["word"]);
@@ -189,13 +181,12 @@ public sealed class TrialWordStatisticsTests : IDisposable
         var retried = new WordAnalysis(0, "word", 1200, WordOutcome.Analysed, "sig")
         {
             WasRetried = true,
-            RetryStatistics = new PanGlossWordStatistics(29, 8, 1_200_000) { ParserWork = 2900 },
+            RetryStatistics = new PanGlossWordStatistics(8, 1_200_000) { ParserWork = 2900 },
         };
         var statistics = TrialWordStatistics.Read([Produced(cache), ProducedBatch(retried)], ["word", "quick"]);
 
         var recorded = TrialWordStatistics.Apply(new AssessedWord("quick", "analysed", []), statistics);
 
-        Assert.Equal(5, recorded.Attempts);
         Assert.Equal(3, recorded.Passes);
         Assert.Equal(42L, recorded.ParserWork);
     }
@@ -235,7 +226,7 @@ public sealed class TrialWordStatisticsTests : IDisposable
             INSERT INTO run VALUES (8);
             CREATE TABLE word (
                 word_id INTEGER PRIMARY KEY, form TEXT NOT NULL, elapsed_ns INTEGER NOT NULL,
-                attempts INTEGER NOT NULL, passes INTEGER NOT NULL{{(withWork ? ", work INTEGER" : string.Empty)}});
+                attempts INTEGER NOT NULL, passes INTEGER NOT NULL, work INTEGER);
             CREATE TABLE object (
                 object_id INTEGER PRIMARY KEY, key TEXT NOT NULL, kind TEXT NOT NULL, label TEXT NOT NULL,
                 identity_quality TEXT NOT NULL);
@@ -243,12 +234,12 @@ public sealed class TrialWordStatisticsTests : IDisposable
                 word_id INTEGER NOT NULL, object_id INTEGER NOT NULL, direction TEXT NOT NULL,
                 attempts INTEGER NOT NULL, self_time_ns INTEGER, work_steps INTEGER);
             INSERT INTO cache_identity VALUES (1, {{PanGlossInterfaceVersions.StatsCacheVersion}});
-            INSERT INTO word VALUES (1, 'word', 725001, 11, 2{{(withWork ? ", 777" : string.Empty)}});
+            INSERT INTO word VALUES (1, 'word', 725001, 11, 2{{(withWork ? ", 777" : ", NULL")}});
             """;
         command.ExecuteNonQuery();
         if (includeQuick)
         {
-            command.CommandText = $"INSERT INTO word VALUES (2, 'quick', 1000, 5, 3{(withWork ? ", 42" : string.Empty)});";
+            command.CommandText = $"INSERT INTO word VALUES (2, 'quick', 1000, 5, 3{(withWork ? ", 42" : ", NULL")});";
             command.ExecuteNonQuery();
         }
         return path;

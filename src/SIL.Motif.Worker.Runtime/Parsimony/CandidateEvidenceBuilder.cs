@@ -493,7 +493,7 @@ public sealed class ParsimonyCandidateEvidenceBuilder
         var factsPhase = stages.Enter("facts", inputName);
         var factsWait = claim.ObserveParserWait(factsPhase);
         var outcome = await timer.TimeAsync("facts", inputName, () => _invoker.RunAsync(
-            new PanGlossRequest.Facts(snapshotPath, contextJson, factsDirectory) { OnAdmissionWait = factsWait.Observe },
+            new PanGlossRequest.Facts(snapshotPath, contextJson, factsDirectory, Light: true) { OnAdmissionWait = factsWait.Observe },
             "parsimony-candidate-facts", cancellationToken)).ConfigureAwait(false);
         if (outcome is not PanGlossOutcome.Completed completed || completed.Facts is null)
             throw new PanGlossInvocationException(CategoryOf(outcome), outcome.Message);

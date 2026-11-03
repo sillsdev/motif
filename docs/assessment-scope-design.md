@@ -214,7 +214,7 @@ architecture.
 A scope carries a per-word parser work limit, defaulting to **20,000,000 parser work**, and a time safety net.
 PanGloss distinguishes the two mechanisms and their outcomes: `--word-timeout-ms` sets a wall-clock
 bound and marks a word `timed_out`; `--work-cap` bounds parser work and marks a word `capped`, which
-Motif reports as a stop at the parser work limit. Motif passes `--step-cap` (PanGloss's bound on analysis attempts) at one hundredth of the limit, so the limit is what stops a word. Both are distinct from a word
+Motif reports as a stop at the parser work limit. Motif passes only `--work-cap` (PanGloss 0.14.0 refuses `--step-cap`), so the limit is what stops a word. Both are distinct from a word
 that genuinely did not parse. The timeout and parser work limits are stored per word.
 
 `--word-timeout-ms` is wall-clock inside PanGloss, so a busy machine stops slow words that finish when it is

@@ -14,14 +14,14 @@ namespace SIL.Motif.Tests.App;
 public sealed class DesktopFileAndClipboardSeamTests
 {
     private const string ValidDiagnosticJson = """
-        {"schemaVersion":"pangloss.trace-details.v4","word":"word",
-         "search":{"completed":false,"capped":false,"timedOut":false,"invalidShape":false,"steps":1,"elapsedNs":2},
+        {"schemaVersion":"pangloss.trace-details.v5","word":"word",
+         "search":{"completed":false,"capped":false,"timedOut":false,"invalidShape":false,"elapsedNs":2},
          "result":{"signature":"-","guessed":false,"analyses":[]},"categories":{},"trace":null}
         """;
 
     private const string InvalidShapeDiagnosticJson = """
-        {"schemaVersion":"pangloss.trace-details.v4","word":"word",
-         "search":{"completed":false,"capped":false,"timedOut":false,"invalidShape":true,"steps":0,"elapsedNs":0},
+        {"schemaVersion":"pangloss.trace-details.v5","word":"word",
+         "search":{"completed":false,"capped":false,"timedOut":false,"invalidShape":true,"elapsedNs":0},
          "result":{"signature":"-","guessed":false,"analyses":[]},"categories":{},"trace":null}
         """;
 
@@ -59,7 +59,6 @@ public sealed class DesktopFileAndClipboardSeamTests
         var copied = Assert.Single(_clipboard.Copied);
         Assert.Contains(ExpectedChatInstructions, copied, StringComparison.Ordinal);
         Assert.Contains("Summary:\nNo parse", copied, StringComparison.Ordinal);
-        Assert.Contains("1 analysis attempt", copied, StringComparison.Ordinal);
         Assert.Contains("overall time not recorded", copied, StringComparison.Ordinal);
         Assert.Contains("Search completion: incomplete", copied, StringComparison.Ordinal);
         Assert.Contains("Trace diagnostic JSON:\n" + ValidDiagnosticJson, copied, StringComparison.Ordinal);

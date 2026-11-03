@@ -24,7 +24,6 @@ public sealed class ParserWorkReadingTests : IDisposable
         var details = PanGlossTraceDiagnosticReader.Read(raw).Details;
 
         Assert.Equal(237L, details.ParserWork);
-        Assert.Equal(3L, details.Steps);
     }
 
     [Fact]
@@ -38,53 +37,47 @@ public sealed class ParserWorkReadingTests : IDisposable
     }
 
     [Fact]
-    public void ABatchTsvThatDeclaresStepColumnsHasThemRead()
+    public void ABatchTsvThatDeclaresAWorkColumnHasItRead()
     {
-        var first = new BatchRow(0, NewWord(), 3, "ok", "sig", 12, 345);
-        var capped = new BatchRow(1, NewWord(), 900, "CAP", "-", 200_000, 20_000_000);
+        var first = new BatchRow(0, NewWord(), 3, "ok", "sig", 345);
+        var capped = new BatchRow(1, NewWord(), 900, "CAP", "-", 20_000_000);
         var tsv = SerializeRows(
-            ["index", "word", "elapsed_ms", "status", "signature", "steps", "work_steps"],
+            ["index", "word", "elapsed_ms", "status", "signature", "work_steps"],
             [first, capped], row =>
                 [row.Index.ToString(CultureInfo.InvariantCulture), row.Word,
                     row.ElapsedMs.ToString(CultureInfo.InvariantCulture), row.Status, row.Signature,
-                    row.Steps!.Value.ToString(CultureInfo.InvariantCulture),
                     row.ParserWork!.Value.ToString(CultureInfo.InvariantCulture)]);
 
         var rows = BatchTsvParser.Parse(tsv);
 
         Assert.Equal(2, rows.Count);
-        Assert.Equal((12L, 345L), (rows[0].Steps, rows[0].ParserWork));
+        Assert.Equal(345L, rows[0].ParserWork);
         Assert.Equal(first.Word, rows[0].Word);
         Assert.Equal(WordOutcome.Capped, rows[1].Outcome);
-        Assert.Equal((200_000L, 20_000_000L), (rows[1].Steps, rows[1].ParserWork));
+        Assert.Equal(20_000_000L, rows[1].ParserWork);
         Assert.Equal(capped.Word, rows[1].Word);
     }
 
     [Fact]
     public void HeaderlessWorkColumnsAndWatchdogRowsAreRead()
     {
-        var rows = BatchTsvParser.Parse("0\tword\t3\tok\tsig\t12\t345\n1\tother\t8\tTIMEOUT\t-\n");
-        Assert.Equal((12L, 345L), (rows[0].Steps, rows[0].ParserWork));
+        var rows = BatchTsvParser.Parse("0\tword\t3\tok\tsig\t345\n1\tother\t8\tTIMEOUT\t-\n");
+        Assert.Equal(345L, rows[0].ParserWork);
         Assert.Null(rows[1].ParserWork);
-        var guessed = Assert.Single(BatchTsvParser.Parse("0\tword\t3\tok\tsig\ttrue\t12\t345\n"));
-        Assert.Equal((12L, 345L), (guessed.Steps, guessed.ParserWork));
+        var guessed = Assert.Single(BatchTsvParser.Parse("0\tword\t3\tok\tsig\ttrue\n"));
+        Assert.Null(guessed.ParserWork);
     }
 
     [Fact]
-    public void HeaderlessSevenAndEightColumnRowsPreserveWorkAndOutcomes()
+    public void HeaderlessSixColumnRowsPreserveWorkAndOutcomes()
     {
-        var rows = BatchTsvParser.Parse("0\tquick\t1\tok\tsig\t4\t501\n" +
-            "1\tguessed\t2\tok\tsig\ttrue\t7\t900\n" +
-            "2\tstopped\t3\tCAP\t-\tfalse\t200\t20000\n" +
-            "3\tunknown\t4\tok\t-\t-\t-\n");
-        Assert.Equal(("quick", WordOutcome.Analysed, 4L, 501L),
-            (rows[0].Word, rows[0].Outcome, rows[0].Steps, rows[0].ParserWork));
-        Assert.Equal(("guessed", WordOutcome.Analysed, 7L, 900L),
-            (rows[1].Word, rows[1].Outcome, rows[1].Steps, rows[1].ParserWork));
-        Assert.Equal((WordOutcome.Capped, 200L, 20000L), (rows[2].Outcome, rows[2].Steps, rows[2].ParserWork));
-        Assert.Equal(WordOutcome.NoAnalysis, rows[3].Outcome);
-        Assert.Null(rows[3].Steps);
-        Assert.Null(rows[3].ParserWork);
+        var rows = BatchTsvParser.Parse("0\tquick\t1\tok\tsig\t501\n" +
+            "1\tstopped\t3\tCAP\t-\t20000\n" +
+            "2\tunknown\t4\tok\t-\t-\n");
+        Assert.Equal(("quick", WordOutcome.Analysed, 501L), (rows[0].Word, rows[0].Outcome, rows[0].ParserWork));
+        Assert.Equal((WordOutcome.Capped, 20000L), (rows[1].Outcome, rows[1].ParserWork));
+        Assert.Equal(WordOutcome.NoAnalysis, rows[2].Outcome);
+        Assert.Null(rows[2].ParserWork);
     }
 
     [Fact]
@@ -99,7 +92,6 @@ public sealed class ParserWorkReadingTests : IDisposable
 
         Assert.Equal([WordOutcome.Analysed, WordOutcome.TimedOut], rows.Select(row => row.Outcome));
         Assert.Equal([analysed.Word, timedOut.Word], rows.Select(row => row.Word));
-        Assert.All(rows, row => Assert.Null(row.Steps));
         Assert.All(rows, row => Assert.Null(row.ParserWork));
     }
 
@@ -112,7 +104,6 @@ public sealed class ParserWorkReadingTests : IDisposable
         var words = PanGlossBatchStatisticsReader.Read(path, ["word"]).Words;
 
         Assert.Equal(777L, words["word"].ParserWork);
-        Assert.Equal(11, words["word"].Attempts);
     }
 
     [Fact]
@@ -124,7 +115,6 @@ public sealed class ParserWorkReadingTests : IDisposable
         var words = PanGlossBatchStatisticsReader.Read(path, ["word"]).Words;
 
         Assert.Null(words["word"].ParserWork);
-        Assert.Equal(11, words["word"].Attempts);
     }
 
     [Theory]
@@ -166,7 +156,7 @@ public sealed class ParserWorkReadingTests : IDisposable
                 form TEXT NOT NULL,
                 elapsed_ns INTEGER NOT NULL,
                 attempts INTEGER NOT NULL,
-                passes INTEGER NOT NULL{{(withWork ? ", work INTEGER" : string.Empty)}});
+                passes INTEGER NOT NULL, work INTEGER);
             CREATE TABLE object (
                 object_id INTEGER PRIMARY KEY, key TEXT NOT NULL, kind TEXT NOT NULL, label TEXT NOT NULL,
                 identity_quality TEXT NOT NULL);
@@ -174,7 +164,7 @@ public sealed class ParserWorkReadingTests : IDisposable
                 word_id INTEGER NOT NULL, object_id INTEGER NOT NULL, direction TEXT NOT NULL,
                 attempts INTEGER NOT NULL, self_time_ns INTEGER, work_steps INTEGER);
             INSERT INTO cache_identity VALUES (1, {{PanGlossInterfaceVersions.StatsCacheVersion}});
-            INSERT INTO word VALUES (1, 'word', 725001, 11, 2{{(withWork ? ", 777" : string.Empty)}});
+            INSERT INTO word VALUES (1, 'word', 725001, 11, 2{{(withWork ? ", 777" : ", NULL")}});
             """;
         command.ExecuteNonQuery();
     }
@@ -197,5 +187,5 @@ public sealed class ParserWorkReadingTests : IDisposable
     private static string NewWord() => "word-" + Guid.NewGuid().ToString("N");
 
     private sealed record BatchRow(int Index, string Word, int ElapsedMs, string Status, string Signature,
-        long? Steps = null, long? ParserWork = null);
+        long? ParserWork = null);
 }

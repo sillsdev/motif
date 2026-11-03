@@ -190,7 +190,6 @@ public sealed record WordTraceResponse(
     int ElapsedMs,
     WordTraceReading Reading)
 {
-    public long? ParserSteps { get; init; }
     /// <summary>Total parser work for this word, when the trace reported it.</summary>
     public long? ParserWork { get; init; }
     public double? ParserElapsedMs { get; init; }

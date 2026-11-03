@@ -114,7 +114,7 @@ public sealed class TraceWordViewModelTests
         using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
         var trace = new TraceWordViewModel
         {
-            Result = MatinluTrace() with { Parsed = false, InvalidShape = true, ParserSteps = null, ParserWork = null },
+            Result = MatinluTrace() with { Parsed = false, InvalidShape = true, ParserWork = null },
         };
 
         Assert.Equal(string.Empty, trace.ParserWorkText);
@@ -219,7 +219,7 @@ public sealed class TraceWordViewModelTests
         var response = WordTraceQuery.LoadDiagnostic(TraceEnvelope.CapturedRuleLabel).Value!;
         var trace = new TraceWordViewModel
         {
-            Result = response with { Complete = true, ElapsedMs = 0, ParserSteps = null, ParserElapsedMs = null, HostCapture = null },
+            Result = response with { Complete = true, ElapsedMs = 0, ParserElapsedMs = null, HostCapture = null },
         };
         Assert.NotEmpty(trace.Candidates);
         Assert.StartsWith("No parse", trace.SummaryText, StringComparison.Ordinal);
@@ -274,7 +274,6 @@ public sealed class TraceWordViewModelTests
             DeepestRule: null, ElapsedMs: 1500,
             TraceReadingBuilder.Build("kitabu", Leaf("WordAnalysis"), [], []))
         {
-            ParserSteps = 12345,
             ParserWork = 2345,
             ParserElapsedMs = 0.2876,
             Effort = [new TraceEffort("Root lookups", 2, 0, 0, 1, 0, 0, null)],
@@ -287,7 +286,6 @@ public sealed class TraceWordViewModelTests
 
         Assert.True(trace.HasResult);
         Assert.Contains("No parse", trace.SummaryText, StringComparison.Ordinal);
-        Assert.Contains("12,345 analysis attempts", trace.SummaryText, StringComparison.Ordinal);
         Assert.Contains("2,345 parser work in the parser, 1.5 s overall", trace.SummaryText, StringComparison.Ordinal);
         AssertNoMilliseconds(trace.SummaryText);
         Assert.Equal("The parser stopped at a search limit.", trace.StopReason);
@@ -365,9 +363,8 @@ public sealed class TraceWordViewModelTests
     public void EffortShowsParserWorkAndTheUnattributedRemainder()
     {
         const string json = """
-        {"schemaVersion":"pangloss.trace-details.v4","word":"word",
-         "search":{"completed":true,"capped":false,"timedOut":false,"invalidShape":false,
-                   "steps":3,"workSteps":19,"elapsedNs":1000000},
+        {"schemaVersion":"pangloss.trace-details.v5","word":"word",
+         "search":{"completed":true,"capped":false,"timedOut":false,"invalidShape":false,"workSteps":19,"elapsedNs":1000000},
          "result":{"signature":"","guessed":false,"analyses":[]},
          "categories":{"morphRule":{"attempts":1,"work":8,"work_steps":12,"outputs":1,
           "notApplied":0,"noRoot":0,"surfaceMismatch":0,"uses":0,"timingAvailable":true,"selfElapsedNs":500000},
@@ -793,8 +790,8 @@ public sealed class TraceWordViewModelTests
     public void LoadingProducerEnvelopeKeepsRawJsonAndRecordedRichAnalysis()
     {
         const string json = """
-            {"schemaVersion":"pangloss.trace-details.v4","word":"sagd",
-             "search":{"completed":true,"capped":false,"timedOut":false,"invalidShape":false,"steps":1,"elapsedNs":9},
+            {"schemaVersion":"pangloss.trace-details.v5","word":"sagd",
+             "search":{"completed":true,"capped":false,"timedOut":false,"invalidShape":false,"elapsedNs":9},
              "result":{"signature":"a","guessed":false,"analyses":[
                {"analysisId":"analysis-0","index":0,"surface":"sagd","morphemes":"root",
                 "projection":{"profile":"fieldworks-parse-analysis/v1","status":"available"},

@@ -279,7 +279,7 @@ public sealed class SampleProjectSpikeTests(ITestOutputHelper output)
                     var fixedWork = fixedResult.Work.GetValueOrDefault();
                     Assert.True(result.Work.HasValue && fixedResult.Work.HasValue,
                         "Both slow-variant measurements must trace their declared words.");
-                    output.WriteLine($"slow variant work={brokenWork}; fixed work={fixedWork}; ratio={(double)brokenWork / fixedWork:F2}x; steps={result.Steps}/{fixedResult.Steps}; slowest={string.Join(", ", slowestWords)}");
+                    output.WriteLine($"slow variant work={brokenWork}; fixed work={fixedWork}; ratio={(double)brokenWork / fixedWork:F2}x; slowest={string.Join(", ", slowestWords)}");
                     Assert.Equal(expectedWords, slowestWords);
                     Assert.True(brokenWork >= fixedWork * 10,
                         $"Slow bug '{bugId}' needs 10x parser work; fixed={fixedResult}, broken={result}.");
@@ -406,9 +406,9 @@ public sealed class SampleProjectSpikeTests(ITestOutputHelper output)
 
             var fixedWork = await AssessWorkAsync(root, fixedProject, fixedText);
             var brokenWork = await AssessWorkAsync(root, brokenProject, brokenText);
-            output.WriteLine($"fixed={fixedWork}; broken={brokenWork}; step ratio={(double)brokenWork.Steps / fixedWork.Steps:F2}x; work ratio={(double)brokenWork.Work / fixedWork.Work:F2}x");
-            Assert.True(brokenWork.Steps >= fixedWork.Steps * 10,
-                $"Expected duplicate optional plural slots to multiply parser steps tenfold; fixed={fixedWork}, broken={brokenWork}.");
+            output.WriteLine($"fixed={fixedWork}; broken={brokenWork}; work ratio={(double)brokenWork.Work / fixedWork.Work:F2}x");
+            Assert.True(brokenWork.Work >= fixedWork.Work * 10,
+                $"Expected duplicate optional plural slots to multiply parser work tenfold; fixed={fixedWork}, broken={brokenWork}.");
         }
         finally
         {
@@ -565,7 +565,6 @@ public sealed class SampleProjectSpikeTests(ITestOutputHelper output)
         var words = response.RootElement.GetProperty("words").EnumerateArray().ToArray();
         Assert.All(words, word => Assert.Equal("analysed", word.GetProperty("outcome").GetString()));
         var work = 0L;
-        var steps = 0L;
         var parserElapsedMs = 0d;
         using var invoker = new PanGlossInvoker();
         var tracer = new PanGlossTracer(invoker);
@@ -575,11 +574,10 @@ public sealed class SampleProjectSpikeTests(ITestOutputHelper output)
                 CancellationToken.None, TimeSpan.FromSeconds(30));
             var completed = Assert.IsType<PanGlossTraceOutcome.Completed>(trace);
             var details = Assert.IsType<PanGlossTraceDetails>(completed.Details);
-            steps += details.Steps;
             work += details.Categories.Sum(category => category.Work);
             parserElapsedMs += details.ElapsedNs / 1_000_000d;
         }
-        return new WorkSnapshot(work, steps, stopwatch.ElapsedMilliseconds, parserElapsedMs);
+        return new WorkSnapshot(work, stopwatch.ElapsedMilliseconds, parserElapsedMs);
     }
 
     private static async Task<AssessmentSnapshot> AssessTextsAsync(
@@ -592,7 +590,6 @@ public sealed class SampleProjectSpikeTests(ITestOutputHelper output)
         var words = 0;
         var parsed = 0;
         var work = 0L;
-        var steps = 0L;
         var assessmentId = Guid.NewGuid().ToString("N")[..8];
         var workerRoot = Path.Combine(root, "worker-root");
         var assess = new ProcessStartInfo(BuildOutput.Cli)
@@ -646,7 +643,6 @@ public sealed class SampleProjectSpikeTests(ITestOutputHelper output)
                 CancellationToken.None, TimeSpan.FromSeconds(30));
             var completed = Assert.IsType<PanGlossTraceOutcome.Completed>(trace);
             var details = Assert.IsType<PanGlossTraceDetails>(completed.Details);
-            steps += details.Steps;
             var wordUnits = details.Categories.Sum(category => category.Work);
             work += wordUnits;
             wordWork[normalized] = wordUnits;
@@ -656,7 +652,7 @@ public sealed class SampleProjectSpikeTests(ITestOutputHelper output)
             Assert.Equal(traceWords.Order(StringComparer.Ordinal), tracedWords!.Order(StringComparer.Ordinal));
 
         return new AssessmentSnapshot(outcomes, words, parsed,
-            traceWords is null ? null : work, traceWords is null ? null : steps, stopwatch.ElapsedMilliseconds,
+            traceWords is null ? null : work, stopwatch.ElapsedMilliseconds,
             tracedWords?.Order(StringComparer.Ordinal).ToArray(), assessmentWords?.Order(StringComparer.Ordinal).ToArray(),
             wordWork);
     }
@@ -678,7 +674,7 @@ public sealed class SampleProjectSpikeTests(ITestOutputHelper output)
     private static SampleVariantExpected ToExpected(
         AssessmentSnapshot result, Dictionary<string, string>? failing = null) =>
         new(result.Words, result.Parsed, result.Words == 0 ? 0 : (double)result.Parsed / result.Words,
-            result.Work, result.Steps, result.WallClockMs, result.SelectedWords,
+            result.Work, result.WallClockMs, result.SelectedWords,
             result.TracedWords is null ? null : SlowestWords(result), result.TracedWords,
             failing ?? new Dictionary<string, string>(StringComparer.Ordinal));
 
@@ -756,9 +752,9 @@ public sealed class SampleProjectSpikeTests(ITestOutputHelper output)
     }
 
     private sealed record ProcessResult(int ExitCode, string StandardOutput, string StandardError);
-    private sealed record WorkSnapshot(long Work, long Steps, long WallClockMs, double ParserElapsedMs);
+    private sealed record WorkSnapshot(long Work, long WallClockMs, double ParserElapsedMs);
     private sealed record AssessmentSnapshot(
-        Dictionary<string, string> Outcomes, int Words, int Parsed, long? Work, long? Steps, long WallClockMs,
+        Dictionary<string, string> Outcomes, int Words, int Parsed, long? Work, long WallClockMs,
         string[]? TracedWords, string[]? SelectedWords, Dictionary<string, long> WordWork);
     private sealed record SampleExpected(
         string Disclaimer, SampleVariantExpected Fixed, SampleVariantExpected Broken,
@@ -766,7 +762,7 @@ public sealed class SampleProjectSpikeTests(ITestOutputHelper output)
     private sealed record SampleGrammarHealthPins(
         SampleGrammarHealthSnapshot Fixed, SampleGrammarHealthSnapshot Broken);
     private sealed record SampleVariantExpected(
-        int Words, int Parsed, double TextCoverage, long? Work, long? Steps, long WallClockMs,
+        int Words, int Parsed, double TextCoverage, long? Work, long WallClockMs,
         string[]? SelectedWords, string[]? SlowestWords, string[]? TracedWords,
         Dictionary<string, string> Failing);
 

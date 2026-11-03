@@ -18,7 +18,7 @@ Motif reads PanGloss's `work_steps` and calls it parser work everywhere a person
 
 ### 2. The limit is a parser work limit
 
-The per-word limit counts parser work. Its default is 20,000,000. Motif passes `--work-cap` with that number and derives PanGloss's `--step-cap` as one hundredth of it, rounded up, in one place (`ParserWorkLimit.ToStepCapArgument`), so the work limit is what stops a word and PanGloss dropping `--step-cap` is a one-place change. The time estimate keeps its per-attempt rate: a limit of 100 parser work allows one attempt, so estimates do not change.
+The per-word limit counts parser work. Its default is 20,000,000. Motif passes `--work-cap` with that number. PanGloss 0.14.0 dropped `--step-cap` and analysis attempts per word, so Motif no longer derives or sends a step cap and the work limit is the only cap. The time estimate keeps its per-attempt rate: a limit of 100 parser work allows one attempt, so estimates do not change.
 
 ### 3. Names follow, and PanGloss's keys stay at the reading points
 

@@ -577,7 +577,7 @@ public sealed class AssessmentRepositoryTests : IDisposable
             CREATE TABLE run (counter_semantics INTEGER NOT NULL);
             INSERT INTO run VALUES (8);
             CREATE TABLE word (word_id INTEGER PRIMARY KEY, form TEXT NOT NULL, elapsed_ns INTEGER NOT NULL,
-                attempts INTEGER NOT NULL, passes INTEGER NOT NULL);
+                attempts INTEGER NOT NULL, passes INTEGER NOT NULL, work INTEGER);
             CREATE TABLE object (object_id INTEGER PRIMARY KEY, key TEXT NOT NULL, kind TEXT NOT NULL,
                 label TEXT NOT NULL, identity_quality TEXT NOT NULL);
             CREATE TABLE fact (word_id INTEGER NOT NULL, object_id INTEGER NOT NULL, direction TEXT NOT NULL,
@@ -601,7 +601,7 @@ public sealed class AssessmentRepositoryTests : IDisposable
         }
         using var insertWord = connection.CreateCommand();
         insertWord.Transaction = transaction;
-        insertWord.CommandText = "INSERT INTO word VALUES ($id, $form, $elapsed, 10, 1)";
+        insertWord.CommandText = "INSERT INTO word VALUES ($id, $form, $elapsed, 10, 1, NULL)";
         var wordId = insertWord.Parameters.Add("$id", SqliteType.Integer);
         var wordForm = insertWord.Parameters.Add("$form", SqliteType.Text);
         var wordElapsed = insertWord.Parameters.Add("$elapsed", SqliteType.Integer);

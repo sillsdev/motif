@@ -44,7 +44,7 @@ public sealed record ShowPhonologyExamplesRequest(
 /// <param name="ProjectPath">The path to the project that owns the revision.</param>
 /// <param name="RevisionId">The canonical id of the immutable Example Set revision to check.</param>
 /// <param name="Baseline">The captured Baseline that binds this request, or null for the project's current Baseline.</param>
-/// <param name="Limits">Request-wide step and work ceilings divided across rows in request order, plus one shared deadline that starts after grammar and cache preparation; null uses the defaults.</param>
+/// <param name="Limits">Request-wide work ceiling divided across rows in request order, plus one shared deadline that starts after grammar and cache preparation; null uses the defaults.</param>
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record PhonologyCheckRequest(
     [property: JsonPropertyName("projectPath")] string ProjectPath,

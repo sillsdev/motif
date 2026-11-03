@@ -42,8 +42,8 @@ public sealed class TraceDiagnosticCaptureTests
     public void ExplicitIncompleteSearchIsNotReinterpretedAsComplete()
     {
         const string json = """
-        {"schemaVersion":"pangloss.trace-details.v4","word":"word",
-         "search":{"completed":false,"capped":false,"timedOut":false,"invalidShape":false,"steps":1,"elapsedNs":2},
+        {"schemaVersion":"pangloss.trace-details.v5","word":"word",
+         "search":{"completed":false,"capped":false,"timedOut":false,"invalidShape":false,"elapsedNs":2},
          "result":{"signature":"-","guessed":false,"analyses":[]},"categories":{},"trace":null}
         """;
         var outcome = WordTraceQuery.LoadDiagnostic(json);
@@ -83,8 +83,8 @@ public sealed class TraceDiagnosticCaptureTests
     public void SavedEnvelopeRetainsHostTimingUnknownFieldsAndProjectionError()
     {
         var json = """
-        {"schemaVersion":"pangloss.trace-details.v4","word":"sagd",
-         "search":{"completed":false,"capped":true,"timedOut":false,"invalidShape":false,"steps":12,"elapsedNs":9},
+        {"schemaVersion":"pangloss.trace-details.v5","word":"sagd",
+         "search":{"completed":false,"capped":true,"timedOut":false,"invalidShape":false,"elapsedNs":9},
          "result":{"signature":"root:sagd","guessed":false,"analyses":[{"analysisId":"analysis-0","index":0,"morphemes":"root","surface":"sagd","projection":{"status":"unavailable","error":"recorded projection failed","errorCode":"Example"},"morphs":[]}]},
          "categories":{},"trace":null,"extension":{"preserve":[1,2,3]},
          "hostCapture":{"projectIdentity":"project-a","grammarHash":"abc","grammarHashSemantics":"snapshot-semantic-sha256-v1","capturedUtc":"2026-09-22T12:00:00Z","wallElapsedMs":1234,"writingSystems":[{"id":"ar","name":"Arabic","isVernacular":true,"isDefault":true,"direction":"rtl","font":"Noto Sans Arabic"}]}}

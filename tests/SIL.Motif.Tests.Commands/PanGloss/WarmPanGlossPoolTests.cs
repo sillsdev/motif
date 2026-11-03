@@ -69,16 +69,14 @@ public sealed class WarmPanGlossPoolTests : IDisposable
     [Fact]
     public async Task OptionalServeCountsSurviveTheEnvelopeAndTracePath()
     {
-        var (grammar, _, _) = Project("counts", new { ServeSteps = 13L, ServeParserWork = 401L });
+        var (grammar, _, _) = Project("counts", new { ServeParserWork = 401L });
         using var pool = Pool();
         var answer = Assert.IsType<WarmParseResult.Completed>(
             await pool.TryWordAsync(grammar, "t1", grammar, "motifa", true, CancellationToken.None));
-        Assert.Equal(13, answer.Steps);
         Assert.Equal(401, answer.ParserWork);
         using var cold = new PanGlossInvoker(FakeParser.ExecutablePath);
         using var tracer = new WarmFirstTracer(pool, new PanGlossTracer(cold));
         var trace = await tracer.TraceAsync(grammar, "t1", grammar, "motifa", CancellationToken.None);
-        Assert.Equal(13, trace.Steps);
         Assert.Equal(401, trace.ParserWork);
     }
 
@@ -96,7 +94,6 @@ public sealed class WarmPanGlossPoolTests : IDisposable
             await invoker.RunAsync(new PanGlossRequest.Trace(grammar, "motifa"), "cold", CancellationToken.None));
 
         Assert.Equal(cold.Output.Trim(), warm.Json);
-        Assert.Null(warm.Steps);
         Assert.Null(warm.ParserWork);
     }
 
@@ -369,9 +366,9 @@ public sealed class WarmPanGlossPoolTests : IDisposable
         await pool.TryWordAsync(grammar, "t1", grammar, "motifd", true, CancellationToken.None, new ParserWorkLimit(5_000_000_000));
         var argv = Lines(argvLog);
         Assert.Equal(3, Lines(startLog).Length);
-        Assert.DoesNotContain("--step-cap", argv[0]);
-        Assert.Contains("\"--step-cap\",\"1000\"", argv[1]);
-        Assert.Contains("\"--step-cap\",\"unbounded\"", argv[2]);
+        Assert.DoesNotContain("--work-cap", argv[0]);
+        Assert.Contains("\"--work-cap\",\"100000\"", argv[1]);
+        Assert.Contains("\"--work-cap\",\"unbounded\"", argv[2]);
         Assert.Equal(WarmSessionPhase.Ready, pool.GetState(grammar).Phase);
         Assert.Equal(WarmSessionPhase.Ready, pool.GetState(grammar, new ParserWorkLimit(100_000)).Phase);
         Assert.Equal(WarmSessionPhase.Idle, pool.GetState(grammar, new ParserWorkLimit(7)).Phase);

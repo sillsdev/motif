@@ -463,7 +463,7 @@ public sealed class PageScreenshots
         using var document = JsonDocument.Parse(TraceFixture());
         var root = document.RootElement;
         var grammar = root.GetProperty("provenance").GetProperty("grammar");
-        Assert.Equal("pangloss.trace-details.v4", root.GetProperty("schemaVersion").GetString());
+        Assert.Equal("pangloss.trace-details.v5", root.GetProperty("schemaVersion").GetString());
         Assert.Equal("synthetic", root.GetProperty("fixture").GetProperty("kind").GetString());
         var failed = Descendants(root.GetProperty("trace"))
             .Single(node => node.TryGetProperty("type", out var type) && type.GetString() == "Failed");

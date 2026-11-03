@@ -273,7 +273,6 @@ public sealed class RealParserBatchTests(PristineProjectFixture pristine)
             var counters = statistics.Words[word];
             Assert.NotNull(counters.ParserWork);
             Assert.Equal(ReadInt64(cachePath, "SELECT work FROM word LIMIT 1;"), counters.ParserWork);
-            Assert.True(counters.ParserWork >= counters.Attempts);
             Assert.Equal(counters.ParserWork, statistics.ObjectTimings.Sum(row => row.ParserWork));
             Assert.Single(statistics.ObjectTimings, row => row.Kind == "unattributed");
             Assert.Contains(statistics.ObjectTimings,

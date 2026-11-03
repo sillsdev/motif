@@ -46,8 +46,6 @@ public abstract record WarmParseResult
     /// </summary>
     public sealed record Completed(string Json, int ExitCode, TimeSpan Elapsed) : WarmParseResult
     {
-        /// <summary>The analysis attempts reported by the result envelope, if present.</summary>
-        public long? Steps { get; init; }
         /// <summary>The total parser work reported by the result envelope, if present.</summary>
         public long? ParserWork { get; init; }
     }
@@ -84,7 +82,7 @@ public sealed record WarmPanGlossOptions
 public sealed class WarmPanGlossPool : IDisposable
 {
     /// <summary>The <c>serve</c> protocol version Motif speaks.</summary>
-    public const int ServeProtocol = 1;
+    public const int ServeProtocol = 2;
 
     private readonly string? _executable;
     private readonly MachinePanGlossQueue _queue;
@@ -140,7 +138,7 @@ public sealed class WarmPanGlossPool : IDisposable
     /// <paramref name="cancellationToken"/>, which then abandons only the wait), starts one if there is none, and
     /// returns <see cref="WarmParseResult.Fallback"/> when the session failed, the parser answered the word with an error,
     /// or a reply line was malformed or unterminated, so the caller runs the cold path.
-    /// <paramref name="parserWorkLimit"/> is passed to <c>serve</c> as <c>--step-cap</c> and is part of the session key.
+    /// <paramref name="parserWorkLimit"/> is passed to <c>serve</c> as <c>--work-cap</c> and is part of the session key.
     /// Cancelling during a parse kills the process.
     /// </summary>
     public async Task<WarmParseResult> TryWordAsync(string projectKey, string stateToken, string grammarPath,
@@ -392,8 +390,6 @@ public sealed class WarmPanGlossPool : IDisposable
             if (parserWorkLimitArgument is not null)
             {
                 var limit = ParserWorkLimit.Parse(parserWorkLimitArgument);
-                start.ArgumentList.Add("--step-cap"); // PanGloss's name for its analysis-attempt bound; derived from the work limit
-                start.ArgumentList.Add(limit.ToStepCapArgument());
                 start.ArgumentList.Add("--work-cap");
                 start.ArgumentList.Add(limit.ToWorkCapArgument());
             }
@@ -516,7 +512,6 @@ public sealed class WarmPanGlossPool : IDisposable
                             return new WarmParseResult.Fallback("serve-protocol", "A result line carried no exit code.");
                         return new WarmParseResult.Completed(result.GetRawText(), exitCode, clock.Elapsed)
                         {
-                            Steps = ReadOptionalCount(root, "steps"),
                             ParserWork = ReadOptionalCount(root, "workSteps"),
                         };
                     }

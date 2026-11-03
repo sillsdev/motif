@@ -29,14 +29,14 @@ public sealed class GrammarFactsReaderTests : IDisposable
     }
 
     [Fact]
-    public void AcceptsAValidVersionEightArtifactAndReportsItsSections()
+    public void AcceptsAValidVersionNineArtifactAndReportsItsSections()
     {
         var facts = new FactsFile(_root);
 
         var artifact = GrammarFactsReader.Read(facts.DatabasePath, facts.Response(), facts.SnapshotPath);
 
         Assert.Equal(GrammarFactsReader.ApplicationId, artifact.ApplicationId);
-        Assert.Equal(8, artifact.SchemaVersion);
+        Assert.Equal(9, artifact.SchemaVersion);
         Assert.Equal("pangloss-grammar-facts", artifact.Format);
         Assert.Equal(facts.SourceDigest, artifact.SourceSha256);
         Assert.Equal("baseline", artifact.InputKind);
@@ -86,7 +86,7 @@ public sealed class GrammarFactsReaderTests : IDisposable
 
         var failure = Refusal(facts, response => response["schemaVersion"] = 7);
 
-        Assert.Contains("schema version 7, not 8", failure.Message);
+        Assert.Contains("schema version 7, not 9", failure.Message);
         Assert.Contains("PanGloss " + PanGlossInterfaceVersions.SourceTag, failure.Message);
     }
 
@@ -97,7 +97,7 @@ public sealed class GrammarFactsReaderTests : IDisposable
 
         var failure = Refusal(facts);
 
-        Assert.Contains("not schema version 8", failure.Message);
+        Assert.Contains("not schema version 9", failure.Message);
         Assert.Contains("PanGloss " + PanGlossInterfaceVersions.SourceTag, failure.Message);
     }
 

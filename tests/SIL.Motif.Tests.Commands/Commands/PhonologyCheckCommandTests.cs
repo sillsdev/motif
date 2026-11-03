@@ -26,9 +26,9 @@ public sealed class PhonologyCheckCommandTests(PristineProjectFixture pristine)
         var unknown = PhonologyExampleCommands.Check(new PhonologyCheckRequest(projectPath,
             SIL.Motif.Contract.Ids.CanonicalId.Mint("example-revision/").Value));
         var unbounded = PhonologyExampleCommands.Check(new PhonologyCheckRequest(projectPath, revisionId, null,
-            new PhonologyLimits(PhonologyExampleValidation.MaxStepCap + 1, 1, 1)));
+            new PhonologyLimits(PhonologyExampleValidation.MaxWorkCap + 1, 1)));
         var zero = PhonologyExampleCommands.Check(new PhonologyCheckRequest(projectPath, revisionId, null,
-            new PhonologyLimits(1, 1, 0)));
+            new PhonologyLimits(1, 0)));
 
         Assert.Equal("phonology-examples.no-baseline", noBaseline.Refusal?.Code);
         Assert.Equal("phonology-examples.revision-not-found", unknown.Refusal?.Code);
@@ -61,6 +61,20 @@ public sealed class PhonologyCheckCommandTests(PristineProjectFixture pristine)
             "2026-01-01T00:00:00Z", "sha256:" + new string('b', 64));
         var stale = PhonologyExampleCommands.Check(new PhonologyCheckRequest(projectPath, revisionId, other));
         Assert.Equal("phonology-examples.baseline-changed", stale.Refusal?.Code);
+    }
+
+    [Fact]
+    public void AJobQueuedBeforeTheStepCapWasRemovedStillReadsItsInput()
+    {
+        const string queuedBefore = """
+            {"revisionId":"r1","baselineToken":null,"limits":{"stepCap":500,"workCap":1000,"timeoutMs":5000}}
+            """;
+
+        var input = PhonologyCheckJobHandler.ReadInput(queuedBefore);
+
+        Assert.Equal("r1", input.RevisionId);
+        Assert.Equal(1000UL, input.Limits.WorkCap);
+        Assert.Equal(5000u, input.Limits.TimeoutMs);
     }
 
     private static string SaveSet(string projectPath)

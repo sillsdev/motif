@@ -27,29 +27,27 @@ internal static class StatsCache
                 CREATE TABLE run (counter_semantics INTEGER NOT NULL);
                 INSERT INTO run VALUES (8);
                 CREATE TABLE word (word_id INTEGER PRIMARY KEY, form TEXT NOT NULL, elapsed_ns INTEGER NOT NULL,
-                                   attempts INTEGER NOT NULL, passes INTEGER NOT NULL, work INTEGER NULL);
+                                   passes INTEGER NOT NULL, work INTEGER NULL);
                 CREATE TABLE object (object_id INTEGER PRIMARY KEY, key TEXT NOT NULL, identity_quality TEXT NOT NULL,
                                      kind TEXT NOT NULL, label TEXT NOT NULL);
                 CREATE TABLE fact (word_id INTEGER NOT NULL, object_id INTEGER NOT NULL,
                                    direction TEXT NOT NULL, attempts INTEGER NOT NULL, self_time_ns INTEGER, work_steps INTEGER);
-                INSERT INTO cache_identity VALUES (1, 10);
+                INSERT INTO cache_identity VALUES (1, 11);
                 """;
             create.ExecuteNonQuery();
         }
         using var transaction = connection.BeginTransaction();
         using var insert = connection.CreateCommand();
         insert.Transaction = transaction;
-        insert.CommandText = "INSERT INTO word (form, elapsed_ns, attempts, passes, work) " +
-            "VALUES ($form, 0, $attempts, $passes, $work);";
+        insert.CommandText = "INSERT INTO word (form, elapsed_ns, passes, work) " +
+            "VALUES ($form, 0, $passes, $work);";
         var form = insert.Parameters.Add("$form", SqliteType.Text);
-        var attempts = insert.Parameters.Add("$attempts", SqliteType.Integer);
         var passes = insert.Parameters.Add("$passes", SqliteType.Integer);
         var work = insert.Parameters.Add("$work", SqliteType.Integer);
         insert.Prepare();
         foreach (var word in words.GroupBy(word => word.Form, StringComparer.Ordinal).Select(group => group.First()))
         {
             form.Value = word.Form;
-            attempts.Value = word.Attempts;
             passes.Value = word.Passes;
             work.Value = word.ParserWork is { } value ? value : DBNull.Value;
             insert.ExecuteNonQuery();

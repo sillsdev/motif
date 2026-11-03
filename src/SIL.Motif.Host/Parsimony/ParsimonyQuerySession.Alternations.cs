@@ -18,7 +18,7 @@ public sealed partial class ParsimonyQuerySession
         var entries = ReadAlternationEntries(allomorphs);
         return new AlternationInput(ReadRelevantFeatureCount(), phonemes, entries,
             ReadExistingRewriteRules(), ReadSectionStatus("phonology") == "complete" &&
-            ReadSectionStatus("patterns") == "complete" && ReadSectionStatus("load_accounting") == "complete");
+            ReadSectionStatus("patterns") == "complete" && IsSectionReadable("load_accounting"));
     }
 
     private IReadOnlyList<PhonemeFacts> ReadPhonemes()

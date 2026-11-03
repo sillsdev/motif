@@ -127,8 +127,6 @@ public abstract record PanGlossRequest
                 startInfo.ArgumentList.Add("--word-timeout-ms");
                 startInfo.ArgumentList.Add(((int)timeLimit.TotalMilliseconds).ToString(CultureInfo.InvariantCulture));
             }
-            startInfo.ArgumentList.Add("--step-cap"); // PanGloss's name for its analysis-attempt bound; derived from the work limit
-            startInfo.ArgumentList.Add((PerWordParserWorkLimit ?? ParserWorkLimit.Default).ToStepCapArgument());
             startInfo.ArgumentList.Add("--work-cap");
             startInfo.ArgumentList.Add((PerWordParserWorkLimit ?? ParserWorkLimit.Default).ToWorkCapArgument());
             if (WorkColumns) startInfo.ArgumentList.Add("--work-columns");
@@ -265,8 +263,6 @@ public abstract record PanGlossRequest
             startInfo.ArgumentList.Add("json");
             startInfo.ArgumentList.Add("--trace-details");
             if (ParserWorkLimit is null) return;
-            startInfo.ArgumentList.Add("--step-cap"); // PanGloss's name for its analysis-attempt bound; derived from the work limit
-            startInfo.ArgumentList.Add(ParserWorkLimit.ToStepCapArgument());
             startInfo.ArgumentList.Add("--work-cap");
             startInfo.ArgumentList.Add(ParserWorkLimit.ToWorkCapArgument());
         }
@@ -366,8 +362,10 @@ public abstract record PanGlossRequest
     /// <param name="SnapshotPath">The exact current pg-snapshot JSON input.</param>
     /// <param name="ContextJson">The versioned facts context passed to PanGloss.</param>
     /// <param name="ArtifactDirectory">An optional new directory to own the database and its invocation inputs.</param>
+    /// <param name="Light">Whether to pass <c>--light</c>, which leaves out the tables and rows no Parsimony measure reads
+    /// and marks the sections they narrow <c>partial</c> with reason <c>light</c>.</param>
     public sealed record Facts(string SnapshotPath, string ContextJson, string? ArtifactDirectory = null,
-        string? StatsCachePath = null, string? StatsManifestPath = null)
+        string? StatsCachePath = null, string? StatsManifestPath = null, bool Light = false)
         : PanGlossRequest
     {
         public override string Subcommand => "facts";
@@ -409,6 +407,7 @@ public abstract record PanGlossRequest
                 startInfo.ArgumentList.Add("--stats-manifest");
                 startInfo.ArgumentList.Add(Path.GetFullPath(StatsManifestPath!));
             }
+            if (Light) startInfo.ArgumentList.Add("--light");
             startInfo.ArgumentList.Add("--json");
         }
 

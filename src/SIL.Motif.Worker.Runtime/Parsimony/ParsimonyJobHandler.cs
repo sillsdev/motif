@@ -145,7 +145,7 @@ public sealed class ParsimonyJobHandler
             var factsPhase = Enter("facts");
             var factsWait = claimed.ObserveParserWait(factsPhase);
             var factsOutcome = await _invoker.RunAsync(
-                new PanGlossRequest.Facts(snapshotPath, contextJson)
+                new PanGlossRequest.Facts(snapshotPath, contextJson, Light: true)
                 {
                     OnAdmissionWait = factsWait.Observe,
                 },

@@ -81,10 +81,10 @@ internal sealed class BatchProgressReader(IReadOnlyList<string> words)
         return first > second || first == second && index < (_slowestIndex ?? int.MaxValue);
     }
 
-    // The headerless layout appends steps then parser work, so a 7 or 8 column row ends with the parser work.
+    // The headerless layout appends the parser work to the five result columns, so a 6 column row ends with it.
     private long? ParserWorkOf(string[] cells)
     {
-        var column = _parserWorkColumn ?? (cells.Length is 7 or 8 ? cells.Length - 1 : (int?)null);
+        var column = _parserWorkColumn ?? (cells.Length is 6 ? 5 : (int?)null);
         return column is { } at && at < cells.Length &&
             long.TryParse(cells[at], NumberStyles.None, CultureInfo.InvariantCulture, out var value) ? value : null;
     }

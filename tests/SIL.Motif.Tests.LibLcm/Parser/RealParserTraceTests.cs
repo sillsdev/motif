@@ -94,7 +94,7 @@ public sealed class RealParserTraceTests
         var grammarPath = Path.Combine(Path.GetTempPath(), "motif-real-trace-cap-" + Guid.NewGuid().ToString("N") + ".xml");
         File.WriteAllText(grammarPath, GoldenGrammar);
         using var invoker = new PanGlossInvoker();
-        var tracer = new PanGlossTracer(invoker, parserWorkLimit: 100);
+        var tracer = new PanGlossTracer(invoker, parserWorkLimit: 20);
         try
         {
             var outcome = await tracer.TraceAsync(grammarPath, "sagd", CancellationToken.None, TimeSpan.FromSeconds(30));

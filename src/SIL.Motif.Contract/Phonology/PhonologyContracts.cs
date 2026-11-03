@@ -77,12 +77,10 @@ public sealed class PhonologyMsaClassJsonConverter : JsonConverter<PhonologyMsaC
 }
 
 /// <summary>Request-wide ceilings balanced across examples during phonology checking.</summary>
-/// <param name="StepCap">The total synthesis-step ceiling, divided evenly among rows with remainder units assigned in request order; unused units are not reassigned.</param>
 /// <param name="WorkCap">The total shared inner-work ceiling, divided evenly among rows with remainder units assigned in request order; unused units are not reassigned.</param>
 /// <param name="TimeoutMs">The shared monotonic deadline in milliseconds, started after grammar loading and shared Morpher/cache construction.</param>
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record PhonologyLimits(
-    [property: JsonPropertyName("stepCap")] ulong StepCap,
     [property: JsonPropertyName("workCap")] ulong WorkCap,
     [property: JsonPropertyName("timeoutMs")] uint TimeoutMs);
 

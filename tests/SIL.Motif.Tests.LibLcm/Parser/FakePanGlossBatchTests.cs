@@ -47,7 +47,7 @@ public sealed class FakePanGlossBatchTests : IDisposable
         using var connection = new SqliteConnection($"Data Source={cache};Pooling=False");
         connection.Open();
         using var query = connection.CreateCommand();
-        query.CommandText = "SELECT form, elapsed_ns, attempts, passes FROM word ORDER BY word_id;";
+        query.CommandText = "SELECT form, elapsed_ns, passes FROM word ORDER BY word_id;";
         using var reader = query.ExecuteReader();
         var cachedWords = new List<string>();
         while (reader.Read())
@@ -55,7 +55,6 @@ public sealed class FakePanGlossBatchTests : IDisposable
             cachedWords.Add(reader.GetString(0));
             Assert.Equal(0, reader.GetInt64(1));
             Assert.Equal(1, reader.GetInt64(2));
-            Assert.Equal(1, reader.GetInt64(3));
         }
         Assert.Equal(["motifa", "zzz"], cachedWords);
         var argv = JsonSerializer.Deserialize<string[]>(File.ReadAllText(Path.Combine(_root, "_pangloss-argv.json")));
