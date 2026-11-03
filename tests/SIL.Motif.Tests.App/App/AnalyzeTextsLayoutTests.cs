@@ -108,12 +108,8 @@ public sealed class AnalyzeTextsLayoutTests
                 window.KeyPress(Key.Right, RawInputModifiers.None, PhysicalKey.None, null);
                 await SettleReaderAsync(workspace, window);
                 Assert.Same(RealizedLines(inText)[0].Tokens.Single(token => token.Form == "chakula"), FocusedToken(panel));
-                window.KeyPress(Key.Down, RawInputModifiers.None, PhysicalKey.None, null);
-                PageScreenshots.Settle(window);
-                Assert.Same(watoto, FocusedToken(panel));
-                window.KeyPress(Key.Right, RawInputModifiers.None, PhysicalKey.None, null);
-                PageScreenshots.Settle(window);
-                Assert.Same(hawajafika, FocusedToken(panel));
+                await PressUntilFocusedAsync(workspace, window, panel, Key.Down, watoto);
+                await PressUntilFocusedAsync(workspace, window, panel, Key.Right, hawajafika);
 
                 await inText.OpenTokenCardAsync(hawajafika);
                 PageScreenshots.Settle(window);
@@ -129,12 +125,9 @@ public sealed class AnalyzeTextsLayoutTests
                 await WaitForPendingChanges(workspace, window, 2);
                 Assert.Contains(workspace.Context.Changes.Items, change => change.Word == "mwalimu" && change.Kind == ChangeKinds.Approve);
 
-                window.KeyPress(Key.End, RawInputModifiers.None, PhysicalKey.None, null);
-                PageScreenshots.Settle(window);
-                Assert.Same(watoto, FocusedToken(panel));
-                window.KeyPress(Key.Home, RawInputModifiers.None, PhysicalKey.None, null);
-                PageScreenshots.Settle(window);
-                Assert.Same(sungura, FocusedToken(panel));
+                await SettleReaderAsync(workspace, window);
+                await PressUntilFocusedAsync(workspace, window, panel, Key.End, watoto);
+                await PressUntilFocusedAsync(workspace, window, panel, Key.Home, sungura);
                 window.KeyPress(Key.D, RawInputModifiers.None, PhysicalKey.None, null);
                 await WaitForPendingChanges(workspace, window, 3);
 
@@ -217,6 +210,24 @@ public sealed class AnalyzeTextsLayoutTests
 
     private static ResultsTokenViewModel FocusedToken(ResultsInTextPanel panel) =>
         Assert.IsType<ResultsTokenViewModel>(ResultsInTextPanel.TokenOf(Assert.Single(Strips(panel), strip => strip.IsFocused)));
+
+    // The key handler awaits the reader before it moves focus, so a dispatcher pump alone can return first.
+    private static async Task PressUntilFocusedAsync(
+        WorkspaceShellViewModel workspace, Window window, ResultsInTextPanel panel, Key key, ResultsTokenViewModel expected)
+    {
+        window.KeyPress(key, RawInputModifiers.None, PhysicalKey.None, null);
+        await Wait.UntilAsync(() => ReferenceEquals(FocusedTokenOrNull(panel), expected),
+            $"focus to reach '{expected.Form}' after {key}",
+            detail: () => $"focused='{FocusedTokenOrNull(panel)?.Form}' " +
+                $"keyboard='{window.FindInWindowOrWorkspace<TextBlock>("KeyboardShortcutStatusLine")?.Text}' " +
+                $"pending={workspace.PageModel<TextsPageModel>().ResultsInText.SelectionRefresh.IsCompleted}",
+            between: () => PageScreenshots.Settle(window));
+    }
+
+    private static ResultsTokenViewModel? FocusedTokenOrNull(ResultsInTextPanel panel) =>
+        Strips(panel).Where(strip => strip.IsFocused).Take(2).ToArray() is [var only]
+            ? ResultsInTextPanel.TokenOf(only) as ResultsTokenViewModel
+            : null;
 
     private static async Task WaitForPendingChanges(WorkspaceShellViewModel workspace, Window window, int count)
     {
