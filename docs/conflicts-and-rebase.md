@@ -1,3 +1,8 @@
+> **Window words.** People see "Update to current project" for what this document calls rebase, and "no longer fits" for
+> an item that cannot be carried over; the glossary term is Update baseline (`CONTEXT.md`). Each such item offers Use
+> mine, Use FieldWorks or Fix with chatbot, with both versions viewable and copyable. See
+> `docs/superpowers/specs/2026-11-02-grammar-design-records-design.md`, section 6. The engineering content below is unchanged.
+
 # Conflict, warning, and rebase semantics
 
 ## Outcomes

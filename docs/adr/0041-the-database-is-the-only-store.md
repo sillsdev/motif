@@ -8,6 +8,10 @@ Follows [ADR 0040](0040-one-api-the-cli.md): its decision 7 already settles whic
 project, and its decision 5 leaves the Launcher without a job. ADR 0039's Baseline, live-host authority,
 per-project queueing and PanGloss bounding remain binding.
 
+**Status note, 2026-11-02:** [ADR 0085](0085-proposal-snapshots-are-disposable-derived-files.md) allows disposable
+derived project copies (Proposal snapshots) outside the database. They hold no authored work, so the database remains
+the only store.
+
 **In plain terms:** Motif kept a linguist's proposed changes in a folder of JSON files whose location
 depended on which directory you happened to be standing in, so the same project could show you different
 work from two different terminals. It also had a second, better home for them — a database sitting beside

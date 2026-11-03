@@ -6,6 +6,9 @@ agents seven tools instead of thirty-eight, gives the same commands and answers 
 right Composer from a goal in a linguist's words, and always says what to do next when it refuses. The aim is that
 the next two thousand languages mostly reuse what the first few built.
 
+**Status note, 2026-11-02:** [ADR 0084](0084-proposal-discussion-rationale-comments-and-pictures.md) replaces the
+Proposal's note, described in decision 6, with Comments that an agent may add to but never edit or delete. The `noteChanged` notice follows to Comments.
+
 **Status:** proposed, decided with the owner on 2026-10-15. Amends [ADR 0058](0058-the-agent-edit-loop.md)'s list of
 which commands become agent tools and its separate Dry Run and Trial tools; the meaning of a Dry Run and a Trial is
 unchanged. [ADR 0029](0029-agents-address-layer-1-only.md) stands, with no gated primitive route. Builds on
@@ -140,10 +143,11 @@ language.
 - A Proposal has a one-line label and a **Rationale**: Markdown saying what it changes and why, shown rendered to
   people and agents and required before Finalize. An agent writes it when it starts the Proposal and revises it with
   `motif_proposal` as it composes. Citations stay on the operations they support (ADR 0064).
-- A person answers in the Proposal's note, which only a person writes. An agent reads it with the Proposal and never
-  writes it. Each of the two records the Proposal content it was written for, so a reader can tell when it is out of
-  date. An MCP server cannot start an agent's turn on any host Motif supports, so every response about a Proposal
-  says whether the person has written the note since the Rationale was last set, and its next step says to read it.
+- A person answers in the Proposal's Comments, which people can add, edit and delete. An agent reads them with the
+  Proposal and may add its own, attributed to it, but never edits or deletes one (ADR 0084). Each of the Rationale and
+  the Comments records the Proposal content it was written for, so a reader can tell when it is out of date. An MCP
+  server cannot start an agent's turn on any host Motif supports, so every response about a Proposal says whether a
+  person has written a Comment since the Rationale was last set, and its next step says to read it.
 
 ### 7. Refusals and next steps
 

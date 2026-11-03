@@ -70,11 +70,36 @@ discarding the Draft leaves it as it was.
 _Avoid_: state, closed-out, archived, cancelled
 
 **Rationale**:
-A Proposal's account of what it changes and why, in Markdown, written by whoever builds the Proposal (usually an
-agent) and shown rendered to people and agents. Finalize requires it. It records the Proposal content it was written
-for, so a reader can see when later changes have left it out of date. A person's reply belongs in the Proposal's
-note, which an agent reads but never writes.
-_Avoid_: description (that is Help text), comment, summary, commit message
+A Proposal's account of what it changes and why, in Markdown, written and revised by people and agents while the
+Proposal is open. Finalize requires it. It records the Proposal content it was written for, so a reader can see when
+later changes have left it out of date. Its earlier versions are kept until the Proposal is decided, then dropped; the
+latest stays, frozen. A reply belongs in a **Comment**.
+_Avoid_: description (that is Help text), summary, commit message
+
+**Comment**:
+A remark attached to a Proposal, shown under its Rationale. A Proposal can have many and they can grow. People can add,
+edit and delete any Comment; an agent can only add its own, attributed to it, and cannot change or remove one. Comments
+freeze when the Proposal is decided. The window also records, as a Comment, which choice a person made for a change
+that no longer fits. A Comment is a label for readers, not an approval.
+_Avoid_: note, review, sign-off, annotation
+
+**Grammar Design Record**:
+A living page about one grammar topic of a language project, such as how word-initial sounds change: what the grammar
+does and why. It keeps one permanent ID and title, is stored in the FieldWorks project, and is rewritten in place;
+the Proposals that touched it are its history. Agents read it before changing the objects it describes. Also GDR.
+_Avoid_: design doc, wiki page, note, decision log
+
+**Proposal snapshot**:
+A saved copy of the project as it would be after a Proposal, opened in FLEx to look around. It is built from the
+Proposal on request and deleted when the Proposal's content changes or it is decided. Edits typed into it are never
+applied. Not a **Baseline**.
+_Avoid_: preview project, backup, baseline
+
+**Update baseline**:
+Bringing a Proposal up to the project as it stands now, so its changes are checked against the current state. The window
+says **Update to current project**; each change that cannot be carried over then "no longer fits" and offers Use mine,
+Use FieldWorks or Fix with chatbot. A person can view both versions and copy from either.
+_Avoid_: rebase, refresh, sync, merge
 
 **Finalize**:
 To commit a Draft's content as the Proposal's first immutable revision, handing it to a person to review.
@@ -261,7 +286,7 @@ A saved, minimal, file-backed copy of the project state from which Motif can mak
 Dry Run scratches. It contains the LibLCM and writing-system data needed to reproduce engine behaviour,
 but no linked media bytes. A Baseline is replaced explicitly, not merely because time passed. It may be
 captured from a project FieldWorks holds open, in which case it is the state as of FieldWorks' last save.
-_Avoid_: snapshot, backup, session cache, live model
+_Avoid_: snapshot (a Proposal snapshot is a different thing), backup, session cache, live model
 
 **Trial**:
 One attempt at a Proposal on a throwaway copy of the project, producing both a Dry Run and one or more
