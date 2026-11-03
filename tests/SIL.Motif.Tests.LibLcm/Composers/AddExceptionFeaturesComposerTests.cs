@@ -100,4 +100,30 @@ public sealed class AddExceptionFeaturesComposerTests(PristineProjectFixture pri
                  })
             Assert.ThrowsAny<Exception>(() => AddExceptionFeaturesIntentParser.Parse(JsonDocument.Parse(json).RootElement));
     }
+
+    [Fact]
+    public void ANewStemEntryCarriesTheExceptionFeaturesItsMsaNamesAndRefusesUnknownRepeatedOrAffixOnes()
+    {
+        using var cache = pristine.NewScratch();
+        var verb = AddCategory(cache, "Verb");
+        var loan = NewFeature(cache, "Loan stem");
+        string Json(string kind, string features) => "{\"form\":\"kaun\",\"formWs\":\"" + Vern(cache) +
+            "\",\"morphType\":\"" + MorphType(kind == "stem" ? MoMorphTypeTags.kguidMorphStem : MoMorphTypeTags.kguidMorphSuffix).Value +
+            "\",\"gloss\":\"eat\",\"analysisWs\":\"" + Anal(cache) + "\",\"msa\":{\"kind\":\"" + kind +
+            "\",\"category\":\"" + verb.Value + "\",\"exceptionFeatures\":" + features + "}}";
+        AuthorLexicalEntryIntent Parse(string json) =>
+            AuthorLexicalEntryIntentParser.Parse(JsonDocument.Parse(json).RootElement);
+
+        var created = ApplyOps(cache, AuthorLexicalEntryComposer.Build(cache, Parse(Json("stem", "[\"" + loan.Value + "\"]"))));
+        var msa = Assert.IsAssignableFrom<IMoStemMsa>(Get<IMoMorphSynAnalysis>(cache,
+            Created(created, LexEntryMorphoSyntaxAnalysesOperationKinds.Create)));
+        Assert.Equal([loan.ToGuid()], msa.ProdRestrictRC.Select(item => item.Guid));
+
+        Assert.Contains("not one of the project's exception features", Assert.Throws<InvalidOperationException>(() =>
+            AuthorLexicalEntryComposer.Build(cache, Parse(Json("stem", "[\"" + CanonicalId.Mint().Value + "\"]")))).Message);
+        Assert.Contains("duplicate ids", Assert.Throws<SIL.Motif.Contract.Parsing.ContractParseException>(() =>
+            Parse(Json("stem", "[\"" + loan.Value + "\",\"" + loan.Value + "\"]"))).Message);
+        Assert.Contains("only a stem msa takes 'exceptionFeatures'", Assert.Throws<SIL.Motif.Contract.Parsing.ContractParseException>(() =>
+            Parse(Json("inflectional", "[\"" + loan.Value + "\"]"))).Message);
+    }
 }

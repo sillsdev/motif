@@ -95,7 +95,7 @@ public sealed class StemAnalysisSplitByExceptionFeatureTests(PristineProjectFixt
              "gloss":"x","analysisWs":"{{{ws}}}",
              "msa":{"kind":"stem","category":"{{{verb.Value}}}","exceptionFeatures":["{{{feature.Value}}}"]}}
             """);
-        Assert.Throws<ContractParseException>(() => AuthorLexicalEntryIntentParser.Parse(other.RootElement));
+        Assert.Equal([feature], AuthorLexicalEntryIntentParser.Parse(other.RootElement).Msa.ExceptionFeatures);
     }
 
     private static CanonicalId Feature(LcmCache cache, string name, string abbreviation) =>

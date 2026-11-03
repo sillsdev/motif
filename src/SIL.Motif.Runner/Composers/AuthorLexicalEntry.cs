@@ -75,7 +75,7 @@ public static class AuthorLexicalEntryIntentParser
         SoundSystemIntentParsing.Object(authored, ConstructName,
             "form", "formWs", "morphType", "gloss", "analysisWs", "definition", "msa", "inflectionClasses",
             "environments");
-        var parsedMsa = ParseMsa(authored, ConstructName);
+        var parsedMsa = ParseMsa(authored, ConstructName, allowExceptionFeatures: true);
         return new AuthorLexicalEntryIntent(
             SoundSystemIntentParsing.Text(authored, "form"),
             SoundSystemIntentParsing.Text(authored, "formWs"),

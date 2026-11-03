@@ -151,11 +151,28 @@ public class ScratchCacheFactory
             if (file.EndsWith(".fwdata.lock", StringComparison.OrdinalIgnoreCase)) continue;
             // The paired Motif store is owned separately; a scratch cache only needs FieldWorks files.
             if (IsMotifStoreFile(file, projectName)) continue;
-            System.IO.File.Copy(file, System.IO.Path.Combine(destDir, System.IO.Path.GetFileName(file)), overwrite: true);
+            CopyFileWhenFree(file, System.IO.Path.Combine(destDir, System.IO.Path.GetFileName(file)));
         }
 
         foreach (var subDir in System.IO.Directory.GetDirectories(sourceDir))
             CopyDirectory(subDir, System.IO.Path.Combine(destDir, System.IO.Path.GetFileName(subDir)), projectName);
+    }
+
+    // Retries briefly while another writer still holds the file open.
+    private static void CopyFileWhenFree(string source, string destination)
+    {
+        for (var attempt = 1; ; attempt++)
+        {
+            try
+            {
+                System.IO.File.Copy(source, destination, overwrite: true);
+                return;
+            }
+            catch (System.IO.IOException ex) when (attempt < 20 && ex is not System.IO.FileNotFoundException and not System.IO.DirectoryNotFoundException)
+            {
+                System.Threading.Thread.Sleep(50);
+            }
+        }
     }
 
     private static bool IsMotifStoreFile(string path, string projectName)

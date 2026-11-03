@@ -55,6 +55,7 @@ public class OperationCitationTests
         Assert.Equal(OperationCitation.MaxSourceLength,
             OperationCitation.Create(new string('s', OperationCitation.MaxSourceLength)).Source.Length);
         Assert.Equal(300, OperationCitation.MaxLocatorLength);
+        Assert.Equal(2000, OperationCitation.MaxSourceLength);
         Assert.Equal(300, OperationCitation.Create("Steere 1870", new string('l', 300)).Locator!.Length);
     }
 

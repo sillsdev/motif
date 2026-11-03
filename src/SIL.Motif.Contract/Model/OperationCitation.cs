@@ -21,7 +21,7 @@ public sealed record OperationCitation
     public const string ProvenanceType = "citation";
 
     /// <summary>The longest <see cref="Source"/> accepted, in UTF-16 code units after trimming.</summary>
-    public const int MaxSourceLength = 300;
+    public const int MaxSourceLength = 2000;
 
     /// <summary>The longest <see cref="Locator"/> accepted, in UTF-16 code units after trimming.</summary>
     public const int MaxLocatorLength = 300;

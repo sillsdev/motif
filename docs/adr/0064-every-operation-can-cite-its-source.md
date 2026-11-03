@@ -21,7 +21,7 @@ is reserved for tool data (rule 7).
 ## Decision
 
 1. **A citation is a typed `provenance` entry.** `{"type":"citation","source":"...","locator":"..."}`: `source`
-   required (1–300 characters), `locator` optional (at most 300), no other property, at most one per
+   required (1–2000 characters, raised from 300 on 2026-11-03 because nothing in LibLCM or the store needs the cap and a Wolff passage did not fit), `locator` optional (at most 300), no other property, at most one per
    operation. Proposal parsing refuses a malformed or repeated citation; other `provenance` entries stay open.
    `decisionEvidence` is a second typed entry on the same channel, with the same rules: closed, at most one per
    operation, outside the digest and never naming an author of the Proposal.

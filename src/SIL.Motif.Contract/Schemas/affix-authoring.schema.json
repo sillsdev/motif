@@ -92,6 +92,13 @@
         },
         "inflectionClass": {
           "$ref": "#/$defs/CanonicalId"
+        },
+        "exceptionFeatures": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/CanonicalId"
+          }
         }
       },
       "required": [
@@ -146,8 +153,17 @@
           },
           "else": {
             "not": {
-              "required": [
-                "inflectionClass"
+              "anyOf": [
+                {
+                  "required": [
+                    "inflectionClass"
+                  ]
+                },
+                {
+                  "required": [
+                    "exceptionFeatures"
+                  ]
+                }
               ]
             }
           }

@@ -2,6 +2,7 @@ using System.Text.Json;
 using SIL.Motif.Contract;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Canonicalization;
+using SIL.Motif.Contract.Model;
 using SIL.Motif.Contract.Phonology;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
@@ -35,7 +36,7 @@ public sealed class PhonologyContractTests
         Assert.Throws<ArgumentException>(() => PhonologyExampleValidation.ValidateAndCopy("Set",
             [Example("e", citation: new CitationView("", null))]));
         Assert.Throws<ArgumentException>(() => PhonologyExampleValidation.ValidateAndCopy("Set",
-            [Example("e", citation: new CitationView(new string('s', 301), null))]));
+            [Example("e", citation: new CitationView(new string('s', OperationCitation.MaxSourceLength + 1), null))]));
     }
 
     [Fact]

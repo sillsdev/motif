@@ -126,13 +126,17 @@ public sealed class ProjectStoreResetTests : IDisposable
         using (var writer = Connection(storePath))
         {
             Execute(writer, "BEGIN IMMEDIATE;");
-            creating = Task.Run(() => ProjectStoreCommand.Run<string>(
-                project, "1.0", (_, _) => CommandOutcome<string>.Success(string.Empty)));
-            Assert.True(SpinWait.SpinUntil(() => File.Exists(storePath + ".owner.lock"), TimeSpan.FromSeconds(10)));
+            // A dedicated thread, because a pool task queued behind the suite's blocking tests can start late.
+            creating = Task.Factory.StartNew(() => ProjectStoreCommand.Run<string>(
+                project, "1.0", (_, _) => CommandOutcome<string>.Success(string.Empty)),
+                CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
+            Assert.True(SpinWait.SpinUntil(() => File.Exists(storePath + ".owner.lock"), TimeSpan.FromSeconds(30)),
+                $"The creator never took the owner lock; its task is {creating.Status}.");
 
-            deleting = Task.Run(() => MotifDatabase.DeleteIfOtherVersion(storePath, Locator(project),
-                MotifSchema.CurrentSchema, new Version(1, 0), onWaitingForOwnership: deleteWaiting.Set));
-            Assert.True(deleteWaiting.Wait(TimeSpan.FromSeconds(10)));
+            deleting = Task.Factory.StartNew(() => MotifDatabase.DeleteIfOtherVersion(storePath, Locator(project),
+                MotifSchema.CurrentSchema, new Version(1, 0), onWaitingForOwnership: deleteWaiting.Set),
+                CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
+            Assert.True(deleteWaiting.Wait(TimeSpan.FromSeconds(30)));
             Assert.False(deleting.IsCompleted);
             Execute(writer, "ROLLBACK;");
         }

@@ -992,6 +992,13 @@
             "inflectionClass": {
               "type": "string",
               "description": "Stem only: canonical id of its inflection class, such as a noun class."
+            },
+            "exceptionFeatures": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Stem only: canonical ids of existing exception features the analysis carries."
             }
           },
           "required": [

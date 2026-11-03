@@ -99,7 +99,7 @@ An operation may cite the source it was taken from as one entry of its `provenan
 "provenance": [ { "type": "citation", "source": "Steere 1870, A Handbook of the Swahili Language", "locator": "p. 142" } ]
 ```
 
-`source` is required, non-blank, and at most 300 characters; `locator` (a page, section or verse) is optional
+`source` is required, non-blank, and at most 2000 characters (a long passage fits; nothing in LibLCM or the store limits it, the cap only bounds the Proposal file); `locator` (a page, section or verse) is optional
 and at most 300. An entry whose `type` is `citation` admits no other property, and an operation carries at most
 one; a malformed or repeated citation makes the Proposal unparseable. Other `provenance` entries stay open.
 Like all of `provenance`, a citation is excluded from the intent digest. A citation names a source, never a
