@@ -18,4 +18,4 @@ Refusal messages begin with a stable name:
 - `phoneme-representation-not-found`: a `from` is not a representation of the phoneme.
 - `phoneme-representation-referenced`: an environment writes the `from` spelling; change that environment first.
 
-To fold one phoneme into another use `compose-merge-phoneme`, and to move a spelling out again use `compose-split-phoneme`. Editing phonological features is not supported. The command stages operations in a Draft and does not change the saved FieldWorks project. Dry Run and Trial the Proposal, then Finalize it for a person to review and Apply.
+To fold one phoneme into another use `compose-merge-phoneme`, and to move a spelling out again use `compose-split-phoneme`. To set the phonological features of a phoneme use [Set a phoneme's features](cmd:compose-edit-phoneme-features). The command stages operations in a Draft and does not change the saved FieldWorks project. Dry Run and Trial the Proposal, then Finalize it for a person to review and Apply.

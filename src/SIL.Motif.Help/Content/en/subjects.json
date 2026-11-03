@@ -8,7 +8,10 @@
       "vowel",
       "sound inventory",
       "segment",
-      "contrast"
+      "contrast",
+      "archiphoneme",
+      "glottal stop",
+      "phonological feature"
     ]
   },
   "natural-classes": {

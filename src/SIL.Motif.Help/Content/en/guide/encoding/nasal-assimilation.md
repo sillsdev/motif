@@ -12,11 +12,11 @@ A linguist sees a nasal change its sound near another consonant, while the morph
 
 ## Motif support
 
-`motif_grammar` can read phonemes, natural classes and phonological rules. `motif_add_phoneme`, `motif_add_natural_class` and `motif_add_phonological_rule` create the sound inventory, reusable sound classes and regular rules. A rule intent names existing phonemes or natural classes in its input, output and contexts. Motif still needs a composer for declaring phonological feature definitions. `motif_add_affix_process` and `motif_add_affix_process_allomorph` express a substitution as pattern-based forms of one affix instead. `motif_guide(topic="conditioned-allomorphs")` describes the related case where the evidence instead supports stored conditioned variants.
+`motif_grammar` can read phonemes, natural classes and phonological rules. `motif_add_phoneme`, `motif_add_natural_class` and `motif_add_phonological_rule` create the sound inventory, reusable sound classes and regular rules. A rule intent names existing phonemes or natural classes in its input, output and contexts. `motif_add_phonological_feature` and `motif_add_phonological_feature_value` define the phonological features and their values, `motif_edit_phoneme_features` sets them on phonemes, and `motif_edit_natural_class_features` changes the feature constraints of a natural class; a class by features can be created with `motif_add_natural_class` (`features`). A nasal that changes with its neighbour is often an archiphoneme, a phoneme only the underlying form carries (`motif_guide(topic="archiphonemes")`). Defining the first feature changes how rewrite rules that name segment classes are read in a project that had none, so Trial the rules after it. `motif_add_affix_process` and `motif_add_affix_process_allomorph` express a substitution as pattern-based forms of one affix instead. `motif_guide(topic="conditioned-allomorphs")` describes the related case where the evidence instead supports stored conditioned variants.
 
 ## Check with a Trial
 
-After a composer can express the rule, include attested forms for each conditioning place, forms where the nasal should stay unchanged, and negative words that should not become valid. Check that each output matches the evidence and that rule ordering does not alter unrelated segments.
+Include attested forms for each conditioning place, forms where the nasal should stay unchanged, and negative words that should not become valid. Check that each output matches the evidence and that rule ordering does not alter unrelated segments.
 
 ## Ask the linguist
 

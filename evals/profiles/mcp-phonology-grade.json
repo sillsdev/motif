@@ -83,6 +83,22 @@
       "class": "Draft"
     },
     {
+      "name": "motif_add_phonological_feature",
+      "class": "Draft"
+    },
+    {
+      "name": "motif_add_phonological_feature_value",
+      "class": "Draft"
+    },
+    {
+      "name": "motif_edit_phoneme_features",
+      "class": "Draft"
+    },
+    {
+      "name": "motif_edit_natural_class_features",
+      "class": "Draft"
+    },
+    {
       "name": "motif_edit_derivational_affix_restriction",
       "class": "Draft"
     },

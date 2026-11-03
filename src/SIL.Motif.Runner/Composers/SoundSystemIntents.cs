@@ -106,8 +106,8 @@ internal static class SoundSystemIntentParsing
         return value.EnumerateArray().ToArray();
     }
 
-    internal static PhonologicalFeatureValue[]? Features(JsonElement authored) =>
-        !authored.TryGetProperty("features", out _) ? null : Array(authored, "features").Select(e =>
+    internal static PhonologicalFeatureValue[]? Features(JsonElement authored, string name = "features") =>
+        !authored.TryGetProperty(name, out _) ? null : Array(authored, name).Select(e =>
         {
             Object(e, "feature value", "feature", "value");
             return new PhonologicalFeatureValue(Id(e, "feature"), Id(e, "value"));

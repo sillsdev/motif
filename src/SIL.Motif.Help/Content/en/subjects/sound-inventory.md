@@ -18,10 +18,12 @@ An orthography that writes numerals inside words (Cebuano `ika-14`, an ordinal p
 1. `compose-author-phoneme` adds one phoneme with its representations.
 2. `compose-edit-phoneme` adds a representation such as a digraph (ng, ts, dy) to a phoneme that exists, or respells one.
 3. `compose-merge-phoneme` folds a phoneme into the one it is a spelling of, and `compose-split-phoneme` undoes that.
-4. `compose-author-natural-class` groups phonemes once they exist.
+4. `compose-author-phonological-feature` and `compose-add-phonological-feature-value` define the features of sounds (place, voicing), and `compose-edit-phoneme-features` sets them on phonemes that exist.
+5. `compose-author-natural-class` groups phonemes once they exist, by members or by features, and `compose-edit-natural-class-features` changes the features of a class.
 
 ## Pitfalls
 
 - Do not add a phoneme because one form shows an unusual spelling. A spelling variant of a sound already in the inventory belongs in its representations.
-- Do not guess a sound's features. The rule-based parser needs phonological feature definitions (Black §6.2.2), and no composer here authors them, so report that gap rather than skipping the step.
+- Do not guess a sound's features. The rule-based parser needs phonological feature definitions (Black §6.2.2). Define them with `compose-author-phonological-feature` from the evidence, and ask the linguist where the evidence does not decide a value. Defining the first feature changes how rewrite rules that name segment classes are read, so Trial the rules after it.
+- An archiphoneme (a sound only an underlying form carries) and the glottal stop are ordinary phonemes; see the guide `archiphonemes`. A phoneme that occurs in no form, rule, class or environment is reported as information (`grammar.phoneme-never-used`).
 - Check the inventory against attested words, including words with the new sound and words that should not change.

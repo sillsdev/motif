@@ -34,6 +34,12 @@ alternation. Languages are many and phenomena are few, so the Phenomena are the 
 Composers by; no Composer is written for one language.
 _Avoid_: feature (a FieldWorks term), construction, rule
 
+**Archiphoneme**:
+A phoneme that an underlying form carries and a rule changes, so it may never appear in the written language, as a
+nasal that is `m`, `n` or `ng` by the sound after it. LibLCM has no flag for it and Motif adds none: it is an
+ordinary phoneme, found by the same Composers, and a phoneme that occurs nowhere draws an information finding.
+_Avoid_: abstract segment, placeholder phoneme
+
 **Subject**:
 One entry in the closed list an agent searches to find a Composer: what part of a language project the change is
 about. The grammar Subjects are the Phenomena; the others are lexicography and description, such as senses and

@@ -358,6 +358,41 @@ public sealed class GrammarCheckQueryTests : IDisposable
     }
 
     [Fact]
+    public void APhonemeThatOccursNowhereIsInformationButOneInAFormOrARuleIsNot()
+    {
+        var fwDataPath = _pristine.CopyProjectFile();
+        var loader = new FwDataProjectLoader();
+        Guid archiphoneme;
+        using (var cache = loader.LoadCache(fwDataPath))
+        {
+            var phonemes = AddPhonemes(cache, "N", "m", "k", "z");
+            archiphoneme = phonemes["N"].Guid;
+            var services = cache.ServiceLocator;
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            {
+                services.GetInstance<ILexEntryFactory>().Create(
+                    services.GetInstance<IMoMorphTypeRepository>().GetObject(MoMorphTypeTags.kguidMorphStem),
+                    SIL.LCModel.Core.Text.TsStringUtils.MakeString("kz", cache.DefaultVernWs), "gloss",
+                    new SandboxGenericMSA { MsaType = MsaType.kStem });
+                var rule = services.GetInstance<IPhRegularRuleFactory>().Create();
+                cache.LangProject.PhonologicalDataOA.PhonRulesOS.Add(rule);
+                var context = services.GetInstance<IPhSimpleContextSegFactory>().Create();
+                rule.StrucDescOS.Add(context);
+                context.FeatureStructureRA = phonemes["m"];
+            });
+            loader.Save(cache);
+        }
+
+        Capture(fwDataPath);
+        var check = Check(fwDataPath);
+
+        var finding = Assert.Single(check.Findings, item => item.Code == GrammarFindingCodes.PhonemeNeverUsed);
+        Assert.Equal(GrammarDiagnosticLevel.Information, finding.Severity);
+        Assert.Contains("'N'", finding.Description, StringComparison.Ordinal);
+        Assert.Equal(CanonicalId.FromGuid(archiphoneme).Value, Assert.Single(finding.Subject).ObjectId);
+    }
+
+    [Fact]
     public void AnEnvironmentTheParserCannotReadIsAWarningNamingTheFormButAReadableOneIsNot()
     {
         var fwDataPath = _pristine.CopyProjectFile();

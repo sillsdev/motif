@@ -1870,6 +1870,213 @@
     "idempotentHint": false
   },
   {
+    "name": "motif_add_phonological_feature",
+    "description": "Author a phonological feature. Research first: motif_guide topic nasal-assimilation or archiphonemes; check best practice. Use for a phonological feature of sounds. An inflection or part-of-speech feature uses compose-author-inflection-feature; a word-level exception uses compose-author-exception-feature (guide archiphonemes). Stages a closed phonological feature and its values in the project\u0027s phonological feature system, such as place with labial, coronal and velar. Phonemes carry the values and a natural class can be defined by them. Defining the first feature of a featureless project changes how rewrite rules that name segment classes are read, so Trial the rules after it. Only a person can Apply.\nCommand: compose-author-phonological-feature. Agent class: Draft.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "Draft name."
+        },
+        "name": {
+          "type": "string",
+          "description": "Feature name."
+        },
+        "abbreviation": {
+          "type": "string",
+          "description": "Optional feature abbreviation, unique among phonological features."
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "abbreviation": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "additionalProperties": false
+          },
+          "description": "Nonempty list of values, each an object with a name and an optional abbreviation."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "draft",
+        "name",
+        "values",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_add_phonological_feature_value",
+    "description": "Add a phonological feature value. Research first: motif_guide topic nasal-assimilation; check best practice. Extend a feature that exists. Create the feature first with compose-author-phonological-feature (guide nasal-assimilation). Stages one more value for an existing closed phonological feature. The feature must belong to the phonological feature system, and the value name and abbreviation must be new to it. Only a person can Apply.\nCommand: compose-add-phonological-feature-value. Agent class: Draft.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "Draft name."
+        },
+        "feature": {
+          "type": "string",
+          "description": "Id of the existing phonological feature."
+        },
+        "name": {
+          "type": "string",
+          "description": "Value name."
+        },
+        "abbreviation": {
+          "type": "string",
+          "description": "Optional value abbreviation, unique within the feature."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "draft",
+        "feature",
+        "name",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_edit_phoneme_features",
+    "description": "Set a phoneme\u0027s features. Research first: motif_guide topic nasal-assimilation or archiphonemes; check best practice. Set the features of a phoneme that exists; a new phoneme can take features when it is authored (guides nasal-assimilation, archiphonemes). Stages feature values on an existing phoneme: set a value (a feature the phoneme already has takes the new value in place, one it lacks gains it) and clear features. A phoneme with no feature structure gets one. It refuses a value that does not belong to its feature, a feature both set and cleared, a clear of an absent feature and a change that alters nothing. Only a person can Apply.\nCommand: compose-edit-phoneme-features. Agent class: Draft.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "Draft name."
+        },
+        "target": {
+          "type": "string",
+          "description": "Id of the existing phoneme."
+        },
+        "set": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "feature": {
+                "type": "string"
+              },
+              "value": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "feature",
+              "value"
+            ],
+            "additionalProperties": false
+          },
+          "description": "Feature and value pairs to set, each an object with feature and value ids."
+        },
+        "clear": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Ids of features whose specification is removed."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "draft",
+        "target",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_edit_natural_class_features",
+    "description": "Edit a natural class\u0027s features. Research first: motif_guide topic nasal-assimilation; check best practice. Change the feature constraints of a class defined by features. A class defined by segments changes its members with compose-edit-natural-class (guide nasal-assimilation). Stages a change to the feature values that define a feature-based natural class: set a constraint (a feature the class already constrains takes the new value in place) and clear constraints. The class must keep at least one constraint, and a segment class is refused. The response lists the environments, rules and insertions that use the class. Only a person can Apply.\nCommand: compose-edit-natural-class-features. Agent class: Draft.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "Draft name."
+        },
+        "target": {
+          "type": "string",
+          "description": "Id of the existing feature-based natural class."
+        },
+        "set": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "feature": {
+                "type": "string"
+              },
+              "value": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "feature",
+              "value"
+            ],
+            "additionalProperties": false
+          },
+          "description": "Feature and value pairs to set, each an object with feature and value ids."
+        },
+        "clear": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Ids of features whose constraint is removed."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "draft",
+        "target",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
     "name": "motif_merge_phoneme",
     "description": "Merge a phoneme into another. Research first: motif_guide topic nasal-assimilation or conditioned-allomorphs; check best practice. Merge phonemes only when the language has no contrast between them, since the contrast cannot be recovered from the words afterwards (guides nasal-assimilation, conditioned-allomorphs). Stages a merge of one phoneme into another: each spelling of the first becomes another way to write the second, and the first phoneme is removed from the inventory and from its natural classes. It refuses a spelling another phoneme has, a natural class the first phoneme alone fills, and a rule or environment that uses the first phoneme. Dry Run and Trial before a person Applies the Proposal.\nCommand: compose-merge-phoneme. Agent class: Draft.",
     "inputSchema": {

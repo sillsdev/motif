@@ -21,6 +21,9 @@ public static class GrammarFindingCodes
     /// <summary>A phoneme spelling that other phonemes' spellings add up to, which the parser reads as the longest one.</summary>
     public const string PhonemeSpellingAmbiguous = "grammar.phoneme-spelling-ambiguous";
 
+    /// <summary>A phoneme that no form, wordform, rule, natural class or environment uses.</summary>
+    public const string PhonemeNeverUsed = "grammar.phoneme-never-used";
+
     /// <summary>A form's environment the parser cannot read, which it drops, leaving the form unrestricted by it.</summary>
     public const string AllomorphEnvironmentIgnoredByParser = "grammar.allomorph-environment-ignored-by-parser";
 

@@ -1314,6 +1314,87 @@
     ],
     "redirect": "Edit a phoneme for a real contrast, not only to record a surface variant, unless a rule needs it as an output segment (guides nasal-assimilation, conditioned-allomorphs)."
   },
+  "compose-author-phonological-feature": {
+    "title": "Author a phonological feature",
+    "description": "Stages a closed phonological feature and its values in the project's phonological feature system, such as place with labial, coronal and velar. Phonemes carry the values and a natural class can be defined by them. Defining the first feature of a featureless project changes how rewrite rules that name segment classes are read, so Trial the rules after it. Only a person can Apply.",
+    "source": "Authored from the typed command contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "name": "Feature name.",
+      "abbreviation": "Optional feature abbreviation, unique among phonological features.",
+      "values": "Nonempty list of values, each an object with a name and an optional abbreviation."
+    },
+    "goals": [
+      "Define a place feature with labial, coronal and velar values",
+      "Add a voicing feature to the phonological feature system",
+      "Give the sound inventory features so a natural class can be defined by them"
+    ],
+    "guides": [
+      "nasal-assimilation",
+      "archiphonemes"
+    ],
+    "redirect": "Use for a phonological feature of sounds. An inflection or part-of-speech feature uses compose-author-inflection-feature; a word-level exception uses compose-author-exception-feature (guide archiphonemes)."
+  },
+  "compose-add-phonological-feature-value": {
+    "title": "Add a phonological feature value",
+    "description": "Stages one more value for an existing closed phonological feature. The feature must belong to the phonological feature system, and the value name and abbreviation must be new to it. Only a person can Apply.",
+    "source": "Authored from the typed command contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "feature": "Id of the existing phonological feature.",
+      "name": "Value name.",
+      "abbreviation": "Optional value abbreviation, unique within the feature."
+    },
+    "goals": [
+      "Add a velar value to the place feature",
+      "Extend a phonological feature with another value"
+    ],
+    "guides": [
+      "nasal-assimilation"
+    ],
+    "redirect": "Extend a feature that exists. Create the feature first with compose-author-phonological-feature (guide nasal-assimilation)."
+  },
+  "compose-edit-phoneme-features": {
+    "title": "Set a phoneme's features",
+    "description": "Stages feature values on an existing phoneme: set a value (a feature the phoneme already has takes the new value in place, one it lacks gains it) and clear features. A phoneme with no feature structure gets one. It refuses a value that does not belong to its feature, a feature both set and cleared, a clear of an absent feature and a change that alters nothing. Only a person can Apply.",
+    "source": "Authored from the typed command contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "target": "Id of the existing phoneme.",
+      "set": "Feature and value pairs to set, each an object with feature and value ids.",
+      "clear": "Ids of features whose specification is removed."
+    },
+    "goals": [
+      "Mark a consonant as labial",
+      "Change a phoneme's place feature",
+      "Remove a feature from a phoneme"
+    ],
+    "guides": [
+      "nasal-assimilation",
+      "archiphonemes"
+    ],
+    "redirect": "Set the features of a phoneme that exists; a new phoneme can take features when it is authored (guides nasal-assimilation, archiphonemes)."
+  },
+  "compose-edit-natural-class-features": {
+    "title": "Edit a natural class's features",
+    "description": "Stages a change to the feature values that define a feature-based natural class: set a constraint (a feature the class already constrains takes the new value in place) and clear constraints. The class must keep at least one constraint, and a segment class is refused. The response lists the environments, rules and insertions that use the class. Only a person can Apply.",
+    "source": "Authored from the typed command contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "target": "Id of the existing feature-based natural class.",
+      "set": "Feature and value pairs to set, each an object with feature and value ids.",
+      "clear": "Ids of features whose constraint is removed."
+    },
+    "goals": [
+      "Change a natural class from coronal to labial sounds",
+      "Add a voicing constraint to a natural class",
+      "Remove a feature from a natural class"
+    ],
+    "guides": [
+      "nasal-assimilation"
+    ],
+    "redirect": "Change the feature constraints of a class defined by features. A class defined by segments changes its members with compose-edit-natural-class (guide nasal-assimilation)."
+  },
   "compose-merge-phoneme": {
     "title": "Merge a phoneme into another",
     "description": "Stages a merge of one phoneme into another: each spelling of the first becomes another way to write the second, and the first phoneme is removed from the inventory and from its natural classes. It refuses a spelling another phoneme has, a natural class the first phoneme alone fills, and a rule or environment that uses the first phoneme. Dry Run and Trial before a person Applies the Proposal.",
