@@ -20,7 +20,8 @@ namespace SIL.Motif.Runner.Composers;
 /// The classes this form attaches to for an inflectional MSA; a derivational MSA uses its MSA restriction.
 /// </param>
 /// <param name="Placement">
-/// The neighbouring alternate forms that define the insertion gap; required when the entry already has any.
+/// The neighbouring alternate forms that define the insertion gap. Left out, a restricted form goes just before the
+/// first unrestricted alternate form and any other form goes after the last alternate form.
 /// </param>
 public sealed record AuthorAlternateFormIntent(
     CanonicalId Entry,
@@ -112,6 +113,7 @@ public static class AuthorAlternateFormComposer
             classes = LexicalFormAuthoring.RequireInflectionClasses(cache, requested, inflectionalCategories, ConstructName);
         }
 
+        if (intent.Placement is null) intent = intent with { Placement = DefaultPlacement(entry, environments.Count > 0) };
         RequirePlacement(entry, intent.Placement);
         RequireOrderThatCanBeSelected(entry, intent.Placement, environments.Count > 0);
 
@@ -130,6 +132,17 @@ public static class AuthorAlternateFormComposer
                 after: JsonSerializer.SerializeToElement(new { member = member.Value }),
                 dependsOn: [new OperationDependency(createId)], rationale: Rationale));
         return operations;
+    }
+
+    /// <summary>The gap for a form with no named neighbour.</summary>
+    private static Placement? DefaultPlacement(ILexEntry entry, bool restricted)
+    {
+        var forms = entry.AlternateFormsOS.ToList();
+        if (forms.Count == 0) return null;
+        var gap = restricted && forms.FindIndex(form => !HasEnvironments(form)) is var blocker and >= 0 ? blocker : forms.Count;
+        return new Placement(
+            gap > 0 ? CanonicalId.FromGuid(forms[gap - 1].Guid) : null,
+            gap < forms.Count ? CanonicalId.FromGuid(forms[gap].Guid) : null);
     }
 
     internal static void RequirePlacement(ILexEntry entry, Placement? placement, string constructName = ConstructName)

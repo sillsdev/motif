@@ -46,40 +46,13 @@ public static class EditExceptionFeaturesComposer
         ArgumentNullException.ThrowIfNull(cache);
         ArgumentNullException.ThrowIfNull(intent);
         var msaId = LexicalFormAuthoring.Normalize(intent.Msa);
-        var msa = LexicalFormAuthoring.Resolve<IMoMorphSynAnalysis>(cache, msaId, ConstructName);
-        string addKind, removeKind;
-        IEnumerable<ICmPossibility> current;
-        switch (msa)
-        {
-            case IMoStemMsa stem:
-                addKind = MoStemMsaProdRestrictOperationKinds.AddRefProdRestrict;
-                removeKind = MoStemMsaProdRestrictOperationKinds.RemoveRefProdRestrict;
-                current = stem.ProdRestrictRC;
-                break;
-            case IMoInflAffMsa inflectional:
-                addKind = MoInflAffMsaFromProdRestrictOperationKinds.AddRefFromProdRestrict;
-                removeKind = MoInflAffMsaFromProdRestrictOperationKinds.RemoveRefFromProdRestrict;
-                current = inflectional.FromProdRestrictRC;
-                break;
-            case IMoDerivAffMsa:
-                throw new InvalidOperationException(
-                    $"'{ConstructName}': '{msaId.Value}' is a derivational affix; set its From Exception Features with " +
-                    "compose-edit-derivational-affix-restriction.");
-            default:
-                throw new InvalidOperationException(
-                    $"'{ConstructName}': '{msaId.Value}' is not the grammatical info of a stem or an inflectional affix. " +
-                    "An unclassified affix has no exception features.");
-        }
+        var (addKind, removeKind, current) = ExceptionFeatureTargets.Resolve(cache, msaId, ConstructName);
 
         var wanted = intent.ExceptionFeatures.Select(LexicalFormAuthoring.Normalize)
             .OrderBy(id => id.Value, StringComparer.Ordinal).ToArray();
         if (wanted.Select(id => id.ToGuid()).Distinct().Count() != wanted.Length)
             throw new InvalidOperationException($"'{ConstructName}': 'exceptionFeatures' must not repeat an identity.");
-        var allowed = cache.LangProject.MorphologicalDataOA?.ProdRestrictOA?.ReallyReallyAllPossibilities
-            .Select(item => item.Guid).ToHashSet() ?? [];
-        foreach (var featureId in wanted.Where(id => !allowed.Contains(id.ToGuid())))
-            throw new InvalidOperationException(
-                $"'{ConstructName}': '{featureId.Value}' is not one of the project's exception features.");
+        ExceptionFeatureTargets.RequireProjectFeatures(cache, wanted, ConstructName);
 
         var currentIds = current.Select(item => item.Guid).ToHashSet();
         var wantedIds = wanted.Select(id => id.ToGuid()).ToHashSet();
@@ -93,5 +66,43 @@ public static class EditExceptionFeaturesComposer
 
         OperationEnvelope Member(string kind, CanonicalId featureId) => new(CanonicalId.Mint(), kind, target: msaId,
             after: JsonSerializer.SerializeToElement(new { member = featureId.Value }), rationale: Rationale);
+    }
+}
+
+/// <summary>What the exception-feature composers share: which grammatical info carries the set, and which features exist.</summary>
+internal static class ExceptionFeatureTargets
+{
+    /// <summary>Finds the add and remove operation kinds and the current set for a stem or inflectional-affix analysis.</summary>
+    internal static (string AddKind, string RemoveKind, IEnumerable<ICmPossibility> Current) Resolve(
+        LcmCache cache, CanonicalId msaId, string constructName)
+    {
+        var msa = LexicalFormAuthoring.Resolve<IMoMorphSynAnalysis>(cache, msaId, constructName);
+        switch (msa)
+        {
+            case IMoStemMsa stem:
+                return (MoStemMsaProdRestrictOperationKinds.AddRefProdRestrict,
+                    MoStemMsaProdRestrictOperationKinds.RemoveRefProdRestrict, stem.ProdRestrictRC);
+            case IMoInflAffMsa inflectional:
+                return (MoInflAffMsaFromProdRestrictOperationKinds.AddRefFromProdRestrict,
+                    MoInflAffMsaFromProdRestrictOperationKinds.RemoveRefFromProdRestrict, inflectional.FromProdRestrictRC);
+            case IMoDerivAffMsa:
+                throw new InvalidOperationException(
+                    $"'{constructName}': '{msaId.Value}' is a derivational affix; set its From Exception Features with " +
+                    "compose-edit-derivational-affix-restriction.");
+            default:
+                throw new InvalidOperationException(
+                    $"'{constructName}': '{msaId.Value}' is not the grammatical info of a stem or an inflectional affix. " +
+                    "An unclassified affix has no exception features.");
+        }
+    }
+
+    /// <summary>Checks that every feature id exists in the project.</summary>
+    internal static void RequireProjectFeatures(LcmCache cache, IEnumerable<CanonicalId> features, string constructName)
+    {
+        var allowed = cache.LangProject.MorphologicalDataOA?.ProdRestrictOA?.ReallyReallyAllPossibilities
+            .Select(item => item.Guid).ToHashSet() ?? [];
+        foreach (var featureId in features.Where(id => !allowed.Contains(id.ToGuid())))
+            throw new InvalidOperationException(
+                $"'{constructName}': '{featureId.Value}' is not one of the project's exception features.");
     }
 }

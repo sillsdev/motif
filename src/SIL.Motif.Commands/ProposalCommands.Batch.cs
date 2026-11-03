@@ -281,7 +281,9 @@ public static partial class ProposalCommands
     /// <summary>Replaces each declared <c>@label</c> string with an earlier intent's created id.</summary>
     private static JsonElement ResolveBatchLabelReferences(JsonElement authored,
         IReadOnlyDictionary<string, IReadOnlyList<CreatedObject>> created,
-        IReadOnlyDictionary<string, CanonicalId> principals, IReadOnlyDictionary<string, int> declared, int intentIndex)
+        IReadOnlyDictionary<string, CanonicalId> principals,
+        IReadOnlyDictionary<string, IReadOnlyList<(string Role, string Id)>> roles,
+        IReadOnlyDictionary<string, int> declared, int intentIndex)
     {
         var node = JsonNode.Parse(authored.GetRawText());
         var changed = false;
@@ -306,7 +308,7 @@ public static partial class ProposalCommands
                     text.StartsWith('@') && ParseBatchReference(text) is { } reference &&
                     declared.ContainsKey(reference.Label):
                     changed = true;
-                    return JsonValue.Create(ResolveBatchReference(text, reference, created, principals, declared, intentIndex));
+                    return JsonValue.Create(ResolveBatchReference(text, reference, created, principals, roles, declared, intentIndex));
                 default:
                     return current;
             }
@@ -326,7 +328,9 @@ public static partial class ProposalCommands
 
     private static string ResolveBatchReference(string text, (string Label, string? Kind) reference,
         IReadOnlyDictionary<string, IReadOnlyList<CreatedObject>> created,
-        IReadOnlyDictionary<string, CanonicalId> principals, IReadOnlyDictionary<string, int> declared, int intentIndex)
+        IReadOnlyDictionary<string, CanonicalId> principals,
+        IReadOnlyDictionary<string, IReadOnlyList<(string Role, string Id)>> roles,
+        IReadOnlyDictionary<string, int> declared, int intentIndex)
     {
         var label = reference.Label;
         if (declared[label] >= intentIndex)
@@ -343,6 +347,10 @@ public static partial class ProposalCommands
                 $"'{text}' is ambiguous: intent {declared[label]} created {distinct.Length} objects ({DescribeCreated(distinct)}). " +
                 $"Name one with '@{label}:<kind>'.");
         }
+        // A role such as prefix picks one of several objects of one kind.
+        if (roles.TryGetValue(label, out var named) &&
+            named.Where(item => string.Equals(item.Role, reference.Kind, StringComparison.OrdinalIgnoreCase)).ToArray() is { Length: 1 } byRole)
+            return byRole[0].Id;
         var matches = objects.DistinctBy(item => item.Id)
             .Where(item => CreatedKindMatches(item.Kind, reference.Kind)).ToArray();
         if (matches.Length == 1) return matches[0].Id;

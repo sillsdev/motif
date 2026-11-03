@@ -504,6 +504,7 @@ public static partial class ProposalCommands
                 var availableLabels = new Dictionary<string, CanonicalId>(StringComparer.Ordinal);
                 var labelObjects = new Dictionary<string, IReadOnlyList<CreatedObject>>(StringComparer.Ordinal);
                 var labelRoots = new Dictionary<string, CanonicalId>(StringComparer.Ordinal);
+                var labelRoles = new Dictionary<string, IReadOnlyList<(string Role, string Id)>>(StringComparer.Ordinal);
                 var results = new List<(JsonElement Input, OperationEnvelope[] Added,
                     IReadOnlyList<ComposedRelatedObject>? Related)>();
                 for (var index = 0; index < steps.Count; index++)
@@ -513,7 +514,7 @@ public static partial class ProposalCommands
                     {
                         var labeled = step.Authored is { } unlabeled && declaredLabels.Count > 0 &&
                             step.Verb != PhonologicalRuleComposerVerb
-                            ? ResolveBatchLabelReferences(unlabeled, labelObjects, labelRoots, declaredLabels, index)
+                            ? ResolveBatchLabelReferences(unlabeled, labelObjects, labelRoots, labelRoles, declaredLabels, index)
                             : step.Authored;
                         var normalized = labeled is { } raw && step.Verb is { } verb
                             ? ResolveSoundObjectNames(cache, verb, raw)
@@ -620,6 +621,7 @@ public static partial class ProposalCommands
                                 .Distinct().ToArray();
                             if (labeledEntity is { } entityId) availableLabels.Add(label, entityId);
                             if (roots.Length == 1) labelRoots.Add(label, roots[0]);
+                            labelRoles.Add(label, AlternateFormRoles(added));
                             labelObjects.Add(label, CreatedObjectsForOperations(added.Select(operation =>
                                 new OperationSummary(operation.OperationId.Value, operation.Kind, operation.EntityId?.Value))
                                 .ToArray()));
@@ -706,6 +708,32 @@ public static partial class ProposalCommands
                 DraftInvalidFrom(exception, ("draftName", draftName)));
         }
     }
+
+    /// <summary>Names each created alternate form by its morph type, such as prefix or suffix.</summary>
+    private static IReadOnlyList<(string Role, string Id)> AlternateFormRoles(IEnumerable<OperationEnvelope> added)
+    {
+        var roles = new List<(string Role, string Id)>();
+        foreach (var operation in added.Where(item =>
+                     item.Kind == LexEntryAlternateFormsCreateOperationKinds.CreateAlternateForms && item.EntityId is not null &&
+                     item.After is { ValueKind: JsonValueKind.Object } after && after.TryGetProperty("morphType", out _)))
+        {
+            var morphType = operation.After!.Value.GetProperty("morphType").GetString();
+            var role = AlternateFormRoleNames.FirstOrDefault(pair =>
+                CanonicalId.FromGuid(pair.Key).Value == morphType).Value;
+            if (role is not null) roles.Add((role, operation.EntityId!.Value.Value));
+        }
+        return roles;
+    }
+
+    private static readonly IReadOnlyDictionary<Guid, string> AlternateFormRoleNames = new Dictionary<Guid, string>
+    {
+        [MoMorphTypeTags.kguidMorphPrefix] = "prefix",
+        [MoMorphTypeTags.kguidMorphSuffix] = "suffix",
+        [MoMorphTypeTags.kguidMorphInfix] = "infix",
+        [MoMorphTypeTags.kguidMorphProclitic] = "proclitic",
+        [MoMorphTypeTags.kguidMorphEnclitic] = "enclitic",
+        [MoMorphTypeTags.kguidMorphStem] = "stem",
+    };
 
     private static IReadOnlyList<CreatedObject> CreatedObjectsForOperations(
         IReadOnlyList<OperationSummary> operations) => operations

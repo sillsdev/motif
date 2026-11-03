@@ -109,4 +109,74 @@ public sealed class ExceptionFeatureDraftTests(PristineProjectFixture pristine)
 
         Assert.False(refused.Succeeded);
     }
+
+    [Fact]
+    public void OneIntentTagsManyStemsStagedInTheSameDraftAndIsOnlyOnTheCommandLine()
+    {
+        using var cache = pristine.NewScratch();
+        var path = cache.ProjectId.Path;
+        var vernacular = cache.WritingSystemFactory.GetStrFromWs(cache.DefaultVernWs);
+        var ws = cache.WritingSystemFactory.GetStrFromWs(cache.DefaultAnalWs);
+        var category = CanonicalId.FromGuid(pristine.Seed.PartOfSpeechId).Value;
+        cache.Dispose();
+        Assert.True(ProposalCommands.New(new(path, Version, "bulk", "Tag stems")).Succeeded);
+        var feature = ProposalCommands.ComposeIntent(new(path, Version, "bulk", "compose-author-exception-feature",
+            Intent(new { name = "Loan stem", ws })));
+        Assert.True(feature.Succeeded, feature.Refusal?.Message);
+        var featureId = Assert.Single(feature.Value!.Operations,
+            item => item.Kind == "lists/cmPossibilityList/createPossibilities").EntityId!;
+        var msas = new List<string>();
+        foreach (var form in new[] { "kaun", "inum", "tulog" })
+        {
+            var stem = ProposalCommands.ComposeAuthorLexicalEntry(new(path, Version, "bulk", Intent(new
+            {
+                form, formWs = vernacular, morphType = CanonicalId.FromGuid(MoMorphTypeTags.kguidMorphStem).Value,
+                gloss = form, analysisWs = ws, msa = new { kind = "stem", category },
+            })));
+            Assert.True(stem.Succeeded, stem.Refusal?.Message);
+            msas.Add(Assert.Single(stem.Value!.Operations,
+                item => item.Kind == "lexical/lexEntry/createMorphoSyntaxAnalyses").EntityId!);
+        }
+
+        var tagged = ProposalCommands.ComposeIntent(new(path, Version, "bulk", "compose-add-exception-features",
+            Intent(new { msas, exceptionFeatures = new[] { featureId } })));
+
+        Assert.True(tagged.Succeeded, tagged.Refusal?.Message);
+        Assert.Equal(msas.Count, tagged.Value!.Operations.Count(item => item.Kind == MoStemMsaProdRestrictOperationKinds.AddRefProdRestrict));
+        var descriptor = Assert.Single(ProposalCommands.ComposerDescriptors, composer => composer.Verb == "compose-add-exception-features");
+        Assert.False(descriptor.IsAgentTool);
+    }
+
+    [Fact]
+    public void TwoBatchStepsAddingTheSameFeatureToTheSameStemStageOneAddition()
+    {
+        using var cache = pristine.NewScratch();
+        var path = cache.ProjectId.Path;
+        var vernacular = cache.WritingSystemFactory.GetStrFromWs(cache.DefaultVernWs);
+        var ws = cache.WritingSystemFactory.GetStrFromWs(cache.DefaultAnalWs);
+        var category = CanonicalId.FromGuid(pristine.Seed.PartOfSpeechId).Value;
+        cache.Dispose();
+        Assert.True(ProposalCommands.New(new(path, Version, "twice", "Tag a stem twice")).Succeeded);
+        object[] intents =
+        [
+            new { verb = "compose-author-exception-feature", @as = "loan", intent = new { name = "Loan stem", ws } },
+            new
+            {
+                verb = "compose-author-lexical-entry", @as = "stem",
+                intent = new
+                {
+                    form = "kaun", formWs = vernacular, morphType = CanonicalId.FromGuid(MoMorphTypeTags.kguidMorphStem).Value,
+                    gloss = "eat", analysisWs = ws, msa = new { kind = "stem", category },
+                },
+            },
+            new { verb = "compose-add-exception-features", intent = new { msas = new[] { "@stem:msa" }, exceptionFeatures = new[] { "@loan" } } },
+            new { verb = "compose-add-exception-features", intent = new { msas = new[] { "@stem:msa" }, exceptionFeatures = new[] { "@loan" } } },
+        ];
+
+        var batch = ProposalCommands.ComposeBatch(new(path, Version, "twice", Intent(new { intents })));
+
+        Assert.True(batch.Succeeded, batch.Refusal?.Message);
+        Assert.Equal(1, batch.Value!.Intents.SelectMany(intent => intent.Operations)
+            .Count(item => item.Kind == MoStemMsaProdRestrictOperationKinds.AddRefProdRestrict));
+    }
 }

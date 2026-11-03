@@ -134,6 +134,7 @@ public static class ChangeVocabulary
             ["AuthorExceptionFeature"] = ("Add exception feature", "Add an exception feature"),
             ["EditPhonologicalRuleFeatures"] = ("Change rule features", "Change the features a rule requires or excludes"),
         ["EditExceptionFeatures"] = ("Change exception features", "Change the exception features of a stem or affix"),
+            ["AddExceptionFeatures"] = ("Add exception features", "Add exception features to many stems or affixes"),
             ["MergePhoneme"] = ("Merge into phoneme", "Merge one phoneme into another"),
             ["SplitPhoneme"] = ("Split out phoneme", "Split a spelling out into its own phoneme"),
             ["EditNaturalClass"] = ("Change natural class", "Change a natural class"),

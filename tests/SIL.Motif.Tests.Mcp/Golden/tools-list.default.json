@@ -4849,14 +4849,14 @@
                         "items": {
                           "type": "string"
                         },
-                        "description": "Optional ids of environments the prefix part occurs in; absent means any."
+                        "description": "Optional ids of environments the prefix part occurs in; absent means any. Any environment on a circumfix part is unreliable, because it is tested against both parts; leave the part unconditioned."
                       },
                       "suffixEnvironments": {
                         "type": "array",
                         "items": {
                           "type": "string"
                         },
-                        "description": "Optional ids of environments the suffix part occurs in; absent means any."
+                        "description": "Optional ids of environments the suffix part occurs in; absent means any. Any environment on a circumfix part is unreliable, because it is tested against both parts; leave the part unconditioned or model the short form as its own entry."
                       },
                       "inflectionClasses": {
                         "type": "array",
@@ -6738,7 +6738,7 @@
   },
   {
     "name": "motif_add_circumfix",
-    "description": "Author a circumfix. Research first: motif_guide topic workflow or suffix-prefix-slots; check best practice. Use when one meaning is marked on both sides of the stem at once. Markers that can occur apart are two entries in slots (guide suffix-prefix-slots). Stages a new circumfix entry as FieldWorks holds it: one entry whose prefix part and suffix part attach to a stem together, with one sense and one grammatical analysis. The parser pairs the two parts, so neither part alone attaches. Dry Run and Trial before a person Applies the Proposal.\nCommand: compose-author-circumfix. Agent class: Draft.",
+    "description": "Author a circumfix. Research first: motif_guide topic workflow or suffix-prefix-slots; check best practice. Use when one meaning is marked on both sides of the stem at once. Markers that can occur apart are two entries in slots (guide suffix-prefix-slots). Stages a new circumfix entry as FieldWorks holds it: one entry whose prefix part and suffix part attach to a stem together, with one sense and one grammatical analysis. The parser pairs the two parts, so neither part alone attaches. Dry Run and Trial before a person Applies the Proposal. In a compose-batch file its two parts are labelled @label:prefix and @label:suffix.\nCommand: compose-author-circumfix. Agent class: Draft.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -6806,14 +6806,14 @@
           "items": {
             "type": "string"
           },
-          "description": "Optional ids of environments the prefix part occurs in; absent means any."
+          "description": "Optional ids of environments the prefix part occurs in; absent means any. Any environment on a circumfix part is unreliable, because it is tested against both parts; leave the part unconditioned."
         },
         "suffixEnvironments": {
           "type": "array",
           "items": {
             "type": "string"
           },
-          "description": "Optional ids of environments the suffix part occurs in; absent means any."
+          "description": "Optional ids of environments the suffix part occurs in; absent means any. Any environment on a circumfix part is unreliable, because it is tested against both parts; leave the part unconditioned or model the short form as its own entry."
         },
         "inflectionClasses": {
           "type": "array",

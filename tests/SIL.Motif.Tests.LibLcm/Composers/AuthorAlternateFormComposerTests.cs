@@ -278,7 +278,7 @@ public sealed class AuthorAlternateFormComposerTests : IDisposable
     }
 
     [Fact]
-    public void PlacementIsRequiredOnceTheSequenceIsOccupied_AndMustBeAdjacent()
+    public void ANamedPlacementMustBeAdjacent()
     {
         var (entry, _, _) = AddInflectionalPrefix(_cache, "m", _category);
         ApplyOps(_cache, AuthorAlternateFormComposer.Build(_cache, Prefix(entry, "mw")));
@@ -286,17 +286,54 @@ public sealed class AuthorAlternateFormComposerTests : IDisposable
             placement: new Placement(Id(Get<ILexEntry>(_cache, entry).AlternateFormsOS[0]), null))));
         var forms = Get<ILexEntry>(_cache, entry).AlternateFormsOS.Select(Id).ToArray();
 
-        var missing = Assert.Throws<InvalidOperationException>(() => AuthorAlternateFormComposer.Build(_cache, Prefix(entry, "mi")));
         var gap = Assert.Throws<InvalidOperationException>(() => AuthorAlternateFormComposer.Build(_cache,
             Prefix(entry, "mi", placement: new Placement(forms[0], forms[0]))));
         var leapfrog = Assert.Throws<InvalidOperationException>(() => AuthorAlternateFormComposer.Build(_cache,
             Prefix(entry, "mi", placement: new Placement(forms[1], forms[0]))));
 
-        Assert.Contains("requires placement", missing.Message, StringComparison.Ordinal);
         Assert.Contains("not adjacent", gap.Message, StringComparison.Ordinal);
         Assert.Contains("not adjacent", leapfrog.Message, StringComparison.Ordinal);
         ApplyOps(_cache, AuthorAlternateFormComposer.Build(_cache, Prefix(entry, "mi", placement: new Placement(null, forms[0]))));
         Assert.Equal(forms[0], Id(Get<ILexEntry>(_cache, entry).AlternateFormsOS[1]));
+    }
+
+    [Fact]
+    public void WithoutAPlacementAnUnrestrictedFormGoesLastAndARestrictedFormGoesBeforeTheFirstUnrestrictedOne()
+    {
+        var environment = AddEnvironment(_cache, "before vowel");
+        var other = AddEnvironment(_cache, "before consonant");
+        var (entry, _, _) = AddInflectionalPrefix(_cache, "m", _category);
+        string Order() => string.Join(",", Get<ILexEntry>(_cache, entry).AlternateFormsOS
+            .Select(form => form.Form.BestVernacularAlternative.Text));
+
+        ApplyOps(_cache, AuthorAlternateFormComposer.Build(_cache, Prefix(entry, "mw")));
+        ApplyOps(_cache, AuthorAlternateFormComposer.Build(_cache, Prefix(entry, "mu")));
+        Assert.Equal("mw,mu", Order());
+
+        ApplyOps(_cache, AuthorAlternateFormComposer.Build(_cache, Prefix(entry, "mi", environments: [environment])));
+        Assert.Equal("mi,mw,mu", Order());
+        ApplyOps(_cache, AuthorAlternateFormComposer.Build(_cache, Prefix(entry, "ma", environments: [other])));
+        Assert.Equal("mi,ma,mw,mu", Order());
+
+        ApplyOps(_cache, AuthorAlternateFormComposer.Build(_cache, Prefix(entry, "mo")));
+        Assert.Equal("mi,ma,mw,mu,mo", Order());
+        var middle = AuthorAlternateFormComposer.Build(_cache, Prefix(entry, "me", environments: [environment]));
+        var placement = Assert.Single(middle, operation => operation.Placement is not null).Placement!;
+        Assert.Equal(Id(Get<ILexEntry>(_cache, entry).AlternateFormsOS[1]), placement.After);
+        Assert.Equal(Id(Get<ILexEntry>(_cache, entry).AlternateFormsOS[2]), placement.Before);
+    }
+
+    [Fact]
+    public void ARestrictedFormAfterTheLastRestrictedFormIsAppendedWhenNoFormIsUnrestricted()
+    {
+        var environment = AddEnvironment(_cache, "before vowel");
+        var (entry, _, _) = AddInflectionalPrefix(_cache, "m", _category);
+        ApplyOps(_cache, AuthorAlternateFormComposer.Build(_cache, Prefix(entry, "mw", environments: [environment])));
+
+        ApplyOps(_cache, AuthorAlternateFormComposer.Build(_cache, Prefix(entry, "mu", environments: [environment])));
+
+        Assert.Equal(["mw", "mu"], Get<ILexEntry>(_cache, entry).AlternateFormsOS
+            .Select(form => form.Form.BestVernacularAlternative.Text));
     }
 
     [Fact]
