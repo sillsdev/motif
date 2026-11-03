@@ -20,10 +20,11 @@ public sealed class ProposalParsimonyPanelTests
     private const string CanTry = "proposal/reduplicated-forms";
 
     private static async Task<(WorkspaceShellViewModel Workspace, MainWindow Window, FakeCommandClient Fake)> OpenAsync(
-        ProposalParsimonyStatus? status = null, string? choose = null)
+        ProposalParsimonyStatus? status = null, string? choose = null, Action<FakeCommandClient>? configure = null)
     {
         var fake = new FakeCommandClient();
         ProposalsCaptureFixture.Configure(fake);
+        configure?.Invoke(fake);
         if (status is not null) fake.ProposalParsimonyStatusIs(status);
         var (workspace, window) = await ReviewScreenshots.OpenAsync(fake);
         workspace.CurrentPage = WorkspacePage.Proposals;
@@ -104,6 +105,49 @@ public sealed class ProposalParsimonyPanelTests
                 Assert.Contains("Counts are per measure and are not added together.", texts);
                 Assert.DoesNotContain(texts, text => text.Contains("total", StringComparison.OrdinalIgnoreCase));
                 Assert.DoesNotContain(texts, text => text.Contains(" ms", StringComparison.Ordinal));
+            }
+            finally { Close(workspace, window); }
+        }, TimeSpan.FromMinutes(3));
+    }
+
+    [Fact]
+    public void ReadyShowsTheReadTheFindingsWithTheirDescriptionsAndEvidenceOnRequest()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, window, _) = await OpenAsync(ProposalParsimonyStatusFixtures.Ready(Selected), Selected,
+                configure: ProposalParsimonyPresentationTests.ConfigureStoredReports);
+            try
+            {
+                var page = workspace.PageModel<ProposalsPageModel>();
+                await Wait.UntilAsync(() => page.Parsimony.Groups.Count > 0 && page.Parsimony.Groups[0].HasFindingsRead,
+                    "The Findings were never read.");
+                var panel = Panel(window);
+                foreach (var expander in panel.GetVisualDescendants().OfType<Expander>()) expander.IsExpanded = true;
+                PageScreenshots.Settle(window);
+                var texts = Texts(panel).ToArray();
+                Assert.Contains(texts, text => text.StartsWith("1 measure found new or changed Findings.", StringComparison.Ordinal));
+                Assert.Contains("3 Findings to Look at", texts);
+                Assert.Contains(texts, text => text == "Repeated ad hoc restrictions: Prohibition ma- + -tu repeats a slot");
+                var ids = panel.GetVisualDescendants().OfType<Control>()
+                    .Select(control => Avalonia.Automation.AutomationProperties.GetAutomationId(control)).ToHashSet();
+                Assert.Superset(new HashSet<string?>
+                {
+                    "motif-proposal-parsimony-findings-grammar", "motif-proposal-parsimony-findings-list-grammar",
+                    "motif-proposal-parsimony-findings-more-grammar", "motif-proposal-parsimony-judgments-grammar",
+                    "motif-proposal-parsimony-evidence-text-f-new",
+                }, ids);
+                var read = panel.FindControl<Control>("ParsimonyRead")!;
+                Assert.Equal(AutomationIds.ProposalParsimonyRead, Avalonia.Automation.AutomationProperties.GetAutomationId(read));
+                var button = Assert.Single(panel.GetVisualDescendants().OfType<Button>(), candidate =>
+                    candidate.IsEffectivelyVisible && Avalonia.Automation.AutomationProperties.GetAutomationId(candidate) ==
+                    AutomationIds.ForProposalParsimonyEvidence("f-new"));
+                await page.Parsimony.Groups[0].Findings.Single(item => item.FindingId == "f-new")
+                    .ShowEvidenceCommand.ExecuteAsync(null);
+                PageScreenshots.Settle(window);
+                Assert.Contains(Texts(panel), text => text.Contains("Allomorph: not kept for this Proposal", StringComparison.Ordinal));
+                Assert.False(button.IsEffectivelyVisible);
+                Assert.DoesNotContain(Texts(panel), text => text.Contains(" ms", StringComparison.Ordinal));
             }
             finally { Close(workspace, window); }
         }, TimeSpan.FromMinutes(3));

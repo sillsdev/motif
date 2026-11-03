@@ -21,6 +21,21 @@
       </Grid>
       <views:CopyableTextBlock x:Name="ParsimonyNote" Classes="muted" TextWrapping="Wrap"
                                Text="{Binding Note}" IsVisible="{Binding HasNote}" />
+      <StackPanel Spacing="{DynamicResource Intent.Space.Compact}" IsVisible="{Binding ShowsStatus}">
+        <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}" IsVisible="{Binding HasReadText}">
+          <TextBlock Classes="inspectorFactLabel" Text="{Binding ReadTitle}" />
+          <views:CopyableTextBlock x:Name="ParsimonyRead" TextWrapping="Wrap" Text="{Binding ReadText}"
+                                   AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalParsimonyRead}" />
+        </StackPanel>
+        <Grid Classes="inspectorFact" ColumnDefinitions="Auto,*" IsVisible="{Binding HasParserWork}">
+          <TextBlock Classes="inspectorFactLabel" Text="{Binding ParserWorkLabel}" />
+          <views:CopyableTextBlock x:Name="ParsimonyParserWork" Grid.Column="1" TextWrapping="Wrap" Text="{Binding ParserWork}"
+                                   AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalParsimonyParserWork}" />
+        </Grid>
+        <views:CopyableTextBlock x:Name="ParsimonyWallTime" Classes="muted" TextWrapping="Wrap"
+                                 Text="{Binding WallTime}" IsVisible="{Binding HasWallTime}"
+                                 AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalParsimonyWallTime}" />
+      </StackPanel>
       <views:RefusalBlock DataContext="{Binding ShownRefusal}" />
       <ItemsControl x:Name="ParsimonyGroups" ItemsSource="{Binding Groups}" IsVisible="{Binding ShowsStatus}"
                     AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalParsimonyGroups}">
@@ -37,6 +52,48 @@
               </Grid>
               <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" Text="{Binding Note}"
                                        IsVisible="{Binding HasNote}" />
+              <Expander IsVisible="{Binding HasFindingsRead}"
+                        AutomationProperties.AutomationId="{Binding FindingsAutomationId}">
+                <Expander.Header>
+                  <TextBlock Text="{Binding FindingsHeader}" />
+                </Expander.Header>
+                <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
+                  <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" Text="{Binding FindingsNote}"
+                                           IsVisible="{Binding HasFindingsNote}"
+                                           AutomationProperties.AutomationId="{Binding FindingsNoteAutomationId}" />
+                  <ItemsControl x:Name="ParsimonyFindings" ItemsSource="{Binding Findings}"
+                                AutomationProperties.AutomationId="{Binding FindingsListAutomationId}">
+                    <ItemsControl.ItemsPanel>
+                      <ItemsPanelTemplate><StackPanel Spacing="{DynamicResource Intent.Space.Minimal}" /></ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:ProposalParsimonyFindingViewModel">
+                        <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
+                          <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Intent.Space.Compact}">
+                            <TextBlock Classes="muted" Text="{Binding Kind}" />
+                            <views:CopyableTextBlock Grid.Column="1" TextWrapping="Wrap" Text="{Binding Line}"
+                                                     AutomationProperties.AutomationId="{Binding AutomationId}" />
+                          </Grid>
+                          <Button HorizontalAlignment="Left"
+                                  Command="{Binding ShowEvidenceCommand}" IsVisible="{Binding CanShowEvidence}"
+                                  AutomationProperties.Name="{Binding ShowEvidenceAccessibleName}"
+                                  AutomationProperties.AutomationId="{Binding EvidenceAutomationId}">
+                            <TextBlock Text="{Binding ShowEvidenceText}" />
+                          </Button>
+                          <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" Text="{Binding EvidenceText}"
+                                                   IsVisible="{Binding HasEvidence}"
+                                                   AutomationProperties.AutomationId="{Binding EvidenceTextAutomationId}" />
+                        </StackPanel>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                  <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" Text="{Binding FindingsMoreText}"
+                                           IsVisible="{Binding HasFindingsMore}"
+                                           AutomationProperties.AutomationId="{Binding FindingsMoreAutomationId}" />
+                  <views:CopyableTextBlock TextWrapping="Wrap" Text="{Binding JudgmentsText}" IsVisible="{Binding HasJudgments}"
+                                           AutomationProperties.AutomationId="{Binding JudgmentsAutomationId}" />
+                </StackPanel>
+              </Expander>
               <Expander Header="{x:Static app:MotifAppStrings.ProposalParsimonyCountsHeader}" IsVisible="{Binding HasMeasures}">
                 <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
                   <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" Text="{Binding CountsNote}" />

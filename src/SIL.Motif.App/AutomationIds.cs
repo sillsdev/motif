@@ -119,6 +119,34 @@ public static class AutomationIds
     public const string ProposalParsimonyPanel = "motif-proposal-parsimony";
     public const string ProposalParsimonyState = "motif-proposal-parsimony-state";
     public const string ProposalParsimonyGroups = "motif-proposal-parsimony-groups";
+    /// <summary>The short read of the Parsimony section: which measures found new Findings.</summary>
+    public const string ProposalParsimonyRead = "motif-proposal-parsimony-read";
+    /// <summary>The Proposal's parser work against the Baseline, as a percent change.</summary>
+    public const string ProposalParsimonyParserWork = "motif-proposal-parsimony-parser-work";
+    /// <summary>How long Parsimony took, in seconds or minutes.</summary>
+    public const string ProposalParsimonyWallTime = "motif-proposal-parsimony-wall-time";
+    /// <summary>The automation identifier of one Finding of the Parsimony section.</summary>
+    public static string ForProposalParsimonyFinding(string findingId) => "motif-proposal-parsimony-finding-" + findingId;
+    /// <summary>The automation identifier of one Finding's Show Evidence button.</summary>
+    public static string ForProposalParsimonyEvidence(string findingId) => "motif-proposal-parsimony-evidence-" + findingId;
+
+    /// <summary>The automation identifier of a Finding's evidence text.</summary>
+    public static string ForProposalParsimonyEvidenceText(string findingId) => "motif-proposal-parsimony-evidence-text-" + findingId;
+
+    /// <summary>The automation identifier of a Parsimony group's Findings fold; <paramref name="group"/> is grammar or text.</summary>
+    public static string ForProposalParsimonyFindings(string group) => "motif-proposal-parsimony-findings-" + group;
+
+    /// <summary>The automation identifier of a Parsimony group's list of Findings.</summary>
+    public static string ForProposalParsimonyFindingsList(string group) => "motif-proposal-parsimony-findings-list-" + group;
+
+    /// <summary>The automation identifier of a Parsimony group's note about its Findings.</summary>
+    public static string ForProposalParsimonyFindingsNote(string group) => "motif-proposal-parsimony-findings-note-" + group;
+
+    /// <summary>The automation identifier of the lines saying which Findings a group does not list.</summary>
+    public static string ForProposalParsimonyFindingsMore(string group) => "motif-proposal-parsimony-findings-more-" + group;
+
+    /// <summary>The automation identifier of a Parsimony group's decision lines.</summary>
+    public static string ForProposalParsimonyJudgments(string group) => "motif-proposal-parsimony-judgments-" + group;
     public const string ProposalDifferenceClear = "motif-proposal-difference-clear";
     public const string ProposalDifferenceText = "motif-proposal-difference-text";
     public const string ProposalDifferenceSaved = "motif-proposal-difference-saved";

@@ -277,6 +277,32 @@ public sealed class ParsimonyPageModelTests
     }
 
     [Fact]
+    public async Task AFindingsStoredDescriptionHeadsItsRowAndLeadsItsInspectorWhileTheCountsStayThere()
+    {
+        var fake = new FakeCommandClient();
+        var described = Finding("described", ParsimonyMeasure, ParsimonyAxis.Parsimony, 2, 3) with
+        {
+            Description = "Prohibition ka- + -ni repeats the slot order",
+        };
+        var plain = Finding("plain", ParsimonyMeasure, ParsimonyAxis.Parsimony, 1, 4);
+        ExpectReport(fake, Report([described, plain]));
+        var (context, page) = Build(fake, advancedAi: true);
+
+        await context.OpenProjectAsync(ProjectA);
+
+        var rows = page.Groups.SelectMany(group => group.Items).ToDictionary(row => row.Link!.FindingId);
+        Assert.Equal("Prohibition ka- + -ni repeats the slot order", rows["described"].Description);
+        Assert.Equal(Describe(plain), rows["plain"].Description);
+        Assert.True(page.SelectFinding(rows["described"].Link!));
+        var details = page.Evidence!.Details;
+        Assert.Equal(MotifAppStrings.ParsimonyDetailSubject, details[0].Label);
+        Assert.Equal("Prohibition ka- + -ni repeats the slot order", details[0].Value);
+        Assert.Equal(Describe(described), details.Single(detail => detail.Label == MotifAppStrings.ParsimonyDetailCounted).Value);
+        Assert.True(page.SelectFinding(rows["plain"].Link!));
+        Assert.DoesNotContain(page.Evidence!.Details, detail => detail.Label == MotifAppStrings.ParsimonyDetailSubject);
+    }
+
+    [Fact]
     public async Task TheSuppressedListShowsEachJudgmentIdAndRecordTitleAndTheCheckedRecordsAreListed()
     {
         var fake = new FakeCommandClient();

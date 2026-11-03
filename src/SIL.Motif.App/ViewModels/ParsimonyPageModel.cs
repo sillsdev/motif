@@ -108,7 +108,10 @@ public sealed partial class ParsimonyListRow(
     /// <summary>A header's axis, or empty on a finding.</summary>
     public string Detail { get; } = detail;
 
-    /// <summary>The finding's counted numbers in words, such as "2 of 3 prohibitions".</summary>
+    /// <summary>
+    /// The finding's stored description of its subject, or when the Report has none, its counted numbers in words,
+    /// such as "2 of 3 prohibitions".
+    /// </summary>
     public string Description { get; } = description;
 
     /// <summary>The Report's evidence tier, stated without interpreting it as a stronger result.</summary>
@@ -1106,7 +1109,7 @@ public sealed partial class ParsimonyPageModel : PageModel
     {
         if (_rowsByFinding.TryGetValue(row.Finding.FindingId, out var existing)) return existing;
         var link = row.ReportId is { } reportId ? new ParsimonyFindingLink(path, reportId, row.Finding.FindingId) : null;
-        var made = new ParsimonyListRow(false, string.Empty, string.Empty, string.Empty, Describe(row.Finding),
+        var made = new ParsimonyListRow(false, string.Empty, string.Empty, string.Empty, DescribeRow(row.Finding),
             ItemsText(row.Finding, RowItemNames), TierLabel(row.Finding.Tier),
             VerificationLabel(row.Finding.Verification), StatusOf(row), link,
             row.Finding.FindingId == _selectedFindingId, SelectFindingCommand,
@@ -1198,6 +1201,8 @@ public sealed partial class ParsimonyPageModel : PageModel
                 MotifAppStrings.ParsimonyReportedBecauseFormat, Describe(finding), ShortTitleOf(finding.MeasureId))),
             (MotifAppStrings.ParsimonyDetailStrength, TierLabel(finding.Tier)),
             (MotifAppStrings.ParsimonyDetailPairedCheck, VerificationLabel(finding.Verification))).ToList();
+        if (!string.IsNullOrWhiteSpace(finding.Description))
+            details.Insert(0, new InspectorDetail(MotifAppStrings.ParsimonyDetailSubject, finding.Description));
         if (changed && priorReason is not null) details.AddRange(InspectorDetail.Recorded((MotifAppStrings.ParsimonyDetailEarlierReason, priorReason)));
         return new ParsimonyEvidence(TitleOf(finding.MeasureId), details, finding.Limitations);
     }
@@ -1359,6 +1364,9 @@ public sealed partial class ParsimonyPageModel : PageModel
     private static string Describe(ParsimonyFinding finding) =>
         string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.ParsimonyDescribeFormat,
             finding.Number.Numerator, finding.Number.Denominator, finding.Number.Unit);
+
+    private static string DescribeRow(ParsimonyFinding finding) =>
+        string.IsNullOrWhiteSpace(finding.Description) ? Describe(finding) : finding.Description;
 
     private static string TitleOf(string measureId) => RecipeCatalog.Find(measureId)?.Title ?? MotifAppStrings.ParsimonyCheckTitle;
 

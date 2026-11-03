@@ -440,7 +440,9 @@ public sealed partial class ProposalsPageModel : PageModel
             () => [.. Context.Selection.AllTexts.Select(text => new DifferenceTextChoice(text.Id, text.Title))]);
         Parsimony = new ProposalParsimonyViewModel(
             (request, cancellationToken) => Context.Commands.ReadProposalParsimonyStatusAsync(request, cancellationToken),
-            parsimonyDelay);
+            parsimonyDelay,
+            (request, cancellationToken) => Context.Commands.ReadParsimonyReportAsync(request, cancellationToken),
+            (request, cancellationToken) => Context.Commands.ReadParsimonyViewAsync(request, cancellationToken));
         Context.Selection.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(SelectionViewModel.TextCount)) Difference.RefreshTexts();
@@ -844,6 +846,7 @@ public sealed partial class ProposalsPageModel : PageModel
             if (value is not null || !_rereading) Parsimony.Stop();
             return;
         }
+        Parsimony.SetParserWork(value.Card.Trial?.Work);
         ParsimonyWatching = Parsimony.Watch(path, value.ProposalId);
         // The same Proposal chosen again, as when the list was re-read, only refreshes what its card offers.
         if (value.ProposalId == _differenceProposalId && path == _differenceProject)

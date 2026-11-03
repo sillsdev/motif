@@ -4090,6 +4090,118 @@ public static class MotifAppStrings
     public static string ProposalParsimonyUnknown => Text("MotifApp.ProposalParsimonyUnknown");
     public static string ProposalParsimonyChangedUnknown => Text("MotifApp.ProposalParsimonyChangedUnknown");
 
+    public static string ProposalParsimonyReadNothingNewComputed => Text("MotifApp.ProposalParsimonyReadNothingNewComputed");
+
+    public static string ProposalParsimonyReadUnknownPattern => Text("MotifApp.ProposalParsimonyReadUnknownPattern");
+
+    public static string ProposalParsimonyReadNotComputedPattern => Text("MotifApp.ProposalParsimonyReadNotComputedPattern");
+
+    public static string ProposalParsimonyReadGrammarNoResult => Text("MotifApp.ProposalParsimonyReadGrammarNoResult");
+
+    public static string ProposalParsimonyReadTextNotMeasured => Text("MotifApp.ProposalParsimonyReadTextNotMeasured");
+
+    public static string ProposalParsimonyFindingsAllDecided => Text("MotifApp.ProposalParsimonyFindingsAllDecided");
+
+    public static string ProposalParsimonyFindingsPartial => Text("MotifApp.ProposalParsimonyFindingsPartial");
+
+    public static string ProposalParsimonyFindingsMoreLineFormat => Text("MotifApp.ProposalParsimonyFindingsMoreLineFormat");
+
+    public static string ProposalParsimonyReadTitle => Text("MotifApp.ProposalParsimonyReadTitle");
+
+    public static string ProposalParsimonyReadNothingNew => Text("MotifApp.ProposalParsimonyReadNothingNew");
+
+    public static string ProposalParsimonyReadNewPattern => Text("MotifApp.ProposalParsimonyReadNewPattern");
+
+    public static string ProposalParsimonyReadResolvedPattern => Text("MotifApp.ProposalParsimonyReadResolvedPattern");
+
+    public static string ProposalParsimonyParserWorkLabel => Text("MotifApp.ProposalParsimonyParserWorkLabel");
+
+    public static string ProposalParsimonyParserWorkMoreFormat => Text("MotifApp.ProposalParsimonyParserWorkMoreFormat");
+
+    public static string ProposalParsimonyParserWorkLessFormat => Text("MotifApp.ProposalParsimonyParserWorkLessFormat");
+
+    public static string ProposalParsimonyParserWorkSame => Text("MotifApp.ProposalParsimonyParserWorkSame");
+
+    public static string ProposalParsimonyWallTimeSecondsPattern => Text("MotifApp.ProposalParsimonyWallTimeSecondsPattern");
+
+    public static string ProposalParsimonyWallTimeMinutesPattern => Text("MotifApp.ProposalParsimonyWallTimeMinutesPattern");
+
+    public static string ProposalParsimonyFindingsHeaderPattern => Text("MotifApp.ProposalParsimonyFindingsHeaderPattern");
+
+    public static string ProposalParsimonyFindingsMorePattern => Text("MotifApp.ProposalParsimonyFindingsMorePattern");
+
+    public static string ProposalParsimonyFindingsNone => Text("MotifApp.ProposalParsimonyFindingsNone");
+
+    public static string ProposalParsimonyFindingsNoneComputed => Text("MotifApp.ProposalParsimonyFindingsNoneComputed");
+
+    public static string ProposalParsimonyFindingKindNew => Text("MotifApp.ProposalParsimonyFindingKindNew");
+
+    public static string ProposalParsimonyFindingKindChanged => Text("MotifApp.ProposalParsimonyFindingKindChanged");
+
+    public static string ProposalParsimonyFindingLineFormat => Text("MotifApp.ProposalParsimonyFindingLineFormat");
+
+    public static string ProposalParsimonyFindingsUnreadable => Text("MotifApp.ProposalParsimonyFindingsUnreadable");
+
+    public static string ProposalParsimonyFindingsNotComparable => Text("MotifApp.ProposalParsimonyFindingsNotComparable");
+
+    public static string ProposalParsimonyJudgmentsLineFormat => Text("MotifApp.ProposalParsimonyJudgmentsLineFormat");
+
+    public static string ProposalParsimonyJudgmentsSuppressedPattern => Text("MotifApp.ProposalParsimonyJudgmentsSuppressedPattern");
+
+    public static string ProposalParsimonyJudgmentsResurfacedPattern => Text("MotifApp.ProposalParsimonyJudgmentsResurfacedPattern");
+
+    public static string ProposalParsimonyJudgmentsUnresolvedPattern => Text("MotifApp.ProposalParsimonyJudgmentsUnresolvedPattern");
+
+    public static string ProposalParsimonyShowEvidence => Text("MotifApp.ProposalParsimonyShowEvidence");
+
+    public static string ProposalParsimonyShowEvidenceAccessibleName => Text("MotifApp.ProposalParsimonyShowEvidenceAccessibleName");
+
+    public static string ProposalParsimonyEvidenceReading => Text("MotifApp.ProposalParsimonyEvidenceReading");
+
+    public static string ProposalParsimonyEvidenceNone => Text("MotifApp.ProposalParsimonyEvidenceNone");
+
+    public static string ProposalParsimonyEvidenceLineFormat => Text("MotifApp.ProposalParsimonyEvidenceLineFormat");
+
+    public static string ProposalParsimonyEvidenceRowsPattern => Text("MotifApp.ProposalParsimonyEvidenceRowsPattern");
+
+    public static string ProposalParsimonyEvidenceNotKept => Text("MotifApp.ProposalParsimonyEvidenceNotKept");
+
+    public static string ProposalParsimonyEvidenceNotAvailable => Text("MotifApp.ProposalParsimonyEvidenceNotAvailable");
+
+    public static string ProposalParsimonyEvidenceUnreadable => Text("MotifApp.ProposalParsimonyEvidenceUnreadable");
+
+    public static string ProposalParsimonyViewAffixContext => Text("MotifApp.ProposalParsimonyViewAffixContext");
+
+    public static string ProposalParsimonyViewAdhocContext => Text("MotifApp.ProposalParsimonyViewAdhocContext");
+
+    public static string ProposalParsimonyViewAllomorphContext => Text("MotifApp.ProposalParsimonyViewAllomorphContext");
+
+    public static string ProposalParsimonyViewAlternationFamilies => Text("MotifApp.ProposalParsimonyViewAlternationFamilies");
+
+    public static string ProposalParsimonyViewApprovedMorphSequences => Text("MotifApp.ProposalParsimonyViewApprovedMorphSequences");
+
+    public static string ProposalParsimonyViewEnvironmentExcess => Text("MotifApp.ProposalParsimonyViewEnvironmentExcess");
+
+    public static string ProposalParsimonyViewJoinQuality => Text("MotifApp.ProposalParsimonyViewJoinQuality");
+
+    public static string ProposalParsimonyViewNaturalClassExcess => Text("MotifApp.ProposalParsimonyViewNaturalClassExcess");
+
+    public static string ProposalParsimonyViewNaturalClassContext => Text("MotifApp.ProposalParsimonyViewNaturalClassContext");
+
+    public static string ProposalParsimonyViewParserCases => Text("MotifApp.ProposalParsimonyViewParserCases");
+
+    public static string ProposalParsimonyViewStatementUsage => Text("MotifApp.ProposalParsimonyViewStatementUsage");
+
+    public static string ProposalParsimonyViewSlotContext => Text("MotifApp.ProposalParsimonyViewSlotContext");
+
+    public static string ProposalParsimonyViewTemplateOrder => Text("MotifApp.ProposalParsimonyViewTemplateOrder");
+
+    public static string ProposalParsimonyViewUnslottedAffixes => Text("MotifApp.ProposalParsimonyViewUnslottedAffixes");
+
+    public static string ProposalParsimonyViewNullOptional => Text("MotifApp.ProposalParsimonyViewNullOptional");
+
+    public static string ProposalParsimonyViewOther => Text("MotifApp.ProposalParsimonyViewOther");
+
     public static string ProposalParsimonyFailedFormat => Text("MotifApp.ProposalParsimonyFailedFormat");
 
     public static string ProposalParsimonyFailedTimedOut => Text("MotifApp.ProposalParsimonyFailedTimedOut");

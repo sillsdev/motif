@@ -4407,7 +4407,7 @@ Motif starts a check automatically when this project opens. Use Reload to read a
   </data>
   <data name="MotifApp.ParsimonyDetailSubject" xml:space="preserve">
     <value>Subject</value>
-    <comment>Field label in the inspector of a suppressed decision: what the decision is about.</comment>
+    <comment>Field label in the inspector of a suppressed decision or a finding: what it is about.</comment>
   </data>
   <data name="MotifApp.ParsimonyDetailJudgmentId" xml:space="preserve">
     <value>Judgment ID</value>
@@ -8510,6 +8510,230 @@ Motif starts a check automatically when this project opens. Use Reload to read a
   <data name="MotifApp.ProposalParsimonyChangedUnknown" xml:space="preserve">
     <value>something changed</value>
     <comment>What changed since Parsimony measured, inside a list, when this window does not know the kind of change.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyReadTitle" xml:space="preserve">
+    <value>Quick Read</value>
+    <comment>Heading of the short read at the top of a Proposal's Parsimony section.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyReadNothingNew" xml:space="preserve">
+    <value>No measure found a new Finding for this Proposal.</value>
+    <comment>Sentence in the Parsimony section's read when no Grammar measure found a new or changed Finding.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyReadNewPattern" xml:space="preserve">
+    <value>{0, plural, one {# measure found new or changed Findings. Look at it first.} other {# measures found new or changed Findings. Look at those first.}}</value>
+    <comment>Plural pattern: the Parsimony read when some Grammar measures found new or changed Findings; # is how many measures, never a count of Findings.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyReadResolvedPattern" xml:space="preserve">
+    <value>{0, plural, one {# measure no longer finds Findings the Baseline had.} other {# measures no longer find Findings the Baseline had.}}</value>
+    <comment>Plural pattern: the second sentence of the Parsimony read when the Proposal resolves Findings; # is how many measures.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyParserWorkLabel" xml:space="preserve">
+    <value>Parser Work</value>
+    <comment>Label beside the Proposal's parser work against the Baseline in the Parsimony section.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyParserWorkMoreFormat" xml:space="preserve">
+    <value>About {0}% more parser work than the Baseline</value>
+    <comment>Parser work of a Trial against the Baseline in the Parsimony section; {0} is the whole-number percent.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyParserWorkLessFormat" xml:space="preserve">
+    <value>About {0}% less parser work than the Baseline</value>
+    <comment>Parser work of a Trial against the Baseline in the Parsimony section; {0} is the whole-number percent.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyParserWorkSame" xml:space="preserve">
+    <value>About the same parser work as the Baseline</value>
+    <comment>Parser work of a Trial against the Baseline in the Parsimony section when the change rounds to nothing.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyWallTimeSecondsPattern" xml:space="preserve">
+    <value>{0, plural, one {Measured in about # second.} other {Measured in about # seconds.}}</value>
+    <comment>Plural pattern: how long Parsimony took on this Proposal, under two minutes; # is the whole seconds.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyWallTimeMinutesPattern" xml:space="preserve">
+    <value>{0, plural, one {Measured in about # minute.} other {Measured in about # minutes.}}</value>
+    <comment>Plural pattern: how long Parsimony took on this Proposal, two minutes or more; # is the whole minutes.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyFindingsHeaderPattern" xml:space="preserve">
+    <value>{0, plural, one {# Finding to Look at} other {# Findings to Look at}}</value>
+    <comment>Plural pattern: header of a group's list of new or changed Findings; # is the count.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyFindingsMorePattern" xml:space="preserve">
+    <value>{0, plural, one {# more Finding is not listed here.} other {# more Findings are not listed here.}}</value>
+    <comment>Plural pattern: Findings a Parsimony group has beyond the ones its list shows; # is how many are left out.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyFindingsNone" xml:space="preserve">
+    <value>No new or changed Findings in this group.</value>
+    <comment>Sentence in a Parsimony group when no measure found a new or changed Finding.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyFindingsNoneComputed" xml:space="preserve">
+    <value>The measures that gave a result found no new or changed Findings in this group.</value>
+    <comment>Sentence in a Parsimony group when no measure that computed found a new or changed Finding, and at least one measure gave no result.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyFindingKindNew" xml:space="preserve">
+    <value>New</value>
+    <comment>Chip beside a Finding the Baseline did not have.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyFindingKindChanged" xml:space="preserve">
+    <value>Evidence Changed</value>
+    <comment>Chip beside a Finding both sides have whose evidence differs.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyFindingLineFormat" xml:space="preserve">
+    <value>{0}: {1}</value>
+    <comment>One Finding line; {0} is the measure's name and {1} the Finding's description.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyFindingsUnreadable" xml:space="preserve">
+    <value>The Findings could not be read. The counts above still stand.</value>
+    <comment>Sentence in a Parsimony group when its stored Reports could not be read.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyFindingsNotComparable" xml:space="preserve">
+    <value>Which Findings are new could not be worked out, so none are listed.</value>
+    <comment>Sentence in a Parsimony group when the Baseline's Report could not be read to tell new Findings from old ones.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyJudgmentsLineFormat" xml:space="preserve">
+    <value>{0}: {1}</value>
+    <comment>One line of a measure's decision counts; {0} is the measure's name and {1} one decision count sentence.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyJudgmentsSuppressedPattern" xml:space="preserve">
+    <value>{0, plural, one {# Finding is set aside by a decision} other {# Findings are set aside by decisions}}</value>
+    <comment>Plural pattern: Findings an earlier keep or defer hides; # is the count.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyJudgmentsResurfacedPattern" xml:space="preserve">
+    <value>{0, plural, one {# Finding is back because its evidence changed} other {# Findings are back because their evidence changed}}</value>
+    <comment>Plural pattern: Findings that returned because an earlier decision named different evidence; # is the count.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyJudgmentsUnresolvedPattern" xml:space="preserve">
+    <value>{0, plural, one {# judgment record needs a look} other {# judgment records need a look}}</value>
+    <comment>Plural pattern: stored judgment records that could not safely decide a Finding; # is the count.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyShowEvidence" xml:space="preserve">
+    <value>Show Evidence</value>
+    <comment>Button on a Parsimony Finding: reads the kept views its evidence points to.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyShowEvidenceAccessibleName" xml:space="preserve">
+    <value>Show the evidence for {0}</value>
+    <comment>Accessible name of the Show Evidence button on a Parsimony Finding; {0} is the Finding's line.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyEvidenceReading" xml:space="preserve">
+    <value>Reading the evidence…</value>
+    <comment>Shown on a Parsimony Finding while its kept views are being read.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyEvidenceNone" xml:space="preserve">
+    <value>This Finding points to no evidence view.</value>
+    <comment>Sentence on a Parsimony Finding whose Report names no evidence view.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyEvidenceLineFormat" xml:space="preserve">
+    <value>{0}: {1}</value>
+    <comment>One evidence view line of a Finding; {0} is the view's name and {1} what was found.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyEvidenceRowsPattern" xml:space="preserve">
+    <value>{0, plural, one {# row} other {# rows}}</value>
+    <comment>Plural pattern: how many rows a kept evidence view holds; # is the count.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyEvidenceNotKept" xml:space="preserve">
+    <value>not kept for this Proposal</value>
+    <comment>What a Finding's evidence view says when Motif did not keep it; not an error.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyEvidenceNotAvailable" xml:space="preserve">
+    <value>not available for this Proposal</value>
+    <comment>What a Finding's evidence view says when it is unavailable for a reason other than not being kept.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyEvidenceUnreadable" xml:space="preserve">
+    <value>could not be read</value>
+    <comment>What a Finding's evidence view says when reading it was refused.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyViewAffixContext" xml:space="preserve">
+    <value>Affix</value>
+    <comment>Name of the affix evidence view on a Parsimony Finding.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyViewAdhocContext" xml:space="preserve">
+    <value>Ad hoc prohibition</value>
+    <comment>Name of the ad hoc prohibition evidence view on a Parsimony Finding.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyViewAllomorphContext" xml:space="preserve">
+    <value>Allomorph</value>
+    <comment>Name of the allomorph evidence view on a Parsimony Finding.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyViewAlternationFamilies" xml:space="preserve">
+    <value>Alternation families</value>
+    <comment>Name of the alternation families evidence view on a Parsimony Finding.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyViewApprovedMorphSequences" xml:space="preserve">
+    <value>Approved morph sequences</value>
+    <comment>Name of the Approved morph sequences evidence view on a Parsimony Finding.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyViewEnvironmentExcess" xml:space="preserve">
+    <value>Environment excess</value>
+    <comment>Name of the environment excess evidence view on a Parsimony Finding.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyViewJoinQuality" xml:space="preserve">
+    <value>Join quality</value>
+    <comment>Name of the join quality evidence view on a Parsimony Finding.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyViewNaturalClassExcess" xml:space="preserve">
+    <value>Natural class excess</value>
+    <comment>Name of the natural class excess evidence view on a Parsimony Finding.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyViewNaturalClassContext" xml:space="preserve">
+    <value>Natural class</value>
+    <comment>Name of the natural class evidence view on a Parsimony Finding.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyViewParserCases" xml:space="preserve">
+    <value>Parser cases</value>
+    <comment>Name of the parser cases evidence view on a Parsimony Finding.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyViewStatementUsage" xml:space="preserve">
+    <value>Statement usage</value>
+    <comment>Name of the statement usage evidence view on a Parsimony Finding.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyViewSlotContext" xml:space="preserve">
+    <value>Slot</value>
+    <comment>Name of the slot evidence view on a Parsimony Finding.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyViewTemplateOrder" xml:space="preserve">
+    <value>Template order</value>
+    <comment>Name of the template order evidence view on a Parsimony Finding.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyViewUnslottedAffixes" xml:space="preserve">
+    <value>Unslotted affixes</value>
+    <comment>Name of the unslotted affixes evidence view on a Parsimony Finding.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyViewNullOptional" xml:space="preserve">
+    <value>Null and optional affixes</value>
+    <comment>Name of the null and optional affixes evidence view on a Parsimony Finding.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyViewOther" xml:space="preserve">
+    <value>Evidence</value>
+    <comment>Name of an evidence view this window has no name for.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyReadNothingNewComputed" xml:space="preserve">
+    <value>The measures that gave a result found no new Finding.</value>
+    <comment>Sentence in the Parsimony read when some Grammar measures gave no result and the others found no new Finding.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyReadUnknownPattern" xml:space="preserve">
+    <value>{0, plural, one {# measure could not be checked, so it may have new Findings.} other {# measures could not be checked, so they may have new Findings.}}</value>
+    <comment>Plural pattern: Parsimony read when the stored Reports of some measures could not be read to tell new Findings from decided ones; # is how many measures.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyReadNotComputedPattern" xml:space="preserve">
+    <value>{0, plural, one {# measure gave no result.} other {# measures gave no result.}}</value>
+    <comment>Plural pattern: Parsimony read when some measures did not compute; # is how many measures.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyReadGrammarNoResult" xml:space="preserve">
+    <value>The Grammar measures gave no result.</value>
+    <comment>Sentence in the Parsimony read when the Grammar group is not measured, abstained or failed.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyReadTextNotMeasured" xml:space="preserve">
+    <value>The Text group was not measured.</value>
+    <comment>Sentence in the Parsimony read when the Text group has no measured result for this Proposal.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyFindingsAllDecided" xml:space="preserve">
+    <value>Every new Finding is one you already decided.</value>
+    <comment>Sentence when the only new Findings of a Parsimony group are ones an earlier decision sets aside.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyFindingsPartial" xml:space="preserve">
+    <value>Only part of the Findings could be read, so the list may be incomplete.</value>
+    <comment>Sentence in a Parsimony group when reading its Active Findings stopped before the end.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyFindingsMoreLineFormat" xml:space="preserve">
+    <value>{0}: {1}</value>
+    <comment>One line of Findings a Parsimony group does not list; {0} is the measure's name and {1} how many more it has.</comment>
   </data>
   <data name="MotifApp.OverviewPairFormat" xml:space="preserve">
     <value>{0} → {1}</value>

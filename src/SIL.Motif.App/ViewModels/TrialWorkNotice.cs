@@ -24,6 +24,10 @@ public static class TrialWorkNotice
             return null;
         if (!work.WorkIncreaseWarning) return null;
         return string.Format(CultureInfo.CurrentCulture, MotifAppStrings.TrialWorkNotice,
-            (int)Math.Ceiling(change));
+            WholePercent(change));
     }
+
+    /// <summary>The whole percent the window says for a change in parser work: its size rounded up, never below zero.</summary>
+    /// <param name="change">The percent change against the Baseline; a fall counts by its size.</param>
+    internal static int WholePercent(double change) => (int)Math.Ceiling(Math.Abs(change));
 }
