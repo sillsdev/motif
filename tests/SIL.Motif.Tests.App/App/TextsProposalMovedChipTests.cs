@@ -5,9 +5,9 @@ using SIL.Motif.App.ViewModels;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Tests.App.Walkthrough;
+using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 using Xunit.Abstractions;
-using SIL.Motif.Tests.TestFixtures;
 
 namespace SIL.Motif.Tests.App;
 

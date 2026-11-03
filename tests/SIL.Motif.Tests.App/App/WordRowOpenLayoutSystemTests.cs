@@ -12,9 +12,9 @@ using SIL.Motif.App.Controls.WordPresentation;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using SIL.Motif.Tests.App.Walkthrough;
+using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 using Xunit.Abstractions;
-using SIL.Motif.Tests.TestFixtures;
 using WordRow = SIL.Motif.App.Controls.WordPresentation.WordRow;
 
 namespace SIL.Motif.Tests.App;

@@ -14,8 +14,8 @@ using SIL.Motif.App.Views;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.App.Services;
 using SIL.Motif.Commands.Queries;
-using Xunit;
 using SIL.Motif.Tests.TestFixtures;
+using Xunit;
 using ContractWordRow = SIL.Motif.Contract.Responses.WordRow;
 
 namespace SIL.Motif.Tests.App;

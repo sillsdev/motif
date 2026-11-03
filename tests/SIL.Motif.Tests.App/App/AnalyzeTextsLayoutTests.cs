@@ -22,8 +22,8 @@ using SIL.Motif.App.Views;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
 using ContractWordRow = SIL.Motif.Contract.Responses.WordRow;
-using Xunit;
 using SIL.Motif.Tests.TestFixtures;
+using Xunit;
 
 namespace SIL.Motif.Tests.App;
 

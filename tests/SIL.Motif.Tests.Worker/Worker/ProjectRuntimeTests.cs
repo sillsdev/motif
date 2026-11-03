@@ -6,8 +6,8 @@ using SIL.Motif.Worker;
 using SIL.Motif.Worker.Jobs;
 using SIL.Motif.Worker.Projects;
 using SIL.Motif.Worker.Store;
-using Xunit;
 using SIL.Motif.Tests.TestFixtures;
+using Xunit;
 
 namespace SIL.Motif.Tests.Worker;
 

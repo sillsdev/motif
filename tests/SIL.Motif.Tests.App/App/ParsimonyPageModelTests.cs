@@ -14,8 +14,8 @@ using SIL.Motif.Contract.Parsimony;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Contract.HumanJudgments;
 using SIL.Motif.Help;
-using Xunit;
 using SIL.Motif.Tests.TestFixtures;
+using Xunit;
 
 namespace SIL.Motif.Tests.App;
 

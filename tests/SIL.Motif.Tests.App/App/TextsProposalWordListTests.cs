@@ -3,8 +3,8 @@ using SIL.Motif.App.Controls.WordPresentation;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Responses;
-using Xunit;
 using SIL.Motif.Tests.TestFixtures;
+using Xunit;
 using static SIL.Motif.Tests.App.TextsProposalMatrixTests;
 
 namespace SIL.Motif.Tests.App;

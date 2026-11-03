@@ -7,8 +7,8 @@ using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Responses;
-using Xunit;
 using SIL.Motif.Tests.TestFixtures;
+using Xunit;
 
 namespace SIL.Motif.Tests.App;
 

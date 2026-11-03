@@ -5,8 +5,8 @@ using Avalonia;
 using Avalonia.Headless;
 using Avalonia.Threading;
 using SIL.Motif.App.Services;
-using Xunit;
 using SIL.Motif.Tests.TestFixtures;
+using Xunit;
 
 namespace SIL.Motif.Tests.App;
 

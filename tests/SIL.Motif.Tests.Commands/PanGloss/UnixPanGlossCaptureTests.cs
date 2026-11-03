@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using SIL.Motif.Host.PanGloss;
-using Xunit;
 using SIL.Motif.Tests.TestFixtures;
+using Xunit;
 
 namespace SIL.Motif.Tests.PanGloss;
 

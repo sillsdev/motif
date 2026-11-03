@@ -1,7 +1,7 @@
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Worker.Scheduling;
-using Xunit;
 using SIL.Motif.Tests.TestFixtures;
+using Xunit;
 
 namespace SIL.Motif.Tests.Worker;
 

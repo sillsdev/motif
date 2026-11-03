@@ -5,8 +5,8 @@ using Avalonia.VisualTree;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using SIL.Motif.Tests.App.Walkthrough;
-using Xunit;
 using SIL.Motif.Tests.TestFixtures;
+using Xunit;
 
 namespace SIL.Motif.Tests.App;
 

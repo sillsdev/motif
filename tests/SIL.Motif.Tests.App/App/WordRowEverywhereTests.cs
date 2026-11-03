@@ -8,8 +8,8 @@ using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Tests.App.Walkthrough;
-using Xunit;
 using SIL.Motif.Tests.TestFixtures;
+using Xunit;
 using ModuleWordRow = SIL.Motif.App.Controls.WordPresentation.WordRow;
 
 namespace SIL.Motif.Tests.App;
