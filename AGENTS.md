@@ -33,17 +33,11 @@ cover it, and a green `-All` does not mean those tests passed. A tenth test, the
 variable and is in no run: it is hand-only until a quiet-machine run shows it fits a hosted runner. The list, what
 each proves and how to run it by hand are in [docs/testing-slow-run.md](docs/testing-slow-run.md).
 
-**Landers run the required whole projects in one call.** Rebase onto the current `origin/main`, then run
-`pwsh -NoProfile -File ./test.ps1 -Project SIL.Motif.Tests.Mcp,SIL.Motif.Tests.Commands,SIL.Motif.Tests.LibLcm,SIL.Motif.Tests.Contract,SIL.Motif.Tests.Cli -All`
-(comma, no spaces; add `SIL.Motif.Tests.App` and `SIL.Motif.Tests.Worker` when a window sentence, resx or refusal
-changes) with no `-SkipBuild`, so the build is fresh and the counts come from the final SHA. One call shares the process
-cap and the machine-wide slot instead of adding the projects' times together, and it builds exactly the projects it
-names. All test projects write to the one folder `bin/<Configuration>/tests/`, and `TestLevelGuardTests` in the App
-project needs the App, Cli, Commands, LibLcm, Mcp and Worker test assemblies there, so a list that names
-`SIL.Motif.Tests.App` must name all six or it fails on a clean worktree for a tooling reason. The list skips the tooling
-regressions and process hygiene that a whole `./test.ps1 -All` runs, so a change under `tools/`, to a build file or to
-`test.ps1` needs `./test.ps1 -All`; that whole-repository run is the simplest correct form. A lander's report lists the
-projects run and the passed, failed and skipped counts for each.
+**Landers run `./test.ps1 -All`.** Rebase onto the current `origin/main`, then run
+`pwsh -NoProfile -File ./test.ps1 -All` with no `-SkipBuild`, so the build is fresh and the counts come from the final SHA.
+It runs every test project plus the tooling regressions and process hygiene, so no lander has to work out which
+projects a change reaches; a hand-picked list of projects let breaks through to `main`. A lander's report lists the
+passed, failed and skipped counts for each project.
 
 **One machine, many worktrees: the scripts size themselves.** `build.ps1` passes `-m:N` to restore and build, with
 `N = MOTIF_BUILD_NODES` or, on a developer machine, a quarter of the processors (minimum two). CI is uncapped: no `-m`, no slot, and xUnit keeps its own thread default.
