@@ -13,7 +13,8 @@ namespace SIL.Motif.Tests.TestFixtures;
 /// <summary>Starts Motif CLI processes with the same isolated runner configuration across test projects.</summary>
 public static class CliProcess
 {
-    private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(60);
+    // A hang guard, not a speed check: a loaded machine runs a real CLI slowly, so it is long and scaled.
+    private static readonly TimeSpan Timeout = Wait.Scaled(TimeSpan.FromMinutes(5));
 
     /// <summary>Enables Advanced AI mode for one CLI fixture without changing the test process's preference.</summary>
     public static void EnableAdvancedAiMode(ProcessStartInfo start, string preferenceDirectory)
@@ -78,7 +79,7 @@ public static class CliProcess
             var output = await outputTask;
             var error = await errorTask;
             throw new TimeoutException(
-                $"The CLI did not exit within {Timeout}.{Environment.NewLine}" +
+                $"The CLI ({string.Join(' ', process.StartInfo.ArgumentList)}) did not exit within {Timeout}.{Environment.NewLine}" +
                 $"Standard error:{Environment.NewLine}{error}{Environment.NewLine}" +
                 $"Standard output:{Environment.NewLine}{output}", exception);
         }
@@ -131,7 +132,7 @@ public static class CliProcess
             var output = await outputTask;
             var error = await errorTask;
             throw new TimeoutException(
-                $"The CLI did not exit within {Timeout}.{Environment.NewLine}" +
+                $"The CLI ({string.Join(' ', process.StartInfo.ArgumentList)}) did not exit within {Timeout}.{Environment.NewLine}" +
                 $"Standard error:{Environment.NewLine}{error}{Environment.NewLine}" +
                 $"Standard output:{Environment.NewLine}{output}", exception);
         }

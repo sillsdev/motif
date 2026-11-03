@@ -304,6 +304,9 @@ public sealed class GrammarDataHygieneTests
         try
         {
             CopyGuardTools(temp);
+            // Stub the checker: the real one cold-compiles the scan with dotnet run; the scan has its own tests.
+            File.WriteAllText(Path.Combine(temp, "tools/Check-GrammarData.ps1"),
+                "param([string] $Mode, [string] $RepositoryRoot)\n[IO.File]::WriteAllText((Join-Path $env:HOOK_TRACE_DIR 'checker-args.txt'), \"$Mode|$RepositoryRoot\")\n");
             InitGit(temp);
             var hookDir = Path.Combine(temp, ".git", "hooks"); Directory.CreateDirectory(hookDir);
             var trace = Path.Combine(temp, "hook-trace.txt");
@@ -329,10 +332,13 @@ public sealed class GrammarDataHygieneTests
 
             var adapterHook = Path.Combine(configured, "pre-commit");
             Assert.True((File.GetUnixFileMode(adapterHook) & UnixFileMode.UserExecute) != 0, $"installed adapter mode: {File.GetUnixFileMode(adapterHook)}");
-            var result = await RunProcessAsync("sh", [adapterHook, "first", "second"], temp, "private stdin marker\n", new Dictionary<string, string?> { ["HOOK_TRACE"] = trace }, ChildProcessTimeout);
+            var hookEnvironment = LocalPowerShellCaches(temp);
+            hookEnvironment["HOOK_TRACE"] = trace; hookEnvironment["HOOK_TRACE_DIR"] = temp;
+            var result = await RunProcessAsync("sh", [adapterHook, "first", "second"], temp, "private stdin marker\n", hookEnvironment, ChildProcessTimeout);
             Assert.True(!result.TimedOut && result.ChildExited && result.ExitCode == 0, $"timed out: {result.TimedOut}; exited: {result.ChildExited}; exit: {result.ExitCode}\nstdout: {result.Output}\nstderr: {result.Error}");
             Assert.Equal("first\nsecond\n", File.ReadAllText(trace + ".args"));
             Assert.Equal("private stdin marker\n", File.ReadAllText(trace + ".stdin"));
+            Assert.Equal($"Index|{Path.GetFullPath(temp)}", File.ReadAllText(Path.Combine(temp, "checker-args.txt")));
         }
         finally { DeleteTemp(temp); }
     }
@@ -435,6 +441,7 @@ public sealed class GrammarDataHygieneTests
     {
         Directory.CreateDirectory(root);
         RunGit(root, "init", "--initial-branch=main");
+        RunGit(root, "config", "gc.auto", "0"); RunGit(root, "config", "maintenance.auto", "false");
         RunGit(root, "config", "user.name", "Grammar guard test");
         RunGit(root, "config", "user.email", "grammar-guard@example.invalid");
     }
@@ -475,12 +482,20 @@ public sealed class GrammarDataHygieneTests
         return result.Output.Trim();
     }
 
+    // pwsh hangs about a minute on the drvfs cache folders test.ps1 sets; keep its caches in temp.
+    private static Dictionary<string, string?> LocalPowerShellCaches(string temp) => new()
+    {
+        ["XDG_CACHE_HOME"] = Path.Combine(temp, "xdg-cache"),
+        ["XDG_DATA_HOME"] = Path.Combine(temp, "xdg-data"),
+        ["PSModuleAnalysisCachePath"] = Path.Combine(temp, "xdg-cache", "ModuleAnalysisCache"),
+    };
+
     private static void RunPowerShell(string cwd, params string[] args)
     {
         var start = new ProcessStartInfo("pwsh") { WorkingDirectory = cwd };
         start.ArgumentList.Add("-NoProfile"); start.ArgumentList.Add("-File");
         foreach (var arg in args) start.ArgumentList.Add(arg);
-        var result = ToolProcess.Run(start);
+        var result = ToolProcess.Run(start, LocalPowerShellCaches(cwd));
         Assert.True(result.ExitCode == 0, result.Error + result.Output);
     }
 
