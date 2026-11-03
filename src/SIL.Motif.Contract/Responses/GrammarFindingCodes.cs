@@ -24,6 +24,9 @@ public static class GrammarFindingCodes
     /// <summary>A form's environment the parser cannot read, which it drops, leaving the form unrestricted by it.</summary>
     public const string AllomorphEnvironmentIgnoredByParser = "grammar.allomorph-environment-ignored-by-parser";
 
+    /// <summary>A form that already spells the material its environment asks of its neighbour, which may be a mistake.</summary>
+    public const string AllomorphRepeatsEnvironmentMaterial = "grammar.allomorph-repeats-environment-material";
+
     /// <summary>An entry marked do-not-parse, which PanGloss leaves out and FieldWorks' parsers still use.</summary>
     public const string DoNotParseIgnoredByFieldWorks = "fieldworks.do-not-parse-ignored";
 }

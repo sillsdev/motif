@@ -27,6 +27,10 @@ A lexical entry is a stem or affix with its forms, senses, glosses and grammatic
 15. `compose-add-example` adds a new example, with text in one or more writing systems and optional translations, to a sense.
 16. `compose-rewrite-lexeme-form` rewrites the lexeme forms of existing entries in one batch, for example to drop stress marks the parser cannot match.
 
+## Splitting one lexeme into homographs
+
+A homograph is a separate entry with the same lexeme form, not a second analysis of one entry. To add one beside an entry that exists (`talikud` the banana beside `talikud` the verb to turn), use `compose-author-lexical-entry` with the same form and a different gloss and analysis; Motif allows it and Dry Run reports nothing wrong. To pull a meaning out of an entry that already holds several senses, use `compose-move-sense-to-entry`, which gives the sense an entry of its own with a copy of its analysis; an entry's only sense cannot move, and `compose-add-morphosyntax-analysis` only adds a second analysis to the same entry. Name the right homograph in later intents with `lookup:entry:FORM|GLOSS`, or read its id from the lexicon.
+
 ## Pitfalls
 
 - Do not add a second entry for each inflected shape of the same stem.

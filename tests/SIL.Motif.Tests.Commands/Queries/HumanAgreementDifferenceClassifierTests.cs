@@ -145,6 +145,25 @@ public sealed class HumanAgreementDifferenceClassifierTests
     }
 
     [Fact]
+    public void AReadingAddedBesideEveryOldReadingIsItsOwnChangeCodeButStaysAFindingToOpen()
+    {
+        var added = Compare(Evidence(A()), Evidence(A(), B()), []);
+        Assert.Equal([ProposalDifferenceChange.ReadingAdded, ProposalDifferenceChange.AmbiguityUp], added.Changes);
+        Assert.Equal([ProposalDifferenceBucket.AnalysisChanged], added.Buckets.Select(item => item.Bucket));
+        Assert.True(added.CouldBeBad);
+        Assert.DoesNotContain(ProposalDifferenceChange.Changed, added.Changes);
+        Assert.Equal(FormB, Assert.Single(added.GainedIdentities).Morphs[0].Form);
+        Assert.Empty(added.LostIdentities);
+
+        // Replacing a reading, or adding one while dropping another, is still a change.
+        var replaced = Compare(Evidence(A()), Evidence(B()), []);
+        Assert.Equal([ProposalDifferenceChange.Changed], replaced.Changes);
+        Assert.Contains(replaced.Buckets, item => item.Bucket == ProposalDifferenceBucket.AnalysisChanged);
+        var mixed = Compare(Evidence(A(), B()), Evidence(A(), new ParseAnalysis([new ParseMorph(FormA, MsaB, null, null)])), []);
+        Assert.Equal([ProposalDifferenceChange.Changed], mixed.Changes);
+    }
+
+    [Fact]
     public void OpposedOpinionsKeepMechanicalChangeWithoutQualityClaims()
     {
         var decisions = new[] { Decision(IdA, ReadingGrade.Approved, FormA), Decision(IdB, ReadingGrade.Disapproved, FormA) };

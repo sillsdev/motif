@@ -8,6 +8,10 @@ Reduplication marks a meaning by copying all or part of a stem, such as the firs
 - Whole-stem copying needs only the remaining stem as a named part, copied twice, with an optional separator phoneme between the copies.
 - Partial copying names the leading parts, such as a consonant and a vowel, and the rest of the stem, then copies the leading parts again before the rest.
 
+## Reduplication written with a hyphen
+
+When the text writes a hyphen between the copies (`lakaw-lakaw`), include the hyphen phoneme in the output: copy the stem, insert the hyphen, copy it again. Both spellings of an affix that needs a hyphen and a solid form are separate processes of one entry (see `guide:encoding/conditioned-allomorphs`).
+
 ## Composers, in order
 
 1. `compose-author-natural-class` adds the groups of sounds the pattern matches.

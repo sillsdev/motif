@@ -54,6 +54,12 @@ public enum WordChangeKind
 
     /// <summary>Both sides analysed the word, but the set of analyses produced differs.</summary>
     AnalysisChanged,
+
+    /// <summary>
+    /// Both sides analysed the word and the later side kept every earlier analysis and added at least one, so nothing
+    /// the word already parsed to was lost or replaced.
+    /// </summary>
+    ReadingAdded,
 }
 
 /// <summary>One shared word whose recorded behaviour differed between the two Assessments compared.</summary>
@@ -201,7 +207,8 @@ public static class AssessmentComparer
                 .ToHashSet(StringComparer.Ordinal);
             if (beforeKeys.SetEquals(afterKeys)) return null;
             var kind = beforeKeys.Count == 0 ? WordChangeKind.GainedAnalysis
-                : afterKeys.Count == 0 ? WordChangeKind.LostAnalysis : WordChangeKind.AnalysisChanged;
+                : afterKeys.Count == 0 ? WordChangeKind.LostAnalysis
+                : beforeKeys.IsProperSubsetOf(afterKeys) ? WordChangeKind.ReadingAdded : WordChangeKind.AnalysisChanged;
             return new WordChange(word, kind, from.Outcome, to.Outcome);
         }
         var fromAnalysed = string.Equals(from.Outcome, "analysed", StringComparison.Ordinal);
@@ -214,9 +221,9 @@ public static class AssessmentComparer
         {
             var fromIdentities = from.Analyses.Select(a => a.IdentityDigest).ToHashSet(StringComparer.Ordinal);
             var toIdentities = to.Analyses.Select(a => a.IdentityDigest).ToHashSet(StringComparer.Ordinal);
-            return fromIdentities.SetEquals(toIdentities)
-                ? null
-                : new WordChange(word, WordChangeKind.AnalysisChanged, from.Outcome, to.Outcome);
+            if (fromIdentities.SetEquals(toIdentities)) return null;
+            return new WordChange(word, fromIdentities.Count > 0 && fromIdentities.IsProperSubsetOf(toIdentities)
+                ? WordChangeKind.ReadingAdded : WordChangeKind.AnalysisChanged, from.Outcome, to.Outcome);
         }
 
         return string.Equals(from.Outcome, to.Outcome, StringComparison.Ordinal)

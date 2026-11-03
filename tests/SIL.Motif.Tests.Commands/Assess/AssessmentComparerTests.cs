@@ -142,6 +142,21 @@ public sealed class AssessmentComparerTests
         Assert.Equal(WordChangeKind.AnalysisChanged, change.Kind);
     }
 
+    [Fact]
+    public void ANewAnalysisBesideEveryOldOneIsReadingAddedAndAReplacedOneStaysAnalysisChanged()
+    {
+        ParsedAnalysis Analysis(string digest) => new(null, Array.Empty<string>(), 0, digest);
+        ComparableAssessment Side(string id, params string[] digests) => new(id, "pangloss", "ParseTime", "none", "1",
+            new[] { new AssessedWord("alpha", "analysed", digests.Select(Analysis).ToArray()) });
+
+        var added = Assert.Single(AssessmentComparer.Compare(Side("from", "digest-1"), Side("to", "digest-1", "digest-2")).Changes);
+        Assert.Equal(WordChangeKind.ReadingAdded, added.Kind);
+        var replaced = Assert.Single(AssessmentComparer.Compare(Side("from", "digest-1"), Side("to", "digest-2")).Changes);
+        Assert.Equal(WordChangeKind.AnalysisChanged, replaced.Kind);
+        var dropped = Assert.Single(AssessmentComparer.Compare(Side("from", "digest-1", "digest-2"), Side("to", "digest-1", "digest-3")).Changes);
+        Assert.Equal(WordChangeKind.AnalysisChanged, dropped.Kind);
+    }
+
     private static ComparableAssessment Build(string assessmentId, string assessor, string kind,
         string tokeniserName, string tokeniserVersion, params (string Word, bool Analysed)[] words)
     {

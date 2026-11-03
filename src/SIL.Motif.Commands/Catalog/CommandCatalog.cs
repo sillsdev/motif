@@ -205,6 +205,8 @@ public static class CommandCatalog
         // Saved default Selection
         new CommandDescriptor("project create", typeof(ProjectCreateRequest),
             typeof(ProjectCreatedResponse), CommandSurface.Developer, AgentClass.HumanOnly),
+        new CommandDescriptor("project word-forming", typeof(ProjectWordFormingRequest),
+            typeof(ProjectWordFormingResponse), CommandSurface.Developer, AgentClass.HumanOnly),
         new CommandDescriptor("project tag", typeof(ReadProjectTagRequest),
             typeof(ProjectTagResponse), CommandSurface.Released, AgentClass.Read)
             { ExposeAsAgentTool = false },

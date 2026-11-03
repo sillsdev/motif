@@ -90,6 +90,7 @@ public static class CommandTextRenderer
             ProjectInitializationResponse r => RenderProjectInitialization(r),
             ProjectTagResponse r => "Project tag: " + r.Tag + Environment.NewLine,
             ProjectCreatedResponse r => RenderProjectCreated(r),
+            ProjectWordFormingResponse r => RenderProjectWordForming(r),
             NamedSelectionProjection p => RenderDefaultSelection(new DefaultSelectionResponse(p)),
             ProjectSetupResponse r => r.SetupSkipped
                 ? "Setup skipped for this project." + Environment.NewLine
@@ -435,6 +436,18 @@ public static class CommandTextRenderer
         if (continuation is null) return;
         builder.Append("Next page cursor: ");
         builder.AppendLine(ProjectionJson.Serialize(continuation));
+    }
+
+    private static string RenderProjectWordForming(ProjectWordFormingResponse r)
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine(r.Added.Count > 0
+            ? $"Declared word-forming in '{r.Vernacular}': {string.Join(" ", r.Added)}"
+            : $"Nothing to add: those characters are already word-forming in '{r.Vernacular}'.");
+        if (r.WordFormingCharacters.Count > 0)
+            sb.AppendLine($"  Word-forming beyond letters: {string.Join(" ", r.WordFormingCharacters)}");
+        sb.AppendLine("A word the parser reads also needs each of these as a phoneme grapheme (compose-author-phoneme).");
+        return sb.ToString();
     }
 
     private static string RenderProjectCreated(ProjectCreatedResponse r)

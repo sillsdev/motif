@@ -28,6 +28,10 @@ Phonological rules in FieldWorks are obligatory, and there is no optional rule a
 
 A form that may surface either way takes a third analysis with no tag. A whole-word variant listed as its own entry also works, but it misses the productive forms built on the stem.
 
+## Name an object by its form, not its id
+
+An id is a GUID, and an object a Proposal creates gets a new one every time that Proposal is composed, so a plan written against one project (a private copy, say) names ids that do not exist in another (the live project). Any string in an intent that starts with `lookup:` is read as a name and replaced by the id of the object in the project the Draft is composed against, including one an earlier step of the same Draft created: `lookup:entry:ika-` (an entry by lexeme form, with the affix hyphen to pick the affix; add `|gloss` to separate homographs), `lookup:sense:FORM|GLOSS`, `lookup:msa:FORM|GLOSS` (the sense's grammatical info), `lookup:phoneme:GRAPHEME` and `lookup:category:NAME`. A name that matches nothing, or more than one object, is refused with the ids of the objects it matched. Stored Drafts keep the resolved ids, so a Draft replays the same way afterwards.
+
 ## Try it, then ask or defer
 
 - Run `motif_dry_run`, then `motif_trial` with attested positive forms, contrasting forms and words that should not parse.

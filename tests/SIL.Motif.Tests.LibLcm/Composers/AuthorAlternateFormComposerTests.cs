@@ -185,6 +185,16 @@ public sealed class AuthorAlternateFormComposerTests : IDisposable
     }
 
     [Fact]
+    public void AFormThatEndsWithTheMaterialItsEnvironmentConditionsOnStillComposes()
+    {
+        var (entry, _, _) = AddInflectionalPrefix(_cache, "m", _category);
+        var beforeLinker = EnvironmentWithPattern("/ _ ng");
+
+        Assert.NotEmpty(AuthorAlternateFormComposer.Build(_cache, Prefix(entry, "pang", [beforeLinker])));
+        Assert.NotEmpty(AuthorAlternateFormComposer.Build(_cache, Prefix(entry, "batung", [beforeLinker])));
+    }
+
+    [Fact]
     public void AnOrderThatLetsAnUnrestrictedFormShadowARestrictedOneIsRefusedWithTheNextStep()
     {
         var environment = AddEnvironment(_cache, "after vowel");

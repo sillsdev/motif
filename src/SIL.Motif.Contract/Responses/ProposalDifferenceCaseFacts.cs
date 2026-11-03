@@ -57,7 +57,10 @@ public enum ProposalDifferenceChange
     [JsonStringEnumMemberName("changed")]
     Changed,
     [JsonStringEnumMemberName("ambiguity-up")]
-    AmbiguityUp
+    AmbiguityUp,
+    /// <summary>A reading appeared beside every reading the word already had: nothing was lost or replaced.</summary>
+    [JsonStringEnumMemberName("reading-added")]
+    ReadingAdded
 }
 
 /// <summary>A stable advisory category for a paired parser observation.</summary>

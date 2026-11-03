@@ -9,6 +9,10 @@ The sound inventory is the set of consonants, vowels and other sounds the langua
 - Give each phoneme a name and the written representations the language uses for it, in the right writing systems.
 - Add phonemes before anything that refers to them: natural classes, environments, then rules. A composer in a later step can name a phoneme created earlier in the same Draft through a declared dependency.
 
+## Digits and other characters a word contains
+
+An orthography that writes numerals inside words (Cebuano `ika-14`, an ordinal prefix on a number) needs two things, and Motif authors both. FieldWorks and Motif's tokeniser treat a letter, a mark or a modifier symbol as part of a word, and a digit is none of those, so `ika-14` is read as `ika` until the vernacular writing system lists the digits and the hyphen as word-forming characters: `motif project word-forming --project PATH --add "-0123456789"` adds them (it only adds, never removes, and refuses while FieldWorks has the project open). The parser then needs every character a word contains as a phoneme grapheme, so author each digit and the hyphen with `compose-author-phoneme` (a representation such as `"1"` or `"-"`). A numeral written in digits parses only if a stem entry spells it (`14`) or a rule builds it; the real parser reads `ika-14` as the ordinal prefix, its hyphen and that stem.
+
 ## Composers, in order
 
 1. `compose-author-phoneme` adds one phoneme with its representations.

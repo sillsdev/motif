@@ -27,9 +27,11 @@ public static class HumanAgreementDifferenceClassifier
         {
             if (beforeIdentities.Count == 0 && afterIdentities.Count > 0) changes.Add(ProposalDifferenceChange.Gained);
             else if (beforeIdentities.Count > 0 && afterIdentities.Count == 0) changes.Add(ProposalDifferenceChange.Lost);
+            else if (lost.Count == 0 && gained.Count > 0) changes.Add(ProposalDifferenceChange.ReadingAdded);
             else if (gained.Count > 0 || lost.Count > 0) changes.Add(ProposalDifferenceChange.Changed);
             if (afterIdentities.Count > 1 && afterIdentities.Count > beforeIdentities.Count)
                 changes.Add(ProposalDifferenceChange.AmbiguityUp);
+            // An added reading keeps its own change code but stays listed here, as it can be a wrong parse.
             if (gained.Count > 0 || lost.Count > 0) Add(ProposalDifferenceBucket.AnalysisChanged);
             if ((long)afterIdentities.Count - beforeIdentities.Count >= policy.AbsoluteIncrease &&
                 (long)afterIdentities.Count >= (long)policy.Ratio * Math.Max(1, beforeIdentities.Count))

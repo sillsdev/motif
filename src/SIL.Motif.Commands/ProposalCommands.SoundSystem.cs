@@ -516,9 +516,10 @@ public static partial class ProposalCommands
                             step.Verb != PhonologicalRuleComposerVerb
                             ? ResolveBatchLabelReferences(unlabeled, labelObjects, labelRoots, labelRoles, declaredLabels, index)
                             : step.Authored;
-                        var normalized = labeled is { } raw && step.Verb is { } verb
+                        var looked = labeled is { } toLook ? LookupReferences.Resolve(cache, toLook) : labeled;
+                        var normalized = looked is { } raw && step.Verb is { } verb
                             ? ResolveSoundObjectNames(cache, verb, raw)
-                            : labeled;
+                            : looked;
                         if (step.Verb == "compose-edit-natural-class" && normalized is { } naturalClassInput &&
                             naturalClassInput.ValueKind == JsonValueKind.Object &&
                             naturalClassInput.TryGetProperty("target", out var naturalClassTarget) &&

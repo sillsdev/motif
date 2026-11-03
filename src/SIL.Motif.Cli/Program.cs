@@ -1966,6 +1966,15 @@ try
                 result = RenderCommand(created);
                 break;
             }
+            if (positionals is ["word-forming"])
+            {
+                if (!flags.TryGetValue("project", out var wordFormingProject) ||
+                    !flags.TryGetValue("add", out var wordFormingAdd))
+                    return Usage(UsageLineFor("project word-forming"), asJson);
+                result = RenderCommand(ProjectWordFormingCommand.Add(
+                    new ProjectWordFormingRequest(wordFormingProject, wordFormingAdd)));
+                break;
+            }
             if (positionals is ["tag"] && flags.ContainsKey("set") && !HasProjectTagValue(rest))
                 return Usage(UsageLineFor("project tag --set"), asJson);
             if (positionals is ["tag"] && flags.TryGetValue("project", out var tagProject))

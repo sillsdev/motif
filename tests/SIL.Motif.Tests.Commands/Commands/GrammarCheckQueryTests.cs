@@ -388,6 +388,33 @@ public sealed class GrammarCheckQueryTests : IDisposable
     }
 
     [Fact]
+    public void AFormThatRepeatsTheMaterialItsEnvironmentConditionsOnIsAWarningAndOneThatStopsBeforeItIsNot()
+    {
+        var fwDataPath = _pristine.CopyProjectFile();
+        var loader = new FwDataProjectLoader();
+        var repeating = Guid.Empty;
+        using (var cache = loader.LoadCache(fwDataPath))
+        {
+            AddPhonemes(cache, "b", "a", "t", "u", "n", "g");
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            {
+                repeating = Stem(cache, "batung", "/ _ ng").Guid;
+                Stem(cache, "batu", "/ _ ng");
+            });
+            loader.Save(cache);
+        }
+
+        Capture(fwDataPath);
+        var warning = Assert.Single(Check(fwDataPath).Findings,
+            item => item.Code == GrammarFindingCodes.AllomorphRepeatsEnvironmentMaterial);
+
+        Assert.Equal(GrammarDiagnosticLevel.Warning, warning.Severity);
+        Assert.Contains("'batung'", warning.Description, StringComparison.Ordinal);
+        Assert.Contains("already ends with 'ng'", warning.Description, StringComparison.Ordinal);
+        Assert.Equal(CanonicalId.FromGuid(repeating).Value, Assert.Single(warning.Subject).ObjectId);
+    }
+
+    [Fact]
     public void AnEnvironmentOnAnEntryNotUsedForParsingIsNotWarnedAbout()
     {
         var fwDataPath = _pristine.CopyProjectFile();
