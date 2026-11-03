@@ -78,6 +78,40 @@ public sealed class WindowRefusalDetailsTests
         Assert.Contains(path, ProblemReport.FromRefusal(window).ToText(includeLocalDetails: true));
     }
 
+    [Theory]
+    [InlineData("The Proposal is decided, so its word detail is gone. Read the saved summary with: motif difference show --project <fwdata> --proposal <id>")]
+    [InlineData("No saved Difference was found. Run: motif difference produce --project <fwdata> --proposal <id> --text <guid>")]
+    [InlineData("None of the saved Differences can be read. Make it again to replace it: motif difference produce --project <fwdata> --proposal <id>")]
+    [InlineData("The Proposal has no completed Trial. Run: motif proposal trial --project <fwdata> <proposalId>")]
+    [InlineData("The replacement is not in the store. Run 'list' to see committed proposals.")]
+    [InlineData("Proposal 'p-1' not found in store. Run 'list' to see committed proposals.")]
+    public void AnUnquotedCliCommandOrAQuotedVerbNeverShowsInDetails(string message)
+    {
+        var refusal = new Refusal(RefusalCodes.AssessParserUnavailable, FailureReason.Refused, message,
+            new Dictionary<string, string>());
+
+        var details = WindowRefusal.From(refusal).Details ?? string.Empty;
+
+        Assert.DoesNotContain("motif ", details, StringComparison.Ordinal);
+        Assert.DoesNotContain("--", details, StringComparison.Ordinal);
+        Assert.DoesNotContain("Run ", details, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("draftId")]
+    [InlineData("preflightId")]
+    [InlineData("dryRunId")]
+    public void AFactNamedForACliWordStaysHidden(string key)
+    {
+        var refusal = new Refusal(RefusalCodes.AssessParserUnavailable, FailureReason.Refused, "The project file is read-only.",
+            new Dictionary<string, string> { [key] = "x-1", ["proposalId"] = "p-1" });
+
+        var details = WindowRefusal.From(refusal).Details;
+
+        Assert.DoesNotContain(key, details);
+        Assert.Contains("proposalId: p-1", details);
+    }
+
     [Fact]
     public void AFactThatIsNotAPathStaysHiddenForACliWordInItsValue()
     {

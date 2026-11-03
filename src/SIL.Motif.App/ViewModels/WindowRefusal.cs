@@ -464,8 +464,8 @@ public sealed partial record WindowRefusal
     [GeneratedRegex(@"(?<=[.!?])\s+")]
     private static partial Regex SentenceBreak();
 
-    // A quoted `motif …` line, or any quoted line with an option, is a remedy only the CLI can act on.
-    [GeneratedRegex(@"[`'](?:motif\s|[^`']*\s--[a-z])")]
+    // A `motif …` command quoted or not, a quoted option line, or "Run 'verb'" is a remedy only the CLI can act on.
+    [GeneratedRegex(@"[`'](?:motif\s|[^`']*\s--[a-z])|\bmotif\s+[a-z]|\bRun\s+[`'][a-z][\w-]*[`']")]
     private static partial Regex CommandLine();
 
     // A fact name is an identifier such as draftId, so it matches anywhere; Proposal is a window word.
