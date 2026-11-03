@@ -99,8 +99,11 @@ public sealed class StatsCacheLockTests : IDisposable
     {
         if (OperatingSystem.IsWindows()) return;
         var directory = Path.GetDirectoryName(RunFile("cleanup"))!;
+        // The lease names a case-insensitive filesystem's directories in upper case, as Create does.
+        var leasePath = Path.GetFullPath(directory);
+        if (OperatingSystem.IsMacOS()) leasePath = leasePath.ToUpperInvariant();
         var identity = "machine:Global\\Motif.StatsCache." +
-            Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Path.GetFullPath(directory))));
+            Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(leasePath)));
         var lockFolder = Environment.GetEnvironmentVariable("MOTIF_TEST_WORKER_LOCK_NAMESPACE") is { Length: > 0 } ns
             ? Path.GetFullPath(ns) : "/tmp";
         var lockFile = Path.Combine(lockFolder, "motif-lock-" +

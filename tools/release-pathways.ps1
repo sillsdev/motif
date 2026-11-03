@@ -56,10 +56,14 @@ function Invoke-Cli {
 }
 
 function Build-Sample {
-    param([Parameter(Mandatory = $true)] [string] $OutputRoot)
+    # Copies share a vernacular and folder name, so each gets its own valid tag.
+    param([Parameter(Mandatory = $true)] [string] $OutputRoot, [Parameter(Mandatory = $true)] [string] $Tag)
     $build = Invoke-Process -Executable $script:BuilderPath -Arguments @('build', $script:SampleSpec, $OutputRoot)
-    try { return $build.Output | ConvertFrom-Json }
+    try { $record = $build.Output | ConvertFrom-Json }
     catch { throw "SampleProjects did not return its build record: $($build.Output)" }
+    [void] (Invoke-Cli @('project', 'tag', '--project', [System.IO.Path]::GetFullPath([string] $record.projectPath),
+        '--set', $Tag))
+    return $record
 }
 
 function Seed-Selection {
@@ -144,7 +148,7 @@ $fixtureMap = [ordered]@{
 }
 $sampleBuilds = [ordered]@{}
 foreach ($fixture in $fixtureMap.Keys) {
-    $built = Build-Sample (Join-Path $releaseRoot ('app-' + $fixture))
+    $built = Build-Sample (Join-Path $releaseRoot ('app-' + $fixture)) ('app' + @($fixtureMap.Keys).IndexOf($fixture))
     $text = @($built.texts | Where-Object { $_.id -eq 'plural-harmony' })
     if ($text.Count -ne 1) { throw "The synthetic sample has no unique plural-harmony Text for $fixture." }
     $projectPaths[$fixture] = [System.IO.Path]::GetFullPath([string] $built.projectPath)
@@ -163,7 +167,7 @@ foreach ($fixture in $fixtureMap.Keys) {
 
 $cliProjects = [ordered]@{}
 foreach ($fixture in $fixtureMap.Keys) {
-    $built = Build-Sample (Join-Path $releaseRoot ('cli-' + $fixture))
+    $built = Build-Sample (Join-Path $releaseRoot ('cli-' + $fixture)) ('cli' + @($fixtureMap.Keys).IndexOf($fixture))
     $text = @($built.texts | Where-Object { $_.id -eq 'plural-harmony' })
     if ($text.Count -ne 1) { throw "The synthetic sample has no unique plural-harmony Text for CLI $fixture." }
     $cliProjects[$fixture] = [pscustomobject]@{
@@ -174,7 +178,7 @@ foreach ($fixture in $fixtureMap.Keys) {
 }
 
 if ([OperatingSystem]::IsWindows()) {
-    $locked = Build-Sample (Join-Path $releaseRoot 'windows-apply-lock')
+    $locked = Build-Sample (Join-Path $releaseRoot 'windows-apply-lock') 'lock'
     $lockedText = @($locked.texts | Where-Object { $_.id -eq 'plural-harmony' })
     if ($lockedText.Count -ne 1) { throw 'The Windows lock sample has no unique Text.' }
     $lockedProject = [System.IO.Path]::GetFullPath([string] $locked.projectPath)

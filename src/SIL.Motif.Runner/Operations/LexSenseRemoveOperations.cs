@@ -414,11 +414,11 @@ internal static class RemovalPreview
         }).ToArray(),
     };
 
-    /// <summary>A picture: its file and caption.</summary>
+    /// <summary>A picture: its file (shown with / separators on every OS) and caption.</summary>
     internal static object Picture(ICmPicture picture) => new
     {
         id = CanonicalId.FromGuid(picture.Guid).Value,
-        file = picture.PictureFileRA?.InternalPath,
+        file = picture.PictureFileRA?.InternalPath?.Replace('\\', '/'),
         caption = AllWritingSystems(picture.Cache, picture.Caption),
     };
 }

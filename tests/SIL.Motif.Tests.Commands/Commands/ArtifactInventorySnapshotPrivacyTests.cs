@@ -104,7 +104,10 @@ public sealed class ArtifactInventorySnapshotPrivacyTests : IDisposable
             ? new DirectoryInfo(path).GetAccessControl(AccessControlSections.Access | AccessControlSections.Owner)
             : new FileInfo(path).GetAccessControl(AccessControlSections.Access | AccessControlSections.Owner);
         if (isDirectory) Assert.True(security.AreAccessRulesProtected);
-        Assert.Equal(owner, security.GetOwner(typeof(SecurityIdentifier)));
+        // An elevated token owns new files as Administrators; the access rules below are what keep others out.
+        var actualOwner = security.GetOwner(typeof(SecurityIdentifier));
+        Assert.True(owner.Equals(actualOwner) || WindowsIdentity.GetCurrent().Owner!.Equals(actualOwner),
+            $"Unexpected owner {actualOwner}.");
         var allows = security.GetAccessRules(true, true, typeof(SecurityIdentifier))
             .Cast<FileSystemAccessRule>()
             .Where(rule => rule.AccessControlType == AccessControlType.Allow)
