@@ -83,7 +83,7 @@ public sealed class WaitTests
 
         var failure = Assert.Throws<FailException>(() => Wait.Until(() => ready, timeout: TimeSpan.FromMilliseconds(30)));
 
-        Assert.Equal("Timed out waiting for ready", failure.Message);
+        Assert.Equal("Timed out waiting for () => ready", failure.Message);
     }
 
     [Theory]
