@@ -47,7 +47,7 @@ public static class AddMorphoSyntaxAnalysisIntentParser
         if (definition is not null && gloss is null)
             throw new ContractParseException($"'{ConstructName}': 'definition' belongs to a new sense, so it needs 'gloss'.");
         var intent = new AddMorphoSyntaxAnalysisIntent(SoundSystemIntentParsing.Id(authored, "entry"),
-            AuthorLexicalEntryIntentParser.ParseMsa(authored, ConstructName),
+            AuthorLexicalEntryIntentParser.ParseMsa(authored, ConstructName, allowExceptionFeatures: true),
             AuthorLexicalEntryIntentParser.NonEmptyIds(authored, "senses"), gloss, analysisWs, definition,
             authored.TryGetProperty("fromInflectionClass", out _)
                 ? SoundSystemIntentParsing.Id(authored, "fromInflectionClass") : null);
@@ -86,6 +86,7 @@ public static class AddMorphoSyntaxAnalysisComposer
             ToCategory = intent.Msa.ToCategory is { } to ? LexicalFormAuthoring.Normalize(to) : null,
             InflectionClass = intent.Msa.InflectionClass is { } cls ? LexicalFormAuthoring.Normalize(cls) : null,
             Slots = LexicalFormAuthoring.Normalize(intent.Msa.Slots),
+            ExceptionFeatures = intent.Msa.ExceptionFeatures?.Select(LexicalFormAuthoring.Normalize).ToArray(),
         };
         AuthorLexicalEntryComposer.RequireMsaShape(msa, ConstructName);
         var entry = LexicalFormAuthoring.Resolve<ILexEntry>(cache, entryId, ConstructName);
@@ -178,11 +179,14 @@ public static class AddMorphoSyntaxAnalysisComposer
     private static void RequireNotDuplicate(ILexEntry entry, LexicalEntryMsa msa, CanonicalId? fromClass)
     {
         var slots = (msa.Slots ?? []).Select(id => id.ToGuid()).Order().ToArray();
-        // A new analysis has no feature requirements; only an existing one with none is identical.
-        var found = entry.MorphoSyntaxAnalysesOC.Where(existing => !HasFeatureRequirements(existing)).Any(existing => existing switch
+        var wantedFeatures = (msa.ExceptionFeatures ?? []).Select(id => id.ToGuid()).ToHashSet();
+        // LibLCM's EqualsMsa also compares feature requirements and exception features, so these tell analyses apart.
+        var found = entry.MorphoSyntaxAnalysesOC.Any(existing => existing switch
         {
             IMoStemMsa stem => msa.Kind == LexicalEntryMsaKind.Stem && stem.PartOfSpeechRA?.Guid == msa.Category.ToGuid()
-                && stem.InflectionClassRA?.Guid == msa.InflectionClass?.ToGuid(),
+                && stem.InflectionClassRA?.Guid == msa.InflectionClass?.ToGuid() && !Any(stem.MsFeaturesOA)
+                && stem.ProdRestrictRC.Select(item => item.Guid).ToHashSet().SetEquals(wantedFeatures),
+            _ when HasFeatureRequirements(existing) => false,
             IMoInflAffMsa infl => msa.Kind == LexicalEntryMsaKind.Inflectional && infl.PartOfSpeechRA?.Guid == msa.Category.ToGuid()
                 && infl.SlotsRC.Select(slot => slot.Guid).Order().SequenceEqual(slots),
             IMoDerivAffMsa deriv => msa.Kind == LexicalEntryMsaKind.Derivational
@@ -195,15 +199,16 @@ public static class AddMorphoSyntaxAnalysisComposer
         });
         if (found)
             throw new InvalidOperationException(
-                $"'{ConstructName}': entry '{CanonicalId.FromGuid(entry.Guid).Value}' already has an identical analysis (same category, classes, slots and no feature requirements); point its senses at that one instead, " +
-                "or give that analysis its feature requirements first so the new one can differ by them.");
+                $"'{ConstructName}': entry '{CanonicalId.FromGuid(entry.Guid).Value}' already has an identical analysis (same category, classes, slots, feature requirements and exception features); point its senses at that one instead, " +
+                "or give that analysis its feature requirements or exception features first so the new one can differ by them.");
     }
 
     private static bool HasFeatureRequirements(IMoMorphSynAnalysis msa) => msa switch
     {
-        IMoStemMsa stem => Any(stem.MsFeaturesOA),
-        IMoInflAffMsa infl => Any(infl.InflFeatsOA),
-        IMoDerivAffMsa deriv => Any(deriv.FromMsFeaturesOA) || Any(deriv.ToMsFeaturesOA),
+        IMoStemMsa stem => Any(stem.MsFeaturesOA) || stem.ProdRestrictRC.Count > 0,
+        IMoInflAffMsa infl => Any(infl.InflFeatsOA) || infl.FromProdRestrictRC.Count > 0,
+        IMoDerivAffMsa deriv => Any(deriv.FromMsFeaturesOA) || Any(deriv.ToMsFeaturesOA)
+            || deriv.FromProdRestrictRC.Count > 0 || deriv.ToProdRestrictRC.Count > 0,
         _ => false,
     };
 

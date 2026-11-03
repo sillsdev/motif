@@ -18,6 +18,16 @@ Start by learning what the saved project and words already show. Make one small 
 - Use `motif_compose_batch` to stage related intents together. Supply each as a `verb` and structured `intent` object, with an optional `citation`. Use entity ids returned by earlier completed calls or batches; an intent that needs a newly created entity's returned id belongs in a later call or batch.
 - Keep the Proposal to one related change. If a required composer is missing, say which encoding cannot be made and why; do not approximate it with unrelated edits.
 
+## A stem two obligatory rules both want
+
+Phonological rules in FieldWorks are obligatory, and there is no optional rule and no per-stem rule order. When two rules each need their own exception feature and the first removes what the second needs (syncope bleeding a d-to-r rule), a stem tagged for both surfaces only the first outcome. This is Black's route, not an optional rule: exception features that gate rules (Black 2.1.6, and 6.1.2.2.2, "Rule applies only with certain properties"), tried before any ad hoc rule. Give the stem one analysis per outcome, each tagged for one rule only:
+
+1. Tag the existing analysis for the first rule with `motif_edit_exception_features` (`compose-edit-exception-features`).
+2. Add a second analysis tagged for the other rule with `motif_add_morphosyntax_analysis`, giving `msa.exceptionFeatures` and a `gloss` for its sense. The original sense stays on the original analysis and the gloss adds a second sense, so an entry with one sense ends with two; give it a real gloss, since it lands in FieldWorks. Do not move the only sense with `senses`: the old analysis would be dropped and the split becomes a retag.
+3. Run a Trial with both surface forms and a word neither rule should make. Split only stems whose second form is attested: each split costs one more parse path for that stem.
+
+A form that may surface either way takes a third analysis with no tag. A whole-word variant listed as its own entry also works, but it misses the productive forms built on the stem.
+
 ## Try it, then ask or defer
 
 - Run `motif_dry_run`, then `motif_trial` with attested positive forms, contrasting forms and words that should not parse.

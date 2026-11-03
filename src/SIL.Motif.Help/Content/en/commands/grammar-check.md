@@ -38,6 +38,8 @@ Motif also warns, with code `grammar.phoneme-spelling-ambiguous`, about each pho
 
 Motif also warns, with code `grammar.allomorph-environment-ignored-by-parser`, about each stem or affix form that names an environment the parser cannot read, as one written with a morpheme boundary `+`. The parser drops such an environment, so the form is not restricted by it and may appear anywhere. The check uses the same recognizer as FieldWorks' parser loader over the project's phonemes and natural classes. PanGloss drops the environment too, but its own grammar-health report does not list it. Entries marked do-not-use-for-parsing are skipped. The finding names the form and the environment. Rewrite the environment with phonemes and natural classes only. A restriction that needs a morpheme boundary can be stated as a phonological rule with a boundary context ([Author a phonological rule](cmd:compose-author-phonological-rule)); Motif has not checked that this gives the same readings as the environment, so try it in a Trial.
 
+Motif also reports, with code `fieldworks.do-not-parse-ignored` and level information, each entry marked do-not-parse. Motif's parser leaves such an entry out, but FieldWorks' parsers do not read the flag and still parse it after Apply, so a Trial differs from FieldWorks for words that use the entry. The finding names the entry. To exclude it in FieldWorks too, delete or retire it, or disable the rule or template that lets it parse; otherwise read a Trial knowing the difference.
+
 ## Related commands
 
 - [Read grammar warnings](cmd:warnings) filters and displays stored findings.

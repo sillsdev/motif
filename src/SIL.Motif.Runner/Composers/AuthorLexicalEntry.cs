@@ -29,12 +29,17 @@ public enum LexicalEntryMsaKind
 /// <param name="ToCategory">For a derivational affix only, the category of the word it makes.</param>
 /// <param name="Slots">For an inflectional affix only, the existing slots it fills.</param>
 /// <param name="InflectionClass">For a stem only, its inflection class, such as a noun class.</param>
+/// <param name="ExceptionFeatures">
+/// For a stem only, the existing exception features the analysis carries; two stem analyses that differ only by these
+/// are distinct, as LibLCM holds them, so each can be the one a rule requires or excludes.
+/// </param>
 public sealed record LexicalEntryMsa(
     LexicalEntryMsaKind Kind,
     CanonicalId Category,
     CanonicalId? ToCategory = null,
     IReadOnlyList<CanonicalId>? Slots = null,
-    CanonicalId? InflectionClass = null);
+    CanonicalId? InflectionClass = null,
+    IReadOnlyList<CanonicalId>? ExceptionFeatures = null);
 
 /// <summary>One new dictionary entry with one sense and typed grammatical info.</summary>
 /// <param name="Form">The lexeme form, without affix hyphens.</param>
@@ -82,12 +87,17 @@ public static class AuthorLexicalEntryIntentParser
             NonEmptyIds(authored, "inflectionClasses"), NonEmptyIds(authored, "environments"));
     }
 
-    internal static LexicalEntryMsa ParseMsa(JsonElement authored, string constructName)
+    internal static LexicalEntryMsa ParseMsa(JsonElement authored, string constructName,
+        bool allowExceptionFeatures = false)
     {
         if (!authored.TryGetProperty("msa", out var msa))
             throw new ContractParseException($"'{constructName}': 'msa' is required.");
-        SoundSystemIntentParsing.Object(msa, constructName + ".msa",
-            "kind", "category", "toCategory", "slots", "inflectionClass");
+        if (allowExceptionFeatures)
+            SoundSystemIntentParsing.Object(msa, constructName + ".msa",
+                "kind", "category", "toCategory", "slots", "inflectionClass", "exceptionFeatures");
+        else
+            SoundSystemIntentParsing.Object(msa, constructName + ".msa",
+                "kind", "category", "toCategory", "slots", "inflectionClass");
         var kind = SoundSystemIntentParsing.Text(msa, "kind") switch
         {
             "stem" => LexicalEntryMsaKind.Stem,
@@ -100,6 +110,10 @@ public static class AuthorLexicalEntryIntentParser
         var toCategory = Optional(msa, "toCategory");
         var slots = msa.TryGetProperty("slots", out _) ? SoundSystemIntentParsing.Ids(msa, "slots", ordered: false) : null;
         var inflectionClass = Optional(msa, "inflectionClass");
+        var exceptionFeatures = msa.TryGetProperty("exceptionFeatures", out _)
+            ? NonEmptyIds(msa, "exceptionFeatures") : null;
+        if (exceptionFeatures is not null && kind != LexicalEntryMsaKind.Stem)
+            throw new ContractParseException($"'{constructName}': only a stem msa takes 'exceptionFeatures'.");
         if (toCategory is not null && kind != LexicalEntryMsaKind.Derivational)
             throw new ContractParseException($"'{constructName}': only a derivational msa takes 'toCategory'.");
         if (kind == LexicalEntryMsaKind.Derivational && toCategory is null)
@@ -108,7 +122,8 @@ public static class AuthorLexicalEntryIntentParser
             throw new ContractParseException($"'{constructName}': only an inflectional msa takes 'slots'.");
         if (inflectionClass is not null && kind != LexicalEntryMsaKind.Stem)
             throw new ContractParseException($"'{constructName}': only a stem msa takes 'inflectionClass'.");
-        return new LexicalEntryMsa(kind, SoundSystemIntentParsing.Id(msa, "category"), toCategory, slots, inflectionClass);
+        return new LexicalEntryMsa(kind, SoundSystemIntentParsing.Id(msa, "category"), toCategory, slots, inflectionClass,
+            exceptionFeatures);
     }
 
     /// <summary>Reads an optional unordered identity list; present means nonempty and free of repeats.</summary>
@@ -269,6 +284,16 @@ public static class AuthorLexicalEntryComposer
                 throw new InvalidOperationException(
                     $"'{construct}': inflection class '{classId.Value}' does not belong to the category.");
         }
+        if (msa.ExceptionFeatures is { } features)
+        {
+            if (features.Select(id => id.ToGuid()).Distinct().Count() != features.Count)
+                throw new InvalidOperationException($"'{construct}': 'exceptionFeatures' must not repeat an identity.");
+            var allowed = cache.LangProject.MorphologicalDataOA?.ProdRestrictOA?.ReallyReallyAllPossibilities
+                .Select(item => item.Guid).ToHashSet() ?? [];
+            foreach (var featureId in features.Where(id => !allowed.Contains(id.ToGuid())))
+                throw new InvalidOperationException(
+                    $"'{construct}': '{featureId.Value}' is not one of the project's exception features.");
+        }
         return category;
     }
 
@@ -283,6 +308,8 @@ public static class AuthorLexicalEntryComposer
                 if (msa.InflectionClass is { } inflectionClass)
                     yield return (MoStemMsaInflectionClassOperationKinds.SetInflectionClass,
                         new { @ref = inflectionClass.Value });
+                foreach (var feature in (msa.ExceptionFeatures ?? []).OrderBy(id => id.Value, StringComparer.Ordinal))
+                    yield return (MoStemMsaProdRestrictOperationKinds.AddRefProdRestrict, new { member = feature.Value });
                 break;
             case LexicalEntryMsaKind.Inflectional:
                 yield return (MoInflAffMsaPartOfSpeechOperationKinds.SetPartOfSpeech, new { @ref = msa.Category.Value });
@@ -314,6 +341,8 @@ public static class AuthorLexicalEntryComposer
             throw new InvalidOperationException($"'{construct}': only an inflectional msa takes 'slots'.");
         if (msa.InflectionClass is not null && msa.Kind != LexicalEntryMsaKind.Stem)
             throw new InvalidOperationException($"'{construct}': only a stem msa takes 'inflectionClass'.");
+        if (msa.ExceptionFeatures is not null && msa.Kind != LexicalEntryMsaKind.Stem)
+            throw new InvalidOperationException($"'{construct}': only a stem msa takes 'exceptionFeatures'.");
     }
 
     internal static string MsaClass(LexicalEntryMsaKind kind) => kind switch

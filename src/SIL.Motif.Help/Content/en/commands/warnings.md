@@ -30,6 +30,8 @@ Motif findings also include `grammar.template-has-no-slots` for an affix templat
 
 Motif findings also include `grammar.phoneme-spelling-ambiguous` for a phoneme whose spelling is other phonemes' spellings joined (`ng` beside `n` and `g`), which the parser always reads as the longest spelling, and `grammar.allomorph-environment-ignored-by-parser` for a form whose environment the parser cannot read and so drops, leaving the form unrestricted by it. Each finding names the phoneme or form and says what to change.
 
+Motif findings also include `fieldworks.do-not-parse-ignored` (information) for each entry marked do-not-parse: Motif's parser leaves it out and FieldWorks still parses it after Apply.
+
 When a stored Assessment matches the Baseline and Selection, all recorded allomorph segmentation refusals are included under `parse.allomorph.unsegmentable`, labelled **Parse all words**. Their descriptions preserve the parser's reason, without truncating the allomorph list or inventing guidance. These findings can differ from the whole-grammar check's findings.
 
 ## Your words

@@ -1202,7 +1202,7 @@
     "fields": {
       "draft": "Draft name.",
       "entry": "Id of the existing or earlier-staged entry that gains the analysis.",
-      "msa": "The new grammatical info: kind stem, inflectional, derivational or unclassified to suit the entry's form, its category, for derivational also toCategory, for inflectional also slots, for a stem also inflectionClass.",
+      "msa": "The new grammatical info: kind stem, inflectional, derivational or unclassified to suit the entry's form, its category, for derivational also toCategory, for inflectional also slots, for a stem also inflectionClass and exceptionFeatures (existing exception feature ids).",
       "senses": "Optional ids of senses of this entry that should point at the new analysis instead of the one they have.",
       "gloss": "Optional gloss for a new sense that points at the new analysis; goes with analysisWs.",
       "analysisWs": "Analysis writing system tag of the new sense's gloss and definition.",

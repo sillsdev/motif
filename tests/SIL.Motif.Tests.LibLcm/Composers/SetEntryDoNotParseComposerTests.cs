@@ -1,5 +1,6 @@
 using System.Text.Json;
 using SIL.LCModel;
+using SIL.LCModel.Infrastructure;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Model;
 using SIL.Motif.Contract.Parsing;
@@ -49,6 +50,20 @@ public sealed class SetEntryDoNotParseComposerTests(PristineProjectFixture prist
             Assert.Equal(after ? "true" : "false", effect.After["value"]);
             ProposalApplier.Apply(_cache, proposal, dry.Anchor, "motif-tests");
         }
+    }
+
+    [Fact]
+    public void SettingTheFlagCarriesANoteThatFieldWorksStillParsesTheEntry()
+    {
+        var entry = _cache.ServiceLocator.GetInstance<ILexEntryRepository>().GetObject(pristine.Seed.FirstEntryId);
+        var target = CanonicalId.FromGuid(entry.Guid);
+
+        var set = Assert.Single(SetEntryDoNotParseComposer.Build(_cache, new(target, false, true)));
+        Assert.Contains("A Trial leaves this entry out", set.Rationale, StringComparison.Ordinal);
+        Assert.Contains("FieldWorks' parsers do not read the flag", set.Rationale, StringComparison.Ordinal);
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () => entry.DoNotUseForParsing = true);
+        var clear = Assert.Single(SetEntryDoNotParseComposer.Build(_cache, new(target, true, false)));
+        Assert.DoesNotContain("FieldWorks", clear.Rationale, StringComparison.Ordinal);
     }
 
     [Fact]

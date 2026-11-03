@@ -34,6 +34,10 @@ public static class SetEntryDoNotParseIntentParser
 /// <summary>Builds a write to the entry's FieldWorks do-not-parse flag without changing the cache.</summary>
 public static class SetEntryDoNotParseComposer
 {
+    private const string SetNote = "Set the lexical entry's do-not-parse flag. A Trial leaves this entry out, but " +
+        "FieldWorks' parsers do not read the flag, so after Apply they still parse it.";
+    private const string ClearNote = "Cleared the lexical entry's do-not-parse flag. A Trial parses the entry again.";
+
     /// <summary>Checks the current flag and returns one semantic operation for the requested value.</summary>
     public static IReadOnlyList<OperationEnvelope> Build(LcmCache cache, SetEntryDoNotParseIntent intent)
     {
@@ -47,6 +51,6 @@ public static class SetEntryDoNotParseComposer
                 $"The entry has DoNotUseForParsing={entry.DoNotUseForParsing}; expected {intent.ExpectedDoNotParse}.");
         return [new(CanonicalId.Mint(), LexEntryDoNotUseForParsingOperationKinds.SetDoNotUseForParsing,
             target: intent.Target, after: JsonSerializer.SerializeToElement(new { value = intent.DoNotParse }),
-            rationale: "Set the lexical entry's FieldWorks do-not-parse flag.")];
+            rationale: intent.DoNotParse ? SetNote : ClearNote)];
     }
 }

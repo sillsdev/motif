@@ -14,6 +14,21 @@ A linguist sees one morpheme with different spoken or written forms in different
 
 `motif_lexicon` with detailed results can read existing allomorphs and their environments. `motif_grammar` can read natural classes and environments. `motif_add_phoneme`, `motif_add_natural_class` and `motif_add_environment` create the sound inventory and context. `motif_add_lexeme_form` changes an existing lexeme form. `motif_add_alternate_form` creates a stem or affix alternate under an existing entry. It accepts optional sound `environments` and, for affix forms, optional `inflectionClasses`. When alternates already exist, supply an exact `placement` gap. `motif_add_affix_process_allomorph` adds a pattern-based form (an affix process with its own input and output) to an entry whose lexeme form is already an affix process; it takes no environments and applies to all of the entry's grammatical info, and an entry that mixes plain allomorphs with processes is refused. Both take `inflectionClasses` for inflectional grammatical info; the parser ignores them for a derivational analysis, so a mixed entry can use them for its inflectional analysis while restricting the derivational analysis through the `motif_edit_derivational_affix_restriction` MCP tool or `compose-edit-derivational-affix-restriction` CLI verb (guide suffix-prefix-slots). When the entry has no inflectional grammatical info, Motif refuses `inflectionClasses` and points to that composer. `motif_edit_allomorph_condition`, when selected by the profile, can link an environment to an existing allomorph.
 
+## What an allomorph can and cannot carry
+
+FieldWorks holds the meaning of a morpheme on the entry, not on its forms. So one form cannot have its own tense, gloss or slot.
+
+| An allomorph can carry | An allomorph cannot carry |
+|---|---|
+| Sound environments the form occurs in (`environments`) | Its own gloss, tense or other label |
+| Inflection classes of the stems it attaches to, for an inflectional analysis (`inflectionClasses`) | Its own grammatical info or slot |
+| For an affix, the stem features and category it needs (conditions on the stem it attaches to) | A different category or meaning from the entry's other forms |
+| For a stem, a stem name tied to inflection features | A rule to apply or skip (use exception features on the analysis) |
+| Its place in the order of the entry's forms | Anything that changes which senses it serves |
+| Being abstract (a form no word shows) | |
+
+When the form needs a different label, as a past form beside a future one, make it its own entry with its own grammatical info, slot and sense. Two analyses on one entry do not help: the parser gives every form of the entry to every analysis, so both labels would apply to both forms.
+
 ## One form blocked after one form of another affix
 
 Sometimes one form of an affix is wrong only after one particular form of an earlier affix: a stative `-lik` fits after an applicative `-o` but not after `-e`, while `-k` fits after both. Create an allomorph prohibition with the CLI verb `compose-author-adhoc-prohibition`, which MCP offers as `motif_author_adhoc_prohibition` (kind `allomorph`; the later form as `first`, the earlier form as `rest`, adjacency `adjacent-to-right`). The parser drops only that pair of forms. Use it between forms of different entries: in an inflectional template an entry fills one slot, so a rule between two forms of the same entry would never fire there. To choose between forms of one entry, give each its own environment, or put the narrowest first and the general form last.

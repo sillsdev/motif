@@ -406,6 +406,64 @@ public sealed class GrammarCheckQueryTests : IDisposable
     }
 
     [Fact]
+    public void AnEntryMarkedDoNotParseIsAnInformationFindingSayingFieldWorksStillParsesIt()
+    {
+        var fwDataPath = _pristine.CopyProjectFile();
+        var loader = new FwDataProjectLoader();
+        Guid flagged;
+        using (var cache = loader.LoadCache(fwDataPath))
+        {
+            var entries = cache.ServiceLocator.GetInstance<ILexEntryRepository>().AllInstances().ToArray();
+            Assert.True(entries.Length >= 2);
+            flagged = entries[0].Guid;
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () => entries[0].DoNotUseForParsing = true);
+            loader.Save(cache);
+        }
+
+        Capture(fwDataPath);
+        var check = Check(fwDataPath);
+
+        var finding = Assert.Single(check.Findings, item => item.Code == GrammarFindingCodes.DoNotParseIgnoredByFieldWorks);
+        Assert.Equal(GrammarDiagnosticLevel.Information, finding.Severity);
+        Assert.Equal(CanonicalId.FromGuid(flagged).Value, Assert.Single(finding.Subject).ObjectId);
+        Assert.Contains("FieldWorks still parses it after Apply", finding.Description, StringComparison.Ordinal);
+        Assert.Equal(1, Assert.Single(check.Summary, item => item.Code == GrammarFindingCodes.DoNotParseIgnoredByFieldWorks).Count);
+    }
+
+    [Fact]
+    public void ManyFlaggedEntriesCollapseIntoOneFindingWithTheTotalCountAndASample()
+    {
+        var fwDataPath = _pristine.CopyProjectFile();
+        var loader = new FwDataProjectLoader();
+        using (var cache = loader.LoadCache(fwDataPath))
+        {
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            {
+                var factory = cache.ServiceLocator.GetInstance<ILexEntryFactory>();
+                for (var i = 0; i < 25; i++) factory.Create().DoNotUseForParsing = true;
+            });
+            loader.Save(cache);
+        }
+
+        Capture(fwDataPath);
+        var check = Check(fwDataPath);
+
+        var finding = Assert.Single(check.Findings, item => item.Code == GrammarFindingCodes.DoNotParseIgnoredByFieldWorks);
+        Assert.Contains("25 entries are marked do-not-parse", finding.Description, StringComparison.Ordinal);
+        Assert.InRange(finding.Subject.Count, 1, 5);
+        Assert.Equal(25, Assert.Single(check.Summary, item => item.Code == GrammarFindingCodes.DoNotParseIgnoredByFieldWorks).Count);
+    }
+
+    [Fact]
+    public void WithoutAFlaggedEntryThereIsNoDoNotParseFinding()
+    {
+        var fwDataPath = _pristine.CopyProjectFile();
+        Capture(fwDataPath);
+
+        Assert.DoesNotContain(Check(fwDataPath).Findings, item => item.Code == GrammarFindingCodes.DoNotParseIgnoredByFieldWorks);
+    }
+
+    [Fact]
     public void ASpellingMadeOfOtherPhonemesIsFoundInAnyPhonemeSetIgnoringDottedCirclesAndSaysItMayBeIntended()
     {
         var fwDataPath = _pristine.CopyProjectFile();

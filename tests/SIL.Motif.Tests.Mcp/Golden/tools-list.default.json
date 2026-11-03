@@ -4944,6 +4944,12 @@
                           },
                           "inflectionClass": {
                             "type": "string"
+                          },
+                          "exceptionFeatures": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
                           }
                         },
                         "required": [
@@ -4951,7 +4957,7 @@
                           "category"
                         ],
                         "additionalProperties": false,
-                        "description": "The new grammatical info: kind stem, inflectional, derivational or unclassified to suit the entry\u0027s form, its category, for derivational also toCategory, for inflectional also slots, for a stem also inflectionClass."
+                        "description": "The new grammatical info: kind stem, inflectional, derivational or unclassified to suit the entry\u0027s form, its category, for derivational also toCategory, for inflectional also slots, for a stem also inflectionClass and exceptionFeatures (existing exception feature ids)."
                       },
                       "senses": {
                         "type": "array",
@@ -6877,6 +6883,12 @@
             },
             "inflectionClass": {
               "type": "string"
+            },
+            "exceptionFeatures": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             }
           },
           "required": [
@@ -6884,7 +6896,7 @@
             "category"
           ],
           "additionalProperties": false,
-          "description": "The new grammatical info: kind stem, inflectional, derivational or unclassified to suit the entry\u0027s form, its category, for derivational also toCategory, for inflectional also slots, for a stem also inflectionClass."
+          "description": "The new grammatical info: kind stem, inflectional, derivational or unclassified to suit the entry\u0027s form, its category, for derivational also toCategory, for inflectional also slots, for a stem also inflectionClass and exceptionFeatures (existing exception feature ids)."
         },
         "senses": {
           "type": "array",

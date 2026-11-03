@@ -11,4 +11,6 @@ This is how a Draft retires a whole lexical entry in Motif, for example an impor
 
 PanGloss excludes the entry from parsing when this flag is set, so a Trial can show the effect. Ask the linguist which entries should be excluded and do not Apply it as a substitute for a supported non-compounding restriction.
 
+The operation carries a note, shown in the Dry Run and in the review, that a Trial leaves the entry out and that FieldWorks still parses it after Apply. Grammar Health lists every entry that carries the flag under `fieldworks.do-not-parse-ignored` (information), so the difference between a Trial and FieldWorks stays visible after the Proposal is applied. To exclude an entry in FieldWorks too, delete or retire it, or disable the rule or template that lets it parse.
+
 The command stages a change in the Draft; it does not change the project. Add `--cite-source <text>` and optionally `--cite-locator <text>` to record a source on the operation. Only a person can Apply a Proposal.
