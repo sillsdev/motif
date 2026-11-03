@@ -3304,7 +3304,7 @@ public static class MotifAppStrings
 
     public static string CompareSearchWordsPlaceholder => Text("MotifApp.CompareSearchWordsPlaceholder");
 
-    public static string ExpertMoreRuleStepsFormat => Text("MotifApp.ExpertMoreRuleStepsFormat");
+    public static string ExpertMoreRuleStepsPattern => Text("MotifApp.ExpertMoreRuleStepsPattern");
 
     public static string ExpertShowingEveryStep => Text("MotifApp.ExpertShowingEveryStep");
 

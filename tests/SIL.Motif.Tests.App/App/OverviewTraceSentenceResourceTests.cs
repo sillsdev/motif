@@ -316,6 +316,9 @@ public sealed class OverviewTraceSentenceResourceTests
     [InlineData("OverviewWarningInformationPattern", 5, "5 information findings")]
     [InlineData("ParserWorkPattern", 1, "1 parser work")]
     [InlineData("ParserWorkPattern", 1234, "1,234 parser work")]
+    [InlineData("ExpertMoreRuleStepsPattern", 1, "1 more rule step · open in Expert")]
+    [InlineData("ExpertMoreRuleStepsPattern", 2, "2 more rule steps · open in Expert")]
+    [InlineData("ExpertMoreRuleStepsPattern", 1234, "1,234 more rule steps · open in Expert")]
     public void CountSentencesGoThroughThePluralHelper(string accessor, int count, string expected)
     {
         using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));

@@ -138,7 +138,7 @@ public sealed partial class TraceWordViewModel
         {
             var shown = PlainSteps.Select(step => step.RecordedStep.StepId).ToHashSet(StringComparer.Ordinal);
             var count = _expertTree.Count(step => step.Type != "WordAnalysis" && !shown.Contains(step.RecordedStep.StepId));
-            return count > 0 ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.ExpertMoreRuleStepsFormat, count.ToString("N0", System.Globalization.CultureInfo.CurrentCulture)) : string.Empty;
+            return count > 0 ? PluralText.Format(MotifAppStrings.ExpertMoreRuleStepsPattern, count) : string.Empty;
         }
     }
 

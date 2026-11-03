@@ -5,6 +5,7 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Headless;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Media;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using System.Globalization;
@@ -342,6 +343,8 @@ public sealed class WordPresentationTests
                 var time = Assert.Single(window.GetVisualDescendants().OfType<CopyableTextBlock>(),
                     text => text.Classes.Contains("wordPresentationTime"));
                 Assert.Equal("1,234 parser work", time.Text);
+                Assert.Equal(TextWrapping.Wrap, time.TextWrapping);
+                Assert.Equal(TextTrimming.None, time.TextTrimming);
             }
             finally
             {

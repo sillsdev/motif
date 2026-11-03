@@ -513,12 +513,11 @@ public sealed class WordRow : UserControl
         var timeText = data.TimeText ?? data.Facts.ParserWorkText;
         var cell = (CopyableTextBlock)Text(timeText, "wordPresentationNumber");
         cell.Classes.Add("wordPresentationTime");
-        cell.TextTrimming = TextTrimming.CharacterEllipsis;
+        // "parser work" is a phrase that a narrow Time column would otherwise cut to "parser ...", so the cell wraps.
+        cell.TextWrapping = TextWrapping.Wrap;
+        cell.TextAlignment = TextAlignment.Right;
         if (data.WithProposal is { Alone: true })
         {
-            // The Proposal's steps are the point of its view, so the text wraps rather than trims.
-            cell.TextWrapping = TextWrapping.Wrap;
-            cell.TextTrimming = TextTrimming.None;
             AutomationProperties.SetName(cell, string.Format(System.Globalization.CultureInfo.CurrentCulture,
                 MotifAppStrings.WordRowTimeWithProposalFormat, timeText));
         }

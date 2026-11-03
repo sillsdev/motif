@@ -6497,9 +6497,9 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <value>Search words…</value>
     <comment>Hint inside the empty box that searches the words of the Matrix cell chosen on the Compare panel.</comment>
   </data>
-  <data name="MotifApp.ExpertMoreRuleStepsFormat" xml:space="preserve">
-    <value>{0} more rule steps · open in Expert</value>
-    <comment>Note under the Plain trace: {0} is how many rule steps are folded away; Expert is the name of a view of the trace.</comment>
+  <data name="MotifApp.ExpertMoreRuleStepsPattern" xml:space="preserve">
+    <value>{0, plural, one {# more rule step · open in Expert} other {# more rule steps · open in Expert}}</value>
+    <comment>Note under the Plain trace. # is how many rule steps of the trace are folded away; a trace step is one recorded event of the parser's trace, not parser work; Expert is the name of a view of the trace.</comment>
   </data>
   <data name="MotifApp.ExpertShowingEveryStep" xml:space="preserve">
     <value>Showing every step</value>
