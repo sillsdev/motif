@@ -57,6 +57,25 @@ try {
     $explicit = Initialize-MotifTestTemporaryDirectory -RepoRoot $root -WindowsHost $true
     Assert-Equal $chosen $explicit 'MOTIF_TEST_TEMP names the folder when set.'
     Assert-Equal $chosen $env:TEMP 'TEMP follows MOTIF_TEST_TEMP.'
+    if (-not $IsWindows) {
+        $savedXdg = $env:XDG_CACHE_HOME
+        try {
+            $env:XDG_CACHE_HOME = $null
+            Initialize-MotifToolEnvironment -RepoRoot $root
+            if (-not $env:XDG_CACHE_HOME.StartsWith([IO.Path]::GetTempPath().TrimEnd('/'), [StringComparison]::Ordinal)) {
+                throw "XDG_CACHE_HOME must be in the system temporary folder (pwsh profile writes are slow on drvfs); got '$env:XDG_CACHE_HOME'."
+            }
+            $first = $env:XDG_CACHE_HOME
+            $otherRoot = Join-Path ([IO.Path]::GetTempPath()) ('motif-tool-environment-other-' + [guid]::NewGuid().ToString('N'))
+            $env:XDG_CACHE_HOME = $null
+            Initialize-MotifToolEnvironment -RepoRoot $otherRoot
+            if ($env:XDG_CACHE_HOME -eq $first) { throw 'Two checkout roots must get different XDG_CACHE_HOME folders.' }
+            $env:XDG_CACHE_HOME = '/preset/cache'
+            Initialize-MotifToolEnvironment -RepoRoot $root
+            Assert-Equal '/preset/cache' $env:XDG_CACHE_HOME 'A preset XDG_CACHE_HOME is kept.'
+        }
+        finally { $env:XDG_CACHE_HOME = $savedXdg }
+    }
     Write-Host 'Tool environment checks passed.'
 }
 finally {

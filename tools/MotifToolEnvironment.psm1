@@ -9,7 +9,9 @@ Set-StrictMode -Version Latest
   race on one per-user folder. Each tool below otherwise writes beside the user's home: the .NET CLI
   its first-run, telemetry and workload files; `dotnet run --file` its compiled program; NuGet its
   HTTP and plugin caches; Avalonia its build statistics; a child PowerShell its module cache. Any
-  value the caller already set is kept, so a developer's own choice wins.
+  value the caller already set is kept, so a developer's own choice wins. The one exception to the
+  checkout: on Linux and macOS XDG_CACHE_HOME defaults to <temp>/motif-xdg-cache-<checkout hash>,
+  because pwsh's exit-time startup-profile write takes tens of seconds on drvfs.
 
   NuGet's global packages folder stays shared and per-user (NUGET_PACKAGES): restore fills it once,
   and builds only read it. Build temporary files stay in the system temporary folder, which every
@@ -54,7 +56,12 @@ function Initialize-MotifToolEnvironment {
     # On Linux the application-data folders follow XDG; on Windows they are left to the user profile.
     if (-not $IsWindows) {
         Set-Default 'XDG_DATA_HOME' (Join-Path $cache 'xdg-data')
-        Set-Default 'XDG_CACHE_HOME' (Join-Path $cache 'xdg-cache')
+        # A child PowerShell writes its startup profile to XDG_CACHE_HOME as about 10,000 tiny writes. On a
+        # WSL /mnt (drvfs) checkout that takes 45-90 s per start, so this one folder lives in the system
+        # temporary folder (every sandbox allows it), named by the checkout so worktrees do not share it.
+        $checkoutId = [BitConverter]::ToString([Security.Cryptography.SHA256]::HashData(
+            [Text.Encoding]::UTF8.GetBytes([IO.Path]::GetFullPath($RepoRoot)))).Replace('-', '').Substring(0, 12).ToLowerInvariant()
+        Set-Default 'XDG_CACHE_HOME' (Join-Path ([IO.Path]::GetTempPath()) "motif-xdg-cache-$checkoutId")
     }
 }
 

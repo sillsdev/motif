@@ -148,8 +148,10 @@ every OS.
 worktree, and two worktrees must never race on one per-user folder. So `build.ps1` and `test.ps1` point
 every per-user cache their tools keep at `bin/.cache/` in this checkout (`tools/MotifToolEnvironment.psm1`):
 the .NET CLI's first-run, telemetry and workload files, the compiled hygiene tools, NuGet's HTTP and
-plugin caches, Avalonia's build statistics, and on Linux the XDG data and cache folders. A value you set
-yourself is kept. Two things stay outside, by design:
+plugin caches, Avalonia's build statistics, and on Linux the XDG data folder. A value you set
+yourself is kept. Three things stay outside, by design:
+- On Linux and macOS `XDG_CACHE_HOME` defaults to `<temp>/motif-xdg-cache-<checkout hash>`, because a child
+  pwsh's exit-time startup-profile write takes tens of seconds on a drvfs checkout.
 - NuGet's global packages folder (`NUGET_PACKAGES`, default `$USERPROFILE/.nuget/packages`, an explicit
   value is preserved) is shared. Restore fills it, and a build only reads it, so restore before you hand
   a worktree to a sandboxed agent. It is a cache, not a package source.
