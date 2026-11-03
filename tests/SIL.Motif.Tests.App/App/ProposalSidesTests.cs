@@ -7,6 +7,7 @@ using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 
 namespace SIL.Motif.Tests.App;
@@ -227,7 +228,7 @@ public sealed class ProposalSidesTests
 
         context.OpenPage(WorkspacePage.Overview);
         await VisitAsync("Overview", overviewNumbers, () => context.ShowProposalView(MarkupView.TodayToProposal),
-            async () => await TextsProposalMatrixTests.UntilAsync(() => overview.TextCoverageMain.Contains(Arrow)),
+            async () => await Wait.UntilAsync(() => overview.TextCoverageMain.Contains(Arrow)),
             view => DrawOverview(overview, view), context, fake, faults, RailOf(WorkspacePage.Overview, "", ""));
 
         context.OpenPage(WorkspacePage.Texts);
@@ -235,7 +236,7 @@ public sealed class ProposalSidesTests
         await VisitAsync("Texts", textsNumbers, () => context.ShowProposalView(MarkupView.TodayToProposal),
             async () =>
             {
-                await TextsProposalMatrixTests.UntilAsync(() => texts.Assess.Compare.ProposalWordsMatch is not null);
+                await Wait.UntilAsync(() => texts.Assess.Compare.ProposalWordsMatch is not null);
                 texts.Assess.Compare.UpdateOccurrences(word => Places[int.Parse(word[1..])]);
                 context.ShowProposalView(MarkupView.TodayToProposal);
             },
@@ -244,13 +245,13 @@ public sealed class ProposalSidesTests
 
         context.OpenPage(WorkspacePage.Timing);
         await VisitAsync("Timing", timingNumbers, () => context.ShowProposalView(MarkupView.TodayToProposal),
-            async () => await TextsProposalMatrixTests.UntilAsync(() => timing.HeadlineTotal.Contains(Arrow)),
+            async () => await Wait.UntilAsync(() => timing.HeadlineTotal.Contains(Arrow)),
             view => DrawTiming(timing, view, faults), context, fake, faults,
             RailOf(WorkspacePage.Timing, "+30%", "30% more parser work with this Proposal than today"));
 
         context.OpenPage(WorkspacePage.Warnings);
         await VisitAsync("Warnings", warningsNumbers, () => context.ShowProposalView(MarkupView.TodayToProposal),
-            async () => await TextsProposalMatrixTests.UntilAsync(() => warnings.Grammar.Warnings.Pairs),
+            async () => await Wait.UntilAsync(() => warnings.Grammar.Warnings.Pairs),
             view => DrawWarnings(warnings, view), context, fake, faults,
             RailOf(WorkspacePage.Warnings, "−9", "9 fewer warnings with this Proposal than today"));
 
@@ -275,7 +276,7 @@ public sealed class ProposalSidesTests
         var (_, context, _, _, timing, _, _) = await OpenedAsync(fiveWords);
         context.OpenPage(WorkspacePage.Timing);
         context.ShowProposalView(MarkupView.Proposal);
-        await TextsProposalMatrixTests.UntilAsync(() => timing.HeadlineTotal == TimingShare.FormatParserWork(13_700));
+        await Wait.UntilAsync(() => timing.HeadlineTotal == TimingShare.FormatParserWork(13_700));
 
         var faults = new List<string>();
         Expect(faults, "Proposal caption", string.Format(MotifAppStrings.TimingCaptionAllWordsFormat, "5"), timing.HeadlineTotalCaption);
