@@ -212,6 +212,24 @@ public sealed class GrammarDataHygieneTests
     }
 
     [Fact]
+    public void RangeAcceptsAGitlinkButStillFailsABlobPayload()
+    {
+        var temp = NewTemp();
+        try
+        {
+            InitGit(temp);
+            File.WriteAllText(Path.Combine(temp, "a.txt"), "a"); RunGit(temp, "add", "a.txt"); RunGit(temp, "commit", "-m", "base");
+            var baseSha = GitOutput(temp, "rev-parse", "HEAD");
+            RunGit(temp, "update-index", "--add", "--cacheinfo", "160000," + baseSha + ",external/Sub"); RunGit(temp, "commit", "-m", "add gitlink");
+            var head = GitOutput(temp, "rev-parse", "HEAD");
+            Assert.Equal(0, RunGuard("--range", temp, baseSha, head));
+            File.WriteAllBytes(Path.Combine(temp, "bad.txt"), RuntimePayload(temp)); RunGit(temp, "add", "bad.txt"); RunGit(temp, "commit", "-m", "payload");
+            Assert.Equal(1, RunGuard("--range", temp, baseSha, GitOutput(temp, "rev-parse", "HEAD")));
+        }
+        finally { DeleteTemp(temp); }
+    }
+
+    [Fact]
     public void NulPathsAndSymlinksDoNotCausePrivateTargetsToBeFollowed()
     {
         var temp = NewTemp();

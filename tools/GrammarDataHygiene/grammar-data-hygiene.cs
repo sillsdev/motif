@@ -652,6 +652,7 @@ internal static class GrammarDataHygiene
             if (!header.StartsWith(':')) throw new InvalidDataException("raw Git diff header is malformed");
             var pieces = header[1..].Split(' ', StringSplitOptions.RemoveEmptyEntries);
             if (pieces.Length != 5 || pieces[4] is not ("A" or "M" or "T" or "C" or "R")) continue;
+            if (pieces[1] == "160000") continue; // gitlink: a commit, not a blob; the tip scan reports it
             var oid = pieces[3];
             if (oid.All(c => c == '0')) continue;
             var key = Convert.ToHexString(pathBytes) + ":" + oid;
