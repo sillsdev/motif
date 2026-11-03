@@ -115,7 +115,7 @@ public sealed class WalkthroughReplayTests(PristineProjectFixture pristine)
                 Environment.SetEnvironmentVariable(WalkthroughArtifacts.StrictComparisonVariable, "1");
                 var failure = Assert.ThrowsAny<Xunit.Sdk.XunitException>(() =>
                     walkthrough.WaitUntilFrameIsStable(TimeSpan.FromSeconds(1), "a strict run draws every frame"));
-                Assert.Contains("frames were drawn and none matched", failure.Message, StringComparison.Ordinal);
+                Assert.Contains("and none matched the one before it", failure.Message, StringComparison.Ordinal);
             }
             finally
             {
