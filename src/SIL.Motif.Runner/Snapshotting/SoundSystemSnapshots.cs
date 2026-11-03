@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 using SIL.LCModel;
+using SIL.Motif.Runner.Operations;
 using SIL.LCModel.Core.KernelInterfaces;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Model.Effects;
@@ -130,6 +131,11 @@ public static class SoundSystemSnapshots
                     break;
                 case IPhSimpleContextBdry boundaryContext:
                     Fields(PhSimpleContextBdryRelationsSnapshotter.Snapshot(cache, boundaryContext));
+                    break;
+                case IPhIterationContext iterationContext:
+                    Reference(SnapshotFields.PhIterationContextMember, iterationContext.MemberRA);
+                    fields[PhIterationContextBoundsOperationKinds.BoundsField] = PhIterationContextBoundsHandler.Read(iterationContext);
+                    if (iterationContext.MemberRA is { } iterated) Add(iterated);
                     break;
                 case IPhSequenceContext sequenceContext:
                     Fields(PhSequenceContextRelationsSnapshotter.Snapshot(cache, sequenceContext));

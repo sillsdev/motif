@@ -45,6 +45,33 @@ public sealed class RetireBoundaryMarkerComposerTests(PristineProjectFixture pri
     private static CanonicalId Id(IPhBdryMarker marker) => CanonicalId.FromGuid(marker.Guid);
 
     [Fact]
+    public void MergingAUsedDuplicateRepointsItsContextsAndTheProjectThenTakesABoundaryRule()
+    {
+        using var cache = pristine.NewScratch();
+        RealParserProject.PrepareForParsing(cache, ["n", "m"]);
+        var stray = Marker(cache, Guid.NewGuid(), "+");
+        IPhSimpleContextBdry context = null!;
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+        {
+            context = cache.ServiceLocator.GetInstance<IPhSimpleContextBdryFactory>().Create();
+            cache.LangProject.PhonologicalDataOA.ContextsOS.Add(context);
+            context.FeatureStructureRA = stray;
+        });
+        var phoneme = CanonicalId.FromGuid(cache.LangProject.PhonologicalDataOA.PhonemeSetsOS[0].PhonemesOC.First().Guid);
+        var rule = new AuthorPhonologicalRuleIntent("n to m", PhonologicalRuleDirection.Simultaneous,
+            [new(Phoneme: phoneme)], [], [], [new(Boundary: "morpheme")]);
+        var onStray = rule with { Right = [new(BoundaryMarker: Id(stray))] };
+        Assert.Contains("conflicting boundary markers", Refusal(() => AuthorPhonologicalRuleComposer.Build(cache, onStray)));
+
+        var operations = MergeBoundaryMarkersComposer.Build(cache, new(Id(stray)));
+        SoundSystemComposerTests.Execute(cache, operations);
+
+        Assert.Equal(LangProjectTags.kguidPhRuleMorphBdry, context.FeatureStructureRA!.Guid);
+        Assert.DoesNotContain(FirstSet(cache).BoundaryMarkersOC, item => item.Guid == stray.Guid);
+        Assert.NotEmpty(AuthorPhonologicalRuleComposer.Build(cache, rule));
+    }
+
+    [Fact]
     public void RetiresAnUnusedDuplicateOfTheStandardMorphemeMarkerAndKeepsTheStandardOne()
     {
         using var cache = pristine.NewScratch();

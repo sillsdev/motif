@@ -551,7 +551,7 @@ public sealed class PhonologicalRuleOrderConformanceTests(PristineProjectFixture
         Assert.Contains(CanonicalId.FromGuid(reservedGuid).Value, refusal, StringComparison.Ordinal);
         Assert.Contains(representation == "#" ? "word boundary" : "morpheme boundary", refusal,
             StringComparison.Ordinal);
-        Assert.Contains("re-point references to the standard boundary marker, remove the stray marker, save, and reload",
+        Assert.Contains("compose-merge-boundary-markers",
             refusal, StringComparison.Ordinal);
     }
 

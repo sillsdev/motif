@@ -194,6 +194,11 @@ public static class EditNaturalClassComposer
     private static IEnumerable<IPhPhonContext> Flatten(IPhPhonContext context)
     {
         yield return context;
+        if (context is IPhIterationContext { MemberRA: { } iterated })
+        {
+            foreach (var nested in Flatten(iterated)) yield return nested;
+            yield break;
+        }
         if (context is not IPhSequenceContext sequence) yield break;
         foreach (var member in sequence.MembersRS)
             foreach (var nested in Flatten(member)) yield return nested;

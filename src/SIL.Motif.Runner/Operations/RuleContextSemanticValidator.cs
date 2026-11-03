@@ -26,6 +26,9 @@ internal static class RuleContextSemanticValidator
         PhSequenceContextMembersOperationKinds.AddRefMembers,
         PhSequenceContextMembersOperationKinds.RemoveRefMembers,
         PhSequenceContextMembersOperationKinds.MoveMembers,
+        PhIterationContextMemberOperationKinds.SetMember,
+        PhIterationContextMemberOperationKinds.ClearMember,
+        PhIterationContextBoundsOperationKinds.SetBounds,
     };
 
     public static void ValidateProposal(LcmCache cache, IReadOnlyList<OperationEnvelope> operations)
@@ -100,17 +103,17 @@ internal static class RuleContextSemanticValidator
             foreach (var context in rhs.StrucChangeOS)
                 ValidateNode(data, context, allowSequence: false, seen, active);
             if (rhs.LeftContextOA is { } left)
-                ValidateNode(data, left, allowSequence: true, seen, active);
+                ValidateNode(data, left, allowSequence: true, seen, active, allowIteration: true);
             if (rhs.RightContextOA is { } right)
-                ValidateNode(data, right, allowSequence: true, seen, active);
+                ValidateNode(data, right, allowSequence: true, seen, active, allowIteration: true);
         }
     }
 
     private static void ValidateTree(IPhPhonData data, IPhPhonContext context, bool allowSequence) =>
-        ValidateNode(data, context, allowSequence, new HashSet<Guid>(), new HashSet<Guid>());
+        ValidateNode(data, context, allowSequence, new HashSet<Guid>(), new HashSet<Guid>(), allowIteration: true);
 
     private static void ValidateNode(IPhPhonData data, IPhPhonContext context, bool allowSequence,
-        HashSet<Guid> seen, HashSet<Guid> active)
+        HashSet<Guid> seen, HashSet<Guid> active, bool allowIteration = false)
     {
         if (active.Contains(context.Guid))
             throw new InvalidOperationException("Rule contexts cannot contain a cycle.");
@@ -149,8 +152,17 @@ internal static class RuleContextSemanticValidator
                         throw new InvalidOperationException("Rule contexts cannot contain a cycle.");
                     if (member is IPhSequenceContext)
                         throw new InvalidOperationException("A rule context sequence can contain only simple contexts.");
-                    ValidateNode(data, member, allowSequence: false, seen, active);
+                    ValidateNode(data, member, allowSequence: false, seen, active, allowIteration: true);
                 }
+                break;
+            case IPhIterationContext iteration when allowIteration:
+                if (iteration.MemberRA is not { } iterated || iterated is not IPhSimpleContext)
+                    throw new InvalidOperationException("An iteration context must repeat one simple context.");
+                if (iteration.Minimum < 0 ||
+                    (iteration.Maximum != -1 && (iteration.Maximum < 1 || iteration.Maximum < iteration.Minimum)))
+                    throw new InvalidOperationException(
+                        "An iteration context needs a minimum of 0 or more and a maximum that is -1 or at least 1 and the minimum.");
+                ValidateNode(data, iterated, allowSequence: false, seen, active);
                 break;
             default:
                 throw new InvalidOperationException($"Rule context class '{context.ClassName}' is not supported.");
@@ -183,6 +195,8 @@ internal static class RuleContextSemanticValidator
         if (context is IPhSequenceContext sequence)
             foreach (var member in sequence.MembersRS.OfType<IPhPhonContext>())
                 Collect(member, ruleId, seen, contextRules);
+        else if (context is IPhIterationContext { MemberRA: { } iterated })
+            Collect(iterated, ruleId, seen, contextRules);
     }
 
     private static IPhSegmentRule? FindRule(ICmObject value)

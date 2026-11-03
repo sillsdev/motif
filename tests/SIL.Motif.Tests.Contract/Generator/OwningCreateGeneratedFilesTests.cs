@@ -84,7 +84,7 @@ public sealed class OwningCreateGeneratedFilesTests
             Assert.Contains("PhSimpleContextBdry", contexts);
             Assert.Contains("PhSequenceContext", contexts);
             Assert.Contains("\"PhContextOrVar\", false", contexts);
-            Assert.DoesNotContain("PhIterationContext", contexts);
+            Assert.Contains("PhIterationContext", contexts);
             Assert.DoesNotContain("PhVariable", contexts);
             Assert.DoesNotContain("PhEnvironment", contexts);
 
@@ -105,7 +105,7 @@ public sealed class OwningCreateGeneratedFilesTests
                 Assert.Contains("PhSimpleContextNC", source);
                 Assert.Contains("PhSimpleContextBdry", source);
                 Assert.Contains("PhSequenceContext", source);
-                Assert.DoesNotContain("PhIterationContext", source);
+                Assert.Contains("PhIterationContext", source);
             }
         }
         finally { if (Directory.Exists(temporary)) Directory.Delete(temporary, true); }

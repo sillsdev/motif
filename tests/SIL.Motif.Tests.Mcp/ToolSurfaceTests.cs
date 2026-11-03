@@ -142,6 +142,7 @@ public sealed class ToolSurfaceTests
             "compose-edit-part-of-speech-inflection-class-default",
             "compose-edit-stem-allomorph-stem-name",
             "compose-edit-stem-inflection-class",
+            "compose-merge-boundary-markers",
             "compose-move-example",
             "compose-move-sense-to-entry",
             "compose-record-source-validated-decision",
@@ -169,8 +170,9 @@ public sealed class ToolSurfaceTests
                 "compose-delete-sense" or "compose-remove-alternate-form" or
                 "compose-move-example" or "compose-add-example" or
                 "compose-set-stem-part-of-speech" or "compose-record-source-validated-decision" or
-                "compose-retire-boundary-marker" or "compose-add-exception-features").ToArray();
-        Assert.Equal(13, numeralEditors.Length);
+                "compose-retire-boundary-marker" or "compose-add-exception-features" or
+                "compose-merge-boundary-markers").ToArray();
+        Assert.Equal(14, numeralEditors.Length);
         Assert.All(numeralEditors, command =>
         {
             Assert.Equal(CommandSurface.AdvancedAi, command.Surface);
@@ -315,7 +317,7 @@ public sealed class ToolSurfaceTests
         Assert.DoesNotContain("intentsJson", batch.Tool.ArgumentNames);
         var branches = intents["items"]!["oneOf"]!.AsArray();
         var verbs = branches.Select(branch => branch!["properties"]!["verb"]!["enum"]![0]!.GetValue<string>()).ToArray();
-        Assert.Equal(53, verbs.Length);
+        Assert.Equal(57, verbs.Length);
         Assert.Equal(new[]
         {
             "compose-author-lexeme-form",
@@ -367,6 +369,10 @@ public sealed class ToolSurfaceTests
             "compose-author-exception-feature",
             "compose-edit-exception-features",
             "compose-edit-phonological-rule-features",
+            "compose-edit-phonological-rule",
+            "compose-order-phonological-rules",
+            "compose-set-phonological-rule-disabled",
+            "compose-delete-phonological-rule",
             "compose-edit-allomorph-condition",
             "order-allomorphs",
             "compose-author-text",

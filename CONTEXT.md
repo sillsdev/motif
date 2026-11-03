@@ -129,6 +129,13 @@ name; it no longer does ([ADR 0023](docs/adr/0023-derived-kind-names-required-de
 segment is derived from the declaring class. Construct is now purely about *what work ships together*.
 _Avoid_: entity, class, feature
 
+**Rewrite rule**:
+A regular phonological rule that changes one sound into one sound, deletes one, or inserts one, in a left and right
+context. A context item may be optional or repeated, and a context may name a word or morpheme boundary. A rule can
+be edited in place, reordered, switched off (disabled) or deleted; its order is meaning, because a later rule sees
+the output of the earlier ones ([ADR 0088](docs/adr/0088-phonological-rules-are-edited-in-place-and-hold-one-item-each-side.md)).
+_Avoid_: sound change (for the stored rule), multi-item rule
+
 **Judgement call**:
 A choice the sources leave to the analyst, such as whether an affix, reduplication included, is derivational or
 inflectional. Linguistic decisions follow Andy Black's paper and guidance; a judgement call belongs to the person

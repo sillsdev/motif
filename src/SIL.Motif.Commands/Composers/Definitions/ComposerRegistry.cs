@@ -35,6 +35,10 @@ internal static class ComposerDefinitions
         new EditExceptionFeaturesDefinition(),
         new AddExceptionFeaturesDefinition(),
         new EditPhonologicalRuleFeaturesDefinition(),
+        new EditPhonologicalRuleDefinition(),
+        new OrderPhonologicalRulesDefinition(),
+        new SetPhonologicalRuleDisabledDefinition(),
+        new DeletePhonologicalRuleDefinition(),
         new EditCompoundRuleDefinition(),
         new EditPartOfSpeechInflectionClassDefaultDefinition(),
         new EditStemAllomorphStemNameDefinition(),
@@ -49,6 +53,7 @@ internal static class ComposerDefinitions
         new RetireAllomorphDefinition(),
         new RetireRedundantZeroAffixDefinition(),
         new RetireBoundaryMarkerDefinition(),
+        new MergeBoundaryMarkersDefinition(),
         new RecordParsimonyDispositionDefinition(),
         new RecordSourceValidatedDecisionDefinition(),
     ];

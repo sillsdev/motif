@@ -1774,5 +1774,92 @@
       "Remove the Attaches to Categories restriction from a clitic",
       "Replace the set of parts of speech a clitic attaches to"
     ]
+  },
+  "compose-edit-phonological-rule": {
+    "title": "Edit a sound rule",
+    "description": "Changes the name, direction, input, output or contexts of one existing regular rewrite rule in place, keeping its identity, order and features. Context items may be optional or repeated. Motif stages a Draft for a person to review and Apply.",
+    "source": "Hand-written from the closed intent and composer contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "rule": "Id of an existing regular rewrite rule with one right-hand side.",
+      "name": "New rule name.",
+      "direction": "New direction.",
+      "input": "New input: zero or one phoneme or natural-class item.",
+      "output": "New output: zero or one item; empty means deletion.",
+      "left": "New left context; an empty list clears it.",
+      "right": "New right context; an empty list clears it.",
+      "expected": "Current values of the parts being changed; a mismatch refuses the edit."
+    },
+    "goals": [
+      "Widen a rule's context to more suffixes",
+      "Make a context item optional",
+      "Change what a rule produces without recreating it"
+    ],
+    "guides": [
+      "nasal-assimilation"
+    ],
+    "redirect": "For a rule that exists. A new rule is compose-author-phonological-rule; features are compose-edit-phonological-rule-features."
+  },
+  "compose-order-phonological-rules": {
+    "title": "Reorder sound rules",
+    "description": "Moves phonological rules to a new order, with the fewest moves, so a later rule sees the output of the earlier ones. Motif stages a Draft for a person to review and Apply.",
+    "source": "Hand-written from the closed intent and composer contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "rule": "Id of the rule to move.",
+      "before": "Id of the rule it should come before.",
+      "after": "Id of the rule it should come after.",
+      "order": "Every rule id once, in the new order."
+    },
+    "goals": [
+      "Put a nasal deletion rule after the rules that change a class to a nasal",
+      "Fix a rule chain that gives no analysis"
+    ],
+    "guides": [
+      "nasal-assimilation"
+    ],
+    "redirect": "Order matters whenever one rule feeds or bleeds another. Try a word that needs the chain."
+  },
+  "compose-set-phonological-rule-disabled": {
+    "title": "Turn a sound rule off or on",
+    "description": "Disables or enables one phonological rule. A disabled rule stays in place but the parser does not load it. Motif stages a Draft for a person to review and Apply.",
+    "source": "Hand-written from the closed intent and composer contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "target": "Id of the rule.",
+      "expectedDisabled": "The rule's current disabled state.",
+      "disabled": "The state to set."
+    },
+    "goals": [
+      "Test a grammar without one rule",
+      "Hold a rule back until its words are in"
+    ]
+  },
+  "compose-delete-phonological-rule": {
+    "title": "Delete a sound rule",
+    "description": "Removes one phonological rule and the contexts only it uses, after checking its name. Motif stages a Draft for a person to review and Apply.",
+    "source": "Hand-written from the closed intent and composer contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "target": "Id of the rule.",
+      "expectedName": "The rule's current name."
+    },
+    "goals": [
+      "Remove a rule that is wrong",
+      "Clean up after a rule chain was rebuilt"
+    ]
+  },
+  "compose-merge-boundary-markers": {
+    "title": "Merge a boundary marker",
+    "description": "Points every rule or environment that uses a stray duplicate of the word or morpheme boundary marker at the standard marker, then removes the duplicate, so a rule with a boundary can be authored again. Motif stages a Draft for a person to review and Apply.",
+    "source": "Hand-written from the closed intent and composer contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "marker": "Id of the duplicate boundary marker to merge away."
+    },
+    "goals": [
+      "Clear a refusal that the phoneme set has conflicting boundary markers",
+      "Merge a second plus marker that a rule already uses"
+    ]
   }
 }

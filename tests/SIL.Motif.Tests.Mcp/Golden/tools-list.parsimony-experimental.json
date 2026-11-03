@@ -357,6 +357,22 @@
               "boundaryMarker": {
                 "type": "string",
                 "description": "Stored boundary-marker id. Rule contexts preserve its literal identity, even when its code is #."
+              },
+              "optional": {
+                "type": "boolean",
+                "description": "A phoneme or natural class that may be absent (zero or one time). Use instead of minimum and maximum."
+              },
+              "minimum": {
+                "type": "integer",
+                "description": "Fewest repeats of a phoneme or natural class; with maximum.",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "maximum": {
+                "type": "integer",
+                "description": "Most repeats of a phoneme or natural class, or -1 for no limit.",
+                "minimum": -1,
+                "maximum": 100
               }
             },
             "additionalProperties": false
@@ -388,6 +404,22 @@
               "boundaryMarker": {
                 "type": "string",
                 "description": "Stored boundary-marker id. Rule contexts preserve its literal identity, even when its code is #."
+              },
+              "optional": {
+                "type": "boolean",
+                "description": "A phoneme or natural class that may be absent (zero or one time). Use instead of minimum and maximum."
+              },
+              "minimum": {
+                "type": "integer",
+                "description": "Fewest repeats of a phoneme or natural class; with maximum.",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "maximum": {
+                "type": "integer",
+                "description": "Most repeats of a phoneme or natural class, or -1 for no limit.",
+                "minimum": -1,
+                "maximum": 100
               }
             },
             "additionalProperties": false

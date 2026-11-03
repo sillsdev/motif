@@ -693,6 +693,22 @@
               "boundaryMarker": {
                 "type": "string",
                 "description": "Stored boundary-marker id. Rule contexts preserve its literal identity, even when its code is #."
+              },
+              "optional": {
+                "type": "boolean",
+                "description": "A phoneme or natural class that may be absent (zero or one time). Use instead of minimum and maximum."
+              },
+              "minimum": {
+                "type": "integer",
+                "description": "Fewest repeats of a phoneme or natural class; with maximum.",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "maximum": {
+                "type": "integer",
+                "description": "Most repeats of a phoneme or natural class, or -1 for no limit.",
+                "minimum": -1,
+                "maximum": 100
               }
             },
             "additionalProperties": false
@@ -724,6 +740,22 @@
               "boundaryMarker": {
                 "type": "string",
                 "description": "Stored boundary-marker id. Rule contexts preserve its literal identity, even when its code is #."
+              },
+              "optional": {
+                "type": "boolean",
+                "description": "A phoneme or natural class that may be absent (zero or one time). Use instead of minimum and maximum."
+              },
+              "minimum": {
+                "type": "integer",
+                "description": "Fewest repeats of a phoneme or natural class; with maximum.",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "maximum": {
+                "type": "integer",
+                "description": "Most repeats of a phoneme or natural class, or -1 for no limit.",
+                "minimum": -1,
+                "maximum": 100
               }
             },
             "additionalProperties": false
@@ -2011,6 +2043,22 @@
                             "boundaryMarker": {
                               "type": "string",
                               "description": "Stored boundary-marker id. Rule contexts preserve its literal identity, even when its code is #."
+                            },
+                            "optional": {
+                              "type": "boolean",
+                              "description": "A phoneme or natural class that may be absent (zero or one time). Use instead of minimum and maximum."
+                            },
+                            "minimum": {
+                              "type": "integer",
+                              "description": "Fewest repeats of a phoneme or natural class; with maximum.",
+                              "minimum": 0,
+                              "maximum": 100
+                            },
+                            "maximum": {
+                              "type": "integer",
+                              "description": "Most repeats of a phoneme or natural class, or -1 for no limit.",
+                              "minimum": -1,
+                              "maximum": 100
                             }
                           },
                           "additionalProperties": false
@@ -2042,6 +2090,22 @@
                             "boundaryMarker": {
                               "type": "string",
                               "description": "Stored boundary-marker id. Rule contexts preserve its literal identity, even when its code is #."
+                            },
+                            "optional": {
+                              "type": "boolean",
+                              "description": "A phoneme or natural class that may be absent (zero or one time). Use instead of minimum and maximum."
+                            },
+                            "minimum": {
+                              "type": "integer",
+                              "description": "Fewest repeats of a phoneme or natural class; with maximum.",
+                              "minimum": 0,
+                              "maximum": 100
+                            },
+                            "maximum": {
+                              "type": "integer",
+                              "description": "Most repeats of a phoneme or natural class, or -1 for no limit.",
+                              "minimum": -1,
+                              "maximum": 100
                             }
                           },
                           "additionalProperties": false
@@ -4879,6 +4943,460 @@
                     "additionalProperties": false,
                     "required": [
                       "rule"
+                    ]
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
+                      "compose-edit-phonological-rule"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for compose-edit-phonological-rule.",
+                    "properties": {
+                      "rule": {
+                        "type": "string",
+                        "description": "Id of an existing regular rewrite rule with one right-hand side."
+                      },
+                      "name": {
+                        "type": "string",
+                        "description": "New rule name."
+                      },
+                      "direction": {
+                        "type": "string",
+                        "enum": [
+                          "left-to-right",
+                          "right-to-left",
+                          "simultaneous"
+                        ],
+                        "description": "New direction."
+                      },
+                      "input": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "phoneme": {
+                              "type": "string"
+                            },
+                            "naturalClass": {
+                              "type": "string"
+                            }
+                          },
+                          "additionalProperties": false
+                        },
+                        "description": "New input: zero or one phoneme or natural-class item."
+                      },
+                      "output": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "phoneme": {
+                              "type": "string"
+                            },
+                            "naturalClass": {
+                              "type": "string"
+                            }
+                          },
+                          "additionalProperties": false
+                        },
+                        "description": "New output: zero or one item; empty means deletion."
+                      },
+                      "left": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "phoneme": {
+                              "type": "string"
+                            },
+                            "naturalClass": {
+                              "type": "string"
+                            },
+                            "boundary": {
+                              "type": "string",
+                              "enum": [
+                                "word",
+                                "morpheme"
+                              ]
+                            },
+                            "boundaryMarker": {
+                              "type": "string"
+                            },
+                            "optional": {
+                              "type": "boolean",
+                              "const": true
+                            },
+                            "minimum": {
+                              "type": "number"
+                            },
+                            "maximum": {
+                              "type": "number"
+                            }
+                          },
+                          "additionalProperties": false
+                        },
+                        "description": "New left context; an empty list clears it."
+                      },
+                      "right": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "phoneme": {
+                              "type": "string"
+                            },
+                            "naturalClass": {
+                              "type": "string"
+                            },
+                            "boundary": {
+                              "type": "string",
+                              "enum": [
+                                "word",
+                                "morpheme"
+                              ]
+                            },
+                            "boundaryMarker": {
+                              "type": "string"
+                            },
+                            "optional": {
+                              "type": "boolean",
+                              "const": true
+                            },
+                            "minimum": {
+                              "type": "number"
+                            },
+                            "maximum": {
+                              "type": "number"
+                            }
+                          },
+                          "additionalProperties": false
+                        },
+                        "description": "New right context; an empty list clears it."
+                      },
+                      "expected": {
+                        "type": "object",
+                        "properties": {
+                          "name": {
+                            "type": "string"
+                          },
+                          "direction": {
+                            "type": "string",
+                            "enum": [
+                              "left-to-right",
+                              "right-to-left",
+                              "simultaneous"
+                            ]
+                          },
+                          "input": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "phoneme": {
+                                  "type": "string"
+                                },
+                                "naturalClass": {
+                                  "type": "string"
+                                }
+                              },
+                              "additionalProperties": false
+                            }
+                          },
+                          "output": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "phoneme": {
+                                  "type": "string"
+                                },
+                                "naturalClass": {
+                                  "type": "string"
+                                }
+                              },
+                              "additionalProperties": false
+                            }
+                          },
+                          "left": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "phoneme": {
+                                  "type": "string"
+                                },
+                                "naturalClass": {
+                                  "type": "string"
+                                },
+                                "boundary": {
+                                  "type": "string",
+                                  "enum": [
+                                    "word",
+                                    "morpheme"
+                                  ]
+                                },
+                                "boundaryMarker": {
+                                  "type": "string"
+                                },
+                                "optional": {
+                                  "type": "boolean",
+                                  "const": true
+                                },
+                                "minimum": {
+                                  "type": "number"
+                                },
+                                "maximum": {
+                                  "type": "number"
+                                }
+                              },
+                              "additionalProperties": false
+                            }
+                          },
+                          "right": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "phoneme": {
+                                  "type": "string"
+                                },
+                                "naturalClass": {
+                                  "type": "string"
+                                },
+                                "boundary": {
+                                  "type": "string",
+                                  "enum": [
+                                    "word",
+                                    "morpheme"
+                                  ]
+                                },
+                                "boundaryMarker": {
+                                  "type": "string"
+                                },
+                                "optional": {
+                                  "type": "boolean",
+                                  "const": true
+                                },
+                                "minimum": {
+                                  "type": "number"
+                                },
+                                "maximum": {
+                                  "type": "number"
+                                }
+                              },
+                              "additionalProperties": false
+                            }
+                          }
+                        },
+                        "additionalProperties": false,
+                        "description": "Current values of the parts being changed; a mismatch refuses the edit."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "rule"
+                    ]
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
+                      "compose-order-phonological-rules"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for compose-order-phonological-rules.",
+                    "properties": {
+                      "rule": {
+                        "type": "string",
+                        "description": "Id of the rule to move."
+                      },
+                      "after": {
+                        "type": "string",
+                        "description": "Id of the rule it should come after."
+                      },
+                      "before": {
+                        "type": "string",
+                        "description": "Id of the rule it should come before."
+                      },
+                      "order": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Every rule id once, in the new order."
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
+                      "compose-set-phonological-rule-disabled"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for compose-set-phonological-rule-disabled.",
+                    "properties": {
+                      "target": {
+                        "type": "string",
+                        "description": "Id of the rule."
+                      },
+                      "expectedDisabled": {
+                        "type": "boolean",
+                        "description": "The rule\u0027s current disabled state."
+                      },
+                      "disabled": {
+                        "type": "boolean",
+                        "description": "The state to set."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "target",
+                      "expectedDisabled",
+                      "disabled"
+                    ]
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
+                      "compose-delete-phonological-rule"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for compose-delete-phonological-rule.",
+                    "properties": {
+                      "target": {
+                        "type": "string",
+                        "description": "Id of the rule."
+                      },
+                      "expectedName": {
+                        "type": "string",
+                        "description": "The rule\u0027s current name."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "target",
+                      "expectedName"
                     ]
                   },
                   "citation": {

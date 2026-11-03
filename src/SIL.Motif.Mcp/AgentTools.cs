@@ -1018,6 +1018,14 @@ internal static class AgentTools
         changedItems["maxItems"] = 1;
         var contexts = NaturalClassContexts();
         contexts["maxItems"] = 8;
+        var contextProperties = contexts["items"]!.AsObject()["properties"]!.AsObject();
+        contextProperties["optional"] = new JsonObject
+        {
+            ["type"] = "boolean",
+            ["description"] = "A phoneme or natural class that may be absent (zero or one time). Use instead of minimum and maximum.",
+        };
+        contextProperties["minimum"] = Schema.Integer("Fewest repeats of a phoneme or natural class; with maximum.", 0, 100);
+        contextProperties["maximum"] = Schema.Integer("Most repeats of a phoneme or natural class, or -1 for no limit.", -1, 100);
         return Schema.Object(("draft", Schema.String("Draft name."), true),
             ("name", Schema.String("Rule name."), true),
             ("direction", Schema.String("Rule scan direction or application mode.",

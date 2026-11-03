@@ -32,9 +32,10 @@ public static class PhSegRuleRHSRightContextOperationKinds
                             "PhSimpleContextNC" => cache.ServiceLocator.GetInstance<IPhSimpleContextNCFactory>().Create(guid),
                             "PhSimpleContextBdry" => cache.ServiceLocator.GetInstance<IPhSimpleContextBdryFactory>().Create(guid),
                             "PhSequenceContext" => cache.ServiceLocator.GetInstance<IPhSequenceContextFactory>().Create(guid),
-                            _ => throw new InvalidOperationException("Right context must be a supported simple or sequence context."),
+                            "PhIterationContext" => cache.ServiceLocator.GetInstance<IPhIterationContextFactory>().Create(guid),
+                            _ => throw new InvalidOperationException("Right context must be a supported simple, sequence or iteration context."),
                         };
                         owner.RightContextOA = child;
-            }, false, true, new[] { "PhSimpleContextSeg", "PhSimpleContextNC", "PhSimpleContextBdry", "PhSequenceContext" }, "PhPhonContext", true));
+            }, false, true, new[] { "PhSimpleContextSeg", "PhSimpleContextNC", "PhSimpleContextBdry", "PhSequenceContext", "PhIterationContext" }, "PhPhonContext", true));
     }
 }

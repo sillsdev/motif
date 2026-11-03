@@ -12,6 +12,8 @@ namespace SIL.Motif.Runner.Composers;
 /// <summary>Builds the operations for one complete regular rewrite rule.</summary>
 public static class AuthorPhonologicalRuleComposer
 {
+    private const int MaximumItems = 1;
+
     public static IReadOnlyList<OperationEnvelope> Build(LcmCache cache, AuthorPhonologicalRuleIntent intent,
         Func<CanonicalId>? mintId = null, CanonicalId? plannedNaturalClass = null,
         CanonicalId? authoredRuleId = null, IReadOnlyList<OperationEnvelope>? prerequisites = null)
@@ -21,13 +23,13 @@ public static class AuthorPhonologicalRuleComposer
         SoundSystemAuthoring.RequireName(intent.Name);
         if (intent.Input is null || intent.Output is null || intent.Left is null || intent.Right is null)
             throw new InvalidOperationException("Rule input, output, left context and right context must be supplied; a context with no items is empty.");
-        if (intent.Input.Count > 1 || intent.Output.Count > 1)
-            throw new InvalidOperationException("A simple rewrite rule supports at most one input and one output item.");
+        RequireItemCount(intent.Input, "input");
+        RequireItemCount(intent.Output, "output");
         RequireContextLength(intent.Left, "left");
         RequireContextLength(intent.Right, "right");
 
         var data = cache.LangProject.PhonologicalDataOA;
-        ValidateBoundaryMarkers(cache, intent);
+        ValidateBoundaryMarkers(cache, intent.Left, intent.Right);
         ValidatePlacement(data, intent.Placement);
         var input = intent.Input.Select(item => ResolveRuleItem(cache, item, plannedNaturalClass)).ToArray();
         var output = intent.Output.Select(item => ResolveRuleItem(cache, item, plannedNaturalClass)).ToArray();
@@ -35,20 +37,7 @@ public static class AuthorPhonologicalRuleComposer
         var right = ResolveContexts(cache, intent.Right, isLeft: false, plannedNaturalClass);
 
         var builder = new SoundSystemAuthoring.Builder(mintId);
-        var boundaryOperations = new List<OperationEnvelope>();
-        var referencedBoundaries = left.Concat(right).Select(context => context.Reference.ToGuid()).ToHashSet();
-        if (referencedBoundaries.Contains(LangProjectTags.kguidPhRuleWordBdry) ||
-            referencedBoundaries.Contains(LangProjectTags.kguidPhRuleMorphBdry))
-        {
-            var firstSet = SoundSystemAuthoring.FirstSet(cache);
-            var firstSetId = SoundSystemAuthoring.Id(firstSet);
-            if (referencedBoundaries.Contains(LangProjectTags.kguidPhRuleWordBdry))
-                boundaryOperations.AddRange(SoundSystemAuthoring.EnsureOwnedBoundaryMarker(cache, builder, firstSet,
-                    firstSetId, LangProjectTags.kguidPhRuleWordBdry, "word", "#"));
-            if (referencedBoundaries.Contains(LangProjectTags.kguidPhRuleMorphBdry))
-                boundaryOperations.AddRange(SoundSystemAuthoring.EnsureOwnedBoundaryMarker(cache, builder, firstSet,
-                    firstSetId, LangProjectTags.kguidPhRuleMorphBdry, "morpheme", "+"));
-        }
+        var boundaryOperations = EnsureBoundaries(cache, builder, left, right);
 
         var dataId = SoundSystemAuthoring.Id(data);
         var ruleId = builder.Create(PhPhonDataPhonRulesOperationKinds.Create, dataId,
@@ -60,12 +49,7 @@ public static class AuthorPhonologicalRuleComposer
             new { value = DirectionValue(intent.Direction) });
 
         var rhsId = builder.Create(PhRegularRuleRightHandSidesOperationKinds.Create, ruleId);
-        if (input.Length == 1)
-            CreateOwnedSimpleContext(builder, ruleId, input[0], PhSegmentRuleStrucDescOperationKinds.Create);
-        if (output.Length == 1)
-            CreateOwnedSimpleContext(builder, rhsId, output[0], PhSegRuleRHSStrucChangeOperationKinds.Create);
-        CreateRuleContext(builder, dataId, rhsId, left, PhSegRuleRHSLeftContextOperationKinds.Create);
-        CreateRuleContext(builder, dataId, rhsId, right, PhSegRuleRHSRightContextOperationKinds.Create);
+        AddStructure(builder, dataId, ruleId, rhsId, input, output, left, right);
 
         var toEnable = builder.Operations.ToArray();
         var enable = builder.Add(PhSegmentRuleDisabledOperationKinds.SetDisabled, ruleId, new { value = false });
@@ -86,40 +70,114 @@ public static class AuthorPhonologicalRuleComposer
         return builder.Operations;
     }
 
-    private static void CreateOwnedSimpleContext(SoundSystemAuthoring.Builder builder, CanonicalId owner,
-        ResolvedContext item, string createKind)
+    /// <summary>Creates each part that is given under a rule whose same part is empty.</summary>
+    internal static void AddStructure(SoundSystemAuthoring.Builder builder, CanonicalId dataId, CanonicalId ruleId,
+        CanonicalId rhsId, IReadOnlyList<ResolvedContext>? input, IReadOnlyList<ResolvedContext>? output,
+        IReadOnlyList<ResolvedContext>? left, IReadOnlyList<ResolvedContext>? right,
+        IReadOnlyList<OperationEnvelope>? after = null)
     {
-        var contextId = builder.Create(createKind, owner, new { @class = item.ClassName });
-        SetContextReference(builder, contextId, item.Reference, item.ClassName);
+        if (input is not null) CreateOwnedItems(builder, ruleId, input, PhSegmentRuleStrucDescOperationKinds.Create, after);
+        if (output is not null) CreateOwnedItems(builder, rhsId, output, PhSegRuleRHSStrucChangeOperationKinds.Create, after);
+        if (left is not null)
+            CreateRuleContext(builder, dataId, rhsId, left, PhSegRuleRHSLeftContextOperationKinds.Create, after);
+        if (right is not null)
+            CreateRuleContext(builder, dataId, rhsId, right, PhSegRuleRHSRightContextOperationKinds.Create, after);
+    }
+
+    internal static IReadOnlyList<OperationEnvelope> EnsureBoundaries(LcmCache cache,
+        SoundSystemAuthoring.Builder builder, IReadOnlyList<ResolvedContext>? left, IReadOnlyList<ResolvedContext>? right)
+    {
+        var boundaryOperations = new List<OperationEnvelope>();
+        var referencedBoundaries = (left ?? []).Concat(right ?? []).Select(context => context.Reference.ToGuid()).ToHashSet();
+        if (!referencedBoundaries.Contains(LangProjectTags.kguidPhRuleWordBdry) &&
+            !referencedBoundaries.Contains(LangProjectTags.kguidPhRuleMorphBdry))
+            return boundaryOperations;
+        var firstSet = SoundSystemAuthoring.FirstSet(cache);
+        var firstSetId = SoundSystemAuthoring.Id(firstSet);
+        if (referencedBoundaries.Contains(LangProjectTags.kguidPhRuleWordBdry))
+            boundaryOperations.AddRange(SoundSystemAuthoring.EnsureOwnedBoundaryMarker(cache, builder, firstSet,
+                firstSetId, LangProjectTags.kguidPhRuleWordBdry, "word", "#"));
+        if (referencedBoundaries.Contains(LangProjectTags.kguidPhRuleMorphBdry))
+            boundaryOperations.AddRange(SoundSystemAuthoring.EnsureOwnedBoundaryMarker(cache, builder, firstSet,
+                firstSetId, LangProjectTags.kguidPhRuleMorphBdry, "morpheme", "+"));
+        return boundaryOperations;
+    }
+
+    private static void CreateOwnedItems(SoundSystemAuthoring.Builder builder, CanonicalId owner,
+        IReadOnlyList<ResolvedContext> items, string createKind, IReadOnlyList<OperationEnvelope>? after)
+    {
+        CanonicalId? previous = null;
+        foreach (var item in items)
+        {
+            var placement = previous is { } prior ? new Placement(prior, null) : null;
+            var contextId = builder.Create(createKind, owner, new { @class = item.ClassName }, placement,
+                requires: after);
+            SetContextReference(builder, contextId, item.Reference, item.ClassName);
+            previous = contextId;
+        }
     }
 
     private static void CreateRuleContext(SoundSystemAuthoring.Builder builder, CanonicalId dataId,
-        CanonicalId rhsId, IReadOnlyList<ResolvedContext> contexts, string createKind)
+        CanonicalId rhsId, IReadOnlyList<ResolvedContext> contexts, string createKind,
+        IReadOnlyList<OperationEnvelope>? after)
     {
         if (contexts.Count == 0) return;
+        if (contexts.Count == 1 && contexts[0].Minimum is null)
+        {
+            var contextId = builder.Create(createKind, rhsId, new { @class = contexts[0].ClassName }, requires: after);
+            SetContextReference(builder, contextId, contexts[0].Reference, contexts[0].ClassName);
+            return;
+        }
         if (contexts.Count == 1)
         {
-            CreateOwnedSimpleContext(builder, rhsId, contexts[0], createKind);
+            var item = contexts[0];
+            var iterationId = builder.Create(createKind, rhsId, new { @class = "PhIterationContext" }, requires: after);
+            builder.Add(PhIterationContextBoundsOperationKinds.SetBounds, iterationId,
+                new { minimum = item.Minimum, maximum = item.Maximum });
+            var inner = CreatePooled(builder, dataId, item with { Minimum = null, Maximum = null }, after);
+            builder.Add(PhIterationContextMemberOperationKinds.SetMember, iterationId, new { @ref = inner.Id.Value },
+                requires: inner.Operations);
             return;
         }
 
-        var sequenceId = builder.Create(createKind, rhsId, new { @class = "PhSequenceContext" });
+        var sequenceId = builder.Create(createKind, rhsId, new { @class = "PhSequenceContext" }, requires: after);
         CanonicalId? previousMember = null;
         OperationEnvelope? previousAdd = null;
         foreach (var item in contexts)
         {
-            var memberId = builder.Create(PhPhonDataContextsOperationKinds.Create, dataId,
-                new { @class = item.ClassName });
-            var memberCreate = builder.Operations[^1];
-            SetContextReference(builder, memberId, item.Reference, item.ClassName);
+            var member = CreatePooled(builder, dataId, item, after);
             var placement = previousMember is { } previous ? new Placement(previous, null) : null;
+            var required = previousAdd is { } prior ? member.Operations.Append(prior).ToArray() : member.Operations;
             var add = builder.Add(PhSequenceContextMembersOperationKinds.AddRefMembers, sequenceId,
-                new { member = memberId.Value }, placement: placement);
-            var prerequisites = previousAdd is { } prior ? new[] { memberCreate, prior } : [memberCreate];
-            AddDependencies(builder.Operations, add, prerequisites);
-            previousMember = memberId;
+                new { member = member.Id.Value }, placement: placement, requires: required);
+            previousMember = member.Id;
             previousAdd = add;
         }
+    }
+
+    private static (CanonicalId Id, OperationEnvelope[] Operations) CreatePooled(
+        SoundSystemAuthoring.Builder builder, CanonicalId dataId, ResolvedContext item,
+        IReadOnlyList<OperationEnvelope>? after)
+    {
+        var start = builder.Operations.Count;
+        CanonicalId id;
+        if (item.Minimum is null)
+        {
+            id = builder.Create(PhPhonDataContextsOperationKinds.Create, dataId, new { @class = item.ClassName },
+                requires: after);
+            SetContextReference(builder, id, item.Reference, item.ClassName);
+        }
+        else
+        {
+            var inner = CreatePooled(builder, dataId, item with { Minimum = null, Maximum = null }, after);
+            id = builder.Create(PhPhonDataContextsOperationKinds.Create, dataId, new { @class = "PhIterationContext" },
+                requires: after);
+            builder.Add(PhIterationContextBoundsOperationKinds.SetBounds, id,
+                new { minimum = item.Minimum, maximum = item.Maximum });
+            builder.Add(PhIterationContextMemberOperationKinds.SetMember, id, new { @ref = inner.Id.Value },
+                requires: inner.Operations);
+        }
+        return (id, builder.Operations.Skip(start).ToArray());
     }
 
     private static void SetContextReference(SoundSystemAuthoring.Builder builder, CanonicalId context,
@@ -135,7 +193,7 @@ public static class AuthorPhonologicalRuleComposer
         builder.Add(kind, context, new { @ref = reference.Value });
     }
 
-    private static ResolvedContext ResolveRuleItem(LcmCache cache, PhonologicalRuleItem item,
+    internal static ResolvedContext ResolveRuleItem(LcmCache cache, PhonologicalRuleItem item,
         CanonicalId? plannedNaturalClass)
     {
         ArgumentNullException.ThrowIfNull(item);
@@ -151,7 +209,7 @@ public static class AuthorPhonologicalRuleComposer
         return new("PhSimpleContextNC", naturalClass);
     }
 
-    private static IReadOnlyList<ResolvedContext> ResolveContexts(LcmCache cache,
+    internal static IReadOnlyList<ResolvedContext> ResolveContexts(LcmCache cache,
         IReadOnlyList<EnvironmentContext> contexts, bool isLeft, CanonicalId? plannedNaturalClass)
     {
         var resolved = new ResolvedContext[contexts.Count];
@@ -162,12 +220,15 @@ public static class AuthorPhonologicalRuleComposer
                 (item.Boundary is null ? 0 : 1) + (item.BoundaryMarker is null ? 0 : 1);
             if (fields != 1)
                 throw new InvalidOperationException("Each context item must name one phoneme, natural class or boundary marker.");
+            if (item.Minimum is not null && (item.Phoneme is null && item.NaturalClass is null))
+                throw new InvalidOperationException("Only a phoneme or natural class can be optional or repeated.");
             if (item.Phoneme is { } phoneme)
-                resolved[index] = ResolveRuleItem(cache, new PhonologicalRuleItem(Phoneme: phoneme), plannedNaturalClass);
+                resolved[index] = ResolveRuleItem(cache, new PhonologicalRuleItem(Phoneme: phoneme), plannedNaturalClass)
+                    with { Minimum = item.Minimum, Maximum = item.Maximum };
             else if (item.NaturalClass is { } naturalClass)
             {
                 if (naturalClass != plannedNaturalClass) _ = RequireNaturalClass(cache, naturalClass);
-                resolved[index] = new("PhSimpleContextNC", naturalClass);
+                resolved[index] = new("PhSimpleContextNC", naturalClass, item.Minimum, item.Maximum);
             }
             else if (item.BoundaryMarker is { } boundaryId)
             {
@@ -221,13 +282,14 @@ public static class AuthorPhonologicalRuleComposer
             : LangProjectTags.kguidPhRuleMorphBdry);
     }
 
-    private static void ValidateBoundaryMarkers(LcmCache cache, AuthorPhonologicalRuleIntent intent)
+    internal static void ValidateBoundaryMarkers(LcmCache cache, IReadOnlyList<EnvironmentContext> leftContexts,
+        IReadOnlyList<EnvironmentContext> rightContexts)
     {
         var firstSet = cache.LangProject.PhonologicalDataOA.PhonemeSetsOS.FirstOrDefault();
         if (firstSet is null)
             return;
 
-        var named = intent.Left.Concat(intent.Right).Select(context => context.BoundaryMarker)
+        var named = leftContexts.Concat(rightContexts).Select(context => context.BoundaryMarker)
             .OfType<CanonicalId>().Select(id => id.ToGuid()).ToHashSet();
         var stored = firstSet.BoundaryMarkersOC.SelectMany(marker => marker.CodesOS
                 .SelectMany(code => code.Representation.AvailableWritingSystemIds
@@ -250,9 +312,7 @@ public static class AuthorPhonologicalRuleComposer
             .ToArray();
         if (conflicts.Length > 0)
             throw new InvalidOperationException("The first phoneme set has conflicting boundary markers: " +
-                string.Join(" ", conflicts) + " When nothing uses the stray marker, retire it with compose-retire-boundary-marker; otherwise " +
-                "repair in FieldWorks: re-point references to the standard boundary marker, remove the stray marker, " +
-                "save, and reload the project.");
+                string.Join(" ", conflicts) + " Merge the stray marker into the standard one with compose-merge-boundary-markers.");
     }
 
     private static Guid ReservedBoundaryId(string representation) => representation switch
@@ -280,7 +340,7 @@ public static class AuthorPhonologicalRuleComposer
             throw new InvalidOperationException("Rule placement anchors are stale or are not adjacent in the current order.");
     }
 
-    private static int DirectionValue(PhonologicalRuleDirection direction) => direction switch
+    internal static int DirectionValue(PhonologicalRuleDirection direction) => direction switch
     {
         PhonologicalRuleDirection.LeftToRightIterative => 0,
         PhonologicalRuleDirection.RightToLeftIterative => 1,
@@ -288,13 +348,13 @@ public static class AuthorPhonologicalRuleComposer
         _ => throw new InvalidOperationException("The rule direction is not supported."),
     };
 
-    private static void RequireContextLength(IReadOnlyCollection<EnvironmentContext> contexts, string side)
+    internal static void RequireContextLength(IReadOnlyCollection<EnvironmentContext> contexts, string side)
     {
         if (contexts.Count > 8)
             throw new InvalidOperationException($"The {side} context must contain at most 8 simple items.");
     }
 
-    private static OperationEnvelope AddDependencies(List<OperationEnvelope> operations,
+    internal static OperationEnvelope AddDependencies(List<OperationEnvelope> operations,
         OperationEnvelope operation, IReadOnlyList<OperationEnvelope> prerequisites)
     {
         var dependencies = operation.DependsOn.Concat(prerequisites.Select(item =>
@@ -307,5 +367,11 @@ public static class AuthorPhonologicalRuleComposer
         return replacement;
     }
 
-    private sealed record ResolvedContext(string ClassName, CanonicalId Reference);
+    internal static void RequireItemCount(IReadOnlyCollection<PhonologicalRuleItem> items, string side)
+    {
+        if (items.Count > MaximumItems)
+            throw new InvalidOperationException($"A rewrite rule supports at most one {side} item; Black (2025, fn 66) warns more will not do what you hope.");
+    }
+
+    internal sealed record ResolvedContext(string ClassName, CanonicalId Reference, int? Minimum = null, int? Maximum = null);
 }

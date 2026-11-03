@@ -7,3 +7,5 @@ English plural endings give an illustrative example of a familiar sound pattern.
 A rule says what changes and in what environment. In plain words, one part of this pattern could be described as “make the ending voiced after a voiced sound.” A well-chosen rule covers the words that share that environment. A rule that is too broad can also change words you meant to leave alone, so check examples from both sides of the pattern.
 
 Rule order matters when one rule changes something that another rule looks for. If Rule 1 creates the sound that Rule 2 needs to see, Rule 1 must apply first. If Rule 2 applies first, it cannot act on a sound that does not exist yet. When a trace shows an unexpected output, check both the rule’s environment and whether earlier rules have already changed the relevant sound.
+
+You can change a rule after it exists: widen its environment, make an item in it optional or repeated, move it earlier or later, turn it off to see what the grammar does without it, or delete it. A rule's environment can name a word or morpheme boundary. A rule changes one sound into one sound, or deletes or inserts one sound.

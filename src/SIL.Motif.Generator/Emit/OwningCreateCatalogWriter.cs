@@ -65,7 +65,8 @@ public static class OwningCreateCatalogWriter
             "    \"PhSimpleContextNC\" => cache.ServiceLocator.GetInstance<IPhSimpleContextNCFactory>().Create(guid),\n" +
             "    \"PhSimpleContextBdry\" => cache.ServiceLocator.GetInstance<IPhSimpleContextBdryFactory>().Create(guid),\n" +
             "    \"PhSequenceContext\" => cache.ServiceLocator.GetInstance<IPhSequenceContextFactory>().Create(guid),\n" +
-            "    _ => throw new InvalidOperationException(\"Rule context must be a supported simple or sequence context.\"),\n" +
+            "    \"PhIterationContext\" => cache.ServiceLocator.GetInstance<IPhIterationContextFactory>().Create(guid),\n" +
+            "    _ => throw new InvalidOperationException(\"Rule context must be a supported simple, sequence or iteration context.\"),\n" +
             "};\nowner.ContextsOS.Insert(index, child);", PositionMatters: false),
         new("PhPhonData", "PhonRules", "PhSegmentRule", FieldCard.Seq,
             "var child = cache.ServiceLocator.GetInstance<IPhRegularRuleFactory>().Create(guid);\n" +
@@ -97,7 +98,8 @@ public static class OwningCreateCatalogWriter
             "    \"PhSimpleContextNC\" => cache.ServiceLocator.GetInstance<IPhSimpleContextNCFactory>().Create(guid),\n" +
             "    \"PhSimpleContextBdry\" => cache.ServiceLocator.GetInstance<IPhSimpleContextBdryFactory>().Create(guid),\n" +
             "    \"PhSequenceContext\" => cache.ServiceLocator.GetInstance<IPhSequenceContextFactory>().Create(guid),\n" +
-            "    _ => throw new InvalidOperationException(\"Left context must be a supported simple or sequence context.\"),\n" +
+            "    \"PhIterationContext\" => cache.ServiceLocator.GetInstance<IPhIterationContextFactory>().Create(guid),\n" +
+            "    _ => throw new InvalidOperationException(\"Left context must be a supported simple, sequence or iteration context.\"),\n" +
             "};\nowner.LeftContextOA = child;"),
         new("PhSegRuleRHS", "RightContext", "PhPhonContext", FieldCard.Atomic,
             "IPhPhonContext child = concreteClass switch\n" +
@@ -106,7 +108,8 @@ public static class OwningCreateCatalogWriter
             "    \"PhSimpleContextNC\" => cache.ServiceLocator.GetInstance<IPhSimpleContextNCFactory>().Create(guid),\n" +
             "    \"PhSimpleContextBdry\" => cache.ServiceLocator.GetInstance<IPhSimpleContextBdryFactory>().Create(guid),\n" +
             "    \"PhSequenceContext\" => cache.ServiceLocator.GetInstance<IPhSequenceContextFactory>().Create(guid),\n" +
-            "    _ => throw new InvalidOperationException(\"Right context must be a supported simple or sequence context.\"),\n" +
+            "    \"PhIterationContext\" => cache.ServiceLocator.GetInstance<IPhIterationContextFactory>().Create(guid),\n" +
+            "    _ => throw new InvalidOperationException(\"Right context must be a supported simple, sequence or iteration context.\"),\n" +
             "};\nowner.RightContextOA = child;"),
         new("PhNCFeatures", "Features", "FsFeatStruc", FieldCard.Atomic,
             "var child = cache.ServiceLocator.GetInstance<IFsFeatStrucFactory>().Create(guid);\n" +
@@ -244,9 +247,9 @@ public static class OwningCreateCatalogWriter
                 {
                     "PhNaturalClass" => "new[] { \"PhNCSegments\", \"PhNCFeatures\" }",
                     "PhSegmentRule" => "new[] { \"PhRegularRule\" }",
-                    "PhContextOrVar" => "new[] { \"PhSimpleContextSeg\", \"PhSimpleContextNC\", \"PhSimpleContextBdry\", \"PhSequenceContext\" }",
+                    "PhContextOrVar" => "new[] { \"PhSimpleContextSeg\", \"PhSimpleContextNC\", \"PhSimpleContextBdry\", \"PhSequenceContext\", \"PhIterationContext\" }",
                     "PhSimpleContext" => "new[] { \"PhSimpleContextSeg\", \"PhSimpleContextNC\", \"PhSimpleContextBdry\" }",
-                    "PhPhonContext" => "new[] { \"PhSimpleContextSeg\", \"PhSimpleContextNC\", \"PhSimpleContextBdry\", \"PhSequenceContext\" }",
+                    "PhPhonContext" => "new[] { \"PhSimpleContextSeg\", \"PhSimpleContextNC\", \"PhSimpleContextBdry\", \"PhSequenceContext\", \"PhIterationContext\" }",
                     "StPara" => "new[] { \"StTxtPara\" }",
                     "CmPossibility" when creation.Owner == "CmPossibilityList" =>
                         "new[] { \"PartOfSpeech\", \"CmPossibility\", \"PhPhonRuleFeat\" }",

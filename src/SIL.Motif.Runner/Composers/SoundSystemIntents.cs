@@ -20,8 +20,17 @@ public sealed record AuthorNaturalClassIntent(string Name, string Abbreviation,
     IReadOnlyList<CanonicalId>? Members = null, IReadOnlyList<PhonologicalFeatureValue>? Features = null);
 
 /// <summary>One context item: exactly one phoneme, natural class, named marker, or word/morpheme boundary.</summary>
+/// <param name="Phoneme">An existing phoneme.</param>
+/// <param name="NaturalClass">An existing natural class.</param>
+/// <param name="Boundary">The word or morpheme boundary.</param>
+/// <param name="BoundaryMarker">A stored boundary marker.</param>
+/// <param name="Minimum">
+/// The fewest times a phoneme or natural class must repeat; null means the item appears exactly once. Only rule
+/// contexts accept it.
+/// </param>
+/// <param name="Maximum">The most times it may repeat, or -1 for no limit; set together with <paramref name="Minimum"/>.</param>
 public sealed record EnvironmentContext(CanonicalId? Phoneme = null, CanonicalId? NaturalClass = null,
-    string? Boundary = null, CanonicalId? BoundaryMarker = null);
+    string? Boundary = null, CanonicalId? BoundaryMarker = null, int? Minimum = null, int? Maximum = null);
 
 /// <summary>Authors a parser-visible environment string from typed left and right contexts.</summary>
 public sealed record AuthorEnvironmentIntent(string Name, IReadOnlyList<EnvironmentContext> Left,
@@ -60,18 +69,52 @@ public static class AuthorEnvironmentIntentParser
         return new(SoundSystemIntentParsing.Text(authored, "name"), Contexts(authored, "left"), Contexts(authored, "right"));
     }
 
-    internal static EnvironmentContext[] Contexts(JsonElement authored, string name) =>
+    internal static EnvironmentContext[] Contexts(JsonElement authored, string name, bool allowRepeat = false) =>
         SoundSystemIntentParsing.Array(authored, name).Select(e =>
         {
-            SoundSystemIntentParsing.Object(e, "environment context", "phoneme", "naturalClass", "boundary", "boundaryMarker");
-            if (e.EnumerateObject().Count() != 1)
+            if (allowRepeat)
+                SoundSystemIntentParsing.Object(e, "environment context", "phoneme", "naturalClass", "boundary",
+                    "boundaryMarker", "optional", "minimum", "maximum");
+            else
+                SoundSystemIntentParsing.Object(e, "environment context", "phoneme", "naturalClass", "boundary", "boundaryMarker");
+            var references = new[] { "phoneme", "naturalClass", "boundary", "boundaryMarker" }
+                .Count(property => e.TryGetProperty(property, out _));
+            if (references != 1)
                 throw new ContractParseException("Each environment context must name exactly one phoneme, naturalClass, boundary or boundaryMarker.");
+            var (minimum, maximum) = allowRepeat ? Repeat(e) : (null, null);
             return new EnvironmentContext(
                 e.TryGetProperty("phoneme", out _) ? SoundSystemIntentParsing.Id(e, "phoneme") : null,
                 e.TryGetProperty("naturalClass", out _) ? SoundSystemIntentParsing.Id(e, "naturalClass") : null,
                 e.TryGetProperty("boundary", out _) ? SoundSystemIntentParsing.Text(e, "boundary") : null,
-                e.TryGetProperty("boundaryMarker", out _) ? SoundSystemIntentParsing.Id(e, "boundaryMarker") : null);
+                e.TryGetProperty("boundaryMarker", out _) ? SoundSystemIntentParsing.Id(e, "boundaryMarker") : null,
+                minimum, maximum);
         }).ToArray();
+
+    /// <summary>Reads optional, or minimum and maximum (-1 is unbounded).</summary>
+    private static (int? Minimum, int? Maximum) Repeat(JsonElement e)
+    {
+        var optional = e.TryGetProperty("optional", out var flag)
+            ? flag.ValueKind is JsonValueKind.True or JsonValueKind.False ? flag.GetBoolean()
+                : throw new ContractParseException("'optional' must be a Boolean.")
+            : false;
+        var hasMinimum = e.TryGetProperty("minimum", out _);
+        var hasMaximum = e.TryGetProperty("maximum", out _);
+        if (optional && (hasMinimum || hasMaximum))
+            throw new ContractParseException("Give 'optional' or 'minimum'/'maximum', not both.");
+        if (optional) return (0, 1);
+        if (!hasMinimum && !hasMaximum) return (null, null);
+        var minimum = hasMinimum ? Count(e, "minimum") : 0;
+        var maximum = hasMaximum ? Count(e, "maximum") : -1;
+        if (minimum < 0) throw new ContractParseException("'minimum' cannot be negative.");
+        if (maximum != -1 && (maximum < 1 || maximum < minimum))
+            throw new ContractParseException("'maximum' must be -1 (no limit) or at least 1 and at least 'minimum'.");
+        return minimum == 1 && maximum == 1 ? (null, null) : (minimum, maximum);
+    }
+
+    private static int Count(JsonElement e, string name) =>
+        e.GetProperty(name) is { ValueKind: JsonValueKind.Number } value && value.TryGetInt32(out var count)
+            ? count
+            : throw new ContractParseException($"'{name}' must be a whole number.");
 }
 
 internal static class SoundSystemIntentParsing

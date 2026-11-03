@@ -34,7 +34,7 @@ internal static class BoundaryMarkerRetirement
 {
     private const string Kind = BoundaryMarkerDeleteOperationKinds.DeleteBoundaryMarkers;
 
-    internal static IPhBdryMarker Inspect(LcmCache cache, CanonicalId id)
+    internal static IPhBdryMarker Inspect(LcmCache cache, CanonicalId id, bool allowUsers = false)
     {
         if (!cache.ServiceLocator.GetInstance<ICmObjectRepository>().TryGetObject(id.ToGuid(), out var found) ||
             found is not IPhBdryMarker marker)
@@ -53,11 +53,13 @@ internal static class BoundaryMarkerRetirement
                 $"'{Kind}': '{id.Value}' is not a duplicate of the word or morpheme boundary marker ('#' or '+').");
         foreach (var spelling in spellings)
         {
+            if (allowUsers) break;
             var standard = spelling == "#" ? wordMarker : morphemeMarker;
             if (!set.BoundaryMarkersOC.Any(other => other.Guid == standard && Spellings(other).Contains(spelling)))
                 throw new InvalidOperationException(
                     $"'{Kind}': the standard marker for '{spelling}' is not in the phoneme set, so '{id.Value}' is not a duplicate.");
         }
+        if (allowUsers) return marker;
         var users = marker.ReferringObjects.Where(user => !ReferenceEquals(user, marker) && user.Owner != marker).ToArray();
         if (users.Length > 0)
             throw new InvalidOperationException(

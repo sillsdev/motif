@@ -32,9 +32,10 @@ public static class PhPhonDataContextsOperationKinds
                             "PhSimpleContextNC" => cache.ServiceLocator.GetInstance<IPhSimpleContextNCFactory>().Create(guid),
                             "PhSimpleContextBdry" => cache.ServiceLocator.GetInstance<IPhSimpleContextBdryFactory>().Create(guid),
                             "PhSequenceContext" => cache.ServiceLocator.GetInstance<IPhSequenceContextFactory>().Create(guid),
-                            _ => throw new InvalidOperationException("Rule context must be a supported simple or sequence context."),
+                            "PhIterationContext" => cache.ServiceLocator.GetInstance<IPhIterationContextFactory>().Create(guid),
+                            _ => throw new InvalidOperationException("Rule context must be a supported simple, sequence or iteration context."),
                         };
                         owner.ContextsOS.Insert(index, child);
-            }, true, false, new[] { "PhSimpleContextSeg", "PhSimpleContextNC", "PhSimpleContextBdry", "PhSequenceContext" }, "PhContextOrVar", false));
+            }, true, false, new[] { "PhSimpleContextSeg", "PhSimpleContextNC", "PhSimpleContextBdry", "PhSequenceContext", "PhIterationContext" }, "PhContextOrVar", false));
     }
 }

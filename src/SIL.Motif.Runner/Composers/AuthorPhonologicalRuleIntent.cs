@@ -30,8 +30,8 @@ public sealed record PhonologicalRuleItem(CanonicalId? Phoneme = null, Canonical
 /// <param name="Direction">The closed direction value to author.</param>
 /// <param name="Input">Zero or one phoneme or natural-class items; an empty list means insertion.</param>
 /// <param name="Output">Zero or one phoneme or natural-class items; an empty list means deletion.</param>
-/// <param name="Left">A simple context or an ordered sequence of simple contexts.</param>
-/// <param name="Right">A simple context or an ordered sequence of simple contexts.</param>
+/// <param name="Left">Contexts in order; an item may be optional or repeated.</param>
+/// <param name="Right">Contexts in order; an item may be optional or repeated.</param>
 /// <param name="Placement">The neighboring rule identities that define the insertion gap.</param>
 public sealed record AuthorPhonologicalRuleIntent(
     string Name,
@@ -80,6 +80,17 @@ public static class AuthorPhonologicalRuleIntentParser
         return items;
     }
 
+    internal static PhonologicalRuleDirection ParseDirection(JsonElement authored) => Direction(authored);
+
+    internal static PhonologicalRuleItem[] ParseItems(JsonElement authored, string name) => Items(authored, name);
+
+    internal static EnvironmentContext[] ParseContexts(JsonElement authored, string name)
+    {
+        var contexts = AuthorEnvironmentIntentParser.Contexts(authored, name, allowRepeat: true);
+        RequireContextLength(contexts, name);
+        return contexts;
+    }
+
     private static PhonologicalRuleDirection Direction(JsonElement authored) =>
         SoundSystemIntentParsing.Text(authored, "direction") switch
         {
@@ -111,5 +122,5 @@ public static class AuthorPhonologicalRuleIntentParser
 
     /// <summary>A rule's left or right context may be absent, as LibLCM and FieldWorks' loader allow.</summary>
     private static EnvironmentContext[] OptionalContexts(JsonElement authored, string name) =>
-        authored.TryGetProperty(name, out _) ? AuthorEnvironmentIntentParser.Contexts(authored, name) : [];
+        authored.TryGetProperty(name, out _) ? AuthorEnvironmentIntentParser.Contexts(authored, name, allowRepeat: true) : [];
 }

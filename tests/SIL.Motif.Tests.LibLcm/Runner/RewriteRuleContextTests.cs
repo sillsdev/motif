@@ -661,7 +661,7 @@ public sealed class RewriteRuleContextTests(PristineProjectFixture pristine)
 
         var error = Assert.Throws<InvalidOperationException>(() => RegularRuleActivationGuard.RequireComplete(rule));
 
-        Assert.Contains("not supported", error.Message, StringComparison.Ordinal);
+        Assert.Contains("must repeat one simp", error.Message, StringComparison.Ordinal);
     }
 
     [Fact]
