@@ -26,7 +26,7 @@ public sealed class WaitTests
     }
 
     [Fact]
-    public void BetweenRunsBeforeEverySleepAndOnceMoreBeforeTheLastLook()
+    public void BetweenRunsBeforeEverySleepAndOnceMoreAfterTheConditionHolds()
     {
         var pumps = 0;
         var late = false;
@@ -34,7 +34,7 @@ public sealed class WaitTests
         Wait.Until(() => late, "work that only the pump finishes", TimeSpan.FromMinutes(5),
             between: () => { if (++pumps == 4) late = true; });
 
-        Assert.Equal(4, pumps);
+        Assert.Equal(5, pumps);
     }
 
     [Fact]
@@ -91,16 +91,30 @@ public sealed class WaitTests
     [InlineData("", 1.0)]
     [InlineData("1", 1.0)]
     [InlineData("2.5", 2.5)]
-    public void TheScaleReadsAsANumberOfAtLeastOne(string? value, double expected) =>
-        Assert.Equal(expected, Wait.ParseScale(value));
+    public void TheScaleReadsAsANumberOfAtLeastOne(string? value, double expected)
+    {
+        Assert.Equal(expected, Wait.ParseScale(value, out var problem));
+        Assert.Null(problem);
+    }
 
     [Theory]
     [InlineData("0.5")]
     [InlineData("0")]
     [InlineData("fast")]
     [InlineData("NaN")]
-    public void AScaleBelowOneOrNotANumberIsRefused(string value) =>
-        Assert.Throws<InvalidOperationException>(() => Wait.ParseScale(value));
+    [InlineData("Infinity")]
+    public void AScaleBelowOneOrNotANumberFallsBackToOneAndSaysWhy(string value)
+    {
+        Assert.Equal(1, Wait.ParseScale(value, out var problem));
+        Assert.Contains(value, problem);
+    }
+
+    [Theory]
+    [InlineData("21", 20.0)]
+    [InlineData("1000000000000", 20.0)]
+    [InlineData("20", 20.0)]
+    public void AScaleAboveTheCapIsCapped(string value, double expected) =>
+        Assert.Equal(expected, Wait.ParseScale(value, out _));
 
     [Fact]
     public void AScaleStretchesEveryDeadlineTakenThroughTheClass() =>

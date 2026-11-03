@@ -13,12 +13,14 @@ namespace SIL.Motif.Tests.TestFixtures;
 /// <para>
 /// A deadline costs time only on a failing run, because a wait ends the moment its condition holds. So it is set
 /// generously and then multiplied by <see cref="Scale"/>, which the <see cref="ScaleVariable"/> variable raises on
-/// a machine that runs many suites at once. A test never counts passes or sleeps a fixed time instead, because a
-/// pass count or a sleep is a guess about speed that a loaded machine turns into a failure.
+/// a machine that runs many suites at once. A test does not sleep a fixed time instead, because a sleep is a guess
+/// about speed that a loaded machine turns into a failure; <c>minimumPasses</c> is for the one condition whose own
+/// evaluation a starved machine slows, and it only adds looks.
 /// </para>
 /// <para>
 /// <paramref name="between"/> is what lets the awaited work make progress while the test waits: a UI test passes a
-/// dispatcher pump, a process test passes nothing.
+/// dispatcher pump, a process test passes nothing. It also runs once after the condition first holds, so what a
+/// test reads next has had one more turn of the pump.
 /// </para>
 /// </remarks>
 public static class Wait
@@ -31,17 +33,38 @@ public static class Wait
 
     private static readonly TimeSpan PollInterval = TimeSpan.FromMilliseconds(15);
 
-    /// <summary>The multiplier read from <see cref="ScaleVariable"/>, or 1 when it is unset.</summary>
-    public static double Scale { get; } = ParseScale(Environment.GetEnvironmentVariable(ScaleVariable));
+    /// <summary>The largest scale taken; a larger value would turn a failing wait into hours.</summary>
+    public const double MaxScale = 20;
 
-    /// <summary>Parses a scale value: unset or empty is 1, and anything but a number of at least 1 is an error.</summary>
-    public static double ParseScale(string? value)
+    /// <summary>The multiplier read from <see cref="ScaleVariable"/>: 1 when it is unset or unusable.</summary>
+    public static double Scale { get; }
+
+    /// <summary>Why <see cref="ScaleVariable"/> was not used as given, or null; every failure text carries it.</summary>
+    public static string? ScaleProblem { get; }
+
+    static Wait()
     {
+        Scale = ParseScale(Environment.GetEnvironmentVariable(ScaleVariable), out var problem);
+        ScaleProblem = problem;
+    }
+
+    /// <summary>
+    /// Parses a scale value: unset or empty is 1, a number of at least 1 is kept up to <see cref="MaxScale"/>, and
+    /// anything else is 1, with <paramref name="problem"/> saying so, so a bad value never breaks a type initializer.
+    /// </summary>
+    public static double ParseScale(string? value, out string? problem)
+    {
+        problem = null;
         if (string.IsNullOrWhiteSpace(value)) return 1;
-        if (double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var scale) &&
-            double.IsFinite(scale) && scale >= 1)
-            return scale;
-        throw new InvalidOperationException($"{ScaleVariable} must be a number of at least 1, not '{value}'.");
+        if (!double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var scale) ||
+            !double.IsFinite(scale) || scale < 1)
+        {
+            problem = $"{ScaleVariable} must be a number from 1 to {MaxScale}, not '{value}'; 1 was used.";
+            return 1;
+        }
+        if (scale <= MaxScale) return scale;
+        problem = $"{ScaleVariable} '{value}' is above {MaxScale}; {MaxScale} was used.";
+        return MaxScale;
     }
 
     /// <summary><paramref name="timeout"/> multiplied by <see cref="Scale"/>.</summary>
@@ -59,7 +82,11 @@ public static class Wait
         var deadline = Deadline(timeout);
         for (var pass = 1; ; pass++)
         {
-            if (condition()) return true;
+            if (condition())
+            {
+                between?.Invoke();
+                return true;
+            }
             var expired = pass >= minimumPasses && Stopwatch.GetTimestamp() >= deadline;
             between?.Invoke();
             if (expired) return condition();
@@ -75,7 +102,11 @@ public static class Wait
         var deadline = Deadline(timeout);
         for (var pass = 1; ; pass++)
         {
-            if (condition()) return true;
+            if (condition())
+            {
+                between?.Invoke();
+                return true;
+            }
             var expired = pass >= minimumPasses && Stopwatch.GetTimestamp() >= deadline;
             between?.Invoke();
             if (expired) return condition();
@@ -116,7 +147,8 @@ public static class Wait
     internal static string Describe(string why, Func<string>? detail)
     {
         var state = detail?.Invoke();
-        return string.IsNullOrWhiteSpace(state) ? why : why + "; " + state;
+        var text = string.IsNullOrWhiteSpace(state) ? why : why + "; " + state;
+        return ScaleProblem is null ? text : text + " (" + ScaleProblem + ")";
     }
 
     private static long Deadline(TimeSpan timeout) =>
