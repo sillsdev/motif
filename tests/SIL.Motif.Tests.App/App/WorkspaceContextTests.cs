@@ -1769,38 +1769,42 @@ public sealed class WorkspaceContextTests
     [Fact]
     public async Task TryAgainSaysTryingUntilTheTrialEndsThenShowsItsResult()
     {
-        var fake = new FakeCommandClient();
-        var context = NewContext(fake);
-        await context.OpenProjectAsync(ProjectPath);
-        fake.ReadTrialCompletesWith(Trial() with { Freshness = TrialFreshness.ProposalChanged });
-        await context.OpenProposalAsync("proposal/one", CancellationToken.None);
-        Assert.Equal(TrialStanding.NeedsAnotherTry(TrialStaleReason.ProposalChanged), context.ProposalStanding);
-        var waiting = new TaskCompletionSource<CommandOutcome<JobStatusResponse>>(
-            TaskCreationOptions.RunContinuationsAsynchronously);
-        IProgress<JobStatusResponse>? reported = null;
-        fake.OnWaitForJob((_, progress, _) =>
+        // The window publishes Trial states through the context it was made on, which a pool thread is not.
+        await SingleThreadPump.RunAsync(async () =>
         {
-            reported = progress;
-            return waiting.Task;
+            var fake = new FakeCommandClient();
+            var context = NewContext(fake);
+            await context.OpenProjectAsync(ProjectPath);
+            fake.ReadTrialCompletesWith(Trial() with { Freshness = TrialFreshness.ProposalChanged });
+            await context.OpenProposalAsync("proposal/one", CancellationToken.None);
+            Assert.Equal(TrialStanding.NeedsAnotherTry(TrialStaleReason.ProposalChanged), context.ProposalStanding);
+            var waiting = new TaskCompletionSource<CommandOutcome<JobStatusResponse>>(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+            IProgress<JobStatusResponse>? reported = null;
+            fake.OnWaitForJob((_, progress, _) =>
+            {
+                reported = progress;
+                return waiting.Task;
+            });
+
+            var trying = context.TryAgainAsync("proposal/one", CancellationToken.None);
+            reported!.Report(Status(JobStatus.Running) with { TrialProgress = new TrialWordProgress(1, 4, "dogs") });
+
+            Assert.Equal(TrialStanding.Trying, context.ProposalStanding);
+            Assert.True(context.TrialRun.IsActive);
+            Assert.Equal(1, context.TrialRun.StateFor("proposal/one").Progress?.Completed);
+            Assert.Equal(Timeout.InfiniteTimeSpan, Assert.Single(fake.WaitForJobRequests).Timeout);
+            fake.ReadTrialCompletesWith(Trial() with { JobId = "job/new" });
+            waiting.SetResult(CommandOutcome<JobStatusResponse>.Success(Status(JobStatus.Completed)));
+            var outcome = await trying;
+
+            Assert.Equal("job/new", outcome.Value?.JobId);
+            Assert.Equal("job/new", context.Lens?.Trial?.JobId);
+            Assert.Equal("job/new", context.EvidenceLens.Proposal?.Trial.JobId);
+            Assert.Equal(TrialStanding.Current, context.ProposalStanding);
+            Assert.False(context.TrialRun.IsActive);
+            Assert.Null(context.TrialRun.StateFor("proposal/one").Refusal);
         });
-
-        var trying = context.TryAgainAsync("proposal/one", CancellationToken.None);
-        reported!.Report(Status(JobStatus.Running) with { TrialProgress = new TrialWordProgress(1, 4, "dogs") });
-
-        Assert.Equal(TrialStanding.Trying, context.ProposalStanding);
-        Assert.True(context.TrialRun.IsActive);
-        Assert.Equal(1, context.TrialRun.StateFor("proposal/one").Progress?.Completed);
-        Assert.Equal(Timeout.InfiniteTimeSpan, Assert.Single(fake.WaitForJobRequests).Timeout);
-        fake.ReadTrialCompletesWith(Trial() with { JobId = "job/new" });
-        waiting.SetResult(CommandOutcome<JobStatusResponse>.Success(Status(JobStatus.Completed)));
-        var outcome = await trying;
-
-        Assert.Equal("job/new", outcome.Value?.JobId);
-        Assert.Equal("job/new", context.Lens?.Trial?.JobId);
-        Assert.Equal("job/new", context.EvidenceLens.Proposal?.Trial.JobId);
-        Assert.Equal(TrialStanding.Current, context.ProposalStanding);
-        Assert.False(context.TrialRun.IsActive);
-        Assert.Null(context.TrialRun.StateFor("proposal/one").Refusal);
     }
 
     [Fact]

@@ -26,26 +26,30 @@ public sealed class RefreshBeforeCheckTests
     [Fact]
     public async Task ATrialAfterAnApplyRefreshesFirstAndSaysTryingWhileItRuns()
     {
-        var (fake, context) = await OpenProposalAsync();
-        var refresh = new RefreshProbe(context) { Gate = NewGate() };
-        context.RefreshProjectCommand = refresh.Command;
-        context.RecordApplied();
+        // The window publishes Trial states through the context it was made on, which a pool thread is not.
+        await SingleThreadPump.RunAsync(async () =>
+        {
+            var (fake, context) = await OpenProposalAsync();
+            var refresh = new RefreshProbe(context) { Gate = NewGate() };
+            context.RefreshProjectCommand = refresh.Command;
+            context.RecordApplied();
 
-        var trying = context.TryAgainAsync(ProposalId, CancellationToken.None);
+            var trying = context.TryAgainAsync(ProposalId, CancellationToken.None);
 
-        Assert.Equal(1, refresh.Runs);
-        Assert.True(context.TrialRun.IsRunning(ProposalId));
-        Assert.Equal(TrialStanding.Trying, context.ProposalStanding);
-        Assert.Empty(fake.EnqueueTrialRequests);
-        refresh.Gate.SetResult();
-        var outcome = await trying;
+            Assert.Equal(1, refresh.Runs);
+            Assert.True(context.TrialRun.IsRunning(ProposalId));
+            Assert.Equal(TrialStanding.Trying, context.ProposalStanding);
+            Assert.Empty(fake.EnqueueTrialRequests);
+            refresh.Gate.SetResult();
+            var outcome = await trying;
 
-        Assert.True(outcome.Succeeded);
-        Assert.Equal(1, refresh.Runs);
-        Assert.Equal(ProposalId, Assert.Single(fake.EnqueueTrialRequests).ProposalId);
-        Assert.False(context.Evidence.AppliedSinceRefresh);
-        Assert.Equal(ProposalId, context.Lens?.ProposalId);
-        Assert.False(context.TrialRun.IsActive);
+            Assert.True(outcome.Succeeded);
+            Assert.Equal(1, refresh.Runs);
+            Assert.Equal(ProposalId, Assert.Single(fake.EnqueueTrialRequests).ProposalId);
+            Assert.False(context.Evidence.AppliedSinceRefresh);
+            Assert.Equal(ProposalId, context.Lens?.ProposalId);
+            Assert.False(context.TrialRun.IsActive);
+        });
     }
 
     [Fact]
@@ -127,23 +131,27 @@ public sealed class RefreshBeforeCheckTests
     [Fact]
     public async Task CancellingWhileTheRefreshRunsStopsTheTrialAsCancelled()
     {
-        var (fake, context) = await OpenProposalAsync();
-        var refresh = new RefreshProbe(context) { Gate = NewGate() };
-        context.RefreshProjectCommand = refresh.Command;
-        context.RecordApplied();
-        using var cancel = new CancellationTokenSource();
+        // The window publishes Trial states through the context it was made on, which a pool thread is not.
+        await SingleThreadPump.RunAsync(async () =>
+        {
+            var (fake, context) = await OpenProposalAsync();
+            var refresh = new RefreshProbe(context) { Gate = NewGate() };
+            context.RefreshProjectCommand = refresh.Command;
+            context.RecordApplied();
+            using var cancel = new CancellationTokenSource();
 
-        var trying = context.TryAgainAsync(ProposalId, cancel.Token);
-        await cancel.CancelAsync();
-        var outcome = await trying;
+            var trying = context.TryAgainAsync(ProposalId, cancel.Token);
+            await cancel.CancelAsync();
+            var outcome = await trying;
 
-        Assert.Equal(WindowRefusal.RefreshCancelledCode, outcome.Refusal?.Code);
-        Assert.Equal("Cancelled, so nothing was checked. The Refresh already started carries on until it finishes.",
-            WindowRefusal.From(outcome.Refusal!).Sentence);
-        Assert.Equal(FailureReason.Cancelled, outcome.Refusal?.Reason);
-        Assert.Empty(fake.EnqueueTrialRequests);
-        Assert.False(context.TrialRun.IsRunning(ProposalId));
-        refresh.Gate.SetResult();
+            Assert.Equal(WindowRefusal.RefreshCancelledCode, outcome.Refusal?.Code);
+            Assert.Equal("Cancelled, so nothing was checked. The Refresh already started carries on until it finishes.",
+                WindowRefusal.From(outcome.Refusal!).Sentence);
+            Assert.Equal(FailureReason.Cancelled, outcome.Refusal?.Reason);
+            Assert.Empty(fake.EnqueueTrialRequests);
+            Assert.False(context.TrialRun.IsRunning(ProposalId));
+            refresh.Gate.SetResult();
+        });
     }
 
     [Fact]
