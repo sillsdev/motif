@@ -37,7 +37,10 @@ internal static class WalkthroughWindowReopen
                 !ReferenceEquals(before, command.ExecutionTask) && command.ExecutionTask is { IsCompleted: true },
             TimeSpan.FromSeconds(60), $"opening '{project.AutomationName}' did not finish");
         Assert.NotSame(before, command.ExecutionTask);
-        Assert.Equal(projectPath, walkthrough.Workspace.Context.ProjectPath);
+        if (!string.Equals(projectPath, walkthrough.Workspace.Context.ProjectPath, StringComparison.Ordinal))
+            Assert.Fail($"Opening '{project.AutomationName}' finished with project path " +
+                $"'{walkthrough.Workspace.Context.ProjectPath ?? "none"}', not '{projectPath}'; " +
+                OpenFailureText.Describe(walkthrough.Workspace));
     }
 
     private static (MenuItem RecentMenu, RecentProjectViewModel Project, Task? Before) ClickRecentEntry(

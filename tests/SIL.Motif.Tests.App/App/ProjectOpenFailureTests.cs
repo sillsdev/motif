@@ -7,6 +7,7 @@ using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Tests.App.Walkthrough;
 using Xunit;
 
 namespace SIL.Motif.Tests.App;
@@ -84,6 +85,26 @@ public sealed class ProjectOpenFailureTests
         fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(token, DateTimeOffset.UtcNow, false));
         await workspace.OpenRecentProjectCommand.ExecuteAsync(new RecentProjectViewModel(ProjectB));
         Assert.Equal(ProjectB, workspace.Context.ProjectPath);
+    }
+
+    [Fact]
+    public async Task TheFailureTextNamesTheOpenStepThatThrew()
+    {
+        var fake = new FakeCommandClient();
+        var token = new BaselineToken("project-1", Digest, "1", "2026-09-05T00:00:00Z", BundleDigest);
+        fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(token, DateTimeOffset.UtcNow, false));
+        fake.OnListTexts((_, _) => Task.FromException<CommandOutcome<TextInventoryResponse>>(
+            new InvalidOperationException("The Text list could not be read.")));
+        var workspace = NewWorkspace(fake);
+        Assert.Equal("no open refusal", OpenFailureText.Describe(workspace));
+
+        await workspace.OpenRecentProjectCommand.ExecuteAsync(new RecentProjectViewModel(ProjectA));
+
+        Assert.Null(workspace.Context.ProjectPath);
+        var text = OpenFailureText.Describe(workspace);
+        Assert.Contains(OpenRefusal, text, StringComparison.Ordinal);
+        Assert.Contains("The Text list could not be read.", text, StringComparison.Ordinal);
+        Assert.Contains(nameof(SelectionViewModel.LoadTextsAsync), text, StringComparison.Ordinal);
     }
 
     [Fact]

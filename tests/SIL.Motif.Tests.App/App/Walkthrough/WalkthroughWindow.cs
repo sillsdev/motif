@@ -840,7 +840,8 @@ public sealed class WalkthroughWindow : IDisposable
             $"Handoff.State='{Workspace.PageModel<AiHandoffPageModel>().Handoff.State}', " +
             $"Handoff.Refusal?.Message='{Workspace.PageModel<AiHandoffPageModel>().Handoff.Refusal?.Message}', " +
             $"Handoff.Progress='{Workspace.PageModel<AiHandoffPageModel>().Handoff.Progress}', " +
-            $"project='{Workspace.Project.KnownProjects.Count}' known projects", Pump, minimumPasses);
+            $"project='{Workspace.Project.KnownProjects.Count}' known projects, " +
+            OpenFailureText.Describe(Workspace), Pump, minimumPasses);
 
     public void Dispose()
     {
